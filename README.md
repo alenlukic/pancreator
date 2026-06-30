@@ -1,6 +1,6 @@
-# Pancreator v2.7.0
+# Pancreator v2.8.0
 
-Pancreator v2.7.0 is a dependency-free, Cursor-native control plane for agent workflows. Cursor provides the conversational supervisor, named subagents, and MCP integrations. Compiled TypeScript and shell code provide durable workflow state, policy selection, validation, retries, evidence, and operator-readable records.
+Pancreator v2.8.0 is a dependency-free, Cursor-native control plane for agent workflows. Cursor provides the conversational supervisor, named subagents, and MCP integrations. Compiled TypeScript and shell code provide durable workflow state, policy selection, validation, retries, evidence, and operator-readable records.
 
 ## What this prototype proves
 

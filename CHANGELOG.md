@@ -1,124 +1,121 @@
 # Changelog
 
-_Release boundaries before formal Semantic Versioning adoption are reconstructed from repository history. Each date reflects the endpoint commit for that release._
-
-## [Unreleased]
+## [2.8.0] - 2026-06-30
 
 ### Changed
 
-- Make the release steward the agentic owner of Pancreator version selection, Common Changelog release notes, synchronized version-bearing metadata, and idempotent self-development ship updates.
-- Restrict ship-stage mutations to validated release metadata and durable version-bearing documentation without invalidating the reviewed implementation fingerprint.
-- Make embedded target-repository verification language- and technology-agnostic through repository-owned check profiles with explicit toolchain probes.
-- Scope Pancreator's TypeScript, shell, and npm conventions to self-development instead of projecting them into arbitrary target repositories.
-- Preserve in-flight embedded workflow compatibility by translating legacy npm gates to target-owned profiles and disabling the removed standalone coverage gate without recording a false pass.
-- Define distinct `fast`, optional `secondary`, and complete `full` repository-check semantics, support target-declared profile timeouts, and stream direct check output while preserving structured stdout.
+- Make the release steward the explicit owner of version selection, release-note generation, and synchronized metadata updates in self-development ship mode and standalone `/pan-release` execution ([7211533](https://github.com/alenlukic/pancreator/commit/72115335c0307ebca4b0d14af30ed7fb672f08c0)).
+- Restrict ship-stage source mutations to release metadata and durable current-version documentation while preserving prior implementation evidence semantics ([7211533](https://github.com/alenlukic/pancreator/commit/72115335c0307ebca4b0d14af30ed7fb672f08c0), [2342efa](https://github.com/alenlukic/pancreator/commit/2342efa86ddaac407e619952a560d18188af5870)).
+- Make embedded repository checks language- and technology-agnostic with explicit profile semantics (`fast`, optional `secondary`, and `full`) and target-owned command/probe definitions ([2342efa](https://github.com/alenlukic/pancreator/commit/2342efa86ddaac407e619952a560d18188af5870), [2a406c8](https://github.com/alenlukic/pancreator/commit/2a406c89eb620f553e58ecd6693c598277082765)).
+- Scope self-development TypeScript/shell/npm conventions away from embedded target assumptions, while preserving compatibility translation for existing in-flight runs ([2342efa](https://github.com/alenlukic/pancreator/commit/2342efa86ddaac407e619952a560d18188af5870), [0c55859](https://github.com/alenlukic/pancreator/commit/0c5585962c8cdf135093c7cb242b940122f2bf09)).
 
 ### Added
 
-- Add standalone `/pan-release` preparation for regenerating an existing release candidate or creating the next major, minor, or patch candidate from the full post-bump Git delta.
+- Add standalone `/pan-release` release preparation to regenerate an in-progress candidate or create one SemVer bump from the full post-baseline delta ([7211533](https://github.com/alenlukic/pancreator/commit/72115335c0307ebca4b0d14af30ed7fb672f08c0), [library/skills/update-release-metadata.md](library/skills/update-release-metadata.md)).
+- Add repository-check templates and validation guardrails for embedded targets, including explicit profile shape and duplicate `fast`/`full` protection ([2342efa](https://github.com/alenlukic/pancreator/commit/2342efa86ddaac407e619952a560d18188af5870), [2a406c8](https://github.com/alenlukic/pancreator/commit/2a406c89eb620f553e58ecd6693c598277082765)).
 
 ### Removed
 
-- Remove persistent per-file workspace locks, active-workflow leases, and the per-edit modification ledger; legacy `pan changes begin|commit|cancel` commands now return compatibility no-ops, embedded refreshes delete stale exclusion records, and transient run-state serialization uses a self-cleaning operation mutex with distinct diagnostics.
+- Remove persistent workspace locks, active-workflow leases, and per-edit ledgers; retain `pan changes begin|commit|cancel` as compatibility no-ops for upgraded operators ([2342efa](https://github.com/alenlukic/pancreator/commit/2342efa86ddaac407e619952a560d18188af5870)).
 
 ### Fixed
 
-- Prevent incomparable stage evidence caused by ambiguous interpreter selection and prevent false npm lint, test, or coverage failures in non-Node target repositories.
-- Remove the embedded `/pan-validate` dependency on a target-root npm script; harness doctor and validation now run through the installed Pancreator CLI.
-- Include release metadata in embedded installations so `pan validate` and the indexed update protocol can read `release/index.json` after installation or refresh.
-- Prevent generated `fast` profiles from silently running the complete suite: semantic validation rejects exact `fast`/`full` duplication, and install/update refreshes disable known-bad legacy duplicates with an automatic backup while preserving valid target commands.
+- Prevent incomparable validation evidence from ambiguous interpreter selection and avoid false npm-based failures in non-Node target repositories ([2342efa](https://github.com/alenlukic/pancreator/commit/2342efa86ddaac407e619952a560d18188af5870), [2a406c8](https://github.com/alenlukic/pancreator/commit/2a406c89eb620f553e58ecd6693c598277082765)).
+- Remove embedded `/pan-validate` dependence on target-root npm scripts by routing validation through the installed Pancreator CLI entrypoints ([2342efa](https://github.com/alenlukic/pancreator/commit/2342efa86ddaac407e619952a560d18188af5870)).
+- Include release metadata in embedded installation/refresh flows so `pan validate` and indexed updates can resolve `release/index.json` consistently ([2342efa](https://github.com/alenlukic/pancreator/commit/2342efa86ddaac407e619952a560d18188af5870)).
+- Prevent generated `fast` profiles from silently running full suites by rejecting exact duplication and auto-disabling known-bad legacy duplicates with backups ([2342efa](https://github.com/alenlukic/pancreator/commit/2342efa86ddaac407e619952a560d18188af5870), [2a406c8](https://github.com/alenlukic/pancreator/commit/2a406c89eb620f553e58ecd6693c598277082765)).
 
 ## [2.7.0] - 2026-06-28
 
 ### Changed
 
-- Adopt complete Semantic Versioning metadata and a curated Common Changelog release history ([`VERSION`](VERSION), [`VERSION-001`](governance/policies/VERSION-001.json))
+- Adopt complete Semantic Versioning metadata and a curated Common Changelog release history ([VERSION](VERSION), [VERSION-001](governance/policies/VERSION-001.json))
 
 ### Added
 
-- Expose release-steward PR description generation independently through `/pan-write-pr [base-ref]`, comparing committed and worktree changes against `main` by default ([`f36ede0`](https://github.com/alenlukic/pancreator/commit/f36ede0b6955d291ed67c92386cf5b6696756722), [`pan-write-pr`](library/cursor/commands/pan-write-pr.md))
+- Expose release-steward PR description generation independently through `/pan-write-pr [base-ref]`, comparing committed and worktree changes against `main` by default ([f36ede0](https://github.com/alenlukic/pancreator/commit/f36ede0b6955d291ed67c92386cf5b6696756722), [pan-write-pr](library/cursor/commands/pan-write-pr.md))
 
 ## [2.6.0] - 2026-06-28
 
 ### Changed
 
-- Install Pancreator as an embedded `.pancreator/` harness with canonical Cursor projections, ownership-aware refreshes, and indexed fast-forward updates ([`7b555f9`](https://github.com/alenlukic/pancreator/commit/7b555f99395b1f4d9c4f1548f7c8ce0ae0425713), [`667ee3c`](https://github.com/alenlukic/pancreator/commit/667ee3ca9c45322ad2462fd09dc27e76a5639975))
+- Install Pancreator as an embedded `.pancreator/` harness with canonical Cursor projections, ownership-aware refreshes, and indexed fast-forward updates ([7b555f9](https://github.com/alenlukic/pancreator/commit/7b555f99395b1f4d9c4f1548f7c8ce0ae0425713), [667ee3c](https://github.com/alenlukic/pancreator/commit/667ee3ca9c45322ad2462fd09dc27e76a5639975))
 
 ### Added
 
-- Add a librarian persona and `/pan-build-docs` command for validated target-repository primers ([`a8f3b42`](https://github.com/alenlukic/pancreator/commit/a8f3b42bc29d2c9b49e40f1fcb49071bbb14f7ef))
+- Add a librarian persona and `/pan-build-docs` command for validated target-repository primers ([a8f3b42](https://github.com/alenlukic/pancreator/commit/a8f3b42bc29d2c9b49e40f1fcb49071bbb14f7ef))
 
 ### Fixed
 
-- Correct embedded-installation ignore handling and deterministic installation validation ([`72cf812`](https://github.com/alenlukic/pancreator/commit/72cf812b9abe6ad9999e173e4f73311e40aa6f70), [`2fac15d`](https://github.com/alenlukic/pancreator/commit/2fac15dec77440f522e4875b0bb1626d1a712331))
+- Correct embedded-installation ignore handling and deterministic installation validation ([72cf812](https://github.com/alenlukic/pancreator/commit/72cf812b9abe6ad9999e173e4f73311e40aa6f70), [2fac15d](https://github.com/alenlukic/pancreator/commit/2fac15dec77440f522e4875b0bb1626d1a712331))
 
 ## [2.5.0] - 2026-06-27
 
 ### Changed
 
-- Govern executable migrations and remove superseded migration implementations ([`7b5f5b5`](https://github.com/alenlukic/pancreator/commit/7b5f5b5b6df0b7f91d994940d935f7b1d3e1e507), [`3a5f6a0`](https://github.com/alenlukic/pancreator/commit/3a5f6a04e847c1b2a65cb11e4cb9a1b396f6eee1))
+- Govern executable migrations and remove superseded migration implementations ([7b5f5b5](https://github.com/alenlukic/pancreator/commit/7b5f5b5b6df0b7f91d994940d935f7b1d3e1e507), [3a5f6a0](https://github.com/alenlukic/pancreator/commit/3a5f6a04e847c1b2a65cb11e4cb9a1b396f6eee1))
 
 ### Added
 
-- Add workflow-artifact contract coverage, bounded workflow circuit breakers, and conservative intake decomposition ([`db925af`](https://github.com/alenlukic/pancreator/commit/db925afb51ad0dabfd31f1b80129f185074ec2c5), [`bc6d5b6`](https://github.com/alenlukic/pancreator/commit/bc6d5b67e48e0751c33478206842eca2eba6364d), [`cfee47c`](https://github.com/alenlukic/pancreator/commit/cfee47c73591ee1fedc71f684ee887fd434d0bb4))
+- Add workflow-artifact contract coverage, bounded workflow circuit breakers, and conservative intake decomposition ([db925af](https://github.com/alenlukic/pancreator/commit/db925afb51ad0dabfd31f1b80129f185074ec2c5), [bc6d5b6](https://github.com/alenlukic/pancreator/commit/bc6d5b67e48e0751c33478206842eca2eba6364d), [cfee47c](https://github.com/alenlukic/pancreator/commit/cfee47c73591ee1fedc71f684ee887fd434d0bb4))
 
 ### Fixed
 
-- Correct misplaced delegation evidence in generated workflow artifacts ([`2745f78`](https://github.com/alenlukic/pancreator/commit/2745f78a90641ee61c5ae2f246ae75d8fa3b84a8))
+- Correct misplaced delegation evidence in generated workflow artifacts ([2745f78](https://github.com/alenlukic/pancreator/commit/2745f78a90641ee61c5ae2f246ae75d8fa3b84a8))
 
 ## [2.4.0] - 2026-06-26
 
 ### Changed
 
-- Standardize durable workflow and artifact names, typed artifact directories, reverse execution ordering, and terminal compaction ([`7d28760`](https://github.com/alenlukic/pancreator/commit/7d287602fd1666a7a4e8408be5fda4aab96f0e36), [`6547c73`](https://github.com/alenlukic/pancreator/commit/6547c73fba2592bd01042db1e477606d5274feeb))
-- Remove redundant record artifacts and bound invocation-context construction to relevant workflow history ([`ea85d0c`](https://github.com/alenlukic/pancreator/commit/ea85d0cb34493a2e29219140f29a0d62c6d49835), [`e6d7c12`](https://github.com/alenlukic/pancreator/commit/e6d7c12e59c92d2892defde7df2d877497d66991))
+- Standardize durable workflow and artifact names, typed artifact directories, reverse execution ordering, and terminal compaction ([7d28760](https://github.com/alenlukic/pancreator/commit/7d287602fd1666a7a4e8408be5fda4aab96f0e36), [6547c73](https://github.com/alenlukic/pancreator/commit/6547c73fba2592bd01042db1e477606d5274feeb))
+- Remove redundant record artifacts and bound invocation-context construction to relevant workflow history ([ea85d0c](https://github.com/alenlukic/pancreator/commit/ea85d0cb34493a2e29219140f29a0d62c6d49835), [e6d7c12](https://github.com/alenlukic/pancreator/commit/e6d7c12e59c92d2892defde7df2d877497d66991))
 
 ### Added
 
-- Add quiet npm execution and Cursor-style SDK progress logging ([`7134e0c`](https://github.com/alenlukic/pancreator/commit/7134e0c2f5a7325fa4fd11924f4f598db5b0f4ae))
+- Add quiet npm execution and Cursor-style SDK progress logging ([7134e0c](https://github.com/alenlukic/pancreator/commit/7134e0c2f5a7325fa4fd11924f4f598db5b0f4ae))
 
 ## [2.3.0] - 2026-06-25
 
 ### Changed
 
-- Normalize governance ownership, policy lookup, and pipeline configuration around explicit scoped contracts ([`ee27bbe`](https://github.com/alenlukic/pancreator/commit/ee27bbef67821aa8be0a899089220a90ddd7f29b), [`f1bb95f`](https://github.com/alenlukic/pancreator/commit/f1bb95f0c8c8f6b96cad4efaf0ca3be1f63991f8), [`9890613`](https://github.com/alenlukic/pancreator/commit/989061331a092c97edae208762903307cfcad7df))
+- Normalize governance ownership, policy lookup, and pipeline configuration around explicit scoped contracts ([ee27bbe](https://github.com/alenlukic/pancreator/commit/ee27bbef67821aa8be0a899089220a90ddd7f29b), [f1bb95f](https://github.com/alenlukic/pancreator/commit/f1bb95f0c8c8f6b96cad4efaf0ca3be1f63991f8), [9890613](https://github.com/alenlukic/pancreator/commit/989061331a092c97edae208762903307cfcad7df))
 
 ### Added
 
-- Add policy-bound deterministic automation, validation registries, directive auditing, and repository contract checks ([`4bf5558`](https://github.com/alenlukic/pancreator/commit/4bf555885bb6527452d6e141f545074ad766efc1))
+- Add policy-bound deterministic automation, validation registries, directive auditing, and repository contract checks ([4bf5558](https://github.com/alenlukic/pancreator/commit/4bf555885bb6527452d6e141f545074ad766efc1))
 
 ## [2.2.0] - 2026-06-24
 
 ### Changed
 
-- Strengthen the runtime protocol, delegation enforcement, ship gates, project settings, and model synchronization ([`9f662aa`](https://github.com/alenlukic/pancreator/commit/9f662aa9fdca0eecbbf00e4b17528330c4ebcffc), [`0082178`](https://github.com/alenlukic/pancreator/commit/00821787da354d4c185c0adfdf163b20d48de62a), [`6bb55f3`](https://github.com/alenlukic/pancreator/commit/6bb55f3752467f96c6b253aa134ca5245e82e569))
+- Strengthen the runtime protocol, delegation enforcement, ship gates, project settings, and model synchronization ([9f662aa](https://github.com/alenlukic/pancreator/commit/9f662aa9fdca0eecbbf00e4b17528330c4ebcffc), [0082178](https://github.com/alenlukic/pancreator/commit/00821787da354d4c185c0adfdf163b20d48de62a), [6bb55f3](https://github.com/alenlukic/pancreator/commit/6bb55f3752467f96c6b253aa134ca5245e82e569))
 
 ### Added
 
-- Add controlled change tracking, lightweight investigation and spot-fix execution, arbitrary stage repair, and operator pause controls ([`fa9117a`](https://github.com/alenlukic/pancreator/commit/fa9117a36b4debebb4713623ded505801eaed1b1), [`cf9be68`](https://github.com/alenlukic/pancreator/commit/cf9be689db4c681d56c51256a7eb7948b6b61047), [`7cd9cca`](https://github.com/alenlukic/pancreator/commit/7cd9ccaa7db3d291ad6eae2d3655b649543f8dee))
-- Add the first embedded-installation update path for target repositories ([`725b3eb`](https://github.com/alenlukic/pancreator/commit/725b3eb02d7d05a87019ba0de0ce2b500f379b3b))
+- Add controlled change tracking, lightweight investigation and spot-fix execution, arbitrary stage repair, and operator pause controls ([fa9117a](https://github.com/alenlukic/pancreator/commit/fa9117a36b4debebb4713623ded505801eaed1b1), [cf9be68](https://github.com/alenlukic/pancreator/commit/cf9be689db4c681d56c51256a7eb7948b6b61047), [7cd9cca](https://github.com/alenlukic/pancreator/commit/7cd9ccaa7db3d291ad6eae2d3655b649543f8dee))
+- Add the first embedded-installation update path for target repositories ([725b3eb](https://github.com/alenlukic/pancreator/commit/725b3eb02d7d05a87019ba0de0ce2b500f379b3b))
 
 ## [2.1.0] - 2026-06-23
 
 ### Changed
 
-- Make pipeline configuration explicit and selectable across simple and complex execution profiles ([`7b22b37`](https://github.com/alenlukic/pancreator/commit/7b22b3790584bbec199a54265a5abaa26851ccfe), [`5de65ee`](https://github.com/alenlukic/pancreator/commit/5de65eedaed6c3cd9fd88e65d22e2c1771409b16))
+- Make pipeline configuration explicit and selectable across simple and complex execution profiles ([7b22b37](https://github.com/alenlukic/pancreator/commit/7b22b3790584bbec199a54265a5abaa26851ccfe), [5de65ee](https://github.com/alenlukic/pancreator/commit/5de65eedaed6c3cd9fd88e65d22e2c1771409b16))
 
 ### Added
 
-- Add workspace-targeted workflow parameters so Pancreator can operate against an explicit target repository ([`3c2225c`](https://github.com/alenlukic/pancreator/commit/3c2225cf5230b03a5c21e524aa14861aba10d0f9))
+- Add workspace-targeted workflow parameters so Pancreator can operate against an explicit target repository ([3c2225c](https://github.com/alenlukic/pancreator/commit/3c2225cf5230b03a5c21e524aa14861aba10d0f9))
 
 ## [2.0.1] - 2026-06-22
 
 ### Fixed
 
-- Correct formatting, initialization, and first-run defects discovered after the clean rebuild ([`2ff4c09`](https://github.com/alenlukic/pancreator/commit/2ff4c0926732c8437b89cce4a7848489e2d50231), [`612f825`](https://github.com/alenlukic/pancreator/commit/612f82503bc08c2df59471a3bc1968e3f8a3bd50))
+- Correct formatting, initialization, and first-run defects discovered after the clean rebuild ([2ff4c09](https://github.com/alenlukic/pancreator/commit/2ff4c0926732c8437b89cce4a7848489e2d50231), [612f825](https://github.com/alenlukic/pancreator/commit/612f82503bc08c2df59471a3bc1968e3f8a3bd50))
 
 ## [2.0.0] - 2026-06-22
 
 ### Changed
 
-- **Breaking:** replace the legacy application and package layout with a dependency-free TypeScript CLI, file-backed workflow runtime, canonical library, and scoped governance model ([`603f932`](https://github.com/alenlukic/pancreator/commit/603f932f850abfc2be70a94441fdd63c9b764ec5), [`377f309`](https://github.com/alenlukic/pancreator/commit/377f3098db74ac3834fdb4750af757e1bd25b1c1))
+- **Breaking:** replace the legacy application and package layout with a dependency-free TypeScript CLI, file-backed workflow runtime, canonical library, and scoped governance model ([603f932](https://github.com/alenlukic/pancreator/commit/603f932f850abfc2be70a94441fdd63c9b764ec5), [377f309](https://github.com/alenlukic/pancreator/commit/377f3098db74ac3834fdb4750af757e1bd25b1c1))
 
 ## [1.3.0] - 2026-06-20
 
@@ -145,7 +142,7 @@ _Release boundaries before formal Semantic Versioning adoption are reconstructed
 
 ### Changed
 
-- Consolidate and clean the Cursor command surface before exposing retrospective workflows ([`6f8a1b4`](https://github.com/alenlukic/pancreator/commit/6f8a1b463eba402ff72b12f5a04dcdef9a7a5b9d))
+- Consolidate and clean the Cursor command surface before exposing retrospective workflows ([6f8a1b4](https://github.com/alenlukic/pancreator/commit/6f8a1b463eba402ff72b12f5a04dcdef9a7a5b9d))
 
 ### Added
 
@@ -155,7 +152,7 @@ _Release boundaries before formal Semantic Versioning adoption are reconstructed
 
 ### Changed
 
-- Close governance and postmortem gaps and simplify Command Center maintenance behavior ([#62](https://github.com/alenlukic/pancreator/pull/62), [`9b1f28f`](https://github.com/alenlukic/pancreator/commit/9b1f28fd1885e9abcc3b176ca2c4ce1df6a1975e))
+- Close governance and postmortem gaps and simplify Command Center maintenance behavior ([#62](https://github.com/alenlukic/pancreator/pull/62), [9b1f28f](https://github.com/alenlukic/pancreator/commit/9b1f28fd1885e9abcc3b176ca2c4ce1df6a1975e))
 
 ### Fixed
 
@@ -230,9 +227,10 @@ _First functional release._
 
 ### Added
 
-- Add the original self-building workflow harness, governed personas, compliance hooks, durable memory, and bootstrap documentation ([`c9c5def`](https://github.com/alenlukic/pancreator/commit/c9c5def2ccd2a0a9c27d5c6707c963cb2621518a))
+- Add the original self-building workflow harness, governed personas, compliance hooks, durable memory, and bootstrap documentation ([c9c5def](https://github.com/alenlukic/pancreator/commit/c9c5def2ccd2a0a9c27d5c6707c963cb2621518a))
 
-[2.7.0]: https://github.com/alenlukic/pancreator/compare/a8f3b42bc29d2c9b49e40f1fcb49071bbb14f7ef...HEAD
+[2.8.0]: https://github.com/alenlukic/pancreator/compare/5f4953e321544a9a28b2614cbf5a1fa2f6882a99...HEAD
+[2.7.0]: https://github.com/alenlukic/pancreator/compare/a8f3b42bc29d2c9b49e40f1fcb49071bbb14f7ef...5f4953e321544a9a28b2614cbf5a1fa2f6882a99
 [2.6.0]: https://github.com/alenlukic/pancreator/compare/cfee47c73591ee1fedc71f684ee887fd434d0bb4...a8f3b42bc29d2c9b49e40f1fcb49071bbb14f7ef
 [2.5.0]: https://github.com/alenlukic/pancreator/compare/e6d7c12e59c92d2892defde7df2d877497d66991...cfee47c73591ee1fedc71f684ee887fd434d0bb4
 [2.4.0]: https://github.com/alenlukic/pancreator/compare/4bf555885bb6527452d6e141f545074ad766efc1...e6d7c12e59c92d2892defde7df2d877497d66991
