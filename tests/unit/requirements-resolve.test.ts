@@ -84,7 +84,7 @@ test('decomposition requirements bind the standalone artifact validator', () => 
 
 test('documentation requirements bind the target primer validator', () => {
   const root = createFixture()
-  const target = 'runtime/target-repo-primer.md'
+  const target = 'docs/target-repo-primer.md'
   const manifest = resolveRequirements(root, {
     persona: 'librarian',
     workflow: 'standalone',

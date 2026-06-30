@@ -1,15 +1,14 @@
 {
   "id": "PAUSE-001",
-  "title": "Operator pause authority",
+  "title": "Operator pause and workspace ratification",
   "severity": "hard",
-  "summary": "Operators MAY pause an active workflow at any time, and tracked changes made during that explicit pause MUST be ratified without being misclassified as unledgered agent work.",
+  "summary": "Operators MAY pause an active workflow at any time, and tracked changes made during that explicit pause MUST be ratified against the accepted workspace fingerprint.",
   "instructions": [
-    "Operators MUST use `./bin/pan pause <run-id> [--note <reason>]` to pause a non-terminal run; agents MUST NOT hand-edit run state to pause.",
-    "While a run is paused by the operator, the operator MAY modify tracked files in the deliverable workspace without using the changes protocol.",
-    "On resume, including resume with a stage override, the harness MUST compare the accepted pause-start fingerprint with the current workspace, record any pause-only delta in the workflow ledger, and ratify the resulting fingerprint.",
-    "When a pause-only workspace delta is ratified, the harness MUST invalidate the stale active invocation or gate packet and prepare the current stage again against the ratified workspace without consuming an unused attempt.",
-    "The harness MUST NOT auto-ratify a pause delta when the workspace already diverged from the accepted index before the pause; the operator MUST adjudicate that pre-existing divergence separately.",
-    "Operators MUST resume with `./bin/pan resume <run-id>` to continue from the saved gate, or `./bin/pan resume <run-id> --stage <slug>` to restart at a chosen stage.",
-    "Agents MUST NOT resume or abort on the operator's behalf unless the active invocation explicitly records operator approval for that action."
+    "An operator pause MUST preserve the prior run status, pending action, current stage, and prepared invocation until resume or an explicit stage override.",
+    "While a run is paused by the operator, the operator MAY modify tracked files in the deliverable workspace directly.",
+    "On resume, including resume with a stage override, the harness MUST compare the accepted pause-start fingerprint with the current workspace, record a ratification artifact for any pause-only delta, update the accepted workspace index and fingerprint, and invalidate stale prepared invocations.",
+    "The harness MUST NOT auto-ratify workspace divergence that existed before the operator pause began.",
+    "A normal resume MUST restore the saved status and pending action; a stage override MUST restart at that stage with prepare_invocation.",
+    "Operator pause controls MUST remain available for non-terminal runs and MUST NOT be represented as agent-owned remediation."
   ]
 }

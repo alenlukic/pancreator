@@ -95,6 +95,7 @@ function workspaceSourceChanges(root: string): GitDiffResult {
       (file) =>
         !file.startsWith('runtime/') &&
         !file.endsWith('/.lock') &&
+        !file.endsWith('/.operation-mutex') &&
         !file.includes('/validations/'),
     ),
   }

@@ -89,7 +89,7 @@ mapping before resuming the run.
     retrieval condition.
   - `prior_attempts` and `operator_feedback` bound remediation history by count.
   - ship-like stages MAY include active waivers, current workspace
-    ratifications, and the latest ledger validation.
+    ratifications, and the latest workspace-change validation.
 
   Each stage-output selector declares `stage` and `selection`. Use
   `latest_success` for ratified/effective upstream results and `latest` when a

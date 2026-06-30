@@ -128,15 +128,18 @@ A `blocked` result pauses. A failure follows the declared remediation transition
 
 Pancreator tracks accepted workspace state with a checksum index at
 `<state-root>/workspace/index.json`, a per-workflow immutable baseline at
-`<state-root>/workflows/<run-id>/baseline.json`, cooperative file locks under
-`<state-root>/locks/`, and an append-only ledger at
-`<state-root>/workflows/<run-id>/modifications.jsonl`.
+`<state-root>/workflows/<run-id>/baseline.json`, and stage verification
+fingerprints. Agents edit the target workspace directly; Pancreator does not
+create persistent workspace locks, active-workflow leases, or require a
+per-edit modification ledger.
 
 Mutating workflows run a harness-owned deterministic `validate-changes` stage
-before ship. The stage compares baseline, ledger, accepted index, filesystem,
-and active locks. Any hard anomaly yields
-`operator-review-required` in `ledger-validation.json` and pauses the run for
-operator adjudication.
+before ship. The stage compares the immutable baseline, accepted index,
+current filesystem scope, and latest successful QA fingerprint. Any hard
+anomaly yields `operator-review-required` and pauses the run for operator
+adjudication. The result remains stored in `ledger-validation.json` only to
+preserve compatibility with existing run state and integrations; no ledger is
+created or consulted.
 
 ## Operator rejection
 
@@ -217,7 +220,7 @@ Exceeding a limit pauses the run and writes a decision record. The operator may 
 
 ### Operator pause
 
-Operators MAY pause any non-terminal run at any time with `./bin/pan pause <run-id> [--note "reason"]`. The harness saves the current gate, pending action, and workspace snapshot. While paused, operators MAY modify tracked files in the deliverable workspace without the changes protocol. Every resume, including one with `--stage`, reconciles pause-period changes into the workspace ledger, records a ratification artifact, accepts the resulting fingerprint, and invalidates a stale prepared invocation. A normal resume restores the saved gate; `--stage` restarts at the chosen stage with `prepare_invocation`. The harness refuses to auto-ratify divergence that already existed when the pause began.
+Operators MAY pause any non-terminal run at any time with `./bin/pan pause <run-id> [--note "reason"]`. The harness saves the current gate, pending action, and workspace snapshot. While paused, operators MAY modify tracked files in the deliverable workspace directly. Every resume, including one with `--stage`, compares the pause-start snapshot with the current workspace, records a ratification artifact for pause-only changes, updates the accepted workspace index and fingerprint, and invalidates a stale prepared invocation. A normal resume restores the saved gate; `--stage` restarts at the chosen stage with `prepare_invocation`. The harness refuses to auto-ratify divergence that already existed when the pause began.
 
 ### Accepting an intentional workspace change
 

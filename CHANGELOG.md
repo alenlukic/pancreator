@@ -2,6 +2,26 @@
 
 _Release boundaries before formal Semantic Versioning adoption are reconstructed from repository history. Each date reflects the endpoint commit for that release._
 
+## [Unreleased]
+
+### Changed
+
+- Make embedded target-repository verification language- and technology-agnostic through repository-owned check profiles with explicit toolchain probes.
+- Scope Pancreator's TypeScript, shell, and npm conventions to self-development instead of projecting them into arbitrary target repositories.
+- Preserve in-flight embedded workflow compatibility by translating legacy npm gates to target-owned profiles and disabling the removed standalone coverage gate without recording a false pass.
+- Define distinct `fast`, optional `secondary`, and complete `full` repository-check semantics, support target-declared profile timeouts, and stream direct check output while preserving structured stdout.
+
+### Removed
+
+- Remove persistent per-file workspace locks, active-workflow leases, and the per-edit modification ledger; legacy `pan changes begin|commit|cancel` commands now return compatibility no-ops, embedded refreshes delete stale exclusion records, and transient run-state serialization uses a self-cleaning operation mutex with distinct diagnostics.
+
+### Fixed
+
+- Prevent incomparable stage evidence caused by ambiguous interpreter selection and prevent false npm lint, test, or coverage failures in non-Node target repositories.
+- Remove the embedded `/pan-validate` dependency on a target-root npm script; harness doctor and validation now run through the installed Pancreator CLI.
+- Include release metadata in embedded installations so `pan validate` and the indexed update protocol can read `release/index.json` after installation or refresh.
+- Prevent generated `fast` profiles from silently running the complete suite: semantic validation rejects exact `fast`/`full` duplication, and install/update refreshes disable known-bad legacy duplicates with an automatic backup while preserving valid target commands.
+
 ## [2.7.0] - 2026-06-28
 
 ### Changed

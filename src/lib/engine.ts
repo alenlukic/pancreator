@@ -3,7 +3,7 @@ import { copyFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { buildInvocationInputs } from './context.js'
-import { invariant, PanError } from './errors.js'
+import { invariant } from './errors.js'
 import {
   ensureDir,
   fileExists,
@@ -14,7 +14,7 @@ import {
   resolveInside,
   sha256,
   toRepoRelative,
-  withFileLock,
+  withOperationMutex,
   writeJsonAtomic,
   writeTextAtomic,
 } from './io.js'
@@ -50,7 +50,7 @@ import { syncCursorProjection } from './projection.js'
 import { renderInvocationMarkdown, renderStatus } from './render.js'
 import {
   ledgerValidationPath,
-  lockPath,
+  operationMutexPath,
   loadState,
   makeRunId,
   nextStageSequence,
@@ -99,17 +99,13 @@ import {
   stageBySlug,
 } from './workflow.js'
 import {
-  acquireActiveWorkflowLease,
   loadWorkspaceIndex,
-  readActiveWorkflowLease,
-  releaseActiveWorkflowLease,
   saveWorkspaceIndex,
   snapshotWorkspace,
   workspaceSnapshotFromIndex,
   writeWorkflowBaseline,
 } from './workspace/index.js'
 import { adoptAuthorizedWorkspaceChanges } from './workspace/changes.js'
-import { listFileLocks } from './workspace/locks.js'
 import { resolveRoots } from './workspace/roots.js'
 import {
   validateWorkflowChanges,
@@ -214,45 +210,13 @@ function rootsForRun(root: string, state: RunState) {
   })
 }
 
-function acquireRunWorkspaceTracking(root: string, state: RunState) {
+function initializeRunWorkspaceTracking(root: string, state: RunState) {
   const roots = rootsForRun(root, state)
 
   state.workspace_id = roots.workspace_id
   state.installation_root = roots.installation_root
   state.state_root = roots.state_root
   state.scope_hash = roots.scope_hash
-
-  const existingLease = readActiveWorkflowLease(roots.state_root)
-
-  if (existingLease && existingLease.workflow_id !== state.run_id) {
-    throw new PanError(
-      `Mutating workflow lease is held by ${existingLease.workflow_id}.`,
-      {
-        code: 'WORKFLOW_LEASE_HELD',
-        details: { workflow_id: existingLease.workflow_id },
-      },
-    )
-  }
-
-  if (!existingLease) {
-    acquireActiveWorkflowLease(roots.state_root, {
-      schema_version: 1,
-      workspace_id: roots.workspace_id,
-      workflow_id: state.run_id,
-      acquired_at_ms: Date.now(),
-      process_id: process.pid,
-    })
-  }
-
-  const lockConflicts = listFileLocks(roots.state_root).filter(
-    (lock) => lock.workflow_id !== state.run_id,
-  )
-
-  invariant(
-    lockConflicts.length === 0,
-    'Cannot start tracked workspace mutation while unrelated file locks are present.',
-    { code: 'LOCK_HELD' },
-  )
 
   return roots
 }
@@ -285,31 +249,10 @@ function ensureMutatingWorkflowInitialized(
     return
   }
 
-  const roots = acquireRunWorkspaceTracking(root, state)
+  const roots = initializeRunWorkspaceTracking(root, state)
   const reconciled = snapshotWorkspace(roots, true)
 
   writeRunWorkspaceBaseline(state, roots, reconciled.index)
-}
-
-function releaseWorkflowLeaseIfHeld(state: RunState): void {
-  if (!state.state_root) {
-    return
-  }
-
-  const lease = readActiveWorkflowLease(state.state_root)
-
-  if (lease?.workflow_id === state.run_id) {
-    const remainingLocks = listFileLocks(state.state_root).filter(
-      (lock) => lock.workflow_id === state.run_id,
-    )
-
-    invariant(
-      remainingLocks.length === 0,
-      'Workflow cannot close while workflow-owned file locks remain.',
-      { code: 'LOCK_HELD' },
-    )
-    releaseActiveWorkflowLease(state.state_root, state.run_id)
-  }
 }
 
 function workspaceSnapshotForRun(root: string, state: RunState) {
@@ -456,7 +399,9 @@ function collectHardFailureSignature(
         return self.get(criterion.id)?.result === 'fail'
       }
 
-      return det.get(criterion.id)?.passed === false
+      const result = det.get(criterion.id)
+
+      return result?.passed === false && !result.disabled
     })
     .map((criterion) => criterion.id)
     .sort()
@@ -540,10 +485,18 @@ function executeHarnessStage(
     root,
     ledgerValidationPath(roots.state_root, state.run_id),
   )
+  const latestQaFingerprint = [...state.stage_history]
+    .reverse()
+    .find(
+      (item) => item.stage === 'test' && item.outcome === 'success',
+    )?.workspace_fingerprint
   const result = validateWorkflowChanges({
     run_id: state.run_id,
     state_root: roots.state_root,
     roots,
+    ...(latestQaFingerprint
+      ? { expected_workspace_fingerprint: latestQaFingerprint }
+      : {}),
   })
   const outcome: StageOutcome =
     result.status === 'passed' ? 'success' : 'blocked'
@@ -633,7 +586,6 @@ function applyTransition(
   }
 
   if (target === 'succeeded' || target === 'failed' || target === 'canceled') {
-    releaseWorkflowLeaseIfHeld(state)
     state.status = target
     state.current_stage = null
     state.pending_action = { type: 'none' }
@@ -1002,7 +954,7 @@ export function prepareInvocation(
   root: string,
   runId: string,
 ): PrepareInvocationResult {
-  return withFileLock(lockPath(root, runId), () => {
+  return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
 
     invariant(
@@ -1172,7 +1124,7 @@ export function prepareInvocation(
               `You MUST persist delegation evidence to ${delegationArtifactPath} and MUST NOT write workspace-root .delegation.md.`,
             ]),
         'You MUST NOT alter workflow state directly.',
-        'While a mutating workflow is active, external edits to tracked files MUST be avoided because cooperative locks cannot block non-harness writers.',
+        'While a mutating workflow is active, external edits to tracked files SHOULD be avoided because they make stage attribution ambiguous; pause the run before operator-authored changes.',
         'You MUST NOT commit, push, merge, publish, deploy, or perform destructive source-control actions.',
       ],
       workspace_before: workspace,
@@ -1273,7 +1225,9 @@ function effectiveOutcome(
     return 'failure'
   }
 
-  if (deterministic.some((item) => item.hard && !item.passed)) {
+  if (
+    deterministic.some((item) => item.hard && !item.passed && !item.disabled)
+  ) {
     return 'failure'
   }
 
@@ -1285,7 +1239,7 @@ export function submitOutput(
   runId: string,
   submittedPath: string,
 ): { state: RunState; record: TaskRecord; idempotent?: boolean } {
-  return withFileLock(lockPath(root, runId), () => {
+  return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
     const submittedValue = readJson(resolveInside(root, submittedPath))
     const invocationId = submittedInvocationId(submittedValue)
@@ -1563,7 +1517,7 @@ export function assessStage(
   runId: string,
   assessmentPath: string,
 ): { state: RunState; assessment: SupervisorAssessment } {
-  return withFileLock(lockPath(root, runId), () => {
+  return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
 
     invariant(
@@ -1709,7 +1663,7 @@ export function decideRun(
   note = '',
   targetStage: string | null = null,
 ): RunState {
-  return withFileLock(lockPath(root, runId), () => {
+  return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
 
     invariant(
@@ -1770,7 +1724,7 @@ export function setRunStage(
   stageSlug: string,
   note: string,
 ): RunState {
-  return withFileLock(lockPath(root, runId), () => {
+  return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
 
     invariant(note.trim().length > 0, 'Stage repair note MUST be non-empty.', {
@@ -1881,7 +1835,7 @@ function ratifyPausedWorkspaceChanges(
     return null
   }
 
-  const roots = acquireRunWorkspaceTracking(root, state)
+  const roots = initializeRunWorkspaceTracking(root, state)
   let acceptedIndex = loadWorkspaceIndex(roots.state_root)
 
   if (!acceptedIndex) {
@@ -1925,7 +1879,7 @@ function ratifyPausedWorkspaceChanges(
     '',
     `**Run** \`${state.run_id}\` · **Stage** \`${state.current_stage ?? 'none'}\``,
     '',
-    'The operator explicitly paused the workflow before making these tracked-file changes. The harness recorded the resulting delta in the workflow ledger and adopted the resulting workspace fingerprint.',
+    'The operator explicitly paused the workflow before making these tracked-file changes. The harness recorded the resulting delta in a ratification artifact and adopted the resulting workspace index and fingerprint.',
     '',
     `**Accepted fingerprint:** \`${adopted.workspace_fingerprint}\``,
     '',
@@ -1988,7 +1942,7 @@ function invalidatePausedInvocation(state: RunState): void {
 }
 
 export function pauseRun(root: string, runId: string, note = ''): RunState {
-  return withFileLock(lockPath(root, runId), () => {
+  return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
 
     invariant(
@@ -2055,7 +2009,7 @@ export function resumeRun(
   stageSlug: string | null = null,
   note = '',
 ): RunState {
-  return withFileLock(lockPath(root, runId), () => {
+  return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
 
     invariant(state.status === 'paused', 'Only paused runs can be resumed.', {
@@ -2173,7 +2127,9 @@ function failedHardCriteria(
         return self.get(criterion.id)?.result === 'fail'
       }
 
-      return deterministic.get(criterion.id)?.passed === false
+      const result = deterministic.get(criterion.id)
+
+      return result?.passed === false && !result.disabled
     })
     .map((criterion) => criterion.id)
     .sort()
@@ -2246,7 +2202,7 @@ export function waiveGate(
   runId: string,
   options: WaiveGateOptions,
 ): { state: RunState; waiver: OperatorGateWaiver } {
-  return withFileLock(lockPath(root, runId), () => {
+  return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
 
     invariant(
@@ -2503,7 +2459,7 @@ export function acceptChange(
   note = '',
   waive = false,
 ): RunState {
-  return withFileLock(lockPath(root, runId), () => {
+  return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
 
     invariant(
@@ -2574,7 +2530,7 @@ export function acceptChange(
 }
 
 export function abortRun(root: string, runId: string, note = ''): RunState {
-  return withFileLock(lockPath(root, runId), () => {
+  return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
 
     invariant(

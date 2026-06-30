@@ -1,20 +1,7 @@
 ---
 description: Implements and validates one operator-selected lightweight change, escalating after bounded failure.
 model: __PANCREATOR_MODEL__
-tools:
-  [
-    'Bash(./bin/pan:*)',
-    Read,
-    Grep,
-    Glob,
-    Write,
-    Edit,
-    'Bash(git diff:*)',
-    'Bash(git status:*)',
-    'Bash(npm test:*)',
-    'Bash(npm run:*)',
-    'Bash(node:*)',
-  ]
+tools: [Bash, Read, Grep, Glob, Write, Edit]
 disallowedTools:
   [
     'Bash(git commit:*)',

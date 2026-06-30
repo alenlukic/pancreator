@@ -175,12 +175,35 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
       true,
     )
     assert.equal(existsSync(path.join(project, '.pancreator', 'library')), true)
+    assert.equal(
+      existsSync(path.join(project, '.pancreator', 'release', 'index.json')),
+      true,
+    )
     assert.equal(existsSync(path.join(project, '.pancreator', 'src')), true)
     const primer = readFileSync(
-      path.join(project, '.pancreator', 'runtime', 'target-repo-primer.md'),
+      path.join(project, '.pancreator', 'docs', 'target-repo-primer.md'),
       'utf8',
     )
     assert.match(primer, /pancreator-primer-status: unbuilt/u)
+    assert.equal(
+      existsSync(
+        path.join(project, '.pancreator', 'runtime', 'target-repo-primer.md'),
+      ),
+      false,
+    )
+
+    const repositoryChecks = readJson<{
+      schema_version: number
+      profiles: Record<string, { commands: string[] }>
+    }>(path.join(project, '.pancreator', 'runtime', 'repository-checks.json'))
+    assert.equal(repositoryChecks.schema_version, 1)
+    assert.deepEqual(repositoryChecks.profiles.static?.commands, [])
+    assert.deepEqual(repositoryChecks.profiles.secondary?.commands, [])
+    assert.deepEqual(repositoryChecks.profiles.full?.commands, [])
+    assert.equal(
+      existsSync(path.join(project, '.pancreator', 'runtime', 'locks')),
+      false,
+    )
 
     const buildDocsCommand = readFileSync(
       path.join(project, '.cursor', 'commands', 'pan-build-docs.md'),
@@ -189,8 +212,10 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
     assert.match(buildDocsCommand, /\.\/\.pancreator\/bin\/pan/u)
     assert.match(
       buildDocsCommand,
-      /\.pancreator\/runtime\/target-repo-primer\.md/u,
+      /\.pancreator\/docs\/target-repo-primer\.md/u,
     )
+    assert.match(buildDocsCommand, /create the primer when absent/u)
+    assert.match(buildDocsCommand, /inventory target-owned documentation/u)
     assert.equal(
       existsSync(path.join(project, '.cursor', 'agents', 'librarian.md')),
       true,
@@ -204,6 +229,7 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
       writePrCommand,
       /\.pancreator\/library\/skills\/write-pr-description\.md/u,
     )
+    assert.match(writePrCommand, /\.pancreator\/docs\/target-repo-primer\.md/u)
     assert.match(writePrCommand, /\.pancreator\/runtime\/pr-descriptions/u)
 
     assert.equal(
@@ -234,6 +260,7 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
     assert.equal('source_root' in marker, false)
     assert.equal('target_root' in marker, false)
     assert.ok(marker.payload_entries.includes('governance'))
+    assert.ok(marker.payload_entries.includes('release'))
     assert.ok(
       marker.cursor_files.some((entry) => entry.path.endsWith('coder.md')),
     )
@@ -409,7 +436,7 @@ test('embedded installer warns on existing Cursor state, preserves custom files,
   }
 })
 
-test('embedded installer refresh preserves runtime state and unrelated Cursor files', () => {
+test('embedded installer refresh preserves target primer, runtime state, and unrelated Cursor files', () => {
   const project = makeSkeletonProject()
 
   try {
@@ -420,8 +447,40 @@ test('embedded installer refresh preserves runtime state and unrelated Cursor fi
     )
     writeFileSync(path.join(project, '.cursor', 'custom.md'), 'keep me\n')
     writeFileSync(
-      path.join(project, '.pancreator', 'runtime', 'target-repo-primer.md'),
+      path.join(project, '.pancreator', 'docs', 'target-repo-primer.md'),
       'generated primer\n',
+    )
+    writeFileSync(
+      path.join(project, '.pancreator', 'runtime', 'repository-checks.json'),
+      '{\n  "schema_version": 1,\n  "profiles": {\n    "full": {\n      "probes": ["python --version"],\n      "commands": ["python -m pytest"]\n    }\n  }\n}\n',
+    )
+    mkdirSync(path.join(project, '.pancreator', 'runtime', 'locks'), {
+      recursive: true,
+    })
+    writeFileSync(
+      path.join(project, '.pancreator', 'runtime', 'locks', 'stale.json'),
+      '{}\n',
+    )
+    const legacyRunDirectory = path.join(
+      project,
+      '.pancreator',
+      'runtime',
+      'logs',
+      'workflows',
+      'legacy-run',
+    )
+    mkdirSync(legacyRunDirectory, { recursive: true })
+    writeFileSync(path.join(legacyRunDirectory, '.lock'), '99999999\n')
+    const legacyWorkspaceDirectory = path.join(
+      project,
+      '.pancreator',
+      'runtime',
+      'workspace',
+    )
+    mkdirSync(legacyWorkspaceDirectory, { recursive: true })
+    writeFileSync(
+      path.join(legacyWorkspaceDirectory, 'active-workflow.json'),
+      '{}\n',
     )
 
     const result = runInstaller(project, ['--yes'])
@@ -441,10 +500,137 @@ test('embedded installer refresh preserves runtime state and unrelated Cursor fi
     )
     assert.equal(
       readFileSync(
-        path.join(project, '.pancreator', 'runtime', 'target-repo-primer.md'),
+        path.join(project, '.pancreator', 'docs', 'target-repo-primer.md'),
         'utf8',
       ),
       'generated primer\n',
+    )
+    assert.equal(
+      existsSync(
+        path.join(project, '.pancreator', 'runtime', 'target-repo-primer.md'),
+      ),
+      false,
+    )
+    assert.match(
+      readFileSync(
+        path.join(project, '.pancreator', 'runtime', 'repository-checks.json'),
+        'utf8',
+      ),
+      /python -m pytest/u,
+    )
+    assert.equal(
+      existsSync(path.join(project, '.pancreator', 'runtime', 'locks')),
+      false,
+    )
+    assert.equal(existsSync(path.join(legacyRunDirectory, '.lock')), false)
+    assert.equal(
+      existsSync(path.join(legacyWorkspaceDirectory, 'active-workflow.json')),
+      false,
+    )
+  } finally {
+    rmSync(project, { recursive: true, force: true })
+  }
+})
+
+test('embedded installer migrates a legacy runtime primer into docs', () => {
+  const project = makeSkeletonProject()
+
+  try {
+    assert.equal(runInstaller(project).status, 0)
+    const currentPrimer = path.join(
+      project,
+      '.pancreator',
+      'docs',
+      'target-repo-primer.md',
+    )
+    const legacyPrimer = path.join(
+      project,
+      '.pancreator',
+      'runtime',
+      'target-repo-primer.md',
+    )
+    rmSync(currentPrimer)
+    writeFileSync(legacyPrimer, 'legacy generated primer\n')
+
+    const result = runInstaller(project, ['--yes'])
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.match(result.stdout, /Migrated target repository primer/u)
+    assert.equal(
+      readFileSync(currentPrimer, 'utf8'),
+      'legacy generated primer\n',
+    )
+    assert.equal(existsSync(legacyPrimer), false)
+  } finally {
+    rmSync(project, { recursive: true, force: true })
+  }
+})
+
+test('embedded installer disables a legacy fast profile that duplicates full', () => {
+  const project = makeSkeletonProject()
+
+  try {
+    assert.equal(runInstaller(project).status, 0)
+    const checksPath = path.join(
+      project,
+      '.pancreator',
+      'runtime',
+      'repository-checks.json',
+    )
+    writeFileSync(
+      checksPath,
+      `${JSON.stringify(
+        {
+          schema_version: 1,
+          profiles: {
+            fast: {
+              description: 'incorrect generated fast profile',
+              probes: ['node --version'],
+              commands: ['node -e "process.exit(0)"'],
+            },
+            full: {
+              description: 'complete suite',
+              probes: ['node --version'],
+              commands: ['node   -e   "process.exit(0)"'],
+            },
+          },
+        },
+        null,
+        2,
+      )}\n`,
+    )
+
+    const result = runInstaller(project, ['--yes'])
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.match(result.stdout, /Disabled fast because it duplicated full/u)
+
+    const migrated = readJson<{
+      profiles: Record<string, { commands: string[]; probes: string[] }>
+      $operator?: { migration_notes?: string[] }
+    }>(checksPath)
+
+    assert.deepEqual(migrated.profiles.fast?.commands, [])
+    assert.deepEqual(migrated.profiles.fast?.probes, [])
+    assert.deepEqual(migrated.profiles.full?.commands, [
+      'node   -e   "process.exit(0)"',
+    ])
+    assert.deepEqual(migrated.profiles.secondary?.commands, [])
+    assert.match(
+      migrated.$operator?.migration_notes?.join('\n') ?? '',
+      /distinct default\/primary suite/u,
+    )
+
+    const backupRoot = path.join(
+      project,
+      '.pancreator',
+      'backups',
+      'repository-checks',
+    )
+    assert.equal(readdirSync(backupRoot).length, 1)
+    assert.match(
+      readFileSync(path.join(backupRoot, readdirSync(backupRoot)[0]), 'utf8'),
+      /incorrect generated fast profile/u,
     )
   } finally {
     rmSync(project, { recursive: true, force: true })
@@ -625,6 +811,10 @@ test('indexed update fast-forwards the embedded harness and preserves target sta
       path.join(project, '.pancreator', 'runtime', 'inbox', 'preserved.md'),
       'preserve\n',
     )
+    writeFileSync(
+      path.join(project, '.pancreator', 'docs', 'target-repo-primer.md'),
+      'generated target primer\n',
+    )
     writeFileSync(path.join(project, '.cursor', 'custom.md'), 'preserve\n')
 
     writeFileSync(path.join(source, 'VERSION'), '0.2.0\n')
@@ -676,6 +866,19 @@ test('indexed update fast-forwards the embedded harness and preserves target sta
         'utf8',
       ),
       'preserve\n',
+    )
+    assert.equal(
+      readFileSync(
+        path.join(project, '.pancreator', 'docs', 'target-repo-primer.md'),
+        'utf8',
+      ),
+      'generated target primer\n',
+    )
+    assert.equal(
+      existsSync(
+        path.join(project, '.pancreator', 'runtime', 'target-repo-primer.md'),
+      ),
+      false,
     )
     assert.equal(
       readFileSync(path.join(project, '.cursor', 'custom.md'), 'utf8'),

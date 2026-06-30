@@ -30,7 +30,7 @@ A stage MUST NOT succeed unless its output shape is valid, every declared criter
 - `*.acceptance_met` MUST require independently verifiable acceptance evidence rather than an unsupported completion claim.
 - `*.tests_correct` MUST require meaningful tests that are correctly scoped and resistant to false positives.
 - `*.maintainable` MUST require structural and maintenance risk proportionate to the requested scope.
-- `*.full_suite` and `*.coverage` MUST be deterministic shell criteria when the repository exposes applicable commands.
+- Repository verification criteria MUST call configured repository-check profiles. Coverage MAY be part of a profile only when the target repository explicitly defines a coverage command; Pancreator MUST NOT invent a standalone coverage gate.
 
 ## Deterministic-first selection
 

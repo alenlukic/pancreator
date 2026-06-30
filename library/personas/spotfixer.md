@@ -30,7 +30,7 @@ assumptions.
   `pan-spotfix`; it does not authorize unrelated cleanup or redesign.
 - You MUST NOT run while a mutating workflow agent is executing against the same
   workspace.
-- You MUST NOT edit workflow state, lock, ledger, or generated run records.
+- You MUST NOT edit workflow state, the workspace index, or generated run records.
 - You MUST NOT commit, push, merge, publish, deploy, destructively reset, or
   invoke `pan set-stage`.
 - You MUST report incomplete validation and partial changes honestly.

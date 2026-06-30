@@ -1,6 +1,6 @@
 Write a pull-request description for the current branch and worktree.
 
-1. Read `AGENTS.md`, `runtime/target-repo-primer.md`, and `library/skills/write-pr-description.md`.
+1. Read `AGENTS.md`, `docs/target-repo-primer.md`, and `library/skills/write-pr-description.md`.
 2. Treat `$ARGUMENTS` as either empty or one literal Git base ref. Use `main` when it is empty. Reject multiple arguments, options, shell syntax, or a ref that `git rev-parse --verify` cannot resolve to a commit.
 3. Resolve the current branch, the selected base ref, and their merge base. Compare all committed branch changes plus staged, unstaged, and relevant untracked worktree changes against that merge base. Do not compare only `HEAD` or only the unstaged diff.
 4. Convert the current branch and base ref to filename-safe slugs by replacing every run of characters outside `[A-Za-z0-9._-]` with `-` and trimming leading or trailing `-`. Choose a unique harness-relative output path under `runtime/pr-descriptions/` named `<UTC timestamp>-<branch-slug>-against-<base-slug>.md`. In an embedded installation, write the corresponding file under `.pancreator/runtime/pr-descriptions/`.

@@ -52,10 +52,10 @@ import {
 } from './lib/requirements/scaffold.js'
 import { auditDirectives } from './lib/governance/audit-directives.js'
 import {
-  beginTrackedModification,
-  cancelTrackedModification,
-  commitTrackedModification,
-} from './lib/workspace/changes.js'
+  assertRepositoryChecksValid,
+  repositoryChecksSourcePath,
+  runRepositoryCheckStreaming,
+} from './lib/repository-checks.js'
 import { snapshotWorkspace } from './lib/workspace/index.js'
 import { resolveRoots } from './lib/workspace/roots.js'
 import { validateWorkflowChanges } from './lib/workspace/validate-changes.js'
@@ -72,9 +72,9 @@ const HELP_BODY = `Usage:
   pan waive-gate <run-id> --criteria <id[,id...]> --note <reason> [--stage <stage-slug>] [--defer <AC-id[,AC-id...]> --spotfix]
   pan accept-change <run-id> [--note <text>] [--waive]
   pan abort <run-id> [--note <text>]
-  pan changes begin <run-id> <path>
-  pan changes commit <run-id> <path> --lock <lock-id>
-  pan changes cancel <run-id> <path> --lock <lock-id>
+  pan changes begin|commit|cancel <run-id> <path> [--lock <legacy-token>]  # deprecated no-op
+  pan repository-check <profile> [--timeout-ms <milliseconds>] [--json]
+  pan repository-check validate [--json]
   pan workspace reconcile [--workspace <dir>] [--state-root <dir>] [--adopt]
   pan workflow validate-changes <run-id>
   pan status <run-id> [--json]
@@ -206,45 +206,6 @@ function parseRunState(value: unknown, source: string): RunState {
   }
 
   return value as unknown as RunState
-}
-
-function activeModificationContext(root: string, runId: string) {
-  const state = getRunState(root, runId)
-
-  if (state.status !== 'running') {
-    throw new PanError('Run must be running to modify tracked files.', {
-      code: 'RUN_NOT_RUNNING',
-    })
-  }
-
-  if (!state.current_stage) {
-    throw new PanError('Run has no active stage.', {
-      code: 'INVALID_RUN_ACTION',
-    })
-  }
-
-  const stageAttempt = state.attempts[state.current_stage] ?? 1
-  const invocationId =
-    state.current_invocation?.id ??
-    `${state.current_stage}-${stageAttempt}-manual`
-  const roots = resolveRoots({
-    installation_root: root,
-    workspace_root: path.resolve(root, state.workspace_root),
-    state_root: state.state_root,
-  })
-
-  return {
-    state,
-    roots,
-    context: {
-      state_root: roots.state_root,
-      roots,
-      workflow_id: runId,
-      stage: state.current_stage,
-      stage_attempt: stageAttempt,
-      invocation_id: invocationId,
-    },
-  }
 }
 
 function listRuns(root: string): Array<Record<string, unknown>> {
@@ -598,66 +559,81 @@ async function main(): Promise<void> {
       const subcommand = requiredArgument(args[0], 'changes-subcommand')
       const runId = requiredArgument(args[1], 'run-id')
       const trackedPath = requiredArgument(args[2], 'path')
-      const active = activeModificationContext(root, runId)
+      getRunState(root, runId)
 
-      if (subcommand === 'begin') {
-        const result = beginTrackedModification(active.context, trackedPath)
-
-        print({
-          status: 'locked',
-          run_id: runId,
-          path: trackedPath,
-          lock_id: result.lock.lock_id,
-          expected_checksum: result.expected_checksum,
-        })
-        return
-      }
-
-      const lockId = option(args, '--lock')
-
-      if (!lockId) {
-        throw new PanError('--lock is required for commit and cancel.', {
-          code: 'INVALID_ARGUMENT',
+      if (!['begin', 'commit', 'cancel'].includes(subcommand)) {
+        throw new PanError(`Unknown changes subcommand: ${subcommand}`, {
+          code: 'UNKNOWN_COMMAND',
         })
       }
 
-      if (subcommand === 'commit') {
-        const result = commitTrackedModification(
-          active.context,
-          trackedPath,
-          lockId,
-        )
-
-        print({
-          status: 'committed',
-          run_id: runId,
-          path: trackedPath,
-          lock_id: lockId,
-          operation: result.operation,
-          sequence: result.entry?.sequence ?? null,
-        })
-        return
-      }
-
-      if (subcommand === 'cancel') {
-        const lock = cancelTrackedModification(
-          active.context,
-          trackedPath,
-          lockId,
-        )
-
-        print({
-          status: 'cancelled',
-          run_id: runId,
-          path: trackedPath,
-          lock_id: lock.lock_id,
-        })
-        return
-      }
-
-      throw new PanError(`Unknown changes subcommand: ${subcommand}`, {
-        code: 'UNKNOWN_COMMAND',
+      print({
+        status: 'deprecated_noop',
+        run_id: runId,
+        path: trackedPath,
+        lock_id: option(args, '--lock') ?? `no-lock-${Date.now()}`,
+        message:
+          'Per-file workspace locks were removed. Edit source directly within a source_allowed stage; the harness validates workspace fingerprints.',
       })
+      return
+    }
+    case 'repository-check': {
+      const profile = requiredArgument(args[0], 'profile')
+
+      if (profile === 'validate') {
+        const config = assertRepositoryChecksValid(root)
+
+        print(
+          {
+            status: 'valid',
+            config_path: path
+              .relative(root, repositoryChecksSourcePath(root))
+              .split(path.sep)
+              .join('/'),
+            profiles: Object.keys(config.profiles).sort(),
+          },
+          hasFlag(args, '--json'),
+        )
+        return
+      }
+
+      const timeoutValue = option(args, '--timeout-ms')
+      let timeoutMs: number | undefined
+
+      if (timeoutValue !== null) {
+        const parsedTimeout = Number(timeoutValue)
+
+        if (!Number.isInteger(parsedTimeout) || parsedTimeout < 1_000) {
+          throw new PanError(
+            '--timeout-ms MUST be an integer of at least 1000.',
+            { code: 'INVALID_ARGUMENT' },
+          )
+        }
+
+        timeoutMs = parsedTimeout
+      }
+
+      const result = await runRepositoryCheckStreaming(root, profile, {
+        ...(timeoutMs !== undefined ? { timeout_ms: timeoutMs } : {}),
+        on_start: (kind, commandText) => {
+          process.stderr.write(
+            `[repository-check:${profile}] ${kind}: ${commandText}\n`,
+          )
+        },
+        on_stdout: (chunk) => process.stderr.write(chunk),
+        on_stderr: (chunk) => process.stderr.write(chunk),
+      })
+
+      if (result.status === 'not_configured') {
+        process.stderr.write('PANCREATOR_CHECK_SKIPPED=1\n')
+      }
+
+      print(result, hasFlag(args, '--json'))
+
+      if (result.status === 'failed') {
+        process.exitCode = 1
+      }
+      return
     }
     case 'workspace': {
       const subcommand = requiredArgument(args[0], 'workspace-subcommand')

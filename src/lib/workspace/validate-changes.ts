@@ -10,14 +10,12 @@ import type {
   WorkspaceIndexEntry,
 } from '../types.js'
 import {
-  isNonBlockingGeneratedArtifact,
   loadWorkspaceIndex,
   readWorkflowBaseline,
   reconcileWorkspaceIndex,
   saveWorkspaceIndex,
+  workspaceSnapshotFromIndex,
 } from './index.js'
-import { readLedgerEntries, replayLedger } from './ledger.js'
-import { listFileLocks } from './locks.js'
 
 function makeAnomaly(
   code: string,
@@ -43,12 +41,40 @@ function checksumAt(
   return entries[relativePath]?.checksum ?? null
 }
 
+function changedPathCount(
+  baseline: Record<string, WorkspaceIndexEntry>,
+  current: Record<string, WorkspaceIndexEntry>,
+): number {
+  const paths = new Set([...Object.keys(baseline), ...Object.keys(current)])
+  let count = 0
+
+  for (const relativePath of paths) {
+    if (
+      checksumAt(baseline, relativePath) !== checksumAt(current, relativePath)
+    ) {
+      count += 1
+    }
+  }
+
+  return count
+}
+
 export interface ValidateChangesOptions {
   run_id: string
   state_root: string
   roots: ResolvedRoots
+  expected_workspace_fingerprint?: string
 }
 
+/**
+ * Validate stable workspace scope metadata and adopt the current checksum index.
+ *
+ * Earlier versions attempted to prove individual file ownership with persistent
+ * cooperative locks and a per-edit ledger. Those records routinely outlived the
+ * worker that created them and blocked unrelated lifecycle actions. Workspace
+ * integrity now relies on immutable run baselines, per-stage fingerprints, and
+ * read-only-stage mutation guards instead.
+ */
 export function validateWorkflowChanges(
   options: ValidateChangesOptions,
 ): LedgerValidationResult {
@@ -65,10 +91,7 @@ export function validateWorkflowChanges(
   }
 
   const observed = reconcileWorkspaceIndex(options.roots, acceptedIndex)
-  const ledgerEntries = readLedgerEntries(options.state_root, options.run_id)
-  const replay = replayLedger(baseline.entries, ledgerEntries)
-  const anomalies: LedgerAnomaly[] = [...replay.anomalies]
-  const repairs: string[] = []
+  const anomalies: LedgerAnomaly[] = []
 
   if (baseline.scope_hash !== options.roots.scope_hash) {
     anomalies.push(
@@ -90,129 +113,29 @@ export function validateWorkflowChanges(
     )
   }
 
-  for (const entry of ledgerEntries) {
-    if (entry.workflow_id !== options.run_id) {
-      anomalies.push(
-        makeAnomaly(
-          'ledger.foreign_workflow',
-          'Ledger contains entries from a different workflow.',
-          `Entry sequence ${entry.sequence} belongs to workflow ${entry.workflow_id}.`,
-          { sequence: entry.sequence, path: entry.path },
-        ),
-      )
-    }
+  const observedFingerprint = workspaceSnapshotFromIndex(
+    observed.index,
+  ).fingerprint
+
+  if (
+    options.expected_workspace_fingerprint &&
+    observedFingerprint !== options.expected_workspace_fingerprint
+  ) {
+    anomalies.push(
+      makeAnomaly(
+        'evidence.fingerprint_mismatch',
+        'Workspace changed after QA evidence was recorded.',
+        `QA fingerprint ${options.expected_workspace_fingerprint} does not match current workspace fingerprint ${observedFingerprint}.`,
+        {
+          expected: options.expected_workspace_fingerprint,
+          observed: observedFingerprint,
+        },
+      ),
+    )
   }
 
-  const expectedFinalChecksums = new Map<string, string | null>(
-    Object.entries(baseline.entries).map(([relativePath, entry]) => [
-      relativePath,
-      entry.checksum,
-    ]),
-  )
-
-  for (const [relativePath, checksum] of Object.entries(
-    replay.final_checksums,
-  )) {
-    expectedFinalChecksums.set(relativePath, checksum)
-  }
-
-  for (const relativePath of replay.modified_paths) {
-    const replayChecksum = replay.final_checksums[relativePath] ?? null
-    const observedChecksum = checksumAt(observed.index.entries, relativePath)
-    const acceptedChecksum = checksumAt(acceptedIndex.entries, relativePath)
-
-    if (replayChecksum !== observedChecksum) {
-      anomalies.push(
-        makeAnomaly(
-          'ledger.filesystem_mismatch',
-          'Ledger replay does not match the current filesystem.',
-          `Path ${relativePath} replayed checksum ${replayChecksum ?? 'null'} but observed ${observedChecksum ?? 'null'}.`,
-          {
-            path: relativePath,
-            expected: replayChecksum,
-            observed: observedChecksum,
-          },
-        ),
-      )
-    }
-
-    if (replayChecksum !== acceptedChecksum) {
-      if (replayChecksum === observedChecksum) {
-        if (replayChecksum === null) {
-          delete acceptedIndex.entries[relativePath]
-        } else {
-          acceptedIndex.entries[relativePath] =
-            observed.index.entries[relativePath]
-        }
-
-        repairs.push(`Replayed index entry for ${relativePath}.`)
-      } else {
-        anomalies.push(
-          makeAnomaly(
-            'ledger.index_mismatch',
-            'Accepted index diverged from replay and filesystem.',
-            `Path ${relativePath} accepted checksum ${acceptedChecksum ?? 'null'} does not match replay ${replayChecksum ?? 'null'}.`,
-            {
-              path: relativePath,
-              expected: replayChecksum,
-              observed: acceptedChecksum,
-            },
-          ),
-        )
-      }
-    }
-  }
-
-  const observedPaths = new Set<string>(Object.keys(observed.index.entries))
-  const expectedPaths = new Set<string>(expectedFinalChecksums.keys())
-
-  for (const relativePath of new Set([...expectedPaths, ...observedPaths])) {
-    const expectedChecksum = expectedFinalChecksums.get(relativePath) ?? null
-    const observedChecksum = checksumAt(observed.index.entries, relativePath)
-
-    if (expectedChecksum !== observedChecksum) {
-      if (isNonBlockingGeneratedArtifact(options.roots, relativePath)) {
-        continue
-      }
-
-      const code =
-        expectedChecksum === null
-          ? 'unledgered.creation'
-          : observedChecksum === null
-            ? 'unledgered.deletion'
-            : 'unledgered.modification'
-
-      anomalies.push(
-        makeAnomaly(
-          code,
-          'Unledgered workspace difference detected.',
-          `Path ${relativePath} expected checksum ${expectedChecksum ?? 'null'} but observed ${observedChecksum ?? 'null'}.`,
-          {
-            path: relativePath,
-            expected: expectedChecksum,
-            observed: observedChecksum,
-          },
-        ),
-      )
-    }
-  }
-
-  for (const lock of listFileLocks(options.state_root)) {
-    if (lock.workflow_id === options.run_id) {
-      anomalies.push(
-        makeAnomaly(
-          'lock.stale',
-          'Workflow-owned lock remains after validation.',
-          `Lock ${lock.lock_id} still exists for path ${lock.path}.`,
-          { path: lock.path },
-        ),
-      )
-    }
-  }
-
-  if (repairs.length > 0) {
-    acceptedIndex.updated_at_ms = Date.now()
-    saveWorkspaceIndex(options.state_root, acceptedIndex)
+  if (anomalies.length === 0) {
+    saveWorkspaceIndex(options.state_root, observed.index)
   }
 
   const result: LedgerValidationResult = {
@@ -222,8 +145,13 @@ export function validateWorkflowChanges(
     validated_at_ms: Date.now(),
     baseline_scope_hash: baseline.scope_hash,
     current_scope_hash: options.roots.scope_hash,
-    ledger_entry_count: ledgerEntries.length,
-    modified_path_count: replay.modified_paths.length,
+    // Retained for persisted-result compatibility. New runs do not create a
+    // per-edit modification ledger.
+    ledger_entry_count: 0,
+    modified_path_count: changedPathCount(
+      baseline.entries,
+      observed.index.entries,
+    ),
     anomalies,
   }
 

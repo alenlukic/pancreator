@@ -12,9 +12,44 @@
         "AUTO-001",
         "VALID-001",
         "OUTPUT-001",
-        "BIN-001",
-        "PRIMER-001"
+        "PRIMER-001",
+        "REPO-001"
       ]
+    },
+    {
+      "persona": "*",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["BIN-001"]
+    },
+    {
+      "persona": "coder",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["TS-001"]
+    },
+    {
+      "persona": "reviewer",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["TS-001"]
+    },
+    {
+      "persona": "qa-tester",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["TS-001"]
+    },
+    {
+      "persona": "spotfixer",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["TS-001"]
     },
     {
       "persona": "orchestrator",
@@ -32,19 +67,19 @@
       "persona": "coder",
       "workflow": "*",
       "stage": "*",
-      "policies": ["ENG-001", "TS-001", "CONTRACT-001"]
+      "policies": ["ENG-001", "CONTRACT-001"]
     },
     {
       "persona": "reviewer",
       "workflow": "*",
       "stage": "*",
-      "policies": ["ENG-001", "TS-001", "CONTRACT-001"]
+      "policies": ["ENG-001", "CONTRACT-001"]
     },
     {
       "persona": "qa-tester",
       "workflow": "*",
       "stage": "*",
-      "policies": ["ENG-001", "TS-001"]
+      "policies": ["ENG-001"]
     },
     {
       "persona": "tech-lead",
@@ -117,7 +152,7 @@
       "persona": "spotfixer",
       "workflow": "*",
       "stage": "*",
-      "policies": ["ENG-001", "TS-001", "WORK-001", "SPOT-001", "CONTRACT-001"]
+      "policies": ["ENG-001", "WORK-001", "SPOT-001", "CONTRACT-001"]
     }
   ]
 }

@@ -80,7 +80,7 @@ Run /pan-start.
 
 test('requirements run validates a target repository primer', () => {
   const root = createFixture()
-  const targetPath = 'runtime/target-repo-primer.md'
+  const targetPath = 'docs/target-repo-primer.md'
 
   writeFileSync(
     path.join(root, targetPath),

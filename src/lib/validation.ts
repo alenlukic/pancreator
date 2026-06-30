@@ -14,6 +14,10 @@ import {
   writeTextAtomic,
 } from './io.js'
 import { loadPipelineConfig } from './pipeline-config.js'
+import {
+  assertRepositoryChecksValid,
+  runRepositoryCheck,
+} from './repository-checks.js'
 import type { LoadedPipelineConfig } from './pipeline-config.js'
 import { auditDirectives } from './governance/audit-directives.js'
 import { HANDLER_IDS } from './requirements/handlers.js'
@@ -28,6 +32,10 @@ import {
   readPolicyLookupTable,
   resolvePolicies,
 } from './policies.js'
+import {
+  isEmbeddedInstallation,
+  isSelfDevelopmentInstallation,
+} from './project-config.js'
 import {
   blockingWorkspacePathsFromSnapshots,
   snapshotWorkspace,
@@ -627,6 +635,89 @@ export function validateStageOutput(
   return { errors, output }
 }
 
+function repositoryCheckProfile(command: string): string | null {
+  const match = /^pan repository-check ([a-z0-9][a-z0-9_-]*)$/u.exec(
+    command.trim(),
+  )
+
+  return match?.[1] ?? null
+}
+
+interface ShellCheckResolution {
+  command: string
+  profile_name: string | null
+  removed_reason?: string
+}
+
+function resolveShellCheck(
+  root: string,
+  criterion: Criterion,
+  requestedCommand: string,
+  overridden: boolean,
+): ShellCheckResolution {
+  if (overridden || !isEmbeddedInstallation(root)) {
+    return {
+      command: requestedCommand,
+      profile_name: overridden
+        ? null
+        : repositoryCheckProfile(requestedCommand),
+    }
+  }
+
+  const legacyProfiles: Record<string, string> = {
+    'implement.lint:npm run lint': 'static',
+    'implement.unit_tests:npm test': 'fast',
+    'test.full_suite:npm test': 'full',
+    'ship.validate:npm run validate': 'configuration',
+  }
+  const legacyKey = `${criterion.id}:${requestedCommand.trim()}`
+  const legacyProfile = legacyProfiles[legacyKey]
+
+  if (legacyProfile) {
+    return {
+      command: `pan repository-check ${legacyProfile}`,
+      profile_name: legacyProfile,
+    }
+  }
+
+  if (
+    criterion.id === 'test.coverage' &&
+    requestedCommand.trim() === 'npm run test:coverage'
+  ) {
+    return {
+      command: requestedCommand,
+      profile_name: null,
+      removed_reason:
+        'Legacy standalone coverage gate removed; coverage belongs inside a target-owned repository profile when applicable.',
+    }
+  }
+
+  if (
+    criterion.id === 'preflight.validate' &&
+    requestedCommand.trim() === 'npm run validate'
+  ) {
+    return {
+      command: '"$PANCREATOR_ROOT/bin/pan" validate',
+      profile_name: null,
+    }
+  }
+
+  if (
+    criterion.id === 'preflight.tests' &&
+    requestedCommand.trim() === 'npm test'
+  ) {
+    return {
+      command: 'npm --prefix "$PANCREATOR_ROOT" test',
+      profile_name: null,
+    }
+  }
+
+  return {
+    command: requestedCommand,
+    profile_name: repositoryCheckProfile(requestedCommand),
+  }
+}
+
 function runShellCheck(
   root: string,
   runDirectory: string,
@@ -637,16 +728,64 @@ function runShellCheck(
   commandOverride?: string,
   artifactId = stage.slug,
 ): DeterministicResult {
-  const command = commandOverride ?? criterion.command ?? ''
+  const requestedCommand = commandOverride ?? criterion.command ?? ''
+  const resolution = resolveShellCheck(
+    root,
+    criterion,
+    requestedCommand,
+    commandOverride !== undefined,
+  )
+  const command = resolution.command
   const startedAt = new Date().toISOString()
-  const result = spawnSync(command, {
-    cwd: workspaceDir,
-    encoding: 'utf8',
-    shell: true,
-    timeout: criterion.timeout_ms ?? 120_000,
-    maxBuffer: 10 * 1024 * 1024,
-    env: { ...process.env, PAN_WORKFLOW_STAGE: stage.slug },
-  })
+  const profileName = resolution.profile_name
+
+  let exitCode: number | null
+  let signal: NodeJS.Signals | null = null
+  let stdout: string
+  let stderr: string
+  let errorMessageText = ''
+  let timedOut = false
+  let skipped = false
+
+  if (resolution.removed_reason) {
+    exitCode = 0
+    stdout = `${resolution.removed_reason}\n`
+    stderr = ''
+    skipped = true
+  } else if (profileName) {
+    const repositoryResult = runRepositoryCheck(root, profileName, {
+      timeout_ms: criterion.timeout_ms,
+    })
+
+    exitCode = repositoryResult.status === 'failed' ? 1 : 0
+    stdout = `${JSON.stringify(repositoryResult, null, 2)}\n`
+    stderr = ''
+    skipped = repositoryResult.status === 'not_configured'
+    timedOut = repositoryResult.results.some((result) => result.timed_out)
+  } else {
+    const result = spawnSync(command, {
+      cwd: workspaceDir,
+      encoding: 'utf8',
+      shell: true,
+      timeout: criterion.timeout_ms ?? 120_000,
+      maxBuffer: 10 * 1024 * 1024,
+      env: {
+        ...process.env,
+        PAN_WORKFLOW_STAGE: stage.slug,
+        PANCREATOR_ROOT: root,
+        PAN_WORKSPACE_ROOT: workspaceDir,
+      },
+    })
+
+    exitCode = result.status
+    signal = result.signal
+    stdout = result.stdout ?? ''
+    stderr = result.stderr ?? ''
+    errorMessageText = result.error?.message ?? ''
+    timedOut = isNodeError(result.error) && result.error.code === 'ETIMEDOUT'
+    skipped = stdout.includes('PANCREATOR_CHECK_SKIPPED=1')
+  }
+
   const safeCriterionId = criterion.id.replaceAll(/[^a-zA-Z0-9_.-]/g, '-')
   const evidencePath = path.join(
     runDirectory,
@@ -658,14 +797,14 @@ function runShellCheck(
     `started_at=${startedAt}`,
     `finished_at=${new Date().toISOString()}`,
     `workspace_fingerprint=${workspaceFingerprint}`,
-    `exit_code=${result.status ?? 'null'}`,
-    result.signal ? `signal=${result.signal}` : null,
+    `exit_code=${exitCode ?? 'null'}`,
+    signal ? `signal=${signal}` : null,
     '',
     '--- stdout ---',
-    result.stdout ?? '',
+    stdout,
     '--- stderr ---',
-    result.stderr ?? '',
-    result.error ? `--- error ---\n${result.error.message}` : '',
+    stderr,
+    errorMessageText ? `--- error ---\n${errorMessageText}` : '',
   ]
     .filter((line): line is string => line !== null)
     .join('\n')
@@ -676,7 +815,15 @@ function runShellCheck(
     id: criterion.id,
     type: 'shell',
     hard: Boolean(criterion.hard),
-    passed: result.status === 0 && !result.error,
+    passed: !skipped && exitCode === 0 && !errorMessageText,
+    ...(skipped
+      ? {
+          disabled: true,
+          explanation:
+            resolution.removed_reason ??
+            'Repository check profile is not configured; no technology-specific command was guessed.',
+        }
+      : {}),
     ...(commandOverride === undefined
       ? {}
       : {
@@ -684,8 +831,8 @@ function runShellCheck(
           explanation: 'Gate command was overridden by run configuration.',
         }),
     command,
-    exit_code: result.status,
-    timed_out: isNodeError(result.error) && result.error.code === 'ETIMEDOUT',
+    exit_code: exitCode,
+    timed_out: timedOut,
     evidence_path: path.relative(root, evidencePath).split(path.sep).join('/'),
     workspace_fingerprint: workspaceFingerprint,
   }
@@ -886,6 +1033,7 @@ interface HandbookPolicyRequirement {
   handbook_path: string
   label: string
   personas: Set<string>
+  installation_scope?: 'all' | 'self_development'
 }
 
 const HANDBOOK_POLICY_REQUIREMENTS: HandbookPolicyRequirement[] = [
@@ -898,8 +1046,18 @@ const HANDBOOK_POLICY_REQUIREMENTS: HandbookPolicyRequirement[] = [
     handbook_path: 'governance/handbooks/typescript/style-guide.md',
     label: 'TypeScript handbook',
     personas: CODE_REVIEW_PERSONAS,
+    installation_scope: 'self_development',
   },
 ]
+
+function handbookRequirementApplies(
+  requirement: HandbookPolicyRequirement,
+  selfDevelopment: boolean,
+): boolean {
+  return (
+    requirement.installation_scope !== 'self_development' || selfDevelopment
+  )
+}
 
 function validateHandbookPolicyCoverage(
   root: string,
@@ -1040,6 +1198,7 @@ function validatePolicyLookupDependencies(
 export function validateRepository(root: string): RepositoryValidationResult {
   const errors: string[] = []
   const warnings: string[] = []
+  const selfDevelopment = isSelfDevelopmentInstallation(root)
   const required = [
     'AGENTS.md',
     'CHANGELOG.md',
@@ -1077,9 +1236,12 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'library/personas/spotfixer.md',
     'library/skills/spotfix.md',
     'library/skills/write-pr-description.md',
+    'library/templates/repository-checks.json',
+    'library/templates/repository-checks.self-development.json',
     'release/index.json',
     'governance/policies/DECOMP-001.json',
     'governance/policies/PRIMER-001.json',
+    'governance/policies/REPO-001.json',
     'governance/policies/PR-001.json',
     'governance/policies/WORK-001.json',
     'governance/policies/SPOT-001.json',
@@ -1093,6 +1255,12 @@ export function validateRepository(root: string): RepositoryValidationResult {
   }
 
   errors.push(...validateReleaseMetadata(root).errors)
+
+  try {
+    assertRepositoryChecksValid(root)
+  } catch (error) {
+    errors.push(errorMessage(error))
+  }
 
   let pipelineConfig: LoadedPipelineConfig | null = null
   let handbookPolicies = new Map<string, Set<string>>()
@@ -1162,6 +1330,31 @@ export function validateRepository(root: string): RepositoryValidationResult {
 
       for (const stage of workflow.stages) {
         workflowPersonas.add(stage.persona)
+
+        const canonicalRepositoryChecks: Record<string, string> = {
+          'implement.lint': 'pan repository-check static',
+          'implement.unit_tests': 'pan repository-check fast',
+          'test.full_suite': 'pan repository-check full',
+          'ship.validate': 'pan repository-check configuration',
+        }
+
+        if (workflow.slug === 'dev') {
+          for (const criterion of stage.criteria) {
+            const expectedCommand = canonicalRepositoryChecks[criterion.id]
+
+            if (expectedCommand && criterion.command !== expectedCommand) {
+              errors.push(
+                `dev criterion '${criterion.id}' MUST use '${expectedCommand}'`,
+              )
+            }
+
+            if (criterion.id === 'test.coverage') {
+              errors.push(
+                'dev MUST NOT require a standalone coverage gate; configure coverage inside a target-owned repository profile when applicable',
+              )
+            }
+          }
+        }
         const policies = resolvePolicies(root, {
           persona: stage.persona,
           workflow: workflow.slug,
@@ -1169,7 +1362,10 @@ export function validateRepository(root: string): RepositoryValidationResult {
         })
 
         for (const requirement of HANDBOOK_POLICY_REQUIREMENTS) {
-          if (!requirement.personas.has(stage.persona)) {
+          if (
+            !handbookRequirementApplies(requirement, selfDevelopment) ||
+            !requirement.personas.has(stage.persona)
+          ) {
             continue
           }
 

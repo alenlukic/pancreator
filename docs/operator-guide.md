@@ -35,7 +35,7 @@ delegation validation state, artifact paths, and short failure reasons.
 
 ## Build the target repository primer
 
-Run `/pan-build-docs` after installation, after major architectural or administrative changes, or when the existing primer is materially stale. The librarian inspects representative code, repository instructions and documentation, setup/build/install/test scripts, manifests, and bounded Git history, then writes the validated primer to `runtime/target-repo-primer.md` (`.pancreator/runtime/target-repo-primer.md` when embedded).
+Run `/pan-build-docs` after installation, after major architectural or administrative changes, or when the existing primer is materially stale. The command creates the primer when absent and regenerates it when present. The librarian inventories target-owned documentation, incorporates useful verified details into the appropriate sections, and reconciles those claims against representative code, setup/build/install/test scripts, manifests, and bounded Git history before writing the validated primer to `docs/target-repo-primer.md` (`.pancreator/docs/target-repo-primer.md` when embedded).
 
 Every agent reads this primer before expanding repository context. It is a navigation aid rather than an instruction to preload all referenced files: agents may follow a primer path only when the active task creates a concrete need for that file.
 
@@ -105,16 +105,11 @@ Operators MAY pause any non-terminal run at any time:
 ./bin/pan pause <run-id> [--note "<reason>"]
 ```
 
-While paused, you MAY modify tracked files in the deliverable workspace without
-using the changes protocol. On resume, including resume with `--stage`,
-Pancreator compares the workspace to the pause-start snapshot. Authorized
-changes are added to the workspace ledger under a ratification artifact, the
-new fingerprint is accepted, and any prepared invocation is invalidated so it
-can be regenerated against the changed workspace. Changes that predated the
+While paused, you MAY modify tracked files in the deliverable workspace directly. On resume, including resume with `--stage`, Pancreator compares the workspace to the pause-start snapshot. Authorized pause-only changes are recorded in a ratification artifact, the accepted workspace index and fingerprint are updated, and any prepared invocation is invalidated so it can be regenerated against the changed workspace. Changes that predated the
 pause are not silently ratified. Resume with `./bin/pan resume <run-id>` or
 deliberately restart at a different stage with `--stage <slug>`.
 
-Resume from the stage that owns the remediation when the pause was harness-initiated (blocker, circuit breaker, or ledger anomaly). Do not resume from review or test when the defect belongs to implementation.
+Resume from the stage that owns the remediation when the pause was harness-initiated (blocker, circuit breaker, or workspace anomaly). Do not resume from review or test when the defect belongs to implementation.
 
 - `./bin/pan resume <run-id> --stage implement --note "<required changes>"` restarts implementation and attaches the latest note to the next invocation card as required remediation input.
 
@@ -156,18 +151,44 @@ executing; terminate that process first so an obsolete worker cannot continue
 writing after the run has moved. Use it for deliberate state repair, not normal
 review or QA remediation.
 
-## Cooperative lock contract
+## Workspace mutation contract
 
-While a mutating workflow is active, avoid editing tracked files outside
-Pancreator. Pancreator locks are cooperative evidence records only; they do not
-prevent editors, scripts, or other processes from writing files. External edits
-may surface as unledgered anomalies during `validate-changes`.
+Pancreator does not use persistent workspace locks, active-workflow leases, or
+per-edit ledgers. During a `source_allowed` stage, the active worker may edit
+tracked source files directly within the declared scope. The harness protects
+integrity with accepted indexes, workspace fingerprints, read-only-stage
+mutation guards, and stage evidence.
 
-Use the protocol commands when a worker modifies tracked files:
+Do not run concurrent mutating workflows against one workspace. Avoid other
+concurrent external edits while a mutating worker is running because they make
+stage attribution ambiguous. Pause the run before operator-driven changes.
+Legacy `pan changes begin|commit|cancel` commands remain accepted as no-ops so
+older invocation cards and operator notes do not fail after an upgrade.
 
-- `./bin/pan changes begin <run-id> <path>`
-- `./bin/pan changes commit <run-id> <path> --lock <lock-id>`
-- `./bin/pan changes cancel <run-id> <path> --lock <lock-id>`
+## Repository verification profiles
+
+The canonical target checks live in
+`.pancreator/runtime/repository-checks.json`. `/pan-build-docs` must populate only
+commands verified from the target repository's own documentation, manifests,
+executable scripts, or operator instructions. `fast` is the shortest documented
+default or primary suite, `secondary` is an optional complementary slow or
+integration suite, and `full` is complete verification. Identical non-empty
+`fast` and `full` command lists are invalid. Use explicit runtime entrypoints,
+identity/version probes, and documented runtime bounds when PATH or environment
+selection could change results.
+
+Run a profile directly with:
+
+```sh
+./.pancreator/bin/pan repository-check static
+./.pancreator/bin/pan repository-check fast
+./.pancreator/bin/pan repository-check secondary
+./.pancreator/bin/pan repository-check full
+```
+
+An empty profile is reported as `not_configured`; it is never silently replaced
+with an npm, Python, or other technology-specific command. Direct runs stream
+live subprocess output to stderr and print the final structured result to stdout.
 
 ## Write a standalone PR description
 

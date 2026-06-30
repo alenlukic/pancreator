@@ -92,7 +92,7 @@
         },
         "include_latest_ledger_validation": {
           "type": "boolean",
-          "description": "Include the latest harness-owned validate-changes ledger result."
+          "description": "Include the latest harness-owned workspace-change validation result. The field name is retained for persisted-state compatibility."
         }
       }
     },

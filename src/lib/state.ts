@@ -62,32 +62,20 @@ export function nextStageSequence(root: string, runId: string): number {
   return sequence
 }
 
-export function lockPath(root: string, runId: string): string {
+export function operationMutexPath(root: string, runId: string): string {
   invariant(fileExists(statePath(root, runId)), `Unknown run: ${runId}`, {
     code: 'RUN_NOT_FOUND',
   })
 
-  return path.join(runDir(root, runId), '.lock')
+  return path.join(runDir(root, runId), '.operation-mutex')
 }
 
 export function indexPath(stateRoot: string): string {
   return path.join(stateRoot, 'workspace', 'index.json')
 }
 
-export function leasePath(stateRoot: string): string {
-  return path.join(stateRoot, 'workspace', 'active-workflow.json')
-}
-
-export function lockDir(stateRoot: string): string {
-  return path.join(stateRoot, 'locks')
-}
-
 export function baselinePath(stateRoot: string, runId: string): string {
   return path.join(stateRoot, 'workflows', runId, 'baseline.json')
-}
-
-export function ledgerPath(stateRoot: string, runId: string): string {
-  return path.join(stateRoot, 'workflows', runId, 'modifications.jsonl')
 }
 
 export function ledgerValidationPath(stateRoot: string, runId: string): string {

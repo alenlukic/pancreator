@@ -27,6 +27,7 @@ SOURCE_PAYLOAD_ENTRIES=(
   package-lock.json
   package.json
   prettier.config.js
+  release
   src
   tests
   tsconfig.json
@@ -154,7 +155,13 @@ run_smoke() {
       && test -f "$project/.pancreator/project.json" \
       && test -f "$project/.pancreator/install.json" \
       && test -d "$project/.pancreator/runtime/inbox" \
-      && test -f "$project/.pancreator/runtime/target-repo-primer.md" \
+      && test -f "$project/.pancreator/docs/target-repo-primer.md" \
+      && test ! -e "$project/.pancreator/runtime/target-repo-primer.md" \
+      && test -f "$project/.pancreator/runtime/repository-checks.json" \
+      && node -e 'const c=require(process.argv[1]); process.exit(c.profiles?.secondary ? 0 : 1)' \
+        "$project/.pancreator/runtime/repository-checks.json" \
+      && test -f "$project/.pancreator/release/index.json" \
+      && test ! -e "$project/.pancreator/runtime/locks" \
       && test -L "$project/.pancreator/.cursor" \
       && test -f "$project/.cursor/commands/pan-start.md" \
       && test -f "$project/.cursor/agents/coder.md" \
@@ -253,6 +260,9 @@ PANCREATOR_DIR="$TARGET_DIR/.pancreator"
 PROJECT_JSON="$PANCREATOR_DIR/project.json"
 RUNTIME_DIR="$PANCREATOR_DIR/runtime"
 INBOX_DIR="$RUNTIME_DIR/inbox"
+DOCS_DIR="$PANCREATOR_DIR/docs"
+PRIMER_PATH="$DOCS_DIR/target-repo-primer.md"
+LEGACY_PRIMER_PATH="$RUNTIME_DIR/target-repo-primer.md"
 INSTALL_MARKER="$PANCREATOR_DIR/install.json"
 CURSOR_DIR="$TARGET_DIR/.cursor"
 
@@ -328,7 +338,8 @@ resolve_source_metadata() {
   fi
 
   if ! git -C "$PANCREATOR_ROOT" diff --quiet "$indexed" "$head" -- \
-    .gitignore project.json "${SOURCE_PAYLOAD_ENTRIES[@]}"; then
+    .gitignore project.json "${SOURCE_PAYLOAD_ENTRIES[@]}" \
+    ':(exclude)release/index.json'; then
     echo "Error: installed harness inputs differ from indexed release $VERSION." >&2
     echo "Complete the Pancreator self-development release flow or increment VERSION before installing this clean checkout." >&2
     exit 1
@@ -445,13 +456,48 @@ ensure_target_gitignore() {
   echo "Added .pancreator/ to $gitignore"
 }
 
-create_runtime_layout() {
-  mkdir -p "$INBOX_DIR" "$RUNTIME_DIR/logs/workflows" "$RUNTIME_DIR/backlog"
+prepare_persistent_layout() {
+  local migrated_at backup_dir
 
-  if [[ ! -f "$RUNTIME_DIR/target-repo-primer.md" ]]; then
-    cp "$PANCREATOR_ROOT/library/templates/target-repo-primer.md" \
-      "$RUNTIME_DIR/target-repo-primer.md"
+  mkdir -p \
+    "$INBOX_DIR" \
+    "$RUNTIME_DIR/logs/workflows" \
+    "$RUNTIME_DIR/backlog" \
+    "$DOCS_DIR"
+
+  # Per-file workspace locks were removed. Refreshes clean up stale lock files
+  # from older installations so they can never block run completion again.
+  rm -rf "$RUNTIME_DIR/locks"
+  find "$RUNTIME_DIR/logs/workflows" -type f -name '.lock' -delete
+  rm -f "$RUNTIME_DIR/workspace/active-workflow.json"
+
+  if [[ ! -f "$PRIMER_PATH" ]]; then
+    if [[ -f "$LEGACY_PRIMER_PATH" ]]; then
+      mv "$LEGACY_PRIMER_PATH" "$PRIMER_PATH"
+      echo "Migrated target repository primer to $PRIMER_PATH"
+    else
+      cp "$PANCREATOR_ROOT/library/templates/target-repo-primer.md" \
+        "$PRIMER_PATH"
+    fi
+  elif [[ -f "$LEGACY_PRIMER_PATH" ]]; then
+    if ! cmp -s "$LEGACY_PRIMER_PATH" "$PRIMER_PATH"; then
+      migrated_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+      backup_dir="$PANCREATOR_DIR/backups/target-repo-primer/${migrated_at//:/-}"
+      mkdir -p "$backup_dir"
+      cp "$LEGACY_PRIMER_PATH" "$backup_dir/target-repo-primer.md"
+    fi
+    rm -f "$LEGACY_PRIMER_PATH"
   fi
+
+  if [[ ! -f "$RUNTIME_DIR/repository-checks.json" ]]; then
+    cp "$PANCREATOR_ROOT/library/templates/repository-checks.json" \
+      "$RUNTIME_DIR/repository-checks.json"
+  fi
+
+  node "$PANCREATOR_ROOT/bin/install-support" migrate-repository-checks \
+    --config "$RUNTIME_DIR/repository-checks.json" \
+    --template "$PANCREATOR_ROOT/library/templates/repository-checks.json" \
+    --backup-root "$PANCREATOR_DIR/backups/repository-checks"
 }
 
 is_complete_install() {
@@ -559,7 +605,12 @@ install_payload() {
   ensure_target_gitignore
 
   mkdir -p "$PANCREATOR_DIR" "$CURSOR_DIR"
-  create_runtime_layout
+  prepare_persistent_layout
+
+  # `docs/` is release-owned except for the generated target primer. Seed the
+  # staged payload with the target-specific file so refreshes and updates do not
+  # replace it with Pancreator's self-development primer.
+  cp "$PRIMER_PATH" "$staging/docs/target-repo-primer.md"
 
   if [[ "$cursor_preexisting" == "true" ]]; then
     cursor_warning
@@ -608,6 +659,7 @@ install_payload() {
   echo "Pancreator $VERSION installed in $PANCREATOR_DIR"
   echo "  workspace:      $TARGET_DIR"
   echo "  harness config: $PROJECT_JSON"
+  echo "  target primer:  $PRIMER_PATH"
   echo "  runtime state:  $RUNTIME_DIR"
   echo "  Cursor surface: $CURSOR_DIR"
 

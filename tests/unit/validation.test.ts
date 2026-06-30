@@ -143,6 +143,26 @@ test('repository validation requires code-review and QA stages to load TypeScrip
   )
 })
 
+test('embedded repository validation does not impose the TypeScript handbook on target stages', () => {
+  const root = createFixture()
+  prepareValidationFixture(root)
+  const configPath = path.join(root, 'project.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  config.installation_mode = 'embedded'
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+
+  const result = validateRepository(root)
+
+  assert.doesNotMatch(
+    result.errors.join('\n'),
+    /MUST load a policy for the TypeScript handbook/u,
+  )
+})
+
 test('repository validation requires lookup rows to load referenced policy dependencies', () => {
   const root = createFixture()
   prepareValidationFixture(root)

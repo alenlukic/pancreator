@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "source_head": "source-template",
+  "$operator": {
+    "summary": "Pancreator self-development verification commands grouped by workflow purpose.",
+    "note": "This template applies only when developing Pancreator itself. Embedded installations receive repository-checks.json instead."
+  },
+  "profiles": {
+    "configuration": {
+      "description": "Validate Pancreator governance, workflow, and projection configuration.",
+      "probes": ["node --version", "npm --version"],
+      "commands": ["npm run validate"]
+    },
+    "static": {
+      "description": "Run Pancreator formatting, type, and lint checks.",
+      "probes": ["node --version", "npm --version"],
+      "commands": ["npm run lint"]
+    },
+    "fast": {
+      "description": "Run Pancreator's compiled automated test suite.",
+      "probes": ["node --version", "npm --version"],
+      "commands": ["npm test"]
+    },
+    "full": {
+      "description": "Run Pancreator's complete tests and configured coverage thresholds.",
+      "probes": ["node --version", "npm --version"],
+      "commands": ["npm test", "npm run test:coverage"]
+    }
+  }
+}

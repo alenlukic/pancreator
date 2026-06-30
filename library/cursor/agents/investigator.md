@@ -1,18 +1,7 @@
 ---
 description: Diagnoses a reported problem, identifies root cause, and recommends a governed remediation mode.
 model: __PANCREATOR_MODEL__
-tools:
-  [
-    'Bash(./bin/pan:*)',
-    Read,
-    Grep,
-    Glob,
-    'Bash(git diff:*)',
-    'Bash(git status:*)',
-    'Bash(npm test:*)',
-    'Bash(npm run:*)',
-    'Bash(node:*)',
-  ]
+tools: [Bash, Read, Grep, Glob]
 disallowedTools:
   [
     Write,
