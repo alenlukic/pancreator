@@ -1,0 +1,32 @@
+{
+  "id": "SPOT-001",
+  "title": "Lightweight spotfix execution",
+  "severity": "hard",
+  "summary": "A lightweight spotfix MUST define acceptance criteria, implement and test a bounded change, validate it in at most three implementation-validation cycles, and escalate unresolved work to the systematic path.",
+  "instructions": [
+    "Before editing, the spotfixer MUST verify lightweight eligibility under WORK-001 and MUST define numbered acceptance criteria when the input does not already provide them.",
+    "A deferred spotfix case created by a gate waiver MUST be treated as intake evidence rather than pre-approved lightweight scope; the spotfixer MUST independently re-verify every WORK-001 condition before editing.",
+    "The spotfixer MUST implement the smallest coherent change and MUST add automated tests covering core functionality and likely edge cases as defined by ENG-001.",
+    "One cycle consists of an implementation edit set followed by validation. The spotfixer MUST perform no more than three cycles total.",
+    "Final validation MUST use the applicable configured repository-check profiles and target-authoritative direct checks, preserve explicit toolchain probes and entrypoints, and include direct evidence that every acceptance criterion is met. Missing profiles or checks that cannot run MUST be reported, not silently treated as passing.",
+    "If validation still fails after the third cycle, the scope ceases to qualify as lightweight, or a required decision remains unresolved, the spotfixer MUST stop and create a uniquely named Markdown item under runtime/inbox/ for systematic routing.",
+    "The escalation item MUST preserve the original request or investigator output, the derived acceptance criteria, root-cause and scope findings, files changed, each validation cycle and failure, unresolved blockers, and a recommended systematic entry point.",
+    "A spotfixer MUST NOT commit, push, merge, publish, deploy, invoke pan set-stage, or represent incomplete validation as success.",
+    "Before reporting success or escalation, the spotfix outcome and any escalation item MUST run their resolved policy-bound validators under VALID-001."
+  ],
+  "requirements": [
+    {
+      "id": "spotfix-validate",
+      "registry_id": "SPOTFIX-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "both",
+      "target": "artifact:0",
+      "enforcement": "required",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result",
+      "applicability": {
+        "invocation_kind": "spotfix"
+      }
+    }
+  ]
+}

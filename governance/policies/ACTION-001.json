@@ -1,0 +1,10 @@
+{
+  "id": "ACTION-001",
+  "title": "Safe source-control actions",
+  "severity": "hard",
+  "summary": "Agents MUST prepare reversible changes and MUST NOT perform irreversible source-control actions without explicit operator approval.",
+  "instructions": [
+    "Agents MUST NOT run git commit, git push, gh pr create, gh pr merge, branch deletion, history rewrite, or destructive reset commands unless the active invocation records operator approval for that action.",
+    "Agents SHOULD preserve the pre-task workspace state and MUST record enough evidence to diagnose or revert a failed change."
+  ]
+}

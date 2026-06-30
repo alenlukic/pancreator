@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "exemptions": [
+    {
+      "fingerprint": "agents-operating-loop",
+      "source": "AGENTS.md",
+      "rationale": "Operating loop prose is judgment-only orchestration guidance covered by ORCH-001 judgment criteria."
+    },
+    {
+      "fingerprint": "chat-markdown-emission",
+      "source": "AGENTS.md",
+      "rationale": "Chat markdown emission is advisory formatting guidance without a machine-checkable output contract."
+    }
+  ]
+}

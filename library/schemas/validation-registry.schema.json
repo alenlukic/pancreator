@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ValidationRegistry",
+  "type": "object",
+  "required": ["schema_version", "entries"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "version",
+          "handler",
+          "result_schema",
+          "target_types",
+          "default_timeout_ms",
+          "deterministic",
+          "side_effect_free"
+        ]
+      }
+    }
+  }
+}

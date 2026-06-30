@@ -1,0 +1,19 @@
+{
+  "id": "VERSION-001",
+  "title": "Pancreator self-development release metadata ownership",
+  "severity": "hard",
+  "summary": "The release steward MUST own Semantic Versioning, release notes, and synchronized version-bearing metadata for Pancreator self-development releases while preserving the release-to-commit index boundary.",
+  "instructions": [
+    "This policy MUST apply only when project.json explicitly marks the active installation as Pancreator self-development. It MUST NOT cause release-metadata changes in embedded target repositories.",
+    "The release steward MUST apply library/skills/update-release-metadata.md during every successful self-development ship stage and whenever /pan-release is invoked manually.",
+    "The release steward MUST identify the last committed release bump that introduced the current committed VERSION, then inspect every committed change after that baseline together with staged, unstaged, relevant untracked changes, and any existing Unreleased changelog content.",
+    "If a matching uncommitted release candidate already exists, the release steward MUST regenerate that candidate in place rather than incrementing the version again. A retry or repeated /pan-release invocation MUST be idempotent.",
+    "The release steward MUST choose exactly major, minor, or patch. Major applies to backward-incompatible installed layouts, command contracts, durable-state schemas, governance contracts, or update paths requiring migration. Minor applies to backward-compatible operator capabilities, workflows, personas, validation behavior, or material installation behavior. Patch applies to backward-compatible fixes, documentation, tests, maintenance, and internal refactors shipped as a release.",
+    "The release steward MUST author or regenerate the current Common Changelog release entry from the actual release delta, use Changed, Added, Removed, and Fixed groups in that order when present, describe impact in imperative mood, and link each item to the best available commit, pull request, issue, or repository document without inventing hashes.",
+    "The release steward MUST update VERSION, package.json.version, the top-level and root package versions in package-lock.json, README.md current-version references, docs/embedded-installation.md current-version reference, and every other durable README or docs Markdown statement that explicitly represents the current Pancreator version.",
+    "The release steward MUST populate release.versioning with current_version, recommendation, proposed_version, baseline_commit, rationale, compatibility, updated_files, and release_index_action. current_version is the committed release version before the candidate; proposed_version is the exact next version selected by the bump.",
+    "VERSION, package.json.version, the package-lock.json versions, the latest versioned CHANGELOG.md entry, and validated version-bearing documentation MUST agree before the ship output is submitted.",
+    "The release steward MUST NOT edit release/index.json, create commits, push, publish, deploy, or invent the future release commit hash. release_index_action MUST explain that the immutable release commit is indexed only after that commit exists.",
+    "When /pan-release finds no committed or worktree changes after the last release bump and no release candidate requiring regeneration, it MUST stop without modifying files or incrementing VERSION."
+  ]
+}

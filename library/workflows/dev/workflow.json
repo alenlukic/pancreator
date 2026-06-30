@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "slug": "dev",
+  "title": "Development delivery",
+  "description": "Operator-ratified intake followed by plan, implement, independent review, QA, and operator-approved release preparation.",
+  "start_stage": "intake",
+  "limits": {
+    "max_total_transitions": 18,
+    "max_stage_attempts": 3,
+    "max_consecutive_failures": 3
+  },
+  "stages": [
+    "intake",
+    "plan",
+    "implement",
+    "review",
+    "test",
+    "validate-changes",
+    "ship"
+  ]
+}

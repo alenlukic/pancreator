@@ -1,0 +1,27 @@
+{
+  "id": "VALID-001",
+  "title": "Policy-bound artifact validation",
+  "severity": "hard",
+  "summary": "Required artifacts and structured outputs MUST pass their resolved policy-bound validators before they are represented as complete.",
+  "instructions": [
+    "When the active invocation declares a validator requirement, the producing agent MUST run that validator against the exact final target after the last edit and before submission or emission.",
+    "A required validation MUST count as passed only when the declared validator exits successfully, returns its expected result shape, and identifies the validator version and exact target it checked.",
+    "A missing validator, non-zero exit, timeout, malformed result, stale target, or target mismatch MUST be corrected and rerun within the active attempt budget or MUST be reported using the requirement's declared failure route; manual inspection MUST NOT substitute for a required validator.",
+    "When a validator is authoritative, the harness MUST rerun it against the submitted bytes, persist the result as evidence, and MUST treat an agent-run result as early feedback rather than gate evidence.",
+    "Validation evidence MUST identify the governing policy, validator id and version, executable path, target path, target checksum when available, command, outcome, and evidence artifact path.",
+    "The invocation card MUST contain only the resolved validator requirements for that invocation and MUST NOT inline the full validator catalog or unrelated validation rules.",
+    "Out-of-workflow execution MUST resolve policy-bound validator requirements through the same repository resolver and MUST NOT invent a separate validator set."
+  ],
+  "requirements": [
+    {
+      "id": "stage-output-validate",
+      "registry_id": "STAGE-OUTPUT-VALIDATE-002",
+      "phase": "pre_submit",
+      "executor": "both",
+      "target": "invocation.output.path",
+      "enforcement": "authoritative",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result"
+    }
+  ]
+}

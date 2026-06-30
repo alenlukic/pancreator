@@ -1,0 +1,55 @@
+{
+  "slug": "test",
+  "title": "Quality assurance",
+  "persona": "qa-tester",
+  "prompt_path": "library/workflows/dev/prompts/test.md",
+  "workspace_policy": "read_only",
+  "gate": "stage_verdict",
+  "context": {
+    "request": "omit",
+    "required_stage_outputs": [
+      {
+        "stage": "plan",
+        "selection": "latest_success"
+      },
+      {
+        "stage": "implement",
+        "selection": "latest"
+      },
+      {
+        "stage": "review",
+        "selection": "latest_success"
+      }
+    ],
+    "prior_attempts": 1,
+    "operator_feedback": 1
+  },
+  "required_data": {
+    "test": "object",
+    "test.verdict": "string",
+    "test.cases": "array",
+    "test.defects": "array",
+    "test.acceptance_results": "array"
+  },
+  "criteria": [
+    {
+      "id": "test.manual_cases",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Manual QA cases cover each acceptance criterion or explicitly justify why a case is not applicable."
+    },
+    {
+      "id": "test.full_suite",
+      "type": "shell",
+      "hard": true,
+      "statement": "The configured complete repository verification suite passes.",
+      "command": "pan repository-check full",
+      "timeout_ms": 600000
+    }
+  ],
+  "transitions": {
+    "success": "validate-changes",
+    "failure": "implement",
+    "blocked": "paused"
+  }
+}

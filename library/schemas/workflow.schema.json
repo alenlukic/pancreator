@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pancreator://workflow/v1",
+  "title": "Pancreator workflow index",
+  "description": "The top-level file at library/workflows/<slug>/workflow.json. It declares run-wide settings and the ordered list of stage slugs. Each slug resolves to library/workflows/<slug>/stages/<stage-slug>.json, validated by stage.schema.json. The harness assembles these into one self-contained workflow.snapshot.json per run.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "slug",
+    "title",
+    "start_stage",
+    "limits",
+    "stages"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "description": "Schema version of this workflow definition. Always 1 for the prototype."
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Unique workflow identifier and directory name, e.g. 'dev'."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable workflow name."
+    },
+    "description": {
+      "type": "string",
+      "description": "One- or two-sentence summary of what the workflow delivers."
+    },
+    "start_stage": {
+      "type": "string",
+      "description": "Slug of the entry stage. Must appear in stages[]."
+    },
+    "limits": {
+      "type": "object",
+      "description": "Circuit breakers enforced by the harness. Exceeding any limit pauses the run and writes a decision record.",
+      "required": [
+        "max_total_transitions",
+        "max_stage_attempts",
+        "max_consecutive_failures"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "max_total_transitions": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Hard cap on total stage transitions in one run."
+        },
+        "max_stage_attempts": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum invocation attempts for any single stage."
+        },
+        "max_consecutive_failures": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum consecutive failure transitions before pausing."
+        }
+      }
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "Ordered stage slugs. Each resolves to stages/<slug>.json. The graph formed by every stage's transitions must reach all stages from start_stage.",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      }
+    }
+  }
+}

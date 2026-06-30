@@ -1,0 +1,55 @@
+{
+  "slug": "review",
+  "title": "Independent review",
+  "persona": "reviewer",
+  "prompt_path": "library/workflows/dev/prompts/review.md",
+  "workspace_policy": "read_only",
+  "gate": "stage_verdict",
+  "context": {
+    "request": "omit",
+    "required_stage_outputs": [
+      {
+        "stage": "plan",
+        "selection": "latest_success"
+      },
+      {
+        "stage": "implement",
+        "selection": "latest"
+      }
+    ],
+    "prior_attempts": 1,
+    "operator_feedback": 1
+  },
+  "required_data": {
+    "review": "object",
+    "review.verdict": "string",
+    "review.findings": "array",
+    "review.acceptance_results": "array",
+    "review.maintenance_assessment": "string"
+  },
+  "criteria": [
+    {
+      "id": "review.acceptance_met",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Every acceptance criterion is independently verified against the resulting workspace."
+    },
+    {
+      "id": "review.tests_correct",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Tests are meaningful, correctly scoped, and resistant to false positives."
+    },
+    {
+      "id": "review.maintainable",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Code quality and maintenance risk are appropriate for the change."
+    }
+  ],
+  "transitions": {
+    "success": "test",
+    "failure": "implement",
+    "blocked": "paused"
+  }
+}

@@ -1,0 +1,174 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PANCREATOR_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+TARGET_DIR=""
+SKIP_DEPENDENCIES=0
+
+usage() {
+  cat <<'USAGE'
+Fast-forward an embedded Pancreator installation to this checkout's indexed release.
+
+Usage:
+  update --target <repository> [--pancreator-root <checkout>]
+
+Options:
+  --skip-dependencies  Skip npm install/build (test harness only)
+USAGE
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --target)
+      TARGET_DIR="${2:-}"
+      shift 2
+      ;;
+    --pancreator-root)
+      PANCREATOR_ROOT="${2:-}"
+      shift 2
+      ;;
+    --skip-dependencies)
+      SKIP_DEPENDENCIES=1
+      shift
+      ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+done
+
+if [[ -z "$TARGET_DIR" ]]; then
+  echo "Error: --target is required." >&2
+  exit 1
+fi
+
+if [[ ! -d "$TARGET_DIR" ]]; then
+  echo "Error: target repository does not exist: $TARGET_DIR" >&2
+  exit 1
+fi
+
+TARGET_DIR="$(cd "$TARGET_DIR" && pwd)"
+PANCREATOR_ROOT="$(cd "$PANCREATOR_ROOT" && pwd)"
+MARKER="$TARGET_DIR/.pancreator/install.json"
+RELEASE_INDEX="$PANCREATOR_ROOT/release/index.json"
+
+for required in "$MARKER" "$RELEASE_INDEX" "$PANCREATOR_ROOT/VERSION"; do
+  if [[ ! -f "$required" ]]; then
+    echo "Error: required update metadata is missing: $required" >&2
+    exit 1
+  fi
+done
+
+if ! git -C "$PANCREATOR_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "Error: Pancreator updates must be initiated from a Git checkout." >&2
+  exit 1
+fi
+
+read_json_field() {
+  local file="$1"
+  local field="$2"
+
+  node -e '
+    const fs = require("node:fs")
+    const [file, field] = process.argv.slice(1)
+    const value = JSON.parse(fs.readFileSync(file, "utf8"))
+    const result = field.split(".").reduce((current, key) => current?.[key], value)
+    if (result === undefined || result === null) process.exit(2)
+    process.stdout.write(String(result))
+  ' "$file" "$field"
+}
+
+release_commit() {
+  local version="$1"
+
+  node -e '
+    const fs = require("node:fs")
+    const [file, version] = process.argv.slice(1)
+    const value = JSON.parse(fs.readFileSync(file, "utf8"))
+    const release = value.releases?.find((entry) => entry.version === version)
+    if (!release || typeof release.commit !== "string") process.exit(2)
+    process.stdout.write(release.commit)
+  ' "$RELEASE_INDEX" "$version"
+}
+
+if ! INSTALLED_VERSION="$(read_json_field "$MARKER" version)" \
+  || ! INSTALLED_COMMIT="$(read_json_field "$MARKER" source_commit)" \
+  || ! INSTALLED_DIRTY="$(read_json_field "$MARKER" source_dirty)" \
+  || ! INSTALLED_INDEXED="$(read_json_field "$MARKER" source_indexed)"; then
+  echo "Error: installed metadata predates the versioned update protocol; refresh the target with bin/install before updating." >&2
+  exit 1
+fi
+
+TARGET_VERSION="$(tr -d '[:space:]' <"$PANCREATOR_ROOT/VERSION")"
+
+if [[ "$INSTALLED_DIRTY" == "true" ]]; then
+  echo "Error: target contains a development-snapshot install; reinstall from a clean indexed release before automatic updates." >&2
+  exit 1
+fi
+
+if [[ "$INSTALLED_INDEXED" != "true" ]]; then
+  echo "Error: target contains an unindexed release-candidate install; reinstall after the version is published in release/index.json." >&2
+  exit 1
+fi
+
+if ! INSTALLED_INDEX_COMMIT="$(release_commit "$INSTALLED_VERSION")"; then
+  echo "Error: installed version $INSTALLED_VERSION is absent from release/index.json." >&2
+  exit 1
+fi
+
+if ! TARGET_COMMIT="$(release_commit "$TARGET_VERSION")"; then
+  echo "Error: target version $TARGET_VERSION is absent from release/index.json." >&2
+  exit 1
+fi
+
+if [[ "$INSTALLED_COMMIT" != "$INSTALLED_INDEX_COMMIT" ]]; then
+  echo "Error: installed commit does not match the release index for $INSTALLED_VERSION." >&2
+  exit 1
+fi
+
+for commit in "$INSTALLED_COMMIT" "$TARGET_COMMIT"; do
+  if ! git -C "$PANCREATOR_ROOT" cat-file -e "${commit}^{commit}" 2>/dev/null; then
+    echo "Error: indexed commit is unavailable in the Pancreator checkout: $commit" >&2
+    exit 1
+  fi
+done
+
+if [[ "$INSTALLED_COMMIT" == "$TARGET_COMMIT" ]]; then
+  echo "Pancreator $INSTALLED_VERSION is already current."
+  exit 0
+fi
+
+if ! git -C "$PANCREATOR_ROOT" merge-base --is-ancestor \
+  "$INSTALLED_COMMIT" "$TARGET_COMMIT"; then
+  echo "Error: update is not a fast-forward from $INSTALLED_VERSION to $TARGET_VERSION." >&2
+  exit 1
+fi
+
+PAYLOAD_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/pancreator-release.XXXXXX")"
+trap 'rm -rf "$PAYLOAD_ROOT"' EXIT
+
+git -C "$PANCREATOR_ROOT" archive "$TARGET_COMMIT" | tar -x -C "$PAYLOAD_ROOT"
+
+INSTALL_ARGS=(
+  --target "$TARGET_DIR"
+  --pancreator-root "$PAYLOAD_ROOT"
+  --source-commit "$TARGET_COMMIT"
+  --source-dirty false
+  --source-indexed true
+  --update
+)
+
+if [[ "$SKIP_DEPENDENCIES" -eq 1 ]]; then
+  INSTALL_ARGS+=(--skip-dependencies)
+fi
+
+bash "$PAYLOAD_ROOT/bin/install" "${INSTALL_ARGS[@]}"
+
+echo "Pancreator fast-forwarded: $INSTALLED_VERSION ($INSTALLED_COMMIT) -> $TARGET_VERSION ($TARGET_COMMIT)"

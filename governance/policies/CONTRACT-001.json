@@ -1,0 +1,50 @@
+{
+  "id": "CONTRACT-001",
+  "title": "Deterministic contract coverage",
+  "severity": "hard",
+  "summary": "Agents creating or modifying machine-checkable normative contracts MUST assign policy ownership and deterministic automation or validator coverage.",
+  "instructions": [
+    "When an agent creates or modifies a normative requirement for an output shape, required artifact, traceability relationship, deterministic operation, or machine-checkable invariant, the agent MUST identify its owning policy and a registered automation or validator id, or MUST include an explicit implementation specification when the registry capability does not yet exist.",
+    "Validator and automation definitions MUST live in one canonical registry; policies and applicability rules MUST reference stable ids and MUST NOT duplicate executable paths or command definitions.",
+    "Applicable automation and validation requirements MUST be derived from the policies resolved for an invocation and MUST NOT be maintained in an independent second applicability map that can drift from policy selection.",
+    "Repository validation MUST fail for a missing policy owner, unknown requirement id, duplicate registry id, missing executable, invalid target declaration, or policy-bound requirement whose executable contract cannot be resolved once the registry capability is active.",
+    "A requirement that cannot be checked deterministically MUST be marked as judgment-only with a rationale and MUST NOT be represented as covered by a superficial structural validator.",
+    "The repository-local `.cursor/` directory MUST be treated as ignored, disposable configuration and MUST NOT contain authoritative Pancreator functionality.",
+    "Every Pancreator-owned Cursor agent, command, or rule projection MUST be declared in `governance/registries/projection_manifest.json`; its canonical implementation MUST live under `library/` or `src/`, and installers or sync automation MUST NOT read the source checkout's `.cursor/` directory as authority.",
+    "Repository validation MUST validate canonical projection sources and manifest coverage independently of whether a local `.cursor/` projection exists; when a local projection exists, drift MAY be reported with the registered regeneration command.",
+    "Embedded installation and refresh MUST add `.pancreator/` to an existing target `.gitignore` without removing or rewriting unrelated entries, MUST avoid duplicate equivalent entries, and MUST NOT create a target `.gitignore` when none exists.",
+    "Generated invocation manifests MAY persist resolved requirement ids, versions, paths, arguments, targets, and failure routes for auditability, but agents MUST receive only the entries relevant to the active invocation."
+  ],
+  "requirements": [
+    {
+      "id": "registry-validate",
+      "registry_id": "REGISTRY-VALIDATE-001",
+      "phase": "gate",
+      "executor": "harness",
+      "target": "repository",
+      "enforcement": "authoritative",
+      "failure_route": "blocked",
+      "evidence_class": "validation-result"
+    },
+    {
+      "id": "directive-audit",
+      "registry_id": "DIRECTIVE-AUDIT-001",
+      "phase": "gate",
+      "executor": "harness",
+      "target": "repository",
+      "enforcement": "authoritative",
+      "failure_route": "blocked",
+      "evidence_class": "validation-result"
+    },
+    {
+      "id": "projection-validate",
+      "registry_id": "PROJECTION-VALIDATE-001",
+      "phase": "gate",
+      "executor": "harness",
+      "target": "repository",
+      "enforcement": "authoritative",
+      "failure_route": "blocked",
+      "evidence_class": "validation-result"
+    }
+  ]
+}

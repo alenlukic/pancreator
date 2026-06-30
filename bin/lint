@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+npm run format:check
+npm run typecheck
+
+for script in "$ROOT/bin"/*; do
+  if [[ ! -f "$script" ]]; then
+    continue
+  fi
+
+  if head -1 "$script" | grep -q 'bash'; then
+    bash -n "$script"
+  fi
+done

@@ -1,0 +1,13 @@
+{
+  "id": "BIN-001",
+  "title": "Durable repository shell automation",
+  "severity": "hard",
+  "summary": "Durable repository automation MUST live under bin/ as executable Bash shell files without file-type suffixes.",
+  "instructions": [
+    "Durable repository automation scripts MUST live under bin/ as executable Bash shell files.",
+    "Durable bin/ script filenames MUST NOT include file-type suffixes such as .sh, .bash, .mjs, or .js; names MUST follow the unprefixed convention used by bin/pan.",
+    "The repository scripts/ directory MUST NOT contain durable automation; throwaway run-local scripts remain under runtime/logs/workflows/<run-id>/scripts/ per AUTO-001.",
+    "When durable automation must invoke Node or other interpreters, the bin/ entry MUST remain a thin Bash wrapper that delegates to the compiled artifact or external tool.",
+    "Agents MUST NOT add durable automation under scripts/ or introduce new bin/ file-type suffixes without an explicit governance change."
+  ]
+}

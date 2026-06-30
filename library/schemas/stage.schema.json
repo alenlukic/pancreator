@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pancreator://stage/v1",
+  "title": "Pancreator workflow stage",
+  "description": "One stage file at library/workflows/<slug>/stages/<stage-slug>.json. A stage is one unit of delegated work with a persona, a task prompt, a workspace mutation policy, a gate, a declared output shape, criteria, and transitions.",
+  "type": "object",
+  "required": [
+    "slug",
+    "title",
+    "persona",
+    "prompt_path",
+    "workspace_policy",
+    "gate",
+    "context",
+    "criteria",
+    "transitions"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Stage identifier, unique within the workflow. Must match the file name and appear in the workflow index stages[]."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable stage name shown on invocation cards and records."
+    },
+    "persona": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Owner of the stage. Resolves to library/personas/<persona>.md and, for delegated work, to the matching .cursor/agents/<persona>.md subagent."
+    },
+    "executor": {
+      "enum": ["agent", "harness"],
+      "description": "Execution mode. agent delegates to a worker persona. harness runs deterministic runtime logic without delegation."
+    },
+    "prompt_path": {
+      "type": "string",
+      "description": "Repository-relative path to the stage task brief. Its contents become the Task section of the invocation card."
+    },
+    "workspace_policy": {
+      "enum": [
+        "source_allowed",
+        "release_metadata_only",
+        "runtime_only",
+        "read_only"
+      ],
+      "description": "Mutation boundary enforced by the harness via workspace fingerprints. source_allowed: may modify product source. release_metadata_only: in self-development ship stages, may modify only release metadata and durable version-bearing documentation; in embedded installations it behaves as read_only. runtime_only: may write only under runtime/ (planning, intake). read_only: may not change tracked content. Any policy other than source_allowed adds the deterministic criterion scope.no_unapproved_changes."
+    },
+    "gate": {
+      "enum": ["operator", "supervisor", "next_stage", "stage_verdict"],
+      "description": "What decides advancement after a successful output. operator: pause for explicit operator approval (intake, ship). supervisor: pause for independent supervisor judgment of the judgment criteria (plan). stage_verdict: the worker's own verdict drives the transition (review, test). next_stage: advance directly to the success transition (implement)."
+    },
+    "context": {
+      "type": "object",
+      "description": "Stage-scoped context projection. Required inputs are read before work; conditional references are opened only on their declared trigger; omitted history remains discoverable through a generated context manifest.",
+      "required": ["request"],
+      "additionalProperties": false,
+      "properties": {
+        "request": {
+          "enum": ["required", "conditional", "omit"],
+          "description": "Whether the original operator request is a required input, a fallback reference, or omitted from the stage card."
+        },
+        "required_stage_outputs": {
+          "type": "array",
+          "description": "Effective stage outputs the worker must read. Missing selectors are surfaced explicitly on the invocation card.",
+          "items": {
+            "$ref": "#/$defs/contextStageSelector"
+          }
+        },
+        "conditional_stage_outputs": {
+          "type": "array",
+          "description": "Stage outputs that remain available but should be read only when required inputs do not resolve the task or unresolved remediation evidence requires them.",
+          "items": {
+            "$ref": "#/$defs/contextStageSelector"
+          }
+        },
+        "prior_attempts": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum prior attempts of the current stage to include as required remediation context."
+        },
+        "operator_feedback": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum most-recent operator feedback artifacts targeting this stage to include as required inputs."
+        },
+        "include_active_waivers": {
+          "type": "boolean",
+          "description": "Include only waivers still bound to the latest stage attempt and current workspace fingerprint."
+        },
+        "include_workspace_ratifications": {
+          "type": "boolean",
+          "description": "Include the latest operator workspace ratification matching the current fingerprint."
+        },
+        "include_latest_ledger_validation": {
+          "type": "boolean",
+          "description": "Include the latest harness-owned workspace-change validation result. The field name is retained for persisted-state compatibility."
+        }
+      }
+    },
+    "required_data": {
+      "type": "object",
+      "description": "Shape contract for the output's data object, as a map of dotted paths to expected JSON types. The harness rejects an output whose data does not match. Type is one of: object, array, string, number, boolean.",
+      "additionalProperties": {
+        "enum": ["object", "array", "string", "number", "boolean"]
+      }
+    },
+    "criteria": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Checkable claims for this stage. See governance/criteria/index.md for naming and families.",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "statement"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9_.-]+$",
+            "description": "Namespaced identifier <area>.<claim>, stable across history."
+          },
+          "type": {
+            "enum": ["judgment", "shell", "state"],
+            "description": "judgment: evaluated by a reasoning agent. shell: harness reruns command. state: harness checks run state and fingerprints."
+          },
+          "hard": {
+            "type": "boolean",
+            "description": "If true, failure or not_applicable blocks the stage. Defaults to false."
+          },
+          "statement": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The claim, phrased so that pass is unambiguous."
+          },
+          "command": {
+            "type": "string",
+            "description": "Required for type=shell. The exact command the harness reruns; never assembled from agent-controlled values."
+          },
+          "timeout_ms": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Optional timeout for a shell criterion. Defaults to 120000."
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "shell"
+                }
+              }
+            },
+            "then": {
+              "required": ["command"]
+            }
+          }
+        ]
+      }
+    },
+    "transitions": {
+      "type": "object",
+      "description": "Outcome routing. Targets are either another stage slug or a terminal status (succeeded, failed, canceled, paused).",
+      "required": ["success", "failure", "blocked"],
+      "additionalProperties": false,
+      "properties": {
+        "success": {
+          "type": "string",
+          "description": "Target after a successful, gated outcome."
+        },
+        "failure": {
+          "type": "string",
+          "description": "Remediation target after a failed outcome (often the implement stage)."
+        },
+        "blocked": {
+          "type": "string",
+          "description": "Target when the worker reports a blocker; usually 'paused'."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "contextStageSelector": {
+      "type": "object",
+      "required": ["stage", "selection"],
+      "additionalProperties": false,
+      "properties": {
+        "stage": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "selection": {
+          "enum": ["latest", "latest_success"],
+          "description": "latest selects the newest attempt regardless of outcome; latest_success selects the newest successful attempt."
+        }
+      }
+    }
+  }
+}
