@@ -35,7 +35,7 @@ delegation validation state, artifact paths, and short failure reasons.
 
 ## Build the target repository primer
 
-Run `/pan-build-docs` after installation, after major architectural or administrative changes, or when the existing primer is materially stale. The librarian inspects representative code, repository instructions and documentation, setup/build/install/test scripts, manifests, and bounded Git history, then writes the validated primer to `runtime/target-repo-primer.md` (`.pancreator/runtime/target-repo-primer.md` when embedded).
+Run `/pan-build-docs` after installation, after major architectural or administrative changes, or when the existing primer is materially stale. The command creates the primer when absent and regenerates it when present. The librarian inventories target-owned documentation, incorporates useful verified details into the appropriate sections, and reconciles those claims against representative code, setup/build/install/test scripts, manifests, and bounded Git history before writing the validated primer to `docs/target-repo-primer.md` (`.pancreator/docs/target-repo-primer.md` when embedded).
 
 Every agent reads this primer before expanding repository context. It is a navigation aid rather than an instruction to preload all referenced files: agents may follow a primer path only when the active task creates a concrete need for that file.
 

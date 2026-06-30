@@ -25,6 +25,13 @@ export function projectCursorContent(
       "read the target repository's `AGENTS.md` when present and `.pancreator/AGENTS.md`",
     )
 
+  if (
+    relativePath.startsWith('.cursor/agents/') ||
+    relativePath === '.cursor/commands/pan-write-pr.md'
+  ) {
+    projected = projected.replaceAll('`docs/', '`.pancreator/docs/')
+  }
+
   if (relativePath.startsWith('.cursor/agents/')) {
     projected = projected
       .replaceAll('`runtime/', '`.pancreator/runtime/')

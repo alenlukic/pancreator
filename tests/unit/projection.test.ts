@@ -3,12 +3,39 @@ import { readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
+import { projectCursorContent } from '../../src/lib/cursor-content.js'
 import {
   syncCursorProjection,
   validateProjectionDrift,
 } from '../../src/lib/projection.js'
 import { loadPipelineConfig } from '../../src/lib/pipeline-config.js'
 import { createFixture } from '../helpers.js'
+
+test('embedded Cursor projection prefixes durable harness docs paths', () => {
+  const projected = projectCursorContent(
+    'Read `docs/target-repo-primer.md` before running `library/skills/x.md`.',
+    '.cursor/commands/pan-write-pr.md',
+    'embedded',
+  )
+
+  assert.equal(
+    projected,
+    'Read `.pancreator/docs/target-repo-primer.md` before running `.pancreator/library/skills/x.md`.',
+  )
+})
+
+test('embedded build-docs projection preserves harness-relative CLI targets', () => {
+  const projected = projectCursorContent(
+    'Run `./bin/pan requirements run --target docs/target-repo-primer.md`.',
+    '.cursor/commands/pan-build-docs.md',
+    'embedded',
+  )
+
+  assert.equal(
+    projected,
+    'Run `./.pancreator/bin/pan requirements run --target docs/target-repo-primer.md`.',
+  )
+})
 
 test('projection drift validation runs on fixture repository', () => {
   const root = createFixture()

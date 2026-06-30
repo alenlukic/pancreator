@@ -65,6 +65,13 @@ function projectCursorContent(content, relative) {
       "read the target repository's `AGENTS.md` when present and `.pancreator/AGENTS.md`",
     )
 
+  if (
+    relative.startsWith('.cursor/agents/') ||
+    relative === '.cursor/commands/pan-write-pr.md'
+  ) {
+    projected = projected.replaceAll('`docs/', '`.pancreator/docs/')
+  }
+
   if (relative.startsWith('.cursor/agents/')) {
     projected = projected
       .replaceAll('`runtime/', '`.pancreator/runtime/')

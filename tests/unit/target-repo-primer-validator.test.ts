@@ -8,7 +8,7 @@ import { createFixture } from '../helpers.js'
 
 function validate(content: string) {
   const root = createFixture()
-  const targetPath = 'runtime/target-repo-primer.md'
+  const targetPath = 'docs/target-repo-primer.md'
 
   writeFileSync(path.join(root, targetPath), content)
 

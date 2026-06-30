@@ -15,7 +15,7 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 
 ## Target repository primer
 
-- `PRIMER-001` governs the target-repository primer at `runtime/target-repo-primer.md`.
+- `PRIMER-001` governs the target-repository primer at `docs/target-repo-primer.md`.
 - Before expanding repository context, every agent MUST read the primer. A missing or unbuilt primer blocks substantive repository work except for the librarian rebuilding it through `/pan-build-docs`.
 - The primer is orientation, not authority. Agents MUST NOT open or search files merely because the primer references them; a referenced file MAY be read only for a concrete task-specific need.
 - The operator request, this file, the active invocation card, and applicable policies retain precedence over primer content.

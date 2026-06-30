@@ -25,7 +25,7 @@ There are no npm runtime dependencies. TypeScript and Prettier are development-o
 1. Run `./bin/pan models --sync` once after cloning to generate the ignored local `.cursor/` projection.
 2. Open or reload the repository in Cursor.
 3. Run `/pan-validate` once.
-4. Run `/pan-build-docs` to build or refresh `runtime/target-repo-primer.md`.
+4. Run `/pan-build-docs` to build or refresh `docs/target-repo-primer.md`.
 5. Use `/pan-decompose <intake spec>` when a request may be too large for one efficient workflow run.
 6. Use `/pan-start <your request>` for systematic delivery.
 7. Use `/pan-debug <problem>` for root-cause analysis and a work-mode recommendation.
@@ -58,7 +58,7 @@ but they are not the normal target-repository interface.
 
 ### Target repository primer
 
-`/pan-build-docs` delegates to the librarian persona to scan the target repository and rebuild `runtime/target-repo-primer.md`. The primer records verified administrative commands, a Mermaid architecture overview, key paths, public interfaces, and gotchas. Every agent reads it before expanding repository context but must not follow its file references unless the active task specifically requires those files.
+`/pan-build-docs` delegates to the librarian persona to create `docs/target-repo-primer.md` when absent or regenerate it when present. The librarian inventories target-owned documentation and incorporates useful verified administrative, architectural, structural, interface, and gotcha information, reconciling it against current scripts, manifests, and code. Every agent reads the resulting durable primer before expanding repository context but must not follow its file references unless the active task specifically requires those files.
 
 ## Work modes
 

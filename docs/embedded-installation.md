@@ -45,8 +45,11 @@ cd /path/to/target-repository
     VERSION
     install.json            # source version/commit and ownership manifest
     project.json            # embedded workspace and model configuration
-    bin/ docs/ governance/ library/ src/ tests/
-    dist/ node_modules/     # built runtime and development tooling
+    bin/ governance/ library/ src/ tests/
+    docs/
+      target-repo-primer.md  # target-specific durable repository primer
+      ...                    # Pancreator operator and authoring documentation
+    dist/ node_modules/      # built runtime and development tooling
     runtime/
       repository-checks.json # target-authoritative verification profiles
       logs/ inbox/ ...       # target-specific durable workflow state
@@ -66,9 +69,11 @@ configuration lives at `.pancreator/project.json` with:
 - `state_root: "runtime"` so state resolves to `.pancreator/runtime`
 
 Pancreator infrastructure, tooling, workflows, personas, governance, schemas,
-and validators are retained. Source-checkout self-development context is not
-installed: `.git`, `.env`, source `runtime/`, nested validation repositories, editor-local
-settings, and the self-development operating card are excluded.
+and validators are retained. The source checkout's self-development primer is
+replaced by a target-specific bootstrap at `.pancreator/docs/target-repo-primer.md`.
+Other source-checkout self-development context is not installed: `.git`, `.env`,
+source `runtime/`, nested validation repositories, editor-local settings, and the
+self-development operating card are excluded.
 
 ## Target repository checks
 
@@ -76,8 +81,12 @@ The embedded harness is language- and technology-agnostic. It does not infer
 that the target uses npm, Python, a root package, or any other ecosystem merely
 because Pancreator itself is implemented in TypeScript.
 
-`/pan-build-docs` inspects the target and writes
-`.pancreator/runtime/repository-checks.json`. Its `configuration`, `static`,
+`/pan-build-docs` creates or regenerates
+`.pancreator/docs/target-repo-primer.md` and writes
+`.pancreator/runtime/repository-checks.json`. The librarian inventories target
+repository documentation and incorporates useful verified details into the primer,
+reconciling stale claims against current scripts, manifests, and code. The check
+configuration's `configuration`, `static`,
 `fast`, optional `secondary`, and `full` profiles may contain only commands
 verified from target-owned documentation, manifests, executable scripts, or
 operator instructions. `fast` is the shortest documented default or primary
@@ -148,8 +157,9 @@ matches the previous installation; modified operator copies are retained.
 Cursor operates from the target root. Therefore projected instructions use two
 path spaces:
 
-- filesystem references use `.pancreator/runtime/...`,
-  `.pancreator/library/...`, and `.pancreator/governance/...`
+- filesystem references use `.pancreator/docs/...`,
+  `.pancreator/runtime/...`, `.pancreator/library/...`, and
+  `.pancreator/governance/...`
 - CLI request/output arguments remain harness-relative, such as
   `runtime/inbox/request.md`, because `./.pancreator/bin/pan` resolves them from
   the installation root
@@ -162,7 +172,7 @@ A complete installation can be refreshed idempotently:
 ./bin/install --target /path/to/target-repository --yes
 ```
 
-Refresh replaces owned harness payload and reprojects Cursor files while preserving `.pancreator/runtime/repository-checks.json`, workflow state, Cursor backups, and unrelated target files. Refresh also removes the obsolete `.pancreator/runtime/locks/` directory from pre-removal installations so stale cooperative locks cannot block upgraded runs.
+Refresh replaces owned harness payload and reprojects Cursor files while preserving `.pancreator/docs/target-repo-primer.md`, `.pancreator/runtime/repository-checks.json`, workflow state, Cursor backups, and unrelated target files. Upgrading an older installation migrates `.pancreator/runtime/target-repo-primer.md` into the durable docs location and removes the legacy path; a conflicting legacy copy is backed up under `.pancreator/backups/target-repo-primer/`. Refresh also removes the obsolete `.pancreator/runtime/locks/` directory from pre-removal installations so stale cooperative locks cannot block upgraded runs.
 
 If `.pancreator/` exists but is incomplete, an interactive install offers:
 
@@ -238,7 +248,7 @@ The updater:
    release commit
 5. archives that exact release commit and refreshes the embedded harness
 
-Runtime state and unrelated target Cursor files are preserved. Updates refuse
+The target primer, runtime state, and unrelated target Cursor files are preserved. Updates refuse
 development snapshots, unindexed release candidates, legacy markers, missing
 index entries, unavailable commits, marker/index mismatches, and non-fast-forward
 histories.

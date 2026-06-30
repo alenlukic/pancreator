@@ -70,6 +70,7 @@ export function createFixture(): string {
   })
   mkdirSync(path.join(root, 'runtime', 'inbox'), { recursive: true })
   mkdirSync(path.join(root, 'runtime', 'backlog'), { recursive: true })
+  mkdirSync(path.join(root, 'docs'), { recursive: true })
   mkdirSync(path.join(root, 'src'), { recursive: true })
 
   writeFileSync(path.join(root, 'AGENTS.md'), '# fixture\n')
