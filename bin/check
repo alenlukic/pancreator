@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+QUIET="$ROOT/bin/run-quiet"
+
+for script_name in lint build validate test; do
+  if "$QUIET" -- npm run "$script_name"; then
+    continue
+  fi
+
+  exit 1
+done

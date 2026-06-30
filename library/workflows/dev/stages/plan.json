@@ -1,0 +1,53 @@
+{
+  "slug": "plan",
+  "title": "Engineering plan",
+  "persona": "tech-lead",
+  "prompt_path": "library/workflows/dev/prompts/plan.md",
+  "workspace_policy": "runtime_only",
+  "gate": "supervisor",
+  "context": {
+    "request": "conditional",
+    "required_stage_outputs": [
+      {
+        "stage": "intake",
+        "selection": "latest_success"
+      }
+    ],
+    "prior_attempts": 1,
+    "operator_feedback": 1
+  },
+  "required_data": {
+    "engineering_plan": "object",
+    "engineering_plan.approach": "string",
+    "engineering_plan.components": "array",
+    "engineering_plan.files": "array",
+    "engineering_plan.risks": "array",
+    "engineering_plan.validation": "array",
+    "acceptance_criteria": "array"
+  },
+  "criteria": [
+    {
+      "id": "plan.complete_mapping",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Every approved user story and feature requirement maps to at least one testable acceptance criterion."
+    },
+    {
+      "id": "plan.implementation_ready",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The plan is specific enough for implementation without additional architectural decisions."
+    },
+    {
+      "id": "plan.proportionate",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The plan minimizes new structure and complexity while addressing system-wide implications."
+    }
+  ],
+  "transitions": {
+    "success": "implement",
+    "failure": "plan",
+    "blocked": "paused"
+  }
+}

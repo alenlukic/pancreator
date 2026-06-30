@@ -1,6 +1,0 @@
-persona: tech-writer
-description: When the `feature-delivery` pipeline reaches the `report` stage, the `tech-writer` SHALL draft one Delivery Report at `/.pan/work/<day>/<task-id>/delivery-report.md` for the named Feature, then exit so the `notifier` post-run step stages the file to `lib/inbox/out/`.
-globs:
-  - lib/inbox/out/**/*.md
-  - .pan/work/**/delivery-report.md
-alwaysApply: false

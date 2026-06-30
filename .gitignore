@@ -1,72 +1,18 @@
-# --- OS ---
-
 .DS_Store
-Thumbs.db
-
-# --- Environment & secrets ---
-
 .env
-.env.*
-!.env.example
-.envrc
 
-# --- Node / pnpm monorepo ---
+**/coverage/
+**/dist/
+**/node_modules/
+**/*.log
 
-node_modules/
-.pnpm-store/
-.turbo/
-dist/
-*.tsbuildinfo
-.eslintcache
-
-# --- Test & coverage ---
-
-coverage/
-*.lcov
-
-# --- Logs & debug ---
-
-*.log
-npm-debug.log*
-pnpm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# --- Next.js (pancreator/client/) ---
-
-pancreator/client/.next/
-pancreator/client/out/
-
-# --- IDE (local overrides) ---
-
-.idea/
-.vscode/
-*.swp
-*~
-
-# --- Cursor ---
-
-# Runtime IDE surface; regenerated via `pan cursor-sync` or `pan init --apply`.
 .cursor/
+.vscode/
 
-# Local-only operator overrides; indexing policy lives in .cursorindexingignore (tracked).
-.cursorignore
+projects/
+runtime/
 
-# --- Local control plane ---
-
-pancreator/.pan/
-
-# --- Local inbox ---
-
-pancreator/lib/inbox/
-
-# --- Internal product docs (local-only; explicit-read; not in git index) ---
-
-pancreator/.docs/
-
-# --- Ephemeral runtime workspaces ---
-
-pancreator/lib/memory/checkpoints/
-pancreator/lib/internal/packages/@pancreator/env-isolation/src/.tmp-ports-*/
+src/migrations/
+tests/migrations/
 
 

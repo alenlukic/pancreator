@@ -1,0 +1,39 @@
+{
+  "schema_version": 2,
+  "policy": "CONTRACT-001",
+  "regeneration_command": "./bin/pan models --sync",
+  "projections": [
+    {
+      "id": "cursor-agents",
+      "source": "library/cursor/agents/{persona}.md",
+      "target": ".cursor/agents/{persona}.md",
+      "installation_modes": ["self_development", "embedded"],
+      "generated_fields": ["frontmatter.model"],
+      "transforms": ["installation-paths"]
+    },
+    {
+      "id": "cursor-commands",
+      "source": "library/cursor/commands/{command}.md",
+      "target": ".cursor/commands/{command}.md",
+      "installation_modes": ["self_development", "embedded"],
+      "generated_fields": [],
+      "transforms": ["installation-paths"]
+    },
+    {
+      "id": "cursor-self-development-rule",
+      "source": "library/cursor/rules/pancreator-self-development.mdc",
+      "target": ".cursor/rules/pancreator.mdc",
+      "installation_modes": ["self_development"],
+      "generated_fields": [],
+      "transforms": []
+    },
+    {
+      "id": "cursor-embedded-rule",
+      "source": "library/cursor/rules/pancreator-embedded.mdc",
+      "target": ".cursor/rules/pancreator.mdc",
+      "installation_modes": ["embedded"],
+      "generated_fields": [],
+      "transforms": []
+    }
+  ]
+}

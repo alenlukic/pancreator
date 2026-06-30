@@ -1,4 +1,0 @@
-{
-  "extends": "../../../../../tsconfig.base.json",
-  "include": ["src", "../../../tools/canonical-json-format.mjs"]
-}

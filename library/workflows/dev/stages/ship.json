@@ -1,0 +1,84 @@
+{
+  "slug": "ship",
+  "title": "Release preparation",
+  "persona": "release-steward",
+  "prompt_path": "library/workflows/dev/prompts/ship.md",
+  "workspace_policy": "release_metadata_only",
+  "gate": "operator",
+  "context": {
+    "request": "conditional",
+    "required_stage_outputs": [
+      {
+        "stage": "intake",
+        "selection": "latest_success"
+      },
+      {
+        "stage": "plan",
+        "selection": "latest_success"
+      },
+      {
+        "stage": "implement",
+        "selection": "latest"
+      },
+      {
+        "stage": "review",
+        "selection": "latest"
+      },
+      {
+        "stage": "test",
+        "selection": "latest"
+      },
+      {
+        "stage": "validate-changes",
+        "selection": "latest"
+      }
+    ],
+    "prior_attempts": 1,
+    "operator_feedback": 1,
+    "include_active_waivers": true,
+    "include_workspace_ratifications": true,
+    "include_latest_ledger_validation": true
+  },
+  "required_data": {
+    "release": "object",
+    "release.summary": "string",
+    "release.change_list": "array",
+    "release.validation": "array",
+    "release.rollback": "string",
+    "release.waivers": "array",
+    "release.follow_up_cases": "array"
+  },
+  "criteria": [
+    {
+      "id": "ship.prior_gates_current",
+      "type": "state",
+      "hard": true,
+      "statement": "Review and QA are satisfied by current successful evidence or explicit fingerprint-bound operator waivers."
+    },
+    {
+      "id": "ship.release_packet_complete",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The release packet accurately summarizes scope, validation, risks, and rollback."
+    },
+    {
+      "id": "ship.release_metadata_updated",
+      "type": "state",
+      "hard": true,
+      "statement": "Pancreator self-development release metadata is synchronized and records a real major, minor, or patch bump; embedded target workflows do not modify Pancreator release metadata."
+    },
+    {
+      "id": "ship.validate",
+      "type": "shell",
+      "hard": true,
+      "statement": "Configured repository validation remains valid.",
+      "command": "pan repository-check configuration",
+      "timeout_ms": 240000
+    }
+  ],
+  "transitions": {
+    "success": "succeeded",
+    "failure": "implement",
+    "blocked": "paused"
+  }
+}

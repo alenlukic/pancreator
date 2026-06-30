@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pancreator://stage-output/v1",
+  "title": "Pancreator stage output",
+  "description": "The machine contract a worker submits for a stage. The harness validates this shape and the stage's required_data before accepting it. Operator-readable narrative belongs in a referenced markdown artifact, not here.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "invocation_id",
+    "result",
+    "summary",
+    "artifacts",
+    "criteria",
+    "risks",
+    "unknowns",
+    "data"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "$operator": {
+      "type": "object",
+      "description": "Optional operator-first header: headline, status, next_action."
+    },
+    "schema_version": { "const": 1 },
+    "invocation_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Must equal the active invocation's id."
+    },
+    "result": {
+      "enum": ["success", "failure", "blocked"],
+      "description": "The worker's own outcome. blocked pauses the run."
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Concise, operator-first summary. Not a place for raw logs."
+    },
+    "artifacts": {
+      "type": "array",
+      "description": "Durable deliverables produced by this stage. Each must exist before submission.",
+      "items": {
+        "type": "object",
+        "required": ["path", "description"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Repository-relative path inside the project root."
+          },
+          "description": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "criteria": {
+      "type": "array",
+      "description": "Self-evaluation of every declared stage criterion.",
+      "items": {
+        "type": "object",
+        "required": ["id", "result", "evidence", "explanation"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "result": {
+            "enum": ["pass", "fail", "not_applicable"],
+            "description": "A hard criterion may not be not_applicable."
+          },
+          "evidence": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Paths or observations a reviewer could re-check."
+          },
+          "explanation": {
+            "type": "string",
+            "description": "Why the evidence is sufficient."
+          }
+        }
+      }
+    },
+    "risks": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Residual risks; empty means checked, not skipped."
+    },
+    "unknowns": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Open questions the operator should know about."
+    },
+    "data": {
+      "type": "object",
+      "description": "Stage-specific structured fields. Must satisfy the stage's required_data shape."
+    }
+  }
+}

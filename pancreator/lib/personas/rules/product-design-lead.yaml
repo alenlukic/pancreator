@@ -1,6 +1,0 @@
-persona: product-design-lead
-description: "When the `experience-planning` pipeline reaches the `synthesis` stage with operator-approved SME recommendations, the `product-design-lead` SHALL merge `product-recommendations.md`, `design-recommendations.md`, and operator thread feedback into one feature-delivery-ready intake directive under `/lib/inbox/in/<day-bucket>/` with drafted spec frontmatter `design_steps: true` and explicit tradeoff resolutions."
-globs:
-  - lib/inbox/in/**
-  - lib/memory/smes/product-design-lead/**
-alwaysApply: false

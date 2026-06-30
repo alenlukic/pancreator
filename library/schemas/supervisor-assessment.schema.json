@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pancreator://supervisor-assessment/v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "assessment_id",
+    "invocation_id",
+    "verdict",
+    "criteria",
+    "summary"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "assessment_id": { "type": "string" },
+    "invocation_id": { "type": "string" },
+    "verdict": { "enum": ["pass", "fail", "escalate"] },
+    "criteria": { "type": "array" },
+    "summary": { "type": "string" }
+  }
+}

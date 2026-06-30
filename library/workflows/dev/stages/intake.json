@@ -1,0 +1,46 @@
+{
+  "slug": "intake",
+  "title": "Intake",
+  "persona": "orchestrator",
+  "prompt_path": "library/workflows/dev/prompts/intake.md",
+  "workspace_policy": "runtime_only",
+  "gate": "operator",
+  "context": {
+    "request": "required",
+    "prior_attempts": 1,
+    "operator_feedback": 1
+  },
+  "required_data": {
+    "product_spec": "object",
+    "product_spec.summary": "string",
+    "product_spec.user_stories": "array",
+    "product_spec.constraints": "array",
+    "product_spec.out_of_scope": "array",
+    "product_spec.open_questions": "array"
+  },
+  "criteria": [
+    {
+      "id": "intake.request_covered",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The product spec faithfully covers the operator request without inventing material scope."
+    },
+    {
+      "id": "intake.stories_testable",
+      "type": "judgment",
+      "hard": true,
+      "statement": "User stories describe observable outcomes and include relevant constraints and exclusions."
+    },
+    {
+      "id": "record.operator_readable",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The operator summary is concise and actionable."
+    }
+  ],
+  "transitions": {
+    "success": "plan",
+    "failure": "intake",
+    "blocked": "paused"
+  }
+}

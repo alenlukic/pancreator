@@ -1,0 +1,24 @@
+{
+  "id": "REVIEW-001",
+  "title": "Independent review",
+  "severity": "hard",
+  "summary": "Review MUST evaluate the resulting workspace independently and MUST NOT silently repair implementation defects.",
+  "instructions": [
+    "Review MUST verify acceptance criteria, test quality, maintainability, and scope control against evidence.",
+    "Each finding MUST include severity, evidence, and an owning remediation stage.",
+    "The review gate MUST fail when any hard blocker remains unresolved.",
+    "Before submission, review findings, acceptance-criterion coverage, verdict consistency, and the referenced review artifact MUST run their resolved policy-bound validators under VALID-001."
+  ],
+  "requirements": [
+    {
+      "id": "review-validate",
+      "registry_id": "REVIEW-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "both",
+      "target": "invocation.output.path",
+      "enforcement": "required",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result"
+    }
+  ]
+}

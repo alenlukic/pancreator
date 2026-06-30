@@ -1,0 +1,69 @@
+{
+  "slug": "implement",
+  "title": "Implementation",
+  "persona": "coder",
+  "prompt_path": "library/workflows/dev/prompts/implement.md",
+  "workspace_policy": "source_allowed",
+  "gate": "next_stage",
+  "context": {
+    "request": "conditional",
+    "required_stage_outputs": [
+      {
+        "stage": "intake",
+        "selection": "latest_success"
+      },
+      {
+        "stage": "plan",
+        "selection": "latest_success"
+      }
+    ],
+    "conditional_stage_outputs": [
+      {
+        "stage": "review",
+        "selection": "latest"
+      },
+      {
+        "stage": "test",
+        "selection": "latest"
+      }
+    ],
+    "prior_attempts": 1,
+    "operator_feedback": 1
+  },
+  "required_data": {
+    "implementation": "object",
+    "implementation.changed_files": "array",
+    "implementation.tests_added": "array",
+    "implementation.notes": "array",
+    "acceptance_results": "array"
+  },
+  "criteria": [
+    {
+      "id": "implement.acceptance_claimed",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The output maps evidence to every acceptance criterion and does not claim unsupported completion."
+    },
+    {
+      "id": "implement.lint",
+      "type": "shell",
+      "hard": true,
+      "statement": "Configured repository static checks pass.",
+      "command": "pan repository-check static",
+      "timeout_ms": 240000
+    },
+    {
+      "id": "implement.unit_tests",
+      "type": "shell",
+      "hard": true,
+      "statement": "Configured repository fast checks pass.",
+      "command": "pan repository-check fast",
+      "timeout_ms": 300000
+    }
+  ],
+  "transitions": {
+    "success": "review",
+    "failure": "implement",
+    "blocked": "paused"
+  }
+}

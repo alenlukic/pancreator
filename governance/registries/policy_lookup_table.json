@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "rows": [
+    {
+      "persona": "*",
+      "workflow": "*",
+      "stage": "*",
+      "policies": [
+        "GLOBAL-001",
+        "GLOBAL-002",
+        "ACTION-001",
+        "AUTO-001",
+        "VALID-001",
+        "OUTPUT-001",
+        "PRIMER-001",
+        "REPO-001"
+      ]
+    },
+    {
+      "persona": "*",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["BIN-001"]
+    },
+    {
+      "persona": "coder",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["TS-001"]
+    },
+    {
+      "persona": "reviewer",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["TS-001"]
+    },
+    {
+      "persona": "qa-tester",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["TS-001"]
+    },
+    {
+      "persona": "spotfixer",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["TS-001"]
+    },
+    {
+      "persona": "orchestrator",
+      "workflow": "*",
+      "stage": "*",
+      "policies": [
+        "ORCH-001",
+        "INVOCATION-001",
+        "PAUSE-001",
+        "WAIVER-001",
+        "WORK-001"
+      ]
+    },
+    {
+      "persona": "coder",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["ENG-001", "CONTRACT-001"]
+    },
+    {
+      "persona": "reviewer",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["ENG-001", "CONTRACT-001"]
+    },
+    {
+      "persona": "qa-tester",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["ENG-001"]
+    },
+    {
+      "persona": "tech-lead",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["CONTRACT-001"]
+    },
+    {
+      "persona": "orchestrator",
+      "workflow": "dev",
+      "stage": "intake",
+      "policies": ["INTAKE-001"]
+    },
+    {
+      "persona": "tech-lead",
+      "workflow": "dev",
+      "stage": "plan",
+      "policies": ["PLAN-001"]
+    },
+    {
+      "persona": "coder",
+      "workflow": "dev",
+      "stage": "implement",
+      "policies": ["DEV-001"]
+    },
+    {
+      "persona": "reviewer",
+      "workflow": "dev",
+      "stage": "review",
+      "policies": ["REVIEW-001"]
+    },
+    {
+      "persona": "qa-tester",
+      "workflow": "dev",
+      "stage": "test",
+      "policies": ["TEST-001"]
+    },
+    {
+      "persona": "release-steward",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["PR-001"]
+    },
+    {
+      "persona": "release-steward",
+      "workflow": "dev",
+      "stage": "ship",
+      "policies": ["SHIP-001", "WAIVER-001", "WORK-001"]
+    },
+    {
+      "persona": "release-steward",
+      "workflow": "dev",
+      "stage": "ship",
+      "installation_scope": "self_development",
+      "policies": ["VERSION-001"]
+    },
+    {
+      "persona": "release-steward",
+      "workflow": "standalone",
+      "stage": "release",
+      "installation_scope": "self_development",
+      "policies": ["VERSION-001"]
+    },
+    {
+      "persona": "decomposer",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["DECOMP-001"]
+    },
+    {
+      "persona": "investigator",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["DIAG-001", "WORK-001"]
+    },
+    {
+      "persona": "spotfixer",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["ENG-001", "WORK-001", "SPOT-001", "CONTRACT-001"]
+    }
+  ]
+}
