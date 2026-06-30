@@ -1,94 +1,66 @@
-# Pancreator v2.8.0
+# Pancreator
 
-Pancreator v2.8.0 is a dependency-free, Cursor-native control plane for agent workflows. Cursor provides the conversational supervisor, named subagents, and MCP integrations. Compiled TypeScript and shell code provide durable workflow state, policy selection, validation, retries, evidence, and operator-readable records.
+Pancreator helps teams use Cursor agents like an engineering workflow instead of a one-off chat. It brings structure, repeatability, and operator control to planning, implementation, review, QA, and release preparation without asking you to leave your repository.
 
-## What this prototype proves
+It is built for teams that want faster agent-assisted delivery without turning approvals, validation, or release decisions into a black box.
 
-- A single Cursor chat can supervise a bounded workflow without an external agent framework.
-- Each run is resumable from repository files and reconstructable from append-only events.
-- Agents receive narrow invocation cards with only applicable policies and prior artifacts.
-- Source mutation boundaries, output shape, workflow topology, retry limits, tests, and coverage are checked by code.
-- Intake and release remain explicit operator gates.
-- Plan evaluation, code review, and QA use distinct authority boundaries instead of letting one agent self-certify the entire run.
+## Why Pancreator
+
+- Keep a human operator in control of high-impact decisions.
+- Give agents durable repository context before they start changing code.
+- Separate planning, implementation, review, and QA so one agent is not grading its own work.
+- Resume work cleanly when a task spans multiple turns, sessions, or handoffs.
+- Bring the same governed workflow into other repositories with an embedded install.
+
+## What It Does
+
+Pancreator adds a set of Cursor commands, supporting agents, and repository-aware workflow tools that help you:
+
+- turn broad requests into scoped, reviewable work;
+- run implementation through explicit validation and QA gates;
+- debug issues with a bounded investigation path;
+- prepare release notes and version metadata with the operator still owning the release action;
+- generate durable repository orientation docs so future agent work starts with better context.
 
 ## Requirements
 
 - Node.js 22 or newer
 - Git
-- Cursor with project commands/subagents enabled
-- Optional MCP servers configured in Cursor; Pancreator itself does not run or depend on them
+- Cursor with project commands and subagents enabled
+- Optional MCP servers configured in Cursor for teams that want them
 
-There are no npm runtime dependencies. TypeScript and Prettier are development-only dependencies; `./bin/pan` compiles the project before invoking the CLI.
+## Quick Start In Cursor
 
-## Quick start in Cursor
+1. Sync the local Cursor projection:
 
-1. Run `./bin/pan models --sync` once after cloning to generate the ignored local `.cursor/` projection.
-2. Open or reload the repository in Cursor.
-3. Run `/pan-validate` once.
-4. Run `/pan-build-docs` to build or refresh `docs/target-repo-primer.md`.
-5. Use `/pan-decompose <intake spec>` when a request may be too large for one efficient workflow run.
-6. Use `/pan-start <your request>` for systematic delivery.
-7. Use `/pan-debug <problem>` for root-cause analysis and a work-mode recommendation.
-8. Use `/pan-spotfix <request>` only for an explicitly lightweight, small-scope change.
-9. Use `/pan-release` to prepare or regenerate version metadata and release notes outside a workflow when needed.
-10. Use `/pan-write-pr [base-branch]` to draft a PR description from the current branch and worktree; the base defaults to `main`.
-11. For systematic work, ratify intake and continue with `/pan-resume <run-id>` until the next operator gate.
+   ```sh
+   ./bin/pan models --sync
+   ```
 
-The CLI is also directly usable:
+2. Open or reload the repository in Cursor, then validate the setup:
 
-```sh
-./bin/pan init --workflow dev --request runtime/inbox/request.md
-./bin/pan prepare <run-id>
-./bin/pan status <run-id>
-./bin/pan submit <run-id> <stage-output.json>
-./bin/pan assess <run-id> <assessment.json>
-./bin/pan decide <run-id> approve
-./bin/pan pause <run-id> [--note "<reason>"]
-./bin/pan set-stage <run-id> --stage <stage> --note "reason for repair"
-./bin/pan accept-change <run-id> --note "operator-intentional change"
-./bin/pan waive-gate <run-id> --criteria <id[,id...]> --note "accepted exception"
-```
+   ```sh
+   /pan-validate
+   ```
 
-### Workspace model
+3. Build repository orientation so agents start from accurate local context:
 
-The source checkout is Pancreator's self-development environment. Normal use
-installs the harness into a target repository at `.pancreator/`; the target root
-then becomes the configured workspace automatically. Manual `--workspace`
-overrides remain available for exceptional self-development and migration work,
-but they are not the normal target-repository interface.
+   ```sh
+   /pan-build-docs
+   ```
 
-### Target repository primer
+4. Choose the workflow that matches the job:
 
-`/pan-build-docs` delegates to the librarian persona to create `docs/target-repo-primer.md` when absent or regenerate it when present. The librarian inventories target-owned documentation and incorporates useful verified administrative, architectural, structural, interface, and gotcha information, reconciling it against current scripts, manifests, and code. Every agent reads the resulting durable primer before expanding repository context but must not follow its file references unless the active task specifically requires those files.
+   - Use `/pan-start <request>` for normal delivery work.
+   - Use `/pan-debug <problem>` when you need root-cause analysis first.
+   - Use `/pan-spotfix <request>` for an explicitly small, bounded change.
+   - Use `/pan-release` when you want Pancreator to prepare release metadata.
 
-## Work modes
+5. Continue the run with `/pan-resume <run-id>` whenever Pancreator pauses for the next operator decision.
 
-`/pan-decompose` is an optional pre-workflow assessment for unusually broad intake. It applies `DECOMP-001`, defaults to retaining one larger systematic run, and decomposes only when independently valuable chunks cross a conservative complexity threshold and save more execution risk than the extra workflow overhead they create. File count and technical-layer boundaries are never sufficient by themselves. The validated packet is written under `runtime/inbox/` and contains either one retained intake or a small dependency-ordered set of standalone `/pan-start` chunks.
+## Install Into Another Repository
 
-`systematic` is the default and executes a governed workflow such as `dev`.
-`lightweight` is an explicit operator choice through `/pan-spotfix`; it is limited
-to one coherent change that satisfies `WORK-001`, including a maximum of three
-core implementation files in one bounded subsystem and no unresolved structural
-decisions. `/pan-debug` uses the investigator persona to establish root cause,
-define acceptance criteria, and recommend one of these modes.
-
-A spotfix performs at most three implementation-validation cycles. It requires
-lint, unit tests, regression tests, and acceptance-criteria evidence when those
-checks exist. Unresolved or expanded work is preserved in a uniquely named
-`runtime/inbox/spotfix-escalation-*.md` item for systematic routing.
-
-### Standalone PR descriptions
-
-`/pan-write-pr [base-branch]` invokes the release steward without creating a workflow run. It compares the current branch and complete worktree against the merge base with `main` by default, or against one explicitly supplied base ref. The generated body is saved under `runtime/pr-descriptions/` and surfaced in chat; the command never creates, updates, or merges a pull request.
-
-### Standalone release preparation
-
-`/pan-release` invokes the release steward in Pancreator self-development mode without creating a workflow run. It finds the commit that introduced the committed `VERSION`, inspects every committed and worktree change after that baseline, chooses a `major`, `minor`, or `patch` bump, authors or regenerates the latest Common Changelog entry, and synchronizes `VERSION`, npm metadata, and current-version references in README/docs. Repeated runs update an existing uncommitted candidate in place rather than incrementing again. The command never edits `release/index.json`, commits, publishes, or deploys.
-
-## Embedded installation
-
-Install Pancreator from this source checkout into the repository that Cursor
-will manage:
+Use Pancreator from this source checkout to install the workflow harness into a target repository:
 
 ```sh
 ./bin/install --target /path/to/your-project
@@ -97,172 +69,25 @@ cd /path/to/your-project
 ./.pancreator/bin/pan validate
 ```
 
-If the target already has a `.gitignore`, the installer adds `.pancreator/`
-idempotently and preserves the rest of the file; it does not create a new
-`.gitignore` for targets that lack one.
+Pancreator installs into `.pancreator/` and projects its Cursor commands and agents into the target repository, so the workflow travels with the codebase you actually want to manage.
 
-The harness lives at `.pancreator/`; Pancreator agents, commands, and its rule
-are merged into the target `.cursor/`. Existing `.cursor` state triggers a
-warning and conflicting files are backed up before replacement.
-
-Clean unindexed release candidates and dirty development snapshots can be
-installed for validation, but only indexed releases can use automatic updates.
-For an indexed release update, initiate the fast-forward from Pancreator:
+For indexed release updates:
 
 ```sh
 ./bin/update --target /path/to/your-project
 ```
 
-See [`CHANGELOG.md`](CHANGELOG.md) for release history and [`docs/embedded-installation.md`](docs/embedded-installation.md) for the installed boundary, Semantic Versioning/index protocol, update guarantees, partial-install behavior, and cleanup.
+## Common Entry Points
 
-### Embedded target verification
+- `/pan-start`: start a governed delivery run for a new request
+- `/pan-debug`: investigate a problem and recommend the right work mode
+- `/pan-build-docs`: generate or refresh repository orientation for future agent work
+- `/pan-release`: prepare version metadata and release notes
+- `/pan-write-pr [base-branch]`: draft a pull request description from the current branch
 
-Embedded targets define their own deterministic commands in
-`.pancreator/runtime/repository-checks.json`. `/pan-build-docs` derives profiles
-only from target-authoritative docs, manifests, scripts, or operator guidance.
-Pancreator does not project its npm, TypeScript, shell, or package-layout
-conventions into the target. `fast` is the shortest documented default/primary
-suite, optional `secondary` contains complementary slow or integration checks,
-and `full` covers complete verification. Profiles should use explicit toolchain
-entrypoints, identity/version probes, and documented runtime bounds when PATH or
-environment ambiguity matters. Direct checks stream live subprocess output.
+## Learn More
 
-Persistent workspace locks, workflow leases, and per-edit ledgers have been
-removed. Source-allowed stages edit directly within declared scope; accepted
-indexes, fingerprints, stage evidence, and read-only mutation guards provide
-integrity. Older `pan changes` commands are accepted as no-ops for upgrade
-compatibility. Operators must not run concurrent mutating workflows against one
-workspace.
-
-## Runtime record layout
-
-```text
-runtime/logs/workflows/<run-id>/
-  state.json                 # current materialized state; never hand-edit
-  events.jsonl               # append-only transition history
-  workflow.snapshot.json     # immutable workflow definition for this run
-  pipeline-config.snapshot.json # immutable persona-to-model mapping for this run
-  request.md|json            # preserved operator input
-  invocations/               # JSON contract + operator-readable Markdown card
-  outputs/                   # worker stage outputs
-  assessments/               # supervisor judgment requests and responses
-  evidence/                  # deterministic command output
-  decisions/                 # pause/escalation records
-  artifacts/
-    json/                     # machine-readable execution records and metadata
-    markdown/                 # stage-authored reports and operator artifacts
-```
-
-Run directories use `<days-to-2200-01-01>_<MMM-DD>_<uuid-suffix>`. The day
-component is `floor((2200-01-01T00:00:00Z - now) / 1 day)`, evaluated from the
-run's UTC creation instant.
-
-Stage-scoped artifact IDs use
-`<reverse-step>_<stage>-<stage-iteration>_<uuid-suffix>`. While a run is open,
-`reverse-step` is the two-digit value `99 - stage sequence in the run`, where the
-first stage occurrence is sequence `0`. Thus sequence `0` is `99` and sequence
-`8` is `91`. Each prepared worker invocation and executed harness stage consumes
-the next sequence, including retries and workflow loops.
-
-When a run reaches a terminal status, Pancreator automatically compacts the
-prefixes against the actual stage count so the last occurrence is `00`. A
-seven-stage run is renumbered from `99` through `93` to `06` through `00`.
-Workflow runs therefore support at most 100 stage occurrences.
-
-Execution records are stored only as machine-readable JSON in
-`artifacts/json/<artifact-id>.json`. Stage-authored Markdown and other
-operator-facing documents are stored under `artifacts/markdown/`.
-
-Migrate legacy runtime records after updating the repository:
-
-```sh
-npm run migrate:workflow-names
-```
-
-The migration renames workflow directories under both runtime roots, applies the
-correct open or terminal artifact sequence, consolidates legacy `records/` and
-flat `artifacts/` contents into the typed artifact directories, removes redundant
-rendered execution-record Markdown, removes an empty
-legacy `--help` run directory, and rewrites persisted references. It is
-idempotent.
-
-## Library layout
-
-Workflow definitions, personas, prompts, skills, schemas, templates, and canonical Cursor projection sources live under `library/`. `.cursor/` is ignored local output, never source authority. `governance/registries/projection_manifest.json` maps `library/cursor/` agents, commands, and rules into the local or embedded Cursor surface. Standalone command personas such as `investigator` and `spotfixer` use the same canonical-persona plus projected-Cursor-agent pattern as workflow personas. Each workflow is a slim index plus one file per stage:
-
-```text
-library/workflows/<slug>/
-  workflow.json            # index: run-wide settings + ordered stage slugs
-  stages/<stage>.json      # one file per stage
-  prompts/<stage>.md       # one task brief per stage
-```
-
-See [`docs/workflow-authoring.md`](docs/workflow-authoring.md) for the field
-semantics and the JSON schemas in `library/schemas/`.
-
-### Pipeline model configuration
-
-`project.json` restores V1-style named persona-to-model mappings. The active mapping is rendered from canonical `library/cursor/agents/` templates into ignored local Cursor subagent frontmatter and snapshotted for each run. After changing `active_config` or any mapping, synchronize and
-validate it:
-
-```sh
-./bin/pan models --sync
-./bin/pan validate
-```
-
-Invocation cards show both the resolved model and the named configuration. Because Cursor subagent models are project-global, changing and syncing the active mapping while a run is in flight blocks that run's next preparation until its snapshotted mapping is restored.
-
-## Development workflow
-
-```text
-intake ──operator approval──> plan ──supervisor gate──> implement
-  ^                              |                           |
-  └──────── remediation ─────────┘                           v
-                                     implement <──fail── review
-                                          ^                 |
-                                          └────fail── test <─┘
-                                                        |
-                                                        v
-                                         ship ──operator approval──> succeeded
-                                          |
-                                          └──operator reject──> implement (or --stage <slug>)
-```
-
-Review and QA do not modify source. Failed review or QA routes to implementation unless the operator records a policy-conforming, fingerprint-bound gate waiver. Bounded deferred acceptance misses may open a linked spot-fix intake case, but lightweight eligibility is still evaluated independently. An operator rejection at the ship gate routes remediation back to implementation by default (or to `--stage plan`/another stage), carrying the operator's feedback forward as a required input. In Pancreator self-development, ship owns the bounded release-metadata update and release packet; in embedded target workflows it remains release-metadata read-only. Commit, push, PR creation, merge, publication, and deployment remain operator-owned.
-For stage-scoped required, conditional, and index-only invocation inputs, see [Invocation context projection](docs/runtime-protocol.md#invocation-context-projection).
-
-## TypeScript and formatting
-
-Human-authored TypeScript and TSX are governed by [`governance/handbooks/typescript/style-guide.md`](governance/handbooks/typescript/style-guide.md). The checked-in `prettier.config.js` is authoritative for formatter-owned layout.
-
-```sh
-npm install
-npm run format
-npm run typecheck
-npm run build
-npm run validate:chat-markdown -- <file>
-```
-
-## Validation
-
-```sh
-npm run lint
-npm run validate
-npm test
-npm run test:coverage
-npm run check
-./bin/pan doctor
-```
-
-Coverage uses Node's built-in test coverage; no coverage runtime package is installed.
-
-Successful build, lint, format, test, and aggregate check scripts are quiet by
-default. Set
-`PAN_VERBOSE=1` to stream their full output while diagnosing a problem.
-
-## Design documents
-
-- [`docs/runtime-protocol.md`](docs/runtime-protocol.md): state, gate, retry, evidence, and recovery semantics
-- [`docs/workflow-authoring.md`](docs/workflow-authoring.md): how to define a workflow and its stages
-- [`docs/operator-guide.md`](docs/operator-guide.md): how to inspect and remediate a run
-- [`docs/output-verbosity.md`](docs/output-verbosity.md): quiet npm scripts and Cursor SDK invocation logging
+- [`docs/operator-guide.md`](docs/operator-guide.md) for day-to-day operation and remediation
+- [`docs/embedded-installation.md`](docs/embedded-installation.md) for installation boundaries and update behavior
+- [`docs/workflow-authoring.md`](docs/workflow-authoring.md) for defining or extending workflows
+- [`CHANGELOG.md`](CHANGELOG.md) for release history
