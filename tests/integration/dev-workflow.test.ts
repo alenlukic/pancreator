@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -95,7 +95,11 @@ test('full dev workflow persists gates and reaches operator-approved success', (
 
     const submitted = submitOutput(root, runId, invocation.output.path)
 
-    assert.equal(submitted.record.outcome, 'success')
+    assert.equal(
+      submitted.record.outcome,
+      'success',
+      `${stageSlug}: ${JSON.stringify(submitted.record.evaluation)}`,
+    )
 
     if (stageSlug === 'intake') {
       const repeated = submitOutput(root, runId, invocation.output.path)
@@ -399,6 +403,147 @@ function submitStageOutput(
 
   return submitOutput(root, runId, invocation.output.path)
 }
+
+test('implementation same-reason failure twice pauses before a third attempt', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Same-reason implementation fixture',
+  })
+  const runId = state.run_id
+  const implementStage = stageBySlug(workflow, 'implement')
+
+  setRunStage(
+    root,
+    runId,
+    'implement',
+    'Seed implementation for direct self-loop testing.',
+  )
+
+  const first = submitStageOutput(root, runId, implementStage, 'failure', [
+    'implement.acceptance_claimed',
+  ])
+
+  assert.equal(first.state.status, 'running')
+  assert.equal(first.state.current_stage, 'implement')
+  assert.equal(first.state.same_reason_failures?.implement?.repeat_count, 1)
+
+  const second = submitStageOutput(root, runId, implementStage, 'failure', [
+    'implement.acceptance_claimed',
+  ])
+
+  assert.equal(second.state.status, 'paused')
+  assert.equal(second.state.pending_action.type, 'operator_decision')
+  assert.equal(second.state.attempts.implement, 2)
+  assert.match(second.state.pause_reason ?? '', /same deterministic reason/u)
+})
+
+test('unchanged pre-existing repository-check failures do not block implementation', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Pre-existing repository failure fixture',
+  })
+  const runId = state.run_id
+  const implementStage = stageBySlug(workflow, 'implement')
+
+  writeJson(path.join(root, 'runtime/repository-checks.json'), {
+    schema_version: 1,
+    profiles: {
+      static: {
+        probes: [],
+        commands: [
+          `node -e "console.error('known lint failure'); process.exit(1)"`,
+        ],
+      },
+      fast: {
+        probes: [],
+        commands: [`node -e "process.exit(0)"`],
+      },
+    },
+  })
+  setRunStage(root, runId, 'implement', 'Exercise baseline-aware gates.')
+
+  const invocation = prepareInvocation(root, runId).invocation
+  assert.ok(invocation)
+  const baseline = getRunState(root, runId).repository_check_baselines?.static
+
+  assert.equal(baseline?.status, 'failed')
+  assert.ok(baseline && existsSync(path.join(root, baseline.artifact_path)))
+  assert.ok(
+    invocation.inputs.references.some(
+      (reference) => reference.path === baseline?.artifact_path,
+    ),
+  )
+
+  const output = makeOutput(root, invocation, implementStage)
+  writeJson(path.join(root, invocation.output.path), output)
+  writeCanonicalDelegation(root, invocation)
+
+  const submitted = submitOutput(root, runId, invocation.output.path)
+  const staticResult = submitted.record.evaluation.deterministic.find(
+    (result) => result.id === 'implement.lint',
+  )
+
+  assert.equal(submitted.record.outcome, 'success')
+  assert.equal(submitted.state.current_stage, 'review')
+  assert.equal(staticResult?.passed, true)
+  assert.equal(staticResult?.preexisting_failure, true)
+  assert.equal(staticResult?.exit_code, 1)
+  assert.equal(staticResult?.baseline_evidence_path, baseline?.artifact_path)
+})
+
+test('new repository-check diagnostics still block implementation', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Repository regression fixture',
+  })
+  const runId = state.run_id
+  const implementStage = stageBySlug(workflow, 'implement')
+
+  writeJson(path.join(root, 'runtime/repository-checks.json'), {
+    schema_version: 1,
+    profiles: {
+      static: {
+        probes: [],
+        commands: [
+          `node -e "const fs=require('node:fs'); console.error(fs.readFileSync('src/base.ts','utf8').trim()); process.exit(1)"`,
+        ],
+      },
+      fast: {
+        probes: [],
+        commands: [`node -e "process.exit(0)"`],
+      },
+    },
+  })
+  setRunStage(root, runId, 'implement', 'Exercise regression-aware gates.')
+
+  const invocation = prepareInvocation(root, runId).invocation
+  assert.ok(invocation)
+  writeFileSync(path.join(root, 'src/base.ts'), 'export const base = false\n')
+  const output = makeOutput(root, invocation, implementStage)
+  const implementation = output.data.implementation as Record<string, unknown>
+  implementation.changed_files = ['src/base.ts']
+  writeJson(path.join(root, invocation.output.path), output)
+  writeCanonicalDelegation(root, invocation)
+
+  const submitted = submitOutput(root, runId, invocation.output.path)
+  const staticResult = submitted.record.evaluation.deterministic.find(
+    (result) => result.id === 'implement.lint',
+  )
+
+  assert.equal(submitted.record.outcome, 'failure')
+  assert.equal(submitted.state.current_stage, 'implement')
+  assert.equal(staticResult?.passed, false)
+  assert.match(staticResult?.explanation ?? '', /new or changed failure/u)
+})
 
 test('review same-reason failure twice pauses for operator_decision', () => {
   const root = createFixture()

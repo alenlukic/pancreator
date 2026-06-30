@@ -196,6 +196,21 @@ An empty profile is reported as `not_configured`; it is never silently replaced
 with an npm, Python, or other technology-specific command. Direct runs stream
 live subprocess output to stderr and print the final structured result to stdout.
 
+For a systematic implementation run, Pancreator executes the configured
+implementation profiles immediately before the first coder invocation and stores
+the results as run-scoped baseline evidence. Existing lint or unit-test failures
+remain visible, and the coder must repair them when the fix is bounded and low-risk,
+but an unchanged baseline failure does not block advancement when remediation would
+be broad, structural, or unrelated to the approved change. New or changed diagnostics
+do block. This prevents unrelated repository debt from consuming repeated stage
+attempts without allowing the implementation to introduce additional failures.
+
+The review stage is source-allowed specifically for bounded remediation. The
+reviewer fixes local, low-risk issues when intended behavior is unambiguous and
+records the changed files and evidence. Architecture, public-interface, data or
+persistence model, security-boundary, dependency, migration, requirement, or
+broad cross-component changes return to implementation.
+
 ## Write a standalone PR description
 
 Use `/pan-write-pr` after the current branch and worktree are ready for review but a full ship-stage rerun is unnecessary. The command defaults to `main`; pass one alternative base ref such as `/pan-write-pr v2` when needed. It resolves the merge base, includes committed branch changes plus staged, unstaged, and relevant untracked worktree changes, and writes the result under `runtime/pr-descriptions/` (`.pancreator/runtime/pr-descriptions/` when embedded).

@@ -59,6 +59,180 @@ export interface RepositoryCheckStreamingOptions extends RepositoryCheckRunOptio
   on_stderr?: (chunk: string) => void
 }
 
+export interface RepositoryCheckBaselineArtifact {
+  schema_version: 1
+  run_id: string
+  stage: string
+  profile: string
+  workspace_fingerprint: string
+  recorded_at: string
+  result: RepositoryCheckResult
+}
+
+export interface RepositoryCheckBaselineComparison {
+  passed: boolean
+  explanation: string
+}
+
+export function repositoryCheckProfileName(command: string): string | null {
+  const match = /^pan repository-check ([a-z0-9][a-z0-9_-]*)$/u.exec(
+    command.trim(),
+  )
+
+  return match?.[1] ?? null
+}
+
+function stripAnsi(value: string): string {
+  return value.replaceAll(/\u001b\[[0-?]*[ -/]*[@-~]/gu, '')
+}
+
+function isVolatileSummaryLine(line: string): boolean {
+  return (
+    /^(?:✖\s*)?\d+\s+problems?(?:\s+\(|$)/iu.test(line) ||
+    /^(?:tests?|test suites?|snapshots?|time):/iu.test(line) ||
+    /^#\s+(?:tests|suites|pass|fail|cancelled|skipped|todo|duration_ms)\b/iu.test(
+      line,
+    ) ||
+    /^=+\s+.*\b(?:failed|passed|error|errors)\b.*=+$/iu.test(line)
+  )
+}
+
+function normalizeDiagnosticLine(line: string, workspaceRoot: string): string {
+  return stripAnsi(line)
+    .replaceAll('\\', '/')
+    .replaceAll(workspaceRoot.replaceAll('\\', '/'), '<workspace>')
+    .replaceAll(
+      /\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z\b/gu,
+      '<timestamp>',
+    )
+    .replaceAll(
+      /\b\d+(?:\.\d+)?\s?(?:ms|s|sec|secs|seconds|m|min|mins|minutes)\b/giu,
+      '<duration>',
+    )
+    .replaceAll(/([/\w.-]+):\d+:\d+/gu, '$1:<line>:<column>')
+    .replaceAll(/([/\w.-]+):\d+/gu, '$1:<line>')
+    .replaceAll(/\s+/gu, ' ')
+    .trim()
+}
+
+function diagnosticCounts(
+  result: RepositoryCheckCommandResult,
+  workspaceRoot: string,
+): Map<string, number> {
+  const lines = `${result.stdout}\n${result.stderr}\n${result.error ?? ''}`
+    .split(/\r?\n/u)
+    .map((line) => normalizeDiagnosticLine(line, workspaceRoot))
+    .filter((line) => line.length > 0 && !isVolatileSummaryLine(line))
+  const counts = new Map<string, number>()
+
+  for (const line of lines) {
+    counts.set(line, (counts.get(line) ?? 0) + 1)
+  }
+
+  return counts
+}
+
+function failedCommandKey(result: RepositoryCheckCommandResult): string {
+  return `${result.kind}:${result.command.trim().replaceAll(/\s+/gu, ' ')}`
+}
+
+function failureCoveredByBaseline(
+  baseline: RepositoryCheckCommandResult,
+  current: RepositoryCheckCommandResult,
+  baselineWorkspaceRoot: string,
+  currentWorkspaceRoot: string,
+): boolean {
+  if (baseline.passed || current.passed) {
+    return false
+  }
+
+  if (
+    baseline.timed_out !== current.timed_out ||
+    baseline.signal !== current.signal ||
+    baseline.exit_code !== current.exit_code
+  ) {
+    return false
+  }
+
+  const baselineDiagnostics = diagnosticCounts(baseline, baselineWorkspaceRoot)
+  const currentDiagnostics = diagnosticCounts(current, currentWorkspaceRoot)
+
+  if (currentDiagnostics.size === 0) {
+    return baselineDiagnostics.size === 0
+  }
+
+  for (const [line, count] of currentDiagnostics) {
+    if ((baselineDiagnostics.get(line) ?? 0) < count) {
+      return false
+    }
+  }
+
+  return true
+}
+
+export function compareRepositoryCheckToBaseline(
+  baseline: RepositoryCheckResult,
+  current: RepositoryCheckResult,
+): RepositoryCheckBaselineComparison {
+  if (current.status === 'passed') {
+    return {
+      passed: true,
+      explanation: `Repository check '${current.profile}' passes.`,
+    }
+  }
+
+  if (current.status === 'not_configured') {
+    return {
+      passed: false,
+      explanation: `Repository check '${current.profile}' is not configured.`,
+    }
+  }
+
+  if (baseline.status !== 'failed') {
+    return {
+      passed: false,
+      explanation:
+        `Repository check '${current.profile}' now fails but its pre-implementation ` +
+        `baseline was '${baseline.status}'.`,
+    }
+  }
+
+  const baselineFailures = new Map(
+    baseline.results
+      .filter((result) => !result.passed)
+      .map((result) => [failedCommandKey(result), result]),
+  )
+  const currentFailures = current.results.filter((result) => !result.passed)
+
+  for (const failure of currentFailures) {
+    const prior = baselineFailures.get(failedCommandKey(failure))
+
+    if (
+      !prior ||
+      !failureCoveredByBaseline(
+        prior,
+        failure,
+        baseline.workspace_root,
+        current.workspace_root,
+      )
+    ) {
+      return {
+        passed: false,
+        explanation:
+          `Repository check '${current.profile}' contains a new or changed ` +
+          `failure in '${failure.command}'.`,
+      }
+    }
+  }
+
+  return {
+    passed: true,
+    explanation:
+      `Repository check '${current.profile}' still reports only failures ` +
+      'captured before implementation; no new diagnostics were introduced.',
+  }
+}
+
 export function repositoryChecksPath(root: string): string {
   return path.join(root, 'runtime', 'repository-checks.json')
 }

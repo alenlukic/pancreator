@@ -2,12 +2,15 @@
   "id": "DEV-001",
   "title": "Implementation discipline",
   "severity": "hard",
-  "summary": "Implementation MUST remain within the approved plan and acceptance criteria and SHOULD minimize structural change.",
+  "summary": "Implementation MUST remain within the approved plan, establish deterministic pre-edit repository-check baselines, and directly remediate every cause of a retry.",
   "instructions": [
     "Each material change MUST map to an acceptance criterion or an explicitly documented enabling change.",
     "Agents MUST NOT redesign adjacent systems unless the approved plan requires it.",
+    "Before the first coder invocation, the harness MUST run and persist each configured implementation repository-check profile so pre-existing failures are distinguishable from regressions.",
+    "The coder MUST inspect the pre-implementation static and fast baselines before editing. Existing failures MUST be repaired when bounded and low-risk; an unchanged pre-existing failure MUST NOT block the workflow when remediation would be broad, structural, or unrelated to the approved change. Any new or worsened diagnostic MUST remain a hard failure.",
+    "On implementation attempt 2 or later, the coder MUST perform work that directly addresses every issue causing the retry and MUST populate implementation.remediation with cause, action, and evidence. A paperwork-only retry is prohibited.",
     "Agents SHOULD run the narrowest useful checks while iterating, and the harness MUST rerun declared deterministic gates independently.",
-    "Before submission, the implementation record, changed-file claims, acceptance evidence, and referenced summary artifact MUST run their resolved policy-bound validators under VALID-001."
+    "Before submission, the implementation record, changed-file claims, retry-remediation evidence, acceptance evidence, and referenced summary artifact MUST run their resolved policy-bound validators under VALID-001."
   ],
   "requirements": [
     {

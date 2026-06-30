@@ -16,7 +16,13 @@ import {
 import { loadPipelineConfig } from './pipeline-config.js'
 import {
   assertRepositoryChecksValid,
+  compareRepositoryCheckToBaseline,
+  repositoryCheckProfileName,
   runRepositoryCheck,
+} from './repository-checks.js'
+import type {
+  RepositoryCheckBaselineArtifact,
+  RepositoryCheckResult,
 } from './repository-checks.js'
 import type { LoadedPipelineConfig } from './pipeline-config.js'
 import { auditDirectives } from './governance/audit-directives.js'
@@ -635,14 +641,6 @@ export function validateStageOutput(
   return { errors, output }
 }
 
-function repositoryCheckProfile(command: string): string | null {
-  const match = /^pan repository-check ([a-z0-9][a-z0-9_-]*)$/u.exec(
-    command.trim(),
-  )
-
-  return match?.[1] ?? null
-}
-
 interface ShellCheckResolution {
   command: string
   profile_name: string | null
@@ -660,7 +658,7 @@ function resolveShellCheck(
       command: requestedCommand,
       profile_name: overridden
         ? null
-        : repositoryCheckProfile(requestedCommand),
+        : repositoryCheckProfileName(requestedCommand),
     }
   }
 
@@ -714,13 +712,14 @@ function resolveShellCheck(
 
   return {
     command: requestedCommand,
-    profile_name: repositoryCheckProfile(requestedCommand),
+    profile_name: repositoryCheckProfileName(requestedCommand),
   }
 }
 
 function runShellCheck(
   root: string,
   runDirectory: string,
+  state: RunState,
   stage: StageDefinition,
   criterion: Criterion,
   workspaceFingerprint: string,
@@ -746,6 +745,7 @@ function runShellCheck(
   let errorMessageText = ''
   let timedOut = false
   let skipped = false
+  let repositoryResult: RepositoryCheckResult | undefined
 
   if (resolution.removed_reason) {
     exitCode = 0
@@ -753,7 +753,7 @@ function runShellCheck(
     stderr = ''
     skipped = true
   } else if (profileName) {
-    const repositoryResult = runRepositoryCheck(root, profileName, {
+    repositoryResult = runRepositoryCheck(root, profileName, {
       timeout_ms: criterion.timeout_ms,
     })
 
@@ -786,6 +786,33 @@ function runShellCheck(
     skipped = stdout.includes('PANCREATOR_CHECK_SKIPPED=1')
   }
 
+  let baselineComparison:
+    | ReturnType<typeof compareRepositoryCheckToBaseline>
+    | undefined
+  let baselineEvidencePath: string | undefined
+
+  if (profileName && repositoryResult?.status === 'failed') {
+    const pointer = state.repository_check_baselines?.[profileName]
+
+    if (pointer && fileExists(resolveInside(root, pointer.artifact_path))) {
+      const artifact = readJson(
+        resolveInside(root, pointer.artifact_path),
+      ) as RepositoryCheckBaselineArtifact
+
+      if (
+        artifact.schema_version === 1 &&
+        artifact.profile === profileName &&
+        artifact.result
+      ) {
+        baselineComparison = compareRepositoryCheckToBaseline(
+          artifact.result,
+          repositoryResult,
+        )
+        baselineEvidencePath = pointer.artifact_path
+      }
+    }
+  }
+
   const safeCriterionId = criterion.id.replaceAll(/[^a-zA-Z0-9_.-]/g, '-')
   const evidencePath = path.join(
     runDirectory,
@@ -815,7 +842,10 @@ function runShellCheck(
     id: criterion.id,
     type: 'shell',
     hard: Boolean(criterion.hard),
-    passed: !skipped && exitCode === 0 && !errorMessageText,
+    passed:
+      !skipped &&
+      ((exitCode === 0 && !errorMessageText) ||
+        baselineComparison?.passed === true),
     ...(skipped
       ? {
           disabled: true,
@@ -823,7 +853,12 @@ function runShellCheck(
             resolution.removed_reason ??
             'Repository check profile is not configured; no technology-specific command was guessed.',
         }
-      : {}),
+      : baselineComparison
+        ? {
+            explanation: baselineComparison.explanation,
+            ...(baselineComparison.passed ? { preexisting_failure: true } : {}),
+          }
+        : {}),
     ...(commandOverride === undefined
       ? {}
       : {
@@ -834,6 +869,9 @@ function runShellCheck(
     exit_code: exitCode,
     timed_out: timedOut,
     evidence_path: path.relative(root, evidencePath).split(path.sep).join('/'),
+    ...(baselineEvidencePath
+      ? { baseline_evidence_path: baselineEvidencePath }
+      : {}),
     workspace_fingerprint: workspaceFingerprint,
   }
 }
@@ -1006,6 +1044,7 @@ export function evaluateDeterministicCriteria(
           runShellCheck(
             root,
             runDirectory,
+            state,
             stage,
             criterion,
             afterSnapshot.fingerprint,

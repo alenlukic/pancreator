@@ -31,6 +31,8 @@ This handbook defines the repository-wide engineering baseline. An agent MUST re
 - Integration tests SHOULD cover cross-boundary behavior, and regression tests MUST preserve previously observed failures.
 - A new regression test SHOULD be demonstrated to fail without the corresponding fix when practical.
 - Test setup and helpers SHOULD be shared when doing so does not obscure the scenario.
+- Configured static and fast validation MUST be captured before implementation begins so later gates can distinguish pre-existing failures from regressions.
+- Existing validation failures MUST be repaired when the correction is bounded and low-risk. An unchanged pre-existing failure MUST NOT block a workflow when remediation would be broad, structural, or unrelated to the approved change, but a new or worsened diagnostic MUST fail the owning gate.
 - Validation commands declared by the repository MUST run before completion.
 - An agent MUST report commands run, results, pre-existing failures, introduced failures, and validation that could not be completed.
 
@@ -58,4 +60,5 @@ This handbook defines the repository-wide engineering baseline. An agent MUST re
 - An agent MUST stay inside the invocation’s declared workspace policy and output contract.
 - An agent MUST surface ambiguity, conflicting instructions, missing evidence, and blocked dependencies.
 - An agent MUST NOT manufacture successful completion, evidence, tool output, or validation results.
-- A reviewer MUST evaluate independently and MUST NOT silently repair implementation defects when the workflow assigns remediation to another stage.
+- A reviewer MUST evaluate independently, record findings before or while repairing them, and MUST remediate bounded non-structural defects when the active invocation permits source changes.
+- A reviewer MUST route major, structural, ambiguous, migration-requiring, high-blast-radius, or requirement-changing remediation to implementation and MUST NOT silently expand review scope.

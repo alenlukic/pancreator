@@ -300,6 +300,60 @@ export function validateImplementationClaims(
     }
   }
 
+  const invocationAttempt =
+    typeof input.invocation?.attempt === 'number' ? input.invocation.attempt : 1
+
+  if (invocationAttempt > 1) {
+    const remediation = Array.isArray(implementation.remediation)
+      ? implementation.remediation
+      : []
+
+    if (remediation.length === 0) {
+      issues.push(
+        issue(
+          'implementation.remediation_missing',
+          'Retry implementation output MUST explicitly describe remediation for the prior failure or loop cause',
+        ),
+      )
+    }
+
+    for (const [index, item] of remediation.entries()) {
+      if (!isRecord(item)) {
+        issues.push(
+          issue(
+            'implementation.remediation_shape',
+            `implementation.remediation[${index}] MUST be an object`,
+          ),
+        )
+        continue
+      }
+
+      for (const field of ['cause', 'action', 'evidence'] as const) {
+        const value = item[field]
+        const valid =
+          field === 'evidence'
+            ? Array.isArray(value) &&
+              value.some(
+                (entry) => typeof entry === 'string' && entry.trim().length > 0,
+              )
+            : typeof value === 'string' && value.trim().length > 0
+
+        if (!valid) {
+          issues.push(
+            issue(
+              'implementation.remediation_shape',
+              `implementation.remediation[${index}].${field} MUST be ${
+                field === 'evidence'
+                  ? 'a non-empty string array'
+                  : 'a non-empty string'
+              }`,
+            ),
+          )
+        }
+      }
+    }
+  }
+
   const changedFiles = Array.isArray(implementation.changed_files)
     ? (implementation.changed_files as string[])
     : []
@@ -766,6 +820,48 @@ export function validateReviewOutput(input: HandlerInput): HandlerResult {
       )
     }
 
+    const resolution =
+      typeof finding.resolution === 'string' ? finding.resolution : ''
+
+    if (resolution !== 'resolved_in_review' && resolution !== 'unresolved') {
+      issues.push(
+        issue(
+          'review.resolution',
+          `Finding ${finding.id} MUST declare resolution as resolved_in_review or unresolved`,
+        ),
+      )
+    }
+
+    if (resolution === 'resolved_in_review') {
+      const changedFiles = Array.isArray(finding.changed_files)
+        ? finding.changed_files
+        : []
+      const validChangedFiles =
+        changedFiles.length > 0 &&
+        changedFiles.every(
+          (file) => typeof file === 'string' && file.trim().length > 0,
+        )
+
+      if (finding.remediation_stage !== 'review' || !validChangedFiles) {
+        issues.push(
+          issue(
+            'review.resolution',
+            `Finding ${finding.id} resolved in review MUST set remediation_stage to review and list non-empty changed_files`,
+          ),
+        )
+      }
+    } else if (
+      resolution === 'unresolved' &&
+      finding.remediation_stage !== 'implement'
+    ) {
+      issues.push(
+        issue(
+          'review.resolution',
+          `Finding ${finding.id} unresolved in review MUST set remediation_stage to implement`,
+        ),
+      )
+    }
+
     const evidence = Array.isArray(finding.evidence) ? finding.evidence : []
 
     if (evidence.length === 0) {
@@ -868,20 +964,20 @@ export function validateReviewOutput(input: HandlerInput): HandlerResult {
     (item) => isRecord(item) && item.result === 'fail',
   )
 
-  if (
-    review.verdict === 'pass' &&
-    (findings.some((item) => isRecord(item) && item.severity === 'blocker') ||
-      failedAcceptance)
-  ) {
+  const unresolvedFinding = findings.some(
+    (item) => isRecord(item) && item.resolution !== 'resolved_in_review',
+  )
+
+  if (review.verdict === 'pass' && (unresolvedFinding || failedAcceptance)) {
     issues.push(
       issue(
         'review.verdict_inconsistent',
-        'pass verdict inconsistent with blocker finding or failed acceptance',
+        'pass verdict inconsistent with unresolved finding or failed acceptance',
       ),
     )
   }
 
-  if (review.verdict === 'fail' && findings.length === 0 && !failedAcceptance) {
+  if (review.verdict === 'fail' && !unresolvedFinding && !failedAcceptance) {
     issues.push(
       issue(
         'review.verdict_inconsistent',

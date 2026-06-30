@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.9.0] - 2026-06-30
+
+### Changed
+
+- Generalize the same-reason circuit breaker to direct stage self-loops, including implementation retries, so a second consecutive hard failure with the same normalized signature pauses before a third attempt ([src/lib/engine.ts](src/lib/engine.ts), [ORCH-001](governance/policies/ORCH-001.json)).
+- Require implementation retries to identify and remediate the prior loop cause with explicit evidence rather than resubmitting unchanged work or paperwork ([coder persona](library/personas/coder.md), [implementation prompt](library/workflows/dev/prompts/implement.md)).
+- Make review source-allowed for bounded, local, low-risk remediation while routing major, structural, ambiguous, or high-blast-radius findings back to implementation ([reviewer persona](library/personas/reviewer.md), [review stage](library/workflows/dev/stages/review.json), [REVIEW-001](governance/policies/REVIEW-001.json)).
+
+### Added
+
+- Capture run-scoped static and fast repository-check baselines before the first coder invocation; unchanged pre-existing failures remain visible but non-blocking, while new or changed diagnostics still fail implementation gates ([src/lib/repository-checks.ts](src/lib/repository-checks.ts), [DEV-001](governance/policies/DEV-001.json)).
+- Validate retry remediation records and reviewer-owned fixes, with integration coverage for same-reason pauses and baseline-aware repository gates ([tests/integration/dev-workflow.test.ts](tests/integration/dev-workflow.test.ts), [tests/unit/validators-stage-validators.test.ts](tests/unit/validators-stage-validators.test.ts)).
+
+### Fixed
+
+- Prevent implementation attempts from repeatedly consuming retry budget on known repository lint or unit-test debt and ensure fresh and refreshed embedded installations receive the updated governance, personas, workflow stages, and runtime enforcement ([bin/install](bin/install), [embedded installation guide](docs/embedded-installation.md)).
+
 ## [2.8.0] - 2026-06-30
 
 ### Changed
@@ -229,6 +246,7 @@ _First functional release._
 
 - Add the original self-building workflow harness, governed personas, compliance hooks, durable memory, and bootstrap documentation ([c9c5def](https://github.com/alenlukic/pancreator/commit/c9c5def2ccd2a0a9c27d5c6707c963cb2621518a))
 
+[2.9.0]: https://github.com/alenlukic/pancreator/compare/5f1a87704fa1601cc2f1c74e77d37268de0ce0cd...HEAD
 [2.8.0]: https://github.com/alenlukic/pancreator/compare/5f4953e321544a9a28b2614cbf5a1fa2f6882a99...HEAD
 [2.7.0]: https://github.com/alenlukic/pancreator/compare/a8f3b42bc29d2c9b49e40f1fcb49071bbb14f7ef...5f4953e321544a9a28b2614cbf5a1fa2f6882a99
 [2.6.0]: https://github.com/alenlukic/pancreator/compare/cfee47c73591ee1fedc71f684ee887fd434d0bb4...a8f3b42bc29d2c9b49e40f1fcb49071bbb14f7ef

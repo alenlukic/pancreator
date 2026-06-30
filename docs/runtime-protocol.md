@@ -124,6 +124,35 @@ A stage is successful only when all of the following hold:
 
 A `blocked` result pauses. A failure follows the declared remediation transition. A successful result may still wait at a supervisor or operator gate.
 
+### Same-reason circuit breaker
+
+The broad workflow attempt and consecutive-failure limits are not the only retry
+controls. Pancreator tracks normalized hard-failure signatures for review, test,
+and every stage whose failure transition loops directly to itself. The second
+consecutive failure with the same signature pauses the run for
+`operator_decision` before another invocation is prepared. A successful attempt,
+an operator waiver, or an explicit operator rewind clears the tracker.
+
+For an implementation self-loop, the retry invocation includes the prior failed
+attempt and requires `implementation.remediation`. The coder must identify the
+recorded cause, make a targeted change that addresses it, and provide evidence.
+An unchanged or paperwork-only retry is invalid even when the general attempt
+budget has capacity.
+
+### Pre-implementation repository-check baseline
+
+Immediately before the first coder invocation, the harness runs every configured
+implementation repository-check profile (normally `static` and `fast`) and saves
+run-scoped baseline evidence. The same profiles run again at submission. A
+profile that still reports only normalized diagnostics already present in the
+baseline is recorded as a visible `preexisting_failure` but passes the workflow
+gate. Any new command failure, changed exit behavior, or new/changed diagnostic
+fails the gate. A passing baseline that later fails always blocks.
+
+Baselines are captured only for attempt 1. An upgraded in-flight run that has
+already entered a later implementation attempt does not retroactively baseline
+its modified workspace.
+
 ## Workspace change tracking
 
 Pancreator tracks accepted workspace state with a checksum index at

@@ -195,6 +195,21 @@ function availableReferences(state: RunState): AvailableReference[] {
     })
   }
 
+  for (const baseline of Object.values(
+    state.repository_check_baselines ?? {},
+  )) {
+    if (!baseline) {
+      continue
+    }
+
+    references.push({
+      path: baseline.artifact_path,
+      description: `Pre-implementation repository-check baseline for ${baseline.profile}`,
+      retrieval: 'conditional',
+      category: 'repository_check_baseline',
+    })
+  }
+
   return references.filter(
     (reference, index, all) =>
       all.findIndex((candidate) => candidate.path === reference.path) === index,
@@ -426,6 +441,24 @@ export function buildInvocationInputs(
   selectPriorAttempts(references, state, stage, options.attempt)
   selectOperatorFeedback(references, state, stage)
   selectExceptions(references, state, stage, options.workspaceFingerprint)
+
+  if (stage.persona === 'coder') {
+    for (const baseline of Object.values(
+      state.repository_check_baselines ?? {},
+    )) {
+      if (!baseline) {
+        continue
+      }
+
+      addReference(references, {
+        path: baseline.artifact_path,
+        description:
+          `Required pre-implementation ${baseline.profile} check baseline ` +
+          `(${baseline.status})`,
+        retrieval: 'required',
+      })
+    }
+  }
 
   if (
     stage.persona === 'release-steward' &&

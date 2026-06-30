@@ -412,6 +412,8 @@ export interface DeterministicResult {
   exit_code?: number | null
   timed_out?: boolean
   evidence_path?: string
+  baseline_evidence_path?: string
+  preexisting_failure?: boolean
   workspace_fingerprint: string
   delta?: WorkspaceDelta
 }
@@ -496,9 +498,18 @@ export interface StageFailureTracker {
   repeat_count: number
 }
 
-export type SameReasonFailureTrackers = Partial<
-  Record<'review' | 'test', StageFailureTracker>
+export type SameReasonFailureTrackers = Record<
+  string,
+  StageFailureTracker | undefined
 >
+
+export interface RepositoryCheckBaselinePointer {
+  profile: string
+  status: 'passed' | 'failed' | 'not_configured'
+  artifact_path: string
+  workspace_fingerprint: string
+  recorded_at: string
+}
 
 export interface RunState {
   schema_version: 1
@@ -547,6 +558,10 @@ export interface RunState {
   last_decision_path?: string
   accepted_workspace_fingerprint?: string | null
   same_reason_failures?: SameReasonFailureTrackers
+  repository_check_baselines?: Record<
+    string,
+    RepositoryCheckBaselinePointer | undefined
+  >
 }
 
 export interface SupervisorAssessment {

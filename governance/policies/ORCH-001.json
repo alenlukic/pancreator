@@ -7,7 +7,9 @@
     "The supervisor MUST inspect `pending_action`, perform only that action, and re-check `pending_action` after every harness transition.",
     "The supervisor MUST continue without operator handoff while `pending_action` is `prepare_invocation`, `invoke_agent`, or `supervisor_assessment`.",
     "The supervisor MUST stop for operator input only when `pending_action` is `operator_approval`, `operator_decision`, or `none`.",
-    "The supervisor MUST NOT ask the operator to resume a run while a supervisor-owned pending action remains."
+    "The supervisor MUST NOT ask the operator to resume a run while a supervisor-owned pending action remains.",
+    "The harness MUST pause for operator_decision after the same stage fails twice for the same hard-failure signature, independently of general stage-attempt and consecutive-failure limits. This applies to direct failure self-loops and governed indirect remediation loops.",
+    "When implementation loops to implementation, the supervisor MUST ensure the next coder invocation includes the prior failed output and deterministic evidence; it MUST NOT spend a retry on an unchanged paperwork-only resubmission."
   ],
   "requirements": [
     {

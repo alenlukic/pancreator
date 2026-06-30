@@ -208,12 +208,13 @@ function prepareFixtureReleaseMetadata(root: string): {
   }
 
   if (!existingCandidate) {
+    const releaseEntry =
+      `## [${proposedVersion}] - 2026-06-30\n\n` +
+      '### Changed\n\n' +
+      '- Prepare fixture release metadata.\n'
     const updatedChangelog = changelog.includes('## [Unreleased]')
-      ? changelog.replace(
-          '## [Unreleased]',
-          `## [${proposedVersion}] - 2026-06-30`,
-        )
-      : changelog
+      ? changelog.replace('## [Unreleased]', releaseEntry.trimEnd())
+      : changelog.replace('# Changelog\n', `# Changelog\n\n${releaseEntry}`)
 
     writeFileSync(changelogPath, updatedChangelog)
   }
@@ -330,6 +331,17 @@ function requiredData(
           changed_files: [],
           tests_added: [],
           notes: ['fixture'],
+          ...(invocation && invocation.attempt > 1
+            ? {
+                remediation: [
+                  {
+                    cause: 'Prior stage attempt failed.',
+                    action: 'Address the recorded failure before resubmission.',
+                    evidence: ['fixture remediation evidence'],
+                  },
+                ],
+              }
+            : {}),
         },
         acceptance_results: [
           {

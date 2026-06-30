@@ -46,6 +46,10 @@ import {
   makePipelineConfigSnapshot,
   resolvePersonaModel,
 } from './pipeline-config.js'
+import {
+  repositoryCheckProfileName,
+  runRepositoryCheck,
+} from './repository-checks.js'
 import { syncCursorProjection } from './projection.js'
 import { renderInvocationMarkdown, renderStatus } from './render.js'
 import {
@@ -331,6 +335,66 @@ function readGateOverrides(
   return overrides
 }
 
+function ensureImplementationRepositoryCheckBaselines(
+  root: string,
+  state: RunState,
+  stage: StageDefinition,
+  attempt: number,
+): void {
+  if (
+    attempt !== 1 ||
+    stage.persona !== 'coder' ||
+    stage.workspace_policy !== 'source_allowed'
+  ) {
+    return
+  }
+
+  const profiles = stage.criteria
+    .filter((criterion) => criterion.type === 'shell')
+    .map((criterion) => ({
+      name: repositoryCheckProfileName(criterion.command ?? ''),
+      timeout_ms: criterion.timeout_ms,
+    }))
+    .filter(
+      (profile): profile is { name: string; timeout_ms: number | undefined } =>
+        profile.name !== null,
+    )
+  const baselines = (state.repository_check_baselines ??= {})
+
+  for (const profile of profiles) {
+    if (baselines[profile.name]) {
+      continue
+    }
+
+    const result = runRepositoryCheck(root, profile.name, {
+      timeout_ms: profile.timeout_ms,
+    })
+    const workspace = workspaceSnapshotForRun(root, state)
+    const artifactPath =
+      `runtime/logs/workflows/${state.run_id}/evidence/` +
+      `pre-implementation-${profile.name}.json`
+    const recordedAt = now()
+
+    writeJsonAtomic(resolveInside(root, artifactPath), {
+      schema_version: 1,
+      run_id: state.run_id,
+      stage: stage.slug,
+      profile: profile.name,
+      workspace_fingerprint: workspace.fingerprint,
+      recorded_at: recordedAt,
+      result,
+    })
+
+    baselines[profile.name] = {
+      profile: profile.name,
+      status: result.status,
+      artifact_path: artifactPath,
+      workspace_fingerprint: workspace.fingerprint,
+      recorded_at: recordedAt,
+    }
+  }
+}
+
 function pauseForLimit(root: string, state: RunState, reason: string): void {
   state.status = 'paused'
   state.pause_reason = reason
@@ -347,10 +411,12 @@ const VALIDATION_ONLY_SIGNATURE = ['__validation__']
 
 function isSameReasonTrackedStage(
   state: RunState,
-  stageSlug: string,
-): stageSlug is 'review' | 'test' {
+  stage: StageDefinition,
+): boolean {
   return (
-    state.workflow_slug === 'dev' && SAME_REASON_TRACKED_STAGES.has(stageSlug)
+    (state.workflow_slug === 'dev' &&
+      SAME_REASON_TRACKED_STAGES.has(stage.slug)) ||
+    stage.transitions.failure === stage.slug
   )
 }
 
@@ -358,10 +424,7 @@ function sameReasonTrackers(state: RunState): SameReasonFailureTrackers {
   return (state.same_reason_failures ??= {})
 }
 
-function clearSameReasonTracker(
-  state: RunState,
-  stageSlug: 'review' | 'test',
-): void {
+function clearSameReasonTracker(state: RunState, stageSlug: string): void {
   const trackers = state.same_reason_failures
   if (!trackers?.[stageSlug]) {
     return
@@ -425,7 +488,7 @@ function isSameReasonSignature(current: string[], prior: string[]): boolean {
 
 function recordSameReasonFailure(
   state: RunState,
-  stageSlug: 'review' | 'test',
+  stageSlug: string,
   signature: string[],
 ): boolean {
   const trackers = sameReasonTrackers(state)
@@ -455,7 +518,7 @@ function pauseForSameReasonFailure(
   state: RunState,
   stage: StageDefinition,
 ): void {
-  const tracker = isSameReasonTrackedStage(state, stage.slug)
+  const tracker = isSameReasonTrackedStage(state, stage)
     ? state.same_reason_failures?.[stage.slug]
     : undefined
   const signature = tracker?.last_signature.join(', ') ?? 'unknown'
@@ -1008,6 +1071,7 @@ export function prepareInvocation(
     state.attempts[stage.slug] = attempt
 
     ensureMutatingWorkflowInitialized(root, state, stage)
+    ensureImplementationRepositoryCheckBaselines(root, state, stage, attempt)
 
     if (stage.executor === 'harness') {
       return executeHarnessStage(root, state, stage, attempt)
@@ -1044,6 +1108,10 @@ export function prepareInvocation(
           `${delegationArtifactPath}, then submit ${outputPath}.`
 
     const requiredData = { ...(stage.required_data ?? {}) }
+
+    if (stage.persona === 'coder' && attempt > 1) {
+      requiredData['implementation.remediation'] = 'array'
+    }
 
     if (
       stage.persona === 'release-steward' &&
@@ -1442,19 +1510,13 @@ export function submitOutput(
       state.status = 'awaiting_operator'
       nextState = 'awaiting operator approval'
     } else {
-      if (
-        outcome === 'success' &&
-        isSameReasonTrackedStage(state, stage.slug)
-      ) {
+      if (outcome === 'success' && isSameReasonTrackedStage(state, stage)) {
         clearSameReasonTracker(state, stage.slug)
       }
 
       let sameReasonPauseTriggered = false
 
-      if (
-        outcome === 'failure' &&
-        isSameReasonTrackedStage(state, stage.slug)
-      ) {
+      if (outcome === 'failure' && isSameReasonTrackedStage(state, stage)) {
         const signature = collectHardFailureSignature(
           stage,
           validation.output.criteria,
@@ -2420,7 +2482,7 @@ export function waiveGate(
 
     waivers.push(waiver)
     state.operator_gate_waivers = waivers
-    if (isSameReasonTrackedStage(state, stage.slug)) {
+    if (isSameReasonTrackedStage(state, stage)) {
       clearSameReasonTracker(state, stage.slug)
     }
     state.status = 'running'
