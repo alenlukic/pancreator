@@ -78,11 +78,10 @@ function snapshotEntryPath(entry: string): string {
   return colonIndex === -1 ? entry : entry.slice(0, colonIndex)
 }
 
-/** Paths whose snapshot deltas should block non-source workflow stages. */
-export function blockingWorkspacePathsFromSnapshots(
+/** All workspace-relative paths whose snapshot entries changed. */
+export function workspaceChangedPathsFromSnapshots(
   before: WorkspaceSnapshot,
   after: WorkspaceSnapshot,
-  roots: ResolvedRoots,
 ): string[] {
   const beforeByPath = new Map(
     before.entries.map((entry) => [snapshotEntryPath(entry), entry]),
@@ -91,13 +90,27 @@ export function blockingWorkspacePathsFromSnapshots(
     after.entries.map((entry) => [snapshotEntryPath(entry), entry]),
   )
   const paths = new Set([...beforeByPath.keys(), ...afterByPath.keys()])
+
+  return [...paths]
+    .filter(
+      (relativePath) =>
+        beforeByPath.get(relativePath) !== afterByPath.get(relativePath),
+    )
+    .sort()
+}
+
+/** Paths whose snapshot deltas should block non-source workflow stages. */
+export function blockingWorkspacePathsFromSnapshots(
+  before: WorkspaceSnapshot,
+  after: WorkspaceSnapshot,
+  roots: ResolvedRoots,
+): string[] {
   const blocking: string[] = []
 
-  for (const relativePath of paths) {
-    if (beforeByPath.get(relativePath) === afterByPath.get(relativePath)) {
-      continue
-    }
-
+  for (const relativePath of workspaceChangedPathsFromSnapshots(
+    before,
+    after,
+  )) {
     if (isMisplacedDelegationArtifact(relativePath)) {
       continue
     }

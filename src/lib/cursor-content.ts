@@ -27,9 +27,17 @@ export function projectCursorContent(
 
   if (
     relativePath.startsWith('.cursor/agents/') ||
-    relativePath === '.cursor/commands/pan-write-pr.md'
+    relativePath === '.cursor/commands/pan-write-pr.md' ||
+    relativePath === '.cursor/commands/pan-release.md'
   ) {
     projected = projected.replaceAll('`docs/', '`.pancreator/docs/')
+  }
+
+  if (relativePath === '.cursor/commands/pan-release.md') {
+    projected = projected.replaceAll(
+      '`project.json`',
+      '`.pancreator/project.json`',
+    )
   }
 
   if (relativePath.startsWith('.cursor/agents/')) {

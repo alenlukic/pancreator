@@ -200,18 +200,21 @@ Git commit. Because a commit cannot contain its own hash, release publication is
 a two-commit protocol:
 
 1. Complete and validate the Pancreator self-development workflow. The
-   self-development-only release steward recommends `major`, `minor`, `patch`,
-   or `neither`; it does not edit release metadata or commit.
-2. The operator synchronizes `VERSION`, `package.json`, `package-lock.json`, and
-   the latest `CHANGELOG.md` entry, then creates the **release commit** containing
-   the exact installable payload.
+   self-development-only release steward inspects every change since the last
+   committed release bump, selects `major`, `minor`, or `patch`, authors the
+   release notes, and synchronizes `VERSION`, npm metadata, and current-version
+   README/docs references. The same bounded update can be run manually through
+   `/pan-release`.
+2. The operator reviews those prepared files and creates the **release commit**
+   containing the exact installable payload. The release steward does not
+   commit, publish, or invent the future commit hash.
 3. After that hash exists, the operator adds `version -> release commit` to
    `release/index.json` in a separate **index metadata commit**.
 
 Major means an incompatible installed contract requiring target migration.
-Minor means a backward-compatible material capability. Patch means a
-backward-compatible defect correction. `Neither` covers documentation, tests,
-and internal refactors without a material installed or operator-facing change.
+Minor means a backward-compatible material capability. Patch means any
+backward-compatible release, including defect corrections, documentation,
+tests, maintenance, and internal refactors.
 
 Install metadata distinguishes three source states:
 

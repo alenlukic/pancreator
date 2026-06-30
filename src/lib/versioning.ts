@@ -6,6 +6,15 @@ const SEMVER_PATTERN =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/u
 const RELEASE_HEADING_PATTERN = /^## \[([^\]]+)\] - (\d{4}-\d{2}-\d{2})$/gmu
 const RELEASE_GROUPS = ['Changed', 'Added', 'Removed', 'Fixed'] as const
+const RELEASE_METADATA_PATHS = new Set([
+  'CHANGELOG.md',
+  'README.md',
+  'VERSION',
+  'package-lock.json',
+  'package.json',
+])
+
+export type ReleaseBump = 'major' | 'minor' | 'patch'
 
 interface ParsedVersion {
   major: number
@@ -22,6 +31,16 @@ export function isSemanticVersion(value: string): boolean {
   return SEMVER_PATTERN.test(value)
 }
 
+/** Whether a workspace path is writable during self-development release prep. */
+export function isReleaseMetadataPath(relativePath: string): boolean {
+  const normalized = relativePath.split(path.sep).join('/')
+
+  return (
+    RELEASE_METADATA_PATHS.has(normalized) ||
+    (normalized.startsWith('docs/') && normalized.endsWith('.md'))
+  )
+}
+
 function parseVersion(value: string): ParsedVersion | null {
   const match = SEMVER_PATTERN.exec(value)
 
@@ -34,6 +53,27 @@ function parseVersion(value: string): ParsedVersion | null {
     minor: Number(match[2]),
     patch: Number(match[3]),
     prerelease: match[4] ?? null,
+  }
+}
+
+/** Calculate the exact next stable version for an agent-selected bump. */
+export function nextSemanticVersion(
+  currentVersion: string,
+  bump: ReleaseBump,
+): string | null {
+  const current = parseVersion(currentVersion)
+
+  if (!current) {
+    return null
+  }
+
+  switch (bump) {
+    case 'major':
+      return `${current.major + 1}.0.0`
+    case 'minor':
+      return `${current.major}.${current.minor + 1}.0`
+    case 'patch':
+      return `${current.major}.${current.minor}.${current.patch + 1}`
   }
 }
 
@@ -196,6 +236,46 @@ function validateChangelog(content: string, currentVersion: string): string[] {
   return errors
 }
 
+function validateVersionBearingDocuments(
+  root: string,
+  version: string,
+): string[] {
+  const errors: string[] = []
+  const readmePath = path.join(root, 'README.md')
+  const embeddedInstallationPath = path.join(
+    root,
+    'docs',
+    'embedded-installation.md',
+  )
+
+  if (fileExists(readmePath)) {
+    const readme = readText(readmePath)
+    const headingVersion = /^# Pancreator v([^\s]+)$/mu.exec(readme)?.[1]
+    const introductionVersion = /^Pancreator v([^\s]+) is /mu.exec(readme)?.[1]
+
+    if (headingVersion !== version) {
+      errors.push('README.md heading version MUST match VERSION')
+    }
+
+    if (introductionVersion !== version) {
+      errors.push('README.md introduction version MUST match VERSION')
+    }
+  }
+
+  if (fileExists(embeddedInstallationPath)) {
+    const content = readText(embeddedInstallationPath)
+    const documentedVersion = /currently agree on `([^`]+)`/u.exec(content)?.[1]
+
+    if (documentedVersion !== version) {
+      errors.push(
+        'docs/embedded-installation.md current release version MUST match VERSION',
+      )
+    }
+  }
+
+  return errors
+}
+
 export function validateReleaseMetadata(
   root: string,
 ): ReleaseMetadataValidation {
@@ -246,6 +326,7 @@ export function validateReleaseMetadata(
   }
 
   errors.push(...validateChangelog(readText(changelogPath), version))
+  errors.push(...validateVersionBearingDocuments(root, version))
 
   if (
     !isRecord(releaseIndex) ||

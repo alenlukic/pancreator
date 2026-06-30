@@ -164,6 +164,17 @@ test('self-development version policy is excluded from embedded installations', 
   assert.ok(releaseIds.includes('SHIP-001'))
 })
 
+test('standalone release preparation resolves self-development version ownership', () => {
+  const root = createFixture()
+  const ids = resolvePolicies(root, {
+    persona: 'release-steward',
+    workflow: 'standalone',
+    stage: 'release',
+  }).map((policy) => policy.id)
+
+  assert.ok(ids.includes('VERSION-001'))
+})
+
 test('embedded coding stages exclude Pancreator language and binary policies', () => {
   const root = createFixture()
   const configPath = path.join(root, 'project.json')

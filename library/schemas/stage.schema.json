@@ -41,8 +41,13 @@
       "description": "Repository-relative path to the stage task brief. Its contents become the Task section of the invocation card."
     },
     "workspace_policy": {
-      "enum": ["source_allowed", "runtime_only", "read_only"],
-      "description": "Mutation boundary enforced by the harness via workspace fingerprints. source_allowed: may modify product source. runtime_only: may write only under runtime/ (planning, intake). read_only: may not change any tracked content (review, QA, ship). Any policy other than source_allowed adds the deterministic criterion scope.no_unapproved_changes."
+      "enum": [
+        "source_allowed",
+        "release_metadata_only",
+        "runtime_only",
+        "read_only"
+      ],
+      "description": "Mutation boundary enforced by the harness via workspace fingerprints. source_allowed: may modify product source. release_metadata_only: in self-development ship stages, may modify only release metadata and durable version-bearing documentation; in embedded installations it behaves as read_only. runtime_only: may write only under runtime/ (planning, intake). read_only: may not change tracked content. Any policy other than source_allowed adds the deterministic criterion scope.no_unapproved_changes."
     },
     "gate": {
       "enum": ["operator", "supervisor", "next_stage", "stage_verdict"],

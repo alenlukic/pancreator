@@ -43,7 +43,7 @@ import {
 import { resolveRoots } from './workspace/roots.js'
 import { listWorkflowSlugs, loadWorkflow } from './workflow.js'
 import { activeOperatorGateWaivers } from './waivers.js'
-import { validateReleaseMetadata } from './versioning.js'
+import { isReleaseMetadataPath, validateReleaseMetadata } from './versioning.js'
 import type {
   ArtifactReference,
   Criterion,
@@ -944,12 +944,25 @@ export function evaluateDeterministicCriteria(
   const results: DeterministicResult[] = []
 
   if (stage.workspace_policy !== 'source_allowed') {
-    const blockingPaths = blockingWorkspacePathsFromSnapshots(
+    const changedPaths = blockingWorkspacePathsFromSnapshots(
       beforeSnapshot,
       afterSnapshot,
       roots,
     )
+    const releaseMetadataAllowed =
+      stage.workspace_policy === 'release_metadata_only' &&
+      isSelfDevelopmentInstallation(root)
+    const blockingPaths = releaseMetadataAllowed
+      ? changedPaths.filter(
+          (relativePath) => !isReleaseMetadataPath(relativePath),
+        )
+      : changedPaths
     const changed = blockingPaths.length > 0
+    const allowedPaths = releaseMetadataAllowed
+      ? changedPaths.filter((relativePath) =>
+          isReleaseMetadataPath(relativePath),
+        )
+      : []
 
     results.push({
       id: 'scope.no_unapproved_changes',
@@ -957,8 +970,10 @@ export function evaluateDeterministicCriteria(
       hard: true,
       passed: !changed,
       explanation: changed
-        ? `Workspace changed during a stage that forbids source changes: ${blockingPaths.join(', ')}.`
-        : 'Workspace fingerprint is unchanged.',
+        ? `Workspace changed outside the '${stage.workspace_policy}' boundary: ${blockingPaths.join(', ')}.`
+        : allowedPaths.length > 0
+          ? `Only permitted release metadata changed: ${allowedPaths.join(', ')}.`
+          : 'Workspace fingerprint is unchanged.',
       delta: changed
         ? workspaceDelta(beforeSnapshot, afterSnapshot)
         : { added: [], removed: [] },
@@ -1001,8 +1016,46 @@ export function evaluateDeterministicCriteria(
         )
       }
     } else if (criterion.type === 'state') {
+      if (criterion.id === 'ship.release_metadata_updated') {
+        const metadataErrors = isSelfDevelopmentInstallation(root)
+          ? validateReleaseMetadata(root).errors
+          : []
+
+        results.push({
+          id: criterion.id,
+          type: 'state',
+          hard: Boolean(criterion.hard),
+          passed: metadataErrors.length === 0,
+          explanation: isEmbeddedInstallation(root)
+            ? 'Pancreator release metadata is not owned by embedded target workflows.'
+            : metadataErrors.length === 0
+              ? 'Release metadata and version-bearing documentation are synchronized.'
+              : `Release metadata is not synchronized: ${metadataErrors.join('; ')}`,
+          workspace_fingerprint: afterSnapshot.fingerprint,
+        })
+        continue
+      }
+
+      const evidenceFingerprint =
+        stage.workspace_policy === 'release_metadata_only' &&
+        criterion.id === 'ship.prior_gates_current'
+          ? beforeSnapshot.fingerprint
+          : afterSnapshot.fingerprint
+      const result = evaluateStateCriterion(
+        state,
+        criterion,
+        evidenceFingerprint,
+      )
+
       results.push(
-        evaluateStateCriterion(state, criterion, afterSnapshot.fingerprint),
+        evidenceFingerprint === afterSnapshot.fingerprint
+          ? result
+          : {
+              ...result,
+              explanation:
+                `${result.explanation ?? ''} Expected release-metadata-only edits are checked separately and do not invalidate the reviewed implementation fingerprint.`.trim(),
+              workspace_fingerprint: afterSnapshot.fingerprint,
+            },
       )
     }
   }

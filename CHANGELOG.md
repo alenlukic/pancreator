@@ -6,10 +6,16 @@ _Release boundaries before formal Semantic Versioning adoption are reconstructed
 
 ### Changed
 
+- Make the release steward the agentic owner of Pancreator version selection, Common Changelog release notes, synchronized version-bearing metadata, and idempotent self-development ship updates.
+- Restrict ship-stage mutations to validated release metadata and durable version-bearing documentation without invalidating the reviewed implementation fingerprint.
 - Make embedded target-repository verification language- and technology-agnostic through repository-owned check profiles with explicit toolchain probes.
 - Scope Pancreator's TypeScript, shell, and npm conventions to self-development instead of projecting them into arbitrary target repositories.
 - Preserve in-flight embedded workflow compatibility by translating legacy npm gates to target-owned profiles and disabling the removed standalone coverage gate without recording a false pass.
 - Define distinct `fast`, optional `secondary`, and complete `full` repository-check semantics, support target-declared profile timeouts, and stream direct check output while preserving structured stdout.
+
+### Added
+
+- Add standalone `/pan-release` preparation for regenerating an existing release candidate or creating the next major, minor, or patch candidate from the full post-bump Git delta.
 
 ### Removed
 

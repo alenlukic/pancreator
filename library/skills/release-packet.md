@@ -15,6 +15,9 @@ the irreversible action; it makes the decision easy and safe.
 - Residual risks: every unresolved non-blocking risk, stated plainly.
 - Rollback: a credible way to undo the change.
 - Proposed commit message when Git metadata is available.
+- For Pancreator self-development, the completed version bump, baseline commit,
+  release-note update, synchronized files, and deferred `release/index.json`
+  action produced by `update-release-metadata.md`.
 - PR description artifact at
   `runtime/logs/workflows/<run-id>/artifacts/markdown/pr-description.md`,
   produced via `write-pr-description.md` (suggested conventional-commit title
@@ -29,5 +32,5 @@ the irreversible action; it makes the decision easy and safe.
 
 ## Boundaries
 
-Do not commit, push, open or merge a PR, publish, or deploy. Stop for operator
-approval.
+Do not edit `release/index.json`, commit, push, open or merge a PR, publish, or
+deploy. Stop for operator approval.

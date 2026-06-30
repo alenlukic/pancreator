@@ -37,6 +37,19 @@ test('embedded build-docs projection preserves harness-relative CLI targets', ()
   )
 })
 
+test('embedded release projection resolves the harness config before stopping', () => {
+  const projected = projectCursorContent(
+    'Read `project.json`, `docs/target-repo-primer.md`, and `library/skills/update-release-metadata.md`, then run `./bin/pan list --json`.',
+    '.cursor/commands/pan-release.md',
+    'embedded',
+  )
+
+  assert.equal(
+    projected,
+    'Read `.pancreator/project.json`, `.pancreator/docs/target-repo-primer.md`, and `.pancreator/library/skills/update-release-metadata.md`, then run `./.pancreator/bin/pan list --json`.',
+  )
+})
+
 test('projection drift validation runs on fixture repository', () => {
   const root = createFixture()
   const result = validateProjectionDrift(root)

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
-import { mkdtempSync, writeFileSync, mkdirSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
@@ -12,6 +13,7 @@ import {
   validateReleaseOutput,
   validateReviewOutput,
 } from '../../src/lib/validators/stage-validators.js'
+import { createFixture } from '../helpers.js'
 
 function writePlanOutput(
   root: string,
@@ -645,6 +647,138 @@ test('release validator rejects unknown validation fingerprints', () => {
       (issue) => issue.code === 'release.validation_evidence_missing',
     ),
   )
+})
+
+test('self-development release validator requires a real next-version bump', () => {
+  const root = createFixture()
+  const target = 'output.json'
+  const currentVersion = readFileSync(path.join(root, 'VERSION'), 'utf8').trim()
+  const baselineCommit = execFileSync('git', ['rev-parse', 'HEAD'], {
+    cwd: root,
+    encoding: 'utf8',
+  }).trim()
+
+  writeFileSync(
+    path.join(root, target),
+    `${JSON.stringify({
+      data: {
+        release: {
+          summary: 'ready',
+          versioning: {
+            current_version: currentVersion,
+            recommendation: 'patch',
+            proposed_version: currentVersion,
+            baseline_commit: baselineCommit,
+            rationale: 'fixture',
+            compatibility: 'backward compatible',
+            updated_files: [
+              'CHANGELOG.md',
+              'README.md',
+              'VERSION',
+              'docs/embedded-installation.md',
+              'package-lock.json',
+              'package.json',
+            ],
+            release_index_action: 'Index after the release commit exists.',
+          },
+          change_list: [],
+          validation: [],
+          rollback: 'revert commit',
+          waivers: [],
+          follow_up_cases: [],
+        },
+      },
+    })}\n`,
+  )
+
+  const result = validateReleaseOutput({
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'VERSION-001',
+      requirement_id: 'release-validate',
+      registry_id: 'RELEASE-VALIDATE-001',
+      arguments: {},
+    },
+    runState: { stage_history: [] },
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.ok(
+    result.issues.some(
+      (issue) => issue.code === 'release.proposed_version_mismatch',
+    ),
+  )
+})
+
+test('self-development release validator binds metadata to Git history and scope', () => {
+  const root = createFixture()
+  const target = 'output.json'
+  const baselineCommit = execFileSync('git', ['rev-parse', 'HEAD'], {
+    cwd: root,
+    encoding: 'utf8',
+  }).trim()
+
+  writeFileSync(
+    path.join(root, target),
+    `${JSON.stringify({
+      data: {
+        release: {
+          summary: 'ready',
+          versioning: {
+            current_version: '0.0.0',
+            recommendation: 'patch',
+            proposed_version: '0.0.1',
+            baseline_commit: baselineCommit,
+            rationale: '',
+            compatibility: '',
+            updated_files: [
+              'CHANGELOG.md',
+              'README.md',
+              'VERSION',
+              'docs/embedded-installation.md',
+              'package-lock.json',
+              'package.json',
+              'src/index.ts',
+            ],
+            release_index_action: '',
+          },
+          change_list: [],
+          validation: [],
+          rollback: 'revert commit',
+          waivers: [],
+          follow_up_cases: [],
+        },
+      },
+    })}\n`,
+  )
+
+  const result = validateReleaseOutput({
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'VERSION-001',
+      requirement_id: 'release-validate',
+      registry_id: 'RELEASE-VALIDATE-001',
+      arguments: {},
+    },
+    runState: { stage_history: [] },
+  })
+
+  assert.equal(result.status, 'failed')
+  for (const code of [
+    'release.current_version_mismatch',
+    'release.baseline_version_mismatch',
+    'release.rationale_missing',
+    'release.compatibility_missing',
+    'release.index_action_missing',
+    'release.updated_file_out_of_scope',
+  ]) {
+    assert.ok(
+      result.issues.some((issue) => issue.code === code),
+      code,
+    )
+  }
 })
 
 test('release validator rejects waiver fingerprint mismatch', () => {

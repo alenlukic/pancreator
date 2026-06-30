@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
-import { existsSync, rmSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -13,6 +13,7 @@ import {
   submitOutput,
 } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
+import { syncCursorProjection } from '../../src/lib/projection.js'
 import {
   createFixture,
   makeOutput,
@@ -22,6 +23,15 @@ import {
 
 test('dev workflow runs to completion without a Git repository', () => {
   const root = createFixture()
+  const projectPath = path.join(root, 'project.json')
+  const project = JSON.parse(readFileSync(projectPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  project.installation_mode = 'embedded'
+  writeFileSync(projectPath, `${JSON.stringify(project, null, 2)}\n`)
+  syncCursorProjection(root, { write: true })
 
   rmSync(path.join(root, '.git'), { recursive: true, force: true })
 

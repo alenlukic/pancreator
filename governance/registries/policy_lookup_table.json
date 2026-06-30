@@ -137,6 +137,13 @@
       "policies": ["VERSION-001"]
     },
     {
+      "persona": "release-steward",
+      "workflow": "standalone",
+      "stage": "release",
+      "installation_scope": "self_development",
+      "policies": ["VERSION-001"]
+    },
+    {
       "persona": "decomposer",
       "workflow": "*",
       "stage": "*",

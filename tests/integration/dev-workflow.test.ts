@@ -17,6 +17,7 @@ import {
   waiveGate,
 } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
+import { nextSemanticVersion } from '../../src/lib/versioning.js'
 import type { StageDefinition, StageOutcome } from '../../src/lib/types.js'
 import {
   createFixture,
@@ -27,6 +28,7 @@ import {
 
 test('full dev workflow persists gates and reaches operator-approved success', () => {
   const root = createFixture()
+  const initialVersion = readFileSync(path.join(root, 'VERSION'), 'utf8').trim()
   const workflow = loadWorkflow(root, 'dev')
   const state = createRun(root, {
     workflowSlug: 'dev',
@@ -163,6 +165,25 @@ test('full dev workflow persists gates and reaches operator-approved success', (
       item.record_path?.endsWith('.record.md'),
     ),
     false,
+  )
+  assert.equal(
+    readFileSync(path.join(root, 'VERSION'), 'utf8').trim(),
+    nextSemanticVersion(initialVersion, 'patch'),
+  )
+  const shipHistory = final.stage_history.find((item) => item.stage === 'ship')
+  const scopeResult = shipHistory?.deterministic.find(
+    (item) => item.id === 'scope.no_unapproved_changes',
+  )
+  const priorGateResult = shipHistory?.deterministic.find(
+    (item) => item.id === 'ship.prior_gates_current',
+  )
+
+  assert.equal(scopeResult?.passed, true)
+  assert.match(scopeResult?.explanation ?? '', /permitted release metadata/u)
+  assert.equal(priorGateResult?.passed, true)
+  assert.match(
+    priorGateResult?.explanation ?? '',
+    /do not invalidate the reviewed implementation fingerprint/u,
   )
 })
 

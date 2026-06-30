@@ -7,6 +7,14 @@ import { loadRegistry } from '../requirements/registry.js'
 import { hasHeading, parseMarkdown } from '../markdown.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
 import { activeOperatorGateWaivers } from '../waivers.js'
+import { readProjectConfig } from '../project-config.js'
+import {
+  isReleaseMetadataPath,
+  isSemanticVersion,
+  nextSemanticVersion,
+  validateReleaseMetadata,
+  type ReleaseBump,
+} from '../versioning.js'
 
 const REVIEW_SEVERITIES = new Set(['blocker', 'high', 'medium', 'low'])
 const WORK_MODES = new Set(['systematic', 'lightweight'])
@@ -1068,6 +1076,254 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
     return {
       status: 'failed',
       issues: [issue('release.missing', 'data.release is required')],
+    }
+  }
+
+  if (readProjectConfig(input.root)?.installation_mode === 'self_development') {
+    const versioning = isRecord(release.versioning) ? release.versioning : null
+
+    if (!versioning) {
+      issues.push(
+        issue(
+          'release.versioning_missing',
+          'Self-development release output MUST include release.versioning',
+        ),
+      )
+    } else {
+      const currentVersion =
+        typeof versioning.current_version === 'string'
+          ? versioning.current_version
+          : ''
+      const proposedVersion =
+        typeof versioning.proposed_version === 'string'
+          ? versioning.proposed_version
+          : ''
+      const recommendation =
+        typeof versioning.recommendation === 'string'
+          ? versioning.recommendation
+          : ''
+      const baselineCommit =
+        typeof versioning.baseline_commit === 'string'
+          ? versioning.baseline_commit
+          : ''
+      const rawUpdatedFiles = Array.isArray(versioning.updated_files)
+        ? versioning.updated_files
+        : []
+      const updatedFiles = rawUpdatedFiles.filter(
+        (entry): entry is string => typeof entry === 'string',
+      )
+      const rationale =
+        typeof versioning.rationale === 'string'
+          ? versioning.rationale.trim()
+          : ''
+      const compatibility =
+        typeof versioning.compatibility === 'string'
+          ? versioning.compatibility.trim()
+          : ''
+      const releaseIndexAction =
+        typeof versioning.release_index_action === 'string'
+          ? versioning.release_index_action.trim()
+          : ''
+
+      if (!isSemanticVersion(currentVersion)) {
+        issues.push(
+          issue(
+            'release.current_version',
+            'release.versioning.current_version MUST be complete Semantic Versioning',
+          ),
+        )
+      }
+
+      if (!isSemanticVersion(proposedVersion)) {
+        issues.push(
+          issue(
+            'release.proposed_version',
+            'release.versioning.proposed_version MUST be complete Semantic Versioning',
+          ),
+        )
+      }
+
+      if (!['major', 'minor', 'patch'].includes(recommendation)) {
+        issues.push(
+          issue(
+            'release.recommendation',
+            'release.versioning.recommendation MUST be major, minor, or patch',
+          ),
+        )
+      } else {
+        const expected = nextSemanticVersion(
+          currentVersion,
+          recommendation as ReleaseBump,
+        )
+
+        if (expected !== proposedVersion) {
+          issues.push(
+            issue(
+              'release.proposed_version_mismatch',
+              `release.versioning.proposed_version MUST be ${expected ?? 'a valid next version'} for a ${recommendation} bump from ${currentVersion}`,
+            ),
+          )
+        }
+      }
+
+      if (!/^[0-9a-f]{40}$/u.test(baselineCommit)) {
+        issues.push(
+          issue(
+            'release.baseline_commit',
+            'release.versioning.baseline_commit MUST be a full lowercase Git commit hash',
+          ),
+        )
+      } else {
+        const committedVersion = gitOutput(input.root, ['show', 'HEAD:VERSION'])
+
+        if (!committedVersion.ok) {
+          issues.push(
+            issue(
+              'release.committed_version_unavailable',
+              `Unable to read the committed VERSION: ${committedVersion.error}`,
+            ),
+          )
+        } else if (committedVersion.stdout.trim() !== currentVersion) {
+          issues.push(
+            issue(
+              'release.current_version_mismatch',
+              'release.versioning.current_version MUST equal the committed HEAD:VERSION value',
+            ),
+          )
+        }
+
+        const baselineVersion = gitOutput(input.root, [
+          'show',
+          `${baselineCommit}:VERSION`,
+        ])
+
+        if (
+          !baselineVersion.ok ||
+          baselineVersion.stdout.trim() !== currentVersion
+        ) {
+          issues.push(
+            issue(
+              'release.baseline_version_mismatch',
+              'release.versioning.baseline_commit MUST contain current_version in VERSION',
+            ),
+          )
+        }
+
+        const ancestor = gitOutput(input.root, [
+          'merge-base',
+          '--is-ancestor',
+          baselineCommit,
+          'HEAD',
+        ])
+
+        if (!ancestor.ok) {
+          issues.push(
+            issue(
+              'release.baseline_not_ancestor',
+              'release.versioning.baseline_commit MUST be an ancestor of HEAD',
+            ),
+          )
+        }
+
+        const parentVersion = gitOutput(input.root, [
+          'show',
+          `${baselineCommit}^:VERSION`,
+        ])
+
+        if (
+          parentVersion.ok &&
+          parentVersion.stdout.trim() === currentVersion
+        ) {
+          issues.push(
+            issue(
+              'release.baseline_not_bump',
+              'release.versioning.baseline_commit MUST be the commit that introduced current_version, not a later commit carrying the same value',
+            ),
+          )
+        }
+      }
+
+      if (rationale.length === 0) {
+        issues.push(
+          issue(
+            'release.rationale_missing',
+            'release.versioning.rationale MUST explain the selected bump',
+          ),
+        )
+      }
+
+      if (compatibility.length === 0) {
+        issues.push(
+          issue(
+            'release.compatibility_missing',
+            'release.versioning.compatibility MUST describe compatibility impact',
+          ),
+        )
+      }
+
+      if (releaseIndexAction.length === 0) {
+        issues.push(
+          issue(
+            'release.index_action_missing',
+            'release.versioning.release_index_action MUST describe deferred indexing after the release commit exists',
+          ),
+        )
+      }
+
+      if (rawUpdatedFiles.length !== updatedFiles.length) {
+        issues.push(
+          issue(
+            'release.updated_files_invalid',
+            'release.versioning.updated_files MUST contain only path strings',
+          ),
+        )
+      }
+
+      for (const file of updatedFiles) {
+        if (!isReleaseMetadataPath(file)) {
+          issues.push(
+            issue(
+              'release.updated_file_out_of_scope',
+              `release.versioning.updated_files contains an out-of-scope path: ${file}`,
+            ),
+          )
+        }
+      }
+
+      const requiredUpdatedFiles = [
+        'CHANGELOG.md',
+        'README.md',
+        'VERSION',
+        'docs/embedded-installation.md',
+        'package-lock.json',
+        'package.json',
+      ]
+
+      for (const file of requiredUpdatedFiles) {
+        if (!updatedFiles.includes(file)) {
+          issues.push(
+            issue(
+              'release.updated_file_missing',
+              `release.versioning.updated_files MUST include ${file}`,
+            ),
+          )
+        }
+      }
+
+      const diskVersion = readText(path.join(input.root, 'VERSION')).trim()
+
+      if (diskVersion !== proposedVersion) {
+        issues.push(
+          issue(
+            'release.version_not_applied',
+            'VERSION MUST equal release.versioning.proposed_version before ship submission',
+          ),
+        )
+      }
+
+      for (const metadataError of validateReleaseMetadata(input.root).errors) {
+        issues.push(issue('release.metadata_invalid', metadataError))
+      }
     }
   }
 

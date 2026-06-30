@@ -79,7 +79,7 @@ flowchart TD
 ## Public interfaces
 
 - `./bin/pan` is the primary programmatic/operator interface. Verified top-level commands include `init`, `prepare`, `submit`, `assess`, `decide`, `pause`, `resume`, `set-stage`, `accept-change`, `waive-gate`, `abort`, `changes`, `workspace`, `workflow`, `status`, `list`, `models`, `validation-map`, `governance`, `requirements`, `output`, `assessment`, `spotfix`, `validate`, and `doctor`.
-- `library/cursor/commands/` defines the public Cursor command surface that gets projected into `.cursor/commands/`, including `/pan-start`, `/pan-resume`, `/pan-debug`, `/pan-decompose`, `/pan-build-docs`, `/pan-spotfix`, `/pan-status`, and `/pan-validate`.
+- `library/cursor/commands/` defines the public Cursor command surface that gets projected into `.cursor/commands/`, including `/pan-start`, `/pan-resume`, `/pan-debug`, `/pan-decompose`, `/pan-build-docs`, `/pan-release`, `/pan-spotfix`, `/pan-status`, and `/pan-validate`.
 - `bin/install` and `bin/update` are the supported embedded-installation interfaces for initial install, repair/clean refresh, smoke validation, and indexed fast-forward updates.
 - `project.json` is the public model-configuration surface for this checkout. `active_config` selects a named persona-to-model mapping, and `./bin/pan models --sync` projects that mapping into local Cursor agent frontmatter.
 - `library/workflows/<slug>/workflow.json`, `library/workflows/<slug>/stages/*.json`, and `library/workflows/<slug>/prompts/*.md` form the canonical workflow authoring surface consumed by the CLI.
@@ -92,5 +92,5 @@ flowchart TD
 - `runtime/logs/workflows/<run-id>/state.json`, `events.jsonl`, and related generated workflow records are harness-owned and must not be edited by hand.
 - `pan changes begin|commit|cancel` remains a compatibility no-op; current mutation safety relies on declared stage scope, accepted workspace indexes, fingerprints, evidence, and read-only-stage guards.
 - Embedded installations use two path spaces: filesystem references move under `.pancreator/`, including `.pancreator/docs/target-repo-primer.md`, while CLI request and output arguments remain harness-relative such as `runtime/inbox/request.md` and `docs/target-repo-primer.md`.
-- Release metadata has a two-commit protocol: `VERSION` is operator-facing, `release/index.json` maps versions to immutable commits later, and `./bin/update` only works from clean indexed releases.
+- Release metadata has a two-commit protocol: the release steward updates `VERSION`, npm metadata, `CHANGELOG.md`, and current-version README/docs references during self-development ship or `/pan-release`; the operator creates the release commit; `release/index.json` maps that immutable commit later; and `./bin/update` only works from clean indexed releases.
 - Recent Git history is concentrated in installer/projection and workflow-validation surfaces, so those areas are actively evolving; prefer current scripts and docs over older assumptions.

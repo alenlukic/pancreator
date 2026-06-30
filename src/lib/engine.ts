@@ -1055,8 +1055,10 @@ export function prepareInvocation(
         'release.versioning.current_version': 'string',
         'release.versioning.recommendation': 'string',
         'release.versioning.proposed_version': 'string',
+        'release.versioning.baseline_commit': 'string',
         'release.versioning.rationale': 'string',
         'release.versioning.compatibility': 'string',
+        'release.versioning.updated_files': 'array',
         'release.versioning.release_index_action': 'string',
       })
     }
@@ -1117,7 +1119,12 @@ export function prepareInvocation(
             ]
           : []),
         `You MUST respect workspace policy '${stage.workspace_policy}'.`,
-        'You MUST write only the declared output and evidence.',
+        ...(stage.workspace_policy === 'release_metadata_only' &&
+        isSelfDevelopmentInstallation(root)
+          ? [
+              'You MAY also edit only CHANGELOG.md, VERSION, package.json, package-lock.json, README.md, and version-bearing Markdown under docs/ as required by VERSION-001.',
+            ]
+          : ['You MUST write only the declared output and evidence.']),
         ...(stage.persona === 'orchestrator'
           ? []
           : [

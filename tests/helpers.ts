@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 import { syncCursorProjection } from '../src/lib/projection.js'
+import { nextSemanticVersion } from '../src/lib/versioning.js'
 
 import type {
   Invocation,
@@ -44,7 +45,13 @@ function fixtureGit(
 export function createFixture(): string {
   const root = mkdtempSync(path.join(tmpdir(), 'pancreator-v2-'))
 
-  for (const entry of ['governance', 'library', 'release', '.pancreator']) {
+  for (const entry of [
+    'governance',
+    'library',
+    'release',
+    'docs',
+    '.pancreator',
+  ]) {
     const source = path.join(REPO_ROOT, entry)
 
     if (existsSync(source)) {
@@ -54,6 +61,7 @@ export function createFixture(): string {
 
   for (const entry of [
     'CHANGELOG.md',
+    'README.md',
     'VERSION',
     'package-lock.json',
     'project.json',
@@ -147,6 +155,103 @@ function gitChangedFiles(root: string): string[] {
       )
   } catch {
     return []
+  }
+}
+
+function prepareFixtureReleaseMetadata(root: string): {
+  currentVersion: string
+  proposedVersion: string
+  baselineCommit: string
+  updatedFiles: string[]
+} {
+  const currentVersion = fixtureGit(['show', 'HEAD:VERSION'], {
+    cwd: root,
+    encoding: 'utf8',
+  }).trim()
+  const baselineCommit = fixtureGit(['rev-parse', 'HEAD'], {
+    cwd: root,
+    encoding: 'utf8',
+  }).trim()
+  const versionPath = path.join(root, 'VERSION')
+  const workingVersion = readFileSync(versionPath, 'utf8').trim()
+  const changelogPath = path.join(root, 'CHANGELOG.md')
+  const changelog = readFileSync(changelogPath, 'utf8')
+  const latestVersion = /^## \[([^\]]+)\] - \d{4}-\d{2}-\d{2}$/mu.exec(
+    changelog,
+  )?.[1]
+  const existingCandidate =
+    workingVersion !== currentVersion && latestVersion === workingVersion
+  const proposedVersion = existingCandidate
+    ? workingVersion
+    : (nextSemanticVersion(currentVersion, 'patch') ?? currentVersion)
+
+  writeFileSync(versionPath, `${proposedVersion}\n`)
+
+  for (const filename of ['package.json', 'package-lock.json']) {
+    const filePath = path.join(root, filename)
+    const value = JSON.parse(readFileSync(filePath, 'utf8')) as Record<
+      string,
+      unknown
+    >
+
+    value.version = proposedVersion
+
+    if (filename === 'package-lock.json') {
+      const packages = value.packages as Record<string, Record<string, unknown>>
+
+      if (packages?.['']) {
+        packages[''].version = proposedVersion
+      }
+    }
+
+    writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`)
+  }
+
+  if (!existingCandidate) {
+    const updatedChangelog = changelog.includes('## [Unreleased]')
+      ? changelog.replace(
+          '## [Unreleased]',
+          `## [${proposedVersion}] - 2026-06-30`,
+        )
+      : changelog
+
+    writeFileSync(changelogPath, updatedChangelog)
+  }
+
+  const readmePath = path.join(root, 'README.md')
+  const readme = readFileSync(readmePath, 'utf8')
+
+  writeFileSync(
+    readmePath,
+    readme.replaceAll(
+      `Pancreator v${currentVersion}`,
+      `Pancreator v${proposedVersion}`,
+    ),
+  )
+
+  const embeddedPath = path.join(root, 'docs', 'embedded-installation.md')
+  const embedded = readFileSync(embeddedPath, 'utf8')
+
+  writeFileSync(
+    embeddedPath,
+    embedded.replace(
+      `currently agree on \`${currentVersion}\``,
+      `currently agree on \`${proposedVersion}\``,
+    ),
+  )
+
+  return {
+    currentVersion,
+    proposedVersion,
+    baselineCommit,
+    updatedFiles: [
+      'CHANGELOG.md',
+      'README.md',
+      'VERSION',
+      'docs/embedded-installation.md',
+      'package-lock.json',
+      'package.json',
+    ],
   }
 }
 
@@ -302,21 +407,26 @@ function requiredData(
             readFileSync(path.join(root, 'project.json'), 'utf8'),
           ) as { installation_mode?: string })
         : null
-      const versioning =
-        projectConfig?.installation_mode === 'self_development'
-          ? {
-              versioning: {
-                current_version: CURRENT_VERSION,
-                recommendation: 'neither',
-                proposed_version: CURRENT_VERSION,
-                rationale:
-                  'Fixture release does not change the installed contract.',
-                compatibility: 'Backward compatible.',
-                release_index_action:
-                  'Create the release commit first, then add its hash in a separate index metadata commit.',
-              },
-            }
-          : {}
+      const fixtureRelease =
+        projectConfig?.installation_mode === 'self_development' && root
+          ? prepareFixtureReleaseMetadata(root)
+          : null
+      const versioning = fixtureRelease
+        ? {
+            versioning: {
+              current_version: fixtureRelease.currentVersion,
+              recommendation: 'patch',
+              proposed_version: fixtureRelease.proposedVersion,
+              baseline_commit: fixtureRelease.baselineCommit,
+              rationale:
+                'Fixture release contains backward-compatible maintenance changes.',
+              compatibility: 'Backward compatible.',
+              updated_files: fixtureRelease.updatedFiles,
+              release_index_action:
+                'Create the release commit first, then add its hash in a separate index metadata commit.',
+            },
+          }
+        : {}
 
       return {
         release: {

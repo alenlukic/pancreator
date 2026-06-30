@@ -10,6 +10,6 @@
     "The generated file MUST contain a suggested conventional-commits-style title, Summary, Changelist, and a Delivery Pipeline Manifest only when actual workflow stage records resolve.",
     "Every claim MUST be traceable to the Git delta or a workflow artifact that was read; the release steward MUST stop rather than invent changes or describe an empty or ambiguous comparison.",
     "Standalone PR-writing MUST NOT require workflow review or QA evidence and MUST write only the command-supplied output path.",
-    "The release steward MUST NOT create, update, merge, or otherwise mutate a pull request, commit, branch, remote, release, or deployment."
+    "The release steward MUST NOT create, update, merge, or otherwise mutate a pull request, commit, branch, remote, published release, or deployment. The self-development release-metadata policy separately permits bounded local edits in workflow ship and /pan-release modes."
   ]
 }

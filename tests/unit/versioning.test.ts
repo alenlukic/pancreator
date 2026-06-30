@@ -5,6 +5,7 @@ import test from 'node:test'
 
 import {
   isSemanticVersion,
+  nextSemanticVersion,
   validateReleaseMetadata,
 } from '../../src/lib/versioning.js'
 import { createFixture } from '../helpers.js'
@@ -14,6 +15,13 @@ test('Semantic Versioning accepts complete versions and rejects abbreviated vers
   assert.equal(isSemanticVersion('2.1.0-rc.1+build.4'), true)
   assert.equal(isSemanticVersion('2.0'), false)
   assert.equal(isSemanticVersion('02.0.0'), false)
+})
+
+test('Semantic Versioning bump calculation returns exact next stable versions', () => {
+  assert.equal(nextSemanticVersion('2.7.4', 'major'), '3.0.0')
+  assert.equal(nextSemanticVersion('2.7.4', 'minor'), '2.8.0')
+  assert.equal(nextSemanticVersion('2.7.4', 'patch'), '2.7.5')
+  assert.equal(nextSemanticVersion('invalid', 'patch'), null)
 })
 
 test('release metadata validation requires synchronized version files', () => {
@@ -51,5 +59,22 @@ test('release metadata validation requires the changelog latest release to match
     result.errors.includes(
       `CHANGELOG.md latest release MUST match VERSION (${version})`,
     ),
+  )
+})
+
+test('release metadata validation requires version-bearing docs to match VERSION', () => {
+  const root = createFixture()
+  const readmePath = path.join(root, 'README.md')
+  const readme = readFileSync(readmePath, 'utf8').replace(
+    /^# Pancreator v[^\s]+$/mu,
+    '# Pancreator v999.0.0',
+  )
+
+  writeFileSync(readmePath, readme)
+
+  const result = validateReleaseMetadata(root)
+
+  assert.ok(
+    result.errors.includes('README.md heading version MUST match VERSION'),
   )
 })

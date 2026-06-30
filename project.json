@@ -29,7 +29,7 @@
         "coder": "composer-2.5[fast=false]",
         "reviewer": "gpt-5.3-codex[reasoning=high,fast=false]",
         "qa-tester": "gpt-5.3-codex[reasoning=high,fast=false]",
-        "release-steward": "auto",
+        "release-steward": "gpt-5.3-codex[reasoning=high,fast=false]",
         "investigator": "gpt-5.3-codex[reasoning=high,fast=false]",
         "spotfixer": "composer-2.5[fast=false]"
       }

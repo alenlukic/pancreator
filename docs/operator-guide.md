@@ -159,6 +159,12 @@ tracked source files directly within the declared scope. The harness protects
 integrity with accepted indexes, workspace fingerprints, read-only-stage
 mutation guards, and stage evidence.
 
+The self-development ship stage uses `release_metadata_only`. It may change only
+`CHANGELOG.md`, `VERSION`, npm version metadata, `README.md`, and
+version-bearing Markdown under `docs/`. Those expected edits are validated
+separately and do not invalidate the implementation fingerprint already reviewed
+and tested. Embedded target ship stages remain release-metadata read-only.
+
 Do not run concurrent mutating workflows against one workspace. Avoid other
 concurrent external edits while a mutating worker is running because they make
 stage attribution ambiguous. Pause the run before operator-driven changes.
@@ -196,9 +202,18 @@ Use `/pan-write-pr` after the current branch and worktree are ready for review b
 
 The command is read-only apart from its generated Markdown artifact. It does not create, update, or merge a pull request and stops when the base is invalid, the comparison is ambiguous, or there is no delta to describe.
 
+## Prepare release metadata manually
+
+Use `/pan-release` when release metadata must be prepared or regenerated outside a workflow ship stage. The command is self-development-only and refuses to version an embedded target repository. It resolves the commit that introduced the committed `VERSION`, evaluates all committed, staged, unstaged, and relevant untracked changes after that baseline, and asks the release steward to choose exactly `major`, `minor`, or `patch`.
+
+The release steward then authors or regenerates the latest Common Changelog entry and synchronizes `VERSION`, `package.json`, `package-lock.json`, the README current-version references, and the current-version statement in `docs/embedded-installation.md`. If a dirty release candidate already exists, the command updates it in place rather than bumping again. If there is no post-bump delta and no candidate, it makes no changes.
+
+`/pan-release` validates formatting, types, and repository contracts but does not edit `release/index.json`, commit, push, publish, or deploy.
+
 ## Release approval
 
-The ship packet is a proposal. Before approval, confirm:
+The ship packet is a proposal, but Pancreator self-development release metadata
+has already been updated by the release steward. Before approval, confirm:
 
 - review and QA passed against the current workspace, or any exceptions are
   explicit fingerprint-bound waivers
@@ -206,6 +221,8 @@ The ship packet is a proposal. Before approval, confirm:
 - residual risks are acceptable
 - rollback guidance is credible
 - the proposed commit/PR text accurately describes the diff
+- the selected version bump and generated release notes match the complete
+  delta since the last committed release bump
 
 Approval marks the workflow succeeded. It does not itself create a commit, PR, merge, or deployment.
 

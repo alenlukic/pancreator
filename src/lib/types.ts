@@ -9,7 +9,11 @@ export type RunStatus =
   | 'failed'
   | 'canceled'
 
-export type WorkspacePolicy = 'source_allowed' | 'runtime_only' | 'read_only'
+export type WorkspacePolicy =
+  | 'source_allowed'
+  | 'release_metadata_only'
+  | 'runtime_only'
+  | 'read_only'
 
 export type StageGate =
   | 'operator'

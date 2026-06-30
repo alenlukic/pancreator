@@ -30,8 +30,9 @@ There are no npm runtime dependencies. TypeScript and Prettier are development-o
 6. Use `/pan-start <your request>` for systematic delivery.
 7. Use `/pan-debug <problem>` for root-cause analysis and a work-mode recommendation.
 8. Use `/pan-spotfix <request>` only for an explicitly lightweight, small-scope change.
-9. Use `/pan-write-pr [base-branch]` to draft a PR description from the current branch and worktree; the base defaults to `main`.
-10. For systematic work, ratify intake and continue with `/pan-resume <run-id>` until the next operator gate.
+9. Use `/pan-release` to prepare or regenerate version metadata and release notes outside a workflow when needed.
+10. Use `/pan-write-pr [base-branch]` to draft a PR description from the current branch and worktree; the base defaults to `main`.
+11. For systematic work, ratify intake and continue with `/pan-resume <run-id>` until the next operator gate.
 
 The CLI is also directly usable:
 
@@ -79,6 +80,10 @@ checks exist. Unresolved or expanded work is preserved in a uniquely named
 ### Standalone PR descriptions
 
 `/pan-write-pr [base-branch]` invokes the release steward without creating a workflow run. It compares the current branch and complete worktree against the merge base with `main` by default, or against one explicitly supplied base ref. The generated body is saved under `runtime/pr-descriptions/` and surfaced in chat; the command never creates, updates, or merges a pull request.
+
+### Standalone release preparation
+
+`/pan-release` invokes the release steward in Pancreator self-development mode without creating a workflow run. It finds the commit that introduced the committed `VERSION`, inspects every committed and worktree change after that baseline, chooses a `major`, `minor`, or `patch` bump, authors or regenerates the latest Common Changelog entry, and synchronizes `VERSION`, npm metadata, and current-version references in README/docs. Repeated runs update an existing uncommitted candidate in place rather than incrementing again. The command never edits `release/index.json`, commits, publishes, or deploys.
 
 ## Embedded installation
 
@@ -223,7 +228,7 @@ intake ──operator approval──> plan ──supervisor gate──> implemen
                                           └──operator reject──> implement (or --stage <slug>)
 ```
 
-Review and QA do not modify source. Failed review or QA routes to implementation unless the operator records a policy-conforming, fingerprint-bound gate waiver. Bounded deferred acceptance misses may open a linked spot-fix intake case, but lightweight eligibility is still evaluated independently. An operator rejection at the ship gate routes remediation back to implementation by default (or to `--stage plan`/another stage), carrying the operator's feedback forward as a required input. Ship creates a release packet only; commit, push, PR, merge, publication, and deployment remain operator-owned.
+Review and QA do not modify source. Failed review or QA routes to implementation unless the operator records a policy-conforming, fingerprint-bound gate waiver. Bounded deferred acceptance misses may open a linked spot-fix intake case, but lightweight eligibility is still evaluated independently. An operator rejection at the ship gate routes remediation back to implementation by default (or to `--stage plan`/another stage), carrying the operator's feedback forward as a required input. In Pancreator self-development, ship owns the bounded release-metadata update and release packet; in embedded target workflows it remains release-metadata read-only. Commit, push, PR creation, merge, publication, and deployment remain operator-owned.
 For stage-scoped required, conditional, and index-only invocation inputs, see [Invocation context projection](docs/runtime-protocol.md#invocation-context-projection).
 
 ## TypeScript and formatting

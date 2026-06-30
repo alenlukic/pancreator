@@ -36,6 +36,7 @@ const GATES = new Set<StageGate>([
 const EXECUTORS = new Set<StageExecutor>(['agent', 'harness'])
 const WORKSPACE_POLICIES = new Set<WorkspacePolicy>([
   'source_allowed',
+  'release_metadata_only',
   'runtime_only',
   'read_only',
 ])
@@ -298,7 +299,7 @@ function parseStage(
   invariant(
     typeof value.workspace_policy === 'string' &&
       WORKSPACE_POLICIES.has(value.workspace_policy as WorkspacePolicy),
-    `${source}.workspace_policy MUST be source_allowed, runtime_only, or read_only.`,
+    `${source}.workspace_policy MUST be source_allowed, release_metadata_only, runtime_only, or read_only.`,
     { code: 'INVALID_WORKFLOW' },
   )
   invariant(

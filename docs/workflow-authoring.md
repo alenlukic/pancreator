@@ -70,8 +70,12 @@ mapping before resuming the run.
 - `workspace_policy` - the mutation boundary the harness enforces with workspace
   fingerprints:
   - `source_allowed` - may modify product source (implement).
+  - `release_metadata_only` - in Pancreator self-development, may modify only
+    `CHANGELOG.md`, `VERSION`, npm version metadata, `README.md`, and
+    version-bearing Markdown under `docs/`; in embedded installations it
+    behaves as `read_only` (ship).
   - `runtime_only` - may write only under `runtime/` (intake, plan).
-  - `read_only` - may not change any tracked content (review, test, ship).
+  - `read_only` - may not change any tracked content (review, test).
     Any policy other than `source_allowed` adds the deterministic criterion
     `scope.no_unapproved_changes`, so a read-only stage that mutates source fails.
 - `gate` - what decides advancement after a valid, successful output:

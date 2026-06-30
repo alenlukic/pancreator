@@ -3,7 +3,7 @@
   "title": "Release preparation",
   "persona": "release-steward",
   "prompt_path": "library/workflows/dev/prompts/ship.md",
-  "workspace_policy": "read_only",
+  "workspace_policy": "release_metadata_only",
   "gate": "operator",
   "context": {
     "request": "conditional",
@@ -60,6 +60,12 @@
       "type": "judgment",
       "hard": true,
       "statement": "The release packet accurately summarizes scope, validation, risks, and rollback."
+    },
+    {
+      "id": "ship.release_metadata_updated",
+      "type": "state",
+      "hard": true,
+      "statement": "Pancreator self-development release metadata is synchronized and records a real major, minor, or patch bump; embedded target workflows do not modify Pancreator release metadata."
     },
     {
       "id": "ship.validate",

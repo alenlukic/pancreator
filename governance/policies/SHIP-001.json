@@ -2,11 +2,12 @@
   "id": "SHIP-001",
   "title": "Operator-owned release boundary",
   "severity": "hard",
-  "summary": "The ship stage MUST prepare a release packet, and the operator MUST own irreversible release actions.",
+  "summary": "The ship stage MUST prepare a release packet, update self-development release metadata, and leave irreversible release actions to the operator.",
   "instructions": [
     "The release packet MUST confirm that prior gates are satisfied by current evidence or explicit fingerprint-bound operator acceptance and waivers.",
     "The release packet MUST enumerate active operator gate waivers, deferred acceptance criteria, and linked spotfix cases rather than describing waived gates as ordinary passes.",
     "The release packet MUST include rollback guidance, unresolved non-blocking risks, and a concise change summary.",
+    "For Pancreator self-development only, the release steward MUST update release metadata under VERSION-001 before operator approval. Embedded target workflows MUST remain release-metadata read-only.",
     "The workflow MUST pause for operator approval before commit, push, merge, publication, or deployment.",
     "Before operator approval, the release data, waiver and follow-up disclosure, diff-grounded change list, and referenced release packet MUST run their resolved policy-bound validators under VALID-001."
   ],
