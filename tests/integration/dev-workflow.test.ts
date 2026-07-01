@@ -497,6 +497,72 @@ test('unchanged pre-existing repository-check failures do not block implementati
   assert.equal(staticResult?.baseline_evidence_path, baseline?.artifact_path)
 })
 
+test('unchanged pre-existing full repository-check failures do not block QA', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Pre-existing QA failure fixture',
+  })
+  const runId = state.run_id
+  const implementStage = stageBySlug(workflow, 'implement')
+  const reviewStage = stageBySlug(workflow, 'review')
+  const testStage = stageBySlug(workflow, 'test')
+
+  writeJson(path.join(root, 'runtime/repository-checks.json'), {
+    schema_version: 1,
+    profiles: {
+      static: {
+        probes: [],
+        commands: [`node -e "process.exit(0)"`],
+      },
+      fast: {
+        probes: [],
+        commands: [`node -e "process.exit(0)"`],
+      },
+      full: {
+        probes: [],
+        commands: [`node -e "console.error('known full-suite failure'); process.exit(1)"`],
+      },
+      configuration: {
+        probes: [],
+        commands: [`node -e "process.exit(0)"`],
+      },
+    },
+  })
+  setRunStage(root, runId, 'implement', 'Exercise workflow-wide check baselines.')
+
+  submitStageOutput(root, runId, implementStage, 'success')
+  const baselines = getRunState(root, runId).repository_check_baselines ?? {}
+  const fullBaseline = baselines.full
+
+  assert.equal(fullBaseline?.status, 'failed')
+  assert.ok(fullBaseline && existsSync(path.join(root, fullBaseline.artifact_path)))
+  assert.equal(baselines.configuration?.status, 'passed')
+
+  submitStageOutput(root, runId, reviewStage, 'success')
+
+  const invocation = prepareInvocation(root, runId).invocation
+  assert.ok(invocation)
+
+  const output = makeOutput(root, invocation, testStage)
+  writeJson(path.join(root, invocation.output.path), output)
+  writeCanonicalDelegation(root, invocation)
+
+  const submitted = submitOutput(root, runId, invocation.output.path)
+  const fullResult = submitted.record.evaluation.deterministic.find(
+    (result) => result.id === 'test.full_suite',
+  )
+
+  assert.equal(submitted.record.outcome, 'success')
+  assert.equal(submitted.state.current_stage, 'validate-changes')
+  assert.equal(fullResult?.passed, true)
+  assert.equal(fullResult?.preexisting_failure, true)
+  assert.equal(fullResult?.exit_code, 1)
+  assert.equal(fullResult?.baseline_evidence_path, fullBaseline?.artifact_path)
+})
+
 test('new repository-check diagnostics still block implementation', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'dev')

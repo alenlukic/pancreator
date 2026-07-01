@@ -142,12 +142,14 @@ budget has capacity.
 ### Pre-implementation repository-check baseline
 
 Immediately before the first coder invocation, the harness runs every configured
-implementation repository-check profile (normally `static` and `fast`) and saves
-run-scoped baseline evidence. The same profiles run again at submission. A
-profile that still reports only normalized diagnostics already present in the
-baseline is recorded as a visible `preexisting_failure` but passes the workflow
-gate. Any new command failure, changed exit behavior, or new/changed diagnostic
-fails the gate. A passing baseline that later fails always blocks.
+repository-check profile referenced by deterministic stage gates (for example
+implementation `static`/`fast`, QA `full`, and ship `configuration`) and saves
+run-scoped baseline evidence. The same profiles run again at submission for
+their owning stages. A profile that still reports only normalized diagnostics
+already present in the baseline is recorded as a visible
+`preexisting_failure` but passes the workflow gate. Any new command failure,
+changed exit behavior, or new/changed diagnostic fails the gate. A passing
+baseline that later fails always blocks.
 
 Baselines are captured only for attempt 1. An upgraded in-flight run that has
 already entered a later implementation attempt does not retroactively baseline

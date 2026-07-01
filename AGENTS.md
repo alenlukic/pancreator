@@ -30,7 +30,7 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 - The supervisor MUST apply `INVOCATION-001` for canonical-card validation, prompt delivery, and delegation evidence. Detailed delegation instructions MUST live in that policy rather than parallel restatements here.
 - A worker MUST write only the declared output and permitted evidence. The supervisor MUST submit it through `./bin/pan submit`.
 - The harness MUST rerun deterministic gate commands and MUST own code-determined transitions.
-- Before the first implementation invocation, the harness MUST capture the configured static and fast repository-check results. Unchanged failures present in that baseline MUST remain visible evidence but MUST NOT block the run; new or changed diagnostics MUST fail the gate.
+- Before the first implementation invocation, the harness MUST capture every repository-check profile referenced by deterministic stage gates. Unchanged failures present in that baseline MUST remain visible evidence but MUST NOT block the run; new or changed diagnostics MUST fail the gate.
 - A second consecutive hard failure with the same normalized signature MUST pause immediately, independent of broader retry limits. On an implementation self-loop, the next coder attempt MUST directly remediate the recorded loop cause and MUST NOT consume an attempt on unchanged paperwork or evidence alone.
 - For `supervisor_assessment`, the supervisor MUST evaluate only the listed judgment criteria and write the declared assessment file.
 - For `operator_approval`, the supervisor MUST present the ratification packet and stop. It MUST NOT approve on the operator’s behalf.

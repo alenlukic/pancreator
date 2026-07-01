@@ -335,9 +335,36 @@ function readGateOverrides(
   return overrides
 }
 
-function ensureImplementationRepositoryCheckBaselines(
+function collectWorkflowRepositoryCheckProfiles(
+  workflow: WorkflowDefinition,
+): Array<{ name: string; timeout_ms: number | undefined }> {
+  const profiles = new Map<string, number | undefined>()
+
+  for (const stage of workflow.stages) {
+    for (const criterion of stage.criteria) {
+      if (criterion.type !== 'shell') {
+        continue
+      }
+
+      const profileName = repositoryCheckProfileName(criterion.command ?? '')
+
+      if (!profileName || profiles.has(profileName)) {
+        continue
+      }
+
+      profiles.set(profileName, criterion.timeout_ms)
+    }
+  }
+
+  return [...profiles.entries()]
+    .map(([name, timeout_ms]) => ({ name, timeout_ms }))
+    .sort((left, right) => left.name.localeCompare(right.name))
+}
+
+function ensureWorkflowRepositoryCheckBaselines(
   root: string,
   state: RunState,
+  workflow: WorkflowDefinition,
   stage: StageDefinition,
   attempt: number,
 ): void {
@@ -349,16 +376,7 @@ function ensureImplementationRepositoryCheckBaselines(
     return
   }
 
-  const profiles = stage.criteria
-    .filter((criterion) => criterion.type === 'shell')
-    .map((criterion) => ({
-      name: repositoryCheckProfileName(criterion.command ?? ''),
-      timeout_ms: criterion.timeout_ms,
-    }))
-    .filter(
-      (profile): profile is { name: string; timeout_ms: number | undefined } =>
-        profile.name !== null,
-    )
+  const profiles = collectWorkflowRepositoryCheckProfiles(workflow)
   const baselines = (state.repository_check_baselines ??= {})
 
   for (const profile of profiles) {
@@ -1071,7 +1089,7 @@ export function prepareInvocation(
     state.attempts[stage.slug] = attempt
 
     ensureMutatingWorkflowInitialized(root, state, stage)
-    ensureImplementationRepositoryCheckBaselines(root, state, stage, attempt)
+    ensureWorkflowRepositoryCheckBaselines(root, state, workflow, stage, attempt)
 
     if (stage.executor === 'harness') {
       return executeHarnessStage(root, state, stage, attempt)

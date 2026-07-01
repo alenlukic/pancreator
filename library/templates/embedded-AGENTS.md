@@ -28,7 +28,7 @@ This directory contains the Pancreator harness installed for the parent reposito
 - Named worker stages MUST be delegated to the matching Cursor subagent.
 - Agents MUST write only declared outputs and permitted evidence.
 - Deterministic transitions and gates belong to the harness.
-- Before the first implementation invocation, the harness captures configured static and fast checks. Unchanged pre-existing failures remain evidence but do not block; new or changed diagnostics do.
+- Before the first implementation invocation, the harness captures every repository-check profile referenced by deterministic stage gates. Unchanged pre-existing failures remain evidence but do not block; new or changed diagnostics do.
 - Two consecutive hard failures with the same normalized signature pause immediately. An implementation retry MUST directly remediate the recorded cause rather than repeat an unchanged submission.
 - Operator approvals and irreversible actions MUST remain operator-owned.
 
