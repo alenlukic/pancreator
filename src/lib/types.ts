@@ -137,12 +137,18 @@ export interface PolicyRequirement {
   applicability?: Record<string, string>
 }
 
+export interface PolicyGuidance {
+  source_path: string
+  content: string
+}
+
 export interface Policy {
   id: string
   title: string
   severity: 'hard' | 'soft'
   summary: string
   instructions: string[]
+  guidance?: PolicyGuidance[]
   requirements?: PolicyRequirement[]
 }
 

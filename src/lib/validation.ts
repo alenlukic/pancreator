@@ -245,6 +245,25 @@ export function validateInvocationMarkdown(
           : `Markdown MUST include policy ${policy.id} instruction ${index + 1}`,
       })
     }
+
+    for (const [index, guidance] of (policy.guidance ?? []).entries()) {
+      const heading = `### Unrolled guidance · \`${guidance.source_path}\``
+
+      checks.push({
+        id: `policy.${policy.id}.guidance.${index + 1}.heading`,
+        passed: normalized.includes(heading),
+        message: normalized.includes(heading)
+          ? `Policy ${policy.id} guidance ${index + 1} heading is present`
+          : `Markdown MUST identify unrolled guidance ${guidance.source_path}`,
+      })
+      checks.push({
+        id: `policy.${policy.id}.guidance.${index + 1}.content`,
+        passed: normalized.includes(guidance.content),
+        message: normalized.includes(guidance.content)
+          ? `Policy ${policy.id} guidance ${index + 1} content is present`
+          : `Markdown MUST inline guidance from ${guidance.source_path}`,
+      })
+    }
   }
 
   if (invocation.requirements) {
@@ -1160,6 +1179,8 @@ function listMarkdownFiles(directory: string): string[] {
 
 const CODE_REVIEW_PERSONAS = new Set(['coder', 'reviewer', 'qa-tester'])
 const POLICY_REFERENCE_PATTERN = /\b[A-Z][A-Z0-9]*-\d{3}\b/gu
+const STATIC_GUIDANCE_PATH_PATTERN =
+  /\b(?:governance\/handbooks|library\/skills)\/[A-Za-z0-9._/-]+\.md\b/gu
 
 interface HandbookPolicyRequirement {
   handbook_path: string
@@ -1206,14 +1227,14 @@ function validateHandbookPolicyCoverage(
 
   const policyIds = new Set<string>()
   const matches = [...catalog.values()].filter((policy) =>
-    [policy.summary, ...policy.instructions].some((text) =>
-      text.includes(requirement.handbook_path),
+    (policy.guidance ?? []).some(
+      (guidance) => guidance.source_path === requirement.handbook_path,
     ),
   )
 
   if (matches.length === 0) {
     errors.push(
-      `${requirement.handbook_path} MUST be referenced by at least one policy`,
+      `${requirement.handbook_path} MUST be unrolled by at least one policy`,
     )
     return policyIds
   }
@@ -1254,6 +1275,21 @@ function validateGovernance(
         )
       }
     }
+
+    const declaredGuidance = new Set(
+      (policy.guidance ?? []).map((guidance) => guidance.source_path),
+    )
+    const staticReferences = [policy.summary, ...policy.instructions].flatMap(
+      (text) => text.match(STATIC_GUIDANCE_PATH_PATTERN) ?? [],
+    )
+
+    for (const guidancePath of new Set(staticReferences)) {
+      if (!declaredGuidance.has(guidancePath)) {
+        errors.push(
+          `${policy.id} references static guidance ${guidancePath} without unrolling it through guidance_sources`,
+        )
+      }
+    }
   }
 
   const handbookPolicies = new Map<string, Set<string>>()
@@ -1284,7 +1320,11 @@ function lookupRowCovers(
 }
 
 function referencedPolicyIds(policy: Policy): Set<string> {
-  const text = [policy.summary, ...policy.instructions].join('\n')
+  const text = [
+    policy.summary,
+    ...policy.instructions,
+    ...(policy.guidance ?? []).map((guidance) => guidance.content),
+  ].join('\n')
   return new Set(text.match(POLICY_REFERENCE_PATTERN) ?? [])
 }
 

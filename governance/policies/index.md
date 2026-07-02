@@ -2,7 +2,7 @@
 
 The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in this document indicate requirement levels as defined by RFC 2119 and RFC 8174.
 
-Policies MUST be small, globally identified JSON modules. `governance/registries/policy_lookup_table.json` MUST select policies by persona, workflow, and stage. The harness MUST union all matching rows and snapshot the resulting policies into each invocation card.
+Policies MUST be small, globally identified JSON modules. `governance/registries/policy_lookup_table.json` MUST select policies by persona, workflow, and stage. The harness MUST union all matching rows and snapshot the resulting policies into each invocation card. A policy that depends on durable static guidance MUST declare it through `guidance_sources`; the resolver MUST snapshot the selected guidance content into the invocation rather than require the worker to open the source file.
 
 - `GLOBAL-001` — operator-first records
 - `GLOBAL-002` — bounded context retrieval

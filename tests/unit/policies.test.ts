@@ -98,6 +98,44 @@ test('policy registry content remains canonical for inlining', () => {
   assert.equal(action.instructions.length, 2)
 })
 
+test('policy resolution snapshots handbook and skill guidance', () => {
+  const root = createFixture()
+  const catalog = loadPolicyCatalog(root)
+  const engineering = catalog.get('ENG-001')
+  const typescript = catalog.get('TS-001')
+  const pullRequest = catalog.get('PR-001')
+
+  assert.ok(engineering)
+  assert.deepEqual(
+    engineering.guidance?.map((guidance) => guidance.source_path),
+    ['governance/handbooks/eng/engineering.md'],
+  )
+  assert.match(
+    engineering.guidance?.[0]?.content ?? '',
+    /A change MUST be the smallest coherent change/u,
+  )
+
+  assert.ok(typescript)
+  assert.deepEqual(
+    typescript.guidance?.map((guidance) => guidance.source_path),
+    [
+      'governance/handbooks/typescript/style-guide.md',
+      'governance/handbooks/typescript/node.md',
+    ],
+  )
+  assert.match(typescript.guidance?.[0]?.content ?? '', /## Core principles/u)
+  assert.doesNotMatch(
+    typescript.guidance?.[0]?.content ?? '',
+    /Appendix A: Formatter-owned rules/u,
+  )
+
+  assert.ok(pullRequest)
+  assert.match(
+    pullRequest.guidance?.[0]?.content ?? '',
+    /## File format \(normative\)/u,
+  )
+})
+
 test('orchestration and release guidance resolve with required policy dependencies', () => {
   const root = createFixture()
   const orchestratorIds = resolvePolicies(root, {

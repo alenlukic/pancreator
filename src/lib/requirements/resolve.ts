@@ -214,6 +214,7 @@ export function resolveRequirements(
     policyVersions[policy.id] = sha256({
       summary: policy.summary,
       instructions: policy.instructions,
+      ...(policy.guidance ? { guidance: policy.guidance } : {}),
       requirements: policy.requirements ?? [],
     })
 

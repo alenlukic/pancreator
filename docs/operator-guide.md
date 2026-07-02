@@ -34,6 +34,11 @@ on the same invocation so delivery can be corrected and resubmitted.
 `./bin/pan status` includes a dedicated validation section with invocation and
 delegation validation state, artifact paths, and short failure reasons.
 
+Applicable durable handbooks and static skills are resolved through policy
+`guidance_sources` and embedded directly in the invocation card. A worker MUST
+receive that unrolled guidance with the canonical card; a source-file path is
+not a substitute for delivering the content.
+
 ## Build the target repository primer
 
 Run `/pan-build-docs` after installation, after major architectural or administrative changes, or when the existing primer is materially stale. The command creates the primer when absent and regenerates it when present. The librarian inventories target-owned documentation, incorporates useful verified details into the appropriate sections, and reconciles those claims against representative code, setup/build/install/test scripts, manifests, and bounded Git history before writing the validated primer to `docs/target-repo-primer.md` (`.pancreator/docs/target-repo-primer.md` when embedded).

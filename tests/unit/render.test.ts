@@ -6,6 +6,7 @@ import { resolvePolicies } from '../../src/lib/policies.js'
 import {
   buildValidationArtifact,
   invocationValidationPath,
+  validateInvocationMarkdown,
 } from '../../src/lib/validation.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { createFixture } from '../helpers.js'
@@ -137,8 +138,41 @@ test('invocation cards inline full policy text for every stage', () => {
           new RegExp(instruction.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
         )
       }
+
+      for (const guidance of policy.guidance ?? []) {
+        assert.ok(
+          markdown.includes(
+            `### Unrolled guidance · \`${guidance.source_path}\``,
+          ),
+        )
+        assert.ok(markdown.includes(guidance.content))
+      }
     }
   }
+})
+
+test('invocation validation fails when unrolled guidance is omitted', () => {
+  const root = createFixture()
+  const invocation = baseInvocation(root, 'dev', 'implement')
+  const markdown = renderInvocationMarkdown(invocation)
+  const engineeringGuidance = invocation.policies.find(
+    (policy) => policy.id === 'ENG-001',
+  )?.guidance?.[0]
+
+  assert.ok(engineeringGuidance)
+
+  const result = validateInvocationMarkdown(
+    invocation,
+    markdown.replace(engineeringGuidance.content, ''),
+  )
+
+  assert.equal(result.passed, false)
+  assert.ok(
+    result.checks.some(
+      (check) =>
+        check.id === 'policy.ENG-001.guidance.1.content' && !check.passed,
+    ),
+  )
 })
 
 test('status summary renders a dedicated validation section for pass state', () => {

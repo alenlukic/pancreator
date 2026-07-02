@@ -2,9 +2,10 @@ import { readdirSync } from 'node:fs'
 import path from 'node:path'
 
 import { invariant } from './errors.js'
-import { isRecord, readJson } from './io.js'
+import { isRecord, readJson, readText, resolveInside } from './io.js'
 import type {
   Policy,
+  PolicyGuidance,
   PolicyLookupRow,
   PolicyLookupTable,
   PolicyRequirement,
@@ -18,11 +19,79 @@ interface PolicyContext {
   stage: string
 }
 
+interface PolicyGuidanceSource {
+  path: string
+  start_heading?: string
+  end_heading?: string
+}
+
 function matches(pattern: string, value: string): boolean {
   return pattern === '*' || pattern === value
 }
 
-function parsePolicy(value: unknown, source: string): Policy {
+function parseGuidanceSource(
+  root: string,
+  value: unknown,
+  source: string,
+): PolicyGuidance {
+  invariant(isRecord(value), `${source} MUST be an object.`, {
+    code: 'INVALID_POLICY',
+  })
+  invariant(
+    typeof value.path === 'string' && value.path.length > 0,
+    `${source}.path MUST be a non-empty string.`,
+    { code: 'INVALID_POLICY' },
+  )
+  invariant(
+    value.start_heading === undefined ||
+      (typeof value.start_heading === 'string' &&
+        value.start_heading.length > 0),
+    `${source}.start_heading MUST be a non-empty string when present.`,
+    { code: 'INVALID_POLICY' },
+  )
+  invariant(
+    value.end_heading === undefined ||
+      (typeof value.end_heading === 'string' && value.end_heading.length > 0),
+    `${source}.end_heading MUST be a non-empty string when present.`,
+    { code: 'INVALID_POLICY' },
+  )
+
+  const definition = value as unknown as PolicyGuidanceSource
+  const fullContent = readText(resolveInside(root, definition.path)).trim()
+  let startIndex = 0
+  let endIndex = fullContent.length
+
+  if (definition.start_heading) {
+    startIndex = fullContent.indexOf(definition.start_heading)
+    invariant(
+      startIndex >= 0,
+      `${source}.start_heading was not found in ${definition.path}.`,
+      { code: 'INVALID_POLICY' },
+    )
+  }
+
+  if (definition.end_heading) {
+    endIndex = fullContent.indexOf(definition.end_heading, startIndex)
+    invariant(
+      endIndex >= 0,
+      `${source}.end_heading was not found in ${definition.path}.`,
+      { code: 'INVALID_POLICY' },
+    )
+  }
+
+  invariant(
+    endIndex > startIndex,
+    `${source} MUST select non-empty guidance from ${definition.path}.`,
+    { code: 'INVALID_POLICY' },
+  )
+
+  return {
+    source_path: definition.path,
+    content: fullContent.slice(startIndex, endIndex).trim(),
+  }
+}
+
+function parsePolicy(root: string, value: unknown, source: string): Policy {
   invariant(isRecord(value), `${source}: policy MUST be an object.`, {
     code: 'INVALID_POLICY',
   })
@@ -54,6 +123,19 @@ function parsePolicy(value: unknown, source: string): Policy {
   )
 
   let requirements: PolicyRequirement[] | undefined
+  let guidance: PolicyGuidance[] | undefined
+
+  if (value.guidance_sources !== undefined) {
+    invariant(
+      Array.isArray(value.guidance_sources),
+      `${source}: guidance_sources MUST be an array when present.`,
+      { code: 'INVALID_POLICY' },
+    )
+
+    guidance = value.guidance_sources.map((item, index) =>
+      parseGuidanceSource(root, item, `${source}:guidance_sources[${index}]`),
+    )
+  }
 
   if (value.requirements !== undefined) {
     invariant(
@@ -75,7 +157,12 @@ function parsePolicy(value: unknown, source: string): Policy {
   }
 
   return {
-    ...(value as unknown as Policy),
+    id: value.id,
+    title: value.title,
+    severity: value.severity,
+    summary: value.summary,
+    instructions: value.instructions,
+    guidance,
     requirements,
   }
 }
@@ -141,7 +228,7 @@ export function loadPolicyCatalog(root: string): Map<string, Policy> {
     .sort()
 
   for (const name of names) {
-    const policy = parsePolicy(readJson(path.join(dir, name)), name)
+    const policy = parsePolicy(root, readJson(path.join(dir, name)), name)
 
     invariant(!catalog.has(policy.id), `Duplicate policy id: ${policy.id}`, {
       code: 'DUPLICATE_POLICY',
