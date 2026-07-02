@@ -47,8 +47,8 @@ test('release metadata validation requires the changelog latest release to match
   const version = readFileSync(path.join(root, 'VERSION'), 'utf8').trim()
   const changelogPath = path.join(root, 'CHANGELOG.md')
   const changelog = readFileSync(changelogPath, 'utf8').replace(
-    `## [${version}] - 2026-06-28`,
-    '## [999.0.0] - 2026-06-28',
+    /^## \[[^\]]+\] - \d{4}-\d{2}-\d{2}$/mu,
+    '## [999.0.0] - 2099-01-01',
   )
 
   writeFileSync(changelogPath, changelog)

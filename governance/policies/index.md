@@ -16,7 +16,8 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 - `PAUSE-001` — operator pause authority and workspace edits while paused
 - `ORCH-001` — supervisor continuation and stop conditions
 - `INVOCATION-001` — canonical invocation validation and delegation delivery
-- `WAIVER-001` — explicit fingerprint-bound gate waivers and deferred follow-up
+- `OPERATOR-001` — operator supremacy and execution of explicit directives
+- `WAIVER-001` — flexible operator waiver directives and optional follow-up
 - `ENG-001` — engineering handbook baseline and proportionate automated-test coverage
 - `INTAKE-001` — faithful intake
 - `PLAN-001` — proportionate planning

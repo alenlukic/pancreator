@@ -5,6 +5,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
+  abortRun,
   assessStage,
   createRun,
   getRunState,
@@ -204,13 +205,13 @@ test('gate waivers can override a failed supervisor assessment', () => {
   assert.equal(waived.waiver.criterion_ids[0], 'plan.complete_mapping')
 })
 
-test('gate waivers reject partial criteria and post-failure workspace drift', () => {
+test('gate waivers honor partial scope after workspace drift', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'dev')
   const state = createRun(root, {
     workflowSlug: 'dev',
     requestPath: 'request.md',
-    title: 'Rejected gate waiver fixture',
+    title: 'Flexible gate waiver fixture',
   })
   const runId = state.run_id
 
@@ -236,30 +237,115 @@ test('gate waivers reject partial criteria and post-failure workspace drift', ()
 
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
-  submitOutput(root, runId, invocation.output.path)
-  setRunStage(root, runId, 'review', 'Adjudicate the failed review attempt.')
-  pauseRun(root, runId, 'Operator is reviewing the failed criteria.')
+  const failed = submitOutput(root, runId, invocation.output.path)
 
-  assert.throws(
-    () =>
-      waiveGate(root, runId, {
-        criterionIds: ['review.acceptance_met'],
-        note: 'Only one of the two failed criteria was selected.',
-      }),
-    /exactly match the failed hard criteria/u,
-  )
+  assert.equal(failed.state.current_stage, 'implement')
 
   writeFileSync(
     path.join(root, 'src', 'base.ts'),
     'export const base = true\nexport const drifted = true\n',
   )
 
-  assert.throws(
-    () =>
-      waiveGate(root, runId, {
-        criterionIds: ['review.acceptance_met', 'review.tests_correct'],
-        note: 'The criteria are complete, but the workspace has moved.',
-      }),
-    /Workspace changed after the failed gate/u,
+  const waived = waiveGate(root, runId, {
+    stageSlug: 'review',
+    criterionIds: ['review.acceptance_met'],
+    targetStage: 'test',
+    note: 'Waive only acceptance coverage. The operator accepts the separate test concern and the current workspace exactly as it stands.',
+  })
+
+  assert.equal(waived.state.status, 'running')
+  assert.equal(waived.state.current_stage, 'test')
+  assert.deepEqual(waived.waiver.criterion_ids, ['review.acceptance_met'])
+  assert.notEqual(
+    waived.waiver.source_workspace_fingerprint,
+    waived.waiver.workspace_fingerprint,
   )
+  assert.match(
+    readFileSync(path.join(root, waived.waiver.artifact_path), 'utf8'),
+    /accepts the separate test concern and the current workspace exactly as it stands/u,
+  )
+})
+
+test('gate waivers can bypass malformed output without another agent attempt', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Malformed output waiver fixture',
+  })
+  const runId = state.run_id
+
+  setRunStage(root, runId, 'implement', 'Initialize tracked workspace state.')
+  prepareInvocation(root, runId)
+  setRunStage(root, runId, 'review', 'Create malformed review evidence.')
+
+  const invocation = prepareInvocation(root, runId).invocation
+
+  assert.ok(invocation)
+
+  const output = makeOutput(root, invocation, stageBySlug(workflow, 'review'))
+  output.invocation_id = 'wrong-invocation-id'
+
+  writeJson(path.join(root, invocation.output.path), output)
+  writeCanonicalDelegation(root, invocation)
+  const submitted = submitOutput(root, runId, invocation.output.path)
+
+  assert.equal(submitted.record.outcome, 'failure')
+  assert.ok(submitted.record.evaluation.validation_errors.length > 0)
+
+  const waived = waiveGate(root, runId, {
+    stageSlug: 'review',
+    note: 'The malformed review record is paperwork only. Proceed directly to test without paying for another review attempt.',
+  })
+
+  assert.equal(waived.state.current_stage, 'test')
+  assert.deepEqual(waived.waiver.criterion_ids, ['*'])
+  assert.ok((waived.waiver.validation_errors ?? []).length > 0)
+  assert.match(
+    readFileSync(path.join(root, waived.waiver.artifact_path), 'utf8'),
+    /Known malformed or missing evidence/u,
+  )
+})
+
+test('gate waivers can bypass an unattempted stage', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Pre-attempt waiver fixture',
+  })
+  const runId = state.run_id
+
+  setRunStage(root, runId, 'test', 'Operator elects not to run QA.')
+
+  const waived = waiveGate(root, runId, {
+    stageSlug: 'test',
+    note: 'Skip QA entirely and continue to validate-changes.',
+  })
+
+  assert.equal(waived.state.current_stage, 'validate-changes')
+  assert.equal(waived.waiver.source_attempt, 0)
+  assert.deepEqual(waived.waiver.criterion_ids, ['*'])
+})
+
+test('operator waiver can redirect a terminal run', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Terminal override fixture',
+  })
+  const runId = state.run_id
+
+  abortRun(root, runId, 'Initial operator decision.')
+
+  const waived = waiveGate(root, runId, {
+    stageSlug: 'test',
+    targetStage: 'ship',
+    note: 'Reopen the canceled run at ship. This directive supersedes the prior cancellation.',
+  })
+
+  assert.equal(waived.state.status, 'running')
+  assert.equal(waived.state.current_stage, 'ship')
 })

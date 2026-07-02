@@ -6,6 +6,7 @@
       "workflow": "*",
       "stage": "*",
       "policies": [
+        "OPERATOR-001",
         "GLOBAL-001",
         "GLOBAL-002",
         "ACTION-001",

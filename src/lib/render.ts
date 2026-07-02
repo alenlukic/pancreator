@@ -150,6 +150,8 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
     '',
     ...requiredDataLines,
     '',
+    'When tracked workspace files change during the stage, include top-level `workspace_changes` with `attribution`, every changed path in `paths`, and a concise `explanation`. Use `attribution: internal` only when the active worker can trace every listed change to its own actions; the cleanliness gate blocks only external or unattributed contamination.',
+    '',
     '## 🚧 Boundaries',
     '',
     ...invocation.boundaries.map((item) => `- ${item}`),
@@ -237,7 +239,7 @@ export function renderStatus(
     for (const waiver of state.operator_gate_waivers ?? []) {
       lines.push(
         `- ${waiver.stage} attempt ${waiver.source_attempt}: ` +
-          `${waiver.criterion_ids.join(', ')} ` +
+          `${waiver.criterion_ids.join(', ')} → ${waiver.directive_target ?? 'stage success'} ` +
           `(${waiver.artifact_path})`,
       )
 

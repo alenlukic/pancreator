@@ -5,11 +5,13 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
+  compareRepositoryCheckToBaseline,
   loadRepositoryChecks,
   repositoryChecksSourcePath,
   runRepositoryCheck,
   runRepositoryCheckStreaming,
 } from '../../src/lib/repository-checks.js'
+import type { RepositoryCheckResult } from '../../src/lib/repository-checks.js'
 import { createFixture } from '../helpers.js'
 
 function makeInstallation(): { root: string; workspace: string } {
@@ -143,6 +145,59 @@ test('repository check configuration rejects identical fast and full commands', 
     () => loadRepositoryChecks(root),
     /profiles\.fast MUST NOT duplicate profiles\.full/u,
   )
+})
+
+function failedCheck(
+  stderr: string,
+  workspaceRoot = '/workspace',
+): RepositoryCheckResult {
+  return {
+    profile: 'static',
+    status: 'failed',
+    config_path: '/harness/runtime/repository-checks.json',
+    workspace_root: workspaceRoot,
+    timeout_ms: 60_000,
+    results: [
+      {
+        kind: 'command',
+        command: 'npm run lint',
+        exit_code: 1,
+        signal: null,
+        stdout: '',
+        stderr,
+        passed: false,
+        timed_out: false,
+      },
+    ],
+  }
+}
+
+test('baseline comparison tolerates line movement and improving failure counts', () => {
+  const baseline = failedCheck(
+    '/workspace/src/a.ts:10:2 error Unexpected value no-example\n✖ 2 problems (2 errors, 0 warnings)\n',
+  )
+  const current = failedCheck(
+    '/workspace/src/a.ts:40:9 error Unexpected value no-example\n✖ 1 problem (1 error, 0 warnings)\n',
+  )
+
+  const comparison = compareRepositoryCheckToBaseline(baseline, current)
+
+  assert.equal(comparison.passed, true)
+})
+
+test('baseline comparison rejects a new diagnostic from the same command', () => {
+  const baseline = failedCheck(
+    '/workspace/src/a.ts:10:2 error Unexpected value no-example\n',
+  )
+  const current = failedCheck(
+    '/workspace/src/a.ts:40:9 error Unexpected value no-example\n' +
+      '/workspace/src/b.ts:3:1 error New failure no-new\n',
+  )
+
+  const comparison = compareRepositoryCheckToBaseline(baseline, current)
+
+  assert.equal(comparison.passed, false)
+  assert.match(comparison.explanation, /new or changed/u)
 })
 
 test('streaming repository checks emit subprocess output before returning the result', async () => {

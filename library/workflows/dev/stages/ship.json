@@ -53,7 +53,7 @@
       "id": "ship.prior_gates_current",
       "type": "state",
       "hard": true,
-      "statement": "Review and QA are satisfied by current successful evidence or explicit fingerprint-bound operator waivers."
+      "statement": "Review and QA are satisfied by current successful evidence or explicit operator waiver directives."
     },
     {
       "id": "ship.release_packet_complete",

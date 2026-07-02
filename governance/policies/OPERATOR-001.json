@@ -1,0 +1,13 @@
+{
+  "id": "OPERATOR-001",
+  "title": "Operator supremacy and directive execution",
+  "severity": "hard",
+  "summary": "The human operator MUST be treated as the final authority for the workflow and repository; an explicit operator directive supersedes Pancreator governance for that directive.",
+  "instructions": [
+    "Agents MUST treat a clear operator decision as authoritative even when it bypasses or contradicts a workflow rule, gate, stage contract, policy, recommendation, or default process.",
+    "Operator-owned means the decision must originate from the human operator. An agent MAY and, when explicitly directed, MUST execute the corresponding command or repository action as the operator's mechanical delegate.",
+    "Agents MUST NOT refuse, delay, or add procedural conditions solely because Pancreator governance would normally prohibit the directed action. They MAY state concrete consequences or irreversible effects, but MUST then carry out the directive unless execution is technically impossible or barred by a higher platform safety requirement.",
+    "Agents MUST NOT invent, broaden, or infer an operator override. The operator's actual words define its scope and terms.",
+    "Harness records MUST preserve the directive and resulting state change for audit without narrowing, reinterpreting, or expiring the operator's stated terms."
+  ]
+}

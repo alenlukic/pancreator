@@ -110,6 +110,7 @@ test('review validator rejects findings without evidence', () => {
               id: 'f1',
               severity: 'high',
               remediation_stage: 'implement',
+              resolution: 'unresolved',
             },
           ],
           acceptance_results: [{ id: 'AC-01', result: 'pass' }],
@@ -154,6 +155,7 @@ test('review validator rejects summary-only findings', () => {
               id: 'f1',
               severity: 'medium',
               remediation_stage: 'implement',
+              resolution: 'unresolved',
               summary: 'Observed a maintainability risk.',
             },
           ],
@@ -239,6 +241,7 @@ test('review validator binds acceptance coverage to accepted plan', () => {
               id: 'f1',
               severity: 'high',
               remediation_stage: 'implement',
+              resolution: 'unresolved',
               evidence: ['runtime/logs/workflows/example.md'],
             },
           ],
@@ -424,6 +427,177 @@ test('implementation validator rejects unknown acceptance ids', () => {
   assert.ok(result.issues.some((issue) => issue.code === 'acceptance.unknown'))
 })
 
+test('implementation retry requires explicit remediation evidence', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'pan-impl-remediation-'))
+  const target = 'output.json'
+
+  writeFileSync(
+    path.join(root, target),
+    `${JSON.stringify({
+      data: {
+        implementation: {
+          changed_files: [],
+          tests_added: [],
+          notes: [],
+        },
+        acceptance_results: [
+          { id: 'AC-01', result: 'pass', evidence: ['verified'] },
+        ],
+      },
+    })}\n`,
+  )
+
+  const result = validateImplementationClaims({
+    root,
+    targetPath: target,
+    invocation: { attempt: 2 },
+    requirement: {
+      policy_id: 'DEV-001',
+      requirement_id: 'implementation-claims',
+      registry_id: 'IMPLEMENTATION-CLAIMS-VALIDATE-001',
+      arguments: {},
+    },
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.ok(
+    result.issues.some(
+      (issue) => issue.code === 'implementation.remediation_missing',
+    ),
+  )
+})
+
+test('implementation retry accepts targeted remediation evidence', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'pan-impl-remediation-pass-'))
+  const target = 'output.json'
+
+  writeFileSync(
+    path.join(root, target),
+    `${JSON.stringify({
+      data: {
+        implementation: {
+          changed_files: [],
+          tests_added: [],
+          notes: [],
+          remediation: [
+            {
+              cause: 'implement.lint reported a new diagnostic',
+              action: 'Corrected the offending implementation path',
+              evidence: ['runtime/logs/workflows/run/evidence/lint.log'],
+            },
+          ],
+        },
+        acceptance_results: [
+          { id: 'AC-01', result: 'pass', evidence: ['verified'] },
+        ],
+      },
+    })}\n`,
+  )
+
+  const result = validateImplementationClaims({
+    root,
+    targetPath: target,
+    invocation: { attempt: 2 },
+    requirement: {
+      policy_id: 'DEV-001',
+      requirement_id: 'implementation-claims',
+      registry_id: 'IMPLEMENTATION-CLAIMS-VALIDATE-001',
+      arguments: {},
+    },
+  })
+
+  assert.ok(
+    !result.issues.some((issue) =>
+      issue.code.startsWith('implementation.remediation'),
+    ),
+  )
+})
+
+test('review validator accepts disclosed reviewer remediation', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'pan-review-remediation-'))
+  const target = 'output.json'
+
+  writeFileSync(
+    path.join(root, target),
+    `${JSON.stringify({
+      data: {
+        review: {
+          verdict: 'pass',
+          findings: [
+            {
+              id: 'f1',
+              severity: 'medium',
+              remediation_stage: 'review',
+              resolution: 'resolved_in_review',
+              changed_files: ['src/example.ts'],
+              evidence: ['Focused test passes after the local fix'],
+            },
+          ],
+          acceptance_results: [{ id: 'AC-01', result: 'pass' }],
+          maintenance_assessment:
+            'Bounded issue repaired without structural change.',
+        },
+      },
+    })}\n`,
+  )
+
+  const result = validateReviewOutput({
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'REVIEW-001',
+      requirement_id: 'review',
+      registry_id: 'REVIEW-VALIDATE-001',
+      arguments: {},
+    },
+  })
+
+  assert.equal(result.status, 'passed')
+})
+
+test('review validator routes unresolved findings to implementation', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'pan-review-unresolved-'))
+  const target = 'output.json'
+
+  writeFileSync(
+    path.join(root, target),
+    `${JSON.stringify({
+      data: {
+        review: {
+          verdict: 'pass',
+          findings: [
+            {
+              id: 'f1',
+              severity: 'high',
+              remediation_stage: 'implement',
+              resolution: 'unresolved',
+              evidence: ['The fix requires a public API redesign'],
+            },
+          ],
+          acceptance_results: [{ id: 'AC-01', result: 'pass' }],
+          maintenance_assessment: 'Structural issue remains.',
+        },
+      },
+    })}\n`,
+  )
+
+  const result = validateReviewOutput({
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'REVIEW-001',
+      requirement_id: 'review',
+      registry_id: 'REVIEW-VALIDATE-001',
+      arguments: {},
+    },
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.ok(
+    result.issues.some((issue) => issue.code === 'review.verdict_inconsistent'),
+  )
+})
+
 test('implementation validator fails closed when git is unavailable', () => {
   const root = mkdtempSync(path.join(tmpdir(), 'pan-impl-git-'))
   const target = 'output.json'
@@ -478,6 +652,7 @@ test('review validator rejects duplicate and unknown acceptance ids', () => {
               id: 'f1',
               severity: 'high',
               remediation_stage: 'implement',
+              resolution: 'unresolved',
             },
           ],
           acceptance_results: [
@@ -586,6 +761,121 @@ test('qa validator binds acceptance coverage to accepted plan', () => {
   assert.equal(result.status, 'passed')
   assert.ok(
     !result.issues.some((issue) => issue.code === 'qa.acceptance_coverage'),
+  )
+})
+
+test('qa validator accepts pytest node ids and slash-bearing observations', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'pan-qa-evidence-'))
+  const runId = 'run-qa-evidence'
+  const target = `runtime/logs/workflows/${runId}/outputs/test-1-test.json`
+  const absolute = path.join(root, target)
+
+  mkdirSync(path.dirname(absolute), { recursive: true })
+  mkdirSync(path.join(root, 'tests'), { recursive: true })
+  writePlanOutput(root, runId, ['AC-01'])
+  writeFileSync(path.join(root, 'tests', 'sample_test.py'), '# fixture\n')
+  writeFileSync(
+    absolute,
+    `${JSON.stringify({
+      data: {
+        qa_report: {
+          verdict: 'pass',
+          cases: [
+            {
+              id: 'QA-01',
+              steps: 'Run the focused test and inspect helper branches',
+              expected: 'Both branches pass',
+              actual: 'Both branches pass',
+              result: 'pass',
+            },
+          ],
+          defects: [],
+          acceptance_results: [
+            {
+              id: 'AC-01',
+              result: 'pass',
+              evidence: [
+                'tests/sample_test.py::test_case',
+                'Direct helper output for true/false branches',
+              ],
+            },
+          ],
+        },
+      },
+    })}\n`,
+  )
+
+  const result = validateQaOutput({
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'TEST-001',
+      requirement_id: 'qa-validate',
+      registry_id: 'QA-VALIDATE-001',
+      arguments: {},
+    },
+  })
+
+  assert.equal(result.status, 'passed')
+  assert.ok(
+    !result.issues.some((issue) => issue.code === 'qa.evidence_missing'),
+  )
+})
+
+test('qa validator still rejects explicitly declared missing evidence paths', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'pan-qa-missing-evidence-'))
+  const runId = 'run-qa-missing-evidence'
+  const target = `runtime/logs/workflows/${runId}/outputs/test-1-test.json`
+  const absolute = path.join(root, target)
+
+  mkdirSync(path.dirname(absolute), { recursive: true })
+  writePlanOutput(root, runId, ['AC-01'])
+  writeFileSync(
+    absolute,
+    `${JSON.stringify({
+      data: {
+        qa_report: {
+          verdict: 'pass',
+          cases: [
+            {
+              id: 'QA-01',
+              steps: 'Inspect evidence',
+              expected: 'Evidence exists',
+              actual: 'Evidence is missing',
+              result: 'pass',
+            },
+          ],
+          defects: [],
+          acceptance_results: [
+            {
+              id: 'AC-01',
+              result: 'pass',
+              evidence: ['path:tests/missing.py'],
+            },
+          ],
+        },
+      },
+    })}\n`,
+  )
+
+  const result = validateQaOutput({
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'TEST-001',
+      requirement_id: 'qa-validate',
+      registry_id: 'QA-VALIDATE-001',
+      arguments: {},
+    },
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.ok(
+    result.issues.some(
+      (issue) =>
+        issue.code === 'qa.evidence_missing' &&
+        issue.message.includes('tests/missing.py'),
+    ),
   )
 })
 

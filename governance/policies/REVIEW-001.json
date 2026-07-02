@@ -2,12 +2,14 @@
   "id": "REVIEW-001",
   "title": "Independent review",
   "severity": "hard",
-  "summary": "Review MUST evaluate the resulting workspace independently and MUST NOT silently repair implementation defects.",
+  "summary": "Review MUST independently evaluate the workspace, remediate bounded non-structural defects, and route only major, structural, ambiguous, or unresolved hard findings back to implementation.",
   "instructions": [
-    "Review MUST verify acceptance criteria, test quality, maintainability, and scope control against evidence.",
-    "Each finding MUST include severity, evidence, and an owning remediation stage.",
-    "The review gate MUST fail when any hard blocker remains unresolved.",
-    "Before submission, review findings, acceptance-criterion coverage, verdict consistency, and the referenced review artifact MUST run their resolved policy-bound validators under VALID-001."
+    "Review MUST verify acceptance criteria, test quality, maintainability, and scope control against evidence before choosing a verdict.",
+    "The reviewer MUST remediate a finding when intended behavior is unambiguous, the fix is local and low-risk, and it does not alter architecture, public interfaces, data or persistence models, security boundaries, dependency strategy, requirements, or the approved approach.",
+    "A finding MUST route to implementation when it requires a broad refactor, cross-component redesign, migration, structural decision, operator judgment, or has uncertain blast radius.",
+    "Each finding MUST include severity, evidence, remediation ownership, and whether the reviewer resolved it or left it unresolved. Reviewer edits MUST be disclosed and validated rather than applied silently.",
+    "The review gate MUST fail when any hard blocker remains unresolved; a hard finding repaired and validated during review does not require a review-to-implementation loop.",
+    "Before submission, review findings, acceptance-criterion coverage, verdict consistency, reviewer remediation, and the referenced review artifact MUST run their resolved policy-bound validators under VALID-001."
   ],
   "requirements": [
     {

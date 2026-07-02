@@ -3,7 +3,7 @@
   "title": "Independent review",
   "persona": "reviewer",
   "prompt_path": "library/workflows/dev/prompts/review.md",
-  "workspace_policy": "read_only",
+  "workspace_policy": "source_allowed",
   "gate": "stage_verdict",
   "context": {
     "request": "omit",

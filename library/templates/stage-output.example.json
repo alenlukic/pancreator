@@ -24,5 +24,10 @@
   ],
   "risks": [],
   "unknowns": [],
+  "workspace_changes": {
+    "attribution": "unknown",
+    "paths": [],
+    "explanation": "Remove this object when no tracked workspace files changed. When files changed, list every path and use internal only when the active worker can trace every change to its own actions."
+  },
   "data": {}
 }

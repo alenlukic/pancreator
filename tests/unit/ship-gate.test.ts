@@ -161,7 +161,7 @@ test('ship gate does not infer a waiver from an operator resume note', () => {
   assert.equal(result.passed, false)
 })
 
-test('ship gate rejects a waiver bound to a different fingerprint', () => {
+test('ship gate honors an operator waiver despite a different fingerprint', () => {
   const review = historyItem('review', 'fp-current', 'failure')
   const waiver = waiverFor(review)
 
@@ -173,5 +173,6 @@ test('ship gate rejects a waiver bound to a different fingerprint', () => {
 
   const result = evaluateStateCriterion(state, CRITERION, 'fp-current')
 
-  assert.equal(result.passed, false)
+  assert.equal(result.passed, true)
+  assert.match(result.explanation ?? '', /operator-waived/i)
 })

@@ -124,6 +124,37 @@ A stage is successful only when all of the following hold:
 
 A `blocked` result pauses. A failure follows the declared remediation transition. A successful result may still wait at a supervisor or operator gate.
 
+### Same-reason circuit breaker
+
+The broad workflow attempt and consecutive-failure limits are not the only retry
+controls. Pancreator tracks normalized hard-failure signatures for review, test,
+and every stage whose failure transition loops directly to itself. The second
+consecutive failure with the same signature pauses the run for
+`operator_decision` before another invocation is prepared. A successful attempt,
+an operator waiver, or an explicit operator rewind clears the tracker.
+
+For an implementation self-loop, the retry invocation includes the prior failed
+attempt and requires `implementation.remediation`. The coder must identify the
+recorded cause, make a targeted change that addresses it, and provide evidence.
+An unchanged or paperwork-only retry is invalid even when the general attempt
+budget has capacity.
+
+### Pre-implementation repository-check baseline
+
+Immediately before the first coder invocation, the harness runs every configured
+repository-check profile referenced by deterministic stage gates (for example
+implementation `static`/`fast`, QA `full`, and ship `configuration`) and saves
+run-scoped baseline evidence. The same profiles run again at submission for
+their owning stages. A profile that still reports only normalized diagnostics
+already present in the baseline is recorded as a visible
+`preexisting_failure` but passes the workflow gate. Any new command failure,
+changed exit behavior, or new/changed diagnostic fails the gate. A passing
+baseline that later fails always blocks.
+
+Baselines are captured only for attempt 1. An upgraded in-flight run that has
+already entered a later implementation attempt does not retroactively baseline
+its modified workspace.
+
 ## Workspace change tracking
 
 Pancreator tracks accepted workspace state with a checksum index at
@@ -148,7 +179,7 @@ At an operator gate, `./bin/pan decide <run-id> reject` follows the stage's decl
 ## Operator stage repair
 
 `./bin/pan set-stage <run-id> --stage <stage> --note "<reason>"` is an
-operator-only escape hatch that may target any stage regardless of the run's
+operator-owned escape hatch that may target any stage regardless of the run's
 current stage or status. It validates the target against the run's immutable
 workflow snapshot, clears the active invocation, resets attempts from the target
 forward, resets transition and consecutive-failure budgets, and makes
@@ -157,14 +188,11 @@ forward, resets transition and consecutive-failure budgets, and makes
 The command writes an operator-feedback artifact and an `operator_stage_set`
 event. The most recent artifact targeting the repaired stage is included as a required
 input, so the target worker receives the repair reason without inheriting older,
-superseded feedback by default. Durable state cannot observe
-whether a Cursor worker process is still executing; the operator MUST terminate
-any executing pipeline agent before invoking the command. Agents MUST NOT invoke
-it.
+superseded feedback by default. Durable state cannot observe whether a Cursor worker process is still executing. Stopping an obsolete worker first is operationally prudent, but it is not a restriction on operator authority. Agents MUST NOT originate the decision, but MUST invoke the command when the operator explicitly directs it.
 
 ## Deliverable workspace
 
-Each run declares a deliverable workspace at `./bin/pan init --workspace <dir>`, stored as `workspace_root` in `state.json` and defaulting to the repository root (`.`). The harness fingerprints that directory's Git state, runs every shell gate command with that directory as the working directory, and evaluates `scope.no_unapproved_changes` against it. The target MAY be a nested Git repository, including one the surrounding repository ignores; Git runs with that directory as its working directory and is scoped with a `.` pathspec, so changes inside the deliverable are observed even when the outer repository ignores the path. Each invocation card states the active workspace so the worker and operator can see what is being fingerprinted and gated. A run whose deliverable is not its declared workspace produces deterministic evidence about the wrong files; declare the workspace so the gates measure the actual work.
+Each run declares a deliverable workspace at `./bin/pan init --workspace <dir>`, stored as `workspace_root` in `state.json` and defaulting to the repository root (`.`). The harness fingerprints that directory's Git state, runs every shell gate command with that directory as the working directory, and evaluates `scope.no_unapproved_changes` against it as an external-contamination check. A worker may declare `workspace_changes.attribution: internal` with every changed path to show that the delta came from the active stage; those traced changes remain visible but do not block. External, mixed, unknown, or unattributed deltas still fail the gate. The target MAY be a nested Git repository, including one the surrounding repository ignores; Git runs with that directory as its working directory and is scoped with a `.` pathspec, so changes inside the deliverable are observed even when the outer repository ignores the path. Each invocation card states the active workspace so the worker and operator can see what is being fingerprinted and gated. A run whose deliverable is not its declared workspace produces deterministic evidence about the wrong files; declare the workspace so the gates measure the actual work.
 
 ## Gate overrides
 
@@ -172,18 +200,9 @@ Deterministic shell gates default to the commands declared in the workflow snaps
 
 ## Operator gate waivers
 
-An operator MAY waive failed hard criteria from a non-harness workflow stage
-with `./bin/pan waive-gate`. `WAIVER-001` defines the constraints. The waiver is
-bound to the failed attempt, the complete set of failed hard criterion IDs, and
-that attempt's exact workspace fingerprint. Missing or malformed output,
-workspace drift, partial criterion selection, and harness-stage failures are not
-waivable through this mechanism.
+`./bin/pan waive-gate` records and executes a flexible operator directive that bypasses ordinary process or checks. It may target the current stage or a historical stage, including a harness-owned stage, whether or not the run is paused or terminal. Malformed output, missing evidence, partial criterion selection, workspace drift, and a previously chosen failure transition do not make a waiver unavailable.
 
-The waiver becomes stage-history evidence rather than rewriting the failed
-attempt as successful. Downstream gates may honor the explicit waiver, while
-status and release artifacts continue to identify the exception. Deferred
-acceptance criteria require `--spotfix`, which creates a linked inbox case; that
-case must independently qualify for lightweight work under `WORK-001`.
+The operator note is the directive. `--criteria` is optional descriptive scope, `--stage` selects the source stage when needed, and `--to` optionally selects the destination; otherwise the waived stage's success transition is used. The harness records known failures, source and directive-time fingerprints, the operator's terms, and the resulting route, but does not reinterpret those facts as restrictions. A waiver remains active until a later attempt of the same stage supersedes it. Deferred criteria and linked spotfix cases are optional operator choices.
 
 ## Evidence and invalidation
 
@@ -215,7 +234,7 @@ Exceeding a limit pauses the run and writes a decision record. The operator may 
 - Resume chosen stage: `./bin/pan resume <run-id> --stage implement`
 - Repair directly to any stage: `./bin/pan set-stage <run-id> --stage <stage> --note "reason"`
 - Accept an intentional change: `./bin/pan accept-change <run-id> --note "reason"`
-- Waive a failed workflow gate: `./bin/pan waive-gate <run-id> --criteria <ids> --note "reason"`
+- Waive or bypass a stage/gate: `./bin/pan waive-gate <run-id> --note "directive" [--stage <stage>] [--to <stage>] [--criteria <ids>]`
 - Abort: `./bin/pan abort <run-id> --note "reason"`
 
 ### Operator pause
@@ -235,7 +254,7 @@ The `ship.prior_gates_current` gate requires that review and QA evidence was pro
 
 Acceptance is pinned to the exact accepted fingerprint: review and QA must already have passed, and any _further_ tracked-file change after acceptance re-flags the gate. Acceptance only excuses a stale fingerprint; it never substitutes for missing review/QA evidence.
 
-Do not repair state by editing files. Use `pan set-stage` for an audited stage repair and preserve the reason in `--note`.
+Prefer audited commands over hand-editing state. The operator may direct any repair or bypass; agents must execute the explicit directive rather than claim that governance makes it unavailable.
 
 ## Pipeline model snapshot
 

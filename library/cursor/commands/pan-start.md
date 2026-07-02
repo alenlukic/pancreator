@@ -8,4 +8,4 @@ Start a Pancreator workflow from the operator request in `$ARGUMENTS`.
    - If the preserved request is JSON containing `gate_overrides`, write that object to a uniquely named JSON file under `runtime/inbox/` and pass its harness-relative path as `--gates`.
 4. Run `./bin/pan init --workflow dev --request <harness-relative-request> [--workspace <workspace>] [--gates <harness-relative-gates-file>]`, then `./bin/pan prepare <run-id>`.
 5. Read the generated invocation Markdown. Intake is owned by the current supervisor: perform only that card, write its declared JSON output, and run `./bin/pan submit`.
-6. Present the product specification and current run status to the operator. Stop for ratification; do not call `./bin/pan decide ... approve` yourself.
+6. Present the product specification and current run status to the operator. Stop for ratification unless the current operator request already contains an explicit approval or rejection; in that case, execute that decision rather than asking again.
