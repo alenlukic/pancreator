@@ -80,8 +80,7 @@ mapping before resuming the run.
   - `runtime_only` - may write only under `runtime/` (intake, plan).
   - `read_only` - may not change any tracked content (test and any review
     stage that is not explicitly source-allowed).
-    Any policy other than `source_allowed` adds the deterministic criterion
-    `scope.no_unapproved_changes`, so a read-only stage that mutates source fails.
+    Any policy other than `source_allowed` adds the deterministic criterion `scope.no_unapproved_changes`. This criterion detects external or unattributed contamination: a stage may report top-level `workspace_changes` with `attribution: internal` and every changed path to preserve attribution without blocking.
 - `gate` - what decides advancement after a valid, successful output:
   - `operator` - pause for explicit operator approval (intake, ship).
   - `supervisor` - pause for independent supervisor judgment of the judgment
@@ -96,7 +95,7 @@ mapping before resuming the run.
   - `conditional_stage_outputs` keeps records available behind an explicit
     retrieval condition.
   - `prior_attempts` and `operator_feedback` bound remediation history by count.
-  - ship-like stages MAY include active waivers, current workspace
+  - ship-like stages MAY include active operator waiver directives, current workspace
     ratifications, and the latest workspace-change validation.
 
   Each stage-output selector declares `stage` and `selection`. Use

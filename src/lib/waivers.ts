@@ -40,38 +40,35 @@ function gateWaivers(value: unknown): OperatorGateWaiver[] {
   })
 }
 
-/** Resolve waivers still bound to the latest stage attempt and active fingerprint. */
+/** Resolve operator directives that have not been superseded by a later attempt of the same stage. */
 export function activeOperatorGateWaivers(
   state: WaiverStateLike,
-  workspaceFingerprint?: string,
+  _workspaceFingerprint?: string,
 ): OperatorGateWaiver[] {
   const history = stageHistoryItems(state.stage_history)
   const waivers = gateWaivers(state.operator_gate_waivers)
-  const acceptedFingerprint =
-    typeof state.accepted_workspace_fingerprint === 'string'
-      ? state.accepted_workspace_fingerprint
-      : null
-  const validFingerprints = new Set(
-    [workspaceFingerprint, acceptedFingerprint].filter(
-      (value): value is string => typeof value === 'string',
-    ),
-  )
 
   return waivers.filter((waiver) => {
-    const latest = [...history]
-      .reverse()
-      .find((item) => item.stage === waiver.stage)
+    const sourceIndex = history.findIndex(
+      (item) => item.invocation_id === waiver.source_invocation_id,
+    )
 
-    if (
-      latest?.invocation_id !== waiver.source_invocation_id ||
-      latest.workspace_fingerprint !== waiver.workspace_fingerprint
-    ) {
-      return false
+    if (sourceIndex >= 0) {
+      return !history
+        .slice(sourceIndex + 1)
+        .some((item) => item.stage === waiver.stage)
     }
 
-    return (
-      validFingerprints.size === 0 ||
-      validFingerprints.has(waiver.workspace_fingerprint)
-    )
+    const waiverTime = Date.parse(waiver.timestamp)
+
+    return !history.some((item) => {
+      const submittedTime = Date.parse(item.submitted_at)
+      return (
+        item.stage === waiver.stage &&
+        Number.isFinite(waiverTime) &&
+        Number.isFinite(submittedTime) &&
+        submittedTime > waiverTime
+      )
+    })
   })
 }

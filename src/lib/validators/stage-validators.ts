@@ -21,6 +21,45 @@ const WORK_MODES = new Set(['systematic', 'lightweight'])
 const GIT_TIMEOUT_MS = 30_000
 const GIT_MAX_BUFFER = 1_024 * 1_024
 
+function evidencePathCandidate(entry: string): string | null {
+  const trimmed = entry.trim()
+  const explicit = trimmed.match(/^(?:path|file):\s*(.+)$/iu)
+  const candidate = (explicit?.[1] ?? trimmed).split('::', 1)[0]?.trim() ?? ''
+
+  if (candidate.length === 0 || /^[a-z][a-z0-9+.-]*:\/\//iu.test(candidate)) {
+    return null
+  }
+
+  if (explicit || trimmed.includes('::')) {
+    return candidate
+  }
+
+  if (/\s/u.test(candidate)) {
+    return null
+  }
+
+  if (
+    candidate.startsWith('./') ||
+    candidate.startsWith('../') ||
+    candidate.startsWith('/') ||
+    /(?:^|\/)\.?[a-z0-9_-]+\.[a-z0-9]+$/iu.test(candidate)
+  ) {
+    return candidate
+  }
+
+  return null
+}
+
+function missingEvidencePath(root: string, entry: unknown): string | null {
+  if (typeof entry !== 'string') {
+    return null
+  }
+
+  const candidate = evidencePathCandidate(entry)
+
+  return candidate && !fileExists(path.join(root, candidate)) ? candidate : null
+}
+
 type GitCommandResult =
   | { ok: true; stdout: string }
   | { ok: false; error: string }
@@ -1115,15 +1154,13 @@ export function validateQaOutput(input: HandlerInput): HandlerResult {
         )
       } else {
         for (const entry of evidence) {
-          if (
-            typeof entry === 'string' &&
-            entry.includes('/') &&
-            !fileExists(path.join(input.root, entry))
-          ) {
+          const missingPath = missingEvidencePath(input.root, entry)
+
+          if (missingPath) {
             issues.push(
               issue(
                 'qa.evidence_missing',
-                `Evidence path does not exist: ${entry}`,
+                `Evidence path does not exist: ${missingPath}`,
               ),
             )
           }
@@ -1569,15 +1606,13 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
     const evidencePath =
       typeof entry.evidence_path === 'string' ? entry.evidence_path : ''
 
-    if (
-      evidencePath.length > 0 &&
-      evidencePath.includes('/') &&
-      !fileExists(path.join(input.root, evidencePath))
-    ) {
+    const missingValidationPath = missingEvidencePath(input.root, evidencePath)
+
+    if (missingValidationPath) {
       issues.push(
         issue(
           'release.validation_evidence_missing',
-          `Validation evidence path does not exist: ${evidencePath}`,
+          `Validation evidence path does not exist: ${missingValidationPath}`,
         ),
       )
     }
@@ -1614,15 +1649,13 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
     }
 
     for (const entry of evidence) {
-      if (
-        typeof entry === 'string' &&
-        entry.includes('/') &&
-        !fileExists(path.join(input.root, entry))
-      ) {
+      const missingPath = missingEvidencePath(input.root, entry)
+
+      if (missingPath) {
         issues.push(
           issue(
             'release.evidence_missing',
-            `Follow-up evidence path does not exist: ${entry}`,
+            `Follow-up evidence path does not exist: ${missingPath}`,
           ),
         )
       }

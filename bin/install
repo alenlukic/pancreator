@@ -169,6 +169,12 @@ run_smoke() {
       && grep -q 'bounded' "$project/.cursor/agents/reviewer.md" \
       && grep -q 'pre-implementation' \
         "$project/.pancreator/governance/policies/DEV-001.json" \
+      && grep -q 'Operator supremacy' \
+        "$project/.pancreator/governance/policies/OPERATOR-001.json" \
+      && grep -q 'operator MAY waive any workflow stage' \
+        "$project/.pancreator/governance/policies/WAIVER-001.json" \
+      && grep -q 'workspace_changes' \
+        "$project/.pancreator/library/schemas/stage-output.schema.json" \
       && grep -q '"workspace_policy": "source_allowed"' \
         "$project/.pancreator/library/workflows/dev/stages/review.json" \
       && grep -Eq '^[[:space:]]*/?\.pancreator/?[[:space:]]*$' \

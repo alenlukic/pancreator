@@ -764,6 +764,121 @@ test('qa validator binds acceptance coverage to accepted plan', () => {
   )
 })
 
+test('qa validator accepts pytest node ids and slash-bearing observations', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'pan-qa-evidence-'))
+  const runId = 'run-qa-evidence'
+  const target = `runtime/logs/workflows/${runId}/outputs/test-1-test.json`
+  const absolute = path.join(root, target)
+
+  mkdirSync(path.dirname(absolute), { recursive: true })
+  mkdirSync(path.join(root, 'tests'), { recursive: true })
+  writePlanOutput(root, runId, ['AC-01'])
+  writeFileSync(path.join(root, 'tests', 'sample_test.py'), '# fixture\n')
+  writeFileSync(
+    absolute,
+    `${JSON.stringify({
+      data: {
+        qa_report: {
+          verdict: 'pass',
+          cases: [
+            {
+              id: 'QA-01',
+              steps: 'Run the focused test and inspect helper branches',
+              expected: 'Both branches pass',
+              actual: 'Both branches pass',
+              result: 'pass',
+            },
+          ],
+          defects: [],
+          acceptance_results: [
+            {
+              id: 'AC-01',
+              result: 'pass',
+              evidence: [
+                'tests/sample_test.py::test_case',
+                'Direct helper output for true/false branches',
+              ],
+            },
+          ],
+        },
+      },
+    })}\n`,
+  )
+
+  const result = validateQaOutput({
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'TEST-001',
+      requirement_id: 'qa-validate',
+      registry_id: 'QA-VALIDATE-001',
+      arguments: {},
+    },
+  })
+
+  assert.equal(result.status, 'passed')
+  assert.ok(
+    !result.issues.some((issue) => issue.code === 'qa.evidence_missing'),
+  )
+})
+
+test('qa validator still rejects explicitly declared missing evidence paths', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'pan-qa-missing-evidence-'))
+  const runId = 'run-qa-missing-evidence'
+  const target = `runtime/logs/workflows/${runId}/outputs/test-1-test.json`
+  const absolute = path.join(root, target)
+
+  mkdirSync(path.dirname(absolute), { recursive: true })
+  writePlanOutput(root, runId, ['AC-01'])
+  writeFileSync(
+    absolute,
+    `${JSON.stringify({
+      data: {
+        qa_report: {
+          verdict: 'pass',
+          cases: [
+            {
+              id: 'QA-01',
+              steps: 'Inspect evidence',
+              expected: 'Evidence exists',
+              actual: 'Evidence is missing',
+              result: 'pass',
+            },
+          ],
+          defects: [],
+          acceptance_results: [
+            {
+              id: 'AC-01',
+              result: 'pass',
+              evidence: ['path:tests/missing.py'],
+            },
+          ],
+        },
+      },
+    })}\n`,
+  )
+
+  const result = validateQaOutput({
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'TEST-001',
+      requirement_id: 'qa-validate',
+      registry_id: 'QA-VALIDATE-001',
+      arguments: {},
+    },
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.ok(
+    result.issues.some(
+      (issue) =>
+        issue.code === 'qa.evidence_missing' &&
+        issue.message.includes('tests/missing.py'),
+    ),
+  )
+})
+
 test('release validator rejects unknown validation fingerprints', () => {
   const root = mkdtempSync(path.join(tmpdir(), 'pan-release-fp-'))
   const target = 'output.json'

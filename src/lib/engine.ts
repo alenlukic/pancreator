@@ -550,7 +550,7 @@ function pauseForSameReasonFailure(
 
   writeDecision(root, state, 'Same-reason retry limit reached', reason, [
     `Resume from a chosen stage with: ${panCommand(root)} resume ${state.run_id} --stage <stage>`,
-    `Waive the failed gate with: ${panCommand(root)} waive-gate ${state.run_id} --criteria <ids>`,
+    `Waive or redirect the gate with: ${panCommand(root)} waive-gate ${state.run_id} --note "<directive>" [--to <stage>]`,
     `Or abort with: ${panCommand(root)} abort ${state.run_id}`,
   ])
 }
@@ -656,12 +656,18 @@ function applyTransition(
     code: 'INVALID_TRANSITION',
   })
 
-  if (state.transition_count > state.limits.max_total_transitions) {
+  if (
+    !options.operatorDirected &&
+    state.transition_count > state.limits.max_total_transitions
+  ) {
     pauseForLimit(root, state, 'Maximum workflow transitions exceeded.')
     return
   }
 
-  if (state.consecutive_failures > state.limits.max_consecutive_failures) {
+  if (
+    !options.operatorDirected &&
+    state.consecutive_failures > state.limits.max_consecutive_failures
+  ) {
     pauseForLimit(root, state, 'Maximum consecutive failures exceeded.')
     return
   }
@@ -1089,7 +1095,13 @@ export function prepareInvocation(
     state.attempts[stage.slug] = attempt
 
     ensureMutatingWorkflowInitialized(root, state, stage)
-    ensureWorkflowRepositoryCheckBaselines(root, state, workflow, stage, attempt)
+    ensureWorkflowRepositoryCheckBaselines(
+      root,
+      state,
+      workflow,
+      stage,
+      attempt,
+    )
 
     if (stage.executor === 'harness') {
       return executeHarnessStage(root, state, stage, attempt)
@@ -1448,6 +1460,7 @@ export function submitOutput(
       workspaceDirectory(root, state),
       state.gate_overrides ?? {},
       invocation.invocation_id,
+      validation.output,
     )
     const harnessValidation = runHarnessAuthoritativeValidators(
       root,
@@ -1801,9 +1814,9 @@ export function decideRun(
 
 /**
  * Move a run to an operator-selected stage outside normal workflow transitions.
- * The operator contract requires any executing worker process to be terminated
- * before this function is invoked; the durable state cannot observe process
- * lifetime, so the action is audited rather than inferred.
+ * An obsolete worker may continue writing because durable state cannot observe
+ * process lifetime, so stopping it first is prudent. That operational risk does
+ * not constrain the operator's authority to redirect the run.
  */
 export function setRunStage(
   root: string,
@@ -2179,7 +2192,8 @@ export function resumeRun(
 
 export interface WaiveGateOptions {
   stageSlug?: string | null
-  criterionIds: string[]
+  targetStage?: string | null
+  criterionIds?: string[]
   note: string
   deferredAcceptanceCriteria?: string[]
   createSpotfixCase?: boolean
@@ -2280,9 +2294,9 @@ function writeSpotfixCase(
 }
 
 /**
- * Record an explicit operator waiver for every failed hard criterion on the
- * latest attempt of a paused stage, then advance as though that stage passed.
- * The waiver is bound to the exact invocation and workspace fingerprint.
+ * Record an explicit operator directive that bypasses a stage or gate and route
+ * the run according to the operator's stated terms. The directive is audited,
+ * but governance does not narrow the operator's authority.
  */
 export function waiveGate(
   root: string,
@@ -2293,191 +2307,154 @@ export function waiveGate(
     const state = loadState(root, runId)
 
     invariant(
-      state.status === 'paused' &&
-        state.pending_action.type === 'operator_decision',
-      'Run is not paused for an operator decision.',
-      { code: 'INVALID_RUN_ACTION' },
-    )
-    invariant(
       options.note.trim().length > 0,
       'Waiver note MUST be non-empty.',
-      {
-        code: 'WAIVER_NOTE_REQUIRED',
-      },
+      { code: 'WAIVER_NOTE_REQUIRED' },
     )
 
     const workflow = loadRunWorkflow(root, state)
-    const stageSlug = options.stageSlug ?? state.current_stage
+    const stageSlug =
+      options.stageSlug ??
+      state.current_stage ??
+      [...state.stage_history]
+        .reverse()
+        .find((item) => item.outcome !== 'success')?.stage
 
     invariant(stageSlug, 'Run has no stage to waive.', {
       code: 'INVALID_RUN_ACTION',
     })
-    invariant(
-      state.current_stage === stageSlug,
-      'A gate waiver MUST target the run current stage.',
-      { code: 'INVALID_WAIVER_STAGE' },
-    )
 
     const stage = stageBySlug(workflow, stageSlug)
-
-    invariant(
-      stage.executor !== 'harness',
-      'Harness stages require accept-change adjudication, not a gate waiver.',
-      {
-        code: 'INVALID_WAIVER_STAGE',
-      },
-    )
-
     const history = [...state.stage_history]
       .reverse()
       .find((item) => item.stage === stageSlug)
+    const assessmentPath = history
+      ? `runtime/logs/workflows/${state.run_id}/assessments/${history.invocation_id}.assessment.json`
+      : null
+    let assessment: SupervisorAssessment | null = null
 
-    invariant(history, 'No stage attempt is available to waive.', {
-      code: 'NO_FAILED_GATE',
-    })
-
-    const assessmentPath =
-      `runtime/logs/workflows/${state.run_id}/assessments/` +
-      `${history.invocation_id}.assessment.json`
-    const assessment =
-      stage.gate === 'supervisor' &&
-      fileExists(resolveInside(root, assessmentPath))
-        ? parseSupervisorAssessment(
-            readJson(resolveInside(root, assessmentPath)),
-            assessmentPath,
-          )
-        : null
-
-    if (assessment) {
-      invariant(
-        assessment.invocation_id === history.invocation_id,
-        'Supervisor assessment does not belong to the latest stage attempt.',
-        { code: 'INVALID_WAIVER_TARGET' },
-      )
+    if (assessmentPath && fileExists(resolveInside(root, assessmentPath))) {
+      try {
+        assessment = parseSupervisorAssessment(
+          readJson(resolveInside(root, assessmentPath)),
+          assessmentPath,
+        )
+      } catch {
+        assessment = null
+      }
     }
 
-    invariant(
-      history?.outcome === 'failure' || assessment?.verdict === 'fail',
-      'No failed stage attempt is available to waive.',
-      {
-        code: 'NO_FAILED_GATE',
-      },
-    )
-    invariant(
-      history.validation_errors.length === 0,
-      'Malformed stage output cannot be waived; repair and resubmit the stage.',
-      { code: 'INVALID_WAIVER_TARGET' },
-    )
-    invariant(history.record_path, 'Failed stage record is missing.', {
-      code: 'INVALID_WAIVER_TARGET',
+    let record: TaskRecord | null = null
+    if (
+      history?.record_path &&
+      fileExists(resolveInside(root, history.record_path))
+    ) {
+      try {
+        record = readTaskRecord(root, history.record_path)
+      } catch {
+        record = null
+      }
+    }
+
+    const inferredBlockers = record
+      ? failedHardCriteria(stage, record, assessment)
+      : []
+    const requested = normalizeIdentifiers(options.criterionIds ?? [])
+    const waivedCriteria =
+      requested.length > 0
+        ? requested
+        : inferredBlockers.length > 0
+          ? inferredBlockers
+          : ['*']
+    const target = options.targetStage ?? stage.transitions.success
+
+    invariant(target, `Stage '${stage.slug}' has no success transition.`, {
+      code: 'INVALID_TRANSITION',
     })
-
-    const record = readTaskRecord(
-      root,
-      artifactJsonPath(state.run_id, history.invocation_id),
-    )
-    const blockers = failedHardCriteria(stage, record, assessment)
-    const requested = normalizeIdentifiers(options.criterionIds)
-    const sourceEvidencePath =
-      assessment?.verdict === 'fail' ? assessmentPath : history.record_path
-
-    invariant(
-      blockers.length > 0,
-      'The failed attempt has no declared hard criterion failure to waive.',
-      {
-        code: 'NO_FAILED_GATE',
-      },
-    )
-    invariant(
-      requested.length > 0,
-      'At least one --criteria value is required.',
-      {
-        code: 'INVALID_WAIVER_CRITERIA',
-      },
-    )
-    invariant(
-      requested.length === blockers.length &&
-        requested.every((criterionId) => blockers.includes(criterionId)),
-      `Waiver criteria MUST exactly match the failed hard criteria: ${blockers.join(', ')}.`,
-      {
-        code: 'INVALID_WAIVER_CRITERIA',
-        details: { failed_hard_criteria: blockers, requested },
-      },
-    )
-
-    const roots = rootsForRun(root, state)
-    const workspace = snapshotWorkspace(roots, false).snapshot
-
-    invariant(
-      workspace.fingerprint === history.workspace_fingerprint,
-      'Workspace changed after the failed gate. Ratify the workspace change or rerun the owning stage before waiving its gate.',
-      { code: 'STALE_WAIVER_FINGERPRINT' },
-    )
+    if (!['succeeded', 'failed', 'canceled', 'paused'].includes(target)) {
+      stageBySlug(workflow, target)
+    }
 
     const deferred = normalizeIdentifiers(
       options.deferredAcceptanceCriteria ?? [],
     )
-
     if (options.createSpotfixCase) {
       invariant(
-        deferred.length > 0,
-        '--spotfix requires at least one deferred acceptance criterion.',
-        { code: 'INVALID_SPOTFIX_CASE' },
-      )
-    } else {
-      invariant(
-        deferred.length === 0,
-        'Deferred acceptance criteria require --spotfix so the follow-up is tracked.',
+        deferred.length > 0 && history,
+        '--spotfix requires a prior stage attempt and at least one deferred acceptance criterion.',
         { code: 'INVALID_SPOTFIX_CASE' },
       )
     }
 
+    const roots = rootsForRun(root, state)
+    const workspace = snapshotWorkspace(roots, false).snapshot
     const waivers = state.operator_gate_waivers ?? []
     const waiverId = `waiver-${randomUUID()}`
     const artifactPath =
       `runtime/logs/workflows/${state.run_id}/artifacts/markdown/` +
       `gate-waiver-${waivers.length + 1}.md`
+    const sourceEvidencePath =
+      assessment?.verdict === 'fail' && assessmentPath
+        ? assessmentPath
+        : (history?.record_path ?? history?.output_path ?? artifactPath)
     const spotfixCasePath = options.createSpotfixCase
       ? writeSpotfixCase(
           root,
           state,
           waiverId,
           stage,
-          history,
-          requested,
+          history!,
+          waivedCriteria,
           deferred,
           options.note,
           sourceEvidencePath,
         )
       : undefined
     const body = [
-      '# Operator gate waiver',
+      '# Operator waiver directive',
       '',
       `**Run** \`${state.run_id}\` · **Stage** \`${stage.slug}\` · ` +
-        `**Invocation** \`${history.invocation_id}\` · **Attempt** ${history.attempt}`,
+        `**Source attempt** ${history?.attempt ?? 'none'} · **Route to** \`${target}\``,
       '',
-      `**Workspace fingerprint:** \`${workspace.fingerprint}\``,
-      `**Gate evidence:** \`${sourceEvidencePath}\``,
+      `**Directive-time workspace fingerprint:** \`${workspace.fingerprint}\``,
+      ...(history
+        ? [
+            `**Source invocation:** \`${history.invocation_id}\``,
+            `**Source-attempt workspace fingerprint:** \`${history.workspace_fingerprint}\``,
+            `**Source evidence:** \`${sourceEvidencePath}\``,
+          ]
+        : [
+            '**Source invocation:** none — the stage was bypassed before a completed attempt.',
+          ]),
       '',
-      '## Waived hard criteria',
+      '## Directive scope',
       '',
-      ...requested.map((item) => `- \`${item}\``),
+      ...waivedCriteria.map((item) => `- \`${item}\``),
       '',
-      '## Operator rationale',
+      '## Operator terms',
       '',
       options.note.trim(),
       '',
+      ...(history?.validation_errors.length
+        ? [
+            '## Known malformed or missing evidence',
+            '',
+            ...history.validation_errors.map((item) => `- ${item}`),
+            '',
+          ]
+        : []),
       ...(deferred.length > 0
         ? [
             '## Deferred acceptance criteria',
             '',
             ...deferred.map((item) => `- \`${item}\``),
             '',
-            `**Spotfix case:** \`${spotfixCasePath}\``,
-            '',
+            ...(spotfixCasePath
+              ? [`**Spotfix case:** \`${spotfixCasePath}\``, '']
+              : []),
           ]
         : []),
-      'This waiver is valid only for the invocation and workspace fingerprint above. A later attempt or workspace change does not inherit it.',
+      'This artifact records the operator directive; it does not constrain or reinterpret the directive beyond the terms written above.',
       '',
     ].join('\n')
 
@@ -2486,12 +2463,18 @@ export function waiveGate(
     const waiver: OperatorGateWaiver = {
       waiver_id: waiverId,
       stage: stage.slug,
-      source_invocation_id: history.invocation_id,
-      source_attempt: history.attempt,
+      source_invocation_id:
+        history?.invocation_id ?? `operator-bypass-${randomUUID()}`,
+      source_attempt: history?.attempt ?? 0,
       source_evidence_path: sourceEvidencePath,
-      criterion_ids: requested,
+      criterion_ids: waivedCriteria,
       workspace_fingerprint: workspace.fingerprint,
-      note: options.note,
+      ...(history
+        ? { source_workspace_fingerprint: history.workspace_fingerprint }
+        : {}),
+      directive_target: target,
+      validation_errors: history?.validation_errors ?? [],
+      note: options.note.trim(),
       artifact_path: artifactPath,
       deferred_acceptance_criteria: deferred,
       ...(spotfixCasePath ? { spotfix_case_path: spotfixCasePath } : {}),
@@ -2500,39 +2483,30 @@ export function waiveGate(
 
     waivers.push(waiver)
     state.operator_gate_waivers = waivers
-    if (isSameReasonTrackedStage(state, stage)) {
-      clearSameReasonTracker(state, stage.slug)
-    }
+    clearSameReasonTracker(state, stage.slug)
     state.status = 'running'
     state.pause_reason = null
     state.operator_pause = null
     state.current_invocation = null
     state.consecutive_failures = 0
 
-    if (stage.gate === 'operator') {
-      state.status = 'awaiting_operator'
-      state.current_stage = stage.slug
-      state.pending_action = {
-        type: 'operator_approval',
-        stage: stage.slug,
-        proposed_transition: stage.transitions.success,
-      }
-    } else {
-      applyTransition(root, state, stage, 'success', {
-        operatorDirected: true,
-      })
-    }
+    applyTransition(root, state, stage, 'success', {
+      overrideTarget: target,
+      operatorDirected: true,
+    })
 
     state.last_decision_path = artifactPath
 
     persistRun(root, state, 'operator_gate_waived', {
       waiver_id: waiverId,
       stage: stage.slug,
-      source_invocation_id: history.invocation_id,
-      source_attempt: history.attempt,
+      source_invocation_id: waiver.source_invocation_id,
+      source_attempt: waiver.source_attempt,
       source_evidence_path: sourceEvidencePath,
-      criterion_ids: requested,
+      criterion_ids: waivedCriteria,
       workspace_fingerprint: workspace.fingerprint,
+      source_workspace_fingerprint: waiver.source_workspace_fingerprint ?? null,
+      directive_target: target,
       spotfix_case_path: spotfixCasePath ?? null,
     })
 

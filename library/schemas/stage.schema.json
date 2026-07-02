@@ -47,7 +47,7 @@
         "runtime_only",
         "read_only"
       ],
-      "description": "Mutation boundary enforced by the harness via workspace fingerprints. source_allowed: may modify product source. release_metadata_only: in self-development ship stages, may modify only release metadata and durable version-bearing documentation; in embedded installations it behaves as read_only. runtime_only: may write only under runtime/ (planning, intake). read_only: may not change tracked content. Any policy other than source_allowed adds the deterministic criterion scope.no_unapproved_changes."
+      "description": "Declared mutation expectation. source_allowed may modify product source. release_metadata_only identifies expected self-development release files. runtime_only and read_only normally avoid tracked target changes. For every non-source_allowed stage, scope.no_unapproved_changes detects external or unattributed contamination; worker-attributed internal changes remain visible evidence but do not block."
     },
     "gate": {
       "enum": ["operator", "supervisor", "next_stage", "stage_verdict"],
@@ -89,7 +89,7 @@
         },
         "include_active_waivers": {
           "type": "boolean",
-          "description": "Include only waivers still bound to the latest stage attempt and current workspace fingerprint."
+          "description": "Include operator waiver directives that have not been superseded by a later attempt of the same stage."
         },
         "include_workspace_ratifications": {
           "type": "boolean",

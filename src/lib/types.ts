@@ -325,6 +325,12 @@ export interface CriterionEvaluation {
   explanation: string
 }
 
+export interface WorkspaceChangeAttribution {
+  attribution: 'internal' | 'external' | 'mixed' | 'unknown'
+  paths: string[]
+  explanation: string
+}
+
 export interface StageOutput {
   $operator?: {
     headline: string
@@ -339,6 +345,7 @@ export interface StageOutput {
   criteria: CriterionEvaluation[]
   risks: string[]
   unknowns: string[]
+  workspace_changes?: WorkspaceChangeAttribution
   data: Record<string, unknown>
 }
 
@@ -486,6 +493,9 @@ export interface OperatorGateWaiver {
   source_evidence_path: string
   criterion_ids: string[]
   workspace_fingerprint: string
+  source_workspace_fingerprint?: string
+  directive_target?: string
+  validation_errors?: string[]
   note: string
   artifact_path: string
   deferred_acceptance_criteria: string[]

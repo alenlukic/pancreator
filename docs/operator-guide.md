@@ -14,8 +14,9 @@ Raw JSONL and shell output are diagnostic surfaces, not the default conversation
 ### Supervisor continuation
 
 `ORCH-001` is the normative continuation policy. In practice, keep advancing
-supervisor-owned `pending_action` values and stop only at an operator-owned or
-terminal action.
+supervisor-owned `pending_action` values and stop only when an operator-owned
+decision is still missing or the run is terminal. When the active operator request
+already supplies the decision, execute it instead of asking again.
 
 ## Invocation and delegation validation
 
@@ -113,30 +114,22 @@ Resume from the stage that owns the remediation when the pause was harness-initi
 
 - `./bin/pan resume <run-id> --stage implement --note "<required changes>"` restarts implementation and attaches the latest note to the next invocation card as required remediation input.
 
-### Waiving a failed workflow gate
+### Waiving or bypassing a workflow stage
 
-Use a gate waiver only for a failed non-harness workflow stage whose remaining
-misses are understood and intentionally accepted:
+A waiver is an operator directive, not a permission request. Use it whenever you intentionally want to bypass ordinary process, checks, evidence requirements, workspace-fingerprint matching, or a stage transition:
 
 ```sh
 ./bin/pan waive-gate <run-id> \
-  --criteria <failed-id[,failed-id...]> \
-  --note "<reason>" \
-  [--stage <stage>] \
+  --note "<directive and terms>" \
+  [--stage <source-stage>] \
+  [--to <destination-stage>] \
+  [--criteria <id[,id...]>] \
   [--defer <acceptance-id[,acceptance-id...]> --spotfix]
 ```
 
-`WAIVER-001` is normative. The command is fail-closed: the listed criterion IDs
-must exactly match every failed hard criterion from the latest failed attempt,
-and the workspace must still match that attempt's fingerprint. A generic resume
-note is not a waiver. Harness anomalies continue to use their purpose-built
-operator commands.
+The command may target current or historical workflow stages, including harness-owned stages, and may redirect a terminal run when the operator explicitly names the source and destination. Destinations may be workflow stages or terminal states such as `succeeded`. It does not require a pause, exact criterion matching, valid stage output, or an unchanged workspace. The note defines the directive; criteria and follow-up tracking are optional metadata. The harness records what was bypassed and where the run was routed without narrowing the directive.
 
-When bounded acceptance misses are deferred with `--defer ... --spotfix`, the
-waiver creates an inbox case recording the misses and source evidence. The case
-is intake evidence only: it must still satisfy `WORK-001` before lightweight
-execution. Waivers and open follow-up cases remain visible in status and the
-release packet.
+“Operator-owned” means only the operator may decide to waive. An agent may execute the command when the operator explicitly directs it and must not answer that the operator is “not allowed” or that a waiver is impossible because of harness governance.
 
 ### Operator stage repair
 
@@ -146,18 +139,14 @@ clears the active invocation, resets the target segment's attempt budget and the
 transition/failure circuit-breaker counters, records an `operator_stage_set`
 event, and attaches the repair note to the next invocation.
 
-This command is operator-only. Never invoke it while a pipeline agent is still
-executing; terminate that process first so an obsolete worker cannot continue
-writing after the run has moved. Use it for deliberate state repair, not normal
-review or QA remediation.
+This is an operator-owned decision. The operator may run it directly or explicitly direct an agent to run it. Stopping an obsolete worker first remains prudent because that worker may continue writing against stale state, but it is an operational warning rather than a restriction on operator authority.
 
 ## Workspace mutation contract
 
 Pancreator does not use persistent workspace locks, active-workflow leases, or
 per-edit ledgers. During a `source_allowed` stage, the active worker may edit
 tracked source files directly within the declared scope. The harness protects
-integrity with accepted indexes, workspace fingerprints, read-only-stage
-mutation guards, and stage evidence.
+integrity with accepted indexes, workspace fingerprints, external-contamination guards and stage evidence. A non-source stage that changes tracked files must identify every changed path in top-level `workspace_changes` and use `attribution: internal` only when the active worker can trace the delta to its own actions. Fully traced internal changes pass the cleanliness gate; external or unattributed changes block.
 
 The self-development ship stage uses `release_metadata_only`. It may change only
 `CHANGELOG.md`, `VERSION`, npm version metadata, `README.md`, and
@@ -231,8 +220,8 @@ The ship packet is a proposal, but Pancreator self-development release metadata
 has already been updated by the release steward. Before approval, confirm:
 
 - review and QA passed against the current workspace, or any exceptions are
-  explicit fingerprint-bound waivers
-- deferred acceptance criteria have an owned follow-up case
+  covered by explicit operator waiver directives
+- deferred acceptance criteria and any follow-up obligations required by the operator's waiver terms are disclosed
 - residual risks are acceptable
 - rollback guidance is credible
 - the proposed commit/PR text accurately describes the diff

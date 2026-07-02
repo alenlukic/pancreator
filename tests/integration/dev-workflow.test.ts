@@ -523,7 +523,9 @@ test('unchanged pre-existing full repository-check failures do not block QA', ()
       },
       full: {
         probes: [],
-        commands: [`node -e "console.error('known full-suite failure'); process.exit(1)"`],
+        commands: [
+          `node -e "console.error('known full-suite failure'); process.exit(1)"`,
+        ],
       },
       configuration: {
         probes: [],
@@ -531,14 +533,21 @@ test('unchanged pre-existing full repository-check failures do not block QA', ()
       },
     },
   })
-  setRunStage(root, runId, 'implement', 'Exercise workflow-wide check baselines.')
+  setRunStage(
+    root,
+    runId,
+    'implement',
+    'Exercise workflow-wide check baselines.',
+  )
 
   submitStageOutput(root, runId, implementStage, 'success')
   const baselines = getRunState(root, runId).repository_check_baselines ?? {}
   const fullBaseline = baselines.full
 
   assert.equal(fullBaseline?.status, 'failed')
-  assert.ok(fullBaseline && existsSync(path.join(root, fullBaseline.artifact_path)))
+  assert.ok(
+    fullBaseline && existsSync(path.join(root, fullBaseline.artifact_path)),
+  )
   assert.equal(baselines.configuration?.status, 'passed')
 
   submitStageOutput(root, runId, reviewStage, 'success')

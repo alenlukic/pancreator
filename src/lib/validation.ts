@@ -514,6 +514,23 @@ function normalizeStageOutput(
     criteria: normalizeCriteria(record.criteria),
     risks: normalizeStringArray(record.risks),
     unknowns: normalizeStringArray(record.unknowns),
+    ...(isRecord(record.workspace_changes)
+      ? {
+          workspace_changes: {
+            attribution:
+              record.workspace_changes.attribution === 'internal' ||
+              record.workspace_changes.attribution === 'external' ||
+              record.workspace_changes.attribution === 'mixed'
+                ? record.workspace_changes.attribution
+                : 'unknown',
+            paths: normalizeStringArray(record.workspace_changes.paths),
+            explanation:
+              typeof record.workspace_changes.explanation === 'string'
+                ? record.workspace_changes.explanation
+                : '',
+          },
+        }
+      : {}),
     data: isRecord(record.data) ? record.data : {},
   }
 }
@@ -893,15 +910,11 @@ export function evaluateStateCriterion(
       .find((item) => item.stage === 'test')
 
     const activeWaivers = activeOperatorGateWaivers(state, workspaceFingerprint)
-    const waiverFor = (stage: string, invocationId: string | undefined) =>
-      activeWaivers.find(
-        (waiver) =>
-          waiver.stage === stage &&
-          waiver.source_invocation_id === invocationId,
-      )
+    const waiverFor = (stage: string) =>
+      [...activeWaivers].reverse().find((waiver) => waiver.stage === stage)
 
-    const reviewWaiver = waiverFor('review', review?.invocation_id)
-    const testWaiver = waiverFor('test', test?.invocation_id)
+    const reviewWaiver = waiverFor('review')
+    const testWaiver = waiverFor('test')
     const reviewSatisfied =
       review?.outcome === 'success' || Boolean(reviewWaiver)
     const testSatisfied = test?.outcome === 'success' || Boolean(testWaiver)
@@ -914,12 +927,17 @@ export function evaluateStateCriterion(
       Boolean(testFingerprint) &&
       state.accepted_workspace_fingerprint === testFingerprint
     const gatesCurrent =
-      fingerprintCurrent || operatorAccepted || acceptedEvidenceFingerprint
-    const fingerprintBasis = fingerprintCurrent
-      ? 'current workspace fingerprint'
-      : 'operator-accepted workspace fingerprint'
+      Boolean(testWaiver) ||
+      fingerprintCurrent ||
+      operatorAccepted ||
+      acceptedEvidenceFingerprint
+    passed = Boolean(gatesCurrent && reviewSatisfied && testSatisfied)
+    const waiverEvidenceBasis = testWaiver
+      ? 'The QA waiver is not fingerprint-bound.'
+      : fingerprintCurrent
+        ? 'Unwaived QA evidence matches the current workspace fingerprint.'
+        : 'Unwaived QA evidence matches the operator-accepted workspace fingerprint.'
 
-    passed = Boolean(test && gatesCurrent && reviewSatisfied && testSatisfied)
     explanation = !passed
       ? 'Passing review/QA evidence is missing or stale.'
       : reviewWaiver || testWaiver
@@ -928,9 +946,7 @@ export function evaluateStateCriterion(
             testWaiver ? 'QA' : null,
           ]
             .filter(Boolean)
-            .join(
-              ' and ',
-            )} evidence satisfies the gate; remaining evidence matches the ${fingerprintBasis}.`
+            .join(' and ')} evidence satisfies the gate. ${waiverEvidenceBasis}`
         : review?.outcome === 'success' && fingerprintCurrent
           ? 'Review and QA passed against the current workspace fingerprint.'
           : review?.outcome === 'success' && operatorAccepted
@@ -972,6 +988,7 @@ export function evaluateDeterministicCriteria(
   workspaceDir: string,
   gateOverrides: Record<string, string | false> = {},
   artifactId = stage.slug,
+  stageOutput?: StageOutput,
 ): { results: DeterministicResult[]; workspace: WorkspaceSnapshot } {
   const roots = resolveRoots({
     installation_root: root,
@@ -995,12 +1012,32 @@ export function evaluateDeterministicCriteria(
           (relativePath) => !isReleaseMetadataPath(relativePath),
         )
       : changedPaths
-    const changed = blockingPaths.length > 0
     const allowedPaths = releaseMetadataAllowed
       ? changedPaths.filter((relativePath) =>
           isReleaseMetadataPath(relativePath),
         )
       : []
+    const attribution = stageOutput?.workspace_changes
+    const normalizeDeclaredPath = (relativePath: string): string =>
+      path.posix
+        .normalize(relativePath.replaceAll('\\', '/'))
+        .replace(/^\.\//u, '')
+    const declaredInternalPaths = new Set(
+      attribution?.attribution === 'internal'
+        ? attribution.paths.map(normalizeDeclaredPath)
+        : [],
+    )
+    const internallyAttributed =
+      blockingPaths.length > 0 &&
+      attribution?.attribution === 'internal' &&
+      attribution.explanation.trim().length > 0 &&
+      blockingPaths.every((relativePath) =>
+        declaredInternalPaths.has(normalizeDeclaredPath(relativePath)),
+      )
+    const unattributedPaths = blockingPaths.filter(
+      (relativePath) => !declaredInternalPaths.has(relativePath),
+    )
+    const changed = blockingPaths.length > 0 && !internallyAttributed
 
     results.push({
       id: 'scope.no_unapproved_changes',
@@ -1008,13 +1045,16 @@ export function evaluateDeterministicCriteria(
       hard: true,
       passed: !changed,
       explanation: changed
-        ? `Workspace changed outside the '${stage.workspace_policy}' boundary: ${blockingPaths.join(', ')}.`
-        : allowedPaths.length > 0
-          ? `Only permitted release metadata changed: ${allowedPaths.join(', ')}.`
-          : 'Workspace fingerprint is unchanged.',
-      delta: changed
-        ? workspaceDelta(beforeSnapshot, afterSnapshot)
-        : { added: [], removed: [] },
+        ? `Workspace contamination is external or unattributed for the '${stage.workspace_policy}' stage: ${unattributedPaths.length > 0 ? unattributedPaths.join(', ') : blockingPaths.join(', ')}.`
+        : internallyAttributed
+          ? `All workspace changes were traced to the active worker; no external contamination was detected: ${blockingPaths.join(', ')}.`
+          : allowedPaths.length > 0
+            ? `Only permitted release metadata changed: ${allowedPaths.join(', ')}.`
+            : 'Workspace fingerprint is unchanged.',
+      delta:
+        changedPaths.length > 0
+          ? workspaceDelta(beforeSnapshot, afterSnapshot)
+          : { added: [], removed: [] },
       workspace_fingerprint: afterSnapshot.fingerprint,
     })
   }

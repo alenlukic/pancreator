@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.10.0] - 2026-07-01
+
+### Changed
+
+- Establish explicit operator supremacy across repository and embedded governance: operator-owned actions describe decision origin, while agents must execute clear operator directives even when they override ordinary workflow policy ([OPERATOR-001](governance/policies/OPERATOR-001.json), [AGENTS.md](AGENTS.md), [embedded operating card](library/templates/embedded-AGENTS.md)).
+- Redefine gate waivers as flexible audited directives rather than constrained exception contracts. Waivers can target current, historical, harness-owned, unattempted, or terminal stages; select any subset of criteria; route to an operator-selected destination; and remain valid across workspace drift ([WAIVER-001](governance/policies/WAIVER-001.json), [runtime engine](src/lib/engine.ts), [operator guide](docs/operator-guide.md)).
+- Treat non-source-stage workspace cleanliness as an external-contamination check. Complete, explained path attribution to the active worker remains auditable but no longer blocks the run ([criteria catalog](governance/criteria/index.md), [stage output schema](library/schemas/stage-output.schema.json), [validation engine](src/lib/validation.ts)).
+
+### Added
+
+- Add `workspace_changes` attribution to stage outputs and waiver routing options for source stage and destination stage, with regression coverage for partial, malformed, pre-attempt, drifted, and terminal-run overrides ([stage output template](library/templates/stage-output.example.json), [gate waiver tests](tests/integration/gate-waiver.test.ts), [workspace mutation tests](tests/regression/read-only-mutation.test.ts)).
+
+### Fixed
+
+- Stop QA evidence validation from misclassifying pytest node IDs and slash-bearing prose observations as missing files; explicit `path:` or `file:` references and genuine path-shaped evidence remain existence-checked ([QA validator](src/lib/validators/stage-validators.ts), [validator tests](tests/unit/validators-stage-validators.test.ts)).
+- Ensure fresh installations and refreshes of existing embedded installations receive the operator-authority policy, flexible waiver behavior, internal-change attribution contract, and corrected evidence validation ([embedded installation guide](docs/embedded-installation.md)).
+
 ## [2.9.0] - 2026-06-30
 
 ### Changed
@@ -246,6 +263,7 @@ _First functional release._
 
 - Add the original self-building workflow harness, governed personas, compliance hooks, durable memory, and bootstrap documentation ([c9c5def](https://github.com/alenlukic/pancreator/commit/c9c5def2ccd2a0a9c27d5c6707c963cb2621518a))
 
+[2.10.0]: https://github.com/alenlukic/pancreator/compare/c0a1a4cc6964261a970038578b41de71c5de1204...HEAD
 [2.9.0]: https://github.com/alenlukic/pancreator/compare/5f1a87704fa1601cc2f1c74e77d37268de0ce0cd...HEAD
 [2.8.0]: https://github.com/alenlukic/pancreator/compare/5f4953e321544a9a28b2614cbf5a1fa2f6882a99...HEAD
 [2.7.0]: https://github.com/alenlukic/pancreator/compare/a8f3b42bc29d2c9b49e40f1fcb49071bbb14f7ef...5f4953e321544a9a28b2614cbf5a1fa2f6882a99
