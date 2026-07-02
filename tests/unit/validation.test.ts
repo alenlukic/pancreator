@@ -90,6 +90,60 @@ test('repository validation requires a policy to unroll the TypeScript handbook'
   )
 })
 
+test('repository validation requires a policy to unroll the Python handbook', () => {
+  const root = createFixture()
+  prepareValidationFixture(root)
+  const policyPath = path.join(root, 'governance', 'policies', 'PY-001.json')
+  const policy = JSON.parse(readFileSync(policyPath, 'utf8')) as {
+    guidance_sources?: unknown[]
+  }
+
+  delete policy.guidance_sources
+
+  writeFileSync(policyPath, `${JSON.stringify(policy, null, 2)}\n`)
+
+  const result = validateRepository(root)
+
+  assert.equal(result.ok, false)
+  assert.match(
+    result.errors.join('\n'),
+    /governance\/handbooks\/python\/style-guide\.md MUST be unrolled by at least one policy/u,
+  )
+})
+
+test('repository validation requires code-review and QA stages to load Python handbook policies', () => {
+  const root = createFixture()
+  prepareValidationFixture(root)
+  const lookupPath = path.join(
+    root,
+    'governance',
+    'registries',
+    'policy_lookup_table.json',
+  )
+  const lookup = JSON.parse(readFileSync(lookupPath, 'utf8')) as {
+    rows: Array<{ persona: string; policies: string[] }>
+  }
+
+  lookup.rows = lookup.rows.map((row) =>
+    row.persona === 'qa-tester'
+      ? {
+          ...row,
+          policies: row.policies.filter((policy) => policy !== 'PY-001'),
+        }
+      : row,
+  )
+
+  writeFileSync(lookupPath, `${JSON.stringify(lookup, null, 2)}\n`)
+
+  const result = validateRepository(root)
+
+  assert.equal(result.ok, false)
+  assert.match(
+    result.errors.join('\n'),
+    /workflow stage 'dev\/test' persona 'qa-tester' MUST load a policy for the Python handbook/u,
+  )
+})
+
 test('repository validation rejects static guidance references that are not unrolled', () => {
   const root = createFixture()
   prepareValidationFixture(root)
@@ -167,6 +221,37 @@ test('embedded repository validation does not impose the TypeScript handbook on 
   assert.doesNotMatch(
     result.errors.join('\n'),
     /MUST load a policy for the TypeScript handbook/u,
+  )
+})
+
+test('repository validation rejects unsupported policy technology selectors', () => {
+  const root = createFixture()
+  prepareValidationFixture(root)
+  const lookupPath = path.join(
+    root,
+    'governance',
+    'registries',
+    'policy_lookup_table.json',
+  )
+  const lookup = JSON.parse(readFileSync(lookupPath, 'utf8')) as {
+    rows: Array<Record<string, unknown>>
+  }
+
+  lookup.rows.push({
+    persona: 'coder',
+    workflow: '*',
+    stage: '*',
+    technology: 'ruby',
+    policies: ['ENG-001'],
+  })
+  writeFileSync(lookupPath, `${JSON.stringify(lookup, null, 2)}\n`)
+
+  const result = validateRepository(root)
+
+  assert.equal(result.ok, false)
+  assert.match(
+    result.errors.join('\n'),
+    /technology MUST name a supported workspace technology when present/u,
   )
 })
 

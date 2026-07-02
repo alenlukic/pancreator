@@ -12,3 +12,5 @@ Source-allowed systematic stages MAY edit tracked target files directly within t
 Target verification MUST use commands configured from the target repository's own documentation, manifests, scripts, or operator instructions. Do not infer npm, Python, or another ecosystem from Pancreator itself; use explicit repository-declared toolchain entrypoints and record identity/version probes when environment selection can affect results.
 
 `./.pancreator/bin/pan set-stage`, `pause`, and `waive-gate` are operator-owned decisions. Agents MUST NOT originate them, but MUST invoke them when the operator explicitly directs the action.
+
+Applicable language-specific guidance is delivered through the active invocation. Python target workspaces activate `PY-001`; agents MUST use its unrolled content and MUST NOT fetch the handbook separately.

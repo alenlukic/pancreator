@@ -175,6 +175,9 @@ run_smoke() {
       && grep -q 'bounded' "$project/.cursor/agents/reviewer.md" \
       && grep -q 'pre-implementation' \
         "$project/.pancreator/governance/policies/DEV-001.json" \
+      && test -f "$project/.pancreator/governance/handbooks/python/style-guide.md" \
+      && grep -q 'Python conformance' \
+        "$project/.pancreator/governance/policies/PY-001.json" \
       && grep -q 'Operator supremacy' \
         "$project/.pancreator/governance/policies/OPERATOR-001.json" \
       && grep -q 'operator MAY waive any workflow stage' \

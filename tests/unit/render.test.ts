@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import path from 'node:path'
 import test from 'node:test'
 
 import { renderInvocationMarkdown, renderStatus } from '../../src/lib/render.js'
@@ -149,6 +151,36 @@ test('invocation cards inline full policy text for every stage', () => {
       }
     }
   }
+})
+
+test('Python invocation cards inline PY-001 guidance for embedded targets', () => {
+  const root = createFixture()
+  const configPath = path.join(root, 'project.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  config.installation_mode = 'embedded'
+  config.workspace_root = 'target'
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+  mkdirSync(path.join(root, 'target'), { recursive: true })
+  writeFileSync(path.join(root, 'target', 'pyproject.toml'), '[project]\n')
+
+  const invocation = baseInvocation(root, 'dev', 'implement')
+  const markdown = renderInvocationMarkdown(invocation)
+  const pythonPolicy = invocation.policies.find(
+    (policy) => policy.id === 'PY-001',
+  )
+
+  assert.ok(pythonPolicy)
+  assert.ok(
+    markdown.includes(
+      '### Unrolled guidance · `governance/handbooks/python/style-guide.md`',
+    ),
+  )
+  assert.match(markdown, /Mutable default arguments MUST NOT be used/u)
+  assert.doesNotMatch(markdown, /Appendix A: Formatter-owned rules/u)
 })
 
 test('invocation validation fails when unrolled guidance is omitted', () => {

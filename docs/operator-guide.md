@@ -35,7 +35,10 @@ on the same invocation so delivery can be corrected and resubmitted.
 delegation validation state, artifact paths, and short failure reasons.
 
 Applicable durable handbooks and static skills are resolved through policy
-`guidance_sources` and embedded directly in the invocation card. A worker MUST
+`guidance_sources` and embedded directly in the invocation card. Language-specific
+policies MAY also be selected from detected target-workspace technology signals;
+for example, Python source or packaging markers activate `PY-001` for implementation,
+review, QA, and spotfix work without imposing Python guidance on unrelated targets. A worker MUST
 receive that unrolled guidance with the canonical card; a source-file path is
 not a substitute for delivering the content.
 

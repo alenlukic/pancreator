@@ -1178,6 +1178,7 @@ function listMarkdownFiles(directory: string): string[] {
 }
 
 const CODE_REVIEW_PERSONAS = new Set(['coder', 'reviewer', 'qa-tester'])
+const PYTHON_GUIDANCE_PERSONAS = new Set([...CODE_REVIEW_PERSONAS, 'spotfixer'])
 const POLICY_REFERENCE_PATTERN = /\b[A-Z][A-Z0-9]*-\d{3}\b/gu
 const STATIC_GUIDANCE_PATH_PATTERN =
   /\b(?:governance\/handbooks|library\/skills)\/[A-Za-z0-9._/-]+\.md\b/gu
@@ -1187,6 +1188,7 @@ interface HandbookPolicyRequirement {
   label: string
   personas: Set<string>
   installation_scope?: 'all' | 'self_development'
+  technology?: string
 }
 
 const HANDBOOK_POLICY_REQUIREMENTS: HandbookPolicyRequirement[] = [
@@ -1200,6 +1202,12 @@ const HANDBOOK_POLICY_REQUIREMENTS: HandbookPolicyRequirement[] = [
     label: 'TypeScript handbook',
     personas: CODE_REVIEW_PERSONAS,
     installation_scope: 'self_development',
+  },
+  {
+    handbook_path: 'governance/handbooks/python/style-guide.md',
+    label: 'Python handbook',
+    personas: PYTHON_GUIDANCE_PERSONAS,
+    technology: 'python',
   },
 ]
 
@@ -1315,7 +1323,9 @@ function lookupRowCovers(
   return (
     lookupPatternCovers(provider.persona, consumer.persona) &&
     lookupPatternCovers(provider.workflow, consumer.workflow) &&
-    lookupPatternCovers(provider.stage, consumer.stage)
+    lookupPatternCovers(provider.stage, consumer.stage) &&
+    (provider.technology === undefined ||
+      provider.technology === consumer.technology)
   )
 }
 
@@ -1381,6 +1391,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'tsconfig.json',
     'governance/registries/policy_lookup_table.json',
     'governance/handbooks/eng/engineering.md',
+    'governance/handbooks/python/style-guide.md',
     'governance/handbooks/typescript/style-guide.md',
     'governance/registries/validation_registry.json',
     'governance/registries/directive_exemptions.json',
@@ -1422,6 +1433,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'library/templates/repository-checks.self-development.json',
     'release/index.json',
     'governance/policies/DECOMP-001.json',
+    'governance/policies/PY-001.json',
     'governance/policies/BRIEF-001.json',
     'governance/policies/PRIMER-001.json',
     'governance/policies/REPO-001.json',
@@ -1561,7 +1573,15 @@ export function validateRepository(root: string): RepositoryValidationResult {
 
           const handbookPolicyIds =
             handbookPolicies.get(requirement.handbook_path) ?? new Set<string>()
-          const hasHandbookPolicy = policies.some((policy) =>
+          const applicablePolicies = requirement.technology
+            ? resolvePolicies(root, {
+                persona: stage.persona,
+                workflow: workflow.slug,
+                stage: stage.slug,
+                technologies: [requirement.technology],
+              })
+            : policies
+          const hasHandbookPolicy = applicablePolicies.some((policy) =>
             handbookPolicyIds.has(policy.id),
           )
 

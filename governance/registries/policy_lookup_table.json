@@ -54,6 +54,34 @@
       "policies": ["TS-001"]
     },
     {
+      "persona": "coder",
+      "workflow": "*",
+      "stage": "*",
+      "technology": "python",
+      "policies": ["PY-001"]
+    },
+    {
+      "persona": "reviewer",
+      "workflow": "*",
+      "stage": "*",
+      "technology": "python",
+      "policies": ["PY-001"]
+    },
+    {
+      "persona": "qa-tester",
+      "workflow": "*",
+      "stage": "*",
+      "technology": "python",
+      "policies": ["PY-001"]
+    },
+    {
+      "persona": "spotfixer",
+      "workflow": "*",
+      "stage": "*",
+      "technology": "python",
+      "policies": ["PY-001"]
+    },
+    {
       "persona": "orchestrator",
       "workflow": "*",
       "stage": "*",

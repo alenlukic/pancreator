@@ -1,8 +1,14 @@
-import { readdirSync } from 'node:fs'
+import { readdirSync, type Dirent } from 'node:fs'
 import path from 'node:path'
 
 import { invariant } from './errors.js'
-import { isRecord, readJson, readText, resolveInside } from './io.js'
+import {
+  fileExists,
+  isRecord,
+  readJson,
+  readText,
+  resolveInside,
+} from './io.js'
 import type {
   Policy,
   PolicyGuidance,
@@ -10,13 +16,111 @@ import type {
   PolicyLookupTable,
   PolicyRequirement,
 } from './types.js'
-import { isSelfDevelopmentInstallation } from './project-config.js'
+import {
+  configuredWorkspaceRoot,
+  isSelfDevelopmentInstallation,
+} from './project-config.js'
 import { isValidPolicyRequirement } from './requirements/types.js'
 
 interface PolicyContext {
   persona: string
   workflow: string
   stage: string
+  technologies?: string[]
+}
+
+const SUPPORTED_POLICY_TECHNOLOGIES = new Set(['python'])
+const PYTHON_MARKER_FILES = [
+  'pyproject.toml',
+  'setup.py',
+  'setup.cfg',
+  'requirements.txt',
+  'Pipfile',
+  'poetry.lock',
+  'pdm.lock',
+  'uv.lock',
+  'tox.ini',
+  'noxfile.py',
+  'environment.yml',
+  'environment.yaml',
+] as const
+const TECHNOLOGY_SCAN_IGNORES = new Set([
+  '.git',
+  '.hg',
+  '.mypy_cache',
+  '.nox',
+  '.pancreator',
+  '.pytest_cache',
+  '.ruff_cache',
+  '.svn',
+  '.tox',
+  '.venv',
+  '__pycache__',
+  'build',
+  'coverage',
+  'dist',
+  'node_modules',
+  'venv',
+])
+const TECHNOLOGY_SCAN_MAX_DEPTH = 4
+const TECHNOLOGY_SCAN_MAX_ENTRIES = 10_000
+
+function containsPythonSource(
+  directory: string,
+  depth: number,
+  budget: { remaining: number },
+): boolean {
+  if (depth > TECHNOLOGY_SCAN_MAX_DEPTH || budget.remaining <= 0) {
+    return false
+  }
+
+  let entries: Dirent[]
+
+  try {
+    entries = readdirSync(directory, { withFileTypes: true })
+  } catch {
+    return false
+  }
+
+  for (const entry of entries) {
+    budget.remaining -= 1
+
+    if (budget.remaining < 0) {
+      return false
+    }
+
+    if (entry.isFile() && /\.pyi?$/u.test(entry.name)) {
+      return true
+    }
+
+    if (
+      entry.isDirectory() &&
+      !TECHNOLOGY_SCAN_IGNORES.has(entry.name) &&
+      containsPythonSource(path.join(directory, entry.name), depth + 1, budget)
+    ) {
+      return true
+    }
+  }
+
+  return false
+}
+
+export function detectWorkspaceTechnologies(root: string): Set<string> {
+  const workspaceRoot = path.resolve(root, configuredWorkspaceRoot(root))
+  const technologies = new Set<string>()
+
+  if (
+    PYTHON_MARKER_FILES.some((marker) =>
+      fileExists(path.join(workspaceRoot, marker)),
+    ) ||
+    containsPythonSource(workspaceRoot, 0, {
+      remaining: TECHNOLOGY_SCAN_MAX_ENTRIES,
+    })
+  ) {
+    technologies.add('python')
+  }
+
+  return technologies
 }
 
 interface PolicyGuidanceSource {
@@ -188,6 +292,13 @@ function parseLookupRow(value: unknown, source: string): PolicyLookupRow {
     { code: 'INVALID_POLICY_LOOKUP' },
   )
   invariant(
+    value.technology === undefined ||
+      (typeof value.technology === 'string' &&
+        SUPPORTED_POLICY_TECHNOLOGIES.has(value.technology)),
+    `${source}: technology MUST name a supported workspace technology when present.`,
+    { code: 'INVALID_POLICY_LOOKUP' },
+  )
+  invariant(
     Array.isArray(value.policies) &&
       value.policies.every((item) => typeof item === 'string'),
     `${source}: policies MUST be a string array.`,
@@ -252,6 +363,9 @@ export function resolvePolicies(
   const catalog = loadPolicyCatalog(root)
   const policyIds = new Set<string>()
   const selfDevelopment = isSelfDevelopmentInstallation(root)
+  const technologies = new Set(
+    context.technologies ?? [...detectWorkspaceTechnologies(root)],
+  )
 
   for (const row of lookup.rows) {
     const applies =
@@ -264,6 +378,10 @@ export function resolvePolicies(
     }
 
     if (row.installation_scope === 'self_development' && !selfDevelopment) {
+      continue
+    }
+
+    if (row.technology && !technologies.has(row.technology)) {
       continue
     }
 

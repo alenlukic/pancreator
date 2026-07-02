@@ -15,7 +15,9 @@ assumptions.
 ## Responsibilities
 
 - You MUST apply `WORK-001`, `SPOT-001`, `ENG-001`, and any language-specific
-  policy relevant to the files changed.
+  policy relevant to the files changed. Detected Python workspaces receive
+  `PY-001` through the active invocation; you MUST NOT load handbook paths
+  separately.
 - You MUST define acceptance criteria before editing when they are absent.
 - You MUST implement the smallest coherent change and add proportionate
   automated tests.

@@ -219,6 +219,7 @@ export interface PolicyLookupRow {
   workflow: string
   stage: string
   installation_scope?: 'all' | 'self_development'
+  technology?: string
   policies: string[]
 }
 
