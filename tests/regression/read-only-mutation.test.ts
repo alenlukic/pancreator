@@ -16,7 +16,7 @@ import {
   writeJson,
 } from '../helpers.js'
 
-test('read-only stage fails when the source workspace changes', () => {
+test('read-only stage fails when a source workspace change is unattributed', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'preflight')
   const state = createRun(root, {
@@ -55,4 +55,45 @@ test('read-only stage fails when the source workspace changes', () => {
     ),
   )
   assert.equal(submitted.state.status, 'failed')
+})
+
+test('read-only stage allows changes traced to the active agent', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'preflight')
+  const state = createRun(root, {
+    workflowSlug: 'preflight',
+    requestPath: 'request.md',
+  })
+  const prepared = prepareInvocation(root, state.run_id)
+  const invocation = prepared.invocation
+
+  assert.ok(invocation)
+
+  writeFileSync(
+    path.join(root, 'src', 'base.ts'),
+    'export const base = false\n',
+  )
+
+  const stage = stageBySlug(workflow, 'inspect')
+  const output = {
+    ...makeOutput(root, invocation, stage),
+    workspace_changes: {
+      attribution: 'internal',
+      paths: ['src/base.ts'],
+      explanation:
+        'The active inspector changed this file while producing the stage output.',
+    },
+    data: { inspection: { findings: [], verdict: 'pass' } },
+  }
+
+  writeJson(path.join(root, invocation.output.path), output)
+  writeCanonicalDelegation(root, invocation)
+
+  const submitted = submitOutput(root, state.run_id, invocation.output.path)
+  const cleanliness = submitted.record.evaluation.deterministic.find(
+    (item) => item.id === 'scope.no_unapproved_changes',
+  )
+
+  assert.equal(cleanliness?.passed, true)
+  assert.match(cleanliness?.explanation ?? '', /no external contamination/u)
 })

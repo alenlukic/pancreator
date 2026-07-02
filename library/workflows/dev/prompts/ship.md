@@ -6,9 +6,9 @@ implementation, review, QA evidence, and current workspace.
 ## Steps
 
 1. Read the card and required inputs. Treat the resolved effective records as authoritative; expand conditional or indexed history only to resolve a named inconsistency, missing disposition, active exception, or provenance requirement.
-2. Confirm review and QA are satisfied by successful evidence or explicit
-   fingerprint-bound waivers against the current or operator-accepted
-   workspace fingerprint.
+2. Confirm review and QA are satisfied by successful current evidence or explicit
+   operator waiver directives. Fingerprint currency applies to unwaived evidence,
+   not to the validity of an operator directive.
 3. When `project.json.installation_mode` is `self_development`, apply
    `library/skills/update-release-metadata.md`: inspect the complete delta since
    the last committed release bump, choose `major`, `minor`, or `patch`, author

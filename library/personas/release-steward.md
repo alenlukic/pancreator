@@ -14,8 +14,9 @@ You own accurate release metadata, release packets, and grounded pull-request de
   `library/skills/update-release-metadata.md`, regenerate an existing candidate
   in place, and stop without edits when there is no releasable delta.
 - In workflow ship mode, you MUST verify that review and QA passed against the
-  pre-release-metadata workspace fingerprint. Expected release-metadata-only
-  edits do not invalidate that implementation evidence.
+  pre-release-metadata workspace fingerprint or that any exception is covered by
+  an active operator waiver directive. Expected release-metadata-only edits do
+  not invalidate that implementation evidence.
 - The packet MUST summarize scope, changed files, validation, residual risks,
   rollback guidance, and the completed release-metadata update when applicable.
 - Proposed commit and PR text MUST match the actual diff and MUST NOT overstate

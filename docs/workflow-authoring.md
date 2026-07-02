@@ -34,7 +34,9 @@ is the imperative validator in `src/lib/workflow.ts`, run by `./bin/pan validate
 - `start_stage` - slug of the entry stage; must appear in `stages`.
 - `limits` - circuit breakers: `max_total_transitions`, `max_stage_attempts`,
   `max_consecutive_failures`. Exceeding any pauses the run with a decision
-  record. The harness never silently resets a budget.
+  record. These broad budgets are independent of the universal same-reason
+  circuit breaker: two consecutive hard failures with the same normalized
+  signature pause immediately. The harness never silently resets a budget.
 - `stages` - ordered, unique stage slugs.
 
 ## Pipeline model configuration
@@ -69,15 +71,16 @@ mapping before resuming the run.
   section.
 - `workspace_policy` - the mutation boundary the harness enforces with workspace
   fingerprints:
-  - `source_allowed` - may modify product source (implement).
+  - `source_allowed` - may modify product source (implement, and review when
+    the reviewer is explicitly responsible for bounded non-structural remediation).
   - `release_metadata_only` - in Pancreator self-development, may modify only
     `CHANGELOG.md`, `VERSION`, npm version metadata, `README.md`, and
     version-bearing Markdown under `docs/`; in embedded installations it
     behaves as `read_only` (ship).
   - `runtime_only` - may write only under `runtime/` (intake, plan).
-  - `read_only` - may not change any tracked content (review, test).
-    Any policy other than `source_allowed` adds the deterministic criterion
-    `scope.no_unapproved_changes`, so a read-only stage that mutates source fails.
+  - `read_only` - may not change any tracked content (test and any review
+    stage that is not explicitly source-allowed).
+    Any policy other than `source_allowed` adds the deterministic criterion `scope.no_unapproved_changes`. This criterion detects external or unattributed contamination: a stage may report top-level `workspace_changes` with `attribution: internal` and every changed path to preserve attribution without blocking.
 - `gate` - what decides advancement after a valid, successful output:
   - `operator` - pause for explicit operator approval (intake, ship).
   - `supervisor` - pause for independent supervisor judgment of the judgment
@@ -92,7 +95,7 @@ mapping before resuming the run.
   - `conditional_stage_outputs` keeps records available behind an explicit
     retrieval condition.
   - `prior_attempts` and `operator_feedback` bound remediation history by count.
-  - ship-like stages MAY include active waivers, current workspace
+  - ship-like stages MAY include active operator waiver directives, current workspace
     ratifications, and the latest workspace-change validation.
 
   Each stage-output selector declares `stage` and `selection`. Use
@@ -124,6 +127,10 @@ mapping before resuming the run.
   `paused`). Every stage must be reachable from `start_stage`.
 
 ## Validation rules enforced by the harness
+
+A stage whose `failure` transition points to itself is automatically covered
+by same-reason tracking. The second consecutive hard failure with the same
+normalized signature pauses before a third invocation can be prepared.
 
 - `schema_version` is `1`; `slug`, `title`, and a non-empty `stages` list exist.
 - Stage slugs are unique; each has a persona, a valid `gate`, `context`, and

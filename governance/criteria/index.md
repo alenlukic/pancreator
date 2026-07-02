@@ -26,7 +26,7 @@ A stage MUST NOT succeed unless its output shape is valid, every declared criter
 ## Reusable criterion families
 
 - `record.operator_readable` MUST require a concise outcome, blockers, evidence pointers, and next action.
-- `scope.no_unapproved_changes` MUST require compliance with the declared workspace mutation policy. The harness MUST inject it for any stage whose `workspace_policy` is not `source_allowed`; `release_metadata_only` passes only for bounded self-development release files and behaves as read-only in embedded installations.
+- `scope.no_unapproved_changes` is an external-contamination detector, not a punishment for worker-attributable edits. The harness MUST inject it for any stage whose `workspace_policy` is not `source_allowed`; it MUST pass when every changed blocking path is explicitly traced to the active worker and MUST fail only for external, mixed, unknown, or unattributed changes. `release_metadata_only` continues to identify expected self-development release paths separately.
 - `*.acceptance_met` MUST require independently verifiable acceptance evidence rather than an unsupported completion claim.
 - `*.tests_correct` MUST require meaningful tests that are correctly scoped and resistant to false positives.
 - `*.maintainable` MUST require structural and maintenance risk proportionate to the requested scope.

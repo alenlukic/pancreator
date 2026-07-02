@@ -69,7 +69,7 @@ const HELP_BODY = `Usage:
   pan pause <run-id> [--note <text>]
   pan resume <run-id> [--stage <stage-slug>] [--note <text>]
   pan set-stage <run-id> --stage <stage-slug> --note <reason>
-  pan waive-gate <run-id> --criteria <id[,id...]> --note <reason> [--stage <stage-slug>] [--defer <AC-id[,AC-id...]> --spotfix]
+  pan waive-gate <run-id> --note <directive> [--stage <stage-slug>] [--to <stage-slug>] [--criteria <id[,id...]>] [--defer <AC-id[,AC-id...]> --spotfix]
   pan accept-change <run-id> [--note <text>] [--waive]
   pan abort <run-id> [--note <text>]
   pan changes begin|commit|cancel <run-id> <path> [--lock <legacy-token>]  # deprecated no-op
@@ -518,12 +518,6 @@ async function main(): Promise<void> {
       const criteria = commaSeparatedOption(args, '--criteria')
       const note = option(args, '--note')
 
-      if (criteria.length === 0) {
-        throw new PanError('--criteria is required for waive-gate.', {
-          code: 'INVALID_ARGUMENT',
-        })
-      }
-
       if (!note || note.trim().length === 0) {
         throw new PanError('--note is required for waive-gate.', {
           code: 'INVALID_ARGUMENT',
@@ -532,6 +526,7 @@ async function main(): Promise<void> {
 
       const result = waiveGate(root, runId, {
         stageSlug: option(args, '--stage'),
+        targetStage: option(args, '--to'),
         criterionIds: criteria,
         note,
         deferredAcceptanceCriteria: commaSeparatedOption(args, '--defer'),
@@ -544,6 +539,7 @@ async function main(): Promise<void> {
         pending_action: result.state.pending_action,
         waiver_id: result.waiver.waiver_id,
         waiver_artifact: result.waiver.artifact_path,
+        directive_target: result.waiver.directive_target ?? null,
         spotfix_case: result.waiver.spotfix_case_path ?? null,
       })
       return

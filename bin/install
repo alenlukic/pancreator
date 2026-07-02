@@ -165,6 +165,18 @@ run_smoke() {
       && test -L "$project/.pancreator/.cursor" \
       && test -f "$project/.cursor/commands/pan-start.md" \
       && test -f "$project/.cursor/agents/coder.md" \
+      && grep -q 'paperwork-only' "$project/.cursor/agents/coder.md" \
+      && grep -q 'bounded' "$project/.cursor/agents/reviewer.md" \
+      && grep -q 'pre-implementation' \
+        "$project/.pancreator/governance/policies/DEV-001.json" \
+      && grep -q 'Operator supremacy' \
+        "$project/.pancreator/governance/policies/OPERATOR-001.json" \
+      && grep -q 'operator MAY waive any workflow stage' \
+        "$project/.pancreator/governance/policies/WAIVER-001.json" \
+      && grep -q 'workspace_changes' \
+        "$project/.pancreator/library/schemas/stage-output.schema.json" \
+      && grep -q '"workspace_policy": "source_allowed"' \
+        "$project/.pancreator/library/workflows/dev/stages/review.json" \
       && grep -Eq '^[[:space:]]*/?\.pancreator/?[[:space:]]*$' \
         "$project/.gitignore" \
       && test "$(grep -Ec '^[[:space:]]*/?\.pancreator/?[[:space:]]*$' \
@@ -249,7 +261,7 @@ if ! command -v node >/dev/null 2>&1; then
   exit 1
 fi
 
-NODE_MAJOR="$(node -p 'Number(process.versions.node.split(".")[0])')"
+NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
 
 if [[ "$NODE_MAJOR" -lt 22 ]]; then
   echo "Error: Node.js 22 or newer is required; found $(node --version)." >&2

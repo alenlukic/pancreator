@@ -174,6 +174,31 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
       existsSync(path.join(project, '.pancreator', 'governance')),
       true,
     )
+    assert.equal(
+      existsSync(
+        path.join(
+          project,
+          '.pancreator',
+          'governance',
+          'policies',
+          'OPERATOR-001.json',
+        ),
+      ),
+      true,
+    )
+    assert.match(
+      readFileSync(
+        path.join(
+          project,
+          '.pancreator',
+          'governance',
+          'policies',
+          'WAIVER-001.json',
+        ),
+        'utf8',
+      ),
+      /operator MAY waive any workflow stage/u,
+    )
     assert.equal(existsSync(path.join(project, '.pancreator', 'library')), true)
     assert.equal(
       existsSync(path.join(project, '.pancreator', 'release', 'index.json')),
@@ -526,6 +551,31 @@ test('embedded installer refresh preserves target primer, runtime state, and unr
     assert.equal(
       existsSync(path.join(legacyWorkspaceDirectory, 'active-workflow.json')),
       false,
+    )
+    assert.equal(
+      existsSync(
+        path.join(
+          project,
+          '.pancreator',
+          'governance',
+          'policies',
+          'OPERATOR-001.json',
+        ),
+      ),
+      true,
+    )
+    assert.match(
+      readFileSync(
+        path.join(
+          project,
+          '.pancreator',
+          'library',
+          'schemas',
+          'stage-output.schema.json',
+        ),
+        'utf8',
+      ),
+      /workspace_changes/u,
     )
   } finally {
     rmSync(project, { recursive: true, force: true })

@@ -182,12 +182,10 @@ test('repository validation requires lookup rows to load referenced policy depen
   }
 
   lookup.rows = lookup.rows.map((row) =>
-    row.persona === 'release-steward' &&
-    row.workflow === 'dev' &&
-    row.stage === 'ship'
+    row.persona === '*' && row.workflow === '*' && row.stage === '*'
       ? {
           ...row,
-          policies: row.policies.filter((policy) => policy !== 'WORK-001'),
+          policies: row.policies.filter((policy) => policy !== 'OPERATOR-001'),
         }
       : row,
   )
@@ -199,7 +197,7 @@ test('repository validation requires lookup rows to load referenced policy depen
   assert.equal(result.ok, false)
   assert.match(
     result.errors.join('\n'),
-    /loads WAIVER-001 without referenced policy WORK-001/u,
+    /loads WAIVER-001 without referenced policy OPERATOR-001/u,
   )
 })
 

@@ -4,7 +4,7 @@
   "severity": "hard",
   "summary": "The ship stage MUST prepare a release packet, update self-development release metadata, and leave irreversible release actions to the operator.",
   "instructions": [
-    "The release packet MUST confirm that prior gates are satisfied by current evidence or explicit fingerprint-bound operator acceptance and waivers.",
+    "The release packet MUST confirm that prior gates are satisfied by current evidence or explicit operator acceptance and waiver directives.",
     "The release packet MUST enumerate active operator gate waivers, deferred acceptance criteria, and linked spotfix cases rather than describing waived gates as ordinary passes.",
     "The release packet MUST include rollback guidance, unresolved non-blocking risks, and a concise change summary.",
     "For Pancreator self-development only, the release steward MUST update release metadata under VERSION-001 before operator approval. Embedded target workflows MUST remain release-metadata read-only.",
