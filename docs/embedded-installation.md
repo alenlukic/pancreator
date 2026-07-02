@@ -28,8 +28,8 @@ post-install checks from the target repository:
 cd /path/to/target-repository
 ./.pancreator/bin/pan doctor
 ./.pancreator/bin/pan validate
-# Then run /pan-build-docs in Cursor to replace the bootstrap target primer
-# and populate target-authoritative repository check profiles.
+# Then run /pan-build-docs to replace the bootstrap target primer and
+# /pan-build-briefs to generate target-specific brief semantics and design tokens.
 ```
 
 ## Installed layout
@@ -48,7 +48,8 @@ cd /path/to/target-repository
     bin/ governance/ library/ src/ tests/
     docs/
       target-repo-primer.md  # target-specific durable repository primer
-      ...                    # Pancreator operator and authoring documentation
+      operator-briefs/        # generated target ontology and design tokens
+      ...                     # Pancreator operator and authoring documentation
     dist/ node_modules/      # built runtime and development tooling
     runtime/
       repository-checks.json # target-authoritative verification profiles
@@ -116,6 +117,18 @@ valid target-specific commands, add newly introduced standard profiles, and
 safely disable a legacy `fast` profile that exactly duplicates `full`; the
 pre-migration file is backed up under `.pancreator/backups/repository-checks/`.
 
+## Operator brief system
+
+Every install includes Pancreator-owned schemas, generic semantics, and base CSS under `.pancreator/library/`. A fresh target does not inherit Pancreator self-development card types or colors. Run `/pan-build-briefs` after installation to generate `.pancreator/docs/operator-briefs/project.json` and `.pancreator/docs/operator-briefs/project.css` from recurring target use cases. The underlying CLI commands are:
+
+```sh
+./.pancreator/bin/pan briefs build
+./.pancreator/bin/pan briefs validate
+./.pancreator/bin/pan briefs render --input <brief.json> --output <brief.html>
+```
+
+Refreshes preserve the target-specific project files. Legacy installations can generate them with the same command; existing Markdown artifacts remain unchanged.
+
 ## Workspace mutation model
 
 Pancreator no longer creates persistent workspace locks, active-workflow leases,
@@ -172,7 +185,7 @@ A complete installation can be refreshed idempotently:
 ./bin/install --target /path/to/target-repository --yes
 ```
 
-Refresh replaces owned harness payload and reprojects Cursor files while preserving `.pancreator/docs/target-repo-primer.md`, `.pancreator/runtime/repository-checks.json`, workflow state, Cursor backups, and unrelated target files. The refreshed payload includes current workflow stages, personas, policies, validators, and runtime enforcement, so operator-supremacy semantics, flexible waiver directives, internal-change attribution, implementation baselines, same-reason pauses, retry remediation, and reviewer remediation apply to both new and updated installations. Upgrading an older installation migrates `.pancreator/runtime/target-repo-primer.md` into the durable docs location and removes the legacy path; a conflicting legacy copy is backed up under `.pancreator/backups/target-repo-primer/`. Refresh also removes the obsolete `.pancreator/runtime/locks/` directory from pre-removal installations so stale cooperative locks cannot block upgraded runs.
+Refresh replaces owned harness payload and reprojects Cursor files while preserving `.pancreator/docs/target-repo-primer.md`, `.pancreator/docs/operator-briefs/` when generated, `.pancreator/runtime/repository-checks.json`, workflow state, Cursor backups, and unrelated target files. The refreshed payload includes current workflow stages, personas, policies, validators, and runtime enforcement, so operator-supremacy semantics, flexible waiver directives, internal-change attribution, implementation baselines, same-reason pauses, retry remediation, and reviewer remediation apply to both new and updated installations. Upgrading an older installation migrates `.pancreator/runtime/target-repo-primer.md` into the durable docs location and removes the legacy path; a conflicting legacy copy is backed up under `.pancreator/backups/target-repo-primer/`. Refresh also removes the obsolete `.pancreator/runtime/locks/` directory from pre-removal installations so stale cooperative locks cannot block upgraded runs.
 
 If `.pancreator/` exists but is incomplete, an interactive install offers:
 
@@ -193,7 +206,7 @@ blanket-deleted.
 
 ## Harness versioning
 
-`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `2.10.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
+`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `2.11.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
 
 `release/index.json` is the internal mapping from harness version to immutable
 Git commit. Because a commit cannot contain its own hash, release publication is

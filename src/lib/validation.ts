@@ -1356,6 +1356,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'library/cursor/commands/pan-debug.md',
     'library/cursor/commands/pan-decompose.md',
     'library/cursor/commands/pan-build-docs.md',
+    'library/cursor/commands/pan-build-briefs.md',
     'library/cursor/commands/pan-spotfix.md',
     'library/cursor/commands/pan-write-pr.md',
     'library/cursor/agents/decomposer.md',
@@ -1368,10 +1369,20 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'library/personas/spotfixer.md',
     'library/skills/spotfix.md',
     'library/skills/write-pr-description.md',
+    'library/skills/craft-operator-artifact.md',
+    'library/operator-briefs/primitives.json',
+    'library/operator-briefs/base.css',
+    'library/schemas/operator-brief.schema.json',
+    'library/schemas/operator-brief-system.schema.json',
+    'library/templates/operator-briefs/project.json',
+    'library/templates/operator-briefs/project.css',
+    'library/templates/operator-briefs/brief.example.json',
+    'docs/operator-brief-system.md',
     'library/templates/repository-checks.json',
     'library/templates/repository-checks.self-development.json',
     'release/index.json',
     'governance/policies/DECOMP-001.json',
+    'governance/policies/BRIEF-001.json',
     'governance/policies/PRIMER-001.json',
     'governance/policies/REPO-001.json',
     'governance/policies/PR-001.json',
@@ -1379,6 +1390,13 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'governance/policies/SPOT-001.json',
     'src/cli.ts',
   ]
+
+  if (selfDevelopment) {
+    required.push(
+      'docs/operator-briefs/project.json',
+      'docs/operator-briefs/project.css',
+    )
+  }
 
   for (const relative of required) {
     if (!fileExists(path.join(root, relative))) {

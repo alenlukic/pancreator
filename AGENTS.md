@@ -23,6 +23,13 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 - The primer is orientation, not authority. Agents MUST NOT open or search files merely because the primer references them; a referenced file MAY be read only for a concrete task-specific need.
 - The operator request, this file, the active invocation card, and applicable policies retain precedence over primer content.
 
+## Operator brief system
+
+- `BRIEF-001` governs new operator-facing narrative artifacts. Authors MUST use the JSON brief contract and render self-contained semantic HTML; existing Markdown and canonical worker-control records are not migrated.
+- Shared semantics and base presentation live under `library/operator-briefs/`. Pancreator self-development extensions live under `docs/operator-briefs/`.
+- Section emoji MUST come from the registered semantic key and retain one meaning across the repository. Artifact data MUST NOT encode layout, color, or inline styles.
+- Use `./bin/pan briefs validate` before relying on the project brief system and `./bin/pan briefs render` to produce operator HTML.
+
 ## Operating loop
 
 - Runs MUST be created, inspected, advanced, paused, resumed, and aborted through `./bin/pan`.

@@ -6,6 +6,7 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 
 - `GLOBAL-001` — operator-first records
 - `GLOBAL-002` — bounded context retrieval
+- `BRIEF-001` — semantic HTML operator brief structure and presentation
 - `OUTPUT-001` — quiet command output and Cursor-like SDK progress
 - `BIN-001` — self-development-only durable Pancreator shell automation under `bin/`
 - `REPO-001` — target-owned, technology-agnostic verification commands
