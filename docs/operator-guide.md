@@ -52,7 +52,7 @@ Every agent reads this primer before expanding repository context. It is a navig
 
 Run `/pan-build-briefs` after installation and whenever recurring operator-facing use cases or project visual conventions materially change. The command scaffolds missing files, then asks the librarian to derive a minimal target-specific ontology and design-token layer from bounded repository evidence. It writes `docs/operator-briefs/project.json` and `docs/operator-briefs/project.css` (`.pancreator/docs/operator-briefs/` when embedded) and validates collisions and emoji consistency.
 
-Use `pan briefs build --force` only when deliberately resetting the project layer to templates before regeneration. Existing Markdown artifacts are not migrated. New narrative artifacts should be authored as brief JSON and rendered with `pan briefs render` to portable HTML.
+Use `pan briefs build --force` only when deliberately resetting the project layer to templates before regeneration. Existing historical Markdown artifacts are not migrated. Every newly prepared workflow stage declares exact brief JSON and HTML paths in its invocation card; workers must use those paths, and submission rerenders and validates the HTML automatically.
 
 ## Assess unusually large intake
 

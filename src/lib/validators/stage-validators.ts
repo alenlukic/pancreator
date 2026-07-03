@@ -636,11 +636,11 @@ export function validateIntakeOutput(input: HandlerInput): HandlerResult {
       continue
     }
 
-    const markdown = readText(artifactPath)
+    const artifactContent = readText(artifactPath)
     let mentionedStories = 0
 
     for (const id of storyIds) {
-      if (markdown.includes(id)) {
+      if (artifactContent.includes(id)) {
         mentionedStories += 1
       }
     }
@@ -648,7 +648,7 @@ export function validateIntakeOutput(input: HandlerInput): HandlerResult {
     if (storyIds.size > 0 && mentionedStories === 0) {
       issues.push(
         issue(
-          'intake.md_json_mismatch',
+          'intake.artifact_json_mismatch',
           `Artifact ${artifact.path} does not reference any user story ids from JSON`,
         ),
       )

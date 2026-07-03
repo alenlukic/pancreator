@@ -23,7 +23,9 @@ produce reproducible evidence.
 
 Populate `data.test` (`verdict`, `cases`, `defects`, `acceptance_results`). Set
 the verdict to fail for any unresolved blocking defect or uncovered hard
-criterion. Write a markdown QA report artifact and reference it.
+criterion. Author the QA report as the invocation's schema-valid brief JSON,
+render it to the exact HTML path from the output contract, and reference the HTML
+first and the brief JSON second.
 
 ## Done when
 

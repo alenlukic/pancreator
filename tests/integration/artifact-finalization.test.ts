@@ -37,6 +37,7 @@ test('aborting a run finalizes artifact numbering and layout', () => {
   assert.ok(invocationFiles.some((name) => /^00_intake-1_.*\.md$/u.test(name)))
   assert.equal(existsSync(path.join(runDirectory, 'records')), false)
   assert.equal(existsSync(path.join(runDirectory, 'artifacts/json')), true)
+  assert.equal(existsSync(path.join(runDirectory, 'artifacts/html')), true)
   assert.equal(existsSync(path.join(runDirectory, 'artifacts/markdown')), true)
   assert.match(
     readFileSync(path.join(runDirectory, 'events.jsonl'), 'utf8'),

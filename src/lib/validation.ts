@@ -658,6 +658,27 @@ export function validateStageOutput(
     }
   }
 
+  const briefContract = invocation.output.operator_brief as
+    | Invocation['output']['operator_brief']
+    | undefined
+
+  if (briefContract) {
+    const primaryArtifact = output.artifacts[0]
+    const sourceArtifact = output.artifacts[1]
+
+    if (primaryArtifact?.path !== briefContract.rendered_path) {
+      errors.push(
+        `artifacts[0].path MUST equal rendered operator brief path '${briefContract.rendered_path}'`,
+      )
+    }
+
+    if (sourceArtifact?.path !== briefContract.source_path) {
+      errors.push(
+        `artifacts[1].path MUST equal operator brief source path '${briefContract.source_path}'`,
+      )
+    }
+  }
+
   for (const artifact of output.artifacts) {
     try {
       const absolute = resolveInside(root, artifact.path)
