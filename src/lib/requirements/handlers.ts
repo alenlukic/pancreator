@@ -21,6 +21,7 @@ import {
 } from '../validators/operator-artifact.js'
 import {
   validateDecompositionArtifact,
+  validateHarnessRepairIntake,
   validateImplementationClaims,
   validateIntakeOutput,
   validateInvestigationArtifact,
@@ -134,6 +135,7 @@ export const HANDLERS: Record<string, ValidatorHandler> = {
   'release-validate': validateReleaseOutput,
   'decomposition-validate': validateDecompositionArtifact,
   'target-repo-primer-validate': validateTargetRepoPrimer,
+  'harness-repair-validate': validateHarnessRepairIntake,
   'investigation-validate': validateInvestigationArtifact,
   'spotfix-validate': validateSpotfixOutcome,
   'spotfix-escalation-scaffold': () => passed(),

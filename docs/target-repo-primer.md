@@ -79,7 +79,7 @@ flowchart TD
 ## Public interfaces
 
 - `./bin/pan` is the primary programmatic/operator interface. Verified top-level commands include `init`, `prepare`, `submit`, `assess`, `decide`, `pause`, `resume`, `set-stage`, `accept-change`, `waive-gate`, `abort`, `changes`, `workspace`, `workflow`, `status`, `list`, `models`, `validation-map`, `governance`, `requirements`, `output`, `assessment`, `spotfix`, `validate`, and `doctor`.
-- `library/cursor/commands/` defines the public Cursor command surface that gets projected into `.cursor/commands/`, including `/pan-start`, `/pan-resume`, `/pan-debug`, `/pan-decompose`, `/pan-build-docs`, `/pan-release`, `/pan-spotfix`, `/pan-status`, and `/pan-validate`.
+- `library/cursor/commands/` defines the public Cursor command surface that gets projected into `.cursor/commands/`, including `/pan-start`, `/pan-resume`, `/pan-debug`, `/pan-repair`, `/pan-decompose`, `/pan-build-docs`, `/pan-release`, `/pan-spotfix`, `/pan-status`, and `/pan-validate`.
 - `bin/install` and `bin/update` are the supported embedded-installation interfaces for initial install, repair/clean refresh, smoke validation, and indexed fast-forward updates.
 - `project.json` is the public model-configuration surface for this checkout. `active_config` selects a named persona-to-model mapping, and `./bin/pan models --sync` projects that mapping into local Cursor agent frontmatter.
 - `library/workflows/<slug>/workflow.json`, `library/workflows/<slug>/stages/*.json`, and `library/workflows/<slug>/prompts/*.md` form the canonical workflow authoring surface consumed by the CLI.

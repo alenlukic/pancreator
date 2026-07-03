@@ -69,6 +69,17 @@ Use `/pan-debug <problem>` when the cause or remediation scope is unclear. The
 investigator does not modify source; it returns root cause, proposed remediation,
 numbered acceptance criteria, and a `lightweight` or `systematic` recommendation.
 
+Use `/pan-repair <problem-or-artifact>` when the suspected defect is in
+Pancreator itself or when a workflow run needs a harness-level audit. The harness
+technician accepts prose, a file, or a run directory; reconstructs run behavior
+from state, events, snapshots, invocations, outputs, assessments, validations,
+and artifacts; and augments those records with the relevant agent transcripts.
+Delegation prompts are treated as prompt-delivery evidence rather than as
+transcripts. The command writes a validated `harness-repair-*.md` intake under
+`runtime/inbox/` that can be passed directly to `/pan-start` in the Pancreator
+self-development checkout. It does not modify the investigated run or implement
+the repair.
+
 Use `/pan-spotfix <request>` only when the operator deliberately selects
 lightweight execution and the request satisfies `WORK-001`: one coherent change,
 no unresolved structural decision, no more than three core implementation files

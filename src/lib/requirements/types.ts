@@ -22,6 +22,7 @@ export type InvocationKind =
   | 'assessment'
   | 'spotfix'
   | 'investigation'
+  | 'repair'
   | 'decomposition'
   | 'documentation'
 
