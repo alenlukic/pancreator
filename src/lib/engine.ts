@@ -2425,6 +2425,10 @@ export function waiveGate(
         : inferredBlockers.length > 0
           ? inferredBlockers
           : ['*']
+    const bypassedBeyondRequest = inferredBlockers.filter(
+      (blocker) => !waivedCriteria.includes(blocker),
+    )
+    const wholeStageBypass = bypassedBeyondRequest.length > 0
     const target = options.targetStage ?? stage.transitions.success
 
     invariant(target, `Stage '${stage.slug}' has no success transition.`, {
@@ -2490,6 +2494,18 @@ export function waiveGate(
       '',
       ...waivedCriteria.map((item) => `- \`${item}\``),
       '',
+      ...(wholeStageBypass
+        ? [
+            '## Whole-stage bypass disclosure',
+            '',
+            '**whole_stage_bypass:** true',
+            '',
+            'Additional failed hard criteria bypassed beyond the operator-named subset:',
+            '',
+            ...bypassedBeyondRequest.map((item) => `- \`${item}\``),
+            '',
+          ]
+        : []),
       '## Operator terms',
       '',
       options.note.trim(),
@@ -2527,6 +2543,7 @@ export function waiveGate(
       source_attempt: history?.attempt ?? 0,
       source_evidence_path: sourceEvidencePath,
       criterion_ids: waivedCriteria,
+      ...(wholeStageBypass ? { whole_stage_bypass: true } : {}),
       workspace_fingerprint: workspace.fingerprint,
       ...(history
         ? { source_workspace_fingerprint: history.workspace_fingerprint }

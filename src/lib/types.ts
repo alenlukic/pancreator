@@ -514,6 +514,7 @@ export interface OperatorGateWaiver {
   source_attempt: number
   source_evidence_path: string
   criterion_ids: string[]
+  whole_stage_bypass?: boolean
   workspace_fingerprint: string
   source_workspace_fingerprint?: string
   directive_target?: string

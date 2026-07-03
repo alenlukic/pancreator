@@ -6,11 +6,20 @@
 
 - Migrate active development and preflight workflow-stage narratives from Markdown to the invocation-declared operator brief contract: schema-valid JSON source plus self-contained HTML, with HTML as artifact 0 and source JSON as artifact 1 ([workflow prompts](library/workflows/dev/prompts), [stage output skill](library/skills/write-stage-output.md)).
 - Make invocation cards expose exact brief paths, renderer, schema, and profile, and prepopulate those references in stage-output scaffolds so workers no longer infer artifact format or location ([invocation rendering](src/lib/render.ts), [stage scaffold](src/lib/requirements/scaffold.ts)).
+- Apply glob-aware workspace exclusion matching with automatic nested generated-directory detection for well-known names such as `node_modules`, `dist`, and `coverage`, while preserving existing literal exclusions ([workspace roots](src/lib/workspace/roots.ts), [workspace index](src/lib/workspace/index.ts)).
+
+### Added
+
+- Add shared embedded evidence-path resolution so target-repository paths and pytest node IDs resolve from the run workspace root while harness-relative `runtime/`, `library/`, and `governance/` paths still resolve from the installation root ([stage validators](src/lib/validators/stage-validators.ts)).
+- Disclose whole-stage bypass conditions in gate waiver artifacts with an additive `whole_stage_bypass` field and operator-readable audit text when additional hard blockers are bypassed beyond the named criterion subset ([engine](src/lib/engine.ts), [render](src/lib/render.ts), [types](src/lib/types.ts)).
+- Add focused regression coverage for nested exclusion matching, embedded evidence-path resolution, partial-criterion waiver disclosure, and macOS symlink-safe repository-check workspace assertions ([workspace tests](tests/unit/workspace-roots.test.ts), [validator tests](tests/unit/validators-stage-validators.test.ts), [gate-waiver tests](tests/integration/gate-waiver.test.ts)).
 
 ### Fixed
 
 - Rerender each stage brief from its JSON source during submission and reject missing or invalid brief data, non-HTML primary artifacts, or artifact paths that drift from the invocation contract ([runtime engine](src/lib/engine.ts), [stage-output validation](src/lib/validation.ts)).
 - Preserve and finalize `artifacts/html/` alongside JSON and explicit Markdown compatibility records, including embedded installations and legacy artifact-layout migration ([artifact finalizer](src/lib/workflow-artifacts.ts), [runtime protocol](docs/runtime-protocol.md)).
+- Stop nested generated files under dependency directories from polluting workspace fingerprints and triggering false `scope.no_unapproved_changes` failures on read-only and release-metadata-only stages ([workspace index tests](tests/unit/workspace-index.test.ts)).
+- Resolve embedded target evidence paths without requiring `../` escapes and apply consistent resolver semantics across implementation, QA, and release validators ([stage validators](src/lib/validators/stage-validators.ts)).
 
 ## [2.11.0] - 2026-07-02
 
@@ -293,8 +302,8 @@ _First functional release._
 
 - Add the original self-building workflow harness, governed personas, compliance hooks, durable memory, and bootstrap documentation ([c9c5def](https://github.com/alenlukic/pancreator/commit/c9c5def2ccd2a0a9c27d5c6707c963cb2621518a))
 
-[2.11.0]: https://github.com/alenlukic/pancreator/compare/7d86b1257b839217317f568d802fe5e836b8bebf...HEAD
-[2.10.0]: https://github.com/alenlukic/pancreator/compare/c0a1a4cc6964261a970038578b41de71c5de1204...HEAD
+[2.11.1]: https://github.com/alenlukic/pancreator/compare/7d86b1257b839217317f568d802fe5e836b8bebf...HEAD
+[2.11.0]: https://github.com/alenlukic/pancreator/compare/c0a1a4cc6964261a970038578b41de71c5de1204...7d86b1257b839217317f568d802fe5e836b8bebf
 [2.9.0]: https://github.com/alenlukic/pancreator/compare/5f1a87704fa1601cc2f1c74e77d37268de0ce0cd...HEAD
 [2.8.0]: https://github.com/alenlukic/pancreator/compare/5f4953e321544a9a28b2614cbf5a1fa2f6882a99...HEAD
 [2.7.0]: https://github.com/alenlukic/pancreator/compare/a8f3b42bc29d2c9b49e40f1fcb49071bbb14f7ef...5f4953e321544a9a28b2614cbf5a1fa2f6882a99
