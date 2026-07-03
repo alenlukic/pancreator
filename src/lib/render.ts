@@ -274,6 +274,10 @@ export function renderStatus(
           `(${waiver.artifact_path})`,
       )
 
+      if (waiver.whole_stage_bypass) {
+        lines.push('  Whole-stage bypass: true')
+      }
+
       if (waiver.spotfix_case_path) {
         lines.push(`  Follow-up: ${waiver.spotfix_case_path}`)
       }

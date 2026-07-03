@@ -29,6 +29,12 @@ const HARNESS_REPAIR_CLASSIFICATIONS = [
 const GIT_TIMEOUT_MS = 30_000
 const GIT_MAX_BUFFER = 1_024 * 1_024
 
+const HARNESS_EVIDENCE_PREFIXES = [
+  'runtime/',
+  'library/',
+  'governance/',
+] as const
+
 function evidencePathCandidate(entry: string): string | null {
   const trimmed = entry.trim()
   const explicit = trimmed.match(/^(?:path|file):\s*(.+)$/iu)
@@ -58,14 +64,85 @@ function evidencePathCandidate(entry: string): string | null {
   return null
 }
 
-function missingEvidencePath(root: string, entry: unknown): string | null {
+function workspaceRootFromInput(input: HandlerInput): string {
+  if (
+    isRecord(input.runState) &&
+    typeof input.runState.workspace_root === 'string'
+  ) {
+    return path.resolve(input.root, input.runState.workspace_root)
+  }
+
+  return input.root
+}
+
+function isHarnessRelativeEvidencePath(candidate: string): boolean {
+  return HARNESS_EVIDENCE_PREFIXES.some(
+    (prefix) =>
+      candidate === prefix.slice(0, -1) || candidate.startsWith(prefix),
+  )
+}
+
+function resolveEvidenceFilesystemPath(
+  installationRoot: string,
+  workspaceRoot: string,
+  entry: string,
+): string | null {
+  const candidate = evidencePathCandidate(entry)
+
+  if (!candidate) {
+    return null
+  }
+
+  if (path.isAbsolute(candidate)) {
+    return candidate
+  }
+
+  if (isHarnessRelativeEvidencePath(candidate)) {
+    return path.join(installationRoot, candidate)
+  }
+
+  return path.join(workspaceRoot, candidate)
+}
+
+function resolveWorkspaceRelativeFilePath(
+  installationRoot: string,
+  workspaceRoot: string,
+  relativePath: string,
+): string {
+  const trimmed = relativePath.trim()
+
+  if (path.isAbsolute(trimmed)) {
+    return trimmed
+  }
+
+  if (isHarnessRelativeEvidencePath(trimmed)) {
+    return path.join(installationRoot, trimmed)
+  }
+
+  return path.join(workspaceRoot, trimmed)
+}
+
+function missingEvidencePath(
+  input: HandlerInput,
+  entry: unknown,
+): string | null {
   if (typeof entry !== 'string') {
     return null
   }
 
   const candidate = evidencePathCandidate(entry)
 
-  return candidate && !fileExists(path.join(root, candidate)) ? candidate : null
+  if (!candidate) {
+    return null
+  }
+
+  const resolved = resolveEvidenceFilesystemPath(
+    input.root,
+    workspaceRootFromInput(input),
+    entry,
+  )
+
+  return resolved && !fileExists(resolved) ? candidate : null
 }
 
 type GitCommandResult =
@@ -537,7 +614,13 @@ export function validateImplementationClaims(
     : []
 
   for (const testPath of testsAdded) {
-    if (!fileExists(path.join(input.root, testPath))) {
+    const resolved = resolveWorkspaceRelativeFilePath(
+      input.root,
+      workspaceRootFromInput(input),
+      testPath,
+    )
+
+    if (!fileExists(resolved)) {
       issues.push(
         issue(
           'claim.test_missing',
@@ -1162,7 +1245,7 @@ export function validateQaOutput(input: HandlerInput): HandlerResult {
         )
       } else {
         for (const entry of evidence) {
-          const missingPath = missingEvidencePath(input.root, entry)
+          const missingPath = missingEvidencePath(input, entry)
 
           if (missingPath) {
             issues.push(
@@ -1614,7 +1697,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
     const evidencePath =
       typeof entry.evidence_path === 'string' ? entry.evidence_path : ''
 
-    const missingValidationPath = missingEvidencePath(input.root, evidencePath)
+    const missingValidationPath = missingEvidencePath(input, evidencePath)
 
     if (missingValidationPath) {
       issues.push(
@@ -1657,7 +1740,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
     }
 
     for (const entry of evidence) {
-      const missingPath = missingEvidencePath(input.root, entry)
+      const missingPath = missingEvidencePath(input, entry)
 
       if (missingPath) {
         issues.push(

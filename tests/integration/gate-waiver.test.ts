@@ -256,6 +256,11 @@ test('gate waivers honor partial scope after workspace drift', () => {
   assert.equal(waived.state.status, 'running')
   assert.equal(waived.state.current_stage, 'test')
   assert.deepEqual(waived.waiver.criterion_ids, ['review.acceptance_met'])
+  assert.equal(waived.waiver.whole_stage_bypass, true)
+  assert.match(
+    readFileSync(path.join(root, waived.waiver.artifact_path), 'utf8'),
+    /whole_stage_bypass/u,
+  )
   assert.notEqual(
     waived.waiver.source_workspace_fingerprint,
     waived.waiver.workspace_fingerprint,
