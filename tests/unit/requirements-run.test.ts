@@ -5,6 +5,7 @@ import test from 'node:test'
 
 import {
   runRequirement,
+  inferTargetKind,
   isPassingResult,
   isStaleTarget,
 } from '../../src/lib/requirements/run.js'
@@ -81,4 +82,8 @@ test('isStaleTarget detects checksum drift', () => {
 test('isValidHandlerStatus rejects malformed handler statuses', () => {
   assert.equal(isValidHandlerStatus('passed'), true)
   assert.equal(isValidHandlerStatus('bogus'), false)
+})
+
+test('inferTargetKind recognizes HTML operator artifacts', () => {
+  assert.equal(inferTargetKind('runtime/brief.html'), 'html-artifact')
 })

@@ -156,6 +156,9 @@ run_smoke() {
       && test -f "$project/.pancreator/install.json" \
       && test -d "$project/.pancreator/runtime/inbox" \
       && test -f "$project/.pancreator/docs/target-repo-primer.md" \
+      && test -f "$project/.pancreator/library/operator-briefs/primitives.json" \
+      && test -f "$project/.pancreator/library/schemas/operator-brief.schema.json" \
+      && test ! -e "$project/.pancreator/docs/operator-briefs" \
       && test ! -e "$project/.pancreator/runtime/target-repo-primer.md" \
       && test -f "$project/.pancreator/runtime/repository-checks.json" \
       && node -e 'const c=require(process.argv[1]); process.exit(c.profiles?.secondary ? 0 : 1)' \
@@ -164,11 +167,17 @@ run_smoke() {
       && test ! -e "$project/.pancreator/runtime/locks" \
       && test -L "$project/.pancreator/.cursor" \
       && test -f "$project/.cursor/commands/pan-start.md" \
+      && test -f "$project/.cursor/commands/pan-build-briefs.md" \
+      && grep -q '.pancreator/docs/operator-briefs/project.json' \
+        "$project/.cursor/commands/pan-build-briefs.md" \
       && test -f "$project/.cursor/agents/coder.md" \
       && grep -q 'paperwork-only' "$project/.cursor/agents/coder.md" \
       && grep -q 'bounded' "$project/.cursor/agents/reviewer.md" \
       && grep -q 'pre-implementation' \
         "$project/.pancreator/governance/policies/DEV-001.json" \
+      && test -f "$project/.pancreator/governance/handbooks/python/style-guide.md" \
+      && grep -q 'Python conformance' \
+        "$project/.pancreator/governance/policies/PY-001.json" \
       && grep -q 'Operator supremacy' \
         "$project/.pancreator/governance/policies/OPERATOR-001.json" \
       && grep -q 'operator MAY waive any workflow stage' \
@@ -274,6 +283,7 @@ RUNTIME_DIR="$PANCREATOR_DIR/runtime"
 INBOX_DIR="$RUNTIME_DIR/inbox"
 DOCS_DIR="$PANCREATOR_DIR/docs"
 PRIMER_PATH="$DOCS_DIR/target-repo-primer.md"
+BRIEF_SYSTEM_DIR="$DOCS_DIR/operator-briefs"
 LEGACY_PRIMER_PATH="$RUNTIME_DIR/target-repo-primer.md"
 INSTALL_MARKER="$PANCREATOR_DIR/install.json"
 CURSOR_DIR="$TARGET_DIR/.cursor"
@@ -624,6 +634,14 @@ install_payload() {
   # replace it with Pancreator's self-development primer.
   cp "$PRIMER_PATH" "$staging/docs/target-repo-primer.md"
 
+  # The shared brief model ships with the harness, but the project ontology and
+  # design tokens belong to the target. Preserve them on refresh and omit the
+  # Pancreator self-development layer from fresh embedded installations.
+  rm -rf "$staging/docs/operator-briefs"
+  if [[ -d "$BRIEF_SYSTEM_DIR" ]]; then
+    cp -Rp "$BRIEF_SYSTEM_DIR" "$staging/docs/operator-briefs"
+  fi
+
   if [[ "$cursor_preexisting" == "true" ]]; then
     cursor_warning
   fi
@@ -672,6 +690,7 @@ install_payload() {
   echo "  workspace:      $TARGET_DIR"
   echo "  harness config: $PROJECT_JSON"
   echo "  target primer:  $PRIMER_PATH"
+  echo "  brief system:   run /pan-build-briefs after install"
   echo "  runtime state:  $RUNTIME_DIR"
   echo "  Cursor surface: $CURSOR_DIR"
 

@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "status": "ready",
+  "project": {
+    "id": "__PROJECT_ID__",
+    "title": "__PROJECT_TITLE__"
+  },
+  "extends": "pancreator",
+  "$operator": {
+    "summary": "Project-specific brief ontology. Add only recurring repository concepts; one-off content belongs in brief data.",
+    "regeneration_command": "/pan-build-briefs"
+  },
+  "brief_types": {},
+  "section_semantics": {},
+  "card_types": {},
+  "field_semantics": {}
+}

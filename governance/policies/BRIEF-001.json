@@ -1,0 +1,15 @@
+{
+  "id": "BRIEF-001",
+  "title": "Operator brief structure and presentation",
+  "severity": "hard",
+  "summary": "New operator-facing narrative artifacts MUST use the shared brief data contract and render to self-contained semantic HTML; legacy Markdown and worker-control records remain valid exceptions.",
+  "instructions": [
+    "New operator-facing narrative artifacts MUST be authored as schema-valid brief data and rendered to HTML with the Pancreator brief system. Existing Markdown artifacts do not require migration.",
+    "A brief MUST begin with an executive-summary section that states the bottom line first: what changed or matters, why it matters, and outcomes or required actions when applicable.",
+    "Brief data MUST describe content and semantic intent; layout, typography, color, spacing, and responsive behavior MUST remain in the shared or project design system.",
+    "Section headings MUST use concise titles and a registered semantic key. Renderers MUST resolve the heading emoji from that registry rather than accepting ad hoc emoji choices.",
+    "Within one repository, each registered section emoji MUST retain one meaning. Project definitions MUST extend rather than override Pancreator-owned semantic keys.",
+    "Cards SHOULD separate metadata from substantive detail through field placement, SHOULD expose clear actions when action is possible, and MUST avoid unnecessary nesting, decorative clutter, and raw-log substitution.",
+    "Canonical invocation and delegation cards, source documentation, machine-readable workflow records, and legacy artifacts MAY remain Markdown or JSON when those formats are part of their execution contract."
+  ]
+}

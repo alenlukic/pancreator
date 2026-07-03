@@ -23,6 +23,13 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 - The primer is orientation, not authority. Agents MUST NOT open or search files merely because the primer references them; a referenced file MAY be read only for a concrete task-specific need.
 - The operator request, this file, the active invocation card, and applicable policies retain precedence over primer content.
 
+## Operator brief system
+
+- `BRIEF-001` governs new operator-facing narrative artifacts. Authors MUST use the JSON brief contract and render self-contained semantic HTML; existing Markdown and canonical worker-control records are not migrated.
+- Shared semantics and base presentation live under `library/operator-briefs/`. Pancreator self-development extensions live under `docs/operator-briefs/`.
+- Section emoji MUST come from the registered semantic key and retain one meaning across the repository. Artifact data MUST NOT encode layout, color, or inline styles.
+- Use `./bin/pan briefs validate` before relying on the project brief system and `./bin/pan briefs render` to produce operator HTML.
+
 ## Operating loop
 
 - Runs MUST be created, inspected, advanced, paused, resumed, and aborted through `./bin/pan`.
@@ -43,7 +50,7 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 ## Work modes
 
 - `systematic` is the default work mode and MUST execute an applicable governed workflow such as `dev`.
-- `lightweight` MAY be selected only by an explicit operator invocation of `/pan-spotfix` and MUST apply `WORK-001`, `SPOT-001`, and `library/skills/spotfix.md`.
+- `lightweight` MAY be selected only by an explicit operator invocation of `/pan-spotfix` and MUST apply `WORK-001`, `SPOT-001`, and the complete spotfix procedure unrolled into the delegation.
 - A request qualifies as lightweight only when it is one coherent small-scope change under `WORK-001`. Uncertain or expanded scope MUST route to `systematic`.
 - `/pan-debug` MUST delegate to the non-mutating investigator, which MUST identify root cause, define acceptance criteria, and recommend exactly one work mode.
 - `/pan-decompose` MUST apply `DECOMP-001` before workflow execution, default to retaining one larger systematic run, and write only its validated decomposition artifact under `runtime/inbox/`.
@@ -62,7 +69,7 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 ## Change protocol
 
 - A source-allowed systematic stage MAY edit tracked workspace files directly within its declared scope.
-- An operator-selected lightweight spotfix MAY edit tracked files directly only while applying `library/skills/spotfix.md` and only when no mutating workflow agent is executing against that workspace.
+- An operator-selected lightweight spotfix MAY edit tracked files directly only while applying the active `SPOT-001` guidance and only when no mutating workflow agent is executing against that workspace.
 - Agents MUST NOT hand-edit the workspace index or generated run records.
 - Per-file `pan changes begin|commit|cancel` locking is deprecated and retained only as a no-op compatibility surface for older instructions.
 - If a modification is interrupted, agents MUST report it rather than deleting evidence.
@@ -85,7 +92,7 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 
 ## TypeScript
 
-- Human-authored TypeScript and TSX MUST conform to `governance/handbooks/typescript/style-guide.md`.
+- Human-authored TypeScript and TSX MUST conform to `TS-001`; workflow agents MUST use the complete TypeScript and Node.js guidance unrolled into the active invocation rather than loading handbook paths separately.
 - Agents changing TypeScript MUST inspect the guide’s normative sections and MUST NOT inspect Appendix A during ordinary implementation or review.
 - Formatter output MUST be treated as authoritative.
 

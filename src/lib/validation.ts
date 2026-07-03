@@ -245,6 +245,25 @@ export function validateInvocationMarkdown(
           : `Markdown MUST include policy ${policy.id} instruction ${index + 1}`,
       })
     }
+
+    for (const [index, guidance] of (policy.guidance ?? []).entries()) {
+      const heading = `### Unrolled guidance · \`${guidance.source_path}\``
+
+      checks.push({
+        id: `policy.${policy.id}.guidance.${index + 1}.heading`,
+        passed: normalized.includes(heading),
+        message: normalized.includes(heading)
+          ? `Policy ${policy.id} guidance ${index + 1} heading is present`
+          : `Markdown MUST identify unrolled guidance ${guidance.source_path}`,
+      })
+      checks.push({
+        id: `policy.${policy.id}.guidance.${index + 1}.content`,
+        passed: normalized.includes(guidance.content),
+        message: normalized.includes(guidance.content)
+          ? `Policy ${policy.id} guidance ${index + 1} content is present`
+          : `Markdown MUST inline guidance from ${guidance.source_path}`,
+      })
+    }
   }
 
   if (invocation.requirements) {
@@ -1159,13 +1178,17 @@ function listMarkdownFiles(directory: string): string[] {
 }
 
 const CODE_REVIEW_PERSONAS = new Set(['coder', 'reviewer', 'qa-tester'])
+const PYTHON_GUIDANCE_PERSONAS = new Set([...CODE_REVIEW_PERSONAS, 'spotfixer'])
 const POLICY_REFERENCE_PATTERN = /\b[A-Z][A-Z0-9]*-\d{3}\b/gu
+const STATIC_GUIDANCE_PATH_PATTERN =
+  /\b(?:governance\/handbooks|library\/skills)\/[A-Za-z0-9._/-]+\.md\b/gu
 
 interface HandbookPolicyRequirement {
   handbook_path: string
   label: string
   personas: Set<string>
   installation_scope?: 'all' | 'self_development'
+  technology?: string
 }
 
 const HANDBOOK_POLICY_REQUIREMENTS: HandbookPolicyRequirement[] = [
@@ -1179,6 +1202,12 @@ const HANDBOOK_POLICY_REQUIREMENTS: HandbookPolicyRequirement[] = [
     label: 'TypeScript handbook',
     personas: CODE_REVIEW_PERSONAS,
     installation_scope: 'self_development',
+  },
+  {
+    handbook_path: 'governance/handbooks/python/style-guide.md',
+    label: 'Python handbook',
+    personas: PYTHON_GUIDANCE_PERSONAS,
+    technology: 'python',
   },
 ]
 
@@ -1206,14 +1235,14 @@ function validateHandbookPolicyCoverage(
 
   const policyIds = new Set<string>()
   const matches = [...catalog.values()].filter((policy) =>
-    [policy.summary, ...policy.instructions].some((text) =>
-      text.includes(requirement.handbook_path),
+    (policy.guidance ?? []).some(
+      (guidance) => guidance.source_path === requirement.handbook_path,
     ),
   )
 
   if (matches.length === 0) {
     errors.push(
-      `${requirement.handbook_path} MUST be referenced by at least one policy`,
+      `${requirement.handbook_path} MUST be unrolled by at least one policy`,
     )
     return policyIds
   }
@@ -1254,6 +1283,21 @@ function validateGovernance(
         )
       }
     }
+
+    const declaredGuidance = new Set(
+      (policy.guidance ?? []).map((guidance) => guidance.source_path),
+    )
+    const staticReferences = [policy.summary, ...policy.instructions].flatMap(
+      (text) => text.match(STATIC_GUIDANCE_PATH_PATTERN) ?? [],
+    )
+
+    for (const guidancePath of new Set(staticReferences)) {
+      if (!declaredGuidance.has(guidancePath)) {
+        errors.push(
+          `${policy.id} references static guidance ${guidancePath} without unrolling it through guidance_sources`,
+        )
+      }
+    }
   }
 
   const handbookPolicies = new Map<string, Set<string>>()
@@ -1279,12 +1323,18 @@ function lookupRowCovers(
   return (
     lookupPatternCovers(provider.persona, consumer.persona) &&
     lookupPatternCovers(provider.workflow, consumer.workflow) &&
-    lookupPatternCovers(provider.stage, consumer.stage)
+    lookupPatternCovers(provider.stage, consumer.stage) &&
+    (provider.technology === undefined ||
+      provider.technology === consumer.technology)
   )
 }
 
 function referencedPolicyIds(policy: Policy): Set<string> {
-  const text = [policy.summary, ...policy.instructions].join('\n')
+  const text = [
+    policy.summary,
+    ...policy.instructions,
+    ...(policy.guidance ?? []).map((guidance) => guidance.content),
+  ].join('\n')
   return new Set(text.match(POLICY_REFERENCE_PATTERN) ?? [])
 }
 
@@ -1341,6 +1391,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'tsconfig.json',
     'governance/registries/policy_lookup_table.json',
     'governance/handbooks/eng/engineering.md',
+    'governance/handbooks/python/style-guide.md',
     'governance/handbooks/typescript/style-guide.md',
     'governance/registries/validation_registry.json',
     'governance/registries/directive_exemptions.json',
@@ -1356,6 +1407,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'library/cursor/commands/pan-debug.md',
     'library/cursor/commands/pan-decompose.md',
     'library/cursor/commands/pan-build-docs.md',
+    'library/cursor/commands/pan-build-briefs.md',
     'library/cursor/commands/pan-spotfix.md',
     'library/cursor/commands/pan-write-pr.md',
     'library/cursor/agents/decomposer.md',
@@ -1368,10 +1420,21 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'library/personas/spotfixer.md',
     'library/skills/spotfix.md',
     'library/skills/write-pr-description.md',
+    'library/skills/craft-operator-artifact.md',
+    'library/operator-briefs/primitives.json',
+    'library/operator-briefs/base.css',
+    'library/schemas/operator-brief.schema.json',
+    'library/schemas/operator-brief-system.schema.json',
+    'library/templates/operator-briefs/project.json',
+    'library/templates/operator-briefs/project.css',
+    'library/templates/operator-briefs/brief.example.json',
+    'docs/operator-brief-system.md',
     'library/templates/repository-checks.json',
     'library/templates/repository-checks.self-development.json',
     'release/index.json',
     'governance/policies/DECOMP-001.json',
+    'governance/policies/PY-001.json',
+    'governance/policies/BRIEF-001.json',
     'governance/policies/PRIMER-001.json',
     'governance/policies/REPO-001.json',
     'governance/policies/PR-001.json',
@@ -1379,6 +1442,13 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'governance/policies/SPOT-001.json',
     'src/cli.ts',
   ]
+
+  if (selfDevelopment) {
+    required.push(
+      'docs/operator-briefs/project.json',
+      'docs/operator-briefs/project.css',
+    )
+  }
 
   for (const relative of required) {
     if (!fileExists(path.join(root, relative))) {
@@ -1503,7 +1573,15 @@ export function validateRepository(root: string): RepositoryValidationResult {
 
           const handbookPolicyIds =
             handbookPolicies.get(requirement.handbook_path) ?? new Set<string>()
-          const hasHandbookPolicy = policies.some((policy) =>
+          const applicablePolicies = requirement.technology
+            ? resolvePolicies(root, {
+                persona: stage.persona,
+                workflow: workflow.slug,
+                stage: stage.slug,
+                technologies: [requirement.technology],
+              })
+            : policies
+          const hasHandbookPolicy = applicablePolicies.some((policy) =>
             handbookPolicyIds.has(policy.id),
           )
 

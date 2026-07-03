@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "$operator": {
+    "summary": "Pancreator-owned brief primitives shared by every installation. Target repositories extend these definitions in docs/operator-briefs/project.json.",
+    "regeneration_command": "pan briefs build"
+  },
+  "brief_types": {
+    "general": {
+      "label": "General brief",
+      "description": "A concise operator brief for mixed information and actions."
+    },
+    "workflow-run": {
+      "label": "Workflow run",
+      "description": "Pancreator run state, stage outcomes, validation, risks, and next actions."
+    },
+    "release": {
+      "label": "Release brief",
+      "description": "Release scope, validation, risk, rollback, and operator decision."
+    }
+  },
+  "section_semantics": {
+    "executive-summary": {
+      "emoji": "🧭",
+      "label": "Executive summary",
+      "description": "Bottom line, why it matters, outcomes, and immediate actions."
+    },
+    "actions": {
+      "emoji": "✅",
+      "label": "Actions",
+      "description": "Decisions or tasks that require operator attention."
+    },
+    "workflow": {
+      "emoji": "🔄",
+      "label": "Workflow",
+      "description": "Run stages, state, ownership, and transitions."
+    },
+    "changes": {
+      "emoji": "🛠️",
+      "label": "Changes",
+      "description": "Implemented or proposed changes."
+    },
+    "validation": {
+      "emoji": "🧪",
+      "label": "Validation",
+      "description": "Tests, checks, evidence, and confidence."
+    },
+    "evidence": {
+      "emoji": "🔎",
+      "label": "Evidence",
+      "description": "Sources, observations, and supporting records."
+    },
+    "risks": {
+      "emoji": "⚠️",
+      "label": "Risks",
+      "description": "Risks, blockers, unknowns, and caveats."
+    },
+    "release": {
+      "emoji": "🚀",
+      "label": "Release",
+      "description": "Release readiness, rollout, and rollback."
+    },
+    "context": {
+      "emoji": "📌",
+      "label": "Context",
+      "description": "Background information needed to interpret the brief."
+    }
+  },
+  "card_types": {
+    "summary": {
+      "label": "Summary",
+      "description": "A compact outcome or state summary.",
+      "layout": "standard"
+    },
+    "action": {
+      "label": "Action",
+      "description": "A decision or next step with an explicit call to action.",
+      "layout": "standard"
+    },
+    "run-stage": {
+      "label": "Run stage",
+      "description": "A Pancreator workflow stage and its current outcome.",
+      "layout": "split-header"
+    },
+    "validation": {
+      "label": "Validation",
+      "description": "A check, suite, or evidence-backed verdict.",
+      "layout": "split-header"
+    },
+    "risk": {
+      "label": "Risk",
+      "description": "A blocker, uncertainty, or material caveat.",
+      "layout": "standard"
+    },
+    "release": {
+      "label": "Release",
+      "description": "Release scope and readiness information.",
+      "layout": "split-header"
+    }
+  },
+  "field_semantics": {
+    "status": {
+      "label": "Status",
+      "description": "Current state or verdict."
+    },
+    "urgency": {
+      "label": "Urgency",
+      "description": "Time sensitivity or priority."
+    },
+    "time": {
+      "label": "Time",
+      "description": "Date, time, or duration."
+    },
+    "location": {
+      "label": "Location",
+      "description": "Physical or virtual venue."
+    },
+    "person": {
+      "label": "Person",
+      "description": "Owner, participant, or stakeholder."
+    },
+    "identifier": {
+      "label": "Identifier",
+      "description": "Stable run, issue, artifact, or external identifier."
+    },
+    "source": {
+      "label": "Source",
+      "description": "Evidence or provenance pointer."
+    },
+    "metric": {
+      "label": "Metric",
+      "description": "Measured quantity or score."
+    },
+    "outcome": {
+      "label": "Outcome",
+      "description": "Result or decision."
+    },
+    "detail": {
+      "label": "Detail",
+      "description": "General substantive information."
+    }
+  }
+}
