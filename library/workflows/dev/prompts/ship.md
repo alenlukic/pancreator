@@ -34,8 +34,10 @@ For Pancreator self-development, also populate `data.release.versioning`
 (`current_version`, `recommendation`, `proposed_version`, `baseline_commit`,
 `rationale`, `compatibility`, `updated_files`, `release_index_action`).
 Include optional Git metadata field `commit_message` when it is available.
-Write the release packet as a markdown artifact and reference it together with
-`pr-description.md`.
+Author the release packet as the invocation's schema-valid brief JSON, render
+it to the exact HTML path from the output contract, and reference the HTML first
+and the brief JSON second. Reference `pr-description.md` separately as a
+Markdown source artifact intended for direct use in a pull request.
 
 ## Done when
 

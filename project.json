@@ -31,6 +31,7 @@
         "qa-tester": "gpt-5.3-codex[reasoning=high,fast=false]",
         "release-steward": "gpt-5.3-codex[reasoning=high,fast=false]",
         "investigator": "gpt-5.3-codex[reasoning=high,fast=false]",
+        "harness-technician": "gpt-5.3-codex[reasoning=high,fast=false]",
         "spotfixer": "gpt-5.3-codex[reasoning=high,fast=false]"
       }
     },
@@ -46,6 +47,7 @@
         "qa-tester": "gpt-5.3-codex[reasoning=high,fast=false]",
         "release-steward": "auto",
         "investigator": "gpt-5.3-codex[reasoning=high,fast=false]",
+        "harness-technician": "gpt-5.3-codex[reasoning=high,fast=false]",
         "spotfixer": "composer-2.5[fast=false]"
       }
     },
@@ -61,6 +63,7 @@
         "qa-tester": "gpt-5.3-codex[reasoning=high,fast=false]",
         "release-steward": "auto",
         "investigator": "gpt-5.3-codex[reasoning=high,fast=false]",
+        "harness-technician": "gpt-5.3-codex[reasoning=high,fast=false]",
         "spotfixer": "composer-2.5[fast=false]"
       }
     },
@@ -76,6 +79,7 @@
         "qa-tester": "gpt-5.3-codex[reasoning=high,fast=false]",
         "release-steward": "auto",
         "investigator": "gpt-5.3-codex[reasoning=high,fast=false]",
+        "harness-technician": "gpt-5.3-codex[reasoning=high,fast=false]",
         "spotfixer": "composer-2.5[fast=false]"
       }
     },
@@ -91,6 +95,7 @@
         "qa-tester": "auto",
         "release-steward": "auto",
         "investigator": "auto",
+        "harness-technician": "auto",
         "spotfixer": "composer-2.5[fast=false]"
       }
     }

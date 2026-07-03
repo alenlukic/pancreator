@@ -658,6 +658,27 @@ export function validateStageOutput(
     }
   }
 
+  const briefContract = invocation.output.operator_brief as
+    | Invocation['output']['operator_brief']
+    | undefined
+
+  if (briefContract) {
+    const primaryArtifact = output.artifacts[0]
+    const sourceArtifact = output.artifacts[1]
+
+    if (primaryArtifact?.path !== briefContract.rendered_path) {
+      errors.push(
+        `artifacts[0].path MUST equal rendered operator brief path '${briefContract.rendered_path}'`,
+      )
+    }
+
+    if (sourceArtifact?.path !== briefContract.source_path) {
+      errors.push(
+        `artifacts[1].path MUST equal operator brief source path '${briefContract.source_path}'`,
+      )
+    }
+  }
+
   for (const artifact of output.artifacts) {
     try {
       const absolute = resolveInside(root, artifact.path)
@@ -1405,6 +1426,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'library/cursor/commands/pan-start.md',
     'library/cursor/commands/pan-resume.md',
     'library/cursor/commands/pan-debug.md',
+    'library/cursor/commands/pan-repair.md',
     'library/cursor/commands/pan-decompose.md',
     'library/cursor/commands/pan-build-docs.md',
     'library/cursor/commands/pan-build-briefs.md',
@@ -1413,10 +1435,12 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'library/cursor/agents/decomposer.md',
     'library/cursor/agents/librarian.md',
     'library/cursor/agents/investigator.md',
+    'library/cursor/agents/harness-technician.md',
     'library/cursor/agents/spotfixer.md',
     'library/personas/decomposer.md',
     'library/personas/librarian.md',
     'library/personas/investigator.md',
+    'library/personas/harness-technician.md',
     'library/personas/spotfixer.md',
     'library/skills/spotfix.md',
     'library/skills/write-pr-description.md',
@@ -1439,6 +1463,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'governance/policies/REPO-001.json',
     'governance/policies/PR-001.json',
     'governance/policies/WORK-001.json',
+    'governance/policies/REPAIR-001.json',
     'governance/policies/SPOT-001.json',
     'src/cli.ts',
   ]

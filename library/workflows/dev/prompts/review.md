@@ -20,7 +20,9 @@ Populate `data.review` (`verdict`, `findings`, `acceptance_results`,
 `maintenance_assessment`). Each finding must state severity, evidence,
 remediation ownership, and whether it was resolved during review. Set the
 verdict to fail only for unresolved hard blockers and route those findings to
-the implement stage. Write a markdown review artifact and reference it.
+the implement stage. Author the review as the invocation's schema-valid brief
+JSON, render it to the exact HTML path from the output contract, and reference
+the HTML first and the brief JSON second.
 
 ## Done when
 

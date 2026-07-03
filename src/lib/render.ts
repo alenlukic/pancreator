@@ -81,6 +81,9 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
       ? `- 🚫 **${id}** — disabled by run configuration.`
       : `- 🛠️ **${id}** — overridden: \`${command}\``,
   )
+  const operatorBrief = invocation.output.operator_brief as
+    | Invocation['output']['operator_brief']
+    | undefined
   const requiredDataLines = requiredData.length
     ? [
         'Required `data` fields:',
@@ -159,6 +162,23 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
       `\`${invocation.output.template}\` as the base shape ` +
       `(schema \`${invocation.output.schema}\`).`,
     '',
+    ...(operatorBrief
+      ? [
+          `Author the operator brief source at ` +
+            `\`${operatorBrief.source_path}\` using schema ` +
+            `\`${operatorBrief.schema}\`, then render it to ` +
+            `\`${operatorBrief.rendered_path}\` with ` +
+            `\`${operatorBrief.renderer}\` and satisfy the ` +
+            `\`${operatorBrief.profile}\` operator-artifact profile. ` +
+            `Required section-heading phrases: ${operatorBrief.required_headings.join(', ')}. ` +
+            'The harness rerenders the same source during submission and treats the ' +
+            'HTML as artifact 0 and the brief JSON as artifact 1.',
+          '',
+        ]
+      : [
+          'This legacy invocation retains the artifact contract captured when it was prepared.',
+          '',
+        ]),
     ...requiredDataLines,
     '',
     'When tracked workspace files change during the stage, include top-level `workspace_changes` with `attribution`, every changed path in `paths`, and a concise `explanation`. Use `attribution: internal` only when the active worker can trace every listed change to its own actions; the cleanliness gate blocks only external or unattributed contamination.',

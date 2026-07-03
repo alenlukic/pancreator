@@ -357,6 +357,25 @@ function fixtureInvocation(root: string, stageSlug: string): Invocation {
       template: 'library/templates/stage-output.example.json',
       schema: 'library/schemas/stage-output.schema.json',
       required_data: stage.required_data ?? {},
+      operator_brief: {
+        source_path: `runtime/logs/workflows/run-fixture/artifacts/json/${stageSlug}.brief.json`,
+        rendered_path: `runtime/logs/workflows/run-fixture/artifacts/html/${stageSlug}.html`,
+        schema: 'library/schemas/operator-brief.schema.json',
+        renderer: 'pan briefs render',
+        profile:
+          stageSlug === 'intake'
+            ? 'intake'
+            : stageSlug === 'plan'
+              ? 'plan'
+              : stageSlug === 'review'
+                ? 'review'
+                : stageSlug === 'test'
+                  ? 'qa'
+                  : stageSlug === 'ship'
+                    ? 'release'
+                    : 'implementation',
+        required_headings: [],
+      },
     },
     boundaries: ['Fixture boundary'],
     workspace_before: {

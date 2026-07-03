@@ -78,6 +78,112 @@ Run /pan-start.
   assert.equal(result.exit_code, 0)
 })
 
+test('requirements run validates a standalone harness repair intake', () => {
+  const root = createFixture()
+  const targetPath = 'runtime/inbox/harness-repair.md'
+
+  writeFileSync(
+    path.join(root, targetPath),
+    `# Harness repair intake
+
+**State:** Ready
+**Outcome:** One governance miss is confirmed.
+**Blockers:** None.
+**Next action:** Run /pan-start with this intake.
+
+## Original report
+
+A review stage skipped required remediation.
+
+## Investigation scope
+
+Review-stage governance and one workflow run.
+
+## Evidence examined
+
+State, events, invocation, output, and validation evidence.
+
+## Agent transcript coverage
+
+The reviewer transcript was examined. The delegation prompt was reviewed only as
+delegation evidence and was not treated as the agent transcript.
+
+## Execution timeline
+
+1. Review identified a bounded defect.
+2. Review returned it to implementation instead of repairing it.
+
+## Findings
+
+### HR-001 Reviewer remediation contract was omitted
+
+- **Classification:** governance miss
+- **Severity:** medium
+- **Evidence:** The invocation omitted bounded-remediation guidance.
+- **Expected contract:** Review repairs local low-risk findings.
+- **Causal chain:** Missing unrolled governance changed agent behavior.
+- **Root cause:** Invocation construction did not include the governing clause.
+- **Affected surfaces:** review prompt generation and regression tests.
+
+## Root-cause remediation
+
+Unroll the remediation contract into review invocations and test the behavior.
+
+## Acceptance criteria
+
+1. AC-001 Review invocations include bounded-remediation guidance.
+2. AC-002 Regression tests cover repair versus implementation routing.
+
+## Validation plan
+
+Run focused unit and integration tests plus repository validation.
+
+## Installation and migration impact
+
+Refreshes project the corrected review behavior into embedded installs.
+
+## Constraints and out of scope
+
+Do not alter historical run records.
+
+## Open questions and unknowns
+
+None.
+
+## Recommended next action
+
+Run /pan-start with this intake.
+`,
+  )
+
+  const stdout = execFileSync(
+    process.execPath,
+    [
+      CLI,
+      'requirements',
+      'run',
+      '--persona',
+      'harness-technician',
+      '--workflow',
+      'standalone',
+      '--stage',
+      'repair',
+      '--kind',
+      'repair',
+      '--registry',
+      'HARNESS-REPAIR-VALIDATE-001',
+      '--target',
+      targetPath,
+      '--json',
+    ],
+    { cwd: root, encoding: 'utf8' },
+  )
+  const result = JSON.parse(stdout) as { status: string; exit_code: number }
+
+  assert.equal(result.status, 'passed')
+  assert.equal(result.exit_code, 0)
+})
+
 test('requirements run validates a target repository primer', () => {
   const root = createFixture()
   const targetPath = 'docs/target-repo-primer.md'

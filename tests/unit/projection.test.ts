@@ -37,6 +37,19 @@ test('embedded build-docs projection preserves harness-relative CLI targets', ()
   )
 })
 
+test('embedded repair projection writes the intake under the installed harness', () => {
+  const projected = projectCursorContent(
+    'Choose an output path under `runtime/inbox/`, then run `./bin/pan requirements run --target runtime/inbox/repair.md`.',
+    '.cursor/commands/pan-repair.md',
+    'embedded',
+  )
+
+  assert.equal(
+    projected,
+    'Choose an output path under `.pancreator/runtime/inbox/`, then run `./.pancreator/bin/pan requirements run --target runtime/inbox/repair.md`.',
+  )
+})
+
 test('embedded release projection resolves the harness config before stopping', () => {
   const projected = projectCursorContent(
     'Read `project.json`, `docs/target-repo-primer.md`, and `library/skills/update-release-metadata.md`, then run `./bin/pan list --json`.',

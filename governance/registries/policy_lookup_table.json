@@ -186,6 +186,12 @@
       "policies": ["DIAG-001", "WORK-001"]
     },
     {
+      "persona": "harness-technician",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["REPAIR-001"]
+    },
+    {
       "persona": "spotfixer",
       "workflow": "*",
       "stage": "*",

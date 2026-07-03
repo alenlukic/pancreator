@@ -37,7 +37,9 @@ Populate `data.implementation` (`changed_files`, `tests_added`, `notes`) and
 `data.acceptance_results`, mapping evidence to each acceptance criterion. On
 attempt 2 or later, also populate non-empty `data.implementation.remediation`
 entries with `cause`, `action`, and `evidence` for every issue responsible for
-the retry. Write a markdown implementation summary artifact and reference it.
+the retry. Author the implementation summary as the invocation's schema-valid
+brief JSON, render it to the exact HTML path from the output contract, and
+reference the HTML first and the brief JSON second.
 
 ## Done when
 

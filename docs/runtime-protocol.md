@@ -35,9 +35,13 @@ renumbered from `99` through `93` to `06` through `00`. A workflow run supports
 at most 100 stage occurrences. The finalizer is idempotent and can be invoked
 manually with `npm run finalize:workflow-artifacts -- <run-id> [root]`.
 
-Execution records are stored only as machine-readable JSON in
-`artifacts/json/<artifact-id>.json`. Stage-authored Markdown and other
-operator-facing documents are stored under `artifacts/markdown/`.
+Execution records and brief source documents are stored as machine-readable
+JSON under `artifacts/json/`. New stage-authored operator narratives are stored
+as self-contained HTML under `artifacts/html/`; each stage output references the
+HTML first and its `.brief.json` source second. The harness rerenders the HTML
+from that source during submission. `artifacts/markdown/` is reserved for
+canonical control/source exceptions such as operator feedback, gate waivers,
+invocation-adjacent records, PR copy, and historical artifacts.
 
 Supervisor assessment files retain the invocation artifact ID as their sortable
 prefix: `<invocation-id>.assessment-request.json` and

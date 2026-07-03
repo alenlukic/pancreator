@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process'
 
 import { fileExists, isRecord, readJson, readText } from '../io.js'
 import { loadRegistry } from '../requirements/registry.js'
-import { hasHeading, parseMarkdown } from '../markdown.js'
+import { hasHeading, operatorLeadPresent, parseMarkdown } from '../markdown.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
 import { activeOperatorGateWaivers } from '../waivers.js'
 import { readProjectConfig } from '../project-config.js'
@@ -18,6 +18,14 @@ import {
 
 const REVIEW_SEVERITIES = new Set(['blocker', 'high', 'medium', 'low'])
 const WORK_MODES = new Set(['systematic', 'lightweight'])
+const HARNESS_REPAIR_CLASSIFICATIONS = [
+  'harness bug',
+  'compliance issue',
+  'governance miss',
+  'agent execution error',
+  'target-repository defect',
+  'unresolved hypothesis',
+] as const
 const GIT_TIMEOUT_MS = 30_000
 const GIT_MAX_BUFFER = 1_024 * 1_024
 
@@ -636,11 +644,11 @@ export function validateIntakeOutput(input: HandlerInput): HandlerResult {
       continue
     }
 
-    const markdown = readText(artifactPath)
+    const artifactContent = readText(artifactPath)
     let mentionedStories = 0
 
     for (const id of storyIds) {
-      if (markdown.includes(id)) {
+      if (artifactContent.includes(id)) {
         mentionedStories += 1
       }
     }
@@ -648,7 +656,7 @@ export function validateIntakeOutput(input: HandlerInput): HandlerResult {
     if (storyIds.size > 0 && mentionedStories === 0) {
       issues.push(
         issue(
-          'intake.md_json_mismatch',
+          'intake.artifact_json_mismatch',
           `Artifact ${artifact.path} does not reference any user story ids from JSON`,
         ),
       )
@@ -1922,6 +1930,216 @@ export function validateDecompositionArtifact(
         ),
       )
     }
+  }
+
+  return { status: issues.length === 0 ? 'passed' : 'failed', issues }
+}
+
+export function validateHarnessRepairIntake(
+  input: HandlerInput,
+): HandlerResult {
+  const issues: HandlerResult['issues'] = []
+  const content = readText(path.join(input.root, input.targetPath))
+  const lower = content.toLowerCase()
+  const parsed = parseMarkdown(content)
+  const requiredHeadings = [
+    'original report',
+    'investigation scope',
+    'evidence examined',
+    'agent transcript coverage',
+    'execution timeline',
+    'findings',
+    'root-cause remediation',
+    'acceptance criteria',
+    'validation plan',
+    'installation and migration impact',
+    'constraints and out of scope',
+    'open questions and unknowns',
+    'recommended next action',
+  ]
+
+  if (!hasHeading(parsed, 'harness repair intake', 1)) {
+    issues.push(
+      issue(
+        'repair.title',
+        'Harness repair intake MUST begin with # Harness repair intake',
+      ),
+    )
+  }
+
+  if (
+    !operatorLeadPresent(content) ||
+    !lower.slice(0, 700).includes('blocker')
+  ) {
+    issues.push(
+      issue(
+        'repair.operator_lead',
+        'Harness repair intake MUST lead with State, Outcome, Blockers, and Next action',
+      ),
+    )
+  }
+
+  for (const heading of requiredHeadings) {
+    if (!hasHeading(parsed, heading)) {
+      issues.push(
+        issue(
+          'repair.section_missing',
+          `Harness repair intake MUST include heading: ${heading}`,
+        ),
+      )
+    }
+  }
+
+  const findingMatches = [...content.matchAll(/^#{3,6}\s+(HR-\d{3})\b.*$/gmu)]
+  const findingIds = findingMatches.map((match) => match[1])
+
+  if (findingIds.length === 0) {
+    issues.push(
+      issue(
+        'repair.finding_id',
+        'Harness repair intake MUST include at least one stable HR-### finding id',
+      ),
+    )
+  } else if (new Set(findingIds).size !== findingIds.length) {
+    issues.push(
+      issue(
+        'repair.finding_id_duplicate',
+        'Harness repair finding ids MUST be unique',
+      ),
+    )
+  }
+
+  for (const [index, match] of findingMatches.entries()) {
+    const start = match.index ?? 0
+    const nextFinding = findingMatches[index + 1]?.index ?? content.length
+    const remainder = content.slice(start, nextFinding)
+    const nextTopLevelSection = /^##\s+/mu.exec(
+      remainder.slice(match[0].length),
+    )
+    const end = nextTopLevelSection
+      ? start + match[0].length + nextTopLevelSection.index
+      : nextFinding
+    const block = content.slice(start, Math.min(end, nextFinding))
+    const blockLower = block.toLowerCase()
+    const findingId = match[1]
+
+    if (
+      !HARNESS_REPAIR_CLASSIFICATIONS.some((classification) =>
+        blockLower.includes(`classification:** ${classification}`),
+      )
+    ) {
+      issues.push(
+        issue(
+          'repair.classification',
+          `${findingId} MUST classify the finding as a harness bug, compliance issue, governance miss, agent execution error, target-repository defect, or unresolved hypothesis`,
+        ),
+      )
+    }
+
+    for (const label of [
+      'severity',
+      'evidence',
+      'expected contract',
+      'causal chain',
+      'root cause',
+      'affected surfaces',
+    ]) {
+      if (!blockLower.includes(`**${label}:**`)) {
+        issues.push(
+          issue('repair.finding_field', `${findingId} MUST include ${label}`),
+        )
+      }
+    }
+  }
+
+  const acceptanceHeading = /^##\s+Acceptance criteria\s*$/imu.exec(content)
+  const acceptanceRemainder = acceptanceHeading
+    ? content.slice(acceptanceHeading.index + acceptanceHeading[0].length)
+    : ''
+  const nextAcceptanceHeading = /^##\s+/mu.exec(acceptanceRemainder)
+  const acceptanceSection = acceptanceRemainder.slice(
+    0,
+    nextAcceptanceHeading?.index,
+  )
+  const criterionIds = [
+    ...acceptanceSection.matchAll(/^\s*\d+\.\s+(AC-\d{3})\b/gmu),
+  ].map((match) => match[1])
+
+  if (criterionIds.length === 0) {
+    issues.push(
+      issue(
+        'repair.acceptance_id',
+        'Harness repair intake MUST include stable AC-### acceptance criteria',
+      ),
+    )
+  } else if (new Set(criterionIds).size !== criterionIds.length) {
+    issues.push(
+      issue(
+        'repair.acceptance_id_duplicate',
+        'Harness repair acceptance criterion ids MUST be unique',
+      ),
+    )
+  }
+
+  if (!/^\s*\d+\.\s+AC-\d{3}\b/gmu.test(acceptanceSection)) {
+    issues.push(
+      issue(
+        'repair.numbered_acceptance',
+        'Acceptance criteria MUST be numbered and begin with stable AC-### ids',
+      ),
+    )
+  }
+
+  const transcriptHeading = /^##\s+Agent transcript coverage\s*$/imu.exec(
+    content,
+  )
+  const transcriptRemainder = transcriptHeading
+    ? content.slice(transcriptHeading.index + transcriptHeading[0].length)
+    : ''
+  const nextTranscriptHeading = /^##\s+/mu.exec(transcriptRemainder)
+  const transcriptSection = transcriptRemainder.slice(
+    0,
+    nextTranscriptHeading?.index,
+  )
+  const transcriptLower = transcriptSection.toLowerCase()
+  const transcriptStatusPresent =
+    transcriptLower.includes('examined') ||
+    transcriptLower.includes('unavailable') ||
+    transcriptLower.includes('not applicable')
+
+  if (!transcriptStatusPresent) {
+    issues.push(
+      issue(
+        'repair.transcript_coverage',
+        'Agent transcript coverage MUST mark transcript evidence as examined, unavailable, or not applicable',
+      ),
+    )
+  }
+
+  if (
+    !transcriptLower.includes('delegation') ||
+    !transcriptLower.includes('transcript')
+  ) {
+    issues.push(
+      issue(
+        'repair.transcript_distinction',
+        'Harness repair intake MUST distinguish delegation evidence from agent transcripts',
+      ),
+    )
+  }
+
+  const nextActionHeading = /^##\s+Recommended next action\s*$/imu.exec(content)
+  const nextActionSection = nextActionHeading
+    ? content.slice(nextActionHeading.index + nextActionHeading[0].length)
+    : ''
+
+  if (!nextActionSection.includes('/pan-start')) {
+    issues.push(
+      issue(
+        'repair.next_action',
+        'Recommended next action MUST route the intake through /pan-start',
+      ),
+    )
   }
 
   return { status: issues.length === 0 ? 'passed' : 'failed', issues }

@@ -52,7 +52,7 @@ Every agent reads this primer before expanding repository context. It is a navig
 
 Run `/pan-build-briefs` after installation and whenever recurring operator-facing use cases or project visual conventions materially change. The command scaffolds missing files, then asks the librarian to derive a minimal target-specific ontology and design-token layer from bounded repository evidence. It writes `docs/operator-briefs/project.json` and `docs/operator-briefs/project.css` (`.pancreator/docs/operator-briefs/` when embedded) and validates collisions and emoji consistency.
 
-Use `pan briefs build --force` only when deliberately resetting the project layer to templates before regeneration. Existing Markdown artifacts are not migrated. New narrative artifacts should be authored as brief JSON and rendered with `pan briefs render` to portable HTML.
+Use `pan briefs build --force` only when deliberately resetting the project layer to templates before regeneration. Existing historical Markdown artifacts are not migrated. Every newly prepared workflow stage declares exact brief JSON and HTML paths in its invocation card; workers must use those paths, and submission rerenders and validates the HTML automatically.
 
 ## Assess unusually large intake
 
@@ -68,6 +68,17 @@ with planning, implementation, independent review, QA, and release preparation.
 Use `/pan-debug <problem>` when the cause or remediation scope is unclear. The
 investigator does not modify source; it returns root cause, proposed remediation,
 numbered acceptance criteria, and a `lightweight` or `systematic` recommendation.
+
+Use `/pan-repair <problem-or-artifact>` when the suspected defect is in
+Pancreator itself or when a workflow run needs a harness-level audit. The harness
+technician accepts prose, a file, or a run directory; reconstructs run behavior
+from state, events, snapshots, invocations, outputs, assessments, validations,
+and artifacts; and augments those records with the relevant agent transcripts.
+Delegation prompts are treated as prompt-delivery evidence rather than as
+transcripts. The command writes a validated `harness-repair-*.md` intake under
+`runtime/inbox/` that can be passed directly to `/pan-start` in the Pancreator
+self-development checkout. It does not modify the investigated run or implement
+the repair.
 
 Use `/pan-spotfix <request>` only when the operator deliberately selects
 lightweight execution and the request satisfies `WORK-001`: one coherent change,

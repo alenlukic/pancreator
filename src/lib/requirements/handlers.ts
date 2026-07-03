@@ -12,12 +12,16 @@ import type { HandlerInput, HandlerResult, ValidatorHandler } from './types.js'
 import { validateAssessment } from '../validators/assessment.js'
 import { validateTargetRepoPrimer } from '../validators/target-repo-primer.js'
 import {
+  operatorArtifactProfileForStage,
+  type OperatorArtifactProfile,
+} from '../operator-artifact-profiles.js'
+import {
   validateOperatorArtifact,
   validateStageOutputStrict,
-  type ArtifactProfile,
 } from '../validators/operator-artifact.js'
 import {
   validateDecompositionArtifact,
+  validateHarnessRepairIntake,
   validateImplementationClaims,
   validateIntakeOutput,
   validateInvestigationArtifact,
@@ -103,24 +107,11 @@ function delegationValidateHandler(input: HandlerInput): HandlerResult {
 
 function profileForInvocation(
   invocation: Record<string, unknown> | undefined,
-): ArtifactProfile {
+): OperatorArtifactProfile {
   const stage = isRecord(invocation?.stage) ? invocation.stage : null
   const slug = stage && typeof stage.slug === 'string' ? stage.slug : ''
 
-  switch (slug) {
-    case 'intake':
-      return 'intake'
-    case 'plan':
-      return 'plan'
-    case 'review':
-      return 'review'
-    case 'test':
-      return 'qa'
-    case 'ship':
-      return 'release'
-    default:
-      return 'implementation'
-  }
+  return operatorArtifactProfileForStage(slug)
 }
 
 function operatorArtifactHandler(input: HandlerInput): HandlerResult {
@@ -144,6 +135,7 @@ export const HANDLERS: Record<string, ValidatorHandler> = {
   'release-validate': validateReleaseOutput,
   'decomposition-validate': validateDecompositionArtifact,
   'target-repo-primer-validate': validateTargetRepoPrimer,
+  'harness-repair-validate': validateHarnessRepairIntake,
   'investigation-validate': validateInvestigationArtifact,
   'spotfix-validate': validateSpotfixOutcome,
   'spotfix-escalation-scaffold': () => passed(),
