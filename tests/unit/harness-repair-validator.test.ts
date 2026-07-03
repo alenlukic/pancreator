@@ -26,9 +26,9 @@ function validate(content: string) {
 
 const VALID_INTAKE = `# Harness repair intake
 
-**State:** Ready for self-development intake  
-**Outcome:** Confirmed one harness bug.  
-**Blockers:** None.  
+**State:** Ready for self-development intake 
+**Outcome:** Confirmed one harness bug.
+**Blockers:** None.
 **Next action:** Run /pan-start with this file.
 
 ## Original report
