@@ -158,6 +158,8 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
       workspace_root: string
       state_root: string
       installation_mode: string
+      active_config: string
+      configs: Record<string, { personas: Record<string, string> }>
     }>(path.join(project, '.pancreator', 'project.json'))
 
     assert.equal(config.schema_version, 1)
@@ -165,6 +167,12 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
     assert.equal(config.state_root, 'runtime')
     assert.equal(config.installation_mode, 'embedded')
     assert.ok(config.workspace_id.length > 0)
+    assert.equal(
+      typeof config.configs[config.active_config]?.personas[
+        'harness-technician'
+      ],
+      'string',
+    )
 
     assert.equal(
       lstatSync(path.join(project, '.pancreator', '.cursor')).isSymbolicLink(),
@@ -271,6 +279,20 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
     assert.match(buildDocsCommand, /inventory target-owned documentation/u)
     assert.equal(
       existsSync(path.join(project, '.cursor', 'agents', 'librarian.md')),
+      true,
+    )
+
+    const repairCommand = readFileSync(
+      path.join(project, '.cursor', 'commands', 'pan-repair.md'),
+      'utf8',
+    )
+    assert.match(repairCommand, /harness-technician/u)
+    assert.match(repairCommand, /\.pancreator\/runtime\/inbox/u)
+    assert.match(repairCommand, /--kind repair/u)
+    assert.equal(
+      existsSync(
+        path.join(project, '.cursor', 'agents', 'harness-technician.md'),
+      ),
       true,
     )
 
@@ -641,6 +663,16 @@ test('embedded installer refresh preserves target primer, runtime state, and unr
         'utf8',
       ),
       /workspace_changes/u,
+    )
+    assert.equal(
+      existsSync(path.join(project, '.cursor', 'commands', 'pan-repair.md')),
+      true,
+    )
+    assert.equal(
+      existsSync(
+        path.join(project, '.cursor', 'agents', 'harness-technician.md'),
+      ),
+      true,
     )
   } finally {
     rmSync(project, { recursive: true, force: true })

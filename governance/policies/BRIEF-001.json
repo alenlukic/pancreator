@@ -2,14 +2,15 @@
   "id": "BRIEF-001",
   "title": "Operator brief structure and presentation",
   "severity": "hard",
-  "summary": "New operator-facing narrative artifacts MUST use the shared brief data contract and render to self-contained semantic HTML; legacy Markdown and worker-control records remain valid exceptions.",
+  "summary": "Active workflow-stage narratives MUST use the shared brief data contract and render to self-contained semantic HTML; historical Markdown and explicit worker-control/source records remain valid exceptions.",
   "instructions": [
-    "New operator-facing narrative artifacts MUST be authored as schema-valid brief data and rendered to HTML with the Pancreator brief system. Existing Markdown artifacts do not require migration.",
+    "Every active workflow-stage narrative MUST be authored as schema-valid brief data and rendered to HTML with the Pancreator brief system. Existing historical Markdown artifacts do not require migration.",
+    "Each worker invocation MUST declare exact operator-brief source and rendered paths. The worker MUST reference rendered HTML as artifact 0 and source brief JSON as artifact 1; the harness MUST rerender the source during submission and reject path drift, missing sources, invalid brief data, or non-HTML primary artifacts.",
     "A brief MUST begin with an executive-summary section that states the bottom line first: what changed or matters, why it matters, and outcomes or required actions when applicable.",
     "Brief data MUST describe content and semantic intent; layout, typography, color, spacing, and responsive behavior MUST remain in the shared or project design system.",
     "Section headings MUST use concise titles and a registered semantic key. Renderers MUST resolve the heading emoji from that registry rather than accepting ad hoc emoji choices.",
     "Within one repository, each registered section emoji MUST retain one meaning. Project definitions MUST extend rather than override Pancreator-owned semantic keys.",
     "Cards SHOULD separate metadata from substantive detail through field placement, SHOULD expose clear actions when action is possible, and MUST avoid unnecessary nesting, decorative clutter, and raw-log substitution.",
-    "Canonical invocation and delegation cards, source documentation, machine-readable workflow records, and legacy artifacts MAY remain Markdown or JSON when those formats are part of their execution contract."
+    "Canonical invocation and delegation cards, source documentation, PR copy intended for direct reuse, machine-readable workflow records, and historical artifacts MAY remain Markdown or JSON when those formats are part of their execution contract. New workflow-stage narratives are not an exception."
   ]
 }

@@ -1,6 +1,6 @@
-# Pancreator v2.11.0
+# Pancreator v2.11.1
 
-Pancreator v2.11.0 is a workflow harness that helps teams use Cursor agents like an engineering workflow instead of a one-off chat. It brings structure, repeatability, and operator control to planning, implementation, review, QA, and release preparation without asking you to leave your repository.
+Pancreator v2.11.1 is a workflow harness that helps teams use Cursor agents like an engineering workflow instead of a one-off chat. It brings structure, repeatability, and operator control to planning, implementation, review, QA, and release preparation without asking you to leave your repository.
 
 It is built for teams that want faster agent-assisted delivery without turning approvals, validation, or release decisions into a black box.
 
@@ -19,6 +19,7 @@ Pancreator adds a set of Cursor commands, supporting agents, and repository-awar
 - turn broad requests into scoped, reviewable work;
 - run implementation through explicit validation and QA gates;
 - debug issues with a bounded investigation path;
+- audit suspicious Pancreator runs, including worker transcripts, into root-cause self-development intake;
 - prepare release notes and version metadata with the operator still owning the release action;
 - generate durable repository orientation docs so future agent work starts with better context;
 - render structured, project-themed operator briefs as portable semantic HTML.
@@ -55,6 +56,7 @@ Pancreator adds a set of Cursor commands, supporting agents, and repository-awar
 
    - Use `/pan-start <request>` for normal delivery work.
    - Use `/pan-debug <problem>` when you need root-cause analysis first.
+   - Use `/pan-repair <problem-or-artifact>` when Pancreator itself may have failed or missed governance.
    - Use `/pan-spotfix <request>` for an explicitly small, bounded change.
    - Use `/pan-release` when you want Pancreator to prepare release metadata.
 
@@ -83,6 +85,7 @@ For indexed release updates:
 
 - `/pan-start`: start a governed delivery run for a new request
 - `/pan-debug`: investigate a problem and recommend the right work mode
+- `/pan-repair`: audit a harness problem or workflow run and write a transcript-aware self-development intake
 - `/pan-build-docs`: generate or refresh repository orientation for future agent work
 - `/pan-build-briefs`: generate or refresh project brief semantics and design tokens
 - `/pan-release`: prepare version metadata and release notes

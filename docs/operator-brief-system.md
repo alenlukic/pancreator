@@ -69,7 +69,29 @@ Render an artifact from data:
 
 The renderer validates all semantic references, requires the executive summary first, rejects active HTML content, embeds the common and project CSS, and writes a portable HTML file with no runtime dependency.
 
-Fresh embedded installations receive the shared system but no target ontology. Target files are generated after installation and are preserved across refreshes. Legacy installations can run the same build command; existing Markdown artifacts are left untouched.
+### Workflow-stage contract
+
+Every worker invocation declares an `output.operator_brief` contract containing:
+
+- `source_path`: the schema-valid brief JSON;
+- `rendered_path`: the self-contained HTML operator artifact;
+- `schema`: the brief schema path;
+- `renderer`: the rendering command; and
+- `profile`: the stage-specific structural profile.
+
+The worker writes the brief JSON, renders the declared HTML, and lists the HTML
+as `artifacts[0]` and the JSON source as `artifacts[1]` in the stage output. The
+harness rerenders the source during submission before running policy-bound
+operator-artifact validation. Missing or invalid source data, a Markdown primary
+artifact, or any drift from the invocation-declared paths fails the stage.
+
+Invocation and delegation cards remain Markdown because Markdown is their
+canonical worker-control format. PR descriptions may remain Markdown because
+they are direct-use source copy. Those exceptions do not apply to intake specs,
+plans, implementation summaries, reviews, QA reports, release packets, or
+preflight inspection summaries.
+
+Fresh embedded installations receive the shared system but no target ontology. Target files are generated after installation and are preserved across refreshes. Legacy installations can run the same build command; existing historical Markdown artifacts are left untouched, while all newly prepared workflow stages use the HTML contract.
 
 ## Authoring and safety
 

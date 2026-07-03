@@ -409,6 +409,21 @@ export interface Invocation {
     template: string
     schema: string
     required_data: Record<string, JsonTypeName>
+    operator_brief: {
+      source_path: string
+      rendered_path: string
+      schema: string
+      renderer: string
+      profile:
+        | 'intake'
+        | 'plan'
+        | 'implementation'
+        | 'review'
+        | 'qa'
+        | 'release'
+        | 'inspection'
+      required_headings: string[]
+    }
   }
   boundaries: string[]
   workspace_before: WorkspaceSnapshot
@@ -499,6 +514,7 @@ export interface OperatorGateWaiver {
   source_attempt: number
   source_evidence_path: string
   criterion_ids: string[]
+  whole_stage_bypass?: boolean
   workspace_fingerprint: string
   source_workspace_fingerprint?: string
   directive_target?: string

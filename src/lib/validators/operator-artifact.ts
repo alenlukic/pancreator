@@ -2,30 +2,9 @@ import path from 'node:path'
 
 import { fileExists, isRecord, readJson, readText } from '../io.js'
 import { operatorLeadPresent, parseMarkdown } from '../markdown.js'
+import { OPERATOR_ARTIFACT_PROFILE_HEADINGS } from '../operator-artifact-profiles.js'
+import type { OperatorArtifactProfile } from '../operator-artifact-profiles.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
-
-export type ArtifactProfile =
-  | 'intake'
-  | 'plan'
-  | 'implementation'
-  | 'review'
-  | 'qa'
-  | 'release'
-  | 'investigation'
-  | 'spotfix'
-  | 'escalation'
-
-const PROFILE_HEADINGS: Record<ArtifactProfile, string[]> = {
-  intake: ['approach', 'user stories', 'constraints'],
-  plan: ['approach', 'architecture', 'acceptance criteria'],
-  implementation: ['summary', 'changes', 'acceptance'],
-  review: ['findings', 'verdict'],
-  qa: ['test cases', 'defects', 'verdict'],
-  release: ['change list', 'rollback'],
-  investigation: ['root cause', 'acceptance criteria', 'work mode'],
-  spotfix: ['outcome', 'validation cycles'],
-  escalation: ['escalation', 'acceptance criteria'],
-}
 
 function decodeHtml(value: string): string {
   return value
@@ -48,7 +27,7 @@ function htmlHeadings(content: string): string[] {
 
 function validateHtmlOperatorArtifact(
   content: string,
-  profile: ArtifactProfile,
+  profile: OperatorArtifactProfile,
 ): HandlerResult['issues'] {
   const issues: HandlerResult['issues'] = []
   const main =
@@ -87,7 +66,7 @@ function validateHtmlOperatorArtifact(
 
   const headings = htmlHeadings(content)
 
-  for (const heading of PROFILE_HEADINGS[profile]) {
+  for (const heading of OPERATOR_ARTIFACT_PROFILE_HEADINGS[profile]) {
     if (!headings.some((item) => item.includes(heading))) {
       issues.push({
         code: 'profile.heading_missing',
@@ -101,7 +80,7 @@ function validateHtmlOperatorArtifact(
 
 export function validateOperatorArtifact(
   input: HandlerInput,
-  profile: ArtifactProfile,
+  profile: OperatorArtifactProfile,
 ): HandlerResult {
   const issues: HandlerResult['issues'] = []
   const absolute = path.isAbsolute(input.targetPath)
@@ -135,7 +114,7 @@ export function validateOperatorArtifact(
 
     const parsed = parseMarkdown(content)
 
-    for (const heading of PROFILE_HEADINGS[profile]) {
+    for (const heading of OPERATOR_ARTIFACT_PROFILE_HEADINGS[profile]) {
       if (
         !parsed.headings.some((item) =>
           item.text.toLowerCase().includes(heading),

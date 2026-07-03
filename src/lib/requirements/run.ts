@@ -115,6 +115,7 @@ export function registryStageSlug(registryId: string): string | null {
     'RELEASE-VALIDATE-001': 'ship',
     'DECOMPOSITION-VALIDATE-001': 'decompose',
     'TARGET-REPO-PRIMER-VALIDATE-001': 'build-docs',
+    'HARNESS-REPAIR-VALIDATE-001': 'repair',
     'INVESTIGATION-VALIDATE-001': 'investigate',
     'SPOTFIX-VALIDATE-001': 'spotfix',
   }

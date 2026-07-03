@@ -822,6 +822,182 @@ test('qa validator accepts pytest node ids and slash-bearing observations', () =
   )
 })
 
+test('embedded evidence paths resolve from the workspace root', () => {
+  const targetRoot = mkdtempSync(path.join(tmpdir(), 'pan-embedded-evidence-'))
+  const installationRoot = path.join(targetRoot, '.pancreator')
+  const runId = 'run-embedded-evidence'
+  const target = `runtime/logs/workflows/${runId}/outputs/test-1-test.json`
+  const testFile = path.join(
+    targetRoot,
+    'tests',
+    'track_metadata',
+    'test_label.py',
+  )
+
+  mkdirSync(installationRoot, { recursive: true })
+  mkdirSync(path.dirname(testFile), { recursive: true })
+  writeFileSync(testFile, 'def test_example():\n    assert True\n')
+  writePlanOutput(installationRoot, runId, ['AC-01'])
+  writeFileSync(
+    path.join(installationRoot, target),
+    `${JSON.stringify({
+      data: {
+        qa_report: {
+          verdict: 'pass',
+          cases: [
+            {
+              id: 'QA-01',
+              steps: 'Run pytest',
+              expected: 'pass',
+              actual: 'pass',
+              result: 'pass',
+            },
+          ],
+          defects: [],
+          acceptance_results: [
+            {
+              id: 'AC-01',
+              result: 'pass',
+              evidence: [
+                'tests/track_metadata/test_label.py',
+                'tests/track_metadata/test_label.py::test_example',
+              ],
+            },
+          ],
+        },
+      },
+    })}\n`,
+  )
+
+  const sharedInput = {
+    root: installationRoot,
+    targetPath: target,
+    requirement: {
+      policy_id: 'TEST-001',
+      requirement_id: 'qa-validate',
+      registry_id: 'QA-VALIDATE-001',
+      arguments: {},
+    },
+    runState: {
+      workspace_root: '..',
+    },
+  }
+
+  const qaResult = validateQaOutput(sharedInput)
+
+  assert.equal(qaResult.status, 'passed')
+  assert.ok(
+    !qaResult.issues.some((issue) => issue.code === 'qa.evidence_missing'),
+  )
+
+  const implementationTarget = `runtime/logs/workflows/${runId}/outputs/implement-1-test.json`
+
+  writeFileSync(
+    path.join(installationRoot, implementationTarget),
+    `${JSON.stringify({
+      data: {
+        implementation: {
+          changed_files: [],
+          tests_added: ['tests/track_metadata/test_label.py'],
+          notes: [],
+        },
+        acceptance_results: [
+          {
+            id: 'AC-01',
+            result: 'pass',
+            evidence: ['tests/track_metadata/test_label.py::test_example'],
+          },
+        ],
+      },
+    })}\n`,
+  )
+
+  const implementationResult = validateImplementationClaims({
+    ...sharedInput,
+    targetPath: implementationTarget,
+    requirement: {
+      policy_id: 'DEV-001',
+      requirement_id: 'implementation-claims',
+      registry_id: 'IMPLEMENTATION-CLAIMS-VALIDATE-001',
+      arguments: {},
+    },
+  })
+
+  assert.equal(implementationResult.status, 'passed')
+  assert.ok(
+    !implementationResult.issues.some(
+      (issue) => issue.code === 'claim.test_missing',
+    ),
+  )
+})
+
+test('harness-relative evidence still resolves from the installation root', () => {
+  const targetRoot = mkdtempSync(path.join(tmpdir(), 'pan-harness-evidence-'))
+  const installationRoot = path.join(targetRoot, '.pancreator')
+  const runId = 'run-harness-evidence'
+  const target = `runtime/logs/workflows/${runId}/outputs/test-1-test.json`
+  const harnessEvidence = path.join(
+    installationRoot,
+    'runtime/logs/workflows',
+    runId,
+    'evidence',
+    'full.json',
+  )
+
+  mkdirSync(path.dirname(harnessEvidence), { recursive: true })
+  writeFileSync(harnessEvidence, '{}\n')
+  writePlanOutput(installationRoot, runId, ['AC-01'])
+  writeFileSync(
+    path.join(installationRoot, target),
+    `${JSON.stringify({
+      data: {
+        qa_report: {
+          verdict: 'pass',
+          cases: [
+            {
+              id: 'QA-01',
+              steps: 'Inspect harness evidence',
+              expected: 'present',
+              actual: 'present',
+              result: 'pass',
+            },
+          ],
+          defects: [],
+          acceptance_results: [
+            {
+              id: 'AC-01',
+              result: 'pass',
+              evidence: [
+                `runtime/logs/workflows/${runId}/evidence/full.json`,
+                'https://example.com/report',
+              ],
+            },
+          ],
+        },
+      },
+    })}\n`,
+  )
+
+  const result = validateQaOutput({
+    root: installationRoot,
+    targetPath: target,
+    requirement: {
+      policy_id: 'TEST-001',
+      requirement_id: 'qa-validate',
+      registry_id: 'QA-VALIDATE-001',
+      arguments: {},
+    },
+    runState: {
+      workspace_root: '..',
+    },
+  })
+
+  assert.equal(result.status, 'passed')
+  assert.ok(
+    !result.issues.some((issue) => issue.code === 'qa.evidence_missing'),
+  )
+})
+
 test('qa validator still rejects explicitly declared missing evidence paths', () => {
   const root = mkdtempSync(path.join(tmpdir(), 'pan-qa-missing-evidence-'))
   const runId = 'run-qa-missing-evidence'

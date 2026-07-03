@@ -257,18 +257,137 @@ export function resolveWorkspacePath(
   return absolute
 }
 
-function patternPrefix(pattern: string): string {
-  if (pattern.endsWith('/**')) {
-    return pattern.slice(0, -3)
+export const NESTED_GENERATED_DIRECTORY_NAMES = [
+  'node_modules',
+  'dist',
+  'coverage',
+] as const
+
+function pathSegments(relativePath: string): string[] {
+  return relativePath.split('/').filter((segment) => segment.length > 0)
+}
+
+export function containsNestedGeneratedDirectory(
+  workspaceRelativePath: string,
+): boolean {
+  const segments = pathSegments(workspaceRelativePath)
+
+  return segments.some((segment) =>
+    (NESTED_GENERATED_DIRECTORY_NAMES as readonly string[]).includes(segment),
+  )
+}
+
+function segmentMatches(patternSegment: string, pathSegment: string): boolean {
+  if (patternSegment === '*') {
+    return true
   }
 
-  const wildcardIndex = pattern.indexOf('*')
-
-  if (wildcardIndex === -1) {
-    return pattern
+  if (!patternSegment.includes('*')) {
+    return patternSegment === pathSegment
   }
 
-  return pattern.slice(0, wildcardIndex)
+  const escaped = patternSegment.replace(/[.+?^${}()|[\]\\]/gu, '\\$&')
+  const regex = new RegExp(`^${escaped.replaceAll('*', '.*')}$`, 'u')
+
+  return regex.test(pathSegment)
+}
+
+function matchGlobSegments(
+  patternSegments: string[],
+  pathSegmentsList: string[],
+  patternIndex: number,
+  pathIndex: number,
+): boolean {
+  if (patternIndex === patternSegments.length) {
+    return pathIndex === pathSegmentsList.length
+  }
+
+  const patternSegment = patternSegments[patternIndex]
+
+  if (patternSegment === '**') {
+    if (patternIndex === patternSegments.length - 1) {
+      return true
+    }
+
+    for (
+      let nextPathIndex = pathIndex;
+      nextPathIndex <= pathSegmentsList.length;
+      nextPathIndex += 1
+    ) {
+      if (
+        matchGlobSegments(
+          patternSegments,
+          pathSegmentsList,
+          patternIndex + 1,
+          nextPathIndex,
+        )
+      ) {
+        return true
+      }
+    }
+
+    return false
+  }
+
+  if (pathIndex >= pathSegmentsList.length) {
+    return false
+  }
+
+  if (!segmentMatches(patternSegment, pathSegmentsList[pathIndex])) {
+    return false
+  }
+
+  return matchGlobSegments(
+    patternSegments,
+    pathSegmentsList,
+    patternIndex + 1,
+    pathIndex + 1,
+  )
+}
+
+export function matchWorkspaceGlob(
+  pattern: string,
+  workspaceRelativePath: string,
+): boolean {
+  const normalizedPattern = pattern.trim()
+
+  if (normalizedPattern.length === 0) {
+    return false
+  }
+
+  const normalizedPath = normalizeWorkspacePath(workspaceRelativePath)
+
+  if (normalizedPattern === normalizedPath) {
+    return true
+  }
+
+  if (normalizedPattern.endsWith('/**')) {
+    const prefix = normalizedPattern.slice(0, -3)
+
+    if (!prefix.includes('*')) {
+      if (prefix.length === 0) {
+        return true
+      }
+
+      let normalizedPrefix: string
+
+      try {
+        normalizedPrefix = normalizeWorkspacePath(prefix)
+      } catch {
+        return false
+      }
+
+      return (
+        normalizedPath === normalizedPrefix ||
+        normalizedPath.startsWith(`${normalizedPrefix}/`)
+      )
+    }
+  }
+
+  const patternSegments = normalizedPattern.split('/').filter(Boolean)
+  const pathSegmentsList = pathSegments(normalizedPath)
+
+  return matchGlobSegments(patternSegments, pathSegmentsList, 0, 0)
 }
 
 export function isExcludedPath(
@@ -277,26 +396,12 @@ export function isExcludedPath(
 ): boolean {
   const normalized = normalizeWorkspacePath(workspaceRelativePath)
 
+  if (containsNestedGeneratedDirectory(normalized)) {
+    return true
+  }
+
   for (const pattern of roots.exclude) {
-    const rawPrefix = patternPrefix(pattern).trim()
-
-    if (rawPrefix.length === 0) {
-      continue
-    }
-
-    let prefix: string
-
-    try {
-      prefix = normalizeWorkspacePath(rawPrefix)
-    } catch {
-      continue
-    }
-
-    if (
-      normalized === prefix ||
-      normalized.startsWith(`${prefix}/`) ||
-      pattern === normalized
-    ) {
+    if (matchWorkspaceGlob(pattern, normalized)) {
       return true
     }
   }

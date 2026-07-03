@@ -67,6 +67,10 @@ export function artifactMarkdownPath(
   return `runtime/logs/workflows/${runId}/artifacts/markdown/${artifactId}.md`
 }
 
+export function artifactHtmlPath(runId: string, artifactId: string): string {
+  return `runtime/logs/workflows/${runId}/artifacts/html/${artifactId}.html`
+}
+
 export function isClosedRunStatus(status: RunStatus): boolean {
   return status === 'succeeded' || status === 'failed' || status === 'canceled'
 }
@@ -754,7 +758,9 @@ function layoutPlan(root: string, runDirectory: string): ArtifactLayoutPlan {
     for (const entry of readdirSync(artifactRoot, { withFileTypes: true })) {
       if (
         entry.isDirectory() &&
-        (entry.name === 'json' || entry.name === 'markdown')
+        (entry.name === 'json' ||
+          entry.name === 'html' ||
+          entry.name === 'markdown')
       ) {
         continue
       }
@@ -771,7 +777,11 @@ function layoutPlan(root: string, runDirectory: string): ArtifactLayoutPlan {
           continue
         }
 
-        const targetDirectory = source.endsWith('.json') ? 'json' : 'markdown'
+        const targetDirectory = source.endsWith('.json')
+          ? 'json'
+          : source.endsWith('.html')
+            ? 'html'
+            : 'markdown'
         const target = path.join(artifactRoot, targetDirectory, relative)
 
         moves.push({
@@ -826,6 +836,7 @@ function consolidateArtifactLayout(
   const artifactRoot = path.join(runDirectory, 'artifacts')
 
   mkdirSync(path.join(artifactRoot, 'json'), { recursive: true })
+  mkdirSync(path.join(artifactRoot, 'html'), { recursive: true })
   mkdirSync(path.join(artifactRoot, 'markdown'), { recursive: true })
 
   const plan = layoutPlan(root, runDirectory)
@@ -838,6 +849,7 @@ function consolidateArtifactLayout(
     if (
       entry.isDirectory() &&
       entry.name !== 'json' &&
+      entry.name !== 'html' &&
       entry.name !== 'markdown'
     ) {
       rmSync(path.join(artifactRoot, entry.name), {

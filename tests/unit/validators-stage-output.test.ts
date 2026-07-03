@@ -51,6 +51,16 @@ function fixtureInvocation(
         template: 'library/templates/stage-output.example.json',
         schema: 'library/schemas/stage-output.schema.json',
         required_data: stage.required_data ?? {},
+        operator_brief: {
+          source_path:
+            'runtime/logs/workflows/run-test/artifacts/json/out.brief.json',
+          rendered_path:
+            'runtime/logs/workflows/run-test/artifacts/html/out.html',
+          schema: 'library/schemas/operator-brief.schema.json',
+          renderer: 'pan briefs render',
+          profile: 'implementation',
+          required_headings: ['summary', 'changes', 'acceptance'],
+        },
       },
       boundaries: [],
       workspace_before: { kind: 'git', fingerprint: 'abc', entries: [] },
@@ -117,4 +127,32 @@ test('strict stage output rejects success with failed self-evaluation', () => {
   const validation = validateStageOutput(root, stage, invocation, output)
 
   assert.match(validation.errors.join('\n'), /contradicts failed criterion/u)
+})
+
+test('stage output requires invocation-declared HTML and brief source artifacts', () => {
+  const root = createFixture()
+  const { invocation, stage } = fixtureInvocation(
+    root,
+    'implement',
+    'implement-1-test',
+  )
+  const output = baseOutput(invocation, stage)
+
+  output.artifacts = [
+    {
+      path: 'runtime/logs/workflows/run-test/artifacts/markdown/summary.md',
+      description: 'Legacy Markdown summary',
+    },
+    {
+      path: invocation.output.operator_brief.source_path,
+      description: 'Brief source',
+    },
+  ]
+
+  const validation = validateStageOutput(root, stage, invocation, output)
+
+  assert.match(
+    validation.errors.join('\n'),
+    /artifacts\[0\]\.path MUST equal rendered operator brief path/u,
+  )
 })

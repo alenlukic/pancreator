@@ -194,6 +194,18 @@
       "side_effect_free": true
     },
     {
+      "id": "HARNESS-REPAIR-VALIDATE-001",
+      "kind": "validator",
+      "version": "1",
+      "handler": "harness-repair-validate",
+      "input_contract": "harness-repair-markdown",
+      "result_schema": "validation-result-v1",
+      "target_types": ["markdown-artifact"],
+      "default_timeout_ms": 30000,
+      "deterministic": true,
+      "side_effect_free": true
+    },
+    {
       "id": "INVESTIGATION-VALIDATE-001",
       "kind": "validator",
       "version": "1",

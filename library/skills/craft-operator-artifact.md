@@ -10,7 +10,15 @@ Under `BRIEF-001`, use the operator brief system for new operator-facing narrati
 2. Use shared semantics from `library/operator-briefs/primitives.json` and project semantics from `docs/operator-briefs/project.json`.
 3. Render self-contained HTML with `./bin/pan briefs render --input <brief.json> --output <brief.html>`.
 
-Existing Markdown does not require migration. Canonical invocation/delegation records, machine workflow records, source documentation, and other formats that are part of an execution contract remain exceptions.
+For workflow stages, use the exact source and rendered paths declared in
+`output.operator_brief`; list HTML as artifact 0 and brief JSON as artifact 1.
+The harness rerenders the source during submission so the displayed document is
+always derived from the validated content contract.
+
+Existing historical Markdown does not require migration. Canonical
+invocation/delegation records, machine workflow records, source documentation,
+PR copy, and other formats that are themselves part of an execution contract
+remain exceptions. New workflow-stage narratives are not an exception.
 
 ## Composition
 

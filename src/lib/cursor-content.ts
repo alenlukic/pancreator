@@ -64,5 +64,12 @@ export function projectCursorContent(
     )
   }
 
+  if (relativePath === '.cursor/commands/pan-repair.md') {
+    projected = projected.replace(
+      'output path under `runtime/inbox/`',
+      'output path under `.pancreator/runtime/inbox/`',
+    )
+  }
+
   return projected
 }

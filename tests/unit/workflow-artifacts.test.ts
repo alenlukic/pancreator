@@ -113,6 +113,10 @@ function writeLegacyArtifacts(
       `Artifact ${invocationId}\n`,
     )
     write(
+      path.join(runDirectory, 'artifacts', `${invocationId}.html`),
+      `<main>Artifact ${invocationId}</main>\n`,
+    )
+    write(
       path.join(runDirectory, 'records', `${invocationId}.json`),
       `${JSON.stringify({
         run_id: runId,
@@ -251,6 +255,16 @@ test('workflow migration finalizes closed runs and consolidates artifacts', () =
           migratedLogDirectory,
           'artifacts/markdown',
           `${invocationId}.md`,
+        ),
+      ),
+      true,
+    )
+    assert.equal(
+      existsSync(
+        path.join(
+          migratedLogDirectory,
+          'artifacts/html',
+          `${invocationId}.html`,
         ),
       ),
       true,

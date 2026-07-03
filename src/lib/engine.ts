@@ -3,7 +3,8 @@ import { copyFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { buildInvocationInputs } from './context.js'
-import { invariant } from './errors.js'
+import { renderBrief, validateBriefSystem } from './briefs.js'
+import { errorMessage, invariant } from './errors.js'
 import {
   ensureDir,
   fileExists,
@@ -19,6 +20,10 @@ import {
   writeTextAtomic,
 } from './io.js'
 import { makeStageArtifactId } from './naming.js'
+import {
+  OPERATOR_ARTIFACT_PROFILE_HEADINGS,
+  operatorArtifactProfileForStage,
+} from './operator-artifact-profiles.js'
 import {
   configuredWorkspaceRoot,
   isEmbeddedInstallation,
@@ -818,6 +823,14 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     code: 'REQUEST_NOT_FOUND',
   })
 
+  const briefSystem = validateBriefSystem(root)
+
+  invariant(
+    briefSystem.status === 'passed',
+    `${briefSystem.errors.join(' ')} Run ${panCommand(root)} briefs build or /pan-build-briefs before starting a workflow.`,
+    { code: 'INVALID_BRIEF_SYSTEM', details: briefSystem },
+  )
+
   const id = makeRunId()
   const directory = runDir(root, id)
 
@@ -828,6 +841,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     'evidence',
     'decisions',
     'artifacts/json',
+    'artifacts/html',
     'artifacts/markdown',
   ]) {
     ensureDir(path.join(directory, child))
@@ -1113,6 +1127,8 @@ export function prepareInvocation(
       attempt,
     )
     const outputPath = `runtime/logs/workflows/${runId}/outputs/${invocationId}.json`
+    const briefSourcePath = `runtime/logs/workflows/${runId}/artifacts/json/${invocationId}.brief.json`
+    const briefRenderedPath = `runtime/logs/workflows/${runId}/artifacts/html/${invocationId}.html`
     const jsonPath = `runtime/logs/workflows/${runId}/invocations/${invocationId}.json`
     const markdownPath = `runtime/logs/workflows/${runId}/invocations/${invocationId}.md`
     const delegationArtifactPath = delegationPath(runId, invocationId)
@@ -1127,7 +1143,10 @@ export function prepareInvocation(
       persona: stage.persona,
       workflow: workflow.slug,
       stage: stage.slug,
-      invocation: { output_path: outputPath },
+      invocation: {
+        output_path: outputPath,
+        artifact_paths: [briefRenderedPath, briefSourcePath],
+      },
     })
     const nextAction =
       stage.persona === 'orchestrator'
@@ -1208,6 +1227,18 @@ export function prepareInvocation(
         template: 'library/templates/stage-output.example.json',
         schema: 'library/schemas/stage-output.schema.json',
         required_data: requiredData,
+        operator_brief: {
+          source_path: briefSourcePath,
+          rendered_path: briefRenderedPath,
+          schema: 'library/schemas/operator-brief.schema.json',
+          renderer: 'pan briefs render',
+          profile: operatorArtifactProfileForStage(stage.slug),
+          required_headings: [
+            ...OPERATOR_ARTIFACT_PROFILE_HEADINGS[
+              operatorArtifactProfileForStage(stage.slug)
+            ],
+          ],
+        },
       },
       boundaries: [
         'You MUST read this invocation card before broader repository context.',
@@ -1293,6 +1324,32 @@ export function prepareInvocation(
 
     return { state, invocation }
   })
+}
+
+function materializeOperatorBrief(
+  root: string,
+  invocation: Invocation,
+): string[] {
+  const contract = invocation.output.operator_brief as
+    | Invocation['output']['operator_brief']
+    | undefined
+
+  if (!contract) {
+    return []
+  }
+
+  const source = resolveInside(root, contract.source_path)
+
+  if (!fileExists(source)) {
+    return [`operator brief source does not exist: ${contract.source_path}`]
+  }
+
+  try {
+    renderBrief(root, contract.source_path, contract.rendered_path)
+    return []
+  } catch (error) {
+    return [`operator brief render failed: ${errorMessage(error)}`]
+  }
 }
 
 function effectiveOutcome(
@@ -1439,12 +1496,14 @@ export function submitOutput(
       )
     }
 
+    const briefErrors = materializeOperatorBrief(root, invocation)
     const validation = validateStageOutput(
       root,
       stage,
       invocation,
       submittedValue,
     )
+    validation.errors.unshift(...briefErrors)
 
     writeJsonAtomic(
       resolveInside(root, state.current_invocation.output_path),
@@ -2366,6 +2425,10 @@ export function waiveGate(
         : inferredBlockers.length > 0
           ? inferredBlockers
           : ['*']
+    const bypassedBeyondRequest = inferredBlockers.filter(
+      (blocker) => !waivedCriteria.includes(blocker),
+    )
+    const wholeStageBypass = bypassedBeyondRequest.length > 0
     const target = options.targetStage ?? stage.transitions.success
 
     invariant(target, `Stage '${stage.slug}' has no success transition.`, {
@@ -2431,6 +2494,18 @@ export function waiveGate(
       '',
       ...waivedCriteria.map((item) => `- \`${item}\``),
       '',
+      ...(wholeStageBypass
+        ? [
+            '## Whole-stage bypass disclosure',
+            '',
+            '**whole_stage_bypass:** true',
+            '',
+            'Additional failed hard criteria bypassed beyond the operator-named subset:',
+            '',
+            ...bypassedBeyondRequest.map((item) => `- \`${item}\``),
+            '',
+          ]
+        : []),
       '## Operator terms',
       '',
       options.note.trim(),
@@ -2468,6 +2543,7 @@ export function waiveGate(
       source_attempt: history?.attempt ?? 0,
       source_evidence_path: sourceEvidencePath,
       criterion_ids: waivedCriteria,
+      ...(wholeStageBypass ? { whole_stage_bypass: true } : {}),
       workspace_fingerprint: workspace.fingerprint,
       ...(history
         ? { source_workspace_fingerprint: history.workspace_fingerprint }

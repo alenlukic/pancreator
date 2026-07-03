@@ -4,7 +4,12 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
-import { resolveRoots } from '../../src/lib/workspace/roots.js'
+import {
+  containsNestedGeneratedDirectory,
+  isExcludedPath,
+  matchWorkspaceGlob,
+  resolveRoots,
+} from '../../src/lib/workspace/roots.js'
 
 function makeWorkspace(name: string): string {
   const root = mkdtempSync(path.join(tmpdir(), `pancreator-roots-${name}-`))
@@ -98,4 +103,79 @@ test('resolveRoots applies state-root precedence', () => {
       process.env.PANCREATOR_STATE_ROOT = previousEnv
     }
   }
+})
+
+test('matchWorkspaceGlob preserves literal and directory glob exclusions', () => {
+  assert.equal(
+    matchWorkspaceGlob('package-lock.json', 'package-lock.json'),
+    true,
+  )
+  assert.equal(
+    matchWorkspaceGlob('package-lock.json', 'nested/package-lock.json'),
+    false,
+  )
+  assert.equal(matchWorkspaceGlob('dist/**', 'dist/out.js'), true)
+  assert.equal(matchWorkspaceGlob('dist/**', 'client/dist/out.js'), false)
+  assert.equal(matchWorkspaceGlob('coverage/**', 'coverage/lcov.info'), true)
+  assert.equal(matchWorkspaceGlob('exact/file.ts', 'exact/file.ts'), true)
+  assert.equal(matchWorkspaceGlob('src/*/index.ts', 'src/lib/index.ts'), true)
+  assert.equal(
+    matchWorkspaceGlob('**/generated/**', 'client/generated/cache.json'),
+    true,
+  )
+})
+
+test('containsNestedGeneratedDirectory excludes dependency trees at any depth', () => {
+  assert.equal(
+    containsNestedGeneratedDirectory(
+      'client/node_modules/.vite/vitest/da39a3ee/results.json',
+    ),
+    true,
+  )
+  assert.equal(
+    containsNestedGeneratedDirectory('node_modules/pkg/index.js'),
+    true,
+  )
+  assert.equal(containsNestedGeneratedDirectory('src/app.ts'), false)
+})
+
+test('isExcludedPath excludes nested generated files under node_modules', () => {
+  const workspace = makeWorkspace('nested-generated')
+  const configPath = path.join(workspace, 'project.json')
+
+  writeFileSync(
+    configPath,
+    JSON.stringify(
+      {
+        schema_version: 1,
+        workspace_id: 'fixture-workspace',
+        tracking: {
+          include: ['**/*'],
+          exclude: [
+            'dist/**',
+            'node_modules/**',
+            'coverage/**',
+            'package-lock.json',
+          ],
+        },
+      },
+      null,
+      2,
+    ),
+  )
+
+  const roots = resolveRoots({
+    installation_root: workspace,
+    workspace_root: workspace,
+  })
+
+  assert.equal(
+    isExcludedPath(
+      roots,
+      'client/node_modules/.vite/vitest/da39a3ee/results.json',
+    ),
+    true,
+  )
+  assert.equal(isExcludedPath(roots, 'src/tracked.ts'), false)
+  assert.equal(isExcludedPath(roots, 'dist/out.js'), true)
 })

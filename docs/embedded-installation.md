@@ -127,7 +127,7 @@ Every install includes Pancreator-owned schemas, generic semantics, and base CSS
 ./.pancreator/bin/pan briefs render --input <brief.json> --output <brief.html>
 ```
 
-Refreshes preserve the target-specific project files. Legacy installations can generate them with the same command; existing Markdown artifacts remain unchanged.
+Refreshes preserve the target-specific project files. Legacy installations can generate them with the same command; existing historical Markdown artifacts remain unchanged. Run `/pan-build-briefs` before starting the first workflow after a fresh install or a legacy update that lacks those files. New worker-stage invocations then require brief JSON plus rendered HTML, and the harness rerenders the HTML during submission.
 
 ## Workspace mutation model
 
@@ -206,7 +206,7 @@ blanket-deleted.
 
 ## Harness versioning
 
-`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `2.11.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
+`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `2.11.1`. `CHANGELOG.md` records curated release history in Common Changelog format.
 
 `release/index.json` is the internal mapping from harness version to immutable
 Git commit. Because a commit cannot contain its own hash, release publication is

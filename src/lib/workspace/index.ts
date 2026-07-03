@@ -18,13 +18,11 @@ import type {
   WorkspaceIndexEntry,
   WorkspaceSnapshot,
 } from '../types.js'
-import { isExcludedPath, normalizeWorkspacePath } from './roots.js'
-
-const DEFAULT_GENERATED_PATH_PREFIXES = [
-  'dist',
-  'node_modules',
-  'coverage',
-] as const
+import {
+  containsNestedGeneratedDirectory,
+  isExcludedPath,
+  normalizeWorkspacePath,
+} from './roots.js'
 
 const DEFAULT_GENERATED_PATHS = new Set([
   'package-lock.json',
@@ -63,10 +61,8 @@ export function isNonBlockingGeneratedArtifact(
     return true
   }
 
-  for (const prefix of DEFAULT_GENERATED_PATH_PREFIXES) {
-    if (normalized === prefix || normalized.startsWith(`${prefix}/`)) {
-      return true
-    }
+  if (containsNestedGeneratedDirectory(normalized)) {
+    return true
   }
 
   return false

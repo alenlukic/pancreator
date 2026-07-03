@@ -10,6 +10,7 @@ import {
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
+import { renderBrief } from '../src/lib/briefs.js'
 import { syncCursorProjection } from '../src/lib/projection.js'
 import { nextSemanticVersion } from '../src/lib/versioning.js'
 
@@ -256,29 +257,72 @@ function prepareFixtureReleaseMetadata(root: string): {
   }
 }
 
-function artifactMarkdown(stageSlug: string, title: string): string {
+function artifactBrief(
+  stageSlug: string,
+  title: string,
+): Record<string, unknown> {
   const profileSections: Record<string, string[]> = {
-    intake: ['## Approach', '## User stories', '## Constraints'],
-    plan: ['## Approach', '## Architecture', '## Acceptance criteria'],
-    implement: ['## Summary', '## Changes', '## Acceptance'],
-    review: ['## Findings', '## Verdict'],
-    test: ['## Test cases', '## Defects', '## Verdict'],
-    ship: ['## Change list', '## Rollback'],
+    intake: ['Approach', 'User stories', 'Constraints'],
+    plan: ['Approach', 'Architecture', 'Acceptance criteria'],
+    implement: ['Changes', 'Acceptance'],
+    review: ['Findings', 'Verdict'],
+    test: ['Test cases', 'Defects', 'Verdict'],
+    ship: ['Change list', 'Rollback'],
+    inspect: ['Findings', 'Verdict'],
   }
-  const sections = (profileSections[stageSlug] ?? ['## Summary']).join('\n\n')
-  const storyLine =
-    stageSlug === 'intake' ? '\n\nStory index includes US-01.\n' : ''
+  const semanticForHeading = (heading: string): string => {
+    const normalized = heading.toLowerCase()
 
-  return `# ${title}
+    if (normalized.includes('change')) return 'changes'
+    if (normalized.includes('accept') || normalized.includes('test')) {
+      return 'validation'
+    }
+    if (normalized.includes('defect') || normalized.includes('constraint')) {
+      return 'risks'
+    }
+    if (normalized.includes('rollback')) return 'release'
 
-**State:** Fixture stage complete.
-**Outcome:** Success.
-**Next action:** Submit output to the harness.
+    return 'context'
+  }
+  const bodyForHeading = (heading: string): string =>
+    heading === 'User stories'
+      ? 'US-01 — Run a workflow and observe the expected outcome.'
+      : `Fixture ${heading.toLowerCase()} details for ${stageSlug}.`
 
-${sections}
-${storyLine}
-Fixture artifact body for ${stageSlug}.
-`
+  return {
+    schema_version: 1,
+    brief_type: stageSlug === 'ship' ? 'release' : 'workflow-run',
+    title,
+    subtitle: `Fixture operator brief for ${stageSlug}.`,
+    sections: [
+      {
+        semantic: 'executive-summary',
+        title: 'Executive summary',
+        cards: [
+          {
+            type: 'summary',
+            title: `${title} complete`,
+            body:
+              'The fixture stage completed successfully with concrete evidence. ' +
+              'The next action is to submit the stage output to the harness.',
+          },
+        ],
+      },
+      ...(profileSections[stageSlug] ?? ['Changes', 'Acceptance']).map(
+        (heading) => ({
+          semantic: semanticForHeading(heading),
+          title: heading,
+          cards: [
+            {
+              type: 'summary',
+              title: heading,
+              body: bodyForHeading(heading),
+            },
+          ],
+        }),
+      ),
+    ],
+  }
 }
 
 function requiredData(
@@ -500,16 +544,14 @@ export function makeOutput(
   result: StageOutcome = 'success',
   runState?: RunState,
 ): StageOutput {
-  const artifactRelative =
-    `runtime/logs/workflows/${invocation.run_id}/artifacts/markdown/` +
-    `${invocation.invocation_id}.md`
-  const artifactAbsolute = path.join(root, artifactRelative)
+  const briefSource = invocation.output.operator_brief.source_path
+  const briefHtml = invocation.output.operator_brief.rendered_path
 
-  mkdirSync(path.dirname(artifactAbsolute), { recursive: true })
-  writeFileSync(
-    artifactAbsolute,
-    artifactMarkdown(invocation.stage.slug, invocation.stage.title),
+  writeJson(
+    path.join(root, briefSource),
+    artifactBrief(invocation.stage.slug, invocation.stage.title),
   )
+  renderBrief(root, briefSource, briefHtml)
 
   return {
     $operator: {
@@ -521,11 +563,14 @@ export function makeOutput(
     invocation_id: invocation.invocation_id,
     result,
     summary: `${invocation.stage.title} completed in fixture.`,
-    artifacts: [{ path: artifactRelative, description: 'Fixture artifact' }],
+    artifacts: [
+      { path: briefHtml, description: 'Fixture HTML operator brief' },
+      { path: briefSource, description: 'Fixture operator brief source' },
+    ],
     criteria: stageDefinition.criteria.map((criterion) => ({
       id: criterion.id,
       result: result === 'success' ? 'pass' : 'fail',
-      evidence: [artifactRelative],
+      evidence: [briefHtml],
       explanation: 'Fixture evidence',
     })),
     risks: [],

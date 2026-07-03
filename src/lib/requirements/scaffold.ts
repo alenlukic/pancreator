@@ -86,12 +86,27 @@ export function scaffoldStageOutput(
     }
   }
 
+  const operatorBrief = invocation.output.operator_brief as
+    | Invocation['output']['operator_brief']
+    | undefined
+
   const scaffold: StageOutput = {
     schema_version: 1,
     invocation_id: invocation.invocation_id,
     result: 'success',
     summary: '',
-    artifacts: [],
+    artifacts: operatorBrief
+      ? [
+          {
+            path: operatorBrief.rendered_path,
+            description: 'Primary self-contained HTML brief for the operator.',
+          },
+          {
+            path: operatorBrief.source_path,
+            description: 'Schema-valid JSON source for the operator brief.',
+          },
+        ]
+      : [],
     criteria: invocation.rubric.map((criterion) => ({
       id: criterion.id,
       result: 'not_applicable',

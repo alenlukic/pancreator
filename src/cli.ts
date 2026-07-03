@@ -167,6 +167,7 @@ const INVOCATION_KINDS = new Set<InvocationKind>([
   'assessment',
   'spotfix',
   'investigation',
+  'repair',
   'decomposition',
   'documentation',
 ])

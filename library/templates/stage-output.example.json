@@ -7,11 +7,15 @@
   "schema_version": 1,
   "invocation_id": "copy-from-invocation-card",
   "result": "success",
-  "summary": "Concise, operator-first description of the work and outcome. Detail belongs in the referenced markdown artifact.",
+  "summary": "Concise, operator-first description of the work and outcome. Detail belongs in the referenced HTML brief.",
   "artifacts": [
     {
-      "path": "runtime/logs/workflows/<run>/artifacts/markdown/<invocation>.md",
-      "description": "Primary operator-readable deliverable for this stage."
+      "path": "copy-output.operator_brief.rendered_path-from-invocation-card",
+      "description": "Primary self-contained HTML brief for the operator."
+    },
+    {
+      "path": "copy-output.operator_brief.source_path-from-invocation-card",
+      "description": "Schema-valid JSON source used to render the operator brief."
     }
   ],
   "criteria": [

@@ -400,6 +400,30 @@ test('standalone remediation personas load their work-mode policies', () => {
   ])
 })
 
+test('harness technician loads repair governance', () => {
+  const root = createFixture()
+  const ids = resolvePolicies(root, {
+    persona: 'harness-technician',
+    workflow: 'standalone',
+    stage: 'repair',
+  }).map((policy) => policy.id)
+
+  assert.deepEqual(ids, [
+    'ACTION-001',
+    'AUTO-001',
+    'BIN-001',
+    'BRIEF-001',
+    'GLOBAL-001',
+    'GLOBAL-002',
+    'OPERATOR-001',
+    'OUTPUT-001',
+    'PRIMER-001',
+    'REPAIR-001',
+    'REPO-001',
+    'VALID-001',
+  ])
+})
+
 test('librarian loads target primer governance', () => {
   const root = createFixture()
   const ids = resolvePolicies(root, {

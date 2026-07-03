@@ -5,9 +5,11 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
+  blockingWorkspacePathsFromSnapshots,
   loadWorkspaceIndex,
   reconcileWorkspaceIndex,
   saveWorkspaceIndex,
+  snapshotWorkspace,
 } from '../../src/lib/workspace/index.js'
 import { resolveRoots } from '../../src/lib/workspace/roots.js'
 
@@ -58,4 +60,96 @@ test('workspace index reconciliation rehashes changed files', () => {
     first.index.entries['tracked.txt']?.checksum,
     second.index.entries['tracked.txt']?.checksum,
   )
+})
+
+test('nested generated files under node_modules are not fingerprinted', () => {
+  const workspace = makeWorkspace()
+  const configPath = path.join(workspace, 'project.json')
+
+  writeFileSync(
+    configPath,
+    JSON.stringify(
+      {
+        schema_version: 1,
+        workspace_id: 'fixture-workspace',
+        tracking: {
+          include: ['**/*'],
+          exclude: ['node_modules/**', 'dist/**', 'coverage/**'],
+        },
+      },
+      null,
+      2,
+    ),
+  )
+
+  const roots = resolveRoots({
+    installation_root: workspace,
+    workspace_root: workspace,
+  })
+  const generatedPath = path.join(
+    workspace,
+    'client',
+    'node_modules',
+    '.vite',
+    'vitest',
+    'cache',
+    'results.json',
+  )
+
+  mkdirSync(path.dirname(generatedPath), { recursive: true })
+  writeFileSync(generatedPath, '{}\n')
+
+  const reconciled = reconcileWorkspaceIndex(roots, null)
+
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(
+      reconciled.index.entries,
+      'client/node_modules/.vite/vitest/cache/results.json',
+    ),
+    false,
+  )
+})
+
+test('nested generated file deltas do not block non-source stages', () => {
+  const workspace = makeWorkspace()
+  const configPath = path.join(workspace, 'project.json')
+
+  writeFileSync(
+    configPath,
+    JSON.stringify(
+      {
+        schema_version: 1,
+        workspace_id: 'fixture-workspace',
+        tracking: {
+          include: ['**/*'],
+          exclude: ['node_modules/**', 'dist/**', 'coverage/**'],
+        },
+      },
+      null,
+      2,
+    ),
+  )
+
+  const roots = resolveRoots({
+    installation_root: workspace,
+    workspace_root: workspace,
+  })
+  const before = snapshotWorkspace(roots, false).snapshot
+  const generatedPath = path.join(
+    workspace,
+    'client',
+    'node_modules',
+    '.vite',
+    'vitest',
+    'cache',
+    'results.json',
+  )
+
+  mkdirSync(path.dirname(generatedPath), { recursive: true })
+  writeFileSync(generatedPath, '{}\n')
+
+  const after = snapshotWorkspace(roots, false).snapshot
+  const blocking = blockingWorkspacePathsFromSnapshots(before, after, roots)
+
+  assert.deepEqual(blocking, [])
 })

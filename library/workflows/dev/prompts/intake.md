@@ -15,8 +15,9 @@ specification. Preserve intent; do not design the solution.
 ## Output
 
 Populate `data.product_spec` with `summary`, `user_stories`, `constraints`,
-`out_of_scope`, and `open_questions`. Write the operator-facing specification as
-a markdown artifact and reference it.
+`out_of_scope`, and `open_questions`. Author the operator-facing specification as
+the invocation's schema-valid brief JSON, render it to the exact HTML path from
+the output contract, and reference the HTML first and the brief JSON second.
 
 ## Done when
 

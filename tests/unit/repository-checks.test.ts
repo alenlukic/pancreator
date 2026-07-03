@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
@@ -89,7 +95,10 @@ test('repository checks run probes and commands in the configured workspace', ()
     result.results.map((item) => item.kind),
     ['probe', 'probe', 'command'],
   )
-  assert.equal(result.results[2]?.stdout, workspace)
+  assert.equal(
+    realpathSync(result.results[2]?.stdout ?? ''),
+    realpathSync(workspace),
+  )
   assert.match(result.results[0]?.stdout ?? '', /node/u)
   assert.match(result.results[1]?.stdout ?? '', /^v\d+/u)
 })
