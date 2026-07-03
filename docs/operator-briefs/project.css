@@ -1,0 +1,14 @@
+/* Pancreator project design tokens. Shared structure remains in library/operator-briefs/base.css. */
+:root {
+  --pc-accent: #4b88a2;
+  --pc-accent-contrast: #ffffff;
+  --pc-max-width: 76rem;
+  --pc-radius: 0.75rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --pc-accent: #79b7d1;
+    --pc-accent-contrast: #0e1a20;
+  }
+}

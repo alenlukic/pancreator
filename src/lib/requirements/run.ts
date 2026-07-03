@@ -94,6 +94,10 @@ export function inferTargetKind(targetPath: string): string {
     return 'invocation-markdown'
   }
 
+  if (targetPath.endsWith('.html')) {
+    return 'html-artifact'
+  }
+
   if (targetPath.endsWith('.md')) {
     return 'markdown-artifact'
   }

@@ -1,0 +1,20 @@
+{
+  "id": "PY-001",
+  "title": "Python conformance",
+  "severity": "hard",
+  "summary": "Agents writing, reviewing, or testing durable repository Python MUST apply the Python guidance unrolled into the active invocation together with the target repository's configured toolchain.",
+  "instructions": [
+    "Agents writing, reviewing, or testing Python MUST apply the complete unrolled Python guidance included with this policy before completion.",
+    "Agents MUST preserve the target repository's declared Python version, formatter, linter, type checker, test runner, packaging conventions, and more specific compatible instructions.",
+    "Agents MUST use runtime/repository-checks.json as the verification command authority and MUST NOT invent Python environment or tool commands.",
+    "Workflow-local automation under runtime/logs/workflows/<run-id>/scripts/ MAY be throwaway and need not conform to the repository Python guidance unless it is promoted into durable repository code.",
+    "Agents MUST NOT reconstruct or separately load formatter-owned appendix rules during ordinary implementation or review unless they are changing formatter configuration or integration."
+  ],
+  "guidance_sources": [
+    {
+      "path": "governance/handbooks/python/style-guide.md",
+      "start_heading": "## Core principles",
+      "end_heading": "# Appendix A: Formatter-owned rules"
+    }
+  ]
+}

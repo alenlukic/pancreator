@@ -201,6 +201,34 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
     )
     assert.equal(existsSync(path.join(project, '.pancreator', 'library')), true)
     assert.equal(
+      existsSync(
+        path.join(
+          project,
+          '.pancreator',
+          'library',
+          'operator-briefs',
+          'primitives.json',
+        ),
+      ),
+      true,
+    )
+    assert.equal(
+      existsSync(
+        path.join(
+          project,
+          '.pancreator',
+          'library',
+          'schemas',
+          'operator-brief.schema.json',
+        ),
+      ),
+      true,
+    )
+    assert.equal(
+      existsSync(path.join(project, '.pancreator', 'docs', 'operator-briefs')),
+      false,
+    )
+    assert.equal(
       existsSync(path.join(project, '.pancreator', 'release', 'index.json')),
       true,
     )
@@ -244,6 +272,20 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
     assert.equal(
       existsSync(path.join(project, '.cursor', 'agents', 'librarian.md')),
       true,
+    )
+
+    const buildBriefsCommand = readFileSync(
+      path.join(project, '.cursor', 'commands', 'pan-build-briefs.md'),
+      'utf8',
+    )
+    assert.match(buildBriefsCommand, /\.\/\.pancreator\/bin\/pan briefs build/u)
+    assert.match(
+      buildBriefsCommand,
+      /\.pancreator\/docs\/operator-briefs\/project\.json/u,
+    )
+    assert.match(
+      buildBriefsCommand,
+      /\.pancreator\/library\/operator-briefs\/primitives\.json/u,
     )
 
     const writePrCommand = readFileSync(
@@ -479,6 +521,21 @@ test('embedded installer refresh preserves target primer, runtime state, and unr
       path.join(project, '.pancreator', 'runtime', 'repository-checks.json'),
       '{\n  "schema_version": 1,\n  "profiles": {\n    "full": {\n      "probes": ["python --version"],\n      "commands": ["python -m pytest"]\n    }\n  }\n}\n',
     )
+    const briefSystemDirectory = path.join(
+      project,
+      '.pancreator',
+      'docs',
+      'operator-briefs',
+    )
+    mkdirSync(briefSystemDirectory, { recursive: true })
+    writeFileSync(
+      path.join(briefSystemDirectory, 'project.json'),
+      '{"target":"custom-registry"}\n',
+    )
+    writeFileSync(
+      path.join(briefSystemDirectory, 'project.css'),
+      ':root { --target-token: 1; }\n',
+    )
     mkdirSync(path.join(project, '.pancreator', 'runtime', 'locks'), {
       recursive: true,
     })
@@ -535,6 +592,14 @@ test('embedded installer refresh preserves target primer, runtime state, and unr
         path.join(project, '.pancreator', 'runtime', 'target-repo-primer.md'),
       ),
       false,
+    )
+    assert.equal(
+      readFileSync(path.join(briefSystemDirectory, 'project.json'), 'utf8'),
+      '{"target":"custom-registry"}\n',
+    )
+    assert.equal(
+      readFileSync(path.join(briefSystemDirectory, 'project.css'), 'utf8'),
+      ':root { --target-token: 1; }\n',
     )
     assert.match(
       readFileSync(

@@ -9,7 +9,7 @@ recurring job. Read the skill relevant to your current step.
 - [`write-stage-output.md`](write-stage-output.md) - produce the declared JSON
   output correctly.
 - [`craft-operator-artifact.md`](craft-operator-artifact.md) - write the
-  markdown deliverable an operator reads.
+  structured brief data and semantic HTML an operator reads.
 - [`evaluate-evidence.md`](evaluate-evidence.md) - judge whether evidence
   supports a criterion.
 - [`scope-control.md`](scope-control.md) - keep a change minimal and bounded.

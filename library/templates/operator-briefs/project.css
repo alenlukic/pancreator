@@ -1,0 +1,14 @@
+/* Project-specific operator brief design tokens. Keep layout rules in the Pancreator base system. */
+:root {
+  --pc-accent: #315d75;
+  --pc-accent-contrast: #ffffff;
+  --pc-max-width: 72rem;
+  --pc-radius: 0.8rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --pc-accent: #80b3cf;
+    --pc-accent-contrast: #0f1b22;
+  }
+}

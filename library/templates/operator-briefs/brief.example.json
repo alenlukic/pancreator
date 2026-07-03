@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "brief_type": "general",
+  "title": "Example operator brief",
+  "subtitle": "A small example of the semantic brief, section, card, and field primitives.",
+  "sections": [
+    {
+      "semantic": "executive-summary",
+      "title": "Executive summary",
+      "cards": [
+        {
+          "type": "summary",
+          "title": "The brief system is ready",
+          "lede": "Use semantic data for content and let the renderer apply repository design tokens.",
+          "status": {
+            "label": "Ready",
+            "tone": "positive"
+          },
+          "actions": [
+            {
+              "label": "Render this brief",
+              "command": "pan briefs render --input library/templates/operator-briefs/brief.example.json --output runtime/example-brief.html",
+              "style": "primary"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

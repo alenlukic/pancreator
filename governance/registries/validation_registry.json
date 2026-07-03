@@ -90,9 +90,9 @@
       "kind": "validator",
       "version": "1",
       "handler": "operator-artifact-validate",
-      "input_contract": "markdown",
+      "input_contract": "operator-artifact",
       "result_schema": "validation-result-v1",
-      "target_types": ["markdown-artifact"],
+      "target_types": ["markdown-artifact", "html-artifact"],
       "default_timeout_ms": 30000,
       "deterministic": true,
       "side_effect_free": true

@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pancreator.local/schemas/operator-brief-system.schema.json",
+  "title": "Pancreator operator brief system extension",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "project",
+    "extends",
+    "brief_types",
+    "section_semantics",
+    "card_types",
+    "field_semantics"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "status": {
+      "enum": ["ready"]
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      }
+    },
+    "extends": {
+      "const": "pancreator"
+    },
+    "$operator": {
+      "type": "object"
+    },
+    "brief_types": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/definition"
+      }
+    },
+    "section_semantics": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/sectionSemantic"
+      }
+    },
+    "card_types": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/cardType"
+      }
+    },
+    "field_semantics": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/definition"
+      }
+    }
+  },
+  "$defs": {
+    "definition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "description"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        }
+      }
+    },
+    "sectionSemantic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["emoji", "label", "description"],
+      "properties": {
+        "emoji": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        }
+      }
+    },
+    "cardType": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "description", "layout"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "layout": {
+          "enum": ["standard", "split-header"]
+        },
+        "required_fields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      }
+    }
+  }
+}

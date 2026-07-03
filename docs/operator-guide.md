@@ -34,11 +34,25 @@ on the same invocation so delivery can be corrected and resubmitted.
 `./bin/pan status` includes a dedicated validation section with invocation and
 delegation validation state, artifact paths, and short failure reasons.
 
+Applicable durable handbooks and static skills are resolved through policy
+`guidance_sources` and embedded directly in the invocation card. Language-specific
+policies MAY also be selected from detected target-workspace technology signals;
+for example, Python source or packaging markers activate `PY-001` for implementation,
+review, QA, and spotfix work without imposing Python guidance on unrelated targets. A worker MUST
+receive that unrolled guidance with the canonical card; a source-file path is
+not a substitute for delivering the content.
+
 ## Build the target repository primer
 
 Run `/pan-build-docs` after installation, after major architectural or administrative changes, or when the existing primer is materially stale. The command creates the primer when absent and regenerates it when present. The librarian inventories target-owned documentation, incorporates useful verified details into the appropriate sections, and reconciles those claims against representative code, setup/build/install/test scripts, manifests, and bounded Git history before writing the validated primer to `docs/target-repo-primer.md` (`.pancreator/docs/target-repo-primer.md` when embedded).
 
 Every agent reads this primer before expanding repository context. It is a navigation aid rather than an instruction to preload all referenced files: agents may follow a primer path only when the active task creates a concrete need for that file.
+
+## Build the operator brief system
+
+Run `/pan-build-briefs` after installation and whenever recurring operator-facing use cases or project visual conventions materially change. The command scaffolds missing files, then asks the librarian to derive a minimal target-specific ontology and design-token layer from bounded repository evidence. It writes `docs/operator-briefs/project.json` and `docs/operator-briefs/project.css` (`.pancreator/docs/operator-briefs/` when embedded) and validates collisions and emoji consistency.
+
+Use `pan briefs build --force` only when deliberately resetting the project layer to templates before regeneration. Existing Markdown artifacts are not migrated. New narrative artifacts should be authored as brief JSON and rendered with `pan briefs render` to portable HTML.
 
 ## Assess unusually large intake
 

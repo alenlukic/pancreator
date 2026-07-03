@@ -1,6 +1,6 @@
-# Pancreator v2.10.0
+# Pancreator v2.11.0
 
-Pancreator v2.10.0 is a workflow harness that helps teams use Cursor agents like an engineering workflow instead of a one-off chat. It brings structure, repeatability, and operator control to planning, implementation, review, QA, and release preparation without asking you to leave your repository.
+Pancreator v2.11.0 is a workflow harness that helps teams use Cursor agents like an engineering workflow instead of a one-off chat. It brings structure, repeatability, and operator control to planning, implementation, review, QA, and release preparation without asking you to leave your repository.
 
 It is built for teams that want faster agent-assisted delivery without turning approvals, validation, or release decisions into a black box.
 
@@ -20,7 +20,8 @@ Pancreator adds a set of Cursor commands, supporting agents, and repository-awar
 - run implementation through explicit validation and QA gates;
 - debug issues with a bounded investigation path;
 - prepare release notes and version metadata with the operator still owning the release action;
-- generate durable repository orientation docs so future agent work starts with better context.
+- generate durable repository orientation docs so future agent work starts with better context;
+- render structured, project-themed operator briefs as portable semantic HTML.
 
 ## Requirements
 
@@ -43,10 +44,11 @@ Pancreator adds a set of Cursor commands, supporting agents, and repository-awar
    /pan-validate
    ```
 
-3. Build repository orientation so agents start from accurate local context:
+3. Build repository orientation and the project-specific operator brief system:
 
    ```sh
    /pan-build-docs
+   /pan-build-briefs
    ```
 
 4. Choose the workflow that matches the job:
@@ -82,12 +84,14 @@ For indexed release updates:
 - `/pan-start`: start a governed delivery run for a new request
 - `/pan-debug`: investigate a problem and recommend the right work mode
 - `/pan-build-docs`: generate or refresh repository orientation for future agent work
+- `/pan-build-briefs`: generate or refresh project brief semantics and design tokens
 - `/pan-release`: prepare version metadata and release notes
 - `/pan-write-pr [base-branch]`: draft a pull request description from the current branch
 
 ## Learn More
 
 - [`docs/operator-guide.md`](docs/operator-guide.md) for day-to-day operation and remediation
+- [`docs/operator-brief-system.md`](docs/operator-brief-system.md) for brief composition, semantics, rendering, and theming
 - [`docs/embedded-installation.md`](docs/embedded-installation.md) for installation boundaries and update behavior
 - [`docs/workflow-authoring.md`](docs/workflow-authoring.md) for defining or extending workflows
 - [`CHANGELOG.md`](CHANGELOG.md) for release history

@@ -67,7 +67,8 @@ function projectCursorContent(content, relative) {
 
   if (
     relative.startsWith('.cursor/agents/') ||
-    relative === '.cursor/commands/pan-write-pr.md'
+    relative === '.cursor/commands/pan-write-pr.md' ||
+    relative === '.cursor/commands/pan-build-briefs.md'
   ) {
     projected = projected.replaceAll('`docs/', '`.pancreator/docs/')
   }

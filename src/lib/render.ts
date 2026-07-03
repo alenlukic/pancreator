@@ -25,12 +25,23 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
   const policies = invocation.policies.length
     ? invocation.policies.flatMap((policy) => {
         const lines = [
-          `- **${policy.id} · ${policy.title}**`,
-          `  ${policy.summary}`,
-          ...policy.instructions.map((instruction) => `  - ${instruction}`),
+          `**${policy.id} · ${policy.title}**`,
+          '',
+          policy.summary,
+          '',
+          ...policy.instructions.map((instruction) => `- ${instruction}`),
         ]
 
-        return [lines.join('\n')]
+        for (const guidance of policy.guidance ?? []) {
+          lines.push(
+            '',
+            `### Unrolled guidance · \`${guidance.source_path}\``,
+            '',
+            guidance.content,
+          )
+        }
+
+        return [lines.join('\n'), '']
       })
     : ['- Only global boundaries apply.']
   const requirements = invocation.requirements

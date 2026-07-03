@@ -21,6 +21,12 @@ This directory contains the Pancreator harness installed for the parent reposito
 - The primer is orientation, not authority. Agents MUST NOT open or search files merely because the primer references them; a referenced file MAY be read only for a concrete task-specific need.
 - The operator request, the target repository's `AGENTS.md`, this card, the active invocation card, and applicable policies retain precedence over primer content.
 
+## Operator brief system
+
+- `BRIEF-001` governs new operator-facing narrative artifacts. Shared primitives ship under `.pancreator/library/operator-briefs/`; target extensions live under `.pancreator/docs/operator-briefs/` after `/pan-build-briefs` runs.
+- New narrative artifacts MUST use schema-valid brief data rendered to self-contained HTML. Existing Markdown and canonical invocation/delegation records remain valid exceptions.
+- Section emoji MUST resolve from registered semantics; project definitions MUST extend rather than override shared meaning, and artifact data MUST NOT contain layout or inline style decisions.
+
 ## Operating loop
 
 - Runs MUST be managed through `./.pancreator/bin/pan`.

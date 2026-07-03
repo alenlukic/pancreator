@@ -245,9 +245,11 @@ function handbookOwned(root: string, relative: string): boolean {
   const catalog = loadPolicyCatalog(root)
 
   for (const policy of catalog.values()) {
-    const text = [policy.summary, ...policy.instructions].join('\n')
-
-    if (text.includes(relative)) {
+    if (
+      (policy.guidance ?? []).some(
+        (guidance) => guidance.source_path === relative,
+      )
+    ) {
       return true
     }
   }

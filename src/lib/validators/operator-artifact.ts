@@ -27,6 +27,78 @@ const PROFILE_HEADINGS: Record<ArtifactProfile, string[]> = {
   escalation: ['escalation', 'acceptance criteria'],
 }
 
+function decodeHtml(value: string): string {
+  return value
+    .replaceAll(/<[^>]+>/gu, ' ')
+    .replaceAll('&nbsp;', ' ')
+    .replaceAll('&amp;', '&')
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&#39;', "'")
+    .replaceAll(/\s+/gu, ' ')
+    .trim()
+}
+
+function htmlHeadings(content: string): string[] {
+  return [...content.matchAll(/<h[1-6]\b[^>]*>([\s\S]*?)<\/h[1-6]>/giu)].map(
+    (match) => decodeHtml(match[1] ?? '').toLowerCase(),
+  )
+}
+
+function validateHtmlOperatorArtifact(
+  content: string,
+  profile: ArtifactProfile,
+): HandlerResult['issues'] {
+  const issues: HandlerResult['issues'] = []
+  const main =
+    /<main\b[^>]*class=["'][^"']*\bpc-brief\b[^"']*["'][^>]*>/iu.exec(content)
+
+  if (!main || !/data-brief-type=["'][^"']+["']/iu.test(main[0])) {
+    issues.push({
+      code: 'operator.brief_root_missing',
+      message:
+        'HTML operator artifact MUST use the Pancreator brief root and declare a brief type.',
+    })
+  }
+
+  const firstSection =
+    /<section\b[^>]*data-section-semantic=["']([^"']+)["'][^>]*>([\s\S]*?)<\/section>/iu.exec(
+      content,
+    )
+
+  if (firstSection?.[1] !== 'executive-summary') {
+    issues.push({
+      code: 'operator.executive_summary_missing',
+      message:
+        "HTML operator artifact MUST begin with an 'executive-summary' section.",
+    })
+  } else {
+    const summaryText = decodeHtml(firstSection[2] ?? '')
+
+    if (summaryText.length < 40) {
+      issues.push({
+        code: 'operator.lead_missing',
+        message:
+          'Executive summary MUST state the bottom line and meaningful outcome or next-action context.',
+      })
+    }
+  }
+
+  const headings = htmlHeadings(content)
+
+  for (const heading of PROFILE_HEADINGS[profile]) {
+    if (!headings.some((item) => item.includes(heading))) {
+      issues.push({
+        code: 'profile.heading_missing',
+        message: `Profile '${profile}' requires heading containing '${heading}'`,
+      })
+    }
+  }
+
+  return issues
+}
+
 export function validateOperatorArtifact(
   input: HandlerInput,
   profile: ArtifactProfile,
@@ -50,24 +122,30 @@ export function validateOperatorArtifact(
 
   const content = readText(absolute)
 
-  if (!operatorLeadPresent(content)) {
-    issues.push({
-      code: 'operator.lead_missing',
-      message:
-        'Artifact MUST include operator-first state/outcome/next-action lead',
-    })
-  }
-
-  const parsed = parseMarkdown(content)
-
-  for (const heading of PROFILE_HEADINGS[profile]) {
-    if (
-      !parsed.headings.some((item) => item.text.toLowerCase().includes(heading))
-    ) {
+  if (path.extname(absolute).toLowerCase() === '.html') {
+    issues.push(...validateHtmlOperatorArtifact(content, profile))
+  } else {
+    if (!operatorLeadPresent(content)) {
       issues.push({
-        code: 'profile.heading_missing',
-        message: `Profile '${profile}' requires heading containing '${heading}'`,
+        code: 'operator.lead_missing',
+        message:
+          'Artifact MUST include operator-first state/outcome/next-action lead',
       })
+    }
+
+    const parsed = parseMarkdown(content)
+
+    for (const heading of PROFILE_HEADINGS[profile]) {
+      if (
+        !parsed.headings.some((item) =>
+          item.text.toLowerCase().includes(heading),
+        )
+      ) {
+        issues.push({
+          code: 'profile.heading_missing',
+          message: `Profile '${profile}' requires heading containing '${heading}'`,
+        })
+      }
     }
   }
 

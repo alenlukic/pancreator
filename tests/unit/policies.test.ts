@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { createFixture } from '../helpers.js'
 import { loadPolicyCatalog, resolvePolicies } from '../../src/lib/policies.js'
@@ -18,6 +18,7 @@ test('policy resolution unions global and stage-specific policies', () => {
     'ACTION-001',
     'AUTO-001',
     'BIN-001',
+    'BRIEF-001',
     'CONTRACT-001',
     'DEV-001',
     'ENG-001',
@@ -45,6 +46,7 @@ test('engineering handbook policy loads for reviewer and qa personas', () => {
     'ACTION-001',
     'AUTO-001',
     'BIN-001',
+    'BRIEF-001',
     'CONTRACT-001',
     'ENG-001',
     'GLOBAL-001',
@@ -68,6 +70,7 @@ test('engineering handbook policy loads for reviewer and qa personas', () => {
     'ACTION-001',
     'AUTO-001',
     'BIN-001',
+    'BRIEF-001',
     'ENG-001',
     'GLOBAL-001',
     'GLOBAL-002',
@@ -95,6 +98,125 @@ test('policy registry content remains canonical for inlining', () => {
   assert.equal(action.instructions.length, 2)
 })
 
+test('policy resolution snapshots handbook and skill guidance', () => {
+  const root = createFixture()
+  const catalog = loadPolicyCatalog(root)
+  const engineering = catalog.get('ENG-001')
+  const python = catalog.get('PY-001')
+  const typescript = catalog.get('TS-001')
+  const pullRequest = catalog.get('PR-001')
+
+  assert.ok(engineering)
+  assert.deepEqual(
+    engineering.guidance?.map((guidance) => guidance.source_path),
+    ['governance/handbooks/eng/engineering.md'],
+  )
+  assert.match(
+    engineering.guidance?.[0]?.content ?? '',
+    /A change MUST be the smallest coherent change/u,
+  )
+
+  assert.ok(python)
+  assert.deepEqual(
+    python.guidance?.map((guidance) => guidance.source_path),
+    ['governance/handbooks/python/style-guide.md'],
+  )
+  assert.match(python.guidance?.[0]?.content ?? '', /## Core principles/u)
+  assert.match(
+    python.guidance?.[0]?.content ?? '',
+    /Mutable default arguments MUST NOT be used/u,
+  )
+  assert.doesNotMatch(
+    python.guidance?.[0]?.content ?? '',
+    /Appendix A: Formatter-owned rules/u,
+  )
+
+  assert.ok(typescript)
+  assert.deepEqual(
+    typescript.guidance?.map((guidance) => guidance.source_path),
+    [
+      'governance/handbooks/typescript/style-guide.md',
+      'governance/handbooks/typescript/node.md',
+    ],
+  )
+  assert.match(typescript.guidance?.[0]?.content ?? '', /## Core principles/u)
+  assert.doesNotMatch(
+    typescript.guidance?.[0]?.content ?? '',
+    /Appendix A: Formatter-owned rules/u,
+  )
+
+  assert.ok(pullRequest)
+  assert.match(
+    pullRequest.guidance?.[0]?.content ?? '',
+    /## File format \(normative\)/u,
+  )
+})
+
+test('Python policy loads only for detected Python workspaces', () => {
+  const root = createFixture()
+  const configPath = path.join(root, 'project.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  config.installation_mode = 'embedded'
+  config.workspace_root = 'target'
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+  mkdirSync(path.join(root, 'target'), { recursive: true })
+  writeFileSync(
+    path.join(root, 'target', 'pyproject.toml'),
+    '[project]\nname = "fixture"\n',
+    {
+      flag: 'w',
+    },
+  )
+
+  const pythonIds = resolvePolicies(root, {
+    persona: 'coder',
+    workflow: 'dev',
+    stage: 'implement',
+  }).map((policy) => policy.id)
+
+  assert.ok(pythonIds.includes('PY-001'))
+  assert.ok(!pythonIds.includes('TS-001'))
+
+  rmSync(path.join(root, 'target', 'pyproject.toml'))
+  writeFileSync(path.join(root, 'target', 'main.py'), 'VALUE = 1\n')
+
+  const sourceDetectedIds = resolvePolicies(root, {
+    persona: 'reviewer',
+    workflow: 'dev',
+    stage: 'review',
+  }).map((policy) => policy.id)
+
+  assert.ok(sourceDetectedIds.includes('PY-001'))
+})
+
+test('non-Python embedded workspaces do not load Python guidance', () => {
+  const root = createFixture()
+  const configPath = path.join(root, 'project.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  config.installation_mode = 'embedded'
+  config.workspace_root = 'target'
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+  mkdirSync(path.join(root, 'target'), { recursive: true })
+  writeFileSync(path.join(root, 'target', 'package.json'), '{}\n')
+
+  const ids = resolvePolicies(root, {
+    persona: 'coder',
+    workflow: 'dev',
+    stage: 'implement',
+  }).map((policy) => policy.id)
+
+  assert.ok(!ids.includes('PY-001'))
+  assert.ok(!ids.includes('TS-001'))
+})
+
 test('orchestration and release guidance resolve with required policy dependencies', () => {
   const root = createFixture()
   const orchestratorIds = resolvePolicies(root, {
@@ -112,6 +234,7 @@ test('orchestration and release guidance resolve with required policy dependenci
     'ACTION-001',
     'AUTO-001',
     'BIN-001',
+    'BRIEF-001',
     'GLOBAL-001',
     'GLOBAL-002',
     'INTAKE-001',
@@ -130,6 +253,7 @@ test('orchestration and release guidance resolve with required policy dependenci
     'ACTION-001',
     'AUTO-001',
     'BIN-001',
+    'BRIEF-001',
     'GLOBAL-001',
     'GLOBAL-002',
     'OPERATOR-001',
@@ -215,6 +339,7 @@ test('decomposer loads conservative decomposition governance', () => {
     'ACTION-001',
     'AUTO-001',
     'BIN-001',
+    'BRIEF-001',
     'DECOMP-001',
     'GLOBAL-001',
     'GLOBAL-002',
@@ -238,6 +363,7 @@ test('standalone remediation personas load their work-mode policies', () => {
     'ACTION-001',
     'AUTO-001',
     'BIN-001',
+    'BRIEF-001',
     'DIAG-001',
     'GLOBAL-001',
     'GLOBAL-002',
@@ -258,6 +384,7 @@ test('standalone remediation personas load their work-mode policies', () => {
     'ACTION-001',
     'AUTO-001',
     'BIN-001',
+    'BRIEF-001',
     'CONTRACT-001',
     'ENG-001',
     'GLOBAL-001',

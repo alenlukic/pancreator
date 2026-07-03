@@ -59,6 +59,11 @@ import {
 import { snapshotWorkspace } from './lib/workspace/index.js'
 import { resolveRoots } from './lib/workspace/roots.js'
 import { validateWorkflowChanges } from './lib/workspace/validate-changes.js'
+import {
+  buildBriefSystem,
+  renderBrief,
+  validateBriefSystem,
+} from './lib/briefs.js'
 
 const HELP_BODY = `Usage:
   pan init --request <repo-relative-file> [--workflow dev] [--title <title>] [--workspace <dir>] [--gates <file>]
@@ -88,6 +93,9 @@ const HELP_BODY = `Usage:
   pan output validate <run-id> --file <path> [--json]
   pan assessment scaffold <run-id> --invocation <path> --output <path> [--force]
   pan governance audit-directives [--json]
+  pan briefs build [--force] [--json]
+  pan briefs validate [--json]
+  pan briefs render --input <brief-json> --output <brief-html> [--json]
   pan validation-map [--json]
   pan spotfix scaffold-escalation --input <path> --output <path>
 
@@ -714,6 +722,44 @@ async function main(): Promise<void> {
         true,
       )
       return
+    }
+    case 'briefs': {
+      const subcommand = requiredArgument(args[0], 'briefs-subcommand')
+
+      if (subcommand === 'build') {
+        const result = buildBriefSystem(root, {
+          force: hasFlag(args, '--force'),
+        })
+
+        print(result, hasFlag(args, '--json'))
+        return
+      }
+
+      if (subcommand === 'validate') {
+        const result = validateBriefSystem(root)
+
+        print(result, hasFlag(args, '--json'))
+
+        if (result.status === 'failed') {
+          process.exitCode = 1
+        }
+        return
+      }
+
+      if (subcommand === 'render') {
+        const inputPath = requiredArgument(option(args, '--input'), '--input')
+        const outputPath = requiredArgument(
+          option(args, '--output'),
+          '--output',
+        )
+
+        print(renderBrief(root, inputPath, outputPath), hasFlag(args, '--json'))
+        return
+      }
+
+      throw new PanError(`Unknown briefs subcommand: ${subcommand}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
     }
     case 'validation-map': {
       print(buildValidationMap(root), hasFlag(args, '--json'))

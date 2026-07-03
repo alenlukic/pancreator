@@ -9,10 +9,11 @@ implementation, review, QA evidence, and current workspace.
 2. Confirm review and QA are satisfied by successful current evidence or explicit
    operator waiver directives. Fingerprint currency applies to unwaived evidence,
    not to the validity of an operator directive.
-3. When `project.json.installation_mode` is `self_development`, apply
-   `library/skills/update-release-metadata.md`: inspect the complete delta since
-   the last committed release bump, choose `major`, `minor`, or `patch`, author
-   or regenerate the release notes, and synchronize all version-bearing files.
+3. When `project.json.installation_mode` is `self_development`, apply the
+   release-metadata procedure unrolled under `VERSION-001`: inspect the complete
+   delta since the last committed release bump, choose `major`, `minor`, or
+   `patch`, author or regenerate the release notes, and synchronize all
+   version-bearing files.
    In embedded mode, do not modify release metadata.
 4. List every active operator gate waiver, deferred acceptance criterion, and
    linked follow-up case; do not describe waived evidence as an ordinary pass.
@@ -20,7 +21,8 @@ implementation, review, QA evidence, and current workspace.
    rollback guidance.
 6. When Git metadata is available, draft a proposed commit message that
    accurately describes the diff.
-7. Apply `library/skills/write-pr-description.md`: save the PR description to
+7. Apply the PR-description procedure unrolled under `PR-001`: save the PR
+   description to
    `runtime/logs/workflows/<run-id>/artifacts/markdown/pr-description.md` and
    reference it in stage artifacts. Do not open or create a pull request.
 

@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "status": "ready",
+  "project": {
+    "id": "pancreator",
+    "title": "Pancreator"
+  },
+  "extends": "pancreator",
+  "$operator": {
+    "summary": "Pancreator's project-specific extensions to the shared operator brief primitives.",
+    "regeneration_command": "/pan-build-briefs"
+  },
+  "brief_types": {
+    "governance-change": {
+      "label": "Governance change",
+      "description": "Policy, gate, persona, or workflow behavior changes and their operational effect."
+    },
+    "installation-update": {
+      "label": "Installation update",
+      "description": "Fresh-install and legacy-refresh behavior, migration effects, and operator follow-up."
+    }
+  },
+  "section_semantics": {
+    "governance": {
+      "emoji": "⚖️",
+      "label": "Governance",
+      "description": "Policy and authority changes."
+    },
+    "installation": {
+      "emoji": "📦",
+      "label": "Installation",
+      "description": "Fresh-install, update, and migration behavior."
+    }
+  },
+  "card_types": {
+    "policy-change": {
+      "label": "Policy change",
+      "description": "A governance contract and its practical effect.",
+      "layout": "split-header"
+    },
+    "installation-path": {
+      "label": "Installation path",
+      "description": "A generated or preserved installation asset.",
+      "layout": "split-header"
+    }
+  },
+  "field_semantics": {
+    "policy": {
+      "label": "Policy",
+      "description": "Governance policy identifier."
+    },
+    "path": {
+      "label": "Path",
+      "description": "Repository-relative file or directory path."
+    }
+  }
+}

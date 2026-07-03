@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.11.0] - 2026-07-02
+
+### Changed
+
+- Make schema-backed, self-contained semantic HTML the standard for new operator-facing narrative artifacts while retaining existing Markdown and canonical worker-control records as explicit compatibility exceptions ([BRIEF-001](governance/policies/BRIEF-001.json), [operator brief system](docs/operator-brief-system.md), [artifact validator](src/lib/validators/operator-artifact.ts)).
+- Separate content semantics from presentation: briefs reference registered types and field placement, section emojis resolve from a repository-wide semantic registry, and shared/project CSS owns layout, color, spacing, dark mode, responsive behavior, and print output ([shared primitives](library/operator-briefs/primitives.json), [base design system](library/operator-briefs/base.css)).
+
+### Added
+
+- Add generic brief, section, card, field, item, status, urgency, and action contracts plus `pan briefs build|validate|render` for project scaffolding, consistency checks, and portable HTML generation ([brief schema](library/schemas/operator-brief.schema.json), [brief runtime](src/lib/briefs.ts), [CLI](src/cli.ts)).
+- Add `/pan-build-briefs` and extend the librarian so fresh and legacy installations can derive a minimal project ontology and design-token layer from recurring target use cases without modifying shared Pancreator primitives ([command](library/cursor/commands/pan-build-briefs.md), [librarian persona](library/personas/librarian.md)).
+- Add Pancreator-specific governance and installation brief extensions as the self-development project layer, with common workflow/release primitives remaining reusable across installed repositories ([project registry](docs/operator-briefs/project.json), [project CSS](docs/operator-briefs/project.css)).
+
+### Fixed
+
+- Preserve generated target brief systems across embedded refreshes while preventing Pancreator's self-development ontology and colors from leaking into fresh installations; shared primitives remain available before project generation ([installer](bin/install), [embedded installation guide](docs/embedded-installation.md)).
+- Recognize and validate HTML operator artifacts in requirement routing, including the mandatory executive-summary lead and profile-specific headings, without weakening legacy Markdown validation ([requirement routing](src/lib/requirements/run.ts), [validation registry](governance/registries/validation_registry.json)).
+
 ## [2.10.0] - 2026-07-01
 
 ### Changed
@@ -263,6 +281,7 @@ _First functional release._
 
 - Add the original self-building workflow harness, governed personas, compliance hooks, durable memory, and bootstrap documentation ([c9c5def](https://github.com/alenlukic/pancreator/commit/c9c5def2ccd2a0a9c27d5c6707c963cb2621518a))
 
+[2.11.0]: https://github.com/alenlukic/pancreator/compare/7d86b1257b839217317f568d802fe5e836b8bebf...HEAD
 [2.10.0]: https://github.com/alenlukic/pancreator/compare/c0a1a4cc6964261a970038578b41de71c5de1204...HEAD
 [2.9.0]: https://github.com/alenlukic/pancreator/compare/5f1a87704fa1601cc2f1c74e77d37268de0ce0cd...HEAD
 [2.8.0]: https://github.com/alenlukic/pancreator/compare/5f4953e321544a9a28b2614cbf5a1fa2f6882a99...HEAD

@@ -28,5 +28,11 @@
         "invocation_kind": "spotfix"
       }
     }
+  ],
+  "guidance_sources": [
+    {
+      "path": "library/skills/spotfix.md",
+      "start_heading": "## Eligibility"
+    }
   ]
 }
