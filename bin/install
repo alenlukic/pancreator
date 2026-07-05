@@ -650,12 +650,22 @@ install_payload() {
   backup_root="$PANCREATOR_DIR/backups/cursor/${installed_at//:/-}"
   cursor_manifest="$staging/cursor-manifest.json"
 
-  node "$PANCREATOR_ROOT/bin/install-support" project-cursor \
-    --source-root "$PANCREATOR_ROOT" \
-    --target-root "$TARGET_DIR" \
-    --manifest-out "$cursor_manifest" \
-    --backup-root "$backup_root" \
-    --previous-marker "$previous_marker"
+  if [[ -f "$PROJECT_JSON" ]]; then
+    node "$PANCREATOR_ROOT/bin/install-support" project-cursor \
+      --source-root "$PANCREATOR_ROOT" \
+      --target-root "$TARGET_DIR" \
+      --manifest-out "$cursor_manifest" \
+      --backup-root "$backup_root" \
+      --previous-marker "$previous_marker" \
+      --persona-config "$PROJECT_JSON"
+  else
+    node "$PANCREATOR_ROOT/bin/install-support" project-cursor \
+      --source-root "$PANCREATOR_ROOT" \
+      --target-root "$TARGET_DIR" \
+      --manifest-out "$cursor_manifest" \
+      --backup-root "$backup_root" \
+      --previous-marker "$previous_marker"
+  fi
 
   remove_previous_payload
 

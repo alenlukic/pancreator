@@ -188,8 +188,8 @@ function cursorSourceFiles(sourceRoot) {
     .sort((left, right) => left.relative.localeCompare(right.relative))
 }
 
-function activePersonaModels(sourceRoot) {
-  const config = readJson(path.join(sourceRoot, 'project.json'))
+function personaModelsFromConfig(configPath) {
+  const config = readJson(configPath)
   const active = config.configs?.[config.active_config]
 
   if (!active || typeof active.personas !== 'object') {
@@ -197,6 +197,75 @@ function activePersonaModels(sourceRoot) {
   }
 
   return active.personas
+}
+
+function personaModelsForProjection(personaConfigPath, sourceRoot) {
+  const sourceConfigPath = path.join(sourceRoot, 'project.json')
+  const sourceConfig = readJson(sourceConfigPath)
+
+  if (!personaConfigPath) {
+    return personaModelsFromConfig(sourceConfigPath)
+  }
+
+  const targetConfig = readJson(personaConfigPath)
+  const activeConfigName =
+    typeof targetConfig.active_config === 'string'
+      ? targetConfig.active_config
+      : sourceConfig.active_config
+  const sourcePersonas =
+    sourceConfig.configs?.[activeConfigName]?.personas ??
+    sourceConfig.configs?.[sourceConfig.active_config]?.personas
+  const targetPersonas = targetConfig.configs?.[activeConfigName]?.personas
+
+  if (!sourcePersonas || typeof sourcePersonas !== 'object') {
+    fail('project.json active config does not define personas')
+  }
+
+  if (!targetPersonas || typeof targetPersonas !== 'object') {
+    return sourcePersonas
+  }
+
+  return { ...sourcePersonas, ...targetPersonas }
+}
+
+function mergeEmbeddedProjectConfig(source, existing) {
+  const merged = {
+    ...source,
+    configs: { ...(existing.configs ?? {}) },
+  }
+  const activeConfig =
+    typeof existing.active_config === 'string' &&
+    existing.configs?.[existing.active_config]
+      ? existing.active_config
+      : source.active_config
+
+  merged.active_config = activeConfig
+
+  for (const [name, sourceConfig] of Object.entries(source.configs ?? {})) {
+    if (typeof sourceConfig !== 'object' || sourceConfig === null) {
+      continue
+    }
+
+    const existingConfig = merged.configs[name]
+
+    if (!existingConfig || typeof existingConfig !== 'object') {
+      merged.configs[name] = sourceConfig
+      continue
+    }
+
+    merged.configs[name] = {
+      ...sourceConfig,
+      ...existingConfig,
+      personas: {
+        ...(typeof sourceConfig.personas === 'object' ? sourceConfig.personas : {}),
+        ...(typeof existingConfig.personas === 'object'
+          ? existingConfig.personas
+          : {}),
+      },
+    }
+  }
+
+  return merged
 }
 
 function previousCursorFiles(markerPath) {
@@ -229,7 +298,11 @@ function projectCursor() {
   const projected = []
   const backups = []
   const currentPaths = new Set()
-  const personaModels = activePersonaModels(sourceRoot)
+  const personaConfigPath = option('--persona-config')
+  const personaModels = personaModelsForProjection(
+    personaConfigPath ? path.resolve(personaConfigPath) : null,
+    sourceRoot,
+  )
 
   for (const entry of cursorSourceFiles(sourceRoot)) {
     let content = readFileSync(entry.source, 'utf8')
@@ -404,7 +477,11 @@ function writeProject() {
   const source = path.resolve(requiredOption('--source'))
   const destination = path.resolve(requiredOption('--destination'))
   const workspaceId = requiredOption('--workspace-id')
-  const config = readJson(source)
+  let config = readJson(source)
+
+  if (existsSync(destination)) {
+    config = mergeEmbeddedProjectConfig(config, readJson(destination))
+  }
 
   config.workspace_id = workspaceId
   config.workspace_root = '..'
