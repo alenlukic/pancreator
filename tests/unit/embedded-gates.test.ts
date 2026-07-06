@@ -6,7 +6,7 @@ import test from 'node:test'
 import { createFixture } from '../helpers.js'
 import { evaluateDeterministicCriteria } from '../../src/lib/validation.js'
 import { resolveRoots } from '../../src/lib/workspace/roots.js'
-import { snapshotWorkspace } from '../../src/lib/workspace/index.js'
+import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
 import type { RunState, StageDefinition } from '../../src/lib/types.js'
 
 function configureEmbeddedFixture(root: string): void {
@@ -46,7 +46,7 @@ function configureEmbeddedFixture(root: string): void {
 
 function fixtureState(root: string): {
   state: RunState
-  workspaceBefore: ReturnType<typeof snapshotWorkspace>['snapshot']
+  workspaceBefore: ReturnType<typeof gitWorkspaceSnapshot>
   runDirectory: string
 } {
   const roots = resolveRoots({
@@ -66,7 +66,7 @@ function fixtureState(root: string): {
       stage_history: [],
       gate_overrides: {},
     } as unknown as RunState,
-    workspaceBefore: snapshotWorkspace(roots, false).snapshot,
+    workspaceBefore: gitWorkspaceSnapshot(roots.workspace_root),
     runDirectory,
   }
 }

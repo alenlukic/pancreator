@@ -14,7 +14,7 @@
       "id": "intake-validate",
       "registry_id": "INTAKE-VALIDATE-001",
       "phase": "pre_submit",
-      "executor": "both",
+      "executor": "harness",
       "target": "invocation.output.path",
       "enforcement": "required",
       "failure_route": "stage_failure",

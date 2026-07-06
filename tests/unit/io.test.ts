@@ -4,6 +4,7 @@ import path from 'node:path'
 import { createFixture } from '../helpers.js'
 import { writeFileSync } from 'node:fs'
 import {
+  clearStaleOperationMutex,
   readJson,
   resolveInside,
   sha256,
@@ -31,4 +32,13 @@ test('repository path resolution rejects escapes and run operations serialize ac
   writeFileSync(mutex, '99999999\n')
   const result = withOperationMutex(mutex, () => 'ok')
   assert.equal(result, 'ok')
+})
+
+test('dead operation mutexes are removed explicitly for status recovery', () => {
+  const root = createFixture()
+  const mutex = path.join(root, 'runtime', '.operation-mutex')
+  writeFileSync(mutex, '99999999\n')
+
+  assert.equal(clearStaleOperationMutex(mutex), true)
+  assert.equal(clearStaleOperationMutex(mutex), false)
 })

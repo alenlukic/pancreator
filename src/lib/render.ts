@@ -164,15 +164,15 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
     '',
     ...(operatorBrief
       ? [
-          `Author the operator brief source at ` +
-            `\`${operatorBrief.source_path}\` using schema ` +
-            `\`${operatorBrief.schema}\`, then render it to ` +
-            `\`${operatorBrief.rendered_path}\` with ` +
-            `\`${operatorBrief.renderer}\` and satisfy the ` +
-            `\`${operatorBrief.profile}\` operator-artifact profile. ` +
+          `Operator brief artifact index: source ` +
+            `\`${operatorBrief.source_path}\`; rendered HTML ` +
+            `\`${operatorBrief.rendered_path}\`; schema ` +
+            `\`${operatorBrief.schema}\`; profile ` +
+            `\`${operatorBrief.profile}\`. The source file already exists. ` +
+            `Edit it in place; do not search the repository for brief artifacts and ` +
+            `do not run the renderer. The harness renders and validates it during submission. ` +
             `Required section-heading phrases: ${operatorBrief.required_headings.join(', ')}. ` +
-            'The harness rerenders the same source during submission and treats the ' +
-            'HTML as artifact 0 and the brief JSON as artifact 1.',
+            'The rendered HTML is artifact 0 and the source JSON is artifact 1.',
           '',
         ]
       : [

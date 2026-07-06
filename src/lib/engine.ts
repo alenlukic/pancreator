@@ -3,7 +3,11 @@ import { copyFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { buildInvocationInputs } from './context.js'
-import { renderBrief, validateBriefSystem } from './briefs.js'
+import {
+  renderBrief,
+  scaffoldOperatorBrief,
+  validateBriefSystem,
+} from './briefs.js'
 import { errorMessage, invariant } from './errors.js'
 import {
   ensureDir,
@@ -58,7 +62,6 @@ import {
 import { syncCursorProjection } from './projection.js'
 import { renderInvocationMarkdown, renderStatus } from './render.js'
 import {
-  ledgerValidationPath,
   operationMutexPath,
   loadState,
   makeRunId,
@@ -71,6 +74,7 @@ import {
 import type {
   CriterionEvaluation,
   DeterministicResult,
+  GovernanceArtifactIssue,
   Invocation,
   OperatorFeedbackItem,
   OperatorGateWaiver,
@@ -87,7 +91,6 @@ import type {
   SupervisorAssessment,
   TaskRecord,
   WorkflowDefinition,
-  WorkspaceIndex,
 } from './types.js'
 import {
   buildValidationArtifact,
@@ -108,18 +111,11 @@ import {
   stageBySlug,
 } from './workflow.js'
 import {
-  loadWorkspaceIndex,
-  saveWorkspaceIndex,
-  snapshotWorkspace,
-  workspaceSnapshotFromIndex,
-  writeWorkflowBaseline,
-} from './workspace/index.js'
-import { adoptAuthorizedWorkspaceChanges } from './workspace/changes.js'
+  gitWorkspaceSnapshot,
+  workspaceChangedPathsFromSnapshots,
+} from './git.js'
 import { resolveRoots } from './workspace/roots.js'
-import {
-  validateWorkflowChanges,
-  waiveLedgerValidation,
-} from './workspace/validate-changes.js'
+import { PROTECTED_PATH_RULE } from './workspace/protected-paths.js'
 
 interface CreateRunOptions {
   workflowSlug?: string
@@ -133,9 +129,55 @@ interface StatusOptions {
   json?: boolean
 }
 
+function recordGovernanceArtifactIssues(
+  root: string,
+  state: RunState,
+  stage: string,
+  invocationId: string,
+  source: GovernanceArtifactIssue['source'],
+  messages: string[],
+  artifactPath?: string,
+): string[] {
+  if (messages.length === 0) {
+    return []
+  }
+
+  const recordedAt = now()
+  const issues = (state.governance_artifact_issues ??= [])
+
+  for (const message of messages) {
+    issues.push({
+      issue_id: `GA-${String(issues.length + 1).padStart(4, '0')}`,
+      stage,
+      invocation_id: invocationId,
+      source,
+      message,
+      ...(artifactPath ? { artifact_path: artifactPath } : {}),
+      recorded_at: recordedAt,
+    })
+  }
+
+  const relativePath =
+    `runtime/logs/workflows/${state.run_id}/artifacts/json/` +
+    'governance-artifact-issues.json'
+  state.governance_artifact_issues_path = relativePath
+  writeJsonAtomic(resolveInside(root, relativePath), {
+    schema_version: 1,
+    run_id: state.run_id,
+    updated_at: recordedAt,
+    issues,
+  })
+
+  return messages
+}
+
 export interface PrepareInvocationResult {
   state: RunState
   invocation: Invocation | null
+}
+
+interface OperationProgressOptions {
+  onProgress?: (message: string) => void
 }
 
 function persistRun(
@@ -230,50 +272,25 @@ function initializeRunWorkspaceTracking(root: string, state: RunState) {
   return roots
 }
 
-function writeRunWorkspaceBaseline(
-  state: RunState,
-  roots: ReturnType<typeof rootsForRun>,
-  index: WorkspaceIndex,
-): void {
-  writeWorkflowBaseline(
-    roots.state_root,
-    state.run_id,
-    roots,
-    index,
-    sha256({
-      workspace_id: roots.workspace_id,
-      scope_hash: roots.scope_hash,
-      workspace_root: roots.workspace_root,
-      state_root: roots.state_root,
-    }),
-  )
-}
-
 function ensureMutatingWorkflowInitialized(
   root: string,
   state: RunState,
   stage: StageDefinition,
 ): void {
-  if (stage.workspace_policy !== 'source_allowed') {
-    return
+  if (stage.workspace_policy === 'source_allowed') {
+    initializeRunWorkspaceTracking(root, state)
   }
-
-  const roots = initializeRunWorkspaceTracking(root, state)
-  const reconciled = snapshotWorkspace(roots, true)
-
-  writeRunWorkspaceBaseline(state, roots, reconciled.index)
 }
 
 function workspaceSnapshotForRun(root: string, state: RunState) {
   const roots = rootsForRun(root, state)
-  const snapshot = snapshotWorkspace(roots, false)
 
   state.workspace_id = roots.workspace_id
   state.installation_root = roots.installation_root
   state.state_root = roots.state_root
   state.scope_hash = roots.scope_hash
 
-  return snapshot.snapshot
+  return gitWorkspaceSnapshot(roots.workspace_root)
 }
 
 /**
@@ -340,23 +357,19 @@ function readGateOverrides(
   return overrides
 }
 
-function collectWorkflowRepositoryCheckProfiles(
-  workflow: WorkflowDefinition,
+function collectStageRepositoryCheckProfiles(
+  stage: StageDefinition,
 ): Array<{ name: string; timeout_ms: number | undefined }> {
   const profiles = new Map<string, number | undefined>()
 
-  for (const stage of workflow.stages) {
-    for (const criterion of stage.criteria) {
-      if (criterion.type !== 'shell') {
-        continue
-      }
+  for (const criterion of stage.criteria) {
+    if (criterion.type !== 'shell') {
+      continue
+    }
 
-      const profileName = repositoryCheckProfileName(criterion.command ?? '')
+    const profileName = repositoryCheckProfileName(criterion.command ?? '')
 
-      if (!profileName || profiles.has(profileName)) {
-        continue
-      }
-
+    if (profileName && !profiles.has(profileName)) {
       profiles.set(profileName, criterion.timeout_ms)
     }
   }
@@ -369,9 +382,9 @@ function collectWorkflowRepositoryCheckProfiles(
 function ensureWorkflowRepositoryCheckBaselines(
   root: string,
   state: RunState,
-  workflow: WorkflowDefinition,
   stage: StageDefinition,
   attempt: number,
+  onProgress?: (message: string) => void,
 ): void {
   if (
     attempt !== 1 ||
@@ -381,7 +394,7 @@ function ensureWorkflowRepositoryCheckBaselines(
     return
   }
 
-  const profiles = collectWorkflowRepositoryCheckProfiles(workflow)
+  const profiles = collectStageRepositoryCheckProfiles(stage)
   const baselines = (state.repository_check_baselines ??= {})
 
   for (const profile of profiles) {
@@ -389,9 +402,15 @@ function ensureWorkflowRepositoryCheckBaselines(
       continue
     }
 
+    onProgress?.(
+      `capturing pre-implementation '${profile.name}' baseline (timeout ${profile.timeout_ms ?? 'default'}ms)`,
+    )
     const result = runRepositoryCheck(root, profile.name, {
       timeout_ms: profile.timeout_ms,
     })
+    onProgress?.(
+      `pre-implementation '${profile.name}' baseline ${result.status} in ${(result.total_duration_ms / 1000).toFixed(1)}s`,
+    )
     const workspace = workspaceSnapshotForRun(root, state)
     const artifactPath =
       `runtime/logs/workflows/${state.run_id}/evidence/` +
@@ -558,82 +577,6 @@ function pauseForSameReasonFailure(
     `Waive or redirect the gate with: ${panCommand(root)} waive-gate ${state.run_id} --note "<directive>" [--to <stage>]`,
     `Or abort with: ${panCommand(root)} abort ${state.run_id}`,
   ])
-}
-
-function executeHarnessStage(
-  root: string,
-  state: RunState,
-  stage: StageDefinition,
-  attempt: number,
-): PrepareInvocationResult {
-  const roots = rootsForRun(root, state)
-  const validationPath = toRepoRelative(
-    root,
-    ledgerValidationPath(roots.state_root, state.run_id),
-  )
-  const latestQaFingerprint = [...state.stage_history]
-    .reverse()
-    .find(
-      (item) => item.stage === 'test' && item.outcome === 'success',
-    )?.workspace_fingerprint
-  const result = validateWorkflowChanges({
-    run_id: state.run_id,
-    state_root: roots.state_root,
-    roots,
-    ...(latestQaFingerprint
-      ? { expected_workspace_fingerprint: latestQaFingerprint }
-      : {}),
-  })
-  const outcome: StageOutcome =
-    result.status === 'passed' ? 'success' : 'blocked'
-  const invocationId = makeStageArtifactId(
-    nextStageSequence(root, state.run_id),
-    stage.slug,
-    attempt,
-  )
-  const historyItem: StageHistoryItem = {
-    stage: stage.slug,
-    attempt,
-    invocation_id: invocationId,
-    output_path: validationPath,
-    outcome,
-    submitted_at: now(),
-    workspace_fingerprint: workspaceSnapshotForRun(root, state).fingerprint,
-    validation_errors: [],
-    deterministic: [],
-  }
-
-  state.stage_history.push(historyItem)
-  state.latest_ledger_validation = result.status
-  state.latest_ledger_validation_path = validationPath
-
-  if (result.status === 'passed') {
-    applyTransition(root, state, stage, 'success')
-  } else {
-    state.status = 'paused'
-    state.pending_action = { type: 'operator_decision' }
-    state.pause_reason = `validate-changes detected ${result.anomalies.length} anomaly/anomalies.`
-    writeDecision(
-      root,
-      state,
-      'validate-changes requires operator adjudication',
-      state.pause_reason,
-      [
-        `Review ${state.latest_ledger_validation_path} before deciding.`,
-        `Waive with: ${panCommand(root)} accept-change ${state.run_id} --waive`,
-        `Restart at a stage with: ${panCommand(root)} resume ${state.run_id} --stage <stage>`,
-      ],
-    )
-  }
-
-  persistRun(root, state, 'harness_stage_executed', {
-    stage: stage.slug,
-    attempt,
-    invocation_id: invocationId,
-    status: result.status,
-  })
-
-  return { state, invocation: null }
 }
 
 interface TransitionOptions {
@@ -1054,6 +997,7 @@ function runHarnessAuthoritativeValidators(
 export function prepareInvocation(
   root: string,
   runId: string,
+  options: OperationProgressOptions = {},
 ): PrepareInvocationResult {
   return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
@@ -1112,14 +1056,10 @@ export function prepareInvocation(
     ensureWorkflowRepositoryCheckBaselines(
       root,
       state,
-      workflow,
       stage,
       attempt,
+      options.onProgress,
     )
-
-    if (stage.executor === 'harness') {
-      return executeHarnessStage(root, state, stage, attempt)
-    }
 
     const invocationId = makeStageArtifactId(
       nextStageSequence(root, runId),
@@ -1248,10 +1188,15 @@ export function prepareInvocation(
             ]
           : []),
         `You MUST respect workspace policy '${stage.workspace_policy}'.`,
-        ...(stage.workspace_policy === 'release_metadata_only' &&
-        isSelfDevelopmentInstallation(root)
+        PROTECTED_PATH_RULE,
+        ...(stage.workspace_policy === 'release_metadata_only'
           ? [
-              'You MAY also edit only CHANGELOG.md, VERSION, package.json, package-lock.json, README.md, and version-bearing Markdown under docs/ as required by VERSION-001.',
+              ...(isSelfDevelopmentInstallation(root)
+                ? [
+                    'You MAY also edit only CHANGELOG.md, VERSION, package.json, package-lock.json, README.md, and version-bearing Markdown under docs/ as required by VERSION-001.',
+                  ]
+                : []),
+              'You MAY repair Pancreator runtime governance and artifact files for this run. You MUST NOT modify target source during ship.',
             ]
           : ['You MUST write only the declared output and evidence.']),
         ...(stage.persona === 'orchestrator'
@@ -1265,6 +1210,13 @@ export function prepareInvocation(
       ],
       workspace_before: workspace,
     }
+
+    scaffoldOperatorBrief(root, {
+      source_path: briefSourcePath,
+      profile: operatorArtifactProfileForStage(stage.slug),
+      title: `${stage.title} brief`,
+      source: `${runId}/${invocationId}`,
+    })
 
     const renderedMarkdown = renderInvocationMarkdown(invocation)
     const invocationValidation = validateInvocationMarkdown(
@@ -1289,17 +1241,19 @@ export function prepareInvocation(
       invocationValidationArtifact,
     )
 
-    invariant(
-      invocationValidation.passed,
-      'Invocation markdown failed policy manifest validation.',
-      {
-        code: 'INVOCATION_VALIDATION_FAILED',
-        details: {
-          validation_path: invocationValidationArtifactPath,
-          summary: invocationValidationArtifact.summary,
-        },
-      },
-    )
+    if (!invocationValidation.passed) {
+      recordGovernanceArtifactIssues(
+        root,
+        state,
+        stage.slug,
+        invocationId,
+        'invocation',
+        [
+          `Invocation validation failed: ${invocationValidationArtifact.summary}`,
+        ],
+        invocationValidationArtifactPath,
+      )
+    }
 
     writeJsonAtomic(resolveInside(root, jsonPath), invocation)
     writeTextAtomic(resolveInside(root, markdownPath), renderedMarkdown)
@@ -1400,6 +1354,7 @@ export function submitOutput(
   root: string,
   runId: string,
   submittedPath: string,
+  options: OperationProgressOptions = {},
 ): { state: RunState; record: TaskRecord; idempotent?: boolean } {
   return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
@@ -1439,6 +1394,8 @@ export function submitOutput(
     const stage = stageBySlug(workflow, state.current_stage)
     const invocation = readInvocation(root, state.current_invocation.json_path)
 
+    const governanceArtifactWarnings: string[] = []
+
     if (stage.persona !== 'orchestrator') {
       relocateMisplacedDelegationArtifact(root, runId, invocation.invocation_id)
 
@@ -1448,52 +1405,43 @@ export function submitOutput(
       )
       const delegationAbsolute = resolveInside(root, delegationArtifactPath)
 
-      invariant(
-        fileExists(delegationAbsolute),
-        'Delegation artifact is missing for the active invocation.',
-        {
-          code: 'DELEGATION_ARTIFACT_MISSING',
-          details: { path: delegationArtifactPath },
-        },
-      )
+      if (!fileExists(delegationAbsolute)) {
+        governanceArtifactWarnings.push(
+          `Delegation artifact is missing: ${delegationArtifactPath}`,
+        )
+      } else {
+        const canonicalMarkdown = readText(
+          resolveInside(root, state.current_invocation.markdown_path),
+        )
+        const delegationMarkdown = readText(delegationAbsolute)
+        const delegationValidation = validateDelegationMarkdown(
+          canonicalMarkdown,
+          delegationMarkdown,
+        )
+        const delegationValidationArtifactPath = delegationValidationPath(
+          runId,
+          invocation.invocation_id,
+        )
+        const delegationValidationArtifact = buildValidationArtifact({
+          run_id: runId,
+          invocation_id: invocation.invocation_id,
+          kind: 'delegation',
+          status: delegationValidation.passed ? 'pass' : 'fail',
+          checks: delegationValidation.checks,
+          artifact_path: delegationArtifactPath,
+        })
 
-      const canonicalMarkdown = readText(
-        resolveInside(root, state.current_invocation.markdown_path),
-      )
-      const delegationMarkdown = readText(delegationAbsolute)
-      const delegationValidation = validateDelegationMarkdown(
-        canonicalMarkdown,
-        delegationMarkdown,
-      )
-      const delegationValidationArtifactPath = delegationValidationPath(
-        runId,
-        invocation.invocation_id,
-      )
-      const delegationValidationArtifact = buildValidationArtifact({
-        run_id: runId,
-        invocation_id: invocation.invocation_id,
-        kind: 'delegation',
-        status: delegationValidation.passed ? 'pass' : 'fail',
-        checks: delegationValidation.checks,
-        artifact_path: delegationArtifactPath,
-      })
+        writeJsonAtomic(
+          resolveInside(root, delegationValidationArtifactPath),
+          delegationValidationArtifact,
+        )
 
-      writeJsonAtomic(
-        resolveInside(root, delegationValidationArtifactPath),
-        delegationValidationArtifact,
-      )
-
-      invariant(
-        delegationValidation.passed,
-        'Delegation artifact failed canonical invocation validation.',
-        {
-          code: 'DELEGATION_VALIDATION_FAILED',
-          details: {
-            validation_path: delegationValidationArtifactPath,
-            summary: delegationValidationArtifact.summary,
-          },
-        },
-      )
+        if (!delegationValidation.passed) {
+          governanceArtifactWarnings.push(
+            `Delegation validation failed: ${delegationValidationArtifact.summary}`,
+          )
+        }
+      }
     }
 
     const briefErrors = materializeOperatorBrief(root, invocation)
@@ -1503,8 +1451,6 @@ export function submitOutput(
       invocation,
       submittedValue,
     )
-    validation.errors.unshift(...briefErrors)
-
     writeJsonAtomic(
       resolveInside(root, state.current_invocation.output_path),
       submittedValue,
@@ -1520,6 +1466,7 @@ export function submitOutput(
       state.gate_overrides ?? {},
       invocation.invocation_id,
       validation.output,
+      options.onProgress,
     )
     const harnessValidation = runHarnessAuthoritativeValidators(
       root,
@@ -1529,17 +1476,43 @@ export function submitOutput(
       submittedValue as Record<string, unknown>,
       state as unknown as Record<string, unknown>,
     )
+    governanceArtifactWarnings.push(
+      ...briefErrors.map((message) => `Operator brief: ${message}`),
+      ...validation.errors.map((message) => `Stage output: ${message}`),
+      ...harnessValidation.errors.map((message) => `Validator: ${message}`),
+    )
+    recordGovernanceArtifactIssues(
+      root,
+      state,
+      stage.slug,
+      invocation.invocation_id,
+      'validator',
+      governanceArtifactWarnings,
+    )
+
+    const blockingValidationErrors =
+      stage.slug === 'ship' ? governanceArtifactWarnings : []
+    const explicitlyDeclaredProductFailure =
+      isRecord(submittedValue) &&
+      (submittedValue.result === 'failure' ||
+        submittedValue.result === 'blocked')
+    const outcomeOutput =
+      stage.slug !== 'ship' &&
+      validation.errors.length > 0 &&
+      !explicitlyDeclaredProductFailure
+        ? { ...validation.output, result: 'success' as const }
+        : validation.output
+    const outcome = effectiveOutcome(
+      stage,
+      outcomeOutput,
+      blockingValidationErrors,
+      evaluated.results,
+      stage.slug === 'ship' ? harnessValidation.validatorOutcome : null,
+    )
     const allValidationErrors = [
       ...validation.errors,
       ...harnessValidation.errors,
     ]
-    const outcome = effectiveOutcome(
-      stage,
-      validation.output,
-      allValidationErrors,
-      evaluated.results,
-      harnessValidation.validatorOutcome,
-    )
     const historyItem: StageHistoryItem = {
       stage: stage.slug,
       attempt: invocation.attempt,
@@ -1549,6 +1522,7 @@ export function submitOutput(
       submitted_at: now(),
       workspace_fingerprint: evaluated.workspace.fingerprint,
       validation_errors: allValidationErrors,
+      governance_artifact_warnings: governanceArtifactWarnings,
       deterministic: evaluated.results,
     }
 
@@ -1647,6 +1621,7 @@ export function submitOutput(
       unknowns: validation.output.unknowns,
       evaluation: {
         validation_errors: validation.errors,
+        governance_artifact_warnings: governanceArtifactWarnings,
         deterministic: evaluated.results,
         self: validation.output.criteria,
       },
@@ -1952,30 +1927,6 @@ export function setRunStage(
   })
 }
 
-function readPauseWorkspaceIndex(
-  root: string,
-  pause: OperatorPauseContext,
-): WorkspaceIndex | null {
-  if (!pause.workspace_index_path) {
-    return null
-  }
-
-  const value = readJson(resolveInside(root, pause.workspace_index_path))
-
-  invariant(
-    isRecord(value) &&
-      value.schema_version === 1 &&
-      typeof value.workspace_id === 'string' &&
-      typeof value.workspace_root === 'string' &&
-      typeof value.scope_hash === 'string' &&
-      isRecord(value.entries),
-    'Operator pause workspace index is invalid.',
-    { code: 'INVALID_PAUSE_WORKSPACE_INDEX' },
-  )
-
-  return value as unknown as WorkspaceIndex
-}
-
 function ratifyPausedWorkspaceChanges(
   root: string,
   state: RunState,
@@ -1983,52 +1934,24 @@ function ratifyPausedWorkspaceChanges(
   note: string,
 ): OperatorWorkspaceRatification | null {
   const before = pause.workspace_before
+
   if (!before) {
     return null
   }
 
-  const initialRoots = rootsForRun(root, state)
-  const current = snapshotWorkspace(initialRoots, false)
+  const current = workspaceSnapshotForRun(root, state)
 
-  if (current.snapshot.fingerprint === before.fingerprint) {
+  if (current.fingerprint === before.fingerprint) {
     return null
   }
 
-  const roots = initializeRunWorkspaceTracking(root, state)
-  let acceptedIndex = loadWorkspaceIndex(roots.state_root)
-
-  if (!acceptedIndex) {
-    acceptedIndex = readPauseWorkspaceIndex(root, pause)
-
-    invariant(
-      acceptedIndex,
-      'Workspace index is missing and the pause has no recoverable start index.',
-      { code: 'MISSING_WORKSPACE_INDEX' },
-    )
-    saveWorkspaceIndex(roots.state_root, acceptedIndex)
-  }
-
-  const acceptedSnapshot = workspaceSnapshotFromIndex(acceptedIndex)
-
-  invariant(
-    acceptedSnapshot.fingerprint === before.fingerprint,
-    'Workspace already diverged before the operator pause; use accept-change or restart the owning stage instead of auto-ratifying the pause delta.',
-    { code: 'PREEXISTING_WORKSPACE_DIVERGENCE' },
-  )
-
-  writeRunWorkspaceBaseline(state, roots, acceptedIndex)
-
   const ratificationId = `pause-${randomUUID()}`
-  const adopted = adoptAuthorizedWorkspaceChanges({
-    state_root: roots.state_root,
-    roots,
-    workflow_id: state.run_id,
-    stage: state.current_stage ?? 'unknown',
-    stage_attempt: state.current_stage
-      ? (state.attempts[state.current_stage] ?? 0)
-      : 0,
-    authorization_id: ratificationId,
-  })
+  const changedPaths = workspaceChangedPathsFromSnapshots(before, current)
+  const beforePaths = new Set(before.entries.map((entry) => entry.slice(3)))
+  const afterPaths = new Set(current.entries.map((entry) => entry.slice(3)))
+  const deletedPaths = [...beforePaths]
+    .filter((relativePath) => !afterPaths.has(relativePath))
+    .sort()
   const ratifications = state.operator_workspace_ratifications ?? []
   const relativePath =
     `runtime/logs/workflows/${state.run_id}/artifacts/markdown/` +
@@ -2038,20 +1961,20 @@ function ratifyPausedWorkspaceChanges(
     '',
     `**Run** \`${state.run_id}\` · **Stage** \`${state.current_stage ?? 'none'}\``,
     '',
-    'The operator explicitly paused the workflow before making these tracked-file changes. The harness recorded the resulting delta in a ratification artifact and adopted the resulting workspace index and fingerprint.',
+    'The operator explicitly paused the workflow before making these Git-visible source changes. Pancreator recorded the resulting delta without scanning dependency, virtual-environment, cache, compiled, or generated directories.',
     '',
-    `**Accepted fingerprint:** \`${adopted.workspace_fingerprint}\``,
+    `**Accepted fingerprint:** \`${current.fingerprint}\``,
     '',
     '## Changed paths',
     '',
-    ...(adopted.changed_paths.length > 0
-      ? adopted.changed_paths.map((item) => `- \`${item}\``)
+    ...(changedPaths.length > 0
+      ? changedPaths.map((item) => `- \`${item}\``)
       : ['- None']),
     '',
     '## Deleted paths',
     '',
-    ...(adopted.deleted_paths.length > 0
-      ? adopted.deleted_paths.map((item) => `- \`${item}\``)
+    ...(deletedPaths.length > 0
+      ? deletedPaths.map((item) => `- \`${item}\``)
       : ['- None']),
     '',
     '## Operator note',
@@ -2065,9 +1988,9 @@ function ratifyPausedWorkspaceChanges(
   const ratification: OperatorWorkspaceRatification = {
     ratification_id: ratificationId,
     stage: state.current_stage ?? 'unknown',
-    workspace_fingerprint: adopted.workspace_fingerprint,
-    changed_paths: adopted.changed_paths,
-    deleted_paths: adopted.deleted_paths,
+    workspace_fingerprint: current.fingerprint,
+    changed_paths: changedPaths,
+    deleted_paths: deletedPaths,
     note,
     artifact_path: relativePath,
     timestamp: now(),
@@ -2075,7 +1998,7 @@ function ratifyPausedWorkspaceChanges(
 
   ratifications.push(ratification)
   state.operator_workspace_ratifications = ratifications
-  state.accepted_workspace_fingerprint = adopted.workspace_fingerprint
+  state.accepted_workspace_fingerprint = current.fingerprint
 
   return ratification
 }
@@ -2124,25 +2047,14 @@ export function pauseRun(root: string, runId: string, note = ''): RunState {
         { code: 'INVALID_RUN_ACTION' },
       )
 
-      const roots = rootsForRun(root, state)
-      const workspace = snapshotWorkspace(roots, false)
-      const workspaceIndexPath =
-        `runtime/logs/workflows/${state.run_id}/artifacts/json/` +
-        `operator-pause-workspace-${state.revision + 1}.json`
+      const workspace = workspaceSnapshotForRun(root, state)
 
-      writeJsonAtomic(resolveInside(root, workspaceIndexPath), workspace.index)
-
-      state.workspace_id = roots.workspace_id
-      state.installation_root = roots.installation_root
-      state.state_root = roots.state_root
-      state.scope_hash = roots.scope_hash
       state.operator_pause = {
         prior_status: state.status,
         prior_pending_action: JSON.parse(
           JSON.stringify(state.pending_action),
         ) as OperatorPauseContext['prior_pending_action'],
-        workspace_before: workspace.snapshot,
-        workspace_index_path: workspaceIndexPath,
+        workspace_before: workspace,
       }
     }
 
@@ -2449,8 +2361,7 @@ export function waiveGate(
       )
     }
 
-    const roots = rootsForRun(root, state)
-    const workspace = snapshotWorkspace(roots, false).snapshot
+    const workspace = workspaceSnapshotForRun(root, state)
     const waivers = state.operator_gate_waivers ?? []
     const waiverId = `waiver-${randomUUID()}`
     const artifactPath =
@@ -2587,82 +2498,6 @@ export function waiveGate(
     })
 
     return { state, waiver }
-  })
-}
-
-export function acceptChange(
-  root: string,
-  runId: string,
-  note = '',
-  waive = false,
-): RunState {
-  return withOperationMutex(operationMutexPath(root, runId), () => {
-    const state = loadState(root, runId)
-
-    invariant(
-      state.status === 'paused' &&
-        state.pending_action.type === 'operator_decision',
-      'Run is not paused for an operator decision.',
-      { code: 'INVALID_RUN_ACTION' },
-    )
-
-    const target = state.current_stage
-    invariant(target, 'Run has no current stage to resume.', {
-      code: 'INVALID_RUN_ACTION',
-    })
-    const roots = rootsForRun(root, state)
-    const snapshot = snapshotWorkspace(roots, waive)
-    const fingerprint = snapshot.snapshot.fingerprint
-
-    if (waive) {
-      const waived = waiveLedgerValidation(roots.state_root, state.run_id)
-      state.latest_ledger_validation = waived.status
-      state.latest_ledger_validation_path = toRepoRelative(
-        root,
-        ledgerValidationPath(roots.state_root, state.run_id),
-      )
-    }
-
-    state.accepted_workspace_fingerprint = fingerprint
-    state.status = 'running'
-    state.current_invocation = null
-    state.pause_reason = null
-    state.consecutive_failures = 0
-
-    if (waive) {
-      const workflow = loadRunWorkflow(root, state)
-      const stage = stageBySlug(workflow, target)
-
-      state.current_stage = target
-      applyTransition(root, state, stage, 'success', {
-        operatorDirected: true,
-      })
-    } else {
-      state.current_stage = target
-      state.pending_action = { type: 'prepare_invocation' }
-    }
-
-    writeDecision(
-      root,
-      state,
-      waive
-        ? 'Operator waived validate-changes anomalies'
-        : 'Operator accepted an intentional workspace change',
-      note ||
-        (waive
-          ? 'Operator waived validate-changes anomalies and adopted the current workspace index as accepted state.'
-          : 'Operator attested the current workspace is intentional; review and QA evidence is honored against the accepted fingerprint.'),
-      [`Continue with: ${panCommand(root)} prepare ${state.run_id}`],
-    )
-
-    persistRun(root, state, 'workspace_change_accepted', {
-      stage: target,
-      accepted_workspace_fingerprint: fingerprint,
-      waived_validation: waive,
-      note,
-    })
-
-    return state
   })
 }
 

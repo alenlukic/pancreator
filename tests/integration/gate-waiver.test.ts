@@ -106,11 +106,6 @@ test('explicit gate waiver advances a bounded miss and tracks its spotfix case',
   writeCanonicalDelegation(root, testInvocation)
   submitOutput(root, runId, testInvocation.output.path)
 
-  const validation = prepareInvocation(root, runId)
-
-  assert.equal(validation.invocation, null)
-  assert.equal(validation.state.current_stage, 'ship')
-
   const shipInvocation = prepareInvocation(root, runId).invocation
 
   assert.ok(shipInvocation)
@@ -271,13 +266,13 @@ test('gate waivers honor partial scope after workspace drift', () => {
   )
 })
 
-test('gate waivers can bypass malformed output without another agent attempt', () => {
+test('malformed governance output is advisory and advances without another agent attempt', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'dev')
   const state = createRun(root, {
     workflowSlug: 'dev',
     requestPath: 'request.md',
-    title: 'Malformed output waiver fixture',
+    title: 'Malformed output advisory fixture',
   })
   const runId = state.run_id
 
@@ -296,20 +291,50 @@ test('gate waivers can bypass malformed output without another agent attempt', (
   writeCanonicalDelegation(root, invocation)
   const submitted = submitOutput(root, runId, invocation.output.path)
 
-  assert.equal(submitted.record.outcome, 'failure')
+  assert.equal(submitted.record.outcome, 'success')
+  assert.equal(submitted.state.current_stage, 'test')
   assert.ok(submitted.record.evaluation.validation_errors.length > 0)
+  assert.ok(
+    (submitted.record.evaluation.governance_artifact_warnings ?? []).length > 0,
+  )
+  assert.ok((submitted.state.governance_artifact_issues ?? []).length > 0)
+})
 
-  const waived = waiveGate(root, runId, {
-    stageSlug: 'review',
-    note: 'The malformed review record is paperwork only. Proceed directly to test without paying for another review attempt.',
+test('explicit product failure remains blocking even when its governance output is malformed', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Malformed failure routing fixture',
   })
+  const runId = state.run_id
 
-  assert.equal(waived.state.current_stage, 'test')
-  assert.deepEqual(waived.waiver.criterion_ids, ['*'])
-  assert.ok((waived.waiver.validation_errors ?? []).length > 0)
-  assert.match(
-    readFileSync(path.join(root, waived.waiver.artifact_path), 'utf8'),
-    /Known malformed or missing evidence/u,
+  setRunStage(root, runId, 'review', 'Exercise product-failure routing.')
+  const invocation = prepareInvocation(root, runId).invocation
+
+  assert.ok(invocation)
+
+  const output = makeOutput(root, invocation, stageBySlug(workflow, 'review'))
+  output.invocation_id = 'wrong-invocation-id'
+  output.result = 'failure'
+  const acceptance = output.criteria.find(
+    (criterion) => criterion.id === 'review.acceptance_met',
+  )
+
+  assert.ok(acceptance)
+  acceptance.result = 'fail'
+  acceptance.explanation = 'The implementation does not meet acceptance.'
+
+  writeJson(path.join(root, invocation.output.path), output)
+  writeCanonicalDelegation(root, invocation)
+  const submitted = submitOutput(root, runId, invocation.output.path)
+
+  assert.equal(submitted.record.outcome, 'failure')
+  assert.equal(submitted.state.current_stage, 'implement')
+  assert.ok(submitted.record.evaluation.validation_errors.length > 0)
+  assert.ok(
+    (submitted.record.evaluation.governance_artifact_warnings ?? []).length > 0,
   )
 })
 
@@ -326,10 +351,10 @@ test('gate waivers can bypass an unattempted stage', () => {
 
   const waived = waiveGate(root, runId, {
     stageSlug: 'test',
-    note: 'Skip QA entirely and continue to validate-changes.',
+    note: 'Skip QA entirely and continue to ship.',
   })
 
-  assert.equal(waived.state.current_stage, 'validate-changes')
+  assert.equal(waived.state.current_stage, 'ship')
   assert.equal(waived.waiver.source_attempt, 0)
   assert.deepEqual(waived.waiver.criterion_ids, ['*'])
 })

@@ -94,11 +94,6 @@ test('ship context selects effective records and indexes superseded history', ()
   const implementCurrent = historyItem('implement', 'implement-2', 'success')
   const reviewCurrent = historyItem('review', 'review-2', 'failure')
   const testCurrent = historyItem('test', 'test-1', 'success')
-  const validateCurrent = historyItem(
-    'validate-changes',
-    'validate-changes-1',
-    'blocked',
-  )
   const history = [
     intakeOld,
     intakeCurrent,
@@ -109,11 +104,10 @@ test('ship context selects effective records and indexes superseded history', ()
     implementCurrent,
     reviewCurrent,
     testCurrent,
-    validateCurrent,
   ]
   const state = stateWith(history)
-  state.latest_ledger_validation = 'operator-review-required'
-  state.latest_ledger_validation_path = validateCurrent.output_path
+  state.governance_artifact_issues_path =
+    'runtime/logs/workflows/run/artifacts/json/governance-artifact-issues.json'
   state.operator_feedback = [
     {
       decision: 'resume',
@@ -126,7 +120,7 @@ test('ship context selects effective records and indexes superseded history', ()
     },
     {
       decision: 'set-stage',
-      from_stage: 'validate-changes',
+      from_stage: 'test',
       to_stage: 'ship',
       attempt: 1,
       note: 'Current ship repair.',
@@ -169,7 +163,6 @@ test('ship context selects effective records and indexes superseded history', ()
     implementCurrent,
     reviewCurrent,
     testCurrent,
-    validateCurrent,
   ]) {
     assert.equal(byPath.get(item.output_path)?.retrieval, 'required')
     assert.equal(byPath.get(item.record_path ?? '')?.retrieval, 'conditional')

@@ -135,6 +135,10 @@ export function writeJson(pathname: string, value: unknown): void {
 }
 
 function gitChangedFiles(root: string): string[] {
+  if (!existsSync(path.join(root, '.git'))) {
+    return []
+  }
+
   try {
     const tracked = fixtureGit(
       ['diff', '--name-only', 'HEAD', '--diff-filter=ACMR'],
@@ -450,6 +454,11 @@ function requiredData(
       const runWaivers = Array.isArray(runState?.operator_gate_waivers)
         ? runState.operator_gate_waivers
         : []
+      const governanceIssues = Array.isArray(
+        runState?.governance_artifact_issues,
+      )
+        ? runState.governance_artifact_issues
+        : []
       const deferred = new Set<string>()
 
       for (const waiver of runWaivers) {
@@ -509,6 +518,15 @@ function requiredData(
             workspace_fingerprint: waiver.workspace_fingerprint,
           })),
           follow_up_cases: [],
+          governance_artifact_review: {
+            issues_reviewed: governanceIssues.map((issue) => issue.issue_id),
+            repairs: [],
+            escalations: [],
+            summary:
+              governanceIssues.length > 0
+                ? 'All recorded governance and artifact issues were reviewed.'
+                : 'No unresolved governance or artifact issues.',
+          },
           deferred_acceptance_criteria: [...deferred],
           commit_message: 'Build harness',
           pr_body: 'Prototype',

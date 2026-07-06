@@ -4,7 +4,11 @@ import { execFileSync } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { createFixture } from '../helpers.js'
-import { gitWorkspaceSnapshot, snapshotChanged } from '../../src/lib/git.js'
+import {
+  gitWorkspaceSnapshot,
+  snapshotChanged,
+  workspaceChangedPathsFromSnapshots,
+} from '../../src/lib/git.js'
 
 test('workspace fingerprint detects content changes when status labels stay the same', () => {
   const root = createFixture()
@@ -55,4 +59,44 @@ test('fingerprint observes work inside a gitignored nested repository', () => {
     true,
     'targeting the nested repo surfaces the new file',
   )
+})
+
+test('workspace snapshots exclude protected environments, dependencies, caches, and compiled artifacts', () => {
+  const root = createFixture()
+  const protectedFiles = [
+    '.venv/lib/python/site-packages/pkg/module.py',
+    '.pyenv/versions/3.11/lib/python/site-packages/pkg/module.py',
+    'client/node_modules/pkg/index.js',
+    'xeremia.egg-info/PKG-INFO',
+    'src/__pycache__/module.cpython-311.pyc',
+    'build/output.o',
+  ]
+
+  for (const relative of protectedFiles) {
+    const absolute = path.join(root, relative)
+    mkdirSync(path.dirname(absolute), { recursive: true })
+    writeFileSync(absolute, 'generated\n')
+    execFileSync('git', ['add', '-f', relative], { cwd: root })
+  }
+
+  execFileSync('git', ['commit', '-qm', 'add protected artifacts'], {
+    cwd: root,
+  })
+  const before = gitWorkspaceSnapshot(root)
+
+  for (const relative of protectedFiles) {
+    writeFileSync(path.join(root, relative), 'changed generated content\n')
+    execFileSync('git', ['add', '-f', relative], { cwd: root })
+  }
+  execFileSync('git', ['commit', '-qm', 'change protected artifacts'], {
+    cwd: root,
+  })
+
+  const after = gitWorkspaceSnapshot(root)
+
+  assert.notEqual(before.head, after.head)
+  assert.deepEqual(before.entries, [])
+  assert.deepEqual(after.entries, [])
+  assert.equal(snapshotChanged(before, after), false)
+  assert.deepEqual(workspaceChangedPathsFromSnapshots(before, after), [])
 })

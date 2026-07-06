@@ -1,12 +1,34 @@
 # Changelog
 
+## [2.12.0] - 2026-07-06
+
+### Changed
+
+- Replace recursive workspace tracking with protected-path-aware Git snapshots so harness checks never enumerate virtual environments, dependency trees, compiled outputs, caches, or package directories ([workspace snapshots](src/lib/git.ts), [protected paths](src/lib/workspace/protected-paths.ts)).
+- Make invocation cards a literal artifact index: operator-brief source files are pre-created at invocation time, workers edit only the declared path, and submission performs rendering without repository discovery or duplicate renderer work ([brief runtime](src/lib/briefs.ts), [invocation rendering](src/lib/render.ts)).
+- Route governance, validator, path-resolution, and operator-artifact defects to ship-stage release stewardship instead of implementation retries; ship repairs routine runtime defects and pauses only when operator review is warranted ([workflow engine](src/lib/engine.ts), [ship stage](library/workflows/dev/stages/ship.json)).
+- Treat successful but slow repository checks as advisory timing information. A stage-declared timeout now overrides a profile default, while actual timeouts, hangs, and failing diagnostics remain blocking ([repository checks](src/lib/repository-checks.ts), [validation](src/lib/validation.ts)).
+
+### Added
+
+- Add a repository-wide protected-artifact rule forbidding agents and harness operations from touching or reasoning about compiled artifacts, third-party libraries, package directories, virtual environments, and generated caches ([GLOBAL-002](governance/policies/GLOBAL-002.json), [embedded operating card](library/templates/embedded-AGENTS.md)).
+- Add profile-level progress output for long `pan next` and `pan submit` operations, measured-duration advisories, stale operation-lock recovery, and regression coverage for embedded path resolution and ship-stage governance escalation ([CLI](src/cli.ts), [operation locking](src/lib/io.ts), [dev workflow tests](tests/integration/dev-workflow.test.ts)).
+
+### Removed
+
+- Remove the obsolete workspace tracking commands, state, validators, workflow stage, gates, and acceptance flow. Embedded refreshes now delete all residual tracking data and stale operation locks ([installer](bin/install), [workflow definition](library/workflows/dev/workflow.json)).
+
+### Fixed
+
+- Resolve embedded implementation evidence paths from the target repository root consistently during direct validation and submission, eliminating false missing-file failures and invalid `../` retry rewrites ([validation](src/lib/validation.ts), [CLI](src/cli.ts)).
+- Limit pre-implementation repository baselines to implementation-owned static and fast profiles instead of running full and configuration profiles before coding ([workflow engine](src/lib/engine.ts)).
+
 ## [2.11.1] - 2026-07-02
 
 ### Changed
 
 - Migrate active development and preflight workflow-stage narratives from Markdown to the invocation-declared operator brief contract: schema-valid JSON source plus self-contained HTML, with HTML as artifact 0 and source JSON as artifact 1 ([workflow prompts](library/workflows/dev/prompts), [stage output skill](library/skills/write-stage-output.md)).
 - Make invocation cards expose exact brief paths, renderer, schema, and profile, and prepopulate those references in stage-output scaffolds so workers no longer infer artifact format or location ([invocation rendering](src/lib/render.ts), [stage scaffold](src/lib/requirements/scaffold.ts)).
-- Apply glob-aware workspace exclusion matching with automatic nested generated-directory detection for well-known names such as `node_modules`, `dist`, and `coverage`, while preserving existing literal exclusions ([workspace roots](src/lib/workspace/roots.ts), [workspace index](src/lib/workspace/index.ts)).
 
 ### Added
 
@@ -18,7 +40,6 @@
 
 - Rerender each stage brief from its JSON source during submission and reject missing or invalid brief data, non-HTML primary artifacts, or artifact paths that drift from the invocation contract ([runtime engine](src/lib/engine.ts), [stage-output validation](src/lib/validation.ts)).
 - Preserve and finalize `artifacts/html/` alongside JSON and explicit Markdown compatibility records, including embedded installations and legacy artifact-layout migration ([artifact finalizer](src/lib/workflow-artifacts.ts), [runtime protocol](docs/runtime-protocol.md)).
-- Stop nested generated files under dependency directories from polluting workspace fingerprints and triggering false `scope.no_unapproved_changes` failures on read-only and release-metadata-only stages ([workspace index tests](tests/unit/workspace-index.test.ts)).
 - Resolve embedded target evidence paths without requiring `../` escapes and apply consistent resolver semantics across implementation, QA, and release validators ([stage validators](src/lib/validators/stage-validators.ts)).
 
 ## [2.11.0] - 2026-07-02
@@ -88,8 +109,6 @@
 - Add repository-check templates and validation guardrails for embedded targets, including explicit profile shape and duplicate `fast`/`full` protection ([2342efa](https://github.com/alenlukic/pancreator/commit/2342efa86ddaac407e619952a560d18188af5870), [2a406c8](https://github.com/alenlukic/pancreator/commit/2a406c89eb620f553e58ecd6693c598277082765)).
 
 ### Removed
-
-- Remove persistent workspace locks, active-workflow leases, and per-edit ledgers; retain `pan changes begin|commit|cancel` as compatibility no-ops for upgraded operators ([2342efa](https://github.com/alenlukic/pancreator/commit/2342efa86ddaac407e619952a560d18188af5870)).
 
 ### Fixed
 
@@ -302,8 +321,10 @@ _First functional release._
 
 - Add the original self-building workflow harness, governed personas, compliance hooks, durable memory, and bootstrap documentation ([c9c5def](https://github.com/alenlukic/pancreator/commit/c9c5def2ccd2a0a9c27d5c6707c963cb2621518a))
 
+[2.12.0]: https://github.com/alenlukic/pancreator/compare/7d86b1257b839217317f568d802fe5e836b8bebf...HEAD
 [2.11.1]: https://github.com/alenlukic/pancreator/compare/7d86b1257b839217317f568d802fe5e836b8bebf...HEAD
 [2.11.0]: https://github.com/alenlukic/pancreator/compare/c0a1a4cc6964261a970038578b41de71c5de1204...7d86b1257b839217317f568d802fe5e836b8bebf
+[2.10.0]: https://github.com/alenlukic/pancreator/compare/992da4018692bda9e5b963f43d2e55ce37021c6c...c0a1a4cc6964261a970038578b41de71c5de1204
 [2.9.0]: https://github.com/alenlukic/pancreator/compare/5f1a87704fa1601cc2f1c74e77d37268de0ce0cd...HEAD
 [2.8.0]: https://github.com/alenlukic/pancreator/compare/5f4953e321544a9a28b2614cbf5a1fa2f6882a99...HEAD
 [2.7.0]: https://github.com/alenlukic/pancreator/compare/a8f3b42bc29d2c9b49e40f1fcb49071bbb14f7ef...5f4953e321544a9a28b2614cbf5a1fa2f6882a99

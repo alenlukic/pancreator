@@ -12,8 +12,6 @@ import {
   submitOutput,
 } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
-import { resolveRoots } from '../../src/lib/workspace/roots.js'
-import { validateWorkflowChanges } from '../../src/lib/workspace/validate-changes.js'
 import {
   createFixture,
   makeOutput,
@@ -138,20 +136,6 @@ test('operator changes made during a pause are ratified and stale cards are repl
     resumed.accepted_workspace_fingerprint,
     resumed.operator_workspace_ratifications?.[0]?.workspace_fingerprint,
   )
-
-  const roots = resolveRoots({
-    installation_root: root,
-    workspace_root: root,
-    state_root: resumed.state_root,
-  })
-  const validation = validateWorkflowChanges({
-    run_id: runId,
-    state_root: roots.state_root,
-    roots,
-  })
-
-  assert.equal(validation.status, 'passed')
-  assert.equal(validation.ledger_entry_count, 0)
 
   const replacement = prepareInvocation(root, runId).invocation
 

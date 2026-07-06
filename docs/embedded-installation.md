@@ -131,14 +131,9 @@ Refreshes preserve the target-specific project files. Legacy installations can g
 
 ## Workspace mutation model
 
-Pancreator no longer creates persistent workspace locks, active-workflow leases,
-or per-edit ledger entries. Source-allowed workers edit within declared scope
-directly; the harness relies on accepted workspace indexes, fingerprints,
-read-only-stage mutation guards, and stage evidence. Legacy
-`pan changes begin|commit|cancel` commands remain compatibility no-ops.
-Operators MUST NOT run concurrent mutating workflows against one target
-workspace and should pause a run before making other concurrent tracked-file
-changes so stage attribution remains clear.
+Pancreator fingerprints relevant Git-visible source state and does not recursively index target files. Compiled artifacts, caches, virtual environments, and third-party dependency/package directories are excluded and permanently outside agent remit. Source-allowed workers edit declared source directly; governance and artifact diagnostics are deferred to release-steward review instead of looping implementation. Operators should pause before concurrent tracked-file changes so attribution remains clear.
+
+Every refresh or version update removes obsolete workspace-tracking state from older installations.
 
 ## Cursor merge behavior
 
@@ -206,7 +201,7 @@ blanket-deleted.
 
 ## Harness versioning
 
-`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `2.11.1`. `CHANGELOG.md` records curated release history in Common Changelog format.
+`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `2.12.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
 
 `release/index.json` is the internal mapping from harness version to immutable
 Git commit. Because a commit cannot contain its own hash, release publication is

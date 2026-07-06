@@ -233,6 +233,27 @@ function processIsAlive(pid: number): boolean {
   }
 }
 
+export function clearStaleOperationMutex(mutexPath: string): boolean {
+  if (!existsSync(mutexPath)) {
+    return false
+  }
+
+  let owner = Number.NaN
+
+  try {
+    owner = Number(readFileSync(mutexPath, 'utf8').trim())
+  } catch {
+    // A malformed mutex is stale.
+  }
+
+  if (processIsAlive(owner)) {
+    return false
+  }
+
+  rmSync(mutexPath, { force: true })
+  return true
+}
+
 export function withOperationMutex<T>(mutexPath: string, callback: () => T): T {
   ensureDir(path.dirname(mutexPath))
 
@@ -244,17 +265,16 @@ export function withOperationMutex<T>(mutexPath: string, callback: () => T): T {
       writeFileSync(descriptor, `${process.pid}\n`, 'utf8')
       break
     } catch (error) {
+      if (attempt === 0 && clearStaleOperationMutex(mutexPath)) {
+        continue
+      }
+
       let owner = Number.NaN
 
       try {
         owner = Number(readFileSync(mutexPath, 'utf8').trim())
       } catch {
-        // A malformed mutex is stale and MAY be removed once.
-      }
-
-      if (attempt === 0 && !processIsAlive(owner)) {
-        rmSync(mutexPath, { force: true })
-        continue
+        // Preserve NaN in diagnostics for an unreadable live mutex.
       }
 
       throw new PanError(

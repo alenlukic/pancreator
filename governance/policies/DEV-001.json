@@ -10,14 +10,16 @@
     "The coder MUST inspect the pre-implementation static and fast baselines before editing. Existing failures MUST be repaired when bounded and low-risk; an unchanged pre-existing failure MUST NOT block the workflow when remediation would be broad, structural, or unrelated to the approved change. Any new or worsened diagnostic MUST remain a hard failure.",
     "On implementation attempt 2 or later, the coder MUST perform work that directly addresses every issue causing the retry and MUST populate implementation.remediation with cause, action, and evidence. A paperwork-only retry is prohibited.",
     "Agents SHOULD run the narrowest useful checks while iterating, and the harness MUST rerun declared deterministic gates independently.",
-    "Before submission, the implementation record, changed-file claims, retry-remediation evidence, acceptance evidence, and referenced summary artifact MUST run their resolved policy-bound validators under VALID-001."
+    "Before submission, the implementation record, changed-file claims, retry-remediation evidence, acceptance evidence, and referenced summary artifact MUST run their resolved policy-bound validators under VALID-001.",
+    "The fast/default profile MUST contain only deterministic offline tests. Tests that make real external network or catalog calls MUST be marked and confined to a secondary, integration, or full-only profile.",
+    "Elapsed clock time alone MUST NOT fail a repository check that exits successfully. A slow successful check MUST be recorded as an operator FYI; a timeout, hang, nonzero exit, or new diagnostic remains actionable."
   ],
   "requirements": [
     {
       "id": "implementation-claims-validate",
       "registry_id": "IMPLEMENTATION-CLAIMS-VALIDATE-001",
       "phase": "pre_submit",
-      "executor": "both",
+      "executor": "harness",
       "target": "invocation.output.path",
       "enforcement": "required",
       "failure_route": "stage_failure",

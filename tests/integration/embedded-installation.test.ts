@@ -575,6 +575,22 @@ test('embedded installer refresh preserves target primer, runtime state, and unr
     )
     mkdirSync(legacyRunDirectory, { recursive: true })
     writeFileSync(path.join(legacyRunDirectory, '.lock'), '99999999\n')
+    const retiredValidationName = `led${'ger'}-validation.json`
+    writeFileSync(path.join(legacyRunDirectory, retiredValidationName), '{}\n')
+    writeFileSync(path.join(legacyRunDirectory, 'baseline.json'), '{}\n')
+    const retiredStateDirectory = path.join(
+      project,
+      '.pancreator',
+      'runtime',
+      'workflows',
+      'legacy-run',
+    )
+    mkdirSync(retiredStateDirectory, { recursive: true })
+    writeFileSync(
+      path.join(retiredStateDirectory, retiredValidationName),
+      '{}\n',
+    )
+    writeFileSync(path.join(retiredStateDirectory, 'baseline.json'), '{}\n')
     const legacyWorkspaceDirectory = path.join(
       project,
       '.pancreator',
@@ -636,9 +652,22 @@ test('embedded installer refresh preserves target primer, runtime state, and unr
     )
     assert.equal(existsSync(path.join(legacyRunDirectory, '.lock')), false)
     assert.equal(
-      existsSync(path.join(legacyWorkspaceDirectory, 'active-workflow.json')),
+      existsSync(path.join(legacyRunDirectory, retiredValidationName)),
       false,
     )
+    assert.equal(
+      existsSync(path.join(legacyRunDirectory, 'baseline.json')),
+      false,
+    )
+    assert.equal(
+      existsSync(path.join(retiredStateDirectory, retiredValidationName)),
+      false,
+    )
+    assert.equal(
+      existsSync(path.join(retiredStateDirectory, 'baseline.json')),
+      false,
+    )
+    assert.equal(existsSync(legacyWorkspaceDirectory), false)
     assert.equal(
       existsSync(
         path.join(
@@ -674,6 +703,82 @@ test('embedded installer refresh preserves target primer, runtime state, and unr
       ),
       true,
     )
+  } finally {
+    rmSync(project, { recursive: true, force: true })
+  }
+})
+
+test('embedded installer refresh preserves target persona model mappings', () => {
+  const project = makeSkeletonProject()
+  const customCoderModel = 'operator-custom-coder-model[fast=false]'
+
+  try {
+    assert.equal(runInstaller(project).status, 0)
+
+    const projectJsonPath = path.join(project, '.pancreator', 'project.json')
+    const config = readJson<{
+      active_config: string
+      configs: Record<string, { personas: Record<string, string> }>
+    }>(projectJsonPath)
+
+    config.active_config = 'simple'
+    config.configs.simple.personas.coder = customCoderModel
+    writeFileSync(projectJsonPath, `${JSON.stringify(config, null, 2)}\n`)
+
+    const result = runInstaller(project, ['--yes'])
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.match(result.stdout, /Installation refresh completed/)
+
+    const refreshed = readJson<{
+      active_config: string
+      configs: Record<string, { personas: Record<string, string> }>
+    }>(projectJsonPath)
+
+    assert.equal(refreshed.active_config, 'simple')
+    assert.equal(refreshed.configs.simple.personas.coder, customCoderModel)
+
+    const coderAgent = readFileSync(
+      path.join(project, '.cursor', 'agents', 'coder.md'),
+      'utf8',
+    )
+
+    assert.ok(coderAgent.includes(`model: ${customCoderModel}`))
+  } finally {
+    rmSync(project, { recursive: true, force: true })
+  }
+})
+
+test('embedded installer refresh merges new personas without overwriting operator models', () => {
+  const project = makeSkeletonProject()
+
+  try {
+    assert.equal(runInstaller(project).status, 0)
+
+    const projectJsonPath = path.join(project, '.pancreator', 'project.json')
+    const config = readJson<{
+      active_config: string
+      configs: Record<string, { personas: Record<string, string> }>
+    }>(projectJsonPath)
+
+    const customReviewerModel = 'operator-custom-reviewer[fast=false]'
+    config.configs[config.active_config].personas.reviewer = customReviewerModel
+    delete config.configs[config.active_config].personas.spotfixer
+    writeFileSync(projectJsonPath, `${JSON.stringify(config, null, 2)}\n`)
+
+    const result = runInstaller(project, ['--yes'])
+
+    assert.equal(result.status, 0, result.stderr)
+
+    const refreshed = readJson<{
+      active_config: string
+      configs: Record<string, { personas: Record<string, string> }>
+    }>(projectJsonPath)
+    const active = refreshed.configs[refreshed.active_config]
+
+    assert.equal(active.personas.reviewer, customReviewerModel)
+    assert.equal(typeof active.personas.spotfixer, 'string')
+    assert.notEqual(active.personas.spotfixer, customReviewerModel)
   } finally {
     rmSync(project, { recursive: true, force: true })
   }
