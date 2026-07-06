@@ -48,7 +48,7 @@
     }
   ],
   "transitions": {
-    "success": "validate-changes",
+    "success": "ship",
     "failure": "implement",
     "blocked": "paused"
   }

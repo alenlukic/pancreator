@@ -257,7 +257,9 @@ function mergeEmbeddedProjectConfig(source, existing) {
       ...sourceConfig,
       ...existingConfig,
       personas: {
-        ...(typeof sourceConfig.personas === 'object' ? sourceConfig.personas : {}),
+        ...(typeof sourceConfig.personas === 'object'
+          ? sourceConfig.personas
+          : {}),
         ...(typeof existingConfig.personas === 'object'
           ? existingConfig.personas
           : {}),

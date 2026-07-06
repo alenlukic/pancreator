@@ -131,7 +131,7 @@ Operators MAY pause any non-terminal run at any time:
 ./bin/pan pause <run-id> [--note "<reason>"]
 ```
 
-While paused, you MAY modify tracked files in the deliverable workspace directly. On resume, including resume with `--stage`, Pancreator compares the workspace to the pause-start snapshot. Authorized pause-only changes are recorded in a ratification artifact, the accepted workspace index and fingerprint are updated, and any prepared invocation is invalidated so it can be regenerated against the changed workspace. Changes that predated the
+While paused, you MAY modify tracked files in the deliverable workspace directly. On resume, including resume with `--stage`, Pancreator compares the workspace to the pause-start snapshot. Authorized pause-only changes are recorded in a ratification artifact, the accepted workspace fingerprint is updated, and any prepared invocation is invalidated so it can be regenerated against the changed workspace. Changes that predated the
 pause are not silently ratified. Resume with `./bin/pan resume <run-id>` or
 deliberately restart at a different stage with `--stage <slug>`.
 
@@ -168,22 +168,11 @@ This is an operator-owned decision. The operator may run it directly or explicit
 
 ## Workspace mutation contract
 
-Pancreator does not use persistent workspace locks, active-workflow leases, or
-per-edit ledgers. During a `source_allowed` stage, the active worker may edit
-tracked source files directly within the declared scope. The harness protects
-integrity with accepted indexes, workspace fingerprints, external-contamination guards and stage evidence. A non-source stage that changes tracked files must identify every changed path in top-level `workspace_changes` and use `attribution: internal` only when the active worker can trace the delta to its own actions. Fully traced internal changes pass the cleanliness gate; external or unattributed changes block.
+Pancreator does not recursively index the workspace. During a `source_allowed` stage, the worker may edit tracked source files within declared scope. Compiled artifacts, caches, virtual environments, and third-party dependency/package directories are outside agent remit and must never be read, edited, created, deleted, validated, or reported. Git-visible fingerprints and stage evidence track relevant source state.
 
-The self-development ship stage uses `release_metadata_only`. It may change only
-`CHANGELOG.md`, `VERSION`, npm version metadata, `README.md`, and
-version-bearing Markdown under `docs/`. Those expected edits are validated
-separately and do not invalidate the implementation fingerprint already reviewed
-and tested. Embedded target ship stages remain release-metadata read-only.
+Governance and artifact diagnostics are advisory until ship. The release steward reviews and repairs safe runtime-only issues, pauses only for a legitimate implementation, test, security, or release concern, and never sends governance paperwork back to the coder. Product or test failures still follow their owning remediation route.
 
-Do not run concurrent mutating workflows against one workspace. Avoid other
-concurrent external edits while a mutating worker is running because they make
-stage attribution ambiguous. Pause the run before operator-driven changes.
-Legacy `pan changes begin|commit|cancel` commands remain accepted as no-ops so
-older invocation cards and operator notes do not fail after an upgrade.
+The self-development ship stage may change only release metadata and version-bearing documentation plus runtime artifact repairs. Embedded ship may repair only Pancreator runtime artifacts and must not modify target source. Do not run concurrent mutating workflows against one workspace; pause before operator-driven tracked changes.
 
 ## Repository verification profiles
 

@@ -30,16 +30,10 @@ function advanceToShipGate(root: string, runId: string): RunState {
     'implement',
     'review',
     'test',
-    'validate-changes',
     'ship',
   ]) {
     const prepared = prepareInvocation(root, runId)
     const invocation = prepared.invocation
-
-    if (stageSlug === 'validate-changes') {
-      assert.equal(invocation, null)
-      continue
-    }
 
     assert.ok(invocation)
     assert.equal(invocation.stage.slug, stageSlug)
@@ -86,7 +80,7 @@ function advanceToShipGate(root: string, runId: string): RunState {
   return getRunState(root, runId)
 }
 
-test('ship reject defaults to implement so remediation is possible', () => {
+test('ship reject defaults to a paused operator decision instead of an implementation loop', () => {
   const root = createFixture()
   const created = createRun(root, {
     workflowSlug: 'dev',
@@ -99,9 +93,9 @@ test('ship reject defaults to implement so remediation is possible', () => {
 
   const decided = decideRun(root, runId, 'reject', 'Commit message is wrong.')
 
-  assert.equal(decided.status, 'running')
-  assert.equal(decided.current_stage, 'implement')
-  assert.equal(decided.pending_action.type, 'prepare_invocation')
+  assert.equal(decided.status, 'paused')
+  assert.equal(decided.current_stage, 'ship')
+  assert.equal(decided.pending_action.type, 'operator_decision')
 })
 
 test('ship reject with --stage routes to the chosen stage and resets attempts', () => {
@@ -151,6 +145,7 @@ test('operator rejection feedback is persisted and surfaced to the remediation w
     runId,
     'reject',
     'Rollback steps are not credible.',
+    'implement',
   )
 
   assert.ok(decided.operator_feedback)

@@ -197,7 +197,6 @@ function parseContext(
   for (const key of [
     'include_active_waivers',
     'include_workspace_ratifications',
-    'include_latest_ledger_validation',
   ] as const) {
     if (value[key] === undefined) {
       continue
@@ -240,12 +239,6 @@ function parseContext(
       ? {
           include_workspace_ratifications:
             value.include_workspace_ratifications as boolean,
-        }
-      : {}),
-    ...(value.include_latest_ledger_validation !== undefined
-      ? {
-          include_latest_ledger_validation:
-            value.include_latest_ledger_validation as boolean,
         }
       : {}),
   }

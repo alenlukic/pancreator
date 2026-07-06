@@ -5,7 +5,7 @@ import test from 'node:test'
 
 import { createFixture } from '../helpers.js'
 import { evaluateDeterministicCriteria } from '../../src/lib/validation.js'
-import { snapshotWorkspace } from '../../src/lib/workspace/index.js'
+import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
 import { resolveRoots } from '../../src/lib/workspace/roots.js'
 import type { RunState, StageDefinition } from '../../src/lib/types.js'
 
@@ -32,7 +32,7 @@ function evaluate(root: string, mutate: () => void) {
     workspace_root: root,
     state_root: 'runtime',
   })
-  const before = snapshotWorkspace(roots, false).snapshot
+  const before = gitWorkspaceSnapshot(roots.workspace_root)
   const runDirectory = path.join(root, 'runtime', 'logs', 'workflows', 'scope')
 
   mkdirSync(runDirectory, { recursive: true })

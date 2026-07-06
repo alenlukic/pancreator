@@ -9,6 +9,7 @@
     "A finding MUST route to implementation when it requires a broad refactor, cross-component redesign, migration, structural decision, operator judgment, or has uncertain blast radius.",
     "Each finding MUST include severity, evidence, remediation ownership, and whether the reviewer resolved it or left it unresolved. Reviewer edits MUST be disclosed and validated rather than applied silently.",
     "The review gate MUST fail when any hard blocker remains unresolved; a hard finding repaired and validated during review does not require a review-to-implementation loop.",
+    "Harness governance, path-resolution, validator, renderer, or artifact-contract defects MUST be recorded as governance/artifact diagnostics for ship review and MUST NOT produce a review-to-implementation transition. Only legitimate unresolved implementation defects may route to the coder.",
     "Before submission, review findings, acceptance-criterion coverage, verdict consistency, reviewer remediation, and the referenced review artifact MUST run their resolved policy-bound validators under VALID-001."
   ],
   "requirements": [
@@ -16,7 +17,7 @@
       "id": "review-validate",
       "registry_id": "REVIEW-VALIDATE-001",
       "phase": "pre_submit",
-      "executor": "both",
+      "executor": "harness",
       "target": "invocation.output.path",
       "enforcement": "required",
       "failure_route": "stage_failure",

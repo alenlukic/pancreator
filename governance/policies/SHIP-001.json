@@ -9,6 +9,7 @@
     "The release packet MUST include rollback guidance, unresolved non-blocking risks, and a concise change summary.",
     "For Pancreator self-development only, the release steward MUST update release metadata under VERSION-001 before operator approval. Embedded target workflows MUST remain release-metadata read-only.",
     "The workflow MUST pause for operator approval before commit, push, merge, publication, or deployment.",
+    "The release steward MUST review the run governance/artifact diagnostics index, repair safe runtime-only defects, record a disposition for every issue, and continue when no legitimate implementation, test, security, or release concern remains. Governance/artifact defects MUST never transition back to implementation; a legitimate concern MUST pause for operator decision.",
     "Before operator approval, the release data, waiver and follow-up disclosure, diff-grounded change list, and referenced release packet MUST run their resolved policy-bound validators under VALID-001."
   ],
   "requirements": [
@@ -16,7 +17,7 @@
       "id": "release-validate",
       "registry_id": "RELEASE-VALIDATE-001",
       "phase": "pre_submit",
-      "executor": "both",
+      "executor": "harness",
       "target": "invocation.output.path",
       "enforcement": "required",
       "failure_route": "stage_failure",

@@ -15,13 +15,14 @@ implementation, review, QA evidence, and current workspace.
    `patch`, author or regenerate the release notes, and synchronize all
    version-bearing files.
    In embedded mode, do not modify release metadata.
-4. List every active operator gate waiver, deferred acceptance criterion, and
+4. Review the required governance/artifact diagnostics index. Repair safe runtime-only artifact or path issues directly. If a diagnostic reveals a legitimate implementation, test, security, or release concern, return `blocked` so the operator can decide; otherwise record the disposition and continue. Governance or artifact defects MUST NOT route the workflow back to implementation.
+5. List every active operator gate waiver, deferred acceptance criterion, and
    linked follow-up case; do not describe waived evidence as an ordinary pass.
-5. Summarize scope, changed files, validation performed, residual risks, and
+6. Summarize scope, changed files, validation performed, residual risks, and
    rollback guidance.
-6. When Git metadata is available, draft a proposed commit message that
+7. When Git metadata is available, draft a proposed commit message that
    accurately describes the diff.
-7. Apply the PR-description procedure unrolled under `PR-001`: save the PR
+8. Apply the PR-description procedure unrolled under `PR-001`: save the PR
    description to
    `runtime/logs/workflows/<run-id>/artifacts/markdown/pr-description.md` and
    reference it in stage artifacts. Do not open or create a pull request.
@@ -29,14 +30,12 @@ implementation, review, QA evidence, and current workspace.
 ## Output
 
 Populate `data.release` (`summary`, `change_list`, `validation`, `rollback`,
-`waivers`, `follow_up_cases`).
+`waivers`, `follow_up_cases`, `governance_artifact_review`). The governance review MUST include `summary`, `issues_reviewed` (issue ids), `repairs`, and `escalations`; every issue in the required diagnostics index must have a recorded disposition.
 For Pancreator self-development, also populate `data.release.versioning`
 (`current_version`, `recommendation`, `proposed_version`, `baseline_commit`,
 `rationale`, `compatibility`, `updated_files`, `release_index_action`).
 Include optional Git metadata field `commit_message` when it is available.
-Author the release packet as the invocation's schema-valid brief JSON, render
-it to the exact HTML path from the output contract, and reference the HTML first
-and the brief JSON second. Reference `pr-description.md` separately as a
+Edit the pre-created brief JSON at the exact source path in the output contract. Do not search for brief artifacts or run the renderer; the harness renders and validates the HTML during submission. Reference the HTML first and the brief JSON second. Reference `pr-description.md` separately as a
 Markdown source artifact intended for direct use in a pull request.
 
 ## Done when

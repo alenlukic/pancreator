@@ -64,7 +64,7 @@ flowchart TD
 - `README.md`: top-level product overview, quick start, runtime layout, and embedded-installation summary.
 - `bin/`: executable entrypoints and wrappers, including `pan`, `install`, `install-support`, `update`, `build`, `check`, `lint`, and `validate-chat-markdown`.
 - `src/cli.ts`: primary CLI entrypoint; dispatches run lifecycle, validation, projection, workspace, and requirements commands.
-- `src/lib/`: core runtime modules for workflow orchestration, policy resolution, validation, projection, workspace tracking, and installer support.
+- `src/lib/`: core runtime modules for workflow orchestration, policy resolution, validation, projection, Git-state fingerprinting, and installer support.
 - `docs/`: durable operator and authoring documentation, including this target-repository primer, `embedded-installation.md`, `operator-guide.md`, `workflow-authoring.md`, and `validation-framework.md`.
 - `governance/policies/`: policy contracts such as `PRIMER-001`, `WORK-001`, and workflow-stage rules.
 - `governance/registries/`: canonical registries such as `projection_manifest.json` and `validation_registry.json`.
@@ -78,7 +78,7 @@ flowchart TD
 
 ## Public interfaces
 
-- `./bin/pan` is the primary programmatic/operator interface. Verified top-level commands include `init`, `prepare`, `submit`, `assess`, `decide`, `pause`, `resume`, `set-stage`, `accept-change`, `waive-gate`, `abort`, `changes`, `workspace`, `workflow`, `status`, `list`, `models`, `validation-map`, `governance`, `requirements`, `output`, `assessment`, `spotfix`, `validate`, and `doctor`.
+- `./bin/pan` is the primary programmatic/operator interface. Verified top-level commands include `init`, `prepare`, `submit`, `assess`, `decide`, `pause`, `resume`, `set-stage`, `waive-gate`, `abort`, `status`, `list`, `models`, `validation-map`, `governance`, `requirements`, `output`, `assessment`, `spotfix`, `validate`, and `doctor`.
 - `library/cursor/commands/` defines the public Cursor command surface that gets projected into `.cursor/commands/`, including `/pan-start`, `/pan-resume`, `/pan-debug`, `/pan-repair`, `/pan-decompose`, `/pan-build-docs`, `/pan-release`, `/pan-spotfix`, `/pan-status`, and `/pan-validate`.
 - `bin/install` and `bin/update` are the supported embedded-installation interfaces for initial install, repair/clean refresh, smoke validation, and indexed fast-forward updates.
 - `project.json` is the public model-configuration surface for this checkout. `active_config` selects a named persona-to-model mapping, and `./bin/pan models --sync` projects that mapping into local Cursor agent frontmatter.
@@ -90,7 +90,7 @@ flowchart TD
 - `.cursor/` is disposable local projection, not source of truth. Canonical Cursor content lives under `library/cursor/`, and projection drift is resolved with `./bin/pan models --sync`.
 - Missing or unbuilt `docs/target-repo-primer.md` blocks substantive repository exploration for non-librarian agents; `/pan-build-docs` creates or regenerates it from current code, scripts, manifests, history, and useful target-owned documentation.
 - `runtime/logs/workflows/<run-id>/state.json`, `events.jsonl`, and related generated workflow records are harness-owned and must not be edited by hand.
-- `pan changes begin|commit|cancel` remains a compatibility no-op; current mutation safety relies on declared stage scope, accepted workspace indexes, fingerprints, evidence, and read-only-stage guards.
+- Pancreator fingerprints Git-visible source without recursively indexing the workspace. Generated artifacts, virtual environments, and dependency trees are outside agent remit.
 - Embedded installations use two path spaces: filesystem references move under `.pancreator/`, including `.pancreator/docs/target-repo-primer.md`, while CLI request and output arguments remain harness-relative such as `runtime/inbox/request.md` and `docs/target-repo-primer.md`.
 - Release metadata has a two-commit protocol: the release steward updates `VERSION`, npm metadata, `CHANGELOG.md`, and current-version README/docs references during self-development ship or `/pan-release`; the operator creates the release commit; `release/index.json` maps that immutable commit later; and `./bin/update` only works from clean indexed releases.
 - Recent Git history is concentrated in installer/projection and workflow-validation surfaces, so those areas are actively evolving; prefer current scripts and docs over older assumptions.

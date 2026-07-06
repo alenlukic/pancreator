@@ -575,6 +575,22 @@ test('embedded installer refresh preserves target primer, runtime state, and unr
     )
     mkdirSync(legacyRunDirectory, { recursive: true })
     writeFileSync(path.join(legacyRunDirectory, '.lock'), '99999999\n')
+    const retiredValidationName = `led${'ger'}-validation.json`
+    writeFileSync(path.join(legacyRunDirectory, retiredValidationName), '{}\n')
+    writeFileSync(path.join(legacyRunDirectory, 'baseline.json'), '{}\n')
+    const retiredStateDirectory = path.join(
+      project,
+      '.pancreator',
+      'runtime',
+      'workflows',
+      'legacy-run',
+    )
+    mkdirSync(retiredStateDirectory, { recursive: true })
+    writeFileSync(
+      path.join(retiredStateDirectory, retiredValidationName),
+      '{}\n',
+    )
+    writeFileSync(path.join(retiredStateDirectory, 'baseline.json'), '{}\n')
     const legacyWorkspaceDirectory = path.join(
       project,
       '.pancreator',
@@ -636,9 +652,22 @@ test('embedded installer refresh preserves target primer, runtime state, and unr
     )
     assert.equal(existsSync(path.join(legacyRunDirectory, '.lock')), false)
     assert.equal(
-      existsSync(path.join(legacyWorkspaceDirectory, 'active-workflow.json')),
+      existsSync(path.join(legacyRunDirectory, retiredValidationName)),
       false,
     )
+    assert.equal(
+      existsSync(path.join(legacyRunDirectory, 'baseline.json')),
+      false,
+    )
+    assert.equal(
+      existsSync(path.join(retiredStateDirectory, retiredValidationName)),
+      false,
+    )
+    assert.equal(
+      existsSync(path.join(retiredStateDirectory, 'baseline.json')),
+      false,
+    )
+    assert.equal(existsSync(legacyWorkspaceDirectory), false)
     assert.equal(
       existsSync(
         path.join(

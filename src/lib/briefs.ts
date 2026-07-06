@@ -7,8 +7,10 @@ import {
   readJson,
   readText,
   resolveInside,
+  writeJsonAtomic,
   writeTextAtomic,
 } from './io.js'
+import { OPERATOR_ARTIFACT_PROFILE_HEADINGS } from './operator-artifact-profiles.js'
 import { configuredWorkspaceRoot } from './project-config.js'
 
 const COMMON_REGISTRY_PATH = 'library/operator-briefs/primitives.json'
@@ -1137,6 +1139,95 @@ ${sections}
 </body>
 </html>
 `
+}
+
+export interface BriefScaffoldOptions {
+  source_path: string
+  profile: string
+  title: string
+  source: string
+}
+
+const PROFILE_SECTION_SEMANTICS: Record<string, string[]> = {
+  intake: ['context', 'actions', 'risks'],
+  plan: ['workflow', 'changes', 'validation'],
+  implementation: ['changes', 'validation', 'actions'],
+  review: ['evidence', 'validation'],
+  qa: ['validation', 'risks', 'actions'],
+  release: ['release', 'validation'],
+  inspection: ['evidence', 'validation'],
+}
+
+/**
+ * Create the operator-brief source at the exact indexed path before delegation.
+ * Workers edit this file in place; they never need to discover a brief location
+ * or invoke the renderer themselves.
+ */
+export function scaffoldOperatorBrief(
+  root: string,
+  options: BriefScaffoldOptions,
+): void {
+  const absolute = resolveInside(root, options.source_path)
+
+  if (fileExists(absolute)) {
+    return
+  }
+
+  const requiredHeadings = OPERATOR_ARTIFACT_PROFILE_HEADINGS[
+    options.profile as keyof typeof OPERATOR_ARTIFACT_PROFILE_HEADINGS
+  ] ?? ['details']
+  const semantics = PROFILE_SECTION_SEMANTICS[options.profile] ?? [
+    'context',
+    'actions',
+  ]
+  const sections: BriefSection[] = [
+    {
+      semantic: 'executive-summary',
+      title: 'Executive summary',
+      cards: [
+        {
+          type: 'summary',
+          title: 'Bottom line',
+          body: 'Replace this scaffold with the concise operator-facing outcome, why it matters, and immediate next action.',
+        },
+      ],
+    },
+    ...requiredHeadings.map((heading, index) => {
+      const semantic = semantics[index % semantics.length] ?? 'context'
+
+      return {
+        semantic,
+        title: heading
+          .split('-')
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(' '),
+        cards: [
+          {
+            type:
+              semantic === 'validation'
+                ? 'validation'
+                : semantic === 'risks'
+                  ? 'risk'
+                  : semantic === 'release'
+                    ? 'release'
+                    : semantic === 'actions'
+                      ? 'action'
+                      : 'summary',
+            title: 'Complete this section',
+            body: 'Replace this placeholder with stage-specific operator-facing content.',
+          },
+        ],
+      }
+    }),
+  ]
+
+  writeJsonAtomic(absolute, {
+    schema_version: 1,
+    brief_type: options.profile === 'release' ? 'release' : 'workflow-run',
+    title: options.title,
+    source: options.source,
+    sections,
+  })
 }
 
 export function renderBrief(

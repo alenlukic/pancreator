@@ -176,8 +176,11 @@ function failedCheck(
         stderr,
         passed: false,
         timed_out: false,
+        duration_ms: 1,
       },
     ],
+    total_duration_ms: 1,
+    advisories: [],
   }
 }
 
@@ -236,7 +239,7 @@ test('streaming repository checks emit subprocess output before returning the re
   assert.match(stdout.join(''), /first\nsecond/u)
 })
 
-test('repository checks honor the tighter profile timeout', () => {
+test('stage-requested timeout overrides the profile default', () => {
   const { root } = makeInstallation()
 
   writeChecks(root, {
@@ -248,6 +251,24 @@ test('repository checks honor the tighter profile timeout', () => {
   })
 
   const result = runRepositoryCheck(root, 'fast', { timeout_ms: 5_000 })
+
+  assert.equal(result.status, 'passed')
+  assert.equal(result.timeout_ms, 5_000)
+  assert.equal(result.results[0]?.timed_out, false)
+})
+
+test('direct repository checks use the profile timeout default', () => {
+  const { root } = makeInstallation()
+
+  writeChecks(root, {
+    fast: {
+      timeout_ms: 1_000,
+      probes: [],
+      commands: ['node -e "setTimeout(() => process.exit(0), 2000)"'],
+    },
+  })
+
+  const result = runRepositoryCheck(root, 'fast')
 
   assert.equal(result.status, 'failed')
   assert.equal(result.timeout_ms, 1_000)
