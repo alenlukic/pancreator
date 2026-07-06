@@ -10,6 +10,7 @@ import {
 
 const DEFAULT_TIMEOUT_MS = 600_000
 const MAX_CAPTURE_BYTES = 10 * 1024 * 1024
+const SLOW_PASS_ADVISORY_MS = 60_000
 
 export interface RepositoryCheckProfile {
   description?: string
@@ -33,6 +34,7 @@ export interface RepositoryCheckCommandResult {
   stderr: string
   passed: boolean
   timed_out: boolean
+  duration_ms: number
   error?: string
 }
 
@@ -44,6 +46,8 @@ export interface RepositoryCheckResult {
   timeout_ms: number
   description?: string
   results: RepositoryCheckCommandResult[]
+  total_duration_ms: number
+  advisories: string[]
 }
 
 export interface RepositoryCheckRunOptions {
@@ -384,11 +388,9 @@ function effectiveTimeout(
 ): number {
   const configured = profile?.timeout_ms
 
-  if (configured !== undefined && requested !== undefined) {
-    return Math.min(configured, requested)
-  }
-
-  return configured ?? requested ?? DEFAULT_TIMEOUT_MS
+  // A stage criterion is the authoritative execution budget. Profile timeouts
+  // remain defaults for direct repository-check invocations.
+  return requested ?? configured ?? DEFAULT_TIMEOUT_MS
 }
 
 function appendCaptured(current: string, chunk: string): string {
@@ -414,6 +416,7 @@ function execute(
   workspaceRoot: string,
   timeoutMs: number,
 ): RepositoryCheckCommandResult {
+  const startedAt = Date.now()
   const result = spawnSync(command, {
     cwd: workspaceRoot,
     encoding: 'utf8',
@@ -435,6 +438,7 @@ function execute(
       result.error instanceof Error &&
       'code' in result.error &&
       result.error.code === 'ETIMEDOUT',
+    duration_ms: Date.now() - startedAt,
     ...(result.error ? { error: result.error.message } : {}),
   }
 }
@@ -447,6 +451,7 @@ function executeStreaming(
   options: RepositoryCheckStreamingOptions,
 ): Promise<RepositoryCheckCommandResult> {
   options.on_start?.(kind, command)
+  const startedAt = Date.now()
 
   return new Promise((resolve) => {
     const child = spawn(command, {
@@ -495,6 +500,7 @@ function executeStreaming(
         stderr,
         passed: exitCode === 0 && !errorText,
         timed_out: timedOut,
+        duration_ms: Date.now() - startedAt,
         ...(errorText ? { error: errorText } : {}),
       })
     }
@@ -532,6 +538,17 @@ function baseResult(
   status: RepositoryCheckResult['status'],
   results: RepositoryCheckCommandResult[],
 ): RepositoryCheckResult {
+  const totalDurationMs = results.reduce(
+    (total, result) => total + result.duration_ms,
+    0,
+  )
+  const advisories =
+    status === 'passed' && totalDurationMs >= SLOW_PASS_ADVISORY_MS
+      ? [
+          `FYI: repository check '${profileName}' passed but took ${totalDurationMs}ms. Clock time alone does not block the pipeline.`,
+        ]
+      : []
+
   return {
     profile: profileName,
     status,
@@ -540,6 +557,8 @@ function baseResult(
     timeout_ms: timeoutMs,
     ...(profile?.description ? { description: profile.description } : {}),
     results,
+    total_duration_ms: totalDurationMs,
+    advisories,
   }
 }
 

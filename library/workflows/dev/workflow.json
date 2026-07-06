@@ -9,13 +9,5 @@
     "max_stage_attempts": 3,
     "max_consecutive_failures": 3
   },
-  "stages": [
-    "intake",
-    "plan",
-    "implement",
-    "review",
-    "test",
-    "validate-changes",
-    "ship"
-  ]
+  "stages": ["intake", "plan", "implement", "review", "test", "ship"]
 }

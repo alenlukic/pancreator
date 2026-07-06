@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -49,15 +49,9 @@ test('dev workflow runs to completion without a Git repository', () => {
     'implement',
     'review',
     'test',
-    'validate-changes',
     'ship',
   ]) {
     const prepared = prepareInvocation(root, runId)
-
-    if (stageSlug === 'validate-changes') {
-      assert.equal(prepared.invocation, null)
-      continue
-    }
 
     const invocation = prepared.invocation
 
@@ -105,18 +99,7 @@ test('dev workflow runs to completion without a Git repository', () => {
   }
 
   const final = getRunState(root, runId)
-  const stateRoot = final.state_root
 
   assert.equal(final.status, 'succeeded')
-  assert.ok(stateRoot)
-  assert.equal(
-    existsSync(path.join(stateRoot, 'workflows', runId, 'baseline.json')),
-    true,
-  )
-  assert.equal(
-    existsSync(
-      path.join(stateRoot, 'workflows', runId, 'ledger-validation.json'),
-    ),
-    true,
-  )
+  assert.ok(final.state_root)
 })

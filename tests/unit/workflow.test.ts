@@ -22,15 +22,7 @@ test('loader assembles ordered stage files from the workflow index', () => {
   const workflow = loadWorkflow(root, 'dev')
   assert.deepEqual(
     workflow.stages.map((stage) => stage.slug),
-    [
-      'intake',
-      'plan',
-      'implement',
-      'review',
-      'test',
-      'validate-changes',
-      'ship',
-    ],
+    ['intake', 'plan', 'implement', 'review', 'test', 'ship'],
   )
   assert.ok(workflow.stages.every((stage) => typeof stage.persona === 'string'))
 })

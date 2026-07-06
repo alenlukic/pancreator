@@ -491,7 +491,19 @@ prepare_persistent_layout() {
   # from older installations so they can never block run completion again.
   rm -rf "$RUNTIME_DIR/locks"
   find "$RUNTIME_DIR/logs/workflows" -type f -name '.lock' -delete
-  rm -f "$RUNTIME_DIR/workspace/active-workflow.json"
+
+  # Remove the retired recursive workspace-tracking payload from every refresh
+  # or version update. Split the legacy filename so the obsolete subsystem name
+  # does not remain in active documentation or runtime contracts.
+  legacy_validation_name="led""ger-validation.json"
+  rm -rf "$RUNTIME_DIR/workspace"
+  for workflow_root in \
+    "$RUNTIME_DIR/workflows" \
+    "$RUNTIME_DIR/logs/workflows"; do
+    [[ -d "$workflow_root" ]] || continue
+    find "$workflow_root" -type f \
+      \( -name "$legacy_validation_name" -o -name 'baseline.json' \) -delete
+  done
 
   if [[ ! -f "$PRIMER_PATH" ]]; then
     if [[ -f "$LEGACY_PRIMER_PATH" ]]; then
@@ -650,12 +662,22 @@ install_payload() {
   backup_root="$PANCREATOR_DIR/backups/cursor/${installed_at//:/-}"
   cursor_manifest="$staging/cursor-manifest.json"
 
-  node "$PANCREATOR_ROOT/bin/install-support" project-cursor \
-    --source-root "$PANCREATOR_ROOT" \
-    --target-root "$TARGET_DIR" \
-    --manifest-out "$cursor_manifest" \
-    --backup-root "$backup_root" \
-    --previous-marker "$previous_marker"
+  if [[ -f "$PROJECT_JSON" ]]; then
+    node "$PANCREATOR_ROOT/bin/install-support" project-cursor \
+      --source-root "$PANCREATOR_ROOT" \
+      --target-root "$TARGET_DIR" \
+      --manifest-out "$cursor_manifest" \
+      --backup-root "$backup_root" \
+      --previous-marker "$previous_marker" \
+      --persona-config "$PROJECT_JSON"
+  else
+    node "$PANCREATOR_ROOT/bin/install-support" project-cursor \
+      --source-root "$PANCREATOR_ROOT" \
+      --target-root "$TARGET_DIR" \
+      --manifest-out "$cursor_manifest" \
+      --backup-root "$backup_root" \
+      --previous-marker "$previous_marker"
+  fi
 
   remove_previous_payload
 

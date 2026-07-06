@@ -73,7 +73,6 @@ export interface StageContextDefinition {
   operator_feedback?: number
   include_active_waivers?: boolean
   include_workspace_ratifications?: boolean
-  include_latest_ledger_validation?: boolean
   legacy_full_history?: boolean
 }
 
@@ -235,62 +234,6 @@ export interface WorkspaceSnapshot {
   head?: string | null
 }
 
-export type WorkspaceEntryKind = 'file' | 'symlink'
-
-export interface WorkspaceIndexEntry {
-  kind: WorkspaceEntryKind
-  checksum: string
-  size: number
-  modified_at_ms: number
-}
-
-export interface WorkspaceIndex {
-  schema_version: 1
-  workspace_id: string
-  workspace_root: string
-  scope_hash: string
-  updated_at_ms: number
-  entries: Record<string, WorkspaceIndexEntry>
-}
-
-export interface WorkflowBaseline {
-  schema_version: 1
-  workflow_id: string
-  workspace_id: string
-  workspace_root: string
-  state_root: string
-  installation_root: string
-  created_at_ms: number
-  configuration_hash: string
-  scope_hash: string
-  entries: Record<string, WorkspaceIndexEntry>
-}
-
-export interface LedgerAnomaly {
-  id: string
-  code: string
-  severity: 'hard'
-  path?: string
-  sequence?: number
-  expected?: string | null
-  observed?: string | null
-  summary: string
-  details: string
-  suggested_actions: Array<'accept' | 'restart-stage' | 'spot-fix' | 'abort'>
-}
-
-export interface LedgerValidationResult {
-  schema_version: 1
-  workflow_id: string
-  status: 'passed' | 'operator-review-required' | 'waived'
-  validated_at_ms: number
-  baseline_scope_hash: string
-  current_scope_hash: string
-  ledger_entry_count: number
-  modified_path_count: number
-  anomalies: LedgerAnomaly[]
-}
-
 export interface TrackingConfig {
   include?: string[]
   exclude?: string[]
@@ -447,6 +390,21 @@ export interface DeterministicResult {
   delta?: WorkspaceDelta
 }
 
+export interface GovernanceArtifactIssue {
+  issue_id: string
+  stage: string
+  invocation_id: string
+  source:
+    | 'invocation'
+    | 'delegation'
+    | 'stage-output'
+    | 'operator-brief'
+    | 'validator'
+  message: string
+  artifact_path?: string
+  recorded_at: string
+}
+
 export interface StageHistoryItem {
   stage: string
   attempt: number
@@ -456,6 +414,7 @@ export interface StageHistoryItem {
   submitted_at: string
   workspace_fingerprint: string
   validation_errors: string[]
+  governance_artifact_warnings?: string[]
   deterministic: DeterministicResult[]
   record_path?: string
 }
@@ -493,7 +452,6 @@ export interface OperatorPauseContext {
   prior_status: 'running' | 'awaiting_supervisor' | 'awaiting_operator'
   prior_pending_action: PendingAction
   workspace_before?: WorkspaceSnapshot
-  workspace_index_path?: string
 }
 
 export interface OperatorWorkspaceRatification {
@@ -562,8 +520,6 @@ export interface RunState {
   installation_root?: string
   state_root?: string
   scope_hash?: string
-  latest_ledger_validation?: LedgerValidationResult['status']
-  latest_ledger_validation_path?: string
   gate_overrides?: Record<string, string | false>
   title: string
   status: RunStatus
@@ -591,6 +547,8 @@ export interface RunState {
   last_decision_path?: string
   accepted_workspace_fingerprint?: string | null
   same_reason_failures?: SameReasonFailureTrackers
+  governance_artifact_issues?: GovernanceArtifactIssue[]
+  governance_artifact_issues_path?: string
   repository_check_baselines?: Record<
     string,
     RepositoryCheckBaselinePointer | undefined
@@ -623,6 +581,7 @@ export interface TaskRecord {
   unknowns: string[]
   evaluation: {
     validation_errors: string[]
+    governance_artifact_warnings?: string[]
     deterministic: DeterministicResult[]
     self: CriterionEvaluation[]
   }

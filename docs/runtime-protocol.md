@@ -159,26 +159,15 @@ Baselines are captured only for attempt 1. An upgraded in-flight run that has
 already entered a later implementation attempt does not retroactively baseline
 its modified workspace.
 
-## Workspace change tracking
+## Workspace boundaries
 
-Pancreator tracks accepted workspace state with a checksum index at
-`<state-root>/workspace/index.json`, a per-workflow immutable baseline at
-`<state-root>/workflows/<run-id>/baseline.json`, and stage verification
-fingerprints. Agents edit the target workspace directly; Pancreator does not
-create persistent workspace locks, active-workflow leases, or require a
-per-edit modification ledger.
+Pancreator fingerprints Git-visible source state without recursively indexing the filesystem. Compiled artifacts, caches, virtual environments, and third-party dependency/package directories are excluded from fingerprints and are outside agent remit. There is no pre-ship workspace-audit stage.
 
-Mutating workflows run a harness-owned deterministic `validate-changes` stage
-before ship. The stage compares the immutable baseline, accepted index,
-current filesystem scope, and latest successful QA fingerprint. Any hard
-anomaly yields `operator-review-required` and pauses the run for operator
-adjudication. The result remains stored in `ledger-validation.json` only to
-preserve compatibility with existing run state and integrations; no ledger is
-created or consulted.
+Governance, invocation, delegation, path-resolution, and operator-artifact diagnostics are non-blocking before ship and are accumulated for release-steward review. The release steward repairs safe runtime-only issues and continues; a materially concerning implementation, test, security, or release issue returns `blocked` and pauses for the operator. These diagnostics never route the workflow back to implementation.
 
 ## Operator rejection
 
-At an operator gate, `./bin/pan decide <run-id> reject` follows the stage's declared `failure` transition (the ship stage routes to `implement`, intake retries `intake`). The operator MAY override the remediation target with `--stage <slug>`, which is restricted to a real stage in the workflow. An overridden target, and every stage declared after it, restarts with a fresh attempt budget, and consecutive-failure tracking is cleared because the rewind is an explicit human decision rather than an automated retry. In all cases the operator's `--note` is written to `artifacts/markdown/operator-feedback-<n>.md`. The most recent feedback targeting the remediation stage is attached as a required input; older feedback remains discoverable through the context manifest.
+At an operator gate, `./bin/pan decide <run-id> reject` follows the stage's declared `failure` transition (ship pauses for operator-directed remediation; intake retries `intake`). The operator MAY override the remediation target with `--stage <slug>`, which is restricted to a real stage in the workflow. An overridden target, and every stage declared after it, restarts with a fresh attempt budget, and consecutive-failure tracking is cleared because the rewind is an explicit human decision rather than an automated retry. In all cases the operator's `--note` is written to `artifacts/markdown/operator-feedback-<n>.md`. The most recent feedback targeting the remediation stage is attached as a required input; older feedback remains discoverable through the context manifest.
 
 ## Operator stage repair
 
@@ -237,28 +226,16 @@ Exceeding a limit pauses the run and writes a decision record. The operator may 
 - Resume same stage: `./bin/pan resume <run-id>`
 - Resume chosen stage: `./bin/pan resume <run-id> --stage implement`
 - Repair directly to any stage: `./bin/pan set-stage <run-id> --stage <stage> --note "reason"`
-- Accept an intentional change: `./bin/pan accept-change <run-id> --note "reason"`
 - Waive or bypass a stage/gate: `./bin/pan waive-gate <run-id> --note "directive" [--stage <stage>] [--to <stage>] [--criteria <ids>]`
 - Abort: `./bin/pan abort <run-id> --note "reason"`
 
 ### Operator pause
 
-Operators MAY pause any non-terminal run at any time with `./bin/pan pause <run-id> [--note "reason"]`. The harness saves the current gate, pending action, and workspace snapshot. While paused, operators MAY modify tracked files in the deliverable workspace directly. Every resume, including one with `--stage`, compares the pause-start snapshot with the current workspace, records a ratification artifact for pause-only changes, updates the accepted workspace index and fingerprint, and invalidates a stale prepared invocation. A normal resume restores the saved gate; `--stage` restarts at the chosen stage with `prepare_invocation`. The harness refuses to auto-ratify divergence that already existed when the pause began.
+Operators MAY pause any non-terminal run at any time with `./bin/pan pause <run-id> [--note "reason"]`. The harness saves the current gate, pending action, and workspace snapshot. While paused, operators MAY modify tracked files in the deliverable workspace directly. Every resume, including one with `--stage`, compares the pause-start snapshot with the current workspace, records a ratification artifact for pause-only changes, updates the accepted workspace fingerprint, and invalidates a stale prepared invocation. A normal resume restores the saved gate; `--stage` restarts at the chosen stage with `prepare_invocation`. The harness refuses to auto-ratify divergence that already existed when the pause began.
 
-### Accepting an intentional workspace change
+### Intentional operator changes
 
-The `ship.prior_gates_current` gate requires that review and QA evidence was produced against the workspace fingerprint that ship sees. If the operator intentionally changed tracked files (so the current fingerprint differs from the one review/QA certified), the run pauses for an operator decision.
-
-`./bin/pan accept-change <run-id>` lets the operator attest that the current workspace is intentional. It:
-
-- requires the run to be `paused` with a pending `operator_decision`,
-- pins the current workspace fingerprint into `accepted_workspace_fingerprint`,
-- returns the run to `running` at the same stage (no review/test re-loop), and
-- records an auditable decision plus a `workspace_change_accepted` event.
-
-Acceptance is pinned to the exact accepted fingerprint: review and QA must already have passed, and any _further_ tracked-file change after acceptance re-flags the gate. Acceptance only excuses a stale fingerprint; it never substitutes for missing review/QA evidence.
-
-Prefer audited commands over hand-editing state. The operator may direct any repair or bypass; agents must execute the explicit directive rather than claim that governance makes it unavailable.
+Pause before operator-authored tracked changes. Resume records the pause-only delta, updates the accepted fingerprint, and invalidates a stale invocation. If later review or QA evidence is stale, the operator may route or waive the gate explicitly with `pan set-stage` or `pan waive-gate`; agents must execute that directive.
 
 ## Pipeline model snapshot
 

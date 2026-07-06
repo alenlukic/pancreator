@@ -5,6 +5,7 @@ import { invariant } from './errors.js'
 import { makeWorkflowRunId } from './naming.js'
 import {
   appendJsonLine,
+  clearStaleOperationMutex,
   fileExists,
   isRecord,
   readJson,
@@ -70,18 +71,6 @@ export function operationMutexPath(root: string, runId: string): string {
   return path.join(runDir(root, runId), '.operation-mutex')
 }
 
-export function indexPath(stateRoot: string): string {
-  return path.join(stateRoot, 'workspace', 'index.json')
-}
-
-export function baselinePath(stateRoot: string, runId: string): string {
-  return path.join(stateRoot, 'workflows', runId, 'baseline.json')
-}
-
-export function ledgerValidationPath(stateRoot: string, runId: string): string {
-  return path.join(stateRoot, 'workflows', runId, 'ledger-validation.json')
-}
-
 function parseRunState(value: unknown, source: string): RunState {
   invariant(isRecord(value), `${source} MUST contain a state object.`, {
     code: 'INVALID_STATE',
@@ -125,6 +114,8 @@ export function loadState(root: string, runId: string): RunState {
   invariant(fileExists(filePath), `Unknown run: ${runId}`, {
     code: 'RUN_NOT_FOUND',
   })
+
+  clearStaleOperationMutex(path.join(runDir(root, runId), '.operation-mutex'))
 
   let state = parseRunState(readJson(filePath), filePath)
   const eventsFile = eventPath(root, runId)

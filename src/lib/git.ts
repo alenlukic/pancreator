@@ -5,6 +5,10 @@ import path from 'node:path'
 import { PanError } from './errors.js'
 import { sha256 } from './io.js'
 import type { WorkspaceDelta, WorkspaceSnapshot } from './types.js'
+import {
+  isProtectedWorkspacePath,
+  protectedGitPathspecs,
+} from './workspace/protected-paths.js'
 
 interface RunGitOptions {
   allowFailure?: boolean
@@ -54,7 +58,11 @@ function contentFingerprint(
   for (const entry of entries) {
     const relative = entry.length >= 4 ? entry.slice(3) : entry
 
-    if (!relative || relative.startsWith('runtime/')) {
+    if (
+      !relative ||
+      relative.startsWith('runtime/') ||
+      isProtectedWorkspacePath(relative)
+    ) {
       continue
     }
 
@@ -107,6 +115,7 @@ export function gitWorkspaceSnapshot(workspaceDir: string): WorkspaceSnapshot {
     '-z',
     '--',
     '.',
+    ...protectedGitPathspecs(),
   ])
   const entries = status.stdout
     .split('\0')
@@ -114,11 +123,30 @@ export function gitWorkspaceSnapshot(workspaceDir: string): WorkspaceSnapshot {
     .filter((entry) => {
       const relative = entry.length >= 4 ? entry.slice(3) : entry
 
-      return !relative.startsWith('runtime/')
+      return (
+        !relative.startsWith('runtime/') && !isProtectedWorkspacePath(relative)
+      )
     })
     .sort()
 
-  const index = runGit(workspaceDir, ['ls-files', '--stage', '-z', '--', '.'])
+  const indexResult = runGit(workspaceDir, [
+    'ls-files',
+    '--stage',
+    '-z',
+    '--',
+    '.',
+    ...protectedGitPathspecs(),
+  ])
+  const indexEntries = indexResult.stdout
+    .split('\0')
+    .filter(Boolean)
+    .filter((entry) => {
+      const tab = entry.indexOf('\t')
+      const relative = tab === -1 ? entry : entry.slice(tab + 1)
+
+      return !isProtectedWorkspacePath(relative)
+    })
+    .sort()
   const head = gitHead(workspaceDir)
   const content = contentFingerprint(toplevel, entries)
 
@@ -126,13 +154,40 @@ export function gitWorkspaceSnapshot(workspaceDir: string): WorkspaceSnapshot {
     kind: 'git',
     head,
     fingerprint: sha256({
-      head,
       entries,
-      index: sha256(index.stdout),
+      index: sha256(indexEntries.join('\0')),
       content,
     }),
     entries,
   }
+}
+
+function snapshotEntryPath(entry: string): string {
+  const statusPath = entry.length >= 4 ? entry.slice(3) : entry
+  const renameArrow = statusPath.lastIndexOf(' -> ')
+
+  return renameArrow === -1 ? statusPath : statusPath.slice(renameArrow + 4)
+}
+
+export function workspaceChangedPathsFromSnapshots(
+  before: WorkspaceSnapshot,
+  after: WorkspaceSnapshot,
+): string[] {
+  const beforeByPath = new Map(
+    before.entries.map((entry) => [snapshotEntryPath(entry), entry]),
+  )
+  const afterByPath = new Map(
+    after.entries.map((entry) => [snapshotEntryPath(entry), entry]),
+  )
+  const paths = new Set([...beforeByPath.keys(), ...afterByPath.keys()])
+
+  return [...paths]
+    .filter(
+      (relativePath) =>
+        beforeByPath.get(relativePath) !== afterByPath.get(relativePath),
+    )
+    .filter((relativePath) => !isProtectedWorkspacePath(relativePath))
+    .sort()
 }
 
 export function snapshotChanged(

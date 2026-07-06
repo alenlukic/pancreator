@@ -44,30 +44,12 @@ test('full dev workflow persists gates and reaches operator-approved success', (
     /pipeline-config\.snapshot\.json$/u,
   )
 
-  const stageSlugs = [
-    'intake',
-    'plan',
-    'implement',
-    'review',
-    'test',
-    'validate-changes',
-    'ship',
-  ]
+  const stageSlugs = ['intake', 'plan', 'implement', 'review', 'test', 'ship']
 
   for (const [stageSequence, stageSlug] of stageSlugs.entries()) {
     const prepared = prepareInvocation(root, runId)
     const invocation = prepared.invocation
     const expectedPrefix = String(99 - stageSequence).padStart(2, '0')
-
-    if (stageSlug === 'validate-changes') {
-      assert.equal(invocation, null)
-      assert.equal(prepared.state.current_stage, 'ship')
-      assert.match(
-        prepared.state.stage_history.at(-1)?.invocation_id ?? '',
-        new RegExp(`^${expectedPrefix}_validate-changes-1_`, 'u'),
-      )
-      continue
-    }
 
     assert.ok(invocation)
     assert.match(
@@ -142,27 +124,17 @@ test('full dev workflow persists gates and reaches operator-approved success', (
 
   assert.equal(final.status, 'succeeded')
   assert.equal(final.current_stage, null)
-  assert.equal(final.stage_history.length, 7)
+  assert.equal(final.stage_history.length, 6)
   assert.deepEqual(
     final.stage_history.map((item) => item.invocation_id.slice(0, 2)),
-    ['06', '05', '04', '03', '02', '01', '00'],
+    ['05', '04', '03', '02', '01', '00'],
   )
   assert.equal(
     existsSync(path.join(root, `runtime/logs/workflows/${runId}/records`)),
     false,
   )
-  const validateChangesHistory = final.stage_history.find(
-    (item) => item.stage === 'validate-changes',
-  )
-  assert.ok(validateChangesHistory)
-  assert.equal(
-    validateChangesHistory.output_path,
-    `runtime/workflows/${runId}/ledger-validation.json`,
-  )
   assert.ok(
-    final.stage_history
-      .filter((item) => item.stage !== 'validate-changes')
-      .every((item) => item.record_path?.endsWith('.json')),
+    final.stage_history.every((item) => item.record_path?.endsWith('.json')),
   )
   assert.equal(
     final.stage_history.some((item) =>
@@ -497,79 +469,35 @@ test('unchanged pre-existing repository-check failures do not block implementati
   assert.equal(staticResult?.baseline_evidence_path, baseline?.artifact_path)
 })
 
-test('unchanged pre-existing full repository-check failures do not block QA', () => {
+test('pre-implementation baselines capture only implementation-stage profiles', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'dev')
   const state = createRun(root, {
     workflowSlug: 'dev',
     requestPath: 'request.md',
-    title: 'Pre-existing QA failure fixture',
+    title: 'Stage-local baseline fixture',
   })
   const runId = state.run_id
   const implementStage = stageBySlug(workflow, 'implement')
-  const reviewStage = stageBySlug(workflow, 'review')
-  const testStage = stageBySlug(workflow, 'test')
 
   writeJson(path.join(root, 'runtime/repository-checks.json'), {
     schema_version: 1,
     profiles: {
-      static: {
-        probes: [],
-        commands: [`node -e "process.exit(0)"`],
-      },
-      fast: {
-        probes: [],
-        commands: [`node -e "process.exit(0)"`],
-      },
-      full: {
-        probes: [],
-        commands: [
-          `node -e "console.error('known full-suite failure'); process.exit(1)"`,
-        ],
-      },
-      configuration: {
-        probes: [],
-        commands: [`node -e "process.exit(0)"`],
-      },
+      static: { probes: [], commands: [`node -e "process.exit(0)"`] },
+      fast: { probes: [], commands: [`node -e "process.exit(0)"`] },
+      full: { probes: [], commands: [`node -e "process.exit(1)"`] },
+      configuration: { probes: [], commands: [`node -e "process.exit(0)"`] },
     },
   })
-  setRunStage(
-    root,
-    runId,
-    'implement',
-    'Exercise workflow-wide check baselines.',
-  )
+  setRunStage(root, runId, 'implement', 'Capture implementation checks only.')
 
   submitStageOutput(root, runId, implementStage, 'success')
   const baselines = getRunState(root, runId).repository_check_baselines ?? {}
-  const fullBaseline = baselines.full
 
-  assert.equal(fullBaseline?.status, 'failed')
-  assert.ok(
-    fullBaseline && existsSync(path.join(root, fullBaseline.artifact_path)),
-  )
-  assert.equal(baselines.configuration?.status, 'passed')
-
-  submitStageOutput(root, runId, reviewStage, 'success')
-
-  const invocation = prepareInvocation(root, runId).invocation
-  assert.ok(invocation)
-
-  const output = makeOutput(root, invocation, testStage)
-  writeJson(path.join(root, invocation.output.path), output)
-  writeCanonicalDelegation(root, invocation)
-
-  const submitted = submitOutput(root, runId, invocation.output.path)
-  const fullResult = submitted.record.evaluation.deterministic.find(
-    (result) => result.id === 'test.full_suite',
-  )
-
-  assert.equal(submitted.record.outcome, 'success')
-  assert.equal(submitted.state.current_stage, 'validate-changes')
-  assert.equal(fullResult?.passed, true)
-  assert.equal(fullResult?.preexisting_failure, true)
-  assert.equal(fullResult?.exit_code, 1)
-  assert.equal(fullResult?.baseline_evidence_path, fullBaseline?.artifact_path)
+  assert.equal(baselines.static?.status, 'passed')
+  assert.equal(baselines.fast?.status, 'passed')
+  assert.equal(baselines.full, undefined)
+  assert.equal(baselines.configuration, undefined)
 })
 
 test('new repository-check diagnostics still block implementation', () => {
@@ -892,4 +820,83 @@ test('ordinary resume preserves same-reason tracker across implement work', () =
 
   assert.equal(second.state.status, 'paused')
   assert.equal(second.state.pending_action.type, 'operator_decision')
+})
+
+test('governance and artifact defects are advisory before ship and never loop to implementation', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Governance warning fixture',
+  })
+  const runId = state.run_id
+
+  setRunStage(root, runId, 'review', 'Exercise advisory validation routing.')
+  const invocation = prepareInvocation(root, runId).invocation
+  assert.ok(invocation)
+  assert.equal(
+    existsSync(path.join(root, invocation.output.operator_brief.source_path)),
+    true,
+  )
+  assert.equal(
+    existsSync(path.join(root, invocation.output.operator_brief.rendered_path)),
+    false,
+  )
+
+  writeJson(path.join(root, invocation.output.path), {
+    schema_version: 1,
+    invocation_id: invocation.invocation_id,
+    result: 'success',
+  })
+
+  const submitted = submitOutput(root, runId, invocation.output.path)
+
+  assert.equal(submitted.record.outcome, 'success')
+  assert.equal(submitted.state.current_stage, 'test')
+  assert.equal(submitted.state.status, 'running')
+  assert.ok(
+    (submitted.record.evaluation.governance_artifact_warnings ?? []).length > 0,
+  )
+  assert.equal(
+    existsSync(path.join(root, invocation.output.operator_brief.rendered_path)),
+    true,
+  )
+  assert.equal(
+    existsSync(
+      path.join(
+        root,
+        `runtime/logs/workflows/${runId}/artifacts/json/governance-artifact-issues.json`,
+      ),
+    ),
+    true,
+  )
+})
+
+test('ship owns governance artifact review and pauses instead of looping to implementation', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Ship governance fixture',
+  })
+  const runId = state.run_id
+
+  setRunStage(root, runId, 'ship', 'Exercise ship-stage escalation.')
+  const invocation = prepareInvocation(root, runId).invocation
+  assert.ok(invocation)
+  writeJson(path.join(root, invocation.output.path), {
+    schema_version: 1,
+    invocation_id: invocation.invocation_id,
+    result: 'success',
+  })
+
+  const submitted = submitOutput(root, runId, invocation.output.path)
+
+  assert.equal(submitted.record.outcome, 'failure')
+  assert.equal(submitted.state.status, 'paused')
+  assert.equal(submitted.state.current_stage, 'ship')
+  assert.notEqual(submitted.state.current_stage, 'implement')
+  assert.ok(
+    (submitted.record.evaluation.governance_artifact_warnings ?? []).length > 0,
+  )
 })

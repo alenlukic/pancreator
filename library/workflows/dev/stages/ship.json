@@ -27,17 +27,12 @@
       {
         "stage": "test",
         "selection": "latest"
-      },
-      {
-        "stage": "validate-changes",
-        "selection": "latest"
       }
     ],
     "prior_attempts": 1,
     "operator_feedback": 1,
     "include_active_waivers": true,
-    "include_workspace_ratifications": true,
-    "include_latest_ledger_validation": true
+    "include_workspace_ratifications": true
   },
   "required_data": {
     "release": "object",
@@ -46,7 +41,12 @@
     "release.validation": "array",
     "release.rollback": "string",
     "release.waivers": "array",
-    "release.follow_up_cases": "array"
+    "release.follow_up_cases": "array",
+    "release.governance_artifact_review": "object",
+    "release.governance_artifact_review.summary": "string",
+    "release.governance_artifact_review.issues_reviewed": "array",
+    "release.governance_artifact_review.repairs": "array",
+    "release.governance_artifact_review.escalations": "array"
   },
   "criteria": [
     {
@@ -78,7 +78,7 @@
   ],
   "transitions": {
     "success": "succeeded",
-    "failure": "implement",
+    "failure": "paused",
     "blocked": "paused"
   }
 }

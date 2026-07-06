@@ -484,7 +484,8 @@ export function validateImplementationClaims(
   const acceptanceResultsList = Array.isArray(data.acceptance_results)
     ? data.acceptance_results
     : []
-  const diffResult = workspaceSourceChanges(input.root)
+  const workspaceRoot = workspaceRootFromInput(input)
+  const diffResult = workspaceSourceChanges(workspaceRoot)
 
   if (!diffResult.ok) {
     if (changedFiles.length > 0) {
@@ -517,7 +518,7 @@ export function validateImplementationClaims(
       }
     } else if (changedFiles.length > 0) {
       for (const file of changedFiles) {
-        if (!fileExists(path.join(input.root, file))) {
+        if (!fileExists(path.join(workspaceRoot, file))) {
           issues.push(
             issue(
               'claim.file_missing',
@@ -1599,6 +1600,61 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
 
   if (rollback.trim().length === 0) {
     issues.push(issue('release.rollback', 'rollback_plan MUST be non-empty'))
+  }
+
+  const governanceReview = isRecord(release.governance_artifact_review)
+    ? release.governance_artifact_review
+    : null
+  const runGovernanceIssues = Array.isArray(
+    input.runState?.governance_artifact_issues,
+  )
+    ? input.runState.governance_artifact_issues.filter(isRecord)
+    : []
+
+  if (runGovernanceIssues.length > 0) {
+    if (!governanceReview) {
+      issues.push(
+        issue(
+          'release.governance_review_missing',
+          'release.governance_artifact_review MUST disposition every recorded governance or artifact issue',
+        ),
+      )
+    } else {
+      const reviewedIssueIds = new Set(
+        Array.isArray(governanceReview.issues_reviewed)
+          ? governanceReview.issues_reviewed.filter(
+              (item): item is string => typeof item === 'string',
+            )
+          : [],
+      )
+      const summary =
+        typeof governanceReview.summary === 'string'
+          ? governanceReview.summary.trim()
+          : ''
+
+      if (summary.length === 0) {
+        issues.push(
+          issue(
+            'release.governance_review_summary',
+            'release.governance_artifact_review.summary MUST be non-empty',
+          ),
+        )
+      }
+
+      for (const runIssue of runGovernanceIssues) {
+        const issueId =
+          typeof runIssue.issue_id === 'string' ? runIssue.issue_id : ''
+
+        if (issueId.length > 0 && !reviewedIssueIds.has(issueId)) {
+          issues.push(
+            issue(
+              'release.governance_issue_undisposed',
+              `Recorded governance or artifact issue is not dispositioned: ${issueId}`,
+            ),
+          )
+        }
+      }
+    }
   }
 
   const waivers = Array.isArray(release.disclosed_waivers)

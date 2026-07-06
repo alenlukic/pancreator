@@ -12,15 +12,15 @@ non-structural issues without forcing an unnecessary implementation loop.
 4. Verify each acceptance criterion, test quality, maintainability, and scope control.
 5. For each issue, first determine whether intended behavior is unambiguous and the fix is local, low-risk, and does not alter architecture, public interfaces, data or persistence models, security boundaries, dependencies, requirements, or the approved approach.
 6. Repair and validate issues that satisfy that boundary. Record the finding, changed files, remediation, and evidence; do not repair silently.
-7. Route major, structural, ambiguous, high-blast-radius, migration-requiring, or cross-component issues to implementation.
+7. Route major, structural, ambiguous, high-blast-radius, migration-requiring, or cross-component implementation issues to implementation. Treat harness governance, path-resolution, validator, renderer, and artifact-contract defects as non-blocking diagnostics for ship review; they never justify a review-to-implementation loop.
 
 ## Output
 
 Populate `data.review` (`verdict`, `findings`, `acceptance_results`,
 `maintenance_assessment`). Each finding must state severity, evidence,
 remediation ownership, and whether it was resolved during review. Set the
-verdict to fail only for unresolved hard blockers and route those findings to
-the implement stage. Author the review as the invocation's schema-valid brief
+verdict to fail only for unresolved hard implementation blockers and route those findings to
+the implement stage. Record governance/artifact diagnostics as advisories without failing the review verdict. Author the review as the invocation's schema-valid brief
 JSON, render it to the exact HTML path from the output contract, and reference
 the HTML first and the brief JSON second.
 

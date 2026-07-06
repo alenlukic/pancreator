@@ -6,7 +6,7 @@
   "instructions": [
     "An operator pause MUST preserve the prior run status, pending action, current stage, and prepared invocation until resume or an explicit stage override.",
     "While a run is paused by the operator, the operator MAY modify tracked files in the deliverable workspace directly.",
-    "On resume, including resume with a stage override, the harness MUST compare the accepted pause-start fingerprint with the current workspace, record a ratification artifact for any pause-only delta, update the accepted workspace index and fingerprint, and invalidate stale prepared invocations.",
+    "On resume, including resume with a stage override, the harness MUST compare the accepted pause-start fingerprint with the current workspace, record a ratification artifact for any pause-only delta, update the accepted workspace fingerprint, and invalidate stale prepared invocations.",
     "The harness MUST NOT auto-ratify workspace divergence that existed before the operator pause began.",
     "A normal resume MUST restore the saved status and pending action; a stage override MUST restart at that stage with prepare_invocation.",
     "Operator pause controls MUST remain available for non-terminal runs and MUST NOT be represented as agent-owned remediation."

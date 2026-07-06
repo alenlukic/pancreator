@@ -94,10 +94,6 @@
         "include_workspace_ratifications": {
           "type": "boolean",
           "description": "Include the latest operator workspace ratification matching the current fingerprint."
-        },
-        "include_latest_ledger_validation": {
-          "type": "boolean",
-          "description": "Include the latest harness-owned workspace-change validation result. The field name is retained for persisted-state compatibility."
         }
       }
     },

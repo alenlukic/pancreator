@@ -43,10 +43,9 @@ import {
   isSelfDevelopmentInstallation,
 } from './project-config.js'
 import {
-  blockingWorkspacePathsFromSnapshots,
-  snapshotWorkspace,
-} from './workspace/index.js'
-import { resolveRoots } from './workspace/roots.js'
+  gitWorkspaceSnapshot,
+  workspaceChangedPathsFromSnapshots,
+} from './git.js'
 import { listWorkflowSlugs, loadWorkflow } from './workflow.js'
 import { activeOperatorGateWaivers } from './waivers.js'
 import { isReleaseMetadataPath, validateReleaseMetadata } from './versioning.js'
@@ -783,6 +782,7 @@ function runShellCheck(
   workspaceDir: string,
   commandOverride?: string,
   artifactId = stage.slug,
+  onProgress?: (message: string) => void,
 ): DeterministicResult {
   const requestedCommand = commandOverride ?? criterion.command ?? ''
   const resolution = resolveShellCheck(
@@ -810,9 +810,15 @@ function runShellCheck(
     stderr = ''
     skipped = true
   } else if (profileName) {
+    onProgress?.(
+      `running ${criterion.id} with repository profile '${profileName}' (timeout ${criterion.timeout_ms ?? 'default'}ms)`,
+    )
     repositoryResult = runRepositoryCheck(root, profileName, {
       timeout_ms: criterion.timeout_ms,
     })
+    onProgress?.(
+      `${criterion.id} ${repositoryResult.status} in ${(repositoryResult.total_duration_ms / 1000).toFixed(1)}s`,
+    )
 
     exitCode = repositoryResult.status === 'failed' ? 1 : 0
     stdout = `${JSON.stringify(repositoryResult, null, 2)}\n`
@@ -820,6 +826,10 @@ function runShellCheck(
     skipped = repositoryResult.status === 'not_configured'
     timedOut = repositoryResult.results.some((result) => result.timed_out)
   } else {
+    onProgress?.(
+      `running ${criterion.id} command (timeout ${criterion.timeout_ms ?? 120_000}ms)`,
+    )
+    const commandStartedAt = Date.now()
     const result = spawnSync(command, {
       cwd: workspaceDir,
       encoding: 'utf8',
@@ -834,6 +844,9 @@ function runShellCheck(
       },
     })
 
+    onProgress?.(
+      `${criterion.id} ${result.status === 0 ? 'passed' : 'failed'} in ${((Date.now() - commandStartedAt) / 1000).toFixed(1)}s`,
+    )
     exitCode = result.status
     signal = result.signal
     stdout = result.stdout ?? ''
@@ -915,7 +928,9 @@ function runShellCheck(
             explanation: baselineComparison.explanation,
             ...(baselineComparison.passed ? { preexisting_failure: true } : {}),
           }
-        : {}),
+        : repositoryResult?.advisories.length
+          ? { explanation: repositoryResult.advisories.join(' ') }
+          : {}),
     ...(commandOverride === undefined
       ? {}
       : {
@@ -1029,20 +1044,15 @@ export function evaluateDeterministicCriteria(
   gateOverrides: Record<string, string | false> = {},
   artifactId = stage.slug,
   stageOutput?: StageOutput,
+  onProgress?: (message: string) => void,
 ): { results: DeterministicResult[]; workspace: WorkspaceSnapshot } {
-  const roots = resolveRoots({
-    installation_root: root,
-    workspace_root: workspaceDir,
-    state_root: state.state_root,
-  })
-  const afterSnapshot = snapshotWorkspace(roots, false).snapshot
+  const afterSnapshot = gitWorkspaceSnapshot(workspaceDir)
   const results: DeterministicResult[] = []
 
   if (stage.workspace_policy !== 'source_allowed') {
-    const changedPaths = blockingWorkspacePathsFromSnapshots(
+    const changedPaths = workspaceChangedPathsFromSnapshots(
       beforeSnapshot,
       afterSnapshot,
-      roots,
     )
     const releaseMetadataAllowed =
       stage.workspace_policy === 'release_metadata_only' &&
@@ -1131,6 +1141,7 @@ export function evaluateDeterministicCriteria(
             workspaceDir,
             typeof override === 'string' ? override : undefined,
             artifactId,
+            onProgress,
           ),
         )
       }

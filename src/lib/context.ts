@@ -185,13 +185,12 @@ function availableReferences(state: RunState): AvailableReference[] {
     })
   }
 
-  if (state.latest_ledger_validation_path) {
+  if (state.governance_artifact_issues_path) {
     references.push({
-      path: state.latest_ledger_validation_path,
-      description:
-        'Latest workspace-change validation result (legacy path name)',
+      path: state.governance_artifact_issues_path,
+      description: 'Accumulated governance and artifact diagnostics',
       retrieval: 'conditional',
-      category: 'ledger_validation',
+      category: 'governance_artifact_issues',
     })
   }
 
@@ -331,6 +330,15 @@ function selectExceptions(
     }
   }
 
+  if (stage.slug === 'ship' && state.governance_artifact_issues_path) {
+    addReference(references, {
+      path: state.governance_artifact_issues_path,
+      description:
+        'Governance and artifact diagnostics to review, repair when safe, and escalate only when materially concerning',
+      retrieval: 'required',
+    })
+  }
+
   if (stage.context.include_workspace_ratifications) {
     const ratification = [...(state.operator_workspace_ratifications ?? [])]
       .reverse()
@@ -343,17 +351,6 @@ function selectExceptions(
         retrieval: 'required',
       })
     }
-  }
-
-  if (
-    stage.context.include_latest_ledger_validation &&
-    state.latest_ledger_validation_path
-  ) {
-    addReference(references, {
-      path: state.latest_ledger_validation_path,
-      description: `Latest validate-changes result (${state.latest_ledger_validation ?? 'unknown'})`,
-      retrieval: 'required',
-    })
   }
 }
 

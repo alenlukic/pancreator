@@ -17,7 +17,7 @@
       "id": "stage-output-validate",
       "registry_id": "STAGE-OUTPUT-VALIDATE-002",
       "phase": "pre_submit",
-      "executor": "both",
+      "executor": "harness",
       "target": "invocation.output.path",
       "enforcement": "authoritative",
       "failure_route": "stage_failure",
