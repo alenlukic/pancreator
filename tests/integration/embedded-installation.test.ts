@@ -67,7 +67,13 @@ function run(
 }
 
 function runInstaller(project: string, args: string[] = []): CommandResult {
-  return run(INSTALLER, ['--target', project, '--skip-dependencies', ...args])
+  return run(INSTALLER, [
+    '--target',
+    project,
+    '--skip-dependencies',
+    '--skip-shell-alias',
+    ...args,
+  ])
 }
 
 function readJson<T>(filePath: string): T {
@@ -296,6 +302,13 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
       true,
     )
 
+    const summarizeContextCommand = readFileSync(
+      path.join(project, '.cursor', 'commands', 'pan-summarize-context.md'),
+      'utf8',
+    )
+    assert.match(summarizeContextCommand, /exactly one fenced Markdown block/u)
+    assert.match(summarizeContextCommand, /fresh conversation/u)
+
     const buildBriefsCommand = readFileSync(
       path.join(project, '.cursor', 'commands', 'pan-build-briefs.md'),
       'utf8',
@@ -370,7 +383,7 @@ test('dirty development snapshot installs with automatic updates disabled', () =
 
     const install = run(
       path.join(source, 'bin', 'install'),
-      ['--target', project, '--skip-dependencies'],
+      ['--target', project, '--skip-dependencies', '--skip-shell-alias'],
       source,
     )
 
@@ -386,7 +399,7 @@ test('dirty development snapshot installs with automatic updates disabled', () =
 
     const update = run(
       path.join(source, 'bin', 'update'),
-      ['--target', project, '--skip-dependencies'],
+      ['--target', project, '--skip-dependencies', '--skip-shell-alias'],
       source,
     )
     assert.notEqual(update.status, 0)
@@ -602,6 +615,48 @@ test('embedded installer refresh preserves target primer, runtime state, and unr
       path.join(legacyWorkspaceDirectory, 'active-workflow.json'),
       '{}\n',
     )
+    const oldRunId = '63379_Jun-22_5f354f23'
+    const migratedOldRunId = '63379_Jun-22-0158_5f354f23'
+    const oldRunDirectory = path.join(
+      project,
+      '.pancreator',
+      'runtime',
+      'logs',
+      'workflows',
+      oldRunId,
+    )
+    const oldStateDirectory = path.join(
+      project,
+      '.pancreator',
+      'runtime',
+      'workflows',
+      oldRunId,
+    )
+    mkdirSync(oldRunDirectory, { recursive: true })
+    mkdirSync(oldStateDirectory, { recursive: true })
+    writeFileSync(
+      path.join(oldRunDirectory, 'state.json'),
+      `${JSON.stringify({
+        schema_version: 1,
+        run_id: oldRunId,
+        workflow_slug: 'dev',
+        title: 'old run',
+        status: 'succeeded',
+        pending_action: { type: 'none' },
+        stage_history: [],
+        attempts: {},
+        created_at: '2026-06-22T21:22:54.051Z',
+      })}\n`,
+    )
+    writeFileSync(
+      path.join(oldRunDirectory, 'workflow.snapshot.json'),
+      '{"stages":[{"slug":"intake"}]}\n',
+    )
+    writeFileSync(path.join(oldRunDirectory, 'events.jsonl'), '')
+    writeFileSync(
+      path.join(oldStateDirectory, 'modifications.jsonl'),
+      `${JSON.stringify({ run_id: oldRunId })}\n`,
+    )
 
     const result = runInstaller(project, ['--yes'])
 
@@ -668,6 +723,37 @@ test('embedded installer refresh preserves target primer, runtime state, and unr
       false,
     )
     assert.equal(existsSync(legacyWorkspaceDirectory), false)
+    assert.equal(existsSync(oldRunDirectory), false)
+    assert.equal(existsSync(oldStateDirectory), false)
+    assert.equal(
+      existsSync(
+        path.join(
+          project,
+          '.pancreator',
+          'runtime',
+          'logs',
+          'workflows',
+          'archive',
+          migratedOldRunId,
+          'state.json',
+        ),
+      ),
+      true,
+    )
+    assert.equal(
+      existsSync(
+        path.join(
+          project,
+          '.pancreator',
+          'runtime',
+          'workflows',
+          'archive',
+          migratedOldRunId,
+          'modifications.jsonl',
+        ),
+      ),
+      true,
+    )
     assert.equal(
       existsSync(
         path.join(
@@ -986,7 +1072,7 @@ test('clean unindexed release candidate installs with automatic updates disabled
 
     const install = run(
       path.join(source, 'bin', 'install'),
-      ['--target', project, '--skip-dependencies'],
+      ['--target', project, '--skip-dependencies', '--skip-shell-alias'],
       source,
     )
 
@@ -1002,7 +1088,7 @@ test('clean unindexed release candidate installs with automatic updates disabled
 
     const update = run(
       path.join(source, 'bin', 'update'),
-      ['--target', project, '--skip-dependencies'],
+      ['--target', project, '--skip-dependencies', '--skip-shell-alias'],
       source,
     )
     assert.notEqual(update.status, 0)
@@ -1024,7 +1110,7 @@ test('clean checkout rejects harness drift under an indexed version', () => {
 
     const install = run(
       path.join(source, 'bin', 'install'),
-      ['--target', project, '--skip-dependencies'],
+      ['--target', project, '--skip-dependencies', '--skip-shell-alias'],
       source,
     )
 
@@ -1046,7 +1132,7 @@ test('indexed update fast-forwards the embedded harness and preserves target sta
   try {
     const install = run(
       path.join(source, 'bin', 'install'),
-      ['--target', project, '--skip-dependencies'],
+      ['--target', project, '--skip-dependencies', '--skip-shell-alias'],
       source,
     )
     assert.equal(install.status, 0, install.stderr)
@@ -1091,7 +1177,7 @@ test('indexed update fast-forwards the embedded harness and preserves target sta
 
     const update = run(
       path.join(source, 'bin', 'update'),
-      ['--target', project, '--skip-dependencies'],
+      ['--target', project, '--skip-dependencies', '--skip-shell-alias'],
       source,
     )
 

@@ -60,6 +60,7 @@ import {
   renderBrief,
   validateBriefSystem,
 } from './lib/briefs.js'
+import { maintainWorkflowRuntime } from './lib/workflow-artifacts.js'
 
 const HELP_BODY = `Usage:
   pan init --request <repo-relative-file> [--workflow dev] [--title <title>] [--workspace <dir>] [--gates <file>]
@@ -76,6 +77,7 @@ const HELP_BODY = `Usage:
   pan repository-check validate [--json]
   pan status <run-id> [--json]
   pan list [--json]
+  pan archive [--days <positive-integer>] [--json]
   pan models [--sync] [--json]
   pan validate [--json]
   pan doctor [--json]
@@ -614,6 +616,16 @@ async function main(): Promise<void> {
     case 'list':
       print(listRuns(root), true)
       return
+    case 'archive': {
+      const daysValue = option(args, '--days')
+      const retentionDays = daysValue === null ? 7 : Number(daysValue)
+
+      print(
+        maintainWorkflowRuntime(root, { retentionDays }),
+        hasFlag(args, '--json'),
+      )
+      return
+    }
     case 'models': {
       const loaded = loadPipelineConfig(root)
       const changes = syncCursorProjection(root, {

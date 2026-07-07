@@ -5,7 +5,9 @@ import { invariant } from './errors.js'
 export const DATETIME_ANCHOR = '2200-01-01T00:00:00.000Z'
 
 const DATETIME_ANCHOR_MS = Date.parse(DATETIME_ANCHOR)
-const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000
+const MILLISECONDS_PER_MINUTE = 60 * 1000
+const MINUTES_PER_DAY = 24 * 60
+const MILLISECONDS_PER_DAY = MINUTES_PER_DAY * MILLISECONDS_PER_MINUTE
 const MONTH_NAMES = [
   'Jan',
   'Feb',
@@ -27,6 +29,16 @@ export function daysToAnchor(at = new Date()): number {
 
 export const DAYS_TO_ANCHOR = daysToAnchor()
 
+export function minutesToEndOfUtcDay(at = new Date()): number {
+  const nextUtcDay = Date.UTC(
+    at.getUTCFullYear(),
+    at.getUTCMonth(),
+    at.getUTCDate() + 1,
+  )
+
+  return Math.ceil((nextUtcDay - at.getTime()) / MILLISECONDS_PER_MINUTE)
+}
+
 export function makeWorkflowRunId(
   at = new Date(),
   uuidSuffix = randomUUID().slice(0, 8),
@@ -34,7 +46,9 @@ export function makeWorkflowRunId(
   const month = MONTH_NAMES[at.getUTCMonth()]
   const day = String(at.getUTCDate()).padStart(2, '0')
 
-  return `${daysToAnchor(at)}_${month}-${day}_${uuidSuffix}`
+  const minutes = String(minutesToEndOfUtcDay(at)).padStart(4, '0')
+
+  return `${daysToAnchor(at)}_${month}-${day}-${minutes}_${uuidSuffix}`
 }
 
 export function pipelineStepPrefix(stageSequence: number): string {

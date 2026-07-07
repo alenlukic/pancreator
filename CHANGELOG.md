@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.13.0] - 2026-07-07
+
+### Changed
+
+- Adopt minute-level UTC workflow directory names and seven-day runtime retention. `pan archive` and embedded `install --yes` refreshes migrate recognized legacy names, update persisted references, and move older run directories into paired `archive/` locations without overwriting existing targets ([runtime naming](src/lib/naming.ts), [runtime maintenance](src/lib/workflow-artifacts.ts), [installer](bin/install)).
+- Deliver handbook guidance directly in invocation context and add technology-scoped Python engineering rules, closing the gap where workers were expected to discover and read durable handbooks independently ([context unrolling](https://github.com/alenlukic/pancreator/commit/cbd03f5), [Python handbook](https://github.com/alenlukic/pancreator/commit/a30702f)).
+
+### Added
+
+- Add `/pan-summarize-context` to emit one copyable Markdown handoff containing the material current-conversation history, decisions, validation, open issues, and next actions for a fresh agent conversation ([command](library/cursor/commands/pan-summarize-context.md)).
+- Add the transcript-aware harness technician and `/pan-repair` command for auditing workflow runs and producing validated Pancreator self-development intake without implementing the repair ([harness technician](https://github.com/alenlukic/pancreator/commit/4526c25)).
+- Add `RUNTIME-001` governance for sortable workflow names, harness-owned archival, idempotence, collision handling, and installer migration behavior ([runtime policy](governance/policies/RUNTIME-001.json)).
+
+### Fixed
+
+- Preserve operator-selected persona model mappings across embedded refreshes while merging newly shipped personas into existing target configuration ([embedded configuration merge](https://github.com/alenlukic/pancreator/commit/365df13)).
+
 ## [2.12.0] - 2026-07-06
 
 ### Changed
@@ -321,7 +338,8 @@ _First functional release._
 
 - Add the original self-building workflow harness, governed personas, compliance hooks, durable memory, and bootstrap documentation ([c9c5def](https://github.com/alenlukic/pancreator/commit/c9c5def2ccd2a0a9c27d5c6707c963cb2621518a))
 
-[2.12.0]: https://github.com/alenlukic/pancreator/compare/7d86b1257b839217317f568d802fe5e836b8bebf...HEAD
+[2.13.0]: https://github.com/alenlukic/pancreator/compare/6fd00e4e9493f8ac898b757842ce28db82cbc07d...HEAD
+[2.12.0]: https://github.com/alenlukic/pancreator/compare/7d86b1257b839217317f568d802fe5e836b8bebf...6fd00e4e9493f8ac898b757842ce28db82cbc07d
 [2.11.1]: https://github.com/alenlukic/pancreator/compare/7d86b1257b839217317f568d802fe5e836b8bebf...HEAD
 [2.11.0]: https://github.com/alenlukic/pancreator/compare/c0a1a4cc6964261a970038578b41de71c5de1204...7d86b1257b839217317f568d802fe5e836b8bebf
 [2.10.0]: https://github.com/alenlukic/pancreator/compare/992da4018692bda9e5b963f43d2e55ce37021c6c...c0a1a4cc6964261a970038578b41de71c5de1204

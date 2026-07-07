@@ -1,6 +1,6 @@
-# Pancreator v2.12.0
+# Pancreator v2.13.0
 
-Pancreator v2.12.0 is a workflow harness that helps teams use Cursor agents like an engineering workflow instead of a one-off chat. It brings structure, repeatability, and operator control to planning, implementation, review, QA, and release preparation without asking you to leave your repository.
+Pancreator v2.13.0 is a workflow harness that helps teams use Cursor agents like an engineering workflow instead of a one-off chat. It brings structure, repeatability, and operator control to planning, implementation, review, QA, and release preparation without asking you to leave your repository.
 
 It is built for teams that want faster agent-assisted delivery without turning approvals, validation, or release decisions into a black box.
 
@@ -10,6 +10,7 @@ It is built for teams that want faster agent-assisted delivery without turning a
 - Give agents durable repository context before they start changing code.
 - Separate planning, implementation, review, and QA so one agent is not grading its own work.
 - Resume work cleanly when a task spans multiple turns, sessions, or handoffs.
+- Carry the material context from one agent conversation into another as a copyable handoff.
 - Bring the same governed workflow into other repositories with an embedded install.
 
 ## What It Does
@@ -57,6 +58,7 @@ Pancreator adds a set of Cursor commands, supporting agents, and repository-awar
    - Use `/pan-start <request>` for normal delivery work.
    - Use `/pan-debug <problem>` when you need root-cause analysis first.
    - Use `/pan-repair <problem-or-artifact>` when Pancreator itself may have failed or missed governance.
+   - Use `/pan-summarize-context` before continuing the work in a fresh agent conversation.
    - Use `/pan-spotfix <request>` for an explicitly small, bounded change.
    - Use `/pan-release` when you want Pancreator to prepare release metadata.
 
@@ -88,6 +90,7 @@ For indexed release updates:
 - `/pan-repair`: audit a harness problem or workflow run and write a transcript-aware self-development intake
 - `/pan-build-docs`: generate or refresh repository orientation for future agent work
 - `/pan-build-briefs`: generate or refresh project brief semantics and design tokens
+- `/pan-summarize-context`: emit a copyable Markdown handoff for a fresh agent conversation
 - `/pan-release`: prepare version metadata and release notes
 - `/pan-write-pr [base-branch]`: draft a pull request description from the current branch
 

@@ -10,6 +10,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 function fail(message) {
   process.stderr.write(`${message}\n`)
@@ -501,6 +502,27 @@ function writeProject() {
   writeJson(destination, config)
 }
 
+async function configureShellAlias() {
+  const distRoot = path.resolve(
+    option('--dist-root') ??
+      path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist'),
+  )
+  const modulePath = path.join(distRoot, 'src/lib/shell-alias.js')
+
+  if (!existsSync(modulePath)) {
+    fail(`Shell alias module is missing: ${modulePath}`)
+  }
+
+  const { configureShellAlias: applyShellAlias } = await import(
+    pathToFileURL(modulePath).href
+  )
+  const result = applyShellAlias()
+
+  for (const message of result.messages) {
+    process.stdout.write(`${message}\n`)
+  }
+}
+
 function writeMarker() {
   const destination = path.resolve(requiredOption('--destination'))
   const cursorManifest = readJson(
@@ -532,6 +554,8 @@ if (command === 'project-cursor') {
   writeMarker()
 } else if (command === 'migrate-repository-checks') {
   migrateRepositoryChecks()
+} else if (command === 'configure-shell-alias') {
+  await configureShellAlias()
 } else {
   fail(`Unknown install support command: ${command ?? '(missing)'}`)
 }
