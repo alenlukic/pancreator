@@ -1,0 +1,14 @@
+{
+  "id": "RUNTIME-001",
+  "title": "Workflow runtime naming and retention",
+  "severity": "hard",
+  "summary": "Pancreator workflow runtime directories MUST use sortable UTC names and harness-owned archival after seven days; agents MUST NOT rename or relocate generated run state manually.",
+  "instructions": [
+    "Workflow directories under runtime/logs/workflows/ and the legacy mirrored runtime/workflows/ location MUST use <days-to-anchor>_<MMM-DD>-<minutes-to-end-of-UTC-day>_<eight-character-UUID>, with the minute field zero-padded to four digits.",
+    "DATETIME_ANCHOR MUST remain 2200-01-01T00:00:00.000Z. days-to-anchor MUST be the floor of the UTC duration from run creation to the anchor divided by one day, and minutes-to-end-of-UTC-day MUST be the ceiling of the remaining UTC-day duration in minutes.",
+    "The harness-owned pan archive command MUST migrate recognized legacy workflow directory names, update persisted path references, and move active-root workflow directories older than seven days into an archive/ child of the same parent directory.",
+    "Archived workflow directories MUST be excluded from active run discovery and repeated archival MUST be idempotent. Existing archive targets MUST never be overwritten silently.",
+    "Embedded installation refresh with install --yes MUST run the same naming migration and seven-day archival before replacing the owned harness payload, while preserving workflow contents.",
+    "Agents MUST NOT hand-rename, hand-move, or manually rewrite generated workflow directories or records. They MUST use pan archive or the installer-owned migration path for these deterministic operations."
+  ]
+}

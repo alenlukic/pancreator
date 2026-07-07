@@ -12,6 +12,7 @@ import test from 'node:test'
 
 import { PanError } from '../../src/lib/errors.js'
 import {
+  archiveWorkflowDirectories,
   finalizeWorkflowArtifacts,
   migrateWorkflowNames,
   migratedRunId,
@@ -68,6 +69,7 @@ function writeState(
   runId: string,
   status: 'running' | 'succeeded',
   invocationIds: string[] = [],
+  createdAt = '2026-06-22T21:22:54.051Z',
 ): void {
   const runDirectory = invocationIds.length
     ? rootOrDirectory
@@ -90,6 +92,7 @@ function writeState(
         record_path: `runtime/logs/workflows/${runId}/records/${invocationId}.md`,
       })),
       attempts: {},
+      created_at: createdAt,
     })}\n`,
   )
 
@@ -168,7 +171,7 @@ test('workflow migration finalizes closed runs and consolidates artifacts', () =
   const oldRunId = '20260622T212254051Z-5f354f23'
   const newRunId = migratedRunId(oldRunId)
 
-  assert.equal(newRunId, '63379_Jun-22_5f354f23')
+  assert.equal(newRunId, '63379_Jun-22-0158_5f354f23')
 
   const logDirectory = path.join(root, 'runtime/logs/workflows', oldRunId)
   const stateDirectory = path.join(root, 'runtime/workflows', oldRunId)
@@ -311,6 +314,7 @@ test('workflow migration finalizes closed runs and consolidates artifacts', () =
 test('workflow migration repairs in-flight prefixes without finalizing', () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'pancreator-migration-'))
   const runId = '63379_Jun-22_5f354f23'
+  const migratedId = '63379_Jun-22-0158_5f354f23'
   const runDirectory = path.join(root, 'runtime/logs/workflows', runId)
   const groupedInvocationIds = [
     '999_intake-1_02e65dfc',
@@ -341,7 +345,13 @@ test('workflow migration repairs in-flight prefixes without finalizing', () => {
   sequencedInvocationIds.forEach((invocationId) => {
     assert.equal(
       existsSync(
-        path.join(runDirectory, 'invocations', `${invocationId}.json`),
+        path.join(
+          root,
+          'runtime/logs/workflows',
+          migratedId,
+          'invocations',
+          `${invocationId}.json`,
+        ),
       ),
       true,
     )
@@ -357,6 +367,79 @@ test('workflow migration repairs in-flight prefixes without finalizing', () => {
   })
 })
 
-test('migratedRunId returns null for current-format run ids', () => {
-  assert.equal(migratedRunId('63379_Jun-22_5f354f23'), null)
+test('migratedRunId upgrades day-only ids and ignores current-format ids', () => {
+  assert.equal(
+    migratedRunId(
+      '63379_Jun-22_5f354f23',
+      new Date('2026-06-22T21:22:54.051Z'),
+    ),
+    '63379_Jun-22-0158_5f354f23',
+  )
+  assert.equal(migratedRunId('63379_Jun-22-0158_5f354f23'), null)
+})
+
+test('workflow archive moves runs older than retention into archive directories', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'pancreator-archive-'))
+  const oldRunId = '63379_Jun-22-0158_5f354f23'
+  const recentRunId = '63372_Jun-29-0158_6f354f23'
+  const oldLogDirectory = path.join(root, 'runtime/logs/workflows', oldRunId)
+  const oldStateDirectory = path.join(root, 'runtime/workflows', oldRunId)
+
+  writeState(root, oldRunId, 'succeeded')
+  writeState(root, recentRunId, 'running', [], '2026-06-29T21:22:54.051Z')
+  write(
+    path.join(oldStateDirectory, 'modifications.jsonl'),
+    `${JSON.stringify({
+      path: `runtime/logs/workflows/${oldRunId}/state.json`,
+    })}\n`,
+  )
+  write(
+    path.join(oldLogDirectory, 'evidence', 'path.txt'),
+    `runtime/workflows/${oldRunId}/modifications.jsonl\n`,
+  )
+
+  const summary = archiveWorkflowDirectories(root, {
+    retentionDays: 7,
+    now: new Date('2026-07-01T22:00:00.000Z'),
+  })
+
+  assert.deepEqual(summary.run_ids, [oldRunId])
+  assert.equal(summary.run_directories, 1)
+  assert.equal(summary.state_directories, 1)
+  assert.equal(existsSync(oldLogDirectory), false)
+  assert.equal(existsSync(oldStateDirectory), false)
+  assert.equal(
+    existsSync(path.join(root, 'runtime/logs/workflows/archive', oldRunId)),
+    true,
+  )
+  assert.equal(
+    existsSync(path.join(root, 'runtime/workflows/archive', oldRunId)),
+    true,
+  )
+  assert.equal(
+    existsSync(
+      path.join(root, 'runtime/logs/workflows', recentRunId, 'state.json'),
+    ),
+    true,
+  )
+  assert.match(
+    readFileSync(
+      path.join(
+        root,
+        'runtime/logs/workflows/archive',
+        oldRunId,
+        'evidence/path.txt',
+      ),
+      'utf8',
+    ),
+    /runtime\/workflows\/archive\//u,
+  )
+
+  assert.deepEqual(
+    archiveWorkflowDirectories(root, {
+      retentionDays: 7,
+      now: new Date('2026-07-01T22:00:00.000Z'),
+    }).run_ids,
+    [],
+  )
 })

@@ -168,6 +168,7 @@ run_smoke() {
       && test -L "$project/.pancreator/.cursor" \
       && test -f "$project/.cursor/commands/pan-start.md" \
       && test -f "$project/.cursor/commands/pan-build-briefs.md" \
+      && test -f "$project/.cursor/commands/pan-summarize-context.md" \
       && grep -q '.pancreator/docs/operator-briefs/project.json' \
         "$project/.cursor/commands/pan-build-briefs.md" \
       && test -f "$project/.cursor/agents/coder.md" \
@@ -616,6 +617,8 @@ prepare_staging_payload() {
       npm ci --ignore-scripts --no-audit --no-fund --loglevel=error
       npm run build --silent
     )
+  elif [[ -d "$PANCREATOR_ROOT/dist" ]]; then
+    cp -Rp "$PANCREATOR_ROOT/dist" "$staging/dist"
   fi
 }
 
@@ -640,6 +643,14 @@ install_payload() {
 
   mkdir -p "$PANCREATOR_DIR" "$CURSOR_DIR"
   prepare_persistent_layout
+
+  if [[ -f "$staging/dist/src/runtime-maintenance-cli.js" ]]; then
+    node "$staging/dist/src/runtime-maintenance-cli.js" \
+      --root "$PANCREATOR_DIR" --days 7 >/dev/null
+  elif [[ "$SKIP_DEPENDENCIES" -eq 0 ]]; then
+    echo "Error: runtime maintenance executable is missing from staged payload." >&2
+    exit 1
+  fi
 
   # `docs/` is release-owned except for the generated target primer. Seed the
   # staged payload with the target-specific file so refreshes and updates do not

@@ -16,8 +16,12 @@
 ## Runtime naming
 
 `DATETIME_ANCHOR` is `2200-01-01T00:00:00.000Z`. A run ID is
-`<days-to-anchor>_<MMM-DD>_<uuid-suffix>`, where days-to-anchor is the floor of
-the UTC duration from the run creation instant to the anchor divided by one day.
+`<days-to-anchor>_<MMM-DD>-<minutes-to-end-of-UTC-day>_<uuid-suffix>`, where
+days-to-anchor is the floor of the UTC duration from the run creation instant to
+the anchor divided by one day. The minute component is the ceiling of the
+remaining duration to the next UTC midnight, zero-padded to four digits. For
+example, a run created at `2026-07-03T23:00:00Z` is named
+`63368_Jul-03-0060_<uuid-suffix>`.
 
 Stage-scoped artifact IDs are
 `<reverse-step>_<stage>-<stage-iteration>_<uuid-suffix>`. While a run is open,
@@ -47,11 +51,16 @@ Supervisor assessment files retain the invocation artifact ID as their sortable
 prefix: `<invocation-id>.assessment-request.json` and
 `<invocation-id>.assessment.json`.
 
-Legacy runtime records are migrated with `npm run migrate:workflow-names`. The
-migration is idempotent, chooses open or terminal numbering from run status,
-consolidates legacy `records/` and flat `artifacts/` contents, removes redundant
-rendered execution-record Markdown, removes an empty
-legacy `--help` run directory, and updates persisted references alongside names.
+`./bin/pan archive` performs idempotent runtime maintenance. It migrates
+recognized legacy workflow directory names, chooses open or terminal artifact
+numbering from run status, consolidates legacy `records/` and flat `artifacts/`
+contents, removes redundant rendered execution-record Markdown, removes an
+empty legacy `--help` run directory, and updates persisted references alongside
+names. It then moves workflow directories older than seven days from both
+`runtime/logs/workflows/` and the legacy `runtime/workflows/` mirror into each
+directory's `archive/` child. Archived runs are excluded from active run
+discovery. Use `--days <positive-integer>` only when deliberately overriding the
+default retention window.
 
 ## Invocation and delegation validation
 
