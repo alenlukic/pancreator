@@ -67,7 +67,13 @@ function run(
 }
 
 function runInstaller(project: string, args: string[] = []): CommandResult {
-  return run(INSTALLER, ['--target', project, '--skip-dependencies', ...args])
+  return run(INSTALLER, [
+    '--target',
+    project,
+    '--skip-dependencies',
+    '--skip-shell-alias',
+    ...args,
+  ])
 }
 
 function readJson<T>(filePath: string): T {
@@ -377,7 +383,7 @@ test('dirty development snapshot installs with automatic updates disabled', () =
 
     const install = run(
       path.join(source, 'bin', 'install'),
-      ['--target', project, '--skip-dependencies'],
+      ['--target', project, '--skip-dependencies', '--skip-shell-alias'],
       source,
     )
 
@@ -393,7 +399,7 @@ test('dirty development snapshot installs with automatic updates disabled', () =
 
     const update = run(
       path.join(source, 'bin', 'update'),
-      ['--target', project, '--skip-dependencies'],
+      ['--target', project, '--skip-dependencies', '--skip-shell-alias'],
       source,
     )
     assert.notEqual(update.status, 0)
@@ -1066,7 +1072,7 @@ test('clean unindexed release candidate installs with automatic updates disabled
 
     const install = run(
       path.join(source, 'bin', 'install'),
-      ['--target', project, '--skip-dependencies'],
+      ['--target', project, '--skip-dependencies', '--skip-shell-alias'],
       source,
     )
 
@@ -1082,7 +1088,7 @@ test('clean unindexed release candidate installs with automatic updates disabled
 
     const update = run(
       path.join(source, 'bin', 'update'),
-      ['--target', project, '--skip-dependencies'],
+      ['--target', project, '--skip-dependencies', '--skip-shell-alias'],
       source,
     )
     assert.notEqual(update.status, 0)
@@ -1104,7 +1110,7 @@ test('clean checkout rejects harness drift under an indexed version', () => {
 
     const install = run(
       path.join(source, 'bin', 'install'),
-      ['--target', project, '--skip-dependencies'],
+      ['--target', project, '--skip-dependencies', '--skip-shell-alias'],
       source,
     )
 
@@ -1126,7 +1132,7 @@ test('indexed update fast-forwards the embedded harness and preserves target sta
   try {
     const install = run(
       path.join(source, 'bin', 'install'),
-      ['--target', project, '--skip-dependencies'],
+      ['--target', project, '--skip-dependencies', '--skip-shell-alias'],
       source,
     )
     assert.equal(install.status, 0, install.stderr)
@@ -1171,7 +1177,7 @@ test('indexed update fast-forwards the embedded harness and preserves target sta
 
     const update = run(
       path.join(source, 'bin', 'update'),
-      ['--target', project, '--skip-dependencies'],
+      ['--target', project, '--skip-dependencies', '--skip-shell-alias'],
       source,
     )
 

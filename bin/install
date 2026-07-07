@@ -13,6 +13,7 @@ NON_INTERACTIVE=0
 CHOICE=""
 SMOKE_RUN=0
 SKIP_DEPENDENCIES=0
+SKIP_SHELL_ALIAS=0
 
 SOURCE_PAYLOAD_ENTRIES=(
   .npmrc
@@ -48,6 +49,8 @@ Options:
   --repair                 Repair a partial installation
   --clean                  Remove .pancreator and reinstall
   --yes                    Idempotently refresh a complete installation
+  --skip-dependencies      Skip npm ci/build in the staged payload
+  --skip-shell-alias       Do not append the guarded pan shell function to rc files
   --smoke                  Run scripted installer verification
   -h, --help               Show this help
 
@@ -104,6 +107,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --skip-dependencies)
       SKIP_DEPENDENCIES=1
+      shift
+      ;;
+    --skip-shell-alias)
+      SKIP_SHELL_ALIAS=1
       shift
       ;;
     --smoke)
@@ -197,10 +204,10 @@ run_smoke() {
 
   fresh_project="$(smoke_project)"
   smoke_step "fresh install" bash "$0" --target "$fresh_project" \
-    --pancreator-root "$PANCREATOR_ROOT" --skip-dependencies
+    --pancreator-root "$PANCREATOR_ROOT" --skip-dependencies --skip-shell-alias
   smoke_step "verify fresh install" smoke_verify "$fresh_project"
   smoke_step "idempotent refresh" bash "$0" --target "$fresh_project" \
-    --pancreator-root "$PANCREATOR_ROOT" --yes --skip-dependencies
+    --pancreator-root "$PANCREATOR_ROOT" --yes --skip-dependencies --skip-shell-alias
   smoke_step "verify idempotent refresh" smoke_verify "$fresh_project"
 
   existing_cursor_project="$(smoke_project)"
@@ -208,20 +215,20 @@ run_smoke() {
   printf 'custom\n' >"$existing_cursor_project/.cursor/rules/custom.mdc"
   smoke_step "existing cursor merge" bash "$0" \
     --target "$existing_cursor_project" --pancreator-root "$PANCREATOR_ROOT" \
-    --skip-dependencies
+    --skip-dependencies --skip-shell-alias
   smoke_step "preserve custom cursor file" test -f \
     "$existing_cursor_project/.cursor/rules/custom.mdc"
 
   partial_project="$(smoke_project)"
   mkdir -p "$partial_project/.pancreator"
   smoke_step "partial install repair" bash "$0" --target "$partial_project" \
-    --pancreator-root "$PANCREATOR_ROOT" --choice r --skip-dependencies
+    --pancreator-root "$PANCREATOR_ROOT" --choice r --skip-dependencies --skip-shell-alias
   smoke_step "verify repair" smoke_verify "$partial_project"
 
   no_gitignore_project="$(mktemp -d "${smoke_root}/project.XXXXXX")"
   smoke_step "install without target gitignore" bash "$0" \
     --target "$no_gitignore_project" --pancreator-root "$PANCREATOR_ROOT" \
-    --skip-dependencies
+    --skip-dependencies --skip-shell-alias
   smoke_step "do not create target gitignore" test ! -e \
     "$no_gitignore_project/.gitignore"
 
@@ -477,6 +484,24 @@ ensure_target_gitignore() {
 
   printf '.pancreator/\n' >>"$gitignore"
   echo "Added .pancreator/ to $gitignore"
+}
+
+configure_shell_alias() {
+  if [[ "$SKIP_SHELL_ALIAS" -eq 1 ]]; then
+    return 0
+  fi
+
+  if [[ ! -f "$PANCREATOR_ROOT/dist/src/lib/shell-alias.js" ]]; then
+    echo "Skipping pan shell function; dist build is required before install can configure it."
+    return 0
+  fi
+
+  node "$PANCREATOR_ROOT/bin/install-support" configure-shell-alias \
+    --dist-root "$PANCREATOR_ROOT/dist" || true
+}
+
+configure_install_shell_aliases() {
+  configure_shell_alias
 }
 
 prepare_persistent_layout() {
@@ -741,6 +766,8 @@ install_payload() {
   echo "Run from the target repository:"
   echo "  ./.pancreator/bin/pan doctor"
   echo "  ./.pancreator/bin/pan init --workflow dev --request runtime/inbox/request.md"
+
+  configure_install_shell_aliases
 }
 
 CURSOR_PREEXISTING=false
