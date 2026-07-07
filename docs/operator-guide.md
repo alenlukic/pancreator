@@ -11,6 +11,16 @@ Use `/pan-start` for a new request and `/pan-resume <run-id>` thereafter. The su
 
 Raw JSONL and shell output are diagnostic surfaces, not the default conversation.
 
+Use `/pan-summarize-context` before moving work into a fresh Cursor conversation.
+It emits one copyable Markdown block containing the current goal, material
+conversation history, decisions, completed work, validation, open issues, and
+next actions without modifying repository state.
+
+Run `./bin/pan archive` to migrate recognized legacy workflow names and move
+workflow directories older than seven days into `archive/` under both runtime
+workflow roots. The command updates persisted path references and is idempotent;
+it never overwrites an existing archive target.
+
 ### Supervisor continuation
 
 `ORCH-001` is the normative continuation policy. In practice, keep advancing

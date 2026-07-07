@@ -956,7 +956,28 @@ export function finalizeWorkflowArtifacts(
 
 const LEGACY_RUN_ID_PATTERN =
   /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(\d{3})Z-([0-9a-f]{8})$/u
-const CURRENT_RUN_ID_PATTERN = /^\d+_[A-Z][a-z]{2}-\d{2}_[0-9a-f]{8}$/u
+const DAY_ONLY_RUN_ID_PATTERN = /^(\d+)_([A-Z][a-z]{2})-(\d{2})_([0-9a-f]{8})$/u
+const CURRENT_RUN_ID_PATTERN =
+  /^(\d+)_([A-Z][a-z]{2})-(\d{2})-(\d{4})_([0-9a-f]{8})$/u
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000
+const MILLISECONDS_PER_MINUTE = 60 * 1000
+const DATETIME_ANCHOR_MS = Date.parse('2200-01-01T00:00:00.000Z')
+const MONTH_INDEX = new Map(
+  [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ].map((month, index) => [month, index]),
+)
 
 export interface WorkflowNameMigrationSummary {
   run_directories: number
@@ -965,6 +986,20 @@ export interface WorkflowNameMigrationSummary {
   artifact_layout_files: number
   updated_files: number
   removed_invalid_directories: number
+}
+
+export interface WorkflowArchiveSummary {
+  retention_days: number
+  cutoff: string
+  run_directories: number
+  state_directories: number
+  updated_files: number
+  run_ids: string[]
+}
+
+export interface WorkflowRuntimeMaintenanceSummary {
+  migration: WorkflowNameMigrationSummary
+  archive: WorkflowArchiveSummary
 }
 
 interface RunMigration {
@@ -996,20 +1031,174 @@ function legacyRunDate(
   return { date, uuidSuffix: match[8] }
 }
 
-export function migratedRunId(runId: string): string | null {
-  const legacy = legacyRunDate(runId)
+function dayOnlyRunDate(runId: string): Date | null {
+  const match = DAY_ONLY_RUN_ID_PATTERN.exec(runId)
 
-  return legacy ? makeWorkflowRunId(legacy.date, legacy.uuidSuffix) : null
+  if (!match) {
+    return null
+  }
+
+  const monthIndex = MONTH_INDEX.get(match[2])
+
+  if (monthIndex === undefined) {
+    return null
+  }
+
+  const day = Number(match[3])
+  const boundary = new Date(
+    DATETIME_ANCHOR_MS - Number(match[1]) * MILLISECONDS_PER_DAY,
+  )
+  const candidates = [
+    boundary,
+    new Date(boundary.getTime() - MILLISECONDS_PER_DAY),
+  ]
+  const matchingDate = candidates.find(
+    (candidate) =>
+      candidate.getUTCMonth() === monthIndex && candidate.getUTCDate() === day,
+  )
+
+  if (!matchingDate) {
+    return null
+  }
+
+  return new Date(
+    Date.UTC(
+      matchingDate.getUTCFullYear(),
+      matchingDate.getUTCMonth(),
+      matchingDate.getUTCDate(),
+      12,
+    ),
+  )
 }
 
-function migrationTargetRunId(runId: string): string | null {
-  const migrated = migratedRunId(runId)
+function currentRunDate(runId: string): Date | null {
+  const match = CURRENT_RUN_ID_PATTERN.exec(runId)
+
+  if (!match) {
+    return null
+  }
+
+  const monthIndex = MONTH_INDEX.get(match[2])
+
+  if (monthIndex === undefined) {
+    return null
+  }
+
+  const day = Number(match[3])
+  const minutesToEnd = Number(match[4])
+
+  if (minutesToEnd < 1 || minutesToEnd > 1440) {
+    return null
+  }
+
+  const boundary = new Date(
+    DATETIME_ANCHOR_MS - Number(match[1]) * MILLISECONDS_PER_DAY,
+  )
+  const candidates = [
+    boundary,
+    new Date(boundary.getTime() - MILLISECONDS_PER_DAY),
+  ]
+  const matchingDate = candidates.find(
+    (candidate) =>
+      candidate.getUTCMonth() === monthIndex && candidate.getUTCDate() === day,
+  )
+
+  if (!matchingDate) {
+    return null
+  }
+
+  const startOfDay = Date.UTC(
+    matchingDate.getUTCFullYear(),
+    matchingDate.getUTCMonth(),
+    matchingDate.getUTCDate(),
+  )
+
+  return new Date(startOfDay + (1440 - minutesToEnd) * MILLISECONDS_PER_MINUTE)
+}
+
+function validDate(value: unknown): Date | null {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const date = new Date(value)
+
+  return Number.isFinite(date.getTime()) ? date : null
+}
+
+function runCreatedAt(root: string, runId: string): Date | null {
+  const statePath = path.join(
+    root,
+    'runtime',
+    'logs',
+    'workflows',
+    runId,
+    'state.json',
+  )
+
+  if (existsSync(statePath)) {
+    const state = parseJsonFile(statePath)
+
+    if (isRecord(state)) {
+      const createdAt = validDate(state.created_at)
+
+      if (createdAt) {
+        return createdAt
+      }
+    }
+  }
+
+  const eventsPath = path.join(
+    root,
+    'runtime',
+    'logs',
+    'workflows',
+    runId,
+    'events.jsonl',
+  )
+
+  for (const event of parseJsonLines(eventsPath)) {
+    if (isRecord(event)) {
+      const timestamp = validDate(event.timestamp)
+
+      if (timestamp) {
+        return timestamp
+      }
+    }
+  }
+
+  return (
+    legacyRunDate(runId)?.date ?? currentRunDate(runId) ?? dayOnlyRunDate(runId)
+  )
+}
+
+export function migratedRunId(runId: string, createdAt?: Date): string | null {
+  const legacy = legacyRunDate(runId)
+
+  if (legacy) {
+    return makeWorkflowRunId(legacy.date, legacy.uuidSuffix)
+  }
+
+  const dayOnly = DAY_ONLY_RUN_ID_PATTERN.exec(runId)
+
+  if (!dayOnly) {
+    return null
+  }
+
+  return makeWorkflowRunId(
+    createdAt ?? dayOnlyRunDate(runId) ?? new Date(),
+    dayOnly[4],
+  )
+}
+
+function migrationTargetRunId(root: string, runId: string): string | null {
+  const migrated = migratedRunId(runId, runCreatedAt(root, runId) ?? undefined)
 
   if (migrated) {
     return migrated
   }
 
-  return CURRENT_RUN_ID_PATTERN.test(runId) ? runId : null
+  return currentRunDate(runId) ? runId : null
 }
 
 function updateFileCount(
@@ -1023,7 +1212,7 @@ function updateFileCount(
   return updated.size
 }
 
-function migratableDirectoryNames(directory: string): string[] {
+function migratableDirectoryNames(root: string, directory: string): string[] {
   if (!existsSync(directory)) {
     return []
   }
@@ -1033,7 +1222,8 @@ function migratableDirectoryNames(directory: string): string[] {
       const absolute = path.join(directory, name)
 
       return (
-        statSync(absolute).isDirectory() && migrationTargetRunId(name) !== null
+        statSync(absolute).isDirectory() &&
+        migrationTargetRunId(root, name) !== null
       )
     })
     .sort()
@@ -1094,10 +1284,10 @@ export function migrateWorkflowNames(
   const migrations = new Map<string, RunMigration>()
 
   for (const sourceRunId of new Set([
-    ...migratableDirectoryNames(logRoot),
-    ...migratableDirectoryNames(stateRoot),
+    ...migratableDirectoryNames(root, logRoot),
+    ...migratableDirectoryNames(root, stateRoot),
   ])) {
-    const targetRunId = migrationTargetRunId(sourceRunId)
+    const targetRunId = migrationTargetRunId(root, sourceRunId)
 
     invariant(targetRunId, `Invalid workflow directory: ${sourceRunId}`, {
       code: 'INVALID_WORKFLOW_MIGRATION',
@@ -1166,5 +1356,127 @@ export function migrateWorkflowNames(
     artifact_layout_files: artifactLayoutFiles,
     updated_files: updatedFiles,
     removed_invalid_directories: removeEmptyHelpDirectory(logRoot),
+  }
+}
+
+function activeWorkflowDirectoryNames(directory: string): string[] {
+  if (!existsSync(directory)) {
+    return []
+  }
+
+  return readdirSync(directory, { withFileTypes: true })
+    .filter(
+      (entry) =>
+        entry.isDirectory() &&
+        entry.name !== 'archive' &&
+        currentRunDate(entry.name) !== null,
+    )
+    .map((entry) => entry.name)
+    .sort()
+}
+
+function archiveDirectory(parent: string, runId: string): void {
+  const source = path.join(parent, runId)
+
+  if (!existsSync(source)) {
+    return
+  }
+
+  const archiveRoot = path.join(parent, 'archive')
+  const target = path.join(archiveRoot, runId)
+
+  invariant(!existsSync(target), `Archive target already exists: ${target}`, {
+    code: 'ARCHIVE_COLLISION',
+  })
+  mkdirSync(archiveRoot, { recursive: true })
+  renameSync(source, target)
+}
+
+export function archiveWorkflowDirectories(
+  root = findProjectRoot(),
+  options: { retentionDays?: number; now?: Date } = {},
+): WorkflowArchiveSummary {
+  const retentionDays = options.retentionDays ?? 7
+  const now = options.now ?? new Date()
+
+  invariant(
+    Number.isInteger(retentionDays) && retentionDays >= 1,
+    'Workflow retention days MUST be a positive integer.',
+    { code: 'INVALID_RETENTION_DAYS' },
+  )
+  invariant(Number.isFinite(now.getTime()), 'Archive time MUST be valid.', {
+    code: 'INVALID_ARCHIVE_TIME',
+  })
+
+  const cutoff = new Date(now.getTime() - retentionDays * MILLISECONDS_PER_DAY)
+  const logRoot = path.join(root, 'runtime', 'logs', 'workflows')
+  const stateRoot = path.join(root, 'runtime', 'workflows')
+  const runIds = [
+    ...new Set([
+      ...activeWorkflowDirectoryNames(logRoot),
+      ...activeWorkflowDirectoryNames(stateRoot),
+    ]),
+  ].filter((runId) => {
+    const createdAt = runCreatedAt(root, runId) ?? currentRunDate(runId)
+
+    invariant(
+      createdAt,
+      `Could not determine workflow creation time: ${runId}`,
+      {
+        code: 'INVALID_WORKFLOW_ARCHIVE',
+      },
+    )
+
+    return createdAt.getTime() < cutoff.getTime()
+  })
+
+  let updatedFiles = 0
+  let runDirectories = 0
+  let stateDirectories = 0
+
+  for (const runId of runIds) {
+    const logDirectory = path.join(logRoot, runId)
+    const stateDirectory = path.join(stateRoot, runId)
+    const mappings = new Map<string, string>([
+      [
+        `runtime/logs/workflows/${runId}`,
+        `runtime/logs/workflows/archive/${runId}`,
+      ],
+      [`runtime/workflows/${runId}`, `runtime/workflows/archive/${runId}`],
+    ])
+
+    updatedFiles += updateFileCount(
+      [...listFiles(logDirectory), ...listFiles(stateDirectory)],
+      mappings,
+    )
+
+    if (existsSync(logDirectory)) {
+      archiveDirectory(logRoot, runId)
+      runDirectories += 1
+    }
+
+    if (existsSync(stateDirectory)) {
+      archiveDirectory(stateRoot, runId)
+      stateDirectories += 1
+    }
+  }
+
+  return {
+    retention_days: retentionDays,
+    cutoff: cutoff.toISOString(),
+    run_directories: runDirectories,
+    state_directories: stateDirectories,
+    updated_files: updatedFiles,
+    run_ids: runIds,
+  }
+}
+
+export function maintainWorkflowRuntime(
+  root = findProjectRoot(),
+  options: { retentionDays?: number; now?: Date } = {},
+): WorkflowRuntimeMaintenanceSummary {
+  return {
+    migration: migrateWorkflowNames(root),
+    archive: archiveWorkflowDirectories(root, options),
   }
 }

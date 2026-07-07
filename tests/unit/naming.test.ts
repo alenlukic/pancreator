@@ -7,6 +7,7 @@ import {
   makeCompletedStageArtifactId,
   makeStageArtifactId,
   makeWorkflowRunId,
+  minutesToEndOfUtcDay,
   pipelineStepPrefix,
 } from '../../src/lib/naming.js'
 
@@ -14,7 +15,15 @@ test('workflow run IDs use UTC days to the 2200 anchor', () => {
   const date = new Date('2026-06-22T21:22:54.051Z')
 
   assert.equal(daysToAnchor(date), 63379)
-  assert.equal(makeWorkflowRunId(date, '5f354f23'), '63379_Jun-22_5f354f23')
+  assert.equal(minutesToEndOfUtcDay(date), 158)
+  assert.equal(
+    makeWorkflowRunId(date, '5f354f23'),
+    '63379_Jun-22-0158_5f354f23',
+  )
+  assert.equal(
+    makeWorkflowRunId(new Date('2026-07-03T23:00:00.000Z'), '3974ddd5'),
+    '63368_Jul-03-0060_3974ddd5',
+  )
 })
 
 test('in-flight pipeline prefixes count down from 99', () => {

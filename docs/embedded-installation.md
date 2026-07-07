@@ -180,7 +180,7 @@ A complete installation can be refreshed idempotently:
 ./bin/install --target /path/to/target-repository --yes
 ```
 
-Refresh replaces owned harness payload and reprojects Cursor files while preserving `.pancreator/docs/target-repo-primer.md`, `.pancreator/docs/operator-briefs/` when generated, `.pancreator/runtime/repository-checks.json`, workflow state, Cursor backups, and unrelated target files. The refreshed payload includes current workflow stages, personas, policies, handbooks, validators, and runtime enforcement, so operator-supremacy semantics, flexible waiver directives, internal-change attribution, implementation baselines, same-reason pauses, retry remediation, reviewer remediation, and technology-scoped Python guidance apply to both new and updated installations. Upgrading an older installation migrates `.pancreator/runtime/target-repo-primer.md` into the durable docs location and removes the legacy path; a conflicting legacy copy is backed up under `.pancreator/backups/target-repo-primer/`. Refresh also removes the obsolete `.pancreator/runtime/locks/` directory from pre-removal installations so stale cooperative locks cannot block upgraded runs.
+Refresh replaces owned harness payload and reprojects Cursor files while preserving `.pancreator/docs/target-repo-primer.md`, `.pancreator/docs/operator-briefs/` when generated, `.pancreator/runtime/repository-checks.json`, workflow state, Cursor backups, and unrelated target files. The refreshed payload includes current workflow stages, personas, policies, handbooks, validators, and runtime enforcement, so operator-supremacy semantics, flexible waiver directives, internal-change attribution, implementation baselines, same-reason pauses, retry remediation, reviewer remediation, and technology-scoped Python guidance apply to both new and updated installations. Before replacing the payload, `--yes` refresh runs the same runtime maintenance as `pan archive`: recognized workflow names are migrated to the UTC minute-bearing convention, persisted references are updated, and directories older than seven days are moved into the corresponding `archive/` child. Upgrading an older installation also migrates `.pancreator/runtime/target-repo-primer.md` into the durable docs location and removes the legacy path; a conflicting legacy copy is backed up under `.pancreator/backups/target-repo-primer/`. Refresh removes the obsolete `.pancreator/runtime/locks/` directory from pre-removal installations so stale cooperative locks cannot block upgraded runs.
 
 If `.pancreator/` exists but is incomplete, an interactive install offers:
 
@@ -201,7 +201,7 @@ blanket-deleted.
 
 ## Harness versioning
 
-`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `2.12.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
+`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `2.13.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
 
 `release/index.json` is the internal mapping from harness version to immutable
 Git commit. Because a commit cannot contain its own hash, release publication is
