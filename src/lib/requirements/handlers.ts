@@ -11,6 +11,7 @@ import { validateProjectionDrift } from '../projection.js'
 import type { HandlerInput, HandlerResult, ValidatorHandler } from './types.js'
 import { validateAssessment } from '../validators/assessment.js'
 import { validateTargetRepoPrimer } from '../validators/target-repo-primer.js'
+import { validateTargetLanguageHandbooks } from '../validators/target-language-handbooks.js'
 import {
   operatorArtifactProfileForStage,
   type OperatorArtifactProfile,
@@ -135,6 +136,7 @@ export const HANDLERS: Record<string, ValidatorHandler> = {
   'release-validate': validateReleaseOutput,
   'decomposition-validate': validateDecompositionArtifact,
   'target-repo-primer-validate': validateTargetRepoPrimer,
+  'target-language-handbook-validate': validateTargetLanguageHandbooks,
   'harness-repair-validate': validateHarnessRepairIntake,
   'investigation-validate': validateInvestigationArtifact,
   'spotfix-validate': validateSpotfixOutcome,

@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.14.0] - 2026-07-09
+
+### Changed
+
+- Document ad-hoc Subagent model inheritance so unnamed invocations omit `model` and inherit the parent unless the operator explicitly selects one; named persona routing continues through projected frontmatter and `project.json` ([operating card](AGENTS.md), [embedded rules](library/cursor/rules/pancreator-embedded.mdc)).
+- Extend Git path utilities to prefer tracked source evidence for deterministic language detection in version-controlled workspaces ([git](src/lib/git.ts), [technologies](src/lib/technologies.ts)).
+- Wire embedded `/pan-build-docs` to generate one target-derived handbook per detected language, maintain LANG-001 guidance sources and lookup rows, and preserve the marked bundle across install refreshes ([build-docs command](library/cursor/commands/pan-build-docs.md), [installer](bin/install)).
+
+### Added
+
+- Add `pan technologies detect --json` for sorted language detection with explicit unsupported evidence reporting ([CLI](src/cli.ts)).
+- Add `TARGET-LANGUAGE-HANDBOOK-VALIDATE-001` and deterministic validator coverage for handbook paths, policy wiring, and stale-artifact rejection ([handbook validator](src/lib/validators/target-language-handbooks.ts)).
+- Add the repo-technician persona and projected agent for target-repository performance, security, and functionality investigations ([repo-technician persona](library/personas/repo-technician.md)).
+- Add optional shell `pan` alias configuration during install and update with walk-up resolution for embedded and self-development roots ([shell alias](src/lib/shell-alias.ts), [install-support](bin/install-support)).
+
 ## [2.13.0] - 2026-07-07
 
 ### Changed
@@ -338,7 +353,8 @@ _First functional release._
 
 - Add the original self-building workflow harness, governed personas, compliance hooks, durable memory, and bootstrap documentation ([c9c5def](https://github.com/alenlukic/pancreator/commit/c9c5def2ccd2a0a9c27d5c6707c963cb2621518a))
 
-[2.13.0]: https://github.com/alenlukic/pancreator/compare/6fd00e4e9493f8ac898b757842ce28db82cbc07d...HEAD
+[2.14.0]: https://github.com/alenlukic/pancreator/compare/7c942cd52889e86e2654dbde8b26b825b3b9f0d4...HEAD
+[2.13.0]: https://github.com/alenlukic/pancreator/compare/6fd00e4e9493f8ac898b757842ce28db82cbc07d...7c942cd52889e86e2654dbde8b26b825b3b9f0d4
 [2.12.0]: https://github.com/alenlukic/pancreator/compare/7d86b1257b839217317f568d802fe5e836b8bebf...6fd00e4e9493f8ac898b757842ce28db82cbc07d
 [2.11.1]: https://github.com/alenlukic/pancreator/compare/7d86b1257b839217317f568d802fe5e836b8bebf...HEAD
 [2.11.0]: https://github.com/alenlukic/pancreator/compare/c0a1a4cc6964261a970038578b41de71c5de1204...7d86b1257b839217317f568d802fe5e836b8bebf

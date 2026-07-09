@@ -690,6 +690,13 @@ install_payload() {
     cp -Rp "$BRIEF_SYSTEM_DIR" "$staging/docs/operator-briefs"
   fi
 
+  # Generated target language guidance is durable target state. Preserve only a
+  # complete marked bundle; malformed bundles are removed and must be rebuilt
+  # by /pan-build-docs, where the registered validator explains the defect.
+  node "$PANCREATOR_ROOT/bin/install-support" preserve-language-governance \
+    --existing-root "$PANCREATOR_DIR" \
+    --staging-root "$staging"
+
   if [[ "$cursor_preexisting" == "true" ]]; then
     cursor_warning
   fi

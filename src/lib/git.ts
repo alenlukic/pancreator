@@ -49,6 +49,54 @@ export function gitHead(root: string): string | null {
   return result.status === 0 ? result.stdout.trim() : null
 }
 
+function trackedWorkspacePath(
+  entry: string,
+  workspacePrefix: string,
+): string | null {
+  const normalizedEntry = entry.replaceAll('\\', '/')
+  const normalizedPrefix = workspacePrefix.replaceAll('\\', '/')
+
+  if (normalizedPrefix.length === 0) {
+    return normalizedEntry
+  }
+
+  return normalizedEntry.startsWith(normalizedPrefix)
+    ? normalizedEntry.slice(normalizedPrefix.length)
+    : normalizedEntry
+}
+
+export function gitTrackedWorkspacePaths(workspaceDir: string): string[] {
+  if (!isGitRepository(workspaceDir)) {
+    return []
+  }
+
+  const prefixResult = runGit(workspaceDir, ['rev-parse', '--show-prefix'], {
+    allowFailure: true,
+  })
+  const workspacePrefix =
+    prefixResult.status === 0 ? prefixResult.stdout.trim() : ''
+  const tracked = runGit(workspaceDir, [
+    'ls-files',
+    '-z',
+    '--',
+    '.',
+    ...protectedGitPathspecs(),
+  ])
+
+  return tracked.stdout
+    .split('\0')
+    .filter(Boolean)
+    .map((entry) => trackedWorkspacePath(entry, workspacePrefix))
+    .filter(
+      (relative): relative is string =>
+        typeof relative === 'string' &&
+        relative.length > 0 &&
+        !relative.startsWith('runtime/') &&
+        !isProtectedWorkspacePath(relative),
+    )
+    .sort()
+}
+
 function contentFingerprint(
   root: string,
   entries: string[],
