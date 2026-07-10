@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto'
 import {
+  cpSync,
   copyFileSync,
   existsSync,
   mkdirSync,
@@ -269,6 +270,164 @@ function mergeEmbeddedProjectConfig(source, existing) {
   }
 
   return merged
+}
+
+const LANGUAGE_BUNDLE_MARKER = 'pancreator-target-language-handbooks'
+const LANGUAGE_CODE_PERSONAS = new Set([
+  'coder',
+  'qa-tester',
+  'reviewer',
+  'spotfixer',
+])
+
+function isGeneratedLanguageRow(row) {
+  return (
+    row &&
+    typeof row === 'object' &&
+    row.generated_by === LANGUAGE_BUNDLE_MARKER
+  )
+}
+
+function validLanguageBundle(existingRoot) {
+  const policyPath = path.join(
+    existingRoot,
+    'governance',
+    'policies',
+    'LANG-001.json',
+  )
+  const handbookRoot = path.join(
+    existingRoot,
+    'governance',
+    'handbooks',
+    'target',
+  )
+  const lookupPath = path.join(
+    existingRoot,
+    'governance',
+    'registries',
+    'policy_lookup_table.json',
+  )
+
+  if (
+    !existsSync(policyPath) ||
+    !existsSync(handbookRoot) ||
+    !existsSync(lookupPath)
+  ) {
+    return false
+  }
+
+  let policy
+  let lookup
+
+  try {
+    policy = readJson(policyPath)
+    lookup = readJson(lookupPath)
+  } catch {
+    return false
+  }
+
+  if (
+    policy?.id !== 'LANG-001' ||
+    policy?.generated_by !== LANGUAGE_BUNDLE_MARKER ||
+    !Array.isArray(policy.guidance_sources) ||
+    !Array.isArray(lookup?.rows)
+  ) {
+    return false
+  }
+
+  const sources = policy.guidance_sources
+    .map((source) => (typeof source?.path === 'string' ? source.path : null))
+    .filter(Boolean)
+    .sort()
+  const handbooks = readdirSync(handbookRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => {
+      const relative = `governance/handbooks/target/${entry.name}/style-guide.md`
+      const absolute = path.join(existingRoot, relative)
+
+      return existsSync(absolute) &&
+        readFileSync(absolute, 'utf8').includes(
+          `<!-- pancreator-target-language-handbook: ${entry.name} -->`,
+        )
+        ? relative
+        : null
+    })
+    .filter(Boolean)
+    .sort()
+
+  if (
+    sources.length === 0 ||
+    sources.length !== handbooks.length ||
+    sources.some((source, index) => source !== handbooks[index])
+  ) {
+    return false
+  }
+
+  const rows = lookup.rows.filter(isGeneratedLanguageRow)
+  const personas = rows
+    .filter(
+      (row) =>
+        Array.isArray(row.policies) &&
+        row.policies.length === 1 &&
+        row.policies[0] === 'LANG-001' &&
+        typeof row.persona === 'string',
+    )
+    .map((row) => row.persona)
+
+  return (
+    rows.length === LANGUAGE_CODE_PERSONAS.size &&
+    personas.length === LANGUAGE_CODE_PERSONAS.size &&
+    personas.every((persona) => LANGUAGE_CODE_PERSONAS.has(persona)) &&
+    new Set(personas).size === LANGUAGE_CODE_PERSONAS.size
+  )
+}
+
+function preserveLanguageGovernance() {
+  const existingRoot = path.resolve(requiredOption('--existing-root'))
+  const stagingRoot = path.resolve(requiredOption('--staging-root'))
+
+  if (!validLanguageBundle(existingRoot)) {
+    return
+  }
+
+  const existingHandbooks = path.join(
+    existingRoot,
+    'governance',
+    'handbooks',
+    'target',
+  )
+  const stagedHandbooks = path.join(
+    stagingRoot,
+    'governance',
+    'handbooks',
+    'target',
+  )
+  cpSync(existingHandbooks, stagedHandbooks, { recursive: true, force: true })
+  copyFileSync(
+    path.join(existingRoot, 'governance', 'policies', 'LANG-001.json'),
+    path.join(stagingRoot, 'governance', 'policies', 'LANG-001.json'),
+  )
+
+  const existingLookup = readJson(
+    path.join(
+      existingRoot,
+      'governance',
+      'registries',
+      'policy_lookup_table.json',
+    ),
+  )
+  const stagedLookupPath = path.join(
+    stagingRoot,
+    'governance',
+    'registries',
+    'policy_lookup_table.json',
+  )
+  const stagedLookup = readJson(stagedLookupPath)
+  stagedLookup.rows = [
+    ...stagedLookup.rows.filter((row) => !isGeneratedLanguageRow(row)),
+    ...existingLookup.rows.filter(isGeneratedLanguageRow),
+  ]
+  writeJson(stagedLookupPath, stagedLookup)
 }
 
 function previousCursorFiles(markerPath) {
@@ -554,6 +713,8 @@ if (command === 'project-cursor') {
   writeMarker()
 } else if (command === 'migrate-repository-checks') {
   migrateRepositoryChecks()
+} else if (command === 'preserve-language-governance') {
+  preserveLanguageGovernance()
 } else if (command === 'configure-shell-alias') {
   await configureShellAlias()
 } else {

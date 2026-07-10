@@ -32,6 +32,8 @@ This directory contains the Pancreator harness installed for the parent reposito
 - Runs MUST be managed through `./.pancreator/bin/pan`.
 - Agents MUST read the active invocation card before expanding repository context.
 - Named worker stages MUST be delegated to the matching Cursor subagent.
+- Ad-hoc Subagent calls MUST omit `model` to inherit the parent model unless the
+  operator explicitly selects one; named personas retain their projected model.
 - `/pan-repair` MUST delegate to the non-mutating harness technician, include relevant agent transcripts when investigating a workflow run, and write a validated intake under `.pancreator/runtime/inbox/` for Pancreator self-development follow-up.
 - Agents MUST write only declared outputs and permitted evidence.
 - Deterministic transitions and gates belong to the harness.

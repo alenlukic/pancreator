@@ -193,6 +193,12 @@
       "policies": ["REPAIR-001"]
     },
     {
+      "persona": "repo-technician",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["DIAG-001", "WORK-001"]
+    },
+    {
       "persona": "spotfixer",
       "workflow": "*",
       "stage": "*",
