@@ -1447,11 +1447,13 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'library/cursor/agents/librarian.md',
     'library/cursor/agents/investigator.md',
     'library/cursor/agents/harness-technician.md',
+    'library/cursor/agents/repo-technician.md',
     'library/cursor/agents/spotfixer.md',
     'library/personas/decomposer.md',
     'library/personas/librarian.md',
     'library/personas/investigator.md',
     'library/personas/harness-technician.md',
+    'library/personas/repo-technician.md',
     'library/personas/spotfixer.md',
     'library/skills/spotfix.md',
     'library/skills/write-pr-description.md',
@@ -1726,10 +1728,68 @@ export function validateRepository(root: string): RepositoryValidationResult {
     errors.push('src/ and tests/ MUST NOT contain legacy .mjs modules')
   }
 
+  validateAdHocModelInheritanceGuidance(root, errors)
+
+  if (
+    fileExists(path.join(root, 'library', 'cursor', 'commands', 'pan-repo.md'))
+  ) {
+    errors.push(
+      'repo-technician MUST remain directly invocable without a dedicated pan-repo command',
+    )
+  }
+
   return {
     ok: errors.length === 0,
     errors,
     warnings,
     report_hash: sha256({ errors, warnings }),
+  }
+}
+
+function validateAdHocModelInheritanceGuidance(
+  root: string,
+  errors: string[],
+): void {
+  const sources = [
+    'AGENTS.md',
+    'library/templates/embedded-AGENTS.md',
+    'library/cursor/rules/pancreator-self-development.mdc',
+    'library/cursor/rules/pancreator-embedded.mdc',
+  ]
+
+  for (const relative of sources) {
+    const absolute = path.join(root, relative)
+
+    if (!fileExists(absolute)) {
+      continue
+    }
+
+    const content = readText(absolute)
+    const hasDefaultInheritance =
+      /Ad-hoc Subagent calls MUST omit `model`/u.test(content) &&
+      /inherit the parent model/u.test(content)
+    const hasExplicitOverride =
+      /operator explicitly selects(?: a model| one| model)?/u.test(content)
+    const hasNamedRouting =
+      /named[- ]personas?/iu.test(content) &&
+      (/projected/u.test(content) || /project\.json/u.test(content))
+
+    if (!hasDefaultInheritance) {
+      errors.push(
+        `${relative} MUST require ad-hoc Subagent calls to omit model and inherit the parent model`,
+      )
+    }
+
+    if (!hasExplicitOverride) {
+      errors.push(
+        `${relative} MUST preserve explicit operator-selected model override for ad-hoc Subagent calls`,
+      )
+    }
+
+    if (!hasNamedRouting) {
+      errors.push(
+        `${relative} MUST preserve named-persona projected model routing`,
+      )
+    }
   }
 }

@@ -8,7 +8,6 @@ import {
   assessStage,
   createRun,
   decideRun,
-  getRunState,
   prepareInvocation,
   submitOutput,
 } from '../../src/lib/engine.js'
@@ -20,7 +19,7 @@ import {
   writeJson,
 } from '../helpers.js'
 
-test('submit rejects missing delegation artifact and keeps the active invocation', () => {
+test('submit records missing delegation as an advisory governance warning', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'dev')
   const state = createRun(root, {
@@ -45,18 +44,18 @@ test('submit rejects missing delegation artifact and keeps the active invocation
     makeOutput(root, planInvocation, stageBySlug(workflow, 'plan')),
   )
 
-  assert.throws(
-    () => submitOutput(root, runId, planInvocation.output.path),
+  const submitted = submitOutput(root, runId, planInvocation.output.path)
+
+  assert.equal(submitted.record.outcome, 'success')
+  assert.equal(submitted.state.status, 'awaiting_supervisor')
+  assert.match(
+    (submitted.record.evaluation.governance_artifact_warnings ?? []).join('\n'),
     /Delegation artifact is missing/u,
   )
-
-  const current = getRunState(root, runId)
-  assert.equal(current.pending_action.type, 'invoke_agent')
-  assert.equal(current.current_invocation?.id, planInvocation.invocation_id)
-  assert.equal(current.stage_history.length, 1)
+  assert.equal(submitted.state.stage_history.length, 2)
 })
 
-test('submit rejects mismatched delegation artifact and writes validation evidence', () => {
+test('submit records mismatched delegation as advisory evidence before ship', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'dev')
   const state = createRun(root, {
@@ -87,9 +86,13 @@ test('submit rejects mismatched delegation artifact and writes validation eviden
   )
   writeFileSync(delegationPath, '# rewritten delegation prompt\n')
 
-  assert.throws(
-    () => submitOutput(root, runId, planInvocation.output.path),
-    /Delegation artifact failed canonical invocation validation/u,
+  const submitted = submitOutput(root, runId, planInvocation.output.path)
+
+  assert.equal(submitted.record.outcome, 'success')
+  assert.equal(submitted.state.status, 'awaiting_supervisor')
+  assert.match(
+    (submitted.record.evaluation.governance_artifact_warnings ?? []).join('\n'),
+    /Delegation validation failed/u,
   )
 
   const validationPath = path.join(
@@ -97,9 +100,7 @@ test('submit rejects mismatched delegation artifact and writes validation eviden
     `runtime/logs/workflows/${runId}/invocations/${planInvocation.invocation_id}.delegation-validation.json`,
   )
   assert.ok(existsSync(validationPath))
-
-  const current = getRunState(root, runId)
-  assert.equal(current.current_invocation?.id, planInvocation.invocation_id)
+  assert.equal(JSON.parse(readFileSync(validationPath, 'utf8')).status, 'fail')
 })
 
 test('submit succeeds when canonical delegation artifact is present', () => {

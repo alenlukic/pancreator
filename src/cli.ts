@@ -55,6 +55,7 @@ import {
   repositoryChecksSourcePath,
   runRepositoryCheckStreaming,
 } from './lib/repository-checks.js'
+import { detectWorkspaceTechnologies } from './lib/technologies.js'
 import {
   buildBriefSystem,
   renderBrief,
@@ -73,6 +74,7 @@ const HELP_BODY = `Usage:
   pan set-stage <run-id> --stage <stage-slug> --note <reason>
   pan waive-gate <run-id> --note <directive> [--stage <stage-slug>] [--to <stage-slug>] [--criteria <id[,id...]>] [--defer <AC-id[,AC-id...]> --spotfix]
   pan abort <run-id> [--note <text>]
+  pan technologies detect --json
   pan repository-check <profile> [--timeout-ms <milliseconds>] [--json]
   pan repository-check validate [--json]
   pan status <run-id> [--json]
@@ -548,6 +550,18 @@ async function main(): Promise<void> {
       const state = abortRun(root, runId, option(args, '--note', '') ?? '')
 
       print({ status: state.status, run_id: runId })
+      return
+    }
+    case 'technologies': {
+      const subcommand = requiredArgument(args[0], 'technologies subcommand')
+
+      if (subcommand !== 'detect') {
+        throw new PanError(`Unknown technologies subcommand: ${subcommand}`, {
+          code: 'UNKNOWN_COMMAND',
+        })
+      }
+
+      print(detectWorkspaceTechnologies(root), true)
       return
     }
     case 'repository-check': {

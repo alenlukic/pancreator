@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PANCREATOR_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 TARGET_DIR=""
 SKIP_DEPENDENCIES=0
+SKIP_SHELL_ALIAS=0
 
 usage() {
   cat <<'USAGE'
@@ -15,6 +16,7 @@ Usage:
 
 Options:
   --skip-dependencies  Skip npm install/build (test harness only)
+  --skip-shell-alias   Do not append the guarded pan shell function to rc files
 USAGE
 }
 
@@ -32,6 +34,10 @@ while [[ $# -gt 0 ]]; do
       SKIP_DEPENDENCIES=1
       shift
       ;;
+    --skip-shell-alias)
+      SKIP_SHELL_ALIAS=1
+      shift
+      ;;
     -h | --help)
       usage
       exit 0
@@ -43,6 +49,7 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
 
 if [[ -z "$TARGET_DIR" ]]; then
   echo "Error: --target is required." >&2
@@ -167,6 +174,10 @@ INSTALL_ARGS=(
 
 if [[ "$SKIP_DEPENDENCIES" -eq 1 ]]; then
   INSTALL_ARGS+=(--skip-dependencies)
+fi
+
+if [[ "$SKIP_SHELL_ALIAS" -eq 1 ]]; then
+  INSTALL_ARGS+=(--skip-shell-alias)
 fi
 
 bash "$PAYLOAD_ROOT/bin/install" "${INSTALL_ARGS[@]}"

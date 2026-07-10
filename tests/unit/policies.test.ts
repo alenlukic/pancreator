@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { createFixture } from '../helpers.js'
@@ -186,6 +187,10 @@ test('Python policy loads only for detected Python workspaces', () => {
 
   rmSync(path.join(root, 'target', 'pyproject.toml'))
   writeFileSync(path.join(root, 'target', 'main.py'), 'VALUE = 1\n')
+  execFileSync('git', ['add', 'target/main.py'], {
+    cwd: root,
+    encoding: 'utf8',
+  })
 
   const sourceDetectedIds = resolvePolicies(root, {
     persona: 'reviewer',
