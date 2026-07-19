@@ -13,7 +13,7 @@
       "tsconfig.tsbuildinfo"
     ]
   },
-  "active_config": "default",
+  "active_config": "complex",
   "defaults": {
     "orchestrator": "grok-4.5[effort=high,fast=false]",
     "coder": "composer-2.5[fast=false]",
@@ -53,7 +53,6 @@
         "tech-lead": "claude-fable-5[thinking=true,context=300k,effort=high]",
         "decomposer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
         "librarian": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
-        "coder": "gpt-5.6-terra[context=272k,reasoning=high,fast=false]",
         "reviewer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
         "qa-tester": "grok-4.5[effort=xhigh,fast=false]",
         "spotfixer": "gpt-5.6-sol[context=272k,reasoning=xhigh,fast=false]"
