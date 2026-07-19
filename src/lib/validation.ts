@@ -13,7 +13,7 @@ import {
   sha256,
   writeTextAtomic,
 } from './io.js'
-import { loadPipelineConfig } from './pipeline-config.js'
+import { loadPipelineConfig, resolveConfigPersonas } from './pipeline-config.js'
 import {
   assertRepositoryChecksValid,
   compareRepositoryCheckToBaseline,
@@ -1694,11 +1694,11 @@ export function validateRepository(root: string): RepositoryValidationResult {
   ])
 
   if (pipelineConfig) {
-    for (const [configName, config] of Object.entries(
-      pipelineConfig.file.configs,
-    )) {
+    for (const configName of Object.keys(pipelineConfig.file.configs)) {
+      const personas = resolveConfigPersonas(pipelineConfig.file, configName)
+
       for (const persona of configuredPersonas) {
-        if (!config.personas[persona]) {
+        if (!personas[persona]) {
           errors.push(
             `pipeline config '${configName}' does not map persona '${persona}'`,
           )

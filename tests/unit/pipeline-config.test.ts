@@ -7,6 +7,7 @@ import {
   loadPipelineConfig,
   makePipelineConfigSnapshot,
   parsePipelineConfig,
+  resolveConfigPersonas,
   resolvePersonaModel,
 } from '../../src/lib/pipeline-config.js'
 import { createFixture } from '../helpers.js'
@@ -41,5 +42,48 @@ test('pipeline config rejects an undefined active config', () => {
         },
       }),
     /active_config 'missing' is not defined/u,
+  )
+})
+
+test('pipeline config merges defaults with config-specific persona overrides', () => {
+  const file = parsePipelineConfig({
+    schema_version: 1,
+    active_config: 'default',
+    defaults: {
+      orchestrator: 'default-orchestrator',
+      coder: 'default-coder',
+    },
+    configs: {
+      default: {
+        personas: {
+          coder: 'override-coder',
+        },
+      },
+    },
+  })
+
+  assert.deepEqual(resolveConfigPersonas(file, 'default'), {
+    orchestrator: 'default-orchestrator',
+    coder: 'override-coder',
+  })
+})
+
+test('pipeline config falls back to defaults for omitted config personas', () => {
+  const file = parsePipelineConfig({
+    schema_version: 1,
+    active_config: 'default',
+    defaults: {
+      investigator: 'default-investigator',
+    },
+    configs: {
+      default: {
+        personas: {},
+      },
+    },
+  })
+
+  assert.equal(
+    resolveConfigPersonas(file, 'default').investigator,
+    'default-investigator',
   )
 })

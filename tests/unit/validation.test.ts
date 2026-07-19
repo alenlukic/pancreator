@@ -301,7 +301,7 @@ test('repository validation requires standalone Cursor agents in every pipeline 
     configs: Record<string, { personas: Record<string, string> }>
   }
 
-  delete config.configs.complex?.personas.investigator
+  delete config.configs.complex?.personas['tech-lead']
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
 
   const result = validateRepository(root)
@@ -309,7 +309,7 @@ test('repository validation requires standalone Cursor agents in every pipeline 
   assert.equal(result.ok, false)
   assert.match(
     result.errors.join('\n'),
-    /pipeline config 'complex' does not map persona 'investigator'/u,
+    /pipeline config 'complex' does not map persona 'tech-lead'/u,
   )
 })
 
