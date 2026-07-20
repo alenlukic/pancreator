@@ -1,0 +1,55 @@
+{
+  "slug": "test",
+  "title": "Design QA",
+  "persona": "design-qa",
+  "prompt_path": "library/workflows/design/prompts/test.md",
+  "workspace_policy": "read_only",
+  "gate": "stage_verdict",
+  "context": {
+    "request": "omit",
+    "required_stage_outputs": [
+      {
+        "stage": "design",
+        "selection": "latest"
+      },
+      {
+        "stage": "review",
+        "selection": "latest_success"
+      }
+    ],
+    "prior_attempts": 1,
+    "operator_feedback": 1
+  },
+  "required_data": {
+    "test": "object",
+    "test.verdict": "string",
+    "test.cases": "array",
+    "test.defects": "array",
+    "test.acceptance_results": "array"
+  },
+  "criteria": [
+    {
+      "id": "test.flows_exercised",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Manual or interactive cases cover primary flows, material states, and keyboard or accessibility passes."
+    },
+    {
+      "id": "test.acceptance_met",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Every acceptance criterion is verified as testable and met, or explicitly unmet with evidence."
+    },
+    {
+      "id": "test.defects_classified",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Defects are classified and evidenced; environment blocks are not converted into product passes."
+    }
+  ],
+  "transitions": {
+    "success": "handoff",
+    "failure": "design",
+    "blocked": "paused"
+  }
+}

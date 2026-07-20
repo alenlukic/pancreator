@@ -13,7 +13,7 @@ import {
   sha256,
   writeTextAtomic,
 } from './io.js'
-import { loadPipelineConfig } from './pipeline-config.js'
+import { loadPipelineConfig, resolveConfigPersonas } from './pipeline-config.js'
 import {
   assertRepositoryChecksValid,
   compareRepositoryCheckToBaseline,
@@ -1210,6 +1210,7 @@ function listMarkdownFiles(directory: string): string[] {
 }
 
 const CODE_REVIEW_PERSONAS = new Set(['coder', 'reviewer', 'qa-tester'])
+const DESIGN_PERSONAS = new Set(['designer', 'design-reviewer', 'design-qa'])
 const PYTHON_GUIDANCE_PERSONAS = new Set([...CODE_REVIEW_PERSONAS, 'spotfixer'])
 const POLICY_REFERENCE_PATTERN = /\b[A-Z][A-Z0-9]*-\d{3}\b/gu
 const STATIC_GUIDANCE_PATH_PATTERN =
@@ -1240,6 +1241,11 @@ const HANDBOOK_POLICY_REQUIREMENTS: HandbookPolicyRequirement[] = [
     label: 'Python handbook',
     personas: PYTHON_GUIDANCE_PERSONAS,
     technology: 'python',
+  },
+  {
+    handbook_path: 'governance/handbooks/design/ux-guide.md',
+    label: 'design handbook',
+    personas: DESIGN_PERSONAS,
   },
 ]
 
@@ -1694,11 +1700,11 @@ export function validateRepository(root: string): RepositoryValidationResult {
   ])
 
   if (pipelineConfig) {
-    for (const [configName, config] of Object.entries(
-      pipelineConfig.file.configs,
-    )) {
+    for (const configName of Object.keys(pipelineConfig.file.configs)) {
+      const personas = resolveConfigPersonas(pipelineConfig.file, configName)
+
       for (const persona of configuredPersonas) {
-        if (!config.personas[persona]) {
+        if (!personas[persona]) {
           errors.push(
             `pipeline config '${configName}' does not map persona '${persona}'`,
           )

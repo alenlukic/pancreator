@@ -18,6 +18,7 @@ export interface NamedPipelineConfig {
 export interface PipelineConfigFile {
   schema_version: 1
   active_config: string
+  defaults: Record<string, string>
   $operator?: {
     summary?: string
     note?: string
@@ -44,20 +45,21 @@ export interface PipelineConfigSnapshot {
 
 const CONFIG_PATH = 'project.json'
 
-function parseNamedConfig(value: unknown, source: string): NamedPipelineConfig {
+function parsePersonaMap(
+  value: unknown,
+  source: string,
+  { allowEmpty = false }: { allowEmpty?: boolean } = {},
+): Record<string, string> {
   invariant(isRecord(value), `${source} MUST be an object.`, {
-    code: 'INVALID_PIPELINE_CONFIG',
-  })
-  invariant(isRecord(value.personas), `${source}.personas MUST be an object.`, {
     code: 'INVALID_PIPELINE_CONFIG',
   })
 
   const personas: Record<string, string> = {}
 
-  for (const [persona, model] of Object.entries(value.personas)) {
+  for (const [persona, model] of Object.entries(value)) {
     invariant(
       persona.length > 0 && typeof model === 'string' && model.length > 0,
-      `${source}.personas.${persona} MUST be a non-empty model string.`,
+      `${source}.${persona} MUST be a non-empty model string.`,
       { code: 'INVALID_PIPELINE_CONFIG' },
     )
 
@@ -65,14 +67,44 @@ function parseNamedConfig(value: unknown, source: string): NamedPipelineConfig {
   }
 
   invariant(
-    Object.keys(personas).length > 0,
-    `${source}.personas MUST NOT be empty.`,
+    allowEmpty || Object.keys(personas).length > 0,
+    `${source} MUST NOT be empty.`,
     { code: 'INVALID_PIPELINE_CONFIG' },
   )
+
+  return personas
+}
+
+function parseNamedConfig(value: unknown, source: string): NamedPipelineConfig {
+  invariant(isRecord(value), `${source} MUST be an object.`, {
+    code: 'INVALID_PIPELINE_CONFIG',
+  })
+
+  const personas = parsePersonaMap(value.personas, `${source}.personas`, {
+    allowEmpty: true,
+  })
 
   return {
     ...(typeof value.summary === 'string' ? { summary: value.summary } : {}),
     personas,
+  }
+}
+
+export function resolveConfigPersonas(
+  file: PipelineConfigFile,
+  configName: string,
+): Record<string, string> {
+  const config = file.configs[configName]
+
+  invariant(
+    config !== undefined,
+    `Pipeline config '${configName}' is not defined.`,
+    { code: 'INVALID_PIPELINE_CONFIG' },
+  )
+
+  return {
+    ...file.defaults,
+    ...config.personas,
   }
 }
 
@@ -94,6 +126,12 @@ export function parsePipelineConfig(
   invariant(isRecord(value.configs), `${source}.configs MUST be an object.`, {
     code: 'INVALID_PIPELINE_CONFIG',
   })
+
+  const defaults = isRecord(value.defaults)
+    ? parsePersonaMap(value.defaults, `${source}.defaults`, {
+        allowEmpty: true,
+      })
+    : {}
 
   const configs: Record<string, NamedPipelineConfig> = {}
 
@@ -126,6 +164,7 @@ export function parsePipelineConfig(
   return {
     schema_version: 1,
     active_config: value.active_config,
+    defaults,
     ...(operator ? { $operator: operator } : {}),
     configs,
   }
@@ -154,7 +193,10 @@ export function loadPipelineConfig(
 
   return {
     name: resolvedName,
-    config,
+    config: {
+      ...config,
+      personas: resolveConfigPersonas(file, resolvedName),
+    },
     file,
     path: CONFIG_PATH,
     sha256: sha256(raw),

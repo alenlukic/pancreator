@@ -23,3 +23,12 @@ recurring job. Read the skill relevant to your current step.
 - [`release-packet.md`](release-packet.md) - release preparation.
 - [`write-pr-description.md`](write-pr-description.md) - draft a merge-ready PR
   body from a workflow run or a standalone base-to-worktree comparison.
+
+## Design
+
+- [`design-spec.md`](design-spec.md) - author a UI/UX design specification.
+- [`html-prototype.md`](html-prototype.md) - build token-first self-contained HTML
+  prototypes.
+- [`design-critique.md`](design-critique.md) - heuristic critique of specs and mocks.
+- [`visual-design-iteration.md`](visual-design-iteration.md) - screenshot-score-fix
+  visual iteration loop.

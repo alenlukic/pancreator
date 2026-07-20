@@ -165,6 +165,7 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
       state_root: string
       installation_mode: string
       active_config: string
+      defaults: Record<string, string>
       configs: Record<string, { personas: Record<string, string> }>
     }>(path.join(project, '.pancreator', 'project.json'))
 
@@ -173,11 +174,21 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
     assert.equal(config.state_root, 'runtime')
     assert.equal(config.installation_mode, 'embedded')
     assert.ok(config.workspace_id.length > 0)
-    assert.equal(
-      typeof config.configs[config.active_config]?.personas[
-        'harness-technician'
-      ],
-      'string',
+
+    for (const namedConfig of Object.values(config.configs)) {
+      for (const [persona, defaultModel] of Object.entries(config.defaults)) {
+        assert.notEqual(namedConfig.personas[persona], defaultModel)
+      }
+    }
+
+    const harnessTechnicianModel = config.defaults['harness-technician']
+
+    assert.equal(typeof harnessTechnicianModel, 'string')
+    assert.ok(
+      readFileSync(
+        path.join(project, '.cursor', 'agents', 'harness-technician.md'),
+        'utf8',
+      ).includes(`model: ${harnessTechnicianModel}`),
     )
 
     assert.equal(
@@ -835,7 +846,7 @@ test('embedded installer refresh preserves target persona model mappings', () =>
   }
 })
 
-test('embedded installer refresh merges new personas without overwriting operator models', () => {
+test('embedded installer refresh compacts defaults and preserves operator models', () => {
   const project = makeSkeletonProject()
 
   try {
@@ -844,11 +855,19 @@ test('embedded installer refresh merges new personas without overwriting operato
     const projectJsonPath = path.join(project, '.pancreator', 'project.json')
     const config = readJson<{
       active_config: string
+      defaults: Record<string, string>
       configs: Record<string, { personas: Record<string, string> }>
     }>(projectJsonPath)
 
     const customReviewerModel = 'operator-custom-reviewer[fast=false]'
+    const inheritedPersona = 'investigator'
+    const inheritedModel = config.defaults[inheritedPersona]
+
+    assert.equal(typeof inheritedModel, 'string')
+
     config.configs[config.active_config].personas.reviewer = customReviewerModel
+    config.configs[config.active_config].personas[inheritedPersona] =
+      inheritedModel
     delete config.configs[config.active_config].personas.spotfixer
     writeFileSync(projectJsonPath, `${JSON.stringify(config, null, 2)}\n`)
 
@@ -863,8 +882,15 @@ test('embedded installer refresh merges new personas without overwriting operato
     const active = refreshed.configs[refreshed.active_config]
 
     assert.equal(active.personas.reviewer, customReviewerModel)
+    assert.equal(active.personas[inheritedPersona], undefined)
     assert.equal(typeof active.personas.spotfixer, 'string')
     assert.notEqual(active.personas.spotfixer, customReviewerModel)
+    assert.ok(
+      readFileSync(
+        path.join(project, '.cursor', 'agents', `${inheritedPersona}.md`),
+        'utf8',
+      ).includes(`model: ${inheritedModel}`),
+    )
   } finally {
     rmSync(project, { recursive: true, force: true })
   }

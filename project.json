@@ -13,95 +13,61 @@
       "tsconfig.tsbuildinfo"
     ]
   },
-  "active_config": "default",
+  "active_config": "complex",
+  "defaults": {
+    "orchestrator": "grok-4.5[effort=high,fast=false]",
+    "coder": "composer-2.5[fast=false]",
+    "librarian": "grok-4.5[effort=high,fast=false]",
+    "release-steward": "auto",
+    "investigator": "grok-4.5[effort=high,fast=false]",
+    "harness-technician": "grok-4.5[effort=high,fast=false]",
+    "repo-technician": "grok-4.5[effort=high,fast=false]",
+    "spotfixer": "grok-4.5[effort=high,fast=false]",
+    "designer": "claude-fable-5[thinking=true,context=300k,effort=high]",
+    "design-reviewer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
+    "design-qa": "grok-4.5[effort=high,fast=false]"
+  },
   "$operator": {
     "summary": "Named model configurations. Each configuration maps every checked-in Cursor persona to the model that should execute it.",
-    "note": "Change active_config, then run ./bin/pan models --sync. New runs snapshot the active mapping so later config edits do not change an in-flight run."
+    "note": "Change active_config, then run ./.pancreator/bin/pan models --sync. New runs snapshot the active mapping so later config edits do not change an in-flight run."
   },
   "configs": {
     "simple": {
       "summary": "Simple and fast configuration for quick tasks.",
       "personas": {
-        "orchestrator": "gpt-5.3-codex[reasoning=high,fast=false]",
-        "tech-lead": "gpt-5.4[context=272k,reasoning=high,fast=false]",
-        "decomposer": "gpt-5.4[context=272k,reasoning=high,fast=false]",
-        "librarian": "gpt-5.4[context=272k,reasoning=high,fast=false]",
-        "coder": "composer-2.5[fast=false]",
-        "reviewer": "gpt-5.3-codex[reasoning=high,fast=false]",
-        "qa-tester": "gpt-5.3-codex[reasoning=high,fast=false]",
-        "release-steward": "gpt-5.3-codex[reasoning=high,fast=false]",
-        "investigator": "gpt-5.3-codex[reasoning=high,fast=false]",
-        "harness-technician": "gpt-5.3-codex[reasoning=high,fast=false]",
-        "repo-technician": "gpt-5.3-codex[reasoning=high,fast=false]",
-        "spotfixer": "gpt-5.3-codex[reasoning=high,fast=false]"
+        "tech-lead": "gpt-5.6-terra[context=272k,reasoning=high,fast=false]",
+        "decomposer": "gpt-5.6-terra[context=272k,reasoning=high,fast=false]",
+        "reviewer": "gpt-5.6-terra[context=272k,reasoning=high,fast=false]",
+        "qa-tester": "gpt-5.3-codex[reasoning=high,fast=false]"
       }
     },
     "default": {
       "summary": "Balance of focused coding, strong review, and frontier planning.",
       "personas": {
-        "orchestrator": "grok-4.5[]",
-        "tech-lead": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
-        "decomposer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
-        "librarian": "gpt-5.5[context=272k,reasoning=high,fast=false]",
-        "coder": "grok-4.5[effort=high,fast=true]",
-        "reviewer": "gpt-5.4[reasoning=high,fast=false]",
-        "qa-tester": "gpt-5.3-codex[reasoning=high,fast=false]",
-        "release-steward": "auto",
-        "investigator": "grok-4.5[]",
-        "harness-technician": "grok-4.5[]",
-        "repo-technician": "grok-4.5[]",
-        "spotfixer": "grok-4.5[]"
-      }
-    },
-    "complex-planning": {
-      "summary": "Balance of focused coding, strong review, and frontier planning.",
-      "personas": {
-        "orchestrator": "auto",
-        "tech-lead": "claude-opus-4-8[thinking=true,context=300k,effort=high,fast=false]",
-        "decomposer": "claude-opus-4-8[thinking=true,context=300k,effort=high,fast=false]",
-        "librarian": "claude-opus-4-8[thinking=true,context=300k,effort=high,fast=false]",
-        "coder": "composer-2.5[fast=false]",
-        "reviewer": "gpt-5.4[reasoning=high,fast=false]",
-        "qa-tester": "gpt-5.3-codex[reasoning=high,fast=false]",
-        "release-steward": "auto",
-        "investigator": "gpt-5.3-codex[reasoning=high,fast=false]",
-        "harness-technician": "gpt-5.3-codex[reasoning=high,fast=false]",
-        "repo-technician": "gpt-5.3-codex[reasoning=high,fast=false]",
-        "spotfixer": "composer-2.5[fast=false]"
+        "tech-lead": "gpt-5.6-terra[context=272k,reasoning=xhigh,fast=false]",
+        "decomposer": "gpt-5.6-terra[context=272k,reasoning=high,fast=false]",
+        "reviewer": "claude-opus-4-8[thinking=true,context=300k,effort=high,fast=false]",
+        "qa-tester": "grok-4.5[effort=xhigh,fast=false]"
       }
     },
     "complex": {
       "summary": "Higher-reasoning review and QA for complex or high-risk work.",
       "personas": {
-        "orchestrator": "gpt-5.3-codex[reasoning=high,fast=false]",
-        "tech-lead": "claude-opus-4-8[thinking=true,context=300k,effort=high,fast=false]",
-        "decomposer": "claude-opus-4-8[thinking=true,context=300k,effort=high,fast=false]",
-        "librarian": "claude-opus-4-8[thinking=true,context=300k,effort=high,fast=false]",
-        "coder": "gpt-5.3-codex[reasoning=high,fast=false]",
-        "reviewer": "gpt-5.4[reasoning=high,fast=false]",
-        "qa-tester": "gpt-5.3-codex[reasoning=high,fast=false]",
-        "release-steward": "auto",
-        "investigator": "gpt-5.3-codex[reasoning=high,fast=false]",
-        "harness-technician": "gpt-5.3-codex[reasoning=high,fast=false]",
-        "repo-technician": "gpt-5.3-codex[reasoning=high,fast=false]",
-        "spotfixer": "gpt-5.4[reasoning=high,fast=false]"
+        "tech-lead": "claude-fable-5[thinking=true,context=300k,effort=high]",
+        "decomposer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
+        "librarian": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
+        "reviewer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
+        "qa-tester": "grok-4.5[effort=xhigh,fast=false]",
+        "spotfixer": "gpt-5.6-sol[context=272k,reasoning=xhigh,fast=false]"
       }
     },
     "auto": {
       "summary": "Cursor-managed routing except for the bounded coding workhorse.",
       "personas": {
-        "orchestrator": "auto",
-        "tech-lead": "auto",
-        "decomposer": "auto",
-        "librarian": "auto",
-        "coder": "composer-2.5[fast=false]",
-        "reviewer": "auto",
-        "qa-tester": "auto",
-        "release-steward": "auto",
-        "investigator": "auto",
-        "harness-technician": "auto",
-        "repo-technician": "auto",
-        "spotfixer": "composer-2.5[fast=false]"
+        "tech-lead": "grok-4.5[effort=high,fast=false]",
+        "decomposer": "grok-4.5[effort=high,fast=false]",
+        "reviewer": "grok-4.5[effort=high,fast=false]",
+        "qa-tester": "grok-4.5[effort=high,fast=false]"
       }
     }
   },

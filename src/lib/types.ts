@@ -365,6 +365,8 @@ export interface Invocation {
         | 'qa'
         | 'release'
         | 'inspection'
+        | 'design'
+        | 'handoff'
       required_headings: string[]
     }
   }

@@ -1,0 +1,55 @@
+{
+  "slug": "review",
+  "title": "Design review",
+  "persona": "design-reviewer",
+  "prompt_path": "library/workflows/design/prompts/review.md",
+  "workspace_policy": "read_only",
+  "gate": "stage_verdict",
+  "context": {
+    "request": "omit",
+    "required_stage_outputs": [
+      {
+        "stage": "intake",
+        "selection": "latest_success"
+      },
+      {
+        "stage": "design",
+        "selection": "latest"
+      }
+    ],
+    "prior_attempts": 1,
+    "operator_feedback": 1
+  },
+  "required_data": {
+    "review": "object",
+    "review.verdict": "string",
+    "review.findings": "array",
+    "review.heuristic_results": "array",
+    "review.acceptance_results": "array"
+  },
+  "criteria": [
+    {
+      "id": "review.heuristics_scored",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Each handbook checklist heuristic is scored with evidence."
+    },
+    {
+      "id": "review.acceptance_met",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Every draft acceptance criterion is independently assessed against the mocks and spec."
+    },
+    {
+      "id": "review.findings_actionable",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Findings cite evidence, severity, violated law or checklist item, and a minimal fix."
+    }
+  ],
+  "transitions": {
+    "success": "test",
+    "failure": "design",
+    "blocked": "paused"
+  }
+}
