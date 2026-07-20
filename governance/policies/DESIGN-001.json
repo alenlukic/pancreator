@@ -1,0 +1,21 @@
+{
+  "id": "DESIGN-001",
+  "title": "UI/UX design standards",
+  "severity": "hard",
+  "summary": "Agents performing UI/UX design, design review, or design QA MUST apply the design handbook unrolled into the active invocation for laws, critique, accessibility, tokens, mock media, tooling, and evidence.",
+  "instructions": [
+    "Agents designing, reviewing, or verifying UI/UX work MUST apply the complete unrolled design handbook guidance included with this policy before completion.",
+    "Design work MUST apply the handbook heuristic checklist, accessibility baseline, and token-first prototyping rules when producing or judging mocks.",
+    "Design stages MUST treat self-contained HTML prototypes under the run artifacts as the authoritative mock medium and MAY add best-effort design-tool MCP artifacts (Figma); when Figma tooling is unavailable or fails, agents MUST record a degradation note and MUST NOT block solely on missing design-tool artifacts.",
+    "Designers MUST iterate with the screenshot-or-accessibility-snapshot → score-against-heuristics → fix-top-issues loop, using Bash capture fallbacks when MCP or browser tools are unavailable.",
+    "Design reviewers MUST severity-rank findings, cite the violated law or checklist item, and propose the minimal fix; design QA MUST exercise interactive flows, states, and keyboard or accessibility passes against testable acceptance criteria.",
+    "Agents MUST treat operator-level Cursor frontend-design user rules as separate unabsorbed authority and MUST NOT copy them into handbook or policy text.",
+    "Agents MUST treat the unrolled design handbook as supporting repository guidance and MUST NOT use it as a replacement for the active invocation contract."
+  ],
+  "guidance_sources": [
+    {
+      "path": "governance/handbooks/design/ux-guide.md",
+      "start_heading": "## Core UX laws and principles"
+    }
+  ]
+}

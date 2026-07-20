@@ -119,8 +119,32 @@
       "policies": ["CONTRACT-001"]
     },
     {
+      "persona": "designer",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["DESIGN-001"]
+    },
+    {
+      "persona": "design-reviewer",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["DESIGN-001"]
+    },
+    {
+      "persona": "design-qa",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["DESIGN-001"]
+    },
+    {
       "persona": "orchestrator",
       "workflow": "dev",
+      "stage": "intake",
+      "policies": ["INTAKE-001"]
+    },
+    {
+      "persona": "orchestrator",
+      "workflow": "design",
       "stage": "intake",
       "policies": ["INTAKE-001"]
     },
