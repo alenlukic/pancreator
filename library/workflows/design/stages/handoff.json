@@ -33,7 +33,6 @@
     "design_package.summary": "string",
     "design_package.design_spec_path": "string",
     "design_package.mocks_index": "array",
-    "design_package.figma_artifacts": "array",
     "design_package.acceptance_criteria": "array",
     "design_package.dev_request_instructions": "string"
   },
@@ -42,7 +41,7 @@
       "id": "handoff.package_complete",
       "type": "judgment",
       "hard": true,
-      "statement": "The design package lists stable paths for the design spec, mocks index, Figma artifacts or degradation notes, and acceptance criteria."
+      "statement": "The design package lists stable paths for the design spec, mocks index, and acceptance criteria."
     },
     {
       "id": "handoff.dev_composition",

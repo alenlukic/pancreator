@@ -142,9 +142,6 @@ or principle. Prefer the minimal fix.
 
 - **Authoritative medium** — Self-contained HTML/interactive prototypes under the run’s
   `artifacts/mocks/` directory. No external build step or CDN dependency.
-- **Best-effort medium** — Design-tool MCP artifacts (official Figma MCP) when available.
-- When Figma MCP is unavailable, unavailable to the plan, or write-to-canvas fails,
-  continue with HTML prototypes and record a degradation note in the stage output.
 - Fidelity SHOULD match the question under test: structure and flow first; visual polish
   after hierarchy and states stabilize.
 - For key screens, explore multiple variants before converging.
@@ -156,10 +153,9 @@ or principle. Prefer the minimal fix.
 Canonical config: `library/cursor/mcp.json`, projected to `.cursor/mcp.json` in
 `self_development` only via `./bin/pan models --sync`.
 
-| Server         | Transport                          | Role                                                                              | Setup / degradation                                                                                              |
-| -------------- | ---------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| **figma**      | Remote `https://mcp.figma.com/mcp` | Read design context; `create_new_file`; `use_figma` write-to-canvas (best-effort) | Operator completes OAuth on first use. If missing or failing, record degradation and keep HTML authoritative.    |
-| **playwright** | `npx @playwright/mcp@latest`       | Accessibility-tree automation, navigation, screenshots for prototype QA           | Requires network for first `npx` fetch. If unavailable, use Bash/browser capture fallbacks documented in skills. |
+| Server         | Transport                    | Role                                                                    | Setup / degradation                                                                                              |
+| -------------- | ---------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **playwright** | `npx @playwright/mcp@latest` | Accessibility-tree automation, navigation, screenshots for prototype QA | Requires network for first `npx` fetch. If unavailable, use Bash/browser capture fallbacks documented in skills. |
 
 ### Documented for target repositories (not installed here)
 

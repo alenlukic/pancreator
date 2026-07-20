@@ -6,15 +6,15 @@
 
 - Refactor `project.json` persona model mappings to inherit shared defaults across named configurations, reducing drift when adding personas ([project.json](project.json), [pipeline config](src/lib/pipeline-config.ts)).
 - Merge embedded-install persona defaults during install projection so new and existing default personas resolve without manual target edits ([install-support](bin/install-support)).
-- Document design-before-dev composition, MCP setup, and canonical `library/cursor/mcp.json` ownership in the operator guide ([operator guide](docs/operator-guide.md)).
+- Document design-before-dev composition, Playwright MCP setup, and canonical `library/cursor/mcp.json` ownership in the operator guide ([operator guide](docs/operator-guide.md)).
 
 ### Added
 
 - Add a standalone five-stage `design` predecessor workflow (intake, design, review, test, handoff) that produces a ratified design package for a separately started `dev` run ([design workflow](library/workflows/design/workflow.json)).
-- Add a UX design handbook under `governance/handbooks/design/` with `DESIGN-001` policy unrolling, heuristic checklist, tokens guidance, and dual mock-media rules ([ux guide](governance/handbooks/design/ux-guide.md), [DESIGN-001](governance/policies/DESIGN-001.json)).
+- Add a UX design handbook under `governance/handbooks/design/` with `DESIGN-001` policy unrolling, heuristic checklist, tokens guidance, and HTML mock-media rules ([ux guide](governance/handbooks/design/ux-guide.md), [DESIGN-001](governance/policies/DESIGN-001.json)).
 - Add designer, design-reviewer, and design-qa personas with projected Cursor agents and default model mappings ([personas](library/personas/designer.md), [agents](library/cursor/agents/designer.md), [project.json](project.json)).
 - Add design-spec, html-prototype, design-critique, and visual-design-iteration skills encoding tokens-first prototyping and the capture-score-fix iteration loop ([skills index](library/skills/index.md)).
-- Add canonical Figma and Playwright MCP configuration projected to `.cursor/mcp.json` in self-development mode only ([mcp.json](library/cursor/mcp.json), [projection manifest](governance/registries/projection_manifest.json)).
+- Add canonical Playwright MCP configuration projected to `.cursor/mcp.json` in self-development mode only ([mcp.json](library/cursor/mcp.json), [projection manifest](governance/registries/projection_manifest.json)).
 - Add `design` and `handoff` operator-brief profiles and validation enforcing design-handbook policy coverage for design personas ([operator artifact profiles](src/lib/operator-artifact-profiles.ts), [validation](src/lib/validation.ts)).
 
 ## [2.14.0] - 2026-07-09
