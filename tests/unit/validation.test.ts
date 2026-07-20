@@ -90,6 +90,58 @@ test('repository validation requires a policy to unroll the TypeScript handbook'
   )
 })
 
+test('repository validation requires a policy to unroll the design handbook', () => {
+  const root = createFixture()
+  prepareValidationFixture(root)
+  const policyPath = path.join(
+    root,
+    'governance',
+    'policies',
+    'DESIGN-001.json',
+  )
+  const policy = JSON.parse(readFileSync(policyPath, 'utf8')) as {
+    guidance_sources?: unknown[]
+  }
+
+  delete policy.guidance_sources
+
+  writeFileSync(policyPath, `${JSON.stringify(policy, null, 2)}\n`)
+
+  const result = validateRepository(root)
+
+  assert.equal(result.ok, false)
+  assert.match(
+    result.errors.join('\n'),
+    /governance\/handbooks\/design\/ux-guide\.md MUST be unrolled by at least one policy/u,
+  )
+})
+
+test('repository validation requires design stages to load design handbook policies', () => {
+  const root = createFixture()
+  prepareValidationFixture(root)
+  const lookupPath = path.join(
+    root,
+    'governance',
+    'registries',
+    'policy_lookup_table.json',
+  )
+  const lookup = JSON.parse(readFileSync(lookupPath, 'utf8')) as {
+    rows: Array<{ persona: string }>
+  }
+
+  lookup.rows = lookup.rows.filter((row) => row.persona !== 'design-qa')
+
+  writeFileSync(lookupPath, `${JSON.stringify(lookup, null, 2)}\n`)
+
+  const result = validateRepository(root)
+
+  assert.equal(result.ok, false)
+  assert.match(
+    result.errors.join('\n'),
+    /workflow stage 'design\/test' persona 'design-qa' MUST load a policy for the design handbook/u,
+  )
+})
+
 test('repository validation requires a policy to unroll the Python handbook', () => {
   const root = createFixture()
   prepareValidationFixture(root)

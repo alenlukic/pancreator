@@ -193,17 +193,25 @@ function cursorSourceFiles(sourceRoot) {
 function personaModelsFromConfig(configPath) {
   const config = readJson(configPath)
   const active = config.configs?.[config.active_config]
+  const defaults =
+    typeof config.defaults === 'object' && config.defaults !== null
+      ? config.defaults
+      : {}
 
   if (!active || typeof active.personas !== 'object') {
     fail('project.json active config does not define personas')
   }
 
-  return active.personas
+  return { ...defaults, ...active.personas }
 }
 
 function personaModelsForProjection(personaConfigPath, sourceRoot) {
   const sourceConfigPath = path.join(sourceRoot, 'project.json')
   const sourceConfig = readJson(sourceConfigPath)
+  const sourceDefaults =
+    typeof sourceConfig.defaults === 'object' && sourceConfig.defaults !== null
+      ? sourceConfig.defaults
+      : {}
 
   if (!personaConfigPath) {
     return personaModelsFromConfig(sourceConfigPath)
@@ -217,22 +225,36 @@ function personaModelsForProjection(personaConfigPath, sourceRoot) {
   const sourcePersonas =
     sourceConfig.configs?.[activeConfigName]?.personas ??
     sourceConfig.configs?.[sourceConfig.active_config]?.personas
+  const targetDefaults =
+    typeof targetConfig.defaults === 'object' && targetConfig.defaults !== null
+      ? targetConfig.defaults
+      : {}
   const targetPersonas = targetConfig.configs?.[activeConfigName]?.personas
 
   if (!sourcePersonas || typeof sourcePersonas !== 'object') {
     fail('project.json active config does not define personas')
   }
 
+  const mergedSource = { ...sourceDefaults, ...sourcePersonas }
+
   if (!targetPersonas || typeof targetPersonas !== 'object') {
-    return sourcePersonas
+    return mergedSource
   }
 
-  return { ...sourcePersonas, ...targetPersonas }
+  return { ...mergedSource, ...targetDefaults, ...targetPersonas }
 }
 
 function mergeEmbeddedProjectConfig(source, existing) {
   const merged = {
     ...source,
+    defaults: {
+      ...(typeof source.defaults === 'object' && source.defaults !== null
+        ? source.defaults
+        : {}),
+      ...(typeof existing.defaults === 'object' && existing.defaults !== null
+        ? existing.defaults
+        : {}),
+    },
     configs: { ...(existing.configs ?? {}) },
   }
   const activeConfig =
@@ -650,6 +672,27 @@ function writeProject() {
   config.state_root = 'runtime'
   config.installation_mode = 'embedded'
   delete config.self_development
+
+  const defaults =
+    typeof config.defaults === 'object' && config.defaults !== null
+      ? config.defaults
+      : {}
+
+  for (const [name, namedConfig] of Object.entries(config.configs ?? {})) {
+    if (typeof namedConfig !== 'object' || namedConfig === null) {
+      continue
+    }
+
+    const personas =
+      typeof namedConfig.personas === 'object' && namedConfig.personas !== null
+        ? namedConfig.personas
+        : {}
+
+    config.configs[name] = {
+      ...namedConfig,
+      personas: { ...defaults, ...personas },
+    }
+  }
 
   if (config.$operator?.note) {
     config.$operator.note = config.$operator.note.replaceAll(

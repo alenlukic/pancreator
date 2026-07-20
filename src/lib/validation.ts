@@ -1210,6 +1210,7 @@ function listMarkdownFiles(directory: string): string[] {
 }
 
 const CODE_REVIEW_PERSONAS = new Set(['coder', 'reviewer', 'qa-tester'])
+const DESIGN_PERSONAS = new Set(['designer', 'design-reviewer', 'design-qa'])
 const PYTHON_GUIDANCE_PERSONAS = new Set([...CODE_REVIEW_PERSONAS, 'spotfixer'])
 const POLICY_REFERENCE_PATTERN = /\b[A-Z][A-Z0-9]*-\d{3}\b/gu
 const STATIC_GUIDANCE_PATH_PATTERN =
@@ -1240,6 +1241,11 @@ const HANDBOOK_POLICY_REQUIREMENTS: HandbookPolicyRequirement[] = [
     label: 'Python handbook',
     personas: PYTHON_GUIDANCE_PERSONAS,
     technology: 'python',
+  },
+  {
+    handbook_path: 'governance/handbooks/design/ux-guide.md',
+    label: 'design handbook',
+    personas: DESIGN_PERSONAS,
   },
 ]
 

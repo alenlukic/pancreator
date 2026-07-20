@@ -1,0 +1,52 @@
+{
+  "slug": "design",
+  "title": "Design",
+  "persona": "designer",
+  "prompt_path": "library/workflows/design/prompts/design.md",
+  "workspace_policy": "runtime_only",
+  "gate": "next_stage",
+  "context": {
+    "request": "conditional",
+    "required_stage_outputs": [
+      {
+        "stage": "intake",
+        "selection": "latest_success"
+      }
+    ],
+    "prior_attempts": 1,
+    "operator_feedback": 1
+  },
+  "required_data": {
+    "design_spec": "object",
+    "design_spec.summary": "string",
+    "design_spec.screens": "array",
+    "design_spec.tokens": "object",
+    "mocks": "array",
+    "acceptance_criteria": "array"
+  },
+  "criteria": [
+    {
+      "id": "design.spec_complete",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The design spec covers users, flows, states, tokens, and screens needed for the brief."
+    },
+    {
+      "id": "design.mocks_authoritative",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Self-contained HTML prototypes exist under run artifacts as the authoritative mock medium, with Figma artifacts best-effort or explicitly degraded."
+    },
+    {
+      "id": "design.acceptance_drafted",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Draft acceptance criteria are observable and consumable by a later corresponding dev run."
+    }
+  ],
+  "transitions": {
+    "success": "review",
+    "failure": "design",
+    "blocked": "paused"
+  }
+}

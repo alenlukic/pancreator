@@ -1,0 +1,65 @@
+{
+  "slug": "handoff",
+  "title": "Design handoff",
+  "persona": "designer",
+  "prompt_path": "library/workflows/design/prompts/handoff.md",
+  "workspace_policy": "runtime_only",
+  "gate": "operator",
+  "context": {
+    "request": "conditional",
+    "required_stage_outputs": [
+      {
+        "stage": "intake",
+        "selection": "latest_success"
+      },
+      {
+        "stage": "design",
+        "selection": "latest_success"
+      },
+      {
+        "stage": "review",
+        "selection": "latest_success"
+      },
+      {
+        "stage": "test",
+        "selection": "latest_success"
+      }
+    ],
+    "prior_attempts": 1,
+    "operator_feedback": 1
+  },
+  "required_data": {
+    "design_package": "object",
+    "design_package.summary": "string",
+    "design_package.design_spec_path": "string",
+    "design_package.mocks_index": "array",
+    "design_package.figma_artifacts": "array",
+    "design_package.acceptance_criteria": "array",
+    "design_package.dev_request_instructions": "string"
+  },
+  "criteria": [
+    {
+      "id": "handoff.package_complete",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The design package lists stable paths for the design spec, mocks index, Figma artifacts or degradation notes, and acceptance criteria."
+    },
+    {
+      "id": "handoff.dev_composition",
+      "type": "judgment",
+      "hard": true,
+      "statement": "dev_request_instructions explain how to start a separate corresponding dev run that references the package paths."
+    },
+    {
+      "id": "record.operator_readable",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The operator summary is concise and actionable."
+    }
+  ],
+  "transitions": {
+    "success": "succeeded",
+    "failure": "design",
+    "blocked": "paused"
+  }
+}

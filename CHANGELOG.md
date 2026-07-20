@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.15.0] - 2026-07-20
+
+### Changed
+
+- Refactor `project.json` persona model mappings to inherit shared defaults across named configurations, reducing drift when adding personas ([project.json](project.json), [pipeline config](src/lib/pipeline-config.ts)).
+- Merge embedded-install persona defaults during install projection so new and existing default personas resolve without manual target edits ([install-support](bin/install-support)).
+- Document design-before-dev composition, MCP setup, and canonical `library/cursor/mcp.json` ownership in the operator guide ([operator guide](docs/operator-guide.md)).
+
+### Added
+
+- Add a standalone five-stage `design` predecessor workflow (intake, design, review, test, handoff) that produces a ratified design package for a separately started `dev` run ([design workflow](library/workflows/design/workflow.json)).
+- Add a UX design handbook under `governance/handbooks/design/` with `DESIGN-001` policy unrolling, heuristic checklist, tokens guidance, and dual mock-media rules ([ux guide](governance/handbooks/design/ux-guide.md), [DESIGN-001](governance/policies/DESIGN-001.json)).
+- Add designer, design-reviewer, and design-qa personas with projected Cursor agents and default model mappings ([personas](library/personas/designer.md), [agents](library/cursor/agents/designer.md), [project.json](project.json)).
+- Add design-spec, html-prototype, design-critique, and visual-design-iteration skills encoding tokens-first prototyping and the capture-score-fix iteration loop ([skills index](library/skills/index.md)).
+- Add canonical Figma and Playwright MCP configuration projected to `.cursor/mcp.json` in self-development mode only ([mcp.json](library/cursor/mcp.json), [projection manifest](governance/registries/projection_manifest.json)).
+- Add `design` and `handoff` operator-brief profiles and validation enforcing design-handbook policy coverage for design personas ([operator artifact profiles](src/lib/operator-artifact-profiles.ts), [validation](src/lib/validation.ts)).
+
 ## [2.14.0] - 2026-07-09
 
 ### Changed
@@ -353,7 +370,8 @@ _First functional release._
 
 - Add the original self-building workflow harness, governed personas, compliance hooks, durable memory, and bootstrap documentation ([c9c5def](https://github.com/alenlukic/pancreator/commit/c9c5def2ccd2a0a9c27d5c6707c963cb2621518a))
 
-[2.14.0]: https://github.com/alenlukic/pancreator/compare/7c942cd52889e86e2654dbde8b26b825b3b9f0d4...HEAD
+[2.15.0]: https://github.com/alenlukic/pancreator/compare/ca4298bb6168b18afebe864e07db3f40c29de612...HEAD
+[2.14.0]: https://github.com/alenlukic/pancreator/compare/7c942cd52889e86e2654dbde8b26b825b3b9f0d4...ca4298bb6168b18afebe864e07db3f40c29de612
 [2.13.0]: https://github.com/alenlukic/pancreator/compare/6fd00e4e9493f8ac898b757842ce28db82cbc07d...7c942cd52889e86e2654dbde8b26b825b3b9f0d4
 [2.12.0]: https://github.com/alenlukic/pancreator/compare/7d86b1257b839217317f568d802fe5e836b8bebf...6fd00e4e9493f8ac898b757842ce28db82cbc07d
 [2.11.1]: https://github.com/alenlukic/pancreator/compare/7d86b1257b839217317f568d802fe5e836b8bebf...HEAD

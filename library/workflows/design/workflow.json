@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "slug": "design",
+  "title": "UI/UX design predecessor",
+  "description": "Operator-ratified design intake followed by design, independent design review, design QA, and operator-ratified handoff package for a separately started corresponding dev run.",
+  "start_stage": "intake",
+  "limits": {
+    "max_total_transitions": 15,
+    "max_stage_attempts": 3,
+    "max_consecutive_failures": 3
+  },
+  "stages": ["intake", "design", "review", "test", "handoff"]
+}

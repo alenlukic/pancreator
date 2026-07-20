@@ -99,6 +99,53 @@ scope expansion creates `runtime/inbox/spotfix-escalation-*.md` for systematic
 routing. Do not run it while a mutating workflow agent is active in the same
 workspace.
 
+## Run the design workflow before non-trivial UI/UX `dev` work
+
+For any development task with a non-trivial UI/UX design component, run the
+standalone `design` workflow first, ratify its handoff package, then start a
+separate corresponding `dev` run whose request references that package.
+
+```sh
+./bin/pan init --workflow design --request runtime/inbox/<design-request>.md
+```
+
+After intake → design → design review → design QA → handoff succeed and you
+approve handoff, the design package lists stable paths for the design spec, HTML
+mocks index, optional Figma artifacts, and acceptance criteria. Start `dev` with a
+request that cites those paths so intake preserves the design acceptance criteria:
+
+```sh
+./bin/pan init --workflow dev --request runtime/inbox/<dev-request-referencing-design-package>.md
+```
+
+Composition is deliberately separate runs (not an automatic gate inside `dev`).
+The first live design run after enabling this capability is an operator checklist
+item, not an in-workflow nested run.
+
+### Design MCP setup (self-development)
+
+Canonical MCP config lives at `library/cursor/mcp.json` and projects to
+`.cursor/mcp.json` only in `self_development` mode:
+
+```sh
+./bin/pan models --sync
+```
+
+Installed servers:
+
+- **figma** — remote `https://mcp.figma.com/mcp` (OAuth on first use). Supports
+  design context, `create_new_file`, and best-effort `use_figma` write-to-canvas.
+  When unavailable, design stages keep HTML prototypes authoritative and record
+  degradation.
+- **playwright** — `npx @playwright/mcp@latest` for accessibility-tree automation
+  and screenshots during design QA.
+
+Do not put long-lived MCP customizations only in `.cursor/mcp.json`; that file is
+projection-owned and will be overwritten on sync. Edit `library/cursor/mcp.json`
+instead. Embedded target repositories own their own MCP config; Pancreator
+documents optional servers (for example shadcn/ui MCP, 21st.dev Magic) but does
+not install them into targets.
+
 ## Select pipeline models
 
 `project.json` is the source of truth for named persona-to-model mappings. Canonical Cursor artifacts live under `library/cursor/`; `.cursor/` is ignored local output. Set `active_config` to one of the declared configurations, then regenerate the Cursor surface:

@@ -22,7 +22,10 @@
     "investigator": "grok-4.5[effort=high,fast=false]",
     "harness-technician": "grok-4.5[effort=high,fast=false]",
     "repo-technician": "grok-4.5[effort=high,fast=false]",
-    "spotfixer": "grok-4.5[effort=high,fast=false]"
+    "spotfixer": "grok-4.5[effort=high,fast=false]",
+    "designer": "claude-fable-5[thinking=true,context=300k,effort=high]",
+    "design-reviewer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
+    "design-qa": "grok-4.5[effort=high,fast=false]"
   },
   "$operator": {
     "summary": "Named model configurations. Each configuration maps every checked-in Cursor persona to the model that should execute it.",

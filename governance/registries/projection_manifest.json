@@ -34,6 +34,14 @@
       "installation_modes": ["embedded"],
       "generated_fields": [],
       "transforms": []
+    },
+    {
+      "id": "cursor-mcp",
+      "source": "library/cursor/mcp.json",
+      "target": ".cursor/mcp.json",
+      "installation_modes": ["self_development"],
+      "generated_fields": [],
+      "transforms": []
     }
   ]
 }

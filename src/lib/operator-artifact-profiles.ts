@@ -9,6 +9,8 @@ export const OPERATOR_ARTIFACT_PROFILE_HEADINGS = {
   investigation: ['root cause', 'acceptance criteria', 'work mode'],
   spotfix: ['outcome', 'validation cycles'],
   escalation: ['escalation', 'acceptance criteria'],
+  design: ['approach', 'mocks', 'acceptance criteria'],
+  handoff: ['design package', 'acceptance criteria', 'next steps'],
 } as const
 
 export type OperatorArtifactProfile =
@@ -22,6 +24,8 @@ export type WorkflowOperatorArtifactProfile =
   | 'qa'
   | 'release'
   | 'inspection'
+  | 'design'
+  | 'handoff'
 
 export function operatorArtifactProfileForStage(
   stageSlug: string,
@@ -39,6 +43,10 @@ export function operatorArtifactProfileForStage(
       return 'release'
     case 'inspect':
       return 'inspection'
+    case 'design':
+      return 'design'
+    case 'handoff':
+      return 'handoff'
     default:
       return 'implementation'
   }
