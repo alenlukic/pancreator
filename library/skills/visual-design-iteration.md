@@ -21,5 +21,4 @@ Structure and accessibility come before polish.
 
 ## Boundaries
 
-Do not treat missing Figma tooling as a loop blocker. Keep HTML authoritative and
-record degradation when design-tool artifacts cannot be produced.
+Keep HTML prototypes authoritative throughout the iteration loop.

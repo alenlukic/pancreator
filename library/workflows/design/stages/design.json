@@ -35,7 +35,7 @@
       "id": "design.mocks_authoritative",
       "type": "judgment",
       "hard": true,
-      "statement": "Self-contained HTML prototypes exist under run artifacts as the authoritative mock medium, with Figma artifacts best-effort or explicitly degraded."
+      "statement": "Self-contained HTML prototypes exist under run artifacts as the authoritative mock medium."
     },
     {
       "id": "design.acceptance_drafted",

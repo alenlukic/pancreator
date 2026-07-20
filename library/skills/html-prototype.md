@@ -22,5 +22,4 @@ Semantic landmarks make section capture and accessibility passes possible.
 
 ## Boundaries
 
-HTML prototypes are authoritative. Figma or other design-tool artifacts are
-optional supplements, never a substitute when HTML is required.
+HTML prototypes are the authoritative mock medium for the design workflow.
