@@ -685,12 +685,16 @@ function writeProject() {
 
     const personas =
       typeof namedConfig.personas === 'object' && namedConfig.personas !== null
-        ? namedConfig.personas
+        ? Object.fromEntries(
+            Object.entries(namedConfig.personas).filter(
+              ([persona, model]) => defaults[persona] !== model,
+            ),
+          )
         : {}
 
     config.configs[name] = {
       ...namedConfig,
-      personas: { ...defaults, ...personas },
+      personas,
     }
   }
 
