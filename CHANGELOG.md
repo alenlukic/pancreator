@@ -1,5 +1,27 @@
 # Changelog
 
+## [2.16.0] - 2026-07-20
+
+### Changed
+
+- Require chrome-devtools Visual QA host isolation across qa-tester and design-qa personas, matching Cursor agent cards, and dev/design test prompts, including isolated `new_page`/`close_page` lifecycle, personal-browser prohibitions, and intermittent full-suite timeout taxonomy ([personas](library/personas/qa-tester.md), [test prompts](library/workflows/dev/prompts/test.md)).
+- Make chrome-devtools the projected self-development MCP default with `--isolated`, retaining Playwright only as explicit fallback language in docs and `library/cursor/mcp.json` ([mcp.json](library/cursor/mcp.json), [operator guide](docs/operator-guide.md), [ux guide](governance/handbooks/design/ux-guide.md)).
+- Document Chrome for Testing, `--executablePath`, and `--isolated` hardening for operators and embedded targets without overwriting target-owned MCP configuration ([embedded installation](docs/embedded-installation.md)).
+- Extend spotfix `diff_bounded` validation to honor WORK-001 documentation, test, and projection exemptions while scoping `.test.` filename checks to basenames only ([stage validators](src/lib/validators/stage-validators.ts)).
+- Disambiguate `pan requirements run` duplicate registry matches by preferring `required` enforcement bindings ([CLI](src/cli.ts)).
+- Ignore release-metadata-only workspace drift across ship retries when evaluating `ship.prior_gates_current` ([validation](src/lib/validation.ts), [git fingerprinting](src/lib/git.ts)).
+- Remove stale Figma references from design workflow prompts and skills ([design prompts](library/workflows/design/prompts/design.md), [html-prototype skill](library/skills/html-prototype.md)).
+- Refresh the target repository primer and embedded install persona merge behavior ([target repo primer](docs/target-repo-primer.md), [install-support](bin/install-support)).
+
+### Added
+
+- Add an always-apply `visual-qa-isolation` Cursor rule projected to self-development and embedded installs through the existing manifest channel ([rule template](library/cursor/rules/visual-qa-isolation.mdc), [projection manifest](governance/registries/projection_manifest.json)).
+- Add a visual-qa-contract regression test and embedded-install packaging assertions so isolation tokens and rule projection cannot regress silently ([regression test](tests/regression/visual-qa-contract.test.ts), [embedded installation test](tests/integration/embedded-installation.test.ts)).
+
+### Fixed
+
+- Strengthen Visual QA contract regression coverage after review found assertions could pass with required host-safety clauses removed ([visual-qa-contract test](tests/regression/visual-qa-contract.test.ts)).
+
 ## [2.15.0] - 2026-07-20
 
 ### Changed
@@ -370,7 +392,8 @@ _First functional release._
 
 - Add the original self-building workflow harness, governed personas, compliance hooks, durable memory, and bootstrap documentation ([c9c5def](https://github.com/alenlukic/pancreator/commit/c9c5def2ccd2a0a9c27d5c6707c963cb2621518a))
 
-[2.15.0]: https://github.com/alenlukic/pancreator/compare/ca4298bb6168b18afebe864e07db3f40c29de612...HEAD
+[2.16.0]: https://github.com/alenlukic/pancreator/compare/814fdf025f3cd4932dbf448262ecc36b0cd44754...HEAD
+[2.15.0]: https://github.com/alenlukic/pancreator/compare/ca4298bb6168b18afebe864e07db3f40c29de612...814fdf025f3cd4932dbf448262ecc36b0cd44754
 [2.14.0]: https://github.com/alenlukic/pancreator/compare/7c942cd52889e86e2654dbde8b26b825b3b9f0d4...ca4298bb6168b18afebe864e07db3f40c29de612
 [2.13.0]: https://github.com/alenlukic/pancreator/compare/6fd00e4e9493f8ac898b757842ce28db82cbc07d...7c942cd52889e86e2654dbde8b26b825b3b9f0d4
 [2.12.0]: https://github.com/alenlukic/pancreator/compare/7d86b1257b839217317f568d802fe5e836b8bebf...6fd00e4e9493f8ac898b757842ce28db82cbc07d

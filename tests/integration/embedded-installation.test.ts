@@ -231,6 +231,25 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
           project,
           '.pancreator',
           'library',
+          'cursor',
+          'rules',
+          'visual-qa-isolation.mdc',
+        ),
+      ),
+      true,
+    )
+    assert.equal(
+      existsSync(
+        path.join(project, '.cursor', 'rules', 'visual-qa-isolation.mdc'),
+      ),
+      true,
+    )
+    assert.equal(
+      existsSync(
+        path.join(
+          project,
+          '.pancreator',
+          'library',
           'operator-briefs',
           'primitives.json',
         ),

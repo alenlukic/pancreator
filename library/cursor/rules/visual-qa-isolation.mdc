@@ -1,0 +1,24 @@
+---
+description: Visual QA host-safety and chrome-devtools isolation procedure
+alwaysApply: true
+---
+
+The terms MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY use RFC 2119 meanings.
+
+When browser inspection or Visual QA applies, agents MUST use the `chrome-devtools`
+MCP server. Open a fresh, dedicated page with `new_page` in a unique isolated
+context (for example via the server's `--isolated` flag). You MUST NOT attach to
+an operator's personal browser or use the personal `com.google.Chrome` identity for
+MCP automation.
+
+You MUST close every page you open with `close_page` when verification finishes,
+including on failure. Record `isolatedContext` confirmation and every `close_page`
+action in case evidence.
+
+You MUST NOT change macOS Launch Services, the default browser, or Chrome
+preferences as remediation. You MUST NOT kill or quit all MCP Chrome processes as
+the primary remediation.
+
+Prefer Chrome for Testing with `chrome-devtools-mcp` `--executablePath` and
+`--isolated` hardening when operators configure MCP locally. Use Playwright MCP
+only as an explicit fallback when chrome-devtools is unavailable.

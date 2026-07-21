@@ -131,16 +131,23 @@ Canonical MCP config lives at `library/cursor/mcp.json` and projects to
 ./bin/pan models --sync
 ```
 
-Installed server:
+Installed servers (chrome-devtools is primary; Playwright is an explicit fallback
+only):
 
-- **playwright** — `npx @playwright/mcp@latest` for accessibility-tree automation
-  and screenshots during design QA.
+- **chrome-devtools** — `npx chrome-devtools-mcp@latest --isolated` for Visual QA
+  and browser inspection through Chrome DevTools MCP. Harden with Chrome for
+  Testing (a distinct bundle, never the operator's personal `com.google.Chrome`
+  identity) via `--executablePath` and `--isolated`. Automation MUST NOT use the
+  personal `com.google.Chrome` app identity for MCP.
+- **playwright** — explicit fallback only: `npx @playwright/mcp@latest` when
+  chrome-devtools is unavailable.
 
 Do not put long-lived MCP customizations only in `.cursor/mcp.json`; that file is
 projection-owned and will be overwritten on sync. Edit `library/cursor/mcp.json`
 instead. Embedded target repositories own their own MCP config; Pancreator
-documents optional servers (for example shadcn/ui MCP, 21st.dev Magic) but does
-not install them into targets.
+documents optional hardening (for example Chrome for Testing with
+`--executablePath` and `--isolated`) but does not install or overwrite target
+`.cursor/mcp.json`.
 
 ## Select pipeline models
 

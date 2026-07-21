@@ -128,6 +128,19 @@ function contentFingerprint(
   return files.sort(([left], [right]) => left.localeCompare(right))
 }
 
+function snapshotEntryPath(entry: string): string {
+  const statusPath = entry.length >= 4 ? entry.slice(3) : entry
+  const renameArrow = statusPath.lastIndexOf(' -> ')
+
+  return renameArrow === -1 ? statusPath : statusPath.slice(renameArrow + 4)
+}
+
+function indexEntryPath(entry: string): string {
+  const tab = entry.indexOf('\t')
+
+  return tab === -1 ? entry : entry.slice(tab + 1)
+}
+
 /**
  * Fingerprint the Git state of a deliverable workspace directory.
  *
@@ -169,7 +182,7 @@ export function gitWorkspaceSnapshot(workspaceDir: string): WorkspaceSnapshot {
     .split('\0')
     .filter(Boolean)
     .filter((entry) => {
-      const relative = entry.length >= 4 ? entry.slice(3) : entry
+      const relative = snapshotEntryPath(entry)
 
       return (
         !relative.startsWith('runtime/') && !isProtectedWorkspacePath(relative)
@@ -188,12 +201,7 @@ export function gitWorkspaceSnapshot(workspaceDir: string): WorkspaceSnapshot {
   const indexEntries = indexResult.stdout
     .split('\0')
     .filter(Boolean)
-    .filter((entry) => {
-      const tab = entry.indexOf('\t')
-      const relative = tab === -1 ? entry : entry.slice(tab + 1)
-
-      return !isProtectedWorkspacePath(relative)
-    })
+    .filter((entry) => !isProtectedWorkspacePath(indexEntryPath(entry)))
     .sort()
   const head = gitHead(workspaceDir)
   const content = contentFingerprint(toplevel, entries)
@@ -210,11 +218,66 @@ export function gitWorkspaceSnapshot(workspaceDir: string): WorkspaceSnapshot {
   }
 }
 
-function snapshotEntryPath(entry: string): string {
-  const statusPath = entry.length >= 4 ? entry.slice(3) : entry
-  const renameArrow = statusPath.lastIndexOf(' -> ')
+/**
+ * Fingerprint the deliverable workspace while omitting dirty paths matched by
+ * `excludePath` from status and content inputs.
+ *
+ * The full index hash is retained so unstaged excluded-path edits (the common
+ * ship release-metadata case) still match the reviewed implementation
+ * fingerprint. Used by ship prior-gates across ship retries.
+ */
+export function gitWorkspaceFingerprintExcluding(
+  workspaceDir: string,
+  excludePath: (relativePath: string) => boolean,
+): string {
+  const snapshot = gitWorkspaceSnapshot(workspaceDir)
 
-  return renameArrow === -1 ? statusPath : statusPath.slice(renameArrow + 4)
+  if (snapshot.kind !== 'git' || !isGitRepository(workspaceDir)) {
+    return snapshot.fingerprint
+  }
+
+  const dirtyExcluded = new Set(
+    snapshot.entries
+      .map((entry) => snapshotEntryPath(entry))
+      .filter((relativePath) => excludePath(relativePath)),
+  )
+
+  if (dirtyExcluded.size === 0) {
+    return snapshot.fingerprint
+  }
+
+  const toplevelResult = runGit(
+    workspaceDir,
+    ['rev-parse', '--show-toplevel'],
+    {
+      allowFailure: true,
+    },
+  )
+  const toplevel =
+    toplevelResult.status === 0 ? toplevelResult.stdout.trim() : workspaceDir
+  const entries = snapshot.entries
+    .filter((entry) => !dirtyExcluded.has(snapshotEntryPath(entry)))
+    .sort()
+  const indexResult = runGit(workspaceDir, [
+    'ls-files',
+    '--stage',
+    '-z',
+    '--',
+    '.',
+    ...protectedGitPathspecs(),
+  ])
+  const indexEntries = indexResult.stdout
+    .split('\0')
+    .filter(Boolean)
+    .filter((entry) => !isProtectedWorkspacePath(indexEntryPath(entry)))
+    .sort()
+  const content = contentFingerprint(toplevel, entries)
+
+  return sha256({
+    entries,
+    index: sha256(indexEntries.join('\0')),
+    content,
+  })
 }
 
 export function workspaceChangedPathsFromSnapshots(

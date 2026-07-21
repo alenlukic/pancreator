@@ -36,6 +36,14 @@
       "transforms": []
     },
     {
+      "id": "cursor-visual-qa-rule",
+      "source": "library/cursor/rules/visual-qa-isolation.mdc",
+      "target": ".cursor/rules/visual-qa-isolation.mdc",
+      "installation_modes": ["self_development", "embedded"],
+      "generated_fields": [],
+      "transforms": []
+    },
+    {
       "id": "cursor-mcp",
       "source": "library/cursor/mcp.json",
       "target": ".cursor/mcp.json",

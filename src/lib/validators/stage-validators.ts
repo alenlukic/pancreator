@@ -214,6 +214,26 @@ function gitChangedFiles(root: string): GitDiffResult {
   return { ok: true, files: [...files] }
 }
 
+function isSpotfixDiffExempt(file: string): boolean {
+  if (file.endsWith('.md') || file.endsWith('.mdc')) {
+    return true
+  }
+
+  if (file.startsWith('docs/') || file.startsWith('tests/')) {
+    return true
+  }
+
+  if (path.basename(file).includes('.test.')) {
+    return true
+  }
+
+  if (file.startsWith('.cursor/')) {
+    return true
+  }
+
+  return false
+}
+
 function workspaceSourceChanges(root: string): GitDiffResult {
   const diff = gitChangedFiles(root)
 
@@ -2411,15 +2431,15 @@ export function validateSpotfixOutcome(input: HandlerInput): HandlerResult {
   if (!diffResult.ok) {
     issues.push(gitUnavailableIssue(diffResult.error))
   } else {
-    const diffFiles = diffResult.files.filter(
-      (file) => !file.startsWith('runtime/'),
-    )
+    const diffFiles = diffResult.files
+      .filter((file) => !file.startsWith('runtime/'))
+      .filter((file) => !isSpotfixDiffExempt(file))
 
     if (diffFiles.length > 3) {
       issues.push(
         issue(
           'spotfix.diff_bounded',
-          'Spotfix MUST keep implementation scope within three non-test files',
+          'Spotfix MUST keep implementation scope within three non-exempt files (WORK-001 exempts documentation, tests, generated projections, and .cursor/ paths)',
         ),
       )
     }
