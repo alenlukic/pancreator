@@ -12,6 +12,7 @@ import {
   validateQaOutput,
   validateReleaseOutput,
   validateReviewOutput,
+  validateSpotfixOutcome,
 } from '../../src/lib/validators/stage-validators.js'
 import { createFixture } from '../helpers.js'
 
@@ -1447,5 +1448,183 @@ test('assessment validator requires exact judgment criterion coverage', () => {
     result.issues.some(
       (issue) => issue.code === 'assessment.missing_criterion',
     ),
+  )
+})
+
+const SPOTFIX_OUTCOME = `# Spotfix outcome
+
+Validation cycle 1 completed with npm run lint.
+`
+
+function writeSpotfixChangedFiles(root: string, relativePaths: string[]): void {
+  const forceAdd: string[] = []
+
+  for (const relativePath of relativePaths) {
+    const absolute = path.join(root, relativePath)
+
+    mkdirSync(path.dirname(absolute), { recursive: true })
+    writeFileSync(absolute, `fixture ${relativePath}\n`)
+
+    if (relativePath.startsWith('.cursor/')) {
+      forceAdd.push(relativePath)
+    }
+  }
+
+  const ordinary = relativePaths.filter((file) => !file.startsWith('.cursor/'))
+
+  if (ordinary.length > 0) {
+    execFileSync('git', ['add', ...ordinary], { cwd: root })
+  }
+
+  if (forceAdd.length > 0) {
+    execFileSync('git', ['add', '-f', ...forceAdd], { cwd: root })
+  }
+}
+
+test('spotfix diff_bounded exempts WORK-001 documentation and projection files', () => {
+  const root = createFixture()
+  const target = 'runtime/inbox/spotfix-outcome.md'
+
+  writeSpotfixChangedFiles(root, [
+    'docs/one.md',
+    'library/personas/two.md',
+    'tests/three.test.ts',
+    'library/workflows/note.md',
+  ])
+  writeFileSync(path.join(root, target), SPOTFIX_OUTCOME)
+
+  const result = validateSpotfixOutcome({
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'SPOT-001',
+      requirement_id: 'spotfix-validate',
+      registry_id: 'SPOTFIX-VALIDATE-001',
+      arguments: {},
+    },
+  })
+
+  assert.equal(result.status, 'passed')
+  assert.ok(
+    !result.issues.some((issue) => issue.code === 'spotfix.diff_bounded'),
+  )
+})
+
+test('spotfix diff_bounded still fails when more than three implementation files change', () => {
+  const root = createFixture()
+  const target = 'runtime/inbox/spotfix-outcome.md'
+
+  writeSpotfixChangedFiles(root, [
+    'src/one.ts',
+    'src/two.ts',
+    'src/three.ts',
+    'src/four.ts',
+  ])
+  writeFileSync(path.join(root, target), SPOTFIX_OUTCOME)
+
+  const result = validateSpotfixOutcome({
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'SPOT-001',
+      requirement_id: 'spotfix-validate',
+      registry_id: 'SPOTFIX-VALIDATE-001',
+      arguments: {},
+    },
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.ok(
+    result.issues.some((issue) => issue.code === 'spotfix.diff_bounded'),
+  )
+})
+
+test('spotfix diff_bounded does not exempt implementation files under test-like directories', () => {
+  const root = createFixture()
+  const target = 'runtime/inbox/spotfix-outcome.md'
+
+  writeSpotfixChangedFiles(root, [
+    'src/.test.fixtures/one.ts',
+    'src/.test.fixtures/two.ts',
+    'src/.test.fixtures/three.ts',
+    'src/.test.fixtures/four.ts',
+  ])
+  writeFileSync(path.join(root, target), SPOTFIX_OUTCOME)
+
+  const result = validateSpotfixOutcome({
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'SPOT-001',
+      requirement_id: 'spotfix-validate',
+      registry_id: 'SPOTFIX-VALIDATE-001',
+      arguments: {},
+    },
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.ok(
+    result.issues.some((issue) => issue.code === 'spotfix.diff_bounded'),
+  )
+})
+
+test('spotfix diff_bounded exempts projected .cursor paths', () => {
+  const root = createFixture()
+  const target = 'runtime/inbox/spotfix-outcome.md'
+
+  writeSpotfixChangedFiles(root, [
+    'docs/one.md',
+    'tests/two.test.ts',
+    'src/one.ts',
+    'src/two.ts',
+    'src/three.ts',
+    '.cursor/rules/four.mdc',
+  ])
+  writeFileSync(path.join(root, target), SPOTFIX_OUTCOME)
+
+  const result = validateSpotfixOutcome({
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'SPOT-001',
+      requirement_id: 'spotfix-validate',
+      registry_id: 'SPOTFIX-VALIDATE-001',
+      arguments: {},
+    },
+  })
+
+  assert.equal(result.status, 'passed')
+  assert.ok(
+    !result.issues.some((issue) => issue.code === 'spotfix.diff_bounded'),
+  )
+})
+
+test('spotfix diff_bounded counts only non-exempt files in mixed diffs', () => {
+  const root = createFixture()
+  const target = 'runtime/inbox/spotfix-outcome.md'
+
+  writeSpotfixChangedFiles(root, [
+    'docs/one.md',
+    'tests/two.test.ts',
+    'library/workflows/note.md',
+    'src/one.ts',
+    'src/two.ts',
+  ])
+  writeFileSync(path.join(root, target), SPOTFIX_OUTCOME)
+
+  const result = validateSpotfixOutcome({
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'SPOT-001',
+      requirement_id: 'spotfix-validate',
+      registry_id: 'SPOTFIX-VALIDATE-001',
+      arguments: {},
+    },
+  })
+
+  assert.equal(result.status, 'passed')
+  assert.ok(
+    !result.issues.some((issue) => issue.code === 'spotfix.diff_bounded'),
   )
 })

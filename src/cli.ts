@@ -778,8 +778,19 @@ async function main(): Promise<void> {
           ...manifest.automation_requirements,
           ...manifest.validation_requirements,
         ].filter((item) => item.registry_id === registryId)
+        let selected = requirements
 
-        if (requirements.length !== 1) {
+        if (requirements.length > 1) {
+          const required = requirements.filter(
+            (item) => item.enforcement === 'required',
+          )
+
+          if (required.length === 1) {
+            selected = required
+          }
+        }
+
+        if (selected.length !== 1) {
           throw new PanError(
             requirements.length === 0
               ? `Registry ${registryId} did not resolve for this context.`
@@ -808,7 +819,7 @@ async function main(): Promise<void> {
 
         const result = runRequirement({
           root,
-          requirement: requirements[0],
+          requirement: selected[0],
           targetPath,
           executor: 'agent',
           catalog,

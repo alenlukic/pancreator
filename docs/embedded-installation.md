@@ -40,6 +40,7 @@ cd /path/to/target-repository
     agents/                 # Pancreator personas projected for Cursor
     commands/               # /pan-* commands projected for Cursor
     rules/pancreator.mdc    # embedded operating rule
+    rules/visual-qa-isolation.mdc  # always-apply Visual QA host-safety rule
   .pancreator/
     AGENTS.md               # installed-harness operating card
     VERSION
@@ -75,6 +76,37 @@ replaced by a target-specific bootstrap at `.pancreator/docs/target-repo-primer.
 Other source-checkout self-development context is not installed: `.git`, `.env`,
 source `runtime/`, nested validation repositories, editor-local settings, and the
 self-development operating card are excluded.
+
+## Visual QA isolation projection
+
+Embedded installs project `library/cursor/rules/visual-qa-isolation.mdc` to
+`.cursor/rules/visual-qa-isolation.mdc` and retain the canonical template under
+`.pancreator/library/cursor/rules/visual-qa-isolation.mdc`. The rule is
+always-apply host-safety guidance for chrome-devtools Visual QA: unique isolated
+context, `new_page`, `close_page` including on failure, and prohibitions on
+personal-browser attach, Launch Services/default-browser/Chrome-preference
+changes, and kill-all-MCP-Chrome remediation.
+
+Pancreator never overwrites target-owned `.cursor/mcp.json`. Operators MAY add
+chrome-devtools hardening locally, for example:
+
+```json
+{
+  "mcpServers": {
+    "chrome-devtools": {
+      "command": "npx",
+      "args": [
+        "chrome-devtools-mcp@latest",
+        "--executablePath=/path/to/chrome-for-testing",
+        "--isolated"
+      ]
+    }
+  }
+}
+```
+
+Use Chrome for Testing (never the personal `com.google.Chrome` identity) and keep
+any Playwright server as an explicit fallback only.
 
 ## Target repository checks
 
@@ -201,7 +233,7 @@ blanket-deleted.
 
 ## Harness versioning
 
-`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `2.15.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
+`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `2.16.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
 
 `release/index.json` is the internal mapping from harness version to immutable
 Git commit. Because a commit cannot contain its own hash, release publication is

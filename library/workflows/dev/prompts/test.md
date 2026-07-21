@@ -17,22 +17,28 @@ produce reproducible evidence.
 5. Otherwise, when the implementation exposes an operator-facing web UI, start
    its documented development server, confirm the local URL, and perform visual
    QA through the `chrome-devtools` MCP server. Open a fresh, dedicated page with
-   `new_page`, never attach to an operator's personal browser, and close every
-   page you open with `close_page` when verification finishes, including on
-   failure.
+   `new_page` in a unique isolated context (for example via the server's
+   `--isolated` flag), never attach to an operator's personal browser, never change
+   macOS Launch Services, the default browser, or Chrome preferences as
+   remediation, never kill or quit all MCP Chrome processes as the primary
+   remediation, and close every page you open with `close_page` when verification
+   finishes, including on failure.
 6. For applicable visual QA, use navigation, DOM snapshots, and interaction tools
    to exercise declared flows and affordances. Confirm relevant functionality,
    visual hierarchy, and named design tokens; use screenshots when DOM evidence
-   is insufficient. Record every Chrome DevTools MCP action, DOM observation, and
-   finding in the corresponding manual case evidence.
+   is insufficient. Record every Chrome DevTools MCP action, DOM observation,
+   `isolatedContext` confirmation, every `close_page` action, and finding in the
+   corresponding manual case evidence.
 7. Use the same explicit repository-declared toolchain entrypoints and configured
    probes used by implementation and review so equivalent results are comparable.
    The `full` profile must cover the complete documented suite; an optional
    `secondary` profile may be used for focused slow/integration diagnosis but
    does not replace complete verification. Real external network or catalog calls
    must never run in the fast/default profile.
-8. Classify each defect as product, environment, or harness/test. Treat an
-   unconfigured repository-check profile as missing validation, not a pass. A
+8. Classify each defect as product, environment, or harness/test. An intermittent
+   timeout of a configured full-suite target check is product/test or environment,
+   not harness/test, unless harness-owned evidence implicates the harness. Treat
+   an unconfigured repository-check profile as missing validation, not a pass. A
    successful but slow check is an operator FYI, never a failure; only an actual
    timeout, hang, nonzero exit, or failed assertion is actionable.
 9. Record harness governance, path-resolution, validator, renderer, or artifact-contract

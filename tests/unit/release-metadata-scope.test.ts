@@ -102,3 +102,187 @@ test('embedded release metadata policy remains read-only', () => {
   assert.equal(result.passed, false)
   assert.match(result.explanation ?? '', /README\.md/u)
 })
+
+test('ship prior-gates stays current across release-metadata-only ship retries', () => {
+  const root = createFixture()
+  const roots = resolveRoots({
+    installation_root: root,
+    workspace_root: root,
+    state_root: 'runtime',
+  })
+  const runDirectory = path.join(root, 'runtime', 'logs', 'workflows', 'retry')
+
+  mkdirSync(runDirectory, { recursive: true })
+
+  writeFileSync(
+    path.join(root, 'src', 'base.ts'),
+    "export const base = 'reviewed'\n",
+  )
+
+  const reviewed = gitWorkspaceSnapshot(roots.workspace_root)
+  const shipStage = stage()
+
+  shipStage.criteria = [
+    {
+      id: 'ship.prior_gates_current',
+      type: 'state',
+      hard: true,
+      statement:
+        'Review and QA passed against the current workspace fingerprint.',
+    },
+  ]
+
+  const state = {
+    run_id: 'retry',
+    workspace_root: root,
+    state_root: roots.state_root,
+    stage_history: [
+      {
+        stage: 'review',
+        attempt: 1,
+        invocation_id: 'review-1',
+        output_path: 'outputs/review-1.json',
+        outcome: 'success',
+        submitted_at: '2026-07-20T00:00:00.000Z',
+        workspace_fingerprint: reviewed.fingerprint,
+        validation_errors: [],
+        deterministic: [],
+      },
+      {
+        stage: 'test',
+        attempt: 1,
+        invocation_id: 'test-1',
+        output_path: 'outputs/test-1.json',
+        outcome: 'success',
+        submitted_at: '2026-07-20T00:01:00.000Z',
+        workspace_fingerprint: reviewed.fingerprint,
+        validation_errors: [],
+        deterministic: [],
+      },
+      {
+        stage: 'ship',
+        attempt: 1,
+        invocation_id: 'ship-1',
+        output_path: 'outputs/ship-1.json',
+        outcome: 'failure',
+        submitted_at: '2026-07-20T00:02:00.000Z',
+        workspace_fingerprint: 'ship-1-after-metadata',
+        validation_errors: ['packet shape'],
+        deterministic: [],
+      },
+    ],
+    gate_overrides: {},
+  } as unknown as RunState
+
+  // Simulate ship attempt 1 already having rewritten release metadata, then a
+  // retry whose before-snapshot is no longer the QA fingerprint.
+  writeFileSync(path.join(root, 'VERSION'), '9.9.9\n')
+  writeFileSync(
+    path.join(root, 'README.md'),
+    `${readFileSync(path.join(root, 'README.md'), 'utf8')}\n`,
+  )
+
+  const beforeRetry = gitWorkspaceSnapshot(roots.workspace_root)
+
+  writeFileSync(path.join(root, 'CHANGELOG.md'), '# Changelog\n\n## [9.9.9]\n')
+
+  const results = evaluateDeterministicCriteria(
+    root,
+    runDirectory,
+    state,
+    shipStage,
+    beforeRetry,
+    root,
+  ).results
+  const priorGates = results.find(
+    (result) => result.id === 'ship.prior_gates_current',
+  )
+
+  assert.ok(priorGates)
+  assert.equal(priorGates.passed, true)
+  assert.match(
+    priorGates.explanation ?? '',
+    /do not invalidate the reviewed implementation fingerprint/u,
+  )
+})
+
+test('ship prior-gates still fails when non-metadata files change after QA', () => {
+  const root = createFixture()
+  const roots = resolveRoots({
+    installation_root: root,
+    workspace_root: root,
+    state_root: 'runtime',
+  })
+  const runDirectory = path.join(root, 'runtime', 'logs', 'workflows', 'drift')
+
+  mkdirSync(runDirectory, { recursive: true })
+
+  writeFileSync(
+    path.join(root, 'src', 'base.ts'),
+    "export const base = 'reviewed'\n",
+  )
+
+  const reviewed = gitWorkspaceSnapshot(roots.workspace_root)
+  const shipStage = stage()
+
+  shipStage.criteria = [
+    {
+      id: 'ship.prior_gates_current',
+      type: 'state',
+      hard: true,
+      statement:
+        'Review and QA passed against the current workspace fingerprint.',
+    },
+  ]
+
+  const state = {
+    run_id: 'drift',
+    workspace_root: root,
+    state_root: roots.state_root,
+    stage_history: [
+      {
+        stage: 'review',
+        attempt: 1,
+        invocation_id: 'review-1',
+        output_path: 'outputs/review-1.json',
+        outcome: 'success',
+        submitted_at: '2026-07-20T00:00:00.000Z',
+        workspace_fingerprint: reviewed.fingerprint,
+        validation_errors: [],
+        deterministic: [],
+      },
+      {
+        stage: 'test',
+        attempt: 1,
+        invocation_id: 'test-1',
+        output_path: 'outputs/test-1.json',
+        outcome: 'success',
+        submitted_at: '2026-07-20T00:01:00.000Z',
+        workspace_fingerprint: reviewed.fingerprint,
+        validation_errors: [],
+        deterministic: [],
+      },
+    ],
+    gate_overrides: {},
+  } as unknown as RunState
+
+  writeFileSync(path.join(root, 'VERSION'), '9.9.9\n')
+  const beforeRetry = gitWorkspaceSnapshot(roots.workspace_root)
+
+  writeFileSync(
+    path.join(root, 'src', 'base.ts'),
+    "export const base = 'drifted'\n",
+  )
+
+  const priorGates = evaluateDeterministicCriteria(
+    root,
+    runDirectory,
+    state,
+    shipStage,
+    beforeRetry,
+    root,
+  ).results.find((result) => result.id === 'ship.prior_gates_current')
+
+  assert.ok(priorGates)
+  assert.equal(priorGates.passed, false)
+})

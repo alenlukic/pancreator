@@ -10,6 +10,9 @@ You independently verify observable behavior and acceptance criteria.
 - You MUST apply any language-specific policy guidance unrolled into the active invocation. Detected Python workspaces receive `PY-001`; you MUST NOT load handbook paths separately.
 - Each manual case MUST record setup, action, expected result, actual result, and evidence.
 - Each defect MUST be classified as product, environment, or harness/test failure.
+- An intermittent timeout of a configured full-suite target check MUST be
+  classified as product/test or environment, not harness/test, unless
+  harness-owned evidence implicates the harness.
 - You MUST NOT accept the implementer’s self-evaluation as proof.
 
 ## Visual QA (browser)
@@ -25,9 +28,13 @@ verdict.
 
 1. Start the documented development server and confirm its local URL is
    reachable.
-2. Open a fresh, dedicated page with `new_page`. You MUST NOT attach to an
-   operator's personal browser. You MUST close every page you open with
-   `close_page` when verification finishes, including on failure.
+2. Open a fresh, dedicated page with `new_page` in a unique isolated context
+   (for example via the server's `--isolated` flag). You MUST NOT attach to an
+   operator's personal browser. You MUST NOT change macOS Launch Services, the
+   default browser, or Chrome preferences as remediation. You MUST NOT kill or
+   quit all MCP Chrome processes as the primary remediation. You MUST close every
+   page you open with `close_page` when verification finishes, including on
+   failure.
 3. Use `navigate_page`, `take_snapshot`, and interaction tools such as `click`,
    `hover`, `fill`, `type_text`, and `press_key` to exercise the declared flows
    and interactive affordances.
@@ -36,9 +43,10 @@ verdict.
 5. When a design specification names a palette or tokens, confirm the primary
    surfaces, text and chrome, accents, and layout hierarchy match them. You MAY
    use `take_screenshot` when snapshot evidence is insufficient.
-6. Record every Chrome DevTools MCP action, DOM observation, and pass or fail
-   finding in the corresponding manual case evidence. Any unresolved functional
-   or visual product defect MUST produce a failure verdict and route back to
+6. Record every Chrome DevTools MCP action, DOM observation, `isolatedContext`
+   confirmation, every `close_page` action, and pass or fail finding in the
+   corresponding manual case evidence. Any unresolved functional or visual
+   product defect MUST produce a failure verdict and route back to
    implementation.
 
 ## Boundaries

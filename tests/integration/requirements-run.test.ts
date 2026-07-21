@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -265,4 +265,92 @@ None identified.
 
   assert.equal(result.status, 'passed')
   assert.equal(result.exit_code, 0)
+})
+
+const SPOTFIX_OUTCOME = `# Spotfix outcome
+
+Validation cycle 1 completed with npm run lint.
+`
+
+test('requirements run selects required SPOT-001 binding for SPOTFIX-VALIDATE-001', () => {
+  const root = createFixture()
+  const targetPath = 'runtime/inbox/spotfix-outcome.md'
+
+  writeFileSync(path.join(root, targetPath), SPOTFIX_OUTCOME)
+
+  const stdout = execFileSync(
+    process.execPath,
+    [
+      CLI,
+      'requirements',
+      'run',
+      '--persona',
+      'spotfixer',
+      '--workflow',
+      'standalone',
+      '--stage',
+      'spotfix',
+      '--kind',
+      'spotfix',
+      '--registry',
+      'SPOTFIX-VALIDATE-001',
+      '--target',
+      targetPath,
+      '--json',
+    ],
+    { cwd: root, encoding: 'utf8' },
+  )
+  const result = JSON.parse(stdout) as {
+    status: string
+    exit_code: number
+    policy_id: string
+    requirement_id: string
+  }
+
+  assert.equal(result.status, 'passed')
+  assert.equal(result.exit_code, 0)
+  assert.equal(result.policy_id, 'SPOT-001')
+  assert.equal(result.requirement_id, 'spotfix-validate')
+})
+
+test('requirements run preserves ambiguity when duplicate required bindings remain', () => {
+  const root = createFixture()
+  const targetPath = 'runtime/inbox/spotfix-outcome.md'
+  const engPolicyPath = path.join(root, 'governance/policies/ENG-001.json')
+
+  writeFileSync(path.join(root, targetPath), SPOTFIX_OUTCOME)
+
+  const engPolicy = JSON.parse(readFileSync(engPolicyPath, 'utf8')) as {
+    requirements: Array<{ enforcement: string }>
+  }
+
+  engPolicy.requirements[0].enforcement = 'required'
+  writeFileSync(engPolicyPath, `${JSON.stringify(engPolicy, null, 2)}\n`)
+
+  assert.throws(
+    () =>
+      execFileSync(
+        process.execPath,
+        [
+          CLI,
+          'requirements',
+          'run',
+          '--persona',
+          'spotfixer',
+          '--workflow',
+          'standalone',
+          '--stage',
+          'spotfix',
+          '--kind',
+          'spotfix',
+          '--registry',
+          'SPOTFIX-VALIDATE-001',
+          '--target',
+          targetPath,
+          '--json',
+        ],
+        { cwd: root, encoding: 'utf8' },
+      ),
+    /resolved more than once/u,
+  )
 })

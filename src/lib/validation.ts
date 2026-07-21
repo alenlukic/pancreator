@@ -43,6 +43,7 @@ import {
   isSelfDevelopmentInstallation,
 } from './project-config.js'
 import {
+  gitWorkspaceFingerprintExcluding,
   gitWorkspaceSnapshot,
   workspaceChangedPathsFromSnapshots,
 } from './git.js'
@@ -1021,6 +1022,52 @@ export function evaluateStateCriterion(
   }
 }
 
+function resolveShipPriorGatesEvidenceFingerprint(options: {
+  state: RunState
+  stage: StageDefinition
+  workspaceDir: string
+  beforeSnapshot: WorkspaceSnapshot
+  afterSnapshot: WorkspaceSnapshot
+}): string {
+  if (options.stage.workspace_policy !== 'release_metadata_only') {
+    return options.afterSnapshot.fingerprint
+  }
+
+  const test = [...options.state.stage_history]
+    .reverse()
+    .find((item) => item.stage === 'test' && item.outcome === 'success')
+  const testFingerprint = test?.workspace_fingerprint
+
+  if (!testFingerprint) {
+    return options.beforeSnapshot.fingerprint
+  }
+
+  if (options.afterSnapshot.fingerprint === testFingerprint) {
+    return testFingerprint
+  }
+
+  // First ship attempt: before snapshot still matches QA.
+  if (options.beforeSnapshot.fingerprint === testFingerprint) {
+    return testFingerprint
+  }
+
+  // Later ship attempts: before snapshot already includes prior release-metadata
+  // edits. Treat the workspace as current when only release-metadata paths are
+  // dirty relative to the reviewed implementation fingerprint.
+  if (isSelfDevelopmentInstallation(options.workspaceDir)) {
+    const implementationFingerprint = gitWorkspaceFingerprintExcluding(
+      options.workspaceDir,
+      isReleaseMetadataPath,
+    )
+
+    if (implementationFingerprint === testFingerprint) {
+      return testFingerprint
+    }
+  }
+
+  return options.beforeSnapshot.fingerprint
+}
+
 function workspaceDelta(
   before: WorkspaceSnapshot,
   after: WorkspaceSnapshot,
@@ -1166,26 +1213,32 @@ export function evaluateDeterministicCriteria(
         continue
       }
 
-      const evidenceFingerprint =
-        stage.workspace_policy === 'release_metadata_only' &&
-        criterion.id === 'ship.prior_gates_current'
-          ? beforeSnapshot.fingerprint
-          : afterSnapshot.fingerprint
+      const evidenceFingerprint = resolveShipPriorGatesEvidenceFingerprint({
+        state,
+        stage,
+        workspaceDir,
+        beforeSnapshot,
+        afterSnapshot,
+      })
       const result = evaluateStateCriterion(
         state,
         criterion,
         evidenceFingerprint,
       )
+      const releaseMetadataNormalized =
+        stage.workspace_policy === 'release_metadata_only' &&
+        criterion.id === 'ship.prior_gates_current' &&
+        evidenceFingerprint !== afterSnapshot.fingerprint
 
       results.push(
-        evidenceFingerprint === afterSnapshot.fingerprint
-          ? result
-          : {
+        releaseMetadataNormalized
+          ? {
               ...result,
               explanation:
                 `${result.explanation ?? ''} Expected release-metadata-only edits are checked separately and do not invalidate the reviewed implementation fingerprint.`.trim(),
               workspace_fingerprint: afterSnapshot.fingerprint,
-            },
+            }
+          : result,
       )
     }
   }
