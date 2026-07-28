@@ -2,7 +2,7 @@ import { readdirSync } from 'node:fs'
 import path from 'node:path'
 
 import { fileExists, isRecord, readJson, readText } from '../io.js'
-import { isEmbeddedInstallation } from '../project-config.js'
+import { isTargetInstallation } from '../project-config.js'
 import { detectWorkspaceTechnologies } from '../technologies.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
 
@@ -88,7 +88,7 @@ function validateEmptyBundle(
 export function validateTargetLanguageHandbooks(
   input: HandlerInput,
 ): HandlerResult {
-  if (!isEmbeddedInstallation(input.root)) {
+  if (!isTargetInstallation(input.root)) {
     return { status: 'passed', issues: [] }
   }
 

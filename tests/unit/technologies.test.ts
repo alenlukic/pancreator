@@ -11,7 +11,7 @@ function createTechnologyFixture(): string {
   const root = mkdtempSync(path.join(tmpdir(), 'pancreator-technologies-'))
 
   writeFileSync(
-    path.join(root, 'project.json'),
+    path.join(root, 'config.json'),
     JSON.stringify({
       schema_version: 1,
       workspace_root: '.',
@@ -87,7 +87,7 @@ test('uses tracked source evidence in git workspaces', () => {
     writeFileSync(path.join(root, 'src', 'tracked.rs'), 'fn main() {}\n')
 
     git(root, ['init', '-q'])
-    git(root, ['add', 'project.json', 'src/tracked.ts', 'src/tracked.rs'])
+    git(root, ['add', 'config.json', 'src/tracked.ts', 'src/tracked.rs'])
 
     assert.deepEqual(detectWorkspaceTechnologies(root), {
       languages: [{ id: 'typescript', evidence: ['src/tracked.ts'] }],

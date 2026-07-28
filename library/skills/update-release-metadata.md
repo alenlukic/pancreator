@@ -15,7 +15,7 @@ Prepare one complete, reviewable release candidate without committing it:
 
 ## Establish the baseline
 
-1. Read `project.json` and stop without mutation unless `installation_mode` is
+1. Read `config.json` and stop without mutation unless `installation_mode` is
    `self_development`.
 2. Read `VERSION`, `package.json`, `package-lock.json`, `CHANGELOG.md`,
    `release/index.json`, `README.md`, and `docs/embedded-installation.md`.

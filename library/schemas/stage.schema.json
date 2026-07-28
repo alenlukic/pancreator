@@ -30,7 +30,7 @@
     "persona": {
       "type": "string",
       "pattern": "^[a-z0-9-]+$",
-      "description": "Owner of the stage. Resolves to library/personas/<persona>.md and, for delegated work, to the matching .cursor/agents/<persona>.md subagent."
+      "description": "Owner of the stage. Resolves to library/personas/<persona>.md and, for delegated work, to the matching .cursor/agents/pan-<persona>.md subagent."
     },
     "executor": {
       "enum": ["agent", "harness"],

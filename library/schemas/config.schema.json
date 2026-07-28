@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "pancreator://project/v1",
-  "title": "Pancreator project configuration",
+  "$id": "pancreator://config/v1",
+  "title": "Pancreator harness configuration",
   "description": "Workspace identity, state root, tracking patterns, and named persona-to-model mappings for a Pancreator workspace.",
   "type": "object",
   "required": ["schema_version"],
@@ -80,7 +80,8 @@
       }
     },
     "installation_mode": {
-      "enum": ["self_development", "embedded"]
+      "description": "self_development is the Pancreator source checkout. embedded installs the harness at <target>/.pancreator. detached installs it outside the target tree, requiring an absolute workspace_root.",
+      "enum": ["self_development", "embedded", "detached"]
     }
   }
 }

@@ -1,10 +1,19 @@
-# Embedded Pancreator installation
+# Pancreator installation
 
-Pancreator's supported deployment model is **harness inside target**. A
-Pancreator source checkout installs a self-contained harness at
-`<target>/.pancreator`; the target repository remains the workspace opened in
-Cursor and the owner of application code, Git state, and repository-specific
-instructions.
+Pancreator installs a self-contained harness that governs a target repository.
+The target repository always remains the workspace opened in Cursor and the
+owner of application code, Git state, and repository-specific instructions.
+
+Two layouts are supported:
+
+| Mode                 | Harness location                 | `workspace_root`            | Use when                                                                            |
+| -------------------- | -------------------------------- | --------------------------- | ----------------------------------------------------------------------------------- |
+| `embedded` (default) | `<target>/.pancreator`           | `".."`                      | Normal case; harness travels with the checkout                                      |
+| `detached`           | Any directory outside the target | Absolute path to the target | The target must not gain a top-level directory, or the harness is managed centrally |
+
+Both project the same pan-namespaced `.cursor/` surface into the target, so the
+operator opens the target in Cursor either way. Neither modifies a file the
+target repository tracks.
 
 ## Requirements
 
@@ -32,20 +41,67 @@ cd /path/to/target-repository
 # /pan-build-briefs to generate target-specific brief semantics and design tokens.
 ```
 
+## Detached installation
+
+Pass `--harness-dir` to place the harness outside the target tree. The directory
+MUST NOT be inside the target; the installer rejects a nested path.
+
+```sh
+./bin/install --target /path/to/target-repository \
+  --harness-dir /opt/pancreator/target-repository
+```
+
+The target then receives only the `.cursor/` projection — there is no
+`<target>/.pancreator` at all, and runtime state, logs, `dist/`, and
+`node_modules/` all live with the harness.
+
+Because no relative path from the target can reach a detached harness, the
+installed configuration records the target's **absolute** path:
+
+```json
+{
+  "workspace_root": "/path/to/target-repository",
+  "state_root": "runtime",
+  "installation_mode": "detached"
+}
+```
+
+Projected Cursor artifacts likewise address the harness absolutely, so
+`/pan-*` commands work unchanged when the operator opens the target.
+
+The CLI locates its own installation from `bin/pan`, so invoking it by absolute
+path always works. To run `pan` from inside the target repository, export the
+harness root:
+
+```sh
+/opt/pancreator/target-repository/bin/pan doctor
+# or, to run from anywhere:
+export PANCREATOR_ROOT=/opt/pancreator/target-repository
+```
+
+Without `PANCREATOR_ROOT`, root discovery walks up from the working directory
+and cannot reach a detached harness. Update a detached installation by passing
+the same directory:
+
+```sh
+./bin/update --target /path/to/target-repository \
+  --harness-dir /opt/pancreator/target-repository
+```
+
 ## Installed layout
 
 ```text
 <target>/
   .cursor/
-    agents/                 # Pancreator personas projected for Cursor
-    commands/               # /pan-* commands projected for Cursor
+    agents/pan-*.md         # Pancreator personas projected for Cursor
+    commands/pan-*.md       # /pan-* commands projected for Cursor
     rules/pancreator.mdc    # embedded operating rule
-    rules/visual-qa-isolation.mdc  # always-apply Visual QA host-safety rule
+    rules/pan-visual-qa-isolation.mdc  # always-apply Visual QA host-safety rule
   .pancreator/
     AGENTS.md               # installed-harness operating card
     VERSION
     install.json            # source version/commit and ownership manifest
-    project.json            # embedded workspace and model configuration
+    config.json             # embedded workspace and model configuration
     bin/ governance/ library/ src/ tests/
     docs/
       target-repo-primer.md  # target-specific durable repository primer
@@ -58,13 +114,50 @@ cd /path/to/target-repository
     backups/cursor/         # replaced operator Cursor files, when needed
 ```
 
-When the target already has a `.gitignore`, installation and refresh add a
-single `.pancreator/` entry while preserving all existing content. The installer
-does not create a target `.gitignore` when none exists. This keeps the embedded
-harness and its target-specific runtime state local to the checkout.
+## Target repository ownership
 
-The target root does **not** receive a Pancreator `project.json`. The installed
-configuration lives at `.pancreator/project.json` with:
+Installation MUST NOT change any file the target repository tracks. The
+installer never reads, writes, or deletes the target's `.gitignore`, source,
+documentation, or existing agentic-harness configuration.
+
+Pancreator-owned paths are kept out of the target's Git status through a managed
+block in `.git/info/exclude`, which is local to the clone and never committed:
+
+```text
+# >>> pancreator >>>
+/.pancreator/
+/.cursor/agents/pan-*.md
+/.cursor/commands/pan-*.md
+/.cursor/rules/pan-*.mdc
+/.cursor/rules/pancreator.mdc
+# <<< pancreator <<<
+```
+
+The block is rewritten on every refresh, so it never accumulates duplicates. A
+detached installation omits the `/.pancreator/` line, because nothing is
+installed there. The patterns are deliberately narrow: excluding `.cursor/`
+wholesale would hide the target's own agent configuration from its operators.
+Installing into a clean Git target therefore leaves `git status` empty.
+
+## Coexisting with an existing agentic harness
+
+A target repository MAY already run other agentic tooling. Pancreator installs
+alongside it and treats all of it as target-owned: it is never read as
+instruction, modified, or removed. On first install the installer reports what
+it found — `AGENTS.md`, `CLAUDE.md`, `.claude/`, `.cursorrules`,
+`.github/copilot-instructions.md`, target-authored `.cursor/` files, and other
+recognized surfaces — so the operator knows which harnesses are live.
+
+Collisions are prevented by construction. Every file Pancreator projects into a
+target's `.cursor/` is namespaced: `pan-<persona>.md` for agents, `pan-*.md` for
+commands, and `pan-*.mdc` or `pancreator.mdc` for rules. Both
+`src/lib/projection.ts` and `bin/install-support` enforce this, so a target
+keeping its own `.cursor/agents/coder.md` is unaffected. A target file that
+occupies a Pancreator-owned name is reported as a takeover and backed up under
+`.pancreator/backups/cursor/` before it is replaced.
+
+The target root does **not** receive a Pancreator `config.json`. The installed
+configuration lives at `.pancreator/config.json` with:
 
 - `installation_mode: "embedded"`
 - `workspace_root: ".."` so the target repository is authoritative
@@ -80,7 +173,7 @@ self-development operating card are excluded.
 ## Visual QA isolation projection
 
 Embedded installs project `library/cursor/rules/visual-qa-isolation.mdc` to
-`.cursor/rules/visual-qa-isolation.mdc` and retain the canonical template under
+`.cursor/rules/pan-visual-qa-isolation.mdc` and retain the canonical template under
 `.pancreator/library/cursor/rules/visual-qa-isolation.mdc`. The rule is
 always-apply host-safety guidance for chrome-devtools Visual QA: unique isolated
 context, `new_page`, `close_page` including on failure, and prohibitions on

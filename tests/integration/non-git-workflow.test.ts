@@ -23,7 +23,7 @@ import {
 
 test('dev workflow runs to completion without a Git repository', () => {
   const root = createFixture()
-  const projectPath = path.join(root, 'project.json')
+  const projectPath = path.join(root, 'config.json')
   const project = JSON.parse(readFileSync(projectPath, 'utf8')) as Record<
     string,
     unknown

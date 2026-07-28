@@ -39,7 +39,7 @@ import {
   resolvePolicies,
 } from './policies.js'
 import {
-  isEmbeddedInstallation,
+  isTargetInstallation,
   isSelfDevelopmentInstallation,
 } from './project-config.js'
 import {
@@ -710,7 +710,7 @@ function resolveShellCheck(
   requestedCommand: string,
   overridden: boolean,
 ): ShellCheckResolution {
-  if (overridden || !isEmbeddedInstallation(root)) {
+  if (overridden || !isTargetInstallation(root)) {
     return {
       command: requestedCommand,
       profile_name: overridden
@@ -1023,6 +1023,7 @@ export function evaluateStateCriterion(
 }
 
 function resolveShipPriorGatesEvidenceFingerprint(options: {
+  root: string
   state: RunState
   stage: StageDefinition
   workspaceDir: string
@@ -1054,7 +1055,7 @@ function resolveShipPriorGatesEvidenceFingerprint(options: {
   // Later ship attempts: before snapshot already includes prior release-metadata
   // edits. Treat the workspace as current when only release-metadata paths are
   // dirty relative to the reviewed implementation fingerprint.
-  if (isSelfDevelopmentInstallation(options.workspaceDir)) {
+  if (isSelfDevelopmentInstallation(options.root)) {
     const implementationFingerprint = gitWorkspaceFingerprintExcluding(
       options.workspaceDir,
       isReleaseMetadataPath,
@@ -1203,7 +1204,7 @@ export function evaluateDeterministicCriteria(
           type: 'state',
           hard: Boolean(criterion.hard),
           passed: metadataErrors.length === 0,
-          explanation: isEmbeddedInstallation(root)
+          explanation: isTargetInstallation(root)
             ? 'Pancreator release metadata is not owned by embedded target workflows.'
             : metadataErrors.length === 0
               ? 'Release metadata and version-bearing documentation are synchronized.'
@@ -1214,6 +1215,7 @@ export function evaluateDeterministicCriteria(
       }
 
       const evidenceFingerprint = resolveShipPriorGatesEvidenceFingerprint({
+        root,
         state,
         stage,
         workspaceDir,
@@ -1488,8 +1490,8 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'governance/registries/directive_exemptions.json',
     'governance/registries/projection_manifest.json',
     'docs/validation-framework.md',
-    'project.json',
-    'library/schemas/project.schema.json',
+    'config.json',
+    'library/schemas/config.schema.json',
     'library/schemas/stage-output.schema.json',
     'library/schemas/workflow.schema.json',
     'library/schemas/stage.schema.json',

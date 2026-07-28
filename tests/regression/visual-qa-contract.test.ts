@@ -132,7 +132,7 @@ test('projection manifest declares visual QA rule for both installation modes', 
 
   assert.ok(rule)
   assert.equal(rule.source, 'library/cursor/rules/visual-qa-isolation.mdc')
-  assert.equal(rule.target, '.cursor/rules/visual-qa-isolation.mdc')
+  assert.equal(rule.target, '.cursor/rules/pan-visual-qa-isolation.mdc')
   assert.deepEqual(rule.installation_modes, ['self_development', 'embedded'])
 })
 
