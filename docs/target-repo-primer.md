@@ -53,7 +53,7 @@ flowchart LR
   Commands --> Pan[`./bin/pan`]
   Pan --> CLI[`src/cli.ts`]
   CLI --> Engine[`src/lib/engine.ts` state machine]
-  Project[`project.json` model/workspace config] --> CLI
+  Project[`config.json` model/workspace config] --> CLI
   Workflows[`library/workflows/` stage graphs] --> Engine
   Governance[`governance/` policies and registries] --> Engine
   Engine --> Validation[Requirements, validators, repository checks]
@@ -87,7 +87,7 @@ flowchart LR
 - `./bin/pan` is the primary programmatic/operator interface. Its verified top-level commands are `init`, `prepare`, `submit`, `assess`, `decide`, `pause`, `resume`, `set-stage`, `waive-gate`, `abort`, `technologies`, `repository-check`, `status`, `list`, `archive`, `models`, `briefs`, `validation-map`, `governance`, `requirements`, `output`, `assessment`, `spotfix`, `validate`, and `doctor`.
 - `library/cursor/commands/` defines the projected user commands: `/pan-start`, `/pan-resume`, `/pan-status`, `/pan-validate`, `/pan-debug`, `/pan-repair`, `/pan-decompose`, `/pan-spotfix`, `/pan-build-docs`, `/pan-build-briefs`, `/pan-summarize-context`, `/pan-release`, and `/pan-write-pr`.
 - `bin/install` and `bin/update` are the supported embedded-installation interfaces for initial install, repair/clean refresh, smoke validation, and indexed fast-forward updates.
-- `project.json` is the public workspace and persona-model configuration surface. Shared `defaults` merge with the selected `active_config`; `./bin/pan models --sync` projects the effective mapping into Cursor agent frontmatter.
+- `config.json` is the public workspace and persona-model configuration surface. Shared `defaults` merge with the selected `active_config`; `./bin/pan models --sync` projects the effective mapping into Cursor agent frontmatter.
 - `library/workflows/<slug>/workflow.json`, `library/workflows/<slug>/stages/*.json`, and `library/workflows/<slug>/prompts/*.md` form the canonical workflow authoring surface consumed by the CLI.
 - `governance/policies/*.json` plus `governance/registries/validation_registry.json` form the public policy-bound automation/validation authoring surface.
 - JSON operator briefs, semantic registries, and project CSS are the narrative-artifact interface; the harness renders self-contained HTML and validates stage-declared paths.

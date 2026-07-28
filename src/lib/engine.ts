@@ -30,8 +30,10 @@ import {
 } from './operator-artifact-profiles.js'
 import {
   configuredWorkspaceRoot,
-  isEmbeddedInstallation,
+  harnessPathPrefix,
+  isDetachedInstallation,
   isSelfDevelopmentInstallation,
+  isTargetInstallation,
   panCommand,
 } from './project-config.js'
 import { resolvePolicies } from './policies.js'
@@ -59,7 +61,7 @@ import {
   repositoryCheckProfileName,
   runRepositoryCheck,
 } from './repository-checks.js'
-import { syncCursorProjection } from './projection.js'
+import { cursorAgentTarget, syncCursorProjection } from './projection.js'
 import { renderInvocationMarkdown, renderStatus } from './render.js'
 import {
   operationMutexPath,
@@ -297,6 +299,11 @@ function workspaceSnapshotForRun(root: string, state: RunState) {
  * Resolve an operator-supplied workspace relative to the Pancreator installation.
  * Embedded installations intentionally target a parent directory, so the stored
  * path MAY contain `..` while every file operation remains bounded by resolveRoots.
+ *
+ * A detached installation has no stable relative path to its target — the two
+ * trees are unrelated, and relativizing would break the moment either moved —
+ * so its workspace is stored absolute. `workspaceDirectory` resolves both forms
+ * through `path.resolve`, which already tolerates an absolute value.
  */
 function normalizeWorkspaceRoot(
   root: string,
@@ -312,6 +319,10 @@ function normalizeWorkspaceRoot(
     `--workspace must be an existing directory: ${requested}`,
     { code: 'WORKSPACE_NOT_FOUND' },
   )
+
+  if (isDetachedInstallation(root)) {
+    return absolute
+  }
 
   const relative = path.relative(root, absolute)
 
@@ -740,7 +751,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
 
     if (stage.persona !== 'orchestrator') {
       invariant(
-        fileExists(path.join(root, '.cursor', 'agents', `${stage.persona}.md`)),
+        fileExists(path.join(root, cursorAgentTarget(root, stage.persona))),
         `Missing Cursor agent for persona '${stage.persona}'.`,
         { code: 'MISSING_CURSOR_AGENT' },
       )
@@ -1182,9 +1193,9 @@ export function prepareInvocation(
       },
       boundaries: [
         'You MUST read this invocation card before broader repository context.',
-        ...(isEmbeddedInstallation(root)
+        ...(isTargetInstallation(root)
           ? [
-              'Harness-relative paths beginning runtime/, library/, or governance/ are rooted at .pancreator/ when accessed from the target repository in Cursor.',
+              `Harness-relative paths beginning runtime/, library/, or governance/ are rooted at ${harnessPathPrefix(root)}/ when accessed from the target repository in Cursor.`,
             ]
           : []),
         `You MUST respect workspace policy '${stage.workspace_policy}'.`,

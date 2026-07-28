@@ -6,7 +6,7 @@
     {
       "id": "cursor-agents",
       "source": "library/cursor/agents/{persona}.md",
-      "target": ".cursor/agents/{persona}.md",
+      "target": ".cursor/agents/pan-{persona}.md",
       "installation_modes": ["self_development", "embedded"],
       "generated_fields": ["frontmatter.model"],
       "transforms": ["installation-paths"]
@@ -38,7 +38,7 @@
     {
       "id": "cursor-visual-qa-rule",
       "source": "library/cursor/rules/visual-qa-isolation.mdc",
-      "target": ".cursor/rules/visual-qa-isolation.mdc",
+      "target": ".cursor/rules/pan-visual-qa-isolation.mdc",
       "installation_modes": ["self_development", "embedded"],
       "generated_fields": [],
       "transforms": []

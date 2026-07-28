@@ -17,7 +17,7 @@ import {
   waiveGate,
 } from './lib/engine.js'
 import { PanError } from './lib/errors.js'
-import { panCommand } from './lib/project-config.js'
+import { configuredWorkspaceRoot, panCommand } from './lib/project-config.js'
 import { isGitRepository } from './lib/git.js'
 import { loadPipelineConfig } from './lib/pipeline-config.js'
 import { syncCursorProjection } from './lib/projection.js'
@@ -1007,7 +1007,14 @@ async function main(): Promise<void> {
           version: process.versions.node,
           supported: nodeMajor >= 22,
         },
-        git: { available_repository: isGitRepository(root) },
+        // Git availability is a property of the deliverable workspace, not the
+        // installation. These coincide only when the harness sits inside the
+        // target, which a detached installation does not.
+        git: {
+          available_repository: isGitRepository(
+            path.resolve(root, configuredWorkspaceRoot(root)),
+          ),
+        },
         pipeline_config: {
           active: pipelineConfig.name,
           personas: pipelineConfig.config.personas,

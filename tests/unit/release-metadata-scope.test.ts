@@ -83,7 +83,7 @@ test('self-development release metadata policy rejects source changes', () => {
 
 test('embedded release metadata policy remains read-only', () => {
   const root = createFixture()
-  const projectPath = path.join(root, 'project.json')
+  const projectPath = path.join(root, 'config.json')
   const project = JSON.parse(readFileSync(projectPath, 'utf8')) as Record<
     string,
     unknown

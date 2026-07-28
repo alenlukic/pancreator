@@ -8,6 +8,7 @@ SOURCE_DIRTY_OVERRIDE=""
 SOURCE_INDEXED_OVERRIDE=""
 
 TARGET_DIR=""
+HARNESS_DIR=""
 MODE=""
 NON_INTERACTIVE=0
 CHOICE=""
@@ -45,6 +46,9 @@ Usage:
 
 Options:
   --target <dir>           Target repository (required unless --smoke)
+  --harness-dir <dir>      Install the harness here instead of <target>/.pancreator.
+                           Creates a detached installation; the directory MUST be
+                           outside the target repository.
   --pancreator-root <dir>  Pancreator checkout or release payload
   --repair                 Repair a partial installation
   --clean                  Remove .pancreator and reinstall
@@ -54,8 +58,10 @@ Options:
   --smoke                  Run scripted installer verification
   -h, --help               Show this help
 
-A complete installation contains the harness at <target>/.pancreator and merges
-Pancreator commands, subagents, and rules into <target>/.cursor.
+A complete installation contains the harness at <target>/.pancreator and adds
+pan-namespaced commands, subagents, and rules to <target>/.cursor. No file the
+target repository tracks is modified; Pancreator-owned paths are excluded via
+the clone-local .git/info/exclude.
 USAGE
 }
 
@@ -63,6 +69,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --target)
       TARGET_DIR="${2:-}"
+      shift 2
+      ;;
+    --harness-dir)
+      HARNESS_DIR="${2:-}"
       shift 2
       ;;
     --pancreator-root)
@@ -130,7 +140,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 run_smoke() {
-  local smoke_root failures fresh_project existing_cursor_project partial_project no_gitignore_project
+  local smoke_root failures fresh_project existing_cursor_project partial_project no_gitignore_project git_project
+  local detached_project detached_harness
 
   smoke_root="$(mktemp -d "${TMPDIR:-/tmp}/pancreator-smoke.XXXXXX")"
   failures=0
@@ -159,7 +170,7 @@ run_smoke() {
     local project="$1"
 
     test -x "$project/.pancreator/bin/pan" \
-      && test -f "$project/.pancreator/project.json" \
+      && test -f "$project/.pancreator/config.json" \
       && test -f "$project/.pancreator/install.json" \
       && test -d "$project/.pancreator/runtime/inbox" \
       && test -f "$project/.pancreator/docs/target-repo-primer.md" \
@@ -178,9 +189,9 @@ run_smoke() {
       && test -f "$project/.cursor/commands/pan-summarize-context.md" \
       && grep -q '.pancreator/docs/operator-briefs/project.json' \
         "$project/.cursor/commands/pan-build-briefs.md" \
-      && test -f "$project/.cursor/agents/coder.md" \
-      && grep -q 'paperwork-only' "$project/.cursor/agents/coder.md" \
-      && grep -q 'bounded' "$project/.cursor/agents/reviewer.md" \
+      && test -f "$project/.cursor/agents/pan-coder.md" \
+      && grep -q 'paperwork-only' "$project/.cursor/agents/pan-coder.md" \
+      && grep -q 'bounded' "$project/.cursor/agents/pan-reviewer.md" \
       && grep -q 'pre-implementation' \
         "$project/.pancreator/governance/policies/DEV-001.json" \
       && test -f "$project/.pancreator/governance/handbooks/python/style-guide.md" \
@@ -194,10 +205,6 @@ run_smoke() {
         "$project/.pancreator/library/schemas/stage-output.schema.json" \
       && grep -q '"workspace_policy": "source_allowed"' \
         "$project/.pancreator/library/workflows/dev/stages/review.json" \
-      && grep -Eq '^[[:space:]]*/?\.pancreator/?[[:space:]]*$' \
-        "$project/.gitignore" \
-      && test "$(grep -Ec '^[[:space:]]*/?\.pancreator/?[[:space:]]*$' \
-        "$project/.gitignore")" -eq 1 \
       && test ! -e "$project/.pancreator/workdesk" \
       && test ! -e "$project/.pancreator/runtime/workflows"
   }
@@ -224,6 +231,53 @@ run_smoke() {
   smoke_step "partial install repair" bash "$0" --target "$partial_project" \
     --pancreator-root "$PANCREATOR_ROOT" --choice r --skip-dependencies --skip-shell-alias
   smoke_step "verify repair" smoke_verify "$partial_project"
+
+  # The target's tracked .gitignore MUST come through byte-identical.
+  smoke_step "leave target gitignore unmodified" \
+    test "$(cat "$fresh_project/.gitignore")" = "node_modules/"
+
+  git_project="$(mktemp -d "${smoke_root}/project.XXXXXX")"
+  git -C "$git_project" init -q
+  smoke_step "install into a git target" bash "$0" --target "$git_project" \
+    --pancreator-root "$PANCREATOR_ROOT" --skip-dependencies --skip-shell-alias
+  smoke_step "ignore harness via local git exclude" grep -Eq \
+    '^[[:space:]]*/?\.pancreator/?[[:space:]]*$' \
+    "$git_project/.git/info/exclude"
+  smoke_step "create no tracked gitignore in a git target" test ! -e \
+    "$git_project/.gitignore"
+  smoke_step "leave the git target with no tracked changes" \
+    test -z "$(git -C "$git_project" status --porcelain)"
+
+  # Resolve to the canonical form the installer records; TMPDIR often carries a
+  # trailing slash, so the raw mktemp paths would not compare equal.
+  detached_project="$(cd "$(mktemp -d "${smoke_root}/project.XXXXXX")" && pwd)"
+  detached_harness="$(cd "$(mktemp -d "${smoke_root}/harness.XXXXXX")" && pwd)"
+  git -C "$detached_project" init -q
+  smoke_step "detached install" bash "$0" --target "$detached_project" \
+    --harness-dir "$detached_harness" --pancreator-root "$PANCREATOR_ROOT" \
+    --skip-dependencies --skip-shell-alias
+  smoke_step "detached harness lives outside the target" test -x \
+    "$detached_harness/bin/pan"
+  smoke_step "detached target has no .pancreator" test ! -e \
+    "$detached_project/.pancreator"
+  smoke_step "detached target keeps the cursor projection" test -f \
+    "$detached_project/.cursor/agents/pan-coder.md"
+  smoke_step "detached projection uses the absolute harness path" grep -q \
+    "$detached_harness/bin/pan" "$detached_project/.cursor/commands/pan-status.md"
+  smoke_step "detached config records the absolute workspace" node -e '
+    const c = require(process.argv[1])
+    process.exit(
+      c.installation_mode === "detached" && c.workspace_root === process.argv[2]
+        ? 0
+        : 1,
+    )
+  ' "$detached_harness/config.json" "$detached_project"
+  smoke_step "detached install leaves the target clean" \
+    test -z "$(git -C "$detached_project" status --porcelain)"
+  smoke_step "detached harness rejects a nested harness dir" bash -c \
+    "! bash '$0' --target '$detached_project' \
+      --harness-dir '$detached_project/nested' \
+      --pancreator-root '$PANCREATOR_ROOT' --skip-dependencies --skip-shell-alias"
 
   no_gitignore_project="$(mktemp -d "${smoke_root}/project.XXXXXX")"
   smoke_step "install without target gitignore" bash "$0" \
@@ -266,7 +320,7 @@ fi
 TARGET_DIR="$(cd "$TARGET_DIR" && pwd)"
 PANCREATOR_ROOT="$(cd "$PANCREATOR_ROOT" && pwd)"
 
-for required in VERSION project.json package.json package-lock.json bin/install-support; do
+for required in VERSION config.json package.json package-lock.json bin/install-support; do
   if [[ ! -e "$PANCREATOR_ROOT/$required" ]]; then
     echo "Error: invalid Pancreator payload; missing $required" >&2
     exit 1
@@ -285,14 +339,34 @@ if [[ "$NODE_MAJOR" -lt 22 ]]; then
   exit 1
 fi
 
-PANCREATOR_DIR="$TARGET_DIR/.pancreator"
-PROJECT_JSON="$PANCREATOR_DIR/project.json"
+# A detached installation places the harness outside the target tree. The target
+# repository still receives the pan-namespaced `.cursor` projection so Cursor
+# works when the operator opens the target; only the harness itself moves.
+DETACHED=0
+
+if [[ -n "$HARNESS_DIR" ]]; then
+  mkdir -p "$HARNESS_DIR"
+  HARNESS_DIR="$(cd "$HARNESS_DIR" && pwd)"
+
+  if [[ "$HARNESS_DIR" == "$TARGET_DIR" || "$HARNESS_DIR" == "$TARGET_DIR"/* ]]; then
+    echo "Error: --harness-dir MUST be outside the target repository: $HARNESS_DIR" >&2
+    exit 1
+  fi
+
+  PANCREATOR_DIR="$HARNESS_DIR"
+  DETACHED=1
+else
+  PANCREATOR_DIR="$TARGET_DIR/.pancreator"
+fi
+
+CONFIG_JSON="$PANCREATOR_DIR/config.json"
 RUNTIME_DIR="$PANCREATOR_DIR/runtime"
 INBOX_DIR="$RUNTIME_DIR/inbox"
 DOCS_DIR="$PANCREATOR_DIR/docs"
 PRIMER_PATH="$DOCS_DIR/target-repo-primer.md"
 BRIEF_SYSTEM_DIR="$DOCS_DIR/operator-briefs"
 LEGACY_PRIMER_PATH="$RUNTIME_DIR/target-repo-primer.md"
+LEGACY_CONFIG_JSON="$PANCREATOR_DIR/project.json"
 INSTALL_MARKER="$PANCREATOR_DIR/install.json"
 CURSOR_DIR="$TARGET_DIR/.cursor"
 
@@ -368,7 +442,7 @@ resolve_source_metadata() {
   fi
 
   if ! git -C "$PANCREATOR_ROOT" diff --quiet "$indexed" "$head" -- \
-    .gitignore project.json "${SOURCE_PAYLOAD_ENTRIES[@]}" \
+    .gitignore config.json "${SOURCE_PAYLOAD_ENTRIES[@]}" \
     ':(exclude)release/index.json'; then
     echo "Error: installed harness inputs differ from indexed release $VERSION." >&2
     echo "Complete the Pancreator self-development release flow or increment VERSION before installing this clean checkout." >&2
@@ -451,39 +525,78 @@ payload_entries_csv() {
   printf '%s' "$joined"
 }
 
-cursor_warning() {
-  cat <<WARNING
+report_existing_harness() {
+  local previous_marker="$1"
+  local args=(
+    detect-existing-harness
+    --target-root "$TARGET_DIR"
+    --source-root "$PANCREATOR_ROOT"
+  )
 
-######################################################################
-# PANCREATOR: EXISTING .cursor DIRECTORY DETECTED                     #
-######################################################################
-Pancreator assumes a pristine agentic/harness environment. Existing
-.cursor files will be retained where they do not conflict, but custom
-agents, commands, rules, or settings may cause unexpected behavior.
-Conflicting Pancreator-owned paths are replaced and backed up under:
-  $PANCREATOR_DIR/backups/cursor/
-######################################################################
+  if [[ -f "$previous_marker" ]]; then
+    args+=(--previous-marker "$previous_marker")
+  fi
 
-WARNING
+  node "$PANCREATOR_ROOT/bin/install-support" "${args[@]}"
 }
 
-ensure_target_gitignore() {
-  local gitignore="$TARGET_DIR/.gitignore"
+# Keep Pancreator's own files out of the target's Git status without editing any
+# file the target repository tracks. `.git/info/exclude` is local to the clone
+# and is never committed, so installation leaves the repository's content
+# byte-identical.
+#
+# Only Pancreator-owned paths are listed. Excluding `.cursor/` wholesale would
+# hide the target's own agent configuration from its operators, and ignore rules
+# never affect files Git already tracks, so a target that versions its own
+# `.cursor/` files is unaffected either way.
+GIT_EXCLUDE_BEGIN="# >>> pancreator >>>"
+GIT_EXCLUDE_END="# <<< pancreator <<<"
 
-  if [[ ! -f "$gitignore" ]]; then
+ensure_target_git_exclude() {
+  local git_dir exclude_file
+
+  if ! git_dir="$(git -C "$TARGET_DIR" rev-parse --absolute-git-dir 2>/dev/null)"; then
     return
   fi
 
-  if grep -Eq '^[[:space:]]*/?\.pancreator/?[[:space:]]*$' "$gitignore"; then
-    return
+  exclude_file="$git_dir/info/exclude"
+  mkdir -p "$git_dir/info"
+
+  # Drop any previous block so the managed patterns stay current and the file
+  # never accumulates duplicates across refreshes.
+  if [[ -f "$exclude_file" ]]; then
+    awk -v begin="$GIT_EXCLUDE_BEGIN" -v end="$GIT_EXCLUDE_END" '
+      $0 == begin { skipping = 1; next }
+      $0 == end { skipping = 0; next }
+      !skipping { print }
+    ' "$exclude_file" >"$exclude_file.pancreator-tmp"
+    mv "$exclude_file.pancreator-tmp" "$exclude_file"
   fi
 
-  if [[ -s "$gitignore" && -n "$(tail -c 1 "$gitignore")" ]]; then
-    printf '\n' >>"$gitignore"
+  if [[ -s "$exclude_file" && -n "$(tail -c 1 "$exclude_file")" ]]; then
+    printf '\n' >>"$exclude_file"
   fi
 
-  printf '.pancreator/\n' >>"$gitignore"
-  echo "Added .pancreator/ to $gitignore"
+  {
+    printf '%s\n' "$GIT_EXCLUDE_BEGIN"
+
+    # A detached harness lives outside the target, so there is nothing at
+    # `.pancreator/` to exclude.
+    if [[ "$DETACHED" -eq 0 ]]; then
+      printf '/.pancreator/\n'
+    fi
+
+    cat <<'EXCLUDE'
+/.cursor/agents/pan-*.md
+/.cursor/commands/pan-*.md
+/.cursor/rules/pan-*.mdc
+/.cursor/rules/pancreator.mdc
+EXCLUDE
+
+    printf '%s\n' "$GIT_EXCLUDE_END"
+  } >>"$exclude_file"
+
+  echo "Ignored Pancreator files via $exclude_file (local only; not tracked)"
 }
 
 configure_shell_alias() {
@@ -560,9 +673,41 @@ prepare_persistent_layout() {
     --backup-root "$PANCREATOR_DIR/backups/repository-checks"
 }
 
+# Installations created before the harness configuration was renamed carry
+# `project.json`. Move it into place before any completeness check so an
+# existing install is not misread as partial, and so `write-project` merges the
+# operator's `active_config` and model overrides forward instead of discarding
+# them. Runs on every install, refresh, repair, and update.
+migrate_legacy_config() {
+  local migrated_at backup_dir
+
+  if [[ ! -f "$LEGACY_CONFIG_JSON" ]]; then
+    return
+  fi
+
+  if [[ ! -f "$CONFIG_JSON" ]]; then
+    mv "$LEGACY_CONFIG_JSON" "$CONFIG_JSON"
+    echo "Migrated harness configuration: project.json -> config.json"
+    return
+  fi
+
+  # Both names present: config.json is authoritative. Retain the superseded
+  # file as evidence rather than deleting a config the operator may have edited.
+  if cmp -s "$LEGACY_CONFIG_JSON" "$CONFIG_JSON"; then
+    rm -f "$LEGACY_CONFIG_JSON"
+    return
+  fi
+
+  migrated_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  backup_dir="$PANCREATOR_DIR/backups/config/${migrated_at//:/-}"
+  mkdir -p "$backup_dir"
+  mv "$LEGACY_CONFIG_JSON" "$backup_dir/project.json"
+  echo "Superseded legacy project.json retained at $backup_dir/project.json"
+}
+
 is_complete_install() {
   [[ -x "$PANCREATOR_DIR/bin/pan" \
-    && -f "$PROJECT_JSON" \
+    && -f "$CONFIG_JSON" \
     && -f "$INSTALL_MARKER" \
     && -d "$INBOX_DIR" \
     && -L "$PANCREATOR_DIR/.cursor" \
@@ -570,7 +715,24 @@ is_complete_install() {
 }
 
 is_partial_install() {
-  [[ -d "$PANCREATOR_DIR" ]] && ! is_complete_install
+  if is_complete_install; then
+    return 1
+  fi
+
+  if [[ ! -d "$PANCREATOR_DIR" ]]; then
+    return 1
+  fi
+
+  # `--harness-dir` is routinely pointed at a directory the operator already
+  # created, and this script's own `mkdir -p` creates one too, so an empty
+  # detached destination is fresh rather than damaged. An embedded
+  # `.pancreator/` is created only by Pancreator, so its mere presence still
+  # requires an explicit repair or clean decision.
+  if [[ "$DETACHED" -eq 1 && -z "$(ls -A "$PANCREATOR_DIR" 2>/dev/null)" ]]; then
+    return 1
+  fi
+
+  return 0
 }
 
 apply_partial_choice() {
@@ -656,15 +818,16 @@ remove_previous_payload() {
 }
 
 install_payload() {
-  local cursor_preexisting="$1"
+  local harness_preexisting="$1"
   local previous_marker="${2:-$INSTALL_MARKER}"
   local staging backup_root cursor_manifest installed_at entry
+  local cursor_args project_args
 
   staging="$(mktemp -d "${TMPDIR:-/tmp}/pancreator-install.XXXXXX")"
   trap 'rm -rf "$staging"' RETURN
 
   prepare_staging_payload "$staging"
-  ensure_target_gitignore
+  ensure_target_git_exclude
 
   mkdir -p "$PANCREATOR_DIR" "$CURSOR_DIR"
   prepare_persistent_layout
@@ -697,30 +860,34 @@ install_payload() {
     --existing-root "$PANCREATOR_DIR" \
     --staging-root "$staging"
 
-  if [[ "$cursor_preexisting" == "true" ]]; then
-    cursor_warning
+  if [[ "$harness_preexisting" == "true" ]]; then
+    report_existing_harness "$previous_marker"
   fi
 
   installed_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   backup_root="$PANCREATOR_DIR/backups/cursor/${installed_at//:/-}"
   cursor_manifest="$staging/cursor-manifest.json"
 
-  if [[ -f "$PROJECT_JSON" ]]; then
-    node "$PANCREATOR_ROOT/bin/install-support" project-cursor \
-      --source-root "$PANCREATOR_ROOT" \
-      --target-root "$TARGET_DIR" \
-      --manifest-out "$cursor_manifest" \
-      --backup-root "$backup_root" \
-      --previous-marker "$previous_marker" \
-      --persona-config "$PROJECT_JSON"
-  else
-    node "$PANCREATOR_ROOT/bin/install-support" project-cursor \
-      --source-root "$PANCREATOR_ROOT" \
-      --target-root "$TARGET_DIR" \
-      --manifest-out "$cursor_manifest" \
-      --backup-root "$backup_root" \
-      --previous-marker "$previous_marker"
+  cursor_args=(
+    project-cursor
+    --source-root "$PANCREATOR_ROOT"
+    --target-root "$TARGET_DIR"
+    --manifest-out "$cursor_manifest"
+    --backup-root "$backup_root"
+    --previous-marker "$previous_marker"
+  )
+
+  if [[ -f "$CONFIG_JSON" ]]; then
+    cursor_args+=(--persona-config "$CONFIG_JSON")
   fi
+
+  # Projected Cursor artifacts address the harness by path. An embedded harness
+  # is reachable at `.pancreator`; a detached one only by absolute path.
+  if [[ "$DETACHED" -eq 1 ]]; then
+    cursor_args+=(--harness-prefix "$PANCREATOR_DIR")
+  fi
+
+  node "$PANCREATOR_ROOT/bin/install-support" "${cursor_args[@]}"
 
   remove_previous_payload
 
@@ -730,13 +897,28 @@ install_payload() {
     fi
   done
 
-  node "$PANCREATOR_ROOT/bin/install-support" write-project \
-    --source "$PANCREATOR_ROOT/project.json" \
-    --destination "$PROJECT_JSON" \
+  project_args=(
+    write-project
+    --source "$PANCREATOR_ROOT/config.json"
+    --destination "$CONFIG_JSON"
     --workspace-id "$(workspace_id)"
+  )
 
+  if [[ "$DETACHED" -eq 1 ]]; then
+    project_args+=(--detached-workspace "$TARGET_DIR")
+  fi
+
+  node "$PANCREATOR_ROOT/bin/install-support" "${project_args[@]}"
+
+  # The runtime reaches the Cursor surface as `<installation>/.cursor`. An
+  # embedded harness links to its parent; a detached one MUST link absolutely.
   rm -rf "$PANCREATOR_DIR/.cursor"
-  ln -s ../.cursor "$PANCREATOR_DIR/.cursor"
+
+  if [[ "$DETACHED" -eq 1 ]]; then
+    ln -s "$CURSOR_DIR" "$PANCREATOR_DIR/.cursor"
+  else
+    ln -s ../.cursor "$PANCREATOR_DIR/.cursor"
+  fi
 
   node "$PANCREATOR_ROOT/bin/install-support" write-marker \
     --destination "$INSTALL_MARKER" \
@@ -753,7 +935,7 @@ install_payload() {
 
   echo "Pancreator $VERSION installed in $PANCREATOR_DIR"
   echo "  workspace:      $TARGET_DIR"
-  echo "  harness config: $PROJECT_JSON"
+  echo "  harness config: $CONFIG_JSON"
   echo "  target primer:  $PRIMER_PATH"
   echo "  brief system:   run /pan-build-briefs after install"
   echo "  runtime state:  $RUNTIME_DIR"
@@ -770,17 +952,30 @@ install_payload() {
   fi
 
   echo ""
-  echo "Run from the target repository:"
-  echo "  ./.pancreator/bin/pan doctor"
-  echo "  ./.pancreator/bin/pan init --workflow dev --request runtime/inbox/request.md"
+
+  if [[ "$DETACHED" -eq 1 ]]; then
+    echo "Detached installation: the harness lives outside the target repository."
+    echo "Invoke it by absolute path, or export PANCREATOR_ROOT to run from anywhere:"
+    echo "  $PANCREATOR_DIR/bin/pan doctor"
+    echo "  export PANCREATOR_ROOT=$PANCREATOR_DIR"
+  else
+    echo "Run from the target repository:"
+    echo "  ./.pancreator/bin/pan doctor"
+    echo "  ./.pancreator/bin/pan init --workflow dev --request runtime/inbox/request.md"
+  fi
 
   configure_install_shell_aliases
 }
 
-CURSOR_PREEXISTING=false
+migrate_legacy_config
 
-if [[ -d "$CURSOR_DIR" && ! -f "$INSTALL_MARKER" ]]; then
-  CURSOR_PREEXISTING=true
+# Report the target's pre-existing agentic harness configuration on first
+# install only. The detector no-ops when the repository has none, so this covers
+# `.cursor/`, CLAUDE.md, AGENTS.md, and every other surface it knows about.
+HARNESS_PREEXISTING=false
+
+if [[ ! -f "$INSTALL_MARKER" ]]; then
+  HARNESS_PREEXISTING=true
 fi
 
 if is_complete_install; then
@@ -802,7 +997,7 @@ if is_complete_install; then
       trap 'rm -f "$previous_marker_copy"' EXIT
       cp "$INSTALL_MARKER" "$previous_marker_copy"
       rm -rf "$PANCREATOR_DIR"
-      install_payload "$CURSOR_PREEXISTING" "$previous_marker_copy"
+      install_payload "$HARNESS_PREEXISTING" "$previous_marker_copy"
       rm -f "$previous_marker_copy"
       trap - EXIT
       echo "Clean reinstall completed."
@@ -823,12 +1018,12 @@ if is_partial_install; then
 
   case "$MODE" in
     repair)
-      install_payload "$CURSOR_PREEXISTING"
+      install_payload "$HARNESS_PREEXISTING"
       echo "Repair completed."
       ;;
     clean)
       rm -rf "$PANCREATOR_DIR"
-      install_payload "$CURSOR_PREEXISTING"
+      install_payload "$HARNESS_PREEXISTING"
       echo "Clean reinstall completed."
       ;;
     *)
@@ -840,4 +1035,4 @@ if is_partial_install; then
   exit 0
 fi
 
-install_payload "$CURSOR_PREEXISTING"
+install_payload "$HARNESS_PREEXISTING"

@@ -158,7 +158,7 @@ test('policy resolution snapshots handbook and skill guidance', () => {
 
 test('Python policy loads only for detected Python workspaces', () => {
   const root = createFixture()
-  const configPath = path.join(root, 'project.json')
+  const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
     string,
     unknown
@@ -203,7 +203,7 @@ test('Python policy loads only for detected Python workspaces', () => {
 
 test('non-Python embedded workspaces do not load Python guidance', () => {
   const root = createFixture()
-  const configPath = path.join(root, 'project.json')
+  const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
     string,
     unknown
@@ -281,7 +281,7 @@ test('orchestration and release guidance resolve with required policy dependenci
 
 test('self-development version policy is excluded from embedded installations', () => {
   const root = createFixture()
-  const configPath = path.join(root, 'project.json')
+  const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
     string,
     unknown
@@ -316,7 +316,7 @@ test('standalone release preparation resolves self-development version ownership
 
 test('embedded coding stages exclude Pancreator language and binary policies', () => {
   const root = createFixture()
-  const configPath = path.join(root, 'project.json')
+  const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
     string,
     unknown

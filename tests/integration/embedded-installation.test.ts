@@ -100,7 +100,7 @@ function createReleaseFixture(): string {
     'package-lock.json',
     'package.json',
     'prettier.config.js',
-    'project.json',
+    'config.json',
     'release',
     'src',
     'tests',
@@ -156,7 +156,7 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
 
     assert.equal(result.status, 0, result.stderr)
     assert.ok(result.stdout.includes(`Pancreator ${CURRENT_VERSION} installed`))
-    assert.equal(existsSync(path.join(project, 'project.json')), false)
+    assert.equal(existsSync(path.join(project, 'config.json')), false)
 
     const config = readJson<{
       schema_version: number
@@ -167,7 +167,7 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
       active_config: string
       defaults: Record<string, string>
       configs: Record<string, { personas: Record<string, string> }>
-    }>(path.join(project, '.pancreator', 'project.json'))
+    }>(path.join(project, '.pancreator', 'config.json'))
 
     assert.equal(config.schema_version, 1)
     assert.equal(config.workspace_root, '..')
@@ -186,7 +186,7 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
     assert.equal(typeof harnessTechnicianModel, 'string')
     assert.ok(
       readFileSync(
-        path.join(project, '.cursor', 'agents', 'harness-technician.md'),
+        path.join(project, '.cursor', 'agents', 'pan-harness-technician.md'),
         'utf8',
       ).includes(`model: ${harnessTechnicianModel}`),
     )
@@ -240,7 +240,7 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
     )
     assert.equal(
       existsSync(
-        path.join(project, '.cursor', 'rules', 'visual-qa-isolation.mdc'),
+        path.join(project, '.cursor', 'rules', 'pan-visual-qa-isolation.mdc'),
       ),
       true,
     )
@@ -314,7 +314,7 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
     assert.match(buildDocsCommand, /create the primer when absent/u)
     assert.match(buildDocsCommand, /inventory target-owned documentation/u)
     assert.equal(
-      existsSync(path.join(project, '.cursor', 'agents', 'librarian.md')),
+      existsSync(path.join(project, '.cursor', 'agents', 'pan-librarian.md')),
       true,
     )
 
@@ -327,7 +327,7 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
     assert.match(repairCommand, /--kind repair/u)
     assert.equal(
       existsSync(
-        path.join(project, '.cursor', 'agents', 'harness-technician.md'),
+        path.join(project, '.cursor', 'agents', 'pan-harness-technician.md'),
       ),
       true,
     )
@@ -440,9 +440,121 @@ test('dirty development snapshot installs with automatic updates disabled', () =
   }
 })
 
-test('embedded installer manages an existing target gitignore without creating one', () => {
+test('detached installer places the harness outside the target tree', () => {
+  const project = makeSkeletonProject()
+  const harness = mkdtempSync(path.join(tmpdir(), 'pancreator-harness-'))
+
+  try {
+    git(project, ['init', '-q'])
+    git(project, ['config', 'user.email', 'fixture@example.com'])
+    git(project, ['config', 'user.name', 'Fixture'])
+    git(project, ['add', '.'])
+    git(project, ['commit', '-qm', 'initial'])
+
+    const result = runInstaller(project, ['--harness-dir', harness])
+
+    assert.equal(result.status, 0, result.stderr)
+
+    // The harness is outside the target; the target has no .pancreator at all.
+    assert.equal(existsSync(path.join(harness, 'bin', 'pan')), true)
+    assert.equal(existsSync(path.join(project, '.pancreator')), false)
+
+    const config = readJson<{
+      workspace_root: string
+      state_root: string
+      installation_mode: string
+    }>(path.join(harness, 'config.json'))
+
+    assert.equal(config.installation_mode, 'detached')
+    assert.equal(config.workspace_root, project)
+    assert.equal(path.isAbsolute(config.workspace_root), true)
+    assert.equal(config.state_root, 'runtime')
+
+    // The Cursor surface still lands in the target so opening it just works.
+    assert.equal(
+      existsSync(path.join(project, '.cursor', 'agents', 'pan-coder.md')),
+      true,
+    )
+
+    // Projected content must address the harness absolutely: no relative path
+    // from the target can reach it.
+    const status = readFileSync(
+      path.join(project, '.cursor', 'commands', 'pan-status.md'),
+      'utf8',
+    )
+
+    assert.ok(status.includes(path.join(harness, 'bin', 'pan')))
+    assert.doesNotMatch(status, /\.pancreator\/bin\/pan/u)
+
+    // The runtime reaches the Cursor surface through an absolute symlink.
+    const link = path.join(harness, '.cursor')
+
+    assert.equal(lstatSync(link).isSymbolicLink(), true)
+    assert.equal(existsSync(path.join(link, 'agents', 'pan-coder.md')), true)
+
+    // Runtime state lives with the harness, not the target.
+    assert.equal(existsSync(path.join(harness, 'runtime', 'inbox')), true)
+
+    // The target repository is left untouched.
+    assert.equal(git(project, ['status', '--porcelain']), '')
+
+    const exclude = readFileSync(
+      path.join(project, '.git', 'info', 'exclude'),
+      'utf8',
+    )
+
+    // Nothing sits at .pancreator/, so that rule must not be emitted.
+    assert.doesNotMatch(exclude, /^\/\.pancreator\/$/mu)
+    assert.match(exclude, /^\/\.cursor\/agents\/pan-\*\.md$/mu)
+  } finally {
+    rmSync(project, { recursive: true, force: true })
+    rmSync(harness, { recursive: true, force: true })
+  }
+})
+
+test('detached installer refuses a harness inside the target', () => {
+  const project = makeSkeletonProject()
+
+  try {
+    const result = runInstaller(project, [
+      '--harness-dir',
+      path.join(project, 'nested', 'harness'),
+    ])
+
+    assert.notEqual(result.status, 0)
+    assert.match(result.stderr, /MUST be outside the target repository/)
+  } finally {
+    rmSync(project, { recursive: true, force: true })
+  }
+})
+
+test('detached installation refreshes idempotently', () => {
+  const project = makeSkeletonProject()
+  const harness = mkdtempSync(path.join(tmpdir(), 'pancreator-harness-'))
+
+  try {
+    assert.equal(runInstaller(project, ['--harness-dir', harness]).status, 0)
+
+    const refresh = runInstaller(project, ['--harness-dir', harness, '--yes'])
+
+    assert.equal(refresh.status, 0, refresh.stderr)
+    assert.match(refresh.stdout, /Installation refresh completed/)
+
+    const config = readJson<{
+      workspace_root: string
+      installation_mode: string
+    }>(path.join(harness, 'config.json'))
+
+    assert.equal(config.installation_mode, 'detached')
+    assert.equal(config.workspace_root, project)
+  } finally {
+    rmSync(project, { recursive: true, force: true })
+    rmSync(harness, { recursive: true, force: true })
+  }
+})
+
+test('embedded installer never writes the target gitignore', () => {
   const withGitignore = makeSkeletonProject()
-  const equivalentRule = makeSkeletonProject()
   const withoutGitignore = makeSkeletonProject()
 
   try {
@@ -455,20 +567,7 @@ test('embedded installer manages an existing target gitignore without creating o
     assert.equal(second.status, 0, second.stderr)
     assert.equal(
       readFileSync(path.join(withGitignore, '.gitignore'), 'utf8'),
-      'node_modules/\n.pancreator/\n',
-    )
-
-    writeFileSync(
-      path.join(equivalentRule, '.gitignore'),
-      '/.pancreator/\nlocal-only/\n',
-    )
-
-    const equivalent = runInstaller(equivalentRule)
-
-    assert.equal(equivalent.status, 0, equivalent.stderr)
-    assert.equal(
-      readFileSync(path.join(equivalentRule, '.gitignore'), 'utf8'),
-      '/.pancreator/\nlocal-only/\n',
+      'node_modules/',
     )
 
     const absent = runInstaller(withoutGitignore)
@@ -477,8 +576,75 @@ test('embedded installer manages an existing target gitignore without creating o
     assert.equal(existsSync(path.join(withoutGitignore, '.gitignore')), false)
   } finally {
     rmSync(withGitignore, { recursive: true, force: true })
-    rmSync(equivalentRule, { recursive: true, force: true })
     rmSync(withoutGitignore, { recursive: true, force: true })
+  }
+})
+
+test('embedded installer leaves a git target with no tracked changes', () => {
+  const project = makeSkeletonProject()
+
+  try {
+    git(project, ['init', '-q'])
+    git(project, ['config', 'user.email', 'fixture@example.com'])
+    git(project, ['config', 'user.name', 'Fixture'])
+    git(project, ['add', '.'])
+    git(project, ['commit', '-qm', 'initial'])
+
+    const head = git(project, ['rev-parse', 'HEAD'])
+
+    assert.equal(runInstaller(project).status, 0)
+    assert.equal(runInstaller(project, ['--yes']).status, 0)
+
+    // The installation is invisible to the repository: no tracked file changed,
+    // nothing untracked was introduced, and no commit was created.
+    assert.equal(git(project, ['status', '--porcelain']), '')
+    assert.equal(git(project, ['rev-parse', 'HEAD']), head)
+    assert.equal(existsSync(path.join(project, '.gitignore')), false)
+
+    // The exclusions live only in the clone-local, never-committed file, and a
+    // refresh MUST NOT duplicate the managed block.
+    const exclude = readFileSync(
+      path.join(project, '.git', 'info', 'exclude'),
+      'utf8',
+    )
+
+    assert.equal(exclude.match(/# >>> pancreator >>>/gu)?.length, 1)
+    assert.match(exclude, /^\/\.pancreator\/$/mu)
+    assert.match(exclude, /^\/\.cursor\/agents\/pan-\*\.md$/mu)
+  } finally {
+    rmSync(project, { recursive: true, force: true })
+  }
+})
+
+test('embedded installer does not hide target-owned Cursor files from git', () => {
+  const project = makeSkeletonProject()
+
+  try {
+    git(project, ['init', '-q'])
+    git(project, ['config', 'user.email', 'fixture@example.com'])
+    git(project, ['config', 'user.name', 'Fixture'])
+
+    mkdirSync(path.join(project, '.cursor', 'agents'), { recursive: true })
+    writeFileSync(
+      path.join(project, '.cursor', 'agents', 'coder.md'),
+      'target-authored coder\n',
+    )
+
+    assert.equal(runInstaller(project).status, 0)
+
+    // The target's own agent stays visible to its operators; only Pancreator's
+    // namespaced projection is excluded.
+    const status = git(project, [
+      'status',
+      '--porcelain',
+      '--untracked-files=all',
+    ])
+
+    assert.match(status, /\.cursor\/agents\/coder\.md/u)
+    assert.doesNotMatch(status, /pan-coder\.md/u)
+    assert.doesNotMatch(status, /\.pancreator/u)
+  } finally {
+    rmSync(project, { recursive: true, force: true })
   }
 })
 
@@ -489,7 +655,7 @@ test('embedded installer ignores source-checkout Cursor files', () => {
   try {
     mkdirSync(path.join(source, '.cursor', 'agents'), { recursive: true })
     writeFileSync(
-      path.join(source, '.cursor', 'agents', 'coder.md'),
+      path.join(source, '.cursor', 'agents', 'pan-coder.md'),
       'poisoned local source config\n',
     )
 
@@ -498,7 +664,7 @@ test('embedded installer ignores source-checkout Cursor files', () => {
     assert.equal(result.status, 0, result.stderr)
 
     const projected = readFileSync(
-      path.join(project, '.cursor', 'agents', 'coder.md'),
+      path.join(project, '.cursor', 'agents', 'pan-coder.md'),
       'utf8',
     )
 
@@ -517,7 +683,7 @@ test('embedded installer warns on existing Cursor state, preserves custom files,
     mkdirSync(path.join(project, '.cursor', 'agents'), { recursive: true })
     mkdirSync(path.join(project, '.cursor', 'rules'), { recursive: true })
     writeFileSync(
-      path.join(project, '.cursor', 'agents', 'coder.md'),
+      path.join(project, '.cursor', 'agents', 'pan-coder.md'),
       'custom coder\n',
     )
     writeFileSync(
@@ -532,11 +698,14 @@ test('embedded installer warns on existing Cursor state, preserves custom files,
     const result = runInstaller(project)
 
     assert.equal(result.status, 0, result.stderr)
-    assert.match(result.stdout, /EXISTING \.cursor DIRECTORY DETECTED/)
     assert.match(
       result.stdout,
-      /assumes a pristine agentic\/harness environment/,
+      /Existing agentic harness configuration detected/,
     )
+    assert.match(result.stdout, /retained {2}\.cursor\/rules\/custom\.mdc/)
+    // pan-coder.md squats on Pancreator's namespace, so it is reported as a
+    // takeover rather than silently replaced.
+    assert.match(result.stdout, /replaced {2}\.cursor\/agents\/pan-coder\.md/)
     assert.equal(
       readFileSync(
         path.join(project, '.cursor', 'rules', 'custom.mdc'),
@@ -549,7 +718,10 @@ test('embedded installer warns on existing Cursor state, preserves custom files,
       '{"custom":true}\n',
     )
     assert.notEqual(
-      readFileSync(path.join(project, '.cursor', 'agents', 'coder.md'), 'utf8'),
+      readFileSync(
+        path.join(project, '.cursor', 'agents', 'pan-coder.md'),
+        'utf8',
+      ),
       'custom coder\n',
     )
 
@@ -558,10 +730,108 @@ test('embedded installer warns on existing Cursor state, preserves custom files,
     assert.equal(backupRuns.length, 1)
     assert.equal(
       readFileSync(
-        path.join(backupBase, backupRuns[0], '.cursor', 'agents', 'coder.md'),
+        path.join(
+          backupBase,
+          backupRuns[0],
+          '.cursor',
+          'agents',
+          'pan-coder.md',
+        ),
         'utf8',
       ),
       'custom coder\n',
+    )
+  } finally {
+    rmSync(project, { recursive: true, force: true })
+  }
+})
+
+test('embedded installer leaves target-owned agents and rules untouched', () => {
+  const project = makeSkeletonProject()
+  const targetCoder = path.join(project, '.cursor', 'agents', 'coder.md')
+  const targetRule = path.join(
+    project,
+    '.cursor',
+    'rules',
+    'visual-qa-isolation.mdc',
+  )
+
+  try {
+    mkdirSync(path.join(project, '.cursor', 'agents'), { recursive: true })
+    mkdirSync(path.join(project, '.cursor', 'rules'), { recursive: true })
+    writeFileSync(targetCoder, 'target-authored coder\n')
+    writeFileSync(targetRule, 'target-authored visual qa rule\n')
+
+    const result = runInstaller(project)
+
+    assert.equal(result.status, 0, result.stderr)
+
+    // The target's own agentic configuration MUST survive byte-identical.
+    assert.equal(readFileSync(targetCoder, 'utf8'), 'target-authored coder\n')
+    assert.equal(
+      readFileSync(targetRule, 'utf8'),
+      'target-authored visual qa rule\n',
+    )
+
+    // Pancreator's equivalents install alongside under the pan namespace.
+    assert.equal(
+      existsSync(path.join(project, '.cursor', 'agents', 'pan-coder.md')),
+      true,
+    )
+    assert.equal(
+      existsSync(
+        path.join(project, '.cursor', 'rules', 'pan-visual-qa-isolation.mdc'),
+      ),
+      true,
+    )
+
+    // Nothing was displaced, so nothing should have been backed up.
+    assert.equal(
+      existsSync(path.join(project, '.pancreator', 'backups', 'cursor')),
+      false,
+    )
+
+    const marker = readJson<InstallMarker>(
+      path.join(project, '.pancreator', 'install.json'),
+    )
+
+    for (const entry of marker.cursor_files) {
+      assert.match(path.basename(entry.path), /^pan(-|creator\.)/u)
+    }
+  } finally {
+    rmSync(project, { recursive: true, force: true })
+  }
+})
+
+test('embedded installer reclaims un-namespaced agents from a pre-namespace install', () => {
+  const project = makeSkeletonProject()
+  const legacyAgent = path.join(project, '.cursor', 'agents', 'coder.md')
+  const markerPath = path.join(project, '.pancreator', 'install.json')
+
+  try {
+    assert.equal(runInstaller(project).status, 0)
+
+    // Reproduce an installation made before agents were namespaced: the old
+    // path exists and the marker records Pancreator as its owner.
+    const contents = 'pancreator-owned coder\n'
+
+    writeFileSync(legacyAgent, contents)
+
+    const marker = readJson<InstallMarker>(markerPath)
+
+    marker.cursor_files.push({
+      path: '.cursor/agents/coder.md',
+      sha256: createHash('sha256').update(contents).digest('hex'),
+    })
+    writeFileSync(markerPath, `${JSON.stringify(marker, null, 2)}\n`)
+
+    assert.equal(runInstaller(project, ['--yes']).status, 0)
+
+    // Ownership transfers to the namespaced path and the orphan is reclaimed.
+    assert.equal(existsSync(legacyAgent), false)
+    assert.equal(
+      existsSync(path.join(project, '.cursor', 'agents', 'pan-coder.md')),
+      true,
     )
   } finally {
     rmSync(project, { recursive: true, force: true })
@@ -815,7 +1085,7 @@ test('embedded installer refresh preserves target primer, runtime state, and unr
     )
     assert.equal(
       existsSync(
-        path.join(project, '.cursor', 'agents', 'harness-technician.md'),
+        path.join(project, '.cursor', 'agents', 'pan-harness-technician.md'),
       ),
       true,
     )
@@ -831,15 +1101,15 @@ test('embedded installer refresh preserves target persona model mappings', () =>
   try {
     assert.equal(runInstaller(project).status, 0)
 
-    const projectJsonPath = path.join(project, '.pancreator', 'project.json')
+    const configJsonPath = path.join(project, '.pancreator', 'config.json')
     const config = readJson<{
       active_config: string
       configs: Record<string, { personas: Record<string, string> }>
-    }>(projectJsonPath)
+    }>(configJsonPath)
 
     config.active_config = 'simple'
     config.configs.simple.personas.coder = customCoderModel
-    writeFileSync(projectJsonPath, `${JSON.stringify(config, null, 2)}\n`)
+    writeFileSync(configJsonPath, `${JSON.stringify(config, null, 2)}\n`)
 
     const result = runInstaller(project, ['--yes'])
 
@@ -849,17 +1119,98 @@ test('embedded installer refresh preserves target persona model mappings', () =>
     const refreshed = readJson<{
       active_config: string
       configs: Record<string, { personas: Record<string, string> }>
-    }>(projectJsonPath)
+    }>(configJsonPath)
 
     assert.equal(refreshed.active_config, 'simple')
     assert.equal(refreshed.configs.simple.personas.coder, customCoderModel)
 
     const coderAgent = readFileSync(
-      path.join(project, '.cursor', 'agents', 'coder.md'),
+      path.join(project, '.cursor', 'agents', 'pan-coder.md'),
       'utf8',
     )
 
     assert.ok(coderAgent.includes(`model: ${customCoderModel}`))
+  } finally {
+    rmSync(project, { recursive: true, force: true })
+  }
+})
+
+test('embedded installer migrates a legacy project.json to config.json', () => {
+  const project = makeSkeletonProject()
+  const customCoderModel = 'operator-legacy-coder-model[fast=false]'
+  const pancreatorDir = path.join(project, '.pancreator')
+  const configPath = path.join(pancreatorDir, 'config.json')
+  const legacyPath = path.join(pancreatorDir, 'project.json')
+
+  try {
+    assert.equal(runInstaller(project).status, 0)
+
+    // Reproduce a pre-rename installation carrying an operator edit.
+    const config = readJson<{
+      active_config: string
+      configs: Record<string, { personas: Record<string, string> }>
+    }>(configPath)
+
+    config.active_config = 'simple'
+    config.configs.simple.personas.coder = customCoderModel
+    writeFileSync(legacyPath, `${JSON.stringify(config, null, 2)}\n`)
+    rmSync(configPath)
+
+    const result = runInstaller(project, ['--yes'])
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.match(result.stdout, /Migrated harness configuration/)
+
+    assert.equal(existsSync(configPath), true)
+    assert.equal(existsSync(legacyPath), false)
+
+    const migrated = readJson<{
+      active_config: string
+      installation_mode: string
+      configs: Record<string, { personas: Record<string, string> }>
+    }>(configPath)
+
+    assert.equal(migrated.active_config, 'simple')
+    assert.equal(migrated.installation_mode, 'embedded')
+    assert.equal(migrated.configs.simple.personas.coder, customCoderModel)
+
+    // The projected agent must pick the migrated mapping up, proving the
+    // migration ran before persona projection rather than after.
+    const coderAgent = readFileSync(
+      path.join(project, '.cursor', 'agents', 'pan-coder.md'),
+      'utf8',
+    )
+
+    assert.ok(coderAgent.includes(`model: ${customCoderModel}`))
+  } finally {
+    rmSync(project, { recursive: true, force: true })
+  }
+})
+
+test('embedded installer retains a superseded legacy project.json as a backup', () => {
+  const project = makeSkeletonProject()
+  const pancreatorDir = path.join(project, '.pancreator')
+  const legacyPath = path.join(pancreatorDir, 'project.json')
+
+  try {
+    assert.equal(runInstaller(project).status, 0)
+
+    writeFileSync(legacyPath, '{"schema_version":1,"active_config":"stale"}\n')
+
+    const result = runInstaller(project, ['--yes'])
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.match(result.stdout, /Superseded legacy project\.json retained/)
+    assert.equal(existsSync(legacyPath), false)
+
+    const backupRoot = path.join(pancreatorDir, 'backups', 'config')
+    const stamps = readdirSync(backupRoot)
+
+    assert.equal(stamps.length, 1)
+    assert.equal(
+      existsSync(path.join(backupRoot, stamps[0]!, 'project.json')),
+      true,
+    )
   } finally {
     rmSync(project, { recursive: true, force: true })
   }
@@ -871,12 +1222,12 @@ test('embedded installer refresh compacts defaults and preserves operator models
   try {
     assert.equal(runInstaller(project).status, 0)
 
-    const projectJsonPath = path.join(project, '.pancreator', 'project.json')
+    const configJsonPath = path.join(project, '.pancreator', 'config.json')
     const config = readJson<{
       active_config: string
       defaults: Record<string, string>
       configs: Record<string, { personas: Record<string, string> }>
-    }>(projectJsonPath)
+    }>(configJsonPath)
 
     const customReviewerModel = 'operator-custom-reviewer[fast=false]'
     const inheritedPersona = 'investigator'
@@ -888,7 +1239,7 @@ test('embedded installer refresh compacts defaults and preserves operator models
     config.configs[config.active_config].personas[inheritedPersona] =
       inheritedModel
     delete config.configs[config.active_config].personas.spotfixer
-    writeFileSync(projectJsonPath, `${JSON.stringify(config, null, 2)}\n`)
+    writeFileSync(configJsonPath, `${JSON.stringify(config, null, 2)}\n`)
 
     const result = runInstaller(project, ['--yes'])
 
@@ -897,7 +1248,7 @@ test('embedded installer refresh compacts defaults and preserves operator models
     const refreshed = readJson<{
       active_config: string
       configs: Record<string, { personas: Record<string, string> }>
-    }>(projectJsonPath)
+    }>(configJsonPath)
     const active = refreshed.configs[refreshed.active_config]
 
     assert.equal(active.personas.reviewer, customReviewerModel)
@@ -906,7 +1257,7 @@ test('embedded installer refresh compacts defaults and preserves operator models
     assert.notEqual(active.personas.spotfixer, customReviewerModel)
     assert.ok(
       readFileSync(
-        path.join(project, '.cursor', 'agents', `${inheritedPersona}.md`),
+        path.join(project, '.cursor', 'agents', `pan-${inheritedPersona}.md`),
         'utf8',
       ).includes(`model: ${inheritedModel}`),
     )

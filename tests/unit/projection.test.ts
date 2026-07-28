@@ -24,6 +24,52 @@ test('embedded Cursor projection prefixes durable harness docs paths', () => {
   )
 })
 
+test('detached Cursor projection addresses the harness absolutely', () => {
+  const projected = projectCursorContent(
+    'Read `docs/target-repo-primer.md`, then run `./bin/pan list --json`.',
+    '.cursor/commands/pan-write-pr.md',
+    'detached',
+    '/opt/pancreator/acme',
+  )
+
+  assert.equal(
+    projected,
+    'Read `/opt/pancreator/acme/docs/target-repo-primer.md`, then run ' +
+      '`/opt/pancreator/acme/bin/pan list --json`.',
+  )
+  // No relative path from the target can reach a detached harness.
+  assert.doesNotMatch(projected, /\.pancreator/u)
+  assert.doesNotMatch(projected, /`\.\/opt/u)
+})
+
+test('detached projection rewrites npm prefixes to the harness root', () => {
+  const projected = projectCursorContent(
+    'Run `npm run check` and `npm run validate`.',
+    '.cursor/commands/pan-validate.md',
+    'detached',
+    '/opt/pancreator/acme',
+  )
+
+  assert.equal(
+    projected,
+    'Run `npm --prefix /opt/pancreator/acme run check` and ' +
+      '`npm --prefix /opt/pancreator/acme run validate`.',
+  )
+})
+
+test('self-development projection is never rewritten', () => {
+  const source = 'Read `docs/x.md`, then run `./bin/pan list --json`.'
+
+  assert.equal(
+    projectCursorContent(
+      source,
+      '.cursor/commands/pan-status.md',
+      'self_development',
+    ),
+    source,
+  )
+})
+
 test('embedded build-docs projection preserves harness-relative CLI targets', () => {
   const projected = projectCursorContent(
     'Run `./bin/pan requirements run --target docs/target-repo-primer.md`.',
@@ -52,14 +98,14 @@ test('embedded repair projection writes the intake under the installed harness',
 
 test('embedded release projection resolves the harness config before stopping', () => {
   const projected = projectCursorContent(
-    'Read `project.json`, `docs/target-repo-primer.md`, and `library/skills/update-release-metadata.md`, then run `./bin/pan list --json`.',
+    'Read `config.json`, `docs/target-repo-primer.md`, and `library/skills/update-release-metadata.md`, then run `./bin/pan list --json`.',
     '.cursor/commands/pan-release.md',
     'embedded',
   )
 
   assert.equal(
     projected,
-    'Read `.pancreator/project.json`, `.pancreator/docs/target-repo-primer.md`, and `.pancreator/library/skills/update-release-metadata.md`, then run `./.pancreator/bin/pan list --json`.',
+    'Read `.pancreator/config.json`, `.pancreator/docs/target-repo-primer.md`, and `.pancreator/library/skills/update-release-metadata.md`, then run `./.pancreator/bin/pan list --json`.',
   )
 })
 
@@ -83,7 +129,7 @@ test('repository validation does not require a local Cursor projection', () => {
 
 test('Cursor sync renders ignored local files from canonical library sources', () => {
   const root = createFixture()
-  const agentPath = path.join(root, '.cursor', 'agents', 'coder.md')
+  const agentPath = path.join(root, '.cursor', 'agents', 'pan-coder.md')
   const sourcePath = path.join(root, 'library', 'cursor', 'agents', 'coder.md')
   const activeModel = loadPipelineConfig(root).config.personas.coder
   const stale = readFileSync(agentPath, 'utf8').replace(
@@ -94,7 +140,7 @@ test('Cursor sync renders ignored local files from canonical library sources', (
   writeFileSync(agentPath, stale)
 
   const preview = syncCursorProjection(root)
-  const coder = preview.find((entry) => entry.path.endsWith('/coder.md'))
+  const coder = preview.find((entry) => entry.path.endsWith('/pan-coder.md'))
 
   assert.equal(coder?.id, 'cursor-agents')
   assert.equal(coder?.changed, true)

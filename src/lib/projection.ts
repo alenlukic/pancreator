@@ -15,7 +15,14 @@ import {
   writeTextAtomic,
 } from './io.js'
 import { loadPipelineConfig } from './pipeline-config.js'
-import { loadProjectConfig, panCommand } from './project-config.js'
+import {
+  harnessPathPrefix,
+  loadProjectConfig,
+  panCommand,
+} from './project-config.js'
+
+/** Filenames Pancreator may own inside a target repository's `.cursor/`. */
+const PANCREATOR_OWNED_BASENAME = /^pan(-|creator\.)/u
 
 interface ProjectionDefinition {
   id: string
@@ -232,14 +239,27 @@ function installationMode(root: string): CursorInstallationMode {
   return loadProjectConfig(root).installation_mode ?? 'self_development'
 }
 
+/**
+ * Mode the manifest is filtered by. A detached installation projects the same
+ * file set as an embedded one — only the harness prefix baked into the content
+ * differs — so the manifest declares `embedded` for both.
+ */
+function projectionMode(
+  mode: CursorInstallationMode,
+): Exclude<CursorInstallationMode, 'detached'> {
+  return mode === 'detached' ? 'embedded' : mode
+}
+
 function renderProjections(root: string): RenderedProjection[] {
   const manifest = readProjectionManifest(root)
   const mode = installationMode(root)
+  const manifestMode = projectionMode(mode)
+  const harnessPrefix = harnessPathPrefix(root)
   const pipeline = loadPipelineConfig(root)
   const rendered: RenderedProjection[] = []
 
   for (const projection of manifest.projections) {
-    if (!projection.installation_modes.includes(mode)) {
+    if (!projection.installation_modes.includes(manifestMode)) {
       continue
     }
 
@@ -252,6 +272,19 @@ function renderProjections(root: string): RenderedProjection[] {
         {
           code: 'INVALID_PROJECTION_MANIFEST',
         },
+      )
+
+      // A target repository owns its own `.cursor/` surface. Every file
+      // Pancreator installs there MUST carry the `pan` namespace so a
+      // projection can never collide with a target-authored agent, command, or
+      // rule. Checked post-expansion so a mis-named source is caught too.
+      // Self-development is exempt: that workspace is Pancreator's own, and
+      // Cursor fixes some filenames (`mcp.json`) that cannot be namespaced.
+      invariant(
+        !projection.installation_modes.includes('embedded') ||
+          PANCREATOR_OWNED_BASENAME.test(path.basename(entry.target)),
+        `projection ${projection.id} target MUST use a pan-namespaced filename: ${entry.target}`,
+        { code: 'INVALID_PROJECTION_MANIFEST' },
       )
 
       let content = readText(absoluteSource)
@@ -280,7 +313,12 @@ function renderProjections(root: string): RenderedProjection[] {
       }
 
       if (projection.transforms.includes('installation-paths')) {
-        content = projectCursorContent(content, entry.target, mode)
+        content = projectCursorContent(
+          content,
+          entry.target,
+          mode,
+          harnessPrefix,
+        )
       }
 
       rendered.push({
@@ -296,6 +334,23 @@ function renderProjections(root: string): RenderedProjection[] {
 }
 
 /** Project canonical Pancreator Cursor artifacts into the local ignored .cursor tree. */
+/**
+ * Root-relative `.cursor` path of a persona's projected subagent. Resolved from
+ * the projection manifest so the manifest stays the only place the namespaced
+ * filename is declared.
+ */
+export function cursorAgentTarget(root: string, persona: string): string {
+  const agents = readProjectionManifest(root).projections.find(
+    (projection) => projection.id === 'cursor-agents',
+  )
+
+  invariant(agents, 'projection manifest MUST declare cursor-agents', {
+    code: 'INVALID_PROJECTION_MANIFEST',
+  })
+
+  return agents.target.replace('{persona}', persona)
+}
+
 export function syncCursorProjection(
   root: string,
   options: { write?: boolean } = {},
