@@ -1,12 +1,12 @@
 # Target repository primer
 
 <!-- pancreator-primer-status: ready -->
-<!-- generated-at: 2026-07-20T04:47:53Z -->
-<!-- source-head: e0ddcdba2c217834b36771274347483ecc952eca -->
+<!-- generated-at: 2026-07-28T20:19:05Z -->
+<!-- source-head: bf4acf15accf18a6d333fadedc5720de34cd4b17 -->
 
 ## Summary
 
-Pancreator is a Cursor-native workflow harness implemented in strict TypeScript and Bash. Cursor supplies model execution and MCP access; the dependency-free Node.js CLI owns workflow snapshots, state transitions, deterministic checks, retries, validation evidence, and audit records. In this self-development checkout, `library/` is the canonical source for workflows, personas, skills, Cursor projections, schemas, and templates; `governance/` defines policies and registries; and generated run state lives under `runtime/`. `bin/install` packages the harness into another repository's `.pancreator/` while leaving that target repository in control of application source and Git state.
+Pancreator is a Cursor-native workflow harness implemented in strict TypeScript and Bash. Cursor supplies model execution and MCP access; the dependency-free Node.js CLI owns workflow snapshots, state transitions, deterministic checks, retries, validation evidence, and audit records. In this self-development checkout, `library/` is the canonical source for workflows, personas, skills, Cursor projections, schemas, and templates; `governance/` defines policies and registries; and generated run state lives under `runtime/`. `bin/install` packages the harness for another repository in embedded or detached mode while leaving that target repository in control of application source, tracked files, existing agentic tooling, and Git state.
 
 ## Administrative commands
 
@@ -15,7 +15,8 @@ Pancreator is a Cursor-native workflow harness implemented in strict TypeScript 
 - Node.js 22 or newer, npm, Git, and Cursor with project commands and subagents are required.
 - `npm ci` installs the locked TypeScript, Node type, and Prettier development toolchain.
 - `./bin/pan models --sync` renders the active model mapping and canonical Cursor assets into the ignored local `.cursor/` tree.
-- `./bin/install --target /path/to/target-repository` builds and installs an embedded harness; `--yes`, `--repair`, and `--clean` provide explicit refresh and recovery modes.
+- `./bin/install --target /path/to/target-repository` builds an embedded harness at `<target>/.pancreator`; add `--harness-dir /outside/path` for a detached installation.
+- `--yes`, `--repair`, and `--clean` provide explicit refresh and recovery modes. Installation uses the target clone's `.git/info/exclude` and does not modify target-tracked files or the target `.gitignore`.
 
 ### Build
 
@@ -27,7 +28,7 @@ Pancreator is a Cursor-native workflow harness implemented in strict TypeScript 
 
 - `npm test` is the default compiled suite and includes all tests under `tests/`.
 - `npm run test:unit` runs unit tests under `dist/tests/unit/`.
-- `npm run test:migrations` runs migration tests under `dist/tests/migrations/`.
+- `npm run test:migrations` is still declared for `dist/tests/migrations/`, but no `tests/migrations/*.test.ts` files currently exist.
 - `npm run test:integration` runs integration tests under `dist/tests/integration/`.
 - `npm run test:regression` runs regression tests under `dist/tests/regression/`.
 - `npm run test:coverage` enforces 80% line/function and 70% branch coverage over `dist/src/lib/**`.
@@ -43,7 +44,7 @@ Pancreator is a Cursor-native workflow harness implemented in strict TypeScript 
 - `./bin/pan repository-check <profile>` runs a configured verification profile, and `./bin/pan repository-check validate --json` validates the profile file without running its commands.
 - `./bin/pan briefs build|validate|render` manages schema-backed operator briefs; `/pan-build-briefs` delegates target-specific project semantics to the librarian.
 - `./bin/pan requirements run --persona librarian --workflow standalone --stage build-docs --kind documentation --registry TARGET-REPO-PRIMER-VALIDATE-001 --target docs/target-repo-primer.md --json` validates this primer artifact.
-- `./bin/update --target /path/to/target-repository` fast-forwards an embedded installation from an indexed release.
+- `./bin/update --target /path/to/target-repository [--harness-dir /outside/path]` fast-forwards an embedded or detached installation from an indexed release.
 
 ## Architecture
 
@@ -60,7 +61,10 @@ flowchart LR
   Engine --> Runtime[`runtime/logs/workflows/<run-id>/`]
   Engine --> Workers[Cursor supervisor and named subagents]
   CLI --> Projection[`library/cursor/` to local `.cursor/`]
-  Installer[`bin/install` and `bin/update`] --> Embedded[Target `.pancreator/` and projected `.cursor/`]
+  Installer[`bin/install` and `bin/update`] --> Embedded[Embedded target `.pancreator/`]
+  Installer --> Detached[Detached external harness]
+  Embedded --> TargetCursor[Target `pan-*` `.cursor/` projections]
+  Detached --> TargetCursor
 ```
 
 ## Project structure
@@ -78,7 +82,7 @@ flowchart LR
 - `library/workflows/`: canonical `dev`, `design`, and `preflight` stage graphs, definitions, and prompts.
 - `library/personas/`, `library/skills/`, `library/cursor/`, `library/schemas/`, and `library/templates/`: worker contracts, reusable procedures, projected Cursor sources, JSON schemas, and installation/bootstrap templates.
 - `governance/policies/`, `governance/registries/`, `governance/criteria/`, and `governance/handbooks/`: enforceable policy metadata, validation/projection lookup data, criterion definitions, and durable guidance.
-- `tests/`: unit, integration, migration, and regression coverage compiled alongside source.
+- `tests/`: unit, integration, and regression coverage compiled alongside source; the declared migration-test entrypoint currently has no source tests.
 - `runtime/`: generated inbox, backlog, check configuration, run state, evidence, outputs, assessments, and artifacts; generated workflow records are harness-owned.
 - `release/`: the version-to-immutable-commit index used by embedded updates.
 
@@ -86,10 +90,11 @@ flowchart LR
 
 - `./bin/pan` is the primary programmatic/operator interface. Its verified top-level commands are `init`, `prepare`, `submit`, `assess`, `decide`, `pause`, `resume`, `set-stage`, `waive-gate`, `abort`, `technologies`, `repository-check`, `status`, `list`, `archive`, `models`, `briefs`, `validation-map`, `governance`, `requirements`, `output`, `assessment`, `spotfix`, `validate`, and `doctor`.
 - `library/cursor/commands/` defines the projected user commands: `/pan-start`, `/pan-resume`, `/pan-status`, `/pan-validate`, `/pan-debug`, `/pan-repair`, `/pan-decompose`, `/pan-spotfix`, `/pan-build-docs`, `/pan-build-briefs`, `/pan-summarize-context`, `/pan-release`, and `/pan-write-pr`.
-- `bin/install` and `bin/update` are the supported embedded-installation interfaces for initial install, repair/clean refresh, smoke validation, and indexed fast-forward updates.
+- `bin/install` and `bin/update` are the supported embedded/detached installation interfaces for initial install, repair/clean refresh, smoke validation, and indexed fast-forward updates.
 - `config.json` is the public workspace and persona-model configuration surface. Shared `defaults` merge with the selected `active_config`; `./bin/pan models --sync` projects the effective mapping into Cursor agent frontmatter.
 - `library/workflows/<slug>/workflow.json`, `library/workflows/<slug>/stages/*.json`, and `library/workflows/<slug>/prompts/*.md` form the canonical workflow authoring surface consumed by the CLI.
 - `governance/policies/*.json` plus `governance/registries/validation_registry.json` form the public policy-bound automation/validation authoring surface.
+- `library/cursor/rules/visual-qa-isolation.mdc` and `library/cursor/mcp.json` define the self-development browser-inspection interface: chrome-devtools is primary, isolated contexts are mandatory, and Playwright is fallback-only.
 - JSON operator briefs, semantic registries, and project CSS are the narrative-artifact interface; the harness renders self-contained HTML and validates stage-declared paths.
 - `runtime/logs/workflows/<run-id>/` is the durable operator-facing run surface for state, snapshots, invocation cards, outputs, assessments, validation evidence, and finalized artifacts, but its generated records must not be hand-edited.
 
@@ -102,7 +107,11 @@ flowchart LR
 - `runtime/logs/workflows/<run-id>/state.json`, `events.jsonl`, snapshots, invocation records, and generated artifacts are harness-owned. Run lifecycle and maintenance through `./bin/pan`, not direct edits.
 - Pancreator fingerprints Git-visible source without recursively indexing the workspace. Compiled output, caches, virtual environments, dependency/package trees, and third-party code are outside agent remit.
 - A non-trivial UI/UX delivery uses a separate `design` workflow first; only its ratified handoff is then referenced by a new `dev` run.
-- Embedded installations use two path spaces: filesystem references move under `.pancreator/`, including `.pancreator/docs/target-repo-primer.md`, while CLI request and output arguments remain harness-relative such as `runtime/inbox/request.md` and `docs/target-repo-primer.md`.
-- Release publication is a two-commit protocol: prepare synchronized version metadata, create the immutable release commit, then map that hash in `release/index.json`. The current `2.16.0` checkout is intentionally unindexed, so automatic embedded updates remain unavailable until publication.
-- `docs/runtime-protocol.md` still mentions `npm run finalize:workflow-artifacts`, but `package.json` defines no such script. Current code finalizes terminal runs automatically; use `./bin/pan archive` for supported runtime maintenance.
-- Recent history materially changed design workflow support, model-config inheritance, embedded projection, language detection, repository checks, and runtime archiving. Prefer current executable sources and manifests when older narrative text conflicts.
+- Target installations use two path spaces: embedded filesystem references live under `.pancreator/`, while detached projections use the absolute harness path; CLI request and output arguments remain harness-relative such as `runtime/inbox/request.md` and `docs/target-repo-primer.md`.
+- Target `.cursor/` projections are intentionally namespaced (`pan-*` or `pancreator.*`) and coexist with target-owned `AGENTS.md`, `CLAUDE.md`, `.claude/`, `.cursorrules`, Copilot instructions, MCP settings, and non-conflicting Cursor files; installation reports but does not read, modify, or remove those surfaces. A detached harness still projects Pancreator's surface into the target, but root discovery from the target requires an absolute harness command or `PANCREATOR_ROOT`.
+- Browser inspection and Visual QA must use chrome-devtools with `new_page` in a unique isolated context and must `close_page` every opened page even on failure. Never attach MCP automation to the operator's personal Chrome identity or remediate by changing browser/Chrome preferences or killing all MCP Chrome processes.
+- Release publication is a two-commit protocol: prepare synchronized version metadata, create the immutable release commit, then map that hash in `release/index.json`. The current `2.16.0` checkout is unindexed (`release/index.json` has no releases), so automatic target updates remain unavailable until publication.
+- `package.json` retains a `test:migrations` entrypoint, but the referenced test source directory is currently empty; do not treat it as an active suite without adding migration tests.
+- `docs/runtime-protocol.md` still mentions nonexistent `npm run finalize:workflow-artifacts` and says pre-implementation baselines include later-stage profiles. Current code finalizes terminal runs automatically and baselines only repository-check profiles declared by the first coder stage; use `./bin/pan archive` for supported runtime maintenance.
+- `docs/workflow-authoring.md` still names a `fable` model configuration, while `config.json` declares `simple`, `default`, `complex`, and `auto`. The self-development `$operator.note` in `config.json` also incorrectly shows the embedded `./.pancreator/bin/pan models --sync` path; use `./bin/pan models --sync` here.
+- The latest merged work hardened coexistence with target-owned agentic tooling and made chrome-devtools isolation an always-applied Visual QA contract. Prefer current executable sources and manifests when older narrative text conflicts.
