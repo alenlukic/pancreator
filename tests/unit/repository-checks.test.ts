@@ -28,7 +28,7 @@ function makeInstallation(): { root: string; workspace: string } {
   mkdirSync(path.join(root, 'runtime'), { recursive: true })
   mkdirSync(workspace, { recursive: true })
   writeFileSync(
-    path.join(root, 'project.json'),
+    path.join(root, 'config.json'),
     `${JSON.stringify(
       {
         schema_version: 1,

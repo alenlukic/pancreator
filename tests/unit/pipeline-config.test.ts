@@ -16,7 +16,7 @@ test('pipeline config loads the active named persona mapping', () => {
   const root = createFixture()
   const loaded = loadPipelineConfig(root)
   const config = JSON.parse(
-    readFileSync(path.join(root, 'project.json'), 'utf8'),
+    readFileSync(path.join(root, 'config.json'), 'utf8'),
   ) as { active_config: string }
 
   assert.equal(loaded.name, config.active_config)

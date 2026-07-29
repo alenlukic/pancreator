@@ -8,13 +8,25 @@ because the design workflow does not mutate tracked source.
 
 1. Read the card, design output, successful review output, and unrolled handbook
    guidance.
-2. Exercise primary flows, empty/loading/error/success states, and keyboard or
-   accessibility passes against the HTML prototypes.
-3. Prefer Playwright MCP accessibility-tree automation and screenshots when
-   available; otherwise use Bash or manual capture and disclose the method.
-4. Record each case with setup, action, expected result, actual result, and evidence.
-5. Classify defects; do not convert environment blocks into product passes.
-6. Map results to every acceptance criterion.
+2. Start the documented prototype server and confirm its local URL is reachable.
+3. For each web UI surface, use the `chrome-devtools` MCP server and open a fresh,
+   dedicated page with `new_page` in a unique isolated context (for example via the
+   server's `--isolated` flag); never attach to an operator's personal browser;
+   never change macOS Launch Services, the default browser, or Chrome preferences
+   as remediation; never kill or quit all MCP Chrome processes as the primary
+   remediation. Close every page you open with `close_page` when inspection
+   finishes, including on failure.
+4. Use navigation, snapshots, and interaction tools to exercise primary flows,
+   hover/focus/active/selected/disabled states, empty/loading/error/success states,
+   and keyboard or accessibility passes against the HTML prototypes. Prefer DOM
+   snapshots for evidence and use screenshots for pixel-level visual confirmation.
+5. Confirm layout, navigation, affordances, named design tokens, and motion against
+   the ratified design specification.
+6. Record every Chrome DevTools MCP action, DOM observation, `isolatedContext`
+   confirmation, and every `close_page` action in a case with setup, action,
+   expected result, actual result, and evidence.
+7. Classify defects; do not convert environment blocks into product passes.
+8. Map results to every acceptance criterion.
 
 ## Output
 

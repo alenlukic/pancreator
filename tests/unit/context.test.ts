@@ -214,7 +214,7 @@ test('ship context selects effective records and indexes superseded history', ()
 
 test('embedded ship context omits Pancreator self-development release metadata', () => {
   const root = createFixture()
-  const configPath = path.join(root, 'project.json')
+  const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
     string,
     unknown

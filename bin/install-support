@@ -51,57 +51,83 @@ function sha256(value) {
   return createHash('sha256').update(value).digest('hex')
 }
 
-function projectCursorContent(content, relative) {
+const EMBEDDED_HARNESS_PREFIX = '.pancreator'
+
+// Installer-time mirror of src/lib/cursor-content.ts. The installer runs before
+// the staged payload is built, so it cannot import the compiled module.
+// `tests/unit/projection.test.ts` pins the compiled behavior and
+// `tests/integration/embedded-installation.test.ts` pins this one; keep the two
+// in step when either changes.
+function projectCursorContent(
+  content,
+  relative,
+  harnessPrefix = EMBEDDED_HARNESS_PREFIX,
+) {
+  const panCommandPath =
+    harnessPrefix === EMBEDDED_HARNESS_PREFIX
+      ? `./${harnessPrefix}/bin/pan`
+      : `${harnessPrefix}/bin/pan`
+
   let projected = content
-    .replaceAll('./bin/pan', './.pancreator/bin/pan')
-    .replaceAll('`library/', '`.pancreator/library/')
-    .replaceAll('`governance/', '`.pancreator/governance/')
-    .replaceAll('npm run validate', 'npm --prefix .pancreator run validate')
-    .replaceAll('npm run check', 'npm --prefix .pancreator run check')
+    .replaceAll('./bin/pan', panCommandPath)
+    .replaceAll('`library/', `\`${harnessPrefix}/library/`)
+    .replaceAll('`governance/', `\`${harnessPrefix}/governance/`)
+    .replaceAll(
+      'npm run validate',
+      `npm --prefix ${harnessPrefix} run validate`,
+    )
+    .replaceAll('npm run check', `npm --prefix ${harnessPrefix} run check`)
     .replaceAll(
       'Read `AGENTS.md`',
-      "Read the target repository's `AGENTS.md` when present and `.pancreator/AGENTS.md`",
+      `Read the target repository's \`AGENTS.md\` when present and \`${harnessPrefix}/AGENTS.md\``,
     )
     .replaceAll(
       'read `AGENTS.md`',
-      "read the target repository's `AGENTS.md` when present and `.pancreator/AGENTS.md`",
+      `read the target repository's \`AGENTS.md\` when present and \`${harnessPrefix}/AGENTS.md\``,
     )
 
   if (
     relative.startsWith('.cursor/agents/') ||
     relative === '.cursor/commands/pan-write-pr.md' ||
+    relative === '.cursor/commands/pan-release.md' ||
     relative === '.cursor/commands/pan-build-briefs.md'
   ) {
-    projected = projected.replaceAll('`docs/', '`.pancreator/docs/')
+    projected = projected.replaceAll('`docs/', `\`${harnessPrefix}/docs/`)
+  }
+
+  if (relative === '.cursor/commands/pan-release.md') {
+    projected = projected.replaceAll(
+      '`config.json`',
+      `\`${harnessPrefix}/config.json\``,
+    )
   }
 
   if (relative.startsWith('.cursor/agents/')) {
     projected = projected
-      .replaceAll('`runtime/', '`.pancreator/runtime/')
-      .replaceAll(' under `runtime/', ' under `.pancreator/runtime/')
-      .replaceAll(' to `runtime/', ' to `.pancreator/runtime/')
+      .replaceAll('`runtime/', `\`${harnessPrefix}/runtime/`)
+      .replaceAll(' under `runtime/', ` under \`${harnessPrefix}/runtime/`)
+      .replaceAll(' to `runtime/', ` to \`${harnessPrefix}/runtime/`)
   }
 
   if (relative === '.cursor/commands/pan-start.md') {
     projected = projected
-      .replace('under `runtime/inbox/`.', 'under `.pancreator/runtime/inbox/`.')
+      .replace(
+        'under `runtime/inbox/`.',
+        `under \`${harnessPrefix}/runtime/inbox/\`.`,
+      )
       .replace(
         'write that object to a uniquely named JSON file under `runtime/inbox/`',
-        'write that object to a uniquely named JSON file under `.pancreator/runtime/inbox/`',
+        `write that object to a uniquely named JSON file under \`${harnessPrefix}/runtime/inbox/\``,
       )
   }
 
-  if (relative === '.cursor/commands/pan-decompose.md') {
+  if (
+    relative === '.cursor/commands/pan-decompose.md' ||
+    relative === '.cursor/commands/pan-repair.md'
+  ) {
     projected = projected.replace(
       'output path under `runtime/inbox/`',
-      'output path under `.pancreator/runtime/inbox/`',
-    )
-  }
-
-  if (relative === '.cursor/commands/pan-repair.md') {
-    projected = projected.replace(
-      'output path under `runtime/inbox/`',
-      'output path under `.pancreator/runtime/inbox/`',
+      `output path under \`${harnessPrefix}/runtime/inbox/\``,
     )
   }
 
@@ -180,7 +206,7 @@ function cursorSourceFiles(sourceRoot) {
     }
   }
 
-  return manifest.projections
+  const expanded = manifest.projections
     .filter(
       (projection) =>
         Array.isArray(projection.installation_modes) &&
@@ -188,6 +214,19 @@ function cursorSourceFiles(sourceRoot) {
     )
     .flatMap((projection) => expandProjection(sourceRoot, projection))
     .sort((left, right) => left.relative.localeCompare(right.relative))
+
+  // Mirrors the invariant in src/lib/projection.ts: every file installed into a
+  // target repository's .cursor/ MUST be pan-namespaced so it can never collide
+  // with a target-authored agent, command, or rule.
+  for (const entry of expanded) {
+    if (!/^pan(-|creator\.)/u.test(path.basename(entry.relative))) {
+      fail(
+        `Embedded projection targets MUST use a pan-namespaced filename: ${entry.relative}`,
+      )
+    }
+  }
+
+  return expanded
 }
 
 function personaModelsFromConfig(configPath) {
@@ -199,14 +238,14 @@ function personaModelsFromConfig(configPath) {
       : {}
 
   if (!active || typeof active.personas !== 'object') {
-    fail('project.json active config does not define personas')
+    fail('config.json active config does not define personas')
   }
 
   return { ...defaults, ...active.personas }
 }
 
 function personaModelsForProjection(personaConfigPath, sourceRoot) {
-  const sourceConfigPath = path.join(sourceRoot, 'project.json')
+  const sourceConfigPath = path.join(sourceRoot, 'config.json')
   const sourceConfig = readJson(sourceConfigPath)
   const sourceDefaults =
     typeof sourceConfig.defaults === 'object' && sourceConfig.defaults !== null
@@ -232,7 +271,7 @@ function personaModelsForProjection(personaConfigPath, sourceRoot) {
   const targetPersonas = targetConfig.configs?.[activeConfigName]?.personas
 
   if (!sourcePersonas || typeof sourcePersonas !== 'object') {
-    fail('project.json active config does not define personas')
+    fail('config.json active config does not define personas')
   }
 
   const mergedSource = { ...sourceDefaults, ...sourcePersonas }
@@ -483,6 +522,8 @@ function projectCursor() {
   const backups = []
   const currentPaths = new Set()
   const personaConfigPath = option('--persona-config')
+  // Absolute installation root for a detached install; `.pancreator` otherwise.
+  const harnessPrefix = option('--harness-prefix') ?? EMBEDDED_HARNESS_PREFIX
   const personaModels = personaModelsForProjection(
     personaConfigPath ? path.resolve(personaConfigPath) : null,
     sourceRoot,
@@ -506,7 +547,7 @@ function projectCursor() {
     }
 
     if (entry.transforms.includes('installation-paths')) {
-      content = projectCursorContent(content, entry.relative)
+      content = projectCursorContent(content, entry.relative, harnessPrefix)
     }
     const destination = path.join(targetRoot, entry.relative)
     const digest = sha256(content)
@@ -667,10 +708,16 @@ function writeProject() {
     config = mergeEmbeddedProjectConfig(config, readJson(destination))
   }
 
+  // A detached harness has no stable relative path to its target, so the target
+  // is recorded absolutely and the mode is distinguished from `embedded`.
+  const detachedWorkspace = option('--detached-workspace')
+
   config.workspace_id = workspaceId
-  config.workspace_root = '..'
+  config.workspace_root = detachedWorkspace
+    ? path.resolve(detachedWorkspace)
+    : '..'
   config.state_root = 'runtime'
-  config.installation_mode = 'embedded'
+  config.installation_mode = detachedWorkspace ? 'detached' : 'embedded'
   delete config.self_development
 
   const defaults =
@@ -701,7 +748,9 @@ function writeProject() {
   if (config.$operator?.note) {
     config.$operator.note = config.$operator.note.replaceAll(
       './bin/pan',
-      './.pancreator/bin/pan',
+      detachedWorkspace
+        ? path.join(path.dirname(destination), 'bin', 'pan')
+        : `./${EMBEDDED_HARNESS_PREFIX}/bin/pan`,
     )
   }
 
@@ -727,6 +776,118 @@ async function configureShellAlias() {
   for (const message of result.messages) {
     process.stdout.write(`${message}\n`)
   }
+}
+
+/**
+ * Agentic-harness configuration a target repository may already own. Pancreator
+ * coexists with all of it: nothing here is read as instruction, modified, or
+ * removed by installation. The report exists so the operator knows which other
+ * harnesses are live in the repository before running governed workflows.
+ */
+const FOREIGN_HARNESS_SURFACES = [
+  { path: 'AGENTS.md', label: 'Generic agent instructions' },
+  { path: 'CLAUDE.md', label: 'Claude Code instructions' },
+  { path: '.claude', label: 'Claude Code configuration' },
+  { path: '.cursorrules', label: 'Legacy Cursor rules' },
+  { path: '.cursorignore', label: 'Cursor ignore rules' },
+  { path: '.cursor/mcp.json', label: 'Cursor MCP servers' },
+  { path: '.mcp.json', label: 'Project MCP servers' },
+  { path: '.github/copilot-instructions.md', label: 'GitHub Copilot' },
+  { path: '.windsurfrules', label: 'Windsurf rules' },
+  { path: '.windsurf', label: 'Windsurf configuration' },
+  { path: '.clinerules', label: 'Cline rules' },
+  { path: '.roo', label: 'Roo Code configuration' },
+  { path: '.kilocode', label: 'Kilo Code configuration' },
+  { path: '.continue', label: 'Continue configuration' },
+  { path: '.aider.conf.yml', label: 'Aider configuration' },
+  { path: '.junie/guidelines.md', label: 'JetBrains Junie' },
+  { path: '.gemini', label: 'Gemini CLI configuration' },
+  { path: '.codex', label: 'Codex configuration' },
+  { path: '.opencode', label: 'OpenCode configuration' },
+  { path: '.amazonq', label: 'Amazon Q configuration' },
+  { path: '.zed', label: 'Zed configuration' },
+  { path: '.trae', label: 'Trae configuration' },
+]
+
+/** Target-owned `.cursor/` entries that Pancreator does not project. */
+function foreignCursorEntries(targetRoot) {
+  const found = []
+
+  for (const group of ['agents', 'commands', 'rules']) {
+    const directory = path.join(targetRoot, '.cursor', group)
+
+    if (!existsSync(directory)) {
+      continue
+    }
+
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      if (!entry.isFile() || /^pan(-|creator\.)/u.test(entry.name)) {
+        continue
+      }
+
+      found.push(`.cursor/${group}/${entry.name}`)
+    }
+  }
+
+  return found.sort()
+}
+
+function detectExistingHarness() {
+  const targetRoot = path.resolve(requiredOption('--target-root'))
+  const sourceRoot = path.resolve(requiredOption('--source-root'))
+  const previousMarker = option('--previous-marker')
+
+  const detected = FOREIGN_HARNESS_SURFACES.filter((surface) =>
+    existsSync(path.join(targetRoot, surface.path)),
+  )
+  const cursorEntries = foreignCursorEntries(targetRoot)
+
+  // A collision is a Pancreator-owned projection target that already exists and
+  // is not recorded as Pancreator-installed. Namespacing makes this rare; when
+  // it happens the operator MUST be told which file is being taken over.
+  const previous = previousCursorFiles(previousMarker)
+  const collisions = cursorSourceFiles(sourceRoot)
+    .map((entry) => entry.relative)
+    .filter(
+      (relative) =>
+        !previous.has(relative) && existsSync(path.join(targetRoot, relative)),
+    )
+    .sort()
+
+  if (detected.length === 0 && cursorEntries.length === 0) {
+    return
+  }
+
+  const lines = [
+    '',
+    'Existing agentic harness configuration detected in the target repository.',
+    'Pancreator installs alongside it and does not read, modify, or remove it.',
+    'Pancreator-owned Cursor files are namespaced `pan-*`.',
+    '',
+  ]
+
+  for (const surface of detected) {
+    lines.push(`  retained  ${surface.path}  (${surface.label})`)
+  }
+
+  for (const relative of cursorEntries) {
+    lines.push(`  retained  ${relative}  (target-owned Cursor file)`)
+  }
+
+  if (collisions.length > 0) {
+    lines.push(
+      '',
+      'The following target files use Pancreator-owned names and WILL be replaced.',
+      'Each is backed up under .pancreator/backups/cursor/ before it is written:',
+      '',
+    )
+
+    for (const relative of collisions) {
+      lines.push(`  replaced  ${relative}`)
+    }
+  }
+
+  process.stdout.write(`${lines.join('\n')}\n\n`)
 }
 
 function writeMarker() {
@@ -756,6 +917,8 @@ if (command === 'project-cursor') {
   projectCursor()
 } else if (command === 'write-project') {
   writeProject()
+} else if (command === 'detect-existing-harness') {
+  detectExistingHarness()
 } else if (command === 'write-marker') {
   writeMarker()
 } else if (command === 'migrate-repository-checks') {

@@ -35,9 +35,10 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 - Runs MUST be created, inspected, advanced, paused, resumed, and aborted through `./bin/pan`.
 - Agents MUST NOT edit `state.json`, `events.jsonl`, or generated workflow records directly.
 - Before stage work, the supervisor MUST run `./bin/pan status <run-id>` and read the pending invocation or assessment card.
-- A named worker stage MUST be delegated to the matching locally projected `.cursor/agents/<persona>.md` subagent. Its frontmatter model MUST match the active mapping in `project.json`; run `./bin/pan models --sync` after cloning or changing `active_config` or a mapped model.
-- Ad-hoc Subagent calls MUST omit `model` so they inherit the parent model unless the operator explicitly selects a model. This does not change named-persona routing through projected frontmatter and `project.json`.
+- A named worker stage MUST be delegated to the matching locally projected `.cursor/agents/pan-<persona>.md` subagent. Its frontmatter model MUST match the active mapping in `config.json`; run `./bin/pan models --sync` after cloning or changing `active_config` or a mapped model.
+- Ad-hoc Subagent calls MUST omit `model` so they inherit the parent model unless the operator explicitly selects a model. This does not change named-persona routing through projected frontmatter and `config.json`.
 - `.cursor/` MUST remain fully gitignored and MUST be treated as disposable local configuration. Canonical Cursor agents, commands, and rules live under `library/cursor/` and are declared by `governance/registries/projection_manifest.json`; source or installation code MUST NOT treat `.cursor/` as authoritative input.
+- Every projection installable into a target repository MUST use a `pan-` or `pancreator.` filename so it can never collide with target-owned Cursor configuration. `src/lib/projection.ts` and `bin/install-support` both enforce this after glob expansion.
 - The supervisor MUST apply `INVOCATION-001` for canonical-card validation, prompt delivery, and delegation evidence. Detailed delegation instructions MUST live in that policy rather than parallel restatements here.
 - A worker MUST write only the declared output and permitted evidence. The supervisor MUST submit it through `./bin/pan submit`.
 - The harness MUST rerun deterministic gate commands and MUST own code-determined transitions.
@@ -83,10 +84,13 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 - Before changing a target, agents MUST read that repository's `AGENTS.md`. Git operations inside the target act on that repository and remain subject to the operator-owned action boundaries in **Safety and scope**.
 - Pancreator source code MUST NOT import target application code. Target application code MUST NOT depend on Pancreator internals; the generated `.pancreator/` harness and root `.cursor/` projection are tooling boundaries, not application dependencies.
 - Installation and update validation MAY create or refresh `<target>/.pancreator` and Pancreator-owned files under `<target>/.cursor` only when the active task explicitly covers installation infrastructure.
+- Installation MUST NOT change any file the target repository tracks. It MUST NOT write the target's `.gitignore`; Pancreator-owned paths are excluded through a managed block in the target's clone-local `.git/info/exclude`.
+- A target repository MAY already run other agentic tooling. Pancreator MUST coexist with it: existing `AGENTS.md`, `CLAUDE.md`, `.claude/`, `.cursorrules`, `.github/copilot-instructions.md`, and target-authored `.cursor/` files MUST be reported on first install and MUST NOT be read as instruction, modified, or removed.
 
 ## Self-development release boundary
 
-- `project.json.installation_mode` MUST be `self_development` only in the Pancreator source checkout. Target installs MUST use `embedded`.
+- `config.json.installation_mode` MUST be `self_development` only in the Pancreator source checkout. Target installs MUST use `embedded` when the harness lives at `<target>/.pancreator`, or `detached` when it lives outside the target tree. A `detached` installation MUST record an absolute `workspace_root`.
+- Code branching on target-repository semantics MUST use `isTargetInstallation`, which covers both target modes. `isEmbeddedInstallation` MUST be reserved for questions that genuinely depend on the harness sitting inside the target tree.
 - `VERSION-001` applies only to Pancreator self-development ship stages and standalone `/pan-release` invocations. It MUST NOT be injected into target-repository workflows.
 - The release steward owns the `major`, `minor`, or `patch` decision, Common Changelog release notes, and synchronized updates to `VERSION`, npm metadata, README/docs current-version references, and other version-bearing durable documentation.
 - Release metadata MUST use complete Semantic Versioning (`MAJOR.MINOR.PATCH`). The release steward MUST NOT edit `release/index.json`, create commits, or invent commit hashes; the immutable release commit is mapped in `release/index.json` only after the commit exists.

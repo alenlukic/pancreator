@@ -4,17 +4,20 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PANCREATOR_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 TARGET_DIR=""
+HARNESS_DIR=""
 SKIP_DEPENDENCIES=0
 SKIP_SHELL_ALIAS=0
 
 usage() {
   cat <<'USAGE'
-Fast-forward an embedded Pancreator installation to this checkout's indexed release.
+Fast-forward an installed Pancreator harness to this checkout's indexed release.
 
 Usage:
-  update --target <repository> [--pancreator-root <checkout>]
+  update --target <repository> [--harness-dir <dir>] [--pancreator-root <checkout>]
 
 Options:
+  --harness-dir <dir>  Location of a detached harness. Defaults to
+                       <target>/.pancreator for an embedded installation.
   --skip-dependencies  Skip npm install/build (test harness only)
   --skip-shell-alias   Do not append the guarded pan shell function to rc files
 USAGE
@@ -24,6 +27,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --target)
       TARGET_DIR="${2:-}"
+      shift 2
+      ;;
+    --harness-dir)
+      HARNESS_DIR="${2:-}"
       shift 2
       ;;
     --pancreator-root)
@@ -63,7 +70,20 @@ fi
 
 TARGET_DIR="$(cd "$TARGET_DIR" && pwd)"
 PANCREATOR_ROOT="$(cd "$PANCREATOR_ROOT" && pwd)"
-MARKER="$TARGET_DIR/.pancreator/install.json"
+
+if [[ -n "$HARNESS_DIR" ]]; then
+  if [[ ! -d "$HARNESS_DIR" ]]; then
+    echo "Error: harness directory does not exist: $HARNESS_DIR" >&2
+    exit 1
+  fi
+
+  HARNESS_DIR="$(cd "$HARNESS_DIR" && pwd)"
+  INSTALLED_DIR="$HARNESS_DIR"
+else
+  INSTALLED_DIR="$TARGET_DIR/.pancreator"
+fi
+
+MARKER="$INSTALLED_DIR/install.json"
 RELEASE_INDEX="$PANCREATOR_ROOT/release/index.json"
 
 for required in "$MARKER" "$RELEASE_INDEX" "$PANCREATOR_ROOT/VERSION"; do
@@ -171,6 +191,10 @@ INSTALL_ARGS=(
   --source-indexed true
   --update
 )
+
+if [[ -n "$HARNESS_DIR" ]]; then
+  INSTALL_ARGS+=(--harness-dir "$HARNESS_DIR")
+fi
 
 if [[ "$SKIP_DEPENDENCIES" -eq 1 ]]; then
   INSTALL_ARGS+=(--skip-dependencies)

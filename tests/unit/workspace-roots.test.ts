@@ -63,7 +63,7 @@ test('resolveRoots keeps installation tracked during self-development', () => {
 
 test('resolveRoots applies state-root precedence', () => {
   const workspace = makeWorkspace('precedence')
-  const configPath = path.join(workspace, 'project.json')
+  const configPath = path.join(workspace, 'config.json')
   const envStateRoot = path.join(workspace, 'env-runtime')
   const explicitStateRoot = path.join(workspace, 'explicit-runtime')
 
@@ -141,7 +141,7 @@ test('containsNestedGeneratedDirectory excludes dependency trees at any depth', 
 
 test('isExcludedPath excludes nested generated files under node_modules', () => {
   const workspace = makeWorkspace('nested-generated')
-  const configPath = path.join(workspace, 'project.json')
+  const configPath = path.join(workspace, 'config.json')
 
   writeFileSync(
     configPath,

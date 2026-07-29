@@ -131,20 +131,27 @@ Canonical MCP config lives at `library/cursor/mcp.json` and projects to
 ./bin/pan models --sync
 ```
 
-Installed server:
+Installed servers (chrome-devtools is primary; Playwright is an explicit fallback
+only):
 
-- **playwright** — `npx @playwright/mcp@latest` for accessibility-tree automation
-  and screenshots during design QA.
+- **chrome-devtools** — `npx chrome-devtools-mcp@latest --isolated` for Visual QA
+  and browser inspection through Chrome DevTools MCP. Harden with Chrome for
+  Testing (a distinct bundle, never the operator's personal `com.google.Chrome`
+  identity) via `--executablePath` and `--isolated`. Automation MUST NOT use the
+  personal `com.google.Chrome` app identity for MCP.
+- **playwright** — explicit fallback only: `npx @playwright/mcp@latest` when
+  chrome-devtools is unavailable.
 
 Do not put long-lived MCP customizations only in `.cursor/mcp.json`; that file is
 projection-owned and will be overwritten on sync. Edit `library/cursor/mcp.json`
 instead. Embedded target repositories own their own MCP config; Pancreator
-documents optional servers (for example shadcn/ui MCP, 21st.dev Magic) but does
-not install them into targets.
+documents optional hardening (for example Chrome for Testing with
+`--executablePath` and `--isolated`) but does not install or overwrite target
+`.cursor/mcp.json`.
 
 ## Select pipeline models
 
-`project.json` is the source of truth for named persona-to-model mappings. Canonical Cursor artifacts live under `library/cursor/`; `.cursor/` is ignored local output. Set `active_config` to one of the declared configurations, then regenerate the Cursor surface:
+`config.json` is the source of truth for named persona-to-model mappings. Canonical Cursor artifacts live under `library/cursor/`; `.cursor/` is ignored local output. Set `active_config` to one of the declared configurations, then regenerate the Cursor surface:
 
 ```sh
 ./bin/pan models --sync
@@ -153,11 +160,11 @@ not install them into targets.
 
 Run `./bin/pan models` without `--sync` to preview the active mapping and any drift without changing files.
 
-Each new run snapshots the active configuration in `runtime/logs/workflows/<run-id>/pipeline-config.snapshot.json`. Invocation cards resolve their model from that snapshot. Because Cursor executes the model declared in `.cursor/agents/<persona>.md`, preparing an older run after switching configurations is blocked until the projected agent models again match that run's snapshot. This prevents the card from claiming one model while Cursor launches another.
+Each new run snapshots the active configuration in `runtime/logs/workflows/<run-id>/pipeline-config.snapshot.json`. Invocation cards resolve their model from that snapshot. Because Cursor executes the model declared in `.cursor/agents/pan-<persona>.md`, preparing an older run after switching configurations is blocked until the projected agent models again match that run's snapshot. This prevents the card from claiming one model while Cursor launches another.
 
 ## Targeting a deliverable outside the repository root
 
-For ordinary target work, install Pancreator into the target repository and open that target in Cursor. `.pancreator/project.json` sets `workspace_root` to `..`, so workflow fingerprints, gate commands, and scope guards apply to the target automatically. Confirm the workspace shown on each invocation card before trusting gate results. `--workspace` remains an explicit override for exceptional self-development or migration work, not the default deployment model.
+For ordinary target work, install Pancreator into the target repository and open that target in Cursor. `.pancreator/config.json` sets `workspace_root` to `..`, so workflow fingerprints, gate commands, and scope guards apply to the target automatically. Confirm the workspace shown on each invocation card before trusting gate results. `--workspace` remains an explicit override for exceptional self-development or migration work, not the default deployment model.
 
 Bootstrap a target with `./bin/install --target <path>` from the Pancreator source checkout, then run `./.pancreator/bin/pan doctor` and `./.pancreator/bin/pan validate` from the target. See [`docs/embedded-installation.md`](embedded-installation.md) for Cursor merge semantics, versioned updates, partial-install prompts, and cleanup.
 

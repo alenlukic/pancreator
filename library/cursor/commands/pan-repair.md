@@ -17,7 +17,7 @@ self-development intake without implementing the repair.
    conversation, transcript links or exports referenced by the input, and any
    transcript artifacts associated with the run. Treat `*.delegation.md` as
    prompt-delivery evidence only, never as a substitute for an agent transcript.
-5. Invoke the `harness-technician` subagent with the original input, resolved
+5. Invoke the `pan-harness-technician` subagent with the original input, resolved
    evidence location, collected transcript references or contents, and output
    path. Require it to apply `REPAIR-001`, audit for harness bugs, compliance
    issues, governance misses, agent execution errors, target-repository defects,

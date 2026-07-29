@@ -22,7 +22,7 @@ function writeJson(filePath: string, value: unknown): void {
 function createLanguageFixture(): string {
   const root = mkdtempSync(path.join(tmpdir(), 'pancreator-language-handbook-'))
 
-  writeJson(path.join(root, 'project.json'), {
+  writeJson(path.join(root, 'config.json'), {
     schema_version: 1,
     workspace_root: 'target',
     installation_mode: 'embedded',

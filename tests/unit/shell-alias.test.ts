@@ -55,7 +55,7 @@ function walkDeps(
 
         if (
           (kind === 'self_development' || kind === 'invalid') &&
-          normalized === path.join(root, 'project.json')
+          normalized === path.join(root, 'config.json')
         ) {
           return true
         }
@@ -67,7 +67,7 @@ function walkDeps(
       const normalized = path.resolve(filePath)
 
       for (const [root, kind] of Object.entries(roots)) {
-        if (normalized !== path.join(root, 'project.json')) {
+        if (normalized !== path.join(root, 'config.json')) {
           continue
         }
 
@@ -165,7 +165,7 @@ test('resolvePanWalkUp returns null when no install exists in the ancestor tree'
   assert.equal(match, null)
 })
 
-test('resolvePanWalkUp ignores bin/pan without self_development project.json', () => {
+test('resolvePanWalkUp ignores bin/pan without self_development config.json', () => {
   const root = '/tmp/not-self-dev'
   const match = resolvePanWalkUp(root, walkDeps({ [root]: 'invalid' }))
 

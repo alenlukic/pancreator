@@ -9,6 +9,7 @@ import {
   resolveInside,
   sha256,
 } from './io.js'
+import { harnessConfigName } from './project-config.js'
 
 export interface NamedPipelineConfig {
   summary?: string
@@ -43,7 +44,7 @@ export interface PipelineConfigSnapshot {
   personas: Record<string, string>
 }
 
-const CONFIG_PATH = 'project.json'
+const CONFIG_PATH = 'config.json'
 
 function parsePersonaMap(
   value: unknown,
@@ -174,20 +175,21 @@ export function loadPipelineConfig(
   root: string,
   name?: string,
 ): LoadedPipelineConfig {
-  const filePath = path.join(root, CONFIG_PATH)
+  const configName = harnessConfigName(root) ?? CONFIG_PATH
+  const filePath = path.join(root, configName)
 
   invariant(fileExists(filePath), `Missing required file: ${CONFIG_PATH}`, {
     code: 'INVALID_PIPELINE_CONFIG',
   })
 
   const raw = readText(filePath)
-  const file = parsePipelineConfig(readJson(filePath), CONFIG_PATH)
+  const file = parsePipelineConfig(readJson(filePath), configName)
   const resolvedName = name ?? file.active_config
   const config = file.configs[resolvedName]
 
   invariant(
     config !== undefined,
-    `Pipeline config '${resolvedName}' is not defined in ${CONFIG_PATH}.`,
+    `Pipeline config '${resolvedName}' is not defined in ${configName}.`,
     { code: 'INVALID_PIPELINE_CONFIG' },
   )
 
@@ -198,7 +200,7 @@ export function loadPipelineConfig(
       personas: resolveConfigPersonas(file, resolvedName),
     },
     file,
-    path: CONFIG_PATH,
+    path: configName,
     sha256: sha256(raw),
   }
 }

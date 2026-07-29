@@ -54,11 +54,11 @@ export function resolvePanWalkUp(
     }
 
     const sourcePan = path.join(dir, 'bin', 'pan')
-    const projectJson = path.join(dir, 'project.json')
+    const configJson = path.join(dir, 'config.json')
 
-    if (deps.pathExists(sourcePan) && deps.pathExists(projectJson)) {
+    if (deps.pathExists(sourcePan) && deps.pathExists(configJson)) {
       try {
-        const config = JSON.parse(deps.readFile(projectJson)) as {
+        const config = JSON.parse(deps.readFile(configJson)) as {
           installation_mode?: string
         }
 
@@ -70,7 +70,7 @@ export function resolvePanWalkUp(
           }
         }
       } catch {
-        // Ignore invalid project.json and keep walking up.
+        // Ignore invalid config.json and keep walking up.
       }
     }
 
@@ -94,8 +94,8 @@ export function buildPanFunctionBlock(): string {
     '      "$dir/.pancreator/bin/pan" "$@"',
     '      return $?',
     '    fi',
-    '    if [[ -x "$dir/bin/pan" && -f "$dir/project.json" ]]; then',
-    '      if node -e \'const fs=require("node:fs");const c=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));process.exit(c.installation_mode==="self_development"?0:1)\' "$dir/project.json" 2>/dev/null; then',
+    '    if [[ -x "$dir/bin/pan" && -f "$dir/config.json" ]]; then',
+    '      if node -e \'const fs=require("node:fs");const c=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));process.exit(c.installation_mode==="self_development"?0:1)\' "$dir/config.json" 2>/dev/null; then',
     '        "$dir/bin/pan" "$@"',
     '        return $?',
     '      fi',

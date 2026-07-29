@@ -47,27 +47,51 @@ function resolveCanonicalBoundaryPath(targetPath: string): string {
   return path.resolve(canonicalAncestor, remainder)
 }
 
+/** True when `candidate` is a Pancreator installation root. */
+function isPancreatorRoot(candidate: string): boolean {
+  const packagePath = path.join(candidate, 'package.json')
+
+  if (!existsSync(packagePath)) {
+    return false
+  }
+
+  try {
+    const packageValue: unknown = JSON.parse(readFileSync(packagePath, 'utf8'))
+
+    return (
+      isRecord(packageValue) && packageValue.name === 'pancreator-v2-prototype'
+    )
+  } catch {
+    // Validation reports malformed package files after root discovery.
+    return false
+  }
+}
+
 export function findProjectRoot(start = process.cwd()): string {
+  // A detached installation lives outside the target tree, so walking up from
+  // the working directory can never reach it. PANCREATOR_ROOT is the explicit
+  // override; `bin/pan` sets its own root from BASH_SOURCE, so this matters
+  // when the CLI is invoked directly from inside a target repository.
+  const configuredRoot = process.env.PANCREATOR_ROOT
+
+  if (configuredRoot && configuredRoot.length > 0) {
+    const resolved = path.resolve(configuredRoot)
+
+    if (!isPancreatorRoot(resolved)) {
+      throw new PanError(
+        `PANCREATOR_ROOT is not a Pancreator installation: ${resolved}`,
+        { code: 'ROOT_NOT_FOUND', details: { start, configuredRoot } },
+      )
+    }
+
+    return resolved
+  }
+
   let current = path.resolve(start)
 
   while (true) {
-    const packagePath = path.join(current, 'package.json')
-
-    if (existsSync(packagePath)) {
-      try {
-        const packageValue: unknown = JSON.parse(
-          readFileSync(packagePath, 'utf8'),
-        )
-
-        if (
-          isRecord(packageValue) &&
-          packageValue.name === 'pancreator-v2-prototype'
-        ) {
-          return current
-        }
-      } catch {
-        // Validation reports malformed package files after root discovery.
-      }
+    if (isPancreatorRoot(current)) {
+      return current
     }
 
     const parent = path.dirname(current)

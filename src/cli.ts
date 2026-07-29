@@ -17,7 +17,7 @@ import {
   waiveGate,
 } from './lib/engine.js'
 import { PanError } from './lib/errors.js'
-import { panCommand } from './lib/project-config.js'
+import { configuredWorkspaceRoot, panCommand } from './lib/project-config.js'
 import { isGitRepository } from './lib/git.js'
 import { loadPipelineConfig } from './lib/pipeline-config.js'
 import { syncCursorProjection } from './lib/projection.js'
@@ -778,8 +778,19 @@ async function main(): Promise<void> {
           ...manifest.automation_requirements,
           ...manifest.validation_requirements,
         ].filter((item) => item.registry_id === registryId)
+        let selected = requirements
 
-        if (requirements.length !== 1) {
+        if (requirements.length > 1) {
+          const required = requirements.filter(
+            (item) => item.enforcement === 'required',
+          )
+
+          if (required.length === 1) {
+            selected = required
+          }
+        }
+
+        if (selected.length !== 1) {
           throw new PanError(
             requirements.length === 0
               ? `Registry ${registryId} did not resolve for this context.`
@@ -808,7 +819,7 @@ async function main(): Promise<void> {
 
         const result = runRequirement({
           root,
-          requirement: requirements[0],
+          requirement: selected[0],
           targetPath,
           executor: 'agent',
           catalog,
@@ -996,7 +1007,14 @@ async function main(): Promise<void> {
           version: process.versions.node,
           supported: nodeMajor >= 22,
         },
-        git: { available_repository: isGitRepository(root) },
+        // Git availability is a property of the deliverable workspace, not the
+        // installation. These coincide only when the harness sits inside the
+        // target, which a detached installation does not.
+        git: {
+          available_repository: isGitRepository(
+            path.resolve(root, configuredWorkspaceRoot(root)),
+          ),
+        },
         pipeline_config: {
           active: pipelineConfig.name,
           personas: pipelineConfig.config.personas,

@@ -153,9 +153,10 @@ or principle. Prefer the minimal fix.
 Canonical config: `library/cursor/mcp.json`, projected to `.cursor/mcp.json` in
 `self_development` only via `./bin/pan models --sync`.
 
-| Server         | Transport                    | Role                                                                    | Setup / degradation                                                                                              |
-| -------------- | ---------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| **playwright** | `npx @playwright/mcp@latest` | Accessibility-tree automation, navigation, screenshots for prototype QA | Requires network for first `npx` fetch. If unavailable, use Bash/browser capture fallbacks documented in skills. |
+| Server              | Transport                                   | Role                                                                 | Setup / degradation                                                                                              |
+| ------------------- | ------------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **chrome-devtools** | `npx chrome-devtools-mcp@latest --isolated` | Primary Visual QA and browser inspection through Chrome DevTools MCP | Use Chrome for Testing with `--executablePath` and `--isolated`. Requires network for first `npx` fetch.         |
+| **playwright**      | `npx @playwright/mcp@latest`                | Explicit fallback only when chrome-devtools is unavailable           | Requires network for first `npx` fetch. If unavailable, use Bash/browser capture fallbacks documented in skills. |
 
 ### Documented for target repositories (not installed here)
 

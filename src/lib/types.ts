@@ -245,7 +245,12 @@ export interface ProjectConfig {
   workspace_root?: string
   state_root?: string
   tracking?: TrackingConfig
-  installation_mode?: 'self_development' | 'embedded'
+  /**
+   * `embedded` installs the harness at `<target>/.pancreator`; `detached`
+   * places it outside the target tree entirely, with `workspace_root` holding
+   * the target's absolute path.
+   */
+  installation_mode?: 'self_development' | 'embedded' | 'detached'
 }
 
 export interface ResolvedRoots {

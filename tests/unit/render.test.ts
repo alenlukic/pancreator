@@ -174,7 +174,7 @@ test('invocation cards inline full policy text for every stage', () => {
 
 test('Python invocation cards inline PY-001 guidance for embedded targets', () => {
   const root = createFixture()
-  const configPath = path.join(root, 'project.json')
+  const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
     string,
     unknown

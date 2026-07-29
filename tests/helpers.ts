@@ -65,7 +65,7 @@ export function createFixture(): string {
     'README.md',
     'VERSION',
     'package-lock.json',
-    'project.json',
+    'config.json',
     '.gitignore',
   ]) {
     cpSync(path.join(REPO_ROOT, entry), path.join(root, entry))
@@ -468,9 +468,9 @@ function requiredData(
       }
 
       const projectConfig = root
-        ? (JSON.parse(
-            readFileSync(path.join(root, 'project.json'), 'utf8'),
-          ) as { installation_mode?: string })
+        ? (JSON.parse(readFileSync(path.join(root, 'config.json'), 'utf8')) as {
+            installation_mode?: string
+          })
         : null
       const fixtureRelease =
         projectConfig?.installation_mode === 'self_development' && root

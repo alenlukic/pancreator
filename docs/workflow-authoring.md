@@ -41,7 +41,7 @@ is the imperative validator in `src/lib/workflow.ts`, run by `./bin/pan validate
 
 ## Pipeline model configuration
 
-`project.json` is the single source of truth for persona-to-model selection.
+`config.json` is the single source of truth for persona-to-model selection.
 It contains named configurations such as `default`, `complex`, `auto`, and `fable`.
 Every named configuration MUST map every canonical Cursor agent template under `library/cursor/agents/`, including standalone command personas that are not referenced by a workflow.
 
@@ -51,7 +51,7 @@ After changing `active_config` or a model value, run:
 ./bin/pan models --sync
 ```
 
-This regenerates the ignored local `.cursor/` surface from the canonical sources declared in `governance/registries/projection_manifest.json`, including the active model mapping in `.cursor/agents/<persona>.md` frontmatter. `./bin/pan validate` validates the canonical projection sources even when local `.cursor/` output is absent; when a local projection exists, it also fails on drift. It also fails when a canonical agent template is unmapped, its `library/personas/<persona>.md` contract is missing, or a workflow worker template is missing.
+This regenerates the ignored local `.cursor/` surface from the canonical sources declared in `governance/registries/projection_manifest.json`, including the active model mapping in `.cursor/agents/pan-<persona>.md` frontmatter. `./bin/pan validate` validates the canonical projection sources even when local `.cursor/` output is absent; when a local projection exists, it also fails on drift. It also fails when a canonical agent template is unmapped, its `library/personas/<persona>.md` contract is missing, or a workflow worker template is missing.
 New runs copy the active mapping to `pipeline-config.snapshot.json`; every
 invocation records the resolved model and configuration name. Because Cursor
 subagent files are project-global, preparing an existing run fails if the live
@@ -63,9 +63,9 @@ mapping before resuming the run.
 - `slug` - stage id; matches the file name and a slug in the index.
 - `title` - shown on cards and records.
 - `persona` - owner; resolves to `library/personas/<persona>.md` and, for
-  delegated work, the `.cursor/agents/<persona>.md` subagent. The run resolves
+  delegated work, the `.cursor/agents/pan-<persona>.md` subagent. The run resolves
   the persona to a model through the active named mapping in
-  [`project.json`](../project.json), then snapshots that mapping
+  [`config.json`](../config.json), then snapshots that mapping
   so an in-flight run cannot drift when the live config changes.
 - `prompt_path` - the stage task brief; its contents become the card's Task
   section.

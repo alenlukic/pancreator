@@ -10,7 +10,7 @@ import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
 import type { RunState, StageDefinition } from '../../src/lib/types.js'
 
 function configureEmbeddedFixture(root: string): void {
-  const projectPath = path.join(root, 'project.json')
+  const projectPath = path.join(root, 'config.json')
   const project = JSON.parse(readFileSync(projectPath, 'utf8')) as Record<
     string,
     unknown

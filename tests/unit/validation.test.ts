@@ -259,7 +259,7 @@ test('repository validation requires code-review and QA stages to load TypeScrip
 test('embedded repository validation does not impose the TypeScript handbook on target stages', () => {
   const root = createFixture()
   prepareValidationFixture(root)
-  const configPath = path.join(root, 'project.json')
+  const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
     string,
     unknown
@@ -348,7 +348,7 @@ test('repository validation requires lookup rows to load referenced policy depen
 test('repository validation requires standalone Cursor agents in every pipeline config', () => {
   const root = createFixture()
   prepareValidationFixture(root)
-  const configPath = path.join(root, 'project.json')
+  const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
     configs: Record<string, { personas: Record<string, string> }>
   }
