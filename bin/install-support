@@ -836,6 +836,7 @@ function detectExistingHarness() {
   const targetRoot = path.resolve(requiredOption('--target-root'))
   const sourceRoot = path.resolve(requiredOption('--source-root'))
   const previousMarker = option('--previous-marker')
+  const installationMode = option('--installation-mode') ?? 'embedded'
 
   const detected = FOREIGN_HARNESS_SURFACES.filter((surface) =>
     existsSync(path.join(targetRoot, surface.path)),
@@ -861,10 +862,25 @@ function detectExistingHarness() {
   const lines = [
     '',
     'Existing agentic harness configuration detected in the target repository.',
-    'Pancreator installs alongside it and does not read, modify, or remove it.',
+    'Pancreator installs alongside it and does not modify or remove it.',
     'Pancreator-owned Cursor files are namespaced `pan-*`.',
     '',
   ]
+
+  if (installationMode === 'detached') {
+    lines.push(
+      'Detached installation: applicable target instruction surfaces remain live target authority for target application work.',
+      'Hard conflicts between target policy and Pancreator defaults fall back to the target.',
+      'Pancreator retains authority for harness runtime/state and operator-owned source-control actions.',
+      '',
+    )
+  } else {
+    lines.push(
+      'Embedded installation: applicable target instruction surfaces remain live target authority for target application work.',
+      'Hard conflicts between target policy and Pancreator defaults fall back to the target.',
+      '',
+    )
+  }
 
   for (const surface of detected) {
     lines.push(`  retained  ${surface.path}  (${surface.label})`)

@@ -88,6 +88,19 @@ the same directory:
   --harness-dir /opt/pancreator/target-repository
 ```
 
+## Detached target authority
+
+A detached installation does not copy target governance into the harness.
+Target-owned `AGENTS.md`, Cursor rules, and agents remain in the live target
+workspace and are authoritative for target application files, behavior, and
+conventions. When they conflict with Pancreator defaults, the target policy
+wins. Pancreator retains authority for harness runtime/state, stage contracts,
+and operator-owned source-control actions.
+
+The installed harness operating card at `<harness>/AGENTS.md` states this
+boundary explicitly. Refresh regenerates Pancreator-owned detached guidance
+without mutating target-owned files or creating a copied target-policy snapshot.
+
 ## Installed layout
 
 ```text
@@ -139,14 +152,20 @@ installed there. The patterns are deliberately narrow: excluding `.cursor/`
 wholesale would hide the target's own agent configuration from its operators.
 Installing into a clean Git target therefore leaves `git status` empty.
 
+Historical installations may still contain a tracked `.pancreator/` line in the
+target `.gitignore`. The installer never rewrites that tracked file; it reports
+the legacy line for optional operator cleanup and uses `.git/info/exclude` going
+forward.
+
 ## Coexisting with an existing agentic harness
 
 A target repository MAY already run other agentic tooling. Pancreator installs
-alongside it and treats all of it as target-owned: it is never read as
-instruction, modified, or removed. On first install the installer reports what
-it found — `AGENTS.md`, `CLAUDE.md`, `.claude/`, `.cursorrules`,
+alongside it and treats applicable target instruction surfaces as live target
+authority for target application work. On first install the installer reports
+what it found — `AGENTS.md`, `CLAUDE.md`, `.claude/`, `.cursorrules`,
 `.github/copilot-instructions.md`, target-authored `.cursor/` files, and other
-recognized surfaces — so the operator knows which harnesses are live.
+recognized surfaces — and states that hard conflicts between target policy and
+Pancreator defaults fall back to the target.
 
 Collisions are prevented by construction. Every file Pancreator projects into a
 target's `.cursor/` is namespaced: `pan-<persona>.md` for agents, `pan-*.md` for
@@ -326,7 +345,7 @@ blanket-deleted.
 
 ## Harness versioning
 
-`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `2.16.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
+`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `2.17.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
 
 `release/index.json` is the internal mapping from harness version to immutable
 Git commit. Because a commit cannot contain its own hash, release publication is

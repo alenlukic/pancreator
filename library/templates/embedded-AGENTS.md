@@ -12,7 +12,7 @@ This directory contains the Pancreator harness installed for the parent reposito
 - Harness configuration lives at `.pancreator/config.json`.
 - Cursor-facing commands, agents, and rules are projected into the target repository's `.cursor/` directory from canonical sources under `.pancreator/library/cursor/`; projected files MUST NOT be treated as harness authority.
 - Every Pancreator-owned file under `.cursor/` is namespaced `pan-*` or `pancreator.*`. Any other `.cursor/` file is target-owned: agents MUST NOT edit, delete, or rely on it as harness authority.
-- The target repository MAY run other agentic tooling, such as `CLAUDE.md`, `.claude/`, `.cursorrules`, or `.github/copilot-instructions.md`. Pancreator coexists with it. Agents MUST NOT modify or remove that configuration, and MUST treat its contents as target context rather than harness instruction.
+- The target repository MAY run other agentic tooling, such as `CLAUDE.md`, `.claude/`, `.cursorrules`, or `.github/copilot-instructions.md`. Pancreator coexists with it. Agents MUST NOT modify or remove that configuration. Applicable target instruction surfaces are live target authority for target application files, behavior, and conventions; hard conflicts between target policy and Pancreator defaults MUST fall back to the target.
 - Harness paths emitted by the CLI are installation-relative. Cursor filesystem operations MUST prefix `runtime/`, `library/`, and `governance/` paths with `.pancreator/`, while CLI arguments MUST keep the emitted harness-relative form.
 - The embedded installation is not a Pancreator self-development checkout. It MUST NOT evaluate or modify Pancreator release versions.
 

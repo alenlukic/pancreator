@@ -274,6 +274,8 @@ run_smoke() {
   ' "$detached_harness/config.json" "$detached_project"
   smoke_step "detached install leaves the target clean" \
     test -z "$(git -C "$detached_project" status --porcelain)"
+  smoke_step "detached operating card states target authority" grep -q \
+    'live target authority' "$detached_harness/AGENTS.md"
   smoke_step "detached harness rejects a nested harness dir" bash -c \
     "! bash '$0' --target '$detached_project' \
       --harness-dir '$detached_project/nested' \
@@ -537,7 +539,28 @@ report_existing_harness() {
     args+=(--previous-marker "$previous_marker")
   fi
 
+  if [[ "$DETACHED" -eq 1 ]]; then
+    args+=(--installation-mode detached)
+  else
+    args+=(--installation-mode embedded)
+  fi
+
   node "$PANCREATOR_ROOT/bin/install-support" "${args[@]}"
+}
+
+report_legacy_gitignore() {
+  local gitignore="$TARGET_DIR/.gitignore"
+
+  if [[ ! -f "$gitignore" ]]; then
+    return
+  fi
+
+  if grep -Eq '^[[:space:]]*/?\.pancreator/?[[:space:]]*(#.*)?$' "$gitignore"; then
+    echo ""
+    echo "Legacy Pancreator ignore entry detected in tracked .gitignore."
+    echo "Installation uses clone-local .git/info/exclude instead; the tracked"
+    echo "file was left byte-identical. Remove the legacy line when convenient."
+  fi
 }
 
 # Keep Pancreator's own files out of the target's Git status without editing any
@@ -788,8 +811,13 @@ prepare_staging_payload() {
     cp -Rp "$PANCREATOR_ROOT/$entry" "$staging/$entry"
   done
 
-  cp "$PANCREATOR_ROOT/library/templates/embedded-AGENTS.md" \
-    "$staging/AGENTS.md"
+  if [[ "$DETACHED" -eq 1 ]]; then
+    cp "$PANCREATOR_ROOT/library/templates/detached-AGENTS.md" \
+      "$staging/AGENTS.md"
+  else
+    cp "$PANCREATOR_ROOT/library/templates/embedded-AGENTS.md" \
+      "$staging/AGENTS.md"
+  fi
   cp "$PANCREATOR_ROOT/library/templates/embedded-gitignore" \
     "$staging/.gitignore"
 
@@ -828,6 +856,7 @@ install_payload() {
 
   prepare_staging_payload "$staging"
   ensure_target_git_exclude
+  report_legacy_gitignore
 
   mkdir -p "$PANCREATOR_DIR" "$CURSOR_DIR"
   prepare_persistent_layout

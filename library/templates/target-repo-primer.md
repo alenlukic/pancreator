@@ -44,3 +44,11 @@ Unavailable until the primer is built.
 ## Gotchas
 
 The repository has not yet been scanned by the librarian.
+
+## Frontend visual inspection
+
+Unavailable until the primer is built.
+
+## Major workflows and data flows
+
+Unavailable until the primer is built.

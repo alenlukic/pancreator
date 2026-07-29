@@ -350,10 +350,12 @@ test('repository validation requires standalone Cursor agents in every pipeline 
   prepareValidationFixture(root)
   const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
+    defaults: Record<string, string>
     configs: Record<string, { personas: Record<string, string> }>
   }
 
   delete config.configs.complex?.personas['tech-lead']
+  delete config.defaults['tech-lead']
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
 
   const result = validateRepository(root)

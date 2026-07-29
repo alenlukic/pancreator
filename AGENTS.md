@@ -85,7 +85,7 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 - Pancreator source code MUST NOT import target application code. Target application code MUST NOT depend on Pancreator internals; the generated `.pancreator/` harness and root `.cursor/` projection are tooling boundaries, not application dependencies.
 - Installation and update validation MAY create or refresh `<target>/.pancreator` and Pancreator-owned files under `<target>/.cursor` only when the active task explicitly covers installation infrastructure.
 - Installation MUST NOT change any file the target repository tracks. It MUST NOT write the target's `.gitignore`; Pancreator-owned paths are excluded through a managed block in the target's clone-local `.git/info/exclude`.
-- A target repository MAY already run other agentic tooling. Pancreator MUST coexist with it: existing `AGENTS.md`, `CLAUDE.md`, `.claude/`, `.cursorrules`, `.github/copilot-instructions.md`, and target-authored `.cursor/` files MUST be reported on first install and MUST NOT be read as instruction, modified, or removed.
+- A target repository MAY already run other agentic tooling. Pancreator MUST coexist with it: existing `AGENTS.md`, `CLAUDE.md`, `.claude/`, `.cursorrules`, `.github/copilot-instructions.md`, and target-authored `.cursor/` files MUST be reported on first install and MUST NOT be modified or removed. Applicable target instruction surfaces are live target authority for target application files, behavior, and conventions; hard conflicts between target policy and Pancreator defaults MUST fall back to the target. Pancreator retains authority for harness runtime/state, stage contracts, and operator-owned source-control actions.
 
 ## Self-development release boundary
 

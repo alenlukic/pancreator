@@ -82,7 +82,16 @@ export function createFixture(): string {
   mkdirSync(path.join(root, 'docs'), { recursive: true })
   mkdirSync(path.join(root, 'src'), { recursive: true })
 
-  writeFileSync(path.join(root, 'AGENTS.md'), '# fixture\n')
+  writeFileSync(
+    path.join(root, 'AGENTS.md'),
+    [
+      '# fixture',
+      '',
+      'Ad-hoc Subagent calls MUST omit `model` so they inherit the parent model unless the operator explicitly selects a model.',
+      'Named personas retain their projected model routing through projected frontmatter and `config.json`.',
+      '',
+    ].join('\n'),
+  )
   writeFileSync(
     path.join(root, 'request.md'),
     'Build a dependency-free workflow harness.\n',

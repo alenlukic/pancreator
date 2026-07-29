@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.17.0] - 2026-07-29
+
+### Changed
+
+- Rename the harness configuration file from `project.json` to `config.json`, migrate legacy installations on refresh, and retain superseded `project.json` backups for operator recovery ([config.json](config.json), [project config](src/lib/project-config.ts), [embedded installation test](tests/integration/embedded-installation.test.ts)).
+- Make detached installations treat applicable target instruction surfaces as live target authority for target application work, with hard conflicts falling back to target policy while Pancreator retains harness runtime/state and operator-owned action boundaries ([detached operating card](library/templates/detached-AGENTS.md), [install](bin/install), [install-support](bin/install-support), [embedded rule](library/cursor/rules/pancreator-embedded.mdc)).
+- Correct embedded-install governance so Pancreator-owned ignore patterns land in clone-local `.git/info/exclude` rather than the target `.gitignore`, preserve legacy tracked ignore lines byte-identical with an operator cleanup notice, and update `CONTRACT-001` to match the implemented invariant ([CONTRACT-001](governance/policies/CONTRACT-001.json), [embedded installation](docs/embedded-installation.md)).
+- Extend external-target `/pan-build-docs` primers with relevance-gated frontend visual-inspection guidance and structured major workflow/data-flow walkthroughs whose steps document input shape, abbreviated source-derived logic, and output shape; self-development primers remain exempt ([PRIMER-001](governance/policies/PRIMER-001.json), [librarian persona](library/personas/librarian.md), [primer validator](src/lib/validators/target-repo-primer.ts)).
+- Refresh target-repository primer guidance and embedded-install coexistence wording in the operating card and canonical Cursor surfaces ([target repo primer](docs/target-repo-primer.md), [AGENTS.md](AGENTS.md)).
+
+### Added
+
+- Add a detached-specific harness operating-card template and installer smoke assertions for target-authority semantics and gitignore preservation ([detached-AGENTS.md](library/templates/detached-AGENTS.md), [install smoke](bin/install)).
+- Add external-only primer validation for frontend inspection subsections, major-flow step fields, explicit not-applicable outcomes, and named flows without steps ([target-repo-primer validator](src/lib/validators/target-repo-primer.ts), [validator tests](tests/unit/target-repo-primer-validator.test.ts)).
+- Add harness-config unit coverage for legacy `project.json` detection, migration, and backup retention ([harness-config test](tests/unit/harness-config.test.ts)).
+
+### Fixed
+
+- Reject state-only frontend guidance and named major-flow sections that omit ordered steps after review found two false-positive validation paths ([target-repo-primer validator](src/lib/validators/target-repo-primer.ts)).
+
 ## [2.16.0] - 2026-07-20
 
 ### Changed
