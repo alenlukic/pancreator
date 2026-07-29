@@ -553,6 +553,148 @@ test('detached installation refreshes idempotently', () => {
   }
 })
 
+test('detached installation preserves target authority and scoped precedence', () => {
+  const project = makeSkeletonProject()
+  const harness = mkdtempSync(path.join(tmpdir(), 'pancreator-harness-'))
+
+  try {
+    git(project, ['init', '-q'])
+    git(project, ['config', 'user.email', 'fixture@example.com'])
+    git(project, ['config', 'user.name', 'Fixture'])
+
+    const targetAgents = path.join(project, 'AGENTS.md')
+    const targetRule = path.join(
+      project,
+      '.cursor',
+      'rules',
+      'typescript-semicolons.mdc',
+    )
+    const targetAgent = path.join(project, '.cursor', 'agents', 'coder.md')
+
+    writeFileSync(
+      targetAgents,
+      '# Target agents\n\nAlways terminate TypeScript statements with semicolons.\n',
+    )
+    mkdirSync(path.dirname(targetRule), { recursive: true })
+    writeFileSync(
+      targetRule,
+      '---\nalwaysApply: true\n---\n\nRequire terminating semicolons in TypeScript files.\n',
+    )
+    mkdirSync(path.dirname(targetAgent), { recursive: true })
+    writeFileSync(
+      targetAgent,
+      '---\nmodel: target-coder\n---\n\nTarget-owned coder agent.\n',
+    )
+
+    git(project, ['add', '.'])
+    git(project, ['commit', '-qm', 'initial'])
+
+    const agentsBefore = readFileSync(targetAgents, 'utf8')
+    const ruleBefore = readFileSync(targetRule, 'utf8')
+    const agentBefore = readFileSync(targetAgent, 'utf8')
+
+    const result = runInstaller(project, ['--harness-dir', harness])
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.match(result.stdout, /live target authority/)
+    assert.match(result.stdout, /does not modify or remove/)
+    assert.doesNotMatch(result.stdout, /does not read/)
+    assert.match(result.stdout, /retained {2}AGENTS\.md/)
+    assert.match(
+      result.stdout,
+      /retained {2}\.cursor\/rules\/typescript-semicolons\.mdc/,
+    )
+    assert.match(result.stdout, /retained {2}\.cursor\/agents\/coder\.md/)
+
+    assert.equal(readFileSync(targetAgents, 'utf8'), agentsBefore)
+    assert.equal(readFileSync(targetRule, 'utf8'), ruleBefore)
+    assert.equal(readFileSync(targetAgent, 'utf8'), agentBefore)
+
+    assert.equal(
+      existsSync(path.join(project, '.cursor', 'agents', 'pan-coder.md')),
+      true,
+    )
+    assert.equal(existsSync(path.join(project, '.pancreator')), false)
+
+    const harnessAgents = readFileSync(path.join(harness, 'AGENTS.md'), 'utf8')
+    const projectedRule = readFileSync(
+      path.join(project, '.cursor', 'rules', 'pancreator.mdc'),
+      'utf8',
+    )
+
+    assert.match(harnessAgents, /Detached Pancreator operating card/)
+    assert.match(harnessAgents, /absolute `workspace_root`/)
+    assert.match(harnessAgents, /fall back to the target/)
+    assert.match(projectedRule, /target policy wins/)
+    assert.equal(git(project, ['status', '--porcelain']), '')
+  } finally {
+    rmSync(project, { recursive: true, force: true })
+    rmSync(harness, { recursive: true, force: true })
+  }
+})
+
+test('detached refresh keeps live target instructions without copied policy', () => {
+  const project = makeSkeletonProject()
+  const harness = mkdtempSync(path.join(tmpdir(), 'pancreator-harness-'))
+
+  try {
+    git(project, ['init', '-q'])
+    git(project, ['config', 'user.email', 'fixture@example.com'])
+    git(project, ['config', 'user.name', 'Fixture'])
+
+    const targetRule = path.join(
+      project,
+      '.cursor',
+      'rules',
+      'typescript-semicolons.mdc',
+    )
+
+    mkdirSync(path.dirname(targetRule), { recursive: true })
+    writeFileSync(
+      targetRule,
+      '---\nalwaysApply: true\n---\n\nInitial target rule.\n',
+    )
+    git(project, ['add', '.'])
+    git(project, ['commit', '-qm', 'initial'])
+
+    assert.equal(runInstaller(project, ['--harness-dir', harness]).status, 0)
+
+    writeFileSync(
+      targetRule,
+      '---\nalwaysApply: true\n---\n\nUpdated target rule after install.\n',
+    )
+    git(project, ['add', targetRule])
+    git(project, ['commit', '-qm', 'update target rule'])
+
+    const ruleAfterChange = readFileSync(targetRule, 'utf8')
+
+    const refresh = runInstaller(project, ['--harness-dir', harness, '--yes'])
+
+    assert.equal(refresh.status, 0, refresh.stderr)
+    assert.equal(readFileSync(targetRule, 'utf8'), ruleAfterChange)
+    assert.equal(
+      existsSync(path.join(harness, 'runtime', 'inbox', 'target-policy.json')),
+      false,
+    )
+
+    const config = readJson<{
+      workspace_root: string
+      installation_mode: string
+    }>(path.join(harness, 'config.json'))
+
+    assert.equal(config.installation_mode, 'detached')
+    assert.equal(config.workspace_root, project)
+    assert.match(
+      readFileSync(path.join(harness, 'AGENTS.md'), 'utf8'),
+      /live target authority/,
+    )
+    assert.equal(git(project, ['status', '--porcelain']), '')
+  } finally {
+    rmSync(project, { recursive: true, force: true })
+    rmSync(harness, { recursive: true, force: true })
+  }
+})
+
 test('embedded installer never writes the target gitignore', () => {
   const withGitignore = makeSkeletonProject()
   const withoutGitignore = makeSkeletonProject()
@@ -577,6 +719,54 @@ test('embedded installer never writes the target gitignore', () => {
   } finally {
     rmSync(withGitignore, { recursive: true, force: true })
     rmSync(withoutGitignore, { recursive: true, force: true })
+  }
+})
+
+test('embedded installer preserves legacy gitignore and unrelated exclude content', () => {
+  const project = makeSkeletonProject()
+
+  try {
+    git(project, ['init', '-q'])
+    git(project, ['config', 'user.email', 'fixture@example.com'])
+    git(project, ['config', 'user.name', 'Fixture'])
+    writeFileSync(
+      path.join(project, '.gitignore'),
+      'node_modules/\n/.pancreator/\n',
+    )
+    writeFileSync(
+      path.join(project, '.git', 'info', 'exclude'),
+      'local-only-pattern\n',
+    )
+    git(project, ['add', '.'])
+    git(project, ['commit', '-qm', 'initial'])
+
+    const gitignoreBefore = readFileSync(
+      path.join(project, '.gitignore'),
+      'utf8',
+    )
+
+    const first = runInstaller(project)
+    const second = runInstaller(project, ['--yes'])
+
+    assert.equal(first.status, 0, first.stderr)
+    assert.equal(second.status, 0, second.stderr)
+    assert.match(first.stdout, /Legacy Pancreator ignore entry detected/)
+    assert.equal(
+      readFileSync(path.join(project, '.gitignore'), 'utf8'),
+      gitignoreBefore,
+    )
+
+    const exclude = readFileSync(
+      path.join(project, '.git', 'info', 'exclude'),
+      'utf8',
+    )
+
+    assert.match(exclude, /^local-only-pattern$/mu)
+    assert.equal(exclude.match(/# >>> pancreator >>>/gu)?.length, 1)
+    assert.match(exclude, /^\/\.pancreator\/$/mu)
+    assert.equal(git(project, ['status', '--porcelain']), '')
+  } finally {
+    rmSync(project, { recursive: true, force: true })
   }
 })
 
@@ -1232,13 +1422,14 @@ test('embedded installer refresh compacts defaults and preserves operator models
     const customReviewerModel = 'operator-custom-reviewer[fast=false]'
     const inheritedPersona = 'investigator'
     const inheritedModel = config.defaults[inheritedPersona]
+    const activeConfigName = 'complex'
 
     assert.equal(typeof inheritedModel, 'string')
 
-    config.configs[config.active_config].personas.reviewer = customReviewerModel
-    config.configs[config.active_config].personas[inheritedPersona] =
-      inheritedModel
-    delete config.configs[config.active_config].personas.spotfixer
+    config.active_config = activeConfigName
+    config.configs[activeConfigName].personas.reviewer = customReviewerModel
+    config.configs[activeConfigName].personas[inheritedPersona] = inheritedModel
+    delete config.configs[activeConfigName].personas.spotfixer
     writeFileSync(configJsonPath, `${JSON.stringify(config, null, 2)}\n`)
 
     const result = runInstaller(project, ['--yes'])
@@ -1249,7 +1440,7 @@ test('embedded installer refresh compacts defaults and preserves operator models
       active_config: string
       configs: Record<string, { personas: Record<string, string> }>
     }>(configJsonPath)
-    const active = refreshed.configs[refreshed.active_config]
+    const active = refreshed.configs[activeConfigName]
 
     assert.equal(active.personas.reviewer, customReviewerModel)
     assert.equal(active.personas[inheritedPersona], undefined)
