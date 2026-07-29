@@ -13,19 +13,23 @@
       "tsconfig.tsbuildinfo"
     ]
   },
-  "active_config": "complex",
+  "active_config": "default",
   "defaults": {
-    "orchestrator": "grok-4.5[effort=high,fast=false]",
+    "orchestrator": "grok-4.5[effort=high,fast=true]",
+    "tech-lead": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
     "coder": "composer-2.5[fast=false]",
-    "librarian": "grok-4.5[effort=high,fast=false]",
-    "release-steward": "auto",
-    "investigator": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
-    "harness-technician": "grok-4.5[effort=high,fast=false]",
-    "repo-technician": "grok-4.5[effort=high,fast=false]",
-    "spotfixer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
-    "designer": "claude-fable-5[thinking=true,context=300k,effort=high]",
+    "reviewer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
+    "qa-tester": "kimi-k3[]",
+    "designer": "claude-opus-5[thinking=true,context=300k,effort=high]",
     "design-reviewer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
-    "design-qa": "grok-4.5[effort=high,fast=false]"
+    "design-qa": "kimi-k3[]",
+    "release-steward": "auto",
+    "librarian": "claude-opus-5[thinking=true,context=300k,effort=high]",
+    "decomposer": "claude-opus-5[thinking=true,context=300k,effort=high]",
+    "investigator": "claude-opus-5[thinking=true,context=300k,effort=high]",
+    "spotfixer": "kimi-k3[]",
+    "harness-technician": "claude-opus-5[thinking=true,context=300k,effort=high]",
+    "repo-technician": "claude-opus-5[thinking=true,context=300k,effort=high]"
   },
   "$operator": {
     "summary": "Named model configurations. Each configuration maps every checked-in Cursor persona to the model that should execute it.",
@@ -43,22 +47,15 @@
     },
     "default": {
       "summary": "Balance of focused coding, strong review, and frontier planning.",
-      "personas": {
-        "tech-lead": "gpt-5.6-terra[context=272k,reasoning=xhigh,fast=false]",
-        "decomposer": "gpt-5.6-terra[context=272k,reasoning=high,fast=false]",
-        "reviewer": "claude-opus-4-8[thinking=true,context=300k,effort=high,fast=false]",
-        "qa-tester": "grok-4.5[effort=xhigh,fast=false]"
-      }
+      "personas": {}
     },
     "complex": {
-      "summary": "Higher-reasoning review and QA for complex or high-risk work.",
+      "summary": "Higher-reasoning coding and QA for complex or high-risk work.",
       "personas": {
-        "tech-lead": "claude-fable-5[thinking=true,context=300k,effort=high]",
-        "decomposer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
-        "librarian": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
-        "reviewer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
-        "qa-tester": "grok-4.5[effort=xhigh,fast=false]",
-        "spotfixer": "gpt-5.6-sol[context=272k,reasoning=xhigh,fast=false]"
+        "coder": "claude-opus-5[thinking=true,context=300k,effort=high]",
+        "qa-tester": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
+        "design-qa": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
+        "spotfixer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]"
       }
     },
     "auto": {

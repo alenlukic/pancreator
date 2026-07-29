@@ -48,6 +48,11 @@ In primer mode, write one Markdown file with exactly these top-level sections:
 6. `## Public interfaces`
 7. `## Gotchas`
 
+For embedded and detached target installations only, also include:
+
+8. `## Frontend visual inspection` with source-verified startup, route or state, and applicable isolated browser-inspection guidance when a relevant client exists, or an explicit `Not applicable` result when none is found.
+9. `## Major workflows and data flows` documenting each source-identified major workflow or data flow as ordered steps where every step states input data shape, an abbreviated source-derived business-logic excerpt, and output data shape, or an explicit `None identified` result when bounded inspection finds none. Do not fabricate absent frontend or flow content.
+
 The file MUST include these metadata comments near the title:
 
 - `<!-- pancreator-primer-status: ready -->`

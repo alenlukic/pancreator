@@ -2,6 +2,7 @@ import path from 'node:path'
 
 import { hasHeading, parseMarkdown } from '../markdown.js'
 import { readText } from '../io.js'
+import { isTargetInstallation } from '../project-config.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
 
 function issue(code: string, message: string): HandlerResult['issues'][number] {
@@ -32,6 +33,210 @@ function sectionBody(content: string, heading: string): string {
     .trim()
 }
 
+function isExplicitNotApplicable(body: string): boolean {
+  return /^(?:[-*]\s*)?not applicable\b/iu.test(body.trim())
+}
+
+function isExplicitNoneIdentified(body: string): boolean {
+  return /^(?:[-*]\s*)?none identified\b/iu.test(body.trim())
+}
+
+interface RequiredField {
+  pattern: RegExp
+  missingCode: string
+  emptyCode: string
+  label: string
+}
+
+function validateRequiredFields(
+  body: string,
+  fields: RequiredField[],
+  context: string,
+): HandlerResult['issues'] {
+  const issues: HandlerResult['issues'] = []
+
+  for (const { pattern, missingCode, emptyCode, label } of fields) {
+    const match = pattern.exec(body)
+
+    if (!match) {
+      issues.push(issue(missingCode, `${context} MUST include **${label}:**`))
+    } else if (match[1].trim().length === 0) {
+      issues.push(
+        issue(emptyCode, `${context} **${label}:** MUST not be empty`),
+      )
+    }
+  }
+
+  return issues
+}
+
+function validateFrontendInspectionSection(
+  body: string,
+): HandlerResult['issues'] {
+  const issues: HandlerResult['issues'] = []
+
+  if (body.length === 0) {
+    issues.push(
+      issue(
+        'primer.frontend_inspection_empty',
+        'Frontend visual inspection MUST not be empty for external target primers',
+      ),
+    )
+    return issues
+  }
+
+  if (isExplicitNotApplicable(body)) {
+    return issues
+  }
+
+  const requiredLabels = [
+    {
+      pattern:
+        /^[ \t]*(?:[-*][ \t]*)?\*\*Startup:\*\*[ \t]*([^\r\n]*)[ \t]*$/imu,
+      missingCode: 'primer.frontend_startup_missing',
+      emptyCode: 'primer.frontend_startup_empty',
+      label: 'Startup',
+    },
+    {
+      pattern:
+        /^[ \t]*(?:[-*][ \t]*)?\*\*(?:Route(?:\/state)?|State):\*\*[ \t]*([^\r\n]*)[ \t]*$/imu,
+      missingCode: 'primer.frontend_route_missing',
+      emptyCode: 'primer.frontend_route_empty',
+      label: 'Route/state',
+    },
+    {
+      pattern:
+        /^[ \t]*(?:[-*][ \t]*)?\*\*Browser inspection:\*\*[ \t]*([^\r\n]*)[ \t]*$/imu,
+      missingCode: 'primer.frontend_browser_missing',
+      emptyCode: 'primer.frontend_browser_empty',
+      label: 'Browser inspection',
+    },
+  ]
+
+  issues.push(
+    ...validateRequiredFields(
+      body,
+      requiredLabels,
+      'Frontend visual inspection',
+    ),
+  )
+
+  return issues
+}
+
+function validateFlowSteps(body: string): HandlerResult['issues'] {
+  const issues: HandlerResult['issues'] = []
+
+  if (body.length === 0) {
+    issues.push(
+      issue(
+        'primer.major_flows_empty',
+        'Major workflows and data flows MUST not be empty for external target primers',
+      ),
+    )
+    return issues
+  }
+
+  if (isExplicitNoneIdentified(body)) {
+    return issues
+  }
+
+  const flowSections = body.split(/^###\s+/mu).slice(1)
+
+  for (const flowSection of flowSections) {
+    const flowName = flowSection.split('\n', 1)[0].trim()
+    const flowBody = flowSection.replace(/^[^\n]*(?:\n|$)/u, '')
+
+    if (!/^####\s+Step\b/imu.test(flowBody)) {
+      issues.push(
+        issue(
+          'primer.major_flow_steps_missing',
+          `Flow "${flowName}" MUST document ordered steps beginning with #### Step 1`,
+        ),
+      )
+    }
+  }
+
+  const stepBlocks = body.split(/^####\s+/mu).slice(1)
+
+  if (stepBlocks.length === 0) {
+    issues.push(
+      issue(
+        'primer.major_flow_steps_missing',
+        'Major workflows and data flows MUST document ordered steps or state None identified',
+      ),
+    )
+    return issues
+  }
+
+  let expectedStep = 1
+
+  for (const [index, block] of stepBlocks.entries()) {
+    const heading = block.split('\n', 1)[0].trim()
+    const stepNumber = /^Step\s+([1-9][0-9]*)(?::|\s|$)/iu.exec(heading)?.[1]
+    const previousBlock = index === 0 ? body : stepBlocks[index - 1]
+
+    if (/^###\s+/mu.test(previousBlock)) {
+      expectedStep = 1
+    }
+
+    if (!stepNumber || Number(stepNumber) !== expectedStep) {
+      issues.push(
+        issue(
+          'primer.major_flow_step_order',
+          `Flow steps MUST use contiguous ordered headings beginning with #### Step 1; expected Step ${expectedStep}`,
+        ),
+      )
+    } else {
+      expectedStep += 1
+    }
+
+    const stepBody = block.replace(/^[^\n]*\n/u, '').trim()
+
+    if (stepBody.length === 0) {
+      issues.push(
+        issue(
+          'primer.major_flow_step_empty',
+          'Each documented flow step MUST include input, logic, and output fields',
+        ),
+      )
+      continue
+    }
+
+    issues.push(
+      ...validateRequiredFields(
+        stepBody,
+        [
+          {
+            pattern:
+              /^[ \t]*(?:[-*][ \t]*)?\*\*Input shape:\*\*[ \t]*([^\r\n]*)[ \t]*$/imu,
+            missingCode: 'primer.major_flow_input_missing',
+            emptyCode: 'primer.major_flow_input_empty',
+            label: 'Input shape',
+          },
+          {
+            pattern:
+              /^[ \t]*(?:[-*][ \t]*)?\*\*Logic excerpt:\*\*[ \t]*([^\r\n]*)[ \t]*$/imu,
+            missingCode: 'primer.major_flow_logic_missing',
+            emptyCode: 'primer.major_flow_logic_empty',
+            label: 'Logic excerpt',
+          },
+          {
+            pattern:
+              /^[ \t]*(?:[-*][ \t]*)?\*\*Output shape:\*\*[ \t]*([^\r\n]*)[ \t]*$/imu,
+            missingCode: 'primer.major_flow_output_missing',
+            emptyCode: 'primer.major_flow_output_empty',
+            label: 'Output shape',
+          },
+        ],
+        'Each documented flow step',
+      ),
+    )
+  }
+
+  return issues
+}
+
 export function validateTargetRepoPrimer(input: HandlerInput): HandlerResult {
   const issues: HandlerResult['issues'] = []
   const content = readText(path.join(input.root, input.targetPath))
@@ -44,6 +249,14 @@ export function validateTargetRepoPrimer(input: HandlerInput): HandlerResult {
     'Public interfaces',
     'Gotchas',
   ]
+  const externalTarget = isTargetInstallation(input.root)
+
+  if (externalTarget) {
+    requiredSections.push(
+      'Frontend visual inspection',
+      'Major workflows and data flows',
+    )
+  }
 
   if (!hasHeading(parsed, 'Target repository primer', 1)) {
     issues.push(
@@ -147,6 +360,17 @@ export function validateTargetRepoPrimer(input: HandlerInput): HandlerResult {
       issue(
         'primer.project_paths',
         'Project structure MUST include repository-relative paths in backticks',
+      ),
+    )
+  }
+
+  if (externalTarget) {
+    issues.push(
+      ...validateFrontendInspectionSection(
+        sectionBody(content, 'Frontend visual inspection'),
+      ),
+      ...validateFlowSteps(
+        sectionBody(content, 'Major workflows and data flows'),
       ),
     )
   }
