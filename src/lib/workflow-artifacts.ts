@@ -993,8 +993,11 @@ export interface WorkflowArchiveSummary {
   cutoff: string
   run_directories: number
   state_directories: number
+  /** Standalone-mode session directories archived under the same retention. */
+  session_directories: number
   updated_files: number
   run_ids: string[]
+  session_ids: string[]
 }
 
 export interface WorkflowRuntimeMaintenanceSummary {
@@ -1461,13 +1464,44 @@ export function archiveWorkflowDirectories(
     }
   }
 
+  // Standalone-mode governance cards live outside the workflow tree but are
+  // just as disposable, so RUNTIME-001 retention has to reach them too or they
+  // accumulate for the life of the installation.
+  const sessionRoot = path.join(root, 'runtime', 'logs', 'sessions')
+  const sessionIds = activeWorkflowDirectoryNames(sessionRoot).filter(
+    (sessionId) => {
+      const createdAt = currentRunDate(sessionId)
+
+      return createdAt !== null && createdAt.getTime() < cutoff.getTime()
+    },
+  )
+  let sessionDirectories = 0
+
+  for (const sessionId of sessionIds) {
+    const sessionDirectory = path.join(sessionRoot, sessionId)
+
+    updatedFiles += updateFileCount(
+      listFiles(sessionDirectory),
+      new Map([
+        [
+          `runtime/logs/sessions/${sessionId}`,
+          `runtime/logs/sessions/archive/${sessionId}`,
+        ],
+      ]),
+    )
+    archiveDirectory(sessionRoot, sessionId)
+    sessionDirectories += 1
+  }
+
   return {
     retention_days: retentionDays,
     cutoff: cutoff.toISOString(),
     run_directories: runDirectories,
     state_directories: stateDirectories,
+    session_directories: sessionDirectories,
     updated_files: updatedFiles,
     run_ids: runIds,
+    session_ids: sessionIds,
   }
 }
 

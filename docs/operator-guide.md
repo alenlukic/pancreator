@@ -110,6 +110,17 @@ directive. It will not create a run, produce stage outputs or briefs, or convert
 the session into a workflow on its own. Do not run it while a mutating workflow
 agent is active in the same workspace.
 
+Invoke `/pan-pair` **once per conversation**, not once per turn. It opens the
+session by generating the governance card; after that, every directive is an
+ordinary chat message and the agent loops on its own. Re-invoking is harmless but
+unnecessary — the agent reuses the existing card rather than generating another.
+
+Start a new conversation and you start a new session, so invoke it again there.
+If a long session gets summarized and the agent appears to drift, the card is a
+durable file under `runtime/logs/sessions/<id>/`; telling the agent to re-read it
+restores the full contract without regenerating anything. Session directories
+follow the same seven-day `RUNTIME-001` retention as workflow runs.
+
 Every non-workflow mode takes its governance from a generated card rather than
 hand-assembled policy text:
 
