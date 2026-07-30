@@ -225,25 +225,31 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
       /operator MAY waive any workflow stage/u,
     )
     assert.equal(existsSync(path.join(project, '.pancreator', 'library')), true)
+    // The browser contract installs as a rule generated from BROWSER-001, so the
+    // policy travels in the payload and no hand-written rule template exists.
     assert.equal(
       existsSync(
         path.join(
           project,
           '.pancreator',
-          'library',
-          'cursor',
-          'rules',
-          'visual-qa-isolation.mdc',
+          'governance',
+          'policies',
+          'BROWSER-001.json',
         ),
       ),
       true,
     )
-    assert.equal(
-      existsSync(
-        path.join(project, '.cursor', 'rules', 'pan-visual-qa-isolation.mdc'),
-      ),
-      true,
+
+    const browserRule = path.join(
+      project,
+      '.cursor',
+      'rules',
+      'pan-browser-isolation.mdc',
     )
+
+    assert.equal(existsSync(browserRule), true)
+    assert.match(readFileSync(browserRule, 'utf8'), /BROWSER-001/u)
+    assert.match(readFileSync(browserRule, 'utf8'), /alwaysApply:\s*true/u)
     assert.equal(
       existsSync(
         path.join(
@@ -943,14 +949,14 @@ test('embedded installer leaves target-owned agents and rules untouched', () => 
     project,
     '.cursor',
     'rules',
-    'visual-qa-isolation.mdc',
+    'browser-isolation.mdc',
   )
 
   try {
     mkdirSync(path.join(project, '.cursor', 'agents'), { recursive: true })
     mkdirSync(path.join(project, '.cursor', 'rules'), { recursive: true })
     writeFileSync(targetCoder, 'target-authored coder\n')
-    writeFileSync(targetRule, 'target-authored visual qa rule\n')
+    writeFileSync(targetRule, 'target-authored browser rule\n')
 
     const result = runInstaller(project)
 
@@ -960,7 +966,7 @@ test('embedded installer leaves target-owned agents and rules untouched', () => 
     assert.equal(readFileSync(targetCoder, 'utf8'), 'target-authored coder\n')
     assert.equal(
       readFileSync(targetRule, 'utf8'),
-      'target-authored visual qa rule\n',
+      'target-authored browser rule\n',
     )
 
     // Pancreator's equivalents install alongside under the pan namespace.
@@ -970,7 +976,7 @@ test('embedded installer leaves target-owned agents and rules untouched', () => 
     )
     assert.equal(
       existsSync(
-        path.join(project, '.cursor', 'rules', 'pan-visual-qa-isolation.mdc'),
+        path.join(project, '.cursor', 'rules', 'pan-browser-isolation.mdc'),
       ),
       true,
     )

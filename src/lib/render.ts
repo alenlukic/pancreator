@@ -1,4 +1,5 @@
 import type { Invocation, RunState } from './types.js'
+import { DELEGATION_HEADING } from './validation.js'
 import type { InvocationValidationStatus } from './validation.js'
 
 function fencedJson(value: unknown): string {
@@ -92,6 +93,38 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
         ),
       ]
     : ['No stage-specific `data` fields are required.']
+
+  const { delegation } = invocation
+  const delegationLines = delegation
+    ? [
+        DELEGATION_HEADING,
+        '',
+        'This section addresses the supervisor that prepared this card, not the ' +
+          'assigned worker. The worker MUST ignore it. The supervisor MUST NOT ' +
+          'remove it: delegation evidence is compared against this card verbatim.',
+        '',
+        ...delegation.policies.flatMap((policy) => [
+          `**${policy.id} · ${policy.title}**`,
+          '',
+          policy.summary,
+          '',
+          ...policy.instructions.map((instruction) => `- ${instruction}`),
+          '',
+        ]),
+        'Resolved paths for this invocation:',
+        '',
+        `1. Confirm \`${delegation.invocation_validation_path}\` reports \`pass\`. ` +
+          'A failed or missing validation artifact MUST NOT be delegated.',
+        `2. Paste the complete contents of \`${delegation.canonical_markdown_path}\` ` +
+          `verbatim into the \`${delegation.persona}\` subagent prompt ` +
+          `(\`${delegation.cursor_agent_path}\`). A path reference, summary, or ` +
+          'excerpt MUST NOT substitute for the card body.',
+        `3. Persist that exact prompt body to \`${delegation.delegation_artifact_path}\` ` +
+          'before submission.',
+        `4. Submit with \`${delegation.submit_command}\`.`,
+        '',
+      ]
+    : []
 
   const lines = [
     `# 🚀 ${invocation.$operator.headline}`,
@@ -199,6 +232,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
       workspace_policy: stage.workspace_policy,
       gate: stage.gate,
     }),
+    ...(delegationLines.length > 0 ? ['', ...delegationLines] : []),
   ]
 
   return `${lines.join('\n')}\n`

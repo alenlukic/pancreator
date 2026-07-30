@@ -36,7 +36,9 @@ prepared invocation writes
 read that artifact for the failing checks before retrying.
 
 When `pending_action` is `invoke_agent`, deliver the canonical invocation card
-according to `INVOCATION-001` and persist its delegation audit artifact. Before
+according to the **Supervisor delivery procedure** section at the end of that
+card, which unrolls `INVOCATION-001` with resolved paths, and persist its
+delegation audit artifact. Before
 `./bin/pan submit`, confirm delegation validation passed. Rejection with
 `DELEGATION_ARTIFACT_MISSING` or `DELEGATION_VALIDATION_FAILED` leaves the run
 on the same invocation so delivery can be corrected and resubmitted.
@@ -122,7 +124,11 @@ Composition is deliberately separate runs (not an automatic gate inside `dev`).
 The first live design run after enabling this capability is an operator checklist
 item, not an in-workflow nested run.
 
-### Design QA MCP setup (self-development)
+### Browser inspection MCP setup (self-development)
+
+`BROWSER-001` (`governance/policies/BROWSER-001.json`) is the single source of the
+agent-facing browser contract; this section covers only the operator-owned setup it
+depends on.
 
 Canonical MCP config lives at `library/cursor/mcp.json` and projects to
 `.cursor/mcp.json` only in `self_development` mode:
@@ -131,22 +137,36 @@ Canonical MCP config lives at `library/cursor/mcp.json` and projects to
 ./bin/pan models --sync
 ```
 
-Installed servers (chrome-devtools is primary; Playwright is an explicit fallback
-only):
+Installed servers: `chrome-devtools` (primary) and `playwright` (explicit fallback
+only). Both fetch on first `npx` run, so the first use needs network.
 
-- **chrome-devtools** — `npx chrome-devtools-mcp@latest --isolated` for Visual QA
-  and browser inspection through Chrome DevTools MCP. Harden with Chrome for
-  Testing (a distinct bundle, never the operator's personal `com.google.Chrome`
-  identity) via `--executablePath` and `--isolated`. Automation MUST NOT use the
-  personal `com.google.Chrome` app identity for MCP.
-- **playwright** — explicit fallback only: `npx @playwright/mcp@latest` when
-  chrome-devtools is unavailable.
+`BROWSER-001` requires a Chrome for Testing bundle — a distinct install, never the
+operator's personal `com.google.Chrome` identity. Point the server at it and check
+readiness:
+
+```sh
+./bin/pan doctor   # reports browser_automation.chrome_for_testing
+```
+
+```json
+{
+  "mcpServers": {
+    "chrome-devtools": {
+      "command": "npx",
+      "args": [
+        "chrome-devtools-mcp@latest",
+        "--executablePath=/path/to/chrome-for-testing",
+        "--isolated"
+      ]
+    }
+  }
+}
+```
 
 Do not put long-lived MCP customizations only in `.cursor/mcp.json`; that file is
 projection-owned and will be overwritten on sync. Edit `library/cursor/mcp.json`
 instead. Embedded target repositories own their own MCP config; Pancreator
-documents optional hardening (for example Chrome for Testing with
-`--executablePath` and `--isolated`) but does not install or overwrite target
+documents the hardening above but does not install or overwrite target
 `.cursor/mcp.json`.
 
 ## Select pipeline models

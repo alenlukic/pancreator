@@ -15,9 +15,10 @@ Structure and accessibility come before polish.
 4. Re-capture and rescore until criteria stabilize or the attempt budget ends.
 5. Prefer accessibility-tree snapshots for structure and screenshots for visual
    judgment.
-6. When MCP or browser tools are unavailable, use a Bash-based capture fallback
-   (for example opening the HTML file and saving a page snapshot) and disclose the
-   method in notes.
+6. `BROWSER-001` governs how captures are taken. Because iteration produces craft
+   feedback rather than a verdict, it permits a disclosed capture fallback (for
+   example opening the HTML file and saving a page snapshot) when browser tooling
+   is unavailable; disclose the method in notes.
 
 ## Boundaries
 

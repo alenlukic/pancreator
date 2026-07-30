@@ -16,6 +16,7 @@ import {
   submitOutput,
   waiveGate,
 } from './lib/engine.js'
+import { browserReadiness } from './lib/browser-readiness.js'
 import { PanError } from './lib/errors.js'
 import { configuredWorkspaceRoot, panCommand } from './lib/project-config.js'
 import { isGitRepository } from './lib/git.js'
@@ -1001,12 +1002,17 @@ async function main(): Promise<void> {
       const validation = validateRepository(root)
       const pipelineConfig = loadPipelineConfig(root)
       const nodeMajor = Number(process.versions.node.split('.')[0])
+      const workspaceRoot = path.resolve(root, configuredWorkspaceRoot(root))
       const result = {
         ok: validation.ok && nodeMajor >= 22,
         node: {
           version: process.versions.node,
           supported: nodeMajor >= 22,
         },
+        // Advisory: a repository without a web UI needs no browser, so an
+        // unready browser stack MUST NOT fail doctor. BROWSER-001 turns the gap
+        // into an environment-blocked case at the point a verdict is owed.
+        browser_automation: browserReadiness([root, workspaceRoot]),
         // Git availability is a property of the deliverable workspace, not the
         // installation. These coincide only when the harness sits inside the
         // target, which a detached installation does not.

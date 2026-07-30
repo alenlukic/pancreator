@@ -70,7 +70,14 @@ the invocation-time policy snapshot and writes
 validates the delegation audit artifact and writes
 `invocations/<invocation-id>.delegation-validation.json` before stage history
 can advance. `INVOCATION-001` defines the canonical delivery contract and the
-orchestrator-owned-stage exception.
+supervisor-owned-stage exception.
+
+Every prepared worker card also ends with a **Supervisor delivery procedure**
+section carrying that policy unrolled with this invocation's resolved paths. The
+supervisor holds no card of its own during the continuation loop, so the contract
+travels on the artifact it must already read to deliver the card. The section is
+part of the canonical body: removing it breaks delegation equality, and its
+presence is checked by the invocation validator.
 
 `./bin/pan status` renders a dedicated validation section from the active
 invocation's validation artifacts. Missing or malformed artifacts are reported

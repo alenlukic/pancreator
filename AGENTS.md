@@ -30,6 +30,12 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 - Section emoji MUST come from the registered semantic key and retain one meaning across the repository. Artifact data MUST NOT encode layout, color, or inline styles.
 - Every invocation output contract is the canonical brief artifact index. The harness pre-creates the source JSON and renders HTML during submission; agents MUST edit the declared source in place, MUST NOT search for brief artifacts, and MUST NOT invoke the renderer during stage work.
 
+## Roles
+
+- The **supervisor** is the agent holding the operator conversation and advancing the run. It is the `orchestrator` persona; `library/personas/orchestrator.md` is its behavioral brief, and `ORCH-001` unrolls that brief into every supervisor-owned invocation card. "Supervisor" and "orchestrator" name the same role throughout this repository — the first is the role, the second is the persona identifier used by `config.json` and the policy lookup table.
+- A **worker** is a named persona executing one delegated stage through its projected `.cursor/agents/pan-<persona>.md` subagent.
+- The supervisor is not itself invoked as a subagent. Its governance therefore arrives through this file, the `pan-*` command it is running, and the invocation cards it prepares — never through a `pan-orchestrator` subagent, which does not exist.
+
 ## Operating loop
 
 - Runs MUST be created, inspected, advanced, paused, resumed, and aborted through `./bin/pan`.
@@ -39,7 +45,12 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 - Ad-hoc Subagent calls MUST omit `model` so they inherit the parent model unless the operator explicitly selects a model. This does not change named-persona routing through projected frontmatter and `config.json`.
 - `.cursor/` MUST remain fully gitignored and MUST be treated as disposable local configuration. Canonical Cursor agents, commands, and rules live under `library/cursor/` and are declared by `governance/registries/projection_manifest.json`; source or installation code MUST NOT treat `.cursor/` as authoritative input.
 - Every projection installable into a target repository MUST use a `pan-` or `pancreator.` filename so it can never collide with target-owned Cursor configuration. `src/lib/projection.ts` and `bin/install-support` both enforce this after glob expansion.
-- The supervisor MUST apply `INVOCATION-001` for canonical-card validation, prompt delivery, and delegation evidence. Detailed delegation instructions MUST live in that policy rather than parallel restatements here.
+- Delegation is governed by [`INVOCATION-001`](governance/policies/INVOCATION-001.json) and is unrolled here because the supervisor holds no invocation card of its own during the continuation loop. Every prepared worker card also carries the same contract, with resolved paths, under its **Supervisor delivery procedure** section. For each worker stage the supervisor MUST:
+  1. Read the harness-produced invocation validation artifact and MUST NOT delegate a card whose status is failed or missing.
+  2. Paste the complete canonical invocation Markdown verbatim into the subagent prompt. A path reference, summary, or excerpt MUST NOT substitute for the card body.
+  3. Persist that exact prompt body to `runtime/logs/workflows/<run-id>/invocations/<invocation-id>.delegation.md` before submitting the stage.
+  4. Add no parallel scope, policy, gate, or plan restatement that could shadow the card; a minimal non-conflicting persona label MAY precede it.
+  5. Repair a missing or mismatched delegation artifact against the same active invocation rather than bypassing it or reporting delivery as successful.
 - A worker MUST write only the declared output and permitted evidence. The supervisor MUST submit it through `./bin/pan submit`.
 - The harness MUST rerun deterministic gate commands and MUST own code-determined transitions.
 - Before the first implementation invocation, the harness MUST capture only repository-check profiles required by the implementation stage. Unchanged failures present in that baseline MUST remain visible evidence but MUST NOT block the run; new or changed implementation/test diagnostics MUST fail the gate.
@@ -47,7 +58,7 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 - For `supervisor_assessment`, the supervisor MUST evaluate only the listed judgment criteria and write the declared assessment file.
 - For `operator_approval`, the supervisor MUST present the ratification packet and stop unless the operator has already explicitly decided. It MUST NOT originate or infer approval, but MUST execute an explicit approval directive.
 
-- The supervisor MUST apply `ORCH-001` for continuation and stop conditions.
+- The supervisor MUST apply [`ORCH-001`](governance/policies/ORCH-001.json) for continuation and stop conditions. Its full text and the supervisor brief are unrolled into every supervisor-owned invocation card.
 
 ## Work modes
 

@@ -36,12 +36,12 @@
       "transforms": []
     },
     {
-      "id": "cursor-visual-qa-rule",
-      "source": "library/cursor/rules/visual-qa-isolation.mdc",
-      "target": ".cursor/rules/pan-visual-qa-isolation.mdc",
+      "id": "cursor-browser-policy-rule",
+      "source": "governance/policies/BROWSER-001.json",
+      "target": ".cursor/rules/pan-browser-isolation.mdc",
       "installation_modes": ["self_development", "embedded"],
       "generated_fields": [],
-      "transforms": []
+      "transforms": ["policy-rule"]
     },
     {
       "id": "cursor-mcp",

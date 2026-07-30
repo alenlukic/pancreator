@@ -232,6 +232,13 @@ export interface WorkspaceSnapshot {
   fingerprint: string
   entries: string[]
   head?: string | null
+  /**
+   * Content hash per dirty path. A Git status entry only records *that* a path
+   * is modified, so two snapshots of the same already-dirty file are
+   * indistinguishable by `entries` alone. Change detection needs these hashes
+   * to see an edit that leaves the status code untouched.
+   */
+  dirty_content?: Record<string, string>
 }
 
 export interface TrackingConfig {
@@ -376,7 +383,25 @@ export interface Invocation {
     }
   }
   boundaries: string[]
+  /**
+   * Delivery contract for the supervisor that must hand this card to a worker.
+   * Present only for delegated stages. The supervisor holds no card of its own
+   * during the continuation loop, so `INVOCATION-001` is unrolled here — on the
+   * artifact the supervisor is already reading at the moment it delegates —
+   * rather than left to ambient recall of `AGENTS.md`.
+   */
+  delegation?: InvocationDelegationContract
   workspace_before: WorkspaceSnapshot
+}
+
+export interface InvocationDelegationContract {
+  persona: string
+  cursor_agent_path: string
+  canonical_markdown_path: string
+  invocation_validation_path: string
+  delegation_artifact_path: string
+  submit_command: string
+  policies: Policy[]
 }
 
 export interface DeterministicResult {
@@ -420,6 +445,13 @@ export interface StageHistoryItem {
   outcome: StageOutcome
   submitted_at: string
   workspace_fingerprint: string
+  /**
+   * Fingerprint captured when this attempt's invocation was prepared. Together
+   * with `workspace_fingerprint` it bounds the window the attempt is
+   * accountable for, which is what lets ship retries prove evidence currency
+   * by continuity instead of by guessing which paths the stage would touch.
+   */
+  workspace_before_fingerprint?: string
   validation_errors: string[]
   governance_artifact_warnings?: string[]
   deterministic: DeterministicResult[]

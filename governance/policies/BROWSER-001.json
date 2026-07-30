@@ -1,0 +1,23 @@
+{
+  "id": "BROWSER-001",
+  "title": "Isolated browser inspection",
+  "severity": "hard",
+  "summary": "Browser inspection MUST run in a dedicated isolated context that never borrows the operator's personal browser identity, and MUST leave no page or host setting behind.",
+  "instructions": [
+    "Browser inspection and Visual QA MUST use the `chrome-devtools` MCP server. Playwright MCP is an explicit fallback only when chrome-devtools is unavailable, and the fallback MUST be disclosed in case evidence.",
+    "Every page MUST be opened with `new_page` in a unique isolated context, for example through the server's `--isolated` flag. Agents MUST NOT attach to an operator's personal browser or drive MCP automation through the personal `com.google.Chrome` identity.",
+    "MCP automation MUST run against a Chrome for Testing bundle, configured locally as `chrome-devtools-mcp --executablePath=<chrome-for-testing> --isolated`. `pan doctor` reports whether that bundle is present; when it is absent, agents MUST report the readiness gap rather than fall back to an installed personal browser.",
+    "Agents MUST close every page they open with `close_page` when inspection finishes, including on failure.",
+    "Agents MUST NOT change macOS Launch Services, the default browser, or Chrome preferences as remediation, and MUST NOT kill or quit all MCP Chrome processes as the primary remediation.",
+    "Case evidence MUST record every Chrome DevTools MCP action, DOM observation, `isolatedContext` confirmation, and every `close_page` action.",
+    "When neither chrome-devtools nor the Playwright fallback is available, a stage that owes a browser verdict MUST report the case as environment-blocked. It MUST NOT convert the gap into a product pass or fail, and MUST NOT substitute a screenshot or capture fallback for a required browser verdict.",
+    "Design exploration and iteration MAY use a disclosed non-browser capture fallback, because it produces craft feedback rather than a verdict.",
+    "When one stage already owns browser inspection for a surface, another stage MUST NOT duplicate it; it MUST record its own verification and reference the existing evidence."
+  ],
+  "guidance_sources": [
+    {
+      "path": "library/skills/browser-inspection.md",
+      "start_heading": "## Procedure"
+    }
+  ]
+}

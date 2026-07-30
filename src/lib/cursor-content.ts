@@ -3,6 +3,51 @@ export type CursorInstallationMode =
   | 'embedded'
   | 'detached'
 
+interface PolicyRuleSource {
+  id: string
+  title: string
+  summary: string
+  instructions: string[]
+  guidance?: Array<{ source_path: string; content: string }>
+}
+
+/**
+ * Render a governance policy as an always-apply Cursor rule.
+ *
+ * Policies reach workflow agents unrolled into their invocation card. Work that
+ * runs outside the card machinery — command-driven subagents, ad-hoc operator
+ * requests — has no card, so the same policy is generated into a rule instead of
+ * restated by hand. Generating it keeps the policy the single source of truth.
+ *
+ * Kept in sync with the equivalent renderer in `bin/install-support`, which
+ * cannot import this module during an embedded install.
+ */
+export function renderPolicyCursorRule(policy: PolicyRuleSource): string {
+  return [
+    '---',
+    `description: ${policy.id} — ${policy.title}`,
+    'alwaysApply: true',
+    '---',
+    '',
+    `<!-- Generated from governance/policies/${policy.id}.json. Edit the policy, not this file. -->`,
+    '',
+    'The terms MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY use RFC 2119 meanings.',
+    '',
+    `# ${policy.id} · ${policy.title}`,
+    '',
+    policy.summary,
+    '',
+    ...policy.instructions.map((instruction) => `- ${instruction}`),
+    ...(policy.guidance ?? []).flatMap((guidance) => [
+      '',
+      `## Unrolled guidance · \`${guidance.source_path}\``,
+      '',
+      guidance.content,
+    ]),
+    '',
+  ].join('\n')
+}
+
 /** Harness prefix used by an embedded installation, relative to the target. */
 export const EMBEDDED_HARNESS_PREFIX = '.pancreator'
 
