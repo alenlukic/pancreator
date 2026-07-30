@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "slug": "prototype",
+  "title": "Prototype spike",
+  "description": "Operator-framed technical questions followed by a thin approach, a fast implementation, and an operator-ratified evaluation of what the spike proved. Trades up-front design depth and QA breadth for speed of answering a technical question.",
+  "start_stage": "intake",
+  "limits": {
+    "max_total_transitions": 12,
+    "max_stage_attempts": 3,
+    "max_consecutive_failures": 2
+  },
+  "stages": ["intake", "approach", "build", "evaluate"]
+}

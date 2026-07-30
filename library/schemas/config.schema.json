@@ -79,6 +79,69 @@
         }
       }
     },
+    "operator_involvement": {
+      "type": "object",
+      "description": "Named profiles declaring how heavily the operator gates each workflow stage. Optional: an installation without this block behaves as the built-in 'standard' profile. A run resolves one profile at init and snapshots the result, so later edits never change an in-flight run.",
+      "required": ["active", "profiles"],
+      "additionalProperties": false,
+      "properties": {
+        "$operator": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "note": {
+              "type": "string"
+            }
+          }
+        },
+        "active": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Profile used when `pan init` omits --involvement. Must name a key in profiles."
+        },
+        "profiles": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "object",
+            "required": ["summary"],
+            "additionalProperties": false,
+            "properties": {
+              "summary": {
+                "type": "string",
+                "minLength": 1
+              },
+              "gates": {
+                "type": "object",
+                "description": "Stage slug to gate assignment. The '*' key applies to every stage; an explicit slug overrides it. A stage declaring gate_relaxable: false rejects any assignment that lowers operator involvement.",
+                "propertyNames": {
+                  "pattern": "^(\\*|[a-z0-9-]+)$"
+                },
+                "additionalProperties": {
+                  "enum": [
+                    "operator",
+                    "supervisor",
+                    "next_stage",
+                    "stage_verdict"
+                  ]
+                }
+              },
+              "contracts": {
+                "type": "array",
+                "uniqueItems": true,
+                "description": "Run-wide contracts every stage of the run abides by. technical_director escalates the technical_plan and independent_review checkpoints to operator gates and requires interactive refinement.",
+                "items": {
+                  "enum": ["technical_director"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "installation_mode": {
       "description": "self_development is the Pancreator source checkout. embedded installs the harness at <target>/.pancreator. detached installs it outside the target tree, requiring an absolute workspace_root.",
       "enum": ["self_development", "embedded", "detached"]

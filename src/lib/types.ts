@@ -23,6 +23,14 @@ export type StageGate =
 
 export type StageExecutor = 'agent' | 'harness'
 
+/**
+ * Role a stage plays for run contracts that must attach to equivalent stages
+ * across different workflows. `dev/plan`, `prototype/approach`, and any future
+ * planning stage share `technical_plan`, so a contract escalates gates by role
+ * rather than by hard-coding slugs it cannot know in advance.
+ */
+export type StageCheckpoint = 'technical_plan' | 'independent_review'
+
 export type CriterionType = 'judgment' | 'shell' | 'state'
 
 export type CriterionResultValue = 'pass' | 'fail' | 'not_applicable'
@@ -86,10 +94,55 @@ export interface StageDefinition {
   prompt_sha256?: string
   workspace_policy: WorkspacePolicy
   gate: StageGate
+  /**
+   * Whether an operator-involvement profile may lower this stage's gate. Absent
+   * means relaxable. `dev/ship` sets it false because SHIP-001 requires a pause
+   * before commit, push, merge, publication, or deployment; a stored config
+   * profile MUST NOT be able to remove that pause silently.
+   */
+  gate_relaxable?: boolean
+  checkpoint?: StageCheckpoint
   context: StageContextDefinition
   required_data?: Record<string, JsonTypeName>
   criteria: Criterion[]
   transitions: StageTransitions
+}
+
+/**
+ * Run contracts a workflow run abides by for its whole lifetime. A contract is
+ * orthogonal to workflow choice: the same contract applies to `dev`,
+ * `prototype`, or `design` by attaching to stage checkpoints and personas
+ * rather than to stage slugs.
+ */
+export type RunContract = 'technical_director'
+
+/** One named operator-involvement profile from `config.json`. */
+export interface OperatorInvolvementProfile {
+  summary: string
+  /**
+   * Stage-slug to gate assignment. The `*` key applies to every stage in the
+   * run and explicit slugs override it. Values name the gate the operator wants
+   * for that stage, whether that raises or lowers involvement.
+   */
+  gates?: Record<string, StageGate>
+  contracts?: RunContract[]
+}
+
+export interface OperatorInvolvementFile {
+  active: string
+  profiles: Record<string, OperatorInvolvementProfile>
+}
+
+/** What a run actually resolved, snapshotted so later config edits cannot drift it. */
+export interface ResolvedOperatorInvolvement {
+  profile: string
+  summary: string
+  contracts: RunContract[]
+  /** Stage slug to the gate the run uses, recorded only where it differs from the workflow default. */
+  applied_gates: Record<
+    string,
+    { workflow_gate: StageGate; run_gate: StageGate; source: string }
+  >
 }
 
 export interface WorkflowIndex {
@@ -219,6 +272,12 @@ export interface PolicyLookupRow {
   stage: string
   installation_scope?: 'all' | 'self_development'
   technology?: string
+  /**
+   * Activates the row only for runs abiding by this contract. Keeps run
+   * contracts inside the single policy applicability map instead of a second
+   * one that could drift from it, as CONTRACT-001 requires.
+   */
+  contract?: RunContract
   policies: string[]
 }
 
@@ -336,6 +395,7 @@ export interface Invocation {
   created_at: string
   workspace_root: string
   gate_overrides?: Record<string, string | false>
+  operator_involvement?: ResolvedOperatorInvolvement
   workflow: {
     slug: string
     snapshot_path: string
@@ -352,6 +412,7 @@ export interface Invocation {
     gate: StageGate
   }
   prompt: string
+  prior_failure?: PriorAttemptFailure
   inputs: {
     references: InvocationReference[]
     missing_required?: string[]
@@ -379,7 +440,19 @@ export interface Invocation {
         | 'inspection'
         | 'design'
         | 'handoff'
+        | 'prototype-brief'
+        | 'prototype-approach'
+        | 'spike'
+        | 'prototype-evaluation'
       required_headings: string[]
+      /**
+       * Card types and section semantics the renderer accepts. The brief schema
+       * types both as open strings, so without this a schema-valid brief can
+       * still fail to render — and the worker is contractually barred from
+       * running the renderer to find out.
+       */
+      allowed_card_types?: string[]
+      allowed_section_semantics?: string[]
     }
   }
   boundaries: string[]
@@ -455,7 +528,42 @@ export interface StageHistoryItem {
   validation_errors: string[]
   governance_artifact_warnings?: string[]
   deterministic: DeterministicResult[]
+  /**
+   * The attempt's own criterion self-evaluations. Deterministic results are
+   * already durable, but a stage can fail purely on a judgment criterion, and
+   * without this the run record cannot say which one — leaving a retry to guess.
+   */
+  self_criteria?: CriterionEvaluation[]
   record_path?: string
+}
+
+/**
+ * Why the immediately preceding attempt of this stage failed, rendered inline on
+ * the retry card. A path reference to the prior output is not enough: the reason
+ * is spread across validation errors, deterministic results, and self-evaluated
+ * criteria, so a worker handed only a pointer tends to resubmit the same defect.
+ */
+export interface PriorAttemptFailure {
+  stage: string
+  attempt: number
+  invocation_id: string
+  outcome: StageOutcome
+  output_path: string
+  failed_hard_criteria: Array<{
+    id: string
+    type: CriterionType
+    statement: string
+    explanation: string
+  }>
+  failed_deterministic: Array<{
+    id: string
+    command?: string
+    exit_code?: number | null
+    timed_out?: boolean
+    evidence_path?: string
+  }>
+  validation_errors: string[]
+  governance_artifact_warnings: string[]
 }
 
 export type PendingAction =
@@ -467,6 +575,12 @@ export type PendingAction =
       type: 'operator_approval'
       stage: string
       proposed_transition: string
+      /**
+       * Set when this stop is a technical-director checkpoint rather than an
+       * ordinary ratification, so the supervisor can present the refinement
+       * options DIRECTOR-001 requires instead of a plain approve/reject.
+       */
+      checkpoint?: StageCheckpoint
     }
   | { type: 'operator_decision' }
 
@@ -478,7 +592,7 @@ export interface CurrentInvocationPointer {
 }
 
 export interface OperatorFeedbackItem {
-  decision: 'reject' | 'resume' | 'set-stage'
+  decision: 'reject' | 'resume' | 'set-stage' | 'revise'
   from_stage: string
   to_stage: string
   attempt: number
@@ -560,6 +674,13 @@ export interface RunState {
   state_root?: string
   scope_hash?: string
   gate_overrides?: Record<string, string | false>
+  operator_involvement?: ResolvedOperatorInvolvement
+  /**
+   * Extra stage attempts granted by operator-directed revisions, per stage. A
+   * refinement round at a director checkpoint is not a failed attempt, so it
+   * raises the ceiling instead of consuming budget reserved for failures.
+   */
+  operator_revisions?: Record<string, number>
   title: string
   status: RunStatus
   current_stage: string | null

@@ -12,7 +12,7 @@ Repeat until a stop condition:
 - `prepare_invocation` → run `./bin/pan prepare <run-id>`, read the generated card, continue.
 - `invoke_agent` → deliver the card as specified in **Card delivery** below, then continue.
 - `supervisor_assessment` → write the assessment JSON declared by the assessment request card, judging only its listed criteria, run `./bin/pan assess`, continue.
-- `operator_approval` → if the current operator request already supplies an explicit approval or rejection, execute it; otherwise present the ratification packet and STOP.
+- `operator_approval` → if the current operator request already supplies an explicit approval or rejection, execute it; otherwise present the ratification packet and STOP. When the pending action carries a `checkpoint`, this is a technical-director stop governed by `DIRECTOR-001`: present the stage's substance in full and offer `approve`, `revise --note <directive>`, or `reject --note <reason>`.
 - `operator_decision` → if the current operator request already supplies an explicit decision, execute it; otherwise present the pause context and options and STOP.
 - `none` → report the terminal state and STOP.
 

@@ -5,6 +5,7 @@
   "prompt_path": "library/workflows/dev/prompts/review.md",
   "workspace_policy": "source_allowed",
   "gate": "stage_verdict",
+  "checkpoint": "independent_review",
   "context": {
     "request": "omit",
     "required_stage_outputs": [

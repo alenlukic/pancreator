@@ -111,8 +111,11 @@ function profileForInvocation(
 ): OperatorArtifactProfile {
   const stage = isRecord(invocation?.stage) ? invocation.stage : null
   const slug = stage && typeof stage.slug === 'string' ? stage.slug : ''
+  const workflow = isRecord(invocation?.workflow) ? invocation.workflow : null
+  const workflowSlug =
+    workflow && typeof workflow.slug === 'string' ? workflow.slug : undefined
 
-  return operatorArtifactProfileForStage(slug)
+  return operatorArtifactProfileForStage(slug, workflowSlug)
 }
 
 function operatorArtifactHandler(input: HandlerInput): HandlerResult {

@@ -1,0 +1,54 @@
+{
+  "slug": "approach",
+  "title": "Technical approach",
+  "persona": "tech-lead",
+  "prompt_path": "library/workflows/prototype/prompts/approach.md",
+  "workspace_policy": "runtime_only",
+  "gate": "next_stage",
+  "checkpoint": "technical_plan",
+  "context": {
+    "request": "conditional",
+    "required_stage_outputs": [
+      {
+        "stage": "intake",
+        "selection": "latest_success"
+      }
+    ],
+    "prior_attempts": 1,
+    "operator_feedback": 1
+  },
+  "required_data": {
+    "technical_approach": "object",
+    "technical_approach.hypothesis": "string",
+    "technical_approach.strategy": "string",
+    "technical_approach.touch_points": "array",
+    "technical_approach.planned_shortcuts": "array",
+    "technical_approach.observable_signals": "array",
+    "technical_approach.discard_conditions": "array"
+  },
+  "criteria": [
+    {
+      "id": "approach.answers_questions",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Every technical question from the brief maps to an observable signal the approach will produce."
+    },
+    {
+      "id": "approach.thin",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The approach specifies only the decisions the spike tests and names the shortcuts it will take instead of designing around them."
+    },
+    {
+      "id": "approach.discard_conditions",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The approach states what result would invalidate the hypothesis, so a negative answer is a usable outcome."
+    }
+  ],
+  "transitions": {
+    "success": "build",
+    "failure": "approach",
+    "blocked": "paused"
+  }
+}

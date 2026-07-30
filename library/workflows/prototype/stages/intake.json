@@ -1,0 +1,52 @@
+{
+  "slug": "intake",
+  "title": "Prototype framing",
+  "persona": "orchestrator",
+  "prompt_path": "library/workflows/prototype/prompts/intake.md",
+  "workspace_policy": "runtime_only",
+  "gate": "operator",
+  "context": {
+    "request": "required",
+    "prior_attempts": 1,
+    "operator_feedback": 1
+  },
+  "required_data": {
+    "prototype_brief": "object",
+    "prototype_brief.objective": "string",
+    "prototype_brief.technical_questions": "array",
+    "prototype_brief.success_signals": "array",
+    "prototype_brief.acceptable_shortcuts": "array",
+    "prototype_brief.out_of_scope": "array"
+  },
+  "criteria": [
+    {
+      "id": "intake.request_covered",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The prototype brief faithfully covers the operator request without inventing material scope."
+    },
+    {
+      "id": "intake.questions_decidable",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Each technical question is stated so that the prototype's result can answer it, and each has at least one observable success signal."
+    },
+    {
+      "id": "intake.production_scope_excluded",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Production concerns the spike will deliberately skip are listed as out of scope or acceptable shortcuts rather than left implied."
+    },
+    {
+      "id": "record.operator_readable",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The operator summary is concise and actionable."
+    }
+  ],
+  "transitions": {
+    "success": "approach",
+    "failure": "intake",
+    "blocked": "paused"
+  }
+}

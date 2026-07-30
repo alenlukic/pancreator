@@ -29,7 +29,12 @@ test('loader assembles ordered stage files from the workflow index', () => {
 
 test('listWorkflowSlugs finds every defined workflow', () => {
   const root = createFixture()
-  assert.deepEqual(listWorkflowSlugs(root), ['design', 'dev', 'preflight'])
+  assert.deepEqual(listWorkflowSlugs(root), [
+    'design',
+    'dev',
+    'preflight',
+    'prototype',
+  ])
 })
 
 test('loader fails when an indexed stage file is missing', () => {

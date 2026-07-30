@@ -68,5 +68,34 @@
       }
     }
   },
+  "operator_involvement": {
+    "$operator": {
+      "summary": "Named profiles controlling how heavily the operator gates each workflow stage. Select one per run with ./bin/pan init --involvement <profile>; omitting the flag uses active.",
+      "note": "gates maps a stage slug (or * for every stage) to the gate that stage uses for the run. contracts names run-wide contracts the run abides by. Runs snapshot the resolved profile, so later edits here do not change an in-flight run. Inspect available profiles with ./bin/pan involvement."
+    },
+    "active": "standard",
+    "profiles": {
+      "standard": {
+        "summary": "Workflow-declared gates, unchanged. The operator ratifies intake and approves release preparation."
+      },
+      "hands-off": {
+        "summary": "Minimum interruption. The supervisor ratifies intake instead of the operator; release preparation still stops for explicit operator approval.",
+        "gates": {
+          "intake": "supervisor"
+        }
+      },
+      "technical-director": {
+        "summary": "The operator refines the technical plan with its author before implementation and responds to the independent review before the run continues.",
+        "contracts": ["technical_director"]
+      },
+      "high-touch": {
+        "summary": "Every stage stops for explicit operator approval, and the technical-director refinement contract is active.",
+        "gates": {
+          "*": "operator"
+        },
+        "contracts": ["technical_director"]
+      }
+    }
+  },
   "installation_mode": "self_development"
 }

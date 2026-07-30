@@ -27,6 +27,13 @@
       "policies": ["BIN-001"]
     },
     {
+      "persona": "*",
+      "workflow": "*",
+      "stage": "*",
+      "contract": "technical_director",
+      "policies": ["DIRECTOR-001"]
+    },
+    {
       "persona": "coder",
       "workflow": "*",
       "stage": "*",
@@ -191,6 +198,12 @@
       "policies": ["REVIEW-001"]
     },
     {
+      "persona": "*",
+      "workflow": "prototype",
+      "stage": "*",
+      "policies": ["PROTO-001"]
+    },
+    {
       "persona": "qa-tester",
       "workflow": "dev",
       "stage": "test",
@@ -251,6 +264,12 @@
       "workflow": "*",
       "stage": "*",
       "policies": ["ENG-001", "WORK-001", "SPOT-001", "CONTRACT-001"]
+    },
+    {
+      "persona": "coder",
+      "workflow": "standalone",
+      "stage": "pair",
+      "policies": ["PAIR-001"]
     }
   ]
 }

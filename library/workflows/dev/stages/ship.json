@@ -5,6 +5,7 @@
   "prompt_path": "library/workflows/dev/prompts/ship.md",
   "workspace_policy": "release_metadata_only",
   "gate": "operator",
+  "gate_relaxable": false,
   "context": {
     "request": "conditional",
     "required_stage_outputs": [

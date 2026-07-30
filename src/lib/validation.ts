@@ -11,6 +11,7 @@ import {
   readText,
   resolveInside,
   sha256,
+  toRepoRelative,
   writeTextAtomic,
 } from './io.js'
 import { loadPipelineConfig, resolveConfigPersonas } from './pipeline-config.js'
@@ -47,6 +48,10 @@ import {
   workspaceChangedPathsFromSnapshots,
 } from './git.js'
 import { listWorkflowSlugs, loadWorkflow } from './workflow.js'
+import {
+  applyOperatorInvolvement,
+  loadOperatorInvolvementFile,
+} from './operator-involvement.js'
 import { activeOperatorGateWaivers } from './waivers.js'
 import { isReleaseMetadataPath, validateReleaseMetadata } from './versioning.js'
 import type {
@@ -56,6 +61,8 @@ import type {
   DeterministicResult,
   Invocation,
   JsonTypeName,
+  OperatorInvolvementFile,
+  OperatorInvolvementProfile,
   Policy,
   PolicyLookupRow,
   PolicyLookupTable,
@@ -69,6 +76,25 @@ import type {
 } from './types.js'
 
 export const POLICIES_HEADING = '## 📜 Policies in force'
+export const PRIOR_FAILURE_HEADING = '## ⛔ Why the previous attempt failed'
+
+/** Head and tail bytes preserved per stream in a deterministic-gate evidence log. */
+const EVIDENCE_STREAM_HEAD_BYTES = 64 * 1024
+const EVIDENCE_STREAM_TAIL_BYTES = 16 * 1024
+
+function boundEvidenceStream(value: string): string {
+  const budget = EVIDENCE_STREAM_HEAD_BYTES + EVIDENCE_STREAM_TAIL_BYTES
+
+  if (value.length <= budget) {
+    return value
+  }
+
+  return [
+    value.slice(0, EVIDENCE_STREAM_HEAD_BYTES),
+    `\n…[${value.length - budget} bytes elided; see the full log beside this one]…\n`,
+    value.slice(value.length - EVIDENCE_STREAM_TAIL_BYTES),
+  ].join('')
+}
 export const DELEGATION_HEADING = '## 🧭 Supervisor delivery procedure'
 export const AGENT_REQUIREMENTS_HEADING = '## ✅ Agent validation requirements'
 export const HARNESS_REQUIREMENTS_HEADING = '## 🧰 Harness-owned checks'
@@ -267,6 +293,37 @@ export function validateInvocationMarkdown(
     }
   }
 
+  // A retry card that does not state the recorded failure reason lets a worker
+  // resubmit the same defect, so the reason being rendered is itself a contract.
+  if (invocation.prior_failure) {
+    const failure = invocation.prior_failure
+
+    checks.push({
+      id: 'prior_failure.heading',
+      passed: normalized.includes(PRIOR_FAILURE_HEADING),
+      message: normalized.includes(PRIOR_FAILURE_HEADING)
+        ? 'Prior-attempt failure reason is present'
+        : `Markdown MUST contain '${PRIOR_FAILURE_HEADING}'`,
+    })
+
+    const renderedReasons = [
+      ...failure.failed_hard_criteria.map((item) => item.id),
+      ...failure.failed_deterministic.map((item) => item.id),
+      ...failure.validation_errors,
+      ...failure.governance_artifact_warnings,
+    ]
+
+    for (const [index, reason] of renderedReasons.entries()) {
+      checks.push({
+        id: `prior_failure.reason.${index + 1}`,
+        passed: normalized.includes(reason),
+        message: normalized.includes(reason)
+          ? `Prior failure reason ${index + 1} is inlined`
+          : `Markdown MUST inline prior failure reason '${reason}'`,
+      })
+    }
+  }
+
   if (invocation.delegation) {
     const { delegation } = invocation
 
@@ -380,6 +437,38 @@ export function validateInvocationMarkdown(
   }
 }
 
+/** Longest leading persona label the delegation contract tolerates. */
+const DELEGATION_LABEL_MAX_LENGTH = 80
+
+/**
+ * Strip the minimal non-conflicting persona label `INVOCATION-001` and the
+ * supervisor commands explicitly permit ahead of the pasted card.
+ *
+ * A label qualifies only when it is a single short line that starts no Markdown
+ * structure and is followed by a blank line, so it cannot smuggle in a heading,
+ * list item, or parallel instruction that would shadow the card.
+ */
+function stripPermittedDelegationLabel(delegation: string): {
+  body: string
+  label: string | null
+} {
+  const lines = delegation.split('\n')
+  const [first = '', second = ''] = lines
+
+  const qualifies =
+    first.trim().length > 0 &&
+    first.length <= DELEGATION_LABEL_MAX_LENGTH &&
+    !/^\s*(?:[#>*\-+]|\d+[.)]|```|\|)/u.test(first) &&
+    second.trim().length === 0 &&
+    lines.length > 2
+
+  if (!qualifies) {
+    return { body: delegation, label: null }
+  }
+
+  return { body: lines.slice(2).join('\n'), label: first.trim() }
+}
+
 export function validateDelegationMarkdown(
   canonicalMarkdown: string,
   delegationMarkdown: string,
@@ -392,20 +481,34 @@ export function validateDelegationMarkdown(
   const delegationNormalized = delegation.endsWith('\n')
     ? delegation
     : `${delegation}\n`
-  const passed = canonicalNormalized === delegationNormalized
 
-  return {
-    passed,
-    checks: [
-      {
-        id: 'delegation.canonical_equality',
-        passed,
-        message: passed
-          ? 'Delegation artifact matches canonical invocation markdown'
-          : 'Delegation artifact MUST equal the canonical invocation card after line-ending normalization',
-      },
-    ],
+  const exact = canonicalNormalized === delegationNormalized
+  const { body, label } = exact
+    ? { body: delegationNormalized, label: null }
+    : stripPermittedDelegationLabel(delegationNormalized)
+  const passed = exact || body === canonicalNormalized
+
+  const checks: ValidationCheck[] = [
+    {
+      id: 'delegation.canonical_equality',
+      passed,
+      message: passed
+        ? label
+          ? `Delegation artifact matches the canonical invocation card after the permitted persona label '${label}'`
+          : 'Delegation artifact matches canonical invocation markdown'
+        : 'Delegation artifact MUST equal the canonical invocation card after line-ending normalization, except for one permitted leading persona label',
+    },
+  ]
+
+  if (label) {
+    checks.push({
+      id: 'delegation.label_minimal',
+      passed: true,
+      message: `Leading persona label '${label}' precedes the verbatim card body`,
+    })
   }
+
+  return { passed, checks }
 }
 
 export function loadValidationArtifact(
@@ -657,6 +760,33 @@ export function validateStageOutput(
 
     if (!hasType(dataValue, expectedType)) {
       errors.push(`data.${dataPath} MUST be ${expectedType}`)
+    }
+  }
+
+  // Report an unrecognized criterion verdict explicitly. `normalizeCriteria`
+  // coerces one to `fail`, which is the safe default but silently converts a
+  // one-token vocabulary mistake into an unexplained stage failure. Naming the
+  // offending value is what lets the retry fix the actual problem.
+  if (Array.isArray(record.criteria)) {
+    for (const item of record.criteria) {
+      if (!isRecord(item) || typeof item.id !== 'string') {
+        errors.push(
+          'each criteria entry MUST be an object with a string id naming a ' +
+            'rubric criterion',
+        )
+        continue
+      }
+
+      if (
+        item.result !== 'pass' &&
+        item.result !== 'fail' &&
+        item.result !== 'not_applicable'
+      ) {
+        errors.push(
+          `criteria '${item.id}' result MUST be pass, fail, or ` +
+            `not_applicable (got ${JSON.stringify(item.result)})`,
+        )
+      }
     }
   }
 
@@ -939,24 +1069,49 @@ function runShellCheck(
     'evidence',
     `${artifactId}-${safeCriterionId}.log`,
   )
-  const combined = [
+  const fullEvidencePath = path.join(
+    runDirectory,
+    'evidence',
+    `${artifactId}-${safeCriterionId}.full.log`,
+  )
+  const boundedStdout = boundEvidenceStream(stdout)
+  const boundedStderr = boundEvidenceStream(stderr)
+  const elided = boundedStdout !== stdout || boundedStderr !== stderr
+  const header = [
     `$ ${command}`,
     `started_at=${startedAt}`,
     `finished_at=${new Date().toISOString()}`,
     `workspace_fingerprint=${workspaceFingerprint}`,
     `exit_code=${exitCode ?? 'null'}`,
     signal ? `signal=${signal}` : null,
-    '',
-    '--- stdout ---',
-    stdout,
-    '--- stderr ---',
-    stderr,
-    errorMessageText ? `--- error ---\n${errorMessageText}` : '',
-  ]
-    .filter((line): line is string => line !== null)
-    .join('\n')
+  ].filter((line): line is string => line !== null)
+  const body = (out: string, err: string, note: string | null) =>
+    [
+      ...header,
+      ...(note ? [note] : []),
+      '',
+      '--- stdout ---',
+      out,
+      '--- stderr ---',
+      err,
+      errorMessageText ? `--- error ---\n${errorMessageText}` : '',
+    ].join('\n')
 
-  writeTextAtomic(evidencePath, combined)
+  // Full test-suite transcripts run to megabytes each and dominate a run's
+  // on-disk size while the actionable content sits at the head and tail. Keep a
+  // bounded log as the referenced evidence and the untruncated one beside it.
+  if (elided) {
+    writeTextAtomic(fullEvidencePath, body(stdout, stderr, null))
+  }
+
+  writeTextAtomic(
+    evidencePath,
+    body(
+      boundedStdout,
+      boundedStderr,
+      elided ? `full_output=${toRepoRelative(root, fullEvidencePath)}` : null,
+    ),
+  )
 
   return {
     id: criterion.id,
@@ -1521,7 +1676,10 @@ function lookupRowCovers(
     lookupPatternCovers(provider.workflow, consumer.workflow) &&
     lookupPatternCovers(provider.stage, consumer.stage) &&
     (provider.technology === undefined ||
-      provider.technology === consumer.technology)
+      provider.technology === consumer.technology) &&
+    // A contract-scoped row only resolves for runs carrying that contract, so it
+    // cannot satisfy a dependency for a row that resolves without one.
+    (provider.contract === undefined || provider.contract === consumer.contract)
   )
 }
 
@@ -1606,6 +1764,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'library/cursor/commands/pan-build-docs.md',
     'library/cursor/commands/pan-build-briefs.md',
     'library/cursor/commands/pan-spotfix.md',
+    'library/cursor/commands/pan-pair.md',
     'library/cursor/commands/pan-write-pr.md',
     'library/cursor/agents/decomposer.md',
     'library/cursor/agents/librarian.md',
@@ -1642,6 +1801,10 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'governance/policies/WORK-001.json',
     'governance/policies/REPAIR-001.json',
     'governance/policies/SPOT-001.json',
+    'governance/policies/PAIR-001.json',
+    'governance/policies/PROTO-001.json',
+    'governance/policies/DIRECTOR-001.json',
+    'library/workflows/prototype/workflow.json',
     'src/cli.ts',
   ]
 
@@ -1739,26 +1902,56 @@ export function validateRepository(root: string): RepositoryValidationResult {
       for (const stage of workflow.stages) {
         workflowPersonas.add(stage.persona)
 
-        const canonicalRepositoryChecks: Record<string, string> = {
-          'implement.lint': 'pan repository-check static',
-          'implement.unit_tests': 'pan repository-check fast',
-          'test.full_suite': 'pan repository-check full',
-          'ship.validate': 'pan repository-check configuration',
+        // Repository verification MUST route through configured profiles rather
+        // than baking a project-shaped command into a workflow (REPO-001).
+        const canonicalRepositoryChecks: Record<
+          string,
+          Record<string, string>
+        > = {
+          dev: {
+            'implement.lint': 'pan repository-check static',
+            'implement.unit_tests': 'pan repository-check fast',
+            'test.full_suite': 'pan repository-check full',
+            'ship.validate': 'pan repository-check configuration',
+          },
+          prototype: {
+            'build.static': 'pan repository-check static',
+            'build.fast_checks': 'pan repository-check fast',
+          },
         }
+        const expectedForWorkflow = canonicalRepositoryChecks[workflow.slug]
 
-        if (workflow.slug === 'dev') {
+        if (expectedForWorkflow) {
           for (const criterion of stage.criteria) {
-            const expectedCommand = canonicalRepositoryChecks[criterion.id]
+            const expectedCommand = expectedForWorkflow[criterion.id]
 
             if (expectedCommand && criterion.command !== expectedCommand) {
               errors.push(
-                `dev criterion '${criterion.id}' MUST use '${expectedCommand}'`,
+                `${workflow.slug} criterion '${criterion.id}' MUST use '${expectedCommand}'`,
               )
             }
 
             if (criterion.id === 'test.coverage') {
               errors.push(
-                'dev MUST NOT require a standalone coverage gate; configure coverage inside a target-owned repository profile when applicable',
+                `${workflow.slug} MUST NOT require a standalone coverage gate; configure coverage inside a target-owned repository profile when applicable`,
+              )
+            }
+          }
+        }
+
+        // A prototype deprioritizes QA breadth by design; a hard full-suite gate
+        // would reintroduce exactly the cost the workflow exists to avoid.
+        if (workflow.slug === 'prototype') {
+          for (const criterion of stage.criteria) {
+            if (
+              criterion.type === 'shell' &&
+              criterion.hard === true &&
+              criterion.command !== 'pan repository-check static'
+            ) {
+              errors.push(
+                `prototype criterion '${criterion.id}' MUST NOT be a hard shell ` +
+                  'gate other than the static profile; report other profiles as ' +
+                  'advisory evidence instead',
               )
             }
           }
@@ -1833,6 +2026,8 @@ export function validateRepository(root: string): RepositoryValidationResult {
       errors.push(errorMessage(error))
     }
   }
+
+  validateOperatorInvolvementProfiles(root, errors)
 
   const cursorAgentPersonas = new Set<string>()
   const cursorAgentDirectory = path.join(root, 'library', 'cursor', 'agents')
@@ -1911,6 +2106,77 @@ export function validateRepository(root: string): RepositoryValidationResult {
     errors,
     warnings,
     report_hash: sha256({ errors, warnings }),
+  }
+}
+
+/**
+ * Check every involvement profile against every workflow at authoring time. A
+ * profile is shared across workflows, so a stage key only has to match one of
+ * them; a key matching none is a typo that would otherwise surface as a failed
+ * `pan init` for whoever selected the profile first.
+ */
+function validateOperatorInvolvementProfiles(
+  root: string,
+  errors: string[],
+): void {
+  let file: OperatorInvolvementFile
+
+  try {
+    file = loadOperatorInvolvementFile(root)
+  } catch (error) {
+    errors.push(errorMessage(error))
+    return
+  }
+
+  const workflows = listWorkflowSlugs(root).flatMap((slug) => {
+    try {
+      return [loadWorkflow(root, slug)]
+    } catch {
+      // Workflow-level defects are already reported by the workflow loop.
+      return []
+    }
+  })
+
+  const profileEntries: Array<[string, OperatorInvolvementProfile]> =
+    Object.entries(file.profiles)
+
+  for (const [name, profile] of profileEntries) {
+    for (const stageKey of Object.keys(profile.gates ?? {})) {
+      if (stageKey === '*') {
+        continue
+      }
+
+      const owners = workflows.filter((workflow) =>
+        workflow.stages.some((stage) => stage.slug === stageKey),
+      )
+
+      if (owners.length === 0) {
+        errors.push(
+          `operator-involvement profile '${name}' targets stage '${stageKey}', ` +
+            'which no workflow defines',
+        )
+      }
+    }
+
+    for (const workflow of workflows) {
+      try {
+        applyOperatorInvolvement(structuredClone(workflow), { name, profile })
+      } catch (error) {
+        // Only report the mismatch when the profile actually names a stage of
+        // this workflow; a shared profile is allowed to be inert elsewhere.
+        const targetsWorkflow = Object.keys(profile.gates ?? {}).some(
+          (key) =>
+            key === '*' || workflow.stages.some((stage) => stage.slug === key),
+        )
+
+        if (targetsWorkflow || (profile.contracts ?? []).length > 0) {
+          errors.push(
+            `operator-involvement profile '${name}' cannot apply to workflow ` +
+              `'${workflow.slug}': ${errorMessage(error)}`,
+          )
+        }
+      }
+    }
   }
 }
 

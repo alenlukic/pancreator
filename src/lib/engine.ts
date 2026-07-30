@@ -2,9 +2,10 @@ import { randomUUID } from 'node:crypto'
 import { copyFileSync } from 'node:fs'
 import path from 'node:path'
 
-import { buildInvocationInputs } from './context.js'
+import { buildInvocationInputs, summarizePriorFailure } from './context.js'
 import {
   renderBrief,
+  resolveBriefVocabulary,
   scaffoldOperatorBrief,
   validateBriefSystem,
 } from './briefs.js'
@@ -58,8 +59,15 @@ import {
   resolvePersonaModel,
 } from './pipeline-config.js'
 import {
+  applyOperatorInvolvement,
+  loadOperatorInvolvementFile,
+  runHasContract,
+  selectInvolvementProfile,
+} from './operator-involvement.js'
+import {
   repositoryCheckProfileName,
   runRepositoryCheck,
+  summarizeRepositoryCheckResult,
 } from './repository-checks.js'
 import { cursorAgentTarget, syncCursorProjection } from './projection.js'
 import { renderInvocationMarkdown, renderStatus } from './render.js'
@@ -125,6 +133,7 @@ interface CreateRunOptions {
   title?: string | null
   workspace?: string | null
   gatesPath?: string | null
+  involvement?: string | null
 }
 
 interface StatusOptions {
@@ -369,19 +378,21 @@ function readGateOverrides(
 }
 
 function collectStageRepositoryCheckProfiles(
-  stage: StageDefinition,
+  stages: StageDefinition[],
 ): Array<{ name: string; timeout_ms: number | undefined }> {
   const profiles = new Map<string, number | undefined>()
 
-  for (const criterion of stage.criteria) {
-    if (criterion.type !== 'shell') {
-      continue
-    }
+  for (const stage of stages) {
+    for (const criterion of stage.criteria) {
+      if (criterion.type !== 'shell') {
+        continue
+      }
 
-    const profileName = repositoryCheckProfileName(criterion.command ?? '')
+      const profileName = repositoryCheckProfileName(criterion.command ?? '')
 
-    if (profileName && !profiles.has(profileName)) {
-      profiles.set(profileName, criterion.timeout_ms)
+      if (profileName && !profiles.has(profileName)) {
+        profiles.set(profileName, criterion.timeout_ms)
+      }
     }
   }
 
@@ -390,22 +401,27 @@ function collectStageRepositoryCheckProfiles(
     .sort((left, right) => left.name.localeCompare(right.name))
 }
 
+/**
+ * Capture a baseline for every repository-check profile the run's workflow gates
+ * on, before the first mutating stage edits anything.
+ *
+ * Baselining only the current stage's profiles left terminal gates such as a QA
+ * stage's `full` profile with nothing to compare against, so pre-existing target
+ * breakage unrelated to the change under test hard-failed the run. Capturing all
+ * profiles once here also amortizes the cost of the slow ones.
+ */
 function ensureWorkflowRepositoryCheckBaselines(
   root: string,
   state: RunState,
+  workflow: WorkflowDefinition,
   stage: StageDefinition,
-  attempt: number,
   onProgress?: (message: string) => void,
 ): void {
-  if (
-    attempt !== 1 ||
-    stage.persona !== 'coder' ||
-    stage.workspace_policy !== 'source_allowed'
-  ) {
+  if (stage.workspace_policy !== 'source_allowed') {
     return
   }
 
-  const profiles = collectStageRepositoryCheckProfiles(stage)
+  const profiles = collectStageRepositoryCheckProfiles(workflow.stages)
   const baselines = (state.repository_check_baselines ??= {})
 
   for (const profile of profiles) {
@@ -423,10 +439,25 @@ function ensureWorkflowRepositoryCheckBaselines(
       `pre-implementation '${profile.name}' baseline ${result.status} in ${(result.total_duration_ms / 1000).toFixed(1)}s`,
     )
     const workspace = workspaceSnapshotForRun(root, state)
-    const artifactPath =
-      `runtime/logs/workflows/${state.run_id}/evidence/` +
-      `pre-implementation-${profile.name}.json`
+    const evidenceDir = `runtime/logs/workflows/${state.run_id}/evidence`
+    const artifactPath = `${evidenceDir}/pre-implementation-${profile.name}.json`
+    const fullPath = `${evidenceDir}/pre-implementation-${profile.name}.full.json`
     const recordedAt = now()
+    const { summary, elided } = summarizeRepositoryCheckResult(result)
+
+    // The summarized artifact is what a coder is required to read; the complete
+    // capture stays on disk for anyone who needs the untruncated transcript.
+    if (elided) {
+      writeJsonAtomic(resolveInside(root, fullPath), {
+        schema_version: 1,
+        run_id: state.run_id,
+        stage: stage.slug,
+        profile: profile.name,
+        workspace_fingerprint: workspace.fingerprint,
+        recorded_at: recordedAt,
+        result,
+      })
+    }
 
     writeJsonAtomic(resolveInside(root, artifactPath), {
       schema_version: 1,
@@ -435,7 +466,8 @@ function ensureWorkflowRepositoryCheckBaselines(
       profile: profile.name,
       workspace_fingerprint: workspace.fingerprint,
       recorded_at: recordedAt,
-      result,
+      result: summary,
+      ...(elided ? { full_result_path: fullPath } : {}),
     })
 
     baselines[profile.name] = {
@@ -653,6 +685,17 @@ function applyTransition(
     return
   }
 
+  // `max_stage_attempts` bounds retries of a stage, not how many times a run
+  // legitimately visits it. Leaving a stage for a different one closes that
+  // stage's retry sequence, so a later return starts fresh instead of inheriting
+  // a budget already spent on attempts that succeeded. Run-wide looping stays
+  // bounded by max_total_transitions, max_consecutive_failures, and same-reason
+  // tracking.
+  if (target !== stage.slug) {
+    delete state.attempts[stage.slug]
+    delete state.operator_revisions?.[stage.slug]
+  }
+
   state.status = 'running'
   state.current_stage = target
   state.pending_action = { type: 'prepare_invocation' }
@@ -820,6 +863,17 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     stage.prompt_sha256 = sha256(stage.prompt)
   }
 
+  // The snapshot is authoritative for this run's gates, so the involvement
+  // profile is resolved once here rather than re-derived on every transition.
+  // A later edit to config.json cannot change a run already in flight.
+  const involvement = applyOperatorInvolvement(
+    workflowSnapshotValue,
+    selectInvolvementProfile(
+      loadOperatorInvolvementFile(root),
+      options.involvement,
+    ),
+  )
+
   writeJsonAtomic(resolveInside(root, workflowSnapshot), workflowSnapshotValue)
 
   const pipelineConfigSnapshot = `runtime/logs/workflows/${id}/pipeline-config.snapshot.json`
@@ -849,6 +903,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     state_root: roots.state_root,
     scope_hash: roots.scope_hash,
     ...(gateOverrides ? { gate_overrides: gateOverrides } : {}),
+    operator_involvement: involvement,
     title: options.title ?? path.basename(requestPath),
     status: 'running',
     current_stage: workflow.start_stage,
@@ -874,6 +929,9 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     pipeline_config: pipelineConfig.name,
     workspace_root: workspaceRoot,
     state_root: roots.state_root,
+    involvement_profile: involvement.profile,
+    run_contracts: involvement.contracts,
+    applied_gates: involvement.applied_gates,
   })
 
   return state
@@ -1047,14 +1105,34 @@ export function prepareInvocation(
     assertRunPipelineConfigCurrent(root, state, pipelineConfig)
 
     const model = resolvePersonaModel(pipelineConfig, stage.persona)
-    const attempt = (state.attempts[stage.slug] ?? 0) + 1
+    // An invocation that was prepared but never submitted did no work, so it
+    // must not spend an attempt. This happens whenever a card is superseded —
+    // most often after an operator pause — and previously the discarded card
+    // permanently consumed one of the stage's retries.
+    const recordedAttempt = state.attempts[stage.slug] ?? 0
+    const lastAttemptSubmitted =
+      recordedAttempt === 0 ||
+      state.stage_history.some(
+        (item) => item.stage === stage.slug && item.attempt === recordedAttempt,
+      )
+    const attempt = lastAttemptSubmitted ? recordedAttempt + 1 : recordedAttempt
+    // An operator refinement round is not a failed attempt. It raises the
+    // ceiling instead of consuming budget reserved for failures, so directing a
+    // plan through several revisions cannot exhaust the retry allowance the
+    // stage still needs if it later fails on its own.
+    const grantedRevisions = state.operator_revisions?.[stage.slug] ?? 0
+    const attemptCeiling = state.limits.max_stage_attempts + grantedRevisions
 
-    if (attempt > state.limits.max_stage_attempts) {
+    if (attempt > attemptCeiling) {
       pauseForLimit(
         root,
         state,
-        `Stage '${stage.slug}' exceeded ` +
-          `${state.limits.max_stage_attempts} attempts.`,
+        `Stage '${stage.slug}' exceeded ${attemptCeiling} attempts ` +
+          `(${state.limits.max_stage_attempts} configured` +
+          (grantedRevisions > 0
+            ? ` plus ${grantedRevisions} operator revision${grantedRevisions === 1 ? '' : 's'}`
+            : '') +
+          ').',
       )
       persistRun(root, state, 'run_paused', { reason: state.pause_reason })
 
@@ -1067,8 +1145,8 @@ export function prepareInvocation(
     ensureWorkflowRepositoryCheckBaselines(
       root,
       state,
+      workflow,
       stage,
-      attempt,
       options.onProgress,
     )
 
@@ -1085,15 +1163,18 @@ export function prepareInvocation(
     const delegationArtifactPath = delegationPath(runId, invocationId)
 
     const workspace = workspaceSnapshotForRun(root, state)
+    const contracts = state.operator_involvement?.contracts ?? []
     const policies = resolvePolicies(root, {
       persona: stage.persona,
       workflow: workflow.slug,
       stage: stage.slug,
+      contracts,
     })
     const requirements = resolveRequirements(root, {
       persona: stage.persona,
       workflow: workflow.slug,
       stage: stage.slug,
+      contracts,
       invocation: {
         output_path: outputPath,
         artifact_paths: [briefRenderedPath, briefSourcePath],
@@ -1129,6 +1210,12 @@ export function prepareInvocation(
             }).filter((policy) => policy.id === 'INVOCATION-001'),
           }
 
+    const artifactProfile = operatorArtifactProfileForStage(
+      stage.slug,
+      workflow.slug,
+    )
+    const priorFailure = summarizePriorFailure(state, stage)
+    const briefVocabulary = resolveBriefVocabulary(root)
     const requiredData = { ...(stage.required_data ?? {}) }
 
     if (stage.persona === 'coder' && attempt > 1) {
@@ -1168,6 +1255,9 @@ export function prepareInvocation(
       created_at: now(),
       workspace_root: state.workspace_root || '.',
       ...(state.gate_overrides ? { gate_overrides: state.gate_overrides } : {}),
+      ...(state.operator_involvement
+        ? { operator_involvement: state.operator_involvement }
+        : {}),
       workflow: {
         slug: workflow.slug,
         snapshot_path: state.workflow_snapshot.path,
@@ -1184,6 +1274,7 @@ export function prepareInvocation(
         gate: stage.gate,
       },
       prompt: loadStagePrompt(root, stage),
+      ...(priorFailure ? { prior_failure: priorFailure } : {}),
       inputs: buildInvocationInputs({
         root,
         state,
@@ -1205,12 +1296,12 @@ export function prepareInvocation(
           rendered_path: briefRenderedPath,
           schema: 'library/schemas/operator-brief.schema.json',
           renderer: 'pan briefs render',
-          profile: operatorArtifactProfileForStage(stage.slug),
+          profile: artifactProfile,
           required_headings: [
-            ...OPERATOR_ARTIFACT_PROFILE_HEADINGS[
-              operatorArtifactProfileForStage(stage.slug)
-            ],
+            ...OPERATOR_ARTIFACT_PROFILE_HEADINGS[artifactProfile],
           ],
+          allowed_card_types: briefVocabulary.card_types,
+          allowed_section_semantics: briefVocabulary.section_semantics,
         },
       },
       boundaries: [
@@ -1247,7 +1338,7 @@ export function prepareInvocation(
 
     scaffoldOperatorBrief(root, {
       source_path: briefSourcePath,
-      profile: operatorArtifactProfileForStage(stage.slug),
+      profile: artifactProfile,
       title: `${stage.title} brief`,
       source: `${runId}/${invocationId}`,
     })
@@ -1479,12 +1570,28 @@ export function submitOutput(
     }
 
     const briefErrors = materializeOperatorBrief(root, invocation)
+    // A failed render leaves the HTML absent, which would otherwise raise a
+    // second "artifact does not exist" error and a third validator target-missing
+    // error, both blaming the worker for one harness-side render failure. Keep
+    // the root diagnostic and drop the derivatives.
+    const briefRenderFailed = briefErrors.length > 0
+    const briefRenderedPath = (
+      invocation.output.operator_brief as
+        | Invocation['output']['operator_brief']
+        | undefined
+    )?.rendered_path
     const validation = validateStageOutput(
       root,
       stage,
       invocation,
       submittedValue,
     )
+
+    if (briefRenderFailed && briefRenderedPath) {
+      validation.errors = validation.errors.filter(
+        (message) => !message.includes(briefRenderedPath),
+      )
+    }
     writeJsonAtomic(
       resolveInside(root, state.current_invocation.output_path),
       submittedValue,
@@ -1513,7 +1620,12 @@ export function submitOutput(
     governanceArtifactWarnings.push(
       ...briefErrors.map((message) => `Operator brief: ${message}`),
       ...validation.errors.map((message) => `Stage output: ${message}`),
-      ...harnessValidation.errors.map((message) => `Validator: ${message}`),
+      ...(briefRenderFailed && briefRenderedPath
+        ? harnessValidation.errors.filter(
+            (message) => !message.includes(briefRenderedPath),
+          )
+        : harnessValidation.errors
+      ).map((message) => `Validator: ${message}`),
     )
     recordGovernanceArtifactIssues(
       root,
@@ -1559,6 +1671,7 @@ export function submitOutput(
       validation_errors: allValidationErrors,
       governance_artifact_warnings: governanceArtifactWarnings,
       deterministic: evaluated.results,
+      self_criteria: validation.output.criteria,
     }
 
     state.stage_history.push(historyItem)
@@ -1601,13 +1714,22 @@ export function submitOutput(
       state.status = 'awaiting_supervisor'
       nextState = 'awaiting supervisor evaluation'
     } else if (outcome === 'success' && stage.gate === 'operator') {
+      const directorCheckpoint =
+        stage.checkpoint &&
+        runHasContract(state.operator_involvement, 'technical_director')
+          ? stage.checkpoint
+          : undefined
+
       state.pending_action = {
         type: 'operator_approval',
         stage: stage.slug,
         proposed_transition: stage.transitions.success,
+        ...(directorCheckpoint ? { checkpoint: directorCheckpoint } : {}),
       }
       state.status = 'awaiting_operator'
-      nextState = 'awaiting operator approval'
+      nextState = directorCheckpoint
+        ? `awaiting operator decision at the ${directorCheckpoint} checkpoint`
+        : 'awaiting operator approval'
     } else {
       if (outcome === 'success' && isSameReasonTrackedStage(state, stage)) {
         clearSameReasonTracker(state, stage.slug)
@@ -1790,7 +1912,11 @@ function recordOperatorFeedback(
     `runtime/logs/workflows/${state.run_id}/artifacts/markdown/` +
     `operator-feedback-${index}.md`
   const heading =
-    decision === 'reject' ? 'Operator rejection' : 'Operator remediation note'
+    decision === 'reject'
+      ? 'Operator rejection'
+      : decision === 'revise'
+        ? 'Operator revision directive'
+        : 'Operator remediation note'
   const body = [
     `# ${heading}: ${fromStage.title} (\`${fromStage.slug}\`)`,
     '',
@@ -1804,8 +1930,13 @@ function recordOperatorFeedback(
       : 'The operator rejected this stage without written feedback. ' +
         'Treat the prior output as unacceptable and re-derive the work.',
     '',
-    'You MUST address this feedback before the run can reach the operator ' +
-      'gate again.',
+    decision === 'revise'
+      ? 'This is a refinement directive, not a rejection. Keep everything the ' +
+        'operator did not ask you to change, apply the changes above, and ' +
+        'state in your summary what you changed and what you deliberately ' +
+        'left alone.'
+      : 'You MUST address this feedback before the run can reach the operator ' +
+        'gate again.',
     '',
   ].join('\n')
 
@@ -1842,18 +1973,38 @@ export function decideRun(
       { code: 'INVALID_RUN_ACTION' },
     )
     invariant(
-      decision === 'approve' || decision === 'reject',
-      'Decision MUST be approve or reject.',
+      decision === 'approve' || decision === 'reject' || decision === 'revise',
+      'Decision MUST be approve, reject, or revise.',
       { code: 'INVALID_DECISION' },
     )
 
     const workflow = loadRunWorkflow(root, state)
     const stage = stageBySlug(workflow, state.current_stage)
 
+    invariant(
+      decision !== 'revise' || note.trim().length > 0,
+      'A revise decision MUST carry the operator directive in --note.',
+      { code: 'REVISION_NOTE_REQUIRED' },
+    )
+
     state.status = 'running'
 
     if (decision === 'approve') {
       applyTransition(root, state, stage, 'success')
+    } else if (decision === 'revise') {
+      // Re-run the same stage with the operator's directive as required input.
+      // The stage did not fail, so this must not consume its retry budget.
+      const revisions = state.operator_revisions ?? {}
+
+      revisions[stage.slug] = (revisions[stage.slug] ?? 0) + 1
+      state.operator_revisions = revisions
+
+      recordOperatorFeedback(root, state, stage, stage.slug, 'revise', note)
+      clearSameReasonTracker(state, stage.slug)
+      applyTransition(root, state, stage, 'failure', {
+        overrideTarget: stage.slug,
+        operatorDirected: true,
+      })
     } else {
       let target = stage.transitions.failure
 
@@ -1874,7 +2025,10 @@ export function decideRun(
       stage: stage.slug,
       decision,
       note,
-      target_stage: decision === 'reject' ? state.current_stage : null,
+      target_stage: decision === 'approve' ? null : state.current_stage,
+      ...(decision === 'revise'
+        ? { revision: state.operator_revisions?.[stage.slug] }
+        : {}),
     })
 
     return state

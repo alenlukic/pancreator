@@ -88,6 +88,21 @@ mapping before resuming the run.
   - `stage_verdict` - the worker's own verdict drives the transition (review,
     test).
   - `next_stage` - advance directly along the success transition (implement).
+
+  A run's operator-involvement profile MAY replace this gate; see
+  **Operator involvement profiles** below.
+
+- `gate_relaxable` - optional boolean, default `true`. Set `false` to stop an
+  involvement profile lowering the gate. `dev/ship` sets it because `SHIP-001`
+  requires a pause before commit, push, merge, publication, or deployment; a
+  stored configuration profile must not be able to remove that pause silently.
+  Escalation is always allowed.
+
+- `checkpoint` - optional role this stage plays for run contracts, one of
+  `technical_plan` or `independent_review`. Contracts attach by role rather than
+  by stage slug, so the same contract applies unchanged to `dev/plan`,
+  `prototype/approach`, and `design/review`. At most one stage per workflow may
+  declare a given checkpoint.
 - `context` - the deterministic stage-scoped input projection:
   - `request` declares the original request as `required`, `conditional`, or
     `omit`.
@@ -126,6 +141,84 @@ mapping before resuming the run.
   another stage slug or a terminal status (`succeeded`, `failed`, `canceled`,
   `paused`). Every stage must be reachable from `start_stage`.
 
+## Shipped workflows
+
+- `dev` - production-ready delivery: intake, plan, implement, review, test, ship.
+- `prototype` - a fast spike that answers a technical question: intake,
+  approach, build, evaluate. It applies `PROTO-001`, keeps the approach stage
+  deliberately thin and ungated, gates only the `static` repository-check
+  profile, and reports the other profiles as advisory evidence. Repository
+  validation rejects any other hard shell gate in this workflow, because a hard
+  full-suite gate would reintroduce the cost the workflow exists to avoid.
+- `design` - UI/UX predecessor that hands off to a separately started `dev` run.
+
+## Operator involvement profiles
+
+`config.json.operator_involvement` declares named profiles that control how
+heavily the operator gates each stage:
+
+```json
+{
+  "active": "standard",
+  "profiles": {
+    "technical-director": {
+      "summary": "Operator refines the plan and responds to review.",
+      "gates": { "test": "operator" },
+      "contracts": ["technical_director"]
+    }
+  }
+}
+```
+
+- `gates` maps a stage slug, or `*` for every stage, to the gate that stage uses
+  for the run.
+- `contracts` names run-wide contracts. `technical_director` loads
+  `DIRECTOR-001` and escalates the `technical_plan` and `independent_review`
+  checkpoints to operator gates.
+
+Select one with `./bin/pan init --involvement <profile>`; omitting the flag uses
+`active`. List them with `./bin/pan involvement`.
+
+Gates resolve by ascending specificity, so a blunt default cannot cancel a
+targeted one:
+
+1. the gate the workflow declares,
+2. the profile's `*` gate,
+3. run-contract escalations keyed by stage `checkpoint`,
+4. the profile's explicit per-stage gate.
+
+The run resolves its profile once at `init` and writes the result into
+`workflow.snapshot.json` and `state.operator_involvement`. Later edits to
+`config.json` never change a run already in flight. `./bin/pan validate` checks
+every profile against every workflow, so a mistyped stage slug fails at
+authoring time rather than at someone else's `pan init`.
+
+A contract-scoped policy lookup row keeps run contracts inside the single policy
+applicability map:
+
+```json
+{
+  "persona": "*",
+  "workflow": "*",
+  "stage": "*",
+  "contract": "technical_director",
+  "policies": ["DIRECTOR-001"]
+}
+```
+
+## Attempt accounting
+
+`max_stage_attempts` bounds retries of the stage a run is currently on, not how
+many times the run legitimately visits it. Leaving a stage for a different one
+clears that stage's counter, so a later return starts fresh; the per-attempt
+record stays in `stage_history`. An invocation prepared but never submitted does
+no work and does not consume an attempt.
+
+An operator revision (`./bin/pan decide <run-id> revise --note <directive>`) is
+not a failed attempt. It re-runs the same stage with the directive as required
+input and raises that stage's ceiling by one, recorded in
+`state.operator_revisions`.
+
 ## Validation rules enforced by the harness
 
 A stage whose `failure` transition points to itself is automatically covered
@@ -136,6 +229,7 @@ normalized signature pauses before a third invocation can be prepared.
 - Stage slugs are unique; each has a persona, a valid `gate`, `context`, and
   `workspace_policy`, an existing `prompt_path`, criteria, and transitions.
 - Context selectors target real stages and use `latest` or `latest_success`.
+- At most one stage per workflow declares a given `checkpoint`.
 - Criterion ids are unique within a stage; `shell` criteria declare a command.
 - Transition outcomes are `success`/`failure`/`blocked`, and every target is a
   terminal status or an existing stage.
