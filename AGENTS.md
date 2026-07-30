@@ -4,6 +4,19 @@ The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in thi
 
 Pancreator is a Cursor-native workflow harness. Cursor supplies model execution and MCP access. Repository code owns workflow state, validation, deterministic evidence, retries, and audit records.
 
+## Applicability
+
+This file binds every agent that reads it. Four contexts read it:
+
+- A **supervisor** advancing one workflow run. It holds no invocation card of its own, so this file and the `pan-*` command it is running are its governance.
+- A **worker** executing one delegated stage inside a workflow run, holding an invocation card.
+- A **standalone-mode agent** running `/pan-spotfix`, `/pan-pair`, `/pan-debug`, `/pan-repair`, or `/pan-decompose`, holding a governance card from `./bin/pan governance card --mode <mode>` rather than a stage contract.
+- An **unbound agent** working in this repository outside any run or mode, including an ad-hoc operator request.
+
+An agent MUST determine its context before applying a rule and MUST NOT default to supervisor or worker. **Workflow run roles** governs that determination.
+
+Read the scope of a rule from its subject. A rule that names a run, a stage, an invocation card, the supervisor, or a worker binds only the context that has one. Every other rule binds all four contexts. A section that mixes scopes MUST separate them under **Always applicable** and **Inside a workflow run** subheadings, and a new rule MUST be added under the scope it binds.
+
 ## Authority order
 
 1. An explicit human-operator directive is final for the action it covers and supersedes every Pancreator rule, gate, stage contract, policy, and default process.
@@ -30,21 +43,37 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 - Section emoji MUST come from the registered semantic key and retain one meaning across the repository. Artifact data MUST NOT encode layout, color, or inline styles.
 - Every invocation output contract is the canonical brief artifact index. The harness pre-creates the source JSON and renders HTML during submission; agents MUST edit the declared source in place, MUST NOT search for brief artifacts, and MUST NOT invoke the renderer during stage work.
 
-## Roles
+## Workflow run roles
 
-- The **supervisor** is the agent holding the operator conversation and advancing the run. It is the `orchestrator` persona; `library/personas/orchestrator.md` is its behavioral brief, and `ORCH-001` unrolls that brief into every supervisor-owned invocation card. "Supervisor" and "orchestrator" name the same role throughout this repository — the first is the role, the second is the persona identifier used by `config.json` and the policy lookup table.
+Supervisor and worker are roles inside a workflow run. An agent that holds neither is a standalone-mode agent or an unbound agent.
+
+- The **supervisor** is the agent holding the operator conversation for one workflow run and advancing that run. It is the `orchestrator` persona; `library/personas/orchestrator.md` is its behavioral brief, and `ORCH-001` unrolls that brief into every supervisor-owned invocation card. "Supervisor" and "orchestrator" name the same role throughout this repository — the first is the role, the second is the persona identifier used by `config.json` and the policy lookup table.
 - A **worker** is a named persona executing one delegated stage through its projected `.cursor/agents/pan-<persona>.md` subagent.
 - The supervisor is not itself invoked as a subagent. Its governance therefore arrives through this file, the `pan-*` command it is running, and the invocation cards it prepares — never through a `pan-orchestrator` subagent, which does not exist.
 
+An agent MUST NOT assume the supervisor role. Holding no invocation card does not imply it. The role belongs only to an agent that created or resumed a run and is advancing that run through `./bin/pan`. An agent holding no run MUST NOT prepare or deliver an invocation card, submit stage output, advance run state, or otherwise act as a run's supervisor on its own initiative. It MAY execute such an action when the operator explicitly directs it, under `OPERATOR-001`.
+
+Delegating to a subagent does not confer the role. A standalone-mode agent delegates a governance card and still holds no run, stage contract, or gate.
+
 ## Operating loop
+
+### Always applicable
+
+These rules bind every agent that reads this file.
 
 - Runs MUST be created, inspected, advanced, paused, resumed, and aborted through `./bin/pan`.
 - Agents MUST NOT edit `state.json`, `events.jsonl`, or generated workflow records directly.
-- Before stage work, the supervisor MUST run `./bin/pan status <run-id>` and read the pending invocation or assessment card.
-- A named worker stage MUST be delegated to the matching locally projected `.cursor/agents/pan-<persona>.md` subagent. Its frontmatter model MUST match the active mapping in `config.json`; run `./bin/pan models --sync` after cloning or changing `active_config` or a mapped model.
 - Ad-hoc Subagent calls MUST omit `model` so they inherit the parent model unless the operator explicitly selects a model. This does not change named-persona routing through projected frontmatter and `config.json`.
+- A projected `.cursor/agents/pan-<persona>.md` subagent MUST carry a frontmatter model matching the active mapping in `config.json`. Run `./bin/pan models --sync` after cloning the repository or changing `active_config` or a mapped model.
 - `.cursor/` MUST remain fully gitignored and MUST be treated as disposable local configuration. Canonical Cursor agents, commands, and rules live under `library/cursor/` and are declared by `governance/registries/projection_manifest.json`; source or installation code MUST NOT treat `.cursor/` as authoritative input.
 - Every projection installable into a target repository MUST use a `pan-` or `pancreator.` filename so it can never collide with target-owned Cursor configuration. `src/lib/projection.ts` and `bin/install-support` both enforce this after glob expansion.
+
+### Inside a workflow run
+
+These rules bind the supervisor and the workers of an active run.
+
+- Before stage work, the supervisor MUST run `./bin/pan status <run-id>` and read the pending invocation or assessment card.
+- A named worker stage MUST be delegated to the matching locally projected `.cursor/agents/pan-<persona>.md` subagent.
 - Delegation is governed by [`INVOCATION-001`](governance/policies/INVOCATION-001.json) and is unrolled here because the supervisor holds no invocation card of its own during the continuation loop. Every prepared worker card also carries the same contract, with resolved paths, under its **Supervisor delivery procedure** section. For each worker stage the supervisor MUST:
   1. Read the harness-produced invocation validation artifact and MUST NOT delegate a card whose status is failed or missing.
   2. Paste the complete canonical invocation Markdown verbatim into the subagent prompt. A path reference, summary, or excerpt MUST NOT substitute for the card body.
@@ -57,7 +86,6 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 - A second consecutive hard failure with the same normalized signature MUST pause immediately, independent of broader retry limits. On an implementation self-loop, the next coder attempt MUST directly remediate the recorded loop cause and MUST NOT consume an attempt on unchanged paperwork or evidence alone.
 - For `supervisor_assessment`, the supervisor MUST evaluate only the listed judgment criteria and write the declared assessment file.
 - For `operator_approval`, the supervisor MUST present the ratification packet and stop unless the operator has already explicitly decided. It MUST NOT originate or infer approval, but MUST execute an explicit approval directive.
-
 - The supervisor MUST apply [`ORCH-001`](governance/policies/ORCH-001.json) for continuation and stop conditions. Its full text and the supervisor brief are unrolled into every supervisor-owned invocation card.
 
 ## Work modes
@@ -129,6 +157,14 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 - Human-authored TypeScript and TSX MUST conform to `TS-001`; workflow agents MUST use the complete TypeScript and Node.js guidance unrolled into the active invocation rather than loading handbook paths separately.
 - Agents changing TypeScript MUST inspect the guide’s normative sections and MUST NOT inspect Appendix A during ordinary implementation or review.
 - Formatter output MUST be treated as authoritative.
+
+## Operator-facing writing
+
+- Every durable artifact an operator reads MUST conform to `STE-001`, the Simplified Technical English baseline adapted from ASD-STE100 Issue 9. Governed artifacts are operator briefs, workflow-stage narratives, remediation records, pull-request descriptions, release notes, and changelog entries.
+- Instructions MUST use a maximum of 20 words per sentence and explanation a maximum of 25, counted by the `STE-001` counting rules rather than by whitespace tokens. Identifiers, paths, commands, inline code spans, quoted text, and hyphenated words each count as one word.
+- Machine records, source code, code comments, commit messages, and repository documentation under `docs/`, `README.md`, and `governance/` are outside `STE-001`. Agents MUST NOT restyle them to satisfy it.
+- This repository adopts the ASD-STE100 writing rules but not its controlled dictionary, so agents MUST NOT describe an artifact as conformant to ASD-STE100.
+- `SIMPLIFIED-ENGLISH-VALIDATE-001` is advisory and checks only the countable rules. Terminology consistency, noun-group length, and voice remain judgment criteria, so a passing check MUST NOT be reported as conformance.
 
 ## Validation
 
