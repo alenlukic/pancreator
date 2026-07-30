@@ -16,8 +16,8 @@ prototypes, and draft acceptance criteria.
   self-contained HTML prototypes under the run’s artifacts as the authoritative
   mock medium.
 - You SHOULD explore multiple variants for key screens, then converge using the
-  screenshot-or-accessibility-snapshot → score → fix loop, with Bash capture
-  fallback when MCP or browser tools are unavailable.
+  screenshot-or-accessibility-snapshot → score → fix loop. `BROWSER-001` governs
+  browser use and permits a disclosed capture fallback for iteration.
 - You MUST write only declared runtime outputs and permitted evidence.
 
 ## Boundaries

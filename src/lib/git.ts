@@ -104,7 +104,7 @@ function contentFingerprint(
   const files: Array<[string, string]> = []
 
   for (const entry of entries) {
-    const relative = entry.length >= 4 ? entry.slice(3) : entry
+    const relative = snapshotEntryPath(entry)
 
     if (
       !relative ||
@@ -215,71 +215,19 @@ export function gitWorkspaceSnapshot(workspaceDir: string): WorkspaceSnapshot {
       content,
     }),
     entries,
+    dirty_content: Object.fromEntries(content),
   }
 }
 
 /**
- * Fingerprint the deliverable workspace while omitting dirty paths matched by
- * `excludePath` from status and content inputs.
+ * Paths that differ between two snapshots.
  *
- * The full index hash is retained so unstaged excluded-path edits (the common
- * ship release-metadata case) still match the reviewed implementation
- * fingerprint. Used by ship prior-gates across ship retries.
+ * A path counts as changed when its Git status entry differs *or* when its
+ * content hash differs. Comparing status entries alone misses an edit to a
+ * path that was already dirty in `before`, because the status code stays
+ * identical — the case that let ship-stage edits to feature-dirty
+ * documentation pass unattributed.
  */
-export function gitWorkspaceFingerprintExcluding(
-  workspaceDir: string,
-  excludePath: (relativePath: string) => boolean,
-): string {
-  const snapshot = gitWorkspaceSnapshot(workspaceDir)
-
-  if (snapshot.kind !== 'git' || !isGitRepository(workspaceDir)) {
-    return snapshot.fingerprint
-  }
-
-  const dirtyExcluded = new Set(
-    snapshot.entries
-      .map((entry) => snapshotEntryPath(entry))
-      .filter((relativePath) => excludePath(relativePath)),
-  )
-
-  if (dirtyExcluded.size === 0) {
-    return snapshot.fingerprint
-  }
-
-  const toplevelResult = runGit(
-    workspaceDir,
-    ['rev-parse', '--show-toplevel'],
-    {
-      allowFailure: true,
-    },
-  )
-  const toplevel =
-    toplevelResult.status === 0 ? toplevelResult.stdout.trim() : workspaceDir
-  const entries = snapshot.entries
-    .filter((entry) => !dirtyExcluded.has(snapshotEntryPath(entry)))
-    .sort()
-  const indexResult = runGit(workspaceDir, [
-    'ls-files',
-    '--stage',
-    '-z',
-    '--',
-    '.',
-    ...protectedGitPathspecs(),
-  ])
-  const indexEntries = indexResult.stdout
-    .split('\0')
-    .filter(Boolean)
-    .filter((entry) => !isProtectedWorkspacePath(indexEntryPath(entry)))
-    .sort()
-  const content = contentFingerprint(toplevel, entries)
-
-  return sha256({
-    entries,
-    index: sha256(indexEntries.join('\0')),
-    content,
-  })
-}
-
 export function workspaceChangedPathsFromSnapshots(
   before: WorkspaceSnapshot,
   after: WorkspaceSnapshot,
@@ -290,12 +238,19 @@ export function workspaceChangedPathsFromSnapshots(
   const afterByPath = new Map(
     after.entries.map((entry) => [snapshotEntryPath(entry), entry]),
   )
+  // Absent maps mean a snapshot predates content hashing; fall back to entry
+  // comparison rather than reporting every dirty path as changed.
+  const comparableContent =
+    before.dirty_content !== undefined && after.dirty_content !== undefined
   const paths = new Set([...beforeByPath.keys(), ...afterByPath.keys()])
 
   return [...paths]
     .filter(
       (relativePath) =>
-        beforeByPath.get(relativePath) !== afterByPath.get(relativePath),
+        beforeByPath.get(relativePath) !== afterByPath.get(relativePath) ||
+        (comparableContent &&
+          before.dirty_content?.[relativePath] !==
+            after.dirty_content?.[relativePath]),
     )
     .filter((relativePath) => !isProtectedWorkspacePath(relativePath))
     .sort()

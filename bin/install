@@ -980,6 +980,8 @@ install_payload() {
     echo "Automatic release updates will remain disabled for this install."
   fi
 
+  report_browser_readiness
+
   echo ""
 
   if [[ "$DETACHED" -eq 1 ]]; then
@@ -994,6 +996,51 @@ install_payload() {
   fi
 
   configure_install_shell_aliases
+}
+
+# BROWSER-001 requires a Chrome for Testing bundle and a chrome-devtools MCP
+# server. Pancreator installs neither a browser nor target MCP config, so the gap
+# is reported rather than silently deferred to a stage that owes a verdict.
+report_browser_readiness() {
+  local found=""
+  local candidate
+
+  for candidate in \
+    "/Applications/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing" \
+    "/opt/chrome-for-testing/chrome" \
+    "/usr/local/bin/chrome-for-testing"; do
+    if [[ -e "$candidate" ]]; then
+      found="$candidate"
+      break
+    fi
+  done
+
+  local mcp=""
+
+  for candidate in "$TARGET_DIR/.cursor/mcp.json" "$TARGET_DIR/.mcp.json"; do
+    if [[ -f "$candidate" ]] && grep -q 'chrome-devtools' "$candidate"; then
+      mcp="$candidate"
+      break
+    fi
+  done
+
+  if [[ -n "$found" && -n "$mcp" ]]; then
+    return 0
+  fi
+
+  echo ""
+  echo "Visual QA readiness (BROWSER-001):"
+
+  if [[ -z "$found" ]]; then
+    echo "  - Chrome for Testing was not found. Install it if this target has a web UI."
+  fi
+
+  if [[ -z "$mcp" ]]; then
+    echo "  - No chrome-devtools MCP server is configured in the target's .cursor/mcp.json."
+  fi
+
+  echo "  Until both are present, browser verdicts report environment-blocked."
+  echo "  Details: pan doctor, and docs/embedded-installation.md"
 }
 
 migrate_legacy_config

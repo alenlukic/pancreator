@@ -14,6 +14,8 @@ recurring job. Read the skill relevant to your current step.
   supports a criterion.
 - [`scope-control.md`](scope-control.md) - keep a change minimal and bounded.
 - [`spotfix.md`](spotfix.md) - execute or escalate one operator-selected lightweight change.
+- [`browser-inspection.md`](browser-inspection.md) - observe a running web UI in an
+  isolated browser context.
 
 ## Stage-aligned
 

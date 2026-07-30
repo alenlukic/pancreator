@@ -1,5 +1,36 @@
 # Changelog
 
+## [2.18.0] - 2026-07-29
+
+### Changed
+
+- Unroll `INVOCATION-001` onto every prepared worker invocation card as a resolved **Supervisor delivery procedure** section, so delegation compliance no longer depends on ambient recall of `AGENTS.md` during the continuation loop, and fail invocation validation when the section is absent ([render](src/lib/render.ts), [engine](src/lib/engine.ts), [validation](src/lib/validation.ts)).
+- Extend `/pan-start` with the complete unrolled advance loop and card-delivery contract so a run continues past intake ratification without a separate `/pan-resume` invocation, and align `/pan-resume` on the same procedure ([pan-start](library/cursor/commands/pan-start.md), [pan-resume](library/cursor/commands/pan-resume.md)).
+- Replace the buried, unlinked `INVOCATION-001` pointer in the operating card with the unrolled delegation steps, linked policies, and an explicit statement that "supervisor" and the `orchestrator` persona name one role ([AGENTS.md](AGENTS.md)).
+- Deliver the supervisor brief through `ORCH-001` `guidance_sources` so `library/personas/orchestrator.md` reaches supervisor-owned cards instead of remaining a file nothing loads ([ORCH-001](governance/policies/ORCH-001.json), [orchestrator persona](library/personas/orchestrator.md)).
+- Consolidate every browser-inspection and Visual QA rule into `BROWSER-001`, remove the divergent restatements from personas, Cursor agent cards, workflow prompts, handbooks, and docs, and reconcile the design-iteration capture fallback against the QA verdict prohibition ([BROWSER-001](governance/policies/BROWSER-001.json), [DESIGN-001](governance/policies/DESIGN-001.json), [qa-tester persona](library/personas/qa-tester.md), [design-qa persona](library/personas/design-qa.md)).
+- Redesign ship prior-gates currency as an attempt-chain continuity proof, so retries no longer reconstruct QA state by subtracting a predicted release-metadata path set that false-failed whenever feature work left durable documentation dirty before version sync ([validation](src/lib/validation.ts), [git fingerprinting](src/lib/git.ts)).
+- Detect workspace changes by per-path content hash in addition to Git status entries, so an edit to an already-dirty file is attributable instead of invisible to scope gates ([git fingerprinting](src/lib/git.ts), [types](src/lib/types.ts)).
+- Report Visual QA readiness during installation and in `pan doctor`, and document Chrome for Testing as an installation requirement for targets with a web UI ([CLI](src/cli.ts), [install](bin/install), [embedded installation](docs/embedded-installation.md)).
+
+### Added
+
+- Add `BROWSER-001` and the `browser-inspection` skill as the single canonical browser contract, bound to the qa-tester, design-qa, designer, design-reviewer, and spotfixer personas ([BROWSER-001](governance/policies/BROWSER-001.json), [browser-inspection skill](library/skills/browser-inspection.md), [policy lookup table](governance/registries/policy_lookup_table.json)).
+- Add a `policy-rule` projection transform that generates an always-apply Cursor rule from a governance policy, so work running outside the invocation-card machinery receives `BROWSER-001` from the same source ([projection](src/lib/projection.ts), [install-support](bin/install-support), [projection manifest](governance/registries/projection_manifest.json)).
+- Add browser-automation readiness resolution for Chrome for Testing bundles and chrome-devtools MCP configuration across harness and target roots ([browser readiness](src/lib/browser-readiness.ts), [readiness tests](tests/unit/browser-readiness.test.ts)).
+- Add regression coverage for the supervisor delivery contract, ship prior-gates chain continuity including the feature-dirty documentation case, and browser-guidance single-sourcing ([delegation contract test](tests/regression/supervisor-delegation-contract.test.ts), [release metadata scope test](tests/unit/release-metadata-scope.test.ts), [browser isolation contract test](tests/regression/browser-isolation-contract.test.ts)).
+
+### Removed
+
+- Remove the hand-maintained `visual-qa-isolation` Cursor rule template and its manifest entry, superseded by the rule generated from `BROWSER-001` ([projection manifest](governance/registries/projection_manifest.json)).
+- Remove `gitWorkspaceFingerprintExcluding` and the release-metadata path allowlist from ship evidence reconstruction ([git fingerprinting](src/lib/git.ts), [validation](src/lib/validation.ts)).
+- Remove the regression test that required all twelve browser-isolation tokens to be restated across six surfaces, which was itself enforcing the divergence it was meant to prevent ([browser isolation contract test](tests/regression/browser-isolation-contract.test.ts)).
+
+### Fixed
+
+- Fix directive-exemption and validation-registry lookups that probed `governance/` instead of `governance/registries/`, which silently disabled the exemption registry and all requirement-registry validation ([audit directives](src/lib/governance/audit-directives.ts), [validation](src/lib/validation.ts)).
+- Fix content fingerprinting of staged renames, which hashed the literal `old -> new` status path and recorded the renamed file as missing ([git fingerprinting](src/lib/git.ts)).
+
 ## [2.17.0] - 2026-07-29
 
 ### Changed

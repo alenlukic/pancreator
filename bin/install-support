@@ -134,6 +134,69 @@ function projectCursorContent(
   return projected
 }
 
+// Kept in sync with renderPolicyCursorRule in src/lib/cursor-content.ts. This
+// script runs before the harness is built, so it cannot import that module.
+function renderPolicyCursorRule(policy) {
+  return [
+    '---',
+    `description: ${policy.id} — ${policy.title}`,
+    'alwaysApply: true',
+    '---',
+    '',
+    `<!-- Generated from governance/policies/${policy.id}.json. Edit the policy, not this file. -->`,
+    '',
+    'The terms MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY use RFC 2119 meanings.',
+    '',
+    `# ${policy.id} · ${policy.title}`,
+    '',
+    policy.summary,
+    '',
+    ...policy.instructions.map((instruction) => `- ${instruction}`),
+    ...(policy.guidance_sources ?? []).flatMap((guidance) => [
+      '',
+      `## Unrolled guidance · \`${guidance.path}\``,
+      '',
+      guidance.content,
+    ]),
+    '',
+  ].join('\n')
+}
+
+/** Resolve a policy and inline its declared guidance slices. */
+function policyRuleSource(sourceRoot, sourcePath) {
+  const policy = readJson(sourcePath)
+
+  if (
+    typeof policy?.id !== 'string' ||
+    typeof policy.title !== 'string' ||
+    typeof policy.summary !== 'string' ||
+    !Array.isArray(policy.instructions)
+  ) {
+    fail(`Invalid policy-rule projection source: ${sourcePath}`)
+  }
+
+  for (const guidance of policy.guidance_sources ?? []) {
+    const full = readFileSync(
+      path.join(sourceRoot, guidance.path),
+      'utf8',
+    ).trim()
+    const start = guidance.start_heading
+      ? full.indexOf(guidance.start_heading)
+      : 0
+    const end = guidance.end_heading
+      ? full.indexOf(guidance.end_heading, start)
+      : full.length
+
+    if (start < 0 || end <= start) {
+      fail(`Invalid guidance slice for ${policy.id}: ${guidance.path}`)
+    }
+
+    guidance.content = full.slice(start, end).trim()
+  }
+
+  return policy
+}
+
 function expandProjection(sourceRoot, projection) {
   const match = /\{([a-z_]+)\}/u.exec(projection.source)
 
@@ -530,7 +593,9 @@ function projectCursor() {
   )
 
   for (const entry of cursorSourceFiles(sourceRoot)) {
-    let content = readFileSync(entry.source, 'utf8')
+    let content = entry.transforms.includes('policy-rule')
+      ? renderPolicyCursorRule(policyRuleSource(sourceRoot, entry.source))
+      : readFileSync(entry.source, 'utf8')
 
     if (entry.generatedFields.includes('frontmatter.model')) {
       const model = personaModels[entry.variable]

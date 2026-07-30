@@ -43,7 +43,6 @@ import {
   isSelfDevelopmentInstallation,
 } from './project-config.js'
 import {
-  gitWorkspaceFingerprintExcluding,
   gitWorkspaceSnapshot,
   workspaceChangedPathsFromSnapshots,
 } from './git.js'
@@ -63,12 +62,14 @@ import type {
   RepositoryValidationResult,
   RunState,
   StageDefinition,
+  StageHistoryItem,
   StageOutput,
   StageOutcome,
   WorkspaceSnapshot,
 } from './types.js'
 
 export const POLICIES_HEADING = '## 📜 Policies in force'
+export const DELEGATION_HEADING = '## 🧭 Supervisor delivery procedure'
 export const AGENT_REQUIREMENTS_HEADING = '## ✅ Agent validation requirements'
 export const HARNESS_REQUIREMENTS_HEADING = '## 🧰 Harness-owned checks'
 
@@ -262,6 +263,54 @@ export function validateInvocationMarkdown(
         message: normalized.includes(guidance.content)
           ? `Policy ${policy.id} guidance ${index + 1} content is present`
           : `Markdown MUST inline guidance from ${guidance.source_path}`,
+      })
+    }
+  }
+
+  if (invocation.delegation) {
+    const { delegation } = invocation
+
+    checks.push({
+      id: 'delegation.heading',
+      passed: normalized.includes(DELEGATION_HEADING),
+      message: normalized.includes(DELEGATION_HEADING)
+        ? 'Supervisor delivery procedure is present'
+        : `Markdown MUST contain '${DELEGATION_HEADING}'`,
+    })
+    checks.push({
+      id: 'delegation.policies_unrolled',
+      passed: delegation.policies.length > 0,
+      message:
+        delegation.policies.length > 0
+          ? `${delegation.policies.length} supervisor delivery policies unrolled`
+          : 'Delegated stages MUST unroll INVOCATION-001 for the supervisor',
+    })
+
+    for (const policy of delegation.policies) {
+      for (const [index, instruction] of policy.instructions.entries()) {
+        checks.push({
+          id: `delegation.${policy.id}.instruction.${index + 1}`,
+          passed: normalized.includes(instruction),
+          message: normalized.includes(instruction)
+            ? `Delivery policy ${policy.id} instruction ${index + 1} is present`
+            : `Markdown MUST inline ${policy.id} instruction ${index + 1} for the supervisor`,
+        })
+      }
+    }
+
+    for (const [id, value] of [
+      ['canonical_path', delegation.canonical_markdown_path],
+      ['validation_path', delegation.invocation_validation_path],
+      ['artifact_path', delegation.delegation_artifact_path],
+      ['agent_path', delegation.cursor_agent_path],
+      ['submit_command', delegation.submit_command],
+    ] as const) {
+      checks.push({
+        id: `delegation.${id}`,
+        passed: normalized.includes(value),
+        message: normalized.includes(value)
+          ? `Delivery ${id} is resolved in the card`
+          : `Markdown MUST resolve the delivery ${id}: ${value}`,
       })
     }
   }
@@ -1022,13 +1071,66 @@ export function evaluateStateCriterion(
   }
 }
 
+/**
+ * Whether every ship attempt since the passing QA evidence forms an unbroken
+ * accountability chain starting at the QA fingerprint.
+ *
+ * Each attempt is accountable for exactly the window between its own before and
+ * after snapshots, and `scope.no_unapproved_changes` already adjudicates that
+ * window against the stage's workspace policy. So currency across ship retries
+ * needs only two things: the first attempt started from the QA fingerprint, and
+ * no attempt's before-snapshot disagrees with the previous attempt's
+ * after-snapshot. A gap between two attempts is an edit no stage is accountable
+ * for, which breaks the chain.
+ *
+ * This deliberately avoids reconstructing the QA fingerprint by subtracting a
+ * predicted set of "release metadata" paths from the live tree. That covering
+ * set cannot be known a priori — feature work routinely leaves the same durable
+ * docs and README surfaces dirty that the release procedure later version-syncs
+ * — and subtracting them removed feature bytes the QA fingerprint included.
+ */
+function shipAttemptChainProvesCurrency(
+  state: RunState,
+  qaEvidence: StageHistoryItem,
+  currentBeforeFingerprint: string,
+): boolean {
+  const priorShipAttempts = state.stage_history
+    .slice(state.stage_history.indexOf(qaEvidence) + 1)
+    .filter((item) => item.stage === 'ship')
+
+  if (priorShipAttempts.length === 0) {
+    return false
+  }
+
+  let expectedBefore = qaEvidence.workspace_fingerprint
+
+  for (const attempt of priorShipAttempts) {
+    // An attempt recorded before before-fingerprints were tracked cannot be
+    // bounded, so it cannot carry the chain.
+    if (attempt.workspace_before_fingerprint !== expectedBefore) {
+      return false
+    }
+
+    const scope = attempt.deterministic.find(
+      (result) => result.id === 'scope.no_unapproved_changes',
+    )
+
+    if (scope && !scope.passed) {
+      return false
+    }
+
+    expectedBefore = attempt.workspace_fingerprint
+  }
+
+  return expectedBefore === currentBeforeFingerprint
+}
+
 function resolveShipPriorGatesEvidenceFingerprint(options: {
-  root: string
   state: RunState
   stage: StageDefinition
-  workspaceDir: string
   beforeSnapshot: WorkspaceSnapshot
   afterSnapshot: WorkspaceSnapshot
+  scopePassed: boolean
 }): string {
   if (options.stage.workspace_policy !== 'release_metadata_only') {
     return options.afterSnapshot.fingerprint
@@ -1052,18 +1154,18 @@ function resolveShipPriorGatesEvidenceFingerprint(options: {
     return testFingerprint
   }
 
-  // Later ship attempts: before snapshot already includes prior release-metadata
-  // edits. Treat the workspace as current when only release-metadata paths are
-  // dirty relative to the reviewed implementation fingerprint.
-  if (isSelfDevelopmentInstallation(options.root)) {
-    const implementationFingerprint = gitWorkspaceFingerprintExcluding(
-      options.workspaceDir,
-      isReleaseMetadataPath,
+  // Later ship attempts: the before snapshot already includes earlier ship
+  // edits. Currency holds when this attempt's own window is clean and every
+  // earlier ship attempt chains back to the QA fingerprint.
+  if (
+    options.scopePassed &&
+    shipAttemptChainProvesCurrency(
+      options.state,
+      test,
+      options.beforeSnapshot.fingerprint,
     )
-
-    if (implementationFingerprint === testFingerprint) {
-      return testFingerprint
-    }
+  ) {
+    return testFingerprint
   }
 
   return options.beforeSnapshot.fingerprint
@@ -1096,6 +1198,7 @@ export function evaluateDeterministicCriteria(
 ): { results: DeterministicResult[]; workspace: WorkspaceSnapshot } {
   const afterSnapshot = gitWorkspaceSnapshot(workspaceDir)
   const results: DeterministicResult[] = []
+  let scopePassed = true
 
   if (stage.workspace_policy !== 'source_allowed') {
     const changedPaths = workspaceChangedPathsFromSnapshots(
@@ -1137,6 +1240,7 @@ export function evaluateDeterministicCriteria(
     )
     const changed = blockingPaths.length > 0 && !internallyAttributed
 
+    scopePassed = !changed
     results.push({
       id: 'scope.no_unapproved_changes',
       type: 'state',
@@ -1215,12 +1319,11 @@ export function evaluateDeterministicCriteria(
       }
 
       const evidenceFingerprint = resolveShipPriorGatesEvidenceFingerprint({
-        root,
         state,
         stage,
-        workspaceDir,
         beforeSnapshot,
         afterSnapshot,
+        scopePassed,
       })
       const result = evaluateStateCriterion(
         state,
@@ -1237,7 +1340,7 @@ export function evaluateDeterministicCriteria(
           ? {
               ...result,
               explanation:
-                `${result.explanation ?? ''} Expected release-metadata-only edits are checked separately and do not invalidate the reviewed implementation fingerprint.`.trim(),
+                `${result.explanation ?? ''} Every ship attempt since QA chains back to the QA fingerprint with an adjudicated scope window, so ship-stage edits do not invalidate the reviewed implementation fingerprint.`.trim(),
               workspace_fingerprint: afterSnapshot.fingerprint,
             }
           : result,
@@ -1591,7 +1694,11 @@ export function validateRepository(root: string): RepositoryValidationResult {
 
     validatePolicyLookupDependencies(catalog, lookup, errors)
 
-    if (fileExists(path.join(root, 'governance', 'validation_registry.json'))) {
+    if (
+      fileExists(
+        path.join(root, 'governance', 'registries', 'validation_registry.json'),
+      )
+    ) {
       const registry = loadRegistry(root)
       errors.push(...validateRegistry(registry, HANDLER_IDS))
       errors.push(...validatePolicyRequirements(root, registry))

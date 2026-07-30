@@ -110,7 +110,31 @@
       "persona": "qa-tester",
       "workflow": "*",
       "stage": "*",
-      "policies": ["ENG-001"]
+      "policies": ["ENG-001", "BROWSER-001"]
+    },
+    {
+      "persona": "designer",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["BROWSER-001"]
+    },
+    {
+      "persona": "design-reviewer",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["BROWSER-001"]
+    },
+    {
+      "persona": "design-qa",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["BROWSER-001"]
+    },
+    {
+      "persona": "spotfixer",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["BROWSER-001"]
     },
     {
       "persona": "tech-lead",

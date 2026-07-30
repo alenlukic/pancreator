@@ -1106,6 +1106,28 @@ export function prepareInvocation(
         : `Invoke the '${stage.persona}' Cursor subagent configured for ` +
           `'${model}' with this card, write delegation evidence to ` +
           `${delegationArtifactPath}, then submit ${outputPath}.`
+    // The supervisor delegates from the continuation loop, where it holds no
+    // card of its own. Resolving its policies here puts the delivery contract
+    // on the artifact it must already read to paste the card verbatim.
+    const delegation =
+      stage.persona === 'orchestrator'
+        ? undefined
+        : {
+            persona: stage.persona,
+            cursor_agent_path: cursorAgentTarget(root, stage.persona),
+            canonical_markdown_path: markdownPath,
+            invocation_validation_path: invocationValidationPath(
+              runId,
+              invocationId,
+            ),
+            delegation_artifact_path: delegationArtifactPath,
+            submit_command: `${panCommand(root)} submit ${runId} ${outputPath}`,
+            policies: resolvePolicies(root, {
+              persona: 'orchestrator',
+              workflow: workflow.slug,
+              stage: stage.slug,
+            }).filter((policy) => policy.id === 'INVOCATION-001'),
+          }
 
     const requiredData = { ...(stage.required_data ?? {}) }
 
@@ -1219,6 +1241,7 @@ export function prepareInvocation(
         'While a mutating workflow is active, external edits to tracked files SHOULD be avoided because they make stage attribution ambiguous; pause the run before operator-authored changes.',
         'You MUST NOT commit, push, merge, publish, deploy, or perform destructive source-control actions.',
       ],
+      ...(delegation ? { delegation } : {}),
       workspace_before: workspace,
     }
 
@@ -1532,6 +1555,7 @@ export function submitOutput(
       outcome,
       submitted_at: now(),
       workspace_fingerprint: evaluated.workspace.fingerprint,
+      workspace_before_fingerprint: invocation.workspace_before.fingerprint,
       validation_errors: allValidationErrors,
       governance_artifact_warnings: governanceArtifactWarnings,
       deterministic: evaluated.results,

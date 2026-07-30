@@ -28,6 +28,7 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 - `PY-001` — Python conformance for detected Python workspaces
 - `REVIEW-001` — independent review
 - `TEST-001` — evidence-based QA
+- `BROWSER-001` — isolated browser inspection and Visual QA host safety
 - `SHIP-001` — operator-owned release boundary
 - `PR-001` — grounded pull-request description generation
 - `DECOMP-001` — conservative intake-scope decomposition
