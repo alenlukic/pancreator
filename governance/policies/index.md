@@ -2,7 +2,7 @@
 
 The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in this document indicate requirement levels as defined by RFC 2119 and RFC 8174.
 
-Policies MUST be small, globally identified JSON modules. `governance/registries/policy_lookup_table.json` MUST select policies by persona, workflow, stage, and optional detected workspace `technology`. The harness MUST union all matching rows and snapshot the resulting policies into each invocation card. Technology-scoped rows MUST activate only when the resolved target workspace contains the corresponding declared markers or source files. A policy that depends on durable static guidance MUST declare it through `guidance_sources`; the resolver MUST snapshot the selected guidance content into the invocation rather than require the worker to open the source file.
+Policies MUST be small, globally identified JSON modules. `governance/registries/policy_lookup_table.json` MUST select policies by persona, workflow, stage, optional detected workspace `technology`, and optional active run `contract`. The harness MUST union all matching rows and snapshot the resulting policies into each invocation card. Technology-scoped rows MUST activate only when the resolved target workspace contains the corresponding declared markers or source files. A policy that depends on durable static guidance MUST declare it through `guidance_sources`; the resolver MUST snapshot the selected guidance content into the invocation rather than require the worker to open the source file.
 
 - `GLOBAL-001` — operator-first records
 - `GLOBAL-002` — bounded context retrieval
@@ -36,5 +36,8 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 - `REPAIR-001` — transcript-aware harness repair investigation and self-development intake
 - `WORK-001` — systematic versus lightweight work-mode determination
 - `SPOT-001` — bounded lightweight spotfix execution and escalation
+- `PAIR-001` — operator-directed pair programming outside workflow structure
+- `PROTO-001` — prototype spike discipline and declared shortcuts
+- `DIRECTOR-001` — technical-director checkpoints for contract-enabled runs
 
 The prototype MUST NOT use an implicit policy override hierarchy. Conflicting policy text MUST be treated as a configuration defect and resolved directly.

@@ -161,6 +161,8 @@ budget has capacity.
 
 ### Pre-implementation repository-check baseline
 
+Baselines cover every repository-check profile referenced by any shell criterion anywhere in the run's workflow, captured once before the first `source_allowed` stage edits anything — not only the profiles of the stage being prepared. A terminal gate such as a QA stage's `full` profile otherwise has nothing to compare against, so pre-existing target breakage unrelated to the change under test hard-fails the run. Capturing all profiles up front also amortizes the slow ones.
+
 Immediately before the first coder invocation, the harness runs every configured
 repository-check profile referenced by deterministic stage gates (for example
 implementation `static`/`fast`, QA `full`, and ship `configuration`) and saves
@@ -206,6 +208,30 @@ Each run declares a deliverable workspace at `./bin/pan init --workspace <dir>`,
 ## Gate overrides
 
 Deterministic shell gates default to the commands declared in the workflow snapshot, which assume a particular project shape. A run MAY supply `./bin/pan init --gates <file>` mapping a shell criterion id to a replacement command, or to `false` to disable that gate. Overrides are stored in `state.gate_overrides`, listed on each invocation card, and recorded on every deterministic result (`overridden` or `disabled`) so a customized or skipped gate is never silent. Use overrides to make gates measure the actual deliverable rather than weakening assurance; disabling a hard gate is an explicit, audited operator choice.
+
+## Operator involvement and run contracts
+
+A run resolves one operator-involvement profile at `./bin/pan init [--involvement <profile>]` from `config.json.operator_involvement`, rewrites the gates in its own `workflow.snapshot.json`, and records the resolution in `state.operator_involvement` (`profile`, `summary`, `contracts`, and `applied_gates` for every stage whose gate differs from the workflow default). Because the snapshot is authoritative for the run, a later edit to `config.json` cannot change a run in flight. Each invocation card renders the profile, active contracts, and applied gates so the worker and operator see where the run will stop.
+
+Gates resolve by ascending specificity: the workflow's declared gate, then the profile's `*` gate, then run-contract escalations keyed by stage `checkpoint`, then the profile's explicit per-stage gate. A stage declaring `gate_relaxable: false` rejects any assignment that lowers operator involvement; escalation is always permitted.
+
+A run contract is orthogonal to workflow choice and attaches by stage `checkpoint` role rather than stage slug. `technical_director` escalates `technical_plan` and `independent_review` checkpoints to operator gates and activates the `contract`-scoped policy lookup row that loads `DIRECTOR-001`, keeping run contracts inside the single policy applicability map rather than a second one that could drift. An operator gate reached under an active contract carries `pending_action.checkpoint` so the supervisor presents refinement options rather than a plain approve/reject.
+
+## Operator revisions
+
+`./bin/pan decide <run-id> revise --note <directive>` records an operator refinement of otherwise acceptable work. It writes an operator-feedback artifact, re-runs the same stage with that directive as required input, clears the stage's same-reason tracker, and transitions as operator-directed so run-wide limit counters are unaffected. Each revision increments `state.operator_revisions[<stage>]`, which raises that stage's attempt ceiling by one: a refinement round is not a failed attempt and must not consume budget reserved for failures. `reject` remains the path for work the operator declares unacceptable.
+
+## Attempt accounting
+
+`max_stage_attempts` bounds retries of the stage a run is currently on rather than lifetime visits. Leaving a stage for a different target clears `state.attempts[<stage>]` and its granted revisions, so a later return to that stage starts fresh; the per-attempt record remains in `stage_history`. Because a transition only reaches a different stage after the stage's gate has passed, this is equivalent to resetting when a stage is fully gated. An invocation prepared but never submitted performed no work and does not consume an attempt: the next `prepare` reuses that attempt number. Run-wide looping stays bounded by `max_total_transitions`, `max_consecutive_failures`, and the same-reason circuit breaker.
+
+## Retry failure disclosure
+
+When a stage retries after a failure, its invocation carries `prior_failure` and the card renders a **Why the previous attempt failed** section inlining the failed hard criteria with their recorded explanations, the failed deterministic checks with commands and evidence paths, output validation errors, and governance diagnostics. `stage_history` records each attempt's `self_criteria` so a failure caused solely by a judgment criterion is recoverable from durable state. Invocation validation asserts every recorded reason is actually inlined. A path reference to the prior output is not sufficient: a worker handed only a pointer tends to resubmit the same defect.
+
+## Bounded evidence
+
+Deterministic-gate evidence logs and pre-implementation baselines bound each captured stream to a head and tail window with an explicit elision marker, and write the untruncated capture to a sibling artifact (`*.full.log`, `*.full.json`, referenced by `full_result_path`). The bounded artifact is what an invocation promotes to required reading; a multi-megabyte transcript promoted to required reading crowds out the contract it is meant to support.
 
 ## Operator gate waivers
 

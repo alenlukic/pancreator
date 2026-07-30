@@ -1,0 +1,76 @@
+{
+  "slug": "build",
+  "title": "Spike implementation",
+  "persona": "coder",
+  "prompt_path": "library/workflows/prototype/prompts/build.md",
+  "workspace_policy": "source_allowed",
+  "gate": "next_stage",
+  "context": {
+    "request": "conditional",
+    "required_stage_outputs": [
+      {
+        "stage": "intake",
+        "selection": "latest_success"
+      },
+      {
+        "stage": "approach",
+        "selection": "latest_success"
+      }
+    ],
+    "conditional_stage_outputs": [
+      {
+        "stage": "evaluate",
+        "selection": "latest"
+      }
+    ],
+    "prior_attempts": 1,
+    "operator_feedback": 1
+  },
+  "required_data": {
+    "spike": "object",
+    "spike.changed_files": "array",
+    "spike.shortcuts_taken": "array",
+    "spike.signal_evidence": "array",
+    "spike.notes": "array"
+  },
+  "criteria": [
+    {
+      "id": "build.signals_observed",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Each observable signal from the approach has direct evidence of what the spike actually produced, including signals that came out negative."
+    },
+    {
+      "id": "build.shortcuts_declared",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Every stub, hard-coded value, skipped error path, and omitted concern is declared with the reason it was acceptable for the spike."
+    },
+    {
+      "id": "build.no_weakened_checks",
+      "type": "judgment",
+      "hard": true,
+      "statement": "No existing test or check was deleted, skipped, or weakened to make the spike pass."
+    },
+    {
+      "id": "build.static",
+      "type": "shell",
+      "hard": true,
+      "statement": "Configured repository static checks pass.",
+      "command": "pan repository-check static",
+      "timeout_ms": 240000
+    },
+    {
+      "id": "build.fast_checks",
+      "type": "shell",
+      "statement": "Configured repository fast checks are reported for information; a prototype does not block on them.",
+      "command": "pan repository-check fast",
+      "timeout_ms": 300000
+    }
+  ],
+  "transitions": {
+    "success": "evaluate",
+    "failure": "build",
+    "blocked": "paused"
+  }
+}

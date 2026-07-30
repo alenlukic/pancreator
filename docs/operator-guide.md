@@ -101,6 +101,114 @@ scope expansion creates `runtime/inbox/spotfix-escalation-*.md` for systematic
 routing. Do not run it while a mutating workflow agent is active in the same
 workspace.
 
+Use `/pan-pair <directive>` when you want to drive the work yourself. The agent
+applies the governance the coder persona carries — engineering baseline, language
+handbooks, safety boundaries — but is bound to no workflow, stage contract, gate,
+or run contract. It makes the change you asked for, runs the narrowest useful
+check, reports what it did and did not verify, and stops for your next
+directive. It will not create a run, produce stage outputs or briefs, or convert
+the session into a workflow on its own. Do not run it while a mutating workflow
+agent is active in the same workspace.
+
+Every non-workflow mode takes its governance from a generated card rather than
+hand-assembled policy text:
+
+```sh
+./bin/pan governance card --mode pair
+```
+
+The card resolves the same policy applicability map the workflow path uses, so a
+standalone session is auditable and nothing is inlined by hand.
+
+## Prototype instead of delivering
+
+Use the `prototype` workflow when the question is whether an approach works, not
+whether it ships:
+
+```sh
+./bin/pan init --workflow prototype --request runtime/inbox/<spike-request>.md
+```
+
+It runs intake → approach → build → evaluate. Compared with `dev` it:
+
+- frames technical questions and observable success signals instead of user
+  stories and acceptance criteria,
+- keeps the approach stage thin and ungated rather than producing an
+  implementation-ready plan behind a supervisor gate,
+- gates only the `static` repository-check profile and reports `fast` as
+  advisory, so a spike is not blocked on production test coverage,
+- expects deliberate shortcuts and requires each one declared with the reason it
+  was acceptable,
+- ends with an operator-ratified evaluation giving a `validated`,
+  `invalidated`, or `inconclusive` verdict, the productionization gap, and a
+  recommendation.
+
+`PROTO-001` prohibits representing a spike as production-ready. When you adopt an
+approach, start a separate systematic `dev` run scoped from the evaluation's
+productionization gap; the prototype run does not productionize its own output.
+
+An `invalidated` verdict is a successful prototype. The evaluation names the
+spike code to delete either way.
+
+## Set how heavily you gate a run
+
+`config.json.operator_involvement` declares named involvement profiles. List
+them with:
+
+```sh
+./bin/pan involvement
+```
+
+Select one per run:
+
+```sh
+./bin/pan init --workflow dev --request runtime/inbox/<request>.md --involvement technical-director
+```
+
+Shipped profiles:
+
+- `standard` — workflow-declared gates. You ratify intake and approve release.
+- `hands-off` — the supervisor ratifies intake instead of you; release still
+  stops for your explicit approval.
+- `technical-director` — you refine the technical plan with its author before
+  implementation and respond to the independent review before the run continues.
+- `high-touch` — every stage stops for your explicit approval.
+
+`init` reports the resolved profile, active contracts, and any gate that replaced
+a workflow default, so you know where the run will stop before it starts. The run
+snapshots that resolution, so editing `config.json` afterwards never changes a
+run in flight.
+
+`ship` cannot be relaxed by a profile: `SHIP-001` requires a pause before commit,
+push, merge, publication, or deployment. You keep every in-the-moment override
+under `OPERATOR-001`.
+
+### Technical director mode
+
+`technical-director` is a run contract, not a separate workflow — any workflow
+run abides by it when active. It attaches to stage _roles_ rather than slugs, so
+it escalates `dev/plan` and `prototype/approach` (the `technical_plan`
+checkpoint) and `dev/review` and `design/review` (the `independent_review`
+checkpoint) to operator gates.
+
+At a checkpoint the supervisor presents the stage's substance in full and stops.
+You have three responses:
+
+```sh
+./bin/pan decide <run-id> approve
+./bin/pan decide <run-id> revise --note "Use the existing adapter; drop the new registry."
+./bin/pan decide <run-id> reject --note "Wrong subsystem entirely."
+```
+
+`revise` is the refinement path: it re-runs the same stage with your directive as
+required input, tells the worker to keep everything you did not ask it to change,
+and does **not** consume the stage's failure retry budget — each revision raises
+that stage's attempt ceiling by one. Use `reject` only for work you consider
+unacceptable; it routes to the stage's failure target.
+
+`DIRECTOR-001` forbids inferring approval from silence, from the absence of
+objections, or from discussing the plan with you.
+
 ## Run the design workflow before non-trivial UI/UX `dev` work
 
 For any development task with a non-trivial UI/UX design component, run the

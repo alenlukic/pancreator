@@ -49,7 +49,7 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
   1. Read the harness-produced invocation validation artifact and MUST NOT delegate a card whose status is failed or missing.
   2. Paste the complete canonical invocation Markdown verbatim into the subagent prompt. A path reference, summary, or excerpt MUST NOT substitute for the card body.
   3. Persist that exact prompt body to `runtime/logs/workflows/<run-id>/invocations/<invocation-id>.delegation.md` before submitting the stage.
-  4. Add no parallel scope, policy, gate, or plan restatement that could shadow the card; a minimal non-conflicting persona label MAY precede it.
+  4. Add no parallel scope, policy, gate, or plan restatement that could shadow the card; a minimal non-conflicting persona label MAY precede it. The delegation validator accepts exactly one such label: a single short line that opens no Markdown structure, followed by a blank line, ahead of the verbatim card body.
   5. Repair a missing or mismatched delegation artifact against the same active invocation rather than bypassing it or reporting delivery as successful.
 - A worker MUST write only the declared output and permitted evidence. The supervisor MUST submit it through `./bin/pan submit`.
 - The harness MUST rerun deterministic gate commands and MUST own code-determined transitions.
@@ -62,13 +62,31 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 
 ## Work modes
 
-- `systematic` is the default work mode and MUST execute an applicable governed workflow such as `dev`.
+- `systematic` is the default work mode and MUST execute an applicable governed workflow such as `dev` or `prototype`.
 - `lightweight` MAY be selected only by an explicit operator invocation of `/pan-spotfix` and MUST apply `WORK-001`, `SPOT-001`, and the complete spotfix procedure unrolled into the delegation.
 - A request qualifies as lightweight only when it is one coherent small-scope change under `WORK-001`. Uncertain or expanded scope MUST route to `systematic`.
+- `interactive` MAY be selected only by an explicit operator invocation of `/pan-pair` and MUST apply `PAIR-001`. The agent applies the governance its persona carries and is bound to no workflow, stage contract, gate, or run contract; the operator owns scope, sequencing, and completion. An interactive session MUST NOT create, advance, or write state for a workflow run, and MUST NOT be converted into one on agent initiative.
+- Every non-workflow mode MUST receive its governance from `./bin/pan governance card --mode <mode>`, which resolves the same policy applicability map the workflow path uses. Agents MUST NOT hand-assemble policy text from `governance/policies/` for these modes.
 - `/pan-debug` MUST delegate to the non-mutating investigator, which MUST identify root cause, define acceptance criteria, and recommend exactly one work mode.
 - `/pan-repair` MUST delegate to the non-mutating harness technician, which audits Pancreator failures or run artifacts, includes relevant agent transcripts for run forensics, and writes a validated self-development intake under `runtime/inbox/`.
 - `/pan-decompose` MUST apply `DECOMP-001` before workflow execution, default to retaining one larger systematic run, and write only its validated decomposition artifact under `runtime/inbox/`.
-- A lightweight spotfix MUST NOT run while a mutating workflow agent is executing against the same workspace.
+- A lightweight spotfix and an interactive pair session MUST NOT run while a mutating workflow agent is executing against the same workspace.
+
+## Workflows
+
+- `dev` delivers production-ready change: operator-ratified intake, plan, implement, independent review, QA, and operator-approved release preparation.
+- `prototype` answers a technical question fast. It applies `PROTO-001`, deliberately thins up-front design, deprioritizes QA breadth, and ends in an operator-ratified evaluation stating what the spike proved and what productionizing it would cost. A prototype MUST NOT be represented as production-ready, and adopting its approach MUST route the productionization work to a systematic run.
+- `design` is the UI/UX predecessor that hands off to a separately started `dev` run.
+
+## Operator involvement and run contracts
+
+- `config.json.operator_involvement` declares named profiles that map a stage slug, or `*`, to the gate that stage uses for a run. `./bin/pan init --involvement <profile>` selects one; omitting it uses the declared `active` profile. `./bin/pan involvement` lists them.
+- A run resolves its profile once at creation and snapshots the result into `workflow.snapshot.json` and `state.operator_involvement`. Later edits to `config.json` MUST NOT change a run already in flight.
+- Gates resolve by ascending specificity: the workflow's declared gate, then the profile's `*` gate, then run-contract escalations keyed by stage `checkpoint`, then the profile's explicit per-stage gate.
+- A stage declaring `gate_relaxable: false` MUST NOT be lowered by a profile. `dev/ship` sets it because `SHIP-001` requires a pause before commit, push, merge, publication, or deployment. The operator retains every in-the-moment override under `OPERATOR-001`.
+- The `technical_director` run contract applies `DIRECTOR-001` and escalates the `technical_plan` and `independent_review` checkpoints to operator gates. It is a contract any workflow run abides by when active, not a separate workflow, and attaches by checkpoint role rather than stage slug.
+- `./bin/pan decide <run-id> revise --note <directive>` records an operator refinement directive and re-runs the same stage. A revision is not a failed attempt: it raises that stage's attempt ceiling by one rather than consuming retry budget. Use `reject` only for work the operator has declared unacceptable.
+- `max_stage_attempts` bounds retries of the stage the run is currently on. Leaving a stage clears its counter, so a later return starts fresh; per-attempt history remains in `stage_history`.
 
 ## Safety and scope
 

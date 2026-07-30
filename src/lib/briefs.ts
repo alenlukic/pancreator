@@ -1148,6 +1148,36 @@ export interface BriefScaffoldOptions {
   source: string
 }
 
+export interface BriefVocabulary {
+  card_types: string[]
+  section_semantics: string[]
+}
+
+/**
+ * The card types and section semantics the renderer will accept, merged from the
+ * shared and project registries.
+ *
+ * The brief schema types both fields as open strings while the renderer enforces
+ * a closed registry, and workers are told not to run the renderer — so a
+ * schema-valid brief could still fail to render, with the failure only
+ * discoverable after submission. Putting the real vocabulary on the invocation
+ * card is what closes that gap.
+ */
+export function resolveBriefVocabulary(root: string): BriefVocabulary {
+  const registries = readRegistries(root)
+
+  return {
+    card_types: Object.keys({
+      ...registries.common.card_types,
+      ...registries.project.card_types,
+    }).sort(),
+    section_semantics: Object.keys({
+      ...registries.common.section_semantics,
+      ...registries.project.section_semantics,
+    }).sort(),
+  }
+}
+
 const PROFILE_SECTION_SEMANTICS: Record<string, string[]> = {
   intake: ['context', 'actions', 'risks'],
   plan: ['workflow', 'changes', 'validation'],
@@ -1156,6 +1186,10 @@ const PROFILE_SECTION_SEMANTICS: Record<string, string[]> = {
   qa: ['validation', 'risks', 'actions'],
   release: ['release', 'validation'],
   inspection: ['evidence', 'validation'],
+  'prototype-brief': ['context', 'actions', 'risks'],
+  'prototype-approach': ['workflow', 'changes', 'risks'],
+  spike: ['changes', 'risks', 'evidence'],
+  'prototype-evaluation': ['evidence', 'validation', 'actions'],
 }
 
 /**

@@ -43,6 +43,17 @@ This directory contains the Pancreator harness installed for the parent reposito
 - Two consecutive hard failures with the same normalized signature pause immediately. An implementation retry MUST directly remediate the recorded cause rather than repeat an unchanged submission.
 - Operator approvals and irreversible actions MUST remain operator-owned decisions; agents MAY execute them when explicitly authorized by the operator.
 
+## Work modes and operator involvement
+
+- `systematic` is the default and MUST execute a governed workflow: `dev` for production-ready delivery, `prototype` for a fast spike that answers a technical question, or `design` for UI/UX work preceding implementation.
+- A `prototype` run applies `PROTO-001`: thinner up-front design, deprioritized QA breadth, declared shortcuts, and an operator-ratified evaluation of what the spike proved. Its output MUST NOT be represented as production-ready, and productionizing an adopted approach MUST route to a systematic run.
+- `lightweight` MAY be selected only by an explicit `/pan-spotfix` invocation under `WORK-001` and `SPOT-001`.
+- `interactive` MAY be selected only by an explicit `/pan-pair` invocation under `PAIR-001`. The agent applies its persona's governance and is bound to no workflow, stage contract, gate, or run contract; the operator owns scope, sequencing, and completion. It MUST NOT create or advance a workflow run.
+- Every non-workflow mode MUST take its governance from `./.pancreator/bin/pan governance card --mode <mode>` rather than hand-assembled policy text.
+- `config.json.operator_involvement` declares named profiles mapping a stage slug, or `*`, to the gate that stage uses. `./.pancreator/bin/pan init --involvement <profile>` selects one for a run; `./.pancreator/bin/pan involvement` lists them. A run snapshots its resolved profile, so later configuration edits MUST NOT change a run in flight.
+- The `technical_director` contract applies `DIRECTOR-001` and escalates the `technical_plan` and `independent_review` checkpoints to operator gates. `./.pancreator/bin/pan decide <run-id> revise --note <directive>` records a refinement and re-runs the stage without consuming its failure retry budget.
+- A stage declaring `gate_relaxable: false` MUST NOT be lowered by an involvement profile.
+
 ## Change and safety boundaries
 
 - Source-allowed systematic stages MAY edit tracked target files directly within their declared scope.

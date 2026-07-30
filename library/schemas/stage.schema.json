@@ -51,7 +51,15 @@
     },
     "gate": {
       "enum": ["operator", "supervisor", "next_stage", "stage_verdict"],
-      "description": "What decides advancement after a successful output. operator: pause for explicit operator approval (intake, ship). supervisor: pause for independent supervisor judgment of the judgment criteria (plan). stage_verdict: the worker's own verdict drives the transition (review, test). next_stage: advance directly to the success transition (implement)."
+      "description": "What decides advancement after a successful output. operator: pause for explicit operator approval (intake, ship). supervisor: pause for independent supervisor judgment of the judgment criteria (plan). stage_verdict: the worker's own verdict drives the transition (review, test). next_stage: advance directly to the success transition (implement). An operator-involvement profile MAY replace this gate for a run unless gate_relaxable is false."
+    },
+    "gate_relaxable": {
+      "type": "boolean",
+      "description": "Whether an operator-involvement profile MAY lower this stage's gate. Defaults to true. Set false only where a policy requires the pause to survive configuration, as SHIP-001 does for dev/ship."
+    },
+    "checkpoint": {
+      "enum": ["technical_plan", "independent_review"],
+      "description": "Role this stage plays for run contracts that attach across workflows. The technical_director contract escalates gates by checkpoint rather than by stage slug, so it applies unchanged to dev/plan, prototype/approach, and design/review. At most one stage per workflow MAY declare a given checkpoint."
     },
     "context": {
       "type": "object",

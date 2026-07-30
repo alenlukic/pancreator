@@ -109,8 +109,15 @@ test('ship reject with --stage routes to the chosen stage and resets attempts', 
 
   const atGate = advanceToShipGate(root, runId)
 
-  assert.equal(atGate.attempts.implement, 1)
+  // A stage the run has already left holds no retry counter: max_stage_attempts
+  // bounds retries of the active stage, not lifetime visits. The per-attempt
+  // history remains in stage_history.
+  assert.equal(atGate.attempts.implement, undefined)
   assert.equal(atGate.attempts.ship, 1)
+  assert.equal(
+    atGate.stage_history.filter((item) => item.stage === 'implement').length,
+    1,
+  )
 
   const decided = decideRun(
     root,
@@ -122,7 +129,6 @@ test('ship reject with --stage routes to the chosen stage and resets attempts', 
 
   assert.equal(decided.status, 'running')
   assert.equal(decided.current_stage, 'plan')
-  assert.equal(decided.attempts.intake, 1)
   assert.equal(decided.attempts.plan, undefined)
   assert.equal(decided.attempts.implement, undefined)
   assert.equal(decided.attempts.ship, undefined)

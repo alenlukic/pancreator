@@ -469,13 +469,13 @@ test('unchanged pre-existing repository-check failures do not block implementati
   assert.equal(staticResult?.baseline_evidence_path, baseline?.artifact_path)
 })
 
-test('pre-implementation baselines capture only implementation-stage profiles', () => {
+test('pre-implementation baselines capture every profile the workflow gates on', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'dev')
   const state = createRun(root, {
     workflowSlug: 'dev',
     requestPath: 'request.md',
-    title: 'Stage-local baseline fixture',
+    title: 'Workflow-wide baseline fixture',
   })
   const runId = state.run_id
   const implementStage = stageBySlug(workflow, 'implement')
@@ -489,15 +489,62 @@ test('pre-implementation baselines capture only implementation-stage profiles', 
       configuration: { probes: [], commands: [`node -e "process.exit(0)"`] },
     },
   })
-  setRunStage(root, runId, 'implement', 'Capture implementation checks only.')
+  setRunStage(root, runId, 'implement', 'Capture workflow-wide checks.')
 
   submitStageOutput(root, runId, implementStage, 'success')
   const baselines = getRunState(root, runId).repository_check_baselines ?? {}
 
   assert.equal(baselines.static?.status, 'passed')
   assert.equal(baselines.fast?.status, 'passed')
-  assert.equal(baselines.full, undefined)
-  assert.equal(baselines.configuration, undefined)
+  // A terminal gate such as the QA stage's `full` profile needs a baseline too,
+  // or pre-existing target breakage unrelated to the change hard-fails the run.
+  assert.equal(baselines.full?.status, 'failed')
+  assert.equal(baselines.configuration?.status, 'passed')
+})
+
+test('a pre-existing full-profile failure does not block the QA gate', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Pre-broken full profile fixture',
+  })
+  const runId = state.run_id
+
+  writeJson(path.join(root, 'runtime/repository-checks.json'), {
+    schema_version: 1,
+    profiles: {
+      static: { probes: [], commands: [`node -e "process.exit(0)"`] },
+      fast: { probes: [], commands: [`node -e "process.exit(0)"`] },
+      full: { probes: [], commands: [`node -e "process.exit(1)"`] },
+      configuration: { probes: [], commands: [`node -e "process.exit(0)"`] },
+    },
+  })
+
+  setRunStage(root, runId, 'implement', 'Baseline the pre-broken full profile.')
+  submitStageOutput(root, runId, stageBySlug(workflow, 'implement'), 'success')
+
+  setRunStage(
+    root,
+    runId,
+    'test',
+    'Run QA against the pre-broken full profile.',
+  )
+  const submitted = submitStageOutput(
+    root,
+    runId,
+    stageBySlug(workflow, 'test'),
+    'success',
+  )
+  const fullSuite = submitted.record.evaluation.deterministic.find(
+    (item) => item.id === 'test.full_suite',
+  )
+
+  assert.ok(fullSuite)
+  assert.equal(fullSuite.preexisting_failure, true)
+  assert.equal(fullSuite.passed, true)
+  assert.equal(submitted.record.outcome, 'success')
 })
 
 test('new repository-check diagnostics still block implementation', () => {

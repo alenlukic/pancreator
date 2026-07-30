@@ -30,7 +30,10 @@
       "target": "invocation.output.path",
       "enforcement": "advisory",
       "failure_route": "retry",
-      "evidence_class": "validation-result"
+      "evidence_class": "validation-result",
+      "applicability": {
+        "invocation_kind": "workflow"
+      }
     },
     {
       "id": "assessment-scaffold",

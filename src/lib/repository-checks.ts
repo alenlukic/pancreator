@@ -71,6 +71,56 @@ export interface RepositoryCheckBaselineArtifact {
   workspace_fingerprint: string
   recorded_at: string
   result: RepositoryCheckResult
+  /** Set when `result` holds elided output and the untruncated run lives elsewhere. */
+  full_result_path?: string
+}
+
+/**
+ * Head and tail bytes preserved per captured stream when a result is summarized
+ * for agent-facing reading. A failing check's actionable content sits at both
+ * ends: the first diagnostics and the closing summary line.
+ */
+export const SUMMARY_STREAM_HEAD_BYTES = 24 * 1024
+export const SUMMARY_STREAM_TAIL_BYTES = 8 * 1024
+
+function elideStream(value: string): string {
+  const budget = SUMMARY_STREAM_HEAD_BYTES + SUMMARY_STREAM_TAIL_BYTES
+
+  if (value.length <= budget) {
+    return value
+  }
+
+  const elided = value.length - budget
+
+  return [
+    value.slice(0, SUMMARY_STREAM_HEAD_BYTES),
+    `\n…[${elided} bytes elided; see the full result artifact]…\n`,
+    value.slice(value.length - SUMMARY_STREAM_TAIL_BYTES),
+  ].join('')
+}
+
+/**
+ * Bound a result's captured output for artifacts an agent is required to read.
+ * A multi-megabyte transcript promoted to required reading crowds out the
+ * invocation contract it is supposed to support.
+ */
+export function summarizeRepositoryCheckResult(result: RepositoryCheckResult): {
+  summary: RepositoryCheckResult
+  elided: boolean
+} {
+  let elided = false
+  const results = result.results.map((entry) => {
+    const stdout = elideStream(entry.stdout)
+    const stderr = elideStream(entry.stderr)
+
+    if (stdout !== entry.stdout || stderr !== entry.stderr) {
+      elided = true
+    }
+
+    return { ...entry, stdout, stderr }
+  })
+
+  return { summary: { ...result, results }, elided }
 }
 
 export interface RepositoryCheckBaselineComparison {

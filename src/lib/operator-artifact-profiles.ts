@@ -11,6 +11,10 @@ export const OPERATOR_ARTIFACT_PROFILE_HEADINGS = {
   escalation: ['escalation', 'acceptance criteria'],
   design: ['approach', 'mocks', 'acceptance criteria'],
   handoff: ['design package', 'acceptance criteria', 'next steps'],
+  'prototype-brief': ['objective', 'technical questions', 'success signals'],
+  'prototype-approach': ['hypothesis', 'strategy', 'signals'],
+  spike: ['summary', 'shortcuts', 'signals'],
+  'prototype-evaluation': ['verdict', 'questions', 'productionization gap'],
 } as const
 
 export type OperatorArtifactProfile =
@@ -26,10 +30,36 @@ export type WorkflowOperatorArtifactProfile =
   | 'inspection'
   | 'design'
   | 'handoff'
+  | 'prototype-brief'
+  | 'prototype-approach'
+  | 'spike'
+  | 'prototype-evaluation'
+
+/**
+ * Prototype stages need their own brief shape: a spike record reports shortcuts
+ * and signals, not changes and acceptance. Their slugs would otherwise collide
+ * with `dev` (`intake`) or fall through to `implementation`, so they resolve by
+ * workflow first.
+ */
+const PROTOTYPE_PROFILES: Record<string, WorkflowOperatorArtifactProfile> = {
+  intake: 'prototype-brief',
+  approach: 'prototype-approach',
+  build: 'spike',
+  evaluate: 'prototype-evaluation',
+}
 
 export function operatorArtifactProfileForStage(
   stageSlug: string,
+  workflowSlug?: string,
 ): WorkflowOperatorArtifactProfile {
+  if (workflowSlug === 'prototype') {
+    const profile = PROTOTYPE_PROFILES[stageSlug]
+
+    if (profile) {
+      return profile
+    }
+  }
+
   switch (stageSlug) {
     case 'intake':
       return 'intake'

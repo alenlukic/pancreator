@@ -273,7 +273,11 @@ function prepareFixtureReleaseMetadata(root: string): {
 function artifactBrief(
   stageSlug: string,
   title: string,
+  requiredHeadings?: string[],
 ): Record<string, unknown> {
+  // Section titles come from the invocation's own brief contract when available.
+  // Keying them by stage slug alone breaks as soon as two workflows share a slug
+  // with different brief profiles, as `dev/intake` and `prototype/intake` do.
   const profileSections: Record<string, string[]> = {
     intake: ['Approach', 'User stories', 'Constraints'],
     plan: ['Approach', 'Architecture', 'Acceptance criteria'],
@@ -283,6 +287,8 @@ function artifactBrief(
     ship: ['Change list', 'Rollback'],
     inspect: ['Findings', 'Verdict'],
   }
+  const capitalize = (value: string): string =>
+    value.charAt(0).toUpperCase() + value.slice(1)
   const semanticForHeading = (heading: string): string => {
     const normalized = heading.toLowerCase()
 
@@ -321,19 +327,20 @@ function artifactBrief(
           },
         ],
       },
-      ...(profileSections[stageSlug] ?? ['Changes', 'Acceptance']).map(
-        (heading) => ({
-          semantic: semanticForHeading(heading),
-          title: heading,
-          cards: [
-            {
-              type: 'summary',
-              title: heading,
-              body: bodyForHeading(heading),
-            },
-          ],
-        }),
-      ),
+      ...(requiredHeadings && requiredHeadings.length > 0
+        ? requiredHeadings.map(capitalize)
+        : (profileSections[stageSlug] ?? ['Changes', 'Acceptance'])
+      ).map((heading) => ({
+        semantic: semanticForHeading(heading),
+        title: heading,
+        cards: [
+          {
+            type: 'summary',
+            title: heading,
+            body: bodyForHeading(heading),
+          },
+        ],
+      })),
     ],
   }
 }
@@ -343,7 +350,88 @@ function requiredData(
   root?: string,
   invocation?: Invocation,
   runState?: RunState,
+  workflowSlug?: string,
 ): Record<string, unknown> {
+  if (workflowSlug === 'prototype') {
+    switch (stage) {
+      case 'intake':
+        return {
+          prototype_brief: {
+            objective: 'Test whether one adapter covers both providers.',
+            technical_questions: [
+              {
+                id: 'TQ-01',
+                question: 'Does one adapter interface cover both providers?',
+              },
+            ],
+            success_signals: [
+              {
+                question_id: 'TQ-01',
+                signal: 'Both providers respond through the adapter.',
+              },
+            ],
+            acceptable_shortcuts: ['Hard-coded credentials'],
+            out_of_scope: ['Migration and hardening'],
+          },
+        }
+      case 'approach':
+        return {
+          technical_approach: {
+            hypothesis: 'One adapter interface is sufficient.',
+            strategy: 'Add a thin adapter and route both providers through it.',
+            touch_points: ['src/adapter.ts'],
+            planned_shortcuts: ['Skip retry handling'],
+            observable_signals: [
+              { question_id: 'TQ-01', signal: 'Both providers respond.' },
+            ],
+            discard_conditions: [
+              'Either provider needs caller-visible config.',
+            ],
+          },
+        }
+      case 'build':
+        return {
+          spike: {
+            changed_files: [],
+            shortcuts_taken: [
+              {
+                shortcut: 'Skipped retry handling',
+                reason: 'Not needed to answer the question.',
+              },
+            ],
+            signal_evidence: [
+              {
+                signal: 'Both providers respond.',
+                observed: 'Both returned a completion.',
+              },
+            ],
+            notes: ['fixture spike'],
+          },
+        }
+      case 'evaluate':
+        return {
+          evaluation: {
+            verdict: 'validated',
+            question_results: [
+              {
+                question_id: 'TQ-01',
+                result: 'answered',
+                evidence: ['fixture'],
+              },
+            ],
+            signal_assessment: [
+              { signal: 'Both providers respond.', measures_question: true },
+            ],
+            productionization_gap: ['Restore retry handling'],
+            recommendation: 'Productionize through a systematic dev run.',
+            discard_candidates: ['hard-coded credentials'],
+          },
+        }
+      default:
+        throw new Error(`Unknown prototype stage ${stage}`)
+    }
+  }
+
   switch (stage) {
     case 'intake':
       return {
@@ -576,7 +664,11 @@ export function makeOutput(
 
   writeJson(
     path.join(root, briefSource),
-    artifactBrief(invocation.stage.slug, invocation.stage.title),
+    artifactBrief(
+      invocation.stage.slug,
+      invocation.stage.title,
+      invocation.output.operator_brief.required_headings,
+    ),
   )
   renderBrief(root, briefSource, briefHtml)
 
@@ -602,6 +694,12 @@ export function makeOutput(
     })),
     risks: [],
     unknowns: [],
-    data: requiredData(invocation.stage.slug, root, invocation, runState),
+    data: requiredData(
+      invocation.stage.slug,
+      root,
+      invocation,
+      runState,
+      invocation.workflow.slug,
+    ),
   }
 }
