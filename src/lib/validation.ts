@@ -1679,7 +1679,11 @@ function lookupRowCovers(
       provider.technology === consumer.technology) &&
     // A contract-scoped row only resolves for runs carrying that contract, so it
     // cannot satisfy a dependency for a row that resolves without one.
-    (provider.contract === undefined || provider.contract === consumer.contract)
+    (provider.contract === undefined ||
+      provider.contract === consumer.contract) &&
+    // Same reasoning for a review-method-scoped row.
+    (provider.review_mode === undefined ||
+      provider.review_mode === consumer.review_mode)
   )
 }
 

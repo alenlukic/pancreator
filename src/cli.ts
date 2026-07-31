@@ -67,7 +67,7 @@ import {
 import { maintainWorkflowRuntime } from './lib/workflow-artifacts.js'
 
 const HELP_BODY = `Usage:
-  pan init --request <repo-relative-file> [--workflow dev|prototype|design] [--title <title>] [--workspace <dir>] [--gates <file>] [--involvement <profile>]
+  pan init --request <repo-relative-file> [--workflow dev|prototype|design] [--title <title>] [--workspace <dir>] [--gates <file>] [--involvement <profile>] [--review-mode default|squad]
   pan prepare <run-id>
   pan submit <run-id> <output-json>
   pan assess <run-id> <assessment-json>
@@ -371,6 +371,7 @@ async function main(): Promise<void> {
         workspace: option(args, '--workspace'),
         gatesPath: option(args, '--gates'),
         involvement: option(args, '--involvement'),
+        reviewMode: option(args, '--review-mode'),
       })
 
       print({
@@ -382,6 +383,7 @@ async function main(): Promise<void> {
         involvement_profile: state.operator_involvement?.profile,
         run_contracts: state.operator_involvement?.contracts ?? [],
         applied_gates: state.operator_involvement?.applied_gates ?? {},
+        review_mode: state.review_mode,
         next_command: `${pan} prepare ${state.run_id}`,
         state_path: `runtime/logs/workflows/${state.run_id}/state.json`,
       })

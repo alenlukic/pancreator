@@ -185,6 +185,20 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
           : ['Every stage uses its workflow-declared gate.', '']),
       ]
     : []
+  // Only the non-default method needs a card section. A default review is what
+  // the stage prompt and REVIEW-001 already describe.
+  const reviewModeLines =
+    invocation.review_mode === 'squad'
+      ? [
+          '## 🔭 Review method',
+          '',
+          'This run resolved review mode `squad`. Review gathers its findings ' +
+            'through one agent per review dimension, then joins them into one ' +
+            'ranked set. `REVIEW-002` and its unrolled guidance govern the ' +
+            'lineup, the charters, and the finding shape.',
+          '',
+        ]
+      : []
   const operatorBrief = invocation.output.operator_brief as
     | Invocation['output']['operator_brief']
     | undefined
@@ -294,6 +308,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
       ? ['## 🧪 Gate overrides', '', ...gateOverrideLines, '']
       : []),
     ...involvementLines,
+    ...reviewModeLines,
     '## 📤 Output contract',
     '',
     `Write JSON to \`${invocation.output.path}\` using ` +
@@ -421,6 +436,10 @@ export function renderStatus(
       `Involvement profile: ${profile}` +
         (contracts.length > 0 ? ` (contracts: ${contracts.join(', ')})` : ''),
     )
+  }
+
+  if (state.review_mode) {
+    lines.push(`Review mode: ${state.review_mode}`)
   }
 
   if ('path' in state.pending_action) {

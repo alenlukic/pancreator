@@ -53,6 +53,7 @@ This directory contains the Pancreator harness installed for the parent reposito
 - `config.json.operator_involvement` declares named profiles mapping a stage slug, or `*`, to the gate that stage uses. `./.pancreator/bin/pan init --involvement <profile>` selects one for a run; `./.pancreator/bin/pan involvement` lists them. A run snapshots its resolved profile, so later configuration edits MUST NOT change a run in flight.
 - The `technical_director` contract applies `DIRECTOR-001` and escalates the `technical_plan` and `independent_review` checkpoints to operator gates. `./.pancreator/bin/pan decide <run-id> revise --note <directive>` records a refinement and re-runs the stage without consuming its failure retry budget.
 - A stage declaring `gate_relaxable: false` MUST NOT be lowered by an involvement profile.
+- `config.json.review_mode` selects how independent review gathers findings: `default` for one reviewer over the whole change, or `squad` for one agent per review dimension under `REVIEW-002`. `./.pancreator/bin/pan init --review-mode <mode>` overrides it for one run. A run snapshots its resolved mode, so later configuration edits MUST NOT change a run in flight. `REVIEW-001` keeps the verdict, the remediation boundary, and routing under either mode.
 
 ## Change and safety boundaries
 

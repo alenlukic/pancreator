@@ -145,6 +145,10 @@
     "installation_mode": {
       "description": "self_development is the Pancreator source checkout. embedded installs the harness at <target>/.pancreator. detached installs it outside the target tree, requiring an absolute workspace_root.",
       "enum": ["self_development", "embedded", "detached"]
+    },
+    "review_mode": {
+      "description": "How independent review gathers findings. default is one reviewer over the whole change. squad delegates one agent per review dimension and joins the results under REVIEW-002. A run resolves this once at pan init, optionally overridden by --review-mode.",
+      "enum": ["default", "squad"]
     }
   }
 }

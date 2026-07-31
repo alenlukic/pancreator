@@ -6,7 +6,9 @@ non-structural issues without forcing an unnecessary implementation loop.
 
 ## Steps
 
-1. Read the card, plan, acceptance criteria, and implementation record.
+1. Read the card, plan, acceptance criteria, and implementation record. Apply the
+   review method the card's review-method section declares; a card without that
+   section reviews the change as one reviewer.
 2. Read `runtime/repository-checks.json` and use the same configured `static` and `fast` profiles used by implementation when reproducing deterministic behavior. Preserve the target's documented fast/default boundary; do not substitute `full` or guessed ecosystem commands.
 3. Inspect the actual diff and workspace; reproduce behavior where possible. Preserve configured probes so executable identity and version remain comparable across stages.
 4. Verify each acceptance criterion, test quality, maintainability, and scope control.

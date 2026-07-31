@@ -2,6 +2,7 @@ import type {
   PolicyRequirement,
   RequirementExecutor,
   RequirementPhase,
+  ReviewMode,
   RunContract,
 } from '../types.js'
 
@@ -35,6 +36,8 @@ export interface RequirementContext {
   invocation_kind?: InvocationKind
   /** Run contracts in force, so contract-scoped policy rows resolve identically here. */
   contracts?: RunContract[]
+  /** Review method in force, so review-scoped policy rows resolve identically here. */
+  review_mode?: ReviewMode
   invocation?: {
     output_path?: string
     artifact_paths?: string[]

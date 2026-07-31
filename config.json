@@ -97,5 +97,6 @@
       }
     }
   },
+  "review_mode": "default",
   "installation_mode": "self_development"
 }

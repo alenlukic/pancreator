@@ -194,6 +194,30 @@ run in flight.
 push, merge, publication, or deployment. You keep every in-the-moment override
 under `OPERATOR-001`.
 
+## Choose how review works
+
+`config.json.review_mode` selects how the independent review stage gathers its
+findings. Two values:
+
+- `default` — one reviewer reads the whole change.
+- `squad` — the reviewer delegates one agent per review dimension
+  (correctness, security, architecture, simplification, operations, plus
+  conditional dimensions such as frontend), then joins the returned findings into
+  one ranked set.
+
+Set the default in `config.json`, or pick one for a single run:
+
+```sh
+./bin/pan init --workflow dev --request runtime/inbox/<request>.md --review-mode squad
+```
+
+`squad` costs more model time and returns a wider, more sharply labelled finding
+set. Use it for a change whose blast radius is broad, and `default` for narrow
+work. Either way the reviewer keeps the verdict and repairs the same bounded
+defects, so switching modes never changes what review is allowed to do. `init`
+reports the resolved mode, and the run snapshots it so a later `config.json` edit
+cannot change a run in flight.
+
 ### Technical director mode
 
 `technical-director` is a run contract, not a separate workflow — any workflow

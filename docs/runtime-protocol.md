@@ -217,6 +217,12 @@ Gates resolve by ascending specificity: the workflow's declared gate, then the p
 
 A run contract is orthogonal to workflow choice and attaches by stage `checkpoint` role rather than stage slug. `technical_director` escalates `technical_plan` and `independent_review` checkpoints to operator gates and activates the `contract`-scoped policy lookup row that loads `DIRECTOR-001`, keeping run contracts inside the single policy applicability map rather than a second one that could drift. An operator gate reached under an active contract carries `pending_action.checkpoint` so the supervisor presents refinement options rather than a plain approve/reject.
 
+## Review mode
+
+A run resolves one review mode at `./bin/pan init [--review-mode <mode>]` from `config.json.review_mode`, and records it in `state.review_mode` and on every invocation card. `default` is one reviewer reading the whole change, which is what the review stage prompt and `REVIEW-001` describe on their own. `squad` activates a `review_mode`-scoped policy lookup row that loads `REVIEW-002`, whose `guidance_sources` unroll `library/skills/review-squad.md` into the reviewer's card. The run snapshots the resolution, so a later edit to `config.json` cannot change a run in flight.
+
+Review mode selects the method by which findings are gathered, not the authority over them. Under `squad` the reviewer stays the coordinator: it captures the diff once, writes an intent brief, delegates one agent per review dimension in parallel, and joins the returned findings into one ranked set. `REVIEW-001` continues to own the verdict, the reviewer remediation boundary, and routing to implementation, and a dimension agent never edits a file. The mode is a scalar rather than a profile map, because the only decision it carries is which review method a run adopts.
+
 ## Operator revisions
 
 `./bin/pan decide <run-id> revise --note <directive>` records an operator refinement of otherwise acceptable work. It writes an operator-feedback artifact, re-runs the same stage with that directive as required input, clears the stage's same-reason tracker, and transitions as operator-directed so run-wide limit counters are unaffected. Each revision increments `state.operator_revisions[<stage>]`, which raises that stage's attempt ceiling by one: a refinement round is not a failed attempt and must not consume budget reserved for failures. `reject` remains the path for work the operator declares unacceptable.

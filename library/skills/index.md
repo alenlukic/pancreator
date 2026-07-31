@@ -21,6 +21,10 @@ recurring job. Read the skill relevant to your current step.
 
 - [`map-acceptance-criteria.md`](map-acceptance-criteria.md) - planning.
 - [`modern-code-review.md`](modern-code-review.md) - independent review.
+- [`review-squad.md`](review-squad.md) - independent review by one agent per
+  review dimension, selected by `review_mode: squad`.
+- [`update-release-metadata.md`](update-release-metadata.md) - release metadata
+  and version-bearing documentation.
 - [`manual-qa-cases.md`](manual-qa-cases.md) - quality assurance.
 - [`release-packet.md`](release-packet.md) - release preparation.
 - [`write-pr-description.md`](write-pr-description.md) - draft a merge-ready PR
