@@ -116,6 +116,14 @@ export interface StageDefinition {
  */
 export type RunContract = 'technical_director'
 
+/**
+ * How the independent review stage gathers its findings. `default` is one
+ * reviewer reading the whole change. `squad` delegates one agent per review
+ * dimension and joins the returned findings. The mode selects the review method
+ * only; `REVIEW-001` owns the verdict and the remediation boundary either way.
+ */
+export type ReviewMode = 'default' | 'squad'
+
 /** One named operator-involvement profile from `config.json`. */
 export interface OperatorInvolvementProfile {
   summary: string
@@ -278,6 +286,11 @@ export interface PolicyLookupRow {
    * one that could drift from it, as CONTRACT-001 requires.
    */
   contract?: RunContract
+  /**
+   * Activates the row only for runs whose resolved review method matches. An
+   * absent value applies to every review method.
+   */
+  review_mode?: ReviewMode
   policies: string[]
 }
 
@@ -317,6 +330,8 @@ export interface ProjectConfig {
    * the target's absolute path.
    */
   installation_mode?: 'self_development' | 'embedded' | 'detached'
+  /** Review method new runs adopt. Absent means `default`. */
+  review_mode?: ReviewMode
 }
 
 export interface ResolvedRoots {
@@ -396,6 +411,7 @@ export interface Invocation {
   workspace_root: string
   gate_overrides?: Record<string, string | false>
   operator_involvement?: ResolvedOperatorInvolvement
+  review_mode?: ReviewMode
   workflow: {
     slug: string
     snapshot_path: string
@@ -675,6 +691,11 @@ export interface RunState {
   scope_hash?: string
   gate_overrides?: Record<string, string | false>
   operator_involvement?: ResolvedOperatorInvolvement
+  /**
+   * Review method this run resolved at creation. Snapshotted so a later
+   * `config.json` edit cannot change a run already in flight.
+   */
+  review_mode?: ReviewMode
   /**
    * Extra stage attempts granted by operator-directed revisions, per stage. A
    * refinement round at a director checkpoint is not a failed attempt, so it

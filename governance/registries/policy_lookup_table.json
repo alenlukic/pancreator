@@ -199,6 +199,13 @@
       "policies": ["REVIEW-001"]
     },
     {
+      "persona": "reviewer",
+      "workflow": "dev",
+      "stage": "review",
+      "review_mode": "squad",
+      "policies": ["REVIEW-002"]
+    },
+    {
       "persona": "*",
       "workflow": "prototype",
       "stage": "*",

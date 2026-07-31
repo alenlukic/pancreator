@@ -116,6 +116,13 @@ These rules bind the supervisor and the workers of an active run.
 - `./bin/pan decide <run-id> revise --note <directive>` records an operator refinement directive and re-runs the same stage. A revision is not a failed attempt: it raises that stage's attempt ceiling by one rather than consuming retry budget. Use `reject` only for work the operator has declared unacceptable.
 - `max_stage_attempts` bounds retries of the stage the run is currently on. Leaving a stage clears its counter, so a later return starts fresh; per-attempt history remains in `stage_history`.
 
+## Review mode
+
+- `config.json.review_mode` selects how the independent review stage gathers its findings. `default` is one reviewer over the whole change. `squad` applies `REVIEW-002` and delegates one agent per review dimension. `./bin/pan init --review-mode <mode>` overrides the configured value for one run.
+- A run resolves its review mode once at creation and snapshots it into `state.review_mode`. Later edits to `config.json` MUST NOT change a run already in flight.
+- `squad` activates the `review_mode`-scoped policy lookup row that loads `REVIEW-002`, which unrolls `library/skills/review-squad.md` into the reviewer's card. Reviewers MUST consume that guidance from the card rather than loading the skill separately.
+- Review mode selects the method only. `REVIEW-001` retains the verdict, the reviewer remediation boundary, and routing to implementation under every mode. A dimension agent MUST NOT edit any file.
+
 ## Safety and scope
 
 - Agents MUST NOT commit, push, merge, publish, deploy, rewrite history, delete branches, or destructively reset without explicit operator authorization recorded for that action.

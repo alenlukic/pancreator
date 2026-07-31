@@ -206,6 +206,44 @@ applicability map:
 }
 ```
 
+## Review mode
+
+`config.json.review_mode` selects how the independent review stage gathers its
+findings:
+
+```json
+{ "review_mode": "squad" }
+```
+
+- `default` - one reviewer reads the whole change. This is the behaviour the
+  review stage prompt and `REVIEW-001` describe on their own, so nothing extra
+  loads.
+- `squad` - the reviewer delegates one agent per review dimension, then joins
+  the returned findings into one ranked set.
+
+Select one with `./bin/pan init --review-mode <mode>`; omitting the flag uses the
+configured value, and an absent key means `default`. The run resolves the mode
+once at `init` and records it in `state.review_mode`, so later edits to
+`config.json` never change a run already in flight.
+
+`squad` reaches the worker through a `review_mode`-scoped policy lookup row, the
+same single applicability map that carries technologies and run contracts:
+
+```json
+{
+  "persona": "reviewer",
+  "workflow": "dev",
+  "stage": "review",
+  "review_mode": "squad",
+  "policies": ["REVIEW-002"]
+}
+```
+
+`REVIEW-002` declares `library/skills/review-squad.md` as a guidance source, so
+the dimension charters, the finding shape, and the calibration bar arrive inside
+the invocation card. A row with no `review_mode` applies under every mode, which
+is why `REVIEW-001` stays in force either way.
+
 ## Attempt accounting
 
 `max_stage_attempts` bounds retries of the stage a run is currently on, not how

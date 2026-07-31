@@ -30,12 +30,14 @@ import {
   operatorArtifactProfileForStage,
 } from './operator-artifact-profiles.js'
 import {
+  DEFAULT_REVIEW_MODE,
   configuredWorkspaceRoot,
   harnessPathPrefix,
   isDetachedInstallation,
   isSelfDevelopmentInstallation,
   isTargetInstallation,
   panCommand,
+  resolveReviewMode,
 } from './project-config.js'
 import { resolvePolicies } from './policies.js'
 import {
@@ -134,6 +136,7 @@ interface CreateRunOptions {
   workspace?: string | null
   gatesPath?: string | null
   involvement?: string | null
+  reviewMode?: string | null
 }
 
 interface StatusOptions {
@@ -874,6 +877,10 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     ),
   )
 
+  // Snapshotted for the same reason as the involvement profile: the review
+  // method a run started under governs it to the end.
+  const reviewMode = resolveReviewMode(root, options.reviewMode)
+
   writeJsonAtomic(resolveInside(root, workflowSnapshot), workflowSnapshotValue)
 
   const pipelineConfigSnapshot = `runtime/logs/workflows/${id}/pipeline-config.snapshot.json`
@@ -904,6 +911,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     scope_hash: roots.scope_hash,
     ...(gateOverrides ? { gate_overrides: gateOverrides } : {}),
     operator_involvement: involvement,
+    review_mode: reviewMode,
     title: options.title ?? path.basename(requestPath),
     status: 'running',
     current_stage: workflow.start_stage,
@@ -932,6 +940,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     involvement_profile: involvement.profile,
     run_contracts: involvement.contracts,
     applied_gates: involvement.applied_gates,
+    review_mode: reviewMode,
   })
 
   return state
@@ -1164,17 +1173,20 @@ export function prepareInvocation(
 
     const workspace = workspaceSnapshotForRun(root, state)
     const contracts = state.operator_involvement?.contracts ?? []
+    const reviewMode = state.review_mode ?? DEFAULT_REVIEW_MODE
     const policies = resolvePolicies(root, {
       persona: stage.persona,
       workflow: workflow.slug,
       stage: stage.slug,
       contracts,
+      review_mode: reviewMode,
     })
     const requirements = resolveRequirements(root, {
       persona: stage.persona,
       workflow: workflow.slug,
       stage: stage.slug,
       contracts,
+      review_mode: reviewMode,
       invocation: {
         output_path: outputPath,
         artifact_paths: [briefRenderedPath, briefSourcePath],
@@ -1258,6 +1270,7 @@ export function prepareInvocation(
       ...(state.operator_involvement
         ? { operator_involvement: state.operator_involvement }
         : {}),
+      review_mode: reviewMode,
       workflow: {
         slug: workflow.slug,
         snapshot_path: state.workflow_snapshot.path,

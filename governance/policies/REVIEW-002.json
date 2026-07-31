@@ -1,0 +1,21 @@
+{
+  "id": "REVIEW-002",
+  "title": "Review squad",
+  "severity": "hard",
+  "summary": "A squad review MUST gather findings through one parallel agent per review dimension, and the reviewer MUST join them into one ranked set before it applies REVIEW-001.",
+  "instructions": [
+    "The reviewer MUST capture the review target once and MUST give every dimension agent that same captured diff.",
+    "The reviewer MUST write an intent brief covering what the change does, why, and which follow-ups the plan defers, then MUST give it to every dimension agent.",
+    "The reviewer MUST state the resolved lineup, including which conditional dimensions activated and which the change skipped, and MUST NOT drop a stated dimension silently. A charter whose agent cannot start MUST run in the reviewer context instead.",
+    "A dimension agent MUST return findings only and MUST NOT edit any file. Bounded remediation stays with the reviewer under REVIEW-001.",
+    "The reviewer MUST merge duplicate findings, drop what the intent brief already answers, rank the remainder, and record each dropped finding with its reason.",
+    "A dimension that returns nothing MUST appear in the review artifact as empty rather than absent, and a finding that touches credentials, data loss, or an authorization bypass MUST rank first.",
+    "The unrolled `library/skills/review-squad.md` guidance MUST govern the lineup, the charters, the finding shape, and the calibration bar for this review."
+  ],
+  "guidance_sources": [
+    {
+      "path": "library/skills/review-squad.md",
+      "start_heading": "## Principle"
+    }
+  ]
+}
