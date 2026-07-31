@@ -23,6 +23,7 @@ import type {
 } from '../src/lib/types.js'
 
 const REPO_ROOT = process.cwd()
+const UNRELEASED_HEADING = '## [Unreleased]'
 const CURRENT_VERSION = readFileSync(
   path.join(REPO_ROOT, 'VERSION'),
   'utf8',
@@ -226,9 +227,30 @@ function prepareFixtureReleaseMetadata(root: string): {
       `## [${proposedVersion}] - 2026-06-30\n\n` +
       '### Changed\n\n' +
       '- Prepare fixture release metadata.\n'
-    const updatedChangelog = changelog.includes('## [Unreleased]')
-      ? changelog.replace('## [Unreleased]', releaseEntry.trimEnd())
-      : changelog.replace('# Changelog\n', `# Changelog\n\n${releaseEntry}`)
+    const unreleasedStart = changelog.indexOf(UNRELEASED_HEADING)
+    let updatedChangelog: string
+
+    if (unreleasedStart === -1) {
+      updatedChangelog = changelog.replace(
+        '# Changelog\n',
+        `# Changelog\n\n${releaseEntry}`,
+      )
+    } else {
+      // Consume the whole Unreleased section, the way a real release does.
+      // Replacing only its heading would leave its group headings behind, merge
+      // them into the fixture release, and trip the Changed/Added/Removed/Fixed
+      // ordering rule in validateChangelog.
+      const nextRelease = changelog.indexOf(
+        '\n## ',
+        unreleasedStart + UNRELEASED_HEADING.length,
+      )
+      const tail = nextRelease === -1 ? '' : changelog.slice(nextRelease + 1)
+
+      updatedChangelog =
+        changelog.slice(0, unreleasedStart) +
+        releaseEntry +
+        (tail === '' ? '' : `\n${tail}`)
+    }
 
     writeFileSync(changelogPath, updatedChangelog)
   }

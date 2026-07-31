@@ -20,6 +20,7 @@ import {
   validateOperatorArtifact,
   validateStageOutputStrict,
 } from '../validators/operator-artifact.js'
+import { validateSimplifiedEnglish } from '../validators/simplified-english.js'
 import {
   validateDecompositionArtifact,
   validateHarnessRepairIntake,
@@ -131,6 +132,7 @@ export const HANDLERS: Record<string, ValidatorHandler> = {
   'assessment-scaffold': () => passed(),
   'assessment-validate': validateAssessment,
   'operator-artifact-validate': operatorArtifactHandler,
+  'simplified-english-validate': validateSimplifiedEnglish,
   'intake-validate': validateIntakeOutput,
   'plan-trace-validate': validatePlanTrace,
   'implementation-claims-validate': validateImplementationClaims,

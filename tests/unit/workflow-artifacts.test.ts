@@ -443,3 +443,31 @@ test('workflow archive moves runs older than retention into archive directories'
     [],
   )
 })
+
+test('archival covers standalone-mode session directories', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'pan-session-archive-'))
+  const oldSessionId = '63379_Jun-22-0158_aaaaaaaa'
+  const freshSessionId = '63372_Jun-29-0158_bbbbbbbb'
+  const oldSession = path.join(root, 'runtime/logs/sessions', oldSessionId)
+  const freshSession = path.join(root, 'runtime/logs/sessions', freshSessionId)
+
+  write(path.join(oldSession, 'pair-card.md'), '# Pair programming\n')
+  write(path.join(freshSession, 'pair-card.md'), '# Pair programming\n')
+
+  const summary = archiveWorkflowDirectories(root, {
+    retentionDays: 7,
+    now: new Date('2026-07-01T22:00:00.000Z'),
+  })
+
+  // Standalone cards live outside the workflow tree but are just as disposable;
+  // without this they accumulate for the life of the installation.
+  assert.deepEqual(summary.session_ids, [oldSessionId])
+  assert.equal(summary.session_directories, 1)
+  assert.equal(existsSync(oldSession), false)
+  assert.equal(
+    existsSync(path.join(root, 'runtime/logs/sessions/archive', oldSessionId)),
+    true,
+  )
+  // A session inside the retention window is untouched.
+  assert.equal(existsSync(freshSession), true)
+})
