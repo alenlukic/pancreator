@@ -25,6 +25,16 @@ This standard does not apply to:
 
 An agent MUST NOT rewrite quoted text to satisfy this standard (STE 8.6). Preserve evidence verbatim and write the surrounding explanation in Simplified Technical English.
 
+## Durable instruction text
+
+This section applies to the durable instruction surfaces of this repository: this handbook, `AGENTS.md`, policies, criteria, skills, personas, and commands. The writing rules below do not apply to them. These rules do.
+
+- Instruction text MUST state the rule, the boundary, or the fact a reader needs.
+- Instruction text MUST NOT record the request that produced it, the alternative the author rejected, or the reasoning that produced the wording.
+- A reason MAY remain only when it prevents a wrong action that the rule alone invites.
+- An agent MUST NOT restate a rule that a nearby heading, list, or named section already carries.
+- An agent that revises instruction text MUST delete wording that no longer instructs. Do not add a correction beside it.
+
 ## Adoption boundary
 
 ASD-STE100 has two parts. Part 1 gives 53 writing rules. Part 2 gives a controlled dictionary of 875 approved words.
