@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+## [2.20.0] - 2026-08-03
+
+### Changed
+
+- Move dev intake from supervisor-owned execution to the `intake-writer` worker persona. The stage keeps its operator gate, runtime-only workspace policy, and INTAKE-001 policy route. Design and prototype intake remain supervisor-owned ([dev intake stage](library/workflows/dev/stages/intake.json), [orchestrator agent](library/cursor/agents/orchestrator.md)).
+- Replace the dev intake clarification-turn instruction with a revision-directive path for unresolved questions, because a delegated worker holds no operator dialogue channel ([dev intake prompt](library/workflows/dev/prompts/intake.md)).
+- Narrow pipeline-config drift detection to compare only personas the run snapshot resolves. An additive persona mapping that the run never uses no longer blocks later stages, while a changed or removed resolved mapping still fails with `PIPELINE_CONFIG_DRIFT` and a `details.personas` list ([engine](src/lib/engine.ts), [run-friction regressions](tests/regression/run-friction.test.ts)).
+
+### Added
+
+- Add the `intake-writer` persona and canonical Cursor agent for faithful dev intake writing and revision. The persona maps to the existing orchestrator model in `config.json`, resolves INTAKE-001 on dev intake, and projects through the generic cursor-agents manifest ([intake-writer persona](library/personas/intake-writer.md), [intake-writer agent](library/cursor/agents/intake-writer.md), [policy lookup table](governance/registries/policy_lookup_table.json)).
+- Add integration, unit, and regression coverage for intake delegation, operator revision, policy resolution, model projection, supervisor delivery contracts, and the narrowed drift guard ([dev workflow test](tests/integration/dev-workflow.test.ts), [policies test](tests/unit/policies.test.ts), [run-friction test](tests/regression/run-friction.test.ts)).
+
 ## [2.19.0] - 2026-08-03
 
 ### Changed

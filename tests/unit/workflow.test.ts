@@ -27,6 +27,24 @@ test('loader assembles ordered stage files from the workflow index', () => {
   assert.ok(workflow.stages.every((stage) => typeof stage.persona === 'string'))
 })
 
+test('dev intake is worker-owned while other intake stages stay supervisor-owned', () => {
+  const root = createFixture()
+  const devIntake = stageBySlug(loadWorkflow(root, 'dev'), 'intake')
+
+  assert.equal(devIntake.persona, 'intake-writer')
+  // Moving the owner must not relax the ratification gate or widen the worker's
+  // workspace beyond runtime records.
+  assert.equal(devIntake.gate, 'operator')
+  assert.equal(devIntake.workspace_policy, 'runtime_only')
+
+  for (const slug of ['design', 'prototype']) {
+    assert.equal(
+      stageBySlug(loadWorkflow(root, slug), 'intake').persona,
+      'orchestrator',
+    )
+  }
+})
+
 test('listWorkflowSlugs finds every defined workflow', () => {
   const root = createFixture()
   assert.deepEqual(listWorkflowSlugs(root), [

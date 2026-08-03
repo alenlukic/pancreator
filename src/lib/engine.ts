@@ -236,6 +236,11 @@ function loadRunPipelineConfig(root: string, state: RunState) {
   return makePipelineConfigSnapshot(loadPipelineConfig(root))
 }
 
+/**
+ * A run must keep resolving the models it snapshotted, but a mapping it never
+ * resolves is not drift. Adding a persona would otherwise strand every run in
+ * flight, including the self-development run that introduces that persona.
+ */
 function assertRunPipelineConfigCurrent(
   root: string,
   state: RunState,
@@ -246,16 +251,16 @@ function assertRunPipelineConfigCurrent(
   }
 
   const live = loadPipelineConfig(root)
-  const sameConfig =
-    live.name === snapshot.name &&
-    sha256(live.config.personas) === sha256(snapshot.personas)
+  const driftedPersonas = Object.entries(snapshot.personas)
+    .filter(([persona, model]) => live.config.personas[persona] !== model)
+    .map(([persona]) => persona)
 
   invariant(
-    sameConfig,
+    live.name === snapshot.name && driftedPersonas.length === 0,
     `Run '${state.run_id}' uses pipeline config '${snapshot.name}', but the ` +
       `live active mapping has changed. Restore that mapping and run ` +
       `${panCommand(root)} models --sync before resuming this run.`,
-    { code: 'PIPELINE_CONFIG_DRIFT' },
+    { code: 'PIPELINE_CONFIG_DRIFT', details: { personas: driftedPersonas } },
   )
 
   const agentModelDrift = syncCursorProjection(root).filter(

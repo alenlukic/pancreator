@@ -42,10 +42,11 @@ function cardText(root: string, markdownPath: string): string {
  * The supervisor delegates from the continuation loop, where it holds no card
  * of its own. These assertions pin the delivery contract to the artifact it
  * must already read, so compliance never depends on recalling `AGENTS.md`.
+ * Dev intake is the first delegated stage, so the run has no supervisor-owned
+ * stage to fall back on.
  */
 test('worker invocation cards unroll the supervisor delivery contract', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
   const invocationPolicy = loadPolicyCatalog(root).get('INVOCATION-001')
 
   assert.ok(invocationPolicy)
@@ -56,31 +57,20 @@ test('worker invocation cards unroll the supervisor delivery contract', () => {
     title: 'Delegation contract run',
   }).run_id
 
-  // Intake is supervisor-owned, so it carries no delivery contract.
-  const intake = prepareInvocation(root, runId)
-
-  assert.ok(intake.invocation)
-  assert.equal(intake.invocation.delegation, undefined)
-  assert.ok(
-    !cardText(
-      root,
-      intake.state.current_invocation?.markdown_path ?? '',
-    ).includes(DELEGATION_HEADING),
-  )
-
-  writeJson(
-    path.join(root, intake.invocation.output.path),
-    makeOutput(root, intake.invocation, stageBySlug(workflow, 'intake')),
-  )
-  submitOutput(root, runId, intake.invocation.output.path)
-  decideRun(root, runId, 'approve', 'Fixture approval')
-
+  // Intake is the first delegated worker stage, so the contract must already
+  // hold on the very first card the supervisor delivers.
   const prepared = prepareInvocation(root, runId)
   const invocation = prepared.invocation
   const delegation = invocation?.delegation
 
   assert.ok(invocation)
+  assert.equal(invocation.stage.slug, 'intake')
+  assert.equal(invocation.stage.persona, 'intake-writer')
   assert.ok(delegation)
+  assert.equal(
+    delegation.cursor_agent_path,
+    '.cursor/agents/pan-intake-writer.md',
+  )
 
   const markdown = cardText(
     root,
@@ -151,6 +141,7 @@ test('referenced delivery stays bounded and flat as the contract grows', () => {
     path.join(root, intake.invocation.output.path),
     makeOutput(root, intake.invocation, stageBySlug(workflow, 'intake')),
   )
+  writeCanonicalDelegation(root, intake.invocation)
   submitOutput(root, runId, intake.invocation.output.path)
   decideRun(root, runId, 'approve', 'Fixture approval')
 
@@ -218,6 +209,7 @@ test('a delegation artifact that drops the delivery section fails validation', (
     path.join(root, intake.invocation.output.path),
     makeOutput(root, intake.invocation, stageBySlug(workflow, 'intake')),
   )
+  writeCanonicalDelegation(root, intake.invocation)
   submitOutput(root, runId, intake.invocation.output.path)
   decideRun(root, runId, 'approve', 'Fixture approval')
 
