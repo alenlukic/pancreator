@@ -72,7 +72,12 @@ import {
   summarizeRepositoryCheckResult,
 } from './repository-checks.js'
 import { cursorAgentTarget, syncCursorProjection } from './projection.js'
-import { renderInvocationMarkdown, renderStatus } from './render.js'
+import {
+  buildInvocationContractManifest,
+  renderInvocationDeliveryPrompt,
+  renderInvocationMarkdown,
+  renderStatus,
+} from './render.js'
 import {
   operationMutexPath,
   loadState,
@@ -105,14 +110,19 @@ import type {
   WorkflowDefinition,
 } from './types.js'
 import {
+  attestationValidationPath,
   buildValidationArtifact,
   delegationPath,
   delegationValidationPath,
+  deliveryPromptPath,
   evaluateDeterministicCriteria,
   invocationValidationPath,
   loadInvocationValidationStatus,
+  loadRepositoryCheckBaseline,
   relocateMisplacedDelegationArtifact,
+  repositoryCheckBaselinesCaptured,
   validateDelegationMarkdown,
+  validateInvocationAttestation,
   validateInvocationMarkdown,
   validateStageOutput,
 } from './validation.js'
@@ -424,14 +434,16 @@ function ensureWorkflowRepositoryCheckBaselines(
     return
   }
 
+  if (repositoryCheckBaselinesCaptured(state)) {
+    return
+  }
+
   const profiles = collectStageRepositoryCheckProfiles(workflow.stages)
-  const baselines = (state.repository_check_baselines ??= {})
+  const baselines: NonNullable<RunState['repository_check_baselines']> = {}
+
+  state.repository_check_baselines = baselines
 
   for (const profile of profiles) {
-    if (baselines[profile.name]) {
-      continue
-    }
-
     onProgress?.(
       `capturing pre-implementation '${profile.name}' baseline (timeout ${profile.timeout_ms ?? 'default'}ms)`,
     )
@@ -481,6 +493,75 @@ function ensureWorkflowRepositoryCheckBaselines(
       recorded_at: recordedAt,
     }
   }
+}
+
+/**
+ * Report every repository-check gate of one stage whose expected baseline cannot
+ * support it.
+ *
+ * A gate that reruns `pan repository-check` is judged against the baseline the
+ * run captured, so an absent or incompatible baseline must be repaired before the
+ * worker starts. Finding it at submit would spend a whole stage attempt on a
+ * harness fault the worker cannot influence.
+ */
+function repositoryCheckBaselineGaps(
+  root: string,
+  state: RunState,
+  stage: StageDefinition,
+): string[] {
+  if (!repositoryCheckBaselinesCaptured(state)) {
+    return []
+  }
+
+  const gaps: string[] = []
+
+  for (const criterion of stage.criteria) {
+    if (criterion.type !== 'shell') {
+      continue
+    }
+
+    const profileName = repositoryCheckProfileName(criterion.command ?? '')
+
+    if (!profileName) {
+      continue
+    }
+
+    const load = loadRepositoryCheckBaseline(root, state, profileName)
+
+    if (load.reason) {
+      gaps.push(`Gate '${criterion.id}': ${load.reason}`)
+    }
+  }
+
+  return gaps
+}
+
+function pauseForRepositoryCheckBaselineGaps(
+  root: string,
+  state: RunState,
+  stage: StageDefinition,
+  gaps: string[],
+): void {
+  const reason =
+    `Stage '${stage.slug}' cannot be delegated because a repository-check ` +
+    `baseline does not support its gate. ${gaps.join(' ')}`
+
+  state.status = 'paused'
+  state.pause_reason = reason
+  state.pending_action = { type: 'operator_decision' }
+
+  writeDecision(
+    root,
+    state,
+    'Workflow paused by a repository-check baseline gap',
+    reason,
+    [
+      'Inspect the named baseline evidence under ' +
+        `runtime/logs/workflows/${state.run_id}/evidence/.`,
+      `Recapture the baselines by resuming this run from the first source stage: ${panCommand(root)} resume ${state.run_id} --stage <stage>`,
+      `Or abort with: ${panCommand(root)} abort ${state.run_id}`,
+    ],
+  )
 }
 
 function pauseForLimit(root: string, state: RunState, reason: string): void {
@@ -947,6 +1028,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
 const INLINE_SUBMIT_VALIDATORS = new Set([
   'INVOCATION-VALIDATE-001',
   'DELEGATION-VALIDATE-001',
+  'INVOCATION-ATTEST-VALIDATE-001',
   'STAGE-OUTPUT-VALIDATE-002',
 ])
 
@@ -1157,6 +1239,15 @@ export function prepareInvocation(
       options.onProgress,
     )
 
+    const baselineGaps = repositoryCheckBaselineGaps(root, state, stage)
+
+    if (baselineGaps.length > 0) {
+      pauseForRepositoryCheckBaselineGaps(root, state, stage, baselineGaps)
+      persistRun(root, state, 'run_paused', { reason: state.pause_reason })
+
+      return { state, invocation: null }
+    }
+
     const invocationId = makeStageArtifactId(
       nextStageSequence(root, runId),
       stage.slug,
@@ -1213,6 +1304,8 @@ export function prepareInvocation(
             ),
             delegation_artifact_path: delegationArtifactPath,
             submit_command: `${panCommand(root)} submit ${runId} ${outputPath}`,
+            mode: 'referenced' as const,
+            delivery_prompt_path: deliveryPromptPath(runId, invocationId),
             policies: resolvePolicies(root, {
               persona: 'orchestrator',
               workflow: workflow.slug,
@@ -1355,6 +1448,24 @@ export function prepareInvocation(
     })
 
     const renderedMarkdown = renderInvocationMarkdown(invocation)
+
+    // The manifest describes the rendered bytes, so it can only be attached
+    // after rendering. The card therefore never contains its own digest, and the
+    // compact delivery prompt is where the digest and section index live.
+    if (delegation) {
+      invocation.contract_manifest = buildInvocationContractManifest(
+        markdownPath,
+        renderedMarkdown,
+      )
+      writeTextAtomic(
+        resolveInside(root, delegation.delivery_prompt_path),
+        renderInvocationDeliveryPrompt(
+          invocation,
+          invocation.contract_manifest,
+        ),
+      )
+    }
+
     const invocationValidation = validateInvocationMarkdown(
       invocation,
       renderedMarkdown,
@@ -1531,6 +1642,7 @@ export function submitOutput(
     const invocation = readInvocation(root, state.current_invocation.json_path)
 
     const governanceArtifactWarnings: string[] = []
+    const attestationErrors: string[] = []
 
     if (stage.persona !== 'orchestrator') {
       relocateMisplacedDelegationArtifact(root, runId, invocation.invocation_id)
@@ -1546,14 +1658,32 @@ export function submitOutput(
           `Delegation artifact is missing: ${delegationArtifactPath}`,
         )
       } else {
-        const canonicalMarkdown = readText(
-          resolveInside(root, state.current_invocation.markdown_path),
-        )
+        // Referenced delivery compares evidence with the compact prompt the
+        // supervisor was given. An invocation prepared before referenced mode
+        // existed carries no delivery prompt, so it keeps full-card equality.
+        const mode = invocation.delegation?.mode ?? 'verbatim'
+        const deliveredSourcePath =
+          mode === 'referenced' && invocation.delegation?.delivery_prompt_path
+            ? invocation.delegation.delivery_prompt_path
+            : state.current_invocation.markdown_path
+        const deliveredAbsolute = resolveInside(root, deliveredSourcePath)
         const delegationMarkdown = readText(delegationAbsolute)
-        const delegationValidation = validateDelegationMarkdown(
-          canonicalMarkdown,
-          delegationMarkdown,
-        )
+        const delegationValidation = fileExists(deliveredAbsolute)
+          ? validateDelegationMarkdown(
+              readText(deliveredAbsolute),
+              delegationMarkdown,
+              mode,
+            )
+          : {
+              passed: false,
+              checks: [
+                {
+                  id: 'delegation.delivered_body_present',
+                  passed: false,
+                  message: `Delivered body is missing: ${deliveredSourcePath}`,
+                },
+              ],
+            }
         const delegationValidationArtifactPath = delegationValidationPath(
           runId,
           invocation.invocation_id,
@@ -1577,6 +1707,36 @@ export function submitOutput(
             `Delegation validation failed: ${delegationValidationArtifact.summary}`,
           )
         }
+      }
+
+      // Referenced delivery gives the harness no way to observe the read itself,
+      // so the declared attestation is the observable and it is checked exactly.
+      const attestation = validateInvocationAttestation(
+        invocation,
+        submittedValue,
+      )
+      const attestationArtifactPath = attestationValidationPath(
+        runId,
+        invocation.invocation_id,
+      )
+      const attestationArtifact = buildValidationArtifact({
+        run_id: runId,
+        invocation_id: invocation.invocation_id,
+        kind: 'attestation',
+        status: attestation.passed ? 'pass' : 'fail',
+        checks: attestation.checks,
+        artifact_path: state.current_invocation.output_path,
+      })
+
+      writeJsonAtomic(
+        resolveInside(root, attestationArtifactPath),
+        attestationArtifact,
+      )
+
+      if (!attestation.passed) {
+        attestationErrors.push(
+          `Invocation read attestation failed: ${attestationArtifact.summary}`,
+        )
       }
     }
 
@@ -1629,6 +1789,7 @@ export function submitOutput(
       state as unknown as Record<string, unknown>,
     )
     governanceArtifactWarnings.push(
+      ...attestationErrors,
       ...briefErrors.map((message) => `Operator brief: ${message}`),
       ...validation.errors.map((message) => `Stage output: ${message}`),
       ...(briefRenderFailed && briefRenderedPath
@@ -1647,8 +1808,12 @@ export function submitOutput(
       governanceArtifactWarnings,
     )
 
+    // A missing or mismatched attestation blocks every stage, because it means
+    // the harness cannot show that the worker held the contract it acted on.
     const blockingValidationErrors =
-      stage.slug === 'ship' ? governanceArtifactWarnings : []
+      stage.slug === 'ship'
+        ? governanceArtifactWarnings
+        : [...attestationErrors]
     const explicitlyDeclaredProductFailure =
       isRecord(submittedValue) &&
       (submittedValue.result === 'failure' ||
@@ -1724,23 +1889,6 @@ export function submitOutput(
       }
       state.status = 'awaiting_supervisor'
       nextState = 'awaiting supervisor evaluation'
-    } else if (outcome === 'success' && stage.gate === 'operator') {
-      const directorCheckpoint =
-        stage.checkpoint &&
-        runHasContract(state.operator_involvement, 'technical_director')
-          ? stage.checkpoint
-          : undefined
-
-      state.pending_action = {
-        type: 'operator_approval',
-        stage: stage.slug,
-        proposed_transition: stage.transitions.success,
-        ...(directorCheckpoint ? { checkpoint: directorCheckpoint } : {}),
-      }
-      state.status = 'awaiting_operator'
-      nextState = directorCheckpoint
-        ? `awaiting operator decision at the ${directorCheckpoint} checkpoint`
-        : 'awaiting operator approval'
     } else {
       if (outcome === 'success' && isSameReasonTrackedStage(state, stage)) {
         clearSameReasonTracker(state, stage.slug)
@@ -1766,6 +1914,27 @@ export function submitOutput(
       if (sameReasonPauseTriggered) {
         pauseForSameReasonFailure(root, state, stage)
         nextState = 'paused'
+      } else if (stage.gate === 'operator') {
+        // An operator gate owns the transition, not only the happy path. A failed
+        // review that routes straight back to implementation would spend the
+        // operator's decision without ever asking for it.
+        const directorCheckpoint =
+          stage.checkpoint &&
+          runHasContract(state.operator_involvement, 'technical_director')
+            ? stage.checkpoint
+            : undefined
+
+        state.pending_action = {
+          type: 'operator_approval',
+          stage: stage.slug,
+          outcome,
+          proposed_transition: stage.transitions[outcome],
+          ...(directorCheckpoint ? { checkpoint: directorCheckpoint } : {}),
+        }
+        state.status = 'awaiting_operator'
+        nextState = directorCheckpoint
+          ? `awaiting operator decision at the ${directorCheckpoint} checkpoint`
+          : 'awaiting operator approval'
       } else {
         applyTransition(root, state, stage, outcome)
         nextState =
@@ -1991,6 +2160,12 @@ export function decideRun(
 
     const workflow = loadRunWorkflow(root, state)
     const stage = stageBySlug(workflow, state.current_stage)
+    // A pending action recorded before outcome-aware gates carries no outcome,
+    // and only a successful stage could stop then, so success is the safe default.
+    const approvedOutcome =
+      state.pending_action.type === 'operator_approval'
+        ? (state.pending_action.outcome ?? 'success')
+        : 'success'
 
     invariant(
       decision !== 'revise' || note.trim().length > 0,
@@ -2001,7 +2176,7 @@ export function decideRun(
     state.status = 'running'
 
     if (decision === 'approve') {
-      applyTransition(root, state, stage, 'success')
+      applyTransition(root, state, stage, approvedOutcome)
     } else if (decision === 'revise') {
       // Re-run the same stage with the operator's directive as required input.
       // The stage did not fail, so this must not consume its retry budget.

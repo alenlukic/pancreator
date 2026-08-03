@@ -60,6 +60,7 @@ import type {
   CriterionEvaluation,
   DeterministicResult,
   Invocation,
+  InvocationDeliveryMode,
   JsonTypeName,
   OperatorInvolvementFile,
   OperatorInvolvementProfile,
@@ -109,7 +110,7 @@ export interface ValidationResultArtifact {
   schema_version: 1
   run_id: string
   invocation_id: string
-  kind: 'invocation' | 'delegation'
+  kind: 'invocation' | 'delegation' | 'attestation'
   status: 'pass' | 'fail'
   summary: string
   checks: ValidationCheck[]
@@ -148,6 +149,17 @@ export function delegationPath(runId: string, invocationId: string): string {
   return (
     `runtime/logs/workflows/${runId}/invocations/` +
     `${invocationId}.delegation.md`
+  )
+}
+
+/** Sibling path holding the exact prompt body a referenced delivery uses. */
+export function deliveryPromptPath(
+  runId: string,
+  invocationId: string,
+): string {
+  return (
+    `runtime/logs/workflows/${runId}/invocations/` +
+    `${invocationId}.delivery.md`
   )
 }
 
@@ -192,10 +204,20 @@ export function delegationValidationPath(
   )
 }
 
+export function attestationValidationPath(
+  runId: string,
+  invocationId: string,
+): string {
+  return (
+    `runtime/logs/workflows/${runId}/invocations/` +
+    `${invocationId}.attestation-validation.json`
+  )
+}
+
 export function buildValidationArtifact(options: {
   run_id: string
   invocation_id: string
-  kind: 'invocation' | 'delegation'
+  kind: 'invocation' | 'delegation' | 'attestation'
   status: 'pass' | 'fail'
   checks: ValidationCheck[]
   artifact_path: string
@@ -361,6 +383,9 @@ export function validateInvocationMarkdown(
       ['artifact_path', delegation.delegation_artifact_path],
       ['agent_path', delegation.cursor_agent_path],
       ['submit_command', delegation.submit_command],
+      ...(delegation.delivery_prompt_path
+        ? ([['delivery_prompt_path', delegation.delivery_prompt_path]] as const)
+        : []),
     ] as const) {
       checks.push({
         id: `delegation.${id}`,
@@ -469,24 +494,38 @@ function stripPermittedDelegationLabel(delegation: string): {
   return { body: lines.slice(2).join('\n'), label: first.trim() }
 }
 
+/**
+ * Compare delegation evidence with the body the supervisor was required to
+ * deliver.
+ *
+ * Under `verbatim` mode that body is the canonical card. Under `referenced` mode
+ * it is the compact delivery prompt, which names the card as the worker
+ * contract. Either way the comparison is exact after line-ending normalization,
+ * so the supervisor cannot narrow, summarize, or shadow what it delivered.
+ */
 export function validateDelegationMarkdown(
-  canonicalMarkdown: string,
+  expectedMarkdown: string,
   delegationMarkdown: string,
+  mode: InvocationDeliveryMode = 'verbatim',
 ): { passed: boolean; checks: ValidationCheck[] } {
-  const canonical = normalizeMarkdownContent(canonicalMarkdown)
+  const expected = normalizeMarkdownContent(expectedMarkdown)
   const delegation = normalizeMarkdownContent(delegationMarkdown)
-  const canonicalNormalized = canonical.endsWith('\n')
-    ? canonical
-    : `${canonical}\n`
+  const expectedNormalized = expected.endsWith('\n')
+    ? expected
+    : `${expected}\n`
   const delegationNormalized = delegation.endsWith('\n')
     ? delegation
     : `${delegation}\n`
 
-  const exact = canonicalNormalized === delegationNormalized
+  const exact = expectedNormalized === delegationNormalized
   const { body, label } = exact
     ? { body: delegationNormalized, label: null }
     : stripPermittedDelegationLabel(delegationNormalized)
-  const passed = exact || body === canonicalNormalized
+  const passed = exact || body === expectedNormalized
+  const subject =
+    mode === 'referenced'
+      ? 'the compact delivery prompt'
+      : 'the canonical invocation card'
 
   const checks: ValidationCheck[] = [
     {
@@ -494,9 +533,14 @@ export function validateDelegationMarkdown(
       passed,
       message: passed
         ? label
-          ? `Delegation artifact matches the canonical invocation card after the permitted persona label '${label}'`
-          : 'Delegation artifact matches canonical invocation markdown'
-        : 'Delegation artifact MUST equal the canonical invocation card after line-ending normalization, except for one permitted leading persona label',
+          ? `Delegation artifact matches ${subject} after the permitted persona label '${label}'`
+          : `Delegation artifact matches ${subject}`
+        : `Delegation artifact MUST equal ${subject} after line-ending normalization, except for one permitted leading persona label`,
+    },
+    {
+      id: 'delegation.mode',
+      passed: true,
+      message: `Delivery mode is '${mode}'`,
     },
   ]
 
@@ -504,11 +548,184 @@ export function validateDelegationMarkdown(
     checks.push({
       id: 'delegation.label_minimal',
       passed: true,
-      message: `Leading persona label '${label}' precedes the verbatim card body`,
+      message: `Leading persona label '${label}' precedes the delivered body`,
     })
   }
 
   return { passed, checks }
+}
+
+function attestationSections(value: unknown): Array<{
+  id: unknown
+  sha256: unknown
+}> {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value.map((item) =>
+    isRecord(item)
+      ? { id: item.id, sha256: item.sha256 }
+      : { id: undefined, sha256: undefined },
+  )
+}
+
+/**
+ * Check a worker's read attestation against the invocation contract manifest.
+ *
+ * The attestation is the only observable the harness has for a referenced
+ * delivery, so it is checked for exact section order, cardinality, ids, and
+ * digests. A `reference_failed` report is accepted only next to a `blocked`
+ * stage result carrying the concrete read error, which keeps an unreadable
+ * contract loud instead of letting it pass as a product verdict.
+ */
+export function validateInvocationAttestation(
+  invocation: Invocation,
+  output: unknown,
+): {
+  passed: boolean
+  status: 'read' | 'reference_failed' | 'missing' | 'malformed'
+  checks: ValidationCheck[]
+} {
+  const manifest = invocation.contract_manifest
+  const record = isRecord(output) ? output : {}
+  const attestation = isRecord(record.invocation_attestation)
+    ? record.invocation_attestation
+    : null
+
+  if (!manifest) {
+    return {
+      passed: true,
+      status: 'missing',
+      checks: [
+        {
+          id: 'attestation.not_required',
+          passed: true,
+          message:
+            'Invocation carries no contract manifest, so no read attestation is required',
+        },
+      ],
+    }
+  }
+
+  if (!attestation) {
+    return {
+      passed: false,
+      status: 'missing',
+      checks: [
+        {
+          id: 'attestation.present',
+          passed: false,
+          message:
+            'Output MUST declare invocation_attestation for a referenced invocation contract',
+        },
+      ],
+    }
+  }
+
+  const status =
+    attestation.status === 'read' || attestation.status === 'reference_failed'
+      ? attestation.status
+      : null
+  const checks: ValidationCheck[] = [
+    {
+      id: 'attestation.status',
+      passed: status !== null,
+      message:
+        status !== null
+          ? `Attestation status is '${status}'`
+          : `Attestation status MUST be read or reference_failed (got ${JSON.stringify(attestation.status)})`,
+    },
+    {
+      id: 'attestation.invocation_id',
+      passed: attestation.invocation_id === invocation.invocation_id,
+      message:
+        attestation.invocation_id === invocation.invocation_id
+          ? 'Attestation names the active invocation'
+          : `Attestation invocation_id MUST equal '${invocation.invocation_id}'`,
+    },
+    {
+      id: 'attestation.contract_path',
+      passed: attestation.contract_path === manifest.contract_path,
+      message:
+        attestation.contract_path === manifest.contract_path
+          ? 'Attestation names the canonical contract path'
+          : `Attestation contract_path MUST equal '${manifest.contract_path}'`,
+    },
+  ]
+
+  if (status === null) {
+    return { passed: false, status: 'malformed', checks }
+  }
+
+  if (status === 'reference_failed') {
+    const error =
+      typeof attestation.error === 'string' ? attestation.error.trim() : ''
+
+    checks.push(
+      {
+        id: 'attestation.reference_failure_reason',
+        passed: error.length > 0,
+        message:
+          error.length > 0
+            ? `Reported reference failure: ${error}`
+            : 'A reference_failed attestation MUST carry the concrete read error in error',
+      },
+      {
+        id: 'attestation.reference_failure_blocks',
+        passed: record.result === 'blocked',
+        message:
+          record.result === 'blocked'
+            ? 'Reference failure is reported as a blocked stage result'
+            : 'A reference_failed attestation MUST accompany result blocked',
+      },
+    )
+
+    return {
+      passed: checks.every((check) => check.passed),
+      status,
+      checks,
+    }
+  }
+
+  checks.push({
+    id: 'attestation.contract_digest',
+    passed: attestation.contract_sha256 === manifest.contract_sha256,
+    message:
+      attestation.contract_sha256 === manifest.contract_sha256
+        ? 'Attestation matches the contract digest'
+        : `Attestation contract_sha256 MUST equal '${manifest.contract_sha256}'`,
+  })
+
+  const declared = attestationSections(attestation.sections)
+
+  checks.push({
+    id: 'attestation.section_count',
+    passed: declared.length === manifest.sections.length,
+    message:
+      declared.length === manifest.sections.length
+        ? `Attestation covers all ${manifest.sections.length} contract sections`
+        : `Attestation MUST declare all ${manifest.sections.length} contract sections (got ${declared.length})`,
+  })
+
+  for (const [index, section] of manifest.sections.entries()) {
+    const claim = declared[index]
+    const matches = claim?.id === section.id && claim.sha256 === section.sha256
+
+    checks.push({
+      id: `attestation.section.${section.id}`,
+      passed: matches,
+      message: matches
+        ? `Section ${section.id} is attested in order with a matching digest`
+        : `Attestation position ${index + 1} MUST be section '${section.id}' with digest '${section.sha256}'`,
+    })
+  }
+
+  return {
+    passed: checks.every((check) => check.passed),
+    status: 'read',
+    checks,
+  }
 }
 
 export function loadValidationArtifact(
@@ -952,6 +1169,138 @@ function resolveShellCheck(
   }
 }
 
+export interface RepositoryCheckBaselineLoad {
+  result?: RepositoryCheckResult
+  artifact_path?: string
+  /** Why the baseline cannot support a gate. Absent when none is expected. */
+  reason?: string
+}
+
+/**
+ * Whether this run completed repository-check baseline capture.
+ *
+ * The map is absent before the first source-allowed stage. An empty map is still
+ * a completed capture for a workflow with no configured profiles, and it must
+ * not let a later stage silently recapture post-implementation state.
+ */
+export function repositoryCheckBaselinesCaptured(state: RunState): boolean {
+  return state.repository_check_baselines !== undefined
+}
+
+function isRepositoryCheckBaselineArtifact(
+  value: unknown,
+  profileName: string,
+): value is RepositoryCheckBaselineArtifact {
+  if (
+    !isRecord(value) ||
+    value.schema_version !== 1 ||
+    value.profile !== profileName ||
+    !isRecord(value.result)
+  ) {
+    return false
+  }
+
+  return (
+    value.result.profile === profileName && Array.isArray(value.result.results)
+  )
+}
+
+/**
+ * Load the pre-implementation baseline a repository-check gate compares against.
+ *
+ * Once a run captures baselines, a gated profile without a readable, matching
+ * baseline is a harness defect rather than a licence to judge the gate on its
+ * exit code alone, so the missing artifact is reported and the gate fails closed.
+ */
+export function loadRepositoryCheckBaseline(
+  root: string,
+  state: RunState,
+  profileName: string,
+): RepositoryCheckBaselineLoad {
+  if (!repositoryCheckBaselinesCaptured(state)) {
+    return {}
+  }
+
+  const pointer = state.repository_check_baselines?.[profileName]
+
+  if (!pointer) {
+    return {
+      reason:
+        `No pre-implementation baseline was recorded for repository-check ` +
+        `profile '${profileName}'.`,
+    }
+  }
+
+  const absolute = resolveInside(root, pointer.artifact_path)
+
+  if (!fileExists(absolute)) {
+    return {
+      reason:
+        `Pre-implementation baseline artifact is missing for profile ` +
+        `'${profileName}': ${pointer.artifact_path}.`,
+    }
+  }
+
+  let artifact: unknown
+
+  try {
+    artifact = readJson(absolute)
+  } catch (error) {
+    return {
+      reason:
+        `Pre-implementation baseline for profile '${profileName}' is unreadable ` +
+        `(${pointer.artifact_path}): ${errorMessage(error)}.`,
+    }
+  }
+
+  if (!isRepositoryCheckBaselineArtifact(artifact, profileName)) {
+    return {
+      reason:
+        `Pre-implementation baseline for profile '${profileName}' is ` +
+        `incompatible with its gate (${pointer.artifact_path}).`,
+    }
+  }
+
+  if (!artifact.full_result_path) {
+    return { result: artifact.result, artifact_path: pointer.artifact_path }
+  }
+
+  const fullAbsolute = resolveInside(root, artifact.full_result_path)
+
+  if (!fileExists(fullAbsolute)) {
+    return {
+      reason:
+        `Full pre-implementation baseline artifact is missing for profile ` +
+        `'${profileName}': ${artifact.full_result_path}.`,
+    }
+  }
+
+  let fullArtifact: unknown
+
+  try {
+    fullArtifact = readJson(fullAbsolute)
+  } catch (error) {
+    return {
+      reason:
+        `Full pre-implementation baseline for profile '${profileName}' is ` +
+        `unreadable (${artifact.full_result_path}): ${errorMessage(error)}.`,
+    }
+  }
+
+  if (!isRepositoryCheckBaselineArtifact(fullArtifact, profileName)) {
+    return {
+      reason:
+        `Full pre-implementation baseline for profile '${profileName}' is ` +
+        `incompatible with its gate (${artifact.full_result_path}).`,
+    }
+  }
+
+  return {
+    result: fullArtifact.result,
+    artifact_path: artifact.full_result_path,
+  }
+}
+
 function runShellCheck(
   root: string,
   runDirectory: string,
@@ -1040,26 +1389,23 @@ function runShellCheck(
     | ReturnType<typeof compareRepositoryCheckToBaseline>
     | undefined
   let baselineEvidencePath: string | undefined
+  let baselineGap: string | undefined
 
-  if (profileName && repositoryResult?.status === 'failed') {
-    const pointer = state.repository_check_baselines?.[profileName]
+  // Baseline parity applies to every repository-check gate the run baselined,
+  // not only to a gate that happens to be failing. A stage that repairs an
+  // inherited failure needs the credit recorded, and a first-time failure needs
+  // to be named as new rather than inferred from an exit code.
+  if (profileName && repositoryResult && !skipped) {
+    const load = loadRepositoryCheckBaseline(root, state, profileName)
 
-    if (pointer && fileExists(resolveInside(root, pointer.artifact_path))) {
-      const artifact = readJson(
-        resolveInside(root, pointer.artifact_path),
-      ) as RepositoryCheckBaselineArtifact
-
-      if (
-        artifact.schema_version === 1 &&
-        artifact.profile === profileName &&
-        artifact.result
-      ) {
-        baselineComparison = compareRepositoryCheckToBaseline(
-          artifact.result,
-          repositoryResult,
-        )
-        baselineEvidencePath = pointer.artifact_path
-      }
+    if (load.result) {
+      baselineComparison = compareRepositoryCheckToBaseline(
+        load.result,
+        repositoryResult,
+      )
+      baselineEvidencePath = load.artifact_path
+    } else if (load.reason) {
+      baselineGap = load.reason
     }
   }
 
@@ -1113,29 +1459,38 @@ function runShellCheck(
     ),
   )
 
+  const commandSucceeded = exitCode === 0 && !errorMessageText
+  const passed = baselineGap
+    ? false
+    : !skipped &&
+      (baselineComparison ? baselineComparison.passed : commandSucceeded)
+  const inheritedFailureOnly = Boolean(
+    baselineComparison?.passed && !commandSucceeded,
+  )
+
   return {
     id: criterion.id,
     type: 'shell',
     hard: Boolean(criterion.hard),
-    passed:
-      !skipped &&
-      ((exitCode === 0 && !errorMessageText) ||
-        baselineComparison?.passed === true),
-    ...(skipped
-      ? {
-          disabled: true,
-          explanation:
-            resolution.removed_reason ??
-            'Repository check profile is not configured; no technology-specific command was guessed.',
-        }
-      : baselineComparison
+    passed,
+    ...(baselineGap
+      ? { explanation: `${baselineGap} The gate fails closed.` }
+      : skipped
         ? {
-            explanation: baselineComparison.explanation,
-            ...(baselineComparison.passed ? { preexisting_failure: true } : {}),
+            disabled: true,
+            explanation:
+              resolution.removed_reason ??
+              'Repository check profile is not configured; no technology-specific command was guessed.',
           }
-        : repositoryResult?.advisories.length
-          ? { explanation: repositoryResult.advisories.join(' ') }
-          : {}),
+        : baselineComparison
+          ? {
+              explanation: baselineComparison.explanation,
+              repository_check_delta: baselineComparison.delta,
+              ...(inheritedFailureOnly ? { preexisting_failure: true } : {}),
+            }
+          : repositoryResult?.advisories.length
+            ? { explanation: repositoryResult.advisories.join(' ') }
+            : {}),
     ...(commandOverride === undefined
       ? {}
       : {

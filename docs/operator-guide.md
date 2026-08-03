@@ -319,7 +319,7 @@ documents the hardening above but does not install or overwrite target
 
 ## Select pipeline models
 
-`config.json` is the source of truth for named persona-to-model mappings. Canonical Cursor artifacts live under `library/cursor/`; `.cursor/` is ignored local output. Set `active_config` to one of the declared configurations, then regenerate the Cursor surface:
+`config.json` is the source of truth for named persona-to-model mappings and carries the recommended defaults a release can update. Canonical Cursor artifacts live under `library/cursor/`; `.cursor/` is ignored local output. Set `active_config` to one of the declared configurations, then regenerate the Cursor surface:
 
 ```sh
 ./bin/pan models --sync
@@ -327,6 +327,8 @@ documents the hardening above but does not install or overwrite target
 ```
 
 Run `./bin/pan models` without `--sync` to preview the active mapping and any drift without changing files.
+
+Per-checkout preferences belong in `config.local.json` next to `config.json`. The file is untracked (keep it out of version control, e.g. via `.git/info/exclude`) and merges over `config.json`: objects merge recursively, any other value replaces the checked-in one. Use it for `active_config`, persona model overrides, or an `operator_involvement.active` selection, so `config.json` stays at the recommended defaults releases update. A local preference behaves exactly as if it were edited into `config.json`, including drift detection against in-flight runs.
 
 Each new run snapshots the active configuration in `runtime/logs/workflows/<run-id>/pipeline-config.snapshot.json`. Invocation cards resolve their model from that snapshot. Because Cursor executes the model declared in `.cursor/agents/pan-<persona>.md`, preparing an older run after switching configurations is blocked until the projected agent models again match that run's snapshot. This prevents the card from claiming one model while Cursor launches another.
 

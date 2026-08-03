@@ -34,14 +34,18 @@ This directory contains the Pancreator harness installed for the parent reposito
 - Runs MUST be managed through `./.pancreator/bin/pan`.
 - Agents MUST read the active invocation card before expanding repository context.
 - Named worker stages MUST be delegated to the matching Cursor subagent.
+- Delegation MUST deliver the body the card names: the generated `<invocation-id>.delivery.md` prompt under referenced delivery, or the canonical card under verbatim delivery. The delivered body MUST be persisted byte for byte as delegation evidence.
+- A worker holding a referenced contract MUST read it in full first and MUST declare that read in `invocation_attestation`. A contract it cannot read MUST be reported as result `blocked` with status `reference_failed`.
 - Ad-hoc Subagent calls MUST omit `model` to inherit the parent model unless the
   operator explicitly selects one; named personas retain their projected model.
 - `/pan-repair` MUST delegate to the non-mutating harness technician, include relevant agent transcripts when investigating a workflow run, and write a validated intake under `.pancreator/runtime/inbox/` for Pancreator self-development follow-up.
 - Agents MUST write only declared outputs and permitted evidence.
 - Deterministic transitions and gates belong to the harness.
-- Before the first implementation invocation, the harness captures every repository-check profile referenced by deterministic stage gates. Unchanged pre-existing failures remain evidence but do not block; new or changed diagnostics do.
+- Before the first source-allowed stage, the harness captures every repository-check profile referenced by deterministic stage gates. A gate whose expected baseline is absent or incompatible pauses the run before delegation.
+- A baselined gate is judged by diagnostic delta. Carried failures remain evidence but do not block, repaired failures are recorded as fixed, and a new diagnostic identity or changed exit status fails the gate.
 - Two consecutive hard failures with the same normalized signature pause immediately. An implementation retry MUST directly remediate the recorded cause rather than repeat an unchanged submission.
 - Operator approvals and irreversible actions MUST remain operator-owned decisions; agents MAY execute them when explicitly authorized by the operator.
+- An operator-gated stage stops before its success, failure, and blocked transitions. Approval applies the recorded outcome, so approving a failed stage routes the failure.
 
 ## Work modes and operator involvement
 

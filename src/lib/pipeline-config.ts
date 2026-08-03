@@ -1,15 +1,8 @@
 import path from 'node:path'
 
 import { invariant } from './errors.js'
-import {
-  fileExists,
-  isRecord,
-  readJson,
-  readText,
-  resolveInside,
-  sha256,
-} from './io.js'
-import { harnessConfigName } from './project-config.js'
+import { fileExists, isRecord, readJson, resolveInside, sha256 } from './io.js'
+import { harnessConfigName, readHarnessConfig } from './project-config.js'
 
 export interface NamedPipelineConfig {
   summary?: string
@@ -182,8 +175,10 @@ export function loadPipelineConfig(
     code: 'INVALID_PIPELINE_CONFIG',
   })
 
-  const raw = readText(filePath)
-  const file = parsePipelineConfig(readJson(filePath), configName)
+  // The digest covers the effective configuration, so a `config.local.json`
+  // preference is indistinguishable from the same edit made in `config.json`.
+  const raw = readHarnessConfig(root, filePath)
+  const file = parsePipelineConfig(raw, configName)
   const resolvedName = name ?? file.active_config
   const config = file.configs[resolvedName]
 

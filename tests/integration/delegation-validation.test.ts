@@ -12,6 +12,7 @@ import {
   submitOutput,
 } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
+import type { Invocation } from '../../src/lib/types.js'
 import {
   createFixture,
   makeOutput,
@@ -179,11 +180,12 @@ test('submit relocates workspace-root delegation artifact before validation', ()
   )
 
   const misplacedDelegation = path.join(root, '.delegation.md')
-  const canonicalDelegation = path.join(
+  const deliveredBody = path.join(
     root,
-    `runtime/logs/workflows/${runId}/invocations/${planInvocation.invocation_id}.md`,
+    planInvocation.delegation?.delivery_prompt_path ??
+      `runtime/logs/workflows/${runId}/invocations/${planInvocation.invocation_id}.md`,
   )
-  writeFileSync(misplacedDelegation, readFileSync(canonicalDelegation, 'utf8'))
+  writeFileSync(misplacedDelegation, readFileSync(deliveredBody, 'utf8'))
 
   const submitted = submitOutput(root, runId, planInvocation.output.path)
 
@@ -202,5 +204,121 @@ test('submit relocates workspace-root delegation artifact before validation', ()
     submitted.record.evaluation.deterministic.some(
       (item) => item.id === 'scope.no_unapproved_changes' && item.passed,
     ),
+  )
+})
+
+/** Advance a fixture dev run to a prepared, delegated plan invocation. */
+function prepareDelegatedPlan(root: string): {
+  runId: string
+  invocation: Invocation
+} {
+  const workflow = loadWorkflow(root, 'dev')
+  const runId = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+  }).run_id
+  const intakeInvocation = prepareInvocation(root, runId).invocation
+
+  assert.ok(intakeInvocation)
+  writeJson(
+    path.join(root, intakeInvocation.output.path),
+    makeOutput(root, intakeInvocation, stageBySlug(workflow, 'intake')),
+  )
+  submitOutput(root, runId, intakeInvocation.output.path)
+  decideRun(root, runId, 'approve', 'fixture approval')
+
+  const invocation = prepareInvocation(root, runId).invocation
+
+  assert.ok(invocation)
+
+  return { runId, invocation }
+}
+
+test('submit rejects a delegated output with no read attestation', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const { runId, invocation } = prepareDelegatedPlan(root)
+  const output = makeOutput(root, invocation, stageBySlug(workflow, 'plan'))
+
+  delete output.invocation_attestation
+  writeJson(path.join(root, invocation.output.path), output)
+  writeCanonicalDelegation(root, invocation)
+
+  const submitted = submitOutput(root, runId, invocation.output.path)
+
+  assert.equal(submitted.record.outcome, 'failure')
+  assert.match(
+    (submitted.record.evaluation.governance_artifact_warnings ?? []).join('\n'),
+    /Invocation read attestation failed/u,
+  )
+
+  const artifactPath = path.join(
+    root,
+    `runtime/logs/workflows/${runId}/invocations/${invocation.invocation_id}.attestation-validation.json`,
+  )
+
+  assert.ok(existsSync(artifactPath))
+  assert.equal(JSON.parse(readFileSync(artifactPath, 'utf8')).status, 'fail')
+})
+
+test('submit rejects a read attestation with a stale digest', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const { runId, invocation } = prepareDelegatedPlan(root)
+  const output = makeOutput(root, invocation, stageBySlug(workflow, 'plan'))
+  const attestation = output.invocation_attestation
+
+  assert.ok(attestation?.status === 'read')
+  output.invocation_attestation = {
+    ...attestation,
+    sections: attestation.sections.map((section, index) =>
+      index === 0 ? { id: section.id, sha256: 'stale' } : section,
+    ),
+  }
+  writeJson(path.join(root, invocation.output.path), output)
+  writeCanonicalDelegation(root, invocation)
+
+  const submitted = submitOutput(root, runId, invocation.output.path)
+
+  assert.equal(submitted.record.outcome, 'failure')
+})
+
+test('submit reports an unreadable contract reference as blocked', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const { runId, invocation } = prepareDelegatedPlan(root)
+  const output = makeOutput(root, invocation, stageBySlug(workflow, 'plan'))
+  const manifest = invocation.contract_manifest
+
+  assert.ok(manifest)
+  output.result = 'blocked'
+  output.invocation_attestation = {
+    invocation_id: invocation.invocation_id,
+    contract_path: manifest.contract_path,
+    status: 'reference_failed',
+    error: `EACCES: ${manifest.contract_path} could not be read`,
+  }
+  writeJson(path.join(root, invocation.output.path), output)
+  writeCanonicalDelegation(root, invocation)
+
+  const submitted = submitOutput(root, runId, invocation.output.path)
+
+  assert.equal(submitted.record.outcome, 'blocked')
+  assert.equal(submitted.state.status, 'paused')
+
+  const artifact = JSON.parse(
+    readFileSync(
+      path.join(
+        root,
+        `runtime/logs/workflows/${runId}/invocations/${invocation.invocation_id}.attestation-validation.json`,
+      ),
+      'utf8',
+    ),
+  ) as { status: string; checks: Array<{ message: string }> }
+
+  assert.equal(artifact.status, 'pass')
+  assert.ok(
+    artifact.checks.some((check) => check.message.includes('EACCES')),
+    'the failed reference MUST name the path and error in evidence',
   )
 })

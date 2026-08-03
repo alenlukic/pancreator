@@ -2,8 +2,11 @@
 
 ## [Unreleased]
 
+## [2.19.0] - 2026-08-03
+
 ### Changed
 
+- Update `INVOCATION-001` for referenced delivery: the supervisor pastes a compact delivery prompt that names the canonical worker contract, its digest, and a flat per-section index. Verbatim delivery remains permitted. Workers declare a per-section read attestation at submit ([INVOCATION-001](governance/policies/INVOCATION-001.json), [render](src/lib/render.ts), [validation](src/lib/validation.ts)).
 - Add a `How to read this PR` section to the `/pan-write-pr` output format, for a reviewer who is about to open the diff. The section applies when a change adds or removes an abstraction, alters a flow across components, or spans more than one subsystem. It uses four registered subheadings for core changes, architecture decisions, component changes, and end-to-end flows. `PR-001` bars an unevidenced reason, a reconstructed rejected alternative, and a benefit the delta does not show ([PR-001](governance/policies/PR-001.json), [write-pr-description](library/skills/write-pr-description.md)).
 - Separate the universally applicable rules in `AGENTS.md` from the rules that bind only a workflow run. The operating loop now splits into **Always applicable** and **Inside a workflow run** subheadings. A new **Applicability** section names the four contexts that read the file. A standalone-mode agent and an unbound agent previously had to guess whether a rule such as ad-hoc Subagent model inheritance bound them ([AGENTS.md](AGENTS.md)).
 - Scope the `AGENTS.md` role definitions to a workflow run, and state that supervisor and worker are neither exhaustive nor default. The section sat at the global level. An agent outside a run could read the two roles as the only options and adopt supervisor authority. An agent MUST now determine its context first, and delegating a governance card confers no run authority ([AGENTS.md](AGENTS.md)).
@@ -21,6 +24,10 @@
 - Add `pan governance card --mode <mode>` so every standalone mode resolves governance through the same policy applicability map the workflow path uses, and switch `/pan-spotfix`, `/pan-debug`, `/pan-repair`, and `/pan-decompose` onto it instead of hand-assembling policy text ([governance card](src/lib/governance-card.ts), [governance card test](tests/unit/governance-card.test.ts)).
 - Add a `contract` dimension to the policy lookup table so run contracts stay inside the single policy applicability map rather than a second one that could drift from it ([policy lookup table](governance/registries/policy_lookup_table.json), [policies](src/lib/policies.ts)).
 - Add `pan involvement` to list configured profiles ([CLI](src/cli.ts)).
+- Add referenced invocation delivery with an `InvocationContractManifest` of per-section SHA-256 digests and a compact supervisor delivery prompt that stays bounded as the contract grows ([render](src/lib/render.ts), [engine](src/lib/engine.ts), [delegation contract test](tests/regression/supervisor-delegation-contract.test.ts)).
+- Add `invocation_attestation` to stage output with `INVOCATION-ATTEST-VALIDATE-001`, so submit blocks a missing, partial, reordered, stale, or unreadable contract declaration ([stage-output schema](library/schemas/stage-output.schema.json), [validation](src/lib/validation.ts)).
+- Add diagnostic-delta comparison for every baseline-covered repository-check gate, reporting structured `new`, `fixed`, and `carried` failure sets instead of requiring exit 0 when inherited failures remain ([repository checks](src/lib/repository-checks.ts), [repository checks test](tests/unit/repository-checks.test.ts)).
+- Add `config.local.json`, an untracked per-checkout preference file merged over `config.json` by every harness configuration reader, so `active_config`, persona model overrides, and involvement selection no longer require editing the checked-in recommended defaults ([project config](src/lib/project-config.ts), [pipeline config](src/lib/pipeline-config.ts), [operator guide](docs/operator-guide.md)).
 
 ### Fixed
 
@@ -36,6 +43,9 @@
 - Make `pan output scaffold` idempotent for an untouched scaffold instead of throwing, so a required automation's ordinary second invocation is no longer a hard error ([scaffold](src/lib/requirements/scaffold.ts)).
 - Extend seven-day `RUNTIME-001` retention to standalone-mode session directories, which would otherwise accumulate for the life of the installation ([workflow artifacts](src/lib/workflow-artifacts.ts), [workflow artifacts test](tests/unit/workflow-artifacts.test.ts)).
 - Scope the `STAGE-SCAFFOLD-001` automation requirement to workflow invocations, so standalone modes no longer resolve a scaffold requirement against an output path they do not have ([AUTO-001](governance/policies/AUTO-001.json)).
+- Stop operator-gated stages before their success, failure, and blocked transitions, and apply the stored outcome on approval so a failed review cannot route backward without an operator decision ([engine](src/lib/engine.ts), [operator involvement test](tests/integration/operator-involvement.test.ts)).
+- Return a successful skip from `pan output validate` when no agent-owned before_operation or pre_submit requirement resolves, instead of `INVALID_ARGUMENT` ([CLI](src/cli.ts), [requirements run test](tests/integration/requirements-run.test.ts)).
+- Make large invocation cards deliverable without the supervisor model reproducing the full card body, which previously exceeded the output limit and made `INVOCATION-001` unsatisfiable ([render](src/lib/render.ts), [supervisor delegation contract test](tests/regression/supervisor-delegation-contract.test.ts)).
 
 ## [2.18.0] - 2026-07-29
 

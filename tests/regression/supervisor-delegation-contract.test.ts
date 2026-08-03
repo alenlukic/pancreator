@@ -9,7 +9,13 @@ import {
   prepareInvocation,
   submitOutput,
 } from '../../src/lib/engine.js'
+import { sha256 } from '../../src/lib/io.js'
 import { loadPolicyCatalog } from '../../src/lib/policies.js'
+import {
+  buildInvocationContractManifest,
+  renderInvocationDeliveryPrompt,
+  splitInvocationContract,
+} from '../../src/lib/render.js'
 import {
   DELEGATION_HEADING,
   validateDelegationMarkdown,
@@ -98,6 +104,7 @@ test('worker invocation cards unroll the supervisor delivery contract', () => {
     delegation.delegation_artifact_path,
     delegation.cursor_agent_path,
     delegation.submit_command,
+    delegation.delivery_prompt_path ?? '',
   ]) {
     assert.ok(markdown.includes(resolved), `card MUST resolve ${resolved}`)
   }
@@ -110,14 +117,89 @@ test('worker invocation cards unroll the supervisor delivery contract', () => {
   assert.ok(artifact.checks.some((check) => check.id === 'delegation.heading'))
 
   // The contract survives real delivery: the copied prompt body still matches.
+  assert.equal(delegation.mode, 'referenced')
+  assert.ok(delegation.delivery_prompt_path)
   writeCanonicalDelegation(root, invocation)
   assert.equal(
     validateDelegationMarkdown(
-      markdown,
+      cardText(root, delegation.delivery_prompt_path),
       cardText(root, delegation.delegation_artifact_path),
+      'referenced',
     ).passed,
     true,
   )
+})
+
+/**
+ * A supervisor cannot reproduce a card that exceeds its own output budget, so
+ * delivery size must not scale with the contract. These assertions pin the
+ * bounded prompt, the flat section index, and the digests that let a worker prove
+ * it read the whole contract.
+ */
+test('referenced delivery stays bounded and flat as the contract grows', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const runId = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Bounded delivery run',
+  }).run_id
+  const intake = prepareInvocation(root, runId)
+
+  assert.ok(intake.invocation)
+  writeJson(
+    path.join(root, intake.invocation.output.path),
+    makeOutput(root, intake.invocation, stageBySlug(workflow, 'intake')),
+  )
+  submitOutput(root, runId, intake.invocation.output.path)
+  decideRun(root, runId, 'approve', 'Fixture approval')
+
+  const prepared = prepareInvocation(root, runId)
+  const invocation = prepared.invocation
+
+  assert.ok(invocation?.delegation?.delivery_prompt_path)
+
+  const manifest = invocation.contract_manifest
+
+  assert.ok(manifest)
+
+  const contract = cardText(root, manifest.contract_path)
+  const prompt = cardText(root, invocation.delegation.delivery_prompt_path)
+
+  // The manifest describes the contract that is actually on disk.
+  assert.equal(manifest.contract_sha256, sha256(contract))
+  assert.equal(manifest.byte_length, Buffer.byteLength(contract, 'utf8'))
+
+  // Concatenating the sections reproduces the contract, so a section digest and
+  // the whole-file digest describe the same bytes.
+  const blocks = splitInvocationContract(contract)
+
+  assert.equal(blocks.map((block) => block.markdown).join(''), contract)
+  assert.equal(blocks.length, manifest.sections.length)
+
+  // One flat index: every section appears exactly once, with its owner.
+  for (const section of manifest.sections) {
+    assert.equal(
+      prompt.split(section.sha256).length - 1,
+      1,
+      `prompt MUST list section ${section.id} exactly once`,
+    )
+  }
+
+  assert.ok(manifest.sections.some((section) => section.owner === 'worker'))
+  assert.ok(manifest.sections.some((section) => section.owner === 'supervisor'))
+  assert.ok(prompt.includes(manifest.contract_sha256))
+  assert.ok(prompt.length < contract.length)
+
+  // Growing the contract body does not grow the prompt.
+  const grown = `${contract}${'Filler contract body line.\n'.repeat(4_000)}`
+  const grownPrompt = renderInvocationDeliveryPrompt(
+    invocation,
+    buildInvocationContractManifest(manifest.contract_path, grown),
+  )
+
+  assert.ok(grown.length > contract.length * 2)
+  assert.ok(grownPrompt.length < prompt.length + 100)
 })
 
 test('a delegation artifact that drops the delivery section fails validation', () => {

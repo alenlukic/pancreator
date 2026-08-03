@@ -300,6 +300,18 @@
       "default_timeout_ms": 30000,
       "deterministic": true,
       "side_effect_free": true
+    },
+    {
+      "id": "INVOCATION-ATTEST-VALIDATE-001",
+      "kind": "validator",
+      "version": "1",
+      "handler": "invocation-attest-validate",
+      "input_contract": "stage-output",
+      "result_schema": "validation-result-v1",
+      "target_types": ["stage-output-json"],
+      "default_timeout_ms": 30000,
+      "deterministic": true,
+      "side_effect_free": true
     }
   ]
 }

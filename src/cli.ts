@@ -947,13 +947,22 @@ async function main(): Promise<void> {
             item.enforcement !== 'advisory',
         )
 
+        // An invocation may legitimately resolve no agent-owned requirement. The
+        // command was asked to validate what applies, and nothing applies, so
+        // this is a successful skip rather than a caller error.
         if (agentRequirements.length === 0) {
-          throw new PanError(
-            'No agent-owned pre-submit requirements resolved.',
-            {
-              code: 'INVALID_ARGUMENT',
-            },
+          const reason =
+            'No agent-owned before_operation or pre_submit requirement resolved ' +
+            'for this invocation, so output validation is skipped.'
+
+          print(
+            hasFlag(args, '--json')
+              ? { passed: true, skipped: true, reason, results: [] }
+              : `skipped: ${reason}`,
+            hasFlag(args, '--json'),
           )
+
+          return
         }
 
         const results = runAgentPreSubmitValidators(
