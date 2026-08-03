@@ -115,6 +115,24 @@ directive. It will not create a run, produce stage outputs or briefs, or convert
 the session into a workflow on its own. Do not run it while a mutating workflow
 agent is active in the same workspace.
 
+Use `/pan-shepherd <pr-number-or-url>` after you open a pull request that review
+bots or teammates will comment on. The shepherd polls the PR's reviews and
+comments in 60-second cycles. A watch window runs 15 cycles and closes only
+after one quiet cycle, so a burst of feedback is assessed as one batch rather
+than item by item. It judges each item against the code and against a durable
+per-session ledger of every reviewer's history — repeated items keep their
+prior disposition, a bot's self-contradictions and induced findings are
+rejected as thrash rather than ping-ponged, and inter-bot conflicts are decided
+on the merits with the losing side recorded. Accepted items are implemented
+with proportionate tests, gated through the review squad coordinated by the
+`pan-shepherd-reviewer` subagent (its model comes from the `shepherd-reviewer`
+mapping in `config.json`, separate from the run-time `reviewer`), and pushed to
+the PR head branch only after the review passes. The session ends after a quiet
+window, a fully rejected batch, or at most 8 windows, and always closes with a
+full report and the ledger path. Invoking the command authorizes commits and
+pushes to that PR's head branch only; merging stays with you. Do not run it
+while a mutating workflow agent is active in the same workspace.
+
 Invoke `/pan-pair` **once per conversation**, not once per turn. It opens the
 session by generating the governance card; after that, every directive is an
 ordinary chat message and the agent loops on its own. Re-invoking is harmless but

@@ -96,7 +96,7 @@ const HELP_BODY = `Usage:
   pan output validate <run-id> --file <path> [--json]
   pan assessment scaffold <run-id> --invocation <path> --output <path> [--force]
   pan governance audit-directives [--json]
-  pan governance card --mode <pair|spotfix|investigation|repair|decomposition> [--request <path>] [--out <path>] [--json]
+  pan governance card --mode <pair|spotfix|shepherd|investigation|repair|decomposition> [--request <path>] [--out <path>] [--json]
   pan briefs build [--force] [--json]
   pan briefs validate [--json]
   pan briefs render --input <brief-json> --output <brief-html> [--json]
