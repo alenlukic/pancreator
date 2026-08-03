@@ -9,8 +9,8 @@ specification. Preserve intent; do not design the solution.
 2. Restate the request as a concise summary and a set of observable user
    stories.
 3. Name constraints and out-of-scope behavior explicitly.
-4. Capture unresolved questions instead of inventing answers. Use at most five
-   clarification turns, then record what remains open.
+4. Record unresolved questions instead of inventing answers. The operator can
+   resolve them through a revision directive.
 
 ## Output
 

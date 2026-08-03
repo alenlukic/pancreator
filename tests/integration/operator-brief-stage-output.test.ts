@@ -9,7 +9,12 @@ import {
   submitOutput,
 } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
-import { createFixture, makeOutput, writeJson } from '../helpers.js'
+import {
+  createFixture,
+  makeOutput,
+  writeCanonicalDelegation,
+  writeJson,
+} from '../helpers.js'
 
 test('submission rerenders the invocation-declared HTML brief from JSON', () => {
   const root = createFixture()
@@ -33,6 +38,8 @@ test('submission rerenders the invocation-declared HTML brief from JSON', () => 
   assert.equal(existsSync(htmlPath), false)
 
   writeJson(path.join(root, invocation.output.path), output)
+  writeCanonicalDelegation(root, invocation)
+
   const submitted = submitOutput(root, state.run_id, invocation.output.path)
 
   assert.equal(existsSync(htmlPath), true)

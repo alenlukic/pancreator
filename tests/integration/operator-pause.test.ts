@@ -39,6 +39,7 @@ test('operator pause preserves supervisor gate and resume restores it', () => {
     path.join(root, intakeInvocation.output.path),
     makeOutput(root, intakeInvocation, stageBySlug(workflow, 'intake')),
   )
+  writeCanonicalDelegation(root, intakeInvocation)
 
   submitOutput(root, runId, intakeInvocation.output.path)
   decideRun(root, runId, 'approve', 'fixture approval')
@@ -168,6 +169,7 @@ test('harness pause resume still restarts at prepare_invocation', () => {
     path.join(root, intakeInvocation.output.path),
     makeOutput(root, intakeInvocation, stageBySlug(workflow, 'intake')),
   )
+  writeCanonicalDelegation(root, intakeInvocation)
 
   submitOutput(root, runId, intakeInvocation.output.path)
   decideRun(root, runId, 'approve', 'fixture approval')

@@ -164,6 +164,122 @@ test('full dev workflow persists gates and reaches operator-approved success', (
   )
 })
 
+test('dev intake is delegated to the intake writer and still awaits ratification', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const runId = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Intake delegation run',
+  }).run_id
+  const prepared = prepareInvocation(root, runId)
+  const invocation = prepared.invocation
+
+  assert.ok(invocation)
+  assert.equal(invocation.stage.slug, 'intake')
+  assert.equal(invocation.stage.persona, 'intake-writer')
+
+  // The first stage of the run is now delegated, so it owes the same delivery
+  // contract and read attestation every other worker stage owes.
+  assert.equal(prepared.state.pending_action.type, 'invoke_agent')
+  assert.equal(invocation.delegation?.mode, 'referenced')
+  assert.equal(
+    invocation.delegation?.cursor_agent_path,
+    '.cursor/agents/pan-intake-writer.md',
+  )
+  assert.ok(invocation.contract_manifest)
+
+  writeJson(
+    path.join(root, invocation.output.path),
+    makeOutput(root, invocation, stageBySlug(workflow, 'intake')),
+  )
+  writeCanonicalDelegation(root, invocation)
+
+  const submitted = submitOutput(root, runId, invocation.output.path)
+  const warnings = (
+    submitted.record.evaluation.governance_artifact_warnings ?? []
+  ).join('\n')
+
+  assert.equal(submitted.record.outcome, 'success')
+  assert.doesNotMatch(warnings, /[Dd]elegation/u)
+  assert.doesNotMatch(warnings, /attestation/u)
+
+  // Worker ownership must not change where the operator stops the run.
+  assert.equal(submitted.state.status, 'awaiting_operator')
+  assert.equal(submitted.state.pending_action.type, 'operator_approval')
+  assert.equal(submitted.state.current_stage, 'intake')
+
+  decideRun(root, runId, 'approve', 'fixture approval')
+  assert.equal(getRunState(root, runId).current_stage, 'plan')
+})
+
+test('an operator revision returns dev intake to the intake writer', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const intakeStage = stageBySlug(workflow, 'intake')
+  const runId = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Intake revision run',
+  }).run_id
+  const first = prepareInvocation(root, runId).invocation
+
+  assert.ok(first)
+  writeJson(
+    path.join(root, first.output.path),
+    makeOutput(root, first, intakeStage),
+  )
+  writeCanonicalDelegation(root, first)
+  assert.equal(
+    submitOutput(root, runId, first.output.path).state.status,
+    'awaiting_operator',
+  )
+
+  const directive = 'Record the retention window as an explicit constraint.'
+  decideRun(root, runId, 'revise', directive)
+
+  const second = prepareInvocation(root, runId).invocation
+
+  assert.ok(second)
+  assert.equal(second.stage.slug, 'intake')
+  assert.equal(second.stage.persona, 'intake-writer')
+  assert.equal(second.attempt, 2)
+
+  // A revision is a refinement, not a failed attempt, so it must not spend the
+  // stage's retry budget.
+  assert.equal(getRunState(root, runId).operator_revisions?.intake, 1)
+  assert.equal(getRunState(root, runId).consecutive_failures, 0)
+
+  const feedback = getRunState(root, runId).operator_feedback?.at(-1)
+
+  assert.ok(feedback)
+  assert.equal(feedback.decision, 'revise')
+  assert.equal(feedback.to_stage, 'intake')
+  assert.ok(
+    second.inputs.references.some(
+      (reference) => reference.path === feedback.path,
+    ),
+    'the revised card MUST carry the operator directive as an input',
+  )
+  assert.match(
+    readFileSync(path.join(root, feedback.path), 'utf8'),
+    /retention window/u,
+  )
+
+  writeJson(
+    path.join(root, second.output.path),
+    makeOutput(root, second, intakeStage),
+  )
+  writeCanonicalDelegation(root, second)
+
+  const revised = submitOutput(root, runId, second.output.path)
+
+  assert.equal(revised.record.outcome, 'success')
+  assert.equal(revised.state.status, 'awaiting_operator')
+  decideRun(root, runId, 'approve', 'fixture approval')
+  assert.equal(getRunState(root, runId).current_stage, 'plan')
+})
+
 test('run preparation rejects live pipeline-config drift from its snapshot', () => {
   const root = createFixture()
   const state = createRun(root, {
@@ -201,6 +317,8 @@ test('paused remediation note is attached to the next implement invocation', () 
     path.join(root, intakeInvocation.output.path),
     makeOutput(root, intakeInvocation, stageBySlug(workflow, 'intake')),
   )
+  writeCanonicalDelegation(root, intakeInvocation)
+
   const intakeSubmitted = submitOutput(
     root,
     runId,

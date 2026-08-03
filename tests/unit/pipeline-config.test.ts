@@ -31,6 +31,22 @@ test('pipeline config loads the active named persona mapping', () => {
   assert.equal(snapshot.personas.reviewer, loaded.config.personas.reviewer)
 })
 
+test('every named configuration resolves a model for the intake writer', () => {
+  const root = createFixture()
+  const { file } = loadPipelineConfig(root)
+
+  assert.ok(file.defaults['intake-writer'])
+
+  // A persona no named configuration overrides must still resolve everywhere,
+  // or selecting that configuration blocks run creation.
+  for (const name of Object.keys(file.configs)) {
+    assert.equal(
+      resolveConfigPersonas(file, name)['intake-writer'],
+      file.defaults['intake-writer'],
+    )
+  }
+})
+
 test('config.local.json preferences override the checked-in pipeline config', () => {
   const root = createFixture()
   const base = loadPipelineConfig(root)

@@ -10,6 +10,7 @@ import {
   setRunStage,
   submitOutput,
 } from '../../src/lib/engine.js'
+import { PanError } from '../../src/lib/errors.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   validateDelegationMarkdown,
@@ -30,6 +31,19 @@ import type { Invocation } from '../../src/lib/types.js'
  * Each test pins behavior whose absence forced an agent to stop, diagnose, and
  * work around the harness mid-run.
  */
+
+function editPersonaDefaults(
+  root: string,
+  edit: (defaults: Record<string, string>) => void,
+): void {
+  const configPath = path.join(root, 'config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
+    defaults: Record<string, string>
+  }
+
+  edit(config.defaults)
+  writeJson(configPath, config)
+}
 
 test('an unrecognized criterion verdict is reported, not silently failed', () => {
   const root = createFixture()
@@ -336,4 +350,49 @@ test('an unsubmitted invocation does not consume a stage attempt', () => {
 
   assert.ok(second)
   assert.equal(second.attempt, 1)
+})
+
+test('a persona mapping the run never resolves is not pipeline config drift', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Additive mapping run',
+  })
+
+  // A self-development run that introduces a persona edits the live config
+  // while it is still in flight. The mapping is absent from its own snapshot,
+  // so the run never resolves it and must keep advancing.
+  editPersonaDefaults(root, (defaults) => {
+    defaults['fixture-only-persona'] = 'auto'
+  })
+
+  const prepared = prepareInvocation(root, state.run_id).invocation
+
+  assert.ok(prepared)
+  assert.equal(prepared.stage.slug, 'intake')
+})
+
+test('a changed mapping the run does resolve still fails as pipeline config drift', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Changed mapping run',
+  })
+
+  editPersonaDefaults(root, (defaults) => {
+    defaults.coder = 'fixture-replacement-model'
+  })
+
+  assert.throws(
+    () => prepareInvocation(root, state.run_id),
+    (error: unknown) => {
+      assert.ok(error instanceof PanError)
+      assert.equal(error.code, 'PIPELINE_CONFIG_DRIFT')
+      assert.deepEqual(error.details, { personas: ['coder'] })
+
+      return true
+    },
+  )
 })

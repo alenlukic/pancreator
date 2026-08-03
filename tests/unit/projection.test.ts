@@ -127,6 +127,29 @@ test('repository validation does not require a local Cursor projection', () => {
   assert.deepEqual(result.errors, [])
 })
 
+test('Cursor sync projects the intake writer agent with its resolved model', () => {
+  const root = createFixture()
+  const activeModel = loadPipelineConfig(root).config.personas['intake-writer']
+
+  assert.ok(activeModel)
+  syncCursorProjection(root, { write: true })
+
+  const projected = readFileSync(
+    path.join(root, '.cursor', 'agents', 'pan-intake-writer.md'),
+    'utf8',
+  )
+
+  assert.match(
+    projected,
+    new RegExp(
+      `^model: ${activeModel.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}$`,
+      'mu',
+    ),
+  )
+  assert.match(projected, /library\/personas\/intake-writer\.md/u)
+  assert.deepEqual(validateProjectionDrift(root).errors, [])
+})
+
 test('Cursor sync renders ignored local files from canonical library sources', () => {
   const root = createFixture()
   const agentPath = path.join(root, '.cursor', 'agents', 'pan-coder.md')

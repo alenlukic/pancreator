@@ -29,8 +29,7 @@ Then:
 
 1. Run `./bin/pan init --workflow <workflow> --request <harness-relative-request> [--workspace <workspace>] [--gates <harness-relative-gates-file>] [--involvement <profile>]`, then `./bin/pan prepare <run-id>`.
 2. Record the resolved involvement profile, active run contracts, and any gates that replaced a workflow default. Your report includes them so the operator knows where the run will stop.
-3. Read the generated invocation Markdown. Intake is supervisor-owned: perform only that card, write its declared JSON output, and run `./bin/pan submit`.
-4. Run the advance loop. At the ratification stop, include the product specification in your report. If the preserved request or operator note already contains an explicit approval or rejection, execute that decision and continue instead.
+3. Run the advance loop. At the ratification stop, include the product specification in your report. If the preserved request or operator note already contains an explicit approval or rejection, execute that decision and continue instead.
 
 ## Resume invocation
 

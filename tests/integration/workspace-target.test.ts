@@ -162,6 +162,7 @@ test('scope guard catches edits inside the targeted nested repo during a non-sou
   const output = makeOutput(root, invocation, stage)
 
   writeJson(path.join(root, invocation.output.path), output)
+  writeCanonicalDelegation(root, invocation)
 
   const submitted = submitOutput(root, runId, invocation.output.path)
   const scope = submitted.record.evaluation.deterministic.find(
