@@ -2010,20 +2010,18 @@ export function validateRepository(root: string): RepositoryValidationResult {
           errors.push(`missing persona: library/personas/${stage.persona}.md`)
         }
 
-        if (stage.persona !== 'orchestrator') {
-          const agentPath = path.join(
-            root,
-            'library',
-            'cursor',
-            'agents',
-            `${stage.persona}.md`,
-          )
+        const agentPath = path.join(
+          root,
+          'library',
+          'cursor',
+          'agents',
+          `${stage.persona}.md`,
+        )
 
-          if (!fileExists(agentPath)) {
-            errors.push(
-              `missing Cursor agent template: library/cursor/agents/${stage.persona}.md`,
-            )
-          }
+        if (!fileExists(agentPath)) {
+          errors.push(
+            `missing Cursor agent template: library/cursor/agents/${stage.persona}.md`,
+          )
         }
       }
     } catch (error) {

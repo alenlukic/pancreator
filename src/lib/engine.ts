@@ -795,13 +795,11 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
   for (const stage of workflow.stages) {
     resolvePersonaModel(pipelineConfig.config, stage.persona)
 
-    if (stage.persona !== 'orchestrator') {
-      invariant(
-        fileExists(path.join(root, cursorAgentTarget(root, stage.persona))),
-        `Missing Cursor agent for persona '${stage.persona}'.`,
-        { code: 'MISSING_CURSOR_AGENT' },
-      )
-    }
+    invariant(
+      fileExists(path.join(root, cursorAgentTarget(root, stage.persona))),
+      `Missing Cursor agent for persona '${stage.persona}'.`,
+      { code: 'MISSING_CURSOR_AGENT' },
+    )
   }
 
   const agentModelDrift = syncCursorProjection(root).filter(

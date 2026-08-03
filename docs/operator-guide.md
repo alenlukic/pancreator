@@ -2,7 +2,12 @@
 
 ## The normal interaction
 
-Use `/pan-start` for a new request and `/pan-resume <run-id>` thereafter. The supervisor should always show:
+Use `/pan-start` for a new request and `/pan-resume <run-id> [prompt]` thereafter.
+Both commands deliver the run to the `pan-orchestrator` subagent, which is the
+supervisor: `/pan-start` sends a start invocation built from your preserved
+request, and `/pan-resume` sends a resume invocation carrying the run id and
+your optional prompt. The command relays the supervisor's reports and your
+decisions. Each report should always show:
 
 1. current run and stage
 2. what completed or failed

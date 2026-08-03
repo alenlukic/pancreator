@@ -62,7 +62,7 @@ Pancreator adds a set of Cursor commands, supporting agents, and repository-awar
    - Use `/pan-spotfix <request>` for an explicitly small, bounded change.
    - Use `/pan-release` when you want Pancreator to prepare release metadata.
 
-5. Continue the run with `/pan-resume <run-id>` whenever Pancreator pauses for the next operator decision.
+5. Continue the run with `/pan-resume <run-id> [prompt]` whenever Pancreator pauses for the next operator decision. Both `/pan-start` and `/pan-resume` run the workflow inside the `pan-orchestrator` subagent and relay its reports.
 
 ## Install Into Another Repository
 

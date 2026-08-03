@@ -27,7 +27,7 @@
     "librarian": "claude-opus-5[thinking=true,context=300k,effort=high]",
     "decomposer": "claude-opus-5[thinking=true,context=300k,effort=high]",
     "investigator": "claude-opus-5[thinking=true,context=300k,effort=high]",
-    "spotfixer": "kimi-k3[]",
+    "spotfixer": "claude-opus-5[thinking=true,context=300k,effort=high]",
     "harness-technician": "claude-opus-5[thinking=true,context=300k,effort=high]",
     "repo-technician": "claude-opus-5[thinking=true,context=300k,effort=high]"
   },
