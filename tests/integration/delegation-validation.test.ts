@@ -35,6 +35,7 @@ test('submit records missing delegation as an advisory governance warning', () =
     path.join(root, intakeInvocation.output.path),
     makeOutput(root, intakeInvocation, stageBySlug(workflow, 'intake')),
   )
+  writeCanonicalDelegation(root, intakeInvocation)
   submitOutput(root, runId, intakeInvocation.output.path)
   decideRun(root, runId, 'approve', 'fixture approval')
 
@@ -71,6 +72,7 @@ test('submit records mismatched delegation as advisory evidence before ship', ()
     path.join(root, intakeInvocation.output.path),
     makeOutput(root, intakeInvocation, stageBySlug(workflow, 'intake')),
   )
+  writeCanonicalDelegation(root, intakeInvocation)
   submitOutput(root, runId, intakeInvocation.output.path)
   decideRun(root, runId, 'approve', 'fixture approval')
 
@@ -119,6 +121,7 @@ test('submit succeeds when canonical delegation artifact is present', () => {
     path.join(root, intakeInvocation.output.path),
     makeOutput(root, intakeInvocation, stageBySlug(workflow, 'intake')),
   )
+  writeCanonicalDelegation(root, intakeInvocation)
   submitOutput(root, runId, intakeInvocation.output.path)
   decideRun(root, runId, 'approve', 'fixture approval')
 
@@ -169,6 +172,7 @@ test('submit relocates workspace-root delegation artifact before validation', ()
     path.join(root, intakeInvocation.output.path),
     makeOutput(root, intakeInvocation, stageBySlug(workflow, 'intake')),
   )
+  writeCanonicalDelegation(root, intakeInvocation)
   submitOutput(root, runId, intakeInvocation.output.path)
   decideRun(root, runId, 'approve', 'fixture approval')
 
@@ -224,6 +228,7 @@ function prepareDelegatedPlan(root: string): {
     path.join(root, intakeInvocation.output.path),
     makeOutput(root, intakeInvocation, stageBySlug(workflow, 'intake')),
   )
+  writeCanonicalDelegation(root, intakeInvocation)
   submitOutput(root, runId, intakeInvocation.output.path)
   decideRun(root, runId, 'approve', 'fixture approval')
 

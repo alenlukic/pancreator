@@ -170,7 +170,7 @@
       "policies": ["DESIGN-001"]
     },
     {
-      "persona": "orchestrator",
+      "persona": "intake-writer",
       "workflow": "dev",
       "stage": "intake",
       "policies": ["INTAKE-001"]

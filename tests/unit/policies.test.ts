@@ -250,7 +250,6 @@ test('orchestration and release guidance resolve with required policy dependenci
     'EXECUTOR-001',
     'GLOBAL-001',
     'GLOBAL-002',
-    'INTAKE-001',
     'INVOCATION-001',
     'OPERATOR-001',
     'ORCH-001',
@@ -284,6 +283,58 @@ test('orchestration and release guidance resolve with required policy dependenci
     'WAIVER-001',
     'WORK-001',
   ])
+})
+
+test('dev intake resolves faithful-intake guidance without supervisor policies', () => {
+  const root = createFixture()
+  const intakeIds = resolvePolicies(root, {
+    persona: 'intake-writer',
+    workflow: 'dev',
+    stage: 'intake',
+  }).map((policy) => policy.id)
+
+  assert.deepEqual(intakeIds, [
+    'ACTION-001',
+    'AUTO-001',
+    'BIN-001',
+    'BRIEF-001',
+    'GLOBAL-001',
+    'GLOBAL-002',
+    'INTAKE-001',
+    'OPERATOR-001',
+    'OUTPUT-001',
+    'PRIMER-001',
+    'REPO-001',
+    'RUNTIME-001',
+    'STE-001',
+    'VALID-001',
+  ])
+
+  // Run-advancement authority stays with the supervisor, so a worker that owns
+  // the first stage must not inherit it.
+  for (const supervisorOnly of [
+    'ORCH-001',
+    'PAUSE-001',
+    'WAIVER-001',
+    'WORK-001',
+  ]) {
+    assert.ok(
+      !intakeIds.includes(supervisorOnly),
+      `intake-writer MUST NOT resolve ${supervisorOnly}`,
+    )
+  }
+})
+
+test('design intake keeps resolving faithful intake for the supervisor', () => {
+  const root = createFixture()
+  const ids = resolvePolicies(root, {
+    persona: 'orchestrator',
+    workflow: 'design',
+    stage: 'intake',
+  }).map((policy) => policy.id)
+
+  assert.ok(ids.includes('INTAKE-001'))
+  assert.ok(ids.includes('ORCH-001'))
 })
 
 test('self-development version policy is excluded from embedded installations', () => {
