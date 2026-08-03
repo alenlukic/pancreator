@@ -58,11 +58,14 @@ A STOP ends this invocation: stop calling tools and write the final report. Do n
 `INVOCATION-001` governs delegation. Every prepared worker card restates this contract with resolved paths under its **Supervisor delivery procedure** section. For each `invoke_agent` action you MUST:
 
 1. Confirm the card's invocation validation artifact reports `pass`. A failed or missing validation artifact MUST NOT be delegated.
-2. Read `runtime/logs/workflows/<run-id>/invocations/<invocation-id>.md` and paste its complete contents verbatim into the matching `pan-<persona>` subagent's `prompt`. A path reference, summary, or excerpt MUST NOT substitute for the card body.
+2. Read the card's **Supervisor delivery procedure** section and deliver the body it names:
+   - Referenced delivery names `runtime/logs/workflows/<run-id>/invocations/<invocation-id>.delivery.md`. Paste that file's complete contents into the matching `pan-<persona>` subagent's `prompt`. It carries the contract path, the contract digest, and the complete section index, so you MUST NOT reproduce the card body and MUST NOT replace the prompt with a bare path.
+   - Verbatim delivery names `runtime/logs/workflows/<run-id>/invocations/<invocation-id>.md`. Paste its complete contents into the prompt.
 3. Persist that exact prompt body to `runtime/logs/workflows/<run-id>/invocations/<invocation-id>.delegation.md`.
-4. Add no parallel scope, policy, gate, or plan restatement to the prompt; a minimal non-conflicting persona label MAY precede the card.
+4. Add no parallel scope, policy, gate, or plan restatement to the prompt; a minimal non-conflicting persona label MAY precede the delivered body.
 5. Submit the worker's declared output with `./bin/pan submit <run-id> <output-json>`.
 6. If delegation validation reports a missing or mismatched artifact, repair it against the same active invocation rather than bypassing it or reporting delivery as successful.
+7. A worker that reports stage result `blocked` with attestation status `reference_failed` could not read its contract. Report the named path and error; do not resubmit the same delegation unchanged.
 
 ## Final report
 

@@ -19,6 +19,7 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 - `PAUSE-001` — operator pause authority and workspace edits while paused
 - `ORCH-001` — supervisor continuation and stop conditions
 - `INVOCATION-001` — canonical invocation validation and delegation delivery
+- `EXECUTOR-001` — external stage executors: preflight, permissions, and harness-authored audit
 - `OPERATOR-001` — operator supremacy and execution of explicit directives
 - `WAIVER-001` — flexible operator waiver directives and optional follow-up
 - `ENG-001` — engineering handbook baseline and proportionate automated-test coverage
@@ -39,6 +40,7 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 - `WORK-001` — systematic versus lightweight work-mode determination
 - `SPOT-001` — bounded lightweight spotfix execution and escalation
 - `PAIR-001` — operator-directed pair programming outside workflow structure
+- `SHEPHERD-001` — bounded PR feedback watching, ledgered bot discipline, and squad-gated pushes
 - `PROTO-001` — prototype spike discipline and declared shortcuts
 - `DIRECTOR-001` — technical-director checkpoints for contract-enabled runs
 

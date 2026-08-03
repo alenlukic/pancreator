@@ -1,8 +1,10 @@
 import path from 'node:path'
 
-import { isRecord, readText } from '../io.js'
+import { isRecord, readJson, readText } from '../io.js'
 import {
+  expectedDelegationSource,
   validateDelegationMarkdown,
+  validateInvocationAttestation,
   validateInvocationMarkdown,
 } from '../validation.js'
 import { loadRegistry, validateRegistry } from './registry.js'
@@ -94,10 +96,47 @@ function invocationValidateHandler(input: HandlerInput): HandlerResult {
 }
 
 function delegationValidateHandler(input: HandlerInput): HandlerResult {
-  const canonicalPath = String(input.requirement.arguments.canonical ?? '')
-  const canonical = readText(path.join(input.root, canonicalPath))
+  if (!input.invocation) {
+    return {
+      status: 'invalid',
+      issues: [
+        { code: 'invocation.missing', message: 'Invocation context required' },
+      ],
+    }
+  }
+
+  // Referenced delivery owes the compact prompt, verbatim delivery the whole
+  // card, and a resumed external delegation the persisted revision directive.
+  // `expectedDelegationSource` consults the invocation contract and, for
+  // external executors, the harness-authored execution record.
+  const source = expectedDelegationSource(input.root, input.invocation as never)
+  const expected = readText(path.join(input.root, source.path))
   const delegation = readText(path.join(input.root, input.targetPath))
-  const result = validateDelegationMarkdown(canonical, delegation)
+  const result = validateDelegationMarkdown(expected, delegation, source.mode)
+
+  return {
+    status: result.passed ? 'passed' : 'failed',
+    issues: result.checks
+      .filter((check) => !check.passed)
+      .map((check) => ({ code: check.id, message: check.message })),
+  }
+}
+
+function invocationAttestValidateHandler(input: HandlerInput): HandlerResult {
+  if (!input.invocation) {
+    return {
+      status: 'invalid',
+      issues: [
+        { code: 'invocation.missing', message: 'Invocation context required' },
+      ],
+    }
+  }
+
+  const output = readJson(path.join(input.root, input.targetPath))
+  const result = validateInvocationAttestation(
+    input.invocation as never,
+    output,
+  )
 
   return {
     status: result.passed ? 'passed' : 'failed',
@@ -149,6 +188,7 @@ export const HANDLERS: Record<string, ValidatorHandler> = {
   'projection-validate': projectionValidateHandler,
   'invocation-validate': invocationValidateHandler,
   'delegation-validate': delegationValidateHandler,
+  'invocation-attest-validate': invocationAttestValidateHandler,
 }
 
 export const HANDLER_IDS = new Set(Object.keys(HANDLERS))

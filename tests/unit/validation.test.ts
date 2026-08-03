@@ -6,14 +6,18 @@ import test from 'node:test'
 import {
   POLICIES_HEADING,
   validateDelegationMarkdown,
+  validateInvocationAttestation,
   validateInvocationMarkdown,
   validateRepository,
 } from '../../src/lib/validation.js'
-import { renderInvocationMarkdown } from '../../src/lib/render.js'
+import {
+  buildInvocationContractManifest,
+  renderInvocationMarkdown,
+} from '../../src/lib/render.js'
 import { resolvePolicies } from '../../src/lib/policies.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { createFixture } from '../helpers.js'
-import type { Invocation } from '../../src/lib/types.js'
+import type { Invocation, InvocationAttestation } from '../../src/lib/types.js'
 
 function prepareValidationFixture(root: string): void {
   mkdirSync(path.join(root, 'tests'), { recursive: true })
@@ -513,6 +517,234 @@ test('delegation validator normalizes line endings', () => {
   const result = validateDelegationMarkdown(
     canonical,
     canonical.replaceAll('\n', '\r\n'),
+  )
+
+  assert.equal(result.passed, true)
+})
+
+type ReadAttestation = Extract<InvocationAttestation, { status: 'read' }>
+
+function attestedFixture(root: string): {
+  invocation: Invocation
+  attestation: ReadAttestation
+} {
+  const invocation = fixtureInvocation(root, 'implement')
+  const contractPath = `runtime/logs/workflows/run-fixture/invocations/${invocation.invocation_id}.md`
+
+  invocation.contract_manifest = buildInvocationContractManifest(
+    contractPath,
+    renderInvocationMarkdown(invocation),
+  )
+
+  const manifest = invocation.contract_manifest
+
+  return {
+    invocation,
+    attestation: {
+      invocation_id: invocation.invocation_id,
+      contract_path: manifest.contract_path,
+      contract_sha256: manifest.contract_sha256,
+      status: 'read',
+      sections: manifest.sections.map((section) => ({
+        id: section.id,
+        sha256: section.sha256,
+      })),
+    },
+  }
+}
+
+/** A submitted output carrying whatever the worker declared, valid or not. */
+function attestedOutput(
+  attestation: unknown,
+  result: 'success' | 'blocked' = 'success',
+): Record<string, unknown> {
+  return {
+    schema_version: 1,
+    result,
+    ...(attestation ? { invocation_attestation: attestation } : {}),
+  }
+}
+
+test('attestation validator passes a complete in-order declaration', () => {
+  const root = createFixture()
+  const { invocation, attestation } = attestedFixture(root)
+  const result = validateInvocationAttestation(
+    invocation,
+    attestedOutput(attestation),
+  )
+
+  assert.equal(result.passed, true)
+  assert.equal(result.status, 'read')
+})
+
+test('attestation validator rejects a missing declaration', () => {
+  const root = createFixture()
+  const { invocation } = attestedFixture(root)
+  const result = validateInvocationAttestation(
+    invocation,
+    attestedOutput(undefined),
+  )
+
+  assert.equal(result.passed, false)
+  assert.equal(result.status, 'missing')
+})
+
+test('attestation validator reports an unrecognized status as malformed', () => {
+  const root = createFixture()
+  const { invocation, attestation } = attestedFixture(root)
+  const result = validateInvocationAttestation(
+    invocation,
+    attestedOutput({ ...attestation, status: 'skimmed' }),
+  )
+
+  assert.equal(result.passed, false)
+  assert.equal(result.status, 'malformed')
+  assert.equal(
+    result.checks.find((check) => check.id === 'attestation.status')?.passed,
+    false,
+  )
+})
+
+test('attestation validator rejects a partial declaration', () => {
+  const root = createFixture()
+  const { invocation, attestation } = attestedFixture(root)
+  const result = validateInvocationAttestation(
+    invocation,
+    attestedOutput({
+      ...attestation,
+      sections: attestation.sections?.slice(0, -1),
+    }),
+  )
+
+  assert.equal(result.passed, false)
+  assert.equal(
+    result.checks.find((check) => check.id === 'attestation.section_count')
+      ?.passed,
+    false,
+  )
+})
+
+test('attestation validator rejects reordered sections', () => {
+  const root = createFixture()
+  const { invocation, attestation } = attestedFixture(root)
+  const reordered = [...(attestation.sections ?? [])].reverse()
+  const result = validateInvocationAttestation(
+    invocation,
+    attestedOutput({ ...attestation, sections: reordered }),
+  )
+
+  assert.equal(result.passed, false)
+})
+
+test('attestation validator rejects a stale section digest', () => {
+  const root = createFixture()
+  const { invocation, attestation } = attestedFixture(root)
+  const sections = [...(attestation.sections ?? [])]
+  const first = sections[0]
+
+  assert.ok(first)
+  sections[0] = { id: first.id, sha256: 'stale-digest' }
+
+  const result = validateInvocationAttestation(
+    invocation,
+    attestedOutput({ ...attestation, sections }),
+  )
+
+  assert.equal(result.passed, false)
+  assert.equal(
+    result.checks.find(
+      (check) => check.id === `attestation.section.${first.id}`,
+    )?.passed,
+    false,
+  )
+})
+
+test('attestation validator rejects a stale contract digest', () => {
+  const root = createFixture()
+  const { invocation, attestation } = attestedFixture(root)
+  const result = validateInvocationAttestation(
+    invocation,
+    attestedOutput({ ...attestation, contract_sha256: 'stale' }),
+  )
+
+  assert.equal(result.passed, false)
+  assert.equal(
+    result.checks.find((check) => check.id === 'attestation.contract_digest')
+      ?.passed,
+    false,
+  )
+})
+
+test('attestation validator accepts a blocked reference failure', () => {
+  const root = createFixture()
+  const { invocation, attestation } = attestedFixture(root)
+  const result = validateInvocationAttestation(
+    invocation,
+    attestedOutput(
+      {
+        invocation_id: attestation.invocation_id,
+        contract_path: attestation.contract_path,
+        status: 'reference_failed',
+        error: 'ENOENT: contract path could not be opened',
+      },
+      'blocked',
+    ),
+  )
+
+  assert.equal(result.passed, true)
+  assert.equal(result.status, 'reference_failed')
+  assert.ok(
+    result.checks.some((check) => check.message.includes('ENOENT')),
+    'the failed reference MUST stay visible in the checks',
+  )
+})
+
+test('attestation validator rejects a reference failure reported as success', () => {
+  const root = createFixture()
+  const { invocation, attestation } = attestedFixture(root)
+  const result = validateInvocationAttestation(
+    invocation,
+    attestedOutput({
+      invocation_id: attestation.invocation_id,
+      contract_path: attestation.contract_path,
+      status: 'reference_failed',
+      error: 'ENOENT: contract path could not be opened',
+    }),
+  )
+
+  assert.equal(result.passed, false)
+  assert.equal(
+    result.checks.find(
+      (check) => check.id === 'attestation.reference_failure_blocks',
+    )?.passed,
+    false,
+  )
+})
+
+test('attestation validator rejects a reference failure without a reason', () => {
+  const root = createFixture()
+  const { invocation, attestation } = attestedFixture(root)
+  const result = validateInvocationAttestation(
+    invocation,
+    attestedOutput(
+      {
+        invocation_id: attestation.invocation_id,
+        contract_path: attestation.contract_path,
+        status: 'reference_failed',
+      },
+      'blocked',
+    ),
+  )
+
+  assert.equal(result.passed, false)
+})
+
+test('attestation validator skips an invocation without a contract manifest', () => {
+  const root = createFixture()
+  const invocation = fixtureInvocation(root, 'implement')
+  const result = validateInvocationAttestation(
+    invocation,
+    attestedOutput(undefined),
   )
 
   assert.equal(result.passed, true)

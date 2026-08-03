@@ -10,7 +10,7 @@ This file binds every agent that reads it. Four contexts read it:
 
 - A **supervisor** advancing one workflow run inside the `pan-orchestrator` subagent. It holds no stage invocation card of its own, so this file, its persona brief, and the orchestrator invocation delivered by `/pan-start` or `/pan-resume` are its governance.
 - A **worker** executing one delegated stage inside a workflow run, holding an invocation card.
-- A **standalone-mode agent** running `/pan-spotfix`, `/pan-pair`, `/pan-debug`, `/pan-repair`, or `/pan-decompose`, holding a governance card from `./bin/pan governance card --mode <mode>` rather than a stage contract.
+- A **standalone-mode agent** running `/pan-spotfix`, `/pan-pair`, `/pan-shepherd`, `/pan-debug`, `/pan-repair`, or `/pan-decompose`, holding a governance card from `./bin/pan governance card --mode <mode>` rather than a stage contract.
 - An **unbound agent** working in this repository outside any run or mode, including an ad-hoc operator request.
 
 An agent MUST determine its context before applying a rule and MUST NOT default to supervisor or worker. **Workflow run roles** governs that determination.
@@ -73,19 +73,22 @@ These rules bind every agent that reads this file.
 These rules bind the supervisor and the workers of an active run.
 
 - Before stage work, the supervisor MUST run `./bin/pan status <run-id>` and read the pending invocation or assessment card.
-- A named worker stage MUST be delegated to the matching locally projected `.cursor/agents/pan-<persona>.md` subagent.
-- Delegation is governed by [`INVOCATION-001`](governance/policies/INVOCATION-001.json) and is unrolled here because the supervisor holds no stage invocation card. Every prepared worker card carries the same contract, with resolved paths, under its **Supervisor delivery procedure** section. For each worker stage the supervisor MUST:
+- A named worker stage MUST be delegated to the executor its run's pipeline snapshot resolves: a cursor-executor persona to the matching locally projected `.cursor/agents/pan-<persona>.md` subagent, and an external-executor persona (for example `claude-code:<model>`) by running `./bin/pan delegate <run-id>` and awaiting its result. External delegation is governed by [`EXECUTOR-001`](governance/policies/EXECUTOR-001.json): the harness delivers the card and authors the delegation evidence itself, and the supervisor MUST NOT re-deliver the card or write that evidence.
+- Cursor delegation is governed by [`INVOCATION-001`](governance/policies/INVOCATION-001.json) and is unrolled here because the supervisor holds no stage invocation card. Every prepared worker card carries the same contract, with resolved paths, under its **Supervisor delivery procedure** section. For each cursor-delegated worker stage the supervisor MUST:
   1. Read the harness-produced invocation validation artifact and MUST NOT delegate a card whose status is failed or missing.
-  2. Paste the complete canonical invocation Markdown verbatim into the subagent prompt. A path reference, summary, or excerpt MUST NOT substitute for the card body.
+  2. Deliver the body the card names. Referenced delivery names the generated `<invocation-id>.delivery.md` prompt, which carries the contract path, its digest, and its complete section index. Verbatim delivery names the canonical `<invocation-id>.md` card. A summary, an excerpt, or a bare path MUST NOT substitute for either body.
   3. Persist that exact prompt body to `runtime/logs/workflows/<run-id>/invocations/<invocation-id>.delegation.md` before submitting the stage.
-  4. Add no parallel scope, policy, gate, or plan restatement that could shadow the card; a minimal non-conflicting persona label MAY precede it. The delegation validator accepts exactly one such label: a single short line that opens no Markdown structure, followed by a blank line, ahead of the verbatim card body.
+  4. Add no parallel scope, policy, gate, or plan restatement that could shadow the contract; a minimal non-conflicting persona label MAY precede it. The delegation validator accepts exactly one such label: a single short line that opens no Markdown structure, followed by a blank line, ahead of the delivered body.
   5. Repair a missing or mismatched delegation artifact against the same active invocation rather than bypassing it or reporting delivery as successful.
+- A worker that receives a referenced contract MUST read it in full before other repository context and MUST declare that read in `invocation_attestation` in its stage output. The attestation MUST name every contract section in order with its digest. A worker that cannot read the contract MUST report result `blocked` with status `reference_failed` and the concrete read error.
 - A worker MUST write only the declared output and permitted evidence. The supervisor MUST submit it through `./bin/pan submit`.
 - The harness MUST rerun deterministic gate commands and MUST own code-determined transitions.
-- Before the first implementation invocation, the harness MUST capture only repository-check profiles required by the implementation stage. Unchanged failures present in that baseline MUST remain visible evidence but MUST NOT block the run; new or changed implementation/test diagnostics MUST fail the gate.
+- Before the first source-allowed stage, the harness MUST capture a repository-check baseline for every profile the workflow gates on. A gate whose expected baseline is absent or incompatible MUST pause the run before delegation.
+- A baselined repository-check gate MUST be judged by diagnostic delta. A carried failure MUST remain visible evidence and MUST NOT block the run. A repaired failure MUST be recorded as fixed. A new diagnostic identity, or a changed exit status, signal, or timeout, MUST fail the gate.
 - A second consecutive hard failure with the same normalized signature MUST pause immediately, independent of broader retry limits. On an implementation self-loop, the next coder attempt MUST directly remediate the recorded loop cause and MUST NOT consume an attempt on unchanged paperwork or evidence alone.
 - For `supervisor_assessment`, the supervisor MUST evaluate only the listed judgment criteria and write the declared assessment file.
 - For `operator_approval`, the supervisor MUST present the ratification packet and stop unless the operator has already explicitly decided. It MUST NOT originate or infer approval, but MUST execute an explicit approval directive.
+- An operator-gated stage MUST stop before its success, failure, and blocked transitions. Approval applies the recorded outcome and its transition, so approving a failed stage routes the failure rather than the success.
 - The supervisor MUST apply [`ORCH-001`](governance/policies/ORCH-001.json) for continuation and stop conditions. Its full text and the supervisor brief are unrolled into every supervisor-owned invocation card.
 
 ## Work modes
@@ -95,10 +98,11 @@ These rules bind the supervisor and the workers of an active run.
 - A request qualifies as lightweight only when it is one coherent small-scope change under `WORK-001`. Uncertain or expanded scope MUST route to `systematic`.
 - `interactive` MAY be selected only by an explicit operator invocation of `/pan-pair` and MUST apply `PAIR-001`. The agent applies the governance its persona carries and is bound to no workflow, stage contract, gate, or run contract; the operator owns scope, sequencing, and completion. An interactive session MUST NOT create, advance, or write state for a workflow run, and MUST NOT be converted into one on agent initiative.
 - Every non-workflow mode MUST receive its governance from `./bin/pan governance card --mode <mode>`, which resolves the same policy applicability map the workflow path uses. Agents MUST NOT hand-assemble policy text from `governance/policies/` for these modes.
+- `shepherd` MAY be selected only by an explicit operator invocation of `/pan-shepherd` on one named pull request and MUST apply `SHEPHERD-001` with the complete shepherd procedure unrolled into its governance card. The invocation authorizes commits and pushes to that pull request's head branch only, and only for changes the local review squad has passed; merge, close, retarget, rebase, and force-push remain operator-owned. The squad pass is coordinated by the `pan-shepherd-reviewer` subagent, whose model `config.json` maps through the `shepherd-reviewer` persona independently of the run-time `reviewer`.
 - `/pan-debug` MUST delegate to the non-mutating investigator, which MUST identify root cause, define acceptance criteria, and recommend exactly one work mode.
 - `/pan-repair` MUST delegate to the non-mutating harness technician, which audits Pancreator failures or run artifacts, includes relevant agent transcripts for run forensics, and writes a validated self-development intake under `runtime/inbox/`.
 - `/pan-decompose` MUST apply `DECOMP-001` before workflow execution, default to retaining one larger systematic run, and write only its validated decomposition artifact under `runtime/inbox/`.
-- A lightweight spotfix and an interactive pair session MUST NOT run while a mutating workflow agent is executing against the same workspace.
+- A lightweight spotfix, an interactive pair session, and a shepherd session MUST NOT run while a mutating workflow agent is executing against the same workspace.
 
 ## Workflows
 

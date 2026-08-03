@@ -1,0 +1,16 @@
+{
+  "id": "EXECUTOR-001",
+  "title": "External stage executors",
+  "severity": "hard",
+  "summary": "A stage whose persona resolves to an external executor MUST be dispatched by the harness, preflighted fail-closed, run non-interactively under a stage-derived permission policy, and audited with harness-authored delegation evidence.",
+  "instructions": [
+    "The executor for a stage MUST be resolved from the run's pipeline snapshot. A live configuration edit MUST NOT change the executor of a run in flight.",
+    "Before any external delegation the harness MUST verify the executor is present, at or above the tested minimum version, and authenticated. Run creation MUST verify binary availability for every external persona the workflow uses.",
+    "A failed preflight MUST block with an operator decision. Substituting a different executor would falsify the run's model snapshot and MUST NOT happen silently.",
+    "External invocations MUST run non-interactively with an explicit permission configuration derived from the stage's workspace policy. A stage that does not permit source mutation MUST NOT grant file-write tools beyond the harness runtime tree. The tool policy is defense in depth; scope.no_unapproved_changes remains the gate of record for workspace mutation.",
+    "The harness MUST author the delegation audit for an external stage itself: the delivered prompt body byte for byte in the delegation artifact, and executor identity, resolved argument vector excluding the prompt body, exit status, and the returned session id in the execution record beside it.",
+    "Executor stdout and stderr MUST be captured as durable run evidence under the OUTPUT-001 pattern.",
+    "The supervisor MUST fulfill invoke_agent for an external-executor stage by running pan delegate and awaiting its result. It MUST NOT re-summarize, re-deliver, or paste the card itself.",
+    "When an operator revision re-runs an external stage, the harness SHOULD resume the recorded executor session with the directive so the author keeps its full context. A failed resume MUST fall back to a fresh delegation carrying the standard operator-feedback input and MUST be audited as a fallback. A retry after a failed attempt MUST NOT resume."
+  ]
+}

@@ -25,6 +25,11 @@ target repository tracks.
   with a web UI, because `BROWSER-001` blocks browser verdicts without them. The
   installer reports whether they are configured; it never installs a browser or
   writes target MCP config. See `./bin/pan doctor`.
+- The Claude Code CLI (`claude`), installed and authenticated per machine —
+  required only when the active persona mapping routes a persona to the
+  `claude-code` executor. A missing or unauthenticated CLI is an
+  operator-visible preflight pause, not an error to work around; the harness
+  never silently substitutes Cursor. See `./bin/pan doctor`.
 
 ## Install
 
@@ -348,7 +353,7 @@ blanket-deleted.
 
 ## Harness versioning
 
-`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `2.18.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
+`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `2.19.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
 
 `release/index.json` is the internal mapping from harness version to immutable
 Git commit. Because a commit cannot contain its own hash, release publication is

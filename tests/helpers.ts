@@ -16,6 +16,7 @@ import { nextSemanticVersion } from '../src/lib/versioning.js'
 
 import type {
   Invocation,
+  InvocationAttestation,
   RunState,
   StageDefinition,
   StageOutcome,
@@ -657,21 +658,53 @@ function requiredData(
   }
 }
 
+/**
+ * Persist the delegation evidence a compliant supervisor would leave: the exact
+ * body the invocation names, which is the compact delivery prompt under
+ * referenced delivery and the canonical card under verbatim delivery.
+ */
 export function writeCanonicalDelegation(
   root: string,
   invocation: Invocation,
 ): void {
-  const markdownRelative =
-    `runtime/logs/workflows/${invocation.run_id}/invocations/` +
-    `${invocation.invocation_id}.md`
-  const delegationRelative =
-    `runtime/logs/workflows/${invocation.run_id}/invocations/` +
-    `${invocation.invocation_id}.delegation.md`
-  const markdownAbsolute = path.join(root, markdownRelative)
-  const delegationAbsolute = path.join(root, delegationRelative)
+  const invocationDirectory = `runtime/logs/workflows/${invocation.run_id}/invocations`
+  const deliveredRelative =
+    invocation.delegation?.mode === 'referenced' &&
+    invocation.delegation.delivery_prompt_path
+      ? invocation.delegation.delivery_prompt_path
+      : `${invocationDirectory}/${invocation.invocation_id}.md`
+  const delegationAbsolute = path.join(
+    root,
+    `${invocationDirectory}/${invocation.invocation_id}.delegation.md`,
+  )
 
   mkdirSync(path.dirname(delegationAbsolute), { recursive: true })
-  writeFileSync(delegationAbsolute, readFileSync(markdownAbsolute, 'utf8'))
+  writeFileSync(
+    delegationAbsolute,
+    readFileSync(path.join(root, deliveredRelative), 'utf8'),
+  )
+}
+
+/** The read attestation a worker owes for a referenced invocation contract. */
+export function makeAttestation(
+  invocation: Invocation,
+): InvocationAttestation | undefined {
+  const manifest = invocation.contract_manifest
+
+  if (!manifest) {
+    return undefined
+  }
+
+  return {
+    invocation_id: invocation.invocation_id,
+    contract_path: manifest.contract_path,
+    contract_sha256: manifest.contract_sha256,
+    status: 'read',
+    sections: manifest.sections.map((section) => ({
+      id: section.id,
+      sha256: section.sha256,
+    })),
+  }
 }
 
 export function makeOutput(
@@ -693,6 +726,8 @@ export function makeOutput(
     ),
   )
   renderBrief(root, briefSource, briefHtml)
+
+  const attestation = makeAttestation(invocation)
 
   return {
     $operator: {
@@ -723,5 +758,6 @@ export function makeOutput(
       runState,
       invocation.workflow.slug,
     ),
+    ...(attestation ? { invocation_attestation: attestation } : {}),
   }
 }

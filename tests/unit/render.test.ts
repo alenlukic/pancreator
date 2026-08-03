@@ -3,7 +3,14 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import { renderInvocationMarkdown, renderStatus } from '../../src/lib/render.js'
+import { sha256 } from '../../src/lib/io.js'
+import {
+  buildInvocationContractManifest,
+  renderInvocationDeliveryPrompt,
+  renderInvocationMarkdown,
+  renderStatus,
+  splitInvocationContract,
+} from '../../src/lib/render.js'
 import { resolvePolicies } from '../../src/lib/policies.js'
 import {
   buildValidationArtifact,
@@ -396,4 +403,96 @@ test('invocation cards distinguish required, conditional, and indexed context', 
   assert.match(markdown, /### Context index/u)
   assert.match(markdown, /### Missing required context/u)
   assert.match(markdown, /latest success output for stage 'plan'/u)
+})
+
+function referencedInvocation(root: string): Invocation {
+  const invocation = baseInvocation(root, 'dev', 'implement')
+  const contractPath = `runtime/logs/workflows/run-fixture/invocations/${invocation.invocation_id}.md`
+
+  invocation.delegation = {
+    persona: 'coder',
+    cursor_agent_path: '.cursor/agents/pan-coder.md',
+    canonical_markdown_path: contractPath,
+    invocation_validation_path: `${contractPath}.invocation-validation.json`,
+    delegation_artifact_path: contractPath.replace('.md', '.delegation.md'),
+    submit_command: './bin/pan submit run-fixture output.json',
+    mode: 'referenced',
+    delivery_prompt_path: contractPath.replace('.md', '.delivery.md'),
+    policies: [],
+  }
+  invocation.contract_manifest = buildInvocationContractManifest(
+    contractPath,
+    renderInvocationMarkdown(invocation),
+  )
+
+  return invocation
+}
+
+test('contract sections concatenate back to the exact contract', () => {
+  const root = createFixture()
+  const invocation = referencedInvocation(root)
+  const contract = renderInvocationMarkdown(invocation)
+  const blocks = splitInvocationContract(contract)
+
+  assert.equal(blocks.map((block) => block.markdown).join(''), contract)
+  assert.equal(blocks[0]?.owner, 'worker')
+  assert.equal(blocks[blocks.length - 1]?.owner, 'supervisor')
+
+  for (const block of blocks) {
+    assert.equal(sha256(block.markdown).length, 64)
+  }
+})
+
+test('the contract manifest indexes every section once, in order', () => {
+  const root = createFixture()
+  const invocation = referencedInvocation(root)
+  const manifest = invocation.contract_manifest
+
+  assert.ok(manifest)
+
+  const blocks = splitInvocationContract(renderInvocationMarkdown(invocation))
+
+  assert.deepEqual(
+    manifest.sections.map((section) => section.id),
+    blocks.map((block) => block.id),
+  )
+  assert.deepEqual(
+    manifest.sections.map((section) => section.sha256),
+    blocks.map((block) => sha256(block.markdown)),
+  )
+  assert.equal(
+    new Set(manifest.sections.map((section) => section.id)).size,
+    manifest.sections.length,
+  )
+})
+
+test('the delivery prompt references the contract without reproducing it', () => {
+  const root = createFixture()
+  const invocation = referencedInvocation(root)
+  const manifest = invocation.contract_manifest
+
+  assert.ok(manifest)
+
+  const prompt = renderInvocationDeliveryPrompt(invocation, manifest)
+
+  assert.match(prompt, /Persona: `coder`/u)
+  assert.ok(prompt.includes(manifest.contract_path))
+  assert.ok(prompt.includes(manifest.contract_sha256))
+  assert.match(prompt, /## Contract sections/u)
+  assert.match(prompt, /## Read attestation/u)
+  assert.ok(prompt.includes(invocation.output.path))
+  // The prompt tells the worker what to read; it does not restate the contract.
+  assert.ok(!prompt.includes(invocation.prompt))
+  assert.ok(prompt.length < manifest.byte_length)
+})
+
+test('the invocation card names the delivery prompt for its supervisor', () => {
+  const root = createFixture()
+  const invocation = referencedInvocation(root)
+  const markdown = renderInvocationMarkdown(invocation)
+
+  assert.ok(invocation.delegation?.delivery_prompt_path)
+  assert.ok(markdown.includes(invocation.delegation.delivery_prompt_path))
+  assert.ok(markdown.includes(invocation.delegation.canonical_markdown_path))
+  assert.match(markdown, /referenced delivery/u)
 })

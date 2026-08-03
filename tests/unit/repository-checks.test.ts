@@ -159,6 +159,7 @@ test('repository check configuration rejects identical fast and full commands', 
 function failedCheck(
   stderr: string,
   workspaceRoot = '/workspace',
+  overrides: Partial<RepositoryCheckResult['results'][number]> = {},
 ): RepositoryCheckResult {
   return {
     profile: 'static',
@@ -175,6 +176,32 @@ function failedCheck(
         stdout: '',
         stderr,
         passed: false,
+        timed_out: false,
+        duration_ms: 1,
+        ...overrides,
+      },
+    ],
+    total_duration_ms: 1,
+    advisories: [],
+  }
+}
+
+function passedCheck(): RepositoryCheckResult {
+  return {
+    profile: 'static',
+    status: 'passed',
+    config_path: '/harness/runtime/repository-checks.json',
+    workspace_root: '/workspace',
+    timeout_ms: 60_000,
+    results: [
+      {
+        kind: 'command',
+        command: 'npm run lint',
+        exit_code: 0,
+        signal: null,
+        stdout: '',
+        stderr: '',
+        passed: true,
         timed_out: false,
         duration_ms: 1,
       },
@@ -195,6 +222,8 @@ test('baseline comparison tolerates line movement and improving failure counts',
   const comparison = compareRepositoryCheckToBaseline(baseline, current)
 
   assert.equal(comparison.passed, true)
+  assert.equal(comparison.delta.new.length, 0)
+  assert.equal(comparison.delta.carried.length, 1)
 })
 
 test('baseline comparison rejects a new diagnostic from the same command', () => {
@@ -209,7 +238,102 @@ test('baseline comparison rejects a new diagnostic from the same command', () =>
   const comparison = compareRepositoryCheckToBaseline(baseline, current)
 
   assert.equal(comparison.passed, false)
-  assert.match(comparison.explanation, /new or changed/u)
+  assert.equal(comparison.delta.new.length, 1)
+  assert.match(comparison.delta.new[0]?.diagnostic ?? '', /no-new/u)
+  assert.equal(comparison.delta.new[0]?.command, 'npm run lint')
+  assert.match(comparison.explanation, /1 new, 0 fixed, 1 carried/u)
+})
+
+test('baseline delta credits a repaired inherited failure as fixed', () => {
+  const baseline = failedCheck(
+    '/workspace/src/a.ts:10:2 error Unexpected value no-example\n' +
+      '/workspace/src/b.ts:3:1 error Inherited failure no-old\n',
+  )
+  const current = failedCheck(
+    '/workspace/src/a.ts:10:2 error Unexpected value no-example\n',
+  )
+
+  const comparison = compareRepositoryCheckToBaseline(baseline, current)
+
+  assert.equal(comparison.passed, true)
+  assert.equal(comparison.delta.fixed.length, 1)
+  assert.match(comparison.delta.fixed[0]?.diagnostic ?? '', /no-old/u)
+  assert.equal(comparison.delta.carried.length, 1)
+  assert.match(comparison.explanation, /0 new, 1 fixed, 1 carried/u)
+})
+
+test('baseline delta counts a duplicated diagnostic as new', () => {
+  const baseline = failedCheck(
+    '/workspace/src/a.ts:10:2 error Unexpected value no-example\n',
+  )
+  const current = failedCheck(
+    '/workspace/src/a.ts:10:2 error Unexpected value no-example\n' +
+      '/workspace/src/c.ts:11:4 error Unexpected value no-example\n',
+  )
+
+  const comparison = compareRepositoryCheckToBaseline(baseline, current)
+
+  assert.equal(comparison.passed, false)
+  assert.equal(comparison.delta.new.length, 1)
+  assert.equal(comparison.delta.new[0]?.count, 1)
+})
+
+test('baseline delta treats a first-time failing command as new', () => {
+  const current = failedCheck(
+    '/workspace/src/a.ts:10:2 error Unexpected value no-example\n',
+  )
+
+  const comparison = compareRepositoryCheckToBaseline(passedCheck(), current)
+
+  assert.equal(comparison.passed, false)
+  assert.equal(comparison.delta.new.length > 0, true)
+})
+
+test('baseline delta treats a changed exit status as new', () => {
+  const baseline = failedCheck('same diagnostic text\n')
+  const current = failedCheck('same diagnostic text\n', '/workspace', {
+    timed_out: true,
+    exit_code: null,
+  })
+
+  const comparison = compareRepositoryCheckToBaseline(baseline, current)
+
+  assert.equal(comparison.passed, false)
+  assert.equal(
+    comparison.delta.new.some((item) =>
+      item.diagnostic.includes('timed_out=true'),
+    ),
+    true,
+  )
+})
+
+test('baseline delta ignores an unchanged exit status', () => {
+  const baseline = failedCheck('same diagnostic text\n')
+  const current = failedCheck('same diagnostic text\n')
+
+  const comparison = compareRepositoryCheckToBaseline(baseline, current)
+
+  assert.equal(comparison.passed, true)
+  assert.equal(comparison.delta.new.length, 0)
+  assert.equal(comparison.delta.fixed.length, 0)
+  assert.equal(comparison.delta.carried.length, 1)
+})
+
+test('baseline delta passes a fully repaired check', () => {
+  const baseline = failedCheck(
+    '/workspace/src/a.ts:10:2 error Unexpected value no-example\n',
+  )
+
+  const comparison = compareRepositoryCheckToBaseline(baseline, passedCheck())
+
+  assert.equal(comparison.passed, true)
+  assert.equal(comparison.delta.new.length, 0)
+  assert.equal(
+    comparison.delta.fixed.some((item) =>
+      item.diagnostic.includes('no-example'),
+    ),
+    true,
+  )
 })
 
 test('streaming repository checks emit subprocess output before returning the result', async () => {

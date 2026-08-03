@@ -58,8 +58,14 @@ import {
   loadPipelineConfig,
   loadPipelineConfigSnapshot,
   makePipelineConfigSnapshot,
-  resolvePersonaModel,
+  resolvePersonaMapping,
 } from './pipeline-config.js'
+import {
+  claudeCodeCredentialPreflight,
+  claudeCodeVersionPreflight,
+  runClaudeCode,
+  type ClaudeCodeInvocationResult,
+} from './executors/claude-code.js'
 import {
   applyOperatorInvolvement,
   loadOperatorInvolvementFile,
@@ -72,7 +78,12 @@ import {
   summarizeRepositoryCheckResult,
 } from './repository-checks.js'
 import { cursorAgentTarget, syncCursorProjection } from './projection.js'
-import { renderInvocationMarkdown, renderStatus } from './render.js'
+import {
+  buildInvocationContractManifest,
+  renderInvocationDeliveryPrompt,
+  renderInvocationMarkdown,
+  renderStatus,
+} from './render.js'
 import {
   operationMutexPath,
   loadState,
@@ -86,6 +97,7 @@ import {
 import type {
   CriterionEvaluation,
   DeterministicResult,
+  ExternalDelegationRecord,
   GovernanceArtifactIssue,
   Invocation,
   OperatorFeedbackItem,
@@ -105,14 +117,22 @@ import type {
   WorkflowDefinition,
 } from './types.js'
 import {
+  attestationValidationPath,
   buildValidationArtifact,
+  delegationExecutionPath,
   delegationPath,
   delegationValidationPath,
+  deliveryPromptPath,
   evaluateDeterministicCriteria,
+  expectedDelegationSource,
   invocationValidationPath,
   loadInvocationValidationStatus,
+  loadRepositoryCheckBaseline,
   relocateMisplacedDelegationArtifact,
+  repositoryCheckBaselinesCaptured,
+  sessionRecordPath,
   validateDelegationMarkdown,
+  validateInvocationAttestation,
   validateInvocationMarkdown,
   validateStageOutput,
 } from './validation.js'
@@ -424,14 +444,16 @@ function ensureWorkflowRepositoryCheckBaselines(
     return
   }
 
+  if (repositoryCheckBaselinesCaptured(state)) {
+    return
+  }
+
   const profiles = collectStageRepositoryCheckProfiles(workflow.stages)
-  const baselines = (state.repository_check_baselines ??= {})
+  const baselines: NonNullable<RunState['repository_check_baselines']> = {}
+
+  state.repository_check_baselines = baselines
 
   for (const profile of profiles) {
-    if (baselines[profile.name]) {
-      continue
-    }
-
     onProgress?.(
       `capturing pre-implementation '${profile.name}' baseline (timeout ${profile.timeout_ms ?? 'default'}ms)`,
     )
@@ -481,6 +503,75 @@ function ensureWorkflowRepositoryCheckBaselines(
       recorded_at: recordedAt,
     }
   }
+}
+
+/**
+ * Report every repository-check gate of one stage whose expected baseline cannot
+ * support it.
+ *
+ * A gate that reruns `pan repository-check` is judged against the baseline the
+ * run captured, so an absent or incompatible baseline must be repaired before the
+ * worker starts. Finding it at submit would spend a whole stage attempt on a
+ * harness fault the worker cannot influence.
+ */
+function repositoryCheckBaselineGaps(
+  root: string,
+  state: RunState,
+  stage: StageDefinition,
+): string[] {
+  if (!repositoryCheckBaselinesCaptured(state)) {
+    return []
+  }
+
+  const gaps: string[] = []
+
+  for (const criterion of stage.criteria) {
+    if (criterion.type !== 'shell') {
+      continue
+    }
+
+    const profileName = repositoryCheckProfileName(criterion.command ?? '')
+
+    if (!profileName) {
+      continue
+    }
+
+    const load = loadRepositoryCheckBaseline(root, state, profileName)
+
+    if (load.reason) {
+      gaps.push(`Gate '${criterion.id}': ${load.reason}`)
+    }
+  }
+
+  return gaps
+}
+
+function pauseForRepositoryCheckBaselineGaps(
+  root: string,
+  state: RunState,
+  stage: StageDefinition,
+  gaps: string[],
+): void {
+  const reason =
+    `Stage '${stage.slug}' cannot be delegated because a repository-check ` +
+    `baseline does not support its gate. ${gaps.join(' ')}`
+
+  state.status = 'paused'
+  state.pause_reason = reason
+  state.pending_action = { type: 'operator_decision' }
+
+  writeDecision(
+    root,
+    state,
+    'Workflow paused by a repository-check baseline gap',
+    reason,
+    [
+      'Inspect the named baseline evidence under ' +
+        `runtime/logs/workflows/${state.run_id}/evidence/.`,
+      `Recapture the baselines by resuming this run from the first source stage: ${panCommand(root)} resume ${state.run_id} --stage <stage>`,
+      `Or abort with: ${panCommand(root)} abort ${state.run_id}`,
+    ],
+  )
 }
 
 function pauseForLimit(root: string, state: RunState, reason: string): void {
@@ -791,15 +882,42 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
 
   const workflow = loadWorkflow(root, workflowSlug)
   const pipelineConfig = loadPipelineConfig(root)
+  let workflowUsesClaudeCode = false
 
   for (const stage of workflow.stages) {
-    resolvePersonaModel(pipelineConfig.config, stage.persona)
+    const mapping = resolvePersonaMapping(pipelineConfig.config, stage.persona)
 
+    // The orchestrator persona is the supervisor running in the Cursor chat;
+    // it cannot be handed to an external process.
     invariant(
-      fileExists(path.join(root, cursorAgentTarget(root, stage.persona))),
-      `Missing Cursor agent for persona '${stage.persona}'.`,
-      { code: 'MISSING_CURSOR_AGENT' },
+      stage.persona !== 'orchestrator' || mapping.executor === 'cursor',
+      `Persona 'orchestrator' MUST use the cursor executor; ` +
+        `'${mapping.raw}' routes it to '${mapping.executor}'.`,
+      { code: 'INVALID_PIPELINE_CONFIG' },
     )
+
+    if (mapping.executor === 'cursor') {
+      invariant(
+        fileExists(path.join(root, cursorAgentTarget(root, stage.persona))),
+        `Missing Cursor agent for persona '${stage.persona}'.`,
+        { code: 'MISSING_CURSOR_AGENT' },
+      )
+    } else {
+      workflowUsesClaudeCode = true
+    }
+  }
+
+  // Fail closed before any run state exists: an external persona whose
+  // executor binary is absent or too old could never be delegated, and
+  // substituting Cursor would falsify the model snapshot. The credential probe
+  // spends a real invocation, so it runs at first delegation instead.
+  if (workflowUsesClaudeCode) {
+    const preflight = claudeCodeVersionPreflight()
+
+    invariant(preflight.ok, `Executor preflight failed: ${preflight.error}`, {
+      code: 'EXECUTOR_PREFLIGHT_FAILED',
+      details: preflight,
+    })
   }
 
   const agentModelDrift = syncCursorProjection(root).filter(
@@ -947,6 +1065,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
 const INLINE_SUBMIT_VALIDATORS = new Set([
   'INVOCATION-VALIDATE-001',
   'DELEGATION-VALIDATE-001',
+  'INVOCATION-ATTEST-VALIDATE-001',
   'STAGE-OUTPUT-VALIDATE-002',
 ])
 
@@ -1111,7 +1230,10 @@ export function prepareInvocation(
 
     assertRunPipelineConfigCurrent(root, state, pipelineConfig)
 
-    const model = resolvePersonaModel(pipelineConfig, stage.persona)
+    const mapping = resolvePersonaMapping(pipelineConfig, stage.persona)
+    const model = mapping.model_spec
+    const externalExecutor =
+      mapping.executor !== 'cursor' ? mapping.executor : undefined
     // An invocation that was prepared but never submitted did no work, so it
     // must not spend an attempt. This happens whenever a card is superseded —
     // most often after an operator pause — and previously the discarded card
@@ -1157,6 +1279,15 @@ export function prepareInvocation(
       options.onProgress,
     )
 
+    const baselineGaps = repositoryCheckBaselineGaps(root, state, stage)
+
+    if (baselineGaps.length > 0) {
+      pauseForRepositoryCheckBaselineGaps(root, state, stage, baselineGaps)
+      persistRun(root, state, 'run_paused', { reason: state.pause_reason })
+
+      return { state, invocation: null }
+    }
+
     const invocationId = makeStageArtifactId(
       nextStageSequence(root, runId),
       stage.slug,
@@ -1194,31 +1325,62 @@ export function prepareInvocation(
       stage.persona === 'orchestrator'
         ? `Complete this stage in the current chat with model '${model}' ` +
           `when available, write ${outputPath}, then submit it.`
-        : `Invoke the '${stage.persona}' Cursor subagent configured for ` +
-          `'${model}' with this card, write delegation evidence to ` +
-          `${delegationArtifactPath}, then submit ${outputPath}.`
+        : externalExecutor
+          ? `Run '${panCommand(root)} delegate ${runId}' to execute the ` +
+            `'${stage.persona}' stage under the '${externalExecutor}' ` +
+            `executor with model '${model}', then submit ${outputPath}.`
+          : `Invoke the '${stage.persona}' Cursor subagent configured for ` +
+            `'${model}' with this card, write delegation evidence to ` +
+            `${delegationArtifactPath}, then submit ${outputPath}.`
     // The supervisor delegates from the continuation loop, where it holds no
     // card of its own. Resolving its policies here puts the delivery contract
-    // on the artifact it must already read to paste the card verbatim.
+    // on the artifact it must already read to perform the delegation. For an
+    // external executor the harness moves the bytes itself, so delivery is
+    // `verbatim` by construction and no compact delivery prompt is generated.
     const delegation =
       stage.persona === 'orchestrator'
         ? undefined
-        : {
-            persona: stage.persona,
-            cursor_agent_path: cursorAgentTarget(root, stage.persona),
-            canonical_markdown_path: markdownPath,
-            invocation_validation_path: invocationValidationPath(
-              runId,
-              invocationId,
-            ),
-            delegation_artifact_path: delegationArtifactPath,
-            submit_command: `${panCommand(root)} submit ${runId} ${outputPath}`,
-            policies: resolvePolicies(root, {
-              persona: 'orchestrator',
-              workflow: workflow.slug,
-              stage: stage.slug,
-            }).filter((policy) => policy.id === 'INVOCATION-001'),
-          }
+        : externalExecutor
+          ? {
+              persona: stage.persona,
+              executor: externalExecutor,
+              delegate_command: `${panCommand(root)} delegate ${runId}`,
+              canonical_markdown_path: markdownPath,
+              invocation_validation_path: invocationValidationPath(
+                runId,
+                invocationId,
+              ),
+              delegation_artifact_path: delegationArtifactPath,
+              submit_command: `${panCommand(root)} submit ${runId} ${outputPath}`,
+              mode: 'verbatim' as const,
+              policies: resolvePolicies(root, {
+                persona: 'orchestrator',
+                workflow: workflow.slug,
+                stage: stage.slug,
+              }).filter(
+                (policy) =>
+                  policy.id === 'INVOCATION-001' ||
+                  policy.id === 'EXECUTOR-001',
+              ),
+            }
+          : {
+              persona: stage.persona,
+              cursor_agent_path: cursorAgentTarget(root, stage.persona),
+              canonical_markdown_path: markdownPath,
+              invocation_validation_path: invocationValidationPath(
+                runId,
+                invocationId,
+              ),
+              delegation_artifact_path: delegationArtifactPath,
+              submit_command: `${panCommand(root)} submit ${runId} ${outputPath}`,
+              mode: 'referenced' as const,
+              delivery_prompt_path: deliveryPromptPath(runId, invocationId),
+              policies: resolvePolicies(root, {
+                persona: 'orchestrator',
+                workflow: workflow.slug,
+                stage: stage.slug,
+              }).filter((policy) => policy.id === 'INVOCATION-001'),
+            }
 
     const artifactProfile = operatorArtifactProfileForStage(
       stage.slug,
@@ -1254,8 +1416,11 @@ export function prepareInvocation(
       $operator: {
         headline: `${stage.title} is ready`,
         summary:
-          `The harness prepared attempt ${attempt} with model '${model}', ` +
-          `${policies.length} scoped policies, and a workspace fingerprint.`,
+          `The harness prepared attempt ${attempt} with model '${model}'` +
+          (externalExecutor
+            ? ` under the '${externalExecutor}' executor`
+            : '') +
+          `, ${policies.length} scoped policies, and a workspace fingerprint.`,
         next_action: nextAction,
       },
       schema_version: 1,
@@ -1279,6 +1444,7 @@ export function prepareInvocation(
         title: stage.title,
         persona: stage.persona,
         ...(stage.executor ? { executor: stage.executor } : {}),
+        ...(externalExecutor ? { persona_executor: externalExecutor } : {}),
         model,
         model_config: pipelineConfig.name,
         workspace_policy: stage.workspace_policy,
@@ -1336,9 +1502,13 @@ export function prepareInvocation(
           : ['You MUST write only the declared output and evidence.']),
         ...(stage.persona === 'orchestrator'
           ? []
-          : [
-              `You MUST persist delegation evidence to ${delegationArtifactPath} and MUST NOT write workspace-root .delegation.md.`,
-            ]),
+          : externalExecutor
+            ? [
+                `The harness authors delegation evidence at ${delegationArtifactPath} itself. You MUST NOT write that artifact or workspace-root .delegation.md.`,
+              ]
+            : [
+                `You MUST persist delegation evidence to ${delegationArtifactPath} and MUST NOT write workspace-root .delegation.md.`,
+              ]),
         'You MUST NOT alter workflow state directly.',
         'While a mutating workflow is active, external edits to tracked files SHOULD be avoided because they make stage attribution ambiguous; pause the run before operator-authored changes.',
         'You MUST NOT commit, push, merge, publish, deploy, or perform destructive source-control actions.',
@@ -1355,6 +1525,27 @@ export function prepareInvocation(
     })
 
     const renderedMarkdown = renderInvocationMarkdown(invocation)
+
+    // The manifest describes the rendered bytes, so it can only be attached
+    // after rendering. The card therefore never contains its own digest, and the
+    // compact delivery prompt is where the digest and section index live.
+    // External-executor delegations skip both: the harness pipes the card bytes
+    // to the executor itself, so referenced delivery — and the read attestation
+    // that polices it — has nothing to defend against.
+    if (delegation?.mode === 'referenced' && delegation.delivery_prompt_path) {
+      invocation.contract_manifest = buildInvocationContractManifest(
+        markdownPath,
+        renderedMarkdown,
+      )
+      writeTextAtomic(
+        resolveInside(root, delegation.delivery_prompt_path),
+        renderInvocationDeliveryPrompt(
+          invocation,
+          invocation.contract_manifest,
+        ),
+      )
+    }
+
     const invocationValidation = validateInvocationMarkdown(
       invocation,
       renderedMarkdown,
@@ -1413,6 +1604,444 @@ export function prepareInvocation(
     })
 
     return { state, invocation }
+  })
+}
+
+/**
+ * Verify the claude-code executor is available and authenticated, caching the
+ * result on the run so the credential probe (a real, tiny invocation) is spent
+ * once per run rather than once per delegation.
+ */
+function ensureClaudeCodeReady(
+  state: RunState,
+): { ok: true } | { ok: false; error: string } {
+  const version = claudeCodeVersionPreflight()
+
+  if (!version.ok) {
+    return { ok: false, error: version.error ?? 'version preflight failed' }
+  }
+
+  if (
+    state.claude_code_preflight &&
+    state.claude_code_preflight.binary === version.binary &&
+    state.claude_code_preflight.version === version.version
+  ) {
+    return { ok: true }
+  }
+
+  const credentials = claudeCodeCredentialPreflight()
+
+  if (!credentials.ok) {
+    return {
+      ok: false,
+      error: credentials.error ?? 'credential preflight failed',
+    }
+  }
+
+  state.claude_code_preflight = {
+    binary: version.binary,
+    version: version.version ?? 'unknown',
+    verified_at: now(),
+  }
+
+  return { ok: true }
+}
+
+function pauseForExecutorPreflight(
+  root: string,
+  state: RunState,
+  stage: StageDefinition,
+  executor: string,
+  error: string,
+): void {
+  const reason =
+    `Stage '${stage.slug}' resolves to the '${executor}' executor, but its ` +
+    `preflight failed: ${error} Substituting another executor would falsify ` +
+    `the run's model snapshot, so the run is paused instead.`
+
+  state.status = 'paused'
+  state.pause_reason = reason
+  state.pending_action = { type: 'operator_decision' }
+
+  writeDecision(root, state, 'External executor preflight failed', reason, [
+    'Install and authenticate the Claude Code CLI on this machine, then ' +
+      `resume with: ${panCommand(root)} resume ${state.run_id}`,
+    'Or change the persona mapping in config.json, run ' +
+      `${panCommand(root)} models --sync, and start a new run.`,
+    `Or abort with: ${panCommand(root)} abort ${state.run_id}`,
+  ])
+}
+
+/**
+ * Write rules for a non-source stage: the executor may write only inside the
+ * harness runtime tree (its declared output, evidence, and brief artifacts all
+ * live there). Expressed relative to the executor's working directory when the
+ * runtime tree is reachable that way, and absolute (`//`) otherwise, which is
+ * the detached-installation case.
+ */
+function claudeCodeWriteRules(root: string, workspaceDir: string): string[] {
+  const runtimeAbsolute = path.join(root, 'runtime')
+  const relative = path.relative(workspaceDir, runtimeAbsolute)
+  const prefix =
+    relative.length === 0 || relative.startsWith('..')
+      ? `//${runtimeAbsolute}`
+      : relative.split(path.sep).join('/')
+
+  return [`Write(${prefix}/**)`, `Edit(${prefix}/**)`]
+}
+
+/**
+ * Stage-derived tool policy for a claude-code invocation. Mutating stages get
+ * unrestricted file tools; every other stage may write only inside the harness
+ * runtime tree. This is defense in depth — `scope.no_unapproved_changes`
+ * remains the gate of record for workspace mutation.
+ */
+function claudeCodeToolPolicy(
+  root: string,
+  workspaceDir: string,
+  stage: StageDefinition,
+): { allowedTools: string[]; addDirs: string[] } {
+  const sourceMutating =
+    stage.workspace_policy === 'source_allowed' ||
+    stage.workspace_policy === 'release_metadata_only'
+  const allowedTools = [
+    'Read',
+    'Grep',
+    'Glob',
+    'Bash',
+    ...(sourceMutating
+      ? ['Write', 'Edit']
+      : claudeCodeWriteRules(root, workspaceDir)),
+  ]
+  const relative = path.relative(workspaceDir, root)
+  const addDirs = relative.startsWith('..') ? [root] : []
+
+  return { allowedTools, addDirs }
+}
+
+export interface DelegateInvocationOptions extends OperationProgressOptions {
+  timeoutMs?: number
+}
+
+export interface DelegateInvocationResult {
+  state: RunState
+  invocation: Invocation | null
+  execution: ExternalDelegationRecord | null
+}
+
+/**
+ * Execute the active invocation's stage under its resolved external executor.
+ *
+ * The harness — not a model — moves the bytes: the canonical card is piped to
+ * the spawned CLI verbatim, so delivery fidelity is a property of code and the
+ * supervisor output ceiling does not apply. The harness also authors the
+ * delegation audit itself: the delivered prompt byte for byte in the
+ * delegation Markdown artifact, and executor identity, argument vector, exit
+ * status, and session in the execution record beside it.
+ */
+export function delegateInvocation(
+  root: string,
+  runId: string,
+  options: DelegateInvocationOptions = {},
+): DelegateInvocationResult {
+  return withOperationMutex(operationMutexPath(root, runId), () => {
+    const state = loadState(root, runId)
+
+    invariant(
+      state.status === 'running',
+      `Run is not running: ${state.status}`,
+      { code: 'RUN_NOT_RUNNING' },
+    )
+    invariant(
+      state.pending_action.type === 'invoke_agent' && state.current_invocation,
+      'Run is not awaiting delegation. Run prepare first.',
+      {
+        code: 'INVALID_RUN_ACTION',
+        details: { pending: state.pending_action },
+      },
+    )
+
+    const workflow = loadRunWorkflow(root, state)
+    const stage = stageBySlug(workflow, state.current_stage)
+    const invocation = readInvocation(root, state.current_invocation.json_path)
+    const invocationId = invocation.invocation_id
+    const pipelineConfig = loadRunPipelineConfig(root, state)
+    const mapping = resolvePersonaMapping(pipelineConfig, stage.persona)
+
+    invariant(
+      mapping.executor === 'claude-code',
+      `Stage '${stage.slug}' resolves to the '${mapping.executor}' executor. ` +
+        `'pan delegate' dispatches only external executors; cursor personas ` +
+        `are delegated by the supervisor per INVOCATION-001.`,
+      { code: 'EXECUTOR_UNSUPPORTED' },
+    )
+    invariant(
+      invocation.stage.persona_executor === 'claude-code',
+      `Invocation ${invocationId} was prepared without executor routing. ` +
+        `Re-prepare the invocation before delegating.`,
+      { code: 'EXECUTOR_UNSUPPORTED' },
+    )
+
+    // The supervisor's first delivery step applies to the harness too: a card
+    // whose validation failed MUST NOT be delegated.
+    const validationArtifact = readJson(
+      resolveInside(root, invocationValidationPath(runId, invocationId)),
+    )
+    invariant(
+      isRecord(validationArtifact) && validationArtifact.status === 'pass',
+      `Invocation validation for ${invocationId} did not pass; the card ` +
+        'MUST NOT be delegated.',
+      { code: 'INVOCATION_VALIDATION_FAILED' },
+    )
+
+    const preflight = ensureClaudeCodeReady(state)
+
+    if (!preflight.ok) {
+      pauseForExecutorPreflight(
+        root,
+        state,
+        stage,
+        mapping.executor,
+        preflight.error,
+      )
+      persistRun(root, state, 'run_paused', { reason: state.pause_reason })
+
+      return { state, invocation, execution: null }
+    }
+
+    const workspaceDir = workspaceDirectory(root, state)
+    const policy = claudeCodeToolPolicy(root, workspaceDir, stage)
+    const configuredTimeout = mapping.options['timeout-ms']
+    const timeoutMs =
+      options.timeoutMs ??
+      (configuredTimeout ? Number(configuredTimeout) : undefined)
+    const evidenceDir = `runtime/logs/workflows/${runId}/evidence`
+    const runExecutor = (
+      prompt: string,
+      resumeSessionId?: string,
+    ): ClaudeCodeInvocationResult =>
+      runClaudeCode({
+        prompt,
+        cwd: workspaceDir,
+        model: mapping.model,
+        permissionMode: mapping.options['permission-mode'] ?? 'default',
+        allowedTools: policy.allowedTools,
+        addDirs: policy.addDirs,
+        ...(resumeSessionId ? { resumeSessionId } : {}),
+        ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+      })
+    const writeExecutorLogs = (
+      label: string,
+      result: ClaudeCodeInvocationResult,
+    ): { stdout_path: string; stderr_path: string } => {
+      const stdoutPath = `${evidenceDir}/${invocationId}.claude-code${label}.stdout.json`
+      const stderrPath = `${evidenceDir}/${invocationId}.claude-code${label}.stderr.log`
+
+      writeTextAtomic(resolveInside(root, stdoutPath), result.stdout)
+      writeTextAtomic(resolveInside(root, stderrPath), result.stderr)
+
+      return { stdout_path: stdoutPath, stderr_path: stderrPath }
+    }
+
+    // An operator revision round resumes the recorded session so the author
+    // keeps its full context (R6). A retry after a *failed* attempt never
+    // resumes: the retry contract requires confronting the recorded failure,
+    // and `prior_failure` inlining serves that on a fresh invocation.
+    const sessionResumeEnabled = mapping.options['session-resume'] !== 'false'
+    const lastForStage = [...state.stage_history]
+      .reverse()
+      .find((item) => item.stage === stage.slug)
+    const session = state.external_executor_sessions?.[stage.slug]
+    const lastFeedback = [...(state.operator_feedback ?? [])]
+      .reverse()
+      .find((item) => item.to_stage === stage.slug)
+    const revisionRound =
+      lastFeedback?.decision === 'revise' &&
+      lastForStage !== undefined &&
+      lastForStage.outcome === 'success' &&
+      lastFeedback.timestamp >= lastForStage.submitted_at
+    const resumeSession =
+      sessionResumeEnabled &&
+      revisionRound &&
+      session !== undefined &&
+      session.invocation_id === lastForStage.invocation_id
+        ? session
+        : undefined
+
+    const cardMarkdown = readText(
+      resolveInside(root, state.current_invocation.markdown_path),
+    )
+    const delegationArtifactPath = delegationPath(runId, invocationId)
+    let delegationKind: ExternalDelegationRecord['delegation_kind'] = 'fresh'
+    let deliveredPrompt = cardMarkdown
+    let result: ClaudeCodeInvocationResult
+    let resumeAttempt: ExternalDelegationRecord['resume_attempt']
+
+    if (resumeSession) {
+      const directive = (lastFeedback?.note ?? '').trim()
+      const resumePrompt = [
+        `# Operator revision directive — invocation \`${invocationId}\``,
+        '',
+        'You completed the previous round of this stage in this session. The ' +
+          'operator directed a revision rather than accepting the work as final.',
+        '',
+        `This is a new invocation \`${invocationId}\` (attempt ` +
+          `${invocation.attempt}) for run \`${runId}\`. The full canonical ` +
+          `contract for this round is at ` +
+          `\`${state.current_invocation.markdown_path}\`; its policies, ` +
+          'rubric, and boundaries are unchanged from your previous round ' +
+          'except where the directive below amends the work.',
+        '',
+        `Write your revised stage output JSON to \`${invocation.output.path}\` ` +
+          `with \`invocation_id\` set to \`${invocationId}\`. Edit the ` +
+          `operator brief source at ` +
+          `\`${invocation.output.operator_brief.source_path}\` in place.`,
+        '',
+        '## Directive',
+        '',
+        directive.length > 0
+          ? directive
+          : 'The operator requested a revision without written feedback. ' +
+            'Re-derive the weakest parts of your previous round.',
+        '',
+      ].join('\n')
+
+      options.onProgress?.(
+        `resuming claude-code session ${resumeSession.session_id} with the operator directive`,
+      )
+
+      const resumed = runExecutor(resumePrompt, resumeSession.session_id)
+
+      if (resumed.ok) {
+        delegationKind = 'resumed'
+        deliveredPrompt = resumePrompt
+        result = resumed
+      } else {
+        // A failed resume falls back to a fresh invocation carrying the
+        // standard operator-feedback input (already inlined on the card).
+        options.onProgress?.(
+          `session resume failed (${resumed.error ?? 'unknown error'}); ` +
+            'falling back to a fresh delegation',
+        )
+
+        const attemptLogs = writeExecutorLogs('.resume-attempt', resumed)
+
+        resumeAttempt = {
+          exit_code: resumed.exit_code,
+          timed_out: resumed.timed_out,
+          ...attemptLogs,
+        }
+        delegationKind = 'resume_fallback'
+        options.onProgress?.(
+          `delegating '${stage.persona}' to claude-code (${mapping.model})`,
+        )
+        result = runExecutor(cardMarkdown)
+      }
+    } else {
+      options.onProgress?.(
+        `delegating '${stage.persona}' to claude-code (${mapping.model})`,
+      )
+      result = runExecutor(cardMarkdown)
+    }
+
+    const logs = writeExecutorLogs('', result)
+
+    // The delegation Markdown artifact is the delivered prompt byte for byte.
+    // A resumed round also persists it at the delivery-prompt path, which is
+    // where delegation validation looks for a referenced body.
+    writeTextAtomic(
+      resolveInside(root, delegationArtifactPath),
+      deliveredPrompt,
+    )
+
+    if (delegationKind === 'resumed') {
+      writeTextAtomic(
+        resolveInside(root, deliveryPromptPath(runId, invocationId)),
+        deliveredPrompt,
+      )
+    }
+
+    const execution: ExternalDelegationRecord = {
+      schema_version: 1,
+      run_id: runId,
+      invocation_id: invocationId,
+      stage: stage.slug,
+      executor: 'claude-code',
+      delegation_kind: delegationKind,
+      binary: result.binary,
+      argv: result.argv,
+      exit_code: result.exit_code,
+      timed_out: result.timed_out,
+      duration_ms: result.duration_ms,
+      ...(result.session_id ? { session_id: result.session_id } : {}),
+      ...(resumeSession
+        ? { resumed_from_session_id: resumeSession.session_id }
+        : {}),
+      ...(result.parsed?.subtype
+        ? { result_subtype: result.parsed.subtype }
+        : {}),
+      ...(result.parsed?.is_error !== undefined
+        ? { is_error: result.parsed.is_error }
+        : {}),
+      ...logs,
+      ...(resumeAttempt ? { resume_attempt: resumeAttempt } : {}),
+      delegation_artifact_path: delegationArtifactPath,
+      recorded_at: now(),
+    }
+
+    writeJsonAtomic(
+      resolveInside(root, delegationExecutionPath(runId, invocationId)),
+      execution,
+    )
+
+    if (result.session_id) {
+      const sessionRecord = {
+        executor: 'claude-code' as const,
+        session_id: result.session_id,
+        invocation_id: invocationId,
+        stage: stage.slug,
+        recorded_at: execution.recorded_at,
+      }
+
+      state.external_executor_sessions = {
+        ...(state.external_executor_sessions ?? {}),
+        [stage.slug]: sessionRecord,
+      }
+      writeJsonAtomic(
+        resolveInside(root, sessionRecordPath(runId, invocationId)),
+        sessionRecord,
+      )
+    }
+
+    if (!result.ok) {
+      persistRun(root, state, 'external_delegation_failed', {
+        invocation_id: invocationId,
+        stage: stage.slug,
+        executor: 'claude-code',
+        delegation_kind: delegationKind,
+        exit_code: result.exit_code,
+        timed_out: result.timed_out,
+      })
+
+      invariant(false, `External delegation failed: ${result.error}`, {
+        code: 'EXTERNAL_EXECUTOR_FAILED',
+        details: {
+          execution_record: delegationExecutionPath(runId, invocationId),
+          stderr_path: logs.stderr_path,
+          exit_code: result.exit_code,
+        },
+      })
+    }
+
+    persistRun(root, state, 'external_delegation_recorded', {
+      invocation_id: invocationId,
+      stage: stage.slug,
+      executor: 'claude-code',
+      delegation_kind: delegationKind,
+      session_id: result.session_id ?? null,
+    })
+
+    return { state, invocation, execution }
   })
 }
 
@@ -1531,9 +2160,18 @@ export function submitOutput(
     const invocation = readInvocation(root, state.current_invocation.json_path)
 
     const governanceArtifactWarnings: string[] = []
+    const attestationErrors: string[] = []
+
+    const personaExecutor = invocation.stage.persona_executor ?? 'cursor'
 
     if (stage.persona !== 'orchestrator') {
-      relocateMisplacedDelegationArtifact(root, runId, invocation.invocation_id)
+      if (personaExecutor === 'cursor') {
+        relocateMisplacedDelegationArtifact(
+          root,
+          runId,
+          invocation.invocation_id,
+        )
+      }
 
       const delegationArtifactPath = delegationPath(
         runId,
@@ -1546,14 +2184,32 @@ export function submitOutput(
           `Delegation artifact is missing: ${delegationArtifactPath}`,
         )
       } else {
-        const canonicalMarkdown = readText(
-          resolveInside(root, state.current_invocation.markdown_path),
-        )
+        // Referenced delivery compares evidence with the compact prompt the
+        // supervisor was given; verbatim delivery with the whole card; a
+        // resumed external delegation with the persisted revision directive.
+        // An invocation prepared before referenced mode existed carries no
+        // delivery prompt, so it keeps full-card equality.
+        const deliveredSource = expectedDelegationSource(root, invocation)
+        const mode = deliveredSource.mode
+        const deliveredSourcePath = deliveredSource.path
+        const deliveredAbsolute = resolveInside(root, deliveredSourcePath)
         const delegationMarkdown = readText(delegationAbsolute)
-        const delegationValidation = validateDelegationMarkdown(
-          canonicalMarkdown,
-          delegationMarkdown,
-        )
+        const delegationValidation = fileExists(deliveredAbsolute)
+          ? validateDelegationMarkdown(
+              readText(deliveredAbsolute),
+              delegationMarkdown,
+              mode,
+            )
+          : {
+              passed: false,
+              checks: [
+                {
+                  id: 'delegation.delivered_body_present',
+                  passed: false,
+                  message: `Delivered body is missing: ${deliveredSourcePath}`,
+                },
+              ],
+            }
         const delegationValidationArtifactPath = delegationValidationPath(
           runId,
           invocation.invocation_id,
@@ -1577,6 +2233,36 @@ export function submitOutput(
             `Delegation validation failed: ${delegationValidationArtifact.summary}`,
           )
         }
+      }
+
+      // Referenced delivery gives the harness no way to observe the read itself,
+      // so the declared attestation is the observable and it is checked exactly.
+      const attestation = validateInvocationAttestation(
+        invocation,
+        submittedValue,
+      )
+      const attestationArtifactPath = attestationValidationPath(
+        runId,
+        invocation.invocation_id,
+      )
+      const attestationArtifact = buildValidationArtifact({
+        run_id: runId,
+        invocation_id: invocation.invocation_id,
+        kind: 'attestation',
+        status: attestation.passed ? 'pass' : 'fail',
+        checks: attestation.checks,
+        artifact_path: state.current_invocation.output_path,
+      })
+
+      writeJsonAtomic(
+        resolveInside(root, attestationArtifactPath),
+        attestationArtifact,
+      )
+
+      if (!attestation.passed) {
+        attestationErrors.push(
+          `Invocation read attestation failed: ${attestationArtifact.summary}`,
+        )
       }
     }
 
@@ -1629,6 +2315,7 @@ export function submitOutput(
       state as unknown as Record<string, unknown>,
     )
     governanceArtifactWarnings.push(
+      ...attestationErrors,
       ...briefErrors.map((message) => `Operator brief: ${message}`),
       ...validation.errors.map((message) => `Stage output: ${message}`),
       ...(briefRenderFailed && briefRenderedPath
@@ -1647,8 +2334,12 @@ export function submitOutput(
       governanceArtifactWarnings,
     )
 
+    // A missing or mismatched attestation blocks every stage, because it means
+    // the harness cannot show that the worker held the contract it acted on.
     const blockingValidationErrors =
-      stage.slug === 'ship' ? governanceArtifactWarnings : []
+      stage.slug === 'ship'
+        ? governanceArtifactWarnings
+        : [...attestationErrors]
     const explicitlyDeclaredProductFailure =
       isRecord(submittedValue) &&
       (submittedValue.result === 'failure' ||
@@ -1674,6 +2365,9 @@ export function submitOutput(
       stage: stage.slug,
       attempt: invocation.attempt,
       invocation_id: invocation.invocation_id,
+      ...(invocation.stage.persona_executor
+        ? { executor: invocation.stage.persona_executor }
+        : {}),
       output_path: state.current_invocation.output_path,
       outcome,
       submitted_at: now(),
@@ -1724,23 +2418,6 @@ export function submitOutput(
       }
       state.status = 'awaiting_supervisor'
       nextState = 'awaiting supervisor evaluation'
-    } else if (outcome === 'success' && stage.gate === 'operator') {
-      const directorCheckpoint =
-        stage.checkpoint &&
-        runHasContract(state.operator_involvement, 'technical_director')
-          ? stage.checkpoint
-          : undefined
-
-      state.pending_action = {
-        type: 'operator_approval',
-        stage: stage.slug,
-        proposed_transition: stage.transitions.success,
-        ...(directorCheckpoint ? { checkpoint: directorCheckpoint } : {}),
-      }
-      state.status = 'awaiting_operator'
-      nextState = directorCheckpoint
-        ? `awaiting operator decision at the ${directorCheckpoint} checkpoint`
-        : 'awaiting operator approval'
     } else {
       if (outcome === 'success' && isSameReasonTrackedStage(state, stage)) {
         clearSameReasonTracker(state, stage.slug)
@@ -1766,6 +2443,27 @@ export function submitOutput(
       if (sameReasonPauseTriggered) {
         pauseForSameReasonFailure(root, state, stage)
         nextState = 'paused'
+      } else if (stage.gate === 'operator') {
+        // An operator gate owns the transition, not only the happy path. A failed
+        // review that routes straight back to implementation would spend the
+        // operator's decision without ever asking for it.
+        const directorCheckpoint =
+          stage.checkpoint &&
+          runHasContract(state.operator_involvement, 'technical_director')
+            ? stage.checkpoint
+            : undefined
+
+        state.pending_action = {
+          type: 'operator_approval',
+          stage: stage.slug,
+          outcome,
+          proposed_transition: stage.transitions[outcome],
+          ...(directorCheckpoint ? { checkpoint: directorCheckpoint } : {}),
+        }
+        state.status = 'awaiting_operator'
+        nextState = directorCheckpoint
+          ? `awaiting operator decision at the ${directorCheckpoint} checkpoint`
+          : 'awaiting operator approval'
       } else {
         applyTransition(root, state, stage, outcome)
         nextState =
@@ -1991,6 +2689,12 @@ export function decideRun(
 
     const workflow = loadRunWorkflow(root, state)
     const stage = stageBySlug(workflow, state.current_stage)
+    // A pending action recorded before outcome-aware gates carries no outcome,
+    // and only a successful stage could stop then, so success is the safe default.
+    const approvedOutcome =
+      state.pending_action.type === 'operator_approval'
+        ? (state.pending_action.outcome ?? 'success')
+        : 'success'
 
     invariant(
       decision !== 'revise' || note.trim().length > 0,
@@ -2001,7 +2705,7 @@ export function decideRun(
     state.status = 'running'
 
     if (decision === 'approve') {
-      applyTransition(root, state, stage, 'success')
+      applyTransition(root, state, stage, approvedOutcome)
     } else if (decision === 'revise') {
       // Re-run the same stage with the operator's directive as required input.
       // The stage did not fail, so this must not consume its retry budget.

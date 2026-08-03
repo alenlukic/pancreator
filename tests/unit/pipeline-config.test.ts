@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -29,6 +29,40 @@ test('pipeline config loads the active named persona mapping', () => {
 
   assert.equal(snapshot.name, loaded.name)
   assert.equal(snapshot.personas.reviewer, loaded.config.personas.reviewer)
+})
+
+test('config.local.json preferences override the checked-in pipeline config', () => {
+  const root = createFixture()
+  const base = loadPipelineConfig(root)
+
+  writeFileSync(
+    path.join(root, 'config.local.json'),
+    JSON.stringify({
+      active_config: 'complex',
+      defaults: { orchestrator: 'local-orchestrator[]' },
+    }),
+  )
+
+  const loaded = loadPipelineConfig(root)
+
+  assert.equal(loaded.name, 'complex')
+  assert.equal(loaded.config.personas.orchestrator, 'local-orchestrator[]')
+  // A preference the local file does not name still comes from config.json.
+  assert.equal(loaded.config.personas.reviewer, loaded.file.defaults.reviewer)
+  // The digest covers the effective configuration, so the local preference is
+  // visible to drift detection exactly like a config.json edit.
+  assert.notEqual(loaded.sha256, base.sha256)
+})
+
+test('a config.local.json that is not an object is rejected', () => {
+  const root = createFixture()
+
+  writeFileSync(
+    path.join(root, 'config.local.json'),
+    JSON.stringify(['active_config']),
+  )
+
+  assert.throws(() => loadPipelineConfig(root), /MUST contain an object/u)
 })
 
 test('pipeline config rejects an undefined active config', () => {

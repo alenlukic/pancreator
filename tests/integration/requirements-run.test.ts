@@ -4,7 +4,9 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import { createFixture } from '../helpers.js'
+import { createRun, prepareInvocation } from '../../src/lib/engine.js'
+import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
+import { createFixture, makeOutput, writeJson } from '../helpers.js'
 
 const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
 
@@ -311,6 +313,70 @@ test('requirements run selects required SPOT-001 binding for SPOTFIX-VALIDATE-00
   assert.equal(result.exit_code, 0)
   assert.equal(result.policy_id, 'SPOT-001')
   assert.equal(result.requirement_id, 'spotfix-validate')
+})
+
+test('output validate skips when no agent-owned requirement resolves', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Output validation skip fixture',
+  })
+  const workflow = loadWorkflow(root, 'dev')
+  const invocation = prepareInvocation(root, state.run_id).invocation
+
+  assert.ok(invocation)
+
+  const output = makeOutput(root, invocation, stageBySlug(workflow, 'intake'))
+
+  writeJson(path.join(root, invocation.output.path), output)
+
+  // The worker follows its output contract, so a stage that resolves no
+  // agent-owned validator must report a skip rather than a caller error.
+  const stdout = execFileSync(
+    process.execPath,
+    [
+      CLI,
+      'output',
+      'validate',
+      state.run_id,
+      '--file',
+      invocation.output.path,
+      '--invocation',
+      `runtime/logs/workflows/${state.run_id}/invocations/${invocation.invocation_id}.json`,
+      '--json',
+    ],
+    { cwd: root, encoding: 'utf8' },
+  )
+  const result = JSON.parse(stdout) as {
+    passed: boolean
+    skipped: boolean
+    reason: string
+    results: unknown[]
+  }
+
+  assert.equal(result.passed, true)
+  assert.equal(result.skipped, true)
+  assert.equal(result.results.length, 0)
+  assert.match(result.reason, /output validation is skipped/u)
+
+  const text = execFileSync(
+    process.execPath,
+    [
+      CLI,
+      'output',
+      'validate',
+      state.run_id,
+      '--file',
+      invocation.output.path,
+      '--invocation',
+      `runtime/logs/workflows/${state.run_id}/invocations/${invocation.invocation_id}.json`,
+    ],
+    { cwd: root, encoding: 'utf8' },
+  )
+
+  assert.match(text, /^skipped: /u)
+  assert.doesNotMatch(text, /INVALID_ARGUMENT/u)
 })
 
 test('requirements run preserves ambiguity when duplicate required bindings remain', () => {

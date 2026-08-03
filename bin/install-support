@@ -604,11 +604,25 @@ function projectCursor() {
         fail(`No active model mapping for Cursor persona: ${entry.variable}`)
       }
 
+      // An external-executor persona (e.g. `claude-code:<model>`) has no
+      // Cursor subagent, so nothing is projected for it. Skipping here also
+      // lets the stale-file sweep below remove a previously projected agent.
+      // Kept in sync with the executor handling in `src/lib/projection.ts`.
+      const executorMatch = /^([a-z][a-z0-9-]*):/u.exec(model)
+
+      if (executorMatch && executorMatch[1] !== 'cursor') {
+        continue
+      }
+
+      const projectedModel = executorMatch
+        ? model.slice(executorMatch[0].length)
+        : model
+
       if (!content.includes('__PANCREATOR_MODEL__')) {
         fail(`${entry.source} is missing __PANCREATOR_MODEL__`)
       }
 
-      content = content.replaceAll('__PANCREATOR_MODEL__', model)
+      content = content.replaceAll('__PANCREATOR_MODEL__', projectedModel)
     }
 
     if (entry.transforms.includes('installation-paths')) {

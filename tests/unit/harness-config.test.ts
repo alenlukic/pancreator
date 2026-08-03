@@ -22,6 +22,7 @@ import {
   readProjectConfig,
 } from '../../src/lib/project-config.js'
 import { loadPipelineConfig } from '../../src/lib/pipeline-config.js'
+import { loadOperatorInvolvementFile } from '../../src/lib/operator-involvement.js'
 import { findProjectRoot } from '../../src/lib/io.js'
 
 /** Rewrite the fixture's harness configuration with the supplied overrides. */
@@ -63,6 +64,42 @@ test('harnessConfigName returns null when no configuration exists', () => {
 
   assert.equal(harnessConfigName(root), null)
   assert.equal(readProjectConfig(root), null)
+})
+
+test('config.local.json overrides project preferences without touching config.json', () => {
+  const root = createFixture()
+
+  writeFileSync(
+    path.join(root, 'config.local.json'),
+    JSON.stringify({ review_mode: 'squad' }),
+  )
+
+  assert.equal(loadProjectConfig(root).review_mode, 'squad')
+  assert.equal(
+    loadOperatorInvolvementFile(root).active,
+    'standard',
+    'an involvement preference the local file does not name is unchanged',
+  )
+
+  const checkedIn = JSON.parse(
+    readFileSync(path.join(root, 'config.json'), 'utf8'),
+  ) as { review_mode: string }
+
+  assert.equal(checkedIn.review_mode, 'default')
+})
+
+test('config.local.json can select the active involvement profile', () => {
+  const root = createFixture()
+
+  writeFileSync(
+    path.join(root, 'config.local.json'),
+    JSON.stringify({ operator_involvement: { active: 'hands-off' } }),
+  )
+
+  const involvement = loadOperatorInvolvementFile(root)
+
+  assert.equal(involvement.active, 'hands-off')
+  assert.equal(involvement.profiles['hands-off']?.gates?.intake, 'supervisor')
 })
 
 test('loadProjectConfig reads an unmigrated installation', () => {

@@ -95,12 +95,43 @@ test('the spotfix card unrolls the spotfix procedure guidance', () => {
   )
 })
 
+test('the shepherd card resolves coder governance and unrolls the procedure', () => {
+  const root = createFixture()
+  const card = buildGovernanceCard(root, {
+    mode: 'shepherd',
+    outputPath: 'runtime/inbox/shepherd-card.md',
+  })
+  const ids = card.policies.map((policy) => policy.id)
+
+  // The shepherd implements accepted feedback, so the coder's engineering
+  // governance must ride along with the loop procedure itself.
+  assert.ok(ids.includes('SHEPHERD-001'))
+  assert.ok(ids.includes('ENG-001'))
+  assert.ok(ids.includes('ACTION-001'))
+
+  const shepherd = card.policies.find((policy) => policy.id === 'SHEPHERD-001')
+
+  assert.ok(shepherd)
+  assert.ok(
+    (shepherd.guidance ?? []).length > 0,
+    'SHEPHERD-001 must carry its unrolled procedure',
+  )
+
+  const written = readFileSync(path.join(root, card.path), 'utf8')
+
+  assert.match(
+    written,
+    /### Unrolled guidance · `library\/skills\/shepherd-pr\.md`/u,
+  )
+  assert.match(written, /head branch/u)
+})
+
 test('an unknown mode lists the available modes', () => {
   const root = createFixture()
 
   assert.throws(
     () => buildGovernanceCard(root, { mode: 'nonsense' }),
-    /Available: decomposition, investigation, pair, repair, spotfix/u,
+    /Available: decomposition, investigation, pair, repair, shepherd, spotfix/u,
   )
 })
 

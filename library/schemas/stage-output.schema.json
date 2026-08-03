@@ -105,6 +105,54 @@
       "type": "object",
       "description": "Stage-specific structured fields. Must satisfy the stage's required_data shape."
     },
+    "invocation_attestation": {
+      "type": "object",
+      "description": "Required for a delegated stage whose invocation carries a contract manifest. It declares that the worker read the complete canonical contract.",
+      "required": ["invocation_id", "contract_path", "status"],
+      "properties": {
+        "invocation_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Must equal the active invocation's id."
+        },
+        "contract_path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Canonical contract path named by the invocation manifest."
+        },
+        "contract_sha256": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Digest of the complete contract. Required when status is read."
+        },
+        "status": {
+          "enum": ["read", "reference_failed"],
+          "description": "read means the complete contract was read. reference_failed requires stage result blocked."
+        },
+        "error": {
+          "type": "string",
+          "description": "Concrete read error. Required when status is reference_failed."
+        },
+        "sections": {
+          "type": "array",
+          "description": "Every contract section, in manifest order. Required when status is read.",
+          "items": {
+            "type": "object",
+            "required": ["id", "sha256"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sha256": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
     "workspace_changes": {
       "type": "object",
       "description": "Optional attribution for tracked workspace changes observed during this stage. The cleanliness gate blocks external or unattributed contamination, not changes traced to the active worker.",

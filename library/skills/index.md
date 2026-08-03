@@ -14,6 +14,9 @@ recurring job. Read the skill relevant to your current step.
   supports a criterion.
 - [`scope-control.md`](scope-control.md) - keep a change minimal and bounded.
 - [`spotfix.md`](spotfix.md) - execute or escalate one operator-selected lightweight change.
+- [`shepherd-pr.md`](shepherd-pr.md) - watch one GitHub PR for review feedback,
+  judge it, implement what survives, and gate each push through the review
+  squad.
 - [`browser-inspection.md`](browser-inspection.md) - observe a running web UI in an
   isolated browser context.
 
