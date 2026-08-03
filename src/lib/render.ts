@@ -1,4 +1,5 @@
 import type { Invocation, RunState } from './types.js'
+import { DELEGATION_HEADING } from './validation.js'
 import type { InvocationValidationStatus } from './validation.js'
 
 function fencedJson(value: unknown): string {
@@ -81,6 +82,123 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
       ? `- 🚫 **${id}** — disabled by run configuration.`
       : `- 🛠️ **${id}** — overridden: \`${command}\``,
   )
+  const priorFailure = invocation.prior_failure
+  const priorFailureLines = priorFailure
+    ? [
+        '## ⛔ Why the previous attempt failed',
+        '',
+        `Attempt ${priorFailure.attempt} of \`${priorFailure.stage}\` ended in ` +
+          `\`${priorFailure.outcome}\`. This is the complete recorded reason. ` +
+          'Address every item below; resubmitting unchanged work will fail the ' +
+          'same way.',
+        '',
+        ...(priorFailure.failed_hard_criteria.length > 0
+          ? [
+              '### Hard criteria that did not pass',
+              '',
+              ...priorFailure.failed_hard_criteria.flatMap((criterion) => [
+                `- **${criterion.id}** (${criterion.type}) — ${criterion.statement}`,
+                ...(criterion.explanation
+                  ? [`  - Recorded explanation: ${criterion.explanation}`]
+                  : []),
+              ]),
+              '',
+            ]
+          : []),
+        ...(priorFailure.failed_deterministic.length > 0
+          ? [
+              '### Deterministic checks that failed',
+              '',
+              ...priorFailure.failed_deterministic.flatMap((item) => [
+                `- **${item.id}**` +
+                  (item.command ? ` — \`${item.command}\`` : '') +
+                  (item.timed_out
+                    ? ' (timed out)'
+                    : item.exit_code !== undefined && item.exit_code !== null
+                      ? ` (exit ${item.exit_code})`
+                      : ''),
+                ...(item.evidence_path
+                  ? [`  - Evidence: \`${item.evidence_path}\``]
+                  : []),
+              ]),
+              '',
+            ]
+          : []),
+        ...(priorFailure.validation_errors.length > 0
+          ? [
+              '### Output validation errors',
+              '',
+              ...priorFailure.validation_errors.map((item) => `- ${item}`),
+              '',
+            ]
+          : []),
+        ...(priorFailure.governance_artifact_warnings.length > 0
+          ? [
+              '### Governance and artifact diagnostics',
+              '',
+              ...priorFailure.governance_artifact_warnings.map(
+                (item) => `- ${item}`,
+              ),
+              '',
+            ]
+          : []),
+        ...(priorFailure.failed_hard_criteria.length === 0 &&
+        priorFailure.failed_deterministic.length === 0 &&
+        priorFailure.validation_errors.length === 0 &&
+        priorFailure.governance_artifact_warnings.length === 0
+          ? [
+              'No specific failing criterion, check, or validation error was ' +
+                `recorded. Read \`${priorFailure.output_path}\` and treat the ` +
+                'absent reason itself as a defect to report.',
+              '',
+            ]
+          : []),
+      ]
+    : []
+  const involvement = invocation.operator_involvement
+  const appliedGateEntries = Object.entries(involvement?.applied_gates ?? {})
+  const involvementLines = involvement
+    ? [
+        '## 🎚️ Operator involvement',
+        '',
+        `Profile \`${involvement.profile}\` — ${involvement.summary}`,
+        '',
+        ...(involvement.contracts.length > 0
+          ? [
+              `Active run contracts: ${involvement.contracts
+                .map((contract) => `\`${contract}\``)
+                .join(', ')}.`,
+              '',
+            ]
+          : []),
+        ...(appliedGateEntries.length > 0
+          ? [
+              'Gates this run uses instead of the workflow default:',
+              '',
+              ...appliedGateEntries.map(
+                ([slug, change]) =>
+                  `- \`${slug}\`: \`${change.workflow_gate}\` → ` +
+                  `\`${change.run_gate}\` (${change.source})`,
+              ),
+              '',
+            ]
+          : ['Every stage uses its workflow-declared gate.', '']),
+      ]
+    : []
+  // Only the non-default method needs a card section. A default review is what
+  // the stage prompt and REVIEW-001 already describe.
+  const reviewModeLines =
+    invocation.review_mode === 'squad'
+      ? [
+          '## 🔭 Review method',
+          '',
+          'This run resolved review mode `squad`. Review gathers its findings ' +
+            'through one agent per review dimension, then joins them into one ' +
+            'ranked set. `REVIEW-002` and its unrolled guidance govern the ' +
+            'lineup, the charters, and the finding shape.',
+          '',
+        ]
+      : []
   const operatorBrief = invocation.output.operator_brief as
     | Invocation['output']['operator_brief']
     | undefined
@@ -92,6 +210,38 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
         ),
       ]
     : ['No stage-specific `data` fields are required.']
+
+  const { delegation } = invocation
+  const delegationLines = delegation
+    ? [
+        DELEGATION_HEADING,
+        '',
+        'This section addresses the supervisor that prepared this card, not the ' +
+          'assigned worker. The worker MUST ignore it. The supervisor MUST NOT ' +
+          'remove it: delegation evidence is compared against this card verbatim.',
+        '',
+        ...delegation.policies.flatMap((policy) => [
+          `**${policy.id} · ${policy.title}**`,
+          '',
+          policy.summary,
+          '',
+          ...policy.instructions.map((instruction) => `- ${instruction}`),
+          '',
+        ]),
+        'Resolved paths for this invocation:',
+        '',
+        `1. Confirm \`${delegation.invocation_validation_path}\` reports \`pass\`. ` +
+          'A failed or missing validation artifact MUST NOT be delegated.',
+        `2. Paste the complete contents of \`${delegation.canonical_markdown_path}\` ` +
+          `verbatim into the \`${delegation.persona}\` subagent prompt ` +
+          `(\`${delegation.cursor_agent_path}\`). A path reference, summary, or ` +
+          'excerpt MUST NOT substitute for the card body.',
+        `3. Persist that exact prompt body to \`${delegation.delegation_artifact_path}\` ` +
+          'before submission.',
+        `4. Submit with \`${delegation.submit_command}\`.`,
+        '',
+      ]
+    : []
 
   const lines = [
     `# 🚀 ${invocation.$operator.headline}`,
@@ -113,6 +263,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
     '',
     invocation.prompt,
     '',
+    ...priorFailureLines,
     '## 📥 Inputs',
     '',
     '### Required inputs',
@@ -156,6 +307,8 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
     ...(gateOverrideLines.length > 0
       ? ['## 🧪 Gate overrides', '', ...gateOverrideLines, '']
       : []),
+    ...involvementLines,
+    ...reviewModeLines,
     '## 📤 Output contract',
     '',
     `Write JSON to \`${invocation.output.path}\` using ` +
@@ -174,6 +327,25 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
             `Required section-heading phrases: ${operatorBrief.required_headings.join(', ')}. ` +
             'The rendered HTML is artifact 0 and the source JSON is artifact 1.',
           '',
+          ...((operatorBrief.allowed_card_types ?? []).length > 0
+            ? [
+                'The renderer accepts only these values. The schema types both ' +
+                  'fields as open strings, so an unlisted value produces a ' +
+                  'schema-valid brief that fails to render, and you are not ' +
+                  'permitted to run the renderer to find out. Reuse the closest ' +
+                  'listed value rather than inventing one.',
+                '',
+                `- Card \`type\`: ${(operatorBrief.allowed_card_types ?? [])
+                  .map((item) => `\`${item}\``)
+                  .join(', ')}`,
+                `- Section \`semantic\`: ${(
+                  operatorBrief.allowed_section_semantics ?? []
+                )
+                  .map((item) => `\`${item}\``)
+                  .join(', ')}`,
+                '',
+              ]
+            : []),
         ]
       : [
           'This legacy invocation retains the artifact contract captured when it was prepared.',
@@ -199,6 +371,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
       workspace_policy: stage.workspace_policy,
       gate: stage.gate,
     }),
+    ...(delegationLines.length > 0 ? ['', ...delegationLines] : []),
   ]
 
   return `${lines.join('\n')}\n`
@@ -256,6 +429,19 @@ export function renderStatus(
       state.limits.max_total_transitions,
   ]
 
+  if (state.operator_involvement) {
+    const { profile, contracts } = state.operator_involvement
+
+    lines.push(
+      `Involvement profile: ${profile}` +
+        (contracts.length > 0 ? ` (contracts: ${contracts.join(', ')})` : ''),
+    )
+  }
+
+  if (state.review_mode) {
+    lines.push(`Review mode: ${state.review_mode}`)
+  }
+
   if ('path' in state.pending_action) {
     lines.push(`Card: ${state.pending_action.path}`)
   }
@@ -281,6 +467,34 @@ export function renderStatus(
       if (waiver.spotfix_case_path) {
         lines.push(`  Follow-up: ${waiver.spotfix_case_path}`)
       }
+    }
+  }
+
+  const appliedGates = Object.entries(
+    state.operator_involvement?.applied_gates ?? {},
+  )
+
+  if (appliedGates.length > 0) {
+    lines.push('', '## Run gates replacing workflow defaults', '')
+
+    for (const [slug, change] of appliedGates) {
+      lines.push(
+        `- ${slug}: ${change.workflow_gate} → ${change.run_gate} ` +
+          `(${change.source})`,
+      )
+    }
+  }
+
+  if (Object.keys(state.operator_revisions ?? {}).length > 0) {
+    lines.push('', '## Operator revisions granted', '')
+
+    for (const [slug, count] of Object.entries(
+      state.operator_revisions ?? {},
+    )) {
+      lines.push(
+        `- ${slug}: ${count} extra attempt${count === 1 ? '' : 's'} ` +
+          `(ceiling ${state.limits.max_stage_attempts + count})`,
+      )
     }
   }
 

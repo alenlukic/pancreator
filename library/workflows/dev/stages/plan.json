@@ -5,6 +5,7 @@
   "prompt_path": "library/workflows/dev/prompts/plan.md",
   "workspace_policy": "runtime_only",
   "gate": "supervisor",
+  "checkpoint": "technical_plan",
   "context": {
     "request": "conditional",
     "required_stage_outputs": [

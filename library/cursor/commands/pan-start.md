@@ -1,11 +1,40 @@
-Start a Pancreator workflow from the operator request in `$ARGUMENTS`.
+Start a Pancreator workflow from the operator request in `$ARGUMENTS` and relay it to a stop condition.
+
+Running a workflow is the remit of the orchestrator persona. `ORCH-001` and the supervisor brief govern the run inside the `pan-orchestrator` subagent. You relay between the operator and that subagent. You MUST NOT initialize, prepare, submit, assess, decide, or otherwise advance the run yourself.
 
 1. Read `AGENTS.md`.
-2. Preserve `$ARGUMENTS` verbatim in a uniquely named Markdown file under `runtime/inbox/`. Keep its harness-relative path (for example `runtime/inbox/request-<id>.md`) for CLI arguments.
-3. Read the preserved request file and derive init options:
-   - By default, omit `--workspace` so `config.json.workspace_root` remains authoritative, and use no `gates` override.
-   - If the preserved request is JSON containing `workspace_root` (for example a prior run state payload), use it as `--workspace`.
-   - If the preserved request is JSON containing `gate_overrides`, write that object to a uniquely named JSON file under `runtime/inbox/` and pass its harness-relative path as `--gates`.
-4. Run `./bin/pan init --workflow dev --request <harness-relative-request> [--workspace <workspace>] [--gates <harness-relative-gates-file>]`, then `./bin/pan prepare <run-id>`.
-5. Read the generated invocation Markdown. Intake is owned by the current supervisor: perform only that card, write its declared JSON output, and run `./bin/pan submit`.
-6. Present the product specification and current run status to the operator. Stop for ratification unless the current operator request already contains an explicit approval or rejection; in that case, execute that decision rather than asking again.
+2. Preserve `$ARGUMENTS` verbatim in a uniquely named Markdown file under `runtime/inbox/`. Keep its harness-relative path (for example `runtime/inbox/request-<id>.md`) for the invocation.
+3. Invoke the `pan-orchestrator` subagent with a start invocation from **Orchestrator invocation** below.
+4. Follow the **Relay loop** below.
+
+## Orchestrator invocation
+
+The subagent prompt MUST be exactly one invocation of the matching shape, with no added scope, policy, or plan restatement.
+
+Start invocation:
+
+```text
+Pancreator orchestrator invocation
+- type: start
+- request: <harness-relative preserved request path>
+- operator note: <verbatim operator clarification, or "none">
+```
+
+Resume invocation (after the operator responds to a stop):
+
+```text
+Pancreator orchestrator invocation
+- type: resume
+- run: <run-id>
+- operator prompt: <verbatim operator message, or "none">
+```
+
+## Relay loop
+
+Repeat until the run is terminal:
+
+1. Present the orchestrator's final report to the operator: state, outcome, evidence pointers, and the required decision or next action. Do not summarize away a ratification packet, checkpoint substance, or pause options.
+2. If the report reaches a terminal state, report it and STOP.
+3. If the report requires an operator decision the conversation has not already supplied, STOP and wait for the operator.
+4. When the operator responds, invoke `pan-orchestrator` with a resume invocation carrying the run id and the operator's message verbatim.
+5. If the orchestrator stopped before a run existed (for example an ambiguous workflow choice), send a new start invocation instead, naming the same preserved request file and the operator's answer as the operator note.

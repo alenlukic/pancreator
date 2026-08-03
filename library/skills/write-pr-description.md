@@ -52,12 +52,65 @@ finalization`). Use `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, or
 3. **`## Changelist`** — always. Unordered list (`-` bullets) only; 3–7 bullets
    typical (8 only when distinct user-visible capabilities ship together). Each
    bullet is one thematic outcome or capability, not one touched file.
-4. **`## Delivery Pipeline Manifest`** — only when workflow run history
+4. **`## How to read this PR`** — only when the change meets the applicability
+   test below. A high-level walkthrough that orients a human reviewer before
+   they open the diff.
+5. **`## Delivery Pipeline Manifest`** — only when workflow run history
    resolves. Markdown table only. Omit the section entirely for ordinary
    standalone invocations and whenever no stage records resolve.
 
-The file MUST NOT contain `## Test plan`, `## Testing`, checklists, subordinate
-`###` headings, fenced code blocks, or `## Next operator steps`.
+The file MUST NOT contain `## Test plan`, `## Testing`, checklists, fenced code
+blocks, or `## Next operator steps`. Subordinate `###` headings are permitted
+only as the registered subheadings of `## How to read this PR`.
+
+### How to read this PR
+
+Include this section when at least one of these is true:
+
+- The change adds, removes, renames, or relocates an abstraction, such as a
+  module, class, interface, schema, policy, command, or persona.
+- The change alters architecture, a data flow, or a control flow across more than
+  one component.
+- The diff spans more than one subsystem, or enough files that reading order is
+  not obvious.
+- A reviewer needs to know where to start.
+
+Omit the section entirely for a single-file fix, a copy or documentation edit, a
+dependency bump, a formatting pass, or any change whose Changelist already tells
+the whole story. A thin or padded walkthrough is worse than no walkthrough.
+
+Use only the `###` subheadings below, in this order, and include only those that
+apply. An empty subheading MUST be omitted rather than filled with a placeholder.
+
+- **`### Core changes`** — the substantive changes in the order a reviewer should
+  read them, each anchored to the component or path that carries it. 2–5 bullets.
+- **`### Architecture decisions`** — the decisions this change commits to, each
+  with the reason. 1–4 bullets.
+- **`### Component changes`** — abstractions added, removed, renamed, relocated,
+  or reassigned, and what now depends on them. Prefix each bullet with `Added`,
+  `Removed`, `Renamed`, or `Moved`. 1–6 bullets.
+- **`### End-to-end flows`** — the data or usage path through the change, from
+  entry point to observable outcome. Write each flow as `A → B → C` followed by
+  one line of prose. 1–3 flows.
+
+Each bullet MUST be one or two sentences. The whole section SHOULD stay under 250
+words. A reviewer who wants more detail reads the diff.
+
+This section describes the change at a level the diff does not show, so it is the
+section most exposed to invention. These limits are normative:
+
+- Every statement MUST be traceable to the Git delta or an artifact that was
+  read.
+- A reason for a decision MAY be stated only when the delta or a read artifact
+  evidences it. When the reason is not evidenced, describe the change and omit
+  the reason.
+- A rejected alternative MAY be named only when an artifact records it. The
+  release steward MUST NOT reconstruct a rejected alternative from the shape of
+  the final code.
+- The release steward MUST NOT claim a performance, security, scalability, or
+  maintainability benefit that the delta does not demonstrate.
+- The walkthrough MUST NOT restate Changelist bullets. Changelist says what
+  shipped; this section says how the pieces fit together.
 
 ### Delivery Pipeline Manifest
 
@@ -107,11 +160,11 @@ MUST validate it as one literal Git ref before this skill runs.
 3. **Release context** — in workflow mode, the ship-stage inputs (spec, plan,
    implementation, review, QA, and release packet draft) when present.
 
-Every Summary claim and Changelist bullet MUST be traceable to the Git delta or
-an artifact you read. You MUST NOT invent changes. When the Git delta reveals
-paths not explained by prior stage artifacts, fold them into Summary and
-Changelist as grouped thematic items; MUST NOT emit one bullet per unexplained
-path.
+Every Summary claim, Changelist bullet, and walkthrough statement MUST be
+traceable to the Git delta or an artifact you read. You MUST NOT invent changes.
+When the Git delta reveals paths not explained by prior stage artifacts, fold
+them into Summary and Changelist as grouped thematic items; MUST NOT emit one
+bullet per unexplained path.
 
 ## Steps
 
@@ -119,8 +172,10 @@ path.
 2. Resolve the validated base ref, current branch, merge base, and complete Git
    delta per **Git comparison**.
 3. In workflow mode, read the applicable run artifacts and release context.
-4. Draft the file per **File format**, running the conformance checks below.
-5. Write only the mode-specific output path. In workflow mode, list it in stage
+4. Apply the **How to read this PR** applicability test to the resolved delta,
+   and decide the section in or out before drafting.
+5. Draft the file per **File format**, running the conformance checks below.
+6. Write only the mode-specific output path. In workflow mode, list it in stage
    artifacts.
 
 ## Conformance checks
@@ -128,10 +183,15 @@ path.
 Before saving:
 
 - Line 1 is a conventional-commits-style suggested title.
-- Sections appear in order: Summary, Changelist, optional Delivery Pipeline
-  Manifest.
+- Sections appear in order: Summary, Changelist, optional How to read this PR,
+  optional Delivery Pipeline Manifest.
 - Summary is one paragraph focused on impact; Changelist is thematic bullets
   only.
+- How to read this PR is present when the applicability test is met and absent
+  otherwise. Its subheadings come from the registered four, in order, with no
+  empty subheading.
+- No walkthrough statement invents a reason, a rejected alternative, or a benefit
+  the delta does not demonstrate, and none restates a Changelist bullet.
 - Manifest rows are sourced from task records; section omitted when none resolve.
 - Every claim is grounded in the complete base-to-worktree comparison or an
   artifact that was read.

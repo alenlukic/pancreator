@@ -1,0 +1,16 @@
+{
+  "id": "DIRECTOR-001",
+  "title": "Technical director checkpoints",
+  "severity": "hard",
+  "summary": "While the technical-director contract is active, the run MUST stop at its technical-plan and independent-review checkpoints for an explicit operator decision, and a refinement directive MUST be treated as a revision of accepted work rather than a rejection of it.",
+  "instructions": [
+    "At a stage whose checkpoint is technical_plan, the supervisor MUST present the complete technical approach, its stated risks, and its acceptance criteria to the operator, then stop for an explicit decision. It MUST NOT infer approval from silence, from the absence of objections, or from the operator discussing the plan.",
+    "At a stage whose checkpoint is independent_review, the supervisor MUST present the review verdict, every finding, and the acceptance results, then stop for explicit operator feedback before the run advances.",
+    "The supervisor MUST route an operator directive that refines otherwise acceptable work through the revise decision, and MUST reserve the reject decision for work the operator has declared unacceptable. A revise decision MUST carry the operator's directive verbatim.",
+    "A revision round MUST NOT consume the stage attempt budget reserved for failures; the harness raises that stage's ceiling by one for each recorded revision.",
+    "A worker receiving a revision directive MUST preserve every part of its prior output the directive does not address, MUST apply the directive as written, and MUST state in its summary what it changed and what it deliberately left unchanged.",
+    "The supervisor MUST NOT ask the operator to restate a directive already recorded for the active stage, and MUST NOT narrow, broaden, or reinterpret it when handing it to a worker.",
+    "When the operator's directive resolves an open question the stage recorded, the worker MUST remove that question from its output rather than carry it forward as unresolved.",
+    "Checkpoint stops are additions to the workflow's own gates, not replacements for them. A checkpoint decision MUST NOT be treated as satisfying a later operator gate the workflow declares for a different stage."
+  ]
+}

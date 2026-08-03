@@ -35,7 +35,12 @@ export interface DirectiveAuditResult {
 }
 
 function loadExemptions(root: string): DirectiveExemption[] {
-  const filePath = path.join(root, 'governance', 'directive_exemptions.json')
+  const filePath = path.join(
+    root,
+    'governance',
+    'registries',
+    'directive_exemptions.json',
+  )
 
   if (!fileExists(filePath)) {
     return []
@@ -151,7 +156,7 @@ function policiesForSource(root: string, relative: string): Set<string> {
   }
 
   if (relative === 'AGENTS.md') {
-    return new Set(['GLOBAL-001', 'GLOBAL-002', 'ORCH-001'])
+    return new Set(['GLOBAL-001', 'GLOBAL-002', 'ORCH-001', 'INVOCATION-001'])
   }
 
   return new Set()

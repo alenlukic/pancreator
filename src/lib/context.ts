@@ -7,6 +7,7 @@ import type {
   Invocation,
   InvocationReference,
   InvocationReferenceRetrieval,
+  PriorAttemptFailure,
   RunState,
   StageContextStageSelector,
   StageDefinition,
@@ -390,6 +391,65 @@ function writeContextManifest(
 }
 
 /** Build a stage-scoped context projection and a discoverable full-history index. */
+/**
+ * Summarize the most recent failed attempt of `stage` for inline rendering on the
+ * retry card. Returns null when the previous attempt succeeded or none exists.
+ */
+export function summarizePriorFailure(
+  state: RunState,
+  stage: StageDefinition,
+): PriorAttemptFailure | null {
+  const previous = [...state.stage_history]
+    .reverse()
+    .find((item) => item.stage === stage.slug)
+
+  if (!previous || previous.outcome === 'success') {
+    return null
+  }
+
+  const hardCriteria = new Map(
+    stage.criteria
+      .filter((criterion) => criterion.hard)
+      .map((criterion) => [criterion.id, criterion]),
+  )
+  const failedHardCriteria = (previous.self_criteria ?? [])
+    .filter(
+      (evaluation) =>
+        evaluation.result !== 'pass' && hardCriteria.has(evaluation.id),
+    )
+    .map((evaluation) => {
+      const criterion = hardCriteria.get(evaluation.id)
+
+      return {
+        id: evaluation.id,
+        type: criterion?.type ?? 'judgment',
+        statement: criterion?.statement ?? '',
+        explanation: evaluation.explanation,
+      }
+    })
+  const failedDeterministic = previous.deterministic
+    .filter((item) => !item.passed && !item.disabled)
+    .map((item) => ({
+      id: item.id,
+      ...(item.command ? { command: item.command } : {}),
+      ...(item.exit_code !== undefined ? { exit_code: item.exit_code } : {}),
+      ...(item.timed_out ? { timed_out: item.timed_out } : {}),
+      ...(item.evidence_path ? { evidence_path: item.evidence_path } : {}),
+    }))
+
+  return {
+    stage: previous.stage,
+    attempt: previous.attempt,
+    invocation_id: previous.invocation_id,
+    outcome: previous.outcome,
+    output_path: previous.output_path,
+    failed_hard_criteria: failedHardCriteria,
+    failed_deterministic: failedDeterministic,
+    validation_errors: previous.validation_errors,
+    governance_artifact_warnings: previous.governance_artifact_warnings ?? [],
+  }
+}
+
 export function buildInvocationInputs(
   options: InvocationContextOptions,
 ): Invocation['inputs'] {

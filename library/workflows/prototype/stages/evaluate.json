@@ -1,0 +1,68 @@
+{
+  "slug": "evaluate",
+  "title": "Prototype evaluation",
+  "persona": "reviewer",
+  "prompt_path": "library/workflows/prototype/prompts/evaluate.md",
+  "workspace_policy": "read_only",
+  "gate": "operator",
+  "checkpoint": "independent_review",
+  "context": {
+    "request": "conditional",
+    "required_stage_outputs": [
+      {
+        "stage": "intake",
+        "selection": "latest_success"
+      },
+      {
+        "stage": "approach",
+        "selection": "latest_success"
+      },
+      {
+        "stage": "build",
+        "selection": "latest"
+      }
+    ],
+    "prior_attempts": 1,
+    "operator_feedback": 1
+  },
+  "required_data": {
+    "evaluation": "object",
+    "evaluation.verdict": "string",
+    "evaluation.question_results": "array",
+    "evaluation.signal_assessment": "array",
+    "evaluation.productionization_gap": "array",
+    "evaluation.recommendation": "string",
+    "evaluation.discard_candidates": "array"
+  },
+  "criteria": [
+    {
+      "id": "evaluate.questions_answered",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Every technical question receives an answered, unanswered, or partially answered result grounded in the spike's actual evidence rather than its intent."
+    },
+    {
+      "id": "evaluate.verdict_supported",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The verdict is validated, invalidated, or inconclusive, and the evidence supports it; an inconclusive result is not reported as validated."
+    },
+    {
+      "id": "evaluate.gap_scoped",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The productionization gap is concrete enough that a systematic run could be scoped from it, and names the declared shortcuts that must be undone."
+    },
+    {
+      "id": "evaluate.recommendation_actionable",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The recommendation tells the operator whether to productionize, iterate the spike, or discard it, with the reason."
+    }
+  ],
+  "transitions": {
+    "success": "succeeded",
+    "failure": "build",
+    "blocked": "paused"
+  }
+}

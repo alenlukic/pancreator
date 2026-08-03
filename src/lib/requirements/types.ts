@@ -2,6 +2,8 @@ import type {
   PolicyRequirement,
   RequirementExecutor,
   RequirementPhase,
+  ReviewMode,
+  RunContract,
 } from '../types.js'
 
 export interface RegistryEntry {
@@ -25,12 +27,17 @@ export type InvocationKind =
   | 'repair'
   | 'decomposition'
   | 'documentation'
+  | 'pair'
 
 export interface RequirementContext {
   persona: string
   workflow: string
   stage: string
   invocation_kind?: InvocationKind
+  /** Run contracts in force, so contract-scoped policy rows resolve identically here. */
+  contracts?: RunContract[]
+  /** Review method in force, so review-scoped policy rows resolve identically here. */
+  review_mode?: ReviewMode
   invocation?: {
     output_path?: string
     artifact_paths?: string[]

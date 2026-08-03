@@ -1,11 +1,29 @@
 Resume or advance Pancreator run `$ARGUMENTS`.
 
-1. Read `AGENTS.md` and run `./bin/pan status $ARGUMENTS --json`.
-2. Repeat until stop condition:
-   - `prepare_invocation` -> run `./bin/pan prepare`, read card, continue loop.
-   - `invoke_agent` -> read `invocations/<invocation-id>.md`, paste its full contents verbatim into the subagent `prompt` (Task tool `prompt` field; path-only references MUST NOT substitute), persist the same text to `.delegation.md`, submit output, continue loop.
-   - `supervisor_assessment` -> write assessment JSON, run `./bin/pan assess`, continue loop.
-   - `operator_approval` -> if the current operator request already supplies an explicit approval or rejection, execute it; otherwise present the ratification packet and STOP.
-   - `operator_decision` -> if the current operator request already supplies an explicit decision, execute it; otherwise present the pause context/options and STOP.
-   - `none` -> report terminal state and STOP.
-3. After each action, show status, outcome, evidence pointers, and the next required action.
+The first token of `$ARGUMENTS` is the run id. Any remaining text is the operator prompt for that run.
+
+Running a workflow is the remit of the orchestrator persona. `ORCH-001` and the supervisor brief govern the run inside the `pan-orchestrator` subagent. You relay between the operator and that subagent. You MUST NOT prepare, submit, assess, decide, or otherwise advance the run yourself.
+
+1. Read `AGENTS.md`.
+2. Invoke the `pan-orchestrator` subagent with a resume invocation from **Orchestrator invocation** below.
+3. Follow the **Relay loop** below.
+
+## Orchestrator invocation
+
+The subagent prompt MUST be exactly one resume invocation, with no added scope, policy, or plan restatement.
+
+```text
+Pancreator orchestrator invocation
+- type: resume
+- run: <run-id>
+- operator prompt: <verbatim operator message, or "none">
+```
+
+## Relay loop
+
+Repeat until the run is terminal:
+
+1. Present the orchestrator's final report to the operator: state, outcome, evidence pointers, and the required decision or next action. Do not summarize away a ratification packet, checkpoint substance, or pause options.
+2. If the report reaches a terminal state, report it and STOP.
+3. If the report requires an operator decision the conversation has not already supplied, STOP and wait for the operator.
+4. When the operator responds, invoke `pan-orchestrator` with a resume invocation carrying the run id and the operator's message verbatim.

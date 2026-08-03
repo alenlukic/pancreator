@@ -68,20 +68,70 @@ export function scaffoldDataFromRequiredData(
   return data
 }
 
+/**
+ * Whether an existing output is still an untouched scaffold: every criterion
+ * unevaluated and no summary written. Re-scaffolding one of these is a no-op, so
+ * it must not be an error — a required automation whose ordinary second
+ * invocation throws forces the agent to argue that a failure was really success.
+ */
+function isUntouchedScaffold(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  const summary = typeof value.summary === 'string' ? value.summary.trim() : ''
+
+  if (summary.length > 0) {
+    return false
+  }
+
+  if (!Array.isArray(value.criteria)) {
+    return false
+  }
+
+  return value.criteria.every(
+    (item) =>
+      isRecord(item) &&
+      item.result === 'not_applicable' &&
+      (typeof item.explanation !== 'string' ||
+        item.explanation.trim().length === 0),
+  )
+}
+
+export interface StageOutputScaffoldResult {
+  status: 'scaffolded' | 'already_scaffolded'
+  output: StageOutput
+}
+
 export function scaffoldStageOutput(
   root: string,
   invocation: Invocation,
   outputPath: string,
   force = false,
-): StageOutput {
+): StageOutputScaffoldResult {
   const absolute = path.join(root, outputPath)
 
   if (fileExists(absolute) && !force) {
     const existing = readText(absolute).trim()
 
     if (existing.length > 0) {
+      let parsed: unknown = null
+
+      try {
+        parsed = JSON.parse(existing)
+      } catch {
+        parsed = null
+      }
+
+      if (isUntouchedScaffold(parsed)) {
+        return {
+          status: 'already_scaffolded',
+          output: parsed as StageOutput,
+        }
+      }
+
       throw new Error(
-        `Output already exists at ${outputPath}; pass --force to overwrite.`,
+        `Output already exists at ${outputPath} and contains work; pass --force to overwrite.`,
       )
     }
   }
@@ -120,7 +170,7 @@ export function scaffoldStageOutput(
 
   writeJsonAtomic(absolute, scaffold)
 
-  return scaffold
+  return { status: 'scaffolded', output: scaffold }
 }
 
 export function scaffoldAssessment(

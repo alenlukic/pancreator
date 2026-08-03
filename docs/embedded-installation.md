@@ -21,6 +21,10 @@ target repository tracks.
 - npm
 - Git
 - Cursor with project commands and subagents enabled
+- Chrome for Testing and a `chrome-devtools` MCP server — required only for targets
+  with a web UI, because `BROWSER-001` blocks browser verdicts without them. The
+  installer reports whether they are configured; it never installs a browser or
+  writes target MCP config. See `./bin/pan doctor`.
 
 ## Install
 
@@ -109,7 +113,7 @@ without mutating target-owned files or creating a copied target-policy snapshot.
     agents/pan-*.md         # Pancreator personas projected for Cursor
     commands/pan-*.md       # /pan-* commands projected for Cursor
     rules/pancreator.mdc    # embedded operating rule
-    rules/pan-visual-qa-isolation.mdc  # always-apply Visual QA host-safety rule
+    rules/pan-browser-isolation.mdc    # always-apply rule generated from BROWSER-001
   .pancreator/
     AGENTS.md               # installed-harness operating card
     VERSION
@@ -189,18 +193,16 @@ Other source-checkout self-development context is not installed: `.git`, `.env`,
 source `runtime/`, nested validation repositories, editor-local settings, and the
 self-development operating card are excluded.
 
-## Visual QA isolation projection
+## Browser isolation projection
 
-Embedded installs project `library/cursor/rules/visual-qa-isolation.mdc` to
-`.cursor/rules/pan-visual-qa-isolation.mdc` and retain the canonical template under
-`.pancreator/library/cursor/rules/visual-qa-isolation.mdc`. The rule is
-always-apply host-safety guidance for chrome-devtools Visual QA: unique isolated
-context, `new_page`, `close_page` including on failure, and prohibitions on
-personal-browser attach, Launch Services/default-browser/Chrome-preference
-changes, and kill-all-MCP-Chrome remediation.
+`BROWSER-001` (`.pancreator/governance/policies/BROWSER-001.json`) is the single
+source of the browser-inspection contract. Workflow agents receive it unrolled into
+their invocation card; for work that runs outside a card, embedded installs generate
+it into `.cursor/rules/pan-browser-isolation.mdc` as an always-apply rule. That file
+is generated output — change the policy, not the rule.
 
-Pancreator never overwrites target-owned `.cursor/mcp.json`. Operators MAY add
-chrome-devtools hardening locally, for example:
+Pancreator never overwrites target-owned `.cursor/mcp.json`. The policy requires a
+Chrome for Testing bundle, which operators configure locally:
 
 ```json
 {
@@ -217,8 +219,9 @@ chrome-devtools hardening locally, for example:
 }
 ```
 
-Use Chrome for Testing (never the personal `com.google.Chrome` identity) and keep
-any Playwright server as an explicit fallback only.
+Run `./.pancreator/bin/pan doctor` to see whether the bundle and server are
+detected. Without them, stages that owe a browser verdict report
+environment-blocked rather than guessing.
 
 ## Target repository checks
 
@@ -345,7 +348,7 @@ blanket-deleted.
 
 ## Harness versioning
 
-`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `2.17.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
+`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `2.18.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
 
 `release/index.json` is the internal mapping from harness version to immutable
 Git commit. Because a commit cannot contain its own hash, release publication is

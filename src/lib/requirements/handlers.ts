@@ -20,6 +20,7 @@ import {
   validateOperatorArtifact,
   validateStageOutputStrict,
 } from '../validators/operator-artifact.js'
+import { validateSimplifiedEnglish } from '../validators/simplified-english.js'
 import {
   validateDecompositionArtifact,
   validateHarnessRepairIntake,
@@ -111,8 +112,11 @@ function profileForInvocation(
 ): OperatorArtifactProfile {
   const stage = isRecord(invocation?.stage) ? invocation.stage : null
   const slug = stage && typeof stage.slug === 'string' ? stage.slug : ''
+  const workflow = isRecord(invocation?.workflow) ? invocation.workflow : null
+  const workflowSlug =
+    workflow && typeof workflow.slug === 'string' ? workflow.slug : undefined
 
-  return operatorArtifactProfileForStage(slug)
+  return operatorArtifactProfileForStage(slug, workflowSlug)
 }
 
 function operatorArtifactHandler(input: HandlerInput): HandlerResult {
@@ -128,6 +132,7 @@ export const HANDLERS: Record<string, ValidatorHandler> = {
   'assessment-scaffold': () => passed(),
   'assessment-validate': validateAssessment,
   'operator-artifact-validate': operatorArtifactHandler,
+  'simplified-english-validate': validateSimplifiedEnglish,
   'intake-validate': validateIntakeOutput,
   'plan-trace-validate': validatePlanTrace,
   'implementation-claims-validate': validateImplementationClaims,

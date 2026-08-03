@@ -9,19 +9,41 @@ import type {
   PolicyLookupRow,
   PolicyLookupTable,
   PolicyRequirement,
+  ReviewMode,
+  RunContract,
 } from './types.js'
-import { isSelfDevelopmentInstallation } from './project-config.js'
+import {
+  isSelfDevelopmentInstallation,
+  resolveReviewMode,
+} from './project-config.js'
 import { isValidPolicyRequirement } from './requirements/types.js'
 import {
   detectWorkspaceTechnologies as detectTechnologies,
   supportedTechnologyIds,
 } from './technologies.js'
 
+/** Run contracts a policy lookup row MAY require. */
+export const RUN_CONTRACT_IDS = new Set<RunContract>(['technical_director'])
+
+/** Review methods a policy lookup row MAY require. */
+export const REVIEW_MODE_IDS = new Set<ReviewMode>(['default', 'squad'])
+
 interface PolicyContext {
   persona: string
   workflow: string
   stage: string
   technologies?: string[]
+  /**
+   * Contracts the active run abides by. Absent or empty means no
+   * contract-scoped row applies, which is the case for every standalone
+   * non-workflow invocation.
+   */
+  contracts?: RunContract[]
+  /**
+   * Review method the active run resolved. Absent falls back to the configured
+   * default, which is what every standalone non-workflow invocation uses.
+   */
+  review_mode?: ReviewMode
 }
 
 export function detectWorkspaceTechnologies(root: string): Set<string> {
@@ -206,6 +228,20 @@ function parseLookupRow(value: unknown, source: string): PolicyLookupRow {
     { code: 'INVALID_POLICY_LOOKUP' },
   )
   invariant(
+    value.contract === undefined ||
+      (typeof value.contract === 'string' &&
+        RUN_CONTRACT_IDS.has(value.contract as RunContract)),
+    `${source}: contract MUST name a supported run contract when present.`,
+    { code: 'INVALID_POLICY_LOOKUP' },
+  )
+  invariant(
+    value.review_mode === undefined ||
+      (typeof value.review_mode === 'string' &&
+        REVIEW_MODE_IDS.has(value.review_mode as ReviewMode)),
+    `${source}: review_mode MUST name a supported review method when present.`,
+    { code: 'INVALID_POLICY_LOOKUP' },
+  )
+  invariant(
     Array.isArray(value.policies) &&
       value.policies.every((item) => typeof item === 'string'),
     `${source}: policies MUST be a string array.`,
@@ -273,6 +309,8 @@ export function resolvePolicies(
   const technologies = new Set(
     context.technologies ?? [...detectWorkspaceTechnologies(root)],
   )
+  const contracts = new Set(context.contracts ?? [])
+  const reviewMode = context.review_mode ?? resolveReviewMode(root)
 
   for (const row of lookup.rows) {
     const applies =
@@ -289,6 +327,14 @@ export function resolvePolicies(
     }
 
     if (row.technology && !technologies.has(row.technology)) {
+      continue
+    }
+
+    if (row.contract && !contracts.has(row.contract)) {
+      continue
+    }
+
+    if (row.review_mode && row.review_mode !== reviewMode) {
       continue
     }
 

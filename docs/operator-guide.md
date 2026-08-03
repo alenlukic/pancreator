@@ -2,7 +2,12 @@
 
 ## The normal interaction
 
-Use `/pan-start` for a new request and `/pan-resume <run-id>` thereafter. The supervisor should always show:
+Use `/pan-start` for a new request and `/pan-resume <run-id> [prompt]` thereafter.
+Both commands deliver the run to the `pan-orchestrator` subagent, which is the
+supervisor: `/pan-start` sends a start invocation built from your preserved
+request, and `/pan-resume` sends a resume invocation carrying the run id and
+your optional prompt. The command relays the supervisor's reports and your
+decisions. Each report should always show:
 
 1. current run and stage
 2. what completed or failed
@@ -36,7 +41,9 @@ prepared invocation writes
 read that artifact for the failing checks before retrying.
 
 When `pending_action` is `invoke_agent`, deliver the canonical invocation card
-according to `INVOCATION-001` and persist its delegation audit artifact. Before
+according to the **Supervisor delivery procedure** section at the end of that
+card, which unrolls `INVOCATION-001` with resolved paths, and persist its
+delegation audit artifact. Before
 `./bin/pan submit`, confirm delegation validation passed. Rejection with
 `DELEGATION_ARTIFACT_MISSING` or `DELEGATION_VALIDATION_FAILED` leaves the run
 on the same invocation so delivery can be corrected and resubmitted.
@@ -99,6 +106,149 @@ scope expansion creates `runtime/inbox/spotfix-escalation-*.md` for systematic
 routing. Do not run it while a mutating workflow agent is active in the same
 workspace.
 
+Use `/pan-pair <directive>` when you want to drive the work yourself. The agent
+applies the governance the coder persona carries — engineering baseline, language
+handbooks, safety boundaries — but is bound to no workflow, stage contract, gate,
+or run contract. It makes the change you asked for, runs the narrowest useful
+check, reports what it did and did not verify, and stops for your next
+directive. It will not create a run, produce stage outputs or briefs, or convert
+the session into a workflow on its own. Do not run it while a mutating workflow
+agent is active in the same workspace.
+
+Invoke `/pan-pair` **once per conversation**, not once per turn. It opens the
+session by generating the governance card; after that, every directive is an
+ordinary chat message and the agent loops on its own. Re-invoking is harmless but
+unnecessary — the agent reuses the existing card rather than generating another.
+
+Start a new conversation and you start a new session, so invoke it again there.
+If a long session gets summarized and the agent appears to drift, the card is a
+durable file under `runtime/logs/sessions/<id>/`; telling the agent to re-read it
+restores the full contract without regenerating anything. Session directories
+follow the same seven-day `RUNTIME-001` retention as workflow runs.
+
+Every non-workflow mode takes its governance from a generated card rather than
+hand-assembled policy text:
+
+```sh
+./bin/pan governance card --mode pair
+```
+
+The card resolves the same policy applicability map the workflow path uses, so a
+standalone session is auditable and nothing is inlined by hand.
+
+## Prototype instead of delivering
+
+Use the `prototype` workflow when the question is whether an approach works, not
+whether it ships:
+
+```sh
+./bin/pan init --workflow prototype --request runtime/inbox/<spike-request>.md
+```
+
+It runs intake → approach → build → evaluate. Compared with `dev` it:
+
+- frames technical questions and observable success signals instead of user
+  stories and acceptance criteria,
+- keeps the approach stage thin and ungated rather than producing an
+  implementation-ready plan behind a supervisor gate,
+- gates only the `static` repository-check profile and reports `fast` as
+  advisory, so a spike is not blocked on production test coverage,
+- expects deliberate shortcuts and requires each one declared with the reason it
+  was acceptable,
+- ends with an operator-ratified evaluation giving a `validated`,
+  `invalidated`, or `inconclusive` verdict, the productionization gap, and a
+  recommendation.
+
+`PROTO-001` prohibits representing a spike as production-ready. When you adopt an
+approach, start a separate systematic `dev` run scoped from the evaluation's
+productionization gap; the prototype run does not productionize its own output.
+
+An `invalidated` verdict is a successful prototype. The evaluation names the
+spike code to delete either way.
+
+## Set how heavily you gate a run
+
+`config.json.operator_involvement` declares named involvement profiles. List
+them with:
+
+```sh
+./bin/pan involvement
+```
+
+Select one per run:
+
+```sh
+./bin/pan init --workflow dev --request runtime/inbox/<request>.md --involvement technical-director
+```
+
+Shipped profiles:
+
+- `standard` — workflow-declared gates. You ratify intake and approve release.
+- `hands-off` — the supervisor ratifies intake instead of you; release still
+  stops for your explicit approval.
+- `technical-director` — you refine the technical plan with its author before
+  implementation and respond to the independent review before the run continues.
+- `high-touch` — every stage stops for your explicit approval.
+
+`init` reports the resolved profile, active contracts, and any gate that replaced
+a workflow default, so you know where the run will stop before it starts. The run
+snapshots that resolution, so editing `config.json` afterwards never changes a
+run in flight.
+
+`ship` cannot be relaxed by a profile: `SHIP-001` requires a pause before commit,
+push, merge, publication, or deployment. You keep every in-the-moment override
+under `OPERATOR-001`.
+
+## Choose how review works
+
+`config.json.review_mode` selects how the independent review stage gathers its
+findings. Two values:
+
+- `default` — one reviewer reads the whole change.
+- `squad` — the reviewer delegates one agent per review dimension
+  (correctness, security, architecture, simplification, operations, plus
+  conditional dimensions such as frontend), then joins the returned findings into
+  one ranked set.
+
+Set the default in `config.json`, or pick one for a single run:
+
+```sh
+./bin/pan init --workflow dev --request runtime/inbox/<request>.md --review-mode squad
+```
+
+`squad` costs more model time and returns a wider, more sharply labelled finding
+set. Use it for a change whose blast radius is broad, and `default` for narrow
+work. Either way the reviewer keeps the verdict and repairs the same bounded
+defects, so switching modes never changes what review is allowed to do. `init`
+reports the resolved mode, and the run snapshots it so a later `config.json` edit
+cannot change a run in flight.
+
+### Technical director mode
+
+`technical-director` is a run contract, not a separate workflow — any workflow
+run abides by it when active. It attaches to stage _roles_ rather than slugs, so
+it escalates `dev/plan` and `prototype/approach` (the `technical_plan`
+checkpoint) and `dev/review` and `design/review` (the `independent_review`
+checkpoint) to operator gates.
+
+At a checkpoint the supervisor presents the stage's substance in full and stops.
+You have three responses:
+
+```sh
+./bin/pan decide <run-id> approve
+./bin/pan decide <run-id> revise --note "Use the existing adapter; drop the new registry."
+./bin/pan decide <run-id> reject --note "Wrong subsystem entirely."
+```
+
+`revise` is the refinement path: it re-runs the same stage with your directive as
+required input, tells the worker to keep everything you did not ask it to change,
+and does **not** consume the stage's failure retry budget — each revision raises
+that stage's attempt ceiling by one. Use `reject` only for work you consider
+unacceptable; it routes to the stage's failure target.
+
+`DIRECTOR-001` forbids inferring approval from silence, from the absence of
+objections, or from discussing the plan with you.
+
 ## Run the design workflow before non-trivial UI/UX `dev` work
 
 For any development task with a non-trivial UI/UX design component, run the
@@ -122,7 +272,11 @@ Composition is deliberately separate runs (not an automatic gate inside `dev`).
 The first live design run after enabling this capability is an operator checklist
 item, not an in-workflow nested run.
 
-### Design QA MCP setup (self-development)
+### Browser inspection MCP setup (self-development)
+
+`BROWSER-001` (`governance/policies/BROWSER-001.json`) is the single source of the
+agent-facing browser contract; this section covers only the operator-owned setup it
+depends on.
 
 Canonical MCP config lives at `library/cursor/mcp.json` and projects to
 `.cursor/mcp.json` only in `self_development` mode:
@@ -131,22 +285,36 @@ Canonical MCP config lives at `library/cursor/mcp.json` and projects to
 ./bin/pan models --sync
 ```
 
-Installed servers (chrome-devtools is primary; Playwright is an explicit fallback
-only):
+Installed servers: `chrome-devtools` (primary) and `playwright` (explicit fallback
+only). Both fetch on first `npx` run, so the first use needs network.
 
-- **chrome-devtools** — `npx chrome-devtools-mcp@latest --isolated` for Visual QA
-  and browser inspection through Chrome DevTools MCP. Harden with Chrome for
-  Testing (a distinct bundle, never the operator's personal `com.google.Chrome`
-  identity) via `--executablePath` and `--isolated`. Automation MUST NOT use the
-  personal `com.google.Chrome` app identity for MCP.
-- **playwright** — explicit fallback only: `npx @playwright/mcp@latest` when
-  chrome-devtools is unavailable.
+`BROWSER-001` requires a Chrome for Testing bundle — a distinct install, never the
+operator's personal `com.google.Chrome` identity. Point the server at it and check
+readiness:
+
+```sh
+./bin/pan doctor   # reports browser_automation.chrome_for_testing
+```
+
+```json
+{
+  "mcpServers": {
+    "chrome-devtools": {
+      "command": "npx",
+      "args": [
+        "chrome-devtools-mcp@latest",
+        "--executablePath=/path/to/chrome-for-testing",
+        "--isolated"
+      ]
+    }
+  }
+}
+```
 
 Do not put long-lived MCP customizations only in `.cursor/mcp.json`; that file is
 projection-owned and will be overwritten on sync. Edit `library/cursor/mcp.json`
 instead. Embedded target repositories own their own MCP config; Pancreator
-documents optional hardening (for example Chrome for Testing with
-`--executablePath` and `--isolated`) but does not install or overwrite target
+documents the hardening above but does not install or overwrite target
 `.cursor/mcp.json`.
 
 ## Select pipeline models

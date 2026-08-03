@@ -153,10 +153,14 @@ or principle. Prefer the minimal fix.
 Canonical config: `library/cursor/mcp.json`, projected to `.cursor/mcp.json` in
 `self_development` only via `./bin/pan models --sync`.
 
-| Server              | Transport                                   | Role                                                                 | Setup / degradation                                                                                              |
-| ------------------- | ------------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| **chrome-devtools** | `npx chrome-devtools-mcp@latest --isolated` | Primary Visual QA and browser inspection through Chrome DevTools MCP | Use Chrome for Testing with `--executablePath` and `--isolated`. Requires network for first `npx` fetch.         |
-| **playwright**      | `npx @playwright/mcp@latest`                | Explicit fallback only when chrome-devtools is unavailable           | Requires network for first `npx` fetch. If unavailable, use Bash/browser capture fallbacks documented in skills. |
+`BROWSER-001` owns how these servers are used, including isolation, Chrome for
+Testing, fallback ordering, and blocked-case handling. The table records only what
+is installed.
+
+| Server              | Transport                                   | Role                                                                 | Setup                                   |
+| ------------------- | ------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------- |
+| **chrome-devtools** | `npx chrome-devtools-mcp@latest --isolated` | Primary Visual QA and browser inspection through Chrome DevTools MCP | Requires network for first `npx` fetch. |
+| **playwright**      | `npx @playwright/mcp@latest`                | Explicit fallback only when chrome-devtools is unavailable           | Requires network for first `npx` fetch. |
 
 ### Documented for target repositories (not installed here)
 
@@ -173,7 +177,7 @@ MUST NOT overwrite target MCP config during embedded install.
 3. Fix the highest-severity issues.
 4. Repeat until acceptance criteria stabilize.
    Prefer accessibility-tree snapshots for structure and screenshots for visual judgment.
-   When MCP/browser tools are unavailable, use a Bash-based capture fallback and continue.
+   `BROWSER-001` governs capture tooling and the fallback it permits for iteration.
 
 ## References
 

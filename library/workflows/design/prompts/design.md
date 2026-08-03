@@ -12,8 +12,8 @@ corresponding `dev` run.
 3. Define design tokens (CSS custom properties) before laying out screens.
 4. For key screens, explore multiple HTML variants, then converge using the
    screenshot-or-accessibility-snapshot → score-against-heuristics → fix-top-issues
-   loop. Prefer MCP/browser tools when available; otherwise use Bash capture
-   fallbacks and disclose the method.
+   loop. `BROWSER-001` governs browser use for this loop and permits a disclosed
+   capture fallback when browser tooling is unavailable.
 5. Write authoritative self-contained HTML prototypes under the run’s
    `artifacts/mocks/` with semantic landmarks (`header`, `main`, `section`,
    `footer`). Use HTML as the authoritative mock medium.

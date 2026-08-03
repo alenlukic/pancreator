@@ -30,6 +30,7 @@ test('policy resolution unions global and stage-specific policies', () => {
     'PRIMER-001',
     'REPO-001',
     'RUNTIME-001',
+    'STE-001',
     'TS-001',
     'VALID-001',
   ])
@@ -59,6 +60,7 @@ test('engineering handbook policy loads for reviewer and qa personas', () => {
     'REPO-001',
     'REVIEW-001',
     'RUNTIME-001',
+    'STE-001',
     'TS-001',
     'VALID-001',
   ])
@@ -74,6 +76,7 @@ test('engineering handbook policy loads for reviewer and qa personas', () => {
     'AUTO-001',
     'BIN-001',
     'BRIEF-001',
+    'BROWSER-001',
     'ENG-001',
     'GLOBAL-001',
     'GLOBAL-002',
@@ -82,6 +85,7 @@ test('engineering handbook policy loads for reviewer and qa personas', () => {
     'PRIMER-001',
     'REPO-001',
     'RUNTIME-001',
+    'STE-001',
     'TEST-001',
     'TS-001',
     'VALID-001',
@@ -254,6 +258,7 @@ test('orchestration and release guidance resolve with required policy dependenci
     'PRIMER-001',
     'REPO-001',
     'RUNTIME-001',
+    'STE-001',
     'VALID-001',
     'WAIVER-001',
     'WORK-001',
@@ -272,6 +277,7 @@ test('orchestration and release guidance resolve with required policy dependenci
     'REPO-001',
     'RUNTIME-001',
     'SHIP-001',
+    'STE-001',
     'VALID-001',
     'VERSION-001',
     'WAIVER-001',
@@ -358,6 +364,7 @@ test('decomposer loads conservative decomposition governance', () => {
     'PRIMER-001',
     'REPO-001',
     'RUNTIME-001',
+    'STE-001',
     'VALID-001',
   ])
 })
@@ -383,6 +390,7 @@ test('standalone remediation personas load their work-mode policies', () => {
     'PRIMER-001',
     'REPO-001',
     'RUNTIME-001',
+    'STE-001',
     'VALID-001',
     'WORK-001',
   ])
@@ -397,6 +405,7 @@ test('standalone remediation personas load their work-mode policies', () => {
     'AUTO-001',
     'BIN-001',
     'BRIEF-001',
+    'BROWSER-001',
     'CONTRACT-001',
     'ENG-001',
     'GLOBAL-001',
@@ -407,6 +416,7 @@ test('standalone remediation personas load their work-mode policies', () => {
     'REPO-001',
     'RUNTIME-001',
     'SPOT-001',
+    'STE-001',
     'TS-001',
     'VALID-001',
     'WORK-001',
@@ -434,6 +444,7 @@ test('harness technician loads repair governance', () => {
     'REPAIR-001',
     'REPO-001',
     'RUNTIME-001',
+    'STE-001',
     'VALID-001',
   ])
 })

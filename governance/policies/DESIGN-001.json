@@ -7,7 +7,7 @@
     "Agents designing, reviewing, or verifying UI/UX work MUST apply the complete unrolled design handbook guidance included with this policy before completion.",
     "Design work MUST apply the handbook heuristic checklist, accessibility baseline, and token-first prototyping rules when producing or judging mocks.",
     "Design stages MUST treat self-contained HTML prototypes under the run artifacts as the authoritative mock medium.",
-    "Designers MUST iterate with the screenshot-or-accessibility-snapshot → score-against-heuristics → fix-top-issues loop, using Bash capture fallbacks when MCP or browser tools are unavailable.",
+    "Designers MUST iterate with the screenshot-or-accessibility-snapshot → score-against-heuristics → fix-top-issues loop. BROWSER-001 governs how captures are taken and when a non-browser fallback is permitted.",
     "Design reviewers MUST severity-rank findings, cite the violated law or checklist item, and propose the minimal fix; design QA MUST exercise interactive flows, states, and keyboard or accessibility passes against testable acceptance criteria.",
     "Agents MUST treat operator-level Cursor frontend-design user rules as separate unabsorbed authority and MUST NOT copy them into handbook or policy text.",
     "Agents MUST treat the unrolled design handbook as supporting repository guidance and MUST NOT use it as a replacement for the active invocation contract."

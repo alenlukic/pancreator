@@ -21,8 +21,8 @@ the irreversible action; it makes the decision easy and safe.
 - PR description artifact at
   `runtime/logs/workflows/<run-id>/artifacts/markdown/pr-description.md`,
   produced via `write-pr-description.md` (suggested conventional-commit title
-  on line 1, then Summary, Changelist, and optional Delivery Pipeline
-  Manifest).
+  on line 1, then Summary, Changelist, an optional How to read this PR
+  walkthrough, and an optional Delivery Pipeline Manifest).
 
 ## Checks before proposing
 

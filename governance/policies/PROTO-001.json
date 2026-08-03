@@ -1,0 +1,17 @@
+{
+  "id": "PROTO-001",
+  "title": "Prototype spike discipline",
+  "severity": "hard",
+  "summary": "A prototype run MUST answer a stated technical question with the fastest credible implementation, MUST declare every shortcut it took, and MUST NOT be represented as production-ready work.",
+  "instructions": [
+    "A prototype exists to make a technical approach observable. Every stage MUST serve the stated technical questions and MUST NOT expand into adjacent product scope.",
+    "Design depth MUST be bounded to the decisions the spike actually tests. Agents MUST NOT produce component inventories, interface catalogues, or migration sequencing that the prototype will not exercise.",
+    "Deliberate shortcuts are expected and MUST be declared, not hidden. Stubs, hard-coded values, skipped error handling, copied code, and omitted persistence MUST each appear in the record with the reason it was acceptable for the spike.",
+    "Automated test coverage MUST be limited to what keeps the spike honest about its own signals. A prototype MUST NOT be failed for absent production test coverage, and MUST NOT claim coverage it does not have.",
+    "The prototype MUST leave the repository statically sound. A new static-check or type diagnostic MUST be repaired before submission; a pre-existing one MUST be reported and MAY remain.",
+    "A prototype MUST NOT modify release metadata, delete or rewrite unrelated production code paths, or weaken an existing test to make the spike pass. Weakening an existing check MUST be reported as a blocker instead.",
+    "The evaluation MUST state, for each technical question, whether the prototype answered it, and MUST reach a verdict of validated, invalidated, or inconclusive. An inconclusive result MUST NOT be reported as validated.",
+    "The evaluation MUST describe the gap between the spike and production-ready work concretely enough for a later systematic run to be scoped from it.",
+    "When a prototype's approach is adopted, the productionization work MUST route to a systematic run rather than continuing inside the prototype run."
+  ]
+}

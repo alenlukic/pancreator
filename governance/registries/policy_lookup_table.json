@@ -16,7 +16,8 @@
         "RUNTIME-001",
         "PRIMER-001",
         "REPO-001",
-        "BRIEF-001"
+        "BRIEF-001",
+        "STE-001"
       ]
     },
     {
@@ -25,6 +26,13 @@
       "stage": "*",
       "installation_scope": "self_development",
       "policies": ["BIN-001"]
+    },
+    {
+      "persona": "*",
+      "workflow": "*",
+      "stage": "*",
+      "contract": "technical_director",
+      "policies": ["DIRECTOR-001"]
     },
     {
       "persona": "coder",
@@ -110,7 +118,31 @@
       "persona": "qa-tester",
       "workflow": "*",
       "stage": "*",
-      "policies": ["ENG-001"]
+      "policies": ["ENG-001", "BROWSER-001"]
+    },
+    {
+      "persona": "designer",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["BROWSER-001"]
+    },
+    {
+      "persona": "design-reviewer",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["BROWSER-001"]
+    },
+    {
+      "persona": "design-qa",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["BROWSER-001"]
+    },
+    {
+      "persona": "spotfixer",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["BROWSER-001"]
     },
     {
       "persona": "tech-lead",
@@ -165,6 +197,19 @@
       "workflow": "dev",
       "stage": "review",
       "policies": ["REVIEW-001"]
+    },
+    {
+      "persona": "reviewer",
+      "workflow": "dev",
+      "stage": "review",
+      "review_mode": "squad",
+      "policies": ["REVIEW-002"]
+    },
+    {
+      "persona": "*",
+      "workflow": "prototype",
+      "stage": "*",
+      "policies": ["PROTO-001"]
     },
     {
       "persona": "qa-tester",
@@ -227,6 +272,12 @@
       "workflow": "*",
       "stage": "*",
       "policies": ["ENG-001", "WORK-001", "SPOT-001", "CONTRACT-001"]
+    },
+    {
+      "persona": "coder",
+      "workflow": "standalone",
+      "stage": "pair",
+      "policies": ["PAIR-001"]
     }
   ]
 }

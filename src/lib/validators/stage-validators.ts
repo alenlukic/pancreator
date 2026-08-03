@@ -9,6 +9,11 @@ import type { HandlerInput, HandlerResult } from '../requirements/types.js'
 import { activeOperatorGateWaivers } from '../waivers.js'
 import { readProjectConfig } from '../project-config.js'
 import {
+  gitWorkspaceSnapshot,
+  workspaceChangedPathsFromSnapshots,
+} from '../git.js'
+import type { WorkspaceSnapshot } from '../types.js'
+import {
   isReleaseMetadataPath,
   isSemanticVersion,
   nextSemanticVersion,
@@ -234,6 +239,15 @@ function isSpotfixDiffExempt(file: string): boolean {
   return false
 }
 
+function isHarnessBookkeepingPath(file: string): boolean {
+  return (
+    file.startsWith('runtime/') ||
+    file.endsWith('/.lock') ||
+    file.endsWith('/.operation-mutex') ||
+    file.includes('/validations/')
+  )
+}
+
 function workspaceSourceChanges(root: string): GitDiffResult {
   const diff = gitChangedFiles(root)
 
@@ -243,13 +257,44 @@ function workspaceSourceChanges(root: string): GitDiffResult {
 
   return {
     ok: true,
-    files: diff.files.filter(
-      (file) =>
-        !file.startsWith('runtime/') &&
-        !file.endsWith('/.lock') &&
-        !file.endsWith('/.operation-mutex') &&
-        !file.includes('/validations/'),
-    ),
+    files: diff.files.filter((file) => !isHarnessBookkeepingPath(file)),
+  }
+}
+
+/**
+ * Paths this attempt changed, measured against the snapshot taken when its own
+ * invocation was prepared.
+ *
+ * `changed_files` describes one attempt's work, so comparing it against the
+ * cumulative `git diff HEAD` charged every attempt with the whole run's
+ * accumulated diff — including files earlier attempts touched and files the run
+ * never touched at all. Returns null when the invocation carries no comparable
+ * snapshot, in which case the caller falls back to the cumulative diff.
+ */
+function attemptChangedPaths(
+  input: HandlerInput,
+  workspaceRoot: string,
+): string[] | null {
+  const invocation = input.invocation
+
+  if (!isRecord(invocation) || !isRecord(invocation.workspace_before)) {
+    return null
+  }
+
+  const before = invocation.workspace_before as unknown as WorkspaceSnapshot
+
+  if (before.kind !== 'git' || !Array.isArray(before.entries)) {
+    return null
+  }
+
+  try {
+    const after = gitWorkspaceSnapshot(workspaceRoot)
+
+    return workspaceChangedPathsFromSnapshots(before, after).filter(
+      (file) => !isHarnessBookkeepingPath(file),
+    )
+  } catch {
+    return null
   }
 }
 
@@ -513,6 +558,10 @@ export function validateImplementationClaims(
     }
   } else {
     const diffFiles = diffResult.files
+    // Disclosure is owed for what this attempt changed. Existence is checked
+    // against the cumulative diff, which still catches a fabricated claim.
+    const attemptFiles = attemptChangedPaths(input, workspaceRoot)
+    const owedDisclosure = attemptFiles ?? diffFiles
 
     if (diffFiles.length > 0 && changedFiles.length > 0) {
       for (const file of changedFiles) {
@@ -526,12 +575,12 @@ export function validateImplementationClaims(
         }
       }
 
-      for (const file of diffFiles) {
+      for (const file of owedDisclosure) {
         if (!changedFiles.includes(file)) {
           issues.push(
             issue(
               'claim.diff_not_disclosed',
-              `Diff file not listed in changed_files: ${file}`,
+              `File changed by this attempt but not listed in changed_files: ${file}`,
             ),
           )
         }
@@ -891,6 +940,10 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
   }
 
   const files = plan && Array.isArray(plan.files) ? plan.files : []
+  // Plan file paths name target-repository files, so they resolve against the
+  // workspace root. Resolving them against the installation root fails every
+  // path in a detached install, where the two are different directories.
+  const workspaceRoot = workspaceRootFromInput(input)
 
   for (const [index, file] of files.entries()) {
     if (!isRecord(file) || typeof file.path !== 'string') {
@@ -905,7 +958,26 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
 
     const status = typeof file.status === 'string' ? file.status : ''
 
-    if (status !== 'new' && !fileExists(path.join(input.root, file.path))) {
+    // A traversal segment is how a plan "passes" this check by escaping the
+    // installation root instead of naming a workspace-relative file. Reject it
+    // so the ratified plan cannot carry non-portable paths downstream.
+    if (file.path.split(/[\\/]/u).includes('..')) {
+      issues.push(
+        issue(
+          'plan.file_path_shape',
+          `engineering_plan.files[${index}].path MUST be workspace-relative ` +
+            `without '..' segments: ${file.path}`,
+        ),
+      )
+      continue
+    }
+
+    if (
+      status !== 'new' &&
+      !fileExists(
+        resolveWorkspaceRelativeFilePath(input.root, workspaceRoot, file.path),
+      )
+    ) {
       issues.push(
         issue(
           'plan.file_missing',

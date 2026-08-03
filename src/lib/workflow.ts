@@ -13,6 +13,7 @@ import type {
   Criterion,
   CriterionType,
   JsonTypeName,
+  StageCheckpoint,
   StageContextDefinition,
   StageContextRequest,
   StageContextSelection,
@@ -34,6 +35,10 @@ const GATES = new Set<StageGate>([
   'stage_verdict',
 ])
 const EXECUTORS = new Set<StageExecutor>(['agent', 'harness'])
+const CHECKPOINTS = new Set<StageCheckpoint>([
+  'technical_plan',
+  'independent_review',
+])
 const WORKSPACE_POLICIES = new Set<WorkspacePolicy>([
   'source_allowed',
   'release_metadata_only',
@@ -308,6 +313,21 @@ function parseStage(
       { code: 'INVALID_WORKFLOW' },
     )
   }
+  if (value.gate_relaxable !== undefined) {
+    invariant(
+      typeof value.gate_relaxable === 'boolean',
+      `${source}.gate_relaxable MUST be a boolean when present.`,
+      { code: 'INVALID_WORKFLOW' },
+    )
+  }
+  if (value.checkpoint !== undefined) {
+    invariant(
+      typeof value.checkpoint === 'string' &&
+        CHECKPOINTS.has(value.checkpoint as StageCheckpoint),
+      `${source}.checkpoint MUST be technical_plan or independent_review when present.`,
+      { code: 'INVALID_WORKFLOW' },
+    )
+  }
   invariant(
     typeof value.prompt === 'string' || typeof value.prompt_path === 'string',
     `${source} MUST define prompt or prompt_path.`,
@@ -352,6 +372,14 @@ function parseStage(
 
   if (typeof value.executor === 'string') {
     stage.executor = value.executor as StageExecutor
+  }
+
+  if (typeof value.gate_relaxable === 'boolean') {
+    stage.gate_relaxable = value.gate_relaxable
+  }
+
+  if (typeof value.checkpoint === 'string') {
+    stage.checkpoint = value.checkpoint as StageCheckpoint
   }
 
   const requiredData = parseRequiredData(
@@ -574,6 +602,7 @@ export function validateWorkflow(
   )
 
   const slugs = new Set<string>()
+  const checkpoints = new Map<StageCheckpoint, string>()
 
   for (const stage of workflow.stages) {
     invariant(
@@ -582,6 +611,20 @@ export function validateWorkflow(
       { code: 'INVALID_WORKFLOW' },
     )
     slugs.add(stage.slug)
+
+    // A run contract escalates gates by checkpoint role. Two stages claiming
+    // the same role would make that escalation ambiguous.
+    if (stage.checkpoint) {
+      const owner = checkpoints.get(stage.checkpoint)
+
+      invariant(
+        !owner,
+        `${source}: stages '${owner}' and '${stage.slug}' both declare ` +
+          `checkpoint '${stage.checkpoint}'.`,
+        { code: 'INVALID_WORKFLOW' },
+      )
+      checkpoints.set(stage.checkpoint, stage.slug)
+    }
 
     if (stage.prompt_path && !stage.prompt) {
       invariant(

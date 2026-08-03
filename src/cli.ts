@@ -16,10 +16,12 @@ import {
   submitOutput,
   waiveGate,
 } from './lib/engine.js'
+import { browserReadiness } from './lib/browser-readiness.js'
 import { PanError } from './lib/errors.js'
 import { configuredWorkspaceRoot, panCommand } from './lib/project-config.js'
 import { isGitRepository } from './lib/git.js'
 import { loadPipelineConfig } from './lib/pipeline-config.js'
+import { loadOperatorInvolvementFile } from './lib/operator-involvement.js'
 import { syncCursorProjection } from './lib/projection.js'
 import {
   fileExists,
@@ -50,6 +52,7 @@ import {
   scaffoldStageOutput,
 } from './lib/requirements/scaffold.js'
 import { auditDirectives } from './lib/governance/audit-directives.js'
+import { buildGovernanceCard } from './lib/governance-card.js'
 import {
   assertRepositoryChecksValid,
   repositoryChecksSourcePath,
@@ -64,11 +67,11 @@ import {
 import { maintainWorkflowRuntime } from './lib/workflow-artifacts.js'
 
 const HELP_BODY = `Usage:
-  pan init --request <repo-relative-file> [--workflow dev] [--title <title>] [--workspace <dir>] [--gates <file>]
+  pan init --request <repo-relative-file> [--workflow dev|prototype|design] [--title <title>] [--workspace <dir>] [--gates <file>] [--involvement <profile>] [--review-mode default|squad]
   pan prepare <run-id>
   pan submit <run-id> <output-json>
   pan assess <run-id> <assessment-json>
-  pan decide <run-id> <approve|reject> [--note <text>] [--stage <stage-slug>]
+  pan decide <run-id> <approve|reject|revise> [--note <text>] [--stage <stage-slug>]
   pan pause <run-id> [--note <text>]
   pan resume <run-id> [--stage <stage-slug>] [--note <text>]
   pan set-stage <run-id> --stage <stage-slug> --note <reason>
@@ -89,10 +92,12 @@ const HELP_BODY = `Usage:
   pan output validate <run-id> --file <path> [--json]
   pan assessment scaffold <run-id> --invocation <path> --output <path> [--force]
   pan governance audit-directives [--json]
+  pan governance card --mode <pair|spotfix|investigation|repair|decomposition> [--request <path>] [--out <path>] [--json]
   pan briefs build [--force] [--json]
   pan briefs validate [--json]
   pan briefs render --input <brief-json> --output <brief-html> [--json]
   pan validation-map [--json]
+  pan involvement [--json]
   pan spotfix scaffold-escalation --input <path> --output <path>
 
 The harness does not invoke models. Cursor's supervisor reads invocation cards,
@@ -365,13 +370,20 @@ async function main(): Promise<void> {
         title: option(args, '--title'),
         workspace: option(args, '--workspace'),
         gatesPath: option(args, '--gates'),
+        involvement: option(args, '--involvement'),
+        reviewMode: option(args, '--review-mode'),
       })
 
       print({
         status: 'created',
         run_id: state.run_id,
+        workflow: state.workflow_slug,
         workspace_root: state.workspace_root,
         pipeline_config: state.pipeline_config?.name,
+        involvement_profile: state.operator_involvement?.profile,
+        run_contracts: state.operator_involvement?.contracts ?? [],
+        applied_gates: state.operator_involvement?.applied_gates ?? {},
+        review_mode: state.review_mode,
         next_command: `${pan} prepare ${state.run_id}`,
         state_path: `runtime/logs/workflows/${state.run_id}/state.json`,
       })
@@ -453,9 +465,32 @@ async function main(): Promise<void> {
 
       print({
         status: state.status,
+        decision,
         next_stage: state.current_stage,
+        operator_revisions: state.operator_revisions ?? {},
         pending_action: state.pending_action,
       })
+      return
+    }
+    case 'involvement': {
+      const file = loadOperatorInvolvementFile(root)
+
+      print(
+        {
+          active: file.active,
+          profiles: Object.fromEntries(
+            Object.entries(file.profiles).map(([name, profile]) => [
+              name,
+              {
+                summary: profile.summary,
+                gates: profile.gates ?? {},
+                contracts: profile.contracts ?? [],
+              },
+            ]),
+          ),
+        },
+        true,
+      )
       return
     }
     case 'pause': {
@@ -705,6 +740,28 @@ async function main(): Promise<void> {
 
       if (sub === 'audit-directives') {
         print(auditDirectives(root), hasFlag(args, '--json'))
+        return
+      }
+
+      if (sub === 'card') {
+        const card = buildGovernanceCard(root, {
+          mode: requiredArgument(option(args, '--mode'), '--mode'),
+          requestPath: option(args, '--request'),
+          outputPath: option(args, '--out'),
+        })
+
+        print({
+          status: 'ready',
+          mode: card.mode,
+          card_path: card.path,
+          policies: card.policies.map((policy) => policy.id),
+          agent_requirements: [
+            ...card.requirements.automation_requirements,
+            ...card.requirements.validation_requirements,
+          ]
+            .filter((requirement) => requirement.executor !== 'harness')
+            .map((requirement) => requirement.registry_id),
+        })
         return
       }
 
@@ -1001,12 +1058,17 @@ async function main(): Promise<void> {
       const validation = validateRepository(root)
       const pipelineConfig = loadPipelineConfig(root)
       const nodeMajor = Number(process.versions.node.split('.')[0])
+      const workspaceRoot = path.resolve(root, configuredWorkspaceRoot(root))
       const result = {
         ok: validation.ok && nodeMajor >= 22,
         node: {
           version: process.versions.node,
           supported: nodeMajor >= 22,
         },
+        // Advisory: a repository without a web UI needs no browser, so an
+        // unready browser stack MUST NOT fail doctor. BROWSER-001 turns the gap
+        // into an environment-blocked case at the point a verdict is owed.
+        browser_automation: browserReadiness([root, workspaceRoot]),
         // Git availability is a property of the deliverable workspace, not the
         // installation. These coincide only when the harness sits inside the
         // target, which a detached installation does not.

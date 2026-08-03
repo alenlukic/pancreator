@@ -17,17 +17,21 @@ self-development intake without implementing the repair.
    conversation, transcript links or exports referenced by the input, and any
    transcript artifacts associated with the run. Treat `*.delegation.md` as
    prompt-delivery evidence only, never as a substitute for an agent transcript.
-5. Invoke the `pan-harness-technician` subagent with the original input, resolved
+5. Run `./bin/pan governance card --mode repair` and read the card it writes. It
+   resolves the complete repair governance, including `REPAIR-001`; do not
+   assemble policy text by hand.
+6. Invoke the `pan-harness-technician` subagent, pasting the complete card
+   contents verbatim into its prompt, followed by the original input, resolved
    evidence location, collected transcript references or contents, and output
-   path. Require it to apply `REPAIR-001`, audit for harness bugs, compliance
-   issues, governance misses, agent execution errors, target-repository defects,
-   and unresolved hypotheses, and write no other file.
-6. Run `./bin/pan requirements run --persona harness-technician --workflow standalone --stage repair --kind repair --registry HARNESS-REPAIR-VALIDATE-001 --target <harness-relative-output-path> --json`.
-7. If validation fails, provide the validator issues to the harness technician
+   path. Require it to audit for harness bugs, compliance issues, governance
+   misses, agent execution errors, target-repository defects, and unresolved
+   hypotheses, and write no other file.
+7. Run `./bin/pan requirements run --persona harness-technician --workflow standalone --stage repair --kind repair --registry HARNESS-REPAIR-VALIDATE-001 --target <harness-relative-output-path> --json`.
+8. If validation fails, provide the validator issues to the harness technician
    for one correction attempt, then rerun the same validator. Stop and surface
    unresolved issues if the second attempt fails.
-8. Do not modify source, governance, workflow state, the investigated run, or
+9. Do not modify source, governance, workflow state, the investigated run, or
    target application files. Do not commit, push, merge, publish, or deploy.
-9. Surface the validated intake path and its complete contents. State that the
-   file can be passed directly to `/pan-start` in the Pancreator self-development
-   repository.
+10. Surface the validated intake path and its complete contents. State that the
+    file can be passed directly to `/pan-start` in the Pancreator self-development
+    repository.

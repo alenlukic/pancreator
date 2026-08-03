@@ -5,6 +5,7 @@ The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in thi
 Handbooks define durable repository standards. Applicable handbook content MUST be unrolled through policy `guidance_sources` into each invocation card; policies MUST NOT leave agents responsible for separately loading a handbook. An invocation card and its embedded policies and guidance MUST remain the authoritative contract for a specific stage. Agents MUST NOT load unrelated handbooks speculatively.
 
 - [`eng/engineering.md`](eng/engineering.md) defines the language-agnostic engineering baseline.
+- [`writing/simplified-technical-english.md`](writing/simplified-technical-english.md) defines the Simplified Technical English standard for artifacts an operator reads, adapted from ASD-STE100 Issue 9.
 - [`design/ux-guide.md`](design/ux-guide.md) defines UI/UX design laws, critique, accessibility, tokens, mock media, and tooling.
 - [`python/style-guide.md`](python/style-guide.md) defines normative Python engineering and style guidance.
 - [`typescript/style-guide.md`](typescript/style-guide.md) defines normative TypeScript and TSX style.

@@ -3,9 +3,12 @@ import path from 'node:path'
 
 import {
   projectCursorContent,
+  renderPolicyCursorRule,
   type CursorInstallationMode,
 } from './cursor-content.js'
 import { invariant } from './errors.js'
+import { loadPolicyCatalog } from './policies.js'
+import type { Policy } from './types.js'
 import {
   fileExists,
   isRecord,
@@ -147,7 +150,10 @@ function readProjectionManifest(root: string): ProjectionManifest {
       { code: 'INVALID_PROJECTION_MANIFEST' },
     )
     invariant(
-      transforms.every((transform) => transform === 'installation-paths'),
+      transforms.every(
+        (transform) =>
+          transform === 'installation-paths' || transform === 'policy-rule',
+      ),
       `projection ${entry.id}.transforms contains an unsupported transform`,
       { code: 'INVALID_PROJECTION_MANIFEST' },
     )
@@ -235,6 +241,18 @@ function expandProjection(
     .sort((left, right) => left.target.localeCompare(right.target))
 }
 
+/** Resolve the policy a `policy-rule` projection generates from. */
+function policyForProjection(root: string, source: string): Policy {
+  const policyId = path.basename(source, '.json')
+  const policy = loadPolicyCatalog(root).get(policyId)
+
+  invariant(policy, `policy-rule projection references missing ${policyId}`, {
+    code: 'INVALID_PROJECTION_MANIFEST',
+  })
+
+  return policy
+}
+
 function installationMode(root: string): CursorInstallationMode {
   return loadProjectConfig(root).installation_mode ?? 'self_development'
 }
@@ -287,7 +305,9 @@ function renderProjections(root: string): RenderedProjection[] {
         { code: 'INVALID_PROJECTION_MANIFEST' },
       )
 
-      let content = readText(absoluteSource)
+      let content = projection.transforms.includes('policy-rule')
+        ? renderPolicyCursorRule(policyForProjection(root, entry.source))
+        : readText(absoluteSource)
 
       if (projection.generated_fields.includes('frontmatter.model')) {
         invariant(

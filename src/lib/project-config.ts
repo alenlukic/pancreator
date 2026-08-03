@@ -3,7 +3,10 @@ import path from 'node:path'
 import { EMBEDDED_HARNESS_PREFIX } from './cursor-content.js'
 import { invariant } from './errors.js'
 import { fileExists, isRecord, readJson } from './io.js'
-import type { ProjectConfig } from './types.js'
+import type { ProjectConfig, ReviewMode } from './types.js'
+
+/** Review method a run adopts when `config.json` declares none. */
+export const DEFAULT_REVIEW_MODE: ReviewMode = 'default'
 
 const PROJECT_CONFIG_PATH = 'config.json'
 
@@ -77,6 +80,14 @@ export function readProjectConfig(root: string): ProjectConfig | null {
     { code: 'INVALID_PROJECT_CONFIG' },
   )
 
+  invariant(
+    value.review_mode === undefined ||
+      value.review_mode === 'default' ||
+      value.review_mode === 'squad',
+    `${PROJECT_CONFIG_PATH}.review_mode MUST be default or squad when present.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+
   // A detached harness cannot reach its target by a relative path that would
   // survive being moved, so the target MUST be recorded absolutely.
   invariant(
@@ -102,6 +113,27 @@ export function loadProjectConfig(root: string): ProjectConfig {
 
 export function configuredWorkspaceRoot(root: string): string {
   return loadProjectConfig(root).workspace_root ?? '.'
+}
+
+/**
+ * Review method for a new run. `selected` comes from `pan init --review-mode`
+ * and overrides the configured default for that run only.
+ */
+export function resolveReviewMode(
+  root: string,
+  selected?: string | null,
+): ReviewMode {
+  if (selected !== undefined && selected !== null) {
+    invariant(
+      selected === 'default' || selected === 'squad',
+      `Unknown review mode '${selected}'. Available: default, squad.`,
+      { code: 'INVALID_REVIEW_MODE' },
+    )
+
+    return selected
+  }
+
+  return loadProjectConfig(root).review_mode ?? DEFAULT_REVIEW_MODE
 }
 
 export function isSelfDevelopmentInstallation(root: string): boolean {

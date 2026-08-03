@@ -20,6 +20,19 @@ invocation/delegation records, machine workflow records, source documentation,
 PR copy, and other formats that are themselves part of an execution contract
 remain exceptions. New workflow-stage narratives are not an exception.
 
+## Language
+
+Under `STE-001`, write the artifact in Simplified Technical English, adapted from
+ASD-STE100 Issue 9. The complete guidance arrives unrolled in the active
+invocation. The rules that shape most artifacts are these:
+
+- Use a maximum of 20 words in an instruction and 25 words in explanation. An identifier, a path, a command, an inline code span, quoted text, and a hyphenated word each count as one word.
+- Keep a paragraph to one topic and six sentences or fewer.
+- Write instructions in the imperative form and the active voice.
+- Use one term for one concept, and prefer the term the repository already uses.
+- Do not use a semicolon, a contraction, a Latin abbreviation, a perfect or progressive tense, or an `-ing` form outside a domain term.
+- Preserve quoted evidence and captured output verbatim. Never rewrite evidence to satisfy a writing rule.
+
 ## Composition
 
 - Begin with `executive-summary`; state the bottom line, why it matters, the outcome, and the next action when applicable.
