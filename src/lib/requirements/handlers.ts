@@ -1,8 +1,9 @@
 import path from 'node:path'
 
-import { isRecord, readText } from '../io.js'
+import { isRecord, readJson, readText } from '../io.js'
 import {
   validateDelegationMarkdown,
+  validateInvocationAttestation,
   validateInvocationMarkdown,
 } from '../validation.js'
 import { loadRegistry, validateRegistry } from './registry.js'
@@ -94,10 +95,48 @@ function invocationValidateHandler(input: HandlerInput): HandlerResult {
 }
 
 function delegationValidateHandler(input: HandlerInput): HandlerResult {
-  const canonicalPath = String(input.requirement.arguments.canonical ?? '')
-  const canonical = readText(path.join(input.root, canonicalPath))
+  const contract = isRecord(input.invocation?.delegation)
+    ? input.invocation.delegation
+    : null
+  const referenced =
+    contract?.mode === 'referenced' &&
+    typeof contract.delivery_prompt_path === 'string'
+  // Under referenced delivery the supervisor owes the compact prompt, so that
+  // prompt is the expected body. Verbatim delivery still owes the whole card.
+  const expectedPath = referenced
+    ? String(contract.delivery_prompt_path)
+    : String(input.requirement.arguments.canonical ?? '')
+  const expected = readText(path.join(input.root, expectedPath))
   const delegation = readText(path.join(input.root, input.targetPath))
-  const result = validateDelegationMarkdown(canonical, delegation)
+  const result = validateDelegationMarkdown(
+    expected,
+    delegation,
+    referenced ? 'referenced' : 'verbatim',
+  )
+
+  return {
+    status: result.passed ? 'passed' : 'failed',
+    issues: result.checks
+      .filter((check) => !check.passed)
+      .map((check) => ({ code: check.id, message: check.message })),
+  }
+}
+
+function invocationAttestValidateHandler(input: HandlerInput): HandlerResult {
+  if (!input.invocation) {
+    return {
+      status: 'invalid',
+      issues: [
+        { code: 'invocation.missing', message: 'Invocation context required' },
+      ],
+    }
+  }
+
+  const output = readJson(path.join(input.root, input.targetPath))
+  const result = validateInvocationAttestation(
+    input.invocation as never,
+    output,
+  )
 
   return {
     status: result.passed ? 'passed' : 'failed',
@@ -149,6 +188,7 @@ export const HANDLERS: Record<string, ValidatorHandler> = {
   'projection-validate': projectionValidateHandler,
   'invocation-validate': invocationValidateHandler,
   'delegation-validate': delegationValidateHandler,
+  'invocation-attest-validate': invocationAttestValidateHandler,
 }
 
 export const HANDLER_IDS = new Set(Object.keys(HANDLERS))

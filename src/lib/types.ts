@@ -367,6 +367,43 @@ export interface WorkspaceChangeAttribution {
   explanation: string
 }
 
+/**
+ * Whether the worker read its complete canonical contract, or could not reach
+ * it. `reference_failed` is only valid alongside a `blocked` stage result: a
+ * worker that never held the contract has no basis for any other verdict.
+ */
+export type InvocationAttestationStatus = 'read' | 'reference_failed'
+
+export interface InvocationAttestationSection {
+  id: string
+  sha256: string
+}
+
+/**
+ * A worker's declaration that it read the complete referenced contract. The
+ * declaration is the only observable a harness has: it cannot inspect the model
+ * context that received the card. Comparing exact section order, cardinality,
+ * ids, and digests against the invocation manifest is what makes a partial or
+ * stale read detectable rather than merely discouraged.
+ *
+ * A failed reference carries the read error instead of digests, because a worker
+ * that never opened the contract has nothing to hash.
+ */
+export type InvocationAttestation =
+  | {
+      invocation_id: string
+      contract_path: string
+      contract_sha256: string
+      status: 'read'
+      sections: InvocationAttestationSection[]
+    }
+  | {
+      invocation_id: string
+      contract_path: string
+      status: 'reference_failed'
+      error: string
+    }
+
 export interface StageOutput {
   $operator?: {
     headline: string
@@ -382,6 +419,7 @@ export interface StageOutput {
   risks: string[]
   unknowns: string[]
   workspace_changes?: WorkspaceChangeAttribution
+  invocation_attestation?: InvocationAttestation
   data: Record<string, unknown>
 }
 
@@ -480,8 +518,45 @@ export interface Invocation {
    * rather than left to ambient recall of `AGENTS.md`.
    */
   delegation?: InvocationDelegationContract
+  /**
+   * Section-level digest index for the canonical worker contract. Present for
+   * invocations prepared with referenced delivery. Its absence marks a legacy
+   * invocation whose delegation is validated by full-card equality.
+   */
+  contract_manifest?: InvocationContractManifest
   workspace_before: WorkspaceSnapshot
 }
+
+/** Which side of the delivery a contract section binds. */
+export type InvocationContractSectionOwner = 'worker' | 'supervisor'
+
+export interface InvocationContractSection {
+  id: string
+  heading: string
+  owner: InvocationContractSectionOwner
+  line_count: number
+  sha256: string
+}
+
+/**
+ * The canonical worker contract, described as ordered top-level blocks. The
+ * blocks concatenate back to the exact contract bytes, so a section digest and
+ * the full digest are checkable against the same file without a second render.
+ */
+export interface InvocationContractManifest {
+  contract_path: string
+  contract_sha256: string
+  byte_length: number
+  line_count: number
+  sections: InvocationContractSection[]
+}
+
+/**
+ * How the supervisor delivers a worker contract. `verbatim` pastes the whole
+ * card. `referenced` pastes a compact delivery prompt that names one canonical
+ * contract path, its digest, and a flat section index.
+ */
+export type InvocationDeliveryMode = 'verbatim' | 'referenced'
 
 export interface InvocationDelegationContract {
   persona: string
@@ -490,7 +565,31 @@ export interface InvocationDelegationContract {
   invocation_validation_path: string
   delegation_artifact_path: string
   submit_command: string
+  /** Absent on legacy invocations, which the harness treats as `verbatim`. */
+  mode?: InvocationDeliveryMode
+  /** The exact prompt body the supervisor delivers under `referenced` mode. */
+  delivery_prompt_path?: string
   policies: Policy[]
+}
+
+/** One normalized diagnostic identity and how many times a run reported it. */
+export interface RepositoryCheckDiagnostic {
+  kind: 'probe' | 'command'
+  command: string
+  diagnostic: string
+  count: number
+}
+
+/**
+ * How a repository-check result differs from its pre-implementation baseline.
+ * `carried` failures are inherited and do not fail a gate. `fixed` failures give
+ * a stage credit for repairing inherited breakage. Any `new` entry is a
+ * regression and fails the owning gate.
+ */
+export interface RepositoryCheckDelta {
+  new: RepositoryCheckDiagnostic[]
+  fixed: RepositoryCheckDiagnostic[]
+  carried: RepositoryCheckDiagnostic[]
 }
 
 export interface DeterministicResult {
@@ -507,6 +606,7 @@ export interface DeterministicResult {
   evidence_path?: string
   baseline_evidence_path?: string
   preexisting_failure?: boolean
+  repository_check_delta?: RepositoryCheckDelta
   workspace_fingerprint: string
   delta?: WorkspaceDelta
 }
@@ -591,6 +691,13 @@ export type PendingAction =
       type: 'operator_approval'
       stage: string
       proposed_transition: string
+      /**
+       * The stage outcome that produced this stop. An operator gate applies to
+       * every outcome, so approval must apply the recorded outcome rather than
+       * assume success. Absent on an action recorded before outcomes were
+       * stored, which the harness reads as `success`.
+       */
+      outcome?: StageOutcome
       /**
        * Set when this stop is a technical-director checkpoint rather than an
        * ordinary ratification, so the supervisor can present the refinement

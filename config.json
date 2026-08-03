@@ -9,6 +9,7 @@
       "dist/**",
       "node_modules/**",
       "coverage/**",
+      "config.local.json",
       "package-lock.json",
       "tsconfig.tsbuildinfo"
     ]
@@ -33,7 +34,7 @@
   },
   "$operator": {
     "summary": "Named model configurations. Each configuration maps every checked-in Cursor persona to the model that should execute it.",
-    "note": "Change active_config, then run ./.pancreator/bin/pan models --sync. New runs snapshot the active mapping so later config edits do not change an in-flight run."
+    "note": "This file carries the recommended defaults a release can update. Put per-checkout preferences (active_config, model overrides) in the untracked config.local.json, which merges over this file. After changing either, run ./bin/pan models --sync. New runs snapshot the active mapping so later config edits do not change an in-flight run."
   },
   "configs": {
     "simple": {

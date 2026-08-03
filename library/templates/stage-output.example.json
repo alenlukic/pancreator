@@ -28,6 +28,18 @@
   ],
   "risks": [],
   "unknowns": [],
+  "invocation_attestation": {
+    "invocation_id": "copy-from-invocation-card",
+    "contract_path": "copy-contract_manifest.contract_path-from-invocation-json",
+    "contract_sha256": "copy-contract_manifest.contract_sha256-from-invocation-json",
+    "status": "read",
+    "sections": [
+      {
+        "id": "copy-each-contract_manifest.sections[].id-in-order",
+        "sha256": "copy-the-matching-contract_manifest.sections[].sha256"
+      }
+    ]
+  },
   "workspace_changes": {
     "attribution": "unknown",
     "paths": [],

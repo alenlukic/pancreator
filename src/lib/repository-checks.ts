@@ -7,6 +7,10 @@ import {
   configuredWorkspaceRoot,
   isSelfDevelopmentInstallation,
 } from './project-config.js'
+import type {
+  RepositoryCheckDelta,
+  RepositoryCheckDiagnostic,
+} from './types.js'
 
 const DEFAULT_TIMEOUT_MS = 600_000
 const MAX_CAPTURE_BYTES = 10 * 1024 * 1024
@@ -126,6 +130,11 @@ export function summarizeRepositoryCheckResult(result: RepositoryCheckResult): {
 export interface RepositoryCheckBaselineComparison {
   passed: boolean
   explanation: string
+  delta: RepositoryCheckDelta
+}
+
+function emptyDelta(): RepositoryCheckDelta {
+  return { new: [], fixed: [], carried: [] }
 }
 
 export function repositoryCheckProfileName(command: string): string | null {
@@ -152,21 +161,41 @@ function isVolatileSummaryLine(line: string): boolean {
 }
 
 function normalizeDiagnosticLine(line: string, workspaceRoot: string): string {
-  return stripAnsi(line)
-    .replaceAll('\\', '/')
-    .replaceAll(workspaceRoot.replaceAll('\\', '/'), '<workspace>')
-    .replaceAll(
-      /\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z\b/gu,
-      '<timestamp>',
-    )
-    .replaceAll(
-      /\b\d+(?:\.\d+)?\s?(?:ms|s|sec|secs|seconds|m|min|mins|minutes)\b/giu,
-      '<duration>',
-    )
-    .replaceAll(/([/\w.-]+):\d+:\d+/gu, '$1:<line>:<column>')
-    .replaceAll(/([/\w.-]+):\d+/gu, '$1:<line>')
-    .replaceAll(/\s+/gu, ' ')
-    .trim()
+  return (
+    stripAnsi(line)
+      .replaceAll('\\', '/')
+      .replaceAll(workspaceRoot.replaceAll('\\', '/'), '<workspace>')
+      .replaceAll(
+        /\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z\b/gu,
+        '<timestamp>',
+      )
+      .replaceAll(
+        /\b\d+(?:\.\d+)?\s?(?:ms|s|sec|secs|seconds|m|min|mins|minutes)\b/giu,
+        '<duration>',
+      )
+      // A TAP index shifts whenever a suite gains or loses a case, so keeping it
+      // would report every surviving failure as both fixed and new.
+      .replaceAll(/^((?:not )?ok)\s+\d+\b/giu, '$1 <index>')
+      .replaceAll(/([/\w.-]+):\d+:\d+/gu, '$1:<line>:<column>')
+      .replaceAll(/([/\w.-]+):\d+/gu, '$1:<line>')
+      .replaceAll(/\s+/gu, ' ')
+      .trim()
+  )
+}
+
+/**
+ * Synthetic diagnostic recording how a command failed rather than what it
+ * printed. A changed exit code, signal, or timeout is a different failure even
+ * when the captured text is identical, so the identity has to participate in the
+ * delta.
+ */
+function statusIdentityDiagnostic(
+  result: RepositoryCheckCommandResult,
+): string {
+  return (
+    `<status> exit_code=${result.exit_code ?? 'null'} ` +
+    `signal=${result.signal ?? 'null'} timed_out=${result.timed_out}`
+  )
 }
 
 function diagnosticCounts(
@@ -186,96 +215,195 @@ function diagnosticCounts(
   return counts
 }
 
-function failedCommandKey(result: RepositoryCheckCommandResult): string {
-  return `${result.kind}:${result.command.trim().replaceAll(/\s+/gu, ' ')}`
+function normalizedCommand(command: string): string {
+  return command.trim().replaceAll(/\s+/gu, ' ')
 }
 
-function failureCoveredByBaseline(
-  baseline: RepositoryCheckCommandResult,
-  current: RepositoryCheckCommandResult,
-  baselineWorkspaceRoot: string,
-  currentWorkspaceRoot: string,
-): boolean {
-  if (baseline.passed || current.passed) {
-    return false
-  }
+function failedCommandKey(result: RepositoryCheckCommandResult): string {
+  return `${result.kind}:${normalizedCommand(result.command)}`
+}
 
-  if (
-    baseline.timed_out !== current.timed_out ||
-    baseline.signal !== current.signal ||
-    baseline.exit_code !== current.exit_code
-  ) {
-    return false
-  }
+interface DiagnosticIdentity {
+  kind: 'probe' | 'command'
+  command: string
+  diagnostic: string
+}
 
-  const baselineDiagnostics = diagnosticCounts(baseline, baselineWorkspaceRoot)
-  const currentDiagnostics = diagnosticCounts(current, currentWorkspaceRoot)
+/**
+ * Count every diagnostic identity a result set contributes, keyed by the command
+ * that produced it. Only failing commands contribute: a passing suite prints
+ * ordinary progress output that would otherwise register as a regression the
+ * moment a test is added.
+ */
+function failureDiagnostics(
+  result: RepositoryCheckResult,
+): Map<string, { identity: DiagnosticIdentity; count: number }> {
+  const counts = new Map<
+    string,
+    { identity: DiagnosticIdentity; count: number }
+  >()
 
-  if (currentDiagnostics.size === 0) {
-    return baselineDiagnostics.size === 0
-  }
+  for (const entry of result.results) {
+    if (entry.passed) {
+      continue
+    }
 
-  for (const [line, count] of currentDiagnostics) {
-    if ((baselineDiagnostics.get(line) ?? 0) < count) {
-      return false
+    const commandKey = failedCommandKey(entry)
+
+    for (const [diagnostic, count] of diagnosticCounts(
+      entry,
+      result.workspace_root,
+    )) {
+      const key = `${commandKey}\u0000${diagnostic}`
+      const existing = counts.get(key)
+
+      if (existing) {
+        existing.count += count
+        continue
+      }
+
+      counts.set(key, {
+        identity: {
+          kind: entry.kind,
+          command: normalizedCommand(entry.command),
+          diagnostic,
+        },
+        count,
+      })
     }
   }
 
-  return true
+  return counts
 }
 
+/** How each failing command failed, keyed by command identity. */
+function failureStatuses(
+  result: RepositoryCheckResult,
+): Map<string, DiagnosticIdentity> {
+  const statuses = new Map<string, DiagnosticIdentity>()
+
+  for (const entry of result.results) {
+    if (entry.passed) {
+      continue
+    }
+
+    statuses.set(failedCommandKey(entry), {
+      kind: entry.kind,
+      command: normalizedCommand(entry.command),
+      diagnostic: statusIdentityDiagnostic(entry),
+    })
+  }
+
+  return statuses
+}
+
+function sortDiagnostics(
+  entries: RepositoryCheckDiagnostic[],
+): RepositoryCheckDiagnostic[] {
+  return [...entries].sort(
+    (left, right) =>
+      left.command.localeCompare(right.command) ||
+      left.diagnostic.localeCompare(right.diagnostic),
+  )
+}
+
+/**
+ * Compare a repository-check result with its pre-implementation baseline as a
+ * multiset of diagnostic identities.
+ *
+ * The carried count for an identity is the smaller of the two counts. A positive
+ * surplus in the current run is a regression, and a positive surplus in the
+ * baseline is a repair. Duplicate identical diagnostics therefore stay
+ * distinguishable from one duplicated diagnostic that is genuinely new.
+ */
 export function compareRepositoryCheckToBaseline(
   baseline: RepositoryCheckResult,
   current: RepositoryCheckResult,
 ): RepositoryCheckBaselineComparison {
-  if (current.status === 'passed') {
-    return {
-      passed: true,
-      explanation: `Repository check '${current.profile}' passes.`,
-    }
-  }
-
   if (current.status === 'not_configured') {
     return {
       passed: false,
       explanation: `Repository check '${current.profile}' is not configured.`,
+      delta: emptyDelta(),
     }
   }
 
-  if (baseline.status !== 'failed') {
+  const baselineDiagnostics = failureDiagnostics(baseline)
+  const currentDiagnostics = failureDiagnostics(current)
+  const added: RepositoryCheckDiagnostic[] = []
+  const fixed: RepositoryCheckDiagnostic[] = []
+  const carried: RepositoryCheckDiagnostic[] = []
+
+  for (const [key, entry] of currentDiagnostics) {
+    const before = baselineDiagnostics.get(key)?.count ?? 0
+    const shared = Math.min(before, entry.count)
+
+    if (shared > 0) {
+      carried.push({ ...entry.identity, count: shared })
+    }
+
+    if (entry.count > before) {
+      added.push({ ...entry.identity, count: entry.count - before })
+    }
+  }
+
+  for (const [key, entry] of baselineDiagnostics) {
+    const after = currentDiagnostics.get(key)?.count ?? 0
+
+    if (entry.count > after) {
+      fixed.push({ ...entry.identity, count: entry.count - after })
+    }
+  }
+
+  // A status identity participates only when the two sides disagree about it, so
+  // an unchanged exit code adds no noise while a command that starts failing,
+  // stops failing, times out, or dies on a signal is always visible.
+  const baselineStatuses = failureStatuses(baseline)
+  const currentStatuses = failureStatuses(current)
+
+  for (const [key, identity] of currentStatuses) {
+    if (baselineStatuses.get(key)?.diagnostic !== identity.diagnostic) {
+      added.push({ ...identity, count: 1 })
+    }
+  }
+
+  for (const [key, identity] of baselineStatuses) {
+    if (currentStatuses.get(key)?.diagnostic !== identity.diagnostic) {
+      fixed.push({ ...identity, count: 1 })
+    }
+  }
+
+  const delta: RepositoryCheckDelta = {
+    new: sortDiagnostics(added),
+    fixed: sortDiagnostics(fixed),
+    carried: sortDiagnostics(carried),
+  }
+  const passed = current.status === 'passed' || delta.new.length === 0
+  const counts =
+    `${delta.new.length} new, ${delta.fixed.length} fixed, ` +
+    `${delta.carried.length} carried`
+
+  if (!passed) {
+    const first = delta.new[0]
+
     return {
       passed: false,
       explanation:
-        `Repository check '${current.profile}' now fails but its pre-implementation ` +
-        `baseline was '${baseline.status}'.`,
+        `Repository check '${current.profile}' introduced a new failure in ` +
+        `'${first?.command}': ${first?.diagnostic} (${counts}).`,
+      delta,
     }
   }
 
-  const baselineFailures = new Map(
-    baseline.results
-      .filter((result) => !result.passed)
-      .map((result) => [failedCommandKey(result), result]),
-  )
-  const currentFailures = current.results.filter((result) => !result.passed)
-
-  for (const failure of currentFailures) {
-    const prior = baselineFailures.get(failedCommandKey(failure))
-
-    if (
-      !prior ||
-      !failureCoveredByBaseline(
-        prior,
-        failure,
-        baseline.workspace_root,
-        current.workspace_root,
-      )
-    ) {
-      return {
-        passed: false,
-        explanation:
-          `Repository check '${current.profile}' contains a new or changed ` +
-          `failure in '${failure.command}'.`,
-      }
+  if (current.status === 'passed') {
+    return {
+      passed: true,
+      explanation:
+        delta.fixed.length > 0
+          ? `Repository check '${current.profile}' passes and repaired ` +
+            `${delta.fixed.length} inherited failure identities.`
+          : `Repository check '${current.profile}' passes.`,
+      delta,
     }
   }
 
@@ -283,7 +411,8 @@ export function compareRepositoryCheckToBaseline(
     passed: true,
     explanation:
       `Repository check '${current.profile}' still reports only failures ` +
-      'captured before implementation; no new diagnostics were introduced.',
+      `captured before implementation (${counts}).`,
+    delta,
   }
 }
 

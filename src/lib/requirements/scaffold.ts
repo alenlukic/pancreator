@@ -7,7 +7,12 @@ import {
   readText,
   writeJsonAtomic,
 } from '../io.js'
-import type { Invocation, JsonTypeName, StageOutput } from '../types.js'
+import type {
+  Invocation,
+  InvocationAttestation,
+  JsonTypeName,
+  StageOutput,
+} from '../types.js'
 
 function defaultValueForType(type: JsonTypeName): unknown {
   switch (type) {
@@ -139,6 +144,22 @@ export function scaffoldStageOutput(
   const operatorBrief = invocation.output.operator_brief as
     | Invocation['output']['operator_brief']
     | undefined
+  const manifest = invocation.contract_manifest
+  // Copying the manifest here keeps the worker's job honest rather than clerical:
+  // the digests it must confirm are already in place, so a mismatch means the
+  // contract on disk changed, not that a digest was mistyped.
+  const attestation: InvocationAttestation | undefined = manifest
+    ? {
+        invocation_id: invocation.invocation_id,
+        contract_path: manifest.contract_path,
+        contract_sha256: manifest.contract_sha256,
+        status: 'read',
+        sections: manifest.sections.map((section) => ({
+          id: section.id,
+          sha256: section.sha256,
+        })),
+      }
+    : undefined
 
   const scaffold: StageOutput = {
     schema_version: 1,
@@ -166,6 +187,7 @@ export function scaffoldStageOutput(
     risks: [],
     unknowns: [],
     data: scaffoldDataFromRequiredData(invocation.output.required_data),
+    ...(attestation ? { invocation_attestation: attestation } : {}),
   }
 
   writeJsonAtomic(absolute, scaffold)

@@ -1,8 +1,8 @@
 import path from 'node:path'
 
 import { invariant } from './errors.js'
-import { fileExists, isRecord, readJson } from './io.js'
-import { harnessConfigName } from './project-config.js'
+import { fileExists, isRecord } from './io.js'
+import { harnessConfigName, readHarnessConfig } from './project-config.js'
 import type {
   OperatorInvolvementFile,
   OperatorInvolvementProfile,
@@ -186,7 +186,7 @@ export function loadOperatorInvolvementFile(
     code: 'INVALID_OPERATOR_INVOLVEMENT',
   })
 
-  return parseOperatorInvolvement(readJson(filePath), configName)
+  return parseOperatorInvolvement(readHarnessConfig(root, filePath), configName)
 }
 
 export function selectInvolvementProfile(

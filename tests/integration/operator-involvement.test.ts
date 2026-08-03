@@ -363,6 +363,131 @@ test('a relaxing wildcard must still exempt a non-relaxable stage explicitly', (
   )
 })
 
+test('the independent_review checkpoint stops a passing review too', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Passing review checkpoint run',
+    involvement: 'technical-director',
+  })
+  const runId = state.run_id
+  const workflow = runWorkflow(root, runId)
+
+  submitStage(root, runId, stageBySlug(workflow, 'intake'))
+  decideRun(root, runId, 'approve')
+  submitStage(root, runId, stageBySlug(workflow, 'plan'))
+  decideRun(root, runId, 'approve')
+  submitStage(root, runId, stageBySlug(workflow, 'implement'))
+
+  const review = submitStage(root, runId, stageBySlug(workflow, 'review'))
+
+  assert.equal(review.submitted.record.outcome, 'success')
+  assert.equal(review.submitted.state.status, 'awaiting_operator')
+  assert.equal(
+    review.submitted.state.pending_action.type === 'operator_approval' &&
+      review.submitted.state.pending_action.outcome,
+    'success',
+  )
+  assert.equal(
+    'checkpoint' in review.submitted.state.pending_action
+      ? review.submitted.state.pending_action.checkpoint
+      : undefined,
+    'independent_review',
+  )
+
+  const decided = decideRun(root, runId, 'approve', 'Proceed to QA.')
+
+  assert.equal(decided.current_stage, 'test')
+})
+
+test('an operator gate stops a failed stage before its failure transition', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Failed review checkpoint run',
+    involvement: 'technical-director',
+  })
+  const runId = state.run_id
+  const workflow = runWorkflow(root, runId)
+
+  submitStage(root, runId, stageBySlug(workflow, 'intake'))
+  decideRun(root, runId, 'approve')
+  submitStage(root, runId, stageBySlug(workflow, 'plan'))
+  decideRun(root, runId, 'approve')
+  submitStage(root, runId, stageBySlug(workflow, 'implement'))
+
+  const review = submitStage(
+    root,
+    runId,
+    stageBySlug(workflow, 'review'),
+    'failure',
+  )
+
+  assert.equal(review.submitted.record.outcome, 'failure')
+  // Without the stop, a failed review would route straight to implementation and
+  // spend the operator's decision for them.
+  assert.equal(review.submitted.state.status, 'awaiting_operator')
+  assert.equal(review.submitted.state.current_stage, 'review')
+  assert.equal(
+    review.submitted.state.pending_action.type === 'operator_approval' &&
+      review.submitted.state.pending_action.outcome,
+    'failure',
+  )
+  assert.equal(
+    review.submitted.state.pending_action.type === 'operator_approval' &&
+      review.submitted.state.pending_action.proposed_transition,
+    'implement',
+  )
+  assert.equal(
+    'checkpoint' in review.submitted.state.pending_action
+      ? review.submitted.state.pending_action.checkpoint
+      : undefined,
+    'independent_review',
+  )
+
+  // Approval applies the recorded outcome, so the failure takes its own route.
+  const decided = decideRun(root, runId, 'approve', 'Route the failure back.')
+
+  assert.equal(decided.status, 'running')
+  assert.equal(decided.current_stage, 'implement')
+})
+
+test('an operator gate stops a blocked stage before its blocked transition', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Blocked plan checkpoint run',
+    involvement: 'technical-director',
+  })
+  const runId = state.run_id
+  const workflow = runWorkflow(root, runId)
+
+  submitStage(root, runId, stageBySlug(workflow, 'intake'))
+  decideRun(root, runId, 'approve')
+
+  const plan = submitStage(
+    root,
+    runId,
+    stageBySlug(workflow, 'plan'),
+    'blocked',
+  )
+
+  assert.equal(plan.submitted.record.outcome, 'blocked')
+  assert.equal(plan.submitted.state.status, 'awaiting_operator')
+  assert.equal(
+    plan.submitted.state.pending_action.type === 'operator_approval' &&
+      plan.submitted.state.pending_action.outcome,
+    'blocked',
+  )
+
+  const decided = decideRun(root, runId, 'approve', 'Accept the pause.')
+
+  assert.equal(decided.status, 'paused')
+})
+
 test('gates resolve by ascending specificity', () => {
   const root = createFixture()
 

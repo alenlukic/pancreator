@@ -19,6 +19,51 @@ const PROJECT_CONFIG_PATH = 'config.json'
 const LEGACY_PROJECT_CONFIG_PATH = 'project.json'
 
 /**
+ * Untracked operator-local overrides, merged over the checked-in harness
+ * configuration. The checked-in `config.json` carries the recommended defaults
+ * a release can update; this file holds per-checkout preferences such as
+ * `active_config` or persona model overrides.
+ */
+export const LOCAL_CONFIG_PATH = 'config.local.json'
+
+/** Objects merge recursively; any other local value replaces the base value. */
+function mergeConfigValues(base: unknown, override: unknown): unknown {
+  if (!isRecord(base) || !isRecord(override)) {
+    return override
+  }
+
+  const merged: Record<string, unknown> = { ...base }
+
+  for (const [key, value] of Object.entries(override)) {
+    merged[key] = mergeConfigValues(base[key], value)
+  }
+
+  return merged
+}
+
+/**
+ * Read a harness configuration file with `config.local.json` merged over it.
+ * Every reader of the harness configuration goes through this, so a local
+ * preference behaves exactly as if it were edited into `config.json`.
+ */
+export function readHarnessConfig(root: string, filePath: string): unknown {
+  const value = readJson(filePath)
+  const localPath = path.join(root, LOCAL_CONFIG_PATH)
+
+  if (!fileExists(localPath)) {
+    return value
+  }
+
+  const local = readJson(localPath)
+
+  invariant(isRecord(local), `${LOCAL_CONFIG_PATH} MUST contain an object.`, {
+    code: 'INVALID_PROJECT_CONFIG',
+  })
+
+  return mergeConfigValues(value, local)
+}
+
+/**
  * Root-relative name of the harness configuration present in `root`, or null
  * when neither the current nor the legacy name exists.
  */
@@ -45,7 +90,7 @@ export function readProjectConfig(root: string): ProjectConfig | null {
     return null
   }
 
-  const value = readJson(configPath)
+  const value = readHarnessConfig(root, configPath)
 
   invariant(
     isRecord(value) && value.schema_version === 1,

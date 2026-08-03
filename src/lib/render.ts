@@ -1,9 +1,192 @@
-import type { Invocation, RunState } from './types.js'
-import { DELEGATION_HEADING } from './validation.js'
+import { sha256 } from './io.js'
+import type {
+  Invocation,
+  InvocationContractManifest,
+  InvocationContractSectionOwner,
+  RunState,
+} from './types.js'
+import { DELEGATION_HEADING, normalizeMarkdownContent } from './validation.js'
 import type { InvocationValidationStatus } from './validation.js'
 
 function fencedJson(value: unknown): string {
   return ['```json', JSON.stringify(value, null, 2), '```'].join('\n')
+}
+
+/** Longest section-id slug retained from a heading, so ids stay readable. */
+const SECTION_SLUG_MAX_LENGTH = 48
+
+const TOP_LEVEL_HEADING_PATTERN = /^## /u
+
+/**
+ * One top-level block of a canonical worker contract. Concatenating every
+ * block's `markdown` reproduces the contract byte for byte, which is what lets a
+ * section digest and the whole-file digest be checked against the same file.
+ */
+export interface InvocationContractBlock {
+  id: string
+  heading: string
+  owner: InvocationContractSectionOwner
+  markdown: string
+  line_count: number
+}
+
+/** Normalize to LF with exactly one final newline. */
+function normalizeContract(markdown: string): string {
+  const normalized = normalizeMarkdownContent(markdown)
+
+  return normalized.endsWith('\n') ? normalized : `${normalized}\n`
+}
+
+function sectionSlug(heading: string): string {
+  const slug = heading
+    .replace(/^#+\s*/u, '')
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/gu, '-')
+    .replaceAll(/^-+|-+$/gu, '')
+    .slice(0, SECTION_SLUG_MAX_LENGTH)
+    .replaceAll(/-+$/gu, '')
+
+  return slug.length > 0 ? slug : 'section'
+}
+
+function sectionId(index: number, heading: string): string {
+  return `${String(index + 1).padStart(3, '0')}-${sectionSlug(heading)}`
+}
+
+/**
+ * Split a rendered contract into ordered top-level blocks.
+ *
+ * Content before the first `## ` heading forms a preamble block. The supervisor
+ * delivery procedure is appended last, so every block from that heading onward
+ * is supervisor-owned and the rest binds the worker.
+ */
+export function splitInvocationContract(
+  markdown: string,
+): InvocationContractBlock[] {
+  const lines = normalizeContract(markdown).slice(0, -1).split('\n')
+  const groups: Array<{ heading: string; lines: string[] }> = []
+
+  for (const line of lines) {
+    if (groups.length === 0 || TOP_LEVEL_HEADING_PATTERN.test(line)) {
+      groups.push({
+        heading: TOP_LEVEL_HEADING_PATTERN.test(line)
+          ? line.trim()
+          : 'Preamble',
+        lines: [],
+      })
+    }
+
+    groups[groups.length - 1]?.lines.push(line)
+  }
+
+  const supervisorIndex = groups.findIndex(
+    (group) => group.heading === DELEGATION_HEADING,
+  )
+
+  return groups.map((group, index) => ({
+    id: sectionId(index, group.heading),
+    heading: group.heading,
+    owner:
+      supervisorIndex !== -1 && index >= supervisorIndex
+        ? ('supervisor' as const)
+        : ('worker' as const),
+    markdown: `${group.lines.join('\n')}\n`,
+    line_count: group.lines.length,
+  }))
+}
+
+/** Describe a rendered contract as a flat, digest-bearing section index. */
+export function buildInvocationContractManifest(
+  contractPath: string,
+  markdown: string,
+): InvocationContractManifest {
+  const contract = normalizeContract(markdown)
+  const blocks = splitInvocationContract(contract)
+
+  return {
+    contract_path: contractPath,
+    contract_sha256: sha256(contract),
+    byte_length: Buffer.byteLength(contract, 'utf8'),
+    line_count: contract.slice(0, -1).split('\n').length,
+    sections: blocks.map((block) => ({
+      id: block.id,
+      heading: block.heading,
+      owner: block.owner,
+      line_count: block.line_count,
+      sha256: sha256(block.markdown),
+    })),
+  }
+}
+
+/**
+ * Render the exact prompt body a supervisor delivers under referenced mode.
+ *
+ * The prompt stays bounded no matter how large the contract grows: it carries
+ * one contract reference, one digest, and one flat section index. It deliberately
+ * holds no nested appendix, because a second level of indirection lowers the
+ * accuracy of the read it is meant to guarantee.
+ */
+export function renderInvocationDeliveryPrompt(
+  invocation: Invocation,
+  manifest: InvocationContractManifest,
+): string {
+  const { delegation } = invocation
+  const workerSections = manifest.sections.filter(
+    (section) => section.owner === 'worker',
+  )
+  const lines = [
+    `Persona: \`${delegation?.persona ?? invocation.stage.persona}\`.`,
+    '',
+    `Your complete contract for stage \`${invocation.stage.slug}\` is one file. ` +
+      'Read that file before any other work.',
+    '',
+    `- Contract: \`${manifest.contract_path}\``,
+    `- Digest: \`sha256:${manifest.contract_sha256}\``,
+    `- Size: ${manifest.line_count} lines, ${manifest.byte_length} bytes`,
+    `- Sections: ${manifest.sections.length} (${workerSections.length} bind you)`,
+    '',
+    '## How to read the contract',
+    '',
+    `1. Read \`${manifest.contract_path}\` in full, from line 1 to line ${manifest.line_count}.`,
+    '2. Compare the digest of that file with the digest above.',
+    '3. Read no other repository context before the contract.',
+    '4. When the file is unreadable, or the digest differs, stop and report a reference failure.',
+    '',
+    '## Contract sections',
+    '',
+    'The list below is complete and flat. A `worker` section binds you. A ' +
+      '`supervisor` section addresses the supervisor, and you must ignore it.',
+    '',
+    '| Section id | Heading | Owner | Lines | Digest |',
+    '| --- | --- | --- | --- | --- |',
+    ...manifest.sections.map(
+      (section) =>
+        `| \`${section.id}\` | ${section.heading} | ${section.owner} | ` +
+        `${section.line_count} | \`${section.sha256}\` |`,
+    ),
+    '',
+    'Use the list to confirm that your read covered every section that binds you.',
+    '',
+    '## Read attestation',
+    '',
+    `Declare the read in \`invocation_attestation\` in \`${invocation.output.path}\`:`,
+    '',
+    `- Set \`invocation_id\` to \`${invocation.invocation_id}\`.`,
+    `- Set \`contract_path\` to \`${manifest.contract_path}\`.`,
+    `- Set \`contract_sha256\` to \`${manifest.contract_sha256}\`.`,
+    '- Set `status` to `read` after you read the complete contract.',
+    '- Set `sections` to every section id and digest above, in the same order.',
+    '',
+    'The required stage-output scaffold automation writes these fields for you. ' +
+      'Confirm each value against the list above and correct any difference.',
+    '',
+    'When you cannot read the contract, set `status` to `reference_failed`, put ' +
+      'the concrete read error in `error`, and set the stage `result` to ' +
+      '`blocked`. Do not report a product verdict you have no contract for.',
+    '',
+  ]
+
+  return `${lines.join('\n')}\n`
 }
 
 /** Render an invocation card for both the operator and the assigned worker. */
@@ -212,13 +395,36 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
     : ['No stage-specific `data` fields are required.']
 
   const { delegation } = invocation
+  const referencedDelivery =
+    delegation?.mode === 'referenced' && delegation.delivery_prompt_path
+      ? delegation.delivery_prompt_path
+      : null
+  const deliverySteps = referencedDelivery
+    ? [
+        `2. Paste the complete contents of \`${referencedDelivery}\` verbatim into ` +
+          `the \`${delegation?.persona}\` subagent prompt ` +
+          `(\`${delegation?.cursor_agent_path}\`). That prompt references this ` +
+          'card as the worker contract. A summary, an excerpt, or an added ' +
+          'restatement MUST NOT substitute for it.',
+        `3. Persist that exact prompt body to \`${delegation?.delegation_artifact_path}\` ` +
+          'before submission.',
+      ]
+    : [
+        `2. Paste the complete contents of \`${delegation?.canonical_markdown_path}\` ` +
+          `verbatim into the \`${delegation?.persona}\` subagent prompt ` +
+          `(\`${delegation?.cursor_agent_path}\`). A path reference, summary, or ` +
+          'excerpt MUST NOT substitute for the card body.',
+        `3. Persist that exact prompt body to \`${delegation?.delegation_artifact_path}\` ` +
+          'before submission.',
+      ]
   const delegationLines = delegation
     ? [
         DELEGATION_HEADING,
         '',
         'This section addresses the supervisor that prepared this card, not the ' +
           'assigned worker. The worker MUST ignore it. The supervisor MUST NOT ' +
-          'remove it: delegation evidence is compared against this card verbatim.',
+          'remove it: delegation evidence is compared against the delivered ' +
+          'prompt byte for byte.',
         '',
         ...delegation.policies.flatMap((policy) => [
           `**${policy.id} · ${policy.title}**`,
@@ -228,16 +434,21 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
           ...policy.instructions.map((instruction) => `- ${instruction}`),
           '',
         ]),
+        ...(referencedDelivery
+          ? [
+              'This invocation uses referenced delivery. The worker contract is ' +
+                `this card at \`${delegation.canonical_markdown_path}\`, and the ` +
+                'delivered prompt is a compact reference to it that carries the ' +
+                'contract digest and section index. The supervisor MUST NOT ' +
+                'reproduce the card body.',
+              '',
+            ]
+          : []),
         'Resolved paths for this invocation:',
         '',
         `1. Confirm \`${delegation.invocation_validation_path}\` reports \`pass\`. ` +
           'A failed or missing validation artifact MUST NOT be delegated.',
-        `2. Paste the complete contents of \`${delegation.canonical_markdown_path}\` ` +
-          `verbatim into the \`${delegation.persona}\` subagent prompt ` +
-          `(\`${delegation.cursor_agent_path}\`). A path reference, summary, or ` +
-          'excerpt MUST NOT substitute for the card body.',
-        `3. Persist that exact prompt body to \`${delegation.delegation_artifact_path}\` ` +
-          'before submission.',
+        ...deliverySteps,
         `4. Submit with \`${delegation.submit_command}\`.`,
         '',
       ]

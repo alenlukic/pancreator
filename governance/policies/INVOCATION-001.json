@@ -2,12 +2,18 @@
   "id": "INVOCATION-001",
   "title": "Canonical invocation delivery",
   "severity": "hard",
-  "summary": "The supervisor MUST validate and deliver each canonical invocation card without contract-shadowing rewrites.",
+  "summary": "Every delegated stage MUST receive the complete canonical invocation contract, unshadowed by the supervisor and auditable after the fact.",
   "instructions": [
+    "Delivery MUST achieve three outcomes: the worker holds the complete canonical contract, the supervisor adds no parallel contract, and the delivered body stays auditable.",
     "Before delegation, the supervisor MUST use the harness-produced invocation validation artifact and MUST NOT delegate a card whose validation status is failed or missing.",
-    "For a named worker stage, the supervisor MUST paste the full canonical invocation Markdown verbatim into the subagent prompt; a path-only reference or summary MUST NOT substitute for the card.",
-    "The supervisor MUST persist the exact delegated prompt body to the matching `runtime/logs/workflows/<run-id>/invocations/<invocation-id>.delegation.md` artifact before stage submission so the harness can validate delivery.",
-    "The supervisor MUST NOT append parallel scope, policy, gate, or plan restatements that could shadow the canonical card; a minimal non-conflicting persona label MAY precede it.",
+    "When the invocation declares `referenced` delivery, the supervisor MUST deliver the generated delivery prompt exactly as rendered. The prompt names the canonical contract path, its digest, and its complete section index.",
+    "When the invocation declares `verbatim` delivery, the supervisor MUST paste the complete canonical invocation Markdown into the subagent prompt.",
+    "Under either mode the supervisor MUST NOT summarize, narrow, reorder, or restate the contract, and MUST NOT deliver a path-only reference that carries no digest and no section index.",
+    "The supervisor MUST persist the exact delivered prompt body to the matching `runtime/logs/workflows/<run-id>/invocations/<invocation-id>.delegation.md` artifact before stage submission so the harness can validate delivery.",
+    "The supervisor MUST NOT append parallel scope, policy, gate, or plan restatements that could shadow the canonical contract; a minimal non-conflicting persona label MAY precede it.",
+    "A worker that receives a referenced contract MUST read the complete contract before other repository context, and MUST declare that read in `invocation_attestation` in its stage output.",
+    "A read attestation MUST name the invocation, the contract path, the contract digest, and every contract section in order with its digest. A partial, reordered, or stale attestation MUST fail the stage.",
+    "A worker that cannot read the referenced contract MUST report stage result `blocked` with attestation status `reference_failed` and the concrete read error. It MUST NOT report a product verdict.",
     "A missing or mismatched delegation artifact MUST be repaired against the same active invocation rather than bypassed or represented as successful delivery."
   ],
   "requirements": [
@@ -33,6 +39,16 @@
       "arguments": {
         "canonical": "invocation.markdown.path"
       }
+    },
+    {
+      "id": "invocation-attest-validate",
+      "registry_id": "INVOCATION-ATTEST-VALIDATE-001",
+      "phase": "submit",
+      "executor": "harness",
+      "target": "invocation.output.path",
+      "enforcement": "authoritative",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result"
     }
   ]
 }
