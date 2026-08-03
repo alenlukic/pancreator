@@ -45,6 +45,15 @@
       "type": "string",
       "minLength": 1
     },
+    "defaults": {
+      "type": "object",
+      "description": "Persona-to-model mappings every named config inherits. A mapping MAY carry an executor prefix from the closed set (cursor, claude-code); no prefix means cursor.",
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^((cursor|claude-code):)?[^:]+$"
+      }
+    },
     "$operator": {
       "type": "object",
       "additionalProperties": false,
@@ -71,9 +80,11 @@
           "personas": {
             "type": "object",
             "minProperties": 1,
+            "description": "Persona-to-model mappings. A mapping MAY carry an executor prefix from the closed set (cursor, claude-code); no prefix means cursor.",
             "additionalProperties": {
               "type": "string",
-              "minLength": 1
+              "minLength": 1,
+              "pattern": "^((cursor|claude-code):)?[^:]+$"
             }
           }
         }

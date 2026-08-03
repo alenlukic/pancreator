@@ -7,6 +7,7 @@ import {
   assessStage,
   createRun,
   decideRun,
+  delegateInvocation,
   getRunStatus,
   getRunState,
   pauseRun,
@@ -16,6 +17,8 @@ import {
   submitOutput,
   waiveGate,
 } from './lib/engine.js'
+import { personaExecutorOf } from './lib/executors/mapping.js'
+import { claudeCodeVersionPreflight } from './lib/executors/claude-code.js'
 import { browserReadiness } from './lib/browser-readiness.js'
 import { PanError } from './lib/errors.js'
 import { configuredWorkspaceRoot, panCommand } from './lib/project-config.js'
@@ -69,6 +72,7 @@ import { maintainWorkflowRuntime } from './lib/workflow-artifacts.js'
 const HELP_BODY = `Usage:
   pan init --request <repo-relative-file> [--workflow dev|prototype|design] [--title <title>] [--workspace <dir>] [--gates <file>] [--involvement <profile>] [--review-mode default|squad]
   pan prepare <run-id>
+  pan delegate <run-id> [--timeout-ms <milliseconds>]
   pan submit <run-id> <output-json>
   pan assess <run-id> <assessment-json>
   pan decide <run-id> <approve|reject|revise> [--note <text>] [--stage <stage-slug>]
@@ -100,8 +104,11 @@ const HELP_BODY = `Usage:
   pan involvement [--json]
   pan spotfix scaffold-escalation --input <path> --output <path>
 
-The harness does not invoke models. Cursor's supervisor reads invocation cards,
-delegates to named Cursor subagents, and returns structured output to this CLI.
+Cursor's supervisor reads invocation cards, delegates cursor-executor stages to
+named Cursor subagents, and returns structured output to this CLI. Stages whose
+persona mapping carries an external executor prefix (claude-code:<model>) are
+delegated by the harness itself: 'pan delegate' spawns the executor CLI with
+the canonical card and authors the delegation evidence.
 `
 
 function helpText(root: string): string {
@@ -418,6 +425,55 @@ async function main(): Promise<void> {
       })
       return
     }
+    case 'delegate': {
+      const runId = requiredArgument(args[0], 'run-id')
+      const timeoutValue = option(args, '--timeout-ms')
+      let timeoutMs: number | undefined
+
+      if (timeoutValue !== null) {
+        const parsedTimeout = Number(timeoutValue)
+
+        if (!Number.isInteger(parsedTimeout) || parsedTimeout < 1_000) {
+          throw new PanError(
+            '--timeout-ms MUST be an integer of at least 1000.',
+            { code: 'INVALID_ARGUMENT' },
+          )
+        }
+
+        timeoutMs = parsedTimeout
+      }
+
+      const result = delegateInvocation(root, runId, {
+        ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+        onProgress: (message) =>
+          process.stderr.write(`[pan delegate:${runId}] ${message}\n`),
+      })
+
+      if (!result.execution) {
+        print({
+          status: result.state.status,
+          reason: result.state.pause_reason,
+          decision_path: result.state.last_decision_path,
+        })
+        return
+      }
+
+      print({
+        status: 'delegated',
+        run_id: runId,
+        stage: result.invocation?.stage.slug,
+        persona: result.invocation?.stage.persona,
+        executor: result.execution.executor,
+        delegation_kind: result.execution.delegation_kind,
+        session_id: result.execution.session_id ?? null,
+        exit_code: result.execution.exit_code,
+        duration_ms: result.execution.duration_ms,
+        execution_record: `runtime/logs/workflows/${runId}/invocations/${result.execution.invocation_id}.delegation-execution.json`,
+        expected_output: result.state.current_invocation?.output_path,
+        next_command: `${pan} submit ${runId} ${result.state.current_invocation?.output_path ?? '<output-json>'}`,
+      })
+      return
+    }
     case 'submit': {
       const runId = requiredArgument(args[0], 'run-id')
       const outputPath = requiredArgument(args[1], 'output-json')
@@ -686,6 +742,12 @@ async function main(): Promise<void> {
           active_config: loaded.name,
           summary: loaded.config.summary,
           personas: loaded.config.personas,
+          persona_executors: Object.fromEntries(
+            Object.entries(loaded.config.personas).map(([persona, model]) => [
+              persona,
+              personaExecutorOf(model),
+            ]),
+          ),
           sync_requested: hasFlag(args, '--sync'),
           changed_projections: changes.filter((entry) => entry.changed),
         },
@@ -1090,6 +1152,13 @@ async function main(): Promise<void> {
           active: pipelineConfig.name,
           personas: pipelineConfig.config.personas,
         },
+        // Reported only when the active mapping routes a persona to the
+        // claude-code executor; a pure-Cursor installation owes no binary.
+        ...(Object.values(pipelineConfig.config.personas).some(
+          (model) => personaExecutorOf(model) === 'claude-code',
+        )
+          ? { claude_code: claudeCodeVersionPreflight() }
+          : {}),
         validation,
         constraints: {
           runtime_dependencies: 0,
@@ -1100,6 +1169,7 @@ async function main(): Promise<void> {
             'Cursor commands',
             'Cursor rules',
             'MCP tools available to Cursor',
+            'Claude Code CLI (external stage executor)',
           ],
         },
       }

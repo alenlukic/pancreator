@@ -2,6 +2,7 @@ import path from 'node:path'
 
 import { isRecord, readJson, readText } from '../io.js'
 import {
+  expectedDelegationSource,
   validateDelegationMarkdown,
   validateInvocationAttestation,
   validateInvocationMarkdown,
@@ -95,24 +96,23 @@ function invocationValidateHandler(input: HandlerInput): HandlerResult {
 }
 
 function delegationValidateHandler(input: HandlerInput): HandlerResult {
-  const contract = isRecord(input.invocation?.delegation)
-    ? input.invocation.delegation
-    : null
-  const referenced =
-    contract?.mode === 'referenced' &&
-    typeof contract.delivery_prompt_path === 'string'
-  // Under referenced delivery the supervisor owes the compact prompt, so that
-  // prompt is the expected body. Verbatim delivery still owes the whole card.
-  const expectedPath = referenced
-    ? String(contract.delivery_prompt_path)
-    : String(input.requirement.arguments.canonical ?? '')
-  const expected = readText(path.join(input.root, expectedPath))
+  if (!input.invocation) {
+    return {
+      status: 'invalid',
+      issues: [
+        { code: 'invocation.missing', message: 'Invocation context required' },
+      ],
+    }
+  }
+
+  // Referenced delivery owes the compact prompt, verbatim delivery the whole
+  // card, and a resumed external delegation the persisted revision directive.
+  // `expectedDelegationSource` consults the invocation contract and, for
+  // external executors, the harness-authored execution record.
+  const source = expectedDelegationSource(input.root, input.invocation as never)
+  const expected = readText(path.join(input.root, source.path))
   const delegation = readText(path.join(input.root, input.targetPath))
-  const result = validateDelegationMarkdown(
-    expected,
-    delegation,
-    referenced ? 'referenced' : 'verbatim',
-  )
+  const result = validateDelegationMarkdown(expected, delegation, source.mode)
 
   return {
     status: result.passed ? 'passed' : 'failed',

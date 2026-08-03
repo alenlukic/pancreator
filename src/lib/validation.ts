@@ -59,6 +59,7 @@ import type {
   Criterion,
   CriterionEvaluation,
   DeterministicResult,
+  ExternalDelegationRecord,
   Invocation,
   InvocationDeliveryMode,
   JsonTypeName,
@@ -202,6 +203,90 @@ export function delegationValidationPath(
     `runtime/logs/workflows/${runId}/invocations/` +
     `${invocationId}.delegation-validation.json`
   )
+}
+
+/**
+ * Harness-authored execution audit for an external-executor delegation:
+ * executor identity, argument vector, exit status, and session.
+ */
+export function delegationExecutionPath(
+  runId: string,
+  invocationId: string,
+): string {
+  return (
+    `runtime/logs/workflows/${runId}/invocations/` +
+    `${invocationId}.delegation-execution.json`
+  )
+}
+
+/** Executor session recorded beside the invocation artifacts for later resume. */
+export function sessionRecordPath(runId: string, invocationId: string): string {
+  return (
+    `runtime/logs/workflows/${runId}/invocations/` +
+    `${invocationId}.session.json`
+  )
+}
+
+export function loadDelegationExecutionRecord(
+  root: string,
+  runId: string,
+  invocationId: string,
+): ExternalDelegationRecord | null {
+  const absolute = resolveInside(
+    root,
+    delegationExecutionPath(runId, invocationId),
+  )
+
+  if (!fileExists(absolute)) {
+    return null
+  }
+
+  const value = readJson(absolute)
+
+  return isRecord(value) && value.schema_version === 1
+    ? (value as unknown as ExternalDelegationRecord)
+    : null
+}
+
+/**
+ * Which body the delegation artifact must reproduce, and the matching delivery
+ * mode label.
+ *
+ * A cursor `referenced` delegation owes the compact delivery prompt; a cursor
+ * `verbatim` one owes the whole card. An external delegation owes the card for
+ * a fresh delivery, but a `resumed` revision round delivers a compact directive
+ * that references the card — the harness persists that directive at the
+ * delivery-prompt path, so the comparison follows the execution record.
+ */
+export function expectedDelegationSource(
+  root: string,
+  invocation: Invocation,
+): { path: string; mode: InvocationDeliveryMode } {
+  const runId = invocation.run_id
+  const invocationId = invocation.invocation_id
+  const delegation = invocation.delegation
+  const canonicalPath =
+    delegation?.canonical_markdown_path ??
+    `runtime/logs/workflows/${runId}/invocations/${invocationId}.md`
+
+  if (delegation?.mode === 'referenced' && delegation.delivery_prompt_path) {
+    return { path: delegation.delivery_prompt_path, mode: 'referenced' }
+  }
+
+  const personaExecutor = invocation.stage.persona_executor ?? 'cursor'
+
+  if (personaExecutor !== 'cursor') {
+    const record = loadDelegationExecutionRecord(root, runId, invocationId)
+
+    if (record?.delegation_kind === 'resumed') {
+      return {
+        path: deliveryPromptPath(runId, invocationId),
+        mode: 'referenced',
+      }
+    }
+  }
+
+  return { path: canonicalPath, mode: 'verbatim' }
 }
 
 export function attestationValidationPath(
@@ -381,7 +466,12 @@ export function validateInvocationMarkdown(
       ['canonical_path', delegation.canonical_markdown_path],
       ['validation_path', delegation.invocation_validation_path],
       ['artifact_path', delegation.delegation_artifact_path],
-      ['agent_path', delegation.cursor_agent_path],
+      ...(delegation.cursor_agent_path
+        ? ([['agent_path', delegation.cursor_agent_path]] as const)
+        : []),
+      ...(delegation.delegate_command
+        ? ([['delegate_command', delegation.delegate_command]] as const)
+        : []),
       ['submit_command', delegation.submit_command],
       ...(delegation.delivery_prompt_path
         ? ([['delivery_prompt_path', delegation.delivery_prompt_path]] as const)

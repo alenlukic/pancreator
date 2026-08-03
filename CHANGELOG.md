@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+### Added
+
+- Add executor-qualified persona mappings so named worker stages can execute in Anthropic's Claude Code CLI while Cursor remains the sole orchestrator. A mapping may carry a prefix from a closed set — `cursor` (the default) or `claude-code`, as in `"reviewer": "claude-code:claude-opus-5[permission-mode=default,session-resume=true]"`. Any stage may be routed externally except the `orchestrator` persona; non-mutating stages run with file writes restricted to the harness runtime tree, and `scope.no_unapproved_changes` remains the gate of record ([mapping parser](src/lib/executors/mapping.ts), [config schema](library/schemas/config.schema.json), [executor test](tests/integration/claude-code-executor.test.ts)).
+- Add `pan delegate <run-id>`: for an external-executor stage the harness — not the supervisor — pipes the complete canonical card to `claude -p --output-format json` in the run's workspace, so verbatim delivery is a property of code and the supervisor output ceiling stops applying. The harness authors the delegation audit itself: the delivered prompt byte for byte, plus an execution record with executor identity, argument vector, exit status, and session id. Executor stdout and stderr persist as run evidence under the OUTPUT-001 pattern ([engine](src/lib/engine.ts), [claude-code executor](src/lib/executors/claude-code.ts), [EXECUTOR-001](governance/policies/EXECUTOR-001.json)).
+- Add fail-closed executor preflight: run creation verifies the `claude` binary and minimum version for external personas, and the first delegation of a run verifies credentials with a no-op invocation. A failed preflight pauses the run with an `operator_decision`; the harness never silently substitutes an executor, because that would falsify the model snapshot ([engine](src/lib/engine.ts), [EXECUTOR-001](governance/policies/EXECUTOR-001.json)).
+- Add executor session continuity: a successful external delegation records the CLI `session_id` beside the invocation artifacts, and `pan decide <run-id> revise` resumes that session with the operator directive so a technical-director refinement round keeps the author's full context. A failed resume falls back to a fresh full-card delegation and is audited as such; a retry after a failed attempt never resumes ([engine](src/lib/engine.ts), [runtime protocol](docs/runtime-protocol.md)).
+
+### Changed
+
+- Record each persona's executor in `pipeline-config.snapshot.json`, on invocation cards (`stage.persona_executor`, rendered in the card header), and in `stage_history` per attempt. The `prepare` frontmatter-equality assertion now applies only to `cursor`-executor personas, and `pan models --sync` skips projecting external personas into `.cursor/` and removes a stale projected agent when a persona moves to an external executor. Runs created before this change prepare and resume unchanged ([pipeline config](src/lib/pipeline-config.ts), [projection](src/lib/projection.ts)).
+- Reword the operating-card delegation rule from mechanism to outcome: named worker stages are delegated to the executor resolved from the run's pipeline snapshot. `INVOCATION-001` names harness-spawned external execution as a permitted delivery mechanism, and `ORCH-001` directs the supervisor to fulfill `invoke_agent` for an external stage by running `pan delegate` and awaiting its result ([INVOCATION-001](governance/policies/INVOCATION-001.json), [ORCH-001](governance/policies/ORCH-001.json), [embedded template](library/templates/embedded-AGENTS.md), [detached template](library/templates/detached-AGENTS.md)).
+
 ## [2.19.0] - 2026-08-03
 
 ### Changed

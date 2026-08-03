@@ -102,7 +102,7 @@ test('worker invocation cards unroll the supervisor delivery contract', () => {
     delegation.canonical_markdown_path,
     delegation.invocation_validation_path,
     delegation.delegation_artifact_path,
-    delegation.cursor_agent_path,
+    delegation.cursor_agent_path ?? '',
     delegation.submit_command,
     delegation.delivery_prompt_path ?? '',
   ]) {

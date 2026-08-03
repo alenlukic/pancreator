@@ -24,6 +24,68 @@ export type StageGate =
 export type StageExecutor = 'agent' | 'harness'
 
 /**
+ * Which harness runs a persona's worker process. `cursor` delegates to a
+ * projected Cursor subagent; `claude-code` spawns the operator-installed
+ * Claude Code CLI. Distinct from `StageExecutor`, which says whether a stage is
+ * performed by an agent at all — this says which agent runtime performs it.
+ */
+export type PersonaExecutorKind = 'cursor' | 'claude-code'
+
+/**
+ * Executor session recorded after a successful external delegation, so an
+ * operator revision round can resume the author's full context instead of
+ * starting a fresh invocation.
+ */
+export interface ExternalExecutorSession {
+  executor: Exclude<PersonaExecutorKind, 'cursor'>
+  session_id: string
+  invocation_id: string
+  stage: string
+  recorded_at: string
+}
+
+/**
+ * Harness-authored audit of one external-executor delegation. The delegation
+ * Markdown artifact reproduces the delivered prompt byte for byte; this record
+ * carries everything the Markdown cannot: executor identity, the resolved
+ * argument vector (excluding the prompt body, which is piped), exit status, and
+ * the session the executor returned.
+ */
+export interface ExternalDelegationRecord {
+  schema_version: 1
+  run_id: string
+  invocation_id: string
+  stage: string
+  executor: Exclude<PersonaExecutorKind, 'cursor'>
+  /**
+   * `fresh` delivers the full canonical card in a new session. `resumed`
+   * continues the recorded session with the operator's revision directive.
+   * `resume_fallback` records a resume that failed and fell back to a fresh
+   * full-card delivery.
+   */
+  delegation_kind: 'fresh' | 'resumed' | 'resume_fallback'
+  binary: string
+  argv: string[]
+  exit_code: number | null
+  timed_out: boolean
+  duration_ms: number
+  session_id?: string
+  resumed_from_session_id?: string
+  result_subtype?: string
+  is_error?: boolean
+  stdout_path: string
+  stderr_path: string
+  resume_attempt?: {
+    exit_code: number | null
+    timed_out: boolean
+    stdout_path: string
+    stderr_path: string
+  }
+  delegation_artifact_path: string
+  recorded_at: string
+}
+
+/**
  * Role a stage plays for run contracts that must attach to equivalent stages
  * across different workflows. `dev/plan`, `prototype/approach`, and any future
  * planning stage share `technical_plan`, so a contract escalates gates by role
@@ -460,6 +522,11 @@ export interface Invocation {
     title: string
     persona: string
     executor?: StageExecutor
+    /**
+     * Runtime that executes this persona. Absent on invocations prepared
+     * before executor routing existed, which the harness reads as `cursor`.
+     */
+    persona_executor?: PersonaExecutorKind
     model: string
     model_config: string
     workspace_policy: WorkspacePolicy
@@ -560,7 +627,16 @@ export type InvocationDeliveryMode = 'verbatim' | 'referenced'
 
 export interface InvocationDelegationContract {
   persona: string
-  cursor_agent_path: string
+  /**
+   * Runtime the delegation targets. Absent means `cursor`. When external, the
+   * harness — not the supervisor — moves the bytes and authors the delegation
+   * evidence; the supervisor's only delivery action is `delegate_command`.
+   */
+  executor?: PersonaExecutorKind
+  /** Present only for `cursor`-executor delegations. */
+  cursor_agent_path?: string
+  /** Harness command that performs an external delegation, e.g. `pan delegate <run-id>`. */
+  delegate_command?: string
   canonical_markdown_path: string
   invocation_validation_path: string
   delegation_artifact_path: string
@@ -630,6 +706,8 @@ export interface StageHistoryItem {
   stage: string
   attempt: number
   invocation_id: string
+  /** Runtime that executed this attempt. Absent means `cursor`. */
+  executor?: PersonaExecutorKind
   output_path: string
   outcome: StageOutcome
   submitted_at: string
@@ -835,6 +913,22 @@ export interface RunState {
   last_decision_path?: string
   accepted_workspace_fingerprint?: string | null
   same_reason_failures?: SameReasonFailureTrackers
+  /**
+   * Latest executor session per stage slug, recorded after a successful
+   * external delegation. Consulted only when an operator revision re-runs the
+   * stage; retries after a failed attempt never resume.
+   */
+  external_executor_sessions?: Record<string, ExternalExecutorSession>
+  /**
+   * Cached claude-code preflight for this run. The credential probe spends a
+   * real executor invocation, so it runs once per run rather than once per
+   * delegation.
+   */
+  claude_code_preflight?: {
+    binary: string
+    version: string
+    verified_at: string
+  }
   governance_artifact_issues?: GovernanceArtifactIssue[]
   governance_artifact_issues_path?: string
   repository_check_baselines?: Record<
