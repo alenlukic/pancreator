@@ -8,7 +8,7 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 
 This file binds every agent that reads it. Four contexts read it:
 
-- A **supervisor** advancing one workflow run. It holds no invocation card of its own, so this file and the `pan-*` command it is running are its governance.
+- A **supervisor** advancing one workflow run inside the `pan-orchestrator` subagent. It holds no stage invocation card of its own, so this file, its persona brief, and the orchestrator invocation delivered by `/pan-start` or `/pan-resume` are its governance.
 - A **worker** executing one delegated stage inside a workflow run, holding an invocation card.
 - A **standalone-mode agent** running `/pan-spotfix`, `/pan-pair`, `/pan-debug`, `/pan-repair`, or `/pan-decompose`, holding a governance card from `./bin/pan governance card --mode <mode>` rather than a stage contract.
 - An **unbound agent** working in this repository outside any run or mode, including an ad-hoc operator request.
@@ -47,13 +47,13 @@ Read the scope of a rule from its subject. A rule that names a run, a stage, an 
 
 Supervisor and worker are roles inside a workflow run. An agent that holds neither is a standalone-mode agent or an unbound agent.
 
-- The **supervisor** is the agent holding the operator conversation for one workflow run and advancing that run. It is the `orchestrator` persona; `library/personas/orchestrator.md` is its behavioral brief, and `ORCH-001` unrolls that brief into every supervisor-owned invocation card. "Supervisor" and "orchestrator" name the same role throughout this repository — the first is the role, the second is the persona identifier used by `config.json` and the policy lookup table.
+- The **supervisor** is the agent advancing one workflow run and owning its operator-facing reports. It is the `orchestrator` persona; `library/personas/orchestrator.md` is its behavioral brief, and `ORCH-001` unrolls that brief into every supervisor-owned invocation card. "Supervisor" and "orchestrator" name the same role throughout this repository — the first is the role, the second is the persona identifier used by `config.json` and the policy lookup table.
 - A **worker** is a named persona executing one delegated stage through its projected `.cursor/agents/pan-<persona>.md` subagent.
-- The supervisor is not itself invoked as a subagent. Its governance therefore arrives through this file, the `pan-*` command it is running, and the invocation cards it prepares — never through a `pan-orchestrator` subagent, which does not exist.
+- The supervisor runs as the projected `.cursor/agents/pan-orchestrator.md` subagent. It accepts exactly two invocation types: a **start invocation** carrying a preserved operator request, sent by `/pan-start`, and a **resume invocation** carrying a run id plus an optional operator prompt, sent by `/pan-resume` or by `/pan-start` after an operator response. The invoking command holds the operator conversation: it relays the supervisor's reports and the operator's decisions, and it MUST NOT advance the run itself.
 
-An agent MUST NOT assume the supervisor role. Holding no invocation card does not imply it. The role belongs only to an agent that created or resumed a run and is advancing that run through `./bin/pan`. An agent holding no run MUST NOT prepare or deliver an invocation card, submit stage output, advance run state, or otherwise act as a run's supervisor on its own initiative. It MAY execute such an action when the operator explicitly directs it, under `OPERATOR-001`.
+An agent MUST NOT assume the supervisor role. Holding no invocation card does not imply it. The role belongs only to the `pan-orchestrator` subagent holding a start or resume invocation and advancing that run through `./bin/pan`. An agent holding no run MUST NOT prepare or deliver an invocation card, submit stage output, advance run state, or otherwise act as a run's supervisor on its own initiative. It MAY execute such an action when the operator explicitly directs it, under `OPERATOR-001`.
 
-Delegating to a subagent does not confer the role. A standalone-mode agent delegates a governance card and still holds no run, stage contract, or gate.
+Delegating to a subagent does not confer the role. A standalone-mode agent delegates a governance card and still holds no run, stage contract, or gate. A command agent delegating a run to `pan-orchestrator` likewise holds no run.
 
 ## Operating loop
 
@@ -74,7 +74,7 @@ These rules bind the supervisor and the workers of an active run.
 
 - Before stage work, the supervisor MUST run `./bin/pan status <run-id>` and read the pending invocation or assessment card.
 - A named worker stage MUST be delegated to the matching locally projected `.cursor/agents/pan-<persona>.md` subagent.
-- Delegation is governed by [`INVOCATION-001`](governance/policies/INVOCATION-001.json) and is unrolled here because the supervisor holds no invocation card. Every prepared worker card carries the same contract, with resolved paths, under its **Supervisor delivery procedure** section. For each worker stage the supervisor MUST:
+- Delegation is governed by [`INVOCATION-001`](governance/policies/INVOCATION-001.json) and is unrolled here because the supervisor holds no stage invocation card. Every prepared worker card carries the same contract, with resolved paths, under its **Supervisor delivery procedure** section. For each worker stage the supervisor MUST:
   1. Read the harness-produced invocation validation artifact and MUST NOT delegate a card whose status is failed or missing.
   2. Paste the complete canonical invocation Markdown verbatim into the subagent prompt. A path reference, summary, or excerpt MUST NOT substitute for the card body.
   3. Persist that exact prompt body to `runtime/logs/workflows/<run-id>/invocations/<invocation-id>.delegation.md` before submitting the stage.

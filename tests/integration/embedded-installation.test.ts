@@ -383,9 +383,23 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
       path.join(project, '.cursor', 'commands', 'pan-start.md'),
       'utf8',
     )
-    assert.match(command, /\.\/\.pancreator\/bin\/pan/)
+    assert.match(command, /pan-orchestrator/)
     assert.match(command, /\.pancreator\/runtime\/inbox/)
     assert.match(command, /runtime\/inbox\/request-<id>\.md/)
+
+    const orchestratorAgent = readFileSync(
+      path.join(project, '.cursor', 'agents', 'pan-orchestrator.md'),
+      'utf8',
+    )
+    assert.match(orchestratorAgent, /\.\/\.pancreator\/bin\/pan/)
+    assert.match(
+      orchestratorAgent,
+      /\.pancreator\/library\/personas\/orchestrator\.md/u,
+    )
+    assert.match(
+      orchestratorAgent,
+      /\.pancreator\/runtime\/logs\/workflows\/<run-id>\/invocations/u,
+    )
 
     const marker = readJson<InstallMarker>(
       path.join(project, '.pancreator', 'install.json'),

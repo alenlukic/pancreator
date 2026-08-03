@@ -120,15 +120,10 @@ export function projectCursorContent(
   }
 
   if (relativePath === '.cursor/commands/pan-start.md') {
-    projected = projected
-      .replace(
-        'under `runtime/inbox/`.',
-        `under \`${harnessPrefix}/runtime/inbox/\`.`,
-      )
-      .replace(
-        'write that object to a uniquely named JSON file under `runtime/inbox/`',
-        `write that object to a uniquely named JSON file under \`${harnessPrefix}/runtime/inbox/\``,
-      )
+    projected = projected.replace(
+      'under `runtime/inbox/`.',
+      `under \`${harnessPrefix}/runtime/inbox/\`.`,
+    )
   }
 
   if (
