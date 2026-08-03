@@ -25,6 +25,11 @@ target repository tracks.
   with a web UI, because `BROWSER-001` blocks browser verdicts without them. The
   installer reports whether they are configured; it never installs a browser or
   writes target MCP config. See `./bin/pan doctor`.
+- The Claude Code CLI (`claude`), installed and authenticated per machine —
+  required only when the active persona mapping routes a persona to the
+  `claude-code` executor. A missing or unauthenticated CLI is an
+  operator-visible preflight pause, not an error to work around; the harness
+  never silently substitutes Cursor. See `./bin/pan doctor`.
 
 ## Install
 

@@ -1,8 +1,13 @@
 import path from 'node:path'
 
 import { invariant } from './errors.js'
+import {
+  parsePersonaMapping,
+  type ParsedPersonaMapping,
+} from './executors/mapping.js'
 import { fileExists, isRecord, readJson, resolveInside, sha256 } from './io.js'
 import { harnessConfigName, readHarnessConfig } from './project-config.js'
+import type { PersonaExecutorKind } from './types.js'
 
 export interface NamedPipelineConfig {
   summary?: string
@@ -35,6 +40,12 @@ export interface PipelineConfigSnapshot {
   source_sha256: string
   summary?: string
   personas: Record<string, string>
+  /**
+   * Executor per persona, derived from the mapping strings above. Recorded so
+   * the snapshot names who ran what without re-parsing; absent on snapshots
+   * taken before executor routing existed, where every persona is `cursor`.
+   */
+  executors?: Record<string, PersonaExecutorKind>
 }
 
 const CONFIG_PATH = 'config.json'
@@ -56,6 +67,10 @@ function parsePersonaMap(
       `${source}.${persona} MUST be a non-empty model string.`,
       { code: 'INVALID_PIPELINE_CONFIG' },
     )
+
+    // Validates the optional executor prefix against the closed set and, for
+    // harness-consumed executors, the bracket options.
+    parsePersonaMapping(model, `${source}.${persona}`)
 
     personas[persona] = model
   }
@@ -203,6 +218,12 @@ export function loadPipelineConfig(
 export function makePipelineConfigSnapshot(
   loaded: LoadedPipelineConfig,
 ): PipelineConfigSnapshot {
+  const executors: Record<string, PersonaExecutorKind> = {}
+
+  for (const [persona, model] of Object.entries(loaded.config.personas)) {
+    executors[persona] = parsePersonaMapping(model, persona).executor
+  }
+
   return {
     schema_version: 1,
     name: loaded.name,
@@ -210,6 +231,7 @@ export function makePipelineConfigSnapshot(
     source_sha256: loaded.sha256,
     ...(loaded.config.summary ? { summary: loaded.config.summary } : {}),
     personas: structuredClone(loaded.config.personas),
+    executors,
   }
 }
 
@@ -243,10 +265,10 @@ export function loadPipelineConfigSnapshot(
   return value as unknown as PipelineConfigSnapshot
 }
 
-export function resolvePersonaModel(
+export function resolvePersonaMapping(
   config: NamedPipelineConfig | PipelineConfigSnapshot,
   persona: string,
-): string {
+): ParsedPersonaMapping {
   const model = config.personas[persona]
 
   invariant(
@@ -255,5 +277,16 @@ export function resolvePersonaModel(
     { code: 'INVALID_PIPELINE_CONFIG' },
   )
 
-  return model
+  return parsePersonaMapping(model, `personas.${persona}`)
+}
+
+/**
+ * Model string for a persona with the executor prefix stripped. Cursor
+ * mappings carry no prefix, so this is unchanged behavior for them.
+ */
+export function resolvePersonaModel(
+  config: NamedPipelineConfig | PipelineConfigSnapshot,
+  persona: string,
+): string {
+  return resolvePersonaMapping(config, persona).model_spec
 }

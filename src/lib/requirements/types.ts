@@ -28,6 +28,7 @@ export type InvocationKind =
   | 'decomposition'
   | 'documentation'
   | 'pair'
+  | 'shepherd'
 
 export interface RequirementContext {
   persona: string

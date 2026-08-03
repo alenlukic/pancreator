@@ -247,6 +247,7 @@ test('orchestration and release guidance resolve with required policy dependenci
     'AUTO-001',
     'BIN-001',
     'BRIEF-001',
+    'EXECUTOR-001',
     'GLOBAL-001',
     'GLOBAL-002',
     'INVOCATION-001',

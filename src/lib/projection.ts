@@ -1,4 +1,4 @@
-import { readdirSync } from 'node:fs'
+import { readdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
 
 import {
@@ -7,6 +7,7 @@ import {
   type CursorInstallationMode,
 } from './cursor-content.js'
 import { invariant } from './errors.js'
+import { parsePersonaMapping } from './executors/mapping.js'
 import { loadPolicyCatalog } from './policies.js'
 import type { Policy } from './types.js'
 import {
@@ -57,6 +58,11 @@ export interface CursorProjectionChange {
   changed: boolean
   previous_sha256: string | null
   sha256: string
+  /**
+   * Marks a stale projected file whose persona moved to an external executor.
+   * `changed` is true while the file still exists; a sync removes it.
+   */
+  removed?: boolean
 }
 
 export interface ProjectionDriftResult {
@@ -268,13 +274,23 @@ function projectionMode(
   return mode === 'detached' ? 'embedded' : mode
 }
 
-function renderProjections(root: string): RenderedProjection[] {
+interface ProjectionRemoval {
+  id: string
+  source: string
+  target: string
+}
+
+function renderProjections(root: string): {
+  rendered: RenderedProjection[]
+  removals: ProjectionRemoval[]
+} {
   const manifest = readProjectionManifest(root)
   const mode = installationMode(root)
   const manifestMode = projectionMode(mode)
   const harnessPrefix = harnessPathPrefix(root)
   const pipeline = loadPipelineConfig(root)
   const rendered: RenderedProjection[] = []
+  const removals: ProjectionRemoval[] = []
 
   for (const projection of manifest.projections) {
     if (!projection.installation_modes.includes(manifestMode)) {
@@ -323,13 +339,29 @@ function renderProjections(root: string): RenderedProjection[] {
           `Pipeline config does not map projection persona '${entry.variable}'.`,
           { code: 'INVALID_PIPELINE_CONFIG' },
         )
+
+        const mapping = parsePersonaMapping(model, entry.variable)
+
+        // An external-executor persona has no Cursor subagent, so nothing is
+        // projected for it — and a previously projected file is stale: leaving
+        // it in place would record a false model claim for work Cursor no
+        // longer performs.
+        if (mapping.executor !== 'cursor') {
+          removals.push({
+            id: projection.id,
+            source: entry.source,
+            target: entry.target,
+          })
+          continue
+        }
+
         invariant(
           content.includes('__PANCREATOR_MODEL__'),
           `${entry.source} MUST contain __PANCREATOR_MODEL__.`,
           { code: 'INVALID_CURSOR_AGENT' },
         )
 
-        content = content.replaceAll('__PANCREATOR_MODEL__', model)
+        content = content.replaceAll('__PANCREATOR_MODEL__', mapping.model_spec)
       }
 
       if (projection.transforms.includes('installation-paths')) {
@@ -350,7 +382,14 @@ function renderProjections(root: string): RenderedProjection[] {
     }
   }
 
-  return rendered.sort((left, right) => left.target.localeCompare(right.target))
+  return {
+    rendered: rendered.sort((left, right) =>
+      left.target.localeCompare(right.target),
+    ),
+    removals: removals.sort((left, right) =>
+      left.target.localeCompare(right.target),
+    ),
+  }
 }
 
 /** Project canonical Pancreator Cursor artifacts into the local ignored .cursor tree. */
@@ -375,7 +414,8 @@ export function syncCursorProjection(
   root: string,
   options: { write?: boolean } = {},
 ): CursorProjectionChange[] {
-  return renderProjections(root).map((entry) => {
+  const { rendered, removals } = renderProjections(root)
+  const changes: CursorProjectionChange[] = rendered.map((entry) => {
     const targetPath = path.join(root, entry.target)
     const previous = fileExists(targetPath) ? readText(targetPath) : null
     const changed = previous !== entry.content
@@ -393,6 +433,31 @@ export function syncCursorProjection(
       sha256: sha256(entry.content),
     }
   })
+
+  for (const removal of removals) {
+    const targetPath = path.join(root, removal.target)
+    const previous = fileExists(targetPath) ? readText(targetPath) : null
+
+    if (previous === null) {
+      continue
+    }
+
+    if (options.write) {
+      rmSync(targetPath, { force: true })
+    }
+
+    changes.push({
+      id: removal.id,
+      source: removal.source,
+      path: removal.target,
+      changed: true,
+      previous_sha256: sha256(previous),
+      sha256: '',
+      removed: true,
+    })
+  }
+
+  return changes.sort((left, right) => left.path.localeCompare(right.path))
 }
 
 /** Validate canonical projection ownership and optional local projection drift. */

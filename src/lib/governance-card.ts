@@ -92,6 +92,25 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST ground every finding in run evidence rather than inference.',
     ],
   },
+  shepherd: {
+    kind: 'shepherd',
+    persona: 'coder',
+    workflow: 'standalone',
+    stage: 'shepherd',
+    title: 'PR shepherd loop',
+    summary:
+      'Watches one operator-named GitHub pull request in bounded poll windows, ' +
+      'judges each feedback item against the code and the ledgered review ' +
+      'history, implements only accepted items, and pushes only changes the ' +
+      'local review squad has passed.',
+    boundaries: [
+      'You MUST commit and push only to the shepherded pull request’s head branch, and only changes whose squad review passed.',
+      'You MUST NOT merge, close, retarget, or rebase the pull request, MUST NOT force-push, and MUST NOT push to any other branch.',
+      PROTECTED_PATH_RULE,
+      'You MUST NOT create, advance, or write state for a workflow run.',
+      'You MUST record every feedback item and its disposition in the session ledger, and MUST NOT post PR comments unless the operator directed it.',
+    ],
+  },
   decomposition: {
     kind: 'decomposition',
     persona: 'decomposer',
