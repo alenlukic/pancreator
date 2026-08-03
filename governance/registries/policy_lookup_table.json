@@ -279,6 +279,12 @@
       "workflow": "standalone",
       "stage": "pair",
       "policies": ["PAIR-001"]
+    },
+    {
+      "persona": "coder",
+      "workflow": "standalone",
+      "stage": "shepherd",
+      "policies": ["SHEPHERD-001"]
     }
   ]
 }

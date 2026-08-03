@@ -40,6 +40,7 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 - `WORK-001` — systematic versus lightweight work-mode determination
 - `SPOT-001` — bounded lightweight spotfix execution and escalation
 - `PAIR-001` — operator-directed pair programming outside workflow structure
+- `SHEPHERD-001` — bounded PR feedback watching, ledgered bot discipline, and squad-gated pushes
 - `PROTO-001` — prototype spike discipline and declared shortcuts
 - `DIRECTOR-001` — technical-director checkpoints for contract-enabled runs
 
