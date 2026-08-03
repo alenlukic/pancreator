@@ -395,28 +395,43 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
     : ['No stage-specific `data` fields are required.']
 
   const { delegation } = invocation
+  const externalDelegation =
+    delegation?.executor && delegation.executor !== 'cursor'
+      ? delegation.executor
+      : null
   const referencedDelivery =
     delegation?.mode === 'referenced' && delegation.delivery_prompt_path
       ? delegation.delivery_prompt_path
       : null
-  const deliverySteps = referencedDelivery
+  const deliverySteps = externalDelegation
     ? [
-        `2. Paste the complete contents of \`${referencedDelivery}\` verbatim into ` +
-          `the \`${delegation?.persona}\` subagent prompt ` +
-          `(\`${delegation?.cursor_agent_path}\`). That prompt references this ` +
-          'card as the worker contract. A summary, an excerpt, or an added ' +
-          'restatement MUST NOT substitute for it.',
-        `3. Persist that exact prompt body to \`${delegation?.delegation_artifact_path}\` ` +
-          'before submission.',
+        `2. Run \`${delegation?.delegate_command}\`. The harness spawns the ` +
+          `'${externalDelegation}' executor with the complete canonical card ` +
+          `(\`${delegation?.canonical_markdown_path}\`) and awaits its ` +
+          'result. You MUST NOT re-summarize, re-deliver, or paste the card ' +
+          'anywhere yourself.',
+        `3. The harness authors the delegation evidence at ` +
+          `\`${delegation?.delegation_artifact_path}\` and the execution ` +
+          'audit beside it. You MUST NOT write either artifact.',
       ]
-    : [
-        `2. Paste the complete contents of \`${delegation?.canonical_markdown_path}\` ` +
-          `verbatim into the \`${delegation?.persona}\` subagent prompt ` +
-          `(\`${delegation?.cursor_agent_path}\`). A path reference, summary, or ` +
-          'excerpt MUST NOT substitute for the card body.',
-        `3. Persist that exact prompt body to \`${delegation?.delegation_artifact_path}\` ` +
-          'before submission.',
-      ]
+    : referencedDelivery
+      ? [
+          `2. Paste the complete contents of \`${referencedDelivery}\` verbatim into ` +
+            `the \`${delegation?.persona}\` subagent prompt ` +
+            `(\`${delegation?.cursor_agent_path}\`). That prompt references this ` +
+            'card as the worker contract. A summary, an excerpt, or an added ' +
+            'restatement MUST NOT substitute for it.',
+          `3. Persist that exact prompt body to \`${delegation?.delegation_artifact_path}\` ` +
+            'before submission.',
+        ]
+      : [
+          `2. Paste the complete contents of \`${delegation?.canonical_markdown_path}\` ` +
+            `verbatim into the \`${delegation?.persona}\` subagent prompt ` +
+            `(\`${delegation?.cursor_agent_path}\`). A path reference, summary, or ` +
+            'excerpt MUST NOT substitute for the card body.',
+          `3. Persist that exact prompt body to \`${delegation?.delegation_artifact_path}\` ` +
+            'before submission.',
+        ]
   const delegationLines = delegation
     ? [
         DELEGATION_HEADING,
@@ -434,6 +449,16 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
           ...policy.instructions.map((instruction) => `- ${instruction}`),
           '',
         ]),
+        ...(externalDelegation
+          ? [
+              `This stage executes under the '${externalDelegation}' ` +
+                'executor. The harness — not the supervisor — delivers the ' +
+                'canonical card to the spawned process and authors the ' +
+                'delegation evidence itself, so verbatim delivery is a ' +
+                'property of code.',
+              '',
+            ]
+          : []),
         ...(referencedDelivery
           ? [
               'This invocation uses referenced delivery. The worker contract is ' +
@@ -459,7 +484,11 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
     '',
     `**Run** \`${invocation.run_id}\` · **Stage** ${stage.title} ` +
       `(\`${stage.slug}\`) · **Owner** \`${stage.persona}\` · ` +
-      `**Model** \`${stage.model}\` · **Attempt** ${invocation.attempt}`,
+      `**Model** \`${stage.model}\`` +
+      (stage.persona_executor
+        ? ` · **Executor** \`${stage.persona_executor}\``
+        : '') +
+      ` · **Attempt** ${invocation.attempt}`,
     '',
     `**Workspace** \`${invocation.workspace_root}\` — fingerprints, ` +
       'deterministic gate commands, and scope checks target this directory.',
@@ -579,6 +608,9 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
       workspace_fingerprint: invocation.workspace_before.fingerprint,
       model: stage.model,
       model_config: stage.model_config,
+      ...(stage.persona_executor
+        ? { persona_executor: stage.persona_executor }
+        : {}),
       workspace_policy: stage.workspace_policy,
       gate: stage.gate,
     }),

@@ -79,6 +79,48 @@ travels on the artifact it must already read to deliver the card. The section is
 part of the canonical body: removing it breaks delegation equality, and its
 presence is checked by the invocation validator.
 
+## External stage executors
+
+A persona mapping may carry an executor prefix from a closed set: `cursor`
+(the default, no prefix required) or `claude-code`, as in
+`"reviewer": "claude-code:claude-opus-5[permission-mode=default,session-resume=true]"`.
+A stage whose persona resolves to `claude-code` is not delegated by the
+supervisor. Instead, `pending_action: invoke_agent` is fulfilled by running
+`pan delegate <run-id>`: the harness pipes the complete canonical card to the
+operator-installed Claude Code CLI (`claude -p --output-format json`), working
+directory set to the run's workspace root, and awaits the result. Verbatim
+delivery becomes a property of code, so no delivery prompt, contract manifest,
+or read attestation is generated for external invocations.
+
+The harness authors the delegation audit itself: the delivered prompt body byte
+for byte at `invocations/<invocation-id>.delegation.md`, and an execution
+record at `invocations/<invocation-id>.delegation-execution.json` carrying
+executor identity, the resolved argument vector (excluding the prompt body),
+exit status, duration, and the returned `session_id`. Executor stdout and
+stderr are captured under `evidence/` per the OUTPUT-001 pattern.
+`delegation-validate` passes on these harness-authored records.
+
+Delegation is preflighted fail-closed per `EXECUTOR-001`: run creation verifies
+the binary exists at or above the tested minimum version, and the first
+delegation of a run verifies credentials with a no-op invocation. A failed
+preflight pauses the run with an `operator_decision`; the harness never
+silently substitutes an executor, because that would falsify the model
+snapshot. The spawned process runs non-interactively under a stage-derived
+tool policy — stages that do not permit source mutation receive write tools
+only inside the harness runtime tree — while `scope.no_unapproved_changes`
+remains the gate of record for workspace mutation.
+
+Sessions persist beside the invocation artifacts
+(`invocations/<invocation-id>.session.json`) and on the run state. When
+`pan decide <run-id> revise` re-runs an external stage, the harness resumes the
+recorded session with the operator directive (`--resume <session_id>`) so the
+author keeps its full context; the delivered directive is persisted as both the
+delivery prompt and the delegation artifact. A failed resume falls back to a
+fresh full-card delegation and is audited as `resume_fallback`. A retry after a
+_failed_ attempt never resumes: the retry contract requires confronting the
+recorded failure, and `prior_failure` inlining serves that. Mapping option
+`session-resume=false` disables resumption for a persona.
+
 `./bin/pan status` renders a dedicated validation section from the active
 invocation's validation artifacts. Missing or malformed artifacts are reported
 as observable state rather than crashing status.
@@ -289,11 +331,16 @@ Pause before operator-authored tracked changes. Resume records the pause-only de
 
 At run creation, the harness resolves `config.json` `active_config`, verifies
 that projected Cursor agent models are synchronized, and writes
-`pipeline-config.snapshot.json` into the run directory. Each invocation resolves
-its persona from that snapshot and records both `stage.model` and
-`stage.model_config`. Preparing a snapshotted run requires the live active mapping and projected
-Cursor-agent frontmatter to still match that snapshot. A configuration switch
-therefore blocks older runs until their mapping is restored; this prevents an
-invocation card from claiming one model while Cursor executes another. Runs
-created before model snapshots use the current live mapping for backward
-compatibility.
+`pipeline-config.snapshot.json` into the run directory. The snapshot records
+each persona's executor alongside its mapping string. Each invocation resolves
+its persona from that snapshot and records `stage.model`,
+`stage.model_config`, and — for external personas — `stage.persona_executor`;
+`stage_history` records the executor per attempt. Preparing a snapshotted run
+requires the live active mapping to still match that snapshot, and projected
+Cursor-agent frontmatter to match for `cursor`-executor personas; external
+personas have no projected frontmatter, and `pan models --sync` removes a stale
+projected agent file when a persona moves to an external executor. A
+configuration switch therefore blocks older runs until their mapping is
+restored; this prevents an invocation card from claiming one model while
+another executes. Runs created before model snapshots use the current live
+mapping for backward compatibility.

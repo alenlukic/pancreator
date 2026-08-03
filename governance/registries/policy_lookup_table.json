@@ -97,6 +97,7 @@
       "policies": [
         "ORCH-001",
         "INVOCATION-001",
+        "EXECUTOR-001",
         "PAUSE-001",
         "WAIVER-001",
         "WORK-001"

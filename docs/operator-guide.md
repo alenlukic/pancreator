@@ -332,6 +332,30 @@ Per-checkout preferences belong in `config.local.json` next to `config.json`. Th
 
 Each new run snapshots the active configuration in `runtime/logs/workflows/<run-id>/pipeline-config.snapshot.json`. Invocation cards resolve their model from that snapshot. Because Cursor executes the model declared in `.cursor/agents/pan-<persona>.md`, preparing an older run after switching configurations is blocked until the projected agent models again match that run's snapshot. This prevents the card from claiming one model while Cursor launches another.
 
+## Route a persona to the Claude Code CLI
+
+A persona mapping may name its executor with a prefix from a closed set — `cursor` (the default) or `claude-code`:
+
+```json
+"personas": {
+  "tech-lead": "claude-code:claude-opus-5[permission-mode=default,session-resume=true]",
+  "reviewer": "claude-code:claude-opus-5[permission-mode=default,session-resume=true]",
+  "coder": "claude-opus-5[thinking=true,context=300k,effort=high]"
+}
+```
+
+A `claude-code` persona is executed by the operator-installed Claude Code CLI instead of a Cursor subagent, so the same model can author a stage under the Claude Code harness while Pancreator's run state, gates, and operator contracts stay authoritative. Any stage may be routed this way, including mutating ones; non-mutating stages run with file-write tools restricted to the harness runtime tree, and `scope.no_unapproved_changes` remains the gate of record either way. The `orchestrator` persona is the exception — it is the supervisor itself and must stay on `cursor`.
+
+Supported bracket options for `claude-code` mappings: `permission-mode` (`default`, `acceptEdits`, `plan`, `bypassPermissions`), `session-resume` (`true`/`false`, default `true`), and `timeout-ms`. Cursor mappings keep their existing opaque options.
+
+Requirements and behavior:
+
+- The `claude` CLI must be installed and authenticated on each machine that runs delegations (set `PANCREATOR_CLAUDE_BIN` if the binary is not on `PATH`). `./bin/pan doctor` reports availability when the active mapping uses `claude-code`.
+- Run creation verifies the binary; the first delegation of a run verifies credentials. A failed preflight pauses the run with an operator decision — it is an operator-visible stop, not an error to work around, and the harness never silently substitutes Cursor.
+- When a run reaches an external stage, the supervisor runs `./bin/pan delegate <run-id>` instead of invoking a subagent. The harness delivers the canonical card, writes the delegation evidence itself, and records the executor session.
+- `./bin/pan decide <run-id> revise --note "<directive>"` on an external stage resumes the author's recorded session with your directive, so refinement rounds keep full context. Retries after failures always start fresh.
+- `./bin/pan models --sync` skips projecting external personas into `.cursor/` and removes a stale projected agent when a persona moves to an external executor.
+
 ## Targeting a deliverable outside the repository root
 
 For ordinary target work, install Pancreator into the target repository and open that target in Cursor. `.pancreator/config.json` sets `workspace_root` to `..`, so workflow fingerprints, gate commands, and scope guards apply to the target automatically. Confirm the workspace shown on each invocation card before trusting gate results. `--workspace` remains an explicit override for exceptional self-development or migration work, not the default deployment model.
