@@ -72,7 +72,7 @@ test('every standalone mode renders a card with its policies inlined', () => {
   }
 })
 
-test('the spotfix card unrolls the spotfix procedure guidance', () => {
+test('the spotfix card references the spotfix procedure guidance', () => {
   const root = createFixture()
   const card = buildGovernanceCard(root, {
     mode: 'spotfix',
@@ -81,21 +81,25 @@ test('the spotfix card unrolls the spotfix procedure guidance', () => {
   const spotfix = card.policies.find((policy) => policy.id === 'SPOT-001')
 
   assert.ok(spotfix)
-  assert.ok(
-    (spotfix.guidance ?? []).length > 0,
-    'SPOT-001 must carry its unrolled procedure',
-  )
+
+  const guidance = (spotfix.guidance ?? [])[0]
+
+  assert.ok(guidance, 'SPOT-001 must carry its procedure reference')
+  assert.ok(guidance.reference)
 
   const written = readFileSync(path.join(root, card.path), 'utf8')
 
-  // The command no longer tells the agent to open library/skills/spotfix.md.
+  // The card points at library/skills/spotfix.md and keeps the body out.
   assert.match(
     written,
-    /### Unrolled guidance · `library\/skills\/spotfix\.md`/u,
+    /### Guidance reference · `library\/skills\/spotfix\.md`/u,
   )
+  assert.ok(written.includes(`Read when: ${guidance.reference.read_trigger}`))
+  assert.ok(written.includes(`sha256:${guidance.reference.content_sha256}`))
+  assert.ok(!written.includes(guidance.content))
 })
 
-test('the shepherd card resolves coder governance and unrolls the procedure', () => {
+test('the shepherd card resolves coder governance and references the procedure', () => {
   const root = createFixture()
   const card = buildGovernanceCard(root, {
     mode: 'shepherd',
@@ -112,17 +116,20 @@ test('the shepherd card resolves coder governance and unrolls the procedure', ()
   const shepherd = card.policies.find((policy) => policy.id === 'SHEPHERD-001')
 
   assert.ok(shepherd)
-  assert.ok(
-    (shepherd.guidance ?? []).length > 0,
-    'SHEPHERD-001 must carry its unrolled procedure',
-  )
+
+  const guidance = (shepherd.guidance ?? [])[0]
+
+  assert.ok(guidance, 'SHEPHERD-001 must carry its procedure reference')
+  assert.ok(guidance.reference)
 
   const written = readFileSync(path.join(root, card.path), 'utf8')
 
   assert.match(
     written,
-    /### Unrolled guidance · `library\/skills\/shepherd-pr\.md`/u,
+    /### Guidance reference · `library\/skills\/shepherd-pr\.md`/u,
   )
+  assert.ok(written.includes(`Read when: ${guidance.reference.read_trigger}`))
+  assert.ok(!written.includes(guidance.content))
   assert.match(written, /head branch/u)
 })
 

@@ -147,13 +147,15 @@ export function scaffoldStageOutput(
   const manifest = invocation.contract_manifest
   // Copying the manifest here keeps the worker's job honest rather than clerical:
   // the digests it must confirm are already in place, so a mismatch means the
-  // contract on disk changed, not that a digest was mistyped.
+  // contract on disk changed, not that a digest was mistyped. The status stays
+  // `pending` because only the worker can say that it read the contract, and
+  // submission rejects the prefilled value.
   const attestation: InvocationAttestation | undefined = manifest
     ? {
         invocation_id: invocation.invocation_id,
         contract_path: manifest.contract_path,
         contract_sha256: manifest.contract_sha256,
-        status: 'read',
+        status: 'pending',
         sections: manifest.sections.map((section) => ({
           id: section.id,
           sha256: section.sha256,

@@ -33,6 +33,7 @@ This harness is installed outside the target repository. The target repository i
 
 - Runs MUST be managed through `<harness>/bin/pan` or by exporting `PANCREATOR_ROOT` to that harness root.
 - Agents MUST read the active invocation card before expanding repository context.
+- A card carries every policy instruction inline and references handbook or skill guidance instead. Each reference names the source path, the selected range, a content digest, and a read trigger. An agent MUST read a referenced range before the work its trigger names.
 - Named worker stages MUST be delegated to the executor resolved from the run's pipeline snapshot: a cursor-executor persona to the matching Cursor subagent, and an external-executor persona (for example `claude-code:<model>`) by running `<harness>/bin/pan delegate <run-id>` and awaiting its result.
 - Cursor delegation MUST deliver the body the card names: the generated `<invocation-id>.delivery.md` prompt under referenced delivery, or the canonical card under verbatim delivery. The delivered body MUST be persisted byte for byte as delegation evidence. For external delegation the harness moves the bytes and authors the delegation evidence itself; the supervisor MUST NOT re-deliver the card or write that evidence.
 - A worker holding a referenced contract MUST read it in full first and MUST declare that read in `invocation_attestation`. A contract it cannot read MUST be reported as result `blocked` with status `reference_failed`.

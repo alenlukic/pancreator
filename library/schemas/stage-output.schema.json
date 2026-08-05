@@ -126,8 +126,8 @@
           "description": "Digest of the complete contract. Required when status is read."
         },
         "status": {
-          "enum": ["read", "reference_failed"],
-          "description": "read means the complete contract was read. reference_failed requires stage result blocked."
+          "enum": ["pending", "read", "reference_failed"],
+          "description": "pending is the scaffold value and is rejected at submission. read means the complete contract was read. reference_failed requires stage result blocked."
         },
         "error": {
           "type": "string",

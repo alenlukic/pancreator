@@ -889,17 +889,24 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
   const pipelineConfig = loadPipelineConfig(root)
   let workflowUsesClaudeCode = false
 
+  // The orchestrator persona is the supervisor running in the Cursor chat, so it
+  // cannot be handed to an external process. Every run has a supervisor, whether
+  // or not this workflow also delegates a stage to that persona, so the check
+  // does not belong inside the stage loop.
+  const supervisor = resolvePersonaMapping(
+    pipelineConfig.config,
+    'orchestrator',
+  )
+
+  invariant(
+    supervisor.executor === 'cursor',
+    `Persona 'orchestrator' MUST use the cursor executor; ` +
+      `'${supervisor.raw}' routes it to '${supervisor.executor}'.`,
+    { code: 'INVALID_PIPELINE_CONFIG' },
+  )
+
   for (const stage of workflow.stages) {
     const mapping = resolvePersonaMapping(pipelineConfig.config, stage.persona)
-
-    // The orchestrator persona is the supervisor running in the Cursor chat;
-    // it cannot be handed to an external process.
-    invariant(
-      stage.persona !== 'orchestrator' || mapping.executor === 'cursor',
-      `Persona 'orchestrator' MUST use the cursor executor; ` +
-        `'${mapping.raw}' routes it to '${mapping.executor}'.`,
-      { code: 'INVALID_PIPELINE_CONFIG' },
-    )
 
     if (mapping.executor === 'cursor') {
       invariant(

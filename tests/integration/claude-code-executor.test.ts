@@ -110,10 +110,18 @@ function installClaudeCodeFixture(root: string, personas: string[]): string {
   const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
     defaults: Record<string, string>
+    configs?: Record<string, { personas?: Record<string, string> }>
   }
 
+  // A named entry under `configs` overrides `defaults`, so the routing has to be
+  // cleared there too. Otherwise the fixture silently depends on whichever
+  // `active_config` the checked-in configuration declares.
   for (const persona of personas) {
     config.defaults[persona] = CLAUDE_CODE_SPEC
+
+    for (const named of Object.values(config.configs ?? {})) {
+      delete named.personas?.[persona]
+    }
   }
 
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)

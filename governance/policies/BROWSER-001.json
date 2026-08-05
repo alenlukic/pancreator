@@ -17,7 +17,8 @@
   "guidance_sources": [
     {
       "path": "library/skills/browser-inspection.md",
-      "start_heading": "## Procedure"
+      "start_heading": "## Procedure",
+      "read_trigger": "Read this guidance before you open a browser page or record a browser verdict."
     }
   ]
 }

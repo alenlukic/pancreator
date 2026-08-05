@@ -512,3 +512,55 @@ test('librarian loads target primer governance', () => {
   assert.ok(ids.includes('PRIMER-001'))
   assert.ok(ids.includes('VALID-001'))
 })
+
+/**
+ * Trigger `parseGuidanceSource` generates when a policy declares none. It exists
+ * for generated target-repository policies, which have no author to phrase one,
+ * and it names no concrete action. A checked-in policy must therefore not rely
+ * on it: the trigger is the only thing on a card that tells a worker when to
+ * open the referenced guidance.
+ */
+function generatedReadTrigger(policyId: string): string {
+  return `Read this guidance before work that ${policyId} governs.`
+}
+
+test('every checked-in policy declares its own guidance read trigger', () => {
+  const root = createFixture()
+  const catalog = loadPolicyCatalog(root)
+
+  const sources = [...catalog.values()].flatMap((policy) =>
+    (policy.guidance ?? []).map((guidance) => ({ policy, guidance })),
+  )
+
+  assert.ok(sources.length > 0, 'the catalog MUST resolve guidance sources')
+
+  for (const { policy, guidance } of sources) {
+    const { reference } = guidance
+
+    assert.ok(reference, `${policy.id} guidance MUST resolve a reference`)
+    assert.notEqual(
+      reference.read_trigger,
+      generatedReadTrigger(policy.id),
+      `${policy.id} MUST declare a read_trigger for ${guidance.source_path}`,
+    )
+  }
+})
+
+test('a policy without a declared trigger keeps the generated fallback', () => {
+  const root = createFixture()
+  const policyPath = path.join(root, 'governance', 'policies', 'ENG-001.json')
+  const definition = JSON.parse(readFileSync(policyPath, 'utf8')) as {
+    guidance_sources: { read_trigger?: string }[]
+  }
+
+  delete definition.guidance_sources[0].read_trigger
+  writeFileSync(policyPath, `${JSON.stringify(definition, null, 2)}\n`)
+
+  const guidance = loadPolicyCatalog(root).get('ENG-001')?.guidance?.[0]
+
+  assert.ok(guidance)
+  assert.equal(
+    guidance.reference?.read_trigger,
+    generatedReadTrigger('ENG-001'),
+  )
+})

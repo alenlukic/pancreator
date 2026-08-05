@@ -52,7 +52,7 @@ test('scaffold refuses to overwrite a non-empty output without force', () => {
   )
 })
 
-test('scaffold copies the contract manifest into a read attestation', () => {
+test('scaffold copies the contract manifest into a pending attestation', () => {
   const root = mkdtempSync(path.join(tmpdir(), 'pan-scaffold-'))
   const outputPath = 'runtime/logs/workflows/x/outputs/out.json'
   const contractPath = 'runtime/logs/workflows/x/invocations/implement-1.md'
@@ -88,13 +88,18 @@ test('scaffold copies the contract manifest into a read attestation', () => {
   const attestation = result.output.invocation_attestation
 
   assert.ok(attestation)
-  assert.equal(attestation.status, 'read')
+  // The scaffold cannot know whether the worker read the contract, so it must
+  // not prefill a claim the worker has to make itself.
+  assert.equal(attestation.status, 'pending')
   assert.equal(attestation.invocation_id, 'implement-1')
   assert.equal(attestation.contract_path, contractPath)
-  assert.deepEqual(attestation.status === 'read' ? attestation.sections : [], [
-    { id: '001-preamble', sha256: 'b'.repeat(64) },
-    { id: '002-task', sha256: 'c'.repeat(64) },
-  ])
+  assert.deepEqual(
+    attestation.status === 'pending' ? attestation.sections : [],
+    [
+      { id: '001-preamble', sha256: 'b'.repeat(64) },
+      { id: '002-task', sha256: 'c'.repeat(64) },
+    ],
+  )
 })
 
 test('scaffold omits the attestation for a legacy invocation', () => {

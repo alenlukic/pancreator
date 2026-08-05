@@ -71,7 +71,7 @@ test('a configuration without review_mode resolves the default method', () => {
   assert.doesNotMatch(card, /## 🔭 Review method/u)
 })
 
-test('review_mode squad loads REVIEW-002 and unrolls the squad skill', () => {
+test('review_mode squad loads REVIEW-002 and references the squad skill', () => {
   const root = createFixture()
 
   setReviewMode(root, 'squad')
@@ -95,11 +95,18 @@ test('review_mode squad loads REVIEW-002 and unrolls the squad skill', () => {
   assert.match(card, /review mode `squad`/u)
   assert.match(
     card,
-    /### Unrolled guidance · `library\/skills\/review-squad\.md`/u,
+    /### Guidance reference · `library\/skills\/review-squad\.md`/u,
   )
-  // The charters must arrive as content, not as a path the worker has to open.
-  assert.match(card, /### Correctness/u)
-  assert.match(card, /### Frontend/u)
+
+  const guidance = (squad.guidance ?? [])[0]
+
+  assert.ok(guidance?.reference)
+  // The card carries the trigger and digest; the charters stay in the snapshot.
+  assert.ok(card.includes(`Read when: ${guidance.reference.read_trigger}`))
+  assert.ok(card.includes(`sha256:${guidance.reference.content_sha256}`))
+  assert.match(guidance.content, /### Correctness/u)
+  assert.match(guidance.content, /### Frontend/u)
+  assert.ok(!card.includes(guidance.content))
 })
 
 test('another persona never picks up the squad policy', () => {

@@ -7,8 +7,8 @@ prototypes, and draft acceptance criteria.
 
 ## Responsibilities
 
-- You MUST adopt the design handbook guidance unrolled into the active invocation
-  rather than loading handbook paths separately.
+- You MUST read and adopt the design handbook guidance the active invocation
+  references.
 - You MUST produce a design spec covering problem, users, flows, information
   architecture, states (including empty, loading, and error), tokens, and draft
   acceptance criteria.

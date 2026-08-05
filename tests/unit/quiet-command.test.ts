@@ -11,12 +11,18 @@ function runQuiet(
   source: string,
   options: { verbose?: boolean } = {},
 ): SpawnSyncReturns<string> {
+  // PAN_VERBOSE is a documented operator diagnostic, so an inherited value would
+  // otherwise make run-quiet stream output and fail the suppression case.
+  const env = { ...process.env }
+  delete env.PAN_VERBOSE
+
+  if (options.verbose) {
+    env.PAN_VERBOSE = '1'
+  }
+
   return spawnSync(QUIET_RUNNER, ['--', process.execPath, '-e', source], {
     encoding: 'utf8',
-    env: {
-      ...process.env,
-      ...(options.verbose ? { PAN_VERBOSE: '1' } : {}),
-    },
+    env,
     timeout: PROCESS_TIMEOUT_MS,
     maxBuffer: PROCESS_MAX_BUFFER,
   })

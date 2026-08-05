@@ -15,7 +15,8 @@
   "guidance_sources": [
     {
       "path": "library/personas/orchestrator.md",
-      "start_heading": "## Responsibilities"
+      "start_heading": "## Responsibilities",
+      "read_trigger": "Read this guidance before you advance, pause, or report a workflow run."
     }
   ],
   "requirements": [

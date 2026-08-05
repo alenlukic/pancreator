@@ -26,7 +26,7 @@ function prepareValidationFixture(root: string): void {
   writeFileSync(path.join(root, 'src', 'cli.ts'), 'export {}\n')
 }
 
-test('repository validation requires a policy to unroll each engineering handbook', () => {
+test('repository validation requires a policy to deliver each engineering handbook', () => {
   const root = createFixture()
   prepareValidationFixture(root)
   const policyPath = path.join(root, 'governance', 'policies', 'ENG-001.json')
@@ -43,7 +43,7 @@ test('repository validation requires a policy to unroll each engineering handboo
   assert.equal(result.ok, false)
   assert.match(
     result.errors.join('\n'),
-    /governance\/handbooks\/eng\/engineering\.md MUST be unrolled by at least one policy/u,
+    /governance\/handbooks\/eng\/engineering\.md MUST be delivered by at least one policy/u,
   )
 })
 
@@ -73,7 +73,7 @@ test('repository validation requires code-review and QA stages to load engineeri
   )
 })
 
-test('repository validation requires a policy to unroll the TypeScript handbook', () => {
+test('repository validation requires a policy to deliver the TypeScript handbook', () => {
   const root = createFixture()
   prepareValidationFixture(root)
   const policyPath = path.join(root, 'governance', 'policies', 'TS-001.json')
@@ -90,11 +90,11 @@ test('repository validation requires a policy to unroll the TypeScript handbook'
   assert.equal(result.ok, false)
   assert.match(
     result.errors.join('\n'),
-    /governance\/handbooks\/typescript\/style-guide\.md MUST be unrolled by at least one policy/u,
+    /governance\/handbooks\/typescript\/style-guide\.md MUST be delivered by at least one policy/u,
   )
 })
 
-test('repository validation requires a policy to unroll the design handbook', () => {
+test('repository validation requires a policy to deliver the design handbook', () => {
   const root = createFixture()
   prepareValidationFixture(root)
   const policyPath = path.join(
@@ -116,7 +116,7 @@ test('repository validation requires a policy to unroll the design handbook', ()
   assert.equal(result.ok, false)
   assert.match(
     result.errors.join('\n'),
-    /governance\/handbooks\/design\/ux-guide\.md MUST be unrolled by at least one policy/u,
+    /governance\/handbooks\/design\/ux-guide\.md MUST be delivered by at least one policy/u,
   )
 })
 
@@ -146,7 +146,7 @@ test('repository validation requires design stages to load design handbook polic
   )
 })
 
-test('repository validation requires a policy to unroll the Python handbook', () => {
+test('repository validation requires a policy to deliver the Python handbook', () => {
   const root = createFixture()
   prepareValidationFixture(root)
   const policyPath = path.join(root, 'governance', 'policies', 'PY-001.json')
@@ -163,7 +163,7 @@ test('repository validation requires a policy to unroll the Python handbook', ()
   assert.equal(result.ok, false)
   assert.match(
     result.errors.join('\n'),
-    /governance\/handbooks\/python\/style-guide\.md MUST be unrolled by at least one policy/u,
+    /governance\/handbooks\/python\/style-guide\.md MUST be delivered by at least one policy/u,
   )
 })
 
@@ -200,7 +200,7 @@ test('repository validation requires code-review and QA stages to load Python ha
   )
 })
 
-test('repository validation rejects static guidance references that are not unrolled', () => {
+test('repository validation rejects static guidance references that are not declared', () => {
   const root = createFixture()
   prepareValidationFixture(root)
   const policyPath = path.join(
@@ -223,7 +223,7 @@ test('repository validation rejects static guidance references that are not unro
   assert.equal(result.ok, false)
   assert.match(
     result.errors.join('\n'),
-    /ACTION-001 references static guidance library\/skills\/spotfix\.md without unrolling it through guidance_sources/u,
+    /ACTION-001 references static guidance library\/skills\/spotfix\.md without declaring it in guidance_sources/u,
   )
 })
 
@@ -522,7 +522,10 @@ test('delegation validator normalizes line endings', () => {
   assert.equal(result.passed, true)
 })
 
-type ReadAttestation = Extract<InvocationAttestation, { status: 'read' }>
+type ReadAttestation = Extract<
+  InvocationAttestation,
+  { contract_sha256: string }
+>
 
 function attestedFixture(root: string): {
   invocation: Invocation
@@ -587,6 +590,23 @@ test('attestation validator rejects a missing declaration', () => {
 
   assert.equal(result.passed, false)
   assert.equal(result.status, 'missing')
+})
+
+test('attestation validator rejects the prefilled pending status', () => {
+  const root = createFixture()
+  const { invocation, attestation } = attestedFixture(root)
+  const result = validateInvocationAttestation(
+    invocation,
+    attestedOutput({ ...attestation, status: 'pending' }),
+  )
+
+  assert.equal(result.passed, false)
+  assert.equal(result.status, 'pending')
+  assert.match(
+    result.checks.find((check) => check.id === 'attestation.status')?.message ??
+      '',
+    /still the scaffold value pending/u,
+  )
 })
 
 test('attestation validator reports an unrecognized status as malformed', () => {

@@ -42,7 +42,7 @@ read that artifact for the failing checks before retrying.
 
 When `pending_action` is `invoke_agent`, deliver the canonical invocation card
 according to the **Supervisor delivery procedure** section at the end of that
-card, which unrolls `INVOCATION-001` with resolved paths, and persist its
+card, which carries `INVOCATION-001` with resolved paths, and persist its
 delegation audit artifact. Before
 `./bin/pan submit`, confirm delegation validation passed. Rejection with
 `DELEGATION_ARTIFACT_MISSING` or `DELEGATION_VALIDATION_FAILED` leaves the run
@@ -52,12 +52,17 @@ on the same invocation so delivery can be corrected and resubmitted.
 delegation validation state, artifact paths, and short failure reasons.
 
 Applicable durable handbooks and static skills are resolved through policy
-`guidance_sources` and embedded directly in the invocation card. Language-specific
+`guidance_sources` and delivered on the invocation card as audited references.
+Each reference names the source path, the selected heading range, the content
+digest, and the read trigger that makes the guidance apply. The exact selected
+content stays in the invocation JSON snapshot for audit, so the card stays
+compact without weakening policy authority. Language-specific
 policies MAY also be selected from detected target-workspace technology signals;
 for example, Python source or packaging markers activate `PY-001` for implementation,
-review, QA, and spotfix work without imposing Python guidance on unrelated targets. A worker MUST
-receive that unrolled guidance with the canonical card; a source-file path is
-not a substitute for delivering the content.
+review, QA, and spotfix work without imposing Python guidance on unrelated targets.
+A worker MUST read a referenced range before the work its trigger names, and MUST
+NOT act on a remembered version of it. Cards prepared before progressive
+disclosure keep their inline guidance bodies and stay valid.
 
 ## Build the target repository primer
 

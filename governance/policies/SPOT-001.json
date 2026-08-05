@@ -32,7 +32,8 @@
   "guidance_sources": [
     {
       "path": "library/skills/spotfix.md",
-      "start_heading": "## Eligibility"
+      "start_heading": "## Eligibility",
+      "read_trigger": "Read this guidance before you accept, implement, or escalate a spotfix."
     }
   ]
 }

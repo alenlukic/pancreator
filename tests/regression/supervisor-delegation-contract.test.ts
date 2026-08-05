@@ -45,7 +45,7 @@ function cardText(root: string, markdownPath: string): string {
  * Dev intake is the first delegated stage, so the run has no supervisor-owned
  * stage to fall back on.
  */
-test('worker invocation cards unroll the supervisor delivery contract', () => {
+test('worker invocation cards inline the supervisor delivery contract', () => {
   const root = createFixture()
   const invocationPolicy = loadPolicyCatalog(root).get('INVOCATION-001')
 

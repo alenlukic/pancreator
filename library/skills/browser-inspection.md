@@ -1,8 +1,8 @@
 # Browser inspection
 
 Use when a stage must observe a running web UI. `BROWSER-001` owns the host-safety
-and isolation rules; this skill is the executable procedure and is unrolled with
-that policy into every invocation that needs it.
+and isolation rules; this skill is the executable procedure, and that policy
+references it on every invocation that needs it.
 
 ## Principle
 

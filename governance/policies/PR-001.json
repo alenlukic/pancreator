@@ -7,7 +7,7 @@
     "The release steward MUST apply this policy in workflow ship mode and standalone PR-writing mode.",
     "The selected base ref MUST be validated as one literal Git ref, resolved to a commit, and compared from its merge base with HEAD through the current worktree.",
     "The comparison MUST include committed branch changes, staged and unstaged tracked changes, and relevant untracked files.",
-    "The generated file MUST contain a suggested conventional-commits-style title, Summary, and Changelist. It MUST contain a How to read this PR walkthrough only when the change meets the applicability test in the unrolled procedure, and a Delivery Pipeline Manifest only when actual workflow stage records resolve.",
+    "The generated file MUST contain a suggested conventional-commits-style title, Summary, and Changelist. It MUST contain a How to read this PR walkthrough only when the change meets the applicability test in the referenced procedure, and a Delivery Pipeline Manifest only when actual workflow stage records resolve.",
     "The How to read this PR walkthrough MUST orient a human reviewer through core changes, architecture decisions, component changes, and end-to-end flows, using only the registered subheadings and only those that apply. The release steward MUST omit the section rather than pad it when the Changelist already tells the whole story.",
     "The release steward MUST state a decision reason, a rejected alternative, or a claimed benefit in the walkthrough only when the Git delta or an artifact it read evidences that claim. It MUST describe the change and omit the reason rather than reconstruct intent from the shape of the final code.",
     "Every claim MUST be traceable to the Git delta or a workflow artifact that was read; the release steward MUST stop rather than invent changes or describe an empty or ambiguous comparison.",
@@ -17,7 +17,8 @@
   "guidance_sources": [
     {
       "path": "library/skills/write-pr-description.md",
-      "start_heading": "## Principle"
+      "start_heading": "## Principle",
+      "read_trigger": "Read this guidance before you write a pull-request description."
     }
   ]
 }

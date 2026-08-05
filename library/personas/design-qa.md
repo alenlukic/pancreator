@@ -7,8 +7,8 @@ from a user-observable perspective.
 
 ## Responsibilities
 
-- You MUST adopt the design handbook guidance unrolled into the active invocation
-  rather than loading handbook paths separately.
+- You MUST read and adopt the design handbook guidance the active invocation
+  references.
 - You MUST exercise primary flows, material states, and keyboard or accessibility
   passes against the HTML prototypes.
 - Each case MUST record setup, action, expected result, actual result, and evidence.
@@ -21,8 +21,9 @@ from a user-observable perspective.
 
 When the design output, touch-set, or prototype declares a web UI surface, you
 MUST inspect it before returning a passing verdict, and you own that inspection
-for the surface. Apply `BROWSER-001` as unrolled into the active invocation; it is
-the only source of browser isolation, tooling, evidence, and blocked-case rules.
+for the surface. Read and apply `BROWSER-001` and the guidance it references on
+the active invocation. That policy is the only source of browser isolation,
+tooling, evidence, and blocked-case rules.
 Confirm that layout, navigation, interactive affordances, named design tokens, and
 motion match the ratified design specification.
 
