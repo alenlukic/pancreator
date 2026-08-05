@@ -134,6 +134,23 @@ function projectCursorContent(
   return projected
 }
 
+// Kept in sync with renderGuidanceBlock in src/lib/policy-guidance.ts.
+function guidanceSelectedRange(guidance) {
+  if (guidance.start_heading && guidance.end_heading) {
+    return `from \`${guidance.start_heading}\` to \`${guidance.end_heading}\``
+  }
+
+  if (guidance.start_heading) {
+    return `from \`${guidance.start_heading}\` to the end of the file`
+  }
+
+  if (guidance.end_heading) {
+    return `from the start of the file to \`${guidance.end_heading}\``
+  }
+
+  return 'the complete file'
+}
+
 // Kept in sync with renderPolicyCursorRule in src/lib/cursor-content.ts. This
 // script runs before the harness is built, so it cannot import that module.
 function renderPolicyCursorRule(policy) {
@@ -154,9 +171,12 @@ function renderPolicyCursorRule(policy) {
     ...policy.instructions.map((instruction) => `- ${instruction}`),
     ...(policy.guidance_sources ?? []).flatMap((guidance) => [
       '',
-      `## Unrolled guidance · \`${guidance.path}\``,
+      `## Guidance reference · \`${guidance.path}\``,
       '',
-      guidance.content,
+      `- Read when: ${guidance.read_trigger}`,
+      `- Selected range: ${guidanceSelectedRange(guidance)}.`,
+      `- Content digest: \`sha256:${guidance.content_sha256}\` — ` +
+        `${guidance.line_count} lines, ${guidance.byte_length} bytes.`,
     ]),
     '',
   ].join('\n')
@@ -191,7 +211,15 @@ function policyRuleSource(sourceRoot, sourcePath) {
       fail(`Invalid guidance slice for ${policy.id}: ${guidance.path}`)
     }
 
-    guidance.content = full.slice(start, end).trim()
+    const content = full.slice(start, end).trim()
+
+    guidance.content = content
+    guidance.content_sha256 = createHash('sha256').update(content).digest('hex')
+    guidance.line_count = content.split('\n').length
+    guidance.byte_length = Buffer.byteLength(content, 'utf8')
+    guidance.read_trigger =
+      guidance.read_trigger ??
+      `Read this guidance before work that ${policy.id} governs.`
   }
 
   return policy

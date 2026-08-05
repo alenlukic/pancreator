@@ -4,6 +4,7 @@ import { invariant } from './errors.js'
 import { ensureDir, fileExists, resolveInside, writeTextAtomic } from './io.js'
 import { makeRunId } from './state.js'
 import { resolvePolicies } from './policies.js'
+import { renderGuidanceBlock } from './policy-guidance.js'
 import { harnessPathPrefix, isTargetInstallation } from './project-config.js'
 import { resolveRequirements } from './requirements/resolve.js'
 import type { InvocationKind } from './requirements/types.js'
@@ -166,12 +167,7 @@ function renderGovernanceCardMarkdown(options: {
         ]
 
         for (const guidance of policy.guidance ?? []) {
-          lines.push(
-            '',
-            `### Unrolled guidance · \`${guidance.source_path}\``,
-            '',
-            guidance.content,
-          )
+          lines.push(...renderGuidanceBlock(3, guidance))
         }
 
         return [lines.join('\n'), '']

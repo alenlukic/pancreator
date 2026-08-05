@@ -1,4 +1,5 @@
 import { sha256 } from './io.js'
+import { renderGuidanceBlock } from './policy-guidance.js'
 import type {
   Invocation,
   InvocationContractManifest,
@@ -177,8 +178,10 @@ export function renderInvocationDeliveryPrompt(
     '- Set `status` to `read` after you read the complete contract.',
     '- Set `sections` to every section id and digest above, in the same order.',
     '',
-    'The required stage-output scaffold automation writes these fields for you. ' +
-      'Confirm each value against the list above and correct any difference.',
+    'The required stage-output scaffold automation prefills these fields with ' +
+      'status `pending`. Confirm each value against the list above, correct any ' +
+      'difference, and change `pending` to `read` yourself. Submission rejects ' +
+      '`pending`, because only you can declare the read.',
     '',
     'When you cannot read the contract, set `status` to `reference_failed`, put ' +
       'the concrete read error in `error`, and set the stage `result` to ' +
@@ -217,12 +220,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
         ]
 
         for (const guidance of policy.guidance ?? []) {
-          lines.push(
-            '',
-            `### Unrolled guidance · \`${guidance.source_path}\``,
-            '',
-            guidance.content,
-          )
+          lines.push(...renderGuidanceBlock(3, guidance))
         }
 
         return [lines.join('\n'), '']
@@ -377,7 +375,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
           '',
           'This run resolved review mode `squad`. Review gathers its findings ' +
             'through one agent per review dimension, then joins them into one ' +
-            'ranked set. `REVIEW-002` and its unrolled guidance govern the ' +
+            'ranked set. `REVIEW-002` and the guidance it references govern the ' +
             'lineup, the charters, and the finding shape.',
           '',
         ]

@@ -13,7 +13,7 @@ const REPO_ROOT = process.cwd()
  * The previous version of this file required all twelve isolation tokens to be
  * restated in six separate surfaces, which is exactly why those surfaces drifted
  * apart. It now asserts the opposite: `BROWSER-001` holds the contract, and every
- * surface that needs it receives it by unrolling or generation, never by
+ * surface that needs it receives it by policy delivery or generation, never by
  * restatement.
  */
 const ISOLATION_TOKENS = [
@@ -47,7 +47,7 @@ const NON_RESTATING_SURFACES = [
   'docs/target-repo-primer.md',
 ] as const
 
-/** Procedural detail that belongs only to the policy and its unrolled skill. */
+/** Procedural detail that belongs only to the policy and its referenced skill. */
 const PROCEDURE_TOKENS = [
   'new_page',
   'close_page',
@@ -89,7 +89,7 @@ test('BROWSER-001 carries the complete browser isolation contract', () => {
       (guidance) =>
         guidance.source_path === 'library/skills/browser-inspection.md',
     ),
-    'BROWSER-001 MUST unroll the browser-inspection procedure',
+    'BROWSER-001 MUST deliver the browser-inspection procedure',
   )
 })
 
@@ -105,7 +105,7 @@ for (const surface of NON_RESTATING_SURFACES) {
     for (const token of PROCEDURE_TOKENS) {
       assert.ok(
         !content.includes(token),
-        `${surface} MUST NOT restate '${token}'; the policy is unrolled into the card`,
+        `${surface} MUST NOT restate '${token}'; the policy travels on the card`,
       )
     }
   })
@@ -154,7 +154,7 @@ test('the always-apply Cursor rule is generated from BROWSER-001', () => {
   )
 })
 
-test('the generated rule reproduces the policy text verbatim', () => {
+test('the generated rule reproduces the policy text and references its procedure', () => {
   const root = createFixture()
   const policy = loadPolicyCatalog(root).get('BROWSER-001')
   const generated = syncCursorProjection(root, { write: true }).find(
@@ -176,8 +176,18 @@ test('the generated rule reproduces the policy text verbatim', () => {
     )
   }
 
+  // The rule applies outside a card, so it uses the same progressive disclosure
+  // form: the isolation rules are inline and the procedure stays a reference.
   for (const guidance of policy.guidance ?? []) {
-    assert.ok(content.includes(guidance.content))
+    const { reference } = guidance
+
+    assert.ok(reference)
+    assert.ok(
+      content.includes(`## Guidance reference · \`${guidance.source_path}\``),
+    )
+    assert.ok(content.includes(`Read when: ${reference.read_trigger}`))
+    assert.ok(content.includes(`sha256:${reference.content_sha256}`))
+    assert.ok(!content.includes(guidance.content))
   }
 })
 

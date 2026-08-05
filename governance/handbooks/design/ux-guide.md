@@ -3,9 +3,9 @@
 The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in this
 document indicate requirement levels as defined by RFC 2119 and RFC 8174.
 
-This handbook is the durable UI/UX standard for Pancreator design stages. Applicable
-sections are unrolled into invocations by `DESIGN-001`. Keep guidance high-signal;
-raw research notes belong in run evidence, not here.
+This handbook is the durable UI/UX standard for Pancreator design stages. `DESIGN-001`
+references the applicable sections on each design invocation card. Keep guidance
+high-signal; raw research notes belong in run evidence, not here.
 
 ## Core UX laws and principles
 

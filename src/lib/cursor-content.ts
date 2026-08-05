@@ -1,3 +1,6 @@
+import { renderGuidanceBlock } from './policy-guidance.js'
+import type { PolicyGuidance } from './types.js'
+
 export type CursorInstallationMode =
   | 'self_development'
   | 'embedded'
@@ -8,14 +11,14 @@ interface PolicyRuleSource {
   title: string
   summary: string
   instructions: string[]
-  guidance?: Array<{ source_path: string; content: string }>
+  guidance?: PolicyGuidance[]
 }
 
 /**
  * Render a governance policy as an always-apply Cursor rule.
  *
- * Policies reach workflow agents unrolled into their invocation card. Work that
- * runs outside the card machinery — command-driven subagents, ad-hoc operator
+ * Policies reach workflow agents through their invocation card. Work that runs
+ * outside the card machinery — command-driven subagents, ad-hoc operator
  * requests — has no card, so the same policy is generated into a rule instead of
  * restated by hand. Generating it keeps the policy the single source of truth.
  *
@@ -38,12 +41,9 @@ export function renderPolicyCursorRule(policy: PolicyRuleSource): string {
     policy.summary,
     '',
     ...policy.instructions.map((instruction) => `- ${instruction}`),
-    ...(policy.guidance ?? []).flatMap((guidance) => [
-      '',
-      `## Unrolled guidance · \`${guidance.source_path}\``,
-      '',
-      guidance.content,
-    ]),
+    ...(policy.guidance ?? []).flatMap((guidance) =>
+      renderGuidanceBlock(2, guidance),
+    ),
     '',
   ].join('\n')
 }

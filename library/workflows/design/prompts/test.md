@@ -6,11 +6,11 @@ because the design workflow does not mutate tracked source.
 
 ## Steps
 
-1. Read the card, design output, successful review output, and unrolled handbook
-   guidance.
-2. Inspect every web UI surface by following `BROWSER-001` as unrolled into this
-   card. Exercise primary flows, keyboard or accessibility passes, and the states
-   the prototypes own.
+1. Read the card, design output, successful review output, and the handbook
+   guidance the card references.
+2. Inspect every web UI surface by reading and following the `BROWSER-001`
+   guidance this card references. Exercise primary flows, keyboard or
+   accessibility passes, and the states the prototypes own.
 3. Confirm layout, navigation, affordances, named design tokens, and motion against
    the ratified design specification.
 4. Record each case with setup, action, expected result, actual result, and

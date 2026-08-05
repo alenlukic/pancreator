@@ -5,7 +5,8 @@ handbook heuristic checklist. Verify reality, not the designer’s narrative.
 
 ## Steps
 
-1. Read the card, intake, design output, and unrolled DESIGN-001 / handbook guidance.
+1. Read the card, intake, design output, and the DESIGN-001 handbook guidance the
+   card references.
 2. Inspect the design spec and every mock path; open HTML prototypes and exercise
    primary views where possible.
 3. Score each handbook checklist heuristic; record results with evidence.

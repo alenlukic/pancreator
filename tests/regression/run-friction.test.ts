@@ -32,16 +32,38 @@ import type { Invocation } from '../../src/lib/types.js'
  * work around the harness mid-run.
  */
 
-function editPersonaDefaults(
+/**
+ * Change the persona mapping a run actually resolves.
+ *
+ * A named entry under `configs` overrides `defaults`, so editing `defaults`
+ * alone changes nothing when the active configuration pins the same persona.
+ * Clearing each touched persona from every named configuration keeps these
+ * regressions independent of whichever `active_config` the checked-in
+ * configuration declares.
+ */
+function editPersonaMappings(
   root: string,
   edit: (defaults: Record<string, string>) => void,
 ): void {
   const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
     defaults: Record<string, string>
+    configs?: Record<string, { personas?: Record<string, string> }>
   }
+  const before = { ...config.defaults }
 
   edit(config.defaults)
+
+  const touched = Object.keys(config.defaults).filter(
+    (persona) => config.defaults[persona] !== before[persona],
+  )
+
+  for (const named of Object.values(config.configs ?? {})) {
+    for (const persona of touched) {
+      delete named.personas?.[persona]
+    }
+  }
+
   writeJson(configPath, config)
 }
 
@@ -363,7 +385,7 @@ test('a persona mapping the run never resolves is not pipeline config drift', ()
   // A self-development run that introduces a persona edits the live config
   // while it is still in flight. The mapping is absent from its own snapshot,
   // so the run never resolves it and must keep advancing.
-  editPersonaDefaults(root, (defaults) => {
+  editPersonaMappings(root, (defaults) => {
     defaults['fixture-only-persona'] = 'auto'
   })
 
@@ -381,7 +403,7 @@ test('a changed mapping the run does resolve still fails as pipeline config drif
     title: 'Changed mapping run',
   })
 
-  editPersonaDefaults(root, (defaults) => {
+  editPersonaMappings(root, (defaults) => {
     defaults.coder = 'fixture-replacement-model'
   })
 

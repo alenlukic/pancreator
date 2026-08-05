@@ -5,6 +5,10 @@ import test from 'node:test'
 
 import { sha256 } from '../../src/lib/io.js'
 import {
+  guidanceSelectedRange,
+  renderGuidanceBlock,
+} from '../../src/lib/policy-guidance.js'
+import {
   buildInvocationContractManifest,
   renderInvocationDeliveryPrompt,
   renderInvocationMarkdown,
@@ -134,7 +138,7 @@ function baseInvocation(
   }
 }
 
-test('invocation cards inline full policy text for every stage', () => {
+test('invocation cards inline policy text and reference guidance for every stage', () => {
   const root = createFixture()
   const stages = ['intake', 'plan', 'implement', 'review', 'test', 'ship']
 
@@ -168,18 +172,44 @@ test('invocation cards inline full policy text for every stage', () => {
       }
 
       for (const guidance of policy.guidance ?? []) {
+        const { reference } = guidance
+
+        assert.ok(reference, `${policy.id} guidance MUST resolve a reference`)
         assert.ok(
           markdown.includes(
-            `### Unrolled guidance · \`${guidance.source_path}\``,
+            `### Guidance reference · \`${guidance.source_path}\``,
           ),
         )
-        assert.ok(markdown.includes(guidance.content))
+        assert.ok(markdown.includes(`Read when: ${reference.read_trigger}`))
+        assert.ok(markdown.includes(`sha256:${reference.content_sha256}`))
+        assert.equal(reference.content_sha256, sha256(guidance.content))
+        assert.ok(
+          !markdown.includes(guidance.content),
+          `${policy.id} MUST NOT inline the body of ${guidance.source_path}`,
+        )
       }
     }
   }
 })
 
-test('Python invocation cards inline PY-001 guidance for embedded targets', () => {
+test('model configurations receive the same normative invocation contract', () => {
+  const root = createFixture()
+  const configs = ['simple', 'default', 'complex', 'auto']
+  const contracts = configs.map((modelConfig) => {
+    const invocation = baseInvocation(root, 'dev', 'implement')
+
+    invocation.stage.model = `fixture-${modelConfig}`
+    invocation.stage.model_config = modelConfig
+
+    return renderInvocationMarkdown(invocation)
+      .replaceAll(`fixture-${modelConfig}`, 'fixture-model')
+      .replace(`"model_config": "${modelConfig}"`, '"model_config": "fixture"')
+  })
+
+  assert.ok(contracts.every((contract) => contract === contracts[0]))
+})
+
+test('Python invocation cards reference PY-001 guidance for embedded targets', () => {
   const root = createFixture()
   const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
@@ -200,35 +230,207 @@ test('Python invocation cards inline PY-001 guidance for embedded targets', () =
   )
 
   assert.ok(pythonPolicy)
+
+  const guidance = pythonPolicy.guidance?.[0]
+
+  assert.ok(guidance)
   assert.ok(
     markdown.includes(
-      '### Unrolled guidance · `governance/handbooks/python/style-guide.md`',
+      '### Guidance reference · `governance/handbooks/python/style-guide.md`',
     ),
   )
-  assert.match(markdown, /Mutable default arguments MUST NOT be used/u)
-  assert.doesNotMatch(markdown, /Appendix A: Formatter-owned rules/u)
+  assert.ok(
+    markdown.includes(
+      `\`sha256:${sha256(guidance.content)}\`` +
+        ` — ${guidance.content.split('\n').length} lines,` +
+        ` ${Buffer.byteLength(guidance.content, 'utf8')} bytes.`,
+    ),
+  )
+  // The selected range stops short of the formatter appendix, and the card
+  // carries the pointer rather than either body.
+  assert.match(guidance.content, /Mutable default arguments MUST NOT be used/u)
+  assert.doesNotMatch(guidance.content, /Appendix A: Formatter-owned rules/u)
+  assert.doesNotMatch(markdown, /Mutable default arguments MUST NOT be used/u)
 })
 
-test('invocation validation fails when unrolled guidance is omitted', () => {
+test('a guidance reference names the selected heading range', () => {
   const root = createFixture()
   const invocation = baseInvocation(root, 'dev', 'implement')
   const markdown = renderInvocationMarkdown(invocation)
-  const engineeringGuidance = invocation.policies.find(
-    (policy) => policy.id === 'ENG-001',
-  )?.guidance?.[0]
+  const bounded = invocation.policies
+    .flatMap((policy) => policy.guidance ?? [])
+    .find((guidance) => guidance.reference?.start_heading)
 
-  assert.ok(engineeringGuidance)
-
-  const result = validateInvocationMarkdown(
-    invocation,
-    markdown.replace(engineeringGuidance.content, ''),
+  assert.ok(bounded?.reference?.start_heading)
+  assert.ok(
+    markdown.includes(
+      `Selected range: from \`${bounded.reference.start_heading}\``,
+    ),
   )
+})
+
+test('a guidance reference describes an end-only heading range', () => {
+  const block = renderGuidanceBlock(3, {
+    source_path: 'guide.md',
+    content: 'Selected guidance',
+    reference: {
+      end_heading: '# Appendix',
+      content_sha256: sha256('Selected guidance'),
+      line_count: 1,
+      byte_length: Buffer.byteLength('Selected guidance', 'utf8'),
+      read_trigger: 'Read this guidance before the governed work.',
+    },
+  })
+
+  assert.ok(
+    block.includes(
+      '- Selected range: from the start of the file to `# Appendix`.',
+    ),
+  )
+})
+
+function engineeringGuidance(invocation: Invocation) {
+  const policy = invocation.policies.find((entry) => entry.id === 'ENG-001')
+  const guidance = policy?.guidance?.[0]
+
+  assert.ok(guidance, 'ENG-001 MUST resolve engineering guidance')
+
+  const { reference } = guidance
+
+  assert.ok(reference, 'ENG-001 guidance MUST resolve a reference')
+
+  return { guidance, reference }
+}
+
+function failedCheckIds(invocation: Invocation, markdown: string): Set<string> {
+  const result = validateInvocationMarkdown(invocation, markdown)
 
   assert.equal(result.passed, false)
+
+  return new Set(
+    result.checks.filter((check) => !check.passed).map((check) => check.id),
+  )
+}
+
+test('invocation validation fails when a guidance reference is omitted', () => {
+  const root = createFixture()
+  const invocation = baseInvocation(root, 'dev', 'implement')
+  const markdown = renderInvocationMarkdown(invocation)
+  const { guidance } = engineeringGuidance(invocation)
+  const heading = `### Guidance reference · \`${guidance.source_path}\``
+
   assert.ok(
-    result.checks.some(
-      (check) =>
-        check.id === 'policy.ENG-001.guidance.1.content' && !check.passed,
+    failedCheckIds(invocation, markdown.replace(heading, '')).has(
+      'policy.ENG-001.guidance.1.heading',
+    ),
+  )
+})
+
+test('invocation validation fails when a read trigger is omitted', () => {
+  const root = createFixture()
+  const invocation = baseInvocation(root, 'dev', 'implement')
+  const markdown = renderInvocationMarkdown(invocation)
+  const { reference } = engineeringGuidance(invocation)
+
+  assert.ok(
+    failedCheckIds(
+      invocation,
+      markdown.replace(reference.read_trigger, 'whenever you feel like it'),
+    ).has('policy.ENG-001.guidance.1.read_trigger'),
+  )
+})
+
+test('invocation validation fails when a selected range is stale', () => {
+  const root = createFixture()
+  const invocation = baseInvocation(root, 'dev', 'implement')
+  const markdown = renderInvocationMarkdown(invocation)
+  const { reference } = engineeringGuidance(invocation)
+  const selectedRange = `Selected range: ${guidanceSelectedRange(reference)}.`
+  const failed = failedCheckIds(
+    invocation,
+    markdown.replace(selectedRange, 'Selected range: the complete file.'),
+  )
+
+  assert.ok(failed.has('policy.ENG-001.guidance.1.selected_range'))
+  assert.ok(failed.has('policy.ENG-001.guidance.1.reference_block'))
+})
+
+test('invocation validation fails when a rendered digest is stale', () => {
+  const root = createFixture()
+  const invocation = baseInvocation(root, 'dev', 'implement')
+  const markdown = renderInvocationMarkdown(invocation)
+  const { reference } = engineeringGuidance(invocation)
+  const failed = failedCheckIds(
+    invocation,
+    markdown.replace(reference.content_sha256, sha256('drifted content')),
+  )
+
+  assert.ok(failed.has('policy.ENG-001.guidance.1.digest'))
+})
+
+test('invocation validation fails when reference metadata contradicts the snapshot', () => {
+  const root = createFixture()
+  const invocation = baseInvocation(root, 'dev', 'implement')
+  const { guidance, reference } = engineeringGuidance(invocation)
+
+  guidance.reference = { ...reference, content_sha256: sha256('stale body') }
+
+  const markdown = renderInvocationMarkdown(invocation)
+  const failed = failedCheckIds(invocation, markdown)
+
+  assert.ok(failed.has('policy.ENG-001.guidance.1.digest_matches_snapshot'))
+})
+
+test('invocation validation fails when size metadata contradicts the snapshot', () => {
+  const root = createFixture()
+  const invocation = baseInvocation(root, 'dev', 'implement')
+  const { guidance, reference } = engineeringGuidance(invocation)
+
+  guidance.reference = {
+    ...reference,
+    line_count: reference.line_count + 1,
+    byte_length: reference.byte_length + 1,
+  }
+
+  const markdown = renderInvocationMarkdown(invocation)
+  const failed = failedCheckIds(invocation, markdown)
+
+  assert.ok(failed.has('policy.ENG-001.guidance.1.line_count_matches_snapshot'))
+  assert.ok(
+    failed.has('policy.ENG-001.guidance.1.byte_length_matches_snapshot'),
+  )
+})
+
+test('invocation validation fails when a guidance body leaks into the card', () => {
+  const root = createFixture()
+  const invocation = baseInvocation(root, 'dev', 'implement')
+  const markdown = renderInvocationMarkdown(invocation)
+  const { guidance } = engineeringGuidance(invocation)
+  const failed = failedCheckIds(
+    invocation,
+    `${markdown}\n\n${guidance.content}\n`,
+  )
+
+  assert.ok(failed.has('policy.ENG-001.guidance.1.body_absent'))
+})
+
+test('invocation validation keeps the inline contract for legacy guidance', () => {
+  const root = createFixture()
+  const invocation = baseInvocation(root, 'dev', 'implement')
+  const { guidance } = engineeringGuidance(invocation)
+
+  delete guidance.reference
+
+  const markdown = renderInvocationMarkdown(invocation)
+
+  assert.ok(
+    markdown.includes(`### Unrolled guidance · \`${guidance.source_path}\``),
+  )
+  assert.ok(markdown.includes(guidance.content))
+  assert.equal(validateInvocationMarkdown(invocation, markdown).passed, true)
+  assert.ok(
+    failedCheckIds(invocation, markdown.replace(guidance.content, '')).has(
+      'policy.ENG-001.guidance.1.content',
     ),
   )
 })

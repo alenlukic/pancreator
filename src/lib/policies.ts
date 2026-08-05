@@ -2,7 +2,7 @@ import { readdirSync } from 'node:fs'
 import path from 'node:path'
 
 import { invariant } from './errors.js'
-import { isRecord, readJson, readText, resolveInside } from './io.js'
+import { isRecord, readJson, readText, resolveInside, sha256 } from './io.js'
 import type {
   Policy,
   PolicyGuidance,
@@ -56,14 +56,25 @@ interface PolicyGuidanceSource {
   path: string
   start_heading?: string
   end_heading?: string
+  read_trigger?: string
 }
 
 function matches(pattern: string, value: string): boolean {
   return pattern === '*' || pattern === value
 }
 
+/**
+ * Trigger used when a policy declares no `read_trigger`. A generated
+ * target-repository policy has no author to write one, so the fallback keeps the
+ * reference readable instead of failing resolution.
+ */
+function defaultReadTrigger(policyId: string): string {
+  return `Read this guidance before work that ${policyId} governs.`
+}
+
 function parseGuidanceSource(
   root: string,
+  policyId: string,
   value: unknown,
   source: string,
 ): PolicyGuidance {
@@ -86,6 +97,13 @@ function parseGuidanceSource(
     value.end_heading === undefined ||
       (typeof value.end_heading === 'string' && value.end_heading.length > 0),
     `${source}.end_heading MUST be a non-empty string when present.`,
+    { code: 'INVALID_POLICY' },
+  )
+  invariant(
+    value.read_trigger === undefined ||
+      (typeof value.read_trigger === 'string' &&
+        value.read_trigger.trim().length > 0),
+    `${source}.read_trigger MUST be a non-empty string when present.`,
     { code: 'INVALID_POLICY' },
   )
 
@@ -118,9 +136,23 @@ function parseGuidanceSource(
     { code: 'INVALID_POLICY' },
   )
 
+  const content = fullContent.slice(startIndex, endIndex).trim()
+
   return {
     source_path: definition.path,
-    content: fullContent.slice(startIndex, endIndex).trim(),
+    content,
+    reference: {
+      ...(definition.start_heading
+        ? { start_heading: definition.start_heading }
+        : {}),
+      ...(definition.end_heading
+        ? { end_heading: definition.end_heading }
+        : {}),
+      content_sha256: sha256(content),
+      line_count: content.split('\n').length,
+      byte_length: Buffer.byteLength(content, 'utf8'),
+      read_trigger: definition.read_trigger ?? defaultReadTrigger(policyId),
+    },
   }
 }
 
@@ -165,8 +197,15 @@ function parsePolicy(root: string, value: unknown, source: string): Policy {
       { code: 'INVALID_POLICY' },
     )
 
+    const policyId = value.id
+
     guidance = value.guidance_sources.map((item, index) =>
-      parseGuidanceSource(root, item, `${source}:guidance_sources[${index}]`),
+      parseGuidanceSource(
+        root,
+        policyId,
+        item,
+        `${source}:guidance_sources[${index}]`,
+      ),
     )
   }
 

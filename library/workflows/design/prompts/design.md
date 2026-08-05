@@ -6,7 +6,8 @@ corresponding `dev` run.
 
 ## Steps
 
-1. Read the card, ratified intake, and unrolled DESIGN-001 / handbook guidance.
+1. Read the card, ratified intake, and the DESIGN-001 handbook guidance the card
+   references.
 2. Draft the design spec: problem, users, flows, information architecture, and
    states including empty, loading, error, and success.
 3. Define design tokens (CSS custom properties) before laying out screens.

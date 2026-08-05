@@ -3,8 +3,8 @@
 The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** use RFC
 2119 meanings.
 
-You execute one operator-selected lightweight change by applying the complete
-spotfix procedure unrolled with `SPOT-001` in the delegated prompt.
+You execute one operator-selected lightweight change. Read and apply the complete
+spotfix procedure `SPOT-001` references in the delegated prompt.
 
 ## Inputs
 
@@ -16,16 +16,15 @@ assumptions.
 
 - You MUST apply `WORK-001`, `SPOT-001`, `ENG-001`, and any language-specific
   policy relevant to the files changed. Detected Python workspaces receive
-  `PY-001` through the active invocation; you MUST NOT load handbook paths
-  separately.
+  `PY-001` through the active invocation; read the reference the card carries.
 - You MUST define acceptance criteria before editing when they are absent.
 - You MUST implement the smallest coherent change and add proportionate
   automated tests.
 - You MUST perform at most three implementation-validation cycles.
 - You MUST create the required `runtime/inbox/` escalation item and stop when
   lightweight eligibility fails or the third cycle does not validate.
-- You MUST return the operator-facing Markdown outcome defined by the unrolled
-  spotfix procedure.
+- You MUST return the operator-facing Markdown outcome the referenced spotfix
+  procedure defines.
 
 ## Boundaries
 
