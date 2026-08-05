@@ -73,7 +73,7 @@ can advance. `INVOCATION-001` defines the canonical delivery contract and the
 supervisor-owned-stage exception.
 
 Every prepared worker card also ends with a **Supervisor delivery procedure**
-section carrying that policy unrolled with this invocation's resolved paths. The
+section carrying that policy with this invocation's resolved paths. The
 supervisor holds no card of its own during the continuation loop, so the contract
 travels on the artifact it must already read to deliver the card. The section is
 part of the canonical body: removing it breaks delegation equality, and its
@@ -261,7 +261,7 @@ A run contract is orthogonal to workflow choice and attaches by stage `checkpoin
 
 ## Review mode
 
-A run resolves one review mode at `./bin/pan init [--review-mode <mode>]` from `config.json.review_mode`, and records it in `state.review_mode` and on every invocation card. `default` is one reviewer reading the whole change, which is what the review stage prompt and `REVIEW-001` describe on their own. `squad` activates a `review_mode`-scoped policy lookup row that loads `REVIEW-002`, whose `guidance_sources` unroll `library/skills/review-squad.md` into the reviewer's card. The run snapshots the resolution, so a later edit to `config.json` cannot change a run in flight.
+A run resolves one review mode at `./bin/pan init [--review-mode <mode>]` from `config.json.review_mode`, and records it in `state.review_mode` and on every invocation card. `default` is one reviewer reading the whole change, which is what the review stage prompt and `REVIEW-001` describe on their own. `squad` activates a `review_mode`-scoped policy lookup row that loads `REVIEW-002`, whose `guidance_sources` reference `library/skills/review-squad.md` on the reviewer's card. The run snapshots the resolution, so a later edit to `config.json` cannot change a run in flight.
 
 Review mode selects the method by which findings are gathered, not the authority over them. Under `squad` the reviewer stays the coordinator: it captures the diff once, writes an intent brief, delegates one agent per review dimension in parallel, and joins the returned findings into one ranked set. `REVIEW-001` continues to own the verdict, the reviewer remediation boundary, and routing to implementation, and a dimension agent never edits a file. The mode is a scalar rather than a profile map, because the only decision it carries is which review method a run adopts.
 

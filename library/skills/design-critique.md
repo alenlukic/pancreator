@@ -9,7 +9,7 @@ reality, not intent.
 
 ## Steps
 
-1. Read the design handbook checklist unrolled into the invocation.
+1. Read the design handbook checklist the invocation references.
 2. Open the spec and each mock; exercise primary views.
 3. Score every checklist heuristic with a short evidence note.
 4. Severity-rank findings; cite the violated law or checklist item.

@@ -9,14 +9,15 @@
     "Every feedback item MUST be recorded in the session ledger when it arrives and MUST hold a recorded disposition — accepted, rejected, or deferred — with a rationale before the session ends. Preexisting feedback is seeded as history and MUST NOT be actioned without an explicit operator directive.",
     "Before judging a bot's item, the shepherd MUST re-read that bot's ledger history and apply bot discipline: re-apply prior dispositions to repeated items, reject self-contradictions unless verification favors the newer claim, reject findings induced by the bot's own earlier accepted item rather than reverting, and resolve inter-bot conflicts on the merits with the losing side recorded. The shepherd MUST NOT implement and later revert the same edit within a session.",
     "An accepted item MUST be verified against the current code before implementation. Accepted items are implemented as the smallest coherent change with proportionate automated tests under the engineering guidance in force.",
-    "Each batch's change MUST be gated through the local review squad by delegating one pan-shepherd-reviewer subagent, which coordinates the review dimensions per the unrolled squad guidance and edits nothing. A batch gets at most 3 implement-review iterations; a batch still failing after the third ends the session with nothing pushed.",
+    "Each batch's change MUST be gated through the local review squad by delegating one pan-shepherd-reviewer subagent, which coordinates the review dimensions per the referenced squad guidance and edits nothing. A batch gets at most 3 implement-review iterations; a batch still failing after the third ends the session with nothing pushed.",
     "Invocation of /pan-shepherd authorizes commits and pushes to the shepherded PR's head branch only, and only for changes whose review passed. The shepherd MUST NOT merge, close, retarget, or rebase the PR, MUST NOT force-push or push to any other branch, and MUST NOT post PR comments unless the operator directed it.",
     "Every session MUST end with one operator-facing report covering windows used, per-item dispositions with rationales, pushes with SHAs, review iterations, deferred items, recorded bot contradictions and thrash, and the ledger path."
   ],
   "guidance_sources": [
     {
       "path": "library/skills/shepherd-pr.md",
-      "start_heading": "## Principle"
+      "start_heading": "## Principle",
+      "read_trigger": "Read this guidance before you triage, implement, or push shepherd work."
     }
   ]
 }

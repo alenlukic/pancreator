@@ -14,10 +14,10 @@ Workflow-local automation under `runtime/logs/workflows/<run-id>/scripts/` MAY b
 
 Agents changing Python code:
 
-- MUST apply the complete Python guidance unrolled into the active invocation.
+- MUST read and apply the complete Python guidance the active invocation references.
 - MUST inspect nearby code, tests, configuration, and public interfaces before choosing a pattern.
 - MUST preserve repository conventions when they are deliberate, internally consistent, and compatible with correctness.
-- MUST NOT load this handbook separately when its content is already embedded in the invocation.
+- MUST read only the range the active reference selects.
 - SHOULD expand into framework or dependency documentation only when the task requires behavior not established by repository evidence.
 
 ## Core principles
@@ -335,7 +335,7 @@ A Python implementation or review SHOULD verify that:
 
 # Appendix A: Formatter-owned rules
 
-This appendix records categories intentionally delegated to the repository formatter and linter. It is reference material and SHOULD NOT be unrolled into ordinary implementation or review invocations unless formatter configuration is being changed.
+This appendix records categories intentionally delegated to the repository formatter and linter. It is reference material and SHOULD NOT be referenced by ordinary implementation or review invocations unless formatter configuration is being changed.
 
 The configured tools MAY own:
 

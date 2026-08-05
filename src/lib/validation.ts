@@ -40,6 +40,13 @@ import {
   resolvePolicies,
 } from './policies.js'
 import {
+  guidanceDigestToken,
+  guidanceInlineHeading,
+  guidanceReferenceHeading,
+  guidanceSelectedRange,
+  renderGuidanceBlock,
+} from './policy-guidance.js'
+import {
   isTargetInstallation,
   isSelfDevelopmentInstallation,
 } from './project-config.js'
@@ -66,6 +73,7 @@ import type {
   OperatorInvolvementFile,
   OperatorInvolvementProfile,
   Policy,
+  PolicyGuidance,
   PolicyLookupRow,
   PolicyLookupTable,
   RepositoryValidationResult,
@@ -327,6 +335,126 @@ export function buildValidationArtifact(options: {
   }
 }
 
+/**
+ * Check how one policy guidance range reaches the rendered contract.
+ *
+ * A resolved reference is checked for its heading, its read trigger, a digest
+ * that matches the snapshot content, and the absence of the guidance body. The
+ * absence check is the load-bearing one: it is what keeps a renderer from
+ * silently restoring the full body and undoing progressive disclosure. Guidance
+ * without a reference belongs to an invocation prepared before progressive
+ * disclosure existed, so it keeps the original inline-content contract and an
+ * in-flight legacy run can still submit.
+ */
+function guidanceChecks(options: {
+  id_prefix: string
+  label: string
+  guidance: PolicyGuidance
+  markdown: string
+}): ValidationCheck[] {
+  const { id_prefix: idPrefix, label, guidance, markdown } = options
+  const { reference } = guidance
+
+  if (!reference) {
+    const heading = guidanceInlineHeading(3, guidance.source_path)
+
+    return [
+      {
+        id: `${idPrefix}.heading`,
+        passed: markdown.includes(heading),
+        message: markdown.includes(heading)
+          ? `${label} heading is present`
+          : `Markdown MUST identify inline guidance ${guidance.source_path}`,
+      },
+      {
+        id: `${idPrefix}.content`,
+        passed: markdown.includes(guidance.content),
+        message: markdown.includes(guidance.content)
+          ? `${label} content is present`
+          : `Markdown MUST inline guidance from ${guidance.source_path}`,
+      },
+    ]
+  }
+
+  const heading = guidanceReferenceHeading(3, guidance.source_path)
+  const digestToken = guidanceDigestToken(reference)
+  const selectedRange = `Selected range: ${guidanceSelectedRange(reference)}.`
+  const referenceBlock = renderGuidanceBlock(3, guidance).join('\n')
+  const digestMatchesContent =
+    reference.content_sha256 === sha256(guidance.content)
+  const lineCountMatchesContent =
+    reference.line_count === guidance.content.split('\n').length
+  const byteLengthMatchesContent =
+    reference.byte_length === Buffer.byteLength(guidance.content, 'utf8')
+  const bodyAbsent = !markdown.includes(guidance.content)
+
+  return [
+    {
+      id: `${idPrefix}.heading`,
+      passed: markdown.includes(heading),
+      message: markdown.includes(heading)
+        ? `${label} reference heading is present`
+        : `Markdown MUST reference guidance ${guidance.source_path}`,
+    },
+    {
+      id: `${idPrefix}.read_trigger`,
+      passed: markdown.includes(reference.read_trigger),
+      message: markdown.includes(reference.read_trigger)
+        ? `${label} states when to read the source`
+        : `Markdown MUST state the read trigger for ${guidance.source_path}`,
+    },
+    {
+      id: `${idPrefix}.selected_range`,
+      passed: markdown.includes(selectedRange),
+      message: markdown.includes(selectedRange)
+        ? `${label} states the selected source range`
+        : `Markdown MUST state the selected range for ${guidance.source_path}`,
+    },
+    {
+      id: `${idPrefix}.digest`,
+      passed: markdown.includes(digestToken),
+      message: markdown.includes(digestToken)
+        ? `${label} carries the selected content digest`
+        : `Markdown MUST carry '${digestToken}' for ${guidance.source_path}`,
+    },
+    {
+      id: `${idPrefix}.digest_matches_snapshot`,
+      passed: digestMatchesContent,
+      message: digestMatchesContent
+        ? `${label} digest matches the snapshot content`
+        : `${label} digest MUST match the snapshot content of ${guidance.source_path}`,
+    },
+    {
+      id: `${idPrefix}.line_count_matches_snapshot`,
+      passed: lineCountMatchesContent,
+      message: lineCountMatchesContent
+        ? `${label} line count matches the snapshot content`
+        : `${label} line count MUST match the snapshot content of ${guidance.source_path}`,
+    },
+    {
+      id: `${idPrefix}.byte_length_matches_snapshot`,
+      passed: byteLengthMatchesContent,
+      message: byteLengthMatchesContent
+        ? `${label} byte length matches the snapshot content`
+        : `${label} byte length MUST match the snapshot content of ${guidance.source_path}`,
+    },
+    {
+      id: `${idPrefix}.reference_block`,
+      passed: markdown.includes(referenceBlock),
+      message: markdown.includes(referenceBlock)
+        ? `${label} reference fields are contiguous and exact`
+        : `Markdown MUST render the exact reference block for ${guidance.source_path}`,
+    },
+    {
+      id: `${idPrefix}.body_absent`,
+      passed: bodyAbsent,
+      message: bodyAbsent
+        ? `${label} body stays in the invocation snapshot`
+        : `Markdown MUST NOT inline the guidance body of ${guidance.source_path}`,
+    },
+  ]
+}
+
 export function validateInvocationMarkdown(
   invocation: Invocation,
   markdown: string,
@@ -381,22 +509,14 @@ export function validateInvocationMarkdown(
     }
 
     for (const [index, guidance] of (policy.guidance ?? []).entries()) {
-      const heading = `### Unrolled guidance · \`${guidance.source_path}\``
-
-      checks.push({
-        id: `policy.${policy.id}.guidance.${index + 1}.heading`,
-        passed: normalized.includes(heading),
-        message: normalized.includes(heading)
-          ? `Policy ${policy.id} guidance ${index + 1} heading is present`
-          : `Markdown MUST identify unrolled guidance ${guidance.source_path}`,
-      })
-      checks.push({
-        id: `policy.${policy.id}.guidance.${index + 1}.content`,
-        passed: normalized.includes(guidance.content),
-        message: normalized.includes(guidance.content)
-          ? `Policy ${policy.id} guidance ${index + 1} content is present`
-          : `Markdown MUST inline guidance from ${guidance.source_path}`,
-      })
+      checks.push(
+        ...guidanceChecks({
+          id_prefix: `policy.${policy.id}.guidance.${index + 1}`,
+          label: `Policy ${policy.id} guidance ${index + 1}`,
+          guidance,
+          markdown: normalized,
+        }),
+      )
     }
   }
 
@@ -442,12 +562,12 @@ export function validateInvocationMarkdown(
         : `Markdown MUST contain '${DELEGATION_HEADING}'`,
     })
     checks.push({
-      id: 'delegation.policies_unrolled',
+      id: 'delegation.policies_present',
       passed: delegation.policies.length > 0,
       message:
         delegation.policies.length > 0
-          ? `${delegation.policies.length} supervisor delivery policies unrolled`
-          : 'Delegated stages MUST unroll INVOCATION-001 for the supervisor',
+          ? `${delegation.policies.length} supervisor delivery policies are inline`
+          : 'Delegated stages MUST inline INVOCATION-001 for the supervisor',
     })
 
     for (const policy of delegation.policies) {
@@ -668,13 +788,17 @@ function attestationSections(value: unknown): Array<{
  * digests. A `reference_failed` report is accepted only next to a `blocked`
  * stage result carrying the concrete read error, which keeps an unreadable
  * contract loud instead of letting it pass as a product verdict.
+ *
+ * `pending` is the scaffold value and is rejected here. The scaffold cannot know
+ * whether the worker read the contract, so submitting the prefilled value would
+ * record a claim nobody made.
  */
 export function validateInvocationAttestation(
   invocation: Invocation,
   output: unknown,
 ): {
   passed: boolean
-  status: 'read' | 'reference_failed' | 'missing' | 'malformed'
+  status: 'read' | 'reference_failed' | 'pending' | 'missing' | 'malformed'
   checks: ValidationCheck[]
 } {
   const manifest = invocation.contract_manifest
@@ -713,6 +837,7 @@ export function validateInvocationAttestation(
     }
   }
 
+  const pending = attestation.status === 'pending'
   const status =
     attestation.status === 'read' || attestation.status === 'reference_failed'
       ? attestation.status
@@ -724,7 +849,9 @@ export function validateInvocationAttestation(
       message:
         status !== null
           ? `Attestation status is '${status}'`
-          : `Attestation status MUST be read or reference_failed (got ${JSON.stringify(attestation.status)})`,
+          : pending
+            ? 'Attestation status is still the scaffold value pending; set it to read after reading the complete contract'
+            : `Attestation status MUST be read or reference_failed (got ${JSON.stringify(attestation.status)})`,
     },
     {
       id: 'attestation.invocation_id',
@@ -745,7 +872,7 @@ export function validateInvocationAttestation(
   ]
 
   if (status === null) {
-    return { passed: false, status: 'malformed', checks }
+    return { passed: false, status: pending ? 'pending' : 'malformed', checks }
   }
 
   if (status === 'reference_failed') {
@@ -2038,7 +2165,7 @@ function validateHandbookPolicyCoverage(
 
   if (matches.length === 0) {
     errors.push(
-      `${requirement.handbook_path} MUST be unrolled by at least one policy`,
+      `${requirement.handbook_path} MUST be delivered by at least one policy`,
     )
     return policyIds
   }
@@ -2090,7 +2217,7 @@ function validateGovernance(
     for (const guidancePath of new Set(staticReferences)) {
       if (!declaredGuidance.has(guidancePath)) {
         errors.push(
-          `${policy.id} references static guidance ${guidancePath} without unrolling it through guidance_sources`,
+          `${policy.id} references static guidance ${guidancePath} without declaring it in guidance_sources`,
         )
       }
     }

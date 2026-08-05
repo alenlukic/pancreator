@@ -201,8 +201,9 @@ self-development operating card are excluded.
 ## Browser isolation projection
 
 `BROWSER-001` (`.pancreator/governance/policies/BROWSER-001.json`) is the single
-source of the browser-inspection contract. Workflow agents receive it unrolled into
-their invocation card; for work that runs outside a card, embedded installs generate
+source of the browser-inspection contract. Workflow agents receive its rules inline
+on their invocation card, with the procedure delivered as an audited guidance
+reference; for work that runs outside a card, embedded installs generate
 it into `.cursor/rules/pan-browser-isolation.mdc` as an always-apply rule. That file
 is generated output — change the policy, not the rule.
 
@@ -353,7 +354,7 @@ blanket-deleted.
 
 ## Harness versioning
 
-`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `2.20.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
+`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `3.0.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
 
 `release/index.json` is the internal mapping from harness version to immutable
 Git commit. Because a commit cannot contain its own hash, release publication is

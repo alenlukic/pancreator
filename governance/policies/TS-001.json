@@ -2,9 +2,9 @@
   "id": "TS-001",
   "title": "TypeScript conformance",
   "severity": "hard",
-  "summary": "Agents writing, reviewing, or testing durable repository TypeScript and TSX MUST apply the TypeScript style and Node.js guidance unrolled into the active invocation together with the configured formatter.",
+  "summary": "Agents writing, reviewing, or testing durable repository TypeScript and TSX MUST apply the TypeScript style and Node.js guidance this policy references together with the configured formatter.",
   "instructions": [
-    "Agents writing, reviewing, or testing TypeScript MUST apply the complete unrolled TypeScript and Node.js guidance included with this policy before completion.",
+    "Agents writing, reviewing, or testing TypeScript MUST read the complete TypeScript and Node.js guidance this policy references, and MUST apply it before completion.",
     "Agents MUST run the configured formatter and type checker before completion and MUST treat formatter output as authoritative.",
     "Workflow-local automation under runtime/logs/workflows/<run-id>/scripts/ MAY be throwaway and need not conform to the repository TypeScript style guidance unless it is promoted into durable repository code.",
     "Agents MUST NOT reconstruct or separately load formatter-owned appendix rules during ordinary implementation or review unless they are changing formatter configuration or integration."
@@ -13,11 +13,13 @@
     {
       "path": "governance/handbooks/typescript/style-guide.md",
       "start_heading": "## Core principles",
-      "end_heading": "# Appendix A: Formatter-owned rules"
+      "end_heading": "# Appendix A: Formatter-owned rules",
+      "read_trigger": "Read this guidance before you write, review, or test TypeScript or TSX."
     },
     {
       "path": "governance/handbooks/typescript/node.md",
-      "start_heading": "## Modules and dependencies"
+      "start_heading": "## Modules and dependencies",
+      "read_trigger": "Read this guidance before you write, review, or test TypeScript, TSX, or Node.js code."
     }
   ]
 }

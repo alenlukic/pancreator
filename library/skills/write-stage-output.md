@@ -24,6 +24,10 @@ references both while carrying the structured fields the harness checks.
 5. Populate every required `data` field with the declared type.
 6. State risks and unknowns honestly; an empty list means you checked, not that
    you skipped.
+7. When the output carries `invocation_attestation`, the scaffold writes status
+   `pending`. Change it to `read` after you read the complete contract, or to
+   `reference_failed` with the concrete error and result `blocked`. Submission
+   rejects `pending`.
 
 The harness rerenders the declared brief source during submission. A missing or
 invalid source, a non-HTML primary artifact, or artifact paths that differ from

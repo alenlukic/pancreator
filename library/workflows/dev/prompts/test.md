@@ -15,7 +15,8 @@ produce reproducible evidence.
    inspection to `design-qa`, do not duplicate that inspection; record functional
    verification and reference the existing evidence.
 5. Otherwise, when the implementation exposes an operator-facing web UI, perform
-   visual QA by following `BROWSER-001` as unrolled into this card. Confirm
+   visual QA by reading and following the `BROWSER-001` guidance this card
+   references. Confirm
    relevant functionality, visual hierarchy, and named design tokens.
 6. Use the same explicit repository-declared toolchain entrypoints and configured
    probes used by implementation and review so equivalent results are comparable.

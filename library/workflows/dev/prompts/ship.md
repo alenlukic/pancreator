@@ -10,7 +10,7 @@ implementation, review, QA evidence, and current workspace.
    operator waiver directives. Fingerprint currency applies to unwaived evidence,
    not to the validity of an operator directive.
 3. When `config.json.installation_mode` is `self_development`, apply the
-   release-metadata procedure unrolled under `VERSION-001`: inspect the complete
+   release-metadata procedure `VERSION-001` references: inspect the complete
    delta since the last committed release bump, choose `major`, `minor`, or
    `patch`, author or regenerate the release notes, and synchronize all
    version-bearing files.
@@ -22,7 +22,7 @@ implementation, review, QA evidence, and current workspace.
    rollback guidance.
 7. When Git metadata is available, draft a proposed commit message that
    accurately describes the diff.
-8. Apply the PR-description procedure unrolled under `PR-001`: save the PR
+8. Apply the PR-description procedure `PR-001` references: save the PR
    description to
    `runtime/logs/workflows/<run-id>/artifacts/markdown/pr-description.md` and
    reference it in stage artifacts. Do not open or create a pull request.

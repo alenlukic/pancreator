@@ -259,9 +259,30 @@ export interface PolicyRequirement {
   applicability?: Record<string, string>
 }
 
+/**
+ * Progressive-disclosure metadata for one selected guidance range.
+ *
+ * A card renders this instead of the guidance body, so the initial instruction
+ * set stays small while the authority stays with the policy. The digest and the
+ * counts describe the exact bytes the harness selected when it prepared the
+ * invocation, which is what lets a reader detect a source that changed after
+ * preparation. Guidance whose `reference` is absent was prepared before
+ * progressive disclosure existed and keeps its inline body.
+ */
+export interface PolicyGuidanceReference {
+  start_heading?: string
+  end_heading?: string
+  content_sha256: string
+  line_count: number
+  byte_length: number
+  /** Imperative condition that tells the reader when to open the source. */
+  read_trigger: string
+}
+
 export interface PolicyGuidance {
   source_path: string
   content: string
+  reference?: PolicyGuidanceReference
 }
 
 export interface Policy {
@@ -433,8 +454,15 @@ export interface WorkspaceChangeAttribution {
  * Whether the worker read its complete canonical contract, or could not reach
  * it. `reference_failed` is only valid alongside a `blocked` stage result: a
  * worker that never held the contract has no basis for any other verdict.
+ *
+ * `pending` is the value the output scaffold writes. It is an intermediate
+ * state, never a submittable one: prefilling `read` would put a claim the
+ * harness cannot observe into the record before the worker made it.
  */
-export type InvocationAttestationStatus = 'read' | 'reference_failed'
+export type InvocationAttestationStatus =
+  | 'pending'
+  | 'read'
+  | 'reference_failed'
 
 export interface InvocationAttestationSection {
   id: string
@@ -456,7 +484,7 @@ export type InvocationAttestation =
       invocation_id: string
       contract_path: string
       contract_sha256: string
-      status: 'read'
+      status: 'pending' | 'read'
       sections: InvocationAttestationSection[]
     }
   | {
@@ -580,7 +608,7 @@ export interface Invocation {
   /**
    * Delivery contract for the supervisor that must hand this card to a worker.
    * Present only for delegated stages. The supervisor holds no card of its own
-   * during the continuation loop, so `INVOCATION-001` is unrolled here — on the
+   * during the continuation loop, so `INVOCATION-001` is stated here — on the
    * artifact the supervisor is already reading at the moment it delegates —
    * rather than left to ambient recall of `AGENTS.md`.
    */

@@ -10,12 +10,13 @@
     "A dimension agent MUST return findings only and MUST NOT edit any file. Bounded remediation stays with the reviewer under REVIEW-001.",
     "The reviewer MUST merge duplicate findings, drop what the intent brief already answers, rank the remainder, and record each dropped finding with its reason.",
     "A dimension that returns nothing MUST appear in the review artifact as empty rather than absent, and a finding that touches credentials, data loss, or an authorization bypass MUST rank first.",
-    "The unrolled `library/skills/review-squad.md` guidance MUST govern the lineup, the charters, the finding shape, and the calibration bar for this review."
+    "The referenced `library/skills/review-squad.md` guidance MUST govern the lineup, the charters, the finding shape, and the calibration bar for this review."
   ],
   "guidance_sources": [
     {
       "path": "library/skills/review-squad.md",
-      "start_heading": "## Principle"
+      "start_heading": "## Principle",
+      "read_trigger": "Read this guidance before you start a squad review or join its findings."
     }
   ]
 }

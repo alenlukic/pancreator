@@ -1,4 +1,4 @@
-# Pancreator v2 operating card
+# Pancreator v3 operating card
 
 The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in this document indicate requirement levels as defined by RFC 2119 and RFC 8174.
 
@@ -36,6 +36,16 @@ Read the scope of a rule from its subject. A rule that names a run, a stage, an 
 - The primer is orientation, not authority. Agents MUST NOT open or search files merely because the primer references them; a referenced file MAY be read only for a concrete task-specific need.
 - The operator request, this file, the active invocation card, and applicable policies retain precedence over primer content.
 
+## Policy guidance disclosure
+
+- An invocation card carries every policy summary, instruction, requirement, input, output, and boundary inline.
+- A card references handbook and skill guidance instead of inlining it. Each reference names the source path, the selected range, a content digest, and a read trigger.
+- An agent MUST read a referenced range before the work its trigger names.
+- An agent MUST NOT act on a remembered or paraphrased version of referenced guidance.
+- An agent MUST NOT read a reference whose trigger does not apply to the active task.
+- The invocation JSON keeps the exact selected content for audit. When the source changed after preparation, the digest differs, and the agent MUST report the difference.
+- Every model configuration receives the same references and the same rules.
+
 ## Operator brief system
 
 - `BRIEF-001` governs new operator-facing narrative artifacts. Authors MUST use the JSON brief contract and render self-contained semantic HTML; existing Markdown and canonical worker-control records are not migrated.
@@ -47,7 +57,7 @@ Read the scope of a rule from its subject. A rule that names a run, a stage, an 
 
 Supervisor and worker are roles inside a workflow run. An agent that holds neither is a standalone-mode agent or an unbound agent.
 
-- The **supervisor** is the agent advancing one workflow run and owning its operator-facing reports. It is the `orchestrator` persona; `library/personas/orchestrator.md` is its behavioral brief, and `ORCH-001` unrolls that brief into every supervisor-owned invocation card. "Supervisor" and "orchestrator" name the same role throughout this repository — the first is the role, the second is the persona identifier used by `config.json` and the policy lookup table.
+- The **supervisor** is the agent advancing one workflow run and owning its operator-facing reports. It is the `orchestrator` persona; `library/personas/orchestrator.md` is its behavioral brief, and `ORCH-001` references that brief on every supervisor-owned invocation card. "Supervisor" and "orchestrator" name the same role throughout this repository — the first is the role, the second is the persona identifier used by `config.json` and the policy lookup table.
 - A **worker** is a named persona executing one delegated stage through its projected `.cursor/agents/pan-<persona>.md` subagent.
 - The supervisor runs as the projected `.cursor/agents/pan-orchestrator.md` subagent. It accepts exactly two invocation types: a **start invocation** carrying a preserved operator request, sent by `/pan-start`, and a **resume invocation** carrying a run id plus an optional operator prompt, sent by `/pan-resume` or by `/pan-start` after an operator response. The invoking command holds the operator conversation: it relays the supervisor's reports and the operator's decisions, and it MUST NOT advance the run itself.
 
@@ -74,7 +84,7 @@ These rules bind the supervisor and the workers of an active run.
 
 - Before stage work, the supervisor MUST run `./bin/pan status <run-id>` and read the pending invocation or assessment card.
 - A named worker stage MUST be delegated to the executor its run's pipeline snapshot resolves: a cursor-executor persona to the matching locally projected `.cursor/agents/pan-<persona>.md` subagent, and an external-executor persona (for example `claude-code:<model>`) by running `./bin/pan delegate <run-id>` and awaiting its result. External delegation is governed by [`EXECUTOR-001`](governance/policies/EXECUTOR-001.json): the harness delivers the card and authors the delegation evidence itself, and the supervisor MUST NOT re-deliver the card or write that evidence.
-- Cursor delegation is governed by [`INVOCATION-001`](governance/policies/INVOCATION-001.json) and is unrolled here because the supervisor holds no stage invocation card. Every prepared worker card carries the same contract, with resolved paths, under its **Supervisor delivery procedure** section. For each cursor-delegated worker stage the supervisor MUST:
+- Cursor delegation is governed by [`INVOCATION-001`](governance/policies/INVOCATION-001.json) and is restated here because the supervisor holds no stage invocation card. Every prepared worker card carries the same contract, with resolved paths, under its **Supervisor delivery procedure** section. For each cursor-delegated worker stage the supervisor MUST:
   1. Read the harness-produced invocation validation artifact and MUST NOT delegate a card whose status is failed or missing.
   2. Deliver the body the card names. Referenced delivery names the generated `<invocation-id>.delivery.md` prompt, which carries the contract path, its digest, and its complete section index. Verbatim delivery names the canonical `<invocation-id>.md` card. A summary, an excerpt, or a bare path MUST NOT substitute for either body.
   3. Persist that exact prompt body to `runtime/logs/workflows/<run-id>/invocations/<invocation-id>.delegation.md` before submitting the stage.
@@ -89,16 +99,16 @@ These rules bind the supervisor and the workers of an active run.
 - For `supervisor_assessment`, the supervisor MUST evaluate only the listed judgment criteria and write the declared assessment file.
 - For `operator_approval`, the supervisor MUST present the ratification packet and stop unless the operator has already explicitly decided. It MUST NOT originate or infer approval, but MUST execute an explicit approval directive.
 - An operator-gated stage MUST stop before its success, failure, and blocked transitions. Approval applies the recorded outcome and its transition, so approving a failed stage routes the failure rather than the success.
-- The supervisor MUST apply [`ORCH-001`](governance/policies/ORCH-001.json) for continuation and stop conditions. Its full text and the supervisor brief are unrolled into every supervisor-owned invocation card.
+- The supervisor MUST apply [`ORCH-001`](governance/policies/ORCH-001.json) for continuation and stop conditions. Every supervisor-owned invocation card carries its full text and references the supervisor brief.
 
 ## Work modes
 
 - `systematic` is the default work mode and MUST execute an applicable governed workflow such as `dev` or `prototype`.
-- `lightweight` MAY be selected only by an explicit operator invocation of `/pan-spotfix` and MUST apply `WORK-001`, `SPOT-001`, and the complete spotfix procedure unrolled into the delegation.
+- `lightweight` MAY be selected only by an explicit operator invocation of `/pan-spotfix` and MUST apply `WORK-001`, `SPOT-001`, and the spotfix procedure the delegation references.
 - A request qualifies as lightweight only when it is one coherent small-scope change under `WORK-001`. Uncertain or expanded scope MUST route to `systematic`.
 - `interactive` MAY be selected only by an explicit operator invocation of `/pan-pair` and MUST apply `PAIR-001`. The agent applies the governance its persona carries and is bound to no workflow, stage contract, gate, or run contract; the operator owns scope, sequencing, and completion. An interactive session MUST NOT create, advance, or write state for a workflow run, and MUST NOT be converted into one on agent initiative.
 - Every non-workflow mode MUST receive its governance from `./bin/pan governance card --mode <mode>`, which resolves the same policy applicability map the workflow path uses. Agents MUST NOT hand-assemble policy text from `governance/policies/` for these modes.
-- `shepherd` MAY be selected only by an explicit operator invocation of `/pan-shepherd` on one named pull request and MUST apply `SHEPHERD-001` with the complete shepherd procedure unrolled into its governance card. The invocation authorizes commits and pushes to that pull request's head branch only, and only for changes the local review squad has passed; merge, close, retarget, rebase, and force-push remain operator-owned. The squad pass is coordinated by the `pan-shepherd-reviewer` subagent, whose model `config.json` maps through the `shepherd-reviewer` persona independently of the run-time `reviewer`.
+- `shepherd` MAY be selected only by an explicit operator invocation of `/pan-shepherd` on one named pull request and MUST apply `SHEPHERD-001` with the shepherd procedure its governance card references. The invocation authorizes commits and pushes to that pull request's head branch only, and only for changes the local review squad has passed; merge, close, retarget, rebase, and force-push remain operator-owned. The squad pass is coordinated by the `pan-shepherd-reviewer` subagent, whose model `config.json` maps through the `shepherd-reviewer` persona independently of the run-time `reviewer`.
 - `/pan-debug` MUST delegate to the non-mutating investigator, which MUST identify root cause, define acceptance criteria, and recommend exactly one work mode.
 - `/pan-repair` MUST delegate to the non-mutating harness technician, which audits Pancreator failures or run artifacts, includes relevant agent transcripts for run forensics, and writes a validated self-development intake under `runtime/inbox/`.
 - `/pan-decompose` MUST apply `DECOMP-001` before workflow execution, default to retaining one larger systematic run, and write only its validated decomposition artifact under `runtime/inbox/`.
@@ -124,7 +134,7 @@ These rules bind the supervisor and the workers of an active run.
 
 - `config.json.review_mode` selects how the independent review stage gathers its findings. `default` is one reviewer over the whole change. `squad` applies `REVIEW-002` and delegates one agent per review dimension. `./bin/pan init --review-mode <mode>` overrides the configured value for one run.
 - A run resolves its review mode once at creation and snapshots it into `state.review_mode`. Later edits to `config.json` MUST NOT change a run already in flight.
-- `squad` activates the `review_mode`-scoped policy lookup row that loads `REVIEW-002`, which unrolls `library/skills/review-squad.md` into the reviewer's card. Reviewers MUST consume that guidance from the card rather than loading the skill separately.
+- `squad` activates the `review_mode`-scoped policy lookup row that loads `REVIEW-002`, which references `library/skills/review-squad.md` on the reviewer's card. Reviewers MUST read that reference before the review.
 - Review mode selects the method only. `REVIEW-001` retains the verdict, the reviewer remediation boundary, and routing to implementation under every mode. A dimension agent MUST NOT edit any file.
 
 ## Safety and scope
@@ -165,7 +175,7 @@ These rules bind the supervisor and the workers of an active run.
 
 ## TypeScript
 
-- Human-authored TypeScript and TSX MUST conform to `TS-001`; workflow agents MUST use the complete TypeScript and Node.js guidance unrolled into the active invocation rather than loading handbook paths separately.
+- Human-authored TypeScript and TSX MUST conform to `TS-001`; workflow agents MUST read the complete TypeScript and Node.js guidance the active invocation references.
 - Agents changing TypeScript MUST inspect the guide’s normative sections and MUST NOT inspect Appendix A during ordinary implementation or review.
 - Formatter output MUST be treated as authoritative.
 
