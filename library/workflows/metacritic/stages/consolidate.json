@@ -1,0 +1,69 @@
+{
+  "slug": "consolidate",
+  "title": "Candidate consolidation",
+  "persona": "metacritic",
+  "prompt_path": "library/workflows/metacritic/prompts/consolidate.md",
+  "workspace_policy": "source_allowed",
+  "gate": "next_stage",
+  "context": {
+    "request": "required",
+    "conditional_stage_outputs": [
+      {
+        "stage": "review",
+        "selection": "latest"
+      },
+      {
+        "stage": "test",
+        "selection": "latest"
+      }
+    ],
+    "prior_attempts": 1,
+    "operator_feedback": 1
+  },
+  "required_data": {
+    "consolidation": "object",
+    "consolidation.candidates": "array",
+    "consolidation.strategy": "string",
+    "implementation": "object",
+    "implementation.changed_files": "array",
+    "implementation.tests_added": "array",
+    "implementation.notes": "array",
+    "acceptance_criteria": "array",
+    "acceptance_results": "array"
+  },
+  "criteria": [
+    {
+      "id": "consolidate.candidates_evaluated",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Every candidate named by the consolidation request is evaluated for correctness, strengths, and weaknesses."
+    },
+    {
+      "id": "consolidate.acceptance_claimed",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The consolidated implementation maps evidence to every acceptance criterion and does not claim unsupported completion."
+    },
+    {
+      "id": "consolidate.lint",
+      "type": "shell",
+      "hard": true,
+      "statement": "Configured repository static checks pass.",
+      "command": "pan repository-check static",
+      "timeout_ms": 240000
+    },
+    {
+      "id": "consolidate.unit_tests",
+      "type": "shell",
+      "hard": true,
+      "statement": "Configured repository fast checks pass.",
+      "command": "pan repository-check fast",
+      "timeout_ms": 300000
+    }
+  ],
+  "transitions": {
+    "success": "review",
+    "failure": "consolidate",
+    "blocked": "paused"
+  }
+}

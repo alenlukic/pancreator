@@ -59,6 +59,7 @@ import {
   loadPipelineConfigSnapshot,
   makePipelineConfigSnapshot,
   resolvePersonaMapping,
+  type LoadedPipelineConfig,
 } from './pipeline-config.js'
 import {
   claudeCodeCredentialPreflight,
@@ -77,7 +78,11 @@ import {
   runRepositoryCheck,
   summarizeRepositoryCheckResult,
 } from './repository-checks.js'
-import { cursorAgentTarget, syncCursorProjection } from './projection.js'
+import {
+  cursorAgentTarget,
+  projectPersonaVariants,
+  syncCursorProjection,
+} from './projection.js'
 import {
   buildInvocationContractManifest,
   renderInvocationDeliveryPrompt,
@@ -95,6 +100,7 @@ import {
   writeDecision,
 } from './state.js'
 import type {
+  BestOfNRunRole,
   CriterionEvaluation,
   DeterministicResult,
   ExternalDelegationRecord,
@@ -141,6 +147,7 @@ import {
   loadWorkflow,
   loadWorkflowFile,
   stageBySlug,
+  workflowPersonaNames,
 } from './workflow.js'
 import {
   gitWorkspaceSnapshot,
@@ -148,6 +155,19 @@ import {
 } from './git.js'
 import { resolveRoots } from './workspace/roots.js'
 import { PROTECTED_PATH_RULE } from './workspace/protected-paths.js'
+
+/**
+ * Persona-to-model map that replaces the active pipeline config for one run.
+ * A best-of-N session runs several candidates at once under different models,
+ * which the single active config cannot express.
+ */
+export interface PipelineOverride {
+  label: string
+  personas: Record<string, string>
+  source_path: string
+  source_sha256: string
+  summary?: string
+}
 
 interface CreateRunOptions {
   workflowSlug?: string
@@ -157,6 +177,14 @@ interface CreateRunOptions {
   gatesPath?: string | null
   involvement?: string | null
   reviewMode?: string | null
+  pipelineOverride?: PipelineOverride | null
+  cursorAgentSuffix?: string | null
+  /**
+   * Keep the gates the workflow declares, ignoring the involvement profile. A
+   * best-of-N candidate must stay autonomous whatever profile is configured.
+   */
+  useWorkflowDeclaredGates?: boolean
+  bestOfN?: BestOfNRunRole | null
 }
 
 interface StatusOptions {
@@ -257,6 +285,28 @@ function assertRunPipelineConfigCurrent(
   snapshot: ReturnType<typeof loadRunPipelineConfig>,
 ): void {
   if (!state.pipeline_config) {
+    return
+  }
+
+  // A best-of-N run pins its own persona map, so the active config is not its
+  // authority. Its run-scoped agent variants are what must still match.
+  if (state.cursor_agent_suffix) {
+    const variantDrift = projectPersonaVariants(
+      root,
+      state.cursor_agent_suffix,
+      personaSubset(snapshot.personas, loadRunWorkflow(root, state)),
+    ).filter((entry) => entry.changed)
+
+    invariant(
+      variantDrift.length === 0,
+      `Run '${state.run_id}' delegates to run-scoped Cursor agent variants ` +
+        `that no longer match its pipeline snapshot.`,
+      {
+        code: 'PIPELINE_CONFIG_NOT_SYNCED',
+        details: { agents: variantDrift.map((entry) => entry.path) },
+      },
+    )
+
     return
   }
 
@@ -877,6 +927,47 @@ function submittedInvocationId(value: unknown): string | null {
     : null
 }
 
+/**
+ * Replace the persona map of a loaded pipeline config with an override, merged
+ * over `config.json` defaults exactly as a named config resolves.
+ */
+function overriddenPipelineConfig(
+  loaded: LoadedPipelineConfig,
+  override: PipelineOverride,
+): LoadedPipelineConfig {
+  return {
+    name: override.label,
+    config: {
+      ...(override.summary ? { summary: override.summary } : {}),
+      personas: { ...loaded.file.defaults, ...override.personas },
+    },
+    file: loaded.file,
+    path: override.source_path,
+    sha256: override.source_sha256,
+  }
+}
+
+function personaSubset(
+  personas: Record<string, string>,
+  workflow: WorkflowDefinition,
+): Record<string, string> {
+  const subset: Record<string, string> = {}
+
+  for (const persona of workflowPersonaNames(workflow)) {
+    const model = personas[persona]
+
+    invariant(
+      typeof model === 'string' && model.length > 0,
+      `Pipeline config does not map persona '${persona}' to a model.`,
+      { code: 'INVALID_PIPELINE_CONFIG' },
+    )
+
+    subset[persona] = model
+  }
+
+  return subset
+}
+
 export function createRun(root: string, options: CreateRunOptions): RunState {
   const workflowSlug = options.workflowSlug ?? 'dev'
   const requestPath = options.requestPath
@@ -886,7 +977,18 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
   })
 
   const workflow = loadWorkflow(root, workflowSlug)
-  const pipelineConfig = loadPipelineConfig(root)
+  const pipelineOverride = options.pipelineOverride ?? null
+  const agentSuffix = options.cursorAgentSuffix ?? null
+
+  invariant(
+    !pipelineOverride || agentSuffix,
+    'A pipeline override MUST name a Cursor agent suffix.',
+    { code: 'INVALID_PIPELINE_CONFIG' },
+  )
+
+  const pipelineConfig = pipelineOverride
+    ? overriddenPipelineConfig(loadPipelineConfig(root), pipelineOverride)
+    : loadPipelineConfig(root)
   let workflowUsesClaudeCode = false
 
   // The orchestrator persona is the supervisor running in the Cursor chat, so it
@@ -910,7 +1012,12 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
 
     if (mapping.executor === 'cursor') {
       invariant(
-        fileExists(path.join(root, cursorAgentTarget(root, stage.persona))),
+        fileExists(
+          path.join(
+            root,
+            cursorAgentTarget(root, stage.persona, agentSuffix ?? undefined),
+          ),
+        ),
         `Missing Cursor agent for persona '${stage.persona}'.`,
         { code: 'MISSING_CURSOR_AGENT' },
       )
@@ -932,18 +1039,38 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     })
   }
 
-  const agentModelDrift = syncCursorProjection(root).filter(
-    (entry) => entry.id === 'cursor-agents' && entry.changed,
-  )
+  // An overridden run delegates to run-scoped agent variants, so the active
+  // config's own projection says nothing about the models this run will use.
+  if (agentSuffix) {
+    const variantDrift = projectPersonaVariants(
+      root,
+      agentSuffix,
+      personaSubset(pipelineConfig.config.personas, workflow),
+    ).filter((entry) => entry.changed)
 
-  invariant(
-    agentModelDrift.length === 0,
-    `Cursor agent models do not match the active pipeline config. Run ${panCommand(root)} models --sync.`,
-    {
-      code: 'PIPELINE_CONFIG_NOT_SYNCED',
-      details: { agents: agentModelDrift.map((entry) => entry.path) },
-    },
-  )
+    invariant(
+      variantDrift.length === 0,
+      `Run-scoped Cursor agent variants do not match the pipeline override ` +
+        `'${pipelineConfig.name}'.`,
+      {
+        code: 'PIPELINE_CONFIG_NOT_SYNCED',
+        details: { agents: variantDrift.map((entry) => entry.path) },
+      },
+    )
+  } else {
+    const agentModelDrift = syncCursorProjection(root).filter(
+      (entry) => entry.id === 'cursor-agents' && entry.changed,
+    )
+
+    invariant(
+      agentModelDrift.length === 0,
+      `Cursor agent models do not match the active pipeline config. Run ${panCommand(root)} models --sync.`,
+      {
+        code: 'PIPELINE_CONFIG_NOT_SYNCED',
+        details: { agents: agentModelDrift.map((entry) => entry.path) },
+      },
+    )
+  }
 
   const source = resolveInside(root, requestPath)
 
@@ -997,13 +1124,18 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
   // The snapshot is authoritative for this run's gates, so the involvement
   // profile is resolved once here rather than re-derived on every transition.
   // A later edit to config.json cannot change a run already in flight.
-  const involvement = applyOperatorInvolvement(
-    workflowSnapshotValue,
-    selectInvolvementProfile(
-      loadOperatorInvolvementFile(root),
-      options.involvement,
-    ),
+  const involvementSelection = selectInvolvementProfile(
+    loadOperatorInvolvementFile(root),
+    options.involvement,
   )
+  const involvement = options.useWorkflowDeclaredGates
+    ? {
+        profile: involvementSelection.name,
+        summary: involvementSelection.profile.summary,
+        contracts: [],
+        applied_gates: {},
+      }
+    : applyOperatorInvolvement(workflowSnapshotValue, involvementSelection)
 
   // Snapshotted for the same reason as the involvement profile: the review
   // method a run started under governs it to the end.
@@ -1040,6 +1172,8 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     ...(gateOverrides ? { gate_overrides: gateOverrides } : {}),
     operator_involvement: involvement,
     review_mode: reviewMode,
+    ...(agentSuffix ? { cursor_agent_suffix: agentSuffix } : {}),
+    ...(options.bestOfN ? { best_of_n: options.bestOfN } : {}),
     title: options.title ?? path.basename(requestPath),
     status: 'running',
     current_stage: workflow.start_stage,
@@ -1377,7 +1511,11 @@ export function prepareInvocation(
             }
           : {
               persona: stage.persona,
-              cursor_agent_path: cursorAgentTarget(root, stage.persona),
+              cursor_agent_path: cursorAgentTarget(
+                root,
+                stage.persona,
+                state.cursor_agent_suffix,
+              ),
               canonical_markdown_path: markdownPath,
               invocation_validation_path: invocationValidationPath(
                 runId,
@@ -1548,6 +1686,7 @@ export function prepareInvocation(
       invocation.contract_manifest = buildInvocationContractManifest(
         markdownPath,
         renderedMarkdown,
+        invocation.policies,
       )
       writeTextAtomic(
         resolveInside(root, delegation.delivery_prompt_path),

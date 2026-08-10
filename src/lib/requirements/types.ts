@@ -29,6 +29,7 @@ export type InvocationKind =
   | 'documentation'
   | 'pair'
   | 'shepherd'
+  | 'best_of_n'
 
 export interface RequirementContext {
   persona: string

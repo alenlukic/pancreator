@@ -17,9 +17,11 @@
   "active_config": "default",
   "defaults": {
     "orchestrator": "grok-4.5[effort=high,fast=true]",
+    "meta-orchestrator": "grok-4.5[effort=high,fast=true]",
     "intake-writer": "grok-4.5[effort=high,fast=true]",
     "tech-lead": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
     "coder": "composer-2.5[fast=false]",
+    "metacritic": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
     "reviewer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
     "shepherd-reviewer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
     "qa-tester": "kimi-k3[]",
@@ -55,6 +57,7 @@
     "complex": {
       "summary": "Higher-reasoning coding and QA for complex or high-risk work.",
       "personas": {
+        "tech-lead": "claude-fable-5[]",
         "coder": "claude-opus-5[thinking=true,context=300k,effort=high]",
         "qa-tester": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
         "design-qa": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",

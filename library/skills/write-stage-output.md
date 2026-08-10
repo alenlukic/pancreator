@@ -28,6 +28,14 @@ references both while carrying the structured fields the harness checks.
    `pending`. Change it to `read` after you read the complete contract, or to
    `reference_failed` with the concrete error and result `blocked`. Submission
    rejects `pending`.
+8. When the attestation carries `guidance` entries, decide each one yourself:
+   set `read` after you read the selection from its source file, `skipped` with
+   the concrete `reason` when the read trigger does not apply to your task, or
+   `reference_failed` with the concrete `error` when the selection is
+   unreadable. Guidance digests cover the selected text after leading and
+   trailing whitespace is trimmed; when the source file no longer matches its
+   digest, read the exact selected bytes from the invocation JSON snapshot and
+   still declare `read`. Submission rejects `pending`.
 
 The harness rerenders the declared brief source during submission. A missing or
 invalid source, a non-HTML primary artifact, or artifact paths that differ from

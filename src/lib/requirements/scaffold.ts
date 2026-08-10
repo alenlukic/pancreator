@@ -160,6 +160,16 @@ export function scaffoldStageOutput(
           id: section.id,
           sha256: section.sha256,
         })),
+        ...(manifest.guidance?.length
+          ? {
+              guidance: manifest.guidance.map((entry) => ({
+                policy_id: entry.policy_id,
+                source_path: entry.source_path,
+                content_sha256: entry.content_sha256,
+                status: 'pending' as const,
+              })),
+            }
+          : {}),
       }
     : undefined
 

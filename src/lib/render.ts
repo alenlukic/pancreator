@@ -2,8 +2,10 @@ import { sha256 } from './io.js'
 import { renderGuidanceBlock } from './policy-guidance.js'
 import type {
   Invocation,
+  InvocationContractGuidance,
   InvocationContractManifest,
   InvocationContractSectionOwner,
+  Policy,
   RunState,
 } from './types.js'
 import { DELEGATION_HEADING, normalizeMarkdownContent } from './validation.js'
@@ -96,13 +98,37 @@ export function splitInvocationContract(
   }))
 }
 
+/**
+ * Name every referenced guidance selection the contract points at, in policy
+ * order. Legacy inline guidance carries its body on the card, so a read needs
+ * no attestation and it is not listed.
+ */
+function manifestGuidance(policies: Policy[]): InvocationContractGuidance[] {
+  return policies.flatMap((policy) =>
+    (policy.guidance ?? []).flatMap((guidance) =>
+      guidance.reference
+        ? [
+            {
+              policy_id: policy.id,
+              source_path: guidance.source_path,
+              content_sha256: guidance.reference.content_sha256,
+              read_trigger: guidance.reference.read_trigger,
+            },
+          ]
+        : [],
+    ),
+  )
+}
+
 /** Describe a rendered contract as a flat, digest-bearing section index. */
 export function buildInvocationContractManifest(
   contractPath: string,
   markdown: string,
+  policies: Policy[] = [],
 ): InvocationContractManifest {
   const contract = normalizeContract(markdown)
   const blocks = splitInvocationContract(contract)
+  const guidance = manifestGuidance(policies)
 
   return {
     contract_path: contractPath,
@@ -116,6 +142,7 @@ export function buildInvocationContractManifest(
       line_count: block.line_count,
       sha256: sha256(block.markdown),
     })),
+    ...(guidance.length > 0 ? { guidance } : {}),
   }
 }
 
@@ -187,6 +214,34 @@ export function renderInvocationDeliveryPrompt(
       'the concrete read error in `error`, and set the stage `result` to ' +
       '`blocked`. Do not report a product verdict you have no contract for.',
     '',
+    ...(manifest.guidance?.length
+      ? [
+          '## Guidance attestation',
+          '',
+          'The contract references policy guidance instead of inlining it. The ' +
+            'scaffold prefills one `invocation_attestation.guidance` entry per ' +
+            'reference with status `pending`. Submission rejects `pending`; set ' +
+            'each entry yourself:',
+          '',
+          '- `read` after you read the selection from the source file. Digests ' +
+            `cover the selection with surrounding whitespace trimmed. When the ` +
+            'file no longer matches its digest, read the exact selected bytes ' +
+            `from the invocation JSON snapshot and still declare \`read\`.`,
+          '- `skipped` with the concrete `reason` when the read trigger does ' +
+            'not apply to your task.',
+          '- `reference_failed` with the concrete `error` when neither the ' +
+            'source file nor the invocation snapshot is readable.',
+          '',
+          '| Policy | Guidance source | Digest |',
+          '| --- | --- | --- |',
+          ...manifest.guidance.map(
+            (entry) =>
+              `| \`${entry.policy_id}\` | \`${entry.source_path}\` | ` +
+              `\`sha256:${entry.content_sha256}\` |`,
+          ),
+          '',
+        ]
+      : []),
   ]
 
   return `${lines.join('\n')}\n`

@@ -269,6 +269,34 @@ test('a guidance reference names the selected heading range', () => {
   )
 })
 
+test('a guidance reference states its digest basis', () => {
+  const root = createFixture()
+  const invocation = baseInvocation(root, 'dev', 'implement')
+  const markdown = renderInvocationMarkdown(invocation)
+
+  // An honest verifier who hashes the raw range gets a different digest, so
+  // the reference itself must say what the digest covers.
+  assert.ok(
+    markdown.includes(
+      '- Digest basis: SHA-256 of the selected text after leading and ' +
+        'trailing whitespace is trimmed.',
+    ),
+  )
+})
+
+test('invocation validation accepts a card rendered before the digest-basis line', () => {
+  const root = createFixture()
+  const invocation = baseInvocation(root, 'dev', 'implement')
+  const legacyMarkdown = renderInvocationMarkdown(invocation).replaceAll(
+    '\n- Digest basis: SHA-256 of the selected text after leading and ' +
+      'trailing whitespace is trimmed.',
+    '',
+  )
+  const result = validateInvocationMarkdown(invocation, legacyMarkdown)
+
+  assert.equal(result.passed, true)
+})
+
 test('a guidance reference describes an end-only heading range', () => {
   const block = renderGuidanceBlock(3, {
     source_path: 'guide.md',
@@ -625,6 +653,7 @@ function referencedInvocation(root: string): Invocation {
   invocation.contract_manifest = buildInvocationContractManifest(
     contractPath,
     renderInvocationMarkdown(invocation),
+    invocation.policies,
   )
 
   return invocation
@@ -666,6 +695,64 @@ test('the contract manifest indexes every section once, in order', () => {
     new Set(manifest.sections.map((section) => section.id)).size,
     manifest.sections.length,
   )
+})
+
+test('the contract manifest indexes every referenced guidance selection', () => {
+  const root = createFixture()
+  const invocation = referencedInvocation(root)
+  const manifest = invocation.contract_manifest
+
+  assert.ok(manifest)
+
+  const expected = invocation.policies.flatMap((policy) =>
+    (policy.guidance ?? []).flatMap((guidance) =>
+      guidance.reference
+        ? [
+            {
+              policy_id: policy.id,
+              source_path: guidance.source_path,
+              content_sha256: guidance.reference.content_sha256,
+              read_trigger: guidance.reference.read_trigger,
+            },
+          ]
+        : [],
+    ),
+  )
+
+  assert.ok(expected.length > 0, 'the fixture card references guidance')
+  assert.deepEqual(manifest.guidance, expected)
+})
+
+test('the delivery prompt instructs the guidance attestation', () => {
+  const root = createFixture()
+  const invocation = referencedInvocation(root)
+  const manifest = invocation.contract_manifest
+
+  assert.ok(manifest?.guidance?.length)
+
+  const prompt = renderInvocationDeliveryPrompt(invocation, manifest)
+
+  assert.match(prompt, /## Guidance attestation/u)
+
+  for (const entry of manifest.guidance) {
+    assert.ok(prompt.includes(entry.source_path))
+    assert.ok(prompt.includes(`sha256:${entry.content_sha256}`))
+  }
+})
+
+test('a manifest without policies carries no guidance index', () => {
+  const root = createFixture()
+  const invocation = referencedInvocation(root)
+  const manifest = buildInvocationContractManifest(
+    'runtime/logs/workflows/run-fixture/invocations/legacy.md',
+    renderInvocationMarkdown(invocation),
+  )
+
+  assert.equal(manifest.guidance, undefined)
+
+  const prompt = renderInvocationDeliveryPrompt(invocation, manifest)
+
+  assert.doesNotMatch(prompt, /## Guidance attestation/u)
 })
 
 test('the delivery prompt references the contract without reproducing it', () => {

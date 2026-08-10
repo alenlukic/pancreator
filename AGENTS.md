@@ -43,7 +43,9 @@ Read the scope of a rule from its subject. A rule that names a run, a stage, an 
 - An agent MUST read a referenced range before the work its trigger names.
 - An agent MUST NOT act on a remembered or paraphrased version of referenced guidance.
 - An agent MUST NOT read a reference whose trigger does not apply to the active task.
-- The invocation JSON keeps the exact selected content for audit. When the source changed after preparation, the digest differs, and the agent MUST report the difference.
+- A reference digest covers the selected text after leading and trailing whitespace is trimmed.
+- The invocation JSON keeps the exact selected content for audit. When the source changed after preparation, the digest differs; the agent MUST read the selection from the invocation JSON and record the difference in its guidance attestation.
+- A worker output whose attestation carries `guidance` entries MUST resolve each one: `read` after reading the selection, `skipped` with the reason the trigger does not apply, or `reference_failed` with the concrete error. Submission rejects the scaffold value `pending`.
 - Every model configuration receives the same references and the same rules.
 
 ## Operator brief system
@@ -59,7 +61,8 @@ Supervisor and worker are roles inside a workflow run. An agent that holds neith
 
 - The **supervisor** is the agent advancing one workflow run and owning its operator-facing reports. It is the `orchestrator` persona; `library/personas/orchestrator.md` is its behavioral brief, and `ORCH-001` references that brief on every supervisor-owned invocation card. "Supervisor" and "orchestrator" name the same role throughout this repository — the first is the role, the second is the persona identifier used by `config.json` and the policy lookup table.
 - A **worker** is a named persona executing one delegated stage through its projected `.cursor/agents/pan-<persona>.md` subagent.
-- The supervisor runs as the projected `.cursor/agents/pan-orchestrator.md` subagent. It accepts exactly two invocation types: a **start invocation** carrying a preserved operator request, sent by `/pan-start`, and a **resume invocation** carrying a run id plus an optional operator prompt, sent by `/pan-resume` or by `/pan-start` after an operator response. The invoking command holds the operator conversation: it relays the supervisor's reports and the operator's decisions, and it MUST NOT advance the run itself.
+- The supervisor runs as the projected `.cursor/agents/pan-orchestrator.md` subagent, or as the run-scoped variant a best-of-N session projects for it. The invoking command or agent holds the operator conversation. It relays the supervisor's reports and the operator's decisions, and it MUST NOT advance the run itself.
+- The supervisor accepts exactly two invocation types. A **start invocation** carries a preserved operator request, and `/pan-start` sends it. A **resume invocation** carries a run id plus an optional operator prompt. `/pan-resume` sends one, and `/pan-start` sends one after an operator response. The `pan-meta-orchestrator` agent sends one for a best-of-N run.
 
 An agent MUST NOT assume the supervisor role. Holding no invocation card does not imply it. The role belongs only to the `pan-orchestrator` subagent holding a start or resume invocation and advancing that run through `./bin/pan`. An agent holding no run MUST NOT prepare or deliver an invocation card, submit stage output, advance run state, or otherwise act as a run's supervisor on its own initiative. It MAY execute such an action when the operator explicitly directs it, under `OPERATOR-001`.
 
@@ -75,6 +78,7 @@ These rules bind every agent that reads this file.
 - Agents MUST NOT edit `state.json`, `events.jsonl`, or generated workflow records directly.
 - Ad-hoc Subagent calls MUST omit `model` so they inherit the parent model unless the operator explicitly selects a model. This does not change named-persona routing through projected frontmatter and `config.json`.
 - A projected `.cursor/agents/pan-<persona>.md` subagent MUST carry a frontmatter model matching the active mapping in `config.json`. Run `./bin/pan models --sync` after cloning the repository or changing `active_config` or a mapped model.
+- A run-scoped subagent variant at `.cursor/agents/pan-<persona>--<suffix>.md` carries the model one best-of-N run pinned, rather than the active mapping. `./bin/pan best-of-n` owns every variant. Agents MUST NOT write or edit one, and repository validation MUST NOT read one as active-config drift.
 - `.cursor/` MUST remain fully gitignored and MUST be treated as disposable local configuration. Canonical Cursor agents, commands, and rules live under `library/cursor/` and are declared by `governance/registries/projection_manifest.json`; source or installation code MUST NOT treat `.cursor/` as authoritative input.
 - Every projection installable into a target repository MUST use a `pan-` or `pancreator.` filename so it can never collide with target-owned Cursor configuration. `src/lib/projection.ts` and `bin/install-support` both enforce this after glob expansion.
 
@@ -90,7 +94,7 @@ These rules bind the supervisor and the workers of an active run.
   3. Persist that exact prompt body to `runtime/logs/workflows/<run-id>/invocations/<invocation-id>.delegation.md` before submitting the stage.
   4. Add no parallel scope, policy, gate, or plan restatement that could shadow the contract; a minimal non-conflicting persona label MAY precede it. The delegation validator accepts exactly one such label: a single short line that opens no Markdown structure, followed by a blank line, ahead of the delivered body.
   5. Repair a missing or mismatched delegation artifact against the same active invocation rather than bypassing it or reporting delivery as successful.
-- A worker that receives a referenced contract MUST read it in full before other repository context and MUST declare that read in `invocation_attestation` in its stage output. The attestation MUST name every contract section in order with its digest. A worker that cannot read the contract MUST report result `blocked` with status `reference_failed` and the concrete read error.
+- A worker that receives a referenced contract MUST read it in full before other repository context and MUST declare that read in `invocation_attestation` in its stage output. The attestation MUST name every contract section in order with its digest, and MUST resolve every prefilled guidance entry as `read`, `skipped` with a reason, or `reference_failed` with the concrete error. A worker that cannot read the contract MUST report result `blocked` with status `reference_failed` and the concrete read error.
 - A worker MUST write only the declared output and permitted evidence. The supervisor MUST submit it through `./bin/pan submit`.
 - The harness MUST rerun deterministic gate commands and MUST own code-determined transitions.
 - Before the first source-allowed stage, the harness MUST capture a repository-check baseline for every profile the workflow gates on. A gate whose expected baseline is absent or incompatible MUST pause the run before delegation.
@@ -109,16 +113,19 @@ These rules bind the supervisor and the workers of an active run.
 - `interactive` MAY be selected only by an explicit operator invocation of `/pan-pair` and MUST apply `PAIR-001`. The agent applies the governance its persona carries and is bound to no workflow, stage contract, gate, or run contract; the operator owns scope, sequencing, and completion. An interactive session MUST NOT create, advance, or write state for a workflow run, and MUST NOT be converted into one on agent initiative.
 - Every non-workflow mode MUST receive its governance from `./bin/pan governance card --mode <mode>`, which resolves the same policy applicability map the workflow path uses. Agents MUST NOT hand-assemble policy text from `governance/policies/` for these modes.
 - `shepherd` MAY be selected only by an explicit operator invocation of `/pan-shepherd` on one named pull request and MUST apply `SHEPHERD-001` with the shepherd procedure its governance card references. The invocation authorizes commits and pushes to that pull request's head branch only, and only for changes the local review squad has passed; merge, close, retarget, rebase, and force-push remain operator-owned. The squad pass is coordinated by the `pan-shepherd-reviewer` subagent, whose model `config.json` maps through the `shepherd-reviewer` persona independently of the run-time `reviewer`.
+- The operator selects `best-of-n` only by invoking the projected `pan-meta-orchestrator` agent. The session MUST apply `BESTOFN-001` from `./bin/pan governance card --mode best-of-n`. It tries one task with N candidate runs in isolated worktrees, then consolidates them in one further run. The meta-orchestrator MUST run as the operator's top-level agent. It MUST drive the session only through `./bin/pan best-of-n`. It MUST leave candidate repair, exclusion, and worktree removal to the operator.
 - `/pan-debug` MUST delegate to the non-mutating investigator, which MUST identify root cause, define acceptance criteria, and recommend exactly one work mode.
 - `/pan-repair` MUST delegate to the non-mutating harness technician, which audits Pancreator failures or run artifacts, includes relevant agent transcripts for run forensics, and writes a validated self-development intake under `runtime/inbox/`.
 - `/pan-decompose` MUST apply `DECOMP-001` before workflow execution, default to retaining one larger systematic run, and write only its validated decomposition artifact under `runtime/inbox/`.
-- A lightweight spotfix, an interactive pair session, and a shepherd session MUST NOT run while a mutating workflow agent is executing against the same workspace.
+- A lightweight spotfix, an interactive pair session, and a shepherd session MUST NOT run while a mutating workflow agent is executing against the same workspace. Best-of-N candidates are exempt from each other, because each one owns its own worktree. The consolidation run is not exempt, because it changes the main workspace.
 
 ## Workflows
 
 - `dev` delivers production-ready change: operator-ratified intake, plan, implement, independent review, QA, and operator-approved release preparation.
 - `prototype` answers a technical question fast. It applies `PROTO-001`, deliberately thins up-front design, deprioritizes QA breadth, and ends in an operator-ratified evaluation stating what the spike proved and what productionizing it would cost. A prototype MUST NOT be represented as production-ready, and adopting its approach MUST route the productionization work to a systematic run.
 - `design` is the UI/UX predecessor that hands off to a separately started `dev` run.
+- `dev-candidate` is `dev` without release preparation, run autonomously in one best-of-N worktree. Agents MUST NOT start it outside a best-of-N session, and MUST NOT ship its result directly.
+- `metacritic` consolidates a best-of-N session. It evaluates every candidate, writes one consolidated implementation, then reuses independent review, QA, and operator-approved release preparation.
 
 ## Operator involvement and run contracts
 

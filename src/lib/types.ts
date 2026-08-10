@@ -470,6 +470,31 @@ export interface InvocationAttestationSection {
 }
 
 /**
+ * What a worker did with one referenced guidance selection. `read` means the
+ * worker held the selected content — from the source file, or from the
+ * invocation snapshot when the file drifted. `skipped` means the worker judged
+ * the read trigger inapplicable and says why. `reference_failed` means neither
+ * the source nor the snapshot was readable, which fails the attestation.
+ * `pending` is the scaffold value and is rejected at submission.
+ */
+export type GuidanceAttestationStatus =
+  | 'pending'
+  | 'read'
+  | 'skipped'
+  | 'reference_failed'
+
+export interface GuidanceAttestationEntry {
+  policy_id: string
+  source_path: string
+  content_sha256: string
+  status: GuidanceAttestationStatus
+  /** Why the read trigger did not apply. Required when status is skipped. */
+  reason?: string
+  /** Concrete read error. Required when status is reference_failed. */
+  error?: string
+}
+
+/**
  * A worker's declaration that it read the complete referenced contract. The
  * declaration is the only observable a harness has: it cannot inspect the model
  * context that received the card. Comparing exact section order, cardinality,
@@ -486,6 +511,12 @@ export type InvocationAttestation =
       contract_sha256: string
       status: 'pending' | 'read'
       sections: InvocationAttestationSection[]
+      /**
+       * One entry per referenced guidance selection in the contract manifest,
+       * in manifest order. Absent on invocations prepared before guidance
+       * attestation existed and on contracts that reference no guidance.
+       */
+      guidance?: GuidanceAttestationEntry[]
     }
   | {
       invocation_id: string
@@ -634,6 +665,19 @@ export interface InvocationContractSection {
 }
 
 /**
+ * One referenced guidance selection the contract points at. The manifest names
+ * every selection so the scaffold can prefill a guidance attestation entry for
+ * each, and so the attestation validator has an authoritative order and digest
+ * to hold the worker's declarations against.
+ */
+export interface InvocationContractGuidance {
+  policy_id: string
+  source_path: string
+  content_sha256: string
+  read_trigger: string
+}
+
+/**
  * The canonical worker contract, described as ordered top-level blocks. The
  * blocks concatenate back to the exact contract bytes, so a section digest and
  * the full digest are checkable against the same file without a second render.
@@ -644,6 +688,8 @@ export interface InvocationContractManifest {
   byte_length: number
   line_count: number
   sections: InvocationContractSection[]
+  /** Absent when the contract references no guidance, and on legacy invocations. */
+  guidance?: InvocationContractGuidance[]
 }
 
 /**
@@ -884,6 +930,13 @@ export interface RepositoryCheckBaselinePointer {
   recorded_at: string
 }
 
+export interface BestOfNRunRole {
+  bon_id: string
+  role: 'candidate' | 'consolidation'
+  /** Config name from the session configs file, unique inside the session. */
+  slot: string
+}
+
 export interface RunState {
   schema_version: 1
   run_id: string
@@ -915,6 +968,14 @@ export interface RunState {
    * raises the ceiling instead of consuming budget reserved for failures.
    */
   operator_revisions?: Record<string, number>
+  /**
+   * Suffix of the run-scoped Cursor agent variants this run delegates to. Set
+   * only for a best-of-N run, whose personas carry models the active pipeline
+   * config does not declare.
+   */
+  cursor_agent_suffix?: string
+  /** Membership of a best-of-N session. Absent on an ordinary run. */
+  best_of_n?: BestOfNRunRole
   title: string
   status: RunStatus
   current_stage: string | null

@@ -49,6 +49,61 @@ export function gitHead(root: string): string | null {
   return result.status === 0 ? result.stdout.trim() : null
 }
 
+/**
+ * Create a detached worktree at `commit`.
+ *
+ * Detached is deliberate: a best-of-N candidate is disposable exploration, and
+ * a branch would leave a named ref behind that only an operator may delete.
+ */
+export function gitWorktreeAdd(
+  root: string,
+  worktreePath: string,
+  commit: string,
+): void {
+  runGit(root, ['worktree', 'add', '--detach', worktreePath, commit])
+}
+
+/** Absolute paths of every worktree registered in this repository. */
+export function gitWorktreePaths(root: string): string[] {
+  const result = runGit(root, ['worktree', 'list', '--porcelain'], {
+    allowFailure: true,
+  })
+
+  if (result.status !== 0) {
+    return []
+  }
+
+  return result.stdout
+    .split(/\r?\n/u)
+    .filter((line) => line.startsWith('worktree '))
+    .map((line) => line.slice('worktree '.length).trim())
+    .sort()
+}
+
+export function gitWorktreeRemove(
+  root: string,
+  worktreePath: string,
+  force = false,
+): void {
+  runGit(root, [
+    'worktree',
+    'remove',
+    ...(force ? ['--force'] : []),
+    worktreePath,
+  ])
+}
+
+/** Whether a worktree holds uncommitted work an operator has not preserved. */
+export function gitWorktreeIsDirty(worktreePath: string): boolean {
+  const result = runGit(
+    worktreePath,
+    ['status', '--porcelain=v1', '--untracked-files=all'],
+    { allowFailure: true },
+  )
+
+  return result.status !== 0 || result.stdout.trim().length > 0
+}
+
 function trackedWorkspacePath(
   entry: string,
   workspacePrefix: string,

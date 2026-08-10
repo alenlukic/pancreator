@@ -50,9 +50,63 @@ test('listWorkflowSlugs finds every defined workflow', () => {
   assert.deepEqual(listWorkflowSlugs(root), [
     'design',
     'dev',
+    'dev-candidate',
+    'metacritic',
     'preflight',
     'prototype',
   ])
+})
+
+test('a best-of-N candidate never stops for the operator', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev-candidate')
+
+  assert.deepEqual(
+    workflow.stages.map((stage) => stage.slug),
+    ['intake', 'plan', 'implement', 'review', 'test'],
+  )
+  assert.ok(workflow.stages.every((stage) => stage.gate !== 'operator'))
+  // A candidate ends at QA: shipping is the consolidation run's job.
+  assert.equal(stageBySlug(workflow, 'test').transitions.success, 'succeeded')
+})
+
+test('consolidation routes every failure back to consolidate and keeps the ship gate', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'metacritic')
+
+  assert.equal(workflow.start_stage, 'consolidate')
+
+  const consolidate = stageBySlug(workflow, 'consolidate')
+  const review = stageBySlug(workflow, 'review')
+  const qa = stageBySlug(workflow, 'test')
+  const ship = stageBySlug(workflow, 'ship')
+
+  assert.equal(consolidate.persona, 'metacritic')
+  assert.equal(consolidate.workspace_policy, 'source_allowed')
+  assert.equal(consolidate.transitions.success, 'review')
+  assert.equal(review.transitions.failure, 'consolidate')
+  assert.equal(qa.transitions.failure, 'consolidate')
+  assert.equal(review.gate, 'stage_verdict')
+  assert.equal(qa.gate, 'stage_verdict')
+  assert.equal(ship.gate, 'operator')
+  assert.equal(ship.gate_relaxable, false)
+  assert.deepEqual(consolidate.context.conditional_stage_outputs, [
+    { stage: 'review', selection: 'latest' },
+    { stage: 'test', selection: 'latest' },
+  ])
+
+  for (const key of [
+    'consolidation.candidates',
+    'consolidation.strategy',
+    'implementation.changed_files',
+    'acceptance_criteria',
+    'acceptance_results',
+  ]) {
+    assert.ok(
+      consolidate.required_data?.[key],
+      `consolidate MUST require ${key}`,
+    )
+  }
 })
 
 test('loader fails when an indexed stage file is missing', () => {

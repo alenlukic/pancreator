@@ -557,6 +557,40 @@ function requiredData(
           ],
         },
       }
+    case 'consolidate':
+      return {
+        consolidation: {
+          candidates: [
+            {
+              run_id: 'fixture-candidate',
+              verdict: 'adopted',
+              strengths: ['Smallest change'],
+              weaknesses: ['Thin tests'],
+              taken: 'Its adapter boundary',
+            },
+          ],
+          strategy: 'Adopt one candidate and add the missing tests.',
+        },
+        implementation: {
+          changed_files: [],
+          tests_added: [],
+          notes: ['fixture'],
+        },
+        acceptance_criteria: [
+          {
+            id: 'AC-01',
+            criterion: 'Workflow advances',
+            maps_to: ['US-01'],
+            verification: {
+              method: 'integration test',
+              expected: 'Workflow reaches ship',
+            },
+          },
+        ],
+        acceptance_results: [
+          { id: 'AC-01', result: 'pass', evidence: ['fixture'] },
+        ],
+      }
     case 'inspect':
       return { inspection: { findings: [], verdict: 'pass' } }
     case 'ship': {
@@ -704,6 +738,16 @@ export function makeAttestation(
       id: section.id,
       sha256: section.sha256,
     })),
+    ...(manifest.guidance?.length
+      ? {
+          guidance: manifest.guidance.map((entry) => ({
+            policy_id: entry.policy_id,
+            source_path: entry.source_path,
+            content_sha256: entry.content_sha256,
+            status: 'read' as const,
+          })),
+        }
+      : {}),
   }
 }
 

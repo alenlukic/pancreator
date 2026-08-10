@@ -61,8 +61,17 @@ policies MAY also be selected from detected target-workspace technology signals;
 for example, Python source or packaging markers activate `PY-001` for implementation,
 review, QA, and spotfix work without imposing Python guidance on unrelated targets.
 A worker MUST read a referenced range before the work its trigger names, and MUST
-NOT act on a remembered version of it. Cards prepared before progressive
-disclosure keep their inline guidance bodies and stay valid.
+NOT act on a remembered version of it. Digests cover the selected text after
+leading and trailing whitespace is trimmed, and the reference states that basis.
+The read itself is attested: the contract manifest indexes every referenced
+selection, the stage-output scaffold prefills one
+`invocation_attestation.guidance` entry per selection with status `pending`, and
+submission rejects `pending` — the worker must declare `read`, or `skipped` with
+the reason the trigger did not apply, or `reference_failed` with the concrete
+error (which fails the attestation). Cards prepared before progressive
+disclosure keep their inline guidance bodies and stay valid, and invocations
+prepared before guidance attestation existed carry no guidance index and require
+no entries.
 
 ## Build the target repository primer
 

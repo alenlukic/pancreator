@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-08-10
+
+### Changed
+
+- Extend `AGENTS.md`, embedded and detached templates, and the policy lookup table for best-of-N work mode, the meta-orchestrator start surface, and the run-scoped variant-agent rule ([AGENTS.md](AGENTS.md), [policy lookup table](governance/registries/policy_lookup_table.json)).
+
+### Added
+
+- Add best-of-N mode for the `dev` workflow: the operator invokes the projected `pan-meta-orchestrator` agent with a task and an N+1 configs file. `./bin/pan best-of-n` creates N autonomous `dev-candidate` runs in detached Git worktrees, then one `metacritic` consolidation run in the main workspace that reuses dev review, QA, and ship. Run-scoped Cursor agent variants carry per-candidate models, and `BESTOFN-001` governs the session ([best-of-n](src/lib/best-of-n.ts), [meta-orchestrator agent](library/cursor/agents/meta-orchestrator.md), [metacritic workflow](library/workflows/metacritic/workflow.json), [dev-candidate workflow](library/workflows/dev-candidate/workflow.json), [BESTOFN-001](governance/policies/BESTOFN-001.json), [docs/best-of-n.md](docs/best-of-n.md)).
+- Add `./bin/pan best-of-n init|status|abandon|consolidate|clean` with session mutex serialization, recoverable initialization that writes state before the first worktree, child-run reconciliation on every session command, and refusal of `clean` while a candidate or consolidation run is still active unless `--force` ([cli](src/cli.ts), [best-of-n](src/lib/best-of-n.ts)).
+- Add run-scoped agent variant projection: `projectPersonaVariants` renders `.cursor/agents/pan-<persona>--<suffix>.md` with override models, and drift validation excludes variants from active-config comparison ([projection](src/lib/projection.ts), [engine](src/lib/engine.ts)).
+- Add `CreateRunOptions.pipelineOverride`, `cursorAgentSuffix`, and `useWorkflowDeclaredGates` so best-of-N can pin per-run models and workflow-declared gates without changing the dev workflow itself ([engine](src/lib/engine.ts), [pipeline-config](src/lib/pipeline-config.ts)).
+- Attest referenced guidance reads in stage output. The contract manifest indexes every referenced guidance selection, the scaffold prefills one `invocation_attestation.guidance` entry per selection with status `pending`, and submission requires the worker to declare each entry `read`, `skipped` with the reason the trigger did not apply, or `reference_failed` with the concrete error ([render](src/lib/render.ts), [scaffold](src/lib/requirements/scaffold.ts), [validation](src/lib/validation.ts), [stage-output schema](library/schemas/stage-output.schema.json)).
+- State the digest basis on every guidance reference: SHA-256 of the selected text after leading and trailing whitespace is trimmed ([policy-guidance](src/lib/policy-guidance.ts), [validation](src/lib/validation.ts)).
+
+### Fixed
+
+- Name the rejected value and the allowed vocabulary when an operator brief references an unknown brief type, section semantic, card type, or field semantic ([briefs](src/lib/briefs.ts)).
+
 ## [3.0.0] - 2026-08-04
 
 ### Changed

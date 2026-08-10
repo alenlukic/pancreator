@@ -138,7 +138,7 @@ test('an unknown mode lists the available modes', () => {
 
   assert.throws(
     () => buildGovernanceCard(root, { mode: 'nonsense' }),
-    /Available: decomposition, investigation, pair, repair, shepherd, spotfix/u,
+    /Available: best-of-n, decomposition, investigation, pair, repair, shepherd, spotfix/u,
   )
 })
 

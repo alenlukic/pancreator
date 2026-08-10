@@ -42,6 +42,7 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 - `PAIR-001` — operator-directed pair programming outside workflow structure
 - `SHEPHERD-001` — bounded PR feedback watching, ledgered bot discipline, and squad-gated pushes
 - `PROTO-001` — prototype spike discipline and declared shortcuts
+- `BESTOFN-001` — best-of-N session boundaries: isolated worktrees, operator-owned repair, and no source-control action
 - `DIRECTOR-001` — technical-director checkpoints for contract-enabled runs
 
 The prototype MUST NOT use an implicit policy override hierarchy. Conflicting policy text MUST be treated as a configuration defect and resolved directly.
