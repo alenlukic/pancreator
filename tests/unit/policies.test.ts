@@ -36,6 +36,54 @@ test('policy resolution unions global and stage-specific policies', () => {
   ])
 })
 
+test('best-of-N stages carry the same policies as the dev stages they mirror', () => {
+  const root = createFixture()
+  const ids = (persona: string, workflow: string, stage: string): string[] =>
+    resolvePolicies(root, { persona, workflow, stage }).map(
+      (policy) => policy.id,
+    )
+
+  for (const stage of ['intake', 'plan', 'implement', 'review', 'test']) {
+    const persona = {
+      intake: 'intake-writer',
+      plan: 'tech-lead',
+      implement: 'coder',
+      review: 'reviewer',
+      test: 'qa-tester',
+    }[stage] as string
+
+    assert.deepEqual(
+      ids(persona, 'dev-candidate', stage).filter((id) => id !== 'BESTOFN-001'),
+      ids(persona, 'dev', stage),
+      `dev-candidate/${stage} MUST resolve dev's policies plus BESTOFN-001`,
+    )
+  }
+
+  const consolidate = ids('metacritic', 'metacritic', 'consolidate')
+
+  // Consolidation writes code, so it carries the implementation policy set.
+  for (const id of ['BESTOFN-001', 'DEV-001', 'ENG-001', 'TS-001']) {
+    assert.ok(consolidate.includes(id), `consolidate MUST load ${id}`)
+  }
+
+  assert.ok(ids('release-steward', 'metacritic', 'ship').includes('SHIP-001'))
+})
+
+test('the best-of-N session mode resolves its own governance', () => {
+  const root = createFixture()
+
+  assert.deepEqual(
+    resolvePolicies(root, {
+      persona: 'meta-orchestrator',
+      workflow: 'standalone',
+      stage: 'best-of-n',
+    })
+      .map((policy) => policy.id)
+      .filter((id) => id === 'BESTOFN-001' || id === 'WORK-001'),
+    ['BESTOFN-001', 'WORK-001'],
+  )
+})
+
 test('engineering handbook policy loads for reviewer and qa personas', () => {
   const root = createFixture()
 

@@ -110,6 +110,26 @@
       "policies": ["ENG-001", "CONTRACT-001"]
     },
     {
+      "persona": "metacritic",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["ENG-001", "CONTRACT-001"]
+    },
+    {
+      "persona": "metacritic",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["TS-001"]
+    },
+    {
+      "persona": "metacritic",
+      "workflow": "*",
+      "stage": "*",
+      "technology": "python",
+      "policies": ["PY-001"]
+    },
+    {
       "persona": "reviewer",
       "workflow": "*",
       "stage": "*",
@@ -213,6 +233,86 @@
       "policies": ["PROTO-001"]
     },
     {
+      "persona": "*",
+      "workflow": "dev-candidate",
+      "stage": "*",
+      "policies": ["BESTOFN-001"]
+    },
+    {
+      "persona": "*",
+      "workflow": "metacritic",
+      "stage": "*",
+      "policies": ["BESTOFN-001"]
+    },
+    {
+      "persona": "meta-orchestrator",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["BESTOFN-001", "WORK-001"]
+    },
+    {
+      "persona": "intake-writer",
+      "workflow": "dev-candidate",
+      "stage": "intake",
+      "policies": ["INTAKE-001"]
+    },
+    {
+      "persona": "tech-lead",
+      "workflow": "dev-candidate",
+      "stage": "plan",
+      "policies": ["PLAN-001"]
+    },
+    {
+      "persona": "coder",
+      "workflow": "dev-candidate",
+      "stage": "implement",
+      "policies": ["DEV-001"]
+    },
+    {
+      "persona": "reviewer",
+      "workflow": "dev-candidate",
+      "stage": "review",
+      "policies": ["REVIEW-001"]
+    },
+    {
+      "persona": "reviewer",
+      "workflow": "dev-candidate",
+      "stage": "review",
+      "review_mode": "squad",
+      "policies": ["REVIEW-002"]
+    },
+    {
+      "persona": "qa-tester",
+      "workflow": "dev-candidate",
+      "stage": "test",
+      "policies": ["TEST-001"]
+    },
+    {
+      "persona": "metacritic",
+      "workflow": "metacritic",
+      "stage": "consolidate",
+      "policies": ["DEV-001"]
+    },
+    {
+      "persona": "reviewer",
+      "workflow": "metacritic",
+      "stage": "review",
+      "policies": ["REVIEW-001"]
+    },
+    {
+      "persona": "reviewer",
+      "workflow": "metacritic",
+      "stage": "review",
+      "review_mode": "squad",
+      "policies": ["REVIEW-002"]
+    },
+    {
+      "persona": "qa-tester",
+      "workflow": "metacritic",
+      "stage": "test",
+      "policies": ["TEST-001"]
+    },
+    {
       "persona": "qa-tester",
       "workflow": "dev",
       "stage": "test",
@@ -233,6 +333,19 @@
     {
       "persona": "release-steward",
       "workflow": "dev",
+      "stage": "ship",
+      "installation_scope": "self_development",
+      "policies": ["VERSION-001"]
+    },
+    {
+      "persona": "release-steward",
+      "workflow": "metacritic",
+      "stage": "ship",
+      "policies": ["SHIP-001", "WAIVER-001", "WORK-001"]
+    },
+    {
+      "persona": "release-steward",
+      "workflow": "metacritic",
       "stage": "ship",
       "installation_scope": "self_development",
       "policies": ["VERSION-001"]

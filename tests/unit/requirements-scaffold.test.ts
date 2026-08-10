@@ -81,6 +81,14 @@ test('scaffold copies the contract manifest into a pending attestation', () => {
           sha256: 'c'.repeat(64),
         },
       ],
+      guidance: [
+        {
+          policy_id: 'ENG-001',
+          source_path: 'governance/handbooks/eng/engineering.md',
+          content_sha256: 'd'.repeat(64),
+          read_trigger: 'Read this guidance before the governed work.',
+        },
+      ],
     },
   } as unknown as Invocation
 
@@ -98,6 +106,19 @@ test('scaffold copies the contract manifest into a pending attestation', () => {
     [
       { id: '001-preamble', sha256: 'b'.repeat(64) },
       { id: '002-task', sha256: 'c'.repeat(64) },
+    ],
+  )
+  // The same holds for guidance reads: the digests are prefilled from the
+  // manifest, the decision stays with the worker.
+  assert.deepEqual(
+    attestation.status === 'pending' ? attestation.guidance : [],
+    [
+      {
+        policy_id: 'ENG-001',
+        source_path: 'governance/handbooks/eng/engineering.md',
+        content_sha256: 'd'.repeat(64),
+        status: 'pending',
+      },
     ],
   )
 })

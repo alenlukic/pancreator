@@ -603,6 +603,24 @@ function parseStatus(
   }
 }
 
+/**
+ * Name the rejected value and the closed vocabulary in one message. The brief
+ * schema types these fields as open strings and workers are barred from running
+ * the renderer, so this message is the only place a worker or operator learns
+ * which value failed and what would have been accepted.
+ */
+function unknownVocabularyMessage(
+  source: string,
+  label: string,
+  value: string | null,
+  allowed: Record<string, unknown>,
+): string {
+  const got = value === null ? 'missing' : `'${value}'`
+  const vocabulary = Object.keys(allowed).sort().join(', ')
+
+  return `${source} references an unknown ${label} (got ${got}; allowed: ${vocabulary}).`
+}
+
 function parseField(
   value: unknown,
   source: string,
@@ -633,7 +651,12 @@ function parseField(
 
   if (semantic && !(semantic in fieldSemantics)) {
     errors.push(
-      `${source}.semantic references unknown field semantic '${semantic}'.`,
+      unknownVocabularyMessage(
+        `${source}.semantic`,
+        'field semantic',
+        semantic,
+        fieldSemantics,
+      ),
     )
   }
 
@@ -707,7 +730,14 @@ function parseBrief(
   const title = stringValue(value.title)
 
   if (!briefType || !(briefType in briefTypes)) {
-    errors.push(`${source}.brief_type references an unknown brief type.`)
+    errors.push(
+      unknownVocabularyMessage(
+        `${source}.brief_type`,
+        'brief type',
+        briefType,
+        briefTypes,
+      ),
+    )
   }
 
   if (!title) {
@@ -734,7 +764,14 @@ function parseBrief(
     const layout = sectionValue.layout
 
     if (!semantic || !(semantic in sectionSemantics)) {
-      errors.push(`${sectionSource}.semantic references an unknown semantic.`)
+      errors.push(
+        unknownVocabularyMessage(
+          `${sectionSource}.semantic`,
+          'section semantic',
+          semantic,
+          sectionSemantics,
+        ),
+      )
     }
 
     if (!sectionTitle || sectionTitle.length > 70) {
@@ -766,7 +803,14 @@ function parseBrief(
       const cardTitle = stringValue(cardValue.title)
 
       if (!cardType || !(cardType in cardTypes)) {
-        errors.push(`${cardSource}.type references an unknown card type.`)
+        errors.push(
+          unknownVocabularyMessage(
+            `${cardSource}.type`,
+            'card type',
+            cardType,
+            cardTypes,
+          ),
+        )
       }
 
       if (!cardTitle) {

@@ -26,6 +26,16 @@ export function guidanceDigestToken(
   return `sha256:${reference.content_sha256}`
 }
 
+/**
+ * How a reader recomputes a guidance digest. The harness hashes the selection
+ * after it trims surrounding whitespace, and a reader who hashes the raw range
+ * (with a trailing newline) gets a different digest for identical content.
+ * Stating the basis on the reference is what keeps an honest verification from
+ * reporting false drift.
+ */
+export const GUIDANCE_DIGEST_BASIS =
+  'SHA-256 of the selected text after leading and trailing whitespace is trimmed.'
+
 export function guidanceSelectedRange(
   reference: PolicyGuidanceReference,
 ): string {
@@ -77,5 +87,6 @@ export function renderGuidanceBlock(
     `- Selected range: ${guidanceSelectedRange(reference)}.`,
     `- Content digest: \`${guidanceDigestToken(reference)}\` — ` +
       `${reference.line_count} lines, ${reference.byte_length} bytes.`,
+    `- Digest basis: ${GUIDANCE_DIGEST_BASIS}`,
   ]
 }

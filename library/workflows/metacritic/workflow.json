@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "slug": "metacritic",
+  "title": "Best-of-N consolidation",
+  "description": "Evaluation of every best-of-N candidate implementation, consolidation into one implementation, then independent review, QA, and operator-approved release preparation.",
+  "start_stage": "consolidate",
+  "limits": {
+    "max_total_transitions": 15,
+    "max_stage_attempts": 3,
+    "max_consecutive_failures": 3
+  },
+  "stages": ["consolidate", "review", "test", "ship"]
+}
