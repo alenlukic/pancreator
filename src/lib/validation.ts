@@ -68,6 +68,7 @@ import type {
   DeterministicResult,
   ExternalDelegationRecord,
   Invocation,
+  InvocationContractManifest,
   InvocationDeliveryMode,
   JsonTypeName,
   OperatorInvolvementFile,
@@ -379,7 +380,14 @@ function guidanceChecks(options: {
   const heading = guidanceReferenceHeading(3, guidance.source_path)
   const digestToken = guidanceDigestToken(reference)
   const selectedRange = `Selected range: ${guidanceSelectedRange(reference)}.`
-  const referenceBlock = renderGuidanceBlock(3, guidance).join('\n')
+  const referenceBlockLines = renderGuidanceBlock(3, guidance)
+  const referenceBlock = referenceBlockLines.join('\n')
+  // An invocation rendered before the digest-basis line existed carries the
+  // reference block without it. Accepting that block keeps an in-flight run
+  // valid across the upgrade; a fresh render always carries the basis line.
+  const legacyReferenceBlock = referenceBlockLines.slice(0, -1).join('\n')
+  const referenceBlockPresent =
+    markdown.includes(referenceBlock) || markdown.includes(legacyReferenceBlock)
   const digestMatchesContent =
     reference.content_sha256 === sha256(guidance.content)
   const lineCountMatchesContent =
@@ -440,8 +448,8 @@ function guidanceChecks(options: {
     },
     {
       id: `${idPrefix}.reference_block`,
-      passed: markdown.includes(referenceBlock),
-      message: markdown.includes(referenceBlock)
+      passed: referenceBlockPresent,
+      message: referenceBlockPresent
         ? `${label} reference fields are contiguous and exact`
         : `Markdown MUST render the exact reference block for ${guidance.source_path}`,
     },
@@ -781,6 +789,115 @@ function attestationSections(value: unknown): Array<{
 }
 
 /**
+ * Check the worker's guidance declarations against the manifest's guidance
+ * index. Progressive disclosure moved guidance bodies off the card, and these
+ * checks are what make the mandated reads observable: every referenced
+ * selection needs a worker decision — `read`, `skipped` with the reason the
+ * trigger did not apply, or `reference_failed` with the concrete error. A
+ * failed reference fails the attestation, because the worker acted without
+ * guidance the policy holds it to; re-preparation resolves the source loudly.
+ *
+ * A manifest without a guidance index belongs to an invocation prepared before
+ * guidance attestation existed (or one whose contract references no guidance),
+ * so it requires nothing.
+ */
+function guidanceAttestationChecks(
+  manifest: InvocationContractManifest,
+  attestation: Record<string, unknown>,
+): ValidationCheck[] {
+  const expected = manifest.guidance ?? []
+
+  if (expected.length === 0) {
+    return []
+  }
+
+  const declared = Array.isArray(attestation.guidance)
+    ? attestation.guidance
+    : []
+  const checks: ValidationCheck[] = [
+    {
+      id: 'attestation.guidance_count',
+      passed: declared.length === expected.length,
+      message:
+        declared.length === expected.length
+          ? `Attestation covers all ${expected.length} guidance reference(s)`
+          : `Attestation MUST declare all ${expected.length} guidance reference(s) in manifest order (got ${declared.length})`,
+    },
+  ]
+
+  for (const [index, entry] of expected.entries()) {
+    const id = `attestation.guidance.${entry.policy_id}.${index + 1}`
+    const claim = isRecord(declared[index]) ? declared[index] : {}
+    const identityMatches =
+      claim.policy_id === entry.policy_id &&
+      claim.source_path === entry.source_path &&
+      claim.content_sha256 === entry.content_sha256
+
+    if (!identityMatches) {
+      checks.push({
+        id,
+        passed: false,
+        message:
+          `Guidance attestation position ${index + 1} MUST name policy ` +
+          `'${entry.policy_id}', source '${entry.source_path}', and digest ` +
+          `'${entry.content_sha256}'`,
+      })
+      continue
+    }
+
+    const reason = typeof claim.reason === 'string' ? claim.reason.trim() : ''
+    const error = typeof claim.error === 'string' ? claim.error.trim() : ''
+
+    switch (claim.status) {
+      case 'read':
+        checks.push({
+          id,
+          passed: true,
+          message: `Guidance ${entry.source_path} (${entry.policy_id}) is attested as read`,
+        })
+        break
+      case 'skipped':
+        checks.push({
+          id,
+          passed: reason.length > 0,
+          message:
+            reason.length > 0
+              ? `Guidance ${entry.source_path} (${entry.policy_id}) is skipped: ${reason}`
+              : `A skipped guidance read MUST carry the concrete reason the trigger did not apply for ${entry.source_path}`,
+        })
+        break
+      case 'reference_failed':
+        checks.push({
+          id,
+          passed: false,
+          message:
+            error.length > 0
+              ? `Guidance ${entry.source_path} (${entry.policy_id}) was unreadable: ${error} — repair the source or read the selection from the invocation JSON snapshot`
+              : `A reference_failed guidance entry MUST carry the concrete read error for ${entry.source_path}`,
+        })
+        break
+      case 'pending':
+        checks.push({
+          id,
+          passed: false,
+          message:
+            `Guidance ${entry.source_path} (${entry.policy_id}) is still the scaffold value pending; ` +
+            'set it to read, or to skipped with the reason the trigger does not apply',
+        })
+        break
+      default:
+        checks.push({
+          id,
+          passed: false,
+          message: `Guidance status MUST be read, skipped, or reference_failed (got ${JSON.stringify(claim.status)})`,
+        })
+    }
+  }
+
+  return checks
+}
+
+/**
  * Check a worker's read attestation against the invocation contract manifest.
  *
  * The attestation is the only observable the harness has for a referenced
@@ -937,6 +1054,8 @@ export function validateInvocationAttestation(
         : `Attestation position ${index + 1} MUST be section '${section.id}' with digest '${section.sha256}'`,
     })
   }
+
+  checks.push(...guidanceAttestationChecks(manifest, attestation))
 
   return {
     passed: checks.every((check) => check.passed),
@@ -2094,7 +2213,12 @@ function listMarkdownFiles(directory: string): string[] {
   return files
 }
 
-const CODE_REVIEW_PERSONAS = new Set(['coder', 'reviewer', 'qa-tester'])
+const CODE_REVIEW_PERSONAS = new Set([
+  'coder',
+  'metacritic',
+  'reviewer',
+  'qa-tester',
+])
 const DESIGN_PERSONAS = new Set(['designer', 'design-reviewer', 'design-qa'])
 const PYTHON_GUIDANCE_PERSONAS = new Set([...CODE_REVIEW_PERSONAS, 'spotfixer'])
 const POLICY_REFERENCE_PATTERN = /\b[A-Z][A-Z0-9]*-\d{3}\b/gu

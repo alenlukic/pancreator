@@ -547,6 +547,16 @@ export function listWorkflowSlugs(root: string): string[] {
     .sort()
 }
 
+/** Every persona a run of this workflow delegates to, including the supervisor. */
+export function workflowPersonaNames(workflow: WorkflowDefinition): string[] {
+  return [
+    ...new Set([
+      'orchestrator',
+      ...workflow.stages.map((stage) => stage.persona),
+    ]),
+  ].sort()
+}
+
 export function stageBySlug(
   workflow: WorkflowDefinition,
   slug: string | null,

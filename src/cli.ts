@@ -17,6 +17,13 @@ import {
   submitOutput,
   waiveGate,
 } from './lib/engine.js'
+import {
+  abandonBestOfNCandidate,
+  bestOfNStatus,
+  cleanBestOfN,
+  consolidateBestOfN,
+  initBestOfN,
+} from './lib/best-of-n.js'
 import { personaExecutorOf } from './lib/executors/mapping.js'
 import { claudeCodeVersionPreflight } from './lib/executors/claude-code.js'
 import { browserReadiness } from './lib/browser-readiness.js'
@@ -96,7 +103,12 @@ const HELP_BODY = `Usage:
   pan output validate <run-id> --file <path> [--json]
   pan assessment scaffold <run-id> --invocation <path> --output <path> [--force]
   pan governance audit-directives [--json]
-  pan governance card --mode <pair|spotfix|shepherd|investigation|repair|decomposition> [--request <path>] [--out <path>] [--json]
+  pan governance card --mode <pair|spotfix|shepherd|investigation|repair|decomposition|best-of-n> [--request <path>] [--out <path>] [--json]
+  pan best-of-n init --request <path> --configs <path> [--workflow <slug>] [--consolidation-workflow <slug>] [--json]
+  pan best-of-n status <bon-id> [--json]
+  pan best-of-n abandon <bon-id> <run-id> --note <reason> [--json]
+  pan best-of-n consolidate <bon-id> [--json]
+  pan best-of-n clean <bon-id> [--force] [--json]
   pan briefs build [--force] [--json]
   pan briefs validate [--json]
   pan briefs render --input <brief-json> --output <brief-html> [--json]
@@ -829,6 +841,98 @@ async function main(): Promise<void> {
 
       throw new PanError(
         `Unknown governance subcommand: ${sub ?? '(missing)'}`,
+        {
+          code: 'UNKNOWN_COMMAND',
+        },
+      )
+    }
+    case 'best-of-n': {
+      const sub = args[0]
+      const rest = args.slice(1)
+      const asJson = hasFlag(args, '--json')
+
+      if (sub === 'init') {
+        const state = initBestOfN(root, {
+          requestPath: requiredArgument(option(args, '--request'), '--request'),
+          configsPath: requiredArgument(option(args, '--configs'), '--configs'),
+          ...(option(args, '--workflow')
+            ? { candidateWorkflow: option(args, '--workflow') as string }
+            : {}),
+          ...(option(args, '--consolidation-workflow')
+            ? {
+                consolidationWorkflow: option(
+                  args,
+                  '--consolidation-workflow',
+                ) as string,
+              }
+            : {}),
+        })
+
+        print(
+          {
+            status: 'created',
+            bon_id: state.bon_id,
+            candidate_workflow: state.candidate_workflow,
+            candidates: state.candidates.map((candidate) => ({
+              slot: candidate.slot,
+              run_id: candidate.run_id,
+              worktree_path: candidate.worktree_path,
+              agent_path: `.cursor/agents/pan-orchestrator--${candidate.agent_suffix}.md`,
+            })),
+            state_path: `runtime/logs/best-of-n/${state.bon_id}/state.json`,
+          },
+          asJson,
+        )
+        return
+      }
+
+      if (sub === 'status') {
+        print(bestOfNStatus(root, requiredArgument(rest[0], 'bon-id')), asJson)
+        return
+      }
+
+      if (sub === 'abandon') {
+        const state = abandonBestOfNCandidate(
+          root,
+          requiredArgument(rest[0], 'bon-id'),
+          requiredArgument(rest[1], 'run-id'),
+          requiredArgument(option(args, '--note'), '--note'),
+        )
+
+        print({ status: 'abandoned', candidates: state.candidates }, asJson)
+        return
+      }
+
+      if (sub === 'consolidate') {
+        const state = consolidateBestOfN(
+          root,
+          requiredArgument(rest[0], 'bon-id'),
+        )
+
+        print(
+          {
+            status: 'created',
+            bon_id: state.bon_id,
+            consolidation: state.consolidation,
+            next_command: `${pan} status ${state.consolidation?.run_id}`,
+          },
+          asJson,
+        )
+        return
+      }
+
+      if (sub === 'clean') {
+        print(
+          cleanBestOfN(root, requiredArgument(rest[0], 'bon-id'), {
+            force: hasFlag(args, '--force'),
+          }),
+          asJson,
+        )
+        return
+      }
+
+      throw new PanError(
+        `Unknown best-of-n subcommand: ${sub ?? '(missing)'}`,
         {
           code: 'UNKNOWN_COMMAND',
         },

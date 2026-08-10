@@ -28,6 +28,13 @@ import {
 /** Filenames Pancreator may own inside a target repository's `.cursor/`. */
 const PANCREATOR_OWNED_BASENAME = /^pan(-|creator\.)/u
 
+/**
+ * Separator between a persona and a run-scoped variant suffix. Two hyphens keep
+ * a variant filename distinguishable from a persona whose own name contains a
+ * hyphen, such as `design-qa`.
+ */
+const VARIANT_SEPARATOR = '--'
+
 interface ProjectionDefinition {
   id: string
   source: string
@@ -398,7 +405,11 @@ function renderProjections(root: string): {
  * the projection manifest so the manifest stays the only place the namespaced
  * filename is declared.
  */
-export function cursorAgentTarget(root: string, persona: string): string {
+export function cursorAgentTarget(
+  root: string,
+  persona: string,
+  suffix?: string,
+): string {
   const agents = readProjectionManifest(root).projections.find(
     (projection) => projection.id === 'cursor-agents',
   )
@@ -407,7 +418,126 @@ export function cursorAgentTarget(root: string, persona: string): string {
     code: 'INVALID_PROJECTION_MANIFEST',
   })
 
-  return agents.target.replace('{persona}', persona)
+  return agents.target.replace(
+    '{persona}',
+    suffix ? `${persona}${VARIANT_SEPARATOR}${suffix}` : persona,
+  )
+}
+
+export function assertVariantSuffix(suffix: string): void {
+  invariant(
+    /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(suffix),
+    `Cursor agent variant suffix '${suffix}' MUST be lowercase alphanumeric ` +
+      'with single hyphens.',
+    { code: 'INVALID_AGENT_SUFFIX' },
+  )
+}
+
+/**
+ * Render run-scoped Cursor subagent variants for one suffix.
+ *
+ * A best-of-N session runs several candidates at once, each with its own model
+ * per persona. Cursor reads the model from projected subagent frontmatter, so
+ * the only way to route different models concurrently is a separate projected
+ * file per candidate. Variants keep the `pan-` prefix, so the installer
+ * collision rule still holds, and they are disposable like every other
+ * `.cursor/` file.
+ */
+export function projectPersonaVariants(
+  root: string,
+  suffix: string,
+  personas: Record<string, string>,
+  options: { write?: boolean } = {},
+): CursorProjectionChange[] {
+  assertVariantSuffix(suffix)
+
+  const mode = installationMode(root)
+  const harnessPrefix = harnessPathPrefix(root)
+  const changes: CursorProjectionChange[] = []
+
+  for (const [persona, model] of Object.entries(personas)) {
+    const mapping = parsePersonaMapping(model, persona)
+
+    // An external-executor persona has no Cursor subagent, so a variant would
+    // record a model claim for work Cursor never performs.
+    if (mapping.executor !== 'cursor') {
+      continue
+    }
+
+    const source = `library/cursor/agents/${persona}.md`
+    const absoluteSource = path.join(root, source)
+
+    invariant(
+      fileExists(absoluteSource),
+      `Missing projection source: ${source}`,
+      {
+        code: 'INVALID_PROJECTION_MANIFEST',
+      },
+    )
+
+    const target = cursorAgentTarget(root, persona, suffix)
+    const template = readText(absoluteSource)
+
+    invariant(
+      template.includes('__PANCREATOR_MODEL__'),
+      `${source} MUST contain __PANCREATOR_MODEL__.`,
+      { code: 'INVALID_CURSOR_AGENT' },
+    )
+
+    const content = projectCursorContent(
+      template.replaceAll('__PANCREATOR_MODEL__', mapping.model_spec),
+      target,
+      mode,
+      harnessPrefix,
+    )
+    const targetPath = path.join(root, target)
+    const previous = fileExists(targetPath) ? readText(targetPath) : null
+    const changed = previous !== content
+
+    if (options.write && changed) {
+      writeTextAtomic(targetPath, content)
+    }
+
+    changes.push({
+      id: 'cursor-agent-variants',
+      source,
+      path: target,
+      changed,
+      previous_sha256: previous === null ? null : sha256(previous),
+      sha256: sha256(content),
+    })
+  }
+
+  return changes.sort((left, right) => left.path.localeCompare(right.path))
+}
+
+/** Remove every run-scoped Cursor subagent variant carrying one suffix. */
+export function removePersonaVariants(root: string, suffix: string): string[] {
+  assertVariantSuffix(suffix)
+
+  const directory = path.dirname(
+    path.join(root, cursorAgentTarget(root, 'placeholder', suffix)),
+  )
+
+  if (!fileExists(directory)) {
+    return []
+  }
+
+  const removed: string[] = []
+
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    if (
+      !entry.isFile() ||
+      !entry.name.endsWith(`${VARIANT_SEPARATOR}${suffix}.md`)
+    ) {
+      continue
+    }
+
+    rmSync(path.join(directory, entry.name), { force: true })
+    removed.push(entry.name)
+  }
+
+  return removed.sort()
 }
 
 export function syncCursorProjection(

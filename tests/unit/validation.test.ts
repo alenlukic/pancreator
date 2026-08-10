@@ -537,6 +537,7 @@ function attestedFixture(root: string): {
   invocation.contract_manifest = buildInvocationContractManifest(
     contractPath,
     renderInvocationMarkdown(invocation),
+    invocation.policies,
   )
 
   const manifest = invocation.contract_manifest
@@ -552,6 +553,16 @@ function attestedFixture(root: string): {
         id: section.id,
         sha256: section.sha256,
       })),
+      ...(manifest.guidance?.length
+        ? {
+            guidance: manifest.guidance.map((entry) => ({
+              policy_id: entry.policy_id,
+              source_path: entry.source_path,
+              content_sha256: entry.content_sha256,
+              status: 'read' as const,
+            })),
+          }
+        : {}),
     },
   }
 }
@@ -693,6 +704,142 @@ test('attestation validator rejects a stale contract digest', () => {
       ?.passed,
     false,
   )
+})
+
+test('attestation validator passes read guidance and rejects the pending scaffold value', () => {
+  const root = createFixture()
+  const { invocation, attestation } = attestedFixture(root)
+
+  assert.ok(
+    attestation.guidance?.length,
+    'the fixture contract references guidance',
+  )
+
+  const passing = validateInvocationAttestation(
+    invocation,
+    attestedOutput(attestation),
+  )
+
+  assert.equal(passing.passed, true)
+
+  const pending = attestation.guidance.map((entry, index) =>
+    index === 0 ? { ...entry, status: 'pending' as const } : entry,
+  )
+  const result = validateInvocationAttestation(
+    invocation,
+    attestedOutput({ ...attestation, guidance: pending }),
+  )
+
+  assert.equal(result.passed, false)
+  assert.match(
+    result.checks.find((check) => !check.passed)?.message ?? '',
+    /still the scaffold value pending/u,
+  )
+})
+
+test('attestation validator requires a reason for skipped guidance', () => {
+  const root = createFixture()
+  const { invocation, attestation } = attestedFixture(root)
+
+  assert.ok(attestation.guidance?.length)
+
+  const bare = attestation.guidance.map((entry, index) =>
+    index === 0 ? { ...entry, status: 'skipped' as const } : entry,
+  )
+  const rejected = validateInvocationAttestation(
+    invocation,
+    attestedOutput({ ...attestation, guidance: bare }),
+  )
+
+  assert.equal(rejected.passed, false)
+  assert.match(
+    rejected.checks.find((check) => !check.passed)?.message ?? '',
+    /MUST carry the concrete reason/u,
+  )
+
+  const reasoned = attestation.guidance.map((entry, index) =>
+    index === 0
+      ? {
+          ...entry,
+          status: 'skipped' as const,
+          reason: 'The task changes no file the trigger governs.',
+        }
+      : entry,
+  )
+  const accepted = validateInvocationAttestation(
+    invocation,
+    attestedOutput({ ...attestation, guidance: reasoned }),
+  )
+
+  assert.equal(accepted.passed, true)
+})
+
+test('attestation validator fails a guidance reference failure', () => {
+  const root = createFixture()
+  const { invocation, attestation } = attestedFixture(root)
+
+  assert.ok(attestation.guidance?.length)
+
+  const failed = attestation.guidance.map((entry, index) =>
+    index === 0
+      ? {
+          ...entry,
+          status: 'reference_failed' as const,
+          error: 'ENOENT: guidance source missing',
+        }
+      : entry,
+  )
+  const result = validateInvocationAttestation(
+    invocation,
+    attestedOutput({ ...attestation, guidance: failed }),
+  )
+
+  // Unreadable guidance means the worker acted without policy it is held to,
+  // so the attestation fails rather than recording the loss as an aside.
+  assert.equal(result.passed, false)
+  assert.match(
+    result.checks.find((check) => !check.passed)?.message ?? '',
+    /ENOENT: guidance source missing/u,
+  )
+})
+
+test('attestation validator rejects missing guidance entries', () => {
+  const root = createFixture()
+  const { invocation, attestation } = attestedFixture(root)
+
+  assert.ok(attestation.guidance?.length)
+
+  const { guidance: _guidance, ...withoutGuidance } = attestation
+  const result = validateInvocationAttestation(
+    invocation,
+    attestedOutput(withoutGuidance),
+  )
+
+  assert.equal(result.passed, false)
+  assert.equal(
+    result.checks.find((check) => check.id === 'attestation.guidance_count')
+      ?.passed,
+    false,
+  )
+})
+
+test('a manifest without a guidance index requires no guidance entries', () => {
+  const root = createFixture()
+  const { invocation, attestation } = attestedFixture(root)
+  const manifest = invocation.contract_manifest
+
+  assert.ok(manifest)
+  // An invocation prepared before guidance attestation existed carries no
+  // guidance index, and its worker owes no entries.
+  delete manifest.guidance
+
+  const { guidance: _guidance, ...withoutGuidance } = attestation
+  const result = validateInvocationAttestation(
+    invocation,
+    attestedOutput(withoutGuidance),
+  )
+
+  assert.equal(result.passed, true)
 })
 
 test('attestation validator accepts a blocked reference failure', () => {

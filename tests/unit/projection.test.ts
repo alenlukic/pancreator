@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict'
-import { readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import { projectCursorContent } from '../../src/lib/cursor-content.js'
 import {
+  projectPersonaVariants,
+  removePersonaVariants,
   syncCursorProjection,
   validateProjectionDrift,
 } from '../../src/lib/projection.js'
@@ -148,6 +150,79 @@ test('Cursor sync projects the intake writer agent with its resolved model', () 
   )
   assert.match(projected, /library\/personas\/intake-writer\.md/u)
   assert.deepEqual(validateProjectionDrift(root).errors, [])
+})
+
+test('Cursor sync projects the meta-orchestrator start surface', () => {
+  const root = createFixture()
+  const activeModel =
+    loadPipelineConfig(root).config.personas['meta-orchestrator']
+
+  assert.ok(activeModel)
+  syncCursorProjection(root, { write: true })
+
+  const projected = readFileSync(
+    path.join(root, '.cursor', 'agents', 'pan-meta-orchestrator.md'),
+    'utf8',
+  )
+
+  assert.match(projected, /library\/personas\/meta-orchestrator\.md/u)
+  assert.match(projected, /best-of-n init/u)
+})
+
+test('run-scoped agent variants carry pinned models without touching the base agents', () => {
+  const root = createFixture()
+  const baseCoderPath = path.join(root, '.cursor', 'agents', 'pan-coder.md')
+  const baseCoder = readFileSync(baseCoderPath, 'utf8')
+
+  const changes = projectPersonaVariants(
+    root,
+    'bondeadbeef-alpha',
+    { coder: 'pinned-model-a', reviewer: 'pinned-model-b' },
+    { write: true },
+  )
+
+  assert.deepEqual(
+    changes.map((change) => change.path),
+    [
+      '.cursor/agents/pan-coder--bondeadbeef-alpha.md',
+      '.cursor/agents/pan-reviewer--bondeadbeef-alpha.md',
+    ],
+  )
+  assert.match(
+    readFileSync(
+      path.join(root, '.cursor', 'agents', 'pan-coder--bondeadbeef-alpha.md'),
+      'utf8',
+    ),
+    /^model: pinned-model-a$/mu,
+  )
+  assert.equal(readFileSync(baseCoderPath, 'utf8'), baseCoder)
+
+  // A variant is run-scoped generated state, so it is not active-config drift.
+  assert.deepEqual(validateProjectionDrift(root).errors, [])
+
+  assert.deepEqual(removePersonaVariants(root, 'bondeadbeef-alpha'), [
+    'pan-coder--bondeadbeef-alpha.md',
+    'pan-reviewer--bondeadbeef-alpha.md',
+  ])
+  assert.equal(
+    existsSync(
+      path.join(root, '.cursor', 'agents', 'pan-coder--bondeadbeef-alpha.md'),
+    ),
+    false,
+  )
+})
+
+test('a variant suffix that a Cursor filename cannot carry is rejected', () => {
+  const root = createFixture()
+
+  assert.throws(
+    () => projectPersonaVariants(root, 'Alpha One', { coder: 'model' }),
+    /MUST be lowercase alphanumeric/u,
+  )
+  assert.throws(
+    () => projectPersonaVariants(root, 'alpha--one', { coder: 'model' }),
+    /MUST be lowercase alphanumeric/u,
+  )
 })
 
 test('Cursor sync renders ignored local files from canonical library sources', () => {

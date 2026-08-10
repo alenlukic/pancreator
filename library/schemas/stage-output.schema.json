@@ -150,6 +150,48 @@
               }
             }
           }
+        },
+        "guidance": {
+          "type": "array",
+          "description": "One entry per referenced guidance selection in the contract manifest, in manifest order. The scaffold prefills each entry with status pending; submission rejects that value.",
+          "items": {
+            "type": "object",
+            "required": [
+              "policy_id",
+              "source_path",
+              "content_sha256",
+              "status"
+            ],
+            "properties": {
+              "policy_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Policy that references the guidance."
+              },
+              "source_path": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Guidance source path named by the reference."
+              },
+              "content_sha256": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Digest of the selected guidance content: SHA-256 of the selected text after leading and trailing whitespace is trimmed."
+              },
+              "status": {
+                "enum": ["pending", "read", "skipped", "reference_failed"],
+                "description": "pending is the scaffold value and is rejected at submission. read means the selection was read from the source file or, when the file drifted, from the invocation JSON snapshot. skipped requires reason. reference_failed requires error and fails the attestation."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why the read trigger did not apply. Required when status is skipped."
+              },
+              "error": {
+                "type": "string",
+                "description": "Concrete read error. Required when status is reference_failed."
+              }
+            }
+          }
         }
       }
     },

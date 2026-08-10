@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "slug": "dev-candidate",
+  "title": "Best-of-N candidate delivery",
+  "description": "Autonomous development delivery for one best-of-N candidate worktree: intake, plan, implement, independent review, and QA, with no release preparation.",
+  "start_stage": "intake",
+  "limits": {
+    "max_total_transitions": 18,
+    "max_stage_attempts": 3,
+    "max_consecutive_failures": 3
+  },
+  "stages": ["intake", "plan", "implement", "review", "test"]
+}

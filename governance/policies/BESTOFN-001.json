@@ -1,0 +1,18 @@
+{
+  "id": "BESTOFN-001",
+  "title": "Best-of-N session boundaries",
+  "severity": "hard",
+  "summary": "A best-of-N session MUST run N candidate runs in isolated worktrees under harness-owned lifecycle commands, MUST leave candidate repair and exclusion to the operator, and MUST NOT perform any source-control action.",
+  "instructions": [
+    "The projected `pan-meta-orchestrator` agent MUST be the only start surface for a best-of-N session, and it MUST run as the operator's top-level agent because a nested subagent cannot reliably invoke the candidate subagents.",
+    "The session lifecycle MUST run through `./bin/pan best-of-n` commands. Agents MUST NOT create worktrees, candidate runs, run-scoped agent variants, or session records by hand.",
+    "Every candidate run MUST execute in its own detached worktree under `runtime/worktrees/<bon-id>/`, and MUST NOT edit the main workspace.",
+    "Candidate runs MUST use the gates their workflow declares. A best-of-N session MUST NOT add an operator stop to a candidate run, and MUST NOT relax the operator gate the consolidation run declares for release preparation.",
+    "A failed or blocked candidate MUST remain eligible for operator repair and resume. The meta-orchestrator MUST report it with its run id and resume command, and MUST NOT abandon or discard it on its own initiative.",
+    "Exclusion of a candidate MUST come from an explicit operator directive and MUST be recorded with `./bin/pan best-of-n abandon`.",
+    "Consolidation MUST start only when every candidate run is terminal or recorded as abandoned, and at least one candidate succeeded. A session with no successful candidate MUST be reported as blocked.",
+    "The consolidation request MUST name every candidate, including an abandoned one, with its run id, worktree path, final status, and output paths.",
+    "A best-of-N session MUST NOT create a commit, push, merge, branch deletion, or history rewrite, in the main workspace or in any worktree.",
+    "Worktree removal is destructive and operator-owned. `./bin/pan best-of-n clean` MUST refuse a dirty worktree without an explicit force flag, and MUST NOT delete a branch or a commit."
+  ]
+}

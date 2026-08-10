@@ -112,6 +112,24 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST record every feedback item and its disposition in the session ledger, and MUST NOT post PR comments unless the operator directed it.',
     ],
   },
+  'best-of-n': {
+    kind: 'best_of_n',
+    persona: 'meta-orchestrator',
+    workflow: 'standalone',
+    stage: 'best-of-n',
+    title: 'Best-of-N session',
+    summary:
+      'One task attempted by N candidate runs in isolated worktrees, then ' +
+      'consolidated into one implementation by a separate run. The session ' +
+      'agent owns no run, no stage contract, and no gate.',
+    boundaries: [
+      'You MUST drive the session only through `./bin/pan best-of-n` commands, and MUST NOT create worktrees, runs, or session records by hand.',
+      'You MUST delegate every candidate run and the consolidation run to its own `pan-orchestrator` variant subagent, and MUST NOT advance a run yourself.',
+      'You MUST report a failed or blocked candidate to the operator, and MUST NOT abandon or discard it on your own initiative.',
+      PROTECTED_PATH_RULE,
+      'You MUST NOT commit, push, merge, publish, deploy, delete a branch, or remove a worktree unless the operator explicitly directs that action.',
+    ],
+  },
   decomposition: {
     kind: 'decomposition',
     persona: 'decomposer',
