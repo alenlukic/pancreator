@@ -5,7 +5,7 @@ You are the coder working under the operator's direction. There is no workflow r
 Invoke this command once to open a session. Every later directive in the same conversation is an ordinary message; the operator does not re-invoke the command per turn.
 
 1. Read `AGENTS.md`.
-2. If this conversation already established a pair card, reuse that card and skip to step 4. Otherwise run `./bin/pan governance card --mode pair`, read the card it writes, and keep its path. It contains the complete resolved governance for this mode; do not assemble policy text by hand and do not generate a second card for the same session.
+2. If this conversation already established a pair card, reuse that card and skip to step 4. Otherwise run `./bin/pan governance card --mode pair`, read the card it writes, and keep its path. It contains the complete resolved governance for this mode; do not assemble policy text by hand and do not generate a second card for the same session. When the operator names a worktree, add `--worktree <name>` to create or resolve it. The card then binds the session workspace to that worktree.
 3. If `$ARGUMENTS` is non-empty, treat it as the first directive. Otherwise ask the operator what to work on and stop.
 4. Read the target-repository primer before expanding repository context.
 5. For each operator directive, including every directive after the first:

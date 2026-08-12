@@ -74,6 +74,29 @@ test('does not infer languages from ignored paths', () => {
   }
 })
 
+test('detects inside an explicit workspace override', () => {
+  const root = createTechnologyFixture()
+
+  try {
+    writeFileSync(path.join(root, 'package.json'), '{ "name": "fixture" }\n')
+    mkdirSync(path.join(root, 'nested'), { recursive: true })
+    writeFileSync(
+      path.join(root, 'nested', 'pyproject.toml'),
+      '[project]\nname = "nested"\n',
+    )
+
+    assert.deepEqual(
+      detectWorkspaceTechnologies(root, { workspace: 'nested' }),
+      {
+        languages: [{ id: 'python', evidence: ['pyproject.toml'] }],
+        unsupported_evidence: [],
+      },
+    )
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
 test('uses tracked source evidence in git workspaces', () => {
   const root = createTechnologyFixture()
 

@@ -1,4 +1,3 @@
-import { spawnSync } from 'node:child_process'
 import { copyFileSync, readdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
 
@@ -26,16 +25,23 @@ import {
   writeJsonAtomic,
   writeTextAtomic,
 } from './io.js'
-import { loadPipelineConfig } from './pipeline-config.js'
+import {
+  loadPipelineConfig,
+  loadPipelineConfigSnapshot,
+} from './pipeline-config.js'
 import { projectPersonaVariants, removePersonaVariants } from './projection.js'
+import { runSetupCommands } from './setup-commands.js'
 import { loadState, makeRunId, now, statePath } from './state.js'
 import type { RunState, RunStatus } from './types.js'
-import { loadWorkflow, workflowPersonaNames } from './workflow.js'
+import {
+  loadWorkflow,
+  loadWorkflowFile,
+  workflowPersonaNames,
+} from './workflow.js'
 
 const CANDIDATE_WORKFLOW = 'dev-candidate'
 const CONSOLIDATION_WORKFLOW = 'metacritic'
 const MINIMUM_CANDIDATES = 2
-const SETUP_TIMEOUT_MS = 10 * 60 * 1000
 const BEST_OF_N_ID_PATTERN = /^\d+_[A-Z][a-z]{2}-\d{2}-\d{4}_[0-9a-f]{8}$/u
 const SLOT_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u
 const TERMINAL_STATUSES = new Set<RunStatus>([
@@ -515,29 +521,6 @@ function agentSuffix(bonId: string, slot: string): string {
   return `${sessionKey(bonId)}-${slot}`
 }
 
-function runSetupCommands(
-  commands: string[],
-  worktreePath: string,
-  slot: string,
-): void {
-  for (const command of commands) {
-    const result = spawnSync(command, {
-      cwd: worktreePath,
-      encoding: 'utf8',
-      shell: true,
-      timeout: SETUP_TIMEOUT_MS,
-      maxBuffer: 8 * 1024 * 1024,
-    })
-
-    invariant(
-      result.status === 0,
-      `Setup command failed for candidate '${slot}': ${command}\n` +
-        `${result.error?.message || result.stderr || result.stdout || ''}`.trim(),
-      { code: 'BEST_OF_N_SETUP_FAILED' },
-    )
-  }
-}
-
 export interface InitBestOfNOptions {
   requestPath: string
   configsPath: string
@@ -740,7 +723,10 @@ function createSessionCandidates(
     const worktreePath = resolveInside(root, pending.worktree_path)
 
     gitWorktreeAdd(root, worktreePath, plan.head)
-    runSetupCommands(plan.configs.setup, worktreePath, pending.slot)
+    runSetupCommands(plan.configs.setup, worktreePath, {
+      label: `candidate '${pending.slot}'`,
+      code: 'BEST_OF_N_SETUP_FAILED',
+    })
     projectPersonaVariants(
       root,
       pending.agent_suffix,
@@ -898,6 +884,88 @@ export function bestOfNStatus(root: string, bonId: string): BestOfNStatus {
         }
       : {}),
   }
+}
+
+export interface RefreshBestOfNAgentsResult {
+  bon_id: string
+  refreshed_agents: string[]
+}
+
+/**
+ * Rebuild every run-scoped agent from its run's pinned model snapshot.
+ *
+ * This refreshes executable agent instructions without changing session state,
+ * candidate models, or the runs' immutable workflow contracts.
+ */
+export function refreshBestOfNAgents(
+  root: string,
+  bonId: string,
+): RefreshBestOfNAgentsResult {
+  return withBestOfNSession(root, bonId, (state) => {
+    const runAgents = [
+      ...state.candidates.map((candidate) => ({
+        runId: candidate.run_id,
+        suffix: candidate.agent_suffix,
+      })),
+      ...(state.consolidation
+        ? [
+            {
+              runId: state.consolidation.run_id,
+              suffix: state.consolidation.agent_suffix,
+            },
+          ]
+        : []),
+    ]
+    const refreshed = new Set<string>()
+
+    for (const entry of runAgents) {
+      const run = candidateRunState(root, entry.runId)
+
+      invariant(run, `Best-of-N child run '${entry.runId}' does not exist.`, {
+        code: 'BEST_OF_N_CHILD_NOT_FOUND',
+      })
+      invariant(
+        run.pipeline_config,
+        `Best-of-N child run '${entry.runId}' has no pipeline snapshot.`,
+        { code: 'INVALID_PIPELINE_CONFIG' },
+      )
+
+      const snapshot = loadPipelineConfigSnapshot(
+        root,
+        run.pipeline_config.path,
+      )
+      const workflow = loadWorkflowFile(
+        root,
+        resolveInside(root, run.workflow_snapshot.path),
+      )
+      const personas: Record<string, string> = {}
+
+      for (const persona of workflowPersonaNames(workflow)) {
+        const model = snapshot.personas[persona]
+
+        invariant(
+          model,
+          `Run '${entry.runId}' snapshot maps no model for '${persona}'.`,
+          { code: 'INVALID_PIPELINE_CONFIG' },
+        )
+        personas[persona] = model
+      }
+
+      for (const change of projectPersonaVariants(
+        root,
+        entry.suffix,
+        personas,
+        { write: true },
+      )) {
+        refreshed.add(change.path)
+      }
+    }
+
+    return {
+      bon_id: bonId,
+      refreshed_agents: [...refreshed].sort(),
+    }
+  })
 }
 
 /**
@@ -1122,6 +1190,18 @@ export interface CleanBestOfNResult {
   removed_agents: string[]
 }
 
+export interface PruneBestOfNSkip {
+  resource: string
+  reason: string
+}
+
+export interface PruneBestOfNResult {
+  cleaned_sessions: CleanBestOfNResult[]
+  removed_orphan_worktrees: string[]
+  removed_orphan_agents: string[]
+  skipped: PruneBestOfNSkip[]
+}
+
 /**
  * Remove a session's worktrees and run-scoped agent variants.
  *
@@ -1241,5 +1321,206 @@ function removeSessionResources(
     bon_id: bonId,
     removed_worktrees: removedWorktrees.sort(),
     removed_agents: removedAgents.sort(),
+  }
+}
+
+function bestOfNSessionIds(root: string): string[] {
+  const directory = path.join(root, 'runtime', 'logs', 'best-of-n')
+
+  if (!fileExists(directory)) {
+    return []
+  }
+
+  return readdirSync(directory, { withFileTypes: true })
+    .filter(
+      (entry) => entry.isDirectory() && BEST_OF_N_ID_PATTERN.test(entry.name),
+    )
+    .map((entry) => entry.name)
+    .sort()
+}
+
+function sessionIsPrunable(status: BestOfNStatus): boolean {
+  if (status.session_status === 'initializing') {
+    return true
+  }
+
+  if (status.unresolved.length > 0) {
+    return false
+  }
+
+  if (!status.consolidation) {
+    return status.successes === 0
+  }
+
+  return TERMINAL_STATUSES.has(status.consolidation.status)
+}
+
+function orphanVariantSuffixes(root: string, sessionIds: string[]): string[] {
+  const directory = path.join(root, '.cursor', 'agents')
+
+  if (!fileExists(directory)) {
+    return []
+  }
+
+  const protectedKeys = new Set(sessionIds.map((bonId) => sessionKey(bonId)))
+  const suffixes = new Set<string>()
+
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    if (!entry.isFile()) {
+      continue
+    }
+
+    const match = /--(bon[0-9a-f]{8}-.+)\.md$/u.exec(entry.name)
+
+    if (!match) {
+      continue
+    }
+
+    const suffix = match[1]
+    const key = suffix.split('-', 1)[0]
+
+    if (!protectedKeys.has(key)) {
+      suffixes.add(suffix)
+    }
+  }
+
+  return [...suffixes].sort()
+}
+
+function pruneOrphanWorktrees(
+  root: string,
+  sessionIds: string[],
+  options: { force?: boolean },
+  skipped: PruneBestOfNSkip[],
+): string[] {
+  const directory = path.join(root, 'runtime', 'worktrees')
+
+  if (!fileExists(directory)) {
+    return []
+  }
+
+  const protectedIds = new Set(sessionIds)
+  const registered = new Set(gitWorktreePaths(root))
+  const removed: string[] = []
+
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    if (
+      !entry.isDirectory() ||
+      !BEST_OF_N_ID_PATTERN.test(entry.name) ||
+      protectedIds.has(entry.name)
+    ) {
+      continue
+    }
+
+    const sessionRoot = path.join(directory, entry.name)
+
+    for (const slot of readdirSync(sessionRoot, { withFileTypes: true })) {
+      if (!slot.isDirectory()) {
+        continue
+      }
+
+      const relativeWorktree = path.posix.join(
+        'runtime',
+        'worktrees',
+        entry.name,
+        slot.name,
+      )
+      const worktreePath = resolveInside(root, relativeWorktree)
+
+      if (!registered.has(worktreePath)) {
+        skipped.push({
+          resource: relativeWorktree,
+          reason: 'Directory is not a registered Git worktree.',
+        })
+        continue
+      }
+
+      if (!options.force && gitWorktreeIsDirty(worktreePath)) {
+        skipped.push({
+          resource: relativeWorktree,
+          reason: 'Worktree is dirty. Re-run with --force to discard it.',
+        })
+        continue
+      }
+
+      gitWorktreeRemove(root, worktreePath, options.force ?? false)
+      removed.push(relativeWorktree)
+    }
+
+    if (isEmptyDirectory(sessionRoot)) {
+      rmSync(sessionRoot, { recursive: true, force: true })
+    }
+  }
+
+  return removed.sort()
+}
+
+/**
+ * Remove resources left by terminal sessions and resources with no session.
+ *
+ * Live sessions and dirty worktrees remain untouched unless force explicitly
+ * authorizes discarding dirty candidate work.
+ */
+export function pruneBestOfN(
+  root: string,
+  options: { force?: boolean } = {},
+): PruneBestOfNResult {
+  const cleanedSessions: CleanBestOfNResult[] = []
+  const skipped: PruneBestOfNSkip[] = []
+
+  for (const bonId of bestOfNSessionIds(root)) {
+    let status: BestOfNStatus
+
+    try {
+      status = bestOfNStatus(root, bonId)
+    } catch (error) {
+      skipped.push({
+        resource: `session:${bonId}`,
+        reason: errorMessage(error),
+      })
+      continue
+    }
+
+    if (!sessionIsPrunable(status)) {
+      skipped.push({
+        resource: `session:${bonId}`,
+        reason: 'Session still has active work or awaits consolidation.',
+      })
+      continue
+    }
+
+    try {
+      cleanedSessions.push(cleanBestOfN(root, bonId, options))
+    } catch (error) {
+      skipped.push({
+        resource: `session:${bonId}`,
+        reason: errorMessage(error),
+      })
+    }
+  }
+
+  // Initialization writes session state before worktrees and projections. A
+  // second scan therefore protects resources from a concurrently starting run.
+  const currentSessionIds = bestOfNSessionIds(root)
+  const removedOrphanAgents: string[] = []
+
+  for (const suffix of orphanVariantSuffixes(root, currentSessionIds)) {
+    removedOrphanAgents.push(...removePersonaVariants(root, suffix))
+  }
+
+  return {
+    cleaned_sessions: cleanedSessions.sort((left, right) =>
+      left.bon_id.localeCompare(right.bon_id),
+    ),
+    removed_orphan_worktrees: pruneOrphanWorktrees(
+      root,
+      currentSessionIds,
+      options,
+      skipped,
+    ),
+    removed_orphan_agents: removedOrphanAgents.sort(),
+    skipped: skipped.sort((left, right) =>
+      left.resource.localeCompare(right.resource),
+    ),
   }
 }

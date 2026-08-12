@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-08-12
+
+### Changed
+
+- Extend best-of-N session handling and meta-orchestrator guidance for foreground child supervision and consolidated remediation routing ([best-of-n](src/lib/best-of-n.ts), [BESTOFN-001](governance/policies/BESTOFN-001.json), [meta-orchestrator agent](library/cursor/agents/meta-orchestrator.md)).
+
+### Added
+
+- Add harness worktree management with a durable index, linked `git worktree` creation, removal safety, stale-record pruning, and reconcile into a recorded worktree or an existing branch, including a branch a checkout already holds ([worktrees](src/lib/worktrees.ts), [cli](src/cli.ts), [operator guide](docs/operator-guide.md)).
+- Add `pan worktree resolve <name>` as the create-or-resolve entry for projected librarian and release-steward commands, and extend `--worktree <name>` to workflow starts through the orchestrator, standalone personas through governance cards, and workspace-aware CLI utilities ([cli](src/cli.ts), [orchestrator agent](library/cursor/agents/orchestrator.md), [projected commands](library/cursor/commands/pan-build-docs.md)).
+- Run repository-check baselines, profile commands, and deterministic gate reruns inside the run workspace when a worktree is selected ([engine](src/lib/engine.ts), [repository-checks](src/lib/repository-checks.ts)).
+- Add configurable `worktrees.setup` commands and source selection from branch, revision, or recorded worktree at creation ([project-config](src/lib/project-config.ts), [setup-commands](src/lib/setup-commands.ts), [config schema](library/schemas/config.schema.json)).
+
+### Fixed
+
+- Validate every reconcile source before creating or resolving a branch target so a dirty source cannot leave a recorded integration target ([worktrees](src/lib/worktrees.ts), [worktree-cli test](tests/integration/worktree-cli.test.ts)).
+
 ## [3.2.0] - 2026-08-11
 
 ### Added

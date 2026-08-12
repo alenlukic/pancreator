@@ -72,6 +72,32 @@ test('every standalone mode renders a card with its policies inlined', () => {
   }
 })
 
+test('the best-of-N card flattens child supervision to stage workers', () => {
+  const root = createFixture()
+  const card = buildGovernanceCard(root, {
+    mode: 'best-of-n',
+    outputPath: 'runtime/inbox/best-of-n-card.md',
+  })
+
+  assert.match(
+    card.markdown,
+    /directly perform supervisor mechanics for every child run/u,
+  )
+  assert.match(
+    card.markdown,
+    /MUST NOT delegate a child run to another `pan-orchestrator`/u,
+  )
+  assert.match(
+    card.markdown,
+    /run-scoped worker agents with foreground, blocking calls/u,
+  )
+  assert.match(
+    card.markdown,
+    /terminal candidate failures without creating an operator gate/u,
+  )
+  assert.doesNotMatch(card.markdown, /operator's top-level agent/u)
+})
+
 test('the spotfix card references the spotfix procedure guidance', () => {
   const root = createFixture()
   const card = buildGovernanceCard(root, {
@@ -131,6 +157,43 @@ test('the shepherd card resolves coder governance and references the procedure',
   assert.ok(written.includes(`Read when: ${guidance.reference.read_trigger}`))
   assert.ok(!written.includes(guidance.content))
   assert.match(written, /head branch/u)
+})
+
+test('the shared worktree option resolves or creates the card workspace', () => {
+  const root = createFixture()
+  const card = buildGovernanceCard(root, {
+    mode: 'spotfix',
+    outputPath: 'runtime/inbox/spotfix-worktree-card.md',
+    worktreeName: 'fix-it',
+  })
+
+  assert.ok(card.worktree)
+  assert.equal(card.worktree.name, 'fix-it')
+  assert.equal(card.worktree.path, 'runtime/worktrees/operator/fix-it')
+
+  const written = readFileSync(path.join(root, card.path), 'utf8')
+
+  assert.match(written, /## 🌳 Workspace worktree/u)
+  assert.ok(written.includes('`runtime/worktrees/operator/fix-it`'))
+  assert.match(written, /Do not change the main checkout/u)
+
+  // A second card with the same name reuses the recorded worktree.
+  const again = buildGovernanceCard(root, {
+    mode: 'pair',
+    outputPath: 'runtime/inbox/pair-worktree-card.md',
+    worktreeName: 'fix-it',
+  })
+
+  assert.equal(again.worktree?.path, card.worktree.path)
+
+  // Without the option, no workspace section is rendered.
+  const plain = buildGovernanceCard(root, {
+    mode: 'pair',
+    outputPath: 'runtime/inbox/pair-plain-card.md',
+  })
+
+  assert.equal(plain.worktree, undefined)
+  assert.doesNotMatch(plain.markdown, /Workspace worktree/u)
 })
 
 test('an unknown mode lists the available modes', () => {

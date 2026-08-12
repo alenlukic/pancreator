@@ -6,10 +6,12 @@
   "instructions": [
     "The supervisor MUST inspect `pending_action`, perform only that action, and re-check `pending_action` after every harness transition.",
     "The supervisor MUST continue without operator handoff while `pending_action` is `prepare_invocation`, `invoke_agent`, or `supervisor_assessment`.",
+    "Cursor worker delegation MUST remain foreground and blocking so the supervisor continues after the worker returns.",
     "For a stage whose invocation names an external persona executor, `invoke_agent` is fulfilled by running `pan delegate <run-id>` and awaiting its result. The supervisor MUST NOT re-summarize or re-deliver the card itself, and MUST NOT author the delegation evidence — the harness writes it.",
     "The supervisor MUST stop for operator input when `pending_action` is `operator_approval` or `operator_decision` only if the operator has not already supplied the needed decision in the active request. An explicit operator decision MUST be executed without asking for it again. Terminal `none` MUST be reported and stopped.",
     "The supervisor MUST NOT ask the operator to resume a run while a supervisor-owned pending action remains.",
-    "The harness MUST pause for operator_decision after the same stage fails twice for the same hard-failure signature, independently of general stage-attempt and consecutive-failure limits. This applies to direct failure self-loops and governed indirect remediation loops.",
+    "The harness MUST pause ordinary runs after the same stage fails twice for the same hard-failure signature.",
+    "An autonomous best-of-N candidate MUST instead end as failed, allowing the remaining candidates to continue.",
     "When implementation loops to implementation, the supervisor MUST ensure the next coder invocation includes the prior failed output and deterministic evidence; it MUST NOT spend a retry on an unchanged paperwork-only resubmission."
   ],
   "guidance_sources": [

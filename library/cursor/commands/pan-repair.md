@@ -19,7 +19,9 @@ self-development intake without implementing the repair.
    prompt-delivery evidence only, never as a substitute for an agent transcript.
 5. Run `./bin/pan governance card --mode repair` and read the card it writes. It
    resolves the complete repair governance, including `REPAIR-001`; do not
-   assemble policy text by hand.
+   assemble policy text by hand. When the operator names a worktree, add
+   `--worktree <name>` to create or resolve it. The card then binds the session
+   workspace to that worktree.
 6. Invoke the `pan-harness-technician` subagent, pasting the complete card
    contents verbatim into its prompt, followed by the original input, resolved
    evidence location, collected transcript references or contents, and output

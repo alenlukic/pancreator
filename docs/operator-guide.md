@@ -394,6 +394,54 @@ For ordinary target work, install Pancreator into the target repository and open
 
 Bootstrap a target with `./bin/install --target <path>` from the Pancreator source checkout, then run `./.pancreator/bin/pan doctor` and `./.pancreator/bin/pan validate` from the target. See [`docs/embedded-installation.md`](embedded-installation.md) for Cursor merge semantics, versioned updates, partial-install prompts, and cleanup.
 
+## Working in operator worktrees
+
+A worktree is a second working directory of the same repository. Every worktree is created with `git worktree`, so all worktrees share one object store and one set of branches; only the checked-out files are duplicated. Use one when you want a run to work on a line of work the main checkout is not holding, or when you want several independent lines of work side by side.
+
+```sh
+./bin/pan worktree create feature-login --description "Rework the login flow"
+./bin/pan worktree list
+./bin/pan init --workflow dev --request runtime/inbox/request.md --worktree feature-login
+```
+
+- `create` makes the branch `pan-wt/<name>` from `--from` (a branch, a revision, or another recorded worktree) and defaults to the commit the main checkout currently holds. Names use lowercase letters, digits, and single hyphens, because the name becomes both a directory and a branch segment.
+- Worktrees live under `runtime/worktrees/operator/<name>` and are recorded in `runtime/worktrees/operator/index.json` with branch, commit, description, and creation date. That index is harness-owned generated state; change it only through these commands.
+- `list` adds live state to the recorded fields: whether Git still registers the directory, the current head commit, and whether the worktree is dirty. `--json` returns the same records for scripting.
+- `--worktree <name>` is one shared option with one contract: every workspace-aware command accepts it, resolves the name the same way, and creates the worktree when the index does not hold it. The workspace-aware commands are `init` (starts a workflow run there), `repository-check <profile>` (verifies it without a run), `technologies detect` (detects languages inside it), `doctor` (points its workspace diagnostics at it), and `governance card --mode <mode>` (targets a standalone persona — spotfix, pair, shepherd, debug, repair, decompose — at it through a card-level workspace section). Every other command rejects `--worktree` with an explicit error naming this list, because it does not run against a selectable workspace. The branch of the main checkout never changes.
+- `worktree resolve <name>` applies the same create-or-resolve behavior directly and reports the worktree record with a `created` flag. The projected commands that delegate a named persona outside the CLI — `/pan-build-docs` and `/pan-build-briefs` (librarian), `/pan-release` and `/pan-write-pr` (release steward) — bind their workspace to an operator-named worktree through it. `/pan-start` covers workflows: name a worktree in the request and the orchestrator passes `--worktree <name>` to `init`. Commands that act on an existing run (`/pan-resume`, `/pan-status`) take no worktree option, because a run binds its workspace once at creation.
+- `init --worktree <name>` records the worktree directory as the run's `workspace_root`. The run's repository-check baselines and deterministic gates then run inside the worktree. `--worktree` and `--workspace` name two different workspaces, so pass only one.
+- `pan repository-check <profile> --workspace <name>` also accepts a recorded worktree name or a directory path; unlike `--worktree`, it never creates anything.
+- `remove <name>` refuses a worktree with uncommitted work unless you pass `--force`, and always keeps the branch, because deleting a branch stays your decision. When you already deleted the directory yourself, `remove` prunes the stale Git registration and the index entry.
+
+Best-of-N candidate worktrees are separate. They live under `runtime/worktrees/<bon-id>/` and remain owned by `./bin/pan best-of-n`, so `pan worktree` neither lists nor removes them.
+
+### Reconciling worktrees
+
+```sh
+./bin/pan worktree reconcile --into trunk --source feature-login --source feature-billing
+./bin/pan worktree reconcile --into-branch main --source feature-login --source feature-billing
+```
+
+`reconcile` merges two or more recorded source worktrees, one at a time and in the order you list them, with `git merge --no-ff`. The target is either a recorded worktree (`--into`) or an existing local branch (`--into-branch`). A branch no checkout holds is checked out into a new recorded worktree first, because Git can only merge inside a working tree. A branch a checkout already holds — including `main` in the main checkout, as above — merges inside that checkout, which must be clean; a dirty holding checkout is refused before any merge. Every reconcile appends its operator invocation and outcome to `runtime/logs/worktrees/reconcile.jsonl`.
+
+A merge commit is an irreversible source-control action under `ACTION-001`, so an agent must hold a recorded operator directive before it runs `pan worktree reconcile`.
+
+On conflict the command stops at the first conflicting source and exits non-zero, and a conflict request is written to `runtime/inbox/` naming the target, the completed sources, the conflicted paths, and the sources not started. In a recorded worktree target the merge state stays in place; direct an agent at that request to resolve the conflict, and do not commit the result without explicit operator approval. In a held checkout the conflicted merge is aborted instead, so your working tree comes back untouched; completed source merges remain on the branch, and the request explains how to finish through a worktree.
+
+Configure defaults in `config.json` when the built-in ones do not suit the repository:
+
+```json
+{
+  "worktrees": {
+    "root": "runtime/worktrees/operator",
+    "branch_prefix": "pan-wt/",
+    "setup": ["npm ci"]
+  }
+}
+```
+
+`setup` commands run inside a new worktree, in order, immediately after creation. A failing setup command fails `create`, and the half-prepared worktree stays recorded so you can inspect or remove it.
+
 ## Intake approval
 
 Check that the product specification:

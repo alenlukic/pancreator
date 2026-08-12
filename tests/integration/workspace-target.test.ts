@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
+import {
+  appendFileSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -8,9 +14,13 @@ import {
   assessStage,
   createRun,
   decideRun,
+  getRunState,
   prepareInvocation,
+  setRunStage,
   submitOutput,
 } from '../../src/lib/engine.js'
+import { runRepositoryCheck } from '../../src/lib/repository-checks.js'
+import { createWorktree } from '../../src/lib/worktrees.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
@@ -54,6 +64,73 @@ test('init --workspace records the deliverable repo and surfaces it on the card'
 
   assert.ok(prepared.invocation)
   assert.equal(prepared.invocation.workspace_root, 'nested/project')
+})
+
+test('repository checks run in an explicitly targeted workspace', () => {
+  const root = createFixture()
+  const worktree = createWorktree(root, 'alpha', {
+    description: 'Alpha worktree',
+  })
+
+  writeJson(path.join(root, 'runtime/repository-checks.json'), {
+    schema_version: 1,
+    profiles: {
+      fast: { probes: [], commands: ['node -e "process.exit(0)"'] },
+    },
+  })
+
+  const check = runRepositoryCheck(root, 'fast', { workspace: worktree.path })
+
+  assert.equal(check.status, 'passed')
+  assert.equal(
+    realpathSync(check.workspace_root),
+    realpathSync(path.join(root, worktree.path)),
+  )
+})
+
+test('pre-implementation baselines use the run workspace', () => {
+  const root = createFixture()
+  const worktree = createWorktree(root, 'baseline-target', {
+    description: 'Baseline worktree',
+  })
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Worktree baseline run',
+    workspace: worktree.path,
+  })
+
+  writeJson(path.join(root, 'runtime/repository-checks.json'), {
+    schema_version: 1,
+    profiles: {
+      static: { probes: [], commands: ['node -e "0 // static"'] },
+      fast: { probes: [], commands: ['node -e "0 // fast"'] },
+      full: { probes: [], commands: ['node -e "0 // full"'] },
+      configuration: { probes: [], commands: ['node -e "0 // configuration"'] },
+    },
+  })
+
+  setRunStage(root, state.run_id, 'implement', 'Capture worktree baselines.')
+
+  const invocation = prepareInvocation(root, state.run_id).invocation
+
+  assert.ok(invocation)
+
+  const baseline = getRunState(root, state.run_id).repository_check_baselines
+    ?.static
+
+  assert.ok(baseline)
+
+  const baselineArtifact = JSON.parse(
+    readFileSync(path.join(root, baseline.artifact_path), 'utf8'),
+  ) as {
+    result: { workspace_root: string }
+  }
+
+  assert.equal(
+    realpathSync(baselineArtifact.result.workspace_root),
+    realpathSync(path.join(root, worktree.path)),
+  )
 })
 
 test('gate overrides replace and disable deterministic shell gates', () => {

@@ -1678,8 +1678,11 @@ function runShellCheck(
     onProgress?.(
       `running ${criterion.id} with repository profile '${profileName}' (timeout ${criterion.timeout_ms ?? 'default'}ms)`,
     )
+    // Profile gates run where the stage worked, so a worktree-targeted run is
+    // judged by its own workspace rather than the main checkout.
     repositoryResult = runRepositoryCheck(root, profileName, {
       timeout_ms: criterion.timeout_ms,
+      workspace: workspaceDir,
     })
     onProgress?.(
       `${criterion.id} ${repositoryResult.status} in ${(repositoryResult.total_duration_ms / 1000).toFixed(1)}s`,

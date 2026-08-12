@@ -401,12 +401,26 @@ export interface TrackingConfig {
   exclude?: string[]
 }
 
+export interface WorktreesConfig {
+  root?: string
+  branch_prefix?: string
+  setup?: string[]
+}
+
+export interface ResolvedWorktreesConfig {
+  root: string
+  branch_prefix: string
+  setup: string[]
+}
+
 export interface ProjectConfig {
   schema_version: 1
   workspace_id?: string
   workspace_root?: string
   state_root?: string
   tracking?: TrackingConfig
+  /** Defaults for operator worktrees managed by `pan worktree`. */
+  worktrees?: WorktreesConfig
   /**
    * `embedded` installs the harness at `<target>/.pancreator`; `detached`
    * places it outside the target tree entirely, with `workspace_root` holding
