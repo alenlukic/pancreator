@@ -193,9 +193,10 @@ export function runRequirement(
     })
   }
 
-  const targetChecksum = fileExists(absoluteTarget)
-    ? sha256(readText(absoluteTarget))
-    : undefined
+  const targetChecksum =
+    fileExists(absoluteTarget) && options.targetPath !== '.'
+      ? sha256(readText(absoluteTarget))
+      : undefined
 
   const handlerResult = handler({
     root: options.root,

@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-08-11
+
+### Added
+
+- Add `ASK-001` and `QUESTION-TOOL-VALIDATE-001` so every Cursor-executor agent session is instructed to use `cursor/ask_question`, and canonical agent frontmatter cannot name or block the method ([ASK-001](governance/policies/ASK-001.json), [validation](src/lib/validation.ts), [handlers](src/lib/requirements/handlers.ts)).
+- Require a chat fallback when `cursor/ask_question` is unavailable: the agent asks in its normal response channel and flags the unavailability, rather than assuming an answer, failing silently, or reporting `blocked` for the tool gap alone ([ASK-001](governance/policies/ASK-001.json)).
+- Add an `Operator questions` section to `AGENTS.md` and matching sentences to both canonical Cursor rules so unbound agents receive the same instruction ([AGENTS.md](AGENTS.md), [pancreator-self-development.mdc](library/cursor/rules/pancreator-self-development.mdc), [pancreator-embedded.mdc](library/cursor/rules/pancreator-embedded.mdc)).
+
+### Fixed
+
+- Skip checksum capture when a harness validator targets the repository root `.`, so gate-phase checks run against the workspace without treating the directory as a file ([run.ts](src/lib/requirements/run.ts)).
+- Derive embedded-installation and pipeline-config test expectations from fixture data instead of hard-coded persona models ([embedded-installation.test.ts](tests/integration/embedded-installation.test.ts), [pipeline-config.test.ts](tests/unit/pipeline-config.test.ts)).
+
 ## [3.1.0] - 2026-08-10
 
 ### Changed
