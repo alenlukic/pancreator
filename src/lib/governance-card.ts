@@ -9,6 +9,8 @@ import { harnessPathPrefix, isTargetInstallation } from './project-config.js'
 import { resolveRequirements } from './requirements/resolve.js'
 import type { InvocationKind } from './requirements/types.js'
 import { PROTECTED_PATH_RULE } from './workspace/protected-paths.js'
+import { resolveOrCreateWorktree } from './worktrees.js'
+import type { WorktreeRecord } from './worktrees.js'
 import type { Policy, RequirementManifest } from './types.js'
 
 /**
@@ -123,9 +125,13 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'consolidated into one implementation by a separate run. The session ' +
       'agent owns no run, no stage contract, and no gate.',
     boundaries: [
-      'You MUST drive the session only through `./bin/pan best-of-n` commands, and MUST NOT create worktrees, runs, or session records by hand.',
-      'You MUST delegate every candidate run and the consolidation run to its own `pan-orchestrator` variant subagent, and MUST NOT advance a run yourself.',
-      'You MUST report a failed or blocked candidate to the operator, and MUST NOT abandon or discard it on your own initiative.',
+      'You MUST use `./bin/pan best-of-n` for session lifecycle and `./bin/pan` for child-run supervision.',
+      'You MUST NOT create worktrees, runs, session records, or run records by hand.',
+      'You MUST directly perform supervisor mechanics for every child run.',
+      'You MUST NOT delegate a child run to another `pan-orchestrator`.',
+      'You MUST delegate stages to run-scoped worker agents with foreground, blocking calls.',
+      'You MUST collect terminal candidate failures without creating an operator gate.',
+      'You MUST report only non-terminal execution blockers that make a candidate unable to continue.',
       PROTECTED_PATH_RULE,
       'You MUST NOT commit, push, merge, publish, deploy, delete a branch, or remove a worktree unless the operator explicitly directs that action.',
     ],
@@ -153,12 +159,15 @@ export interface GovernanceCard {
   markdown: string
   policies: Policy[]
   requirements: RequirementManifest
+  /** Worktree the shared `--worktree` option resolved or created, when given. */
+  worktree?: WorktreeRecord
 }
 
 export interface GovernanceCardOptions {
   mode: string
   requestPath?: string | null
   outputPath?: string | null
+  worktreeName?: string | null
 }
 
 function renderGovernanceCardMarkdown(options: {
@@ -167,6 +176,7 @@ function renderGovernanceCardMarkdown(options: {
   requirements: RequirementManifest
   requestPath: string | null
   harnessPrefixNote: string | null
+  worktree: WorktreeRecord | null
 }): string {
   const { mode, policies, requirements, requestPath } = options
   const agentRequirements = [
@@ -206,6 +216,19 @@ function renderGovernanceCardMarkdown(options: {
     '',
     ...(requestPath
       ? ['## 📥 Operator input', '', `- \`${requestPath}\``, '']
+      : []),
+    ...(options.worktree
+      ? [
+          '## 🌳 Workspace worktree',
+          '',
+          `- Worktree: \`${options.worktree.name}\``,
+          `- Path: \`${options.worktree.path}\``,
+          `- Branch: \`${options.worktree.branch}\``,
+          '',
+          'The operator selected this worktree as the workspace. Do all ' +
+            'workspace work inside its path. Do not change the main checkout.',
+          '',
+        ]
       : []),
     ...(options.harnessPrefixNote
       ? ['## 📂 Path resolution', '', options.harnessPrefixNote, '']
@@ -281,6 +304,13 @@ export function buildGovernanceCard(
     invocation_kind: mode.kind,
     contracts: [],
   })
+  const worktree = options.worktreeName
+    ? resolveOrCreateWorktree(
+        root,
+        options.worktreeName,
+        `Worktree '${options.worktreeName}'`,
+      )
+    : null
   const relativePath =
     options.outputPath ??
     `runtime/logs/sessions/${makeRunId()}/${options.mode}-card.md`
@@ -294,6 +324,7 @@ export function buildGovernanceCard(
         `\`governance/\` are rooted at \`${harnessPathPrefix(root)}/\` when ` +
         'accessed from the target repository.'
       : null,
+    worktree,
   })
   const absolute = resolveInside(root, relativePath)
 
@@ -306,5 +337,6 @@ export function buildGovernanceCard(
     markdown,
     policies,
     requirements,
+    ...(worktree ? { worktree } : {}),
   }
 }

@@ -197,8 +197,14 @@ function scanTrackedSources(
   }
 }
 
-export function detectWorkspaceTechnologies(root: string): TechnologyDetection {
-  const workspaceRoot = path.resolve(root, configuredWorkspaceRoot(root))
+export function detectWorkspaceTechnologies(
+  root: string,
+  options: { workspace?: string } = {},
+): TechnologyDetection {
+  const workspaceRoot = path.resolve(
+    root,
+    options.workspace ?? configuredWorkspaceRoot(root),
+  )
   const evidence = evidenceForManifest(workspaceRoot)
   const unsupportedEvidence: string[] = []
 

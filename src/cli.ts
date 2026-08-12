@@ -23,6 +23,7 @@ import {
   cleanBestOfN,
   consolidateBestOfN,
   initBestOfN,
+  refreshBestOfNAgents,
 } from './lib/best-of-n.js'
 import { personaExecutorOf } from './lib/executors/mapping.js'
 import { claudeCodeVersionPreflight } from './lib/executors/claude-code.js'
@@ -75,9 +76,18 @@ import {
   validateBriefSystem,
 } from './lib/briefs.js'
 import { maintainWorkflowRuntime } from './lib/workflow-artifacts.js'
+import {
+  createWorktree,
+  listWorktrees,
+  readWorktreeIndex,
+  reconcileWorktrees,
+  removeWorktree,
+  resolveOrCreateWorktree,
+  resolveWorkspacePathOrWorktree,
+} from './lib/worktrees.js'
 
 const HELP_BODY = `Usage:
-  pan init --request <repo-relative-file> [--workflow dev|prototype|design] [--title <title>] [--workspace <dir>] [--gates <file>] [--involvement <profile>] [--review-mode default|squad]
+  pan init --request <repo-relative-file> [--workflow dev|prototype|design] [--title <title>] [--workspace <dir> | --worktree <name>] [--gates <file>] [--involvement <profile>] [--review-mode default|squad]
   pan prepare <run-id>
   pan delegate <run-id> [--timeout-ms <milliseconds>]
   pan submit <run-id> <output-json>
@@ -88,24 +98,30 @@ const HELP_BODY = `Usage:
   pan set-stage <run-id> --stage <stage-slug> --note <reason>
   pan waive-gate <run-id> --note <directive> [--stage <stage-slug>] [--to <stage-slug>] [--criteria <id[,id...]>] [--defer <AC-id[,AC-id...]> --spotfix]
   pan abort <run-id> [--note <text>]
-  pan technologies detect --json
-  pan repository-check <profile> [--timeout-ms <milliseconds>] [--json]
+  pan technologies detect [--worktree <name>] --json
+  pan repository-check <profile> [--timeout-ms <milliseconds>] [--workspace <dir|worktree> | --worktree <name>] [--json]
   pan repository-check validate [--json]
+  pan worktree create <name> [--from <branch|commit|worktree>] [--description <text>] [--json]
+  pan worktree resolve <name> [--description <text>] [--json]
+  pan worktree list [--json]
+  pan worktree remove <name> [--force] [--json]
+  pan worktree reconcile (--into <worktree> | --into-branch <branch>) --source <worktree> --source <worktree> [--json]
   pan status <run-id> [--json]
   pan list [--json]
   pan archive [--days <positive-integer>] [--json]
   pan models [--sync] [--json]
   pan validate [--json]
-  pan doctor [--json]
+  pan doctor [--worktree <name>] [--json]
   pan requirements resolve --persona <p> --workflow <w> --stage <s> [--kind <kind>] [--output-path <path>] [--json]
   pan requirements run --persona <p> --workflow <w> --stage <s> --kind <kind> --registry <id> --target <path> [--json]
   pan output scaffold <run-id> --invocation <path> --output <path> [--force]
   pan output validate <run-id> --file <path> [--json]
   pan assessment scaffold <run-id> --invocation <path> --output <path> [--force]
   pan governance audit-directives [--json]
-  pan governance card --mode <pair|spotfix|shepherd|investigation|repair|decomposition|best-of-n> [--request <path>] [--out <path>] [--json]
+  pan governance card --mode <pair|spotfix|shepherd|investigation|repair|decomposition|best-of-n> [--request <path>] [--worktree <name>] [--out <path>] [--json]
   pan best-of-n init --request <path> --configs <path> [--workflow <slug>] [--consolidation-workflow <slug>] [--json]
   pan best-of-n status <bon-id> [--json]
+  pan best-of-n refresh-agents <bon-id> [--json]
   pan best-of-n abandon <bon-id> <run-id> --note <reason> [--json]
   pan best-of-n consolidate <bon-id> [--json]
   pan best-of-n clean <bon-id> [--force] [--json]
@@ -171,6 +187,95 @@ function hasFlag(args: string[], name: string): boolean {
   return args.includes(name)
 }
 
+/**
+ * Utility-wide worktree targeting contract.
+ *
+ * One shared `--worktree <name>` option selects the workspace a command runs
+ * against, creating the named worktree when the index does not hold it yet.
+ * `acceptsWorktreeOption` declares every command surface that runs against a
+ * selectable workspace; every other command rejects the option explicitly so
+ * an unsupported use fails loudly instead of being silently ignored.
+ * Projected persona and utility commands that delegate outside the CLI bind
+ * their workspace through `pan worktree resolve`, which applies the same
+ * create-or-resolve behavior to an operator-named worktree.
+ */
+const WORKTREE_CAPABLE_SURFACES = [
+  'init',
+  'repository-check <profile>',
+  'technologies detect',
+  'doctor',
+  'governance card',
+]
+
+const SUBCOMMAND_STYLE_COMMANDS = new Set([
+  'assessment',
+  'best-of-n',
+  'briefs',
+  'governance',
+  'output',
+  'repository-check',
+  'requirements',
+  'spotfix',
+  'technologies',
+  'worktree',
+])
+
+function acceptsWorktreeOption(command: string, args: string[]): boolean {
+  switch (command) {
+    case 'init':
+    case 'doctor':
+      return true
+    case 'repository-check':
+      return args[0] !== 'validate'
+    case 'technologies':
+      return args[0] === 'detect'
+    case 'governance':
+      return args[0] === 'card'
+    default:
+      return false
+  }
+}
+
+function assertWorktreeOptionSupported(command: string, args: string[]): void {
+  if (!hasFlag(args, '--worktree') || acceptsWorktreeOption(command, args)) {
+    return
+  }
+
+  const sub = args[0]
+  const surface =
+    sub && !sub.startsWith('--') && SUBCOMMAND_STYLE_COMMANDS.has(command)
+      ? `${command} ${sub}`
+      : command
+
+  throw new PanError(
+    `'pan ${surface}' does not run against a selected workspace, so it does ` +
+      'not accept --worktree. Commands that accept the shared worktree ' +
+      `option: ${WORKTREE_CAPABLE_SURFACES.join(', ')}.`,
+    { code: 'WORKTREE_OPTION_UNSUPPORTED' },
+  )
+}
+
+/** Workspace the shared `--worktree <name>` option selects, created on demand. */
+function sharedWorktreeWorkspace(
+  root: string,
+  args: string[],
+  description?: string | null,
+): { name: string; path: string } | null {
+  const name = option(args, '--worktree')
+
+  if (!name) {
+    return null
+  }
+
+  const record = resolveOrCreateWorktree(
+    root,
+    name,
+    description ?? `Worktree '${name}'`,
+  )
+
+  return { name, path: record.path }
+}
+
 function commaSeparatedOption(args: string[], name: string): string[] {
   const value = option(args, name)
 
@@ -180,6 +285,29 @@ function commaSeparatedOption(args: string[], name: string): string[] {
         .map((item) => item.trim())
         .filter(Boolean)
     : []
+}
+
+function repeatedOption(args: string[], name: string): string[] {
+  const values: string[] = []
+
+  for (let index = 0; index < args.length; index += 1) {
+    if (args[index] !== name) {
+      continue
+    }
+
+    const value = args[index + 1]
+
+    if (!value || value.startsWith('--')) {
+      throw new PanError(`${name} requires a value.`, {
+        code: 'INVALID_ARGUMENT',
+      })
+    }
+
+    values.push(value)
+    index += 1
+  }
+
+  return values
 }
 
 const INVOCATION_KINDS = new Set<InvocationKind>([
@@ -376,6 +504,8 @@ async function main(): Promise<void> {
     return
   }
 
+  assertWorktreeOptionSupported(command, args)
+
   switch (command) {
     case 'help':
     case '--help':
@@ -383,11 +513,22 @@ async function main(): Promise<void> {
       print(help)
       return
     case 'init': {
+      const workspace = option(args, '--workspace')
+
+      if (workspace && hasFlag(args, '--worktree')) {
+        throw new PanError(
+          '--workspace and --worktree cannot be used together.',
+          { code: 'INVALID_ARGUMENT' },
+        )
+      }
+
+      const title = option(args, '--title')
+      const worktreeWorkspace = sharedWorktreeWorkspace(root, args, title)
       const state = createRun(root, {
         workflowSlug: option(args, '--workflow', 'dev') ?? 'dev',
         requestPath: option(args, '--request'),
-        title: option(args, '--title'),
-        workspace: option(args, '--workspace'),
+        title,
+        workspace: worktreeWorkspace ? worktreeWorkspace.path : workspace,
         gatesPath: option(args, '--gates'),
         involvement: option(args, '--involvement'),
         reviewMode: option(args, '--review-mode'),
@@ -664,7 +805,15 @@ async function main(): Promise<void> {
         })
       }
 
-      print(detectWorkspaceTechnologies(root), true)
+      const worktreeWorkspace = sharedWorktreeWorkspace(root, args)
+
+      print(
+        detectWorkspaceTechnologies(
+          root,
+          worktreeWorkspace ? { workspace: worktreeWorkspace.path } : {},
+        ),
+        true,
+      )
       return
     }
     case 'repository-check': {
@@ -703,8 +852,24 @@ async function main(): Promise<void> {
         timeoutMs = parsedTimeout
       }
 
+      const workspaceOption = option(args, '--workspace')
+
+      if (workspaceOption && hasFlag(args, '--worktree')) {
+        throw new PanError(
+          '--workspace and --worktree cannot be used together.',
+          { code: 'INVALID_ARGUMENT' },
+        )
+      }
+
+      const worktreeWorkspace = sharedWorktreeWorkspace(root, args)
+      const checkWorkspace = worktreeWorkspace
+        ? worktreeWorkspace.path
+        : workspaceOption
+          ? resolveWorkspacePathOrWorktree(root, workspaceOption)
+          : null
       const result = await runRepositoryCheckStreaming(root, profile, {
         ...(timeoutMs !== undefined ? { timeout_ms: timeoutMs } : {}),
+        ...(checkWorkspace ? { workspace: checkWorkspace } : {}),
         on_start: (kind, commandText) => {
           process.stderr.write(
             `[repository-check:${profile}] ${kind}: ${commandText}\n`,
@@ -724,6 +889,78 @@ async function main(): Promise<void> {
         process.exitCode = 1
       }
       return
+    }
+    case 'worktree': {
+      const sub = args[0]
+      const rest = args.slice(1)
+      const asJson = hasFlag(args, '--json')
+
+      if (sub === 'create') {
+        const worktree = createWorktree(
+          root,
+          requiredArgument(rest[0], 'worktree-name'),
+          {
+            from: option(args, '--from'),
+            description: option(args, '--description'),
+          },
+        )
+
+        print({ status: 'created', worktree }, asJson)
+        return
+      }
+
+      if (sub === 'resolve') {
+        const name = requiredArgument(rest[0], 'worktree-name')
+        const created = !readWorktreeIndex(root).worktrees.some(
+          (entry) => entry.name === name,
+        )
+        const worktree = resolveOrCreateWorktree(
+          root,
+          name,
+          option(args, '--description') ?? `Worktree '${name}'`,
+        )
+
+        print({ status: 'resolved', created, worktree }, asJson)
+        return
+      }
+
+      if (sub === 'list') {
+        print({ status: 'listed', worktrees: listWorktrees(root) }, asJson)
+        return
+      }
+
+      if (sub === 'remove') {
+        const removed = removeWorktree(
+          root,
+          requiredArgument(rest[0], 'worktree-name'),
+          { force: hasFlag(args, '--force') },
+        )
+
+        print({ status: 'removed', worktree: removed }, asJson)
+        return
+      }
+
+      if (sub === 'reconcile') {
+        const result = reconcileWorktrees(
+          root,
+          {
+            into: option(args, '--into'),
+            into_branch: option(args, '--into-branch'),
+          },
+          repeatedOption(args, '--source'),
+        )
+
+        print(result, asJson)
+
+        if (result.status === 'conflict') {
+          process.exitCode = 1
+        }
+        return
+      }
+
+      throw new PanError(`Unknown worktree subcommand: ${sub ?? '(missing)'}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
     }
     case 'status': {
       const runId = requiredArgument(args[0], 'run-id')
@@ -822,12 +1059,19 @@ async function main(): Promise<void> {
           mode: requiredArgument(option(args, '--mode'), '--mode'),
           requestPath: option(args, '--request'),
           outputPath: option(args, '--out'),
+          worktreeName: option(args, '--worktree'),
         })
 
         print({
           status: 'ready',
           mode: card.mode,
           card_path: card.path,
+          ...(card.worktree
+            ? {
+                worktree: card.worktree.name,
+                workspace_root: card.worktree.path,
+              }
+            : {}),
           policies: card.policies.map((policy) => policy.id),
           agent_requirements: [
             ...card.requirements.automation_requirements,
@@ -888,6 +1132,14 @@ async function main(): Promise<void> {
 
       if (sub === 'status') {
         print(bestOfNStatus(root, requiredArgument(rest[0], 'bon-id')), asJson)
+        return
+      }
+
+      if (sub === 'refresh-agents') {
+        print(
+          refreshBestOfNAgents(root, requiredArgument(rest[0], 'bon-id')),
+          asJson,
+        )
         return
       }
 
@@ -1230,15 +1482,24 @@ async function main(): Promise<void> {
       return
     }
     case 'doctor': {
+      const worktreeWorkspace = sharedWorktreeWorkspace(root, args)
       const validation = validateRepository(root)
       const pipelineConfig = loadPipelineConfig(root)
       const nodeMajor = Number(process.versions.node.split('.')[0])
-      const workspaceRoot = path.resolve(root, configuredWorkspaceRoot(root))
+      const workspaceRoot = path.resolve(
+        root,
+        worktreeWorkspace?.path ?? configuredWorkspaceRoot(root),
+      )
       const result = {
         ok: validation.ok && nodeMajor >= 22,
         node: {
           version: process.versions.node,
           supported: nodeMajor >= 22,
+        },
+        workspace: {
+          root:
+            path.relative(root, workspaceRoot).split(path.sep).join('/') || '.',
+          worktree: worktreeWorkspace?.name ?? null,
         },
         // Advisory: a repository without a web UI needs no browser, so an
         // unready browser stack MUST NOT fail doctor. BROWSER-001 turns the gap
@@ -1248,9 +1509,7 @@ async function main(): Promise<void> {
         // installation. These coincide only when the harness sits inside the
         // target, which a detached installation does not.
         git: {
-          available_repository: isGitRepository(
-            path.resolve(root, configuredWorkspaceRoot(root)),
-          ),
+          available_repository: isGitRepository(workspaceRoot),
         },
         pipeline_config: {
           active: pipelineConfig.name,

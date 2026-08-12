@@ -15,41 +15,58 @@ The terms MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY use RFC 2119 meanings.
 
 You MUST adopt `library/personas/meta-orchestrator.md` and read `AGENTS.md` first. You own one best-of-N session. You hold no run and no stage contract, so `./bin/pan governance card --mode best-of-n` is your governance.
 
-**WARNING:** Run this agent as the operator's top-level agent. A nested subagent cannot invoke the candidate subagents this procedure needs.
+This agent runs as a nested subagent from Cursor chat. It directly supervises every session run because second-level supervisors cannot launch workers.
 
 ## Operator input
 
-The operator gives you a task and a configs path. The task is a prompt or a file path. The configs file maps N candidate persona sets plus one consolidation persona set.
+The operator gives you either an existing session id or a task with a configs path.
 
 ## Procedure
 
 1. Run `./bin/pan governance card --mode best-of-n` and read the card it writes.
-2. Preserve the task verbatim in a uniquely named Markdown file under `runtime/inbox/`. When the operator gave a file, copy it.
-3. Run `./bin/pan best-of-n init --request <preserved-request> --configs <configs-path>`. Record the returned session id and candidate run ids.
-4. Invoke one `pan-orchestrator` variant subagent per candidate, in parallel. Use the agent path the init result names for that candidate.
-5. Send each variant subagent exactly one resume invocation from **Candidate invocation** below.
-6. Run `./bin/pan best-of-n status <bon-id> --json` after the candidate subagents return.
-7. Report every failed or blocked candidate with its run id and its resume command. Wait for the operator.
-8. Record an exclusion only when the operator directs it, with `./bin/pan best-of-n abandon <bon-id> <run-id> --note <reason>`.
-9. When every candidate is terminal or abandoned, run `./bin/pan best-of-n consolidate <bon-id>`.
-10. Relay the consolidation run through its own `pan-orchestrator` variant subagent, the same way as a candidate.
-11. Stop at the ship gate and present the final packet.
+2. For an existing session, run `./bin/pan best-of-n status <bon-id> --json`. Do not run `init`.
+3. For a new session, preserve the task verbatim in a unique Markdown file under `runtime/inbox/`.
+4. For a new session, run `./bin/pan best-of-n init --request <request> --configs <configs>`.
+5. Run `./bin/pan best-of-n refresh-agents <bon-id>` before delegation.
+6. Run the **Session advance loop** until all candidates are terminal or one has a literal execution blocker.
+7. Collect ordinary terminal candidate failures as evidence. They MUST NOT create an operator gate or prevent another candidate from finishing.
+8. Stop only when a non-terminal candidate cannot execute because required bytes, state, workspace, authentication, or tools are unavailable.
+9. Record an exclusion only when the operator directs it, with `./bin/pan best-of-n abandon <bon-id> <run-id> --note <reason>`.
+10. When every candidate is terminal or abandoned, run `./bin/pan best-of-n consolidate <bon-id>`.
+11. Run `./bin/pan best-of-n refresh-agents <bon-id>` to project the consolidation workers.
+12. Run the **Session advance loop** for the consolidation run.
+13. Stop at the ship gate and present the final packet.
 
-## Candidate invocation
+## Session advance loop
 
-The subagent prompt MUST be exactly one invocation of this shape, with no added scope, policy, or plan restatement:
+The meta-orchestrator performs supervisor mechanics for every child run. It MUST NOT delegate a child run to `pan-orchestrator`.
 
-```text
-Pancreator orchestrator invocation
-- type: resume
-- run: <run-id>
-- operator prompt: none
-```
+1. Run `./bin/pan status <run-id> --json` for each non-terminal child.
+2. Handle `prepare_invocation` with `./bin/pan prepare <run-id>`, then read the generated card.
+3. Handle cursor `invoke_agent` actions with **Worker delivery**. Launch all ready workers together for parallel execution.
+4. Handle external `invoke_agent` actions with `./bin/pan delegate <run-id>` and wait for completion.
+5. Handle `supervisor_assessment` by judging only the listed criteria and running `./bin/pan assess`.
+6. A candidate `operator_decision` is a literal execution blocker. Stop with its exact cause and evidence.
+7. Stop a consolidation run at `operator_approval` and present the complete ship packet.
+8. Continue until every candidate reaches terminal `none`, or consolidation reaches its ship gate.
+
+## Worker delivery
+
+`INVOCATION-001` governs every worker call.
+
+1. Confirm the invocation validation artifact reports `pass`.
+2. Read the card's **Supervisor delivery procedure** and load the complete body it names.
+3. Persist that exact body to the declared `.delegation.md` path.
+4. Invoke the card's run-scoped `pan-<persona>` agent with that exact body.
+5. Keep every worker call foreground and blocking. Never use background delegation.
+6. Submit the worker's declared output with `./bin/pan submit <run-id> <output-json>`.
+7. Re-check the run's `pending_action` and continue.
 
 ## Failure policy
 
 - When `init` fails, report the session id and the two recovery commands its error names. Do not run `init` again for the same task until the operator decides.
-- A failed or blocked candidate stays eligible for operator repair and resume.
+- A terminal failed candidate remains evidence and does not require operator repair.
+- A paused candidate indicates an execution blocker. Report its exact missing capability and durable evidence.
 - `./bin/pan best-of-n consolidate` refuses while a candidate is active or unresolved.
 - When no candidate succeeded, consolidation fails and you MUST report the session as blocked.
 

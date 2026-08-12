@@ -20,6 +20,7 @@ You MUST adopt `library/personas/orchestrator.md` and read `AGENTS.md` first. Yo
 The invocation names a preserved operator request file. Read it and derive init options:
 
 - By default, omit `--workspace` so `config.json.workspace_root` remains authoritative, and use no `gates` override.
+- If the preserved request or the invocation's operator note names a worktree for the run, pass `--worktree <name>`. The option creates or resolves that worktree and binds the run's workspace to it. Do not combine it with `--workspace`.
 - If the preserved request is JSON containing `workspace_root` (for example a prior run state payload), use it as `--workspace`.
 - If the preserved request is JSON containing `gate_overrides`, write that object to a uniquely named JSON file under `runtime/inbox/`. Pass its harness-relative path as `--gates`.
 - Default to `--workflow dev`. Use `--workflow prototype` only when the operator asked for a prototype, spike, or proof of concept, or asked to test an approach rather than deliver it. Use `--workflow design` only when the operator asked for UI/UX design work preceding implementation. When the request and the invocation's operator note leave delivering versus spiking ambiguous, STOP and report the question instead of initializing.
@@ -27,7 +28,7 @@ The invocation names a preserved operator request file. Read it and derive init 
 
 Then:
 
-1. Run `./bin/pan init --workflow <workflow> --request <harness-relative-request> [--workspace <workspace>] [--gates <harness-relative-gates-file>] [--involvement <profile>]`, then `./bin/pan prepare <run-id>`.
+1. Run `./bin/pan init --workflow <workflow> --request <harness-relative-request> [--workspace <workspace> | --worktree <name>] [--gates <harness-relative-gates-file>] [--involvement <profile>]`, then `./bin/pan prepare <run-id>`.
 2. Record the resolved involvement profile, active run contracts, and any gates that replaced a workflow default. Your report includes them so the operator knows where the run will stop.
 3. Run the advance loop. At the ratification stop, include the product specification in your report. If the preserved request or operator note already contains an explicit approval or rejection, execute that decision and continue instead.
 
@@ -44,10 +45,10 @@ The invocation names a run id and MAY carry an operator prompt.
 Repeat until a stop condition:
 
 - `prepare_invocation` → run `./bin/pan prepare <run-id>`, read the generated card, continue.
-- `invoke_agent` → deliver the card as specified in **Card delivery** below, then continue.
+- `invoke_agent` → deliver the card in foreground as specified in **Card delivery**, wait for its result, then continue.
 - `supervisor_assessment` → write the assessment JSON declared by the assessment request card, judging only its listed criteria, run `./bin/pan assess`, continue.
 - `operator_approval` → if the current invocation already supplies an explicit approval or rejection, execute it; otherwise STOP with the ratification packet. When the pending action carries a `checkpoint`, this is a technical-director stop governed by `DIRECTOR-001`: report the stage's substance in full and offer `approve`, `revise --note <directive>` for a refinement of otherwise acceptable work, or `reject --note <reason>` for work the operator declares unacceptable.
-- `operator_decision` → if the current invocation already supplies an explicit decision, execute it; otherwise STOP with the pause context and options.
+- `operator_decision` → if the current invocation already supplies an explicit decision, execute it; otherwise STOP with the pause context and options. A best-of-N candidate reaches this action only for a literal execution blocker.
 - `none` → STOP with the terminal report.
 
 A STOP ends this invocation: stop calling tools and write the final report. Do not STOP while a supervisor-owned pending action remains.
@@ -62,9 +63,10 @@ A STOP ends this invocation: stop calling tools and write the final report. Do n
    - Verbatim delivery names `runtime/logs/workflows/<run-id>/invocations/<invocation-id>.md`. Paste its complete contents into the prompt.
 3. Persist that exact prompt body to `runtime/logs/workflows/<run-id>/invocations/<invocation-id>.delegation.md`.
 4. Add no parallel scope, policy, gate, or plan restatement to the prompt; a minimal non-conflicting persona label MAY precede the delivered body.
-5. Submit the worker's declared output with `./bin/pan submit <run-id> <output-json>`.
-6. If delegation validation reports a missing or mismatched artifact, repair it against the same active invocation rather than bypassing it or reporting delivery as successful.
-7. A worker that reports stage result `blocked` with attestation status `reference_failed` could not read its contract. Report the named path and error; do not resubmit the same delegation unchanged.
+5. Invoke Cursor workers in foreground and wait for their result. Never use background delegation.
+6. Submit the worker's declared output with `./bin/pan submit <run-id> <output-json>`.
+7. If delegation validation reports a missing or mismatched artifact, repair it against the same active invocation rather than bypassing it or reporting delivery as successful.
+8. A worker that reports stage result `blocked` with attestation status `reference_failed` could not read its contract. Report the named path and error; do not resubmit the same delegation unchanged.
 
 ## Final report
 

@@ -3,10 +3,24 @@ import path from 'node:path'
 import { EMBEDDED_HARNESS_PREFIX } from './cursor-content.js'
 import { invariant } from './errors.js'
 import { fileExists, isRecord, readJson } from './io.js'
-import type { ProjectConfig, ReviewMode } from './types.js'
+import type {
+  ProjectConfig,
+  ResolvedWorktreesConfig,
+  ReviewMode,
+} from './types.js'
 
 /** Review method a run adopts when `config.json` declares none. */
 export const DEFAULT_REVIEW_MODE: ReviewMode = 'default'
+
+/**
+ * Operator worktrees share `runtime/worktrees/` with best-of-N sessions. The
+ * fixed `operator` child keeps the two apart, so `pan best-of-n clean` can
+ * never reach a worktree an operator created by hand.
+ */
+export const DEFAULT_WORKTREE_ROOT = 'runtime/worktrees/operator'
+
+/** Branch prefix that keeps harness branches recognizable in `git branch`. */
+export const DEFAULT_WORKTREE_BRANCH_PREFIX = 'pan-wt/'
 
 const PROJECT_CONFIG_PATH = 'config.json'
 
@@ -77,6 +91,54 @@ export function harnessConfigName(root: string): string | null {
     : null
 }
 
+function assertWorktreesBlock(value: unknown): void {
+  if (value === undefined) {
+    return
+  }
+
+  invariant(
+    isRecord(value),
+    `${PROJECT_CONFIG_PATH}.worktrees MUST be an object when present.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+  invariant(
+    value.root === undefined ||
+      (typeof value.root === 'string' &&
+        value.root.trim().length > 0 &&
+        !path.isAbsolute(value.root) &&
+        path.normalize(value.root) !== '..' &&
+        !path.normalize(value.root).startsWith(`..${path.sep}`)),
+    `${PROJECT_CONFIG_PATH}.worktrees.root MUST be a non-empty repository-relative path when present.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+  invariant(
+    value.branch_prefix === undefined ||
+      (typeof value.branch_prefix === 'string' &&
+        value.branch_prefix.length > 0 &&
+        !/\s/u.test(value.branch_prefix)),
+    `${PROJECT_CONFIG_PATH}.worktrees.branch_prefix MUST be a non-empty string without whitespace when present.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+
+  if (value.setup === undefined) {
+    return
+  }
+
+  invariant(
+    Array.isArray(value.setup),
+    `${PROJECT_CONFIG_PATH}.worktrees.setup MUST be an array when present.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+
+  for (const [index, command] of value.setup.entries()) {
+    invariant(
+      typeof command === 'string' && command.trim().length > 0,
+      `${PROJECT_CONFIG_PATH}.worktrees.setup[${index}] MUST be a non-empty command string.`,
+      { code: 'INVALID_PROJECT_CONFIG' },
+    )
+  }
+}
+
 function resolveConfigPath(root: string): string | null {
   const name = harnessConfigName(root)
 
@@ -133,6 +195,8 @@ export function readProjectConfig(root: string): ProjectConfig | null {
     { code: 'INVALID_PROJECT_CONFIG' },
   )
 
+  assertWorktreesBlock(value.worktrees)
+
   // A detached harness cannot reach its target by a relative path that would
   // survive being moved, so the target MUST be recorded absolutely.
   invariant(
@@ -158,6 +222,17 @@ export function loadProjectConfig(root: string): ProjectConfig {
 
 export function configuredWorkspaceRoot(root: string): string {
   return loadProjectConfig(root).workspace_root ?? '.'
+}
+
+/** Worktree defaults for this installation, with code defaults applied. */
+export function worktreesConfig(root: string): ResolvedWorktreesConfig {
+  const configured = loadProjectConfig(root).worktrees
+
+  return {
+    root: configured?.root ?? DEFAULT_WORKTREE_ROOT,
+    branch_prefix: configured?.branch_prefix ?? DEFAULT_WORKTREE_BRANCH_PREFIX,
+    setup: configured?.setup ?? [],
+  }
 }
 
 /**

@@ -167,6 +167,62 @@ test('Cursor sync projects the meta-orchestrator start surface', () => {
 
   assert.match(projected, /library\/personas\/meta-orchestrator\.md/u)
   assert.match(projected, /best-of-n init/u)
+  assert.match(projected, /directly supervises every session run/u)
+  assert.match(
+    projected,
+    /MUST NOT delegate a child run to `pan-orchestrator`/u,
+  )
+  assert.doesNotMatch(projected, /operator's top-level agent/u)
+})
+
+test('standalone persona commands expose the shared worktree option', () => {
+  const root = createFixture()
+
+  syncCursorProjection(root, { write: true })
+
+  for (const command of [
+    'pan-debug',
+    'pan-decompose',
+    'pan-pair',
+    'pan-repair',
+    'pan-shepherd',
+    'pan-spotfix',
+  ]) {
+    const projected = readFileSync(
+      path.join(root, '.cursor', 'commands', `${command}.md`),
+      'utf8',
+    )
+
+    assert.match(projected, /--worktree <name>/u, command)
+  }
+})
+
+test('workflow start and persona utility surfaces expose worktree selection', () => {
+  const root = createFixture()
+
+  syncCursorProjection(root, { write: true })
+
+  const orchestrator = readFileSync(
+    path.join(root, '.cursor', 'agents', 'pan-orchestrator.md'),
+    'utf8',
+  )
+
+  assert.match(orchestrator, /--worktree <name>/u)
+
+  for (const command of [
+    'pan-build-briefs',
+    'pan-build-docs',
+    'pan-release',
+    'pan-write-pr',
+  ]) {
+    const projected = readFileSync(
+      path.join(root, '.cursor', 'commands', `${command}.md`),
+      'utf8',
+    )
+
+    assert.match(projected, /--worktree <name>/u, command)
+    assert.match(projected, /worktree resolve <name>/u, command)
+  }
 })
 
 test('run-scoped agent variants carry pinned models without touching the base agents', () => {

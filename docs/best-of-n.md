@@ -23,13 +23,13 @@ stays uncommitted in its worktree until you remove it.
 
 ## Starting a session
 
-Invoke the projected `pan-meta-orchestrator` agent as your top-level agent and
-give it two things: the task (a prompt or a file path) and the path to a configs
-file. It preserves the task under `runtime/inbox/`, runs `./bin/pan best-of-n
-init`, and drives the session from there.
+Invoke the projected `pan-meta-orchestrator` agent from Cursor chat and give it
+the task plus the configs path. It preserves the task under `runtime/inbox/`,
+runs `./bin/pan best-of-n init`, and drives the session from there.
 
-The agent must be top-level. A Cursor subagent cannot reliably invoke the
-per-candidate subagents this mode needs.
+The meta-orchestrator runs as a nested subagent. It directly supervises every
+session run and invokes run-scoped stage workers in foreground. This flattened
+shape avoids an unsupported second level of subagent delegation.
 
 ## Configs file
 
@@ -82,6 +82,7 @@ disposable, like everything else under `.cursor/`.
 | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
 | `pan best-of-n init --request <file> --configs <file> [--workflow <slug>] [--consolidation-workflow <slug>]` | Creates the worktrees, the agent variants, and the candidate runs.       |
 | `pan best-of-n status <bon-id>`                                                                              | Reports each candidate's run status and whether consolidation can start. |
+| `pan best-of-n refresh-agents <bon-id>`                                                                      | Rebuilds run-scoped agents from each run's pinned model snapshot.        |
 | `pan best-of-n abandon <bon-id> <run-id> --note <reason>`                                                    | Records your decision to exclude one candidate.                          |
 | `pan best-of-n consolidate <bon-id>`                                                                         | Writes the consolidation request and creates the `metacritic` run.       |
 | `pan best-of-n clean <bon-id> [--force]`                                                                     | Removes the worktrees and the agent variants.                            |
@@ -110,9 +111,13 @@ new session.
 
 ## When a candidate fails
 
-A failed or blocked candidate waits for you. The meta-orchestrator reports it
-with its run id and stops; it never abandons a candidate on its own. Repair the
-run and resume it with `/pan-resume`, or exclude it with `abandon`.
+An ordinary terminal candidate failure remains evidence and does not stop the
+other candidates. The meta-orchestrator continues and consolidates when at least
+one candidate succeeds.
+
+A non-terminal candidate stops only when it cannot execute because required
+bytes, state, workspace, authentication, or tools are unavailable. The
+meta-orchestrator reports that blocker with the run id and durable evidence.
 
 Consolidation starts only when every candidate is finished or excluded, and at
 least one candidate succeeded. With no successful candidate the session is

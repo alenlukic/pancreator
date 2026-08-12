@@ -49,6 +49,45 @@ export function gitHead(root: string): string | null {
   return result.status === 0 ? result.stdout.trim() : null
 }
 
+/** Commit hash of a branch, tag, or revision expression. */
+export function gitRevParse(root: string, reference: string): string {
+  const result = runGit(root, [
+    'rev-parse',
+    '--verify',
+    '--end-of-options',
+    `${reference}^{commit}`,
+  ])
+
+  return result.stdout.trim()
+}
+
+export function gitBranchExists(root: string, branch: string): boolean {
+  const result = runGit(
+    root,
+    ['show-ref', '--verify', '--quiet', `refs/heads/${branch}`],
+    { allowFailure: true },
+  )
+
+  return result.status === 0
+}
+
+export function gitBranchNameIsValid(root: string, branch: string): boolean {
+  const result = runGit(root, ['check-ref-format', '--branch', branch], {
+    allowFailure: true,
+  })
+
+  return result.status === 0
+}
+
+/** Branch a checkout currently holds, or `null` when HEAD is detached. */
+export function gitCurrentBranch(root: string): string | null {
+  const result = runGit(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'], {
+    allowFailure: true,
+  })
+
+  return result.status === 0 ? result.stdout.trim() : null
+}
+
 /**
  * Create a detached worktree at `commit`.
  *
@@ -61,6 +100,63 @@ export function gitWorktreeAdd(
   commit: string,
 ): void {
   runGit(root, ['worktree', 'add', '--detach', worktreePath, commit])
+}
+
+/** Create a persistent worktree on a new named branch. */
+export function gitWorktreeAddOnBranch(
+  root: string,
+  worktreePath: string,
+  branch: string,
+  commit: string,
+): void {
+  runGit(root, ['worktree', 'add', '-b', branch, worktreePath, commit])
+}
+
+/**
+ * Create a worktree that checks out an existing branch. Git itself refuses a
+ * branch that another worktree or the main checkout already holds.
+ */
+export function gitWorktreeAddOnExistingBranch(
+  root: string,
+  worktreePath: string,
+  branch: string,
+): void {
+  runGit(root, ['worktree', 'add', worktreePath, branch])
+}
+
+/** Drop stale worktree registrations whose directories no longer exist. */
+export function gitWorktreePrune(root: string): void {
+  runGit(root, ['worktree', 'prune'])
+}
+
+/**
+ * Absolute path of the checkout that holds `branch`, or `null` when no
+ * checkout holds it. The main checkout counts as a checkout here, because Git
+ * lists it first in `git worktree list`.
+ */
+export function gitWorktreeForBranch(
+  root: string,
+  branch: string,
+): string | null {
+  const result = runGit(root, ['worktree', 'list', '--porcelain'], {
+    allowFailure: true,
+  })
+
+  if (result.status !== 0) {
+    return null
+  }
+
+  let currentPath: string | null = null
+
+  for (const line of result.stdout.split(/\r?\n/u)) {
+    if (line.startsWith('worktree ')) {
+      currentPath = line.slice('worktree '.length).trim()
+    } else if (line === `branch refs/heads/${branch}` && currentPath) {
+      return path.resolve(currentPath)
+    }
+  }
+
+  return null
 }
 
 /** Absolute paths of every worktree registered in this repository. */
@@ -102,6 +198,50 @@ export function gitWorktreeIsDirty(worktreePath: string): boolean {
   )
 
   return result.status !== 0 || result.stdout.trim().length > 0
+}
+
+export interface GitMergeResult {
+  succeeded: boolean
+  stdout: string
+  stderr: string
+}
+
+/** Merge one branch and preserve failure output for conflict handling. */
+export function gitMergeBranch(
+  worktreePath: string,
+  branch: string,
+): GitMergeResult {
+  const result = runGit(
+    worktreePath,
+    ['merge', '--no-ff', '--no-edit', branch],
+    { allowFailure: true },
+  )
+
+  return {
+    succeeded: result.status === 0,
+    stdout: result.stdout,
+    stderr: result.stderr,
+  }
+}
+
+/** Abort a stopped merge and restore the checkout to its pre-merge state. */
+export function gitMergeAbort(worktreePath: string): void {
+  runGit(worktreePath, ['merge', '--abort'])
+}
+
+/** Paths a stopped merge left in the unmerged state, sorted. */
+export function gitConflictedPaths(worktreePath: string): string[] {
+  const result = runGit(
+    worktreePath,
+    ['diff', '--name-only', '--diff-filter=U', '-z'],
+    { allowFailure: true },
+  )
+
+  if (result.status !== 0) {
+    return []
+  }
+
+  return result.stdout.split('\0').filter(Boolean).sort()
 }
 
 function trackedWorkspacePath(

@@ -1,4 +1,3 @@
-import { spawnSync } from 'node:child_process'
 import { copyFileSync, readdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
 
@@ -26,16 +25,23 @@ import {
   writeJsonAtomic,
   writeTextAtomic,
 } from './io.js'
-import { loadPipelineConfig } from './pipeline-config.js'
+import {
+  loadPipelineConfig,
+  loadPipelineConfigSnapshot,
+} from './pipeline-config.js'
 import { projectPersonaVariants, removePersonaVariants } from './projection.js'
+import { runSetupCommands } from './setup-commands.js'
 import { loadState, makeRunId, now, statePath } from './state.js'
 import type { RunState, RunStatus } from './types.js'
-import { loadWorkflow, workflowPersonaNames } from './workflow.js'
+import {
+  loadWorkflow,
+  loadWorkflowFile,
+  workflowPersonaNames,
+} from './workflow.js'
 
 const CANDIDATE_WORKFLOW = 'dev-candidate'
 const CONSOLIDATION_WORKFLOW = 'metacritic'
 const MINIMUM_CANDIDATES = 2
-const SETUP_TIMEOUT_MS = 10 * 60 * 1000
 const BEST_OF_N_ID_PATTERN = /^\d+_[A-Z][a-z]{2}-\d{2}-\d{4}_[0-9a-f]{8}$/u
 const SLOT_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u
 const TERMINAL_STATUSES = new Set<RunStatus>([
@@ -515,29 +521,6 @@ function agentSuffix(bonId: string, slot: string): string {
   return `${sessionKey(bonId)}-${slot}`
 }
 
-function runSetupCommands(
-  commands: string[],
-  worktreePath: string,
-  slot: string,
-): void {
-  for (const command of commands) {
-    const result = spawnSync(command, {
-      cwd: worktreePath,
-      encoding: 'utf8',
-      shell: true,
-      timeout: SETUP_TIMEOUT_MS,
-      maxBuffer: 8 * 1024 * 1024,
-    })
-
-    invariant(
-      result.status === 0,
-      `Setup command failed for candidate '${slot}': ${command}\n` +
-        `${result.error?.message || result.stderr || result.stdout || ''}`.trim(),
-      { code: 'BEST_OF_N_SETUP_FAILED' },
-    )
-  }
-}
-
 export interface InitBestOfNOptions {
   requestPath: string
   configsPath: string
@@ -740,7 +723,10 @@ function createSessionCandidates(
     const worktreePath = resolveInside(root, pending.worktree_path)
 
     gitWorktreeAdd(root, worktreePath, plan.head)
-    runSetupCommands(plan.configs.setup, worktreePath, pending.slot)
+    runSetupCommands(plan.configs.setup, worktreePath, {
+      label: `candidate '${pending.slot}'`,
+      code: 'BEST_OF_N_SETUP_FAILED',
+    })
     projectPersonaVariants(
       root,
       pending.agent_suffix,
@@ -898,6 +884,88 @@ export function bestOfNStatus(root: string, bonId: string): BestOfNStatus {
         }
       : {}),
   }
+}
+
+export interface RefreshBestOfNAgentsResult {
+  bon_id: string
+  refreshed_agents: string[]
+}
+
+/**
+ * Rebuild every run-scoped agent from its run's pinned model snapshot.
+ *
+ * This refreshes executable agent instructions without changing session state,
+ * candidate models, or the runs' immutable workflow contracts.
+ */
+export function refreshBestOfNAgents(
+  root: string,
+  bonId: string,
+): RefreshBestOfNAgentsResult {
+  return withBestOfNSession(root, bonId, (state) => {
+    const runAgents = [
+      ...state.candidates.map((candidate) => ({
+        runId: candidate.run_id,
+        suffix: candidate.agent_suffix,
+      })),
+      ...(state.consolidation
+        ? [
+            {
+              runId: state.consolidation.run_id,
+              suffix: state.consolidation.agent_suffix,
+            },
+          ]
+        : []),
+    ]
+    const refreshed = new Set<string>()
+
+    for (const entry of runAgents) {
+      const run = candidateRunState(root, entry.runId)
+
+      invariant(run, `Best-of-N child run '${entry.runId}' does not exist.`, {
+        code: 'BEST_OF_N_CHILD_NOT_FOUND',
+      })
+      invariant(
+        run.pipeline_config,
+        `Best-of-N child run '${entry.runId}' has no pipeline snapshot.`,
+        { code: 'INVALID_PIPELINE_CONFIG' },
+      )
+
+      const snapshot = loadPipelineConfigSnapshot(
+        root,
+        run.pipeline_config.path,
+      )
+      const workflow = loadWorkflowFile(
+        root,
+        resolveInside(root, run.workflow_snapshot.path),
+      )
+      const personas: Record<string, string> = {}
+
+      for (const persona of workflowPersonaNames(workflow)) {
+        const model = snapshot.personas[persona]
+
+        invariant(
+          model,
+          `Run '${entry.runId}' snapshot maps no model for '${persona}'.`,
+          { code: 'INVALID_PIPELINE_CONFIG' },
+        )
+        personas[persona] = model
+      }
+
+      for (const change of projectPersonaVariants(
+        root,
+        entry.suffix,
+        personas,
+        { write: true },
+      )) {
+        refreshed.add(change.path)
+      }
+    }
+
+    return {
+      bon_id: bonId,
+      refreshed_agents: [...refreshed].sort(),
+    }
+  })
 }
 
 /**
