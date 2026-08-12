@@ -36,6 +36,17 @@ Read the scope of a rule from its subject. A rule that names a run, a stage, an 
 - The primer is orientation, not authority. Agents MUST NOT open or search files merely because the primer references them; a referenced file MAY be read only for a concrete task-specific need.
 - The operator request, this file, the active invocation card, and applicable policies retain precedence over primer content.
 
+## Operator questions
+
+- A Cursor-executor agent MUST use `cursor/ask_question` when it needs operator clarification or an operator decision.
+- When `cursor/ask_question` is unavailable, the agent MUST ask the question in its normal response channel. It MUST state in that message that the question tool was unavailable.
+- A worker inside a run MUST write the question and the unavailability into its stage output. The supervisor MUST surface that question to the operator.
+- An agent MUST NOT proceed on an assumed answer, and MUST NOT fail silently.
+- An agent MUST NOT report `blocked` only because it could not use `cursor/ask_question`. It MUST report `blocked` only when its contract requires that result for work that cannot continue.
+- `cursor/ask_question` MUST add to the `blocked` route and MUST NOT replace it.
+- A question through `cursor/ask_question` MUST NOT replace a workflow gate or an operator approval.
+- An external-executor persona MUST NOT call `cursor/ask_question` because the Cursor client does not host its session. It MUST ask in its normal response channel instead.
+
 ## Policy guidance disclosure
 
 - An invocation card carries every policy summary, instruction, requirement, input, output, and boundary inline.

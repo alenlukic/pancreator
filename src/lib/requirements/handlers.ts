@@ -6,6 +6,7 @@ import {
   validateDelegationMarkdown,
   validateInvocationAttestation,
   validateInvocationMarkdown,
+  validateQuestionToolAccess,
 } from '../validation.js'
 import { loadRegistry, validateRegistry } from './registry.js'
 import { auditDirectives } from '../governance/audit-directives.js'
@@ -69,6 +70,18 @@ function projectionValidateHandler(input: HandlerInput): HandlerResult {
     status: result.errors.length === 0 ? 'passed' : 'failed',
     issues: result.errors.map((message) => ({
       code: 'projection.drift',
+      message,
+    })),
+  }
+}
+
+function questionToolValidateHandler(input: HandlerInput): HandlerResult {
+  const errors = validateQuestionToolAccess(input.root)
+
+  return {
+    status: errors.length === 0 ? 'passed' : 'failed',
+    issues: errors.map((message) => ({
+      code: 'question-tool.invalid',
       message,
     })),
   }
@@ -186,6 +199,7 @@ export const HANDLERS: Record<string, ValidatorHandler> = {
   'spotfix-validate': validateSpotfixOutcome,
   'spotfix-escalation-scaffold': () => passed(),
   'projection-validate': projectionValidateHandler,
+  'question-tool-validate': questionToolValidateHandler,
   'invocation-validate': invocationValidateHandler,
   'delegation-validate': delegationValidateHandler,
   'invocation-attest-validate': invocationAttestValidateHandler,

@@ -17,6 +17,7 @@ test('policy resolution unions global and stage-specific policies', () => {
   }).map((policy) => policy.id)
   assert.deepEqual(ids, [
     'ACTION-001',
+    'ASK-001',
     'AUTO-001',
     'BIN-001',
     'BRIEF-001',
@@ -95,6 +96,7 @@ test('engineering handbook policy loads for reviewer and qa personas', () => {
 
   assert.deepEqual(reviewIds, [
     'ACTION-001',
+    'ASK-001',
     'AUTO-001',
     'BIN-001',
     'BRIEF-001',
@@ -121,6 +123,7 @@ test('engineering handbook policy loads for reviewer and qa personas', () => {
 
   assert.deepEqual(testIds, [
     'ACTION-001',
+    'ASK-001',
     'AUTO-001',
     'BIN-001',
     'BRIEF-001',
@@ -292,6 +295,7 @@ test('orchestration and release guidance resolve with required policy dependenci
 
   assert.deepEqual(orchestratorIds, [
     'ACTION-001',
+    'ASK-001',
     'AUTO-001',
     'BIN-001',
     'BRIEF-001',
@@ -313,6 +317,7 @@ test('orchestration and release guidance resolve with required policy dependenci
   ])
   assert.deepEqual(releaseIds, [
     'ACTION-001',
+    'ASK-001',
     'AUTO-001',
     'BIN-001',
     'BRIEF-001',
@@ -343,6 +348,7 @@ test('dev intake resolves faithful-intake guidance without supervisor policies',
 
   assert.deepEqual(intakeIds, [
     'ACTION-001',
+    'ASK-001',
     'AUTO-001',
     'BIN-001',
     'BRIEF-001',
@@ -453,6 +459,7 @@ test('decomposer loads conservative decomposition governance', () => {
 
   assert.deepEqual(ids, [
     'ACTION-001',
+    'ASK-001',
     'AUTO-001',
     'BIN-001',
     'BRIEF-001',
@@ -479,6 +486,7 @@ test('standalone remediation personas load their work-mode policies', () => {
   }).map((policy) => policy.id)
   assert.deepEqual(investigatorIds, [
     'ACTION-001',
+    'ASK-001',
     'AUTO-001',
     'BIN-001',
     'BRIEF-001',
@@ -502,6 +510,7 @@ test('standalone remediation personas load their work-mode policies', () => {
   }).map((policy) => policy.id)
   assert.deepEqual(spotfixerIds, [
     'ACTION-001',
+    'ASK-001',
     'AUTO-001',
     'BIN-001',
     'BRIEF-001',
@@ -533,6 +542,7 @@ test('harness technician loads repair governance', () => {
 
   assert.deepEqual(ids, [
     'ACTION-001',
+    'ASK-001',
     'AUTO-001',
     'BIN-001',
     'BRIEF-001',
