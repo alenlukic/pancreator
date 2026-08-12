@@ -1190,6 +1190,18 @@ export interface CleanBestOfNResult {
   removed_agents: string[]
 }
 
+export interface PruneBestOfNSkip {
+  resource: string
+  reason: string
+}
+
+export interface PruneBestOfNResult {
+  cleaned_sessions: CleanBestOfNResult[]
+  removed_orphan_worktrees: string[]
+  removed_orphan_agents: string[]
+  skipped: PruneBestOfNSkip[]
+}
+
 /**
  * Remove a session's worktrees and run-scoped agent variants.
  *
@@ -1309,5 +1321,206 @@ function removeSessionResources(
     bon_id: bonId,
     removed_worktrees: removedWorktrees.sort(),
     removed_agents: removedAgents.sort(),
+  }
+}
+
+function bestOfNSessionIds(root: string): string[] {
+  const directory = path.join(root, 'runtime', 'logs', 'best-of-n')
+
+  if (!fileExists(directory)) {
+    return []
+  }
+
+  return readdirSync(directory, { withFileTypes: true })
+    .filter(
+      (entry) => entry.isDirectory() && BEST_OF_N_ID_PATTERN.test(entry.name),
+    )
+    .map((entry) => entry.name)
+    .sort()
+}
+
+function sessionIsPrunable(status: BestOfNStatus): boolean {
+  if (status.session_status === 'initializing') {
+    return true
+  }
+
+  if (status.unresolved.length > 0) {
+    return false
+  }
+
+  if (!status.consolidation) {
+    return status.successes === 0
+  }
+
+  return TERMINAL_STATUSES.has(status.consolidation.status)
+}
+
+function orphanVariantSuffixes(root: string, sessionIds: string[]): string[] {
+  const directory = path.join(root, '.cursor', 'agents')
+
+  if (!fileExists(directory)) {
+    return []
+  }
+
+  const protectedKeys = new Set(sessionIds.map((bonId) => sessionKey(bonId)))
+  const suffixes = new Set<string>()
+
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    if (!entry.isFile()) {
+      continue
+    }
+
+    const match = /--(bon[0-9a-f]{8}-.+)\.md$/u.exec(entry.name)
+
+    if (!match) {
+      continue
+    }
+
+    const suffix = match[1]
+    const key = suffix.split('-', 1)[0]
+
+    if (!protectedKeys.has(key)) {
+      suffixes.add(suffix)
+    }
+  }
+
+  return [...suffixes].sort()
+}
+
+function pruneOrphanWorktrees(
+  root: string,
+  sessionIds: string[],
+  options: { force?: boolean },
+  skipped: PruneBestOfNSkip[],
+): string[] {
+  const directory = path.join(root, 'runtime', 'worktrees')
+
+  if (!fileExists(directory)) {
+    return []
+  }
+
+  const protectedIds = new Set(sessionIds)
+  const registered = new Set(gitWorktreePaths(root))
+  const removed: string[] = []
+
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    if (
+      !entry.isDirectory() ||
+      !BEST_OF_N_ID_PATTERN.test(entry.name) ||
+      protectedIds.has(entry.name)
+    ) {
+      continue
+    }
+
+    const sessionRoot = path.join(directory, entry.name)
+
+    for (const slot of readdirSync(sessionRoot, { withFileTypes: true })) {
+      if (!slot.isDirectory()) {
+        continue
+      }
+
+      const relativeWorktree = path.posix.join(
+        'runtime',
+        'worktrees',
+        entry.name,
+        slot.name,
+      )
+      const worktreePath = resolveInside(root, relativeWorktree)
+
+      if (!registered.has(worktreePath)) {
+        skipped.push({
+          resource: relativeWorktree,
+          reason: 'Directory is not a registered Git worktree.',
+        })
+        continue
+      }
+
+      if (!options.force && gitWorktreeIsDirty(worktreePath)) {
+        skipped.push({
+          resource: relativeWorktree,
+          reason: 'Worktree is dirty. Re-run with --force to discard it.',
+        })
+        continue
+      }
+
+      gitWorktreeRemove(root, worktreePath, options.force ?? false)
+      removed.push(relativeWorktree)
+    }
+
+    if (isEmptyDirectory(sessionRoot)) {
+      rmSync(sessionRoot, { recursive: true, force: true })
+    }
+  }
+
+  return removed.sort()
+}
+
+/**
+ * Remove resources left by terminal sessions and resources with no session.
+ *
+ * Live sessions and dirty worktrees remain untouched unless force explicitly
+ * authorizes discarding dirty candidate work.
+ */
+export function pruneBestOfN(
+  root: string,
+  options: { force?: boolean } = {},
+): PruneBestOfNResult {
+  const cleanedSessions: CleanBestOfNResult[] = []
+  const skipped: PruneBestOfNSkip[] = []
+
+  for (const bonId of bestOfNSessionIds(root)) {
+    let status: BestOfNStatus
+
+    try {
+      status = bestOfNStatus(root, bonId)
+    } catch (error) {
+      skipped.push({
+        resource: `session:${bonId}`,
+        reason: errorMessage(error),
+      })
+      continue
+    }
+
+    if (!sessionIsPrunable(status)) {
+      skipped.push({
+        resource: `session:${bonId}`,
+        reason: 'Session still has active work or awaits consolidation.',
+      })
+      continue
+    }
+
+    try {
+      cleanedSessions.push(cleanBestOfN(root, bonId, options))
+    } catch (error) {
+      skipped.push({
+        resource: `session:${bonId}`,
+        reason: errorMessage(error),
+      })
+    }
+  }
+
+  // Initialization writes session state before worktrees and projections. A
+  // second scan therefore protects resources from a concurrently starting run.
+  const currentSessionIds = bestOfNSessionIds(root)
+  const removedOrphanAgents: string[] = []
+
+  for (const suffix of orphanVariantSuffixes(root, currentSessionIds)) {
+    removedOrphanAgents.push(...removePersonaVariants(root, suffix))
+  }
+
+  return {
+    cleaned_sessions: cleanedSessions.sort((left, right) =>
+      left.bon_id.localeCompare(right.bon_id),
+    ),
+    removed_orphan_worktrees: pruneOrphanWorktrees(
+      root,
+      currentSessionIds,
+      options,
+      skipped,
+    ),
+    removed_orphan_agents: removedOrphanAgents.sort(),
+    skipped: skipped.sort((left, right) =>
+      left.resource.localeCompare(right.resource),
+    ),
   }
 }

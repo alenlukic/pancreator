@@ -17,6 +17,7 @@
     "Consolidation MUST start only when every candidate run is terminal or recorded as abandoned, and at least one candidate succeeded. A session with no successful candidate MUST be reported as blocked.",
     "The consolidation request MUST name every candidate, including an abandoned one, with its run id, worktree path, final status, and output paths.",
     "A best-of-N session MUST NOT create a commit, push, merge, branch deletion, or history rewrite, in the main workspace or in any worktree.",
-    "Worktree removal is destructive and operator-owned. `./bin/pan best-of-n clean` MUST refuse a dirty worktree without an explicit force flag, and MUST NOT delete a branch or a commit."
+    "Worktree removal is destructive and operator-owned. `./bin/pan best-of-n clean` MUST refuse a dirty worktree without an explicit force flag, and MUST NOT delete a branch or a commit.",
+    "Global best-of-N pruning MUST always skip active sessions. It MUST skip dirty worktrees unless the operator supplies `--force`."
   ]
 }

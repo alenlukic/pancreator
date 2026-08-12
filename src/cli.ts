@@ -23,6 +23,7 @@ import {
   cleanBestOfN,
   consolidateBestOfN,
   initBestOfN,
+  pruneBestOfN,
   refreshBestOfNAgents,
 } from './lib/best-of-n.js'
 import { personaExecutorOf } from './lib/executors/mapping.js'
@@ -125,6 +126,7 @@ const HELP_BODY = `Usage:
   pan best-of-n abandon <bon-id> <run-id> --note <reason> [--json]
   pan best-of-n consolidate <bon-id> [--json]
   pan best-of-n clean <bon-id> [--force] [--json]
+  pan best-of-n prune [--force] [--json]
   pan briefs build [--force] [--json]
   pan briefs validate [--json]
   pan briefs render --input <brief-json> --output <brief-html> [--json]
@@ -1180,6 +1182,11 @@ async function main(): Promise<void> {
           }),
           asJson,
         )
+        return
+      }
+
+      if (sub === 'prune') {
+        print(pruneBestOfN(root, { force: hasFlag(args, '--force') }), asJson)
         return
       }
 

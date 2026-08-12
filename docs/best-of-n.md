@@ -86,6 +86,7 @@ disposable, like everything else under `.cursor/`.
 | `pan best-of-n abandon <bon-id> <run-id> --note <reason>`                                                    | Records your decision to exclude one candidate.                          |
 | `pan best-of-n consolidate <bon-id>`                                                                         | Writes the consolidation request and creates the `metacritic` run.       |
 | `pan best-of-n clean <bon-id> [--force]`                                                                     | Removes the worktrees and the agent variants.                            |
+| `pan best-of-n prune [--force]`                                                                              | Removes dangling resources from every finished or missing session.       |
 
 Only one of these commands mutates a session at a time. A second command that
 arrives while another is still writing the session record fails with
@@ -137,9 +138,13 @@ candidate worktrees and needs its agent variants for every later operation.
 Finish or abort the runs first, or pass `--force` to discard them. `clean`
 never deletes a branch or a commit.
 
+`prune` cleans completed sessions and removes orphaned registered worktrees and
+run-scoped agent variants. It always preserves active or consolidation-ready
+sessions. It reports active, dirty, or unregistered resources under `skipped`;
+`--force` permits only the dirty terminal or orphaned worktrees.
+
 ## Known gaps
 
-- `pan archive` does not cover `runtime/logs/best-of-n/` or
-  `runtime/worktrees/`. Clean sessions yourself when you are done with them.
+- `pan archive` does not remove `runtime/logs/best-of-n/` session records.
 - N concurrent runs multiply model cost, and their repository checks compete for
   the same package caches and ports.
