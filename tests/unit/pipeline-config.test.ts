@@ -60,11 +60,12 @@ test('config.local.json preferences override the checked-in pipeline config', ()
   )
 
   const loaded = loadPipelineConfig(root)
+  const expectedReviewer = resolveConfigPersonas(base.file, 'complex').reviewer
 
   assert.equal(loaded.name, 'complex')
   assert.equal(loaded.config.personas.orchestrator, 'local-orchestrator[]')
   // A preference the local file does not name still comes from config.json.
-  assert.equal(loaded.config.personas.reviewer, loaded.file.defaults.reviewer)
+  assert.equal(loaded.config.personas.reviewer, expectedReviewer)
   // The digest covers the effective configuration, so the local preference is
   // visible to drift detection exactly like a config.json edit.
   assert.notEqual(loaded.sha256, base.sha256)

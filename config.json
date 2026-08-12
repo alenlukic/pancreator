@@ -14,31 +14,31 @@
       "tsconfig.tsbuildinfo"
     ]
   },
-  "active_config": "default",
+  "active_config": "complex",
   "defaults": {
-    "orchestrator": "grok-4.5[effort=high,fast=true]",
-    "meta-orchestrator": "grok-4.5[effort=high,fast=true]",
-    "intake-writer": "grok-4.5[effort=high,fast=true]",
-    "tech-lead": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
+    "orchestrator": "kimi-k3[]",
+    "meta-orchestrator": "claude-opus-5[thinking=true,context=300k,effort=high]",
+    "intake-writer": "claude-opus-5[thinking=true,context=300k,effort=high]",
+    "tech-lead": "claude-fable-5[]",
     "coder": "composer-2.5[fast=false]",
-    "metacritic": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
+    "metacritic": "claude-fable-5[]",
     "reviewer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
     "shepherd-reviewer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
     "qa-tester": "kimi-k3[]",
-    "designer": "claude-opus-5[thinking=true,context=300k,effort=high]",
+    "designer": "claude-fable-5[]",
     "design-reviewer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
-    "design-qa": "kimi-k3[]",
+    "design-qa": "claude-opus-5[thinking=true,context=300k,effort=high]",
     "release-steward": "auto",
     "librarian": "claude-opus-5[thinking=true,context=300k,effort=high]",
     "decomposer": "claude-opus-5[thinking=true,context=300k,effort=high]",
-    "investigator": "claude-opus-5[thinking=true,context=300k,effort=high]",
-    "spotfixer": "claude-opus-5[thinking=true,context=300k,effort=high]",
-    "harness-technician": "claude-opus-5[thinking=true,context=300k,effort=high]",
-    "repo-technician": "claude-opus-5[thinking=true,context=300k,effort=high]"
+    "investigator": "claude-fable-5[]",
+    "spotfixer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
+    "harness-technician": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
+    "repo-technician": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]"
   },
   "$operator": {
     "summary": "Named model configurations. Each configuration maps every checked-in Cursor persona to the model that should execute it.",
-    "note": "This file carries the recommended defaults a release can update. Put per-checkout preferences (active_config, model overrides) in the untracked config.local.json, which merges over this file. After changing either, run ./bin/pan models --sync. New runs snapshot the active mapping so later config edits do not change an in-flight run."
+    "note": "This file carries the recommended defaults a release can update. Put per-checkout preferences (active_config, model overrides) in the untracked config.local.json, which merges over this file. After changing either, run ./.pancreator/bin/pan models --sync. New runs snapshot the active mapping so later config edits do not change an in-flight run."
   },
   "configs": {
     "simple": {
@@ -57,8 +57,9 @@
     "complex": {
       "summary": "Higher-reasoning coding and QA for complex or high-risk work.",
       "personas": {
-        "tech-lead": "claude-fable-5[]",
-        "coder": "claude-opus-5[thinking=true,context=300k,effort=high]",
+        "coder": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
+        "reviewer": "claude-fable-5[]",
+        "shepherd-reviewer": "claude-fable-5[]",
         "qa-tester": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
         "design-qa": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
         "spotfixer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]"

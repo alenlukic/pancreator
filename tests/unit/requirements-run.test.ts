@@ -73,6 +73,32 @@ test('runRequirement records target checksum when target exists', () => {
   assert.equal(result.executor, 'agent')
 })
 
+test('runRequirement validates a repository target without reading it as a file', () => {
+  const root = createFixture()
+  const manifest = resolveRequirements(root, {
+    persona: 'coder',
+    workflow: 'dev',
+    stage: 'implement',
+    invocation_kind: 'workflow',
+  })
+  const requirement = manifest.validation_requirements.find(
+    (item) => item.registry_id === 'QUESTION-TOOL-VALIDATE-001',
+  )
+
+  assert.ok(requirement)
+
+  const result = runRequirement({
+    root,
+    requirement,
+    targetPath: '.',
+    executor: 'agent',
+    persist: false,
+  })
+
+  assert.equal(result.status, 'passed')
+  assert.equal(result.target_checksum, undefined)
+})
+
 test('isStaleTarget detects checksum drift', () => {
   assert.equal(isStaleTarget('abc', 'abc'), false)
   assert.equal(isStaleTarget('abc', 'def'), true)

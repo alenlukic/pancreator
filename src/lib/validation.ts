@@ -2431,6 +2431,59 @@ function validatePolicyLookupDependencies(
   }
 }
 
+const QUESTION_TOOL_IDENTIFIERS = [
+  'cursor/ask_question',
+  'ask_question',
+  'askquestion',
+  'ask-question',
+] as const
+const CURSOR_AGENT_FRONTMATTER_PATTERN =
+  /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u
+
+/** Check that canonical Cursor agent frontmatter does not name the ACP method. */
+export function validateQuestionToolAccess(root: string): string[] {
+  const directory = path.join(root, 'library', 'cursor', 'agents')
+
+  if (!fileExists(directory)) {
+    return ['missing canonical Cursor agent directory: library/cursor/agents']
+  }
+
+  const filenames = readdirSync(directory)
+    .filter((filename) => filename.endsWith('.md'))
+    .sort()
+
+  if (filenames.length === 0) {
+    return ['library/cursor/agents MUST contain canonical agent files']
+  }
+
+  const errors: string[] = []
+
+  for (const filename of filenames) {
+    const absolute = path.join(directory, filename)
+    const frontmatter = CURSOR_AGENT_FRONTMATTER_PATTERN.exec(
+      readText(absolute),
+    )?.[1]
+
+    if (!frontmatter) {
+      continue
+    }
+
+    const normalized = frontmatter.toLowerCase()
+    const identifier = QUESTION_TOOL_IDENTIFIERS.find((candidate) =>
+      normalized.includes(candidate),
+    )
+
+    if (identifier) {
+      errors.push(
+        `library/cursor/agents/${filename} frontmatter MUST NOT name or block ` +
+          `question-method identifier '${identifier}'`,
+      )
+    }
+  }
+
+  return errors
+}
+
 export function validateRepository(root: string): RepositoryValidationResult {
   const errors: string[] = []
   const warnings: string[] = []
@@ -2521,6 +2574,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
     }
   }
 
+  errors.push(...validateQuestionToolAccess(root))
   errors.push(...validateReleaseMetadata(root).errors)
 
   try {

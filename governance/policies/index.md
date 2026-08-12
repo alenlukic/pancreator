@@ -16,6 +16,7 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 - `VALID-001` — policy-bound artifact validation
 - `CONTRACT-001` — deterministic contract coverage
 - `ACTION-001` — safe source-control actions
+- `ASK-001` — Cursor-native operator questions and question-method access
 - `PAUSE-001` — operator pause authority and workspace edits while paused
 - `ORCH-001` — supervisor continuation and stop conditions
 - `INVOCATION-001` — canonical invocation validation and delegation delivery

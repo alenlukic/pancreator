@@ -1,0 +1,33 @@
+{
+  "id": "ASK-001",
+  "title": "Cursor-native operator questions",
+  "severity": "hard",
+  "summary": "Cursor-executor agents MUST use `cursor/ask_question` for operator input, and MUST ask in chat with the gap flagged when it is unavailable.",
+  "instructions": [
+    "A Cursor-executor agent MUST use `cursor/ask_question` when it needs operator clarification or an operator decision.",
+    "When `cursor/ask_question` is unavailable, the agent MUST ask the question in its normal response channel.",
+    "The agent MUST state in that message that `cursor/ask_question` was unavailable.",
+    "A worker inside a run MUST write the question and the unavailability into its stage output.",
+    "The supervisor MUST surface that question to the operator.",
+    "An agent MUST NOT proceed on an assumed answer, and MUST NOT fail silently.",
+    "An agent MUST NOT report `blocked` only because it could not use `cursor/ask_question`.",
+    "An agent MUST report `blocked` only when its contract requires that result for work that cannot continue.",
+    "`cursor/ask_question` MUST add to the `blocked` route and MUST NOT replace it.",
+    "A question through `cursor/ask_question` MUST NOT replace a workflow gate or an operator approval.",
+    "An external-executor persona MUST NOT call `cursor/ask_question` because the Cursor client does not host its session.",
+    "An external-executor persona MUST ask in its normal response channel instead.",
+    "Canonical agent frontmatter MUST NOT name or block a question-method identifier."
+  ],
+  "requirements": [
+    {
+      "id": "question-tool-validate",
+      "registry_id": "QUESTION-TOOL-VALIDATE-001",
+      "phase": "gate",
+      "executor": "harness",
+      "target": "repository",
+      "enforcement": "authoritative",
+      "failure_route": "blocked",
+      "evidence_class": "validation-result"
+    }
+  ]
+}

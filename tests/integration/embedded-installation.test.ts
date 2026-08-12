@@ -1439,17 +1439,25 @@ test('embedded installer refresh compacts defaults and preserves operator models
       configs: Record<string, { personas: Record<string, string> }>
     }>(configJsonPath)
 
-    const customReviewerModel = 'operator-custom-reviewer[fast=false]'
-    const inheritedPersona = 'investigator'
-    const inheritedModel = config.defaults[inheritedPersona]
     const activeConfigName = 'complex'
+    const activePersonas = config.configs[activeConfigName].personas
+    const inheritedEntry = Object.entries(config.defaults).find(
+      ([persona]) => activePersonas[persona] === undefined,
+    )
+    const omittedEntry = Object.entries(activePersonas).find(
+      ([persona]) => persona !== 'reviewer',
+    )
 
-    assert.equal(typeof inheritedModel, 'string')
+    assert.ok(inheritedEntry)
+    assert.ok(omittedEntry)
 
+    const customReviewerModel = 'operator-custom-reviewer[fast=false]'
+    const [inheritedPersona, inheritedModel] = inheritedEntry
+    const [omittedPersona, omittedModel] = omittedEntry
     config.active_config = activeConfigName
     config.configs[activeConfigName].personas.reviewer = customReviewerModel
     config.configs[activeConfigName].personas[inheritedPersona] = inheritedModel
-    delete config.configs[activeConfigName].personas.spotfixer
+    delete config.configs[activeConfigName].personas[omittedPersona]
     writeFileSync(configJsonPath, `${JSON.stringify(config, null, 2)}\n`)
 
     const result = runInstaller(project, ['--yes'])
@@ -1464,8 +1472,7 @@ test('embedded installer refresh compacts defaults and preserves operator models
 
     assert.equal(active.personas.reviewer, customReviewerModel)
     assert.equal(active.personas[inheritedPersona], undefined)
-    assert.equal(typeof active.personas.spotfixer, 'string')
-    assert.notEqual(active.personas.spotfixer, customReviewerModel)
+    assert.equal(active.personas[omittedPersona], omittedModel)
     assert.ok(
       readFileSync(
         path.join(project, '.cursor', 'agents', `pan-${inheritedPersona}.md`),
