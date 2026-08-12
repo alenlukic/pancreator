@@ -56,6 +56,13 @@ export interface RepositoryCheckResult {
 
 export interface RepositoryCheckRunOptions {
   timeout_ms?: number
+  /**
+   * Directory the profile commands run in, absolute or installation-relative.
+   * Absent means the configured workspace root. A run that targets a worktree
+   * passes its own workspace so checks observe the worktree, not the main
+   * checkout.
+   */
+  workspace?: string
 }
 
 export interface RepositoryCheckStreamingOptions extends RepositoryCheckRunOptions {
@@ -749,7 +756,10 @@ export function runRepositoryCheck(
   const config = loadRepositoryChecks(root)
   const configPath = repositoryChecksSourcePath(root)
   const profile = config.profiles[profileName]
-  const workspaceRoot = path.resolve(root, configuredWorkspaceRoot(root))
+  const workspaceRoot = path.resolve(
+    root,
+    options.workspace ?? configuredWorkspaceRoot(root),
+  )
   const timeoutMs = effectiveTimeout(profile, options.timeout_ms)
 
   if (!profile || profile.commands.length === 0) {
@@ -823,7 +833,10 @@ export async function runRepositoryCheckStreaming(
   const config = loadRepositoryChecks(root)
   const configPath = repositoryChecksSourcePath(root)
   const profile = config.profiles[profileName]
-  const workspaceRoot = path.resolve(root, configuredWorkspaceRoot(root))
+  const workspaceRoot = path.resolve(
+    root,
+    options.workspace ?? configuredWorkspaceRoot(root),
+  )
   const timeoutMs = effectiveTimeout(profile, options.timeout_ms)
 
   if (!profile || profile.commands.length === 0) {

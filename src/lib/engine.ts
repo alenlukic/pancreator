@@ -512,8 +512,12 @@ function ensureWorkflowRepositoryCheckBaselines(
     onProgress?.(
       `capturing pre-implementation '${profile.name}' baseline (timeout ${profile.timeout_ms ?? 'default'}ms)`,
     )
+    // The baseline must observe the workspace the run mutates. A run that
+    // targets a worktree would otherwise baseline the main checkout and judge
+    // the worktree's gates against unrelated evidence.
     const result = runRepositoryCheck(root, profile.name, {
       timeout_ms: profile.timeout_ms,
+      workspace: state.workspace_root || '.',
     })
     onProgress?.(
       `pre-implementation '${profile.name}' baseline ${result.status} in ${(result.total_duration_ms / 1000).toFixed(1)}s`,
@@ -629,7 +633,30 @@ function pauseForRepositoryCheckBaselineGaps(
   )
 }
 
-function pauseForLimit(root: string, state: RunState, reason: string): void {
+function failAutonomousCandidate(
+  root: string,
+  state: RunState,
+  reason: string,
+): boolean {
+  if (state.best_of_n?.role !== 'candidate') {
+    return false
+  }
+
+  state.status = 'failed'
+  state.current_stage = null
+  state.pause_reason = null
+  state.pending_action = { type: 'none' }
+
+  writeDecision(root, state, 'Autonomous candidate failed', reason, [])
+
+  return true
+}
+
+function pauseForLimit(root: string, state: RunState, reason: string): boolean {
+  if (failAutonomousCandidate(root, state, reason)) {
+    return true
+  }
+
   state.status = 'paused'
   state.pause_reason = reason
   state.pending_action = { type: 'operator_decision' }
@@ -638,6 +665,8 @@ function pauseForLimit(root: string, state: RunState, reason: string): void {
     `Resume from a chosen stage with: ${panCommand(root)} resume ${state.run_id} --stage <stage>`,
     `Or abort with: ${panCommand(root)} abort ${state.run_id}`,
   ])
+
+  return false
 }
 
 const SAME_REASON_TRACKED_STAGES = new Set(['review', 'test'])
@@ -648,7 +677,8 @@ function isSameReasonTrackedStage(
   stage: StageDefinition,
 ): boolean {
   return (
-    (state.workflow_slug === 'dev' &&
+    ((state.workflow_slug === 'dev' ||
+      state.workflow_slug === 'dev-candidate') &&
       SAME_REASON_TRACKED_STAGES.has(stage.slug)) ||
     stage.transitions.failure === stage.slug
   )
@@ -759,6 +789,10 @@ function pauseForSameReasonFailure(
   const reason =
     `Stage '${stage.slug}' failed twice consecutively for the same ` +
     `deterministic reason (${signature}).`
+
+  if (failAutonomousCandidate(root, state, reason)) {
+    return
+  }
 
   state.status = 'paused'
   state.pause_reason = reason
@@ -1399,17 +1433,22 @@ export function prepareInvocation(
     const attemptCeiling = state.limits.max_stage_attempts + grantedRevisions
 
     if (attempt > attemptCeiling) {
-      pauseForLimit(
+      const reason =
+        `Stage '${stage.slug}' exceeded ${attemptCeiling} attempts ` +
+        `(${state.limits.max_stage_attempts} configured` +
+        (grantedRevisions > 0
+          ? ` plus ${grantedRevisions} operator revision${grantedRevisions === 1 ? '' : 's'}`
+          : '') +
+        ').'
+
+      const candidateFailed = pauseForLimit(root, state, reason)
+
+      persistRun(
         root,
         state,
-        `Stage '${stage.slug}' exceeded ${attemptCeiling} attempts ` +
-          `(${state.limits.max_stage_attempts} configured` +
-          (grantedRevisions > 0
-            ? ` plus ${grantedRevisions} operator revision${grantedRevisions === 1 ? '' : 's'}`
-            : '') +
-          ').',
+        candidateFailed ? 'candidate_failed' : 'run_paused',
+        { reason },
       )
-      persistRun(root, state, 'run_paused', { reason: state.pause_reason })
 
       return { state, invocation: null }
     }
@@ -2700,7 +2739,13 @@ export function assessStage(
       assessment,
     )
 
-    if (assessment.verdict === 'escalate') {
+    if (
+      assessment.verdict === 'escalate' &&
+      state.best_of_n?.role === 'candidate'
+    ) {
+      state.status = 'running'
+      applyTransition(root, state, stage, 'failure')
+    } else if (assessment.verdict === 'escalate') {
       state.status = 'paused'
       state.pause_reason = assessment.summary
       state.pending_action = { type: 'operator_decision' }

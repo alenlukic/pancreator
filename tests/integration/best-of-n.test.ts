@@ -12,6 +12,7 @@ import {
   cleanBestOfN,
   consolidateBestOfN,
   initBestOfN,
+  refreshBestOfNAgents,
 } from '../../src/lib/best-of-n.js'
 import {
   assessStage,
@@ -248,54 +249,65 @@ test('session state rejects an unknown lifecycle status', () => {
   )
 })
 
+function submitCandidateStage(
+  root: string,
+  runId: string,
+  stageSlug: string,
+  outcome: 'success' | 'failure' = 'success',
+) {
+  const workflow = loadWorkflow(root, 'dev-candidate')
+  const prepared = prepareInvocation(root, runId)
+  const invocation = prepared.invocation
+
+  assert.ok(invocation, `${stageSlug}: expected an invocation`)
+  assert.equal(invocation.stage.slug, stageSlug)
+
+  const stage = stageBySlug(workflow, stageSlug)
+
+  writeJson(
+    path.join(root, invocation.output.path),
+    makeOutput(root, invocation, stage, outcome),
+  )
+
+  if (stage.persona !== 'orchestrator') {
+    writeCanonicalDelegation(root, invocation)
+  }
+
+  const submitted = submitOutput(root, runId, invocation.output.path)
+
+  assert.equal(
+    submitted.record.outcome,
+    outcome,
+    `${stageSlug}: ${JSON.stringify(submitted.record.evaluation)}`,
+  )
+
+  if (submitted.state.pending_action.type !== 'supervisor_assessment') {
+    return submitted.state
+  }
+
+  const assessmentPath = submitted.state.pending_action.output_path
+
+  writeJson(path.join(root, assessmentPath), {
+    schema_version: 1,
+    assessment_id: randomUUID(),
+    invocation_id: invocation.invocation_id,
+    verdict: 'pass',
+    summary: 'Fixture assessment.',
+    criteria: stage.criteria.map((criterion) => ({
+      id: criterion.id,
+      result: 'pass',
+      evidence: [invocation.output.path],
+      explanation: 'Fixture evidence',
+    })),
+  })
+
+  return assessStage(root, runId, assessmentPath).state
+}
+
 /** Advance one autonomous candidate run from intake to a terminal outcome. */
 function driveCandidate(root: string, runId: string): void {
-  const workflow = loadWorkflow(root, 'dev-candidate')
-
   for (const stageSlug of ['intake', 'plan', 'implement', 'review', 'test']) {
-    const prepared = prepareInvocation(root, runId)
-    const invocation = prepared.invocation
-
-    assert.ok(invocation, `${stageSlug}: expected an invocation`)
-    assert.equal(invocation.stage.slug, stageSlug)
-
-    const stage = stageBySlug(workflow, stageSlug)
-
-    writeJson(
-      path.join(root, invocation.output.path),
-      makeOutput(root, invocation, stage),
-    )
-
-    if (stage.persona !== 'orchestrator') {
-      writeCanonicalDelegation(root, invocation)
-    }
-
-    const submitted = submitOutput(root, runId, invocation.output.path)
-
-    assert.equal(
-      submitted.record.outcome,
-      'success',
-      `${stageSlug}: ${JSON.stringify(submitted.record.evaluation)}`,
-    )
-
-    if (submitted.state.pending_action.type === 'supervisor_assessment') {
-      const assessmentPath = submitted.state.pending_action.output_path
-
-      writeJson(path.join(root, assessmentPath), {
-        schema_version: 1,
-        assessment_id: randomUUID(),
-        invocation_id: invocation.invocation_id,
-        verdict: 'pass',
-        summary: 'Fixture assessment.',
-        criteria: stage.criteria.map((criterion) => ({
-          id: criterion.id,
-          result: 'pass',
-          evidence: [invocation.output.path],
-          explanation: 'Fixture evidence',
-        })),
-      })
-      assessStage(root, runId, assessmentPath)
-    }
+    submitCandidateStage(root, runId, stageSlug)
   }
 }
 
@@ -371,6 +383,33 @@ test('a candidate run delegates to its own agent variant', () => {
   )
 })
 
+test('agent refresh preserves pinned models while updating instructions', () => {
+  const root = createFixture()
+  const session = initSession(root)
+  const candidate = session.candidates[0]
+  const variant = path.join(
+    root,
+    `.cursor/agents/pan-orchestrator--${candidate.agent_suffix}.md`,
+  )
+  const original = readFileSync(variant, 'utf8')
+  const pinnedModel = /^model: .+$/mu.exec(original)?.[0]
+
+  assert.ok(pinnedModel)
+
+  writeFileSync(variant, original.replace('maxTurns: 120', 'maxTurns: 1'))
+
+  const refreshed = refreshBestOfNAgents(root, session.bon_id)
+  const updated = readFileSync(variant, 'utf8')
+
+  assert.ok(
+    refreshed.refreshed_agents.includes(
+      `.cursor/agents/pan-orchestrator--${candidate.agent_suffix}.md`,
+    ),
+  )
+  assert.ok(updated.includes(pinnedModel))
+  assert.match(updated, /maxTurns: 120/u)
+})
+
 test('status surfaces invalid candidate state', () => {
   const root = createFixture()
   const session = initSession(root)
@@ -413,6 +452,37 @@ test('a candidate run keeps workflow-declared gates under a high-touch profile',
   ) as { stages: Array<{ slug: string; gate: string }> }
 
   assert.ok(snapshot.stages.every((stage) => stage.gate !== 'operator'))
+})
+
+test('a candidate circuit breaker ends that candidate without operator input', () => {
+  const root = createFixture()
+  const session = initSession(root)
+  const candidate = session.candidates[0]
+
+  submitCandidateStage(root, candidate.run_id, 'intake')
+  submitCandidateStage(root, candidate.run_id, 'plan')
+  submitCandidateStage(root, candidate.run_id, 'implement')
+  submitCandidateStage(root, candidate.run_id, 'review', 'failure')
+  submitCandidateStage(root, candidate.run_id, 'implement')
+
+  const failed = submitCandidateStage(
+    root,
+    candidate.run_id,
+    'review',
+    'failure',
+  )
+
+  assert.equal(failed.status, 'failed')
+  assert.equal(failed.pending_action.type, 'none')
+  assert.equal(failed.current_stage, null)
+
+  const status = bestOfNStatus(root, session.bon_id)
+  const candidateStatus = status.candidates.find(
+    (entry) => entry.run_id === candidate.run_id,
+  )
+
+  assert.equal(candidateStatus?.terminal, true)
+  assert.ok(!status.unresolved.includes(candidate.run_id))
 })
 
 test('consolidation waits for every candidate and then evaluates all of them', () => {
