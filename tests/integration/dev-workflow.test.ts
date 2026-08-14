@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -18,6 +24,7 @@ import {
 } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { nextSemanticVersion } from '../../src/lib/versioning.js'
+import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import type { StageDefinition, StageOutcome } from '../../src/lib/types.js'
 import {
   createFixture,
@@ -35,6 +42,7 @@ test('full dev workflow persists gates and reaches operator-approved success', (
     workflowSlug: 'dev',
     requestPath: 'request.md',
     title: 'Fixture run',
+    involvement: 'standard',
   })
   const runId = state.run_id
   const modelConfig = state.pipeline_config?.name
@@ -61,10 +69,9 @@ test('full dev workflow persists gates and reaches operator-approved success', (
     assert.equal(invocation.stage.model_config, modelConfig)
     assert.ok(invocation.stage.model.length > 0)
 
-    const invocationValidationPath = path.join(
-      root,
-      `runtime/logs/workflows/${runId}/invocations/${invocation.invocation_id}.invocation-validation.json`,
-    )
+    const invocationValidationPath = resolveRunLayout(root, runId).validation(
+      `${invocation.invocation_id}.invocation-validation.json`,
+    ).absolute
     assert.ok(existsSync(invocationValidationPath))
 
     const stage = stageBySlug(workflow, stageSlug)
@@ -82,6 +89,10 @@ test('full dev workflow persists gates and reaches operator-approved success', (
       submitted.record.outcome,
       'success',
       `${stageSlug}: ${JSON.stringify(submitted.record.evaluation)}`,
+    )
+    assert.equal(
+      existsSync(path.join(root, invocation.output.operator_brief.source_path)),
+      false,
     )
 
     if (stageSlug === 'intake') {
@@ -126,6 +137,15 @@ test('full dev workflow persists gates and reaches operator-approved success', (
   assert.equal(final.status, 'succeeded')
   assert.equal(final.current_stage, null)
   assert.equal(final.stage_history.length, 6)
+  const finalLayout = resolveRunLayout(root, runId)
+  const operatorFiles = readdirSync(finalLayout.operator.absolute)
+
+  assert.equal(existsSync(finalLayout.state.absolute), true)
+  assert.equal(operatorFiles.filter((item) => item.endsWith('.html')).length, 6)
+  assert.equal(
+    operatorFiles.some((item) => item.endsWith('.json')),
+    false,
+  )
   assert.deepEqual(
     final.stage_history.map((item) => item.invocation_id.slice(0, 2)),
     ['05', '04', '03', '02', '01', '00'],
@@ -171,6 +191,7 @@ test('dev intake is delegated to the intake writer and still awaits ratification
     workflowSlug: 'dev',
     requestPath: 'request.md',
     title: 'Intake delegation run',
+    involvement: 'standard',
   }).run_id
   const prepared = prepareInvocation(root, runId)
   const invocation = prepared.invocation
@@ -221,6 +242,7 @@ test('an operator revision returns dev intake to the intake writer', () => {
     workflowSlug: 'dev',
     requestPath: 'request.md',
     title: 'Intake revision run',
+    involvement: 'standard',
   }).run_id
   const first = prepareInvocation(root, runId).invocation
 
@@ -308,6 +330,7 @@ test('paused remediation note is attached to the next implement invocation', () 
     workflowSlug: 'dev',
     requestPath: 'request.md',
     title: 'Fixture run',
+    involvement: 'standard',
   })
   const runId = state.run_id
 
@@ -937,10 +960,7 @@ test('a missing baseline map is not recaptured after implementation', () => {
   setRunStage(root, runId, 'implement', 'Capture baselines before damage.')
   submitStageOutput(root, runId, stageBySlug(workflow, 'implement'), 'success')
 
-  const statePath = path.join(
-    root,
-    `runtime/logs/workflows/${runId}/state.json`,
-  )
+  const statePath = resolveRunLayout(root, runId).state.absolute
   const damagedState = JSON.parse(readFileSync(statePath, 'utf8')) as Record<
     string,
     unknown
@@ -1361,11 +1381,14 @@ test('governance and artifact defects are advisory before ship and never loop to
     true,
   )
   assert.equal(
+    existsSync(path.join(root, invocation.output.operator_brief.source_path)),
+    true,
+  )
+  assert.equal(
     existsSync(
-      path.join(
-        root,
-        `runtime/logs/workflows/${runId}/artifacts/json/governance-artifact-issues.json`,
-      ),
+      resolveRunLayout(root, runId).artifactJson(
+        'governance-artifact-issues.json',
+      ).absolute,
     ),
     true,
   )

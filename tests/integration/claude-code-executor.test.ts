@@ -15,6 +15,8 @@ import {
   submitOutput,
 } from '../../src/lib/engine.js'
 import { syncCursorProjection } from '../../src/lib/projection.js'
+import { resolveRunLayout } from '../../src/lib/run-layout.js'
+import { delegationValidationPath } from '../../src/lib/validation.js'
 import {
   loadPipelineConfigSnapshot,
   makePipelineConfigSnapshot,
@@ -165,6 +167,16 @@ function withStub<T>(stubPath: string, mode: string | null, body: () => T): T {
   }
 }
 
+function invocationFile(
+  root: string,
+  runId: string,
+  invocationId: string,
+  extension: string,
+): string {
+  return resolveRunLayout(root, runId).invocation(invocationId, extension)
+    .absolute
+}
+
 function readExecutionRecord(
   root: string,
   runId: string,
@@ -172,10 +184,7 @@ function readExecutionRecord(
 ): ExternalDelegationRecord {
   return JSON.parse(
     readFileSync(
-      path.join(
-        root,
-        `runtime/logs/workflows/${runId}/invocations/${invocationId}.delegation-execution.json`,
-      ),
+      invocationFile(root, runId, invocationId, '.delegation-execution.json'),
       'utf8',
     ),
   ) as ExternalDelegationRecord
@@ -281,9 +290,11 @@ test('a mixed-executor dev run completes with claude-code plan and review', () =
 
         // The delegation artifact is the canonical card byte for byte.
         const delegationArtifact = readFileSync(
-          path.join(
+          invocationFile(
             root,
-            `runtime/logs/workflows/${runId}/invocations/${invocation.invocation_id}.delegation.md`,
+            runId,
+            invocation.invocation_id,
+            '.delegation.md',
           ),
           'utf8',
         )
@@ -291,18 +302,19 @@ test('a mixed-executor dev run completes with claude-code plan and review', () =
         assert.equal(delegationArtifact, markdown)
         assert.ok(
           existsSync(
-            path.join(
+            invocationFile(
               root,
-              `runtime/logs/workflows/${runId}/invocations/${invocation.invocation_id}.session.json`,
+              runId,
+              invocation.invocation_id,
+              '.session.json',
             ),
           ),
         )
         assert.ok(
           existsSync(
-            path.join(
-              root,
-              `runtime/logs/workflows/${runId}/evidence/${invocation.invocation_id}.claude-code.stdout.json`,
-            ),
+            resolveRunLayout(root, runId).evidence(
+              `${invocation.invocation_id}.claude-code.stdout.json`,
+            ).absolute,
           ),
         )
       } else {
@@ -327,7 +339,7 @@ test('a mixed-executor dev run completes with claude-code plan and review', () =
           readFileSync(
             path.join(
               root,
-              `runtime/logs/workflows/${runId}/invocations/${invocation.invocation_id}.delegation-validation.json`,
+              delegationValidationPath(runId, invocation.invocation_id, root),
             ),
             'utf8',
           ),
@@ -536,10 +548,7 @@ test('operator revision resumes the session; fallback and post-failure retries d
 
     const round2Id = round2.invocation.invocation_id
     const delegationArtifact = readFileSync(
-      path.join(
-        root,
-        `runtime/logs/workflows/${runId}/invocations/${round2Id}.delegation.md`,
-      ),
+      invocationFile(root, runId, round2Id, '.delegation.md'),
       'utf8',
     )
 
@@ -551,10 +560,7 @@ test('operator revision resumes the session; fallback and post-failure retries d
     // delegation validation compares like with like.
     assert.equal(
       readFileSync(
-        path.join(
-          root,
-          `runtime/logs/workflows/${runId}/invocations/${round2Id}.delivery.md`,
-        ),
+        invocationFile(root, runId, round2Id, '.delivery.md'),
         'utf8',
       ),
       delegationArtifact,
@@ -566,10 +572,7 @@ test('operator revision resumes the session; fallback and post-failure retries d
 
     const round2Validation = JSON.parse(
       readFileSync(
-        path.join(
-          root,
-          `runtime/logs/workflows/${runId}/invocations/${round2Id}.delegation-validation.json`,
-        ),
+        path.join(root, delegationValidationPath(runId, round2Id, root)),
         'utf8',
       ),
     ) as { status: string }
@@ -593,19 +596,13 @@ test('operator revision resumes the session; fallback and post-failure retries d
 
     const round3Id = round3.invocation.invocation_id
     const round3Markdown = readFileSync(
-      path.join(
-        root,
-        `runtime/logs/workflows/${runId}/invocations/${round3Id}.md`,
-      ),
+      invocationFile(root, runId, round3Id, '.md'),
       'utf8',
     )
 
     assert.equal(
       readFileSync(
-        path.join(
-          root,
-          `runtime/logs/workflows/${runId}/invocations/${round3Id}.delegation.md`,
-        ),
+        invocationFile(root, runId, round3Id, '.delegation.md'),
         'utf8',
       ),
       round3Markdown,

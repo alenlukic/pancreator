@@ -8,6 +8,7 @@ import { hasHeading, operatorLeadPresent, parseMarkdown } from '../markdown.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
 import { activeOperatorGateWaivers } from '../waivers.js'
 import { readProjectConfig } from '../project-config.js'
+import { resolveRunLayout } from '../run-layout.js'
 import {
   gitWorkspaceSnapshot,
   workspaceChangedPathsFromSnapshots,
@@ -340,11 +341,9 @@ function assessmentVerdictForInvocation(
   runId: string,
   invocationId: string,
 ): string | null {
-  const assessmentsDirectory = path.join(
-    root,
-    'runtime/logs/workflows',
-    runId,
-    'assessments',
+  const layout = resolveRunLayout(root, runId)
+  const assessmentsDirectory = path.dirname(
+    layout.assessment('placeholder').absolute,
   )
   const currentPath = path.join(
     assessmentsDirectory,
@@ -375,7 +374,8 @@ function latestPlanOutputPathFromOutputs(
   root: string,
   runId: string,
 ): string | null {
-  const outputsDir = path.join(root, 'runtime/logs/workflows', runId, 'outputs')
+  const layout = resolveRunLayout(root, runId)
+  const outputsDir = path.dirname(layout.output('placeholder').absolute)
 
   if (!fileExists(outputsDir)) {
     return null
@@ -397,7 +397,7 @@ function latestPlanOutputPathFromOutputs(
 
   const latestPlan = planFiles[planFiles.length - 1]
 
-  return `runtime/logs/workflows/${runId}/outputs/${latestPlan}`
+  return layout.output(latestPlan.replace(/\.json$/u, '')).relative
 }
 
 function acceptedPlanOutputPath(

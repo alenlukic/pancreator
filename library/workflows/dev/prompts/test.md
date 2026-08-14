@@ -37,9 +37,8 @@ produce reproducible evidence.
 
 Populate `data.test` (`verdict`, `cases`, `defects`, `acceptance_results`). Set
 the verdict to fail only for an unresolved product/test blocker, actual timeout or hang, or uncovered hard
-criterion. Governance/artifact diagnostics and slow successful checks remain advisories. Author the QA report as the invocation's schema-valid brief JSON,
-render it to the exact HTML path from the output contract, and reference the HTML
-first and the brief JSON second.
+criterion. Governance/artifact diagnostics and slow successful checks remain advisories. Author the QA report at the declared brief source path.
+Do not run the renderer. Reference the rendered HTML as the narrative artifact.
 
 ## Done when
 

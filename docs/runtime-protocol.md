@@ -39,13 +39,16 @@ renumbered from `99` through `93` to `06` through `00`. A workflow run supports
 at most 100 stage occurrences. The finalizer is idempotent and can be invoked
 manually with `npm run finalize:workflow-artifacts -- <run-id> [root]`.
 
-Execution records and brief source documents are stored as machine-readable
-JSON under `artifacts/json/`. New stage-authored operator narratives are stored
-as self-contained HTML under `artifacts/html/`; each stage output references the
-HTML first and its `.brief.json` source second. The harness rerenders the HTML
-from that source during submission. `artifacts/markdown/` is reserved for
-canonical control/source exceptions such as operator feedback, gate waivers,
-invocation-adjacent records, PR copy, and historical artifacts.
+New runs use layout v2. Machine state and evidence live under `agent/`.
+Operator-readable files live under `operator/`. The request and rendered stage
+briefs are operator files. State, events, snapshots, invocations, outputs,
+assessments, decisions, validations, and task records are agent files.
+
+The harness scaffolds brief source JSON under `agent/artifacts/json/`. During
+submission, it renders the operator HTML and validates both the output and
+brief. A successful validation records the source checksum and deletes the
+source. A failed render or validation retains the source for diagnosis. Layout
+v1 runs retain their original root-level directories and artifact lifecycle.
 
 Supervisor assessment files retain the invocation artifact ID as their sortable
 prefix: `<invocation-id>.assessment-request.json` and
@@ -65,12 +68,10 @@ default retention window.
 ## Invocation and delegation validation
 
 During `prepare`, the harness validates the rendered invocation markdown against
-the invocation-time policy snapshot and writes
-`invocations/<invocation-id>.invocation-validation.json`. During `submit`, it
-validates the delegation audit artifact and writes
-`invocations/<invocation-id>.delegation-validation.json` before stage history
-can advance. `INVOCATION-001` defines the canonical delivery contract and the
-supervisor-owned-stage exception.
+the invocation-time policy snapshot. Layout v2 writes the result under
+`agent/validations/`. During `submit`, it validates the delegation audit before
+stage history can advance. `INVOCATION-001` defines the canonical delivery
+contract and the supervisor-owned-stage exception.
 
 Every prepared worker card also ends with a **Supervisor delivery procedure**
 section carrying that policy with this invocation's resolved paths. The
@@ -93,11 +94,11 @@ delivery becomes a property of code, so no delivery prompt, contract manifest,
 or read attestation is generated for external invocations.
 
 The harness authors the delegation audit itself: the delivered prompt body byte
-for byte at `invocations/<invocation-id>.delegation.md`, and an execution
-record at `invocations/<invocation-id>.delegation-execution.json` carrying
+for byte at `agent/invocations/<invocation-id>.delegation.md`, and an execution
+record at `agent/invocations/<invocation-id>.delegation-execution.json` carrying
 executor identity, the resolved argument vector (excluding the prompt body),
 exit status, duration, and the returned `session_id`. Executor stdout and
-stderr are captured under `evidence/` per the OUTPUT-001 pattern.
+stderr are captured under `agent/evidence/` per the OUTPUT-001 pattern.
 `delegation-validate` passes on these harness-authored records.
 
 Delegation is preflighted fail-closed per `EXECUTOR-001`: run creation verifies
@@ -111,7 +112,7 @@ only inside the harness runtime tree — while `scope.no_unapproved_changes`
 remains the gate of record for workspace mutation.
 
 Sessions persist beside the invocation artifacts
-(`invocations/<invocation-id>.session.json`) and on the run state. When
+(`agent/invocations/<invocation-id>.session.json`) and on the run state. When
 `pan decide <run-id> revise` re-runs an external stage, the harness resumes the
 recorded session with the operator directive (`--resume <session_id>`) so the
 author keeps its full context; the delivered directive is persisted as both the
@@ -141,7 +142,7 @@ Invocation references have three retrieval classes:
   listed.
 
 The harness writes
-`invocations/<invocation-id>.context-manifest.json` when workflow records are
+`agent/invocations/<invocation-id>.context-manifest.json` when workflow records are
 omitted from the card or required context is unavailable. The manifest preserves
 full traceability without making superseded history part of the default model
 context. It may be opened only to resolve a named inconsistency, missing
@@ -227,7 +228,7 @@ Governance, invocation, delegation, path-resolution, and operator-artifact diagn
 
 ## Operator rejection
 
-At an operator gate, `./bin/pan decide <run-id> reject` follows the stage's declared `failure` transition (ship pauses for operator-directed remediation; intake retries `intake`). The operator MAY override the remediation target with `--stage <slug>`, which is restricted to a real stage in the workflow. An overridden target, and every stage declared after it, restarts with a fresh attempt budget, and consecutive-failure tracking is cleared because the rewind is an explicit human decision rather than an automated retry. In all cases the operator's `--note` is written to `artifacts/markdown/operator-feedback-<n>.md`. The most recent feedback targeting the remediation stage is attached as a required input; older feedback remains discoverable through the context manifest.
+At an operator gate, `./bin/pan decide <run-id> reject` follows the stage's declared `failure` transition (ship pauses for operator-directed remediation; intake retries `intake`). The operator MAY override the remediation target with `--stage <slug>`, which is restricted to a real stage in the workflow. An overridden target, and every stage declared after it, restarts with a fresh attempt budget, and consecutive-failure tracking is cleared because the rewind is an explicit human decision rather than an automated retry. In all cases the operator's `--note` is written to `agent/decisions/operator-feedback-<n>.md` (`decisions/` in a legacy-layout run). The most recent feedback targeting the remediation stage is attached as a required input; older feedback remains discoverable through the context manifest.
 
 ## Operator stage repair
 

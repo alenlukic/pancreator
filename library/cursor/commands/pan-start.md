@@ -33,7 +33,7 @@ Pancreator orchestrator invocation
 
 Repeat until the run is terminal:
 
-1. Present the orchestrator's final report to the operator: state, outcome, evidence pointers, and the required decision or next action. Do not summarize away a ratification packet, checkpoint substance, or pause options.
+1. Present the outcome, consequence, and next action in plain language. Include each stage HTML path as a clickable file reference.
 2. If the report reaches a terminal state, report it and STOP.
 3. If the report requires an operator decision the conversation has not already supplied, STOP and wait for the operator.
 4. When the operator responds, invoke `pan-orchestrator` with a resume invocation carrying the run id and the operator's message verbatim.

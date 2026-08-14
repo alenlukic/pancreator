@@ -10,7 +10,7 @@
     "When the invocation declares `referenced` delivery, the supervisor MUST deliver the generated delivery prompt exactly as rendered. The prompt names the canonical contract path, its digest, and its complete section index.",
     "When the invocation declares `verbatim` delivery, the supervisor MUST paste the complete canonical invocation Markdown into the subagent prompt.",
     "Under either mode the supervisor MUST NOT summarize, narrow, reorder, or restate the contract, and MUST NOT deliver a path-only reference that carries no digest and no section index.",
-    "The supervisor MUST persist the exact delivered prompt body to the matching `runtime/logs/workflows/<run-id>/invocations/<invocation-id>.delegation.md` artifact before stage submission so the harness can validate delivery.",
+    "The supervisor MUST persist the exact delivered prompt body to the matching `<invocation-id>.delegation.md` artifact that the card resolves, before stage submission, so the harness can validate delivery.",
     "The supervisor MUST NOT append parallel scope, policy, gate, or plan restatements that could shadow the canonical contract; a minimal non-conflicting persona label MAY precede it.",
     "A worker that receives a referenced contract MUST read the complete contract before other repository context, and MUST declare that read in `invocation_attestation` in its stage output.",
     "A read attestation MUST name the invocation, the contract path, the contract digest, and every contract section in order with its digest. A partial, reordered, or stale attestation MUST fail the stage.",

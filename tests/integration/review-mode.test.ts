@@ -11,6 +11,7 @@ import {
 } from '../../src/lib/engine.js'
 import { resolvePolicies } from '../../src/lib/policies.js'
 import { readProjectConfig } from '../../src/lib/project-config.js'
+import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { createFixture, read, writeJson } from '../helpers.js'
 
 const SEED_NOTE = 'Independently review the current workspace.'
@@ -44,10 +45,10 @@ function reviewInvocation(root: string, reviewMode?: string) {
   assert.equal(invocation.stage.slug, 'review')
 
   const card = readFileSync(
-    path.join(
-      root,
-      `runtime/logs/workflows/${state.run_id}/invocations/${invocation.invocation_id}.md`,
-    ),
+    resolveRunLayout(root, state.run_id).invocation(
+      invocation.invocation_id,
+      '.md',
+    ).absolute,
     'utf8',
   )
 

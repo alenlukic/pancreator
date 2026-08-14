@@ -35,9 +35,8 @@ only whether the evidence answers the questions.
 
 Populate `data.evaluation` (`verdict`, `question_results`, `signal_assessment`,
 `productionization_gap`, `recommendation`, `discard_candidates`). Author the
-evaluation as the invocation's schema-valid brief JSON, render it to the exact
-HTML path from the output contract, and reference the HTML first and the brief
-JSON second.
+evaluation at the declared brief source path. Do not run the renderer. Reference
+the rendered HTML as the narrative artifact.
 
 ## Done when
 

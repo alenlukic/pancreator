@@ -26,9 +26,9 @@ does not enumerate features.
 ## Output
 
 Populate `data.prototype_brief` (`objective`, `technical_questions`,
-`success_signals`, `acceptable_shortcuts`, `out_of_scope`). Author the brief as
-the invocation's schema-valid brief JSON, render it to the exact HTML path from
-the output contract, and reference the HTML first and the brief JSON second.
+`success_signals`, `acceptable_shortcuts`, `out_of_scope`). Author the brief at
+the declared source path. Do not run the renderer. Reference the rendered HTML
+as the narrative artifact.
 
 ## Done when
 

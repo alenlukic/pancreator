@@ -12,6 +12,7 @@ import path from 'node:path'
 
 import { renderBrief } from '../src/lib/briefs.js'
 import { syncCursorProjection } from '../src/lib/projection.js'
+import { resolveRunLayout } from '../src/lib/run-layout.js'
 import { nextSemanticVersion } from '../src/lib/versioning.js'
 
 import type {
@@ -30,8 +31,12 @@ const CURRENT_VERSION = readFileSync(
   'utf8',
 ).trim()
 
-const FIXTURE_GIT_TIMEOUT_MS = 30_000
+// The suite runs one fixture per test file in parallel, so fixture setup shares
+// the machine with every other suite. The limit guards against a hung Git
+// process, not against a slow one.
+const FIXTURE_GIT_TIMEOUT_MS = 180_000
 const FIXTURE_GIT_MAX_BUFFER = 1_024 * 1_024
+const FIXTURE_INVOLVEMENT_PROFILE = 'standard'
 
 function fixtureGit(
   args: string[],
@@ -43,6 +48,28 @@ function fixtureGit(
     timeout: FIXTURE_GIT_TIMEOUT_MS,
     maxBuffer: FIXTURE_GIT_MAX_BUFFER,
   })
+}
+
+/**
+ * Pin the involvement profile a fixture run resolves.
+ *
+ * A fixture copies the repository configuration, so the checked-in operator
+ * preference would otherwise decide which stages stop for approval in every
+ * workflow test. Tests that need another profile select it explicitly.
+ */
+function pinFixtureInvolvement(root: string): void {
+  const configPath = path.join(root, 'config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
+    operator_involvement?: { active?: string }
+  }
+
+  if (!config.operator_involvement) {
+    return
+  }
+
+  config.operator_involvement.active = FIXTURE_INVOLVEMENT_PROFILE
+
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
 }
 
 export function createFixture(): string {
@@ -72,6 +99,8 @@ export function createFixture(): string {
   ]) {
     cpSync(path.join(REPO_ROOT, entry), path.join(root, entry))
   }
+
+  pinFixtureInvolvement(root)
 
   mkdirSync(path.join(root, 'runtime', 'logs', 'orchestrator'), {
     recursive: true,
@@ -701,16 +730,17 @@ export function writeCanonicalDelegation(
   root: string,
   invocation: Invocation,
 ): void {
-  const invocationDirectory = `runtime/logs/workflows/${invocation.run_id}/invocations`
+  const layout = resolveRunLayout(root, invocation.run_id)
   const deliveredRelative =
     invocation.delegation?.mode === 'referenced' &&
     invocation.delegation.delivery_prompt_path
       ? invocation.delegation.delivery_prompt_path
-      : `${invocationDirectory}/${invocation.invocation_id}.md`
-  const delegationAbsolute = path.join(
-    root,
-    `${invocationDirectory}/${invocation.invocation_id}.delegation.md`,
-  )
+      : (invocation.delegation?.canonical_markdown_path ??
+        layout.invocation(invocation.invocation_id, '.md').relative)
+  const delegationAbsolute = layout.invocation(
+    invocation.invocation_id,
+    '.delegation.md',
+  ).absolute
 
   mkdirSync(path.dirname(delegationAbsolute), { recursive: true })
   writeFileSync(
@@ -785,7 +815,12 @@ export function makeOutput(
     summary: `${invocation.stage.title} completed in fixture.`,
     artifacts: [
       { path: briefHtml, description: 'Fixture HTML operator brief' },
-      { path: briefSource, description: 'Fixture operator brief source' },
+      ...(invocation.output.operator_brief.source_lifecycle === 'transient' ||
+      invocation.output.operator_brief.source_transient
+        ? []
+        : [
+            { path: briefSource, description: 'Fixture operator brief source' },
+          ]),
     ],
     criteria: stageDefinition.criteria.map((criterion) => ({
       id: criterion.id,

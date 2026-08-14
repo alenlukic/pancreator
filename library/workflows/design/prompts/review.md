@@ -17,8 +17,8 @@ handbook heuristic checklist. Verify reality, not the designer’s narrative.
 ## Output
 
 Populate `data.review` with `verdict`, `findings`, `heuristic_results`, and
-`acceptance_results`. Author the review brief as the invocation's schema-valid brief
-JSON and reference the rendered HTML first and the brief JSON second.
+`acceptance_results`. Author the review brief at the declared source path. Do
+not run the renderer. Reference the rendered HTML as the narrative artifact.
 
 ## Done when
 

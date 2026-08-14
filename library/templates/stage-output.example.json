@@ -12,10 +12,6 @@
     {
       "path": "copy-output.operator_brief.rendered_path-from-invocation-card",
       "description": "Primary self-contained HTML brief for the operator."
-    },
-    {
-      "path": "copy-output.operator_brief.source_path-from-invocation-card",
-      "description": "Schema-valid JSON source used to render the operator brief."
     }
   ],
   "criteria": [

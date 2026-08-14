@@ -11,6 +11,7 @@ import {
   submitOutput,
 } from '../../src/lib/engine.js'
 import { PanError } from '../../src/lib/errors.js'
+import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   validateDelegationMarkdown,
@@ -156,10 +157,8 @@ test('a retry card inlines the recorded reason the prior attempt failed', () => 
   )
 
   const card = readFileSync(
-    path.join(
-      root,
-      `runtime/logs/workflows/${runId}/invocations/${retry.invocation_id}.md`,
-    ),
+    resolveRunLayout(root, runId).invocation(retry.invocation_id, '.md')
+      .absolute,
     'utf8',
   )
 

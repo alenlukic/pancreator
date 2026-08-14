@@ -156,3 +156,40 @@ test('stage output requires invocation-declared HTML and brief source artifacts'
     /artifacts\[0\]\.path MUST equal rendered operator brief path/u,
   )
 })
+
+test('stage output excludes a transient brief source from artifacts', () => {
+  const root = createFixture()
+  const { invocation, stage } = fixtureInvocation(
+    root,
+    'implement',
+    'implement-1-test',
+  )
+  invocation.output.operator_brief.source_transient = true
+  const output = baseOutput(invocation, stage)
+
+  output.artifacts = [
+    {
+      path: invocation.output.operator_brief.rendered_path,
+      description: 'Rendered brief',
+    },
+  ]
+
+  const withoutSource = validateStageOutput(root, stage, invocation, output)
+
+  assert.doesNotMatch(
+    withoutSource.errors.join('\n'),
+    /artifacts\[1\]|MUST NOT list transient/u,
+  )
+
+  output.artifacts.push({
+    path: invocation.output.operator_brief.source_path,
+    description: 'Transient source',
+  })
+
+  const withSource = validateStageOutput(root, stage, invocation, output)
+
+  assert.match(
+    withSource.errors.join('\n'),
+    /MUST NOT list transient operator brief source/u,
+  )
+})

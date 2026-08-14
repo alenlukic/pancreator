@@ -28,6 +28,7 @@ import type {
 import type { LoadedPipelineConfig } from './pipeline-config.js'
 import { auditDirectives } from './governance/audit-directives.js'
 import { HANDLER_IDS } from './requirements/handlers.js'
+import { resolveRunLayout } from './run-layout.js'
 import { loadRegistry, validateRegistry } from './requirements/registry.js'
 import {
   resolveRequirements,
@@ -145,32 +146,62 @@ export function normalizeMarkdownContent(content: string): string {
   return content.replaceAll('\r\n', '\n').replaceAll('\r', '\n')
 }
 
+/**
+ * Layout v2 collects per-invocation validation artifacts under the run's
+ * `validations/` directory. A layout-v1 run keeps them beside the invocation,
+ * because its earlier stages already wrote them there.
+ */
+function invocationValidationArtifactPath(
+  runId: string,
+  invocationId: string,
+  extension: string,
+  root?: string,
+): string {
+  if (!root) {
+    return `runtime/logs/workflows/${runId}/invocations/${invocationId}${extension}`
+  }
+
+  const layout = resolveRunLayout(root, runId)
+
+  return layout.version === 'v2'
+    ? layout.validation(`${invocationId}${extension}`).relative
+    : layout.invocation(invocationId, extension).relative
+}
+
 export function invocationValidationPath(
   runId: string,
   invocationId: string,
+  root?: string,
 ): string {
-  return (
-    `runtime/logs/workflows/${runId}/invocations/` +
-    `${invocationId}.invocation-validation.json`
+  return invocationValidationArtifactPath(
+    runId,
+    invocationId,
+    '.invocation-validation.json',
+    root,
   )
 }
 
-export function delegationPath(runId: string, invocationId: string): string {
-  return (
-    `runtime/logs/workflows/${runId}/invocations/` +
-    `${invocationId}.delegation.md`
-  )
+export function delegationPath(
+  runId: string,
+  invocationId: string,
+  root?: string,
+): string {
+  return root
+    ? resolveRunLayout(root, runId).invocation(invocationId, '.delegation.md')
+        .relative
+    : `runtime/logs/workflows/${runId}/invocations/${invocationId}.delegation.md`
 }
 
 /** Sibling path holding the exact prompt body a referenced delivery uses. */
 export function deliveryPromptPath(
   runId: string,
   invocationId: string,
+  root?: string,
 ): string {
-  return (
-    `runtime/logs/workflows/${runId}/invocations/` +
-    `${invocationId}.delivery.md`
-  )
+  return root
+    ? resolveRunLayout(root, runId).invocation(invocationId, '.delivery.md')
+        .relative
+    : `runtime/logs/workflows/${runId}/invocations/${invocationId}.delivery.md`
 }
 
 const MISPLACED_DELEGATION_RELATIVE_PATH = '.delegation.md'
@@ -190,7 +221,7 @@ export function relocateMisplacedDelegationArtifact(
     return false
   }
 
-  const targetRelative = delegationPath(runId, invocationId)
+  const targetRelative = delegationPath(runId, invocationId, root)
   const targetAbsolute = resolveInside(root, targetRelative)
 
   ensureDir(path.dirname(targetAbsolute))
@@ -207,10 +238,13 @@ export function relocateMisplacedDelegationArtifact(
 export function delegationValidationPath(
   runId: string,
   invocationId: string,
+  root?: string,
 ): string {
-  return (
-    `runtime/logs/workflows/${runId}/invocations/` +
-    `${invocationId}.delegation-validation.json`
+  return invocationValidationArtifactPath(
+    runId,
+    invocationId,
+    '.delegation-validation.json',
+    root,
   )
 }
 
@@ -221,19 +255,26 @@ export function delegationValidationPath(
 export function delegationExecutionPath(
   runId: string,
   invocationId: string,
+  root?: string,
 ): string {
-  return (
-    `runtime/logs/workflows/${runId}/invocations/` +
-    `${invocationId}.delegation-execution.json`
-  )
+  return root
+    ? resolveRunLayout(root, runId).invocation(
+        invocationId,
+        '.delegation-execution.json',
+      ).relative
+    : `runtime/logs/workflows/${runId}/invocations/${invocationId}.delegation-execution.json`
 }
 
 /** Executor session recorded beside the invocation artifacts for later resume. */
-export function sessionRecordPath(runId: string, invocationId: string): string {
-  return (
-    `runtime/logs/workflows/${runId}/invocations/` +
-    `${invocationId}.session.json`
-  )
+export function sessionRecordPath(
+  runId: string,
+  invocationId: string,
+  root?: string,
+): string {
+  return root
+    ? resolveRunLayout(root, runId).invocation(invocationId, '.session.json')
+        .relative
+    : `runtime/logs/workflows/${runId}/invocations/${invocationId}.session.json`
 }
 
 export function loadDelegationExecutionRecord(
@@ -243,7 +284,7 @@ export function loadDelegationExecutionRecord(
 ): ExternalDelegationRecord | null {
   const absolute = resolveInside(
     root,
-    delegationExecutionPath(runId, invocationId),
+    delegationExecutionPath(runId, invocationId, root),
   )
 
   if (!fileExists(absolute)) {
@@ -276,7 +317,7 @@ export function expectedDelegationSource(
   const delegation = invocation.delegation
   const canonicalPath =
     delegation?.canonical_markdown_path ??
-    `runtime/logs/workflows/${runId}/invocations/${invocationId}.md`
+    resolveRunLayout(root, runId).invocation(invocationId, '.md').relative
 
   if (delegation?.mode === 'referenced' && delegation.delivery_prompt_path) {
     return { path: delegation.delivery_prompt_path, mode: 'referenced' }
@@ -289,7 +330,7 @@ export function expectedDelegationSource(
 
     if (record?.delegation_kind === 'resumed') {
       return {
-        path: deliveryPromptPath(runId, invocationId),
+        path: deliveryPromptPath(runId, invocationId, root),
         mode: 'referenced',
       }
     }
@@ -301,10 +342,13 @@ export function expectedDelegationSource(
 export function attestationValidationPath(
   runId: string,
   invocationId: string,
+  root?: string,
 ): string {
-  return (
-    `runtime/logs/workflows/${runId}/invocations/` +
-    `${invocationId}.attestation-validation.json`
+  return invocationValidationArtifactPath(
+    runId,
+    invocationId,
+    '.attestation-validation.json',
+    root,
   )
 }
 
@@ -1109,12 +1153,14 @@ export function loadInvocationValidationStatus(
   const invocationValidationPathValue = invocationValidationPath(
     runId,
     invocationId,
+    root,
   )
   const delegationValidationPathValue = delegationValidationPath(
     runId,
     invocationId,
+    root,
   )
-  const delegationPathValue = delegationPath(runId, invocationId)
+  const delegationPathValue = delegationPath(runId, invocationId, root)
 
   return {
     invocation: loadValidationArtifact(root, invocationValidationPathValue),
@@ -1396,7 +1442,9 @@ export function validateStageOutput(
 
   if (briefContract) {
     const primaryArtifact = output.artifacts[0]
-    const sourceArtifact = output.artifacts[1]
+    const sourceTransient =
+      briefContract.source_lifecycle === 'transient' ||
+      briefContract.source_transient === true
 
     if (primaryArtifact?.path !== briefContract.rendered_path) {
       errors.push(
@@ -1404,7 +1452,19 @@ export function validateStageOutput(
       )
     }
 
-    if (sourceArtifact?.path !== briefContract.source_path) {
+    if (
+      sourceTransient &&
+      output.artifacts.some(
+        (artifact) => artifact.path === briefContract.source_path,
+      )
+    ) {
+      errors.push(
+        `artifacts MUST NOT list transient operator brief source '${briefContract.source_path}'`,
+      )
+    } else if (
+      !sourceTransient &&
+      output.artifacts[1]?.path !== briefContract.source_path
+    ) {
       errors.push(
         `artifacts[1].path MUST equal operator brief source path '${briefContract.source_path}'`,
       )

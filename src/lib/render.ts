@@ -618,7 +618,11 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
             `Edit it in place; do not search the repository for brief artifacts and ` +
             `do not run the renderer. The harness renders and validates it during submission. ` +
             `Required section-heading phrases: ${operatorBrief.required_headings.join(', ')}. ` +
-            'The rendered HTML is artifact 0 and the source JSON is artifact 1.',
+            'The rendered HTML is artifact 0.' +
+            (operatorBrief.source_lifecycle === 'transient' ||
+            operatorBrief.source_transient
+              ? ' The source JSON is transient and the harness deletes it after successful rendering and validation.'
+              : ' This legacy invocation retains the source JSON.'),
           '',
           ...((operatorBrief.allowed_card_types ?? []).length > 0
             ? [

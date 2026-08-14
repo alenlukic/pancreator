@@ -13,6 +13,7 @@ import {
   resolveInside,
   writeJsonAtomic,
 } from './io.js'
+import { resolveRunLayout } from './run-layout.js'
 import type { RunState } from './types.js'
 
 export function now(): string {
@@ -24,15 +25,15 @@ export function makeRunId(): string {
 }
 
 export function runDir(root: string, runId: string): string {
-  return path.join(root, 'runtime', 'logs', 'workflows', runId)
+  return resolveRunLayout(root, runId).agent.absolute
 }
 
 export function statePath(root: string, runId: string): string {
-  return path.join(runDir(root, runId), 'state.json')
+  return resolveRunLayout(root, runId).state.absolute
 }
 
 export function eventPath(root: string, runId: string): string {
-  return path.join(runDir(root, runId), 'events.jsonl')
+  return resolveRunLayout(root, runId).events.absolute
 }
 
 export function nextStageSequence(root: string, runId: string): number {
@@ -68,7 +69,7 @@ export function operationMutexPath(root: string, runId: string): string {
     code: 'RUN_NOT_FOUND',
   })
 
-  return path.join(runDir(root, runId), '.operation-mutex')
+  return resolveRunLayout(root, runId).operationMutex.absolute
 }
 
 function parseRunState(value: unknown, source: string): RunState {
@@ -115,7 +116,9 @@ export function loadState(root: string, runId: string): RunState {
     code: 'RUN_NOT_FOUND',
   })
 
-  clearStaleOperationMutex(path.join(runDir(root, runId), '.operation-mutex'))
+  clearStaleOperationMutex(
+    resolveRunLayout(root, runId).operationMutex.absolute,
+  )
 
   let state = parseRunState(readJson(filePath), filePath)
   const eventsFile = eventPath(root, runId)
@@ -199,8 +202,9 @@ export function writeDecision(
   actionItems: string[] = [],
 ): string {
   const decisionId = randomUUID()
-  const relative =
-    `runtime/logs/workflows/${state.run_id}/decisions/` + `${decisionId}.json`
+  const relative = resolveRunLayout(root, state.run_id).decision(
+    `${decisionId}.json`,
+  ).relative
   const decision = {
     $operator: {
       headline: title,

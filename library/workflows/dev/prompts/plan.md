@@ -15,9 +15,9 @@ criteria from the ratified product specification.
 ## Output
 
 Populate `data.engineering_plan` (`approach`, `components`, `files`, `risks`,
-`validation`) and `data.acceptance_criteria`. Author the plan as the invocation's
-schema-valid brief JSON, render it to the exact HTML path from the output
-contract, and reference the HTML first and the brief JSON second.
+`validation`) and `data.acceptance_criteria`. Author the plan at the declared
+brief source path. Do not run the renderer. Reference the rendered HTML as the
+narrative artifact.
 
 ## Done when
 

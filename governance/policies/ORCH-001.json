@@ -12,13 +12,22 @@
     "The supervisor MUST NOT ask the operator to resume a run while a supervisor-owned pending action remains.",
     "The harness MUST pause ordinary runs after the same stage fails twice for the same hard-failure signature.",
     "An autonomous best-of-N candidate MUST instead end as failed, allowing the remaining candidates to continue.",
-    "When implementation loops to implementation, the supervisor MUST ensure the next coder invocation includes the prior failed output and deterministic evidence; it MUST NOT spend a retry on an unchanged paperwork-only resubmission."
+    "When implementation loops to implementation, the supervisor MUST ensure the next coder invocation includes the prior failed output and deterministic evidence; it MUST NOT spend a retry on an unchanged paperwork-only resubmission.",
+    "After an interruption or an operator resume, the supervisor MUST reconcile run state through `pan status` before further action.",
+    "One prepared invocation MUST have at most one active worker. Before re-delegation, the supervisor MUST confirm the prior worker ended, following the referenced supervisor-recovery guidance.",
+    "Every operator report MUST state the outcome, consequence, and next action. It MUST use plain language and include only relevant evidence.",
+    "Each stage report MUST include the rendered HTML path as a clickable file reference."
   ],
   "guidance_sources": [
     {
       "path": "library/personas/orchestrator.md",
       "start_heading": "## Responsibilities",
       "read_trigger": "Read this guidance before you advance, pause, or report a workflow run."
+    },
+    {
+      "path": "library/skills/supervisor-recovery.md",
+      "start_heading": "## Principle",
+      "read_trigger": "Read this guidance before you resume an interrupted run or relaunch a worker on a prepared invocation."
     }
   ],
   "requirements": [

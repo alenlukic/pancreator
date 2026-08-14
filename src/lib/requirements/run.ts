@@ -7,6 +7,7 @@ import {
   sha256,
   writeJsonAtomic,
 } from '../io.js'
+import { resolveRunLayout } from '../run-layout.js'
 import type {
   RequirementValidationResult,
   ResolvedRequirement,
@@ -124,6 +125,7 @@ export function registryStageSlug(registryId: string): string | null {
 }
 
 function validationResultPath(
+  root: string,
   runId: string,
   policyId: string,
   requirementId: string,
@@ -134,7 +136,7 @@ function validationResultPath(
     '-',
   )
 
-  return `runtime/logs/workflows/${runId}/validations/${safe}.json`
+  return resolveRunLayout(root, runId).validation(`${safe}.json`).relative
 }
 
 /** Run one policy-bound requirement against an exact target. */
@@ -260,6 +262,7 @@ export function runRequirement(
 
   if (options.persist !== false && options.runId) {
     const evidencePath = validationResultPath(
+      options.root,
       options.runId,
       options.requirement.policy_id,
       options.requirement.requirement_id,

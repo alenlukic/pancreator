@@ -5,7 +5,10 @@
   "summary": "Active workflow-stage narratives MUST use the shared brief data contract and render to self-contained semantic HTML; historical Markdown and explicit worker-control/source records remain valid exceptions.",
   "instructions": [
     "Every active workflow-stage narrative MUST use schema-valid brief data at the exact source path pre-created by the harness. The harness renders semantic HTML during submission; workers MUST NOT spend stage time discovering paths or invoking the renderer.",
-    "Each worker invocation MUST declare exact operator-brief source and rendered paths as a canonical artifact index. The worker MUST edit the existing source in place and reference rendered HTML as artifact 0 and source brief JSON as artifact 1. Path drift, invalid brief data, or rendering defects are governance/artifact diagnostics for ship review and MUST NOT loop the workflow to implementation.",
+    "Each worker invocation MUST declare exact operator-brief source and rendered paths. The worker MUST edit the existing source in place.",
+    "The rendered HTML MUST be artifact 0. The transient source JSON MUST NOT be a final stage artifact.",
+    "The harness MUST delete transient source JSON after successful rendering and validation. It MUST retain the source after a failure.",
+    "Path drift, invalid brief data, or rendering defects are governance diagnostics for ship review. They MUST NOT loop the workflow to implementation.",
     "A brief MUST begin with an executive-summary section that states the bottom line first: what changed or matters, why it matters, and outcomes or required actions when applicable.",
     "Brief data MUST describe content and semantic intent; layout, typography, color, spacing, and responsive behavior MUST remain in the shared or project design system.",
     "Section headings MUST use concise titles and a registered semantic key. Renderers MUST resolve the heading emoji from that registry rather than accepting ad hoc emoji choices.",
