@@ -399,6 +399,34 @@
       "workflow": "standalone",
       "stage": "shepherd",
       "policies": ["SHEPHERD-001"]
+    },
+    {
+      "persona": "coder",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["LANG-001"],
+      "generated_by": "pancreator-target-language-handbooks"
+    },
+    {
+      "persona": "reviewer",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["LANG-001"],
+      "generated_by": "pancreator-target-language-handbooks"
+    },
+    {
+      "persona": "qa-tester",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["LANG-001"],
+      "generated_by": "pancreator-target-language-handbooks"
+    },
+    {
+      "persona": "spotfixer",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["LANG-001"],
+      "generated_by": "pancreator-target-language-handbooks"
     }
   ]
 }
