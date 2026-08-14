@@ -46,7 +46,10 @@ import {
 } from './lib/io.js'
 import type { RunState } from './lib/types.js'
 import type { InvocationKind } from './lib/requirements/types.js'
-import { validateRepository } from './lib/validation.js'
+import {
+  delegationExecutionPath,
+  validateRepository,
+} from './lib/validation.js'
 import { buildValidationMap } from './lib/requirements/map.js'
 import { loadRegistry } from './lib/requirements/registry.js'
 import { resolveRequirements } from './lib/requirements/resolve.js'
@@ -71,6 +74,7 @@ import {
   runRepositoryCheckStreaming,
 } from './lib/repository-checks.js'
 import { detectWorkspaceTechnologies } from './lib/technologies.js'
+import { resolveRunLayout } from './lib/run-layout.js'
 import {
   buildBriefSystem,
   renderBrief,
@@ -378,10 +382,10 @@ function listRuns(root: string): Array<Record<string, unknown>> {
     .filter(
       (entry) =>
         entry.isDirectory() &&
-        fileExists(path.join(base, entry.name, 'state.json')),
+        fileExists(resolveRunLayout(root, entry.name).state.absolute),
     )
     .map((entry) => {
-      const statePath = path.join(base, entry.name, 'state.json')
+      const statePath = resolveRunLayout(root, entry.name).state.absolute
 
       return parseRunState(readJson(statePath), statePath)
     })
@@ -547,7 +551,7 @@ async function main(): Promise<void> {
         applied_gates: state.operator_involvement?.applied_gates ?? {},
         review_mode: state.review_mode,
         next_command: `${pan} prepare ${state.run_id}`,
-        state_path: `runtime/logs/workflows/${state.run_id}/state.json`,
+        state_path: resolveRunLayout(root, state.run_id).state.relative,
       })
       return
     }
@@ -623,7 +627,11 @@ async function main(): Promise<void> {
         session_id: result.execution.session_id ?? null,
         exit_code: result.execution.exit_code,
         duration_ms: result.execution.duration_ms,
-        execution_record: `runtime/logs/workflows/${runId}/invocations/${result.execution.invocation_id}.delegation-execution.json`,
+        execution_record: delegationExecutionPath(
+          runId,
+          result.execution.invocation_id,
+          root,
+        ),
         expected_output: result.state.current_invocation?.output_path,
         next_command: `${pan} submit ${runId} ${result.state.current_invocation?.output_path ?? '<output-json>'}`,
       })
@@ -645,6 +653,10 @@ async function main(): Promise<void> {
         status: result.state.status,
         outcome: result.record.outcome,
         stage: result.record.stage.slug,
+        operator_brief_html:
+          result.record.artifacts.find((artifact) =>
+            artifact.path.endsWith('.html'),
+          )?.path ?? null,
         next_stage: result.state.current_stage,
         pending_action: result.state.pending_action,
       })

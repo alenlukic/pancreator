@@ -24,8 +24,8 @@ corresponding `dev` run.
 
 Populate `data.design_spec` (`summary`, `screens`, `tokens`), `data.mocks` (entries
 with `kind` `html`, `screen`, and `path`), and `data.acceptance_criteria`. Author
-the design brief as the invocation's schema-valid brief JSON and reference the
-rendered HTML first and the brief JSON second.
+the design brief at the declared source path. Do not run the renderer. Reference
+the rendered HTML as the narrative artifact.
 
 ## Done when
 

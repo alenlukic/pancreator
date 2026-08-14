@@ -10,6 +10,7 @@ import {
 import path from 'node:path'
 import test from 'node:test'
 
+import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { createFixture, writeJson } from '../helpers.js'
 
 const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
@@ -135,14 +136,7 @@ test('worktree create, list, source selection, and targeted init preserve the ma
   }>(root, ['init', '--request', 'request.md', '--worktree', 'alpha'])
   const state = JSON.parse(
     readFileSync(
-      path.join(
-        root,
-        'runtime',
-        'logs',
-        'workflows',
-        initialized.run_id,
-        'state.json',
-      ),
+      resolveRunLayout(root, initialized.run_id).state.absolute,
       'utf8',
     ),
   ) as { workspace_root: string }

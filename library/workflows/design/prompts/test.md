@@ -21,8 +21,8 @@ because the design workflow does not mutate tracked source.
 ## Output
 
 Populate `data.test` with `verdict`, `cases`, `defects`, and `acceptance_results`.
-Author the QA brief as the invocation's schema-valid brief JSON and reference the
-rendered HTML first and the brief JSON second.
+Author the QA brief at the declared source path. Do not run the renderer.
+Reference the rendered HTML as the narrative artifact.
 
 ## Done when
 

@@ -16,25 +16,25 @@
   },
   "active_config": "complex",
   "defaults": {
-    "orchestrator": "gpt-5.4[context=272k,reasoning=high,fast=false]",
-    "meta-orchestrator": "gpt-5.4[context=272k,reasoning=high,fast=false]",
+    "orchestrator": "gpt-5.4[context=272k,effort=high,fast=false]",
+    "meta-orchestrator": "gpt-5.4[context=272k,effort=high,fast=false]",
     "intake-writer": "claude-opus-5[thinking=true,context=300k,effort=high]",
     "tech-lead": "claude-fable-5[]",
     "coder": "composer-2.5[fast=false]",
     "metacritic": "claude-fable-5[]",
-    "reviewer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
-    "shepherd-reviewer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
-    "qa-tester": "gpt-5.4[context=272k,reasoning=high,fast=false]",
+    "reviewer": "gpt-5.6-sol[context=272k,effort=high,fast=false]",
+    "shepherd-reviewer": "gpt-5.6-sol[context=272k,effort=high,fast=false]",
+    "qa-tester": "gpt-5.4[context=272k,effort=high,fast=false]",
     "designer": "claude-fable-5[]",
-    "design-reviewer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
+    "design-reviewer": "gpt-5.6-sol[context=272k,effort=high,fast=false]",
     "design-qa": "claude-opus-5[thinking=true,context=300k,effort=high]",
     "release-steward": "auto",
     "librarian": "claude-opus-5[thinking=true,context=300k,effort=high]",
     "decomposer": "claude-opus-5[thinking=true,context=300k,effort=high]",
     "investigator": "claude-fable-5[]",
-    "spotfixer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
-    "harness-technician": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
-    "repo-technician": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]"
+    "spotfixer": "gpt-5.6-sol[context=272k,effort=high,fast=false]",
+    "harness-technician": "gpt-5.6-sol[context=272k,effort=high,fast=false]",
+    "repo-technician": "gpt-5.6-sol[context=272k,effort=high,fast=false]"
   },
   "$operator": {
     "summary": "Named model configurations. Each configuration maps every checked-in Cursor persona to the model that should execute it.",
@@ -44,10 +44,10 @@
     "simple": {
       "summary": "Simple and fast configuration for quick tasks.",
       "personas": {
-        "tech-lead": "gpt-5.6-terra[context=272k,reasoning=high,fast=false]",
-        "decomposer": "gpt-5.6-terra[context=272k,reasoning=high,fast=false]",
-        "reviewer": "gpt-5.6-terra[context=272k,reasoning=high,fast=false]",
-        "qa-tester": "gpt-5.3-codex[reasoning=high,fast=false]"
+        "tech-lead": "gpt-5.6-terra[context=272k,effort=high,fast=false]",
+        "decomposer": "gpt-5.6-terra[context=272k,effort=high,fast=false]",
+        "reviewer": "gpt-5.6-terra[context=272k,effort=high,fast=false]",
+        "qa-tester": "gpt-5.3-codex[effort=high,fast=false]"
       }
     },
     "default": {
@@ -57,12 +57,12 @@
     "complex": {
       "summary": "Higher-reasoning coding and QA for complex or high-risk work.",
       "personas": {
-        "coder": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
+        "coder": "gpt-5.6-sol[context=272k,effort=high,fast=false]",
         "reviewer": "claude-fable-5[]",
         "shepherd-reviewer": "claude-fable-5[]",
-        "qa-tester": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
-        "design-qa": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
-        "spotfixer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]"
+        "qa-tester": "gpt-5.6-sol[context=272k,effort=high,fast=false]",
+        "design-qa": "gpt-5.6-sol[context=272k,effort=high,fast=false]",
+        "spotfixer": "gpt-5.6-sol[context=272k,effort=high,fast=false]"
       }
     },
     "auto": {
@@ -80,7 +80,7 @@
       "summary": "Named profiles controlling how heavily the operator gates each workflow stage. Select one per run with ./bin/pan init --involvement <profile>; omitting the flag uses active.",
       "note": "gates maps a stage slug (or * for every stage) to the gate that stage uses for the run. contracts names run-wide contracts the run abides by. Runs snapshot the resolved profile, so later edits here do not change an in-flight run. Inspect available profiles with ./bin/pan involvement."
     },
-    "active": "standard",
+    "active": "hands-off",
     "profiles": {
       "standard": {
         "summary": "Workflow-declared gates, unchanged. The operator ratifies intake and approves release preparation."

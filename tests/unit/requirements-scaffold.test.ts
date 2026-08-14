@@ -136,3 +136,50 @@ test('scaffold omits the attestation for a legacy invocation', () => {
 
   assert.equal(result.output.invocation_attestation, undefined)
 })
+
+test('scaffold retains only non-transient brief sources as artifacts', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'pan-scaffold-'))
+  const sourcePath =
+    'runtime/logs/workflows/x/artifacts/json/implement-1.brief.json'
+  const renderedPath =
+    'runtime/logs/workflows/x/artifacts/html/implement-1.html'
+  const invocation = {
+    invocation_id: 'implement-1',
+    rubric: [],
+    output: {
+      path: 'runtime/logs/workflows/x/outputs/out.json',
+      required_data: {},
+      operator_brief: {
+        source_path: sourcePath,
+        rendered_path: renderedPath,
+      },
+    },
+  } as unknown as Invocation
+
+  const retained = scaffoldStageOutput(
+    root,
+    invocation,
+    invocation.output.path,
+    false,
+  )
+
+  assert.deepEqual(
+    retained.output.artifacts.map((artifact) => artifact.path),
+    [renderedPath, sourcePath],
+  )
+
+  invocation.output.path = 'runtime/logs/workflows/x/outputs/transient.json'
+  invocation.output.operator_brief.source_lifecycle = 'transient'
+
+  const transient = scaffoldStageOutput(
+    root,
+    invocation,
+    invocation.output.path,
+    false,
+  )
+
+  assert.deepEqual(
+    transient.output.artifacts.map((artifact) => artifact.path),
+    [renderedPath],
+  )
+})

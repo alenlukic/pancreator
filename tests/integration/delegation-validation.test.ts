@@ -11,6 +11,11 @@ import {
   prepareInvocation,
   submitOutput,
 } from '../../src/lib/engine.js'
+import {
+  attestationValidationPath,
+  delegationPath,
+  delegationValidationPath,
+} from '../../src/lib/validation.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import type { Invocation } from '../../src/lib/types.js'
 import {
@@ -83,11 +88,11 @@ test('submit records mismatched delegation as advisory evidence before ship', ()
     makeOutput(root, planInvocation, stageBySlug(workflow, 'plan')),
   )
 
-  const delegationPath = path.join(
+  const delegationArtifact = path.join(
     root,
-    `runtime/logs/workflows/${runId}/invocations/${planInvocation.invocation_id}.delegation.md`,
+    delegationPath(runId, planInvocation.invocation_id, root),
   )
-  writeFileSync(delegationPath, '# rewritten delegation prompt\n')
+  writeFileSync(delegationArtifact, '# rewritten delegation prompt\n')
 
   const submitted = submitOutput(root, runId, planInvocation.output.path)
 
@@ -100,7 +105,7 @@ test('submit records mismatched delegation as advisory evidence before ship', ()
 
   const validationPath = path.join(
     root,
-    `runtime/logs/workflows/${runId}/invocations/${planInvocation.invocation_id}.delegation-validation.json`,
+    delegationValidationPath(runId, planInvocation.invocation_id, root),
   )
   assert.ok(existsSync(validationPath))
   assert.equal(JSON.parse(readFileSync(validationPath, 'utf8')).status, 'fail')
@@ -187,7 +192,8 @@ test('submit relocates workspace-root delegation artifact before validation', ()
   const deliveredBody = path.join(
     root,
     planInvocation.delegation?.delivery_prompt_path ??
-      `runtime/logs/workflows/${runId}/invocations/${planInvocation.invocation_id}.md`,
+      planInvocation.delegation?.canonical_markdown_path ??
+      '',
   )
   writeFileSync(misplacedDelegation, readFileSync(deliveredBody, 'utf8'))
 
@@ -199,7 +205,7 @@ test('submit relocates workspace-root delegation artifact before validation', ()
     existsSync(
       path.join(
         root,
-        `runtime/logs/workflows/${runId}/invocations/${planInvocation.invocation_id}.delegation.md`,
+        delegationPath(runId, planInvocation.invocation_id, root),
       ),
     ),
     true,
@@ -259,7 +265,7 @@ test('submit rejects a delegated output with no read attestation', () => {
 
   const artifactPath = path.join(
     root,
-    `runtime/logs/workflows/${runId}/invocations/${invocation.invocation_id}.attestation-validation.json`,
+    attestationValidationPath(runId, invocation.invocation_id, root),
   )
 
   assert.ok(existsSync(artifactPath))
@@ -315,7 +321,7 @@ test('submit reports an unreadable contract reference as blocked', () => {
     readFileSync(
       path.join(
         root,
-        `runtime/logs/workflows/${runId}/invocations/${invocation.invocation_id}.attestation-validation.json`,
+        attestationValidationPath(runId, invocation.invocation_id, root),
       ),
       'utf8',
     ),

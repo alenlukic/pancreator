@@ -622,6 +622,13 @@ export interface Invocation {
     operator_brief: {
       source_path: string
       rendered_path: string
+      /**
+       * The harness deletes the source after a successful render and validation.
+       * Absent on layout-v1 invocations, which retain the source artifact.
+       */
+      source_lifecycle?: 'transient' | 'retained'
+      /** Compatibility signal for consumers that predate source_lifecycle. */
+      source_transient?: boolean
       schema: string
       renderer: string
       profile:
@@ -817,6 +824,17 @@ export interface StageHistoryItem {
    */
   self_criteria?: CriterionEvaluation[]
   record_path?: string
+  /**
+   * Checksum of the transient brief source, recorded when submission deletes
+   * it. Living in stage history keeps the deleted narrative auditable without
+   * adding a file to the run directory.
+   */
+  operator_brief_source?: {
+    source_path: string
+    source_sha256: string
+    rendered_path: string
+    status: 'rendered_and_validated'
+  }
 }
 
 /**

@@ -22,9 +22,8 @@ Populate `data.review` (`verdict`, `findings`, `acceptance_results`,
 `maintenance_assessment`). Each finding must state severity, evidence,
 remediation ownership, and whether it was resolved during review. Set the
 verdict to fail only for unresolved hard implementation blockers and route those findings to
-the implement stage. Record governance/artifact diagnostics as advisories without failing the review verdict. Author the review as the invocation's schema-valid brief
-JSON, render it to the exact HTML path from the output contract, and reference
-the HTML first and the brief JSON second.
+the implement stage. Record governance/artifact diagnostics as advisories without failing the review verdict. Author the review at the declared brief source path.
+Do not run the renderer. Reference the rendered HTML as the narrative artifact.
 
 ## Done when
 

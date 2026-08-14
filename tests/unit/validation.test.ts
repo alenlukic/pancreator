@@ -4,6 +4,10 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
+  attestationValidationPath,
+  delegationValidationPath,
+  expectedDelegationSource,
+  invocationValidationPath,
   POLICIES_HEADING,
   validateDelegationMarkdown,
   validateInvocationAttestation,
@@ -487,6 +491,72 @@ test('invocation validator passes for canonical rendered markdown', () => {
   )
 
   assert.equal(result.passed, true)
+})
+
+test('delegation source falls back to the layout of the run it belongs to', () => {
+  const root = createFixture()
+  const invocation = fixtureInvocation(root, 'implement')
+  const currentLayout = expectedDelegationSource(root, invocation)
+
+  assert.deepEqual(currentLayout, {
+    path: 'runtime/logs/workflows/run-fixture/agent/invocations/implement-1-fixture.md',
+    mode: 'verbatim',
+  })
+
+  const legacyRunDirectory = path.join(
+    root,
+    'runtime/logs/workflows',
+    invocation.run_id,
+  )
+
+  mkdirSync(legacyRunDirectory, { recursive: true })
+  writeFileSync(path.join(legacyRunDirectory, 'state.json'), '{}\n')
+
+  const legacyLayout = expectedDelegationSource(root, invocation)
+
+  assert.deepEqual(legacyLayout, {
+    path: 'runtime/logs/workflows/run-fixture/invocations/implement-1-fixture.md',
+    mode: 'verbatim',
+  })
+})
+
+// A layout-v1 run wrote these artifacts beside its invocation, so a resumed run
+// must keep reading and writing that location.
+test('per-invocation validation artifacts follow the layout of their own run', () => {
+  const root = createFixture()
+  const runId = 'run-layout-validation'
+  const invocationId = 'implement-1-fixture'
+  const runRelative = `runtime/logs/workflows/${runId}`
+
+  mkdirSync(path.join(root, runRelative), { recursive: true })
+
+  assert.deepEqual(
+    [
+      invocationValidationPath(runId, invocationId, root),
+      delegationValidationPath(runId, invocationId, root),
+      attestationValidationPath(runId, invocationId, root),
+    ],
+    [
+      `${runRelative}/agent/validations/${invocationId}.invocation-validation.json`,
+      `${runRelative}/agent/validations/${invocationId}.delegation-validation.json`,
+      `${runRelative}/agent/validations/${invocationId}.attestation-validation.json`,
+    ],
+  )
+
+  writeFileSync(path.join(root, runRelative, 'state.json'), '{}\n')
+
+  assert.deepEqual(
+    [
+      invocationValidationPath(runId, invocationId, root),
+      delegationValidationPath(runId, invocationId, root),
+      attestationValidationPath(runId, invocationId, root),
+    ],
+    [
+      `${runRelative}/invocations/${invocationId}.invocation-validation.json`,
+      `${runRelative}/invocations/${invocationId}.delegation-validation.json`,
+      `${runRelative}/invocations/${invocationId}.attestation-validation.json`,
+    ],
+  )
 })
 
 test('delegation validator fails for rewritten prompts', () => {

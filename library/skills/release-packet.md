@@ -19,10 +19,10 @@ the irreversible action; it makes the decision easy and safe.
   release-note update, synchronized files, and deferred `release/index.json`
   action produced by `update-release-metadata.md`.
 - PR description artifact at
-  `runtime/logs/workflows/<run-id>/artifacts/markdown/pr-description.md`,
-  produced via `write-pr-description.md` (suggested conventional-commit title
-  on line 1, then Summary, Changelist, an optional How to read this PR
-  walkthrough, and an optional Delivery Pipeline Manifest).
+  `runtime/logs/workflows/<run-id>/operator/pr-description.md` for layout v2.
+  For layout v1, use
+  `runtime/logs/workflows/<run-id>/artifacts/markdown/pr-description.md`.
+  Produce it through `write-pr-description.md`.
 
 ## Checks before proposing
 

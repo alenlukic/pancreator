@@ -1,9 +1,18 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
+import { createRun, pauseRun } from '../../src/lib/engine.js'
 import { createFixture } from '../helpers.js'
 import { makeWorkflowRunId } from '../../src/lib/naming.js'
 
@@ -86,5 +95,76 @@ test('pan archive migrates and archives old workflow directories', () => {
       ),
     ),
     true,
+  )
+})
+
+test('status, resume, and archive preserve an unconverted v1 run', () => {
+  const root = createFixture()
+  const runId = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+  }).run_id
+
+  pauseRun(root, runId, 'legacy layout fixture')
+
+  const runDirectory = path.join(root, 'runtime/logs/workflows', runId)
+  const agentDirectory = path.join(runDirectory, 'agent')
+  const operatorDirectory = path.join(runDirectory, 'operator')
+
+  for (const entry of readdirSync(agentDirectory)) {
+    renameSync(path.join(agentDirectory, entry), path.join(runDirectory, entry))
+  }
+  renameSync(
+    path.join(operatorDirectory, 'request.md'),
+    path.join(runDirectory, 'request.md'),
+  )
+  rmSync(agentDirectory, { recursive: true })
+  rmSync(operatorDirectory, { recursive: true })
+
+  const statePath = path.join(runDirectory, 'state.json')
+  const state = JSON.parse(readFileSync(statePath, 'utf8')) as {
+    workflow_snapshot: { path: string }
+    pipeline_config: { path: string }
+    request: { stored_path: string }
+  }
+
+  state.workflow_snapshot.path = `runtime/logs/workflows/${runId}/workflow.snapshot.json`
+  state.pipeline_config.path = `runtime/logs/workflows/${runId}/pipeline-config.snapshot.json`
+  state.request.stored_path = `runtime/logs/workflows/${runId}/request.md`
+  write(statePath, `${JSON.stringify(state)}\n`)
+
+  const status = JSON.parse(
+    execFileSync(process.execPath, [CLI, 'status', runId, '--json'], {
+      cwd: root,
+      encoding: 'utf8',
+    }),
+  ) as { status: string }
+
+  assert.equal(status.status, 'paused')
+
+  execFileSync(
+    process.execPath,
+    [
+      CLI,
+      'resume',
+      runId,
+      '--stage',
+      'intake',
+      '--note',
+      'resume legacy fixture',
+      '--json',
+    ],
+    { cwd: root, encoding: 'utf8' },
+  )
+  execFileSync(
+    process.execPath,
+    [CLI, 'archive', '--days', '36500', '--json'],
+    { cwd: root, encoding: 'utf8' },
+  )
+
+  assert.equal(existsSync(statePath), true)
+  assert.equal(
+    existsSync(path.join(runDirectory, 'agent', 'state.json')),
+    false,
   )
 })

@@ -19,6 +19,8 @@ recurring job. Read the skill relevant to your current step.
   squad.
 - [`browser-inspection.md`](browser-inspection.md) - observe a running web UI in an
   isolated browser context.
+- [`supervisor-recovery.md`](supervisor-recovery.md) - reconcile state and avoid
+  duplicate workers after a supervisor interruption.
 
 ## Stage-aligned
 
