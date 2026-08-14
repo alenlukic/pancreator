@@ -11,6 +11,8 @@
     "Agents MUST write instructions in the imperative form and active voice, MUST limit a paragraph to one topic and six sentences, and MUST NOT use a semicolon, a contraction, a Latin abbreviation, a progressive or perfect tense, or an -ing form outside a domain term.",
     "Agents MUST use one term for one concept and MUST prefer the term the repository already established in AGENTS.md, the target-repo primer, or the brief semantic registry over a new synonym.",
     "Agents MUST preserve quoted text, captured command output, and preserved evidence verbatim. Rewriting evidence to satisfy a writing rule is an evidence defect and MUST NOT occur.",
+    "Operator chat reports MUST state the outcome, consequence, and next action. They MUST use plain language and avoid unnecessary workflow mechanics.",
+    "Operator chat reports MUST follow the referenced sentence and paragraph limits.",
     "This policy adopts Part 1 writing rules of ASD-STE100 and does not adopt the Part 2 controlled dictionary as a gate. Agents MUST NOT describe an artifact as conformant to ASD-STE100, because full conformance requires the dictionary.",
     "Agents MAY use RFC 2119 requirement keywords in governance-bearing prose, because those keywords are terms of art in this repository rather than ordinary wording.",
     "The deterministic check bound to this policy covers only the countable rules and is advisory. Agents MUST NOT treat a passing check as conformance, and a review gate MUST evaluate terminology consistency, noun-group length, voice, and risk-notice correctness by judgment."

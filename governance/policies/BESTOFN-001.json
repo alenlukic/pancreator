@@ -8,6 +8,10 @@
     "The meta-orchestrator MUST run as a nested subagent and directly perform supervisor mechanics for every session child run.",
     "The meta-orchestrator MUST NOT delegate a child run to another `pan-orchestrator`, because a second-level supervisor cannot launch workers.",
     "The meta-orchestrator MUST delegate stages to run-scoped worker agents with foreground, blocking calls.",
+    "One prepared invocation MUST have at most one active worker at a time.",
+    "After an interruption, a resumed session MUST reconcile session and candidate state through harness status commands before further delegation.",
+    "Before a relaunch on the same invocation, the supervisor MUST confirm the prior worker ended, following the referenced supervisor-recovery guidance.",
+    "Evidence of concurrent workers in one candidate worktree MUST stop that candidate's delegation and MUST be surfaced to the operator with the run id, invocation id, and overlap evidence.",
     "The session lifecycle MUST run through `./bin/pan best-of-n` commands. Agents MUST NOT create worktrees, candidate runs, run-scoped agent variants, or session records by hand.",
     "Every candidate run MUST execute in its own detached worktree under `runtime/worktrees/<bon-id>/`, and MUST NOT edit the main workspace.",
     "Candidate runs MUST use the gates their workflow declares. A best-of-N session MUST NOT add an operator stop to a candidate run, and MUST NOT relax the operator gate the consolidation run declares for release preparation.",
@@ -19,5 +23,12 @@
     "A best-of-N session MUST NOT create a commit, push, merge, branch deletion, or history rewrite, in the main workspace or in any worktree.",
     "Worktree removal is destructive and operator-owned. `./bin/pan best-of-n clean` MUST refuse a dirty worktree without an explicit force flag, and MUST NOT delete a branch or a commit.",
     "Global best-of-N pruning MUST always skip active sessions. It MUST skip dirty worktrees unless the operator supplies `--force`."
+  ],
+  "guidance_sources": [
+    {
+      "path": "library/skills/supervisor-recovery.md",
+      "start_heading": "## Principle",
+      "read_trigger": "Read this guidance before you resume an interrupted session or relaunch a worker on a prepared invocation."
+    }
   ]
 }

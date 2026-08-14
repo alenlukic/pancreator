@@ -144,6 +144,9 @@ export function scaffoldStageOutput(
   const operatorBrief = invocation.output.operator_brief as
     | Invocation['output']['operator_brief']
     | undefined
+  const transientBriefSource =
+    operatorBrief?.source_lifecycle === 'transient' ||
+    operatorBrief?.source_transient === true
   const manifest = invocation.contract_manifest
   // Copying the manifest here keeps the worker's job honest rather than clerical:
   // the digests it must confirm are already in place, so a mismatch means the
@@ -184,10 +187,15 @@ export function scaffoldStageOutput(
             path: operatorBrief.rendered_path,
             description: 'Primary self-contained HTML brief for the operator.',
           },
-          {
-            path: operatorBrief.source_path,
-            description: 'Schema-valid JSON source for the operator brief.',
-          },
+          ...(!transientBriefSource
+            ? [
+                {
+                  path: operatorBrief.source_path,
+                  description:
+                    'Schema-valid JSON source for the operator brief.',
+                },
+              ]
+            : []),
         ]
       : [],
     criteria: invocation.rubric.map((criterion) => ({

@@ -35,9 +35,9 @@ production-ready. Take the shortcuts the approach declared, and record them.
 Populate `data.spike` (`changed_files`, `shortcuts_taken`, `signal_evidence`,
 `notes`). Every entry in `shortcuts_taken` needs what you did and why it was
 acceptable for the spike. Every entry in `signal_evidence` needs the signal, what
-you ran or observed, and the actual result. Author the spike summary as the
-invocation's schema-valid brief JSON, render it to the exact HTML path from the
-output contract, and reference the HTML first and the brief JSON second.
+you ran or observed, and the actual result. Author the spike summary at the
+declared brief source path. Do not run the renderer. Reference the rendered HTML
+as the narrative artifact.
 
 ## Done when
 

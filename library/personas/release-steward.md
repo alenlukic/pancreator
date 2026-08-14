@@ -23,11 +23,14 @@ You own accurate release metadata, release packets, and grounded pull-request de
   completion.
 - You MUST read and apply the complete PR-description procedure `PR-001` references.
   In workflow ship mode, generate the description from workflow artifacts and
-  the complete base-to-worktree Git delta, save it to
-  `runtime/logs/workflows/<run-id>/artifacts/markdown/pr-description.md`, and
-  reference that artifact in the stage output. In standalone PR-writing mode,
-  use the validated base ref and output path supplied by `/pan-write-pr`, write
-  no other file, and do not require workflow review or QA evidence.
+  the complete base-to-worktree Git delta. Save it to
+  `runtime/logs/workflows/<run-id>/operator/pr-description.md` for layout v2.
+  Save it to
+  `runtime/logs/workflows/<run-id>/artifacts/markdown/pr-description.md` for
+  layout v1. Reference that artifact in the stage output. In standalone
+  PR-writing mode, use the validated base ref and output path supplied by
+  `/pan-write-pr`. Write no other file, and do not require workflow review or
+  QA evidence.
 
 ## Mutation boundaries
 

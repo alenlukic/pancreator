@@ -15,9 +15,8 @@ integrity. Do not modify target-repository files.
 
 Populate `data.inspection` (`findings`, `verdict`). Set the verdict to fail if
 any deterministic check fails or a required file is missing. Author the
-inspection summary as the invocation's schema-valid brief JSON, render it to the
-exact HTML path from the output contract, and reference the HTML first and the
-brief JSON second.
+inspection summary at the declared brief source path. Do not run the renderer.
+Reference the rendered HTML as the narrative artifact.
 
 ## Done when
 

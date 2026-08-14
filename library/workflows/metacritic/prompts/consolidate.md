@@ -32,9 +32,9 @@ Populate `data.consolidation` (`candidates`, `strategy`), `data.implementation`
 (`changed_files`, `tests_added`, `notes`), `data.acceptance_criteria`, and
 `data.acceptance_results`. Each `consolidation.candidates` entry names the
 candidate run, its verdict, its strengths, its weaknesses, and what the
-consolidated implementation took from it. Author the consolidation summary as
-the invocation's schema-valid brief JSON, render it to the exact HTML path from
-the output contract, and reference the HTML first and the brief JSON second.
+consolidated implementation took from it. Author the consolidation summary at
+the declared brief source path. Do not run the renderer. Reference the rendered
+HTML as the narrative artifact.
 
 ## Done when
 

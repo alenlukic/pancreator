@@ -2,6 +2,7 @@ import path from 'node:path'
 
 import { writeJsonAtomic } from './io.js'
 import { isSelfDevelopmentInstallation } from './project-config.js'
+import { resolveRunLayout } from './run-layout.js'
 import { activeOperatorGateWaivers } from './waivers.js'
 import type {
   Invocation,
@@ -365,9 +366,10 @@ function writeContextManifest(
     return null
   }
 
-  const relativePath =
-    `runtime/logs/workflows/${options.state.run_id}/invocations/` +
-    `${options.invocationId}.context-manifest.json`
+  const relativePath = resolveRunLayout(
+    options.root,
+    options.state.run_id,
+  ).invocation(options.invocationId, '.context-manifest.json').relative
   const manifest: ContextManifest = {
     schema_version: 1,
     invocation_id: options.invocationId,

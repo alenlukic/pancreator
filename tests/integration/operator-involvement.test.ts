@@ -10,6 +10,7 @@ import {
   prepareInvocation,
   submitOutput,
 } from '../../src/lib/engine.js'
+import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadWorkflowFile, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
@@ -203,10 +204,10 @@ test('the technical_director contract escalates checkpoints and loads DIRECTOR-0
   )
 
   const card = readFileSync(
-    path.join(
-      root,
-      `runtime/logs/workflows/${state.run_id}/invocations/${invocation.invocation_id}.md`,
-    ),
+    resolveRunLayout(root, state.run_id).invocation(
+      invocation.invocation_id,
+      '.md',
+    ).absolute,
     'utf8',
   )
 

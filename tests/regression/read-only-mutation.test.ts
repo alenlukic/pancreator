@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -8,6 +8,7 @@ import {
   prepareInvocation,
   submitOutput,
 } from '../../src/lib/engine.js'
+import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
@@ -34,9 +35,12 @@ test('read-only stage fails when a source workspace change is unattributed', () 
   )
 
   const stage = stageBySlug(workflow, 'inspect')
-  const artifact = `runtime/logs/workflows/${state.run_id}/artifacts/markdown/inspect.md`
+  const artifact = resolveRunLayout(root, state.run_id).operatorMarkdown(
+    'inspect.md',
+  ).absolute
 
-  writeFileSync(path.join(root, artifact), '# inspect\n')
+  mkdirSync(path.dirname(artifact), { recursive: true })
+  writeFileSync(artifact, '# inspect\n')
 
   const output = {
     ...makeOutput(root, invocation, stage),

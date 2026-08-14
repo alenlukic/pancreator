@@ -25,6 +25,17 @@ This standard does not apply to:
 
 An agent MUST NOT rewrite quoted text to satisfy this standard (STE 8.6). Preserve evidence verbatim and write the surrounding explanation in Simplified Technical English.
 
+## Chat reports
+
+A chat report is not a durable artifact. Use plain language and this three-part shape:
+
+1. State the outcome.
+2. State the consequence for the operator.
+3. State the next action, or state that no action is necessary.
+
+Apply this handbook's sentence and paragraph limits to each chat report.
+Keep evidence links close to the statement they support. Do not repeat internal workflow mechanics unless they affect the operator.
+
 ## Durable instruction text
 
 This section applies to the durable instruction surfaces of this repository: this handbook, `AGENTS.md`, policies, criteria, skills, personas, and commands. The writing rules below do not apply to them. These rules do.

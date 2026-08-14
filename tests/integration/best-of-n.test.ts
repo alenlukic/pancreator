@@ -22,6 +22,7 @@ import {
   submitOutput,
 } from '../../src/lib/engine.js'
 import { withOperationMutex } from '../../src/lib/io.js'
+import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
@@ -86,14 +87,7 @@ function readSessionState(
 
 /** Mark a child run terminal so lifecycle guards treat it as finished. */
 function terminateRun(root: string, runId: string): void {
-  const runStatePath = path.join(
-    root,
-    'runtime',
-    'logs',
-    'workflows',
-    runId,
-    'state.json',
-  )
+  const runStatePath = resolveRunLayout(root, runId).state.absolute
   const state = JSON.parse(readFileSync(runStatePath, 'utf8')) as Record<
     string,
     unknown
@@ -416,14 +410,7 @@ test('status surfaces invalid candidate state', () => {
   const root = createFixture()
   const session = initSession(root)
   const candidate = session.candidates[0]
-  const statePath = path.join(
-    root,
-    'runtime',
-    'logs',
-    'workflows',
-    candidate.run_id,
-    'state.json',
-  )
+  const statePath = resolveRunLayout(root, candidate.run_id).state.absolute
 
   writeJson(statePath, { schema_version: 1 })
 

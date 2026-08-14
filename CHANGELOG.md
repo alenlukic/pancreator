@@ -2,6 +2,28 @@
 
 ## [Unreleased]
 
+## [3.4.0] - 2026-08-14
+
+### Changed
+
+- Split new workflow run directories into `agent/` machine records and `operator/` narratives. Layout v1 runs keep the legacy flat tree, and status, resume, and archive commands work on both ([run-layout](src/lib/run-layout.ts), [RUNTIME-001](governance/policies/RUNTIME-001.json), [runtime-archive-cli test](tests/integration/runtime-archive-cli.test.ts)).
+- Route operator feedback, stage-repair notes, pause ratifications, and gate waivers to `agent/decisions/` instead of `operator/`, so the operator directory holds only the request, stage HTML narratives, and ship-produced Markdown ([engine](src/lib/engine.ts), [operator-layout test](tests/integration/operator-layout.test.ts)).
+- Delete the transient brief source JSON after a validated render. Retain it only when render or output validation fails, and record the source checksum in stage history before deletion ([engine](src/lib/engine.ts), [types](src/lib/types.ts)).
+- Require supervisor chat reports to state the outcome, the consequence, and the next action in plain language, and to include a clickable rendered HTML path ([ORCH-001](governance/policies/ORCH-001.json), [STE-001](governance/policies/STE-001.json), [orchestrator persona](library/personas/orchestrator.md)).
+- Extend release and PR-description guidance to resolve layout v1 and v2 artifact paths from run state ([write-pr-description](library/skills/write-pr-description.md), [release-steward persona](library/personas/release-steward.md)).
+
+### Added
+
+- Add `src/lib/run-layout.ts` as the single layout resolver for v1 and v2 path construction across engine, state, context, validation, requirements, and CLI code ([run-layout](src/lib/run-layout.ts), [run-layout test](tests/unit/run-layout.test.ts)).
+- Add `operator_brief_html` to `pan submit` JSON output so the supervisor can link the rendered stage narrative without searching the run tree ([cli](src/cli.ts)).
+- Add `library/skills/supervisor-recovery.md` for interrupted-session reconciliation before worker relaunch ([BESTOFN-001](governance/policies/BESTOFN-001.json)).
+- Add layout-aware validation artifact paths, transient-source artifact rules, and scaffold behavior that omits the brief source from final artifacts ([validation](src/lib/validation.ts), [scaffold](src/lib/requirements/scaffold.ts), [validators-stage-output test](tests/unit/validators-stage-output.test.ts)).
+
+### Fixed
+
+- Stop throwing on a stray `artifacts/` directory during v2 finalization; ensure expected directories instead ([workflow-artifacts](src/lib/workflow-artifacts.ts), [artifact-finalization test](tests/integration/artifact-finalization.test.ts)).
+- Cover all four operator control-record write branches in the operator-layout integration test so AC-3 regressions fail before review ([operator-layout test](tests/integration/operator-layout.test.ts)).
+
 ## [3.3.0] - 2026-08-12
 
 ### Changed

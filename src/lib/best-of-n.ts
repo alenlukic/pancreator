@@ -356,7 +356,7 @@ function discoverSessionRuns(
       continue
     }
 
-    const runStatePath = path.join(base, entry.name, 'state.json')
+    const runStatePath = statePath(root, entry.name)
 
     if (!fileExists(runStatePath)) {
       continue

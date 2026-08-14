@@ -18,6 +18,7 @@ import {
   makeStageArtifactId,
   makeWorkflowRunId,
 } from './naming.js'
+import { resolveRunLayout } from './run-layout.js'
 import { loadState } from './state.js'
 import type { RunState, RunStatus } from './types.js'
 
@@ -56,19 +57,35 @@ interface FileMove {
   targetRelative: string
 }
 
-export function artifactJsonPath(runId: string, artifactId: string): string {
-  return `runtime/logs/workflows/${runId}/artifacts/json/${artifactId}.json`
+export function artifactJsonPath(
+  runId: string,
+  artifactId: string,
+  root?: string,
+): string {
+  return root
+    ? resolveRunLayout(root, runId).artifactJson(`${artifactId}.json`).relative
+    : `runtime/logs/workflows/${runId}/artifacts/json/${artifactId}.json`
 }
 
 export function artifactMarkdownPath(
   runId: string,
   artifactId: string,
+  root?: string,
 ): string {
-  return `runtime/logs/workflows/${runId}/artifacts/markdown/${artifactId}.md`
+  return root
+    ? resolveRunLayout(root, runId).operatorMarkdown(`${artifactId}.md`)
+        .relative
+    : `runtime/logs/workflows/${runId}/artifacts/markdown/${artifactId}.md`
 }
 
-export function artifactHtmlPath(runId: string, artifactId: string): string {
-  return `runtime/logs/workflows/${runId}/artifacts/html/${artifactId}.html`
+export function artifactHtmlPath(
+  runId: string,
+  artifactId: string,
+  root?: string,
+): string {
+  return root
+    ? resolveRunLayout(root, runId).operatorHtml(artifactId).relative
+    : `runtime/logs/workflows/${runId}/artifacts/html/${artifactId}.html`
 }
 
 export function isClosedRunStatus(status: RunStatus): boolean {
@@ -95,6 +112,14 @@ function listFiles(directory: string): string[] {
   return files
 }
 
+function agentDirectory(runDirectory: string): string {
+  const candidate = path.join(runDirectory, 'agent')
+
+  return existsSync(path.join(candidate, 'state.json'))
+    ? candidate
+    : runDirectory
+}
+
 function textFileContent(filePath: string): string | null {
   const content = readFileSync(filePath)
 
@@ -118,7 +143,8 @@ function parseJsonLines(filePath: string): unknown[] {
 
 function workflowStageSlugs(runDirectory: string): Set<string> {
   const stageSlugs = new Set<string>()
-  const snapshotPath = path.join(runDirectory, 'workflow.snapshot.json')
+  const machineDirectory = agentDirectory(runDirectory)
+  const snapshotPath = path.join(machineDirectory, 'workflow.snapshot.json')
 
   if (existsSync(snapshotPath)) {
     const snapshot = parseJsonFile(snapshotPath)
@@ -132,7 +158,7 @@ function workflowStageSlugs(runDirectory: string): Set<string> {
     }
   }
 
-  const eventsPath = path.join(runDirectory, 'events.jsonl')
+  const eventsPath = path.join(machineDirectory, 'events.jsonl')
 
   for (const event of parseJsonLines(eventsPath)) {
     if (isRecord(event) && typeof event.stage === 'string') {
@@ -140,7 +166,7 @@ function workflowStageSlugs(runDirectory: string): Set<string> {
     }
   }
 
-  const invocationDirectory = path.join(runDirectory, 'invocations')
+  const invocationDirectory = path.join(machineDirectory, 'invocations')
 
   for (const filePath of listFiles(invocationDirectory)) {
     if (!filePath.endsWith('.json')) {
@@ -217,7 +243,7 @@ function eventInvocationIds(
   stageSlugs: ReadonlySet<string>,
 ): string[] {
   const invocationIds: string[] = []
-  const eventsPath = path.join(runDirectory, 'events.jsonl')
+  const eventsPath = path.join(agentDirectory(runDirectory), 'events.jsonl')
 
   for (const event of parseJsonLines(eventsPath)) {
     if (!isRecord(event)) {
@@ -247,7 +273,10 @@ function invocationFileIds(
   runDirectory: string,
   stageSlugs: ReadonlySet<string>,
 ): TimedInvocationId[] {
-  const invocationDirectory = path.join(runDirectory, 'invocations')
+  const invocationDirectory = path.join(
+    agentDirectory(runDirectory),
+    'invocations',
+  )
   const candidates: TimedInvocationId[] = []
 
   for (const filePath of listFiles(invocationDirectory)) {
@@ -280,7 +309,7 @@ function finalHistoryIds(
   runDirectory: string,
   stageSlugs: ReadonlySet<string>,
 ): TimedInvocationId[] {
-  const statePath = path.join(runDirectory, 'state.json')
+  const statePath = path.join(agentDirectory(runDirectory), 'state.json')
 
   if (!existsSync(statePath)) {
     return []
@@ -526,7 +555,8 @@ function rewriteStructuredFiles(
   mappings: ReadonlyMap<string, string>,
   updatedFiles: Set<string>,
 ): void {
-  const stateFile = path.join(runDirectory, 'state.json')
+  const machineDirectory = agentDirectory(runDirectory)
+  const stateFile = path.join(machineDirectory, 'state.json')
 
   if (existsSync(stateFile)) {
     const original = readFileSync(stateFile, 'utf8')
@@ -543,7 +573,7 @@ function rewriteStructuredFiles(
     }
   }
 
-  const eventsFile = path.join(runDirectory, 'events.jsonl')
+  const eventsFile = path.join(machineDirectory, 'events.jsonl')
 
   if (!existsSync(eventsFile)) {
     return
@@ -833,6 +863,15 @@ function consolidateArtifactLayout(
   root: string,
   runDirectory: string,
 ): { changed: number; mappings: Map<string, string> } {
+  if (agentDirectory(runDirectory) !== runDirectory) {
+    mkdirSync(path.join(runDirectory, 'agent', 'artifacts', 'json'), {
+      recursive: true,
+    })
+    mkdirSync(path.join(runDirectory, 'operator'), { recursive: true })
+
+    return { changed: 0, mappings: new Map() }
+  }
+
   const artifactRoot = path.join(runDirectory, 'artifacts')
 
   mkdirSync(path.join(artifactRoot, 'json'), { recursive: true })
@@ -930,7 +969,10 @@ export function rewriteWorkflowArtifacts(
 
   if (state) {
     replaceRunStateObject(state, layout.mappings)
-    writeJsonAtomic(path.join(runDirectory, 'state.json'), state)
+    writeJsonAtomic(
+      path.join(agentDirectory(runDirectory), 'state.json'),
+      state,
+    )
   }
 
   return {
@@ -1130,14 +1172,8 @@ function validDate(value: unknown): Date | null {
 }
 
 function runCreatedAt(root: string, runId: string): Date | null {
-  const statePath = path.join(
-    root,
-    'runtime',
-    'logs',
-    'workflows',
-    runId,
-    'state.json',
-  )
+  const layout = resolveRunLayout(root, runId)
+  const statePath = layout.state.absolute
 
   if (existsSync(statePath)) {
     const state = parseJsonFile(statePath)
@@ -1151,14 +1187,7 @@ function runCreatedAt(root: string, runId: string): Date | null {
     }
   }
 
-  const eventsPath = path.join(
-    root,
-    'runtime',
-    'logs',
-    'workflows',
-    runId,
-    'events.jsonl',
-  )
+  const eventsPath = layout.events.absolute
 
   for (const event of parseJsonLines(eventsPath)) {
     if (isRecord(event)) {
@@ -1248,7 +1277,7 @@ function moveDirectory(parent: string, oldName: string, newName: string): void {
 }
 
 function readRunStatus(runDirectory: string): RunStatus {
-  const statePath = path.join(runDirectory, 'state.json')
+  const statePath = path.join(agentDirectory(runDirectory), 'state.json')
   const value: unknown = JSON.parse(readFileSync(statePath, 'utf8'))
 
   invariant(

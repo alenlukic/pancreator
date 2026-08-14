@@ -9,10 +9,12 @@ request, and `/pan-resume` sends a resume invocation carrying the run id and
 your optional prompt. The command relays the supervisor's reports and your
 decisions. Each report should always show:
 
-1. current run and stage
-2. what completed or failed
-3. where the evidence lives
-4. what decision or action is required next
+1. the outcome
+2. the consequence
+3. the next action
+
+Each stage report also links its rendered HTML brief. Use that brief for detail
+and evidence.
 
 Raw JSONL and shell output are diagnostic surfaces, not the default conversation.
 
@@ -36,9 +38,9 @@ already supplies the decision, execute it instead of asking again.
 ## Invocation and delegation validation
 
 `INVOCATION-001` is the normative invocation-card and delegation policy. Each
-prepared invocation writes
-`invocations/<invocation-id>.invocation-validation.json`. If prepare fails,
-read that artifact for the failing checks before retrying.
+prepared invocation writes `<invocation-id>.invocation-validation.json` under
+`agent/validations/`, or under `invocations/` in a layout v1 run. If prepare
+fails, read that artifact for the failing checks before retrying.
 
 When `pending_action` is `invoke_agent`, deliver the canonical invocation card
 according to the **Supervisor delivery procedure** section at the end of that
@@ -83,7 +85,11 @@ Every agent reads this primer before expanding repository context. It is a navig
 
 Run `/pan-build-briefs` after installation and whenever recurring operator-facing use cases or project visual conventions materially change. The command scaffolds missing files, then asks the librarian to derive a minimal target-specific ontology and design-token layer from bounded repository evidence. It writes `docs/operator-briefs/project.json` and `docs/operator-briefs/project.css` (`.pancreator/docs/operator-briefs/` when embedded) and validates collisions and emoji consistency.
 
-Use `pan briefs build --force` only when deliberately resetting the project layer to templates before regeneration. Existing historical Markdown artifacts are not migrated. Every newly prepared workflow stage declares exact brief JSON and HTML paths in its invocation card; workers must use those paths, and submission rerenders and validates the HTML automatically.
+Use `pan briefs build --force` only when deliberately resetting the project layer to templates before regeneration. Existing historical Markdown artifacts are not migrated. Every newly prepared workflow stage declares exact brief JSON and HTML paths in its invocation card. Submission renders and validates the HTML, then deletes a valid transient source.
+
+New run directories separate their contents. Open `operator/` for the preserved
+request, stage HTML briefs, and release copy. Harness records remain under
+`agent/`. Existing runs keep their original layout.
 
 ## Assess unusually large intake
 
@@ -362,7 +368,7 @@ Run `./bin/pan models` without `--sync` to preview the active mapping and any dr
 
 Per-checkout preferences belong in `config.local.json` next to `config.json`. The file is untracked (keep it out of version control, e.g. via `.git/info/exclude`) and merges over `config.json`: objects merge recursively, any other value replaces the checked-in one. Use it for `active_config`, persona model overrides, or an `operator_involvement.active` selection, so `config.json` stays at the recommended defaults releases update. A local preference behaves exactly as if it were edited into `config.json`, including drift detection against in-flight runs.
 
-Each new run snapshots the active configuration in `runtime/logs/workflows/<run-id>/pipeline-config.snapshot.json`. Invocation cards resolve their model from that snapshot. Because Cursor executes the model declared in `.cursor/agents/pan-<persona>.md`, preparing an older run after switching configurations is blocked until the projected agent models again match that run's snapshot. This prevents the card from claiming one model while Cursor launches another.
+Each new run snapshots the active configuration in `runtime/logs/workflows/<run-id>/agent/pipeline-config.snapshot.json`. Invocation cards resolve their model from that snapshot. Because Cursor executes the model declared in `.cursor/agents/pan-<persona>.md`, preparing an older run after switching configurations is blocked until the projected agent models again match that run's snapshot. This prevents the card from claiming one model while Cursor launches another.
 
 ## Route a persona to the Claude Code CLI
 
@@ -586,4 +592,4 @@ Rejection routes remediation to the stage that owns the fix and carries your fee
 - `./bin/pan decide <run-id> reject --stage plan --note "<what is wrong>"` sends it back to planning when the defect is architectural rather than a coding error.
 - `--stage <slug>` may target any stage in the workflow. The chosen stage and every stage after it restart with fresh attempt budgets, since you are deliberately reworking that segment.
 
-Always include a `--note`. The feedback is written to `artifacts/markdown/operator-feedback-<n>.md` and attached to the remediation invocation; without it the worker only knows the prior output was unacceptable.
+Always include a `--note`. The feedback is written to `agent/decisions/operator-feedback-<n>.md` (`decisions/` in a legacy-layout run) and attached to the remediation invocation; without it the worker only knows the prior output was unacceptable.

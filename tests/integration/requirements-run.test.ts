@@ -5,6 +5,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { createRun, prepareInvocation } from '../../src/lib/engine.js'
+import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { createFixture, makeOutput, writeJson } from '../helpers.js'
 
@@ -328,6 +329,10 @@ test('output validate skips when no agent-owned requirement resolves', () => {
   assert.ok(invocation)
 
   const output = makeOutput(root, invocation, stageBySlug(workflow, 'intake'))
+  const invocationRelative = resolveRunLayout(root, state.run_id).invocation(
+    invocation.invocation_id,
+    '.json',
+  ).relative
 
   writeJson(path.join(root, invocation.output.path), output)
 
@@ -343,7 +348,7 @@ test('output validate skips when no agent-owned requirement resolves', () => {
       '--file',
       invocation.output.path,
       '--invocation',
-      `runtime/logs/workflows/${state.run_id}/invocations/${invocation.invocation_id}.json`,
+      invocationRelative,
       '--json',
     ],
     { cwd: root, encoding: 'utf8' },
@@ -370,7 +375,7 @@ test('output validate skips when no agent-owned requirement resolves', () => {
       '--file',
       invocation.output.path,
       '--invocation',
-      `runtime/logs/workflows/${state.run_id}/invocations/${invocation.invocation_id}.json`,
+      invocationRelative,
     ],
     { cwd: root, encoding: 'utf8' },
   )

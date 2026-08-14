@@ -21,9 +21,13 @@ into `gh pr create`; never open the PR yourself.
 ### Workflow ship
 
 The invocation card supplies `<run-id>` and MAY supply a PR base ref. Default the
-base to `main` when none is supplied. Write one Markdown file at:
+base to `main` when none is supplied. Write one Markdown file at the path for
+the run layout:
 
-`runtime/logs/workflows/<run-id>/artifacts/markdown/pr-description.md`
+- Layout v2:
+  `runtime/logs/workflows/<run-id>/operator/pr-description.md`
+- Layout v1:
+  `runtime/logs/workflows/<run-id>/artifacts/markdown/pr-description.md`
 
 Reference this path in the stage JSON output `artifacts` list.
 
@@ -117,12 +121,16 @@ section most exposed to invention. These limits are normative:
 Resolve stage rows from the active run directory
 `runtime/logs/workflows/<run-id>/`:
 
-- Read `artifacts/json/<invocation-id>.json` task records when present. Each row
-  MUST correspond to a record you read: Stage from `stage.slug` or
-  `stage.title`, Persona from `stage.persona`, Outcome from `outcome` mapped to
-  operator-facing labels (for example `success` → `pass`, `blocked` → `blocked`).
-- You MAY supplement from `events.jsonl` only when a row anchors to a task
-  record or `harness_stage_executed` event for that invocation.
+- For layout v2, read `agent/artifacts/json/<invocation-id>.json` task records.
+- For layout v1, read `artifacts/json/<invocation-id>.json` task records.
+- Each row MUST correspond to a record you read. Use `stage.slug` or
+  `stage.title` for Stage. Use `stage.persona` for Persona.
+- Map `outcome` to an operator-facing label. For example, map `success` to
+  `pass`.
+- For layout v2, you MAY supplement from `agent/events.jsonl`.
+- For layout v1, you MAY supplement from `events.jsonl`.
+- An event MUST anchor to a task record or `harness_stage_executed` event for
+  that invocation.
 - You MUST NOT fabricate rows from advance, escalation, or non-stage events.
 
 | Stage | Persona | Outcome | Notes |
@@ -154,9 +162,9 @@ MUST validate it as one literal Git ref before this skill runs.
 
 1. **Git delta** — the complete comparison defined above, using `main` by
    default or the caller-supplied base ref.
-2. **Run artifacts** — in workflow mode, prior stage JSON outputs under
-   `artifacts/json/`, markdown artifacts under `artifacts/markdown/`, and
-   `events.jsonl` when building the manifest.
+2. **Run artifacts** — in workflow mode, use paths for the active run layout.
+   Layout v2 uses `agent/artifacts/json/`, `operator/`, and `agent/events.jsonl`.
+   Layout v1 uses `artifacts/json/`, `artifacts/markdown/`, and `events.jsonl`.
 3. **Release context** — in workflow mode, the ship-stage inputs (spec, plan,
    implementation, review, QA, and release packet draft) when present.
 

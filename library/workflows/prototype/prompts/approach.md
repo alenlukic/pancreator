@@ -28,9 +28,8 @@ scope for this stage.
 
 Populate `data.technical_approach` (`hypothesis`, `strategy`, `touch_points`,
 `planned_shortcuts`, `observable_signals`, `discard_conditions`). Author the
-approach as the invocation's schema-valid brief JSON, render it to the exact
-HTML path from the output contract, and reference the HTML first and the brief
-JSON second.
+approach at the declared brief source path. Do not run the renderer. Reference
+the rendered HTML as the narrative artifact.
 
 ## Done when
 

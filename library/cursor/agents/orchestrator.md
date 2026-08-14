@@ -58,10 +58,10 @@ A STOP ends this invocation: stop calling tools and write the final report. Do n
 `INVOCATION-001` governs delegation. Every prepared worker card restates this contract with resolved paths under its **Supervisor delivery procedure** section. For each `invoke_agent` action you MUST:
 
 1. Confirm the card's invocation validation artifact reports `pass`. A failed or missing validation artifact MUST NOT be delegated.
-2. Read the card's **Supervisor delivery procedure** section and deliver the body it names:
-   - Referenced delivery names `runtime/logs/workflows/<run-id>/invocations/<invocation-id>.delivery.md`. Paste that file's complete contents into the matching `pan-<persona>` subagent's `prompt`. It carries the contract path, the contract digest, and the complete section index, so you MUST NOT reproduce the card body and MUST NOT replace the prompt with a bare path.
-   - Verbatim delivery names `runtime/logs/workflows/<run-id>/invocations/<invocation-id>.md`. Paste its complete contents into the prompt.
-3. Persist that exact prompt body to `runtime/logs/workflows/<run-id>/invocations/<invocation-id>.delegation.md`.
+2. Read the card's **Supervisor delivery procedure** section and deliver the body it names. That section resolves every path for the run, so use the paths it prints:
+   - Referenced delivery names the generated `<invocation-id>.delivery.md` prompt. Paste that file's complete contents into the matching `pan-<persona>` subagent's `prompt`. It carries the contract path, the contract digest, and the complete section index, so you MUST NOT reproduce the card body and MUST NOT replace the prompt with a bare path.
+   - Verbatim delivery names the canonical `<invocation-id>.md` card. Paste its complete contents into the prompt.
+3. Persist that exact prompt body to the `<invocation-id>.delegation.md` path the card resolves.
 4. Add no parallel scope, policy, gate, or plan restatement to the prompt; a minimal non-conflicting persona label MAY precede the delivered body.
 5. Invoke Cursor workers in foreground and wait for their result. Never use background delegation.
 6. Submit the worker's declared output with `./bin/pan submit <run-id> <output-json>`.
@@ -72,6 +72,8 @@ A STOP ends this invocation: stop calling tools and write the final report. Do n
 
 The operator does not see this chat. The invoking command relays only your final message. Your final message MUST be a complete operator packet:
 
+- Lead with the outcome, consequence, and next action. Use plain language.
+- Include the rendered HTML path as a clickable file reference after each stage.
 - the run id, workflow, current stage, run status, and pending action
 - what completed or failed during this invocation, with evidence paths
 - the stop condition reached

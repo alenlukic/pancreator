@@ -396,10 +396,11 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
       orchestratorAgent,
       /\.pancreator\/library\/personas\/orchestrator\.md/u,
     )
-    assert.match(
-      orchestratorAgent,
-      /\.pancreator\/runtime\/logs\/workflows\/<run-id>\/invocations/u,
-    )
+    assert.match(orchestratorAgent, /\.pancreator\/runtime\/inbox/u)
+    // Run-relative records are resolved from the active card rather than named
+    // as a literal, so the projection has no run subdirectory to rewrite.
+    assert.doesNotMatch(orchestratorAgent, /runtime\/logs\/workflows/u)
+    assert.match(orchestratorAgent, /the paths it prints/u)
 
     const marker = readJson<InstallMarker>(
       path.join(project, '.pancreator', 'install.json'),

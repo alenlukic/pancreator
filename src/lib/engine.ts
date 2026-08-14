@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { copyFileSync } from 'node:fs'
+import { copyFileSync, rmSync } from 'node:fs'
 import path from 'node:path'
 
 import { buildInvocationInputs, summarizePriorFailure } from './context.js'
@@ -25,6 +25,7 @@ import {
   writeTextAtomic,
 } from './io.js'
 import { makeStageArtifactId } from './naming.js'
+import { resolveRunLayout } from './run-layout.js'
 import {
   OPERATOR_ARTIFACT_PROFILE_HEADINGS,
   operatorArtifactProfileForStage,
@@ -219,9 +220,9 @@ function recordGovernanceArtifactIssues(
     })
   }
 
-  const relativePath =
-    `runtime/logs/workflows/${state.run_id}/artifacts/json/` +
-    'governance-artifact-issues.json'
+  const relativePath = resolveRunLayout(root, state.run_id).artifactJson(
+    'governance-artifact-issues.json',
+  ).relative
   state.governance_artifact_issues_path = relativePath
   writeJsonAtomic(resolveInside(root, relativePath), {
     schema_version: 1,
@@ -523,9 +524,13 @@ function ensureWorkflowRepositoryCheckBaselines(
       `pre-implementation '${profile.name}' baseline ${result.status} in ${(result.total_duration_ms / 1000).toFixed(1)}s`,
     )
     const workspace = workspaceSnapshotForRun(root, state)
-    const evidenceDir = `runtime/logs/workflows/${state.run_id}/evidence`
-    const artifactPath = `${evidenceDir}/pre-implementation-${profile.name}.json`
-    const fullPath = `${evidenceDir}/pre-implementation-${profile.name}.full.json`
+    const layout = resolveRunLayout(root, state.run_id)
+    const artifactPath = layout.evidence(
+      `pre-implementation-${profile.name}.json`,
+    ).relative
+    const fullPath = layout.evidence(
+      `pre-implementation-${profile.name}.full.json`,
+    ).relative
     const recordedAt = now()
     const { summary, elided } = summarizeRepositoryCheckResult(result)
 
@@ -626,7 +631,7 @@ function pauseForRepositoryCheckBaselineGaps(
     reason,
     [
       'Inspect the named baseline evidence under ' +
-        `runtime/logs/workflows/${state.run_id}/evidence/.`,
+        `${resolveRunLayout(root, state.run_id).evidence('.').relative}`,
       `Recapture the baselines by resuming this run from the first source stage: ${panCommand(root)} resume ${state.run_id} --stage <stage>`,
       `Or abort with: ${panCommand(root)} abort ${state.run_id}`,
     ],
@@ -1121,7 +1126,8 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
   )
 
   const id = makeRunId()
-  const directory = runDir(root, id)
+  const layout = resolveRunLayout(root, id)
+  const directory = layout.agent.absolute
 
   for (const child of [
     'invocations',
@@ -1129,15 +1135,15 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     'assessments',
     'evidence',
     'decisions',
+    'validations',
     'artifacts/json',
-    'artifacts/html',
-    'artifacts/markdown',
   ]) {
     ensureDir(path.join(directory, child))
   }
+  ensureDir(layout.operator.absolute)
 
   const requestExtension = path.extname(source) || '.md'
-  const storedRequest = `runtime/logs/workflows/${id}/request${requestExtension}`
+  const storedRequest = layout.request(requestExtension).relative
   copyFileSync(source, resolveInside(root, storedRequest))
 
   const workspaceRoot = normalizeWorkspaceRoot(root, options.workspace)
@@ -1147,7 +1153,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
   })
   const gateOverrides = readGateOverrides(root, options.gatesPath)
 
-  const workflowSnapshot = `runtime/logs/workflows/${id}/workflow.snapshot.json`
+  const workflowSnapshot = layout.workflowSnapshot.relative
   const workflowSnapshotValue = structuredClone(workflow)
 
   for (const stage of workflowSnapshotValue.stages) {
@@ -1177,7 +1183,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
 
   writeJsonAtomic(resolveInside(root, workflowSnapshot), workflowSnapshotValue)
 
-  const pipelineConfigSnapshot = `runtime/logs/workflows/${id}/pipeline-config.snapshot.json`
+  const pipelineConfigSnapshot = layout.pipelineConfigSnapshot.relative
   const pipelineConfigSnapshotValue = makePipelineConfigSnapshot(pipelineConfig)
 
   writeJsonAtomic(
@@ -1478,12 +1484,15 @@ export function prepareInvocation(
       stage.slug,
       attempt,
     )
-    const outputPath = `runtime/logs/workflows/${runId}/outputs/${invocationId}.json`
-    const briefSourcePath = `runtime/logs/workflows/${runId}/artifacts/json/${invocationId}.brief.json`
-    const briefRenderedPath = `runtime/logs/workflows/${runId}/artifacts/html/${invocationId}.html`
-    const jsonPath = `runtime/logs/workflows/${runId}/invocations/${invocationId}.json`
-    const markdownPath = `runtime/logs/workflows/${runId}/invocations/${invocationId}.md`
-    const delegationArtifactPath = delegationPath(runId, invocationId)
+    const layout = resolveRunLayout(root, runId)
+    const outputPath = layout.output(invocationId).relative
+    const briefSourcePath = layout.artifactJson(
+      `${invocationId}.brief.json`,
+    ).relative
+    const briefRenderedPath = layout.operatorHtml(invocationId).relative
+    const jsonPath = layout.invocation(invocationId, '.json').relative
+    const markdownPath = layout.invocation(invocationId, '.md').relative
+    const delegationArtifactPath = delegationPath(runId, invocationId, root)
 
     const workspace = workspaceSnapshotForRun(root, state)
     const contracts = state.operator_involvement?.contracts ?? []
@@ -1503,7 +1512,7 @@ export function prepareInvocation(
       review_mode: reviewMode,
       invocation: {
         output_path: outputPath,
-        artifact_paths: [briefRenderedPath, briefSourcePath],
+        artifact_paths: [briefRenderedPath],
       },
     })
     const nextAction =
@@ -1534,6 +1543,7 @@ export function prepareInvocation(
               invocation_validation_path: invocationValidationPath(
                 runId,
                 invocationId,
+                root,
               ),
               delegation_artifact_path: delegationArtifactPath,
               submit_command: `${panCommand(root)} submit ${runId} ${outputPath}`,
@@ -1559,11 +1569,16 @@ export function prepareInvocation(
               invocation_validation_path: invocationValidationPath(
                 runId,
                 invocationId,
+                root,
               ),
               delegation_artifact_path: delegationArtifactPath,
               submit_command: `${panCommand(root)} submit ${runId} ${outputPath}`,
               mode: 'referenced' as const,
-              delivery_prompt_path: deliveryPromptPath(runId, invocationId),
+              delivery_prompt_path: deliveryPromptPath(
+                runId,
+                invocationId,
+                root,
+              ),
               policies: resolvePolicies(root, {
                 persona: 'orchestrator',
                 workflow: workflow.slug,
@@ -1660,6 +1675,12 @@ export function prepareInvocation(
         operator_brief: {
           source_path: briefSourcePath,
           rendered_path: briefRenderedPath,
+          ...(layout.version === 'v2'
+            ? {
+                source_lifecycle: 'transient' as const,
+                source_transient: true,
+              }
+            : {}),
           schema: 'library/schemas/operator-brief.schema.json',
           renderer: 'pan briefs render',
           profile: artifactProfile,
@@ -1743,6 +1764,7 @@ export function prepareInvocation(
     const invocationValidationArtifactPath = invocationValidationPath(
       runId,
       invocationId,
+      root,
     )
     const invocationValidationArtifact = buildValidationArtifact({
       run_id: runId,
@@ -1975,7 +1997,7 @@ export function delegateInvocation(
     // The supervisor's first delivery step applies to the harness too: a card
     // whose validation failed MUST NOT be delegated.
     const validationArtifact = readJson(
-      resolveInside(root, invocationValidationPath(runId, invocationId)),
+      resolveInside(root, invocationValidationPath(runId, invocationId, root)),
     )
     invariant(
       isRecord(validationArtifact) && validationArtifact.status === 'pass',
@@ -2005,7 +2027,7 @@ export function delegateInvocation(
     const timeoutMs =
       options.timeoutMs ??
       (configuredTimeout ? Number(configuredTimeout) : undefined)
-    const evidenceDir = `runtime/logs/workflows/${runId}/evidence`
+    const evidenceDir = resolveRunLayout(root, runId).evidence('').relative
     const runExecutor = (
       prompt: string,
       resumeSessionId?: string,
@@ -2061,7 +2083,7 @@ export function delegateInvocation(
     const cardMarkdown = readText(
       resolveInside(root, state.current_invocation.markdown_path),
     )
-    const delegationArtifactPath = delegationPath(runId, invocationId)
+    const delegationArtifactPath = delegationPath(runId, invocationId, root)
     let delegationKind: ExternalDelegationRecord['delegation_kind'] = 'fresh'
     let deliveredPrompt = cardMarkdown
     let result: ClaudeCodeInvocationResult
@@ -2146,7 +2168,7 @@ export function delegateInvocation(
 
     if (delegationKind === 'resumed') {
       writeTextAtomic(
-        resolveInside(root, deliveryPromptPath(runId, invocationId)),
+        resolveInside(root, deliveryPromptPath(runId, invocationId, root)),
         deliveredPrompt,
       )
     }
@@ -2180,7 +2202,7 @@ export function delegateInvocation(
     }
 
     writeJsonAtomic(
-      resolveInside(root, delegationExecutionPath(runId, invocationId)),
+      resolveInside(root, delegationExecutionPath(runId, invocationId, root)),
       execution,
     )
 
@@ -2198,7 +2220,7 @@ export function delegateInvocation(
         [stage.slug]: sessionRecord,
       }
       writeJsonAtomic(
-        resolveInside(root, sessionRecordPath(runId, invocationId)),
+        resolveInside(root, sessionRecordPath(runId, invocationId, root)),
         sessionRecord,
       )
     }
@@ -2216,7 +2238,7 @@ export function delegateInvocation(
       invariant(false, `External delegation failed: ${result.error}`, {
         code: 'EXTERNAL_EXECUTOR_FAILED',
         details: {
-          execution_record: delegationExecutionPath(runId, invocationId),
+          execution_record: delegationExecutionPath(runId, invocationId, root),
           stderr_path: logs.stderr_path,
           exit_code: result.exit_code,
         },
@@ -2320,7 +2342,7 @@ export function submitOutput(
       : undefined
 
     if (existing?.record_path) {
-      const recordPath = artifactJsonPath(runId, existing.invocation_id)
+      const recordPath = artifactJsonPath(runId, existing.invocation_id, root)
 
       return {
         state,
@@ -2366,6 +2388,7 @@ export function submitOutput(
       const delegationArtifactPath = delegationPath(
         runId,
         invocation.invocation_id,
+        root,
       )
       const delegationAbsolute = resolveInside(root, delegationArtifactPath)
 
@@ -2403,6 +2426,7 @@ export function submitOutput(
         const delegationValidationArtifactPath = delegationValidationPath(
           runId,
           invocation.invocation_id,
+          root,
         )
         const delegationValidationArtifact = buildValidationArtifact({
           run_id: runId,
@@ -2434,6 +2458,7 @@ export function submitOutput(
       const attestationArtifactPath = attestationValidationPath(
         runId,
         invocation.invocation_id,
+        root,
       )
       const attestationArtifact = buildValidationArtifact({
         run_id: runId,
@@ -2551,6 +2576,31 @@ export function submitOutput(
       ...validation.errors,
       ...harnessValidation.errors,
     ]
+    const briefContract = invocation.output.operator_brief as
+      | Invocation['output']['operator_brief']
+      | undefined
+
+    let briefSourceRecord: StageHistoryItem['operator_brief_source']
+
+    if (
+      (briefContract?.source_lifecycle === 'transient' ||
+        briefContract?.source_transient === true) &&
+      briefErrors.length === 0 &&
+      allValidationErrors.length === 0
+    ) {
+      // The checksum lives in stage history rather than a separate evidence
+      // file, so deleting the source is a net file-count reduction.
+      const sourceAbsolute = resolveInside(root, briefContract.source_path)
+
+      briefSourceRecord = {
+        source_path: briefContract.source_path,
+        source_sha256: sha256(readText(sourceAbsolute)),
+        rendered_path: briefContract.rendered_path,
+        status: 'rendered_and_validated',
+      }
+      rmSync(sourceAbsolute, { force: true })
+    }
+
     const historyItem: StageHistoryItem = {
       stage: stage.slug,
       attempt: invocation.attempt,
@@ -2567,6 +2617,9 @@ export function submitOutput(
       governance_artifact_warnings: governanceArtifactWarnings,
       deterministic: evaluated.results,
       self_criteria: validation.output.criteria,
+      ...(briefSourceRecord
+        ? { operator_brief_source: briefSourceRecord }
+        : {}),
     }
 
     state.stage_history.push(historyItem)
@@ -2575,12 +2628,13 @@ export function submitOutput(
 
     if (outcome === 'success' && stage.gate === 'supervisor') {
       const assessmentId = `assessment-${invocation.invocation_id}`
-      const assessmentPath =
-        `runtime/logs/workflows/${runId}/assessments/` +
-        `${invocation.invocation_id}.assessment.json`
-      const cardPath =
-        `runtime/logs/workflows/${runId}/assessments/` +
-        `${invocation.invocation_id}.assessment-request.json`
+      const layout = resolveRunLayout(root, runId)
+      const assessmentPath = layout.assessment(
+        `${invocation.invocation_id}.assessment.json`,
+      ).relative
+      const cardPath = layout.assessment(
+        `${invocation.invocation_id}.assessment-request.json`,
+      ).relative
 
       writeJsonAtomic(resolveInside(root, cardPath), {
         $operator: {
@@ -2685,7 +2739,11 @@ export function submitOutput(
       next_state: nextState,
       timestamp: now(),
     }
-    const recordJsonPath = artifactJsonPath(runId, invocation.invocation_id)
+    const recordJsonPath = artifactJsonPath(
+      runId,
+      invocation.invocation_id,
+      root,
+    )
 
     writeJsonAtomic(resolveInside(root, recordJsonPath), record)
 
@@ -2813,9 +2871,11 @@ function recordOperatorFeedback(
   const feedback = state.operator_feedback ?? []
   const index = feedback.length + 1
   const attempt = state.attempts[fromStage.slug] ?? 1
-  const relativePath =
-    `runtime/logs/workflows/${state.run_id}/artifacts/markdown/` +
-    `operator-feedback-${index}.md`
+  // Control records document operator decisions for workers and audit, so they
+  // live beside the decision records rather than in the operator directory.
+  const relativePath = resolveRunLayout(root, state.run_id).decision(
+    `operator-feedback-${index}.md`,
+  ).relative
   const heading =
     decision === 'reject'
       ? 'Operator rejection'
@@ -2974,9 +3034,9 @@ export function setRunStage(
       : 0
     const feedback = state.operator_feedback ?? []
     const index = feedback.length + 1
-    const relativePath =
-      `runtime/logs/workflows/${state.run_id}/artifacts/markdown/` +
-      `operator-feedback-${index}.md`
+    const relativePath = resolveRunLayout(root, state.run_id).decision(
+      `operator-feedback-${index}.md`,
+    ).relative
     const body = [
       '# Operator stage repair',
       '',
@@ -3053,9 +3113,9 @@ function ratifyPausedWorkspaceChanges(
     .filter((relativePath) => !afterPaths.has(relativePath))
     .sort()
   const ratifications = state.operator_workspace_ratifications ?? []
-  const relativePath =
-    `runtime/logs/workflows/${state.run_id}/artifacts/markdown/` +
-    `operator-pause-ratification-${ratifications.length + 1}.md`
+  const relativePath = resolveRunLayout(root, state.run_id).decision(
+    `operator-pause-ratification-${ratifications.length + 1}.md`,
+  ).relative
   const body = [
     '# Operator-paused workspace ratification',
     '',
@@ -3400,7 +3460,9 @@ export function waiveGate(
       .reverse()
       .find((item) => item.stage === stageSlug)
     const assessmentPath = history
-      ? `runtime/logs/workflows/${state.run_id}/assessments/${history.invocation_id}.assessment.json`
+      ? resolveRunLayout(root, state.run_id).assessment(
+          `${history.invocation_id}.assessment.json`,
+        ).relative
       : null
     let assessment: SupervisorAssessment | null = null
 
@@ -3464,9 +3526,9 @@ export function waiveGate(
     const workspace = workspaceSnapshotForRun(root, state)
     const waivers = state.operator_gate_waivers ?? []
     const waiverId = `waiver-${randomUUID()}`
-    const artifactPath =
-      `runtime/logs/workflows/${state.run_id}/artifacts/markdown/` +
-      `gate-waiver-${waivers.length + 1}.md`
+    const artifactPath = resolveRunLayout(root, state.run_id).decision(
+      `gate-waiver-${waivers.length + 1}.md`,
+    ).relative
     const sourceEvidencePath =
       assessment?.verdict === 'fail' && assessmentPath
         ? assessmentPath
