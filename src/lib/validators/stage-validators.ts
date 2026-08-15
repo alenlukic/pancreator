@@ -3,6 +3,7 @@ import { readdirSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 
 import { fileExists, isRecord, readJson, readText } from '../io.js'
+import { invariant } from '../errors.js'
 import { loadRegistry } from '../requirements/registry.js'
 import { hasHeading, operatorLeadPresent, parseMarkdown } from '../markdown.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
@@ -22,7 +23,6 @@ import {
   type ReleaseBump,
 } from '../versioning.js'
 
-const REVIEW_SEVERITIES = new Set(['blocker', 'high', 'medium', 'low'])
 const WORK_MODES = new Set(['systematic', 'lightweight'])
 const HARNESS_REPAIR_CLASSIFICATIONS = [
   'harness bug',
@@ -40,6 +40,289 @@ const HARNESS_EVIDENCE_PREFIXES = [
   'library/',
   'governance/',
 ] as const
+
+interface SharedFieldRequirement {
+  path: string
+  type: string
+  enum?: string[]
+  required?: string[]
+  accepted_shapes?: string[]
+}
+
+function sharedFieldRequirements(
+  root: string,
+  stageSlug: string,
+): SharedFieldRequirement[] {
+  const sourcePath = path.join(
+    root,
+    'library',
+    'schemas',
+    'stage-output-requirements.json',
+  )
+  // No process.cwd() fallback: in a broken installation it would silently
+  // substitute whatever contract the launching checkout carries, validating
+  // the target's outputs against a foreign document.
+  invariant(
+    fileExists(sourcePath),
+    `${sourcePath} is missing. The installation MUST ship the shared stage ` +
+      `output contract document.`,
+    { code: 'INVALID_STAGE_OUTPUT_REQUIREMENTS' },
+  )
+
+  const canonicalSourcePath = sourcePath
+  const source = readJson(canonicalSourcePath)
+
+  invariant(
+    isRecord(source) && isRecord(source.stages),
+    `${canonicalSourcePath} MUST contain a stage map.`,
+    { code: 'INVALID_STAGE_OUTPUT_REQUIREMENTS' },
+  )
+
+  const stage = source.stages[stageSlug]
+
+  invariant(
+    isRecord(stage) && Array.isArray(stage.fields),
+    `${canonicalSourcePath}.stages.${stageSlug} MUST declare fields.`,
+    { code: 'INVALID_STAGE_OUTPUT_REQUIREMENTS' },
+  )
+
+  return stage.fields.filter(
+    (field): field is SharedFieldRequirement =>
+      isRecord(field) &&
+      typeof field.path === 'string' &&
+      typeof field.type === 'string' &&
+      (field.enum === undefined ||
+        (Array.isArray(field.enum) &&
+          field.enum.every((entry) => typeof entry === 'string'))) &&
+      (field.required === undefined ||
+        (Array.isArray(field.required) &&
+          field.required.every((entry) => typeof entry === 'string'))) &&
+      (field.accepted_shapes === undefined ||
+        (Array.isArray(field.accepted_shapes) &&
+          field.accepted_shapes.every((entry) => typeof entry === 'string'))),
+  )
+}
+
+function sharedEnum(
+  root: string,
+  stageSlug: string,
+  fieldPath: string,
+): Set<string> {
+  const field = sharedFieldRequirements(root, stageSlug).find(
+    (candidate) => candidate.path === fieldPath,
+  )
+
+  return new Set(field?.enum ?? [])
+}
+
+function sharedChildFields(
+  root: string,
+  stageSlug: string,
+  fieldPrefix: string,
+): string[] {
+  return sharedFieldRequirements(root, stageSlug)
+    .map((field) =>
+      field.path.startsWith(fieldPrefix)
+        ? field.path.slice(fieldPrefix.length)
+        : null,
+    )
+    .filter(
+      (field): field is string =>
+        field !== null && field.length > 0 && !field.includes('.'),
+    )
+}
+
+function validEvidenceShape(
+  entry: string,
+  acceptedShapes: Set<string>,
+): boolean {
+  const value = entry.trim()
+  const pathReference =
+    acceptedShapes.has('path_reference') &&
+    !/\s/u.test(value) &&
+    /(?:^|\/)[^/]+\.[a-z0-9]+(?::\d+(?::\d+)?)?$/iu.test(value)
+  const proseObservation =
+    acceptedShapes.has('prose_observation') &&
+    value.length >= 12 &&
+    /\s/u.test(value)
+  const pytestNodeId =
+    acceptedShapes.has('pytest_node_id') &&
+    !/\s/u.test(value) &&
+    /^[^:]+::[^:]+(?:::[^:]+)*$/u.test(value)
+
+  return pathReference || proseObservation || pytestNodeId
+}
+
+export function validateSharedFieldContract(
+  input: HandlerInput,
+): HandlerResult {
+  const issues: HandlerResult['issues'] = []
+  const source = readJson(path.join(input.root, input.targetPath))
+
+  if (
+    !isRecord(source) ||
+    source.schema_version !== 1 ||
+    source.policy_id !== 'CONTRACT-001' ||
+    source.validator_id !== 'FIELD-CONTRACT-VALIDATE-001' ||
+    !isRecord(source.stages)
+  ) {
+    return {
+      status: 'failed',
+      issues: [
+        issue(
+          'field_contract.shape',
+          'The shared field contract MUST declare its schema, policy, validator, and stages',
+        ),
+      ],
+    }
+  }
+
+  const registryIds = new Set(loadRegistry(input.root).entries.keys())
+
+  for (const stageSlug of ['implement', 'review', 'test', 'ship']) {
+    const stage = source.stages[stageSlug]
+
+    if (
+      !isRecord(stage) ||
+      !Array.isArray(stage.validators) ||
+      !Array.isArray(stage.fields) ||
+      stage.validators.length === 0 ||
+      stage.fields.length === 0
+    ) {
+      issues.push(
+        issue(
+          'field_contract.stage',
+          `The ${stageSlug} field contract MUST declare validators and fields`,
+        ),
+      )
+      continue
+    }
+
+    for (const validator of stage.validators) {
+      if (
+        !isRecord(validator) ||
+        typeof validator.registry_id !== 'string' ||
+        !registryIds.has(validator.registry_id) ||
+        (validator.enforcement !== 'blocks' &&
+          validator.enforcement !== 'advises')
+      ) {
+        issues.push(
+          issue(
+            'field_contract.validator',
+            `The ${stageSlug} field contract contains an invalid validator`,
+          ),
+        )
+      }
+    }
+
+    const fields = sharedFieldRequirements(input.root, stageSlug)
+
+    if (fields.length !== stage.fields.length) {
+      issues.push(
+        issue(
+          'field_contract.field',
+          `The ${stageSlug} field contract contains an invalid field`,
+        ),
+      )
+    }
+  }
+
+  const requiredFieldPaths: Record<string, string[]> = {
+    implement: ['data.acceptance_results[].evidence[]'],
+    review: [
+      'data.review.findings[].severity',
+      'data.review.findings[].remediation_stage',
+      'data.review.findings[].resolution',
+    ],
+    test: [
+      'data.test.cases[].steps',
+      'data.test.cases[].expected',
+      'data.test.cases[].actual',
+      'data.test.defects[].owner',
+    ],
+    ship: [
+      'data.release.change_list[]',
+      'data.release.validation[].workspace_fingerprint',
+    ],
+  }
+
+  for (const [stageSlug, fieldPaths] of Object.entries(requiredFieldPaths)) {
+    const available = new Set(
+      sharedFieldRequirements(input.root, stageSlug).map((field) => field.path),
+    )
+
+    for (const fieldPath of fieldPaths) {
+      if (!available.has(fieldPath)) {
+        issues.push(
+          issue(
+            'field_contract.required_field',
+            `The ${stageSlug} field contract MUST declare ${fieldPath}`,
+          ),
+        )
+      }
+    }
+  }
+
+  const releaseChangeList = sharedFieldRequirements(input.root, 'ship').find(
+    (field) => field.path === 'data.release.change_list[]',
+  )
+
+  if (
+    !['path', 'kind', 'description'].every((field) =>
+      releaseChangeList?.required?.includes(field),
+    )
+  ) {
+    issues.push(
+      issue(
+        'field_contract.release_change_list',
+        'The ship change list MUST require path, kind, and description',
+      ),
+    )
+  }
+
+  const expectedReviewEnums: Record<string, string[]> = {
+    'data.review.findings[].severity': ['blocker', 'high', 'medium', 'low'],
+    'data.review.findings[].remediation_stage': ['review', 'implement'],
+    'data.review.findings[].resolution': ['resolved_in_review', 'unresolved'],
+  }
+
+  for (const [fieldPath, expected] of Object.entries(expectedReviewEnums)) {
+    const actual = sharedEnum(input.root, 'review', fieldPath)
+
+    if (
+      actual.size !== expected.length ||
+      !expected.every((value) => actual.has(value))
+    ) {
+      issues.push(
+        issue(
+          'field_contract.review_enum',
+          `The review field ${fieldPath} MUST declare its canonical values`,
+        ),
+      )
+    }
+  }
+
+  const implementationEvidence = sharedFieldRequirements(
+    input.root,
+    'implement',
+  ).find((field) => field.path === 'data.acceptance_results[].evidence[]')
+  const evidenceShapes = new Set(implementationEvidence?.accepted_shapes ?? [])
+
+  if (
+    !['path_reference', 'prose_observation', 'pytest_node_id'].every((shape) =>
+      evidenceShapes.has(shape),
+    )
+  ) {
+    issues.push(
+      issue(
+        'field_contract.evidence_shapes',
+        'Implementation evidence MUST accept path, prose, and pytest shapes',
+      ),
+    )
+  }
+
+  return { status: issues.length === 0 ? 'passed' : 'failed', issues }
+}
 
 function evidencePathCandidate(entry: string): string | null {
   const trimmed = entry.trim()
@@ -543,9 +826,26 @@ export function validateImplementationClaims(
     }
   }
 
-  const changedFiles = Array.isArray(implementation.changed_files)
-    ? (implementation.changed_files as string[])
+  const changedFilesRaw = Array.isArray(implementation.changed_files)
+    ? (implementation.changed_files as unknown[])
     : []
+  const changedFiles = changedFilesRaw.filter(
+    (file): file is string => typeof file === 'string',
+  )
+
+  // Reject non-string entries explicitly: comparing or joining an object
+  // yields '[object Object]' diagnostics, and path.join on one throws.
+  for (const entry of changedFilesRaw) {
+    if (typeof entry !== 'string') {
+      issues.push(
+        issue(
+          'claim.entry_shape',
+          `implementation.changed_files entries MUST be strings; got ${JSON.stringify(entry)}`,
+        ),
+      )
+    }
+  }
+
   const acceptanceResultsList = Array.isArray(data.acceptance_results)
     ? data.acceptance_results
     : []
@@ -606,6 +906,13 @@ export function validateImplementationClaims(
   }
 
   const acceptanceIds = new Set<string>()
+  const evidenceRequirement = sharedFieldRequirements(
+    input.root,
+    'implement',
+  ).find((field) => field.path === 'data.acceptance_results[].evidence[]')
+  const acceptedEvidenceShapes = new Set(
+    evidenceRequirement?.accepted_shapes ?? [],
+  )
 
   for (const [index, item] of acceptanceResultsList.entries()) {
     if (!isRecord(item) || typeof item.id !== 'string') {
@@ -645,6 +952,20 @@ export function validateImplementationClaims(
         ),
       )
     }
+
+    for (const [evidenceIndex, entry] of evidence.entries()) {
+      if (
+        typeof entry !== 'string' ||
+        !validEvidenceShape(entry, acceptedEvidenceShapes)
+      ) {
+        issues.push(
+          issue(
+            'acceptance.evidence_shape',
+            `Acceptance ${item.id} evidence[${evidenceIndex}] MUST be a path reference, prose observation, or pytest node id`,
+          ),
+        )
+      }
+    }
   }
 
   const expectedIds = planAcceptanceCriterionIds(
@@ -679,9 +1000,23 @@ export function validateImplementationClaims(
     }
   }
 
-  const testsAdded = Array.isArray(implementation.tests_added)
-    ? (implementation.tests_added as string[])
+  const testsAddedRaw = Array.isArray(implementation.tests_added)
+    ? (implementation.tests_added as unknown[])
     : []
+  const testsAdded = testsAddedRaw.filter(
+    (testPath): testPath is string => typeof testPath === 'string',
+  )
+
+  for (const entry of testsAddedRaw) {
+    if (typeof entry !== 'string') {
+      issues.push(
+        issue(
+          'claim.entry_shape',
+          `implementation.tests_added entries MUST be strings; got ${JSON.stringify(entry)}`,
+        ),
+      )
+    }
+  }
 
   for (const testPath of testsAdded) {
     const resolved = resolveWorkspaceRelativeFilePath(
@@ -1010,6 +1345,21 @@ export function validateReviewOutput(input: HandlerInput): HandlerResult {
   const acceptanceResults = Array.isArray(review.acceptance_results)
     ? review.acceptance_results
     : []
+  const severities = sharedEnum(
+    input.root,
+    'review',
+    'data.review.findings[].severity',
+  )
+  const remediationStages = sharedEnum(
+    input.root,
+    'review',
+    'data.review.findings[].remediation_stage',
+  )
+  const resolutions = sharedEnum(
+    input.root,
+    'review',
+    'data.review.findings[].resolution',
+  )
 
   for (const [index, finding] of findings.entries()) {
     if (!isRecord(finding) || typeof finding.id !== 'string') {
@@ -1022,7 +1372,7 @@ export function validateReviewOutput(input: HandlerInput): HandlerResult {
     const severity =
       typeof finding.severity === 'string' ? finding.severity : ''
 
-    if (!REVIEW_SEVERITIES.has(severity)) {
+    if (!severities.has(severity)) {
       issues.push(
         issue(
           'review.severity',
@@ -1033,7 +1383,7 @@ export function validateReviewOutput(input: HandlerInput): HandlerResult {
 
     if (
       typeof finding.remediation_stage !== 'string' ||
-      finding.remediation_stage.trim().length === 0
+      !remediationStages.has(finding.remediation_stage)
     ) {
       issues.push(
         issue(
@@ -1046,7 +1396,7 @@ export function validateReviewOutput(input: HandlerInput): HandlerResult {
     const resolution =
       typeof finding.resolution === 'string' ? finding.resolution : ''
 
-    if (resolution !== 'resolved_in_review' && resolution !== 'unresolved') {
+    if (!resolutions.has(resolution)) {
       issues.push(
         issue(
           'review.resolution',
@@ -1228,7 +1578,7 @@ export function validateQaOutput(input: HandlerInput): HandlerResult {
   if (!qa) {
     return {
       status: 'failed',
-      issues: [issue('qa.missing', 'data.qa_report is required')],
+      issues: [issue('qa.missing', 'data.test is required')],
     }
   }
 
@@ -1237,6 +1587,12 @@ export function validateQaOutput(input: HandlerInput): HandlerResult {
   const acceptanceResults = Array.isArray(qa.acceptance_results)
     ? qa.acceptance_results
     : []
+  const caseFields = sharedChildFields(input.root, 'test', 'data.test.cases[].')
+  const defectFields = sharedChildFields(
+    input.root,
+    'test',
+    'data.test.defects[].',
+  )
 
   for (const [index, testCase] of cases.entries()) {
     if (!isRecord(testCase) || typeof testCase.id !== 'string') {
@@ -1246,7 +1602,7 @@ export function validateQaOutput(input: HandlerInput): HandlerResult {
       continue
     }
 
-    for (const field of ['steps', 'expected', 'actual', 'result'] as const) {
+    for (const field of caseFields) {
       if (
         typeof testCase[field] !== 'string' ||
         (testCase[field] as string).trim().length === 0
@@ -1269,22 +1625,18 @@ export function validateQaOutput(input: HandlerInput): HandlerResult {
       continue
     }
 
-    if (
-      typeof defect.classification !== 'string' ||
-      defect.classification.trim().length === 0
-    ) {
-      issues.push(
-        issue(
-          'qa.defect_classification',
-          `Defect ${defect.id} MUST declare classification`,
-        ),
-      )
-    }
-
-    if (typeof defect.owner !== 'string' || defect.owner.trim().length === 0) {
-      issues.push(
-        issue('qa.defect_owner', `Defect ${defect.id} MUST declare owner`),
-      )
+    for (const field of defectFields) {
+      if (
+        typeof defect[field] !== 'string' ||
+        (defect[field] as string).trim().length === 0
+      ) {
+        issues.push(
+          issue(
+            `qa.defect_${field}`,
+            `Defect ${defect.id} MUST declare ${field}`,
+          ),
+        )
+      }
     }
   }
 
@@ -1644,10 +1996,45 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
     }
   }
 
-  const changeList = Array.isArray(release.change_list)
-    ? (release.change_list as string[])
+  const rawChangeList = Array.isArray(release.change_list)
+    ? release.change_list
     : []
-  const diffResult = workspaceSourceChanges(input.root)
+  const changeListRequirement = sharedFieldRequirements(
+    input.root,
+    'ship',
+  ).find((field) => field.path === 'data.release.change_list[]')
+  const requiredChangeListFields = changeListRequirement?.required ?? []
+  const changeList = rawChangeList
+    .map((entry) =>
+      isRecord(entry) &&
+      requiredChangeListFields.every(
+        (field) =>
+          typeof entry[field] === 'string' &&
+          (entry[field] as string).trim().length > 0,
+      )
+        ? entry.path
+        : null,
+    )
+    .filter((entry): entry is string => typeof entry === 'string')
+  const diffResult = workspaceSourceChanges(workspaceRootFromInput(input))
+
+  if (rawChangeList.length !== changeList.length) {
+    const invalid = rawChangeList.find(
+      (entry) =>
+        !isRecord(entry) ||
+        requiredChangeListFields.some(
+          (field) =>
+            typeof entry[field] !== 'string' ||
+            (entry[field] as string).trim().length === 0,
+        ),
+    )
+    issues.push(
+      issue(
+        'release.change_list_shape',
+        `change_list entries MUST be objects with path, kind, and description: ${JSON.stringify(invalid)}`,
+      ),
+    )
+  }
 
   if (!diffResult.ok) {
     if (changeList.length > 0) {
@@ -1907,10 +2294,23 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
     )
 
     if (!disclosed) {
+      // Distinguish a waiver that is absent from one disclosed under the
+      // wrong key or shape: reporting both as "not disclosed" misdiagnoses a
+      // re-key defect as an omission (audited follow-up SHIP-FU-001).
+      const misdeclared = waivers.find((item) =>
+        isRecord(item)
+          ? Object.values(item).includes(waiver.waiver_id)
+          : item === waiver.waiver_id,
+      )
+
       issues.push(
         issue(
           'release.waiver_undisclosed',
-          `Active waiver not disclosed: ${waiver.waiver_id}`,
+          misdeclared === undefined
+            ? `Active waiver not disclosed: ${waiver.waiver_id}`
+            : `Waiver ${waiver.waiver_id} is disclosed without a 'waiver_id' ` +
+                `key. Re-key this entry, keeping its content: ` +
+                `${JSON.stringify(misdeclared)}`,
         ),
       )
       continue
@@ -2498,7 +2898,9 @@ export function validateSpotfixOutcome(input: HandlerInput): HandlerResult {
     )
   }
 
-  const diffResult = gitChangedFiles(input.root)
+  // Measure the declared workspace, not the installation root: on a detached
+  // installation or a worktree run the two are different repositories.
+  const diffResult = gitChangedFiles(workspaceRootFromInput(input))
 
   if (!diffResult.ok) {
     issues.push(gitUnavailableIssue(diffResult.error))

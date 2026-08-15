@@ -11,6 +11,8 @@ import {
   validateProjectionDrift,
 } from '../../src/lib/projection.js'
 import { loadPipelineConfig } from '../../src/lib/pipeline-config.js'
+import { resolveCursorModelSlug } from '../../src/lib/executors/cursor-catalog.js'
+import { parsePersonaMapping } from '../../src/lib/executors/mapping.js'
 import { createFixture } from '../helpers.js'
 
 test('embedded Cursor projection prefixes durable harness docs paths', () => {
@@ -134,6 +136,7 @@ test('Cursor sync projects the intake writer agent with its resolved model', () 
   const activeModel = loadPipelineConfig(root).config.personas['intake-writer']
 
   assert.ok(activeModel)
+  const activeSlug = resolveCursorModelSlug(parsePersonaMapping(activeModel))
   syncCursorProjection(root, { write: true })
 
   const projected = readFileSync(
@@ -144,7 +147,7 @@ test('Cursor sync projects the intake writer agent with its resolved model', () 
   assert.match(
     projected,
     new RegExp(
-      `^model: ${activeModel.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}$`,
+      `^model: ${activeSlug.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}$`,
       'mu',
     ),
   )
@@ -233,7 +236,7 @@ test('run-scoped agent variants carry pinned models without touching the base ag
   const changes = projectPersonaVariants(
     root,
     'bondeadbeef-alpha',
-    { coder: 'pinned-model-a', reviewer: 'pinned-model-b' },
+    { coder: 'gpt-5.4[effort=high]', reviewer: 'claude-opus-5' },
     { write: true },
   )
 
@@ -244,12 +247,15 @@ test('run-scoped agent variants carry pinned models without touching the base ag
       '.cursor/agents/pan-reviewer--bondeadbeef-alpha.md',
     ],
   )
+  // The variant frontmatter carries the executor-native slug, never the raw
+  // bracket spec: Cursor cannot parse the bracket grammar and would silently
+  // fall back to a default model (the audited HR-005 failure).
   assert.match(
     readFileSync(
       path.join(root, '.cursor', 'agents', 'pan-coder--bondeadbeef-alpha.md'),
       'utf8',
     ),
-    /^model: pinned-model-a$/mu,
+    /^model: gpt-5\.4-high$/mu,
   )
   assert.equal(readFileSync(baseCoderPath, 'utf8'), baseCoder)
 
@@ -286,6 +292,7 @@ test('Cursor sync renders ignored local files from canonical library sources', (
   const agentPath = path.join(root, '.cursor', 'agents', 'pan-coder.md')
   const sourcePath = path.join(root, 'library', 'cursor', 'agents', 'coder.md')
   const activeModel = loadPipelineConfig(root).config.personas.coder
+  const activeSlug = resolveCursorModelSlug(parsePersonaMapping(activeModel))
   const stale = readFileSync(agentPath, 'utf8').replace(
     /^model:.*$/mu,
     'model: intentionally-wrong',
@@ -304,7 +311,7 @@ test('Cursor sync renders ignored local files from canonical library sources', (
   assert.match(
     readFileSync(agentPath, 'utf8'),
     new RegExp(
-      `^model: ${activeModel.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}$`,
+      `^model: ${activeSlug.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}$`,
       'mu',
     ),
   )

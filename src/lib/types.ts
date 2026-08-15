@@ -418,6 +418,10 @@ export interface ProjectConfig {
   workspace_id?: string
   workspace_root?: string
   state_root?: string
+  /** Maximum bytes permitted in one materialized workflow state file. */
+  state_size_budget_bytes?: number
+  /** Worker inactivity bound used by `pan status`. */
+  stage_liveness_ms?: number
   tracking?: TrackingConfig
   /** Defaults for operator worktrees managed by `pan worktree`. */
   worktrees?: WorktreesConfig
@@ -521,6 +525,7 @@ export interface GuidanceAttestationEntry {
 export type InvocationAttestation =
   | {
       invocation_id: string
+      model: string
       contract_path: string
       contract_sha256: string
       status: 'pending' | 'read'
@@ -534,6 +539,7 @@ export type InvocationAttestation =
     }
   | {
       invocation_id: string
+      model: string
       contract_path: string
       status: 'reference_failed'
       error: string
@@ -619,6 +625,20 @@ export interface Invocation {
     template: string
     schema: string
     required_data: Record<string, JsonTypeName>
+    field_contract?: {
+      validators: Array<{
+        registry_id: string
+        enforcement: 'blocks' | 'advises'
+      }>
+      fields: Array<{
+        path: string
+        type: JsonTypeName | 'string'
+        enum?: string[]
+        required?: string[]
+        format?: string
+        accepted_shapes?: string[]
+      }>
+    }
     operator_brief: {
       source_path: string
       rendered_path: string
@@ -761,6 +781,26 @@ export interface RepositoryCheckDelta {
   new: RepositoryCheckDiagnostic[]
   fixed: RepositoryCheckDiagnostic[]
   carried: RepositoryCheckDiagnostic[]
+  counts?: {
+    new: number
+    fixed: number
+    carried: number
+  }
+  full_delta_ref?: {
+    sha256: string
+    path: string
+    counts: {
+      new: number
+      fixed: number
+      carried: number
+    }
+  }
+  /** Full uncapped values retained only until state persistence externalizes them. */
+  full?: {
+    new: RepositoryCheckDiagnostic[]
+    fixed: RepositoryCheckDiagnostic[]
+    carried: RepositoryCheckDiagnostic[]
+  }
 }
 
 export interface DeterministicResult {
@@ -777,6 +817,7 @@ export interface DeterministicResult {
   evidence_path?: string
   baseline_evidence_path?: string
   preexisting_failure?: boolean
+  environment_blocked?: boolean
   repository_check_delta?: RepositoryCheckDelta
   workspace_fingerprint: string
   delta?: WorkspaceDelta
@@ -896,6 +937,8 @@ export interface CurrentInvocationPointer {
   json_path: string
   markdown_path: string
   output_path: string
+  prepared_at?: string
+  last_activity_at?: string
 }
 
 export interface OperatorFeedbackItem {
@@ -970,7 +1013,7 @@ export interface BestOfNRunRole {
 }
 
 export interface RunState {
-  schema_version: 1
+  schema_version: 1 | 2
   run_id: string
   workflow_slug: string
   workflow_snapshot: {
@@ -1013,6 +1056,12 @@ export interface RunState {
   current_stage: string | null
   pending_action: PendingAction
   current_invocation: CurrentInvocationPointer | null
+  invocation_liveness?: {
+    status: 'active' | 'stale'
+    last_activity_at: string
+    stale_after_ms: number
+    age_ms: number
+  }
   request: {
     source_path: string
     stored_path: string

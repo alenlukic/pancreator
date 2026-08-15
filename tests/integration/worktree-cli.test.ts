@@ -635,11 +635,17 @@ test('doctor --worktree points workspace diagnostics at the worktree', () => {
   const doctor = JSON.parse(result.stdout) as {
     workspace: { root: string; worktree: string | null }
     git: { available_repository: boolean }
+    repository_check_environment: { profiles_without_probes: string[] }
   }
 
   assert.equal(doctor.workspace.worktree, 'diagnose')
   assert.equal(doctor.workspace.root, 'runtime/worktrees/operator/diagnose')
   assert.equal(doctor.git.available_repository, true)
+  assert.ok(
+    doctor.repository_check_environment.profiles_without_probes.includes(
+      'static',
+    ),
+  )
 
   const listed = runCli<{ worktrees: Array<{ name: string }> }>(root, [
     'worktree',

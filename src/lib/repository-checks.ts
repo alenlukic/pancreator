@@ -15,10 +15,12 @@ import type {
 const DEFAULT_TIMEOUT_MS = 600_000
 const MAX_CAPTURE_BYTES = 10 * 1024 * 1024
 const SLOW_PASS_ADVISORY_MS = 60_000
+const EMBEDDED_DELTA_LIMIT = 100
 
 export interface RepositoryCheckProfile {
   description?: string
   timeout_ms?: number
+  environment_probes?: string[]
   probes: string[]
   commands: string[]
 }
@@ -163,7 +165,10 @@ function isVolatileSummaryLine(line: string): boolean {
     /^#\s+(?:tests|suites|pass|fail|cancelled|skipped|todo|duration_ms)\b/iu.test(
       line,
     ) ||
-    /^=+\s+.*\b(?:failed|passed|error|errors)\b.*=+$/iu.test(line)
+    /^=+\s+.*\b(?:failed|passed|error|errors)\b.*=+$/iu.test(line) ||
+    // A pytest warnings-summary attribution line counts warnings per file, and
+    // the file a warning attaches to shifts with xdist scheduling.
+    /^\S+: \d+ warnings?$/iu.test(line)
   )
 }
 
@@ -172,6 +177,9 @@ function normalizeDiagnosticLine(line: string, workspaceRoot: string): string {
     stripAnsi(line)
       .replaceAll('\\', '/')
       .replaceAll(workspaceRoot.replaceAll('\\', '/'), '<workspace>')
+      // pytest-xdist prefixes depend on worker scheduling and collection order.
+      // Remove each prefix so two equivalent runs produce the same identity.
+      .replaceAll(/^(?:\[(?:gw\d+|\s*\d+%)\]\s*)+/giu, '')
       .replaceAll(
         /\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z\b/gu,
         '<timestamp>',
@@ -205,21 +213,138 @@ function statusIdentityDiagnostic(
   )
 }
 
+function isNonFailureOutputLine(line: string): boolean {
+  return (
+    line.length === 0 ||
+    /^(?:(?:\S+(?:::\S+)+\s+)?PASSED|PASSED\s+\S+(?:::\S+)+)(?:\s+\[[^\]]+\])?$/iu.test(
+      line,
+    ) ||
+    // Verbose pytest pass lines whose node id carries bracketed parameters with
+    // spaces, or whose tail carries interleaved log output from another worker.
+    /^(?:PASSED|XPASS) \S+::.*$/u.test(line) ||
+    /^\S+::.* (?:PASSED|XPASS)\b.*$/u.test(line) ||
+    // A bare pytest node id is a progress echo, or a warnings-summary header.
+    /^[\w./-]+(?:::[\w.-]+)+(?:\[.*\])?$/u.test(line) ||
+    /^(?:ok \d+\b|# Subtest:|TAP version \d+\b)/iu.test(line) ||
+    // TAP YAML block delimiters are exactly three characters; a longer line
+    // starting with `---` can be real failure content (a diff header).
+    /^(?:---|\.\.\.)$/u.test(line) ||
+    /^(?:type: ['"]test['"]|duration_ms:)/iu.test(line) ||
+    /^(?:=+\s*$|=+ .* =+$)/iu.test(line) ||
+    /^\[(?:gw\d+|\s*\d+%)\](?:\s+\[(?:gw\d+|\s*\d+%)\])*$/iu.test(line)
+  )
+}
+
+/**
+ * pytest session-header noise. Scoped to transcripts that look like pytest:
+ * applied globally, prefixes like `platform`, `collecting`, or `timeout:`
+ * would swallow genuine failure text from other tools (a GNU timeout error,
+ * a platform-support error).
+ */
+function isPytestSessionNoiseLine(line: string): boolean {
+  return (
+    /^(?:platform|plugins:|rootdir:|configfile:|collecting\b|collected \d+)/iu.test(
+      line,
+    ) ||
+    /^(?:cachedir:|timeout(?: method| func_only)?:|asyncio:|hypothesis profile\b)/iu.test(
+      line,
+    ) ||
+    /^(?:created: \d+\/\d+ workers?|\d+ workers \[\d+ items?\]|scheduling tests via )/iu.test(
+      line,
+    ) ||
+    /^(?:test session starts|-- Docs:)/iu.test(line)
+  )
+}
+
+function isPytestTranscript(lines: string[]): boolean {
+  return lines.some(
+    (line) =>
+      /^test session starts\b/iu.test(line) ||
+      /^plugins:/iu.test(line) ||
+      /^rootdir:/iu.test(line) ||
+      /(?:^|\s)pytest(?:-|\s|$)/iu.test(line),
+  )
+}
+
+function isPytestFailureLine(line: string): boolean {
+  return (
+    // Node ids carry bracketed parameters that may contain spaces, so the
+    // portion after `::` (or after the ` - ` of a collection error) is matched
+    // loosely; `\S+(?:::\S+)+` alone missed `FAILED x.py::test[ True ]`.
+    /^(?:FAILED|ERROR)\s+\S+(?:::.*|\s+-\s+.*)?$/u.test(line) ||
+    /^\S+::.*\s(?:FAILED|ERROR)(?:\s+\[\s*\d+%\])?$/u.test(line) ||
+    /^_+\s+ERROR collecting\s+.+\s+_+$/iu.test(line) ||
+    /^(?:E\s+)?(?:ImportError|ModuleNotFoundError)\b/u.test(line) ||
+    /\b(?:ETIMEDOUT|timed out|worker.*(?:crash|exit))\b/iu.test(line)
+  )
+}
+
 function diagnosticCounts(
   result: RepositoryCheckCommandResult,
   workspaceRoot: string,
 ): Map<string, number> {
-  const lines = `${result.stdout}\n${result.stderr}\n${result.error ?? ''}`
-    .split(/\r?\n/u)
-    .map((line) => normalizeDiagnosticLine(line, workspaceRoot))
-    .filter((line) => line.length > 0 && !isVolatileSummaryLine(line))
+  const normalizedLines =
+    `${result.stdout}\n${result.stderr}\n${result.error ?? ''}`
+      .split(/\r?\n/u)
+      .map((line) => normalizeDiagnosticLine(line, workspaceRoot))
+  // A recognized failure line is kept unconditionally: pass-echo and noise
+  // patterns run first, and a failure record that also mentions PASSED (xdist
+  // interleaving) must not be filtered before the failure allowlist sees it.
+  const lines = normalizedLines.filter(
+    (line) =>
+      isPytestFailureLine(line) ||
+      (!isNonFailureOutputLine(line) && !isVolatileSummaryLine(line)),
+  )
+  let diagnostics = lines
+
+  if (isPytestTranscript(normalizedLines)) {
+    const withoutSessionNoise = lines.filter(
+      (line) => isPytestFailureLine(line) || !isPytestSessionNoiseLine(line),
+    )
+    const failures = withoutSessionNoise.filter((line) =>
+      isPytestFailureLine(line),
+    )
+
+    // Keeping only recognized failure shapes prevents traceback churn, but a
+    // failing transcript whose failure text matches no known pytest shape must
+    // not be discarded whole: a command that runs pytest plus another tool
+    // (pytest passing, the other tool regressing) would then lose the genuine
+    // failure and the gate would pass. The fallback keeps only error-looking
+    // lines, so a passing suite's warnings and code context still form no
+    // identities and the status identity alone carries the command failure.
+    diagnostics =
+      failures.length > 0
+        ? failures
+        : withoutSessionNoise.filter(
+            (line) =>
+              /\b(?:error|errors|failed|failure|failures|exception|traceback|fatal|internalerror)\b/iu.test(
+                line,
+              ) &&
+              // Source context quoted under a warning or traceback is not an
+              // error record even when it names an exception type.
+              !/^(?:class|def|@|import |from )\s*\w/u.test(line),
+          )
+  }
+
   const counts = new Map<string, number>()
 
-  for (const line of lines) {
+  for (const line of diagnostics) {
     counts.set(line, (counts.get(line) ?? 0) + 1)
   }
 
   return counts
+}
+
+/**
+ * Normalized failure diagnostics one command result contributes. Exported so
+ * the environment-blocked classification can judge a baseline command by its
+ * extracted failure evidence rather than by raw transcript substrings.
+ */
+export function commandFailureDiagnostics(
+  result: RepositoryCheckCommandResult,
+  workspaceRoot: string,
+): string[] {
+  return [...diagnosticCounts(result, workspaceRoot).keys()]
 }
 
 function normalizedCommand(command: string): string {
@@ -380,24 +505,44 @@ export function compareRepositoryCheckToBaseline(
     }
   }
 
-  const delta: RepositoryCheckDelta = {
+  const sorted = {
     new: sortDiagnostics(added),
     fixed: sortDiagnostics(fixed),
     carried: sortDiagnostics(carried),
   }
-  const passed = current.status === 'passed' || delta.new.length === 0
+  const delta: RepositoryCheckDelta = {
+    new: sorted.new.slice(0, EMBEDDED_DELTA_LIMIT),
+    fixed: sorted.fixed.slice(0, EMBEDDED_DELTA_LIMIT),
+    carried: sorted.carried.slice(0, EMBEDDED_DELTA_LIMIT),
+    counts: {
+      new: sorted.new.length,
+      fixed: sorted.fixed.length,
+      carried: sorted.carried.length,
+    },
+    ...(sorted.new.length > EMBEDDED_DELTA_LIMIT ||
+    sorted.fixed.length > EMBEDDED_DELTA_LIMIT ||
+    sorted.carried.length > EMBEDDED_DELTA_LIMIT
+      ? { full: sorted }
+      : {}),
+  }
+  const passed = current.status === 'passed' || sorted.new.length === 0
   const counts =
-    `${delta.new.length} new, ${delta.fixed.length} fixed, ` +
-    `${delta.carried.length} carried`
+    `${sorted.new.length} new, ${sorted.fixed.length} fixed, ` +
+    `${sorted.carried.length} carried`
 
   if (!passed) {
-    const first = delta.new[0]
+    const first = delta.new.find(
+      (diagnostic) => !diagnostic.diagnostic.startsWith('<status>'),
+    )
 
     return {
       passed: false,
       explanation:
-        `Repository check '${current.profile}' introduced a new failure in ` +
-        `'${first?.command}': ${first?.diagnostic} (${counts}).`,
+        first === undefined
+          ? `Repository check '${current.profile}' introduced a new failure state, ` +
+            `but its output exposed no genuine failure identity (${counts}).`
+          : `Repository check '${current.profile}' introduced a new failure in ` +
+            `'${first.command}': ${first.diagnostic} (${counts}).`,
       delta,
     }
   }
@@ -479,6 +624,16 @@ function normalizedCommands(commands: string[]): string[] {
   return commands.map((command) => command.trim().replaceAll(/\s+/gu, ' '))
 }
 
+function commandSetIsSubset(left: string[], right: string[]): boolean {
+  if (left.length === 0) {
+    return false
+  }
+
+  const rightCommands = new Set(normalizedCommands(right))
+
+  return normalizedCommands(left).every((command) => rightCommands.has(command))
+}
+
 function sameCommands(left: string[], right: string[]): boolean {
   if (left.length === 0 || left.length !== right.length) {
     return false
@@ -504,6 +659,30 @@ function validateProfileSemantics(
     `${filePath}.profiles.fast MUST NOT duplicate profiles.full. Use the repository's documented fast/default command, or leave fast unconfigured when no distinct iterative suite exists.`,
     { code: 'INVALID_REPOSITORY_CHECKS' },
   )
+
+  for (const [name, profile] of Object.entries(profiles)) {
+    if (profile.timeout_ms === undefined) {
+      continue
+    }
+
+    for (const [subsetName, subset] of Object.entries(profiles)) {
+      if (
+        subsetName === name ||
+        subset.timeout_ms === undefined ||
+        !commandSetIsSubset(subset.commands, profile.commands)
+      ) {
+        continue
+      }
+
+      invariant(
+        profile.timeout_ms >= subset.timeout_ms,
+        `${filePath}.profiles.${name}.timeout_ms MUST be at least ` +
+          `${filePath}.profiles.${subsetName}.timeout_ms because '${name}' ` +
+          `runs a superset of '${subsetName}'.`,
+        { code: 'INVALID_REPOSITORY_CHECKS' },
+      )
+    }
+  }
 }
 
 export function loadRepositoryChecks(root: string): RepositoryChecksConfig {
@@ -546,6 +725,10 @@ export function loadRepositoryChecks(root: string): RepositoryChecksConfig {
         ? { description: rawProfile.description }
         : {}),
       ...(timeoutMs !== undefined ? { timeout_ms: timeoutMs } : {}),
+      environment_probes: stringArray(
+        rawProfile.environment_probes ?? [],
+        `${filePath}.profiles.${name}.environment_probes`,
+      ),
       probes: stringArray(
         rawProfile.probes ?? [],
         `${filePath}.profiles.${name}.probes`,
@@ -569,14 +752,31 @@ export function loadRepositoryChecks(root: string): RepositoryChecksConfig {
 }
 
 function effectiveTimeout(
+  config: RepositoryChecksConfig,
+  profileName: string,
   profile: RepositoryCheckProfile | undefined,
   requested: number | undefined,
 ): number {
-  const configured = profile?.timeout_ms
+  // The profile's own bound participates as its explicit timeout or the
+  // default, so a shorter subset timeout can only raise the result, never
+  // lower it below what the profile would get on its own.
+  const candidates = [
+    requested,
+    profile === undefined
+      ? undefined
+      : (profile.timeout_ms ?? DEFAULT_TIMEOUT_MS),
+    ...Object.entries(config.profiles)
+      .filter(
+        ([name, candidate]) =>
+          name !== profileName &&
+          candidate.timeout_ms !== undefined &&
+          profile !== undefined &&
+          commandSetIsSubset(candidate.commands, profile.commands),
+      )
+      .map(([, candidate]) => candidate.timeout_ms),
+  ].filter((value): value is number => value !== undefined)
 
-  // A stage criterion is the authoritative execution budget. Profile timeouts
-  // remain defaults for direct repository-check invocations.
-  return requested ?? configured ?? DEFAULT_TIMEOUT_MS
+  return candidates.length > 0 ? Math.max(...candidates) : DEFAULT_TIMEOUT_MS
 }
 
 function appendCaptured(current: string, chunk: string): string {
@@ -760,7 +960,12 @@ export function runRepositoryCheck(
     root,
     options.workspace ?? configuredWorkspaceRoot(root),
   )
-  const timeoutMs = effectiveTimeout(profile, options.timeout_ms)
+  const timeoutMs = effectiveTimeout(
+    config,
+    profileName,
+    profile,
+    options.timeout_ms,
+  )
 
   if (!profile || profile.commands.length === 0) {
     return baseResult(
@@ -777,7 +982,10 @@ export function runRepositoryCheck(
 
   const results: RepositoryCheckCommandResult[] = []
 
-  for (const command of profile.probes) {
+  for (const command of [
+    ...(profile.environment_probes ?? []),
+    ...profile.probes,
+  ]) {
     const result = execute('probe', command, workspaceRoot, timeoutMs)
     results.push(result)
 
@@ -837,7 +1045,12 @@ export async function runRepositoryCheckStreaming(
     root,
     options.workspace ?? configuredWorkspaceRoot(root),
   )
-  const timeoutMs = effectiveTimeout(profile, options.timeout_ms)
+  const timeoutMs = effectiveTimeout(
+    config,
+    profileName,
+    profile,
+    options.timeout_ms,
+  )
 
   if (!profile || profile.commands.length === 0) {
     return baseResult(
@@ -854,7 +1067,10 @@ export async function runRepositoryCheckStreaming(
 
   const results: RepositoryCheckCommandResult[] = []
 
-  for (const command of profile.probes) {
+  for (const command of [
+    ...(profile.environment_probes ?? []),
+    ...profile.probes,
+  ]) {
     const result = await executeStreaming(
       'probe',
       command,

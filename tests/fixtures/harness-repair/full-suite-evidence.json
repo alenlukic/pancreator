@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "source_run": "63327_Aug-13-0394_5de7203f",
+  "source_path": "evidence/01_test-2_2400177e-test.full_suite.full.log",
+  "profile": "full",
+  "status": "failed",
+  "timeout_ms": 600000,
+  "result": {
+    "kind": "command",
+    "command": "just exec --customer rowspace -- just be-test-int",
+    "exit_code": 101,
+    "signal": null,
+    "stdout": "============================= test session starts ==============================\nplatform darwin -- Python 3.12.12, pytest-9.0.3\ncollecting ... collected 1978 items / 1 skipped\ntests/integration/adapters/authz/test_openfga_authorizer.py::test_openfga_authorizer_checks_latest_model PASSED [ 0%]\n",
+    "stderr": "scripts/dev/service-run.sh backend uv run pytest -v tests/integration\n",
+    "passed": false,
+    "timed_out": true,
+    "duration_ms": 600045,
+    "error": "spawnSync /bin/sh ETIMEDOUT"
+  }
+}

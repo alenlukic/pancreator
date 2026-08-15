@@ -112,14 +112,25 @@ test('submit reports the sole operator brief and removes its source', () => {
 
   assert.deepEqual(removed, [briefSourceRelative])
   // The fixture pre-renders the HTML, so submission re-renders it in place.
-  // Provenance and validation evidence exist under either brief contract, so
-  // the only narrative change is the deleted brief source.
-  assert.deepEqual(added, [
+  // Provenance and validation evidence exist under either brief contract.
+  // Large state revisions can also externalize into a content-addressed record.
+  const stateRevisions = added.filter((file) =>
+    /^agent\/artifacts\/json\/state-revision-\d+-[a-f0-9]{64}\.json$/u.test(
+      file,
+    ),
+  )
+  const nonStateAdditions = added.filter(
+    (file) => !stateRevisions.includes(file),
+  )
+
+  assert.ok(stateRevisions.length <= 1)
+  assert.deepEqual(nonStateAdditions, [
     `agent/artifacts/json/${invocation.invocation_id}.json`,
     `agent/validations/${invocation.invocation_id}.attestation-validation.json`,
     `agent/validations/${invocation.invocation_id}.delegation-validation.json`,
     'agent/validations/GLOBAL-001-operator-artifact-validate-harness.json',
     'agent/validations/INTAKE-001-intake-validate-harness.json',
+    'agent/validations/STE-001-simplified-english-validate-harness.json',
   ])
   assert.ok(filesAfter.includes(`operator/${invocation.invocation_id}.html`))
   assert.equal(

@@ -120,6 +120,25 @@ test('repository checks stop after a failed probe', () => {
   assert.equal(result.results[0]?.exit_code, 7)
 })
 
+test('repository checks run environment probes before ordinary probes', () => {
+  const { root } = makeInstallation()
+
+  writeChecks(root, {
+    static: {
+      environment_probes: ['node -e "process.exit(9)"'],
+      probes: ['node -e "process.exit(0)"'],
+      commands: ['node -e "process.exit(0)"'],
+    },
+  })
+
+  const result = runRepositoryCheck(root, 'static')
+
+  assert.equal(result.status, 'failed')
+  assert.equal(result.results.length, 1)
+  assert.equal(result.results[0]?.kind, 'probe')
+  assert.equal(result.results[0]?.exit_code, 9)
+})
+
 test('repository check configuration rejects malformed command arrays', () => {
   const { root } = makeInstallation()
 
@@ -153,6 +172,31 @@ test('repository check configuration rejects identical fast and full commands', 
   assert.throws(
     () => loadRepositoryChecks(root),
     /profiles\.fast MUST NOT duplicate profiles\.full/u,
+  )
+})
+
+test('repository check supersets cannot shorten subset timeouts', () => {
+  const { root } = makeInstallation()
+
+  writeChecks(root, {
+    fast: {
+      timeout_ms: 10_000,
+      probes: [],
+      commands: ['node -e "process.exit(0)"'],
+    },
+    full: {
+      timeout_ms: 5_000,
+      probes: [],
+      commands: [
+        'node -e "process.exit(0)"',
+        'node -e "process.stdout.write(\'full\')"',
+      ],
+    },
+  })
+
+  assert.throws(
+    () => loadRepositoryChecks(root),
+    /profiles\.full\.timeout_ms MUST be at least .*profiles\.fast\.timeout_ms/u,
   )
 })
 
@@ -278,6 +322,111 @@ test('baseline delta counts a duplicated diagnostic as new', () => {
   assert.equal(comparison.delta.new[0]?.count, 1)
 })
 
+test('baseline delta ignores xdist scheduling and passing test output', () => {
+  const baseline = failedCheck(
+    '[gw0] [ 50%] PASSED tests/example_test.py::test_ok\n' +
+      '/workspace/src/a.ts:10:2 error Unexpected value no-example\n',
+  )
+  const current = failedCheck(
+    '[gw3] [ 75%] PASSED tests/example_test.py::test_ok\n' +
+      '/workspace/src/a.ts:40:9 error Unexpected value no-example\n',
+  )
+
+  const comparison = compareRepositoryCheckToBaseline(baseline, current)
+
+  assert.equal(comparison.passed, true)
+  assert.equal(comparison.delta.new.length, 0)
+})
+
+test('repeated fast profiles ignore reordered xdist pass output', () => {
+  const { root, workspace } = makeInstallation()
+
+  writeFileSync(
+    path.join(workspace, 'check.mjs'),
+    [
+      "import { readFileSync } from 'node:fs'",
+      "const reverse = readFileSync('order.txt', 'utf8').trim() === 'reverse'",
+      "const tests = ['test_a', 'test_b']",
+      'if (reverse) tests.reverse()',
+      "console.log('plugins: xdist-3.8.0')",
+      'for (const [index, name] of tests.entries()) {',
+      '  console.log(`[gw${index}] [ ${index * 50}%] tests/example.py::${name} PASSED`)',
+      '}',
+      "console.log('================ 2 passed in 0.01s ================')",
+    ].join('\n'),
+  )
+  writeChecks(root, {
+    fast: {
+      timeout_ms: 5_000,
+      probes: [],
+      commands: ['node check.mjs'],
+    },
+  })
+  writeFileSync(path.join(workspace, 'order.txt'), 'forward\n')
+  const baseline = runRepositoryCheck(root, 'fast')
+
+  writeFileSync(path.join(workspace, 'order.txt'), 'reverse\n')
+  const current = runRepositoryCheck(root, 'fast')
+  const comparison = compareRepositoryCheckToBaseline(baseline, current)
+
+  assert.equal(comparison.passed, true)
+  assert.deepEqual(comparison.delta, {
+    new: [],
+    fixed: [],
+    carried: [],
+    counts: { new: 0, fixed: 0, carried: 0 },
+  })
+  assert.ok(Buffer.byteLength(JSON.stringify(current), 'utf8') < 1024 * 1024)
+})
+
+test('baseline delta retains failures that mention PASSED', () => {
+  const comparison = compareRepositoryCheckToBaseline(
+    passedCheck(),
+    failedCheck('AssertionError: expected PASSED but got FAILED\n'),
+  )
+
+  assert.ok(
+    comparison.delta.new.some((item) =>
+      item.diagnostic.includes('expected PASSED but got FAILED'),
+    ),
+  )
+})
+
+test('gate explanations prefer printed failures over command status', () => {
+  const comparison = compareRepositoryCheckToBaseline(
+    passedCheck(),
+    failedCheck('AssertionError: expected true\n'),
+  )
+
+  assert.match(comparison.explanation, /AssertionError: expected true/u)
+  assert.doesNotMatch(comparison.explanation, /<status>/u)
+})
+
+test('gate explanations do not quote passing-output churn', () => {
+  const comparison = compareRepositoryCheckToBaseline(
+    passedCheck(),
+    failedCheck('tests/example_test.py::test_ok PASSED\n'),
+  )
+
+  assert.match(comparison.explanation, /no genuine failure identity/u)
+  assert.doesNotMatch(comparison.explanation, /PASSED/u)
+})
+
+test('baseline delta caps embedded diagnostics but preserves full counts', () => {
+  const diagnostics = Array.from(
+    { length: 101 },
+    (_, index) => `/workspace/src/${index}.ts:1:1 error failure-${index}`,
+  ).join('\n')
+  const comparison = compareRepositoryCheckToBaseline(
+    passedCheck(),
+    failedCheck(`${diagnostics}\n`),
+  )
+
+  assert.equal(comparison.delta.new.length, 100)
+  assert.equal(comparison.delta.counts?.new, 102)
+  assert.equal(comparison.delta.full?.new.length, 102)
+})
+
 test('baseline delta treats a first-time failing command as new', () => {
   const current = failedCheck(
     '/workspace/src/a.ts:10:2 error Unexpected value no-example\n',
@@ -397,4 +546,44 @@ test('direct repository checks use the profile timeout default', () => {
   assert.equal(result.status, 'failed')
   assert.equal(result.timeout_ms, 1_000)
   assert.equal(result.results[0]?.timed_out, true)
+})
+
+test('a new pytest failure with spaces in bracketed parameters is detected', () => {
+  const header =
+    'test session starts\nplatform darwin -- Python 3.12.12, pytest-9.0.3\n'
+  const baseline = failedCheck(
+    `${header}FAILED tests/unit/test_old.py::test_old[ a b ] - AssertionError: old\n`,
+  )
+  const current = failedCheck(
+    `${header}FAILED tests/unit/test_new.py::test_new[ c d ] - AssertionError: new\n`,
+  )
+
+  const comparison = compareRepositoryCheckToBaseline(baseline, current)
+
+  assert.equal(comparison.passed, false)
+  assert.equal(comparison.delta.new.length, 1)
+  assert.match(comparison.delta.new[0]?.diagnostic ?? '', /test_new/u)
+})
+
+test('a pytest-looking transcript still surfaces failures outside the pytest shapes', () => {
+  // A command that runs pytest plus another tool: the pytest half passes, the
+  // other tool regresses. The failure allowlist matches nothing, so extraction
+  // must fall back to generic lines instead of discarding the evidence.
+  const header = 'plugins: anyio-4.0.0\n'
+  const baseline = failedCheck(
+    `${header}src/example.py:10: error: Incompatible types [assignment]\n`,
+  )
+  const current = failedCheck(
+    `${header}src/example.py:10: error: Incompatible types [assignment]\n` +
+      `src/other.py:4: error: Missing return statement [return]\n`,
+  )
+
+  const comparison = compareRepositoryCheckToBaseline(baseline, current)
+
+  assert.equal(comparison.passed, false)
+  assert.equal(comparison.delta.new.length, 1)
+  assert.match(
+    comparison.delta.new[0]?.diagnostic ?? '',
+    /Missing return statement/u,
+  )
 })

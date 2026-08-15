@@ -17,6 +17,7 @@ import {
 import { loadPipelineConfig, resolveConfigPersonas } from './pipeline-config.js'
 import {
   assertRepositoryChecksValid,
+  commandFailureDiagnostics,
   compareRepositoryCheckToBaseline,
   repositoryCheckProfileName,
   runRepositoryCheck,
@@ -144,6 +145,16 @@ export interface InvocationValidationStatus {
 
 export function normalizeMarkdownContent(content: string): string {
   return content.replaceAll('\r\n', '\n').replaceAll('\r', '\n')
+}
+
+function normalizeDelegationContent(content: string): string {
+  const normalized = normalizeMarkdownContent(content)
+    .split('\n')
+    .map((line) => line.replace(/[ \t]+$/u, ''))
+    .join('\n')
+    .trimEnd()
+
+  return `${normalized}\n`
 }
 
 /**
@@ -706,7 +717,7 @@ export function validateInvocationMarkdown(
     for (const requirement of harnessRequirements) {
       const line =
         `\`${requirement.registry_id}@${requirement.registry_version}\` — ` +
-        `${requirement.requirement_id} (${requirement.phase})`
+        `${requirement.requirement_id} (${requirement.phase}, ${requirement.enforcement})`
 
       checks.push({
         id: `requirement.${requirement.policy_id}.${requirement.requirement_id}`,
@@ -770,14 +781,8 @@ export function validateDelegationMarkdown(
   delegationMarkdown: string,
   mode: InvocationDeliveryMode = 'verbatim',
 ): { passed: boolean; checks: ValidationCheck[] } {
-  const expected = normalizeMarkdownContent(expectedMarkdown)
-  const delegation = normalizeMarkdownContent(delegationMarkdown)
-  const expectedNormalized = expected.endsWith('\n')
-    ? expected
-    : `${expected}\n`
-  const delegationNormalized = delegation.endsWith('\n')
-    ? delegation
-    : `${delegation}\n`
+  const expectedNormalized = normalizeDelegationContent(expectedMarkdown)
+  const delegationNormalized = normalizeDelegationContent(delegationMarkdown)
 
   const exact = expectedNormalized === delegationNormalized
   const { body, label } = exact
@@ -797,7 +802,7 @@ export function validateDelegationMarkdown(
         ? label
           ? `Delegation artifact matches ${subject} after the permitted persona label '${label}'`
           : `Delegation artifact matches ${subject}`
-        : `Delegation artifact MUST equal ${subject} after line-ending normalization, except for one permitted leading persona label`,
+        : `Delegation artifact MUST equal ${subject} after line-ending and trailing-whitespace normalization, except for one permitted leading persona label`,
     },
     {
       id: 'delegation.mode',
@@ -1021,6 +1026,14 @@ export function validateInvocationAttestation(
         attestation.invocation_id === invocation.invocation_id
           ? 'Attestation names the active invocation'
           : `Attestation invocation_id MUST equal '${invocation.invocation_id}'`,
+    },
+    {
+      id: 'attestation.model',
+      passed: attestation.model === invocation.stage.model,
+      message:
+        attestation.model === invocation.stage.model
+          ? `Attestation records effective model '${invocation.stage.model}'`
+          : `Attestation model MUST equal '${invocation.stage.model}'`,
     },
     {
       id: 'attestation.contract_path',
@@ -1697,6 +1710,90 @@ export function loadRepositoryCheckBaseline(
   }
 }
 
+/**
+ * True when a failed QA repository-check delta carries only timeout or
+ * collection artifacts on infrastructure that already failed at baseline.
+ * Exported so tests can anchor the classification to preserved evidence.
+ */
+export function isEnvironmentBlockedDelta(
+  stage: StageDefinition,
+  baseline: RepositoryCheckResult | undefined,
+  comparison: ReturnType<typeof compareRepositoryCheckToBaseline> | undefined,
+): boolean {
+  if (
+    stage.persona !== 'qa-tester' ||
+    baseline?.status !== 'failed' ||
+    !comparison ||
+    comparison.passed ||
+    comparison.delta.new.length === 0
+  ) {
+    return false
+  }
+
+  // The embedded arrays cap at 100 entries. The classification must inspect
+  // every new identity, so it reads the uncapped list and refuses to classify
+  // when identities beyond the cap are unavailable.
+  const newDiagnostics = comparison.delta.full?.new ?? comparison.delta.new
+  const newCount = comparison.delta.counts?.new ?? newDiagnostics.length
+
+  if (newCount > newDiagnostics.length) {
+    return false
+  }
+
+  const failedBaselineCommands = new Set(
+    baseline.results
+      .filter(
+        (result) =>
+          !result.passed &&
+          (result.timed_out ||
+            commandFailureDiagnostics(result, baseline.workspace_root).some(
+              (diagnostic) => isInfrastructureDiagnostic(diagnostic),
+            )),
+      )
+      .map(
+        (result) =>
+          `${result.kind}:${result.command.trim().replaceAll(/\s+/gu, ' ')}`,
+      ),
+  )
+
+  return newDiagnostics.every((diagnostic) => {
+    const commandWasCarried = failedBaselineCommands.has(
+      `${diagnostic.kind}:${diagnostic.command}`,
+    )
+
+    return (
+      commandWasCarried && isInfrastructureDiagnostic(diagnostic.diagnostic)
+    )
+  })
+}
+
+/** A pytest test-failure record: product evidence, never infrastructure. */
+function isTestFailureRecord(diagnostic: string): boolean {
+  return /^FAILED\b/u.test(diagnostic) || /^\S+::.*\bFAILED\b/u.test(diagnostic)
+}
+
+/**
+ * Match infrastructure evidence by artifact *shape*, not keyword substrings.
+ * A genuinely new failing test whose node id or assertion message merely
+ * mentions a timeout or collection must never classify as environmental: that
+ * misclassification invites an operator waiver that ships the regression.
+ */
+function isInfrastructureDiagnostic(diagnostic: string): boolean {
+  if (isTestFailureRecord(diagnostic)) {
+    return false
+  }
+
+  return (
+    /^<status> .*\btimed_out=true\b/u.test(diagnostic) ||
+    /\bERROR collecting\b/iu.test(diagnostic) ||
+    /^ERROR\b.*\b(?:ImportError|ModuleNotFoundError)\b/u.test(diagnostic) ||
+    /^(?:E\s+)?(?:ImportError|ModuleNotFoundError)\b/u.test(diagnostic) ||
+    /\bETIMEDOUT\b/u.test(diagnostic) ||
+    /\btimed out\b/iu.test(diagnostic) ||
+    /\bworker\b.*\b(?:crash|crashed|exit|exited)\b/iu.test(diagnostic)
+  )
+}
+
 function runShellCheck(
   root: string,
   runDirectory: string,
@@ -1789,6 +1886,7 @@ function runShellCheck(
     | undefined
   let baselineEvidencePath: string | undefined
   let baselineGap: string | undefined
+  let baselineResult: RepositoryCheckResult | undefined
 
   // Baseline parity applies to every repository-check gate the run baselined,
   // not only to a gate that happens to be failing. A stage that repairs an
@@ -1798,6 +1896,7 @@ function runShellCheck(
     const load = loadRepositoryCheckBaseline(root, state, profileName)
 
     if (load.result) {
+      baselineResult = load.result
       baselineComparison = compareRepositoryCheckToBaseline(
         load.result,
         repositoryResult,
@@ -1866,6 +1965,11 @@ function runShellCheck(
   const inheritedFailureOnly = Boolean(
     baselineComparison?.passed && !commandSucceeded,
   )
+  const environmentBlocked = isEnvironmentBlockedDelta(
+    stage,
+    baselineResult,
+    baselineComparison,
+  )
 
   return {
     id: criterion.id,
@@ -1886,6 +1990,7 @@ function runShellCheck(
               explanation: baselineComparison.explanation,
               repository_check_delta: baselineComparison.delta,
               ...(inheritedFailureOnly ? { preexisting_failure: true } : {}),
+              ...(environmentBlocked ? { environment_blocked: true } : {}),
             }
           : repositoryResult?.advisories.length
             ? { explanation: repositoryResult.advisories.join(' ') }
@@ -2093,6 +2198,40 @@ function workspaceDelta(
   }
 }
 
+/**
+ * Bound the paths a gate result embeds in durable state. A dependency install
+ * or generated tree can touch tens of thousands of files; embedding them all
+ * produces a state payload no compaction can externalize, and persist would
+ * refuse the transition outright (STATE_SIZE_BUDGET_EXCEEDED).
+ */
+const SCOPE_DELTA_PREVIEW_LIMIT = 200
+
+function boundedPathList(paths: string[]): string {
+  if (paths.length <= SCOPE_DELTA_PREVIEW_LIMIT) {
+    return paths.join(', ')
+  }
+
+  return (
+    `${paths.slice(0, SCOPE_DELTA_PREVIEW_LIMIT).join(', ')} ` +
+    `… and ${paths.length - SCOPE_DELTA_PREVIEW_LIMIT} more`
+  )
+}
+
+function boundedWorkspaceDelta(delta: { added: string[]; removed: string[] }): {
+  added: string[]
+  removed: string[]
+} {
+  const bound = (entries: string[]): string[] =>
+    entries.length <= SCOPE_DELTA_PREVIEW_LIMIT
+      ? entries
+      : [
+          ...entries.slice(0, SCOPE_DELTA_PREVIEW_LIMIT),
+          `… ${entries.length - SCOPE_DELTA_PREVIEW_LIMIT} more entries elided`,
+        ]
+
+  return { added: bound(delta.added), removed: bound(delta.removed) }
+}
+
 export function evaluateDeterministicCriteria(
   root: string,
   runDirectory: string,
@@ -2156,15 +2295,15 @@ export function evaluateDeterministicCriteria(
       hard: true,
       passed: !changed,
       explanation: changed
-        ? `Workspace contamination is external or unattributed for the '${stage.workspace_policy}' stage: ${unattributedPaths.length > 0 ? unattributedPaths.join(', ') : blockingPaths.join(', ')}.`
+        ? `Workspace contamination is external or unattributed for the '${stage.workspace_policy}' stage: ${boundedPathList(unattributedPaths.length > 0 ? unattributedPaths : blockingPaths)}.`
         : internallyAttributed
-          ? `All workspace changes were traced to the active worker; no external contamination was detected: ${blockingPaths.join(', ')}.`
+          ? `All workspace changes were traced to the active worker; no external contamination was detected: ${boundedPathList(blockingPaths)}.`
           : allowedPaths.length > 0
-            ? `Only permitted release metadata changed: ${allowedPaths.join(', ')}.`
+            ? `Only permitted release metadata changed: ${boundedPathList(allowedPaths)}.`
             : 'Workspace fingerprint is unchanged.',
       delta:
         changedPaths.length > 0
-          ? workspaceDelta(beforeSnapshot, afterSnapshot)
+          ? boundedWorkspaceDelta(workspaceDelta(beforeSnapshot, afterSnapshot))
           : { added: [], removed: [] },
       workspace_fingerprint: afterSnapshot.fingerprint,
     })

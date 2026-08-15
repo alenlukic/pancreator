@@ -2,24 +2,25 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  canonicalPersonaMapping,
   parsePersonaMapping,
   personaExecutorOf,
 } from '../../src/lib/executors/mapping.js'
 
 test('a plain model string parses as a cursor mapping', () => {
   const mapping = parsePersonaMapping(
-    'gpt-5.6-sol[context=272k,reasoning=high,fast=false]',
+    'gpt-5.6-sol[context=272k,effort=high,fast=false]',
   )
 
   assert.equal(mapping.executor, 'cursor')
   assert.equal(
     mapping.model_spec,
-    'gpt-5.6-sol[context=272k,reasoning=high,fast=false]',
+    'gpt-5.6-sol[context=272k,effort=high,fast=false]',
   )
   assert.equal(mapping.model, 'gpt-5.6-sol')
   assert.deepEqual(mapping.options, {
     context: '272k',
-    reasoning: 'high',
+    effort: 'high',
     fast: 'false',
   })
 })
@@ -82,11 +83,58 @@ test('claude-code options are validated because the harness consumes them', () =
   )
 })
 
-test('cursor bracket options stay opaque to the harness', () => {
+test('cursor bracket options reject obsolete and unknown keys', () => {
+  assert.throws(
+    () => parsePersonaMapping('claude-opus-5[thinking=true]'),
+    /obsolete Cursor option 'thinking'/u,
+  )
+  assert.throws(
+    () => parsePersonaMapping('claude-opus-5[unknown=true]'),
+    /unknown Cursor option 'unknown'/u,
+  )
   assert.doesNotThrow(() =>
-    parsePersonaMapping(
+    parsePersonaMapping('claude-opus-5[context=300k,effort=high]'),
+  )
+})
+
+test('canonical mapping equates a retired option spelling with the current one', () => {
+  // A snapshot written before the grammar change must still match live config.
+  assert.equal(
+    canonicalPersonaMapping(
       'claude-opus-5[thinking=true,context=300k,effort=high]',
     ),
+    canonicalPersonaMapping('claude-opus-5[context=300k,effort=high]'),
+  )
+  assert.equal(
+    canonicalPersonaMapping(
+      'gpt-5.6-sol[context=272k,reasoning=high,fast=false]',
+    ),
+    canonicalPersonaMapping('gpt-5.6-sol[context=272k,effort=high,fast=false]'),
+  )
+  // Option order must not register as drift.
+  assert.equal(
+    canonicalPersonaMapping('gpt-5.4[effort=high,context=272k]'),
+    canonicalPersonaMapping('gpt-5.4[context=272k,effort=high]'),
+  )
+  // A current key wins over the retired key that aliases onto it.
+  assert.equal(
+    canonicalPersonaMapping('gpt-5.6-sol[reasoning=low,effort=high]'),
+    'cursor:gpt-5.6-sol[effort=high]',
+  )
+  // A genuine model or effort difference must still register as drift.
+  assert.notEqual(
+    canonicalPersonaMapping('gpt-5.6-sol[effort=high]'),
+    canonicalPersonaMapping('gpt-5.6-sol[effort=medium]'),
+  )
+  assert.notEqual(
+    canonicalPersonaMapping('gpt-5.4[effort=high]'),
+    canonicalPersonaMapping('gpt-5.6-sol[effort=high]'),
+  )
+  // Executor prefixes and bare models normalize without throwing.
+  assert.equal(canonicalPersonaMapping('auto'), 'cursor:auto')
+  assert.equal(
+    canonicalPersonaMapping('claude-code:claude-opus-5[permission-mode=plan]'),
+    'claude-code:claude-opus-5[permission-mode=plan]',
   )
 })
 

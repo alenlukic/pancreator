@@ -8,12 +8,18 @@ import {
   delegationValidationPath,
   expectedDelegationSource,
   invocationValidationPath,
+  isEnvironmentBlockedDelta,
   POLICIES_HEADING,
   validateDelegationMarkdown,
   validateInvocationAttestation,
   validateInvocationMarkdown,
   validateRepository,
 } from '../../src/lib/validation.js'
+import {
+  compareRepositoryCheckToBaseline,
+  type RepositoryCheckCommandResult,
+  type RepositoryCheckResult,
+} from '../../src/lib/repository-checks.js'
 import {
   buildInvocationContractManifest,
   renderInvocationMarkdown,
@@ -592,6 +598,123 @@ test('delegation validator normalizes line endings', () => {
   assert.equal(result.passed, true)
 })
 
+test('delegation validator normalizes trailing whitespace', () => {
+  const root = createFixture()
+  const invocation = fixtureInvocation(root, 'implement')
+  const canonical = renderInvocationMarkdown(invocation)
+  const withTrailingWhitespace = canonical
+    .split('\n')
+    .map((line) => `${line}  `)
+    .join('\n')
+
+  assert.equal(
+    validateDelegationMarkdown(canonical, withTrailingWhitespace).passed,
+    true,
+  )
+})
+
+test('delegation validator normalizes the final newline', () => {
+  const root = createFixture()
+  const invocation = fixtureInvocation(root, 'implement')
+  const canonical = renderInvocationMarkdown(invocation)
+
+  assert.equal(
+    validateDelegationMarkdown(canonical, canonical.trimEnd()).passed,
+    true,
+  )
+})
+
+// Preserved waiver-1 full-suite evidence from audited run
+// 63327_Aug-13-0394_5de7203f: the be-test-int command timed out at baseline
+// with ETIMEDOUT, which is the carried infrastructure the environment-blocked
+// classification must recognize.
+function preservedFullSuiteBaseline(): RepositoryCheckResult {
+  const fixture = JSON.parse(
+    readFileSync(
+      path.join(
+        process.cwd(),
+        'tests/fixtures/harness-repair/full-suite-evidence.json',
+      ),
+      'utf8',
+    ),
+  ) as {
+    profile: string
+    status: 'failed'
+    timeout_ms: number
+    result: RepositoryCheckCommandResult
+  }
+
+  return {
+    profile: fixture.profile,
+    status: fixture.status,
+    config_path: 'runtime/repository-checks.json',
+    workspace_root: '/workspace',
+    timeout_ms: fixture.timeout_ms,
+    results: [fixture.result],
+    total_duration_ms: fixture.result.duration_ms,
+    advisories: [],
+  }
+}
+
+function rerunWithExtraStderr(
+  baseline: RepositoryCheckResult,
+  extraStderr: string,
+): RepositoryCheckResult {
+  const command = baseline.results[0]
+
+  assert.ok(command)
+
+  return {
+    ...baseline,
+    results: [{ ...command, stderr: `${command.stderr}${extraStderr}\n` }],
+  }
+}
+
+test('preserved full-suite evidence classifies as environment-blocked', () => {
+  const root = createFixture()
+  const qaStage = stageBySlug(loadWorkflow(root, 'dev'), 'test')
+  const baseline = preservedFullSuiteBaseline()
+  const current = rerunWithExtraStderr(
+    baseline,
+    'E   ImportError: cannot import name orm_models',
+  )
+  const comparison = compareRepositoryCheckToBaseline(baseline, current)
+
+  assert.equal(comparison.passed, false)
+  assert.equal(comparison.delta.new.length, 1)
+  assert.equal(isEnvironmentBlockedDelta(qaStage, baseline, comparison), true)
+})
+
+test('a genuine product failure on carried infrastructure is not environment-blocked', () => {
+  const root = createFixture()
+  const qaStage = stageBySlug(loadWorkflow(root, 'dev'), 'test')
+  const baseline = preservedFullSuiteBaseline()
+  const current = rerunWithExtraStderr(
+    baseline,
+    'FAILED tests/integration/customers/rowspace/test_box.py::test_poll - AssertionError: mismatch',
+  )
+  const comparison = compareRepositoryCheckToBaseline(baseline, current)
+
+  assert.equal(comparison.passed, false)
+  assert.equal(isEnvironmentBlockedDelta(qaStage, baseline, comparison), false)
+})
+
+test('a non-QA stage never classifies as environment-blocked', () => {
+  const root = createFixture()
+  const reviewStage = stageBySlug(loadWorkflow(root, 'dev'), 'review')
+  const baseline = preservedFullSuiteBaseline()
+  const current = rerunWithExtraStderr(
+    baseline,
+    'E   ImportError: cannot import name orm_models',
+  )
+  const comparison = compareRepositoryCheckToBaseline(baseline, current)
+
+  assert.equal(
+    isEnvironmentBlockedDelta(reviewStage, baseline, comparison),
+    false,
+  )
+})
+
 type ReadAttestation = Extract<
   InvocationAttestation,
   { contract_sha256: string }
@@ -616,6 +739,7 @@ function attestedFixture(root: string): {
     invocation,
     attestation: {
       invocation_id: invocation.invocation_id,
+      model: invocation.stage.model,
       contract_path: manifest.contract_path,
       contract_sha256: manifest.contract_sha256,
       status: 'read',
@@ -920,6 +1044,7 @@ test('attestation validator accepts a blocked reference failure', () => {
     attestedOutput(
       {
         invocation_id: attestation.invocation_id,
+        model: invocation.stage.model,
         contract_path: attestation.contract_path,
         status: 'reference_failed',
         error: 'ENOENT: contract path could not be opened',
@@ -943,6 +1068,7 @@ test('attestation validator rejects a reference failure reported as success', ()
     invocation,
     attestedOutput({
       invocation_id: attestation.invocation_id,
+      model: invocation.stage.model,
       contract_path: attestation.contract_path,
       status: 'reference_failed',
       error: 'ENOENT: contract path could not be opened',
@@ -966,6 +1092,7 @@ test('attestation validator rejects a reference failure without a reason', () =>
     attestedOutput(
       {
         invocation_id: attestation.invocation_id,
+        model: invocation.stage.model,
         contract_path: attestation.contract_path,
         status: 'reference_failed',
       },
@@ -985,4 +1112,21 @@ test('attestation validator skips an invocation without a contract manifest', ()
   )
 
   assert.equal(result.passed, true)
+})
+
+test('a new failing test that mentions a timeout is not environment-blocked', () => {
+  const root = createFixture()
+  const qaStage = stageBySlug(loadWorkflow(root, 'dev'), 'test')
+  const baseline = preservedFullSuiteBaseline()
+  // A genuinely new product regression whose node id names a timeout: keyword
+  // matching classified this as environmental, inviting a waiver that would
+  // ship the regression.
+  const current = rerunWithExtraStderr(
+    baseline,
+    'FAILED tests/integration/test_request_timeout.py::test_timeout_honored - AssertionError: request not aborted',
+  )
+  const comparison = compareRepositoryCheckToBaseline(baseline, current)
+
+  assert.equal(comparison.passed, false)
+  assert.equal(isEnvironmentBlockedDelta(qaStage, baseline, comparison), false)
 })

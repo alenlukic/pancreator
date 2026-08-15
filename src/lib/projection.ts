@@ -7,7 +7,11 @@ import {
   type CursorInstallationMode,
 } from './cursor-content.js'
 import { invariant } from './errors.js'
-import { parsePersonaMapping } from './executors/mapping.js'
+import {
+  canonicalPersonaMapping,
+  parsePersonaMapping,
+} from './executors/mapping.js'
+import { resolveCursorModelSlug } from './executors/cursor-catalog.js'
 import { loadPolicyCatalog } from './policies.js'
 import type { Policy } from './types.js'
 import {
@@ -368,7 +372,10 @@ function renderProjections(root: string): {
           { code: 'INVALID_CURSOR_AGENT' },
         )
 
-        content = content.replaceAll('__PANCREATOR_MODEL__', mapping.model_spec)
+        content = content.replaceAll(
+          '__PANCREATOR_MODEL__',
+          resolveCursorModelSlug(mapping, entry.variable),
+        )
       }
 
       if (projection.transforms.includes('installation-paths')) {
@@ -456,7 +463,11 @@ export function projectPersonaVariants(
   const changes: CursorProjectionChange[] = []
 
   for (const [persona, model] of Object.entries(personas)) {
-    const mapping = parsePersonaMapping(model, persona)
+    // Variant maps come from stored best-of-N session records as well as
+    // fresh authoring, so retired option spellings are canonicalized away
+    // rather than rejected: a grammar change must not strand a resumable
+    // session whose stored configs cannot be edited.
+    const mapping = parsePersonaMapping(canonicalPersonaMapping(model), persona)
 
     // An external-executor persona has no Cursor subagent, so a variant would
     // record a model claim for work Cursor never performs.
@@ -485,7 +496,10 @@ export function projectPersonaVariants(
     )
 
     const content = projectCursorContent(
-      template.replaceAll('__PANCREATOR_MODEL__', mapping.model_spec),
+      template.replaceAll(
+        '__PANCREATOR_MODEL__',
+        resolveCursorModelSlug(mapping, persona),
+      ),
       target,
       mode,
       harnessPrefix,

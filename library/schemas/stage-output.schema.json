@@ -108,12 +108,17 @@
     "invocation_attestation": {
       "type": "object",
       "description": "Required for a delegated stage whose invocation carries a contract manifest. It declares that the worker read the complete canonical contract.",
-      "required": ["invocation_id", "contract_path", "status"],
+      "required": ["invocation_id", "model", "contract_path", "status"],
       "properties": {
         "invocation_id": {
           "type": "string",
           "minLength": 1,
           "description": "Must equal the active invocation's id."
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Effective model recorded on the active invocation."
         },
         "contract_path": {
           "type": "string",

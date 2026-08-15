@@ -644,6 +644,48 @@ test('pre-implementation baselines capture every profile the workflow gates on',
   assert.equal(baselines.configuration?.status, 'passed')
 })
 
+test('a failed environment probe pauses before source-stage delegation', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Environment probe fixture',
+  })
+
+  writeJson(path.join(root, 'runtime/repository-checks.json'), {
+    schema_version: 1,
+    profiles: {
+      static: {
+        environment_probes: ['node -e "process.exit(17)"'],
+        probes: [],
+        commands: ['node -e "process.exit(0)"'],
+      },
+      fast: { probes: [], commands: ['node -e "process.exit(0) /* fast */"'] },
+      full: { probes: [], commands: ['node -e "process.exit(0) /* full */"'] },
+      configuration: {
+        probes: [],
+        commands: ['node -e "process.exit(0) /* configuration */"'],
+      },
+    },
+  })
+  setRunStage(root, state.run_id, 'implement', 'Check the environment first.')
+
+  const prepared = prepareInvocation(root, state.run_id)
+
+  assert.equal(prepared.invocation, null)
+  assert.equal(prepared.state.status, 'paused')
+  assert.equal(prepared.state.pending_action.type, 'operator_decision')
+  assert.match(prepared.state.pause_reason ?? '', /environment probe failed/u)
+  assert.equal(prepared.state.repository_check_baselines, undefined)
+
+  // The paused run must stay loadable: the persisted state digest has to match
+  // the referenced state artifact after the baseline pointer is cleared.
+  const reloaded = getRunState(root, state.run_id)
+
+  assert.equal(reloaded.status, 'paused')
+  assert.equal(reloaded.revision, prepared.state.revision)
+})
+
 test('a pre-existing full-profile failure does not block the QA gate', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'dev')
@@ -687,6 +729,126 @@ test('a pre-existing full-profile failure does not block the QA gate', () => {
   assert.equal(fullSuite.preexisting_failure, true)
   assert.equal(fullSuite.passed, true)
   assert.equal(submitted.record.outcome, 'success')
+})
+
+test('a scaled QA timeout preserves the environment-blocked route', () => {
+  const root = createFixture()
+  const configuredTimeoutMs = 1_000
+  const commandDelayMs = 1_500
+  const resolvedTimeoutMs = 5_000
+  const testStagePath = path.join(
+    root,
+    'library/workflows/dev/stages/test.json',
+  )
+  const testStageDefinition = JSON.parse(
+    readFileSync(testStagePath, 'utf8'),
+  ) as StageDefinition
+  const fullSuiteCriterion = testStageDefinition.criteria.find(
+    (criterion) => criterion.id === 'test.full_suite',
+  )
+  assert.ok(fullSuiteCriterion)
+  fullSuiteCriterion.timeout_ms = resolvedTimeoutMs
+  writeJson(testStagePath, testStageDefinition)
+
+  const workflow = loadWorkflow(root, 'dev')
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'QA infrastructure fixture',
+  })
+  const environmentPath = path.join(root, 'runtime', 'environment.txt')
+  const completionPath = path.join(root, 'runtime', 'completed.txt')
+  // The emitted diagnostic must carry a genuine infrastructure artifact
+  // shape (a pytest collection error): the classifier anchors on shapes, not
+  // keyword substrings, so a line merely containing 'timeout' never counts.
+  const fullCommand =
+    `node -e "const fs=require('node:fs'); ` +
+    `setTimeout(() => { const value=fs.readFileSync('runtime/environment.txt','utf8').trim(); ` +
+    `fs.appendFileSync('runtime/completed.txt',value+'\\n'); ` +
+    `console.error('ERROR collecting tests/integration '+value); process.exit(1) }, ${commandDelayMs})"`
+
+  writeFileSync(environmentPath, 'baseline\n')
+  writeJson(path.join(root, 'runtime/repository-checks.json'), {
+    schema_version: 1,
+    profiles: {
+      static: { probes: [], commands: ['node -e "process.exit(0)"'] },
+      fast: { probes: [], commands: ['node -e "process.exit(0) /* fast */"'] },
+      full: {
+        timeout_ms: configuredTimeoutMs,
+        probes: [],
+        commands: [fullCommand],
+      },
+      secondary: {
+        timeout_ms: configuredTimeoutMs,
+        probes: [],
+        commands: [fullCommand],
+      },
+      configuration: {
+        probes: [],
+        commands: ['node -e "process.exit(0) /* configuration */"'],
+      },
+    },
+  })
+
+  setRunStage(root, state.run_id, 'implement', 'Capture infrastructure state.')
+  submitStageOutput(
+    root,
+    state.run_id,
+    stageBySlug(workflow, 'implement'),
+    'success',
+  )
+  const fullBaseline = getRunState(root, state.run_id)
+    .repository_check_baselines?.full
+  assert.ok(fullBaseline)
+  const baselineResult = JSON.parse(
+    readFileSync(path.join(root, fullBaseline.artifact_path), 'utf8'),
+  ) as {
+    result: {
+      timeout_ms: number
+      results: Array<{
+        kind: string
+        exit_code: number | null
+        stderr: string
+        timed_out: boolean
+        duration_ms: number
+      }>
+    }
+  }
+  const baselineCommand = baselineResult.result.results.find(
+    (result) => result.kind === 'command',
+  )
+
+  assert.ok(baselineCommand)
+  assert.equal(baselineResult.result.timeout_ms, resolvedTimeoutMs)
+  assert.ok(baselineCommand.duration_ms > configuredTimeoutMs)
+  assert.equal(baselineCommand.timed_out, false)
+  assert.equal(baselineCommand.exit_code, 1)
+  assert.match(
+    baselineCommand.stderr,
+    /ERROR collecting tests\/integration baseline/u,
+  )
+  assert.equal(readFileSync(completionPath, 'utf8'), 'baseline\n')
+
+  writeFileSync(environmentPath, 'current\n')
+  setRunStage(root, state.run_id, 'test', 'Recheck the QA infrastructure.')
+
+  const submitted = submitStageOutput(
+    root,
+    state.run_id,
+    stageBySlug(workflow, 'test'),
+    'success',
+  )
+  const fullSuite = submitted.record.evaluation.deterministic.find(
+    (item) => item.id === 'test.full_suite',
+  )
+
+  assert.equal(fullSuite?.timed_out, false)
+  assert.equal(readFileSync(completionPath, 'utf8'), 'baseline\ncurrent\n')
+  assert.equal(fullSuite?.environment_blocked, true)
+  assert.equal(submitted.record.outcome, 'failure')
+  assert.equal(submitted.state.status, 'paused')
+  assert.equal(submitted.state.pending_action.type, 'operator_decision')
+  assert.equal(submitted.state.current_stage, 'test')
 })
 
 test('new repository-check diagnostics still block implementation', () => {
