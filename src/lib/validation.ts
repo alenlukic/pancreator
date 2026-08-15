@@ -17,6 +17,7 @@ import {
 import { loadPipelineConfig, resolveConfigPersonas } from './pipeline-config.js'
 import {
   assertRepositoryChecksValid,
+  commandFailureDiagnostics,
   compareRepositoryCheckToBaseline,
   repositoryCheckProfileName,
   runRepositoryCheck,
@@ -1739,16 +1740,15 @@ export function isEnvironmentBlockedDelta(
     return false
   }
 
-  const infrastructureArtifact =
-    /timed_out=true|timed out|timeout|collect(?:ion|ing)?|importerror|module not found|environment|worker.*(?:crash|exit)/iu
   const failedBaselineCommands = new Set(
     baseline.results
       .filter(
         (result) =>
           !result.passed &&
-          infrastructureArtifact.test(
-            `${result.stdout}\n${result.stderr}\n${result.error ?? ''}`,
-          ),
+          (result.timed_out ||
+            commandFailureDiagnostics(result, baseline.workspace_root).some(
+              (diagnostic) => isInfrastructureDiagnostic(diagnostic),
+            )),
       )
       .map(
         (result) =>
@@ -1760,12 +1760,38 @@ export function isEnvironmentBlockedDelta(
     const commandWasCarried = failedBaselineCommands.has(
       `${diagnostic.kind}:${diagnostic.command}`,
     )
-    const newInfrastructureArtifact = infrastructureArtifact.test(
-      diagnostic.diagnostic,
-    )
 
-    return commandWasCarried && newInfrastructureArtifact
+    return (
+      commandWasCarried && isInfrastructureDiagnostic(diagnostic.diagnostic)
+    )
   })
+}
+
+/** A pytest test-failure record: product evidence, never infrastructure. */
+function isTestFailureRecord(diagnostic: string): boolean {
+  return /^FAILED\b/u.test(diagnostic) || /^\S+::.*\bFAILED\b/u.test(diagnostic)
+}
+
+/**
+ * Match infrastructure evidence by artifact *shape*, not keyword substrings.
+ * A genuinely new failing test whose node id or assertion message merely
+ * mentions a timeout or collection must never classify as environmental: that
+ * misclassification invites an operator waiver that ships the regression.
+ */
+function isInfrastructureDiagnostic(diagnostic: string): boolean {
+  if (isTestFailureRecord(diagnostic)) {
+    return false
+  }
+
+  return (
+    /^<status> .*\btimed_out=true\b/u.test(diagnostic) ||
+    /\bERROR collecting\b/iu.test(diagnostic) ||
+    /^ERROR\b.*\b(?:ImportError|ModuleNotFoundError)\b/u.test(diagnostic) ||
+    /^(?:E\s+)?(?:ImportError|ModuleNotFoundError)\b/u.test(diagnostic) ||
+    /\bETIMEDOUT\b/u.test(diagnostic) ||
+    /\btimed out\b/iu.test(diagnostic) ||
+    /\bworker\b.*\b(?:crash|crashed|exit|exited)\b/iu.test(diagnostic)
+  )
 }
 
 function runShellCheck(
@@ -2172,6 +2198,40 @@ function workspaceDelta(
   }
 }
 
+/**
+ * Bound the paths a gate result embeds in durable state. A dependency install
+ * or generated tree can touch tens of thousands of files; embedding them all
+ * produces a state payload no compaction can externalize, and persist would
+ * refuse the transition outright (STATE_SIZE_BUDGET_EXCEEDED).
+ */
+const SCOPE_DELTA_PREVIEW_LIMIT = 200
+
+function boundedPathList(paths: string[]): string {
+  if (paths.length <= SCOPE_DELTA_PREVIEW_LIMIT) {
+    return paths.join(', ')
+  }
+
+  return (
+    `${paths.slice(0, SCOPE_DELTA_PREVIEW_LIMIT).join(', ')} ` +
+    `… and ${paths.length - SCOPE_DELTA_PREVIEW_LIMIT} more`
+  )
+}
+
+function boundedWorkspaceDelta(delta: { added: string[]; removed: string[] }): {
+  added: string[]
+  removed: string[]
+} {
+  const bound = (entries: string[]): string[] =>
+    entries.length <= SCOPE_DELTA_PREVIEW_LIMIT
+      ? entries
+      : [
+          ...entries.slice(0, SCOPE_DELTA_PREVIEW_LIMIT),
+          `… ${entries.length - SCOPE_DELTA_PREVIEW_LIMIT} more entries elided`,
+        ]
+
+  return { added: bound(delta.added), removed: bound(delta.removed) }
+}
+
 export function evaluateDeterministicCriteria(
   root: string,
   runDirectory: string,
@@ -2235,15 +2295,15 @@ export function evaluateDeterministicCriteria(
       hard: true,
       passed: !changed,
       explanation: changed
-        ? `Workspace contamination is external or unattributed for the '${stage.workspace_policy}' stage: ${unattributedPaths.length > 0 ? unattributedPaths.join(', ') : blockingPaths.join(', ')}.`
+        ? `Workspace contamination is external or unattributed for the '${stage.workspace_policy}' stage: ${boundedPathList(unattributedPaths.length > 0 ? unattributedPaths : blockingPaths)}.`
         : internallyAttributed
-          ? `All workspace changes were traced to the active worker; no external contamination was detected: ${blockingPaths.join(', ')}.`
+          ? `All workspace changes were traced to the active worker; no external contamination was detected: ${boundedPathList(blockingPaths)}.`
           : allowedPaths.length > 0
-            ? `Only permitted release metadata changed: ${allowedPaths.join(', ')}.`
+            ? `Only permitted release metadata changed: ${boundedPathList(allowedPaths)}.`
             : 'Workspace fingerprint is unchanged.',
       delta:
         changedPaths.length > 0
-          ? workspaceDelta(beforeSnapshot, afterSnapshot)
+          ? boundedWorkspaceDelta(workspaceDelta(beforeSnapshot, afterSnapshot))
           : { added: [], removed: [] },
       workspace_fingerprint: afterSnapshot.fingerprint,
     })

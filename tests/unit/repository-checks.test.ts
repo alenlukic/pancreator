@@ -547,3 +547,43 @@ test('direct repository checks use the profile timeout default', () => {
   assert.equal(result.timeout_ms, 1_000)
   assert.equal(result.results[0]?.timed_out, true)
 })
+
+test('a new pytest failure with spaces in bracketed parameters is detected', () => {
+  const header =
+    'test session starts\nplatform darwin -- Python 3.12.12, pytest-9.0.3\n'
+  const baseline = failedCheck(
+    `${header}FAILED tests/unit/test_old.py::test_old[ a b ] - AssertionError: old\n`,
+  )
+  const current = failedCheck(
+    `${header}FAILED tests/unit/test_new.py::test_new[ c d ] - AssertionError: new\n`,
+  )
+
+  const comparison = compareRepositoryCheckToBaseline(baseline, current)
+
+  assert.equal(comparison.passed, false)
+  assert.equal(comparison.delta.new.length, 1)
+  assert.match(comparison.delta.new[0]?.diagnostic ?? '', /test_new/u)
+})
+
+test('a pytest-looking transcript still surfaces failures outside the pytest shapes', () => {
+  // A command that runs pytest plus another tool: the pytest half passes, the
+  // other tool regresses. The failure allowlist matches nothing, so extraction
+  // must fall back to generic lines instead of discarding the evidence.
+  const header = 'plugins: anyio-4.0.0\n'
+  const baseline = failedCheck(
+    `${header}src/example.py:10: error: Incompatible types [assignment]\n`,
+  )
+  const current = failedCheck(
+    `${header}src/example.py:10: error: Incompatible types [assignment]\n` +
+      `src/other.py:4: error: Missing return statement [return]\n`,
+  )
+
+  const comparison = compareRepositoryCheckToBaseline(baseline, current)
+
+  assert.equal(comparison.passed, false)
+  assert.equal(comparison.delta.new.length, 1)
+  assert.match(
+    comparison.delta.new[0]?.diagnostic ?? '',
+    /Missing return statement/u,
+  )
+})

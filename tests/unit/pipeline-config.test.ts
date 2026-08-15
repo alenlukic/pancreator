@@ -149,3 +149,25 @@ test('pipeline config falls back to defaults for omitted config personas', () =>
 
   assert.equal(resolveConfigPersonas(file, 'default').investigator, 'kimi-k3')
 })
+
+test('a run snapshot with retired option grammar still resolves its personas', () => {
+  const root = createFixture()
+  const snapshot = makePipelineConfigSnapshot(loadPipelineConfig(root))
+
+  // Preserved run-era mappings from audited run 63327: a snapshot keeps the
+  // exact text it was created with, so a later option-grammar change must not
+  // strand the in-flight run.
+  snapshot.personas.coder =
+    'gpt-5.6-sol[context=272k,reasoning=high,fast=false]'
+  snapshot.personas.reviewer =
+    'claude-opus-5[thinking=true,context=300k,effort=high]'
+
+  assert.equal(
+    resolvePersonaModel(snapshot, 'coder'),
+    'gpt-5.6-sol[context=272k,effort=high,fast=false]',
+  )
+  assert.equal(
+    resolvePersonaModel(snapshot, 'reviewer'),
+    'claude-opus-5[context=300k,effort=high]',
+  )
+})

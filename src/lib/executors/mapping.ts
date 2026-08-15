@@ -74,6 +74,12 @@ function parseBracketOptions(
       { code: 'INVALID_PIPELINE_CONFIG' },
     )
 
+    // A repeated key has no defined winner: rejecting it keeps parse and
+    // canonicalization from resolving the same spec to different models.
+    invariant(!(key in options), `${source} option '${key}' MUST NOT repeat.`, {
+      code: 'INVALID_PIPELINE_CONFIG',
+    })
+
     options[key] = value
   }
 
@@ -128,9 +134,11 @@ function validateCursorOptions(
   for (const [key, value] of Object.entries(options)) {
     invariant(
       CURSOR_OPTION_KEYS.has(key),
-      key === 'reasoning' || key === 'thinking'
-        ? `${source} uses obsolete Cursor option '${key}'. Use 'effort' instead.`
-        : `${source} uses unknown Cursor option '${key}'. Supported options: context, effort, fast.`,
+      key === 'reasoning'
+        ? `${source} uses obsolete Cursor option 'reasoning'. Use 'effort' instead.`
+        : key === 'thinking'
+          ? `${source} uses obsolete Cursor option 'thinking'. Remove it; no current option replaces it.`
+          : `${source} uses unknown Cursor option '${key}'. Supported options: context, effort, fast.`,
       { code: 'INVALID_PIPELINE_CONFIG' },
     )
 

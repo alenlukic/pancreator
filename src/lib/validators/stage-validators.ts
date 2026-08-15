@@ -59,14 +59,17 @@ function sharedFieldRequirements(
     'schemas',
     'stage-output-requirements.json',
   )
-  const canonicalSourcePath = fileExists(sourcePath)
-    ? sourcePath
-    : path.join(
-        process.cwd(),
-        'library',
-        'schemas',
-        'stage-output-requirements.json',
-      )
+  // No process.cwd() fallback: in a broken installation it would silently
+  // substitute whatever contract the launching checkout carries, validating
+  // the target's outputs against a foreign document.
+  invariant(
+    fileExists(sourcePath),
+    `${sourcePath} is missing. The installation MUST ship the shared stage ` +
+      `output contract document.`,
+    { code: 'INVALID_STAGE_OUTPUT_REQUIREMENTS' },
+  )
+
+  const canonicalSourcePath = sourcePath
   const source = readJson(canonicalSourcePath)
 
   invariant(
@@ -823,9 +826,26 @@ export function validateImplementationClaims(
     }
   }
 
-  const changedFiles = Array.isArray(implementation.changed_files)
-    ? (implementation.changed_files as string[])
+  const changedFilesRaw = Array.isArray(implementation.changed_files)
+    ? (implementation.changed_files as unknown[])
     : []
+  const changedFiles = changedFilesRaw.filter(
+    (file): file is string => typeof file === 'string',
+  )
+
+  // Reject non-string entries explicitly: comparing or joining an object
+  // yields '[object Object]' diagnostics, and path.join on one throws.
+  for (const entry of changedFilesRaw) {
+    if (typeof entry !== 'string') {
+      issues.push(
+        issue(
+          'claim.entry_shape',
+          `implementation.changed_files entries MUST be strings; got ${JSON.stringify(entry)}`,
+        ),
+      )
+    }
+  }
+
   const acceptanceResultsList = Array.isArray(data.acceptance_results)
     ? data.acceptance_results
     : []
@@ -980,9 +1000,23 @@ export function validateImplementationClaims(
     }
   }
 
-  const testsAdded = Array.isArray(implementation.tests_added)
-    ? (implementation.tests_added as string[])
+  const testsAddedRaw = Array.isArray(implementation.tests_added)
+    ? (implementation.tests_added as unknown[])
     : []
+  const testsAdded = testsAddedRaw.filter(
+    (testPath): testPath is string => typeof testPath === 'string',
+  )
+
+  for (const entry of testsAddedRaw) {
+    if (typeof entry !== 'string') {
+      issues.push(
+        issue(
+          'claim.entry_shape',
+          `implementation.tests_added entries MUST be strings; got ${JSON.stringify(entry)}`,
+        ),
+      )
+    }
+  }
 
   for (const testPath of testsAdded) {
     const resolved = resolveWorkspaceRelativeFilePath(
@@ -2260,10 +2294,23 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
     )
 
     if (!disclosed) {
+      // Distinguish a waiver that is absent from one disclosed under the
+      // wrong key or shape: reporting both as "not disclosed" misdiagnoses a
+      // re-key defect as an omission (audited follow-up SHIP-FU-001).
+      const misdeclared = waivers.find((item) =>
+        isRecord(item)
+          ? Object.values(item).includes(waiver.waiver_id)
+          : item === waiver.waiver_id,
+      )
+
       issues.push(
         issue(
           'release.waiver_undisclosed',
-          `Active waiver not disclosed: ${waiver.waiver_id}`,
+          misdeclared === undefined
+            ? `Active waiver not disclosed: ${waiver.waiver_id}`
+            : `Waiver ${waiver.waiver_id} is disclosed without a 'waiver_id' ` +
+                `key. Re-key this entry, keeping its content: ` +
+                `${JSON.stringify(misdeclared)}`,
         ),
       )
       continue
@@ -2851,7 +2898,9 @@ export function validateSpotfixOutcome(input: HandlerInput): HandlerResult {
     )
   }
 
-  const diffResult = gitChangedFiles(input.root)
+  // Measure the declared workspace, not the installation root: on a detached
+  // installation or a worktree run the two are different repositories.
+  const diffResult = gitChangedFiles(workspaceRootFromInput(input))
 
   if (!diffResult.ok) {
     issues.push(gitUnavailableIssue(diffResult.error))

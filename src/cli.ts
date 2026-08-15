@@ -106,6 +106,7 @@ const HELP_BODY = `Usage:
   pan abort <run-id> [--note <text>]
   pan technologies detect [--worktree <name>] --json
   pan repository-check <profile> [--timeout-ms <milliseconds>] [--workspace <dir|worktree> | --worktree <name>] [--json]
+      --timeout-ms raises the effective bound only: resolution keeps the maximum of the request, the profile's own bound, and subset-profile timeouts.
   pan repository-check validate [--json]
   pan worktree create <name> [--from <branch|commit|worktree>] [--description <text>] [--json]
   pan worktree resolve <name> [--description <text>] [--json]
@@ -1505,7 +1506,21 @@ async function main(): Promise<void> {
       const worktreeWorkspace = sharedWorktreeWorkspace(root, args)
       const validation = validateRepository(root)
       const pipelineConfig = loadPipelineConfig(root)
-      const repositoryChecks = loadRepositoryChecks(root)
+      // Doctor's report must survive a malformed repository-checks file:
+      // validateRepository already records the same defect, and aborting here
+      // would replace the full diagnostic report with one error.
+      let repositoryChecks: ReturnType<typeof loadRepositoryChecks> = {
+        schema_version: 1,
+        profiles: {},
+      }
+      let repositoryChecksError: string | null = null
+
+      try {
+        repositoryChecks = loadRepositoryChecks(root)
+      } catch (error) {
+        repositoryChecksError =
+          error instanceof Error ? error.message : String(error)
+      }
       const nodeMajor = Number(process.versions.node.split('.')[0])
       const workspaceRoot = path.resolve(
         root,
@@ -1544,6 +1559,9 @@ async function main(): Promise<void> {
             .map(([name]) => name),
           advisory:
             'Profiles without environment_probes rely on their ordinary probes.',
+          ...(repositoryChecksError === null
+            ? {}
+            : { error: repositoryChecksError }),
         },
         // Reported only when the active mapping routes a persona to the
         // claude-code executor; a pure-Cursor installation owes no binary.

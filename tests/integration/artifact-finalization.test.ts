@@ -9,6 +9,7 @@ import {
   getRunState,
   prepareInvocation,
 } from '../../src/lib/engine.js'
+import { loadState, loadStateRevision } from '../../src/lib/state.js'
 import { createFixture } from '../helpers.js'
 
 test('aborting a run finalizes artifact numbering and layout', () => {
@@ -45,5 +46,37 @@ test('aborting a run finalizes artifact numbering and layout', () => {
   assert.match(
     readFileSync(path.join(agentDirectory, 'events.jsonl'), 'utf8'),
     /"type":"workflow_artifacts_finalized"/u,
+  )
+})
+
+test('finalization preserves content-addressed state revisions', () => {
+  const root = createFixture()
+  const created = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+  })
+  const runId = created.run_id
+  const prepared = prepareInvocation(root, runId)
+
+  assert.ok(prepared.invocation)
+
+  // The prepared-invocation revision embeds the 99_-prefixed invocation id
+  // that finalization renames. Rewriting the revision artifact's content
+  // would invalidate its recorded digest and brick loadState/loadStateRevision
+  // for the closed run.
+  const preparedRevision = getRunState(root, runId).revision
+
+  abortRun(root, runId, 'operator canceled')
+
+  const reloaded = loadState(root, runId)
+
+  assert.equal(reloaded.status, 'canceled')
+
+  const historical = loadStateRevision(root, runId, preparedRevision)
+
+  assert.match(
+    historical.current_invocation?.id ?? '',
+    /^99_intake-1_/u,
+    'historical revisions keep their pre-finalization invocation ids',
   )
 })

@@ -17,6 +17,30 @@ import {
 } from '../../src/lib/validators/stage-validators.js'
 import { createFixture } from '../helpers.js'
 
+/**
+ * Bare validator fixture root carrying the shared field-contract document.
+ * Validators read the document from the installation root only; production
+ * code deliberately has no fallback to the launching checkout, so each
+ * fixture ships its own copy.
+ */
+function installFieldContract(root: string): void {
+  const contractRelative = 'library/schemas/stage-output-requirements.json'
+
+  mkdirSync(path.join(root, 'library/schemas'), { recursive: true })
+  writeFileSync(
+    path.join(root, contractRelative),
+    readFileSync(path.join(process.cwd(), contractRelative)),
+  )
+}
+
+function validatorFixtureRoot(prefix: string): string {
+  const root = mkdtempSync(path.join(tmpdir(), prefix))
+
+  installFieldContract(root)
+
+  return root
+}
+
 function writePlanOutput(
   root: string,
   runId: string,
@@ -57,7 +81,7 @@ function writeAssessment(
 }
 
 test('plan trace rejects criteria without maps_to', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-plan-'))
+  const root = validatorFixtureRoot('pan-plan-')
   const target = 'output.json'
   const absolute = path.join(root, target)
 
@@ -94,7 +118,7 @@ test('plan trace rejects criteria without maps_to', () => {
 })
 
 test('review validator rejects findings without evidence', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-review-finding-shape-'))
+  const root = validatorFixtureRoot('pan-review-finding-shape-')
   const runId = 'run-review-finding-shape'
   const target = `runtime/logs/workflows/${runId}/outputs/review-1-test.json`
   const absolute = path.join(root, target)
@@ -139,7 +163,7 @@ test('review validator rejects findings without evidence', () => {
 })
 
 test('review validator rejects summary-only findings', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-review-summary-only-'))
+  const root = validatorFixtureRoot('pan-review-summary-only-')
   const runId = 'run-review-summary-only'
   const target = `runtime/logs/workflows/${runId}/outputs/review-1-test.json`
   const absolute = path.join(root, target)
@@ -185,7 +209,7 @@ test('review validator rejects summary-only findings', () => {
 })
 
 test('review validator rejects pass verdict with failed acceptance', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-review-'))
+  const root = validatorFixtureRoot('pan-review-')
   const target = 'output.json'
   const absolute = path.join(root, target)
 
@@ -218,7 +242,7 @@ test('review validator rejects pass verdict with failed acceptance', () => {
 })
 
 test('review validator binds acceptance coverage to accepted plan', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-review-accepted-plan-'))
+  const root = validatorFixtureRoot('pan-review-accepted-plan-')
   const runId = 'run-review-accepted-plan'
   const target = `runtime/logs/workflows/${runId}/outputs/review-1-test.json`
   const absolute = path.join(root, target)
@@ -290,7 +314,7 @@ test('review validator binds acceptance coverage to accepted plan', () => {
 })
 
 test('implementation validator binds acceptance coverage to accepted plan', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-impl-accepted-plan-'))
+  const root = validatorFixtureRoot('pan-impl-accepted-plan-')
   const runId = 'run-impl-accepted-plan'
   const target = `runtime/logs/workflows/${runId}/outputs/implement-1-test.json`
   const absolute = path.join(root, target)
@@ -359,7 +383,7 @@ test('implementation validator binds acceptance coverage to accepted plan', () =
 })
 
 test('implementation validator rejects missing plan acceptance coverage', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-impl-coverage-'))
+  const root = validatorFixtureRoot('pan-impl-coverage-')
   const runId = 'run-impl-coverage'
   const target = `runtime/logs/workflows/${runId}/outputs/implement-1-test.json`
   const absolute = path.join(root, target)
@@ -396,7 +420,7 @@ test('implementation validator rejects missing plan acceptance coverage', () => 
 })
 
 test('implementation validator rejects unknown acceptance ids', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-impl-unknown-'))
+  const root = validatorFixtureRoot('pan-impl-unknown-')
   const runId = 'run-impl-unknown'
   const target = `runtime/logs/workflows/${runId}/outputs/implement-1-test.json`
   const absolute = path.join(root, target)
@@ -436,7 +460,7 @@ test('implementation validator rejects unknown acceptance ids', () => {
 })
 
 test('implementation validator rejects opaque acceptance evidence', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-impl-evidence-shape-'))
+  const root = validatorFixtureRoot('pan-impl-evidence-shape-')
   const target = 'runtime/logs/workflows/run/outputs/implement.json'
   const absolute = path.join(root, target)
 
@@ -523,7 +547,7 @@ test('review and QA field contracts declare advisory enforcement', () => {
 })
 
 test('implementation retry requires explicit remediation evidence', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-impl-remediation-'))
+  const root = validatorFixtureRoot('pan-impl-remediation-')
   const target = 'output.json'
 
   writeFileSync(
@@ -563,7 +587,7 @@ test('implementation retry requires explicit remediation evidence', () => {
 })
 
 test('implementation retry accepts targeted remediation evidence', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-impl-remediation-pass-'))
+  const root = validatorFixtureRoot('pan-impl-remediation-pass-')
   const target = 'output.json'
 
   writeFileSync(
@@ -609,7 +633,7 @@ test('implementation retry accepts targeted remediation evidence', () => {
 })
 
 test('review validator accepts disclosed reviewer remediation', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-review-remediation-'))
+  const root = validatorFixtureRoot('pan-review-remediation-')
   const target = 'output.json'
 
   writeFileSync(
@@ -651,7 +675,7 @@ test('review validator accepts disclosed reviewer remediation', () => {
 })
 
 test('review validator routes unresolved findings to implementation', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-review-unresolved-'))
+  const root = validatorFixtureRoot('pan-review-unresolved-')
   const target = 'output.json'
 
   writeFileSync(
@@ -694,7 +718,7 @@ test('review validator routes unresolved findings to implementation', () => {
 })
 
 test('implementation validator fails closed when git is unavailable', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-impl-git-'))
+  const root = validatorFixtureRoot('pan-impl-git-')
   const target = 'output.json'
   const absolute = path.join(root, target)
 
@@ -729,7 +753,7 @@ test('implementation validator fails closed when git is unavailable', () => {
 })
 
 test('review validator rejects duplicate and unknown acceptance ids', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-review-coverage-'))
+  const root = validatorFixtureRoot('pan-review-coverage-')
   const runId = 'run-review-coverage'
   const target = `runtime/logs/workflows/${runId}/outputs/review-1-test.json`
   const absolute = path.join(root, target)
@@ -784,7 +808,7 @@ test('review validator rejects duplicate and unknown acceptance ids', () => {
 })
 
 test('qa validator binds acceptance coverage to accepted plan', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-qa-accepted-plan-'))
+  const root = validatorFixtureRoot('pan-qa-accepted-plan-')
   const runId = 'run-qa-accepted-plan'
   const target = `runtime/logs/workflows/${runId}/outputs/test-1-test.json`
   const absolute = path.join(root, target)
@@ -860,7 +884,7 @@ test('qa validator binds acceptance coverage to accepted plan', () => {
 })
 
 test('qa validator accepts pytest node ids and slash-bearing observations', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-qa-evidence-'))
+  const root = validatorFixtureRoot('pan-qa-evidence-')
   const runId = 'run-qa-evidence'
   const target = `runtime/logs/workflows/${runId}/outputs/test-1-test.json`
   const absolute = path.join(root, target)
@@ -918,7 +942,7 @@ test('qa validator accepts pytest node ids and slash-bearing observations', () =
 })
 
 test('embedded evidence paths resolve from the workspace root', () => {
-  const targetRoot = mkdtempSync(path.join(tmpdir(), 'pan-embedded-evidence-'))
+  const targetRoot = validatorFixtureRoot('pan-embedded-evidence-')
   const installationRoot = path.join(targetRoot, '.pancreator')
   const runId = 'run-embedded-evidence'
   const target = `runtime/logs/workflows/${runId}/outputs/test-1-test.json`
@@ -930,6 +954,7 @@ test('embedded evidence paths resolve from the workspace root', () => {
   )
 
   mkdirSync(installationRoot, { recursive: true })
+  installFieldContract(installationRoot)
   mkdirSync(path.dirname(testFile), { recursive: true })
   writeFileSync(testFile, 'def test_example():\n    assert True\n')
   writePlanOutput(installationRoot, runId, ['AC-01'])
@@ -1027,7 +1052,7 @@ test('embedded evidence paths resolve from the workspace root', () => {
 })
 
 test('harness-relative evidence still resolves from the installation root', () => {
-  const targetRoot = mkdtempSync(path.join(tmpdir(), 'pan-harness-evidence-'))
+  const targetRoot = validatorFixtureRoot('pan-harness-evidence-')
   const installationRoot = path.join(targetRoot, '.pancreator')
   const runId = 'run-harness-evidence'
   const target = `runtime/logs/workflows/${runId}/outputs/test-1-test.json`
@@ -1040,6 +1065,7 @@ test('harness-relative evidence still resolves from the installation root', () =
   )
 
   mkdirSync(path.dirname(harnessEvidence), { recursive: true })
+  installFieldContract(installationRoot)
   writeFileSync(harnessEvidence, '{}\n')
   writePlanOutput(installationRoot, runId, ['AC-01'])
   writeFileSync(
@@ -1094,7 +1120,7 @@ test('harness-relative evidence still resolves from the installation root', () =
 })
 
 test('qa validator still rejects explicitly declared missing evidence paths', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-qa-missing-evidence-'))
+  const root = validatorFixtureRoot('pan-qa-missing-evidence-')
   const runId = 'run-qa-missing-evidence'
   const target = `runtime/logs/workflows/${runId}/outputs/test-1-test.json`
   const absolute = path.join(root, target)
@@ -1151,7 +1177,7 @@ test('qa validator still rejects explicitly declared missing evidence paths', ()
 })
 
 test('release validator requires structured change-list entries', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-release-change-list-'))
+  const root = validatorFixtureRoot('pan-release-change-list-')
   const target = 'output.json'
 
   writeFileSync(
@@ -1196,7 +1222,7 @@ test('release validator requires structured change-list entries', () => {
 })
 
 test('release validator diffs the declared workspace instead of its dirty parent', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-release-worktree-'))
+  const root = validatorFixtureRoot('pan-release-worktree-')
   const workspaceRoot = path.join(root, 'declared-worktree')
   const target = 'output.json'
   const changedFile = 'src/example.ts'
@@ -1308,7 +1334,7 @@ test('release validator diffs the declared workspace instead of its dirty parent
 })
 
 test('release validator rejects unknown validation fingerprints', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-release-fp-'))
+  const root = validatorFixtureRoot('pan-release-fp-')
   const target = 'output.json'
   const absolute = path.join(root, target)
 
@@ -1500,7 +1526,7 @@ test('self-development release validator binds metadata to Git history and scope
 })
 
 test('release validator rejects waiver fingerprint mismatch', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-release-waiver-'))
+  const root = validatorFixtureRoot('pan-release-waiver-')
   const target = 'output.json'
   const absolute = path.join(root, target)
   const artifactPath =
@@ -1578,7 +1604,7 @@ test('release validator rejects waiver fingerprint mismatch', () => {
 })
 
 test('release validator ignores waivers superseded by a later attempt', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-release-stale-waiver-'))
+  const root = validatorFixtureRoot('pan-release-stale-waiver-')
   const target = 'output.json'
   const absolute = path.join(root, target)
   const artifactPath =
@@ -1653,7 +1679,7 @@ test('release validator ignores waivers superseded by a later attempt', () => {
 })
 
 test('assessment validator requires exact judgment criterion coverage', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-assess-'))
+  const root = validatorFixtureRoot('pan-assess-')
   const target = 'assessment.json'
   const absolute = path.join(root, target)
 

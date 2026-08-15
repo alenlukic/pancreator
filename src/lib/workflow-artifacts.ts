@@ -619,6 +619,12 @@ function rewriteStructuredFiles(
   }
 }
 
+function isContentAddressedArtifact(filePath: string): boolean {
+  return /(?:^|[/\\])(?:state-revision-\d+-[a-f0-9]{64}|event-payload-[a-f0-9]{64}|repository-check-delta-[a-f0-9]{64})\.json$/u.test(
+    filePath,
+  )
+}
+
 function updateFiles(
   files: string[],
   mappings: ReadonlyMap<string, string>,
@@ -943,7 +949,17 @@ export function rewriteWorkflowArtifacts(
   const updatedFiles = new Set<string>()
 
   rewriteStructuredFiles(runDirectory, occurrences, mappings, updatedFiles)
-  updateFiles(listFiles(runDirectory), mappings, updatedFiles)
+  // Content-addressed artifacts are immutable history: their recorded digests
+  // cover the written bytes, so rewriting invocation ids inside them would
+  // invalidate every state_ref/payload_ref/full_delta_ref that names them and
+  // make loadState/loadStateRevision fail their checksums after finalization.
+  updateFiles(
+    listFiles(runDirectory).filter(
+      (filePath) => !isContentAddressedArtifact(filePath),
+    ),
+    mappings,
+    updatedFiles,
+  )
   updateFiles(listFiles(stateDirectory), mappings, updatedFiles)
 
   if (state) {

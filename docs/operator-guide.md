@@ -378,7 +378,7 @@ A persona mapping may name its executor with a prefix from a closed set — `cur
 "personas": {
   "tech-lead": "claude-code:claude-opus-5[permission-mode=default,session-resume=true]",
   "reviewer": "claude-code:claude-opus-5[permission-mode=default,session-resume=true]",
-  "coder": "claude-opus-5[thinking=true,context=300k,effort=high]"
+  "coder": "claude-opus-5[context=300k,effort=high]"
 }
 ```
 

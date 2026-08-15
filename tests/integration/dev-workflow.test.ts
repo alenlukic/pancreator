@@ -758,11 +758,14 @@ test('a scaled QA timeout preserves the environment-blocked route', () => {
   })
   const environmentPath = path.join(root, 'runtime', 'environment.txt')
   const completionPath = path.join(root, 'runtime', 'completed.txt')
+  // The emitted diagnostic must carry a genuine infrastructure artifact
+  // shape (a pytest collection error): the classifier anchors on shapes, not
+  // keyword substrings, so a line merely containing 'timeout' never counts.
   const fullCommand =
     `node -e "const fs=require('node:fs'); ` +
     `setTimeout(() => { const value=fs.readFileSync('runtime/environment.txt','utf8').trim(); ` +
     `fs.appendFileSync('runtime/completed.txt',value+'\\n'); ` +
-    `console.error('collection timeout '+value); process.exit(1) }, ${commandDelayMs})"`
+    `console.error('ERROR collecting tests/integration '+value); process.exit(1) }, ${commandDelayMs})"`
 
   writeFileSync(environmentPath, 'baseline\n')
   writeJson(path.join(root, 'runtime/repository-checks.json'), {
@@ -820,7 +823,10 @@ test('a scaled QA timeout preserves the environment-blocked route', () => {
   assert.ok(baselineCommand.duration_ms > configuredTimeoutMs)
   assert.equal(baselineCommand.timed_out, false)
   assert.equal(baselineCommand.exit_code, 1)
-  assert.match(baselineCommand.stderr, /collection timeout baseline/u)
+  assert.match(
+    baselineCommand.stderr,
+    /ERROR collecting tests\/integration baseline/u,
+  )
   assert.equal(readFileSync(completionPath, 'utf8'), 'baseline\n')
 
   writeFileSync(environmentPath, 'current\n')

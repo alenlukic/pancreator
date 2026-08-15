@@ -3,6 +3,7 @@ import path from 'node:path'
 import { invariant } from './errors.js'
 import { resolveCursorModelSlug } from './executors/cursor-catalog.js'
 import {
+  canonicalPersonaMapping,
   parsePersonaMapping,
   type ParsedPersonaMapping,
 } from './executors/mapping.js'
@@ -282,7 +283,15 @@ export function resolvePersonaMapping(
     { code: 'INVALID_PIPELINE_CONFIG' },
   )
 
-  const mapping = parsePersonaMapping(model, `personas.${persona}`)
+  // A run snapshot preserves the exact mapping text it was created with, so a
+  // later option-grammar change must not strand the in-flight run: retired
+  // spellings are canonicalized away before parsing. Authoring surfaces load
+  // through loadPipelineConfig and still reject a retired key outright.
+  const isSnapshot = 'source_sha256' in config
+  const mapping = parsePersonaMapping(
+    isSnapshot ? canonicalPersonaMapping(model) : model,
+    `personas.${persona}`,
+  )
 
   if (mapping.executor === 'cursor') {
     resolveCursorModelSlug(mapping, `personas.${persona}`)

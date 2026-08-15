@@ -42,17 +42,17 @@ string uses the same syntax as `config.json`.
   "schema_version": 1,
   "candidates": [
     {
-      "name": "sonnet",
-      "personas": { "coder": "claude-sonnet-4.5[thinking=true]" }
+      "name": "opus",
+      "personas": { "coder": "claude-opus-5[effort=high]" }
     },
     {
       "name": "gpt",
-      "personas": { "coder": "gpt-5.6-sol[reasoning=high]" }
+      "personas": { "coder": "gpt-5.6-sol[effort=high]" }
     }
   ],
   "consolidation": {
     "name": "consolidation",
-    "personas": { "metacritic": "claude-opus-5[thinking=true]" }
+    "personas": { "metacritic": "claude-fable-5[]" }
   },
   "setup": ["npm ci"]
 }

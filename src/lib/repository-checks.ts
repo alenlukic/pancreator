@@ -226,7 +226,23 @@ function isNonFailureOutputLine(line: string): boolean {
     // A bare pytest node id is a progress echo, or a warnings-summary header.
     /^[\w./-]+(?:::[\w.-]+)+(?:\[.*\])?$/u.test(line) ||
     /^(?:ok \d+\b|# Subtest:|TAP version \d+\b)/iu.test(line) ||
-    /^(?:---|\.\.\.|type: ['"]test['"]|duration_ms:)/iu.test(line) ||
+    // TAP YAML block delimiters are exactly three characters; a longer line
+    // starting with `---` can be real failure content (a diff header).
+    /^(?:---|\.\.\.)$/u.test(line) ||
+    /^(?:type: ['"]test['"]|duration_ms:)/iu.test(line) ||
+    /^(?:=+\s*$|=+ .* =+$)/iu.test(line) ||
+    /^\[(?:gw\d+|\s*\d+%)\](?:\s+\[(?:gw\d+|\s*\d+%)\])*$/iu.test(line)
+  )
+}
+
+/**
+ * pytest session-header noise. Scoped to transcripts that look like pytest:
+ * applied globally, prefixes like `platform`, `collecting`, or `timeout:`
+ * would swallow genuine failure text from other tools (a GNU timeout error,
+ * a platform-support error).
+ */
+function isPytestSessionNoiseLine(line: string): boolean {
+  return (
     /^(?:platform|plugins:|rootdir:|configfile:|collecting\b|collected \d+)/iu.test(
       line,
     ) ||
@@ -236,8 +252,7 @@ function isNonFailureOutputLine(line: string): boolean {
     /^(?:created: \d+\/\d+ workers?|\d+ workers \[\d+ items?\]|scheduling tests via )/iu.test(
       line,
     ) ||
-    /^(?:test session starts|=+\s*$|=+ .* =+$|-- Docs:)/iu.test(line) ||
-    /^\[(?:gw\d+|\s*\d+%)\](?:\s+\[(?:gw\d+|\s*\d+%)\])*$/iu.test(line)
+    /^(?:test session starts|-- Docs:)/iu.test(line)
   )
 }
 
@@ -253,8 +268,11 @@ function isPytestTranscript(lines: string[]): boolean {
 
 function isPytestFailureLine(line: string): boolean {
   return (
-    /^(?:FAILED|ERROR)\s+\S+(?:::\S+)+(?:\s+-\s+.*)?$/u.test(line) ||
-    /^\S+(?:::\S+)+\s+(?:FAILED|ERROR)\b.*$/u.test(line) ||
+    // Node ids carry bracketed parameters that may contain spaces, so the
+    // portion after `::` (or after the ` - ` of a collection error) is matched
+    // loosely; `\S+(?:::\S+)+` alone missed `FAILED x.py::test[ True ]`.
+    /^(?:FAILED|ERROR)\s+\S+(?:::.*|\s+-\s+.*)?$/u.test(line) ||
+    /^\S+::.*\s(?:FAILED|ERROR)(?:\s+\[\s*\d+%\])?$/u.test(line) ||
     /^_+\s+ERROR collecting\s+.+\s+_+$/iu.test(line) ||
     /^(?:E\s+)?(?:ImportError|ModuleNotFoundError)\b/u.test(line) ||
     /\b(?:ETIMEDOUT|timed out|worker.*(?:crash|exit))\b/iu.test(line)
@@ -269,12 +287,45 @@ function diagnosticCounts(
     `${result.stdout}\n${result.stderr}\n${result.error ?? ''}`
       .split(/\r?\n/u)
       .map((line) => normalizeDiagnosticLine(line, workspaceRoot))
+  // A recognized failure line is kept unconditionally: pass-echo and noise
+  // patterns run first, and a failure record that also mentions PASSED (xdist
+  // interleaving) must not be filtered before the failure allowlist sees it.
   const lines = normalizedLines.filter(
-    (line) => !isNonFailureOutputLine(line) && !isVolatileSummaryLine(line),
+    (line) =>
+      isPytestFailureLine(line) ||
+      (!isNonFailureOutputLine(line) && !isVolatileSummaryLine(line)),
   )
-  const diagnostics = isPytestTranscript(normalizedLines)
-    ? lines.filter((line) => isPytestFailureLine(line))
-    : lines
+  let diagnostics = lines
+
+  if (isPytestTranscript(normalizedLines)) {
+    const withoutSessionNoise = lines.filter(
+      (line) => isPytestFailureLine(line) || !isPytestSessionNoiseLine(line),
+    )
+    const failures = withoutSessionNoise.filter((line) =>
+      isPytestFailureLine(line),
+    )
+
+    // Keeping only recognized failure shapes prevents traceback churn, but a
+    // failing transcript whose failure text matches no known pytest shape must
+    // not be discarded whole: a command that runs pytest plus another tool
+    // (pytest passing, the other tool regressing) would then lose the genuine
+    // failure and the gate would pass. The fallback keeps only error-looking
+    // lines, so a passing suite's warnings and code context still form no
+    // identities and the status identity alone carries the command failure.
+    diagnostics =
+      failures.length > 0
+        ? failures
+        : withoutSessionNoise.filter(
+            (line) =>
+              /\b(?:error|errors|failed|failure|failures|exception|traceback|fatal|internalerror)\b/iu.test(
+                line,
+              ) &&
+              // Source context quoted under a warning or traceback is not an
+              // error record even when it names an exception type.
+              !/^(?:class|def|@|import |from )\s*\w/u.test(line),
+          )
+  }
+
   const counts = new Map<string, number>()
 
   for (const line of diagnostics) {
@@ -282,6 +333,18 @@ function diagnosticCounts(
   }
 
   return counts
+}
+
+/**
+ * Normalized failure diagnostics one command result contributes. Exported so
+ * the environment-blocked classification can judge a baseline command by its
+ * extracted failure evidence rather than by raw transcript substrings.
+ */
+export function commandFailureDiagnostics(
+  result: RepositoryCheckCommandResult,
+  workspaceRoot: string,
+): string[] {
+  return [...diagnosticCounts(result, workspaceRoot).keys()]
 }
 
 function normalizedCommand(command: string): string {

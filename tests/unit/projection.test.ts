@@ -236,7 +236,7 @@ test('run-scoped agent variants carry pinned models without touching the base ag
   const changes = projectPersonaVariants(
     root,
     'bondeadbeef-alpha',
-    { coder: 'pinned-model-a', reviewer: 'pinned-model-b' },
+    { coder: 'gpt-5.4[effort=high]', reviewer: 'claude-opus-5' },
     { write: true },
   )
 
@@ -247,12 +247,15 @@ test('run-scoped agent variants carry pinned models without touching the base ag
       '.cursor/agents/pan-reviewer--bondeadbeef-alpha.md',
     ],
   )
+  // The variant frontmatter carries the executor-native slug, never the raw
+  // bracket spec: Cursor cannot parse the bracket grammar and would silently
+  // fall back to a default model (the audited HR-005 failure).
   assert.match(
     readFileSync(
       path.join(root, '.cursor', 'agents', 'pan-coder--bondeadbeef-alpha.md'),
       'utf8',
     ),
-    /^model: pinned-model-a$/mu,
+    /^model: gpt-5\.4-high$/mu,
   )
   assert.equal(readFileSync(baseCoderPath, 'utf8'), baseCoder)
 

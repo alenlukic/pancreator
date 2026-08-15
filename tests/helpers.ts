@@ -257,7 +257,10 @@ function prepareFixtureReleaseMetadata(root: string): {
       `## [${proposedVersion}] - 2026-06-30\n\n` +
       '### Changed\n\n' +
       '- Prepare fixture release metadata.\n'
-    const unreleasedStart = changelog.indexOf(UNRELEASED_HEADING)
+    // Anchor to a line-start heading: a prose mention of the literal
+    // `## [Unreleased]` inside a release bullet must not match once the real
+    // section is gone, or the fixture release gets spliced mid-bullet.
+    const unreleasedStart = changelog.search(/^## \[Unreleased\]/mu)
     let updatedChangelog: string
 
     if (unreleasedStart === -1) {

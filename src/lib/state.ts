@@ -40,7 +40,14 @@ export function invocationLiveness(
   const invocation = state.current_invocation
   const lastActivity = invocation?.last_activity_at ?? invocation?.prepared_at
 
-  if (!invocation || !lastActivity) {
+  // Liveness is meaningful only while the run is waiting on a delegated
+  // worker. current_invocation survives into pauses and operator/supervisor
+  // waits, where "stale, re-deliver the card" advice is impossible to follow.
+  if (
+    !invocation ||
+    !lastActivity ||
+    state.pending_action?.type !== 'invoke_agent'
+  ) {
     return null
   }
 
@@ -210,6 +217,17 @@ export function loadState(root: string, runId: string): RunState {
     return state
   }
 
+  // Dereference the write-ahead artifact only when the event log is actually
+  // ahead of state.json. An unconditional dereference makes every read verify
+  // (and depend on) the latest revision artifact, so one corrupt artifact
+  // would brick status, resume, and archive even though recovery is unneeded.
+  if (
+    typeof latestValue.revision === 'number' &&
+    latestValue.revision <= state.revision
+  ) {
+    return state
+  }
+
   const recovered = stateFromEvent(root, latestValue, `${eventsFile}:latest`)
 
   if (recovered && recovered.revision > state.revision) {
@@ -335,13 +353,18 @@ function writeStateReference(
   root: string,
   state: RunState,
 ): { sha256: string; path: string } {
-  const digest = sha256(state)
+  // Digest the JSON round-trip of the state, not the in-memory object: an
+  // undefined-valued key serializes in stableStringify but is dropped from the
+  // written file, so hashing the live object records a digest the artifact can
+  // never reproduce and every later load fails its checksum.
+  const persisted = JSON.parse(JSON.stringify(state)) as RunState
+  const digest = sha256(persisted)
   const artifact = resolveRunLayout(root, state.run_id).artifactJson(
     `state-revision-${state.revision}-${digest}.json`,
   )
 
   if (!fileExists(artifact.absolute)) {
-    writeJsonAtomic(artifact.absolute, state)
+    writeJsonAtomic(artifact.absolute, persisted)
   }
 
   return { sha256: digest, path: artifact.relative }
@@ -351,12 +374,32 @@ function writeStateReference(
  * Append a revision event with a content-addressed state reference, atomically
  * replace state.json, and mirror a compact event to the orchestrator-wide log.
  */
+const RESERVED_EVENT_KEYS = [
+  'schema_version',
+  'event_id',
+  'type',
+  'timestamp',
+  'run_id',
+  'revision',
+  'state_sha256',
+  'state_ref',
+  'payload_ref',
+] as const
+
 export function persist(
   root: string,
   state: RunState,
   eventType: string,
   payload: Record<string, unknown> = {},
 ): void {
+  const collision = RESERVED_EVENT_KEYS.find((key) => key in payload)
+
+  invariant(
+    collision === undefined,
+    `Event payload for '${eventType}' MUST NOT set reserved envelope key '${collision}'.`,
+    { code: 'RESERVED_EVENT_KEY', details: { key: collision } },
+  )
+
   state.schema_version = 2
   state.revision += 1
   state.updated_at = now()
@@ -374,7 +417,9 @@ export function persist(
 
   invariant(
     stateBytes <= stateSizeBudgetBytes,
-    `Run state exceeds the ${stateSizeBudgetBytes}-byte budget after compaction.`,
+    `Run state exceeds the ${stateSizeBudgetBytes}-byte budget after compaction. ` +
+      `Raise config.json state_size_budget_bytes to record this transition, ` +
+      `then report the oversized payload as a harness defect.`,
     {
       code: 'STATE_SIZE_BUDGET_EXCEEDED',
       details: { state_bytes: stateBytes },
@@ -394,8 +439,11 @@ export function persist(
     state_ref: stateReference,
   }
 
+  // The appended line carries a trailing newline, so budget for it here to
+  // keep every physical event-log line under the cap.
   if (
-    Buffer.byteLength(JSON.stringify(event), 'utf8') >= MAX_EVENT_LINE_BYTES
+    Buffer.byteLength(JSON.stringify(event), 'utf8') + 1 >=
+    MAX_EVENT_LINE_BYTES
   ) {
     const payloadDigest = sha256(payload)
     const payloadArtifact = resolveRunLayout(root, state.run_id).artifactJson(

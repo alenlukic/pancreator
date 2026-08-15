@@ -253,6 +253,11 @@ test('invocation liveness reports active and stale workers', () => {
     prepared_at: preparedAt,
     last_activity_at: preparedAt,
   }
+  state.pending_action = {
+    type: 'invoke_agent',
+    persona: 'coder',
+    path: 'invocation.md',
+  }
 
   assert.equal(
     invocationLiveness(state, Date.parse(preparedAt) + 1_000, 2_000)?.status,
@@ -296,6 +301,11 @@ test('project configuration overrides the invocation liveness bound', () => {
     prepared_at: '2020-01-01T00:00:00.000Z',
     last_activity_at: '2020-01-01T00:00:00.000Z',
   }
+  state.pending_action = {
+    type: 'invoke_agent',
+    persona: 'coder',
+    path: 'invocation.md',
+  }
   writeFileSync(
     statePath(root, state.run_id),
     `${JSON.stringify(state, null, 2)}\n`,
@@ -309,4 +319,46 @@ test('project configuration overrides the invocation liveness bound', () => {
     assert.equal(status.invocation_liveness?.status, 'stale')
     assert.equal(status.invocation_liveness?.stale_after_ms, 1)
   }
+})
+
+test('persist rejects payloads that shadow reserved event envelope keys', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+  })
+
+  // The audited run recorded an operator decision whose payload key
+  // `revision` overwrote the event's state revision, corrupting the recovery
+  // chain. A colliding payload key must fail loudly at the persist boundary.
+  assert.throws(
+    () => persist(root, state, 'fixture_event', { revision: 1 }),
+    /reserved envelope key 'revision'/u,
+  )
+})
+
+test('liveness is not reported while the run waits on the operator', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+  })
+  const preparedAt = '2020-01-01T00:00:00.000Z'
+
+  state.current_invocation = {
+    id: 'test-1',
+    json_path: 'invocation.json',
+    markdown_path: 'invocation.md',
+    output_path: 'output.json',
+    prepared_at: preparedAt,
+    last_activity_at: preparedAt,
+  }
+  state.pending_action = { type: 'operator_decision' }
+
+  // The run is not waiting on a delegated worker, so "stale, re-deliver the
+  // card" advice would be impossible to follow.
+  assert.equal(
+    invocationLiveness(state, Date.parse(preparedAt) + 10_000, 2_000),
+    null,
+  )
 })

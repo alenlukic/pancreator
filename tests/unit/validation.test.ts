@@ -1113,3 +1113,20 @@ test('attestation validator skips an invocation without a contract manifest', ()
 
   assert.equal(result.passed, true)
 })
+
+test('a new failing test that mentions a timeout is not environment-blocked', () => {
+  const root = createFixture()
+  const qaStage = stageBySlug(loadWorkflow(root, 'dev'), 'test')
+  const baseline = preservedFullSuiteBaseline()
+  // A genuinely new product regression whose node id names a timeout: keyword
+  // matching classified this as environmental, inviting a waiver that would
+  // ship the regression.
+  const current = rerunWithExtraStderr(
+    baseline,
+    'FAILED tests/integration/test_request_timeout.py::test_timeout_honored - AssertionError: request not aborted',
+  )
+  const comparison = compareRepositoryCheckToBaseline(baseline, current)
+
+  assert.equal(comparison.passed, false)
+  assert.equal(isEnvironmentBlockedDelta(qaStage, baseline, comparison), false)
+})

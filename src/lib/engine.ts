@@ -1317,12 +1317,17 @@ function runHarnessAuthoritativeValidators(
   workspaceFingerprint: string,
   submittedValue: Record<string, unknown>,
   runState?: Record<string, unknown>,
-): { errors: string[]; validatorOutcome: StageOutcome | null } {
+): {
+  errors: string[]
+  blocking_errors: string[]
+  validatorOutcome: StageOutcome | null
+} {
   const errors: string[] = []
+  const blockingErrors: string[] = []
   const failedRoutes: RequirementFailureRoute[] = []
 
   if (!invocation.requirements) {
-    return { errors, validatorOutcome: null }
+    return { errors, blocking_errors: blockingErrors, validatorOutcome: null }
   }
 
   const catalog = loadRegistry(root)
@@ -1393,12 +1398,14 @@ function runHarnessAuthoritativeValidators(
     })
 
     if (!isPassingResult(result)) {
-      errors.push(
+      const message =
         `harness validator ${requirement.registry_id} failed: ` +
-          result.issues.map((issue) => issue.message).join('; '),
-      )
+        result.issues.map((issue) => issue.message).join('; ')
+
+      errors.push(message)
 
       if (requirement.enforcement !== 'advisory') {
+        blockingErrors.push(message)
         failedRoutes.push(requirement.failure_route)
       }
     }
@@ -1406,6 +1413,7 @@ function runHarnessAuthoritativeValidators(
 
   return {
     errors,
+    blocking_errors: blockingErrors,
     validatorOutcome: outcomeFromFailureRoutes(failedRoutes),
   }
 }
@@ -2677,9 +2685,22 @@ export function submitOutput(
 
     // A missing or mismatched attestation blocks every stage, because it means
     // the harness cannot show that the worker held the contract it acted on.
+    // Ship blocks on every non-advisory diagnostic; an advisory validator
+    // failure is recorded as a governance issue but must not fail the stage,
+    // or the advisory enforcement declared on the card would be false.
     const blockingValidationErrors =
       stage.slug === 'ship'
-        ? governanceArtifactWarnings
+        ? [
+            ...attestationErrors,
+            ...briefErrors.map((message) => `Operator brief: ${message}`),
+            ...validation.errors.map((message) => `Stage output: ${message}`),
+            ...(briefRenderFailed && briefRenderedPath
+              ? harnessValidation.blocking_errors.filter(
+                  (message) => !message.includes(briefRenderedPath),
+                )
+              : harnessValidation.blocking_errors
+            ).map((message) => `Validator: ${message}`),
+          ]
         : [...attestationErrors]
     const explicitlyDeclaredProductFailure =
       isRecord(submittedValue) &&
@@ -2755,7 +2776,10 @@ export function submitOutput(
       (result) => result.environment_blocked,
     )
 
-    if (environmentBlocked) {
+    // A successful outcome needs no environment pause: with a soft repository
+    // gate the stage can pass while infrastructure evidence remains, and
+    // pausing a passing stage would contradict its own record.
+    if (environmentBlocked && outcome !== 'success') {
       const reason =
         `Stage '${stage.slug}' encountered only timeout or collection artifacts ` +
         'on infrastructure that already failed before implementation.'
@@ -3146,7 +3170,7 @@ export function decideRun(
       note,
       target_stage: decision === 'approve' ? null : state.current_stage,
       ...(decision === 'revise'
-        ? { revision: state.operator_revisions?.[stage.slug] }
+        ? { operator_revision: state.operator_revisions?.[stage.slug] }
         : {}),
     })
 
