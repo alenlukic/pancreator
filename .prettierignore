@@ -3,3 +3,6 @@ coverage/
 dist/
 node_modules/
 runtime/
+# Preserved byte fixtures; formatting would destroy their byte fidelity.
+tests/fixtures/harness-repair/intake-1-delivery.md
+tests/fixtures/harness-repair/intake-1-delegation.md

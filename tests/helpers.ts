@@ -257,7 +257,10 @@ function prepareFixtureReleaseMetadata(root: string): {
       `## [${proposedVersion}] - 2026-06-30\n\n` +
       '### Changed\n\n' +
       '- Prepare fixture release metadata.\n'
-    const unreleasedStart = changelog.indexOf(UNRELEASED_HEADING)
+    // Anchor to a line-start heading: a prose mention of the literal
+    // `## [Unreleased]` inside a release bullet must not match once the real
+    // section is gone, or the fixture release gets spliced mid-bullet.
+    const unreleasedStart = changelog.search(/^## \[Unreleased\]/mu)
     let updatedChangelog: string
 
     if (unreleasedStart === -1) {
@@ -680,7 +683,13 @@ function requiredData(
         release: {
           summary: 'Ready',
           ...versioning,
-          change_list: root ? gitChangedFiles(root) : [],
+          change_list: root
+            ? gitChangedFiles(root).map((changedPath) => ({
+                path: changedPath,
+                kind: 'modified',
+                description: 'Fixture workspace change.',
+              }))
+            : [],
           validation: [
             {
               stage: 'review',
@@ -761,6 +770,7 @@ export function makeAttestation(
 
   return {
     invocation_id: invocation.invocation_id,
+    model: invocation.stage.model,
     contract_path: manifest.contract_path,
     contract_sha256: manifest.contract_sha256,
     status: 'read',

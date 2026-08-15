@@ -177,6 +177,20 @@ export function readProjectConfig(root: string): ProjectConfig | null {
     `${PROJECT_CONFIG_PATH}.state_root MUST be a non-empty string when present.`,
     { code: 'INVALID_PROJECT_CONFIG' },
   )
+  invariant(
+    value.state_size_budget_bytes === undefined ||
+      (Number.isInteger(value.state_size_budget_bytes) &&
+        (value.state_size_budget_bytes as number) > 0),
+    `${PROJECT_CONFIG_PATH}.state_size_budget_bytes MUST be a positive integer when present.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+  invariant(
+    value.stage_liveness_ms === undefined ||
+      (Number.isInteger(value.stage_liveness_ms) &&
+        (value.stage_liveness_ms as number) > 0),
+    `${PROJECT_CONFIG_PATH}.stage_liveness_ms MUST be a positive integer when present.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
 
   invariant(
     value.installation_mode === undefined ||

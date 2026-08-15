@@ -62,6 +62,18 @@
       "side_effect_free": true
     },
     {
+      "id": "FIELD-CONTRACT-VALIDATE-001",
+      "kind": "validator",
+      "version": "1",
+      "handler": "stage-field-contract-validate",
+      "input_contract": "stage-field-contract",
+      "result_schema": "validation-result-v1",
+      "target_types": ["json"],
+      "default_timeout_ms": 30000,
+      "deterministic": true,
+      "side_effect_free": true
+    },
+    {
       "id": "ASSESSMENT-SCAFFOLD-001",
       "kind": "automation",
       "version": "1",

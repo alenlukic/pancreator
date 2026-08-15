@@ -58,6 +58,7 @@ test('scaffold copies the contract manifest into a pending attestation', () => {
   const contractPath = 'runtime/logs/workflows/x/invocations/implement-1.md'
   const invocation = {
     invocation_id: 'implement-1',
+    stage: { model: 'gpt-5.6-sol' },
     rubric: [],
     output: { path: outputPath, required_data: {} },
     contract_manifest: {
@@ -100,6 +101,7 @@ test('scaffold copies the contract manifest into a pending attestation', () => {
   // not prefill a claim the worker has to make itself.
   assert.equal(attestation.status, 'pending')
   assert.equal(attestation.invocation_id, 'implement-1')
+  assert.equal(attestation.model, 'gpt-5.6-sol')
   assert.equal(attestation.contract_path, contractPath)
   assert.deepEqual(
     attestation.status === 'pending' ? attestation.sections : [],

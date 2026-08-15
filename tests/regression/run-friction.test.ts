@@ -403,7 +403,7 @@ test('a changed mapping the run does resolve still fails as pipeline config drif
   })
 
   editPersonaMappings(root, (defaults) => {
-    defaults.coder = 'fixture-replacement-model'
+    defaults.coder = 'gpt-5.4'
   })
 
   assert.throws(

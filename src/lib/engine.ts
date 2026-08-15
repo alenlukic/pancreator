@@ -10,6 +10,7 @@ import {
   validateBriefSystem,
 } from './briefs.js'
 import { errorMessage, invariant } from './errors.js'
+import { canonicalPersonaMapping } from './executors/mapping.js'
 import {
   ensureDir,
   fileExists,
@@ -37,6 +38,7 @@ import {
   isDetachedInstallation,
   isSelfDevelopmentInstallation,
   isTargetInstallation,
+  loadProjectConfig,
   panCommand,
   resolveReviewMode,
 } from './project-config.js'
@@ -75,6 +77,7 @@ import {
   selectInvolvementProfile,
 } from './operator-involvement.js'
 import {
+  loadRepositoryChecks,
   repositoryCheckProfileName,
   runRepositoryCheck,
   summarizeRepositoryCheckResult,
@@ -91,6 +94,7 @@ import {
   renderStatus,
 } from './render.js'
 import {
+  invocationLiveness,
   operationMutexPath,
   loadState,
   makeRunId,
@@ -313,7 +317,14 @@ function assertRunPipelineConfigCurrent(
 
   const live = loadPipelineConfig(root)
   const driftedPersonas = Object.entries(snapshot.personas)
-    .filter(([persona, model]) => live.config.personas[persona] !== model)
+    .filter(([persona, model]) => {
+      const livePersona = live.config.personas[persona]
+
+      return (
+        livePersona === undefined ||
+        canonicalPersonaMapping(livePersona) !== canonicalPersonaMapping(model)
+      )
+    })
     .map(([persona]) => persona)
 
   invariant(
@@ -495,16 +506,17 @@ function ensureWorkflowRepositoryCheckBaselines(
   workflow: WorkflowDefinition,
   stage: StageDefinition,
   onProgress?: (message: string) => void,
-): void {
+): boolean {
   if (stage.workspace_policy !== 'source_allowed') {
-    return
+    return false
   }
 
   if (repositoryCheckBaselinesCaptured(state)) {
-    return
+    return false
   }
 
   const profiles = collectStageRepositoryCheckProfiles(workflow.stages)
+  const repositoryChecks = loadRepositoryChecks(root)
   const baselines: NonNullable<RunState['repository_check_baselines']> = {}
 
   state.repository_check_baselines = baselines
@@ -533,6 +545,11 @@ function ensureWorkflowRepositoryCheckBaselines(
     ).relative
     const recordedAt = now()
     const { summary, elided } = summarizeRepositoryCheckResult(result)
+    const environmentProbes =
+      repositoryChecks.profiles[profile.name]?.environment_probes ?? []
+    const failedEnvironmentProbe = result.results
+      .slice(0, environmentProbes.length)
+      .find((entry) => !entry.passed)
 
     // The summarized artifact is what a coder is required to read; the complete
     // capture stays on disk for anyone who needs the untruncated transcript.
@@ -566,7 +583,29 @@ function ensureWorkflowRepositoryCheckBaselines(
       workspace_fingerprint: workspace.fingerprint,
       recorded_at: recordedAt,
     }
+
+    if (failedEnvironmentProbe) {
+      const reason =
+        `Pre-implementation environment probe failed for profile ` +
+        `'${profile.name}': ${failedEnvironmentProbe.command}.`
+
+      // Delete rather than assign undefined: an undefined-valued key changes
+      // the canonical state digest recorded on the persisted event, while the
+      // written JSON drops the key, so recovery would reject the referenced
+      // state artifact as a checksum mismatch.
+      delete state.repository_check_baselines
+      state.status = 'paused'
+      state.pause_reason = reason
+      state.pending_action = { type: 'operator_decision' }
+      writeDecision(root, state, 'Worktree environment needs repair', reason, [
+        'Repair the declared environment, then resume from the first source stage.',
+      ])
+
+      return true
+    }
   }
+
+  return false
 }
 
 /**
@@ -1192,7 +1231,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
   )
 
   const state: RunState = {
-    schema_version: 1,
+    schema_version: 2,
     run_id: id,
     workflow_slug: workflow.slug,
     workflow_snapshot: {
@@ -1278,12 +1317,17 @@ function runHarnessAuthoritativeValidators(
   workspaceFingerprint: string,
   submittedValue: Record<string, unknown>,
   runState?: Record<string, unknown>,
-): { errors: string[]; validatorOutcome: StageOutcome | null } {
+): {
+  errors: string[]
+  blocking_errors: string[]
+  validatorOutcome: StageOutcome | null
+} {
   const errors: string[] = []
+  const blockingErrors: string[] = []
   const failedRoutes: RequirementFailureRoute[] = []
 
   if (!invocation.requirements) {
-    return { errors, validatorOutcome: null }
+    return { errors, blocking_errors: blockingErrors, validatorOutcome: null }
   }
 
   const catalog = loadRegistry(root)
@@ -1308,13 +1352,6 @@ function runHarnessAuthoritativeValidators(
       requirement.phase !== 'pre_submit' &&
       requirement.phase !== 'submit' &&
       requirement.phase !== 'gate'
-    ) {
-      continue
-    }
-
-    if (
-      requirement.enforcement !== 'authoritative' &&
-      requirement.enforcement !== 'required'
     ) {
       continue
     }
@@ -1361,17 +1398,98 @@ function runHarnessAuthoritativeValidators(
     })
 
     if (!isPassingResult(result)) {
-      errors.push(
+      const message =
         `harness validator ${requirement.registry_id} failed: ` +
-          result.issues.map((issue) => issue.message).join('; '),
-      )
-      failedRoutes.push(requirement.failure_route)
+        result.issues.map((issue) => issue.message).join('; ')
+
+      errors.push(message)
+
+      if (requirement.enforcement !== 'advisory') {
+        blockingErrors.push(message)
+        failedRoutes.push(requirement.failure_route)
+      }
     }
   }
 
   return {
     errors,
+    blocking_errors: blockingErrors,
     validatorOutcome: outcomeFromFailureRoutes(failedRoutes),
+  }
+}
+
+function stageFieldContract(
+  root: string,
+  stageSlug: string,
+  requirements: NonNullable<
+    Invocation['requirements']
+  >['validation_requirements'],
+): Invocation['output']['field_contract'] {
+  const source = readJson(
+    path.join(root, 'library', 'schemas', 'stage-output-requirements.json'),
+  )
+
+  invariant(
+    isRecord(source) && source.schema_version === 1 && isRecord(source.stages),
+    'stage-output-requirements.json MUST contain a schema_version 1 stage map.',
+    { code: 'INVALID_STAGE_OUTPUT_REQUIREMENTS' },
+  )
+
+  const stage = source.stages[stageSlug]
+
+  if (stage === undefined) {
+    return undefined
+  }
+
+  invariant(
+    isRecord(stage) &&
+      Array.isArray(stage.validators) &&
+      Array.isArray(stage.fields),
+    `stage-output-requirements.json stages.${stageSlug} MUST declare validators and fields.`,
+    { code: 'INVALID_STAGE_OUTPUT_REQUIREMENTS' },
+  )
+
+  const requirementByRegistryId = new Map(
+    requirements.map((requirement) => [requirement.registry_id, requirement]),
+  )
+  const validators = stage.validators.map((validator) => {
+    invariant(
+      isRecord(validator) &&
+        typeof validator.registry_id === 'string' &&
+        (validator.enforcement === 'blocks' ||
+          validator.enforcement === 'advises'),
+      `stage-output-requirements.json stages.${stageSlug} contains an invalid validator.`,
+      { code: 'INVALID_STAGE_OUTPUT_REQUIREMENTS' },
+    )
+
+    const requirement = requirementByRegistryId.get(validator.registry_id)
+
+    invariant(
+      requirement,
+      `Stage ${stageSlug} does not resolve ${validator.registry_id}.`,
+      { code: 'INVALID_STAGE_OUTPUT_REQUIREMENTS' },
+    )
+
+    const enforcement =
+      requirement.enforcement === 'advisory'
+        ? ('advises' as const)
+        : ('blocks' as const)
+
+    invariant(
+      validator.enforcement === enforcement,
+      `Stage ${stageSlug} declares ${validator.registry_id} as ` +
+        `${validator.enforcement}, but resolved registry metadata says ${enforcement}.`,
+      { code: 'INVALID_STAGE_OUTPUT_REQUIREMENTS' },
+    )
+
+    return { registry_id: validator.registry_id, enforcement }
+  })
+
+  return {
+    validators,
+    fields: stage.fields as NonNullable<
+      Invocation['output']['field_contract']
+    >['fields'],
   }
 }
 
@@ -1462,13 +1580,19 @@ export function prepareInvocation(
     state.attempts[stage.slug] = attempt
 
     ensureMutatingWorkflowInitialized(root, state, stage)
-    ensureWorkflowRepositoryCheckBaselines(
+    const environmentBlocked = ensureWorkflowRepositoryCheckBaselines(
       root,
       state,
       workflow,
       stage,
       options.onProgress,
     )
+
+    if (environmentBlocked) {
+      persistRun(root, state, 'run_paused', { reason: state.pause_reason })
+
+      return { state, invocation: null }
+    }
 
     const baselineGaps = repositoryCheckBaselineGaps(root, state, stage)
 
@@ -1593,6 +1717,11 @@ export function prepareInvocation(
     const priorFailure = summarizePriorFailure(state, stage)
     const briefVocabulary = resolveBriefVocabulary(root)
     const requiredData = { ...(stage.required_data ?? {}) }
+    const fieldContract = stageFieldContract(
+      root,
+      stage.slug,
+      requirements.validation_requirements,
+    )
 
     if (stage.persona === 'coder' && attempt > 1) {
       requiredData['implementation.remediation'] = 'array'
@@ -1672,6 +1801,7 @@ export function prepareInvocation(
         template: 'library/templates/stage-output.example.json',
         schema: 'library/schemas/stage-output.schema.json',
         required_data: requiredData,
+        ...(fieldContract ? { field_contract: fieldContract } : {}),
         operator_brief: {
           source_path: briefSourcePath,
           rendered_path: briefRenderedPath,
@@ -1797,11 +1927,15 @@ export function prepareInvocation(
     writeJsonAtomic(resolveInside(root, jsonPath), invocation)
     writeTextAtomic(resolveInside(root, markdownPath), renderedMarkdown)
 
+    const preparedAt = now()
+
     state.current_invocation = {
       id: invocationId,
       json_path: jsonPath,
       markdown_path: markdownPath,
       output_path: outputPath,
+      prepared_at: preparedAt,
+      last_activity_at: preparedAt,
     }
     state.pending_action = {
       type: 'invoke_agent',
@@ -2551,9 +2685,22 @@ export function submitOutput(
 
     // A missing or mismatched attestation blocks every stage, because it means
     // the harness cannot show that the worker held the contract it acted on.
+    // Ship blocks on every non-advisory diagnostic; an advisory validator
+    // failure is recorded as a governance issue but must not fail the stage,
+    // or the advisory enforcement declared on the card would be false.
     const blockingValidationErrors =
       stage.slug === 'ship'
-        ? governanceArtifactWarnings
+        ? [
+            ...attestationErrors,
+            ...briefErrors.map((message) => `Operator brief: ${message}`),
+            ...validation.errors.map((message) => `Stage output: ${message}`),
+            ...(briefRenderFailed && briefRenderedPath
+              ? harnessValidation.blocking_errors.filter(
+                  (message) => !message.includes(briefRenderedPath),
+                )
+              : harnessValidation.blocking_errors
+            ).map((message) => `Validator: ${message}`),
+          ]
         : [...attestationErrors]
     const explicitlyDeclaredProductFailure =
       isRecord(submittedValue) &&
@@ -2625,8 +2772,33 @@ export function submitOutput(
     state.stage_history.push(historyItem)
 
     let nextState: string | null
+    const environmentBlocked = evaluated.results.some(
+      (result) => result.environment_blocked,
+    )
 
-    if (outcome === 'success' && stage.gate === 'supervisor') {
+    // A successful outcome needs no environment pause: with a soft repository
+    // gate the stage can pass while infrastructure evidence remains, and
+    // pausing a passing stage would contradict its own record.
+    if (environmentBlocked && outcome !== 'success') {
+      const reason =
+        `Stage '${stage.slug}' encountered only timeout or collection artifacts ` +
+        'on infrastructure that already failed before implementation.'
+
+      state.status = 'paused'
+      state.pause_reason = reason
+      state.pending_action = { type: 'operator_decision' }
+      writeDecision(
+        root,
+        state,
+        'QA environment needs an operator decision',
+        reason,
+        [
+          'Repair the environment, then resume the QA stage.',
+          `Or redirect the run with: ${panCommand(root)} set-stage ${state.run_id} <stage> --note "<directive>"`,
+        ],
+      )
+      nextState = 'paused'
+    } else if (outcome === 'success' && stage.gate === 'supervisor') {
       const assessmentId = `assessment-${invocation.invocation_id}`
       const layout = resolveRunLayout(root, runId)
       const assessmentPath = layout.assessment(
@@ -2998,7 +3170,7 @@ export function decideRun(
       note,
       target_stage: decision === 'approve' ? null : state.current_stage,
       ...(decision === 'revise'
-        ? { revision: state.operator_revisions?.[stage.slug] }
+        ? { operator_revision: state.operator_revisions?.[stage.slug] }
         : {}),
     })
 
@@ -3693,16 +3865,24 @@ export function getRunStatus(
   options: StatusOptions = {},
 ): RunState | string {
   const state = loadState(root, runId)
+  const liveness = invocationLiveness(
+    state,
+    Date.now(),
+    loadProjectConfig(root).stage_liveness_ms,
+  )
+  const statusState = liveness
+    ? { ...state, invocation_liveness: liveness }
+    : state
 
   if (options.json) {
-    return state
+    return statusState
   }
 
   const validationStatus = state.current_invocation
     ? loadInvocationValidationStatus(root, runId, state.current_invocation.id)
     : null
 
-  return renderStatus(state, validationStatus)
+  return renderStatus(statusState, validationStatus)
 }
 
 export function getRunState(root: string, runId: string): RunState {

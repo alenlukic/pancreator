@@ -35,10 +35,10 @@ const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
 const CONFIGS = {
   schema_version: 1,
   candidates: [
-    { name: 'alpha', personas: { coder: 'fixture-model-alpha' } },
-    { name: 'beta', personas: { coder: 'fixture-model-beta' } },
+    { name: 'alpha', personas: { coder: 'gpt-5.4' } },
+    { name: 'beta', personas: { coder: 'claude-opus-5' } },
   ],
-  consolidation: { personas: { metacritic: 'fixture-model-consolidation' } },
+  consolidation: { personas: { metacritic: 'gpt-5.6-sol' } },
 }
 
 /** Above every supported pid range, so this owner is provably not running. */
@@ -334,8 +334,7 @@ test('best-of-N init isolates every candidate in its own worktree and model set'
     const snapshot = JSON.parse(
       readFileSync(path.join(root, run.pipeline_config?.path ?? ''), 'utf8'),
     ) as { personas: Record<string, string> }
-    const expected =
-      candidate.slot === 'alpha' ? 'fixture-model-alpha' : 'fixture-model-beta'
+    const expected = candidate.slot === 'alpha' ? 'gpt-5.4' : 'claude-opus-5'
 
     // The candidate map overrides config.json defaults; everything else falls
     // through to them.
@@ -357,7 +356,7 @@ test('best-of-N init isolates every candidate in its own worktree and model set'
   // Base agents keep the active mapping, so an ordinary run is unaffected.
   assert.doesNotMatch(
     readFileSync(path.join(root, '.cursor/agents/pan-coder.md'), 'utf8'),
-    /fixture-model-/u,
+    /gpt-5\.4|claude-opus-5/u,
   )
 })
 
@@ -845,7 +844,7 @@ test('init rejects a candidate config that maps an unknown persona', () => {
   writeJson(path.join(root, 'best-of-n.json'), {
     ...CONFIGS,
     candidates: [
-      { name: 'alpha', personas: { codeer: 'fixture-model-alpha' } },
+      { name: 'alpha', personas: { codeer: 'gpt-5.4' } },
       CONFIGS.candidates[1],
     ],
   })
@@ -865,7 +864,7 @@ test('init validates the consolidation config before any candidate runs', () => 
 
   writeJson(path.join(root, 'best-of-n.json'), {
     ...CONFIGS,
-    consolidation: { personas: { metacritick: 'fixture-model' } },
+    consolidation: { personas: { metacritick: 'gpt-5.4' } },
   })
 
   assert.throws(
@@ -888,7 +887,7 @@ test('init validates the consolidation config before any candidate runs', () => 
   writeJson(configPath, config)
   writeJson(path.join(root, 'best-of-n.json'), {
     ...CONFIGS,
-    consolidation: { personas: { reviewer: 'fixture-model' } },
+    consolidation: { personas: { reviewer: 'gpt-5.4' } },
   })
 
   assert.throws(

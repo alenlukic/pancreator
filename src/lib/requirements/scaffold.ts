@@ -156,6 +156,7 @@ export function scaffoldStageOutput(
   const attestation: InvocationAttestation | undefined = manifest
     ? {
         invocation_id: invocation.invocation_id,
+        model: invocation.stage.model,
         contract_path: manifest.contract_path,
         contract_sha256: manifest.contract_sha256,
         status: 'pending',

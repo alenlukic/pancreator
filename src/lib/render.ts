@@ -295,13 +295,13 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
   )
   const requirementRows = agentRequirements.length
     ? [
-        '| Policy | Requirement | Registry | Phase | Executor | Target | Success | Failure route |',
-        '| --- | --- | --- | --- | --- | --- | --- | --- |',
+        '| Policy | Requirement | Registry | Phase | Executor | Enforcement | Target | Success | Failure route |',
+        '| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
         ...agentRequirements.map(
           (requirement) =>
             `| ${requirement.policy_id} | ${requirement.requirement_id} | ` +
             `${requirement.registry_id}@${requirement.registry_version} | ` +
-            `${requirement.phase} | ${requirement.executor} | ` +
+            `${requirement.phase} | ${requirement.executor} | ${requirement.enforcement} | ` +
             `${requirement.resolved_target ?? requirement.target} | ` +
             `${requirement.success_condition} | ${requirement.failure_route} |`,
         ),
@@ -310,7 +310,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
   const harnessRequirementLines = harnessRequirements.map(
     (requirement) =>
       `- \`${requirement.registry_id}@${requirement.registry_version}\` — ` +
-      `${requirement.requirement_id} (${requirement.phase}); harness-owned, no agent action.`,
+      `${requirement.requirement_id} (${requirement.phase}, ${requirement.enforcement}); harness-owned, no agent action.`,
   )
   const gateOverrideEntries = Object.entries(invocation.gate_overrides ?? {})
   const gateOverrideLines = gateOverrideEntries.map(([id, command]) =>
@@ -446,6 +446,28 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
         ),
       ]
     : ['No stage-specific `data` fields are required.']
+  const fieldContractLines = invocation.output.field_contract
+    ? [
+        '',
+        'Shared field contract:',
+        ...invocation.output.field_contract.validators.map(
+          (validator) =>
+            `- \`${validator.registry_id}\` ${validator.enforcement} the stage.`,
+        ),
+        ...invocation.output.field_contract.fields.map((field) => {
+          const details = [
+            field.type,
+            ...(field.enum ? [`values: ${field.enum.join(', ')}`] : []),
+            ...(field.required
+              ? [`required keys: ${field.required.join(', ')}`]
+              : []),
+            ...(field.format ? [`format: ${field.format}`] : []),
+          ]
+
+          return `- \`${field.path}\`: ${details.join(', ')}`
+        }),
+      ]
+    : []
 
   const { delegation } = invocation
   const externalDelegation =
@@ -528,6 +550,9 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
           'A failed or missing validation artifact MUST NOT be delegated.',
         ...deliverySteps,
         `4. Submit with \`${delegation.submit_command}\`.`,
+        '5. When `pan status` marks the invocation stale, re-deliver this card ' +
+          'only when the invocation validation still passes. Re-prepare the ' +
+          'invocation when validation failed or the card changed.',
         '',
       ]
     : []
@@ -649,6 +674,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
           '',
         ]),
     ...requiredDataLines,
+    ...fieldContractLines,
     '',
     'When tracked workspace files change during the stage, include top-level `workspace_changes` with `attribution`, every changed path in `paths`, and a concise `explanation`. Use `attribution: internal` only when the active worker can trace every listed change to its own actions; the cleanliness gate blocks only external or unattributed contamination.',
     '',
@@ -744,6 +770,19 @@ export function renderStatus(
 
   if ('path' in state.pending_action) {
     lines.push(`Card: ${state.pending_action.path}`)
+  }
+
+  if (state.invocation_liveness) {
+    lines.push(
+      `Invocation activity: ${state.invocation_liveness.status}`,
+      `Last activity: ${state.invocation_liveness.last_activity_at}`,
+    )
+
+    if (state.invocation_liveness.status === 'stale') {
+      lines.push(
+        'Recovery: re-deliver the current card when invocation validation still passes; re-prepare it otherwise.',
+      )
+    }
   }
 
   if (state.pause_reason) {

@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "policy_id": "CONTRACT-001",
+  "validator_id": "FIELD-CONTRACT-VALIDATE-001",
+  "stages": {
+    "implement": {
+      "validators": [
+        {
+          "registry_id": "IMPLEMENTATION-CLAIMS-VALIDATE-001",
+          "enforcement": "blocks"
+        }
+      ],
+      "fields": [
+        {
+          "path": "data.acceptance_results[].evidence[]",
+          "type": "string",
+          "format": "path reference, prose observation, or pytest node id",
+          "accepted_shapes": [
+            "path_reference",
+            "prose_observation",
+            "pytest_node_id"
+          ]
+        }
+      ]
+    },
+    "review": {
+      "validators": [
+        {
+          "registry_id": "REVIEW-VALIDATE-001",
+          "enforcement": "advises"
+        }
+      ],
+      "fields": [
+        {
+          "path": "data.review.findings[].severity",
+          "type": "string",
+          "enum": ["blocker", "high", "medium", "low"]
+        },
+        {
+          "path": "data.review.findings[].remediation_stage",
+          "type": "string",
+          "enum": ["review", "implement"]
+        },
+        {
+          "path": "data.review.findings[].resolution",
+          "type": "string",
+          "enum": ["resolved_in_review", "unresolved"]
+        }
+      ]
+    },
+    "test": {
+      "validators": [
+        {
+          "registry_id": "QA-VALIDATE-001",
+          "enforcement": "advises"
+        }
+      ],
+      "fields": [
+        {
+          "path": "data.test.cases[].steps",
+          "type": "string"
+        },
+        {
+          "path": "data.test.cases[].expected",
+          "type": "string"
+        },
+        {
+          "path": "data.test.cases[].actual",
+          "type": "string"
+        },
+        {
+          "path": "data.test.cases[].result",
+          "type": "string"
+        },
+        {
+          "path": "data.test.defects[].classification",
+          "type": "string"
+        },
+        {
+          "path": "data.test.defects[].owner",
+          "type": "string"
+        }
+      ]
+    },
+    "ship": {
+      "validators": [
+        {
+          "registry_id": "RELEASE-VALIDATE-001",
+          "enforcement": "blocks"
+        }
+      ],
+      "fields": [
+        {
+          "path": "data.release.change_list[]",
+          "type": "object",
+          "required": ["path", "kind", "description"]
+        },
+        {
+          "path": "data.release.validation[].workspace_fingerprint",
+          "type": "string"
+        }
+      ]
+    }
+  }
+}

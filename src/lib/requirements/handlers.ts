@@ -34,6 +34,7 @@ import {
   validateQaOutput,
   validateReleaseOutput,
   validateReviewOutput,
+  validateSharedFieldContract,
   validateSpotfixOutcome,
 } from '../validators/stage-validators.js'
 
@@ -181,6 +182,7 @@ export const HANDLERS: Record<string, ValidatorHandler> = {
   'directive-audit': directiveAuditHandler,
   'stage-scaffold': () => passed(),
   'stage-output-validate': validateStageOutputStrict,
+  'stage-field-contract-validate': validateSharedFieldContract,
   'assessment-scaffold': () => passed(),
   'assessment-validate': validateAssessment,
   'operator-artifact-validate': operatorArtifactHandler,

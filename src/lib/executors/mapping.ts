@@ -38,6 +38,13 @@ const CLAUDE_CODE_OPTION_KEYS = new Set([
   'session-resume',
   'timeout-ms',
 ])
+const CURSOR_OPTION_KEYS = new Set(['context', 'effort', 'fast'])
+
+/** Superseded Cursor option keys, mapped to the key that replaced them. */
+const LEGACY_CURSOR_OPTION_ALIASES = new Map([['reasoning', 'effort']])
+
+/** Superseded Cursor option keys that carry no current equivalent. */
+const LEGACY_CURSOR_OPTION_DROPS = new Set(['thinking'])
 
 function parseBracketOptions(
   optionsText: string | undefined,
@@ -66,6 +73,12 @@ function parseBracketOptions(
       `${source} option '${entry}' MUST use key=value syntax.`,
       { code: 'INVALID_PIPELINE_CONFIG' },
     )
+
+    // A repeated key has no defined winner: rejecting it keeps parse and
+    // canonicalization from resolving the same spec to different models.
+    invariant(!(key in options), `${source} option '${key}' MUST NOT repeat.`, {
+      code: 'INVALID_PIPELINE_CONFIG',
+    })
 
     options[key] = value
   }
@@ -114,13 +127,49 @@ function validateClaudeCodeOptions(
   }
 }
 
+function validateCursorOptions(
+  options: Record<string, string>,
+  source: string,
+): void {
+  for (const [key, value] of Object.entries(options)) {
+    invariant(
+      CURSOR_OPTION_KEYS.has(key),
+      key === 'reasoning'
+        ? `${source} uses obsolete Cursor option 'reasoning'. Use 'effort' instead.`
+        : key === 'thinking'
+          ? `${source} uses obsolete Cursor option 'thinking'. Remove it; no current option replaces it.`
+          : `${source} uses unknown Cursor option '${key}'. Supported options: context, effort, fast.`,
+      { code: 'INVALID_PIPELINE_CONFIG' },
+    )
+
+    if (key === 'context') {
+      invariant(
+        /^\d+k$/u.test(value),
+        `${source} context MUST use a positive '<kilotokens>k' value.`,
+        { code: 'INVALID_PIPELINE_CONFIG' },
+      )
+    } else if (key === 'fast') {
+      invariant(
+        value === 'true' || value === 'false',
+        `${source} fast MUST be true or false.`,
+        { code: 'INVALID_PIPELINE_CONFIG' },
+      )
+    } else if (key === 'effort') {
+      invariant(
+        value === 'low' || value === 'medium' || value === 'high',
+        `${source} effort MUST be low, medium, or high.`,
+        { code: 'INVALID_PIPELINE_CONFIG' },
+      )
+    }
+  }
+}
+
 /**
  * Parse one persona mapping string into its executor, model, and options.
  *
  * The executor prefix is optional and defaults to `cursor`, so every existing
- * configuration parses unchanged. Cursor bracket options stay opaque — Cursor
- * consumes them — while claude-code options are validated here because the
- * harness itself consumes them at delegation time.
+ * configuration parses unchanged. The harness validates Cursor options before
+ * projection and validates claude-code options before delegation.
  */
 export function parsePersonaMapping(
   raw: string,
@@ -162,6 +211,8 @@ export function parsePersonaMapping(
 
   if (executor === 'claude-code') {
     validateClaudeCodeOptions(options, source)
+  } else {
+    validateCursorOptions(options, source)
   }
 
   return {
@@ -171,6 +222,92 @@ export function parsePersonaMapping(
     model,
     options,
   }
+}
+
+/**
+ * Comparable form of a mapping string, tolerant of superseded option grammar.
+ *
+ * A run's pipeline snapshot keeps the exact text it was created with, so a later
+ * option-grammar change would otherwise make an in-flight run permanently
+ * undeliverable: the snapshot cannot be edited, and restoring the retired
+ * spelling in `config.json` fails current validation. Comparison therefore
+ * normalizes both sides instead of matching raw text. Authoring surfaces keep
+ * using `parsePersonaMapping`, which still rejects a retired key outright.
+ */
+export function canonicalPersonaMapping(raw: string): string {
+  const trimmed = raw.trim()
+  const prefixMatch = EXECUTOR_PREFIX_PATTERN.exec(trimmed)
+  let executor: PersonaExecutorKind = DEFAULT_PERSONA_EXECUTOR
+  let modelSpec = trimmed
+
+  if (
+    prefixMatch &&
+    PERSONA_EXECUTOR_KINDS.includes(prefixMatch[1] as PersonaExecutorKind)
+  ) {
+    executor = prefixMatch[1] as PersonaExecutorKind
+    modelSpec = prefixMatch[2]
+  }
+
+  const specMatch = MODEL_SPEC_PATTERN.exec(modelSpec)
+
+  if (
+    specMatch?.groups?.model === undefined ||
+    specMatch.groups.model.trim().length === 0
+  ) {
+    return `${executor}:${modelSpec.trim()}`
+  }
+
+  const model = specMatch.groups.model.trim()
+  const parsed = new Map<string, string>()
+  const optionsText = specMatch.groups.options
+
+  if (optionsText !== undefined && optionsText.trim().length > 0) {
+    for (const entry of optionsText.split(',')) {
+      const separator = entry.indexOf('=')
+
+      if (separator <= 0) {
+        continue
+      }
+
+      const key = entry.slice(0, separator).trim()
+      const value = entry.slice(separator + 1).trim()
+
+      if (key.length > 0 && value.length > 0 && !parsed.has(key)) {
+        parsed.set(key, value)
+      }
+    }
+  }
+
+  const options = new Map<string, string>()
+
+  for (const [key, value] of parsed) {
+    if (executor !== 'cursor') {
+      options.set(key, value)
+      continue
+    }
+
+    if (LEGACY_CURSOR_OPTION_DROPS.has(key)) {
+      continue
+    }
+
+    const canonicalKey = LEGACY_CURSOR_OPTION_ALIASES.get(key) ?? key
+
+    // A current key always wins over the retired key that aliases onto it.
+    if (canonicalKey !== key && parsed.has(canonicalKey)) {
+      continue
+    }
+
+    options.set(canonicalKey, value)
+  }
+
+  const rendered = [...options.keys()]
+    .sort()
+    .map((key) => `${key}=${options.get(key)}`)
+    .join(',')
+
+  return rendered.length > 0
+    ? `${executor}:${model}[${rendered}]`
+    : `${executor}:${model}`
 }
 
 /** Executor a raw mapping string resolves to, without full validation. */

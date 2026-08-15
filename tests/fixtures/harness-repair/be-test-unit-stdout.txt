@@ -1,0 +1,266 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- /Users/alen/Dev/rowspace/.pancreator/runtime/worktrees/operator/my-task/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/alen/Dev/rowspace/.pancreator/runtime/worktrees/operator/my-task
+configfile: pyproject.toml
+plugins: mock-3.15.1, braintrust-0.28.0, xdist-3.8.0, timeout-2.4.0, cov-6.3.0, anyio-4.14.2, asyncio-1.3.0, ddtrace-4.8.2, dependency-0.6.1, langsmith-0.8.18, Faker-40.11.1
+timeout: 60.0s
+timeout method: signal
+timeout func_only: False
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+created: 18/18 workers
+18 workers [11736 items]
+
+scheduling tests via LoadScheduling
+tests/unit/adapters/azure/test_sharepoint_browser_client.py::test_parse_site_url_accepts_sharepoint_urls_and_strips_query 
+tests/unit/adapters/llm/test_stream_factory.py::test_stream_from_spec_prefers_max_output_tokens_over_max_tokens_for_openai 
+tests/unit/adapters/tensor/test_opencode_http.py::test_opencode_runner_maps_permission_asked_to_permission_request 
+tests/unit/adapters/tensor/test_k8s_one_off_pod.py::test_container_env_vars_passes_plaintext_openai_key_without_secret_ref 
+tests/unit/agents/chat/test_model_selection.py::TestATurnThatNamesNoLevel::test_an_unnamed_default_falls_back_to_asking_about_the_provider 
+tests/unit/agents/executors/test_structured_data_executor.py::TestDeserializeSourceMapping::test_deserializes_mixed_mapping 
+tests/unit/agents/structured_data/test_evals_service.py::TestEvalsService::test_find_latest_result_replay_source_treats_passing_score_with_error_as_success 
+tests/unit/agents/structured_data/test_customer_agent_config_models.py::test_get_all_skills_includes_building_skills_when_enabled 
+tests/unit/agents/llm/test_openai_stream.py::test_build_openai_input_items_code_interpreter_replay_preserves_empty_code_string 
+tests/unit/app/middleware/test_feature_flag_middleware.py::test_feature_flag_middleware_applies_cookie_overrides_for_admin 
+tests/unit/adapters/test_dataset_repository_helpers.py::TestColumnsFromJson::test_parses_column_with_all_fields 
+tests/unit/agents/test_tool_executor.py::test_catalog_requires_unit_search_config 
+tests/unit/app/routers/test_agent_api_router.py::test_agent_api_slow_queries_lists_paginated_metadata_without_sql_text 
+tests/unit/agents/test_events.py::TestCronTriggerValidation::test_misspelled_timezone_raises_validation_error 
+tests/unit/agents/rag/test_query_expansion.py::TestExpandQuery::test_uses_anthropic_structured_client_by_default 
+tests/unit/app/routers/test_feedback_router.py::test_submit_company_page_feedback_uses_requesting_user_email_for_normal_session 
+[gw0] [  0%] PASSED tests/unit/adapters/azure/test_sharepoint_browser_client.py::test_parse_site_url_accepts_sharepoint_urls_and_strips_query 
+tests/unit/app/routers/test_chat_eval_datasets_router.py::TestUpdateChatEvalTest::test_not_found 
+[gw4] [  0%] PASSED tests/unit/agents/chat/test_model_selection.py::TestATurnThatNamesNoLevel::test_an_unnamed_default_falls_back_to_asking_about_the_provider 
+[gw6] [  0%] PASSED tests/unit/agents/executors/test_structured_data_executor.py::TestDeserializeSourceMapping::test_deserializes_mixed_mapping 
+tests/unit/adapters/azure/test_sharepoint_browser_client.py::test_parse_site_url_rejects_non_sharepoint_hosts 
+[gw5] [  0%] PASSED tests/unit/adapters/test_dataset_repository_helpers.py::TestColumnsFromJson::test_parses_column_with_all_fields 
+[gw1] [  0%] PASSED tests/unit/adapters/llm/test_stream_factory.py::test_stream_from_spec_prefers_max_output_tokens_over_max_tokens_for_openai 
+tests/unit/adapters/llm/test_stream_factory.py::test_stream_from_spec_maps_output_config_effort_to_openai_reasoning_for_adaptive 
+tests/unit/agents/executors/test_structured_data_executor.py::TestTopLevelModelSelection::test_default_model_when_selection_is_none 
+[gw0] [  0%] PASSED tests/unit/adapters/azure/test_sharepoint_browser_client.py::test_parse_site_url_rejects_non_sharepoint_hosts 
+[gw7] [  0%] PASSED tests/unit/agents/llm/test_openai_stream.py::test_build_openai_input_items_code_interpreter_replay_preserves_empty_code_string 
+[gw1] [  0%] PASSED tests/unit/adapters/llm/test_stream_factory.py::test_stream_from_spec_maps_output_config_effort_to_openai_reasoning_for_adaptive 
+[gw13] [  0%] PASSED tests/unit/app/middleware/test_feature_flag_middleware.py::test_feature_flag_middleware_applies_cookie_overrides_for_admin 
+[gw6] [  0%] PASSED tests/unit/agents/executors/test_structured_data_executor.py::TestTopLevelModelSelection::test_default_model_when_selection_is_none 
+[gw6] [  0%] PASSED tests/unit/agents/executors/test_structured_data_executor.py::TestTopLevelModelSelection::test_top_level_model_map_covers_supported_models 
+[gw7] [  0%] PASSED tests/unit/agents/llm/test_openai_stream.py::test_build_openai_input_items_code_interpreter_replay_failed_uses_empty_outputs_list 
+[gw4] [  0%] PASSED tests/unit/agents/chat/test_model_selection.py::test_the_picker_being_off_does_not_exempt_a_turn_from_a_total_outage 
+[gw0] [  0%] PASSED tests/unit/adapters/azure/test_sharepoint_browser_client.py::test_get_site_falls_back_to_configured_site_id_on_selected_permission_403 
+[gw3] [  0%] PASSED tests/unit/adapters/tensor/test_opencode_http.py::test_opencode_runner_maps_permission_asked_to_permission_request 
+[gw2] [  0%] PASSED tests/unit/adapters/tensor/test_k8s_one_off_pod.py::test_container_env_vars_passes_plaintext_openai_key_without_secret_ref 
+[gw2] [  0%] PASSED tests/unit/adapters/tensor/test_k8s_one_off_pod.py::test_container_env_vars_uses_secret_ref_for_baseten_key_dropping_plaintext 
+[gw8] [  0%] PASSED tests/unit/agents/structured_data/test_customer_agent_config_models.py::test_get_all_skills_includes_building_skills_when_enabled 
+[gw8] [  0%] PASSED tests/unit/agents/structured_data/test_customer_agent_config_models.py::test_get_all_skills_includes_customer_allowed_skills 
+[gw8] [  0%] PASSED tests/unit/agents/structured_data/test_customer_agent_config_models.py::test_get_tool_configs_merges_user_runtime_skills_into_use_skill 
+[gw8] [  0%] PASSED tests/unit/agents/structured_data/test_customer_agent_config_models.py::test_get_tool_configs_includes_empty_entity_configs_by_default 
+[gw12] [  0%] PASSED tests/unit/agents/test_events.py::TestCronTriggerValidation::test_misspelled_timezone_raises_validation_error 
+[gw7] [  0%] PASSED tests/unit/agents/llm/test_openai_stream.py::test_stream_emits_code_interpreter_server_events 
+[gw13] [  0%] PASSED tests/unit/app/middleware/test_feature_flag_middleware.py::test_feature_flag_middleware_ignores_cookie_overrides_for_non_admin 
+[gw5] [  0%] PASSED tests/unit/adapters/test_dataset_repository_helpers.py::TestColumnsFromJson::test_parses_sourced_column 
+[gw5] [  0%] PASSED tests/unit/adapters/test_dataset_repository_helpers.py::TestColumnsFromJson::test_parses_calculated_column 
+[gw5] [  0%] PASSED tests/unit/adapters/test_dataset_repository_helpers.py::TestColumnsFromJson::test_empty_dict_returns_empty 
+[gw5] [  0%] PASSED tests/unit/adapters/test_dataset_repository_helpers.py::TestColumnsFromJson::test_multiple_columns 
+[gw2] [  0%] PASSED tests/unit/adapters/tensor/test_k8s_one_off_pod.py::test_container_env_vars_passes_plaintext_token_without_secret_ref 
+[gw2] [  0%] PASSED tests/unit/adapters/tensor/test_k8s_one_off_pod.py::test_container_env_vars_omits_sentry_when_absent 
+[gw1] [  0%] PASSED tests/unit/adapters/llm/test_stream_factory.py::test_stream_from_spec_maps_anthropic_max_effort_to_openai_xhigh_reasoning 
+[gw1] [  0%] PASSED tests/unit/adapters/llm/test_stream_factory.py::test_stream_from_spec_output_config_effort_does_not_override_disabled_thinking_openai 
+[gw1] [  0%] PASSED tests/unit/adapters/llm/test_stream_factory.py::test_stream_from_spec_remaps_model_when_provider_failover_active 
+[gw12] [  0%] PASSED tests/unit/agents/test_events.py::TestCronTriggerValidation::test_both_invalid_returns_both_errors 
+[gw13] [  0%] PASSED tests/unit/app/middleware/test_feature_flag_middleware.py::test_feature_flag_middleware_uses_not_logged_in_user_when_ctx_user_missing 
+[gw6] [  0%] PASSED tests/unit/agents/executors/test_structured_data_executor.py::TestTopLevelModelSelection::test_openai_top_level_model_map_covers_supported_models 
+[gw6] [  0%] PASSED tests/unit/agents/executors/test_structured_data_executor.py::TestTopLevelModelSelection::test_openai_top_level_output_config_map_covers_supported_models 
+[gw6] [  0%] PASSED tests/unit/agents/executors/test_structured_data_executor.py::TestTopLevelModelSelection::test_openai_default_model_when_selection_is_none 
+[gw6] [  0%] PASSED tests/unit/agents/executors/test_structured_data_executor.py::TestTopLevelModelSelection::test_openai_model_override 
+[gw3] [  0%] PASSED tests/unit/adapters/tensor/test_opencode_http.py::test_opencode_runner_maps_permission_v2_asked_to_permission_request 
+[gw3] [  0%] PASSED tests/unit/adapters/tensor/test_opencode_http.py::test_opencode_runner_maps_permission_v2_replied_to_permission_response 
+[gw0] [  0%] PASSED tests/unit/adapters/azure/test_sharepoint_browser_client.py::test_list_children_rejects_unsafe_ids_and_maps_null_size 
+[gw0] [  0%] PASSED tests/unit/adapters/azure/test_sharepoint_browser_client.py::test_identity_name_handles_null_identity_fields[null-identity-set] 
+[gw12] [  0%] PASSED tests/unit/agents/test_events.py::TestManualTriggerValidation::test_default_timezone_is_valid 
+[gw1] [  0%] PASSED tests/unit/adapters/llm/test_stream_factory.py::test_stream_from_spec_is_unchanged_when_failover_gate_off 
+[gw2] [  0%] PASSED tests/unit/adapters/tensor/test_k8s_one_off_pod.py::test_k8s_backend_requires_port 
+[gw11] [  0%] PASSED tests/unit/agents/test_tool_executor.py::test_catalog_requires_unit_search_config 
+[gw10] [  0%] PASSED tests/unit/agents/structured_data/test_evals_service.py::TestEvalsService::test_find_latest_result_replay_source_treats_passing_score_with_error_as_success 
+[gw8] [  0%] PASSED tests/unit/agents/structured_data/test_customer_agent_config_models.py::test_get_tool_configs_includes_entity_hybrid_search_config 
+[gw8] [  0%] PASSED tests/unit/agents/structured_data/test_customer_agent_config_models.py::test_get_tool_configs_includes_unit_search_document_type_scope 
+[gw8] [  0%] PASSED tests/unit/agents/structured_data/test_customer_agent_config_models.py::test_get_all_skills_includes_dashboard_builder_when_enabled 
+[gw8] [  0%] PASSED tests/unit/agents/structured_data/test_customer_agent_config_models.py::test_get_all_skills_excludes_dashboard_builder_when_disabled 
+[gw12] [  0%] PASSED tests/unit/agents/test_events.py::TestManualTriggerValidation::test_valid_timezone 
+[gw0] [  0%] PASSED tests/unit/adapters/azure/test_sharepoint_browser_client.py::test_identity_name_handles_null_identity_fields[null-user] 
+[gw9] [  0%] PASSED tests/unit/agents/rag/test_query_expansion.py::TestExpandQuery::test_uses_anthropic_structured_client_by_default 
+[gw6] [  0%] PASSED tests/unit/agents/executors/test_structured_data_executor.py::TestTopLevelModelSelection::test_openai_selects_expected_top_level_model[fast-gpt-5.5-2026-04-23] 
+[gw5] [  0%] PASSED tests/unit/adapters/test_dataset_repository_helpers.py::TestColumnsToJson::test_serializes_editable_column 
+[gw4] [  0%] PASSED tests/unit/agents/chat/test_model_selection.py::test_the_picker_being_off_is_otherwise_never_refused 
+[gw3] [  0%] PASSED tests/unit/adapters/tensor/test_opencode_http.py::test_opencode_runner_maps_permission_v2_always_reply_to_accept 
+[gw8] [  0%] PASSED tests/unit/agents/structured_data/test_customer_agent_config_models.py::test_viewing_only_returns_viewing_description_no_builder_description 
+[gw4] [  0%] PASSED tests/unit/agents/chat/test_model_selection.py::test_a_preview_never_hops_to_the_other_provider[sonnet-5-anthropic] 
+[gw0] [  0%] PASSED tests/unit/adapters/azure/test_sharepoint_browser_client.py::test_identity_name_handles_null_identity_fields[valid] 
+[gw0] [  0%] PASSED tests/unit/adapters/azure/test_sharepoint_browser_client.py::test_identity_name_handles_null_identity_fields[missing-key] 
+[gw0] [  0%] PASSED tests/unit/adapters/azure/test_sharepoint_browser_client.py::test_item_from_graph_handles_null_facets 
+[gw10] [  0%] PASSED tests/unit/agents/structured_data/test_evals_service.py::TestEvalsService::test_find_latest_result_replay_source_falls_back_to_newest_when_no_recent_success 
+[gw10] [  0%] PASSED tests/unit/agents/structured_data/test_evals_service.py::TestEvalsService::test_find_latest_result_replay_source_skips_runs_without_events 
+[gw1] [  0%] PASSED tests/unit/adapters/llm/test_text_clients.py::TestAnthropicTextClient::test_generates_with_cached_system_and_effort 
+[gw8] [  0%] PASSED tests/unit/agents/structured_data/test_customer_agent_config_models.py::test_no_description_when_both_flags_disabled 
+[gw8] [  0%] PASSED tests/unit/agents/structured_data/test_customer_agent_config_models.py::test_get_all_skills_includes_direct_sql_metadata_admin_when_enabled 
+[gw6] [  0%] PASSED tests/unit/agents/executors/test_structured_data_executor.py::TestTopLevelModelSelection::test_openai_selects_expected_top_level_model[balanced-gpt-5.5-2026-04-23] 
+[gw6] [  0%] PASSED tests/unit/agents/executors/test_structured_data_executor.py::TestTopLevelModelSelection::test_openai_selects_expected_top_level_model[advanced-gpt-5.5-2026-04-23] 
+[gw6] [  0%] PASSED tests/unit/agents/executors/test_structured_data_executor.py::TestTopLevelModelSelection::test_openai_levels_split_apart_under_an_assigned_map[fast-gpt-5.6-luna] 
+[gw6] [  0%] PASSED tests/unit/agents/executors/test_structured_data_executor.py::TestTopLevelModelSelection::test_openai_levels_split_apart_under_an_assigned_map[balanced-gpt-5.6-terra] 
+[gw6] [  0%] PASSED tests/unit/agents/executors/test_structured_data_executor.py::TestTopLevelModelSelection::test_openai_levels_split_apart_under_an_assigned_map[advanced-gpt-5.6-sol] 
+[gw3] [  0%] PASSED tests/unit/adapters/tensor/test_opencode_http.py::test_opencode_runner_filters_other_sessions 
+[gw5] [  0%] PASSED tests/unit/adapters/test_dataset_repository_helpers.py::TestColumnsToJson::test_excludes_none_fields 
+[gw5] [  0%] PASSED tests/unit/adapters/test_dataset_repository_helpers.py::TestColumnsToJson::test_preserves_enum_values 
+[gw5] [  0%] PASSED tests/unit/adapters/test_dataset_repository_helpers.py::TestColumnsToJson::test_roundtrip_preserves_data 
+[gw5] [  0%] PASSED tests/unit/adapters/test_dataset_repository_helpers.py::TestCastValueForJson::test_string_passthrough 
+[gw5] [  0%] PASSED tests/unit/adapters/test_dataset_repository_helpers.py::TestCastValueForJson::test_int_passthrough 
+[gw4] [  0%] PASSED tests/unit/agents/chat/test_model_selection.py::test_a_preview_never_hops_to_the_other_provider[opus-5-anthropic] 
+[gw4] [  0%] PASSED tests/unit/agents/chat/test_model_selection.py::test_a_preview_paired_with_the_wrong_provider_names_nothing[sonnet-5] 
+[gw4] [  0%] PASSED tests/unit/agents/chat/test_model_selection.py::test_a_preview_paired_with_the_wrong_provider_names_nothing[opus-5] 
+[gw4] [  0%] PASSED tests/unit/agents/chat/test_model_selection.py::test_a_stale_level_does_not_survive_a_request_for_auto 
+[gw2] [  0%] PASSED tests/unit/adapters/tensor/test_k8s_one_off_pod.py::test_k8s_backend_rejects_non_tensor_deployment_manifest_before_create 
+[gw2] [  0%] PASSED tests/unit/adapters/tensor/test_k8s_one_off_pod.py::test_k8s_backend_rejects_one_shot_workload 
+[gw4] [  0%] PASSED tests/unit/agents/chat/test_model_selection.py::test_a_withdrawn_preview_falls_back_instead_of_refusing 
+[gw1] [  0%] PASSED tests/unit/adapters/llm/test_text_clients.py::TestAnthropicTextClient::test_minimal_effort_rounds_up_to_low 
+[gw7] [  0%] PASSED tests/unit/agents/llm/test_openai_stream.py::test_stream_attaches_annotated_container_files_to_code_interpreter_result 
+[gw7] [  0%] PASSED tests/unit/agents/llm/test_openai_stream.py::test_stream_dedupes_code_interpreter_output_file_against_container_listing 
+[gw1] [  0%] PASSED tests/unit/adapters/llm/test_text_clients.py::TestAnthropicTextClient::test_haiku_effort_is_sanitized_away 
+[gw12] [  0%] PASSED tests/unit/agents/test_events.py::TestManualTriggerValidation::test_invalid_timezone_raises_validation_error 
+[gw12] [  0%] PASSED tests/unit/agents/test_events.py::TestEventTriggerValidation::test_validates_configured_event_trigger 
+[gw12] [  0%] PASSED tests/unit/agents/test_events.py::TestEventRunTriggerValidation::test_validates_feedback_left_payload 
+[gw12] [  0%] PASSED tests/unit/agents/test_events.py::TestEventRunTriggerValidation::test_validates_golden_eval_failure_report_finished_payload 
+[gw10] [  0%] PASSED tests/unit/agents/structured_data/test_evals_service.py::TestEvalsService::test_find_latest_result_replay_source_normalizes_legacy_result_ids 
+[gw0] [  0%] PASSED tests/unit/adapters/azure/test_sharepoint_browser_client.py::test_list_children_handles_null_identity_fields 
+[gw0] [  0%] PASSED tests/unit/adapters/azure/test_sharepoint_browser_client.py::test_preview_posts_empty_json_body_and_returns_get_url_only 
+[gw5] [  0%] PASSED tests/unit/adapters/test_dataset_repository_helpers.py::TestCastValueForJson::test_float_passthrough 
+[gw8] [  0%] PASSED tests/unit/agents/structured_data/test_customer_agent_config_models.py::test_get_all_skills_excludes_direct_sql_metadata_admin_when_disabled 
+[gw8] [  0%] PASSED tests/unit/agents/structured_data/test_customer_agent_config_models.py::test_get_all_skills_excludes_direct_sql_metadata_admin_without_use_skill 
+[gw6] [  0%] PASSED tests/unit/agents/executors/test_structured_data_executor.py::TestTopLevelModelSelection::test_selects_expected_top_level_model[fast-claude-haiku-4-5-20251001] 
+[gw3] [  0%] PASSED tests/unit/adapters/tensor/test_opencode_http.py::test_opencode_runner_keeps_session_tagged_events_before_session_is_known 
+[gw8] [  0%] PASSED tests/unit/agents/structured_data/test_customer_agent_config_models.py::test_get_all_skills_excludes_direct_sql_metadata_admin_without_direct_sql 
+[gw4] [  0%] PASSED tests/unit/agents/chat/test_model_selection.py::test_a_level_keeps_its_meaning_when_only_its_provider_is_down 
+[gw4] [  0%] PASSED tests/unit/agents/chat/test_model_selection.py::test_a_level_only_degrades_once_no_provider_can_run_it 
+[gw5] [  0%] PASSED tests/unit/adapters/test_dataset_repository_helpers.py::TestCastValueForJson::test_bool_passthrough 
+[gw10] [  0%] PASSED tests/unit/agents/structured_data/test_evals_service.py::TestEvalsService::test_find_latest_result_replay_source_returns_none_without_matching_events 
+[gw12] [  0%] PASSED tests/unit/agents/test_events.py::TestEventRunTriggerValidation::test_validates_through_trigger_payload 
+[gw8] [  0%] PASSED tests/unit/agents/structured_data/test_customer_agent_config_models.py::test_get_static_tools_includes_microsoft_tools_when_enabled 
+[gw5] [  0%] PASSED tests/unit/adapters/test_dataset_repository_helpers.py::TestCastValueForJson::test_none_passthrough 
+[gw9] [  0%] PASSED tests/unit/agents/rag/test_query_expansion.py::TestExpandQuery::test_returns_none_on_timeout 
+[gw2] [  0%] PASSED tests/unit/adapters/tensor/test_k8s_one_off_pod.py::test_k8s_backend_maps_pod_statuses 
+[gw7] [  0%] PASSED tests/unit/agents/llm/test_openai_stream.py::test_stream_keeps_later_annotated_files_when_container_listing_saw_them_first 
+[gw0] [  0%] PASSED tests/unit/adapters/azure/test_sharepoint_browser_client.py::test_item_fields_keeps_custom_columns_and_flattens_complex_values 
+[gw4] [  0%] PASSED tests/unit/agents/chat/test_model_selection.py::test_a_level_named_without_a_provider_records_no_provider 
+[gw1] [  0%] PASSED tests/unit/adapters/llm/test_text_clients.py::TestAnthropicTextClient::test_stream_mode_uses_streaming_api_and_records_usage 
+[gw3] [  1%] PASSED tests/unit/adapters/tensor/test_opencode_http.py::test_get_history_reconstructs_role_tagged_blocks 
+[gw5] [  1%] PASSED tests/unit/adapters/test_dataset_repository_helpers.py::TestCastValueForJson::test_decimal_converted_to_float 
+[gw4] [  1%] PASSED tests/unit/agents/chat/test_model_selection.py::test_with_the_provider_selector_off_a_level_takes_the_first_working_provider 
+[gw1] [  5%] PASSED tests/unit/adapters/sql/test_table_materializer.py::TestConvertCsvValue::test_boolean_truthy[ True ] 
+[gw1] [  6%] PASSED tests/unit/adapters/sql/test_table_materializer.py::TestConvertCsvValue::test_boolean_falsy[ FALSE ] 
+[gw1] [ 12%] PASSED tests/unit/adapters/tensor/test_k8s_one_off_pod.py::test_k8s_placement_rejects_invalid_configuration[environ1-either true or false] 
+[gw1] [ 12%] PASSED tests/unit/adapters/tensor/test_k8s_one_off_pod.py::test_k8s_placement_rejects_invalid_configuration[environ4-valid JSON] 
+[gw14] [ 17%] PASSED tests/unit/app/routers/test_agent_api_router.py::test_agent_api_vent_rejects_malformed_normalized_fields[attempted_actions-Checked the README] 
+[gw1] [ 17%] PASSED tests/unit/core/services/test_code_executable_materialization.py::TestMaterializationModel::test_invalid_table_identifier_rejected[sp ace] 
+[gw1] [ 17%] PASSED tests/unit/core/services/test_code_executable_materialization.py::TestMaterializationModel::test_invalid_output_filename_rejected[my file.csv] 
+[gw2] [ 18%] PASSED tests/unit/core/services/test_filesystem.py::test_create_requires_valid_display_name_before_blob_access[   ] 
+[gw2] [ 18%] PASSED tests/unit/core/services/test_filesystem.py::test_create_rejects_invalid_content_types_before_blob_access[   ] 
+[gw10] [ 18%] PASSED tests/unit/agents/structured_data/test_scoring_model.py::test_parse_scoring_model_rejects_aliases_and_full_model_names[ GPT-4-MINI ] 
+[gw2] [ 18%] PASSED tests/unit/core/services/test_filesystem.py::test_create_rejects_invalid_content_types_before_blob_access[text/plain; charset=utf-8] 
+[gw14] [ 19%] PASSED tests/unit/app/routers/test_agent_api_router.py::test_agent_api_vent_rejects_malformed_normalized_fields[reproduction_context-command=just check] 
+[gw17] [ 20%] PASSED tests/unit/app/routers/test_slow_query_log.py::test_get_occurrence_maps_domain_errors[SlowQueryOccurrenceNotFoundError-404-Slow query {slow_query_id} not found] 
+[gw17] [ 21%] PASSED tests/unit/app/routers/test_slow_query_log.py::test_get_occurrence_maps_domain_errors[SlowQuerySqlNotStoredError-409-SQL text is unavailable for slow query {slow_query_id}] 
+[gw17] [ 21%] PASSED tests/unit/app/routers/test_slow_query_log.py::test_get_occurrence_maps_domain_errors[SlowQuerySqlReadError-502-Failed to read SQL text for slow query {slow_query_id}] 
+[gw11] [ 21%] PASSED tests/unit/core/services/test_filesystem.py::test_fuzzy_search_rejects_invalid_queries[   ] 
+[gw11] [ 21%] PASSED tests/unit/core/services/test_filesystem.py::test_fuzzy_search_rejects_invalid_queries[a b] 
+[gw17] [ 21%] PASSED tests/unit/app/routers/test_slow_query_log.py::test_list_occurrences_maps_hydration_errors[SlowQuerySqlNotStoredError-409-SQL text is unavailable for slow query {slow_query_id}] 
+[gw17] [ 21%] PASSED tests/unit/app/routers/test_slow_query_log.py::test_list_occurrences_maps_hydration_errors[SlowQuerySqlReadError-502-Failed to read SQL text for slow query {slow_query_id}] 
+[gw11] [ 24%] PASSED tests/unit/core/services/test_tensor_skills_admin.py::test_upsert_rejects_non_slug_name[has space] 
+[gw11] [ 26%] PASSED tests/unit/core/services/test_wiki.py::test_read_entry_owns_inline_text_selection[text/markdown-# Wiki-# Wiki] 
+[gw7] [ 27%] PASSED tests/unit/core/services/test_wiki.py::test_read_durable_text_revalidates_returned_file[/wiki/.state/manifest.json-application/json-Wiki page is outside the durable namespace] 
+[gw7] [ 27%] PASSED tests/unit/core/services/test_wiki.py::test_read_durable_text_revalidates_returned_file[/wiki/entities/acme.bin-application/octet-stream-Wiki page type is not readable] 
+[gw11] [ 27%] PASSED tests/unit/core/services/test_wiki.py::test_create_derives_humanized_display_name[/wiki/people/Andy__Smith--Profile.md-Andy Smith Profile.md] 
+[gw11] [ 27%] PASSED tests/unit/core/services/test_wiki.py::test_create_derives_humanized_display_name[/wiki/reports/Annual__  Report--2026-Annual Report 2026] 
+[gw11] [ 28%] PASSED tests/unit/core/services/test_wiki.py::test_create_rejects_out_of_scope_paths_and_invalid_display_names[/wiki/file.md-   ] 
+[gw7] [ 28%] PASSED tests/unit/core/tensor/test_agent_api_artifacts.py::test_save_rejects_unsafe_paths[   ] 
+[gw11] [ 29%] PASSED tests/unit/customers/parker/integrations/azure/fabric/table_handlers/test_parker_contacts.py::TestParkerContactsTableHandler::test_transform_row_location_cleaning[Waterloo, Belgium-Waterloo, Belgium] 
+[gw1] [ 29%] PASSED tests/unit/core/services/test_read_only_sql.py::test_service_accepts_single_select[SELECT 1] 
+[gw11] [ 29%] PASSED tests/unit/customers/parker/integrations/azure/fabric/table_handlers/test_parker_contacts.py::TestParkerContactsTableHandler::test_transform_row_location_cleaning[  ,  -None] 
+[gw1] [ 29%] PASSED tests/unit/core/services/test_read_only_sql.py::test_service_accepts_single_select[SELECT * FROM users] 
+[gw1] [ 29%] PASSED tests/unit/core/services/test_read_only_sql.py::test_service_accepts_single_select[WITH active_users AS (SELECT * FROM users) SELECT * FROM active_users] 
+[gw1] [ 29%] PASSED tests/unit/core/services/test_read_only_sql.py::test_service_rejects_everything_except_single_select[SHOW statement_timeout] 
+[gw1] [ 29%] PASSED tests/unit/core/services/test_read_only_sql.py::test_service_rejects_everything_except_single_select[INSERT INTO users (id) VALUES (1)] 
+[gw1] [ 29%] PASSED tests/unit/core/services/test_read_only_sql.py::test_service_rejects_everything_except_single_select[UPDATE users SET active = false] 
+[gw1] [ 29%] PASSED tests/unit/core/services/test_read_only_sql.py::test_service_rejects_everything_except_single_select[DELETE FROM users] 
+[gw1] [ 29%] PASSED tests/unit/core/services/test_read_only_sql.py::test_service_rejects_everything_except_single_select[CREATE TABLE users_copy AS SELECT * FROM users] 
+[gw1] [ 29%] PASSED tests/unit/core/services/test_read_only_sql.py::test_service_rejects_everything_except_single_select[ALTER TABLE users ADD COLUMN active boolean] 
+[gw1] [ 29%] PASSED tests/unit/core/services/test_read_only_sql.py::test_service_rejects_everything_except_single_select[DROP TABLE users] 
+[gw1] [ 29%] PASSED tests/unit/core/services/test_read_only_sql.py::test_service_rejects_everything_except_single_select[TRUNCATE TABLE users] 
+[gw1] [ 29%] PASSED tests/unit/core/services/test_read_only_sql.py::test_service_rejects_everything_except_single_select[SELECT * INTO users_copy FROM users] 
+[gw1] [ 30%] PASSED tests/unit/core/services/test_read_only_sql.py::test_service_rejects_everything_except_single_select[WITH deleted AS (DELETE FROM users RETURNING *) SELECT * FROM deleted] 
+[gw1] [ 30%] PASSED tests/unit/core/services/test_read_only_sql.py::test_service_rejects_everything_except_single_select[SELECT 1; DELETE FROM users] 
+[gw1] [ 30%] PASSED tests/unit/core/services/test_read_only_sql.py::test_service_rejects_everything_except_single_select[SET statement_timeout = 0] 
+[gw1] [ 30%] PASSED tests/unit/core/services/test_read_only_sql.py::test_service_rejects_everything_except_single_select[SELECT set_config('statement_timeout', '0', false)] 
+[gw3] [ 31%] PASSED tests/unit/core/models/test_direct_sql_table_metadata.py::test_identity_key_rejects_blank_required_field[   ] 
+[gw3] [ 39%] PASSED tests/unit/core/services/test_staged_file_ingestion.py::test_bucket_key_filename_and_folder_path_derivation[Board Deck/document.pdf-Board Deck.pdf-] 
+[gw3] [ 39%] PASSED tests/unit/core/services/test_staged_file_ingestion.py::test_bucket_key_filename_and_folder_path_derivation[Acme/Board Deck/document.pdf-Board Deck.pdf-Acme] 
+[gw3] [ 39%] PASSED tests/unit/core/services/test_staged_file_ingestion.py::test_bucket_key_filename_and_folder_path_derivation[Acme/Reports/Q1 Deck/document.pptx-Q1 Deck.pptx-Acme/Reports] 
+[gw3] [ 39%] PASSED tests/unit/core/services/test_staged_file_ingestion.py::test_bucket_key_filename_and_folder_path_derivation[Acme/Reports/Q1 Deck.pdf-Q1 Deck.pdf-Acme/Reports] 
+[gw11] [ 39%] PASSED tests/unit/ingestion/test_contextual_embedding_service.py::TestExcelRetryBudgetByWire::test_outer_attempts_per_wire[None-3-anthropic default: SDK retries, but this loop covers non-429s too] 
+[gw11] [ 39%] PASSED tests/unit/ingestion/test_contextual_embedding_service.py::TestExcelRetryBudgetByWire::test_outer_attempts_per_wire[qwen-retry-model-3-baseten binds the SDK with 0 retries; this loop is the budget] 
+[gw1] [ 39%] PASSED tests/unit/customers/rowspace/test_ingestion_config.py::test_box_company_resolution[All Files/rowspace-test/Acme/file.pdf-Acme] 
+[gw11] [ 39%] PASSED tests/unit/ingestion/test_contextual_embedding_service.py::TestExcelRetryBudgetByWire::test_outer_attempts_per_wire[gpt-5.6-luna-1-openai profile retries in the SDK; stacking would multiply attempts] 
+[gw1] [ 39%] PASSED tests/unit/customers/rowspace/test_ingestion_config.py::test_box_company_resolution[/All Files/rowspace-test/Acme/file.pdf-Acme] 
+[gw1] [ 39%] PASSED tests/unit/customers/rowspace/test_ingestion_config.py::test_box_company_resolution[All Files/rowspace-test/file.pdf-None] 
+[gw1] [ 39%] PASSED tests/unit/customers/rowspace/test_ingestion_config.py::test_box_company_resolution[All Files/other/Acme/file.pdf-None] 
+[gw1] [ 39%] PASSED tests/unit/customers/rowspace/test_ingestion_config.py::test_template_id_for_new_company_path[Demos/Private Credit Demo/Live PC Demo/deals/Atlas/file.pdf-expected_template_id0] 
+[gw1] [ 39%] PASSED tests/unit/customers/rowspace/test_ingestion_config.py::test_template_id_for_new_company_path[Demos/PE Demo/Live PE Demo/fund/Monte Carlo/file.pdf-expected_template_id1] 
+[gw1] [ 39%] PASSED tests/unit/customers/rowspace/test_ingestion_config.py::test_template_id_for_new_company_path[Demos/PE Demo/Live PE Demo/live_deal/Acme/file.pdf-expected_template_id2] 
+[gw2] [100%] PASSED tests/unit/files/file_handlers/test_file_handlers.py::test_build_provider_file_handler_unknown_provider_defaults_to_local [2m2026-08-14T03:33:41.340421Z[0m [[32m[1minfo     [0m] [1mEnv value: ROWSPACE_LLM_OBS_ENABLED=false[0m
+[Statsig::DynamicConfig]: Type mismatch - 'backend_startup_config.SLOW_QUERY_LOG_ENABLED'. Expected <class 'str'>, got <class 'NoneType'>
+[Statsig::DynamicConfig]: Type mismatch - 'backend_startup_config.SLOW_QUERY_THRESHOLD_MS'. Expected <class 'str'>, got <class 'NoneType'>
+[Statsig::DynamicConfig]: Type mismatch - 'backend_startup_config.SLOW_QUERY_SENTRY_THRESHOLD_MS'. Expected <class 'str'>, got <class 'NoneType'>
+[Statsig::DynamicConfig]: Type mismatch - 'backend_startup_config.PUBLIC_DATABASE_NAME'. Expected <class 'str'>, got <class 'NoneType'>
+[Statsig::DynamicConfig]: Type mismatch - 'backend_startup_config.ROWSPACE_DATA_DATABASE_NAME'. Expected <class 'str'>, got <class 'NoneType'>
+=============================== warnings summary ===============================
+tests/integration/evals/structured_data_agent/run_evals.py:490: 18 warnings
+  /Users/alen/Dev/rowspace/.pancreator/runtime/worktrees/operator/my-task/tests/integration/evals/structured_data_agent/run_evals.py:490: PytestCollectionWarning: cannot collect test class 'TestCase' because it has a __init__ constructor (from: tests/unit/agents/structured_data/test_eval_runner_case_selection.py)
+    class TestCase(TypedDict):
+rowspace/agents/structured_data/evals/models.py:64: 18 warnings
+  /Users/alen/Dev/rowspace/.pancreator/runtime/worktrees/operator/my-task/rowspace/agents/structured_data/evals/models.py:64: PytestCollectionWarning: cannot collect test class 'TestCaseResult' because it has a __init__ constructor (from: tests/unit/agents/structured_data/test_evals_service.py)
+    class TestCaseResult(RunResultItem):
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:313: 18 warnings
+  /Users/alen/Dev/rowspace/.pancreator/runtime/worktrees/operator/my-task/.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:313: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    self.loader.exec_module(module)
+tests/unit/core/jobs/test_runner.py:31: 18 warnings
+  /Users/alen/Dev/rowspace/.pancreator/runtime/worktrees/operator/my-task/tests/unit/core/jobs/test_runner.py:31: PytestCollectionWarning: cannot collect test class 'TestUserRepository' because it has a __init__ constructor (from: tests/unit/core/jobs/test_runner.py)
+    class TestUserRepository(IUserRepository):
+tests/unit/customers/parker/integrations/azure/sharepoint_list/table_handlers/test_parker_value_creation_initiatives.py:57: 18 warnings
+  /Users/alen/Dev/rowspace/.pancreator/runtime/worktrees/operator/my-task/tests/unit/customers/parker/integrations/azure/sharepoint_list/table_handlers/test_parker_value_creation_initiatives.py:57: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.unit
+rowspace/models/metric_value_finder_eval.py:86: 18 warnings
+  /Users/alen/Dev/rowspace/.pancreator/runtime/worktrees/operator/my-task/rowspace/models/metric_value_finder_eval.py:86: PytestCollectionWarning: cannot collect test class 'TestCase' because it has a __init__ constructor (from: tests/unit/lib/test_filter_metric_value_finder_eval_test_cases.py)
+    class TestCase(TestCaseBase):
+rowspace/models/metric_value_finder_eval.py:17: 18 warnings
+  /Users/alen/Dev/rowspace/.pancreator/runtime/worktrees/operator/my-task/rowspace/models/metric_value_finder_eval.py:17: PytestCollectionWarning: cannot collect test class 'TestCaseFilter' because it has a __init__ constructor (from: tests/unit/lib/test_filter_metric_value_finder_eval_test_cases.py)
+    class TestCaseFilter(BaseModel):
+rowspace/adapters/sql/repositories/metric_value_finder_eval.py:23: 18 warnings
+  /Users/alen/Dev/rowspace/.pancreator/runtime/worktrees/operator/my-task/rowspace/adapters/sql/repositories/metric_value_finder_eval.py:23: PytestCollectionWarning: cannot collect test class 'TestCaseNotFound' because it has a __init__ constructor (from: tests/unit/repositories/test_metric_value_finder_eval_repository.py)
+    class TestCaseNotFound(Exception):
+  /Users/alen/Dev/rowspace/.pancreator/runtime/worktrees/operator/my-task/rowspace/models/metric_value_finder_eval.py:86: PytestCollectionWarning: cannot collect test class 'TestCase' because it has a __init__ constructor (from: tests/unit/repositories/test_metric_value_finder_eval_repository.py)
+rowspace/models/metric_value_finder_eval.py:68: 18 warnings
+  /Users/alen/Dev/rowspace/.pancreator/runtime/worktrees/operator/my-task/rowspace/models/metric_value_finder_eval.py:68: PytestCollectionWarning: cannot collect test class 'TestCaseBase' because it has a __init__ constructor (from: tests/unit/repositories/test_metric_value_finder_eval_repository.py)
+    class TestCaseBase(BaseModel):
+  /Users/alen/Dev/rowspace/.pancreator/runtime/worktrees/operator/my-task/rowspace/models/metric_value_finder_eval.py:17: PytestCollectionWarning: cannot collect test class 'TestCaseFilter' because it has a __init__ constructor (from: tests/unit/repositories/test_metric_value_finder_eval_repository.py)
+tests/unit/agents/rag/test_query_expansion.py: 1 warning
+tests/unit/adapters/sql/repositories/test_slow_query_log_repository.py: 1 warning
+tests/unit/agents/test_loop.py: 4 warnings
+tests/unit/app/routers/chat/test_chat_router.py: 1 warning
+tests/unit/agents/rag/test_permissioned_search_backend.py: 1 warning
+tests/unit/core/services/test_chat_completion_notifier.py: 1 warning
+tests/unit/agents/test_runtime.py: 3 warnings
+tests/unit/core/data_sync_checks/test_runner.py: 2 warnings
+tests/unit/core/jobs/test_poller.py: 1 warning
+tests/unit/core/data_sync_checks/test_source_gate.py: 1 warning
+tests/unit/agents/chat/test_chat_job_runner.py: 25 warnings
+tests/unit/core/jobs/test_reviver.py: 1 warning
+tests/unit/core/data_sync_checks/test_sync_failure_hook.py: 1 warning
+tests/unit/core/services/test_dashboard_citation_access.py: 1 warning
+tests/unit/core/services/test_dashboard_sharing.py: 1 warning
+========== 11736 passed, 8 skipped, 358 warnings in 78.06s (0:01:18) ===========
