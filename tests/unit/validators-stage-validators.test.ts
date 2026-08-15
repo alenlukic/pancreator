@@ -12,6 +12,7 @@ import {
   validateQaOutput,
   validateReleaseOutput,
   validateReviewOutput,
+  validateSharedFieldContract,
   validateSpotfixOutcome,
 } from '../../src/lib/validators/stage-validators.js'
 import { createFixture } from '../helpers.js'
@@ -312,7 +313,13 @@ test('implementation validator binds acceptance coverage to accepted plan', () =
           tests_added: [],
           notes: [],
         },
-        acceptance_results: [{ id: 'AC-OLD', result: 'pass', evidence: ['x'] }],
+        acceptance_results: [
+          {
+            id: 'AC-OLD',
+            result: 'pass',
+            evidence: ['tests/unit/validators-stage-validators.test.ts'],
+          },
+        ],
       },
     })}\n`,
   )
@@ -426,6 +433,93 @@ test('implementation validator rejects unknown acceptance ids', () => {
 
   assert.equal(result.status, 'failed')
   assert.ok(result.issues.some((issue) => issue.code === 'acceptance.unknown'))
+})
+
+test('implementation validator rejects opaque acceptance evidence', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'pan-impl-evidence-shape-'))
+  const target = 'runtime/logs/workflows/run/outputs/implement.json'
+  const absolute = path.join(root, target)
+
+  mkdirSync(path.dirname(absolute), { recursive: true })
+  writeFileSync(
+    absolute,
+    `${JSON.stringify({
+      data: {
+        implementation: {
+          changed_files: [],
+          tests_added: [],
+          notes: [],
+        },
+        acceptance_results: [
+          { id: 'AC-01', result: 'pass', evidence: ['opaque'] },
+        ],
+      },
+    })}\n`,
+  )
+
+  const result = validateImplementationClaims({
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'DEV-001',
+      requirement_id: 'implementation-claims',
+      registry_id: 'IMPLEMENTATION-CLAIMS-VALIDATE-001',
+      arguments: {},
+    },
+  })
+
+  assert.ok(
+    result.issues.some((entry) => entry.code === 'acceptance.evidence_shape'),
+  )
+})
+
+test('shared stage field contract has registered validator ownership', () => {
+  const root = createFixture()
+  const result = validateSharedFieldContract({
+    root,
+    targetPath: 'library/schemas/stage-output-requirements.json',
+    requirement: {
+      policy_id: 'CONTRACT-001',
+      requirement_id: 'shared-stage-field-contract',
+      registry_id: 'FIELD-CONTRACT-VALIDATE-001',
+      arguments: {},
+    },
+  })
+
+  assert.equal(result.status, 'passed')
+})
+
+test('review and QA field contracts declare advisory enforcement', () => {
+  const root = createFixture()
+  const contract = JSON.parse(
+    readFileSync(
+      path.join(root, 'library/schemas/stage-output-requirements.json'),
+      'utf8',
+    ),
+  ) as {
+    stages: Record<
+      string,
+      { validators: Array<{ registry_id: string; enforcement: string }> }
+    >
+  }
+  const reviewPolicy = JSON.parse(
+    readFileSync(
+      path.join(root, 'governance/policies/REVIEW-001.json'),
+      'utf8',
+    ),
+  ) as { requirements: Array<{ enforcement: string }> }
+  const testPolicy = JSON.parse(
+    readFileSync(path.join(root, 'governance/policies/TEST-001.json'), 'utf8'),
+  ) as { requirements: Array<{ enforcement: string }> }
+
+  assert.deepEqual(contract.stages.review?.validators, [
+    { registry_id: 'REVIEW-VALIDATE-001', enforcement: 'advises' },
+  ])
+  assert.deepEqual(contract.stages.test?.validators, [
+    { registry_id: 'QA-VALIDATE-001', enforcement: 'advises' },
+  ])
+  assert.equal(reviewPolicy.requirements[0]?.enforcement, 'advisory')
+  assert.equal(testPolicy.requirements[0]?.enforcement, 'advisory')
 })
 
 test('implementation retry requires explicit remediation evidence', () => {
@@ -1054,6 +1148,163 @@ test('qa validator still rejects explicitly declared missing evidence paths', ()
         issue.message.includes('tests/missing.py'),
     ),
   )
+})
+
+test('release validator requires structured change-list entries', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'pan-release-change-list-'))
+  const target = 'output.json'
+
+  writeFileSync(
+    path.join(root, target),
+    `${JSON.stringify({
+      data: {
+        release: {
+          summary: 'ready',
+          change_list: ['src/example.ts'],
+          validation: [],
+          rollback: 'revert commit',
+          waivers: [],
+          follow_up_cases: [],
+          governance_artifact_review: {
+            issues_reviewed: [],
+            repairs: [],
+            escalations: [],
+            summary: 'No issues.',
+          },
+          deferred_acceptance_criteria: [],
+          commit_message: 'Release',
+          pr_body: 'Release',
+        },
+      },
+    })}\n`,
+  )
+
+  const result = validateReleaseOutput({
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'SHIP-001',
+      requirement_id: 'release-validate',
+      registry_id: 'RELEASE-VALIDATE-001',
+      arguments: {},
+    },
+  })
+
+  assert.ok(
+    result.issues.some((issue) => issue.code === 'release.change_list_shape'),
+  )
+})
+
+test('release validator diffs the declared workspace instead of its dirty parent', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'pan-release-worktree-'))
+  const workspaceRoot = path.join(root, 'declared-worktree')
+  const target = 'output.json'
+  const changedFile = 'src/example.ts'
+  const preservedErrors = JSON.parse(
+    readFileSync(
+      path.join(
+        process.cwd(),
+        'tests/fixtures/harness-repair/ship-validation-errors.json',
+      ),
+      'utf8',
+    ),
+  ) as { errors: string[] }
+
+  execFileSync('git', ['init'], { cwd: root })
+  writeFileSync(path.join(root, 'parent.txt'), 'before\n')
+  execFileSync('git', ['add', 'parent.txt'], { cwd: root })
+  execFileSync(
+    'git',
+    [
+      '-c',
+      'user.name=Pancreator Tests',
+      '-c',
+      'user.email=tests@example.com',
+      'commit',
+      '-m',
+      'parent baseline',
+    ],
+    { cwd: root },
+  )
+  writeFileSync(path.join(root, 'parent.txt'), 'dirty parent\n')
+
+  mkdirSync(path.join(workspaceRoot, 'src'), { recursive: true })
+  execFileSync('git', ['init'], { cwd: workspaceRoot })
+  writeFileSync(
+    path.join(workspaceRoot, changedFile),
+    'export const value = 1\n',
+  )
+  execFileSync('git', ['add', changedFile], { cwd: workspaceRoot })
+  execFileSync(
+    'git',
+    [
+      '-c',
+      'user.name=Pancreator Tests',
+      '-c',
+      'user.email=tests@example.com',
+      'commit',
+      '-m',
+      'workspace baseline',
+    ],
+    { cwd: workspaceRoot },
+  )
+  writeFileSync(
+    path.join(workspaceRoot, changedFile),
+    'export const value = 2\n',
+  )
+
+  writeFileSync(
+    path.join(root, target),
+    `${JSON.stringify({
+      data: {
+        release: {
+          summary: 'ready',
+          change_list: [
+            {
+              path: changedFile,
+              kind: 'modified',
+              description: 'Updates the example value.',
+            },
+          ],
+          validation: [],
+          rollback: 'revert commit',
+          waivers: [],
+          follow_up_cases: [],
+          governance_artifact_review: {
+            issues_reviewed: [],
+            repairs: [],
+            escalations: [],
+            summary: 'No issues.',
+          },
+          deferred_acceptance_criteria: [],
+          commit_message: 'Release',
+          pr_body: 'Release',
+        },
+      },
+    })}\n`,
+  )
+
+  const result = validateReleaseOutput({
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'SHIP-001',
+      requirement_id: 'release-validate',
+      registry_id: 'RELEASE-VALIDATE-001',
+      arguments: {},
+    },
+    runState: {
+      workspace_root: 'declared-worktree',
+    },
+  })
+  const issueCodes = new Set(result.issues.map((entry) => entry.code))
+
+  assert.ok(
+    preservedErrors.errors.some((entry) => entry.includes('[object Object]')),
+  )
+  assert.equal(issueCodes.has('release.change_list_shape'), false)
+  assert.equal(issueCodes.has('release.change_not_in_diff'), false)
+  assert.equal(issueCodes.has('release.diff_not_disclosed'), false)
 })
 
 test('release validator rejects unknown validation fingerprints', () => {

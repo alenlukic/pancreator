@@ -160,6 +160,37 @@ test('submit succeeds when canonical delegation artifact is present', () => {
     })),
   })
   assessStage(root, runId, submitted.state.pending_action.output_path)
+
+  const implementInvocation = prepareInvocation(root, runId).invocation
+
+  assert.ok(implementInvocation)
+  assert.equal(
+    implementInvocation.output.field_contract?.validators[0]?.registry_id,
+    'IMPLEMENTATION-CLAIMS-VALIDATE-001',
+  )
+  assert.equal(
+    implementInvocation.output.field_contract?.validators[0]?.enforcement,
+    'blocks',
+  )
+  assert.ok(
+    implementInvocation.output.field_contract?.fields.some(
+      (field) =>
+        field.path === 'data.acceptance_results[].evidence[]' &&
+        field.accepted_shapes?.includes('pytest_node_id'),
+    ),
+  )
+
+  assert.ok(implementInvocation.delegation)
+  const contract = readFileSync(
+    path.join(root, implementInvocation.delegation.canonical_markdown_path),
+    'utf8',
+  )
+
+  assert.match(contract, /Shared field contract:/u)
+  assert.match(
+    contract,
+    /path reference, prose observation, or pytest node id/u,
+  )
 })
 
 test('submit relocates workspace-root delegation artifact before validation', () => {
@@ -305,6 +336,7 @@ test('submit reports an unreadable contract reference as blocked', () => {
   output.result = 'blocked'
   output.invocation_attestation = {
     invocation_id: invocation.invocation_id,
+    model: invocation.stage.model,
     contract_path: manifest.contract_path,
     status: 'reference_failed',
     error: `EACCES: ${manifest.contract_path} could not be read`,

@@ -1,6 +1,7 @@
 import path from 'node:path'
 
 import { invariant } from './errors.js'
+import { resolveCursorModelSlug } from './executors/cursor-catalog.js'
 import {
   parsePersonaMapping,
   type ParsedPersonaMapping,
@@ -70,7 +71,11 @@ function parsePersonaMap(
 
     // Validates the optional executor prefix against the closed set and, for
     // harness-consumed executors, the bracket options.
-    parsePersonaMapping(model, `${source}.${persona}`)
+    const mapping = parsePersonaMapping(model, `${source}.${persona}`)
+
+    if (mapping.executor === 'cursor') {
+      resolveCursorModelSlug(mapping, `${source}.${persona}`)
+    }
 
     personas[persona] = model
   }
@@ -277,7 +282,13 @@ export function resolvePersonaMapping(
     { code: 'INVALID_PIPELINE_CONFIG' },
   )
 
-  return parsePersonaMapping(model, `personas.${persona}`)
+  const mapping = parsePersonaMapping(model, `personas.${persona}`)
+
+  if (mapping.executor === 'cursor') {
+    resolveCursorModelSlug(mapping, `personas.${persona}`)
+  }
+
+  return mapping
 }
 
 /**

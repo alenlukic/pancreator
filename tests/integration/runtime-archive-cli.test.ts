@@ -123,15 +123,33 @@ test('status, resume, and archive preserve an unconverted v1 run', () => {
 
   const statePath = path.join(runDirectory, 'state.json')
   const state = JSON.parse(readFileSync(statePath, 'utf8')) as {
+    schema_version: number
     workflow_snapshot: { path: string }
     pipeline_config: { path: string }
     request: { stored_path: string }
+    stage_history: unknown[]
   }
 
+  state.schema_version = 1
   state.workflow_snapshot.path = `runtime/logs/workflows/${runId}/workflow.snapshot.json`
   state.pipeline_config.path = `runtime/logs/workflows/${runId}/pipeline-config.snapshot.json`
   state.request.stored_path = `runtime/logs/workflows/${runId}/request.md`
+  state.stage_history.push({
+    stage: 'intake',
+    attempt: 1,
+    invocation_id: '99_intake-1_renamed-prefix',
+    output_path: `runtime/logs/workflows/${runId}/outputs/99_intake-1_renamed-prefix.json`,
+    outcome: 'success',
+    submitted_at: new Date().toISOString(),
+    workspace_fingerprint: 'legacy-fixture',
+    validation_errors: [],
+    deterministic: [],
+  })
   write(statePath, `${JSON.stringify(state)}\n`)
+  write(
+    path.join(runDirectory, 'events.jsonl'),
+    `${JSON.stringify({ type: 'state_persisted', state_after_omitted: true })}\n`,
+  )
 
   const status = JSON.parse(
     execFileSync(process.execPath, [CLI, 'status', runId, '--json'], {

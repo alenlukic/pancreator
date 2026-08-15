@@ -680,7 +680,13 @@ function requiredData(
         release: {
           summary: 'Ready',
           ...versioning,
-          change_list: root ? gitChangedFiles(root) : [],
+          change_list: root
+            ? gitChangedFiles(root).map((changedPath) => ({
+                path: changedPath,
+                kind: 'modified',
+                description: 'Fixture workspace change.',
+              }))
+            : [],
           validation: [
             {
               stage: 'review',
@@ -761,6 +767,7 @@ export function makeAttestation(
 
   return {
     invocation_id: invocation.invocation_id,
+    model: invocation.stage.model,
     contract_path: manifest.contract_path,
     contract_sha256: manifest.contract_sha256,
     status: 'read',

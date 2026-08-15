@@ -146,6 +146,16 @@ export function normalizeMarkdownContent(content: string): string {
   return content.replaceAll('\r\n', '\n').replaceAll('\r', '\n')
 }
 
+function normalizeDelegationContent(content: string): string {
+  const normalized = normalizeMarkdownContent(content)
+    .split('\n')
+    .map((line) => line.replace(/[ \t]+$/u, ''))
+    .join('\n')
+    .trimEnd()
+
+  return `${normalized}\n`
+}
+
 /**
  * Layout v2 collects per-invocation validation artifacts under the run's
  * `validations/` directory. A layout-v1 run keeps them beside the invocation,
@@ -706,7 +716,7 @@ export function validateInvocationMarkdown(
     for (const requirement of harnessRequirements) {
       const line =
         `\`${requirement.registry_id}@${requirement.registry_version}\` — ` +
-        `${requirement.requirement_id} (${requirement.phase})`
+        `${requirement.requirement_id} (${requirement.phase}, ${requirement.enforcement})`
 
       checks.push({
         id: `requirement.${requirement.policy_id}.${requirement.requirement_id}`,
@@ -770,14 +780,8 @@ export function validateDelegationMarkdown(
   delegationMarkdown: string,
   mode: InvocationDeliveryMode = 'verbatim',
 ): { passed: boolean; checks: ValidationCheck[] } {
-  const expected = normalizeMarkdownContent(expectedMarkdown)
-  const delegation = normalizeMarkdownContent(delegationMarkdown)
-  const expectedNormalized = expected.endsWith('\n')
-    ? expected
-    : `${expected}\n`
-  const delegationNormalized = delegation.endsWith('\n')
-    ? delegation
-    : `${delegation}\n`
+  const expectedNormalized = normalizeDelegationContent(expectedMarkdown)
+  const delegationNormalized = normalizeDelegationContent(delegationMarkdown)
 
   const exact = expectedNormalized === delegationNormalized
   const { body, label } = exact
@@ -797,7 +801,7 @@ export function validateDelegationMarkdown(
         ? label
           ? `Delegation artifact matches ${subject} after the permitted persona label '${label}'`
           : `Delegation artifact matches ${subject}`
-        : `Delegation artifact MUST equal ${subject} after line-ending normalization, except for one permitted leading persona label`,
+        : `Delegation artifact MUST equal ${subject} after line-ending and trailing-whitespace normalization, except for one permitted leading persona label`,
     },
     {
       id: 'delegation.mode',
@@ -1021,6 +1025,14 @@ export function validateInvocationAttestation(
         attestation.invocation_id === invocation.invocation_id
           ? 'Attestation names the active invocation'
           : `Attestation invocation_id MUST equal '${invocation.invocation_id}'`,
+    },
+    {
+      id: 'attestation.model',
+      passed: attestation.model === invocation.stage.model,
+      message:
+        attestation.model === invocation.stage.model
+          ? `Attestation records effective model '${invocation.stage.model}'`
+          : `Attestation model MUST equal '${invocation.stage.model}'`,
     },
     {
       id: 'attestation.contract_path',
@@ -1697,6 +1709,65 @@ export function loadRepositoryCheckBaseline(
   }
 }
 
+/**
+ * True when a failed QA repository-check delta carries only timeout or
+ * collection artifacts on infrastructure that already failed at baseline.
+ * Exported so tests can anchor the classification to preserved evidence.
+ */
+export function isEnvironmentBlockedDelta(
+  stage: StageDefinition,
+  baseline: RepositoryCheckResult | undefined,
+  comparison: ReturnType<typeof compareRepositoryCheckToBaseline> | undefined,
+): boolean {
+  if (
+    stage.persona !== 'qa-tester' ||
+    baseline?.status !== 'failed' ||
+    !comparison ||
+    comparison.passed ||
+    comparison.delta.new.length === 0
+  ) {
+    return false
+  }
+
+  // The embedded arrays cap at 100 entries. The classification must inspect
+  // every new identity, so it reads the uncapped list and refuses to classify
+  // when identities beyond the cap are unavailable.
+  const newDiagnostics = comparison.delta.full?.new ?? comparison.delta.new
+  const newCount = comparison.delta.counts?.new ?? newDiagnostics.length
+
+  if (newCount > newDiagnostics.length) {
+    return false
+  }
+
+  const infrastructureArtifact =
+    /timed_out=true|timed out|timeout|collect(?:ion|ing)?|importerror|module not found|environment|worker.*(?:crash|exit)/iu
+  const failedBaselineCommands = new Set(
+    baseline.results
+      .filter(
+        (result) =>
+          !result.passed &&
+          infrastructureArtifact.test(
+            `${result.stdout}\n${result.stderr}\n${result.error ?? ''}`,
+          ),
+      )
+      .map(
+        (result) =>
+          `${result.kind}:${result.command.trim().replaceAll(/\s+/gu, ' ')}`,
+      ),
+  )
+
+  return newDiagnostics.every((diagnostic) => {
+    const commandWasCarried = failedBaselineCommands.has(
+      `${diagnostic.kind}:${diagnostic.command}`,
+    )
+    const newInfrastructureArtifact = infrastructureArtifact.test(
+      diagnostic.diagnostic,
+    )
+
+    return commandWasCarried && newInfrastructureArtifact
+  })
+}
+
 function runShellCheck(
   root: string,
   runDirectory: string,
@@ -1789,6 +1860,7 @@ function runShellCheck(
     | undefined
   let baselineEvidencePath: string | undefined
   let baselineGap: string | undefined
+  let baselineResult: RepositoryCheckResult | undefined
 
   // Baseline parity applies to every repository-check gate the run baselined,
   // not only to a gate that happens to be failing. A stage that repairs an
@@ -1798,6 +1870,7 @@ function runShellCheck(
     const load = loadRepositoryCheckBaseline(root, state, profileName)
 
     if (load.result) {
+      baselineResult = load.result
       baselineComparison = compareRepositoryCheckToBaseline(
         load.result,
         repositoryResult,
@@ -1866,6 +1939,11 @@ function runShellCheck(
   const inheritedFailureOnly = Boolean(
     baselineComparison?.passed && !commandSucceeded,
   )
+  const environmentBlocked = isEnvironmentBlockedDelta(
+    stage,
+    baselineResult,
+    baselineComparison,
+  )
 
   return {
     id: criterion.id,
@@ -1886,6 +1964,7 @@ function runShellCheck(
               explanation: baselineComparison.explanation,
               repository_check_delta: baselineComparison.delta,
               ...(inheritedFailureOnly ? { preexisting_failure: true } : {}),
+              ...(environmentBlocked ? { environment_blocked: true } : {}),
             }
           : repositoryResult?.advisories.length
             ? { explanation: repositoryResult.advisories.join(' ') }

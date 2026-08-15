@@ -8,6 +8,7 @@ import {
 } from './cursor-content.js'
 import { invariant } from './errors.js'
 import { parsePersonaMapping } from './executors/mapping.js'
+import { resolveCursorModelSlug } from './executors/cursor-catalog.js'
 import { loadPolicyCatalog } from './policies.js'
 import type { Policy } from './types.js'
 import {
@@ -368,7 +369,10 @@ function renderProjections(root: string): {
           { code: 'INVALID_CURSOR_AGENT' },
         )
 
-        content = content.replaceAll('__PANCREATOR_MODEL__', mapping.model_spec)
+        content = content.replaceAll(
+          '__PANCREATOR_MODEL__',
+          resolveCursorModelSlug(mapping, entry.variable),
+        )
       }
 
       if (projection.transforms.includes('installation-paths')) {

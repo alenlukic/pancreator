@@ -55,7 +55,7 @@ test('config.local.json preferences override the checked-in pipeline config', ()
     path.join(root, 'config.local.json'),
     JSON.stringify({
       active_config: 'complex',
-      defaults: { orchestrator: 'local-orchestrator[]' },
+      defaults: { orchestrator: 'gpt-5.4[effort=low]' },
     }),
   )
 
@@ -63,7 +63,7 @@ test('config.local.json preferences override the checked-in pipeline config', ()
   const expectedReviewer = resolveConfigPersonas(base.file, 'complex').reviewer
 
   assert.equal(loaded.name, 'complex')
-  assert.equal(loaded.config.personas.orchestrator, 'local-orchestrator[]')
+  assert.equal(loaded.config.personas.orchestrator, 'gpt-5.4[effort=low]')
   // A preference the local file does not name still comes from config.json.
   assert.equal(loaded.config.personas.reviewer, expectedReviewer)
   // The digest covers the effective configuration, so the local preference is
@@ -96,26 +96,40 @@ test('pipeline config rejects an undefined active config', () => {
   )
 })
 
+test('pipeline config rejects an unknown Cursor model', () => {
+  assert.throws(
+    () =>
+      parsePipelineConfig({
+        schema_version: 1,
+        active_config: 'default',
+        configs: {
+          default: { personas: { coder: 'unknown-cursor-model' } },
+        },
+      }),
+    /not in the Cursor model catalog/u,
+  )
+})
+
 test('pipeline config merges defaults with config-specific persona overrides', () => {
   const file = parsePipelineConfig({
     schema_version: 1,
     active_config: 'default',
     defaults: {
-      orchestrator: 'default-orchestrator',
-      coder: 'default-coder',
+      orchestrator: 'auto',
+      coder: 'gpt-5.4',
     },
     configs: {
       default: {
         personas: {
-          coder: 'override-coder',
+          coder: 'claude-opus-5',
         },
       },
     },
   })
 
   assert.deepEqual(resolveConfigPersonas(file, 'default'), {
-    orchestrator: 'default-orchestrator',
-    coder: 'override-coder',
+    orchestrator: 'auto',
+    coder: 'claude-opus-5',
   })
 })
 
@@ -124,7 +138,7 @@ test('pipeline config falls back to defaults for omitted config personas', () =>
     schema_version: 1,
     active_config: 'default',
     defaults: {
-      investigator: 'default-investigator',
+      investigator: 'kimi-k3',
     },
     configs: {
       default: {
@@ -133,8 +147,5 @@ test('pipeline config falls back to defaults for omitted config personas', () =>
     },
   })
 
-  assert.equal(
-    resolveConfigPersonas(file, 'default').investigator,
-    'default-investigator',
-  )
+  assert.equal(resolveConfigPersonas(file, 'default').investigator, 'kimi-k3')
 })

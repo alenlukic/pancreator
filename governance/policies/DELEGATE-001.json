@@ -1,0 +1,17 @@
+{
+  "id": "DELEGATE-001",
+  "title": "Subagent supervision and operator responsiveness",
+  "severity": "hard",
+  "summary": "An agent that starts a subagent MUST monitor it on a fixed cadence, MUST own its outcome, and MUST keep the operator conversation responsive.",
+  "instructions": [
+    "An agent that starts a subagent MUST monitor it until it reaches a terminal state.",
+    "For a short-running subagent, the starting agent MUST check progress at least every 2 minutes.",
+    "For a long-running subagent, the starting agent MUST check progress at least every 5 minutes.",
+    "The starting agent owns the subagent outcome and MUST detect a crash, a stall, and a silent exit.",
+    "The starting agent MUST NOT depend on the subagent to report back, because a report is a convenience rather than a guarantee.",
+    "On a detected stall or crash, the starting agent MUST report the condition and MUST take or propose a recovery action.",
+    "An operator-facing agent MUST start a subagent or other asynchronous process in the background.",
+    "An operator-facing agent MUST NOT block the operator conversation on a foreground subagent call.",
+    "A supervisor MUST keep in-run worker delegation foreground and blocking, because it needs the worker result to advance the stage."
+  ]
+}

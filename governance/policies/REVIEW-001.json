@@ -19,7 +19,7 @@
       "phase": "pre_submit",
       "executor": "harness",
       "target": "invocation.output.path",
-      "enforcement": "required",
+      "enforcement": "advisory",
       "failure_route": "stage_failure",
       "evidence_class": "validation-result"
     }

@@ -1,6 +1,31 @@
 # Changelog
 
-## [Unreleased]
+## [3.5.0] - 2026-08-14
+
+### Changed
+
+- Rebuild repository-check diagnostic extraction so only genuine failures form identities, cap embedded delta arrays at 100 entries per class, and rank real failures in gate explanations ([repository-checks](src/lib/repository-checks.ts), [repository-check-delta test](tests/regression/repository-check-delta.test.ts)).
+- Move run state to schema version 2 with content-addressed delta references, revision events instead of state_after payloads, a default 1 MB state budget, and harness-owned compaction that never renames invocation records ([state](src/lib/state.ts), [state test](tests/unit/state.test.ts)).
+- Resolve repository-check profile timeouts to the maximum applicable bound and reject timeout inversions during validation ([repository-checks](src/lib/repository-checks.ts), [repository-checks test](tests/unit/repository-checks.test.ts)).
+- Route QA stages whose full-profile delta contains only timeout or collection artifacts on carried infrastructure to an environment-blocked operator pause instead of implementation ([engine](src/lib/engine.ts), [environment-blocked test](tests/integration/environment-blocked.test.ts)).
+- Scope RELEASE-VALIDATE-001 to the declared worktree and compare change_list entries structurally ([stage-validators](src/lib/validators/stage-validators.ts), [release-validator test](tests/unit/validators-stage-validators.test.ts)).
+- Translate Pancreator model specs into executor-native Cursor slugs in projected frontmatter and reject obsolete option keys reasoning and thinking with an error that names effort ([cursor-catalog](src/lib/executors/cursor-catalog.ts), [mapping](src/lib/executors/mapping.ts), [projection](src/lib/projection.ts)).
+- Derive stage card output contracts and validator field requirements from one shared schema document ([stage-output-requirements](library/schemas/stage-output-requirements.json), [render](src/lib/render.ts)).
+- Normalize trailing whitespace and final newlines in delegation.canonical_equality ([handlers](src/lib/requirements/handlers.ts), [delegation-equality test](tests/unit/delegation-equality.test.ts)).
+- Run target-declared environment probes at worktree creation and baseline capture, pausing before the first source-allowed stage when a probe fails ([worktrees](src/lib/worktrees.ts), [repository-checks](src/lib/repository-checks.ts)).
+- Record invocation liveness timestamps and mark stale invocations in pan status ([state](src/lib/state.ts), [cli](src/cli.ts), [invocation-liveness test](tests/unit/state.test.ts)).
+
+### Added
+
+- Add `DELEGATE-001` for subagent supervision cadence and operator-conversation responsiveness ([DELEGATE-001](governance/policies/DELEGATE-001.json), [AGENTS.md](AGENTS.md)).
+- Add `src/lib/executors/cursor-catalog.ts` as the Cursor model slug catalog and resolution layer ([cursor-catalog test](tests/unit/cursor-catalog.test.ts)).
+- Add preserved audited-run fixtures under `tests/fixtures/harness-repair/` for regression coverage of findings HR-001 through HR-008 ([dev-workflow test](tests/integration/dev-workflow.test.ts)).
+- Require `invocation_attestation.model` in stage output and prefill it from the invocation card model ([stage-output schema](library/schemas/stage-output.schema.json), [scaffold](src/lib/requirements/scaffold.ts)).
+
+### Fixed
+
+- Stop quoting PASSED or formatting lines as gate failure evidence when a suite passes under pytest-xdist reordering ([repository-checks](src/lib/repository-checks.ts)).
+- Keep legacy version 1 runs with embedded deltas, state_after events, and renamed invocation prefixes readable without a rewrite ([state](src/lib/state.ts), [runtime-archive-cli test](tests/integration/runtime-archive-cli.test.ts)).
 
 ## [3.4.0] - 2026-08-14
 

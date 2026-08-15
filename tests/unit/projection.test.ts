@@ -11,6 +11,8 @@ import {
   validateProjectionDrift,
 } from '../../src/lib/projection.js'
 import { loadPipelineConfig } from '../../src/lib/pipeline-config.js'
+import { resolveCursorModelSlug } from '../../src/lib/executors/cursor-catalog.js'
+import { parsePersonaMapping } from '../../src/lib/executors/mapping.js'
 import { createFixture } from '../helpers.js'
 
 test('embedded Cursor projection prefixes durable harness docs paths', () => {
@@ -134,6 +136,7 @@ test('Cursor sync projects the intake writer agent with its resolved model', () 
   const activeModel = loadPipelineConfig(root).config.personas['intake-writer']
 
   assert.ok(activeModel)
+  const activeSlug = resolveCursorModelSlug(parsePersonaMapping(activeModel))
   syncCursorProjection(root, { write: true })
 
   const projected = readFileSync(
@@ -144,7 +147,7 @@ test('Cursor sync projects the intake writer agent with its resolved model', () 
   assert.match(
     projected,
     new RegExp(
-      `^model: ${activeModel.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}$`,
+      `^model: ${activeSlug.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}$`,
       'mu',
     ),
   )
@@ -286,6 +289,7 @@ test('Cursor sync renders ignored local files from canonical library sources', (
   const agentPath = path.join(root, '.cursor', 'agents', 'pan-coder.md')
   const sourcePath = path.join(root, 'library', 'cursor', 'agents', 'coder.md')
   const activeModel = loadPipelineConfig(root).config.personas.coder
+  const activeSlug = resolveCursorModelSlug(parsePersonaMapping(activeModel))
   const stale = readFileSync(agentPath, 'utf8').replace(
     /^model:.*$/mu,
     'model: intentionally-wrong',
@@ -304,7 +308,7 @@ test('Cursor sync renders ignored local files from canonical library sources', (
   assert.match(
     readFileSync(agentPath, 'utf8'),
     new RegExp(
-      `^model: ${activeModel.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}$`,
+      `^model: ${activeSlug.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}$`,
       'mu',
     ),
   )

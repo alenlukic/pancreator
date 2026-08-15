@@ -70,6 +70,7 @@ import { auditDirectives } from './lib/governance/audit-directives.js'
 import { buildGovernanceCard } from './lib/governance-card.js'
 import {
   assertRepositoryChecksValid,
+  loadRepositoryChecks,
   repositoryChecksSourcePath,
   runRepositoryCheckStreaming,
 } from './lib/repository-checks.js'
@@ -1504,6 +1505,7 @@ async function main(): Promise<void> {
       const worktreeWorkspace = sharedWorktreeWorkspace(root, args)
       const validation = validateRepository(root)
       const pipelineConfig = loadPipelineConfig(root)
+      const repositoryChecks = loadRepositoryChecks(root)
       const nodeMajor = Number(process.versions.node.split('.')[0])
       const workspaceRoot = path.resolve(
         root,
@@ -1533,6 +1535,15 @@ async function main(): Promise<void> {
         pipeline_config: {
           active: pipelineConfig.name,
           personas: pipelineConfig.config.personas,
+        },
+        repository_check_environment: {
+          profiles_without_probes: Object.entries(repositoryChecks.profiles)
+            .filter(
+              ([, profile]) => (profile.environment_probes ?? []).length === 0,
+            )
+            .map(([name]) => name),
+          advisory:
+            'Profiles without environment_probes rely on their ordinary probes.',
         },
         // Reported only when the active mapping routes a persona to the
         // claude-code executor; a pure-Cursor installation owes no binary.
