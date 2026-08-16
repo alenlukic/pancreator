@@ -39,16 +39,109 @@ export function minutesToEndOfUtcDay(at = new Date()): number {
   return Math.ceil((nextUtcDay - at.getTime()) / MILLISECONDS_PER_MINUTE)
 }
 
-export function makeWorkflowRunId(
-  at = new Date(),
-  uuidSuffix = randomUUID().slice(0, 8),
-): string {
+/** Reverse-chronological sortable prefix shared by every temporal runtime name. */
+export function temporalNamePrefix(at = new Date()): string {
   const month = MONTH_NAMES[at.getUTCMonth()]
   const day = String(at.getUTCDate()).padStart(2, '0')
 
   const minutes = String(minutesToEndOfUtcDay(at)).padStart(4, '0')
 
-  return `${daysToAnchor(at)}_${month}-${day}-${minutes}_${uuidSuffix}`
+  return `${daysToAnchor(at)}_${month}-${day}-${minutes}`
+}
+
+export const RUN_SUFFIX_MAX_LENGTH = 12
+
+export const RUN_SUFFIX_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,10}[a-z0-9])?$/u
+
+// Words that carry no signal about what a run was for. Kept deliberately small:
+// terms of art such as "best-of-n" must survive keyword extraction intact.
+const KEYWORD_STOPWORDS = new Set(['a', 'an', 'and', 'the', 'request'])
+
+function keywordTokens(seed: string): string[] {
+  return (
+    seed
+      .toLowerCase()
+      .replace(/\.[a-z0-9]+$/u, '')
+      // The harness's own temporal prefix on an already-standardized name must
+      // not leak its month token into the derived keywords.
+      .replace(
+        /^\d+_(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)-\d{2}-\d{4}_/u,
+        ' ',
+      )
+      .replace(/\d{8}t\d{4,9}z?/gu, ' ')
+      .replace(/\d{4}-\d{2}-\d{2}/gu, ' ')
+      .split(/[^a-z0-9]+/u)
+      .filter(
+        (word) =>
+          word.length > 0 &&
+          !KEYWORD_STOPWORDS.has(word) &&
+          !/^\d+$/u.test(word) &&
+          // UUID and commit fragments are hex runs with at least one digit; the
+          // digit requirement keeps rare all-letter hex words like "acceded".
+          !(/^[0-9a-f]{7,}$/u.test(word) && /\d/u.test(word)),
+      )
+  )
+}
+
+/**
+ * Derive a hyphenated high-signal keyword suffix from a name-like seed, capped
+ * at RUN_SUFFIX_MAX_LENGTH characters. Abrupt cutoffs mid-word are accepted.
+ * Returns null when the seed carries no usable keywords.
+ */
+export function keywordRunSuffix(seed: string): string | null {
+  const joined = keywordTokens(seed).join('-')
+
+  if (joined.length === 0) {
+    return null
+  }
+
+  const truncated = joined.slice(0, RUN_SUFFIX_MAX_LENGTH).replace(/-+$/u, '')
+
+  return truncated.length > 0 ? truncated : null
+}
+
+/**
+ * Keyword suffix from a file name, falling back to the first content line that
+ * yields keywords when the name alone is generic (e.g. `request.md`).
+ */
+export function keywordRunSuffixFrom(
+  name: string,
+  content?: string,
+): string | null {
+  const fromName = keywordRunSuffix(name)
+
+  if (fromName) {
+    return fromName
+  }
+
+  for (const line of (content ?? '').split('\n')) {
+    const cleaned = line.replace(/^[#>*\s-]+/u, '').trim()
+
+    if (cleaned.length === 0) {
+      continue
+    }
+
+    const fromContent = keywordRunSuffix(cleaned)
+
+    if (fromContent) {
+      return fromContent
+    }
+  }
+
+  return null
+}
+
+export function makeWorkflowRunId(
+  at = new Date(),
+  suffix = randomUUID().slice(0, 8),
+): string {
+  invariant(
+    RUN_SUFFIX_PATTERN.test(suffix),
+    'Run ID suffixes MUST be 1-12 lowercase keyword or hex characters.',
+    { code: 'INVALID_RUN_SUFFIX', details: { suffix } },
+  )
+
+  return `${temporalNamePrefix(at)}_${suffix}`
 }
 
 export function pipelineStepPrefix(stageSequence: number): string {

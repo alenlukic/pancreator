@@ -27,7 +27,9 @@ test('pan archive migrates and archives old workflow directories', () => {
   const root = createFixture()
   const legacyRunId = '20200101T120000000Z-abcdef12'
   const createdAt = new Date('2020-01-01T12:00:00.000Z')
-  const currentRunId = makeWorkflowRunId(createdAt, 'abcdef12')
+  // Prefix migration preserves the hex fragment; suffix migration then
+  // replaces it with keywords derived from the run title.
+  const currentRunId = makeWorkflowRunId(createdAt, 'old-fixture')
   const logDirectory = path.join(root, 'runtime/logs/workflows', legacyRunId)
   const stateDirectory = path.join(root, 'runtime/workflows', legacyRunId)
 

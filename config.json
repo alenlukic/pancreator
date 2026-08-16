@@ -34,7 +34,8 @@
     "investigator": "claude-fable-5[]",
     "spotfixer": "gpt-5.6-sol[context=272k,effort=high,fast=false]",
     "harness-technician": "gpt-5.6-sol[context=272k,effort=high,fast=false]",
-    "repo-technician": "gpt-5.6-sol[context=272k,effort=high,fast=false]"
+    "repo-technician": "gpt-5.6-sol[context=272k,effort=high,fast=false]",
+    "harness-workflow-qa": "gpt-5.4[context=272k,effort=high,fast=false]"
   },
   "$operator": {
     "summary": "Named model configurations. Each configuration maps every checked-in Cursor persona to the model that should execute it.",

@@ -282,7 +282,11 @@ export function validateSharedFieldContract(
 
   const expectedReviewEnums: Record<string, string[]> = {
     'data.review.findings[].severity': ['blocker', 'high', 'medium', 'low'],
-    'data.review.findings[].remediation_stage': ['review', 'implement'],
+    'data.review.findings[].remediation_stage': [
+      'review',
+      'implement',
+      'operator',
+    ],
     'data.review.findings[].resolution': ['resolved_in_review', 'unresolved'],
   }
 
@@ -1019,17 +1023,20 @@ export function validateImplementationClaims(
   }
 
   for (const testPath of testsAdded) {
+    // An entry names a test file, optionally followed by ' :: <case name>';
+    // only the file portion resolves against the workspace.
+    const testFile = testPath.split(' :: ')[0].trim()
     const resolved = resolveWorkspaceRelativeFilePath(
       input.root,
       workspaceRootFromInput(input),
-      testPath,
+      testFile,
     )
 
     if (!fileExists(resolved)) {
       issues.push(
         issue(
           'claim.test_missing',
-          `Listed test file does not exist: ${testPath}`,
+          `Listed test file does not exist: ${testFile} (from entry: ${testPath})`,
         ),
       )
     }
@@ -1425,12 +1432,13 @@ export function validateReviewOutput(input: HandlerInput): HandlerResult {
       }
     } else if (
       resolution === 'unresolved' &&
-      finding.remediation_stage !== 'implement'
+      finding.remediation_stage !== 'implement' &&
+      finding.remediation_stage !== 'operator'
     ) {
       issues.push(
         issue(
           'review.resolution',
-          `Finding ${finding.id} unresolved in review MUST set remediation_stage to implement`,
+          `Finding ${finding.id} unresolved in review MUST set remediation_stage to implement, or to operator when the defect lies outside the run's workspace`,
         ),
       )
     }

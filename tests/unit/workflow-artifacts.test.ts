@@ -14,8 +14,10 @@ import { PanError } from '../../src/lib/errors.js'
 import {
   archiveWorkflowDirectories,
   finalizeWorkflowArtifacts,
+  migrateRunSuffixes,
   migrateWorkflowNames,
   migratedRunId,
+  standardizeRuntimeFileNames,
 } from '../../src/lib/workflow-artifacts.js'
 
 function write(filePath: string, content: string): void {
@@ -441,6 +443,295 @@ test('workflow archive moves runs older than retention into archive directories'
       now: new Date('2026-07-01T22:00:00.000Z'),
     }).run_ids,
     [],
+  )
+})
+
+test('runtime file names standardize onto the temporal prefix scheme', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'pan-names-'))
+
+  write(
+    path.join(root, 'runtime/inbox/2026-08-14-archive-utils.md'),
+    '# File prefix standardization\n',
+  )
+  write(
+    path.join(
+      root,
+      'runtime/inbox/request-20260812T035755Z-worktree-management.md',
+    ),
+    'Manage worktrees.\n',
+  )
+  write(
+    path.join(root, 'runtime/inbox/request-20260810T054345Z-6df4ab84.md'),
+    'Implement a best-of-n mode for the dev workflow.\n',
+  )
+  write(
+    path.join(
+      root,
+      'runtime/pr-descriptions/20260803T165512Z-invocation-fixes-against-main.md',
+    ),
+    'PR body.\n',
+  )
+  write(
+    path.join(root, 'runtime/logs/workflows/some-run/state.json'),
+    `${JSON.stringify({
+      request: {
+        source_path: 'runtime/inbox/2026-08-14-archive-utils.md',
+      },
+    })}\n`,
+  )
+
+  const summary = standardizeRuntimeFileNames(root)
+
+  assert.equal(summary.renamed_files, 4)
+  assert.equal(
+    existsSync(
+      path.join(root, 'runtime/inbox/63326_Aug-14-0720_archive-utils.md'),
+    ),
+    true,
+  )
+  assert.equal(
+    existsSync(
+      path.join(root, 'runtime/inbox/63328_Aug-12-1203_worktree-management.md'),
+    ),
+    true,
+  )
+  // The opaque hex slug is replaced by keywords from the file content.
+  assert.equal(
+    existsSync(
+      path.join(root, 'runtime/inbox/63330_Aug-10-1097_implement-be.md'),
+    ),
+    true,
+  )
+  assert.equal(
+    existsSync(
+      path.join(
+        root,
+        'runtime/pr-descriptions/63337_Aug-03-0425_invocation-fixes-against-main.md',
+      ),
+    ),
+    true,
+  )
+  // Persisted references follow the rename.
+  assert.match(
+    readFileSync(
+      path.join(root, 'runtime/logs/workflows/some-run/state.json'),
+      'utf8',
+    ),
+    /runtime\/inbox\/63326_Aug-14-0720_archive-utils\.md/u,
+  )
+  // A second pass finds nothing left to standardize.
+  assert.equal(standardizeRuntimeFileNames(root).renamed_files, 0)
+})
+
+test('run directory hash suffixes migrate to keyword suffixes', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'pan-suffixes-'))
+  const first = '63379_Jun-22-0158_5f354f23'
+  const second = '63379_Jun-22-0157_6f354f23'
+
+  writeState(root, first, 'succeeded')
+  writeState(root, second, 'succeeded')
+  write(
+    path.join(root, 'runtime/workflows', first, 'modifications.jsonl'),
+    `${JSON.stringify({ run_id: first })}\n`,
+  )
+  write(
+    path.join(
+      root,
+      'runtime/logs/sessions/63379_Jun-22-0158_aaaa1111',
+      'pair-card.md',
+    ),
+    '# Pair programming\n',
+  )
+  write(
+    path.join(
+      root,
+      'runtime/logs/best-of-n/63379_Jun-22-0158_bbbb2222',
+      'state.json',
+    ),
+    `${JSON.stringify({
+      bon_id: '63379_Jun-22-0158_bbbb2222',
+      request: {
+        source_path: 'runtime/inbox/2026-06-22-output-simplification.md',
+      },
+    })}\n`,
+  )
+
+  const summary = migrateRunSuffixes(root)
+
+  // Both runs share the fixture title, so the second keeps the keywords with
+  // an ordinal instead of colliding or falling back to hex.
+  assert.equal(summary.run_directories, 2)
+  assert.equal(summary.session_directories, 1)
+  assert.equal(summary.best_of_n_directories, 1)
+  assert.equal(
+    existsSync(
+      path.join(root, 'runtime/logs/workflows/63379_Jun-22-0158_fixture'),
+    ),
+    true,
+  )
+  assert.equal(
+    existsSync(
+      path.join(root, 'runtime/logs/workflows/63379_Jun-22-0157_fixture'),
+    ),
+    true,
+  )
+  assert.equal(
+    existsSync(path.join(root, 'runtime/workflows/63379_Jun-22-0158_fixture')),
+    true,
+  )
+  assert.equal(
+    existsSync(path.join(root, 'runtime/logs/sessions/63379_Jun-22-0158_pair')),
+    true,
+  )
+  assert.equal(
+    existsSync(
+      path.join(root, 'runtime/logs/best-of-n/63379_Jun-22-0158_output-simpl'),
+    ),
+    true,
+  )
+  assert.match(
+    readFileSync(
+      path.join(
+        root,
+        'runtime/workflows/63379_Jun-22-0158_fixture/modifications.jsonl',
+      ),
+      'utf8',
+    ),
+    /63379_Jun-22-0158_fixture/u,
+  )
+  // A second pass has nothing hex-suffixed left.
+  assert.equal(migrateRunSuffixes(root).run_directories, 0)
+})
+
+test('suffix migration deduplicates same-minute keyword collisions', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'pan-suffix-dedupe-'))
+  const first = '63379_Jun-22-0158_5f354f23'
+  const second = '63379_Jun-22-0158_6f354f23'
+
+  writeState(root, first, 'succeeded')
+  writeState(root, second, 'succeeded')
+
+  const summary = migrateRunSuffixes(root)
+
+  assert.equal(summary.run_directories, 2)
+  assert.equal(
+    existsSync(
+      path.join(root, 'runtime/logs/workflows/63379_Jun-22-0158_fixture'),
+    ),
+    true,
+  )
+  assert.equal(
+    existsSync(
+      path.join(root, 'runtime/logs/workflows/63379_Jun-22-0158_fixture-2'),
+    ),
+    true,
+  )
+})
+
+test('suffix migration skips best-of-N sessions with live worktrees', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'pan-suffix-worktree-'))
+  const bonId = '63379_Jun-22-0158_cccc3333'
+
+  write(
+    path.join(root, 'runtime/logs/best-of-n', bonId, 'state.json'),
+    `${JSON.stringify({
+      bon_id: bonId,
+      request: { source_path: 'runtime/inbox/2026-06-22-live-session.md' },
+    })}\n`,
+  )
+  mkdirSync(path.join(root, 'runtime/worktrees', bonId, 'slot-a'), {
+    recursive: true,
+  })
+
+  const summary = migrateRunSuffixes(root)
+
+  assert.equal(summary.best_of_n_directories, 0)
+  assert.deepEqual(summary.skipped_directories, [
+    `runtime/logs/best-of-n/${bonId}`,
+  ])
+  assert.equal(
+    existsSync(path.join(root, 'runtime/logs/best-of-n', bonId)),
+    true,
+  )
+})
+
+test('archival covers best-of-N sessions and temporal runtime files', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'pan-archive-extended-'))
+  const oldBonId = '63379_Jun-22-0158_output-simpl'
+  const freshBonId = '63372_Jun-29-0158_other-keywor'
+
+  write(
+    path.join(root, 'runtime/logs/best-of-n', oldBonId, 'state.json'),
+    `${JSON.stringify({
+      bon_id: oldBonId,
+      created_at: '2026-06-22T21:22:54.051Z',
+    })}\n`,
+  )
+  write(
+    path.join(root, 'runtime/logs/best-of-n', freshBonId, 'state.json'),
+    `${JSON.stringify({
+      bon_id: freshBonId,
+      created_at: '2026-06-29T21:22:54.051Z',
+    })}\n`,
+  )
+  write(
+    path.join(root, 'runtime/inbox/63379_Jun-22-0158_stale-reques.md'),
+    'Stale request.\n',
+  )
+  write(
+    path.join(root, 'runtime/inbox/63372_Jun-29-0158_fresh-reques.md'),
+    'Fresh request.\n',
+  )
+  write(
+    path.join(
+      root,
+      'runtime/pr-descriptions/63379_Jun-22-0158_stale-pr-against-main.md',
+    ),
+    'Stale PR body.\n',
+  )
+
+  const summary = archiveWorkflowDirectories(root, {
+    retentionDays: 7,
+    now: new Date('2026-07-01T22:00:00.000Z'),
+  })
+
+  assert.deepEqual(summary.bon_ids, [oldBonId])
+  assert.equal(summary.best_of_n_directories, 1)
+  assert.deepEqual(summary.inbox_files, ['63379_Jun-22-0158_stale-reques.md'])
+  assert.deepEqual(summary.pr_description_files, [
+    '63379_Jun-22-0158_stale-pr-against-main.md',
+  ])
+  assert.equal(
+    existsSync(path.join(root, 'runtime/logs/best-of-n/archive', oldBonId)),
+    true,
+  )
+  assert.equal(
+    existsSync(path.join(root, 'runtime/logs/best-of-n', freshBonId)),
+    true,
+  )
+  assert.equal(
+    existsSync(
+      path.join(
+        root,
+        'runtime/inbox/archive/63379_Jun-22-0158_stale-reques.md',
+      ),
+    ),
+    true,
+  )
+  assert.equal(
+    existsSync(
+      path.join(root, 'runtime/inbox/63372_Jun-29-0158_fresh-reques.md'),
+    ),
+    true,
+  )
+  assert.equal(
+    existsSync(
+      path.join(
+        root,
+        'runtime/pr-descriptions/archive/63379_Jun-22-0158_stale-pr-against-main.md',
+      ),
+    ),
+    true,
   )
 })
 

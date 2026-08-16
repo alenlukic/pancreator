@@ -959,6 +959,20 @@ function guidanceAttestationChecks(
  * whether the worker read the contract, so submitting the prefilled value would
  * record a claim nobody made.
  */
+/**
+ * A card that declares model 'auto' delegates model selection to the
+ * executor, so the worker attests the model it actually ran as; any other
+ * declaration must match exactly.
+ */
+export function attestationModelMatches(
+  attested: unknown,
+  declared: string,
+): boolean {
+  return declared === 'auto'
+    ? typeof attested === 'string' && attested.trim().length > 0
+    : attested === declared
+}
+
 export function validateInvocationAttestation(
   invocation: Invocation,
   output: unknown,
@@ -1029,10 +1043,19 @@ export function validateInvocationAttestation(
     },
     {
       id: 'attestation.model',
-      passed: attestation.model === invocation.stage.model,
-      message:
-        attestation.model === invocation.stage.model
-          ? `Attestation records effective model '${invocation.stage.model}'`
+      passed: attestationModelMatches(
+        attestation.model,
+        invocation.stage.model,
+      ),
+      message: attestationModelMatches(
+        attestation.model,
+        invocation.stage.model,
+      )
+        ? invocation.stage.model === 'auto'
+          ? `Attestation records executor-selected model '${String(attestation.model)}' under declared model 'auto'`
+          : `Attestation records effective model '${invocation.stage.model}'`
+        : invocation.stage.model === 'auto'
+          ? `Attestation model MUST name the executor-selected model when the declared model is 'auto'`
           : `Attestation model MUST equal '${invocation.stage.model}'`,
     },
     {

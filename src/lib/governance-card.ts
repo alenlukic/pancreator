@@ -2,7 +2,8 @@ import path from 'node:path'
 
 import { invariant } from './errors.js'
 import { ensureDir, fileExists, resolveInside, writeTextAtomic } from './io.js'
-import { makeRunId } from './state.js'
+import { keywordRunSuffix } from './naming.js'
+import { makeUniqueRunId } from './state.js'
 import { resolvePolicies } from './policies.js'
 import { renderGuidanceBlock } from './policy-guidance.js'
 import { harnessPathPrefix, isTargetInstallation } from './project-config.js'
@@ -313,7 +314,10 @@ export function buildGovernanceCard(
     : null
   const relativePath =
     options.outputPath ??
-    `runtime/logs/sessions/${makeRunId()}/${options.mode}-card.md`
+    `runtime/logs/sessions/${makeUniqueRunId(
+      path.join(root, 'runtime', 'logs', 'sessions'),
+      keywordRunSuffix(options.mode),
+    )}/${options.mode}-card.md`
   const markdown = renderGovernanceCardMarkdown({
     mode,
     policies,
