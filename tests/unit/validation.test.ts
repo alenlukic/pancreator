@@ -11,6 +11,7 @@ import {
   isEnvironmentBlockedDelta,
   POLICIES_HEADING,
   validateDelegationMarkdown,
+  attestationModelMatches,
   validateInvocationAttestation,
   validateInvocationMarkdown,
   validateRepository,
@@ -1129,4 +1130,18 @@ test('a new failing test that mentions a timeout is not environment-blocked', ()
 
   assert.equal(comparison.passed, false)
   assert.equal(isEnvironmentBlockedDelta(qaStage, baseline, comparison), false)
+})
+
+test('attestation model matching accepts executor-selected models under auto', () => {
+  assert.equal(attestationModelMatches('claude-opus-5[1m]', 'auto'), true)
+  assert.equal(attestationModelMatches('  ', 'auto'), false)
+  assert.equal(attestationModelMatches(undefined, 'auto'), false)
+  assert.equal(
+    attestationModelMatches(
+      'gpt-5.4[context=272k,effort=high,fast=false]',
+      'gpt-5.4[context=272k,effort=high,fast=false]',
+    ),
+    true,
+  )
+  assert.equal(attestationModelMatches('another-model', 'gpt-5.4'), false)
 })

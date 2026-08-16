@@ -25,7 +25,7 @@ import {
   writeJsonAtomic,
   writeTextAtomic,
 } from './io.js'
-import { makeStageArtifactId } from './naming.js'
+import { keywordRunSuffixFrom, makeStageArtifactId } from './naming.js'
 import { resolveRunLayout } from './run-layout.js'
 import {
   OPERATOR_ARTIFACT_PROFILE_HEADINGS,
@@ -80,6 +80,7 @@ import {
   loadRepositoryChecks,
   repositoryCheckProfileName,
   runRepositoryCheck,
+  runRepositorySetup,
   summarizeRepositoryCheckResult,
 } from './repository-checks.js'
 import {
@@ -97,7 +98,7 @@ import {
   invocationLiveness,
   operationMutexPath,
   loadState,
-  makeRunId,
+  makeUniqueRunId,
   nextStageSequence,
   now,
   persist,
@@ -517,6 +518,52 @@ function ensureWorkflowRepositoryCheckBaselines(
 
   const profiles = collectStageRepositoryCheckProfiles(workflow.stages)
   const repositoryChecks = loadRepositoryChecks(root)
+
+  // A workspace other than the configured default is a fresh worktree without
+  // ignored build state (dependencies, compiled output), so every profile
+  // command would fail against it. Run the target-declared setup commands
+  // first and pause visibly when they fail, instead of capturing a doomed
+  // baseline or hanging the prepare.
+  const setupCommands = repositoryChecks.setup ?? []
+  const workspaceAbsolute = path.resolve(root, state.workspace_root || '.')
+  const defaultWorkspaceAbsolute = path.resolve(
+    root,
+    configuredWorkspaceRoot(root),
+  )
+
+  if (
+    setupCommands.length > 0 &&
+    workspaceAbsolute !== defaultWorkspaceAbsolute
+  ) {
+    onProgress?.(
+      `running workspace setup in '${state.workspace_root}' (${setupCommands.length} command(s))`,
+    )
+
+    const setup = runRepositorySetup(root, {
+      workspace: state.workspace_root || '.',
+    })
+
+    onProgress?.(
+      `workspace setup ${setup.status} in ${(setup.total_duration_ms / 1000).toFixed(1)}s`,
+    )
+
+    if (setup.status === 'failed') {
+      const failedCommand = setup.results.find((result) => !result.passed)
+      const reason =
+        `Workspace setup command failed before baseline capture: ` +
+        `${failedCommand?.command ?? 'unknown'}.`
+
+      state.status = 'paused'
+      state.pause_reason = reason
+      state.pending_action = { type: 'operator_decision' }
+      writeDecision(root, state, 'Worktree environment needs repair', reason, [
+        'Repair the declared setup commands or the workspace, then resume from the first source stage.',
+      ])
+
+      return true
+    }
+  }
+
   const baselines: NonNullable<RunState['repository_check_baselines']> = {}
 
   state.repository_check_baselines = baselines
@@ -1164,7 +1211,10 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     { code: 'INVALID_BRIEF_SYSTEM', details: briefSystem },
   )
 
-  const id = makeRunId()
+  const id = makeUniqueRunId(
+    path.join(root, 'runtime', 'logs', 'workflows'),
+    keywordRunSuffixFrom(path.basename(source), readText(source)),
+  )
   const layout = resolveRunLayout(root, id)
   const directory = layout.agent.absolute
 

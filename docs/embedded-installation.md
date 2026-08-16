@@ -335,6 +335,26 @@ A complete installation can be refreshed idempotently:
 
 Refresh replaces owned harness payload and reprojects Cursor files while preserving `.pancreator/docs/target-repo-primer.md`, `.pancreator/docs/operator-briefs/` when generated, `.pancreator/runtime/repository-checks.json`, workflow state, Cursor backups, and unrelated target files. The refreshed payload includes current workflow stages, personas, policies, handbooks, validators, and runtime enforcement, so operator-supremacy semantics, flexible waiver directives, internal-change attribution, implementation baselines, same-reason pauses, retry remediation, reviewer remediation, and technology-scoped Python guidance apply to both new and updated installations. Before replacing the payload, `--yes` refresh runs the same runtime maintenance as `pan archive`: recognized workflow names are migrated to the UTC minute-bearing convention, persisted references are updated, and directories older than seven days are moved into the corresponding `archive/` child. Upgrading an older installation also migrates `.pancreator/runtime/target-repo-primer.md` into the durable docs location and removes the legacy path; a conflicting legacy copy is backed up under `.pancreator/backups/target-repo-primer/`. Refresh removes the obsolete `.pancreator/runtime/locks/` directory from pre-removal installations so stale cooperative locks cannot block upgraded runs.
 
+### Payload reconciliation
+
+`install.json` records a `payload_files` manifest hashing every release-owned
+payload file as shipped (build artifacts excluded). Refreshes and updates
+reconcile the installed payload against that manifest before the payload swap:
+
+- A harness-owned file that was modified locally is **superseded**: the
+  Pancreator source is authoritative, the local version is backed up under
+  `.pancreator/backups/payload/<timestamp>/`, and the file is named in CLI
+  output so the operator can re-apply or upstream the fix.
+- A file the release never shipped is a **target-specific extension** and is
+  carried through the swap unchanged, on this and every later update. It is
+  never recorded as release-owned content.
+- A harness-owned file that was deleted locally is restored and reported.
+- A local change whose bytes already match the incoming release needs no flag:
+  the fix was upstreamed.
+
+Installations whose marker predates the manifest are replaced wholesale once,
+with a notice, and tracked from then on.
+
 If `.pancreator/` exists but is incomplete, an interactive install offers:
 
 - `r` — repair in place
@@ -354,7 +374,7 @@ blanket-deleted.
 
 ## Harness versioning
 
-`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `3.5.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
+`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `3.6.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
 
 `release/index.json` is the internal mapping from harness version to immutable
 Git commit. Because a commit cannot contain its own hash, release publication is

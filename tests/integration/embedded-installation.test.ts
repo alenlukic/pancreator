@@ -37,6 +37,7 @@ interface InstallMarker {
   source_dirty: boolean
   source_indexed: boolean
   payload_entries: string[]
+  payload_files: Array<{ path: string; sha256: string }>
   cursor_files: Array<{ path: string; sha256: string }>
 }
 
@@ -405,7 +406,7 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
     const marker = readJson<InstallMarker>(
       path.join(project, '.pancreator', 'install.json'),
     )
-    assert.equal(marker.schema_version, 3)
+    assert.equal(marker.schema_version, 4)
     assert.equal(marker.version, CURRENT_VERSION)
     assert.equal(typeof marker.source_dirty, 'boolean')
     assert.equal(typeof marker.source_indexed, 'boolean')
@@ -414,6 +415,19 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
     assert.equal('target_root' in marker, false)
     assert.ok(marker.payload_entries.includes('governance'))
     assert.ok(marker.payload_entries.includes('release'))
+    // The payload manifest describes release-owned files so later updates can
+    // separate local fixes and target extensions from shipped content.
+    assert.ok(
+      marker.payload_files.some(
+        (entry) =>
+          entry.path === 'docs/runtime-protocol.md' &&
+          /^[0-9a-f]{64}$/u.test(entry.sha256),
+      ),
+    )
+    assert.equal(
+      marker.payload_files.some((entry) => entry.path.startsWith('dist/')),
+      false,
+    )
     assert.ok(
       marker.cursor_files.some((entry) => entry.path.endsWith('coder.md')),
     )
@@ -1127,7 +1141,9 @@ test('embedded installer refresh preserves target primer, runtime state, and unr
       '{}\n',
     )
     const oldRunId = '63379_Jun-22_5f354f23'
-    const migratedOldRunId = '63379_Jun-22-0158_5f354f23'
+    // Prefix migration adds the minute component; suffix migration then
+    // replaces the hex fragment with keywords from the run title.
+    const migratedOldRunId = '63379_Jun-22-0158_old-run'
     const oldRunDirectory = path.join(
       project,
       '.pancreator',
@@ -1173,11 +1189,16 @@ test('embedded installer refresh preserves target primer, runtime state, and unr
 
     assert.equal(result.status, 0, result.stderr)
     assert.match(result.stdout, /Installation refresh completed/)
+    // Runtime maintenance standardizes loose inbox names onto the temporal
+    // prefix scheme; the content survives under the new name.
+    const inboxDirectory = path.join(project, '.pancreator', 'runtime', 'inbox')
+    const standardizedRequest = readdirSync(inboxDirectory).find((name) =>
+      /^\d+_[A-Z][a-z]{2}-\d{2}-\d{4}_request\.md$/u.test(name),
+    )
+
+    assert.ok(standardizedRequest, 'inbox request was not standardized')
     assert.equal(
-      readFileSync(
-        path.join(project, '.pancreator', 'runtime', 'inbox', 'request.md'),
-        'utf8',
-      ),
+      readFileSync(path.join(inboxDirectory, standardizedRequest), 'utf8'),
       'keep me\n',
     )
     assert.equal(
@@ -1755,7 +1776,7 @@ test('indexed update fast-forwards the embedded harness and preserves target sta
     const installed = readJson<InstallMarker>(
       path.join(project, '.pancreator', 'install.json'),
     )
-    assert.equal(installed.schema_version, 3)
+    assert.equal(installed.schema_version, 4)
     assert.equal(installed.version, '0.1.0')
     assert.equal(installed.source_dirty, false)
     assert.equal(installed.source_indexed, true)
@@ -1850,4 +1871,62 @@ test('embedded installer scripted smoke verification passes', () => {
   assert.match(result.stdout, /smoke: all steps passed/)
   assert.match(result.stdout, /smoke: fresh install/)
   assert.match(result.stdout, /smoke: partial install repair/)
+})
+
+test('embedded installer refresh supersedes local payload fixes and preserves extensions', () => {
+  const project = makeSkeletonProject()
+
+  try {
+    assert.equal(runInstaller(project).status, 0)
+
+    const owned = path.join(
+      project,
+      '.pancreator',
+      'docs',
+      'runtime-protocol.md',
+    )
+    const pristine = readFileSync(owned, 'utf8')
+    const extension = path.join(
+      project,
+      '.pancreator',
+      'docs',
+      'target-notes.md',
+    )
+
+    writeFileSync(owned, 'locally patched\n')
+    writeFileSync(extension, 'target extension\n')
+
+    const refresh = runInstaller(project, ['--yes'])
+
+    assert.equal(refresh.status, 0, refresh.stderr)
+    // The Pancreator source is authoritative for harness-owned files; the
+    // local fix is flagged, backed up, and replaced.
+    assert.match(refresh.stdout, /superseded {2}docs\/runtime-protocol\.md/u)
+    assert.equal(readFileSync(owned, 'utf8'), pristine)
+    // A file the release never shipped is a target extension and survives.
+    assert.match(refresh.stdout, /preserved {2}docs\/target-notes\.md/u)
+    assert.equal(readFileSync(extension, 'utf8'), 'target extension\n')
+
+    const backupRoot = path.join(project, '.pancreator', 'backups', 'payload')
+    const stamps = readdirSync(backupRoot)
+
+    assert.equal(stamps.length, 1)
+    assert.equal(
+      readFileSync(
+        path.join(backupRoot, stamps[0], 'docs', 'runtime-protocol.md'),
+        'utf8',
+      ),
+      'locally patched\n',
+    )
+
+    // A second refresh has nothing to flag: the extension is preserved again
+    // without ever being recorded as release-owned content.
+    const second = runInstaller(project, ['--yes'])
+
+    assert.equal(second.status, 0, second.stderr)
+    assert.doesNotMatch(second.stdout, /superseded {2}/u)
+    assert.equal(readFileSync(extension, 'utf8'), 'target extension\n')
+  } finally {
+    rmSync(project, { recursive: true, force: true })
+  }
 })

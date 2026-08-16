@@ -4,11 +4,14 @@ import test from 'node:test'
 import {
   completedPipelineStepPrefix,
   daysToAnchor,
+  keywordRunSuffix,
+  keywordRunSuffixFrom,
   makeCompletedStageArtifactId,
   makeStageArtifactId,
   makeWorkflowRunId,
   minutesToEndOfUtcDay,
   pipelineStepPrefix,
+  temporalNamePrefix,
 } from '../../src/lib/naming.js'
 
 test('workflow run IDs use UTC days to the 2200 anchor', () => {
@@ -24,6 +27,66 @@ test('workflow run IDs use UTC days to the 2200 anchor', () => {
     makeWorkflowRunId(new Date('2026-07-03T23:00:00.000Z'), '3974ddd5'),
     '63368_Jul-03-0060_3974ddd5',
   )
+})
+
+test('temporal name prefixes are the run ID minus the suffix', () => {
+  assert.equal(
+    temporalNamePrefix(new Date('2026-06-22T21:22:54.051Z')),
+    '63379_Jun-22-0158',
+  )
+})
+
+test('keyword suffixes strip temporal tokens, noise words, and hex fragments', () => {
+  assert.equal(
+    keywordRunSuffix('2026-08-14-harness-forensics.md'),
+    'harness-fore',
+  )
+  assert.equal(
+    keywordRunSuffix('request-20260812T035755Z-worktree-management.md'),
+    'worktree-man',
+  )
+  assert.equal(keywordRunSuffix('best-of-n.md'), 'best-of-n')
+  // A standardized temporal name must not leak its month token into keywords.
+  assert.equal(
+    keywordRunSuffix('63325_Aug-15-0108_list-liveness.md'),
+    'list-livenes',
+  )
+  assert.equal(keywordRunSuffix('The Archive And Utils'), 'archive-util')
+  assert.equal(keywordRunSuffix('request-20260810T054345Z-6df4ab84.md'), null)
+  assert.equal(keywordRunSuffix('20260803T165512Z'), null)
+  assert.equal(keywordRunSuffix(''), null)
+})
+
+test('keyword suffixes never end mid-hyphen after truncation', () => {
+  assert.equal(keywordRunSuffix('workspace targets everywhere'), 'workspace-ta')
+  assert.equal(keywordRunSuffix('one-two-three-four'), 'one-two-thre')
+})
+
+test('keyword suffix derivation falls back to content lines', () => {
+  assert.equal(
+    keywordRunSuffixFrom('request.md', '# Fix the workflow engine\n'),
+    'fix-workflow',
+  )
+  assert.equal(
+    keywordRunSuffixFrom('request.md', '\n\n- 2026-08-10\n- pond cleanup\n'),
+    'pond-cleanup',
+  )
+  assert.equal(keywordRunSuffixFrom('request.md'), null)
+})
+
+test('run IDs accept keyword suffixes and reject malformed ones', () => {
+  const date = new Date('2026-06-22T21:22:54.051Z')
+
+  assert.equal(
+    makeWorkflowRunId(date, 'harness-fore'),
+    '63379_Jun-22-0158_harness-fore',
+  )
+  assert.throws(() => makeWorkflowRunId(date, 'Harness'), /suffixes MUST/u)
+  assert.throws(
+    () => makeWorkflowRunId(date, 'thirteen-char'),
+    /suffixes MUST/u,
+  )
+  assert.throws(() => makeWorkflowRunId(date, 'trailing-'), /suffixes MUST/u)
 })
 
 test('in-flight pipeline prefixes count down from 99', () => {

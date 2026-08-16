@@ -141,7 +141,7 @@ done
 
 run_smoke() {
   local smoke_root failures fresh_project existing_cursor_project partial_project no_gitignore_project git_project
-  local detached_project detached_harness
+  local detached_project detached_harness reconcile_project
 
   smoke_root="$(mktemp -d "${TMPDIR:-/tmp}/pancreator-smoke.XXXXXX")"
   failures=0
@@ -280,6 +280,28 @@ run_smoke() {
     "! bash '$0' --target '$detached_project' \
       --harness-dir '$detached_project/nested' \
       --pancreator-root '$PANCREATOR_ROOT' --skip-dependencies --skip-shell-alias"
+
+  # Payload reconciliation: local fixes to harness-owned files are superseded
+  # with an operator flag and a backup; target-specific extensions survive.
+  reconcile_project="$(smoke_project)"
+  smoke_step "install for payload reconciliation" bash "$0" \
+    --target "$reconcile_project" --pancreator-root "$PANCREATOR_ROOT" \
+    --skip-dependencies --skip-shell-alias
+  printf 'local fix\n' >>"$reconcile_project/.pancreator/docs/runtime-protocol.md"
+  printf 'target extension\n' >"$reconcile_project/.pancreator/docs/target-notes.md"
+  smoke_step "refresh over local payload changes" bash -c \
+    "bash '$0' --target '$reconcile_project' --pancreator-root '$PANCREATOR_ROOT' \
+      --yes --skip-dependencies --skip-shell-alias \
+      >'$smoke_root/reconcile-refresh.log'"
+  smoke_step "flag the superseded local fix" grep -q \
+    'superseded  docs/runtime-protocol.md' "$smoke_root/reconcile-refresh.log"
+  smoke_step "restore the harness-owned file from source" cmp -s \
+    "$PANCREATOR_ROOT/docs/runtime-protocol.md" \
+    "$reconcile_project/.pancreator/docs/runtime-protocol.md"
+  smoke_step "preserve the target extension" grep -q 'target extension' \
+    "$reconcile_project/.pancreator/docs/target-notes.md"
+  smoke_step "back up the superseded local fix" bash -c \
+    "ls '$reconcile_project/.pancreator/backups/payload/'*'/docs/runtime-protocol.md' >/dev/null"
 
   no_gitignore_project="$(mktemp -d "${smoke_root}/project.XXXXXX")"
   smoke_step "install without target gitignore" bash "$0" \
@@ -848,13 +870,23 @@ remove_previous_payload() {
 install_payload() {
   local harness_preexisting="$1"
   local previous_marker="${2:-$INSTALL_MARKER}"
-  local staging backup_root cursor_manifest installed_at entry
+  local staging backup_root cursor_manifest payload_manifest installed_at entry
   local cursor_args project_args
 
   staging="$(mktemp -d "${TMPDIR:-/tmp}/pancreator-install.XXXXXX")"
   trap 'rm -rf "$staging"' RETURN
 
+  installed_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   prepare_staging_payload "$staging"
+
+  # Hash the pristine staged release before any target-specific seeding. The
+  # manifest describes release-owned content only, so later updates can tell
+  # local fixes and target extensions apart from files the release shipped.
+  payload_manifest="$staging/payload-manifest.json"
+  node "$PANCREATOR_ROOT/bin/install-support" hash-payload \
+    --root "$staging" \
+    --entries "$(payload_entries_csv)" \
+    --out "$payload_manifest"
   ensure_target_git_exclude
   report_legacy_gitignore
 
@@ -889,11 +921,22 @@ install_payload() {
     --existing-root "$PANCREATOR_DIR" \
     --staging-root "$staging"
 
+  # A refresh or update onto an existing installation reconciles the installed
+  # payload first: local fixes lose to the Pancreator source but are backed up
+  # and flagged, and target-specific extensions are carried forward.
+  if [[ -f "$previous_marker" ]]; then
+    node "$PANCREATOR_ROOT/bin/install-support" reconcile-payload \
+      --existing-root "$PANCREATOR_DIR" \
+      --staging-root "$staging" \
+      --previous-marker "$previous_marker" \
+      --backup-root "$PANCREATOR_DIR/backups/payload/${installed_at//:/-}" \
+      --entries "$(payload_entries_csv)"
+  fi
+
   if [[ "$harness_preexisting" == "true" ]]; then
     report_existing_harness "$previous_marker"
   fi
 
-  installed_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   backup_root="$PANCREATOR_DIR/backups/cursor/${installed_at//:/-}"
   cursor_manifest="$staging/cursor-manifest.json"
 
@@ -957,7 +1000,8 @@ install_payload() {
     --source-dirty "$SOURCE_DIRTY" \
     --source-indexed "$SOURCE_INDEXED" \
     --installed-at "$installed_at" \
-    --payload-entries "$(payload_entries_csv)"
+    --payload-entries "$(payload_entries_csv)" \
+    --payload-manifest "$payload_manifest"
 
   rm -rf "$staging"
   trap - RETURN

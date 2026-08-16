@@ -2,7 +2,11 @@ import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 
 import { invariant } from './errors.js'
-import { makeWorkflowRunId } from './naming.js'
+import {
+  RUN_SUFFIX_MAX_LENGTH,
+  keywordRunSuffix,
+  makeWorkflowRunId,
+} from './naming.js'
 import {
   appendJsonLine,
   clearStaleOperationMutex,
@@ -27,8 +31,46 @@ export function now(): string {
   return new Date().toISOString()
 }
 
-export function makeRunId(): string {
-  return makeWorkflowRunId()
+export function makeRunId(seed?: string): string {
+  const suffix = seed === undefined ? null : keywordRunSuffix(seed)
+
+  return suffix === null
+    ? makeWorkflowRunId()
+    : makeWorkflowRunId(new Date(), suffix)
+}
+
+/**
+ * Run ID whose keyword suffix is deduplicated against sibling directories.
+ *
+ * Keyword suffixes are not unique the way UUID fragments were: two runs
+ * created from the same request in the same UTC minute (best-of-N candidates
+ * do exactly this) would collide. Ordinal suffixes keep the keywords; the
+ * UUID fallback keeps creation collision-free when ordinals are exhausted.
+ */
+export function makeUniqueRunId(
+  parentDirectory: string,
+  suffixSeed: string | null,
+  at = new Date(),
+): string {
+  if (suffixSeed !== null) {
+    const stem = suffixSeed
+      .slice(0, RUN_SUFFIX_MAX_LENGTH - 2)
+      .replace(/-+$/u, '')
+    const candidates = [
+      suffixSeed,
+      ...Array.from({ length: 8 }, (_, index) => `${stem}-${index + 2}`),
+    ]
+
+    for (const suffix of candidates) {
+      const id = makeWorkflowRunId(at, suffix)
+
+      if (!fileExists(path.join(parentDirectory, id))) {
+        return id
+      }
+    }
+  }
+
+  return makeWorkflowRunId(at)
 }
 
 /** Derive liveness for the active worker invocation without mutating run state. */

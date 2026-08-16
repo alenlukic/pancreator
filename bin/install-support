@@ -4,6 +4,7 @@ import {
   cpSync,
   copyFileSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   readFileSync,
   readdirSync,
@@ -582,6 +583,186 @@ function preserveLanguageGovernance() {
   writeJson(stagedLookupPath, stagedLookup)
 }
 
+// Build artifacts are machine-generated and env-dependent; hashing them would
+// flag every rebuild as a local modification.
+const PAYLOAD_MANIFEST_SKIP = new Set(['dist', 'node_modules'])
+
+/**
+ * Hash every harness-owned payload file under `rootDir`, sorted by path.
+ * Symlinks (the `.cursor` link) are skipped: they point outside the payload.
+ */
+function listPayloadFiles(rootDir, entries) {
+  const files = []
+
+  const walk = (absolute, relative) => {
+    const stats = lstatSync(absolute)
+
+    if (stats.isSymbolicLink()) {
+      return
+    }
+
+    if (stats.isDirectory()) {
+      for (const name of readdirSync(absolute)) {
+        walk(path.join(absolute, name), `${relative}/${name}`)
+      }
+
+      return
+    }
+
+    if (stats.isFile()) {
+      files.push({ path: relative, sha256: sha256(readFileSync(absolute)) })
+    }
+  }
+
+  for (const entry of entries) {
+    if (PAYLOAD_MANIFEST_SKIP.has(entry)) {
+      continue
+    }
+
+    const absolute = path.join(rootDir, entry)
+
+    if (existsSync(absolute)) {
+      walk(absolute, entry)
+    }
+  }
+
+  return files.sort((left, right) => left.path.localeCompare(right.path))
+}
+
+function previousPayloadManifest(markerPath) {
+  if (!markerPath || !existsSync(markerPath)) {
+    return new Map()
+  }
+
+  const marker = readJson(markerPath)
+  const entries = Array.isArray(marker.payload_files)
+    ? marker.payload_files
+    : []
+
+  return new Map(
+    entries
+      .filter(
+        (entry) =>
+          entry &&
+          typeof entry.path === 'string' &&
+          typeof entry.sha256 === 'string',
+      )
+      .map((entry) => [entry.path, entry.sha256]),
+  )
+}
+
+/**
+ * Reconcile the installed payload with the staged release before the payload
+ * swap. Local modifications to harness-owned files lose to the Pancreator
+ * source but are backed up and flagged; files the harness never shipped are
+ * target-specific extensions and are carried into the staged payload so the
+ * swap cannot destroy them.
+ */
+function reconcilePayload() {
+  const existingRoot = path.resolve(requiredOption('--existing-root'))
+  const stagingRoot = path.resolve(requiredOption('--staging-root'))
+  const markerPath = path.resolve(requiredOption('--previous-marker'))
+  const backupRoot = path.resolve(requiredOption('--backup-root'))
+  const entries = requiredOption('--entries').split(',').filter(Boolean)
+  const manifest = previousPayloadManifest(markerPath)
+
+  if (manifest.size === 0) {
+    if (existsSync(markerPath)) {
+      process.stdout.write(
+        'Installed payload predates local-change tracking: harness-owned ' +
+          'files are replaced wholesale this update and tracked from now on.\n',
+      )
+    }
+
+    return
+  }
+
+  const superseded = []
+  const preserved = []
+  const restored = []
+
+  const backup = (relative) => {
+    const destination = path.join(backupRoot, relative)
+
+    mkdirSync(path.dirname(destination), { recursive: true })
+    copyFileSync(path.join(existingRoot, relative), destination)
+  }
+
+  for (const entry of listPayloadFiles(existingRoot, entries)) {
+    const recordedDigest = manifest.get(entry.path)
+    const stagingPath = path.join(stagingRoot, entry.path)
+    const stagingDigest = existsSync(stagingPath)
+      ? sha256(readFileSync(stagingPath))
+      : null
+
+    if (recordedDigest === undefined) {
+      // Never shipped by the harness: a target-specific extension, unless the
+      // new release now claims the path, in which case the release wins.
+      if (stagingDigest === null) {
+        mkdirSync(path.dirname(stagingPath), { recursive: true })
+        copyFileSync(path.join(existingRoot, entry.path), stagingPath)
+        preserved.push(entry.path)
+      } else if (stagingDigest !== entry.sha256) {
+        backup(entry.path)
+        superseded.push(entry.path)
+      }
+
+      continue
+    }
+
+    // Locally modified since install. When the staged release already carries
+    // the same bytes the fix was upstreamed and needs no flag.
+    if (recordedDigest !== entry.sha256 && stagingDigest !== entry.sha256) {
+      backup(entry.path)
+      superseded.push(entry.path)
+    }
+  }
+
+  for (const relative of manifest.keys()) {
+    if (
+      !existsSync(path.join(existingRoot, relative)) &&
+      existsSync(path.join(stagingRoot, relative))
+    ) {
+      restored.push(relative)
+    }
+  }
+
+  const lines = []
+
+  if (superseded.length > 0) {
+    lines.push(
+      '',
+      'Local changes to harness-owned files detected. The Pancreator source is',
+      'authoritative; each superseded local version is preserved under',
+      `${backupRoot}:`,
+      '',
+      ...superseded.sort().map((relative) => `  superseded  ${relative}`),
+    )
+  }
+
+  if (restored.length > 0) {
+    lines.push(
+      '',
+      'Locally deleted harness-owned files restored from the release:',
+      '',
+      ...restored.sort().map((relative) => `  restored  ${relative}`),
+    )
+  }
+
+  if (preserved.length > 0) {
+    lines.push(
+      '',
+      'Target-specific extensions preserved through the update:',
+      '',
+      ...preserved.sort().map((relative) => `  preserved  ${relative}`),
+    )
+  }
+
+  if (lines.length > 0) {
+    process.stdout.write(`${lines.join('\n')}\n\n`)
+  }
+}
+
 function previousCursorFiles(markerPath) {
   if (!markerPath || !existsSync(markerPath)) {
     return new Map()
@@ -1013,23 +1194,40 @@ function detectExistingHarness() {
   process.stdout.write(`${lines.join('\n')}\n\n`)
 }
 
+/**
+ * Hash a pristine staged payload into a manifest file. Recorded before any
+ * target-specific seeding so the manifest describes release-owned content
+ * only: files absent from it are target extensions on every later update.
+ */
+function hashPayload() {
+  const rootDir = path.resolve(requiredOption('--root'))
+  const entries = requiredOption('--entries').split(',').filter(Boolean)
+  const out = path.resolve(requiredOption('--out'))
+
+  writeJson(out, { payload_files: listPayloadFiles(rootDir, entries) })
+}
+
 function writeMarker() {
   const destination = path.resolve(requiredOption('--destination'))
   const cursorManifest = readJson(
     path.resolve(requiredOption('--cursor-manifest')),
+  )
+  const payloadManifest = readJson(
+    path.resolve(requiredOption('--payload-manifest')),
   )
   const payloadEntries = requiredOption('--payload-entries')
     .split(',')
     .filter(Boolean)
 
   writeJson(destination, {
-    schema_version: 3,
+    schema_version: 4,
     version: requiredOption('--version'),
     source_commit: requiredOption('--source-commit'),
     source_dirty: requiredOption('--source-dirty') === 'true',
     source_indexed: requiredOption('--source-indexed') === 'true',
     installed_at: requiredOption('--installed-at'),
     payload_entries: payloadEntries,
+    payload_files: payloadManifest.payload_files,
     cursor_files: cursorManifest.cursor_files,
   })
 }
@@ -1048,6 +1246,10 @@ if (command === 'project-cursor') {
   migrateRepositoryChecks()
 } else if (command === 'preserve-language-governance') {
   preserveLanguageGovernance()
+} else if (command === 'reconcile-payload') {
+  reconcilePayload()
+} else if (command === 'hash-payload') {
+  hashPayload()
 } else if (command === 'configure-shell-alias') {
   await configureShellAlias()
 } else {

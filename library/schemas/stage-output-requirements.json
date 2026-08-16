@@ -39,7 +39,7 @@
         {
           "path": "data.review.findings[].remediation_stage",
           "type": "string",
-          "enum": ["review", "implement"]
+          "enum": ["review", "implement", "operator"]
         },
         {
           "path": "data.review.findings[].resolution",
