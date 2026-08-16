@@ -31,7 +31,8 @@ import {
 } from './pipeline-config.js'
 import { projectPersonaVariants, removePersonaVariants } from './projection.js'
 import { runSetupCommands } from './setup-commands.js'
-import { loadState, makeRunId, now, statePath } from './state.js'
+import { keywordRunSuffixFrom } from './naming.js'
+import { loadState, makeUniqueRunId, now, statePath } from './state.js'
 import type { RunState, RunStatus } from './types.js'
 import {
   loadWorkflow,
@@ -42,7 +43,8 @@ import {
 const CANDIDATE_WORKFLOW = 'dev-candidate'
 const CONSOLIDATION_WORKFLOW = 'metacritic'
 const MINIMUM_CANDIDATES = 2
-const BEST_OF_N_ID_PATTERN = /^\d+_[A-Z][a-z]{2}-\d{2}-\d{4}_[0-9a-f]{8}$/u
+const BEST_OF_N_ID_PATTERN =
+  /^\d+_[A-Z][a-z]{2}-\d{2}-\d{4}_[a-z0-9](?:[a-z0-9-]{0,10}[a-z0-9])?$/u
 const SLOT_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u
 const TERMINAL_STATUSES = new Set<RunStatus>([
   'succeeded',
@@ -638,7 +640,13 @@ export function initBestOfN(
     )
   }
 
-  const bonId = makeRunId()
+  const bonId = makeUniqueRunId(
+    path.join(root, 'runtime', 'logs', 'best-of-n'),
+    keywordRunSuffixFrom(
+      path.basename(options.requestPath),
+      readText(requestSource),
+    ),
+  )
   const directory = bestOfNDir(root, bonId)
 
   ensureDir(directory)

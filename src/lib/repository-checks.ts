@@ -28,6 +28,12 @@ export interface RepositoryCheckProfile {
 export interface RepositoryChecksConfig {
   schema_version: 1
   source_head?: string
+  /**
+   * Commands that bootstrap a fresh workspace before profile commands can run.
+   * A new worktree carries no ignored build state (dependencies, compiled
+   * output), so checks there are doomed until setup has run.
+   */
+  setup?: string[]
   profiles: Record<string, RepositoryCheckProfile>
 }
 
@@ -572,10 +578,38 @@ export function repositoryChecksPath(root: string): string {
   return path.join(root, 'runtime', 'repository-checks.json')
 }
 
+/** `<installation>/runtime/worktrees/...` resolves to the installation root. */
+function owningInstallationRoot(root: string): string | null {
+  const segments = path.resolve(root).split(path.sep)
+  const index = segments.lastIndexOf('worktrees')
+
+  return index > 0 && segments[index - 1] === 'runtime'
+    ? segments.slice(0, index - 1).join(path.sep) || path.sep
+    : null
+}
+
 export function repositoryChecksSourcePath(root: string): string {
   const runtimePath = repositoryChecksPath(root)
 
-  if (fileExists(runtimePath) || !isSelfDevelopmentInstallation(root)) {
+  if (fileExists(runtimePath)) {
+    return runtimePath
+  }
+
+  // The runtime configuration is untracked per-installation state, so a git
+  // worktree never carries it. A harness-managed worktree resolves the owning
+  // installation's file instead of silently weakening the suite through the
+  // template fallback.
+  const installationRoot = owningInstallationRoot(root)
+
+  if (installationRoot) {
+    const installationPath = repositoryChecksPath(installationRoot)
+
+    if (fileExists(installationPath)) {
+      return installationPath
+    }
+  }
+
+  if (!isSelfDevelopmentInstallation(root)) {
     return runtimePath
   }
 
@@ -742,12 +776,66 @@ export function loadRepositoryChecks(root: string): RepositoryChecksConfig {
 
   validateProfileSemantics(filePath, profiles)
 
+  const setup =
+    value.setup === undefined
+      ? undefined
+      : stringArray(value.setup, `${filePath}.setup`)
+
   return {
     schema_version: 1,
     ...(typeof value.source_head === 'string'
       ? { source_head: value.source_head }
       : {}),
+    ...(setup !== undefined ? { setup } : {}),
     profiles,
+  }
+}
+
+export interface RepositorySetupResult {
+  status: 'passed' | 'failed' | 'not_configured'
+  workspace_root: string
+  results: RepositoryCheckCommandResult[]
+  total_duration_ms: number
+}
+
+/**
+ * Run the target-declared workspace setup commands (dependency install,
+ * build) in the given workspace, stopping at the first failure.
+ */
+export function runRepositorySetup(
+  root: string,
+  options: RepositoryCheckRunOptions = {},
+): RepositorySetupResult {
+  const config = loadRepositoryChecks(root)
+  const workspaceRoot = path.resolve(
+    root,
+    options.workspace ?? configuredWorkspaceRoot(root),
+  )
+  const commands = config.setup ?? []
+  const timeoutMs = options.timeout_ms ?? DEFAULT_TIMEOUT_MS
+  const results: RepositoryCheckCommandResult[] = []
+  let status: RepositorySetupResult['status'] =
+    commands.length > 0 ? 'passed' : 'not_configured'
+
+  for (const command of commands) {
+    const result = execute('command', command, workspaceRoot, timeoutMs)
+
+    results.push(result)
+
+    if (!result.passed) {
+      status = 'failed'
+      break
+    }
+  }
+
+  return {
+    status,
+    workspace_root: workspaceRoot,
+    results,
+    total_duration_ms: results.reduce(
+      (total, result) => total + result.duration_ms,
+      0,
+    ),
   }
 }
 

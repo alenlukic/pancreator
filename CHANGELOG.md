@@ -1,5 +1,30 @@
 # Changelog
 
+## [3.6.0] - 2026-08-15
+
+### Changed
+
+- Derive run, best-of-N, and session directory suffixes from high-signal request keywords (12-character cap, ordinal deduplication, UUID fallback) instead of opaque hex fragments, and migrate existing hash-suffixed directories from persisted run state ([naming](src/lib/naming.ts), [state](src/lib/state.ts), [workflow-artifacts](src/lib/workflow-artifacts.ts), [naming test](tests/unit/naming.test.ts)).
+- Standardize non-durable `runtime/inbox/` and `runtime/pr-descriptions/` file names onto the temporal prefix scheme used by `runtime/logs/workflows/`, recovering timestamps from legacy names or file modification time and rewriting persisted references ([workflow-artifacts](src/lib/workflow-artifacts.ts), [workflow-artifacts test](tests/unit/workflow-artifacts.test.ts)).
+- Extend `pan archive` retention to best-of-N session directories and temporal inbox/PR-description files, moving items older than the window (default 7 days) into each directory's `archive/` child ([workflow-artifacts](src/lib/workflow-artifacts.ts), [runtime-archive-cli test](tests/integration/runtime-archive-cli.test.ts)).
+- Reconcile the installed payload on refresh and update: local fixes to harness-owned files are superseded by the Pancreator source with an operator flag and a backup under `.pancreator/backups/payload/`, target-specific extensions are preserved through the swap, and locally deleted files are restored with a notice ([install](bin/install), [install-support](bin/install-support), [embedded-installation test](tests/integration/embedded-installation.test.ts)).
+- Require `/pan-build-docs` to treat operator-customized configuration — harness `config.json`, `$operator` blocks and custom repository-check profiles, and operator-authored primer content — as durable input merged into regenerated documentation ([pan-build-docs](library/cursor/commands/pan-build-docs.md)).
+- Exclude content-addressed artifacts from run-ID reference rewrites during workflow name migration so recorded digests stay valid ([workflow-artifacts](src/lib/workflow-artifacts.ts)).
+
+### Added
+
+- Record a `payload_files` manifest (schema version 4) in `install.json` hashing every release-owned payload file so updates can distinguish local fixes and target extensions from shipped content ([install-support](bin/install-support)).
+- Add the `harness-workflow-qa` persona and `/pan-qa-workflow` command: drive a real or synthetic workflow as orchestrator to validate harness changes, with per-stage QA checklists, one-minute check-in cadence, remediation duties, and a logged pre-emptive operator waiver ([persona](library/personas/harness-workflow-qa.md), [command](library/cursor/commands/pan-qa-workflow.md)).
+- Support a top-level `setup` command array in `runtime/repository-checks.json`: worktree-targeted runs execute it before pre-implementation baseline capture and pause with an operator decision when it fails, so a fresh worktree without dependencies can no longer hang or poison the baseline ([repository-checks](src/lib/repository-checks.ts), [engine](src/lib/engine.ts)).
+
+### Fixed
+
+- Resolve `pan repository-check` run inside a harness-managed worktree to the owning installation's `runtime/repository-checks.json` instead of silently falling back to the weaker template suite ([repository-checks](src/lib/repository-checks.ts), [repository-checks test](tests/unit/repository-checks.test.ts)).
+- Accept the `path :: case name` convention in `implementation.tests_added` entries so IMPLEMENTATION-CLAIMS-VALIDATE-001 resolves the file portion instead of false-negating on annotated entries ([stage-validators](src/lib/validators/stage-validators.ts)).
+- Add `remediation_stage: operator` for unresolved review findings whose defect lies outside the run's workspace, resolving the REVIEW-VALIDATE-001 conflict with the review contract's no-loop rule for harness defects ([stage-validators](src/lib/validators/stage-validators.ts), [stage-output-requirements](library/schemas/stage-output-requirements.json), [review prompt](library/workflows/dev/prompts/review.md)).
+- Accept any executor-selected model in `invocation_attestation.model` when the card declares model `auto`, instead of demanding an exact match no worker can satisfy ([validation](src/lib/validation.ts)).
+- Stop run-ID keyword derivation from ingesting the month token of an already-standardized request filename ([naming](src/lib/naming.ts)).
+
 ## [3.5.0] - 2026-08-14
 
 ### Changed

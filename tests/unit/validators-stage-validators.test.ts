@@ -1905,3 +1905,101 @@ test('spotfix diff_bounded counts only non-exempt files in mixed diffs', () => {
     !result.issues.some((issue) => issue.code === 'spotfix.diff_bounded'),
   )
 })
+
+test('implementation validator resolves the file portion of "path :: case" test entries', () => {
+  const root = validatorFixtureRoot('pan-impl-test-entry-')
+  const runId = 'run-impl-test-entry'
+  const target = `runtime/logs/workflows/${runId}/outputs/implement-1-test.json`
+  const absolute = path.join(root, target)
+
+  mkdirSync(path.dirname(absolute), { recursive: true })
+  writePlanOutput(root, runId, ['AC-01'])
+  mkdirSync(path.join(root, 'tests'), { recursive: true })
+  writeFileSync(path.join(root, 'tests', 'sample.test.ts'), 'test\n')
+  writeFileSync(
+    absolute,
+    `${JSON.stringify({
+      data: {
+        implementation: {
+          changed_files: [],
+          tests_added: [
+            'tests/sample.test.ts :: a named case inside the file',
+            'tests/missing.test.ts :: another case',
+          ],
+          notes: [],
+        },
+        acceptance_results: [{ id: 'AC-01', result: 'pass', evidence: ['x'] }],
+      },
+    })}\n`,
+  )
+
+  const result = validateImplementationClaims({
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'DEV-001',
+      requirement_id: 'implementation-claims',
+      registry_id: 'IMPLEMENTATION-CLAIMS-VALIDATE-001',
+      arguments: {},
+    },
+  })
+
+  // The existing file passes through the '::' convention; only the genuinely
+  // missing file is reported, by its file portion.
+  const missing = result.issues.filter(
+    (issue) => issue.code === 'claim.test_missing',
+  )
+
+  assert.equal(missing.length, 1)
+  assert.match(missing[0].message, /tests\/missing\.test\.ts/u)
+  assert.doesNotMatch(missing[0].message, /tests\/sample\.test\.ts :: /u)
+})
+
+test('review validator accepts operator-routed unresolved findings', () => {
+  const root = validatorFixtureRoot('pan-review-operator-route-')
+  const runId = 'run-review-operator-route'
+  const target = `runtime/logs/workflows/${runId}/outputs/review-1-test.json`
+  const absolute = path.join(root, target)
+
+  mkdirSync(path.dirname(absolute), { recursive: true })
+  writePlanOutput(root, runId, ['AC-01'])
+  writeFileSync(
+    absolute,
+    `${JSON.stringify({
+      data: {
+        review: {
+          verdict: 'pass',
+          findings: [
+            {
+              id: 'f1',
+              severity: 'low',
+              remediation_stage: 'operator',
+              resolution: 'unresolved',
+              summary: 'Harness validator contradicts the stage contract.',
+              evidence: ['runtime/logs/workflows/run/evidence/finding.json'],
+            },
+          ],
+          acceptance_results: [{ id: 'AC-01', result: 'pass' }],
+        },
+      },
+    })}\n`,
+  )
+
+  const result = validateReviewOutput({
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'REVIEW-001',
+      requirement_id: 'review',
+      registry_id: 'REVIEW-VALIDATE-001',
+      arguments: {},
+    },
+  })
+
+  // A defect outside the run's workspace routes to the operator without
+  // failing the verdict or demanding an implementation loop.
+  assert.ok(
+    !result.issues.some((issue) => issue.code === 'review.resolution'),
+    JSON.stringify(result.issues),
+  )
+})

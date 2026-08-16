@@ -14,6 +14,7 @@ import {
   compareRepositoryCheckToBaseline,
   loadRepositoryChecks,
   repositoryChecksSourcePath,
+  runRepositorySetup,
   runRepositoryCheck,
   runRepositoryCheckStreaming,
 } from '../../src/lib/repository-checks.js'
@@ -586,4 +587,61 @@ test('a pytest-looking transcript still surfaces failures outside the pytest sha
     comparison.delta.new[0]?.diagnostic ?? '',
     /Missing return statement/u,
   )
+})
+
+test('a harness-managed worktree resolves the owning installation runtime config', () => {
+  const { root } = makeInstallation()
+
+  writeChecks(root, { fast: { probes: [], commands: ['echo ok'] } })
+
+  const worktree = path.join(root, 'runtime', 'worktrees', 'operator', 'wt')
+
+  mkdirSync(worktree, { recursive: true })
+
+  // The runtime configuration is untracked, so the worktree never carries it;
+  // resolution must reach the owning installation rather than fall back to a
+  // weaker template suite.
+  assert.equal(
+    repositoryChecksSourcePath(worktree),
+    path.join(root, 'runtime', 'repository-checks.json'),
+  )
+})
+
+test('workspace setup commands load, run in order, and stop at the first failure', () => {
+  const { root } = makeInstallation()
+
+  writeFileSync(
+    path.join(root, 'runtime', 'repository-checks.json'),
+    `${JSON.stringify({
+      schema_version: 1,
+      setup: ['echo one', 'node -e "process.exit(1)"', 'echo never'],
+      profiles: {},
+    })}\n`,
+  )
+
+  const config = loadRepositoryChecks(root)
+
+  assert.deepEqual(config.setup, [
+    'echo one',
+    'node -e "process.exit(1)"',
+    'echo never',
+  ])
+
+  const result = runRepositorySetup(root)
+
+  assert.equal(result.status, 'failed')
+  assert.equal(result.results.length, 2)
+  assert.equal(result.results[0].passed, true)
+  assert.equal(result.results[1].passed, false)
+})
+
+test('workspace setup reports not_configured when the config declares none', () => {
+  const { root } = makeInstallation()
+
+  writeChecks(root, {})
+
+  const result = runRepositorySetup(root)
+
+  assert.equal(result.status, 'not_configured')
+  assert.deepEqual(result.results, [])
 })

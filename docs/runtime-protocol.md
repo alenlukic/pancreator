@@ -16,12 +16,26 @@
 ## Runtime naming
 
 `DATETIME_ANCHOR` is `2200-01-01T00:00:00.000Z`. A run ID is
-`<days-to-anchor>_<MMM-DD>-<minutes-to-end-of-UTC-day>_<uuid-suffix>`, where
+`<days-to-anchor>_<MMM-DD>-<minutes-to-end-of-UTC-day>_<keyword-suffix>`, where
 days-to-anchor is the floor of the UTC duration from the run creation instant to
 the anchor divided by one day. The minute component is the ceiling of the
 remaining duration to the next UTC midnight, zero-padded to four digits. For
 example, a run created at `2026-07-03T23:00:00Z` is named
-`63368_Jul-03-0060_<uuid-suffix>`.
+`63368_Jul-03-0060_<keyword-suffix>`.
+
+The suffix is a hyphenated high-signal keyword slug of at most 12 characters
+derived from the request name (falling back to request content), so a listing
+reveals what each run was about at a glance; abrupt mid-word cutoffs are
+accepted. Timestamps, stopwords, and UUID/commit hex fragments are stripped
+from the seed. When two same-minute runs derive identical keywords the later
+one takes an ordinal (`…_fixture-2`), and when no keywords are derivable the
+suffix falls back to the legacy 8-hex UUID fragment, which remains valid.
+Best-of-N session and standalone session directories use the same convention.
+
+Every non-durable file under `runtime/inbox/` and `runtime/pr-descriptions/`
+uses the same temporal prefix: `<prefix>_<slug>.<ext>`. Operator-chosen keyword
+slugs are kept verbatim; only missing or opaque hex slugs are re-derived from
+file content.
 
 Stage-scoped artifact IDs are
 `<reverse-step>_<stage>-<stage-iteration>_<uuid-suffix>`. While a run is open,
@@ -54,16 +68,33 @@ Supervisor assessment files retain the invocation artifact ID as their sortable
 prefix: `<invocation-id>.assessment-request.json` and
 `<invocation-id>.assessment.json`.
 
-`./bin/pan archive` performs idempotent runtime maintenance. It migrates
-recognized legacy workflow directory names, chooses open or terminal artifact
-numbering from run status, consolidates legacy `records/` and flat `artifacts/`
-contents, removes redundant rendered execution-record Markdown, removes an
-empty legacy `--help` run directory, and updates persisted references alongside
-names. It then moves workflow directories older than seven days from both
-`runtime/logs/workflows/` and the legacy `runtime/workflows/` mirror into each
-directory's `archive/` child. Archived runs are excluded from active run
-discovery. Use `--days <positive-integer>` only when deliberately overriding the
-default retention window.
+`./bin/pan archive` performs idempotent runtime maintenance in four passes:
+
+1. **Name standardization** renames non-compliant files under `runtime/inbox/`
+   and `runtime/pr-descriptions/` onto the temporal prefix scheme, recovering
+   the timestamp from the legacy name when one is embedded and from file
+   modification time otherwise, then rewrites persisted references.
+2. **Prefix migration** migrates recognized legacy workflow directory names,
+   chooses open or terminal artifact numbering from run status, consolidates
+   legacy `records/` and flat `artifacts/` contents, removes redundant rendered
+   execution-record Markdown, removes an empty legacy `--help` run directory,
+   and updates persisted references alongside names.
+3. **Suffix migration** replaces legacy 8-hex directory suffixes under
+   `runtime/logs/workflows/`, `runtime/logs/best-of-n/`, and
+   `runtime/logs/sessions/` (archives included) with keyword suffixes derived
+   from run state, again rewriting references. Directories without a derivable
+   seed, and best-of-N sessions whose worktrees still exist on disk, keep their
+   hash suffix and are reported as skipped.
+4. **Archiving** moves everything non-durable older than the retention window
+   into the owning directory's `archive/` child: workflow directories from both
+   `runtime/logs/workflows/` and the legacy `runtime/workflows/` mirror,
+   standalone session directories, best-of-N session directories, and temporal
+   files in `runtime/inbox/` and `runtime/pr-descriptions/` (their prefix is
+   the age authority). Archived items are excluded from active discovery.
+
+The default retention window is seven days. Use `--days <positive-integer>`
+only when deliberately overriding it. Embedded installs run the same
+maintenance on every refresh and update.
 
 ## Invocation and delegation validation
 
