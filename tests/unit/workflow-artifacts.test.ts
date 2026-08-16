@@ -762,3 +762,40 @@ test('archival covers standalone-mode session directories', () => {
   // A session inside the retention window is untouched.
   assert.equal(existsSync(freshSession), true)
 })
+
+test('runtime name standardization never scans or rewrites worktree checkouts', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'pan-names-worktrees-'))
+
+  write(
+    path.join(root, 'runtime/inbox/2026-08-14-scoped-rename.md'),
+    'Scoped rename fixture.\n',
+  )
+  // A reference inside a worktree checkout must stay untouched: worktrees are
+  // target source trees, not runtime records.
+  write(
+    path.join(root, 'runtime/worktrees/operator/wt/notes.md'),
+    'see runtime/inbox/2026-08-14-scoped-rename.md\n',
+  )
+  write(
+    path.join(root, 'runtime/logs/orchestrator/events.jsonl'),
+    `${JSON.stringify({ path: 'runtime/inbox/2026-08-14-scoped-rename.md' })}\n`,
+  )
+
+  const summary = standardizeRuntimeFileNames(root)
+
+  assert.equal(summary.renamed_files, 1)
+  assert.match(
+    readFileSync(
+      path.join(root, 'runtime/logs/orchestrator/events.jsonl'),
+      'utf8',
+    ),
+    /63326_Aug-14-0720_scoped-rename\.md/u,
+  )
+  assert.equal(
+    readFileSync(
+      path.join(root, 'runtime/worktrees/operator/wt/notes.md'),
+      'utf8',
+    ),
+    'see runtime/inbox/2026-08-14-scoped-rename.md\n',
+  )
+})

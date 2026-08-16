@@ -24,6 +24,7 @@
 - Add `remediation_stage: operator` for unresolved review findings whose defect lies outside the run's workspace, resolving the REVIEW-VALIDATE-001 conflict with the review contract's no-loop rule for harness defects ([stage-validators](src/lib/validators/stage-validators.ts), [stage-output-requirements](library/schemas/stage-output-requirements.json), [review prompt](library/workflows/dev/prompts/review.md)).
 - Accept any executor-selected model in `invocation_attestation.model` when the card declares model `auto`, instead of demanding an exact match no worker can satisfy ([validation](src/lib/validation.ts)).
 - Stop run-ID keyword derivation from ingesting the month token of an already-standardized request filename ([naming](src/lib/naming.ts)).
+- Walk runtime trees iteratively during maintenance and exclude `runtime/worktrees/` from reference-rewrite scans: spreading a large subtree's file list into `push()` exceeded the engine argument limit and crashed installs onto targets whose worktrees carry installed dependencies ([workflow-artifacts](src/lib/workflow-artifacts.ts), [workflow-artifacts test](tests/unit/workflow-artifacts.test.ts)).
 
 ## [3.5.0] - 2026-08-14
 

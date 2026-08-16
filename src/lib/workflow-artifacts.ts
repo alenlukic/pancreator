@@ -96,20 +96,33 @@ export function isClosedRunStatus(status: RunStatus): boolean {
   return status === 'succeeded' || status === 'failed' || status === 'canceled'
 }
 
-function listFiles(directory: string): string[] {
+// Iterative on purpose: recursion with `push(...listFiles(child))` spreads a
+// child subtree's entire file list into one call, and a large tree (a worktree
+// with dependencies installed) exceeds the engine's argument limit, which
+// surfaces as a call-stack RangeError.
+function listFiles(directory: string, exclude?: string): string[] {
   if (!existsSync(directory)) {
     return []
   }
 
   const files: string[] = []
+  const pending: string[] = [directory]
 
-  for (const entry of readdirSync(directory, { withFileTypes: true })) {
-    const absolute = path.join(directory, entry.name)
+  while (pending.length > 0) {
+    const current = pending.pop() as string
 
-    if (entry.isDirectory()) {
-      files.push(...listFiles(absolute))
-    } else if (entry.isFile()) {
-      files.push(absolute)
+    if (current === exclude) {
+      continue
+    }
+
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const absolute = path.join(current, entry.name)
+
+      if (entry.isDirectory()) {
+        pending.push(absolute)
+      } else if (entry.isFile()) {
+        files.push(absolute)
+      }
     }
   }
 
@@ -1294,9 +1307,15 @@ function updateFileCount(
   return updated.size
 }
 
-/** Every runtime file that may be rewritten when a temporal name changes. */
+/**
+ * Every runtime file that may be rewritten when a temporal name changes.
+ *
+ * Worktree checkouts are excluded: they are entire target source trees that
+ * can carry hundreds of thousands of dependency files and never hold runtime
+ * name references.
+ */
 function mutableRuntimeFiles(runtimeRoot: string): string[] {
-  return listFiles(runtimeRoot).filter(
+  return listFiles(runtimeRoot, path.join(runtimeRoot, 'worktrees')).filter(
     (filePath) => !isContentAddressedArtifact(filePath),
   )
 }
