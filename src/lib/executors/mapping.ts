@@ -38,15 +38,6 @@ const CLAUDE_CODE_OPTION_KEYS = new Set([
   'session-resume',
   'timeout-ms',
 ])
-/**
- * Cursor option keys treated as equivalent when comparing a pinned snapshot
- * against live config, so a run written before the v3.5.0 `reasoning`-to-
- * `effort` hot fix does not read as drift. This is drift tolerance only:
- * neither spelling is rejected, and the catalog records which one Cursor
- * actually generates.
- */
-const CURSOR_OPTION_EQUIVALENCE = new Map([['reasoning', 'effort']])
-
 function parseBracketOptions(
   optionsText: string | undefined,
   source: string,
@@ -128,46 +119,12 @@ function validateClaudeCodeOptions(
   }
 }
 
-function validateCursorOptions(
-  options: Record<string, string>,
-  source: string,
-): void {
-  for (const [key, value] of Object.entries(options)) {
-    // Cursor owns this grammar, so an unrecorded key is unverified rather than
-    // invalid. `reasoning` was rejected here until v3.7.0 on a refuted claim,
-    // which made Pancreator reject the exact spec Cursor's picker generates.
-    // See governance/registries/cursor_model_catalog.json.
-    invariant(
-      key.trim().length > 0,
-      `${source} declares an empty Cursor option name.`,
-      { code: 'INVALID_PIPELINE_CONFIG' },
-    )
-
-    if (key === 'context') {
-      invariant(
-        /^\d+k$/u.test(value),
-        `${source} context MUST use a positive '<kilotokens>k' value.`,
-        { code: 'INVALID_PIPELINE_CONFIG' },
-      )
-    } else if (key === 'fast') {
-      invariant(
-        value === 'true' || value === 'false',
-        `${source} fast MUST be true or false.`,
-        { code: 'INVALID_PIPELINE_CONFIG' },
-      )
-    } else if (key === 'effort') {
-      // Pancreator owns which option keys its spec grammar accepts; Cursor owns
-      // which effort values exist. An enum here rejected values Cursor
-      // supports (xhigh), so validity now comes from the evidence-based
-      // catalog, which rejects only observed failures.
-      invariant(
-        value.trim().length > 0,
-        `${source} effort MUST be a non-empty value.`,
-        { code: 'INVALID_PIPELINE_CONFIG' },
-      )
-    }
-  }
-}
+// Cursor option names and values are validated against the model catalog
+// registry at resolution time (resolveCursorModelSlug), never here: which
+// parameters exist, and with which values, is per-model data owned by Cursor.
+// Hardcoded per-key checks in this file twice rejected or mangled specs
+// Cursor itself generates (the v3.5.0 `reasoning` rejection, and a `context`
+// pattern that predated the 1m window).
 
 /**
  * Parse one persona mapping string into its executor, model, and options.
@@ -216,8 +173,6 @@ export function parsePersonaMapping(
 
   if (executor === 'claude-code') {
     validateClaudeCodeOptions(options, source)
-  } else {
-    validateCursorOptions(options, source)
   }
 
   return {
@@ -230,14 +185,12 @@ export function parsePersonaMapping(
 }
 
 /**
- * Comparable form of a mapping string, tolerant of superseded option grammar.
- *
- * A run's pipeline snapshot keeps the exact text it was created with, so a later
- * option-grammar change would otherwise make an in-flight run permanently
- * undeliverable: the snapshot cannot be edited, and restoring the retired
- * spelling in `config.json` fails current validation. Comparison therefore
- * normalizes both sides instead of matching raw text. Authoring surfaces keep
- * using `parsePersonaMapping`, which still rejects a retired key outright.
+ * Comparable form of a mapping string: explicit executor prefix and sorted
+ * options, so option order never registers as drift. No key is renamed or
+ * dropped — `reasoning` and `effort` are distinct real parameters on distinct
+ * models — and empty brackets are preserved, because Cursor documents
+ * `model[]` (standard variant) and `model` (default variant) as different
+ * selections.
  */
 export function canonicalPersonaMapping(raw: string): string {
   const trimmed = raw.trim()
@@ -263,7 +216,7 @@ export function canonicalPersonaMapping(raw: string): string {
   }
 
   const model = specMatch.groups.model.trim()
-  const parsed = new Map<string, string>()
+  const options = new Map<string, string>()
   const optionsText = specMatch.groups.options
 
   if (optionsText !== undefined && optionsText.trim().length > 0) {
@@ -277,37 +230,19 @@ export function canonicalPersonaMapping(raw: string): string {
       const key = entry.slice(0, separator).trim()
       const value = entry.slice(separator + 1).trim()
 
-      if (key.length > 0 && value.length > 0 && !parsed.has(key)) {
-        parsed.set(key, value)
+      if (key.length > 0 && value.length > 0 && !options.has(key)) {
+        options.set(key, value)
       }
     }
-  }
-
-  const options = new Map<string, string>()
-
-  for (const [key, value] of parsed) {
-    if (executor !== 'cursor') {
-      options.set(key, value)
-      continue
-    }
-
-    const canonicalKey = CURSOR_OPTION_EQUIVALENCE.get(key) ?? key
-
-    // When both spellings appear, the one already written wins, so comparison
-    // stays stable regardless of which the snapshot recorded.
-    if (canonicalKey !== key && parsed.has(canonicalKey)) {
-      continue
-    }
-
-    options.set(canonicalKey, value)
   }
 
   const rendered = [...options.keys()]
     .sort()
     .map((key) => `${key}=${options.get(key)}`)
     .join(',')
+  const hadBrackets = optionsText !== undefined
 
-  return rendered.length > 0
+  return hadBrackets
     ? `${executor}:${model}[${rendered}]`
     : `${executor}:${model}`
 }

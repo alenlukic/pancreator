@@ -100,34 +100,35 @@ test('cursor bracket options accept keys the harness has not recorded', () => {
   )
 })
 
-test('canonical mapping equates a retired option spelling with the current one', () => {
-  // A run pinned before the v3.5.0 reasoning-to-effort hot fix must still match
-  // live config. This is drift tolerance across that edit, not a claim that
-  // either spelling is invalid.
+test('canonical mapping compares specs order-insensitively without renaming keys', () => {
+  // Option order must not register as drift.
   assert.equal(
+    canonicalPersonaMapping('gpt-5.4[reasoning=high,context=272k]'),
+    canonicalPersonaMapping('gpt-5.4[context=272k,reasoning=high]'),
+  )
+  // reasoning and effort are DISTINCT real parameters on distinct models.
+  // The v3.5.0 aliasing of one onto the other made a spec Cursor accepts
+  // compare equal to one it silently degrades on, so no key is renamed.
+  assert.notEqual(
     canonicalPersonaMapping(
       'gpt-5.6-sol[context=272k,reasoning=high,fast=false]',
     ),
     canonicalPersonaMapping('gpt-5.6-sol[context=272k,effort=high,fast=false]'),
   )
-  // Option order must not register as drift.
-  assert.equal(
-    canonicalPersonaMapping('gpt-5.4[effort=high,context=272k]'),
-    canonicalPersonaMapping('gpt-5.4[context=272k,effort=high]'),
-  )
-  // A current key wins over the retired key that aliases onto it.
-  assert.equal(
-    canonicalPersonaMapping('gpt-5.6-sol[reasoning=low,effort=high]'),
-    'cursor:gpt-5.6-sol[effort=high]',
-  )
-  // A genuine model or effort difference must still register as drift.
+  // Empty brackets pin the standard variant and a bare id takes the default,
+  // so the two forms are genuinely different selections.
   assert.notEqual(
-    canonicalPersonaMapping('gpt-5.6-sol[effort=high]'),
-    canonicalPersonaMapping('gpt-5.6-sol[effort=medium]'),
+    canonicalPersonaMapping('claude-fable-5[]'),
+    canonicalPersonaMapping('claude-fable-5'),
+  )
+  // A genuine model or value difference must still register as drift.
+  assert.notEqual(
+    canonicalPersonaMapping('gpt-5.6-sol[reasoning=high]'),
+    canonicalPersonaMapping('gpt-5.6-sol[reasoning=medium]'),
   )
   assert.notEqual(
-    canonicalPersonaMapping('gpt-5.4[effort=high]'),
-    canonicalPersonaMapping('gpt-5.6-sol[effort=high]'),
+    canonicalPersonaMapping('gpt-5.4[reasoning=high]'),
+    canonicalPersonaMapping('gpt-5.6-sol[reasoning=high]'),
   )
   // Executor prefixes and bare models normalize without throwing.
   assert.equal(canonicalPersonaMapping('auto'), 'cursor:auto')

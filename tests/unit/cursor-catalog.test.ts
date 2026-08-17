@@ -9,29 +9,125 @@ import { parsePersonaMapping } from '../../src/lib/executors/mapping.js'
 
 const root = process.cwd()
 
-test('a configured spec passes through in Cursor native form', () => {
-  // Cursor's own picker generates the bracketed spec, so projection must not
-  // rewrite it. The flat effort-suffixed form it previously emitted is a string
-  // Cursor never produces.
-  assert.equal(
-    resolveCursorModelSlug(
-      parsePersonaMapping('gpt-5.6-sol[context=272k,reasoning=high,fast=true]'),
-      'persona mapping',
-      root,
-    ),
-    'gpt-5.6-sol[context=272k,fast=true,reasoning=high]',
+test('a valid spec is emitted verbatim in Cursor bracket grammar', () => {
+  // Bracket notation is Cursor's documented grammar for the subagent model
+  // field. Every historical rewrite here (flat slugs, key renames, option
+  // reordering) produced strings Cursor silently degraded on.
+  for (const spec of [
+    'gpt-5.6-sol[context=272k,reasoning=high,fast=false]',
+    'grok-4.6[effort=xhigh,fast=true]',
+    'claude-opus-5[thinking=true,context=300k,effort=high,fast=false]',
+    'claude-fable-5[thinking=true,context=1m,effort=high]',
+    'composer-2.5[fast=false]',
+    'auto',
+  ]) {
+    assert.equal(
+      resolveCursorModelSlug(
+        parsePersonaMapping(spec),
+        'persona mapping',
+        root,
+      ),
+      spec,
+    )
+  }
+})
+
+test('parameters are validated per model, not per family', () => {
+  // GPT models take `reasoning`; Claude and Grok models take `effort`.
+  // Assuming either key exists everywhere is the exact defect that ran Sol at
+  // medium: Cursor falls back silently on an unknown parameter.
+  assert.throws(
+    () =>
+      resolveCursorModelSlug(
+        parsePersonaMapping('gpt-5.6-sol[context=272k,effort=high,fast=false]'),
+        'persona mapping',
+        root,
+      ),
+    /has no parameter 'effort'/u,
+  )
+  assert.throws(
+    () =>
+      resolveCursorModelSlug(
+        parsePersonaMapping('claude-fable-5[reasoning=high]'),
+        'persona mapping',
+        root,
+      ),
+    /has no parameter 'reasoning'/u,
   )
 })
 
-test('a mapping without options resolves to the bare model', () => {
+test('parameter values are validated against the model declaration', () => {
+  // grok-4.5 declares effort low|medium|high; xhigh exists only on grok-4.6.
+  assert.throws(
+    () =>
+      resolveCursorModelSlug(
+        parsePersonaMapping('grok-4.5[effort=xhigh]'),
+        'persona mapping',
+        root,
+      ),
+    /parameter 'effort' has no value 'xhigh'/u,
+  )
+  // gpt-5.5 spells its top tier extra-high, not xhigh.
+  assert.throws(
+    () =>
+      resolveCursorModelSlug(
+        parsePersonaMapping('gpt-5.5[reasoning=xhigh]'),
+        'persona mapping',
+        root,
+      ),
+    /parameter 'reasoning' has no value 'xhigh'/u,
+  )
   assert.equal(
     resolveCursorModelSlug(
-      parsePersonaMapping('claude-fable-5[]'),
+      parsePersonaMapping(
+        'gpt-5.5[context=1m,reasoning=extra-high,fast=false]',
+      ),
       'persona mapping',
       root,
     ),
-    'claude-fable-5',
+    'gpt-5.5[context=1m,reasoning=extra-high,fast=false]',
   )
+})
+
+test('an underspecified spec fails: every declared parameter is required', () => {
+  // Observed 2026-08-17: the cursor-agent CLI rejects claude-fable-5[] and
+  // claude-opus-5[context=300k,effort=high] with "Cannot use this model",
+  // while their fully-specified forms resolve to the requested variant.
+  assert.throws(
+    () =>
+      resolveCursorModelSlug(
+        parsePersonaMapping('claude-fable-5[]'),
+        'persona mapping',
+        root,
+      ),
+    /missing parameter/u,
+  )
+  assert.throws(
+    () =>
+      resolveCursorModelSlug(
+        parsePersonaMapping('claude-opus-5[context=300k,effort=high]'),
+        'persona mapping',
+        root,
+      ),
+    /missing parameter/u,
+  )
+})
+
+test('an unknown model fails loudly with a refresh pointer', () => {
+  // The catalog is the verbatim Cursor.models.list() result, so an unknown id
+  // is a configuration error. A flat effort-suffixed slug is one such id.
+  assert.throws(
+    () =>
+      resolveCursorModelSlug(
+        parsePersonaMapping('gpt-5.6-sol-high'),
+        'persona mapping',
+        root,
+      ),
+    /not in the Cursor model catalog/u,
+  )
+})
+
+test('aliases resolve to a catalog model', () => {
   assert.equal(
     resolveCursorModelSlug(
       parsePersonaMapping('auto'),
@@ -40,72 +136,37 @@ test('a mapping without options resolves to the bare model', () => {
     ),
     'auto',
   )
-})
-
-test('an unlisted model or effort value is accepted, not rejected', () => {
-  // Absence from the catalog is not evidence of invalidity. A hardcoded list
-  // previously rejected grok-4.6 and effort=xhigh, both of which Cursor
-  // accepts, so an unrecorded identifier MUST pass through.
   assert.equal(
     resolveCursorModelSlug(
-      parsePersonaMapping('some-new-model[effort=high]'),
+      parsePersonaMapping('fable[thinking=true,context=1m,effort=high]'),
       'persona mapping',
       root,
     ),
-    'some-new-model[effort=high]',
+    'fable[thinking=true,context=1m,effort=high]',
   )
+})
+
+test('without a root the resolution is grammar-only', () => {
+  // Callers without an installation root (bare config parsing in tests)
+  // cannot reach the catalog; full validation happens at loadPipelineConfig
+  // and projection, which always have the root.
   assert.equal(
-    resolveCursorModelSlug(
-      parsePersonaMapping('grok-4.6[effort=ultra,fast=true]'),
-      'persona mapping',
-      root,
-    ),
-    'grok-4.6[effort=ultra,fast=true]',
+    resolveCursorModelSlug(parsePersonaMapping('unknown-model[foo=bar]')),
+    'unknown-model[foo=bar]',
   )
 })
 
-test('a catalog-verified model resolves', () => {
-  assert.equal(
-    resolveCursorModelSlug(
-      parsePersonaMapping('grok-4.6[effort=xhigh,fast=true]'),
-      'persona mapping',
-      root,
-    ),
-    'grok-4.6[effort=xhigh,fast=true]',
-  )
-})
-
-test('options on auto still fail with a named error', () => {
-  assert.throws(
-    () =>
-      resolveCursorModelSlug(
-        parsePersonaMapping('auto[effort=high]'),
-        'persona mapping',
-        root,
-      ),
-    /cannot apply Cursor options to model 'auto'/u,
-  )
-})
-
-test('the catalog records provenance for every entry', () => {
+test('the catalog loads models, aliases, and per-model parameters', () => {
   const catalog = loadCursorCatalog(root)
+  const sol = catalog.models.get('gpt-5.6-sol')
 
-  for (const [id, entry] of catalog.models) {
-    assert.ok(
-      entry.evidence.trim().length > 0,
-      `model ${id} MUST cite evidence`,
-    )
-  }
-
-  for (const [name, entry] of catalog.parameters) {
-    assert.ok(
-      entry.evidence.trim().length > 0,
-      `parameter ${name} MUST cite evidence`,
-    )
-  }
-
-  // reasoning= is the spelling Cursor's own picker generates, so it must never
-  // be recorded as rejected again.
-  assert.equal(catalog.parameters.get('reasoning')?.status, 'verified')
-  assert.notEqual(catalog.parameters.get('thinking')?.status, 'rejected')
+  assert.ok(sol)
+  assert.deepEqual([...sol.parameters.keys()].sort(), [
+    'context',
+    'fast',
+    'reasoning',
+  ])
+  assert.ok(sol.parameters.get('reasoning')?.has('xhigh'))
+  assert.ok(!sol.parameters.get('reasoning')?.has('extra-high'))
+  assert.ok(catalog.aliases.get('gpt')?.length)
 })

@@ -7,10 +7,7 @@ import {
   type CursorInstallationMode,
 } from './cursor-content.js'
 import { invariant } from './errors.js'
-import {
-  canonicalPersonaMapping,
-  parsePersonaMapping,
-} from './executors/mapping.js'
+import { parsePersonaMapping } from './executors/mapping.js'
 import { resolveCursorModelSlug } from './executors/cursor-catalog.js'
 import { loadPolicyCatalog } from './policies.js'
 import type { Policy } from './types.js'
@@ -463,11 +460,12 @@ export function projectPersonaVariants(
   const changes: CursorProjectionChange[] = []
 
   for (const [persona, model] of Object.entries(personas)) {
-    // Variant maps come from stored best-of-N session records as well as
-    // fresh authoring, so retired option spellings are canonicalized away
-    // rather than rejected: a grammar change must not strand a resumable
-    // session whose stored configs cannot be edited.
-    const mapping = parsePersonaMapping(canonicalPersonaMapping(model), persona)
+    // A stored best-of-N variant map is that candidate's execution contract, so
+    // it is parsed verbatim. Canonicalizing here rewrote the stored spelling
+    // into the agent file Cursor actually reads, which is the same defect as
+    // rewriting a run snapshot on the way to an invocation card. No option
+    // spelling is rejected, so nothing needs rewriting to stay loadable.
+    const mapping = parsePersonaMapping(model, persona)
 
     // An external-executor persona has no Cursor subagent, so a variant would
     // record a model claim for work Cursor never performs.
