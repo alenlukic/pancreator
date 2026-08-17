@@ -2,6 +2,7 @@ import path from 'node:path'
 
 import { invariant } from '../errors.js'
 import { fileExists, isRecord, readJson } from '../io.js'
+import { expandCursorModels } from './cursor-catalog-codec.js'
 import type { ParsedPersonaMapping } from './mapping.js'
 
 const CATALOG_RELATIVE_PATH = 'governance/registries/cursor_model_catalog.json'
@@ -90,7 +91,9 @@ export function loadCursorCatalog(root: string): CursorCatalog {
   const models = new Map<string, CursorCatalogModel>()
   const aliases = new Map<string, string[]>()
 
-  for (const entry of source.models) {
+  // The registry stores models in a lossless compact encoding (see the codec);
+  // a freshly pasted verbatim Cursor.models.list() result is equally valid.
+  for (const entry of expandCursorModels(source.models)) {
     if (!isRecord(entry)) {
       continue
     }
