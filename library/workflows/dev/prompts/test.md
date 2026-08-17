@@ -8,7 +8,9 @@ produce reproducible evidence.
 1. Read the card, acceptance criteria, implementation record, target-repository
    primer, and `runtime/repository-checks.json`.
 2. Derive one or more manual cases per acceptance criterion, or justify why a
-   case is not applicable.
+   case is not applicable. When the review output records
+   `criterion_amendments`, the amended statement is the criterion; test
+   against it, not the superseded plan text.
 3. Execute the cases and record setup, action, expected result, actual result,
    and evidence.
 4. When the active invocation supplies design QA evidence or assigns browser

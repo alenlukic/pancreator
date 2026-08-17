@@ -374,7 +374,7 @@ function renderProjections(root: string): {
 
         content = content.replaceAll(
           '__PANCREATOR_MODEL__',
-          resolveCursorModelSlug(mapping, entry.variable),
+          resolveCursorModelSlug(mapping, entry.variable, root),
         )
       }
 
@@ -498,7 +498,7 @@ export function projectPersonaVariants(
     const content = projectCursorContent(
       template.replaceAll(
         '__PANCREATOR_MODEL__',
-        resolveCursorModelSlug(mapping, persona),
+        resolveCursorModelSlug(mapping, persona, root),
       ),
       target,
       mode,

@@ -179,7 +179,7 @@ export function validateSharedFieldContract(
 
   const registryIds = new Set(loadRegistry(input.root).entries.keys())
 
-  for (const stageSlug of ['implement', 'review', 'test', 'ship']) {
+  for (const stageSlug of ['plan', 'implement', 'review', 'test', 'ship']) {
     const stage = source.stages[stageSlug]
 
     if (
@@ -228,6 +228,7 @@ export function validateSharedFieldContract(
   }
 
   const requiredFieldPaths: Record<string, string[]> = {
+    plan: ['data.open_question_dispositions[].disposition'],
     implement: ['data.acceptance_results[].evidence[]'],
     review: [
       'data.review.findings[].severity',
@@ -1329,7 +1330,209 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
     }
   }
 
+  issues.push(...openQuestionDispositionIssues(input, data, criteria))
+
   return { status: issues.length === 0 ? 'passed' : 'failed', issues }
+}
+
+/** Leading identifier of an inherited open question, e.g. `Q2` in `Q2: ...`. */
+const OPEN_QUESTION_ID_PATTERN = /^\s*([A-Za-z]+-?\d+)\s*[:.)]/u
+
+function openQuestionIds(data: Record<string, unknown>): string[] {
+  const spec = isRecord(data.product_spec) ? data.product_spec : null
+  const questions =
+    spec && Array.isArray(spec.open_questions) ? spec.open_questions : []
+  const ids: string[] = []
+
+  for (const question of questions) {
+    if (typeof question !== 'string') {
+      continue
+    }
+
+    const match = OPEN_QUESTION_ID_PATTERN.exec(question)
+
+    if (match) {
+      ids.push(match[1])
+    }
+  }
+
+  return ids
+}
+
+function openQuestionCount(data: Record<string, unknown>): number {
+  const spec = isRecord(data.product_spec) ? data.product_spec : null
+
+  return spec && Array.isArray(spec.open_questions)
+    ? spec.open_questions.length
+    : 0
+}
+
+/**
+ * An open question the plan cannot settle from evidence must be carried forward
+ * as deferred or escalated, never answered by assumption and never hardened
+ * into an acceptance criterion. Prose appended to the inherited specification
+ * text is invisible to every downstream stage, so the disposition record is
+ * what makes the unmade decision auditable.
+ */
+function openQuestionDispositionIssues(
+  input: HandlerInput,
+  data: Record<string, unknown>,
+  criteria: unknown[],
+): HandlerResult['issues'] {
+  const issues: HandlerResult['issues'] = []
+  const questionCount = openQuestionCount(data)
+
+  if (questionCount === 0) {
+    return issues
+  }
+
+  const dispositions = Array.isArray(data.open_question_dispositions)
+    ? data.open_question_dispositions
+    : []
+
+  if (dispositions.length === 0) {
+    return [
+      issue(
+        'plan.disposition_missing',
+        'data.open_question_dispositions is required when the ratified ' +
+          'specification carries open questions',
+      ),
+    ]
+  }
+
+  const allowed = sharedEnum(
+    input.root,
+    'plan',
+    'data.open_question_dispositions[].disposition',
+  )
+  const questionIds = openQuestionIds(data)
+  const reported = new Set<string>()
+  const unsettled = new Set<string>()
+
+  for (const [index, entry] of dispositions.entries()) {
+    if (!isRecord(entry) || typeof entry.id !== 'string') {
+      issues.push(
+        issue(
+          'plan.disposition_shape',
+          `open_question_dispositions[${index + 1}] MUST name the question id`,
+        ),
+      )
+      continue
+    }
+
+    if (reported.has(entry.id)) {
+      issues.push(
+        issue(
+          'plan.disposition_duplicate',
+          `Duplicate disposition for question ${entry.id}`,
+        ),
+      )
+    }
+
+    reported.add(entry.id)
+
+    const disposition =
+      typeof entry.disposition === 'string' ? entry.disposition : ''
+
+    if (!allowed.has(disposition)) {
+      issues.push(
+        issue(
+          'plan.disposition_value',
+          `Disposition for ${entry.id} MUST be one of ${[...allowed].join(', ')}`,
+        ),
+      )
+    }
+
+    if (disposition === 'deferred' || disposition === 'escalated') {
+      unsettled.add(entry.id)
+    }
+
+    if (typeof entry.answer !== 'string' || entry.answer.trim().length === 0) {
+      issues.push(
+        issue(
+          'plan.disposition_answer',
+          `Disposition for ${entry.id} MUST state the answer or the decision ` +
+            `still required`,
+        ),
+      )
+    }
+
+    const evidence = Array.isArray(entry.evidence) ? entry.evidence : []
+    const validEvidence =
+      evidence.length > 0 &&
+      evidence.every(
+        (item) => typeof item === 'string' && item.trim().length > 0,
+      )
+
+    if (disposition === 'resolved' && !validEvidence) {
+      issues.push(
+        issue(
+          'plan.disposition_evidence',
+          `Question ${entry.id} resolved by the plan MUST cite non-empty ` +
+            `evidence`,
+        ),
+      )
+    }
+  }
+
+  for (const id of questionIds) {
+    if (!reported.has(id)) {
+      issues.push(
+        issue(
+          'plan.disposition_missing',
+          `Open question ${id} MUST have a recorded disposition`,
+        ),
+      )
+    }
+  }
+
+  if (questionIds.length > 0) {
+    const known = new Set(questionIds)
+
+    for (const id of reported) {
+      if (!known.has(id)) {
+        issues.push(
+          issue(
+            'plan.disposition_unknown',
+            `Disposition names unknown open question: ${id}`,
+          ),
+        )
+      }
+    }
+  } else if (dispositions.length < questionCount) {
+    // The intake wrote unlabeled questions, so coverage is countable only.
+    issues.push(
+      issue(
+        'plan.disposition_missing',
+        `The specification carries ${questionCount} open questions and the ` +
+          `plan records ${dispositions.length} dispositions`,
+      ),
+    )
+  }
+
+  // A criterion that cites an unsettled question asserts the answer the plan
+  // just said it does not have.
+  for (const item of criteria) {
+    if (!isRecord(item) || typeof item.id !== 'string') {
+      continue
+    }
+
+    const mapsTo = Array.isArray(item.maps_to) ? item.maps_to : []
+
+    for (const mapped of mapsTo) {
+      if (typeof mapped === 'string' && unsettled.has(mapped)) {
+        issues.push(
+          issue(
+            'plan.criterion_assumes_answer',
+            `Criterion ${item.id} maps to ${mapped}, which the plan recorded ` +
+              `as unresolved`,
+          ),
+        )
+      }
+    }
+  }
+
+  return issues
 }
 
 export function validateReviewOutput(input: HandlerInput): HandlerResult {
@@ -1351,6 +1554,9 @@ export function validateReviewOutput(input: HandlerInput): HandlerResult {
   const findings = Array.isArray(review.findings) ? review.findings : []
   const acceptanceResults = Array.isArray(review.acceptance_results)
     ? review.acceptance_results
+    : []
+  const amendments = Array.isArray(review.criterion_amendments)
+    ? review.criterion_amendments
     : []
   const severities = sharedEnum(
     input.root,
@@ -1466,6 +1672,87 @@ export function validateReviewOutput(input: HandlerInput): HandlerResult {
     }
   }
 
+  const reasonClasses = sharedEnum(
+    input.root,
+    'review',
+    'data.review.criterion_amendments[].reason_class',
+  )
+  const amendedIds = new Set<string>()
+
+  for (const [index, amendment] of amendments.entries()) {
+    if (!isRecord(amendment) || typeof amendment.id !== 'string') {
+      issues.push(
+        issue(
+          'review.amendment_shape',
+          `criterion_amendments[${index + 1}] MUST name the amended criterion id`,
+        ),
+      )
+      continue
+    }
+
+    amendedIds.add(amendment.id)
+
+    for (const field of [
+      'original_statement',
+      'amended_statement',
+      'justification',
+    ] as const) {
+      const value = amendment[field]
+
+      if (typeof value !== 'string' || value.trim().length === 0) {
+        issues.push(
+          issue(
+            'review.amendment_shape',
+            `Amendment ${amendment.id} MUST include ${field}`,
+          ),
+        )
+      }
+    }
+
+    if (
+      typeof amendment.original_statement === 'string' &&
+      typeof amendment.amended_statement === 'string' &&
+      amendment.original_statement.trim() === amendment.amended_statement.trim()
+    ) {
+      issues.push(
+        issue(
+          'review.amendment_unchanged',
+          `Amendment ${amendment.id} MUST change the criterion text`,
+        ),
+      )
+    }
+
+    const reasonClass =
+      typeof amendment.reason_class === 'string' ? amendment.reason_class : ''
+
+    if (!reasonClasses.has(reasonClass)) {
+      issues.push(
+        issue(
+          'review.amendment_reason',
+          `Amendment ${amendment.id} MUST use an allowed reason_class`,
+        ),
+      )
+    }
+
+    const amendmentEvidence = Array.isArray(amendment.evidence)
+      ? amendment.evidence
+      : []
+
+    if (
+      amendmentEvidence.length === 0 ||
+      !amendmentEvidence.every(
+        (entry) => typeof entry === 'string' && entry.trim().length > 0,
+      )
+    ) {
+      issues.push(
+        issue(
+          'review.amendment_evidence',
+          `Amendment ${amendment.id} MUST include non-empty evidence`,
+        ),
+      )
+    }
+  }
+
   if (acceptanceResults.length === 0) {
     issues.push(
       issue(
@@ -1539,14 +1826,42 @@ export function validateReviewOutput(input: HandlerInput): HandlerResult {
         )
       }
     }
+
+    for (const id of amendedIds) {
+      if (!expectedSet.has(id)) {
+        issues.push(
+          issue(
+            'review.amendment_unknown',
+            `Amendment names unknown acceptance id not in plan: ${id}`,
+          ),
+        )
+      }
+    }
+  }
+
+  for (const id of amendedIds) {
+    if (!reportedIds.has(id)) {
+      issues.push(
+        issue(
+          'review.amendment_unverified',
+          `Amended criterion ${id} MUST have an acceptance result judged against the amended text`,
+        ),
+      )
+    }
   }
 
   const failedAcceptance = acceptanceResults.some(
     (item) => isRecord(item) && item.result === 'fail',
   )
 
+  // Findings routed to the operator do not gate the verdict: the review
+  // contract promises that a defect outside the run's workspace reaches
+  // operator/ship review without failing the review or looping the workflow.
   const unresolvedFinding = findings.some(
-    (item) => isRecord(item) && item.resolution !== 'resolved_in_review',
+    (item) =>
+      isRecord(item) &&
+      item.resolution !== 'resolved_in_review' &&
+      item.remediation_stage !== 'operator',
   )
 
   if (review.verdict === 'pass' && (unresolvedFinding || failedAcceptance)) {

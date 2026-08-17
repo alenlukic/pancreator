@@ -9,6 +9,7 @@ lives in this directory:
 - `validation_registry.json` defines durable automation and validator handlers.
 - `directive_exemptions.json` records reviewed directive-audit exemptions.
 - `projection_manifest.json` declares generated projections from canonical `library/` or `src/` files into disposable local surfaces such as `.cursor/`.
+- `cursor_model_catalog.json` records observed Cursor model identifiers and persona-mapping parameters with the provenance of each entry. It is the authoritative source for what Pancreator knows about Cursor's grammar. An entry MUST cite a direct observation to be recorded as `verified` or `rejected`; absence from the catalog means unverified, never invalid, so an unlisted model or value MUST NOT be rejected. Agents MUST NOT introduce a Cursor model or parameter constraint anywhere else in the repository.
 
 Policy modules remain under `governance/policies/`; handbooks remain under
 `governance/handbooks/`.

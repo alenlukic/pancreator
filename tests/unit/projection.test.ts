@@ -247,15 +247,15 @@ test('run-scoped agent variants carry pinned models without touching the base ag
       '.cursor/agents/pan-reviewer--bondeadbeef-alpha.md',
     ],
   )
-  // The variant frontmatter carries the executor-native slug, never the raw
-  // bracket spec: Cursor cannot parse the bracket grammar and would silently
-  // fall back to a default model (the audited HR-005 failure).
+  // The variant frontmatter carries the operator's spec in Cursor's native
+  // bracket form. The flat effort-suffixed slug it previously wrote came from
+  // the refuted HR-005 claim and is a string Cursor never generates.
   assert.match(
     readFileSync(
       path.join(root, '.cursor', 'agents', 'pan-coder--bondeadbeef-alpha.md'),
       'utf8',
     ),
-    /^model: gpt-5\.4-high$/mu,
+    /^model: gpt-5\.4\[effort=high\]$/mu,
   )
   assert.equal(readFileSync(baseCoderPath, 'utf8'), baseCoder)
 

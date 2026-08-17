@@ -96,17 +96,18 @@ test('pipeline config rejects an undefined active config', () => {
   )
 })
 
-test('pipeline config rejects an unknown Cursor model', () => {
-  assert.throws(
-    () =>
-      parsePipelineConfig({
-        schema_version: 1,
-        active_config: 'default',
-        configs: {
-          default: { personas: { coder: 'unknown-cursor-model' } },
-        },
-      }),
-    /not in the Cursor model catalog/u,
+test('pipeline config accepts a Cursor model the catalog has not recorded', () => {
+  // Pancreator cannot enumerate a model catalog it does not own. Rejecting an
+  // unrecorded id bricked config on models Cursor supports, so an unknown id is
+  // unverified rather than invalid.
+  assert.doesNotThrow(() =>
+    parsePipelineConfig({
+      schema_version: 1,
+      active_config: 'default',
+      configs: {
+        default: { personas: { coder: 'unknown-cursor-model' } },
+      },
+    }),
   )
 })
 
@@ -168,6 +169,6 @@ test('a run snapshot with retired option grammar still resolves its personas', (
   )
   assert.equal(
     resolvePersonaModel(snapshot, 'reviewer'),
-    'claude-opus-5[context=300k,effort=high]',
+    'claude-opus-5[context=300k,effort=high,thinking=true]',
   )
 })

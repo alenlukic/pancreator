@@ -117,6 +117,7 @@ test('engineering handbook policy loads for reviewer and qa personas', () => {
     'STE-001',
     'TS-001',
     'VALID-001',
+    'WAIVER-001',
   ])
 
   const testIds = resolvePolicies(root, {

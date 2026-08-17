@@ -53,7 +53,9 @@ whether or not its rule matches.
 6. Join the findings. Merge duplicates, drop what the intent brief already
    answers, then rank.
 7. Apply `REVIEW-001` to the ranked set: repair what falls inside the reviewer
-   remediation boundary, and route the rest.
+   remediation boundary, amend any acceptance criterion the findings prove
+   unworkable as written, and route the rest. Criterion amendment belongs to
+   the coordinator, never to a dimension agent.
 
 ### Repeat reviews
 

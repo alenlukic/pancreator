@@ -2728,6 +2728,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'governance/registries/validation_registry.json',
     'governance/registries/directive_exemptions.json',
     'governance/registries/projection_manifest.json',
+    'governance/registries/cursor_model_catalog.json',
     'docs/validation-framework.md',
     'config.json',
     'library/schemas/config.schema.json',

@@ -1,5 +1,23 @@
 # Changelog
 
+## [3.7.0] - 2026-08-17
+
+### Changed
+
+- Name the exact reviewer-remediation output fields in the review prompt — `resolution: resolved_in_review`, `remediation_stage: review`, and a non-empty `changed_files` array — because workers repeatedly disclosed repairs in prose while leaving `changed_files` empty, tripping the advisory REVIEW-VALIDATE-001 check ([review prompt](library/workflows/dev/prompts/review.md)).
+
+### Added
+
+- Grant the reviewer authority to amend acceptance criteria proven unimplementable, self-contradictory, unverifiable, or otherwise unworkable as written, recording each amendment in `data.review.criterion_amendments` with the original and amended text, a reason class, a justification, and reproduced evidence, with a lower amendment threshold when the operator-involvement profile ratified the specification without the human operator ([REVIEW-001](governance/policies/REVIEW-001.json), [review prompt](library/workflows/dev/prompts/review.md), [review-squad skill](library/skills/review-squad.md)).
+- Validate criterion amendments in REVIEW-VALIDATE-001: an amendment must name a plan criterion, change the text, use a registered reason class, carry evidence, and be re-verified through a matching acceptance result ([stage-validators](src/lib/validators/stage-validators.ts), [stage-output-requirements](library/schemas/stage-output-requirements.json)).
+- Disclose reviewer criterion amendments in the release packet alongside waivers and deferred acceptance criteria, and direct QA to test against amended criterion text ([SHIP-001](governance/policies/SHIP-001.json), [ship prompt](library/workflows/dev/prompts/ship.md), [test prompt](library/workflows/dev/prompts/test.md)).
+
+### Fixed
+
+- Stop rejecting and rewriting valid Cursor model specs. `reasoning=` is the parameter name Cursor's own model picker generates, and the bracketed spec is Cursor's native form, so the v3.5.0 behavior — rejecting `reasoning=`/`thinking=` as obsolete, enumerating allowed models and effort values, and rewriting specs into an effort-suffixed flat slug — made the harness refuse and mangle strings Cursor itself produces. Projection now passes the operator's spec through unchanged, and an unrecorded model, parameter, or value is treated as unverified rather than invalid ([cursor-catalog](src/lib/executors/cursor-catalog.ts), [mapping](src/lib/executors/mapping.ts), [projection](src/lib/projection.ts)).
+- Stop REVIEW-VALIDATE-001 from flagging a pass verdict as inconsistent when the only unresolved findings are routed to the operator, matching the review contract's promise that defects outside the run's workspace do not fail the verdict or loop the workflow ([stage-validators](src/lib/validators/stage-validators.ts)).
+- Add `governance/registries/cursor_model_catalog.json` as the single authoritative record of Cursor model identifiers and persona-mapping parameters. Every entry carries provenance and a status of `verified`, `unverified`, or `rejected`, a `verified` or `rejected` entry requires a cited direct observation rather than inference or a prior finding, and absence from the catalog means unverified rather than invalid. Refuted claims are recorded with their origin so they cannot be reintroduced ([registry](governance/registries/cursor_model_catalog.json), [registries index](governance/registries/index.md), [cursor-catalog](src/lib/executors/cursor-catalog.ts)).
+
 ## [3.6.0] - 2026-08-15
 
 ### Changed

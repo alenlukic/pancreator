@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "description": "Authoritative record of Cursor model identifiers and persona-mapping parameters, with the provenance of every entry.",
+  "evidence_rule": "Every entry MUST carry status and evidence. 'verified' means the behavior was directly observed and the observation is named. 'unverified' means the entry is recorded but unconfirmed; it is accepted at runtime and MUST NOT be presented as a constraint. 'rejected' means the failure was directly observed and the observation is named. Absence from this catalog is NOT evidence of invalidity: an unlisted model or value is treated as unverified, never as an error. An agent MUST NOT add a 'verified' or 'rejected' entry from inference, from another Pancreator document, or from a prior finding that itself cites no observation; it MUST cite a direct observation of Cursor's behavior, and MUST otherwise record the entry as 'unverified'.",
+  "native_spec_form": {
+    "form": "<model>[<key>=<value>,...]",
+    "status": "verified",
+    "example": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]",
+    "evidence": "Operator observation, 2026-08-17: this is the string Cursor's own model picker generates when selecting Sol with the fast option and high effort.",
+    "consequence": "The bracketed spec is Cursor's native format, not an invalid slug. Pancreator MUST pass a configured spec through unchanged rather than rewrite it."
+  },
+  "models": [
+    {
+      "id": "auto",
+      "status": "verified",
+      "evidence": "Cursor's documented default selector; projected for the release-steward persona and observed running."
+    },
+    {
+      "id": "claude-fable-5",
+      "status": "verified",
+      "evidence": "Projected for the reviewer persona and observed running in Rowspace run 63323_Aug-17-1205_model-effort."
+    },
+    {
+      "id": "claude-opus-5",
+      "status": "unverified",
+      "evidence": "Present in Pancreator config defaults since v3.5.0; no direct observation recorded."
+    },
+    {
+      "id": "composer-2.5",
+      "status": "unverified",
+      "evidence": "Recorded in the v3.5.0 catalog without a named observation."
+    },
+    {
+      "id": "gpt-5.3-codex",
+      "status": "unverified",
+      "evidence": "Recorded in the v3.5.0 catalog without a named observation."
+    },
+    {
+      "id": "gpt-5.4",
+      "status": "unverified",
+      "evidence": "Present in Pancreator config defaults; no direct observation recorded."
+    },
+    {
+      "id": "gpt-5.6-sol",
+      "status": "verified",
+      "evidence": "Appears in the Cursor-generated spec observed by the operator on 2026-08-17."
+    },
+    {
+      "id": "gpt-5.6-terra",
+      "status": "unverified",
+      "evidence": "Recorded in the v3.5.0 catalog without a named observation."
+    },
+    {
+      "id": "grok-4.5",
+      "status": "unverified",
+      "evidence": "Recorded in the v3.5.0 catalog without a named observation."
+    },
+    {
+      "id": "grok-4.6",
+      "status": "verified",
+      "evidence": "Operator screenshot, 2026-08-17, shows Cursor accepting a grok-4.6 spec."
+    },
+    {
+      "id": "kimi-k3",
+      "status": "unverified",
+      "evidence": "Recorded in the v3.5.0 catalog without a named observation."
+    }
+  ],
+  "parameters": [
+    {
+      "name": "reasoning",
+      "status": "verified",
+      "evidence": "Operator observation, 2026-08-17: Cursor's own model picker generates reasoning=high for gpt-5.6-sol. This is Cursor's parameter name, not a superseded Pancreator spelling.",
+      "history": "Pancreator v3.5.0 recorded this key as obsolete and rejected it outright, on the HR-005 inference below. That rejection was wrong and is removed."
+    },
+    {
+      "name": "context",
+      "status": "verified",
+      "evidence": "Appears as context=272k in the Cursor-generated spec observed on 2026-08-17."
+    },
+    {
+      "name": "fast",
+      "status": "verified",
+      "evidence": "Appears as fast=true in the Cursor-generated spec observed on 2026-08-17."
+    },
+    {
+      "name": "effort",
+      "status": "unverified",
+      "evidence": "Named as 'the documented parameter' by the HR-005 forensics finding, which cites no observation of Cursor accepting it. Pancreator config was hot-fixed from reasoning= to effort= on that basis. Cursor's own picker emits reasoning= for gpt-5.6-sol, so this spelling may not be honored.",
+      "open_question": "Determine per model family whether Cursor honors effort= or only reasoning=, by selecting each family in the picker and reading the generated spec."
+    },
+    {
+      "name": "thinking",
+      "status": "unverified",
+      "evidence": "Recorded as an obsolete Claude option by HR-005 with no observation. Neither acceptance nor rejection has been observed."
+    }
+  ],
+  "unverified_claims": [
+    {
+      "claim": "A bracketed model spec such as gpt-5.6-sol[context=272k,reasoning=high,fast=false] is an invalid Cursor slug and silently falls back to a family default.",
+      "status": "refuted",
+      "origin": "HR-005, Pancreator v3.5.0 commit 2b5164ce, restating an in-chat diagnosis from Rowspace run 63327_Aug-13-0394.",
+      "evidence": "The HR-005 audit itself listed Cursor's exact fallback for unparseable model values as unverified. Cursor's own model picker generates exactly this bracketed form, so it is the native format. The claim is refuted, not merely unconfirmed.",
+      "consequence": "This claim MUST NOT be used to justify rejecting or rewriting a bracketed spec, and MUST NOT be generalized from one model or one parameter to all models or all parameters."
+    },
+    {
+      "claim": "Cursor requires the effort-suffixed flat slug form, such as gpt-5.6-sol-high, in agent frontmatter.",
+      "status": "refuted",
+      "origin": "Derived from the same HR-005 diagnosis; implemented in resolveCursorModelSlug and deployed from v3.5.0 until v3.7.0.",
+      "evidence": "Cursor generates the bracketed form, so the flat form is not what Cursor produces. No observation shows Cursor requiring or even accepting the flat form.",
+      "consequence": "Pancreator no longer rewrites a configured spec into this form. Projection passes the operator's spec through unchanged."
+    },
+    {
+      "claim": "GPT-5.6 Sol ran at medium effort in Rowspace run 63327_Aug-13-0394 because its model spec was an invalid slug.",
+      "status": "unexplained",
+      "origin": "HR-005 root-cause statement.",
+      "evidence": "The run configured reasoning=high, which is exactly what Cursor's picker generates for that model, so the spec was well formed. The observed symptom is real and its cause is unknown.",
+      "consequence": "The original degradation remains unexplained. It MUST NOT be treated as solved by the slug-rewriting change, which rested on a refuted premise."
+    }
+  ]
+}

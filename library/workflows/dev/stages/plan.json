@@ -24,7 +24,8 @@
     "engineering_plan.files": "array",
     "engineering_plan.risks": "array",
     "engineering_plan.validation": "array",
-    "acceptance_criteria": "array"
+    "acceptance_criteria": "array",
+    "open_question_dispositions": "array"
   },
   "criteria": [
     {

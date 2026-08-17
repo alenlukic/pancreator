@@ -38,13 +38,14 @@ const CLAUDE_CODE_OPTION_KEYS = new Set([
   'session-resume',
   'timeout-ms',
 ])
-const CURSOR_OPTION_KEYS = new Set(['context', 'effort', 'fast'])
-
-/** Superseded Cursor option keys, mapped to the key that replaced them. */
-const LEGACY_CURSOR_OPTION_ALIASES = new Map([['reasoning', 'effort']])
-
-/** Superseded Cursor option keys that carry no current equivalent. */
-const LEGACY_CURSOR_OPTION_DROPS = new Set(['thinking'])
+/**
+ * Cursor option keys treated as equivalent when comparing a pinned snapshot
+ * against live config, so a run written before the v3.5.0 `reasoning`-to-
+ * `effort` hot fix does not read as drift. This is drift tolerance only:
+ * neither spelling is rejected, and the catalog records which one Cursor
+ * actually generates.
+ */
+const CURSOR_OPTION_EQUIVALENCE = new Map([['reasoning', 'effort']])
 
 function parseBracketOptions(
   optionsText: string | undefined,
@@ -132,13 +133,13 @@ function validateCursorOptions(
   source: string,
 ): void {
   for (const [key, value] of Object.entries(options)) {
+    // Cursor owns this grammar, so an unrecorded key is unverified rather than
+    // invalid. `reasoning` was rejected here until v3.7.0 on a refuted claim,
+    // which made Pancreator reject the exact spec Cursor's picker generates.
+    // See governance/registries/cursor_model_catalog.json.
     invariant(
-      CURSOR_OPTION_KEYS.has(key),
-      key === 'reasoning'
-        ? `${source} uses obsolete Cursor option 'reasoning'. Use 'effort' instead.`
-        : key === 'thinking'
-          ? `${source} uses obsolete Cursor option 'thinking'. Remove it; no current option replaces it.`
-          : `${source} uses unknown Cursor option '${key}'. Supported options: context, effort, fast.`,
+      key.trim().length > 0,
+      `${source} declares an empty Cursor option name.`,
       { code: 'INVALID_PIPELINE_CONFIG' },
     )
 
@@ -155,9 +156,13 @@ function validateCursorOptions(
         { code: 'INVALID_PIPELINE_CONFIG' },
       )
     } else if (key === 'effort') {
+      // Pancreator owns which option keys its spec grammar accepts; Cursor owns
+      // which effort values exist. An enum here rejected values Cursor
+      // supports (xhigh), so validity now comes from the evidence-based
+      // catalog, which rejects only observed failures.
       invariant(
-        value === 'low' || value === 'medium' || value === 'high',
-        `${source} effort MUST be low, medium, or high.`,
+        value.trim().length > 0,
+        `${source} effort MUST be a non-empty value.`,
         { code: 'INVALID_PIPELINE_CONFIG' },
       )
     }
@@ -286,13 +291,10 @@ export function canonicalPersonaMapping(raw: string): string {
       continue
     }
 
-    if (LEGACY_CURSOR_OPTION_DROPS.has(key)) {
-      continue
-    }
+    const canonicalKey = CURSOR_OPTION_EQUIVALENCE.get(key) ?? key
 
-    const canonicalKey = LEGACY_CURSOR_OPTION_ALIASES.get(key) ?? key
-
-    // A current key always wins over the retired key that aliases onto it.
+    // When both spellings appear, the one already written wins, so comparison
+    // stays stable regardless of which the snapshot recorded.
     if (canonicalKey !== key && parsed.has(canonicalKey)) {
       continue
     }
