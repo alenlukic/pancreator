@@ -1,5 +1,24 @@
 # Changelog
 
+## [3.8.0] - 2026-08-17
+
+### Changed
+
+- Capture pre-implementation repository-check baselines only for the profiles the run's verification level gates its source-mutating stages on, instead of every profile any stage references. The expensive `full` profile is never run before the coder starts — under the default level a dev run baselines `static` and `fast` in minutes instead of running integration and end-to-end suites for half an hour or more — and a gate whose profile was legitimately never baselined is judged on its own result instead of failing closed ([engine](src/lib/engine.ts), [validation](src/lib/validation.ts), [runtime-protocol](docs/runtime-protocol.md), [dev-workflow test](tests/integration/dev-workflow.test.ts)).
+- Slim the invocation read attestation to its load-bearing fields — invocation id, effective model, contract path, whole-contract digest, and status — and stop scaffolding or requiring the per-section and per-guidance digest echoes, which re-proved what the contract digest already proves at 2–3 KB of transcription per attempt. Volunteered echoes from legacy scaffolds are still validated exactly ([validation](src/lib/validation.ts), [scaffold](src/lib/requirements/scaffold.ts), [render](src/lib/render.ts), [stage-output schema](library/schemas/stage-output.schema.json), [write-stage-output skill](library/skills/write-stage-output.md)).
+- Read the intake product spec from the intake stage's own output when validating a plan, instead of requiring the plan document to carry a ~3.4 KB verbatim copy; an embedded copy remains a fallback for runs without an intake record, and the plan prompt now says not to duplicate the spec ([stage-validators](src/lib/validators/stage-validators.ts), [plan prompt](library/workflows/dev/prompts/plan.md)).
+- Require criterion self-evaluation prose only where it informs: an explanation on `fail`/`not_applicable` verdicts and evidence on hard-criterion pass claims; soft-criterion passes need neither, and `risks`/`unknowns` are optional with absent meaning none to report ([validation](src/lib/validation.ts), [operator-artifact validator](src/lib/validators/operator-artifact.ts), [stage-output schema](library/schemas/stage-output.schema.json)).
+
+### Added
+
+- Add run verification levels: a `verification` block in `config.json` (built-ins `minimal`, `light`, `thorough`; default `light`) maps each shell gate to the repository-check profile it actually runs, or skips it. Runs snapshot the resolved level at init (`pan init --verification <level>`), the operator can change an in-flight run with `pan verification <run-id> set <level>`, and the `full` profile never runs unless the operator explicitly selects a level that names it — the team and CI own the heavier suites ([verification](src/lib/verification.ts), [engine](src/lib/engine.ts), [validation](src/lib/validation.ts), [cli](src/cli.ts), [config](config.json), [verification test](tests/unit/verification.test.ts)).
+- Let intake and plan workers recommend a different verification level in `data.verification_recommendation` (`level`, `reason`); the next prepare pauses once with an operator decision naming the exact apply command, and resuming without applying declines it ([engine](src/lib/engine.ts), [stage-validators](src/lib/validators/stage-validators.ts), [intake prompt](library/workflows/dev/prompts/intake.md), [plan prompt](library/workflows/dev/prompts/plan.md)).
+- Accept merge-patch revision submissions on retries: `{ "revises": "<prior invocation id>", "patch": { ... } }` applies an RFC 7386 JSON merge patch over the prior attempt's output, so fixing two defects in a 20 KB document costs a patch instead of a full re-emission. The merged document flows through every validation a full submission would, the history item records `revised_from`, and the retry card teaches the form with the prior invocation id filled in ([json-merge-patch](src/lib/json-merge-patch.ts), [engine](src/lib/engine.ts), [render](src/lib/render.ts), [dev-workflow test](tests/integration/dev-workflow.test.ts)).
+
+### Fixed
+
+- Hand supervisor rejection feedback to the retry worker: a supervisor-failed attempt records `outcome: success`, so the retry card previously carried no failure reason at all and the assessment file was not among the worker's inputs. The prior-failure block now folds in the failing assessment's verdict, summary, and action items, and the assessment artifact is a required input on retry cards ([context](src/lib/context.ts), [render](src/lib/render.ts), [engine](src/lib/engine.ts)).
+
 ## [3.7.0] - 2026-08-17
 
 ### Changed

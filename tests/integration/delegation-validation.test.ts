@@ -311,6 +311,7 @@ test('submit rejects a read attestation with a stale digest', () => {
   const attestation = output.invocation_attestation
 
   assert.ok(attestation?.status === 'read')
+  assert.ok(attestation.sections)
   output.invocation_attestation = {
     ...attestation,
     sections: attestation.sections.map((section, index) =>

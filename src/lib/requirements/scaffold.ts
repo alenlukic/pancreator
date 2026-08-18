@@ -148,11 +148,12 @@ export function scaffoldStageOutput(
     operatorBrief?.source_lifecycle === 'transient' ||
     operatorBrief?.source_transient === true
   const manifest = invocation.contract_manifest
-  // Copying the manifest here keeps the worker's job honest rather than clerical:
-  // the digests it must confirm are already in place, so a mismatch means the
-  // contract on disk changed, not that a digest was mistyped. The status stays
-  // `pending` because only the worker can say that it read the contract, and
-  // submission rejects the prefilled value.
+  // The attestation is one whole-contract digest plus a status flip. The
+  // per-section and per-guidance digest echoes the scaffold used to prefill
+  // proved nothing beyond the contract digest and cost every attempt kilobytes
+  // of transcription, so they are no longer emitted or required. The status
+  // stays `pending` because only the worker can say that it read the contract,
+  // and submission rejects the prefilled value.
   const attestation: InvocationAttestation | undefined = manifest
     ? {
         invocation_id: invocation.invocation_id,
@@ -160,20 +161,6 @@ export function scaffoldStageOutput(
         contract_path: manifest.contract_path,
         contract_sha256: manifest.contract_sha256,
         status: 'pending',
-        sections: manifest.sections.map((section) => ({
-          id: section.id,
-          sha256: section.sha256,
-        })),
-        ...(manifest.guidance?.length
-          ? {
-              guidance: manifest.guidance.map((entry) => ({
-                policy_id: entry.policy_id,
-                source_path: entry.source_path,
-                content_sha256: entry.content_sha256,
-                status: 'pending' as const,
-              })),
-            }
-          : {}),
       }
     : undefined
 

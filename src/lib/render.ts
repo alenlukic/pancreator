@@ -203,12 +203,12 @@ export function renderInvocationDeliveryPrompt(
     `- Set \`contract_path\` to \`${manifest.contract_path}\`.`,
     `- Set \`contract_sha256\` to \`${manifest.contract_sha256}\`.`,
     '- Set `status` to `read` after you read the complete contract.',
-    '- Set `sections` to every section id and digest above, in the same order.',
     '',
     'The required stage-output scaffold automation prefills these fields with ' +
-      'status `pending`. Confirm each value against the list above, correct any ' +
-      'difference, and change `pending` to `read` yourself. Submission rejects ' +
-      '`pending`, because only you can declare the read.',
+      'status `pending`. Change `pending` to `read` yourself — submission ' +
+      'rejects `pending`, because only you can declare the read. Do not ' +
+      'transcribe the per-section digest table into the attestation; the ' +
+      'contract digest alone is required.',
     '',
     'When you cannot read the contract, set `status` to `reference_failed`, put ' +
       'the concrete read error in `error`, and set the stage `result` to ' +
@@ -216,21 +216,13 @@ export function renderInvocationDeliveryPrompt(
     '',
     ...(manifest.guidance?.length
       ? [
-          '## Guidance attestation',
+          '## Referenced guidance',
           '',
-          'The contract references policy guidance instead of inlining it. The ' +
-            'scaffold prefills one `invocation_attestation.guidance` entry per ' +
-            'reference with status `pending`. Submission rejects `pending`; set ' +
-            'each entry yourself:',
-          '',
-          '- `read` after you read the selection from the source file. Digests ' +
-            `cover the selection with surrounding whitespace trimmed. When the ` +
-            'file no longer matches its digest, read the exact selected bytes ' +
-            `from the invocation JSON snapshot and still declare \`read\`.`,
-          '- `skipped` with the concrete `reason` when the read trigger does ' +
-            'not apply to your task.',
-          '- `reference_failed` with the concrete `error` when neither the ' +
-            'source file nor the invocation snapshot is readable.',
+          'The contract references policy guidance instead of inlining it. ' +
+            'Read each selection from its source file; when the file no ' +
+            'longer matches its digest, read the exact selected bytes from ' +
+            'the invocation JSON snapshot. No per-entry attestation is ' +
+            'required.',
           '',
           '| Policy | Guidance source | Digest |',
           '| --- | --- | --- |',
@@ -323,8 +315,13 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
     ? [
         '## ⛔ Why the previous attempt failed',
         '',
-        `Attempt ${priorFailure.attempt} of \`${priorFailure.stage}\` ended in ` +
-          `\`${priorFailure.outcome}\`. This is the complete recorded reason. ` +
+        (priorFailure.outcome === 'success' &&
+        priorFailure.supervisor_assessment
+          ? `Attempt ${priorFailure.attempt} of \`${priorFailure.stage}\` ` +
+            'submitted cleanly but was rejected by the supervisor. '
+          : `Attempt ${priorFailure.attempt} of \`${priorFailure.stage}\` ` +
+            `ended in \`${priorFailure.outcome}\`. `) +
+          'This is the complete recorded reason. ' +
           'Address every item below; resubmitting unchanged work will fail the ' +
           'same way.',
         '',
@@ -360,6 +357,27 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
               '',
             ]
           : []),
+        ...(priorFailure.supervisor_assessment
+          ? [
+              '### Supervisor assessment',
+              '',
+              `Verdict \`${priorFailure.supervisor_assessment.verdict}\`` +
+                (priorFailure.supervisor_assessment.summary
+                  ? ` — ${priorFailure.supervisor_assessment.summary}`
+                  : ''),
+              '',
+              ...(priorFailure.supervisor_assessment.action_items.length > 0
+                ? [
+                    'Action items:',
+                    '',
+                    ...priorFailure.supervisor_assessment.action_items.map(
+                      (item) => `- ${item}`,
+                    ),
+                    '',
+                  ]
+                : []),
+            ]
+          : []),
         ...(priorFailure.validation_errors.length > 0
           ? [
               '### Output validation errors',
@@ -381,7 +399,8 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
         ...(priorFailure.failed_hard_criteria.length === 0 &&
         priorFailure.failed_deterministic.length === 0 &&
         priorFailure.validation_errors.length === 0 &&
-        priorFailure.governance_artifact_warnings.length === 0
+        priorFailure.governance_artifact_warnings.length === 0 &&
+        !priorFailure.supervisor_assessment
           ? [
               'No specific failing criterion, check, or validation error was ' +
                 `recorded. Read \`${priorFailure.output_path}\` and treat the ` +
@@ -419,6 +438,40 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
               '',
             ]
           : ['Every stage uses its workflow-declared gate.', '']),
+      ]
+    : []
+  const verification = invocation.verification
+  const verificationGateEntries = Object.entries(verification?.gates ?? {})
+  const verificationLines = verification
+    ? [
+        '## 🔬 Verification level',
+        '',
+        `Level \`${verification.level}\` — ${verification.summary}`,
+        '',
+        ...(verificationGateEntries.length > 0
+          ? [
+              'Repository-check gates this level remaps:',
+              '',
+              ...verificationGateEntries.map(
+                ([criterionId, profile]) =>
+                  `- \`${criterionId}\`: ` +
+                  (profile === false
+                    ? 'skipped'
+                    : `runs profile \`${profile}\``),
+              ),
+              '',
+            ]
+          : ['Every gate runs its workflow-declared profile.', '']),
+        ...(invocation.stage.slug === 'intake' ||
+        invocation.stage.slug === 'plan'
+          ? [
+              'If this change warrants a different level, you MAY set ' +
+                '`data.verification_recommendation` to `{ "level": <name>, ' +
+                '"reason": <why> }`. The operator decides; do not assume the ' +
+                'change.',
+              '',
+            ]
+          : []),
       ]
     : []
   // Only the non-default method needs a card section. A default review is what
@@ -626,6 +679,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
       ? ['## 🧪 Gate overrides', '', ...gateOverrideLines, '']
       : []),
     ...involvementLines,
+    ...verificationLines,
     ...reviewModeLines,
     '## 📤 Output contract',
     '',
@@ -633,6 +687,24 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
       `\`${invocation.output.template}\` as the base shape ` +
       `(schema \`${invocation.output.schema}\`).`,
     '',
+    ...(invocation.attempt > 1
+      ? [
+          'This is a retry. Instead of re-emitting the whole document, you ' +
+            'MAY submit a revision: write ' +
+            '`{ "revises": "<prior invocation id' +
+            (invocation.prior_failure
+              ? `, here ${invocation.prior_failure.invocation_id}`
+              : '') +
+            '>", "patch": { ... } }` to the output path, where `patch` is an ' +
+            'RFC 7386 JSON merge patch over the prior attempt output ' +
+            '(objects merge recursively, arrays replace whole, `null` ' +
+            'deletes). The patch MUST set `invocation_id` and ' +
+            "`invocation_attestation` to this card's values. Patch only " +
+            'what the failure or directive requires; the harness validates ' +
+            'the merged document.',
+          '',
+        ]
+      : []),
     ...(operatorBrief
       ? [
           `Operator brief artifact index: source ` +

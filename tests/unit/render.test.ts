@@ -723,7 +723,7 @@ test('the contract manifest indexes every referenced guidance selection', () => 
   assert.deepEqual(manifest.guidance, expected)
 })
 
-test('the delivery prompt instructs the guidance attestation', () => {
+test('the delivery prompt lists referenced guidance without demanding a transcription', () => {
   const root = createFixture()
   const invocation = referencedInvocation(root)
   const manifest = invocation.contract_manifest
@@ -732,12 +732,26 @@ test('the delivery prompt instructs the guidance attestation', () => {
 
   const prompt = renderInvocationDeliveryPrompt(invocation, manifest)
 
-  assert.match(prompt, /## Guidance attestation/u)
+  assert.match(prompt, /## Referenced guidance/u)
+  assert.match(prompt, /No per-entry attestation is required/u)
 
   for (const entry of manifest.guidance) {
     assert.ok(prompt.includes(entry.source_path))
     assert.ok(prompt.includes(`sha256:${entry.content_sha256}`))
   }
+})
+
+test('the delivery prompt requires only the contract digest, not section echoes', () => {
+  const root = createFixture()
+  const invocation = referencedInvocation(root)
+  const manifest = invocation.contract_manifest
+
+  assert.ok(manifest)
+
+  const prompt = renderInvocationDeliveryPrompt(invocation, manifest)
+
+  assert.match(prompt, /Do not transcribe the per-section digest table/u)
+  assert.doesNotMatch(prompt, /Set `sections` to every section id/u)
 })
 
 test('a manifest without policies carries no guidance index', () => {
@@ -752,7 +766,7 @@ test('a manifest without policies carries no guidance index', () => {
 
   const prompt = renderInvocationDeliveryPrompt(invocation, manifest)
 
-  assert.doesNotMatch(prompt, /## Guidance attestation/u)
+  assert.doesNotMatch(prompt, /## Referenced guidance/u)
 })
 
 test('the delivery prompt references the contract without reproducing it', () => {

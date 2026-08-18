@@ -11,8 +11,6 @@
     "summary",
     "artifacts",
     "criteria",
-    "risks",
-    "unknowns",
     "data"
   ],
   "additionalProperties": true,
@@ -63,7 +61,7 @@
       "description": "Self-evaluation of every declared stage criterion.",
       "items": {
         "type": "object",
-        "required": ["id", "result", "evidence", "explanation"],
+        "required": ["id", "result"],
         "properties": {
           "id": {
             "type": "string",
@@ -92,14 +90,14 @@
       "items": {
         "type": "string"
       },
-      "description": "Residual risks; empty means checked, not skipped."
+      "description": "Residual risks; empty means checked, not skipped. Optional: absent means none to report."
     },
     "unknowns": {
       "type": "array",
       "items": {
         "type": "string"
       },
-      "description": "Open questions the operator should know about."
+      "description": "Open questions the operator should know about. Optional: absent means none to report."
     },
     "data": {
       "type": "object",
@@ -140,7 +138,7 @@
         },
         "sections": {
           "type": "array",
-          "description": "Every contract section, in manifest order. Required when status is read.",
+          "description": "Legacy per-section digest echo. Optional: the contract_sha256 digest already ties the attestation to the exact contract. Validated only when present.",
           "items": {
             "type": "object",
             "required": ["id", "sha256"],
@@ -158,7 +156,7 @@
         },
         "guidance": {
           "type": "array",
-          "description": "One entry per referenced guidance selection in the contract manifest, in manifest order. The scaffold prefills each entry with status pending; submission rejects that value.",
+          "description": "Legacy per-guidance attestation entries. Optional; validated only when present.",
           "items": {
             "type": "object",
             "required": [

@@ -737,6 +737,84 @@ function acceptedPlanOutputPath(
   return latestPlanOutputPathFromOutputs(root, runId)
 }
 
+/**
+ * The ratified intake product spec, read from the intake stage's own output on
+ * disk. The plan validator used to require the plan document to carry a
+ * verbatim copy of the spec (~3.4 KB per attempt) purely so this data was in
+ * reach; the run record is the single source instead.
+ */
+function intakeProductSpecFromRun(
+  root: string,
+  targetPath: string,
+  runState?: Record<string, unknown>,
+): Record<string, unknown> | null {
+  const runMatch = /runtime\/logs\/workflows\/([^/]+)\//u.exec(targetPath)
+
+  if (!runMatch) {
+    return null
+  }
+
+  const stageHistory = Array.isArray(runState?.stage_history)
+    ? runState.stage_history
+    : []
+  let latest: string | null = null
+
+  for (const item of stageHistory) {
+    if (
+      isRecord(item) &&
+      item.stage === 'intake' &&
+      item.outcome === 'success' &&
+      typeof item.output_path === 'string' &&
+      fileExists(path.join(root, item.output_path))
+    ) {
+      latest = item.output_path
+    }
+  }
+
+  if (!latest) {
+    const layout = resolveRunLayout(root, runMatch[1])
+    const outputsDir = path.dirname(layout.output('placeholder').absolute)
+
+    if (fileExists(outputsDir)) {
+      const intakePattern = /^(?:\d{3}_)?intake-(\d+)[-_]/u
+      const intakeFiles = readdirSync(outputsDir)
+        .filter((entry) => intakePattern.test(entry))
+        .sort((left, right) => {
+          const leftNumber = Number(intakePattern.exec(left)?.[1] ?? 0)
+          const rightNumber = Number(intakePattern.exec(right)?.[1] ?? 0)
+
+          return leftNumber - rightNumber
+        })
+
+      if (intakeFiles.length > 0) {
+        latest = layout.output(
+          intakeFiles[intakeFiles.length - 1].replace(/\.json$/u, ''),
+        ).relative
+      }
+    }
+  }
+
+  if (!latest) {
+    return null
+  }
+
+  try {
+    const value = readJson(path.join(root, latest))
+
+    if (
+      isRecord(value) &&
+      isRecord(value.data) &&
+      isRecord(value.data.product_spec)
+    ) {
+      return value.data.product_spec
+    }
+  } catch {
+    return null
+  }
+
+  return null
+}
+
 function planAcceptanceCriterionIds(
   root: string,
   targetPath: string,
@@ -1049,6 +1127,40 @@ export function validateImplementationClaims(
   }
 }
 
+/**
+ * Shape check for the optional worker recommendation to change the run's
+ * verification level. Level-name validity is judged at prepare time against
+ * the installation's configured levels.
+ */
+function verificationRecommendationIssues(
+  data: Record<string, unknown>,
+  stage: string,
+): HandlerResult['issues'] {
+  const recommendation = data.verification_recommendation
+
+  if (recommendation === undefined) {
+    return []
+  }
+
+  if (
+    !isRecord(recommendation) ||
+    typeof recommendation.level !== 'string' ||
+    recommendation.level.trim().length === 0 ||
+    typeof recommendation.reason !== 'string' ||
+    recommendation.reason.trim().length === 0
+  ) {
+    return [
+      issue(
+        `${stage}.verification_recommendation`,
+        'data.verification_recommendation MUST carry non-empty level and ' +
+          'reason strings when present',
+      ),
+    ]
+  }
+
+  return []
+}
+
 export function validateIntakeOutput(input: HandlerInput): HandlerResult {
   const issues: HandlerResult['issues'] = []
   const value = readJson(path.join(input.root, input.targetPath)) as Record<
@@ -1057,6 +1169,8 @@ export function validateIntakeOutput(input: HandlerInput): HandlerResult {
   >
   const data = isRecord(value.data) ? value.data : {}
   const spec = isRecord(data.product_spec) ? data.product_spec : null
+
+  issues.push(...verificationRecommendationIssues(data, 'intake'))
 
   if (!spec) {
     issues.push(issue('intake.spec_missing', 'data.product_spec is required'))
@@ -1175,9 +1289,12 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
   const plan = isRecord(data.engineering_plan) ? data.engineering_plan : null
   const referencedStories = new Set<string>()
 
-  const intakeStories = isRecord(data.product_spec)
-    ? data.product_spec.user_stories
-    : null
+  // The intake record on disk is authoritative; a spec embedded in the plan
+  // document is only a fallback for runs whose intake output is unavailable.
+  const productSpec =
+    intakeProductSpecFromRun(input.root, input.targetPath, input.runState) ??
+    (isRecord(data.product_spec) ? data.product_spec : null)
+  const intakeStories = productSpec ? productSpec.user_stories : null
   const storyIds = new Set<string>()
 
   if (Array.isArray(intakeStories)) {
@@ -1330,7 +1447,10 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
     }
   }
 
-  issues.push(...openQuestionDispositionIssues(input, data, criteria))
+  issues.push(
+    ...openQuestionDispositionIssues(input, data, criteria, productSpec),
+  )
+  issues.push(...verificationRecommendationIssues(data, 'plan'))
 
   return { status: issues.length === 0 ? 'passed' : 'failed', issues }
 }
@@ -1338,8 +1458,7 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
 /** Leading identifier of an inherited open question, e.g. `Q2` in `Q2: ...`. */
 const OPEN_QUESTION_ID_PATTERN = /^\s*([A-Za-z]+-?\d+)\s*[:.)]/u
 
-function openQuestionIds(data: Record<string, unknown>): string[] {
-  const spec = isRecord(data.product_spec) ? data.product_spec : null
+function openQuestionIds(spec: Record<string, unknown> | null): string[] {
   const questions =
     spec && Array.isArray(spec.open_questions) ? spec.open_questions : []
   const ids: string[] = []
@@ -1359,9 +1478,7 @@ function openQuestionIds(data: Record<string, unknown>): string[] {
   return ids
 }
 
-function openQuestionCount(data: Record<string, unknown>): number {
-  const spec = isRecord(data.product_spec) ? data.product_spec : null
-
+function openQuestionCount(spec: Record<string, unknown> | null): number {
   return spec && Array.isArray(spec.open_questions)
     ? spec.open_questions.length
     : 0
@@ -1378,9 +1495,10 @@ function openQuestionDispositionIssues(
   input: HandlerInput,
   data: Record<string, unknown>,
   criteria: unknown[],
+  productSpec: Record<string, unknown> | null,
 ): HandlerResult['issues'] {
   const issues: HandlerResult['issues'] = []
-  const questionCount = openQuestionCount(data)
+  const questionCount = openQuestionCount(productSpec)
 
   if (questionCount === 0) {
     return issues
@@ -1405,7 +1523,7 @@ function openQuestionDispositionIssues(
     'plan',
     'data.open_question_dispositions[].disposition',
   )
-  const questionIds = openQuestionIds(data)
+  const questionIds = openQuestionIds(productSpec)
   const reported = new Set<string>()
   const unsettled = new Set<string>()
 

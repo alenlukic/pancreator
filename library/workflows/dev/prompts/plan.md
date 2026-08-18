@@ -35,6 +35,12 @@ required, and `evidence`, which is required and must be non-empty for a resolved
 question. Author the plan at the declared brief source path. Do not run the
 renderer. Reference the rendered HTML as the narrative artifact.
 
+Do not copy the intake product spec into your output; the harness reads it from
+the intake record. If the change warrants a different verification level than
+the card shows, you MAY set `data.verification_recommendation` to
+`{ "level": <name>, "reason": <why> }`. The operator decides; do not assume
+the change.
+
 ## Done when
 
 Every open question has a recorded disposition whose resolutions rest on cited

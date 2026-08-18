@@ -105,6 +105,13 @@
       }
     }
   },
+  "verification": {
+    "$operator": {
+      "summary": "Named verification levels controlling which repository-check profile each shell gate runs. Select one per run with ./bin/pan init --verification <level>; omitting the flag uses active.",
+      "note": "Built-in levels: minimal (implement gates only, QA runs no suite), light (QA re-runs the fast suite), thorough (QA runs the full profile; explicit opt-in only). The full profile never runs unless a selected level names it, and it is never baselined before implementation. Operator-declared levels here merge over the built-ins. Runs snapshot the resolved level; change an in-flight run with ./bin/pan verification <run-id> set <level>. Inspect levels with ./bin/pan verification."
+    },
+    "active": "light"
+  },
   "review_mode": "default",
   "installation_mode": "self_development"
 }

@@ -22,10 +22,11 @@ produce reproducible evidence.
    relevant functionality, visual hierarchy, and named design tokens.
 6. Use the same explicit repository-declared toolchain entrypoints and configured
    probes used by implementation and review so equivalent results are comparable.
-   The `full` profile must cover the complete documented suite; an optional
-   `secondary` profile may be used for focused slow/integration diagnosis but
-   does not replace complete verification. Real external network or catalog calls
-   must never run in the fast/default profile.
+   The card's verification-level section names the repository-check profile your
+   suite gate actually runs; do not run heavier profiles than the level selects.
+   The team and CI own the suites the level leaves out, and the operator alone
+   escalates the level. Real external network or catalog calls must never run in
+   the fast/default profile.
 7. Classify each defect as product, environment, or harness/test. An intermittent
    timeout of a configured full-suite target check is product/test or environment,
    not harness/test, unless harness-owned evidence implicates the harness. Treat
@@ -44,6 +45,6 @@ Do not run the renderer. Reference the rendered HTML as the narrative artifact.
 
 ## Done when
 
-Manual cases cover every acceptance criterion, the configured full repository
-check passes when rerun regardless of elapsed clock time, missing checks are disclosed,
+Manual cases cover every acceptance criterion, the verification suite the run's
+level selects passes when rerun regardless of elapsed clock time, missing checks are disclosed,
 and legitimate product/test defects are routed to their owners without governance loops.
