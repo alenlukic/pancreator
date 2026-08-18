@@ -307,6 +307,9 @@ test('orchestration and release guidance resolve with required policy dependenci
     'BIN-001',
     'BRIEF-001',
     'DELEGATE-001',
+    // The supervisor brief directs a technical-director checkpoint stop to
+    // DIRECTOR-001, so the card must deliver that policy rather than name it.
+    'DIRECTOR-001',
     'EXECUTOR-001',
     'GLOBAL-001',
     'GLOBAL-002',

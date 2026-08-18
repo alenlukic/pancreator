@@ -384,7 +384,9 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
       path.join(project, '.cursor', 'commands', 'pan-start.md'),
       'utf8',
     )
-    assert.match(command, /pan-orchestrator/)
+    // The command supervises the run itself, so it must forbid the nested
+    // relay rather than describe one.
+    assert.match(command, /MUST NOT launch the `pan-orchestrator` subagent/u)
     assert.match(command, /\.pancreator\/runtime\/inbox/)
     assert.match(command, /runtime\/inbox\/request-<id>\.md/)
 
@@ -397,11 +399,23 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
       orchestratorAgent,
       /\.pancreator\/library\/personas\/orchestrator\.md/u,
     )
-    assert.match(orchestratorAgent, /\.pancreator\/runtime\/inbox/u)
     // Run-relative records are resolved from the active card rather than named
     // as a literal, so the projection has no run subdirectory to rewrite.
     assert.doesNotMatch(orchestratorAgent, /runtime\/logs\/workflows/u)
-    assert.match(orchestratorAgent, /the paths it prints/u)
+
+    // The supervisor brief owns the delivery contract, because `/pan-start` and
+    // the best-of-N agent both adopt it rather than restate it.
+    const supervisorBrief = readFileSync(
+      path.join(
+        project,
+        '.pancreator',
+        'library',
+        'personas',
+        'orchestrator.md',
+      ),
+      'utf8',
+    )
+    assert.match(supervisorBrief, /the paths it prints/u)
 
     const marker = readJson<InstallMarker>(
       path.join(project, '.pancreator', 'install.json'),

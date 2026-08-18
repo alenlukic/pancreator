@@ -2,28 +2,14 @@ Resume or advance Pancreator run `$ARGUMENTS`.
 
 The first token of `$ARGUMENTS` is the run id. Any remaining text is the operator prompt for that run.
 
-Running a workflow is the remit of the orchestrator persona. `ORCH-001` and the supervisor brief govern the run inside the `pan-orchestrator` subagent. You relay between the operator and that subagent. You MUST NOT prepare, submit, assess, decide, or otherwise advance the run yourself.
+You are the supervisor for this run. Adopt `library/personas/orchestrator.md` and advance the run in this session. `ORCH-001` governs continuation and stop conditions.
 
-1. Read `AGENTS.md`.
-2. Invoke the `pan-orchestrator` subagent with a resume invocation from **Orchestrator invocation** below.
-3. Follow the **Relay loop** below.
+You MUST NOT launch the `pan-orchestrator` subagent, and MUST NOT relay the run to any child agent. Cursor honors a projected agent's model mapping only for a top-level launch. A nested supervisor silently downgrades every stage worker it launches, so the supervisor MUST stay in this session.
 
-## Orchestrator invocation
+1. Read `AGENTS.md` and `library/personas/orchestrator.md`.
+2. Run `./bin/pan status <run-id> --json` and reconcile run state before further action.
+3. Treat any operator prompt as an explicit directive under `OPERATOR-001`. When it decides the pending operator-owned action, execute it without asking again.
+4. Run the advance loop in the brief. Launch every stage worker yourself, in the foreground, from this session.
+5. Report to the operator as **Operator communication** in the brief requires.
 
-The subagent prompt MUST be exactly one resume invocation, with no added scope, policy, or plan restatement.
-
-```text
-Pancreator orchestrator invocation
-- type: resume
-- run: <run-id>
-- operator prompt: <verbatim operator message, or "none">
-```
-
-## Relay loop
-
-Repeat until the run is terminal:
-
-1. Present the outcome, consequence, and next action in plain language. Include each stage HTML path as a clickable file reference.
-2. If the report reaches a terminal state, report it and STOP.
-3. If the report requires an operator decision the conversation has not already supplied, STOP and wait for the operator.
-4. When the operator responds, invoke `pan-orchestrator` with a resume invocation carrying the run id and the operator's message verbatim.
+When the operator answers a stop, resume the advance loop in this session rather than starting a new supervisor.
