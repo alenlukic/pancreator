@@ -3,6 +3,21 @@
   "policy_id": "CONTRACT-001",
   "validator_id": "FIELD-CONTRACT-VALIDATE-001",
   "stages": {
+    "plan": {
+      "validators": [
+        {
+          "registry_id": "PLAN-TRACE-VALIDATE-001",
+          "enforcement": "blocks"
+        }
+      ],
+      "fields": [
+        {
+          "path": "data.open_question_dispositions[].disposition",
+          "type": "string",
+          "enum": ["resolved", "deferred", "escalated"]
+        }
+      ]
+    },
     "implement": {
       "validators": [
         {
@@ -45,6 +60,16 @@
           "path": "data.review.findings[].resolution",
           "type": "string",
           "enum": ["resolved_in_review", "unresolved"]
+        },
+        {
+          "path": "data.review.criterion_amendments[].reason_class",
+          "type": "string",
+          "enum": [
+            "unimplementable",
+            "contradictory",
+            "unverifiable",
+            "unworkable"
+          ]
         }
       ]
     },

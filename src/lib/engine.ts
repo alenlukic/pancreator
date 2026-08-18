@@ -25,6 +25,7 @@ import {
   writeJsonAtomic,
   writeTextAtomic,
 } from './io.js'
+import { applyJsonMergePatch } from './json-merge-patch.js'
 import { keywordRunSuffixFrom, makeStageArtifactId } from './naming.js'
 import { resolveRunLayout } from './run-layout.js'
 import {
@@ -77,8 +78,12 @@ import {
   selectInvolvementProfile,
 } from './operator-involvement.js'
 import {
+  effectiveRepositoryCheckProfile,
+  loadVerificationFile,
+  resolveVerification,
+} from './verification.js'
+import {
   loadRepositoryChecks,
-  repositoryCheckProfileName,
   runRepositoryCheck,
   runRepositorySetup,
   summarizeRepositoryCheckResult,
@@ -182,6 +187,7 @@ interface CreateRunOptions {
   workspace?: string | null
   gatesPath?: string | null
   involvement?: string | null
+  verification?: string | null
   reviewMode?: string | null
   pipelineOverride?: PipelineOverride | null
   cursorAgentSuffix?: string | null
@@ -470,19 +476,33 @@ function readGateOverrides(
 
 function collectStageRepositoryCheckProfiles(
   stages: StageDefinition[],
+  state: RunState,
 ): Array<{ name: string; timeout_ms: number | undefined }> {
   const profiles = new Map<string, number | undefined>()
 
   for (const stage of stages) {
+    // Under a verification level, baselines exist to answer one question: did
+    // this run's own edits break a check? Only source-mutating stages can, so
+    // only their gate profiles are captured. Gates at later read-only stages
+    // reuse these baselines when they run the same profile and are judged on
+    // their own result otherwise. Runs created before levels existed keep the
+    // old capture-everything behavior their gates fail closed against.
+    if (state.verification && stage.workspace_policy !== 'source_allowed') {
+      continue
+    }
+
     for (const criterion of stage.criteria) {
       if (criterion.type !== 'shell') {
         continue
       }
 
-      const profileName = repositoryCheckProfileName(criterion.command ?? '')
+      const { profile } = effectiveRepositoryCheckProfile(
+        state.verification,
+        criterion,
+      )
 
-      if (profileName && !profiles.has(profileName)) {
-        profiles.set(profileName, criterion.timeout_ms)
+      if (profile && !profiles.has(profile)) {
+        profiles.set(profile, criterion.timeout_ms)
       }
     }
   }
@@ -493,13 +513,14 @@ function collectStageRepositoryCheckProfiles(
 }
 
 /**
- * Capture a baseline for every repository-check profile the run's workflow gates
- * on, before the first mutating stage edits anything.
+ * Capture a baseline for the repository-check profiles the run's verification
+ * level gates its source-mutating stages on, before the first mutating stage
+ * edits anything.
  *
- * Baselining only the current stage's profiles left terminal gates such as a QA
- * stage's `full` profile with nothing to compare against, so pre-existing target
- * breakage unrelated to the change under test hard-failed the run. Capturing all
- * profiles once here also amortizes the cost of the slow ones.
+ * The expensive profiles (integration suites, end-to-end browsers) are never
+ * captured here: a run's own regressions are visible in the fast profiles, the
+ * team and CI own the rest, and a level that gates on a heavier profile judges
+ * it on its own result instead of a delta.
  */
 function ensureWorkflowRepositoryCheckBaselines(
   root: string,
@@ -516,7 +537,7 @@ function ensureWorkflowRepositoryCheckBaselines(
     return false
   }
 
-  const profiles = collectStageRepositoryCheckProfiles(workflow.stages)
+  const profiles = collectStageRepositoryCheckProfiles(workflow.stages, state)
   const repositoryChecks = loadRepositoryChecks(root)
 
   // A workspace other than the configured default is a fresh worktree without
@@ -680,13 +701,16 @@ function repositoryCheckBaselineGaps(
       continue
     }
 
-    const profileName = repositoryCheckProfileName(criterion.command ?? '')
+    const { profile } = effectiveRepositoryCheckProfile(
+      state.verification,
+      criterion,
+    )
 
-    if (!profileName) {
+    if (!profile) {
       continue
     }
 
-    const load = loadRepositoryCheckBaseline(root, state, profileName)
+    const load = loadRepositoryCheckBaseline(root, state, profile)
 
     if (load.reason) {
       gaps.push(`Gate '${criterion.id}': ${load.reason}`)
@@ -694,6 +718,108 @@ function repositoryCheckBaselineGaps(
   }
 
   return gaps
+}
+
+interface VerificationRecommendation {
+  stage: string
+  invocation_id: string
+  level: string
+  reason: string
+}
+
+/**
+ * The newest un-surfaced verification-level recommendation from a successful
+ * intake or plan attempt. Workers MAY recommend a different level when the
+ * change warrants it; the operator decides, once per recommendation.
+ */
+function pendingVerificationRecommendation(
+  root: string,
+  state: RunState,
+): VerificationRecommendation | null {
+  const verification = state.verification
+
+  if (!verification) {
+    return null
+  }
+
+  const surfaced = new Set(state.verification_recommendations_surfaced ?? [])
+
+  for (const item of [...state.stage_history].reverse()) {
+    if (
+      (item.stage !== 'intake' && item.stage !== 'plan') ||
+      item.outcome !== 'success' ||
+      surfaced.has(item.invocation_id)
+    ) {
+      continue
+    }
+
+    let value: unknown
+
+    try {
+      value = readJson(resolveInside(root, item.output_path))
+    } catch {
+      continue
+    }
+
+    if (!isRecord(value) || !isRecord(value.data)) {
+      continue
+    }
+
+    const recommendation = value.data.verification_recommendation
+
+    if (
+      !isRecord(recommendation) ||
+      typeof recommendation.level !== 'string' ||
+      typeof recommendation.reason !== 'string' ||
+      recommendation.level === verification.level
+    ) {
+      continue
+    }
+
+    let knownLevels: string[]
+
+    try {
+      knownLevels = Object.keys(loadVerificationFile(root).levels)
+    } catch {
+      return null
+    }
+
+    if (!knownLevels.includes(recommendation.level)) {
+      continue
+    }
+
+    return {
+      stage: item.stage,
+      invocation_id: item.invocation_id,
+      level: recommendation.level,
+      reason: recommendation.reason,
+    }
+  }
+
+  return null
+}
+
+function pauseForVerificationRecommendation(
+  root: string,
+  state: RunState,
+  recommendation: VerificationRecommendation,
+): void {
+  const reason =
+    `The ${recommendation.stage} worker recommends verification level ` +
+    `'${recommendation.level}' instead of this run's ` +
+    `'${state.verification?.level}': ${recommendation.reason}`
+
+  state.status = 'paused'
+  state.pause_reason = reason
+  state.pending_action = { type: 'operator_decision' }
+  ;(state.verification_recommendations_surfaced ??= []).push(
+    recommendation.invocation_id,
+  )
+
+  writeDecision(root, state, 'Verification level recommendation', reason, [
+    `Apply it with: ${panCommand(root)} verification ${state.run_id} set ${recommendation.level}`,
+    `Or keep '${state.verification?.level}' and continue: ${panCommand(root)} resume ${state.run_id}`,
+  ])
 }
 
 function pauseForRepositoryCheckBaselineGaps(
@@ -1269,6 +1395,9 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
   // Snapshotted for the same reason as the involvement profile: the review
   // method a run started under governs it to the end.
   const reviewMode = resolveReviewMode(root, options.reviewMode)
+  // Snapshotted likewise. The level decides which repository-check profiles
+  // gate this run and which baselines the first mutating stage captures.
+  const verification = resolveVerification(root, options.verification)
 
   writeJsonAtomic(resolveInside(root, workflowSnapshot), workflowSnapshotValue)
 
@@ -1300,6 +1429,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     scope_hash: roots.scope_hash,
     ...(gateOverrides ? { gate_overrides: gateOverrides } : {}),
     operator_involvement: involvement,
+    verification,
     review_mode: reviewMode,
     ...(agentSuffix ? { cursor_agent_suffix: agentSuffix } : {}),
     ...(options.bestOfN ? { best_of_n: options.bestOfN } : {}),
@@ -1331,6 +1461,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     involvement_profile: involvement.profile,
     run_contracts: involvement.contracts,
     applied_gates: involvement.applied_gates,
+    verification_level: verification.level,
     review_mode: reviewMode,
   })
 
@@ -1629,6 +1760,15 @@ export function prepareInvocation(
 
     state.attempts[stage.slug] = attempt
 
+    const recommendation = pendingVerificationRecommendation(root, state)
+
+    if (recommendation) {
+      pauseForVerificationRecommendation(root, state, recommendation)
+      persistRun(root, state, 'run_paused', { reason: state.pause_reason })
+
+      return { state, invocation: null }
+    }
+
     ensureMutatingWorkflowInitialized(root, state, stage)
     const environmentBlocked = ensureWorkflowRepositoryCheckBaselines(
       root,
@@ -1697,8 +1837,9 @@ export function prepareInvocation(
           ? `Run '${panCommand(root)} delegate ${runId}' to execute the ` +
             `'${stage.persona}' stage under the '${externalExecutor}' ` +
             `executor with model '${model}', then submit ${outputPath}.`
-          : `Invoke the '${stage.persona}' Cursor subagent configured for ` +
-            `'${model}' with this card, write delegation evidence to ` +
+          : `Launch the named Cursor agent for persona '${stage.persona}' ` +
+            `(never an ad-hoc subagent; only the named definition runs ` +
+            `'${model}') with this card, write delegation evidence to ` +
             `${delegationArtifactPath}, then submit ${outputPath}.`
     // The supervisor delegates from the continuation loop, where it holds no
     // card of its own. Resolving its policies here puts the delivery contract
@@ -1764,7 +1905,7 @@ export function prepareInvocation(
       stage.slug,
       workflow.slug,
     )
-    const priorFailure = summarizePriorFailure(state, stage)
+    const priorFailure = summarizePriorFailure(state, stage, root)
     const briefVocabulary = resolveBriefVocabulary(root)
     const requiredData = { ...(stage.required_data ?? {}) }
     const fieldContract = stageFieldContract(
@@ -1816,6 +1957,7 @@ export function prepareInvocation(
       ...(state.operator_involvement
         ? { operator_involvement: state.operator_involvement }
         : {}),
+      ...(state.verification ? { verification: state.verification } : {}),
       review_mode: reviewMode,
       workflow: {
         slug: workflow.slug,
@@ -2519,7 +2661,50 @@ export function submitOutput(
 ): { state: RunState; record: TaskRecord; idempotent?: boolean } {
   return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
-    const submittedValue = readJson(resolveInside(root, submittedPath))
+    const submittedRaw = readJson(resolveInside(root, submittedPath))
+    // A revision submission patches the prior attempt's document instead of
+    // re-emitting it: `{ revises: <prior invocation id>, patch: <RFC 7386
+    // merge patch> }`. The merged document flows through every check a full
+    // submission would.
+    const revision =
+      isRecord(submittedRaw) && typeof submittedRaw.revises === 'string'
+        ? { revises: submittedRaw.revises, patch: submittedRaw.patch }
+        : null
+    let priorForRevision: StageHistoryItem | undefined
+    let submittedValue = submittedRaw
+
+    if (revision) {
+      invariant(
+        isRecord(revision.patch),
+        'A revision submission MUST carry an object merge patch in patch.',
+        { code: 'INVALID_REVISION' },
+      )
+      invariant(
+        typeof revision.patch.invocation_id === 'string' &&
+          revision.patch.invocation_id.length > 0 &&
+          revision.patch.invocation_id !== revision.revises,
+        `A revision patch MUST set invocation_id to the current card's ` +
+          `invocation id, not the revised attempt's.`,
+        { code: 'INVALID_REVISION' },
+      )
+
+      priorForRevision = state.stage_history.find(
+        (item) => item.invocation_id === revision.revises,
+      )
+
+      invariant(
+        priorForRevision,
+        `Revision names invocation '${revision.revises}', which this run ` +
+          `has no submitted attempt for.`,
+        { code: 'INVALID_REVISION' },
+      )
+
+      submittedValue = applyJsonMergePatch(
+        readJson(resolveInside(root, priorForRevision.output_path)),
+        revision.patch,
+      )
+    }
+
     const invocationId = submittedInvocationId(submittedValue)
     const existing = invocationId
       ? state.stage_history.find((item) => item.invocation_id === invocationId)
@@ -2554,6 +2739,15 @@ export function submitOutput(
     const workflow = loadRunWorkflow(root, state)
     const stage = stageBySlug(workflow, state.current_stage)
     const invocation = readInvocation(root, state.current_invocation.json_path)
+
+    if (priorForRevision) {
+      invariant(
+        priorForRevision.stage === stage.slug,
+        `Revision targets a '${priorForRevision.stage}' attempt, but the ` +
+          `active stage is '${stage.slug}'.`,
+        { code: 'INVALID_REVISION' },
+      )
+    }
 
     const governanceArtifactWarnings: string[] = []
     const attestationErrors: string[] = []
@@ -2808,6 +3002,9 @@ export function submitOutput(
       output_path: state.current_invocation.output_path,
       outcome,
       submitted_at: now(),
+      ...(priorForRevision
+        ? { revised_from: priorForRevision.invocation_id }
+        : {}),
       workspace_fingerprint: evaluated.workspace.fingerprint,
       workspace_before_fingerprint: invocation.workspace_before.fingerprint,
       validation_errors: allValidationErrors,
@@ -3099,31 +3296,37 @@ function recordOperatorFeedback(
     `operator-feedback-${index}.md`,
   ).relative
   const heading =
-    decision === 'reject'
-      ? 'Operator rejection'
-      : decision === 'revise'
-        ? 'Operator revision directive'
-        : 'Operator remediation note'
+    decision === 'approve'
+      ? 'Operator directive attached to approval'
+      : decision === 'reject'
+        ? 'Operator rejection'
+        : decision === 'revise'
+          ? 'Operator revision directive'
+          : 'Operator remediation note'
   const body = [
     `# ${heading}: ${fromStage.title} (\`${fromStage.slug}\`)`,
     '',
     `**Run** \`${state.run_id}\` · **Source attempt** ${attempt} · ` +
-      `**Remediation stage** \`${toStage}\``,
+      `**${decision === 'approve' ? 'Directed stage' : 'Remediation stage'}** \`${toStage}\``,
     '',
-    '## Required changes',
+    decision === 'approve' ? '## Operator directive' : '## Required changes',
     '',
     note.trim().length > 0
       ? note.trim()
       : 'The operator rejected this stage without written feedback. ' +
         'Treat the prior output as unacceptable and re-derive the work.',
     '',
-    decision === 'revise'
-      ? 'This is a refinement directive, not a rejection. Keep everything the ' +
-        'operator did not ask you to change, apply the changes above, and ' +
-        'state in your summary what you changed and what you deliberately ' +
-        'left alone.'
-      : 'You MUST address this feedback before the run can reach the operator ' +
-        'gate again.',
+    decision === 'approve'
+      ? `The operator approved the '${fromStage.slug}' stage and attached ` +
+        'this directive for your stage. Apply it as operator-supplied ' +
+        'context; it adds no scope beyond your contract.'
+      : decision === 'revise'
+        ? 'This is a refinement directive, not a rejection. Keep everything the ' +
+          'operator did not ask you to change, apply the changes above, and ' +
+          'state in your summary what you changed and what you deliberately ' +
+          'left alone.'
+        : 'You MUST address this feedback before the run can reach the operator ' +
+          'gate again.',
     '',
   ].join('\n')
 
@@ -3184,6 +3387,22 @@ export function decideRun(
 
     if (decision === 'approve') {
       applyTransition(root, state, stage, approvedOutcome)
+
+      // A non-empty approval note is a directive to the routed stage, not
+      // just audit text: recording it only in the event log silently dropped
+      // it from every later invocation while the operator reasonably believed
+      // the run received it (HR-001, run 63322_Aug-18-1287_box-poller-p). On
+      // a terminal or paused route there is no next card, so the note stays
+      // audit evidence in the decision event below.
+      const routedStage = state.current_stage
+
+      if (
+        note.trim().length > 0 &&
+        routedStage !== null &&
+        state.status === 'running'
+      ) {
+        recordOperatorFeedback(root, state, stage, routedStage, 'approve', note)
+      }
     } else if (decision === 'revise') {
       // Re-run the same stage with the operator's directive as required input.
       // The stage did not fail, so this must not consume its retry budget.
@@ -3403,6 +3622,52 @@ function invalidatePausedInvocation(state: RunState): void {
   state.status = 'running'
   state.pending_action = { type: 'prepare_invocation' }
   state.current_invocation = null
+}
+
+/**
+ * Change a run's verification level. The new level is resolved fresh from
+ * config plus built-ins and replaces the run's snapshot, so later gates run
+ * under the new mapping. Baselines are not recaptured: a gate whose new
+ * profile was never baselined is judged on its own result.
+ */
+export function setRunVerification(
+  root: string,
+  runId: string,
+  levelName: string,
+  note = '',
+): RunState {
+  return withOperationMutex(operationMutexPath(root, runId), () => {
+    const state = loadState(root, runId)
+
+    invariant(
+      state.status !== 'succeeded' &&
+        state.status !== 'failed' &&
+        state.status !== 'canceled',
+      'Run is already terminal.',
+      { code: 'RUN_TERMINAL' },
+    )
+
+    const resolved = resolveVerification(root, levelName)
+    const previous = state.verification?.level ?? 'workflow-declared'
+    const reason =
+      `Operator set verification level '${resolved.level}' ` +
+      `(was '${previous}').${note.trim().length > 0 ? ` ${note.trim()}` : ''}`
+
+    state.verification = resolved
+    state.updated_at = now()
+
+    writeDecision(root, state, 'Verification level changed', reason, [
+      `Continue with: ${panCommand(root)} resume ${state.run_id}`,
+    ])
+
+    persistRun(root, state, 'verification_level_changed', {
+      from: previous,
+      to: resolved.level,
+      ...(note.trim().length > 0 ? { note: note.trim() } : {}),
+    })
+
+    return state
+  })
 }
 
 export function pauseRun(root: string, runId: string, note = ''): RunState {

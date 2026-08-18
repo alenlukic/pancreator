@@ -117,6 +117,197 @@ test('plan trace rejects criteria without maps_to', () => {
   )
 })
 
+const planTraceRequirement = {
+  policy_id: 'PLAN-001',
+  requirement_id: 'plan-trace',
+  registry_id: 'PLAN-TRACE-VALIDATE-001',
+  arguments: {},
+} as const
+
+function writePlanWithQuestions(
+  root: string,
+  target: string,
+  openQuestions: string[],
+  dispositions: unknown[],
+  criteria: unknown[] = [
+    {
+      id: 'AC-01',
+      maps_to: ['US-1'],
+      verification: { method: 'unit test', expected: 'passes' },
+    },
+  ],
+): void {
+  writeFileSync(
+    path.join(root, target),
+    `${JSON.stringify({
+      data: {
+        engineering_plan: {
+          approach: 'Smallest coherent change.',
+          components: [],
+          files: [],
+          risks: [],
+          validation: [],
+        },
+        product_spec: {
+          user_stories: [{ id: 'US-1' }],
+          open_questions: openQuestions,
+        },
+        acceptance_criteria: criteria,
+        open_question_dispositions: dispositions,
+      },
+    })}\n`,
+  )
+}
+
+test('plan trace accepts dispositions that cite evidence', () => {
+  const root = validatorFixtureRoot('pan-plan-disposition-')
+  const target = 'output.json'
+
+  writePlanWithQuestions(
+    root,
+    target,
+    ['Q1: What exact contract did the prior change remove?'],
+    [
+      {
+        id: 'Q1',
+        disposition: 'resolved',
+        answer: 'It removed three gated picker options.',
+        evidence: ['git show 9dc16a053 lists the three removed options.'],
+      },
+    ],
+  )
+
+  const result = validatePlanTrace({
+    root,
+    targetPath: target,
+    requirement: planTraceRequirement,
+  })
+
+  assert.equal(result.status, 'passed', JSON.stringify(result.issues))
+})
+
+test('plan trace requires a disposition for every open question', () => {
+  const root = validatorFixtureRoot('pan-plan-disposition-missing-')
+  const target = 'output.json'
+
+  writePlanWithQuestions(
+    root,
+    target,
+    ['Q1: First question?', 'Q2: Second question?'],
+    [
+      {
+        id: 'Q1',
+        disposition: 'resolved',
+        answer: 'Answered.',
+        evidence: ['docs/design.md names the contract.'],
+      },
+    ],
+  )
+
+  const result = validatePlanTrace({
+    root,
+    targetPath: target,
+    requirement: planTraceRequirement,
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.ok(
+    result.issues.some(
+      (issue) =>
+        issue.code === 'plan.disposition_missing' &&
+        issue.message.includes('Q2'),
+    ),
+    JSON.stringify(result.issues),
+  )
+})
+
+test('plan trace rejects a resolved question with no evidence', () => {
+  const root = validatorFixtureRoot('pan-plan-disposition-evidence-')
+  const target = 'output.json'
+
+  writePlanWithQuestions(
+    root,
+    target,
+    ['Q1: What did the prior change remove?'],
+    [
+      {
+        id: 'Q1',
+        disposition: 'resolved',
+        answer: 'Inferred from the current tree.',
+        evidence: [],
+      },
+    ],
+  )
+
+  const result = validatePlanTrace({
+    root,
+    targetPath: target,
+    requirement: planTraceRequirement,
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.ok(
+    result.issues.some((issue) => issue.code === 'plan.disposition_evidence'),
+  )
+})
+
+test('plan trace rejects a criterion asserting an unresolved answer', () => {
+  const root = validatorFixtureRoot('pan-plan-disposition-assumed-')
+  const target = 'output.json'
+
+  // The livelock shape: the plan admits it does not know, then ratifies the
+  // guess as an acceptance criterion anyway.
+  writePlanWithQuestions(
+    root,
+    target,
+    ['Q4: Which value wins when the explicit request and the cohort disagree?'],
+    [
+      {
+        id: 'Q4',
+        disposition: 'escalated',
+        answer: 'The operator must choose the precedence rule.',
+        evidence: [],
+      },
+    ],
+    [
+      {
+        id: 'AC-01',
+        maps_to: ['US-1', 'Q4'],
+        verification: { method: 'unit test', expected: 'explicit wins' },
+      },
+    ],
+  )
+
+  const result = validatePlanTrace({
+    root,
+    targetPath: target,
+    requirement: planTraceRequirement,
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.ok(
+    result.issues.some(
+      (issue) => issue.code === 'plan.criterion_assumes_answer',
+    ),
+    JSON.stringify(result.issues),
+  )
+})
+
+test('plan trace ignores dispositions when the spec has no open questions', () => {
+  const root = validatorFixtureRoot('pan-plan-disposition-none-')
+  const target = 'output.json'
+
+  writePlanWithQuestions(root, target, [], [])
+
+  const result = validatePlanTrace({
+    root,
+    targetPath: target,
+    requirement: planTraceRequirement,
+  })
+
+  assert.equal(result.status, 'passed', JSON.stringify(result.issues))
+})
+
 test('review validator rejects findings without evidence', () => {
   const root = validatorFixtureRoot('pan-review-finding-shape-')
   const runId = 'run-review-finding-shape'
@@ -2001,5 +2192,134 @@ test('review validator accepts operator-routed unresolved findings', () => {
   assert.ok(
     !result.issues.some((issue) => issue.code === 'review.resolution'),
     JSON.stringify(result.issues),
+  )
+  assert.ok(
+    !result.issues.some(
+      (issue) => issue.code === 'review.verdict_inconsistent',
+    ),
+    JSON.stringify(result.issues),
+  )
+  assert.equal(result.status, 'passed')
+})
+
+function writeReviewWithAmendment(
+  root: string,
+  target: string,
+  amendment: Record<string, unknown>,
+): void {
+  writeFileSync(
+    path.join(root, target),
+    `${JSON.stringify({
+      data: {
+        review: {
+          verdict: 'pass',
+          findings: [],
+          acceptance_results: [{ id: 'AC-01', result: 'pass' }],
+          maintenance_assessment: 'Amended criterion verified in place.',
+          criterion_amendments: [amendment],
+        },
+      },
+    })}\n`,
+  )
+}
+
+const reviewRequirement = {
+  policy_id: 'REVIEW-001',
+  requirement_id: 'review',
+  registry_id: 'REVIEW-VALIDATE-001',
+  arguments: {},
+} as const
+
+test('review validator accepts a justified criterion amendment', () => {
+  const root = validatorFixtureRoot('pan-review-amendment-')
+  const runId = 'run-review-amendment'
+  const target = `runtime/logs/workflows/${runId}/outputs/review-1-test.json`
+
+  mkdirSync(path.dirname(path.join(root, target)), { recursive: true })
+  writePlanOutput(root, runId, ['AC-01'])
+  writeReviewWithAmendment(root, target, {
+    id: 'AC-01',
+    reason_class: 'unimplementable',
+    original_statement: 'The API accepts the minimal effort value.',
+    amended_statement: 'The API accepts low, medium, and high effort values.',
+    justification:
+      'The provider mapping raises ValueError for minimal on every model path.',
+    evidence: ['Reproduced: mapping raises ValueError at adapter boundary.'],
+  })
+
+  const result = validateReviewOutput({
+    root,
+    targetPath: target,
+    requirement: reviewRequirement,
+  })
+
+  assert.equal(result.status, 'passed', JSON.stringify(result.issues))
+})
+
+test('review validator rejects an amendment missing fields and evidence', () => {
+  const root = validatorFixtureRoot('pan-review-amendment-shape-')
+  const runId = 'run-review-amendment-shape'
+  const target = `runtime/logs/workflows/${runId}/outputs/review-1-test.json`
+
+  mkdirSync(path.dirname(path.join(root, target)), { recursive: true })
+  writePlanOutput(root, runId, ['AC-01'])
+  writeReviewWithAmendment(root, target, {
+    id: 'AC-01',
+    reason_class: 'because-i-said-so',
+    original_statement: 'Same text.',
+    amended_statement: 'Same text.',
+    evidence: [],
+  })
+
+  const result = validateReviewOutput({
+    root,
+    targetPath: target,
+    requirement: reviewRequirement,
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.ok(
+    result.issues.some((issue) => issue.code === 'review.amendment_shape'),
+  )
+  assert.ok(
+    result.issues.some((issue) => issue.code === 'review.amendment_unchanged'),
+  )
+  assert.ok(
+    result.issues.some((issue) => issue.code === 'review.amendment_reason'),
+  )
+  assert.ok(
+    result.issues.some((issue) => issue.code === 'review.amendment_evidence'),
+  )
+})
+
+test('review validator rejects an amendment for an unknown criterion', () => {
+  const root = validatorFixtureRoot('pan-review-amendment-unknown-')
+  const runId = 'run-review-amendment-unknown'
+  const target = `runtime/logs/workflows/${runId}/outputs/review-1-test.json`
+
+  mkdirSync(path.dirname(path.join(root, target)), { recursive: true })
+  writePlanOutput(root, runId, ['AC-01'])
+  writeReviewWithAmendment(root, target, {
+    id: 'AC-99',
+    reason_class: 'contradictory',
+    original_statement: 'Original text.',
+    amended_statement: 'Amended text.',
+    justification: 'Conflicts with a ratified constraint.',
+    evidence: ['Reproduced conflict between AC-99 and the constraint list.'],
+  })
+
+  const result = validateReviewOutput({
+    root,
+    targetPath: target,
+    requirement: reviewRequirement,
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.ok(
+    result.issues.some((issue) => issue.code === 'review.amendment_unknown'),
+  )
+  // The amended id has no acceptance result either, so re-verification fails.
+  assert.ok(
+    result.issues.some((issue) => issue.code === 'review.amendment_unverified'),
   )
 })

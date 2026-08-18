@@ -179,7 +179,7 @@ export function validateSharedFieldContract(
 
   const registryIds = new Set(loadRegistry(input.root).entries.keys())
 
-  for (const stageSlug of ['implement', 'review', 'test', 'ship']) {
+  for (const stageSlug of ['plan', 'implement', 'review', 'test', 'ship']) {
     const stage = source.stages[stageSlug]
 
     if (
@@ -228,6 +228,7 @@ export function validateSharedFieldContract(
   }
 
   const requiredFieldPaths: Record<string, string[]> = {
+    plan: ['data.open_question_dispositions[].disposition'],
     implement: ['data.acceptance_results[].evidence[]'],
     review: [
       'data.review.findings[].severity',
@@ -736,6 +737,84 @@ function acceptedPlanOutputPath(
   return latestPlanOutputPathFromOutputs(root, runId)
 }
 
+/**
+ * The ratified intake product spec, read from the intake stage's own output on
+ * disk. The plan validator used to require the plan document to carry a
+ * verbatim copy of the spec (~3.4 KB per attempt) purely so this data was in
+ * reach; the run record is the single source instead.
+ */
+function intakeProductSpecFromRun(
+  root: string,
+  targetPath: string,
+  runState?: Record<string, unknown>,
+): Record<string, unknown> | null {
+  const runMatch = /runtime\/logs\/workflows\/([^/]+)\//u.exec(targetPath)
+
+  if (!runMatch) {
+    return null
+  }
+
+  const stageHistory = Array.isArray(runState?.stage_history)
+    ? runState.stage_history
+    : []
+  let latest: string | null = null
+
+  for (const item of stageHistory) {
+    if (
+      isRecord(item) &&
+      item.stage === 'intake' &&
+      item.outcome === 'success' &&
+      typeof item.output_path === 'string' &&
+      fileExists(path.join(root, item.output_path))
+    ) {
+      latest = item.output_path
+    }
+  }
+
+  if (!latest) {
+    const layout = resolveRunLayout(root, runMatch[1])
+    const outputsDir = path.dirname(layout.output('placeholder').absolute)
+
+    if (fileExists(outputsDir)) {
+      const intakePattern = /^(?:\d{3}_)?intake-(\d+)[-_]/u
+      const intakeFiles = readdirSync(outputsDir)
+        .filter((entry) => intakePattern.test(entry))
+        .sort((left, right) => {
+          const leftNumber = Number(intakePattern.exec(left)?.[1] ?? 0)
+          const rightNumber = Number(intakePattern.exec(right)?.[1] ?? 0)
+
+          return leftNumber - rightNumber
+        })
+
+      if (intakeFiles.length > 0) {
+        latest = layout.output(
+          intakeFiles[intakeFiles.length - 1].replace(/\.json$/u, ''),
+        ).relative
+      }
+    }
+  }
+
+  if (!latest) {
+    return null
+  }
+
+  try {
+    const value = readJson(path.join(root, latest))
+
+    if (
+      isRecord(value) &&
+      isRecord(value.data) &&
+      isRecord(value.data.product_spec)
+    ) {
+      return value.data.product_spec
+    }
+  } catch {
+    return null
+  }
+
+  return null
+}
+
 function planAcceptanceCriterionIds(
   root: string,
   targetPath: string,
@@ -1048,6 +1127,40 @@ export function validateImplementationClaims(
   }
 }
 
+/**
+ * Shape check for the optional worker recommendation to change the run's
+ * verification level. Level-name validity is judged at prepare time against
+ * the installation's configured levels.
+ */
+function verificationRecommendationIssues(
+  data: Record<string, unknown>,
+  stage: string,
+): HandlerResult['issues'] {
+  const recommendation = data.verification_recommendation
+
+  if (recommendation === undefined) {
+    return []
+  }
+
+  if (
+    !isRecord(recommendation) ||
+    typeof recommendation.level !== 'string' ||
+    recommendation.level.trim().length === 0 ||
+    typeof recommendation.reason !== 'string' ||
+    recommendation.reason.trim().length === 0
+  ) {
+    return [
+      issue(
+        `${stage}.verification_recommendation`,
+        'data.verification_recommendation MUST carry non-empty level and ' +
+          'reason strings when present',
+      ),
+    ]
+  }
+
+  return []
+}
+
 export function validateIntakeOutput(input: HandlerInput): HandlerResult {
   const issues: HandlerResult['issues'] = []
   const value = readJson(path.join(input.root, input.targetPath)) as Record<
@@ -1056,6 +1169,8 @@ export function validateIntakeOutput(input: HandlerInput): HandlerResult {
   >
   const data = isRecord(value.data) ? value.data : {}
   const spec = isRecord(data.product_spec) ? data.product_spec : null
+
+  issues.push(...verificationRecommendationIssues(data, 'intake'))
 
   if (!spec) {
     issues.push(issue('intake.spec_missing', 'data.product_spec is required'))
@@ -1174,9 +1289,12 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
   const plan = isRecord(data.engineering_plan) ? data.engineering_plan : null
   const referencedStories = new Set<string>()
 
-  const intakeStories = isRecord(data.product_spec)
-    ? data.product_spec.user_stories
-    : null
+  // The intake record on disk is authoritative; a spec embedded in the plan
+  // document is only a fallback for runs whose intake output is unavailable.
+  const productSpec =
+    intakeProductSpecFromRun(input.root, input.targetPath, input.runState) ??
+    (isRecord(data.product_spec) ? data.product_spec : null)
+  const intakeStories = productSpec ? productSpec.user_stories : null
   const storyIds = new Set<string>()
 
   if (Array.isArray(intakeStories)) {
@@ -1329,7 +1447,210 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
     }
   }
 
+  issues.push(
+    ...openQuestionDispositionIssues(input, data, criteria, productSpec),
+  )
+  issues.push(...verificationRecommendationIssues(data, 'plan'))
+
   return { status: issues.length === 0 ? 'passed' : 'failed', issues }
+}
+
+/** Leading identifier of an inherited open question, e.g. `Q2` in `Q2: ...`. */
+const OPEN_QUESTION_ID_PATTERN = /^\s*([A-Za-z]+-?\d+)\s*[:.)]/u
+
+function openQuestionIds(spec: Record<string, unknown> | null): string[] {
+  const questions =
+    spec && Array.isArray(spec.open_questions) ? spec.open_questions : []
+  const ids: string[] = []
+
+  for (const question of questions) {
+    if (typeof question !== 'string') {
+      continue
+    }
+
+    const match = OPEN_QUESTION_ID_PATTERN.exec(question)
+
+    if (match) {
+      ids.push(match[1])
+    }
+  }
+
+  return ids
+}
+
+function openQuestionCount(spec: Record<string, unknown> | null): number {
+  return spec && Array.isArray(spec.open_questions)
+    ? spec.open_questions.length
+    : 0
+}
+
+/**
+ * An open question the plan cannot settle from evidence must be carried forward
+ * as deferred or escalated, never answered by assumption and never hardened
+ * into an acceptance criterion. Prose appended to the inherited specification
+ * text is invisible to every downstream stage, so the disposition record is
+ * what makes the unmade decision auditable.
+ */
+function openQuestionDispositionIssues(
+  input: HandlerInput,
+  data: Record<string, unknown>,
+  criteria: unknown[],
+  productSpec: Record<string, unknown> | null,
+): HandlerResult['issues'] {
+  const issues: HandlerResult['issues'] = []
+  const questionCount = openQuestionCount(productSpec)
+
+  if (questionCount === 0) {
+    return issues
+  }
+
+  const dispositions = Array.isArray(data.open_question_dispositions)
+    ? data.open_question_dispositions
+    : []
+
+  if (dispositions.length === 0) {
+    return [
+      issue(
+        'plan.disposition_missing',
+        'data.open_question_dispositions is required when the ratified ' +
+          'specification carries open questions',
+      ),
+    ]
+  }
+
+  const allowed = sharedEnum(
+    input.root,
+    'plan',
+    'data.open_question_dispositions[].disposition',
+  )
+  const questionIds = openQuestionIds(productSpec)
+  const reported = new Set<string>()
+  const unsettled = new Set<string>()
+
+  for (const [index, entry] of dispositions.entries()) {
+    if (!isRecord(entry) || typeof entry.id !== 'string') {
+      issues.push(
+        issue(
+          'plan.disposition_shape',
+          `open_question_dispositions[${index + 1}] MUST name the question id`,
+        ),
+      )
+      continue
+    }
+
+    if (reported.has(entry.id)) {
+      issues.push(
+        issue(
+          'plan.disposition_duplicate',
+          `Duplicate disposition for question ${entry.id}`,
+        ),
+      )
+    }
+
+    reported.add(entry.id)
+
+    const disposition =
+      typeof entry.disposition === 'string' ? entry.disposition : ''
+
+    if (!allowed.has(disposition)) {
+      issues.push(
+        issue(
+          'plan.disposition_value',
+          `Disposition for ${entry.id} MUST be one of ${[...allowed].join(', ')}`,
+        ),
+      )
+    }
+
+    if (disposition === 'deferred' || disposition === 'escalated') {
+      unsettled.add(entry.id)
+    }
+
+    if (typeof entry.answer !== 'string' || entry.answer.trim().length === 0) {
+      issues.push(
+        issue(
+          'plan.disposition_answer',
+          `Disposition for ${entry.id} MUST state the answer or the decision ` +
+            `still required`,
+        ),
+      )
+    }
+
+    const evidence = Array.isArray(entry.evidence) ? entry.evidence : []
+    const validEvidence =
+      evidence.length > 0 &&
+      evidence.every(
+        (item) => typeof item === 'string' && item.trim().length > 0,
+      )
+
+    if (disposition === 'resolved' && !validEvidence) {
+      issues.push(
+        issue(
+          'plan.disposition_evidence',
+          `Question ${entry.id} resolved by the plan MUST cite non-empty ` +
+            `evidence`,
+        ),
+      )
+    }
+  }
+
+  for (const id of questionIds) {
+    if (!reported.has(id)) {
+      issues.push(
+        issue(
+          'plan.disposition_missing',
+          `Open question ${id} MUST have a recorded disposition`,
+        ),
+      )
+    }
+  }
+
+  if (questionIds.length > 0) {
+    const known = new Set(questionIds)
+
+    for (const id of reported) {
+      if (!known.has(id)) {
+        issues.push(
+          issue(
+            'plan.disposition_unknown',
+            `Disposition names unknown open question: ${id}`,
+          ),
+        )
+      }
+    }
+  } else if (dispositions.length < questionCount) {
+    // The intake wrote unlabeled questions, so coverage is countable only.
+    issues.push(
+      issue(
+        'plan.disposition_missing',
+        `The specification carries ${questionCount} open questions and the ` +
+          `plan records ${dispositions.length} dispositions`,
+      ),
+    )
+  }
+
+  // A criterion that cites an unsettled question asserts the answer the plan
+  // just said it does not have.
+  for (const item of criteria) {
+    if (!isRecord(item) || typeof item.id !== 'string') {
+      continue
+    }
+
+    const mapsTo = Array.isArray(item.maps_to) ? item.maps_to : []
+
+    for (const mapped of mapsTo) {
+      if (typeof mapped === 'string' && unsettled.has(mapped)) {
+        issues.push(
+          issue(
+            'plan.criterion_assumes_answer',
+            `Criterion ${item.id} maps to ${mapped}, which the plan recorded ` +
+              `as unresolved`,
+          ),
+        )
+      }
+    }
+  }
+
+  return issues
 }
 
 export function validateReviewOutput(input: HandlerInput): HandlerResult {
@@ -1351,6 +1672,9 @@ export function validateReviewOutput(input: HandlerInput): HandlerResult {
   const findings = Array.isArray(review.findings) ? review.findings : []
   const acceptanceResults = Array.isArray(review.acceptance_results)
     ? review.acceptance_results
+    : []
+  const amendments = Array.isArray(review.criterion_amendments)
+    ? review.criterion_amendments
     : []
   const severities = sharedEnum(
     input.root,
@@ -1466,6 +1790,87 @@ export function validateReviewOutput(input: HandlerInput): HandlerResult {
     }
   }
 
+  const reasonClasses = sharedEnum(
+    input.root,
+    'review',
+    'data.review.criterion_amendments[].reason_class',
+  )
+  const amendedIds = new Set<string>()
+
+  for (const [index, amendment] of amendments.entries()) {
+    if (!isRecord(amendment) || typeof amendment.id !== 'string') {
+      issues.push(
+        issue(
+          'review.amendment_shape',
+          `criterion_amendments[${index + 1}] MUST name the amended criterion id`,
+        ),
+      )
+      continue
+    }
+
+    amendedIds.add(amendment.id)
+
+    for (const field of [
+      'original_statement',
+      'amended_statement',
+      'justification',
+    ] as const) {
+      const value = amendment[field]
+
+      if (typeof value !== 'string' || value.trim().length === 0) {
+        issues.push(
+          issue(
+            'review.amendment_shape',
+            `Amendment ${amendment.id} MUST include ${field}`,
+          ),
+        )
+      }
+    }
+
+    if (
+      typeof amendment.original_statement === 'string' &&
+      typeof amendment.amended_statement === 'string' &&
+      amendment.original_statement.trim() === amendment.amended_statement.trim()
+    ) {
+      issues.push(
+        issue(
+          'review.amendment_unchanged',
+          `Amendment ${amendment.id} MUST change the criterion text`,
+        ),
+      )
+    }
+
+    const reasonClass =
+      typeof amendment.reason_class === 'string' ? amendment.reason_class : ''
+
+    if (!reasonClasses.has(reasonClass)) {
+      issues.push(
+        issue(
+          'review.amendment_reason',
+          `Amendment ${amendment.id} MUST use an allowed reason_class`,
+        ),
+      )
+    }
+
+    const amendmentEvidence = Array.isArray(amendment.evidence)
+      ? amendment.evidence
+      : []
+
+    if (
+      amendmentEvidence.length === 0 ||
+      !amendmentEvidence.every(
+        (entry) => typeof entry === 'string' && entry.trim().length > 0,
+      )
+    ) {
+      issues.push(
+        issue(
+          'review.amendment_evidence',
+          `Amendment ${amendment.id} MUST include non-empty evidence`,
+        ),
+      )
+    }
+  }
+
   if (acceptanceResults.length === 0) {
     issues.push(
       issue(
@@ -1539,14 +1944,42 @@ export function validateReviewOutput(input: HandlerInput): HandlerResult {
         )
       }
     }
+
+    for (const id of amendedIds) {
+      if (!expectedSet.has(id)) {
+        issues.push(
+          issue(
+            'review.amendment_unknown',
+            `Amendment names unknown acceptance id not in plan: ${id}`,
+          ),
+        )
+      }
+    }
+  }
+
+  for (const id of amendedIds) {
+    if (!reportedIds.has(id)) {
+      issues.push(
+        issue(
+          'review.amendment_unverified',
+          `Amended criterion ${id} MUST have an acceptance result judged against the amended text`,
+        ),
+      )
+    }
   }
 
   const failedAcceptance = acceptanceResults.some(
     (item) => isRecord(item) && item.result === 'fail',
   )
 
+  // Findings routed to the operator do not gate the verdict: the review
+  // contract promises that a defect outside the run's workspace reaches
+  // operator/ship review without failing the review or looping the workflow.
   const unresolvedFinding = findings.some(
-    (item) => isRecord(item) && item.resolution !== 'resolved_in_review',
+    (item) =>
+      isRecord(item) &&
+      item.resolution !== 'resolved_in_review' &&
+      item.remediation_stage !== 'operator',
   )
 
   if (review.verdict === 'pass' && (unresolvedFinding || failedAcceptance)) {

@@ -14,6 +14,7 @@ import {
   prepareInvocation,
   resumeRun,
   setRunStage,
+  setRunVerification,
   submitOutput,
   waiveGate,
 } from './lib/engine.js'
@@ -27,6 +28,7 @@ import {
   refreshBestOfNAgents,
 } from './lib/best-of-n.js'
 import { personaExecutorOf } from './lib/executors/mapping.js'
+import { probeCursorModels } from './lib/executors/cursor-probe.js'
 import { claudeCodeVersionPreflight } from './lib/executors/claude-code.js'
 import { browserReadiness } from './lib/browser-readiness.js'
 import { PanError } from './lib/errors.js'
@@ -34,6 +36,7 @@ import { configuredWorkspaceRoot, panCommand } from './lib/project-config.js'
 import { isGitRepository } from './lib/git.js'
 import { loadPipelineConfig } from './lib/pipeline-config.js'
 import { loadOperatorInvolvementFile } from './lib/operator-involvement.js'
+import { loadVerificationFile } from './lib/verification.js'
 import { syncCursorProjection } from './lib/projection.js'
 import {
   fileExists,
@@ -93,7 +96,7 @@ import {
 } from './lib/worktrees.js'
 
 const HELP_BODY = `Usage:
-  pan init --request <repo-relative-file> [--workflow dev|prototype|design] [--title <title>] [--workspace <dir> | --worktree <name>] [--gates <file>] [--involvement <profile>] [--review-mode default|squad]
+  pan init --request <repo-relative-file> [--workflow dev|prototype|design] [--title <title>] [--workspace <dir> | --worktree <name>] [--gates <file>] [--involvement <profile>] [--verification <level>] [--review-mode default|squad]
   pan prepare <run-id>
   pan delegate <run-id> [--timeout-ms <milliseconds>]
   pan submit <run-id> <output-json>
@@ -116,7 +119,8 @@ const HELP_BODY = `Usage:
   pan status <run-id> [--json]
   pan list [--json]
   pan archive [--days <positive-integer>] [--json]
-  pan models [--sync] [--json]
+  pan models [--sync] [--probe] [--json]
+      --probe launches one minimal cursor-agent call per distinct active model spec and fails loudly when the resolved variant differs from the catalog's prediction. Needs the cursor-agent CLI and CURSOR_API_KEY or a login.
   pan validate [--json]
   pan doctor [--worktree <name>] [--json]
   pan requirements resolve --persona <p> --workflow <w> --stage <s> [--kind <kind>] [--output-path <path>] [--json]
@@ -138,6 +142,8 @@ const HELP_BODY = `Usage:
   pan briefs render --input <brief-json> --output <brief-html> [--json]
   pan validation-map [--json]
   pan involvement [--json]
+  pan verification [<run-id>] [--json]
+  pan verification <run-id> set <level> [--note <text>]
   pan spotfix scaffold-escalation --input <path> --output <path>
 
 Cursor's supervisor reads invocation cards, delegates cursor-executor stages to
@@ -539,6 +545,7 @@ async function main(): Promise<void> {
         workspace: worktreeWorkspace ? worktreeWorkspace.path : workspace,
         gatesPath: option(args, '--gates'),
         involvement: option(args, '--involvement'),
+        verification: option(args, '--verification'),
         reviewMode: option(args, '--review-mode'),
       })
 
@@ -551,6 +558,7 @@ async function main(): Promise<void> {
         involvement_profile: state.operator_involvement?.profile,
         run_contracts: state.operator_involvement?.contracts ?? [],
         applied_gates: state.operator_involvement?.applied_gates ?? {},
+        verification_level: state.verification?.level,
         review_mode: state.review_mode,
         next_command: `${pan} prepare ${state.run_id}`,
         state_path: resolveRunLayout(root, state.run_id).state.relative,
@@ -713,6 +721,59 @@ async function main(): Promise<void> {
               },
             ]),
           ),
+        },
+        true,
+      )
+      return
+    }
+    case 'verification': {
+      const runId = args[0] && !args[0].startsWith('--') ? args[0] : null
+
+      if (!runId) {
+        const file = loadVerificationFile(root)
+
+        print(
+          {
+            active: file.active,
+            levels: Object.fromEntries(
+              Object.entries(file.levels).map(([name, level]) => [
+                name,
+                { summary: level.summary, gates: level.gates },
+              ]),
+            ),
+          },
+          true,
+        )
+        return
+      }
+
+      if (args[1] === 'set') {
+        const level = requiredArgument(args[2], 'level')
+        const state = setRunVerification(
+          root,
+          runId,
+          level,
+          option(args, '--note', '') ?? '',
+        )
+
+        print({
+          status: 'updated',
+          run_id: runId,
+          verification_level: state.verification?.level,
+          gates: state.verification?.gates ?? {},
+          next_command: `${pan} resume ${runId}`,
+        })
+        return
+      }
+
+      const state = getRunState(root, runId)
+
+      print(
+        {
+          run_id: runId,
+          verification_level: state.verification?.level ?? null,
+          summary: state.verification?.summary ?? null,
+          gates: state.verification?.gates ?? {},
         },
         true,
       )
@@ -1001,6 +1062,13 @@ async function main(): Promise<void> {
       const changes = syncCursorProjection(root, {
         write: hasFlag(args, '--sync'),
       })
+      // Static validation proves each spec is well-formed for the catalog
+      // snapshot; --probe proves what it launches today by spending one
+      // minimal cursor-agent call per distinct spec and comparing the echoed
+      // variant against the catalog's prediction.
+      const probes = hasFlag(args, '--probe')
+        ? probeCursorModels(root, loaded.config.personas)
+        : null
 
       print(
         {
@@ -1015,9 +1083,32 @@ async function main(): Promise<void> {
           ),
           sync_requested: hasFlag(args, '--sync'),
           changed_projections: changes.filter((entry) => entry.changed),
+          ...(probes ? { probes } : {}),
         },
         true,
       )
+
+      if (probes) {
+        const failed = probes.filter((probe) => !probe.ok)
+
+        if (failed.length > 0) {
+          throw new PanError(
+            `${failed.length} model spec(s) did not resolve to the ` +
+              `expected variant on live Cursor: ` +
+              failed
+                .map(
+                  (probe) =>
+                    `'${probe.spec}' (${probe.personas.join(', ')}) → ` +
+                    `${probe.resolved ?? `unresolvable: ${probe.error ?? 'unknown error'}`}` +
+                    (probe.expected ? ` (expected '${probe.expected}')` : ''),
+                )
+                .join('; ') +
+              `. Cursor silently falls back to the model's default variant ` +
+              `on an unusable spec, so fix these before delegating.`,
+            { code: 'UNRESOLVED_CURSOR_MODEL' },
+          )
+        }
+      }
       return
     }
     case 'briefs': {

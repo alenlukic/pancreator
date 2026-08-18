@@ -160,11 +160,28 @@ export function validateStageOutputStrict(input: HandlerInput): HandlerResult {
 
   if (value.result === 'success') {
     const criteria = Array.isArray(value.criteria) ? value.criteria : []
+    // Evidence is demanded only for hard rubric criteria, matching the inline
+    // submit validation. Soft-criterion pass claims without evidence are not
+    // paperwork worth failing a stage over.
+    const hardIds = new Set(
+      isRecord(input.stage) && Array.isArray(input.stage.criteria)
+        ? input.stage.criteria
+            .filter(
+              (item): item is Record<string, unknown> =>
+                isRecord(item) &&
+                item.hard === true &&
+                typeof item.id === 'string',
+            )
+            .map((item) => item.id as string)
+        : [],
+    )
 
     for (const item of criteria) {
       if (
         isRecord(item) &&
         item.result === 'pass' &&
+        typeof item.id === 'string' &&
+        hardIds.has(item.id) &&
         (!Array.isArray(item.evidence) || item.evidence.length === 0)
       ) {
         issues.push({

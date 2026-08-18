@@ -16,8 +16,10 @@ implementation, review, QA evidence, and current workspace.
    version-bearing files.
    In embedded mode, do not modify release metadata.
 4. Review the required governance/artifact diagnostics index. Repair safe runtime-only artifact or path issues directly. If a diagnostic reveals a legitimate implementation, test, security, or release concern, return `blocked` so the operator can decide; otherwise record the disposition and continue. Governance or artifact defects MUST NOT route the workflow back to implementation.
-5. List every active operator gate waiver, deferred acceptance criterion, and
-   linked follow-up case; do not describe waived evidence as an ordinary pass.
+5. List every active operator gate waiver, deferred acceptance criterion,
+   reviewer criterion amendment recorded in the review output, and linked
+   follow-up case; do not describe waived evidence or an amended criterion as
+   an ordinary pass.
 6. Summarize scope, changed files, validation performed, residual risks, and
    rollback guidance.
 7. When Git metadata is available, draft a proposed commit message that

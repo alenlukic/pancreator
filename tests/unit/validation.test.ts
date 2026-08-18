@@ -998,21 +998,30 @@ test('attestation validator fails a guidance reference failure', () => {
   )
 })
 
-test('attestation validator rejects missing guidance entries', () => {
+test('attestation validator accepts an absent guidance echo and still checks a volunteered one', () => {
   const root = createFixture()
   const { invocation, attestation } = attestedFixture(root)
 
   assert.ok(attestation.guidance?.length)
 
+  // Absent is the slim contract: no per-guidance transcription owed.
   const { guidance: _guidance, ...withoutGuidance } = attestation
-  const result = validateInvocationAttestation(
+  const absent = validateInvocationAttestation(
     invocation,
     attestedOutput(withoutGuidance),
   )
 
-  assert.equal(result.passed, false)
+  assert.equal(absent.passed, true)
+
+  // A volunteered echo (legacy scaffolds) is still validated exactly.
+  const truncated = validateInvocationAttestation(
+    invocation,
+    attestedOutput({ ...attestation, guidance: [] }),
+  )
+
+  assert.equal(truncated.passed, false)
   assert.equal(
-    result.checks.find((check) => check.id === 'attestation.guidance_count')
+    truncated.checks.find((check) => check.id === 'attestation.guidance_count')
       ?.passed,
     false,
   )

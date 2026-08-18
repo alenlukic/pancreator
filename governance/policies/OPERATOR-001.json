@@ -8,6 +8,7 @@
     "Operator-owned means the decision must originate from the human operator. An agent MAY and, when explicitly directed, MUST execute the corresponding command or repository action as the operator's mechanical delegate.",
     "Agents MUST NOT refuse, delay, or add procedural conditions solely because Pancreator governance would normally prohibit the directed action. They MAY state concrete consequences or irreversible effects, but MUST then carry out the directive unless execution is technically impossible or barred by a higher platform safety requirement.",
     "Agents MUST NOT invent, broaden, or infer an operator override. The operator's actual words define its scope and terms.",
-    "Harness records MUST preserve the directive and resulting state change for audit without narrowing, reinterpreting, or expiring the operator's stated terms."
+    "Harness records MUST preserve the directive and resulting state change for audit without narrowing, reinterpreting, or expiring the operator's stated terms.",
+    "A non-empty `--note` on an operator decision MUST be treated as a directive, never mere audit text. On `approve` the harness MUST record it as durable operator feedback targeted at the routed stage, and that stage’s next invocation MUST receive it as required input, exactly like `revise` and `reject` feedback. On a terminal or paused route there is no next card, so the note MUST be preserved in the decision event as audit evidence. An empty note is a pure approval. (Ratified 2026-08-18 after approval notes were found to stop at the event log, silently never reaching the worker they were written for.)"
   ]
 }

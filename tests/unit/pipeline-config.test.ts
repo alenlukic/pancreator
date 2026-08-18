@@ -55,7 +55,9 @@ test('config.local.json preferences override the checked-in pipeline config', ()
     path.join(root, 'config.local.json'),
     JSON.stringify({
       active_config: 'complex',
-      defaults: { orchestrator: 'gpt-5.4[effort=low]' },
+      defaults: {
+        orchestrator: 'gpt-5.4[context=272k,reasoning=low,fast=false]',
+      },
     }),
   )
 
@@ -63,7 +65,10 @@ test('config.local.json preferences override the checked-in pipeline config', ()
   const expectedReviewer = resolveConfigPersonas(base.file, 'complex').reviewer
 
   assert.equal(loaded.name, 'complex')
-  assert.equal(loaded.config.personas.orchestrator, 'gpt-5.4[effort=low]')
+  assert.equal(
+    loaded.config.personas.orchestrator,
+    'gpt-5.4[context=272k,reasoning=low,fast=false]',
+  )
   // A preference the local file does not name still comes from config.json.
   assert.equal(loaded.config.personas.reviewer, expectedReviewer)
   // The digest covers the effective configuration, so the local preference is
@@ -96,17 +101,18 @@ test('pipeline config rejects an undefined active config', () => {
   )
 })
 
-test('pipeline config rejects an unknown Cursor model', () => {
-  assert.throws(
-    () =>
-      parsePipelineConfig({
-        schema_version: 1,
-        active_config: 'default',
-        configs: {
-          default: { personas: { coder: 'unknown-cursor-model' } },
-        },
-      }),
-    /not in the Cursor model catalog/u,
+test('pipeline config accepts a Cursor model the catalog has not recorded', () => {
+  // Pancreator cannot enumerate a model catalog it does not own. Rejecting an
+  // unrecorded id bricked config on models Cursor supports, so an unknown id is
+  // unverified rather than invalid.
+  assert.doesNotThrow(() =>
+    parsePipelineConfig({
+      schema_version: 1,
+      active_config: 'default',
+      configs: {
+        default: { personas: { coder: 'unknown-cursor-model' } },
+      },
+    }),
   )
 })
 
@@ -150,24 +156,20 @@ test('pipeline config falls back to defaults for omitted config personas', () =>
   assert.equal(resolveConfigPersonas(file, 'default').investigator, 'kimi-k3')
 })
 
-test('a run snapshot with retired option grammar still resolves its personas', () => {
+test('a run snapshot preserves its exact persona model strings', () => {
   const root = createFixture()
   const snapshot = makePipelineConfigSnapshot(loadPipelineConfig(root))
 
-  // Preserved run-era mappings from audited run 63327: a snapshot keeps the
-  // exact text it was created with, so a later option-grammar change must not
-  // strand the in-flight run.
+  // The run snapshot is the execution contract. Drift comparison may treat
+  // equivalent spellings as equal, but execution must not rewrite them.
   snapshot.personas.coder =
     'gpt-5.6-sol[context=272k,reasoning=high,fast=false]'
   snapshot.personas.reviewer =
     'claude-opus-5[thinking=true,context=300k,effort=high]'
 
-  assert.equal(
-    resolvePersonaModel(snapshot, 'coder'),
-    'gpt-5.6-sol[context=272k,effort=high,fast=false]',
-  )
+  assert.equal(resolvePersonaModel(snapshot, 'coder'), snapshot.personas.coder)
   assert.equal(
     resolvePersonaModel(snapshot, 'reviewer'),
-    'claude-opus-5[context=300k,effort=high]',
+    snapshot.personas.reviewer,
   )
 })

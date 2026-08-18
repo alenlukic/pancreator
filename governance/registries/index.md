@@ -9,6 +9,7 @@ lives in this directory:
 - `validation_registry.json` defines durable automation and validator handlers.
 - `directive_exemptions.json` records reviewed directive-audit exemptions.
 - `projection_manifest.json` declares generated projections from canonical `library/` or `src/` files into disposable local surfaces such as `.cursor/`.
+- `cursor_model_catalog.json` is an optional operator-local catalog. It validates only the current Cursor account's models and is never tracked or installed.
 
 Policy modules remain under `governance/policies/`; handbooks remain under
 `governance/handbooks/`.

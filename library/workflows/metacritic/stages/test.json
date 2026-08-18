@@ -38,7 +38,7 @@
       "id": "test.full_suite",
       "type": "shell",
       "hard": true,
-      "statement": "The configured complete repository verification suite passes.",
+      "statement": "The verification suite selected by the run's verification level passes.",
       "command": "pan repository-check full",
       "timeout_ms": 600000
     }
