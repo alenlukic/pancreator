@@ -1,4 +1,4 @@
-# Pancreator v3 operating card
+# Pancreator v4 operating card
 
 The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in this document indicate requirement levels as defined by RFC 2119 and RFC 8174.
 
