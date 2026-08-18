@@ -150,7 +150,9 @@ function availableReferences(state: RunState): AvailableReference[] {
     const label =
       feedback.decision === 'set-stage'
         ? 'Operator stage repair'
-        : 'Operator remediation feedback'
+        : feedback.decision === 'approve'
+          ? 'Operator directive attached to approval'
+          : 'Operator remediation feedback'
 
     references.push({
       path: feedback.path,
@@ -314,7 +316,9 @@ function selectOperatorFeedback(
     const label =
       feedback.decision === 'set-stage'
         ? 'Operator stage repair'
-        : 'Operator remediation feedback'
+        : feedback.decision === 'approve'
+          ? 'Operator directive attached to approval'
+          : 'Operator remediation feedback'
 
     addReference(references, {
       path: feedback.path,

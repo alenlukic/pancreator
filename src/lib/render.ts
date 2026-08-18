@@ -554,9 +554,11 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
     : referencedDelivery
       ? [
           `2. Launch the named \`${namedAgent}\` agent — the definition at ` +
-            `\`${delegation?.cursor_agent_path}\`, never an ad-hoc subagent, ` +
-            'which would silently run the executor default model instead of ' +
-            'this card’s — and paste the complete contents of ' +
+            `\`${delegation?.cursor_agent_path}\` — from this top-level ` +
+            'chat, never from inside another subagent and never as an ' +
+            'ad-hoc subagent: Cursor honors the model mapping only for a ' +
+            'top-level named launch and silently runs the platform default ' +
+            'otherwise. Paste the complete contents of ' +
             `\`${referencedDelivery}\` verbatim as its prompt. That prompt ` +
             'references this card as the worker contract. A summary, an ' +
             'excerpt, or an added restatement MUST NOT substitute for it.',
@@ -566,9 +568,11 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
         ]
       : [
           `2. Launch the named \`${namedAgent}\` agent — the definition at ` +
-            `\`${delegation?.cursor_agent_path}\`, never an ad-hoc subagent, ` +
-            'which would silently run the executor default model instead of ' +
-            'this card’s — and paste the complete contents of ' +
+            `\`${delegation?.cursor_agent_path}\` — from this top-level ` +
+            'chat, never from inside another subagent and never as an ' +
+            'ad-hoc subagent: Cursor honors the model mapping only for a ' +
+            'top-level named launch and silently runs the platform default ' +
+            'otherwise. Paste the complete contents of ' +
             `\`${delegation?.canonical_markdown_path}\` verbatim as its ` +
             'prompt. A path reference, summary, or excerpt MUST NOT ' +
             'substitute for the card body.',

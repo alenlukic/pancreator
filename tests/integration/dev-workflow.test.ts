@@ -234,6 +234,87 @@ test('dev intake is delegated to the intake writer and still awaits ratification
   assert.equal(getRunState(root, runId).current_stage, 'plan')
 })
 
+test('a non-empty approval note becomes required context for the routed stage', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const intakeStage = stageBySlug(workflow, 'intake')
+  const runId = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Approval note run',
+    involvement: 'standard',
+  }).run_id
+  const first = prepareInvocation(root, runId).invocation
+
+  assert.ok(first)
+  writeJson(
+    path.join(root, first.output.path),
+    makeOutput(root, first, intakeStage),
+  )
+  writeCanonicalDelegation(root, first)
+  assert.equal(
+    submitOutput(root, runId, first.output.path).state.status,
+    'awaiting_operator',
+  )
+
+  const directive =
+    'Resolve whether the plan adopts cross-run cache persistence explicitly.'
+
+  decideRun(root, runId, 'approve', directive)
+
+  const feedback = getRunState(root, runId).operator_feedback?.at(-1)
+
+  assert.ok(feedback)
+  assert.equal(feedback.decision, 'approve')
+  assert.equal(feedback.from_stage, 'intake')
+  assert.equal(feedback.to_stage, 'plan')
+  assert.equal(feedback.note, directive)
+  assert.ok(existsSync(path.join(root, feedback.path)))
+  assert.match(
+    readFileSync(path.join(root, feedback.path), 'utf8'),
+    /Operator directive attached to approval/u,
+  )
+
+  const plan = prepareInvocation(root, runId).invocation
+
+  assert.ok(plan)
+  assert.equal(plan.stage.slug, 'plan')
+
+  const reference = plan.inputs.references.find(
+    (entry) => entry.path === feedback.path,
+  )
+
+  assert.ok(reference)
+  assert.equal(reference.retrieval, 'required')
+})
+
+test('an empty approval note records no operator feedback', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const intakeStage = stageBySlug(workflow, 'intake')
+  const runId = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Plain approval run',
+    involvement: 'standard',
+  }).run_id
+  const first = prepareInvocation(root, runId).invocation
+
+  assert.ok(first)
+  writeJson(
+    path.join(root, first.output.path),
+    makeOutput(root, first, intakeStage),
+  )
+  writeCanonicalDelegation(root, first)
+  submitOutput(root, runId, first.output.path)
+  decideRun(root, runId, 'approve')
+
+  const state = getRunState(root, runId)
+
+  assert.equal(state.current_stage, 'plan')
+  assert.equal(state.operator_feedback, undefined)
+})
+
 test('an operator revision returns dev intake to the intake writer', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'dev')

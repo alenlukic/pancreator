@@ -972,7 +972,7 @@ export interface CurrentInvocationPointer {
 }
 
 export interface OperatorFeedbackItem {
-  decision: 'reject' | 'resume' | 'set-stage' | 'revise'
+  decision: 'approve' | 'reject' | 'resume' | 'set-stage' | 'revise'
   from_stage: string
   to_stage: string
   attempt: number

@@ -47,7 +47,11 @@ whether or not its rule matches.
    ones the diff skipped.
 4. Delegate one subagent per dimension in the lineup, in one message, so they run
    at the same time. Each prompt MUST carry the captured diff path, the intent
-   brief, the dimension charter text, and the finding shape.
+   brief, the dimension charter text, and the finding shape. These dimension
+   agents are nested spawns, so Cursor runs them on its default model by
+   platform behavior — that is accepted for charter-scoped finding work — and
+   they sit at the nesting limit: a dimension agent MUST NOT spawn further
+   subagents.
 5. When a subagent cannot start, apply that charter yourself before you join the
    results. Do not drop a dimension from a stated lineup without saying so.
 6. Join the findings. Merge duplicates, drop what the intent brief already

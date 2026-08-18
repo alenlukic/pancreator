@@ -3296,31 +3296,37 @@ function recordOperatorFeedback(
     `operator-feedback-${index}.md`,
   ).relative
   const heading =
-    decision === 'reject'
-      ? 'Operator rejection'
-      : decision === 'revise'
-        ? 'Operator revision directive'
-        : 'Operator remediation note'
+    decision === 'approve'
+      ? 'Operator directive attached to approval'
+      : decision === 'reject'
+        ? 'Operator rejection'
+        : decision === 'revise'
+          ? 'Operator revision directive'
+          : 'Operator remediation note'
   const body = [
     `# ${heading}: ${fromStage.title} (\`${fromStage.slug}\`)`,
     '',
     `**Run** \`${state.run_id}\` · **Source attempt** ${attempt} · ` +
-      `**Remediation stage** \`${toStage}\``,
+      `**${decision === 'approve' ? 'Directed stage' : 'Remediation stage'}** \`${toStage}\``,
     '',
-    '## Required changes',
+    decision === 'approve' ? '## Operator directive' : '## Required changes',
     '',
     note.trim().length > 0
       ? note.trim()
       : 'The operator rejected this stage without written feedback. ' +
         'Treat the prior output as unacceptable and re-derive the work.',
     '',
-    decision === 'revise'
-      ? 'This is a refinement directive, not a rejection. Keep everything the ' +
-        'operator did not ask you to change, apply the changes above, and ' +
-        'state in your summary what you changed and what you deliberately ' +
-        'left alone.'
-      : 'You MUST address this feedback before the run can reach the operator ' +
-        'gate again.',
+    decision === 'approve'
+      ? `The operator approved the '${fromStage.slug}' stage and attached ` +
+        'this directive for your stage. Apply it as operator-supplied ' +
+        'context; it adds no scope beyond your contract.'
+      : decision === 'revise'
+        ? 'This is a refinement directive, not a rejection. Keep everything the ' +
+          'operator did not ask you to change, apply the changes above, and ' +
+          'state in your summary what you changed and what you deliberately ' +
+          'left alone.'
+        : 'You MUST address this feedback before the run can reach the operator ' +
+          'gate again.',
     '',
   ].join('\n')
 
@@ -3381,6 +3387,22 @@ export function decideRun(
 
     if (decision === 'approve') {
       applyTransition(root, state, stage, approvedOutcome)
+
+      // A non-empty approval note is a directive to the routed stage, not
+      // just audit text: recording it only in the event log silently dropped
+      // it from every later invocation while the operator reasonably believed
+      // the run received it (HR-001, run 63322_Aug-18-1287_box-poller-p). On
+      // a terminal or paused route there is no next card, so the note stays
+      // audit evidence in the decision event below.
+      const routedStage = state.current_stage
+
+      if (
+        note.trim().length > 0 &&
+        routedStage !== null &&
+        state.status === 'running'
+      ) {
+        recordOperatorFeedback(root, state, stage, routedStage, 'approve', note)
+      }
     } else if (decision === 'revise') {
       // Re-run the same stage with the operator's directive as required input.
       // The stage did not fail, so this must not consume its retry budget.
