@@ -38,14 +38,6 @@ const CLAUDE_CODE_OPTION_KEYS = new Set([
   'session-resume',
   'timeout-ms',
 ])
-const CURSOR_OPTION_KEYS = new Set(['context', 'effort', 'fast'])
-
-/** Superseded Cursor option keys, mapped to the key that replaced them. */
-const LEGACY_CURSOR_OPTION_ALIASES = new Map([['reasoning', 'effort']])
-
-/** Superseded Cursor option keys that carry no current equivalent. */
-const LEGACY_CURSOR_OPTION_DROPS = new Set(['thinking'])
-
 function parseBracketOptions(
   optionsText: string | undefined,
   source: string,
@@ -127,42 +119,12 @@ function validateClaudeCodeOptions(
   }
 }
 
-function validateCursorOptions(
-  options: Record<string, string>,
-  source: string,
-): void {
-  for (const [key, value] of Object.entries(options)) {
-    invariant(
-      CURSOR_OPTION_KEYS.has(key),
-      key === 'reasoning'
-        ? `${source} uses obsolete Cursor option 'reasoning'. Use 'effort' instead.`
-        : key === 'thinking'
-          ? `${source} uses obsolete Cursor option 'thinking'. Remove it; no current option replaces it.`
-          : `${source} uses unknown Cursor option '${key}'. Supported options: context, effort, fast.`,
-      { code: 'INVALID_PIPELINE_CONFIG' },
-    )
-
-    if (key === 'context') {
-      invariant(
-        /^\d+k$/u.test(value),
-        `${source} context MUST use a positive '<kilotokens>k' value.`,
-        { code: 'INVALID_PIPELINE_CONFIG' },
-      )
-    } else if (key === 'fast') {
-      invariant(
-        value === 'true' || value === 'false',
-        `${source} fast MUST be true or false.`,
-        { code: 'INVALID_PIPELINE_CONFIG' },
-      )
-    } else if (key === 'effort') {
-      invariant(
-        value === 'low' || value === 'medium' || value === 'high',
-        `${source} effort MUST be low, medium, or high.`,
-        { code: 'INVALID_PIPELINE_CONFIG' },
-      )
-    }
-  }
-}
+// Cursor option names and values are validated against the model catalog
+// registry at resolution time (resolveCursorModelSlug), never here: which
+// parameters exist, and with which values, is per-model data owned by Cursor.
+// Hardcoded per-key checks in this file twice rejected or mangled specs
+// Cursor itself generates (the v3.5.0 `reasoning` rejection, and a `context`
+// pattern that predated the 1m window).
 
 /**
  * Parse one persona mapping string into its executor, model, and options.
@@ -211,8 +173,6 @@ export function parsePersonaMapping(
 
   if (executor === 'claude-code') {
     validateClaudeCodeOptions(options, source)
-  } else {
-    validateCursorOptions(options, source)
   }
 
   return {
@@ -225,14 +185,12 @@ export function parsePersonaMapping(
 }
 
 /**
- * Comparable form of a mapping string, tolerant of superseded option grammar.
- *
- * A run's pipeline snapshot keeps the exact text it was created with, so a later
- * option-grammar change would otherwise make an in-flight run permanently
- * undeliverable: the snapshot cannot be edited, and restoring the retired
- * spelling in `config.json` fails current validation. Comparison therefore
- * normalizes both sides instead of matching raw text. Authoring surfaces keep
- * using `parsePersonaMapping`, which still rejects a retired key outright.
+ * Comparable form of a mapping string: explicit executor prefix and sorted
+ * options, so option order never registers as drift. No key is renamed or
+ * dropped — `reasoning` and `effort` are distinct real parameters on distinct
+ * models — and empty brackets are preserved, because Cursor documents
+ * `model[]` (standard variant) and `model` (default variant) as different
+ * selections.
  */
 export function canonicalPersonaMapping(raw: string): string {
   const trimmed = raw.trim()
@@ -258,7 +216,7 @@ export function canonicalPersonaMapping(raw: string): string {
   }
 
   const model = specMatch.groups.model.trim()
-  const parsed = new Map<string, string>()
+  const options = new Map<string, string>()
   const optionsText = specMatch.groups.options
 
   if (optionsText !== undefined && optionsText.trim().length > 0) {
@@ -272,40 +230,19 @@ export function canonicalPersonaMapping(raw: string): string {
       const key = entry.slice(0, separator).trim()
       const value = entry.slice(separator + 1).trim()
 
-      if (key.length > 0 && value.length > 0 && !parsed.has(key)) {
-        parsed.set(key, value)
+      if (key.length > 0 && value.length > 0 && !options.has(key)) {
+        options.set(key, value)
       }
     }
-  }
-
-  const options = new Map<string, string>()
-
-  for (const [key, value] of parsed) {
-    if (executor !== 'cursor') {
-      options.set(key, value)
-      continue
-    }
-
-    if (LEGACY_CURSOR_OPTION_DROPS.has(key)) {
-      continue
-    }
-
-    const canonicalKey = LEGACY_CURSOR_OPTION_ALIASES.get(key) ?? key
-
-    // A current key always wins over the retired key that aliases onto it.
-    if (canonicalKey !== key && parsed.has(canonicalKey)) {
-      continue
-    }
-
-    options.set(canonicalKey, value)
   }
 
   const rendered = [...options.keys()]
     .sort()
     .map((key) => `${key}=${options.get(key)}`)
     .join(',')
+  const hadBrackets = optionsText !== undefined
 
-  return rendered.length > 0
+  return hadBrackets
     ? `${executor}:${model}[${rendered}]`
     : `${executor}:${model}`
 }

@@ -1,6 +1,6 @@
 import path from 'node:path'
 
-import { writeJsonAtomic } from './io.js'
+import { isRecord, readJson, resolveInside, writeJsonAtomic } from './io.js'
 import { isSelfDevelopmentInstallation } from './project-config.js'
 import { resolveRunLayout } from './run-layout.js'
 import { activeOperatorGateWaivers } from './waivers.js'
@@ -150,7 +150,9 @@ function availableReferences(state: RunState): AvailableReference[] {
     const label =
       feedback.decision === 'set-stage'
         ? 'Operator stage repair'
-        : 'Operator remediation feedback'
+        : feedback.decision === 'approve'
+          ? 'Operator directive attached to approval'
+          : 'Operator remediation feedback'
 
     references.push({
       path: feedback.path,
@@ -250,6 +252,7 @@ function selectStageOutputs(
 
 function selectPriorAttempts(
   references: Map<string, InvocationReference>,
+  root: string,
   state: RunState,
   stage: StageDefinition,
   attempt: number,
@@ -272,6 +275,24 @@ function selectPriorAttempts(
       `Prior ${stage.slug} attempt output (${item.outcome})`,
       'required',
     )
+
+    // A supervisor-failed attempt looks successful in its own record; the
+    // assessment is where the defects live, so a retry needs it in hand.
+    const assessmentPath = resolveRunLayout(root, state.run_id).assessment(
+      `${item.invocation_id}.assessment.json`,
+    ).relative
+
+    try {
+      if (isRecord(readJson(resolveInside(root, assessmentPath)))) {
+        addReference(references, {
+          path: assessmentPath,
+          description: `Supervisor assessment of prior ${stage.slug} attempt ${item.attempt}`,
+          retrieval: 'required',
+        })
+      }
+    } catch {
+      // No assessment was recorded for this attempt.
+    }
   }
 }
 
@@ -295,7 +316,9 @@ function selectOperatorFeedback(
     const label =
       feedback.decision === 'set-stage'
         ? 'Operator stage repair'
-        : 'Operator remediation feedback'
+        : feedback.decision === 'approve'
+          ? 'Operator directive attached to approval'
+          : 'Operator remediation feedback'
 
     addReference(references, {
       path: feedback.path,
@@ -400,12 +423,26 @@ function writeContextManifest(
 export function summarizePriorFailure(
   state: RunState,
   stage: StageDefinition,
+  root?: string,
 ): PriorAttemptFailure | null {
   const previous = [...state.stage_history]
     .reverse()
     .find((item) => item.stage === stage.slug)
 
-  if (!previous || previous.outcome === 'success') {
+  if (!previous) {
+    return null
+  }
+
+  // A supervisor-gated stage records the submission as `success` and fails at
+  // the assessment instead, so the retry card previously carried no reason at
+  // all: the worker was left to re-guess what the supervisor rejected. Fold
+  // the failing assessment into the prior-failure block.
+  const supervisorAssessment =
+    root === undefined
+      ? null
+      : failedSupervisorAssessment(root, state, previous)
+
+  if (previous.outcome === 'success' && !supervisorAssessment) {
     return null
   }
 
@@ -449,6 +486,45 @@ export function summarizePriorFailure(
     failed_deterministic: failedDeterministic,
     validation_errors: previous.validation_errors,
     governance_artifact_warnings: previous.governance_artifact_warnings ?? [],
+    ...(supervisorAssessment
+      ? { supervisor_assessment: supervisorAssessment }
+      : {}),
+  }
+}
+
+/**
+ * The failing supervisor assessment for a stage-history item, when one exists
+ * on disk. Returns null for passing assessments and unreadable artifacts.
+ */
+function failedSupervisorAssessment(
+  root: string,
+  state: RunState,
+  item: StageHistoryItem,
+): PriorAttemptFailure['supervisor_assessment'] | null {
+  const assessmentPath = resolveRunLayout(root, state.run_id).assessment(
+    `${item.invocation_id}.assessment.json`,
+  ).relative
+
+  let value: unknown
+
+  try {
+    value = readJson(resolveInside(root, assessmentPath))
+  } catch {
+    return null
+  }
+
+  if (!isRecord(value) || value.verdict === 'pass') {
+    return null
+  }
+
+  return {
+    verdict: typeof value.verdict === 'string' ? value.verdict : 'fail',
+    summary: typeof value.summary === 'string' ? value.summary : '',
+    action_items: Array.isArray(value.action_items)
+      ? value.action_items.filter(
+          (entry): entry is string => typeof entry === 'string',
+        )
+      : [],
   }
 }
 
@@ -497,7 +573,7 @@ export function buildInvocationInputs(
     stage.context.conditional_stage_outputs,
     'conditional',
   )
-  selectPriorAttempts(references, state, stage, options.attempt)
+  selectPriorAttempts(references, options.root, state, stage, options.attempt)
   selectOperatorFeedback(references, state, stage)
   selectExceptions(references, state, stage, options.workspaceFingerprint)
 

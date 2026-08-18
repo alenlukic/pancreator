@@ -215,6 +215,17 @@ export interface ResolvedOperatorInvolvement {
   >
 }
 
+/**
+ * The verification level a run resolved at creation, snapshotted so later
+ * config edits cannot drift it. `gates` maps shell-criterion ids to the
+ * repository-check profile they effectively run, or `false` to skip.
+ */
+export interface ResolvedVerification {
+  level: string
+  summary: string
+  gates: Record<string, string | false>
+}
+
 export interface WorkflowIndex {
   schema_version: 1
   slug: string
@@ -515,9 +526,12 @@ export interface GuidanceAttestationEntry {
 /**
  * A worker's declaration that it read the complete referenced contract. The
  * declaration is the only observable a harness has: it cannot inspect the model
- * context that received the card. Comparing exact section order, cardinality,
- * ids, and digests against the invocation manifest is what makes a partial or
- * stale read detectable rather than merely discouraged.
+ * context that received the card. The whole-contract digest ties the claim to
+ * the exact card on disk.
+ *
+ * Per-section and per-guidance digest echoes are legacy: they re-proved what
+ * the contract digest already proves at kilobytes of transcription per
+ * attempt, so they are optional and validated only when volunteered.
  *
  * A failed reference carries the read error instead of digests, because a worker
  * that never opened the contract has nothing to hash.
@@ -529,12 +543,7 @@ export type InvocationAttestation =
       contract_path: string
       contract_sha256: string
       status: 'pending' | 'read'
-      sections: InvocationAttestationSection[]
-      /**
-       * One entry per referenced guidance selection in the contract manifest,
-       * in manifest order. Absent on invocations prepared before guidance
-       * attestation existed and on contracts that reference no guidance.
-       */
+      sections?: InvocationAttestationSection[]
       guidance?: GuidanceAttestationEntry[]
     }
   | {
@@ -590,6 +599,7 @@ export interface Invocation {
   workspace_root: string
   gate_overrides?: Record<string, string | false>
   operator_involvement?: ResolvedOperatorInvolvement
+  verification?: ResolvedVerification
   review_mode?: ReviewMode
   workflow: {
     slug: string
@@ -810,6 +820,11 @@ export interface DeterministicResult {
   passed: boolean
   overridden?: boolean
   disabled?: boolean
+  /**
+   * Set when the run's verification level remapped or skipped this gate's
+   * workflow-declared repository-check profile.
+   */
+  verification_level?: string
   explanation?: string
   command?: string
   exit_code?: number | null
@@ -847,6 +862,11 @@ export interface StageHistoryItem {
   output_path: string
   outcome: StageOutcome
   submitted_at: string
+  /**
+   * Invocation id of the prior attempt this submission revised via a merge
+   * patch. Absent for whole-document submissions.
+   */
+  revised_from?: string
   workspace_fingerprint: string
   /**
    * Fingerprint captured when this attempt's invocation was prepared. Together
@@ -905,6 +925,16 @@ export interface PriorAttemptFailure {
   }>
   validation_errors: string[]
   governance_artifact_warnings: string[]
+  /**
+   * The supervisor assessment that failed the prior attempt, when its gate was
+   * supervisor-judged. Without this a retry after a supervisor 'fail' sees a
+   * successful-looking attempt and re-guesses what to fix.
+   */
+  supervisor_assessment?: {
+    verdict: string
+    summary: string
+    action_items: string[]
+  }
 }
 
 export type PendingAction =
@@ -942,7 +972,7 @@ export interface CurrentInvocationPointer {
 }
 
 export interface OperatorFeedbackItem {
-  decision: 'reject' | 'resume' | 'set-stage' | 'revise'
+  decision: 'approve' | 'reject' | 'resume' | 'set-stage' | 'revise'
   from_stage: string
   to_stage: string
   attempt: number
@@ -1032,6 +1062,17 @@ export interface RunState {
   scope_hash?: string
   gate_overrides?: Record<string, string | false>
   operator_involvement?: ResolvedOperatorInvolvement
+  /**
+   * Verification level this run resolved at creation. Absent on runs created
+   * before levels existed, which keep workflow-declared gate behavior.
+   */
+  verification?: ResolvedVerification
+  /**
+   * Invocation ids whose `data.verification_recommendation` has already been
+   * surfaced to the operator, so a declined recommendation does not re-pause
+   * every later prepare.
+   */
+  verification_recommendations_surfaced?: string[]
   /**
    * Review method this run resolved at creation. Snapshotted so a later
    * `config.json` edit cannot change a run already in flight.

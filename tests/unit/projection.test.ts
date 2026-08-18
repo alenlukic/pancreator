@@ -228,6 +228,31 @@ test('workflow start and persona utility surfaces expose worktree selection', ()
   }
 })
 
+test('a stored variant effort reaches the agent file unchanged', () => {
+  // A stored best-of-N variant map is that candidate's execution contract. The
+  // harness rewrote reasoning=xhigh to effort=xhigh on the way to the agent
+  // file Cursor reads, so a candidate ran under a value nobody recorded. The
+  // spec must reach the frontmatter byte-identical.
+  const root = createFixture()
+
+  projectPersonaVariants(
+    root,
+    'bondeadbeef-verbatim',
+    { coder: 'gpt-5.6-sol[context=272k,reasoning=xhigh,fast=true]' },
+    { write: true },
+  )
+
+  const projected = readFileSync(
+    path.join(root, '.cursor', 'agents', 'pan-coder--bondeadbeef-verbatim.md'),
+    'utf8',
+  )
+
+  assert.equal(
+    /^model: (.+)$/mu.exec(projected)?.[1],
+    'gpt-5.6-sol[context=272k,reasoning=xhigh,fast=true]',
+  )
+})
+
 test('run-scoped agent variants carry pinned models without touching the base agents', () => {
   const root = createFixture()
   const baseCoderPath = path.join(root, '.cursor', 'agents', 'pan-coder.md')
@@ -236,7 +261,10 @@ test('run-scoped agent variants carry pinned models without touching the base ag
   const changes = projectPersonaVariants(
     root,
     'bondeadbeef-alpha',
-    { coder: 'gpt-5.4[effort=high]', reviewer: 'claude-opus-5' },
+    {
+      coder: 'gpt-5.4[context=272k,reasoning=high,fast=false]',
+      reviewer: 'claude-opus-5',
+    },
     { write: true },
   )
 
@@ -247,15 +275,14 @@ test('run-scoped agent variants carry pinned models without touching the base ag
       '.cursor/agents/pan-reviewer--bondeadbeef-alpha.md',
     ],
   )
-  // The variant frontmatter carries the executor-native slug, never the raw
-  // bracket spec: Cursor cannot parse the bracket grammar and would silently
-  // fall back to a default model (the audited HR-005 failure).
+  // Frontmatter carries the configured spec verbatim in Cursor's documented
+  // bracket grammar.
   assert.match(
     readFileSync(
       path.join(root, '.cursor', 'agents', 'pan-coder--bondeadbeef-alpha.md'),
       'utf8',
     ),
-    /^model: gpt-5\.4-high$/mu,
+    /^model: gpt-5\.4\[context=272k,reasoning=high,fast=false\]$/mu,
   )
   assert.equal(readFileSync(baseCoderPath, 'utf8'), baseCoder)
 

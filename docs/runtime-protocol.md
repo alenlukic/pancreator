@@ -233,19 +233,43 @@ recorded cause, make a targeted change that addresses it, and provide evidence.
 An unchanged or paperwork-only retry is invalid even when the general attempt
 budget has capacity.
 
+### Verification levels
+
+Every run resolves a verification level at init from the `verification` block
+of `config.json` (built-ins: `minimal`, `light`, `thorough`; default `light`)
+or from `pan init --verification <level>`. The level maps shell-criterion ids
+to the repository-check profile each gate actually runs (or `false` to skip a
+gate), and the run snapshots the resolved mapping so later config edits cannot
+change it. Under the default `light` level the implement loop gates on
+`static` and `fast` and QA re-runs `fast`; the expensive `full` profile never
+runs unless the operator explicitly selects a level whose gates leave it in
+place (`thorough`) — teams and CI own the suites the level leaves out.
+
+Intake and plan workers MAY set `data.verification_recommendation`
+(`{ "level": ..., "reason": ... }`) when the change warrants a different
+level. The next prepare pauses once with an operator decision naming
+`pan verification <run-id> set <level>`; resuming without applying it declines
+the recommendation. `pan verification` lists levels; with a run id it shows or
+changes that run's snapshot.
+
 ### Pre-implementation repository-check baseline
 
-Baselines cover every repository-check profile referenced by any shell criterion anywhere in the run's workflow, captured once before the first `source_allowed` stage edits anything — not only the profiles of the stage being prepared. A terminal gate such as a QA stage's `full` profile otherwise has nothing to compare against, so pre-existing target breakage unrelated to the change under test hard-fails the run. Capturing all profiles up front also amortizes the slow ones.
+Baselines exist to answer one question: did this run's own edits break a
+check? They are captured once, before the first `source_allowed` stage edits
+anything, and cover only the profiles the run's verification level gates its
+source-mutating stages on (for dev: implementation `static`/`fast`). The same
+profiles run again at submission for their owning stages. A profile that still
+reports only normalized diagnostics already present in the baseline is
+recorded as a visible `preexisting_failure` but passes the workflow gate. Any
+new command failure, changed exit behavior, or new/changed diagnostic fails
+the gate. A passing baseline that later fails always blocks.
 
-Immediately before the first coder invocation, the harness runs every configured
-repository-check profile referenced by deterministic stage gates (for example
-implementation `static`/`fast`, QA `full`, and ship `configuration`) and saves
-run-scoped baseline evidence. The same profiles run again at submission for
-their owning stages. A profile that still reports only normalized diagnostics
-already present in the baseline is recorded as a visible
-`preexisting_failure` but passes the workflow gate. Any new command failure,
-changed exit behavior, or new/changed diagnostic fails the gate. A passing
-baseline that later fails always blocks.
+A gate at a later non-mutating stage reuses a baseline when its effective
+profile has one (QA's `fast` re-run under `light`) and is judged on its own
+result otherwise (QA's `full` under `thorough`, ship's `configuration`): the
+expensive profiles are never run early just to have a comparison point. A
+recorded baseline that is unreadable or incompatible still pauses the run
+before delegation.
 
 Baselines are captured only for attempt 1. An upgraded in-flight run that has
 already entered a later implementation attempt does not retroactively baseline

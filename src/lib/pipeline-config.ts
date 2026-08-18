@@ -3,7 +3,6 @@ import path from 'node:path'
 import { invariant } from './errors.js'
 import { resolveCursorModelSlug } from './executors/cursor-catalog.js'
 import {
-  canonicalPersonaMapping,
   parsePersonaMapping,
   type ParsedPersonaMapping,
 } from './executors/mapping.js'
@@ -209,6 +208,21 @@ export function loadPipelineConfig(
     { code: 'INVALID_PIPELINE_CONFIG' },
   )
 
+  // Every named config receives strict validation here when the operator has
+  // supplied an account-local Cursor model catalog. Without one, model specs
+  // remain grammar-only because model availability is account-specific.
+  for (const candidate of Object.keys(file.configs)) {
+    for (const [persona, model] of Object.entries(
+      resolveConfigPersonas(file, candidate),
+    )) {
+      const mapping = parsePersonaMapping(model, `${candidate}.${persona}`)
+
+      if (mapping.executor === 'cursor') {
+        resolveCursorModelSlug(mapping, `${candidate}.${persona}`, root)
+      }
+    }
+  }
+
   return {
     name: resolvedName,
     config: {
@@ -283,15 +297,10 @@ export function resolvePersonaMapping(
     { code: 'INVALID_PIPELINE_CONFIG' },
   )
 
-  // A run snapshot preserves the exact mapping text it was created with, so a
-  // later option-grammar change must not strand the in-flight run: retired
-  // spellings are canonicalized away before parsing. Authoring surfaces load
-  // through loadPipelineConfig and still reject a retired key outright.
-  const isSnapshot = 'source_sha256' in config
-  const mapping = parsePersonaMapping(
-    isSnapshot ? canonicalPersonaMapping(model) : model,
-    `personas.${persona}`,
-  )
+  // The snapshot is the execution contract. Parse its model string verbatim;
+  // canonicalization is only for drift comparison and must not rewrite the
+  // model that cards, attestations, and projected workers use.
+  const mapping = parsePersonaMapping(model, `personas.${persona}`)
 
   if (mapping.executor === 'cursor') {
     resolveCursorModelSlug(mapping, `personas.${persona}`)

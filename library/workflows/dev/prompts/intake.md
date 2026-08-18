@@ -19,6 +19,11 @@ Populate `data.product_spec` with `summary`, `user_stories`, `constraints`,
 at the declared brief source path. Do not run the renderer. Reference the
 rendered HTML as the narrative artifact.
 
+If the change warrants a different verification level than the card shows
+(for example, heavier verification for a risky migration), you MAY set
+`data.verification_recommendation` to `{ "level": <name>, "reason": <why> }`.
+The operator decides; do not assume the change.
+
 ## Done when
 
 The spec faithfully covers the request, user stories describe observable

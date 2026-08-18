@@ -1111,31 +1111,40 @@ export function validateInvocationAttestation(
         : `Attestation contract_sha256 MUST equal '${manifest.contract_sha256}'`,
   })
 
-  const declared = attestationSections(attestation.sections)
-
-  checks.push({
-    id: 'attestation.section_count',
-    passed: declared.length === manifest.sections.length,
-    message:
-      declared.length === manifest.sections.length
-        ? `Attestation covers all ${manifest.sections.length} contract sections`
-        : `Attestation MUST declare all ${manifest.sections.length} contract sections (got ${declared.length})`,
-  })
-
-  for (const [index, section] of manifest.sections.entries()) {
-    const claim = declared[index]
-    const matches = claim?.id === section.id && claim.sha256 === section.sha256
+  // The whole contract digest above already proves the worker held the exact
+  // card. A per-section digest echo re-proves the same thing at ~19 lines of
+  // transcription per attempt, so it is validated only when a worker (or a
+  // legacy scaffold) volunteers it — never required.
+  if (attestation.sections !== undefined) {
+    const declared = attestationSections(attestation.sections)
 
     checks.push({
-      id: `attestation.section.${section.id}`,
-      passed: matches,
-      message: matches
-        ? `Section ${section.id} is attested in order with a matching digest`
-        : `Attestation position ${index + 1} MUST be section '${section.id}' with digest '${section.sha256}'`,
+      id: 'attestation.section_count',
+      passed: declared.length === manifest.sections.length,
+      message:
+        declared.length === manifest.sections.length
+          ? `Attestation covers all ${manifest.sections.length} contract sections`
+          : `Attestation MUST declare all ${manifest.sections.length} contract sections (got ${declared.length})`,
     })
+
+    for (const [index, section] of manifest.sections.entries()) {
+      const claim = declared[index]
+      const matches =
+        claim?.id === section.id && claim.sha256 === section.sha256
+
+      checks.push({
+        id: `attestation.section.${section.id}`,
+        passed: matches,
+        message: matches
+          ? `Section ${section.id} is attested in order with a matching digest`
+          : `Attestation position ${index + 1} MUST be section '${section.id}' with digest '${section.sha256}'`,
+      })
+    }
   }
 
-  checks.push(...guidanceAttestationChecks(manifest, attestation))
+  if (attestation.guidance !== undefined) {
+    checks.push(...guidanceAttestationChecks(manifest, attestation))
+  }
 
   return {
     passed: checks.every((check) => check.passed),
@@ -1378,9 +1387,17 @@ export function validateStageOutput(
     errors.push('summary MUST be a non-empty string')
   }
 
-  for (const key of ['artifacts', 'criteria', 'risks', 'unknowns']) {
+  for (const key of ['artifacts', 'criteria']) {
     if (!Array.isArray(record[key])) {
       errors.push(`${key} MUST be an array`)
+    }
+  }
+
+  // Risks and unknowns are honest-disclosure fields, not paperwork: absent
+  // means none to report, exactly like an empty array.
+  for (const key of ['risks', 'unknowns']) {
+    if (record[key] !== undefined && !Array.isArray(record[key])) {
+      errors.push(`${key} MUST be an array when present`)
     }
   }
 
@@ -1432,8 +1449,13 @@ export function validateStageOutput(
       errors.push(`duplicate criteria result: ${item.id}`)
     }
 
-    if (item.explanation.length === 0) {
-      errors.push(`criteria '${item.id}' explanation MUST be non-empty`)
+    // An explanation is required only where it carries information: why a
+    // criterion failed, or why it does not apply. Demanding prose on every
+    // passing entry produced boilerplate nobody read.
+    if (item.result !== 'pass' && item.explanation.length === 0) {
+      errors.push(
+        `criteria '${item.id}' ${item.result} verdict MUST carry an explanation`,
+      )
     }
 
     criteria.set(item.id, item)
@@ -1451,7 +1473,11 @@ export function validateStageOutput(
       errors.push(`hard criterion '${criterion.id}' MUST NOT be not_applicable`)
     }
 
-    if (evaluation.result === 'pass' && evaluation.evidence.length === 0) {
+    if (
+      criterion.hard &&
+      evaluation.result === 'pass' &&
+      evaluation.evidence.length === 0
+    ) {
       errors.push(`criteria '${criterion.id}' pass claim MUST include evidence`)
     }
   }
@@ -1656,6 +1682,15 @@ export function loadRepositoryCheckBaseline(
   const pointer = state.repository_check_baselines?.[profileName]
 
   if (!pointer) {
+    // Under a verification level, only source-mutating stage profiles are
+    // baselined, so an absent pointer is the expected state for a later gate's
+    // heavier profile: that gate is judged on its own result. A run created
+    // before levels existed baselined every gated profile, so an absent
+    // pointer there is a harness defect and the gate fails closed.
+    if (state.verification) {
+      return {}
+    }
+
     return {
       reason:
         `No pre-implementation baseline was recorded for repository-check ` +
@@ -1836,9 +1871,19 @@ function runShellCheck(
     requestedCommand,
     commandOverride !== undefined,
   )
-  const command = resolution.command
+  // The run's verification level may gate this criterion on a different
+  // repository-check profile than the workflow declares. An explicit command
+  // override still wins: resolution then carries no profile to remap.
+  const levelRemap =
+    resolution.profile_name !== null
+      ? state.verification?.gates[criterion.id]
+      : undefined
+  const remappedProfile = typeof levelRemap === 'string' ? levelRemap : null
+  const command = remappedProfile
+    ? `pan repository-check ${remappedProfile}`
+    : resolution.command
   const startedAt = new Date().toISOString()
-  const profileName = resolution.profile_name
+  const profileName = remappedProfile ?? resolution.profile_name
 
   let exitCode: number | null
   let signal: NodeJS.Signals | null = null
@@ -2024,6 +2069,9 @@ function runShellCheck(
           overridden: true,
           explanation: 'Gate command was overridden by run configuration.',
         }),
+    ...(remappedProfile && state.verification
+      ? { verification_level: state.verification.level }
+      : {}),
     command,
     exit_code: exitCode,
     timed_out: timedOut,
@@ -2341,6 +2389,12 @@ export function evaluateDeterministicCriteria(
         ? gateOverrides[criterion.id]
         : undefined
 
+      const verificationSkip =
+        override === undefined &&
+        state.verification !== undefined &&
+        state.verification.gates[criterion.id] === false &&
+        repositoryCheckProfileName(criterion.command ?? '') !== null
+
       if (override === false) {
         results.push({
           id: criterion.id,
@@ -2349,6 +2403,20 @@ export function evaluateDeterministicCriteria(
           passed: true,
           disabled: true,
           explanation: 'Gate disabled by run configuration.',
+          command: criterion.command,
+          workspace_fingerprint: afterSnapshot.fingerprint,
+        })
+      } else if (verificationSkip) {
+        results.push({
+          id: criterion.id,
+          type: 'shell',
+          hard: Boolean(criterion.hard),
+          passed: true,
+          disabled: true,
+          verification_level: state.verification?.level,
+          explanation:
+            `Gate skipped by verification level ` +
+            `'${state.verification?.level}'.`,
           command: criterion.command,
           workspace_fingerprint: afterSnapshot.fingerprint,
         })

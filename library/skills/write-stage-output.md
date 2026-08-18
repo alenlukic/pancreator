@@ -24,18 +24,22 @@ references both while carrying the structured fields the harness checks.
 5. Populate every required `data` field with the declared type.
 6. State risks and unknowns honestly; an empty list means you checked, not that
    you skipped.
-7. When the output carries `invocation_attestation`, the scaffold writes status
-   `pending`. Change it to `read` after you read the complete contract, or to
-   `reference_failed` with the concrete error and result `blocked`. Submission
-   rejects `pending`.
-8. When the attestation carries `guidance` entries, decide each one yourself:
-   set `read` after you read the selection from its source file, `skipped` with
-   the concrete `reason` when the read trigger does not apply to your task, or
-   `reference_failed` with the concrete `error` when the selection is
-   unreadable. Guidance digests cover the selected text after leading and
-   trailing whitespace is trimmed; when the source file no longer matches its
-   digest, read the exact selected bytes from the invocation JSON snapshot and
-   still declare `read`. Submission rejects `pending`.
+7. When the output carries `invocation_attestation`, the scaffold prefills the
+   identity fields and status `pending`. Change the status to `read` after you
+   read the complete contract, or to `reference_failed` with the concrete error
+   and result `blocked`. Submission rejects `pending`. Do not transcribe
+   per-section or per-guidance digest tables into the attestation — the single
+   `contract_sha256` is the whole requirement. Read every referenced guidance
+   selection the card lists; when a source file no longer matches its digest,
+   read the exact selected bytes from the invocation JSON snapshot.
+8. On attempt 2 or later, you may submit a revision instead of re-emitting the
+   whole document: a JSON file of the form
+   `{ "revises": "<prior-invocation-id>", "patch": { ... } }`, where `patch` is
+   an RFC 7386 JSON merge patch over the prior attempt's output (objects merge
+   recursively, arrays replace whole, `null` deletes). The patch has to set
+   `invocation_id` and `invocation_attestation` to the current card's values.
+   The harness applies the patch and validates the merged document; keep
+   everything you were not asked to change.
 
 The harness rerenders the declared brief source during submission. A missing or
 invalid source, a non-HTML primary artifact, or artifact paths that differ from

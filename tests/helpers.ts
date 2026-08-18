@@ -524,6 +524,7 @@ function requiredData(
             },
           },
         ],
+        open_question_dispositions: [],
       }
     case 'implement':
       return {

@@ -233,6 +233,32 @@ a workflow default, so you know where the run will stop before it starts. The ru
 snapshots that resolution, so editing `config.json` afterwards never changes a
 run in flight.
 
+## Set how thoroughly a run verifies
+
+`config.json.verification` selects a named verification level: which
+repository-check profile each shell gate actually runs. List the levels with
+`./bin/pan verification`, select one per run with
+`./bin/pan init --verification <level>`, and inspect or change an in-flight
+run with `./bin/pan verification <run-id> [set <level>]`.
+
+Built-in levels:
+
+- `minimal` — static and fast checks gate the implement loop; QA runs manual
+  cases without re-running a suite.
+- `light` (default) — as minimal, plus QA re-runs the fast suite against the
+  pre-implementation baseline.
+- `thorough` — QA runs the complete `full` profile, judged on its own result.
+  Explicit opt-in only.
+
+The default is deliberately lightweight: your team runs tests locally and CI
+runs them again, so the harness re-running integration and end-to-end suites
+inside the delivery loop buys long waits for evidence that already exists. The
+`full` profile never runs — and is never baselined before implementation —
+unless you select a level whose gates leave it in place. Intake and plan
+workers may recommend a different level for a risky change; the run pauses
+once with the exact apply command, and resuming declines it. Runs snapshot the
+resolved level at init.
+
 `ship` cannot be relaxed by a profile: `SHIP-001` requires a pause before commit,
 push, merge, publication, or deployment. You keep every in-the-moment override
 under `OPERATOR-001`.

@@ -26,23 +26,10 @@
   "unknowns": [],
   "invocation_attestation": {
     "invocation_id": "copy-from-invocation-card",
+    "model": "copy-effective-model-from-invocation-card",
     "contract_path": "copy-contract_manifest.contract_path-from-invocation-json",
     "contract_sha256": "copy-contract_manifest.contract_sha256-from-invocation-json",
-    "status": "read",
-    "sections": [
-      {
-        "id": "copy-each-contract_manifest.sections[].id-in-order",
-        "sha256": "copy-the-matching-contract_manifest.sections[].sha256"
-      }
-    ],
-    "guidance": [
-      {
-        "policy_id": "copy-each-contract_manifest.guidance[].policy_id-in-order",
-        "source_path": "copy-the-matching-contract_manifest.guidance[].source_path",
-        "content_sha256": "copy-the-matching-contract_manifest.guidance[].content_sha256",
-        "status": "read-after-reading-or-skipped-with-reason-when-the-trigger-does-not-apply"
-      }
-    ]
+    "status": "read"
   },
   "workspace_changes": {
     "attribution": "unknown",

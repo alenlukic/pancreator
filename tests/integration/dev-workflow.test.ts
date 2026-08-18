@@ -234,6 +234,87 @@ test('dev intake is delegated to the intake writer and still awaits ratification
   assert.equal(getRunState(root, runId).current_stage, 'plan')
 })
 
+test('a non-empty approval note becomes required context for the routed stage', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const intakeStage = stageBySlug(workflow, 'intake')
+  const runId = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Approval note run',
+    involvement: 'standard',
+  }).run_id
+  const first = prepareInvocation(root, runId).invocation
+
+  assert.ok(first)
+  writeJson(
+    path.join(root, first.output.path),
+    makeOutput(root, first, intakeStage),
+  )
+  writeCanonicalDelegation(root, first)
+  assert.equal(
+    submitOutput(root, runId, first.output.path).state.status,
+    'awaiting_operator',
+  )
+
+  const directive =
+    'Resolve whether the plan adopts cross-run cache persistence explicitly.'
+
+  decideRun(root, runId, 'approve', directive)
+
+  const feedback = getRunState(root, runId).operator_feedback?.at(-1)
+
+  assert.ok(feedback)
+  assert.equal(feedback.decision, 'approve')
+  assert.equal(feedback.from_stage, 'intake')
+  assert.equal(feedback.to_stage, 'plan')
+  assert.equal(feedback.note, directive)
+  assert.ok(existsSync(path.join(root, feedback.path)))
+  assert.match(
+    readFileSync(path.join(root, feedback.path), 'utf8'),
+    /Operator directive attached to approval/u,
+  )
+
+  const plan = prepareInvocation(root, runId).invocation
+
+  assert.ok(plan)
+  assert.equal(plan.stage.slug, 'plan')
+
+  const reference = plan.inputs.references.find(
+    (entry) => entry.path === feedback.path,
+  )
+
+  assert.ok(reference)
+  assert.equal(reference.retrieval, 'required')
+})
+
+test('an empty approval note records no operator feedback', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const intakeStage = stageBySlug(workflow, 'intake')
+  const runId = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Plain approval run',
+    involvement: 'standard',
+  }).run_id
+  const first = prepareInvocation(root, runId).invocation
+
+  assert.ok(first)
+  writeJson(
+    path.join(root, first.output.path),
+    makeOutput(root, first, intakeStage),
+  )
+  writeCanonicalDelegation(root, first)
+  submitOutput(root, runId, first.output.path)
+  decideRun(root, runId, 'approve')
+
+  const state = getRunState(root, runId)
+
+  assert.equal(state.current_stage, 'plan')
+  assert.equal(state.operator_feedback, undefined)
+})
+
 test('an operator revision returns dev intake to the intake writer', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'dev')
@@ -554,6 +635,115 @@ test('implementation same-reason failure twice pauses before a third attempt', (
   assert.match(second.state.pause_reason ?? '', /same deterministic reason/u)
 })
 
+test('a retry may submit a merge-patch revision instead of the whole document', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Revision submission fixture',
+  })
+  const runId = state.run_id
+  const implementStage = stageBySlug(workflow, 'implement')
+
+  setRunStage(root, runId, 'implement', 'Seed a failing first attempt.')
+
+  const first = submitStageOutput(root, runId, implementStage, 'failure', [
+    'implement.acceptance_claimed',
+  ])
+  const firstInvocationId = first.record.invocation_id
+  const firstOutput = JSON.parse(
+    readFileSync(
+      path.join(root, first.state.stage_history[0].output_path),
+      'utf8',
+    ),
+  ) as Record<string, Record<string, unknown>>
+
+  assert.equal(first.record.outcome, 'failure')
+  assert.equal(first.state.current_stage, 'implement')
+
+  const prepared = prepareInvocation(root, runId)
+  const invocation = prepared.invocation
+
+  assert.ok(invocation)
+  assert.equal(invocation.attempt, 2)
+  // The retry card names the prior invocation and teaches the revision form.
+  const card = readFileSync(
+    path.join(root, prepared.state.current_invocation?.markdown_path ?? ''),
+    'utf8',
+  )
+
+  assert.match(card, /"revises"/u)
+  assert.ok(card.includes(firstInvocationId))
+
+  // Author attempt 2's brief (paths differ per attempt), then submit only a
+  // patch: flip the verdicts, attest to the new card, add the remediation.
+  const template = makeOutput(root, invocation, implementStage)
+  const patch = {
+    revises: firstInvocationId,
+    patch: {
+      invocation_id: invocation.invocation_id,
+      result: 'success',
+      $operator: template.$operator,
+      artifacts: template.artifacts,
+      criteria: template.criteria,
+      invocation_attestation: template.invocation_attestation,
+      data: {
+        implementation: {
+          remediation: [
+            {
+              cause: 'Acceptance claim lacked evidence',
+              action: 'Mapped every criterion to fixture evidence',
+              evidence: ['request.md'],
+            },
+          ],
+        },
+      },
+    },
+  }
+
+  writeJson(path.join(root, invocation.output.path), patch)
+  writeCanonicalDelegation(root, invocation)
+
+  const submitted = submitOutput(root, runId, invocation.output.path)
+
+  assert.equal(submitted.record.outcome, 'success')
+  assert.equal(submitted.state.current_stage, 'review')
+
+  const historyItem = submitted.state.stage_history.find(
+    (item) => item.invocation_id === invocation.invocation_id,
+  )
+
+  assert.equal(historyItem?.revised_from, firstInvocationId)
+
+  // The merged document carries attempt 1's untouched content plus the patch.
+  const merged = JSON.parse(
+    readFileSync(path.join(root, invocation.output.path), 'utf8'),
+  ) as Record<string, Record<string, unknown>>
+
+  assert.equal(
+    merged.invocation_id as unknown as string,
+    invocation.invocation_id,
+  )
+  assert.equal(merged.result as unknown as string, 'success')
+  assert.deepEqual(
+    (merged.data.implementation as Record<string, unknown>).changed_files,
+    (firstOutput.data.implementation as Record<string, unknown>).changed_files,
+  )
+  assert.equal(
+    (
+      (merged.data.implementation as Record<string, unknown>)
+        .remediation as unknown[]
+    ).length,
+    1,
+  )
+
+  // Resubmitting the same patch is idempotent.
+  const replay = submitOutput(root, runId, invocation.output.path)
+
+  assert.equal(replay.idempotent, true)
+})
+
 test('unchanged pre-existing repository-check failures do not block implementation', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'dev')
@@ -611,7 +801,7 @@ test('unchanged pre-existing repository-check failures do not block implementati
   assert.equal(staticResult?.baseline_evidence_path, baseline?.artifact_path)
 })
 
-test('pre-implementation baselines capture every profile the workflow gates on', () => {
+test('pre-implementation baselines capture only source-mutating gate profiles', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'dev')
   const state = createRun(root, {
@@ -638,10 +828,12 @@ test('pre-implementation baselines capture every profile the workflow gates on',
 
   assert.equal(baselines.static?.status, 'passed')
   assert.equal(baselines.fast?.status, 'passed')
-  // A terminal gate such as the QA stage's `full` profile needs a baseline too,
-  // or pre-existing target breakage unrelated to the change hard-fails the run.
-  assert.equal(baselines.full?.status, 'failed')
-  assert.equal(baselines.configuration?.status, 'passed')
+  // Baselines answer one question — did this run's own edits break a check —
+  // so only the implement loop's profiles are captured. The expensive `full`
+  // profile and the ship-stage configuration check never run before the coder
+  // starts; their gates are judged on their own results.
+  assert.equal(baselines.full, undefined)
+  assert.equal(baselines.configuration, undefined)
 })
 
 test('a failed environment probe pauses before source-stage delegation', () => {
@@ -686,13 +878,65 @@ test('a failed environment probe pauses before source-stage delegation', () => {
   assert.equal(reloaded.revision, prepared.state.revision)
 })
 
-test('a pre-existing full-profile failure does not block the QA gate', () => {
+test('the default light level gates QA on the fast profile and never runs full', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'dev')
   const state = createRun(root, {
     workflowSlug: 'dev',
     requestPath: 'request.md',
-    title: 'Pre-broken full profile fixture',
+    title: 'Light verification fixture',
+  })
+  const runId = state.run_id
+  const fullMarker = path.join(root, 'runtime', 'full-ran.txt')
+
+  assert.equal(state.verification?.level, 'light')
+
+  writeJson(path.join(root, 'runtime/repository-checks.json'), {
+    schema_version: 1,
+    profiles: {
+      static: { probes: [], commands: [`node -e "process.exit(0)"`] },
+      fast: { probes: [], commands: [`node -e "process.exit(0)"`] },
+      full: {
+        probes: [],
+        commands: [
+          `node -e "require('node:fs').appendFileSync('runtime/full-ran.txt','x'); process.exit(1)"`,
+        ],
+      },
+      configuration: { probes: [], commands: [`node -e "process.exit(0)"`] },
+    },
+  })
+
+  setRunStage(root, runId, 'implement', 'Baseline the implement-loop profiles.')
+  submitStageOutput(root, runId, stageBySlug(workflow, 'implement'), 'success')
+
+  setRunStage(root, runId, 'test', 'Run QA under the light level.')
+  const submitted = submitStageOutput(
+    root,
+    runId,
+    stageBySlug(workflow, 'test'),
+    'success',
+  )
+  const fullSuite = submitted.record.evaluation.deterministic.find(
+    (item) => item.id === 'test.full_suite',
+  )
+
+  assert.ok(fullSuite)
+  assert.equal(fullSuite.command, 'pan repository-check fast')
+  assert.equal(fullSuite.verification_level, 'light')
+  assert.equal(fullSuite.passed, true)
+  assert.equal(submitted.record.outcome, 'success')
+  // The broken full profile never executed at any point in the run.
+  assert.equal(existsSync(fullMarker), false)
+})
+
+test('thorough verification runs full at QA on its own result', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Thorough verification fixture',
+    verification: 'thorough',
   })
   const runId = state.run_id
 
@@ -706,15 +950,18 @@ test('a pre-existing full-profile failure does not block the QA gate', () => {
     },
   })
 
-  setRunStage(root, runId, 'implement', 'Baseline the pre-broken full profile.')
+  setRunStage(root, runId, 'implement', 'Baseline the implement-loop profiles.')
   submitStageOutput(root, runId, stageBySlug(workflow, 'implement'), 'success')
 
-  setRunStage(
-    root,
-    runId,
-    'test',
-    'Run QA against the pre-broken full profile.',
+  // Even under thorough, full is never baselined before implementation: the
+  // operator opted into absolute judgment, so a pre-existing failure fails
+  // the gate and needs an operator decision instead of passing on a delta.
+  assert.equal(
+    getRunState(root, runId).repository_check_baselines?.full,
+    undefined,
   )
+
+  setRunStage(root, runId, 'test', 'Run QA under the thorough level.')
   const submitted = submitStageOutput(
     root,
     runId,
@@ -726,9 +973,10 @@ test('a pre-existing full-profile failure does not block the QA gate', () => {
   )
 
   assert.ok(fullSuite)
-  assert.equal(fullSuite.preexisting_failure, true)
-  assert.equal(fullSuite.passed, true)
-  assert.equal(submitted.record.outcome, 'success')
+  assert.equal(fullSuite.command, 'pan repository-check full')
+  assert.equal(fullSuite.passed, false)
+  assert.equal(fullSuite.preexisting_failure, undefined)
+  assert.equal(submitted.record.outcome, 'failure')
 })
 
 test('a scaled QA timeout preserves the environment-blocked route', () => {
@@ -736,19 +984,24 @@ test('a scaled QA timeout preserves the environment-blocked route', () => {
   const configuredTimeoutMs = 1_000
   const commandDelayMs = 1_500
   const resolvedTimeoutMs = 5_000
-  const testStagePath = path.join(
-    root,
-    'library/workflows/dev/stages/test.json',
-  )
-  const testStageDefinition = JSON.parse(
-    readFileSync(testStagePath, 'utf8'),
-  ) as StageDefinition
-  const fullSuiteCriterion = testStageDefinition.criteria.find(
-    (criterion) => criterion.id === 'test.full_suite',
-  )
-  assert.ok(fullSuiteCriterion)
-  fullSuiteCriterion.timeout_ms = resolvedTimeoutMs
-  writeJson(testStagePath, testStageDefinition)
+
+  // Under the light level the QA gate runs the fast profile, so the
+  // infrastructure scenario and the timeout scaling both route through it.
+  for (const [stageFile, criterionId] of [
+    ['test.json', 'test.full_suite'],
+    ['implement.json', 'implement.unit_tests'],
+  ] as const) {
+    const stagePath = path.join(root, 'library/workflows/dev/stages', stageFile)
+    const stageDefinition = JSON.parse(
+      readFileSync(stagePath, 'utf8'),
+    ) as StageDefinition
+    const criterion = stageDefinition.criteria.find(
+      (item) => item.id === criterionId,
+    )
+    assert.ok(criterion)
+    criterion.timeout_ms = resolvedTimeoutMs
+    writeJson(stagePath, stageDefinition)
+  }
 
   const workflow = loadWorkflow(root, 'dev')
   const state = createRun(root, {
@@ -761,7 +1014,7 @@ test('a scaled QA timeout preserves the environment-blocked route', () => {
   // The emitted diagnostic must carry a genuine infrastructure artifact
   // shape (a pytest collection error): the classifier anchors on shapes, not
   // keyword substrings, so a line merely containing 'timeout' never counts.
-  const fullCommand =
+  const infrastructureCommand =
     `node -e "const fs=require('node:fs'); ` +
     `setTimeout(() => { const value=fs.readFileSync('runtime/environment.txt','utf8').trim(); ` +
     `fs.appendFileSync('runtime/completed.txt',value+'\\n'); ` +
@@ -772,17 +1025,12 @@ test('a scaled QA timeout preserves the environment-blocked route', () => {
     schema_version: 1,
     profiles: {
       static: { probes: [], commands: ['node -e "process.exit(0)"'] },
-      fast: { probes: [], commands: ['node -e "process.exit(0) /* fast */"'] },
-      full: {
+      fast: {
         timeout_ms: configuredTimeoutMs,
         probes: [],
-        commands: [fullCommand],
+        commands: [infrastructureCommand],
       },
-      secondary: {
-        timeout_ms: configuredTimeoutMs,
-        probes: [],
-        commands: [fullCommand],
-      },
+      full: { probes: [], commands: ['node -e "process.exit(1) /* full */"'] },
       configuration: {
         probes: [],
         commands: ['node -e "process.exit(0) /* configuration */"'],
@@ -797,11 +1045,11 @@ test('a scaled QA timeout preserves the environment-blocked route', () => {
     stageBySlug(workflow, 'implement'),
     'success',
   )
-  const fullBaseline = getRunState(root, state.run_id)
-    .repository_check_baselines?.full
-  assert.ok(fullBaseline)
+  const fastBaseline = getRunState(root, state.run_id)
+    .repository_check_baselines?.fast
+  assert.ok(fastBaseline)
   const baselineResult = JSON.parse(
-    readFileSync(path.join(root, fullBaseline.artifact_path), 'utf8'),
+    readFileSync(path.join(root, fastBaseline.artifact_path), 'utf8'),
   ) as {
     result: {
       timeout_ms: number
@@ -827,7 +1075,8 @@ test('a scaled QA timeout preserves the environment-blocked route', () => {
     baselineCommand.stderr,
     /ERROR collecting tests\/integration baseline/u,
   )
-  assert.equal(readFileSync(completionPath, 'utf8'), 'baseline\n')
+  // Baseline capture plus the implement gate's own fast run.
+  assert.equal(readFileSync(completionPath, 'utf8'), 'baseline\nbaseline\n')
 
   writeFileSync(environmentPath, 'current\n')
   setRunStage(root, state.run_id, 'test', 'Recheck the QA infrastructure.')
@@ -843,7 +1092,11 @@ test('a scaled QA timeout preserves the environment-blocked route', () => {
   )
 
   assert.equal(fullSuite?.timed_out, false)
-  assert.equal(readFileSync(completionPath, 'utf8'), 'baseline\ncurrent\n')
+  assert.equal(fullSuite?.command, 'pan repository-check fast')
+  assert.equal(
+    readFileSync(completionPath, 'utf8'),
+    'baseline\nbaseline\ncurrent\n',
+  )
   assert.equal(fullSuite?.environment_blocked, true)
   assert.equal(submitted.record.outcome, 'failure')
   assert.equal(submitted.state.status, 'paused')
@@ -1102,7 +1355,7 @@ test('a missing baseline artifact pauses the run before delegation', () => {
   )
 })
 
-test('a missing baseline map is not recaptured after implementation', () => {
+test('a wiped baseline map degrades gates to absolute judgment without recapture', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'dev')
   const state = createRun(root, {
@@ -1111,6 +1364,7 @@ test('a missing baseline map is not recaptured after implementation', () => {
     title: 'Missing baseline map fixture',
   })
   const runId = state.run_id
+  const implementStage = stageBySlug(workflow, 'implement')
 
   writeJson(path.join(root, 'runtime/repository-checks.json'), {
     schema_version: 1,
@@ -1120,7 +1374,7 @@ test('a missing baseline map is not recaptured after implementation', () => {
     },
   })
   setRunStage(root, runId, 'implement', 'Capture baselines before damage.')
-  submitStageOutput(root, runId, stageBySlug(workflow, 'implement'), 'success')
+  submitStageOutput(root, runId, implementStage, 'success')
 
   const statePath = resolveRunLayout(root, runId).state.absolute
   const damagedState = JSON.parse(readFileSync(statePath, 'utf8')) as Record<
@@ -1132,14 +1386,19 @@ test('a missing baseline map is not recaptured after implementation', () => {
   writeJson(statePath, damagedState)
   setRunStage(root, runId, 'implement', 'Re-enter with no baseline pointers.')
 
-  const prepared = prepareInvocation(root, runId)
-
-  assert.equal(prepared.invocation, null)
-  assert.equal(prepared.state.status, 'paused')
-  assert.match(
-    prepared.state.pause_reason ?? '',
-    /No pre-implementation baseline was recorded/u,
+  // The capture-once invariant holds: nothing is recaptured after
+  // implementation. An absent pointer under a verification level means the
+  // gate is judged on its own result instead of failing closed, so the run
+  // proceeds without an operator pause.
+  const submitted = submitStageOutput(root, runId, implementStage, 'success')
+  const staticResult = submitted.record.evaluation.deterministic.find(
+    (item) => item.id === 'implement.lint',
   )
+
+  assert.equal(submitted.record.outcome, 'success')
+  assert.equal(staticResult?.passed, true)
+  assert.equal(staticResult?.baseline_evidence_path, undefined)
+  assert.deepEqual(getRunState(root, runId).repository_check_baselines, {})
 })
 
 test('a repository-check gate fails closed when its baseline disappears', () => {

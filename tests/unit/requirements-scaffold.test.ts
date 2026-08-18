@@ -103,25 +103,20 @@ test('scaffold copies the contract manifest into a pending attestation', () => {
   assert.equal(attestation.invocation_id, 'implement-1')
   assert.equal(attestation.model, 'gpt-5.6-sol')
   assert.equal(attestation.contract_path, contractPath)
-  assert.deepEqual(
-    attestation.status === 'pending' ? attestation.sections : [],
-    [
-      { id: '001-preamble', sha256: 'b'.repeat(64) },
-      { id: '002-task', sha256: 'c'.repeat(64) },
-    ],
+  assert.equal(
+    attestation.status === 'pending' ? attestation.contract_sha256 : '',
+    'a'.repeat(64),
   )
-  // The same holds for guidance reads: the digests are prefilled from the
-  // manifest, the decision stays with the worker.
-  assert.deepEqual(
-    attestation.status === 'pending' ? attestation.guidance : [],
-    [
-      {
-        policy_id: 'ENG-001',
-        source_path: 'governance/handbooks/eng/engineering.md',
-        content_sha256: 'd'.repeat(64),
-        status: 'pending',
-      },
-    ],
+  // The whole-contract digest is the entire read requirement. Per-section and
+  // per-guidance digest echoes were transcription theater and are no longer
+  // scaffolded.
+  assert.equal(
+    attestation.status === 'pending' ? attestation.sections : null,
+    undefined,
+  )
+  assert.equal(
+    attestation.status === 'pending' ? attestation.guidance : null,
+    undefined,
   )
 })
 
