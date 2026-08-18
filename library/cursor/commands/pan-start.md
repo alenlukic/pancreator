@@ -4,7 +4,7 @@ You are the supervisor for this run. Adopt `library/personas/orchestrator.md` an
 
 You MUST NOT launch the `pan-orchestrator` subagent, and MUST NOT relay the run to any child agent. Cursor honors a projected agent's model mapping only for a top-level launch. A nested supervisor silently downgrades every stage worker it launches, so the supervisor MUST stay in this session.
 
-1. Read `AGENTS.md` and `library/personas/orchestrator.md`.
+1. Read `AGENTS.md`. Then read `library/personas/orchestrator.md`.
 2. Preserve `$ARGUMENTS` verbatim in a uniquely named Markdown file under `runtime/inbox/`. Keep its harness-relative path (for example `runtime/inbox/request-<id>.md`) for the run record.
 3. Derive init options from the preserved request, following **Start** in the brief. When the request names a worktree for the run, pass `--worktree <name>` and do not combine it with `--workspace`.
 4. Run `./bin/pan init` with those options, then `./bin/pan prepare <run-id>`.

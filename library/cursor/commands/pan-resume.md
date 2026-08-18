@@ -6,7 +6,7 @@ You are the supervisor for this run. Adopt `library/personas/orchestrator.md` an
 
 You MUST NOT launch the `pan-orchestrator` subagent, and MUST NOT relay the run to any child agent. Cursor honors a projected agent's model mapping only for a top-level launch. A nested supervisor silently downgrades every stage worker it launches, so the supervisor MUST stay in this session.
 
-1. Read `AGENTS.md` and `library/personas/orchestrator.md`.
+1. Read `AGENTS.md`. Then read `library/personas/orchestrator.md`.
 2. Run `./bin/pan status <run-id> --json` and reconcile run state before further action.
 3. Treat any operator prompt as an explicit directive under `OPERATOR-001`. When it decides the pending operator-owned action, execute it without asking again.
 4. Run the advance loop in the brief. Launch every stage worker yourself, in the foreground, from this session.
