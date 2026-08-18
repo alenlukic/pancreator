@@ -9,9 +9,44 @@ const CATALOG_RELATIVE_PATH = 'governance/registries/cursor_model_catalog.json'
 
 export interface CursorCatalogModel {
   id: string
+  displayName: string
   aliases: string[]
   /** Parameter id → the values Cursor declares for it on this model. */
   parameters: Map<string, Set<string>>
+  /** Parameter ids in Cursor's declared order, for display composition. */
+  parameterOrder: string[]
+  /** Parameter id → value → display fragment, null when the value adds none. */
+  valueDisplays: Map<string, Map<string, string | null>>
+  /**
+   * The declared variant grid as parameter records, or null when the model
+   * records none. Valid combinations are not always the full product of
+   * parameter values, and a grid may carry hidden dimensions beyond the
+   * public parameters (claude-opus-5 declares a `cyber` axis its parameter
+   * list omits), so membership is judged by projection onto the keys a spec
+   * names.
+   */
+  variants: Array<Record<string, string>> | null
+}
+
+/** Canonical `key=value` summary of a set of bracket options. */
+export function variantCombinationKey(options: Record<string, string>): string {
+  return Object.entries(options)
+    .map(([key, value]) => `${key}=${value}`)
+    .sort()
+    .join(',')
+}
+
+/**
+ * Whether some declared variant agrees with the options on every key the
+ * options name. Hidden grid dimensions the spec cannot address are ignored.
+ */
+export function variantCombinationExists(
+  variants: Array<Record<string, string>>,
+  options: Record<string, string>,
+): boolean {
+  return variants.some((variant) =>
+    Object.entries(options).every(([key, value]) => variant[key] === value),
+  )
 }
 
 export interface CursorCatalog {
@@ -27,6 +62,8 @@ function parseModel(value: Record<string, unknown>): CursorCatalogModel | null {
   }
 
   const parameters = new Map<string, Set<string>>()
+  const parameterOrder: string[] = []
+  const valueDisplays = new Map<string, Map<string, string | null>>()
 
   if (Array.isArray(value.parameters)) {
     for (const parameter of value.parameters) {
@@ -38,27 +75,104 @@ function parseModel(value: Record<string, unknown>): CursorCatalogModel | null {
         continue
       }
 
+      const values = parameter.values.filter(isRecord)
+
+      parameterOrder.push(parameter.id)
       parameters.set(
         parameter.id,
         new Set(
-          parameter.values
-            .filter(isRecord)
+          values
             .map((entry) => entry.value)
             .filter((entry): entry is string => typeof entry === 'string'),
+        ),
+      )
+      valueDisplays.set(
+        parameter.id,
+        new Map(
+          values
+            .filter(
+              (entry): entry is Record<string, unknown> =>
+                typeof entry.value === 'string',
+            )
+            .map((entry) => [
+              entry.value as string,
+              typeof entry.displayName === 'string' ? entry.displayName : null,
+            ]),
         ),
       )
     }
   }
 
+  let variants: Array<Record<string, string>> | null = null
+
+  if (Array.isArray(value.variants) && value.variants.length > 0) {
+    variants = []
+
+    for (const variant of value.variants) {
+      if (!isRecord(variant) || !Array.isArray(variant.params)) {
+        continue
+      }
+
+      const options: Record<string, string> = {}
+
+      for (const param of variant.params) {
+        if (
+          isRecord(param) &&
+          typeof param.id === 'string' &&
+          typeof param.value === 'string'
+        ) {
+          options[param.id] = param.value
+        }
+      }
+
+      variants.push(options)
+    }
+  }
+
   return {
     id: value.id,
+    displayName:
+      typeof value.displayName === 'string' ? value.displayName : value.id,
     aliases: Array.isArray(value.aliases)
       ? value.aliases.filter(
           (alias): alias is string => typeof alias === 'string',
         )
       : [],
     parameters,
+    parameterOrder,
+    valueDisplays,
+    variants,
   }
+}
+
+/**
+ * The display name Cursor composes for a resolved variant: the model display
+ * name followed by each specified value's display fragment in declared
+ * parameter order (a value without a fragment, such as `fast=false`,
+ * contributes nothing). Observed live: `gpt-5.6-sol[context=272k,
+ * reasoning=high,fast=true]` echoes "GPT-5.6 Sol 272K High Fast".
+ */
+export function expectedVariantDisplayName(
+  model: CursorCatalogModel,
+  options: Record<string, string>,
+): string {
+  const fragments = [model.displayName]
+
+  for (const parameter of model.parameterOrder) {
+    const value = options[parameter]
+
+    if (value === undefined) {
+      continue
+    }
+
+    const display = model.valueDisplays.get(parameter)?.get(value)
+
+    if (display) {
+      fragments.push(display)
+    }
+  }
+
+  return fragments.join(' ')
 }
 
 /**
@@ -212,6 +326,41 @@ export function resolveCursorModelSlug(
             `parameter '${name}'. Specify every declared parameter ` +
             `(${[...model.parameters.keys()].sort().join(', ')}) or use the ` +
             `bare model id; the Cursor CLI rejects partial bracket specs.`,
+          { code: 'UNRESOLVED_CURSOR_MODEL' },
+        )
+      }
+
+      // Per-value validity is not enough: the catalog's variant grid is not
+      // the full product of parameter values (gpt-5.6-sol offers fast=true
+      // only at context=272k), and Cursor silently falls back to the model's
+      // default variant on a non-existent combination.
+      if (model.variants && model.variants.length > 0) {
+        const specifiedKeys = Object.keys(mapping.options).sort()
+        const declared = [
+          ...new Set(
+            model.variants.map((variant) =>
+              variantCombinationKey(
+                Object.fromEntries(
+                  specifiedKeys
+                    .filter((key) => variant[key] !== undefined)
+                    .map((key) => [key, variant[key]]),
+                ),
+              ),
+            ),
+          ),
+        ].sort()
+
+        invariant(
+          variantCombinationExists(model.variants, mapping.options),
+          `${source}: Cursor model '${model.id}' declares no variant ` +
+            `matching '${variantCombinationKey(mapping.options)}'. Valid ` +
+            `combinations are not the full product of parameter values. ` +
+            `Declared combinations: ` +
+            `${declared.slice(0, 24).join('; ')}` +
+            `${declared.length > 24 ? '; …' : ''}. If Cursor has shipped ` +
+            `new variants, refresh ` +
+            `governance/registries/cursor_model_catalog.json from ` +
+            `Cursor.models.list().`,
           { code: 'UNRESOLVED_CURSOR_MODEL' },
         )
       }

@@ -28,6 +28,7 @@ import {
   refreshBestOfNAgents,
 } from './lib/best-of-n.js'
 import { personaExecutorOf } from './lib/executors/mapping.js'
+import { probeCursorModels } from './lib/executors/cursor-probe.js'
 import { claudeCodeVersionPreflight } from './lib/executors/claude-code.js'
 import { browserReadiness } from './lib/browser-readiness.js'
 import { PanError } from './lib/errors.js'
@@ -118,7 +119,8 @@ const HELP_BODY = `Usage:
   pan status <run-id> [--json]
   pan list [--json]
   pan archive [--days <positive-integer>] [--json]
-  pan models [--sync] [--json]
+  pan models [--sync] [--probe] [--json]
+      --probe launches one minimal cursor-agent call per distinct active model spec and fails loudly when the resolved variant differs from the catalog's prediction. Needs the cursor-agent CLI and CURSOR_API_KEY or a login.
   pan validate [--json]
   pan doctor [--worktree <name>] [--json]
   pan requirements resolve --persona <p> --workflow <w> --stage <s> [--kind <kind>] [--output-path <path>] [--json]
@@ -1060,6 +1062,13 @@ async function main(): Promise<void> {
       const changes = syncCursorProjection(root, {
         write: hasFlag(args, '--sync'),
       })
+      // Static validation proves each spec is well-formed for the catalog
+      // snapshot; --probe proves what it launches today by spending one
+      // minimal cursor-agent call per distinct spec and comparing the echoed
+      // variant against the catalog's prediction.
+      const probes = hasFlag(args, '--probe')
+        ? probeCursorModels(root, loaded.config.personas)
+        : null
 
       print(
         {
@@ -1074,9 +1083,32 @@ async function main(): Promise<void> {
           ),
           sync_requested: hasFlag(args, '--sync'),
           changed_projections: changes.filter((entry) => entry.changed),
+          ...(probes ? { probes } : {}),
         },
         true,
       )
+
+      if (probes) {
+        const failed = probes.filter((probe) => !probe.ok)
+
+        if (failed.length > 0) {
+          throw new PanError(
+            `${failed.length} model spec(s) did not resolve to the ` +
+              `expected variant on live Cursor: ` +
+              failed
+                .map(
+                  (probe) =>
+                    `'${probe.spec}' (${probe.personas.join(', ')}) → ` +
+                    `${probe.resolved ?? `unresolvable: ${probe.error ?? 'unknown error'}`}` +
+                    (probe.expected ? ` (expected '${probe.expected}')` : ''),
+                )
+                .join('; ') +
+              `. Cursor silently falls back to the model's default variant ` +
+              `on an unusable spec, so fix these before delegating.`,
+            { code: 'UNRESOLVED_CURSOR_MODEL' },
+          )
+        }
+      }
       return
     }
     case 'briefs': {

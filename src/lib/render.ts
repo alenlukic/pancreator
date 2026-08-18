@@ -531,6 +531,15 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
     delegation?.mode === 'referenced' && delegation.delivery_prompt_path
       ? delegation.delivery_prompt_path
       : null
+  // The launch must bind to this named definition: it alone carries the
+  // persona's model mapping, and an ad-hoc spawn runs the executor default.
+  const namedAgent =
+    delegation && typeof delegation.cursor_agent_path === 'string'
+      ? (delegation.cursor_agent_path.split('/').pop() ?? '').replace(
+          /\.md$/u,
+          '',
+        )
+      : delegation?.persona
   const deliverySteps = externalDelegation
     ? [
         `2. Run \`${delegation?.delegate_command}\`. The harness spawns the ` +
@@ -544,21 +553,28 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
       ]
     : referencedDelivery
       ? [
-          `2. Paste the complete contents of \`${referencedDelivery}\` verbatim into ` +
-            `the \`${delegation?.persona}\` subagent prompt ` +
-            `(\`${delegation?.cursor_agent_path}\`). That prompt references this ` +
-            'card as the worker contract. A summary, an excerpt, or an added ' +
-            'restatement MUST NOT substitute for it.',
+          `2. Launch the named \`${namedAgent}\` agent — the definition at ` +
+            `\`${delegation?.cursor_agent_path}\`, never an ad-hoc subagent, ` +
+            'which would silently run the executor default model instead of ' +
+            'this card’s — and paste the complete contents of ' +
+            `\`${referencedDelivery}\` verbatim as its prompt. That prompt ` +
+            'references this card as the worker contract. A summary, an ' +
+            'excerpt, or an added restatement MUST NOT substitute for it.',
           `3. Persist that exact prompt body to \`${delegation?.delegation_artifact_path}\` ` +
-            'before submission.',
+            'before submission, labeled with the launched agent name as the ' +
+            'single permitted leading line.',
         ]
       : [
-          `2. Paste the complete contents of \`${delegation?.canonical_markdown_path}\` ` +
-            `verbatim into the \`${delegation?.persona}\` subagent prompt ` +
-            `(\`${delegation?.cursor_agent_path}\`). A path reference, summary, or ` +
-            'excerpt MUST NOT substitute for the card body.',
+          `2. Launch the named \`${namedAgent}\` agent — the definition at ` +
+            `\`${delegation?.cursor_agent_path}\`, never an ad-hoc subagent, ` +
+            'which would silently run the executor default model instead of ' +
+            'this card’s — and paste the complete contents of ' +
+            `\`${delegation?.canonical_markdown_path}\` verbatim as its ` +
+            'prompt. A path reference, summary, or excerpt MUST NOT ' +
+            'substitute for the card body.',
           `3. Persist that exact prompt body to \`${delegation?.delegation_artifact_path}\` ` +
-            'before submission.',
+            'before submission, labeled with the launched agent name as the ' +
+            'single permitted leading line.',
         ]
   const delegationLines = delegation
     ? [

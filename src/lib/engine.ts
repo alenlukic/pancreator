@@ -1837,8 +1837,9 @@ export function prepareInvocation(
           ? `Run '${panCommand(root)} delegate ${runId}' to execute the ` +
             `'${stage.persona}' stage under the '${externalExecutor}' ` +
             `executor with model '${model}', then submit ${outputPath}.`
-          : `Invoke the '${stage.persona}' Cursor subagent configured for ` +
-            `'${model}' with this card, write delegation evidence to ` +
+          : `Launch the named Cursor agent for persona '${stage.persona}' ` +
+            `(never an ad-hoc subagent; only the named definition runs ` +
+            `'${model}') with this card, write delegation evidence to ` +
             `${delegationArtifactPath}, then submit ${outputPath}.`
     // The supervisor delegates from the continuation loop, where it holds no
     // card of its own. Resolving its policies here puts the delivery contract

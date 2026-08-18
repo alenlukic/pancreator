@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  expectedVariantDisplayName,
   loadCursorCatalog,
   resolveCursorModelSlug,
 } from '../../src/lib/executors/cursor-catalog.js'
@@ -169,4 +170,53 @@ test('the catalog loads models, aliases, and per-model parameters', () => {
   assert.ok(sol.parameters.get('reasoning')?.has('xhigh'))
   assert.ok(!sol.parameters.get('reasoning')?.has('extra-high'))
   assert.ok(catalog.aliases.get('gpt')?.length)
+})
+
+test('a bracket spec must name a declared variant combination, not just valid values', () => {
+  // Sol declares context 1m and fast true as values, but its variant grid
+  // offers fast only at 272k. Per-value validation alone passes the phantom
+  // combination, and Cursor's fallback for it is the default variant —
+  // 1M Medium — which is exactly the silently-degraded launch this guards.
+  assert.throws(
+    () =>
+      resolveCursorModelSlug(
+        parsePersonaMapping('gpt-5.6-sol[context=1m,reasoning=high,fast=true]'),
+        'persona mapping',
+        root,
+      ),
+    /declares no variant matching 'context=1m,fast=true,reasoning=high'/u,
+  )
+  assert.equal(
+    resolveCursorModelSlug(
+      parsePersonaMapping('gpt-5.6-sol[context=272k,reasoning=high,fast=true]'),
+      'persona mapping',
+      root,
+    ),
+    'gpt-5.6-sol[context=272k,reasoning=high,fast=true]',
+  )
+})
+
+test('the catalog composes the display name a resolved variant echoes', () => {
+  const catalog = loadCursorCatalog(root)
+  const sol = catalog.models.get('gpt-5.6-sol')
+
+  assert.ok(sol)
+  // Confirmed live 2026-08-17: the system/init event echoed exactly this.
+  assert.equal(
+    expectedVariantDisplayName(sol, {
+      context: '272k',
+      reasoning: 'high',
+      fast: 'true',
+    }),
+    'GPT-5.6 Sol 272K High Fast',
+  )
+  // fast=false contributes no fragment.
+  assert.equal(
+    expectedVariantDisplayName(sol, {
+      context: '272k',
+      reasoning: 'high',
+      fast: 'false',
+    }),
+    'GPT-5.6 Sol 272K High',
+  )
 })
