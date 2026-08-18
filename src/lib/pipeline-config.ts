@@ -208,11 +208,9 @@ export function loadPipelineConfig(
     { code: 'INVALID_PIPELINE_CONFIG' },
   )
 
-  // Every named config is validated against the Cursor model catalog here,
-  // where the installation root is known. Cursor's failure mode for an
-  // unusable spec is a silent fallback to a default variant, so an invalid
-  // model, parameter, or value must fail config loading loudly instead of
-  // reaching projection.
+  // Every named config receives strict validation here when the operator has
+  // supplied an account-local Cursor model catalog. Without one, model specs
+  // remain grammar-only because model availability is account-specific.
   for (const candidate of Object.keys(file.configs)) {
     for (const [persona, model] of Object.entries(
       resolveConfigPersonas(file, candidate),

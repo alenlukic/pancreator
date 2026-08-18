@@ -1,8 +1,8 @@
 # Target repository primer
 
 <!-- pancreator-primer-status: ready -->
-<!-- generated-at: 2026-08-18T15:46:31Z -->
-<!-- source-head: bec5109321c03ebf1ff740e292a0fd029bb0c38d -->
+<!-- generated-at: 2026-08-18T17:07:13Z -->
+<!-- source-head: d28d7951695bc11932ce00bef4ff3e71bd2296f3 -->
 
 ## Summary
 
@@ -90,12 +90,12 @@ flowchart LR
 - `src/lib/verification.ts`, `waivers.ts`, `operator-involvement.ts`, and `naming.ts`: verification-level resolution, operator gate waivers and workspace-fingerprint ratification, gate profiles, and sortable run naming.
 - `src/lib/requirements/`, `validation.ts`, and `validators/`: policy-bound requirement resolution, repository validation, and deterministic validators including `target-repo-primer.ts`, `target-language-handbooks.ts`, and `simplified-english.ts`.
 - `src/lib/repository-checks.ts`, `setup-commands.ts`, `technologies.ts`, `git.ts`, `worktrees.ts`, and `workspace/`: target-authoritative verification profiles, declared workspace bootstrap, language detection, Git-visible fingerprints, worktree management, root resolution, and protected paths.
-- `src/lib/executors/`, `pipeline-config.ts`, `projection.ts`, `cursor-content.ts`, and `shell-alias.ts`: executor mapping, the Cursor model catalog and probe, the Claude Code adapter, model resolution, canonical-to-local Cursor projection, and the guarded `pan` shell function.
+- `src/lib/executors/`, `pipeline-config.ts`, `projection.ts`, `cursor-content.ts`, and `shell-alias.ts`: executor mapping, the optional account-local Cursor model catalog with its compact codec and live probe, the Claude Code adapter, model resolution, canonical-to-local Cursor projection, and the guarded `pan` shell function.
 - `src/lib/best-of-n.ts`, `governance-card.ts`, `governance/audit-directives.ts`, `policies.ts`, `policy-guidance.ts`, `briefs.ts`, and `operator-artifact-profiles.ts`: best-of-N sessions, standalone-mode cards, directive-ownership auditing, policy resolution and progressive disclosure, operator briefs, and per-artifact heading profiles.
 - `src/lib/json-merge-patch.ts`, `markdown.ts`, `io.ts`, `errors.ts`, and `versioning.ts`: RFC 7386 stage-output revision patching, bounded Markdown parsing, filesystem/JSON helpers, invariants, and Semantic Versioning release-metadata rules.
 - `library/workflows/`: `dev`, `prototype`, `design`, `dev-candidate`, `metacritic`, and `preflight` stage graphs with stage definitions and prompts.
 - `library/personas/`, `library/skills/`, `library/cursor/`, `library/schemas/`, `library/operator-briefs/`, and `library/templates/`: worker contracts, reusable procedures, canonical Cursor sources, JSON schemas, shared brief presentation, and installation/bootstrap templates.
-- `governance/policies/`, `governance/registries/`, `governance/criteria/`, and `governance/handbooks/`: enforceable policy metadata, validation/projection/lookup/model-catalog/exemption registries, criterion definitions, and durable engineering, language, design, and writing guidance. `governance/handbooks/target/` and `governance/policies/LANG-001.json` are generated per detected target language.
+- `governance/policies/`, `governance/registries/`, `governance/criteria/`, and `governance/handbooks/`: enforceable policy metadata, validation/projection/lookup/exemption registries, criterion definitions, and durable engineering, language, design, and writing guidance. `governance/handbooks/target/` and `governance/policies/LANG-001.json` are generated per detected target language, and `governance/registries/cursor_model_catalog.json` is an untracked account-local file rather than repository content.
 - `tests/unit/`, `tests/integration/`, `tests/regression/`, `tests/fixtures/`, and `tests/helpers.ts`: compiled coverage alongside source.
 - `runtime/`: `inbox/`, `logs/`, `worktrees/`, `pr-descriptions/`, and `repository-checks.json`. Generated workflow records here are harness-owned.
 - `release/index.json`: the version-to-immutable-commit index used by embedded updates.
@@ -109,7 +109,7 @@ flowchart LR
 - `library/workflows/<slug>/workflow.json`, `stages/*.json`, and `prompts/*.md` form the canonical workflow authoring surface; `library/schemas/` documents their shapes while `src/lib/workflow.ts` is the enforcer.
 - `governance/policies/*.json` plus `governance/registries/validation_registry.json` and `governance/registries/policy_lookup_table.json` form the public policy-bound automation and validation authoring surface.
 - `governance/registries/projection_manifest.json` declares every canonical-to-`.cursor/` projection, including the `pan-browser-isolation.mdc` rule generated from `governance/policies/BROWSER-001.json` and the self-development-only `mcp.json`.
-- `governance/registries/cursor_model_catalog.json` is the model-string grammar and catalog that `config.json` persona specs resolve against; `governance/registries/directive_exemptions.json` records the normative directives excluded from ownership auditing.
+- `governance/registries/cursor_model_catalog.json` is the optional account-local Cursor model catalog. It holds a `Cursor.models.list()` result in `models[]`, in either the verbatim form or the lossless compact codec form. When the file is present, `config.json` persona specs are validated against it at config load, projection, and probing; when it is absent, validation stays grammar-only. `governance/registries/directive_exemptions.json` records the normative directives excluded from ownership auditing.
 - JSON operator briefs plus `library/operator-briefs/` and `docs/operator-briefs/` are the narrative-artifact interface; the harness renders self-contained HTML and validates stage-declared paths.
 - `runtime/repository-checks.json` is the deterministic verification contract with a top-level `setup` bootstrap array and `configuration`, `static`, `fast`, `secondary`, and `full` profiles.
 - `runtime/logs/workflows/<run-id>/` is the durable run surface. New runs split machine records under `agent/` and operator-readable HTML, request, PR description, and QA files under `operator/`; generated records must not be hand-edited.
@@ -117,6 +117,7 @@ flowchart LR
 ## Gotchas
 
 - `.cursor/` is disposable local projection, not source of truth. Canonical content lives under `library/cursor/`, and drift is resolved with `./bin/pan models --sync`.
+- Cursor model availability is account-specific, so `governance/registries/cursor_model_catalog.json` stays on the operator's disk and out of shared history. `.gitignore` ignores it and `bin/install` deletes it from the staging payload, so it never reaches a target installation. The catalog is optional: with it present, an unknown model, parameter, value, or variant combination fails config loading loudly; without it, persona specs are checked for grammar only. Repository validation does not list it as a required file.
 - `./bin/pan` always rebuilds before dispatch. Verification scripts are silent on success through `bin/run-quiet`; set `PAN_VERBOSE=1` to stream output while diagnosing a failure.
 - Repository commands and the checked-in lock file use npm, although `package.json` declares a pnpm `packageManager`. Use the documented npm entrypoints until that metadata discrepancy is resolved.
 - `package.json` still names the project `pancreator-v2-prototype` while `VERSION` and the README report `4.0.0`. Treat `VERSION` as authoritative for the version and the npm `name` field as legacy metadata.

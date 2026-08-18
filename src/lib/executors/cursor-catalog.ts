@@ -5,7 +5,8 @@ import { fileExists, isRecord, readJson } from '../io.js'
 import { expandCursorModels } from './cursor-catalog-codec.js'
 import type { ParsedPersonaMapping } from './mapping.js'
 
-const CATALOG_RELATIVE_PATH = 'governance/registries/cursor_model_catalog.json'
+const LOCAL_CATALOG_RELATIVE_PATH =
+  'governance/registries/cursor_model_catalog.json'
 
 export interface CursorCatalogModel {
   id: string
@@ -176,29 +177,22 @@ export function expectedVariantDisplayName(
 }
 
 /**
- * Load the Cursor model catalog: the verbatim `Cursor.models.list()` result
- * shipped as a governance registry. Unlike its hand-curated predecessor, this
- * catalog is complete for its retrieval date, so an unknown model or parameter
- * is a configuration error rather than an unverified guess — Cursor's own
- * failure mode for an unusable spec is silent fallback, never a loud error, so
- * this validation is the only loud failure the operator gets.
+ * Load an optional operator-local Cursor model catalog. The catalog's contents
+ * reflect one Cursor account and are therefore never shared or installed.
  */
-export function loadCursorCatalog(root: string): CursorCatalog {
-  const sourcePath = path.join(root, CATALOG_RELATIVE_PATH)
+export function loadCursorCatalog(root: string): CursorCatalog | null {
+  const sourcePath = path.join(root, LOCAL_CATALOG_RELATIVE_PATH)
 
-  invariant(
-    fileExists(sourcePath),
-    `${CATALOG_RELATIVE_PATH} is missing. The installation MUST ship the ` +
-      `Cursor model catalog.`,
-    { code: 'INVALID_CURSOR_CATALOG' },
-  )
+  if (!fileExists(sourcePath)) {
+    return null
+  }
 
   const source = readJson(sourcePath)
 
   invariant(
     isRecord(source) && Array.isArray(source.models),
-    `${CATALOG_RELATIVE_PATH} MUST carry the Cursor.models.list() result in ` +
-      `models[].`,
+    `${LOCAL_CATALOG_RELATIVE_PATH} MUST carry the Cursor.models.list() ` +
+      `result in models[].`,
     { code: 'INVALID_CURSOR_CATALOG' },
   )
 
@@ -250,8 +244,7 @@ function catalogModel(
       `Cursor model catalog. Known models: ` +
       `${[...catalog.models.keys()].sort().join(', ')}. If Cursor has ` +
       `shipped a new model, refresh ` +
-      `governance/registries/cursor_model_catalog.json from ` +
-      `Cursor.models.list().`,
+      `${LOCAL_CATALOG_RELATIVE_PATH} from Cursor.models.list().`,
     { code: 'UNRESOLVED_CURSOR_MODEL' },
   )
 
@@ -268,11 +261,12 @@ function catalogModel(
 }
 
 /**
- * Validate a Cursor persona mapping against the catalog and return the spec
- * to project. The configured spec is emitted verbatim: bracket notation is
- * Cursor's documented grammar for the subagent `model:` field, a bare id and
- * empty brackets are distinct valid forms, and any rewriting here has
- * historically produced strings Cursor silently degraded on.
+ * Validate a Cursor persona mapping against an available local catalog and
+ * return the spec to project. Without one, syntax remains grammar-only. The
+ * configured spec is emitted verbatim: bracket notation is Cursor's documented
+ * grammar for the subagent `model:` field, a bare id and empty brackets are
+ * distinct valid forms, and any rewriting here has historically produced
+ * strings Cursor silently degraded on.
  */
 export function resolveCursorModelSlug(
   mapping: ParsedPersonaMapping,
@@ -287,6 +281,11 @@ export function resolveCursorModelSlug(
 
   if (root !== undefined) {
     const catalog = loadCursorCatalog(root)
+
+    if (catalog === null) {
+      return mapping.model_spec
+    }
+
     const model = catalogModel(catalog, mapping.model, source)
 
     for (const [key, value] of Object.entries(mapping.options)) {
@@ -359,8 +358,7 @@ export function resolveCursorModelSlug(
             `${declared.slice(0, 24).join('; ')}` +
             `${declared.length > 24 ? '; …' : ''}. If Cursor has shipped ` +
             `new variants, refresh ` +
-            `governance/registries/cursor_model_catalog.json from ` +
-            `Cursor.models.list().`,
+            `${LOCAL_CATALOG_RELATIVE_PATH} from Cursor.models.list().`,
           { code: 'UNRESOLVED_CURSOR_MODEL' },
         )
       }

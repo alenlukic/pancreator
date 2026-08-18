@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict'
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import test from 'node:test'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
 
 import {
   expectedVariantDisplayName,
@@ -8,18 +11,140 @@ import {
 } from '../../src/lib/executors/cursor-catalog.js'
 import { parsePersonaMapping } from '../../src/lib/executors/mapping.js'
 
-const root = process.cwd()
+function createCatalogRoot(): string {
+  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-catalog-'))
+  const catalog = {
+    models: [
+      {
+        id: 'example-gpt',
+        displayName: 'Example GPT',
+        aliases: ['example'],
+        parameters: [
+          {
+            id: 'context',
+            values: [
+              { value: '272k', displayName: '272K' },
+              { value: '1m', displayName: '1M' },
+            ],
+          },
+          {
+            id: 'reasoning',
+            values: [
+              { value: 'medium', displayName: 'Medium' },
+              { value: 'high', displayName: 'High' },
+            ],
+          },
+          {
+            id: 'fast',
+            values: [
+              { value: 'false' },
+              { value: 'true', displayName: 'Fast' },
+            ],
+          },
+        ],
+        variants: [
+          {
+            params: [
+              { id: 'context', value: '272k' },
+              { id: 'reasoning', value: 'high' },
+              { id: 'fast', value: 'false' },
+            ],
+          },
+          {
+            params: [
+              { id: 'context', value: '272k' },
+              { id: 'reasoning', value: 'high' },
+              { id: 'fast', value: 'true' },
+            ],
+          },
+          {
+            params: [
+              { id: 'context', value: '1m' },
+              { id: 'reasoning', value: 'medium' },
+              { id: 'fast', value: 'false' },
+            ],
+          },
+          {
+            params: [
+              { id: 'context', value: '1m' },
+              { id: 'reasoning', value: 'high' },
+              { id: 'fast', value: 'false' },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'example-claude',
+        displayName: 'Example Claude',
+        parameters: [
+          {
+            id: 'thinking',
+            values: [{ value: 'false' }, { value: 'true' }],
+          },
+          {
+            id: 'context',
+            values: [
+              { value: '300k', displayName: '300K' },
+              { value: '1m', displayName: '1M' },
+            ],
+          },
+          {
+            id: 'effort',
+            values: [
+              { value: 'low', displayName: 'Low' },
+              { value: 'high', displayName: 'High' },
+            ],
+          },
+        ],
+        variants: [
+          {
+            params: [
+              { id: 'thinking', value: 'true' },
+              { id: 'context', value: '1m' },
+              { id: 'effort', value: 'high' },
+            ],
+          },
+          {
+            params: [
+              { id: 'thinking', value: 'false' },
+              { id: 'context', value: '300k' },
+              { id: 'effort', value: 'low' },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'default',
+        displayName: 'Default',
+        aliases: ['auto'],
+        variants: [{ params: [] }],
+      },
+    ],
+  }
+
+  const catalogPath = path.join(
+    root,
+    'governance',
+    'registries',
+    'cursor_model_catalog.json',
+  )
+
+  mkdirSync(path.dirname(catalogPath), { recursive: true })
+
+  writeFileSync(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`)
+
+  return root
+}
+
+const root = createCatalogRoot()
 
 test('a valid spec is emitted verbatim in Cursor bracket grammar', () => {
   // Bracket notation is Cursor's documented grammar for the subagent model
   // field. Every historical rewrite here (flat slugs, key renames, option
   // reordering) produced strings Cursor silently degraded on.
   for (const spec of [
-    'gpt-5.6-sol[context=272k,reasoning=high,fast=false]',
-    'grok-4.6[effort=xhigh,fast=true]',
-    'claude-opus-5[thinking=true,context=300k,effort=high,fast=false]',
-    'claude-fable-5[thinking=true,context=1m,effort=high]',
-    'composer-2.5[fast=false]',
+    'example-gpt[context=272k,reasoning=high,fast=false]',
+    'example-claude[thinking=true,context=1m,effort=high]',
     'auto',
   ]) {
     assert.equal(
@@ -34,13 +159,11 @@ test('a valid spec is emitted verbatim in Cursor bracket grammar', () => {
 })
 
 test('parameters are validated per model, not per family', () => {
-  // GPT models take `reasoning`; Claude and Grok models take `effort`.
-  // Assuming either key exists everywhere is the exact defect that ran Sol at
-  // medium: Cursor falls back silently on an unknown parameter.
+  // Parameters are declared per model.
   assert.throws(
     () =>
       resolveCursorModelSlug(
-        parsePersonaMapping('gpt-5.6-sol[context=272k,effort=high,fast=false]'),
+        parsePersonaMapping('example-gpt[context=272k,effort=high,fast=false]'),
         'persona mapping',
         root,
       ),
@@ -49,7 +172,7 @@ test('parameters are validated per model, not per family', () => {
   assert.throws(
     () =>
       resolveCursorModelSlug(
-        parsePersonaMapping('claude-fable-5[reasoning=high]'),
+        parsePersonaMapping('example-claude[reasoning=high]'),
         'persona mapping',
         root,
       ),
@@ -58,46 +181,32 @@ test('parameters are validated per model, not per family', () => {
 })
 
 test('parameter values are validated against the model declaration', () => {
-  // grok-4.5 declares effort low|medium|high; xhigh exists only on grok-4.6.
   assert.throws(
     () =>
       resolveCursorModelSlug(
-        parsePersonaMapping('grok-4.5[effort=xhigh]'),
+        parsePersonaMapping(
+          'example-gpt[context=272k,reasoning=invalid,fast=false]',
+        ),
         'persona mapping',
         root,
       ),
-    /parameter 'effort' has no value 'xhigh'/u,
-  )
-  // gpt-5.5 spells its top tier extra-high, not xhigh.
-  assert.throws(
-    () =>
-      resolveCursorModelSlug(
-        parsePersonaMapping('gpt-5.5[reasoning=xhigh]'),
-        'persona mapping',
-        root,
-      ),
-    /parameter 'reasoning' has no value 'xhigh'/u,
+    /parameter 'reasoning' has no value 'invalid'/u,
   )
   assert.equal(
     resolveCursorModelSlug(
-      parsePersonaMapping(
-        'gpt-5.5[context=1m,reasoning=extra-high,fast=false]',
-      ),
+      parsePersonaMapping('example-gpt[context=1m,reasoning=high,fast=false]'),
       'persona mapping',
       root,
     ),
-    'gpt-5.5[context=1m,reasoning=extra-high,fast=false]',
+    'example-gpt[context=1m,reasoning=high,fast=false]',
   )
 })
 
 test('an underspecified spec fails: every declared parameter is required', () => {
-  // Observed 2026-08-17: the cursor-agent CLI rejects claude-fable-5[] and
-  // claude-opus-5[context=300k,effort=high] with "Cannot use this model",
-  // while their fully-specified forms resolve to the requested variant.
   assert.throws(
     () =>
       resolveCursorModelSlug(
-        parsePersonaMapping('claude-fable-5[]'),
+        parsePersonaMapping('example-claude[]'),
         'persona mapping',
         root,
       ),
@@ -106,7 +215,7 @@ test('an underspecified spec fails: every declared parameter is required', () =>
   assert.throws(
     () =>
       resolveCursorModelSlug(
-        parsePersonaMapping('claude-opus-5[context=300k,effort=high]'),
+        parsePersonaMapping('example-claude[context=1m,effort=high]'),
         'persona mapping',
         root,
       ),
@@ -114,13 +223,11 @@ test('an underspecified spec fails: every declared parameter is required', () =>
   )
 })
 
-test('an unknown model fails loudly with a refresh pointer', () => {
-  // The catalog is the verbatim Cursor.models.list() result, so an unknown id
-  // is a configuration error. A flat effort-suffixed slug is one such id.
+test('an unknown model fails loudly when a local catalog is present', () => {
   assert.throws(
     () =>
       resolveCursorModelSlug(
-        parsePersonaMapping('gpt-5.6-sol-high'),
+        parsePersonaMapping('unknown-model'),
         'persona mapping',
         root,
       ),
@@ -139,18 +246,29 @@ test('aliases resolve to a catalog model', () => {
   )
   assert.equal(
     resolveCursorModelSlug(
-      parsePersonaMapping('fable[thinking=true,context=1m,effort=high]'),
+      parsePersonaMapping('example[context=272k,reasoning=high,fast=false]'),
       'persona mapping',
       root,
     ),
-    'fable[thinking=true,context=1m,effort=high]',
+    'example[context=272k,reasoning=high,fast=false]',
   )
 })
 
-test('without a root the resolution is grammar-only', () => {
-  // Callers without an installation root (bare config parsing in tests)
-  // cannot reach the catalog; full validation happens at loadPipelineConfig
-  // and projection, which always have the root.
+test('without a local catalog the resolution is grammar-only', () => {
+  const rootWithoutCatalog = mkdtempSync(
+    path.join(tmpdir(), 'pancreator-catalog-empty-'),
+  )
+
+  assert.equal(loadCursorCatalog(rootWithoutCatalog), null)
+  assert.equal(
+    resolveCursorModelSlug(
+      parsePersonaMapping('unknown-model[foo=bar]'),
+      'persona mapping',
+      rootWithoutCatalog,
+    ),
+    'unknown-model[foo=bar]',
+  )
+
   assert.equal(
     resolveCursorModelSlug(parsePersonaMapping('unknown-model[foo=bar]')),
     'unknown-model[foo=bar]',
@@ -159,28 +277,24 @@ test('without a root the resolution is grammar-only', () => {
 
 test('the catalog loads models, aliases, and per-model parameters', () => {
   const catalog = loadCursorCatalog(root)
-  const sol = catalog.models.get('gpt-5.6-sol')
+  const exampleGpt = catalog?.models.get('example-gpt')
 
-  assert.ok(sol)
-  assert.deepEqual([...sol.parameters.keys()].sort(), [
+  assert.ok(exampleGpt)
+  assert.deepEqual([...exampleGpt.parameters.keys()].sort(), [
     'context',
     'fast',
     'reasoning',
   ])
-  assert.ok(sol.parameters.get('reasoning')?.has('xhigh'))
-  assert.ok(!sol.parameters.get('reasoning')?.has('extra-high'))
-  assert.ok(catalog.aliases.get('gpt')?.length)
+  assert.ok(exampleGpt.parameters.get('reasoning')?.has('high'))
+  assert.ok(!exampleGpt.parameters.get('reasoning')?.has('invalid'))
+  assert.ok(catalog?.aliases.get('example')?.length)
 })
 
 test('a bracket spec must name a declared variant combination, not just valid values', () => {
-  // Sol declares context 1m and fast true as values, but its variant grid
-  // offers fast only at 272k. Per-value validation alone passes the phantom
-  // combination, and Cursor's fallback for it is the default variant —
-  // 1M Medium — which is exactly the silently-degraded launch this guards.
   assert.throws(
     () =>
       resolveCursorModelSlug(
-        parsePersonaMapping('gpt-5.6-sol[context=1m,reasoning=high,fast=true]'),
+        parsePersonaMapping('example-gpt[context=1m,reasoning=high,fast=true]'),
         'persona mapping',
         root,
       ),
@@ -188,35 +302,33 @@ test('a bracket spec must name a declared variant combination, not just valid va
   )
   assert.equal(
     resolveCursorModelSlug(
-      parsePersonaMapping('gpt-5.6-sol[context=272k,reasoning=high,fast=true]'),
+      parsePersonaMapping('example-gpt[context=272k,reasoning=high,fast=true]'),
       'persona mapping',
       root,
     ),
-    'gpt-5.6-sol[context=272k,reasoning=high,fast=true]',
+    'example-gpt[context=272k,reasoning=high,fast=true]',
   )
 })
 
 test('the catalog composes the display name a resolved variant echoes', () => {
   const catalog = loadCursorCatalog(root)
-  const sol = catalog.models.get('gpt-5.6-sol')
+  const exampleGpt = catalog?.models.get('example-gpt')
 
-  assert.ok(sol)
-  // Confirmed live 2026-08-17: the system/init event echoed exactly this.
+  assert.ok(exampleGpt)
   assert.equal(
-    expectedVariantDisplayName(sol, {
+    expectedVariantDisplayName(exampleGpt, {
       context: '272k',
       reasoning: 'high',
       fast: 'true',
     }),
-    'GPT-5.6 Sol 272K High Fast',
+    'Example GPT 272K High Fast',
   )
-  // fast=false contributes no fragment.
   assert.equal(
-    expectedVariantDisplayName(sol, {
+    expectedVariantDisplayName(exampleGpt, {
       context: '272k',
       reasoning: 'high',
       fast: 'false',
     }),
-    'GPT-5.6 Sol 272K High',
+    'Example GPT 272K High',
   )
 })

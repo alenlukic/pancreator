@@ -100,8 +100,11 @@ export function probeCursorModelSpec(
   }
 }
 
-function expectedFor(catalog: CursorCatalog, spec: string): string | null {
-  if (!spec.includes('[')) {
+function expectedFor(
+  catalog: CursorCatalog | null,
+  spec: string,
+): string | null {
+  if (catalog === null || !spec.includes('[')) {
     return null
   }
 
@@ -115,9 +118,9 @@ function expectedFor(catalog: CursorCatalog, spec: string): string | null {
 
 /**
  * Probe every distinct cursor-executor model spec of the active pipeline
- * config against live Cursor and compare the resolved variant with the
- * catalog's prediction. Static validation proves a spec is well-formed for
- * the catalog snapshot; this proves what it launches today.
+ * config against live Cursor and compare the resolved variant with an
+ * available local catalog's prediction. Static validation proves a spec is
+ * well-formed for that catalog; this proves what it launches today.
  */
 export function probeCursorModels(
   root: string,

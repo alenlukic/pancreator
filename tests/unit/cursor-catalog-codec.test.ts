@@ -6,7 +6,6 @@ import {
   expandCursorModels,
   isCompactModel,
 } from '../../src/lib/executors/cursor-catalog-codec.js'
-import { readJson, isRecord } from '../../src/lib/io.js'
 
 const SAMPLE = [
   {
@@ -86,31 +85,4 @@ test('a model the encoding cannot represent is kept verbatim, never approximated
 
   assert.ok(!isCompactModel(compact[0]))
   assert.deepEqual(compact, awkward)
-})
-
-test('the shipped registry is compact and idempotent under the codec', () => {
-  const registry = readJson(
-    'governance/registries/cursor_model_catalog.json',
-  ) as { models: unknown[] }
-
-  assert.ok(registry.models.length > 0)
-  assert.ok(registry.models.every(isCompactModel))
-
-  // Compressing expanded content must reproduce the shipped bytes exactly, so
-  // the stored form is a fixed point rather than an approximation.
-  const expanded = expandCursorModels(registry.models)
-
-  assert.deepEqual(compressCursorModels(expanded), registry.models)
-
-  // Expansion restores the verbatim Cursor.models.list() shape.
-  for (const model of expanded) {
-    assert.ok(isRecord(model))
-    assert.ok(Array.isArray(model.variants))
-
-    for (const variant of model.variants as unknown[]) {
-      assert.ok(isRecord(variant))
-      assert.ok(Array.isArray(variant.params))
-      assert.equal(typeof variant.displayName, 'string')
-    }
-  }
 })
