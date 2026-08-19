@@ -692,7 +692,7 @@ test('a genuine product failure on carried infrastructure is not environment-blo
   const baseline = preservedFullSuiteBaseline()
   const current = rerunWithExtraStderr(
     baseline,
-    'FAILED tests/integration/customers/rowspace/test_box.py::test_poll - AssertionError: mismatch',
+    'FAILED tests/integration/customers/acme/test_box.py::test_poll - AssertionError: mismatch',
   )
   const comparison = compareRepositoryCheckToBaseline(baseline, current)
 

@@ -42,13 +42,14 @@ The operator gives you either an existing session id or a task with a configs pa
 The meta-orchestrator performs supervisor mechanics for every child run. It MUST NOT delegate a child run to `pan-orchestrator`.
 
 1. Run `./bin/pan status <run-id> --json` for each non-terminal child.
-2. Handle `prepare_invocation` with `./bin/pan prepare <run-id>`, then read the generated card.
-3. Handle cursor `invoke_agent` actions with **Worker delivery**. Launch all ready workers together for parallel execution.
-4. Handle external `invoke_agent` actions with `./bin/pan delegate <run-id>` and wait for completion.
-5. Handle `supervisor_assessment` by judging only the listed criteria and running `./bin/pan assess`.
-6. A candidate `operator_decision` is a literal execution blocker. Stop with its exact cause and evidence.
-7. Stop a consolidation run at `operator_approval` and present the complete ship packet.
-8. Continue until every candidate reaches terminal `none`, or consolidation reaches its ship gate.
+2. Record this session's sourced effective model for each child that has no supervisor evidence. Use `./bin/pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source>`.
+3. Handle `prepare_invocation` with `./bin/pan prepare <run-id>`, then read the generated card.
+4. Handle cursor `invoke_agent` actions with **Worker delivery**. Launch all ready workers together for parallel execution.
+5. Handle external `invoke_agent` actions with `./bin/pan delegate <run-id>` and wait for completion.
+6. Handle `supervisor_assessment` by judging only the listed criteria and running `./bin/pan assess`.
+7. A candidate `operator_decision` is a literal execution blocker. Stop with its exact cause and evidence.
+8. Stop a consolidation run at `operator_approval` and present the complete ship packet.
+9. Continue until every candidate reaches terminal `none`, or consolidation reaches its ship gate.
 
 ## Worker delivery
 
@@ -58,9 +59,10 @@ The meta-orchestrator performs supervisor mechanics for every child run. It MUST
 2. Read the card's **Supervisor delivery procedure** and load the complete body it names.
 3. Persist that exact body to the declared `.delegation.md` path.
 4. Invoke the card's run-scoped `pan-<persona>` agent with that exact body.
-5. Keep every worker call foreground and blocking. Never use background delegation.
-6. Submit the worker's declared output with `./bin/pan submit <run-id> <output-json>`.
-7. Re-check the run's `pending_action` and continue.
+5. Run `./bin/pan models --probe --run <run-id> --invocation <invocation-id>` before each Cursor worker launch.
+6. Keep every worker call foreground and blocking. Never use background delegation.
+7. Submit the worker's declared output with `./bin/pan submit <run-id> <output-json>`.
+8. Re-check the run's `pending_action` and continue.
 
 ## Failure policy
 

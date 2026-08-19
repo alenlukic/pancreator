@@ -14,6 +14,7 @@ import {
   validateReviewOutput,
   validateSharedFieldContract,
   validateSpotfixOutcome,
+  validateTargetInstructionCoverage,
 } from '../../src/lib/validators/stage-validators.js'
 import { createFixture } from '../helpers.js'
 
@@ -1417,15 +1418,6 @@ test('release validator diffs the declared workspace instead of its dirty parent
   const workspaceRoot = path.join(root, 'declared-worktree')
   const target = 'output.json'
   const changedFile = 'src/example.ts'
-  const preservedErrors = JSON.parse(
-    readFileSync(
-      path.join(
-        process.cwd(),
-        'tests/fixtures/harness-repair/ship-validation-errors.json',
-      ),
-      'utf8',
-    ),
-  ) as { errors: string[] }
 
   execFileSync('git', ['init'], { cwd: root })
   writeFileSync(path.join(root, 'parent.txt'), 'before\n')
@@ -1516,9 +1508,6 @@ test('release validator diffs the declared workspace instead of its dirty parent
   })
   const issueCodes = new Set(result.issues.map((entry) => entry.code))
 
-  assert.ok(
-    preservedErrors.errors.some((entry) => entry.includes('[object Object]')),
-  )
   assert.equal(issueCodes.has('release.change_list_shape'), false)
   assert.equal(issueCodes.has('release.change_not_in_diff'), false)
   assert.equal(issueCodes.has('release.diff_not_disclosed'), false)
@@ -2321,5 +2310,46 @@ test('review validator rejects an amendment for an unknown criterion', () => {
   // The amended id has no acceptance result either, so re-verification fails.
   assert.ok(
     result.issues.some((issue) => issue.code === 'review.amendment_unverified'),
+  )
+})
+
+test('target instruction coverage names omitted instruction paths', () => {
+  const root = createFixture()
+  const target = 'runtime/output.json'
+
+  mkdirSync(path.join(root, 'runtime'), { recursive: true })
+  writeFileSync(
+    path.join(root, target),
+    `${JSON.stringify({
+      target_instruction_evidence: { read_paths: [] },
+    })}\n`,
+  )
+
+  const result = validateTargetInstructionCoverage({
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'DEV-001',
+      requirement_id: 'target-instruction-coverage',
+      registry_id: 'TARGET-INSTRUCTION-COVERAGE-VALIDATE-001',
+      arguments: {},
+    },
+    invocation: {
+      inputs: {
+        target_instructions: {
+          changed_paths: ['src/base.ts'],
+          read_paths: ['AGENTS.md'],
+        },
+      },
+    },
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.ok(
+    result.issues.some(
+      (item) =>
+        item.code === 'TARGET_INSTRUCTION_COVERAGE_MISSING' &&
+        item.message.includes('AGENTS.md'),
+    ),
   )
 })

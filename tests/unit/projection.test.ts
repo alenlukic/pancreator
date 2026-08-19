@@ -205,12 +205,14 @@ test('workflow start and persona utility surfaces expose worktree selection', ()
 
   syncCursorProjection(root, { write: true })
 
-  const orchestrator = readFileSync(
-    path.join(root, '.cursor', 'agents', 'pan-orchestrator.md'),
+  // `/pan-start` creates the run, so worktree selection must be visible there.
+  // It used to live on the orchestrator agent, which no longer starts runs.
+  const start = readFileSync(
+    path.join(root, '.cursor', 'commands', 'pan-start.md'),
     'utf8',
   )
 
-  assert.match(orchestrator, /--worktree <name>/u)
+  assert.match(start, /--worktree <name>/u)
 
   for (const command of [
     'pan-build-briefs',

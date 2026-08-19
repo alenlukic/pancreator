@@ -2,7 +2,14 @@ import { readdirSync } from 'node:fs'
 import path from 'node:path'
 
 import { invariant } from './errors.js'
-import { isRecord, readJson, readText, resolveInside, sha256 } from './io.js'
+import {
+  isDirectory,
+  isRecord,
+  readJson,
+  readText,
+  resolveInside,
+  sha256,
+} from './io.js'
 import type {
   Policy,
   PolicyGuidance,
@@ -304,11 +311,77 @@ function loadLookupTable(root: string): PolicyLookupTable {
     code: 'INVALID_POLICY_LOOKUP',
   })
 
+  const rows = value.rows.map((row, index) =>
+    parseLookupRow(row, `${source}:rows[${index}]`),
+  )
+  const rowSources = value.rows.map((_, index) => `${source}:rows[${index}]`)
+  const extensionDirectory = path.join(
+    root,
+    'governance',
+    'registries',
+    'policy_lookup.d',
+  )
+
+  if (isDirectory(extensionDirectory)) {
+    for (const name of readdirSync(extensionDirectory)
+      .filter((entry) => entry.endsWith('.json'))
+      .sort()) {
+      const extensionSource = `governance/registries/policy_lookup.d/${name}`
+      const extension = readJson(path.join(root, extensionSource))
+
+      invariant(
+        isRecord(extension) &&
+          extension.schema_version === 1 &&
+          Array.isArray(extension.rows),
+        `${extensionSource} MUST contain schema_version 1 and rows[].`,
+        { code: 'INVALID_POLICY_LOOKUP' },
+      )
+
+      for (const [index, row] of extension.rows.entries()) {
+        const rowSource = `${extensionSource}:rows[${index}]`
+
+        rows.push(parseLookupRow(row, rowSource))
+        rowSources.push(rowSource)
+      }
+    }
+  }
+
+  const rowIdentities = new Map<string, string>()
+  const catalog = loadPolicyCatalog(root)
+
+  for (const [index, row] of rows.entries()) {
+    const identity = JSON.stringify({
+      persona: row.persona,
+      workflow: row.workflow,
+      stage: row.stage,
+      installation_scope: row.installation_scope ?? null,
+      technology: row.technology ?? null,
+      contract: row.contract ?? null,
+      review_mode: row.review_mode ?? null,
+      policies: [...row.policies].sort(),
+    })
+    const rowSource = rowSources[index] ?? `row ${index}`
+    const previous = rowIdentities.get(identity)
+
+    invariant(
+      previous === undefined,
+      `${rowSource} duplicates ${String(previous)}.`,
+      { code: 'DUPLICATE_POLICY_LOOKUP_ROW' },
+    )
+    rowIdentities.set(identity, rowSource)
+
+    for (const policyId of row.policies) {
+      invariant(
+        catalog.has(policyId),
+        `${rowSource} references missing policy: ${policyId}`,
+        { code: 'MISSING_POLICY' },
+      )
+    }
+  }
+
   return {
     schema_version: 1,
-    rows: value.rows.map((row, index) =>
-      parseLookupRow(row, `${source}:rows[${index}]`),
-    ),
+    rows,
   }
 }
 

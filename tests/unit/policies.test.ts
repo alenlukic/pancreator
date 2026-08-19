@@ -6,6 +6,129 @@ import path from 'node:path'
 import { createFixture } from '../helpers.js'
 import { loadPolicyCatalog, resolvePolicies } from '../../src/lib/policies.js'
 
+function writePolicyExtension(
+  root: string,
+  name: string,
+  rows: Array<Record<string, unknown>>,
+): void {
+  const directory = path.join(
+    root,
+    'governance',
+    'registries',
+    'policy_lookup.d',
+  )
+
+  mkdirSync(directory, { recursive: true })
+  writeFileSync(
+    path.join(directory, name),
+    `${JSON.stringify({ schema_version: 1, rows }, null, 2)}\n`,
+  )
+}
+
+test('target policy lookup extensions add validated rows', () => {
+  const root = createFixture()
+
+  writeFileSync(
+    path.join(root, 'governance', 'policies', 'TARGET-001.json'),
+    `${JSON.stringify(
+      {
+        id: 'TARGET-001',
+        title: 'Target policy',
+        severity: 'hard',
+        summary: 'Agents MUST apply the target policy.',
+        instructions: ['Agents MUST preserve target behavior.'],
+      },
+      null,
+      2,
+    )}\n`,
+  )
+  writePolicyExtension(root, 'target.json', [
+    {
+      persona: 'tech-lead',
+      workflow: 'dev',
+      stage: 'plan',
+      policies: ['TARGET-001'],
+    },
+  ])
+
+  const ids = resolvePolicies(root, {
+    persona: 'tech-lead',
+    workflow: 'dev',
+    stage: 'plan',
+  }).map((policy) => policy.id)
+
+  assert.ok(ids.includes('TARGET-001'))
+})
+
+test('target policy lookup extensions fail loudly for invalid rows', () => {
+  const root = createFixture()
+
+  writePolicyExtension(root, 'missing.json', [
+    {
+      persona: 'tech-lead',
+      workflow: 'dev',
+      stage: 'plan',
+      policies: ['MISSING-001'],
+    },
+  ])
+
+  assert.throws(
+    () =>
+      resolvePolicies(root, {
+        persona: 'tech-lead',
+        workflow: 'dev',
+        stage: 'plan',
+      }),
+    (error: unknown) =>
+      error instanceof Error &&
+      error.message.includes('policy_lookup.d/missing.json') &&
+      error.message.includes('MISSING-001'),
+  )
+})
+
+test('target policy lookup extensions reject duplicates and malformed JSON', () => {
+  const duplicateRoot = createFixture()
+
+  writePolicyExtension(duplicateRoot, 'duplicate.json', [
+    {
+      persona: 'tech-lead',
+      workflow: 'dev',
+      stage: 'plan',
+      policies: ['PLAN-001'],
+    },
+  ])
+  assert.throws(
+    () =>
+      resolvePolicies(duplicateRoot, {
+        persona: 'tech-lead',
+        workflow: 'dev',
+        stage: 'plan',
+      }),
+    (error: unknown) =>
+      error instanceof Error &&
+      error.message.includes('policy_lookup.d/duplicate.json') &&
+      error.message.includes('duplicates'),
+  )
+
+  const malformedRoot = createFixture()
+  const malformedDirectory = path.join(
+    malformedRoot,
+    'governance',
+    'registries',
+    'policy_lookup.d',
+  )
+
+  mkdirSync(malformedDirectory, { recursive: true })
+  writeFileSync(path.join(malformedDirectory, 'malformed.json'), '{\n')
+  assert.throws(() =>
+    resolvePolicies(malformedRoot, {
+      persona: 'tech-lead',
+      workflow: 'dev',
+      stage: 'plan',
+    }),
+  )
+})
+
 test('policy resolution unions global and stage-specific policies', () => {
   const root = createFixture()
   const catalog = loadPolicyCatalog(root)
@@ -307,6 +430,9 @@ test('orchestration and release guidance resolve with required policy dependenci
     'BIN-001',
     'BRIEF-001',
     'DELEGATE-001',
+    // The supervisor brief directs a technical-director checkpoint stop to
+    // DIRECTOR-001, so the card must deliver that policy rather than name it.
+    'DIRECTOR-001',
     'EXECUTOR-001',
     'GLOBAL-001',
     'GLOBAL-002',

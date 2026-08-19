@@ -323,7 +323,8 @@ function contentFingerprint(
   return files.sort(([left], [right]) => left.localeCompare(right))
 }
 
-function snapshotEntryPath(entry: string): string {
+/** Path component of one `git status --porcelain=v1` snapshot entry. */
+export function snapshotEntryPath(entry: string): string {
   const statusPath = entry.length >= 4 ? entry.slice(3) : entry
   const renameArrow = statusPath.lastIndexOf(' -> ')
 

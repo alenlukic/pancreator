@@ -141,7 +141,6 @@ export interface StageContextDefinition {
   conditional_stage_outputs?: StageContextStageSelector[]
   prior_attempts?: number
   operator_feedback?: number
-  include_active_waivers?: boolean
   include_workspace_ratifications?: boolean
   legacy_full_history?: boolean
 }
@@ -479,6 +478,15 @@ export interface WorkspaceChangeAttribution {
   explanation: string
 }
 
+export interface TargetInstructionEvidence {
+  read_paths: string[]
+}
+
+export interface TargetInstructionInput {
+  changed_paths: string[]
+  read_paths: string[]
+}
+
 /**
  * Whether the worker read its complete canonical contract, or could not reach
  * it. `reference_failed` is only valid alongside a `blocked` stage result: a
@@ -569,6 +577,7 @@ export interface StageOutput {
   risks: string[]
   unknowns: string[]
   workspace_changes?: WorkspaceChangeAttribution
+  target_instruction_evidence?: TargetInstructionEvidence
   invocation_attestation?: InvocationAttestation
   data: Record<string, unknown>
 }
@@ -626,6 +635,7 @@ export interface Invocation {
   inputs: {
     references: InvocationReference[]
     missing_required?: string[]
+    target_instructions?: TargetInstructionInput
   }
   policies: Policy[]
   requirements?: RequirementManifest
@@ -701,6 +711,11 @@ export interface Invocation {
    * invocation whose delegation is validated by full-card equality.
    */
   contract_manifest?: InvocationContractManifest
+  /**
+   * New cards require run-scoped supervisor and worker model evidence.
+   * Its absence preserves the contract of cards prepared before this feature.
+   */
+  model_evidence_required?: boolean
   workspace_before: WorkspaceSnapshot
 }
 
@@ -981,6 +996,19 @@ export interface OperatorFeedbackItem {
   timestamp: string
 }
 
+export interface RunModelEvidence {
+  role: 'supervisor' | 'worker'
+  invocation_id?: string
+  persona: string
+  declared_spec: string | null
+  effective_model: string | null
+  source: string
+  result: 'recorded' | 'match' | 'mismatch' | 'unavailable'
+  error?: string
+  evidence_path: string
+  timestamp: string
+}
+
 export interface OperatorPauseContext {
   prior_status: 'running' | 'awaiting_supervisor' | 'awaiting_operator'
   prior_pending_action: PendingAction
@@ -1114,6 +1142,7 @@ export interface RunState {
   consecutive_failures: number
   stage_history: StageHistoryItem[]
   operator_feedback?: OperatorFeedbackItem[]
+  model_evidence?: RunModelEvidence[]
   revision: number
   created_at: string
   updated_at: string
