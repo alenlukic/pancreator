@@ -431,6 +431,7 @@ const LANGUAGE_CODE_PERSONAS = new Set([
   'qa-tester',
   'reviewer',
   'spotfixer',
+  'tech-lead',
 ])
 
 function isGeneratedLanguageRow(row) {

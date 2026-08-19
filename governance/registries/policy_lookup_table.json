@@ -65,6 +65,13 @@
       "policies": ["TS-001"]
     },
     {
+      "persona": "tech-lead",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["TS-001"]
+    },
+    {
       "persona": "coder",
       "workflow": "*",
       "stage": "*",
@@ -172,7 +179,14 @@
       "persona": "tech-lead",
       "workflow": "*",
       "stage": "*",
-      "policies": ["CONTRACT-001"]
+      "policies": ["CONTRACT-001", "ENG-001"]
+    },
+    {
+      "persona": "tech-lead",
+      "workflow": "*",
+      "stage": "*",
+      "technology": "python",
+      "policies": ["PY-001"]
     },
     {
       "persona": "designer",
@@ -404,6 +418,13 @@
     },
     {
       "persona": "coder",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["LANG-001"],
+      "generated_by": "pancreator-target-language-handbooks"
+    },
+    {
+      "persona": "tech-lead",
       "workflow": "*",
       "stage": "*",
       "policies": ["LANG-001"],

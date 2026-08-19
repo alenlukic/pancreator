@@ -10,6 +10,7 @@ import type { HandlerInput, HandlerResult } from '../requirements/types.js'
 import { activeOperatorGateWaivers } from '../waivers.js'
 import { readProjectConfig } from '../project-config.js'
 import { resolveRunLayout } from '../run-layout.js'
+import { resolveTargetInstructionPaths } from '../target-instructions.js'
 import {
   gitWorkspaceSnapshot,
   workspaceChangedPathsFromSnapshots,
@@ -833,6 +834,105 @@ function planAcceptanceCriterionIds(
   }
 
   return acceptanceCriterionIdsFromPlanOutput(root, planOutputPath)
+}
+
+/** Validate AGENTS.md read evidence against declared and final changed paths. */
+export function validateTargetInstructionCoverage(
+  input: HandlerInput,
+): HandlerResult {
+  const issues: HandlerResult['issues'] = []
+  const invocationInputs =
+    isRecord(input.invocation) && isRecord(input.invocation.inputs)
+      ? input.invocation.inputs
+      : null
+  const targetInstructions =
+    invocationInputs && isRecord(invocationInputs.target_instructions)
+      ? invocationInputs.target_instructions
+      : null
+
+  if (!targetInstructions) {
+    return {
+      status: 'failed',
+      issues: [
+        issue(
+          'TARGET_INSTRUCTION_COVERAGE_MISSING',
+          'The invocation does not declare target instruction paths.',
+        ),
+      ],
+    }
+  }
+
+  const declaredChangedPaths = Array.isArray(targetInstructions.changed_paths)
+    ? targetInstructions.changed_paths.filter(
+        (item): item is string => typeof item === 'string',
+      )
+    : []
+  const invocationReadPaths = Array.isArray(targetInstructions.read_paths)
+    ? targetInstructions.read_paths.filter(
+        (item): item is string => typeof item === 'string',
+      )
+    : []
+  const workspaceRoot = workspaceRootFromInput(input)
+  const output = readJson(path.join(input.root, input.targetPath))
+  const outputData =
+    isRecord(output) && isRecord(output.data) ? output.data : null
+  const implementation =
+    outputData && isRecord(outputData.implementation)
+      ? outputData.implementation
+      : null
+  const claimedChangedPaths =
+    implementation && Array.isArray(implementation.changed_files)
+      ? implementation.changed_files.filter(
+          (item): item is string => typeof item === 'string',
+        )
+      : []
+  const diff = workspaceSourceChanges(workspaceRoot)
+  const workspaceBefore =
+    isRecord(input.invocation) && isRecord(input.invocation.workspace_before)
+      ? input.invocation.workspace_before
+      : null
+
+  if (!diff.ok && workspaceBefore?.kind !== 'filesystem') {
+    issues.push(gitUnavailableIssue(diff.error))
+  }
+
+  const finalChangedPaths = [
+    ...new Set([
+      ...declaredChangedPaths,
+      ...claimedChangedPaths,
+      ...(diff.ok ? diff.files : []),
+    ]),
+  ].sort()
+  const finalReadPaths = resolveTargetInstructionPaths(
+    workspaceRoot,
+    finalChangedPaths,
+  )
+  const requiredReadPaths = [
+    ...new Set([...invocationReadPaths, ...finalReadPaths]),
+  ].sort()
+  const evidence =
+    isRecord(output) && isRecord(output.target_instruction_evidence)
+      ? output.target_instruction_evidence
+      : null
+  const readPaths =
+    evidence && Array.isArray(evidence.read_paths)
+      ? evidence.read_paths.filter(
+          (item): item is string => typeof item === 'string',
+        )
+      : []
+
+  for (const requiredPath of requiredReadPaths) {
+    if (!readPaths.includes(requiredPath)) {
+      issues.push(
+        issue(
+          'TARGET_INSTRUCTION_COVERAGE_MISSING',
+          `Target instruction evidence omits ${requiredPath}.`,
+        ),
+      )
+    }
+  }
+
+  return { status: issues.length === 0 ? 'passed' : 'failed', issues }
 }
 
 export function validateImplementationClaims(

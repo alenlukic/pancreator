@@ -360,6 +360,38 @@ test('best-of-N init isolates every candidate in its own worktree and model set'
   )
 })
 
+test('best-of-N init output omits unused supervisor agent paths', () => {
+  const root = createFixture()
+
+  writeJson(path.join(root, 'best-of-n.json'), CONFIGS)
+
+  const result = JSON.parse(
+    execFileSync(
+      process.execPath,
+      [
+        CLI,
+        'best-of-n',
+        'init',
+        '--request',
+        'request.md',
+        '--configs',
+        'best-of-n.json',
+        '--json',
+      ],
+      {
+        cwd: root,
+        encoding: 'utf8',
+        timeout: 30_000,
+      },
+    ),
+  ) as { candidates: Array<Record<string, unknown>> }
+
+  assert.ok(result.candidates.length >= 2)
+  assert.ok(
+    result.candidates.every((candidate) => !('agent_path' in candidate)),
+  )
+})
+
 test('a candidate run delegates to its own agent variant', () => {
   const root = createFixture()
   const session = initSession(root)
@@ -384,25 +416,34 @@ test('agent refresh preserves pinned models while updating instructions', () => 
   const candidate = session.candidates[0]
   const variant = path.join(
     root,
-    `.cursor/agents/pan-orchestrator--${candidate.agent_suffix}.md`,
+    `.cursor/agents/pan-intake-writer--${candidate.agent_suffix}.md`,
   )
   const original = readFileSync(variant, 'utf8')
   const pinnedModel = /^model: .+$/mu.exec(original)?.[0]
 
   assert.ok(pinnedModel)
 
-  writeFileSync(variant, original.replace('maxTurns: 120', 'maxTurns: 1'))
+  writeFileSync(variant, original.replace('maxTurns: 24', 'maxTurns: 1'))
 
   const refreshed = refreshBestOfNAgents(root, session.bon_id)
   const updated = readFileSync(variant, 'utf8')
 
   assert.ok(
     refreshed.refreshed_agents.includes(
-      `.cursor/agents/pan-orchestrator--${candidate.agent_suffix}.md`,
+      `.cursor/agents/pan-intake-writer--${candidate.agent_suffix}.md`,
     ),
   )
   assert.ok(updated.includes(pinnedModel))
-  assert.match(updated, /maxTurns: 120/u)
+  assert.match(updated, /maxTurns: 24/u)
+  assert.equal(
+    existsSync(
+      path.join(
+        root,
+        `.cursor/agents/pan-orchestrator--${candidate.agent_suffix}.md`,
+      ),
+    ),
+    false,
+  )
 })
 
 test('status surfaces invalid candidate state', () => {

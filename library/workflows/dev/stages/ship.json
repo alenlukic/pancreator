@@ -32,7 +32,6 @@
     ],
     "prior_attempts": 1,
     "operator_feedback": 1,
-    "include_active_waivers": true,
     "include_workspace_ratifications": true
   },
   "required_data": {

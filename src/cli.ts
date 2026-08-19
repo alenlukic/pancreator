@@ -12,6 +12,8 @@ import {
   getRunState,
   pauseRun,
   prepareInvocation,
+  probeRunInvocationModel,
+  recordSupervisorModelEvidence,
   resumeRun,
   setRunStage,
   setRunVerification,
@@ -120,6 +122,8 @@ const HELP_BODY = `Usage:
   pan list [--json]
   pan archive [--days <positive-integer>] [--json]
   pan models [--sync] [--probe] [--json]
+  pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source> [--json]
+  pan models --probe --run <run-id> --invocation <invocation-id> [--json]
       --probe launches one minimal cursor-agent call per distinct active model spec and fails loudly when the resolved variant differs from the catalog's prediction. Needs the cursor-agent CLI and CURSOR_API_KEY or a login.
   pan validate [--json]
   pan doctor [--worktree <name>] [--json]
@@ -1058,6 +1062,46 @@ async function main(): Promise<void> {
       return
     }
     case 'models': {
+      const runId = option(args, '--run')
+      const invocationId = option(args, '--invocation')
+
+      if (args[0] === 'evidence') {
+        const role = requiredArgument(option(args, '--role'), '--role')
+
+        if (role !== 'supervisor') {
+          throw new PanError(
+            `models evidence supports only role 'supervisor'; got '${role}'.`,
+            { code: 'INVALID_ARGUMENT' },
+          )
+        }
+
+        print(
+          recordSupervisorModelEvidence(
+            root,
+            requiredArgument(runId, '--run'),
+            requiredArgument(
+              option(args, '--effective-model'),
+              '--effective-model',
+            ),
+            requiredArgument(option(args, '--source'), '--source'),
+          ),
+          true,
+        )
+        return
+      }
+
+      if (hasFlag(args, '--probe') && (runId || invocationId)) {
+        print(
+          probeRunInvocationModel(
+            root,
+            requiredArgument(runId, '--run'),
+            requiredArgument(invocationId, '--invocation'),
+          ),
+          true,
+        )
+        return
+      }
+
       const loaded = loadPipelineConfig(root)
       const changes = syncCursorProjection(root, {
         write: hasFlag(args, '--sync'),
@@ -1228,7 +1272,6 @@ async function main(): Promise<void> {
               slot: candidate.slot,
               run_id: candidate.run_id,
               worktree_path: candidate.worktree_path,
-              agent_path: `.cursor/agents/pan-orchestrator--${candidate.agent_suffix}.md`,
             })),
             state_path: `runtime/logs/best-of-n/${state.bon_id}/state.json`,
           },

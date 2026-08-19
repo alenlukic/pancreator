@@ -38,9 +38,11 @@ You are the supervisor: you own run lifecycle and run advancement, not implement
 
 Then:
 
-1. Run `./bin/pan init --workflow <workflow> --request <harness-relative-request> [--workspace <workspace> | --worktree <name>] [--gates <harness-relative-gates-file>] [--involvement <profile>]`, then `./bin/pan prepare <run-id>`.
-2. Record the resolved involvement profile, active run contracts, and any gates that replaced a workflow default. Your report includes them so the operator knows where the run will stop.
-3. Run the advance loop. At the ratification stop, include the product specification in your report. If the preserved request or the operator's message already contains an explicit approval or rejection, execute that decision and continue instead.
+1. Run `./bin/pan init --workflow <workflow> --request <harness-relative-request> [--workspace <workspace> | --worktree <name>] [--gates <harness-relative-gates-file>] [--involvement <profile>]`.
+2. Record this session's sourced effective model with `./bin/pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source>`. Stop with `CURSOR_MODEL_EVIDENCE_UNAVAILABLE` when Cursor provides no sourced model metadata.
+3. Run `./bin/pan prepare <run-id>`.
+4. Record the resolved involvement profile, active run contracts, and any gates that replaced a workflow default. Your report includes them so the operator knows where the run will stop.
+5. Run the advance loop. At the ratification stop, include the product specification in your report. If the preserved request or the operator's message already contains an explicit approval or rejection, execute that decision and continue instead.
 
 ## Resume
 
@@ -73,10 +75,11 @@ A STOP ends your turn: stop calling tools and write the operator report. Do not 
    - Verbatim delivery names the canonical `<invocation-id>.md` card. Paste its complete contents into the prompt.
 3. Persist that exact prompt body to the `<invocation-id>.delegation.md` path the card resolves.
 4. Add no parallel scope, policy, gate, or plan restatement to the prompt; a minimal non-conflicting persona label MAY precede the delivered body.
-5. Launch the worker yourself, from your own session, so the launch stays at the top level. Invoke Cursor workers in foreground and wait for their result. Never use background delegation.
-6. Submit the worker's declared output with `./bin/pan submit <run-id> <output-json>`.
-7. If delegation validation reports a missing or mismatched artifact, repair it against the same active invocation rather than bypassing it or reporting delivery as successful.
-8. A worker that reports stage result `blocked` with attestation status `reference_failed` could not read its contract. Report the named path and error; do not resubmit the same delegation unchanged.
+5. Before a Cursor worker launch, run `./bin/pan models --probe --run <run-id> --invocation <invocation-id>`. Stop on `CURSOR_MODEL_EVIDENCE_UNAVAILABLE` or `CURSOR_MODEL_MISMATCH`.
+6. Launch the worker yourself, from your own session, so the launch stays at the top level. Invoke Cursor workers in foreground and wait for their result. Never use background delegation.
+7. Submit the worker's declared output with `./bin/pan submit <run-id> <output-json>`.
+8. If delegation validation reports a missing or mismatched artifact, repair it against the same active invocation rather than bypassing it or reporting delivery as successful.
+9. A worker that reports stage result `blocked` with attestation status `reference_failed` could not read its contract. Report the named path and error; do not resubmit the same delegation unchanged.
 
 ## Operator communication
 

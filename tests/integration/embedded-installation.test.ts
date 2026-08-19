@@ -395,10 +395,7 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
       'utf8',
     )
     assert.match(orchestratorAgent, /\.\/\.pancreator\/bin\/pan/)
-    assert.match(
-      orchestratorAgent,
-      /\.pancreator\/library\/personas\/orchestrator\.md/u,
-    )
+    assert.match(orchestratorAgent, /MUST NOT supervise best-of-N candidates/u)
     // Run-relative records are resolved from the active card rather than named
     // as a literal, so the projection has no run subdirectory to rewrite.
     assert.doesNotMatch(orchestratorAgent, /runtime\/logs\/workflows/u)
@@ -1906,9 +1903,22 @@ test('embedded installer refresh supersedes local payload fixes and preserves ex
       'docs',
       'target-notes.md',
     )
+    const policyExtension = path.join(
+      project,
+      '.pancreator',
+      'governance',
+      'registries',
+      'policy_lookup.d',
+      'target.json',
+    )
 
     writeFileSync(owned, 'locally patched\n')
     writeFileSync(extension, 'target extension\n')
+    mkdirSync(path.dirname(policyExtension), { recursive: true })
+    writeFileSync(
+      policyExtension,
+      '{"schema_version":1,"rows":[{"persona":"tech-lead","workflow":"dev","stage":"plan","policies":["TARGET-001"]}]}\n',
+    )
 
     const refresh = runInstaller(project, ['--yes'])
 
@@ -1920,6 +1930,11 @@ test('embedded installer refresh supersedes local payload fixes and preserves ex
     // A file the release never shipped is a target extension and survives.
     assert.match(refresh.stdout, /preserved {2}docs\/target-notes\.md/u)
     assert.equal(readFileSync(extension, 'utf8'), 'target extension\n')
+    assert.match(
+      refresh.stdout,
+      /preserved {2}governance\/registries\/policy_lookup\.d\/target\.json/u,
+    )
+    assert.match(readFileSync(policyExtension, 'utf8'), /TARGET-001/u)
 
     const backupRoot = path.join(project, '.pancreator', 'backups', 'payload')
     const stamps = readdirSync(backupRoot)
@@ -1940,6 +1955,7 @@ test('embedded installer refresh supersedes local payload fixes and preserves ex
     assert.equal(second.status, 0, second.stderr)
     assert.doesNotMatch(second.stdout, /superseded {2}/u)
     assert.equal(readFileSync(extension, 'utf8'), 'target extension\n')
+    assert.match(readFileSync(policyExtension, 'utf8'), /TARGET-001/u)
   } finally {
     rmSync(project, { recursive: true, force: true })
   }

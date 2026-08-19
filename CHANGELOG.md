@@ -1,5 +1,29 @@
 # Changelog
 
+## [4.1.0] - 2026-08-19
+
+### Changed
+
+- Run the workflow supervisor in the operator session instead of through a nested child agent. Documentation, commands, and projections now describe inline supervision, and a regression scan rejects nested-relay prose in README.md and docs ([AGENTS.md](AGENTS.md), [pan-start](library/cursor/commands/pan-start.md), [pan-resume](library/cursor/commands/pan-resume.md), [supervisor-entry-point-contract test](tests/regression/supervisor-entry-point-contract.test.ts)).
+- Make the meta-orchestrator the sole supervisor for best-of-N candidate runs. Stop generating run-scoped orchestrator variants and omit unused supervisor paths from best-of-n init output ([meta-orchestrator](library/cursor/agents/meta-orchestrator.md), [best-of-n test](tests/integration/best-of-n.test.ts)).
+- Extend operator note visibility in OPERATOR-001. Gate waivers stay required context while active, and a no-stage resume note replaces a prepared worker card or refuses attachment when no active card exists ([OPERATOR-001](governance/policies/OPERATOR-001.json), [operator-pause test](tests/integration/operator-pause.test.ts)).
+- Always include approval directives that target a stage while keeping the numeric remediation-note limit for other notes ([context](src/lib/context.ts), [context test](tests/unit/context.test.ts)).
+- Map release 4.0.0 to merge commit d67a8ebc in release/index.json ([release/index.json](release/index.json)).
+
+### Added
+
+- Add run-scoped model evidence for the unpinned supervisor and each Cursor worker. Record the supervisor effective model at run entry, probe each worker before launch, and enforce evidence only on cards that declare model_evidence_required ([engine](src/lib/engine.ts), [cursor-probe](src/lib/executors/cursor-probe.ts), [model-evidence test](tests/integration/model-evidence.test.ts)).
+- Require an authenticated cursor-agent before a run can advance past supervisor model evidence. `/pan-start` step 4 records the supervisor effective model, which marks later worker cards. Marked cards need worker probe evidence from `./bin/pan models --probe`, and the supervisor stops with `CURSOR_MODEL_EVIDENCE_UNAVAILABLE` when cursor-agent is not authenticated ([pan-start](library/cursor/commands/pan-start.md), [model-evidence test](tests/integration/model-evidence.test.ts)).
+- Resolve applicable AGENTS.md files from declared changed paths and validate target_instruction_evidence.read_paths at submission with TARGET_INSTRUCTION_COVERAGE_MISSING ([target-instructions](src/lib/target-instructions.ts), [stage-validators](src/lib/validators/stage-validators.ts), [target-instructions test](tests/unit/target-instructions.test.ts)).
+- Merge target-owned policy lookup rows from governance/registries/policy_lookup.d/\*.json after the harness table with loud failures for malformed, duplicate, or unresolvable rows ([policies](src/lib/policies.ts), [embedded-installation test](tests/integration/embedded-installation.test.ts)).
+- Deliver ENG-001, LANG-001, and PY-001 guidance on tech-lead plan cards and preserve generated language rows through embedded refresh ([policy_lookup_table.json](governance/registries/policy_lookup_table.json), [render test](tests/unit/render.test.ts)).
+
+### Fixed
+
+- Locate operator rejection feedback by decision and target stage instead of array position in ship-reject integration tests ([ship-reject test](tests/integration/ship-reject.test.ts)).
+- Export snapshotEntryPath from git.ts and remove the duplicated helper in context.ts ([git](src/lib/git.ts), [context](src/lib/context.ts)).
+- Remove the dead include_active_waivers stage-context flag after waiver inclusion became unconditional ([stage.schema.json](library/schemas/stage.schema.json), [workflow](src/lib/workflow.ts)).
+
 ## [4.0.0] - 2026-08-18
 
 ### Changed

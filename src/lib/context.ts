@@ -1,8 +1,10 @@
 import path from 'node:path'
 
+import { snapshotEntryPath } from './git.js'
 import { isRecord, readJson, resolveInside, writeJsonAtomic } from './io.js'
 import { isSelfDevelopmentInstallation } from './project-config.js'
 import { resolveRunLayout } from './run-layout.js'
+import { resolveTargetInstructionPaths } from './target-instructions.js'
 import { activeOperatorGateWaivers } from './waivers.js'
 import type {
   Invocation,
@@ -13,6 +15,8 @@ import type {
   StageContextStageSelector,
   StageDefinition,
   StageHistoryItem,
+  TargetInstructionInput,
+  WorkspaceSnapshot,
 } from './types.js'
 
 interface AvailableReference extends InvocationReference {
@@ -26,6 +30,7 @@ interface InvocationContextOptions {
   attempt: number
   invocationId: string
   workspaceFingerprint: string
+  workspace?: WorkspaceSnapshot
 }
 
 interface ContextManifest {
@@ -302,15 +307,19 @@ function selectOperatorFeedback(
   stage: StageDefinition,
 ): void {
   const limit = stage.context.operator_feedback ?? 0
-
-  if (limit === 0) {
-    return
-  }
-
-  const feedbackItems = [...(state.operator_feedback ?? [])]
-    .reverse()
-    .filter((item) => item.to_stage === stage.slug)
-    .slice(0, limit)
+  const targeted = (state.operator_feedback ?? []).filter(
+    (item) => item.to_stage === stage.slug,
+  )
+  const approvalDirectives = targeted.filter(
+    (item) => item.decision === 'approve',
+  )
+  const remediationNotes =
+    limit === 0
+      ? []
+      : targeted.filter((item) => item.decision !== 'approve').slice(-limit)
+  const feedbackItems = [...approvalDirectives, ...remediationNotes].sort(
+    (left, right) => left.timestamp.localeCompare(right.timestamp),
+  )
 
   for (const feedback of feedbackItems) {
     const label =
@@ -334,24 +343,19 @@ function selectExceptions(
   stage: StageDefinition,
   workspaceFingerprint: string,
 ): void {
-  if (stage.context.include_active_waivers) {
-    for (const waiver of activeOperatorGateWaivers(
-      state,
-      workspaceFingerprint,
-    )) {
+  for (const waiver of activeOperatorGateWaivers(state, workspaceFingerprint)) {
+    addReference(references, {
+      path: waiver.artifact_path,
+      description: `Active operator gate waiver for ${waiver.stage}`,
+      retrieval: 'required',
+    })
+
+    if (waiver.spotfix_case_path) {
       addReference(references, {
-        path: waiver.artifact_path,
-        description: `Active operator gate waiver for ${waiver.stage}`,
+        path: waiver.spotfix_case_path,
+        description: 'Open deferred spotfix case linked to an active waiver',
         retrieval: 'required',
       })
-
-      if (waiver.spotfix_case_path) {
-        addReference(references, {
-          path: waiver.spotfix_case_path,
-          description: 'Open deferred spotfix case linked to an active waiver',
-          retrieval: 'required',
-        })
-      }
     }
   }
 
@@ -377,6 +381,72 @@ function selectExceptions(
       })
     }
   }
+}
+
+function outputChangedPaths(
+  root: string,
+  state: RunState,
+  stageSlug: string,
+): string[] {
+  const outputPath = [...state.stage_history]
+    .reverse()
+    .find(
+      (item) => item.stage === stageSlug && item.outcome === 'success',
+    )?.output_path
+
+  if (!outputPath) {
+    return []
+  }
+
+  const value = readJson(resolveInside(root, outputPath))
+  const data = isRecord(value) && isRecord(value.data) ? value.data : null
+
+  if (!data) {
+    return []
+  }
+
+  if (stageSlug === 'plan') {
+    const plan = isRecord(data.engineering_plan) ? data.engineering_plan : null
+    const files = plan && Array.isArray(plan.files) ? plan.files : []
+
+    return files.flatMap((item) =>
+      isRecord(item) && typeof item.path === 'string' ? [item.path] : [],
+    )
+  }
+
+  const implementation = isRecord(data.implementation)
+    ? data.implementation
+    : null
+  const files =
+    implementation && Array.isArray(implementation.changed_files)
+      ? implementation.changed_files
+      : []
+
+  return files.filter((item): item is string => typeof item === 'string')
+}
+
+function targetInstructionInput(
+  options: InvocationContextOptions,
+): TargetInstructionInput | undefined {
+  const { root, state, stage, workspace } = options
+
+  if (!['implement', 'consolidate', 'review', 'test'].includes(stage.slug)) {
+    return undefined
+  }
+
+  const sourceStage =
+    state.workflow_slug === 'metacritic' ? 'consolidate' : 'implement'
+  const declared = ['implement', 'consolidate'].includes(stage.slug)
+    ? outputChangedPaths(root, state, 'plan')
+    : outputChangedPaths(root, state, sourceStage)
+  const current = ['implement', 'consolidate'].includes(stage.slug)
+    ? []
+    : (workspace?.entries ?? []).map((entry) => snapshotEntryPath(entry))
+  const changedPaths = [...new Set([...declared, ...current])].sort()
+  const workspaceRoot = path.resolve(root, state.workspace_root || '.')
+  const readPaths = resolveTargetInstructionPaths(workspaceRoot, changedPaths)
+
+  return { changed_paths: changedPaths, read_paths: readPaths }
 }
 
 function writeContextManifest(
@@ -576,6 +646,16 @@ export function buildInvocationInputs(
   selectPriorAttempts(references, options.root, state, stage, options.attempt)
   selectOperatorFeedback(references, state, stage)
   selectExceptions(references, state, stage, options.workspaceFingerprint)
+  const targetInstructions = targetInstructionInput(options)
+
+  for (const instructionPath of targetInstructions?.read_paths ?? []) {
+    addReference(references, {
+      path: instructionPath,
+      description:
+        'Target instruction file resolved from declared changed paths',
+      retrieval: 'required',
+    })
+  }
 
   if (stage.persona === 'coder') {
     for (const baseline of Object.values(
@@ -633,5 +713,6 @@ export function buildInvocationInputs(
     ...(missingRequired.length > 0
       ? { missing_required: missingRequired }
       : {}),
+    ...(targetInstructions ? { target_instructions: targetInstructions } : {}),
   }
 }

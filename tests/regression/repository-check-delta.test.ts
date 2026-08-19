@@ -13,6 +13,8 @@ import {
 // progress echoes, plain and parametrized PASSED lines (including bracketed
 // parameters that contain spaces and one line with interleaved ANSI log
 // output), application log noise, the warnings summary, and the final summary.
+// Target-identifying names and absolute paths are substituted; line shapes,
+// which are what the delta filter is judged on, are unchanged.
 const FIXTURE = readFileSync(
   path.join(
     process.cwd(),
@@ -25,7 +27,7 @@ const FIXTURE = readFileSync(
 )
 
 const WORKSPACE_ROOT =
-  '/Users/alen/Dev/rowspace/.pancreator/runtime/worktrees/operator/my-task'
+  '/workspace/.pancreator/runtime/worktrees/operator/my-task'
 
 function checkResult(
   stdout: string,
@@ -40,7 +42,7 @@ function checkResult(
     results: [
       {
         kind: 'command',
-        command: 'just exec --customer rowspace -- just be-test-unit',
+        command: 'just exec --customer acme -- just be-test-unit',
         exit_code: status === 'passed' ? 0 : 1,
         signal: null,
         stdout,

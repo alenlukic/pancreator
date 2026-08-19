@@ -282,6 +282,14 @@ Every install includes Pancreator-owned schemas, generic semantics, and base CSS
 
 Refreshes preserve the target-specific project files. Legacy installations can generate them with the same command; existing historical Markdown artifacts remain unchanged. Run `/pan-build-briefs` before starting the first workflow after a fresh install or a legacy update that lacks those files. New worker-stage invocations then require brief JSON plus rendered HTML, and the harness rerenders the HTML during submission.
 
+## Target policy extensions
+
+Targets can add lookup rows under
+`.pancreator/governance/registries/policy_lookup.d/*.json`. Each file uses
+`schema_version: 1` with a `rows` array. Refresh preserves these target-owned
+files. Invalid JSON, duplicate rows, and missing policy identifiers stop policy
+resolution before card preparation.
+
 ## Workspace mutation model
 
 Pancreator fingerprints relevant Git-visible source state and does not recursively index target files. Compiled artifacts, caches, virtual environments, and third-party dependency/package directories are excluded and permanently outside agent remit. Source-allowed workers edit declared source directly; governance and artifact diagnostics are deferred to release-steward review instead of looping implementation. Operators should pause before concurrent tracked-file changes so attribution remains clear.
@@ -374,7 +382,7 @@ blanket-deleted.
 
 ## Harness versioning
 
-`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `4.0.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
+`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `4.1.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
 
 `release/index.json` is the internal mapping from harness version to immutable
 Git commit. Because a commit cannot contain its own hash, release publication is

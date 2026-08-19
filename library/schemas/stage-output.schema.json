@@ -216,6 +216,22 @@
           "type": "string"
         }
       }
+    },
+    "target_instruction_evidence": {
+      "type": "object",
+      "description": "Concise evidence that the worker read every AGENTS.md file resolved from the declared and final changed paths.",
+      "required": ["read_paths"],
+      "additionalProperties": false,
+      "properties": {
+        "read_paths": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
     }
   }
 }

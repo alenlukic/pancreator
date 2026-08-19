@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -10,7 +10,7 @@ import type {
   StageHistoryItem,
 } from '../../src/lib/types.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
-import { createFixture } from '../helpers.js'
+import { createFixture, writeJson } from '../helpers.js'
 
 function historyItem(
   stage: string,
@@ -82,6 +82,89 @@ function waiverFor(item: StageHistoryItem, suffix: string): OperatorGateWaiver {
     timestamp: '2026-06-26T00:00:00.000Z',
   }
 }
+
+test('implementation context retains approvals beyond the remediation limit', () => {
+  const root = createFixture()
+  const state = stateWith([])
+
+  state.current_stage = 'implement'
+  state.operator_feedback = [
+    {
+      decision: 'approve',
+      from_stage: 'intake',
+      to_stage: 'implement',
+      attempt: 1,
+      note: 'Preserve the approved compatibility boundary.',
+      path: 'runtime/approval.md',
+      timestamp: '2026-06-24T00:00:00.000Z',
+    },
+    {
+      decision: 'revise',
+      from_stage: 'review',
+      to_stage: 'implement',
+      attempt: 1,
+      note: 'Older remediation.',
+      path: 'runtime/older.md',
+      timestamp: '2026-06-25T00:00:00.000Z',
+    },
+    {
+      decision: 'reject',
+      from_stage: 'test',
+      to_stage: 'implement',
+      attempt: 1,
+      note: 'Newest remediation.',
+      path: 'runtime/newest.md',
+      timestamp: '2026-06-26T00:00:00.000Z',
+    },
+  ]
+
+  const inputs = buildInvocationInputs({
+    root,
+    state,
+    stage: stageBySlug(loadWorkflow(root, 'dev'), 'implement'),
+    attempt: 1,
+    invocationId: 'implement-1',
+    workspaceFingerprint: 'fp-current',
+  })
+  const selectedPaths = inputs.references
+    .filter((item) => item.retrieval === 'required')
+    .map((item) => item.path)
+
+  assert.ok(selectedPaths.includes('runtime/approval.md'))
+  assert.ok(selectedPaths.includes('runtime/newest.md'))
+  assert.ok(!selectedPaths.includes('runtime/older.md'))
+})
+
+test('implementation context resolves planned target instruction paths', () => {
+  const root = createFixture()
+  const plan = historyItem('plan', 'plan-1', 'success')
+  const state = stateWith([plan])
+
+  state.current_stage = 'implement'
+  mkdirSync(path.join(root, 'src', 'feature'), { recursive: true })
+  writeFileSync(path.join(root, 'src', 'AGENTS.md'), '# Source rules\n')
+  writeJson(path.join(root, plan.output_path), {
+    data: {
+      engineering_plan: {
+        files: [{ path: 'src/feature/new.ts' }],
+      },
+    },
+  })
+
+  const inputs = buildInvocationInputs({
+    root,
+    state,
+    stage: stageBySlug(loadWorkflow(root, 'dev'), 'implement'),
+    attempt: 1,
+    invocationId: 'implement-1',
+    workspaceFingerprint: 'fp-current',
+  })
+
+  assert.deepEqual(inputs.target_instructions, {
+    changed_paths: ['src/feature/new.ts'],
+    read_paths: ['AGENTS.md', 'src/AGENTS.md'],
+  })
+})
 
 test('ship context selects effective records and indexes superseded history', () => {
   const root = createFixture()

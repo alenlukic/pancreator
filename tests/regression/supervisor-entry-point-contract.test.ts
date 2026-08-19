@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -24,9 +24,24 @@ const ENTRY_COMMANDS = [
 const NESTED_SUPERVISOR_PATTERNS = [
   /invoke the `pan-orchestrator` subagent/iu,
   /launch the `pan-orchestrator` subagent with/iu,
+  /(?:inside|through|to) (?:a |the )?`pan-orchestrator` subagent/iu,
   /you relay between the operator and that subagent/iu,
   /MUST NOT initialize, prepare, submit, assess, decide/iu,
 ] as const
+
+function markdownFiles(directory: string): string[] {
+  return readdirSync(path.join(REPO_ROOT, directory), { withFileTypes: true })
+    .flatMap((entry) => {
+      const relative = path.join(directory, entry.name)
+
+      return entry.isDirectory()
+        ? markdownFiles(relative)
+        : entry.isFile() && entry.name.endsWith('.md')
+          ? [relative]
+          : []
+    })
+    .sort()
+}
 
 function read(relativePath: string): string {
   return readFileSync(path.join(REPO_ROOT, relativePath), 'utf8')
@@ -58,6 +73,21 @@ test('workflow entry points supervise in the operator session', () => {
       /from this session/iu,
       `${commandPath} MUST launch stage workers from the entry session`,
     )
+  }
+})
+
+test('operator documentation contains no nested supervisor relay', () => {
+  const documentation = ['README.md', ...markdownFiles('docs')]
+
+  for (const documentationPath of documentation) {
+    const body = read(documentationPath)
+
+    for (const pattern of NESTED_SUPERVISOR_PATTERNS) {
+      assert.ok(
+        !pattern.test(body),
+        `${documentationPath} contains forbidden supervisor relay wording: ${String(pattern)}`,
+      )
+    }
   }
 })
 

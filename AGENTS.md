@@ -87,11 +87,13 @@ These rules bind every agent that reads this file.
 
 - Runs MUST be created, inspected, advanced, paused, resumed, and aborted through `./bin/pan`.
 - Agents MUST NOT edit `state.json`, `events.jsonl`, or generated workflow records directly.
+- A supervisor MUST record its sourced effective Cursor model for each run before preparing a marked worker card.
+- Before launching a marked Cursor worker, the supervisor MUST persist a matching run-scoped probe for that invocation.
 - Ad-hoc Subagent calls MUST omit `model` so they inherit the parent model unless the operator explicitly selects a model. This does not change named-persona routing through projected frontmatter and `config.json`.
 - `DELEGATE-001` governs subagent supervision. An agent that starts a subagent MUST monitor it until it reaches a terminal state. It MUST check progress at least every 2 minutes for a short-running subagent, and at least every 5 minutes for a long-running one. It owns the outcome, MUST detect a crash, a stall, or a silent exit, and MUST NOT depend on the subagent to report back.
 - An operator-facing agent MUST start a subagent or other asynchronous process in the background, so the operator conversation stays responsive. In-run worker delegation is the stated exception and stays foreground and blocking, because the supervisor needs the worker result to advance the stage.
 - A projected `.cursor/agents/pan-<persona>.md` subagent MUST carry a frontmatter model matching the active mapping in `config.json`. Run `./bin/pan models --sync` after cloning the repository or changing `active_config` or a mapped model.
-- A run-scoped subagent variant at `.cursor/agents/pan-<persona>--<suffix>.md` carries the model one best-of-N run pinned, rather than the active mapping. `./bin/pan best-of-n` owns every variant. Agents MUST NOT write or edit one, and repository validation MUST NOT read one as active-config drift.
+- A run-scoped worker variant at `.cursor/agents/pan-<persona>--<suffix>.md` carries the model one best-of-N run pinned, rather than the active mapping. `./bin/pan best-of-n` owns every variant. It MUST NOT generate an orchestrator variant. Agents MUST NOT write or edit one, and repository validation MUST NOT read one as active-config drift.
 - `.cursor/` MUST remain fully gitignored and MUST be treated as disposable local configuration. Canonical Cursor agents, commands, and rules live under `library/cursor/` and are declared by `governance/registries/projection_manifest.json`; source or installation code MUST NOT treat `.cursor/` as authoritative input.
 - Every projection installable into a target repository MUST use a `pan-` or `pancreator.` filename so it can never collide with target-owned Cursor configuration. `src/lib/projection.ts` and `bin/install-support` both enforce this after glob expansion.
 

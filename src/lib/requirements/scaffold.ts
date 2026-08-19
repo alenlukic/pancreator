@@ -195,6 +195,9 @@ export function scaffoldStageOutput(
     risks: [],
     unknowns: [],
     data: scaffoldDataFromRequiredData(invocation.output.required_data),
+    ...(invocation.inputs?.target_instructions
+      ? { target_instruction_evidence: { read_paths: [] } }
+      : {}),
     ...(attestation ? { invocation_attestation: attestation } : {}),
   }
 
