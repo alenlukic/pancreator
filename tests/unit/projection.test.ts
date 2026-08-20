@@ -1,9 +1,21 @@
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
-import { projectCursorContent } from '../../src/lib/cursor-content.js'
+import {
+  projectCursorContent,
+  renderPolicyCursorRule,
+} from '../../src/lib/cursor-content.js'
+import { loadPolicyCatalog } from '../../src/lib/policies.js'
 import {
   projectPersonaVariants,
   removePersonaVariants,
@@ -129,6 +141,49 @@ test('repository validation does not require a local Cursor projection', () => {
   const result = validateProjectionDrift(root)
 
   assert.deepEqual(result.errors, [])
+})
+
+test('installer and compiled policy-rule renderers stay byte-identical', () => {
+  const root = createFixture()
+  const targetRoot = mkdtempSync(
+    path.join(tmpdir(), 'pancreator-installer-projection-'),
+  )
+  const policy = loadPolicyCatalog(root).get('BROWSER-001')
+
+  assert.ok(policy)
+
+  try {
+    const result = spawnSync(
+      process.execPath,
+      [
+        path.join(process.cwd(), 'bin', 'install-support'),
+        'project-cursor',
+        '--source-root',
+        root,
+        '--target-root',
+        targetRoot,
+        '--manifest-out',
+        path.join(targetRoot, 'cursor-manifest.json'),
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: 'utf8',
+        timeout: 120_000,
+        maxBuffer: 1024 * 1024,
+      },
+    )
+
+    assert.equal(result.status, 0, result.stderr)
+
+    const installerRendered = readFileSync(
+      path.join(targetRoot, '.cursor', 'rules', 'pan-browser-isolation.mdc'),
+      'utf8',
+    )
+
+    assert.equal(installerRendered, renderPolicyCursorRule(policy))
+  } finally {
+    rmSync(targetRoot, { recursive: true, force: true })
+  }
 })
 
 test('Cursor sync projects the intake writer agent with its resolved model', () => {

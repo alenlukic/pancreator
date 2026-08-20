@@ -53,6 +53,8 @@ function sha256(value) {
 }
 
 const EMBEDDED_HARNESS_PREFIX = '.pancreator'
+const GUIDANCE_DIGEST_BASIS =
+  'SHA-256 of the selected text after leading and trailing whitespace is trimmed.'
 
 // Installer-time mirror of src/lib/cursor-content.ts. The installer runs before
 // the staged payload is built, so it cannot import the compiled module.
@@ -178,6 +180,7 @@ function renderPolicyCursorRule(policy) {
       `- Selected range: ${guidanceSelectedRange(guidance)}.`,
       `- Content digest: \`sha256:${guidance.content_sha256}\` — ` +
         `${guidance.line_count} lines, ${guidance.byte_length} bytes.`,
+      `- Digest basis: ${GUIDANCE_DIGEST_BASIS}`,
     ]),
     '',
   ].join('\n')
