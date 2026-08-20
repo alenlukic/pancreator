@@ -3,11 +3,10 @@
 ## The normal interaction
 
 Use `/pan-start` for a new request and `/pan-resume <run-id> [prompt]` thereafter.
-Both commands deliver the run to the `pan-orchestrator` subagent, which is the
-supervisor: `/pan-start` sends a start invocation built from your preserved
-request, and `/pan-resume` sends a resume invocation carrying the run id and
-your optional prompt. The command relays the supervisor's reports and your
-decisions. Each report should always show:
+Both commands adopt the supervisor brief in the operator's current session.
+`/pan-start` receives your preserved request. `/pan-resume` receives the run id
+and your optional prompt. The session advances the run and reports decisions
+without delegating a nested `pan-orchestrator`. Each report should always show:
 
 1. the outcome
 2. the consequence

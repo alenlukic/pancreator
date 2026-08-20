@@ -848,6 +848,13 @@ export function makeOutput(
       runState,
       invocation.workflow.slug,
     ),
+    ...(invocation.inputs.target_instructions
+      ? {
+          target_instruction_evidence: {
+            read_paths: invocation.inputs.target_instructions.read_paths,
+          },
+        }
+      : {}),
     ...(attestation ? { invocation_attestation: attestation } : {}),
   }
 }

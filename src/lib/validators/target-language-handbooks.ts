@@ -7,7 +7,13 @@ import { detectWorkspaceTechnologies } from '../technologies.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
 
 const GENERATED_BY = 'pancreator-target-language-handbooks'
-const CODE_PERSONAS = ['coder', 'qa-tester', 'reviewer', 'spotfixer']
+const CODE_PERSONAS = [
+  'coder',
+  'qa-tester',
+  'reviewer',
+  'spotfixer',
+  'tech-lead',
+]
 
 function issue(code: string, message: string): HandlerResult['issues'][number] {
   return { code, message }

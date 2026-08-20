@@ -253,6 +253,32 @@ test('Python invocation cards reference PY-001 guidance for embedded targets', (
   assert.doesNotMatch(markdown, /Mutable default arguments MUST NOT be used/u)
 })
 
+test('Python planning cards carry engineering and language guidance', () => {
+  const root = createFixture()
+  const configPath = path.join(root, 'config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  config.installation_mode = 'embedded'
+  config.workspace_root = 'target'
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+  mkdirSync(path.join(root, 'target'), { recursive: true })
+  writeFileSync(path.join(root, 'target', 'pyproject.toml'), '[project]\n')
+
+  const invocation = baseInvocation(root, 'dev', 'plan')
+  const policyIds = new Set(invocation.policies.map((policy) => policy.id))
+  const markdown = renderInvocationMarkdown(invocation)
+
+  for (const policyId of ['ENG-001', 'LANG-001', 'PY-001']) {
+    assert.ok(policyIds.has(policyId), `plan card MUST include ${policyId}`)
+  }
+  assert.match(markdown, /Guidance reference/u)
+  assert.match(markdown, /governance\/handbooks\/python\/style-guide\.md/u)
+  assert.match(markdown, /governance\/handbooks\/target\//u)
+})
+
 test('a guidance reference names the selected heading range', () => {
   const root = createFixture()
   const invocation = baseInvocation(root, 'dev', 'implement')

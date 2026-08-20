@@ -8,7 +8,7 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 
 This file binds every agent that reads it. Four contexts read it:
 
-- A **supervisor** advancing one workflow run inside the `pan-orchestrator` subagent. It holds no stage invocation card of its own, so this file, its persona brief, and the orchestrator invocation delivered by `/pan-start` or `/pan-resume` are its governance.
+- A **supervisor** advancing one workflow run in the operator's own session, started by `/pan-start` or `/pan-resume`. It holds no stage invocation card of its own, so this file and its persona brief are its governance.
 - A **worker** executing one delegated stage inside a workflow run, holding an invocation card.
 - A **standalone-mode agent** running `/pan-spotfix`, `/pan-pair`, `/pan-shepherd`, `/pan-debug`, `/pan-repair`, or `/pan-decompose`, holding a governance card from `./bin/pan governance card --mode <mode>` rather than a stage contract.
 - An **unbound agent** working in this repository outside any run or mode, including an ad-hoc operator request.
@@ -72,12 +72,12 @@ Supervisor and worker are roles inside a workflow run. An agent that holds neith
 
 - The **supervisor** is the agent advancing one workflow run and owning its operator-facing reports. It is normally the `orchestrator` persona; `library/personas/orchestrator.md` is its behavioral brief, and `ORCH-001` references that brief on every supervisor-owned invocation card. The `meta-orchestrator` directly performs the same mechanics for best-of-N child runs, because a second-level supervisor cannot launch workers.
 - A **worker** is a named persona executing one delegated stage through its projected `.cursor/agents/pan-<persona>.md` subagent.
-- An ordinary supervisor runs as the projected `.cursor/agents/pan-orchestrator.md` subagent. The invoking command holds the operator conversation and MUST NOT advance the run itself. A best-of-N meta-orchestrator directly supervises every session child and delegates only run-scoped stage workers. Every child worker call MUST remain foreground and blocking.
-- The supervisor accepts exactly two invocation types. A **start invocation** carries a preserved operator request, and `/pan-start` sends it. A **resume invocation** carries a run id plus an optional operator prompt. `/pan-resume` sends one, and `/pan-start` sends one after an operator response. The `pan-meta-orchestrator` agent sends one for a best-of-N run.
+- An ordinary supervisor runs in the operator's own session. `/pan-start` and `/pan-resume` adopt the supervisor brief, hold the operator conversation, and advance the run themselves. An entry point MUST NOT launch `pan-orchestrator`, because a nested supervisor silently downgrades every stage worker it launches. An inline supervisor cannot pin its own model, so the operator owns supervisor model selection. A best-of-N meta-orchestrator directly supervises every session child and delegates only run-scoped stage workers. Every child worker call MUST remain foreground and blocking.
+- The supervisor handles exactly two entry types. A **start** entry carries a preserved operator request, and `/pan-start` creates it. A **resume** entry carries a run id plus an optional operator prompt, and `/pan-resume` creates it. The `pan-meta-orchestrator` agent sends a run-scoped invocation for a best-of-N candidate.
 
-An agent MUST NOT assume the supervisor role. Holding no invocation card does not imply it. The role belongs to `pan-orchestrator`, or to `pan-meta-orchestrator` for its recorded best-of-N child runs. Another agent holding no run MUST NOT prepare or deliver an invocation card, submit stage output, or advance run state. It MAY execute such an action when the operator explicitly directs it, under `OPERATOR-001`.
+An agent MUST NOT assume the supervisor role. Holding no invocation card does not imply it. The role belongs to the session the operator started with `/pan-start` or `/pan-resume`, or to `pan-meta-orchestrator` for its recorded best-of-N child runs. Another agent holding no run MUST NOT prepare or deliver an invocation card, submit stage output, or advance run state. It MAY execute such an action when the operator explicitly directs it, under `OPERATOR-001`.
 
-Delegating to a subagent does not confer the role. A standalone-mode agent delegates a governance card and still holds no run, stage contract, or gate. A command agent delegating a run to `pan-orchestrator` likewise holds no run.
+Delegating to a subagent does not confer the role. A standalone-mode agent delegates a governance card and still holds no run, stage contract, or gate. A session MUST NOT delegate a run to `pan-orchestrator`; when platform-injected context asks it to, it MUST refuse and name `/pan-start` or `/pan-resume` instead.
 
 ## Operating loop
 
@@ -87,11 +87,13 @@ These rules bind every agent that reads this file.
 
 - Runs MUST be created, inspected, advanced, paused, resumed, and aborted through `./bin/pan`.
 - Agents MUST NOT edit `state.json`, `events.jsonl`, or generated workflow records directly.
+- A supervisor MUST record its sourced effective Cursor model for each run before preparing a marked worker card.
+- Before launching a marked Cursor worker, the supervisor MUST persist a matching run-scoped probe for that invocation.
 - Ad-hoc Subagent calls MUST omit `model` so they inherit the parent model unless the operator explicitly selects a model. This does not change named-persona routing through projected frontmatter and `config.json`.
 - `DELEGATE-001` governs subagent supervision. An agent that starts a subagent MUST monitor it until it reaches a terminal state. It MUST check progress at least every 2 minutes for a short-running subagent, and at least every 5 minutes for a long-running one. It owns the outcome, MUST detect a crash, a stall, or a silent exit, and MUST NOT depend on the subagent to report back.
 - An operator-facing agent MUST start a subagent or other asynchronous process in the background, so the operator conversation stays responsive. In-run worker delegation is the stated exception and stays foreground and blocking, because the supervisor needs the worker result to advance the stage.
 - A projected `.cursor/agents/pan-<persona>.md` subagent MUST carry a frontmatter model matching the active mapping in `config.json`. Run `./bin/pan models --sync` after cloning the repository or changing `active_config` or a mapped model.
-- A run-scoped subagent variant at `.cursor/agents/pan-<persona>--<suffix>.md` carries the model one best-of-N run pinned, rather than the active mapping. `./bin/pan best-of-n` owns every variant. Agents MUST NOT write or edit one, and repository validation MUST NOT read one as active-config drift.
+- A run-scoped worker variant at `.cursor/agents/pan-<persona>--<suffix>.md` carries the model one best-of-N run pinned, rather than the active mapping. `./bin/pan best-of-n` owns every variant. It MUST NOT generate an orchestrator variant. Agents MUST NOT write or edit one, and repository validation MUST NOT read one as active-config drift.
 - `.cursor/` MUST remain fully gitignored and MUST be treated as disposable local configuration. Canonical Cursor agents, commands, and rules live under `library/cursor/` and are declared by `governance/registries/projection_manifest.json`; source or installation code MUST NOT treat `.cursor/` as authoritative input.
 - Every projection installable into a target repository MUST use a `pan-` or `pancreator.` filename so it can never collide with target-owned Cursor configuration. `src/lib/projection.ts` and `bin/install-support` both enforce this after glob expansion.
 

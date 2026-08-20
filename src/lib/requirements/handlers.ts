@@ -36,6 +36,7 @@ import {
   validateReviewOutput,
   validateSharedFieldContract,
   validateSpotfixOutcome,
+  validateTargetInstructionCoverage,
 } from '../validators/stage-validators.js'
 
 function passed(): HandlerResult {
@@ -190,6 +191,7 @@ export const HANDLERS: Record<string, ValidatorHandler> = {
   'intake-validate': validateIntakeOutput,
   'plan-trace-validate': validatePlanTrace,
   'implementation-claims-validate': validateImplementationClaims,
+  'target-instruction-coverage-validate': validateTargetInstructionCoverage,
   'review-validate': validateReviewOutput,
   'qa-validate': validateQaOutput,
   'release-validate': validateReleaseOutput,

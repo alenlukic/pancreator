@@ -199,10 +199,7 @@ function parseContext(
     )
   }
 
-  for (const key of [
-    'include_active_waivers',
-    'include_workspace_ratifications',
-  ] as const) {
+  for (const key of ['include_workspace_ratifications'] as const) {
     if (value[key] === undefined) {
       continue
     }
@@ -236,9 +233,6 @@ function parseContext(
       : {}),
     ...(value.operator_feedback !== undefined
       ? { operator_feedback: value.operator_feedback as number }
-      : {}),
-    ...(value.include_active_waivers !== undefined
-      ? { include_active_waivers: value.include_active_waivers as boolean }
       : {}),
     ...(value.include_workspace_ratifications !== undefined
       ? {
@@ -547,14 +541,9 @@ export function listWorkflowSlugs(root: string): string[] {
     .sort()
 }
 
-/** Every persona a run of this workflow delegates to, including the supervisor. */
+/** Every stage-worker persona a run of this workflow delegates to. */
 export function workflowPersonaNames(workflow: WorkflowDefinition): string[] {
-  return [
-    ...new Set([
-      'orchestrator',
-      ...workflow.stages.map((stage) => stage.persona),
-    ]),
-  ].sort()
+  return [...new Set(workflow.stages.map((stage) => stage.persona))].sort()
 }
 
 export function stageBySlug(

@@ -7,7 +7,7 @@
   "timeout_ms": 600000,
   "result": {
     "kind": "command",
-    "command": "just exec --customer rowspace -- just be-test-int",
+    "command": "just exec --customer acme -- just be-test-int",
     "exit_code": 101,
     "signal": null,
     "stdout": "============================= test session starts ==============================\nplatform darwin -- Python 3.12.12, pytest-9.0.3\ncollecting ... collected 1978 items / 1 skipped\ntests/integration/adapters/authz/test_openfga_authorizer.py::test_openfga_authorizer_checks_latest_model PASSED [ 0%]\n",

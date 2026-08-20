@@ -155,9 +155,9 @@ test('operator rejection feedback is persisted and surfaced to the remediation w
   )
 
   assert.ok(decided.operator_feedback)
-  assert.equal(decided.operator_feedback?.length, 1)
-
-  const feedback = decided.operator_feedback?.[0]
+  const feedback = decided.operator_feedback?.find(
+    (item) => item.decision === 'reject' && item.to_stage === 'implement',
+  )
 
   assert.ok(feedback)
   assert.equal(feedback.from_stage, 'ship')

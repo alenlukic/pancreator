@@ -1,4 +1,9 @@
 {
   "schema_version": 1,
-  "releases": []
+  "releases": [
+    {
+      "version": "4.0.0",
+      "commit": "d67a8ebcf734ace8fffd842c782fbeed34c96d62"
+    }
+  ]
 }

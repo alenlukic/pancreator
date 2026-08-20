@@ -28,7 +28,7 @@ import {
 import type { Invocation } from '../../src/lib/types.js'
 
 /**
- * Regressions for the mechanical friction found in the detached rowspace runs.
+ * Regressions for the mechanical friction found in the detached target runs.
  * Each test pins behavior whose absence forced an agent to stop, diagnose, and
  * work around the harness mid-run.
  */

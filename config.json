@@ -14,28 +14,28 @@
       "tsconfig.tsbuildinfo"
     ]
   },
-  "active_config": "complex",
+  "active_config": "advanced",
   "defaults": {
-    "orchestrator": "gpt-5.4[context=272k,reasoning=high,fast=false]",
-    "meta-orchestrator": "gpt-5.4[context=272k,reasoning=high,fast=false]",
-    "intake-writer": "claude-opus-5[thinking=true,context=300k,effort=high,fast=false]",
-    "tech-lead": "claude-fable-5[thinking=true,context=1m,effort=high]",
-    "coder": "composer-2.5[fast=false]",
-    "metacritic": "claude-fable-5[thinking=true,context=1m,effort=high]",
-    "reviewer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
-    "shepherd-reviewer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
-    "qa-tester": "gpt-5.4[context=272k,reasoning=high,fast=false]",
-    "designer": "claude-fable-5[thinking=true,context=1m,effort=high]",
-    "design-reviewer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
-    "design-qa": "claude-opus-5[thinking=true,context=300k,effort=high,fast=false]",
+    "orchestrator": "claude-opus-5[thinking=true,context=300k,effort=high,fast=true]",
+    "meta-orchestrator": "claude-opus-5[thinking=true,context=300k,effort=high,fast=false]",
+    "intake-writer": "kimi-k3[reasoning=max]",
+    "tech-lead": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]",
+    "coder": "composer-2.5[fast=true]",
+    "metacritic": "claude-fable-5[thinking=true,context=300k,effort=high]",
+    "reviewer": "claude-opus-5[thinking=true,context=300k,effort=high,fast=true]",
+    "shepherd-reviewer": "claude-opus-5[thinking=true,context=300k,effort=high,fast=true]",
+    "qa-tester": "kimi-k3[reasoning=max]",
+    "designer": "claude-fable-5[thinking=true,context=300k,effort=xhigh]",
+    "design-reviewer": "gpt-5.6-sol[context=272k,reasoning=xhigh,fast=false]",
+    "design-qa": "kimi-k3[reasoning=max]",
     "release-steward": "auto",
     "librarian": "claude-opus-5[thinking=true,context=300k,effort=high,fast=false]",
     "decomposer": "claude-opus-5[thinking=true,context=300k,effort=high,fast=false]",
-    "investigator": "claude-fable-5[thinking=true,context=1m,effort=high]",
-    "spotfixer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
-    "harness-technician": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
-    "repo-technician": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
-    "harness-workflow-qa": "gpt-5.4[context=272k,reasoning=high,fast=false]"
+    "investigator": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]",
+    "spotfixer": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]",
+    "harness-technician": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]",
+    "repo-technician": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]",
+    "harness-workflow-qa": "claude-fable-5[thinking=true,context=300k,effort=high]"
   },
   "$operator": {
     "summary": "Named model configurations. Each configuration maps every checked-in Cursor persona to the model that should execute it.",
@@ -45,10 +45,32 @@
     "simple": {
       "summary": "Simple and fast configuration for quick tasks.",
       "personas": {
-        "tech-lead": "gpt-5.6-terra[context=272k,reasoning=high,fast=false]",
+        "tech-lead": "gpt-5.6-terra[context=272k,reasoning=high,fast=true]",
         "decomposer": "gpt-5.6-terra[context=272k,reasoning=high,fast=false]",
-        "reviewer": "gpt-5.6-terra[context=272k,reasoning=high,fast=false]",
-        "qa-tester": "gpt-5.3-codex[reasoning=high,fast=false]"
+        "reviewer": "gpt-5.6-terra[context=272k,reasoning=high,fast=true]",
+        "qa-tester": "gpt-5.6-terra[context=272k,reasoning=high,fast=true]",
+        "shepherd-reviewer": "gpt-5.6-terra[context=272k,reasoning=high,fast=true]"
+      }
+    },
+    "balanced": {
+      "summary": "Balance of focused coding, strong review, and frontier planning.",
+      "personas": {}
+    },
+    "advanced": {
+      "summary": "Higher-reasoning coding and QA for complex or high-risk work.",
+      "personas": {
+        "coder": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]",
+        "reviewer": "claude-fable-5[thinking=true,context=1m,effort=high]",
+        "qa-tester": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]"
+      }
+    },
+    "extreme": {
+      "summary": "Extreme configuration for the most demanding tasks.",
+      "personas": {
+        "coder": "gpt-5.6-sol[context=272k,reasoning=xhigh,fast=true]",
+        "reviewer": "claude-fable-5[thinking=true,context=300k,effort=high]",
+        "shepherd-reviewer": "claude-fable-5[thinking=true,context=300k,effort=high]",
+        "qa-tester": "gpt-5.6-sol[context=272k,reasoning=xhigh,fast=true]"
       }
     },
     "default": {

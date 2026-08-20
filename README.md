@@ -1,6 +1,6 @@
-# Pancreator v4.0.0
+# Pancreator v4.1.0
 
-Pancreator v4.0.0 is a workflow harness that helps teams use Cursor agents like an engineering workflow instead of a one-off chat. It brings structure, repeatability, and operator control to planning, implementation, review, QA, and release preparation without asking you to leave your repository.
+Pancreator v4.1.0 is a workflow harness that helps teams use Cursor agents like an engineering workflow instead of a one-off chat. It brings structure, repeatability, and operator control to planning, implementation, review, QA, and release preparation without asking you to leave your repository.
 
 It is built for teams that want faster agent-assisted delivery without turning approvals, validation, or release decisions into a black box.
 
@@ -62,7 +62,7 @@ Pancreator adds a set of Cursor commands, supporting agents, and repository-awar
    - Use `/pan-spotfix <request>` for an explicitly small, bounded change.
    - Use `/pan-release` when you want Pancreator to prepare release metadata.
 
-5. Continue the run with `/pan-resume <run-id> [prompt]` whenever Pancreator pauses for the next operator decision. Both `/pan-start` and `/pan-resume` run the workflow inside the `pan-orchestrator` subagent and relay its reports.
+5. Continue the run with `/pan-resume <run-id> [prompt]` whenever Pancreator pauses for the next operator decision. Both commands adopt the supervisor brief and advance the workflow directly in the operator's session.
 
 ## Install Into Another Repository
 

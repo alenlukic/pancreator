@@ -93,11 +93,7 @@
         "operator_feedback": {
           "type": "integer",
           "minimum": 0,
-          "description": "Maximum most-recent operator feedback artifacts targeting this stage to include as required inputs."
-        },
-        "include_active_waivers": {
-          "type": "boolean",
-          "description": "Include operator waiver directives that have not been superseded by a later attempt of the same stage."
+          "description": "Maximum recent non-approval remediation notes targeting this stage. Every approval directive targeting the stage remains required input."
         },
         "include_workspace_ratifications": {
           "type": "boolean",

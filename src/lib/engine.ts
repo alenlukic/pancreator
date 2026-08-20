@@ -9,8 +9,12 @@ import {
   scaffoldOperatorBrief,
   validateBriefSystem,
 } from './briefs.js'
-import { errorMessage, invariant } from './errors.js'
+import { errorMessage, invariant, PanError } from './errors.js'
 import { canonicalPersonaMapping } from './executors/mapping.js'
+import {
+  expectedCursorModelForSpec,
+  probeCursorModelSpec,
+} from './executors/cursor-probe.js'
 import {
   ensureDir,
   fileExists,
@@ -121,6 +125,7 @@ import type {
   OperatorGateWaiver,
   OperatorPauseContext,
   OperatorWorkspaceRatification,
+  RunModelEvidence,
   RunState,
   SameReasonFailureTrackers,
   StageDefinition,
@@ -1117,6 +1122,242 @@ function readInvocation(root: string, relativePath: string): Invocation {
   return value as unknown as Invocation
 }
 
+function persistModelEvidence(
+  root: string,
+  state: RunState,
+  item: Omit<RunModelEvidence, 'evidence_path' | 'timestamp'>,
+): RunModelEvidence {
+  const index = (state.model_evidence ?? []).findIndex(
+    (existing) =>
+      existing.role === item.role &&
+      existing.invocation_id === item.invocation_id,
+  )
+  const filename =
+    item.role === 'supervisor'
+      ? 'model-evidence-supervisor.json'
+      : `model-evidence-${item.invocation_id}.json`
+  const evidencePath = resolveRunLayout(root, state.run_id).evidence(
+    filename,
+  ).relative
+  const evidence: RunModelEvidence = {
+    ...item,
+    evidence_path: evidencePath,
+    timestamp: now(),
+  }
+  const items = [...(state.model_evidence ?? [])]
+
+  if (index === -1) {
+    items.push(evidence)
+  } else {
+    items[index] = evidence
+  }
+
+  state.model_evidence = items
+  writeJsonAtomic(resolveInside(root, evidencePath), {
+    schema_version: 1,
+    run_id: state.run_id,
+    ...evidence,
+  })
+  persistRun(root, state, 'model_evidence_recorded', {
+    role: evidence.role,
+    invocation_id: evidence.invocation_id ?? null,
+    result: evidence.result,
+    evidence_path: evidence.evidence_path,
+  })
+
+  return evidence
+}
+
+/** Record the unpinned supervisor model that Cursor exposes for this session. */
+export function recordSupervisorModelEvidence(
+  root: string,
+  runId: string,
+  effectiveModel: string,
+  source: string,
+): RunModelEvidence {
+  return withOperationMutex(operationMutexPath(root, runId), () => {
+    invariant(
+      effectiveModel.trim().length > 0,
+      '--effective-model is required.',
+      {
+        code: 'CURSOR_MODEL_EVIDENCE_UNAVAILABLE',
+      },
+    )
+    invariant(source.trim().length > 0, '--source is required.', {
+      code: 'CURSOR_MODEL_EVIDENCE_UNAVAILABLE',
+    })
+
+    const state = loadState(root, runId)
+    const existing = state.model_evidence?.find(
+      (item) => item.role === 'supervisor',
+    )
+
+    if (existing) {
+      if (
+        normalizedModelName(existing.effective_model ?? '') ===
+        normalizedModelName(effectiveModel)
+      ) {
+        return existing
+      }
+
+      throw new PanError(
+        `Run '${runId}' already records supervisor model '${existing.effective_model}'.`,
+        {
+          code: 'CURSOR_MODEL_MISMATCH',
+          details: { evidence_path: existing.evidence_path },
+        },
+      )
+    }
+
+    return persistModelEvidence(root, state, {
+      role: 'supervisor',
+      persona: 'orchestrator',
+      declared_spec: null,
+      effective_model: effectiveModel.trim(),
+      source: source.trim(),
+      result: 'recorded',
+    })
+  })
+}
+
+function normalizedModelName(value: string): string {
+  return value.toLowerCase().replaceAll(/[^a-z0-9]+/gu, '')
+}
+
+/** Probe one active Cursor worker invocation and persist its effective model. */
+export function probeRunInvocationModel(
+  root: string,
+  runId: string,
+  invocationId: string,
+): RunModelEvidence {
+  return withOperationMutex(operationMutexPath(root, runId), () => {
+    const state = loadState(root, runId)
+
+    invariant(
+      state.current_invocation?.id === invocationId,
+      `Invocation '${invocationId}' is not active for run '${runId}'.`,
+      { code: 'CURSOR_MODEL_EVIDENCE_UNAVAILABLE' },
+    )
+
+    const invocation = readInvocation(root, state.current_invocation.json_path)
+
+    invariant(
+      (invocation.stage.persona_executor ?? 'cursor') === 'cursor',
+      `Invocation '${invocationId}' does not use the Cursor executor.`,
+      { code: 'CURSOR_MODEL_EVIDENCE_UNAVAILABLE' },
+    )
+
+    const declaredSpec = invocation.stage.model
+    const expected =
+      expectedCursorModelForSpec(root, declaredSpec) ??
+      (declaredSpec.includes('[') ? null : declaredSpec)
+    const probe = probeCursorModelSpec(declaredSpec)
+    const unavailable =
+      probe.resolved === null || expected === null || probe.error !== undefined
+    const matches =
+      !unavailable &&
+      normalizedModelName(probe.resolved ?? '') ===
+        normalizedModelName(expected ?? '')
+    const result = unavailable
+      ? ('unavailable' as const)
+      : matches
+        ? ('match' as const)
+        : ('mismatch' as const)
+    const error = unavailable
+      ? (probe.error ??
+        `No catalog prediction exists for model spec '${declaredSpec}'.`)
+      : matches
+        ? undefined
+        : `Cursor resolved '${probe.resolved}', but the run snapshot expects '${expected}'.`
+    const evidence = persistModelEvidence(root, state, {
+      role: 'worker',
+      invocation_id: invocationId,
+      persona: invocation.stage.persona,
+      declared_spec: declaredSpec,
+      effective_model: probe.resolved,
+      source: 'cursor-agent system/init event',
+      result,
+      ...(error ? { error } : {}),
+    })
+
+    if (result === 'unavailable') {
+      throw new PanError(error ?? 'Cursor model evidence is unavailable.', {
+        code: 'CURSOR_MODEL_EVIDENCE_UNAVAILABLE',
+        details: { evidence_path: evidence.evidence_path },
+      })
+    }
+
+    if (result === 'mismatch') {
+      throw new PanError(error ?? 'Cursor worker model does not match.', {
+        code: 'CURSOR_MODEL_MISMATCH',
+        details: { evidence_path: evidence.evidence_path },
+      })
+    }
+
+    return evidence
+  })
+}
+
+function assertRequiredModelEvidence(
+  state: RunState,
+  invocation: Invocation,
+): void {
+  if (invocation.model_evidence_required !== true) {
+    return
+  }
+
+  const supervisor = state.model_evidence?.find(
+    (item) => item.role === 'supervisor' && item.result === 'recorded',
+  )
+
+  if (!supervisor?.effective_model) {
+    throw new PanError(
+      `Run '${state.run_id}' has no sourced supervisor model evidence.`,
+      { code: 'CURSOR_MODEL_EVIDENCE_UNAVAILABLE' },
+    )
+  }
+
+  const worker = state.model_evidence?.find(
+    (item) =>
+      item.role === 'worker' && item.invocation_id === invocation.invocation_id,
+  )
+
+  if (!worker || worker.result === 'unavailable') {
+    throw new PanError(
+      `Invocation '${invocation.invocation_id}' has no usable worker model evidence.`,
+      {
+        code: 'CURSOR_MODEL_EVIDENCE_UNAVAILABLE',
+        details: { evidence_path: worker?.evidence_path ?? null },
+      },
+    )
+  }
+
+  if (
+    worker.result !== 'match' ||
+    worker.persona !== invocation.stage.persona ||
+    worker.declared_spec !== invocation.stage.model
+  ) {
+    throw new PanError(
+      `Invocation '${invocation.invocation_id}' worker model evidence does not match its run snapshot.`,
+      {
+        code: 'CURSOR_MODEL_MISMATCH',
+        details: { evidence_path: worker.evidence_path },
+      },
+    )
+  }
+}
+
+function runUsesModelEvidenceContract(state: RunState): boolean {
+  const supervisor = state.model_evidence?.find(
+    (item) => item.role === 'supervisor' && item.result === 'recorded',
+  )
+  const firstSubmission = state.stage_history[0]?.submitted_at
+
+  return Boolean(
+    supervisor && (!firstSubmission || supervisor.timestamp <= firstSubmission),
+  )
+}
+
 function readTaskRecord(root: string, relativePath: string): TaskRecord {
   const value = readJson(resolveInside(root, relativePath))
 
@@ -1984,6 +2225,7 @@ export function prepareInvocation(
         attempt,
         invocationId,
         workspaceFingerprint: workspace.fingerprint,
+        workspace,
       }),
       policies,
       requirements,
@@ -2046,6 +2288,11 @@ export function prepareInvocation(
         'You MUST NOT commit, push, merge, publish, deploy, or perform destructive source-control actions.',
       ],
       ...(delegation ? { delegation } : {}),
+      ...(!externalExecutor &&
+      stage.persona !== 'orchestrator' &&
+      runUsesModelEvidenceContract(state)
+        ? { model_evidence_required: true }
+        : {}),
       workspace_before: workspace,
     }
 
@@ -2739,6 +2986,8 @@ export function submitOutput(
     const workflow = loadRunWorkflow(root, state)
     const stage = stageBySlug(workflow, state.current_stage)
     const invocation = readInvocation(root, state.current_invocation.json_path)
+
+    assertRequiredModelEvidence(state, invocation)
 
     if (priorForRevision) {
       invariant(
@@ -3742,6 +3991,13 @@ export function resumeRun(
 
     if (savedPause && !stageSlug) {
       if (note.trim().length > 0) {
+        invariant(
+          savedPause.prior_pending_action.type === 'invoke_agent' &&
+            state.current_invocation !== null,
+          'A no-stage resume note has no active worker card to target. Pass --stage explicitly.',
+          { code: 'RESUME_NOTE_TARGET_UNAVAILABLE' },
+        )
+
         const source = stageBySlug(
           workflow,
           state.current_stage ?? workflow.start_stage,
@@ -3757,7 +4013,7 @@ export function resumeRun(
         )
       }
 
-      if (ratification) {
+      if (ratification || note.trim().length > 0) {
         invalidatePausedInvocation(state)
       } else {
         state.status = savedPause.prior_status

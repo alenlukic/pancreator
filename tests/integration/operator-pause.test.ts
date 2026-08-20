@@ -6,6 +6,7 @@ import test from 'node:test'
 import {
   createRun,
   decideRun,
+  getRunState,
   pauseRun,
   prepareInvocation,
   resumeRun,
@@ -74,12 +75,61 @@ test('operator pause preserves supervisor gate and resume restores it', () => {
   )
   assert.equal(paused.current_invocation?.id, planInvocation.invocation_id)
 
+  assert.throws(
+    () => resumeRun(root, runId, null, 'Attach this to the next worker.'),
+    (error: unknown) =>
+      error instanceof Error &&
+      error.message.includes('no active worker card to target'),
+  )
+
   const resumed = resumeRun(root, runId)
 
   assert.equal(resumed.status, 'awaiting_supervisor')
   assert.equal(resumed.pending_action.type, 'supervisor_assessment')
   assert.equal(resumed.operator_pause, null)
   assert.equal(resumed.current_invocation?.id, planInvocation.invocation_id)
+})
+
+test('no-stage resume note replaces a prepared worker card', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Resume note fixture',
+  })
+  const runId = state.run_id
+  const original = prepareInvocation(root, runId).invocation
+
+  assert.ok(original)
+  pauseRun(root, runId, 'Need an operator directive.')
+
+  const resumed = resumeRun(
+    root,
+    runId,
+    null,
+    'Preserve the compatibility boundary.',
+  )
+
+  assert.equal(resumed.status, 'running')
+  assert.equal(resumed.pending_action.type, 'prepare_invocation')
+  assert.equal(resumed.current_invocation, null)
+
+  const replacement = prepareInvocation(root, runId).invocation
+
+  assert.ok(replacement)
+  assert.notEqual(replacement.invocation_id, original.invocation_id)
+  const feedback = getRunState(root, runId).operator_feedback?.find(
+    (item) =>
+      item.decision === 'resume' &&
+      item.note === 'Preserve the compatibility boundary.',
+  )
+
+  assert.ok(feedback)
+  assert.ok(
+    replacement.inputs.references.some(
+      (reference) => reference.path === feedback.path,
+    ),
+  )
 })
 
 test('operator pause from running prepare_invocation resumes to prepare', () => {

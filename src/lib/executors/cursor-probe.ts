@@ -100,6 +100,13 @@ export function probeCursorModelSpec(
   }
 }
 
+export function expectedCursorModelForSpec(
+  root: string,
+  spec: string,
+): string | null {
+  return expectedFor(loadCursorCatalog(root), spec)
+}
+
 function expectedFor(
   catalog: CursorCatalog | null,
   spec: string,
