@@ -17,9 +17,10 @@ reference from a separately started corresponding `dev` run.
 ## Output
 
 Populate `data.design_package` with `summary`, `design_spec_path`, `mocks_index`,
-`acceptance_criteria`, and `dev_request_instructions`. Author the handoff brief
-at the declared source path. Do not run the renderer. Reference the rendered
-HTML as the narrative artifact.
+`acceptance_criteria`, and `dev_request_instructions`. When
+`output.operator_brief` exists, edit its declared source and reference the
+rendered HTML. Do not run the renderer. When the contract omits
+`output.operator_brief`, do not create either brief file.
 
 ## Done when
 

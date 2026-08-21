@@ -34,9 +34,10 @@ only whether the evidence answers the questions.
 ## Output
 
 Populate `data.evaluation` (`verdict`, `question_results`, `signal_assessment`,
-`productionization_gap`, `recommendation`, `discard_candidates`). Author the
-evaluation at the declared brief source path. Do not run the renderer. Reference
-the rendered HTML as the narrative artifact.
+`productionization_gap`, `recommendation`, `discard_candidates`). When
+`output.operator_brief` exists, edit its declared source and reference the
+rendered HTML. Do not run the renderer. When the contract omits
+`output.operator_brief`, do not create either brief file.
 
 ## Done when
 

@@ -799,18 +799,33 @@ export function makeOutput(
   result: StageOutcome = 'success',
   runState?: RunState,
 ): StageOutput {
-  const briefSource = invocation.output.operator_brief.source_path
-  const briefHtml = invocation.output.operator_brief.rendered_path
+  const briefContract = invocation.output.operator_brief
+  let artifacts: StageOutput['artifacts'] = []
 
-  writeJson(
-    path.join(root, briefSource),
-    artifactBrief(
-      invocation.stage.slug,
-      invocation.stage.title,
-      invocation.output.operator_brief.required_headings,
-    ),
-  )
-  renderBrief(root, briefSource, briefHtml)
+  if (briefContract) {
+    const briefSource = briefContract.source_path
+    const briefHtml = briefContract.rendered_path
+
+    writeJson(
+      path.join(root, briefSource),
+      artifactBrief(
+        invocation.stage.slug,
+        invocation.stage.title,
+        briefContract.required_headings,
+      ),
+    )
+    renderBrief(root, briefSource, briefHtml)
+
+    artifacts = [
+      { path: briefHtml, description: 'Fixture HTML operator brief' },
+      ...(briefContract.source_lifecycle === 'transient' ||
+      briefContract.source_transient
+        ? []
+        : [
+            { path: briefSource, description: 'Fixture operator brief source' },
+          ]),
+    ]
+  }
 
   const attestation = makeAttestation(invocation)
 
@@ -824,19 +839,11 @@ export function makeOutput(
     invocation_id: invocation.invocation_id,
     result,
     summary: `${invocation.stage.title} completed in fixture.`,
-    artifacts: [
-      { path: briefHtml, description: 'Fixture HTML operator brief' },
-      ...(invocation.output.operator_brief.source_lifecycle === 'transient' ||
-      invocation.output.operator_brief.source_transient
-        ? []
-        : [
-            { path: briefSource, description: 'Fixture operator brief source' },
-          ]),
-    ],
+    artifacts,
     criteria: stageDefinition.criteria.map((criterion) => ({
       id: criterion.id,
       result: result === 'success' ? 'pass' : 'fail',
-      evidence: [briefHtml],
+      evidence: [briefContract?.rendered_path ?? invocation.output.path],
       explanation: 'Fixture evidence',
     })),
     risks: [],
