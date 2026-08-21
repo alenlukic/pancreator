@@ -16,9 +16,9 @@ predecessor run. Preserve intent; do not invent the visual solution.
 ## Output
 
 Populate `data.product_spec` with `summary`, `user_stories`, `constraints`,
-`out_of_scope`, and `open_questions`. Author the operator-facing specification
-at the declared brief source path. Do not run the renderer. Reference the
-rendered HTML as the narrative artifact.
+`out_of_scope`, and `open_questions`. When `output.operator_brief` exists, edit
+its declared source and reference the rendered HTML. Do not run the renderer.
+When the contract omits `output.operator_brief`, do not create either brief file.
 
 ## Done when
 

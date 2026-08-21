@@ -33,7 +33,10 @@
       "target": "artifact:0",
       "enforcement": "advisory",
       "failure_route": "retry",
-      "evidence_class": "validation-result"
+      "evidence_class": "validation-result",
+      "applicability": {
+        "operator_artifacts": "requested"
+      }
     }
   ]
 }

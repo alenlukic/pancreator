@@ -24,11 +24,14 @@ implementation, review, QA evidence, and current workspace.
    rollback guidance.
 7. When Git metadata is available, draft a proposed commit message that
    accurately describes the diff.
-8. Apply the PR-description procedure `PR-001` references. Save the description
-   to `runtime/logs/workflows/<run-id>/operator/pr-description.md` for layout v2.
+8. When `output.operator_brief` exists, apply the PR-description procedure
+   `PR-001` references. Save the description to
+   `runtime/logs/workflows/<run-id>/operator/pr-description.md` for layout v2.
    For layout v1, save it to
    `runtime/logs/workflows/<run-id>/artifacts/markdown/pr-description.md`.
    Reference it in stage artifacts. Do not open or create a pull request.
+   When the contract omits `output.operator_brief`, do not create workflow PR
+   copy. The separate `/pan-write-pr` command remains available.
 
 ## Output
 
@@ -38,8 +41,10 @@ For Pancreator self-development, also populate `data.release.versioning`
 (`current_version`, `recommendation`, `proposed_version`, `baseline_commit`,
 `rationale`, `compatibility`, `updated_files`, `release_index_action`).
 Include optional Git metadata field `commit_message` when it is available.
-Edit the pre-created brief JSON at the exact source path in the output contract. Do not search for brief artifacts or run the renderer; the harness renders and validates the HTML during submission. Reference the HTML as the narrative artifact. Reference `pr-description.md` separately as a
-Markdown source artifact intended for direct use in a pull request.
+When `output.operator_brief` exists, edit its declared source and reference the
+rendered HTML. Do not run the renderer. Reference `pr-description.md` as a
+separate Markdown source artifact. When the contract omits
+`output.operator_brief`, do not create either brief file or workflow PR copy.
 
 ## Done when
 

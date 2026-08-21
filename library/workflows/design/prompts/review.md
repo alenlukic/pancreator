@@ -17,8 +17,9 @@ handbook heuristic checklist. Verify reality, not the designer’s narrative.
 ## Output
 
 Populate `data.review` with `verdict`, `findings`, `heuristic_results`, and
-`acceptance_results`. Author the review brief at the declared source path. Do
-not run the renderer. Reference the rendered HTML as the narrative artifact.
+`acceptance_results`. When `output.operator_brief` exists, edit its declared
+source and reference the rendered HTML. Do not run the renderer. When the
+contract omits `output.operator_brief`, do not create either brief file.
 
 ## Done when
 

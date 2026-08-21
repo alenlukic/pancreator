@@ -1498,9 +1498,7 @@ export function validateStageOutput(
     }
   }
 
-  const briefContract = invocation.output.operator_brief as
-    | Invocation['output']['operator_brief']
-    | undefined
+  const briefContract = invocation.output.operator_brief
 
   if (briefContract) {
     const primaryArtifact = output.artifacts[0]
@@ -2672,7 +2670,10 @@ function lookupRowCovers(
       provider.contract === consumer.contract) &&
     // Same reasoning for a review-method-scoped row.
     (provider.review_mode === undefined ||
-      provider.review_mode === consumer.review_mode)
+      provider.review_mode === consumer.review_mode) &&
+    // Same reasoning for operator-artifact-scoped rows.
+    (provider.operator_artifacts === undefined ||
+      provider.operator_artifacts === consumer.operator_artifacts)
   )
 }
 

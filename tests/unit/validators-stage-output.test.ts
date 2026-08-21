@@ -100,6 +100,9 @@ test('strict stage output rejects pass claims without evidence', () => {
     'implement-1-test',
   )
   const output = baseOutput(invocation, stage)
+  const brief = invocation.output.operator_brief
+
+  assert.ok(brief)
   const passCriterion = output.criteria.find((item) => item.result === 'pass')
 
   assert.ok(passCriterion)
@@ -137,6 +140,9 @@ test('stage output requires invocation-declared HTML and brief source artifacts'
     'implement-1-test',
   )
   const output = baseOutput(invocation, stage)
+  const brief = invocation.output.operator_brief
+
+  assert.ok(brief)
 
   output.artifacts = [
     {
@@ -144,7 +150,7 @@ test('stage output requires invocation-declared HTML and brief source artifacts'
       description: 'Legacy Markdown summary',
     },
     {
-      path: invocation.output.operator_brief.source_path,
+      path: brief.source_path,
       description: 'Brief source',
     },
   ]
@@ -164,12 +170,15 @@ test('stage output excludes a transient brief source from artifacts', () => {
     'implement',
     'implement-1-test',
   )
-  invocation.output.operator_brief.source_transient = true
+  const brief = invocation.output.operator_brief
+
+  assert.ok(brief)
+  brief.source_transient = true
   const output = baseOutput(invocation, stage)
 
   output.artifacts = [
     {
-      path: invocation.output.operator_brief.rendered_path,
+      path: brief.rendered_path,
       description: 'Rendered brief',
     },
   ]
@@ -182,7 +191,7 @@ test('stage output excludes a transient brief source from artifacts', () => {
   )
 
   output.artifacts.push({
-    path: invocation.output.operator_brief.source_path,
+    path: brief.source_path,
     description: 'Transient source',
   })
 

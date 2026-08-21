@@ -28,7 +28,10 @@
       "target": "artifact:0",
       "enforcement": "required",
       "failure_route": "stage_failure",
-      "evidence_class": "validation-result"
+      "evidence_class": "validation-result",
+      "applicability": {
+        "operator_artifacts": "requested"
+      }
     }
   ]
 }

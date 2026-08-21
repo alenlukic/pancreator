@@ -4,7 +4,8 @@
   "severity": "hard",
   "summary": "Pull-request descriptions MUST be grounded in the complete base-to-worktree Git delta, use the canonical reviewer-facing format, and remain separate from pull-request creation or release actions.",
   "instructions": [
-    "The release steward MUST apply this policy in workflow ship mode and standalone PR-writing mode.",
+    "The release steward MUST apply this policy when workflow ship requests operator artifacts.",
+    "The release steward MUST always apply this policy in standalone PR-writing mode.",
     "The selected base ref MUST be validated as one literal Git ref, resolved to a commit, and compared from its merge base with HEAD through the current worktree.",
     "The comparison MUST include committed branch changes, staged and unstaged tracked changes, and relevant untracked files.",
     "The generated file MUST contain a suggested conventional-commits-style title, Summary, and Changelist. It MUST contain a How to read this PR walkthrough only when the change meets the applicability test in the referenced procedure, and a Delivery Pipeline Manifest only when actual workflow stage records resolve.",

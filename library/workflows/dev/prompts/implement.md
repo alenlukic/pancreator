@@ -37,8 +37,9 @@ Populate `data.implementation` (`changed_files`, `tests_added`, `notes`) and
 `data.acceptance_results`, mapping evidence to each acceptance criterion. On
 attempt 2 or later, also populate non-empty `data.implementation.remediation`
 entries with `cause`, `action`, and `evidence` for every issue responsible for
-the retry. Author the implementation summary at the declared brief source path.
-Do not run the renderer. Reference the rendered HTML as the narrative artifact.
+the retry. When `output.operator_brief` exists, edit its declared source and
+reference the rendered HTML. Do not run the renderer. When the contract omits
+`output.operator_brief`, do not create a brief source or rendered stage HTML.
 
 ## Done when
 
