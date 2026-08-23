@@ -3,7 +3,12 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import { createRun, getRunStatus } from '../../src/lib/engine.js'
+import {
+  createRun,
+  getRunStatus,
+  quarantineRunForAgent,
+} from '../../src/lib/engine.js'
+import { tickHypervisor } from '../../src/lib/hypervisor.js'
 import { renderStatus } from '../../src/lib/render.js'
 import {
   eventPath,
@@ -237,7 +242,7 @@ test('project configuration overrides the state-size budget', () => {
   )
 })
 
-test('invocation liveness reports active and stale workers', () => {
+test('legacy invocation quiet time does not claim agent health', () => {
   const root = createFixture()
   const state = createRun(root, {
     workflowSlug: 'dev',
@@ -271,28 +276,18 @@ test('invocation liveness reports active and stale workers', () => {
   const stale = invocationLiveness(state, Date.parse(preparedAt) + 3_000, 2_000)
 
   assert.ok(stale)
-  assert.match(
-    renderStatus({ ...state, invocation_liveness: stale }),
-    /Invocation activity: stale[\s\S]*Recovery: re-deliver/u,
-  )
+  const rendered = renderStatus({ ...state, invocation_liveness: stale })
+
+  assert.match(rendered, /Agent health: unknown/u)
+  assert.doesNotMatch(rendered, /Invocation activity/u)
 })
 
-test('project configuration overrides the invocation liveness bound', () => {
+test('run status reports registry-backed agent health', () => {
   const root = createFixture()
   const state = createRun(root, {
     workflowSlug: 'dev',
     requestPath: 'request.md',
   })
-  const configPath = path.join(root, 'config.json')
-  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
-    string,
-    unknown
-  >
-
-  writeFileSync(
-    configPath,
-    `${JSON.stringify({ ...config, stage_liveness_ms: 1 }, null, 2)}\n`,
-  )
   state.current_invocation = {
     id: 'implement-1',
     json_path: 'invocation.json',
@@ -310,15 +305,54 @@ test('project configuration overrides the invocation liveness bound', () => {
     statePath(root, state.run_id),
     `${JSON.stringify(state, null, 2)}\n`,
   )
+  tickHypervisor(root, {
+    now: '2026-08-21T12:00:00.000Z',
+    observations: [
+      {
+        agent_id: 'agent-1',
+        run_id: state.run_id,
+        invocation_id: 'implement-1',
+        persona: 'coder',
+        executor: 'cursor',
+        process_alive: true,
+        last_transcript_at: '2026-08-21T11:59:59.000Z',
+      },
+    ],
+  })
 
   const status = getRunStatus(root, state.run_id, { json: true })
 
   assert.equal(typeof status, 'object')
 
   if (typeof status !== 'string') {
-    assert.equal(status.invocation_liveness?.status, 'stale')
-    assert.equal(status.invocation_liveness?.stale_after_ms, 1)
+    assert.equal(status.agent_health?.health, 'running')
+    assert.equal(status.agent_health?.agent_id, 'agent-1')
   }
+})
+
+test('recovery quarantine pauses the run for an operator decision', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+  })
+  const paused = quarantineRunForAgent(
+    root,
+    state.run_id,
+    'agent-1',
+    'The same recovery signature failed twice.',
+  )
+
+  assert.equal(paused.status, 'paused')
+  assert.equal(paused.pending_action.type, 'operator_decision')
+  assert.equal(
+    paused.operator_pause?.prior_pending_action.type,
+    'prepare_invocation',
+  )
+  assert.match(
+    readFileSync(eventPath(root, state.run_id), 'utf8'),
+    /"type":"hypervisor_agent_quarantined"/u,
+  )
 })
 
 test('persist rejects payloads that shadow reserved event envelope keys', () => {

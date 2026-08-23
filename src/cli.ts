@@ -13,6 +13,7 @@ import {
   pauseRun,
   prepareInvocation,
   probeRunInvocationModel,
+  quarantineRunForAgent,
   recordSupervisorModelEvidence,
   resumeRun,
   setRunStage,
@@ -33,10 +34,34 @@ import { personaExecutorOf } from './lib/executors/mapping.js'
 import { probeCursorModels } from './lib/executors/cursor-probe.js'
 import { claudeCodeVersionPreflight } from './lib/executors/claude-code.js'
 import { browserReadiness } from './lib/browser-readiness.js'
-import { PanError } from './lib/errors.js'
+import { errorMessage, PanError } from './lib/errors.js'
 import { configuredWorkspaceRoot, panCommand } from './lib/project-config.js'
-import { isGitRepository } from './lib/git.js'
-import { loadPipelineConfig } from './lib/pipeline-config.js'
+import {
+  awayModeTrigger,
+  countAwayDecisions,
+  readAwayDecisionLedger,
+  recordAwayApplyResult,
+  recordAwayEvaluation,
+  recordAwayEvaluationFailure,
+  recordHypervisorQuarantine,
+  type AwayDecisionRecord,
+} from './lib/away-mode.js'
+import {
+  createAgentRecoveryRunner,
+  hypervisorEventsPath,
+  hypervisorProcessStatus,
+  registryHealthForRun,
+  runHypervisorDaemon,
+  startHypervisorProcess,
+  stopHypervisorProcess,
+  tickHypervisor,
+} from './lib/hypervisor.js'
+import { runCursorAgentJson } from './lib/executors/cursor-agent.js'
+import { gitWorkspaceSnapshot, isGitRepository } from './lib/git.js'
+import {
+  loadPipelineConfig,
+  loadPipelineConfigSnapshot,
+} from './lib/pipeline-config.js'
 import { loadOperatorInvolvementFile } from './lib/operator-involvement.js'
 import { loadVerificationFile } from './lib/verification.js'
 import { syncCursorProjection } from './lib/projection.js'
@@ -49,10 +74,11 @@ import {
   resolveInside,
   writeTextAtomic,
 } from './lib/io.js'
-import type { RunState } from './lib/types.js'
+import type { AgentRecord, AwayModeAction, RunState } from './lib/types.js'
 import type { InvocationKind } from './lib/requirements/types.js'
 import {
   delegationExecutionPath,
+  invocationValidationPath,
   validateRepository,
 } from './lib/validation.js'
 import { buildValidationMap } from './lib/requirements/map.js'
@@ -110,6 +136,8 @@ const HELP_BODY = `Usage:
   pan set-stage <run-id> --stage <stage-slug> --note <reason>
   pan waive-gate <run-id> --note <directive> [--stage <stage-slug>] [--to <stage-slug>] [--criteria <id[,id...]>] [--defer <AC-id[,AC-id...]> --spotfix]
   pan abort <run-id> [--note <text>]
+  pan hypervisor start|run|tick|status|stop [--json]
+  pan away status|evaluate|apply <run-id> [--decision <id>] [--json]
   pan technologies detect [--worktree <name>] --json
   pan repository-check <profile> [--timeout-ms <milliseconds>] [--workspace <dir|worktree> | --worktree <name>] [--json]
       --timeout-ms raises the effective bound only: resolution keeps the maximum of the request, the profile's own bound, and subset-profile timeouts.
@@ -229,9 +257,11 @@ const WORKTREE_CAPABLE_SURFACES = [
 
 const SUBCOMMAND_STYLE_COMMANDS = new Set([
   'assessment',
+  'away',
   'best-of-n',
   'briefs',
   'governance',
+  'hypervisor',
   'output',
   'repository-check',
   'requirements',
@@ -405,6 +435,19 @@ function listRuns(root: string): Array<Record<string, unknown>> {
     })
     .sort((left, right) => right.created_at.localeCompare(left.created_at))
     .map((state) => ({
+      ...(() => {
+        const health = registryHealthForRun(
+          root,
+          state.run_id,
+          state.current_invocation?.id,
+        )
+
+        return {
+          agent_health: health?.health ?? 'unknown',
+          health_evidence_at: health?.evidence_at ?? null,
+          recovery_state: health?.recovery.step ?? null,
+        }
+      })(),
       run_id: state.run_id,
       title: state.title,
       status: state.status,
@@ -412,6 +455,337 @@ function listRuns(root: string): Array<Record<string, unknown>> {
       pending_action: state.pending_action.type,
       updated_at: state.updated_at,
     }))
+}
+
+function hypervisorModelForRun(root: string, state: RunState): string {
+  if (state.pipeline_config) {
+    const snapshot = loadPipelineConfigSnapshot(
+      root,
+      state.pipeline_config.path,
+    )
+    const model = snapshot.personas.hypervisor
+
+    if (model) {
+      return model
+    }
+  }
+
+  const model = loadPipelineConfig(root).config.personas.hypervisor
+
+  if (!model) {
+    throw new PanError(
+      "Pipeline configuration does not map persona 'hypervisor'.",
+      { code: 'INVALID_PIPELINE_CONFIG' },
+    )
+  }
+
+  return model
+}
+
+function awayEvaluatorPrompt(
+  root: string,
+  state: RunState,
+  blocker: NonNullable<ReturnType<typeof awayModeTrigger>>,
+): string {
+  const allowedActions = (
+    state.away_mode?.guardrails.allowed_actions ?? []
+  ).filter(
+    (action): action is AwayModeAction =>
+      action !== 'approve' ||
+      (state.current_stage !== 'ship' &&
+        !(
+          state.pending_action.type === 'operator_approval' &&
+          state.pending_action.stage === 'ship'
+        )),
+  )
+  const evidenceReferences = [
+    resolveRunLayout(root, state.run_id).state.relative,
+    path.relative(root, hypervisorEventsPath(root)).split(path.sep).join('/'),
+  ]
+
+  return [
+    'Return JSON only.',
+    'Rank the supplied actions from safest to least safe.',
+    'Each option needs rank, action, feasible, rationale, evidence, and rollback_plan.',
+    'Evidence entries must use the supplied repository-relative paths.',
+    'rollback_plan needs non-empty steps and verification.',
+    'revise needs note. set-stage needs stage.',
+    JSON.stringify({
+      run_id: state.run_id,
+      invocation_id: state.current_invocation?.id ?? null,
+      current_stage: state.current_stage,
+      status: state.status,
+      pending_action: state.pending_action,
+      blocker,
+      allowed_actions: allowedActions,
+      evidence_references: evidenceReferences,
+    }),
+  ].join('\n')
+}
+
+function applyAwayDecision(
+  root: string,
+  state: RunState,
+  decision: AwayDecisionRecord,
+): RunState {
+  const selected = decision.selected_action
+
+  if (!selected) {
+    throw new PanError('The away decision selected no action.', {
+      code: 'AWAY_DECISION_NOT_APPLICABLE',
+    })
+  }
+
+  switch (selected.action) {
+    case 'approve':
+    case 'reject':
+    case 'revise':
+      return decideRun(
+        root,
+        state.run_id,
+        selected.action,
+        selected.note ?? selected.rationale,
+      )
+    case 'resume':
+      return resumeRun(
+        root,
+        state.run_id,
+        selected.stage ?? state.current_stage,
+        selected.note ?? selected.rationale,
+      )
+    case 'set-stage':
+      return setRunStage(
+        root,
+        state.run_id,
+        requiredArgument(selected.stage, 'selected stage'),
+        selected.note ?? selected.rationale,
+      )
+    default:
+      throw new PanError(
+        `Unsupported away action: ${String(selected.action)}`,
+        { code: 'AWAY_DECISION_NOT_APPLICABLE' },
+      )
+  }
+}
+
+function evaluateAwayState(
+  root: string,
+  state: RunState,
+  blocker: NonNullable<ReturnType<typeof awayModeTrigger>>,
+): AwayDecisionRecord {
+  // The ledger append re-checks the limit under its lock. This pre-check only
+  // skips a model evaluation whose record could never be persisted.
+  const budget = state.away_mode?.guardrails.max_decisions_per_run ?? 0
+
+  if (countAwayDecisions(root, state.run_id) >= budget) {
+    throw new PanError(
+      'The away-mode decision limit for this run is exhausted.',
+      { code: 'AWAY_DECISION_LIMIT' },
+    )
+  }
+
+  const evaluation = runCursorAgentJson({
+    cwd: root,
+    model: hypervisorModelForRun(root, state),
+    prompt: awayEvaluatorPrompt(root, state, blocker),
+  })
+
+  if (!evaluation.ok || evaluation.value === undefined) {
+    return recordAwayEvaluationFailure(
+      root,
+      state,
+      blocker,
+      evaluation.error ?? 'The away evaluator returned no decision.',
+    )
+  }
+
+  return recordAwayEvaluation(root, state, blocker, evaluation.value)
+}
+
+function reprepareRecoveredAgent(
+  root: string,
+  agent: AgentRecord,
+): {
+  ok: boolean
+  evidence: string
+  failure_signature?: string
+  supported?: boolean
+} {
+  const state = getRunState(root, agent.run_id)
+  const current = state.current_invocation
+
+  if (
+    !current ||
+    current.id !== agent.invocation_id ||
+    state.current_stage === null
+  ) {
+    return {
+      ok: false,
+      supported: false,
+      failure_signature: 'invocation-changed',
+      evidence: 'The run no longer expects this invocation.',
+    }
+  }
+
+  const invocation = readJson(resolveInside(root, current.json_path))
+  const validationPath = resolveInside(
+    root,
+    invocationValidationPath(agent.run_id, agent.invocation_id, root),
+  )
+  const validation = fileExists(validationPath)
+    ? readJson(validationPath)
+    : undefined
+  const priorFingerprint =
+    isRecord(invocation) &&
+    isRecord(invocation.workspace_before) &&
+    typeof invocation.workspace_before.fingerprint === 'string'
+      ? invocation.workspace_before.fingerprint
+      : null
+  const currentFingerprint = gitWorkspaceSnapshot(
+    state.workspace_root,
+  ).fingerprint
+  const validationPassed = isRecord(validation) && validation.status === 'pass'
+
+  if (validationPassed && priorFingerprint === currentFingerprint) {
+    return {
+      ok: false,
+      supported: false,
+      failure_signature: 'canonical-invocation-still-valid',
+      evidence:
+        'The canonical invocation still validates against the workspace.',
+    }
+  }
+
+  setRunStage(
+    root,
+    state.run_id,
+    state.current_stage,
+    'Hypervisor re-prepared an invalid or workspace-stale invocation.',
+  )
+  const prepared = prepareInvocation(root, state.run_id)
+
+  if (!prepared.invocation) {
+    return {
+      ok: false,
+      failure_signature: 'reprepare-produced-no-invocation',
+      evidence: 'The harness did not produce a replacement invocation.',
+    }
+  }
+
+  return {
+    ok: true,
+    evidence: `Prepared replacement invocation ${prepared.invocation.invocation_id}.`,
+  }
+}
+
+function runHypervisorCycle(root: string): Record<string, unknown> {
+  const recoveryRunner = createAgentRecoveryRunner(root)
+  const tick = tickHypervisor(root, {
+    recoveryRunner: {
+      ...recoveryRunner,
+      reprepare: (agent) => reprepareRecoveredAgent(root, agent),
+    },
+  })
+  const quarantinedRuns = new Set<string>()
+
+  for (const event of tick.recovery_events) {
+    if (event.step !== 'quarantine') {
+      continue
+    }
+
+    const agent = tick.agents.find(
+      (candidate) => candidate.agent_id === event.agent_id,
+    )
+
+    if (
+      !agent ||
+      (agent.health !== 'stalled' && agent.health !== 'dead') ||
+      quarantinedRuns.has(agent.run_id)
+    ) {
+      continue
+    }
+
+    const reason = `Agent '${agent.agent_id}' was quarantined. ${event.evidence}`
+    const state = quarantineRunForAgent(
+      root,
+      agent.run_id,
+      agent.agent_id,
+      reason,
+    )
+
+    recordHypervisorQuarantine(root, state, {
+      health: agent.health,
+      summary: reason,
+      evidence_reference: path
+        .relative(root, hypervisorEventsPath(root))
+        .split(path.sep)
+        .join('/'),
+    })
+    quarantinedRuns.add(agent.run_id)
+  }
+
+  const decisions: Array<Record<string, unknown>> = []
+  const listedRuns = listRuns(root)
+
+  for (const listed of listedRuns) {
+    const runId = listed.run_id
+
+    if (typeof runId !== 'string') {
+      continue
+    }
+
+    if (quarantinedRuns.has(runId)) {
+      continue
+    }
+
+    const state = getRunState(root, runId)
+    const incidentAgent = tick.agents.find(
+      (agent) =>
+        agent.run_id === runId &&
+        (agent.health === 'stalled' || agent.health === 'dead'),
+    )
+    const blocker = awayModeTrigger(
+      state,
+      incidentAgent
+        ? {
+            health: incidentAgent.health as 'stalled' | 'dead',
+            summary: incidentAgent.health_evidence.join(' '),
+          }
+        : undefined,
+    )
+
+    if (!blocker) {
+      continue
+    }
+
+    let decision: AwayDecisionRecord | undefined
+
+    try {
+      decision = evaluateAwayState(root, state, blocker)
+
+      if (!decision.selected_action) {
+        decisions.push({ run_id: runId, decision })
+        continue
+      }
+
+      const next = applyAwayDecision(root, state, decision)
+      const applied = recordAwayApplyResult(root, decision, 'applied')
+
+      decisions.push({
+        run_id: runId,
+        decision: applied,
+        status: next.status,
+        current_stage: next.current_stage,
+      })
+    } catch (error) {
+      if (decision) {
+        recordAwayApplyResult(root, decision, 'failed', errorMessage(error))
+      }
+      decisions.push({ run_id: runId, error: errorMessage(error) })
+    }
+  }
+
+  return { tick, away_decisions: decisions }
 }
 
 function runAgentPreSubmitValidators(
@@ -881,6 +1255,128 @@ async function main(): Promise<void> {
 
       print({ status: state.status, run_id: runId })
       return
+    }
+    case 'hypervisor': {
+      const subcommand = requiredArgument(args[0], 'hypervisor subcommand')
+
+      if (subcommand === 'start') {
+        print(
+          startHypervisorProcess(
+            root,
+            requiredArgument(process.argv[1], 'CLI path'),
+          ),
+          json,
+        )
+        return
+      }
+
+      if (subcommand === 'run') {
+        await runHypervisorDaemon(root, () => {
+          runHypervisorCycle(root)
+        })
+        return
+      }
+
+      if (subcommand === 'tick') {
+        print(runHypervisorCycle(root), json)
+        return
+      }
+
+      if (subcommand === 'status') {
+        print(hypervisorProcessStatus(root), json)
+        return
+      }
+
+      if (subcommand === 'stop') {
+        print(stopHypervisorProcess(root), json)
+        return
+      }
+
+      throw new PanError(`Unknown hypervisor subcommand: ${subcommand}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
+    }
+    case 'away': {
+      const subcommand = requiredArgument(args[0], 'away subcommand')
+      const runId = requiredArgument(args[1], 'run-id')
+      const state = getRunState(root, runId)
+      const blocker = awayModeTrigger(state)
+
+      if (subcommand === 'status') {
+        print(
+          {
+            run_id: runId,
+            enabled: state.away_mode?.enabled ?? false,
+            blocker,
+            decisions: readAwayDecisionLedger(root).filter(
+              (record) => record.run_id === runId,
+            ).length,
+          },
+          json,
+        )
+        return
+      }
+
+      if (subcommand === 'evaluate') {
+        if (!blocker) {
+          throw new PanError(
+            'The run has no blocker that away mode can evaluate.',
+            { code: 'AWAY_TRIGGER_UNAVAILABLE' },
+          )
+        }
+
+        print(evaluateAwayState(root, state, blocker), json)
+        return
+      }
+
+      if (subcommand === 'apply') {
+        const decisionId = requiredArgument(
+          option(args, '--decision'),
+          '--decision',
+        )
+        const ledger = readAwayDecisionLedger(root)
+        const decision = ledger.find(
+          (record) =>
+            record.run_id === runId &&
+            record.decision_id === decisionId &&
+            record.result === 'accepted',
+        )
+
+        if (!decision) {
+          throw new PanError(
+            `Accepted away decision not found: ${decisionId}`,
+            { code: 'AWAY_DECISION_NOT_FOUND' },
+          )
+        }
+
+        if (
+          ledger.some(
+            (record) =>
+              record.run_id === runId &&
+              record.linked_decision_id === decisionId,
+          )
+        ) {
+          throw new PanError(
+            `Away decision was already applied: ${decisionId}`,
+            { code: 'AWAY_DECISION_ALREADY_APPLIED' },
+          )
+        }
+
+        try {
+          const next = applyAwayDecision(root, state, decision)
+          const record = recordAwayApplyResult(root, decision, 'applied')
+
+          print({ state: next, decision: record }, json)
+        } catch (error) {
+          recordAwayApplyResult(root, decision, 'failed', errorMessage(error))
+          throw error
+        }
+        return
+      }
+
+      throw new PanError(`Unknown away subcommand: ${subcommand}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
     }
     case 'technologies': {
       const subcommand = requiredArgument(args[0], 'technologies subcommand')

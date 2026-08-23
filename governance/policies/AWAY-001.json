@@ -1,0 +1,28 @@
+{
+  "id": "AWAY-001",
+  "title": "Bounded away mode",
+  "severity": "hard",
+  "summary": "Away mode MUST select reversible actions within operator guardrails and keep an immutable decision ledger.",
+  "instructions": [
+    "Away mode MUST act only when the run snapshot enables it.",
+    "Away mode MUST trigger only for named blockers and proven hypervisor incidents.",
+    "The evaluator MUST rank bounded options and cite evidence for each option.",
+    "Pan code MUST reject malformed, unsupported, forbidden, or unguarded options.",
+    "Pan code MUST select the first allowed option with a complete manual rollback plan.",
+    "Away mode MUST NOT approve shipping or run irreversible source-control, publication, deployment, or gate-waiver actions.",
+    "Each evaluation and apply result MUST append one immutable ledger record.",
+    "The ledger MUST contain bounded summaries and repository-relative evidence references."
+  ],
+  "requirements": [
+    {
+      "id": "away-decision-ledger-validate",
+      "registry_id": "AWAY-DECISION-LEDGER-VALIDATE-001",
+      "phase": "gate",
+      "executor": "harness",
+      "target": "repository",
+      "enforcement": "authoritative",
+      "failure_route": "blocked",
+      "evidence_class": "validation-result"
+    }
+  ]
+}

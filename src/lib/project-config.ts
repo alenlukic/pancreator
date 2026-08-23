@@ -2,9 +2,11 @@ import path from 'node:path'
 
 import { EMBEDDED_HARNESS_PREFIX } from './cursor-content.js'
 import { invariant } from './errors.js'
-import { fileExists, isRecord, readJson } from './io.js'
+import { fileExists, isRecord, readJson, sha256 } from './io.js'
 import type {
+  AwayModeAction,
   ProjectConfig,
+  ResolvedAwayModeConfig,
   ResolvedWorktreesConfig,
   ReviewMode,
 } from './types.js'
@@ -31,6 +33,18 @@ const PROJECT_CONFIG_PATH = 'config.json'
  * legacy name. Remove once no supported installation predates the rename.
  */
 const LEGACY_PROJECT_CONFIG_PATH = 'project.json'
+
+export const AWAY_MODE_ACTIONS = [
+  'approve',
+  'reject',
+  'revise',
+  'resume',
+  'set-stage',
+] as const satisfies readonly AwayModeAction[]
+
+const DEFAULT_AWAY_MODE_ACTIONS = [...AWAY_MODE_ACTIONS]
+const DEFAULT_MAX_AWAY_DECISIONS_PER_RUN = 3
+const DEFAULT_MAX_REMEDIATION_ATTEMPTS_PER_AGENT = 2
 
 /**
  * Untracked operator-local overrides, merged over the checked-in harness
@@ -139,6 +153,58 @@ function assertWorktreesBlock(value: unknown): void {
   }
 }
 
+function assertPositiveInteger(value: unknown, source: string): void {
+  invariant(
+    value === undefined || (Number.isInteger(value) && (value as number) > 0),
+    `${source} MUST be a positive integer when present.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+}
+
+function assertAwayModeBlock(value: unknown): void {
+  if (value === undefined) {
+    return
+  }
+
+  invariant(
+    isRecord(value) && typeof value.enabled === 'boolean',
+    `${PROJECT_CONFIG_PATH}.away_mode MUST contain enabled as a boolean.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+
+  const guardrails = value.guardrails
+
+  if (guardrails === undefined) {
+    return
+  }
+
+  invariant(
+    isRecord(guardrails),
+    `${PROJECT_CONFIG_PATH}.away_mode.guardrails MUST be an object when present.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+  invariant(
+    guardrails.allowed_actions === undefined ||
+      (Array.isArray(guardrails.allowed_actions) &&
+        guardrails.allowed_actions.every(
+          (action) =>
+            typeof action === 'string' &&
+            AWAY_MODE_ACTIONS.includes(action as AwayModeAction),
+        )),
+    `${PROJECT_CONFIG_PATH}.away_mode.guardrails.allowed_actions MUST contain only approve, reject, revise, resume, or set-stage.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+
+  assertPositiveInteger(
+    guardrails.max_decisions_per_run,
+    `${PROJECT_CONFIG_PATH}.away_mode.guardrails.max_decisions_per_run`,
+  )
+  assertPositiveInteger(
+    guardrails.max_remediation_attempts_per_agent,
+    `${PROJECT_CONFIG_PATH}.away_mode.guardrails.max_remediation_attempts_per_agent`,
+  )
+}
+
 function resolveConfigPath(root: string): string | null {
   const name = harnessConfigName(root)
 
@@ -210,6 +276,7 @@ export function readProjectConfig(root: string): ProjectConfig | null {
   )
 
   assertWorktreesBlock(value.worktrees)
+  assertAwayModeBlock(value.away_mode)
 
   // A detached harness cannot reach its target by a relative path that would
   // survive being moved, so the target MUST be recorded absolutely.
@@ -268,6 +335,27 @@ export function resolveReviewMode(
   }
 
   return loadProjectConfig(root).review_mode ?? DEFAULT_REVIEW_MODE
+}
+
+/** Away-mode settings for a new run, with safe defaults and a source digest. */
+export function resolveAwayModeConfig(root: string): ResolvedAwayModeConfig {
+  const configured = loadProjectConfig(root).away_mode
+  const allowedActions =
+    configured?.guardrails?.allowed_actions ?? DEFAULT_AWAY_MODE_ACTIONS
+
+  return {
+    enabled: configured?.enabled ?? false,
+    guardrails: {
+      allowed_actions: [...allowedActions],
+      max_decisions_per_run:
+        configured?.guardrails?.max_decisions_per_run ??
+        DEFAULT_MAX_AWAY_DECISIONS_PER_RUN,
+      max_remediation_attempts_per_agent:
+        configured?.guardrails?.max_remediation_attempts_per_agent ??
+        DEFAULT_MAX_REMEDIATION_ATTEMPTS_PER_AGENT,
+    },
+    source_sha256: sha256(configured ?? { enabled: false }),
+  }
 }
 
 export function isSelfDevelopmentInstallation(root: string): boolean {

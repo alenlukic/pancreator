@@ -47,10 +47,15 @@ import {
   isDetachedInstallation,
   isSelfDevelopmentInstallation,
   isTargetInstallation,
-  loadProjectConfig,
   panCommand,
+  resolveAwayModeConfig,
   resolveReviewMode,
 } from './project-config.js'
+import {
+  completeInvocationAgent,
+  registerPreparedInvocation,
+  registryHealthForRun,
+} from './hypervisor.js'
 import { resolvePolicies } from './policies.js'
 import {
   artifactJsonPath,
@@ -108,7 +113,6 @@ import {
   renderStatus,
 } from './render.js'
 import {
-  invocationLiveness,
   operationMutexPath,
   loadState,
   makeUniqueRunId,
@@ -1645,6 +1649,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
   // Snapshotted for the same reason as the involvement profile: the review
   // method a run started under governs it to the end.
   const reviewMode = resolveReviewMode(root, options.reviewMode)
+  const awayMode = resolveAwayModeConfig(root)
   // Snapshotted likewise. The level decides which repository-check profiles
   // gate this run and which baselines the first mutating stage captures.
   const verification = resolveVerification(root, options.verification)
@@ -1681,6 +1686,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     operator_involvement: involvement,
     verification,
     review_mode: reviewMode,
+    away_mode: awayMode,
     operator_artifacts: {
       mode: options.operatorArtifacts ? 'requested' : 'suppressed',
       requested_stages: [],
@@ -1717,6 +1723,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     applied_gates: involvement.applied_gates,
     verification_level: verification.level,
     review_mode: reviewMode,
+    away_mode_enabled: awayMode.enabled,
     operator_artifacts: state.operator_artifacts,
   })
 
@@ -2430,6 +2437,13 @@ export function prepareInvocation(
       invocation_id: invocationId,
       stage: stage.slug,
       attempt,
+    })
+    registerPreparedInvocation(root, {
+      run_id: runId,
+      invocation_id: invocationId,
+      persona: stage.persona,
+      executor: invocation.stage.persona_executor ?? 'cursor',
+      model: invocation.stage.model,
     })
 
     return { state, invocation }
@@ -3467,6 +3481,7 @@ export function submitOutput(
       outcome,
       next_state: nextState,
     })
+    completeInvocationAgent(root, runId, invocation.invocation_id)
 
     return { state, record }
   })
@@ -4014,6 +4029,54 @@ export function pauseRun(root: string, runId: string, note = ''): RunState {
   })
 }
 
+/** Pause a run after recovery quarantine and preserve its resumable state. */
+export function quarantineRunForAgent(
+  root: string,
+  runId: string,
+  agentId: string,
+  reason: string,
+): RunState {
+  return withOperationMutex(operationMutexPath(root, runId), () => {
+    const state = loadState(root, runId)
+
+    invariant(
+      state.status !== 'succeeded' &&
+        state.status !== 'failed' &&
+        state.status !== 'canceled',
+      'Run is already terminal.',
+      { code: 'RUN_TERMINAL' },
+    )
+
+    if (state.status !== 'paused') {
+      const workspace = workspaceSnapshotForRun(root, state)
+
+      state.operator_pause = {
+        prior_status: state.status,
+        prior_pending_action: JSON.parse(
+          JSON.stringify(state.pending_action),
+        ) as OperatorPauseContext['prior_pending_action'],
+        workspace_before: workspace,
+      }
+    }
+
+    state.status = 'paused'
+    state.pause_reason = reason
+    state.pending_action = { type: 'operator_decision' }
+
+    writeDecision(root, state, 'Hypervisor quarantined an agent', reason, [
+      `Review agent '${agentId}' and its recovery evidence.`,
+      `Resume with: ${panCommand(root)} resume ${state.run_id}`,
+      `Or abort with: ${panCommand(root)} abort ${state.run_id}`,
+    ])
+    persistRun(root, state, 'hypervisor_agent_quarantined', {
+      agent_id: agentId,
+      reason,
+    })
+
+    return state
+  })
+}
+
 export function resumeRun(
   root: string,
   runId: string,
@@ -4480,14 +4543,8 @@ export function getRunStatus(
   options: StatusOptions = {},
 ): RunState | string {
   const state = loadState(root, runId)
-  const liveness = invocationLiveness(
-    state,
-    Date.now(),
-    loadProjectConfig(root).stage_liveness_ms,
-  )
-  const statusState = liveness
-    ? { ...state, invocation_liveness: liveness }
-    : state
+  const health = registryHealthForRun(root, runId, state.current_invocation?.id)
+  const statusState = health ? { ...state, agent_health: health } : state
 
   if (options.json) {
     return statusState

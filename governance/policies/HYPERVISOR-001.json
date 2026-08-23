@@ -1,0 +1,28 @@
+{
+  "id": "HYPERVISOR-001",
+  "title": "Agent health and recovery",
+  "severity": "hard",
+  "summary": "The hypervisor MUST use agent evidence, prevent duplicates, and stop repeated recovery failures.",
+  "instructions": [
+    "The hypervisor MUST run one non-overlapping tick every 15 minutes.",
+    "Health decisions MUST use transcript, process, terminal, executor, and expected-invocation evidence.",
+    "Time since a harness action MUST NOT prove agent health.",
+    "Unknown health MUST NOT start recovery or another agent.",
+    "A quiet agent MUST have two unchanged scans before a stalled verdict.",
+    "Recovery MUST try nudge, resume, validated re-delivery, and conditional re-prepare in that order.",
+    "The second matching recovery failure MUST quarantine the agent and stop autonomous retries.",
+    "The registry MUST preserve agent identity, parentage, run context, evidence, health, and recovery state."
+  ],
+  "requirements": [
+    {
+      "id": "hypervisor-state-validate",
+      "registry_id": "HYPERVISOR-STATE-VALIDATE-001",
+      "phase": "gate",
+      "executor": "harness",
+      "target": "repository",
+      "enforcement": "authoritative",
+      "failure_route": "blocked",
+      "evidence_class": "validation-result"
+    }
+  ]
+}
