@@ -5,6 +5,7 @@ import path from 'node:path'
 import { createFixture } from '../helpers.js'
 import {
   listWorkflowSlugs,
+  loadStagePrompt,
   loadWorkflow,
   stageBySlug,
   validateWorkflow,
@@ -55,6 +56,21 @@ test('listWorkflowSlugs finds every defined workflow', () => {
     'preflight',
     'prototype',
   ])
+})
+
+test('every workflow prompt obeys the optional brief contract', () => {
+  const root = createFixture()
+
+  for (const slug of listWorkflowSlugs(root)) {
+    const workflow = loadWorkflow(root, slug)
+
+    for (const stage of workflow.stages) {
+      const prompt = loadStagePrompt(root, stage)
+
+      assert.match(prompt, /output\.operator_brief/u)
+      assert.match(prompt, /do not create/u)
+    }
+  }
 })
 
 test('a best-of-N candidate never stops for the operator', () => {

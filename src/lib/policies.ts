@@ -51,6 +51,7 @@ interface PolicyContext {
    * default, which is what every standalone non-workflow invocation uses.
    */
   review_mode?: ReviewMode
+  operator_artifacts?: 'requested' | 'suppressed'
 }
 
 export function detectWorkspaceTechnologies(root: string): Set<string> {
@@ -288,6 +289,13 @@ function parseLookupRow(value: unknown, source: string): PolicyLookupRow {
     { code: 'INVALID_POLICY_LOOKUP' },
   )
   invariant(
+    value.operator_artifacts === undefined ||
+      value.operator_artifacts === 'requested' ||
+      value.operator_artifacts === 'suppressed',
+    `${source}: operator_artifacts MUST be requested or suppressed when present.`,
+    { code: 'INVALID_POLICY_LOOKUP' },
+  )
+  invariant(
     Array.isArray(value.policies) &&
       value.policies.every((item) => typeof item === 'string'),
     `${source}: policies MUST be a string array.`,
@@ -423,6 +431,7 @@ export function resolvePolicies(
   )
   const contracts = new Set(context.contracts ?? [])
   const reviewMode = context.review_mode ?? resolveReviewMode(root)
+  const operatorArtifacts = context.operator_artifacts ?? 'requested'
 
   for (const row of lookup.rows) {
     const applies =
@@ -447,6 +456,13 @@ export function resolvePolicies(
     }
 
     if (row.review_mode && row.review_mode !== reviewMode) {
+      continue
+    }
+
+    if (
+      row.operator_artifacts &&
+      row.operator_artifacts !== operatorArtifacts
+    ) {
       continue
     }
 

@@ -166,7 +166,10 @@ test('scaffold retains only non-transient brief sources as artifacts', () => {
   )
 
   invocation.output.path = 'runtime/logs/workflows/x/outputs/transient.json'
-  invocation.output.operator_brief.source_lifecycle = 'transient'
+  const brief = invocation.output.operator_brief
+
+  assert.ok(brief)
+  brief.source_lifecycle = 'transient'
 
   const transient = scaffoldStageOutput(
     root,

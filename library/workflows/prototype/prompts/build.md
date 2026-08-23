@@ -35,9 +35,10 @@ production-ready. Take the shortcuts the approach declared, and record them.
 Populate `data.spike` (`changed_files`, `shortcuts_taken`, `signal_evidence`,
 `notes`). Every entry in `shortcuts_taken` needs what you did and why it was
 acceptable for the spike. Every entry in `signal_evidence` needs the signal, what
-you ran or observed, and the actual result. Author the spike summary at the
-declared brief source path. Do not run the renderer. Reference the rendered HTML
-as the narrative artifact.
+you ran or observed, and the actual result. When `output.operator_brief` exists,
+edit its declared source and reference the rendered HTML. Do not run the
+renderer. When the contract omits `output.operator_brief`, do not create either
+brief file.
 
 ## Done when
 

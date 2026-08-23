@@ -48,6 +48,7 @@ function prepareFirstStage(root: string): {
     workflowSlug: 'dev',
     requestPath: 'request.md',
     involvement: 'standard',
+    operatorArtifacts: true,
   }).run_id
   const invocation = prepareInvocation(root, runId).invocation
 
@@ -60,6 +61,9 @@ test('submit reports the sole operator brief and removes its source', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'dev')
   const { runId, invocation } = prepareFirstStage(root)
+  const brief = invocation.output.operator_brief
+
+  assert.ok(brief)
   const output = makeOutput(
     root,
     invocation,
@@ -84,14 +88,8 @@ test('submit reports the sole operator brief and removes its source', () => {
   const filesAfter = listRunFiles(layout.root.absolute)
   const operatorFiles = readdirSync(layout.operator.absolute)
 
-  assert.equal(
-    result.operator_brief_html,
-    invocation.output.operator_brief.rendered_path,
-  )
-  assert.equal(
-    existsSync(path.join(root, invocation.output.operator_brief.source_path)),
-    false,
-  )
+  assert.equal(result.operator_brief_html, brief.rendered_path)
+  assert.equal(existsSync(path.join(root, brief.source_path)), false)
   assert.deepEqual(
     operatorFiles.filter((entry) => entry.endsWith('.html')),
     [`${invocation.invocation_id}.html`],
@@ -105,7 +103,7 @@ test('submit reports the sole operator brief and removes its source', () => {
   // brief source without a compensating file anywhere in the run directory.
   const briefSourceRelative = path.relative(
     layout.root.absolute,
-    path.join(root, invocation.output.operator_brief.source_path),
+    path.join(root, brief.source_path),
   )
   const removed = filesBefore.filter((file) => !filesAfter.includes(file))
   const added = filesAfter.filter((file) => !filesBefore.includes(file))
@@ -145,10 +143,7 @@ test('submit reports the sole operator brief and removes its source', () => {
 
   assert.ok(briefSourceRecord)
   assert.equal(briefSourceRecord.status, 'rendered_and_validated')
-  assert.equal(
-    briefSourceRecord.source_path,
-    invocation.output.operator_brief.source_path,
-  )
+  assert.equal(briefSourceRecord.source_path, brief.source_path)
   assert.match(briefSourceRecord.source_sha256, /^[a-f0-9]{64}$/u)
 })
 
@@ -186,6 +181,49 @@ test('a submitted run holds operator files and harness records apart', () => {
     agentEntries.some((entry) => entry.endsWith('.html')),
     false,
   )
+})
+
+// A default run suppresses operator artifacts, so its complete file inventory
+// must gain machine records only: no brief source, no stage HTML, no PR copy.
+test('a default run prepares and submits without any brief file', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const runId = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    involvement: 'standard',
+  }).run_id
+  const invocation = prepareInvocation(root, runId).invocation
+
+  assert.ok(invocation)
+  assert.equal(invocation.output.operator_brief, undefined)
+
+  const layout = resolveRunLayout(root, runId)
+  const filesBefore = listRunFiles(layout.root.absolute)
+  const output = makeOutput(
+    root,
+    invocation,
+    stageBySlug(workflow, invocation.stage.slug),
+  )
+
+  writeJson(path.join(root, invocation.output.path), output)
+  writeCanonicalDelegation(root, invocation)
+  submitOutput(root, runId, invocation.output.path)
+
+  const filesAfter = listRunFiles(layout.root.absolute)
+  const added = filesAfter.filter((file) => !filesBefore.includes(file))
+
+  assert.deepEqual(readdirSync(layout.operator.absolute), ['request.md'])
+  assert.equal(
+    filesAfter.some(
+      (file) => file.endsWith('.brief.json') || file.endsWith('.html'),
+    ),
+    false,
+    `run tree holds no brief file: ${filesAfter.join(', ')}`,
+  )
+  assert.ok(added.some((file) => file.includes('outputs/')))
+  assert.ok(existsSync(layout.state.absolute))
+  assert.ok(existsSync(layout.events.absolute))
 })
 
 // The operator directory holds only the request, stage HTML narratives, and
@@ -264,6 +302,9 @@ test('a submission with validation errors keeps the brief source', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'dev')
   const { runId, invocation } = prepareFirstStage(root)
+  const brief = invocation.output.operator_brief
+
+  assert.ok(brief)
   const output = makeOutput(
     root,
     invocation,
@@ -282,9 +323,6 @@ test('a submission with validation errors keeps the brief source', () => {
   ) as RunState
 
   assert.ok(submitted.record.evaluation.validation_errors.length > 0)
-  assert.equal(
-    existsSync(path.join(root, invocation.output.operator_brief.source_path)),
-    true,
-  )
+  assert.equal(existsSync(path.join(root, brief.source_path)), true)
   assert.equal(state.stage_history.at(-1)?.operator_brief_source, undefined)
 })

@@ -26,9 +26,10 @@ does not enumerate features.
 ## Output
 
 Populate `data.prototype_brief` (`objective`, `technical_questions`,
-`success_signals`, `acceptable_shortcuts`, `out_of_scope`). Author the brief at
-the declared source path. Do not run the renderer. Reference the rendered HTML
-as the narrative artifact.
+`success_signals`, `acceptable_shortcuts`, `out_of_scope`). When
+`output.operator_brief` exists, edit its declared source and reference the
+rendered HTML. Do not run the renderer. When the contract omits
+`output.operator_brief`, do not create either brief file.
 
 ## Done when
 

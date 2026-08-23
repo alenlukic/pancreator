@@ -76,7 +76,7 @@ interface BriefItem {
   body_html?: string
 }
 
-interface BriefCard {
+export interface BriefCard {
   type: string
   title: string
   lede?: string
@@ -89,7 +89,7 @@ interface BriefCard {
   actions?: BriefAction[]
 }
 
-interface BriefSection {
+export interface BriefSection {
   semantic: string
   title: string
   description?: string
@@ -97,7 +97,7 @@ interface BriefSection {
   cards: BriefCard[]
 }
 
-interface OperatorBrief {
+export interface OperatorBrief {
   schema_version: 1
   brief_type: string
   title: string
@@ -1306,6 +1306,21 @@ export function scaffoldOperatorBrief(
     source: options.source,
     sections,
   })
+}
+
+/** Validate and write a complete operator brief source atomically. */
+export function writeOperatorBriefSource(
+  root: string,
+  sourcePath: string,
+  brief: OperatorBrief,
+): void {
+  const parsed = parseBrief(brief, readRegistries(root), sourcePath)
+
+  invariant(parsed.brief, parsed.errors.join('\n'), {
+    code: 'INVALID_OPERATOR_BRIEF',
+    details: { errors: parsed.errors },
+  })
+  writeJsonAtomic(resolveInside(root, sourcePath), parsed.brief)
 }
 
 export function renderBrief(

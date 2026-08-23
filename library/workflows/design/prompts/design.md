@@ -23,9 +23,10 @@ corresponding `dev` run.
 ## Output
 
 Populate `data.design_spec` (`summary`, `screens`, `tokens`), `data.mocks` (entries
-with `kind` `html`, `screen`, and `path`), and `data.acceptance_criteria`. Author
-the design brief at the declared source path. Do not run the renderer. Reference
-the rendered HTML as the narrative artifact.
+with `kind` `html`, `screen`, and `path`), and `data.acceptance_criteria`. When
+`output.operator_brief` exists, edit its declared source and reference the
+rendered HTML. Do not run the renderer. When the contract omits
+`output.operator_brief`, do not create either brief file.
 
 ## Done when
 

@@ -113,6 +113,7 @@ export interface BestOfNState {
     sha256: string
   }
   setup: string[]
+  operator_artifacts?: boolean
   candidates: BestOfNCandidateRecord[]
   pending: BestOfNPendingCandidate[]
   consolidation?: BestOfNConsolidationRecord
@@ -528,6 +529,7 @@ export interface InitBestOfNOptions {
   configsPath: string
   candidateWorkflow?: string
   consolidationWorkflow?: string
+  operatorArtifacts?: boolean
 }
 
 /** Inputs every candidate slot of one session shares. */
@@ -539,6 +541,7 @@ interface SessionPlan {
   requestLabel: string
   defaults: Record<string, string>
   candidatePersonas: string[]
+  operatorArtifacts: boolean
 }
 
 /**
@@ -675,6 +678,7 @@ export function initBestOfN(
       sha256: sha256(readText(requestSource)),
     },
     setup: configs.setup,
+    operator_artifacts: options.operatorArtifacts ?? false,
     candidates: [],
     pending: [],
   }
@@ -687,6 +691,7 @@ export function initBestOfN(
     requestLabel: path.basename(options.requestPath),
     defaults,
     candidatePersonas,
+    operatorArtifacts: options.operatorArtifacts ?? false,
   }
 
   // The record does not exist yet, so the mutex is taken directly rather than
@@ -755,6 +760,7 @@ function createSessionCandidates(
       },
       cursorAgentSuffix: pending.agent_suffix,
       useWorkflowDeclaredGates: true,
+      operatorArtifacts: plan.operatorArtifacts,
       bestOfN: { bon_id: state.bon_id, role: 'candidate', slot: pending.slot },
     })
 
@@ -1178,6 +1184,7 @@ function startConsolidationRun(
     },
     cursorAgentSuffix: suffix,
     useWorkflowDeclaredGates: true,
+    operatorArtifacts: state.operator_artifacts ?? false,
     bestOfN: { bon_id: bonId, role: 'consolidation', slot },
   })
 

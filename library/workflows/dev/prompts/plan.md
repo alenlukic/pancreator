@@ -32,8 +32,9 @@ Populate `data.engineering_plan` (`approach`, `components`, `files`, `risks`,
 Each disposition states the question `id`, a `disposition` of `resolved`,
 `deferred`, or `escalated`, an `answer` naming the answer or the decision still
 required, and `evidence`, which is required and must be non-empty for a resolved
-question. Author the plan at the declared brief source path. Do not run the
-renderer. Reference the rendered HTML as the narrative artifact.
+question. When `output.operator_brief` exists, edit its declared source and
+reference the rendered HTML. Do not run the renderer. When the contract omits
+`output.operator_brief`, do not create a brief source or rendered stage HTML.
 
 Do not copy the intake product spec into your output; the harness reads it from
 the intake record. If the change warrants a different verification level than

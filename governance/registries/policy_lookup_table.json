@@ -339,6 +339,7 @@
       "persona": "release-steward",
       "workflow": "*",
       "stage": "*",
+      "operator_artifacts": "requested",
       "policies": ["PR-001"]
     },
     {

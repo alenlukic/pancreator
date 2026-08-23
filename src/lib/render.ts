@@ -488,9 +488,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
           '',
         ]
       : []
-  const operatorBrief = invocation.output.operator_brief as
-    | Invocation['output']['operator_brief']
-    | undefined
+  const operatorBrief = invocation.output.operator_brief
   const requiredDataLines = requiredData.length
     ? [
         'Required `data` fields:',
@@ -762,7 +760,8 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
             : []),
         ]
       : [
-          'This legacy invocation retains the artifact contract captured when it was prepared.',
+          'This invocation does not request an operator brief. Do not create a brief source or rendered stage HTML.',
+          'Use an empty artifacts array unless the stage produces another declared deliverable.',
           '',
         ]),
     ...requiredDataLines,

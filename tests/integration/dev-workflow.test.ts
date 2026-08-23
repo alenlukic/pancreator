@@ -43,6 +43,7 @@ test('full dev workflow persists gates and reaches operator-approved success', (
     requestPath: 'request.md',
     title: 'Fixture run',
     involvement: 'standard',
+    operatorArtifacts: true,
   })
   const runId = state.run_id
   const modelConfig = state.pipeline_config?.name
@@ -61,6 +62,9 @@ test('full dev workflow persists gates and reaches operator-approved success', (
     const expectedPrefix = String(99 - stageSequence).padStart(2, '0')
 
     assert.ok(invocation)
+    const brief = invocation.output.operator_brief
+
+    assert.ok(brief)
     assert.match(
       invocation.invocation_id,
       new RegExp(`^${expectedPrefix}_${stageSlug}-1_`, 'u'),
@@ -90,10 +94,7 @@ test('full dev workflow persists gates and reaches operator-approved success', (
       'success',
       `${stageSlug}: ${JSON.stringify(submitted.record.evaluation)}`,
     )
-    assert.equal(
-      existsSync(path.join(root, invocation.output.operator_brief.source_path)),
-      false,
-    )
+    assert.equal(existsSync(path.join(root, brief.source_path)), false)
 
     if (stageSlug === 'intake') {
       const repeated = submitOutput(root, runId, invocation.output.path)
@@ -1767,20 +1768,18 @@ test('governance and artifact defects are advisory before ship and never loop to
     workflowSlug: 'dev',
     requestPath: 'request.md',
     title: 'Governance warning fixture',
+    operatorArtifacts: true,
   })
   const runId = state.run_id
 
   setRunStage(root, runId, 'review', 'Exercise advisory validation routing.')
   const invocation = prepareInvocation(root, runId).invocation
   assert.ok(invocation)
-  assert.equal(
-    existsSync(path.join(root, invocation.output.operator_brief.source_path)),
-    true,
-  )
-  assert.equal(
-    existsSync(path.join(root, invocation.output.operator_brief.rendered_path)),
-    false,
-  )
+  const brief = invocation.output.operator_brief
+
+  assert.ok(brief)
+  assert.equal(existsSync(path.join(root, brief.source_path)), true)
+  assert.equal(existsSync(path.join(root, brief.rendered_path)), false)
 
   writeJson(path.join(root, invocation.output.path), {
     schema_version: 1,
@@ -1797,14 +1796,8 @@ test('governance and artifact defects are advisory before ship and never loop to
   assert.ok(
     (submitted.record.evaluation.governance_artifact_warnings ?? []).length > 0,
   )
-  assert.equal(
-    existsSync(path.join(root, invocation.output.operator_brief.rendered_path)),
-    true,
-  )
-  assert.equal(
-    existsSync(path.join(root, invocation.output.operator_brief.source_path)),
-    true,
-  )
+  assert.equal(existsSync(path.join(root, brief.rendered_path)), true)
+  assert.equal(existsSync(path.join(root, brief.source_path)), true)
   assert.equal(
     existsSync(
       resolveRunLayout(root, runId).artifactJson(

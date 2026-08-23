@@ -21,8 +21,9 @@ because the design workflow does not mutate tracked source.
 ## Output
 
 Populate `data.test` with `verdict`, `cases`, `defects`, and `acceptance_results`.
-Author the QA brief at the declared source path. Do not run the renderer.
-Reference the rendered HTML as the narrative artifact.
+When `output.operator_brief` exists, edit its declared source and reference the
+rendered HTML. Do not run the renderer. When the contract omits
+`output.operator_brief`, do not create either brief file.
 
 ## Done when
 

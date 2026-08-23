@@ -13,6 +13,49 @@ import { resolveRequirements } from '../../src/lib/requirements/resolve.js'
 import { isValidHandlerStatus } from '../../src/lib/requirements/types.js'
 import { createFixture } from '../helpers.js'
 
+test('artifact validators resolve only when workflow artifacts are requested', () => {
+  const root = createFixture()
+  const base = {
+    persona: 'coder',
+    workflow: 'dev',
+    stage: 'implement',
+    invocation: {
+      output_path: 'runtime/logs/workflows/x/outputs/y.json',
+      artifact_paths: ['runtime/logs/workflows/x/operator/y.html'],
+    },
+  }
+  const requested = resolveRequirements(root, {
+    ...base,
+    operator_artifacts: 'requested',
+  })
+  const suppressed = resolveRequirements(root, {
+    ...base,
+    operator_artifacts: 'suppressed',
+  })
+  const artifactValidators = new Set([
+    'OPERATOR-ARTIFACT-VALIDATE-001',
+    'SIMPLIFIED-ENGLISH-VALIDATE-001',
+  ])
+
+  assert.equal(
+    requested.validation_requirements.filter((requirement) =>
+      artifactValidators.has(requirement.registry_id),
+    ).length,
+    2,
+  )
+  assert.equal(
+    suppressed.validation_requirements.some((requirement) =>
+      artifactValidators.has(requirement.registry_id),
+    ),
+    false,
+  )
+  assert.ok(
+    suppressed.validation_requirements.some(
+      (requirement) => requirement.registry_id === 'STAGE-OUTPUT-VALIDATE-002',
+    ),
+  )
+})
+
 test('runRequirement fails closed on missing target', () => {
   const root = createFixture()
   const manifest = resolveRequirements(root, {

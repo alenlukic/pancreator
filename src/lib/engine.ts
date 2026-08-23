@@ -37,6 +37,10 @@ import {
   operatorArtifactProfileForStage,
 } from './operator-artifact-profiles.js'
 import {
+  operatorArtifactsRequested,
+  requestStageOperatorArtifacts,
+} from './operator-artifacts.js'
+import {
   DEFAULT_REVIEW_MODE,
   configuredWorkspaceRoot,
   harnessPathPrefix,
@@ -194,6 +198,7 @@ interface CreateRunOptions {
   involvement?: string | null
   verification?: string | null
   reviewMode?: string | null
+  operatorArtifacts?: boolean
   pipelineOverride?: PipelineOverride | null
   cursorAgentSuffix?: string | null
   /**
@@ -257,6 +262,10 @@ export interface PrepareInvocationResult {
 
 interface OperationProgressOptions {
   onProgress?: (message: string) => void
+}
+
+interface PrepareInvocationOptions extends OperationProgressOptions {
+  operatorArtifacts?: boolean
 }
 
 function persistRun(
@@ -1672,6 +1681,10 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     operator_involvement: involvement,
     verification,
     review_mode: reviewMode,
+    operator_artifacts: {
+      mode: options.operatorArtifacts ? 'requested' : 'suppressed',
+      requested_stages: [],
+    },
     ...(agentSuffix ? { cursor_agent_suffix: agentSuffix } : {}),
     ...(options.bestOfN ? { best_of_n: options.bestOfN } : {}),
     title: options.title ?? path.basename(requestPath),
@@ -1704,6 +1717,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     applied_gates: involvement.applied_gates,
     verification_level: verification.level,
     review_mode: reviewMode,
+    operator_artifacts: state.operator_artifacts,
   })
 
   return state
@@ -1918,7 +1932,7 @@ function stageFieldContract(
 export function prepareInvocation(
   root: string,
   runId: string,
-  options: OperationProgressOptions = {},
+  options: PrepareInvocationOptions = {},
 ): PrepareInvocationResult {
   return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
@@ -1930,6 +1944,25 @@ export function prepareInvocation(
         code: 'RUN_NOT_RUNNING',
       },
     )
+
+    if (options.operatorArtifacts) {
+      const stageSlug = state.current_stage
+
+      invariant(
+        stageSlug,
+        'Run has no current stage to request artifacts for.',
+        {
+          code: 'INVALID_RUN_ACTION',
+        },
+      )
+
+      if (requestStageOperatorArtifacts(state, stageSlug)) {
+        persistRun(root, state, 'operator_artifacts_requested', {
+          scope: 'stage',
+          stage: stageSlug,
+        })
+      }
+    }
 
     if (
       state.pending_action.type === 'invoke_agent' &&
@@ -2048,6 +2081,7 @@ export function prepareInvocation(
     const jsonPath = layout.invocation(invocationId, '.json').relative
     const markdownPath = layout.invocation(invocationId, '.md').relative
     const delegationArtifactPath = delegationPath(runId, invocationId, root)
+    const artifactsRequested = operatorArtifactsRequested(state, stage.slug)
 
     const workspace = workspaceSnapshotForRun(root, state)
     const contracts = state.operator_involvement?.contracts ?? []
@@ -2058,6 +2092,7 @@ export function prepareInvocation(
       stage: stage.slug,
       contracts,
       review_mode: reviewMode,
+      operator_artifacts: artifactsRequested ? 'requested' : 'suppressed',
     })
     const requirements = resolveRequirements(root, {
       persona: stage.persona,
@@ -2067,8 +2102,9 @@ export function prepareInvocation(
       review_mode: reviewMode,
       invocation: {
         output_path: outputPath,
-        artifact_paths: [briefRenderedPath],
+        artifact_paths: artifactsRequested ? [briefRenderedPath] : [],
       },
+      operator_artifacts: artifactsRequested ? 'requested' : 'suppressed',
     })
     const nextAction =
       stage.persona === 'orchestrator'
@@ -2147,7 +2183,9 @@ export function prepareInvocation(
       workflow.slug,
     )
     const priorFailure = summarizePriorFailure(state, stage, root)
-    const briefVocabulary = resolveBriefVocabulary(root)
+    const briefVocabulary = artifactsRequested
+      ? resolveBriefVocabulary(root)
+      : undefined
     const requiredData = { ...(stage.required_data ?? {}) }
     const fieldContract = stageFieldContract(
       root,
@@ -2236,24 +2274,28 @@ export function prepareInvocation(
         schema: 'library/schemas/stage-output.schema.json',
         required_data: requiredData,
         ...(fieldContract ? { field_contract: fieldContract } : {}),
-        operator_brief: {
-          source_path: briefSourcePath,
-          rendered_path: briefRenderedPath,
-          ...(layout.version === 'v2'
-            ? {
-                source_lifecycle: 'transient' as const,
-                source_transient: true,
-              }
-            : {}),
-          schema: 'library/schemas/operator-brief.schema.json',
-          renderer: 'pan briefs render',
-          profile: artifactProfile,
-          required_headings: [
-            ...OPERATOR_ARTIFACT_PROFILE_HEADINGS[artifactProfile],
-          ],
-          allowed_card_types: briefVocabulary.card_types,
-          allowed_section_semantics: briefVocabulary.section_semantics,
-        },
+        ...(artifactsRequested && briefVocabulary
+          ? {
+              operator_brief: {
+                source_path: briefSourcePath,
+                rendered_path: briefRenderedPath,
+                ...(layout.version === 'v2'
+                  ? {
+                      source_lifecycle: 'transient' as const,
+                      source_transient: true,
+                    }
+                  : {}),
+                schema: 'library/schemas/operator-brief.schema.json',
+                renderer: 'pan briefs render',
+                profile: artifactProfile,
+                required_headings: [
+                  ...OPERATOR_ARTIFACT_PROFILE_HEADINGS[artifactProfile],
+                ],
+                allowed_card_types: briefVocabulary.card_types,
+                allowed_section_semantics: briefVocabulary.section_semantics,
+              },
+            }
+          : {}),
       },
       boundaries: [
         'You MUST read this invocation card before broader repository context.',
@@ -2296,12 +2338,14 @@ export function prepareInvocation(
       workspace_before: workspace,
     }
 
-    scaffoldOperatorBrief(root, {
-      source_path: briefSourcePath,
-      profile: artifactProfile,
-      title: `${stage.title} brief`,
-      source: `${runId}/${invocationId}`,
-    })
+    if (artifactsRequested) {
+      scaffoldOperatorBrief(root, {
+        source_path: briefSourcePath,
+        profile: artifactProfile,
+        title: `${stage.title} brief`,
+        source: `${runId}/${invocationId}`,
+      })
+    }
 
     const renderedMarkdown = renderInvocationMarkdown(invocation)
 
@@ -2678,9 +2722,17 @@ export function delegateInvocation(
           'except where the directive below amends the work.',
         '',
         `Write your revised stage output JSON to \`${invocation.output.path}\` ` +
-          `with \`invocation_id\` set to \`${invocationId}\`. Edit the ` +
-          `operator brief source at ` +
-          `\`${invocation.output.operator_brief.source_path}\` in place.`,
+          `with \`invocation_id\` set to \`${invocationId}\`.`,
+        ...(invocation.output.operator_brief
+          ? [
+              '',
+              `Edit the operator brief source at ` +
+                `\`${invocation.output.operator_brief.source_path}\` in place.`,
+            ]
+          : [
+              '',
+              'This invocation does not request an operator brief. Do not create one.',
+            ]),
         '',
         '## Directive',
         '',
@@ -2834,9 +2886,7 @@ function materializeOperatorBrief(
   root: string,
   invocation: Invocation,
 ): string[] {
-  const contract = invocation.output.operator_brief as
-    | Invocation['output']['operator_brief']
-    | undefined
+  const contract = invocation.output.operator_brief
 
   if (!contract) {
     return []
@@ -3114,11 +3164,7 @@ export function submitOutput(
     // error, both blaming the worker for one harness-side render failure. Keep
     // the root diagnostic and drop the derivatives.
     const briefRenderFailed = briefErrors.length > 0
-    const briefRenderedPath = (
-      invocation.output.operator_brief as
-        | Invocation['output']['operator_brief']
-        | undefined
-    )?.rendered_path
+    const briefRenderedPath = invocation.output.operator_brief?.rendered_path
     const validation = validateStageOutput(
       root,
       stage,
@@ -3216,9 +3262,7 @@ export function submitOutput(
       ...validation.errors,
       ...harnessValidation.errors,
     ]
-    const briefContract = invocation.output.operator_brief as
-      | Invocation['output']['operator_brief']
-      | undefined
+    const briefContract = invocation.output.operator_brief
 
     let briefSourceRecord: StageHistoryItem['operator_brief_source']
 

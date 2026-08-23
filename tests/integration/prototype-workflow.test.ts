@@ -172,14 +172,18 @@ test('prototype stages resolve PROTO-001 and their own brief profiles', () => {
     workflowSlug: 'prototype',
     requestPath: 'request.md',
     title: 'Governance spike',
+    operatorArtifacts: true,
   })
   const invocation = prepareInvocation(root, state.run_id).invocation
 
   assert.ok(invocation)
+  const brief = invocation.output.operator_brief
+
+  assert.ok(brief)
   assert.ok(invocation.policies.some((policy) => policy.id === 'PROTO-001'))
   // dev/intake and prototype/intake share a slug but need different briefs.
-  assert.equal(invocation.output.operator_brief.profile, 'prototype-brief')
-  assert.deepEqual(invocation.output.operator_brief.required_headings, [
+  assert.equal(brief.profile, 'prototype-brief')
+  assert.deepEqual(brief.required_headings, [
     'objective',
     'technical questions',
     'success signals',

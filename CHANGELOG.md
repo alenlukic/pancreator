@@ -1,5 +1,24 @@
 # Changelog
 
+## [4.2.0] - 2026-08-21
+
+### Changed
+
+- Suppress workflow operator artifacts by default. New runs omit stage brief source JSON, rendered HTML, and workflow PR copy unless the operator requests them. Legacy runs without `operator_artifacts` state keep the previous enabled behavior ([engine](src/lib/engine.ts), [operator-artifacts](src/lib/operator-artifacts.ts), [operator-layout test](tests/integration/operator-layout.test.ts)).
+- Make every workflow stage prompt and ship PR-description creation conditional on an explicit `operator_brief` contract. Resolve artifact-only validators such as OPERATOR-ARTIFACT-VALIDATE-001 and SIMPLIFIED-ENGLISH-VALIDATE-001 only when a brief is requested ([requirements/resolve](src/lib/requirements/resolve.ts), [policies](src/lib/policies.ts), [workflow prompts](library/workflows)).
+- Update BRIEF-001, GLOBAL-001, STE-001, and PR-001 to govern optional generation without requiring default artifacts ([governance/policies](governance/policies)).
+
+### Added
+
+- Add `operator_artifacts` run state with `suppressed` and `requested` modes. Support `pan init --operator-artifacts` for run-wide requests and `pan prepare <run-id> --operator-artifacts` for the current stage and its retries ([state](src/lib/state.ts), [cli](src/cli.ts), [cli-help test](tests/integration/cli-help.test.ts)).
+- Add `pan briefs generate --run <run-id> [--stage <slug>] [--force]` to build validated HTML briefs from canonical submitted stage records without rerunning workers ([operator-artifact-generation](src/lib/operator-artifact-generation.ts), [operator-artifact-profiles](src/lib/operator-artifact-profiles.ts), [operator-artifact-generation test](tests/unit/operator-artifact-generation.test.ts)).
+- Propagate an explicit run-wide artifact request through best-of-N candidate and consolidation runs ([best-of-n](src/lib/best-of-n.ts), [best-of-n test](tests/integration/best-of-n.test.ts)).
+- Document default suppression, on-demand options, the generation command, and PR-description boundaries in [AGENTS.md](AGENTS.md), [README.md](README.md), and [operator-guide](docs/operator-guide.md).
+
+### Fixed
+
+- Harden embedded install projection refresh against stale agent definitions ([install-support](bin/install-support), [projection test](tests/unit/projection.test.ts)).
+
 ## [4.1.0] - 2026-08-19
 
 ### Changed

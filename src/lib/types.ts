@@ -384,6 +384,11 @@ export interface PolicyLookupRow {
    * absent value applies to every review method.
    */
   review_mode?: ReviewMode
+  /**
+   * Activates the row only when the invocation requests operator artifacts.
+   * An absent context retains standalone and historical behavior.
+   */
+  operator_artifacts?: 'requested' | 'suppressed'
   policies: string[]
 }
 
@@ -582,6 +587,15 @@ export interface StageOutput {
   data: Record<string, unknown>
 }
 
+export interface OperatorArtifactSelection {
+  /**
+   * `requested` enables artifacts for every stage. `suppressed` enables only
+   * the stage slugs listed in requested_stages.
+   */
+  mode: 'suppressed' | 'requested'
+  requested_stages: string[]
+}
+
 export type InvocationReferenceRetrieval =
   | 'required'
   | 'conditional'
@@ -659,7 +673,7 @@ export interface Invocation {
         accepted_shapes?: string[]
       }>
     }
-    operator_brief: {
+    operator_brief?: {
       source_path: string
       rendered_path: string
       /**
@@ -1106,6 +1120,11 @@ export interface RunState {
    * `config.json` edit cannot change a run already in flight.
    */
   review_mode?: ReviewMode
+  /**
+   * Operator artifact selection for this run. Absent means enabled for every
+   * stage, which preserves runs created before artifact selection existed.
+   */
+  operator_artifacts?: OperatorArtifactSelection
   /**
    * Extra stage attempts granted by operator-directed revisions, per stage. A
    * refinement round at a director checkpoint is not a failed attempt, so it

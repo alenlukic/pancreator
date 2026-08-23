@@ -14,9 +14,10 @@ integrity. Do not modify target-repository files.
 ## Output
 
 Populate `data.inspection` (`findings`, `verdict`). Set the verdict to fail if
-any deterministic check fails or a required file is missing. Author the
-inspection summary at the declared brief source path. Do not run the renderer.
-Reference the rendered HTML as the narrative artifact.
+any deterministic check fails or a required file is missing. When
+`output.operator_brief` exists, edit its declared source and reference the
+rendered HTML. Do not run the renderer. When the contract omits
+`output.operator_brief`, do not create either brief file.
 
 ## Done when
 

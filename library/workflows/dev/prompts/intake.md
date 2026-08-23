@@ -15,9 +15,9 @@ specification. Preserve intent; do not design the solution.
 ## Output
 
 Populate `data.product_spec` with `summary`, `user_stories`, `constraints`,
-`out_of_scope`, and `open_questions`. Author the operator-facing specification
-at the declared brief source path. Do not run the renderer. Reference the
-rendered HTML as the narrative artifact.
+`out_of_scope`, and `open_questions`. When `output.operator_brief` exists, edit
+its declared source and reference the rendered HTML. Do not run the renderer.
+When the contract omits `output.operator_brief`, do not create either brief file.
 
 If the change warrants a different verification level than the card shows
 (for example, heavier verification for a risky migration), you MAY set

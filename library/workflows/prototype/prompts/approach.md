@@ -27,9 +27,10 @@ scope for this stage.
 ## Output
 
 Populate `data.technical_approach` (`hypothesis`, `strategy`, `touch_points`,
-`planned_shortcuts`, `observable_signals`, `discard_conditions`). Author the
-approach at the declared brief source path. Do not run the renderer. Reference
-the rendered HTML as the narrative artifact.
+`planned_shortcuts`, `observable_signals`, `discard_conditions`). When
+`output.operator_brief` exists, edit its declared source and reference the
+rendered HTML. Do not run the renderer. When the contract omits
+`output.operator_brief`, do not create either brief file.
 
 ## Done when
 

@@ -162,6 +162,20 @@ test('policy resolution unions global and stage-specific policies', () => {
   ])
 })
 
+test('pull-request policy follows operator-artifact selection', () => {
+  const root = createFixture()
+  const ids = (operatorArtifacts: 'requested' | 'suppressed'): string[] =>
+    resolvePolicies(root, {
+      persona: 'release-steward',
+      workflow: 'dev',
+      stage: 'ship',
+      operator_artifacts: operatorArtifacts,
+    }).map((policy) => policy.id)
+
+  assert.ok(ids('requested').includes('PR-001'))
+  assert.equal(ids('suppressed').includes('PR-001'), false)
+})
+
 test('best-of-N stages carry the same policies as the dev stages they mirror', () => {
   const root = createFixture()
   const ids = (persona: string, workflow: string, stage: string): string[] =>

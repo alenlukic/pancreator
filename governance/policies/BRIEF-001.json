@@ -2,11 +2,15 @@
   "id": "BRIEF-001",
   "title": "Operator brief structure and presentation",
   "severity": "hard",
-  "summary": "Active workflow-stage narratives MUST use the shared brief data contract and render to self-contained semantic HTML; historical Markdown and explicit worker-control/source records remain valid exceptions.",
+  "summary": "Requested and generated workflow-stage narratives MUST use the shared brief contract and render to self-contained semantic HTML.",
   "instructions": [
-    "Every active workflow-stage narrative MUST use schema-valid brief data at the exact source path pre-created by the harness. The harness renders semantic HTML during submission; workers MUST NOT spend stage time discovering paths or invoking the renderer.",
-    "Each worker invocation MUST declare exact operator-brief source and rendered paths. The worker MUST edit the existing source in place.",
-    "The rendered HTML MUST be artifact 0. The transient source JSON MUST NOT be a final stage artifact.",
+    "A workflow invocation MUST include a brief contract only when the operator requests workflow artifacts.",
+    "A requested workflow-stage narrative MUST use schema-valid brief data at the exact source path that the harness creates.",
+    "A worker MUST edit the declared source in place and MUST NOT run the renderer.",
+    "The harness MUST render requested HTML during submission.",
+    "A generated workflow-stage narrative MUST use the retained brief system and the latest submitted stage records.",
+    "The rendered HTML MUST be artifact 0 when an invocation requests a brief.",
+    "The transient source JSON MUST NOT be a final stage artifact.",
     "The harness MUST delete transient source JSON after successful rendering and validation. It MUST retain the source after a failure.",
     "Path drift, invalid brief data, or rendering defects are governance diagnostics for ship review. They MUST NOT loop the workflow to implementation.",
     "A brief MUST begin with an executive-summary section that states the bottom line first: what changed or matters, why it matters, and outcomes or required actions when applicable.",
@@ -14,6 +18,7 @@
     "Section headings MUST use concise titles and a registered semantic key. Renderers MUST resolve the heading emoji from that registry rather than accepting ad hoc emoji choices.",
     "Within one repository, each registered section emoji MUST retain one meaning. Project definitions MUST extend rather than override Pancreator-owned semantic keys.",
     "Cards SHOULD separate metadata from substantive detail through field placement, SHOULD expose clear actions when action is possible, and MUST avoid unnecessary nesting, decorative clutter, and raw-log substitution.",
-    "Canonical invocation and delegation cards, source documentation, PR copy intended for direct reuse, machine-readable workflow records, and historical artifacts MAY remain Markdown or JSON when those formats are part of their execution contract. New workflow-stage narratives are not an exception."
+    "Standalone modes MUST retain their declared artifact behavior.",
+    "Canonical control records, source documentation, direct-use PR copy, machine records, and historical artifacts MAY remain Markdown or JSON."
   ]
 }

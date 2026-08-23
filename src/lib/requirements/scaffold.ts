@@ -141,9 +141,7 @@ export function scaffoldStageOutput(
     }
   }
 
-  const operatorBrief = invocation.output.operator_brief as
-    | Invocation['output']['operator_brief']
-    | undefined
+  const operatorBrief = invocation.output.operator_brief
   const transientBriefSource =
     operatorBrief?.source_lifecycle === 'transient' ||
     operatorBrief?.source_transient === true
