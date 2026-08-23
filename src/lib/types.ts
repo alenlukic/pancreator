@@ -428,6 +428,78 @@ export interface ResolvedWorktreesConfig {
   setup: string[]
 }
 
+export type AwayModeAction =
+  | 'approve'
+  | 'reject'
+  | 'revise'
+  | 'resume'
+  | 'set-stage'
+
+export interface AwayModeGuardrails {
+  allowed_actions?: AwayModeAction[]
+  max_decisions_per_run?: number
+  max_remediation_attempts_per_agent?: number
+}
+
+export interface AwayModeConfig {
+  enabled: boolean
+  guardrails?: AwayModeGuardrails
+}
+
+export interface ResolvedAwayModeConfig {
+  enabled: boolean
+  guardrails: {
+    allowed_actions: AwayModeAction[]
+    max_decisions_per_run: number
+    max_remediation_attempts_per_agent: number
+  }
+  source_sha256: string
+}
+
+export type AgentHealth =
+  | 'running'
+  | 'stalled'
+  | 'dead'
+  | 'completed'
+  | 'unknown'
+
+export interface AgentRecoveryState {
+  step?: 'nudge' | 'resume' | 'redeliver' | 'reprepare' | 'quarantine'
+  attempts: number
+  consecutive_failures: number
+  last_failure_signature?: string
+  last_attempt_at?: string
+  quarantined: boolean
+}
+
+export interface AgentRecord {
+  agent_id: string
+  parent_agent_id: string | null
+  run_id: string
+  invocation_id: string
+  persona: string
+  executor: PersonaExecutorKind
+  model: string | null
+  session_id: string | null
+  transcript_path: string | null
+  process_id: number | null
+  process_alive: boolean | null
+  discovered_at: string
+  last_observed_at: string
+  last_transcript_at: string | null
+  consecutive_unchanged_scans: number
+  health: AgentHealth
+  health_evidence: string[]
+  recovery: AgentRecoveryState
+}
+
+export interface AgentHealthView {
+  agent_id: string
+  health: AgentHealth
+  evidence_at: string
+  recovery: AgentRecoveryState
+}
+
 export interface ProjectConfig {
   schema_version: 1
   workspace_id?: string
@@ -448,6 +520,8 @@ export interface ProjectConfig {
   installation_mode?: 'self_development' | 'embedded' | 'detached'
   /** Review method new runs adopt. Absent means `default`. */
   review_mode?: ReviewMode
+  /** Autonomous blocker handling, snapshotted into each new run. */
+  away_mode?: AwayModeConfig
 }
 
 export interface ResolvedRoots {
@@ -1120,6 +1194,8 @@ export interface RunState {
    * `config.json` edit cannot change a run already in flight.
    */
   review_mode?: ReviewMode
+  /** Away-mode settings resolved when the run was created. */
+  away_mode?: ResolvedAwayModeConfig
   /**
    * Operator artifact selection for this run. Absent means enabled for every
    * stage, which preserves runs created before artifact selection existed.
@@ -1144,6 +1220,9 @@ export interface RunState {
   current_stage: string | null
   pending_action: PendingAction
   current_invocation: CurrentInvocationPointer | null
+  /** Registry-backed agent health derived for status output. */
+  agent_health?: AgentHealthView
+  /** Legacy quiet-period signal retained for old state readers. */
   invocation_liveness?: {
     status: 'active' | 'stale'
     last_activity_at: string

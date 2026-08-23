@@ -38,6 +38,10 @@ import {
   validateSpotfixOutcome,
   validateTargetInstructionCoverage,
 } from '../validators/stage-validators.js'
+import {
+  validateAwayDecisionLedger,
+  validateHypervisorState,
+} from '../validators/autonomy-state.js'
 
 function passed(): HandlerResult {
   return { status: 'passed', issues: [] }
@@ -202,6 +206,8 @@ export const HANDLERS: Record<string, ValidatorHandler> = {
   'investigation-validate': validateInvestigationArtifact,
   'spotfix-validate': validateSpotfixOutcome,
   'spotfix-escalation-scaffold': () => passed(),
+  'hypervisor-state-validate': validateHypervisorState,
+  'away-decision-ledger-validate': validateAwayDecisionLedger,
   'projection-validate': projectionValidateHandler,
   'question-tool-validate': questionToolValidateHandler,
   'invocation-validate': invocationValidateHandler,

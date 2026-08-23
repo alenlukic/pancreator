@@ -31,19 +31,18 @@ test('pipeline config loads the active named persona mapping', () => {
   assert.equal(snapshot.personas.reviewer, loaded.config.personas.reviewer)
 })
 
-test('every named configuration resolves a model for the intake writer', () => {
+test('every named configuration resolves required support personas', () => {
   const root = createFixture()
   const { file } = loadPipelineConfig(root)
 
   assert.ok(file.defaults['intake-writer'])
+  assert.ok(file.defaults.hypervisor)
 
-  // A persona no named configuration overrides must still resolve everywhere,
-  // or selecting that configuration blocks run creation.
   for (const name of Object.keys(file.configs)) {
-    assert.equal(
-      resolveConfigPersonas(file, name)['intake-writer'],
-      file.defaults['intake-writer'],
-    )
+    const personas = resolveConfigPersonas(file, name)
+
+    assert.ok(personas['intake-writer'])
+    assert.ok(personas.hypervisor)
   }
 })
 

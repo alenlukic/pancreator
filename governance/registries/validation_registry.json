@@ -26,6 +26,30 @@
       "side_effect_free": true
     },
     {
+      "id": "HYPERVISOR-STATE-VALIDATE-001",
+      "kind": "validator",
+      "version": "1",
+      "handler": "hypervisor-state-validate",
+      "input_contract": "hypervisor-registry",
+      "result_schema": "validation-result-v1",
+      "target_types": ["repository"],
+      "default_timeout_ms": 30000,
+      "deterministic": true,
+      "side_effect_free": true
+    },
+    {
+      "id": "AWAY-DECISION-LEDGER-VALIDATE-001",
+      "kind": "validator",
+      "version": "1",
+      "handler": "away-decision-ledger-validate",
+      "input_contract": "away-decision-ledger",
+      "result_schema": "validation-result-v1",
+      "target_types": ["repository"],
+      "default_timeout_ms": 30000,
+      "deterministic": true,
+      "side_effect_free": true
+    },
+    {
       "id": "DIRECTIVE-AUDIT-001",
       "kind": "validator",
       "version": "1",

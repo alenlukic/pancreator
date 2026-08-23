@@ -863,17 +863,18 @@ export function renderStatus(
     lines.push(`Card: ${state.pending_action.path}`)
   }
 
-  if (state.invocation_liveness) {
+  if (state.agent_health) {
     lines.push(
-      `Invocation activity: ${state.invocation_liveness.status}`,
-      `Last activity: ${state.invocation_liveness.last_activity_at}`,
+      `Agent health: ${state.agent_health.health}`,
+      `Health evidence time: ${state.agent_health.evidence_at}`,
+      `Recovery state: ${state.agent_health.recovery.step ?? 'none'}`,
     )
-
-    if (state.invocation_liveness.status === 'stale') {
-      lines.push(
-        'Recovery: re-deliver the current card when invocation validation still passes; re-prepare it otherwise.',
-      )
-    }
+  } else if (state.pending_action.type === 'invoke_agent') {
+    lines.push(
+      'Agent health: unknown',
+      'Health evidence time: unavailable',
+      'Recovery state: none',
+    )
   }
 
   if (state.pause_reason) {
