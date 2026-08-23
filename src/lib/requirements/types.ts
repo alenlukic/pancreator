@@ -40,6 +40,11 @@ export interface RequirementContext {
   contracts?: RunContract[]
   /** Review method in force, so review-scoped policy rows resolve identically here. */
   review_mode?: ReviewMode
+  /**
+   * Whether this invocation requests an operator artifact. Absent preserves
+   * standalone and legacy behavior by treating artifacts as requested.
+   */
+  operator_artifacts?: 'requested' | 'suppressed'
   invocation?: {
     output_path?: string
     artifact_paths?: string[]

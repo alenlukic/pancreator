@@ -31,8 +31,7 @@ amendment must state the criterion id, original statement, amended statement,
 reason class, justification, and reproduced evidence, and the matching
 acceptance result must be judged against the amended text. Set the
 verdict to fail only for unresolved hard implementation blockers and route those findings to
-the implement stage with `remediation_stage: implement`. An unresolved finding whose defect lies outside the run's workspace (a harness or governance defect the coder cannot fix in this run) takes `remediation_stage: operator`, which routes it to operator/ship review without failing the verdict or looping the workflow. Record governance/artifact diagnostics as advisories without failing the review verdict. Author the review at the declared brief source path.
-Do not run the renderer. Reference the rendered HTML as the narrative artifact.
+the implement stage with `remediation_stage: implement`. An unresolved finding whose defect lies outside the run's workspace (a harness or governance defect the coder cannot fix in this run) takes `remediation_stage: operator`, which routes it to operator/ship review without failing the verdict or looping the workflow. Record governance/artifact diagnostics as advisories without failing the review verdict. When `output.operator_brief` exists, edit its declared source and reference the rendered HTML. Do not run the renderer. When the contract omits `output.operator_brief`, do not create either brief file.
 
 ## Done when
 

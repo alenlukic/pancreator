@@ -1,6 +1,6 @@
-# Pancreator v4.1.0
+# Pancreator v4.2.0
 
-Pancreator v4.1.0 is a workflow harness that helps teams use Cursor agents like an engineering workflow instead of a one-off chat. It brings structure, repeatability, and operator control to planning, implementation, review, QA, and release preparation without asking you to leave your repository.
+Pancreator v4.2.0 is a workflow harness that helps teams use Cursor agents like an engineering workflow instead of a one-off chat. It brings structure, repeatability, and operator control to planning, implementation, review, QA, and release preparation without asking you to leave your repository.
 
 It is built for teams that want faster agent-assisted delivery without turning approvals, validation, or release decisions into a black box.
 
@@ -23,7 +23,7 @@ Pancreator adds a set of Cursor commands, supporting agents, and repository-awar
 - audit suspicious Pancreator runs, including worker transcripts, into root-cause self-development intake;
 - prepare release notes and version metadata with the operator still owning the release action;
 - generate durable repository orientation docs so future agent work starts with better context;
-- render structured, project-themed operator briefs as portable semantic HTML.
+- render structured, project-themed operator briefs as portable semantic HTML when requested.
 
 ## Requirements
 
@@ -63,6 +63,11 @@ Pancreator adds a set of Cursor commands, supporting agents, and repository-awar
    - Use `/pan-release` when you want Pancreator to prepare release metadata.
 
 5. Continue the run with `/pan-resume <run-id> [prompt]` whenever Pancreator pauses for the next operator decision. Both commands adopt the supervisor brief and advance the workflow directly in the operator's session.
+
+Workflow runs suppress stage briefs and workflow PR copy by default. Pass
+`--operator-artifacts` to `pan init` for all stages or to `pan prepare` for the
+current stage. Use `pan briefs generate --run <run-id> [--stage <slug>]` after
+submission to create validated HTML from retained stage records.
 
 ## Install Into Another Repository
 

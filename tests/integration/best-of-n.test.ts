@@ -63,12 +63,16 @@ function sessionIdFromFailure(error: unknown): string {
   return match[1]
 }
 
-function initSession(root: string): ReturnType<typeof initBestOfN> {
+function initSession(
+  root: string,
+  operatorArtifacts = false,
+): ReturnType<typeof initBestOfN> {
   writeJson(path.join(root, 'best-of-n.json'), CONFIGS)
 
   return initBestOfN(root, {
     requestPath: 'request.md',
     configsPath: 'best-of-n.json',
+    operatorArtifacts,
   })
 }
 
@@ -309,7 +313,7 @@ function driveCandidate(root: string, runId: string): void {
 
 test('best-of-N init isolates every candidate in its own worktree and model set', () => {
   const root = createFixture()
-  const session = initSession(root)
+  const session = initSession(root, true)
 
   assert.equal(session.candidates.length, 2)
   assert.equal(session.status, 'ready')
@@ -330,6 +334,7 @@ test('best-of-N init isolates every candidate in its own worktree and model set'
     assert.equal(run.best_of_n?.bon_id, session.bon_id)
     assert.equal(run.best_of_n?.role, 'candidate')
     assert.equal(run.cursor_agent_suffix, candidate.agent_suffix)
+    assert.equal(run.operator_artifacts?.mode, 'requested')
 
     const snapshot = JSON.parse(
       readFileSync(path.join(root, run.pipeline_config?.path ?? ''), 'utf8'),

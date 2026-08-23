@@ -8,12 +8,7 @@
   "invocation_id": "copy-from-invocation-card",
   "result": "success",
   "summary": "Concise, operator-first description of the work and outcome. Detail belongs in the referenced HTML brief.",
-  "artifacts": [
-    {
-      "path": "copy-output.operator_brief.rendered_path-from-invocation-card",
-      "description": "Primary self-contained HTML brief for the operator."
-    }
-  ],
+  "artifacts": [],
   "criteria": [
     {
       "id": "criterion-id",

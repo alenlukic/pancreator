@@ -64,7 +64,12 @@ Read the scope of a rule from its subject. A rule that names a run, a stage, an 
 - `BRIEF-001` governs new operator-facing narrative artifacts. Authors MUST use the JSON brief contract and render self-contained semantic HTML; existing Markdown and canonical worker-control records are not migrated.
 - Shared semantics and base presentation live under `library/operator-briefs/`. Pancreator self-development extensions live under `docs/operator-briefs/`.
 - Section emoji MUST come from the registered semantic key and retain one meaning across the repository. Artifact data MUST NOT encode layout, color, or inline styles.
-- Every invocation output contract is the canonical brief artifact index. The harness pre-creates the source JSON and renders HTML during submission; agents MUST edit the declared source in place, MUST NOT search for brief artifacts, and MUST NOT invoke the renderer during stage work.
+- New workflow runs suppress operator artifacts by default. Use `--operator-artifacts` during run creation or stage preparation to request them.
+- An invocation output contract is the canonical brief index when `operator_brief` exists.
+- Workers MUST edit a declared brief source in place and MUST NOT run the renderer.
+- Workers MUST NOT create a brief when the invocation omits `operator_brief`.
+- Use `pan briefs generate` to create briefs from submitted stage records.
+- Standalone modes retain their declared artifact behavior.
 
 ## Workflow run roles
 

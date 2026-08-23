@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "pancreator://stage-output/v1",
   "title": "Pancreator stage output",
-  "description": "The machine contract a worker submits for a stage. The harness validates this shape and the stage's required_data before accepting it. Operator-readable narrative belongs in the referenced HTML brief and its JSON source, not here.",
+  "description": "The machine contract a worker submits for a stage. The harness validates this shape and the stage's required_data before accepting it.",
   "type": "object",
   "required": [
     "schema_version",
@@ -38,8 +38,7 @@
     },
     "artifacts": {
       "type": "array",
-      "description": "Durable deliverables produced by this stage. Artifact 0 is the rendered HTML operator brief and artifact 1 is its JSON source; additional evidence follows.",
-      "minItems": 1,
+      "description": "Durable deliverables produced by this stage. This array is empty when the stage has no deliverable artifact. When requested, the rendered HTML operator brief is artifact 0.",
       "items": {
         "type": "object",
         "required": ["path", "description"],

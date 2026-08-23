@@ -86,6 +86,7 @@ import {
   renderBrief,
   validateBriefSystem,
 } from './lib/briefs.js'
+import { generateOperatorArtifacts } from './lib/operator-artifact-generation.js'
 import { maintainWorkflowRuntime } from './lib/workflow-artifacts.js'
 import {
   createWorktree,
@@ -98,8 +99,8 @@ import {
 } from './lib/worktrees.js'
 
 const HELP_BODY = `Usage:
-  pan init --request <repo-relative-file> [--workflow dev|prototype|design] [--title <title>] [--workspace <dir> | --worktree <name>] [--gates <file>] [--involvement <profile>] [--verification <level>] [--review-mode default|squad]
-  pan prepare <run-id>
+  pan init --request <repo-relative-file> [--workflow dev|prototype|design] [--title <title>] [--workspace <dir> | --worktree <name>] [--gates <file>] [--involvement <profile>] [--verification <level>] [--review-mode default|squad] [--operator-artifacts]
+  pan prepare <run-id> [--operator-artifacts]
   pan delegate <run-id> [--timeout-ms <milliseconds>]
   pan submit <run-id> <output-json>
   pan assess <run-id> <assessment-json>
@@ -134,7 +135,7 @@ const HELP_BODY = `Usage:
   pan assessment scaffold <run-id> --invocation <path> --output <path> [--force]
   pan governance audit-directives [--json]
   pan governance card --mode <pair|spotfix|shepherd|investigation|repair|decomposition|best-of-n> [--request <path>] [--worktree <name>] [--out <path>] [--json]
-  pan best-of-n init --request <path> --configs <path> [--workflow <slug>] [--consolidation-workflow <slug>] [--json]
+  pan best-of-n init --request <path> --configs <path> [--workflow <slug>] [--consolidation-workflow <slug>] [--operator-artifacts] [--json]
   pan best-of-n status <bon-id> [--json]
   pan best-of-n refresh-agents <bon-id> [--json]
   pan best-of-n abandon <bon-id> <run-id> --note <reason> [--json]
@@ -144,6 +145,7 @@ const HELP_BODY = `Usage:
   pan briefs build [--force] [--json]
   pan briefs validate [--json]
   pan briefs render --input <brief-json> --output <brief-html> [--json]
+  pan briefs generate --run <run-id> [--stage <stage-slug>] [--force] [--json]
   pan validation-map [--json]
   pan involvement [--json]
   pan verification [<run-id>] [--json]
@@ -551,6 +553,7 @@ async function main(): Promise<void> {
         involvement: option(args, '--involvement'),
         verification: option(args, '--verification'),
         reviewMode: option(args, '--review-mode'),
+        operatorArtifacts: hasFlag(args, '--operator-artifacts'),
       })
 
       print({
@@ -564,6 +567,7 @@ async function main(): Promise<void> {
         applied_gates: state.operator_involvement?.applied_gates ?? {},
         verification_level: state.verification?.level,
         review_mode: state.review_mode,
+        operator_artifacts: state.operator_artifacts,
         next_command: `${pan} prepare ${state.run_id}`,
         state_path: resolveRunLayout(root, state.run_id).state.relative,
       })
@@ -572,6 +576,7 @@ async function main(): Promise<void> {
     case 'prepare': {
       const runId = requiredArgument(args[0], 'run-id')
       const result = prepareInvocation(root, runId, {
+        operatorArtifacts: hasFlag(args, '--operator-artifacts'),
         onProgress: (message) =>
           process.stderr.write(`[pan next:${runId}] ${message}\n`),
       })
@@ -1189,6 +1194,18 @@ async function main(): Promise<void> {
         return
       }
 
+      if (subcommand === 'generate') {
+        const runId = requiredArgument(option(args, '--run'), '--run')
+        const result = generateOperatorArtifacts(root, {
+          runId,
+          stage: option(args, '--stage'),
+          force: hasFlag(args, '--force'),
+        })
+
+        print(result, hasFlag(args, '--json'))
+        return
+      }
+
       throw new PanError(`Unknown briefs subcommand: ${subcommand}`, {
         code: 'UNKNOWN_COMMAND',
       })
@@ -1261,6 +1278,7 @@ async function main(): Promise<void> {
                 ) as string,
               }
             : {}),
+          operatorArtifacts: hasFlag(args, '--operator-artifacts'),
         })
 
         print(
