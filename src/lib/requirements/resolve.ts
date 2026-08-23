@@ -42,13 +42,15 @@ export function requirementApplies(
       const actual =
         key === 'invocation_kind'
           ? invocationKind
-          : key === 'stage'
-            ? context.stage
-            : key === 'persona'
-              ? context.persona
-              : key === 'workflow'
-                ? context.workflow
-                : undefined
+          : key === 'operator_artifacts'
+            ? (context.operator_artifacts ?? 'requested')
+            : key === 'stage'
+              ? context.stage
+              : key === 'persona'
+                ? context.persona
+                : key === 'workflow'
+                  ? context.workflow
+                  : undefined
 
       if (typeof actual !== 'string' || !matchesPattern(pattern, actual)) {
         return false

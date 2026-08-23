@@ -12,8 +12,8 @@ without delegating a nested `pan-orchestrator`. Each report should always show:
 2. the consequence
 3. the next action
 
-Each stage report also links its rendered HTML brief. Use that brief for detail
-and evidence.
+Stage reports do not create HTML briefs by default. Machine records and chat
+reports remain available for every stage.
 
 Raw JSONL and shell output are diagnostic surfaces, not the default conversation.
 
@@ -147,11 +147,35 @@ Every agent reads this primer before expanding repository context. It is a navig
 
 Run `/pan-build-briefs` after installation and whenever recurring operator-facing use cases or project visual conventions materially change. The command scaffolds missing files, then asks the librarian to derive a minimal target-specific ontology and design-token layer from bounded repository evidence. It writes `docs/operator-briefs/project.json` and `docs/operator-briefs/project.css` (`.pancreator/docs/operator-briefs/` when embedded) and validates collisions and emoji consistency.
 
-Use `pan briefs build --force` only when deliberately resetting the project layer to templates before regeneration. Existing historical Markdown artifacts are not migrated. Every newly prepared workflow stage declares exact brief JSON and HTML paths in its invocation card. Submission renders and validates the HTML, then deletes a valid transient source.
+Use `pan briefs build --force` only when deliberately resetting the project layer to templates before regeneration. Existing historical Markdown artifacts are not migrated.
+
+New workflow runs suppress stage briefs and workflow PR copy by default. Request briefs for every stage when the run starts:
+
+```sh
+./bin/pan init --workflow dev --request runtime/inbox/request.md --operator-artifacts
+```
+
+Request a brief for only the current stage before its invocation exists:
+
+```sh
+./bin/pan prepare <run-id> --operator-artifacts
+```
+
+Requested invocations declare exact brief JSON and HTML paths. Submission renders and validates the HTML, then deletes a valid transient source.
+
+Generate one submitted stage brief later without rerunning its worker:
+
+```sh
+./bin/pan briefs generate --run <run-id> --stage <stage-slug>
+```
+
+Omit `--stage` to generate each missing latest-stage brief. Existing HTML stays unchanged unless `--force` is present. A failed render or validation keeps the source JSON and preserves existing HTML.
+
+The ship stage creates workflow PR copy only when its invocation requests operator artifacts. `/pan-write-pr` remains available independently.
 
 New run directories separate their contents. Open `operator/` for the preserved
-request, stage HTML briefs, and release copy. Harness records remain under
-`agent/`. Existing runs keep their original layout.
+request and explicitly requested outputs. Harness records remain under `agent/`.
+Existing runs keep their original layout.
 
 ## Assess unusually large intake
 

@@ -188,6 +188,20 @@ function parseRunState(value: unknown, source: string): RunState {
     code: 'INVALID_STATE',
   })
 
+  if (value.operator_artifacts !== undefined) {
+    invariant(
+      isRecord(value.operator_artifacts) &&
+        (value.operator_artifacts.mode === 'suppressed' ||
+          value.operator_artifacts.mode === 'requested') &&
+        Array.isArray(value.operator_artifacts.requested_stages) &&
+        value.operator_artifacts.requested_stages.every(
+          (stage) => typeof stage === 'string' && stage.length > 0,
+        ),
+      `${source}.operator_artifacts MUST contain a valid mode and stage list.`,
+      { code: 'INVALID_STATE' },
+    )
+  }
+
   return value as unknown as RunState
 }
 

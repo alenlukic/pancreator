@@ -32,9 +32,10 @@ Populate `data.consolidation` (`candidates`, `strategy`), `data.implementation`
 (`changed_files`, `tests_added`, `notes`), `data.acceptance_criteria`, and
 `data.acceptance_results`. Each `consolidation.candidates` entry names the
 candidate run, its verdict, its strengths, its weaknesses, and what the
-consolidated implementation took from it. Author the consolidation summary at
-the declared brief source path. Do not run the renderer. Reference the rendered
-HTML as the narrative artifact.
+consolidated implementation took from it. When `output.operator_brief` exists,
+edit its declared source and reference the rendered HTML. Do not run the
+renderer. When the contract omits `output.operator_brief`, do not create either
+brief file.
 
 ## Done when
 

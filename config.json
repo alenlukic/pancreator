@@ -14,7 +14,7 @@
       "tsconfig.tsbuildinfo"
     ]
   },
-  "active_config": "advanced",
+  "active_config": "balanced",
   "defaults": {
     "orchestrator": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]",
     "meta-orchestrator": "claude-opus-5[thinking=true,context=300k,effort=high,fast=false]",
@@ -107,7 +107,7 @@
       "summary": "Named profiles controlling how heavily the operator gates each workflow stage. Select one per run with ./bin/pan init --involvement <profile>; omitting the flag uses active.",
       "note": "gates maps a stage slug (or * for every stage) to the gate that stage uses for the run. contracts names run-wide contracts the run abides by. Runs snapshot the resolved profile, so later edits here do not change an in-flight run. Inspect available profiles with ./bin/pan involvement."
     },
-    "active": "hands-off",
+    "active": "standard",
     "profiles": {
       "standard": {
         "summary": "Workflow-declared gates, unchanged. The operator ratifies intake and approves release preparation."
