@@ -27,6 +27,69 @@ workflow directories older than seven days into `archive/` under both runtime
 workflow roots. The command updates persisted path references and is idempotent;
 it never overwrites an existing archive target.
 
+## Run the agent hypervisor
+
+Start one detached hypervisor process after installation:
+
+```sh
+./bin/pan hypervisor start
+./bin/pan hypervisor status
+```
+
+The process runs one non-overlapping health tick every 15 minutes. Each tick
+reconciles active invocations with transcript, process, executor, and terminal
+evidence. The materialized registry is
+`runtime/logs/hypervisor/registry.json`; health changes and recovery evidence
+append to `runtime/logs/hypervisor/events.jsonl`.
+
+Run one foreground scan for diagnosis, or stop the detached process:
+
+```sh
+./bin/pan hypervisor tick
+./bin/pan hypervisor stop
+```
+
+The hypervisor never recovers an agent whose health is unknown. It requires two
+unchanged scans before a stalled verdict and quarantines the second matching
+recovery failure.
+
+## Configure away mode
+
+Away mode is disabled by default. Enable it in `config.json` with optional
+guardrails:
+
+```json
+{
+  "away_mode": {
+    "enabled": true,
+    "guardrails": {
+      "allowed_actions": ["resume", "revise", "set-stage"],
+      "max_decisions_per_run": 3,
+      "max_remediation_attempts_per_agent": 1
+    }
+  }
+}
+```
+
+Each new run snapshots the resolved block and its digest. Existing runs without
+that snapshot remain disabled. Guardrails can narrow safe actions but cannot
+permit shipping approval, irreversible source control, publication, deployment,
+or gate waivers.
+
+Inspect and evaluate one named blocker:
+
+```sh
+./bin/pan away status <run-id>
+./bin/pan away evaluate <run-id>
+./bin/pan away apply <run-id> --decision <decision-id>
+```
+
+The evaluator ranks bounded options without tools. Pan validates the selected
+action and its rollback plan before apply. Each evaluation and apply result
+appends to `runtime/logs/away-mode/decisions.jsonl`; no command rewrites prior
+records. Use the selected record's `rollback_plan` for manual reversal, then
+append a linked record through the same decision service.
+
 ### Supervisor continuation
 
 `ORCH-001` is the normative continuation policy. In practice, keep advancing

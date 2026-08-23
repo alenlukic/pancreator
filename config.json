@@ -16,7 +16,7 @@
   },
   "active_config": "advanced",
   "defaults": {
-    "orchestrator": "claude-opus-5[thinking=true,context=300k,effort=high,fast=true]",
+    "orchestrator": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]",
     "meta-orchestrator": "claude-opus-5[thinking=true,context=300k,effort=high,fast=false]",
     "intake-writer": "kimi-k3[reasoning=max]",
     "tech-lead": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]",
@@ -35,7 +35,8 @@
     "spotfixer": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]",
     "harness-technician": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]",
     "repo-technician": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]",
-    "harness-workflow-qa": "claude-fable-5[thinking=true,context=300k,effort=high]"
+    "harness-workflow-qa": "claude-fable-5[thinking=true,context=300k,effort=high]",
+    "hypervisor": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]"
   },
   "$operator": {
     "summary": "Named model configurations. Each configuration maps every checked-in Cursor persona to the model that should execute it.",
@@ -59,6 +60,7 @@
     "advanced": {
       "summary": "Higher-reasoning coding and QA for complex or high-risk work.",
       "personas": {
+        "intake-writer": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]",
         "coder": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]",
         "reviewer": "claude-fable-5[thinking=true,context=1m,effort=high]",
         "qa-tester": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]"
@@ -67,6 +69,8 @@
     "extreme": {
       "summary": "Extreme configuration for the most demanding tasks.",
       "personas": {
+        "intake-writer": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]",
+        "tech-lead": "claude-fable-5[thinking=true,context=300k,effort=high]",
         "coder": "gpt-5.6-sol[context=272k,reasoning=xhigh,fast=true]",
         "reviewer": "claude-fable-5[thinking=true,context=300k,effort=high]",
         "shepherd-reviewer": "claude-fable-5[thinking=true,context=300k,effort=high]",
@@ -135,5 +139,8 @@
     "active": "light"
   },
   "review_mode": "default",
+  "away_mode": {
+    "enabled": false
+  },
   "installation_mode": "self_development"
 }

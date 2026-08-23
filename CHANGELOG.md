@@ -1,5 +1,19 @@
 # Changelog
 
+## [4.2.0] - 2026-08-23
+
+### Changed
+
+- Snapshot resolved away-mode settings on new run creation and integrate hypervisor registration and completion hooks in the engine without changing delegation when away mode stays disabled ([engine](src/lib/engine.ts), [project-config](src/lib/project-config.ts)).
+- Document hypervisor startup and away-mode configuration in the operator guide ([operator guide](docs/operator-guide.md)).
+
+### Added
+
+- Add a scheduled agent hypervisor with a fixed 900000-millisecond cadence, a registry of active agents and subagents, transcript-backed liveness classification, ordered recovery, and quarantine after a second matching failure ([hypervisor](src/lib/hypervisor.ts), [HYPERVISOR-001](governance/policies/HYPERVISOR-001.json), [hypervisor CLI](src/cli.ts), [hypervisor tests](tests/integration/hypervisor-cli.test.ts)).
+- Add away mode with typed `config.json` guardrails, ranked blocker evaluation, rollback-gated selection, and an append-only decision ledger that stays disabled unless the operator enables it ([away-mode](src/lib/away-mode.ts), [AWAY-001](governance/policies/AWAY-001.json), [away-mode tests](tests/unit/away-mode.test.ts)).
+- Expose registry-backed agent health on `pan list`, `pan status`, `pan hypervisor status`, and `pan away status`, and add a cursor-agent executor adapter for hypervisor remediation calls ([cli](src/cli.ts), [render](src/lib/render.ts), [cursor-agent](src/lib/executors/cursor-agent.ts)).
+- Add the hypervisor persona, skill, and projected agent definition, plus autonomy-state validation for registry and ledger records ([hypervisor persona](library/personas/hypervisor.md), [autonomy-state validator](src/lib/validators/autonomy-state.ts)).
+
 ## [4.1.0] - 2026-08-19
 
 ### Changed
