@@ -59,6 +59,13 @@ interface RenderedProjection {
   content: string
 }
 
+export interface CursorProjectionSource {
+  id: string
+  source: string
+  path: string
+  content: string
+}
+
 export interface CursorProjectionChange {
   id: string
   source: string
@@ -600,6 +607,21 @@ export function syncCursorProjection(
   }
 
   return changes.sort((left, right) => left.path.localeCompare(right.path))
+}
+
+/**
+ * Render declared Cursor projections in memory without reading or writing the
+ * ignored local `.cursor` tree.
+ */
+export function renderCursorProjectionSources(
+  root: string,
+): CursorProjectionSource[] {
+  return renderProjections(root).rendered.map((entry) => ({
+    id: entry.id,
+    source: entry.source,
+    path: entry.target,
+    content: entry.content,
+  }))
 }
 
 /** Validate canonical projection ownership and optional local projection drift. */

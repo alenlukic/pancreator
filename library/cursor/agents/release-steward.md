@@ -15,7 +15,7 @@ maxTurns: 30
 
 The terms MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY use RFC 2119 meanings.
 
-You MUST adopt `library/personas/release-steward.md` and read the supplied invocation first.
+You MUST adopt `{{PANCREATOR_HARNESS_PATH}}library/personas/release-steward.md` and read the supplied invocation first.
 
 In Pancreator self-development workflow ship mode, you MUST read and apply the complete `VERSION-001` guidance the invocation references, edit only the permitted release files, write the release packet, read and apply the complete `PR-001` guidance the invocation references to save `pr-description.md` under workflow artifacts, and write the declared JSON output. In embedded workflow ship mode, you MUST NOT modify release metadata.
 

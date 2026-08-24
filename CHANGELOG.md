@@ -1,5 +1,24 @@
 # Changelog
 
+## [4.5.0] - 2026-08-24
+
+### Changed
+
+- Scope policy lookup rows by persona, stage, installation, and review mode ([policy_lookup_table.json](governance/registries/policy_lookup_table.json)).
+- Replace file-specific projection rewrites with explicit path tokens for each installation mode ([cursor-content.ts](src/lib/cursor-content.ts)).
+- Reduce `AGENTS.md` and projected wrappers to bootstrap, authority, and safety rules ([AGENTS.md](AGENTS.md)).
+- Use one shared renderer for policy blocks in workflow cards and standalone cards ([policy-guidance.ts](src/lib/policy-guidance.ts)).
+- Mirror projection tokens in the installer renderer and keep compiled output byte-identical ([install-support](bin/install-support)).
+
+### Added
+
+- Add a context-bloat disposition registry and a deterministic audit of agent-facing surfaces ([context_bloat_dispositions.json](governance/registries/context_bloat_dispositions.json)).
+
+### Fixed
+
+- Restore the rtk wrap note, the chat-markdown check, and the source-to-target import boundary ([AGENTS.md](AGENTS.md)).
+- Replace a bare projection-token error with the shared invariant code `UNRESOLVED_PROJECTION_TOKEN` ([cursor-content.ts](src/lib/cursor-content.ts)).
+
 ## [4.4.0] - 2026-08-24
 
 ### Changed

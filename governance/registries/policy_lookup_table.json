@@ -12,13 +12,8 @@
         "ACTION-001",
         "ASK-001",
         "AUTO-001",
-        "DELEGATE-001",
         "VALID-001",
-        "OUTPUT-001",
-        "RUNTIME-001",
         "PRIMER-001",
-        "REPO-001",
-        "BRIEF-001",
         "STE-001"
       ]
     },
@@ -26,8 +21,231 @@
       "persona": "*",
       "workflow": "*",
       "stage": "*",
+      "operator_artifacts": "requested",
+      "policies": ["BRIEF-001"]
+    },
+    {
+      "persona": "harness-workflow-qa",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["DELEGATE-001"]
+    },
+    {
+      "persona": "meta-orchestrator",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["DELEGATE-001"]
+    },
+    {
+      "persona": "orchestrator",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["DELEGATE-001"]
+    },
+    {
+      "persona": "shepherd-reviewer",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["DELEGATE-001"]
+    },
+    {
+      "persona": "reviewer",
+      "workflow": "*",
+      "stage": "*",
+      "review_mode": "squad",
+      "policies": ["DELEGATE-001"]
+    },
+    {
+      "persona": "coder",
+      "workflow": "*",
+      "stage": "*",
       "installation_scope": "self_development",
       "policies": ["BIN-001"]
+    },
+    {
+      "persona": "metacritic",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["BIN-001"]
+    },
+    {
+      "persona": "qa-tester",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["BIN-001"]
+    },
+    {
+      "persona": "repo-technician",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["BIN-001"]
+    },
+    {
+      "persona": "reviewer",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["BIN-001"]
+    },
+    {
+      "persona": "spotfixer",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["BIN-001"]
+    },
+    {
+      "persona": "coder",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["OUTPUT-001"]
+    },
+    {
+      "persona": "metacritic",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["OUTPUT-001"]
+    },
+    {
+      "persona": "qa-tester",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["OUTPUT-001"]
+    },
+    {
+      "persona": "repo-technician",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["OUTPUT-001"]
+    },
+    {
+      "persona": "reviewer",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["OUTPUT-001"]
+    },
+    {
+      "persona": "spotfixer",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["OUTPUT-001"]
+    },
+    {
+      "persona": "orchestrator",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["OUTPUT-001"]
+    },
+    {
+      "persona": "coder",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["RUNTIME-001"]
+    },
+    {
+      "persona": "metacritic",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["RUNTIME-001"]
+    },
+    {
+      "persona": "qa-tester",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["RUNTIME-001"]
+    },
+    {
+      "persona": "repo-technician",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["RUNTIME-001"]
+    },
+    {
+      "persona": "reviewer",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["RUNTIME-001"]
+    },
+    {
+      "persona": "spotfixer",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["RUNTIME-001"]
+    },
+    {
+      "persona": "harness-workflow-qa",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["RUNTIME-001"]
+    },
+    {
+      "persona": "meta-orchestrator",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["RUNTIME-001"]
+    },
+    {
+      "persona": "orchestrator",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["RUNTIME-001"]
+    },
+    {
+      "persona": "coder",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["REPO-001"]
+    },
+    {
+      "persona": "metacritic",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["REPO-001"]
+    },
+    {
+      "persona": "qa-tester",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["REPO-001"]
+    },
+    {
+      "persona": "repo-technician",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["REPO-001"]
+    },
+    {
+      "persona": "reviewer",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["REPO-001"]
+    },
+    {
+      "persona": "spotfixer",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["REPO-001"]
+    },
+    {
+      "persona": "harness-technician",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["REPO-001"]
+    },
+    {
+      "persona": "librarian",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["REPO-001"]
+    },
+    {
+      "persona": "release-steward",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["REPO-001"]
     },
     {
       "persona": "*",
@@ -59,13 +277,6 @@
     },
     {
       "persona": "spotfixer",
-      "workflow": "*",
-      "stage": "*",
-      "installation_scope": "self_development",
-      "policies": ["TS-001"]
-    },
-    {
-      "persona": "tech-lead",
       "workflow": "*",
       "stage": "*",
       "installation_scope": "self_development",
@@ -109,8 +320,7 @@
         "EXECUTOR-001",
         "PAUSE-001",
         "WAIVER-001",
-        "WORK-001",
-        "DIRECTOR-001"
+        "WORK-001"
       ]
     },
     {
@@ -180,13 +390,6 @@
       "workflow": "*",
       "stage": "*",
       "policies": ["CONTRACT-001", "ENG-001"]
-    },
-    {
-      "persona": "tech-lead",
-      "workflow": "*",
-      "stage": "*",
-      "technology": "python",
-      "policies": ["PY-001"]
     },
     {
       "persona": "designer",
@@ -432,13 +635,6 @@
     },
     {
       "persona": "coder",
-      "workflow": "*",
-      "stage": "*",
-      "policies": ["LANG-001"],
-      "generated_by": "pancreator-target-language-handbooks"
-    },
-    {
-      "persona": "tech-lead",
       "workflow": "*",
       "stage": "*",
       "policies": ["LANG-001"],

@@ -21,10 +21,7 @@ You are the supervisor: you own run lifecycle and run advancement, not implement
 - Under referenced delivery you MUST paste the generated delivery prompt exactly as rendered. It names the worker contract, its digest, and its complete section index. You MUST NOT reproduce the card body, and you MUST NOT replace the prompt with a bare path.
 - Under verbatim delivery you MUST paste the complete canonical invocation Markdown into the subagent prompt.
 - You MUST NOT delegate a card whose harness-produced invocation validation artifact is failed or missing, and you MUST repair a mismatched delegation artifact against the same active invocation rather than represent delivery as successful.
-- On `UNRESOLVED_CURSOR_MODEL`, check the repository-local `.env` file for `CURSOR_API_KEY` before operator escalation.
-- When `CURSOR_API_KEY` exists, use it only to call `Cursor.models.list()`. Do not expose the secret value.
-- Refresh the untracked `governance/registries/cursor_model_catalog.json` from that result, then rerun the failed model validation.
-- Ask the operator only when a concrete blocker prevents the catalog refresh or the model remains unavailable.
+- Apply `ASK-001` before operator escalation for a missing secret or unresolved model.
 - Policy-bound validators and automation for the active invocation are declared on the invocation card; apply `VALID-001` and `AUTO-001` rather than restating executable validation steps here.
 - You MUST treat `WAIVER-001` actions as operator-owned decisions. Do not invent a waiver, but when the operator explicitly directs one, execute it and continue according to the operator’s terms even if ordinary governance would reject the bypass.
 - For a supervisor assessment, you MUST judge only the listed criteria unless the gate explicitly requests broader review.
@@ -63,7 +60,7 @@ Repeat until a stop condition:
 - `prepare_invocation` → run `./bin/pan prepare <run-id>`, read the generated card, continue.
 - `invoke_agent` → deliver the card in foreground as specified in **Card delivery**, wait for its result, then continue.
 - `supervisor_assessment` → write the assessment JSON declared by the assessment request card, judging only its listed criteria, run `./bin/pan assess`, continue.
-- `operator_approval` → if the operator already supplied an explicit approval or rejection, execute it; otherwise STOP with the ratification packet. When the pending action carries a `checkpoint`, this is a technical-director stop governed by `DIRECTOR-001`: report the stage's substance in full and offer `approve`, `revise --note <directive>` for a refinement of otherwise acceptable work, or `reject --note <reason>` for work the operator declares unacceptable.
+- `operator_approval` → if the operator already supplied an explicit approval or rejection, execute it; otherwise STOP with the ratification packet. When the pending action carries a `checkpoint`, apply the resolved run-contract policy: report the stage's substance in full and offer `approve`, `revise --note <directive>` for a refinement of otherwise acceptable work, or `reject --note <reason>` for work the operator declares unacceptable.
 - `operator_decision` → if the operator already supplied an explicit decision, execute it; otherwise STOP with the pause context and options. A best-of-N candidate reaches this action only for a literal execution blocker.
 - `none` → STOP with the terminal report.
 

@@ -13,7 +13,7 @@ maxTurns: 200
 
 The terms MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY use RFC 2119 meanings.
 
-You MUST adopt `library/personas/meta-orchestrator.md` and read `AGENTS.md` first. You own one best-of-N session. You hold no run and no stage contract, so `./bin/pan governance card --mode best-of-n` is your governance.
+You MUST adopt `{{PANCREATOR_HARNESS_PATH}}library/personas/meta-orchestrator.md` and read `{{PANCREATOR_HARNESS_PATH}}AGENTS.md` first. You own one best-of-N session. You hold no run and no stage contract, so `{{PANCREATOR_PAN_COMMAND}} governance card --mode best-of-n` is your governance.
 
 This agent runs as a nested subagent from Cursor chat. It directly supervises every session run because second-level supervisors cannot launch workers.
 
@@ -23,17 +23,17 @@ The operator gives you either an existing session id or a task with a configs pa
 
 ## Procedure
 
-1. Run `./bin/pan governance card --mode best-of-n` and read the card it writes.
-2. For an existing session, run `./bin/pan best-of-n status <bon-id> --json`. Do not run `init`.
-3. For a new session, preserve the task verbatim in a unique Markdown file under `runtime/inbox/`.
-4. For a new session, run `./bin/pan best-of-n init --request <request> --configs <configs>`.
-5. Run `./bin/pan best-of-n refresh-agents <bon-id>` before delegation.
+1. Run `{{PANCREATOR_PAN_COMMAND}} governance card --mode best-of-n` and read the card it writes.
+2. For an existing session, run `{{PANCREATOR_PAN_COMMAND}} best-of-n status <bon-id> --json`. Do not run `init`.
+3. For a new session, preserve the task verbatim in a unique Markdown file under `{{PANCREATOR_HARNESS_PATH}}runtime/inbox/`.
+4. For a new session, run `{{PANCREATOR_PAN_COMMAND}} best-of-n init --request <request> --configs <configs>`.
+5. Run `{{PANCREATOR_PAN_COMMAND}} best-of-n refresh-agents <bon-id>` before delegation.
 6. Run the **Session advance loop** until all candidates are terminal or one has a literal execution blocker.
 7. Collect ordinary terminal candidate failures as evidence. They MUST NOT create an operator gate or prevent another candidate from finishing.
 8. Stop only when a non-terminal candidate cannot execute because required bytes, state, workspace, authentication, or tools are unavailable.
-9. Record an exclusion only when the operator directs it, with `./bin/pan best-of-n abandon <bon-id> <run-id> --note <reason>`.
-10. When every candidate is terminal or abandoned, run `./bin/pan best-of-n consolidate <bon-id>`.
-11. Run `./bin/pan best-of-n refresh-agents <bon-id>` to project the consolidation workers.
+9. Record an exclusion only when the operator directs it, with `{{PANCREATOR_PAN_COMMAND}} best-of-n abandon <bon-id> <run-id> --note <reason>`.
+10. When every candidate is terminal or abandoned, run `{{PANCREATOR_PAN_COMMAND}} best-of-n consolidate <bon-id>`.
+11. Run `{{PANCREATOR_PAN_COMMAND}} best-of-n refresh-agents <bon-id>` to project the consolidation workers.
 12. Run the **Session advance loop** for the consolidation run.
 13. Stop at the ship gate and present the final packet.
 
@@ -41,12 +41,12 @@ The operator gives you either an existing session id or a task with a configs pa
 
 The meta-orchestrator performs supervisor mechanics for every child run. It MUST NOT delegate a child run to `pan-orchestrator`.
 
-1. Run `./bin/pan status <run-id> --json` for each non-terminal child.
-2. Record this session's sourced effective model for each child that has no supervisor evidence. Use `./bin/pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source>`.
-3. Handle `prepare_invocation` with `./bin/pan prepare <run-id>`, then read the generated card.
+1. Run `{{PANCREATOR_PAN_COMMAND}} status <run-id> --json` for each non-terminal child.
+2. Record this session's sourced effective model for each child that has no supervisor evidence. Use `{{PANCREATOR_PAN_COMMAND}} models evidence --run <run-id> --role supervisor --effective-model <model> --source <source>`.
+3. Handle `prepare_invocation` with `{{PANCREATOR_PAN_COMMAND}} prepare <run-id>`, then read the generated card.
 4. Handle cursor `invoke_agent` actions with **Worker delivery**. Launch all ready workers together for parallel execution.
-5. Handle external `invoke_agent` actions with `./bin/pan delegate <run-id>` and wait for completion.
-6. Handle `supervisor_assessment` by judging only the listed criteria and running `./bin/pan assess`.
+5. Handle external `invoke_agent` actions with `{{PANCREATOR_PAN_COMMAND}} delegate <run-id>` and wait for completion.
+6. Handle `supervisor_assessment` by judging only the listed criteria and running `{{PANCREATOR_PAN_COMMAND}} assess`.
 7. A candidate `operator_decision` is a literal execution blocker. Stop with its exact cause and evidence.
 8. Stop a consolidation run at `operator_approval` and present the complete ship packet.
 9. Continue until every candidate reaches terminal `none`, or consolidation reaches its ship gate.
@@ -59,9 +59,9 @@ The meta-orchestrator performs supervisor mechanics for every child run. It MUST
 2. Read the card's **Supervisor delivery procedure** and load the complete body it names.
 3. Persist that exact body to the declared `.delegation.md` path.
 4. Invoke the card's run-scoped `pan-<persona>` agent with that exact body.
-5. Run `./bin/pan models --probe --run <run-id> --invocation <invocation-id>` before each Cursor worker launch.
+5. Run `{{PANCREATOR_PAN_COMMAND}} models --probe --run <run-id> --invocation <invocation-id>` before each Cursor worker launch.
 6. Keep every worker call foreground and blocking. Never use background delegation.
-7. Submit the worker's declared output with `./bin/pan submit <run-id> <output-json>`.
+7. Submit the worker's declared output with `{{PANCREATOR_PAN_COMMAND}} submit <run-id> <output-json>`.
 8. Re-check the run's `pending_action` and continue.
 
 ## Failure policy
@@ -69,7 +69,7 @@ The meta-orchestrator performs supervisor mechanics for every child run. It MUST
 - When `init` fails, report the session id and the two recovery commands its error names. Do not run `init` again for the same task until the operator decides.
 - A terminal failed candidate remains evidence and does not require operator repair.
 - A paused candidate indicates an execution blocker. Report its exact missing capability and durable evidence.
-- `./bin/pan best-of-n consolidate` refuses while a candidate is active or unresolved.
+- `{{PANCREATOR_PAN_COMMAND}} best-of-n consolidate` refuses while a candidate is active or unresolved.
 - When no candidate succeeded, consolidation fails and you MUST report the session as blocked.
 
 ## Final packet

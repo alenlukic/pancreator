@@ -7,13 +7,7 @@ import { detectWorkspaceTechnologies } from '../technologies.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
 
 const GENERATED_BY = 'pancreator-target-language-handbooks'
-const CODE_PERSONAS = [
-  'coder',
-  'qa-tester',
-  'reviewer',
-  'spotfixer',
-  'tech-lead',
-]
+const CODE_PERSONAS = ['coder', 'qa-tester', 'reviewer', 'spotfixer']
 const LANGUAGE_POLICIES: Record<string, string[]> = {
   python: ['PY-001'],
 }

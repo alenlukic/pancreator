@@ -5,7 +5,7 @@ import { ensureDir, fileExists, resolveInside, writeTextAtomic } from './io.js'
 import { keywordRunSuffix } from './naming.js'
 import { makeUniqueRunId } from './state.js'
 import { resolvePolicies } from './policies.js'
-import { renderGuidanceBlock } from './policy-guidance.js'
+import { renderPolicyBlocks } from './policy-guidance.js'
 import { harnessPathPrefix, isTargetInstallation } from './project-config.js'
 import { resolveRequirements } from './requirements/resolve.js'
 import type { InvocationKind } from './requirements/types.js'
@@ -185,23 +185,7 @@ function renderGovernanceCardMarkdown(options: {
     ...requirements.validation_requirements,
   ].filter((requirement) => requirement.executor !== 'harness')
 
-  const policyBlocks = policies.length
-    ? policies.flatMap((policy) => {
-        const lines = [
-          `**${policy.id} · ${policy.title}**`,
-          '',
-          policy.summary,
-          '',
-          ...policy.instructions.map((instruction) => `- ${instruction}`),
-        ]
-
-        for (const guidance of policy.guidance ?? []) {
-          lines.push(...renderGuidanceBlock(3, guidance))
-        }
-
-        return [lines.join('\n'), '']
-      })
-    : ['- Only global boundaries apply.']
+  const policyBlocks = renderPolicyBlocks(policies, 3)
 
   return `${[
     `# 🤝 ${mode.title}`,
@@ -297,6 +281,7 @@ export function buildGovernanceCard(
     stage: mode.stage,
     // A standalone mode is bound to no run, so no run contract applies.
     contracts: [],
+    operator_artifacts: 'suppressed',
   })
   const requirements = resolveRequirements(root, {
     persona: mode.persona,
@@ -304,6 +289,7 @@ export function buildGovernanceCard(
     stage: mode.stage,
     invocation_kind: mode.kind,
     contracts: [],
+    operator_artifacts: 'suppressed',
   })
   const worktree = options.worktreeName
     ? resolveOrCreateWorktree(

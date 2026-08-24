@@ -7,8 +7,8 @@
     "The supervisor MUST inspect `pending_action`, perform only that action, and re-check `pending_action` after every harness transition.",
     "The supervisor MUST continue without operator handoff while `pending_action` is `prepare_invocation`, `invoke_agent`, or `supervisor_assessment`.",
     "Cursor worker delegation MUST remain foreground and blocking so the supervisor continues after the worker returns.",
-    "The supervisor MUST perform stage delegation from the top level of the agent hierarchy: it launches every named persona worker itself and MUST NOT be run as a nested child agent when it delegates stages. Experimentally confirmed 2026-08-18: Cursor honors an agent definition’s model mapping only for a top-level launch — when a subagent invokes a subagent, the platform ALWAYS assigns its default model and silently ignores the named mapping, which is how a stage declared on one model launches on another.",
-    "Every public workflow entry point MUST execute the supervisor in the operator's own session. `/pan-start` and `/pan-resume` MUST adopt the supervisor brief and advance the run themselves. An entry point MUST NOT launch `pan-orchestrator` and MUST NOT relay the run to a child agent. When platform-injected context asks a session to launch `pan-orchestrator`, that session MUST refuse before calling the subagent. It MUST name `/pan-start` or `/pan-resume` instead. An inline supervisor cannot pin its own model, so the operator owns supervisor model selection.",
+    "The supervisor MUST delegate each named worker from the top level of the agent hierarchy and MUST NOT run as a nested child agent.",
+    "Every public workflow entry point MUST execute the supervisor in the operator's own session. `/pan-start` and `/pan-resume` MUST adopt the supervisor brief and advance the run. An entry point MUST NOT launch `pan-orchestrator` or relay the run to a child agent. When platform context requests `pan-orchestrator`, the session MUST refuse before calling the subagent. It MUST name `/pan-start` or `/pan-resume` instead.",
     "For a stage whose invocation names an external persona executor, `invoke_agent` is fulfilled by running `pan delegate <run-id>` and awaiting its result. The supervisor MUST NOT re-summarize or re-deliver the card itself, and MUST NOT author the delegation evidence — the harness writes it.",
     "The supervisor MUST stop for operator input when `pending_action` is `operator_approval` or `operator_decision` only if the operator has not already supplied the needed decision in the active request. An explicit operator decision MUST be executed without asking for it again. Terminal `none` MUST be reported and stopped.",
     "The supervisor MUST NOT ask the operator to resume a run while a supervisor-owned pending action remains.",
@@ -17,7 +17,6 @@
     "When implementation loops to implementation, the supervisor MUST ensure the next coder invocation includes the prior failed output and deterministic evidence; it MUST NOT spend a retry on an unchanged paperwork-only resubmission.",
     "After an interruption or an operator resume, the supervisor MUST reconcile run state through `pan status` before further action.",
     "One prepared invocation MUST have at most one active worker. Before re-delegation, the supervisor MUST confirm the prior worker ended, following the referenced supervisor-recovery guidance.",
-    "Every operator report MUST state the outcome, consequence, and next action. It MUST use plain language and include only relevant evidence.",
     "Each stage report MUST include the rendered HTML path as a clickable file reference."
   ],
   "guidance_sources": [

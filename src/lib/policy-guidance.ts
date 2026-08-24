@@ -1,7 +1,18 @@
-import type { PolicyGuidance, PolicyGuidanceReference } from './types.js'
+import type {
+  Policy,
+  PolicyGuidance,
+  PolicyGuidanceReference,
+} from './types.js'
 
 /** Heading depth a card or rule uses for one guidance block. */
 export type GuidanceHeadingLevel = 2 | 3
+
+function normalizedPolicyStatement(value: string): string {
+  return value
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/gu, ' ')
+    .trim()
+}
 
 /** Heading of a progressively disclosed guidance reference. */
 export function guidanceReferenceHeading(
@@ -89,4 +100,44 @@ export function renderGuidanceBlock(
       `${reference.line_count} lines, ${reference.byte_length} bytes.`,
     `- Digest basis: ${GUIDANCE_DIGEST_BASIS}`,
   ]
+}
+
+/**
+ * Render the canonical policy block shape used by workflow and standalone
+ * contracts.
+ */
+export function renderPolicyBlocks(
+  policies: Policy[],
+  guidanceLevel: GuidanceHeadingLevel,
+): string[] {
+  if (policies.length === 0) {
+    return ['- Only global boundaries apply.']
+  }
+
+  return policies.flatMap((policy) => {
+    const seen = new Set<string>()
+    const instructions = policy.instructions.filter((instruction) => {
+      const normalized = normalizedPolicyStatement(instruction)
+
+      if (seen.has(normalized)) {
+        return false
+      }
+
+      seen.add(normalized)
+      return true
+    })
+    const summary = normalizedPolicyStatement(policy.summary)
+    const lines = [
+      `**${policy.id} · ${policy.title}**`,
+      '',
+      ...(seen.has(summary) ? [] : [policy.summary, '']),
+      ...instructions.map((instruction) => `- ${instruction}`),
+    ]
+
+    for (const guidance of policy.guidance ?? []) {
+      lines.push(...renderGuidanceBlock(guidanceLevel, guidance))
+    }
+
+    return [lines.join('\n'), '']
+  })
 }

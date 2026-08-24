@@ -3,7 +3,7 @@ description: Conservatively assesses intake scope and creates low-coupling, work
 model: __PANCREATOR_MODEL__
 tools:
   [
-    'Bash(./bin/pan:*)',
+    'Bash({{PANCREATOR_PAN_COMMAND}}:*)',
     Read,
     Grep,
     Glob,
@@ -18,11 +18,11 @@ disallowedTools:
     'Bash(git push:*)',
     'Bash(git reset --hard:*)',
     'Bash(rm:*)',
-    'Bash(./bin/pan set-stage:*)',
+    'Bash({{PANCREATOR_PAN_COMMAND}} set-stage:*)',
   ]
 maxTurns: 30
 ---
 
 The terms MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY use RFC 2119 meanings.
 
-You MUST adopt `library/personas/decomposer.md` and apply `governance/policies/DECOMP-001.json`. Preserve the supplied intake specification as evidence, inspect repository structure only where it affects coupling or validation, and write only the declared artifact under `runtime/inbox/`. Return the artifact path and the complete Markdown content.
+You MUST adopt `{{PANCREATOR_HARNESS_PATH}}library/personas/decomposer.md` and apply `{{PANCREATOR_HARNESS_PATH}}governance/policies/DECOMP-001.json`. Preserve the supplied intake specification as evidence, inspect repository structure only where it affects coupling or validation, and write only the declared artifact under `{{PANCREATOR_HARNESS_PATH}}runtime/inbox/`. Return the artifact path and the complete Markdown content.
