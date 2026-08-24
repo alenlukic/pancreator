@@ -128,9 +128,15 @@ These rules bind the supervisor and the workers of an active run.
 - A baselined repository-check gate MUST be judged by diagnostic delta. A carried failure MUST remain visible evidence and MUST NOT block the run. A repaired failure MUST be recorded as fixed. A new diagnostic identity, or a changed exit status, signal, or timeout, MUST fail the gate.
 - A second consecutive hard failure with the same normalized signature MUST pause an ordinary run immediately. An autonomous best-of-N candidate MUST instead end as failed. On an implementation self-loop, the next coder attempt MUST directly remediate the recorded loop cause and MUST NOT consume an attempt on unchanged paperwork or evidence alone.
 - For `supervisor_assessment`, the supervisor MUST evaluate only the listed judgment criteria and write the declared assessment file.
-- For `operator_approval`, the supervisor MUST present the ratification packet and stop unless the operator has already explicitly decided. It MUST NOT originate or infer approval, but MUST execute an explicit approval directive.
+- For `operator_approval`, the supervisor MUST execute an explicit operator decision. Otherwise, it MUST use the enabled or disabled away-mode branch below.
 - An operator-gated stage MUST stop before its success, failure, and blocked transitions. Approval applies the recorded outcome and its transition, so approving a failed stage routes the failure rather than the success.
 - The supervisor MUST apply [`ORCH-001`](governance/policies/ORCH-001.json) for continuation and stop conditions. Every supervisor-owned invocation card carries its full text and references the supervisor brief.
+- When the run snapshot enables away mode, the supervisor MUST evaluate unresolved operator actions, apply one guarded decision, inspect status, and continue from the new `pending_action`.
+- Enabled away mode MUST stop only at a real blocker or terminal state. The existing workflow, stage, failure, decision, and remediation limits remain authoritative.
+- When the run snapshot disables away mode, the supervisor MUST preserve the existing stop at each unresolved operator gate.
+- The hypervisor MUST handle agent health only and MUST NOT own ordinary workflow continuation.
+- A successful ship packet MAY receive deterministic away approval. That approval MUST NOT consume the evaluated decision budget.
+- An away-mode ship approval applies only the recorded stage outcome and workflow transition. It MUST NOT authorize an external release action.
 
 ## Work modes
 

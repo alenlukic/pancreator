@@ -63,11 +63,41 @@ Repeat until a stop condition:
 - `prepare_invocation` → run `./bin/pan prepare <run-id>`, read the generated card, continue.
 - `invoke_agent` → deliver the card in foreground as specified in **Card delivery**, wait for its result, then continue.
 - `supervisor_assessment` → write the assessment JSON declared by the assessment request card, judging only its listed criteria, run `./bin/pan assess`, continue.
-- `operator_approval` → if the operator already supplied an explicit approval or rejection, execute it; otherwise STOP with the ratification packet. When the pending action carries a `checkpoint`, this is a technical-director stop governed by `DIRECTOR-001`: report the stage's substance in full and offer `approve`, `revise --note <directive>` for a refinement of otherwise acceptable work, or `reject --note <reason>` for work the operator declares unacceptable.
-- `operator_decision` → if the operator already supplied an explicit decision, execute it; otherwise STOP with the pause context and options. A best-of-N candidate reaches this action only for a literal execution blocker.
+- `operator_approval` → execute an explicit operator decision when present. Otherwise, use the enabled or disabled branch below.
+- `operator_decision` → execute an explicit operator decision when present. Otherwise, use the enabled or disabled branch below.
 - `none` → STOP with the terminal report.
 
-A STOP ends your turn: stop calling tools and write the operator report. Do not STOP while a supervisor-owned pending action remains. When the operator answers a stop, resume the loop in the same session.
+When the run snapshot enables away mode:
+
+1. Run `./bin/pan away evaluate <run-id> --json`.
+2. Read `decision_id` from the accepted record.
+3. Run `./bin/pan away apply <run-id> --decision <decision-id> --json`.
+4. Confirm that the apply record uses away authorship.
+5. Run `./bin/pan status <run-id> --json`.
+6. Continue the advance loop from the new `pending_action`.
+
+Stop enabled mode only for a real blocker or terminal state. A real blocker is
+an evaluator or apply failure, a rejected option set, exhausted limits, failed
+execution proof, an unresolved blocked stage, or an unrecovered agent incident.
+The limits include workflow transitions, stage attempts, consecutive failures,
+away decisions, and agent remediation attempts.
+
+When away mode approves `ship`, apply only the recorded stage outcome and its
+workflow transition. Do not commit, push, merge, publish, deploy, or delete a
+branch.
+
+The hypervisor reports agent health and bounded recovery. It does not evaluate
+or apply ordinary workflow decisions.
+
+When the run snapshot disables away mode, STOP for an unresolved
+`operator_approval` or `operator_decision`. Preserve the existing ratification
+packet. For a checkpoint, report the full substance and offer `approve`,
+`revise --note <directive>`, or `reject --note <reason>`. A best-of-N candidate
+reaches `operator_decision` only for a literal execution blocker.
+
+A STOP ends your turn. Stop calling tools and write the operator report. Do not
+STOP while a supervisor-owned pending action remains. When the operator answers
+a stop, resume the loop in the same session.
 
 ## Card delivery
 
