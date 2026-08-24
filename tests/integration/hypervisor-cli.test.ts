@@ -163,7 +163,7 @@ test('hypervisor quarantine pauses the run and records a decision', () => {
   }
 })
 
-test('hypervisor tick applies an enabled away-mode decision', () => {
+test('hypervisor tick leaves ordinary away decisions to the supervisor', () => {
   const root = createFixture()
   const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
@@ -222,15 +222,126 @@ test('hypervisor tick applies an enabled away-mode decision', () => {
 
   try {
     const result = run(root, 'hypervisor', 'tick') as {
-      away_decisions: Array<{ status: string }>
+      away_decisions: unknown[]
+    }
+    const next = getRunState(root, state.run_id)
+
+    assert.deepEqual(result.away_decisions, [])
+    assert.equal(next.status, 'paused')
+    assert.equal(next.pending_action.type, 'operator_decision')
+    assert.deepEqual(readAwayDecisionLedger(root), [])
+  } finally {
+    if (previousBinary === undefined) {
+      delete process.env.PANCREATOR_CURSOR_AGENT_BIN
+    } else {
+      process.env.PANCREATOR_CURSOR_AGENT_BIN = previousBinary
+    }
+  }
+})
+
+test('away evaluate and apply resume a paused run exactly once', () => {
+  const root = createFixture()
+  const configPath = path.join(root, 'config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+  const binary = path.join(root, 'fake-cursor-agent')
+  const response = {
+    ranked_options: [
+      {
+        rank: 1,
+        action: 'resume',
+        feasible: true,
+        rationale: 'Resume the paused run.',
+        evidence: ['runtime/logs/workflows/run/agent/state.json'],
+        rollback_plan: {
+          steps: ['Pause the run again.'],
+          verification: 'Confirm that the run is paused.',
+        },
+      },
+    ],
+  }
+
+  writeFileSync(
+    configPath,
+    `${JSON.stringify(
+      {
+        ...config,
+        away_mode: {
+          enabled: true,
+          guardrails: { allowed_actions: ['resume'] },
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  )
+  writeFileSync(
+    binary,
+    `#!/bin/sh\nprintf '%s\\n' '${JSON.stringify({
+      session_id: 'evaluator-session',
+      result: JSON.stringify(response),
+    })}'\n`,
+  )
+  chmodSync(binary, 0o755)
+
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+  })
+
+  pauseRun(root, state.run_id, 'Operator unavailable.')
+
+  const previousBinary = process.env.PANCREATOR_CURSOR_AGENT_BIN
+
+  process.env.PANCREATOR_CURSOR_AGENT_BIN = binary
+
+  try {
+    const evaluated = run(root, 'away', 'evaluate', state.run_id) as {
+      decision_id: string
+      decision_kind: string
+      result: string
+      selected_action: { action: string } | null
     }
 
-    assert.equal(
-      result.away_decisions[0]?.status,
-      'running',
-      JSON.stringify(result),
+    assert.equal(evaluated.result, 'accepted')
+    assert.equal(evaluated.decision_kind, 'evaluated')
+    assert.equal(evaluated.selected_action?.action, 'resume')
+
+    const applied = run(
+      root,
+      'away',
+      'apply',
+      state.run_id,
+      '--decision',
+      evaluated.decision_id,
+    ) as {
+      state: { status: string; pending_action: { type: string } }
+      decision: { result: string; linked_decision_id: string }
+    }
+
+    assert.equal(applied.state.status, 'running')
+    assert.equal(applied.state.pending_action.type, 'prepare_invocation')
+    assert.equal(applied.decision.result, 'applied')
+    assert.equal(applied.decision.linked_decision_id, evaluated.decision_id)
+
+    assert.throws(
+      () =>
+        run(
+          root,
+          'away',
+          'apply',
+          state.run_id,
+          '--decision',
+          evaluated.decision_id,
+        ),
+      (error: unknown) =>
+        error instanceof Error &&
+        /AWAY_DECISION_ALREADY_APPLIED/u.test(
+          String((error as { stderr?: unknown }).stderr ?? ''),
+        ),
     )
-    assert.equal(getRunState(root, state.run_id).status, 'running')
     assert.deepEqual(
       readAwayDecisionLedger(root).map((record) => record.result),
       ['accepted', 'applied'],
@@ -244,7 +355,26 @@ test('hypervisor tick applies an enabled away-mode decision', () => {
   }
 })
 
-test('hypervisor tick records an evaluator process failure', () => {
+test('hypervisor tick preserves disabled-mode operator stops', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+  })
+
+  pauseRun(root, state.run_id, 'Operator approval is required.')
+
+  const result = run(root, 'hypervisor', 'tick') as {
+    away_decisions: unknown[]
+  }
+  const next = getRunState(root, state.run_id)
+
+  assert.deepEqual(result.away_decisions, [])
+  assert.equal(next.status, 'paused')
+  assert.equal(next.pending_action.type, 'operator_decision')
+})
+
+test('hypervisor tick does not run the away evaluator', () => {
   const root = createFixture()
   const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
@@ -283,19 +413,12 @@ test('hypervisor tick records an evaluator process failure', () => {
 
   try {
     const result = run(root, 'hypervisor', 'tick') as {
-      away_decisions: Array<{
-        decision: { result: string; error: string }
-      }>
+      away_decisions: unknown[]
     }
     const ledger = readAwayDecisionLedger(root)
 
-    assert.equal(result.away_decisions[0]?.decision.result, 'rejected')
-    assert.match(
-      result.away_decisions[0]?.decision.error ?? '',
-      /exited with status 3/u,
-    )
-    assert.equal(ledger.length, 1)
-    assert.equal(ledger[0]?.result, 'rejected')
+    assert.deepEqual(result.away_decisions, [])
+    assert.deepEqual(ledger, [])
   } finally {
     if (previousBinary === undefined) {
       delete process.env.PANCREATOR_CURSOR_AGENT_BIN

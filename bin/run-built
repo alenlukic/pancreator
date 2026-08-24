@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+usage() {
+  echo "Usage: bin/run-built --build-only | -- <command> [args...]" >&2
+}
+
+release_lock() {
+  local owner
+
+  if ! IFS= read -r owner 2>/dev/null <"$BUILD_LOCK"; then
+    return
+  fi
+
+  if [[ "$owner" == "$$" ]]; then
+    rm -f "$BUILD_LOCK"
+  fi
+}
+
+acquire_lock() {
+  local owner
+
+  while ! (set -o noclobber; printf '%s\n' "$$" >"$BUILD_LOCK") 2>/dev/null; do
+    if ! IFS= read -r owner 2>/dev/null <"$BUILD_LOCK"; then
+      sleep 0.1
+      continue
+    fi
+
+    if [[ "$owner" =~ ^[0-9]+$ ]] && kill -0 "$owner" 2>/dev/null; then
+      sleep 0.1
+      continue
+    fi
+
+    rm -f "$BUILD_LOCK"
+  done
+
+  trap release_lock EXIT HUP INT TERM
+}
+
+run_build() {
+  PATH="$ROOT/node_modules/.bin:$PATH" \
+    "$ROOT/bin/run-quiet" -- "$ROOT/bin/build"
+}
+
+if [[ $# -eq 0 ]]; then
+  usage
+  exit 1
+fi
+
+if [[ "${1:-}" == '--build-only' ]]; then
+  if [[ $# -ne 1 ]]; then
+    usage
+    exit 1
+  fi
+
+  mode='build'
+elif [[ "${1:-}" == '--' ]]; then
+  shift
+
+  if [[ $# -eq 0 ]]; then
+    usage
+    exit 1
+  fi
+
+  mode='run'
+else
+  usage
+  exit 1
+fi
+
+# An ancestor run-built already built this root and holds its lock for this
+# process tree, so re-acquiring the same lock would wait on that live ancestor
+# forever. A ready value matching this root reuses the prepared build instead.
+# The legacy value '1' stays a run-mode escape hatch for operator use; it never
+# skips an explicit build because other roots may still need their own build.
+ready="${PANCREATOR_BUILD_READY:-}"
+
+if [[ "$mode" == 'run' && ("$ready" == "$ROOT" || "$ready" == '1') ]]; then
+  exec "$@"
+fi
+
+if [[ "$mode" == 'build' && "$ready" == "$ROOT" ]]; then
+  exit 0
+fi
+
+read -r root_key _ <<<"$(printf '%s' "$ROOT" | cksum)"
+BUILD_LOCK="${TMPDIR:-/tmp}/pancreator-build-${root_key}.lock"
+
+acquire_lock
+run_build
+
+if [[ "$mode" == 'run' ]]; then
+  export PANCREATOR_BUILD_READY="$ROOT"
+  "$@"
+  exit 0
+fi

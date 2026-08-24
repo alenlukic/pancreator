@@ -7,6 +7,7 @@ import {
   assessStage,
   createRun,
   decideRun,
+  decideRunAsAway,
   delegateInvocation,
   getRunStatus,
   getRunState,
@@ -16,7 +17,9 @@ import {
   quarantineRunForAgent,
   recordSupervisorModelEvidence,
   resumeRun,
+  resumeRunAsAway,
   setRunStage,
+  setRunStageAsAway,
   setRunVerification,
   submitOutput,
   waiveGate,
@@ -45,6 +48,7 @@ import {
   recordAwayApplyResult,
   recordAwayEvaluation,
   recordAwayEvaluationFailure,
+  recordDeterministicShipApproval,
   recordHypervisorQuarantine,
   type AwayDecisionRecord,
 } from './lib/away-mode.js'
@@ -76,7 +80,7 @@ import {
   resolveInside,
   writeTextAtomic,
 } from './lib/io.js'
-import type { AgentRecord, AwayModeAction, RunState } from './lib/types.js'
+import type { AgentRecord, RunState } from './lib/types.js'
 import type { InvocationKind } from './lib/requirements/types.js'
 import {
   delegationExecutionPath,
@@ -491,17 +495,7 @@ function awayEvaluatorPrompt(
   state: RunState,
   blocker: NonNullable<ReturnType<typeof awayModeTrigger>>,
 ): string {
-  const allowedActions = (
-    state.away_mode?.guardrails.allowed_actions ?? []
-  ).filter(
-    (action): action is AwayModeAction =>
-      action !== 'approve' ||
-      (state.current_stage !== 'ship' &&
-        !(
-          state.pending_action.type === 'operator_approval' &&
-          state.pending_action.stage === 'ship'
-        )),
-  )
+  const allowedActions = state.away_mode?.guardrails.allowed_actions ?? []
   const evidenceReferences = [
     resolveRunLayout(root, state.run_id).state.relative,
     path.relative(root, hypervisorEventsPath(root)).split(path.sep).join('/'),
@@ -544,21 +538,21 @@ function applyAwayDecision(
     case 'approve':
     case 'reject':
     case 'revise':
-      return decideRun(
+      return decideRunAsAway(
         root,
         state.run_id,
         selected.action,
         selected.note ?? selected.rationale,
       )
     case 'resume':
-      return resumeRun(
+      return resumeRunAsAway(
         root,
         state.run_id,
         selected.stage ?? state.current_stage,
         selected.note ?? selected.rationale,
       )
     case 'set-stage':
-      return setRunStage(
+      return setRunStageAsAway(
         root,
         state.run_id,
         requiredArgument(selected.stage, 'selected stage'),
@@ -577,6 +571,20 @@ function evaluateAwayState(
   state: RunState,
   blocker: NonNullable<ReturnType<typeof awayModeTrigger>>,
 ): AwayDecisionRecord {
+  if (
+    blocker.type === 'operator_approval' &&
+    blocker.stage === 'ship' &&
+    state.pending_action.type === 'operator_approval' &&
+    (state.pending_action.outcome ?? 'success') === 'success'
+  ) {
+    const evidenceReferences = [
+      resolveRunLayout(root, state.run_id).state.relative,
+      state.stage_history.at(-1)?.output_path,
+    ].filter((item): item is string => typeof item === 'string')
+
+    return recordDeterministicShipApproval(root, state, evidenceReferences)
+  }
+
   // The ledger append re-checks the limit under its lock. This pre-check only
   // skips a model evaluation whose record could never be persisted.
   const budget = state.away_mode?.guardrails.max_decisions_per_run ?? 0
@@ -728,68 +736,7 @@ function runHypervisorCycle(root: string): Record<string, unknown> {
     quarantinedRuns.add(agent.run_id)
   }
 
-  const decisions: Array<Record<string, unknown>> = []
-  const listedRuns = listRuns(root)
-
-  for (const listed of listedRuns) {
-    const runId = listed.run_id
-
-    if (typeof runId !== 'string') {
-      continue
-    }
-
-    if (quarantinedRuns.has(runId)) {
-      continue
-    }
-
-    const state = getRunState(root, runId)
-    const incidentAgent = tick.agents.find(
-      (agent) =>
-        agent.run_id === runId &&
-        (agent.health === 'stalled' || agent.health === 'dead'),
-    )
-    const blocker = awayModeTrigger(
-      state,
-      incidentAgent
-        ? {
-            health: incidentAgent.health as 'stalled' | 'dead',
-            summary: incidentAgent.health_evidence.join(' '),
-          }
-        : undefined,
-    )
-
-    if (!blocker) {
-      continue
-    }
-
-    let decision: AwayDecisionRecord | undefined
-
-    try {
-      decision = evaluateAwayState(root, state, blocker)
-
-      if (!decision.selected_action) {
-        decisions.push({ run_id: runId, decision })
-        continue
-      }
-
-      const next = applyAwayDecision(root, state, decision)
-      const applied = recordAwayApplyResult(root, decision, 'applied')
-
-      decisions.push({
-        run_id: runId,
-        decision: applied,
-        status: next.status,
-        current_stage: next.current_stage,
-      })
-    } catch (error) {
-      if (decision) {
-        recordAwayApplyResult(root, decision, 'failed', errorMessage(error))
-      }
-      decisions.push({ run_id: runId, error: errorMessage(error) })
-    }
-  }
-
-  return { tick, away_decisions: decisions }
+  return { tick, away_decisions: [] }
 }
 
 function runAgentPreSubmitValidators(

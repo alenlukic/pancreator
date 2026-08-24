@@ -7,11 +7,13 @@ import { Worker } from 'node:worker_threads'
 import {
   awayDecisionLedgerPath,
   awayModeTrigger,
+  countAwayDecisions,
   parseAwayOptions,
   readAwayDecisionLedger,
   recordAwayApplyResult,
   recordAwayEvaluation,
   recordAwayEvaluationFailure,
+  recordDeterministicShipApproval,
   recordHypervisorQuarantine,
 } from '../../src/lib/away-mode.js'
 import { createRun } from '../../src/lib/engine.js'
@@ -265,30 +267,107 @@ test('hypervisor quarantine appends a decision when away mode is disabled', () =
   assert.equal(readAwayDecisionLedger(root).length, 1)
 })
 
-test('away mode cannot approve a shipping checkpoint', () => {
+test('away mode records successful ship approval outside the decision budget', () => {
   const root = createFixture()
 
   enableAwayMode(root, { allowed_actions: ['approve'] })
   const state = blockedRun(root)
   state.current_stage = 'ship'
+  state.status = 'awaiting_operator'
   state.pending_action = {
     type: 'operator_approval',
     stage: 'ship',
     proposed_transition: 'complete',
   }
+  const record = recordDeterministicShipApproval(root, state, [
+    'runtime/logs/workflows/run/agent/state.json',
+  ])
+
+  assert.equal(record.result, 'accepted')
+  assert.equal(record.decision_kind, 'deterministic_ship_approval')
+  assert.equal(record.selected_action?.action, 'approve')
+  assert.equal(countAwayDecisions(root, state.run_id), 0)
+})
+
+function successfulShipGate(state: RunState): void {
+  state.current_stage = 'ship'
+  state.status = 'awaiting_operator'
+  state.pending_action = {
+    type: 'operator_approval',
+    stage: 'ship',
+    proposed_transition: 'complete',
+  }
+}
+
+test('deterministic ship approval requires enabled away mode', () => {
+  const root = createFixture()
+  const state = blockedRun(root)
+
+  successfulShipGate(state)
+  assert.throws(
+    () => recordDeterministicShipApproval(root, state, []),
+    /Away mode is disabled for this run/u,
+  )
+  assert.equal(readAwayDecisionLedger(root).length, 0)
+})
+
+test('deterministic ship approval requires a successful ship packet', () => {
+  const root = createFixture()
+
+  enableAwayMode(root, { allowed_actions: ['approve'] })
+  const state = blockedRun(root)
+
+  assert.throws(
+    () => recordDeterministicShipApproval(root, state, []),
+    /does not have a successful ship packet/u,
+  )
+
+  successfulShipGate(state)
+  state.pending_action = {
+    type: 'operator_approval',
+    stage: 'ship',
+    proposed_transition: 'complete',
+    outcome: 'failure',
+  }
+  assert.throws(
+    () => recordDeterministicShipApproval(root, state, []),
+    /does not have a successful ship packet/u,
+  )
+  assert.equal(readAwayDecisionLedger(root).length, 0)
+})
+
+test('deterministic ship approval requires approve inside guardrails', () => {
+  const root = createFixture()
+
+  enableAwayMode(root, { allowed_actions: ['resume'] })
+  const state = blockedRun(root)
+
+  successfulShipGate(state)
+  assert.throws(
+    () => recordDeterministicShipApproval(root, state, []),
+    /outside operator guardrails/u,
+  )
+  assert.equal(readAwayDecisionLedger(root).length, 0)
+})
+
+test('legacy accepted records remain budgeted as evaluated decisions', () => {
+  const root = createFixture()
+
+  enableAwayMode(root)
+  const state = blockedRun(root)
   const blocker = awayModeTrigger(state)
 
   assert.ok(blocker)
   const record = recordAwayEvaluation(root, state, blocker, {
-    ranked_options: [option(1, 'approve')],
+    ranked_options: [option(1, 'resume')],
   })
+  const legacy = { ...record } as Partial<typeof record>
 
-  assert.equal(record.result, 'rejected')
-  assert.equal(record.selected_action, null)
-  assert.match(
-    record.rejected_options[0]?.reason ?? '',
-    /cannot approve shipping/u,
-  )
+  delete legacy.decision_kind
+  writeFileSync(awayDecisionLedgerPath(root), `${JSON.stringify(legacy)}\n`)
+
+  assert.equal(countAwayDecisions(root, state.run_id), 1)
+  assert.equal(readAwayDecisionLedger(root)[0]?.decision_kind, undefined)
 })
 
 function blockedHistoryItem(stage: string): StageHistoryItem {
@@ -435,7 +514,7 @@ test('concurrent evaluations append one valid decision at the limit', async () =
   const successes = results.filter((result) => result.outcome === 'success')
   const errors = results.filter((result) => result.outcome === 'error')
 
-  assert.equal(successes.length, 1)
+  assert.equal(successes.length, 1, JSON.stringify(results))
   assert.equal(errors.length, 1)
   assert.ok(
     errors[0]?.code === 'AWAY_DECISION_LIMIT' ||

@@ -1,5 +1,24 @@
 # Changelog
 
+## [4.5.0] - 2026-08-24
+
+### Changed
+
+- Continue enabled away-mode runs after each safe pending action until a real blocker or a terminal state ([AGENTS.md](AGENTS.md), [ORCH-001](governance/policies/ORCH-001.json), [orchestrator persona](library/personas/orchestrator.md)).
+- Keep ordinary gate decisions with the supervisor and limit the hypervisor to agent health ([AWAY-001](governance/policies/AWAY-001.json), [hypervisor CLI test](tests/integration/hypervisor-cli.test.ts)).
+- Accept a successful ship packet through deterministic away approval without commit, push, merge, publication, or deployment ([SHIP-001](governance/policies/SHIP-001.json), [away-mode](src/lib/away-mode.ts)).
+- Record away authorship on applied away actions instead of operator authorship ([engine](src/lib/engine.ts)).
+
+### Added
+
+- Add `bin/run-built` so one root-scoped lock covers a build and its compiled-code consumer ([run-built](bin/run-built), [package.json](package.json)).
+- Add decision kinds that separate budgeted evaluator records from deterministic ship approval ([away-mode](src/lib/away-mode.ts), [autonomy-state validator](src/lib/validators/autonomy-state.ts)).
+
+### Fixed
+
+- Resume the supervisor loop after one applied away decision so an enabled run does not stall ([dev-workflow test](tests/integration/dev-workflow.test.ts)).
+- Reuse a same-root nested build-only call so the lock does not wait on its ancestor ([cli-help test](tests/integration/cli-help.test.ts)).
+
 ## [4.4.0] - 2026-08-24
 
 ### Changed
