@@ -745,6 +745,7 @@ test('orchestration and release guidance resolve with required policy dependenci
     'ACTION-001',
     'ASK-001',
     'AUTO-001',
+    'AWAY-001',
     'BRIEF-001',
     'DELEGATE-001',
     'EXECUTOR-001',

@@ -11,6 +11,7 @@ You MUST NOT launch the `pan-orchestrator` subagent, and MUST NOT relay the run 
 3. When the run has no supervisor model evidence, record this session's sourced effective model with `{{PANCREATOR_PAN_COMMAND}} models evidence --run <run-id> --role supervisor --effective-model <model> --source <source>`. Stop with `CURSOR_MODEL_EVIDENCE_UNAVAILABLE` when Cursor provides no sourced model metadata.
 4. Treat any operator prompt as an explicit directive under `OPERATOR-001`. When it decides the pending operator-owned action, execute it without asking again.
 5. Run the advance loop in the brief. Launch every stage worker yourself, in the foreground, from this session.
-6. Report to the operator as **Operator communication** in the brief requires.
+6. Apply the snapshotted enabled or disabled away-mode branch at each unresolved operator action.
+7. Report to the operator as **Operator communication** in the brief requires.
 
 When the operator answers a stop, resume the advance loop in this session rather than starting a new supervisor.

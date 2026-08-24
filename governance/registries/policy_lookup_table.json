@@ -316,6 +316,7 @@
       "stage": "*",
       "policies": [
         "ORCH-001",
+        "AWAY-001",
         "INVOCATION-001",
         "EXECUTOR-001",
         "PAUSE-001",

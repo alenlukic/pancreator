@@ -134,6 +134,7 @@ import type {
   OperatorGateWaiver,
   OperatorPauseContext,
   OperatorWorkspaceRatification,
+  RunActionActor,
   RunModelEvidence,
   RunState,
   SameReasonFailureTrackers,
@@ -3631,6 +3632,7 @@ function recordOperatorFeedback(
   toStage: string,
   decision: OperatorFeedbackItem['decision'],
   note: string,
+  source: RunActionActor = 'operator',
 ): void {
   const feedback = state.operator_feedback ?? []
   const index = feedback.length + 1
@@ -3638,47 +3640,68 @@ function recordOperatorFeedback(
   // Control records document operator decisions for workers and audit, so they
   // live beside the decision records rather than in the operator directory.
   const relativePath = resolveRunLayout(root, state.run_id).decision(
-    `operator-feedback-${index}.md`,
+    `${source}-feedback-${index}.md`,
   ).relative
   const heading =
-    decision === 'approve'
-      ? 'Operator directive attached to approval'
-      : decision === 'reject'
-        ? 'Operator rejection'
-        : decision === 'revise'
-          ? 'Operator revision directive'
-          : 'Operator remediation note'
-  const body = [
-    `# ${heading}: ${fromStage.title} (\`${fromStage.slug}\`)`,
-    '',
-    `**Run** \`${state.run_id}\` · **Source attempt** ${attempt} · ` +
-      `**${decision === 'approve' ? 'Directed stage' : 'Remediation stage'}** \`${toStage}\``,
-    '',
-    decision === 'approve' ? '## Operator directive' : '## Required changes',
-    '',
-    note.trim().length > 0
-      ? note.trim()
-      : 'The operator rejected this stage without written feedback. ' +
-        'Treat the prior output as unacceptable and re-derive the work.',
-    '',
-    decision === 'approve'
-      ? `The operator approved the '${fromStage.slug}' stage and attached ` +
-        'this directive for your stage. Apply it as operator-supplied ' +
-        'context; it adds no scope beyond your contract.'
-      : decision === 'revise'
-        ? 'This is a refinement directive, not a rejection. Keep everything the ' +
-          'operator did not ask you to change, apply the changes above, and ' +
-          'state in your summary what you changed and what you deliberately ' +
-          'left alone.'
-        : 'You MUST address this feedback before the run can reach the operator ' +
-          'gate again.',
-    '',
-  ].join('\n')
+    source === 'away'
+      ? 'Away-mode remediation directive'
+      : decision === 'approve'
+        ? 'Operator directive attached to approval'
+        : decision === 'reject'
+          ? 'Operator rejection'
+          : decision === 'revise'
+            ? 'Operator revision directive'
+            : 'Operator remediation note'
+  const body =
+    source === 'away'
+      ? [
+          `# ${heading}: ${fromStage.title} (\`${fromStage.slug}\`)`,
+          '',
+          `**Run** \`${state.run_id}\` · **Source attempt** ${attempt} · ` +
+            `**Remediation stage** \`${toStage}\``,
+          '',
+          '## Required changes',
+          '',
+          note.trim(),
+          '',
+          `Away mode selected '${decision}' within the run guardrails. ` +
+            'Treat this rationale as required remediation context.',
+          '',
+        ].join('\n')
+      : [
+          `# ${heading}: ${fromStage.title} (\`${fromStage.slug}\`)`,
+          '',
+          `**Run** \`${state.run_id}\` · **Source attempt** ${attempt} · ` +
+            `**${decision === 'approve' ? 'Directed stage' : 'Remediation stage'}** \`${toStage}\``,
+          '',
+          decision === 'approve'
+            ? '## Operator directive'
+            : '## Required changes',
+          '',
+          note.trim().length > 0
+            ? note.trim()
+            : 'The operator rejected this stage without written feedback. ' +
+              'Treat the prior output as unacceptable and re-derive the work.',
+          '',
+          decision === 'approve'
+            ? `The operator approved the '${fromStage.slug}' stage and attached ` +
+              'this directive for your stage. Apply it as operator-supplied ' +
+              'context; it adds no scope beyond your contract.'
+            : decision === 'revise'
+              ? 'This is a refinement directive, not a rejection. Keep everything the ' +
+                'operator did not ask you to change, apply the changes above, and ' +
+                'state in your summary what you changed and what you deliberately ' +
+                'left alone.'
+              : 'You MUST address this feedback before the run can reach the operator ' +
+                'gate again.',
+          '',
+        ].join('\n')
 
   writeTextAtomic(resolveInside(root, relativePath), `${body}\n`)
 
   const item: OperatorFeedbackItem = {
     decision,
+    source,
     from_stage: fromStage.slug,
     to_stage: toStage,
     attempt,
@@ -3691,12 +3714,13 @@ function recordOperatorFeedback(
   state.operator_feedback = feedback
 }
 
-export function decideRun(
+function decideRunWithActor(
   root: string,
   runId: string,
   decision: string,
   note = '',
   targetStage: string | null = null,
+  actor: RunActionActor,
 ): RunState {
   return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
@@ -3742,6 +3766,7 @@ export function decideRun(
       const routedStage = state.current_stage
 
       if (
+        actor === 'operator' &&
         note.trim().length > 0 &&
         routedStage !== null &&
         state.status === 'running'
@@ -3749,47 +3774,100 @@ export function decideRun(
         recordOperatorFeedback(root, state, stage, routedStage, 'approve', note)
       }
     } else if (decision === 'revise') {
-      // Re-run the same stage with the operator's directive as required input.
-      // The stage did not fail, so this must not consume its retry budget.
-      const revisions = state.operator_revisions ?? {}
-
-      revisions[stage.slug] = (revisions[stage.slug] ?? 0) + 1
-      state.operator_revisions = revisions
-
-      recordOperatorFeedback(root, state, stage, stage.slug, 'revise', note)
+      recordOperatorFeedback(
+        root,
+        state,
+        stage,
+        stage.slug,
+        'revise',
+        note,
+        actor,
+      )
       clearSameReasonTracker(state, stage.slug)
-      applyTransition(root, state, stage, 'failure', {
-        overrideTarget: stage.slug,
-        operatorDirected: true,
-      })
+
+      if (actor === 'operator') {
+        // Re-run the same stage with the operator's directive as required input.
+        // The stage did not fail, so this must not consume its retry budget.
+        const revisions = state.operator_revisions ?? {}
+
+        revisions[stage.slug] = (revisions[stage.slug] ?? 0) + 1
+        state.operator_revisions = revisions
+
+        applyTransition(root, state, stage, 'failure', {
+          overrideTarget: stage.slug,
+          operatorDirected: true,
+        })
+      } else {
+        applyTransition(root, state, stage, 'failure', {
+          overrideTarget: stage.slug,
+        })
+      }
     } else {
       let target = stage.transitions.failure
 
       if (targetStage) {
+        invariant(actor === 'operator', 'Away mode cannot override a route.', {
+          code: 'AWAY_ACTION_FORBIDDEN',
+        })
         stageBySlug(workflow, targetStage)
         target = targetStage
         resetAttemptsFrom(workflow, state, target)
       }
 
-      recordOperatorFeedback(root, state, stage, target, 'reject', note)
+      recordOperatorFeedback(root, state, stage, target, 'reject', note, actor)
       applyTransition(root, state, stage, 'failure', {
         overrideTarget: target,
-        operatorDirected: Boolean(targetStage),
+        operatorDirected: actor === 'operator' && Boolean(targetStage),
       })
     }
 
-    persistRun(root, state, 'operator_decision_recorded', {
-      stage: stage.slug,
-      decision,
-      note,
-      target_stage: decision === 'approve' ? null : state.current_stage,
-      ...(decision === 'revise'
-        ? { operator_revision: state.operator_revisions?.[stage.slug] }
-        : {}),
-    })
+    persistRun(
+      root,
+      state,
+      actor === 'operator'
+        ? 'operator_decision_recorded'
+        : 'away_decision_applied',
+      {
+        stage: stage.slug,
+        decision,
+        note,
+        actor,
+        target_stage: decision === 'approve' ? null : state.current_stage,
+        ...(decision === 'revise' && actor === 'operator'
+          ? { operator_revision: state.operator_revisions?.[stage.slug] }
+          : {}),
+      },
+    )
 
     return state
   })
+}
+
+export function decideRun(
+  root: string,
+  runId: string,
+  decision: string,
+  note = '',
+  targetStage: string | null = null,
+): RunState {
+  return decideRunWithActor(
+    root,
+    runId,
+    decision,
+    note,
+    targetStage,
+    'operator',
+  )
+}
+
+/** Apply an away-mode gate decision without recording operator authorship. */
+export function decideRunAsAway(
+  root: string,
+  runId: string,
+  decision: string,
+  note = '',
+): RunState {
+  return decideRunWithActor(root, runId, decision, note, null, 'away')
 }
 
 /**
@@ -3798,11 +3876,12 @@ export function decideRun(
  * process lifetime, so stopping it first is prudent. That operational risk does
  * not constrain the operator's authority to redirect the run.
  */
-export function setRunStage(
+function setRunStageWithActor(
   root: string,
   runId: string,
   stageSlug: string,
   note: string,
+  actor: RunActionActor,
 ): RunState {
   return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
@@ -3821,10 +3900,12 @@ export function setRunStage(
     const feedback = state.operator_feedback ?? []
     const index = feedback.length + 1
     const relativePath = resolveRunLayout(root, state.run_id).decision(
-      `operator-feedback-${index}.md`,
+      `${actor}-feedback-${index}.md`,
     ).relative
     const body = [
-      '# Operator stage repair',
+      actor === 'operator'
+        ? '# Operator stage repair'
+        : '# Away-mode stage repair',
       '',
       `**Run** \`${state.run_id}\` · **Previous state** \`${fromStage}\` · ` +
         `**Target stage** \`${stageSlug}\``,
@@ -3833,8 +3914,8 @@ export function setRunStage(
       '',
       note.trim(),
       '',
-      'This operator-directed repair bypassed normal workflow transitions. ' +
-        'You MUST treat the reason above as required input for this stage.',
+      `This ${actor}-directed repair bypassed normal workflow transitions. ` +
+        'Treat the reason above as required input for this stage.',
       '',
     ].join('\n')
 
@@ -3842,6 +3923,7 @@ export function setRunStage(
 
     feedback.push({
       decision: 'set-stage',
+      source: actor,
       from_stage: fromStage,
       to_stage: stageSlug,
       attempt: sourceAttempt,
@@ -3863,14 +3945,39 @@ export function setRunStage(
     state.transition_count = 0
     state.consecutive_failures = 0
 
-    persistRun(root, state, 'operator_stage_set', {
-      from_stage: fromStage,
-      to_stage: stageSlug,
-      note_path: relativePath,
-    })
+    persistRun(
+      root,
+      state,
+      actor === 'operator' ? 'operator_stage_set' : 'away_stage_set',
+      {
+        from_stage: fromStage,
+        to_stage: stageSlug,
+        note_path: relativePath,
+        actor,
+      },
+    )
 
     return state
   })
+}
+
+export function setRunStage(
+  root: string,
+  runId: string,
+  stageSlug: string,
+  note: string,
+): RunState {
+  return setRunStageWithActor(root, runId, stageSlug, note, 'operator')
+}
+
+/** Apply an away-mode stage repair without recording operator authorship. */
+export function setRunStageAsAway(
+  root: string,
+  runId: string,
+  stageSlug: string,
+  note: string,
+): RunState {
+  return setRunStageWithActor(root, runId, stageSlug, note, 'away')
 }
 
 function ratifyPausedWorkspaceChanges(
@@ -4114,11 +4221,12 @@ export function quarantineRunForAgent(
   })
 }
 
-export function resumeRun(
+function resumeRunWithActor(
   root: string,
   runId: string,
   stageSlug: string | null = null,
   note = '',
+  actor: RunActionActor,
 ): RunState {
   return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
@@ -4129,12 +4237,26 @@ export function resumeRun(
 
     const workflow = loadRunWorkflow(root, state)
     const savedPause = state.operator_pause
-    const ratification = savedPause
-      ? ratifyPausedWorkspaceChanges(root, state, savedPause, note)
-      : null
+    const currentWorkspace =
+      actor === 'away' && savedPause?.workspace_before
+        ? workspaceSnapshotForRun(root, state)
+        : null
+
+    invariant(
+      !currentWorkspace ||
+        currentWorkspace.fingerprint ===
+          savedPause?.workspace_before?.fingerprint,
+      'Away mode cannot ratify workspace changes made while the run was paused.',
+      { code: 'AWAY_WORKSPACE_RATIFICATION_REQUIRED' },
+    )
+
+    const ratification =
+      actor === 'operator' && savedPause
+        ? ratifyPausedWorkspaceChanges(root, state, savedPause, note)
+        : null
 
     if (savedPause && !stageSlug) {
-      if (note.trim().length > 0) {
+      if (actor === 'operator' && note.trim().length > 0) {
         invariant(
           savedPause.prior_pending_action.type === 'invoke_agent' &&
             state.current_invocation !== null,
@@ -4157,7 +4279,7 @@ export function resumeRun(
         )
       }
 
-      if (ratification || note.trim().length > 0) {
+      if (ratification || (actor === 'operator' && note.trim().length > 0)) {
         invalidatePausedInvocation(state)
       } else {
         state.status = savedPause.prior_status
@@ -4167,10 +4289,16 @@ export function resumeRun(
       state.operator_pause = null
       state.pause_reason = null
 
-      persistRun(root, state, 'run_resumed', {
-        restored_status: ratification ? 'running' : savedPause.prior_status,
-        workspace_ratification: ratification?.ratification_id ?? null,
-      })
+      persistRun(
+        root,
+        state,
+        actor === 'operator' ? 'run_resumed' : 'away_run_resumed',
+        {
+          restored_status: ratification ? 'running' : savedPause.prior_status,
+          workspace_ratification: ratification?.ratification_id ?? null,
+          actor,
+        },
+      )
 
       return state
     }
@@ -4188,7 +4316,7 @@ export function resumeRun(
     )
 
     if (note.trim().length > 0) {
-      recordOperatorFeedback(root, state, source, target, 'resume', note)
+      recordOperatorFeedback(root, state, source, target, 'resume', note, actor)
     }
 
     state.status = 'running'
@@ -4199,13 +4327,38 @@ export function resumeRun(
     state.operator_pause = null
     state.consecutive_failures = 0
 
-    persistRun(root, state, 'run_resumed', {
-      stage: target,
-      workspace_ratification: ratification?.ratification_id ?? null,
-    })
+    persistRun(
+      root,
+      state,
+      actor === 'operator' ? 'run_resumed' : 'away_run_resumed',
+      {
+        stage: target,
+        workspace_ratification: ratification?.ratification_id ?? null,
+        actor,
+      },
+    )
 
     return state
   })
+}
+
+export function resumeRun(
+  root: string,
+  runId: string,
+  stageSlug: string | null = null,
+  note = '',
+): RunState {
+  return resumeRunWithActor(root, runId, stageSlug, note, 'operator')
+}
+
+/** Resume a paused run without recording operator authorship. */
+export function resumeRunAsAway(
+  root: string,
+  runId: string,
+  stageSlug: string | null = null,
+  note = '',
+): RunState {
+  return resumeRunWithActor(root, runId, stageSlug, note, 'away')
 }
 
 export interface WaiveGateOptions {

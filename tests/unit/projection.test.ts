@@ -282,6 +282,24 @@ test('Cursor sync projects the meta-orchestrator start surface', () => {
   assert.doesNotMatch(projected, /operator's top-level agent/u)
 })
 
+test('workflow QA keeps the supervisor in the top-level session', () => {
+  const root = createFixture()
+
+  syncCursorProjection(root, { write: true })
+
+  const projected = readFileSync(
+    path.join(root, '.cursor', 'commands', 'pan-qa-workflow.md'),
+    'utf8',
+  )
+
+  assert.match(projected, /Adopt both persona briefs in this session/u)
+  assert.match(projected, /Continue each supervisor-owned action/u)
+  assert.doesNotMatch(
+    projected,
+    /Invoke the `pan-harness-workflow-qa` subagent/u,
+  )
+})
+
 test('standalone persona commands expose the shared worktree option', () => {
   const root = createFixture()
 

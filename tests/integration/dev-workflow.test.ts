@@ -14,14 +14,25 @@ import {
   assessStage,
   createRun,
   decideRun,
+  decideRunAsAway,
   getRunState,
   pauseRun,
   prepareInvocation,
   resumeRun,
+  resumeRunAsAway,
   setRunStage,
+  setRunStageAsAway,
   submitOutput,
   waiveGate,
 } from '../../src/lib/engine.js'
+import {
+  awayModeTrigger,
+  countAwayDecisions,
+  readAwayDecisionLedger,
+  recordAwayApplyResult,
+  recordAwayEvaluation,
+  recordDeterministicShipApproval,
+} from '../../src/lib/away-mode.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { nextSemanticVersion } from '../../src/lib/versioning.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
@@ -199,6 +210,279 @@ test('full dev workflow persists gates and reaches operator-approved success', (
     priorGateResult?.explanation ?? '',
     /do not invalidate the reviewed implementation fingerprint/u,
   )
+})
+
+test('enabled away mode continues after one decision and completes ship', () => {
+  const root = createFixture()
+  const configPath = path.join(root, 'config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  writeFileSync(
+    configPath,
+    `${JSON.stringify(
+      {
+        ...config,
+        away_mode: {
+          enabled: true,
+          guardrails: {
+            allowed_actions: ['approve'],
+            max_decisions_per_run: 1,
+          },
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  )
+
+  const workflow = loadWorkflow(root, 'dev')
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Away continuation fixture',
+  })
+  const runId = state.run_id
+
+  for (const stageSlug of [
+    'intake',
+    'plan',
+    'implement',
+    'review',
+    'test',
+    'ship',
+  ]) {
+    const invocation = prepareInvocation(root, runId).invocation
+
+    assert.ok(invocation)
+    const stage = stageBySlug(workflow, stageSlug)
+    const output = makeOutput(root, invocation, stage)
+
+    writeJson(path.join(root, invocation.output.path), output)
+    writeCanonicalDelegation(root, invocation)
+
+    const submitted = submitOutput(root, runId, invocation.output.path)
+
+    assert.equal(submitted.record.outcome, 'success')
+
+    if (stageSlug === 'intake') {
+      const blocker = awayModeTrigger(submitted.state)
+
+      assert.ok(blocker)
+      const decision = recordAwayEvaluation(root, submitted.state, blocker, {
+        ranked_options: [
+          {
+            rank: 1,
+            action: 'approve',
+            feasible: true,
+            rationale: 'Approve the ratified intake.',
+            evidence: [invocation.output.path],
+            rollback_plan: {
+              steps: ['Route a later run to intake.'],
+              verification: 'Confirm the later run starts at intake.',
+            },
+          },
+        ],
+      })
+      const next = decideRunAsAway(
+        root,
+        runId,
+        'approve',
+        decision.selected_action?.rationale ?? '',
+      )
+
+      recordAwayApplyResult(root, decision, 'applied')
+      assert.equal(next.current_stage, 'plan')
+      assert.equal(next.pending_action.type, 'prepare_invocation')
+    } else if (stageSlug === 'plan') {
+      assert.equal(submitted.state.pending_action.type, 'supervisor_assessment')
+
+      if (submitted.state.pending_action.type !== 'supervisor_assessment') {
+        throw new Error('Expected supervisor assessment action')
+      }
+
+      const assessmentPath = submitted.state.pending_action.output_path
+
+      writeJson(path.join(root, assessmentPath), {
+        schema_version: 1,
+        assessment_id: randomUUID(),
+        invocation_id: invocation.invocation_id,
+        verdict: 'pass',
+        summary: 'Plan is implementation-ready.',
+        criteria: stage.criteria.map((criterion) => ({
+          id: criterion.id,
+          result: 'pass',
+          evidence: [invocation.output.path],
+          explanation: 'Fixture evidence',
+        })),
+      })
+      assessStage(root, runId, assessmentPath)
+    } else if (stageSlug === 'ship') {
+      const decision = recordDeterministicShipApproval(root, submitted.state, [
+        resolveRunLayout(root, runId).state.relative,
+        invocation.output.path,
+      ])
+      const next = decideRunAsAway(
+        root,
+        runId,
+        'approve',
+        decision.selected_action?.rationale ?? '',
+      )
+
+      recordAwayApplyResult(root, decision, 'applied')
+      assert.equal(next.status, 'succeeded')
+      assert.equal(next.pending_action.type, 'none')
+    }
+  }
+
+  const ledger = readAwayDecisionLedger(root)
+
+  assert.equal(countAwayDecisions(root, runId), 1)
+  assert.deepEqual(
+    ledger.map((record) => record.decision_kind),
+    [
+      'evaluated',
+      'evaluated',
+      'deterministic_ship_approval',
+      'deterministic_ship_approval',
+    ],
+  )
+
+  const events = readFileSync(
+    resolveRunLayout(root, runId).events.absolute,
+    'utf8',
+  )
+
+  assert.doesNotMatch(events, /operator_decision_recorded/u)
+  assert.match(events, /away_decision_applied/u)
+})
+
+test('away resume cannot ratify workspace changes made during a pause', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Away ratification fixture',
+  })
+  const runId = state.run_id
+
+  pauseRun(root, runId, 'Pause before an external edit.')
+  writeFileSync(
+    path.join(root, 'src', 'base.ts'),
+    'export const base = true\nexport const externalEdit = true\n',
+  )
+
+  assert.throws(
+    () => resumeRunAsAway(root, runId, 'intake', 'Resume past the edit.'),
+    /cannot ratify workspace changes/u,
+  )
+  assert.equal(getRunState(root, runId).status, 'paused')
+
+  const resumed = resumeRun(root, runId, 'intake', 'Authorized operator fix.')
+
+  assert.equal(resumed.status, 'running')
+  assert.equal(resumed.operator_workspace_ratifications?.length, 1)
+})
+
+test('away resume restores an unchanged paused run without ratification', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Away resume fixture',
+  })
+  const runId = state.run_id
+
+  pauseRun(root, runId, 'Pause without workspace edits.')
+
+  const resumed = resumeRunAsAway(root, runId)
+
+  assert.equal(resumed.status, 'running')
+  assert.equal(resumed.pending_action.type, 'prepare_invocation')
+  assert.equal(resumed.operator_pause, null)
+  assert.equal(resumed.operator_workspace_ratifications, undefined)
+
+  const events = readFileSync(
+    resolveRunLayout(root, runId).events.absolute,
+    'utf8',
+  )
+
+  assert.match(events, /away_run_resumed/u)
+})
+
+test('away stage repair records away authorship', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Away stage repair fixture',
+  })
+  const runId = state.run_id
+  const repaired = setRunStageAsAway(
+    root,
+    runId,
+    'implement',
+    'Skip ahead for a bounded repair.',
+  )
+
+  assert.equal(repaired.current_stage, 'implement')
+  assert.equal(repaired.pending_action.type, 'prepare_invocation')
+
+  const feedback = repaired.operator_feedback?.at(-1)
+
+  assert.equal(feedback?.decision, 'set-stage')
+  assert.equal(feedback?.source, 'away')
+  assert.match(feedback?.path ?? '', /away-feedback-1\.md$/u)
+
+  const events = readFileSync(
+    resolveRunLayout(root, runId).events.absolute,
+    'utf8',
+  )
+
+  assert.match(events, /away_stage_set/u)
+  assert.doesNotMatch(events, /operator_stage_set/u)
+})
+
+test('away revise re-runs the stage without an operator revision allowance', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Away revise fixture',
+  })
+  const runId = state.run_id
+  const invocation = prepareInvocation(root, runId).invocation
+
+  assert.ok(invocation)
+  writeJson(
+    path.join(root, invocation.output.path),
+    makeOutput(root, invocation, stageBySlug(workflow, 'intake')),
+  )
+  writeCanonicalDelegation(root, invocation)
+
+  const submitted = submitOutput(root, runId, invocation.output.path)
+
+  assert.equal(submitted.state.pending_action.type, 'operator_approval')
+
+  const revised = decideRunAsAway(
+    root,
+    runId,
+    'revise',
+    'Narrow the intake scope.',
+  )
+
+  assert.equal(revised.current_stage, 'intake')
+  assert.equal(revised.pending_action.type, 'prepare_invocation')
+  assert.equal(revised.operator_revisions?.intake, undefined)
+
+  const feedback = revised.operator_feedback?.at(-1)
+
+  assert.equal(feedback?.decision, 'revise')
+  assert.equal(feedback?.source, 'away')
+  assert.match(feedback?.path ?? '', /away-feedback-1\.md$/u)
 })
 
 test('ship cannot succeed without its declared PR artifact', () => {
