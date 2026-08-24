@@ -53,7 +53,7 @@ The meta-orchestrator performs supervisor mechanics for every child run. It MUST
 
 ## Worker delivery
 
-`INVOCATION-001` governs every worker call.
+The delivery rules in `BESTOFN-001`, on your governance card, govern every worker call.
 
 1. Confirm the invocation validation artifact reports `pass`.
 2. Read the card's **Supervisor delivery procedure** and load the complete body it names.

@@ -34,6 +34,8 @@ A workflow worker follows its named persona and invocation. It writes only the d
 
 A standalone mode follows the card from `./bin/pan governance card --mode <mode>`. It holds no workflow run, stage contract, or gate.
 
+An unbound agent handles an ad-hoc operator request outside every run and named mode. Before substantive repository work, it MUST take its governance from `./bin/pan governance card --mode unbound`.
+
 Best-of-N uses the projected `pan-meta-orchestrator` agent. That agent directly supervises each child run and delegates only run-scoped workers.
 
 Ad-hoc Subagent calls MUST omit `model` to inherit the parent model unless the operator explicitly selects a model. Named personas use projected mappings.
@@ -77,6 +79,12 @@ Do not import target application code into Pancreator source. Do not make target
 Installation MUST NOT change a target-tracked file or the target `.gitignore`. The installer manages clone-local exclusions in `.git/info/exclude`.
 
 Use `isTargetInstallation` for behavior shared by embedded and detached modes. Use `isEmbeddedInstallation` only for location-specific behavior.
+
+Validate embedded installation against an external target repository with `./bin/install --target <path>`.
+
+Read the target repository's `AGENTS.md` before you change that target.
+
+Do not stage, commit, or otherwise track target-repository contents from the Pancreator source checkout.
 
 ## Release boundary
 

@@ -137,6 +137,24 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST NOT commit, push, merge, publish, deploy, delete a branch, or remove a worktree unless the operator explicitly directs that action.',
     ],
   },
+  unbound: {
+    kind: 'standalone',
+    persona: 'unbound',
+    workflow: 'standalone',
+    stage: 'unbound',
+    title: 'Unbound operator request',
+    summary:
+      'Ad-hoc operator-directed work outside every run and named mode. The ' +
+      'card attaches the universal policies that otherwise arrive only on an ' +
+      'invocation or a mode card. An unbound agent then works under the same ' +
+      'secret, prompt-trust, primer, and delegation rules.',
+    boundaries: [
+      'You MUST treat the operator as the authority for scope, sequencing, and completion.',
+      'You MUST NOT create, advance, or write state for a workflow run.',
+      PROTECTED_PATH_RULE,
+      'You MUST NOT commit, push, merge, publish, deploy, or perform destructive source-control actions unless the operator explicitly directs that action.',
+    ],
+  },
   decomposition: {
     kind: 'decomposition',
     persona: 'decomposer',

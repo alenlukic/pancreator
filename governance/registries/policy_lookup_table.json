@@ -631,7 +631,13 @@
       "persona": "coder",
       "workflow": "standalone",
       "stage": "shepherd",
-      "policies": ["SHEPHERD-001"]
+      "policies": ["SHEPHERD-001", "DELEGATE-001"]
+    },
+    {
+      "persona": "unbound",
+      "workflow": "standalone",
+      "stage": "unbound",
+      "policies": ["DELEGATE-001"]
     },
     {
       "persona": "coder",
