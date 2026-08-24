@@ -37,6 +37,35 @@ function prepareValidationFixture(root: string): void {
   writeFileSync(path.join(root, 'src', 'cli.ts'), 'export {}\n')
 }
 
+test('repository validation rejects a target policy without its binding layer', () => {
+  const root = createFixture()
+
+  prepareValidationFixture(root)
+  writeFileSync(
+    path.join(root, 'governance', 'policies', 'TARGET-001.json'),
+    `${JSON.stringify(
+      {
+        id: 'TARGET-001',
+        extension_id: 'target',
+        title: 'Target policy',
+        severity: 'hard',
+        summary: 'Agents MUST apply the target policy.',
+        instructions: ['Agents MUST preserve target behavior.'],
+      },
+      null,
+      2,
+    )}\n`,
+  )
+
+  const result = validateRepository(root)
+
+  assert.equal(result.ok, false)
+  assert.match(
+    result.errors.join('\n'),
+    /TARGET-001 declares extension target, but its binding layer is missing/u,
+  )
+})
+
 test('repository validation requires a policy to deliver each engineering handbook', () => {
   const root = createFixture()
   prepareValidationFixture(root)

@@ -56,6 +56,51 @@ test('artifact validators resolve only when workflow artifacts are requested', (
   )
 })
 
+test('PR validators bind workflow artifact 1 and standalone output', () => {
+  const root = createFixture()
+  const workflow = resolveRequirements(root, {
+    persona: 'release-steward',
+    workflow: 'dev',
+    stage: 'ship',
+    invocation_kind: 'workflow',
+    operator_artifacts: 'requested',
+    invocation: {
+      output_path: 'runtime/logs/workflows/x/outputs/ship.json',
+      artifact_paths: [
+        'runtime/logs/workflows/x/operator/ship.html',
+        'runtime/logs/workflows/x/operator/pr-description.md',
+      ],
+    },
+  })
+  const workflowRequirement = workflow.validation_requirements.find(
+    (item) => item.registry_id === 'PR-DESCRIPTION-VALIDATE-001',
+  )
+
+  assert.equal(
+    workflowRequirement?.resolved_target,
+    'runtime/logs/workflows/x/operator/pr-description.md',
+  )
+
+  const standalone = resolveRequirements(root, {
+    persona: 'release-steward',
+    workflow: 'standalone',
+    stage: 'write-pr',
+    invocation_kind: 'standalone',
+    invocation: {
+      output_path: 'runtime/pr-descriptions/branch.md',
+      artifact_paths: ['runtime/pr-descriptions/branch.md'],
+    },
+  })
+  const standaloneRequirement = standalone.validation_requirements.find(
+    (item) => item.registry_id === 'PR-DESCRIPTION-VALIDATE-001',
+  )
+
+  assert.equal(
+    standaloneRequirement?.resolved_target,
+    'runtime/pr-descriptions/branch.md',
+  )
+})
+
 test('runRequirement fails closed on missing target', () => {
   const root = createFixture()
   const manifest = resolveRequirements(root, {

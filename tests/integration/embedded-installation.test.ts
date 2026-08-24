@@ -1911,6 +1911,36 @@ test('embedded installer refresh supersedes local payload fixes and preserves ex
       'policy_lookup.d',
       'target.json',
     )
+    const legacyPolicyRows = path.join(
+      project,
+      '.pancreator',
+      'governance',
+      'registries',
+      'rowspace_policy_rows.json',
+    )
+    const migratedPolicyExtension = path.join(
+      project,
+      '.pancreator',
+      'governance',
+      'registries',
+      'policy_lookup.d',
+      'rowspace.json',
+    )
+    const targetPolicy = path.join(
+      project,
+      '.pancreator',
+      'governance',
+      'policies',
+      'ROWSPACE-001.json',
+    )
+    const lookupTable = path.join(
+      project,
+      '.pancreator',
+      'governance',
+      'registries',
+      'policy_lookup_table.json',
+    )
+    const pristineLookup = readFileSync(lookupTable, 'utf8')
 
     writeFileSync(owned, 'locally patched\n')
     writeFileSync(extension, 'target extension\n')
@@ -1918,6 +1948,14 @@ test('embedded installer refresh supersedes local payload fixes and preserves ex
     writeFileSync(
       policyExtension,
       '{"schema_version":1,"rows":[{"persona":"tech-lead","workflow":"dev","stage":"plan","policies":["TARGET-001"]}]}\n',
+    )
+    writeFileSync(
+      targetPolicy,
+      '{"id":"ROWSPACE-001","extension_id":"rowspace","title":"Rowspace","severity":"hard","summary":"Agents MUST obey Rowspace.","instructions":["Agents MUST obey Rowspace."]}\n',
+    )
+    writeFileSync(
+      legacyPolicyRows,
+      '{"rows":[{"persona":"release-steward","workflow":"dev","stage":"ship","policies":["ROWSPACE-001"]}]}\n',
     )
 
     const refresh = runInstaller(project, ['--yes'])
@@ -1935,6 +1973,24 @@ test('embedded installer refresh supersedes local payload fixes and preserves ex
       /preserved {2}governance\/registries\/policy_lookup\.d\/target\.json/u,
     )
     assert.match(readFileSync(policyExtension, 'utf8'), /TARGET-001/u)
+    assert.equal(readFileSync(lookupTable, 'utf8'), pristineLookup)
+    assert.equal(existsSync(legacyPolicyRows), true)
+    assert.deepEqual(
+      JSON.parse(readFileSync(migratedPolicyExtension, 'utf8')),
+      {
+        schema_version: 1,
+        extension_id: 'rowspace',
+        policies: ['ROWSPACE-001'],
+        rows: [
+          {
+            persona: 'release-steward',
+            workflow: 'dev',
+            stage: 'ship',
+            policies: ['ROWSPACE-001'],
+          },
+        ],
+      },
+    )
 
     const backupRoot = path.join(project, '.pancreator', 'backups', 'payload')
     const stamps = readdirSync(backupRoot)
@@ -1956,6 +2012,9 @@ test('embedded installer refresh supersedes local payload fixes and preserves ex
     assert.doesNotMatch(second.stdout, /superseded {2}/u)
     assert.equal(readFileSync(extension, 'utf8'), 'target extension\n')
     assert.match(readFileSync(policyExtension, 'utf8'), /TARGET-001/u)
+    assert.equal(readFileSync(lookupTable, 'utf8'), pristineLookup)
+    assert.equal(existsSync(legacyPolicyRows), true)
+    assert.match(readFileSync(migratedPolicyExtension, 'utf8'), /ROWSPACE-001/u)
   } finally {
     rmSync(project, { recursive: true, force: true })
   }

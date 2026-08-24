@@ -73,6 +73,22 @@ test('full dev workflow persists gates and reaches operator-approved success', (
     assert.equal(invocation.stage.model_config, modelConfig)
     assert.ok(invocation.stage.model.length > 0)
 
+    if (stageSlug === 'ship') {
+      assert.equal(invocation.inputs.pr_description?.mode, 'fallback')
+      assert.equal(invocation.output.artifacts?.length, 2)
+      assert.match(
+        invocation.output.artifacts?.[1]?.path ?? '',
+        /operator\/pr-description\.md$/u,
+      )
+      assert.equal(
+        invocation.requirements?.validation_requirements.find(
+          (requirement) =>
+            requirement.registry_id === 'PR-DESCRIPTION-VALIDATE-001',
+        )?.resolved_target,
+        invocation.output.artifacts?.[1]?.path,
+      )
+    }
+
     const invocationValidationPath = resolveRunLayout(root, runId).validation(
       `${invocation.invocation_id}.invocation-validation.json`,
     ).absolute
@@ -182,6 +198,73 @@ test('full dev workflow persists gates and reaches operator-approved success', (
   assert.match(
     priorGateResult?.explanation ?? '',
     /do not invalidate the reviewed implementation fingerprint/u,
+  )
+})
+
+test('ship cannot succeed without its declared PR artifact', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Missing PR artifact',
+    operatorArtifacts: true,
+  })
+
+  setRunStage(root, state.run_id, 'ship', 'Exercise the ship validator.')
+  const invocation = prepareInvocation(root, state.run_id).invocation
+
+  assert.ok(invocation)
+  const stage = stageBySlug(workflow, 'ship')
+  const output = makeOutput(root, invocation, stage)
+  const prArtifact = invocation.output.artifacts?.[1]
+
+  assert.ok(prArtifact)
+  rmSync(path.join(root, prArtifact.path))
+  writeJson(path.join(root, invocation.output.path), output)
+  writeCanonicalDelegation(root, invocation)
+
+  const submitted = submitOutput(root, state.run_id, invocation.output.path)
+
+  assert.equal(submitted.record.outcome, 'blocked')
+  assert.match(
+    submitted.record.evaluation.validation_errors.join('\n'),
+    /artifact does not exist: .*operator\/pr-description\.md/u,
+  )
+})
+
+test('ship cannot succeed when its PR artifact violates resolved authority', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Invalid PR artifact',
+    operatorArtifacts: true,
+  })
+
+  setRunStage(root, state.run_id, 'ship', 'Exercise the ship validator.')
+  const invocation = prepareInvocation(root, state.run_id).invocation
+
+  assert.ok(invocation)
+  const stage = stageBySlug(workflow, 'ship')
+  const output = makeOutput(root, invocation, stage)
+  const prArtifact = invocation.output.artifacts?.[1]
+
+  assert.ok(prArtifact)
+  writeFileSync(
+    path.join(root, prArtifact.path),
+    'A body without a conventional title or required sections.\n',
+  )
+  writeJson(path.join(root, invocation.output.path), output)
+  writeCanonicalDelegation(root, invocation)
+
+  const submitted = submitOutput(root, state.run_id, invocation.output.path)
+
+  assert.equal(submitted.record.outcome, 'blocked')
+  assert.match(
+    submitted.state.stage_history.at(-1)?.validation_errors.join('\n') ?? '',
+    /harness validator PR-DESCRIPTION-VALIDATE-001 failed/u,
   )
 })
 

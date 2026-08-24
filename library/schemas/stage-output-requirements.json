@@ -112,6 +112,10 @@
         {
           "registry_id": "RELEASE-VALIDATE-001",
           "enforcement": "blocks"
+        },
+        {
+          "registry_id": "PR-DESCRIPTION-VALIDATE-001",
+          "enforcement": "blocks"
         }
       ],
       "fields": [

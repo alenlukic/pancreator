@@ -36,6 +36,8 @@ import { claudeCodeVersionPreflight } from './lib/executors/claude-code.js'
 import { browserReadiness } from './lib/browser-readiness.js'
 import { errorMessage, PanError } from './lib/errors.js'
 import { configuredWorkspaceRoot, panCommand } from './lib/project-config.js'
+import { resolvePolicies } from './lib/policies.js'
+import { resolvePrDescriptionContext } from './lib/pr-description.js'
 import {
   awayModeTrigger,
   countAwayDecisions,
@@ -157,7 +159,8 @@ const HELP_BODY = `Usage:
   pan validate [--json]
   pan doctor [--worktree <name>] [--json]
   pan requirements resolve --persona <p> --workflow <w> --stage <s> [--kind <kind>] [--output-path <path>] [--json]
-  pan requirements run --persona <p> --workflow <w> --stage <s> --kind <kind> --registry <id> --target <path> [--json]
+  pan requirements run --persona <p> --workflow <w> --stage <s> --kind <kind> --registry <id> --target <path> [--worktree <name>] [--json]
+  pan pr-description context [--worktree <name>] [--json]
   pan output scaffold <run-id> --invocation <path> --output <path> [--force]
   pan output validate <run-id> --file <path> [--json]
   pan assessment scaffold <run-id> --invocation <path> --output <path> [--force]
@@ -368,6 +371,7 @@ const INVOCATION_KINDS = new Set<InvocationKind>([
   'repair',
   'decomposition',
   'documentation',
+  'standalone',
 ])
 
 function invocationKindOption(
@@ -1859,6 +1863,34 @@ async function main(): Promise<void> {
         },
       )
     }
+    case 'pr-description': {
+      const sub = args[0]
+
+      if (sub === 'context') {
+        const worktreeWorkspace = sharedWorktreeWorkspace(root, args)
+        const workspaceRoot = path.resolve(
+          root,
+          worktreeWorkspace?.path ?? configuredWorkspaceRoot(root),
+        )
+        const policies = resolvePolicies(root, {
+          persona: 'release-steward',
+          workflow: 'standalone',
+          stage: 'write-pr',
+          operator_artifacts: 'requested',
+        })
+
+        print(
+          resolvePrDescriptionContext(workspaceRoot, policies),
+          hasFlag(args, '--json'),
+        )
+        return
+      }
+
+      throw new PanError(
+        `Unknown pr-description subcommand: ${sub ?? '(missing)'}`,
+        { code: 'UNKNOWN_COMMAND' },
+      )
+    }
     case 'requirements': {
       const sub = args[0]
 
@@ -1908,6 +1940,31 @@ async function main(): Promise<void> {
           option(args, '--target'),
           '--target',
         )
+        let validatorInvocation: Record<string, unknown> | undefined
+
+        if (registryId === 'PR-DESCRIPTION-VALIDATE-001') {
+          const worktreeWorkspace = sharedWorktreeWorkspace(root, args)
+          const workspaceRoot = path.resolve(
+            root,
+            worktreeWorkspace?.path ?? configuredWorkspaceRoot(root),
+          )
+          const policies = resolvePolicies(root, {
+            persona,
+            workflow,
+            stage,
+            operator_artifacts: 'requested',
+          })
+
+          validatorInvocation = {
+            inputs: {
+              pr_description: resolvePrDescriptionContext(
+                workspaceRoot,
+                policies,
+              ),
+            },
+          }
+        }
+
         const manifest = resolveRequirements(root, {
           persona,
           workflow,
@@ -1966,6 +2023,7 @@ async function main(): Promise<void> {
           requirement: selected[0],
           targetPath,
           executor: 'agent',
+          ...(validatorInvocation ? { invocation: validatorInvocation } : {}),
           catalog,
           persist: false,
         })

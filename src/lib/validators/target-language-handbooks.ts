@@ -14,6 +14,9 @@ const CODE_PERSONAS = [
   'spotfixer',
   'tech-lead',
 ]
+const LANGUAGE_POLICIES: Record<string, string[]> = {
+  python: ['PY-001'],
+}
 
 function issue(code: string, message: string): HandlerResult['issues'][number] {
   return { code, message }
@@ -46,6 +49,18 @@ function generatedLanguageRows(value: unknown): Array<Record<string, unknown>> {
     (row): row is Record<string, unknown> =>
       isRecord(row) && row.generated_by === GENERATED_BY,
   )
+}
+
+function expectedLanguagePolicies(languages: string[]): string[] {
+  const policies = new Set(['LANG-001'])
+
+  for (const language of languages) {
+    for (const policy of LANGUAGE_POLICIES[language] ?? []) {
+      policies.add(policy)
+    }
+  }
+
+  return [...policies].sort()
 }
 
 function validateEmptyBundle(
@@ -202,12 +217,16 @@ export function validateTargetLanguageHandbooks(
     ),
   )
   const rows = generatedLanguageRows(lookup)
+  const expectedPolicies = expectedLanguagePolicies(languages)
   const personas = rows
     .filter(
       (row) =>
         Array.isArray(row.policies) &&
-        row.policies.length === 1 &&
-        row.policies[0] === 'LANG-001' &&
+        row.policies.length === expectedPolicies.length &&
+        row.policies
+          .filter((policy): policy is string => typeof policy === 'string')
+          .sort()
+          .join('\n') === expectedPolicies.join('\n') &&
         typeof row.persona === 'string',
     )
     .map((row) => row.persona)
@@ -217,7 +236,7 @@ export function validateTargetLanguageHandbooks(
     issues.push(
       issue(
         'language.lookup_rows',
-        `Generated LANG-001 rows must exactly cover ${CODE_PERSONAS.join(', ')}.`,
+        `Generated language rows must exactly cover ${CODE_PERSONAS.join(', ')} with policies ${expectedPolicies.join(', ')}.`,
       ),
     )
   }

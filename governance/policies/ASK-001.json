@@ -4,6 +4,13 @@
   "severity": "hard",
   "summary": "Cursor-executor agents MUST use `cursor/ask_question` for operator input, and MUST ask in chat with the gap flagged when it is unavailable.",
   "instructions": [
+    "Before an agent reports a needed secret as missing, it MUST check the repository-local `.env` file when that file exists.",
+    "An agent MUST use a secret only for its authorized operation.",
+    "An agent MUST NOT print, quote, persist, or expose a secret value.",
+    "When `config.json` names an unavailable Cursor model, an agent MUST check `.env` for `CURSOR_API_KEY` before operator escalation.",
+    "When `CURSOR_API_KEY` exists, the agent MUST use `Cursor.models.list()` to refresh `governance/registries/cursor_model_catalog.json`.",
+    "After the catalog refresh, the agent MUST rerun model validation.",
+    "The agent MUST ask the operator only when the recovery flow remains blocked.",
     "A Cursor-executor agent MUST use `cursor/ask_question` when it needs operator clarification or an operator decision.",
     "When `cursor/ask_question` is unavailable, the agent MUST ask the question in its normal response channel.",
     "The agent MUST state in that message that `cursor/ask_question` was unavailable.",
