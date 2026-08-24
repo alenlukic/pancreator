@@ -1,10 +1,9 @@
 import { createHash, randomUUID } from 'node:crypto'
 import {
   appendFileSync,
-  closeSync,
   existsSync,
+  linkSync,
   mkdirSync,
-  openSync,
   readFileSync,
   realpathSync,
   renameSync,
@@ -281,50 +280,56 @@ export function clearStaleOperationMutex(mutexPath: string): boolean {
 export function withOperationMutex<T>(mutexPath: string, callback: () => T): T {
   ensureDir(path.dirname(mutexPath))
 
-  let descriptor: number | undefined
+  const candidatePath = `${mutexPath}.${process.pid}.${randomUUID()}.candidate`
+  let acquired = false
 
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      descriptor = openSync(mutexPath, 'wx')
-      writeFileSync(descriptor, `${process.pid}\n`, 'utf8')
-      break
-    } catch (error) {
-      if (attempt === 0 && clearStaleOperationMutex(mutexPath)) {
-        continue
-      }
+  writeFileSync(candidatePath, `${process.pid}\n`, {
+    encoding: 'utf8',
+    flag: 'wx',
+  })
 
-      let owner = Number.NaN
-
+  try {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
-        owner = Number(readFileSync(mutexPath, 'utf8').trim())
-      } catch {
-        // Preserve NaN in diagnostics for an unreadable live mutex.
-      }
+        // A hard link publishes the complete owner record atomically. Another
+        // thread can never observe the empty file window from open-then-write.
+        linkSync(candidatePath, mutexPath)
+        acquired = true
+        break
+      } catch (error) {
+        if (attempt === 0 && clearStaleOperationMutex(mutexPath)) {
+          continue
+        }
 
-      throw new PanError(
-        `Another Pancreator command is updating this run: ${mutexPath}`,
-        {
-          code: 'RUN_OPERATION_IN_PROGRESS',
-          details: { owner_pid: owner, cause: errorMessage(error) },
-        },
-      )
+        let owner = Number.NaN
+
+        try {
+          owner = Number(readFileSync(mutexPath, 'utf8').trim())
+        } catch {
+          // Preserve NaN in diagnostics for an unreadable live mutex.
+        }
+
+        throw new PanError(
+          `Another Pancreator command is updating this run: ${mutexPath}`,
+          {
+            code: 'RUN_OPERATION_IN_PROGRESS',
+            details: { owner_pid: owner, cause: errorMessage(error) },
+          },
+        )
+      }
     }
+  } finally {
+    rmSync(candidatePath, { force: true })
   }
 
-  invariant(
-    descriptor !== undefined,
-    `Failed to serialize run operation: ${mutexPath}`,
-    { code: 'RUN_OPERATION_SERIALIZATION_FAILED' },
-  )
+  invariant(acquired, `Failed to serialize run operation: ${mutexPath}`, {
+    code: 'RUN_OPERATION_SERIALIZATION_FAILED',
+  })
 
   try {
     return callback()
   } finally {
-    try {
-      closeSync(descriptor)
-    } finally {
-      rmSync(mutexPath, { force: true })
-    }
+    rmSync(mutexPath, { force: true })
   }
 }
 

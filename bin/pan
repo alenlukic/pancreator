@@ -4,5 +4,4 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-npm run build --silent
-exec node "$ROOT/dist/src/cli.js" "$@"
+exec "$ROOT/bin/run-built" -- node "$ROOT/dist/src/cli.js" "$@"

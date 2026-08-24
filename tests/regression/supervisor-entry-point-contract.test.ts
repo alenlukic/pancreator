@@ -60,7 +60,7 @@ test('workflow entry points supervise in the operator session', () => {
 
     assert.match(
       body,
-      /adopt `library\/personas\/orchestrator\.md`/iu,
+      /adopt `(?:\{\{PANCREATOR_HARNESS_PATH\}\})?library\/personas\/orchestrator\.md`/iu,
       `${commandPath} MUST adopt the supervisor brief inline`,
     )
     assert.match(
@@ -106,33 +106,31 @@ test('the supervisor brief describes a top-level session supervisor', () => {
   assert.match(brief, /You hold the operator conversation yourself/iu)
 })
 
-test('secret and model recovery precede operator escalation', () => {
+test('ASK-001 owns secret and model recovery before escalation', () => {
   const catalog = loadPolicyCatalog(REPO_ROOT)
   const ask = catalog.get('ASK-001')
 
   assert.ok(ask)
 
-  const contracts = [
-    read('AGENTS.md'),
-    read('library/personas/orchestrator.md'),
-    ask.instructions.join('\n'),
-  ]
+  const authority = ask.instructions.join('\n')
 
-  for (const contract of contracts) {
-    assert.match(contract, /repository-local `\.env`/u)
-    assert.match(contract, /`CURSOR_API_KEY`/u)
-    assert.match(contract, /`Cursor\.models\.list\(\)`/u)
-    assert.match(
-      contract,
-      /`governance\/registries\/cursor_model_catalog\.json`/u,
-    )
-    assert.match(contract, /rerun (?:the failed )?model validation/iu)
-    assert.match(contract, /operator/iu)
+  for (const pattern of [
+    /repository-local `\.env`/u,
+    /`CURSOR_API_KEY`/u,
+    /`Cursor\.models\.list\(\)`/u,
+    /`governance\/registries\/cursor_model_catalog\.json`/u,
+    /rerun (?:the failed )?model validation/iu,
+    /operator/iu,
+    /MUST NOT print, quote, persist, or expose/u,
+  ]) {
+    assert.match(authority, pattern)
   }
 
-  assert.match(
-    contracts.join('\n'),
-    /MUST NOT print, quote, persist, or expose/u,
+  assert.match(read('library/personas/orchestrator.md'), /Apply `ASK-001`/u)
+  assert.doesNotMatch(read('AGENTS.md'), /`CURSOR_API_KEY`/u)
+  assert.doesNotMatch(
+    read('library/personas/orchestrator.md'),
+    /`CURSOR_API_KEY`/u,
   )
 })
 

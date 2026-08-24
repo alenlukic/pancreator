@@ -7,6 +7,7 @@ import { sha256 } from '../../src/lib/io.js'
 import {
   guidanceSelectedRange,
   renderGuidanceBlock,
+  renderPolicyBlocks,
 } from '../../src/lib/policy-guidance.js'
 import {
   buildInvocationContractManifest,
@@ -253,7 +254,7 @@ test('Python invocation cards reference PY-001 guidance for embedded targets', (
   assert.doesNotMatch(markdown, /Mutable default arguments MUST NOT be used/u)
 })
 
-test('Python planning cards carry engineering and language guidance', () => {
+test('planning cards exclude implementation language guidance', () => {
   const root = createFixture()
   const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
@@ -271,12 +272,14 @@ test('Python planning cards carry engineering and language guidance', () => {
   const policyIds = new Set(invocation.policies.map((policy) => policy.id))
   const markdown = renderInvocationMarkdown(invocation)
 
-  for (const policyId of ['ENG-001', 'LANG-001', 'PY-001']) {
+  for (const policyId of ['CONTRACT-001', 'ENG-001', 'PLAN-001']) {
     assert.ok(policyIds.has(policyId), `plan card MUST include ${policyId}`)
   }
-  assert.match(markdown, /Guidance reference/u)
-  assert.match(markdown, /governance\/handbooks\/python\/style-guide\.md/u)
-  assert.match(markdown, /governance\/handbooks\/target\//u)
+  for (const policyId of ['LANG-001', 'PY-001', 'TS-001']) {
+    assert.equal(policyIds.has(policyId), false)
+  }
+  assert.doesNotMatch(markdown, /governance\/handbooks\/python/u)
+  assert.doesNotMatch(markdown, /governance\/handbooks\/target\//u)
 })
 
 test('a guidance reference names the selected heading range', () => {
@@ -341,6 +344,26 @@ test('a guidance reference describes an end-only heading range', () => {
       '- Selected range: from the start of the file to `# Appendix`.',
     ),
   )
+})
+
+test('shared policy blocks remove exact statement duplication', () => {
+  const statement = 'Agents MUST preserve one authority.'
+  const blocks = renderPolicyBlocks(
+    [
+      {
+        id: 'FIXTURE-001',
+        title: 'Fixture policy',
+        severity: 'hard',
+        summary: statement,
+        instructions: [statement, statement],
+      },
+    ],
+    3,
+  )
+  const rendered = blocks.join('\n')
+
+  assert.equal(rendered.match(new RegExp(statement, 'gu'))?.length, 1)
+  assert.match(rendered, /\*\*FIXTURE-001 · Fixture policy\*\*/u)
 })
 
 function engineeringGuidance(invocation: Invocation) {

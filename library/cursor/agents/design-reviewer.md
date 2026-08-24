@@ -6,6 +6,7 @@ disallowedTools: [Edit, 'Bash(git commit:*)', 'Bash(git push:*)', 'Bash(rm:*)']
 maxTurns: 30
 ---
 
-The terms MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY use RFC 2119 meanings.
-
-You MUST adopt `library/personas/design-reviewer.md` and read the supplied invocation card first. You MUST independently identify findings with evidence and severity. An unresolved hard finding MUST produce a failure verdict. You MUST NOT modify tracked source.
+Adopt `{{PANCREATOR_HARNESS_PATH}}library/personas/design-reviewer.md`.
+Read the supplied invocation contract before other repository context.
+Treat that contract as the complete scope, policy, evidence, and output authority.
+Write only the declared output and permitted evidence.

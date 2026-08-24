@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "entries": [
+    {
+      "id": "installer-projection-renderer-mirror",
+      "category": "monkeypatch",
+      "sources": [
+        "src/lib/cursor-content.ts#projectCursorContent",
+        "bin/install-support#projectCursorContent"
+      ],
+      "disposition": "retain",
+      "rationale": "The installer runs before the TypeScript payload exists. It needs the same token renderer without importing compiled code.",
+      "evidence": [
+        "tests/unit/projection.test.ts: installer and compiled projection renderers stay byte-identical",
+        "tests/integration/embedded-installation.test.ts: embedded installation projection coverage"
+      ]
+    },
+    {
+      "id": "installer-policy-renderer-mirror",
+      "category": "monkeypatch",
+      "sources": [
+        "src/lib/cursor-content.ts#renderPolicyCursorRule",
+        "bin/install-support#renderPolicyCursorRule"
+      ],
+      "disposition": "retain",
+      "rationale": "The installer must render policy rules before a compiled TypeScript payload exists.",
+      "evidence": [
+        "tests/unit/projection.test.ts: installer and compiled projection renderers stay byte-identical"
+      ]
+    },
+    {
+      "id": "reviewer-hard-evidence-boundary",
+      "category": "duplicate",
+      "sources": [
+        "library/personas/design-reviewer.md",
+        "library/personas/reviewer.md"
+      ],
+      "disposition": "retain",
+      "rationale": "The two mutually exclusive reviewer roles need the same verdict boundary in their independent judgment guidance.",
+      "evidence": [
+        "tests/unit/policies.test.ts: representative review contexts resolve distinct review policy sets"
+      ]
+    },
+    {
+      "id": "supervisor-entry-invariants",
+      "category": "duplicate",
+      "sources": [
+        "library/cursor/commands/pan-start.md",
+        "library/cursor/commands/pan-resume.md"
+      ],
+      "disposition": "retain",
+      "rationale": "Each independently invoked entry command must prevent nested supervision before it adopts the shared supervisor persona.",
+      "evidence": ["tests/regression/supervisor-entry-point-contract.test.ts"]
+    },
+    {
+      "id": "installation-bootstrap-invariants",
+      "category": "duplicate",
+      "sources": [
+        "library/cursor/rules/pancreator-self-development.mdc",
+        "library/cursor/rules/pancreator-embedded.mdc"
+      ],
+      "disposition": "retain",
+      "rationale": "Only one installation-specific bootstrap rule is projected. Both variants must retain the same supervisor and retrieval invariants.",
+      "evidence": [
+        "tests/unit/projection.test.ts: self-development and embedded projection coverage",
+        "tests/integration/embedded-installation.test.ts: embedded rule projection"
+      ]
+    },
+    {
+      "id": "language-appendix-boundaries",
+      "category": "duplicate",
+      "sources": [
+        "governance/policies/PY-001.json",
+        "governance/policies/TS-001.json"
+      ],
+      "disposition": "retain",
+      "rationale": "Each language policy independently guards its formatter-owned appendix and can be delivered without the other policy.",
+      "evidence": ["tests/unit/policies.test.ts: language guidance selection"]
+    },
+    {
+      "id": "generated-language-unknowns",
+      "category": "duplicate",
+      "sources": [
+        "governance/handbooks/target/javascript/style-guide.md",
+        "governance/handbooks/target/typescript/style-guide.md"
+      ],
+      "disposition": "retain",
+      "rationale": "Each generated language handbook must state its own bounded unknowns because agents read only guidance for relevant languages.",
+      "evidence": [
+        "src/lib/validators/target-language-handbooks.ts",
+        "tests/unit/target-language-handbooks.test.ts"
+      ]
+    }
+  ]
+}

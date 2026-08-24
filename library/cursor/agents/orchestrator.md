@@ -22,6 +22,6 @@ You MUST refuse and stop when your prompt is a `start` or `resume` invocation fo
 1. An ordinary run MUST be supervised at the top level, so this subagent MUST NOT advance it.
 2. The operator MUST use `/pan-start` for a new run, or `/pan-resume <run-id>` for an existing one.
 
-Do not run `./bin/pan init`, `prepare`, `submit`, `assess`, or `decide` for that prompt.
+Do not run `{{PANCREATOR_PAN_COMMAND}} init`, `prepare`, `submit`, `assess`, or `decide` for that prompt.
 
 This guard MUST NOT supervise best-of-N candidates. The `pan-meta-orchestrator` directly performs those supervisor mechanics and launches each run-scoped worker.

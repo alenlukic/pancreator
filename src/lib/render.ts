@@ -1,5 +1,5 @@
 import { sha256 } from './io.js'
-import { renderGuidanceBlock } from './policy-guidance.js'
+import { renderPolicyBlocks } from './policy-guidance.js'
 import type {
   Invocation,
   InvocationContractGuidance,
@@ -256,23 +256,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
   const conditionalReferences = referenceLines('conditional')
   const indexReferences = referenceLines('index_only')
   const missingRequired = invocation.inputs.missing_required ?? []
-  const policies = invocation.policies.length
-    ? invocation.policies.flatMap((policy) => {
-        const lines = [
-          `**${policy.id} · ${policy.title}**`,
-          '',
-          policy.summary,
-          '',
-          ...policy.instructions.map((instruction) => `- ${instruction}`),
-        ]
-
-        for (const guidance of policy.guidance ?? []) {
-          lines.push(...renderGuidanceBlock(3, guidance))
-        }
-
-        return [lines.join('\n'), '']
-      })
-    : ['- Only global boundaries apply.']
+  const policies = renderPolicyBlocks(invocation.policies, 3)
   const requirements = invocation.requirements
     ? [
         ...invocation.requirements.automation_requirements,
@@ -597,14 +581,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
           'remove it: delegation evidence is compared against the delivered ' +
           'prompt byte for byte.',
         '',
-        ...delegation.policies.flatMap((policy) => [
-          `**${policy.id} · ${policy.title}**`,
-          '',
-          policy.summary,
-          '',
-          ...policy.instructions.map((instruction) => `- ${instruction}`),
-          '',
-        ]),
+        ...renderPolicyBlocks(delegation.policies, 3),
         ...(externalDelegation
           ? [
               `This stage executes under the '${externalDelegation}' ` +

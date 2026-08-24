@@ -192,7 +192,7 @@ Explanation gives information rather than instructions. Findings, outcomes, rati
 - An agent MUST give information gradually, in the order the reader needs it (STE 6.1).
 - An agent MUST repeat a key term rather than vary it (STE 6.2).
 
-An executive summary is explanation. `GLOBAL-001` and `BRIEF-001` require it to state the outcome first, and this standard governs how it reads.
+An executive summary is explanation. Applicable artifact policies require the outcome first, and this standard governs how the summary reads.
 
 ### Notes
 

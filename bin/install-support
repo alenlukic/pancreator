@@ -63,6 +63,13 @@ function sha256(value) {
 }
 
 const EMBEDDED_HARNESS_PREFIX = '.pancreator'
+const CURSOR_PROJECTION_TOKENS = {
+  harnessPath: '{{PANCREATOR_HARNESS_PATH}}',
+  panCommand: '{{PANCREATOR_PAN_COMMAND}}',
+  npmPrefix: '{{PANCREATOR_NPM_PREFIX}}',
+  cliPath: '{{PANCREATOR_CLI_PATH}}',
+}
+const UNRESOLVED_PROJECTION_TOKEN = /\{\{PANCREATOR_[A-Z_]+\}\}/gu
 const GUIDANCE_DIGEST_BASIS =
   'SHA-256 of the selected text after leading and trailing whitespace is trimmed.'
 
@@ -76,71 +83,25 @@ function projectCursorContent(
   relative,
   harnessPrefix = EMBEDDED_HARNESS_PREFIX,
 ) {
-  const panCommandPath =
+  const panCommand =
     harnessPrefix === EMBEDDED_HARNESS_PREFIX
       ? `./${harnessPrefix}/bin/pan`
       : `${harnessPrefix}/bin/pan`
-
-  let projected = content
-    .replaceAll('./bin/pan', panCommandPath)
-    .replaceAll('`library/', `\`${harnessPrefix}/library/`)
-    .replaceAll('`governance/', `\`${harnessPrefix}/governance/`)
+  const projected = content
+    .replaceAll(CURSOR_PROJECTION_TOKENS.harnessPath, `${harnessPrefix}/`)
+    .replaceAll(CURSOR_PROJECTION_TOKENS.panCommand, panCommand)
     .replaceAll(
-      'npm run validate',
-      `npm --prefix ${harnessPrefix} run validate`,
+      CURSOR_PROJECTION_TOKENS.npmPrefix,
+      ` --prefix ${harnessPrefix}`,
     )
-    .replaceAll('npm run check', `npm --prefix ${harnessPrefix} run check`)
-    .replaceAll(
-      'Read `AGENTS.md`',
-      `Read the target repository's \`AGENTS.md\` when present and \`${harnessPrefix}/AGENTS.md\``,
-    )
-    .replaceAll(
-      'read `AGENTS.md`',
-      `read the target repository's \`AGENTS.md\` when present and \`${harnessPrefix}/AGENTS.md\``,
-    )
+    .replaceAll(CURSOR_PROJECTION_TOKENS.cliPath, '')
+  const unresolved = projected.match(UNRESOLVED_PROJECTION_TOKEN) ?? []
 
-  if (
-    relative.startsWith('.cursor/agents/') ||
-    relative === '.cursor/commands/pan-write-pr.md' ||
-    relative === '.cursor/commands/pan-release.md' ||
-    relative === '.cursor/commands/pan-build-briefs.md'
-  ) {
-    projected = projected.replaceAll('`docs/', `\`${harnessPrefix}/docs/`)
-  }
-
-  if (relative === '.cursor/commands/pan-release.md') {
-    projected = projected.replaceAll(
-      '`config.json`',
-      `\`${harnessPrefix}/config.json\``,
-    )
-  }
-
-  if (relative.startsWith('.cursor/agents/')) {
-    projected = projected
-      .replaceAll('`runtime/', `\`${harnessPrefix}/runtime/`)
-      .replaceAll(' under `runtime/', ` under \`${harnessPrefix}/runtime/`)
-      .replaceAll(' to `runtime/', ` to \`${harnessPrefix}/runtime/`)
-  }
-
-  if (relative === '.cursor/commands/pan-start.md') {
-    projected = projected
-      .replace(
-        'under `runtime/inbox/`.',
-        `under \`${harnessPrefix}/runtime/inbox/\`.`,
-      )
-      .replace(
-        'write that object to a uniquely named JSON file under `runtime/inbox/`',
-        `write that object to a uniquely named JSON file under \`${harnessPrefix}/runtime/inbox/\``,
-      )
-  }
-
-  if (
-    relative === '.cursor/commands/pan-decompose.md' ||
-    relative === '.cursor/commands/pan-repair.md'
-  ) {
-    projected = projected.replace(
-      'output path under `runtime/inbox/`',
-      `output path under \`${harnessPrefix}/runtime/inbox/\``,
+  if (unresolved.length > 0) {
+    fail(
+      `${relative} contains unresolved projection tokens: ${[
+        ...new Set(unresolved),
+      ].join(', ')}`,
     )
   }
 

@@ -12,6 +12,7 @@ import {
 import { AWAY_MODE_ACTIONS } from './project-config.js'
 import type {
   AgentHealth,
+  AwayDecisionKind,
   AwayModeAction,
   ResolvedAwayModeConfig,
   RunState,
@@ -51,6 +52,8 @@ export interface AwayBlocker {
 export interface AwayDecisionRecord {
   schema_version: 1
   decision_id: string
+  /** Absent on legacy records, which are evaluated decisions. */
+  decision_kind?: AwayDecisionKind
   linked_decision_id?: string
   run_id: string
   invocation_id: string | null
@@ -187,16 +190,7 @@ export function parseAwayOptions(value: unknown): AwayOption[] {
   return options.sort((left, right) => left.rank - right.rank)
 }
 
-function hardDenialReason(option: AwayOption, state: RunState): string | null {
-  if (
-    option.action === 'approve' &&
-    (state.current_stage === 'ship' ||
-      (state.pending_action.type === 'operator_approval' &&
-        state.pending_action.stage === 'ship'))
-  ) {
-    return 'Away mode cannot approve shipping.'
-  }
-
+function hardDenialReason(option: AwayOption): string | null {
   if (option.action === 'set-stage' && !option.stage) {
     return 'set-stage requires a target stage.'
   }
@@ -212,7 +206,6 @@ function hardDenialReason(option: AwayOption, state: RunState): string | null {
 export function selectAwayOption(
   options: AwayOption[],
   config: ResolvedAwayModeConfig,
-  state: RunState,
 ): {
   selected: AwayOption | null
   rejected: Array<{ rank: number; reason: string }>
@@ -236,7 +229,7 @@ export function selectAwayOption(
       continue
     }
 
-    const denial = hardDenialReason(option, state)
+    const denial = hardDenialReason(option)
 
     if (denial) {
       rejected.push({ rank: option.rank, reason: denial })
@@ -356,8 +349,78 @@ export function countAwayDecisions(root: string, runId: string): number {
   return readAwayDecisionLedger(root).filter(
     (record) =>
       record.run_id === runId &&
+      (record.decision_kind === undefined ||
+        record.decision_kind === 'evaluated') &&
       (record.result === 'accepted' || record.result === 'rejected'),
   ).length
+}
+
+/** Append a non-budgeted approval for one successful ship packet. */
+export function recordDeterministicShipApproval(
+  root: string,
+  state: RunState,
+  evidenceReferences: string[],
+  recordedAt = new Date().toISOString(),
+): AwayDecisionRecord {
+  const awayMode = state.away_mode
+
+  invariant(awayMode?.enabled, 'Away mode is disabled for this run.', {
+    code: 'AWAY_MODE_DISABLED',
+  })
+  invariant(
+    state.current_stage === 'ship' &&
+      state.status === 'awaiting_operator' &&
+      state.pending_action.type === 'operator_approval' &&
+      state.pending_action.stage === 'ship' &&
+      (state.pending_action.outcome ?? 'success') === 'success',
+    'The run does not have a successful ship packet awaiting approval.',
+    { code: 'AWAY_SHIP_APPROVAL_UNAVAILABLE' },
+  )
+  invariant(
+    awayMode.guardrails.allowed_actions.includes('approve'),
+    "Action 'approve' is outside operator guardrails.",
+    { code: 'AWAY_ACTION_FORBIDDEN' },
+  )
+
+  const evidence = parseEvidenceReferences(
+    evidenceReferences,
+    'evidence_references',
+  )
+  const selectedAction: AwayOption = {
+    rank: 1,
+    action: 'approve',
+    feasible: true,
+    rationale:
+      'Accept the successful ship packet without authorizing a release action.',
+    evidence,
+    rollback_plan: {
+      steps: ['Start a new remediation run for a later product change.'],
+      verification: 'Confirm that no external release action occurred.',
+    },
+  }
+  const record: AwayDecisionRecord = {
+    schema_version: 1,
+    decision_id: randomUUID(),
+    decision_kind: 'deterministic_ship_approval',
+    run_id: state.run_id,
+    invocation_id: state.current_invocation?.id ?? null,
+    blocker: {
+      type: 'operator_approval',
+      summary: 'A successful ship packet awaits bounded away approval.',
+      stage: 'ship',
+    },
+    ranked_options: [selectedAction],
+    selected_action: selectedAction,
+    rejected_options: [],
+    guardrails: awayMode.guardrails,
+    result: 'accepted',
+    evidence_references: evidence,
+    recorded_at: recordedAt,
+  }
+
+  appendAwayDecision(root, record)
+
+  return record
 }
 
 /** Record a deterministic quarantine decision without requiring away mode. */
@@ -374,6 +437,7 @@ export function recordHypervisorQuarantine(
   const record: AwayDecisionRecord = {
     schema_version: 1,
     decision_id: randomUUID(),
+    decision_kind: 'hypervisor_quarantine',
     run_id: state.run_id,
     invocation_id: state.current_invocation?.id ?? null,
     blocker: {
@@ -423,6 +487,7 @@ export function recordAwayEvaluationFailure(
   const record: AwayDecisionRecord = {
     schema_version: 1,
     decision_id: randomUUID(),
+    decision_kind: 'evaluated',
     run_id: state.run_id,
     invocation_id: state.current_invocation?.id ?? null,
     blocker,
@@ -489,6 +554,7 @@ export function recordAwayEvaluation(
         const rejected: AwayDecisionRecord = {
           schema_version: 1,
           decision_id: randomUUID(),
+          decision_kind: 'evaluated',
           run_id: state.run_id,
           invocation_id: state.current_invocation?.id ?? null,
           blocker,
@@ -506,10 +572,11 @@ export function recordAwayEvaluation(
         return rejected
       }
 
-      const selection = selectAwayOption(options, awayMode, state)
+      const selection = selectAwayOption(options, awayMode)
       const record: AwayDecisionRecord = {
         schema_version: 1,
         decision_id: randomUUID(),
+        decision_kind: 'evaluated',
         run_id: state.run_id,
         invocation_id: state.current_invocation?.id ?? null,
         blocker,

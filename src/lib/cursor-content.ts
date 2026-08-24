@@ -1,3 +1,4 @@
+import { invariant } from './errors.js'
 import { renderGuidanceBlock } from './policy-guidance.js'
 import type { PolicyGuidance } from './types.js'
 
@@ -51,15 +52,21 @@ export function renderPolicyCursorRule(policy: PolicyRuleSource): string {
 /** Harness prefix used by an embedded installation, relative to the target. */
 export const EMBEDDED_HARNESS_PREFIX = '.pancreator'
 
+/** Explicit path tokens accepted in canonical Cursor projection sources. */
+export const CURSOR_PROJECTION_TOKENS = {
+  harnessPath: '{{PANCREATOR_HARNESS_PATH}}',
+  panCommand: '{{PANCREATOR_PAN_COMMAND}}',
+  npmPrefix: '{{PANCREATOR_NPM_PREFIX}}',
+  cliPath: '{{PANCREATOR_CLI_PATH}}',
+} as const
+
+const UNRESOLVED_PROJECTION_TOKEN = /\{\{PANCREATOR_[A-Z_]+\}\}/gu
+
 /**
  * Render a canonical Cursor projection for the selected installation mode.
  *
- * Canonical sources are written harness-relative because that is how the CLI
- * emits paths. A target installation reads them from the target repository
- * instead, so every harness path is rewritten to point at the installation.
- * `harnessPrefix` is `.pancreator` for an embedded install and the absolute
- * installation root for a detached one, where no relative path from the target
- * can reach the harness.
+ * Canonical sources mark each path by semantic role. This keeps filesystem
+ * paths distinct from CLI arguments and removes file-specific rewrites.
  */
 export function projectCursorContent(
   content: string,
@@ -67,74 +74,28 @@ export function projectCursorContent(
   installationMode: CursorInstallationMode,
   harnessPrefix: string = EMBEDDED_HARNESS_PREFIX,
 ): string {
-  if (installationMode === 'self_development') {
-    return content
-  }
-
-  // An embedded harness is reachable relative to the target repository; a
-  // detached one MUST be addressed absolutely.
-  const panCommandPath =
-    harnessPrefix === EMBEDDED_HARNESS_PREFIX
+  const targetInstallation = installationMode !== 'self_development'
+  const harnessPath = targetInstallation ? `${harnessPrefix}/` : ''
+  const panCommand = targetInstallation
+    ? harnessPrefix === EMBEDDED_HARNESS_PREFIX
       ? `./${harnessPrefix}/bin/pan`
       : `${harnessPrefix}/bin/pan`
+    : './bin/pan'
+  const npmPrefix = targetInstallation ? ` --prefix ${harnessPrefix}` : ''
+  const projected = content
+    .replaceAll(CURSOR_PROJECTION_TOKENS.harnessPath, harnessPath)
+    .replaceAll(CURSOR_PROJECTION_TOKENS.panCommand, panCommand)
+    .replaceAll(CURSOR_PROJECTION_TOKENS.npmPrefix, npmPrefix)
+    .replaceAll(CURSOR_PROJECTION_TOKENS.cliPath, '')
+  const unresolved = projected.match(UNRESOLVED_PROJECTION_TOKEN) ?? []
 
-  let projected = content
-    .replaceAll('./bin/pan', panCommandPath)
-    .replaceAll('`library/', `\`${harnessPrefix}/library/`)
-    .replaceAll('`governance/', `\`${harnessPrefix}/governance/`)
-    .replaceAll(
-      'npm run validate',
-      `npm --prefix ${harnessPrefix} run validate`,
-    )
-    .replaceAll('npm run check', `npm --prefix ${harnessPrefix} run check`)
-    .replaceAll(
-      'Read `AGENTS.md`',
-      `Read the target repository's \`AGENTS.md\` when present and \`${harnessPrefix}/AGENTS.md\``,
-    )
-    .replaceAll(
-      'read `AGENTS.md`',
-      `read the target repository's \`AGENTS.md\` when present and \`${harnessPrefix}/AGENTS.md\``,
-    )
-
-  if (
-    relativePath.startsWith('.cursor/agents/') ||
-    relativePath === '.cursor/commands/pan-write-pr.md' ||
-    relativePath === '.cursor/commands/pan-release.md' ||
-    relativePath === '.cursor/commands/pan-build-briefs.md'
-  ) {
-    projected = projected.replaceAll('`docs/', `\`${harnessPrefix}/docs/`)
-  }
-
-  if (relativePath === '.cursor/commands/pan-release.md') {
-    projected = projected.replaceAll(
-      '`config.json`',
-      `\`${harnessPrefix}/config.json\``,
-    )
-  }
-
-  if (relativePath.startsWith('.cursor/agents/')) {
-    projected = projected
-      .replaceAll('`runtime/', `\`${harnessPrefix}/runtime/`)
-      .replaceAll(' under `runtime/', ` under \`${harnessPrefix}/runtime/`)
-      .replaceAll(' to `runtime/', ` to \`${harnessPrefix}/runtime/`)
-  }
-
-  if (relativePath === '.cursor/commands/pan-start.md') {
-    projected = projected.replace(
-      'under `runtime/inbox/`.',
-      `under \`${harnessPrefix}/runtime/inbox/\`.`,
-    )
-  }
-
-  if (
-    relativePath === '.cursor/commands/pan-decompose.md' ||
-    relativePath === '.cursor/commands/pan-repair.md'
-  ) {
-    projected = projected.replace(
-      'output path under `runtime/inbox/`',
-      `output path under \`${harnessPrefix}/runtime/inbox/\``,
-    )
-  }
+  invariant(
+    unresolved.length === 0,
+    `${relativePath} contains unresolved projection tokens: ${[
+      ...new Set(unresolved),
+    ].join(', ')}`,
+    { code: 'UNRESOLVED_PROJECTION_TOKEN' },
+  )
 
   return projected
 }

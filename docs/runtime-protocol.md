@@ -205,6 +205,54 @@ legacy all-history input behavior for compatibility. New runs use the scoped
 `ORCH-001` defines how the supervisor consumes `pending_action`, which actions it
 must continue through, and where operator handoff is required.
 
+### Away-mode control loop
+
+The top-level supervisor owns ordinary workflow continuation. It reads the full
+run state after each prepare, worker return, submission, assessment, and away
+decision. For a disabled snapshot, `operator_approval` and `operator_decision`
+keep their existing operator stops. For an enabled snapshot, the supervisor
+uses `pan away evaluate` and `pan away apply`, then continues from the new
+`pending_action`.
+
+The original stall had two causes. First, the supervisor contract stopped
+unconditionally at every operator action, even when the run snapshot enabled
+away mode. Second, the detached hypervisor applied at most one away decision.
+That decision changed run state but did not resume the top-level supervisor
+loop. Later preparation, worker routing, submission, and gate handling therefore
+had no control owner.
+
+The stalled entry point also broke model routing. The previous
+`/pan-qa-workflow` command delegated the supervisor role to a child agent, and
+Cursor honors a persona model mapping only for a top-level launch. Every stage
+worker launched from that nested supervisor therefore ran the platform default
+model. The repaired command adopts the supervisor brief in the operator's
+top-level session, so each mapped worker keeps its configured model.
+
+The repaired ownership matrix is:
+
+| Condition                           | Owner                                  | Result                                            |
+| ----------------------------------- | -------------------------------------- | ------------------------------------------------- |
+| `prepare_invocation`                | Top-level supervisor                   | Prepare, read state, and continue                 |
+| `invoke_agent`                      | Top-level supervisor                   | Launch the mapped worker, submit, and continue    |
+| `supervisor_assessment`             | Top-level supervisor                   | Assess, read state, and continue                  |
+| Enabled operator action             | Top-level supervisor plus away service | Evaluate, apply, read state, and continue         |
+| Disabled operator action            | Operator                               | Stop with the decision packet                     |
+| Agent incident                      | Hypervisor                             | Recover or quarantine, then expose incident state |
+| Denied guardrail or exhausted limit | Operator                               | Stop at a real blocker                            |
+| `none`                              | Nobody                                 | Report the terminal result                        |
+
+Applied away actions use away authorship. They do not create operator decision,
+resume, or stage-repair events. Evaluated accepted and rejected records consume
+`max_decisions_per_run`. Legacy records without `decision_kind` count as
+evaluated. Hypervisor quarantine records and deterministic ship approvals do
+not consume that budget.
+
+A successful ship packet can receive deterministic away approval only when the
+snapshot enables away mode and `allowed_actions` includes `approve`. The
+approval applies the recorded successful outcome and terminal workflow
+transition. It does not authorize or run commit, push, merge, publication,
+deployment, or branch deletion.
+
 ## Effective stage outcome
 
 A stage is successful only when all of the following hold:

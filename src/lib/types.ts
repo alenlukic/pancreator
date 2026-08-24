@@ -446,6 +446,13 @@ export type AwayModeAction =
   | 'resume'
   | 'set-stage'
 
+export type AwayDecisionKind =
+  | 'evaluated'
+  | 'deterministic_ship_approval'
+  | 'hypervisor_quarantine'
+
+export type RunActionActor = 'operator' | 'away'
+
 export interface AwayModeGuardrails {
   allowed_actions?: AwayModeAction[]
   max_decisions_per_run?: number
@@ -1099,6 +1106,8 @@ export interface CurrentInvocationPointer {
 
 export interface OperatorFeedbackItem {
   decision: 'approve' | 'reject' | 'resume' | 'set-stage' | 'revise'
+  /** Absent on records created before decision actors were stored. */
+  source?: RunActionActor
   from_stage: string
   to_stage: string
   attempt: number

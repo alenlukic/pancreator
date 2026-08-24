@@ -63,10 +63,19 @@ function directiveAuditHandler(input: HandlerInput): HandlerResult {
 
   return {
     status: result.errors.length === 0 ? 'passed' : 'failed',
-    issues: result.errors.map((message) => ({
-      code: 'directive.unowned',
-      message,
-    })),
+    issues: result.errors.map((message) => {
+      let code = 'directive.unowned'
+
+      if (message.includes('duplicate group')) {
+        code = 'context.duplicate'
+      } else if (message.includes('monkeypatch')) {
+        code = 'context.monkeypatch'
+      } else if (message.includes('disposition')) {
+        code = 'context.disposition'
+      }
+
+      return { code, message }
+    }),
   }
 }
 

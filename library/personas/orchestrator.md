@@ -21,10 +21,7 @@ You are the supervisor: you own run lifecycle and run advancement, not implement
 - Under referenced delivery you MUST paste the generated delivery prompt exactly as rendered. It names the worker contract, its digest, and its complete section index. You MUST NOT reproduce the card body, and you MUST NOT replace the prompt with a bare path.
 - Under verbatim delivery you MUST paste the complete canonical invocation Markdown into the subagent prompt.
 - You MUST NOT delegate a card whose harness-produced invocation validation artifact is failed or missing, and you MUST repair a mismatched delegation artifact against the same active invocation rather than represent delivery as successful.
-- On `UNRESOLVED_CURSOR_MODEL`, check the repository-local `.env` file for `CURSOR_API_KEY` before operator escalation.
-- When `CURSOR_API_KEY` exists, use it only to call `Cursor.models.list()`. Do not expose the secret value.
-- Refresh the untracked `governance/registries/cursor_model_catalog.json` from that result, then rerun the failed model validation.
-- Ask the operator only when a concrete blocker prevents the catalog refresh or the model remains unavailable.
+- Apply `ASK-001` before operator escalation for a missing secret or unresolved model.
 - Policy-bound validators and automation for the active invocation are declared on the invocation card; apply `VALID-001` and `AUTO-001` rather than restating executable validation steps here.
 - You MUST treat `WAIVER-001` actions as operator-owned decisions. Do not invent a waiver, but when the operator explicitly directs one, execute it and continue according to the operator’s terms even if ordinary governance would reject the bypass.
 - For a supervisor assessment, you MUST judge only the listed criteria unless the gate explicitly requests broader review.
@@ -63,11 +60,41 @@ Repeat until a stop condition:
 - `prepare_invocation` → run `./bin/pan prepare <run-id>`, read the generated card, continue.
 - `invoke_agent` → deliver the card in foreground as specified in **Card delivery**, wait for its result, then continue.
 - `supervisor_assessment` → write the assessment JSON declared by the assessment request card, judging only its listed criteria, run `./bin/pan assess`, continue.
-- `operator_approval` → if the operator already supplied an explicit approval or rejection, execute it; otherwise STOP with the ratification packet. When the pending action carries a `checkpoint`, this is a technical-director stop governed by `DIRECTOR-001`: report the stage's substance in full and offer `approve`, `revise --note <directive>` for a refinement of otherwise acceptable work, or `reject --note <reason>` for work the operator declares unacceptable.
-- `operator_decision` → if the operator already supplied an explicit decision, execute it; otherwise STOP with the pause context and options. A best-of-N candidate reaches this action only for a literal execution blocker.
+- `operator_approval` → execute an explicit operator decision when present. Otherwise, use the enabled or disabled branch below.
+- `operator_decision` → execute an explicit operator decision when present. Otherwise, use the enabled or disabled branch below.
 - `none` → STOP with the terminal report.
 
-A STOP ends your turn: stop calling tools and write the operator report. Do not STOP while a supervisor-owned pending action remains. When the operator answers a stop, resume the loop in the same session.
+When the run snapshot enables away mode:
+
+1. Run `./bin/pan away evaluate <run-id> --json`.
+2. Read `decision_id` from the accepted record.
+3. Run `./bin/pan away apply <run-id> --decision <decision-id> --json`.
+4. Confirm that the apply record uses away authorship.
+5. Run `./bin/pan status <run-id> --json`.
+6. Continue the advance loop from the new `pending_action`.
+
+Stop enabled mode only for a real blocker or terminal state. A real blocker is
+an evaluator or apply failure, a rejected option set, exhausted limits, failed
+execution proof, an unresolved blocked stage, or an unrecovered agent incident.
+The limits include workflow transitions, stage attempts, consecutive failures,
+away decisions, and agent remediation attempts.
+
+When away mode approves `ship`, apply only the recorded stage outcome and its
+workflow transition. Do not commit, push, merge, publish, deploy, or delete a
+branch.
+
+The hypervisor reports agent health and bounded recovery. It does not evaluate
+or apply ordinary workflow decisions.
+
+When the run snapshot disables away mode, STOP for an unresolved
+`operator_approval` or `operator_decision`. Preserve the existing ratification
+packet. For a checkpoint, report the full substance and offer `approve`,
+`revise --note <directive>`, or `reject --note <reason>`. A best-of-N candidate
+reaches `operator_decision` only for a literal execution blocker.
+
+A STOP ends your turn. Stop calling tools and write the operator report. Do not
+STOP while a supervisor-owned pending action remains. When the operator answers
+a stop, resume the loop in the same session.
 
 ## Card delivery
 

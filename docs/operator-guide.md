@@ -63,9 +63,9 @@ guardrails:
   "away_mode": {
     "enabled": true,
     "guardrails": {
-      "allowed_actions": ["resume", "revise", "set-stage"],
+      "allowed_actions": ["approve", "reject", "revise", "resume", "set-stage"],
       "max_decisions_per_run": 3,
-      "max_remediation_attempts_per_agent": 1
+      "max_remediation_attempts_per_agent": 2
     }
   }
 }
@@ -73,8 +73,9 @@ guardrails:
 
 Each new run snapshots the resolved block and its digest. Existing runs without
 that snapshot remain disabled. Guardrails can narrow safe actions but cannot
-permit shipping approval, irreversible source control, publication, deployment,
-or gate waivers.
+permit source control, publication, deployment, branch deletion, or gate
+waivers. A guarded `approve` action can apply a recorded ship-stage outcome and
+its workflow transition. It cannot perform an external release action.
 
 Inspect and evaluate one named blocker:
 
@@ -90,12 +91,44 @@ appends to `runtime/logs/away-mode/decisions.jsonl`; no command rewrites prior
 records. Use the selected record's `rollback_plan` for manual reversal, then
 append a linked record through the same decision service.
 
+A successful ship packet uses a deterministic approval record. That record does
+not consume the evaluated decision budget. The approval changes workflow state
+only and cannot authorize an external release action.
+
 ### Supervisor continuation
 
 `ORCH-001` is the normative continuation policy. In practice, keep advancing
-supervisor-owned `pending_action` values and stop only when an operator-owned
-decision is still missing or the run is terminal. When the active operator request
-already supplies the decision, execute it instead of asking again.
+supervisor-owned `pending_action` values in the operator's top-level session.
+When away mode is enabled, evaluate an unresolved operator action, apply one
+permitted decision, inspect status, and continue from the new action. Stop only
+at a real blocker or terminal state.
+
+Real blockers include failed evaluation or apply, rejected options, exhausted
+limits, failed model or delegation proof, unresolved blocked stages, and
+unrecovered agent incidents. The workflow transition, stage-attempt,
+consecutive-failure, away-decision, and remediation limits bound the loop.
+
+The hypervisor reports agent health and runs bounded recovery. It does not
+evaluate or apply ordinary workflow decisions.
+
+When away mode is disabled, stop at each unresolved operator gate as before.
+When the active request already supplies a decision, execute it instead of
+asking again.
+
+### Run top-level workflow QA
+
+`/pan-qa-workflow` adopts both the orchestrator and harness workflow QA briefs
+in the current top-level session. It never delegates the supervisor role. This
+keeps every mapped worker launch at the top level and preserves model routing.
+
+The command can apply a temporary QA waiver for surgical repair, governance,
+workflow, and verification work. The waiver expires immediately after the
+first successful `test` stage record. After expiry, the supervisor uses only
+away-mode decisions and normal harness actions through `ship`.
+
+The final ship approval applies only the recorded ship outcome. It completes
+the workflow without a commit, push, merge, publication, deployment, or branch
+deletion.
 
 ## Invocation and delegation validation
 

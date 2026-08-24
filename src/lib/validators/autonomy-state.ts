@@ -12,6 +12,11 @@ const AGENT_HEALTH_VALUES = new Set([
   'unknown',
 ])
 const AWAY_RESULTS = new Set(['accepted', 'rejected', 'applied', 'failed'])
+const AWAY_DECISION_KINDS = new Set([
+  'evaluated',
+  'deterministic_ship_approval',
+  'hypervisor_quarantine',
+])
 const RECOVERY_STEPS = new Set([
   'nudge',
   'resume',
@@ -101,6 +106,8 @@ export function validateAwayDecisionLedger(input: HandlerInput): HandlerResult {
     const ids = new Set<string>()
 
     for (const [index, record] of records.entries()) {
+      const decisionKind = record.decision_kind ?? 'evaluated'
+
       if (ids.has(record.decision_id)) {
         issues.push({
           code: 'away.decision.duplicate',
@@ -114,6 +121,13 @@ export function validateAwayDecisionLedger(input: HandlerInput): HandlerResult {
         issues.push({
           code: 'away.decision.result',
           message: `Ledger record ${index} has an invalid result.`,
+        })
+      }
+
+      if (!AWAY_DECISION_KINDS.has(decisionKind)) {
+        issues.push({
+          code: 'away.decision.kind',
+          message: `Ledger record ${index} has an invalid decision kind.`,
         })
       }
 
@@ -134,6 +148,64 @@ export function validateAwayDecisionLedger(input: HandlerInput): HandlerResult {
         issues.push({
           code: 'away.decision.rollback',
           message: `Accepted ledger record ${index} lacks a rollback plan.`,
+        })
+      }
+
+      if (
+        decisionKind === 'deterministic_ship_approval' &&
+        (record.blocker.type !== 'operator_approval' ||
+          record.blocker.stage !== 'ship' ||
+          record.selected_action?.action !== 'approve' ||
+          !record.guardrails.allowed_actions.includes('approve'))
+      ) {
+        issues.push({
+          code: 'away.decision.ship',
+          message: `Ledger record ${index} is not a valid ship approval.`,
+        })
+      }
+
+      if (
+        decisionKind === 'hypervisor_quarantine' &&
+        (record.blocker.type !== 'hypervisor_incident' ||
+          record.result !== 'rejected')
+      ) {
+        issues.push({
+          code: 'away.decision.quarantine',
+          message: `Ledger record ${index} is not a valid quarantine record.`,
+        })
+      }
+
+      if (
+        (record.result === 'applied' || record.result === 'failed') &&
+        typeof record.linked_decision_id !== 'string'
+      ) {
+        issues.push({
+          code: 'away.decision.link',
+          message: `Ledger record ${index} lacks its source decision link.`,
+        })
+      }
+    }
+
+    const byId = new Map(records.map((record) => [record.decision_id, record]))
+
+    for (const [index, record] of records.entries()) {
+      if (!record.linked_decision_id) {
+        continue
+      }
+
+      const source = byId.get(record.linked_decision_id)
+      const recordKind = record.decision_kind ?? 'evaluated'
+      const sourceKind = source?.decision_kind ?? 'evaluated'
+
+      if (
+        !source ||
+        source.run_id !== record.run_id ||
+        sourceKind !== recordKind ||
+        source.result !== 'accepted'
+      ) {
+        issues.push({
+          code: 'away.decision.link',
+          message: `Ledger record ${index} has an invalid source decision link.`,
         })
       }
     }

@@ -3,6 +3,10 @@ import path from 'node:path'
 
 import { fileExists, isRecord, readJson, readText } from '../io.js'
 import { loadPolicyCatalog, readPolicyLookupTable } from '../policies.js'
+import {
+  auditAgentContext,
+  type ContextAuditDuplicateGroup,
+} from './context-audit.js'
 
 const DIRECTIVE_PATTERN =
   /\b(?:MUST(?: NOT)?|SHOULD(?: NOT)?|MAY)\b[^.\n]{10,}/gu
@@ -13,7 +17,7 @@ const AUDIT_ROOTS = [
   'library/cursor/commands',
   'library/personas',
   'library/skills',
-  'docs',
+  'library/workflows',
   'governance/handbooks',
 ]
 
@@ -26,6 +30,14 @@ interface DirectiveExemption {
 export interface DirectiveAuditResult {
   errors: string[]
   warnings: string[]
+  source_coverage: Array<{
+    category: string
+    count: number
+    paths: string[]
+  }>
+  duplicate_groups: ContextAuditDuplicateGroup[]
+  disposition_errors: string[]
+  monkeypatch_candidates: Array<{ id: string; sources: string[] }>
   directives: Array<{
     source: string
     line: number
@@ -387,5 +399,15 @@ export function auditDirectives(root: string): DirectiveAuditResult {
     }
   }
 
-  return { errors, warnings, directives }
+  const context = auditAgentContext(root)
+
+  return {
+    errors: [...errors, ...context.errors],
+    warnings,
+    directives,
+    source_coverage: context.source_coverage,
+    duplicate_groups: context.duplicate_groups,
+    disposition_errors: context.disposition_errors,
+    monkeypatch_candidates: context.monkeypatch_candidates,
+  }
 }
