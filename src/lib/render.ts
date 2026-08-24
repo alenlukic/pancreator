@@ -489,6 +489,16 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
         ]
       : []
   const operatorBrief = invocation.output.operator_brief
+  const declaredArtifactLines = invocation.output.artifacts
+    ? [
+        'Declare these artifacts in this exact order:',
+        ...invocation.output.artifacts.map(
+          (artifact, index) =>
+            `${index}. \`${artifact.path}\` — ${artifact.description}`,
+        ),
+        '',
+      ]
+    : []
   const requiredDataLines = requiredData.length
     ? [
         'Required `data` fields:',
@@ -764,6 +774,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
           'Use an empty artifacts array unless the stage produces another declared deliverable.',
           '',
         ]),
+    ...declaredArtifactLines,
     ...requiredDataLines,
     ...fieldContractLines,
     '',

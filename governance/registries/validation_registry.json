@@ -230,6 +230,18 @@
       "side_effect_free": true
     },
     {
+      "id": "PR-DESCRIPTION-VALIDATE-001",
+      "kind": "validator",
+      "version": "1",
+      "handler": "pr-description-validate",
+      "input_contract": "pr-description-markdown",
+      "result_schema": "validation-result-v1",
+      "target_types": ["markdown-artifact"],
+      "default_timeout_ms": 30000,
+      "deterministic": true,
+      "side_effect_free": true
+    },
+    {
       "id": "DECOMPOSITION-VALIDATE-001",
       "kind": "validator",
       "version": "1",

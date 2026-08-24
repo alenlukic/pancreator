@@ -10,6 +10,7 @@ function writePolicyExtension(
   root: string,
   name: string,
   rows: Array<Record<string, unknown>>,
+  metadata?: { extension_id: string; policies: string[] },
 ): void {
   const directory = path.join(
     root,
@@ -21,7 +22,29 @@ function writePolicyExtension(
   mkdirSync(directory, { recursive: true })
   writeFileSync(
     path.join(directory, name),
-    `${JSON.stringify({ schema_version: 1, rows }, null, 2)}\n`,
+    `${JSON.stringify({ schema_version: 1, ...metadata, rows }, null, 2)}\n`,
+  )
+}
+
+function writeTargetPolicy(
+  root: string,
+  id: string,
+  extensionId?: string,
+): void {
+  writeFileSync(
+    path.join(root, 'governance', 'policies', `${id}.json`),
+    `${JSON.stringify(
+      {
+        id,
+        ...(extensionId ? { extension_id: extensionId } : {}),
+        title: 'Target policy',
+        severity: 'hard',
+        summary: 'Agents MUST apply the target policy.',
+        instructions: ['Agents MUST preserve target behavior.'],
+      },
+      null,
+      2,
+    )}\n`,
   )
 }
 
@@ -58,6 +81,180 @@ test('target policy lookup extensions add validated rows', () => {
   }).map((policy) => policy.id)
 
   assert.ok(ids.includes('TARGET-001'))
+})
+
+test('structured target policy extensions bind their owned policies', () => {
+  const root = createFixture()
+
+  writeTargetPolicy(root, 'TARGET-001', 'target')
+  const policyPath = path.join(
+    root,
+    'governance',
+    'policies',
+    'TARGET-001.json',
+  )
+  const policy = JSON.parse(readFileSync(policyPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  policy.artifact_authority = {
+    pr_description: {
+      template_path: '.github/PULL_REQUEST_TEMPLATE.md',
+      instruction_paths: ['docs/pr-rules.md'],
+    },
+  }
+  writeFileSync(policyPath, `${JSON.stringify(policy, null, 2)}\n`)
+  writePolicyExtension(
+    root,
+    'target.json',
+    [
+      {
+        persona: 'tech-lead',
+        workflow: 'dev',
+        stage: 'plan',
+        policies: ['TARGET-001'],
+      },
+    ],
+    { extension_id: 'target', policies: ['TARGET-001'] },
+  )
+
+  const policies = resolvePolicies(root, {
+    persona: 'tech-lead',
+    workflow: 'dev',
+    stage: 'plan',
+  })
+  const ids = policies.map((item) => item.id)
+
+  assert.ok(ids.includes('TARGET-001'))
+  assert.deepEqual(
+    policies.find((item) => item.id === 'TARGET-001')?.artifact_authority,
+    policy.artifact_authority,
+  )
+})
+
+test('target PR authority rejects paths outside the workspace', () => {
+  const root = createFixture()
+
+  writeTargetPolicy(root, 'TARGET-001')
+  const policyPath = path.join(
+    root,
+    'governance',
+    'policies',
+    'TARGET-001.json',
+  )
+  const policy = JSON.parse(readFileSync(policyPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  policy.artifact_authority = {
+    pr_description: { template_path: '../outside.md' },
+  }
+  writeFileSync(policyPath, `${JSON.stringify(policy, null, 2)}\n`)
+
+  assert.throws(
+    () => loadPolicyCatalog(root),
+    /template_path MUST be a safe workspace-relative path/u,
+  )
+})
+
+test('structured target policy extensions reject missing and stale bindings', () => {
+  const missingRoot = createFixture()
+
+  writeTargetPolicy(missingRoot, 'TARGET-001', 'target')
+  assert.throws(
+    () =>
+      resolvePolicies(missingRoot, {
+        persona: 'tech-lead',
+        workflow: 'dev',
+        stage: 'plan',
+      }),
+    /binding layer is missing/u,
+  )
+
+  const staleRoot = createFixture()
+
+  writePolicyExtension(
+    staleRoot,
+    'target.json',
+    [
+      {
+        persona: 'tech-lead',
+        workflow: 'dev',
+        stage: 'plan',
+        policies: ['MISSING-001'],
+      },
+    ],
+    { extension_id: 'target', policies: ['MISSING-001'] },
+  )
+  assert.throws(
+    () =>
+      resolvePolicies(staleRoot, {
+        persona: 'tech-lead',
+        workflow: 'dev',
+        stage: 'plan',
+      }),
+    /stale policy: MISSING-001/u,
+  )
+})
+
+test('structured target policy extensions reject ownership conflicts', () => {
+  const root = createFixture()
+
+  writeTargetPolicy(root, 'TARGET-001', 'target')
+  writePolicyExtension(
+    root,
+    'other.json',
+    [
+      {
+        persona: 'tech-lead',
+        workflow: 'dev',
+        stage: 'plan',
+        policies: ['TARGET-001'],
+      },
+    ],
+    { extension_id: 'other', policies: ['TARGET-001'] },
+  )
+
+  assert.throws(
+    () =>
+      resolvePolicies(root, {
+        persona: 'tech-lead',
+        workflow: 'dev',
+        stage: 'plan',
+      }),
+    /belongs to target/u,
+  )
+
+  const conflictRoot = createFixture()
+
+  writeTargetPolicy(conflictRoot, 'TARGET-001')
+  for (const extensionId of ['first', 'second']) {
+    writePolicyExtension(
+      conflictRoot,
+      `${extensionId}.json`,
+      [
+        {
+          persona: 'tech-lead',
+          workflow: 'dev',
+          stage: 'plan',
+          policies: ['TARGET-001'],
+        },
+      ],
+      { extension_id: extensionId, policies: ['TARGET-001'] },
+    )
+  }
+
+  assert.throws(
+    () =>
+      resolvePolicies(conflictRoot, {
+        persona: 'tech-lead',
+        workflow: 'dev',
+        stage: 'plan',
+      }),
+    /conflicts with/u,
+  )
 })
 
 test('target policy lookup extensions fail loudly for invalid rows', () => {
@@ -349,10 +546,7 @@ test('policy resolution snapshots handbook and skill guidance', () => {
   )
 
   assert.ok(pullRequest)
-  assert.match(
-    pullRequest.guidance?.[0]?.content ?? '',
-    /## File format \(normative\)/u,
-  )
+  assert.match(pullRequest.guidance?.[0]?.content ?? '', /## Authority modes/u)
 })
 
 test('Python policy loads only for detected Python workspaces', () => {

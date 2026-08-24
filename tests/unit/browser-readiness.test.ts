@@ -10,6 +10,13 @@ function makeRoot(): string {
   return mkdtempSync(path.join(tmpdir(), 'pancreator-browser-'))
 }
 
+function writeBrowser(root: string): string {
+  const browser = path.join(root, 'chrome-for-testing')
+
+  writeFileSync(browser, '#!/bin/sh\n')
+  return browser
+}
+
 function writeMcp(root: string, relative: string, value: unknown): void {
   const target = path.join(root, relative)
 
@@ -27,7 +34,11 @@ function chromeDevtoolsConfig(args: string[]): unknown {
 }
 
 test('missing MCP configuration is reported as not ready', () => {
-  const readiness = browserReadiness([makeRoot()])
+  const root = makeRoot()
+  const browser = writeBrowser(root)
+  const readiness = browserReadiness([root], {
+    chrome_for_testing: { path: browser, source: 'test' },
+  })
 
   assert.equal(readiness.ready, false)
   assert.equal(readiness.chrome_devtools_mcp.configured, false)
@@ -41,6 +52,7 @@ test('missing MCP configuration is reported as not ready', () => {
 
 test('a chrome-devtools server without --isolated is advised', () => {
   const root = makeRoot()
+  const browser = writeBrowser(root)
 
   writeMcp(
     root,
@@ -48,13 +60,66 @@ test('a chrome-devtools server without --isolated is advised', () => {
     chromeDevtoolsConfig(['chrome-devtools-mcp@latest']),
   )
 
-  const readiness = browserReadiness([root])
+  const readiness = browserReadiness([root], {
+    chrome_for_testing: { path: browser, source: 'test' },
+  })
 
+  assert.equal(readiness.ready, false)
   assert.equal(readiness.chrome_devtools_mcp.configured, true)
   assert.equal(readiness.chrome_devtools_mcp.isolated, false)
   assert.equal(readiness.playwright_mcp_fallback, true)
   assert.ok(
     readiness.advisories.some((advisory) => advisory.includes('--isolated')),
+  )
+})
+
+test('an absent browser bundle reports only the primary readiness gap', () => {
+  const root = makeRoot()
+
+  writeMcp(
+    root,
+    '.cursor/mcp.json',
+    chromeDevtoolsConfig(['chrome-devtools-mcp@latest']),
+  )
+
+  const readiness = browserReadiness([root], {
+    chrome_for_testing: { path: null, source: 'not found' },
+  })
+
+  assert.equal(readiness.ready, false)
+  assert.equal(readiness.advisories.length, 1)
+  assert.match(
+    readiness.advisories[0] ?? '',
+    /Chrome for Testing was not found/u,
+  )
+  assert.ok(
+    readiness.advisories.every(
+      (advisory) =>
+        !advisory.includes('--isolated') &&
+        !advisory.includes('does not pass that full --executablePath'),
+    ),
+  )
+})
+
+test('partial browser configuration does not satisfy readiness', () => {
+  const root = makeRoot()
+  const browser = writeBrowser(root)
+
+  writeMcp(
+    root,
+    '.cursor/mcp.json',
+    chromeDevtoolsConfig(['chrome-devtools-mcp@latest', '--isolated']),
+  )
+
+  const readiness = browserReadiness([root], {
+    chrome_for_testing: { path: browser, source: 'test' },
+  })
+
+  assert.equal(readiness.ready, false)
+  assert.ok(
+    readiness.advisories.some((advisory) =>
+      advisory.includes('does not pass that full --executablePath'),
+    ),
   )
 })
 
@@ -76,9 +141,8 @@ test('a target-owned .mcp.json is discovered when .cursor/mcp.json is absent', (
 
 test('a configured Chrome for Testing bundle satisfies readiness', () => {
   const root = makeRoot()
-  const browser = path.join(root, 'chrome-for-testing')
+  const browser = writeBrowser(root)
 
-  writeFileSync(browser, '#!/bin/sh\n')
   writeMcp(
     root,
     '.cursor/mcp.json',

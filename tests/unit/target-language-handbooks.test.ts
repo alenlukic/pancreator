@@ -39,18 +39,22 @@ function createLanguageFixture(): string {
   return root
 }
 
-function writeLanguageBundle(root: string): void {
+function writeLanguageBundle(
+  root: string,
+  language = 'typescript',
+  policies = ['LANG-001'],
+): void {
   const handbookRoot = path.join(
     root,
     'governance',
     'handbooks',
     'target',
-    'typescript',
+    language,
   )
   mkdirSync(handbookRoot, { recursive: true })
   writeFileSync(
     path.join(handbookRoot, 'style-guide.md'),
-    '<!-- pancreator-target-language-handbook: typescript -->\n\n# TypeScript\n',
+    `<!-- pancreator-target-language-handbook: ${language} -->\n\n# ${language}\n`,
   )
   writeJson(path.join(root, 'governance', 'policies', 'LANG-001.json'), {
     id: 'LANG-001',
@@ -61,7 +65,7 @@ function writeLanguageBundle(root: string): void {
     generated_by: GENERATED_BY,
     guidance_sources: [
       {
-        path: 'governance/handbooks/target/typescript/style-guide.md',
+        path: `governance/handbooks/target/${language}/style-guide.md`,
       },
     ],
   })
@@ -87,7 +91,7 @@ function writeLanguageBundle(root: string): void {
       persona,
       workflow: '*',
       stage: '*',
-      policies: ['LANG-001'],
+      policies,
       generated_by: GENERATED_BY,
     })
   }
@@ -119,6 +123,40 @@ test('validates exact embedded target language handbook coverage', () => {
 
     assert.equal(result.status, 'passed')
     assert.deepEqual(result.issues, [])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('accepts required supplemental policies in generated Python rows', () => {
+  const root = createLanguageFixture()
+
+  try {
+    writeFileSync(path.join(root, 'target', 'pyproject.toml'), '[project]\n')
+    writeLanguageBundle(root, 'python', ['LANG-001', 'PY-001'])
+
+    const result = validateTargetLanguageHandbooks(fixtureInput(root))
+
+    assert.equal(result.status, 'passed')
+    assert.deepEqual(result.issues, [])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('rejects a generated Python row that omits PY-001', () => {
+  const root = createLanguageFixture()
+
+  try {
+    writeFileSync(path.join(root, 'target', 'pyproject.toml'), '[project]\n')
+    writeLanguageBundle(root, 'python')
+
+    const result = validateTargetLanguageHandbooks(fixtureInput(root))
+
+    assert.equal(result.status, 'failed')
+    assert.ok(
+      result.issues.some((item) => item.code === 'language.lookup_rows'),
+    )
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

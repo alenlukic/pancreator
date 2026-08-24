@@ -1499,6 +1499,23 @@ export function validateStageOutput(
   }
 
   const briefContract = invocation.output.operator_brief
+  const declaredArtifacts = invocation.output.artifacts
+
+  if (declaredArtifacts) {
+    if (output.artifacts.length !== declaredArtifacts.length) {
+      errors.push(
+        `artifacts MUST contain exactly ${declaredArtifacts.length} declared entries`,
+      )
+    }
+
+    for (const [index, artifact] of declaredArtifacts.entries()) {
+      if (output.artifacts[index]?.path !== artifact.path) {
+        errors.push(
+          `artifacts[${index}].path MUST equal declared path '${artifact.path}'`,
+        )
+      }
+    }
+  }
 
   if (briefContract) {
     const primaryArtifact = output.artifacts[0]
@@ -1522,6 +1539,7 @@ export function validateStageOutput(
         `artifacts MUST NOT list transient operator brief source '${briefContract.source_path}'`,
       )
     } else if (
+      !declaredArtifacts &&
       !sourceTransient &&
       output.artifacts[1]?.path !== briefContract.source_path
     ) {

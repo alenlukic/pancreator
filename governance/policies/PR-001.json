@@ -2,18 +2,53 @@
   "id": "PR-001",
   "title": "Grounded pull-request description generation",
   "severity": "hard",
-  "summary": "Pull-request descriptions MUST be grounded in the complete base-to-worktree Git delta, use the canonical reviewer-facing format, and remain separate from pull-request creation or release actions.",
+  "summary": "Pull-request descriptions MUST use live target authority when available, remain grounded in the complete Git delta, and stay separate from pull-request actions.",
   "instructions": [
     "The release steward MUST apply this policy when workflow ship requests operator artifacts.",
     "The release steward MUST always apply this policy in standalone PR-writing mode.",
     "The selected base ref MUST be validated as one literal Git ref, resolved to a commit, and compared from its merge base with HEAD through the current worktree.",
     "The comparison MUST include committed branch changes, staged and unstaged tracked changes, and relevant untracked files.",
-    "The generated file MUST contain a suggested conventional-commits-style title, Summary, and Changelist. It MUST contain a How to read this PR walkthrough only when the change meets the applicability test in the referenced procedure, and a Delivery Pipeline Manifest only when actual workflow stage records resolve.",
-    "The How to read this PR walkthrough MUST orient a human reviewer through core changes, architecture decisions, component changes, and end-to-end flows, using only the registered subheadings and only those that apply. The release steward MUST omit the section rather than pad it when the Changelist already tells the whole story.",
+    "The release steward MUST use the resolved target template and target PR instructions when either authority exists.",
+    "The Pancreator fallback format MUST apply only when no target template or target PR instruction exists.",
+    "Target-template mode MUST preserve target section names and order.",
+    "Target-template mode MUST omit a body title when the target template has no title field.",
+    "Fallback mode MUST contain a suggested title, Summary, and Changelist.",
+    "In fallback mode, the How to read this PR walkthrough MUST use only the registered applicable subheadings.",
+    "In fallback mode, the release steward MUST omit the walkthrough when the Changelist already tells the whole story.",
     "The release steward MUST state a decision reason, a rejected alternative, or a claimed benefit in the walkthrough only when the Git delta or an artifact it read evidences that claim. It MUST describe the change and omit the reason rather than reconstruct intent from the shape of the final code.",
     "Every claim MUST be traceable to the Git delta or a workflow artifact that was read; the release steward MUST stop rather than invent changes or describe an empty or ambiguous comparison.",
     "Standalone PR-writing MUST NOT require workflow review or QA evidence and MUST write only the command-supplied output path.",
     "The release steward MUST NOT create, update, merge, or otherwise mutate a pull request, commit, branch, remote, published release, or deployment. The self-development release-metadata policy separately permits bounded local edits in workflow ship and /pan-release modes."
+  ],
+  "requirements": [
+    {
+      "id": "workflow-pr-description-validate",
+      "registry_id": "PR-DESCRIPTION-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "harness",
+      "target": "artifact:1",
+      "enforcement": "authoritative",
+      "failure_route": "blocked",
+      "evidence_class": "validation-result",
+      "applicability": {
+        "invocation_kind": "workflow",
+        "stage": "ship",
+        "operator_artifacts": "requested"
+      }
+    },
+    {
+      "id": "standalone-pr-description-validate",
+      "registry_id": "PR-DESCRIPTION-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "agent",
+      "target": "invocation.output.path",
+      "enforcement": "required",
+      "failure_route": "blocked",
+      "evidence_class": "validation-result",
+      "applicability": {
+        "invocation_kind": "standalone"
+      }
+    }
   ],
   "guidance_sources": [
     {

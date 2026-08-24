@@ -8,6 +8,7 @@ import {
   mkdirSync,
   readFileSync,
   readdirSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from 'node:fs'
@@ -46,6 +47,15 @@ function readJson(filePath) {
 function writeJson(filePath, value) {
   mkdirSync(path.dirname(filePath), { recursive: true })
   writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`)
+}
+
+function writeJsonAtomic(filePath, value) {
+  mkdirSync(path.dirname(filePath), { recursive: true })
+
+  const temporary = `${filePath}.tmp-${process.pid}`
+
+  writeFileSync(temporary, `${JSON.stringify(value, null, 2)}\n`)
+  renameSync(temporary, filePath)
 }
 
 function sha256(value) {
@@ -521,12 +531,20 @@ function validLanguageBundle(existingRoot) {
   }
 
   const rows = lookup.rows.filter(isGeneratedLanguageRow)
+  const expectedPolicies = ['LANG-001']
+
+  if (handbooks.includes('governance/handbooks/target/python/style-guide.md')) {
+    expectedPolicies.push('PY-001')
+  }
+
+  expectedPolicies.sort()
+
   const personas = rows
     .filter(
       (row) =>
         Array.isArray(row.policies) &&
-        row.policies.length === 1 &&
-        row.policies[0] === 'LANG-001' &&
+        row.policies.length === expectedPolicies.length &&
+        [...row.policies].sort().join('\n') === expectedPolicies.join('\n') &&
         typeof row.persona === 'string',
     )
     .map((row) => row.persona)
@@ -580,11 +598,86 @@ function preserveLanguageGovernance() {
     'policy_lookup_table.json',
   )
   const stagedLookup = readJson(stagedLookupPath)
-  stagedLookup.rows = [
+  const rows = [
     ...stagedLookup.rows.filter((row) => !isGeneratedLanguageRow(row)),
     ...existingLookup.rows.filter(isGeneratedLanguageRow),
   ]
-  writeJson(stagedLookupPath, stagedLookup)
+
+  if (JSON.stringify(stagedLookup.rows) !== JSON.stringify(rows)) {
+    stagedLookup.rows = rows
+    writeJson(stagedLookupPath, stagedLookup)
+  }
+}
+
+function migratePolicyExtensions() {
+  const stagingRoot = path.resolve(requiredOption('--staging-root'))
+  const registryRoot = path.join(stagingRoot, 'governance', 'registries')
+
+  if (!existsSync(registryRoot)) {
+    return
+  }
+
+  const legacyNames = readdirSync(registryRoot)
+    .filter((name) => name.endsWith('_policy_rows.json'))
+    .sort()
+
+  for (const name of legacyNames) {
+    const sourcePath = path.join(registryRoot, name)
+    const source = readJson(sourcePath)
+    const rows = Array.isArray(source) ? source : source?.rows
+
+    if (!Array.isArray(rows)) {
+      fail(`${name} must contain an array or rows[].`)
+    }
+
+    const extensionId = name
+      .slice(0, -'_policy_rows.json'.length)
+      .replaceAll('_', '-')
+
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(extensionId)) {
+      fail(`${name} cannot produce a valid extension id.`)
+    }
+
+    const policies = [
+      ...new Set(
+        rows.flatMap((row) =>
+          row && Array.isArray(row.policies)
+            ? row.policies.filter(
+                (policy) => typeof policy === 'string' && policy.length > 0,
+              )
+            : [],
+        ),
+      ),
+    ].sort()
+
+    if (policies.length === 0) {
+      fail(`${name} does not contain a policy binding.`)
+    }
+
+    const migrated = {
+      schema_version: 1,
+      extension_id: extensionId,
+      policies,
+      rows,
+    }
+    const destination = path.join(
+      registryRoot,
+      'policy_lookup.d',
+      `${extensionId}.json`,
+    )
+
+    if (existsSync(destination)) {
+      const existing = readJson(destination)
+
+      if (JSON.stringify(existing) !== JSON.stringify(migrated)) {
+        fail(`${name} conflicts with policy_lookup.d/${extensionId}.json.`)
+      }
+
+      continue
+    }
+
+    writeJsonAtomic(destination, migrated)
+  }
 }
 
 // Build artifacts are machine-generated and env-dependent; hashing them would
@@ -1250,6 +1343,8 @@ if (command === 'project-cursor') {
   migrateRepositoryChecks()
 } else if (command === 'preserve-language-governance') {
   preserveLanguageGovernance()
+} else if (command === 'migrate-policy-extensions') {
+  migratePolicyExtensions()
 } else if (command === 'reconcile-payload') {
   reconcilePayload()
 } else if (command === 'hash-payload') {

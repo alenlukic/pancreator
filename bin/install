@@ -935,6 +935,9 @@ install_payload() {
       --entries "$(payload_entries_csv)"
   fi
 
+  node "$PANCREATOR_ROOT/bin/install-support" migrate-policy-extensions \
+    --staging-root "$staging"
+
   if [[ "$harness_preexisting" == "true" ]]; then
     report_existing_harness "$previous_marker"
   fi

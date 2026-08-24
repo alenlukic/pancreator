@@ -15,6 +15,7 @@ import type { HandlerInput, HandlerResult, ValidatorHandler } from './types.js'
 import { validateAssessment } from '../validators/assessment.js'
 import { validateTargetRepoPrimer } from '../validators/target-repo-primer.js'
 import { validateTargetLanguageHandbooks } from '../validators/target-language-handbooks.js'
+import { validatePrDescription } from '../validators/pr-description.js'
 import {
   operatorArtifactProfileForStage,
   type OperatorArtifactProfile,
@@ -199,6 +200,7 @@ export const HANDLERS: Record<string, ValidatorHandler> = {
   'review-validate': validateReviewOutput,
   'qa-validate': validateQaOutput,
   'release-validate': validateReleaseOutput,
+  'pr-description-validate': validatePrDescription,
   'decomposition-validate': validateDecompositionArtifact,
   'target-repo-primer-validate': validateTargetRepoPrimer,
   'target-language-handbook-validate': validateTargetLanguageHandbooks,

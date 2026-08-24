@@ -1,5 +1,26 @@
 # Changelog
 
+## [4.4.0] - 2026-08-24
+
+### Changed
+
+- Make live target PR templates and instructions authoritative over the Pancreator default PR format. Apply Pancreator fallback only when no target authority exists ([PR-001](governance/policies/PR-001.json), [write-pr-description skill](library/skills/write-pr-description.md), [pr-description](src/lib/pr-description.ts)).
+- Classify an absent Chrome for Testing bundle as one browser readiness gap and stop emitting secondary isolation or executable-path defects for that absence ([browser-readiness](src/lib/browser-readiness.ts), [browser-readiness tests](tests/unit/browser-readiness.test.ts)).
+- Allow generated LANG-001 rows to require supplemental language policies such as PY-001 and align librarian generation with repository validation ([target-language-handbooks validator](src/lib/validators/target-language-handbooks.ts), [librarian persona](library/personas/librarian.md)).
+- Extend target `policy_lookup.d` loading with ownership, binding, duplicate, and conflict validation exposed as hard repository errors ([policies](src/lib/policies.ts), [validation](src/lib/validation.ts)).
+
+### Added
+
+- Add repository-wide secret lookup and model-catalog self-remediation before operator escalation through `CURSOR_API_KEY` and `Cursor.models.list()` ([AGENTS.md](AGENTS.md), [ASK-001](governance/policies/ASK-001.json), [orchestrator persona](library/personas/orchestrator.md)).
+- Add `PR-DESCRIPTION-VALIDATE-001` to validate workflow and standalone PR bodies against resolved target authority, including required H2 order, optional section markers, and title placement ([pr-description validator](src/lib/validators/pr-description.ts), [validation registry](governance/registries/validation_registry.json)).
+- Migrate legacy target `*_policy_rows.json` sources into preserved `policy_lookup.d` extension files during embedded install and update ([install-support](bin/install-support), [embedded-installation test](tests/integration/embedded-installation.test.ts)).
+- Add `pan pr-description context` and ship invocation inputs that carry the live template, root and nearest target instructions, and structured PR context ([cli](src/cli.ts), [context](src/lib/context.ts), [engine](src/lib/engine.ts)).
+- Block ship submission when the declared PR Markdown artifact is missing or violates resolved target authority ([dev-workflow test](tests/integration/dev-workflow.test.ts)).
+
+### Fixed
+
+- Pass structural PR validation through for instruction-only target authority that declares no template contract ([pr-description validator](src/lib/validators/pr-description.ts), [pr-description tests](tests/unit/pr-description.test.ts)).
+
 ## [4.3.0] - 2026-08-23
 
 ### Changed

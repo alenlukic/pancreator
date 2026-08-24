@@ -33,6 +33,10 @@ export interface BrowserReadiness {
   advisories: string[]
 }
 
+export interface BrowserReadinessOptions {
+  chrome_for_testing?: { path: string | null; source: string }
+}
+
 function resolveChromeForTesting(): { path: string | null; source: string } {
   const configured = process.env.PANCREATOR_CHROME_FOR_TESTING
 
@@ -87,8 +91,11 @@ function serverArguments(server: unknown): string[] {
  * `searchRoots` covers the harness checkout and, for a target installation, the
  * workspace that owns its own `.cursor/mcp.json`.
  */
-export function browserReadiness(searchRoots: string[]): BrowserReadiness {
-  const chrome = resolveChromeForTesting()
+export function browserReadiness(
+  searchRoots: string[],
+  options: BrowserReadinessOptions = {},
+): BrowserReadiness {
+  const chrome = options.chrome_for_testing ?? resolveChromeForTesting()
   const advisories: string[] = []
   let located: { configPath: string; servers: Record<string, unknown> } | null =
     null
@@ -109,16 +116,23 @@ export function browserReadiness(searchRoots: string[]): BrowserReadiness {
   const executableArgument = args.find((arg) =>
     arg.startsWith('--executablePath'),
   )
+  const executablePath = executableArgument
+    ? (executableArgument.split('=')[1] ?? null)
+    : null
+  const chromeDevtoolsConfigured = chromeDevtools !== undefined
+  const chromeDevtoolsIsolated = args.includes('--isolated')
   const readiness: BrowserReadiness = {
-    ready: chrome.path !== null && chromeDevtools !== undefined,
+    ready:
+      chrome.path !== null &&
+      chromeDevtoolsConfigured &&
+      chromeDevtoolsIsolated &&
+      executablePath === chrome.path,
     chrome_for_testing: chrome,
     chrome_devtools_mcp: {
-      configured: chromeDevtools !== undefined,
+      configured: chromeDevtoolsConfigured,
       config_path: located ? path.join(locatedRoot, located.configPath) : null,
-      isolated: args.includes('--isolated'),
-      executable_path: executableArgument
-        ? (executableArgument.split('=')[1] ?? null)
-        : null,
+      isolated: chromeDevtoolsIsolated,
+      executable_path: executablePath,
     },
     playwright_mcp_fallback: located?.servers.playwright !== undefined,
     advisories,
@@ -130,6 +144,8 @@ export function browserReadiness(searchRoots: string[]): BrowserReadiness {
         'PANCREATOR_CHROME_FOR_TESTING or the chrome-devtools --executablePath ' +
         'argument; BROWSER-001 blocks browser verdicts until then.',
     )
+
+    return readiness
   }
 
   if (!readiness.chrome_devtools_mcp.configured) {
@@ -147,13 +163,12 @@ export function browserReadiness(searchRoots: string[]): BrowserReadiness {
 
   if (
     readiness.chrome_devtools_mcp.configured &&
-    !readiness.chrome_devtools_mcp.executable_path &&
-    chrome.path
+    readiness.chrome_devtools_mcp.executable_path !== chrome.path
   ) {
     advisories.push(
       `Chrome for Testing is installed at ${chrome.path} but the ` +
-        'chrome-devtools MCP server does not pass --executablePath, so ' +
-        'automation may fall back to the personal browser identity.',
+        'chrome-devtools MCP server does not pass that full --executablePath, ' +
+        'so automation may fall back to the personal browser identity.',
     )
   }
 

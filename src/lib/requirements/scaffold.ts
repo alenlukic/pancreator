@@ -167,23 +167,26 @@ export function scaffoldStageOutput(
     invocation_id: invocation.invocation_id,
     result: 'success',
     summary: '',
-    artifacts: operatorBrief
-      ? [
-          {
-            path: operatorBrief.rendered_path,
-            description: 'Primary self-contained HTML brief for the operator.',
-          },
-          ...(!transientBriefSource
-            ? [
-                {
-                  path: operatorBrief.source_path,
-                  description:
-                    'Schema-valid JSON source for the operator brief.',
-                },
-              ]
-            : []),
-        ]
-      : [],
+    artifacts:
+      invocation.output.artifacts ??
+      (operatorBrief
+        ? [
+            {
+              path: operatorBrief.rendered_path,
+              description:
+                'Primary self-contained HTML brief for the operator.',
+            },
+            ...(!transientBriefSource
+              ? [
+                  {
+                    path: operatorBrief.source_path,
+                    description:
+                      'Schema-valid JSON source for the operator brief.',
+                  },
+                ]
+              : []),
+          ]
+        : []),
     criteria: invocation.rubric.map((criterion) => ({
       id: criterion.id,
       result: 'not_applicable',

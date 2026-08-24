@@ -27,6 +27,7 @@ export type InvocationKind =
   | 'repair'
   | 'decomposition'
   | 'documentation'
+  | 'standalone'
   | 'pair'
   | 'shepherd'
   | 'best_of_n'

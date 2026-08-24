@@ -39,11 +39,36 @@ stage records, review evidence, QA evidence, or a workflow run. Omit the deliver
 pipeline manifest unless the command explicitly supplies a run whose records you
 read.
 
-## File format (normative)
+## Authority modes
 
-The file MUST contain only the sections below, in this exact order. The first
-line is outside the `##` heading structure and is the only exception to the
-top-level `##` section rule.
+The invocation supplies `inputs.pr_description`, or the standalone command
+supplies `pan pr-description context --json`. Use the mode from that result.
+
+### Target mode
+
+Target mode applies when a target template or target PR instruction exists.
+Read every resolved template and instruction path before drafting.
+
+- Preserve the template's visible `##` headings and their order.
+- Treat each heading as required unless its section comment starts with
+  `Optional:`.
+- Omit an optional section when the change does not need it.
+- Do not add Summary, Changelist, How to read this PR, or a delivery manifest
+  unless the target template contains that heading.
+- Do not put a suggested title in the body unless
+  `inputs.pr_description.allows_body_title` is true.
+- Apply the live target instructions when they conflict with the Pancreator
+  fallback format.
+
+### Pancreator fallback mode
+
+Fallback mode applies only when the resolved target context has no template and
+no target PR instruction.
+
+## Pancreator fallback format (normative)
+
+In fallback mode, the file MUST contain only the sections below, in this exact
+order. The first line is outside the `##` heading structure.
 
 1. **Suggested PR title (line 1).** One line with a Conventional Commits type
    and a concise subject (for example `feat: add workflow artifact
@@ -165,7 +190,9 @@ MUST validate it as one literal Git ref before this skill runs.
 2. **Run artifacts** — in workflow mode, use paths for the active run layout.
    Layout v2 uses `agent/artifacts/json/`, `operator/`, and `agent/events.jsonl`.
    Layout v1 uses `artifacts/json/`, `artifacts/markdown/`, and `events.jsonl`.
-3. **Release context** — in workflow mode, the ship-stage inputs (spec, plan,
+3. **Target authority** — the resolved PR template, instruction paths, section
+   order, required headings, and optional headings.
+4. **Release context** — in workflow mode, the ship-stage inputs (spec, plan,
    implementation, review, QA, and release packet draft) when present.
 
 Every Summary claim, Changelist bullet, and walkthrough statement MUST be
@@ -177,27 +204,27 @@ bullet per unexplained path.
 ## Steps
 
 1. Determine whether the invocation is workflow ship or standalone command.
-2. Resolve the validated base ref, current branch, merge base, and complete Git
+2. Resolve target mode or Pancreator fallback mode before drafting.
+3. Read every resolved target template and instruction path in target mode.
+4. Resolve the validated base ref, current branch, merge base, and complete Git
    delta per **Git comparison**.
-3. In workflow mode, read the applicable run artifacts and release context.
-4. Apply the **How to read this PR** applicability test to the resolved delta,
-   and decide the section in or out before drafting.
-5. Draft the file per **File format**, running the conformance checks below.
-6. Write only the mode-specific output path. In workflow mode, list it in stage
+5. In workflow mode, read the applicable run artifacts and release context.
+6. In fallback mode, apply the **How to read this PR** applicability test.
+7. Draft the file per the resolved authority mode and run the checks below.
+8. Write only the mode-specific output path. In workflow mode, list it in stage
    artifacts.
 
 ## Conformance checks
 
 Before saving:
 
-- Line 1 is a conventional-commits-style suggested title.
-- Sections appear in order: Summary, Changelist, optional How to read this PR,
-  optional Delivery Pipeline Manifest.
-- Summary is one paragraph focused on impact; Changelist is thematic bullets
-  only.
-- How to read this PR is present when the applicability test is met and absent
-  otherwise. Its subheadings come from the registered four, in order, with no
-  empty subheading.
+- Target mode uses only target headings in target order.
+- Target mode includes every required section and no empty required section.
+- Target mode has no body title unless the resolved context permits one.
+- Fallback mode has a conventional title on line 1.
+- Fallback sections appear in the registered order.
+- Fallback Summary is one paragraph, and Changelist contains thematic bullets.
+- Fallback How to read this PR obeys its applicability test.
 - No walkthrough statement invents a reason, a rejected alternative, or a benefit
   the delta does not demonstrate, and none restates a Changelist bullet.
 - Manifest rows are sourced from task records; section omitted when none resolve.

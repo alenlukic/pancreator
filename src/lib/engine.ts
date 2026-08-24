@@ -57,6 +57,7 @@ import {
   registryHealthForRun,
 } from './hypervisor.js'
 import { resolvePolicies } from './policies.js'
+import { resolvePrDescriptionContext } from './pr-description.js'
 import {
   artifactJsonPath,
   finalizeWorkflowArtifacts,
@@ -1867,6 +1868,7 @@ function stageFieldContract(
   requirements: NonNullable<
     Invocation['requirements']
   >['validation_requirements'],
+  artifactsRequested: boolean,
 ): Invocation['output']['field_contract'] {
   const source = readJson(
     path.join(root, 'library', 'schemas', 'stage-output-requirements.json'),
@@ -1895,7 +1897,7 @@ function stageFieldContract(
   const requirementByRegistryId = new Map(
     requirements.map((requirement) => [requirement.registry_id, requirement]),
   )
-  const validators = stage.validators.map((validator) => {
+  const validators = stage.validators.flatMap((validator) => {
     invariant(
       isRecord(validator) &&
         typeof validator.registry_id === 'string' &&
@@ -1904,6 +1906,13 @@ function stageFieldContract(
       `stage-output-requirements.json stages.${stageSlug} contains an invalid validator.`,
       { code: 'INVALID_STAGE_OUTPUT_REQUIREMENTS' },
     )
+
+    if (
+      validator.registry_id === 'PR-DESCRIPTION-VALIDATE-001' &&
+      !artifactsRequested
+    ) {
+      return []
+    }
 
     const requirement = requirementByRegistryId.get(validator.registry_id)
 
@@ -1925,7 +1934,7 @@ function stageFieldContract(
       { code: 'INVALID_STAGE_OUTPUT_REQUIREMENTS' },
     )
 
-    return { registry_id: validator.registry_id, enforcement }
+    return [{ registry_id: validator.registry_id, enforcement }]
   })
 
   return {
@@ -2085,6 +2094,8 @@ export function prepareInvocation(
       `${invocationId}.brief.json`,
     ).relative
     const briefRenderedPath = layout.operatorHtml(invocationId).relative
+    const prDescriptionPath =
+      layout.operatorMarkdown('pr-description.md').relative
     const jsonPath = layout.invocation(invocationId, '.json').relative
     const markdownPath = layout.invocation(invocationId, '.md').relative
     const delegationArtifactPath = delegationPath(runId, invocationId, root)
@@ -2101,6 +2112,12 @@ export function prepareInvocation(
       review_mode: reviewMode,
       operator_artifacts: artifactsRequested ? 'requested' : 'suppressed',
     })
+    const prDescription =
+      artifactsRequested &&
+      stage.persona === 'release-steward' &&
+      stage.slug === 'ship'
+        ? resolvePrDescriptionContext(workspaceDirectory(root, state), policies)
+        : undefined
     const requirements = resolveRequirements(root, {
       persona: stage.persona,
       workflow: workflow.slug,
@@ -2109,7 +2126,9 @@ export function prepareInvocation(
       review_mode: reviewMode,
       invocation: {
         output_path: outputPath,
-        artifact_paths: artifactsRequested ? [briefRenderedPath] : [],
+        artifact_paths: artifactsRequested
+          ? [briefRenderedPath, ...(prDescription ? [prDescriptionPath] : [])]
+          : [],
       },
       operator_artifacts: artifactsRequested ? 'requested' : 'suppressed',
     })
@@ -2198,6 +2217,7 @@ export function prepareInvocation(
       root,
       stage.slug,
       requirements.validation_requirements,
+      artifactsRequested,
     )
 
     if (stage.persona === 'coder' && attempt > 1) {
@@ -2271,6 +2291,7 @@ export function prepareInvocation(
         invocationId,
         workspaceFingerprint: workspace.fingerprint,
         workspace,
+        ...(prDescription ? { prDescription } : {}),
       }),
       policies,
       requirements,
@@ -2280,6 +2301,22 @@ export function prepareInvocation(
         template: 'library/templates/stage-output.example.json',
         schema: 'library/schemas/stage-output.schema.json',
         required_data: requiredData,
+        ...(prDescription
+          ? {
+              artifacts: [
+                {
+                  path: briefRenderedPath,
+                  description:
+                    'Primary self-contained HTML brief for the operator.',
+                },
+                {
+                  path: prDescriptionPath,
+                  description:
+                    'Pull-request description validated against target authority.',
+                },
+              ],
+            }
+          : {}),
         ...(fieldContract ? { field_contract: fieldContract } : {}),
         ...(artifactsRequested && briefVocabulary
           ? {

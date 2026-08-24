@@ -295,12 +295,23 @@ export interface PolicyGuidance {
   reference?: PolicyGuidanceReference
 }
 
+export interface PrDescriptionAuthority {
+  template_path?: string
+  instruction_paths?: string[]
+}
+
+export interface PolicyArtifactAuthority {
+  pr_description?: PrDescriptionAuthority
+}
+
 export interface Policy {
   id: string
   title: string
   severity: 'hard' | 'soft'
   summary: string
   instructions: string[]
+  extension_id?: string
+  artifact_authority?: PolicyArtifactAuthority
   guidance?: PolicyGuidance[]
   requirements?: PolicyRequirement[]
 }
@@ -566,6 +577,16 @@ export interface TargetInstructionInput {
   read_paths: string[]
 }
 
+export interface PrDescriptionContext {
+  mode: 'target' | 'fallback'
+  template_path: string | null
+  instruction_paths: string[]
+  heading_order: string[]
+  required_headings: string[]
+  optional_headings: string[]
+  allows_body_title: boolean
+}
+
 /**
  * Whether the worker read its complete canonical contract, or could not reach
  * it. `reference_failed` is only valid alongside a `blocked` stage result: a
@@ -724,6 +745,7 @@ export interface Invocation {
     references: InvocationReference[]
     missing_required?: string[]
     target_instructions?: TargetInstructionInput
+    pr_description?: PrDescriptionContext
   }
   policies: Policy[]
   requirements?: RequirementManifest
@@ -733,6 +755,7 @@ export interface Invocation {
     template: string
     schema: string
     required_data: Record<string, JsonTypeName>
+    artifacts?: ArtifactReference[]
     field_contract?: {
       validators: Array<{
         registry_id: string

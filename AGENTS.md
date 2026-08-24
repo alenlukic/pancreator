@@ -38,6 +38,11 @@ Read the scope of a rule from its subject. A rule that names a run, a stage, an 
 
 ## Operator questions
 
+- Before an agent reports a needed secret as missing, it MUST check the repository-local `.env` file when that file exists.
+- An agent MUST use a secret only for its authorized operation. It MUST NOT print, quote, persist, or expose the value.
+- When `config.json` names an unavailable Cursor model, an agent MUST check `.env` for `CURSOR_API_KEY` before operator escalation.
+- When `CURSOR_API_KEY` exists, the agent MUST use `Cursor.models.list()` to refresh `governance/registries/cursor_model_catalog.json`.
+- After the catalog refresh, the agent MUST rerun model validation. It MUST ask the operator only when the recovery flow remains blocked.
 - A Cursor-executor agent MUST use `cursor/ask_question` when it needs operator clarification or an operator decision.
 - When `cursor/ask_question` is unavailable, the agent MUST ask the question in its normal response channel. It MUST state in that message that the question tool was unavailable.
 - A worker inside a run MUST write the question and the unavailability into its stage output. The supervisor MUST surface that question to the operator.
