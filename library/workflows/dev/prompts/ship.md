@@ -25,11 +25,12 @@ implementation, review, QA evidence, and current workspace.
 7. When Git metadata is available, draft a proposed commit message that
    accurately describes the diff.
 8. When `output.operator_brief` exists, apply the PR-description procedure
-   `PR-001` references. Save the description to
-   `runtime/logs/workflows/<run-id>/operator/pr-description.md` for layout v2.
-   For layout v1, save it to
-   `runtime/logs/workflows/<run-id>/artifacts/markdown/pr-description.md`.
-   Reference it in stage artifacts. Do not open or create a pull request.
+   `PR-001` references. Read the template and instructions in
+   `inputs.pr_description`. Use target mode when that context names target
+   authority. Use Pancreator fallback mode only when the context permits it.
+   Save the description to `output.artifacts[1].path`, and preserve the declared
+   artifact order. The harness runs `PR-DESCRIPTION-VALIDATE-001` before the
+   operator gate. Do not open or create a pull request.
    When the contract omits `output.operator_brief`, do not create workflow PR
    copy. The separate `/pan-write-pr` command remains available.
 

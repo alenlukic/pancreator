@@ -827,6 +827,30 @@ export function makeOutput(
     ]
   }
 
+  if (invocation.output.artifacts) {
+    const prContext = invocation.inputs.pr_description
+
+    for (const artifact of invocation.output.artifacts) {
+      if (artifact.path === briefContract?.rendered_path) {
+        continue
+      }
+
+      const body =
+        prContext?.mode === 'target'
+          ? prContext.required_headings
+              .map(
+                (heading) =>
+                  `## ${heading}\n\nFixture content for ${heading}.\n`,
+              )
+              .join('\n')
+          : 'test: fixture PR body\n\n## Summary\n\nFixture summary.\n\n## Changelist\n\n- Fixture change.\n'
+
+      writeFileSync(path.join(root, artifact.path), body)
+    }
+
+    artifacts = invocation.output.artifacts
+  }
+
   const attestation = makeAttestation(invocation)
 
   return {

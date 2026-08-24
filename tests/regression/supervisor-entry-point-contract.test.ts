@@ -106,6 +106,36 @@ test('the supervisor brief describes a top-level session supervisor', () => {
   assert.match(brief, /You hold the operator conversation yourself/iu)
 })
 
+test('secret and model recovery precede operator escalation', () => {
+  const catalog = loadPolicyCatalog(REPO_ROOT)
+  const ask = catalog.get('ASK-001')
+
+  assert.ok(ask)
+
+  const contracts = [
+    read('AGENTS.md'),
+    read('library/personas/orchestrator.md'),
+    ask.instructions.join('\n'),
+  ]
+
+  for (const contract of contracts) {
+    assert.match(contract, /repository-local `\.env`/u)
+    assert.match(contract, /`CURSOR_API_KEY`/u)
+    assert.match(contract, /`Cursor\.models\.list\(\)`/u)
+    assert.match(
+      contract,
+      /`governance\/registries\/cursor_model_catalog\.json`/u,
+    )
+    assert.match(contract, /rerun (?:the failed )?model validation/iu)
+    assert.match(contract, /operator/iu)
+  }
+
+  assert.match(
+    contracts.join('\n'),
+    /MUST NOT print, quote, persist, or expose/u,
+  )
+})
+
 test('the orchestrator agent refuses ordinary run supervision', () => {
   const agent = read('library/cursor/agents/orchestrator.md')
 

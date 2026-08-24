@@ -12,6 +12,7 @@ import {
 } from './io.js'
 import type {
   Policy,
+  PolicyArtifactAuthority,
   PolicyGuidance,
   PolicyLookupRow,
   PolicyLookupTable,
@@ -164,6 +165,63 @@ function parseGuidanceSource(
   }
 }
 
+function validAuthorityPath(value: string): boolean {
+  return (
+    value.length > 0 &&
+    !path.isAbsolute(value) &&
+    !value.split(/[\\/]/u).includes('..')
+  )
+}
+
+function parseArtifactAuthority(
+  value: unknown,
+  source: string,
+): PolicyArtifactAuthority {
+  invariant(isRecord(value), `${source} MUST be an object.`, {
+    code: 'INVALID_POLICY',
+  })
+
+  if (value.pr_description === undefined) {
+    return {}
+  }
+
+  invariant(
+    isRecord(value.pr_description),
+    `${source}.pr_description MUST be an object.`,
+    { code: 'INVALID_POLICY' },
+  )
+
+  const definition = value.pr_description
+
+  invariant(
+    definition.template_path === undefined ||
+      (typeof definition.template_path === 'string' &&
+        validAuthorityPath(definition.template_path)),
+    `${source}.pr_description.template_path MUST be a safe workspace-relative path.`,
+    { code: 'INVALID_POLICY' },
+  )
+  invariant(
+    definition.instruction_paths === undefined ||
+      (Array.isArray(definition.instruction_paths) &&
+        definition.instruction_paths.every(
+          (item) => typeof item === 'string' && validAuthorityPath(item),
+        )),
+    `${source}.pr_description.instruction_paths MUST contain safe workspace-relative paths.`,
+    { code: 'INVALID_POLICY' },
+  )
+
+  return {
+    pr_description: {
+      ...(typeof definition.template_path === 'string'
+        ? { template_path: definition.template_path }
+        : {}),
+      ...(Array.isArray(definition.instruction_paths)
+        ? { instruction_paths: definition.instruction_paths as string[] }
+        : {}),
+    },
+  }
+}
+
 function parsePolicy(root: string, value: unknown, source: string): Policy {
   invariant(isRecord(value), `${source}: policy MUST be an object.`, {
     code: 'INVALID_POLICY',
@@ -194,9 +252,24 @@ function parsePolicy(root: string, value: unknown, source: string): Policy {
     `${source}: policy instructions MUST be a string array.`,
     { code: 'INVALID_POLICY' },
   )
+  invariant(
+    value.extension_id === undefined ||
+      (typeof value.extension_id === 'string' &&
+        /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(value.extension_id)),
+    `${source}: extension_id MUST use lowercase hyphenated words when present.`,
+    { code: 'INVALID_POLICY' },
+  )
 
   let requirements: PolicyRequirement[] | undefined
   let guidance: PolicyGuidance[] | undefined
+  let artifactAuthority: PolicyArtifactAuthority | undefined
+
+  if (value.artifact_authority !== undefined) {
+    artifactAuthority = parseArtifactAuthority(
+      value.artifact_authority,
+      `${source}:artifact_authority`,
+    )
+  }
 
   if (value.guidance_sources !== undefined) {
     invariant(
@@ -242,6 +315,10 @@ function parsePolicy(root: string, value: unknown, source: string): Policy {
     severity: value.severity,
     summary: value.summary,
     instructions: value.instructions,
+    ...(typeof value.extension_id === 'string'
+      ? { extension_id: value.extension_id }
+      : {}),
+    ...(artifactAuthority ? { artifact_authority: artifactAuthority } : {}),
     guidance,
     requirements,
   }
@@ -323,6 +400,13 @@ function loadLookupTable(root: string): PolicyLookupTable {
     parseLookupRow(row, `${source}:rows[${index}]`),
   )
   const rowSources = value.rows.map((_, index) => `${source}:rows[${index}]`)
+  const rowExtensionIds: Array<string | null> = value.rows.map(() => null)
+  const catalog = loadPolicyCatalog(root)
+  const extensionSources = new Map<string, string>()
+  const policyOwners = new Map<
+    string,
+    { extensionId: string; source: string }
+  >()
   const extensionDirectory = path.join(
     root,
     'governance',
@@ -345,17 +429,120 @@ function loadLookupTable(root: string): PolicyLookupTable {
         { code: 'INVALID_POLICY_LOOKUP' },
       )
 
+      const normalized =
+        extension.extension_id !== undefined || extension.policies !== undefined
+      let extensionId: string | null = null
+      let ownedPolicies = new Set<string>()
+
+      if (normalized) {
+        invariant(
+          typeof extension.extension_id === 'string' &&
+            /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(extension.extension_id),
+          `${extensionSource}.extension_id MUST use lowercase hyphenated words.`,
+          { code: 'INVALID_POLICY_EXTENSION' },
+        )
+        invariant(
+          name === `${extension.extension_id}.json`,
+          `${extensionSource} MUST match extension_id ${extension.extension_id}.`,
+          { code: 'INVALID_POLICY_EXTENSION' },
+        )
+        invariant(
+          Array.isArray(extension.policies) &&
+            extension.policies.length > 0 &&
+            extension.policies.every(
+              (policy) => typeof policy === 'string' && policy.length > 0,
+            ),
+          `${extensionSource}.policies MUST be a non-empty string array.`,
+          { code: 'INVALID_POLICY_EXTENSION' },
+        )
+
+        extensionId = extension.extension_id
+        ownedPolicies = new Set(extension.policies as string[])
+
+        invariant(
+          ownedPolicies.size === extension.policies.length,
+          `${extensionSource}.policies MUST NOT contain duplicates.`,
+          { code: 'DUPLICATE_POLICY_EXTENSION' },
+        )
+
+        const previousExtension = extensionSources.get(extensionId)
+
+        invariant(
+          previousExtension === undefined,
+          `${extensionSource} duplicates extension ${extensionId} from ${String(previousExtension)}.`,
+          { code: 'DUPLICATE_POLICY_EXTENSION' },
+        )
+        extensionSources.set(extensionId, extensionSource)
+
+        for (const policyId of ownedPolicies) {
+          const policy = catalog.get(policyId)
+
+          invariant(
+            policy,
+            `${extensionSource} references stale policy: ${policyId}`,
+            { code: 'STALE_POLICY_EXTENSION' },
+          )
+          invariant(
+            policy.extension_id === undefined ||
+              policy.extension_id === extensionId,
+            `${extensionSource} claims ${policyId}, but that policy belongs to ${String(policy.extension_id)}.`,
+            { code: 'POLICY_EXTENSION_OWNERSHIP_MISMATCH' },
+          )
+
+          const previousOwner = policyOwners.get(policyId)
+
+          invariant(
+            previousOwner === undefined,
+            `${extensionSource} conflicts with ${String(previousOwner?.source)} for policy ${policyId}.`,
+            { code: 'CONFLICTING_POLICY_EXTENSION' },
+          )
+          policyOwners.set(policyId, { extensionId, source: extensionSource })
+        }
+      }
+
+      const referencedOwnedPolicies = new Set<string>()
+
       for (const [index, row] of extension.rows.entries()) {
         const rowSource = `${extensionSource}:rows[${index}]`
+        const parsed = parseLookupRow(row, rowSource)
 
-        rows.push(parseLookupRow(row, rowSource))
+        for (const policyId of parsed.policies) {
+          if (ownedPolicies.has(policyId)) {
+            referencedOwnedPolicies.add(policyId)
+          }
+        }
+
+        rows.push(parsed)
         rowSources.push(rowSource)
+        rowExtensionIds.push(extensionId)
+      }
+
+      for (const policyId of ownedPolicies) {
+        invariant(
+          referencedOwnedPolicies.has(policyId),
+          `${extensionSource} declares ${policyId} without a binding row.`,
+          { code: 'MISSING_POLICY_EXTENSION_BINDING' },
+        )
       }
     }
   }
 
+  for (const policy of catalog.values()) {
+    if (!policy.extension_id) {
+      continue
+    }
+
+    const owner = policyOwners.get(policy.id)
+
+    invariant(
+      owner?.extensionId === policy.extension_id,
+      `${policy.id} declares extension ${policy.extension_id}, but its binding layer is missing.`,
+      { code: 'MISSING_POLICY_EXTENSION_BINDING' },
+    )
+  }
+
   const rowIdentities = new Map<string, string>()
-  const catalog = loadPolicyCatalog(root)
+  const policyBindingIdentities = new Map<string, string>()
 
   for (const [index, row] of rows.entries()) {
     const identity = JSON.stringify({
@@ -366,6 +553,7 @@ function loadLookupTable(root: string): PolicyLookupTable {
       technology: row.technology ?? null,
       contract: row.contract ?? null,
       review_mode: row.review_mode ?? null,
+      operator_artifacts: row.operator_artifacts ?? null,
       policies: [...row.policies].sort(),
     })
     const rowSource = rowSources[index] ?? `row ${index}`
@@ -379,11 +567,44 @@ function loadLookupTable(root: string): PolicyLookupTable {
     rowIdentities.set(identity, rowSource)
 
     for (const policyId of row.policies) {
-      invariant(
-        catalog.has(policyId),
-        `${rowSource} references missing policy: ${policyId}`,
-        { code: 'MISSING_POLICY' },
-      )
+      const policy = catalog.get(policyId)
+
+      invariant(policy, `${rowSource} references missing policy: ${policyId}`, {
+        code: 'MISSING_POLICY',
+      })
+
+      const extensionId = rowExtensionIds[index]
+
+      if (policy.extension_id) {
+        invariant(
+          extensionId === policy.extension_id,
+          `${rowSource} binds ${policyId} outside extension ${policy.extension_id}.`,
+          { code: 'POLICY_EXTENSION_OWNERSHIP_MISMATCH' },
+        )
+      }
+
+      if (extensionId) {
+        const bindingIdentity = JSON.stringify({
+          extension_id: extensionId,
+          policy: policyId,
+          persona: row.persona,
+          workflow: row.workflow,
+          stage: row.stage,
+          installation_scope: row.installation_scope ?? null,
+          technology: row.technology ?? null,
+          contract: row.contract ?? null,
+          review_mode: row.review_mode ?? null,
+          operator_artifacts: row.operator_artifacts ?? null,
+        })
+        const previousBinding = policyBindingIdentities.get(bindingIdentity)
+
+        invariant(
+          previousBinding === undefined,
+          `${rowSource} duplicates policy binding from ${String(previousBinding)}.`,
+          { code: 'DUPLICATE_POLICY_EXTENSION_BINDING' },
+        )
+        policyBindingIdentities.set(bindingIdentity, rowSource)
+      }
     }
   }
 

@@ -10,6 +10,7 @@ import type {
   Invocation,
   InvocationReference,
   InvocationReferenceRetrieval,
+  PrDescriptionContext,
   PriorAttemptFailure,
   RunState,
   StageContextStageSelector,
@@ -31,6 +32,7 @@ interface InvocationContextOptions {
   invocationId: string
   workspaceFingerprint: string
   workspace?: WorkspaceSnapshot
+  prDescription?: PrDescriptionContext
 }
 
 interface ContextManifest {
@@ -657,6 +659,23 @@ export function buildInvocationInputs(
     })
   }
 
+  if (options.prDescription?.template_path) {
+    addReference(references, {
+      path: options.prDescription.template_path,
+      description: 'Resolved target pull-request template',
+      retrieval: 'required',
+    })
+  }
+
+  for (const instructionPath of options.prDescription?.instruction_paths ??
+    []) {
+    addReference(references, {
+      path: instructionPath,
+      description: 'Resolved target pull-request instruction file',
+      retrieval: 'required',
+    })
+  }
+
   if (stage.persona === 'coder') {
     for (const baseline of Object.values(
       state.repository_check_baselines ?? {},
@@ -714,5 +733,6 @@ export function buildInvocationInputs(
       ? { missing_required: missingRequired }
       : {}),
     ...(targetInstructions ? { target_instructions: targetInstructions } : {}),
+    ...(options.prDescription ? { pr_description: options.prDescription } : {}),
   }
 }
