@@ -5,7 +5,7 @@ import { ensureDir, fileExists, resolveInside, writeTextAtomic } from './io.js'
 import { keywordRunSuffix } from './naming.js'
 import { makeUniqueRunId } from './state.js'
 import { resolvePolicies } from './policies.js'
-import { renderGuidanceBlock } from './policy-guidance.js'
+import { renderPolicyBlocks } from './policy-guidance.js'
 import { harnessPathPrefix, isTargetInstallation } from './project-config.js'
 import { resolveRequirements } from './requirements/resolve.js'
 import type { InvocationKind } from './requirements/types.js'
@@ -137,6 +137,24 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST NOT commit, push, merge, publish, deploy, delete a branch, or remove a worktree unless the operator explicitly directs that action.',
     ],
   },
+  unbound: {
+    kind: 'standalone',
+    persona: 'unbound',
+    workflow: 'standalone',
+    stage: 'unbound',
+    title: 'Unbound operator request',
+    summary:
+      'Ad-hoc operator-directed work outside every run and named mode. The ' +
+      'card attaches the universal policies that otherwise arrive only on an ' +
+      'invocation or a mode card. An unbound agent then works under the same ' +
+      'secret, prompt-trust, primer, and delegation rules.',
+    boundaries: [
+      'You MUST treat the operator as the authority for scope, sequencing, and completion.',
+      'You MUST NOT create, advance, or write state for a workflow run.',
+      PROTECTED_PATH_RULE,
+      'You MUST NOT commit, push, merge, publish, deploy, or perform destructive source-control actions unless the operator explicitly directs that action.',
+    ],
+  },
   decomposition: {
     kind: 'decomposition',
     persona: 'decomposer',
@@ -185,23 +203,7 @@ function renderGovernanceCardMarkdown(options: {
     ...requirements.validation_requirements,
   ].filter((requirement) => requirement.executor !== 'harness')
 
-  const policyBlocks = policies.length
-    ? policies.flatMap((policy) => {
-        const lines = [
-          `**${policy.id} · ${policy.title}**`,
-          '',
-          policy.summary,
-          '',
-          ...policy.instructions.map((instruction) => `- ${instruction}`),
-        ]
-
-        for (const guidance of policy.guidance ?? []) {
-          lines.push(...renderGuidanceBlock(3, guidance))
-        }
-
-        return [lines.join('\n'), '']
-      })
-    : ['- Only global boundaries apply.']
+  const policyBlocks = renderPolicyBlocks(policies, 3)
 
   return `${[
     `# 🤝 ${mode.title}`,
@@ -297,6 +299,7 @@ export function buildGovernanceCard(
     stage: mode.stage,
     // A standalone mode is bound to no run, so no run contract applies.
     contracts: [],
+    operator_artifacts: 'suppressed',
   })
   const requirements = resolveRequirements(root, {
     persona: mode.persona,
@@ -304,6 +307,7 @@ export function buildGovernanceCard(
     stage: mode.stage,
     invocation_kind: mode.kind,
     contracts: [],
+    operator_artifacts: 'suppressed',
   })
   const worktree = options.worktreeName
     ? resolveOrCreateWorktree(

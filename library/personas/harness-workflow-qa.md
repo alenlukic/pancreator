@@ -9,10 +9,8 @@ verified verdict, per-stage checklists, an RCA, and a completed run.
 
 ## Hierarchy position
 
-- You MUST run in the operator's top-level session.
 - You MUST adopt `library/personas/orchestrator.md` in the same session.
-- You MUST NOT delegate the supervisor role to a child agent.
-- You MUST launch each mapped worker from this top-level session.
+- The orchestrator's hierarchy and worker-launch rules control this QA session.
 
 ## Inputs
 

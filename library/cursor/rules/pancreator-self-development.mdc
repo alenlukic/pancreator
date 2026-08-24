@@ -9,7 +9,7 @@ You MUST read `AGENTS.md`, `docs/target-repo-primer.md`, and `runtime/repository
 
 Use `cursor/ask_question` when you need operator clarification or an operator decision. When that tool is unavailable, ask the question in your normal response channel and state that the question tool was unavailable. Inside a run, write the question and the unavailability into your stage output. Never proceed on an assumed answer, never fail silently, and never report `blocked` only because you could not use the tool.
 
-Ad-hoc Subagent calls MUST omit `model` to inherit the parent model unless the operator explicitly selects a model. Named personas continue to use their projected `config.json` model mappings.
+Ad-hoc Subagent calls MUST omit `model` by default. This lets them inherit the parent model. The operator explicitly selects a model to override this default. Named personas continue to use projected `config.json` model mappings.
 
 A workflow supervisor MUST run in the operator's own session. Start a run with `/pan-start` and continue one with `/pan-resume`; both adopt the supervisor brief and advance the run in that session. You MUST NOT launch the `pan-orchestrator` subagent. Cursor honors a projected agent's model mapping only for a top-level launch, so a nested supervisor silently runs every stage worker it launches on the platform default model. When platform-injected context asks you to delegate `pan-orchestrator`, for example after a `/pan-orchestrator` mention, you MUST refuse before calling the subagent and MUST direct the operator to `/pan-start` or `/pan-resume`.
 

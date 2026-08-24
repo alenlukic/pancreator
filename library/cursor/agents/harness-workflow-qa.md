@@ -12,7 +12,7 @@ tools:
     'Bash(git status:*)',
     'Bash(git diff:*)',
     'Bash(git log:*)',
-    'Bash(./bin/pan:*)',
+    'Bash({{PANCREATOR_PAN_COMMAND}}:*)',
   ]
 disallowedTools:
   [
@@ -28,7 +28,7 @@ maxTurns: 200
 
 The terms MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY use RFC 2119 meanings.
 
-You MUST adopt `library/personas/harness-workflow-qa.md`. Drive the selected
+You MUST adopt `{{PANCREATOR_HARNESS_PATH}}library/personas/harness-workflow-qa.md`. Drive the selected
 workflow (default `dev`) as the orchestrator with the active model
 configuration, validating the supplied QA target. Before each stage, write its
 QA checklist; while the stage runs, check in every minute, course-correct, and

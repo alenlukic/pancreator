@@ -342,7 +342,6 @@ test('policy resolution unions global and stage-specific policies', () => {
     'BIN-001',
     'BRIEF-001',
     'CONTRACT-001',
-    'DELEGATE-001',
     'DEV-001',
     'ENG-001',
     'GLOBAL-001',
@@ -357,6 +356,66 @@ test('policy resolution unions global and stage-specific policies', () => {
     'TS-001',
     'VALID-001',
   ])
+})
+
+test('representative contexts exclude policies outside their remit', () => {
+  const root = createFixture()
+  const ids = (
+    persona: string,
+    workflow: string,
+    stage: string,
+    reviewMode: 'default' | 'squad' = 'default',
+  ): string[] =>
+    resolvePolicies(root, {
+      persona,
+      workflow,
+      stage,
+      review_mode: reviewMode,
+      operator_artifacts: 'suppressed',
+    }).map((policy) => policy.id)
+
+  assert.deepEqual(ids('tech-lead', 'dev', 'plan'), [
+    'ACTION-001',
+    'ASK-001',
+    'AUTO-001',
+    'CONTRACT-001',
+    'ENG-001',
+    'GLOBAL-001',
+    'GLOBAL-002',
+    'OPERATOR-001',
+    'PLAN-001',
+    'PRIMER-001',
+    'STE-001',
+    'VALID-001',
+  ])
+  assert.deepEqual(ids('intake-writer', 'dev', 'intake'), [
+    'ACTION-001',
+    'ASK-001',
+    'AUTO-001',
+    'GLOBAL-001',
+    'GLOBAL-002',
+    'INTAKE-001',
+    'OPERATOR-001',
+    'PRIMER-001',
+    'STE-001',
+    'VALID-001',
+  ])
+
+  const defaultReview = ids('reviewer', 'dev', 'review')
+  const squadReview = ids('reviewer', 'dev', 'review', 'squad')
+
+  assert.equal(defaultReview.includes('DELEGATE-001'), false)
+  assert.equal(defaultReview.includes('REVIEW-002'), false)
+  assert.ok(squadReview.includes('DELEGATE-001'))
+  assert.ok(squadReview.includes('REVIEW-002'))
+
+  for (const leaked of ['BRIEF-001', 'LANG-001', 'PY-001', 'TS-001']) {
+    assert.equal(
+      ids('tech-lead', 'dev', 'plan').includes(leaked),
+      false,
+      `plan MUST exclude ${leaked}`,
+    )
+  }
 })
 
 test('pull-request policy follows operator-artifact selection', () => {
@@ -406,18 +465,71 @@ test('best-of-N stages carry the same policies as the dev stages they mirror', (
   assert.ok(ids('release-steward', 'metacritic', 'ship').includes('SHIP-001'))
 })
 
+test('standalone shepherd resolves subagent supervision governance', () => {
+  const root = createFixture()
+  const ids = resolvePolicies(root, {
+    persona: 'coder',
+    workflow: 'standalone',
+    stage: 'shepherd',
+    operator_artifacts: 'suppressed',
+  }).map((policy) => policy.id)
+
+  // Shepherd delegates the review squad, so it needs delegation supervision
+  // authority alongside its own mode policy.
+  assert.ok(ids.includes('SHEPHERD-001'))
+  assert.ok(ids.includes('DELEGATE-001'))
+})
+
+test('the unbound mode resolves universal and delegation governance', () => {
+  const root = createFixture()
+  const ids = resolvePolicies(root, {
+    persona: 'unbound',
+    workflow: 'standalone',
+    stage: 'unbound',
+    operator_artifacts: 'suppressed',
+  }).map((policy) => policy.id)
+
+  // An unbound agent holds no invocation card, so this catch-all context is
+  // the only way card-delivered universal policies reach it.
+  assert.deepEqual(ids, [
+    'ACTION-001',
+    'ASK-001',
+    'AUTO-001',
+    'DELEGATE-001',
+    'GLOBAL-001',
+    'GLOBAL-002',
+    'OPERATOR-001',
+    'PRIMER-001',
+    'STE-001',
+    'VALID-001',
+  ])
+})
+
 test('the best-of-N session mode resolves its own governance', () => {
   const root = createFixture()
+  const policies = resolvePolicies(root, {
+    persona: 'meta-orchestrator',
+    workflow: 'standalone',
+    stage: 'best-of-n',
+  })
 
   assert.deepEqual(
-    resolvePolicies(root, {
-      persona: 'meta-orchestrator',
-      workflow: 'standalone',
-      stage: 'best-of-n',
-    })
+    policies
       .map((policy) => policy.id)
       .filter((id) => id === 'BESTOFN-001' || id === 'WORK-001'),
     ['BESTOFN-001', 'WORK-001'],
+  )
+
+  // The session never receives INVOCATION-001, so its delivery authority must
+  // be complete inside BESTOFN-001 itself.
+  const bestOfN = policies.find((policy) => policy.id === 'BESTOFN-001')
+  const instructions = bestOfN?.instructions.join('\n') ?? ''
+
+  assert.match(instructions, /A summary, an excerpt, or a bare path MUST NOT/u)
+  assert.match(instructions, /MUST NOT add a parallel scope, policy, gate/u)
+  assert.match(
+    instructions,
+    /missing or mismatched delegation artifact MUST be repaired/u,
   )
 })
 
@@ -437,7 +549,6 @@ test('engineering handbook policy loads for reviewer and qa personas', () => {
     'BIN-001',
     'BRIEF-001',
     'CONTRACT-001',
-    'DELEGATE-001',
     'ENG-001',
     'GLOBAL-001',
     'GLOBAL-002',
@@ -467,7 +578,6 @@ test('engineering handbook policy loads for reviewer and qa personas', () => {
     'BIN-001',
     'BRIEF-001',
     'BROWSER-001',
-    'DELEGATE-001',
     'ENG-001',
     'GLOBAL-001',
     'GLOBAL-002',
@@ -636,12 +746,8 @@ test('orchestration and release guidance resolve with required policy dependenci
     'ASK-001',
     'AUTO-001',
     'AWAY-001',
-    'BIN-001',
     'BRIEF-001',
     'DELEGATE-001',
-    // The supervisor brief directs a technical-director checkpoint stop to
-    // DIRECTOR-001, so the card must deliver that policy rather than name it.
-    'DIRECTOR-001',
     'EXECUTOR-001',
     'GLOBAL-001',
     'GLOBAL-002',
@@ -651,7 +757,6 @@ test('orchestration and release guidance resolve with required policy dependenci
     'OUTPUT-001',
     'PAUSE-001',
     'PRIMER-001',
-    'REPO-001',
     'RUNTIME-001',
     'STE-001',
     'VALID-001',
@@ -662,17 +767,13 @@ test('orchestration and release guidance resolve with required policy dependenci
     'ACTION-001',
     'ASK-001',
     'AUTO-001',
-    'BIN-001',
     'BRIEF-001',
-    'DELEGATE-001',
     'GLOBAL-001',
     'GLOBAL-002',
     'OPERATOR-001',
-    'OUTPUT-001',
     'PR-001',
     'PRIMER-001',
     'REPO-001',
-    'RUNTIME-001',
     'SHIP-001',
     'STE-001',
     'VALID-001',
@@ -694,17 +795,12 @@ test('dev intake resolves faithful-intake guidance without supervisor policies',
     'ACTION-001',
     'ASK-001',
     'AUTO-001',
-    'BIN-001',
     'BRIEF-001',
-    'DELEGATE-001',
     'GLOBAL-001',
     'GLOBAL-002',
     'INTAKE-001',
     'OPERATOR-001',
-    'OUTPUT-001',
     'PRIMER-001',
-    'REPO-001',
-    'RUNTIME-001',
     'STE-001',
     'VALID-001',
   ])
@@ -806,17 +902,12 @@ test('decomposer loads conservative decomposition governance', () => {
     'ACTION-001',
     'ASK-001',
     'AUTO-001',
-    'BIN-001',
     'BRIEF-001',
     'DECOMP-001',
-    'DELEGATE-001',
     'GLOBAL-001',
     'GLOBAL-002',
     'OPERATOR-001',
-    'OUTPUT-001',
     'PRIMER-001',
-    'REPO-001',
-    'RUNTIME-001',
     'STE-001',
     'VALID-001',
   ])
@@ -834,17 +925,12 @@ test('standalone remediation personas load their work-mode policies', () => {
     'ACTION-001',
     'ASK-001',
     'AUTO-001',
-    'BIN-001',
     'BRIEF-001',
-    'DELEGATE-001',
     'DIAG-001',
     'GLOBAL-001',
     'GLOBAL-002',
     'OPERATOR-001',
-    'OUTPUT-001',
     'PRIMER-001',
-    'REPO-001',
-    'RUNTIME-001',
     'STE-001',
     'VALID-001',
     'WORK-001',
@@ -863,7 +949,6 @@ test('standalone remediation personas load their work-mode policies', () => {
     'BRIEF-001',
     'BROWSER-001',
     'CONTRACT-001',
-    'DELEGATE-001',
     'ENG-001',
     'GLOBAL-001',
     'GLOBAL-002',
@@ -893,17 +978,13 @@ test('harness technician loads repair governance', () => {
     'ACTION-001',
     'ASK-001',
     'AUTO-001',
-    'BIN-001',
     'BRIEF-001',
-    'DELEGATE-001',
     'GLOBAL-001',
     'GLOBAL-002',
     'OPERATOR-001',
-    'OUTPUT-001',
     'PRIMER-001',
     'REPAIR-001',
     'REPO-001',
-    'RUNTIME-001',
     'STE-001',
     'VALID-001',
   ])

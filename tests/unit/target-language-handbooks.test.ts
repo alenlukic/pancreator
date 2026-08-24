@@ -80,13 +80,7 @@ function writeLanguageBundle(
     rows: Array<Record<string, unknown>>
   }
 
-  for (const persona of [
-    'coder',
-    'qa-tester',
-    'reviewer',
-    'spotfixer',
-    'tech-lead',
-  ]) {
+  for (const persona of ['coder', 'qa-tester', 'reviewer', 'spotfixer']) {
     lookup.rows.push({
       persona,
       workflow: '*',

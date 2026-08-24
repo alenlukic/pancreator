@@ -13,7 +13,7 @@ disallowedTools:
 maxTurns: 35
 ---
 
-You MUST adopt `library/personas/repo-technician.md`. Investigate only the
+You MUST adopt `{{PANCREATOR_HARNESS_PATH}}library/personas/repo-technician.md`. Investigate only the
 target repository, do not mutate source or workflow state, and write only the
 supplied target-repair intake. Classify findings as performance, security, or
 functionality/product; distinguish hypotheses from confirmed root causes; and

@@ -12,6 +12,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
+  CURSOR_PROJECTION_TOKENS,
   projectCursorContent,
   renderPolicyCursorRule,
 } from '../../src/lib/cursor-content.js'
@@ -28,8 +29,10 @@ import { parsePersonaMapping } from '../../src/lib/executors/mapping.js'
 import { createFixture } from '../helpers.js'
 
 test('embedded Cursor projection prefixes durable harness docs paths', () => {
+  const { harnessPath } = CURSOR_PROJECTION_TOKENS
   const projected = projectCursorContent(
-    'Read `docs/target-repo-primer.md` before running `library/skills/x.md`.',
+    `Read \`${harnessPath}docs/target-repo-primer.md\` before running ` +
+      `\`${harnessPath}library/skills/x.md\`.`,
     '.cursor/commands/pan-write-pr.md',
     'embedded',
   )
@@ -41,8 +44,10 @@ test('embedded Cursor projection prefixes durable harness docs paths', () => {
 })
 
 test('detached Cursor projection addresses the harness absolutely', () => {
+  const { harnessPath, panCommand } = CURSOR_PROJECTION_TOKENS
   const projected = projectCursorContent(
-    'Read `docs/target-repo-primer.md`, then run `./bin/pan list --json`.',
+    `Read \`${harnessPath}docs/target-repo-primer.md\`, then run ` +
+      `\`${panCommand} list --json\`.`,
     '.cursor/commands/pan-write-pr.md',
     'detached',
     '/opt/pancreator/acme',
@@ -59,8 +64,10 @@ test('detached Cursor projection addresses the harness absolutely', () => {
 })
 
 test('detached projection rewrites npm prefixes to the harness root', () => {
+  const { npmPrefix } = CURSOR_PROJECTION_TOKENS
   const projected = projectCursorContent(
-    'Run `npm run check` and `npm run validate`.',
+    `Run \`npm${npmPrefix} run check\` and ` +
+      `\`npm${npmPrefix} run validate\`.`,
     '.cursor/commands/pan-validate.md',
     'detached',
     '/opt/pancreator/acme',
@@ -74,7 +81,10 @@ test('detached projection rewrites npm prefixes to the harness root', () => {
 })
 
 test('self-development projection is never rewritten', () => {
-  const source = 'Read `docs/x.md`, then run `./bin/pan list --json`.'
+  const { harnessPath, panCommand } = CURSOR_PROJECTION_TOKENS
+  const source =
+    `Read \`${harnessPath}docs/x.md\`, then run ` +
+    `\`${panCommand} list --json\`.`
 
   assert.equal(
     projectCursorContent(
@@ -82,13 +92,15 @@ test('self-development projection is never rewritten', () => {
       '.cursor/commands/pan-status.md',
       'self_development',
     ),
-    source,
+    'Read `docs/x.md`, then run `./bin/pan list --json`.',
   )
 })
 
 test('embedded build-docs projection preserves harness-relative CLI targets', () => {
+  const { cliPath, panCommand } = CURSOR_PROJECTION_TOKENS
   const projected = projectCursorContent(
-    'Run `./bin/pan requirements run --target docs/target-repo-primer.md`.',
+    `Run \`${panCommand} requirements run --target ` +
+      `${cliPath}docs/target-repo-primer.md\`.`,
     '.cursor/commands/pan-build-docs.md',
     'embedded',
   )
@@ -100,8 +112,11 @@ test('embedded build-docs projection preserves harness-relative CLI targets', ()
 })
 
 test('embedded repair projection writes the intake under the installed harness', () => {
+  const { cliPath, harnessPath, panCommand } = CURSOR_PROJECTION_TOKENS
   const projected = projectCursorContent(
-    'Choose an output path under `runtime/inbox/`, then run `./bin/pan requirements run --target runtime/inbox/repair.md`.',
+    `Choose an output path under \`${harnessPath}runtime/inbox/\`, then run ` +
+      `\`${panCommand} requirements run --target ` +
+      `${cliPath}runtime/inbox/repair.md\`.`,
     '.cursor/commands/pan-repair.md',
     'embedded',
   )
@@ -113,8 +128,12 @@ test('embedded repair projection writes the intake under the installed harness',
 })
 
 test('embedded release projection resolves the harness config before stopping', () => {
+  const { harnessPath, panCommand } = CURSOR_PROJECTION_TOKENS
   const projected = projectCursorContent(
-    'Read `config.json`, `docs/target-repo-primer.md`, and `library/skills/update-release-metadata.md`, then run `./bin/pan list --json`.',
+    `Read \`${harnessPath}config.json\`, ` +
+      `\`${harnessPath}docs/target-repo-primer.md\`, and ` +
+      `\`${harnessPath}library/skills/update-release-metadata.md\`, then run ` +
+      `\`${panCommand} list --json\`.`,
     '.cursor/commands/pan-release.md',
     'embedded',
   )
@@ -122,6 +141,18 @@ test('embedded release projection resolves the harness config before stopping', 
   assert.equal(
     projected,
     'Read `.pancreator/config.json`, `.pancreator/docs/target-repo-primer.md`, and `.pancreator/library/skills/update-release-metadata.md`, then run `./.pancreator/bin/pan list --json`.',
+  )
+})
+
+test('projection rejects unresolved path tokens', () => {
+  assert.throws(
+    () =>
+      projectCursorContent(
+        'Read `{{PANCREATOR_UNKNOWN_PATH}}file.md`.',
+        '.cursor/commands/pan-status.md',
+        'embedded',
+      ),
+    /contains unresolved projection tokens/u,
   )
 })
 
@@ -143,7 +174,7 @@ test('repository validation does not require a local Cursor projection', () => {
   assert.deepEqual(result.errors, [])
 })
 
-test('installer and compiled policy-rule renderers stay byte-identical', () => {
+test('installer and compiled projection renderers stay byte-identical', () => {
   const root = createFixture()
   const targetRoot = mkdtempSync(
     path.join(tmpdir(), 'pancreator-installer-projection-'),
@@ -181,6 +212,24 @@ test('installer and compiled policy-rule renderers stay byte-identical', () => {
     )
 
     assert.equal(installerRendered, renderPolicyCursorRule(policy))
+
+    const commandSource = readFileSync(
+      path.join(root, 'library', 'cursor', 'commands', 'pan-status.md'),
+      'utf8',
+    )
+    const installerCommand = readFileSync(
+      path.join(targetRoot, '.cursor', 'commands', 'pan-status.md'),
+      'utf8',
+    )
+
+    assert.equal(
+      installerCommand,
+      projectCursorContent(
+        commandSource,
+        '.cursor/commands/pan-status.md',
+        'embedded',
+      ),
+    )
   } finally {
     rmSync(targetRoot, { recursive: true, force: true })
   }

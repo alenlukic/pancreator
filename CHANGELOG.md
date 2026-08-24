@@ -4,6 +4,12 @@
 
 ### Changed
 
+- Scope policy lookup rows by persona, stage, installation, and review mode ([policy_lookup_table.json](governance/registries/policy_lookup_table.json)).
+- Replace file-specific projection rewrites with explicit path tokens for each installation mode ([cursor-content.ts](src/lib/cursor-content.ts)).
+- Reduce `AGENTS.md` and projected wrappers to bootstrap, authority, and safety rules ([AGENTS.md](AGENTS.md)).
+- Use one shared renderer for policy blocks in workflow cards and standalone cards ([policy-guidance.ts](src/lib/policy-guidance.ts)).
+- Mirror projection tokens in the installer renderer and keep compiled output byte-identical ([install-support](bin/install-support)).
+- Carry complete worker-delivery authority inside `BESTOFN-001` so the meta-orchestrator no longer cites unavailable `INVOCATION-001` ([BESTOFN-001](governance/policies/BESTOFN-001.json), [meta-orchestrator](library/cursor/agents/meta-orchestrator.md), [policies tests](tests/unit/policies.test.ts)).
 - Continue enabled away-mode runs after each safe pending action until a real blocker or a terminal state ([AGENTS.md](AGENTS.md), [ORCH-001](governance/policies/ORCH-001.json), [orchestrator persona](library/personas/orchestrator.md)).
 - Keep ordinary gate decisions with the supervisor and limit the hypervisor to agent health ([AWAY-001](governance/policies/AWAY-001.json), [hypervisor CLI test](tests/integration/hypervisor-cli.test.ts)).
 - Accept a successful ship packet through deterministic away approval without commit, push, merge, publication, or deployment ([SHIP-001](governance/policies/SHIP-001.json), [away-mode](src/lib/away-mode.ts)).
@@ -11,11 +17,17 @@
 
 ### Added
 
+- Add a context-bloat disposition registry and a deterministic audit of agent-facing surfaces ([context_bloat_dispositions.json](governance/registries/context_bloat_dispositions.json)).
+- Add a catch-all `unbound` governance-card context so ad-hoc agents receive universal policies plus `DELEGATE-001` ([governance-card.ts](src/lib/governance-card.ts), [policy_lookup_table.json](governance/registries/policy_lookup_table.json), [AGENTS.md](AGENTS.md), [policies tests](tests/unit/policies.test.ts)).
 - Add `bin/run-built` so one root-scoped lock covers a build and its compiled-code consumer ([run-built](bin/run-built), [package.json](package.json)).
 - Add decision kinds that separate budgeted evaluator records from deterministic ship approval ([away-mode](src/lib/away-mode.ts), [autonomy-state validator](src/lib/validators/autonomy-state.ts)).
 
 ### Fixed
 
+- Restore the rtk wrap note, the chat-markdown check, and the source-to-target import boundary ([AGENTS.md](AGENTS.md)).
+- Restore source-side target-installation safeguards: validate against an external target, read the target `AGENTS.md`, and never stage target contents from the Pancreator checkout ([AGENTS.md](AGENTS.md)).
+- Restore `DELEGATE-001` on standalone shepherd so `pan-shepherd-reviewer` stays under subagent supervision ([policy_lookup_table.json](governance/registries/policy_lookup_table.json), [policies tests](tests/unit/policies.test.ts)).
+- Replace a bare projection-token error with the shared invariant code `UNRESOLVED_PROJECTION_TOKEN` ([cursor-content.ts](src/lib/cursor-content.ts)).
 - Resume the supervisor loop after one applied away decision so an enabled run does not stall ([dev-workflow test](tests/integration/dev-workflow.test.ts)).
 - Reuse a same-root nested build-only call so the lock does not wait on its ancestor ([cli-help test](tests/integration/cli-help.test.ts)).
 
