@@ -9,14 +9,18 @@
 - Reduce `AGENTS.md` and projected wrappers to bootstrap, authority, and safety rules ([AGENTS.md](AGENTS.md)).
 - Use one shared renderer for policy blocks in workflow cards and standalone cards ([policy-guidance.ts](src/lib/policy-guidance.ts)).
 - Mirror projection tokens in the installer renderer and keep compiled output byte-identical ([install-support](bin/install-support)).
+- Carry complete worker-delivery authority inside `BESTOFN-001` so the meta-orchestrator no longer cites unavailable `INVOCATION-001` ([BESTOFN-001](governance/policies/BESTOFN-001.json), [meta-orchestrator](library/cursor/agents/meta-orchestrator.md), [policies tests](tests/unit/policies.test.ts)).
 
 ### Added
 
 - Add a context-bloat disposition registry and a deterministic audit of agent-facing surfaces ([context_bloat_dispositions.json](governance/registries/context_bloat_dispositions.json)).
+- Add a catch-all `unbound` governance-card context so ad-hoc agents receive universal policies plus `DELEGATE-001` ([governance-card.ts](src/lib/governance-card.ts), [policy_lookup_table.json](governance/registries/policy_lookup_table.json), [AGENTS.md](AGENTS.md), [policies tests](tests/unit/policies.test.ts)).
 
 ### Fixed
 
 - Restore the rtk wrap note, the chat-markdown check, and the source-to-target import boundary ([AGENTS.md](AGENTS.md)).
+- Restore source-side target-installation safeguards: validate against an external target, read the target `AGENTS.md`, and never stage target contents from the Pancreator checkout ([AGENTS.md](AGENTS.md)).
+- Restore `DELEGATE-001` on standalone shepherd so `pan-shepherd-reviewer` stays under subagent supervision ([policy_lookup_table.json](governance/registries/policy_lookup_table.json), [policies tests](tests/unit/policies.test.ts)).
 - Replace a bare projection-token error with the shared invariant code `UNRESOLVED_PROJECTION_TOKEN` ([cursor-content.ts](src/lib/cursor-content.ts)).
 
 ## [4.4.0] - 2026-08-24
