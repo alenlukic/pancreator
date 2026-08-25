@@ -191,6 +191,15 @@ test('submit succeeds when canonical delegation artifact is present', () => {
     contract,
     /path reference, prose observation, or pytest node id/u,
   )
+  // The card states the tests_added and remediation shapes with an example,
+  // so the required format no longer lives only inside the validator.
+  assert.match(contract, /data\.implementation\.tests_added\[\]/u)
+  assert.match(
+    contract,
+    /tests\/unit\/example\.test\.ts::adds provenance rows/u,
+  )
+  assert.match(contract, /data\.implementation\.remediation\[\]/u)
+  assert.match(contract, /required keys: cause, action, evidence/u)
 })
 
 test('submit relocates workspace-root delegation artifact before validation', () => {

@@ -1,5 +1,31 @@
 # Changelog
 
+## [4.6.0] - 2026-08-25
+
+### Changed
+
+- Enforce required and authoritative harness validator failures on every stage they bind, routing `stage_failure`/`blocked` outcomes from the resolved requirement instead of demoting non-ship failures to governance warnings ([engine](src/lib/engine.ts), [dev-workflow test](tests/integration/dev-workflow.test.ts)).
+- Accept operator-declared absolute and out-of-workspace paths wherever they resolve on the system: plan validation drops its path-shape rejection, and target-instruction resolution contributes no chain for out-of-workspace paths instead of failing with `TARGET_INSTRUCTION_PATH_INVALID` ([stage-validators](src/lib/validators/stage-validators.ts), [target-instructions](src/lib/target-instructions.ts), [run-friction tests](tests/regression/run-friction.test.ts)).
+- Resolve native pytest `path::case` node ids and the spaced `path :: case` display form to the same test file in implementation claims, and name the accepted format in the failure message ([stage-validators](src/lib/validators/stage-validators.ts)).
+- Run every repository-check profile command even after an earlier command fails, so independently meaningful partitions (backend/frontend) are always captured; probes remain fail-fast preconditions ([repository-checks](src/lib/repository-checks.ts)).
+- Accept any successfully resolved Cursor variant for a bare (bracket-less) model spec in worker model evidence, aligning `probeRunInvocationModel` with the config-wide prober instead of comparing a spec id with a display name ([engine](src/lib/engine.ts), [model-evidence test](tests/integration/model-evidence.test.ts)).
+- Permit the two-line `Agent:`/`Persona:` identity prefix ahead of delegation evidence and document the exact supported label grammar in the delivery procedure, `INVOCATION-001`, `BESTOFN-001`, and the orchestrator persona ([validation](src/lib/validation.ts), [render](src/lib/render.ts)).
+- Rename the untracked operator-overrides file from `config.local.json` to `config_overrides.json`, with a legacy-name fallback for existing installations ([project-config](src/lib/project-config.ts), [install-support](bin/install-support)).
+- Change the default worktree branch prefix from `pan-wt/` to `worktree/`; the prefix remains configurable via `worktrees.branch_prefix` in `config.json` ([project-config](src/lib/project-config.ts)).
+- Merge the source checkout's `config_overrides.json` into every installer read of the source configuration, so installs ship the effective model specs while the tracked `config.json` may keep its model values blank ([install-support](bin/install-support)).
+
+### Added
+
+- Require per-reference read evidence: guidance attestation entries return (scaffold-prefilled identities, worker-supplied `final_line` quote of the selection's closing line) and target-instruction evidence gains `reads` entries quoting each file's last non-empty line, both validated against the actual bytes ([validation](src/lib/validation.ts), [scaffold](src/lib/requirements/scaffold.ts), [stage-validators](src/lib/validators/stage-validators.ts), [stage-output schema](library/schemas/stage-output.schema.json), [GLOBAL-002](governance/policies/GLOBAL-002.json)).
+- Declare the `tests_added` entry format and the `remediation` object shape in the shared field contract so implement cards state them with an example ([stage-output-requirements](library/schemas/stage-output-requirements.json), [implement prompt](library/workflows/dev/prompts/implement.md)).
+- Disclose dirty-worktree paths, the full dirty count, and a matching predecessor run id in pre-implementation baseline artifacts, and warn at capture when a run starts from uncommitted prior-run changes ([engine](src/lib/engine.ts), [repository-checks](src/lib/repository-checks.ts)).
+- Expose `apply_ready_decision_ids` from `pan away status` and make `AWAY_DECISION_NOT_FOUND` name the ledger path, the id's actual state, and the apply-ready ids ([cli](src/cli.ts), [hypervisor-cli test](tests/integration/hypervisor-cli.test.ts)).
+- Record `output_bytes` on every stage-history item as advisory output-volume telemetry ([engine](src/lib/engine.ts), [types](src/lib/types.ts)).
+
+### Fixed
+
+- Stop recording `outcome: success` and transitioning along the success edge while a required harness validator failure stands in a non-ship stage's `validation_errors` — the record and the transition now agree ([engine](src/lib/engine.ts)).
+
 ## [4.5.0] - 2026-08-24
 
 ### Changed

@@ -2135,6 +2135,59 @@ test('implementation validator resolves the file portion of "path :: case" test 
   assert.doesNotMatch(missing[0].message, /tests\/sample\.test\.ts :: /u)
 })
 
+test('implementation validator resolves native pytest node ids without spaces', () => {
+  const root = validatorFixtureRoot('pan-impl-pytest-node-')
+  const runId = 'run-impl-pytest-node'
+  const target = `runtime/logs/workflows/${runId}/outputs/implement-1-test.json`
+  const absolute = path.join(root, target)
+
+  mkdirSync(path.dirname(absolute), { recursive: true })
+  writePlanOutput(root, runId, ['AC-01'])
+  mkdirSync(path.join(root, 'tests'), { recursive: true })
+  writeFileSync(path.join(root, 'tests', 'test_provenance.py'), 'test\n')
+  writeFileSync(
+    absolute,
+    `${JSON.stringify({
+      data: {
+        implementation: {
+          changed_files: [],
+          tests_added: [
+            // Run 63315 workers repeatedly submitted this native pytest form
+            // and the parser treated the entire node id as a path.
+            'tests/test_provenance.py::test_clo_fixture_validates',
+            'tests/test_provenance.py::TestSave::test_rejects_invalid',
+            'tests/test_provenance.py :: display form of the same file',
+            'tests/gone.py::test_case',
+          ],
+          notes: [],
+        },
+        acceptance_results: [{ id: 'AC-01', result: 'pass', evidence: ['x'] }],
+      },
+    })}\n`,
+  )
+
+  const result = validateImplementationClaims({
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'DEV-001',
+      requirement_id: 'implementation-claims',
+      registry_id: 'IMPLEMENTATION-CLAIMS-VALIDATE-001',
+      arguments: {},
+    },
+  })
+  const missing = result.issues.filter(
+    (issue) => issue.code === 'claim.test_missing',
+  )
+
+  // `path::case` and `path :: case` resolve to the same file; only the file
+  // that truly does not exist is reported, with the accepted format named in
+  // the message so a retry can self-correct.
+  assert.equal(missing.length, 1)
+  assert.match(missing[0].message, /tests\/gone\.py/u)
+  assert.match(missing[0].message, /Entries MUST be/u)
+})
+
 test('review validator accepts operator-routed unresolved findings', () => {
   const root = validatorFixtureRoot('pan-review-operator-route-')
   const runId = 'run-review-operator-route'
@@ -2352,4 +2405,96 @@ test('target instruction coverage names omitted instruction paths', () => {
         item.message.includes('AGENTS.md'),
     ),
   )
+})
+
+test('target instruction coverage demands final-line read evidence per path', () => {
+  const root = createFixture()
+  const target = 'runtime/output.json'
+  const requirement = {
+    policy_id: 'DEV-001',
+    requirement_id: 'target-instruction-coverage',
+    registry_id: 'TARGET-INSTRUCTION-COVERAGE-VALIDATE-001',
+    arguments: {},
+  }
+  const invocation = {
+    inputs: {
+      target_instructions: {
+        changed_paths: ['src/base.ts'],
+        read_paths: ['AGENTS.md'],
+      },
+    },
+  }
+  const agentsLines = readFileSync(path.join(root, 'AGENTS.md'), 'utf8')
+    .split('\n')
+    .filter((line) => line.trim().length > 0)
+  const finalLine = agentsLines[agentsLines.length - 1]
+
+  mkdirSync(path.join(root, 'runtime'), { recursive: true })
+
+  // A path list alone is copyable from the card, so it is not read evidence.
+  writeFileSync(
+    path.join(root, target),
+    `${JSON.stringify({
+      target_instruction_evidence: { read_paths: ['AGENTS.md'] },
+    })}\n`,
+  )
+
+  const withoutReads = validateTargetInstructionCoverage({
+    root,
+    targetPath: target,
+    requirement,
+    invocation,
+  })
+
+  assert.equal(withoutReads.status, 'failed')
+  assert.ok(
+    withoutReads.issues.some(
+      (item) => item.code === 'TARGET_INSTRUCTION_READ_EVIDENCE_MISSING',
+    ),
+  )
+
+  // A wrong quote fails: the line validates against the file on disk.
+  writeFileSync(
+    path.join(root, target),
+    `${JSON.stringify({
+      target_instruction_evidence: {
+        read_paths: ['AGENTS.md'],
+        reads: [{ path: 'AGENTS.md', final_line: 'not the closing line' }],
+      },
+    })}\n`,
+  )
+
+  const misquoted = validateTargetInstructionCoverage({
+    root,
+    targetPath: target,
+    requirement,
+    invocation,
+  })
+
+  assert.equal(misquoted.status, 'failed')
+  assert.ok(
+    misquoted.issues.some(
+      (item) => item.code === 'TARGET_INSTRUCTION_READ_EVIDENCE_MISMATCH',
+    ),
+  )
+
+  // The verbatim closing line of the file passes.
+  writeFileSync(
+    path.join(root, target),
+    `${JSON.stringify({
+      target_instruction_evidence: {
+        read_paths: ['AGENTS.md'],
+        reads: [{ path: 'AGENTS.md', final_line: finalLine }],
+      },
+    })}\n`,
+  )
+
+  const quoted = validateTargetInstructionCoverage({
+    root,
+    targetPath: target,
+    requirement,
+    invocation,
+  })
+
+  assert.equal(quoted.status, 'passed', JSON.stringify(quoted.issues))
 })

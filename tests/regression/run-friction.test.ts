@@ -186,6 +186,43 @@ test('the delegation validator accepts one leading persona label', () => {
   )
 })
 
+test('the delegation validator accepts the Agent/Persona identity-line pair', () => {
+  // The delivered body itself begins with a harness-generated `Persona:` line
+  // under referenced delivery; run 63316 supervisors prepended both identity
+  // lines and every otherwise correct delegation warned (GA-0001..GA-0010).
+  const canonical = 'Persona: `coder`.\n\nBody line one.\nBody line two.\n'
+  const paired = validateDelegationMarkdown(
+    canonical,
+    `Agent: pan-coder\nPersona: \`coder\`.\n\n${canonical}`,
+    'referenced',
+  )
+
+  assert.equal(paired.passed, true)
+  assert.ok(
+    paired.checks.some((check) => check.id === 'delegation.label_minimal'),
+  )
+
+  // A lone Agent label still qualifies via the single-line grammar even
+  // though the body's own first line is a Persona line.
+  const single = validateDelegationMarkdown(
+    canonical,
+    `Agent: pan-coder\n\n${canonical}`,
+    'referenced',
+  )
+
+  assert.equal(single.passed, true)
+
+  // Two-line prose does not qualify: only Agent:/Persona: identity lines may
+  // stack, so a parallel instruction cannot ride in as a "label".
+  const prose = validateDelegationMarkdown(
+    canonical,
+    `Refactor the module first\nThen follow the card\n\n${canonical}`,
+    'referenced',
+  )
+
+  assert.equal(prose.passed, false)
+})
+
 test('the delegation validator still rejects a shadowing preamble', () => {
   const canonical = '# 🚀 Card\n\nBody line one.\n'
 
@@ -257,18 +294,24 @@ test('plan file paths resolve against the workspace root, not the installation',
   )
 })
 
-test('a plan file path escaping the root with .. is rejected', () => {
+test('plan file paths outside the workspace are accepted when they resolve', () => {
   const root = createFixture()
   const outputRelative = 'runtime/logs/workflows/x/outputs/plan.json'
+  const sibling = mkdtempSync(path.join(tmpdir(), 'pan-sibling-repo-'))
+  const siblingFile = path.join(sibling, 'model.py')
 
+  writeFileSync(siblingFile, 'print("sibling")\n')
   writeJson(path.join(root, outputRelative), {
     data: {
       engineering_plan: {
         approach: 'Fixture',
         components: ['app'],
         files: [
+          // An absolute path into a sibling repository, exactly as run
+          // 63315's plan 97_plan-2_b898a4d1 declared it.
+          { path: siblingFile, status: 'modified', purpose: 'core' },
           {
-            path: '../../../app/model.py',
+            path: '../nonexistent/app/model.py',
             status: 'modified',
             purpose: 'core',
           },
@@ -298,9 +341,25 @@ test('a plan file path escaping the root with .. is rejected', () => {
     },
   })
 
-  // Traversal was how one tech-lead made this validator pass; the ratified plan
-  // then carried non-portable paths into implement and review.
-  assert.ok(result.issues.some((item) => item.code === 'plan.file_path_shape'))
+  // Any path that resolves on this system is valid, absolute or relative;
+  // the only gate is existence for files not marked new. Downstream
+  // target-instruction resolution consumes the same paths without rejecting
+  // them, so an accepted plan can no longer fail implement preparation with
+  // TARGET_INSTRUCTION_PATH_INVALID.
+  assert.ok(!result.issues.some((item) => item.code === 'plan.file_path_shape'))
+  assert.ok(
+    !result.issues.some(
+      (item) =>
+        item.code === 'plan.file_missing' && item.message.includes(siblingFile),
+    ),
+  )
+  assert.ok(
+    result.issues.some(
+      (item) =>
+        item.code === 'plan.file_missing' &&
+        item.message.includes('../nonexistent/app/model.py'),
+    ),
+  )
 })
 
 test('re-scaffolding an untouched output is idempotent, not an error', () => {

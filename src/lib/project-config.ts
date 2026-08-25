@@ -21,8 +21,13 @@ export const DEFAULT_REVIEW_MODE: ReviewMode = 'default'
  */
 export const DEFAULT_WORKTREE_ROOT = 'runtime/worktrees/operator'
 
-/** Branch prefix that keeps harness branches recognizable in `git branch`. */
-export const DEFAULT_WORKTREE_BRANCH_PREFIX = 'pan-wt/'
+/**
+ * Branch prefix that keeps harness branches recognizable in `git branch`.
+ * Configurable per installation via `worktrees.branch_prefix` in
+ * `config.json`; the prefix is concatenated directly with the worktree name,
+ * so the trailing separator belongs to the prefix.
+ */
+export const DEFAULT_WORKTREE_BRANCH_PREFIX = 'worktree/'
 
 const PROJECT_CONFIG_PATH = 'config.json'
 
@@ -52,7 +57,26 @@ const DEFAULT_MAX_REMEDIATION_ATTEMPTS_PER_AGENT = 2
  * a release can update; this file holds per-checkout preferences such as
  * `active_config` or persona model overrides.
  */
-export const LOCAL_CONFIG_PATH = 'config.local.json'
+export const LOCAL_CONFIG_PATH = 'config_overrides.json'
+
+/**
+ * Pre-rename installations keep operator overrides at `config.local.json`.
+ * Reads fall back to the legacy name so an installation stays usable before
+ * its operator renames the file. Remove once no supported installation
+ * predates the rename.
+ */
+export const LEGACY_LOCAL_CONFIG_PATH = 'config.local.json'
+
+/** Root-relative name of the operator-overrides file present in `root`. */
+export function localConfigName(root: string): string {
+  if (fileExists(path.join(root, LOCAL_CONFIG_PATH))) {
+    return LOCAL_CONFIG_PATH
+  }
+
+  return fileExists(path.join(root, LEGACY_LOCAL_CONFIG_PATH))
+    ? LEGACY_LOCAL_CONFIG_PATH
+    : LOCAL_CONFIG_PATH
+}
 
 /** Objects merge recursively; any other local value replaces the base value. */
 function mergeConfigValues(base: unknown, override: unknown): unknown {
@@ -70,13 +94,14 @@ function mergeConfigValues(base: unknown, override: unknown): unknown {
 }
 
 /**
- * Read a harness configuration file with `config.local.json` merged over it.
- * Every reader of the harness configuration goes through this, so a local
+ * Read a harness configuration file with `config_overrides.json` merged over
+ * it. Every reader of the harness configuration goes through this, so a local
  * preference behaves exactly as if it were edited into `config.json`.
  */
 export function readHarnessConfig(root: string, filePath: string): unknown {
   const value = readJson(filePath)
-  const localPath = path.join(root, LOCAL_CONFIG_PATH)
+  const localName = localConfigName(root)
+  const localPath = path.join(root, localName)
 
   if (!fileExists(localPath)) {
     return value
@@ -84,7 +109,7 @@ export function readHarnessConfig(root: string, filePath: string): unknown {
 
   const local = readJson(localPath)
 
-  invariant(isRecord(local), `${LOCAL_CONFIG_PATH} MUST contain an object.`, {
+  invariant(isRecord(local), `${localName} MUST contain an object.`, {
     code: 'INVALID_PROJECT_CONFIG',
   })
 
