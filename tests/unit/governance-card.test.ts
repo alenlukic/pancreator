@@ -169,12 +169,12 @@ test('the shared worktree option resolves or creates the card workspace', () => 
 
   assert.ok(card.worktree)
   assert.equal(card.worktree.name, 'fix-it')
-  assert.equal(card.worktree.path, 'runtime/worktrees/operator/fix-it')
+  assert.equal(card.worktree.path, 'worktrees/operator/fix-it')
 
   const written = readFileSync(path.join(root, card.path), 'utf8')
 
   assert.match(written, /## 🌳 Workspace worktree/u)
-  assert.ok(written.includes('`runtime/worktrees/operator/fix-it`'))
+  assert.ok(written.includes('`worktrees/operator/fix-it`'))
   assert.match(written, /Do not change the main checkout/u)
 
   // A second card with the same name reuses the recorded worktree.

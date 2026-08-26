@@ -519,9 +519,19 @@ function guidanceChecks(options: {
   ]
 }
 
+/**
+ * Workflow lifecycle commands are supervisor-owned. A worker-visible contract
+ * that prints one invites the worker to run it, so invocation validation
+ * rejects any of these in the card when the delegation names a separate
+ * supervisor procedure document.
+ */
+const WORKER_LIFECYCLE_COMMAND_PATTERN =
+  /pan\s+(submit|decide|set-stage|waive-gate|delegate|abort)\b/u
+
 export function validateInvocationMarkdown(
   invocation: Invocation,
   markdown: string,
+  supervisorProcedureMarkdown?: string,
 ): { passed: boolean; checks: ValidationCheck[] } {
   const checks: ValidationCheck[] = []
   const normalized = normalizeMarkdownContent(markdown)
@@ -617,6 +627,17 @@ export function validateInvocationMarkdown(
 
   if (invocation.delegation) {
     const { delegation } = invocation
+    // A delegation that names a supervisor procedure document keeps every
+    // lifecycle command there; the card holds only a pointer section. Legacy
+    // delegations inline the whole procedure on the card, so their checks run
+    // against the card body.
+    const split = typeof delegation.supervisor_procedure_path === 'string'
+    const procedure = split
+      ? normalizeMarkdownContent(supervisorProcedureMarkdown ?? '')
+      : normalized
+    const procedureLabel = split
+      ? 'the supervisor procedure document'
+      : 'the card'
 
     checks.push({
       id: 'delegation.heading',
@@ -625,6 +646,37 @@ export function validateInvocationMarkdown(
         ? 'Supervisor delivery procedure is present'
         : `Markdown MUST contain '${DELEGATION_HEADING}'`,
     })
+
+    if (split) {
+      const procedurePath = delegation.supervisor_procedure_path ?? ''
+
+      checks.push({
+        id: 'delegation.procedure_path',
+        passed: normalized.includes(procedurePath),
+        message: normalized.includes(procedurePath)
+          ? 'Supervisor procedure path is resolved in the card'
+          : `Markdown MUST name the supervisor procedure document: ${procedurePath}`,
+      })
+      checks.push({
+        id: 'delegation.procedure_document',
+        passed: procedure.includes(DELEGATION_HEADING),
+        message: procedure.includes(DELEGATION_HEADING)
+          ? 'Supervisor procedure document is present'
+          : `The supervisor procedure document at ${procedurePath} MUST contain '${DELEGATION_HEADING}'`,
+      })
+
+      const lifecycleMatch = WORKER_LIFECYCLE_COMMAND_PATTERN.exec(normalized)
+
+      checks.push({
+        id: 'delegation.worker_isolation',
+        passed: lifecycleMatch === null,
+        message:
+          lifecycleMatch === null
+            ? 'Worker-visible contract carries no workflow lifecycle command'
+            : `Worker-visible contract MUST NOT contain the lifecycle command 'pan ${lifecycleMatch[1]}'`,
+      })
+    }
+
     checks.push({
       id: 'delegation.policies_present',
       passed: delegation.policies.length > 0,
@@ -638,10 +690,10 @@ export function validateInvocationMarkdown(
       for (const [index, instruction] of policy.instructions.entries()) {
         checks.push({
           id: `delegation.${policy.id}.instruction.${index + 1}`,
-          passed: normalized.includes(instruction),
-          message: normalized.includes(instruction)
+          passed: procedure.includes(instruction),
+          message: procedure.includes(instruction)
             ? `Delivery policy ${policy.id} instruction ${index + 1} is present`
-            : `Markdown MUST inline ${policy.id} instruction ${index + 1} for the supervisor`,
+            : `${procedureLabel} MUST inline ${policy.id} instruction ${index + 1} for the supervisor`,
         })
       }
     }
@@ -663,10 +715,10 @@ export function validateInvocationMarkdown(
     ] as const) {
       checks.push({
         id: `delegation.${id}`,
-        passed: normalized.includes(value),
-        message: normalized.includes(value)
-          ? `Delivery ${id} is resolved in the card`
-          : `Markdown MUST resolve the delivery ${id}: ${value}`,
+        passed: procedure.includes(value),
+        message: procedure.includes(value)
+          ? `Delivery ${id} is resolved in ${procedureLabel}`
+          : `${procedureLabel} MUST resolve the delivery ${id}: ${value}`,
       })
     }
   }

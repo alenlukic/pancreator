@@ -1841,7 +1841,8 @@ export function migrateRunSuffixes(
 
         if (
           group.kind === 'best-of-n' &&
-          existsSync(path.join(runtimeRoot, 'worktrees', entry.name))
+          (existsSync(path.join(root, 'worktrees', entry.name)) ||
+            existsSync(path.join(runtimeRoot, 'worktrees', entry.name)))
         ) {
           skipped.push(`${parentRelative}/${entry.name}`)
           continue

@@ -40,12 +40,13 @@ function cardText(root: string, markdownPath: string): string {
 
 /**
  * The supervisor delegates from the continuation loop, where it holds no card
- * of its own. These assertions pin the delivery contract to the artifact it
- * must already read, so compliance never depends on recalling `AGENTS.md`.
- * Dev intake is the first delegated stage, so the run has no supervisor-owned
- * stage to fall back on.
+ * of its own. These assertions pin the delivery contract to the sibling
+ * supervisor procedure document the card names, so compliance never depends
+ * on recalling `AGENTS.md` — while the worker-visible card itself carries no
+ * workflow lifecycle command. Dev intake is the first delegated stage, so the
+ * run has no supervisor-owned stage to fall back on.
  */
-test('worker invocation cards inline the supervisor delivery contract', () => {
+test('worker invocation cards point at the supervisor delivery procedure', () => {
   const root = createFixture()
   const invocationPolicy = loadPolicyCatalog(root).get('INVOCATION-001')
 
@@ -78,12 +79,34 @@ test('worker invocation cards inline the supervisor delivery contract', () => {
   )
 
   assert.ok(markdown.includes(DELEGATION_HEADING))
+  assert.ok(delegation.supervisor_procedure_path)
+  assert.ok(
+    markdown.includes(delegation.supervisor_procedure_path),
+    'card MUST name the supervisor procedure document',
+  )
+
+  // Lifecycle commands are supervisor-owned: the worker-visible card must not
+  // print any of them, above all the submit command.
+  assert.ok(
+    !markdown.includes(delegation.submit_command),
+    'card MUST NOT print the submit command',
+  )
+  assert.ok(
+    !/pan\s+(submit|decide|set-stage|waive-gate|delegate|abort)\b/u.test(
+      markdown,
+    ),
+    'card MUST NOT print a workflow lifecycle command',
+  )
+
+  const procedure = cardText(root, delegation.supervisor_procedure_path)
+
+  assert.ok(procedure.includes(DELEGATION_HEADING))
 
   // The whole policy, not a pointer to it.
   for (const instruction of invocationPolicy.instructions) {
     assert.ok(
-      markdown.includes(instruction),
-      `card MUST inline INVOCATION-001 instruction: ${instruction}`,
+      procedure.includes(instruction),
+      `procedure MUST inline INVOCATION-001 instruction: ${instruction}`,
     )
   }
 
@@ -96,7 +119,10 @@ test('worker invocation cards inline the supervisor delivery contract', () => {
     delegation.submit_command,
     delegation.delivery_prompt_path ?? '',
   ]) {
-    assert.ok(markdown.includes(resolved), `card MUST resolve ${resolved}`)
+    assert.ok(
+      procedure.includes(resolved),
+      `procedure MUST resolve ${resolved}`,
+    )
   }
 
   const artifact = read(
@@ -105,6 +131,16 @@ test('worker invocation cards inline the supervisor delivery contract', () => {
 
   assert.equal(artifact.status, 'pass')
   assert.ok(artifact.checks.some((check) => check.id === 'delegation.heading'))
+  assert.ok(
+    artifact.checks.some(
+      (check) => check.id === 'delegation.worker_isolation' && check.passed,
+    ),
+  )
+  assert.ok(
+    artifact.checks.some(
+      (check) => check.id === 'delegation.procedure_document' && check.passed,
+    ),
+  )
 
   // The contract survives real delivery: the copied prompt body still matches.
   assert.equal(delegation.mode, 'referenced')

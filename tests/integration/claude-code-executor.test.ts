@@ -267,7 +267,17 @@ test('a mixed-executor dev run completes with claude-code plan and review', () =
         assert.equal(invocation.delegation?.executor, 'claude-code')
         assert.equal(invocation.delegation?.cursor_agent_path, undefined)
         assert.ok(markdown.includes('**Executor** `claude-code`'))
-        assert.ok(markdown.includes(`pan delegate ${runId}`))
+        // The delegate command is supervisor-owned: it lives in the sibling
+        // procedure document, never on the worker-visible card.
+        assert.ok(!markdown.includes(`pan delegate ${runId}`))
+        assert.ok(invocation.delegation?.supervisor_procedure_path)
+
+        const procedure = readFileSync(
+          path.join(root, invocation.delegation.supervisor_procedure_path),
+          'utf8',
+        )
+
+        assert.ok(procedure.includes(`pan delegate ${runId}`))
         // Harness-piped delivery needs no read attestation machinery.
         assert.equal(invocation.contract_manifest, undefined)
 

@@ -14,6 +14,7 @@ import { canonicalPersonaMapping } from './executors/mapping.js'
 import {
   expectedCursorModelForSpec,
   probeCursorModelSpec,
+  probeEnvironment,
 } from './executors/cursor-probe.js'
 import {
   ensureDir,
@@ -111,6 +112,7 @@ import {
   buildInvocationContractManifest,
   renderInvocationDeliveryPrompt,
   renderInvocationMarkdown,
+  renderSupervisorProcedureMarkdown,
   renderStatus,
 } from './render.js'
 import {
@@ -1386,7 +1388,11 @@ export function probeRunInvocationModel(
     // compared literally with a display name.
     const bareSpec = !declaredSpec.includes('[')
     const expected = expectedCursorModelForSpec(root, declaredSpec)
-    const probe = probeCursorModelSpec(declaredSpec)
+    const probe = probeCursorModelSpec(
+      declaredSpec,
+      undefined,
+      probeEnvironment(root),
+    )
     const unavailable =
       probe.resolved === null ||
       probe.error !== undefined ||
@@ -2222,6 +2228,10 @@ export function prepareInvocation(
       layout.operatorMarkdown('pr-description.md').relative
     const jsonPath = layout.invocation(invocationId, '.json').relative
     const markdownPath = layout.invocation(invocationId, '.md').relative
+    const supervisorProcedurePath = layout.invocation(
+      invocationId,
+      '.supervisor.md',
+    ).relative
     const delegationArtifactPath = delegationPath(runId, invocationId, root)
     const artifactsRequested = operatorArtifactsRequested(state, stage.slug)
 
@@ -2261,9 +2271,10 @@ export function prepareInvocation(
         ? `Complete this stage in the current chat with model '${model}' ` +
           `when available, write ${outputPath}, then submit it.`
         : externalExecutor
-          ? `Run '${panCommand(root)} delegate ${runId}' to execute the ` +
-            `'${stage.persona}' stage under the '${externalExecutor}' ` +
-            `executor with model '${model}', then submit ${outputPath}.`
+          ? `Run the delegate command from the supervisor procedure to ` +
+            `execute the '${stage.persona}' stage under the ` +
+            `'${externalExecutor}' executor with model '${model}', then ` +
+            `submit ${outputPath}.`
           : `Launch the named Cursor agent for persona '${stage.persona}' ` +
             `(never an ad-hoc subagent; only the named definition runs ` +
             `'${model}') with this card, write delegation evidence to ` +
@@ -2288,6 +2299,7 @@ export function prepareInvocation(
                 root,
               ),
               delegation_artifact_path: delegationArtifactPath,
+              supervisor_procedure_path: supervisorProcedurePath,
               submit_command: `${panCommand(root)} submit ${runId} ${outputPath}`,
               mode: 'verbatim' as const,
               policies: resolvePolicies(root, {
@@ -2314,6 +2326,7 @@ export function prepareInvocation(
                 root,
               ),
               delegation_artifact_path: delegationArtifactPath,
+              supervisor_procedure_path: supervisorProcedurePath,
               submit_command: `${panCommand(root)} submit ${runId} ${outputPath}`,
               mode: 'referenced' as const,
               delivery_prompt_path: deliveryPromptPath(
@@ -2424,6 +2437,16 @@ export function prepareInvocation(
         path: outputPath,
         template: 'library/templates/stage-output.example.json',
         schema: 'library/schemas/stage-output.schema.json',
+        // The exact command, with the JSON snapshot the scaffold interface
+        // accepts, so a delegated worker never reconstructs it from the
+        // requirement table and never reaches for the Markdown contract.
+        ...(stage.persona === 'orchestrator'
+          ? {}
+          : {
+              scaffold_command:
+                `${panCommand(root)} output scaffold ${runId} ` +
+                `--invocation ${jsonPath} --output ${outputPath}`,
+            }),
         required_data: requiredData,
         ...(prDescription
           ? {
@@ -2516,6 +2539,19 @@ export function prepareInvocation(
     }
 
     const renderedMarkdown = renderInvocationMarkdown(invocation)
+    // The supervisor procedure lives beside the card so the worker-visible
+    // contract never carries a lifecycle command. It must exist before
+    // invocation validation, which verifies both documents together.
+    const supervisorProcedureMarkdown = delegation
+      ? renderSupervisorProcedureMarkdown(invocation)
+      : null
+
+    if (supervisorProcedureMarkdown !== null) {
+      writeTextAtomic(
+        resolveInside(root, supervisorProcedurePath),
+        supervisorProcedureMarkdown,
+      )
+    }
 
     // The manifest describes the rendered bytes, so it can only be attached
     // after rendering. The card therefore never contains its own digest, and the
@@ -2541,6 +2577,7 @@ export function prepareInvocation(
     const invocationValidation = validateInvocationMarkdown(
       invocation,
       renderedMarkdown,
+      supervisorProcedureMarkdown ?? undefined,
     )
     const invocationValidationArtifactPath = invocationValidationPath(
       runId,

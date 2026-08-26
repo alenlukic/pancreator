@@ -946,6 +946,7 @@ test('init validates the consolidation config before any candidate runs', () => 
   )
 
   // Nothing was created for either rejected config.
+  assert.equal(existsSync(path.join(root, 'worktrees')), false)
   assert.equal(existsSync(path.join(root, 'runtime', 'worktrees')), false)
 })
 
