@@ -107,16 +107,24 @@ test('scaffold copies the contract manifest into a pending attestation', () => {
     attestation.status === 'pending' ? attestation.contract_sha256 : '',
     'a'.repeat(64),
   )
-  // The whole-contract digest is the entire read requirement. Per-section and
-  // per-guidance digest echoes were transcription theater and are no longer
-  // scaffolded.
+  // Per-section digest echoes were transcription theater and are no longer
+  // scaffolded. Guidance entries return as read evidence: identity fields are
+  // prefilled mechanically so the worker owes only the status flip and the
+  // final-line quote its read produces.
   assert.equal(
     attestation.status === 'pending' ? attestation.sections : null,
     undefined,
   )
-  assert.equal(
+  assert.deepEqual(
     attestation.status === 'pending' ? attestation.guidance : null,
-    undefined,
+    [
+      {
+        policy_id: 'ENG-001',
+        source_path: 'governance/handbooks/eng/engineering.md',
+        content_sha256: 'd'.repeat(64),
+        status: 'pending',
+      },
+    ],
   )
 })
 

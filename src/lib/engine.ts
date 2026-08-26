@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { copyFileSync, rmSync } from 'node:fs'
+import { copyFileSync, readdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
 
 import { buildInvocationInputs, summarizePriorFailure } from './context.js'
@@ -177,6 +177,7 @@ import {
 } from './workflow.js'
 import {
   gitWorkspaceSnapshot,
+  snapshotEntryPath,
   workspaceChangedPathsFromSnapshots,
 } from './git.js'
 import { resolveRoots } from './workspace/roots.js'
@@ -542,6 +543,93 @@ function collectStageRepositoryCheckProfiles(
  * team and CI own the rest, and a level that gates on a heavier profile judges
  * it on its own result instead of a delta.
  */
+/** Cap on the dirty paths a baseline artifact lists verbatim. */
+const BASELINE_DIRTY_PATH_LIMIT = 200
+
+interface BaselineWorkspaceProvenance {
+  dirty_paths: string[]
+  dirty_path_count: number
+  predecessor_run_id?: string
+}
+
+/**
+ * Describe the uncommitted state a baseline is about to be captured over.
+ *
+ * A dirty worktree means the baseline observes someone else's unfinished
+ * changes — typically a predecessor run in the same worktree — so the record
+ * MUST disclose which paths were already modified and, when another run's
+ * final workspace fingerprint matches this starting state, which run left
+ * them. Without this, an inherited failure reads as "the repository was
+ * always broken" and masks what the baseline never truly observed.
+ */
+function baselineWorkspaceProvenance(
+  root: string,
+  state: RunState,
+  workspace: ReturnType<typeof gitWorkspaceSnapshot>,
+): BaselineWorkspaceProvenance {
+  const dirtyPaths = [
+    ...new Set(workspace.entries.map((entry) => snapshotEntryPath(entry))),
+  ].sort()
+  const provenance: BaselineWorkspaceProvenance = {
+    dirty_paths: dirtyPaths.slice(0, BASELINE_DIRTY_PATH_LIMIT),
+    dirty_path_count: dirtyPaths.length,
+  }
+
+  if (dirtyPaths.length === 0) {
+    return provenance
+  }
+
+  const workflows = path.join(root, 'runtime', 'logs', 'workflows')
+
+  if (!fileExists(workflows)) {
+    return provenance
+  }
+
+  let latestSubmittedAt = ''
+
+  for (const entry of readdirSync(workflows, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.name === state.run_id) {
+      continue
+    }
+
+    const stateFile = resolveRunLayout(root, entry.name).state.absolute
+
+    if (!fileExists(stateFile)) {
+      continue
+    }
+
+    let value: unknown
+
+    try {
+      value = readJson(stateFile)
+    } catch {
+      continue
+    }
+
+    if (!isRecord(value)) {
+      continue
+    }
+
+    const other = value as unknown as RunState
+
+    if ((other.workspace_root || '.') !== (state.workspace_root || '.')) {
+      continue
+    }
+
+    const last = other.stage_history?.at(-1)
+
+    if (
+      last?.workspace_fingerprint === workspace.fingerprint &&
+      (last.submitted_at ?? '') >= latestSubmittedAt
+    ) {
+      latestSubmittedAt = last.submitted_at ?? ''
+      provenance.predecessor_run_id = other.run_id
+    }
+  }
+
+  return provenance
+}
+
 function ensureWorkflowRepositoryCheckBaselines(
   root: string,
   state: RunState,
@@ -605,6 +693,24 @@ function ensureWorkflowRepositoryCheckBaselines(
     }
   }
 
+  const preCaptureWorkspace = workspaceSnapshotForRun(root, state)
+  const provenance = baselineWorkspaceProvenance(
+    root,
+    state,
+    preCaptureWorkspace,
+  )
+
+  if (provenance.dirty_path_count > 0) {
+    onProgress?.(
+      `WARNING: baseline capture starts from a dirty worktree ` +
+        `(${provenance.dirty_path_count} uncommitted path(s)` +
+        (provenance.predecessor_run_id
+          ? `, matching the final state of run ${provenance.predecessor_run_id}`
+          : '') +
+        `); baseline evidence discloses the inherited paths`,
+    )
+  }
+
   const baselines: NonNullable<RunState['repository_check_baselines']> = {}
 
   state.repository_check_baselines = baselines
@@ -641,6 +747,14 @@ function ensureWorkflowRepositoryCheckBaselines(
 
     // The summarized artifact is what a coder is required to read; the complete
     // capture stays on disk for anyone who needs the untruncated transcript.
+    const provenanceFields = {
+      workspace_dirty_paths: provenance.dirty_paths,
+      workspace_dirty_path_count: provenance.dirty_path_count,
+      ...(provenance.predecessor_run_id
+        ? { predecessor_run_id: provenance.predecessor_run_id }
+        : {}),
+    }
+
     if (elided) {
       writeJsonAtomic(resolveInside(root, fullPath), {
         schema_version: 1,
@@ -649,6 +763,7 @@ function ensureWorkflowRepositoryCheckBaselines(
         profile: profile.name,
         workspace_fingerprint: workspace.fingerprint,
         recorded_at: recordedAt,
+        ...provenanceFields,
         result,
       })
     }
@@ -660,6 +775,7 @@ function ensureWorkflowRepositoryCheckBaselines(
       profile: profile.name,
       workspace_fingerprint: workspace.fingerprint,
       recorded_at: recordedAt,
+      ...provenanceFields,
       result: summary,
       ...(elided ? { full_result_path: fullPath } : {}),
     })
@@ -1263,16 +1379,23 @@ export function probeRunInvocationModel(
     )
 
     const declaredSpec = invocation.stage.model
-    const expected =
-      expectedCursorModelForSpec(root, declaredSpec) ??
-      (declaredSpec.includes('[') ? null : declaredSpec)
+    // A bare (bracket-less) spec delegates the variant choice to Cursor, so
+    // any successfully resolved variant is the declared behavior — the same
+    // contract `probeCursorModels` applies. Only a bracketed spec carries a
+    // catalog-predicted display name to compare against; a spec id is never
+    // compared literally with a display name.
+    const bareSpec = !declaredSpec.includes('[')
+    const expected = expectedCursorModelForSpec(root, declaredSpec)
     const probe = probeCursorModelSpec(declaredSpec)
     const unavailable =
-      probe.resolved === null || expected === null || probe.error !== undefined
+      probe.resolved === null ||
+      probe.error !== undefined ||
+      (!bareSpec && expected === null)
     const matches =
       !unavailable &&
-      normalizedModelName(probe.resolved ?? '') ===
-        normalizedModelName(expected ?? '')
+      (expected === null ||
+        normalizedModelName(probe.resolved ?? '') ===
+          normalizedModelName(expected))
     const result = unavailable
       ? ('unavailable' as const)
       : matches
@@ -3276,23 +3399,28 @@ export function submitOutput(
 
     // A missing or mismatched attestation blocks every stage, because it means
     // the harness cannot show that the worker held the contract it acted on.
-    // Ship blocks on every non-advisory diagnostic; an advisory validator
-    // failure is recorded as a governance issue but must not fail the stage,
-    // or the advisory enforcement declared on the card would be false.
+    // A required or authoritative harness validator failure blocks whichever
+    // stage its policy binds it to — the enforcement and failure route the
+    // card declares must be the enforcement the engine applies. Advisory
+    // validator failures stay governance warnings on every stage, or the
+    // advisory enforcement declared on the card would be false. Ship
+    // additionally blocks on operator-brief and stage-output diagnostics.
+    const blockingValidatorErrors = (
+      briefRenderFailed && briefRenderedPath
+        ? harnessValidation.blocking_errors.filter(
+            (message) => !message.includes(briefRenderedPath),
+          )
+        : harnessValidation.blocking_errors
+    ).map((message) => `Validator: ${message}`)
     const blockingValidationErrors =
       stage.slug === 'ship'
         ? [
             ...attestationErrors,
             ...briefErrors.map((message) => `Operator brief: ${message}`),
             ...validation.errors.map((message) => `Stage output: ${message}`),
-            ...(briefRenderFailed && briefRenderedPath
-              ? harnessValidation.blocking_errors.filter(
-                  (message) => !message.includes(briefRenderedPath),
-                )
-              : harnessValidation.blocking_errors
-            ).map((message) => `Validator: ${message}`),
+            ...blockingValidatorErrors,
           ]
-        : [...attestationErrors]
+        : [...attestationErrors, ...blockingValidatorErrors]
     const explicitlyDeclaredProductFailure =
       isRecord(submittedValue) &&
       (submittedValue.result === 'failure' ||
@@ -3308,7 +3436,7 @@ export function submitOutput(
       outcomeOutput,
       blockingValidationErrors,
       evaluated.results,
-      stage.slug === 'ship' ? harnessValidation.validatorOutcome : null,
+      harnessValidation.validatorOutcome,
     )
     const allValidationErrors = [
       ...validation.errors,
@@ -3352,6 +3480,7 @@ export function submitOutput(
         : {}),
       workspace_fingerprint: evaluated.workspace.fingerprint,
       workspace_before_fingerprint: invocation.workspace_before.fingerprint,
+      output_bytes: Buffer.byteLength(JSON.stringify(submittedValue)),
       validation_errors: allValidationErrors,
       governance_artifact_warnings: governanceArtifactWarnings,
       deterministic: evaluated.results,

@@ -66,11 +66,11 @@ test('harnessConfigName returns null when no configuration exists', () => {
   assert.equal(readProjectConfig(root), null)
 })
 
-test('config.local.json overrides project preferences without touching config.json', () => {
+test('config_overrides.json overrides project preferences without touching config.json', () => {
   const root = createFixture()
 
   writeFileSync(
-    path.join(root, 'config.local.json'),
+    path.join(root, 'config_overrides.json'),
     JSON.stringify({ review_mode: 'squad' }),
   )
 
@@ -88,11 +88,11 @@ test('config.local.json overrides project preferences without touching config.js
   assert.equal(checkedIn.review_mode, 'default')
 })
 
-test('config.local.json can select the active involvement profile', () => {
+test('config_overrides.json can select the active involvement profile', () => {
   const root = createFixture()
 
   writeFileSync(
-    path.join(root, 'config.local.json'),
+    path.join(root, 'config_overrides.json'),
     JSON.stringify({ operator_involvement: { active: 'hands-off' } }),
   )
 

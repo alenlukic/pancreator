@@ -2,7 +2,13 @@ import path from 'node:path'
 import { readdirSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 
-import { fileExists, isRecord, readJson, readText } from '../io.js'
+import {
+  fileExists,
+  isRecord,
+  lastNonEmptyLine,
+  readJson,
+  readText,
+} from '../io.js'
 import { invariant } from '../errors.js'
 import { loadRegistry } from '../requirements/registry.js'
 import { hasHeading, operatorLeadPresent, parseMarkdown } from '../markdown.js'
@@ -920,6 +926,18 @@ export function validateTargetInstructionCoverage(
           (item): item is string => typeof item === 'string',
         )
       : []
+  const reads = new Map<string, string>(
+    evidence && Array.isArray(evidence.reads)
+      ? evidence.reads.flatMap(
+          (entry): Array<[string, string]> =>
+            isRecord(entry) &&
+            typeof entry.path === 'string' &&
+            typeof entry.final_line === 'string'
+              ? [[entry.path, entry.final_line]]
+              : [],
+        )
+      : [],
+  )
 
   for (const requiredPath of requiredReadPaths) {
     if (!readPaths.includes(requiredPath)) {
@@ -927,6 +945,42 @@ export function validateTargetInstructionCoverage(
         issue(
           'TARGET_INSTRUCTION_COVERAGE_MISSING',
           `Target instruction evidence omits ${requiredPath}.`,
+        ),
+      )
+      continue
+    }
+
+    // A path list alone is copyable from the card; the quoted closing line is
+    // what shows the file was opened. It validates against the workspace file
+    // because instruction files bind as they exist in the tree being changed.
+    const declaredFinalLine = reads.get(requiredPath)
+
+    if (declaredFinalLine === undefined) {
+      issues.push(
+        issue(
+          'TARGET_INSTRUCTION_READ_EVIDENCE_MISSING',
+          `Target instruction evidence MUST include reads entry ` +
+            `{ path, final_line } quoting the last non-empty line of ` +
+            `${requiredPath}.`,
+        ),
+      )
+      continue
+    }
+
+    const instructionAbsolute = path.join(workspaceRoot, requiredPath)
+
+    if (!fileExists(instructionAbsolute)) {
+      continue
+    }
+
+    const expectedFinalLine = lastNonEmptyLine(readText(instructionAbsolute))
+
+    if (declaredFinalLine.trim() !== expectedFinalLine.trim()) {
+      issues.push(
+        issue(
+          'TARGET_INSTRUCTION_READ_EVIDENCE_MISMATCH',
+          `Target instruction read evidence for ${requiredPath} does not ` +
+            `quote the file's last non-empty line.`,
         ),
       )
     }
@@ -1202,9 +1256,11 @@ export function validateImplementationClaims(
   }
 
   for (const testPath of testsAdded) {
-    // An entry names a test file, optionally followed by ' :: <case name>';
-    // only the file portion resolves against the workspace.
-    const testFile = testPath.split(' :: ')[0].trim()
+    // An entry names a test file, optionally followed by '::<case name>' in
+    // native pytest/Jest notation or the spaced display form ' :: <case>'.
+    // Both resolve to the same file: only the file portion resolves against
+    // the workspace.
+    const testFile = testPath.split(/\s*::\s*/u)[0].trim()
     const resolved = resolveWorkspaceRelativeFilePath(
       input.root,
       workspaceRootFromInput(input),
@@ -1215,7 +1271,10 @@ export function validateImplementationClaims(
       issues.push(
         issue(
           'claim.test_missing',
-          `Listed test file does not exist: ${testFile} (from entry: ${testPath})`,
+          `Listed test file does not exist: ${testFile} (from entry: ` +
+            `${testPath}). Entries MUST be '<test file path>' optionally ` +
+            `followed by '::<test case>', e.g. ` +
+            `'tests/unit/example.test.ts::adds provenance rows'.`,
         ),
       )
     }
@@ -1518,20 +1577,10 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
 
     const status = typeof file.status === 'string' ? file.status : ''
 
-    // A traversal segment is how a plan "passes" this check by escaping the
-    // installation root instead of naming a workspace-relative file. Reject it
-    // so the ratified plan cannot carry non-portable paths downstream.
-    if (file.path.split(/[\\/]/u).includes('..')) {
-      issues.push(
-        issue(
-          'plan.file_path_shape',
-          `engineering_plan.files[${index}].path MUST be workspace-relative ` +
-            `without '..' segments: ${file.path}`,
-        ),
-      )
-      continue
-    }
-
+    // Absolute and traversal paths are acceptable when that is what the plan
+    // declares: any path that resolves on this system is valid, and the
+    // existence check below is the only gate. Downstream target-instruction
+    // resolution consumes the same paths without rejecting them.
     if (
       status !== 'new' &&
       !fileExists(

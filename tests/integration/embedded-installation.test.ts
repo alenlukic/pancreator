@@ -114,6 +114,15 @@ function createReleaseFixture(): string {
     })
   }
 
+  // The tracked config.json blanks its model values; the effective specs live
+  // in the untracked overrides file, which a real operator checkout carries.
+  if (existsSync(path.join(REPO_ROOT, 'config_overrides.json'))) {
+    cpSync(
+      path.join(REPO_ROOT, 'config_overrides.json'),
+      path.join(fixture, 'config_overrides.json'),
+    )
+  }
+
   writeFileSync(path.join(fixture, 'VERSION'), '0.1.0\n')
 
   writeFileSync(
@@ -1472,7 +1481,7 @@ test('embedded installer refresh compacts defaults and preserves operator models
       configs: Record<string, { personas: Record<string, string> }>
     }>(configJsonPath)
 
-    const activeConfigName = 'complex'
+    const activeConfigName = 'extreme'
     const activePersonas = config.configs[activeConfigName].personas
     const inheritedEntry = Object.entries(config.defaults).find(
       ([persona]) => activePersonas[persona] === undefined,

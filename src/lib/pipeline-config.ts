@@ -195,7 +195,7 @@ export function loadPipelineConfig(
     code: 'INVALID_PIPELINE_CONFIG',
   })
 
-  // The digest covers the effective configuration, so a `config.local.json`
+  // The digest covers the effective configuration, so a `config_overrides.json`
   // preference is indistinguishable from the same edit made in `config.json`.
   const raw = readHarnessConfig(root, filePath)
   const file = parsePipelineConfig(raw, configName)

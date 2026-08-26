@@ -7,6 +7,7 @@ import {
   ensureDir,
   fileExists,
   isRecord,
+  lastNonEmptyLine,
   readJson,
   readText,
   resolveInside,
@@ -739,32 +740,67 @@ export function validateInvocationMarkdown(
 const DELEGATION_LABEL_MAX_LENGTH = 80
 
 /**
- * Strip the minimal non-conflicting persona label `INVOCATION-001` and the
- * supervisor commands explicitly permit ahead of the pasted card.
- *
- * A label qualifies only when it is a single short line that starts no Markdown
- * structure and is followed by a blank line, so it cannot smuggle in a heading,
- * list item, or parallel instruction that would shadow the card.
+ * Identity line the supervisor procedure generates ahead of the delivered
+ * body, e.g. `Agent: pan-coder` or `Persona: \`coder\`.`. Only these keys
+ * qualify for the two-line prefix, so free prose can never stack into a
+ * parallel instruction.
  */
-function stripPermittedDelegationLabel(delegation: string): {
-  body: string
-  label: string | null
-} {
-  const lines = delegation.split('\n')
-  const [first = '', second = ''] = lines
+const DELEGATION_IDENTITY_LINE = /^(?:Agent|Persona):\s\S/u
 
-  const qualifies =
-    first.trim().length > 0 &&
-    first.length <= DELEGATION_LABEL_MAX_LENGTH &&
-    !/^\s*(?:[#>*\-+]|\d+[.)]|```|\|)/u.test(first) &&
+function qualifiesAsDelegationLabel(line: string): boolean {
+  return (
+    line.trim().length > 0 &&
+    line.length <= DELEGATION_LABEL_MAX_LENGTH &&
+    !/^\s*(?:[#>*\-+]|\d+[.)]|```|\|)/u.test(line)
+  )
+}
+
+/**
+ * Enumerate every reading of the minimal non-conflicting persona label
+ * `INVOCATION-001` and the supervisor commands explicitly permit ahead of the
+ * pasted card.
+ *
+ * A label qualifies when it is a single short line that starts no Markdown
+ * structure and is followed by a blank line, so it cannot smuggle in a
+ * heading, list item, or parallel instruction that would shadow the card. Two
+ * leading lines qualify only when both are `Agent:`/`Persona:` identity lines
+ * — the exact prefix the supervisor procedure generates — again followed by a
+ * blank line. Both readings are returned because the delivered body itself
+ * begins with a harness-generated `Persona:` line, so only comparison against
+ * the expected body can tell which lines are label and which are body.
+ */
+function permittedDelegationLabelReadings(
+  delegation: string,
+): Array<{ body: string; label: string | null }> {
+  const readings: Array<{ body: string; label: string | null }> = [
+    { body: delegation, label: null },
+  ]
+  const lines = delegation.split('\n')
+  const [first = '', second = '', third = ''] = lines
+
+  if (
+    qualifiesAsDelegationLabel(first) &&
     second.trim().length === 0 &&
     lines.length > 2
-
-  if (!qualifies) {
-    return { body: delegation, label: null }
+  ) {
+    readings.push({ body: lines.slice(2).join('\n'), label: first.trim() })
   }
 
-  return { body: lines.slice(2).join('\n'), label: first.trim() }
+  if (
+    qualifiesAsDelegationLabel(first) &&
+    qualifiesAsDelegationLabel(second) &&
+    DELEGATION_IDENTITY_LINE.test(first) &&
+    DELEGATION_IDENTITY_LINE.test(second) &&
+    third.trim().length === 0 &&
+    lines.length > 3
+  ) {
+    readings.push({
+      body: lines.slice(3).join('\n'),
+      label: `${first.trim()} / ${second.trim()}`,
+    })
+  }
+
+  return readings
 }
 
 /**
@@ -785,10 +821,13 @@ export function validateDelegationMarkdown(
   const delegationNormalized = normalizeDelegationContent(delegationMarkdown)
 
   const exact = expectedNormalized === delegationNormalized
-  const { body, label } = exact
+  const matched = exact
     ? { body: delegationNormalized, label: null }
-    : stripPermittedDelegationLabel(delegationNormalized)
-  const passed = exact || body === expectedNormalized
+    : permittedDelegationLabelReadings(delegationNormalized).find(
+        (reading) => reading.body === expectedNormalized,
+      )
+  const label = matched?.label ?? null
+  const passed = exact || matched !== undefined
   const subject =
     mode === 'referenced'
       ? 'the compact delivery prompt'
@@ -802,7 +841,7 @@ export function validateDelegationMarkdown(
         ? label
           ? `Delegation artifact matches ${subject} after the permitted persona label '${label}'`
           : `Delegation artifact matches ${subject}`
-        : `Delegation artifact MUST equal ${subject} after line-ending and trailing-whitespace normalization, except for one permitted leading persona label`,
+        : `Delegation artifact MUST equal ${subject} after line-ending and trailing-whitespace normalization, except for one permitted leading persona label (or the 'Agent:'/'Persona:' identity-line pair) followed by a blank line`,
     },
     {
       id: 'delegation.mode',
@@ -850,9 +889,43 @@ function attestationSections(value: unknown): Array<{
  * guidance attestation existed (or one whose contract references no guidance),
  * so it requires nothing.
  */
+/**
+ * Expected `final_line` read evidence for each referenced guidance selection,
+ * keyed by policy id, source path, and content digest. Built from the
+ * invocation's own policy snapshot, so the check needs no source file that
+ * may have drifted since preparation.
+ */
+function expectedGuidanceFinalLines(
+  invocation: Invocation,
+): Map<string, string> {
+  const expected = new Map<string, string>()
+  const policySets = [
+    invocation.policies,
+    invocation.delegation?.policies ?? [],
+  ]
+
+  for (const policies of policySets) {
+    for (const policy of policies) {
+      for (const guidance of policy.guidance ?? []) {
+        if (!guidance.reference) {
+          continue
+        }
+
+        expected.set(
+          `${policy.id}\0${guidance.source_path}\0${guidance.reference.content_sha256}`,
+          lastNonEmptyLine(guidance.content),
+        )
+      }
+    }
+  }
+
+  return expected
+}
+
 function guidanceAttestationChecks(
   manifest: InvocationContractManifest,
   attestation: Record<string, unknown>,
+  expectedFinalLines: Map<string, string>,
 ): ValidationCheck[] {
   const expected = manifest.guidance ?? []
 
@@ -898,13 +971,30 @@ function guidanceAttestationChecks(
     const error = typeof claim.error === 'string' ? claim.error.trim() : ''
 
     switch (claim.status) {
-      case 'read':
+      case 'read': {
+        // The final line is deliberately not printed on the card: quoting it
+        // is what separates "opened the selection" from "echoed the card".
+        const expectedFinalLine = expectedFinalLines.get(
+          `${entry.policy_id}\0${entry.source_path}\0${entry.content_sha256}`,
+        )
+        const declaredFinalLine =
+          typeof claim.final_line === 'string' ? claim.final_line : ''
+        const finalLineMatches =
+          expectedFinalLine === undefined ||
+          declaredFinalLine.trim() === expectedFinalLine.trim()
+
         checks.push({
           id,
-          passed: true,
-          message: `Guidance ${entry.source_path} (${entry.policy_id}) is attested as read`,
+          passed: finalLineMatches && declaredFinalLine.trim().length > 0,
+          message:
+            finalLineMatches && declaredFinalLine.trim().length > 0
+              ? `Guidance ${entry.source_path} (${entry.policy_id}) is attested as read with matching final-line evidence`
+              : declaredFinalLine.trim().length === 0
+                ? `A read guidance entry MUST quote the selection's last non-empty line as final_line for ${entry.source_path}`
+                : `Guidance ${entry.source_path} (${entry.policy_id}) final_line does not match the selected content's last non-empty line`,
         })
         break
+      }
       case 'skipped':
         checks.push({
           id,
@@ -1142,9 +1232,16 @@ export function validateInvocationAttestation(
     }
   }
 
-  if (attestation.guidance !== undefined) {
-    checks.push(...guidanceAttestationChecks(manifest, attestation))
-  }
+  // Guidance read evidence is required whenever the manifest references
+  // guidance: the card carries only digests, so a self-declared "I read the
+  // contract" cannot cover external selections the worker never opened.
+  checks.push(
+    ...guidanceAttestationChecks(
+      manifest,
+      attestation,
+      expectedGuidanceFinalLines(invocation),
+    ),
+  )
 
   return {
     passed: checks.every((check) => check.passed),

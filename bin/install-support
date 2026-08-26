@@ -295,8 +295,29 @@ function cursorSourceFiles(sourceRoot) {
   return expanded
 }
 
+/**
+ * Read a harness config with the untracked operator-overrides file beside it
+ * merged over it. The self-development checkout blanks its model values in
+ * the tracked config.json and keeps the real specs in config_overrides.json,
+ * so every installer read of a source config MUST see the effective merge.
+ */
+function readConfigWithOverrides(configPath) {
+  let config = readJson(configPath)
+
+  for (const overridesName of ['config_overrides.json', 'config.local.json']) {
+    const overridesPath = path.join(path.dirname(configPath), overridesName)
+
+    if (existsSync(overridesPath)) {
+      config = mergeConfigObjects(config, readJson(overridesPath))
+      break
+    }
+  }
+
+  return config
+}
+
 function personaModelsFromConfig(configPath) {
-  const config = readJson(configPath)
+  const config = readConfigWithOverrides(configPath)
   const active = config.configs?.[config.active_config]
   const defaults =
     typeof config.defaults === 'object' && config.defaults !== null
@@ -312,7 +333,7 @@ function personaModelsFromConfig(configPath) {
 
 function personaModelsForProjection(personaConfigPath, sourceRoot) {
   const sourceConfigPath = path.join(sourceRoot, 'config.json')
-  const sourceConfig = readJson(sourceConfigPath)
+  const sourceConfig = readConfigWithOverrides(sourceConfigPath)
   const sourceDefaults =
     typeof sourceConfig.defaults === 'object' && sourceConfig.defaults !== null
       ? sourceConfig.defaults
@@ -347,6 +368,28 @@ function personaModelsForProjection(personaConfigPath, sourceRoot) {
   }
 
   return { ...mergedSource, ...targetDefaults, ...targetPersonas }
+}
+
+/** Objects merge recursively; any other override value replaces the base. */
+function mergeConfigObjects(base, override) {
+  if (
+    typeof base !== 'object' ||
+    base === null ||
+    Array.isArray(base) ||
+    typeof override !== 'object' ||
+    override === null ||
+    Array.isArray(override)
+  ) {
+    return override
+  }
+
+  const merged = { ...base }
+
+  for (const [key, value] of Object.entries(override)) {
+    merged[key] = mergeConfigObjects(base[key], value)
+  }
+
+  return merged
 }
 
 function mergeEmbeddedProjectConfig(source, existing) {
@@ -1048,7 +1091,9 @@ function writeProject() {
   const source = path.resolve(requiredOption('--source'))
   const destination = path.resolve(requiredOption('--destination'))
   const workspaceId = requiredOption('--workspace-id')
-  let config = readJson(source)
+  // An install ships the effective configuration: the source checkout's
+  // tracked config.json merged with its untracked operator overrides.
+  let config = readConfigWithOverrides(source)
 
   if (existsSync(destination)) {
     config = mergeEmbeddedProjectConfig(config, readJson(destination))

@@ -42,6 +42,7 @@ import { configuredWorkspaceRoot, panCommand } from './lib/project-config.js'
 import { resolvePolicies } from './lib/policies.js'
 import { resolvePrDescriptionContext } from './lib/pr-description.js'
 import {
+  awayDecisionLedgerPath,
   awayModeTrigger,
   countAwayDecisions,
   readAwayDecisionLedger,
@@ -1254,14 +1255,31 @@ async function main(): Promise<void> {
       const blocker = awayModeTrigger(state)
 
       if (subcommand === 'status') {
+        const runDecisions = readAwayDecisionLedger(root).filter(
+          (record) => record.run_id === runId,
+        )
+        const appliedIds = new Set(
+          runDecisions
+            .map((record) => record.linked_decision_id)
+            .filter((value): value is string => typeof value === 'string'),
+        )
+
         print(
           {
             run_id: runId,
             enabled: state.away_mode?.enabled ?? false,
             blocker,
-            decisions: readAwayDecisionLedger(root).filter(
-              (record) => record.run_id === runId,
-            ).length,
+            decisions: runDecisions.length,
+            // The exact ids `pan away apply --decision` accepts, so the
+            // supervisor never has to guess between the ledger id and a
+            // mirrored run-local decision packet id.
+            apply_ready_decision_ids: runDecisions
+              .filter(
+                (record) =>
+                  record.result === 'accepted' &&
+                  !appliedIds.has(record.decision_id),
+              )
+              .map((record) => record.decision_id),
           },
           json,
         )
@@ -1294,8 +1312,35 @@ async function main(): Promise<void> {
         )
 
         if (!decision) {
+          const applied = new Set(
+            ledger
+              .filter((record) => record.run_id === runId)
+              .map((record) => record.linked_decision_id)
+              .filter((value): value is string => typeof value === 'string'),
+          )
+          const applyReady = ledger
+            .filter(
+              (record) =>
+                record.run_id === runId &&
+                record.result === 'accepted' &&
+                !applied.has(record.decision_id),
+            )
+            .map((record) => record.decision_id)
+          const inLedger = ledger.find(
+            (record) => record.decision_id === decisionId,
+          )
+          // A wrong id is almost always the mirrored run-local decision
+          // packet under agent/decisions/. Name the canonical namespace and
+          // the ids it would accept, so the caller needs no source dive.
+          const detail = inLedger
+            ? `The id exists in the ledger but is not an accepted decision for run ${runId} (result: ${inLedger.result}, run: ${inLedger.run_id}).`
+            : `The id is not in the away decision ledger at ${awayDecisionLedgerPath(root)}; run-local agent/decisions/ packet ids are not apply ids.`
+
           throw new PanError(
-            `Accepted away decision not found: ${decisionId}`,
+            `Accepted away decision not found: ${decisionId}. ${detail}` +
+              (applyReady.length
+                ? ` Apply-ready decision ids for this run: ${applyReady.join(', ')}.`
+                : ` No accepted, unapplied decisions exist for this run; run 'pan away evaluate' first.`),
             { code: 'AWAY_DECISION_NOT_FOUND' },
           )
         }

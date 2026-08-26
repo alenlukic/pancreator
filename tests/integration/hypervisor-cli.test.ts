@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
 import { chmodSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
@@ -308,6 +309,30 @@ test('away evaluate and apply resume a paused run exactly once', () => {
     assert.equal(evaluated.result, 'accepted')
     assert.equal(evaluated.decision_kind, 'evaluated')
     assert.equal(evaluated.selected_action?.action, 'resume')
+
+    // Status exposes the exact id apply accepts, so a supervisor that lost
+    // the evaluate stdout never falls back to a mirrored run-local packet id.
+    const status = run(root, 'away', 'status', state.run_id) as {
+      apply_ready_decision_ids: string[]
+    }
+
+    assert.deepEqual(status.apply_ready_decision_ids, [evaluated.decision_id])
+
+    // A wrong id names the canonical namespace and the apply-ready ids
+    // instead of a bare not-found.
+    assert.throws(
+      () =>
+        run(root, 'away', 'apply', state.run_id, '--decision', randomUUID()),
+      (error: unknown) => {
+        const stderr = String((error as { stderr?: unknown }).stderr ?? '')
+
+        return (
+          /AWAY_DECISION_NOT_FOUND/u.test(stderr) &&
+          /away decision ledger/u.test(stderr) &&
+          stderr.includes(evaluated.decision_id)
+        )
+      },
+    )
 
     const applied = run(
       root,

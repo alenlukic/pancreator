@@ -348,3 +348,18 @@ export function isDirectory(filePath: string): boolean {
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
+
+/** Verbatim last non-empty line of a text, or '' when none exists. */
+export function lastNonEmptyLine(content: string): string {
+  const lines = content.split('\n')
+
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    const line = lines[index]
+
+    if (line.trim().length > 0) {
+      return line
+    }
+  }
+
+  return ''
+}

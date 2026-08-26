@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { chmodSync, mkdirSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -14,6 +14,7 @@ import {
 } from '../../src/lib/engine.js'
 import { expectedCursorModelForSpec } from '../../src/lib/executors/cursor-probe.js'
 import { stageBySlug, loadWorkflow } from '../../src/lib/workflow.js'
+import { syncCursorProjection } from '../../src/lib/projection.js'
 import {
   createFixture,
   makeOutput,
@@ -215,5 +216,57 @@ test('worker probes persist matches and reject mismatches or missing metadata', 
     submitted.state.stage_history.some(
       (item) => item.invocation_id === invocation.invocation_id,
     ),
+  )
+})
+
+test('a bare model spec accepts any resolved Cursor variant', () => {
+  const root = createFixture()
+  const configPath = path.join(root, 'config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
+    defaults: Record<string, string>
+  }
+
+  // Run 63316 record 02_ship-1_abe84794: a bare spec delegates the variant
+  // choice to Cursor, so comparing the spec id literally with the resolved
+  // display name produced a false CURSOR_MODEL_MISMATCH ('auto' vs 'Auto
+  // Balance') that made ship unsubmittable without a harness repair.
+  config.defaults['intake-writer'] = 'auto-smart'
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+  syncCursorProjection(root, { write: true })
+
+  const run = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Bare spec run',
+  })
+
+  recordSupervisorModelEvidence(
+    root,
+    run.run_id,
+    'GPT 5.6 Sol',
+    'Cursor session metadata',
+  )
+
+  const invocation = prepareInvocation(root, run.run_id).invocation
+
+  assert.ok(invocation)
+  assert.equal(invocation.stage.model, 'auto-smart')
+
+  const resolved = withFakeCursorAgent(root, 'Auto Balance', () =>
+    probeRunInvocationModel(root, run.run_id, invocation.invocation_id),
+  )
+
+  assert.equal(resolved.result, 'match')
+  assert.equal(resolved.effective_model, 'Auto Balance')
+
+  // A failed probe still reports unavailable evidence: bare is permissive
+  // about the variant, not about having evidence at all.
+  assert.throws(
+    () =>
+      withFakeCursorAgent(root, null, () =>
+        probeRunInvocationModel(root, run.run_id, invocation.invocation_id),
+      ),
+    (error: unknown) =>
+      error instanceof Error && error.message.includes('no system/init event'),
   )
 })

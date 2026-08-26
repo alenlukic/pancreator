@@ -32,17 +32,36 @@ test('resolves exact root-to-file instruction chains across subtrees', () => {
   )
 })
 
-test('rejects absolute and escaping changed paths', () => {
+test('accepts absolute in-workspace paths and resolves their chains', () => {
+  const root = fixture()
+
+  assert.deepEqual(
+    resolveTargetInstructionPaths(root, [
+      path.join(root, 'apps', 'web', 'src', 'file.ts'),
+    ]),
+    ['AGENTS.md', 'apps/AGENTS.md', 'apps/web/AGENTS.md'],
+  )
+})
+
+test('paths outside the workspace contribute no instruction chain', () => {
+  const root = fixture()
+
+  assert.deepEqual(resolveTargetInstructionPaths(root, ['../outside.ts']), [])
+  assert.deepEqual(
+    resolveTargetInstructionPaths(root, [
+      '/somewhere/else/entirely.ts',
+      'services/api/handler.ts',
+    ]),
+    ['AGENTS.md', 'services/AGENTS.md'],
+  )
+})
+
+test('rejects empty changed paths', () => {
   const root = fixture()
 
   assert.throws(
-    () => resolveTargetInstructionPaths(root, ['../outside.ts']),
+    () => resolveTargetInstructionPaths(root, ['']),
     (error: unknown) =>
-      error instanceof Error && error.message.includes('escapes the workspace'),
-  )
-  assert.throws(
-    () => resolveTargetInstructionPaths(root, [path.join(root, 'file.ts')]),
-    (error: unknown) =>
-      error instanceof Error && error.message.includes('workspace-relative'),
+      error instanceof Error && error.message.includes('non-empty'),
   )
 })

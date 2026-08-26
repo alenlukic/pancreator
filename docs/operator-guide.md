@@ -511,7 +511,7 @@ documents the hardening above but does not install or overwrite target
 
 Run `./bin/pan models` without `--sync` to preview the active mapping and any drift without changing files.
 
-Per-checkout preferences belong in `config.local.json` next to `config.json`. The file is untracked (keep it out of version control, e.g. via `.git/info/exclude`) and merges over `config.json`: objects merge recursively, any other value replaces the checked-in one. Use it for `active_config`, persona model overrides, or an `operator_involvement.active` selection, so `config.json` stays at the recommended defaults releases update. A local preference behaves exactly as if it were edited into `config.json`, including drift detection against in-flight runs.
+Per-checkout preferences belong in `config_overrides.json` next to `config.json` (the legacy name `config.local.json` still reads until you rename it). The file is untracked (keep it out of version control, e.g. via `.gitignore` or `.git/info/exclude`) and merges over `config.json`: objects merge recursively, any other value replaces the checked-in one. Use it for `active_config`, persona model overrides, or an `operator_involvement.active` selection, so `config.json` stays at the recommended defaults releases update. A local preference behaves exactly as if it were edited into `config.json`, including drift detection against in-flight runs.
 
 Each new run snapshots the active configuration in `runtime/logs/workflows/<run-id>/agent/pipeline-config.snapshot.json`. Invocation cards resolve their model from that snapshot. Because Cursor executes the model declared in `.cursor/agents/pan-<persona>.md`, preparing an older run after switching configurations is blocked until the projected agent models again match that run's snapshot. This prevents the card from claiming one model while Cursor launches another.
 
@@ -555,7 +555,7 @@ A worktree is a second working directory of the same repository. Every worktree 
 ./bin/pan init --workflow dev --request runtime/inbox/request.md --worktree feature-login
 ```
 
-- `create` makes the branch `pan-wt/<name>` from `--from` (a branch, a revision, or another recorded worktree) and defaults to the commit the main checkout currently holds. Names use lowercase letters, digits, and single hyphens, because the name becomes both a directory and a branch segment.
+- `create` makes the branch `worktree/<name>` from `--from` (a branch, a revision, or another recorded worktree) and defaults to the commit the main checkout currently holds. Names use lowercase letters, digits, and single hyphens, because the name becomes both a directory and a branch segment.
 - Worktrees live under `runtime/worktrees/operator/<name>` and are recorded in `runtime/worktrees/operator/index.json` with branch, commit, description, and creation date. That index is harness-owned generated state; change it only through these commands.
 - `list` adds live state to the recorded fields: whether Git still registers the directory, the current head commit, and whether the worktree is dirty. `--json` returns the same records for scripting.
 - `--worktree <name>` is one shared option with one contract: every workspace-aware command accepts it, resolves the name the same way, and creates the worktree when the index does not hold it. The workspace-aware commands are `init` (starts a workflow run there), `repository-check <profile>` (verifies it without a run), `technologies detect` (detects languages inside it), `doctor` (points its workspace diagnostics at it), and `governance card --mode <mode>` (targets a standalone persona — spotfix, pair, shepherd, debug, repair, decompose — at it through a card-level workspace section). Every other command rejects `--worktree` with an explicit error naming this list, because it does not run against a selectable workspace. The branch of the main checkout never changes.
@@ -585,7 +585,7 @@ Configure defaults in `config.json` when the built-in ones do not suit the repos
 {
   "worktrees": {
     "root": "runtime/worktrees/operator",
-    "branch_prefix": "pan-wt/",
+    "branch_prefix": "worktree/",
     "setup": ["npm ci"]
   }
 }

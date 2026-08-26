@@ -34,10 +34,12 @@ import {
   recordDeterministicShipApproval,
 } from '../../src/lib/away-mode.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
+import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
 import { nextSemanticVersion } from '../../src/lib/versioning.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import type { StageDefinition, StageOutcome } from '../../src/lib/types.js'
 import {
+  attachTargetInstructionEvidence,
   createFixture,
   makeAttestation,
   makeOutput,
@@ -763,7 +765,7 @@ test('run preparation rejects live pipeline-config drift from its snapshot', () 
   }
 
   config.active_config =
-    config.active_config === 'default' ? 'complex' : 'default'
+    config.active_config === 'balanced' ? 'advanced' : 'balanced'
   writeJson(configPath, config)
 
   assert.throws(
@@ -1584,6 +1586,7 @@ test('a repository-check gate credits an inherited failure the stage fixed', () 
   const implementation = repaired.data.implementation as Record<string, unknown>
 
   implementation.changed_files = ['src/base.ts']
+  attachTargetInstructionEvidence(root, repaired, ['AGENTS.md'])
   writeJson(path.join(root, second.output.path), repaired)
   writeCanonicalDelegation(root, second)
 
@@ -1657,6 +1660,7 @@ test('an elided inherited failure stays carried from the full baseline', () => {
   const implementation = output.data.implementation as Record<string, unknown>
 
   implementation.changed_files = ['src/diagnostics.txt']
+  attachTargetInstructionEvidence(root, output, ['AGENTS.md'])
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
 
@@ -2216,4 +2220,107 @@ test('ship owns governance artifact review and pauses instead of looping to impl
 
   assert.equal(decided.status, 'paused')
   assert.equal(decided.current_stage, 'ship')
+})
+
+test('a required implement validator failure blocks the stage transition', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Required validator enforcement fixture',
+  })
+  const runId = state.run_id
+  const implementStage = stageBySlug(workflow, 'implement')
+
+  setRunStage(root, runId, 'implement', 'Exercise required enforcement.')
+
+  const invocation = prepareInvocation(root, runId).invocation
+
+  assert.ok(invocation)
+
+  const output = makeOutput(root, invocation, implementStage)
+  const implementation = output.data.implementation as Record<string, unknown>
+
+  // The exact defect of run 63315 record 93_implement-3_c7ba51e2: claimed
+  // test files that do not exist. DEV-001 declares the claims validator
+  // required with failure_route stage_failure, so the submit MUST fail the
+  // stage instead of advancing to review with a governance warning.
+  implementation.tests_added = [
+    'tests/unit/tools/custom_dashboard/test_source_citations.py::test_accepts_valid_shape',
+  ]
+  writeJson(path.join(root, invocation.output.path), output)
+  writeCanonicalDelegation(root, invocation)
+
+  const submitted = submitOutput(root, runId, invocation.output.path)
+
+  assert.equal(submitted.record.outcome, 'failure')
+  assert.notEqual(submitted.state.current_stage, 'review')
+  assert.match(
+    submitted.state.stage_history.at(-1)?.validation_errors.join('\n') ?? '',
+    /IMPLEMENTATION-CLAIMS-VALIDATE-001/u,
+  )
+})
+
+test('baseline capture disclosed dirty paths and predecessor provenance', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Baseline provenance fixture',
+  })
+  const runId = state.run_id
+
+  // Leave uncommitted prior-run changes in the tree, as run 63316 left the
+  // lineage_loader type error for run 63315 to inherit.
+  writeFileSync(
+    path.join(root, 'src', 'base.ts'),
+    'export const base = true // inherited edit\n',
+  )
+
+  const snapshot = gitWorkspaceSnapshot(root)
+  const predecessorDir = path.join(
+    root,
+    'runtime/logs/workflows/00000_predecessor',
+  )
+
+  writeJson(path.join(predecessorDir, 'state.json'), {
+    schema_version: 1,
+    run_id: '00000_predecessor',
+    workspace_root: '.',
+    stage_history: [
+      {
+        stage: 'implement',
+        attempt: 1,
+        invocation_id: 'implement-1-prior',
+        output_path: 'x',
+        outcome: 'success',
+        submitted_at: '2026-08-24T00:00:00.000Z',
+        workspace_fingerprint: snapshot.fingerprint,
+        validation_errors: [],
+        deterministic: [],
+      },
+    ],
+  })
+  setRunStage(root, runId, 'implement', 'Capture a dirty-tree baseline.')
+
+  const invocation = prepareInvocation(root, runId).invocation
+
+  assert.ok(invocation)
+
+  const pointer = getRunState(root, runId).repository_check_baselines?.static
+
+  assert.ok(pointer)
+
+  const artifact = JSON.parse(
+    readFileSync(path.join(root, pointer.artifact_path), 'utf8'),
+  ) as {
+    workspace_dirty_paths?: string[]
+    workspace_dirty_path_count?: number
+    predecessor_run_id?: string
+  }
+
+  assert.ok(artifact.workspace_dirty_paths?.includes('src/base.ts'))
+  assert.ok((artifact.workspace_dirty_path_count ?? 0) >= 1)
+  assert.equal(artifact.predecessor_run_id, '00000_predecessor')
 })

@@ -89,6 +89,16 @@ export interface RepositoryCheckBaselineArtifact {
   profile: string
   workspace_fingerprint: string
   recorded_at: string
+  /**
+   * Uncommitted workspace paths at capture time, so an inherited failure is
+   * attributable instead of reading as pre-existing repository state. Capped;
+   * `workspace_dirty_path_count` carries the full count. Absent on records
+   * written before provenance capture existed.
+   */
+  workspace_dirty_paths?: string[]
+  workspace_dirty_path_count?: number
+  /** Run whose final workspace fingerprint matches this dirty starting state. */
+  predecessor_run_id?: string
   result: RepositoryCheckResult
   /** Set when `result` holds elided output and the untruncated run lives elsewhere. */
   full_result_path?: string
@@ -1091,21 +1101,18 @@ export function runRepositoryCheck(
     }
   }
 
+  // Probes are preconditions and stop the profile, but the commands are
+  // independently meaningful partitions: an early backend failure MUST NOT
+  // leave the frontend partition uncaptured, or the baseline would represent
+  // surfaces it never observed.
+  let commandsPassed = true
+
   for (const command of profile.commands) {
     const result = execute('command', command, workspaceRoot, timeoutMs)
     results.push(result)
 
     if (!result.passed) {
-      return baseResult(
-        root,
-        profileName,
-        configPath,
-        workspaceRoot,
-        timeoutMs,
-        profile,
-        'failed',
-        results,
-      )
+      commandsPassed = false
     }
   }
 
@@ -1116,7 +1123,7 @@ export function runRepositoryCheck(
     workspaceRoot,
     timeoutMs,
     profile,
-    'passed',
+    commandsPassed ? 'passed' : 'failed',
     results,
   )
 }
@@ -1182,6 +1189,10 @@ export async function runRepositoryCheckStreaming(
     }
   }
 
+  // Same partition contract as the synchronous runner: every configured
+  // command records its result even after an earlier command fails.
+  let commandsPassed = true
+
   for (const command of profile.commands) {
     const result = await executeStreaming(
       'command',
@@ -1193,16 +1204,7 @@ export async function runRepositoryCheckStreaming(
     results.push(result)
 
     if (!result.passed) {
-      return baseResult(
-        root,
-        profileName,
-        configPath,
-        workspaceRoot,
-        timeoutMs,
-        profile,
-        'failed',
-        results,
-      )
+      commandsPassed = false
     }
   }
 
@@ -1213,7 +1215,7 @@ export async function runRepositoryCheckStreaming(
     workspaceRoot,
     timeoutMs,
     profile,
-    'passed',
+    commandsPassed ? 'passed' : 'failed',
     results,
   )
 }

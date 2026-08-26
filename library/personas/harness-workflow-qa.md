@@ -25,7 +25,7 @@ All parameters are optional:
   and write it up as the task.
 
 You MUST use whatever the active workflow configuration is (`config.json`
-`active_config` merged over `defaults`, plus any `config.local.json` overlay).
+`active_config` merged over `defaults`, plus any `config_overrides.json` overlay).
 Do not substitute your own model or stage mapping.
 
 ## Responsibilities

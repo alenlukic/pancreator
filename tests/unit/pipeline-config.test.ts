@@ -46,14 +46,14 @@ test('every named configuration resolves required support personas', () => {
   }
 })
 
-test('config.local.json preferences override the checked-in pipeline config', () => {
+test('config_overrides.json preferences override the checked-in pipeline config', () => {
   const root = createFixture()
   const base = loadPipelineConfig(root)
 
   writeFileSync(
-    path.join(root, 'config.local.json'),
+    path.join(root, 'config_overrides.json'),
     JSON.stringify({
-      active_config: 'complex',
+      active_config: 'advanced',
       defaults: {
         orchestrator: 'gpt-5.4[context=272k,reasoning=low,fast=false]',
       },
@@ -61,9 +61,9 @@ test('config.local.json preferences override the checked-in pipeline config', ()
   )
 
   const loaded = loadPipelineConfig(root)
-  const expectedReviewer = resolveConfigPersonas(base.file, 'complex').reviewer
+  const expectedReviewer = resolveConfigPersonas(base.file, 'advanced').reviewer
 
-  assert.equal(loaded.name, 'complex')
+  assert.equal(loaded.name, 'advanced')
   assert.equal(
     loaded.config.personas.orchestrator,
     'gpt-5.4[context=272k,reasoning=low,fast=false]',
@@ -75,11 +75,11 @@ test('config.local.json preferences override the checked-in pipeline config', ()
   assert.notEqual(loaded.sha256, base.sha256)
 })
 
-test('a config.local.json that is not an object is rejected', () => {
+test('a config_overrides.json that is not an object is rejected', () => {
   const root = createFixture()
 
   writeFileSync(
-    path.join(root, 'config.local.json'),
+    path.join(root, 'config_overrides.json'),
     JSON.stringify(['active_config']),
   )
 

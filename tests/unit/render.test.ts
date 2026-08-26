@@ -772,7 +772,7 @@ test('the contract manifest indexes every referenced guidance selection', () => 
   assert.deepEqual(manifest.guidance, expected)
 })
 
-test('the delivery prompt lists referenced guidance without demanding a transcription', () => {
+test('the delivery prompt demands final-line read evidence per guidance entry', () => {
   const root = createFixture()
   const invocation = referencedInvocation(root)
   const manifest = invocation.contract_manifest
@@ -782,7 +782,10 @@ test('the delivery prompt lists referenced guidance without demanding a transcri
   const prompt = renderInvocationDeliveryPrompt(invocation, manifest)
 
   assert.match(prompt, /## Referenced guidance/u)
-  assert.match(prompt, /No per-entry attestation is required/u)
+  // Read evidence is a quote the card does not carry — never a digest
+  // transcription, which stays prefilled by the scaffold.
+  assert.match(prompt, /set `final_line` to the/u)
+  assert.match(prompt, /verbatim last non-empty line/u)
 
   for (const entry of manifest.guidance) {
     assert.ok(prompt.includes(entry.source_path))

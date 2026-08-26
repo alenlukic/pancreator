@@ -218,7 +218,7 @@
     },
     "target_instruction_evidence": {
       "type": "object",
-      "description": "Concise evidence that the worker read every AGENTS.md file resolved from the declared and final changed paths.",
+      "description": "Concise evidence that the worker read every AGENTS.md file resolved from the declared and final changed paths. Each reads entry quotes the file's verbatim last non-empty line, which is the read evidence.",
       "required": ["read_paths"],
       "additionalProperties": false,
       "properties": {
@@ -228,6 +228,24 @@
           "items": {
             "type": "string",
             "minLength": 1
+          }
+        },
+        "reads": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "final_line"],
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "final_line": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
           }
         }
       }

@@ -30,7 +30,9 @@ change the work or evidence that caused the prior failure.
 
 Populate `data.consolidation` (`candidates`, `strategy`), `data.implementation`
 (`changed_files`, `tests_added`, `notes`), `data.acceptance_criteria`, and
-`data.acceptance_results`. Each `consolidation.candidates` entry names the
+`data.acceptance_results`. `tests_added` entries are `<test file path>`
+optionally followed by `::<test case>`, and the file portion must exist in the
+workspace. Each `consolidation.candidates` entry names the
 candidate run, its verdict, its strengths, its weaknesses, and what the
 consolidated implementation took from it. When `output.operator_brief` exists,
 edit its declared source and reference the rendered HTML. Do not run the

@@ -12,19 +12,19 @@ export function resolveTargetInstructionPaths(
   const instructions = new Set<string>()
 
   for (const changedPath of [...new Set(changedPaths)].sort()) {
-    invariant(
-      changedPath.length > 0 && !path.isAbsolute(changedPath),
-      `Changed path MUST be workspace-relative: ${changedPath}`,
-      { code: 'TARGET_INSTRUCTION_PATH_INVALID' },
-    )
+    invariant(changedPath.length > 0, 'Changed path MUST be non-empty', {
+      code: 'TARGET_INSTRUCTION_PATH_INVALID',
+    })
 
     const absolute = path.resolve(root, changedPath)
 
-    invariant(
-      absolute === root || absolute.startsWith(`${root}${path.sep}`),
-      `Changed path escapes the workspace: ${changedPath}`,
-      { code: 'TARGET_INSTRUCTION_PATH_INVALID' },
-    )
+    // Declared paths may be absolute or point outside the workspace when the
+    // operator or plan says so. A path outside the workspace has no workspace
+    // instruction chain, so it contributes nothing instead of failing the
+    // whole resolution.
+    if (absolute !== root && !absolute.startsWith(`${root}${path.sep}`)) {
+      continue
+    }
 
     let directory = path.dirname(absolute)
 

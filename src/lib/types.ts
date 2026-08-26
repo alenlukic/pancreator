@@ -575,8 +575,24 @@ export interface WorkspaceChangeAttribution {
   explanation: string
 }
 
+/** Per-file read evidence for one required target instruction file. */
+export interface TargetInstructionRead {
+  path: string
+  /**
+   * Verbatim last non-empty line of the file. The card lists only the paths,
+   * so quoting the closing line is evidence the worker opened the file — a
+   * self-declared path list proves nothing.
+   */
+  final_line: string
+}
+
 export interface TargetInstructionEvidence {
   read_paths: string[]
+  /**
+   * Required alongside `read_paths` on new invocations; absent only on
+   * outputs written before per-reference read evidence existed.
+   */
+  reads?: TargetInstructionRead[]
 }
 
 export interface TargetInstructionInput {
@@ -632,6 +648,13 @@ export interface GuidanceAttestationEntry {
   source_path: string
   content_sha256: string
   status: GuidanceAttestationStatus
+  /**
+   * Verbatim last non-empty line of the selected guidance content. Required
+   * when status is `read`: the line is not printed on the card, so quoting it
+   * is evidence the worker actually held the selection, unlike a digest echo
+   * that can be copied from the card itself.
+   */
+  final_line?: string
   /** Why the read trigger did not apply. Required when status is skipped. */
   reason?: string
   /** Concrete read error. Required when status is reference_failed. */
@@ -644,9 +667,12 @@ export interface GuidanceAttestationEntry {
  * context that received the card. The whole-contract digest ties the claim to
  * the exact card on disk.
  *
- * Per-section and per-guidance digest echoes are legacy: they re-proved what
- * the contract digest already proves at kilobytes of transcription per
- * attempt, so they are optional and validated only when volunteered.
+ * Per-section digest echoes are legacy: they re-proved what the contract
+ * digest already proves at kilobytes of transcription per attempt, so they
+ * are optional and validated only when volunteered. Per-guidance entries are
+ * required when the manifest references guidance — but as read evidence
+ * (status plus a `final_line` quote the card does not carry), not as digest
+ * transcription: the identity fields are prefilled by the scaffold.
  *
  * A failed reference carries the read error instead of digests, because a worker
  * that never opened the contract has nothing to hash.
@@ -1008,6 +1034,11 @@ export interface StageHistoryItem {
    * by continuity instead of by guessing which paths the stage would touch.
    */
   workspace_before_fingerprint?: string
+  /**
+   * Size of the submitted stage output in bytes. Advisory observability for
+   * output-volume creep; never a gate.
+   */
+  output_bytes?: number
   validation_errors: string[]
   governance_artifact_warnings?: string[]
   deterministic: DeterministicResult[]
