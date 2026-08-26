@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 import { renderBrief } from '../src/lib/briefs.js'
+import { readHarnessConfig } from '../src/lib/project-config.js'
 import { syncCursorProjection } from '../src/lib/projection.js'
 import { resolveRunLayout } from '../src/lib/run-layout.js'
 import { nextSemanticVersion } from '../src/lib/versioning.js'
@@ -94,11 +95,23 @@ export function createFixture(): string {
     'README.md',
     'VERSION',
     'package-lock.json',
-    'config.json',
     '.gitignore',
   ]) {
     cpSync(path.join(REPO_ROOT, entry), path.join(root, entry))
   }
+
+  // The checked-in config.json intentionally blanks its model values; the
+  // real specs live in the untracked config_overrides.json. Fixtures need a
+  // complete standalone config, so they receive this checkout's effective
+  // merged configuration.
+  writeFileSync(
+    path.join(root, 'config.json'),
+    `${JSON.stringify(
+      readHarnessConfig(REPO_ROOT, path.join(REPO_ROOT, 'config.json')),
+      null,
+      2,
+    )}\n`,
+  )
 
   pinFixtureInvolvement(root)
 
@@ -759,6 +772,62 @@ export function writeCanonicalDelegation(
   )
 }
 
+/** Verbatim last non-empty line of a text, or '' when none exists. */
+function finalLineOf(content: string): string {
+  const lines = content.split('\n')
+
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    if (lines[index].trim().length > 0) {
+      return lines[index]
+    }
+  }
+
+  return ''
+}
+
+/** The final-line read evidence a worker owes for one guidance selection. */
+function guidanceFinalLine(
+  invocation: Invocation,
+  entry: { policy_id: string; source_path: string },
+): string {
+  for (const policies of [
+    invocation.policies,
+    invocation.delegation?.policies ?? [],
+  ]) {
+    for (const policy of policies) {
+      if (policy.id !== entry.policy_id) {
+        continue
+      }
+
+      for (const guidance of policy.guidance ?? []) {
+        if (guidance.source_path === entry.source_path) {
+          return finalLineOf(guidance.content)
+        }
+      }
+    }
+  }
+
+  return ''
+}
+
+/**
+ * Attach compliant per-file read evidence for the given instruction paths,
+ * quoting each file's actual last non-empty line from the fixture tree.
+ */
+export function attachTargetInstructionEvidence(
+  root: string,
+  output: StageOutput,
+  readPaths: string[],
+): void {
+  output.target_instruction_evidence = {
+    read_paths: readPaths,
+    reads: readPaths.map((readPath) => ({
+      path: readPath,
+      final_line: finalLineOf(readFileSync(path.join(root, readPath), 'utf8')),
+    })),
+  }
+}
+
 /** The read attestation a worker owes for a referenced invocation contract. */
 export function makeAttestation(
   invocation: Invocation,
@@ -786,6 +855,7 @@ export function makeAttestation(
             source_path: entry.source_path,
             content_sha256: entry.content_sha256,
             status: 'read' as const,
+            final_line: guidanceFinalLine(invocation, entry),
           })),
         }
       : {}),
@@ -883,6 +953,22 @@ export function makeOutput(
       ? {
           target_instruction_evidence: {
             read_paths: invocation.inputs.target_instructions.read_paths,
+            reads: invocation.inputs.target_instructions.read_paths.map(
+              (readPath) => {
+                const workspaceRoot = path.resolve(
+                  root,
+                  runState?.workspace_root ?? '.',
+                )
+                const absolute = path.join(workspaceRoot, readPath)
+
+                return {
+                  path: readPath,
+                  final_line: existsSync(absolute)
+                    ? finalLineOf(readFileSync(absolute, 'utf8'))
+                    : 'missing instruction file',
+                }
+              },
+            ),
           },
         }
       : {}),

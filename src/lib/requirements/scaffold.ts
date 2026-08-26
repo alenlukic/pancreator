@@ -147,11 +147,14 @@ export function scaffoldStageOutput(
     operatorBrief?.source_transient === true
   const manifest = invocation.contract_manifest
   // The attestation is one whole-contract digest plus a status flip. The
-  // per-section and per-guidance digest echoes the scaffold used to prefill
-  // proved nothing beyond the contract digest and cost every attempt kilobytes
-  // of transcription, so they are no longer emitted or required. The status
+  // per-section digest echoes the scaffold used to prefill proved nothing
+  // beyond the contract digest and cost every attempt kilobytes of
+  // transcription, so they are no longer emitted or required. The status
   // stays `pending` because only the worker can say that it read the contract,
-  // and submission rejects the prefilled value.
+  // and submission rejects the prefilled value. Guidance entries return as
+  // read evidence, not digest transcription: the scaffold prefills every
+  // identity field mechanically, and the worker owes only the status flip and
+  // the `final_line` quote its read produces.
   const attestation: InvocationAttestation | undefined = manifest
     ? {
         invocation_id: invocation.invocation_id,
@@ -159,6 +162,16 @@ export function scaffoldStageOutput(
         contract_path: manifest.contract_path,
         contract_sha256: manifest.contract_sha256,
         status: 'pending',
+        ...(manifest.guidance?.length
+          ? {
+              guidance: manifest.guidance.map((entry) => ({
+                policy_id: entry.policy_id,
+                source_path: entry.source_path,
+                content_sha256: entry.content_sha256,
+                status: 'pending' as const,
+              })),
+            }
+          : {}),
       }
     : undefined
 
@@ -197,7 +210,7 @@ export function scaffoldStageOutput(
     unknowns: [],
     data: scaffoldDataFromRequiredData(invocation.output.required_data),
     ...(invocation.inputs?.target_instructions
-      ? { target_instruction_evidence: { read_paths: [] } }
+      ? { target_instruction_evidence: { read_paths: [], reads: [] } }
       : {}),
     ...(attestation ? { invocation_attestation: attestation } : {}),
   }

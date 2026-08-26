@@ -398,7 +398,7 @@ test('repository validation requires standalone Cursor agents in every pipeline 
     configs: Record<string, { personas: Record<string, string> }>
   }
 
-  delete config.configs.complex?.personas['tech-lead']
+  delete config.configs.auto?.personas['tech-lead']
   delete config.defaults['tech-lead']
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
 
@@ -407,7 +407,7 @@ test('repository validation requires standalone Cursor agents in every pipeline 
   assert.equal(result.ok, false)
   assert.match(
     result.errors.join('\n'),
-    /pipeline config 'complex' does not map persona 'tech-lead'/u,
+    /pipeline config 'auto' does not map persona 'tech-lead'/u,
   )
 })
 
@@ -784,11 +784,38 @@ function attestedFixture(root: string): {
               source_path: entry.source_path,
               content_sha256: entry.content_sha256,
               status: 'read' as const,
+              final_line: guidanceFinalLine(invocation, entry),
             })),
           }
         : {}),
     },
   }
+}
+
+/** Last non-empty line of the selection, from the invocation's own policies. */
+function guidanceFinalLine(
+  invocation: Invocation,
+  entry: { policy_id: string; source_path: string },
+): string {
+  for (const policy of invocation.policies) {
+    if (policy.id !== entry.policy_id) {
+      continue
+    }
+
+    for (const guidance of policy.guidance ?? []) {
+      if (guidance.source_path === entry.source_path) {
+        const lines = guidance.content.split('\n')
+
+        for (let index = lines.length - 1; index >= 0; index -= 1) {
+          if (lines[index].trim().length > 0) {
+            return lines[index]
+          }
+        }
+      }
+    }
+  }
+
+  return ''
 }
 
 /** A submitted output carrying whatever the worker declared, valid or not. */
@@ -1027,32 +1054,57 @@ test('attestation validator fails a guidance reference failure', () => {
   )
 })
 
-test('attestation validator accepts an absent guidance echo and still checks a volunteered one', () => {
+test('attestation validator requires guidance read evidence when the manifest references guidance', () => {
   const root = createFixture()
   const { invocation, attestation } = attestedFixture(root)
 
   assert.ok(attestation.guidance?.length)
 
-  // Absent is the slim contract: no per-guidance transcription owed.
+  // A self-declared "I read the contract" cannot cover external selections
+  // the worker never opened, so omitting the entries fails the attestation.
   const { guidance: _guidance, ...withoutGuidance } = attestation
   const absent = validateInvocationAttestation(
     invocation,
     attestedOutput(withoutGuidance),
   )
 
-  assert.equal(absent.passed, true)
-
-  // A volunteered echo (legacy scaffolds) is still validated exactly.
-  const truncated = validateInvocationAttestation(
-    invocation,
-    attestedOutput({ ...attestation, guidance: [] }),
-  )
-
-  assert.equal(truncated.passed, false)
+  assert.equal(absent.passed, false)
   assert.equal(
-    truncated.checks.find((check) => check.id === 'attestation.guidance_count')
+    absent.checks.find((check) => check.id === 'attestation.guidance_count')
       ?.passed,
     false,
+  )
+
+  // A read entry without its final-line quote is a path list, not evidence.
+  const unquoted = attestation.guidance.map((entry, index) =>
+    index === 0 ? { ...entry, final_line: undefined } : entry,
+  )
+  const missingQuote = validateInvocationAttestation(
+    invocation,
+    attestedOutput({ ...attestation, guidance: unquoted }),
+  )
+
+  assert.equal(missingQuote.passed, false)
+  assert.match(
+    missingQuote.checks.find((check) => !check.passed)?.message ?? '',
+    /MUST quote the selection's last non-empty line/u,
+  )
+
+  // A wrong quote fails: the line validates against the selected bytes.
+  const misquoted = attestation.guidance.map((entry, index) =>
+    index === 0
+      ? { ...entry, final_line: 'not the selection closing line' }
+      : entry,
+  )
+  const mismatch = validateInvocationAttestation(
+    invocation,
+    attestedOutput({ ...attestation, guidance: misquoted }),
+  )
+
+  assert.equal(mismatch.passed, false)
+  assert.match(
+    mismatch.checks.find((check) => !check.passed)?.message ?? '',
+    /final_line does not match/u,
   )
 })
 

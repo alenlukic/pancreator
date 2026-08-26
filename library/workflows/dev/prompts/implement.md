@@ -34,10 +34,13 @@ work or evidence that caused the prior failure.
 ## Output
 
 Populate `data.implementation` (`changed_files`, `tests_added`, `notes`) and
-`data.acceptance_results`, mapping evidence to each acceptance criterion. On
-attempt 2 or later, also populate non-empty `data.implementation.remediation`
-entries with `cause`, `action`, and `evidence` for every issue responsible for
-the retry. When `output.operator_brief` exists, edit its declared source and
+`data.acceptance_results`, mapping evidence to each acceptance criterion.
+`tests_added` entries are `<test file path>` optionally followed by
+`::<test case>` — for example `tests/unit/example.test.ts::adds provenance
+rows` — and the file portion must exist in the workspace. On attempt 2 or
+later, also populate non-empty `data.implementation.remediation` entries with
+`cause` (non-empty string), `action` (non-empty string), and `evidence` (a
+non-empty string array) for every issue responsible for the retry. When `output.operator_brief` exists, edit its declared source and
 reference the rendered HTML. Do not run the renderer. When the contract omits
 `output.operator_brief`, do not create a brief source or rendered stage HTML.
 

@@ -105,7 +105,7 @@ a stop, resume the loop in the same session.
    - Referenced delivery names the generated `<invocation-id>.delivery.md` prompt. Paste that file's complete contents into the matching `pan-<persona>` subagent's `prompt`. It carries the contract path, the contract digest, and the complete section index, so you MUST NOT reproduce the card body and MUST NOT replace the prompt with a bare path.
    - Verbatim delivery names the canonical `<invocation-id>.md` card. Paste its complete contents into the prompt.
 3. Persist that exact prompt body to the `<invocation-id>.delegation.md` path the card resolves.
-4. Add no parallel scope, policy, gate, or plan restatement to the prompt; a minimal non-conflicting persona label MAY precede the delivered body.
+4. Add no parallel scope, policy, gate, or plan restatement to the prompt; a minimal non-conflicting persona label MAY precede the delivered body. The supported label is one `Agent: <launched agent name>` line followed by one blank line (the harness already opens the body with its own `Persona:` line).
 5. Before a Cursor worker launch, run `./bin/pan models --probe --run <run-id> --invocation <invocation-id>`. Stop on `CURSOR_MODEL_EVIDENCE_UNAVAILABLE` or `CURSOR_MODEL_MISMATCH`.
 6. Launch the worker yourself, from your own session, so the launch stays at the top level. Invoke Cursor workers in foreground and wait for their result. Never use background delegation.
 7. Submit the worker's declared output with `./bin/pan submit <run-id> <output-json>`.

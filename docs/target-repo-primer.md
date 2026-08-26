@@ -62,7 +62,7 @@ flowchart LR
   Supervisor --> Pan[`./bin/pan`]
   Pan --> CLI[`src/cli.ts`]
   CLI --> Engine[`src/lib/engine.ts` state machine]
-  Config[`config.json` plus `config.local.json`] --> CLI
+  Config[`config.json` plus `config_overrides.json`] --> CLI
   Workflows[`library/workflows/` stage graphs] --> Engine
   Governance[`governance/` policies and registries] --> Engine
   Engine --> Snapshots[Per-run workflow, pipeline, involvement, verification snapshots]
@@ -83,7 +83,7 @@ flowchart LR
 - `AGENTS.md`: repository-wide authority order, run roles, operating loop, safety, mutation, and validation boundaries.
 - `README.md`, `CHANGELOG.md`, `VERSION`, and `docs/`: product overview, Common Changelog history, harness version, and operator/authoring documentation.
 - `package.json`, `package-lock.json`, `tsconfig.json`, `prettier.config.js`, and `.npmrc`: toolchain, scripts, strict compilation, formatting, and quiet npm output.
-- `config.json` and `best-of-n-config.json`: workspace, persona-model, involvement, verification, review-mode, and best-of-N session configuration. The untracked `config.local.json` merges over `config.json`.
+- `config.json` and `best-of-n-config.json`: workspace, persona-model, involvement, verification, review-mode, and best-of-N session configuration. The untracked `config_overrides.json` merges over `config.json`.
 - `bin/`: `pan`, `build`, `check`, `lint`, `run-quiet`, `install`, `install-support`, `update`, and `validate-chat-markdown`.
 - `src/cli.ts` and `src/runtime-maintenance-cli.ts`: the public CLI dispatcher and the standalone runtime-maintenance entrypoint used during installation.
 - `src/lib/engine.ts`, `workflow.ts`, `state.ts`, `context.ts`, `render.ts`, and `run-layout.ts`: stage orchestration, graph assembly, persistence, bounded invocation context, card rendering, and layout v1/v2 path resolution.

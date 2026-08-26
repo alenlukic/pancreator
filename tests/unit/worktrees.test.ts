@@ -29,11 +29,11 @@ test('worktree config uses defaults and local overrides', () => {
 
   assert.deepEqual(worktreesConfig(root), {
     root: 'runtime/worktrees/operator',
-    branch_prefix: 'pan-wt/',
+    branch_prefix: 'worktree/',
     setup: [],
   })
 
-  writeJson(path.join(root, 'config.local.json'), {
+  writeJson(path.join(root, 'config_overrides.json'), {
     worktrees: {
       root: 'runtime/operator-worktrees',
       branch_prefix: 'task/',
@@ -105,7 +105,7 @@ test('worktree index round-trips through its atomic writer', () => {
       {
         name: 'feature-one',
         path: 'runtime/worktrees/operator/feature-one',
-        branch: 'pan-wt/feature-one',
+        branch: 'worktree/feature-one',
         created_from: '0123456789abcdef',
         description: 'Feature one',
         created_at: '2026-08-12T00:00:00.000Z',
@@ -179,7 +179,7 @@ test('workspace specifiers pass paths through and resolve recorded names', () =>
       {
         name: 'alpha',
         path: 'runtime/worktrees/operator/alpha',
-        branch: 'pan-wt/alpha',
+        branch: 'worktree/alpha',
         created_from: '0123456789abcdef',
         description: 'Alpha',
         created_at: '2026-08-12T00:00:00.000Z',

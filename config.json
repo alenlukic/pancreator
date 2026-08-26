@@ -9,48 +9,48 @@
       "dist/**",
       "node_modules/**",
       "coverage/**",
-      "config.local.json",
+      "config_overrides.json",
       "package-lock.json",
       "tsconfig.tsbuildinfo"
     ]
   },
   "active_config": "balanced",
   "defaults": {
-    "orchestrator": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]",
-    "meta-orchestrator": "claude-opus-5[thinking=true,context=300k,effort=high,fast=false]",
-    "intake-writer": "kimi-k3[reasoning=max]",
-    "tech-lead": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]",
-    "coder": "composer-2.5[fast=true]",
-    "metacritic": "claude-fable-5[thinking=true,context=300k,effort=high]",
-    "reviewer": "claude-opus-5[thinking=true,context=300k,effort=high,fast=true]",
-    "shepherd-reviewer": "claude-opus-5[thinking=true,context=300k,effort=high,fast=true]",
-    "qa-tester": "kimi-k3[reasoning=max]",
-    "designer": "claude-fable-5[thinking=true,context=300k,effort=xhigh]",
-    "design-reviewer": "gpt-5.6-sol[context=272k,reasoning=xhigh,fast=false]",
-    "design-qa": "kimi-k3[reasoning=max]",
-    "release-steward": "auto",
-    "librarian": "claude-opus-5[thinking=true,context=300k,effort=high,fast=false]",
-    "decomposer": "claude-opus-5[thinking=true,context=300k,effort=high,fast=false]",
-    "investigator": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]",
-    "spotfixer": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]",
-    "harness-technician": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]",
-    "repo-technician": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]",
-    "harness-workflow-qa": "claude-fable-5[thinking=true,context=300k,effort=high]",
-    "hypervisor": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]"
+    "orchestrator": "",
+    "meta-orchestrator": "",
+    "intake-writer": "",
+    "tech-lead": "",
+    "coder": "",
+    "metacritic": "",
+    "reviewer": "",
+    "shepherd-reviewer": "",
+    "qa-tester": "",
+    "designer": "",
+    "design-reviewer": "",
+    "design-qa": "",
+    "release-steward": "",
+    "librarian": "",
+    "decomposer": "",
+    "investigator": "",
+    "spotfixer": "",
+    "harness-technician": "",
+    "repo-technician": "",
+    "harness-workflow-qa": "",
+    "hypervisor": ""
   },
   "$operator": {
     "summary": "Named model configurations. Each configuration maps every checked-in Cursor persona to the model that should execute it.",
-    "note": "This file carries the recommended defaults a release can update. Put per-checkout preferences (active_config, model overrides) in the untracked config.local.json, which merges over this file. After changing either, run ./.pancreator/bin/pan models --sync. New runs snapshot the active mapping so later config edits do not change an in-flight run."
+    "note": "This file carries the recommended defaults a release can update. Put per-checkout preferences (active_config, model overrides) in the untracked config_overrides.json, which merges over this file. After changing either, run ./.pancreator/bin/pan models --sync. New runs snapshot the active mapping so later config edits do not change an in-flight run."
   },
   "configs": {
     "simple": {
       "summary": "Simple and fast configuration for quick tasks.",
       "personas": {
-        "tech-lead": "gpt-5.6-terra[context=272k,reasoning=high,fast=true]",
-        "decomposer": "gpt-5.6-terra[context=272k,reasoning=high,fast=false]",
-        "reviewer": "gpt-5.6-terra[context=272k,reasoning=high,fast=true]",
-        "qa-tester": "gpt-5.6-terra[context=272k,reasoning=high,fast=true]",
-        "shepherd-reviewer": "gpt-5.6-terra[context=272k,reasoning=high,fast=true]"
+        "tech-lead": "",
+        "decomposer": "",
+        "reviewer": "",
+        "qa-tester": "",
+        "shepherd-reviewer": ""
       }
     },
     "balanced": {
@@ -60,45 +60,30 @@
     "advanced": {
       "summary": "Higher-reasoning coding and QA for complex or high-risk work.",
       "personas": {
-        "intake-writer": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]",
-        "coder": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]",
-        "reviewer": "claude-fable-5[thinking=true,context=1m,effort=high]",
-        "qa-tester": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]"
+        "intake-writer": "",
+        "coder": "",
+        "reviewer": "",
+        "qa-tester": ""
       }
     },
     "extreme": {
       "summary": "Extreme configuration for the most demanding tasks.",
       "personas": {
-        "intake-writer": "gpt-5.6-sol[context=272k,reasoning=high,fast=true]",
-        "tech-lead": "claude-fable-5[thinking=true,context=300k,effort=high]",
-        "coder": "gpt-5.6-sol[context=272k,reasoning=xhigh,fast=true]",
-        "reviewer": "claude-fable-5[thinking=true,context=300k,effort=high]",
-        "shepherd-reviewer": "claude-fable-5[thinking=true,context=300k,effort=high]",
-        "qa-tester": "gpt-5.6-sol[context=272k,reasoning=xhigh,fast=true]"
-      }
-    },
-    "default": {
-      "summary": "Balance of focused coding, strong review, and frontier planning.",
-      "personas": {}
-    },
-    "complex": {
-      "summary": "Higher-reasoning coding and QA for complex or high-risk work.",
-      "personas": {
-        "coder": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
-        "reviewer": "claude-fable-5[thinking=true,context=1m,effort=high]",
-        "shepherd-reviewer": "claude-fable-5[thinking=true,context=1m,effort=high]",
-        "qa-tester": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
-        "design-qa": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
-        "spotfixer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]"
+        "intake-writer": "",
+        "tech-lead": "",
+        "coder": "",
+        "reviewer": "",
+        "shepherd-reviewer": "",
+        "qa-tester": ""
       }
     },
     "auto": {
       "summary": "Cursor-managed routing except for the bounded coding workhorse.",
       "personas": {
-        "tech-lead": "grok-4.5[effort=high,fast=false]",
-        "decomposer": "grok-4.5[effort=high,fast=false]",
-        "reviewer": "grok-4.5[effort=high,fast=false]",
-        "qa-tester": "grok-4.5[effort=high,fast=false]"
+        "tech-lead": "",
+        "decomposer": "",
+        "reviewer": "",
+        "qa-tester": ""
       }
     }
   },

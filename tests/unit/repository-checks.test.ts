@@ -104,6 +104,31 @@ test('repository checks run probes and commands in the configured workspace', ()
   assert.match(result.results[1]?.stdout ?? '', /^v\d+/u)
 })
 
+test('a failed command does not stop the remaining command partitions', () => {
+  const { root } = makeInstallation()
+
+  writeChecks(root, {
+    static: {
+      probes: [],
+      commands: [
+        'node -e "console.error(\'backend partition failure\'); process.exit(1)"',
+        'node -e "process.stdout.write(\'frontend partition ran\')"',
+      ],
+    },
+  })
+
+  const result = runRepositoryCheck(root, 'static')
+
+  // Commands are independently meaningful partitions: an early backend
+  // failure must not leave the frontend partition uncaptured, or a baseline
+  // would represent surfaces it never observed.
+  assert.equal(result.status, 'failed')
+  assert.equal(result.results.length, 2)
+  assert.equal(result.results[0]?.passed, false)
+  assert.equal(result.results[1]?.passed, true)
+  assert.match(result.results[1]?.stdout ?? '', /frontend partition ran/u)
+})
+
 test('repository checks stop after a failed probe', () => {
   const { root } = makeInstallation()
 

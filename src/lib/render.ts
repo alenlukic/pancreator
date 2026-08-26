@@ -221,8 +221,12 @@ export function renderInvocationDeliveryPrompt(
           'The contract references policy guidance instead of inlining it. ' +
             'Read each selection from its source file; when the file no ' +
             'longer matches its digest, read the exact selected bytes from ' +
-            'the invocation JSON snapshot. No per-entry attestation is ' +
-            'required.',
+            'the invocation JSON snapshot. The scaffold prefills one ' +
+            '`invocation_attestation.guidance` entry per selection: for each ' +
+            'one, set `status` to `read` and set `final_line` to the ' +
+            "selection's verbatim last non-empty line (or `skipped` with the " +
+            'reason the read trigger does not apply). The final line is not ' +
+            'printed here — quoting it is your read evidence.',
           '',
           '| Policy | Guidance source | Digest |',
           '| --- | --- | --- |',
@@ -555,8 +559,9 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
             'references this card as the worker contract. A summary, an ' +
             'excerpt, or an added restatement MUST NOT substitute for it.',
           `3. Persist that exact prompt body to \`${delegation?.delegation_artifact_path}\` ` +
-            'before submission, labeled with the launched agent name as the ' +
-            'single permitted leading line.',
+            'before submission. The only permitted label is a leading ' +
+            `\`Agent: ${namedAgent}\` line followed by one blank line; add ` +
+            'nothing else ahead of the body.',
         ]
       : [
           `2. Launch the named \`${namedAgent}\` agent — the definition at ` +
@@ -569,8 +574,9 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
             'prompt. A path reference, summary, or excerpt MUST NOT ' +
             'substitute for the card body.',
           `3. Persist that exact prompt body to \`${delegation?.delegation_artifact_path}\` ` +
-            'before submission, labeled with the launched agent name as the ' +
-            'single permitted leading line.',
+            'before submission. The only permitted label is a leading ' +
+            `\`Agent: ${namedAgent}\` line followed by one blank line; add ` +
+            'nothing else ahead of the body.',
         ]
   const delegationLines = delegation
     ? [

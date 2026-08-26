@@ -35,6 +35,22 @@
             "prose_observation",
             "pytest_node_id"
           ]
+        },
+        {
+          "path": "data.implementation.tests_added[]",
+          "type": "string",
+          "format": "'<test file path>' optionally followed by '::<test case>' (pytest node ids and the spaced ' :: ' display form both resolve); the file portion must exist, e.g. 'tests/unit/example.test.ts::adds provenance rows'"
+        },
+        {
+          "path": "data.implementation.remediation[]",
+          "type": "object",
+          "required": ["cause", "action", "evidence"],
+          "format": "required on attempt 2+; cause and action are non-empty strings, evidence is a non-empty string array"
+        },
+        {
+          "path": "data.implementation.remediation[].evidence[]",
+          "type": "string",
+          "format": "non-empty string array of paths, commands, or observations proving the remediation"
         }
       ]
     },

@@ -163,7 +163,7 @@
     },
     "worktrees": {
       "type": "object",
-      "description": "Defaults for operator worktrees created by `pan worktree create` and `pan init --worktree`. Every field is optional; absent fields use the code defaults runtime/worktrees/operator, pan-wt/, and no setup commands.",
+      "description": "Defaults for operator worktrees created by `pan worktree create` and `pan init --worktree`. Every field is optional; absent fields use the code defaults runtime/worktrees/operator, worktree/, and no setup commands.",
       "additionalProperties": false,
       "properties": {
         "root": {
