@@ -10,12 +10,12 @@ The mode is governed by [`BESTOFN-001`](../governance/policies/BESTOFN-001.json)
 
 ## Shape of a session
 
-1. `dev-candidate` runs, one per candidate, each in its own detached Git
-   worktree. `dev-candidate` is `dev` without the `ship` stage, and every gate is
-   autonomous, so a candidate finishes without operator attention.
+1. `delivery-candidate` runs, one per candidate, each in its own detached Git
+   worktree. `delivery-candidate` is `delivery` without the `ship` stage, and
+   every gate is autonomous, so a candidate finishes without operator attention.
 2. One `metacritic` run in the main workspace. Its `consolidate` stage evaluates
    every candidate diff, writes one consolidated implementation, and then hands
-   off to the usual independent review, QA, and release preparation. `ship` keeps
+   off to the joint verification stage and release preparation. `ship` keeps
    its operator gate.
 
 Nothing in a session commits, pushes, merges, or deletes a branch. Candidate work

@@ -432,16 +432,18 @@ function targetInstructionInput(
 ): TargetInstructionInput | undefined {
   const { root, state, stage, workspace } = options
 
-  if (!['implement', 'consolidate', 'review', 'test'].includes(stage.slug)) {
+  const editingStages = ['implement', 'consolidate', 'remediate']
+
+  if (![...editingStages, 'review', 'test', 'verify'].includes(stage.slug)) {
     return undefined
   }
 
   const sourceStage =
     state.workflow_slug === 'metacritic' ? 'consolidate' : 'implement'
-  const declared = ['implement', 'consolidate'].includes(stage.slug)
+  const declared = editingStages.includes(stage.slug)
     ? outputChangedPaths(root, state, 'plan')
     : outputChangedPaths(root, state, sourceStage)
-  const current = ['implement', 'consolidate'].includes(stage.slug)
+  const current = editingStages.includes(stage.slug)
     ? []
     : (workspace?.entries ?? []).map((entry) => snapshotEntryPath(entry))
   const changedPaths = [...new Set([...declared, ...current])].sort()

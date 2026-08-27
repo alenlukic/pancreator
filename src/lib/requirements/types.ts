@@ -2,7 +2,6 @@ import type {
   PolicyRequirement,
   RequirementExecutor,
   RequirementPhase,
-  ReviewMode,
   RunContract,
 } from '../types.js'
 
@@ -39,8 +38,6 @@ export interface RequirementContext {
   invocation_kind?: InvocationKind
   /** Run contracts in force, so contract-scoped policy rows resolve identically here. */
   contracts?: RunContract[]
-  /** Review method in force, so review-scoped policy rows resolve identically here. */
-  review_mode?: ReviewMode
   /**
    * Whether this invocation requests an operator artifact. Absent preserves
    * standalone and legacy behavior by treating artifacts as requested.

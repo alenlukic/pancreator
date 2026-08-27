@@ -15,14 +15,14 @@ import { createFixture } from '../helpers.js'
 test('aborting a run finalizes artifact numbering and layout', () => {
   const root = createFixture()
   const created = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
   const runId = created.run_id
   const prepared = prepareInvocation(root, runId)
 
   assert.ok(prepared.invocation)
-  assert.match(prepared.invocation.invocation_id, /^99_intake-1_/u)
+  assert.match(prepared.invocation.invocation_id, /^99_plan-1_/u)
 
   const canceled = abortRun(root, runId, 'operator canceled')
   const persisted = getRunState(root, runId)
@@ -35,10 +35,8 @@ test('aborting a run finalizes artifact numbering and layout', () => {
   const operatorDirectory = path.join(runDirectory, 'operator')
   const invocationFiles = readdirSync(path.join(agentDirectory, 'invocations'))
 
-  assert.ok(
-    invocationFiles.some((name) => /^00_intake-1_.*\.json$/u.test(name)),
-  )
-  assert.ok(invocationFiles.some((name) => /^00_intake-1_.*\.md$/u.test(name)))
+  assert.ok(invocationFiles.some((name) => /^00_plan-1_.*\.json$/u.test(name)))
+  assert.ok(invocationFiles.some((name) => /^00_plan-1_.*\.md$/u.test(name)))
   assert.equal(existsSync(path.join(runDirectory, 'records')), false)
   assert.equal(existsSync(path.join(agentDirectory, 'artifacts/json')), true)
   assert.equal(existsSync(operatorDirectory), true)
@@ -52,7 +50,7 @@ test('aborting a run finalizes artifact numbering and layout', () => {
 test('finalization preserves content-addressed state revisions', () => {
   const root = createFixture()
   const created = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
   const runId = created.run_id
@@ -76,7 +74,7 @@ test('finalization preserves content-addressed state revisions', () => {
 
   assert.match(
     historical.current_invocation?.id ?? '',
-    /^99_intake-1_/u,
+    /^99_plan-1_/u,
     'historical revisions keep their pre-finalization invocation ids',
   )
 })

@@ -193,7 +193,7 @@ Use `pan briefs build --force` only when deliberately resetting the project laye
 New workflow runs suppress stage briefs and workflow PR copy by default. Request briefs for every stage when the run starts:
 
 ```sh
-./bin/pan init --workflow dev --request runtime/inbox/request.md --operator-artifacts
+./bin/pan init --request runtime/inbox/request.md --operator-artifacts
 ```
 
 Request a brief for only the current stage before its invocation exists:
@@ -226,8 +226,10 @@ The decomposer also compares reduced implementation, review, and remediation ris
 
 ## Choose a work mode
 
-Use `systematic` by default. `/pan-start` executes the governed `dev` workflow
-with planning, implementation, independent review, QA, and release preparation.
+Use `systematic` by default. `/pan-start` executes the governed `delivery`
+workflow: consolidated planning, implementation, joint verification with
+parallel review and QA evidence workers, verdict-routed remediation, and
+release preparation.
 
 Use `/pan-debug <problem>` when the cause or remediation scope is unclear. The
 investigator does not modify source; it returns root cause, proposed remediation,
@@ -310,7 +312,7 @@ whether it ships:
 ./bin/pan init --workflow prototype --request runtime/inbox/<spike-request>.md
 ```
 
-It runs intake → approach → build → evaluate. Compared with `dev` it:
+It runs intake → approach → build → evaluate. Compared with `delivery` it:
 
 - frames technical questions and observable success signals instead of user
   stories and acceptance criteria,
@@ -325,7 +327,7 @@ It runs intake → approach → build → evaluate. Compared with `dev` it:
   recommendation.
 
 `PROTO-001` prohibits representing a spike as production-ready. When you adopt an
-approach, start a separate systematic `dev` run scoped from the evaluation's
+approach, start a separate systematic `delivery` run scoped from the evaluation's
 productionization gap; the prototype run does not productionize its own output.
 
 An `invalidated` verdict is a successful prototype. The evaluation names the
@@ -343,13 +345,13 @@ them with:
 Select one per run:
 
 ```sh
-./bin/pan init --workflow dev --request runtime/inbox/<request>.md --involvement technical-director
+./bin/pan init --request runtime/inbox/<request>.md --involvement technical-director
 ```
 
 Shipped profiles:
 
-- `standard` — workflow-declared gates. You ratify intake and approve release.
-- `hands-off` — the supervisor ratifies intake instead of you; release still
+- `standard` — workflow-declared gates. You ratify the plan and approve release.
+- `hands-off` — the supervisor ratifies the plan instead of you; release still
   stops for your explicit approval.
 - `technical-director` — you refine the technical plan with its author before
   implementation and respond to the independent review before the run continues.
@@ -381,8 +383,8 @@ The default is deliberately lightweight: your team runs tests locally and CI
 runs them again, so the harness re-running integration and end-to-end suites
 inside the delivery loop buys long waits for evidence that already exists. The
 `full` profile never runs — and is never baselined before implementation —
-unless you select a level whose gates leave it in place. Intake and plan
-workers may recommend a different level for a risky change; the run pauses
+unless you select a level whose gates leave it in place. The plan worker may
+recommend a different level for a risky change; the run pauses
 once with the exact apply command, and resuming declines it. Runs snapshot the
 resolved level at init.
 
@@ -390,36 +392,12 @@ resolved level at init.
 push, merge, publication, or deployment. You keep every in-the-moment override
 under `OPERATOR-001`.
 
-## Choose how review works
-
-`config.json.review_mode` selects how the independent review stage gathers its
-findings. Two values:
-
-- `default` — one reviewer reads the whole change.
-- `squad` — the reviewer delegates one agent per review dimension
-  (correctness, security, architecture, simplification, operations, plus
-  conditional dimensions such as frontend), then joins the returned findings into
-  one ranked set.
-
-Set the default in `config.json`, or pick one for a single run:
-
-```sh
-./bin/pan init --workflow dev --request runtime/inbox/<request>.md --review-mode squad
-```
-
-`squad` costs more model time and returns a wider, more sharply labelled finding
-set. Use it for a change whose blast radius is broad, and `default` for narrow
-work. Either way the reviewer keeps the verdict and repairs the same bounded
-defects, so switching modes never changes what review is allowed to do. `init`
-reports the resolved mode, and the run snapshots it so a later `config.json` edit
-cannot change a run in flight.
-
 ### Technical director mode
 
 `technical-director` is a run contract, not a separate workflow — any workflow
 run abides by it when active. It attaches to stage _roles_ rather than slugs, so
-it escalates `dev/plan` and `prototype/approach` (the `technical_plan`
-checkpoint) and `dev/review` and `design/review` (the `independent_review`
+it escalates `delivery/plan` and `prototype/approach` (the `technical_plan`
+checkpoint) and `delivery/verify` and `design/review` (the `independent_review`
 checkpoint) to operator gates.
 
 At a checkpoint the supervisor presents the stage's substance in full and stops.
@@ -440,11 +418,11 @@ unacceptable; it routes to the stage's failure target.
 `DIRECTOR-001` forbids inferring approval from silence, from the absence of
 objections, or from discussing the plan with you.
 
-## Run the design workflow before non-trivial UI/UX `dev` work
+## Run the design workflow before non-trivial UI/UX delivery work
 
 For any development task with a non-trivial UI/UX design component, run the
 standalone `design` workflow first, ratify its handoff package, then start a
-separate corresponding `dev` run whose request references that package.
+separate corresponding `delivery` run whose request references that package.
 
 ```sh
 ./bin/pan init --workflow design --request runtime/inbox/<design-request>.md
@@ -452,14 +430,15 @@ separate corresponding `dev` run whose request references that package.
 
 After intake → design → design review → design QA → handoff succeed and you
 approve handoff, the design package lists stable paths for the design spec, HTML
-mocks index, and acceptance criteria. Start `dev` with a request that cites those
-paths so intake preserves the design acceptance criteria:
+mocks index, and acceptance criteria. Start `delivery` with a request that cites
+those paths so planning preserves the design acceptance criteria:
 
 ```sh
-./bin/pan init --workflow dev --request runtime/inbox/<dev-request-referencing-design-package>.md
+./bin/pan init --request runtime/inbox/<request-referencing-design-package>.md
 ```
 
-Composition is deliberately separate runs (not an automatic gate inside `dev`).
+Composition is deliberately separate runs (not an automatic gate inside
+`delivery`).
 The first live design run after enabling this capability is an operator checklist
 item, not an in-workflow nested run.
 
@@ -529,7 +508,7 @@ A persona mapping may name its executor with a prefix from a closed set — `cur
 
 ```json
 "personas": {
-  "tech-lead": "claude-code:claude-opus-5[permission-mode=default,session-resume=true]",
+  "planner": "claude-code:claude-opus-5[permission-mode=default,session-resume=true]",
   "reviewer": "claude-code:claude-opus-5[permission-mode=default,session-resume=true]",
   "coder": "claude-opus-5[context=300k,effort=high]"
 }
@@ -560,7 +539,7 @@ A worktree is a second working directory of the same repository. Every worktree 
 ```sh
 ./bin/pan worktree create feature-login --description "Rework the login flow"
 ./bin/pan worktree list
-./bin/pan init --workflow dev --request runtime/inbox/request.md --worktree feature-login
+./bin/pan init --request runtime/inbox/request.md --worktree feature-login
 ```
 
 - `create` makes the branch `worktree/<name>` from `--from` (a branch, a revision, or another recorded worktree) and defaults to the commit the main checkout currently holds. Names use lowercase letters, digits, and single hyphens, because the name becomes both a directory and a branch segment.

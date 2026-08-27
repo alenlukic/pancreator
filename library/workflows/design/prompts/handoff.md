@@ -1,7 +1,7 @@
 ## Objective
 
 Package the ratified design outputs into a stable design package the operator can
-reference from a separately started corresponding `dev` run.
+reference from a separately started corresponding `delivery` run.
 
 ## Steps
 
@@ -9,8 +9,8 @@ reference from a separately started corresponding `dev` run.
 2. Assemble `design_package` with a concise summary, the stable design-spec path,
    mocks index, acceptance criteria, and explicit `dev_request_instructions`.
 3. Point every package path at durable run artifacts under this workflow run so a
-   later `dev` request can cite them without hunting.
-4. Instruct the operator to start `./bin/pan init --workflow dev --request ...`
+   later `delivery` request can cite them without hunting.
+4. Instruct the operator to start `./bin/pan init --request ...`
    with a request that references those paths and preserves the design acceptance
    criteria for implementation.
 
@@ -25,4 +25,4 @@ rendered HTML. Do not run the renderer. When the contract omits
 ## Done when
 
 The package is complete, paths are stable, and composition instructions for the
-corresponding `dev` run are clear for operator ratification.
+corresponding `delivery` run are clear for operator ratification.

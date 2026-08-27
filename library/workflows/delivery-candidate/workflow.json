@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "slug": "delivery-candidate",
+  "title": "Best-of-N candidate delivery",
+  "description": "Autonomous consolidated delivery for one best-of-N candidate worktree: ratified planning, implementation, joint verification, and verdict-routed remediation, with no release preparation.",
+  "start_stage": "plan",
+  "limits": {
+    "max_total_transitions": 12,
+    "max_stage_attempts": 3,
+    "max_consecutive_failures": 3
+  },
+  "stages": ["plan", "implement", "verify", "remediate"]
+}

@@ -1,11 +1,9 @@
 import assert from 'node:assert/strict'
-import { randomUUID } from 'node:crypto'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import {
-  assessStage,
   createRun,
   decideRun,
   prepareInvocation,
@@ -27,22 +25,12 @@ import {
 
 test('submit records missing delegation as an advisory governance warning', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
   const runId = state.run_id
-
-  const intakeInvocation = prepareInvocation(root, runId).invocation
-  assert.ok(intakeInvocation)
-  writeJson(
-    path.join(root, intakeInvocation.output.path),
-    makeOutput(root, intakeInvocation, stageBySlug(workflow, 'intake')),
-  )
-  writeCanonicalDelegation(root, intakeInvocation)
-  submitOutput(root, runId, intakeInvocation.output.path)
-  decideRun(root, runId, 'approve', 'fixture approval')
 
   const planInvocation = prepareInvocation(root, runId).invocation
   assert.ok(planInvocation)
@@ -54,32 +42,22 @@ test('submit records missing delegation as an advisory governance warning', () =
   const submitted = submitOutput(root, runId, planInvocation.output.path)
 
   assert.equal(submitted.record.outcome, 'success')
-  assert.equal(submitted.state.status, 'awaiting_supervisor')
+  assert.equal(submitted.state.status, 'awaiting_operator')
   assert.match(
     (submitted.record.evaluation.governance_artifact_warnings ?? []).join('\n'),
     /Delegation artifact is missing/u,
   )
-  assert.equal(submitted.state.stage_history.length, 2)
+  assert.equal(submitted.state.stage_history.length, 1)
 })
 
 test('submit records mismatched delegation as advisory evidence before ship', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
   const runId = state.run_id
-
-  const intakeInvocation = prepareInvocation(root, runId).invocation
-  assert.ok(intakeInvocation)
-  writeJson(
-    path.join(root, intakeInvocation.output.path),
-    makeOutput(root, intakeInvocation, stageBySlug(workflow, 'intake')),
-  )
-  writeCanonicalDelegation(root, intakeInvocation)
-  submitOutput(root, runId, intakeInvocation.output.path)
-  decideRun(root, runId, 'approve', 'fixture approval')
 
   const planInvocation = prepareInvocation(root, runId).invocation
   assert.ok(planInvocation)
@@ -97,7 +75,7 @@ test('submit records mismatched delegation as advisory evidence before ship', ()
   const submitted = submitOutput(root, runId, planInvocation.output.path)
 
   assert.equal(submitted.record.outcome, 'success')
-  assert.equal(submitted.state.status, 'awaiting_supervisor')
+  assert.equal(submitted.state.status, 'awaiting_operator')
   assert.match(
     (submitted.record.evaluation.governance_artifact_warnings ?? []).join('\n'),
     /Delegation validation failed/u,
@@ -113,22 +91,12 @@ test('submit records mismatched delegation as advisory evidence before ship', ()
 
 test('submit succeeds when canonical delegation artifact is present', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
   const runId = state.run_id
-
-  const intakeInvocation = prepareInvocation(root, runId).invocation
-  assert.ok(intakeInvocation)
-  writeJson(
-    path.join(root, intakeInvocation.output.path),
-    makeOutput(root, intakeInvocation, stageBySlug(workflow, 'intake')),
-  )
-  writeCanonicalDelegation(root, intakeInvocation)
-  submitOutput(root, runId, intakeInvocation.output.path)
-  decideRun(root, runId, 'approve', 'fixture approval')
 
   const planInvocation = prepareInvocation(root, runId).invocation
   assert.ok(planInvocation)
@@ -140,26 +108,9 @@ test('submit succeeds when canonical delegation artifact is present', () => {
 
   const submitted = submitOutput(root, runId, planInvocation.output.path)
   assert.equal(submitted.record.outcome, 'success')
-  assert.equal(submitted.state.status, 'awaiting_supervisor')
+  assert.equal(submitted.state.status, 'awaiting_operator')
 
-  if (submitted.state.pending_action.type !== 'supervisor_assessment') {
-    throw new Error('Expected supervisor assessment action')
-  }
-
-  writeJson(path.join(root, submitted.state.pending_action.output_path), {
-    schema_version: 1,
-    assessment_id: randomUUID(),
-    invocation_id: planInvocation.invocation_id,
-    verdict: 'pass',
-    summary: 'Plan is implementation-ready.',
-    criteria: stageBySlug(workflow, 'plan').criteria.map((criterion) => ({
-      id: criterion.id,
-      result: 'pass',
-      evidence: [planInvocation.output.path],
-      explanation: 'Fixture evidence',
-    })),
-  })
-  assessStage(root, runId, submitted.state.pending_action.output_path)
+  decideRun(root, runId, 'approve', 'Plan is implementation-ready.')
 
   const implementInvocation = prepareInvocation(root, runId).invocation
 
@@ -204,22 +155,12 @@ test('submit succeeds when canonical delegation artifact is present', () => {
 
 test('submit relocates workspace-root delegation artifact before validation', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
   const runId = state.run_id
-
-  const intakeInvocation = prepareInvocation(root, runId).invocation
-  assert.ok(intakeInvocation)
-  writeJson(
-    path.join(root, intakeInvocation.output.path),
-    makeOutput(root, intakeInvocation, stageBySlug(workflow, 'intake')),
-  )
-  writeCanonicalDelegation(root, intakeInvocation)
-  submitOutput(root, runId, intakeInvocation.output.path)
-  decideRun(root, runId, 'approve', 'fixture approval')
 
   const planInvocation = prepareInvocation(root, runId).invocation
   assert.ok(planInvocation)
@@ -257,27 +198,15 @@ test('submit relocates workspace-root delegation artifact before validation', ()
   )
 })
 
-/** Advance a fixture dev run to a prepared, delegated plan invocation. */
+/** Prepare a fixture delivery run's first delegated plan invocation. */
 function prepareDelegatedPlan(root: string): {
   runId: string
   invocation: Invocation
 } {
-  const workflow = loadWorkflow(root, 'dev')
   const runId = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   }).run_id
-  const intakeInvocation = prepareInvocation(root, runId).invocation
-
-  assert.ok(intakeInvocation)
-  writeJson(
-    path.join(root, intakeInvocation.output.path),
-    makeOutput(root, intakeInvocation, stageBySlug(workflow, 'intake')),
-  )
-  writeCanonicalDelegation(root, intakeInvocation)
-  submitOutput(root, runId, intakeInvocation.output.path)
-  decideRun(root, runId, 'approve', 'fixture approval')
-
   const invocation = prepareInvocation(root, runId).invocation
 
   assert.ok(invocation)
@@ -287,7 +216,7 @@ function prepareDelegatedPlan(root: string): {
 
 test('submit rejects a delegated output with no read attestation', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const { runId, invocation } = prepareDelegatedPlan(root)
   const output = makeOutput(root, invocation, stageBySlug(workflow, 'plan'))
 
@@ -314,7 +243,7 @@ test('submit rejects a delegated output with no read attestation', () => {
 
 test('submit rejects a read attestation with a stale digest', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const { runId, invocation } = prepareDelegatedPlan(root)
   const output = makeOutput(root, invocation, stageBySlug(workflow, 'plan'))
   const attestation = output.invocation_attestation
@@ -337,7 +266,7 @@ test('submit rejects a read attestation with a stale digest', () => {
 
 test('submit reports an unreadable contract reference as blocked', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const { runId, invocation } = prepareDelegatedPlan(root)
   const output = makeOutput(root, invocation, stageBySlug(workflow, 'plan'))
   const manifest = invocation.contract_manifest
@@ -357,7 +286,16 @@ test('submit reports an unreadable contract reference as blocked', () => {
   const submitted = submitOutput(root, runId, invocation.output.path)
 
   assert.equal(submitted.record.outcome, 'blocked')
-  assert.equal(submitted.state.status, 'paused')
+
+  // Plan's operator gate owns the transition: a blocked outcome waits for the
+  // operator with a proposed pause instead of pausing unilaterally.
+  assert.equal(submitted.state.status, 'awaiting_operator')
+
+  if (submitted.state.pending_action.type !== 'operator_approval') {
+    throw new Error('Expected an operator approval action')
+  }
+
+  assert.equal(submitted.state.pending_action.proposed_transition, 'paused')
 
   const artifact = JSON.parse(
     readFileSync(

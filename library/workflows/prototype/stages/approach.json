@@ -1,7 +1,7 @@
 {
   "slug": "approach",
   "title": "Technical approach",
-  "persona": "tech-lead",
+  "persona": "planner",
   "prompt_path": "library/workflows/prototype/prompts/approach.md",
   "workspace_policy": "runtime_only",
   "gate": "next_stage",

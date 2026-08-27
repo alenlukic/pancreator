@@ -3,12 +3,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import {
-  createRun,
-  decideRun,
-  prepareInvocation,
-  submitOutput,
-} from '../../src/lib/engine.js'
+import { createRun, prepareInvocation } from '../../src/lib/engine.js'
 import { sha256 } from '../../src/lib/io.js'
 import { loadPolicyCatalog } from '../../src/lib/policies.js'
 import {
@@ -20,14 +15,7 @@ import {
   DELEGATION_HEADING,
   validateDelegationMarkdown,
 } from '../../src/lib/validation.js'
-import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
-import {
-  createFixture,
-  makeOutput,
-  read,
-  writeCanonicalDelegation,
-  writeJson,
-} from '../helpers.js'
+import { createFixture, read, writeCanonicalDelegation } from '../helpers.js'
 
 interface ValidationArtifact {
   status: string
@@ -43,8 +31,8 @@ function cardText(root: string, markdownPath: string): string {
  * of its own. These assertions pin the delivery contract to the sibling
  * supervisor procedure document the card names, so compliance never depends
  * on recalling `AGENTS.md` — while the worker-visible card itself carries no
- * workflow lifecycle command. Dev intake is the first delegated stage, so the
- * run has no supervisor-owned stage to fall back on.
+ * workflow lifecycle command. Delivery plan is the first delegated stage, so
+ * the run has no supervisor-owned stage to fall back on.
  */
 test('worker invocation cards point at the supervisor delivery procedure', () => {
   const root = createFixture()
@@ -53,25 +41,22 @@ test('worker invocation cards point at the supervisor delivery procedure', () =>
   assert.ok(invocationPolicy)
 
   const runId = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Delegation contract run',
   }).run_id
 
-  // Intake is the first delegated worker stage, so the contract must already
+  // Plan is the first delegated worker stage, so the contract must already
   // hold on the very first card the supervisor delivers.
   const prepared = prepareInvocation(root, runId)
   const invocation = prepared.invocation
   const delegation = invocation?.delegation
 
   assert.ok(invocation)
-  assert.equal(invocation.stage.slug, 'intake')
-  assert.equal(invocation.stage.persona, 'intake-writer')
+  assert.equal(invocation.stage.slug, 'plan')
+  assert.equal(invocation.stage.persona, 'planner')
   assert.ok(delegation)
-  assert.equal(
-    delegation.cursor_agent_path,
-    '.cursor/agents/pan-intake-writer.md',
-  )
+  assert.equal(delegation.cursor_agent_path, '.cursor/agents/pan-planner.md')
 
   const markdown = cardText(
     root,
@@ -164,22 +149,11 @@ test('worker invocation cards point at the supervisor delivery procedure', () =>
  */
 test('referenced delivery stays bounded and flat as the contract grows', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
   const runId = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Bounded delivery run',
   }).run_id
-  const intake = prepareInvocation(root, runId)
-
-  assert.ok(intake.invocation)
-  writeJson(
-    path.join(root, intake.invocation.output.path),
-    makeOutput(root, intake.invocation, stageBySlug(workflow, 'intake')),
-  )
-  writeCanonicalDelegation(root, intake.invocation)
-  submitOutput(root, runId, intake.invocation.output.path)
-  decideRun(root, runId, 'approve', 'Fixture approval')
 
   const prepared = prepareInvocation(root, runId)
   const invocation = prepared.invocation
@@ -231,23 +205,11 @@ test('referenced delivery stays bounded and flat as the contract grows', () => {
 
 test('a delegation artifact that drops the delivery section fails validation', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
   const runId = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Stripped delegation run',
   }).run_id
-
-  const intake = prepareInvocation(root, runId)
-
-  assert.ok(intake.invocation)
-  writeJson(
-    path.join(root, intake.invocation.output.path),
-    makeOutput(root, intake.invocation, stageBySlug(workflow, 'intake')),
-  )
-  writeCanonicalDelegation(root, intake.invocation)
-  submitOutput(root, runId, intake.invocation.output.path)
-  decideRun(root, runId, 'approve', 'Fixture approval')
 
   const prepared = prepareInvocation(root, runId)
   const invocation = prepared.invocation

@@ -1,6 +1,6 @@
 Drive a workflow in this top-level session to validate harness changes.
 
-1. Parse `$ARGUMENTS` for `--workflow`, `--qa-target`, and `--task`. Default `--workflow` to `dev`. Reject all other arguments.
+1. Parse `$ARGUMENTS` for `--workflow`, `--qa-target`, and `--task`. Default `--workflow` to `delivery`. Reject all other arguments.
 2. Read `AGENTS.md`, `library/personas/orchestrator.md`, `library/personas/harness-workflow-qa.md`, and `library/personas/harness-technician.md`. Adopt the orchestrator and QA persona briefs in this session. Use the harness technician brief for post-run investigation. Do not invoke a supervisor subagent.
 3. Use the workspace from `AGENTS.md`. Ask the operator for the QA target when `--qa-target` is absent.
 4. Use `--task` when present. Otherwise, select one unimplemented `runtime/inbox/` item. Create an intake only when no item qualifies.

@@ -1,6 +1,6 @@
 # Review squad
 
-Use when `REVIEW-002` is active and one review must cover several review
+Use when a shepherd review under `SHEPHERD-001` must cover several review
 dimensions at once.
 
 The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** use RFC
@@ -13,8 +13,8 @@ some of them. A squad splits the lenses. The reviewer stays the coordinator: it
 delegates one narrow charter per dimension, then joins the returned findings into
 one ranked set.
 
-The squad changes only how findings are gathered. `REVIEW-001` still owns the
-verdict, the remediation boundary, and routing to implementation.
+The squad changes only how findings are gathered. The coordinator still owns
+the verdict, the remediation boundary, and routing.
 
 ## Lineup
 
@@ -56,7 +56,7 @@ whether or not its rule matches.
    results. Do not drop a dimension from a stated lineup without saying so.
 6. Join the findings. Merge duplicates, drop what the intent brief already
    answers, then rank.
-7. Apply `REVIEW-001` to the ranked set: repair what falls inside the reviewer
+7. Judge the ranked set as the coordinator: repair what falls inside your
    remediation boundary, amend any acceptance criterion the findings prove
    unworkable as written, and route the rest. Criterion amendment belongs to
    the coordinator, never to a dimension agent.
@@ -281,8 +281,8 @@ the exact API for a "the library already does it" finding.
 ## Boundaries
 
 - A dimension agent MUST NOT edit any file. It returns findings only.
-- Bounded remediation belongs to the coordinator under `REVIEW-001`, and it MUST
-  be disclosed in the review artifact.
+- Bounded remediation belongs to the coordinator, and it MUST be disclosed in
+  the review artifact.
 - Do not report a style preference. Every finding needs a failure scenario or a
   counted maintenance cost.
 - A dimension that returns nothing MUST appear in the review artifact as empty

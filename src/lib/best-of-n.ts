@@ -46,7 +46,7 @@ import {
   workflowPersonaNames,
 } from './workflow.js'
 
-const CANDIDATE_WORKFLOW = 'dev-candidate'
+const CANDIDATE_WORKFLOW = 'delivery-candidate'
 const CONSOLIDATION_WORKFLOW = 'metacritic'
 const MINIMUM_CANDIDATES = 2
 const BEST_OF_N_ID_PATTERN =

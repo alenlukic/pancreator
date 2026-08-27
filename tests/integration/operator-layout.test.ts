@@ -45,7 +45,7 @@ function prepareFirstStage(root: string): {
   invocation: Invocation
 } {
   const runId = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     involvement: 'standard',
     operatorArtifacts: true,
@@ -59,7 +59,7 @@ function prepareFirstStage(root: string): {
 
 test('submit reports the sole operator brief and removes its source', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const { runId, invocation } = prepareFirstStage(root)
   const brief = invocation.output.operator_brief
 
@@ -127,7 +127,7 @@ test('submit reports the sole operator brief and removes its source', () => {
     `agent/validations/${invocation.invocation_id}.attestation-validation.json`,
     `agent/validations/${invocation.invocation_id}.delegation-validation.json`,
     'agent/validations/GLOBAL-001-operator-artifact-validate-harness.json',
-    'agent/validations/INTAKE-001-intake-validate-harness.json',
+    'agent/validations/PLAN-002-plan-trace-validate-harness.json',
     'agent/validations/STE-001-simplified-english-validate-harness.json',
   ])
   assert.ok(filesAfter.includes(`operator/${invocation.invocation_id}.html`))
@@ -149,7 +149,7 @@ test('submit reports the sole operator brief and removes its source', () => {
 
 test('a submitted run holds operator files and harness records apart', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const { runId, invocation } = prepareFirstStage(root)
   const output = makeOutput(
     root,
@@ -187,9 +187,9 @@ test('a submitted run holds operator files and harness records apart', () => {
 // must gain machine records only: no brief source, no stage HTML, no PR copy.
 test('a default run prepares and submits without any brief file', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const runId = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     involvement: 'standard',
   }).run_id
@@ -232,7 +232,7 @@ test('a default run prepares and submits without any brief file', () => {
 // belongs beside the decision records under agent/decisions/.
 test('operator control records stay out of the operator directory', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const { runId, invocation } = prepareFirstStage(root)
   const output = makeOutput(
     root,
@@ -244,8 +244,8 @@ test('operator control records stay out of the operator directory', () => {
   writeCanonicalDelegation(root, invocation)
   submitOutput(root, runId, invocation.output.path)
 
-  // Rejection feedback at the intake operator gate.
-  decideRun(root, runId, 'reject', 'Re-derive the intake with narrower scope.')
+  // Rejection feedback at the plan operator gate.
+  decideRun(root, runId, 'reject', 'Re-derive the plan with narrower scope.')
 
   // Stage-repair feedback from an operator-directed stage change.
   setRunStage(root, runId, 'implement', 'Initialize tracked workspace state.')
@@ -300,7 +300,7 @@ test('operator control records stay out of the operator directory', () => {
 // narrative, so submission keeps it whenever the render or a validator fails.
 test('a submission with validation errors keeps the brief source', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const { runId, invocation } = prepareFirstStage(root)
   const brief = invocation.output.operator_brief
 

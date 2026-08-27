@@ -38,7 +38,7 @@ test('pan archive migrates and archives old workflow directories', () => {
     `${JSON.stringify({
       schema_version: 1,
       run_id: legacyRunId,
-      workflow_slug: 'dev',
+      workflow_slug: 'delivery',
       title: 'old fixture',
       status: 'succeeded',
       pending_action: { type: 'none' },
@@ -49,7 +49,7 @@ test('pan archive migrates and archives old workflow directories', () => {
   )
   write(
     path.join(logDirectory, 'workflow.snapshot.json'),
-    '{"stages":[{"slug":"intake"}]}\n',
+    '{"stages":[{"slug":"plan"}]}\n',
   )
   write(path.join(logDirectory, 'events.jsonl'), '')
   write(
@@ -103,7 +103,7 @@ test('pan archive migrates and archives old workflow directories', () => {
 test('status, resume, and archive preserve an unconverted v1 run', () => {
   const root = createFixture()
   const runId = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   }).run_id
 
@@ -137,10 +137,10 @@ test('status, resume, and archive preserve an unconverted v1 run', () => {
   state.pipeline_config.path = `runtime/logs/workflows/${runId}/pipeline-config.snapshot.json`
   state.request.stored_path = `runtime/logs/workflows/${runId}/request.md`
   state.stage_history.push({
-    stage: 'intake',
+    stage: 'plan',
     attempt: 1,
-    invocation_id: '99_intake-1_renamed-prefix',
-    output_path: `runtime/logs/workflows/${runId}/outputs/99_intake-1_renamed-prefix.json`,
+    invocation_id: '99_plan-1_renamed-prefix',
+    output_path: `runtime/logs/workflows/${runId}/outputs/99_plan-1_renamed-prefix.json`,
     outcome: 'success',
     submitted_at: new Date().toISOString(),
     workspace_fingerprint: 'legacy-fixture',
@@ -169,7 +169,7 @@ test('status, resume, and archive preserve an unconverted v1 run', () => {
       'resume',
       runId,
       '--stage',
-      'intake',
+      'plan',
       '--note',
       'resume legacy fixture',
       '--json',

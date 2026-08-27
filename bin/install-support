@@ -445,10 +445,13 @@ function mergeEmbeddedProjectConfig(source, existing) {
 const LANGUAGE_BUNDLE_MARKER = 'pancreator-target-language-handbooks'
 const LANGUAGE_CODE_PERSONAS = new Set([
   'coder',
+  'planner',
   'qa-tester',
+  'remediator',
+  'remediator-severe',
   'reviewer',
   'spotfixer',
-  'tech-lead',
+  'verifier',
 ])
 
 function isGeneratedLanguageRow(row) {

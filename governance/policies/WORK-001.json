@@ -4,7 +4,7 @@
   "severity": "hard",
   "summary": "Systematic workflow execution MUST remain the default; lightweight execution MAY be used only for a single small-scope change whose correctness can be established with bounded validation.",
   "instructions": [
-    "The systematic work mode MUST execute an applicable governed workflow such as dev and MUST be selected whenever the request is not demonstrably small-scope.",
+    "The systematic work mode MUST execute an applicable governed workflow such as delivery and MUST be selected whenever the request is not demonstrably small-scope.",
     "The lightweight work mode MUST execute the governed spotfix workflow and MAY be selected only when the operator explicitly requests pan-spotfix or an investigator recommends lightweight remediation under this policy.",
     "A gate-waiver follow-up MAY be proposed as a spotfix case only when the unmet acceptance criteria are explicitly identified and appear independently bounded, but the case MUST still pass the full lightweight eligibility check before implementation.",
     "A request MUST be treated as small-scope only when it is one coherent issue or change, has acceptance criteria that are supplied or can be derived without unresolved product or architecture decisions, and can be validated with existing repository checks.",

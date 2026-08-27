@@ -54,72 +54,81 @@
         }
       ]
     },
-    "review": {
+    "verify": {
       "validators": [
         {
-          "registry_id": "REVIEW-VALIDATE-001",
-          "enforcement": "advises"
+          "registry_id": "VERIFY-VALIDATE-001",
+          "enforcement": "blocks"
         }
       ],
       "fields": [
         {
-          "path": "data.review.findings[].severity",
+          "path": "data.verify.verdict",
+          "type": "string",
+          "enum": ["pass", "pass_with_warnings", "fail_remedial", "fail_severe"]
+        },
+        {
+          "path": "data.verify.findings[].severity",
           "type": "string",
           "enum": ["blocker", "high", "medium", "low"]
         },
         {
-          "path": "data.review.findings[].remediation_stage",
+          "path": "data.verify.findings[].source",
           "type": "string",
-          "enum": ["review", "implement", "operator"]
+          "enum": ["review", "qa"]
         },
         {
-          "path": "data.review.findings[].resolution",
-          "type": "string",
-          "enum": ["resolved_in_review", "unresolved"]
+          "path": "data.verify.qa_cases[].steps",
+          "type": "string"
         },
         {
-          "path": "data.review.criterion_amendments[].reason_class",
+          "path": "data.verify.qa_cases[].expected",
+          "type": "string"
+        },
+        {
+          "path": "data.verify.qa_cases[].actual",
+          "type": "string"
+        },
+        {
+          "path": "data.verify.qa_cases[].result",
           "type": "string",
-          "enum": [
-            "unimplementable",
-            "contradictory",
-            "unverifiable",
-            "unworkable"
-          ]
+          "enum": ["pass", "fail", "blocked"]
         }
       ]
     },
-    "test": {
+    "remediate": {
       "validators": [
         {
-          "registry_id": "QA-VALIDATE-001",
-          "enforcement": "advises"
+          "registry_id": "IMPLEMENTATION-CLAIMS-VALIDATE-001",
+          "enforcement": "blocks"
         }
       ],
       "fields": [
         {
-          "path": "data.test.cases[].steps",
-          "type": "string"
+          "path": "data.acceptance_results[].evidence[]",
+          "type": "string",
+          "format": "path reference, prose observation, or pytest node id",
+          "accepted_shapes": [
+            "path_reference",
+            "prose_observation",
+            "pytest_node_id"
+          ]
         },
         {
-          "path": "data.test.cases[].expected",
-          "type": "string"
+          "path": "data.implementation.tests_added[]",
+          "type": "string",
+          "format": "'<test file path>' optionally followed by '::<test case>' (pytest node ids and the spaced ' :: ' display form both resolve); the file portion must exist, e.g. 'tests/unit/example.test.ts::adds provenance rows'"
         },
         {
-          "path": "data.test.cases[].actual",
-          "type": "string"
+          "path": "data.implementation.remediation[]",
+          "type": "object",
+          "required": ["cause", "action", "evidence"],
+          "format": "required on every remediation attempt; cause and action are non-empty strings, evidence is a non-empty string array"
         },
         {
-          "path": "data.test.cases[].result",
-          "type": "string"
-        },
-        {
-          "path": "data.test.defects[].classification",
-          "type": "string"
-        },
-        {
-          "path": "data.test.defects[].owner",
-          "type": "string"
+          "path": "data.implementation.remediation[].evidence[]",
+          "type": "string",
+          "format": "non-empty string array of paths, commands, or observations proving the remediation"
         }
       ]
     },

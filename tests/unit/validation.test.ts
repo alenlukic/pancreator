@@ -87,7 +87,7 @@ test('repository validation requires a policy to deliver each engineering handbo
   )
 })
 
-test('repository validation requires code-review and QA stages to load engineering handbook policies', () => {
+test('repository validation requires code-review stages to load engineering handbook policies', () => {
   const root = createFixture()
   prepareValidationFixture(root)
   const lookupPath = path.join(
@@ -100,7 +100,7 @@ test('repository validation requires code-review and QA stages to load engineeri
     rows: Array<{ persona: string }>
   }
 
-  lookup.rows = lookup.rows.filter((row) => row.persona !== 'qa-tester')
+  lookup.rows = lookup.rows.filter((row) => row.persona !== 'coder')
 
   writeFileSync(lookupPath, `${JSON.stringify(lookup, null, 2)}\n`)
 
@@ -109,7 +109,7 @@ test('repository validation requires code-review and QA stages to load engineeri
   assert.equal(result.ok, false)
   assert.match(
     result.errors.join('\n'),
-    /workflow stage 'dev\/test' persona 'qa-tester' MUST load a policy for the engineering handbook/u,
+    /workflow stage 'delivery\/implement' persona 'coder' MUST load a policy for the engineering handbook/u,
   )
 })
 
@@ -221,7 +221,7 @@ test('repository validation requires code-review and QA stages to load Python ha
   }
 
   lookup.rows = lookup.rows.map((row) =>
-    row.persona === 'qa-tester'
+    row.persona === 'coder'
       ? {
           ...row,
           policies: row.policies.filter((policy) => policy !== 'PY-001'),
@@ -236,7 +236,7 @@ test('repository validation requires code-review and QA stages to load Python ha
   assert.equal(result.ok, false)
   assert.match(
     result.errors.join('\n'),
-    /workflow stage 'dev\/test' persona 'qa-tester' MUST load a policy for the Python handbook/u,
+    /workflow stage 'delivery\/implement' persona 'coder' MUST load a policy for the Python handbook/u,
   )
 })
 
@@ -281,7 +281,7 @@ test('repository validation requires code-review and QA stages to load TypeScrip
   }
 
   lookup.rows = lookup.rows.map((row) =>
-    row.persona === 'qa-tester'
+    row.persona === 'coder'
       ? {
           ...row,
           policies: row.policies.filter((policy) => policy !== 'TS-001'),
@@ -296,7 +296,7 @@ test('repository validation requires code-review and QA stages to load TypeScrip
   assert.equal(result.ok, false)
   assert.match(
     result.errors.join('\n'),
-    /workflow stage 'dev\/test' persona 'qa-tester' MUST load a policy for the TypeScript handbook/u,
+    /workflow stage 'delivery\/implement' persona 'coder' MUST load a policy for the TypeScript handbook/u,
   )
 })
 
@@ -398,8 +398,8 @@ test('repository validation requires standalone Cursor agents in every pipeline 
     configs: Record<string, { personas: Record<string, string> }>
   }
 
-  delete config.configs.auto?.personas['tech-lead']
-  delete config.defaults['tech-lead']
+  delete config.configs.auto?.personas.planner
+  delete config.defaults.planner
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
 
   const result = validateRepository(root)
@@ -407,12 +407,12 @@ test('repository validation requires standalone Cursor agents in every pipeline 
   assert.equal(result.ok, false)
   assert.match(
     result.errors.join('\n'),
-    /pipeline config 'auto' does not map persona 'tech-lead'/u,
+    /pipeline config 'auto' does not map persona 'planner'/u,
   )
 })
 
 function fixtureInvocation(root: string, stageSlug: string): Invocation {
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const stage = stageBySlug(workflow, stageSlug)
   const policies = resolvePolicies(root, {
     persona: stage.persona,
@@ -461,17 +461,11 @@ function fixtureInvocation(root: string, stageSlug: string): Invocation {
         schema: 'library/schemas/operator-brief.schema.json',
         renderer: 'pan briefs render',
         profile:
-          stageSlug === 'intake'
-            ? 'intake'
-            : stageSlug === 'plan'
-              ? 'plan'
-              : stageSlug === 'review'
-                ? 'review'
-                : stageSlug === 'test'
-                  ? 'qa'
-                  : stageSlug === 'ship'
-                    ? 'release'
-                    : 'implementation',
+          stageSlug === 'plan'
+            ? 'plan'
+            : stageSlug === 'ship'
+              ? 'release'
+              : 'implementation',
         required_headings: [],
       },
     },
@@ -700,9 +694,19 @@ function rerunWithExtraStderr(
   }
 }
 
+// The classification keys on the QA-owning personas: the delivery verify
+// stage's verifier, plus qa-tester for standalone and evidence-worker QA.
+// The fixture pins qa-tester to keep that persona's path under test.
+function qaPersonaStage(root: string) {
+  return {
+    ...stageBySlug(loadWorkflow(root, 'delivery'), 'verify'),
+    persona: 'qa-tester',
+  }
+}
+
 test('preserved full-suite evidence classifies as environment-blocked', () => {
   const root = createFixture()
-  const qaStage = stageBySlug(loadWorkflow(root, 'dev'), 'test')
+  const qaStage = qaPersonaStage(root)
   const baseline = preservedFullSuiteBaseline()
   const current = rerunWithExtraStderr(
     baseline,
@@ -717,7 +721,7 @@ test('preserved full-suite evidence classifies as environment-blocked', () => {
 
 test('a genuine product failure on carried infrastructure is not environment-blocked', () => {
   const root = createFixture()
-  const qaStage = stageBySlug(loadWorkflow(root, 'dev'), 'test')
+  const qaStage = qaPersonaStage(root)
   const baseline = preservedFullSuiteBaseline()
   const current = rerunWithExtraStderr(
     baseline,
@@ -729,9 +733,9 @@ test('a genuine product failure on carried infrastructure is not environment-blo
   assert.equal(isEnvironmentBlockedDelta(qaStage, baseline, comparison), false)
 })
 
-test('a non-QA stage never classifies as environment-blocked', () => {
+test('the delivery verify stage classifies as environment-blocked', () => {
   const root = createFixture()
-  const reviewStage = stageBySlug(loadWorkflow(root, 'dev'), 'review')
+  const verifyStage = stageBySlug(loadWorkflow(root, 'delivery'), 'verify')
   const baseline = preservedFullSuiteBaseline()
   const current = rerunWithExtraStderr(
     baseline,
@@ -740,7 +744,26 @@ test('a non-QA stage never classifies as environment-blocked', () => {
   const comparison = compareRepositoryCheckToBaseline(baseline, current)
 
   assert.equal(
-    isEnvironmentBlockedDelta(reviewStage, baseline, comparison),
+    isEnvironmentBlockedDelta(verifyStage, baseline, comparison),
+    true,
+  )
+})
+
+test('a non-QA-persona stage never classifies as environment-blocked', () => {
+  const root = createFixture()
+  const implementStage = stageBySlug(
+    loadWorkflow(root, 'delivery'),
+    'implement',
+  )
+  const baseline = preservedFullSuiteBaseline()
+  const current = rerunWithExtraStderr(
+    baseline,
+    'E   ImportError: cannot import name orm_models',
+  )
+  const comparison = compareRepositoryCheckToBaseline(baseline, current)
+
+  assert.equal(
+    isEnvironmentBlockedDelta(implementStage, baseline, comparison),
     false,
   )
 })
@@ -1207,7 +1230,7 @@ test('attestation validator skips an invocation without a contract manifest', ()
 
 test('a new failing test that mentions a timeout is not environment-blocked', () => {
   const root = createFixture()
-  const qaStage = stageBySlug(loadWorkflow(root, 'dev'), 'test')
+  const qaStage = qaPersonaStage(root)
   const baseline = preservedFullSuiteBaseline()
   // A genuinely new product regression whose node id names a timeout: keyword
   // matching classified this as environmental, inviting a waiver that would

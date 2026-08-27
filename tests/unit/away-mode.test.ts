@@ -64,7 +64,7 @@ function option(rank: number, action: AwayModeAction): Record<string, unknown> {
 
 function blockedRun(root: string): RunState {
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
 
@@ -244,7 +244,7 @@ test('away mode rejects evidence that is not a repository path', () => {
 test('hypervisor quarantine appends a decision when away mode is disabled', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
   const record = recordHypervisorQuarantine(
@@ -389,11 +389,11 @@ test('a stale blocked outcome does not trigger on a progressing run', () => {
 
   enableAwayMode(root)
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
 
-  state.stage_history.push(blockedHistoryItem('intake'))
+  state.stage_history.push(blockedHistoryItem('plan'))
 
   assert.equal(awayModeTrigger(state), null)
 
@@ -403,7 +403,7 @@ test('a stale blocked outcome does not trigger on a progressing run', () => {
   const blocker = awayModeTrigger(state)
 
   assert.equal(blocker?.type, 'stage_blocked')
-  assert.equal(blocker?.stage, 'intake')
+  assert.equal(blocker?.stage, 'plan')
 })
 
 test('the decision limit also bounds evaluator failure records', () => {
@@ -445,10 +445,16 @@ function runConcurrentEvaluation(input: {
   const workerSource = `
     const { parentPort, workerData } = require('node:worker_threads')
     const start = new Int32Array(workerData.start)
+    const setup = workerData.tsxApiUrl
+      ? import(workerData.tsxApiUrl).then((api) => api.register())
+      : Promise.resolve()
 
-    Atomics.wait(start, 0, 0)
+    setup
+      .then(() => {
+        Atomics.wait(start, 0, 0)
 
-    import(workerData.moduleUrl)
+        return import(workerData.moduleUrl)
+      })
       .then(({ recordAwayEvaluation }) => {
         try {
           recordAwayEvaluation(
@@ -473,10 +479,20 @@ function runConcurrentEvaluation(input: {
         })
       })
   `
+  // A tsx source run resolves the .js specifier onto the TypeScript module
+  // through hooks tsx only installs on the main thread, so the worker must
+  // register the tsx API itself. The compiled dist run needs no hooks.
+  const tsxLoaderArg = process.execArgv.find((argument) =>
+    argument.endsWith('/tsx/dist/loader.mjs'),
+  )
+  const tsxApiUrl = tsxLoaderArg
+    ? new URL('./esm/api/index.mjs', tsxLoaderArg).href
+    : undefined
   const worker = new Worker(workerSource, {
     eval: true,
     workerData: {
       ...input,
+      tsxApiUrl,
       moduleUrl: new URL('../../src/lib/away-mode.js', import.meta.url).href,
       value: { ranked_options: [option(1, 'resume')] },
     },
@@ -533,7 +549,7 @@ test('concurrent evaluations append one valid decision at the limit', async () =
 test('away mode triggers only for named blocker classes', () => {
   const disabledRoot = createFixture()
   const disabled = createRun(disabledRoot, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
 
@@ -542,7 +558,7 @@ test('away mode triggers only for named blocker classes', () => {
   const enabledRoot = createFixture()
   enableAwayMode(enabledRoot)
   const running = createRun(enabledRoot, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
 

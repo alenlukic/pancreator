@@ -46,7 +46,7 @@ test('hypervisor CLI ticks and reports registry state', () => {
 test('pan list reports registry-backed agent health fields', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
 
@@ -102,7 +102,7 @@ test('hypervisor quarantine pauses the run and records a decision', () => {
   )
 
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
   const invocation = prepareInvocation(root, state.run_id).invocation
@@ -212,7 +212,7 @@ test('hypervisor tick leaves ordinary away decisions to the supervisor', () => {
   chmodSync(binary, 0o755)
 
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
 
@@ -288,7 +288,7 @@ test('away evaluate and apply resume a paused run exactly once', () => {
   chmodSync(binary, 0o755)
 
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
 
@@ -383,7 +383,7 @@ test('away evaluate and apply resume a paused run exactly once', () => {
 test('hypervisor tick preserves disabled-mode operator stops', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
 
@@ -426,7 +426,7 @@ test('hypervisor tick does not run the away evaluator', () => {
   chmodSync(binary, 0o755)
 
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
 

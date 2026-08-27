@@ -1,0 +1,40 @@
+{
+  "id": "REMED-001",
+  "title": "Verdict-routed remediation",
+  "severity": "hard",
+  "summary": "One remediation stage MUST repair the failures the verify verdict recorded, under a persona and authority the verdict selects: fail_remedial repairs within the ratified plan, fail_severe adds bounded plan-amendment authority.",
+  "instructions": [
+    "Remediation MUST start from the verify evidence: the verdict, every blocking finding, every failed acceptance criterion or QA case, and the remediation guidance.",
+    "Each failure MUST be reproduced before it is changed. A failure that cannot be reproduced MUST be disputed with evidence, not patched blindly.",
+    "Each remediation entry MUST state the cause from the verify evidence, the action taken, and non-empty proof.",
+    "Remediation MUST fix causes, not symptoms, and MUST NOT weaken, skip, or delete tests to make a failure pass.",
+    "Under fail_remedial, the stage MUST NOT amend the plan or acceptance criteria. Evidence that the plan itself is wrong is a blocked report for the operator.",
+    "Under fail_severe, the stage MAY amend the plan or an acceptance criterion minimally, recording the original statement, the amended statement, a justification, and the forcing evidence in data.plan_amendments. Amendments MUST NOT expand scope, remove a criterion, or reverse ratified product intent; those remain operator decisions.",
+    "Before submission, the implementation claims, remediation entries, and referenced artifacts MUST run their resolved policy-bound validators under VALID-001."
+  ],
+  "requirements": [
+    {
+      "id": "implementation-claims-validate",
+      "registry_id": "IMPLEMENTATION-CLAIMS-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "harness",
+      "target": "invocation.output.path",
+      "enforcement": "required",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result",
+      "applicability": {
+        "stage": "remediate"
+      }
+    },
+    {
+      "id": "target-instruction-coverage-validate",
+      "registry_id": "TARGET-INSTRUCTION-COVERAGE-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "harness",
+      "target": "invocation.output.path",
+      "enforcement": "required",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result"
+    }
+  ]
+}

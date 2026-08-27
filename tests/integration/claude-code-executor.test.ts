@@ -6,7 +6,6 @@ import test from 'node:test'
 
 import {
   abortRun,
-  assessStage,
   createRun,
   decideRun,
   delegateInvocation,
@@ -26,6 +25,7 @@ import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import type {
   ExternalDelegationRecord,
   Invocation,
+  StageOutput,
 } from '../../src/lib/types.js'
 import {
   createFixture,
@@ -195,8 +195,9 @@ function submitFixtureStage(
   runId: string,
   invocation: Invocation,
   result: 'success' | 'failure' = 'success',
+  mutate?: (output: StageOutput) => void,
 ): ReturnType<typeof submitOutput> {
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const stage = stageBySlug(workflow, invocation.stage.slug)
   const output = makeOutput(
     root,
@@ -206,18 +207,19 @@ function submitFixtureStage(
     getRunState(root, runId),
   )
 
+  mutate?.(output)
   writeJson(path.join(root, invocation.output.path), output)
 
   return submitOutput(root, runId, invocation.output.path)
 }
 
-test('a mixed-executor dev run completes with claude-code plan and review', () => {
+test('a mixed-executor delivery run completes with claude-code plan and verify', () => {
   const root = createFixture()
-  const stubPath = installClaudeCodeFixture(root, ['tech-lead', 'reviewer'])
+  const stubPath = installClaudeCodeFixture(root, ['planner', 'verifier'])
 
   withStub(stubPath, null, () => {
     const state = createRun(root, {
-      workflowSlug: 'dev',
+      workflowSlug: 'delivery',
       requestPath: 'request.md',
       title: 'Mixed executor run',
     })
@@ -229,22 +231,15 @@ test('a mixed-executor dev run completes with claude-code plan and review', () =
       state.pipeline_config?.path ?? '',
     )
 
-    assert.equal(snapshot.executors?.['tech-lead'], 'claude-code')
-    assert.equal(snapshot.executors?.reviewer, 'claude-code')
+    assert.equal(snapshot.executors?.planner, 'claude-code')
+    assert.equal(snapshot.executors?.verifier, 'claude-code')
     assert.equal(snapshot.executors?.coder, 'cursor')
-    assert.equal(snapshot.personas['tech-lead'], CLAUDE_CODE_SPEC)
+    assert.equal(snapshot.personas.planner, CLAUDE_CODE_SPEC)
 
-    const externalStages = new Set(['plan', 'review'])
-    const workflow = loadWorkflow(root, 'dev')
+    const externalStages = new Set(['plan', 'verify'])
+    const workflow = loadWorkflow(root, 'delivery')
 
-    for (const stageSlug of [
-      'intake',
-      'plan',
-      'implement',
-      'review',
-      'test',
-      'ship',
-    ]) {
+    for (const stageSlug of ['plan', 'implement', 'verify', 'ship']) {
       const prepared = prepareInvocation(root, runId)
       const invocation = prepared.invocation
 
@@ -335,7 +330,7 @@ test('a mixed-executor dev run completes with claude-code plan and review', () =
         }
       }
 
-      const submitted = submitFixtureStage(root, runId, invocation)
+      const submitted = submitFixtureStage(root, runId, invocation, 'success')
 
       assert.equal(
         submitted.record.outcome,
@@ -358,33 +353,10 @@ test('a mixed-executor dev run completes with claude-code plan and review', () =
         assert.equal(validation.status, 'pass')
       }
 
-      if (stageSlug === 'intake' || stageSlug === 'ship') {
+      if (stageSlug === 'plan' || stageSlug === 'ship') {
+        // Plan and ship keep their operator gates under the standard profile.
+        assert.equal(submitted.state.status, 'awaiting_operator')
         decideRun(root, runId, 'approve', 'fixture approval')
-      } else if (stageSlug === 'plan') {
-        // Plan keeps its supervisor gate under the standard profile.
-        assert.equal(submitted.state.status, 'awaiting_supervisor')
-
-        if (submitted.state.pending_action.type !== 'supervisor_assessment') {
-          throw new Error('Expected supervisor assessment action')
-        }
-
-        const assessmentPath = submitted.state.pending_action.output_path
-
-        writeJson(path.join(root, assessmentPath), {
-          schema_version: 1,
-          assessment_id: `assessment-${invocation.invocation_id}`,
-          invocation_id: invocation.invocation_id,
-          verdict: 'pass',
-          summary: 'Plan is implementation-ready.',
-          criteria: stage.criteria.map((criterion) => ({
-            id: criterion.id,
-            result: 'pass',
-            evidence: [invocation.output.path],
-            explanation: 'Fixture evidence',
-          })),
-        })
-
-        assessStage(root, runId, assessmentPath)
       }
     }
 
@@ -396,15 +368,15 @@ test('a mixed-executor dev run completes with claude-code plan and review', () =
     const planHistory = final.stage_history.find(
       (item) => item.stage === 'plan',
     )
-    const reviewHistory = final.stage_history.find(
-      (item) => item.stage === 'review',
+    const verifyHistory = final.stage_history.find(
+      (item) => item.stage === 'verify',
     )
     const implementHistory = final.stage_history.find(
       (item) => item.stage === 'implement',
     )
 
     assert.equal(planHistory?.executor, 'claude-code')
-    assert.equal(reviewHistory?.executor, 'claude-code')
+    assert.equal(verifyHistory?.executor, 'claude-code')
     assert.equal(implementHistory?.executor, undefined)
   })
 })
@@ -412,11 +384,15 @@ test('a mixed-executor dev run completes with claude-code plan and review', () =
 test('run creation fails closed when the executor binary is missing', () => {
   const root = createFixture()
 
-  installClaudeCodeFixture(root, ['tech-lead'])
+  installClaudeCodeFixture(root, ['planner'])
 
   withStub(path.join(root, 'no-such-binary.cjs'), null, () => {
     assert.throws(
-      () => createRun(root, { workflowSlug: 'dev', requestPath: 'request.md' }),
+      () =>
+        createRun(root, {
+          workflowSlug: 'delivery',
+          requestPath: 'request.md',
+        }),
       /Executor preflight failed/u,
     )
   })
@@ -424,22 +400,16 @@ test('run creation fails closed when the executor binary is missing', () => {
 
 test('an unauthenticated executor pauses delegation with an operator decision', () => {
   const root = createFixture()
-  const stubPath = installClaudeCodeFixture(root, ['tech-lead'])
+  const stubPath = installClaudeCodeFixture(root, ['planner'])
 
   withStub(stubPath, 'auth-failure', () => {
     const state = createRun(root, {
-      workflowSlug: 'dev',
+      workflowSlug: 'delivery',
       requestPath: 'request.md',
     })
     const runId = state.run_id
 
-    // Intake first.
-    const intake = prepareInvocation(root, runId)
-
-    assert.ok(intake.invocation)
-    submitFixtureStage(root, runId, intake.invocation)
-    decideRun(root, runId, 'approve', 'fixture approval')
-
+    // Plan is the first delegated stage.
     const plan = prepareInvocation(root, runId)
 
     assert.ok(plan.invocation)
@@ -456,20 +426,14 @@ test('an unauthenticated executor pauses delegation with an operator decision', 
 
 test('executor process failures are audited and surface as errors', () => {
   const root = createFixture()
-  const stubPath = installClaudeCodeFixture(root, ['tech-lead'])
+  const stubPath = installClaudeCodeFixture(root, ['planner'])
 
   withStub(stubPath, null, () => {
     const state = createRun(root, {
-      workflowSlug: 'dev',
+      workflowSlug: 'delivery',
       requestPath: 'request.md',
     })
     const runId = state.run_id
-    const intake = prepareInvocation(root, runId)
-
-    assert.ok(intake.invocation)
-    submitFixtureStage(root, runId, intake.invocation)
-    decideRun(root, runId, 'approve', 'fixture approval')
-
     const plan = prepareInvocation(root, runId)
 
     assert.ok(plan.invocation)
@@ -511,21 +475,15 @@ test('executor process failures are audited and surface as errors', () => {
 
 test('operator revision resumes the session; fallback and post-failure retries do not', () => {
   const root = createFixture()
-  const stubPath = installClaudeCodeFixture(root, ['tech-lead'])
+  const stubPath = installClaudeCodeFixture(root, ['planner'])
 
   withStub(stubPath, null, () => {
     const state = createRun(root, {
-      workflowSlug: 'dev',
+      workflowSlug: 'delivery',
       requestPath: 'request.md',
       involvement: 'technical-director',
     })
     const runId = state.run_id
-
-    const intake = prepareInvocation(root, runId)
-
-    assert.ok(intake.invocation)
-    submitFixtureStage(root, runId, intake.invocation)
-    decideRun(root, runId, 'approve', 'fixture approval')
 
     // Round 1: fresh delegation, session recorded.
     const round1 = prepareInvocation(root, runId)
@@ -541,7 +499,8 @@ test('operator revision resumes the session; fallback and post-failure retries d
     assert.ok(firstSession)
     submitFixtureStage(root, runId, round1.invocation)
 
-    // The technical-director contract stops plan at the operator checkpoint.
+    // Plan stops at the operator checkpoint under the technical-director
+    // contract (and carries an operator gate in delivery regardless).
     assert.equal(getRunState(root, runId).status, 'awaiting_operator')
     decideRun(root, runId, 'revise', 'Tighten the rollout plan for phase two.')
 
@@ -640,20 +599,14 @@ test('operator revision resumes the session; fallback and post-failure retries d
 
 test('an external stage writing outside its permitted scope fails the scope gate', () => {
   const root = createFixture()
-  const stubPath = installClaudeCodeFixture(root, ['tech-lead'])
+  const stubPath = installClaudeCodeFixture(root, ['planner'])
 
   withStub(stubPath, null, () => {
     const state = createRun(root, {
-      workflowSlug: 'dev',
+      workflowSlug: 'delivery',
       requestPath: 'request.md',
     })
     const runId = state.run_id
-    const intake = prepareInvocation(root, runId)
-
-    assert.ok(intake.invocation)
-    submitFixtureStage(root, runId, intake.invocation)
-    decideRun(root, runId, 'approve', 'fixture approval')
-
     const plan = prepareInvocation(root, runId)
 
     assert.ok(plan.invocation)
@@ -676,18 +629,28 @@ test('an external stage writing outside its permitted scope fails the scope gate
 
 test('moving a persona cursor→claude-code→cursor leaves .cursor clean', () => {
   const root = createFixture()
-  const agentPath = path.join(root, '.cursor', 'agents', 'pan-tech-lead.md')
+  const agentPath = path.join(root, '.cursor', 'agents', 'pan-planner.md')
   const before = readFileSync(agentPath, 'utf8')
   const configPath = path.join(root, 'config.json')
   const original = readFileSync(configPath, 'utf8')
-  const config = JSON.parse(original) as { defaults: Record<string, string> }
+  const config = JSON.parse(original) as {
+    defaults: Record<string, string>
+    configs?: Record<string, { personas?: Record<string, string> }>
+  }
 
-  config.defaults['tech-lead'] = CLAUDE_CODE_SPEC
+  // A named entry under `configs` overrides `defaults`, so the persona is
+  // cleared there too.
+  config.defaults.planner = CLAUDE_CODE_SPEC
+
+  for (const named of Object.values(config.configs ?? {})) {
+    delete named.personas?.planner
+  }
+
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
 
   const changes = syncCursorProjection(root, { write: true })
   const removal = changes.find(
-    (entry) => entry.path.endsWith('pan-tech-lead.md') && entry.removed,
+    (entry) => entry.path.endsWith('pan-planner.md') && entry.removed,
   )
 
   assert.ok(removal, 'sync must report the stale projected agent as removed')
@@ -697,7 +660,7 @@ test('moving a persona cursor→claude-code→cursor leaves .cursor clean', () =
   const again = syncCursorProjection(root, { write: true })
 
   assert.equal(
-    again.some((entry) => entry.path.endsWith('pan-tech-lead.md')),
+    again.some((entry) => entry.path.endsWith('pan-planner.md')),
     false,
   )
 
@@ -716,24 +679,25 @@ test('moving a persona cursor→claude-code→cursor leaves .cursor clean', () =
 
 test('prepare skips frontmatter drift for external personas and still catches cursor drift', () => {
   const root = createFixture()
-  const stubPath = installClaudeCodeFixture(root, ['tech-lead'])
+  const stubPath = installClaudeCodeFixture(root, ['planner'])
 
   withStub(stubPath, null, () => {
     const state = createRun(root, {
-      workflowSlug: 'dev',
+      workflowSlug: 'delivery',
       requestPath: 'request.md',
     })
     const runId = state.run_id
 
     // No projected agent exists for the external persona, yet prepare works.
     assert.equal(
-      existsSync(path.join(root, '.cursor', 'agents', 'pan-tech-lead.md')),
+      existsSync(path.join(root, '.cursor', 'agents', 'pan-planner.md')),
       false,
     )
 
-    const intake = prepareInvocation(root, runId)
+    const plan = prepareInvocation(root, runId)
 
-    assert.ok(intake.invocation)
+    assert.ok(plan.invocation)
+    assert.equal(plan.invocation.stage.persona_executor, 'claude-code')
 
     // A cursor persona's projected frontmatter drifting still fails prepare.
     const coderAgent = path.join(root, '.cursor', 'agents', 'pan-coder.md')
@@ -744,7 +708,7 @@ test('prepare skips frontmatter drift for external personas and still catches cu
       coderContent.replace(/^model: .*$/mu, 'model: drifted-model'),
     )
 
-    submitFixtureStage(root, runId, intake.invocation)
+    submitFixtureStage(root, runId, plan.invocation)
     decideRun(root, runId, 'approve', 'fixture approval')
     assert.throws(
       () => prepareInvocation(root, runId),
@@ -754,19 +718,20 @@ test('prepare skips frontmatter drift for external personas and still catches cu
     // Restoring the projection lets the run continue.
     writeFileSync(coderAgent, coderContent)
 
-    const plan = prepareInvocation(root, runId)
+    const implement = prepareInvocation(root, runId)
 
-    assert.equal(plan.invocation?.stage.persona_executor, 'claude-code')
+    assert.equal(implement.invocation?.stage.slug, 'implement')
+    assert.equal(implement.invocation?.stage.persona_executor, undefined)
   })
 })
 
 test('mixed-executor snapshots detect live mapping drift for any persona', () => {
   const root = createFixture()
-  const stubPath = installClaudeCodeFixture(root, ['tech-lead'])
+  const stubPath = installClaudeCodeFixture(root, ['planner'])
 
   withStub(stubPath, null, () => {
     const state = createRun(root, {
-      workflowSlug: 'dev',
+      workflowSlug: 'delivery',
       requestPath: 'request.md',
     })
     const runId = state.run_id
@@ -776,7 +741,7 @@ test('mixed-executor snapshots detect live mapping drift for any persona', () =>
     }
 
     // Changing the external persona's mapping mid-run is drift too.
-    config.defaults['tech-lead'] = 'claude-code:claude-sonnet-5'
+    config.defaults.planner = 'claude-code:claude-sonnet-5'
     writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
     syncCursorProjection(root, { write: true })
 
@@ -793,7 +758,11 @@ test('the orchestrator persona rejects external executors', () => {
 
   withStub(stubPath, null, () => {
     assert.throws(
-      () => createRun(root, { workflowSlug: 'dev', requestPath: 'request.md' }),
+      () =>
+        createRun(root, {
+          workflowSlug: 'delivery',
+          requestPath: 'request.md',
+        }),
       /orchestrator.*MUST use the cursor executor/u,
     )
   })

@@ -15,7 +15,7 @@ board.
 3. Define information architecture: screens, navigation, and hierarchy.
 4. Enumerate states for each key screen: empty, loading, partial, error, success.
 5. Declare design tokens (color, type, space) before detailing layouts.
-6. Draft acceptance criteria as observable outcomes a later `dev` run can verify.
+6. Draft acceptance criteria as observable outcomes a later `delivery` run can verify.
 7. Use IxDF quality lenses (useful, usable, findable, credible, desirable,
    accessible, valuable) as a coverage check, not as decorative labels.
 

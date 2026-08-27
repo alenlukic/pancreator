@@ -2,7 +2,7 @@
 
 The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in this document indicate requirement levels as defined by RFC 2119 and RFC 8174.
 
-Policies MUST be small, globally identified JSON modules. `governance/registries/policy_lookup_table.json` MUST select policies by persona, workflow, stage, optional detected workspace `technology`, optional active run `contract`, and the optional resolved `review_mode`. The harness MUST union all matching rows and snapshot the resulting policies into each invocation card. Technology-scoped rows MUST activate only when the resolved target workspace contains the corresponding declared markers or source files. A policy that depends on durable static guidance MUST declare it through `guidance_sources`; the resolver MUST snapshot the selected guidance content into the invocation rather than require the worker to open the source file.
+Policies MUST be small, globally identified JSON modules. `governance/registries/policy_lookup_table.json` MUST select policies by persona, workflow, stage, optional detected workspace `technology`, and optional active run `contract`. The harness MUST union all matching rows and snapshot the resulting policies into each invocation card. Technology-scoped rows MUST activate only when the resolved target workspace contains the corresponding declared markers or source files. A policy that depends on durable static guidance MUST declare it through `guidance_sources`; the resolver MUST snapshot the selected guidance content into the invocation rather than require the worker to open the source file.
 
 - `GLOBAL-001` — operator-first records
 - `GLOBAL-002` — bounded context retrieval
@@ -24,14 +24,13 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 - `OPERATOR-001` — operator supremacy and execution of explicit directives
 - `WAIVER-001` — flexible operator waiver directives and optional follow-up
 - `ENG-001` — engineering handbook baseline and proportionate automated-test coverage
-- `INTAKE-001` — faithful intake
-- `PLAN-001` — proportionate planning
+- `INTAKE-001` — faithful intake (design workflow)
+- `PLAN-002` — consolidated planning for the delivery workflow
 - `DEV-001` — implementation discipline
+- `VERIFY-001` — joint read-only verification with a graded verdict
+- `REMED-001` — verdict-routed remediation with verdict-scoped authority
 - `TS-001` — self-development-only TypeScript conformance
 - `PY-001` — Python conformance for detected Python workspaces
-- `REVIEW-001` — independent review
-- `REVIEW-002` — parallel dimension review under `review_mode: squad`
-- `TEST-001` — evidence-based QA
 - `BROWSER-001` — isolated browser inspection and Visual QA host safety
 - `SHIP-001` — operator-owned release boundary
 - `PR-001` — grounded pull-request description generation

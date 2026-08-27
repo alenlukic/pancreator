@@ -85,22 +85,22 @@ mapping before resuming the run.
   - `operator` - pause for explicit operator approval (intake, ship).
   - `supervisor` - pause for independent supervisor judgment of the judgment
     criteria (plan).
-  - `stage_verdict` - the worker's own verdict drives the transition (review,
-    test).
+  - `stage_verdict` - the worker's own verdict drives the transition
+    (verify).
   - `next_stage` - advance directly along the success transition (implement).
 
   A run's operator-involvement profile MAY replace this gate; see
   **Operator involvement profiles** below.
 
 - `gate_relaxable` - optional boolean, default `true`. Set `false` to stop an
-  involvement profile lowering the gate. `dev/ship` sets it because `SHIP-001`
+  involvement profile lowering the gate. `delivery/ship` sets it because `SHIP-001`
   requires a pause before commit, push, merge, publication, or deployment; a
   stored configuration profile must not be able to remove that pause silently.
   Escalation is always allowed.
 
 - `checkpoint` - optional role this stage plays for run contracts, one of
   `technical_plan` or `independent_review`. Contracts attach by role rather than
-  by stage slug, so the same contract applies unchanged to `dev/plan`,
+  by stage slug, so the same contract applies unchanged to `delivery/plan`,
   `prototype/approach`, and `design/review`. At most one stage per workflow may
   declare a given checkpoint.
 - `context` - the deterministic stage-scoped input projection:
@@ -143,14 +143,18 @@ mapping before resuming the run.
 
 ## Shipped workflows
 
-- `dev` - production-ready delivery: intake, plan, implement, review, test, ship.
+- `delivery` - production-ready delivery: consolidated plan (specification,
+  engineering plan, acceptance criteria, test plan), implement, joint verify
+  with parallel review and QA evidence workers and a graded verdict,
+  verdict-routed remediate, and ship. `delivery-candidate` is the autonomous
+  best-of-N variant without ship.
 - `prototype` - a fast spike that answers a technical question: intake,
   approach, build, evaluate. It applies `PROTO-001`, keeps the approach stage
   deliberately thin and ungated, gates only the `static` repository-check
   profile, and reports the other profiles as advisory evidence. Repository
   validation rejects any other hard shell gate in this workflow, because a hard
   full-suite gate would reintroduce the cost the workflow exists to avoid.
-- `design` - UI/UX predecessor that hands off to a separately started `dev` run.
+- `design` - UI/UX predecessor that hands off to a separately started `delivery` run.
 
 ## Operator involvement profiles
 
@@ -205,44 +209,6 @@ applicability map:
   "policies": ["DIRECTOR-001"]
 }
 ```
-
-## Review mode
-
-`config.json.review_mode` selects how the independent review stage gathers its
-findings:
-
-```json
-{ "review_mode": "squad" }
-```
-
-- `default` - one reviewer reads the whole change. This is the behaviour the
-  review stage prompt and `REVIEW-001` describe on their own, so nothing extra
-  loads.
-- `squad` - the reviewer delegates one agent per review dimension, then joins
-  the returned findings into one ranked set.
-
-Select one with `./bin/pan init --review-mode <mode>`; omitting the flag uses the
-configured value, and an absent key means `default`. The run resolves the mode
-once at `init` and records it in `state.review_mode`, so later edits to
-`config.json` never change a run already in flight.
-
-`squad` reaches the worker through a `review_mode`-scoped policy lookup row, the
-same single applicability map that carries technologies and run contracts:
-
-```json
-{
-  "persona": "reviewer",
-  "workflow": "dev",
-  "stage": "review",
-  "review_mode": "squad",
-  "policies": ["REVIEW-002"]
-}
-```
-
-`REVIEW-002` declares `library/skills/review-squad.md` as a guidance source, so
-the dimension charters, the finding shape, and the calibration bar arrive inside
-the invocation card. A row with no `review_mode` applies under every mode, which
-is why `REVIEW-001` stays in force either way.
 
 ## Attempt accounting
 

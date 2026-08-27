@@ -35,13 +35,13 @@ test('every named configuration resolves required support personas', () => {
   const root = createFixture()
   const { file } = loadPipelineConfig(root)
 
-  assert.ok(file.defaults['intake-writer'])
+  assert.ok(file.defaults.planner)
   assert.ok(file.defaults.hypervisor)
 
   for (const name of Object.keys(file.configs)) {
     const personas = resolveConfigPersonas(file, name)
 
-    assert.ok(personas['intake-writer'])
+    assert.ok(personas.planner)
     assert.ok(personas.hypervisor)
   }
 })

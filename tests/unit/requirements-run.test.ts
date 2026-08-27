@@ -17,7 +17,7 @@ test('artifact validators resolve only when workflow artifacts are requested', (
   const root = createFixture()
   const base = {
     persona: 'coder',
-    workflow: 'dev',
+    workflow: 'delivery',
     stage: 'implement',
     invocation: {
       output_path: 'runtime/logs/workflows/x/outputs/y.json',
@@ -60,7 +60,7 @@ test('PR validators bind workflow artifact 1 and standalone output', () => {
   const root = createFixture()
   const workflow = resolveRequirements(root, {
     persona: 'release-steward',
-    workflow: 'dev',
+    workflow: 'delivery',
     stage: 'ship',
     invocation_kind: 'workflow',
     operator_artifacts: 'requested',
@@ -105,7 +105,7 @@ test('runRequirement fails closed on missing target', () => {
   const root = createFixture()
   const manifest = resolveRequirements(root, {
     persona: 'coder',
-    workflow: 'dev',
+    workflow: 'delivery',
     stage: 'implement',
     invocation: { output_path: 'missing/output.json' },
   })
@@ -139,7 +139,7 @@ test('runRequirement records target checksum when target exists', () => {
 
   const manifest = resolveRequirements(root, {
     persona: 'coder',
-    workflow: 'dev',
+    workflow: 'delivery',
     stage: 'implement',
     invocation: { output_path: outputPath },
   })
@@ -165,7 +165,7 @@ test('runRequirement validates a repository target without reading it as a file'
   const root = createFixture()
   const manifest = resolveRequirements(root, {
     persona: 'coder',
-    workflow: 'dev',
+    workflow: 'delivery',
     stage: 'implement',
     invocation_kind: 'workflow',
   })

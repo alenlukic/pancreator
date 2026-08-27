@@ -31,7 +31,7 @@ test('status summary includes the pause reason when present', () => {
   const status = renderStatus({
     schema_version: 1,
     run_id: 'run-1',
-    workflow_slug: 'dev',
+    workflow_slug: 'delivery',
     workflow_snapshot: { path: 'workflow.json', sha256: 'abc' },
     workspace_root: '.',
     title: 'Run',
@@ -117,17 +117,11 @@ function baseInvocation(
         schema: 'library/schemas/operator-brief.schema.json',
         renderer: 'pan briefs render',
         profile:
-          stageSlug === 'intake'
-            ? 'intake'
-            : stageSlug === 'plan'
-              ? 'plan'
-              : stageSlug === 'review'
-                ? 'review'
-                : stageSlug === 'test'
-                  ? 'qa'
-                  : stageSlug === 'ship'
-                    ? 'release'
-                    : 'implementation',
+          stageSlug === 'plan'
+            ? 'plan'
+            : stageSlug === 'ship'
+              ? 'release'
+              : 'implementation',
         required_headings: [],
       },
     },
@@ -141,7 +135,7 @@ function baseInvocation(
 }
 
 function delegatedInvocation(root: string): Invocation {
-  const invocation = baseInvocation(root, 'dev', 'implement')
+  const invocation = baseInvocation(root, 'delivery', 'implement')
   const prefix = 'runtime/logs/workflows/run-fixture/invocations/implement-1'
 
   invocation.output.scaffold_command =
@@ -159,7 +153,7 @@ function delegatedInvocation(root: string): Invocation {
     delivery_prompt_path: `${prefix}.delivery.md`,
     policies: resolvePolicies(root, {
       persona: 'orchestrator',
-      workflow: 'dev',
+      workflow: 'delivery',
       stage: 'implement',
     }).filter((policy) => policy.id === 'INVOCATION-001'),
   }
@@ -237,15 +231,15 @@ test('validation rejects a split delegation without its procedure document', () 
 
 test('invocation cards inline policy text and reference guidance for every stage', () => {
   const root = createFixture()
-  const stages = ['intake', 'plan', 'implement', 'review', 'test', 'ship']
+  const stages = ['plan', 'implement', 'verify', 'remediate', 'ship']
 
   for (const stageSlug of stages) {
     const markdown = renderInvocationMarkdown(
-      baseInvocation(root, 'dev', stageSlug),
+      baseInvocation(root, 'delivery', stageSlug),
     )
     const policies = resolvePolicies(root, {
-      persona: stageBySlug(loadWorkflow(root, 'dev'), stageSlug).persona,
-      workflow: 'dev',
+      persona: stageBySlug(loadWorkflow(root, 'delivery'), stageSlug).persona,
+      workflow: 'delivery',
       stage: stageSlug,
     })
 
@@ -293,7 +287,7 @@ test('model configurations receive the same normative invocation contract', () =
   const root = createFixture()
   const configs = ['simple', 'default', 'complex', 'auto']
   const contracts = configs.map((modelConfig) => {
-    const invocation = baseInvocation(root, 'dev', 'implement')
+    const invocation = baseInvocation(root, 'delivery', 'implement')
 
     invocation.stage.model = `fixture-${modelConfig}`
     invocation.stage.model_config = modelConfig
@@ -320,7 +314,7 @@ test('Python invocation cards reference PY-001 guidance for embedded targets', (
   mkdirSync(path.join(root, 'target'), { recursive: true })
   writeFileSync(path.join(root, 'target', 'pyproject.toml'), '[project]\n')
 
-  const invocation = baseInvocation(root, 'dev', 'implement')
+  const invocation = baseInvocation(root, 'delivery', 'implement')
   const markdown = renderInvocationMarkdown(invocation)
   const pythonPolicy = invocation.policies.find(
     (policy) => policy.id === 'PY-001',
@@ -364,11 +358,11 @@ test('planning cards exclude implementation language guidance', () => {
   mkdirSync(path.join(root, 'target'), { recursive: true })
   writeFileSync(path.join(root, 'target', 'pyproject.toml'), '[project]\n')
 
-  const invocation = baseInvocation(root, 'dev', 'plan')
+  const invocation = baseInvocation(root, 'delivery', 'plan')
   const policyIds = new Set(invocation.policies.map((policy) => policy.id))
   const markdown = renderInvocationMarkdown(invocation)
 
-  for (const policyId of ['CONTRACT-001', 'ENG-001', 'PLAN-001']) {
+  for (const policyId of ['CONTRACT-001', 'ENG-001', 'PLAN-002']) {
     assert.ok(policyIds.has(policyId), `plan card MUST include ${policyId}`)
   }
   for (const policyId of ['LANG-001', 'PY-001', 'TS-001']) {
@@ -380,7 +374,7 @@ test('planning cards exclude implementation language guidance', () => {
 
 test('a guidance reference names the selected heading range', () => {
   const root = createFixture()
-  const invocation = baseInvocation(root, 'dev', 'implement')
+  const invocation = baseInvocation(root, 'delivery', 'implement')
   const markdown = renderInvocationMarkdown(invocation)
   const bounded = invocation.policies
     .flatMap((policy) => policy.guidance ?? [])
@@ -396,7 +390,7 @@ test('a guidance reference names the selected heading range', () => {
 
 test('a guidance reference states its digest basis', () => {
   const root = createFixture()
-  const invocation = baseInvocation(root, 'dev', 'implement')
+  const invocation = baseInvocation(root, 'delivery', 'implement')
   const markdown = renderInvocationMarkdown(invocation)
 
   // An honest verifier who hashes the raw range gets a different digest, so
@@ -411,7 +405,7 @@ test('a guidance reference states its digest basis', () => {
 
 test('invocation validation accepts a card rendered before the digest-basis line', () => {
   const root = createFixture()
-  const invocation = baseInvocation(root, 'dev', 'implement')
+  const invocation = baseInvocation(root, 'delivery', 'implement')
   const legacyMarkdown = renderInvocationMarkdown(invocation).replaceAll(
     '\n- Digest basis: SHA-256 of the selected text after leading and ' +
       'trailing whitespace is trimmed.',
@@ -487,7 +481,7 @@ function failedCheckIds(invocation: Invocation, markdown: string): Set<string> {
 
 test('invocation validation fails when a guidance reference is omitted', () => {
   const root = createFixture()
-  const invocation = baseInvocation(root, 'dev', 'implement')
+  const invocation = baseInvocation(root, 'delivery', 'implement')
   const markdown = renderInvocationMarkdown(invocation)
   const { guidance } = engineeringGuidance(invocation)
   const heading = `### Guidance reference · \`${guidance.source_path}\``
@@ -501,7 +495,7 @@ test('invocation validation fails when a guidance reference is omitted', () => {
 
 test('invocation validation fails when a read trigger is omitted', () => {
   const root = createFixture()
-  const invocation = baseInvocation(root, 'dev', 'implement')
+  const invocation = baseInvocation(root, 'delivery', 'implement')
   const markdown = renderInvocationMarkdown(invocation)
   const { reference } = engineeringGuidance(invocation)
 
@@ -515,7 +509,7 @@ test('invocation validation fails when a read trigger is omitted', () => {
 
 test('invocation validation fails when a selected range is stale', () => {
   const root = createFixture()
-  const invocation = baseInvocation(root, 'dev', 'implement')
+  const invocation = baseInvocation(root, 'delivery', 'implement')
   const markdown = renderInvocationMarkdown(invocation)
   const { reference } = engineeringGuidance(invocation)
   const selectedRange = `Selected range: ${guidanceSelectedRange(reference)}.`
@@ -530,7 +524,7 @@ test('invocation validation fails when a selected range is stale', () => {
 
 test('invocation validation fails when a rendered digest is stale', () => {
   const root = createFixture()
-  const invocation = baseInvocation(root, 'dev', 'implement')
+  const invocation = baseInvocation(root, 'delivery', 'implement')
   const markdown = renderInvocationMarkdown(invocation)
   const { reference } = engineeringGuidance(invocation)
   const failed = failedCheckIds(
@@ -543,7 +537,7 @@ test('invocation validation fails when a rendered digest is stale', () => {
 
 test('invocation validation fails when reference metadata contradicts the snapshot', () => {
   const root = createFixture()
-  const invocation = baseInvocation(root, 'dev', 'implement')
+  const invocation = baseInvocation(root, 'delivery', 'implement')
   const { guidance, reference } = engineeringGuidance(invocation)
 
   guidance.reference = { ...reference, content_sha256: sha256('stale body') }
@@ -556,7 +550,7 @@ test('invocation validation fails when reference metadata contradicts the snapsh
 
 test('invocation validation fails when size metadata contradicts the snapshot', () => {
   const root = createFixture()
-  const invocation = baseInvocation(root, 'dev', 'implement')
+  const invocation = baseInvocation(root, 'delivery', 'implement')
   const { guidance, reference } = engineeringGuidance(invocation)
 
   guidance.reference = {
@@ -576,7 +570,7 @@ test('invocation validation fails when size metadata contradicts the snapshot', 
 
 test('invocation validation fails when a guidance body leaks into the card', () => {
   const root = createFixture()
-  const invocation = baseInvocation(root, 'dev', 'implement')
+  const invocation = baseInvocation(root, 'delivery', 'implement')
   const markdown = renderInvocationMarkdown(invocation)
   const { guidance } = engineeringGuidance(invocation)
   const failed = failedCheckIds(
@@ -589,7 +583,7 @@ test('invocation validation fails when a guidance body leaks into the card', () 
 
 test('invocation validation keeps the inline contract for legacy guidance', () => {
   const root = createFixture()
-  const invocation = baseInvocation(root, 'dev', 'implement')
+  const invocation = baseInvocation(root, 'delivery', 'implement')
   const { guidance } = engineeringGuidance(invocation)
 
   delete guidance.reference
@@ -624,7 +618,7 @@ test('status summary renders a dedicated validation section for pass state', () 
     {
       schema_version: 1,
       run_id: runId,
-      workflow_slug: 'dev',
+      workflow_slug: 'delivery',
       workflow_snapshot: { path: 'workflow.json', sha256: 'abc' },
       workspace_root: '.',
       title: 'Run',
@@ -695,7 +689,7 @@ test('status summary surfaces validation failure reasons', () => {
     {
       schema_version: 1,
       run_id: runId,
-      workflow_slug: 'dev',
+      workflow_slug: 'delivery',
       workflow_snapshot: { path: 'workflow.json', sha256: 'abc' },
       workspace_root: '.',
       title: 'Run',
@@ -703,7 +697,7 @@ test('status summary surfaces validation failure reasons', () => {
       current_stage: 'plan',
       pending_action: {
         type: 'invoke_agent',
-        persona: 'tech-lead',
+        persona: 'planner',
         path: `runtime/logs/workflows/${runId}/invocations/${invocationId}.md`,
       },
       current_invocation: {
@@ -745,7 +739,7 @@ test('status summary surfaces validation failure reasons', () => {
 
 test('invocation cards distinguish required, conditional, and indexed context', () => {
   const root = createFixture()
-  const invocation = baseInvocation(root, 'dev', 'review')
+  const invocation = baseInvocation(root, 'delivery', 'verify')
   invocation.inputs = {
     references: [
       {
@@ -781,7 +775,7 @@ test('invocation cards distinguish required, conditional, and indexed context', 
 })
 
 function referencedInvocation(root: string): Invocation {
-  const invocation = baseInvocation(root, 'dev', 'implement')
+  const invocation = baseInvocation(root, 'delivery', 'implement')
   const contractPath = `runtime/logs/workflows/run-fixture/invocations/${invocation.invocation_id}.md`
 
   invocation.delegation = {

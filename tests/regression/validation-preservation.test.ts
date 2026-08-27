@@ -14,7 +14,7 @@ import type { Invocation } from '../../src/lib/types.js'
 
 test('invocation and delegation exact-match validation is preserved', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const stage = stageBySlug(workflow, 'implement')
   const policies = resolvePolicies(root, {
     persona: stage.persona,

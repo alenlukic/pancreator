@@ -11,7 +11,7 @@ function fixtureInvocation(
   stageSlug: string,
   invocationId: string,
 ): { invocation: Invocation; stage: ReturnType<typeof stageBySlug> } {
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const stage = stageBySlug(workflow, stageSlug)
 
   return {
@@ -120,8 +120,8 @@ test('strict stage output rejects success with failed self-evaluation', () => {
   const root = createFixture()
   const { invocation, stage } = fixtureInvocation(
     root,
-    'review',
-    'review-1-test',
+    'verify',
+    'verify-1-test',
   )
   const output = baseOutput(invocation, stage)
 

@@ -91,7 +91,7 @@ test('registry reconciliation preserves stable parent and subagent identity', ()
 test('hypervisor discovers the current Cursor subagent transcript', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
   const invocation = prepareInvocation(root, state.run_id).invocation
@@ -148,7 +148,7 @@ test('hypervisor discovers the current Cursor subagent transcript', () => {
 test('hypervisor observes an external executor session from run state', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
   const invocation = prepareInvocation(root, state.run_id).invocation
@@ -345,7 +345,7 @@ test('prepared invocation registration is idempotent and completable', () => {
 test('redelivery refuses an invocation after workspace drift', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
 

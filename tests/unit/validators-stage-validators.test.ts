@@ -9,12 +9,11 @@ import { validateAssessment } from '../../src/lib/validators/assessment.js'
 import {
   validateImplementationClaims,
   validatePlanTrace,
-  validateQaOutput,
   validateReleaseOutput,
-  validateReviewOutput,
   validateSharedFieldContract,
   validateSpotfixOutcome,
   validateTargetInstructionCoverage,
+  validateVerifyOutput,
 } from '../../src/lib/validators/stage-validators.js'
 import { createFixture } from '../helpers.js'
 
@@ -309,202 +308,6 @@ test('plan trace ignores dispositions when the spec has no open questions', () =
   assert.equal(result.status, 'passed', JSON.stringify(result.issues))
 })
 
-test('review validator rejects findings without evidence', () => {
-  const root = validatorFixtureRoot('pan-review-finding-shape-')
-  const runId = 'run-review-finding-shape'
-  const target = `runtime/logs/workflows/${runId}/outputs/review-1-test.json`
-  const absolute = path.join(root, target)
-
-  mkdirSync(path.dirname(absolute), { recursive: true })
-  writePlanOutput(root, runId, ['AC-01'])
-  writeFileSync(
-    absolute,
-    `${JSON.stringify({
-      data: {
-        review: {
-          verdict: 'fail',
-          findings: [
-            {
-              id: 'f1',
-              severity: 'high',
-              remediation_stage: 'implement',
-              resolution: 'unresolved',
-            },
-          ],
-          acceptance_results: [{ id: 'AC-01', result: 'pass' }],
-        },
-      },
-    })}\n`,
-  )
-
-  const result = validateReviewOutput({
-    root,
-    targetPath: target,
-    requirement: {
-      policy_id: 'REVIEW-001',
-      requirement_id: 'review',
-      registry_id: 'REVIEW-VALIDATE-001',
-      arguments: {},
-    },
-  })
-
-  assert.equal(result.status, 'failed')
-  assert.ok(
-    result.issues.some((issue) => issue.code === 'review.finding_evidence'),
-  )
-})
-
-test('review validator rejects summary-only findings', () => {
-  const root = validatorFixtureRoot('pan-review-summary-only-')
-  const runId = 'run-review-summary-only'
-  const target = `runtime/logs/workflows/${runId}/outputs/review-1-test.json`
-  const absolute = path.join(root, target)
-
-  mkdirSync(path.dirname(absolute), { recursive: true })
-  writePlanOutput(root, runId, ['AC-01'])
-  writeFileSync(
-    absolute,
-    `${JSON.stringify({
-      data: {
-        review: {
-          verdict: 'fail',
-          findings: [
-            {
-              id: 'f1',
-              severity: 'medium',
-              remediation_stage: 'implement',
-              resolution: 'unresolved',
-              summary: 'Observed a maintainability risk.',
-            },
-          ],
-          acceptance_results: [{ id: 'AC-01', result: 'pass' }],
-        },
-      },
-    })}\n`,
-  )
-
-  const result = validateReviewOutput({
-    root,
-    targetPath: target,
-    requirement: {
-      policy_id: 'REVIEW-001',
-      requirement_id: 'review',
-      registry_id: 'REVIEW-VALIDATE-001',
-      arguments: {},
-    },
-  })
-
-  assert.equal(result.status, 'failed')
-  assert.ok(
-    result.issues.some((issue) => issue.code === 'review.finding_evidence'),
-  )
-})
-
-test('review validator rejects pass verdict with failed acceptance', () => {
-  const root = validatorFixtureRoot('pan-review-')
-  const target = 'output.json'
-  const absolute = path.join(root, target)
-
-  mkdirSync(root, { recursive: true })
-  writeFileSync(
-    absolute,
-    `${JSON.stringify({
-      data: {
-        review: {
-          verdict: 'pass',
-          findings: [],
-          acceptance_results: [{ id: 'AC-01', result: 'fail' }],
-        },
-      },
-    })}\n`,
-  )
-
-  const result = validateReviewOutput({
-    root,
-    targetPath: target,
-    requirement: {
-      policy_id: 'REVIEW-001',
-      requirement_id: 'review',
-      registry_id: 'REVIEW-VALIDATE-001',
-      arguments: {},
-    },
-  })
-
-  assert.equal(result.status, 'failed')
-})
-
-test('review validator binds acceptance coverage to accepted plan', () => {
-  const root = validatorFixtureRoot('pan-review-accepted-plan-')
-  const runId = 'run-review-accepted-plan'
-  const target = `runtime/logs/workflows/${runId}/outputs/review-1-test.json`
-  const absolute = path.join(root, target)
-  const acceptedInvocation = 'plan-1-accepted'
-  const rejectedInvocation = 'plan-2-rejected'
-  const acceptedOutput = `runtime/logs/workflows/${runId}/outputs/plan-1-test.json`
-  const rejectedOutput = `runtime/logs/workflows/${runId}/outputs/plan-2-test.json`
-
-  mkdirSync(path.dirname(absolute), { recursive: true })
-  writePlanOutput(root, runId, ['AC-OLD'], 1)
-  writePlanOutput(root, runId, ['AC-NEW'], 2)
-  writeAssessment(root, runId, acceptedInvocation, 'pass')
-  writeAssessment(root, runId, rejectedInvocation, 'fail')
-  writeFileSync(
-    absolute,
-    `${JSON.stringify({
-      data: {
-        review: {
-          verdict: 'fail',
-          findings: [
-            {
-              id: 'f1',
-              severity: 'high',
-              remediation_stage: 'implement',
-              resolution: 'unresolved',
-              evidence: ['runtime/logs/workflows/example.md'],
-            },
-          ],
-          acceptance_results: [{ id: 'AC-OLD', result: 'pass' }],
-        },
-      },
-    })}\n`,
-  )
-
-  const result = validateReviewOutput({
-    root,
-    targetPath: target,
-    requirement: {
-      policy_id: 'REVIEW-001',
-      requirement_id: 'review',
-      registry_id: 'REVIEW-VALIDATE-001',
-      arguments: {},
-    },
-    runState: {
-      stage_history: [
-        {
-          stage: 'plan',
-          outcome: 'success',
-          invocation_id: acceptedInvocation,
-          output_path: acceptedOutput,
-        },
-        {
-          stage: 'plan',
-          outcome: 'success',
-          invocation_id: rejectedInvocation,
-          output_path: rejectedOutput,
-        },
-      ],
-    },
-  })
-
-  assert.equal(result.status, 'passed')
-  assert.ok(
-    !result.issues.some((issue) => issue.code === 'review.acceptance_missing'),
-  )
-  assert.ok(
-    !result.issues.some((issue) => issue.code === 'review.acceptance_unknown'),
-  )
-})
-
 test('implementation validator binds acceptance coverage to accepted plan', () => {
   const root = validatorFixtureRoot('pan-impl-accepted-plan-')
   const runId = 'run-impl-accepted-plan'
@@ -705,7 +508,7 @@ test('shared stage field contract has registered validator ownership', () => {
   assert.equal(result.status, 'passed')
 })
 
-test('review and QA field contracts declare advisory enforcement', () => {
+test('the verify field contract declares blocking validator ownership', () => {
   const root = createFixture()
   const contract = JSON.parse(
     readFileSync(
@@ -718,24 +521,10 @@ test('review and QA field contracts declare advisory enforcement', () => {
       { validators: Array<{ registry_id: string; enforcement: string }> }
     >
   }
-  const reviewPolicy = JSON.parse(
-    readFileSync(
-      path.join(root, 'governance/policies/REVIEW-001.json'),
-      'utf8',
-    ),
-  ) as { requirements: Array<{ enforcement: string }> }
-  const testPolicy = JSON.parse(
-    readFileSync(path.join(root, 'governance/policies/TEST-001.json'), 'utf8'),
-  ) as { requirements: Array<{ enforcement: string }> }
 
-  assert.deepEqual(contract.stages.review?.validators, [
-    { registry_id: 'REVIEW-VALIDATE-001', enforcement: 'advises' },
+  assert.deepEqual(contract.stages.verify?.validators, [
+    { registry_id: 'VERIFY-VALIDATE-001', enforcement: 'blocks' },
   ])
-  assert.deepEqual(contract.stages.test?.validators, [
-    { registry_id: 'QA-VALIDATE-001', enforcement: 'advises' },
-  ])
-  assert.equal(reviewPolicy.requirements[0]?.enforcement, 'advisory')
-  assert.equal(testPolicy.requirements[0]?.enforcement, 'advisory')
 })
 
 test('implementation retry requires explicit remediation evidence', () => {
@@ -824,91 +613,6 @@ test('implementation retry accepts targeted remediation evidence', () => {
   )
 })
 
-test('review validator accepts disclosed reviewer remediation', () => {
-  const root = validatorFixtureRoot('pan-review-remediation-')
-  const target = 'output.json'
-
-  writeFileSync(
-    path.join(root, target),
-    `${JSON.stringify({
-      data: {
-        review: {
-          verdict: 'pass',
-          findings: [
-            {
-              id: 'f1',
-              severity: 'medium',
-              remediation_stage: 'review',
-              resolution: 'resolved_in_review',
-              changed_files: ['src/example.ts'],
-              evidence: ['Focused test passes after the local fix'],
-            },
-          ],
-          acceptance_results: [{ id: 'AC-01', result: 'pass' }],
-          maintenance_assessment:
-            'Bounded issue repaired without structural change.',
-        },
-      },
-    })}\n`,
-  )
-
-  const result = validateReviewOutput({
-    root,
-    targetPath: target,
-    requirement: {
-      policy_id: 'REVIEW-001',
-      requirement_id: 'review',
-      registry_id: 'REVIEW-VALIDATE-001',
-      arguments: {},
-    },
-  })
-
-  assert.equal(result.status, 'passed')
-})
-
-test('review validator routes unresolved findings to implementation', () => {
-  const root = validatorFixtureRoot('pan-review-unresolved-')
-  const target = 'output.json'
-
-  writeFileSync(
-    path.join(root, target),
-    `${JSON.stringify({
-      data: {
-        review: {
-          verdict: 'pass',
-          findings: [
-            {
-              id: 'f1',
-              severity: 'high',
-              remediation_stage: 'implement',
-              resolution: 'unresolved',
-              evidence: ['The fix requires a public API redesign'],
-            },
-          ],
-          acceptance_results: [{ id: 'AC-01', result: 'pass' }],
-          maintenance_assessment: 'Structural issue remains.',
-        },
-      },
-    })}\n`,
-  )
-
-  const result = validateReviewOutput({
-    root,
-    targetPath: target,
-    requirement: {
-      policy_id: 'REVIEW-001',
-      requirement_id: 'review',
-      registry_id: 'REVIEW-VALIDATE-001',
-      arguments: {},
-    },
-  })
-
-  assert.equal(result.status, 'failed')
-  assert.ok(
-    result.issues.some((issue) => issue.code === 'review.verdict_inconsistent'),
-  )
-})
-
 test('implementation validator fails closed when git is unavailable', () => {
   const root = validatorFixtureRoot('pan-impl-git-')
   const target = 'output.json'
@@ -942,430 +646,6 @@ test('implementation validator fails closed when git is unavailable', () => {
 
   assert.equal(result.status, 'failed')
   assert.ok(result.issues.some((issue) => issue.code === 'git.unavailable'))
-})
-
-test('review validator rejects duplicate and unknown acceptance ids', () => {
-  const root = validatorFixtureRoot('pan-review-coverage-')
-  const runId = 'run-review-coverage'
-  const target = `runtime/logs/workflows/${runId}/outputs/review-1-test.json`
-  const absolute = path.join(root, target)
-
-  mkdirSync(path.dirname(absolute), { recursive: true })
-  writePlanOutput(root, runId, ['AC-01', 'AC-02'])
-  writeFileSync(
-    absolute,
-    `${JSON.stringify({
-      data: {
-        review: {
-          verdict: 'fail',
-          findings: [
-            {
-              id: 'f1',
-              severity: 'high',
-              remediation_stage: 'implement',
-              resolution: 'unresolved',
-            },
-          ],
-          acceptance_results: [
-            { id: 'AC-01', result: 'pass' },
-            { id: 'AC-01', result: 'fail' },
-            { id: 'AC-99', result: 'pass' },
-          ],
-        },
-      },
-    })}\n`,
-  )
-
-  const result = validateReviewOutput({
-    root,
-    targetPath: target,
-    requirement: {
-      policy_id: 'REVIEW-001',
-      requirement_id: 'review',
-      registry_id: 'REVIEW-VALIDATE-001',
-      arguments: {},
-    },
-  })
-
-  assert.equal(result.status, 'failed')
-  assert.ok(
-    result.issues.some((issue) => issue.code === 'review.acceptance_duplicate'),
-  )
-  assert.ok(
-    result.issues.some((issue) => issue.code === 'review.acceptance_unknown'),
-  )
-  assert.ok(
-    result.issues.some((issue) => issue.code === 'review.acceptance_missing'),
-  )
-})
-
-test('qa validator binds acceptance coverage to accepted plan', () => {
-  const root = validatorFixtureRoot('pan-qa-accepted-plan-')
-  const runId = 'run-qa-accepted-plan'
-  const target = `runtime/logs/workflows/${runId}/outputs/test-1-test.json`
-  const absolute = path.join(root, target)
-  const acceptedInvocation = 'plan-1-accepted'
-  const rejectedInvocation = 'plan-2-rejected'
-  const acceptedOutput = `runtime/logs/workflows/${runId}/outputs/plan-1-test.json`
-  const rejectedOutput = `runtime/logs/workflows/${runId}/outputs/plan-2-test.json`
-
-  mkdirSync(path.dirname(absolute), { recursive: true })
-  writePlanOutput(root, runId, ['AC-OLD'], 1)
-  writePlanOutput(root, runId, ['AC-NEW'], 2)
-  writeAssessment(root, runId, acceptedInvocation, 'pass')
-  writeAssessment(root, runId, rejectedInvocation, 'fail')
-  writeFileSync(
-    absolute,
-    `${JSON.stringify({
-      data: {
-        qa_report: {
-          verdict: 'pass',
-          cases: [
-            {
-              id: 'QA-01',
-              steps: 'Run validator against accepted plan fixture',
-              expected: 'Coverage checks target accepted criteria',
-              actual: 'Coverage checks target accepted criteria',
-              result: 'pass',
-            },
-          ],
-          defects: [],
-          acceptance_results: [
-            {
-              id: 'AC-OLD',
-              result: 'pass',
-              evidence: ['fixture'],
-            },
-          ],
-        },
-      },
-    })}\n`,
-  )
-
-  const result = validateQaOutput({
-    root,
-    targetPath: target,
-    requirement: {
-      policy_id: 'TEST-001',
-      requirement_id: 'qa-validate',
-      registry_id: 'QA-VALIDATE-001',
-      arguments: {},
-    },
-    runState: {
-      stage_history: [
-        {
-          stage: 'plan',
-          outcome: 'success',
-          invocation_id: acceptedInvocation,
-          output_path: acceptedOutput,
-        },
-        {
-          stage: 'plan',
-          outcome: 'success',
-          invocation_id: rejectedInvocation,
-          output_path: rejectedOutput,
-        },
-      ],
-    },
-  })
-
-  assert.equal(result.status, 'passed')
-  assert.ok(
-    !result.issues.some((issue) => issue.code === 'qa.acceptance_coverage'),
-  )
-})
-
-test('qa validator accepts pytest node ids and slash-bearing observations', () => {
-  const root = validatorFixtureRoot('pan-qa-evidence-')
-  const runId = 'run-qa-evidence'
-  const target = `runtime/logs/workflows/${runId}/outputs/test-1-test.json`
-  const absolute = path.join(root, target)
-
-  mkdirSync(path.dirname(absolute), { recursive: true })
-  mkdirSync(path.join(root, 'tests'), { recursive: true })
-  writePlanOutput(root, runId, ['AC-01'])
-  writeFileSync(path.join(root, 'tests', 'sample_test.py'), '# fixture\n')
-  writeFileSync(
-    absolute,
-    `${JSON.stringify({
-      data: {
-        qa_report: {
-          verdict: 'pass',
-          cases: [
-            {
-              id: 'QA-01',
-              steps: 'Run the focused test and inspect helper branches',
-              expected: 'Both branches pass',
-              actual: 'Both branches pass',
-              result: 'pass',
-            },
-          ],
-          defects: [],
-          acceptance_results: [
-            {
-              id: 'AC-01',
-              result: 'pass',
-              evidence: [
-                'tests/sample_test.py::test_case',
-                'Direct helper output for true/false branches',
-              ],
-            },
-          ],
-        },
-      },
-    })}\n`,
-  )
-
-  const result = validateQaOutput({
-    root,
-    targetPath: target,
-    requirement: {
-      policy_id: 'TEST-001',
-      requirement_id: 'qa-validate',
-      registry_id: 'QA-VALIDATE-001',
-      arguments: {},
-    },
-  })
-
-  assert.equal(result.status, 'passed')
-  assert.ok(
-    !result.issues.some((issue) => issue.code === 'qa.evidence_missing'),
-  )
-})
-
-test('embedded evidence paths resolve from the workspace root', () => {
-  const targetRoot = validatorFixtureRoot('pan-embedded-evidence-')
-  const installationRoot = path.join(targetRoot, '.pancreator')
-  const runId = 'run-embedded-evidence'
-  const target = `runtime/logs/workflows/${runId}/outputs/test-1-test.json`
-  const testFile = path.join(
-    targetRoot,
-    'tests',
-    'track_metadata',
-    'test_label.py',
-  )
-
-  mkdirSync(installationRoot, { recursive: true })
-  installFieldContract(installationRoot)
-  mkdirSync(path.dirname(testFile), { recursive: true })
-  writeFileSync(testFile, 'def test_example():\n    assert True\n')
-  writePlanOutput(installationRoot, runId, ['AC-01'])
-  writeFileSync(
-    path.join(installationRoot, target),
-    `${JSON.stringify({
-      data: {
-        qa_report: {
-          verdict: 'pass',
-          cases: [
-            {
-              id: 'QA-01',
-              steps: 'Run pytest',
-              expected: 'pass',
-              actual: 'pass',
-              result: 'pass',
-            },
-          ],
-          defects: [],
-          acceptance_results: [
-            {
-              id: 'AC-01',
-              result: 'pass',
-              evidence: [
-                'tests/track_metadata/test_label.py',
-                'tests/track_metadata/test_label.py::test_example',
-              ],
-            },
-          ],
-        },
-      },
-    })}\n`,
-  )
-
-  const sharedInput = {
-    root: installationRoot,
-    targetPath: target,
-    requirement: {
-      policy_id: 'TEST-001',
-      requirement_id: 'qa-validate',
-      registry_id: 'QA-VALIDATE-001',
-      arguments: {},
-    },
-    runState: {
-      workspace_root: '..',
-    },
-  }
-
-  const qaResult = validateQaOutput(sharedInput)
-
-  assert.equal(qaResult.status, 'passed')
-  assert.ok(
-    !qaResult.issues.some((issue) => issue.code === 'qa.evidence_missing'),
-  )
-
-  const implementationTarget = `runtime/logs/workflows/${runId}/outputs/implement-1-test.json`
-
-  writeFileSync(
-    path.join(installationRoot, implementationTarget),
-    `${JSON.stringify({
-      data: {
-        implementation: {
-          changed_files: [],
-          tests_added: ['tests/track_metadata/test_label.py'],
-          notes: [],
-        },
-        acceptance_results: [
-          {
-            id: 'AC-01',
-            result: 'pass',
-            evidence: ['tests/track_metadata/test_label.py::test_example'],
-          },
-        ],
-      },
-    })}\n`,
-  )
-
-  const implementationResult = validateImplementationClaims({
-    ...sharedInput,
-    targetPath: implementationTarget,
-    requirement: {
-      policy_id: 'DEV-001',
-      requirement_id: 'implementation-claims',
-      registry_id: 'IMPLEMENTATION-CLAIMS-VALIDATE-001',
-      arguments: {},
-    },
-  })
-
-  assert.equal(implementationResult.status, 'passed')
-  assert.ok(
-    !implementationResult.issues.some(
-      (issue) => issue.code === 'claim.test_missing',
-    ),
-  )
-})
-
-test('harness-relative evidence still resolves from the installation root', () => {
-  const targetRoot = validatorFixtureRoot('pan-harness-evidence-')
-  const installationRoot = path.join(targetRoot, '.pancreator')
-  const runId = 'run-harness-evidence'
-  const target = `runtime/logs/workflows/${runId}/outputs/test-1-test.json`
-  const harnessEvidence = path.join(
-    installationRoot,
-    'runtime/logs/workflows',
-    runId,
-    'evidence',
-    'full.json',
-  )
-
-  mkdirSync(path.dirname(harnessEvidence), { recursive: true })
-  installFieldContract(installationRoot)
-  writeFileSync(harnessEvidence, '{}\n')
-  writePlanOutput(installationRoot, runId, ['AC-01'])
-  writeFileSync(
-    path.join(installationRoot, target),
-    `${JSON.stringify({
-      data: {
-        qa_report: {
-          verdict: 'pass',
-          cases: [
-            {
-              id: 'QA-01',
-              steps: 'Inspect harness evidence',
-              expected: 'present',
-              actual: 'present',
-              result: 'pass',
-            },
-          ],
-          defects: [],
-          acceptance_results: [
-            {
-              id: 'AC-01',
-              result: 'pass',
-              evidence: [
-                `runtime/logs/workflows/${runId}/evidence/full.json`,
-                'https://example.com/report',
-              ],
-            },
-          ],
-        },
-      },
-    })}\n`,
-  )
-
-  const result = validateQaOutput({
-    root: installationRoot,
-    targetPath: target,
-    requirement: {
-      policy_id: 'TEST-001',
-      requirement_id: 'qa-validate',
-      registry_id: 'QA-VALIDATE-001',
-      arguments: {},
-    },
-    runState: {
-      workspace_root: '..',
-    },
-  })
-
-  assert.equal(result.status, 'passed')
-  assert.ok(
-    !result.issues.some((issue) => issue.code === 'qa.evidence_missing'),
-  )
-})
-
-test('qa validator still rejects explicitly declared missing evidence paths', () => {
-  const root = validatorFixtureRoot('pan-qa-missing-evidence-')
-  const runId = 'run-qa-missing-evidence'
-  const target = `runtime/logs/workflows/${runId}/outputs/test-1-test.json`
-  const absolute = path.join(root, target)
-
-  mkdirSync(path.dirname(absolute), { recursive: true })
-  writePlanOutput(root, runId, ['AC-01'])
-  writeFileSync(
-    absolute,
-    `${JSON.stringify({
-      data: {
-        qa_report: {
-          verdict: 'pass',
-          cases: [
-            {
-              id: 'QA-01',
-              steps: 'Inspect evidence',
-              expected: 'Evidence exists',
-              actual: 'Evidence is missing',
-              result: 'pass',
-            },
-          ],
-          defects: [],
-          acceptance_results: [
-            {
-              id: 'AC-01',
-              result: 'pass',
-              evidence: ['path:tests/missing.py'],
-            },
-          ],
-        },
-      },
-    })}\n`,
-  )
-
-  const result = validateQaOutput({
-    root,
-    targetPath: target,
-    requirement: {
-      policy_id: 'TEST-001',
-      requirement_id: 'qa-validate',
-      registry_id: 'QA-VALIDATE-001',
-      arguments: {},
-    },
-  })
-
-  assert.equal(result.status, 'failed')
-  assert.ok(
-    result.issues.some(
-      (issue) =>
-        issue.code === 'qa.evidence_missing' &&
-        issue.message.includes('tests/missing.py'),
-    ),
-  )
 })
 
 test('release validator requires structured change-list entries', () => {
@@ -2188,184 +1468,6 @@ test('implementation validator resolves native pytest node ids without spaces', 
   assert.match(missing[0].message, /Entries MUST be/u)
 })
 
-test('review validator accepts operator-routed unresolved findings', () => {
-  const root = validatorFixtureRoot('pan-review-operator-route-')
-  const runId = 'run-review-operator-route'
-  const target = `runtime/logs/workflows/${runId}/outputs/review-1-test.json`
-  const absolute = path.join(root, target)
-
-  mkdirSync(path.dirname(absolute), { recursive: true })
-  writePlanOutput(root, runId, ['AC-01'])
-  writeFileSync(
-    absolute,
-    `${JSON.stringify({
-      data: {
-        review: {
-          verdict: 'pass',
-          findings: [
-            {
-              id: 'f1',
-              severity: 'low',
-              remediation_stage: 'operator',
-              resolution: 'unresolved',
-              summary: 'Harness validator contradicts the stage contract.',
-              evidence: ['runtime/logs/workflows/run/evidence/finding.json'],
-            },
-          ],
-          acceptance_results: [{ id: 'AC-01', result: 'pass' }],
-        },
-      },
-    })}\n`,
-  )
-
-  const result = validateReviewOutput({
-    root,
-    targetPath: target,
-    requirement: {
-      policy_id: 'REVIEW-001',
-      requirement_id: 'review',
-      registry_id: 'REVIEW-VALIDATE-001',
-      arguments: {},
-    },
-  })
-
-  // A defect outside the run's workspace routes to the operator without
-  // failing the verdict or demanding an implementation loop.
-  assert.ok(
-    !result.issues.some((issue) => issue.code === 'review.resolution'),
-    JSON.stringify(result.issues),
-  )
-  assert.ok(
-    !result.issues.some(
-      (issue) => issue.code === 'review.verdict_inconsistent',
-    ),
-    JSON.stringify(result.issues),
-  )
-  assert.equal(result.status, 'passed')
-})
-
-function writeReviewWithAmendment(
-  root: string,
-  target: string,
-  amendment: Record<string, unknown>,
-): void {
-  writeFileSync(
-    path.join(root, target),
-    `${JSON.stringify({
-      data: {
-        review: {
-          verdict: 'pass',
-          findings: [],
-          acceptance_results: [{ id: 'AC-01', result: 'pass' }],
-          maintenance_assessment: 'Amended criterion verified in place.',
-          criterion_amendments: [amendment],
-        },
-      },
-    })}\n`,
-  )
-}
-
-const reviewRequirement = {
-  policy_id: 'REVIEW-001',
-  requirement_id: 'review',
-  registry_id: 'REVIEW-VALIDATE-001',
-  arguments: {},
-} as const
-
-test('review validator accepts a justified criterion amendment', () => {
-  const root = validatorFixtureRoot('pan-review-amendment-')
-  const runId = 'run-review-amendment'
-  const target = `runtime/logs/workflows/${runId}/outputs/review-1-test.json`
-
-  mkdirSync(path.dirname(path.join(root, target)), { recursive: true })
-  writePlanOutput(root, runId, ['AC-01'])
-  writeReviewWithAmendment(root, target, {
-    id: 'AC-01',
-    reason_class: 'unimplementable',
-    original_statement: 'The API accepts the minimal effort value.',
-    amended_statement: 'The API accepts low, medium, and high effort values.',
-    justification:
-      'The provider mapping raises ValueError for minimal on every model path.',
-    evidence: ['Reproduced: mapping raises ValueError at adapter boundary.'],
-  })
-
-  const result = validateReviewOutput({
-    root,
-    targetPath: target,
-    requirement: reviewRequirement,
-  })
-
-  assert.equal(result.status, 'passed', JSON.stringify(result.issues))
-})
-
-test('review validator rejects an amendment missing fields and evidence', () => {
-  const root = validatorFixtureRoot('pan-review-amendment-shape-')
-  const runId = 'run-review-amendment-shape'
-  const target = `runtime/logs/workflows/${runId}/outputs/review-1-test.json`
-
-  mkdirSync(path.dirname(path.join(root, target)), { recursive: true })
-  writePlanOutput(root, runId, ['AC-01'])
-  writeReviewWithAmendment(root, target, {
-    id: 'AC-01',
-    reason_class: 'because-i-said-so',
-    original_statement: 'Same text.',
-    amended_statement: 'Same text.',
-    evidence: [],
-  })
-
-  const result = validateReviewOutput({
-    root,
-    targetPath: target,
-    requirement: reviewRequirement,
-  })
-
-  assert.equal(result.status, 'failed')
-  assert.ok(
-    result.issues.some((issue) => issue.code === 'review.amendment_shape'),
-  )
-  assert.ok(
-    result.issues.some((issue) => issue.code === 'review.amendment_unchanged'),
-  )
-  assert.ok(
-    result.issues.some((issue) => issue.code === 'review.amendment_reason'),
-  )
-  assert.ok(
-    result.issues.some((issue) => issue.code === 'review.amendment_evidence'),
-  )
-})
-
-test('review validator rejects an amendment for an unknown criterion', () => {
-  const root = validatorFixtureRoot('pan-review-amendment-unknown-')
-  const runId = 'run-review-amendment-unknown'
-  const target = `runtime/logs/workflows/${runId}/outputs/review-1-test.json`
-
-  mkdirSync(path.dirname(path.join(root, target)), { recursive: true })
-  writePlanOutput(root, runId, ['AC-01'])
-  writeReviewWithAmendment(root, target, {
-    id: 'AC-99',
-    reason_class: 'contradictory',
-    original_statement: 'Original text.',
-    amended_statement: 'Amended text.',
-    justification: 'Conflicts with a ratified constraint.',
-    evidence: ['Reproduced conflict between AC-99 and the constraint list.'],
-  })
-
-  const result = validateReviewOutput({
-    root,
-    targetPath: target,
-    requirement: reviewRequirement,
-  })
-
-  assert.equal(result.status, 'failed')
-  assert.ok(
-    result.issues.some((issue) => issue.code === 'review.amendment_unknown'),
-  )
-  // The amended id has no acceptance result either, so re-verification fails.
-  assert.ok(
-    result.issues.some((issue) => issue.code === 'review.amendment_unverified'),
-  )
-})
-
 test('target instruction coverage names omitted instruction paths', () => {
   const root = createFixture()
   const target = 'runtime/output.json'
@@ -2497,4 +1599,183 @@ test('target instruction coverage demands final-line read evidence per path', ()
   })
 
   assert.equal(quoted.status, 'passed', JSON.stringify(quoted.issues))
+})
+
+function verifyRequirement() {
+  return {
+    policy_id: 'VERIFY-001',
+    requirement_id: 'verify',
+    registry_id: 'VERIFY-VALIDATE-001',
+    arguments: {},
+  }
+}
+
+function writeVerifyOutput(
+  root: string,
+  target: string,
+  verify: Record<string, unknown>,
+  result = 'success',
+): void {
+  const absolute = path.join(root, target)
+
+  mkdirSync(path.dirname(absolute), { recursive: true })
+  writeFileSync(absolute, `${JSON.stringify({ result, data: { verify } })}\n`)
+}
+
+const passingQaCase = {
+  id: 'TP-01',
+  steps: 'Run the fixture',
+  expected: 'advance',
+  actual: 'advance',
+  result: 'pass',
+}
+
+test('verify validator rejects a passing verdict with a blocker finding', () => {
+  const root = validatorFixtureRoot('pan-verify-blocker-')
+  const target = 'output.json'
+
+  writeVerifyOutput(root, target, {
+    verdict: 'pass',
+    findings: [
+      {
+        id: 'VF-1',
+        severity: 'blocker',
+        source: 'qa',
+        statement: 'The run stalls.',
+        evidence: ['fixture'],
+      },
+    ],
+    qa_cases: [passingQaCase],
+    acceptance_results: [{ id: 'AC-01', result: 'pass' }],
+  })
+
+  const result = validateVerifyOutput({
+    root,
+    targetPath: target,
+    requirement: verifyRequirement(),
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.ok(
+    result.issues.some((item) => item.code === 'verify.verdict_inconsistent'),
+  )
+})
+
+test('verify validator requires a warning finding for pass_with_warnings', () => {
+  const root = validatorFixtureRoot('pan-verify-warnless-')
+  const target = 'output.json'
+
+  writeVerifyOutput(root, target, {
+    verdict: 'pass_with_warnings',
+    findings: [],
+    qa_cases: [passingQaCase],
+    acceptance_results: [{ id: 'AC-01', result: 'pass' }],
+  })
+
+  const result = validateVerifyOutput({
+    root,
+    targetPath: target,
+    requirement: verifyRequirement(),
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.ok(
+    result.issues.some((item) => item.code === 'verify.verdict_inconsistent'),
+  )
+})
+
+test('verify validator requires rationale and guidance for fail_severe', () => {
+  const root = validatorFixtureRoot('pan-verify-severe-')
+  const target = 'output.json'
+
+  writeVerifyOutput(
+    root,
+    target,
+    {
+      verdict: 'fail_severe',
+      findings: [
+        {
+          id: 'VF-1',
+          severity: 'blocker',
+          source: 'review',
+          statement: 'The approach cannot meet AC-01.',
+          evidence: ['fixture'],
+        },
+      ],
+      qa_cases: [{ ...passingQaCase, actual: 'stalled', result: 'fail' }],
+      acceptance_results: [{ id: 'AC-01', result: 'fail' }],
+    },
+    'failure',
+  )
+
+  const bare = validateVerifyOutput({
+    root,
+    targetPath: target,
+    requirement: verifyRequirement(),
+  })
+
+  const bareCodes = bare.issues.map((item) => item.code)
+
+  assert.equal(bare.status, 'failed')
+  assert.ok(bareCodes.includes('verify.remediation_guidance'))
+  assert.ok(bareCodes.includes('verify.severity_rationale'))
+
+  writeVerifyOutput(
+    root,
+    target,
+    {
+      verdict: 'fail_severe',
+      findings: [
+        {
+          id: 'VF-1',
+          severity: 'blocker',
+          source: 'review',
+          statement: 'The approach cannot meet AC-01.',
+          evidence: ['fixture'],
+        },
+      ],
+      qa_cases: [{ ...passingQaCase, actual: 'stalled', result: 'fail' }],
+      acceptance_results: [{ id: 'AC-01', result: 'fail' }],
+      remediation_guidance: 'Rerun the fixture; it stalls before ship.',
+      severity_rationale: 'The chosen approach cannot satisfy AC-01.',
+    },
+    'failure',
+  )
+
+  const complete = validateVerifyOutput({
+    root,
+    targetPath: target,
+    requirement: verifyRequirement(),
+  })
+
+  assert.equal(complete.status, 'passed', JSON.stringify(complete.issues))
+})
+
+test('verify validator binds acceptance coverage to the accepted plan', () => {
+  const root = validatorFixtureRoot('pan-verify-plan-coverage-')
+  const runId = 'run-verify-coverage'
+  const target = `runtime/logs/workflows/${runId}/outputs/verify-1-test.json`
+
+  writePlanOutput(root, runId, ['AC-01', 'AC-02'])
+  writeVerifyOutput(root, target, {
+    verdict: 'pass',
+    findings: [],
+    qa_cases: [passingQaCase],
+    acceptance_results: [{ id: 'AC-01', result: 'pass' }],
+  })
+
+  const result = validateVerifyOutput({
+    root,
+    targetPath: target,
+    requirement: verifyRequirement(),
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.ok(
+    result.issues.some(
+      (item) =>
+        item.code === 'verify.acceptance_missing' &&
+        item.message.includes('AC-02'),
+    ),
+  )
 })

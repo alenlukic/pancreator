@@ -5,7 +5,6 @@ import test from 'node:test'
 
 import {
   createRun,
-  decideRun,
   getRunState,
   pauseRun,
   prepareInvocation,
@@ -22,28 +21,14 @@ import {
 
 test('operator pause preserves supervisor gate and resume restores it', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  // The delivery-candidate plan is the supervisor-gated stage.
+  const workflow = loadWorkflow(root, 'delivery-candidate')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery-candidate',
     requestPath: 'request.md',
     title: 'Pause fixture',
   })
   const runId = state.run_id
-
-  prepareInvocation(root, runId)
-  const intakePrepared = prepareInvocation(root, runId)
-  const intakeInvocation = intakePrepared.invocation
-
-  assert.ok(intakeInvocation)
-
-  writeJson(
-    path.join(root, intakeInvocation.output.path),
-    makeOutput(root, intakeInvocation, stageBySlug(workflow, 'intake')),
-  )
-  writeCanonicalDelegation(root, intakeInvocation)
-
-  submitOutput(root, runId, intakeInvocation.output.path)
-  decideRun(root, runId, 'approve', 'fixture approval')
 
   prepareInvocation(root, runId)
   const planPrepared = prepareInvocation(root, runId)
@@ -93,7 +78,7 @@ test('operator pause preserves supervisor gate and resume restores it', () => {
 test('no-stage resume note replaces a prepared worker card', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Resume note fixture',
   })
@@ -135,7 +120,7 @@ test('no-stage resume note replaces a prepared worker card', () => {
 test('operator pause from running prepare_invocation resumes to prepare', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Pause fixture',
   })
@@ -159,7 +144,7 @@ test('operator pause from running prepare_invocation resumes to prepare', () => 
 test('operator changes made during a pause are ratified and stale cards are replaced', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Paused operator edit fixture',
   })
@@ -176,12 +161,12 @@ test('operator changes made during a pause are ratified and stale cards are repl
     'export const base = true\nexport const operatorFix = true\n',
   )
 
-  const resumed = resumeRun(root, runId, 'intake', 'Authorized operator fix.')
+  const resumed = resumeRun(root, runId, 'plan', 'Authorized operator fix.')
 
   assert.equal(resumed.status, 'running')
   assert.equal(resumed.pending_action.type, 'prepare_invocation')
   assert.equal(resumed.current_invocation, null)
-  assert.equal(resumed.attempts.intake, 0)
+  assert.equal(resumed.attempts.plan, 0)
   assert.equal(resumed.operator_workspace_ratifications?.length, 1)
   assert.equal(
     resumed.accepted_workspace_fingerprint,
@@ -201,28 +186,15 @@ test('operator changes made during a pause are ratified and stale cards are repl
 
 test('harness pause resume still restarts at prepare_invocation', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  // A blocked plan under the supervisor gate pauses the run without an
+  // operator pause record; delivery-candidate declares that gate.
+  const workflow = loadWorkflow(root, 'delivery-candidate')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery-candidate',
     requestPath: 'request.md',
     title: 'Pause fixture',
   })
   const runId = state.run_id
-
-  prepareInvocation(root, runId)
-  const intakePrepared = prepareInvocation(root, runId)
-  const intakeInvocation = intakePrepared.invocation
-
-  assert.ok(intakeInvocation)
-
-  writeJson(
-    path.join(root, intakeInvocation.output.path),
-    makeOutput(root, intakeInvocation, stageBySlug(workflow, 'intake')),
-  )
-  writeCanonicalDelegation(root, intakeInvocation)
-
-  submitOutput(root, runId, intakeInvocation.output.path)
-  decideRun(root, runId, 'approve', 'fixture approval')
 
   prepareInvocation(root, runId)
   const planPrepared = prepareInvocation(root, runId)

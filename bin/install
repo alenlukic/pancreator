@@ -205,8 +205,8 @@ run_smoke() {
         "$project/.pancreator/governance/policies/WAIVER-001.json" \
       && grep -q 'workspace_changes' \
         "$project/.pancreator/library/schemas/stage-output.schema.json" \
-      && grep -q '"workspace_policy": "source_allowed"' \
-        "$project/.pancreator/library/workflows/dev/stages/review.json" \
+      && grep -q '"workspace_policy": "read_only"' \
+        "$project/.pancreator/library/workflows/delivery/stages/verify.json" \
       && test ! -e "$project/.pancreator/workdesk" \
       && test ! -e "$project/.pancreator/runtime/workflows" \
       && test -d "$project/.pancreator/worktrees"

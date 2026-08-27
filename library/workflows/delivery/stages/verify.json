@@ -1,0 +1,82 @@
+{
+  "slug": "verify",
+  "title": "Joint verification",
+  "persona": "verifier",
+  "evidence_workers": [
+    {
+      "persona": "reviewer",
+      "role": "review",
+      "scope": "Independently review the implementation diff and resulting workspace against the ratified plan: acceptance-criteria coverage, test quality and honesty (weakened, deleted, gamed, or narrowed tests), scope control, maintainability, and security. Read code; do not execute the test plan — the parallel QA worker owns execution."
+    },
+    {
+      "persona": "qa-tester",
+      "role": "qa",
+      "scope": "Execute the ratified test plan against the resulting workspace. Run every case, record reproducible evidence (commands, observations, paths) per case, and state a result for each acceptance criterion the plan maps. Do not review code style or architecture — the parallel review worker owns that."
+    }
+  ],
+  "prompt_path": "library/workflows/delivery/prompts/verify.md",
+  "workspace_policy": "read_only",
+  "gate": "stage_verdict",
+  "checkpoint": "independent_review",
+  "context": {
+    "request": "omit",
+    "required_stage_outputs": [
+      {
+        "stage": "plan",
+        "selection": "latest_success"
+      },
+      {
+        "stage": "implement",
+        "selection": "latest"
+      }
+    ],
+    "conditional_stage_outputs": [
+      {
+        "stage": "remediate",
+        "selection": "latest"
+      }
+    ],
+    "prior_attempts": 1,
+    "operator_feedback": 1
+  },
+  "required_data": {
+    "verify": "object",
+    "verify.verdict": "string",
+    "verify.findings": "array",
+    "verify.qa_cases": "array",
+    "verify.acceptance_results": "array"
+  },
+  "criteria": [
+    {
+      "id": "verify.acceptance_met",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Every acceptance criterion is independently verified against the resulting workspace."
+    },
+    {
+      "id": "verify.tests_correct",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Tests are meaningful, correctly scoped, resistant to false positives, and were not weakened to pass."
+    },
+    {
+      "id": "verify.cases_executed",
+      "type": "judgment",
+      "hard": true,
+      "statement": "QA cases from the ratified test plan cover each acceptance criterion or explicitly justify why a case is not applicable."
+    },
+    {
+      "id": "verify.full_suite",
+      "type": "shell",
+      "hard": true,
+      "statement": "The verification suite selected by the run's verification level passes.",
+      "command": "pan repository-check full",
+      "timeout_ms": 600000
+    }
+  ],
+  "transitions": {
+    "success": "ship",
+    "failure": "remediate",
+    "blocked": "paused"
+  }
+}

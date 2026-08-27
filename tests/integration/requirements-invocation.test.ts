@@ -18,7 +18,7 @@ test('out-of-workflow resolve matches workflow manifest shape', () => {
   const root = createFixture()
   const manifest = resolveRequirements(root, {
     persona: 'coder',
-    workflow: 'dev',
+    workflow: 'delivery',
     stage: 'implement',
     invocation: { output_path: 'runtime/logs/workflows/x/outputs/y.json' },
   })

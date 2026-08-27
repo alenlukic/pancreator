@@ -19,11 +19,13 @@
   "defaults": {
     "orchestrator": "",
     "meta-orchestrator": "",
-    "intake-writer": "",
-    "tech-lead": "",
+    "planner": "",
     "coder": "",
     "metacritic": "",
     "reviewer": "",
+    "verifier": "",
+    "remediator": "",
+    "remediator-severe": "",
     "shepherd-reviewer": "",
     "qa-tester": "",
     "designer": "",
@@ -47,9 +49,10 @@
     "simple": {
       "summary": "Simple and fast configuration for quick tasks.",
       "personas": {
-        "tech-lead": "",
+        "planner": "",
         "decomposer": "",
         "reviewer": "",
+        "verifier": "",
         "qa-tester": "",
         "shepherd-reviewer": ""
       }
@@ -61,19 +64,22 @@
     "advanced": {
       "summary": "Higher-reasoning coding and QA for complex or high-risk work.",
       "personas": {
-        "intake-writer": "",
         "coder": "",
+        "remediator": "",
         "reviewer": "",
+        "verifier": "",
         "qa-tester": ""
       }
     },
     "extreme": {
       "summary": "Extreme configuration for the most demanding tasks.",
       "personas": {
-        "intake-writer": "",
-        "tech-lead": "",
+        "planner": "",
         "coder": "",
+        "remediator": "",
+        "remediator-severe": "",
         "reviewer": "",
+        "verifier": "",
         "shepherd-reviewer": "",
         "qa-tester": ""
       }
@@ -81,9 +87,10 @@
     "auto": {
       "summary": "Cursor-managed routing except for the bounded coding workhorse.",
       "personas": {
-        "tech-lead": "",
+        "planner": "",
         "decomposer": "",
         "reviewer": "",
+        "verifier": "",
         "qa-tester": ""
       }
     }
@@ -96,12 +103,12 @@
     "active": "standard",
     "profiles": {
       "standard": {
-        "summary": "Workflow-declared gates, unchanged. The operator ratifies intake and approves release preparation."
+        "summary": "Workflow-declared gates, unchanged. The operator ratifies the plan and approves release preparation."
       },
       "hands-off": {
-        "summary": "Minimum interruption. The supervisor ratifies intake instead of the operator; release preparation still stops for explicit operator approval.",
+        "summary": "Minimum interruption. The supervisor ratifies the plan instead of the operator; release preparation still stops for explicit operator approval.",
         "gates": {
-          "intake": "supervisor"
+          "plan": "supervisor"
         }
       },
       "technical-director": {
@@ -124,7 +131,6 @@
     },
     "active": "light"
   },
-  "review_mode": "default",
   "away_mode": {
     "enabled": false
   },

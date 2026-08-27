@@ -53,13 +53,13 @@ test('every workflow artifact profile maps canonical data into required sections
   }
 })
 
-function submitSuppressedIntake(root: string): {
+function submitSuppressedPlan(root: string): {
   runId: string
   invocationId: string
 } {
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
   const invocation = prepareInvocation(root, state.run_id).invocation
@@ -67,7 +67,7 @@ function submitSuppressedIntake(root: string): {
   assert.ok(invocation)
   assert.equal(invocation.output.operator_brief, undefined)
 
-  const output = makeOutput(root, invocation, stageBySlug(workflow, 'intake'))
+  const output = makeOutput(root, invocation, stageBySlug(workflow, 'plan'))
 
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
@@ -78,10 +78,10 @@ function submitSuppressedIntake(root: string): {
 
 test('post-stage generation creates validated HTML from canonical records', () => {
   const root = createFixture()
-  const { runId, invocationId } = submitSuppressedIntake(root)
+  const { runId, invocationId } = submitSuppressedPlan(root)
   const result = generateOperatorArtifacts(root, {
     runId,
-    stage: 'intake',
+    stage: 'plan',
   })
   const artifact = result.artifacts[0]
 
@@ -108,7 +108,7 @@ test('post-stage generation creates validated HTML from canonical records', () =
 
   const repeated = generateOperatorArtifacts(root, {
     runId,
-    stage: 'intake',
+    stage: 'plan',
   })
 
   assert.equal(repeated.artifacts[0]?.status, 'skipped')
@@ -116,11 +116,11 @@ test('post-stage generation creates validated HTML from canonical records', () =
 
 test('generation without a stage covers missing briefs and force replaces', () => {
   const root = createFixture()
-  const { runId, invocationId } = submitSuppressedIntake(root)
+  const { runId, invocationId } = submitSuppressedPlan(root)
   const initial = generateOperatorArtifacts(root, { runId })
 
   assert.equal(initial.artifacts.length, 1)
-  assert.equal(initial.artifacts[0]?.stage, 'intake')
+  assert.equal(initial.artifacts[0]?.stage, 'plan')
   assert.equal(initial.artifacts[0]?.status, 'generated')
 
   const repeated = generateOperatorArtifacts(root, { runId })
@@ -138,7 +138,7 @@ test('generation without a stage covers missing briefs and force replaces', () =
 
 test('forced generation preserves existing HTML and source after render failure', () => {
   const root = createFixture()
-  const { runId, invocationId } = submitSuppressedIntake(root)
+  const { runId, invocationId } = submitSuppressedPlan(root)
   const layout = resolveRunLayout(root, runId)
   const htmlPath = layout.operatorHtml(invocationId).absolute
   const sourcePath = layout.artifactJson(`${invocationId}.brief.json`).absolute
@@ -153,7 +153,7 @@ test('forced generation preserves existing HTML and source after render failure'
     () =>
       generateOperatorArtifacts(root, {
         runId,
-        stage: 'intake',
+        stage: 'plan',
         force: true,
       }),
     /directory|EISDIR|ENOTDIR/u,
@@ -165,7 +165,7 @@ test('forced generation preserves existing HTML and source after render failure'
 test('generation rejects unknown and unsubmitted stages with stable codes', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
 

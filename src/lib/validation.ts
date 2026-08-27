@@ -1943,8 +1943,10 @@ export function isEnvironmentBlockedDelta(
   baseline: RepositoryCheckResult | undefined,
   comparison: ReturnType<typeof compareRepositoryCheckToBaseline> | undefined,
 ): boolean {
+  // The verifier owns suite-gated QA in the delivery workflows; qa-tester
+  // remains the executing persona for standalone and evidence-worker QA.
   if (
-    stage.persona !== 'qa-tester' ||
+    (stage.persona !== 'verifier' && stage.persona !== 'qa-tester') ||
     baseline?.status !== 'failed' ||
     !comparison ||
     comparison.passed ||
@@ -2257,19 +2259,26 @@ export function evaluateStateCriterion(
   let explanation = 'No specialized state evaluator was required.'
 
   if (criterion.id === 'ship.prior_gates_current') {
-    const review = [...state.stage_history]
+    // The delivery workflow verifies review and QA jointly in one verify
+    // stage, so its latest attempt supplies both evidence roles.
+    const verify = [...state.stage_history]
       .reverse()
-      .find((item) => item.stage === 'review')
-    const test = [...state.stage_history]
-      .reverse()
-      .find((item) => item.stage === 'test')
+      .find((item) => item.stage === 'verify')
+    const review =
+      [...state.stage_history]
+        .reverse()
+        .find((item) => item.stage === 'review') ?? verify
+    const test =
+      [...state.stage_history]
+        .reverse()
+        .find((item) => item.stage === 'test') ?? verify
 
     const activeWaivers = activeOperatorGateWaivers(state, workspaceFingerprint)
     const waiverFor = (stage: string) =>
       [...activeWaivers].reverse().find((waiver) => waiver.stage === stage)
 
-    const reviewWaiver = waiverFor('review')
-    const testWaiver = waiverFor('test')
+    const reviewWaiver = waiverFor('review') ?? waiverFor('verify')
+    const testWaiver = waiverFor('test') ?? waiverFor('verify')
     const reviewSatisfied =
       review?.outcome === 'success' || Boolean(reviewWaiver)
     const testSatisfied = test?.outcome === 'success' || Boolean(testWaiver)
@@ -2388,7 +2397,11 @@ function resolveShipPriorGatesEvidenceFingerprint(options: {
 
   const test = [...options.state.stage_history]
     .reverse()
-    .find((item) => item.stage === 'test' && item.outcome === 'success')
+    .find(
+      (item) =>
+        (item.stage === 'test' || item.stage === 'verify') &&
+        item.outcome === 'success',
+    )
   const testFingerprint = test?.workspace_fingerprint
 
   if (!testFingerprint) {
@@ -2479,6 +2492,7 @@ export function evaluateDeterministicCriteria(
   artifactId = stage.slug,
   stageOutput?: StageOutput,
   onProgress?: (message: string) => void,
+  gateSkipReason: string | null = null,
 ): { results: DeterministicResult[]; workspace: WorkspaceSnapshot } {
   const afterSnapshot = gitWorkspaceSnapshot(workspaceDir)
   const results: DeterministicResult[] = []
@@ -2560,7 +2574,26 @@ export function evaluateDeterministicCriteria(
         state.verification.gates[criterion.id] === false &&
         repositoryCheckProfileName(criterion.command ?? '') !== null
 
-      if (override === false) {
+      // A shell gate can only confirm a success. When the submission has
+      // already decided a non-success outcome, executing the command spends
+      // its runtime proving nothing, so the gate is recorded as skipped
+      // instead of run. State criteria below still evaluate: scope and
+      // currency checks detect contamination regardless of the outcome.
+      if (gateSkipReason !== null) {
+        results.push({
+          id: criterion.id,
+          type: 'shell',
+          hard: Boolean(criterion.hard),
+          passed: true,
+          skipped: true,
+          explanation:
+            `Gate not executed: ${gateSkipReason}, so the outcome was ` +
+            'already decided as non-success before any deterministic gate ' +
+            'ran. A shell gate runs only when its result can decide the stage.',
+          command: criterion.command,
+          workspace_fingerprint: afterSnapshot.fingerprint,
+        })
+      } else if (override === false) {
         results.push({
           id: criterion.id,
           type: 'shell',
@@ -2835,9 +2868,6 @@ function lookupRowCovers(
     // cannot satisfy a dependency for a row that resolves without one.
     (provider.contract === undefined ||
       provider.contract === consumer.contract) &&
-    // Same reasoning for a review-method-scoped row.
-    (provider.review_mode === undefined ||
-      provider.review_mode === consumer.review_mode) &&
     // Same reasoning for operator-artifact-scoped rows.
     (provider.operator_artifacts === undefined ||
       provider.operator_artifacts === consumer.operator_artifacts)

@@ -319,16 +319,16 @@ test('requirements run selects required SPOT-001 binding for SPOTFIX-VALIDATE-00
 test('output validate skips when no agent-owned requirement resolves', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Output validation skip fixture',
   })
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const invocation = prepareInvocation(root, state.run_id).invocation
 
   assert.ok(invocation)
 
-  const output = makeOutput(root, invocation, stageBySlug(workflow, 'intake'))
+  const output = makeOutput(root, invocation, stageBySlug(workflow, 'plan'))
   const invocationRelative = resolveRunLayout(root, state.run_id).invocation(
     invocation.invocation_id,
     '.json',

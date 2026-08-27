@@ -75,6 +75,7 @@ test('pan reuses the prepared build during a repository test run', () => {
 
     assert.equal(result.status, 0, result.stderr)
     assert.match(result.stdout, /Usage:/u)
+    assert.match(result.stdout, /pan inbox \[--json\]/u)
   } finally {
     rmSync(toolDirectory, { recursive: true, force: true })
   }

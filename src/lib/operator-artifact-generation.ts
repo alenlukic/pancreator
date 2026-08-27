@@ -151,7 +151,6 @@ function validateGeneratedBrief(
     workflow: invocation.workflow.slug,
     stage: invocation.stage.slug,
     contracts: state.operator_involvement?.contracts ?? [],
-    review_mode: state.review_mode,
     operator_artifacts: 'requested',
     invocation: {
       output_path: invocation.output.path,

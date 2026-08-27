@@ -41,14 +41,14 @@ export const BUILT_IN_VERIFICATION_LEVELS: Record<string, VerificationLevel> = {
     summary:
       'Static and fast checks gate the implement loop; QA argues from manual ' +
       'cases and prior gate evidence without re-running a suite.',
-    gates: { 'test.full_suite': false },
+    gates: { 'test.full_suite': false, 'verify.full_suite': false },
   },
   light: {
     summary:
       'Static and fast checks gate the implement loop, and QA re-runs the ' +
       'fast suite against the pre-implementation baseline. Integration and ' +
       'end-to-end suites are left to the team and CI.',
-    gates: { 'test.full_suite': 'fast' },
+    gates: { 'test.full_suite': 'fast', 'verify.full_suite': 'fast' },
   },
   thorough: {
     summary:
