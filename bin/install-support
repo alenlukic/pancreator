@@ -392,7 +392,27 @@ function mergeConfigObjects(base, override) {
   return merged
 }
 
+/**
+ * Keep only the personas the incoming release ships. A retired persona would
+ * otherwise survive in a target config forever, because the merge below
+ * prefers every existing target value.
+ */
+function retainShippedPersonas(personas, shipped) {
+  if (typeof personas !== 'object' || personas === null || shipped.size === 0) {
+    return personas
+  }
+
+  return Object.fromEntries(
+    Object.entries(personas).filter(([persona]) => shipped.has(persona)),
+  )
+}
+
 function mergeEmbeddedProjectConfig(source, existing) {
+  const shipped = new Set(
+    typeof source.defaults === 'object' && source.defaults !== null
+      ? Object.keys(source.defaults)
+      : [],
+  )
   const merged = {
     ...source,
     defaults: {
@@ -436,6 +456,19 @@ function mergeEmbeddedProjectConfig(source, existing) {
           ? existingConfig.personas
           : {}),
       },
+    }
+  }
+
+  merged.defaults = retainShippedPersonas(merged.defaults, shipped)
+
+  for (const [name, config] of Object.entries(merged.configs)) {
+    if (typeof config !== 'object' || config === null) {
+      continue
+    }
+
+    merged.configs[name] = {
+      ...config,
+      personas: retainShippedPersonas(config.personas, shipped),
     }
   }
 

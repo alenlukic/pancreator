@@ -1045,7 +1045,7 @@ install_payload() {
   else
     echo "Run from the target repository:"
     echo "  ./.pancreator/bin/pan doctor"
-    echo "  ./.pancreator/bin/pan init --workflow dev --request runtime/inbox/request.md"
+    echo "  ./.pancreator/bin/pan init --workflow delivery --request runtime/inbox/request.md"
   fi
 
   configure_install_shell_aliases

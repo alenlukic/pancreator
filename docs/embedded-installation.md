@@ -290,6 +290,23 @@ Targets can add lookup rows under
 files. Invalid JSON, duplicate rows, and missing policy identifiers stop policy
 resolution before card preparation.
 
+## Target context-bloat dispositions
+
+A policy carrying `target_extension: <name>` is target-authored, and so is every
+handbook it reaches through `guidance_sources`. The context audit tracks that
+ownership. A duplicate directive spanning a target-owned surface and a
+harness-owned one is the documented purpose of a target extension, so the audit
+reports it without requiring a disposition. Restating a harness norm in target
+vocabulary costs the target nothing.
+
+A duplicate among the target's own surfaces still needs a disposition. Record it
+under
+`.pancreator/governance/registries/context_bloat_dispositions.d/<extension-id>.json`,
+using `schema_version: 1`, an `extension_id` matching the filename, and an
+`entries` array shaped like the harness registry. Refresh preserves these
+target-owned files, whereas an edit to the harness registry itself is superseded
+by the incoming release.
+
 ## Workspace mutation model
 
 Pancreator fingerprints relevant Git-visible source state and does not recursively index target files. Compiled artifacts, caches, virtual environments, and third-party dependency/package directories are excluded and permanently outside agent remit. Source-allowed workers edit declared source directly; governance and artifact diagnostics are deferred to release-steward review instead of looping implementation. Operators should pause before concurrent tracked-file changes so attribution remains clear.
@@ -382,7 +399,7 @@ blanket-deleted.
 
 ## Harness versioning
 
-`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `4.8.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
+`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `4.9.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
 
 `release/index.json` is the internal mapping from harness version to immutable
 Git commit. Because a commit cannot contain its own hash, release publication is

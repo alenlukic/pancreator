@@ -1,5 +1,23 @@
 # Changelog
 
+## [4.9.0] - 2026-08-27
+
+### Changed
+
+- Treat policies that declare `target_extension`, and the handbooks they reach, as target-owned during the context audit ([context-audit](src/lib/governance/context-audit.ts), [policies](src/lib/policies.ts)).
+- Skip the disposition requirement when a duplicate directive spans harness-owned and target-owned sources ([context-audit](src/lib/governance/context-audit.ts)).
+- Drop retired persona keys from embedded `defaults` and named configs on install refresh, and keep mappings for personas the incoming release still ships ([install-support](bin/install-support)).
+- Point the post-install init hint at the `delivery` workflow ([install](bin/install)).
+
+### Added
+
+- Accept optional `target_extension` on a policy file ([types](src/lib/types.ts), [policies](src/lib/policies.ts)).
+- Merge target-authored context-bloat dispositions from `context_bloat_dispositions.d/<extension-id>.json` so they survive a harness registry refresh ([context-audit](src/lib/governance/context-audit.ts), [embedded-installation](docs/embedded-installation.md)).
+
+### Fixed
+
+- Ignore a formatter-wrapped RFC 2119 preamble so two copies of that wrapping no longer form an undisposed duplicate ([context-audit](src/lib/governance/context-audit.ts)).
+
 ## [4.8.0] - 2026-08-27
 
 ### Changed

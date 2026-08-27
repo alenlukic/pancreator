@@ -333,6 +333,8 @@ export interface Policy {
   summary: string
   instructions: string[]
   extension_id?: string
+  /** Names the target that authored this policy. Absent on harness policies. */
+  target_extension?: string
   artifact_authority?: PolicyArtifactAuthority
   guidance?: PolicyGuidance[]
   requirements?: PolicyRequirement[]
