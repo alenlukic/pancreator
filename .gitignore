@@ -12,6 +12,7 @@ governance/registries/cursor_model_catalog.json
 
 projects/
 runtime/
+worktrees/
 
 src/migrations/
 tests/migrations/

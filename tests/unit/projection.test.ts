@@ -292,7 +292,10 @@ test('workflow QA keeps the supervisor in the top-level session', () => {
     'utf8',
   )
 
-  assert.match(projected, /Adopt both persona briefs in this session/u)
+  assert.match(
+    projected,
+    /Adopt the orchestrator and QA persona briefs in this session/u,
+  )
   assert.match(projected, /Continue each supervisor-owned action/u)
   assert.doesNotMatch(
     projected,

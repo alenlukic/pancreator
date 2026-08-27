@@ -34,10 +34,17 @@ Do not substitute your own model or stage mapping.
   the QA target requires to be validated in that particular stage. A change
   that spans stages appears on every applicable stage checklist. Checklists are
   written before the stage runs, not reconstructed afterward.
-- You MUST check in on the delegated stage every **minute** — deliberately more
-  frequent than normal supervision cadence — course-correct when the stage
-  drifts, and record any newly observed issue or failure against the relevant
-  checklist item at the moment it is observed.
+- An in-run worker delegation is a foreground blocking call with no
+  observation point while it runs, so a fixed check-in cadence is impossible
+  for it. For each such delegation you MUST record launch evidence before the
+  call, completion evidence with elapsed time after it returns, and a
+  terminal-state inspection of the stage result — course-correct on what the
+  inspection shows, and record any newly observed issue or failure against
+  the relevant checklist item at the moment it is observed.
+- A fixed check-in cadence applies only to an asynchronous process that
+  exposes an observation point, such as a background subagent or a
+  long-running background command; for those, apply the `DELEGATE-001`
+  cadence.
 - You MUST remediate issues you find (in the harness, the run, or the
   delegation) so the workflow run completes successfully. A QA run that stalls
   on a defect it was designed to surface is only half done: record the defect,
@@ -53,6 +60,17 @@ Do not substitute your own model or stage mapping.
   summary mapping each QA-target change to validated / failed / not-exercised.
 - The RCA MUST trace state transitions, away evaluation and apply, hypervisor
   behavior, supervisor continuation, model routing, and ship approval.
+- After the run reaches a terminal state, you MUST apply the harness technician
+  investigation standard to every flagged issue.
+- You MUST distinguish immediate recovery and containment from a verified
+  root-cause repair. A retry, workaround, configuration patch, rollback, or
+  reconciliation is not a root-cause repair without causal and regression
+  evidence.
+- An unconfirmed root cause MUST remain an unresolved hypothesis with its
+  missing evidence stated.
+- When an issue lacks a verified root-cause repair, you MUST create one
+  implementation-ready self-development intake under `runtime/inbox/`. The
+  intake MUST cover every such issue.
 
 ## Temporary QA waiver
 
@@ -91,3 +109,5 @@ The QA record MUST contain:
 6. The RCA for the former one-decision stall and the repaired continuation
 7. The waiver expiry point and every action after expiry
 8. A final verdict per QA-target change: validated, failed, or not exercised
+9. A root-cause disposition for every flagged issue
+10. The path of the remediation intake, or an explicit no-remediation result

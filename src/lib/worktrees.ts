@@ -31,7 +31,13 @@ import {
   writeJsonAtomic,
   writeTextAtomic,
 } from './io.js'
-import { configuredWorkspaceRoot, worktreesConfig } from './project-config.js'
+import {
+  configuredWorkspaceRoot,
+  configuredWorktreeRoot,
+  DEFAULT_WORKTREE_ROOT,
+  LEGACY_DEFAULT_WORKTREE_ROOT,
+  worktreesConfig,
+} from './project-config.js'
 import { runSetupCommands } from './setup-commands.js'
 import { now } from './state.js'
 
@@ -99,16 +105,73 @@ export function isWorktreeName(value: string): boolean {
   return WORKTREE_NAME_PATTERN.test(value)
 }
 
-function worktreeIndexPath(root: string): string {
-  const config = worktreesConfig(root)
+interface OperatorWorktreeStore {
+  indexPath: string
+  mutexPath: string
+  newWorktreeRoot: string
+}
 
-  return resolveInside(root, path.join(config.root, 'index.json'))
+function resolveOperatorWorktreeStore(root: string): OperatorWorktreeStore {
+  const declared = configuredWorktreeRoot(root)
+
+  if (declared !== undefined) {
+    return {
+      indexPath: resolveInside(root, path.join(declared, 'index.json')),
+      mutexPath: resolveInside(root, path.join(declared, '.operation-mutex')),
+      newWorktreeRoot: declared,
+    }
+  }
+
+  const currentIndex = resolveInside(
+    root,
+    path.join(DEFAULT_WORKTREE_ROOT, 'index.json'),
+  )
+  const legacyIndex = resolveInside(
+    root,
+    path.join(LEGACY_DEFAULT_WORKTREE_ROOT, 'index.json'),
+  )
+  const currentExists = fileExists(currentIndex)
+  const legacyExists = fileExists(legacyIndex)
+
+  invariant(
+    !(currentExists && legacyExists),
+    `Both operator worktree indexes exist: ${toRepoRelative(root, currentIndex)} ` +
+      `and ${toRepoRelative(root, legacyIndex)}. Remove or merge one index ` +
+      'before continuing.',
+    { code: 'WORKTREE_INDEX_CONFLICT' },
+  )
+
+  if (legacyExists) {
+    return {
+      indexPath: legacyIndex,
+      mutexPath: resolveInside(
+        root,
+        path.join(LEGACY_DEFAULT_WORKTREE_ROOT, '.operation-mutex'),
+      ),
+      newWorktreeRoot: DEFAULT_WORKTREE_ROOT,
+    }
+  }
+
+  return {
+    indexPath: currentIndex,
+    mutexPath: resolveInside(
+      root,
+      path.join(DEFAULT_WORKTREE_ROOT, '.operation-mutex'),
+    ),
+    newWorktreeRoot: DEFAULT_WORKTREE_ROOT,
+  }
+}
+
+function worktreeIndexPath(root: string): string {
+  return resolveOperatorWorktreeStore(root).indexPath
 }
 
 function worktreeMutexPath(root: string): string {
-  const config = worktreesConfig(root)
+  return resolveOperatorWorktreeStore(root).mutexPath
+}
 
-  return resolveInside(root, path.join(config.root, '.operation-mutex'))
+function newWorktreeRoot(root: string): string {
+  return resolveOperatorWorktreeStore(root).newWorktreeRoot
 }
 
 function parseWorktreeRecord(value: unknown, source: string): WorktreeRecord {
@@ -339,7 +402,10 @@ function addWorktree(
   )
 
   const config = worktreesConfig(root)
-  const worktreePath = resolveInside(root, path.join(config.root, name))
+  const worktreePath = resolveInside(
+    root,
+    path.join(newWorktreeRoot(root), name),
+  )
 
   invariant(
     !fileExists(worktreePath),
@@ -740,8 +806,10 @@ function resolveReconcileTarget(
     { code: 'WORKTREE_EXISTS' },
   )
 
-  const config = worktreesConfig(root)
-  const worktreePath = resolveInside(root, path.join(config.root, name))
+  const worktreePath = resolveInside(
+    root,
+    path.join(newWorktreeRoot(root), name),
+  )
 
   invariant(
     !fileExists(worktreePath),

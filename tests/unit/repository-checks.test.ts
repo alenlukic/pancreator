@@ -614,6 +614,21 @@ test('a pytest-looking transcript still surfaces failures outside the pytest sha
   )
 })
 
+test('a current-path harness-managed worktree resolves the owning installation runtime config', () => {
+  const { root } = makeInstallation()
+
+  writeChecks(root, { fast: { probes: [], commands: ['echo ok'] } })
+
+  const worktree = path.join(root, 'worktrees', 'operator', 'wt')
+
+  mkdirSync(worktree, { recursive: true })
+
+  assert.equal(
+    repositoryChecksSourcePath(worktree),
+    path.join(root, 'runtime', 'repository-checks.json'),
+  )
+})
+
 test('a harness-managed worktree resolves the owning installation runtime config', () => {
   const { root } = makeInstallation()
 

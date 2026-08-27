@@ -5,8 +5,10 @@
   "summary": "An agent that starts a subagent MUST monitor it on a fixed cadence, MUST own its outcome, and MUST keep the operator conversation responsive.",
   "instructions": [
     "An agent that starts a subagent MUST monitor it until it reaches a terminal state.",
-    "For a short-running subagent, the starting agent MUST check progress at least every 2 minutes.",
-    "For a long-running subagent, the starting agent MUST check progress at least every 5 minutes.",
+    "A fixed-cadence progress check MUST target only an asynchronous process that exposes an observation point while it runs, such as a background subagent or a background command with readable output.",
+    "For a short-running background subagent, the starting agent MUST check progress at least every 2 minutes.",
+    "For a long-running background subagent, the starting agent MUST check progress at least every 5 minutes.",
+    "A foreground blocking call exposes no observation point, so no fixed cadence binds it; the starting agent MUST record launch evidence before the call and completion evidence with elapsed time and a terminal-state inspection after it returns.",
     "The starting agent owns the subagent outcome and MUST detect a crash, a stall, and a silent exit.",
     "The starting agent MUST NOT depend on the subagent to report back, because a report is a convenience rather than a guarantee.",
     "On a detected stall or crash, the starting agent MUST report the condition and MUST take or propose a recovery action.",

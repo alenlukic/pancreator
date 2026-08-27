@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -8,6 +8,7 @@ import {
   worktreesConfig,
 } from '../../src/lib/project-config.js'
 import {
+  createWorktree,
   isWorktreeName,
   readWorktreeIndex,
   reconcileWorktrees,
@@ -28,7 +29,7 @@ test('worktree config uses defaults and local overrides', () => {
   const root = createFixture()
 
   assert.deepEqual(worktreesConfig(root), {
-    root: 'runtime/worktrees/operator',
+    root: 'worktrees/operator',
     branch_prefix: 'worktree/',
     setup: [],
   })
@@ -104,7 +105,7 @@ test('worktree index round-trips through its atomic writer', () => {
     worktrees: [
       {
         name: 'feature-one',
-        path: 'runtime/worktrees/operator/feature-one',
+        path: 'worktrees/operator/feature-one',
         branch: 'worktree/feature-one',
         created_from: '0123456789abcdef',
         description: 'Feature one',
@@ -117,13 +118,7 @@ test('worktree index round-trips through its atomic writer', () => {
 
   assert.deepEqual(readWorktreeIndex(root), index)
 
-  const indexPath = path.join(
-    root,
-    'runtime',
-    'worktrees',
-    'operator',
-    'index.json',
-  )
+  const indexPath = path.join(root, 'worktrees', 'operator', 'index.json')
 
   assert.match(readFileSync(indexPath, 'utf8'), /\n$/u)
 
@@ -191,4 +186,102 @@ test('workspace specifiers pass paths through and resolve recorded names', () =>
     resolveWorkspacePathOrWorktree(root, 'alpha'),
     'runtime/worktrees/operator/alpha',
   )
+})
+
+test('legacy operator index remains active when the current index is absent', () => {
+  const root = createFixture()
+  const legacyIndexPath = path.join(
+    root,
+    'runtime',
+    'worktrees',
+    'operator',
+    'index.json',
+  )
+
+  mkdirSync(path.dirname(legacyIndexPath), { recursive: true })
+  writeJson(legacyIndexPath, {
+    schema_version: 1,
+    worktrees: [
+      {
+        name: 'legacy-one',
+        path: 'runtime/worktrees/operator/legacy-one',
+        branch: 'worktree/legacy-one',
+        created_from: '0123456789abcdef',
+        description: 'Legacy record',
+        created_at: '2026-08-12T00:00:00.000Z',
+      },
+    ],
+  })
+
+  assert.deepEqual(readWorktreeIndex(root).worktrees[0]?.name, 'legacy-one')
+})
+
+test('dual default operator indexes fail with a stable conflict error', () => {
+  const root = createFixture()
+  const legacyIndexPath = path.join(
+    root,
+    'runtime',
+    'worktrees',
+    'operator',
+    'index.json',
+  )
+  const currentIndexPath = path.join(
+    root,
+    'worktrees',
+    'operator',
+    'index.json',
+  )
+
+  mkdirSync(path.dirname(legacyIndexPath), { recursive: true })
+  mkdirSync(path.dirname(currentIndexPath), { recursive: true })
+  writeJson(legacyIndexPath, { schema_version: 1, worktrees: [] })
+  writeJson(currentIndexPath, { schema_version: 1, worktrees: [] })
+
+  assert.throws(
+    () => readWorktreeIndex(root),
+    /Both operator worktree indexes exist/u,
+  )
+})
+
+test('new worktrees use the current root when the legacy index is active', () => {
+  const root = createFixture()
+  const legacyIndexPath = path.join(
+    root,
+    'runtime',
+    'worktrees',
+    'operator',
+    'index.json',
+  )
+
+  mkdirSync(path.dirname(legacyIndexPath), { recursive: true })
+  writeJson(legacyIndexPath, { schema_version: 1, worktrees: [] })
+
+  const record = createWorktree(root, 'fresh')
+
+  assert.equal(record.path, 'worktrees/operator/fresh')
+  assert.equal(readWorktreeIndex(root).worktrees[0]?.path, record.path)
+})
+
+test('a declared operator root keeps new worktrees where the operator put them', () => {
+  const root = createFixture()
+
+  writeJson(path.join(root, 'config_overrides.json'), {
+    worktrees: { root: 'runtime/worktrees/operator' },
+  })
+
+  const legacyIndexPath = path.join(
+    root,
+    'runtime',
+    'worktrees',
+    'operator',
+    'index.json',
+  )
+
+  mkdirSync(path.dirname(legacyIndexPath), { recursive: true })
+  writeJson(legacyIndexPath, { schema_version: 1, worktrees: [] })
+
+  const record = createWorktree(root, 'pinned')
+
+  assert.equal(record.path, 'runtime/worktrees/operator/pinned')
+  assert.equal(readWorktreeIndex(root).worktrees[0]?.path, record.path)
 })

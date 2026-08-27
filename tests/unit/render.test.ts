@@ -14,6 +14,7 @@ import {
   renderInvocationDeliveryPrompt,
   renderInvocationMarkdown,
   renderStatus,
+  renderSupervisorProcedureMarkdown,
   splitInvocationContract,
 } from '../../src/lib/render.js'
 import { resolvePolicies } from '../../src/lib/policies.js'
@@ -138,6 +139,101 @@ function baseInvocation(
     },
   }
 }
+
+function delegatedInvocation(root: string): Invocation {
+  const invocation = baseInvocation(root, 'dev', 'implement')
+  const prefix = 'runtime/logs/workflows/run-fixture/invocations/implement-1'
+
+  invocation.output.scaffold_command =
+    `./bin/pan output scaffold run-fixture --invocation ${prefix}.json ` +
+    `--output ${invocation.output.path}`
+  invocation.delegation = {
+    persona: invocation.stage.persona,
+    cursor_agent_path: '.cursor/agents/pan-coder.md',
+    canonical_markdown_path: `${prefix}.md`,
+    invocation_validation_path: `${prefix}.invocation-validation.json`,
+    delegation_artifact_path: `${prefix}.delegation.md`,
+    supervisor_procedure_path: `${prefix}.supervisor.md`,
+    submit_command: `./bin/pan submit run-fixture ${invocation.output.path}`,
+    mode: 'referenced',
+    delivery_prompt_path: `${prefix}.delivery.md`,
+    policies: resolvePolicies(root, {
+      persona: 'orchestrator',
+      workflow: 'dev',
+      stage: 'implement',
+    }).filter((policy) => policy.id === 'INVOCATION-001'),
+  }
+
+  return invocation
+}
+
+test('the worker card names the supervisor procedure and prints no lifecycle command', () => {
+  const root = createFixture()
+  const invocation = delegatedInvocation(root)
+  const card = renderInvocationMarkdown(invocation)
+  const procedure = renderSupervisorProcedureMarkdown(invocation)
+
+  assert.ok(invocation.delegation)
+  assert.ok(
+    card.includes(invocation.delegation.supervisor_procedure_path ?? ''),
+  )
+  assert.ok(!card.includes(invocation.delegation.submit_command))
+  assert.doesNotMatch(
+    card,
+    /pan\s+(submit|decide|set-stage|waive-gate|delegate|abort)\b/u,
+  )
+  // The exact scaffold command, and the artifact-type warning beside it.
+  assert.ok(card.includes(invocation.output.scaffold_command ?? ''))
+  assert.match(card, /fails by artifact type/u)
+  // The procedure document owns the resolved lifecycle commands.
+  assert.ok(procedure.includes(invocation.delegation.submit_command))
+  assert.ok(
+    procedure.includes(invocation.delegation.delivery_prompt_path ?? ''),
+  )
+
+  const result = validateInvocationMarkdown(invocation, card, procedure)
+
+  assert.equal(
+    result.passed,
+    true,
+    result.checks
+      .filter((check) => !check.passed)
+      .map((check) => check.message)
+      .join('; '),
+  )
+})
+
+test('validation rejects a worker card that prints a lifecycle command', () => {
+  const root = createFixture()
+  const invocation = delegatedInvocation(root)
+  const procedure = renderSupervisorProcedureMarkdown(invocation)
+  const card = renderInvocationMarkdown(invocation).replace(
+    '## 🚧 Boundaries',
+    'Run `./bin/pan submit run-fixture out.json` when done.\n\n## 🚧 Boundaries',
+  )
+  const result = validateInvocationMarkdown(invocation, card, procedure)
+
+  assert.equal(result.passed, false)
+  assert.ok(
+    result.checks.some(
+      (check) => check.id === 'delegation.worker_isolation' && !check.passed,
+    ),
+  )
+})
+
+test('validation rejects a split delegation without its procedure document', () => {
+  const root = createFixture()
+  const invocation = delegatedInvocation(root)
+  const card = renderInvocationMarkdown(invocation)
+  const result = validateInvocationMarkdown(invocation, card)
+
+  assert.equal(result.passed, false)
+  assert.ok(
+    result.checks.some(
+      (check) => check.id === 'delegation.procedure_document' && !check.passed,
+    ),
+  )
+})
 
 test('invocation cards inline policy text and reference guidance for every stage', () => {
   const root = createFixture()

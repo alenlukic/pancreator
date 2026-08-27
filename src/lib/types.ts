@@ -788,6 +788,13 @@ export interface Invocation {
     template: string
     schema: string
     required_data: Record<string, JsonTypeName>
+    /**
+     * Exact `pan output scaffold` command for this invocation. It names the
+     * invocation JSON snapshot — the only artifact the command accepts — so a
+     * worker never has to guess between the snapshot and the Markdown
+     * contract. Absent on legacy invocations and supervisor-owned stages.
+     */
+    scaffold_command?: string
     artifacts?: ArtifactReference[]
     field_contract?: {
       validators: Array<{
@@ -924,6 +931,13 @@ export interface InvocationDelegationContract {
   canonical_markdown_path: string
   invocation_validation_path: string
   delegation_artifact_path: string
+  /**
+   * Supervisor-only procedure document beside the card. It owns the resolved
+   * delivery steps and every workflow lifecycle command, so the worker-visible
+   * contract never carries one. Absent on legacy invocations, whose cards
+   * inline the full procedure.
+   */
+  supervisor_procedure_path?: string
   submit_command: string
   /** Absent on legacy invocations, which the harness treats as `verbatim`. */
   mode?: InvocationDeliveryMode

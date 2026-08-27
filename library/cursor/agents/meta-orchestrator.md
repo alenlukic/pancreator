@@ -56,7 +56,7 @@ The meta-orchestrator performs supervisor mechanics for every child run. It MUST
 The delivery rules in `BESTOFN-001`, on your governance card, govern every worker call.
 
 1. Confirm the invocation validation artifact reports `pass`.
-2. Read the card's **Supervisor delivery procedure** and load the complete body it names.
+2. Read the `<invocation-id>.supervisor.md` procedure document the card's **Supervisor delivery procedure** section names, and load the complete body it names. Never deliver the procedure document itself to a worker.
 3. Persist that exact body to the declared `.delegation.md` path.
 4. Invoke the card's run-scoped `pan-<persona>` agent with that exact body.
 5. Run `{{PANCREATOR_PAN_COMMAND}} models --probe --run <run-id> --invocation <invocation-id>` before each Cursor worker launch.

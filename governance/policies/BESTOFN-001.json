@@ -16,7 +16,7 @@
     "Before a relaunch on the same invocation, the supervisor MUST confirm the prior worker ended, following the referenced supervisor-recovery guidance.",
     "Evidence of concurrent workers in one candidate worktree MUST stop that candidate's delegation and MUST be surfaced to the operator with the run id, invocation id, and overlap evidence.",
     "The session lifecycle MUST run through `./bin/pan best-of-n` commands. Agents MUST NOT create worktrees, candidate runs, run-scoped agent variants, or session records by hand.",
-    "Every candidate run MUST execute in its own detached worktree under `runtime/worktrees/<bon-id>/`, and MUST NOT edit the main workspace.",
+    "Every candidate run MUST execute in its own detached worktree under `worktrees/<bon-id>/`, and MUST NOT edit the main workspace.",
     "Candidate runs MUST use the gates their workflow declares. A best-of-N session MUST NOT add an operator stop to a candidate run, and MUST NOT relax the operator gate the consolidation run declares for release preparation.",
     "A terminal candidate failure MUST remain session evidence and MUST NOT create an operator gate.",
     "The meta-orchestrator MUST stop only when a non-terminal candidate cannot execute because required bytes, state, workspace, authentication, or tools are unavailable.",

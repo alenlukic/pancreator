@@ -26,8 +26,7 @@ const FIXTURE = readFileSync(
   'utf8',
 )
 
-const WORKSPACE_ROOT =
-  '/workspace/.pancreator/runtime/worktrees/operator/my-task'
+const WORKSPACE_ROOT = '/workspace/.pancreator/worktrees/operator/my-task'
 
 function checkResult(
   stdout: string,

@@ -31,7 +31,9 @@ The terms MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY use RFC 2119 meanings.
 You MUST adopt `{{PANCREATOR_HARNESS_PATH}}library/personas/harness-workflow-qa.md`. Drive the selected
 workflow (default `dev`) as the orchestrator with the active model
 configuration, validating the supplied QA target. Before each stage, write its
-QA checklist; while the stage runs, check in every minute, course-correct, and
+QA checklist; record launch evidence, completion evidence with elapsed time,
+and a terminal-state inspection for each foreground delegation (fixed-cadence
+check-ins apply only to asynchronous processes with an observation point);
 record new issues against checklist items; remediate what you find so the run
 completes. You hold a pre-emptive global operator waiver over harness policies
 in service of these duties — log every exercise of it. Install dependencies in

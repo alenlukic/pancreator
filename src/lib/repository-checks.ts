@@ -588,14 +588,20 @@ export function repositoryChecksPath(root: string): string {
   return path.join(root, 'runtime', 'repository-checks.json')
 }
 
-/** `<installation>/runtime/worktrees/...` resolves to the installation root. */
+/** `<installation>/worktrees/...` and legacy paths resolve to the installation root. */
 function owningInstallationRoot(root: string): string | null {
   const segments = path.resolve(root).split(path.sep)
   const index = segments.lastIndexOf('worktrees')
 
-  return index > 0 && segments[index - 1] === 'runtime'
-    ? segments.slice(0, index - 1).join(path.sep) || path.sep
-    : null
+  if (index <= 0) {
+    return null
+  }
+
+  if (segments[index - 1] === 'runtime') {
+    return segments.slice(0, index - 1).join(path.sep) || path.sep
+  }
+
+  return segments.slice(0, index).join(path.sep) || path.sep
 }
 
 export function repositoryChecksSourcePath(root: string): string {

@@ -5,9 +5,11 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
+  readInvocationFromPath,
   scaffoldDataFromRequiredData,
   scaffoldStageOutput,
 } from '../../src/lib/requirements/scaffold.js'
+import { PanError } from '../../src/lib/errors.js'
 import type { Invocation } from '../../src/lib/types.js'
 
 test('scaffold builds nested data from dotted required_data paths', () => {
@@ -140,6 +142,43 @@ test('scaffold omits the attestation for a legacy invocation', () => {
   const result = scaffoldStageOutput(root, invocation, outputPath, false)
 
   assert.equal(result.output.invocation_attestation, undefined)
+})
+
+test('the scaffold interface rejects the Markdown contract by artifact type', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'pan-scaffold-'))
+  const markdownPath = 'runtime/logs/workflows/x/invocations/implement-1.md'
+  const jsonPath = 'runtime/logs/workflows/x/invocations/implement-1.json'
+  const absoluteJson = path.join(root, jsonPath)
+
+  mkdirSync(path.dirname(absoluteJson), { recursive: true })
+  writeFileSync(path.join(root, markdownPath), '# Card\n')
+  writeFileSync(absoluteJson, '{"invocation_id":"implement-1"}\n')
+
+  // The error names the failure as an artifact-type mismatch and points at
+  // the sibling snapshot — never a generic JSON parse error.
+  assert.throws(
+    () => readInvocationFromPath(root, markdownPath),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'INVOCATION_ARTIFACT_TYPE' &&
+      error.message.includes(jsonPath),
+  )
+})
+
+test('the artifact-type rejection stands even without a sibling snapshot', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'pan-scaffold-'))
+  const markdownPath = 'runtime/logs/workflows/x/invocations/implement-1.md'
+
+  mkdirSync(path.join(root, path.dirname(markdownPath)), { recursive: true })
+  writeFileSync(path.join(root, markdownPath), '# Card\n')
+
+  assert.throws(
+    () => readInvocationFromPath(root, markdownPath),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'INVOCATION_ARTIFACT_TYPE' &&
+      error.message.includes('.json snapshot'),
+  )
 })
 
 test('scaffold retains only non-transient brief sources as artifacts', () => {

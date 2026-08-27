@@ -456,6 +456,46 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
   }
 })
 
+test('embedded and detached installs prepare the current worktrees root', () => {
+  const project = makeSkeletonProject()
+  const harness = mkdtempSync(
+    path.join(tmpdir(), 'pancreator-detached-harness-'),
+  )
+
+  try {
+    const embedded = runInstaller(project)
+    assert.equal(embedded.status, 0, embedded.stderr)
+    assert.equal(
+      existsSync(path.join(project, '.pancreator', 'worktrees')),
+      true,
+    )
+
+    const legacyMarker = path.join(
+      project,
+      '.pancreator',
+      'runtime',
+      'worktrees',
+      'operator',
+      'legacy-note.txt',
+    )
+    mkdirSync(path.dirname(legacyMarker), { recursive: true })
+    writeFileSync(legacyMarker, 'legacy bytes\n')
+    const beforeRefresh = readFileSync(legacyMarker, 'utf8')
+
+    const refresh = runInstaller(project, ['--yes'])
+    assert.equal(refresh.status, 0, refresh.stderr)
+    assert.equal(readFileSync(legacyMarker, 'utf8'), beforeRefresh)
+
+    const detachedProject = makeSkeletonProject()
+    const detached = runInstaller(detachedProject, ['--harness-dir', harness])
+    assert.equal(detached.status, 0, detached.stderr)
+    assert.equal(existsSync(path.join(harness, 'worktrees')), true)
+  } finally {
+    rmSync(project, { recursive: true, force: true })
+    rmSync(harness, { recursive: true, force: true })
+  }
+})
+
 test('dirty development snapshot installs with automatic updates disabled', () => {
   const source = createReleaseFixture()
   const project = makeSkeletonProject()

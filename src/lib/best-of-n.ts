@@ -26,6 +26,12 @@ import {
   writeTextAtomic,
 } from './io.js'
 import {
+  bestOfNCandidatePath,
+  CURRENT_MANAGED_WORKTREES_ROOT,
+  legacyBestOfNCandidatePath,
+  LEGACY_MANAGED_WORKTREES_ROOT,
+} from './project-config.js'
+import {
   loadPipelineConfig,
   loadPipelineConfigSnapshot,
 } from './pipeline-config.js'
@@ -449,7 +455,7 @@ function reconcileSessionState(
     const pending = next.pending.find((entry) => entry.slot === run.slot)
     const claim: BestOfNPendingCandidate = pending ?? {
       slot: run.slot,
-      worktree_path: `runtime/worktrees/${next.bon_id}/${run.slot}`,
+      worktree_path: resolveCandidateWorktreePath(root, next.bon_id, run.slot),
       agent_suffix: agentSuffix(next.bon_id, run.slot),
     }
 
@@ -722,7 +728,7 @@ function createSessionCandidates(
   for (const candidate of plan.configs.candidates) {
     const pending: BestOfNPendingCandidate = {
       slot: candidate.name,
-      worktree_path: `runtime/worktrees/${state.bon_id}/${candidate.name}`,
+      worktree_path: bestOfNCandidatePath(state.bon_id, candidate.name),
       agent_suffix: agentSuffix(state.bon_id, candidate.name),
     }
 
@@ -1320,16 +1326,14 @@ function removeSessionResources(
     )
   }
 
-  const sessionWorktreeRoot = resolveInside(root, `runtime/worktrees/${bonId}`)
-
-  // Only the now-empty session directory is removed here. Anything still inside
-  // it is work Git no longer tracks as a worktree, and discarding it silently
-  // would bypass the dirty-worktree refusal above.
-  if (
-    fileExists(sessionWorktreeRoot) &&
-    isEmptyDirectory(sessionWorktreeRoot)
-  ) {
-    rmSync(sessionWorktreeRoot, { recursive: true, force: true })
+  for (const sessionRoot of sessionWorktreeDirectoryRoots(
+    root,
+    bonId,
+    claimed,
+  )) {
+    if (fileExists(sessionRoot) && isEmptyDirectory(sessionRoot)) {
+      rmSync(sessionRoot, { recursive: true, force: true })
+    }
   }
 
   return {
@@ -1402,68 +1406,118 @@ function orphanVariantSuffixes(root: string, sessionIds: string[]): string[] {
   return [...suffixes].sort()
 }
 
+function resolveCandidateWorktreePath(
+  root: string,
+  bonId: string,
+  slot: string,
+): string {
+  const current = bestOfNCandidatePath(bonId, slot)
+  const legacy = legacyBestOfNCandidatePath(bonId, slot)
+
+  if (fileExists(resolveInside(root, current))) {
+    return current
+  }
+
+  if (fileExists(resolveInside(root, legacy))) {
+    return legacy
+  }
+
+  return current
+}
+
+function sessionWorktreeDirectoryRoots(
+  root: string,
+  bonId: string,
+  claimed: BestOfNPendingCandidate[],
+): string[] {
+  const roots = new Set<string>()
+
+  for (const candidate of claimed) {
+    roots.add(path.dirname(resolveInside(root, candidate.worktree_path)))
+  }
+
+  for (const relative of [
+    path.posix.join(CURRENT_MANAGED_WORKTREES_ROOT, bonId),
+    path.posix.join(LEGACY_MANAGED_WORKTREES_ROOT, bonId),
+  ]) {
+    const absolute = resolveInside(root, relative)
+
+    if (fileExists(absolute)) {
+      roots.add(absolute)
+    }
+  }
+
+  return [...roots]
+}
+
+function managedBestOfNWorktreeRoots(root: string): string[] {
+  return [
+    path.join(root, CURRENT_MANAGED_WORKTREES_ROOT),
+    path.join(root, LEGACY_MANAGED_WORKTREES_ROOT),
+  ].filter((directory) => fileExists(directory))
+}
+
 function pruneOrphanWorktrees(
   root: string,
   sessionIds: string[],
   options: { force?: boolean },
   skipped: PruneBestOfNSkip[],
 ): string[] {
-  const directory = path.join(root, 'runtime', 'worktrees')
-
-  if (!fileExists(directory)) {
-    return []
-  }
-
   const protectedIds = new Set(sessionIds)
   const registered = new Set(gitWorktreePaths(root))
   const removed: string[] = []
 
-  for (const entry of readdirSync(directory, { withFileTypes: true })) {
-    if (
-      !entry.isDirectory() ||
-      !BEST_OF_N_ID_PATTERN.test(entry.name) ||
-      protectedIds.has(entry.name)
-    ) {
-      continue
-    }
-
-    const sessionRoot = path.join(directory, entry.name)
-
-    for (const slot of readdirSync(sessionRoot, { withFileTypes: true })) {
-      if (!slot.isDirectory()) {
+  for (const directory of managedBestOfNWorktreeRoots(root)) {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      if (
+        !entry.isDirectory() ||
+        !BEST_OF_N_ID_PATTERN.test(entry.name) ||
+        protectedIds.has(entry.name)
+      ) {
         continue
       }
 
-      const relativeWorktree = path.posix.join(
-        'runtime',
-        'worktrees',
-        entry.name,
-        slot.name,
-      )
-      const worktreePath = resolveInside(root, relativeWorktree)
+      const sessionRoot = path.join(directory, entry.name)
+      const managedPrefix =
+        directory === path.join(root, CURRENT_MANAGED_WORKTREES_ROOT)
+          ? CURRENT_MANAGED_WORKTREES_ROOT
+          : LEGACY_MANAGED_WORKTREES_ROOT
 
-      if (!registered.has(worktreePath)) {
-        skipped.push({
-          resource: relativeWorktree,
-          reason: 'Directory is not a registered Git worktree.',
-        })
-        continue
+      for (const slot of readdirSync(sessionRoot, { withFileTypes: true })) {
+        if (!slot.isDirectory()) {
+          continue
+        }
+
+        const relativeWorktree = path.posix.join(
+          managedPrefix,
+          entry.name,
+          slot.name,
+        )
+        const worktreePath = resolveInside(root, relativeWorktree)
+
+        if (!registered.has(worktreePath)) {
+          skipped.push({
+            resource: relativeWorktree,
+            reason: 'Directory is not a registered Git worktree.',
+          })
+          continue
+        }
+
+        if (!options.force && gitWorktreeIsDirty(worktreePath)) {
+          skipped.push({
+            resource: relativeWorktree,
+            reason: 'Worktree is dirty. Re-run with --force to discard it.',
+          })
+          continue
+        }
+
+        gitWorktreeRemove(root, worktreePath, options.force ?? false)
+        removed.push(relativeWorktree)
       }
 
-      if (!options.force && gitWorktreeIsDirty(worktreePath)) {
-        skipped.push({
-          resource: relativeWorktree,
-          reason: 'Worktree is dirty. Re-run with --force to discard it.',
-        })
-        continue
+      if (isEmptyDirectory(sessionRoot)) {
+        rmSync(sessionRoot, { recursive: true, force: true })
       }
-
-      gitWorktreeRemove(root, worktreePath, options.force ?? false)
-      removed.push(relativeWorktree)
-    }
-
-    if (isEmptyDirectory(sessionRoot)) {
-      rmSync(sessionRoot, { recursive: true, force: true })
     }
   }
 

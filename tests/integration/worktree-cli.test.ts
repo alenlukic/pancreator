@@ -83,7 +83,7 @@ test('worktree create, list, source selection, and targeted init preserve the ma
 
   assert.equal(alpha.created_from, mainHead)
   assert.equal(alpha.branch, 'worktree/alpha')
-  assert.equal(alpha.path, 'runtime/worktrees/operator/alpha')
+  assert.equal(alpha.path, 'worktrees/operator/alpha')
   assert.equal(alpha.description, 'Primary feature work')
   assert.ok(git(root, ['worktree', 'list', '--porcelain']).includes(alphaPath))
 
@@ -164,7 +164,7 @@ test('init --worktree creates a missing worktree and setup commands prepare it',
     workspace_root: string
   }>(root, ['init', '--request', 'request.md', '--worktree', 'fresh'])
 
-  assert.equal(initialized.workspace_root, 'runtime/worktrees/operator/fresh')
+  assert.equal(initialized.workspace_root, 'worktrees/operator/fresh')
   assert.equal(
     existsSync(path.join(root, initialized.workspace_root, 'setup-ran.txt')),
     true,
@@ -601,7 +601,7 @@ test('technologies detect --worktree creates the worktree and scans inside it', 
   )
 
   writeFileSync(
-    path.join(root, 'runtime/worktrees/operator/tech', 'requirements.txt'),
+    path.join(root, 'worktrees/operator/tech', 'requirements.txt'),
     'requests\n',
   )
 
@@ -639,7 +639,7 @@ test('doctor --worktree points workspace diagnostics at the worktree', () => {
   }
 
   assert.equal(doctor.workspace.worktree, 'diagnose')
-  assert.equal(doctor.workspace.root, 'runtime/worktrees/operator/diagnose')
+  assert.equal(doctor.workspace.root, 'worktrees/operator/diagnose')
   assert.equal(doctor.git.available_repository, true)
   assert.ok(
     doctor.repository_check_environment.profiles_without_probes.includes(
@@ -670,7 +670,7 @@ test('worktree resolve creates the worktree once and resolves it afterward', () 
 
   assert.equal(resolved.status, 'resolved')
   assert.equal(resolved.created, true)
-  assert.equal(resolved.worktree.path, 'runtime/worktrees/operator/utility')
+  assert.equal(resolved.worktree.path, 'worktrees/operator/utility')
   assert.equal(resolved.worktree.branch, 'worktree/utility')
   assert.equal(
     existsSync(path.join(root, resolved.worktree.path, '.git')),
