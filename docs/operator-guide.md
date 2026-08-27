@@ -130,6 +130,12 @@ The final ship approval applies only the recorded ship outcome. It completes
 the workflow without a commit, push, merge, publication, deployment, or branch
 deletion.
 
+After the run reaches a terminal state, the QA agent investigates each flagged
+issue. It separates a verified root-cause repair from a retry, workaround,
+configuration patch, rollback, reconciliation, or containment action. It puts
+one implementation-ready remediation intake in `runtime/inbox/` when an issue
+does not have a verified root-cause repair.
+
 ## Invocation and delegation validation
 
 `INVOCATION-001` is the normative invocation-card and delegation policy. Each
@@ -138,8 +144,10 @@ prepared invocation writes `<invocation-id>.invocation-validation.json` under
 fails, read that artifact for the failing checks before retrying.
 
 When `pending_action` is `invoke_agent`, deliver the canonical invocation card
-according to the **Supervisor delivery procedure** section at the end of that
-card, which carries `INVOCATION-001` with resolved paths, and persist its
+according to the `<invocation-id>.supervisor.md` procedure document that the
+card's **Supervisor delivery procedure** section names — it carries
+`INVOCATION-001` with resolved paths and every lifecycle command, keeping the
+worker-visible card free of them — and persist the
 delegation audit artifact. Before
 `./bin/pan submit`, confirm delegation validation passed. Rejection with
 `DELEGATION_ARTIFACT_MISSING` or `DELEGATION_VALIDATION_FAILED` leaves the run
@@ -556,7 +564,7 @@ A worktree is a second working directory of the same repository. Every worktree 
 ```
 
 - `create` makes the branch `worktree/<name>` from `--from` (a branch, a revision, or another recorded worktree) and defaults to the commit the main checkout currently holds. Names use lowercase letters, digits, and single hyphens, because the name becomes both a directory and a branch segment.
-- Worktrees live under `runtime/worktrees/operator/<name>` and are recorded in `runtime/worktrees/operator/index.json` with branch, commit, description, and creation date. That index is harness-owned generated state; change it only through these commands.
+- Worktrees live under `worktrees/operator/<name>` and are recorded in `worktrees/operator/index.json` with branch, commit, description, and creation date. That index is harness-owned generated state; change it only through these commands. Installations that still hold only `runtime/worktrees/operator/index.json` continue to use that legacy index in place, and new worktrees are created under `worktrees/operator/`. A `worktrees.root` you declare in `config.json` overrides both locations and is never relocated.
 - `list` adds live state to the recorded fields: whether Git still registers the directory, the current head commit, and whether the worktree is dirty. `--json` returns the same records for scripting.
 - `--worktree <name>` is one shared option with one contract: every workspace-aware command accepts it, resolves the name the same way, and creates the worktree when the index does not hold it. The workspace-aware commands are `init` (starts a workflow run there), `repository-check <profile>` (verifies it without a run), `technologies detect` (detects languages inside it), `doctor` (points its workspace diagnostics at it), and `governance card --mode <mode>` (targets a standalone persona — spotfix, pair, shepherd, debug, repair, decompose — at it through a card-level workspace section). Every other command rejects `--worktree` with an explicit error naming this list, because it does not run against a selectable workspace. The branch of the main checkout never changes.
 - `worktree resolve <name>` applies the same create-or-resolve behavior directly and reports the worktree record with a `created` flag. The projected commands that delegate a named persona outside the CLI — `/pan-build-docs` and `/pan-build-briefs` (librarian), `/pan-release` and `/pan-write-pr` (release steward) — bind their workspace to an operator-named worktree through it. `/pan-start` covers workflows: name a worktree in the request and the orchestrator passes `--worktree <name>` to `init`. Commands that act on an existing run (`/pan-resume`, `/pan-status`) take no worktree option, because a run binds its workspace once at creation.
@@ -564,7 +572,7 @@ A worktree is a second working directory of the same repository. Every worktree 
 - `pan repository-check <profile> --workspace <name>` also accepts a recorded worktree name or a directory path; unlike `--worktree`, it never creates anything.
 - `remove <name>` refuses a worktree with uncommitted work unless you pass `--force`, and always keeps the branch, because deleting a branch stays your decision. When you already deleted the directory yourself, `remove` prunes the stale Git registration and the index entry.
 
-Best-of-N candidate worktrees are separate. They live under `runtime/worktrees/<bon-id>/` and remain owned by `./bin/pan best-of-n`, so `pan worktree` neither lists nor removes them.
+Best-of-N candidate worktrees are separate. They live under `worktrees/<bon-id>/` and remain owned by `./bin/pan best-of-n`, so `pan worktree` neither lists nor removes them. Existing sessions may still reference legacy paths under `runtime/worktrees/<bon-id>/`; those paths remain authoritative until the operator removes the session.
 
 ### Reconciling worktrees
 
@@ -584,7 +592,7 @@ Configure defaults in `config.json` when the built-in ones do not suit the repos
 ```json
 {
   "worktrees": {
-    "root": "runtime/worktrees/operator",
+    "root": "worktrees/operator",
     "branch_prefix": "worktree/",
     "setup": ["npm ci"]
   }

@@ -628,6 +628,31 @@ test('suffix migration deduplicates same-minute keyword collisions', () => {
   )
 })
 
+test('suffix migration skips best-of-N sessions with live worktrees at the current root', () => {
+  const root = mkdtempSync(
+    path.join(os.tmpdir(), 'pan-suffix-worktree-current-'),
+  )
+  const bonId = '63379_Jun-22-0158_dddd4444'
+
+  write(
+    path.join(root, 'runtime/logs/best-of-n', bonId, 'state.json'),
+    `${JSON.stringify({
+      bon_id: bonId,
+      request: { source_path: 'runtime/inbox/2026-06-22-live-session.md' },
+    })}\n`,
+  )
+  mkdirSync(path.join(root, 'worktrees', bonId, 'slot-a'), {
+    recursive: true,
+  })
+
+  const summary = migrateRunSuffixes(root)
+
+  assert.equal(summary.best_of_n_directories, 0)
+  assert.deepEqual(summary.skipped_directories, [
+    `runtime/logs/best-of-n/${bonId}`,
+  ])
+})
+
 test('suffix migration skips best-of-N sessions with live worktrees', () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'pan-suffix-worktree-'))
   const bonId = '63379_Jun-22-0158_cccc3333'

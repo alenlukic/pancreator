@@ -1,6 +1,6 @@
 import path from 'node:path'
 
-import { isRecord, readJson, readText } from '../io.js'
+import { fileExists, isRecord, readJson, readText } from '../io.js'
 import {
   expectedDelegationSource,
   validateDelegationMarkdown,
@@ -114,7 +114,23 @@ function invocationValidateHandler(input: HandlerInput): HandlerResult {
   }
 
   const markdown = readText(path.join(input.root, input.targetPath))
-  const result = validateInvocationMarkdown(input.invocation as never, markdown)
+  const invocation = input.invocation as {
+    delegation?: { supervisor_procedure_path?: string }
+  }
+  const procedurePath = invocation.delegation?.supervisor_procedure_path
+  const procedureAbsolute =
+    typeof procedurePath === 'string'
+      ? path.join(input.root, procedurePath)
+      : null
+  const procedure =
+    procedureAbsolute && fileExists(procedureAbsolute)
+      ? readText(procedureAbsolute)
+      : undefined
+  const result = validateInvocationMarkdown(
+    input.invocation as never,
+    markdown,
+    procedure,
+  )
 
   return {
     status: result.passed ? 'passed' : 'failed',

@@ -38,7 +38,13 @@ import { probeCursorModels } from './lib/executors/cursor-probe.js'
 import { claudeCodeVersionPreflight } from './lib/executors/claude-code.js'
 import { browserReadiness } from './lib/browser-readiness.js'
 import { errorMessage, PanError } from './lib/errors.js'
-import { configuredWorkspaceRoot, panCommand } from './lib/project-config.js'
+import {
+  configuredWorkspaceRoot,
+  harnessConfigName,
+  localConfigName,
+  mergeConfigValues,
+  panCommand,
+} from './lib/project-config.js'
 import { resolvePolicies } from './lib/policies.js'
 import { resolvePrDescriptionContext } from './lib/pr-description.js'
 import {
@@ -68,7 +74,9 @@ import { gitWorkspaceSnapshot, isGitRepository } from './lib/git.js'
 import {
   loadPipelineConfig,
   loadPipelineConfigSnapshot,
+  parsePipelineConfig,
 } from './lib/pipeline-config.js'
+import { migratePipelineOverrides } from './lib/pipeline-config-migration.js'
 import { loadOperatorInvolvementFile } from './lib/operator-involvement.js'
 import { loadVerificationFile } from './lib/verification.js'
 import { syncCursorProjection } from './lib/projection.js'
@@ -79,6 +87,7 @@ import {
   readJson,
   readText,
   resolveInside,
+  writeJsonAtomic,
   writeTextAtomic,
 } from './lib/io.js'
 import type { AgentRecord, RunState } from './lib/types.js'
@@ -157,10 +166,11 @@ const HELP_BODY = `Usage:
   pan status <run-id> [--json]
   pan list [--json]
   pan archive [--days <positive-integer>] [--json]
-  pan models [--sync] [--probe] [--json]
+  pan models [--sync] [--probe] [--migrate-from <previous-config.json>] [--json]
   pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source> [--json]
   pan models --probe --run <run-id> --invocation <invocation-id> [--json]
-      --probe launches one minimal cursor-agent call per distinct active model spec and fails loudly when the resolved variant differs from the catalog's prediction. Needs the cursor-agent CLI and CURSOR_API_KEY or a login.
+      --probe launches one minimal cursor-agent call per distinct active model spec and fails loudly when the resolved variant differs from the catalog's prediction. Needs the cursor-agent CLI and CURSOR_API_KEY (process environment or repository .env) or a login.
+      --migrate-from preserves the previous effective model map across a tracked config.json replacement: every mapping the new file leaves empty is carried into config_overrides.json, and the replacement stops before mutation when any required mapping stays empty.
   pan validate [--json]
   pan doctor [--worktree <name>] [--json]
   pan requirements resolve --persona <p> --workflow <w> --stage <s> [--kind <kind>] [--output-path <path>] [--json]
@@ -1599,6 +1609,63 @@ async function main(): Promise<void> {
         return
       }
 
+      // A tracked config.json replacement runs before loadPipelineConfig:
+      // the point of the migration is to repair an effective map the normal
+      // load would reject. Preservation is validated on the merged result
+      // before any file mutation, so a failed migration changes nothing.
+      const migrateFrom = option(args, '--migrate-from')
+      let migration = null
+
+      if (migrateFrom) {
+        const previousPath = path.isAbsolute(migrateFrom)
+          ? migrateFrom
+          : path.join(root, migrateFrom)
+        const trackedName = harnessConfigName(root)
+
+        if (!trackedName) {
+          throw new PanError('No config.json exists to migrate.', {
+            code: 'INVALID_PIPELINE_CONFIG',
+          })
+        }
+
+        const next = readJson(path.join(root, trackedName))
+        const overridesName = localConfigName(root)
+        const overridesPath = path.join(root, overridesName)
+        const result = migratePipelineOverrides({
+          previous: readJson(previousPath),
+          next,
+          overrides: fileExists(overridesPath) ? readJson(overridesPath) : null,
+        })
+
+        if (result.missing.length > 0) {
+          throw new PanError(
+            'Configuration replacement stopped before mutation: the ' +
+              'effective model map still has empty mappings that the ' +
+              `previous configuration cannot fill: ${result.missing.join(', ')}. ` +
+              `Add them to ${overridesName} and rerun.`,
+            { code: 'INVALID_PIPELINE_CONFIG' },
+          )
+        }
+
+        // Grammar-validate the merged result before touching the overrides
+        // file, so a malformed preservation never lands on disk.
+        parsePipelineConfig(
+          mergeConfigValues(next, result.overrides),
+          trackedName,
+        )
+
+        if (result.changed) {
+          writeJsonAtomic(overridesPath, result.overrides)
+        }
+
+        migration = {
+          previous_path: migrateFrom,
+          overrides_path: overridesName,
+          preserved: result.preserved,
+          overrides_written: result.changed,
+        }
+      }
+
       const loaded = loadPipelineConfig(root)
       const changes = syncCursorProjection(root, {
         write: hasFlag(args, '--sync'),
@@ -1624,6 +1691,7 @@ async function main(): Promise<void> {
           ),
           sync_requested: hasFlag(args, '--sync'),
           changed_projections: changes.filter((entry) => entry.changed),
+          ...(migration ? { migration } : {}),
           ...(probes ? { probes } : {}),
         },
         true,

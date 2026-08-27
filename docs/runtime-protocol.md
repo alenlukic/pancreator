@@ -104,12 +104,15 @@ the invocation-time policy snapshot. Layout v2 writes the result under
 stage history can advance. `INVOCATION-001` defines the canonical delivery
 contract and the supervisor-owned-stage exception.
 
-Every prepared worker card also ends with a **Supervisor delivery procedure**
-section carrying that policy with this invocation's resolved paths. The
-supervisor holds no card of its own during the continuation loop, so the contract
-travels on the artifact it must already read to deliver the card. The section is
-part of the canonical body: removing it breaks delegation equality, and its
-presence is checked by the invocation validator.
+Every prepared worker card ends with a **Supervisor delivery procedure**
+section that names the sibling `<invocation-id>.supervisor.md` procedure
+document. That document carries `INVOCATION-001` with this invocation's
+resolved paths and owns every workflow lifecycle command — `pan submit` above
+all — so the worker-visible contract never prints one; the invocation
+validator rejects a card that does. The pointer section is part of the
+canonical body: removing it breaks delegation equality, and the validator
+checks the pointer, the procedure document, and the worker isolation
+together.
 
 ## External stage executors
 

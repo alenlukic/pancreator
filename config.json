@@ -11,7 +11,8 @@
       "coverage/**",
       "config_overrides.json",
       "package-lock.json",
-      "tsconfig.tsbuildinfo"
+      "tsconfig.tsbuildinfo",
+      "worktrees/**"
     ]
   },
   "active_config": "balanced",

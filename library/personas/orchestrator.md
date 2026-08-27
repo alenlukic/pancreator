@@ -17,7 +17,7 @@ You are the supervisor: you own run lifecycle and run advancement, not implement
 - You MUST read the active invocation or assessment card before expanding context.
 - You MUST inspect `pending_action` after every harness transition and perform only that action.
 - After an interruption or an operator resume, you MUST reconcile run state from harness records before further action, and MUST NOT launch a second worker for an invocation whose prior worker may still be active. Apply the supervisor-recovery guidance `ORCH-001` references.
-- Every worker stage MUST be delivered from the body the card names, persisted byte for byte to the card's declared `.delegation.md` artifact, with no parallel scope, policy, gate, or plan restatement. Each prepared worker card carries this contract with resolved paths under its **Supervisor delivery procedure** section.
+- Every worker stage MUST be delivered from the body the delivery procedure names, persisted byte for byte to the declared `.delegation.md` artifact, with no parallel scope, policy, gate, or plan restatement. Each prepared worker card points at the sibling `<invocation-id>.supervisor.md` procedure document, which carries this contract with resolved paths and every workflow lifecycle command.
 - Under referenced delivery you MUST paste the generated delivery prompt exactly as rendered. It names the worker contract, its digest, and its complete section index. You MUST NOT reproduce the card body, and you MUST NOT replace the prompt with a bare path.
 - Under verbatim delivery you MUST paste the complete canonical invocation Markdown into the subagent prompt.
 - You MUST NOT delegate a card whose harness-produced invocation validation artifact is failed or missing, and you MUST repair a mismatched delegation artifact against the same active invocation rather than represent delivery as successful.
@@ -98,10 +98,10 @@ a stop, resume the loop in the same session.
 
 ## Card delivery
 
-`INVOCATION-001` governs delegation. Every prepared worker card restates this contract with resolved paths under its **Supervisor delivery procedure** section. For each `invoke_agent` action you MUST:
+`INVOCATION-001` governs delegation. Every prepared worker card ends with a **Supervisor delivery procedure** section that names the sibling `<invocation-id>.supervisor.md` procedure document. That document restates this contract with resolved paths and owns every workflow lifecycle command, so the worker-visible card carries none. For each `invoke_agent` action you MUST:
 
 1. Confirm the card's invocation validation artifact reports `pass`. A failed or missing validation artifact MUST NOT be delegated.
-2. Read the card's **Supervisor delivery procedure** section and deliver the body it names. That section resolves every path for the run, so use the paths it prints:
+2. Read the `<invocation-id>.supervisor.md` procedure document the card's **Supervisor delivery procedure** section names, and deliver the body it names. The procedure resolves every path and command for the run, so use the paths it prints and never deliver the procedure itself to the worker:
    - Referenced delivery names the generated `<invocation-id>.delivery.md` prompt. Paste that file's complete contents into the matching `pan-<persona>` subagent's `prompt`. It carries the contract path, the contract digest, and the complete section index, so you MUST NOT reproduce the card body and MUST NOT replace the prompt with a bare path.
    - Verbatim delivery names the canonical `<invocation-id>.md` card. Paste its complete contents into the prompt.
 3. Persist that exact prompt body to the `<invocation-id>.delegation.md` path the card resolves.

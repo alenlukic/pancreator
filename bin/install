@@ -208,7 +208,8 @@ run_smoke() {
       && grep -q '"workspace_policy": "source_allowed"' \
         "$project/.pancreator/library/workflows/dev/stages/review.json" \
       && test ! -e "$project/.pancreator/workdesk" \
-      && test ! -e "$project/.pancreator/runtime/workflows"
+      && test ! -e "$project/.pancreator/runtime/workflows" \
+      && test -d "$project/.pancreator/worktrees"
   }
 
   fresh_project="$(smoke_project)"
@@ -671,7 +672,8 @@ prepare_persistent_layout() {
     "$INBOX_DIR" \
     "$RUNTIME_DIR/logs/workflows" \
     "$RUNTIME_DIR/backlog" \
-    "$DOCS_DIR"
+    "$DOCS_DIR" \
+    "$PANCREATOR_DIR/worktrees"
 
   # Per-file workspace locks were removed. Refreshes clean up stale lock files
   # from older installations so they can never block run completion again.

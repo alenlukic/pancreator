@@ -243,6 +243,142 @@ export function renderInvocationDeliveryPrompt(
   return `${lines.join('\n')}\n`
 }
 
+/**
+ * Render the supervisor delivery procedure: policies, resolved paths, and the
+ * lifecycle steps that advance the stage. New invocations write this to the
+ * sibling `<invocation-id>.supervisor.md` document so the worker contract
+ * carries no lifecycle command; legacy invocations inline it on the card.
+ */
+function renderSupervisorProcedureBody(
+  invocation: Invocation,
+  standalone = false,
+): string[] {
+  const { delegation } = invocation
+
+  if (!delegation) {
+    return []
+  }
+
+  const externalDelegation =
+    delegation.executor && delegation.executor !== 'cursor'
+      ? delegation.executor
+      : null
+  const referencedDelivery =
+    delegation.mode === 'referenced' && delegation.delivery_prompt_path
+      ? delegation.delivery_prompt_path
+      : null
+  // The launch must bind to this named definition: it alone carries the
+  // persona's model mapping, and an ad-hoc spawn runs the executor default.
+  const namedAgent =
+    typeof delegation.cursor_agent_path === 'string'
+      ? (delegation.cursor_agent_path.split('/').pop() ?? '').replace(
+          /\.md$/u,
+          '',
+        )
+      : delegation.persona
+  const deliverySteps = externalDelegation
+    ? [
+        `2. Run \`${delegation.delegate_command}\`. The harness spawns the ` +
+          `'${externalDelegation}' executor with the complete canonical card ` +
+          `(\`${delegation.canonical_markdown_path}\`) and awaits its ` +
+          'result. You MUST NOT re-summarize, re-deliver, or paste the card ' +
+          'anywhere yourself.',
+        `3. The harness authors the delegation evidence at ` +
+          `\`${delegation.delegation_artifact_path}\` and the execution ` +
+          'audit beside it. You MUST NOT write either artifact.',
+      ]
+    : referencedDelivery
+      ? [
+          `2. Launch the named \`${namedAgent}\` agent — the definition at ` +
+            `\`${delegation.cursor_agent_path}\` — from this top-level ` +
+            'chat, never from inside another subagent and never as an ' +
+            'ad-hoc subagent: Cursor honors the model mapping only for a ' +
+            'top-level named launch and silently runs the platform default ' +
+            'otherwise. Paste the complete contents of ' +
+            `\`${referencedDelivery}\` verbatim as its prompt. That prompt ` +
+            'references the canonical card as the worker contract. A summary, ' +
+            'an excerpt, or an added restatement MUST NOT substitute for it.',
+          `3. Persist that exact prompt body to \`${delegation.delegation_artifact_path}\` ` +
+            'before submission. The only permitted label is a leading ' +
+            `\`Agent: ${namedAgent}\` line followed by one blank line; add ` +
+            'nothing else ahead of the body.',
+        ]
+      : [
+          `2. Launch the named \`${namedAgent}\` agent — the definition at ` +
+            `\`${delegation.cursor_agent_path}\` — from this top-level ` +
+            'chat, never from inside another subagent and never as an ' +
+            'ad-hoc subagent: Cursor honors the model mapping only for a ' +
+            'top-level named launch and silently runs the platform default ' +
+            'otherwise. Paste the complete contents of ' +
+            `\`${delegation.canonical_markdown_path}\` verbatim as its ` +
+            'prompt. A path reference, summary, or excerpt MUST NOT ' +
+            'substitute for the card body.',
+          `3. Persist that exact prompt body to \`${delegation.delegation_artifact_path}\` ` +
+            'before submission. The only permitted label is a leading ' +
+            `\`Agent: ${namedAgent}\` line followed by one blank line; add ` +
+            'nothing else ahead of the body.',
+        ]
+
+  return [
+    DELEGATION_HEADING,
+    '',
+    standalone
+      ? 'This document addresses the supervisor for invocation ' +
+        `\`${invocation.invocation_id}\` of run \`${invocation.run_id}\`. ` +
+        'It is not part of the worker contract at ' +
+        `\`${delegation.canonical_markdown_path}\`: its lifecycle commands ` +
+        'are supervisor-owned and MUST NOT be delivered to the worker.'
+      : 'This section addresses the supervisor that prepared this card, not the ' +
+        'assigned worker. The worker MUST ignore it. The supervisor MUST NOT ' +
+        'remove it: delegation evidence is compared against the delivered ' +
+        'prompt byte for byte.',
+    '',
+    ...renderPolicyBlocks(delegation.policies, 3),
+    ...(externalDelegation
+      ? [
+          `This stage executes under the '${externalDelegation}' ` +
+            'executor. The harness — not the supervisor — delivers the ' +
+            'canonical card to the spawned process and authors the ' +
+            'delegation evidence itself, so verbatim delivery is a ' +
+            'property of code.',
+          '',
+        ]
+      : []),
+    ...(referencedDelivery
+      ? [
+          'This invocation uses referenced delivery. The worker contract is ' +
+            `the card at \`${delegation.canonical_markdown_path}\`, and the ` +
+            'delivered prompt is a compact reference to it that carries the ' +
+            'contract digest and section index. The supervisor MUST NOT ' +
+            'reproduce the card body.',
+          '',
+        ]
+      : []),
+    'Resolved paths for this invocation:',
+    '',
+    `1. Confirm \`${delegation.invocation_validation_path}\` reports \`pass\`. ` +
+      'A failed or missing validation artifact MUST NOT be delegated.',
+    ...deliverySteps,
+    `4. Submit with \`${delegation.submit_command}\`.`,
+    '5. When `pan status` marks the invocation stale, re-deliver this card ' +
+      'only when the invocation validation still passes. Re-prepare the ' +
+      'invocation when validation failed or the card changed.',
+    '',
+  ]
+}
+
+/**
+ * Render the standalone supervisor procedure document for an invocation whose
+ * delegation names a `supervisor_procedure_path`.
+ */
+export function renderSupervisorProcedureMarkdown(
+  invocation: Invocation,
+): string {
+  const body = renderSupervisorProcedureBody(invocation, true)
+
+  return `${body.join('\n').trimEnd()}\n`
+}
+
 /** Render an invocation card for both the operator and the assigned worker. */
 export function renderInvocationMarkdown(invocation: Invocation): string {
   const { stage } = invocation
@@ -519,106 +655,25 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
     : []
 
   const { delegation } = invocation
-  const externalDelegation =
-    delegation?.executor && delegation.executor !== 'cursor'
-      ? delegation.executor
-      : null
-  const referencedDelivery =
-    delegation?.mode === 'referenced' && delegation.delivery_prompt_path
-      ? delegation.delivery_prompt_path
-      : null
-  // The launch must bind to this named definition: it alone carries the
-  // persona's model mapping, and an ad-hoc spawn runs the executor default.
-  const namedAgent =
-    delegation && typeof delegation.cursor_agent_path === 'string'
-      ? (delegation.cursor_agent_path.split('/').pop() ?? '').replace(
-          /\.md$/u,
-          '',
-        )
-      : delegation?.persona
-  const deliverySteps = externalDelegation
-    ? [
-        `2. Run \`${delegation?.delegate_command}\`. The harness spawns the ` +
-          `'${externalDelegation}' executor with the complete canonical card ` +
-          `(\`${delegation?.canonical_markdown_path}\`) and awaits its ` +
-          'result. You MUST NOT re-summarize, re-deliver, or paste the card ' +
-          'anywhere yourself.',
-        `3. The harness authors the delegation evidence at ` +
-          `\`${delegation?.delegation_artifact_path}\` and the execution ` +
-          'audit beside it. You MUST NOT write either artifact.',
-      ]
-    : referencedDelivery
-      ? [
-          `2. Launch the named \`${namedAgent}\` agent — the definition at ` +
-            `\`${delegation?.cursor_agent_path}\` — from this top-level ` +
-            'chat, never from inside another subagent and never as an ' +
-            'ad-hoc subagent: Cursor honors the model mapping only for a ' +
-            'top-level named launch and silently runs the platform default ' +
-            'otherwise. Paste the complete contents of ' +
-            `\`${referencedDelivery}\` verbatim as its prompt. That prompt ` +
-            'references this card as the worker contract. A summary, an ' +
-            'excerpt, or an added restatement MUST NOT substitute for it.',
-          `3. Persist that exact prompt body to \`${delegation?.delegation_artifact_path}\` ` +
-            'before submission. The only permitted label is a leading ' +
-            `\`Agent: ${namedAgent}\` line followed by one blank line; add ` +
-            'nothing else ahead of the body.',
-        ]
-      : [
-          `2. Launch the named \`${namedAgent}\` agent — the definition at ` +
-            `\`${delegation?.cursor_agent_path}\` — from this top-level ` +
-            'chat, never from inside another subagent and never as an ' +
-            'ad-hoc subagent: Cursor honors the model mapping only for a ' +
-            'top-level named launch and silently runs the platform default ' +
-            'otherwise. Paste the complete contents of ' +
-            `\`${delegation?.canonical_markdown_path}\` verbatim as its ` +
-            'prompt. A path reference, summary, or excerpt MUST NOT ' +
-            'substitute for the card body.',
-          `3. Persist that exact prompt body to \`${delegation?.delegation_artifact_path}\` ` +
-            'before submission. The only permitted label is a leading ' +
-            `\`Agent: ${namedAgent}\` line followed by one blank line; add ` +
-            'nothing else ahead of the body.',
-        ]
+  // Legacy invocations inline the full procedure on the card. New invocations
+  // point at the sibling supervisor document instead, so the worker-visible
+  // contract never carries a workflow lifecycle command.
   const delegationLines = delegation
-    ? [
-        DELEGATION_HEADING,
-        '',
-        'This section addresses the supervisor that prepared this card, not the ' +
-          'assigned worker. The worker MUST ignore it. The supervisor MUST NOT ' +
-          'remove it: delegation evidence is compared against the delivered ' +
-          'prompt byte for byte.',
-        '',
-        ...renderPolicyBlocks(delegation.policies, 3),
-        ...(externalDelegation
-          ? [
-              `This stage executes under the '${externalDelegation}' ` +
-                'executor. The harness — not the supervisor — delivers the ' +
-                'canonical card to the spawned process and authors the ' +
-                'delegation evidence itself, so verbatim delivery is a ' +
-                'property of code.',
-              '',
-            ]
-          : []),
-        ...(referencedDelivery
-          ? [
-              'This invocation uses referenced delivery. The worker contract is ' +
-                `this card at \`${delegation.canonical_markdown_path}\`, and the ` +
-                'delivered prompt is a compact reference to it that carries the ' +
-                'contract digest and section index. The supervisor MUST NOT ' +
-                'reproduce the card body.',
-              '',
-            ]
-          : []),
-        'Resolved paths for this invocation:',
-        '',
-        `1. Confirm \`${delegation.invocation_validation_path}\` reports \`pass\`. ` +
-          'A failed or missing validation artifact MUST NOT be delegated.',
-        ...deliverySteps,
-        `4. Submit with \`${delegation.submit_command}\`.`,
-        '5. When `pan status` marks the invocation stale, re-deliver this card ' +
-          'only when the invocation validation still passes. Re-prepare the ' +
-          'invocation when validation failed or the card changed.',
-        '',
-      ]
+    ? delegation.supervisor_procedure_path
+      ? [
+          DELEGATION_HEADING,
+          '',
+          'This section addresses the supervisor that prepared this card, not ' +
+            'the assigned worker. The worker MUST ignore it. The complete ' +
+            'delivery procedure, its policies, and every resolved workflow ' +
+            'lifecycle command live in ' +
+            `\`${delegation.supervisor_procedure_path}\`; the supervisor MUST ` +
+            'follow that document and MUST NOT deliver it to the worker. ' +
+            'Worker-visible sections of this card carry no workflow ' +
+            'lifecycle command.',
+          '',
+        ]
+      : renderSupervisorProcedureBody(invocation)
     : []
 
   const lines = [
@@ -698,6 +753,19 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
       `\`${invocation.output.template}\` as the base shape ` +
       `(schema \`${invocation.output.schema}\`).`,
     '',
+    ...(invocation.output.scaffold_command
+      ? [
+          'Prefill the output with the required scaffold automation, exactly ' +
+            'as printed:',
+          '',
+          `\`${invocation.output.scaffold_command}\``,
+          '',
+          'The `--invocation` argument accepts only that invocation JSON ' +
+            'snapshot. The Markdown contract beside it is not a valid ' +
+            'argument and fails by artifact type.',
+          '',
+        ]
+      : []),
     ...(invocation.attempt > 1
       ? [
           'This is a retry. Instead of re-emitting the whole document, you ' +

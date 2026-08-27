@@ -14,12 +14,44 @@ import type {
 /** Review method a run adopts when `config.json` declares none. */
 export const DEFAULT_REVIEW_MODE: ReviewMode = 'default'
 
+/** Top-level managed worktree root for current installations. */
+export const CURRENT_MANAGED_WORKTREES_ROOT = 'worktrees'
+
+/** Legacy managed worktree root kept for read-side compatibility. */
+export const LEGACY_MANAGED_WORKTREES_ROOT = 'runtime/worktrees'
+
 /**
- * Operator worktrees share `runtime/worktrees/` with best-of-N sessions. The
- * fixed `operator` child keeps the two apart, so `pan best-of-n clean` can
- * never reach a worktree an operator created by hand.
+ * Operator worktrees share the managed root with best-of-N sessions. The fixed
+ * `operator` child keeps the two apart, so `pan best-of-n clean` can never
+ * reach a worktree an operator created by hand.
  */
-export const DEFAULT_WORKTREE_ROOT = 'runtime/worktrees/operator'
+export const DEFAULT_WORKTREE_ROOT = 'worktrees/operator'
+
+/** Legacy default operator worktree directory. */
+export const LEGACY_DEFAULT_WORKTREE_ROOT = 'runtime/worktrees/operator'
+
+/**
+ * The operator worktree root `config.json` declares, or `undefined` when it
+ * declares none. Only an absent declaration follows the default relocation
+ * from `runtime/worktrees/operator` to `worktrees/operator`; a declared root
+ * stays exactly where the operator put it.
+ */
+export function configuredWorktreeRoot(root: string): string | undefined {
+  return loadProjectConfig(root).worktrees?.root
+}
+
+/** Candidate worktree path for a new best-of-N session slot. */
+export function bestOfNCandidatePath(bonId: string, slot: string): string {
+  return path.posix.join(CURRENT_MANAGED_WORKTREES_ROOT, bonId, slot)
+}
+
+/** Legacy candidate worktree path kept for read-side compatibility. */
+export function legacyBestOfNCandidatePath(
+  bonId: string,
+  slot: string,
+): string {
+  return path.posix.join(LEGACY_MANAGED_WORKTREES_ROOT, bonId, slot)
+}
 
 /**
  * Branch prefix that keeps harness branches recognizable in `git branch`.
@@ -79,7 +111,7 @@ export function localConfigName(root: string): string {
 }
 
 /** Objects merge recursively; any other local value replaces the base value. */
-function mergeConfigValues(base: unknown, override: unknown): unknown {
+export function mergeConfigValues(base: unknown, override: unknown): unknown {
   if (!isRecord(base) || !isRecord(override)) {
     return override
   }

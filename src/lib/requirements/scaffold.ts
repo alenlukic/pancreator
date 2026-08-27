@@ -1,5 +1,6 @@
 import path from 'node:path'
 
+import { PanError } from '../errors.js'
 import {
   fileExists,
   isRecord,
@@ -263,6 +264,25 @@ export function readInvocationFromPath(
   root: string,
   invocationPath: string,
 ): Invocation {
+  // The scaffold interface accepts exactly one artifact: the invocation JSON
+  // snapshot. The Markdown contract sits beside it with the same stem, so a
+  // wrong pick must fail by artifact type — before any parse attempt — and
+  // name the sibling snapshot instead of surfacing a generic JSON error.
+  if (!invocationPath.endsWith('.json')) {
+    const sibling = invocationPath.replace(/\.[^./]+$/u, '.json')
+    const siblingExists =
+      sibling !== invocationPath && fileExists(path.join(root, sibling))
+
+    throw new PanError(
+      `--invocation accepts only the invocation JSON snapshot, not ` +
+        `'${invocationPath}'.` +
+        (siblingExists
+          ? ` Use the sibling snapshot: ${sibling}`
+          : ' Use the <invocation-id>.json snapshot beside the Markdown contract.'),
+      { code: 'INVOCATION_ARTIFACT_TYPE' },
+    )
+  }
+
   const value = readJson(path.join(root, invocationPath))
 
   if (!isRecord(value)) {

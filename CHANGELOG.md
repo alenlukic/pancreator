@@ -1,5 +1,17 @@
 # Changelog
 
+## [4.7.0] - 2026-08-26
+
+### Changed
+
+- Move new operator and best-of-N worktrees to the top-level `worktrees/` root ([project-config](src/lib/project-config.ts), [worktrees](src/lib/worktrees.ts), [best-of-n](src/lib/best-of-n.ts)).
+- Keep legacy `runtime/worktrees/` records readable and leave them in place ([worktrees](src/lib/worktrees.ts), [operator-guide](docs/operator-guide.md)).
+- Create the current `worktrees/` root during install and update, and do not move legacy data ([install](bin/install)).
+- Exclude `worktrees/` from Git status and from workspace tracking ([.gitignore](.gitignore), [config.json](config.json)).
+- Name the current worktree location on policy, schema, primer, and operator-guide surfaces ([BESTOFN-001](governance/policies/BESTOFN-001.json), [config schema](library/schemas/config.schema.json)).
+- Fail with `WORKTREE_INDEX_CONFLICT` when both default operator indexes exist ([worktrees](src/lib/worktrees.ts)).
+- Honor a declared `worktrees.root` and keep new worktrees at that path ([worktrees](src/lib/worktrees.ts), [operator-guide](docs/operator-guide.md)).
+
 ## [4.6.0] - 2026-08-25
 
 ### Changed
