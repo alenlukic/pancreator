@@ -308,7 +308,7 @@ changes that run's snapshot.
 Baselines exist to answer one question: did this run's own edits break a
 check? They are captured once, before the first `source_allowed` stage edits
 anything, and cover only the profiles the run's verification level gates its
-source-mutating stages on (for dev: implementation `static`/`fast`). The same
+source-mutating stages on (for delivery: implementation `static`/`fast`). The same
 profiles run again at submission for their owning stages. A profile that still
 reports only normalized diagnostics already present in the baseline is
 recorded as a visible `preexisting_failure` but passes the workflow gate. Any
@@ -367,12 +367,6 @@ A run resolves one operator-involvement profile at `./bin/pan init [--involvemen
 Gates resolve by ascending specificity: the workflow's declared gate, then the profile's `*` gate, then run-contract escalations keyed by stage `checkpoint`, then the profile's explicit per-stage gate. A stage declaring `gate_relaxable: false` rejects any assignment that lowers operator involvement; escalation is always permitted.
 
 A run contract is orthogonal to workflow choice and attaches by stage `checkpoint` role rather than stage slug. `technical_director` escalates `technical_plan` and `independent_review` checkpoints to operator gates and activates the `contract`-scoped policy lookup row that loads `DIRECTOR-001`, keeping run contracts inside the single policy applicability map rather than a second one that could drift. An operator gate reached under an active contract carries `pending_action.checkpoint` so the supervisor presents refinement options rather than a plain approve/reject.
-
-## Review mode
-
-A run resolves one review mode at `./bin/pan init [--review-mode <mode>]` from `config.json.review_mode`, and records it in `state.review_mode` and on every invocation card. `default` is one reviewer reading the whole change, which is what the review stage prompt and `REVIEW-001` describe on their own. `squad` activates a `review_mode`-scoped policy lookup row that loads `REVIEW-002`, whose `guidance_sources` reference `library/skills/review-squad.md` on the reviewer's card. The run snapshots the resolution, so a later edit to `config.json` cannot change a run in flight.
-
-Review mode selects the method by which findings are gathered, not the authority over them. Under `squad` the reviewer stays the coordinator: it captures the diff once, writes an intent brief, delegates one agent per review dimension in parallel, and joins the returned findings into one ranked set. `REVIEW-001` continues to own the verdict, the reviewer remediation boundary, and routing to implementation, and a dimension agent never edits a file. The mode is a scalar rather than a profile map, because the only decision it carries is which review method a run adopts.
 
 ## Operator revisions
 

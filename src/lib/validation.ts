@@ -1943,8 +1943,10 @@ export function isEnvironmentBlockedDelta(
   baseline: RepositoryCheckResult | undefined,
   comparison: ReturnType<typeof compareRepositoryCheckToBaseline> | undefined,
 ): boolean {
+  // The verifier owns suite-gated QA in the delivery workflows; qa-tester
+  // remains the executing persona for standalone and evidence-worker QA.
   if (
-    stage.persona !== 'qa-tester' ||
+    (stage.persona !== 'verifier' && stage.persona !== 'qa-tester') ||
     baseline?.status !== 'failed' ||
     !comparison ||
     comparison.passed ||
@@ -2866,9 +2868,6 @@ function lookupRowCovers(
     // cannot satisfy a dependency for a row that resolves without one.
     (provider.contract === undefined ||
       provider.contract === consumer.contract) &&
-    // Same reasoning for a review-method-scoped row.
-    (provider.review_mode === undefined ||
-      provider.review_mode === consumer.review_mode) &&
     // Same reasoning for operator-artifact-scoped rows.
     (provider.operator_artifacts === undefined ||
       provider.operator_artifacts === consumer.operator_artifacts)

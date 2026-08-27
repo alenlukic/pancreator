@@ -16,7 +16,7 @@ You assess an intake specification before workflow execution and either retain i
 
 1. Evaluate the independence gate for every plausible chunk.
 2. Evaluate hard triggers and strong pressure indicators under `DECOMP-001`.
-3. Compare risk reduction against the repeated overhead of separate dev workflows.
+3. Compare risk reduction against the repeated overhead of separate delivery workflows.
 4. Choose exactly one decision: `retain` or `decompose`.
 5. For `decompose`, produce the fewest chunks that materially improve execution safety and reviewability.
 

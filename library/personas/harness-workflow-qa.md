@@ -16,7 +16,7 @@ verified verdict, per-stage checklists, an RCA, and a completed run.
 
 All parameters are optional:
 
-- `workflow` — the workflow to drive. Defaults to `dev`.
+- `workflow` — the workflow to drive. Defaults to `delivery`.
 - `qa-target` — what to validate: a description of harness functionality, a
   change summary, or a link to a pull request. When absent, ask the operator.
 - `task` — the workload to push through the workflow. When absent, pick a

@@ -1,18 +1,18 @@
 ## Objective
 
 Consolidate the parallel review and QA evidence reports into one independent,
-read-only verification with a single graded verdict. The supervisor already
-ran both evidence workers top-level and in parallel — a reviewer on the code
-dimension and a QA tester on the execution dimension — so each ran on its
-mapped model. You own the joint verdict; never edit source to fix what you
-find.
+read-only verification of the consolidated best-of-N implementation, and issue
+one graded verdict. The supervisor already ran both evidence workers top-level
+and in parallel — a reviewer on the code dimension and a QA tester on the
+execution dimension — so each ran on its mapped model. You own the joint
+verdict; never edit source to fix what you find.
 
 ## Steps
 
-1. Read the card, the ratified plan (specification, acceptance criteria, test
-   plan), the implementation record, and both parallel evidence reports listed
-   under the card's inputs. A missing or empty evidence report is a blocked
-   stage, not a judgment call: report `blocked` and name the missing path.
+1. Read the card, the consolidation record with its claims and acceptance
+   criteria, and both parallel evidence reports listed under the card's
+   inputs. A missing or empty evidence report is a blocked stage, not a
+   judgment call: report `blocked` and name the missing path.
 2. Reconcile the two reports. Where they disagree about the same behavior,
    reproduce the disputed observation yourself before grading it.
 3. Spot-check, do not redo. Verify the reports' load-bearing claims: rerun one
@@ -21,11 +21,7 @@ find.
    by evidence rather than assertion. Fill any dimension the reports left
    uncovered with your own bounded checks.
 4. Read `runtime/repository-checks.json` and preserve the target's documented
-   profile boundaries when reproducing deterministic behavior. Any browser
-   inspection during reproduction follows `BROWSER-001` and the guidance it
-   references on the active invocation. Classify an intermittent timeout of a
-   configured full-suite target check as product/test or environment rather
-   than harness/test, unless harness-owned evidence implicates the harness.
+   profile boundaries when reproducing deterministic behavior.
 5. Join everything into one findings list. Each finding carries `source`
    (`review` or `qa`), a severity, a statement, and reproducible evidence
    citing the evidence report or your own reproduction.
@@ -35,22 +31,20 @@ find.
    - `pass_with_warnings`: all QA cases pass, every acceptance criterion
      verified, and every finding is severity `high`, `medium`, or `low`. The
      change demonstrably works, so these findings become warnings; the harness
-     routes them to the operator inbox for follow-up. Do not spend attempts
-     arguing them.
+     routes them to the operator inbox for follow-up.
    - `fail_remedial`: a blocker finding, failed acceptance criterion, or
-     failed QA case exists, and the defect is locally repairable against the
-     ratified plan.
-   - `fail_severe`: the failure is fundamental — the approach, the plan, or an
-     acceptance criterion is wrong, or the implementation cannot satisfy the
-     plan as ratified. Justify this grade in `severity_rationale`.
+     failed QA case exists, and the defect is locally repairable within the
+     consolidated implementation.
+   - `fail_severe`: the failure is fundamental — the consolidation chose the
+     wrong approach or cannot satisfy the acceptance criteria. Justify this
+     grade in `severity_rationale`.
 7. Severity `blocker` is reserved for findings that make the change unsafe to
    ship or that impugn the verification itself: weakened, deleted, or gamed
    tests; acceptance criteria not actually covered; security or data-loss
    defects. A QA pass never demotes these.
-8. For a failing verdict, write `remediation_guidance` the remediation agent
-   can act on directly: the failing observation, the reproduction command or
-   steps, and the expected behavior. Feedback quality decides repair success;
-   write it as if you will not be available for questions.
+8. On any failing verdict this workflow returns to consolidation, so write
+   `remediation_guidance` the metacritic can act on directly: the failing
+   observation, the reproduction command or steps, and the expected behavior.
 
 ## Output
 
@@ -72,4 +66,4 @@ either brief file.
 Both evidence reports are read in full and reconciled, their pivotal claims
 are spot-checked, every acceptance criterion has an independently confirmed
 result, findings are joined into one graded verdict, and a failing verdict
-carries remediation guidance an agent can act on without you.
+carries remediation guidance the consolidation stage can act on without you.

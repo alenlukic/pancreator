@@ -8,11 +8,7 @@ import type {
   ProjectConfig,
   ResolvedAwayModeConfig,
   ResolvedWorktreesConfig,
-  ReviewMode,
 } from './types.js'
-
-/** Review method a run adopts when `config.json` declares none. */
-export const DEFAULT_REVIEW_MODE: ReviewMode = 'default'
 
 /** Top-level managed worktree root for current installations. */
 export const CURRENT_MANAGED_WORKTREES_ROOT = 'worktrees'
@@ -324,14 +320,6 @@ export function readProjectConfig(root: string): ProjectConfig | null {
     { code: 'INVALID_PROJECT_CONFIG' },
   )
 
-  invariant(
-    value.review_mode === undefined ||
-      value.review_mode === 'default' ||
-      value.review_mode === 'squad',
-    `${PROJECT_CONFIG_PATH}.review_mode MUST be default or squad when present.`,
-    { code: 'INVALID_PROJECT_CONFIG' },
-  )
-
   assertWorktreesBlock(value.worktrees)
   assertAwayModeBlock(value.away_mode)
 
@@ -371,27 +359,6 @@ export function worktreesConfig(root: string): ResolvedWorktreesConfig {
     branch_prefix: configured?.branch_prefix ?? DEFAULT_WORKTREE_BRANCH_PREFIX,
     setup: configured?.setup ?? [],
   }
-}
-
-/**
- * Review method for a new run. `selected` comes from `pan init --review-mode`
- * and overrides the configured default for that run only.
- */
-export function resolveReviewMode(
-  root: string,
-  selected?: string | null,
-): ReviewMode {
-  if (selected !== undefined && selected !== null) {
-    invariant(
-      selected === 'default' || selected === 'squad',
-      `Unknown review mode '${selected}'. Available: default, squad.`,
-      { code: 'INVALID_REVIEW_MODE' },
-    )
-
-    return selected
-  }
-
-  return loadProjectConfig(root).review_mode ?? DEFAULT_REVIEW_MODE
 }
 
 /** Away-mode settings for a new run, with safe defaults and a source digest. */

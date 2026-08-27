@@ -50,7 +50,7 @@ This harness is installed outside the target repository. The target repository i
 
 ## Work modes and operator involvement
 
-- `systematic` is the default and MUST execute a governed workflow: `dev` for production-ready delivery, `prototype` for a fast spike that answers a technical question, or `design` for UI/UX work preceding implementation.
+- `systematic` is the default and MUST execute a governed workflow: `delivery` for production-ready delivery, `prototype` for a fast spike that answers a technical question, or `design` for UI/UX work preceding implementation.
 - A `prototype` run applies `PROTO-001`: thinner up-front design, deprioritized QA breadth, declared shortcuts, and an operator-ratified evaluation of what the spike proved. Its output MUST NOT be represented as production-ready, and productionizing an adopted approach MUST route to a systematic run.
 - `lightweight` MAY be selected only by an explicit `/pan-spotfix` invocation under `WORK-001` and `SPOT-001`.
 - `interactive` MAY be selected only by an explicit `/pan-pair` invocation under `PAIR-001`. The agent applies its persona's governance and is bound to no workflow, stage contract, gate, or run contract; the operator owns scope, sequencing, and completion. It MUST NOT create or advance a workflow run.
@@ -58,7 +58,6 @@ This harness is installed outside the target repository. The target repository i
 - `config.json.operator_involvement` declares named profiles mapping a stage slug, or `*`, to the gate that stage uses. `<harness>/bin/pan init --involvement <profile>` selects one for a run; `<harness>/bin/pan involvement` lists them. A run snapshots its resolved profile, so later configuration edits MUST NOT change a run in flight.
 - The `technical_director` contract applies `DIRECTOR-001` and escalates the `technical_plan` and `independent_review` checkpoints to operator gates. `<harness>/bin/pan decide <run-id> revise --note <directive>` records a refinement and re-runs the stage without consuming its failure retry budget.
 - A stage declaring `gate_relaxable: false` MUST NOT be lowered by an involvement profile.
-- `config.json.review_mode` selects how independent review gathers findings: `default` for one reviewer over the whole change, or `squad` for one agent per review dimension under `REVIEW-002`. `<harness>/bin/pan init --review-mode <mode>` overrides it for one run. A run snapshots its resolved mode, so later configuration edits MUST NOT change a run in flight. `REVIEW-001` keeps the verdict, the remediation boundary, and routing under either mode.
 
 ## Change and safety boundaries
 

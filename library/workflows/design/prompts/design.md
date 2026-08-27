@@ -2,7 +2,7 @@
 
 Convert the ratified design brief into a design specification, token set,
 self-contained HTML prototypes, and draft acceptance criteria for a later
-corresponding `dev` run.
+corresponding `delivery` run.
 
 ## Steps
 
@@ -18,7 +18,7 @@ corresponding `dev` run.
 5. Write authoritative self-contained HTML prototypes under the run’s
    `artifacts/mocks/` with semantic landmarks (`header`, `main`, `section`,
    `footer`). Use HTML as the authoritative mock medium.
-6. Draft observable acceptance criteria consumable by a subsequent `dev` request.
+6. Draft observable acceptance criteria consumable by a subsequent `delivery` request.
 
 ## Output
 

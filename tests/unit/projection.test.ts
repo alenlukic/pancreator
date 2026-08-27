@@ -235,16 +235,16 @@ test('installer and compiled projection renderers stay byte-identical', () => {
   }
 })
 
-test('Cursor sync projects the intake writer agent with its resolved model', () => {
+test('Cursor sync projects the planner agent with its resolved model', () => {
   const root = createFixture()
-  const activeModel = loadPipelineConfig(root).config.personas['intake-writer']
+  const activeModel = loadPipelineConfig(root).config.personas.planner
 
   assert.ok(activeModel)
   const activeSlug = resolveCursorModelSlug(parsePersonaMapping(activeModel))
   syncCursorProjection(root, { write: true })
 
   const projected = readFileSync(
-    path.join(root, '.cursor', 'agents', 'pan-intake-writer.md'),
+    path.join(root, '.cursor', 'agents', 'pan-planner.md'),
     'utf8',
   )
 
@@ -255,7 +255,7 @@ test('Cursor sync projects the intake writer agent with its resolved model', () 
       'mu',
     ),
   )
-  assert.match(projected, /library\/personas\/intake-writer\.md/u)
+  assert.match(projected, /library\/personas\/planner\.md/u)
   assert.deepEqual(validateProjectionDrift(root).errors, [])
 })
 

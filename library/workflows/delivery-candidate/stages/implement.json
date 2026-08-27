@@ -2,29 +2,15 @@
   "slug": "implement",
   "title": "Implementation",
   "persona": "coder",
-  "prompt_path": "library/workflows/dev/prompts/implement.md",
+  "prompt_path": "library/workflows/delivery/prompts/implement.md",
   "workspace_policy": "source_allowed",
   "gate": "next_stage",
   "context": {
     "request": "conditional",
     "required_stage_outputs": [
       {
-        "stage": "intake",
-        "selection": "latest_success"
-      },
-      {
         "stage": "plan",
         "selection": "latest_success"
-      }
-    ],
-    "conditional_stage_outputs": [
-      {
-        "stage": "review",
-        "selection": "latest"
-      },
-      {
-        "stage": "test",
-        "selection": "latest"
       }
     ],
     "prior_attempts": 1,
@@ -62,7 +48,7 @@
     }
   ],
   "transitions": {
-    "success": "review",
+    "success": "verify",
     "failure": "implement",
     "blocked": "paused"
   }

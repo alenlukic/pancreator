@@ -37,7 +37,7 @@ function stateWith(history: StageHistoryItem[]): RunState {
   return {
     schema_version: 1,
     run_id: 'run',
-    workflow_slug: 'dev',
+    workflow_slug: 'delivery',
     workflow_snapshot: {
       path: 'runtime/logs/workflows/run/workflow.snapshot.json',
       sha256: 'workflow-sha',
@@ -75,7 +75,7 @@ function waiverFor(item: StageHistoryItem, suffix: string): OperatorGateWaiver {
     source_invocation_id: item.invocation_id,
     source_attempt: item.attempt,
     source_evidence_path: item.record_path ?? item.output_path,
-    criterion_ids: ['review.acceptance_met'],
+    criterion_ids: ['verify.acceptance_met'],
     workspace_fingerprint: item.workspace_fingerprint,
     note: 'Operator accepted bounded residual risk.',
     artifact_path: `runtime/logs/workflows/run/artifacts/markdown/waiver-${suffix}.md`,
@@ -92,7 +92,7 @@ test('implementation context retains approvals beyond the remediation limit', ()
   state.operator_feedback = [
     {
       decision: 'approve',
-      from_stage: 'intake',
+      from_stage: 'plan',
       to_stage: 'implement',
       attempt: 1,
       note: 'Preserve the approved compatibility boundary.',
@@ -101,7 +101,7 @@ test('implementation context retains approvals beyond the remediation limit', ()
     },
     {
       decision: 'revise',
-      from_stage: 'review',
+      from_stage: 'verify',
       to_stage: 'implement',
       attempt: 1,
       note: 'Older remediation.',
@@ -110,7 +110,7 @@ test('implementation context retains approvals beyond the remediation limit', ()
     },
     {
       decision: 'reject',
-      from_stage: 'test',
+      from_stage: 'verify',
       to_stage: 'implement',
       attempt: 1,
       note: 'Newest remediation.',
@@ -122,7 +122,7 @@ test('implementation context retains approvals beyond the remediation limit', ()
   const inputs = buildInvocationInputs({
     root,
     state,
-    stage: stageBySlug(loadWorkflow(root, 'dev'), 'implement'),
+    stage: stageBySlug(loadWorkflow(root, 'delivery'), 'implement'),
     attempt: 1,
     invocationId: 'implement-1',
     workspaceFingerprint: 'fp-current',
@@ -155,7 +155,7 @@ test('implementation context resolves planned target instruction paths', () => {
   const inputs = buildInvocationInputs({
     root,
     state,
-    stage: stageBySlug(loadWorkflow(root, 'dev'), 'implement'),
+    stage: stageBySlug(loadWorkflow(root, 'delivery'), 'implement'),
     attempt: 1,
     invocationId: 'implement-1',
     workspaceFingerprint: 'fp-current',
@@ -169,25 +169,21 @@ test('implementation context resolves planned target instruction paths', () => {
 
 test('ship context selects effective records and indexes superseded history', () => {
   const root = createFixture()
-  const intakeOld = historyItem('intake', 'intake-1', 'success')
-  const intakeCurrent = historyItem('intake', 'intake-2', 'success')
   const planFailed = historyItem('plan', 'plan-1', 'failure')
   const planCurrent = historyItem('plan', 'plan-2', 'success')
   const implementOld = historyItem('implement', 'implement-1', 'success')
-  const reviewOld = historyItem('review', 'review-1', 'failure')
+  const verifyOld = historyItem('verify', 'verify-1', 'failure')
+  const remediateCurrent = historyItem('remediate', 'remediate-1', 'success')
   const implementCurrent = historyItem('implement', 'implement-2', 'success')
-  const reviewCurrent = historyItem('review', 'review-2', 'failure')
-  const testCurrent = historyItem('test', 'test-1', 'success')
+  const verifyCurrent = historyItem('verify', 'verify-2', 'success')
   const history = [
-    intakeOld,
-    intakeCurrent,
     planFailed,
     planCurrent,
     implementOld,
-    reviewOld,
+    verifyOld,
+    remediateCurrent,
     implementCurrent,
-    reviewCurrent,
-    testCurrent,
+    verifyCurrent,
   ]
   const state = stateWith(history)
   state.governance_artifact_issues_path =
@@ -195,7 +191,7 @@ test('ship context selects effective records and indexes superseded history', ()
   state.operator_feedback = [
     {
       decision: 'resume',
-      from_stage: 'review',
+      from_stage: 'verify',
       to_stage: 'implement',
       attempt: 1,
       note: 'Old remediation note.',
@@ -204,7 +200,7 @@ test('ship context selects effective records and indexes superseded history', ()
     },
     {
       decision: 'set-stage',
-      from_stage: 'test',
+      from_stage: 'verify',
       to_stage: 'ship',
       attempt: 1,
       note: 'Current ship repair.',
@@ -213,8 +209,8 @@ test('ship context selects effective records and indexes superseded history', ()
     },
   ]
   state.operator_gate_waivers = [
-    waiverFor(reviewOld, 'old'),
-    waiverFor(reviewCurrent, 'current'),
+    waiverFor(verifyOld, 'old'),
+    waiverFor(verifyCurrent, 'current'),
   ]
   state.operator_workspace_ratifications = [
     {
@@ -230,7 +226,7 @@ test('ship context selects effective records and indexes superseded history', ()
     },
   ]
 
-  const stage = stageBySlug(loadWorkflow(root, 'dev'), 'ship')
+  const stage = stageBySlug(loadWorkflow(root, 'delivery'), 'ship')
   const inputs = buildInvocationInputs({
     root,
     state,
@@ -241,18 +237,18 @@ test('ship context selects effective records and indexes superseded history', ()
   })
   const byPath = new Map(inputs.references.map((item) => [item.path, item]))
 
-  for (const item of [
-    intakeCurrent,
-    planCurrent,
-    implementCurrent,
-    reviewCurrent,
-    testCurrent,
-  ]) {
+  for (const item of [planCurrent, implementCurrent, verifyCurrent]) {
     assert.equal(byPath.get(item.output_path)?.retrieval, 'required')
     assert.equal(byPath.get(item.record_path ?? '')?.retrieval, 'conditional')
   }
 
-  for (const item of [intakeOld, planFailed, implementOld, reviewOld]) {
+  // Remediation is declared conditional ship context, not required reading.
+  assert.equal(
+    byPath.get(remediateCurrent.output_path)?.retrieval,
+    'conditional',
+  )
+
+  for (const item of [planFailed, implementOld, verifyOld]) {
     assert.equal(byPath.has(item.output_path), false)
   }
 
@@ -310,7 +306,7 @@ test('embedded ship context omits Pancreator self-development release metadata',
   const inputs = buildInvocationInputs({
     root,
     state: stateWith([]),
-    stage: stageBySlug(loadWorkflow(root, 'dev'), 'ship'),
+    stage: stageBySlug(loadWorkflow(root, 'delivery'), 'ship'),
     attempt: 1,
     invocationId: 'ship-embedded',
     workspaceFingerprint: 'fp-current',
@@ -341,7 +337,7 @@ test('ship context includes resolved target PR authority', () => {
   const inputs = buildInvocationInputs({
     root,
     state: stateWith([]),
-    stage: stageBySlug(loadWorkflow(root, 'dev'), 'ship'),
+    stage: stageBySlug(loadWorkflow(root, 'delivery'), 'ship'),
     attempt: 1,
     invocationId: 'ship-pr-context',
     workspaceFingerprint: 'fp-current',
@@ -366,15 +362,15 @@ test('ship context includes resolved target PR authority', () => {
 test('missing required stage outputs are explicit instead of triggering broad scans', () => {
   const root = createFixture()
   const state = stateWith([])
-  state.current_stage = 'review'
-  const stage = stageBySlug(loadWorkflow(root, 'dev'), 'review')
+  state.current_stage = 'verify'
+  const stage = stageBySlug(loadWorkflow(root, 'delivery'), 'verify')
 
   const inputs = buildInvocationInputs({
     root,
     state,
     stage,
     attempt: 1,
-    invocationId: 'review-1',
+    invocationId: 'verify-1',
     workspaceFingerprint: 'fp-current',
   })
 
@@ -395,12 +391,12 @@ test('missing required stage outputs are explicit instead of triggering broad sc
 test('legacy workflow snapshots preserve all-history reference behavior', () => {
   const root = createFixture()
   const history = [
-    historyItem('intake', 'intake-1', 'success'),
-    historyItem('plan', 'plan-1', 'failure'),
+    historyItem('plan', 'plan-1', 'success'),
+    historyItem('implement', 'implement-1', 'failure'),
   ]
   const state = stateWith(history)
   const stage = {
-    ...stageBySlug(loadWorkflow(root, 'dev'), 'ship'),
+    ...stageBySlug(loadWorkflow(root, 'delivery'), 'ship'),
     context: { request: 'required' as const, legacy_full_history: true },
   }
 

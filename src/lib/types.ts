@@ -207,14 +207,6 @@ export interface StageDefinition {
  */
 export type RunContract = 'technical_director'
 
-/**
- * How the independent review stage gathers its findings. `default` is one
- * reviewer reading the whole change. `squad` delegates one agent per review
- * dimension and joins the returned findings. The mode selects the review method
- * only; `REVIEW-001` owns the verdict and the remediation boundary either way.
- */
-export type ReviewMode = 'default' | 'squad'
-
 /** One named operator-involvement profile from `config.json`. */
 export interface OperatorInvolvementProfile {
   summary: string
@@ -421,11 +413,6 @@ export interface PolicyLookupRow {
    */
   contract?: RunContract
   /**
-   * Activates the row only for runs whose resolved review method matches. An
-   * absent value applies to every review method.
-   */
-  review_mode?: ReviewMode
-  /**
    * Activates the row only when the invocation requests operator artifacts.
    * An absent context retains standalone and historical behavior.
    */
@@ -566,8 +553,6 @@ export interface ProjectConfig {
    * the target's absolute path.
    */
   installation_mode?: 'self_development' | 'embedded' | 'detached'
-  /** Review method new runs adopt. Absent means `default`. */
-  review_mode?: ReviewMode
   /** Autonomous blocker handling, snapshotted into each new run. */
   away_mode?: AwayModeConfig
 }
@@ -795,7 +780,6 @@ export interface Invocation {
   gate_overrides?: Record<string, string | false>
   operator_involvement?: ResolvedOperatorInvolvement
   verification?: ResolvedVerification
-  review_mode?: ReviewMode
   workflow: {
     slug: string
     snapshot_path: string
@@ -1328,11 +1312,6 @@ export interface RunState {
    * every later prepare.
    */
   verification_recommendations_surfaced?: string[]
-  /**
-   * Review method this run resolved at creation. Snapshotted so a later
-   * `config.json` edit cannot change a run already in flight.
-   */
-  review_mode?: ReviewMode
   /** Away-mode settings resolved when the run was created. */
   away_mode?: ResolvedAwayModeConfig
   /**

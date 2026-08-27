@@ -37,7 +37,7 @@ Player-coach means you keep the pipeline moving. A mechanical delivery or eviden
 - If the preserved request or the operator's message names a worktree for the run, pass `--worktree <name>`. The option creates or resolves that worktree and binds the run's workspace to it. Do not combine it with `--workspace`.
 - If the preserved request is JSON containing `workspace_root` (for example a prior run state payload), use it as `--workspace`.
 - If the preserved request is JSON containing `gate_overrides`, write that object to a uniquely named JSON file under `runtime/inbox/`. Pass its harness-relative path as `--gates`.
-- Default to `--workflow dev`. Use `--workflow prototype` only when the operator asked for a prototype, spike, or proof of concept, or asked to test an approach rather than deliver it. Use `--workflow design` only when the operator asked for UI/UX design work preceding implementation. When the request and the operator's message leave delivering versus spiking ambiguous, STOP and report the question instead of initializing.
+- Default to `--workflow delivery`. Use `--workflow prototype` only when the operator asked for a prototype, spike, or proof of concept, or asked to test an approach rather than deliver it. Use `--workflow design` only when the operator asked for UI/UX design work preceding implementation. When the request and the operator's message leave delivering versus spiking ambiguous, STOP and report the question instead of initializing.
 - Omit `--involvement` unless the request names a profile or asks for a specific level of involvement; the configured `active` profile applies otherwise. Run `./bin/pan involvement` to list profiles when the request asks what is available.
 
 Then:

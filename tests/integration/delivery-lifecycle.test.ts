@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict'
-import { randomUUID } from 'node:crypto'
 import {
   existsSync,
   readdirSync,
@@ -11,7 +10,6 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
-  assessStage,
   createRun,
   decideRun,
   decideRunAsAway,
@@ -37,22 +35,57 @@ import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
 import { nextSemanticVersion } from '../../src/lib/versioning.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
-import type { StageDefinition, StageOutcome } from '../../src/lib/types.js'
+import type {
+  StageDefinition,
+  StageOutcome,
+  StageOutput,
+} from '../../src/lib/types.js'
 import {
   attachTargetInstructionEvidence,
   createFixture,
   makeAttestation,
   makeOutput,
   writeCanonicalDelegation,
+  writeEvidenceReports,
   writeJson,
 } from '../helpers.js'
 
-test('full dev workflow persists gates and reaches operator-approved success', () => {
+/** A verify data payload whose verdict stays consistent with a failed stage. */
+function failingVerify(findingId: string): Record<string, unknown> {
+  return {
+    verdict: 'fail_remedial',
+    findings: [
+      {
+        id: findingId,
+        severity: 'blocker',
+        source: 'qa',
+        statement: 'The workflow fixture does not advance.',
+        evidence: ['fixture'],
+      },
+    ],
+    qa_cases: [
+      {
+        id: 'TP-01',
+        steps: 'Run workflow fixture',
+        expected: 'advance',
+        actual: 'stalled',
+        result: 'fail',
+      },
+    ],
+    acceptance_results: [
+      { id: 'AC-01', result: 'fail', evidence: ['fixture'] },
+    ],
+    remediation_guidance:
+      'Rerun the workflow fixture; the run stalls before ship.',
+  }
+}
+
+test('full delivery workflow persists gates and reaches operator-approved success', () => {
   const root = createFixture()
   const initialVersion = readFileSync(path.join(root, 'VERSION'), 'utf8').trim()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Fixture run',
     involvement: 'standard',
@@ -67,7 +100,7 @@ test('full dev workflow persists gates and reaches operator-approved success', (
     /pipeline-config\.snapshot\.json$/u,
   )
 
-  const stageSlugs = ['intake', 'plan', 'implement', 'review', 'test', 'ship']
+  const stageSlugs = ['plan', 'implement', 'verify', 'ship']
 
   for (const [stageSequence, stageSlug] of stageSlugs.entries()) {
     const prepared = prepareInvocation(root, runId)
@@ -108,13 +141,16 @@ test('full dev workflow persists gates and reaches operator-approved success', (
     assert.ok(existsSync(invocationValidationPath))
 
     const stage = stageBySlug(workflow, stageSlug)
-    const output = makeOutput(root, invocation, stage)
+    const output = makeOutput(
+      root,
+      invocation,
+      stage,
+      'success',
+      stageSlug === 'ship' ? getRunState(root, runId) : undefined,
+    )
 
     writeJson(path.join(root, invocation.output.path), output)
-
-    if (stage.persona !== 'orchestrator') {
-      writeCanonicalDelegation(root, invocation)
-    }
+    writeCanonicalDelegation(root, invocation)
 
     const submitted = submitOutput(root, runId, invocation.output.path)
 
@@ -125,40 +161,16 @@ test('full dev workflow persists gates and reaches operator-approved success', (
     )
     assert.equal(existsSync(path.join(root, brief.source_path)), false)
 
-    if (stageSlug === 'intake') {
+    if (stageSlug === 'plan') {
       const repeated = submitOutput(root, runId, invocation.output.path)
 
       assert.equal(repeated.idempotent, true)
       assert.equal(repeated.record.invocation_id, invocation.invocation_id)
     }
 
-    if (stageSlug === 'intake' || stageSlug === 'ship') {
+    if (stageSlug === 'plan' || stageSlug === 'ship') {
       assert.equal(submitted.state.status, 'awaiting_operator')
       decideRun(root, runId, 'approve', 'fixture approval')
-    } else if (stageSlug === 'plan') {
-      assert.equal(submitted.state.status, 'awaiting_supervisor')
-      assert.equal(submitted.state.pending_action.type, 'supervisor_assessment')
-
-      if (submitted.state.pending_action.type !== 'supervisor_assessment') {
-        throw new Error('Expected supervisor assessment action')
-      }
-
-      const assessmentPath = submitted.state.pending_action.output_path
-
-      writeJson(path.join(root, assessmentPath), {
-        schema_version: 1,
-        assessment_id: randomUUID(),
-        invocation_id: invocation.invocation_id,
-        verdict: 'pass',
-        summary: 'Plan is implementation-ready.',
-        criteria: stage.criteria.map((criterion) => ({
-          id: criterion.id,
-          result: 'pass',
-          evidence: [invocation.output.path],
-          explanation: 'Fixture evidence',
-        })),
-      })
-      assessStage(root, runId, assessmentPath)
     }
   }
 
@@ -166,19 +178,19 @@ test('full dev workflow persists gates and reaches operator-approved success', (
 
   assert.equal(final.status, 'succeeded')
   assert.equal(final.current_stage, null)
-  assert.equal(final.stage_history.length, 6)
+  assert.equal(final.stage_history.length, 4)
   const finalLayout = resolveRunLayout(root, runId)
   const operatorFiles = readdirSync(finalLayout.operator.absolute)
 
   assert.equal(existsSync(finalLayout.state.absolute), true)
-  assert.equal(operatorFiles.filter((item) => item.endsWith('.html')).length, 6)
+  assert.equal(operatorFiles.filter((item) => item.endsWith('.html')).length, 4)
   assert.equal(
     operatorFiles.some((item) => item.endsWith('.json')),
     false,
   )
   assert.deepEqual(
     final.stage_history.map((item) => item.invocation_id.slice(0, 2)),
-    ['05', '04', '03', '02', '01', '00'],
+    ['03', '02', '01', '00'],
   )
   assert.equal(
     existsSync(path.join(root, `runtime/logs/workflows/${runId}/records`)),
@@ -240,36 +252,39 @@ test('enabled away mode continues after one decision and completes ship', () => 
     )}\n`,
   )
 
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Away continuation fixture',
   })
   const runId = state.run_id
 
-  for (const stageSlug of [
-    'intake',
-    'plan',
-    'implement',
-    'review',
-    'test',
-    'ship',
-  ]) {
+  for (const stageSlug of ['plan', 'implement', 'verify', 'ship']) {
     const invocation = prepareInvocation(root, runId).invocation
 
     assert.ok(invocation)
     const stage = stageBySlug(workflow, stageSlug)
-    const output = makeOutput(root, invocation, stage)
+    const output = makeOutput(
+      root,
+      invocation,
+      stage,
+      'success',
+      stageSlug === 'ship' ? getRunState(root, runId) : undefined,
+    )
 
     writeJson(path.join(root, invocation.output.path), output)
     writeCanonicalDelegation(root, invocation)
 
     const submitted = submitOutput(root, runId, invocation.output.path)
 
-    assert.equal(submitted.record.outcome, 'success')
+    assert.equal(
+      submitted.record.outcome,
+      'success',
+      `${stageSlug}: ${JSON.stringify(submitted.record.evaluation)}`,
+    )
 
-    if (stageSlug === 'intake') {
+    if (stageSlug === 'plan') {
       const blocker = awayModeTrigger(submitted.state)
 
       assert.ok(blocker)
@@ -279,11 +294,11 @@ test('enabled away mode continues after one decision and completes ship', () => 
             rank: 1,
             action: 'approve',
             feasible: true,
-            rationale: 'Approve the ratified intake.',
+            rationale: 'Approve the ratified plan.',
             evidence: [invocation.output.path],
             rollback_plan: {
-              steps: ['Route a later run to intake.'],
-              verification: 'Confirm the later run starts at intake.',
+              steps: ['Route a later run to plan.'],
+              verification: 'Confirm the later run starts at plan.',
             },
           },
         ],
@@ -296,31 +311,8 @@ test('enabled away mode continues after one decision and completes ship', () => 
       )
 
       recordAwayApplyResult(root, decision, 'applied')
-      assert.equal(next.current_stage, 'plan')
+      assert.equal(next.current_stage, 'implement')
       assert.equal(next.pending_action.type, 'prepare_invocation')
-    } else if (stageSlug === 'plan') {
-      assert.equal(submitted.state.pending_action.type, 'supervisor_assessment')
-
-      if (submitted.state.pending_action.type !== 'supervisor_assessment') {
-        throw new Error('Expected supervisor assessment action')
-      }
-
-      const assessmentPath = submitted.state.pending_action.output_path
-
-      writeJson(path.join(root, assessmentPath), {
-        schema_version: 1,
-        assessment_id: randomUUID(),
-        invocation_id: invocation.invocation_id,
-        verdict: 'pass',
-        summary: 'Plan is implementation-ready.',
-        criteria: stage.criteria.map((criterion) => ({
-          id: criterion.id,
-          result: 'pass',
-          evidence: [invocation.output.path],
-          explanation: 'Fixture evidence',
-        })),
-      })
-      assessStage(root, runId, assessmentPath)
     } else if (stageSlug === 'ship') {
       const decision = recordDeterministicShipApproval(root, submitted.state, [
         resolveRunLayout(root, runId).state.relative,
@@ -364,7 +356,7 @@ test('enabled away mode continues after one decision and completes ship', () => 
 test('away resume cannot ratify workspace changes made during a pause', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Away ratification fixture',
   })
@@ -377,12 +369,12 @@ test('away resume cannot ratify workspace changes made during a pause', () => {
   )
 
   assert.throws(
-    () => resumeRunAsAway(root, runId, 'intake', 'Resume past the edit.'),
+    () => resumeRunAsAway(root, runId, 'plan', 'Resume past the edit.'),
     /cannot ratify workspace changes/u,
   )
   assert.equal(getRunState(root, runId).status, 'paused')
 
-  const resumed = resumeRun(root, runId, 'intake', 'Authorized operator fix.')
+  const resumed = resumeRun(root, runId, 'plan', 'Authorized operator fix.')
 
   assert.equal(resumed.status, 'running')
   assert.equal(resumed.operator_workspace_ratifications?.length, 1)
@@ -391,7 +383,7 @@ test('away resume cannot ratify workspace changes made during a pause', () => {
 test('away resume restores an unchanged paused run without ratification', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Away resume fixture',
   })
@@ -417,7 +409,7 @@ test('away resume restores an unchanged paused run without ratification', () => 
 test('away stage repair records away authorship', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Away stage repair fixture',
   })
@@ -449,9 +441,9 @@ test('away stage repair records away authorship', () => {
 
 test('away revise re-runs the stage without an operator revision allowance', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Away revise fixture',
   })
@@ -461,7 +453,7 @@ test('away revise re-runs the stage without an operator revision allowance', () 
   assert.ok(invocation)
   writeJson(
     path.join(root, invocation.output.path),
-    makeOutput(root, invocation, stageBySlug(workflow, 'intake')),
+    makeOutput(root, invocation, stageBySlug(workflow, 'plan')),
   )
   writeCanonicalDelegation(root, invocation)
 
@@ -473,12 +465,12 @@ test('away revise re-runs the stage without an operator revision allowance', () 
     root,
     runId,
     'revise',
-    'Narrow the intake scope.',
+    'Narrow the plan scope.',
   )
 
-  assert.equal(revised.current_stage, 'intake')
+  assert.equal(revised.current_stage, 'plan')
   assert.equal(revised.pending_action.type, 'prepare_invocation')
-  assert.equal(revised.operator_revisions?.intake, undefined)
+  assert.equal(revised.operator_revisions?.plan, undefined)
 
   const feedback = revised.operator_feedback?.at(-1)
 
@@ -489,9 +481,9 @@ test('away revise re-runs the stage without an operator revision allowance', () 
 
 test('ship cannot succeed without its declared PR artifact', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Missing PR artifact',
     operatorArtifacts: true,
@@ -521,9 +513,9 @@ test('ship cannot succeed without its declared PR artifact', () => {
 
 test('ship cannot succeed when its PR artifact violates resolved authority', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Invalid PR artifact',
     operatorArtifacts: true,
@@ -554,35 +546,35 @@ test('ship cannot succeed when its PR artifact violates resolved authority', () 
   )
 })
 
-test('dev intake is delegated to the intake writer and still awaits ratification', () => {
+test('delivery plan is delegated to the planner and still awaits ratification', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const runId = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
-    title: 'Intake delegation run',
+    title: 'Plan delegation run',
     involvement: 'standard',
   }).run_id
   const prepared = prepareInvocation(root, runId)
   const invocation = prepared.invocation
 
   assert.ok(invocation)
-  assert.equal(invocation.stage.slug, 'intake')
-  assert.equal(invocation.stage.persona, 'intake-writer')
+  assert.equal(invocation.stage.slug, 'plan')
+  assert.equal(invocation.stage.persona, 'planner')
 
-  // The first stage of the run is now delegated, so it owes the same delivery
+  // The first stage of the run is delegated, so it owes the same delivery
   // contract and read attestation every other worker stage owes.
   assert.equal(prepared.state.pending_action.type, 'invoke_agent')
   assert.equal(invocation.delegation?.mode, 'referenced')
   assert.equal(
     invocation.delegation?.cursor_agent_path,
-    '.cursor/agents/pan-intake-writer.md',
+    '.cursor/agents/pan-planner.md',
   )
   assert.ok(invocation.contract_manifest)
 
   writeJson(
     path.join(root, invocation.output.path),
-    makeOutput(root, invocation, stageBySlug(workflow, 'intake')),
+    makeOutput(root, invocation, stageBySlug(workflow, 'plan')),
   )
   writeCanonicalDelegation(root, invocation)
 
@@ -598,18 +590,18 @@ test('dev intake is delegated to the intake writer and still awaits ratification
   // Worker ownership must not change where the operator stops the run.
   assert.equal(submitted.state.status, 'awaiting_operator')
   assert.equal(submitted.state.pending_action.type, 'operator_approval')
-  assert.equal(submitted.state.current_stage, 'intake')
+  assert.equal(submitted.state.current_stage, 'plan')
 
   decideRun(root, runId, 'approve', 'fixture approval')
-  assert.equal(getRunState(root, runId).current_stage, 'plan')
+  assert.equal(getRunState(root, runId).current_stage, 'implement')
 })
 
 test('a non-empty approval note becomes required context for the routed stage', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
-  const intakeStage = stageBySlug(workflow, 'intake')
+  const workflow = loadWorkflow(root, 'delivery')
+  const planStage = stageBySlug(workflow, 'plan')
   const runId = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Approval note run',
     involvement: 'standard',
@@ -619,7 +611,7 @@ test('a non-empty approval note becomes required context for the routed stage', 
   assert.ok(first)
   writeJson(
     path.join(root, first.output.path),
-    makeOutput(root, first, intakeStage),
+    makeOutput(root, first, planStage),
   )
   writeCanonicalDelegation(root, first)
   assert.equal(
@@ -628,7 +620,7 @@ test('a non-empty approval note becomes required context for the routed stage', 
   )
 
   const directive =
-    'Resolve whether the plan adopts cross-run cache persistence explicitly.'
+    'Adopt cross-run cache persistence explicitly during implementation.'
 
   decideRun(root, runId, 'approve', directive)
 
@@ -636,8 +628,8 @@ test('a non-empty approval note becomes required context for the routed stage', 
 
   assert.ok(feedback)
   assert.equal(feedback.decision, 'approve')
-  assert.equal(feedback.from_stage, 'intake')
-  assert.equal(feedback.to_stage, 'plan')
+  assert.equal(feedback.from_stage, 'plan')
+  assert.equal(feedback.to_stage, 'implement')
   assert.equal(feedback.note, directive)
   assert.ok(existsSync(path.join(root, feedback.path)))
   assert.match(
@@ -645,12 +637,12 @@ test('a non-empty approval note becomes required context for the routed stage', 
     /Operator directive attached to approval/u,
   )
 
-  const plan = prepareInvocation(root, runId).invocation
+  const implement = prepareInvocation(root, runId).invocation
 
-  assert.ok(plan)
-  assert.equal(plan.stage.slug, 'plan')
+  assert.ok(implement)
+  assert.equal(implement.stage.slug, 'implement')
 
-  const reference = plan.inputs.references.find(
+  const reference = implement.inputs.references.find(
     (entry) => entry.path === feedback.path,
   )
 
@@ -660,10 +652,10 @@ test('a non-empty approval note becomes required context for the routed stage', 
 
 test('an empty approval note records no operator feedback', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
-  const intakeStage = stageBySlug(workflow, 'intake')
+  const workflow = loadWorkflow(root, 'delivery')
+  const planStage = stageBySlug(workflow, 'plan')
   const runId = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Plain approval run',
     involvement: 'standard',
@@ -673,7 +665,7 @@ test('an empty approval note records no operator feedback', () => {
   assert.ok(first)
   writeJson(
     path.join(root, first.output.path),
-    makeOutput(root, first, intakeStage),
+    makeOutput(root, first, planStage),
   )
   writeCanonicalDelegation(root, first)
   submitOutput(root, runId, first.output.path)
@@ -681,18 +673,18 @@ test('an empty approval note records no operator feedback', () => {
 
   const state = getRunState(root, runId)
 
-  assert.equal(state.current_stage, 'plan')
+  assert.equal(state.current_stage, 'implement')
   assert.equal(state.operator_feedback, undefined)
 })
 
-test('an operator revision returns dev intake to the intake writer', () => {
+test('an operator revision returns the delivery plan to the planner', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
-  const intakeStage = stageBySlug(workflow, 'intake')
+  const workflow = loadWorkflow(root, 'delivery')
+  const planStage = stageBySlug(workflow, 'plan')
   const runId = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
-    title: 'Intake revision run',
+    title: 'Plan revision run',
     involvement: 'standard',
   }).run_id
   const first = prepareInvocation(root, runId).invocation
@@ -700,7 +692,7 @@ test('an operator revision returns dev intake to the intake writer', () => {
   assert.ok(first)
   writeJson(
     path.join(root, first.output.path),
-    makeOutput(root, first, intakeStage),
+    makeOutput(root, first, planStage),
   )
   writeCanonicalDelegation(root, first)
   assert.equal(
@@ -714,20 +706,20 @@ test('an operator revision returns dev intake to the intake writer', () => {
   const second = prepareInvocation(root, runId).invocation
 
   assert.ok(second)
-  assert.equal(second.stage.slug, 'intake')
-  assert.equal(second.stage.persona, 'intake-writer')
+  assert.equal(second.stage.slug, 'plan')
+  assert.equal(second.stage.persona, 'planner')
   assert.equal(second.attempt, 2)
 
   // A revision is a refinement, not a failed attempt, so it must not spend the
   // stage's retry budget.
-  assert.equal(getRunState(root, runId).operator_revisions?.intake, 1)
+  assert.equal(getRunState(root, runId).operator_revisions?.plan, 1)
   assert.equal(getRunState(root, runId).consecutive_failures, 0)
 
   const feedback = getRunState(root, runId).operator_feedback?.at(-1)
 
   assert.ok(feedback)
   assert.equal(feedback.decision, 'revise')
-  assert.equal(feedback.to_stage, 'intake')
+  assert.equal(feedback.to_stage, 'plan')
   assert.ok(
     second.inputs.references.some(
       (reference) => reference.path === feedback.path,
@@ -741,7 +733,7 @@ test('an operator revision returns dev intake to the intake writer', () => {
 
   writeJson(
     path.join(root, second.output.path),
-    makeOutput(root, second, intakeStage),
+    makeOutput(root, second, planStage),
   )
   writeCanonicalDelegation(root, second)
 
@@ -750,13 +742,13 @@ test('an operator revision returns dev intake to the intake writer', () => {
   assert.equal(revised.record.outcome, 'success')
   assert.equal(revised.state.status, 'awaiting_operator')
   decideRun(root, runId, 'approve', 'fixture approval')
-  assert.equal(getRunState(root, runId).current_stage, 'plan')
+  assert.equal(getRunState(root, runId).current_stage, 'implement')
 })
 
 test('run preparation rejects live pipeline-config drift from its snapshot', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
   const configPath = path.join(root, 'config.json')
@@ -776,30 +768,14 @@ test('run preparation rejects live pipeline-config drift from its snapshot', () 
 
 test('paused remediation note is attached to the next implement invocation', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Fixture run',
     involvement: 'standard',
   })
   const runId = state.run_id
-
-  const intakeInvocation = prepareInvocation(root, runId).invocation
-  assert.ok(intakeInvocation)
-  writeJson(
-    path.join(root, intakeInvocation.output.path),
-    makeOutput(root, intakeInvocation, stageBySlug(workflow, 'intake')),
-  )
-  writeCanonicalDelegation(root, intakeInvocation)
-
-  const intakeSubmitted = submitOutput(
-    root,
-    runId,
-    intakeInvocation.output.path,
-  )
-  assert.equal(intakeSubmitted.state.status, 'awaiting_operator')
-  decideRun(root, runId, 'approve', 'fixture approval')
 
   const planInvocation = prepareInvocation(root, runId).invocation
   assert.ok(planInvocation)
@@ -808,27 +784,10 @@ test('paused remediation note is attached to the next implement invocation', () 
     makeOutput(root, planInvocation, stageBySlug(workflow, 'plan')),
   )
   writeCanonicalDelegation(root, planInvocation)
+
   const planSubmitted = submitOutput(root, runId, planInvocation.output.path)
-  assert.equal(planSubmitted.state.status, 'awaiting_supervisor')
-
-  if (planSubmitted.state.pending_action.type !== 'supervisor_assessment') {
-    throw new Error('Expected supervisor assessment action')
-  }
-
-  writeJson(path.join(root, planSubmitted.state.pending_action.output_path), {
-    schema_version: 1,
-    assessment_id: randomUUID(),
-    invocation_id: planInvocation.invocation_id,
-    verdict: 'pass',
-    summary: 'Plan is implementation-ready.',
-    criteria: stageBySlug(workflow, 'plan').criteria.map((criterion) => ({
-      id: criterion.id,
-      result: 'pass',
-      evidence: [planInvocation.output.path],
-      explanation: 'Fixture evidence',
-    })),
-  })
-  assessStage(root, runId, planSubmitted.state.pending_action.output_path)
+  assert.equal(planSubmitted.state.status, 'awaiting_operator')
+  decideRun(root, runId, 'approve', 'fixture approval')
 
   const implementInvocation = prepareInvocation(root, runId).invocation
   assert.ok(implementInvocation)
@@ -881,7 +840,7 @@ test('paused remediation note is attached to the next implement invocation', () 
 test('operator set-stage bypasses transitions and injects repair context', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Fixture run',
   })
@@ -889,15 +848,15 @@ test('operator set-stage bypasses transitions and injects repair context', () =>
   const originalInvocation = prepareInvocation(root, runId).invocation
 
   assert.ok(originalInvocation)
-  assert.equal(originalInvocation.stage.slug, 'intake')
-  assert.match(originalInvocation.invocation_id, /^99_intake-1_/u)
+  assert.equal(originalInvocation.stage.slug, 'plan')
+  assert.match(originalInvocation.invocation_id, /^99_plan-1_/u)
 
   const note =
-    'Repair the run by independently reviewing the current workspace.'
-  const repaired = setRunStage(root, runId, 'review', note)
+    'Repair the run by independently verifying the current workspace.'
+  const repaired = setRunStage(root, runId, 'verify', note)
 
   assert.equal(repaired.status, 'running')
-  assert.equal(repaired.current_stage, 'review')
+  assert.equal(repaired.current_stage, 'verify')
   assert.equal(repaired.pending_action.type, 'prepare_invocation')
   assert.equal(repaired.current_invocation, null)
   assert.equal(repaired.transition_count, 0)
@@ -906,14 +865,14 @@ test('operator set-stage bypasses transitions and injects repair context', () =>
 
   const invocation = prepareInvocation(root, runId).invocation
   assert.ok(invocation)
-  assert.equal(invocation.stage.slug, 'review')
+  assert.equal(invocation.stage.slug, 'verify')
   assert.equal(invocation.attempt, 1)
-  assert.match(invocation.invocation_id, /^98_review-1_/u)
+  assert.match(invocation.invocation_id, /^98_verify-1_/u)
 
   const feedback = getRunState(root, runId).operator_feedback?.at(-1)
   assert.ok(feedback)
-  assert.equal(feedback.from_stage, 'intake')
-  assert.equal(feedback.to_stage, 'review')
+  assert.equal(feedback.from_stage, 'plan')
+  assert.equal(feedback.to_stage, 'verify')
   assert.ok(
     invocation.inputs.references.some(
       (reference) =>
@@ -923,23 +882,23 @@ test('operator set-stage bypasses transitions and injects repair context', () =>
   )
 
   const feedbackBody = readFileSync(path.join(root, feedback.path), 'utf8')
-  assert.match(feedbackBody, /independently reviewing the current workspace/u)
+  assert.match(feedbackBody, /independently verifying the current workspace/u)
 })
 
 test('operator set-stage requires a valid target and non-empty repair note', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
 
   assert.throws(
-    () => setRunStage(root, state.run_id, 'review', '   '),
+    () => setRunStage(root, state.run_id, 'verify', '   '),
     /Stage repair note MUST be non-empty/u,
   )
   assert.throws(
     () => setRunStage(root, state.run_id, 'missing', 'repair target'),
-    /Workflow dev has no stage 'missing'/u,
+    /Workflow delivery has no stage 'missing'/u,
   )
 })
 
@@ -949,6 +908,7 @@ function submitStageOutput(
   stage: StageDefinition,
   result: StageOutcome,
   failedCriterionIds: string[] = [],
+  mutate?: (output: StageOutput) => void,
 ) {
   const invocation = prepareInvocation(root, runId).invocation
 
@@ -963,34 +923,43 @@ function submitStageOutput(
       : 'pass'
   }
 
+  mutate?.(output)
+
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
 
   return submitOutput(root, runId, invocation.output.path)
 }
 
-test('a failing QA verdict routes without executing the full suite', () => {
+test('a failing verify verdict routes without executing the full suite', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
-    title: 'QA gate skip fixture',
+    title: 'Verify gate skip fixture',
   })
   const runId = state.run_id
-  const testStage = stageBySlug(workflow, 'test')
+  const verifyStage = stageBySlug(workflow, 'verify')
 
-  setRunStage(root, runId, 'test', 'Seed QA for gate-skip testing.')
+  setRunStage(root, runId, 'verify', 'Seed verification for gate-skip testing.')
 
-  const failed = submitStageOutput(root, runId, testStage, 'failure', [
-    'test.manual_cases',
-  ])
+  const failed = submitStageOutput(
+    root,
+    runId,
+    verifyStage,
+    'failure',
+    ['verify.acceptance_met'],
+    (output) => {
+      output.data.verify = failingVerify('VF-GATE-1')
+    },
+  )
 
   assert.equal(failed.record.outcome, 'failure')
-  assert.equal(failed.state.current_stage, 'implement')
+  assert.equal(failed.state.current_stage, 'remediate')
 
   const suite = failed.record.evaluation.deterministic.find(
-    (item) => item.id === 'test.full_suite',
+    (item) => item.id === 'verify.full_suite',
   )
 
   assert.ok(suite)
@@ -1012,9 +981,9 @@ test('a failing QA verdict routes without executing the full suite', () => {
 
 test('a failed hard self-criterion skips shell gates on a declared success', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Self-criterion gate skip fixture',
   })
@@ -1047,9 +1016,9 @@ test('a failed hard self-criterion skips shell gates on a declared success', () 
 
 test('a failed read attestation skips shell gates before executing them', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Attestation gate skip fixture',
   })
@@ -1091,9 +1060,9 @@ test('a failed read attestation skips shell gates before executing them', () => 
 
 test('implementation same-reason failure twice pauses before a third attempt', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Same-reason implementation fixture',
   })
@@ -1127,9 +1096,9 @@ test('implementation same-reason failure twice pauses before a third attempt', (
 
 test('a retry may submit a merge-patch revision instead of the whole document', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Revision submission fixture',
   })
@@ -1198,7 +1167,7 @@ test('a retry may submit a merge-patch revision instead of the whole document', 
   const submitted = submitOutput(root, runId, invocation.output.path)
 
   assert.equal(submitted.record.outcome, 'success')
-  assert.equal(submitted.state.current_stage, 'review')
+  assert.equal(submitted.state.current_stage, 'verify')
 
   const historyItem = submitted.state.stage_history.find(
     (item) => item.invocation_id === invocation.invocation_id,
@@ -1236,9 +1205,9 @@ test('a retry may submit a merge-patch revision instead of the whole document', 
 
 test('unchanged pre-existing repository-check failures do not block implementation', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Pre-existing repository failure fixture',
   })
@@ -1284,7 +1253,7 @@ test('unchanged pre-existing repository-check failures do not block implementati
   )
 
   assert.equal(submitted.record.outcome, 'success')
-  assert.equal(submitted.state.current_stage, 'review')
+  assert.equal(submitted.state.current_stage, 'verify')
   assert.equal(staticResult?.passed, true)
   assert.equal(staticResult?.preexisting_failure, true)
   assert.equal(staticResult?.exit_code, 1)
@@ -1293,9 +1262,9 @@ test('unchanged pre-existing repository-check failures do not block implementati
 
 test('pre-implementation baselines capture only source-mutating gate profiles', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Workflow-wide baseline fixture',
   })
@@ -1329,7 +1298,7 @@ test('pre-implementation baselines capture only source-mutating gate profiles', 
 test('a failed environment probe pauses before source-stage delegation', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Environment probe fixture',
   })
@@ -1368,11 +1337,11 @@ test('a failed environment probe pauses before source-stage delegation', () => {
   assert.equal(reloaded.revision, prepared.state.revision)
 })
 
-test('the default light level gates QA on the fast profile and never runs full', () => {
+test('the default light level gates verification on the fast profile and never runs full', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Light verification fixture',
   })
@@ -1399,15 +1368,15 @@ test('the default light level gates QA on the fast profile and never runs full',
   setRunStage(root, runId, 'implement', 'Baseline the implement-loop profiles.')
   submitStageOutput(root, runId, stageBySlug(workflow, 'implement'), 'success')
 
-  setRunStage(root, runId, 'test', 'Run QA under the light level.')
+  setRunStage(root, runId, 'verify', 'Run verification under the light level.')
   const submitted = submitStageOutput(
     root,
     runId,
-    stageBySlug(workflow, 'test'),
+    stageBySlug(workflow, 'verify'),
     'success',
   )
   const fullSuite = submitted.record.evaluation.deterministic.find(
-    (item) => item.id === 'test.full_suite',
+    (item) => item.id === 'verify.full_suite',
   )
 
   assert.ok(fullSuite)
@@ -1419,11 +1388,11 @@ test('the default light level gates QA on the fast profile and never runs full',
   assert.equal(existsSync(fullMarker), false)
 })
 
-test('thorough verification runs full at QA on its own result', () => {
+test('thorough verification runs full at verify on its own result', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Thorough verification fixture',
     verification: 'thorough',
@@ -1451,15 +1420,15 @@ test('thorough verification runs full at QA on its own result', () => {
     undefined,
   )
 
-  setRunStage(root, runId, 'test', 'Run QA under the thorough level.')
+  setRunStage(root, runId, 'verify', 'Run verification under thorough.')
   const submitted = submitStageOutput(
     root,
     runId,
-    stageBySlug(workflow, 'test'),
+    stageBySlug(workflow, 'verify'),
     'success',
   )
   const fullSuite = submitted.record.evaluation.deterministic.find(
-    (item) => item.id === 'test.full_suite',
+    (item) => item.id === 'verify.full_suite',
   )
 
   assert.ok(fullSuite)
@@ -1469,19 +1438,23 @@ test('thorough verification runs full at QA on its own result', () => {
   assert.equal(submitted.record.outcome, 'failure')
 })
 
-test('a scaled QA timeout preserves the environment-blocked route', () => {
+test('a scaled verification timeout preserves the environment-blocked route', () => {
   const root = createFixture()
   const configuredTimeoutMs = 1_000
   const commandDelayMs = 1_500
   const resolvedTimeoutMs = 5_000
 
-  // Under the light level the QA gate runs the fast profile, so the
+  // Under the light level the verify gate runs the fast profile, so the
   // infrastructure scenario and the timeout scaling both route through it.
   for (const [stageFile, criterionId] of [
-    ['test.json', 'test.full_suite'],
+    ['verify.json', 'verify.full_suite'],
     ['implement.json', 'implement.unit_tests'],
   ] as const) {
-    const stagePath = path.join(root, 'library/workflows/dev/stages', stageFile)
+    const stagePath = path.join(
+      root,
+      'library/workflows/delivery/stages',
+      stageFile,
+    )
     const stageDefinition = JSON.parse(
       readFileSync(stagePath, 'utf8'),
     ) as StageDefinition
@@ -1493,11 +1466,11 @@ test('a scaled QA timeout preserves the environment-blocked route', () => {
     writeJson(stagePath, stageDefinition)
   }
 
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
-    title: 'QA infrastructure fixture',
+    title: 'Verification infrastructure fixture',
   })
   const environmentPath = path.join(root, 'runtime', 'environment.txt')
   const completionPath = path.join(root, 'runtime', 'completed.txt')
@@ -1569,16 +1542,16 @@ test('a scaled QA timeout preserves the environment-blocked route', () => {
   assert.equal(readFileSync(completionPath, 'utf8'), 'baseline\nbaseline\n')
 
   writeFileSync(environmentPath, 'current\n')
-  setRunStage(root, state.run_id, 'test', 'Recheck the QA infrastructure.')
+  setRunStage(root, state.run_id, 'verify', 'Recheck the QA infrastructure.')
 
   const submitted = submitStageOutput(
     root,
     state.run_id,
-    stageBySlug(workflow, 'test'),
+    stageBySlug(workflow, 'verify'),
     'success',
   )
   const fullSuite = submitted.record.evaluation.deterministic.find(
-    (item) => item.id === 'test.full_suite',
+    (item) => item.id === 'verify.full_suite',
   )
 
   assert.equal(fullSuite?.timed_out, false)
@@ -1591,14 +1564,14 @@ test('a scaled QA timeout preserves the environment-blocked route', () => {
   assert.equal(submitted.record.outcome, 'failure')
   assert.equal(submitted.state.status, 'paused')
   assert.equal(submitted.state.pending_action.type, 'operator_decision')
-  assert.equal(submitted.state.current_stage, 'test')
+  assert.equal(submitted.state.current_stage, 'verify')
 })
 
 test('new repository-check diagnostics still block implementation', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Repository regression fixture',
   })
@@ -1649,9 +1622,9 @@ test('new repository-check diagnostics still block implementation', () => {
 
 test('a repository-check gate credits an inherited failure the stage fixed', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Inherited failure repair fixture',
   })
@@ -1716,7 +1689,7 @@ test('a repository-check gate credits an inherited failure the stage fixed', () 
   )
 
   assert.equal(submitted.record.outcome, 'success')
-  assert.equal(submitted.state.current_stage, 'review')
+  assert.equal(submitted.state.current_stage, 'verify')
   assert.equal(afterRepair?.passed, true)
   assert.equal(afterRepair?.preexisting_failure, undefined)
   assert.equal(afterRepair?.repository_check_delta?.new.length, 0)
@@ -1731,9 +1704,9 @@ test('a repository-check gate credits an inherited failure the stage fixed', () 
 
 test('an elided inherited failure stays carried from the full baseline', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Large inherited failure fixture',
   })
@@ -1805,9 +1778,9 @@ test('an elided inherited failure stays carried from the full baseline', () => {
 
 test('a missing baseline artifact pauses the run before delegation', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Missing baseline fixture',
   })
@@ -1849,9 +1822,9 @@ test('a missing baseline artifact pauses the run before delegation', () => {
 
 test('a wiped baseline map degrades gates to absolute judgment without recapture', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Missing baseline map fixture',
   })
@@ -1895,9 +1868,9 @@ test('a wiped baseline map degrades gates to absolute judgment without recapture
 
 test('a repository-check gate fails closed when its baseline disappears', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Fail-closed baseline fixture',
   })
@@ -1941,9 +1914,9 @@ test('a repository-check gate fails closed when its baseline disappears', () => 
 
 test('an incompatible baseline artifact pauses the run before delegation', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Incompatible baseline fixture',
   })
@@ -1979,133 +1952,140 @@ test('an incompatible baseline artifact pauses the run before delegation', () =>
   assert.match(prepared.state.pause_reason ?? '', /incompatible with its gate/u)
 })
 
-test('review same-reason failure twice pauses for operator_decision', () => {
+test('verify same-reason failure twice pauses for operator_decision', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
-    title: 'Same-reason review fixture',
+    title: 'Same-reason verify fixture',
   })
   const runId = state.run_id
-  const reviewStage = stageBySlug(workflow, 'review')
-  const implementStage = stageBySlug(workflow, 'implement')
+  const verifyStage = stageBySlug(workflow, 'verify')
+  const remediateStage = stageBySlug(workflow, 'remediate')
 
-  setRunStage(root, runId, 'review', 'Seed review for same-reason testing.')
+  setRunStage(root, runId, 'verify', 'Seed verify for same-reason testing.')
 
-  const first = submitStageOutput(root, runId, reviewStage, 'failure', [
-    'review.acceptance_met',
-  ])
+  const first = submitStageOutput(
+    root,
+    runId,
+    verifyStage,
+    'failure',
+    ['verify.acceptance_met'],
+    (output) => {
+      output.data.verify = failingVerify('VF-SAME-1')
+    },
+  )
 
   assert.equal(first.state.status, 'running')
-  assert.equal(first.state.current_stage, 'implement')
-  assert.equal(first.state.same_reason_failures?.review?.repeat_count, 1)
+  assert.equal(first.state.current_stage, 'remediate')
+  assert.equal(first.state.same_reason_failures?.verify?.repeat_count, 1)
 
-  submitStageOutput(root, runId, implementStage, 'success')
+  submitStageOutput(root, runId, remediateStage, 'success')
 
-  const second = submitStageOutput(root, runId, reviewStage, 'failure', [
-    'review.acceptance_met',
-  ])
+  const second = submitStageOutput(
+    root,
+    runId,
+    verifyStage,
+    'failure',
+    ['verify.acceptance_met'],
+    (output) => {
+      output.data.verify = failingVerify('VF-SAME-2')
+    },
+  )
 
   assert.equal(second.state.status, 'paused')
   assert.equal(second.state.pending_action.type, 'operator_decision')
-  assert.equal(second.state.current_stage, 'review')
+  assert.equal(second.state.current_stage, 'verify')
   assert.match(second.state.pause_reason ?? '', /same deterministic reason/u)
 })
 
-test('test same-reason failure twice pauses for operator_decision', () => {
+test('different verify failure reasons keep the remediation route', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
-    title: 'Same-reason test fixture',
+    title: 'Different-reason verify fixture',
   })
   const runId = state.run_id
-  const reviewStage = stageBySlug(workflow, 'review')
-  const testStage = stageBySlug(workflow, 'test')
-  const implementStage = stageBySlug(workflow, 'implement')
-
-  setRunStage(root, runId, 'test', 'Seed test for same-reason testing.')
-
-  const first = submitStageOutput(root, runId, testStage, 'failure', [
-    'test.manual_cases',
-  ])
-
-  assert.equal(first.state.current_stage, 'implement')
-  assert.equal(first.state.same_reason_failures?.test?.repeat_count, 1)
-
-  submitStageOutput(root, runId, implementStage, 'success')
-  submitStageOutput(root, runId, reviewStage, 'success')
-
-  const second = submitStageOutput(root, runId, testStage, 'failure', [
-    'test.manual_cases',
-  ])
-
-  assert.equal(second.state.status, 'paused')
-  assert.equal(second.state.pending_action.type, 'operator_decision')
-  assert.equal(second.state.current_stage, 'test')
-})
-
-test('different review failure reasons keep remediation route to implement', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
-  const state = createRun(root, {
-    workflowSlug: 'dev',
-    requestPath: 'request.md',
-    title: 'Different-reason review fixture',
-  })
-  const runId = state.run_id
-  const reviewStage = stageBySlug(workflow, 'review')
-  const implementStage = stageBySlug(workflow, 'implement')
+  const verifyStage = stageBySlug(workflow, 'verify')
+  const remediateStage = stageBySlug(workflow, 'remediate')
 
   setRunStage(
     root,
     runId,
-    'review',
-    'Seed review for different-reason testing.',
+    'verify',
+    'Seed verify for different-reason testing.',
   )
 
-  submitStageOutput(root, runId, reviewStage, 'failure', [
-    'review.acceptance_met',
-  ])
-  submitStageOutput(root, runId, implementStage, 'success')
+  submitStageOutput(
+    root,
+    runId,
+    verifyStage,
+    'failure',
+    ['verify.acceptance_met'],
+    (output) => {
+      output.data.verify = failingVerify('VF-DIFF-1')
+    },
+  )
+  submitStageOutput(root, runId, remediateStage, 'success')
 
-  const second = submitStageOutput(root, runId, reviewStage, 'failure', [
-    'review.tests_correct',
-  ])
+  const second = submitStageOutput(
+    root,
+    runId,
+    verifyStage,
+    'failure',
+    ['verify.tests_correct'],
+    (output) => {
+      output.data.verify = failingVerify('VF-DIFF-2')
+    },
+  )
 
   assert.equal(second.state.status, 'running')
-  assert.equal(second.state.current_stage, 'implement')
-  assert.equal(second.state.same_reason_failures?.review?.repeat_count, 1)
-  assert.deepEqual(second.state.same_reason_failures?.review?.last_signature, [
-    'review.tests_correct',
+  assert.equal(second.state.current_stage, 'remediate')
+  assert.equal(second.state.same_reason_failures?.verify?.repeat_count, 1)
+  assert.deepEqual(second.state.same_reason_failures?.verify?.last_signature, [
+    'verify.tests_correct',
   ])
 })
 
-test('strict superset review failures trigger same-reason pause', () => {
+test('strict superset verify failures trigger same-reason pause', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
-    title: 'Superset review fixture',
+    title: 'Superset verify fixture',
   })
   const runId = state.run_id
-  const reviewStage = stageBySlug(workflow, 'review')
-  const implementStage = stageBySlug(workflow, 'implement')
+  const verifyStage = stageBySlug(workflow, 'verify')
+  const remediateStage = stageBySlug(workflow, 'remediate')
 
-  setRunStage(root, runId, 'review', 'Seed review for superset testing.')
+  setRunStage(root, runId, 'verify', 'Seed verify for superset testing.')
 
-  submitStageOutput(root, runId, reviewStage, 'failure', [
-    'review.acceptance_met',
-  ])
-  submitStageOutput(root, runId, implementStage, 'success')
+  submitStageOutput(
+    root,
+    runId,
+    verifyStage,
+    'failure',
+    ['verify.acceptance_met'],
+    (output) => {
+      output.data.verify = failingVerify('VF-SUP-1')
+    },
+  )
+  submitStageOutput(root, runId, remediateStage, 'success')
 
-  const second = submitStageOutput(root, runId, reviewStage, 'failure', [
-    'review.acceptance_met',
-    'review.tests_correct',
-  ])
+  const second = submitStageOutput(
+    root,
+    runId,
+    verifyStage,
+    'failure',
+    ['verify.acceptance_met', 'verify.tests_correct'],
+    (output) => {
+      output.data.verify = failingVerify('VF-SUP-2')
+    },
+  )
 
   assert.equal(second.state.status, 'paused')
   assert.equal(second.state.pending_action.type, 'operator_decision')
@@ -2113,121 +2093,165 @@ test('strict superset review failures trigger same-reason pause', () => {
 
 test('same-reason tracker resets on stage pass, waive-gate, and set-stage', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Same-reason reset fixture',
   })
   const runId = state.run_id
-  const reviewStage = stageBySlug(workflow, 'review')
-  const implementStage = stageBySlug(workflow, 'implement')
+  const verifyStage = stageBySlug(workflow, 'verify')
+  const remediateStage = stageBySlug(workflow, 'remediate')
+  const failAcceptance = (output: StageOutput, findingId: string): void => {
+    output.data.verify = failingVerify(findingId)
+  }
 
-  setRunStage(root, runId, 'review', 'Seed review for reset testing.')
-  submitStageOutput(root, runId, reviewStage, 'failure', [
-    'review.acceptance_met',
-  ])
+  setRunStage(root, runId, 'verify', 'Seed verify for reset testing.')
+  submitStageOutput(
+    root,
+    runId,
+    verifyStage,
+    'failure',
+    ['verify.acceptance_met'],
+    (output) => failAcceptance(output, 'VF-RESET-1'),
+  )
   assert.equal(
-    getRunState(root, runId).same_reason_failures?.review?.repeat_count,
+    getRunState(root, runId).same_reason_failures?.verify?.repeat_count,
     1,
   )
 
   setRunStage(
     root,
     runId,
-    'review',
+    'verify',
     'Operator repair clears same-reason memory.',
   )
-  assert.equal(getRunState(root, runId).same_reason_failures?.review, undefined)
+  assert.equal(getRunState(root, runId).same_reason_failures?.verify, undefined)
 
-  submitStageOutput(root, runId, reviewStage, 'failure', [
-    'review.acceptance_met',
-  ])
-  submitStageOutput(root, runId, implementStage, 'success')
-  submitStageOutput(root, runId, reviewStage, 'success')
-  assert.equal(getRunState(root, runId).same_reason_failures?.review, undefined)
+  submitStageOutput(
+    root,
+    runId,
+    verifyStage,
+    'failure',
+    ['verify.acceptance_met'],
+    (output) => failAcceptance(output, 'VF-RESET-2'),
+  )
+  submitStageOutput(root, runId, remediateStage, 'success')
+  submitStageOutput(root, runId, verifyStage, 'success')
+  assert.equal(getRunState(root, runId).same_reason_failures?.verify, undefined)
 
-  setRunStage(root, runId, 'review', 'Prepare waiver reset coverage.')
-  const failed = submitStageOutput(root, runId, reviewStage, 'failure', [
-    'review.acceptance_met',
-  ])
-  assert.equal(failed.state.current_stage, 'implement')
-  submitStageOutput(root, runId, implementStage, 'success')
-  const paused = submitStageOutput(root, runId, reviewStage, 'failure', [
-    'review.acceptance_met',
-  ])
+  setRunStage(root, runId, 'verify', 'Prepare waiver reset coverage.')
+  const failed = submitStageOutput(
+    root,
+    runId,
+    verifyStage,
+    'failure',
+    ['verify.acceptance_met'],
+    (output) => failAcceptance(output, 'VF-RESET-3'),
+  )
+  assert.equal(failed.state.current_stage, 'remediate')
+  submitStageOutput(root, runId, remediateStage, 'success')
+  const paused = submitStageOutput(
+    root,
+    runId,
+    verifyStage,
+    'failure',
+    ['verify.acceptance_met'],
+    (output) => failAcceptance(output, 'VF-RESET-4'),
+  )
   assert.equal(paused.state.status, 'paused')
 
   const waived = waiveGate(root, runId, {
-    stageSlug: 'review',
-    criterionIds: ['review.acceptance_met'],
-    note: 'Bounded review miss is isolated and does not block downstream validation.',
+    stageSlug: 'verify',
+    criterionIds: ['verify.acceptance_met'],
+    note: 'Bounded verify miss is isolated and does not block downstream validation.',
   })
 
   assert.equal(waived.state.status, 'running')
-  assert.equal(waived.state.current_stage, 'test')
-  assert.equal(getRunState(root, runId).same_reason_failures?.review, undefined)
+  assert.equal(waived.state.current_stage, 'ship')
+  assert.equal(getRunState(root, runId).same_reason_failures?.verify, undefined)
 })
 
-test('set-stage to implement clears tracked review same-reason memory', () => {
+test('set-stage to remediate clears tracked verify same-reason memory', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
-    title: 'Set-stage to implement reset fixture',
+    title: 'Set-stage to remediate reset fixture',
   })
   const runId = state.run_id
-  const reviewStage = stageBySlug(workflow, 'review')
-  const implementStage = stageBySlug(workflow, 'implement')
+  const verifyStage = stageBySlug(workflow, 'verify')
+  const remediateStage = stageBySlug(workflow, 'remediate')
 
-  setRunStage(root, runId, 'review', 'Seed review for set-stage reset testing.')
-  submitStageOutput(root, runId, reviewStage, 'failure', [
-    'review.acceptance_met',
-  ])
+  setRunStage(root, runId, 'verify', 'Seed verify for set-stage reset testing.')
+  submitStageOutput(
+    root,
+    runId,
+    verifyStage,
+    'failure',
+    ['verify.acceptance_met'],
+    (output) => {
+      output.data.verify = failingVerify('VF-STAGE-1')
+    },
+  )
   assert.equal(
-    getRunState(root, runId).same_reason_failures?.review?.repeat_count,
+    getRunState(root, runId).same_reason_failures?.verify?.repeat_count,
     1,
   )
-  assert.equal(getRunState(root, runId).current_stage, 'implement')
+  assert.equal(getRunState(root, runId).current_stage, 'remediate')
 
   setRunStage(
     root,
     runId,
-    'implement',
-    'Operator repair targets implement and clears review memory.',
+    'remediate',
+    'Operator repair targets remediation and clears verify memory.',
   )
-  assert.equal(getRunState(root, runId).same_reason_failures?.review, undefined)
+  assert.equal(getRunState(root, runId).same_reason_failures?.verify, undefined)
 
-  submitStageOutput(root, runId, implementStage, 'success')
+  submitStageOutput(root, runId, remediateStage, 'success')
 
-  const second = submitStageOutput(root, runId, reviewStage, 'failure', [
-    'review.acceptance_met',
-  ])
+  const second = submitStageOutput(
+    root,
+    runId,
+    verifyStage,
+    'failure',
+    ['verify.acceptance_met'],
+    (output) => {
+      output.data.verify = failingVerify('VF-STAGE-2')
+    },
+  )
 
   assert.equal(second.state.status, 'running')
-  assert.equal(second.state.current_stage, 'implement')
-  assert.equal(second.state.same_reason_failures?.review?.repeat_count, 1)
+  assert.equal(second.state.current_stage, 'remediate')
+  assert.equal(second.state.same_reason_failures?.verify?.repeat_count, 1)
 })
 
-test('ordinary resume preserves same-reason tracker across implement work', () => {
+test('ordinary resume preserves same-reason tracker across remediation work', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Resume preserves tracker fixture',
   })
   const runId = state.run_id
-  const reviewStage = stageBySlug(workflow, 'review')
-  const implementStage = stageBySlug(workflow, 'implement')
+  const verifyStage = stageBySlug(workflow, 'verify')
+  const remediateStage = stageBySlug(workflow, 'remediate')
 
-  setRunStage(root, runId, 'review', 'Seed review for resume testing.')
-  submitStageOutput(root, runId, reviewStage, 'failure', [
-    'review.acceptance_met',
-  ])
+  setRunStage(root, runId, 'verify', 'Seed verify for resume testing.')
+  submitStageOutput(
+    root,
+    runId,
+    verifyStage,
+    'failure',
+    ['verify.acceptance_met'],
+    (output) => {
+      output.data.verify = failingVerify('VF-RESUME-1')
+    },
+  )
   assert.equal(
-    getRunState(root, runId).same_reason_failures?.review?.repeat_count,
+    getRunState(root, runId).same_reason_failures?.verify?.repeat_count,
     1,
   )
 
@@ -2235,19 +2259,26 @@ test('ordinary resume preserves same-reason tracker across implement work', () =
   resumeRun(
     root,
     runId,
-    'implement',
-    'Resume remediation without forgiving review.',
+    'remediate',
+    'Resume remediation without forgiving verification.',
   )
   assert.equal(
-    getRunState(root, runId).same_reason_failures?.review?.repeat_count,
+    getRunState(root, runId).same_reason_failures?.verify?.repeat_count,
     1,
   )
 
-  submitStageOutput(root, runId, implementStage, 'success')
+  submitStageOutput(root, runId, remediateStage, 'success')
 
-  const second = submitStageOutput(root, runId, reviewStage, 'failure', [
-    'review.acceptance_met',
-  ])
+  const second = submitStageOutput(
+    root,
+    runId,
+    verifyStage,
+    'failure',
+    ['verify.acceptance_met'],
+    (output) => {
+      output.data.verify = failingVerify('VF-RESUME-2')
+    },
+  )
 
   assert.equal(second.state.status, 'paused')
   assert.equal(second.state.pending_action.type, 'operator_decision')
@@ -2256,14 +2287,14 @@ test('ordinary resume preserves same-reason tracker across implement work', () =
 test('governance and artifact defects are advisory before ship and never loop to implementation', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Governance warning fixture',
     operatorArtifacts: true,
   })
   const runId = state.run_id
 
-  setRunStage(root, runId, 'review', 'Exercise advisory validation routing.')
+  setRunStage(root, runId, 'verify', 'Exercise advisory validation routing.')
   const invocation = prepareInvocation(root, runId).invocation
   assert.ok(invocation)
   const brief = invocation.output.operator_brief
@@ -2272,17 +2303,39 @@ test('governance and artifact defects are advisory before ship and never loop to
   assert.equal(existsSync(path.join(root, brief.source_path)), true)
   assert.equal(existsSync(path.join(root, brief.rendered_path)), false)
 
+  // Submission still gates hard on the parallel evidence reports and the
+  // required verify validator, so the minimal output carries valid verify
+  // data; every other defect below stays advisory.
+  writeEvidenceReports(root, invocation)
   writeJson(path.join(root, invocation.output.path), {
     schema_version: 1,
     invocation_id: invocation.invocation_id,
     result: 'success',
     invocation_attestation: makeAttestation(invocation),
+    data: {
+      verify: {
+        verdict: 'pass',
+        findings: [],
+        qa_cases: [
+          {
+            id: 'TP-01',
+            steps: 'Run workflow fixture',
+            expected: 'advance',
+            actual: 'advance',
+            result: 'pass',
+          },
+        ],
+        acceptance_results: [
+          { id: 'AC-01', result: 'pass', evidence: ['fixture'] },
+        ],
+      },
+    },
   })
 
   const submitted = submitOutput(root, runId, invocation.output.path)
 
   assert.equal(submitted.record.outcome, 'success')
-  assert.equal(submitted.state.current_stage, 'test')
+  assert.equal(submitted.state.current_stage, 'ship')
   assert.equal(submitted.state.status, 'running')
   assert.ok(
     (submitted.record.evaluation.governance_artifact_warnings ?? []).length > 0,
@@ -2302,7 +2355,7 @@ test('governance and artifact defects are advisory before ship and never loop to
 test('ship owns governance artifact review and pauses instead of looping to implementation', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Ship governance fixture',
   })
@@ -2344,9 +2397,9 @@ test('ship owns governance artifact review and pauses instead of looping to impl
 
 test('a required implement validator failure blocks the stage transition', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Required validator enforcement fixture',
   })
@@ -2365,7 +2418,7 @@ test('a required implement validator failure blocks the stage transition', () =>
   // The exact defect of run 63315 record 93_implement-3_c7ba51e2: claimed
   // test files that do not exist. DEV-001 declares the claims validator
   // required with failure_route stage_failure, so the submit MUST fail the
-  // stage instead of advancing to review with a governance warning.
+  // stage instead of advancing to verification with a governance warning.
   implementation.tests_added = [
     'tests/unit/tools/custom_dashboard/test_source_citations.py::test_accepts_valid_shape',
   ]
@@ -2375,7 +2428,7 @@ test('a required implement validator failure blocks the stage transition', () =>
   const submitted = submitOutput(root, runId, invocation.output.path)
 
   assert.equal(submitted.record.outcome, 'failure')
-  assert.notEqual(submitted.state.current_stage, 'review')
+  assert.notEqual(submitted.state.current_stage, 'verify')
   assert.match(
     submitted.state.stage_history.at(-1)?.validation_errors.join('\n') ?? '',
     /IMPLEMENTATION-CLAIMS-VALIDATE-001/u,
@@ -2385,7 +2438,7 @@ test('a required implement validator failure blocks the stage transition', () =>
 test('baseline capture disclosed dirty paths and predecessor provenance', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Baseline provenance fixture',
   })

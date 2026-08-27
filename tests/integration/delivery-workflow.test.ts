@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -11,27 +11,14 @@ import {
   submitOutput,
 } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
-import type { Invocation, StageOutput } from '../../src/lib/types.js'
+import type { StageOutput } from '../../src/lib/types.js'
 import {
   createFixture,
   makeOutput,
   writeCanonicalDelegation,
+  writeEvidenceReports,
   writeJson,
 } from '../helpers.js'
-
-/** Simulate the supervisor persisting every parallel evidence report. */
-function writeEvidenceReports(root: string, invocation: Invocation): void {
-  for (const worker of invocation.evidence_workers ?? []) {
-    const absolute = path.join(root, worker.evidence_path)
-
-    mkdirSync(path.dirname(absolute), { recursive: true })
-    writeFileSync(
-      absolute,
-      `# ${worker.role} evidence\n\nFixture ${worker.role} report.\n`,
-      'utf8',
-    )
-  }
-}
 
 interface VerifyShape {
   verdict: string
@@ -329,6 +316,10 @@ test('delivery verify resolves parallel evidence workers and gates submission on
 
   // Missing reports reject the submission outright without spending an
   // attempt; persisting them makes the same submission succeed.
+  for (const worker of invocation.evidence_workers ?? []) {
+    rmSync(path.join(root, worker.evidence_path), { force: true })
+  }
+
   assert.throws(
     () => submitOutput(root, runId, invocation.output.path),
     /Evidence report for role 'review'/u,

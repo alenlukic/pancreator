@@ -241,26 +241,11 @@ function validateVersionBearingDocuments(
   version: string,
 ): string[] {
   const errors: string[] = []
-  const readmePath = path.join(root, 'README.md')
   const embeddedInstallationPath = path.join(
     root,
     'docs',
     'embedded-installation.md',
   )
-
-  if (fileExists(readmePath)) {
-    const readme = readText(readmePath)
-    const headingVersion = /^# Pancreator v([^\s]+)$/mu.exec(readme)?.[1]
-    const introductionVersion = /^Pancreator v([^\s]+) is /mu.exec(readme)?.[1]
-
-    if (headingVersion !== version) {
-      errors.push('README.md heading version MUST match VERSION')
-    }
-
-    if (introductionVersion !== version) {
-      errors.push('README.md introduction version MUST match VERSION')
-    }
-  }
 
   if (fileExists(embeddedInstallationPath)) {
     const content = readText(embeddedInstallationPath)

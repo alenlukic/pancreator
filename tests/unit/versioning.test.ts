@@ -64,17 +64,19 @@ test('release metadata validation requires the changelog latest release to match
 
 test('release metadata validation requires version-bearing docs to match VERSION', () => {
   const root = createFixture()
-  const readmePath = path.join(root, 'README.md')
-  const readme = readFileSync(readmePath, 'utf8').replace(
-    /^# Pancreator v[^\s]+$/mu,
-    '# Pancreator v999.0.0',
+  const embeddedPath = path.join(root, 'docs', 'embedded-installation.md')
+  const embedded = readFileSync(embeddedPath, 'utf8').replace(
+    /currently agree on `[^`]+`/u,
+    'currently agree on `999.0.0`',
   )
 
-  writeFileSync(readmePath, readme)
+  writeFileSync(embeddedPath, embedded)
 
   const result = validateReleaseMetadata(root)
 
   assert.ok(
-    result.errors.includes('README.md heading version MUST match VERSION'),
+    result.errors.includes(
+      'docs/embedded-installation.md current release version MUST match VERSION',
+    ),
   )
 })

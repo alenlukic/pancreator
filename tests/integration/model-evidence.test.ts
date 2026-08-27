@@ -55,7 +55,7 @@ function withFakeCursorAgent<T>(
 test('supervisor evidence activates future worker-card enforcement', () => {
   const legacyRoot = createFixture()
   const legacyRun = createRun(legacyRoot, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Markerless compatibility run',
   })
@@ -67,7 +67,7 @@ test('supervisor evidence activates future worker-card enforcement', () => {
   assert.ok(legacyInvocation)
   assert.equal(legacyInvocation.model_evidence_required, undefined)
   const legacyStage = stageBySlug(
-    loadWorkflow(legacyRoot, 'dev'),
+    loadWorkflow(legacyRoot, 'delivery'),
     legacyInvocation.stage.slug,
   )
 
@@ -95,7 +95,7 @@ test('supervisor evidence activates future worker-card enforcement', () => {
 
   const root = createFixture()
   const run = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Model evidence run',
   })
@@ -129,7 +129,7 @@ test('supervisor evidence activates future worker-card enforcement', () => {
   assert.ok(invocation)
   assert.equal(invocation.model_evidence_required, true)
 
-  const stage = stageBySlug(loadWorkflow(root, 'dev'), 'intake')
+  const stage = stageBySlug(loadWorkflow(root, 'delivery'), 'plan')
 
   writeJson(
     path.join(root, invocation.output.path),
@@ -148,7 +148,7 @@ test('supervisor evidence activates future worker-card enforcement', () => {
 test('worker probes persist matches and reject mismatches or missing metadata', () => {
   const root = createFixture()
   const run = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Worker probe run',
   })
@@ -202,7 +202,10 @@ test('worker probes persist matches and reject mismatches or missing metadata', 
 
   assert.equal(repaired.result, 'match')
 
-  const stage = stageBySlug(loadWorkflow(root, 'dev'), invocation.stage.slug)
+  const stage = stageBySlug(
+    loadWorkflow(root, 'delivery'),
+    invocation.stage.slug,
+  )
 
   writeJson(
     path.join(root, invocation.output.path),
@@ -224,18 +227,26 @@ test('a bare model spec accepts any resolved Cursor variant', () => {
   const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
     defaults: Record<string, string>
+    configs?: Record<string, { personas?: Record<string, string> }>
   }
 
   // Run 63316 record 02_ship-1_abe84794: a bare spec delegates the variant
   // choice to Cursor, so comparing the spec id literally with the resolved
   // display name produced a false CURSOR_MODEL_MISMATCH ('auto' vs 'Auto
   // Balance') that made ship unsubmittable without a harness repair.
-  config.defaults['intake-writer'] = 'auto-smart'
+  // A named entry under `configs` overrides `defaults`, so the persona is
+  // cleared there too.
+  config.defaults.planner = 'auto-smart'
+
+  for (const named of Object.values(config.configs ?? {})) {
+    delete named.personas?.planner
+  }
+
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
   syncCursorProjection(root, { write: true })
 
   const run = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Bare spec run',
   })

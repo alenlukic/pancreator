@@ -24,6 +24,7 @@ import {
 import { withOperationMutex } from '../../src/lib/io.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
+import type { StageOutput } from '../../src/lib/types.js'
 import {
   createFixture,
   makeOutput,
@@ -254,8 +255,9 @@ function submitCandidateStage(
   runId: string,
   stageSlug: string,
   outcome: 'success' | 'failure' = 'success',
+  mutate?: (output: StageOutput) => void,
 ) {
-  const workflow = loadWorkflow(root, 'dev-candidate')
+  const workflow = loadWorkflow(root, 'delivery-candidate')
   const prepared = prepareInvocation(root, runId)
   const invocation = prepared.invocation
 
@@ -263,11 +265,10 @@ function submitCandidateStage(
   assert.equal(invocation.stage.slug, stageSlug)
 
   const stage = stageBySlug(workflow, stageSlug)
+  const output = makeOutput(root, invocation, stage, outcome)
 
-  writeJson(
-    path.join(root, invocation.output.path),
-    makeOutput(root, invocation, stage, outcome),
-  )
+  mutate?.(output)
+  writeJson(path.join(root, invocation.output.path), output)
 
   if (stage.persona !== 'orchestrator') {
     writeCanonicalDelegation(root, invocation)
@@ -304,10 +305,46 @@ function submitCandidateStage(
   return assessStage(root, runId, assessmentPath).state
 }
 
-/** Advance one autonomous candidate run from intake to a terminal outcome. */
+/** Advance one autonomous candidate run from plan to a terminal outcome. */
 function driveCandidate(root: string, runId: string): void {
-  for (const stageSlug of ['intake', 'plan', 'implement', 'review', 'test']) {
+  for (const stageSlug of ['plan', 'implement', 'verify']) {
     submitCandidateStage(root, runId, stageSlug)
+  }
+}
+
+/** Mutate a verify output into a remediable failing verdict. */
+function failCandidateVerify(findingId: string): (output: StageOutput) => void {
+  return (output) => {
+    output.data.verify = {
+      verdict: 'fail_remedial',
+      findings: [
+        {
+          id: findingId,
+          severity: 'blocker',
+          source: 'qa',
+          statement: 'The candidate fixture does not advance.',
+          evidence: ['fixture'],
+        },
+      ],
+      qa_cases: [
+        {
+          id: 'TP-01',
+          steps: 'Run workflow fixture',
+          expected: 'advance',
+          actual: 'stalled',
+          result: 'fail',
+        },
+      ],
+      acceptance_results: [
+        { id: 'AC-01', result: 'fail', evidence: ['fixture'] },
+      ],
+      remediation_guidance:
+        'Rerun the workflow fixture; the candidate stalls before verification.',
+    }
+    output.criteria = output.criteria.map((criterion) => ({
+      ...criterion,
+      result: criterion.id === 'verify.acceptance_met' ? 'fail' : 'pass',
+    }))
   }
 }
 
@@ -330,7 +367,7 @@ test('best-of-N init isolates every candidate in its own worktree and model set'
     const run = getRunState(root, candidate.run_id)
 
     assert.equal(run.workspace_root, candidate.worktree_path)
-    assert.equal(run.workflow_slug, 'dev-candidate')
+    assert.equal(run.workflow_slug, 'delivery-candidate')
     assert.equal(run.best_of_n?.bon_id, session.bon_id)
     assert.equal(run.best_of_n?.role, 'candidate')
     assert.equal(run.cursor_agent_suffix, candidate.agent_suffix)
@@ -407,7 +444,7 @@ test('a candidate run delegates to its own agent variant', () => {
   assert.ok(prepared.invocation)
   assert.equal(
     prepared.invocation.delegation?.cursor_agent_path,
-    `.cursor/agents/pan-intake-writer--${candidate.agent_suffix}.md`,
+    `.cursor/agents/pan-planner--${candidate.agent_suffix}.md`,
   )
   assert.equal(
     status.candidates[0].resume_command,
@@ -421,25 +458,25 @@ test('agent refresh preserves pinned models while updating instructions', () => 
   const candidate = session.candidates[0]
   const variant = path.join(
     root,
-    `.cursor/agents/pan-intake-writer--${candidate.agent_suffix}.md`,
+    `.cursor/agents/pan-planner--${candidate.agent_suffix}.md`,
   )
   const original = readFileSync(variant, 'utf8')
   const pinnedModel = /^model: .+$/mu.exec(original)?.[0]
 
   assert.ok(pinnedModel)
 
-  writeFileSync(variant, original.replace('maxTurns: 24', 'maxTurns: 1'))
+  writeFileSync(variant, original.replace('maxTurns: 28', 'maxTurns: 1'))
 
   const refreshed = refreshBestOfNAgents(root, session.bon_id)
   const updated = readFileSync(variant, 'utf8')
 
   assert.ok(
     refreshed.refreshed_agents.includes(
-      `.cursor/agents/pan-intake-writer--${candidate.agent_suffix}.md`,
+      `.cursor/agents/pan-planner--${candidate.agent_suffix}.md`,
     ),
   )
   assert.ok(updated.includes(pinnedModel))
-  assert.match(updated, /maxTurns: 24/u)
+  assert.match(updated, /maxTurns: 28/u)
   assert.equal(
     existsSync(
       path.join(
@@ -493,17 +530,23 @@ test('a candidate circuit breaker ends that candidate without operator input', (
   const session = initSession(root)
   const candidate = session.candidates[0]
 
-  submitCandidateStage(root, candidate.run_id, 'intake')
   submitCandidateStage(root, candidate.run_id, 'plan')
   submitCandidateStage(root, candidate.run_id, 'implement')
-  submitCandidateStage(root, candidate.run_id, 'review', 'failure')
-  submitCandidateStage(root, candidate.run_id, 'implement')
+  submitCandidateStage(
+    root,
+    candidate.run_id,
+    'verify',
+    'failure',
+    failCandidateVerify('VF-CAND-1'),
+  )
+  submitCandidateStage(root, candidate.run_id, 'remediate')
 
   const failed = submitCandidateStage(
     root,
     candidate.run_id,
-    'review',
+    'verify',
     'failure',
+    failCandidateVerify('VF-CAND-2'),
   )
 
   assert.equal(failed.status, 'failed')

@@ -253,7 +253,7 @@ entrypoints where PATH ambiguity could make stage results incomparable. Optional
 probes should print executable identity and version before verification, and
 `timeout_ms` should capture a documented runtime bound when one exists.
 
-The dev workflow invokes profiles through:
+The delivery workflow invokes profiles through:
 
 ```sh
 ./.pancreator/bin/pan repository-check static

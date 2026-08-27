@@ -41,7 +41,7 @@ const NON_RESTATING_SURFACES = [
   'library/cursor/agents/qa-tester.md',
   'library/cursor/agents/design-qa.md',
   'library/cursor/agents/designer.md',
-  'library/workflows/dev/prompts/test.md',
+  'library/workflows/delivery/prompts/verify.md',
   'library/workflows/design/prompts/test.md',
   'library/workflows/design/prompts/design.md',
   'docs/target-repo-primer.md',
@@ -204,10 +204,10 @@ test('library/cursor/mcp.json declares chrome-devtools with --isolated', () => {
   assert.ok(mcp.mcpServers.playwright)
 })
 
-test('qa-tester persona and dev test prompt classify intermittent full-suite timeouts', () => {
+test('qa-tester persona and delivery verify prompt classify intermittent full-suite timeouts', () => {
   for (const surface of [
     'library/personas/qa-tester.md',
-    'library/workflows/dev/prompts/test.md',
+    'library/workflows/delivery/prompts/verify.md',
   ]) {
     const content = readSurface(surface).toLowerCase()
 

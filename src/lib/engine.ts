@@ -42,7 +42,6 @@ import {
   requestStageOperatorArtifacts,
 } from './operator-artifacts.js'
 import {
-  DEFAULT_REVIEW_MODE,
   configuredWorkspaceRoot,
   harnessPathPrefix,
   isDetachedInstallation,
@@ -50,7 +49,6 @@ import {
   isTargetInstallation,
   panCommand,
   resolveAwayModeConfig,
-  resolveReviewMode,
 } from './project-config.js'
 import {
   completeInvocationAgent,
@@ -208,7 +206,6 @@ interface CreateRunOptions {
   gatesPath?: string | null
   involvement?: string | null
   verification?: string | null
-  reviewMode?: string | null
   operatorArtifacts?: boolean
   pipelineOverride?: PipelineOverride | null
   cursorAgentSuffix?: string | null
@@ -1026,20 +1023,14 @@ function pauseForLimit(root: string, state: RunState, reason: string): boolean {
   return false
 }
 
-const SAME_REASON_TRACKED_STAGES = new Set(['review', 'test'])
 const VALIDATION_ONLY_SIGNATURE = ['__validation__']
 
-function isSameReasonTrackedStage(
-  state: RunState,
-  stage: StageDefinition,
-): boolean {
-  return (
-    ((state.workflow_slug === 'dev' ||
-      state.workflow_slug === 'dev-candidate') &&
-      SAME_REASON_TRACKED_STAGES.has(stage.slug)) ||
-    (state.workflow_slug === 'delivery' && stage.slug === 'verify') ||
-    stage.transitions.failure === stage.slug
-  )
+/**
+ * Verification stages loop through remediation rather than themselves, so the
+ * same-reason breaker tracks them explicitly alongside self-looping stages.
+ */
+function isSameReasonTrackedStage(stage: StageDefinition): boolean {
+  return stage.slug === 'verify' || stage.transitions.failure === stage.slug
 }
 
 function sameReasonTrackers(state: RunState): SameReasonFailureTrackers {
@@ -1140,7 +1131,7 @@ function pauseForSameReasonFailure(
   state: RunState,
   stage: StageDefinition,
 ): void {
-  const tracker = isSameReasonTrackedStage(state, stage)
+  const tracker = isSameReasonTrackedStage(stage)
     ? state.same_reason_failures?.[stage.slug]
     : undefined
   const signature = tracker?.last_signature.join(', ') ?? 'unknown'
@@ -1608,7 +1599,7 @@ function personaSubset(
 }
 
 export function createRun(root: string, options: CreateRunOptions): RunState {
-  const workflowSlug = options.workflowSlug ?? 'dev'
+  const workflowSlug = options.workflowSlug ?? 'delivery'
   const requestPath = options.requestPath
 
   invariant(requestPath, '--request is required.', {
@@ -1784,9 +1775,6 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
       }
     : applyOperatorInvolvement(workflowSnapshotValue, involvementSelection)
 
-  // Snapshotted for the same reason as the involvement profile: the review
-  // method a run started under governs it to the end.
-  const reviewMode = resolveReviewMode(root, options.reviewMode)
   const awayMode = resolveAwayModeConfig(root)
   // Snapshotted likewise. The level decides which repository-check profiles
   // gate this run and which baselines the first mutating stage captures.
@@ -1823,7 +1811,6 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     ...(gateOverrides ? { gate_overrides: gateOverrides } : {}),
     operator_involvement: involvement,
     verification,
-    review_mode: reviewMode,
     away_mode: awayMode,
     operator_artifacts: {
       mode: options.operatorArtifacts ? 'requested' : 'suppressed',
@@ -1860,7 +1847,6 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     run_contracts: involvement.contracts,
     applied_gates: involvement.applied_gates,
     verification_level: verification.level,
-    review_mode: reviewMode,
     away_mode_enabled: awayMode.enabled,
     operator_artifacts: state.operator_artifacts,
   })
@@ -2334,13 +2320,11 @@ export function prepareInvocation(
 
     const workspace = workspaceSnapshotForRun(root, state)
     const contracts = state.operator_involvement?.contracts ?? []
-    const reviewMode = state.review_mode ?? DEFAULT_REVIEW_MODE
     const policies = resolvePolicies(root, {
       persona: stage.persona,
       workflow: workflow.slug,
       stage: stage.slug,
       contracts,
-      review_mode: reviewMode,
       operator_artifacts: artifactsRequested ? 'requested' : 'suppressed',
     })
     const prDescription =
@@ -2354,7 +2338,6 @@ export function prepareInvocation(
       workflow: workflow.slug,
       stage: stage.slug,
       contracts,
-      review_mode: reviewMode,
       invocation: {
         output_path: outputPath,
         artifact_paths: artifactsRequested
@@ -2498,7 +2481,6 @@ export function prepareInvocation(
         ? { operator_involvement: state.operator_involvement }
         : {}),
       ...(state.verification ? { verification: state.verification } : {}),
-      review_mode: reviewMode,
       workflow: {
         slug: workflow.slug,
         snapshot_path: state.workflow_snapshot.path,
@@ -3821,13 +3803,13 @@ export function submitOutput(
       state.status = 'awaiting_supervisor'
       nextState = 'awaiting supervisor evaluation'
     } else {
-      if (outcome === 'success' && isSameReasonTrackedStage(state, stage)) {
+      if (outcome === 'success' && isSameReasonTrackedStage(stage)) {
         clearSameReasonTracker(state, stage.slug)
       }
 
       let sameReasonPauseTriggered = false
 
-      if (outcome === 'failure' && isSameReasonTrackedStage(state, stage)) {
+      if (outcome === 'failure' && isSameReasonTrackedStage(stage)) {
         const signature = collectHardFailureSignature(
           stage,
           validation.output.criteria,

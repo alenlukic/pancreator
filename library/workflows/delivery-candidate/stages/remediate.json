@@ -1,29 +1,32 @@
 {
-  "slug": "implement",
-  "title": "Implementation",
-  "persona": "coder",
-  "prompt_path": "library/workflows/dev/prompts/implement.md",
+  "slug": "remediate",
+  "title": "Remediation",
+  "persona": "remediator",
+  "persona_by_verdict": {
+    "source_stage": "verify",
+    "path": "verify.verdict",
+    "map": {
+      "fail_severe": "remediator-severe"
+    }
+  },
+  "prompt_path": "library/workflows/delivery/prompts/remediate.md",
   "workspace_policy": "source_allowed",
   "gate": "next_stage",
   "context": {
     "request": "conditional",
     "required_stage_outputs": [
       {
-        "stage": "intake",
+        "stage": "plan",
         "selection": "latest_success"
       },
       {
-        "stage": "plan",
-        "selection": "latest_success"
+        "stage": "verify",
+        "selection": "latest"
       }
     ],
     "conditional_stage_outputs": [
       {
-        "stage": "review",
-        "selection": "latest"
-      },
-      {
-        "stage": "test",
+        "stage": "implement",
         "selection": "latest"
       }
     ],
@@ -35,9 +38,16 @@
     "implementation.changed_files": "array",
     "implementation.tests_added": "array",
     "implementation.notes": "array",
+    "implementation.remediation": "array",
     "acceptance_results": "array"
   },
   "criteria": [
+    {
+      "id": "remediate.addresses_verdict",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The remediation addresses every blocking verify finding, failed acceptance criterion, and failed QA case, or records why one stands."
+    },
     {
       "id": "implement.acceptance_claimed",
       "type": "judgment",
@@ -62,8 +72,8 @@
     }
   ],
   "transitions": {
-    "success": "review",
-    "failure": "implement",
+    "success": "verify",
+    "failure": "remediate",
     "blocked": "paused"
   }
 }

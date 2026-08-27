@@ -142,7 +142,7 @@ import {
 } from './lib/worktrees.js'
 
 const HELP_BODY = `Usage:
-  pan init --request <repo-relative-file> [--workflow dev|prototype|design] [--title <title>] [--workspace <dir> | --worktree <name>] [--gates <file>] [--involvement <profile>] [--verification <level>] [--review-mode default|squad] [--operator-artifacts]
+  pan init --request <repo-relative-file> [--workflow delivery|prototype|design] [--title <title>] [--workspace <dir> | --worktree <name>] [--gates <file>] [--involvement <profile>] [--verification <level>] [--operator-artifacts]
   pan prepare <run-id> [--operator-artifacts]
   pan delegate <run-id> [--timeout-ms <milliseconds>]
   pan submit <run-id> <output-json>
@@ -883,14 +883,13 @@ async function main(): Promise<void> {
       const title = option(args, '--title')
       const worktreeWorkspace = sharedWorktreeWorkspace(root, args, title)
       const state = createRun(root, {
-        workflowSlug: option(args, '--workflow', 'dev') ?? 'dev',
+        workflowSlug: option(args, '--workflow', 'delivery') ?? 'delivery',
         requestPath: option(args, '--request'),
         title,
         workspace: worktreeWorkspace ? worktreeWorkspace.path : workspace,
         gatesPath: option(args, '--gates'),
         involvement: option(args, '--involvement'),
         verification: option(args, '--verification'),
-        reviewMode: option(args, '--review-mode'),
         operatorArtifacts: hasFlag(args, '--operator-artifacts'),
       })
 
@@ -904,7 +903,6 @@ async function main(): Promise<void> {
         run_contracts: state.operator_involvement?.contracts ?? [],
         applied_gates: state.operator_involvement?.applied_gates ?? {},
         verification_level: state.verification?.level,
-        review_mode: state.review_mode,
         operator_artifacts: state.operator_artifacts,
         next_command: `${pan} prepare ${state.run_id}`,
         state_path: resolveRunLayout(root, state.run_id).state.relative,

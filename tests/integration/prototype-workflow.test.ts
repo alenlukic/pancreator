@@ -181,7 +181,7 @@ test('prototype stages resolve PROTO-001 and their own brief profiles', () => {
 
   assert.ok(brief)
   assert.ok(invocation.policies.some((policy) => policy.id === 'PROTO-001'))
-  // dev/intake and prototype/intake share a slug but need different briefs.
+  // design/intake and prototype/intake share a slug but need different briefs.
   assert.equal(brief.profile, 'prototype-brief')
   assert.deepEqual(brief.required_headings, [
     'objective',
@@ -210,7 +210,7 @@ test('the technical_director contract escalates the prototype approach stage', (
     involvement: 'technical-director',
   })
 
-  // The same contract that escalates dev/plan escalates prototype/approach,
+  // The same contract that escalates delivery/plan escalates prototype/approach,
   // because it attaches by checkpoint role rather than by stage slug.
   assert.deepEqual(state.operator_involvement?.applied_gates.approach, {
     workflow_gate: 'next_stage',
@@ -219,16 +219,17 @@ test('the technical_director contract escalates the prototype approach stage', (
   })
 })
 
-test('prototype limits stay tighter than dev', () => {
+test('prototype limits stay tighter than delivery', () => {
   const root = createFixture()
   const prototype = loadWorkflow(root, 'prototype')
-  const dev = loadWorkflow(root, 'dev')
+  const delivery = loadWorkflow(root, 'delivery')
 
   assert.ok(
-    prototype.limits.max_total_transitions < dev.limits.max_total_transitions,
+    prototype.limits.max_total_transitions <
+      delivery.limits.max_total_transitions,
   )
   assert.ok(
     prototype.limits.max_consecutive_failures <=
-      dev.limits.max_consecutive_failures,
+      delivery.limits.max_consecutive_failures,
   )
 })

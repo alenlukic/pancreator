@@ -67,16 +67,16 @@ test('target policy lookup extensions add validated rows', () => {
   )
   writePolicyExtension(root, 'target.json', [
     {
-      persona: 'tech-lead',
-      workflow: 'dev',
+      persona: 'planner',
+      workflow: 'delivery',
       stage: 'plan',
       policies: ['TARGET-001'],
     },
   ])
 
   const ids = resolvePolicies(root, {
-    persona: 'tech-lead',
-    workflow: 'dev',
+    persona: 'planner',
+    workflow: 'delivery',
     stage: 'plan',
   }).map((policy) => policy.id)
 
@@ -110,8 +110,8 @@ test('structured target policy extensions bind their owned policies', () => {
     'target.json',
     [
       {
-        persona: 'tech-lead',
-        workflow: 'dev',
+        persona: 'planner',
+        workflow: 'delivery',
         stage: 'plan',
         policies: ['TARGET-001'],
       },
@@ -120,8 +120,8 @@ test('structured target policy extensions bind their owned policies', () => {
   )
 
   const policies = resolvePolicies(root, {
-    persona: 'tech-lead',
-    workflow: 'dev',
+    persona: 'planner',
+    workflow: 'delivery',
     stage: 'plan',
   })
   const ids = policies.map((item) => item.id)
@@ -166,8 +166,8 @@ test('structured target policy extensions reject missing and stale bindings', ()
   assert.throws(
     () =>
       resolvePolicies(missingRoot, {
-        persona: 'tech-lead',
-        workflow: 'dev',
+        persona: 'planner',
+        workflow: 'delivery',
         stage: 'plan',
       }),
     /binding layer is missing/u,
@@ -180,8 +180,8 @@ test('structured target policy extensions reject missing and stale bindings', ()
     'target.json',
     [
       {
-        persona: 'tech-lead',
-        workflow: 'dev',
+        persona: 'planner',
+        workflow: 'delivery',
         stage: 'plan',
         policies: ['MISSING-001'],
       },
@@ -191,8 +191,8 @@ test('structured target policy extensions reject missing and stale bindings', ()
   assert.throws(
     () =>
       resolvePolicies(staleRoot, {
-        persona: 'tech-lead',
-        workflow: 'dev',
+        persona: 'planner',
+        workflow: 'delivery',
         stage: 'plan',
       }),
     /stale policy: MISSING-001/u,
@@ -208,8 +208,8 @@ test('structured target policy extensions reject ownership conflicts', () => {
     'other.json',
     [
       {
-        persona: 'tech-lead',
-        workflow: 'dev',
+        persona: 'planner',
+        workflow: 'delivery',
         stage: 'plan',
         policies: ['TARGET-001'],
       },
@@ -220,8 +220,8 @@ test('structured target policy extensions reject ownership conflicts', () => {
   assert.throws(
     () =>
       resolvePolicies(root, {
-        persona: 'tech-lead',
-        workflow: 'dev',
+        persona: 'planner',
+        workflow: 'delivery',
         stage: 'plan',
       }),
     /belongs to target/u,
@@ -236,8 +236,8 @@ test('structured target policy extensions reject ownership conflicts', () => {
       `${extensionId}.json`,
       [
         {
-          persona: 'tech-lead',
-          workflow: 'dev',
+          persona: 'planner',
+          workflow: 'delivery',
           stage: 'plan',
           policies: ['TARGET-001'],
         },
@@ -249,8 +249,8 @@ test('structured target policy extensions reject ownership conflicts', () => {
   assert.throws(
     () =>
       resolvePolicies(conflictRoot, {
-        persona: 'tech-lead',
-        workflow: 'dev',
+        persona: 'planner',
+        workflow: 'delivery',
         stage: 'plan',
       }),
     /conflicts with/u,
@@ -262,8 +262,8 @@ test('target policy lookup extensions fail loudly for invalid rows', () => {
 
   writePolicyExtension(root, 'missing.json', [
     {
-      persona: 'tech-lead',
-      workflow: 'dev',
+      persona: 'planner',
+      workflow: 'delivery',
       stage: 'plan',
       policies: ['MISSING-001'],
     },
@@ -272,8 +272,8 @@ test('target policy lookup extensions fail loudly for invalid rows', () => {
   assert.throws(
     () =>
       resolvePolicies(root, {
-        persona: 'tech-lead',
-        workflow: 'dev',
+        persona: 'planner',
+        workflow: 'delivery',
         stage: 'plan',
       }),
     (error: unknown) =>
@@ -288,17 +288,17 @@ test('target policy lookup extensions reject duplicates and malformed JSON', () 
 
   writePolicyExtension(duplicateRoot, 'duplicate.json', [
     {
-      persona: 'tech-lead',
-      workflow: 'dev',
+      persona: 'planner',
+      workflow: 'delivery',
       stage: 'plan',
-      policies: ['PLAN-001'],
+      policies: ['PLAN-002'],
     },
   ])
   assert.throws(
     () =>
       resolvePolicies(duplicateRoot, {
-        persona: 'tech-lead',
-        workflow: 'dev',
+        persona: 'planner',
+        workflow: 'delivery',
         stage: 'plan',
       }),
     (error: unknown) =>
@@ -319,8 +319,8 @@ test('target policy lookup extensions reject duplicates and malformed JSON', () 
   writeFileSync(path.join(malformedDirectory, 'malformed.json'), '{\n')
   assert.throws(() =>
     resolvePolicies(malformedRoot, {
-      persona: 'tech-lead',
-      workflow: 'dev',
+      persona: 'planner',
+      workflow: 'delivery',
       stage: 'plan',
     }),
   )
@@ -332,7 +332,7 @@ test('policy resolution unions global and stage-specific policies', () => {
   assert.ok(catalog.size >= 8)
   const ids = resolvePolicies(root, {
     persona: 'coder',
-    workflow: 'dev',
+    workflow: 'delivery',
     stage: 'implement',
   }).map((policy) => policy.id)
   assert.deepEqual(ids, [
@@ -360,21 +360,15 @@ test('policy resolution unions global and stage-specific policies', () => {
 
 test('representative contexts exclude policies outside their remit', () => {
   const root = createFixture()
-  const ids = (
-    persona: string,
-    workflow: string,
-    stage: string,
-    reviewMode: 'default' | 'squad' = 'default',
-  ): string[] =>
+  const ids = (persona: string, workflow: string, stage: string): string[] =>
     resolvePolicies(root, {
       persona,
       workflow,
       stage,
-      review_mode: reviewMode,
       operator_artifacts: 'suppressed',
     }).map((policy) => policy.id)
 
-  assert.deepEqual(ids('tech-lead', 'dev', 'plan'), [
+  assert.deepEqual(ids('planner', 'delivery', 'plan'), [
     'ACTION-001',
     'ASK-001',
     'AUTO-001',
@@ -383,35 +377,24 @@ test('representative contexts exclude policies outside their remit', () => {
     'GLOBAL-001',
     'GLOBAL-002',
     'OPERATOR-001',
-    'PLAN-001',
-    'PRIMER-001',
-    'STE-001',
-    'VALID-001',
-  ])
-  assert.deepEqual(ids('intake-writer', 'dev', 'intake'), [
-    'ACTION-001',
-    'ASK-001',
-    'AUTO-001',
-    'GLOBAL-001',
-    'GLOBAL-002',
-    'INTAKE-001',
-    'OPERATOR-001',
+    'PLAN-002',
     'PRIMER-001',
     'STE-001',
     'VALID-001',
   ])
 
-  const defaultReview = ids('reviewer', 'dev', 'review')
-  const squadReview = ids('reviewer', 'dev', 'review', 'squad')
+  const verify = ids('verifier', 'delivery', 'verify')
 
-  assert.equal(defaultReview.includes('DELEGATE-001'), false)
-  assert.equal(defaultReview.includes('REVIEW-002'), false)
-  assert.ok(squadReview.includes('DELEGATE-001'))
-  assert.ok(squadReview.includes('REVIEW-002'))
+  assert.ok(verify.includes('VERIFY-001'))
+  assert.equal(
+    verify.includes('DELEGATE-001'),
+    false,
+    'the verifier consolidates parallel evidence and never delegates',
+  )
 
-  for (const leaked of ['BRIEF-001', 'LANG-001', 'PY-001', 'TS-001']) {
+  for (const leaked of ['BRIEF-001', 'LANG-001', 'PY-001']) {
     assert.equal(
-      ids('tech-lead', 'dev', 'plan').includes(leaked),
+      ids('planner', 'delivery', 'plan').includes(leaked),
       false,
       `plan MUST exclude ${leaked}`,
     )
@@ -423,7 +406,7 @@ test('pull-request policy follows operator-artifact selection', () => {
   const ids = (operatorArtifacts: 'requested' | 'suppressed'): string[] =>
     resolvePolicies(root, {
       persona: 'release-steward',
-      workflow: 'dev',
+      workflow: 'delivery',
       stage: 'ship',
       operator_artifacts: operatorArtifacts,
     }).map((policy) => policy.id)
@@ -432,26 +415,27 @@ test('pull-request policy follows operator-artifact selection', () => {
   assert.equal(ids('suppressed').includes('PR-001'), false)
 })
 
-test('best-of-N stages carry the same policies as the dev stages they mirror', () => {
+test('best-of-N stages carry the same policies as the delivery stages they mirror', () => {
   const root = createFixture()
   const ids = (persona: string, workflow: string, stage: string): string[] =>
     resolvePolicies(root, { persona, workflow, stage }).map(
       (policy) => policy.id,
     )
 
-  for (const stage of ['intake', 'plan', 'implement', 'review', 'test']) {
+  for (const stage of ['plan', 'implement', 'verify', 'remediate']) {
     const persona = {
-      intake: 'intake-writer',
-      plan: 'tech-lead',
+      plan: 'planner',
       implement: 'coder',
-      review: 'reviewer',
-      test: 'qa-tester',
+      verify: 'verifier',
+      remediate: 'remediator',
     }[stage] as string
 
     assert.deepEqual(
-      ids(persona, 'dev-candidate', stage).filter((id) => id !== 'BESTOFN-001'),
-      ids(persona, 'dev', stage),
-      `dev-candidate/${stage} MUST resolve dev's policies plus BESTOFN-001`,
+      ids(persona, 'delivery-candidate', stage).filter(
+        (id) => id !== 'BESTOFN-001',
+      ),
+      ids(persona, 'delivery', stage),
+      `delivery-candidate/${stage} MUST resolve delivery's policies plus BESTOFN-001`,
     )
   }
 
@@ -533,65 +517,46 @@ test('the best-of-N session mode resolves its own governance', () => {
   )
 })
 
-test('engineering handbook policy loads for reviewer and qa personas', () => {
+test('engineering handbook policy loads for verifier and evidence personas', () => {
   const root = createFixture()
 
-  const reviewIds = resolvePolicies(root, {
-    persona: 'reviewer',
-    workflow: 'dev',
-    stage: 'review',
+  const verifyIds = resolvePolicies(root, {
+    persona: 'verifier',
+    workflow: 'delivery',
+    stage: 'verify',
   }).map((policy) => policy.id)
 
-  assert.deepEqual(reviewIds, [
+  assert.deepEqual(verifyIds, [
     'ACTION-001',
     'ASK-001',
     'AUTO-001',
-    'BIN-001',
     'BRIEF-001',
+    'BROWSER-001',
     'CONTRACT-001',
     'ENG-001',
     'GLOBAL-001',
     'GLOBAL-002',
-    'LANG-001',
     'OPERATOR-001',
-    'OUTPUT-001',
     'PRIMER-001',
-    'REPO-001',
-    'REVIEW-001',
-    'RUNTIME-001',
     'STE-001',
     'TS-001',
     'VALID-001',
+    'VERIFY-001',
     'WAIVER-001',
   ])
 
-  const testIds = resolvePolicies(root, {
-    persona: 'qa-tester',
-    workflow: 'dev',
-    stage: 'test',
+  const reviewerIds = resolvePolicies(root, {
+    persona: 'reviewer',
+    workflow: 'delivery',
+    stage: 'verify',
   }).map((policy) => policy.id)
 
-  assert.deepEqual(testIds, [
-    'ACTION-001',
-    'ASK-001',
-    'AUTO-001',
-    'BIN-001',
-    'BRIEF-001',
-    'BROWSER-001',
-    'ENG-001',
-    'GLOBAL-001',
-    'GLOBAL-002',
-    'LANG-001',
-    'OPERATOR-001',
-    'OUTPUT-001',
-    'PRIMER-001',
-    'REPO-001',
-    'RUNTIME-001',
-    'STE-001',
-    'TEST-001',
-    'TS-001',
-    'VALID-001',
-  ])
+  for (const id of ['ENG-001', 'CONTRACT-001', 'LANG-001', 'TS-001']) {
+    assert.ok(
+      reviewerIds.includes(id),
+      `the review evidence worker MUST load ${id}`,
+    )
+  }
 })
 
 test('policy registry content remains canonical for inlining', () => {
@@ -681,7 +646,7 @@ test('Python policy loads only for detected Python workspaces', () => {
 
   const pythonIds = resolvePolicies(root, {
     persona: 'coder',
-    workflow: 'dev',
+    workflow: 'delivery',
     stage: 'implement',
   }).map((policy) => policy.id)
 
@@ -696,9 +661,9 @@ test('Python policy loads only for detected Python workspaces', () => {
   })
 
   const sourceDetectedIds = resolvePolicies(root, {
-    persona: 'reviewer',
-    workflow: 'dev',
-    stage: 'review',
+    persona: 'verifier',
+    workflow: 'delivery',
+    stage: 'verify',
   }).map((policy) => policy.id)
 
   assert.ok(sourceDetectedIds.includes('PY-001'))
@@ -720,7 +685,7 @@ test('non-Python embedded workspaces do not load Python guidance', () => {
 
   const ids = resolvePolicies(root, {
     persona: 'coder',
-    workflow: 'dev',
+    workflow: 'delivery',
     stage: 'implement',
   }).map((policy) => policy.id)
 
@@ -732,12 +697,12 @@ test('orchestration and release guidance resolve with required policy dependenci
   const root = createFixture()
   const orchestratorIds = resolvePolicies(root, {
     persona: 'orchestrator',
-    workflow: 'dev',
-    stage: 'intake',
+    workflow: 'delivery',
+    stage: 'plan',
   }).map((policy) => policy.id)
   const releaseIds = resolvePolicies(root, {
     persona: 'release-steward',
-    workflow: 'dev',
+    workflow: 'delivery',
     stage: 'ship',
   }).map((policy) => policy.id)
 
@@ -783,23 +748,25 @@ test('orchestration and release guidance resolve with required policy dependenci
   ])
 })
 
-test('dev intake resolves faithful-intake guidance without supervisor policies', () => {
+test('delivery plan resolves planning guidance without supervisor policies', () => {
   const root = createFixture()
-  const intakeIds = resolvePolicies(root, {
-    persona: 'intake-writer',
-    workflow: 'dev',
-    stage: 'intake',
+  const planIds = resolvePolicies(root, {
+    persona: 'planner',
+    workflow: 'delivery',
+    stage: 'plan',
   }).map((policy) => policy.id)
 
-  assert.deepEqual(intakeIds, [
+  assert.deepEqual(planIds, [
     'ACTION-001',
     'ASK-001',
     'AUTO-001',
     'BRIEF-001',
+    'CONTRACT-001',
+    'ENG-001',
     'GLOBAL-001',
     'GLOBAL-002',
-    'INTAKE-001',
     'OPERATOR-001',
+    'PLAN-002',
     'PRIMER-001',
     'STE-001',
     'VALID-001',
@@ -814,12 +781,11 @@ test('dev intake resolves faithful-intake guidance without supervisor policies',
     'WORK-001',
   ]) {
     assert.ok(
-      !intakeIds.includes(supervisorOnly),
-      `intake-writer MUST NOT resolve ${supervisorOnly}`,
+      !planIds.includes(supervisorOnly),
+      `planner MUST NOT resolve ${supervisorOnly}`,
     )
   }
 })
-
 test('design intake keeps resolving faithful intake for the supervisor', () => {
   const root = createFixture()
   const ids = resolvePolicies(root, {
@@ -845,7 +811,7 @@ test('self-development version policy is excluded from embedded installations', 
 
   const releaseIds = resolvePolicies(root, {
     persona: 'release-steward',
-    workflow: 'dev',
+    workflow: 'delivery',
     stage: 'ship',
   }).map((policy) => policy.id)
 
@@ -880,7 +846,7 @@ test('embedded coding stages exclude Pancreator language and binary policies', (
 
   const ids = resolvePolicies(root, {
     persona: 'coder',
-    workflow: 'dev',
+    workflow: 'delivery',
     stage: 'implement',
   }).map((policy) => policy.id)
 
