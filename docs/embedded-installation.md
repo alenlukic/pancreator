@@ -290,6 +290,17 @@ Targets can add lookup rows under
 files. Invalid JSON, duplicate rows, and missing policy identifiers stop policy
 resolution before card preparation.
 
+## Target context-bloat dispositions
+
+Target-authored guidance can restate a directive the harness already ships,
+which the context audit reports as an undisposed duplicate group. Record the
+disposition under
+`.pancreator/governance/registries/context_bloat_dispositions.d/<extension-id>.json`.
+Each file uses `schema_version: 1`, an `extension_id` matching its filename, and
+an `entries` array using the same shape as the harness registry. Refresh
+preserves these target-owned files, whereas an edit to the harness registry
+itself is superseded by the incoming release.
+
 ## Workspace mutation model
 
 Pancreator fingerprints relevant Git-visible source state and does not recursively index target files. Compiled artifacts, caches, virtual environments, and third-party dependency/package directories are excluded and permanently outside agent remit. Source-allowed workers edit declared source directly; governance and artifact diagnostics are deferred to release-steward review instead of looping implementation. Operators should pause before concurrent tracked-file changes so attribution remains clear.

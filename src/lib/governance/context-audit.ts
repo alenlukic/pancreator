@@ -1,7 +1,7 @@
 import { readdirSync } from 'node:fs'
 import path from 'node:path'
 
-import { fileExists, isRecord, readJson, readText } from '../io.js'
+import { fileExists, isDirectory, isRecord, readJson, readText } from '../io.js'
 import { loadPolicyCatalog } from '../policies.js'
 import { renderCursorProjectionSources } from '../projection.js'
 
@@ -9,6 +9,9 @@ const DIRECTIVE_PATTERN =
   /[^.\n]*\b(?:MUST(?: NOT)?|SHOULD(?: NOT)?|MAY)\b[^.\n]*(?:\.|$)/gu
 const DISPOSITIONS_PATH =
   'governance/registries/context_bloat_dispositions.json'
+const DISPOSITIONS_EXTENSION_DIRECTORY =
+  'governance/registries/context_bloat_dispositions.d'
+const EXTENSION_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u
 const DISPOSITIONS = new Set(['retain', 'absorb', 'generalize', 'remove'])
 const CATEGORIES = new Set(['duplicate', 'monkeypatch'])
 
@@ -192,9 +195,18 @@ function normalizeDirective(value: string): string {
 function ignoredDirective(value: string): boolean {
   const normalized = normalizeDirective(value)
 
+  // A formatter wraps the RFC 2119 preamble, which leaves the RFC clause on a
+  // later line. The term enumeration alone identifies the boilerplate.
+  if (
+    normalized.startsWith('the terms must') &&
+    normalized.includes('must not') &&
+    normalized.includes('should not')
+  ) {
+    return true
+  }
+
   return (
-    ((normalized.startsWith('the terms must') ||
-      normalized.startsWith('must')) &&
+    (normalized.startsWith('must') &&
       normalized.includes('must not') &&
       normalized.includes('should') &&
       normalized.includes('should not') &&
@@ -248,70 +260,136 @@ function duplicateGroups(
     .sort((left, right) => left.fingerprint.localeCompare(right.fingerprint))
 }
 
+function validDispositionEntry(item: unknown): boolean {
+  return (
+    isRecord(item) &&
+    typeof item.id === 'string' &&
+    EXTENSION_ID_PATTERN.test(item.id) &&
+    typeof item.category === 'string' &&
+    CATEGORIES.has(item.category) &&
+    Array.isArray(item.sources) &&
+    item.sources.length > 0 &&
+    item.sources.every(
+      (entry) => typeof entry === 'string' && entry.length > 0,
+    ) &&
+    typeof item.disposition === 'string' &&
+    DISPOSITIONS.has(item.disposition) &&
+    typeof item.rationale === 'string' &&
+    item.rationale.trim().length > 0 &&
+    Array.isArray(item.evidence) &&
+    item.evidence.length > 0 &&
+    item.evidence.every(
+      (entry) => typeof entry === 'string' && entry.length > 0,
+    )
+  )
+}
+
+function collectDispositionEntries(
+  entries: unknown[],
+  source: string,
+  ids: Set<string>,
+  dispositions: ContextBloatDisposition[],
+  errors: string[],
+): void {
+  for (const [index, item] of entries.entries()) {
+    const label = `${source}:entries[${index}]`
+
+    if (!validDispositionEntry(item)) {
+      errors.push(`${label} is invalid.`)
+      continue
+    }
+
+    const entry = item as unknown as ContextBloatDisposition
+
+    if (ids.has(entry.id)) {
+      errors.push(`${label} duplicates disposition id ${entry.id}.`)
+      continue
+    }
+
+    ids.add(entry.id)
+    dispositions.push(entry)
+  }
+}
+
+function dispositionExtensionNames(root: string): string[] {
+  const absolute = path.join(root, DISPOSITIONS_EXTENSION_DIRECTORY)
+
+  if (!isDirectory(absolute)) {
+    return []
+  }
+
+  return readdirSync(absolute)
+    .filter((name) => name.endsWith('.json'))
+    .sort()
+}
+
+/**
+ * Read the harness registry, then every target-authored layer under
+ * `context_bloat_dispositions.d/`. An installation replaces the harness
+ * registry wholesale, so a target records dispositions for its own context
+ * surfaces in that directory to survive an update.
+ */
 function parseDispositions(
   root: string,
   errors: string[],
 ): ContextBloatDisposition[] {
+  const dispositions: ContextBloatDisposition[] = []
+  const ids = new Set<string>()
   const absolute = path.join(root, DISPOSITIONS_PATH)
 
   if (!fileExists(absolute)) {
     errors.push(
       `missing context-bloat disposition record: ${DISPOSITIONS_PATH}`,
     )
-    return []
-  }
-
-  const value = readJson(absolute)
-
-  if (
-    !isRecord(value) ||
-    value.schema_version !== 1 ||
-    !Array.isArray(value.entries)
-  ) {
-    errors.push(
-      `${DISPOSITIONS_PATH} MUST contain schema_version 1 and entries[].`,
-    )
-    return []
-  }
-
-  const dispositions: ContextBloatDisposition[] = []
-  const ids = new Set<string>()
-
-  for (const [index, item] of value.entries.entries()) {
-    const label = `${DISPOSITIONS_PATH}:entries[${index}]`
+  } else {
+    const value = readJson(absolute)
 
     if (
-      !isRecord(item) ||
-      typeof item.id !== 'string' ||
-      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(item.id) ||
-      typeof item.category !== 'string' ||
-      !CATEGORIES.has(item.category) ||
-      !Array.isArray(item.sources) ||
-      item.sources.length === 0 ||
-      !item.sources.every(
-        (entry) => typeof entry === 'string' && entry.length > 0,
-      ) ||
-      typeof item.disposition !== 'string' ||
-      !DISPOSITIONS.has(item.disposition) ||
-      typeof item.rationale !== 'string' ||
-      item.rationale.trim().length === 0 ||
-      !Array.isArray(item.evidence) ||
-      item.evidence.length === 0 ||
-      !item.evidence.every(
-        (entry) => typeof entry === 'string' && entry.length > 0,
-      )
+      !isRecord(value) ||
+      value.schema_version !== 1 ||
+      !Array.isArray(value.entries)
     ) {
-      errors.push(`${label} is invalid.`)
+      errors.push(
+        `${DISPOSITIONS_PATH} MUST contain schema_version 1 and entries[].`,
+      )
+    } else {
+      collectDispositionEntries(
+        value.entries,
+        DISPOSITIONS_PATH,
+        ids,
+        dispositions,
+        errors,
+      )
+    }
+  }
+
+  for (const name of dispositionExtensionNames(root)) {
+    const source = `${DISPOSITIONS_EXTENSION_DIRECTORY}/${name}`
+    const value = readJson(path.join(root, source))
+
+    if (
+      !isRecord(value) ||
+      value.schema_version !== 1 ||
+      !Array.isArray(value.entries)
+    ) {
+      errors.push(`${source} MUST contain schema_version 1 and entries[].`)
       continue
     }
 
-    if (ids.has(item.id)) {
-      errors.push(`${label} duplicates disposition id ${item.id}.`)
+    if (
+      typeof value.extension_id !== 'string' ||
+      !EXTENSION_ID_PATTERN.test(value.extension_id)
+    ) {
+      errors.push(`${source}.extension_id MUST use lowercase hyphenated words.`)
       continue
     }
 
-    ids.add(item.id)
-    dispositions.push(item as unknown as ContextBloatDisposition)
+    if (name !== `${value.extension_id}.json`) {
+      errors.push(`${source} MUST match extension_id ${value.extension_id}.`)
+      continue
+    }
+
+    collectDispositionEntries(value.entries, source, ids, dispositions, errors)
   }
 
   return dispositions

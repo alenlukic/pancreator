@@ -89,6 +89,122 @@ test('directive audit rejects an undisposed duplicate group', () => {
   )
 })
 
+function writeDispositionExtension(
+  root: string,
+  extensionId: string,
+  entries: Array<Record<string, unknown>>,
+): void {
+  const directory = path.join(
+    root,
+    'governance',
+    'registries',
+    'context_bloat_dispositions.d',
+  )
+
+  mkdirSync(directory, { recursive: true })
+  writeFileSync(
+    path.join(directory, `${extensionId}.json`),
+    `${JSON.stringify(
+      { schema_version: 1, extension_id: extensionId, entries },
+      null,
+      2,
+    )}\n`,
+  )
+}
+
+test('a wrapped RFC 2119 preamble is not a duplicate directive', () => {
+  const root = createFixture()
+  const directory = path.join(root, 'governance', 'handbooks', 'target-owned')
+  // Two files carrying the preamble wrapped the way a formatter emits it.
+  const preamble =
+    '# Guidance\n\nThe terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in this document indicate\nrequirement levels as defined by RFC 2119 and RFC 8174.\n'
+
+  mkdirSync(directory, { recursive: true })
+  writeFileSync(path.join(directory, 'first.md'), preamble)
+  writeFileSync(path.join(directory, 'second.md'), preamble)
+
+  const result = auditDirectives(root)
+
+  assert.equal(
+    result.errors.some(
+      (item) =>
+        item.includes('duplicate group lacks a disposition') &&
+        item.includes('target-owned'),
+    ),
+    false,
+  )
+})
+
+test('a target-authored disposition layer covers a duplicate group', () => {
+  const root = createFixture()
+  const record = dispositionRecord(root)
+  const moved = record.entries.find(
+    (entry) => entry.id === 'reviewer-hard-evidence-boundary',
+  )
+
+  assert.ok(moved)
+
+  // An installation replaces the harness registry wholesale, so the same entry
+  // must satisfy the audit from a target-owned layer.
+  record.entries = record.entries.filter((entry) => entry !== moved)
+  writeDispositionRecord(root, record)
+  writeDispositionExtension(root, 'target-layer', [moved])
+
+  const result = auditDirectives(root)
+
+  assert.equal(
+    result.errors.some((item) =>
+      item.includes('duplicate group lacks a disposition'),
+    ),
+    false,
+  )
+})
+
+test('a disposition layer filename MUST match its extension id', () => {
+  const root = createFixture()
+  const directory = path.join(
+    root,
+    'governance',
+    'registries',
+    'context_bloat_dispositions.d',
+  )
+
+  mkdirSync(directory, { recursive: true })
+  writeFileSync(
+    path.join(directory, 'mismatched.json'),
+    `${JSON.stringify({
+      schema_version: 1,
+      extension_id: 'target-layer',
+      entries: [],
+    })}\n`,
+  )
+
+  const result = auditDirectives(root)
+
+  assert.ok(
+    result.errors.some((item) =>
+      item.includes('MUST match extension_id target-layer'),
+    ),
+  )
+})
+
+test('a disposition layer MUST NOT reuse a harness disposition id', () => {
+  const root = createFixture()
+  const record = dispositionRecord(root)
+  const existing = record.entries[0]
+
+  assert.ok(existing)
+  writeDispositionExtension(root, 'target-layer', [existing])
+
+  const result = auditDirectives(root)
+
+  assert.ok(
+    result.errors.some((item) =>
+      item.includes(`duplicates disposition id ${String(existing.id)}`),
+    ),
+  )
+})
+
 test('directive audit rejects stale sources and missing retain evidence', () => {
   const root = createFixture()
   const record = dispositionRecord(root)
