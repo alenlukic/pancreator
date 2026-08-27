@@ -15,11 +15,14 @@ const EXTENSION_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u
 const DISPOSITIONS = new Set(['retain', 'absorb', 'generalize', 'remove'])
 const CATEGORIES = new Set(['duplicate', 'monkeypatch'])
 
+type ContextOwner = 'harness' | 'target'
+
 interface ContextSource {
   category: string
   path: string
   content: string
   generated: boolean
+  owner: ContextOwner
 }
 
 interface ContextBloatDisposition {
@@ -33,7 +36,7 @@ interface ContextBloatDisposition {
 
 export interface ContextAuditDuplicateGroup {
   fingerprint: string
-  sources: Array<{ path: string; line: number }>
+  sources: Array<{ path: string; line: number; owner: ContextOwner }>
 }
 
 export interface ContextAuditResult {
@@ -82,6 +85,7 @@ function source(
   root: string,
   category: string,
   relative: string,
+  owner: ContextOwner = 'harness',
 ): ContextSource | null {
   const absolute = path.join(root, relative)
 
@@ -94,6 +98,7 @@ function source(
     path: relative,
     content: readText(absolute),
     generated: false,
+    owner,
   }
 }
 
@@ -126,10 +131,40 @@ function canonicalSources(root: string): ContextSource[] {
       suffixes: ['.json', '.md'],
     },
   ]
+  const catalog = loadPolicyCatalog(root)
+  const targetPolicyPaths = new Set<string>()
+  const targetGuidance = new Set<string>()
+  const harnessGuidance = new Set<string>()
+
+  // A target extension declares its own policies and handbooks. Those surfaces
+  // restate harness norms in target vocabulary by design, so ownership has to
+  // travel with them. A file any harness policy also references stays
+  // harness-owned.
+  for (const policy of catalog.values()) {
+    const targetOwned = typeof policy.target_extension === 'string'
+
+    if (targetOwned) {
+      targetPolicyPaths.add(`governance/policies/${policy.id}.json`)
+    }
+
+    for (const guidance of policy.guidance ?? []) {
+      if (targetOwned) {
+        targetGuidance.add(guidance.source_path)
+      } else {
+        harnessGuidance.add(guidance.source_path)
+      }
+    }
+  }
+
   const sources = definitions.flatMap((definition) =>
     listFiles(root, definition.root, definition.suffixes).flatMap(
       (relative) => {
-        const item = source(root, definition.category, relative)
+        const item = source(
+          root,
+          definition.category,
+          relative,
+          targetPolicyPaths.has(relative) ? 'target' : 'harness',
+        )
 
         return item ? [item] : []
       },
@@ -157,18 +192,21 @@ function canonicalSources(root: string): ContextSource[] {
 
   const existing = new Set(sources.map((item) => item.path))
 
-  for (const policy of loadPolicyCatalog(root).values()) {
-    for (const guidance of policy.guidance ?? []) {
-      if (existing.has(guidance.source_path)) {
-        continue
-      }
+  for (const relative of [...harnessGuidance, ...targetGuidance]) {
+    if (existing.has(relative)) {
+      continue
+    }
 
-      const item = source(root, 'guidance', guidance.source_path)
+    const item = source(
+      root,
+      'guidance',
+      relative,
+      harnessGuidance.has(relative) ? 'harness' : 'target',
+    )
 
-      if (item) {
-        sources.push(item)
-        existing.add(item.path)
-      }
+    if (item) {
+      sources.push(item)
+      existing.add(item.path)
     }
   }
 
@@ -178,6 +216,7 @@ function canonicalSources(root: string): ContextSource[] {
       path: `generated:${projection.path}`,
       content: projection.content,
       generated: true,
+      owner: 'harness',
     })
   }
 
@@ -221,7 +260,7 @@ function duplicateGroups(
 ): ContextAuditDuplicateGroup[] {
   const occurrences = new Map<
     string,
-    Map<string, { path: string; line: number }>
+    Map<string, { path: string; line: number; owner: ContextOwner }>
   >()
 
   for (const item of sources) {
@@ -243,7 +282,11 @@ function duplicateGroups(
         }
 
         const bySource = occurrences.get(fingerprint) ?? new Map()
-        bySource.set(item.path, { path: item.path, line: index + 1 })
+        bySource.set(item.path, {
+          path: item.path,
+          line: index + 1,
+          owner: item.owner,
+        })
         occurrences.set(fingerprint, bySource)
       }
     }
@@ -446,6 +489,14 @@ function dispositionErrors(
   )
 
   for (const group of groups) {
+    // A target handbook restating a harness directive is the documented
+    // purpose of a target extension, not context bloat. Requiring a
+    // disposition here would charge every target a recurring tax for
+    // guidance the harness itself asked it to write.
+    if (new Set(group.sources.map((item) => item.owner)).size > 1) {
+      continue
+    }
+
     const covered = duplicateDispositions.some((disposition) =>
       group.sources.every((occurrence) =>
         disposition.sources.some((declared) =>

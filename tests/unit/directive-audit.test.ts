@@ -112,6 +112,62 @@ function writeDispositionExtension(
   )
 }
 
+test('a target extension restating a harness directive needs no disposition', () => {
+  const root = createFixture()
+  const harnessSkill = path.join(root, 'library', 'skills', 'write-pr.md')
+  const directive =
+    '- A rejected alternative MAY be named only when an artifact records it.\n'
+
+  mkdirSync(path.dirname(harnessSkill), { recursive: true })
+  writeFileSync(harnessSkill, `# Write a PR\n\n${directive}`)
+
+  // A target extension declares its own policy and handbook, the way an
+  // installed target does, and restates the harness rule in its own wording.
+  const handbook = 'governance/handbooks/acme/pull-requests.md'
+
+  mkdirSync(path.join(root, path.dirname(handbook)), { recursive: true })
+  writeFileSync(path.join(root, handbook), `# Acme PRs\n\n${directive}`)
+  writeFileSync(
+    path.join(root, 'governance', 'policies', 'ACME-001.json'),
+    `${JSON.stringify(
+      {
+        id: 'ACME-001',
+        title: 'Acme pull requests',
+        target_extension: 'acme',
+        severity: 'soft',
+        summary: 'Target-owned pull-request guidance.',
+        instructions: ['Follow the Acme handbook.'],
+        guidance_sources: [
+          {
+            path: handbook,
+            read_trigger: 'Read before writing an Acme pull request.',
+          },
+        ],
+      },
+      null,
+      2,
+    )}\n`,
+  )
+
+  const result = auditDirectives(root)
+  const group = result.duplicate_groups.find((item) =>
+    item.sources.some((entry) => entry.path === handbook),
+  )
+
+  // The collision is still reported, so it stays visible.
+  assert.ok(group)
+  assert.deepEqual(
+    new Set(group.sources.map((entry) => entry.owner)),
+    new Set(['harness', 'target']),
+  )
+
+  // It just MUST NOT demand a disposition from the target.
+  assert.equal(
+    result.errors.some((item) => item.includes(handbook)),
+    false,
+  )
+})
+
 test('a wrapped RFC 2119 preamble is not a duplicate directive', () => {
   const root = createFixture()
   const directory = path.join(root, 'governance', 'handbooks', 'target-owned')

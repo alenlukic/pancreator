@@ -247,6 +247,13 @@ function parsePolicy(root: string, value: unknown, source: string): Policy {
     `${source}: extension_id MUST use lowercase hyphenated words when present.`,
     { code: 'INVALID_POLICY' },
   )
+  invariant(
+    value.target_extension === undefined ||
+      (typeof value.target_extension === 'string' &&
+        value.target_extension.length > 0),
+    `${source}: target_extension MUST be a non-empty string when present.`,
+    { code: 'INVALID_POLICY' },
+  )
 
   let requirements: PolicyRequirement[] | undefined
   let guidance: PolicyGuidance[] | undefined
@@ -305,6 +312,9 @@ function parsePolicy(root: string, value: unknown, source: string): Policy {
     instructions: value.instructions,
     ...(typeof value.extension_id === 'string'
       ? { extension_id: value.extension_id }
+      : {}),
+    ...(typeof value.target_extension === 'string'
+      ? { target_extension: value.target_extension }
       : {}),
     ...(artifactAuthority ? { artifact_authority: artifactAuthority } : {}),
     guidance,

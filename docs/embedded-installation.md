@@ -292,14 +292,20 @@ resolution before card preparation.
 
 ## Target context-bloat dispositions
 
-Target-authored guidance can restate a directive the harness already ships,
-which the context audit reports as an undisposed duplicate group. Record the
-disposition under
-`.pancreator/governance/registries/context_bloat_dispositions.d/<extension-id>.json`.
-Each file uses `schema_version: 1`, an `extension_id` matching its filename, and
-an `entries` array using the same shape as the harness registry. Refresh
-preserves these target-owned files, whereas an edit to the harness registry
-itself is superseded by the incoming release.
+A policy carrying `target_extension: <name>` is target-authored, and so is every
+handbook it reaches through `guidance_sources`. The context audit tracks that
+ownership. A duplicate directive spanning a target-owned surface and a
+harness-owned one is the documented purpose of a target extension, so the audit
+reports it without requiring a disposition. Restating a harness norm in target
+vocabulary costs the target nothing.
+
+A duplicate among the target's own surfaces still needs a disposition. Record it
+under
+`.pancreator/governance/registries/context_bloat_dispositions.d/<extension-id>.json`,
+using `schema_version: 1`, an `extension_id` matching the filename, and an
+`entries` array shaped like the harness registry. Refresh preserves these
+target-owned files, whereas an edit to the harness registry itself is superseded
+by the incoming release.
 
 ## Workspace mutation model
 
