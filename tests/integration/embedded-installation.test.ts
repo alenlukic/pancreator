@@ -1427,6 +1427,97 @@ test('embedded installer refresh preserves target persona model mappings', () =>
   }
 })
 
+test('embedded installer refresh prunes personas the release no longer ships', () => {
+  const project = makeSkeletonProject()
+  const customCoderModel = 'operator-custom-coder-model[fast=false]'
+  const retiredPersona = 'tech-lead'
+  const retiredModel = 'retired-persona-model[fast=false]'
+
+  try {
+    assert.equal(runInstaller(project).status, 0)
+
+    const configJsonPath = path.join(project, '.pancreator', 'config.json')
+    const config = readJson<{
+      defaults: Record<string, string>
+      configs: Record<string, { personas: Record<string, string> }>
+    }>(configJsonPath)
+
+    // Reproduce an installation that still maps a persona the harness retired.
+    config.defaults[retiredPersona] = retiredModel
+    config.configs.simple.personas[retiredPersona] = retiredModel
+    config.configs.simple.personas.coder = customCoderModel
+    writeFileSync(configJsonPath, `${JSON.stringify(config, null, 2)}\n`)
+
+    const result = runInstaller(project, ['--yes'])
+
+    assert.equal(result.status, 0, result.stderr)
+
+    const refreshed = readJson<{
+      defaults: Record<string, string>
+      configs: Record<string, { personas: Record<string, string> }>
+    }>(configJsonPath)
+
+    assert.equal(refreshed.defaults[retiredPersona], undefined)
+    assert.equal(
+      refreshed.configs.simple.personas[retiredPersona],
+      undefined,
+      'a retired persona MUST NOT survive a refresh',
+    )
+
+    // Pruning MUST NOT disturb a mapping the release still ships.
+    assert.equal(refreshed.configs.simple.personas.coder, customCoderModel)
+  } finally {
+    rmSync(project, { recursive: true, force: true })
+  }
+})
+
+test('embedded installer refresh preserves a target disposition layer', () => {
+  const project = makeSkeletonProject()
+
+  try {
+    assert.equal(runInstaller(project).status, 0)
+
+    const layerPath = path.join(
+      project,
+      '.pancreator',
+      'governance',
+      'registries',
+      'context_bloat_dispositions.d',
+      'target-layer.json',
+    )
+
+    mkdirSync(path.dirname(layerPath), { recursive: true })
+    writeFileSync(
+      layerPath,
+      `${JSON.stringify({
+        schema_version: 1,
+        extension_id: 'target-layer',
+        entries: [
+          {
+            id: 'target-handbook-boilerplate',
+            category: 'duplicate',
+            sources: ['governance/handbooks/target-owned/'],
+            disposition: 'retain',
+            rationale: 'Target-owned guidance restates the RFC 2119 preamble.',
+            evidence: ['governance/handbooks/target-owned/'],
+          },
+        ],
+      })}\n`,
+    )
+
+    const result = runInstaller(project, ['--yes'])
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(
+      existsSync(layerPath),
+      true,
+      'a target disposition layer MUST survive a refresh',
+    )
+  } finally {
+    rmSync(project, { recursive: true, force: true })
+  }
+})
+
 test('embedded installer migrates a legacy project.json to config.json', () => {
   const project = makeSkeletonProject()
   const customCoderModel = 'operator-legacy-coder-model[fast=false]'
