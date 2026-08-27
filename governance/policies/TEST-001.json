@@ -10,7 +10,8 @@
     "Before submission, manual-case structure, acceptance-criterion coverage, defect routing, verdict consistency, and the referenced QA artifact MUST run their resolved policy-bound validators under VALID-001.",
     "A repository check that ultimately passes MUST NOT fail because of elapsed clock time. Slow successful checks are operator FYIs; actual timeouts, hangs, nonzero exits, or failing assertions remain defects.",
     "Harness governance, path-resolution, validator, renderer, or artifact-contract defects MUST be recorded for ship review and MUST NOT route the workflow to implementation. Only legitimate product or test failures may return to the coder.",
-    "Tests that make real external network or catalog calls MUST NOT be part of the fast/default profile; such tests MUST be explicitly marked for a secondary, integration, or full-only profile."
+    "Tests that make real external network or catalog calls MUST NOT be part of the fast/default profile; such tests MUST be explicitly marked for a secondary, integration, or full-only profile.",
+    "The verification-suite gate exists to confirm a passing QA verdict. When QA reports a failing or blocked verdict, the harness MUST route that verdict without executing the suite and MUST record the gate as skipped with the deciding reason."
   ],
   "requirements": [
     {

@@ -969,6 +969,126 @@ function submitStageOutput(
   return submitOutput(root, runId, invocation.output.path)
 }
 
+test('a failing QA verdict routes without executing the full suite', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'QA gate skip fixture',
+  })
+  const runId = state.run_id
+  const testStage = stageBySlug(workflow, 'test')
+
+  setRunStage(root, runId, 'test', 'Seed QA for gate-skip testing.')
+
+  const failed = submitStageOutput(root, runId, testStage, 'failure', [
+    'test.manual_cases',
+  ])
+
+  assert.equal(failed.record.outcome, 'failure')
+  assert.equal(failed.state.current_stage, 'implement')
+
+  const suite = failed.record.evaluation.deterministic.find(
+    (item) => item.id === 'test.full_suite',
+  )
+
+  assert.ok(suite)
+  assert.equal(suite.skipped, true)
+  assert.equal(suite.passed, true)
+  assert.equal(suite.exit_code, undefined)
+  assert.equal(suite.evidence_path, undefined)
+  assert.match(suite.explanation ?? '', /the stage reported result 'failure'/u)
+
+  // Contamination detection is outcome-independent: the scope state criterion
+  // still evaluates even when every shell gate is skipped.
+  const scope = failed.record.evaluation.deterministic.find(
+    (item) => item.id === 'scope.no_unapproved_changes',
+  )
+
+  assert.ok(scope)
+  assert.equal(scope.skipped, undefined)
+})
+
+test('a failed hard self-criterion skips shell gates on a declared success', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Self-criterion gate skip fixture',
+  })
+  const runId = state.run_id
+  const implementStage = stageBySlug(workflow, 'implement')
+
+  setRunStage(root, runId, 'implement', 'Seed implementation for gate skips.')
+
+  const submitted = submitStageOutput(root, runId, implementStage, 'success', [
+    'implement.acceptance_claimed',
+  ])
+
+  assert.equal(submitted.record.outcome, 'failure')
+
+  const shellResults = submitted.record.evaluation.deterministic.filter(
+    (item) => item.type === 'shell',
+  )
+
+  assert.ok(shellResults.length >= 2)
+  for (const result of shellResults) {
+    assert.equal(result.skipped, true)
+    assert.equal(result.passed, true)
+    assert.equal(result.exit_code, undefined)
+    assert.match(
+      result.explanation ?? '',
+      /hard criterion 'implement\.acceptance_claimed' was self-evaluated as failed/u,
+    )
+  }
+})
+
+test('a failed read attestation skips shell gates before executing them', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Attestation gate skip fixture',
+  })
+  const runId = state.run_id
+  const implementStage = stageBySlug(workflow, 'implement')
+
+  setRunStage(root, runId, 'implement', 'Seed implementation for gate skips.')
+
+  const invocation = prepareInvocation(root, runId).invocation
+
+  assert.ok(invocation)
+
+  const output = makeOutput(root, invocation, implementStage)
+
+  assert.ok(output.invocation_attestation)
+  assert.ok(output.invocation_attestation.status === 'read')
+  output.invocation_attestation.contract_sha256 = '0'.repeat(64)
+
+  writeJson(path.join(root, invocation.output.path), output)
+  writeCanonicalDelegation(root, invocation)
+
+  const submitted = submitOutput(root, runId, invocation.output.path)
+
+  assert.equal(submitted.record.outcome, 'failure')
+
+  const shellResults = submitted.record.evaluation.deterministic.filter(
+    (item) => item.type === 'shell',
+  )
+
+  assert.ok(shellResults.length >= 2)
+  for (const result of shellResults) {
+    assert.equal(result.skipped, true)
+    assert.match(
+      result.explanation ?? '',
+      /the invocation read attestation failed/u,
+    )
+  }
+})
+
 test('implementation same-reason failure twice pauses before a third attempt', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'dev')

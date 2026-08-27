@@ -994,6 +994,16 @@ export interface DeterministicResult {
   overridden?: boolean
   disabled?: boolean
   /**
+   * Set when the gate was not executed because the submission had already
+   * decided a non-success outcome (declared failure or blocked, a failed hard
+   * self-criterion, or a failed read attestation). A deterministic gate can
+   * only confirm a success, so running one after the outcome is decided
+   * spends its runtime proving nothing. `passed` stays true so a skipped gate
+   * never masquerades as the failure reason; `explanation` records why it did
+   * not run.
+   */
+  skipped?: boolean
+  /**
    * Set when the run's verification level remapped or skipped this gate's
    * workflow-declared repository-check profile.
    */

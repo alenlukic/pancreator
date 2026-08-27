@@ -2479,6 +2479,7 @@ export function evaluateDeterministicCriteria(
   artifactId = stage.slug,
   stageOutput?: StageOutput,
   onProgress?: (message: string) => void,
+  gateSkipReason: string | null = null,
 ): { results: DeterministicResult[]; workspace: WorkspaceSnapshot } {
   const afterSnapshot = gitWorkspaceSnapshot(workspaceDir)
   const results: DeterministicResult[] = []
@@ -2560,7 +2561,26 @@ export function evaluateDeterministicCriteria(
         state.verification.gates[criterion.id] === false &&
         repositoryCheckProfileName(criterion.command ?? '') !== null
 
-      if (override === false) {
+      // A shell gate can only confirm a success. When the submission has
+      // already decided a non-success outcome, executing the command spends
+      // its runtime proving nothing, so the gate is recorded as skipped
+      // instead of run. State criteria below still evaluate: scope and
+      // currency checks detect contamination regardless of the outcome.
+      if (gateSkipReason !== null) {
+        results.push({
+          id: criterion.id,
+          type: 'shell',
+          hard: Boolean(criterion.hard),
+          passed: true,
+          skipped: true,
+          explanation:
+            `Gate not executed: ${gateSkipReason}, so the outcome was ` +
+            'already decided as non-success before any deterministic gate ' +
+            'ran. A shell gate runs only when its result can decide the stage.',
+          command: criterion.command,
+          workspace_fingerprint: afterSnapshot.fingerprint,
+        })
+      } else if (override === false) {
         results.push({
           id: criterion.id,
           type: 'shell',

@@ -3394,6 +3394,32 @@ export function submitOutput(
       submittedValue,
     )
 
+    // A shell gate can only confirm a success — `effectiveOutcome` decides
+    // failure from a declared non-success result, a failed hard
+    // self-criterion, or a failed attestation before deterministic results
+    // are consulted. When one of those has already decided the outcome,
+    // running the gate commands (QA's full suite above all) spends minutes
+    // proving nothing, so they are recorded as skipped instead of executed.
+    const declaredNonSuccess =
+      isRecord(submittedValue) &&
+      (submittedValue.result === 'failure' ||
+        submittedValue.result === 'blocked')
+        ? (submittedValue.result as string)
+        : null
+    const selfEvaluations = new Map(
+      validation.output.criteria.map((item) => [item.id, item]),
+    )
+    const failedHardSelfCriterion = stage.criteria.find(
+      (criterion) =>
+        criterion.hard && selfEvaluations.get(criterion.id)?.result === 'fail',
+    )
+    const gateSkipReason = declaredNonSuccess
+      ? `the stage reported result '${declaredNonSuccess}'`
+      : attestationErrors.length > 0
+        ? 'the invocation read attestation failed'
+        : failedHardSelfCriterion
+          ? `hard criterion '${failedHardSelfCriterion.id}' was self-evaluated as failed`
+          : null
     const evaluated = evaluateDeterministicCriteria(
       root,
       runDir(root, runId),
@@ -3405,6 +3431,7 @@ export function submitOutput(
       invocation.invocation_id,
       validation.output,
       options.onProgress,
+      gateSkipReason,
     )
     const harnessValidation = runHarnessAuthoritativeValidators(
       root,
