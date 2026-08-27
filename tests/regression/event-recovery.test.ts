@@ -8,7 +8,7 @@ import { resolveRunLayout } from '../../src/lib/run-layout.js'
 test('materialized state recovers from a newer write-ahead event', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
   const recovered = structuredClone(state)

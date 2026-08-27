@@ -145,10 +145,40 @@ export interface StageContextDefinition {
   legacy_full_history?: boolean
 }
 
+/**
+ * Verdict-conditional persona selection. When the latest output of
+ * `source_stage` carries a verdict the map names, the stage runs under the
+ * mapped persona instead of its default persona. Run creation validates and
+ * snapshots every mapped persona, so verdict routing cannot drift with later
+ * config edits.
+ */
+export interface StagePersonaByVerdict {
+  source_stage: string
+  /** Dotted path inside the source output's data object, e.g. `verify.verdict`. */
+  path: string
+  map: Record<string, string>
+}
+
+/**
+ * A parallel evidence worker the supervisor launches top-level before the
+ * stage worker itself. Each worker writes one evidence report the stage
+ * worker consolidates. Top-level launch preserves the persona-model mapping
+ * that a nested spawn silently loses.
+ */
+export interface StageEvidenceWorkerDefinition {
+  persona: string
+  /** Short slug naming the evidence dimension, e.g. `review` or `qa`. */
+  role: string
+  /** One-paragraph scope statement rendered into the worker's brief. */
+  scope: string
+}
+
 export interface StageDefinition {
   slug: string
   title: string
   persona: string
+  persona_by_verdict?: StagePersonaByVerdict
+  evidence_workers?: StageEvidenceWorkerDefinition[]
   executor?: StageExecutor
   prompt?: string
   prompt_path?: string
@@ -176,14 +206,6 @@ export interface StageDefinition {
  * rather than to stage slugs.
  */
 export type RunContract = 'technical_director'
-
-/**
- * How the independent review stage gathers its findings. `default` is one
- * reviewer reading the whole change. `squad` delegates one agent per review
- * dimension and joins the returned findings. The mode selects the review method
- * only; `REVIEW-001` owns the verdict and the remediation boundary either way.
- */
-export type ReviewMode = 'default' | 'squad'
 
 /** One named operator-involvement profile from `config.json`. */
 export interface OperatorInvolvementProfile {
@@ -391,11 +413,6 @@ export interface PolicyLookupRow {
    */
   contract?: RunContract
   /**
-   * Activates the row only for runs whose resolved review method matches. An
-   * absent value applies to every review method.
-   */
-  review_mode?: ReviewMode
-  /**
    * Activates the row only when the invocation requests operator artifacts.
    * An absent context retains standalone and historical behavior.
    */
@@ -536,8 +553,6 @@ export interface ProjectConfig {
    * the target's absolute path.
    */
   installation_mode?: 'self_development' | 'embedded' | 'detached'
-  /** Review method new runs adopt. Absent means `default`. */
-  review_mode?: ReviewMode
   /** Autonomous blocker handling, snapshotted into each new run. */
   away_mode?: AwayModeConfig
 }
@@ -729,6 +744,20 @@ export type InvocationReferenceRetrieval =
   | 'conditional'
   | 'index_only'
 
+/** One resolved parallel evidence worker on a prepared invocation. */
+export interface InvocationEvidenceWorker {
+  persona: string
+  role: string
+  scope: string
+  /** Named projected agent to launch, e.g. `pan-reviewer`. */
+  agent: string
+  model: string
+  /** Generated brief the supervisor pastes as the worker's prompt. */
+  brief_path: string
+  /** Report the worker writes; a required input of the stage worker. */
+  evidence_path: string
+}
+
 export interface InvocationReference {
   path: string
   description: string
@@ -751,7 +780,6 @@ export interface Invocation {
   gate_overrides?: Record<string, string | false>
   operator_involvement?: ResolvedOperatorInvolvement
   verification?: ResolvedVerification
-  review_mode?: ReviewMode
   workflow: {
     slug: string
     snapshot_path: string
@@ -780,6 +808,14 @@ export interface Invocation {
     target_instructions?: TargetInstructionInput
     pr_description?: PrDescriptionContext
   }
+  /**
+   * Parallel evidence workers resolved for this attempt. The supervisor
+   * launches every listed agent top-level and in parallel, awaits all of
+   * them, and confirms each evidence report exists before delivering the
+   * stage worker's own card. Submission rejects the stage output while an
+   * evidence report is missing.
+   */
+  evidence_workers?: InvocationEvidenceWorker[]
   policies: Policy[]
   requirements?: RequirementManifest
   rubric: Criterion[]
@@ -993,6 +1029,16 @@ export interface DeterministicResult {
   passed: boolean
   overridden?: boolean
   disabled?: boolean
+  /**
+   * Set when the gate was not executed because the submission had already
+   * decided a non-success outcome (declared failure or blocked, a failed hard
+   * self-criterion, or a failed read attestation). A deterministic gate can
+   * only confirm a success, so running one after the outcome is decided
+   * spends its runtime proving nothing. `passed` stays true so a skipped gate
+   * never masquerades as the failure reason; `explanation` records why it did
+   * not run.
+   */
+  skipped?: boolean
   /**
    * Set when the run's verification level remapped or skipped this gate's
    * workflow-declared repository-check profile.
@@ -1266,11 +1312,6 @@ export interface RunState {
    * every later prepare.
    */
   verification_recommendations_surfaced?: string[]
-  /**
-   * Review method this run resolved at creation. Snapshotted so a later
-   * `config.json` edit cannot change a run already in flight.
-   */
-  review_mode?: ReviewMode
   /** Away-mode settings resolved when the run was created. */
   away_mode?: ResolvedAwayModeConfig
   /**

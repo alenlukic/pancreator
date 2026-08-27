@@ -2,7 +2,7 @@
   "slug": "ship",
   "title": "Release preparation",
   "persona": "release-steward",
-  "prompt_path": "library/workflows/dev/prompts/ship.md",
+  "prompt_path": "library/workflows/delivery/prompts/ship.md",
   "workspace_policy": "release_metadata_only",
   "gate": "operator",
   "gate_relaxable": false,
@@ -14,11 +14,7 @@
         "selection": "latest"
       },
       {
-        "stage": "review",
-        "selection": "latest"
-      },
-      {
-        "stage": "test",
+        "stage": "verify",
         "selection": "latest"
       }
     ],

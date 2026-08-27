@@ -186,7 +186,13 @@ export function validateSharedFieldContract(
 
   const registryIds = new Set(loadRegistry(input.root).entries.keys())
 
-  for (const stageSlug of ['plan', 'implement', 'review', 'test', 'ship']) {
+  for (const stageSlug of [
+    'plan',
+    'implement',
+    'verify',
+    'remediate',
+    'ship',
+  ]) {
     const stage = source.stages[stageSlug]
 
     if (
@@ -237,16 +243,13 @@ export function validateSharedFieldContract(
   const requiredFieldPaths: Record<string, string[]> = {
     plan: ['data.open_question_dispositions[].disposition'],
     implement: ['data.acceptance_results[].evidence[]'],
-    review: [
-      'data.review.findings[].severity',
-      'data.review.findings[].remediation_stage',
-      'data.review.findings[].resolution',
-    ],
-    test: [
-      'data.test.cases[].steps',
-      'data.test.cases[].expected',
-      'data.test.cases[].actual',
-      'data.test.defects[].owner',
+    verify: [
+      'data.verify.verdict',
+      'data.verify.findings[].severity',
+      'data.verify.findings[].source',
+      'data.verify.qa_cases[].steps',
+      'data.verify.qa_cases[].expected',
+      'data.verify.qa_cases[].actual',
     ],
     ship: [
       'data.release.change_list[]',
@@ -288,18 +291,19 @@ export function validateSharedFieldContract(
     )
   }
 
-  const expectedReviewEnums: Record<string, string[]> = {
-    'data.review.findings[].severity': ['blocker', 'high', 'medium', 'low'],
-    'data.review.findings[].remediation_stage': [
-      'review',
-      'implement',
-      'operator',
+  const expectedVerifyEnums: Record<string, string[]> = {
+    'data.verify.verdict': [
+      'pass',
+      'pass_with_warnings',
+      'fail_remedial',
+      'fail_severe',
     ],
-    'data.review.findings[].resolution': ['resolved_in_review', 'unresolved'],
+    'data.verify.findings[].severity': ['blocker', 'high', 'medium', 'low'],
+    'data.verify.findings[].source': ['review', 'qa'],
   }
 
-  for (const [fieldPath, expected] of Object.entries(expectedReviewEnums)) {
-    const actual = sharedEnum(input.root, 'review', fieldPath)
+  for (const [fieldPath, expected] of Object.entries(expectedVerifyEnums)) {
+    const actual = sharedEnum(input.root, 'verify', fieldPath)
 
     if (
       actual.size !== expected.length ||
@@ -307,8 +311,8 @@ export function validateSharedFieldContract(
     ) {
       issues.push(
         issue(
-          'field_contract.review_enum',
-          `The review field ${fieldPath} MUST declare its canonical values`,
+          'field_contract.verify_enum',
+          `The verify field ${fieldPath} MUST declare its canonical values`,
         ),
       )
     }
@@ -1802,49 +1806,57 @@ function openQuestionDispositionIssues(
   return issues
 }
 
-export function validateReviewOutput(input: HandlerInput): HandlerResult {
+/**
+ * Joint verification output for the delivery workflow's verify stage. One
+ * stage carries both the review findings and the QA evidence, and one verdict
+ * routes the run: pass and pass_with_warnings advance, fail_remedial and
+ * fail_severe route to remediation. The demotion rule is deterministic here:
+ * a passing verdict cannot coexist with a blocker finding, a failed
+ * acceptance criterion, or a failed QA case, and a failing verdict must carry
+ * reproducible remediation guidance because that guidance is the remediation
+ * stage's primary input.
+ */
+export function validateVerifyOutput(input: HandlerInput): HandlerResult {
   const issues: HandlerResult['issues'] = []
   const value = readJson(path.join(input.root, input.targetPath)) as Record<
     string,
     unknown
   >
   const data = isRecord(value.data) ? value.data : {}
-  const review = isRecord(data.review) ? data.review : null
+  const verify = isRecord(data.verify) ? data.verify : null
 
-  if (!review) {
+  if (!verify) {
     return {
       status: 'failed',
-      issues: [issue('review.missing', 'data.review is required')],
+      issues: [issue('verify.missing', 'data.verify is required')],
     }
   }
 
-  const findings = Array.isArray(review.findings) ? review.findings : []
-  const acceptanceResults = Array.isArray(review.acceptance_results)
-    ? review.acceptance_results
-    : []
-  const amendments = Array.isArray(review.criterion_amendments)
-    ? review.criterion_amendments
-    : []
+  const verdicts = sharedEnum(input.root, 'verify', 'data.verify.verdict')
+  const verdict = typeof verify.verdict === 'string' ? verify.verdict : ''
+
+  if (!verdicts.has(verdict)) {
+    issues.push(
+      issue('verify.verdict', 'data.verify.verdict MUST use an allowed value'),
+    )
+  }
+
   const severities = sharedEnum(
     input.root,
-    'review',
-    'data.review.findings[].severity',
+    'verify',
+    'data.verify.findings[].severity',
   )
-  const remediationStages = sharedEnum(
+  const sources = sharedEnum(
     input.root,
-    'review',
-    'data.review.findings[].remediation_stage',
+    'verify',
+    'data.verify.findings[].source',
   )
-  const resolutions = sharedEnum(
-    input.root,
-    'review',
-    'data.review.findings[].resolution',
-  )
+  const findings = Array.isArray(verify.findings) ? verify.findings : []
 
   for (const [index, finding] of findings.entries()) {
     if (!isRecord(finding) || typeof finding.id !== 'string') {
       issues.push(
-        issue('review.finding_shape', `Finding ${index + 1} MUST have an id`),
+        issue('verify.finding_shape', `Finding ${index + 1} MUST have an id`),
       )
       continue
     }
@@ -1855,176 +1867,95 @@ export function validateReviewOutput(input: HandlerInput): HandlerResult {
     if (!severities.has(severity)) {
       issues.push(
         issue(
-          'review.severity',
+          'verify.severity',
           `Finding ${finding.id} MUST use an allowed severity`,
         ),
       )
     }
 
+    const source = typeof finding.source === 'string' ? finding.source : ''
+
+    if (!sources.has(source)) {
+      issues.push(
+        issue(
+          'verify.finding_source',
+          `Finding ${finding.id} MUST declare source as review or qa`,
+        ),
+      )
+    }
+
     if (
-      typeof finding.remediation_stage !== 'string' ||
-      !remediationStages.has(finding.remediation_stage)
+      typeof finding.statement !== 'string' ||
+      finding.statement.trim().length === 0
     ) {
       issues.push(
         issue(
-          'review.remediation_stage',
-          `Finding ${finding.id} MUST declare remediation_stage`,
-        ),
-      )
-    }
-
-    const resolution =
-      typeof finding.resolution === 'string' ? finding.resolution : ''
-
-    if (!resolutions.has(resolution)) {
-      issues.push(
-        issue(
-          'review.resolution',
-          `Finding ${finding.id} MUST declare resolution as resolved_in_review or unresolved`,
-        ),
-      )
-    }
-
-    if (resolution === 'resolved_in_review') {
-      const changedFiles = Array.isArray(finding.changed_files)
-        ? finding.changed_files
-        : []
-      const validChangedFiles =
-        changedFiles.length > 0 &&
-        changedFiles.every(
-          (file) => typeof file === 'string' && file.trim().length > 0,
-        )
-
-      if (finding.remediation_stage !== 'review' || !validChangedFiles) {
-        issues.push(
-          issue(
-            'review.resolution',
-            `Finding ${finding.id} resolved in review MUST set remediation_stage to review and list non-empty changed_files`,
-          ),
-        )
-      }
-    } else if (
-      resolution === 'unresolved' &&
-      finding.remediation_stage !== 'implement' &&
-      finding.remediation_stage !== 'operator'
-    ) {
-      issues.push(
-        issue(
-          'review.resolution',
-          `Finding ${finding.id} unresolved in review MUST set remediation_stage to implement, or to operator when the defect lies outside the run's workspace`,
+          'verify.finding_statement',
+          `Finding ${finding.id} MUST include a statement`,
         ),
       )
     }
 
     const evidence = Array.isArray(finding.evidence) ? finding.evidence : []
 
-    if (evidence.length === 0) {
-      issues.push(
-        issue(
-          'review.finding_evidence',
-          `Finding ${finding.id} MUST include evidence`,
-        ),
-      )
-    }
-
-    for (const [evidenceIndex, entry] of evidence.entries()) {
-      if (typeof entry !== 'string' || entry.trim().length === 0) {
-        issues.push(
-          issue(
-            'review.finding_evidence',
-            `Finding ${finding.id} evidence[${evidenceIndex}] MUST be non-empty`,
-          ),
-        )
-      }
-    }
-  }
-
-  const reasonClasses = sharedEnum(
-    input.root,
-    'review',
-    'data.review.criterion_amendments[].reason_class',
-  )
-  const amendedIds = new Set<string>()
-
-  for (const [index, amendment] of amendments.entries()) {
-    if (!isRecord(amendment) || typeof amendment.id !== 'string') {
-      issues.push(
-        issue(
-          'review.amendment_shape',
-          `criterion_amendments[${index + 1}] MUST name the amended criterion id`,
-        ),
-      )
-      continue
-    }
-
-    amendedIds.add(amendment.id)
-
-    for (const field of [
-      'original_statement',
-      'amended_statement',
-      'justification',
-    ] as const) {
-      const value = amendment[field]
-
-      if (typeof value !== 'string' || value.trim().length === 0) {
-        issues.push(
-          issue(
-            'review.amendment_shape',
-            `Amendment ${amendment.id} MUST include ${field}`,
-          ),
-        )
-      }
-    }
-
     if (
-      typeof amendment.original_statement === 'string' &&
-      typeof amendment.amended_statement === 'string' &&
-      amendment.original_statement.trim() === amendment.amended_statement.trim()
-    ) {
-      issues.push(
-        issue(
-          'review.amendment_unchanged',
-          `Amendment ${amendment.id} MUST change the criterion text`,
-        ),
-      )
-    }
-
-    const reasonClass =
-      typeof amendment.reason_class === 'string' ? amendment.reason_class : ''
-
-    if (!reasonClasses.has(reasonClass)) {
-      issues.push(
-        issue(
-          'review.amendment_reason',
-          `Amendment ${amendment.id} MUST use an allowed reason_class`,
-        ),
-      )
-    }
-
-    const amendmentEvidence = Array.isArray(amendment.evidence)
-      ? amendment.evidence
-      : []
-
-    if (
-      amendmentEvidence.length === 0 ||
-      !amendmentEvidence.every(
+      evidence.length === 0 ||
+      !evidence.every(
         (entry) => typeof entry === 'string' && entry.trim().length > 0,
       )
     ) {
       issues.push(
         issue(
-          'review.amendment_evidence',
-          `Amendment ${amendment.id} MUST include non-empty evidence`,
+          'verify.finding_evidence',
+          `Finding ${finding.id} MUST include non-empty evidence`,
         ),
       )
     }
   }
 
+  const caseFields = sharedChildFields(
+    input.root,
+    'verify',
+    'data.verify.qa_cases[].',
+  )
+  const qaCases = Array.isArray(verify.qa_cases) ? verify.qa_cases : []
+
+  if (qaCases.length === 0) {
+    issues.push(issue('verify.qa_cases_missing', 'verify.qa_cases is required'))
+  }
+
+  for (const [index, qaCase] of qaCases.entries()) {
+    if (!isRecord(qaCase) || typeof qaCase.id !== 'string') {
+      issues.push(
+        issue('verify.case_shape', `QA case ${index + 1} MUST have an id`),
+      )
+      continue
+    }
+
+    for (const field of caseFields) {
+      if (
+        typeof qaCase[field] !== 'string' ||
+        (qaCase[field] as string).trim().length === 0
+      ) {
+        issues.push(
+          issue(
+            'verify.case_field',
+            `QA case ${qaCase.id} MUST include ${field}`,
+          ),
+        )
+      }
+    }
+  }
+
+  const acceptanceResults = Array.isArray(verify.acceptance_results)
+    ? verify.acceptance_results
+    : []
+
   if (acceptanceResults.length === 0) {
     issues.push(
       issue(
-        'review.acceptance_missing',
-        'review.acceptance_results is required',
+        'verify.acceptance_missing',
+        'verify.acceptance_results is required',
       ),
     )
   }
@@ -2035,7 +1966,7 @@ export function validateReviewOutput(input: HandlerInput): HandlerResult {
     if (!isRecord(item) || typeof item.id !== 'string') {
       issues.push(
         issue(
-          'review.acceptance_shape',
+          'verify.acceptance_shape',
           `acceptance_results[${index}] MUST have an id`,
         ),
       )
@@ -2045,7 +1976,7 @@ export function validateReviewOutput(input: HandlerInput): HandlerResult {
     if (reportedIds.has(item.id)) {
       issues.push(
         issue(
-          'review.acceptance_duplicate',
+          'verify.acceptance_duplicate',
           `Duplicate acceptance id: ${item.id}`,
         ),
       )
@@ -2056,7 +1987,7 @@ export function validateReviewOutput(input: HandlerInput): HandlerResult {
     if (typeof item.result !== 'string' || item.result.trim().length === 0) {
       issues.push(
         issue(
-          'review.acceptance_result',
+          'verify.acceptance_result',
           `Acceptance ${item.id} MUST declare a result`,
         ),
       )
@@ -2076,8 +2007,8 @@ export function validateReviewOutput(input: HandlerInput): HandlerResult {
       if (!reportedIds.has(id)) {
         issues.push(
           issue(
-            'review.acceptance_missing',
-            `Review MUST report acceptance result for ${id}`,
+            'verify.acceptance_missing',
+            `Verify MUST report acceptance result for ${id}`,
           ),
         )
       }
@@ -2087,234 +2018,113 @@ export function validateReviewOutput(input: HandlerInput): HandlerResult {
       if (!expectedSet.has(id)) {
         issues.push(
           issue(
-            'review.acceptance_unknown',
+            'verify.acceptance_unknown',
             `Unknown acceptance id not in plan: ${id}`,
           ),
         )
       }
     }
-
-    for (const id of amendedIds) {
-      if (!expectedSet.has(id)) {
-        issues.push(
-          issue(
-            'review.amendment_unknown',
-            `Amendment names unknown acceptance id not in plan: ${id}`,
-          ),
-        )
-      }
-    }
   }
 
-  for (const id of amendedIds) {
-    if (!reportedIds.has(id)) {
+  const blockerFinding = findings.some(
+    (item) => isRecord(item) && item.severity === 'blocker',
+  )
+  const warningFinding = findings.some(
+    (item) => isRecord(item) && item.severity !== 'blocker',
+  )
+  const failedAcceptance = acceptanceResults.some(
+    (item) => isRecord(item) && item.result === 'fail',
+  )
+  const failedCase = qaCases.some(
+    (item) => isRecord(item) && item.result === 'fail',
+  )
+  const failingEvidence = blockerFinding || failedAcceptance || failedCase
+  const passingVerdict = verdict === 'pass' || verdict === 'pass_with_warnings'
+  const failingVerdict =
+    verdict === 'fail_remedial' || verdict === 'fail_severe'
+
+  if (passingVerdict && failingEvidence) {
+    issues.push(
+      issue(
+        'verify.verdict_inconsistent',
+        'passing verdict inconsistent with a blocker finding, failed acceptance criterion, or failed QA case',
+      ),
+    )
+  }
+
+  if (verdict === 'pass' && warningFinding) {
+    issues.push(
+      issue(
+        'verify.verdict_inconsistent',
+        'pass verdict with open findings MUST be pass_with_warnings',
+      ),
+    )
+  }
+
+  if (verdict === 'pass_with_warnings' && !warningFinding) {
+    issues.push(
+      issue(
+        'verify.verdict_inconsistent',
+        'pass_with_warnings requires at least one non-blocker finding',
+      ),
+    )
+  }
+
+  if (failingVerdict && !failingEvidence) {
+    issues.push(
+      issue(
+        'verify.verdict_inconsistent',
+        'failing verdict requires a blocker finding, failed acceptance criterion, or failed QA case',
+      ),
+    )
+  }
+
+  if (failingVerdict) {
+    const guidance =
+      typeof verify.remediation_guidance === 'string'
+        ? verify.remediation_guidance.trim()
+        : ''
+
+    if (guidance.length === 0) {
       issues.push(
         issue(
-          'review.amendment_unverified',
-          `Amended criterion ${id} MUST have an acceptance result judged against the amended text`,
+          'verify.remediation_guidance',
+          'failing verdict MUST include reproducible remediation_guidance',
         ),
       )
     }
   }
 
-  const failedAcceptance = acceptanceResults.some(
-    (item) => isRecord(item) && item.result === 'fail',
-  )
+  if (verdict === 'fail_severe') {
+    const rationale =
+      typeof verify.severity_rationale === 'string'
+        ? verify.severity_rationale.trim()
+        : ''
 
-  // Findings routed to the operator do not gate the verdict: the review
-  // contract promises that a defect outside the run's workspace reaches
-  // operator/ship review without failing the review or looping the workflow.
-  const unresolvedFinding = findings.some(
-    (item) =>
-      isRecord(item) &&
-      item.resolution !== 'resolved_in_review' &&
-      item.remediation_stage !== 'operator',
-  )
-
-  if (review.verdict === 'pass' && (unresolvedFinding || failedAcceptance)) {
-    issues.push(
-      issue(
-        'review.verdict_inconsistent',
-        'pass verdict inconsistent with unresolved finding or failed acceptance',
-      ),
-    )
-  }
-
-  if (review.verdict === 'fail' && !unresolvedFinding && !failedAcceptance) {
-    issues.push(
-      issue(
-        'review.verdict_inconsistent',
-        'fail verdict requires blocker/high findings or failed acceptance',
-      ),
-    )
-  }
-
-  return { status: issues.length === 0 ? 'passed' : 'failed', issues }
-}
-
-export function validateQaOutput(input: HandlerInput): HandlerResult {
-  const issues: HandlerResult['issues'] = []
-  const value = readJson(path.join(input.root, input.targetPath)) as Record<
-    string,
-    unknown
-  >
-  const data = isRecord(value.data) ? value.data : {}
-  const qa = isRecord(data.qa_report)
-    ? data.qa_report
-    : isRecord(data.test)
-      ? data.test
-      : null
-
-  if (!qa) {
-    return {
-      status: 'failed',
-      issues: [issue('qa.missing', 'data.test is required')],
-    }
-  }
-
-  const cases = Array.isArray(qa.cases) ? qa.cases : []
-  const defects = Array.isArray(qa.defects) ? qa.defects : []
-  const acceptanceResults = Array.isArray(qa.acceptance_results)
-    ? qa.acceptance_results
-    : []
-  const caseFields = sharedChildFields(input.root, 'test', 'data.test.cases[].')
-  const defectFields = sharedChildFields(
-    input.root,
-    'test',
-    'data.test.defects[].',
-  )
-
-  for (const [index, testCase] of cases.entries()) {
-    if (!isRecord(testCase) || typeof testCase.id !== 'string') {
+    if (rationale.length === 0) {
       issues.push(
-        issue('qa.case_shape', `QA case ${index + 1} MUST have an id`),
+        issue(
+          'verify.severity_rationale',
+          'fail_severe MUST justify why the failure is fundamental in severity_rationale',
+        ),
       )
-      continue
-    }
-
-    for (const field of caseFields) {
-      if (
-        typeof testCase[field] !== 'string' ||
-        (testCase[field] as string).trim().length === 0
-      ) {
-        issues.push(
-          issue(
-            'qa.case_field',
-            `QA case ${testCase.id} MUST include ${field}`,
-          ),
-        )
-      }
     }
   }
 
-  for (const [index, defect] of defects.entries()) {
-    if (!isRecord(defect) || typeof defect.id !== 'string') {
-      issues.push(
-        issue('qa.defect_shape', `Defect ${index + 1} MUST have an id`),
-      )
-      continue
-    }
-
-    for (const field of defectFields) {
-      if (
-        typeof defect[field] !== 'string' ||
-        (defect[field] as string).trim().length === 0
-      ) {
-        issues.push(
-          issue(
-            `qa.defect_${field}`,
-            `Defect ${defect.id} MUST declare ${field}`,
-          ),
-        )
-      }
-    }
-  }
-
-  if (acceptanceResults.length === 0) {
+  if (value.result === 'success' && failingVerdict) {
     issues.push(
       issue(
-        'qa.acceptance_missing',
-        'qa_report.acceptance_results is required',
+        'verify.result_inconsistent',
+        'result success inconsistent with a failing verdict',
       ),
     )
   }
 
-  const expectedIds = planAcceptanceCriterionIds(
-    input.root,
-    input.targetPath,
-    input.runState,
-  )
-
-  if (expectedIds.length > 0) {
-    const reportedIds = new Set<string>()
-
-    for (const item of acceptanceResults) {
-      if (!isRecord(item) || typeof item.id !== 'string') {
-        continue
-      }
-
-      reportedIds.add(item.id)
-
-      if (item.result === 'not_applicable') {
-        const explanation =
-          typeof item.explanation === 'string' ? item.explanation.trim() : ''
-
-        if (explanation.length === 0) {
-          issues.push(
-            issue(
-              'qa.not_applicable',
-              `Acceptance ${item.id} marked not_applicable MUST justify`,
-            ),
-          )
-        }
-      }
-
-      const evidence = Array.isArray(item.evidence) ? item.evidence : []
-
-      if (evidence.length === 0) {
-        issues.push(
-          issue(
-            'qa.acceptance_evidence',
-            `Acceptance ${item.id} MUST include evidence`,
-          ),
-        )
-      } else {
-        for (const entry of evidence) {
-          const missingPath = missingEvidencePath(input, entry)
-
-          if (missingPath) {
-            issues.push(
-              issue(
-                'qa.evidence_missing',
-                `Evidence path does not exist: ${missingPath}`,
-              ),
-            )
-          }
-        }
-      }
-    }
-
-    for (const id of expectedIds) {
-      if (!reportedIds.has(id)) {
-        issues.push(
-          issue(
-            'qa.acceptance_coverage',
-            `QA MUST report acceptance result for ${id}`,
-          ),
-        )
-      }
-    }
-  }
-
-  const failedAcceptance = acceptanceResults.some(
-    (item) => isRecord(item) && item.result === 'fail',
-  )
-
-  if (qa.verdict === 'pass' && failedAcceptance) {
+  if (value.result === 'failure' && passingVerdict) {
     issues.push(
       issue(
-        'qa.verdict_inconsistent',
-        'pass verdict inconsistent with failed acceptance criterion',
+        'verify.result_inconsistent',
+        'result failure inconsistent with a passing verdict',
       ),
     )
   }
@@ -2551,7 +2361,6 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
 
       const requiredUpdatedFiles = [
         'CHANGELOG.md',
-        'README.md',
         'VERSION',
         'docs/embedded-installation.md',
         'package-lock.json',

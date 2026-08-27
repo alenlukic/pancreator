@@ -11,7 +11,6 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
-  assessStage,
   createRun,
   decideRun,
   getRunState,
@@ -52,7 +51,7 @@ test('init --workspace records the deliverable repo and surfaces it on the card'
   makeNestedRepo(root, 'nested/project')
 
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Targeted run',
     workspace: 'nested/project',
@@ -94,7 +93,7 @@ test('pre-implementation baselines use the run workspace', () => {
     description: 'Baseline worktree',
   })
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Worktree baseline run',
     workspace: worktree.path,
@@ -135,7 +134,7 @@ test('pre-implementation baselines use the run workspace', () => {
 
 test('gate overrides replace and disable deterministic shell gates', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
 
   writeJson(path.join(root, 'gates.json'), {
     'implement.lint': 'true',
@@ -143,7 +142,7 @@ test('gate overrides replace and disable deterministic shell gates', () => {
   })
 
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Gate override run',
     gatesPath: 'gates.json',
@@ -155,7 +154,7 @@ test('gate overrides replace and disable deterministic shell gates', () => {
     'implement.unit_tests': false,
   })
 
-  for (const stageSlug of ['intake', 'plan', 'implement']) {
+  for (const stageSlug of ['plan', 'implement']) {
     const prepared = prepareInvocation(root, runId)
     const invocation = prepared.invocation
 
@@ -172,29 +171,8 @@ test('gate overrides replace and disable deterministic shell gates', () => {
 
     const submitted = submitOutput(root, runId, invocation.output.path)
 
-    if (stageSlug === 'intake') {
+    if (stageSlug === 'plan') {
       decideRun(root, runId, 'approve', 'fixture approval')
-    } else if (stageSlug === 'plan') {
-      if (submitted.state.pending_action.type !== 'supervisor_assessment') {
-        throw new Error('Expected supervisor assessment action')
-      }
-
-      const assessmentPath = submitted.state.pending_action.output_path
-
-      writeJson(path.join(root, assessmentPath), {
-        schema_version: 1,
-        assessment_id: 'assessment-override',
-        invocation_id: invocation.invocation_id,
-        verdict: 'pass',
-        summary: 'Plan is implementation-ready.',
-        criteria: stage.criteria.map((criterion) => ({
-          id: criterion.id,
-          result: 'pass',
-          evidence: [invocation.output.path],
-          explanation: 'Fixture evidence',
-        })),
-      })
-      assessStage(root, runId, assessmentPath)
     } else {
       const overridden = submitted.record.evaluation.deterministic.find(
         (item) => item.id === 'implement.lint',
@@ -217,10 +195,10 @@ test('gate overrides replace and disable deterministic shell gates', () => {
 test('scope guard catches edits inside the targeted nested repo during a non-source stage', () => {
   const root = createFixture()
   const repo = makeNestedRepo(root, 'nested/project')
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
 
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Scope guard run',
     workspace: 'nested/project',
@@ -231,11 +209,11 @@ test('scope guard catches edits inside the targeted nested repo during a non-sou
   const invocation = prepared.invocation
 
   assert.ok(invocation)
-  assert.equal(invocation.stage.slug, 'intake')
+  assert.equal(invocation.stage.slug, 'plan')
 
   appendFileSync(path.join(repo, 'README.md'), 'unapproved edit\n')
 
-  const stage = stageBySlug(workflow, 'intake')
+  const stage = stageBySlug(workflow, 'plan')
   const output = makeOutput(root, invocation, stage)
 
   writeJson(path.join(root, invocation.output.path), output)

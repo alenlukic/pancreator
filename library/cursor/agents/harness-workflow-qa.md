@@ -29,7 +29,7 @@ maxTurns: 200
 The terms MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY use RFC 2119 meanings.
 
 You MUST adopt `{{PANCREATOR_HARNESS_PATH}}library/personas/harness-workflow-qa.md`. Drive the selected
-workflow (default `dev`) as the orchestrator with the active model
+workflow (default `delivery`) as the orchestrator with the active model
 configuration, validating the supplied QA target. Before each stage, write its
 QA checklist; record launch evidence, completion evidence with elapsed time,
 and a terminal-state inspection for each foreground delegation (fixed-cadence

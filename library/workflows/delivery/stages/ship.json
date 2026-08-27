@@ -1,0 +1,82 @@
+{
+  "slug": "ship",
+  "title": "Release preparation",
+  "persona": "release-steward",
+  "prompt_path": "library/workflows/delivery/prompts/ship.md",
+  "workspace_policy": "release_metadata_only",
+  "gate": "operator",
+  "gate_relaxable": false,
+  "context": {
+    "request": "conditional",
+    "required_stage_outputs": [
+      {
+        "stage": "plan",
+        "selection": "latest_success"
+      },
+      {
+        "stage": "implement",
+        "selection": "latest"
+      },
+      {
+        "stage": "verify",
+        "selection": "latest"
+      }
+    ],
+    "conditional_stage_outputs": [
+      {
+        "stage": "remediate",
+        "selection": "latest"
+      }
+    ],
+    "prior_attempts": 1,
+    "operator_feedback": 1,
+    "include_workspace_ratifications": true
+  },
+  "required_data": {
+    "release": "object",
+    "release.summary": "string",
+    "release.change_list": "array",
+    "release.validation": "array",
+    "release.rollback": "string",
+    "release.waivers": "array",
+    "release.follow_up_cases": "array",
+    "release.governance_artifact_review": "object",
+    "release.governance_artifact_review.summary": "string",
+    "release.governance_artifact_review.issues_reviewed": "array",
+    "release.governance_artifact_review.repairs": "array",
+    "release.governance_artifact_review.escalations": "array"
+  },
+  "criteria": [
+    {
+      "id": "ship.prior_gates_current",
+      "type": "state",
+      "hard": true,
+      "statement": "Verification is satisfied by current successful evidence or explicit operator waiver directives."
+    },
+    {
+      "id": "ship.release_packet_complete",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The release packet accurately summarizes scope, validation, risks, warnings routed to the inbox, and rollback."
+    },
+    {
+      "id": "ship.release_metadata_updated",
+      "type": "state",
+      "hard": true,
+      "statement": "Pancreator self-development release metadata is synchronized and records a real major, minor, or patch bump; embedded target workflows do not modify Pancreator release metadata."
+    },
+    {
+      "id": "ship.validate",
+      "type": "shell",
+      "hard": true,
+      "statement": "Configured repository validation remains valid.",
+      "command": "pan repository-check configuration",
+      "timeout_ms": 240000
+    }
+  ],
+  "transitions": {
+    "success": "succeeded",
+    "failure": "paused",
+    "blocked": "paused"
+  }
+}

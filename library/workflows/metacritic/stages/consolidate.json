@@ -9,11 +9,7 @@
     "request": "required",
     "conditional_stage_outputs": [
       {
-        "stage": "review",
-        "selection": "latest"
-      },
-      {
-        "stage": "test",
+        "stage": "verify",
         "selection": "latest"
       }
     ],
@@ -62,7 +58,7 @@
     }
   ],
   "transitions": {
-    "success": "review",
+    "success": "verify",
     "failure": "consolidate",
     "blocked": "paused"
   }

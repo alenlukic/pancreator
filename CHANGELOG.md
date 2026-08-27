@@ -1,5 +1,37 @@
 # Changelog
 
+## [4.8.0] - 2026-08-27
+
+### Changed
+
+- Make `delivery` the default workflow for new runs ([engine](src/lib/engine.ts), [cli](src/cli.ts)).
+- Run best-of-N candidates on the new `delivery-candidate` workflow ([best-of-n](src/lib/best-of-n.ts), [delivery-candidate](library/workflows/delivery-candidate/workflow.json)).
+- Consolidate the metacritic review and test stages into one joint verify stage ([metacritic](library/workflows/metacritic/workflow.json)).
+- Move the prototype approach stage to the planner persona ([approach](library/workflows/prototype/stages/approach.json)).
+- Map `verify.full_suite` on every built-in verification level ([verification](src/lib/verification.ts)).
+- Resolve target instructions for `verify` and `remediate` ([context](src/lib/context.ts)).
+- Accept optional `persona_by_verdict` on a stage file ([stage schema](library/schemas/stage.schema.json), [workflow](src/lib/workflow.ts)).
+- Drop the version from the README heading and its release-metadata check ([README](README.md), [versioning](src/lib/versioning.ts)).
+
+### Added
+
+- Add the `delivery` workflow with plan, implement, verify, remediate, and ship stages ([delivery](library/workflows/delivery/workflow.json)).
+- Add planner, verifier, remediator, and remediator-severe personas ([planner](library/personas/planner.md)).
+- Add policies PLAN-002, VERIFY-001, and REMED-001 ([PLAN-002](governance/policies/PLAN-002.json)).
+- Add the read-only `pan inbox` command ([inbox](src/lib/inbox.ts), [cli](src/cli.ts)).
+- Add verify-output validation for the delivery verify stage ([stage-validators](src/lib/validators/stage-validators.ts)).
+
+### Removed
+
+- Remove the superseded `dev` and `dev-candidate` workflows ([workflows](library/workflows)).
+- Remove the intake-writer and tech-lead personas and their projected agents ([config](config.json)).
+- Remove policies PLAN-001, REVIEW-001, REVIEW-002, and TEST-001 with their lookup rows and validators ([policy lookup](governance/registries/policy_lookup_table.json)).
+- Remove the `review_mode` configuration and the squad review machinery ([project-config](src/lib/project-config.ts), [policies](src/lib/policies.ts)).
+
+### Fixed
+
+- Skip shell gates when a submission already decides a non-success ([engine](src/lib/engine.ts), [DEV-001](governance/policies/DEV-001.json)).
+
 ## [4.7.0] - 2026-08-26
 
 ### Changed

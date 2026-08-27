@@ -69,23 +69,30 @@ test('harnessConfigName returns null when no configuration exists', () => {
 test('config_overrides.json overrides project preferences without touching config.json', () => {
   const root = createFixture()
 
+  const checkedInBefore = JSON.parse(
+    readFileSync(path.join(root, 'config.json'), 'utf8'),
+  ) as { stage_liveness_ms?: number }
+
   writeFileSync(
     path.join(root, 'config_overrides.json'),
-    JSON.stringify({ review_mode: 'squad' }),
+    JSON.stringify({ stage_liveness_ms: 123_456 }),
   )
 
-  assert.equal(loadProjectConfig(root).review_mode, 'squad')
+  assert.equal(loadProjectConfig(root).stage_liveness_ms, 123_456)
   assert.equal(
     loadOperatorInvolvementFile(root).active,
     'standard',
     'an involvement preference the local file does not name is unchanged',
   )
 
-  const checkedIn = JSON.parse(
+  const checkedInAfter = JSON.parse(
     readFileSync(path.join(root, 'config.json'), 'utf8'),
-  ) as { review_mode: string }
+  ) as { stage_liveness_ms?: number }
 
-  assert.equal(checkedIn.review_mode, 'default')
+  assert.equal(
+    checkedInAfter.stage_liveness_ms,
+    checkedInBefore.stage_liveness_ms,
+  )
 })
 
 test('config_overrides.json can select the active involvement profile', () => {
@@ -99,7 +106,7 @@ test('config_overrides.json can select the active involvement profile', () => {
   const involvement = loadOperatorInvolvementFile(root)
 
   assert.equal(involvement.active, 'hands-off')
-  assert.equal(involvement.profiles['hands-off']?.gates?.intake, 'supervisor')
+  assert.equal(involvement.profiles['hands-off']?.gates?.plan, 'supervisor')
 })
 
 test('loadProjectConfig reads an unmigrated installation', () => {

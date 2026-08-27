@@ -301,17 +301,6 @@ function prepareFixtureReleaseMetadata(root: string): {
     writeFileSync(changelogPath, updatedChangelog)
   }
 
-  const readmePath = path.join(root, 'README.md')
-  const readme = readFileSync(readmePath, 'utf8')
-
-  writeFileSync(
-    readmePath,
-    readme.replaceAll(
-      `Pancreator v${currentVersion}`,
-      `Pancreator v${proposedVersion}`,
-    ),
-  )
-
   const embeddedPath = path.join(root, 'docs', 'embedded-installation.md')
   const embedded = readFileSync(embeddedPath, 'utf8')
 
@@ -329,7 +318,6 @@ function prepareFixtureReleaseMetadata(root: string): {
     baselineCommit,
     updatedFiles: [
       'CHANGELOG.md',
-      'README.md',
       'VERSION',
       'docs/embedded-installation.md',
       'package-lock.json',
@@ -513,6 +501,13 @@ function requiredData(
       }
     case 'plan':
       return {
+        product_spec: {
+          summary: 'A harness',
+          user_stories: [{ id: 'US-01', statement: 'Run a workflow' }],
+          constraints: ['No runtime dependencies'],
+          out_of_scope: ['Remote services'],
+          open_questions: [],
+        },
         engineering_plan: {
           approach: 'Use files and a state machine',
           components: ['engine'],
@@ -537,7 +532,52 @@ function requiredData(
             },
           },
         ],
+        test_plan: [
+          {
+            id: 'TP-01',
+            acceptance_id: 'AC-01',
+            steps: 'Run the workflow fixture end to end',
+            expected: 'The run reaches ship',
+          },
+        ],
         open_question_dispositions: [],
+      }
+    case 'verify':
+      return {
+        verify: {
+          verdict: 'pass',
+          findings: [],
+          qa_cases: [
+            {
+              id: 'TP-01',
+              steps: 'Run workflow fixture',
+              expected: 'advance',
+              actual: 'advance',
+              result: 'pass',
+            },
+          ],
+          acceptance_results: [
+            { id: 'AC-01', result: 'pass', evidence: ['fixture'] },
+          ],
+        },
+      }
+    case 'remediate':
+      return {
+        implementation: {
+          changed_files: [],
+          tests_added: [],
+          notes: ['fixture remediation'],
+          remediation: [
+            {
+              cause: 'Verify recorded a blocking failure.',
+              action: 'Address the recorded failure before resubmission.',
+              evidence: ['fixture remediation evidence'],
+            },
+          ],
+        },
+        acceptance_results: [
+          { id: 'AC-01', result: 'pass', evidence: ['fixture'] },
+        ],
       }
     case 'implement':
       return {
@@ -561,7 +601,7 @@ function requiredData(
           {
             id: 'AC-01',
             result: 'pass',
-            evidence: ['tests/integration/dev-workflow.test.ts'],
+            evidence: ['tests/integration/delivery-workflow.test.ts'],
           },
         ],
       }
@@ -704,20 +744,29 @@ function requiredData(
                 description: 'Fixture workspace change.',
               }))
             : [],
-          validation: [
-            {
-              stage: 'review',
-              workspace_fingerprint:
-                historyFingerprints.get('review') ?? fingerprint,
-              evidence_path: 'src/base.ts',
-            },
-            {
-              stage: 'test',
-              workspace_fingerprint:
-                historyFingerprints.get('test') ?? fingerprint,
-              evidence_path: 'src/base.ts',
-            },
-          ],
+          validation: historyFingerprints.has('verify')
+            ? [
+                {
+                  stage: 'verify',
+                  workspace_fingerprint:
+                    historyFingerprints.get('verify') ?? fingerprint,
+                  evidence_path: 'src/base.ts',
+                },
+              ]
+            : [
+                {
+                  stage: 'review',
+                  workspace_fingerprint:
+                    historyFingerprints.get('review') ?? fingerprint,
+                  evidence_path: 'src/base.ts',
+                },
+                {
+                  stage: 'test',
+                  workspace_fingerprint:
+                    historyFingerprints.get('test') ?? fingerprint,
+                  evidence_path: 'src/base.ts',
+                },
+              ],
           rollback: 'Revert changes',
           waivers: runWaivers.map((waiver) => ({
             waiver_id: waiver.waiver_id,
@@ -862,6 +911,23 @@ export function makeAttestation(
   }
 }
 
+/** Simulate the supervisor persisting every parallel evidence report. */
+export function writeEvidenceReports(
+  root: string,
+  invocation: Invocation,
+): void {
+  for (const worker of invocation.evidence_workers ?? []) {
+    const absolute = path.join(root, worker.evidence_path)
+
+    mkdirSync(path.dirname(absolute), { recursive: true })
+    writeFileSync(
+      absolute,
+      `# ${worker.role} evidence\n\nFixture ${worker.role} report.\n`,
+      'utf8',
+    )
+  }
+}
+
 export function makeOutput(
   root: string,
   invocation: Invocation,
@@ -869,6 +935,10 @@ export function makeOutput(
   result: StageOutcome = 'success',
   runState?: RunState,
 ): StageOutput {
+  // Submission gates on the parallel evidence reports existing, so the fixture
+  // output leaves them behind the way a compliant supervisor would.
+  writeEvidenceReports(root, invocation)
+
   const briefContract = invocation.output.operator_brief
   let artifacts: StageOutput['artifacts'] = []
 

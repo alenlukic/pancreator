@@ -1,11 +1,9 @@
 import assert from 'node:assert/strict'
-import { randomUUID } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import {
-  assessStage,
   createRun,
   decideRun,
   getRunState,
@@ -22,16 +20,9 @@ import {
 } from '../helpers.js'
 
 function advanceToShipGate(root: string, runId: string): RunState {
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
 
-  for (const stageSlug of [
-    'intake',
-    'plan',
-    'implement',
-    'review',
-    'test',
-    'ship',
-  ]) {
+  for (const stageSlug of ['plan', 'implement', 'verify', 'ship']) {
     const prepared = prepareInvocation(root, runId)
     const invocation = prepared.invocation
 
@@ -39,39 +30,28 @@ function advanceToShipGate(root: string, runId: string): RunState {
     assert.equal(invocation.stage.slug, stageSlug)
 
     const stage = stageBySlug(workflow, stageSlug)
-    const output = makeOutput(root, invocation, stage)
+    const output = makeOutput(
+      root,
+      invocation,
+      stage,
+      'success',
+      getRunState(root, runId),
+    )
 
     writeJson(path.join(root, invocation.output.path), output)
-
-    if (stage.persona !== 'orchestrator') {
-      writeCanonicalDelegation(root, invocation)
-    }
+    writeCanonicalDelegation(root, invocation)
 
     const submitted = submitOutput(root, runId, invocation.output.path)
 
-    if (stageSlug === 'intake') {
+    assert.equal(
+      submitted.record.outcome,
+      'success',
+      `${stageSlug}: ${JSON.stringify(submitted.record.evaluation)}`,
+    )
+
+    if (stageSlug === 'plan') {
+      assert.equal(submitted.state.status, 'awaiting_operator')
       decideRun(root, runId, 'approve', 'fixture approval')
-    } else if (stageSlug === 'plan') {
-      if (submitted.state.pending_action.type !== 'supervisor_assessment') {
-        throw new Error('Expected supervisor assessment action')
-      }
-
-      const assessmentPath = submitted.state.pending_action.output_path
-
-      writeJson(path.join(root, assessmentPath), {
-        schema_version: 1,
-        assessment_id: randomUUID(),
-        invocation_id: invocation.invocation_id,
-        verdict: 'pass',
-        summary: 'Plan is implementation-ready.',
-        criteria: stage.criteria.map((criterion) => ({
-          id: criterion.id,
-          result: 'pass',
-          evidence: [invocation.output.path],
-          explanation: 'Fixture evidence',
-        })),
-      })
-      assessStage(root, runId, assessmentPath)
     } else if (stageSlug === 'ship') {
       assert.equal(submitted.state.status, 'awaiting_operator')
     }
@@ -83,7 +63,7 @@ function advanceToShipGate(root: string, runId: string): RunState {
 test('ship reject defaults to a paused operator decision instead of an implementation loop', () => {
   const root = createFixture()
   const created = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Reject routing run',
   })
@@ -101,7 +81,7 @@ test('ship reject defaults to a paused operator decision instead of an implement
 test('ship reject with --stage routes to the chosen stage and resets attempts', () => {
   const root = createFixture()
   const created = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Reject to plan run',
   })
@@ -138,7 +118,7 @@ test('ship reject with --stage routes to the chosen stage and resets attempts', 
 test('operator rejection feedback is persisted and surfaced to the remediation worker', () => {
   const root = createFixture()
   const created = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Feedback carry run',
   })

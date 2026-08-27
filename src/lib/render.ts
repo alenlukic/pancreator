@@ -5,6 +5,7 @@ import type {
   InvocationContractGuidance,
   InvocationContractManifest,
   InvocationContractSectionOwner,
+  InvocationEvidenceWorker,
   Policy,
   RunState,
 } from './types.js'
@@ -358,6 +359,26 @@ function renderSupervisorProcedureBody(
     '',
     `1. Confirm \`${delegation.invocation_validation_path}\` reports \`pass\`. ` +
       'A failed or missing validation artifact MUST NOT be delegated.',
+    ...((invocation.evidence_workers ?? []).length > 0
+      ? [
+          '1a. Launch every parallel evidence worker below from this ' +
+            'top-level chat in a single message so they run concurrently — ' +
+            'never nested and never ad-hoc, because only the named ' +
+            'definition carries the mapped model. Paste the complete ' +
+            "contents of each worker's brief as its prompt.",
+          ...(invocation.evidence_workers ?? []).map(
+            (worker) =>
+              `   - \`${worker.agent}\` (model \`${worker.model}\`, role ` +
+              `\`${worker.role}\`): brief \`${worker.brief_path}\` → report ` +
+              `\`${worker.evidence_path}\``,
+          ),
+          '1b. Await all evidence workers. Confirm each report exists and ' +
+            'is non-empty at its declared path; when a worker returned its ' +
+            'report in chat instead of writing the file, persist the ' +
+            'returned text there yourself verbatim. Submission rejects the ' +
+            'stage output while any report is missing.',
+        ]
+      : []),
     ...deliverySteps,
     `4. Submit with \`${delegation.submit_command}\`.`,
     '5. When `pan status` marks the invocation stale, re-deliver this card ' +
@@ -377,6 +398,66 @@ export function renderSupervisorProcedureMarkdown(
   const body = renderSupervisorProcedureBody(invocation, true)
 
   return `${body.join('\n').trimEnd()}\n`
+}
+
+/**
+ * Render the prompt brief for one parallel evidence worker. The brief is the
+ * worker's complete contract: it launches as a top-level named agent, reads
+ * the same stage inputs as the consolidating worker, and writes exactly one
+ * evidence report. It carries no lifecycle command and no stage output
+ * contract — the consolidating worker owns both.
+ */
+export function renderEvidenceWorkerBrief(
+  invocation: Invocation,
+  worker: InvocationEvidenceWorker,
+): string {
+  const references = invocation.inputs.references
+    .filter((item) => (item.retrieval ?? 'required') !== 'index_only')
+    .flatMap((item) => [
+      `- \`${item.path}\` — ${item.description}`,
+      ...(item.condition ? [`  - Read when: ${item.condition}`] : []),
+    ])
+  const lines = [
+    `# Evidence brief: ${worker.role} for stage \`${invocation.stage.slug}\``,
+    '',
+    `**Run** \`${invocation.run_id}\` · **Invocation** ` +
+      `\`${invocation.invocation_id}\` · **Persona** \`${worker.persona}\``,
+    '',
+    'You are one of several parallel evidence workers for this stage. A ' +
+      'separate consolidating worker joins every report into the stage ' +
+      'verdict; you own one evidence dimension and no verdict.',
+    '',
+    '## Scope',
+    '',
+    worker.scope,
+    '',
+    '## Inputs',
+    '',
+    ...(references.length > 0 ? references : ['- No artifact inputs.']),
+    '',
+    '## Report contract',
+    '',
+    `Write your complete report as Markdown to \`${worker.evidence_path}\`.`,
+    'It MUST contain:',
+    '',
+    '- Every finding or executed case with a severity or result, the exact ' +
+      'evidence behind it (paths, commands, observed output), and a ' +
+      'reproduction step where one applies.',
+    '- An explicit statement for each acceptance criterion your dimension ' +
+      'can assess.',
+    '- A closing summary the consolidating worker can quote.',
+    '',
+    '## Boundaries',
+    '',
+    '- The workspace is read-only for you: you MUST NOT modify tracked ' +
+      'files, and you MUST write only your report file.',
+    '- You MUST NOT run workflow lifecycle commands, write stage outputs or ' +
+      'delegation artifacts, or launch further subagents.',
+    '- Report missing evidence and uncertainty instead of manufacturing ' +
+      'completion.',
+  ]
+
+  return `${lines.join('\n')}\n`
 }
 
 /** Render an invocation card for both the operator and the assigned worker. */
@@ -598,20 +679,6 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
           : []),
       ]
     : []
-  // Only the non-default method needs a card section. A default review is what
-  // the stage prompt and REVIEW-001 already describe.
-  const reviewModeLines =
-    invocation.review_mode === 'squad'
-      ? [
-          '## 🔭 Review method',
-          '',
-          'This run resolved review mode `squad`. Review gathers its findings ' +
-            'through one agent per review dimension, then joins them into one ' +
-            'ranked set. `REVIEW-002` and the guidance it references govern the ' +
-            'lineup, the charters, and the finding shape.',
-          '',
-        ]
-      : []
   const operatorBrief = invocation.output.operator_brief
   const declaredArtifactLines = invocation.output.artifacts
     ? [
@@ -709,6 +776,22 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
       ? requiredReferences
       : ['- No required artifact inputs.']),
     '',
+    ...((invocation.evidence_workers ?? []).length > 0
+      ? [
+          '### Parallel evidence reports',
+          '',
+          'The supervisor persists these reports before delegating this ' +
+            'card. Read each in full and cite it where your output ' +
+            'consolidates its findings.',
+          '',
+          ...(invocation.evidence_workers ?? []).map(
+            (worker) =>
+              `- \`${worker.evidence_path}\` — ${worker.role} evidence ` +
+              `report from the parallel \`${worker.persona}\` worker.`,
+          ),
+          '',
+        ]
+      : []),
     ...(conditionalReferences.length > 0
       ? ['### Conditional references', '', ...conditionalReferences, '']
       : []),
@@ -746,7 +829,6 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
       : []),
     ...involvementLines,
     ...verificationLines,
-    ...reviewModeLines,
     '## 📤 Output contract',
     '',
     `Write JSON to \`${invocation.output.path}\` using ` +
@@ -915,10 +997,6 @@ export function renderStatus(
       `Involvement profile: ${profile}` +
         (contracts.length > 0 ? ` (contracts: ${contracts.join(', ')})` : ''),
     )
-  }
-
-  if (state.review_mode) {
-    lines.push(`Review mode: ${state.review_mode}`)
   }
 
   if ('path' in state.pending_action) {

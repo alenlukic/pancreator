@@ -11,7 +11,7 @@ test('requirement resolution is deterministic', () => {
   const root = createFixture()
   const context = {
     persona: 'coder',
-    workflow: 'dev',
+    workflow: 'delivery',
     stage: 'implement',
     invocation: { output_path: 'runtime/logs/workflows/x/outputs/y.json' },
   }
@@ -37,7 +37,7 @@ test('requirement resolution fails on unknown registry id', () => {
     () =>
       resolveRequirements(root, {
         persona: 'coder',
-        workflow: 'dev',
+        workflow: 'delivery',
         stage: 'implement',
       }),
     /unknown registry id/u,
@@ -47,11 +47,11 @@ test('requirement resolution fails on unknown registry id', () => {
 test('workflow invocations omit assessment and spotfix scaffolds', () => {
   const root = createFixture()
   const manifest = resolveRequirements(root, {
-    persona: 'reviewer',
-    workflow: 'dev',
-    stage: 'review',
+    persona: 'verifier',
+    workflow: 'delivery',
+    stage: 'verify',
     invocation: {
-      output_path: 'runtime/logs/workflows/x/outputs/review.json',
+      output_path: 'runtime/logs/workflows/x/outputs/verify.json',
     },
   })
   const registryIds = [

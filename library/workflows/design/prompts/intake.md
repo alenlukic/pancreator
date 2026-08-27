@@ -9,7 +9,7 @@ predecessor run. Preserve intent; do not invent the visual solution.
 2. Restate the request as a concise summary and observable user stories focused on
    users, flows, brand or product context, and success signals.
 3. Name constraints and out-of-scope behavior explicitly, including what belongs to
-   a later corresponding `dev` run rather than this design run.
+   a later corresponding `delivery` run rather than this design run.
 4. Capture unresolved questions instead of inventing answers. Use at most five
    clarification turns, then record what remains open.
 

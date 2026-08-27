@@ -24,9 +24,9 @@ import {
 
 test('new runs suppress briefs while explicit run and stage requests enable them', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const suppressed = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
   const suppressedInvocation = prepareInvocation(
@@ -52,13 +52,13 @@ test('new runs suppress briefs while explicit run and stage requests enable them
   const output = makeOutput(
     root,
     suppressedInvocation,
-    stageBySlug(workflow, 'intake'),
+    stageBySlug(workflow, 'plan'),
   )
 
   assert.deepEqual(output.artifacts, [])
 
   const runRequested = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     operatorArtifacts: true,
   })
@@ -68,7 +68,7 @@ test('new runs suppress briefs while explicit run and stage requests enable them
   assert.equal(runRequested.operator_artifacts?.mode, 'requested')
 
   const stageRequested = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
   const stagePrepared = prepareInvocation(root, stageRequested.run_id, {
@@ -78,7 +78,7 @@ test('new runs suppress briefs while explicit run and stage requests enable them
   assert.ok(stagePrepared.invocation?.output.operator_brief)
   assert.deepEqual(stagePrepared.state.operator_artifacts, {
     mode: 'suppressed',
-    requested_stages: ['intake'],
+    requested_stages: ['plan'],
   })
 
   const stageInvocation = stagePrepared.invocation
@@ -88,7 +88,7 @@ test('new runs suppress briefs while explicit run and stage requests enable them
   const stageOutput = makeOutput(
     root,
     stageInvocation,
-    stageBySlug(workflow, 'intake'),
+    stageBySlug(workflow, 'plan'),
   )
 
   writeJson(path.join(root, stageInvocation.output.path), stageOutput)
@@ -102,14 +102,14 @@ test('new runs suppress briefs while explicit run and stage requests enable them
   ).invocation
 
   assert.ok(laterInvocation)
-  assert.equal(laterInvocation.stage.slug, 'plan')
+  assert.equal(laterInvocation.stage.slug, 'implement')
   assert.equal(laterInvocation.output.operator_brief, undefined)
 })
 
 test('legacy run state without artifact selection keeps briefs enabled', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
   const layout = resolveRunLayout(root, state.run_id)
@@ -126,7 +126,7 @@ test('legacy run state without artifact selection keeps briefs enabled', () => {
 test('a stage artifact request is rejected after invocation preparation', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
 
@@ -166,9 +166,9 @@ test('every workflow slug prepares without a brief by default', () => {
 
 test('submission rerenders the invocation-declared HTML brief from JSON', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     operatorArtifacts: true,
   })
@@ -180,7 +180,7 @@ test('submission rerenders the invocation-declared HTML brief from JSON', () => 
 
   assert.ok(brief)
 
-  const output = makeOutput(root, invocation, stageBySlug(workflow, 'intake'))
+  const output = makeOutput(root, invocation, stageBySlug(workflow, 'plan'))
   const htmlPath = path.join(root, brief.rendered_path)
 
   rmSync(htmlPath)

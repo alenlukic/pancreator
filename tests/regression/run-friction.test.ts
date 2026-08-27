@@ -70,13 +70,13 @@ function editPersonaMappings(
 
 test('an unrecognized criterion verdict is reported, not silently failed', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Unknown verdict run',
   })
-  const stage = stageBySlug(workflow, 'intake')
+  const stage = stageBySlug(workflow, 'plan')
   const invocation = prepareInvocation(root, state.run_id).invocation
 
   assert.ok(invocation)
@@ -106,9 +106,9 @@ test('an unrecognized criterion verdict is reported, not silently failed', () =>
 
 test('a retry card inlines the recorded reason the prior attempt failed', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'dev')
+  const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Retry disclosure run',
   })
@@ -177,7 +177,7 @@ test('the delegation validator accepts one leading persona label', () => {
   // every supervisor in the observed runs added one.
   const labelled = validateDelegationMarkdown(
     canonical,
-    `tech-lead\n\n${canonical}`,
+    `planner\n\n${canonical}`,
   )
 
   assert.equal(labelled.passed, true)
@@ -280,7 +280,7 @@ test('plan file paths resolve against the workspace root, not the installation',
     root,
     targetPath: outputRelative,
     requirement: {
-      policy_id: 'PLAN-001',
+      policy_id: 'PLAN-002',
       requirement_id: 'plan-trace-validate',
       registry_id: 'PLAN-TRACE-VALIDATE-001',
       arguments: {},
@@ -334,7 +334,7 @@ test('plan file paths outside the workspace are accepted when they resolve', () 
     root,
     targetPath: outputRelative,
     requirement: {
-      policy_id: 'PLAN-001',
+      policy_id: 'PLAN-002',
       requirement_id: 'plan-trace-validate',
       registry_id: 'PLAN-TRACE-VALIDATE-001',
       arguments: {},
@@ -412,7 +412,7 @@ test('re-scaffolding over real work still refuses without force', () => {
 test('an unsubmitted invocation does not consume a stage attempt', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Abandoned card run',
   })
@@ -424,7 +424,7 @@ test('an unsubmitted invocation does not consume a stage attempt', () => {
 
   // Supersede the prepared card without submitting it, as an operator pause and
   // re-prepare does. The discarded card performed no work.
-  setRunStage(root, runId, 'intake', 'Re-prepare intake after a config change.')
+  setRunStage(root, runId, 'plan', 'Re-prepare plan after a config change.')
 
   const second = prepareInvocation(root, runId).invocation
 
@@ -435,7 +435,7 @@ test('an unsubmitted invocation does not consume a stage attempt', () => {
 test('a persona mapping the run never resolves is not pipeline config drift', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Additive mapping run',
   })
@@ -450,13 +450,13 @@ test('a persona mapping the run never resolves is not pipeline config drift', ()
   const prepared = prepareInvocation(root, state.run_id).invocation
 
   assert.ok(prepared)
-  assert.equal(prepared.stage.slug, 'intake')
+  assert.equal(prepared.stage.slug, 'plan')
 })
 
 test('a changed mapping the run does resolve still fails as pipeline config drift', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Changed mapping run',
   })

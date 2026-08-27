@@ -17,13 +17,9 @@ import type {
   PolicyLookupRow,
   PolicyLookupTable,
   PolicyRequirement,
-  ReviewMode,
   RunContract,
 } from './types.js'
-import {
-  isSelfDevelopmentInstallation,
-  resolveReviewMode,
-} from './project-config.js'
+import { isSelfDevelopmentInstallation } from './project-config.js'
 import { isValidPolicyRequirement } from './requirements/types.js'
 import {
   detectWorkspaceTechnologies as detectTechnologies,
@@ -32,9 +28,6 @@ import {
 
 /** Run contracts a policy lookup row MAY require. */
 export const RUN_CONTRACT_IDS = new Set<RunContract>(['technical_director'])
-
-/** Review methods a policy lookup row MAY require. */
-export const REVIEW_MODE_IDS = new Set<ReviewMode>(['default', 'squad'])
 
 interface PolicyContext {
   persona: string
@@ -47,11 +40,6 @@ interface PolicyContext {
    * non-workflow invocation.
    */
   contracts?: RunContract[]
-  /**
-   * Review method the active run resolved. Absent falls back to the configured
-   * default, which is what every standalone non-workflow invocation uses.
-   */
-  review_mode?: ReviewMode
   operator_artifacts?: 'requested' | 'suppressed'
 }
 
@@ -359,13 +347,6 @@ function parseLookupRow(value: unknown, source: string): PolicyLookupRow {
     { code: 'INVALID_POLICY_LOOKUP' },
   )
   invariant(
-    value.review_mode === undefined ||
-      (typeof value.review_mode === 'string' &&
-        REVIEW_MODE_IDS.has(value.review_mode as ReviewMode)),
-    `${source}: review_mode MUST name a supported review method when present.`,
-    { code: 'INVALID_POLICY_LOOKUP' },
-  )
-  invariant(
     value.operator_artifacts === undefined ||
       value.operator_artifacts === 'requested' ||
       value.operator_artifacts === 'suppressed',
@@ -552,7 +533,6 @@ function loadLookupTable(root: string): PolicyLookupTable {
       installation_scope: row.installation_scope ?? null,
       technology: row.technology ?? null,
       contract: row.contract ?? null,
-      review_mode: row.review_mode ?? null,
       operator_artifacts: row.operator_artifacts ?? null,
       policies: [...row.policies].sort(),
     })
@@ -593,7 +573,6 @@ function loadLookupTable(root: string): PolicyLookupTable {
           installation_scope: row.installation_scope ?? null,
           technology: row.technology ?? null,
           contract: row.contract ?? null,
-          review_mode: row.review_mode ?? null,
           operator_artifacts: row.operator_artifacts ?? null,
         })
         const previousBinding = policyBindingIdentities.get(bindingIdentity)
@@ -651,7 +630,6 @@ export function resolvePolicies(
     context.technologies ?? [...detectWorkspaceTechnologies(root)],
   )
   const contracts = new Set(context.contracts ?? [])
-  const reviewMode = context.review_mode ?? resolveReviewMode(root)
   const operatorArtifacts = context.operator_artifacts ?? 'requested'
 
   for (const row of lookup.rows) {
@@ -673,10 +651,6 @@ export function resolvePolicies(
     }
 
     if (row.contract && !contracts.has(row.contract)) {
-      continue
-    }
-
-    if (row.review_mode && row.review_mode !== reviewMode) {
       continue
     }
 

@@ -25,7 +25,7 @@ only whether the evidence answers the questions.
      Do not report an inconclusive result as validated to avoid a negative answer.
 6. Describe the productionization gap: what the declared shortcuts would cost to
    undo, what the spike never touched, and what a systematic run would need to
-   cover. Be concrete enough that the operator could scope a `dev` run from it.
+   cover. Be concrete enough that the operator could scope a `delivery` run from it.
 7. List the discard candidates: spike code that should be deleted rather than
    carried forward, whatever the verdict.
 8. Recommend productionizing, iterating the spike, or discarding it, with the

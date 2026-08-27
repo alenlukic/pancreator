@@ -29,7 +29,7 @@ function writeWorkflowSnapshot(runDirectory: string): void {
   write(
     path.join(runDirectory, 'workflow.snapshot.json'),
     `${JSON.stringify({
-      stages: [{ slug: 'intake' }, { slug: 'implement' }, { slug: 'review' }],
+      stages: [{ slug: 'plan' }, { slug: 'implement' }, { slug: 'verify' }],
     })}\n`,
   )
 }
@@ -82,7 +82,7 @@ function writeState(
     `${JSON.stringify({
       schema_version: 1,
       run_id: runId,
-      workflow_slug: 'dev',
+      workflow_slug: 'delivery',
       title: 'fixture',
       status,
       pending_action: {
@@ -101,7 +101,7 @@ function writeState(
   if (invocationIds.length === 0) {
     write(
       path.join(runDirectory, 'workflow.snapshot.json'),
-      `${JSON.stringify({ stages: [{ slug: 'intake' }] })}\n`,
+      `${JSON.stringify({ stages: [{ slug: 'plan' }] })}\n`,
     )
     write(path.join(runDirectory, 'events.jsonl'), '')
   }
@@ -178,18 +178,18 @@ test('workflow migration finalizes closed runs and consolidates artifacts', () =
   const logDirectory = path.join(root, 'runtime/logs/workflows', oldRunId)
   const stateDirectory = path.join(root, 'runtime/workflows', oldRunId)
   const oldInvocationIds = [
-    'intake-1-02e65dfc',
+    'plan-1-02e65dfc',
     'implement-1-12e65dfc',
-    'review-1-22e65dfc',
+    'verify-1-22e65dfc',
     'implement-2-32e65dfc',
-    'review-2-42e65dfc',
+    'verify-2-42e65dfc',
   ]
   const newInvocationIds = [
-    '04_intake-1_02e65dfc',
+    '04_plan-1_02e65dfc',
     '03_implement-1_12e65dfc',
-    '02_review-1_22e65dfc',
+    '02_verify-1_22e65dfc',
     '01_implement-2_32e65dfc',
-    '00_review-2_42e65dfc',
+    '00_verify-2_42e65dfc',
   ]
 
   writeWorkflowSnapshot(logDirectory)
@@ -319,18 +319,18 @@ test('workflow migration repairs in-flight prefixes without finalizing', () => {
   const migratedId = '63379_Jun-22-0158_5f354f23'
   const runDirectory = path.join(root, 'runtime/logs/workflows', runId)
   const groupedInvocationIds = [
-    '999_intake-1_02e65dfc',
+    '999_plan-1_02e65dfc',
     '997_implement-1_12e65dfc',
-    '996_review-1_22e65dfc',
+    '996_verify-1_22e65dfc',
     '997_implement-2_32e65dfc',
-    '996_review-2_42e65dfc',
+    '996_verify-2_42e65dfc',
   ]
   const sequencedInvocationIds = [
-    '99_intake-1_02e65dfc',
+    '99_plan-1_02e65dfc',
     '98_implement-1_12e65dfc',
-    '97_review-1_22e65dfc',
+    '97_verify-1_22e65dfc',
     '96_implement-2_32e65dfc',
-    '95_review-2_42e65dfc',
+    '95_verify-2_42e65dfc',
   ]
 
   writeWorkflowSnapshot(runDirectory)

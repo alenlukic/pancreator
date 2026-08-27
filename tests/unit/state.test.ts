@@ -24,7 +24,7 @@ import { createFixture } from '../helpers.js'
 test('state events use recoverable content-addressed references', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
   const event = JSON.parse(
@@ -55,7 +55,7 @@ test('state events use recoverable content-addressed references', () => {
 test('every referenced event revision round-trips', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
   const firstRevision = state.revision
@@ -84,7 +84,7 @@ test('every referenced event revision round-trips', () => {
 test('oversized event payloads externalize below the line budget', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
 
@@ -110,7 +110,7 @@ test('oversized event payloads externalize below the line budget', () => {
 test('full repository deltas externalize before state persistence', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
   const diagnostic = {
@@ -165,7 +165,7 @@ test('full repository deltas externalize before state persistence', () => {
 test('audited-scale stage history stays within the state budget', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
   const diagnostics = Array.from({ length: 101 }, (_, index) => ({
@@ -222,7 +222,7 @@ test('audited-scale stage history stays within the state budget', () => {
 test('project configuration overrides the state-size budget', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
   const configPath = path.join(root, 'config.json')
@@ -245,7 +245,7 @@ test('project configuration overrides the state-size budget', () => {
 test('legacy invocation quiet time does not claim agent health', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
   const preparedAt = '2026-08-14T12:00:00.000Z'
@@ -285,7 +285,7 @@ test('legacy invocation quiet time does not claim agent health', () => {
 test('run status reports registry-backed agent health', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
   state.current_invocation = {
@@ -333,7 +333,7 @@ test('run status reports registry-backed agent health', () => {
 test('recovery quarantine pauses the run for an operator decision', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
   const paused = quarantineRunForAgent(
@@ -358,7 +358,7 @@ test('recovery quarantine pauses the run for an operator decision', () => {
 test('persist rejects payloads that shadow reserved event envelope keys', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
 
@@ -374,13 +374,13 @@ test('persist rejects payloads that shadow reserved event envelope keys', () => 
 test('liveness is not reported while the run waits on the operator', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'dev',
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
   const preparedAt = '2020-01-01T00:00:00.000Z'
 
   state.current_invocation = {
-    id: 'test-1',
+    id: 'verify-1',
     json_path: 'invocation.json',
     markdown_path: 'invocation.md',
     output_path: 'output.json',

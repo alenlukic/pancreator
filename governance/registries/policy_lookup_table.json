@@ -49,13 +49,6 @@
       "policies": ["DELEGATE-001"]
     },
     {
-      "persona": "reviewer",
-      "workflow": "*",
-      "stage": "*",
-      "review_mode": "squad",
-      "policies": ["DELEGATE-001"]
-    },
-    {
       "persona": "coder",
       "workflow": "*",
       "stage": "*",
@@ -387,10 +380,70 @@
       "policies": ["BROWSER-001"]
     },
     {
-      "persona": "tech-lead",
+      "persona": "planner",
       "workflow": "*",
       "stage": "*",
       "policies": ["CONTRACT-001", "ENG-001"]
+    },
+    {
+      "persona": "verifier",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["ENG-001", "CONTRACT-001", "BROWSER-001"]
+    },
+    {
+      "persona": "verifier",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["TS-001"]
+    },
+    {
+      "persona": "verifier",
+      "workflow": "*",
+      "stage": "*",
+      "technology": "python",
+      "policies": ["PY-001"]
+    },
+    {
+      "persona": "remediator",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["ENG-001", "CONTRACT-001"]
+    },
+    {
+      "persona": "remediator",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["TS-001"]
+    },
+    {
+      "persona": "remediator",
+      "workflow": "*",
+      "stage": "*",
+      "technology": "python",
+      "policies": ["PY-001"]
+    },
+    {
+      "persona": "remediator-severe",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["ENG-001", "CONTRACT-001"]
+    },
+    {
+      "persona": "remediator-severe",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["TS-001"]
+    },
+    {
+      "persona": "remediator-severe",
+      "workflow": "*",
+      "stage": "*",
+      "technology": "python",
+      "policies": ["PY-001"]
     },
     {
       "persona": "designer",
@@ -411,41 +464,83 @@
       "policies": ["DESIGN-001"]
     },
     {
-      "persona": "intake-writer",
-      "workflow": "dev",
-      "stage": "intake",
-      "policies": ["INTAKE-001"]
-    },
-    {
       "persona": "orchestrator",
       "workflow": "design",
       "stage": "intake",
       "policies": ["INTAKE-001"]
     },
     {
-      "persona": "tech-lead",
-      "workflow": "dev",
+      "persona": "planner",
+      "workflow": "delivery",
       "stage": "plan",
-      "policies": ["PLAN-001"]
+      "policies": ["PLAN-002"]
     },
     {
       "persona": "coder",
-      "workflow": "dev",
+      "workflow": "delivery",
       "stage": "implement",
       "policies": ["DEV-001"]
     },
     {
-      "persona": "reviewer",
-      "workflow": "dev",
-      "stage": "review",
-      "policies": ["REVIEW-001", "WAIVER-001"]
+      "persona": "verifier",
+      "workflow": "delivery",
+      "stage": "verify",
+      "policies": ["VERIFY-001", "WAIVER-001"]
     },
     {
-      "persona": "reviewer",
-      "workflow": "dev",
-      "stage": "review",
-      "review_mode": "squad",
-      "policies": ["REVIEW-002"]
+      "persona": "remediator",
+      "workflow": "delivery",
+      "stage": "remediate",
+      "policies": ["REMED-001"]
+    },
+    {
+      "persona": "remediator-severe",
+      "workflow": "delivery",
+      "stage": "remediate",
+      "policies": ["REMED-001"]
+    },
+    {
+      "persona": "release-steward",
+      "workflow": "delivery",
+      "stage": "ship",
+      "policies": ["SHIP-001", "WAIVER-001", "WORK-001"]
+    },
+    {
+      "persona": "release-steward",
+      "workflow": "delivery",
+      "stage": "ship",
+      "installation_scope": "self_development",
+      "policies": ["VERSION-001"]
+    },
+    {
+      "persona": "planner",
+      "workflow": "delivery-candidate",
+      "stage": "plan",
+      "policies": ["PLAN-002"]
+    },
+    {
+      "persona": "coder",
+      "workflow": "delivery-candidate",
+      "stage": "implement",
+      "policies": ["DEV-001"]
+    },
+    {
+      "persona": "verifier",
+      "workflow": "delivery-candidate",
+      "stage": "verify",
+      "policies": ["VERIFY-001", "WAIVER-001"]
+    },
+    {
+      "persona": "remediator",
+      "workflow": "delivery-candidate",
+      "stage": "remediate",
+      "policies": ["REMED-001"]
+    },
+    {
+      "persona": "remediator-severe",
+      "workflow": "delivery-candidate",
+      "stage": "remediate",
+      "policies": ["REMED-001"]
     },
     {
       "persona": "*",
@@ -455,7 +550,7 @@
     },
     {
       "persona": "*",
-      "workflow": "dev-candidate",
+      "workflow": "delivery-candidate",
       "stage": "*",
       "policies": ["BESTOFN-001"]
     },
@@ -485,72 +580,16 @@
       "policies": ["TS-001"]
     },
     {
-      "persona": "intake-writer",
-      "workflow": "dev-candidate",
-      "stage": "intake",
-      "policies": ["INTAKE-001"]
-    },
-    {
-      "persona": "tech-lead",
-      "workflow": "dev-candidate",
-      "stage": "plan",
-      "policies": ["PLAN-001"]
-    },
-    {
-      "persona": "coder",
-      "workflow": "dev-candidate",
-      "stage": "implement",
-      "policies": ["DEV-001"]
-    },
-    {
-      "persona": "reviewer",
-      "workflow": "dev-candidate",
-      "stage": "review",
-      "policies": ["REVIEW-001", "WAIVER-001"]
-    },
-    {
-      "persona": "reviewer",
-      "workflow": "dev-candidate",
-      "stage": "review",
-      "review_mode": "squad",
-      "policies": ["REVIEW-002"]
-    },
-    {
-      "persona": "qa-tester",
-      "workflow": "dev-candidate",
-      "stage": "test",
-      "policies": ["TEST-001"]
-    },
-    {
       "persona": "metacritic",
       "workflow": "metacritic",
       "stage": "consolidate",
       "policies": ["DEV-001"]
     },
     {
-      "persona": "reviewer",
+      "persona": "verifier",
       "workflow": "metacritic",
-      "stage": "review",
-      "policies": ["REVIEW-001", "WAIVER-001"]
-    },
-    {
-      "persona": "reviewer",
-      "workflow": "metacritic",
-      "stage": "review",
-      "review_mode": "squad",
-      "policies": ["REVIEW-002"]
-    },
-    {
-      "persona": "qa-tester",
-      "workflow": "metacritic",
-      "stage": "test",
-      "policies": ["TEST-001"]
-    },
-    {
-      "persona": "qa-tester",
-      "workflow": "dev",
-      "stage": "test",
-      "policies": ["TEST-001"]
+      "stage": "verify",
+      "policies": ["VERIFY-001", "WAIVER-001"]
     },
     {
       "persona": "release-steward",
@@ -558,19 +597,6 @@
       "stage": "*",
       "operator_artifacts": "requested",
       "policies": ["PR-001"]
-    },
-    {
-      "persona": "release-steward",
-      "workflow": "dev",
-      "stage": "ship",
-      "policies": ["SHIP-001", "WAIVER-001", "WORK-001"]
-    },
-    {
-      "persona": "release-steward",
-      "workflow": "dev",
-      "stage": "ship",
-      "installation_scope": "self_development",
-      "policies": ["VERSION-001"]
     },
     {
       "persona": "release-steward",
