@@ -30,9 +30,11 @@ test('the built-in levels never run the full profile by default', () => {
   // leaves the workflow-declared `full` gate in place.
   assert.deepEqual(BUILT_IN_VERIFICATION_LEVELS.light.gates, {
     'test.full_suite': 'fast',
+    'verify.full_suite': 'fast',
   })
   assert.deepEqual(BUILT_IN_VERIFICATION_LEVELS.minimal.gates, {
     'test.full_suite': false,
+    'verify.full_suite': false,
   })
   assert.deepEqual(BUILT_IN_VERIFICATION_LEVELS.thorough.gates, {})
 
@@ -101,7 +103,10 @@ test('resolveVerification snapshots the named level from config.json', () => {
   const active = resolveVerification(root)
 
   assert.equal(active.level, 'minimal')
-  assert.deepEqual(active.gates, { 'test.full_suite': false })
+  assert.deepEqual(active.gates, {
+    'test.full_suite': false,
+    'verify.full_suite': false,
+  })
 
   const named = resolveVerification(root, 'thorough')
 

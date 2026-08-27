@@ -21,9 +21,13 @@
     "meta-orchestrator": "",
     "intake-writer": "",
     "tech-lead": "",
+    "planner": "",
     "coder": "",
     "metacritic": "",
     "reviewer": "",
+    "verifier": "",
+    "remediator": "",
+    "remediator-severe": "",
     "shepherd-reviewer": "",
     "qa-tester": "",
     "designer": "",
@@ -48,8 +52,10 @@
       "summary": "Simple and fast configuration for quick tasks.",
       "personas": {
         "tech-lead": "",
+        "planner": "",
         "decomposer": "",
         "reviewer": "",
+        "verifier": "",
         "qa-tester": "",
         "shepherd-reviewer": ""
       }
@@ -63,7 +69,9 @@
       "personas": {
         "intake-writer": "",
         "coder": "",
+        "remediator": "",
         "reviewer": "",
+        "verifier": "",
         "qa-tester": ""
       }
     },
@@ -72,8 +80,12 @@
       "personas": {
         "intake-writer": "",
         "tech-lead": "",
+        "planner": "",
         "coder": "",
+        "remediator": "",
+        "remediator-severe": "",
         "reviewer": "",
+        "verifier": "",
         "shepherd-reviewer": "",
         "qa-tester": ""
       }
@@ -82,8 +94,10 @@
       "summary": "Cursor-managed routing except for the bounded coding workhorse.",
       "personas": {
         "tech-lead": "",
+        "planner": "",
         "decomposer": "",
         "reviewer": "",
+        "verifier": "",
         "qa-tester": ""
       }
     }

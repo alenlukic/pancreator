@@ -49,6 +49,7 @@ test('dev intake is worker-owned while other intake stages stay supervisor-owned
 test('listWorkflowSlugs finds every defined workflow', () => {
   const root = createFixture()
   assert.deepEqual(listWorkflowSlugs(root), [
+    'delivery',
     'design',
     'dev',
     'dev-candidate',

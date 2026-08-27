@@ -145,10 +145,40 @@ export interface StageContextDefinition {
   legacy_full_history?: boolean
 }
 
+/**
+ * Verdict-conditional persona selection. When the latest output of
+ * `source_stage` carries a verdict the map names, the stage runs under the
+ * mapped persona instead of its default persona. Run creation validates and
+ * snapshots every mapped persona, so verdict routing cannot drift with later
+ * config edits.
+ */
+export interface StagePersonaByVerdict {
+  source_stage: string
+  /** Dotted path inside the source output's data object, e.g. `verify.verdict`. */
+  path: string
+  map: Record<string, string>
+}
+
+/**
+ * A parallel evidence worker the supervisor launches top-level before the
+ * stage worker itself. Each worker writes one evidence report the stage
+ * worker consolidates. Top-level launch preserves the persona-model mapping
+ * that a nested spawn silently loses.
+ */
+export interface StageEvidenceWorkerDefinition {
+  persona: string
+  /** Short slug naming the evidence dimension, e.g. `review` or `qa`. */
+  role: string
+  /** One-paragraph scope statement rendered into the worker's brief. */
+  scope: string
+}
+
 export interface StageDefinition {
   slug: string
   title: string
   persona: string
+  persona_by_verdict?: StagePersonaByVerdict
+  evidence_workers?: StageEvidenceWorkerDefinition[]
   executor?: StageExecutor
   prompt?: string
   prompt_path?: string
@@ -729,6 +759,20 @@ export type InvocationReferenceRetrieval =
   | 'conditional'
   | 'index_only'
 
+/** One resolved parallel evidence worker on a prepared invocation. */
+export interface InvocationEvidenceWorker {
+  persona: string
+  role: string
+  scope: string
+  /** Named projected agent to launch, e.g. `pan-reviewer`. */
+  agent: string
+  model: string
+  /** Generated brief the supervisor pastes as the worker's prompt. */
+  brief_path: string
+  /** Report the worker writes; a required input of the stage worker. */
+  evidence_path: string
+}
+
 export interface InvocationReference {
   path: string
   description: string
@@ -780,6 +824,14 @@ export interface Invocation {
     target_instructions?: TargetInstructionInput
     pr_description?: PrDescriptionContext
   }
+  /**
+   * Parallel evidence workers resolved for this attempt. The supervisor
+   * launches every listed agent top-level and in parallel, awaits all of
+   * them, and confirms each evidence report exists before delivering the
+   * stage worker's own card. Submission rejects the stage output while an
+   * evidence report is missing.
+   */
+  evidence_workers?: InvocationEvidenceWorker[]
   policies: Policy[]
   requirements?: RequirementManifest
   rubric: Criterion[]

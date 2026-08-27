@@ -1,5 +1,25 @@
 # Changelog
 
+## [4.8.0] - 2026-08-27
+
+### Changed
+
+- Map `verify.full_suite` on every built-in verification level ([verification](src/lib/verification.ts)).
+- Resolve target instructions for `verify` and `remediate` ([context](src/lib/context.ts)).
+- Accept optional `persona_by_verdict` on a stage file ([stage schema](library/schemas/stage.schema.json), [workflow](src/lib/workflow.ts)).
+
+### Added
+
+- Add the `delivery` workflow with plan, implement, verify, remediate, and ship stages ([delivery](library/workflows/delivery/workflow.json)).
+- Add planner, verifier, remediator, and remediator-severe personas ([planner](library/personas/planner.md)).
+- Add policies PLAN-002, VERIFY-001, and REMED-001 ([PLAN-002](governance/policies/PLAN-002.json)).
+- Add the read-only `pan inbox` command ([inbox](src/lib/inbox.ts), [cli](src/cli.ts)).
+- Add verify-output validation for the delivery verify stage ([stage-validators](src/lib/validators/stage-validators.ts)).
+
+### Fixed
+
+- Skip shell gates when a submission already decides a non-success ([engine](src/lib/engine.ts), [DEV-001](governance/policies/DEV-001.json)).
+
 ## [4.7.0] - 2026-08-26
 
 ### Changed

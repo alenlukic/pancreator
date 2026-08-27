@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "slug": "delivery",
+  "title": "Consolidated development delivery",
+  "description": "Operator-ratified consolidated planning followed by implementation, joint read-only verification with a graded verdict, verdict-routed remediation, and operator-approved release preparation.",
+  "start_stage": "plan",
+  "limits": {
+    "max_total_transitions": 14,
+    "max_stage_attempts": 3,
+    "max_consecutive_failures": 3
+  },
+  "stages": ["plan", "implement", "verify", "remediate", "ship"]
+}

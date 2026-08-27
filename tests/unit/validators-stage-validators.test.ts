@@ -15,6 +15,7 @@ import {
   validateSharedFieldContract,
   validateSpotfixOutcome,
   validateTargetInstructionCoverage,
+  validateVerifyOutput,
 } from '../../src/lib/validators/stage-validators.js'
 import { createFixture } from '../helpers.js'
 
@@ -2497,4 +2498,183 @@ test('target instruction coverage demands final-line read evidence per path', ()
   })
 
   assert.equal(quoted.status, 'passed', JSON.stringify(quoted.issues))
+})
+
+function verifyRequirement() {
+  return {
+    policy_id: 'VERIFY-001',
+    requirement_id: 'verify',
+    registry_id: 'VERIFY-VALIDATE-001',
+    arguments: {},
+  }
+}
+
+function writeVerifyOutput(
+  root: string,
+  target: string,
+  verify: Record<string, unknown>,
+  result = 'success',
+): void {
+  const absolute = path.join(root, target)
+
+  mkdirSync(path.dirname(absolute), { recursive: true })
+  writeFileSync(absolute, `${JSON.stringify({ result, data: { verify } })}\n`)
+}
+
+const passingQaCase = {
+  id: 'TP-01',
+  steps: 'Run the fixture',
+  expected: 'advance',
+  actual: 'advance',
+  result: 'pass',
+}
+
+test('verify validator rejects a passing verdict with a blocker finding', () => {
+  const root = validatorFixtureRoot('pan-verify-blocker-')
+  const target = 'output.json'
+
+  writeVerifyOutput(root, target, {
+    verdict: 'pass',
+    findings: [
+      {
+        id: 'VF-1',
+        severity: 'blocker',
+        source: 'qa',
+        statement: 'The run stalls.',
+        evidence: ['fixture'],
+      },
+    ],
+    qa_cases: [passingQaCase],
+    acceptance_results: [{ id: 'AC-01', result: 'pass' }],
+  })
+
+  const result = validateVerifyOutput({
+    root,
+    targetPath: target,
+    requirement: verifyRequirement(),
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.ok(
+    result.issues.some((item) => item.code === 'verify.verdict_inconsistent'),
+  )
+})
+
+test('verify validator requires a warning finding for pass_with_warnings', () => {
+  const root = validatorFixtureRoot('pan-verify-warnless-')
+  const target = 'output.json'
+
+  writeVerifyOutput(root, target, {
+    verdict: 'pass_with_warnings',
+    findings: [],
+    qa_cases: [passingQaCase],
+    acceptance_results: [{ id: 'AC-01', result: 'pass' }],
+  })
+
+  const result = validateVerifyOutput({
+    root,
+    targetPath: target,
+    requirement: verifyRequirement(),
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.ok(
+    result.issues.some((item) => item.code === 'verify.verdict_inconsistent'),
+  )
+})
+
+test('verify validator requires rationale and guidance for fail_severe', () => {
+  const root = validatorFixtureRoot('pan-verify-severe-')
+  const target = 'output.json'
+
+  writeVerifyOutput(
+    root,
+    target,
+    {
+      verdict: 'fail_severe',
+      findings: [
+        {
+          id: 'VF-1',
+          severity: 'blocker',
+          source: 'review',
+          statement: 'The approach cannot meet AC-01.',
+          evidence: ['fixture'],
+        },
+      ],
+      qa_cases: [{ ...passingQaCase, actual: 'stalled', result: 'fail' }],
+      acceptance_results: [{ id: 'AC-01', result: 'fail' }],
+    },
+    'failure',
+  )
+
+  const bare = validateVerifyOutput({
+    root,
+    targetPath: target,
+    requirement: verifyRequirement(),
+  })
+
+  const bareCodes = bare.issues.map((item) => item.code)
+
+  assert.equal(bare.status, 'failed')
+  assert.ok(bareCodes.includes('verify.remediation_guidance'))
+  assert.ok(bareCodes.includes('verify.severity_rationale'))
+
+  writeVerifyOutput(
+    root,
+    target,
+    {
+      verdict: 'fail_severe',
+      findings: [
+        {
+          id: 'VF-1',
+          severity: 'blocker',
+          source: 'review',
+          statement: 'The approach cannot meet AC-01.',
+          evidence: ['fixture'],
+        },
+      ],
+      qa_cases: [{ ...passingQaCase, actual: 'stalled', result: 'fail' }],
+      acceptance_results: [{ id: 'AC-01', result: 'fail' }],
+      remediation_guidance: 'Rerun the fixture; it stalls before ship.',
+      severity_rationale: 'The chosen approach cannot satisfy AC-01.',
+    },
+    'failure',
+  )
+
+  const complete = validateVerifyOutput({
+    root,
+    targetPath: target,
+    requirement: verifyRequirement(),
+  })
+
+  assert.equal(complete.status, 'passed', JSON.stringify(complete.issues))
+})
+
+test('verify validator binds acceptance coverage to the accepted plan', () => {
+  const root = validatorFixtureRoot('pan-verify-plan-coverage-')
+  const runId = 'run-verify-coverage'
+  const target = `runtime/logs/workflows/${runId}/outputs/verify-1-test.json`
+
+  writePlanOutput(root, runId, ['AC-01', 'AC-02'])
+  writeVerifyOutput(root, target, {
+    verdict: 'pass',
+    findings: [],
+    qa_cases: [passingQaCase],
+    acceptance_results: [{ id: 'AC-01', result: 'pass' }],
+  })
+
+  const result = validateVerifyOutput({
+    root,
+    targetPath: target,
+    requirement: verifyRequirement(),
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.ok(
+    result.issues.some(
+      (item) =>
+        item.code === 'verify.acceptance_missing' &&
+        item.message.includes('AC-02'),
+    ),
+  )
 })

@@ -33,12 +33,27 @@
       "category": "duplicate",
       "sources": [
         "library/personas/design-reviewer.md",
-        "library/personas/reviewer.md"
+        "library/personas/reviewer.md",
+        "library/personas/verifier.md"
       ],
       "disposition": "retain",
-      "rationale": "The two mutually exclusive reviewer roles need the same verdict boundary in their independent judgment guidance.",
+      "rationale": "The mutually exclusive reviewer roles need the same verdict boundary in their independent judgment guidance.",
       "evidence": [
         "tests/unit/policies.test.ts: representative review contexts resolve distinct review policy sets"
+      ]
+    },
+    {
+      "id": "delivery-planner-persona",
+      "category": "duplicate",
+      "sources": [
+        "library/personas/planner.md",
+        "library/personas/tech-lead.md"
+      ],
+      "disposition": "retain",
+      "rationale": "The planner persona absorbs the tech lead's planning judgment for the delivery workflow while the dev workflow still delegates to the tech lead. The two roles never run in the same workflow.",
+      "evidence": [
+        "library/workflows/delivery/stages/plan.json: persona planner",
+        "library/workflows/dev/stages/plan.json: persona tech-lead"
       ]
     },
     {
@@ -89,6 +104,74 @@
       "evidence": [
         "src/lib/validators/target-language-handbooks.ts",
         "tests/unit/target-language-handbooks.test.ts"
+      ]
+    },
+    {
+      "id": "delivery-consolidated-planning-policy",
+      "category": "duplicate",
+      "sources": [
+        "governance/policies/INTAKE-001.json",
+        "governance/policies/PLAN-001.json",
+        "governance/policies/PLAN-002.json"
+      ],
+      "disposition": "retain",
+      "rationale": "PLAN-002 consolidates the intake and planning disciplines for the delivery workflow while the dev workflow still binds INTAKE-001 and PLAN-001 to its separate stages. The shared instructions must stay aligned until one workflow supersedes the other.",
+      "evidence": [
+        "governance/registries/policy_lookup_table.json: dev binds INTAKE-001/PLAN-001, delivery binds PLAN-002"
+      ]
+    },
+    {
+      "id": "delivery-joint-verification-policy",
+      "category": "duplicate",
+      "sources": [
+        "governance/policies/TEST-001.json",
+        "governance/policies/VERIFY-001.json"
+      ],
+      "disposition": "retain",
+      "rationale": "VERIFY-001 consolidates review and QA norms for the delivery workflow while the dev workflow still binds TEST-001 to its separate QA stage. The shared QA evidence rules must stay aligned until one workflow supersedes the other.",
+      "evidence": [
+        "governance/registries/policy_lookup_table.json: dev binds TEST-001, delivery binds VERIFY-001"
+      ]
+    },
+    {
+      "id": "delivery-verifier-persona",
+      "category": "duplicate",
+      "sources": [
+        "library/personas/reviewer.md",
+        "library/personas/verifier.md"
+      ],
+      "disposition": "retain",
+      "rationale": "The verifier persona absorbs the reviewer's independent-verification judgment for the delivery workflow while the dev workflow still delegates to the reviewer. The two roles never run in the same workflow.",
+      "evidence": [
+        "library/workflows/delivery/stages/verify.json: persona verifier",
+        "library/workflows/dev/stages/review.json: persona reviewer"
+      ]
+    },
+    {
+      "id": "delivery-remediator-personas",
+      "category": "duplicate",
+      "sources": [
+        "library/personas/remediator-severe.md",
+        "library/personas/remediator.md"
+      ],
+      "disposition": "retain",
+      "rationale": "The two remediator personas share the reproduce-repair-prove discipline but carry different authority: the severe variant may amend the plan, the ordinary variant may not. The verify verdict selects exactly one per attempt, so the shared discipline must stay aligned in both.",
+      "evidence": [
+        "library/workflows/delivery/stages/remediate.json: persona_by_verdict maps fail_severe to remediator-severe"
+      ]
+    },
+    {
+      "id": "delivery-ship-prompt",
+      "category": "duplicate",
+      "sources": [
+        "library/workflows/delivery/prompts/ship.md",
+        "library/workflows/dev/prompts/ship.md"
+      ],
+      "disposition": "retain",
+      "rationale": "Both workflows share the release-steward ship procedure; the delivery variant differs only in which verification evidence it references. The prompts must stay aligned until one workflow supersedes the other.",
+      "evidence": [
+        "library/workflows/delivery/stages/ship.json",
+        "library/workflows/dev/stages/ship.json"
       ]
     }
   ]

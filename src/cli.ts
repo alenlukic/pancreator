@@ -71,6 +71,7 @@ import {
 } from './lib/hypervisor.js'
 import { runCursorAgentJson } from './lib/executors/cursor-agent.js'
 import { gitWorkspaceSnapshot, isGitRepository } from './lib/git.js'
+import { listInbox, renderInbox } from './lib/inbox.js'
 import {
   loadPipelineConfig,
   loadPipelineConfigSnapshot,
@@ -165,6 +166,7 @@ const HELP_BODY = `Usage:
   pan worktree reconcile (--into <worktree> | --into-branch <branch>) --source <worktree> --source <worktree> [--json]
   pan status <run-id> [--json]
   pan list [--json]
+  pan inbox [--json]
   pan archive [--days <positive-integer>] [--json]
   pan models [--sync] [--probe] [--migrate-from <previous-config.json>] [--json]
   pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source> [--json]
@@ -1558,6 +1560,17 @@ async function main(): Promise<void> {
     case 'list':
       print(listRuns(root), true)
       return
+    case 'inbox': {
+      const items = listInbox(root)
+
+      if (json) {
+        print(items, true)
+      } else {
+        print(renderInbox(items))
+      }
+
+      return
+    }
     case 'archive': {
       const daysValue = option(args, '--days')
       const retentionDays = daysValue === null ? 7 : Number(daysValue)

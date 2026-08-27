@@ -218,6 +218,18 @@
       "side_effect_free": true
     },
     {
+      "id": "VERIFY-VALIDATE-001",
+      "kind": "validator",
+      "version": "1",
+      "handler": "verify-validate",
+      "input_contract": "verify-output",
+      "result_schema": "validation-result-v1",
+      "target_types": ["stage-output-json", "markdown-artifact"],
+      "default_timeout_ms": 30000,
+      "deterministic": true,
+      "side_effect_free": true
+    },
+    {
       "id": "RELEASE-VALIDATE-001",
       "kind": "validator",
       "version": "1",

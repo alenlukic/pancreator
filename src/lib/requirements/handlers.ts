@@ -38,6 +38,7 @@ import {
   validateSharedFieldContract,
   validateSpotfixOutcome,
   validateTargetInstructionCoverage,
+  validateVerifyOutput,
 } from '../validators/stage-validators.js'
 import {
   validateAwayDecisionLedger,
@@ -224,6 +225,7 @@ export const HANDLERS: Record<string, ValidatorHandler> = {
   'target-instruction-coverage-validate': validateTargetInstructionCoverage,
   'review-validate': validateReviewOutput,
   'qa-validate': validateQaOutput,
+  'verify-validate': validateVerifyOutput,
   'release-validate': validateReleaseOutput,
   'pr-description-validate': validatePrDescription,
   'decomposition-validate': validateDecompositionArtifact,

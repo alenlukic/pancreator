@@ -1,0 +1,40 @@
+{
+  "id": "PLAN-002",
+  "title": "Consolidated planning",
+  "severity": "hard",
+  "summary": "One planning stage MUST produce a faithful product specification, an implementation-ready engineering plan, testable acceptance criteria, and an executable test plan, ratified together at one operator gate.",
+  "instructions": [
+    "The product specification MUST preserve the operator's intent and MUST NOT broaden, narrow, or prematurely constrain the solution beyond the request.",
+    "Every assumption MUST be explicit, and unresolved questions MUST be recorded rather than guessed.",
+    "Every approved user story and requirement MUST map to at least one testable acceptance criterion.",
+    "The plan MUST specify components, likely files, interfaces, state changes, risks, and validation methods sufficiently to avoid unresolved architectural decisions during implementation.",
+    "The plan SHOULD prefer existing abstractions and reversible changes and MUST justify any new framework, structure, or governance layer against the current requirement.",
+    "Every open question MUST receive exactly one recorded disposition in data.open_question_dispositions, stating the question id, the disposition, the answer or the decision still required, and the supporting evidence.",
+    "A question the plan cannot answer from evidence MUST be disposed as deferred, naming the decision implementation must make, or as escalated for an operator decision. The plan MUST NOT resolve such a question by assumption, and MUST NOT write an acceptance criterion that asserts a deferred or escalated answer.",
+    "Every acceptance criterion MUST receive at least one test-plan case stating setup, action, and expected observation, executable by an independent verifier without editing source.",
+    "When the active operator-involvement profile ratifies the planning artifact without the human operator, the plan MUST escalate rather than assume whenever an answer would change scope, add a capability the request did not name, or decide a product question.",
+    "Before submission, the product-spec data, engineering-plan data, acceptance-criteria traceability, open-question dispositions, and referenced plan artifact MUST run their resolved policy-bound validators under VALID-001."
+  ],
+  "requirements": [
+    {
+      "id": "intake-validate",
+      "registry_id": "INTAKE-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "harness",
+      "target": "invocation.output.path",
+      "enforcement": "required",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result"
+    },
+    {
+      "id": "plan-trace-validate",
+      "registry_id": "PLAN-TRACE-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "harness",
+      "target": "invocation.output.path",
+      "enforcement": "required",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result"
+    }
+  ]
+}

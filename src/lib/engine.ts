@@ -110,6 +110,7 @@ import {
 } from './projection.js'
 import {
   buildInvocationContractManifest,
+  renderEvidenceWorkerBrief,
   renderInvocationDeliveryPrompt,
   renderInvocationMarkdown,
   renderSupervisorProcedureMarkdown,
@@ -175,6 +176,7 @@ import {
   loadWorkflow,
   loadWorkflowFile,
   stageBySlug,
+  stagePersonaCandidates,
   workflowPersonaNames,
 } from './workflow.js'
 import {
@@ -1035,6 +1037,7 @@ function isSameReasonTrackedStage(
     ((state.workflow_slug === 'dev' ||
       state.workflow_slug === 'dev-candidate') &&
       SAME_REASON_TRACKED_STAGES.has(stage.slug)) ||
+    (state.workflow_slug === 'delivery' && stage.slug === 'verify') ||
     stage.transitions.failure === stage.slug
   )
 }
@@ -1644,21 +1647,25 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
   )
 
   for (const stage of workflow.stages) {
-    const mapping = resolvePersonaMapping(pipelineConfig.config, stage.persona)
+    // A verdict-routed stage can run under any of its mapped personas, so the
+    // run is only creatable when every candidate resolves and projects.
+    for (const persona of stagePersonaCandidates(stage)) {
+      const mapping = resolvePersonaMapping(pipelineConfig.config, persona)
 
-    if (mapping.executor === 'cursor') {
-      invariant(
-        fileExists(
-          path.join(
-            root,
-            cursorAgentTarget(root, stage.persona, agentSuffix ?? undefined),
+      if (mapping.executor === 'cursor') {
+        invariant(
+          fileExists(
+            path.join(
+              root,
+              cursorAgentTarget(root, persona, agentSuffix ?? undefined),
+            ),
           ),
-        ),
-        `Missing Cursor agent for persona '${stage.persona}'.`,
-        { code: 'MISSING_CURSOR_AGENT' },
-      )
-    } else {
-      workflowUsesClaudeCode = true
+          `Missing Cursor agent for persona '${persona}'.`,
+          { code: 'MISSING_CURSOR_AGENT' },
+        )
+      } else {
+        workflowUsesClaudeCode = true
+      }
     }
   }
 
@@ -2075,6 +2082,57 @@ function stageFieldContract(
   }
 }
 
+/**
+ * The stage definition for the current attempt, with verdict-conditional
+ * persona routing applied. A stage with `persona_by_verdict` reads the latest
+ * output of its source stage and swaps in the mapped persona when the recorded
+ * verdict matches. An absent source output, an unreadable file, or an unmapped
+ * verdict keeps the default persona, so verdict routing degrades to the
+ * stage's own declaration instead of failing the run.
+ */
+function resolveStageForAttempt(
+  root: string,
+  state: RunState,
+  stage: StageDefinition,
+): StageDefinition {
+  const byVerdict = stage.persona_by_verdict
+
+  if (!byVerdict) {
+    return stage
+  }
+
+  const item = [...state.stage_history]
+    .reverse()
+    .find((entry) => entry.stage === byVerdict.source_stage)
+
+  if (!item) {
+    return stage
+  }
+
+  let verdict: unknown
+
+  try {
+    const output = readJson(resolveInside(root, item.output_path))
+
+    verdict =
+      isRecord(output) && isRecord(output.data)
+        ? byVerdict.path
+            .split('.')
+            .reduce<unknown>(
+              (value, key) => (isRecord(value) ? value[key] : undefined),
+              output.data,
+            )
+        : undefined
+  } catch {
+    return stage
+  }
+
+  const persona =
+    typeof verdict === 'string' ? byVerdict.map[verdict] : undefined
+
+  return persona ? { ...stage, persona } : stage
+}
+
 export function prepareInvocation(
   root: string,
   runId: string,
@@ -2130,7 +2188,11 @@ export function prepareInvocation(
     )
 
     const workflow = loadRunWorkflow(root, state)
-    const stage = stageBySlug(workflow, state.current_stage)
+    const stage = resolveStageForAttempt(
+      root,
+      state,
+      stageBySlug(workflow, state.current_stage),
+    )
     const pipelineConfig = loadRunPipelineConfig(root, state)
 
     assertRunPipelineConfigCurrent(root, state, pipelineConfig)
@@ -2234,6 +2296,41 @@ export function prepareInvocation(
     ).relative
     const delegationArtifactPath = delegationPath(runId, invocationId, root)
     const artifactsRequested = operatorArtifactsRequested(state, stage.slug)
+    // Parallel evidence workers run as top-level named agents so their
+    // persona-model mappings hold. Resolving them at prepare time makes a
+    // missing mapping fail here rather than silently downgrade at launch.
+    const evidenceWorkers =
+      stage.evidence_workers && stage.persona !== 'orchestrator'
+        ? stage.evidence_workers.map((worker) => {
+            const workerMapping = resolvePersonaMapping(
+              pipelineConfig,
+              worker.persona,
+            )
+            const agentTarget = cursorAgentTarget(
+              root,
+              worker.persona,
+              state.cursor_agent_suffix,
+            )
+
+            return {
+              persona: worker.persona,
+              role: worker.role,
+              scope: worker.scope,
+              agent: (agentTarget.split('/').pop() ?? worker.persona).replace(
+                /\.md$/u,
+                '',
+              ),
+              model: workerMapping.model_spec,
+              brief_path: layout.invocation(
+                invocationId,
+                `.${worker.role}-brief.md`,
+              ).relative,
+              evidence_path: layout.evidence(
+                `${invocationId}.${worker.role}-evidence.md`,
+              ).relative,
+            }
+          })
+        : undefined
 
     const workspace = workspaceSnapshotForRun(root, state)
     const contracts = state.operator_involvement?.contracts ?? []
@@ -2430,6 +2527,7 @@ export function prepareInvocation(
         workspace,
         ...(prDescription ? { prDescription } : {}),
       }),
+      ...(evidenceWorkers ? { evidence_workers: evidenceWorkers } : {}),
       policies,
       requirements,
       rubric: stage.criteria,
@@ -2514,7 +2612,7 @@ export function prepareInvocation(
                 `The harness authors delegation evidence at ${delegationArtifactPath} itself. You MUST NOT write that artifact or workspace-root .delegation.md.`,
               ]
             : [
-                `You MUST persist delegation evidence to ${delegationArtifactPath} and MUST NOT write workspace-root .delegation.md.`,
+                `The delegation artifact at ${delegationArtifactPath} is supervisor-owned delivery evidence. You MUST NOT write or modify it, and MUST NOT write workspace-root .delegation.md.`,
               ]),
         'You MUST NOT alter workflow state directly.',
         'While a mutating workflow is active, external edits to tracked files SHOULD be avoided because they make stage attribution ambiguous; pause the run before operator-authored changes.',
@@ -2536,6 +2634,13 @@ export function prepareInvocation(
         title: `${stage.title} brief`,
         source: `${runId}/${invocationId}`,
       })
+    }
+
+    for (const worker of evidenceWorkers ?? []) {
+      writeTextAtomic(
+        resolveInside(root, worker.brief_path),
+        renderEvidenceWorkerBrief(invocation, worker),
+      )
     }
 
     const renderedMarkdown = renderInvocationMarkdown(invocation)
@@ -2807,7 +2912,12 @@ export function delegateInvocation(
     const invocation = readInvocation(root, state.current_invocation.json_path)
     const invocationId = invocation.invocation_id
     const pipelineConfig = loadRunPipelineConfig(root, state)
-    const mapping = resolvePersonaMapping(pipelineConfig, stage.persona)
+    // The invocation carries the persona the prepared card resolved, which for
+    // a verdict-routed stage can differ from the stage's default persona.
+    const mapping = resolvePersonaMapping(
+      pipelineConfig,
+      invocation.stage.persona,
+    )
 
     invariant(
       mapping.executor === 'claude-code',
@@ -2982,13 +3092,13 @@ export function delegateInvocation(
         }
         delegationKind = 'resume_fallback'
         options.onProgress?.(
-          `delegating '${stage.persona}' to claude-code (${mapping.model})`,
+          `delegating '${invocation.stage.persona}' to claude-code (${mapping.model})`,
         )
         result = runExecutor(cardMarkdown)
       }
     } else {
       options.onProgress?.(
-        `delegating '${stage.persona}' to claude-code (${mapping.model})`,
+        `delegating '${invocation.stage.persona}' to claude-code (${mapping.model})`,
       )
       result = runExecutor(cardMarkdown)
     }
@@ -3162,6 +3272,76 @@ function effectiveOutcome(
   return 'success'
 }
 
+/**
+ * Persist non-blocking verify findings as an operator inbox item. A
+ * pass-with-warnings verdict advances the run because QA demonstrated the
+ * change works, but the demoted findings must not evaporate: the inbox file is
+ * the durable follow-up record VERIFY-001 promises. Returns the written
+ * repo-relative path, or null when the output carries no demoted findings.
+ */
+function emitVerifyWarningsInboxItem(
+  root: string,
+  state: RunState,
+  output: StageOutput,
+): string | null {
+  const verify = isRecord(output.data.verify) ? output.data.verify : null
+
+  if (!verify || verify.verdict !== 'pass_with_warnings') {
+    return null
+  }
+
+  const findings = Array.isArray(verify.findings)
+    ? verify.findings.filter(isRecord)
+    : []
+  const warnings = findings.filter((finding) => finding.severity !== 'blocker')
+
+  if (warnings.length === 0) {
+    return null
+  }
+
+  const lines: string[] = [
+    `# Verify warnings from run ${state.run_id}`,
+    '',
+    `The verify stage passed with warnings (invocation ${output.invocation_id}).`,
+    'QA confirmed the change works, so these findings did not block the run.',
+    'Schedule follow-up work for each finding, or record a decision to accept it.',
+    '',
+  ]
+
+  for (const finding of warnings) {
+    const id = typeof finding.id === 'string' ? finding.id : 'finding'
+    const severity =
+      typeof finding.severity === 'string' ? finding.severity : 'unknown'
+    const statement =
+      typeof finding.statement === 'string' ? finding.statement : ''
+    const evidence = Array.isArray(finding.evidence)
+      ? finding.evidence.filter((entry) => typeof entry === 'string')
+      : []
+
+    lines.push(`## ${id} (${severity})`, '')
+
+    if (statement) {
+      lines.push(statement, '')
+    }
+
+    if (evidence.length > 0) {
+      lines.push('Evidence:', ...evidence.map((entry) => `- ${entry}`), '')
+    }
+  }
+
+  const relativePath = path.join(
+    'runtime',
+    'inbox',
+    `${state.run_id}-verify-warnings.md`,
+  )
+  const absolutePath = resolveInside(root, relativePath)
+
+  ensureDir(path.dirname(absolutePath))
+  writeTextAtomic(absolutePath, `${lines.join('\n').trimEnd()}\n`)
+
+  return relativePath
+}
+
 export function submitOutput(
   root: string,
   runId: string,
@@ -3250,6 +3430,22 @@ export function submitOutput(
     const invocation = readInvocation(root, state.current_invocation.json_path)
 
     assertRequiredModelEvidence(state, invocation)
+
+    // Parallel evidence reports are supervisor-owned preconditions, so their
+    // absence rejects the submission outright instead of consuming an attempt.
+    for (const worker of invocation.evidence_workers ?? []) {
+      const evidenceAbsolute = resolveInside(root, worker.evidence_path)
+
+      invariant(
+        fileExists(evidenceAbsolute) &&
+          readText(evidenceAbsolute).trim().length > 0,
+        `Evidence report for role '${worker.role}' is missing or empty at ` +
+          `${worker.evidence_path}. Launch the parallel evidence workers ` +
+          `from the supervisor procedure and persist their reports before ` +
+          `submitting.`,
+        { code: 'EVIDENCE_REPORT_MISSING' },
+      )
+    }
 
     if (priorForRevision) {
       invariant(
@@ -3556,6 +3752,11 @@ export function submitOutput(
 
     state.stage_history.push(historyItem)
 
+    const verifyWarningsPath =
+      outcome === 'success'
+        ? emitVerifyWarningsInboxItem(root, state, validation.output)
+        : null
+
     let nextState: string | null
     const environmentBlocked = evaluated.results.some(
       (result) => result.environment_blocked,
@@ -3679,7 +3880,9 @@ export function submitOutput(
       stage: {
         slug: stage.slug,
         title: stage.title,
-        persona: stage.persona,
+        // The invocation records the persona that actually ran, which for a
+        // verdict-routed stage can differ from the workflow default.
+        persona: invocation.stage.persona,
       },
       outcome,
       summary: validation.output.summary,
@@ -3711,6 +3914,9 @@ export function submitOutput(
       invocation_id: invocation.invocation_id,
       outcome,
       next_state: nextState,
+      ...(verifyWarningsPath
+        ? { verify_warnings_inbox: verifyWarningsPath }
+        : {}),
     })
     completeInvocationAgent(root, runId, invocation.invocation_id)
 

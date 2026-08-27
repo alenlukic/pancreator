@@ -2257,19 +2257,26 @@ export function evaluateStateCriterion(
   let explanation = 'No specialized state evaluator was required.'
 
   if (criterion.id === 'ship.prior_gates_current') {
-    const review = [...state.stage_history]
+    // The delivery workflow verifies review and QA jointly in one verify
+    // stage, so its latest attempt supplies both evidence roles.
+    const verify = [...state.stage_history]
       .reverse()
-      .find((item) => item.stage === 'review')
-    const test = [...state.stage_history]
-      .reverse()
-      .find((item) => item.stage === 'test')
+      .find((item) => item.stage === 'verify')
+    const review =
+      [...state.stage_history]
+        .reverse()
+        .find((item) => item.stage === 'review') ?? verify
+    const test =
+      [...state.stage_history]
+        .reverse()
+        .find((item) => item.stage === 'test') ?? verify
 
     const activeWaivers = activeOperatorGateWaivers(state, workspaceFingerprint)
     const waiverFor = (stage: string) =>
       [...activeWaivers].reverse().find((waiver) => waiver.stage === stage)
 
-    const reviewWaiver = waiverFor('review')
-    const testWaiver = waiverFor('test')
+    const reviewWaiver = waiverFor('review') ?? waiverFor('verify')
+    const testWaiver = waiverFor('test') ?? waiverFor('verify')
     const reviewSatisfied =
       review?.outcome === 'success' || Boolean(reviewWaiver)
     const testSatisfied = test?.outcome === 'success' || Boolean(testWaiver)
@@ -2388,7 +2395,11 @@ function resolveShipPriorGatesEvidenceFingerprint(options: {
 
   const test = [...options.state.stage_history]
     .reverse()
-    .find((item) => item.stage === 'test' && item.outcome === 'success')
+    .find(
+      (item) =>
+        (item.stage === 'test' || item.stage === 'verify') &&
+        item.outcome === 'success',
+    )
   const testFingerprint = test?.workspace_fingerprint
 
   if (!testFingerprint) {

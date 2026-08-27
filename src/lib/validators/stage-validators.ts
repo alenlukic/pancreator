@@ -2322,6 +2322,332 @@ export function validateQaOutput(input: HandlerInput): HandlerResult {
   return { status: issues.length === 0 ? 'passed' : 'failed', issues }
 }
 
+/**
+ * Joint verification output for the delivery workflow's verify stage. One
+ * stage carries both the review findings and the QA evidence, and one verdict
+ * routes the run: pass and pass_with_warnings advance, fail_remedial and
+ * fail_severe route to remediation. The demotion rule is deterministic here:
+ * a passing verdict cannot coexist with a blocker finding, a failed
+ * acceptance criterion, or a failed QA case, and a failing verdict must carry
+ * reproducible remediation guidance because that guidance is the remediation
+ * stage's primary input.
+ */
+export function validateVerifyOutput(input: HandlerInput): HandlerResult {
+  const issues: HandlerResult['issues'] = []
+  const value = readJson(path.join(input.root, input.targetPath)) as Record<
+    string,
+    unknown
+  >
+  const data = isRecord(value.data) ? value.data : {}
+  const verify = isRecord(data.verify) ? data.verify : null
+
+  if (!verify) {
+    return {
+      status: 'failed',
+      issues: [issue('verify.missing', 'data.verify is required')],
+    }
+  }
+
+  const verdicts = sharedEnum(input.root, 'verify', 'data.verify.verdict')
+  const verdict = typeof verify.verdict === 'string' ? verify.verdict : ''
+
+  if (!verdicts.has(verdict)) {
+    issues.push(
+      issue('verify.verdict', 'data.verify.verdict MUST use an allowed value'),
+    )
+  }
+
+  const severities = sharedEnum(
+    input.root,
+    'verify',
+    'data.verify.findings[].severity',
+  )
+  const sources = sharedEnum(
+    input.root,
+    'verify',
+    'data.verify.findings[].source',
+  )
+  const findings = Array.isArray(verify.findings) ? verify.findings : []
+
+  for (const [index, finding] of findings.entries()) {
+    if (!isRecord(finding) || typeof finding.id !== 'string') {
+      issues.push(
+        issue('verify.finding_shape', `Finding ${index + 1} MUST have an id`),
+      )
+      continue
+    }
+
+    const severity =
+      typeof finding.severity === 'string' ? finding.severity : ''
+
+    if (!severities.has(severity)) {
+      issues.push(
+        issue(
+          'verify.severity',
+          `Finding ${finding.id} MUST use an allowed severity`,
+        ),
+      )
+    }
+
+    const source = typeof finding.source === 'string' ? finding.source : ''
+
+    if (!sources.has(source)) {
+      issues.push(
+        issue(
+          'verify.finding_source',
+          `Finding ${finding.id} MUST declare source as review or qa`,
+        ),
+      )
+    }
+
+    if (
+      typeof finding.statement !== 'string' ||
+      finding.statement.trim().length === 0
+    ) {
+      issues.push(
+        issue(
+          'verify.finding_statement',
+          `Finding ${finding.id} MUST include a statement`,
+        ),
+      )
+    }
+
+    const evidence = Array.isArray(finding.evidence) ? finding.evidence : []
+
+    if (
+      evidence.length === 0 ||
+      !evidence.every(
+        (entry) => typeof entry === 'string' && entry.trim().length > 0,
+      )
+    ) {
+      issues.push(
+        issue(
+          'verify.finding_evidence',
+          `Finding ${finding.id} MUST include non-empty evidence`,
+        ),
+      )
+    }
+  }
+
+  const caseFields = sharedChildFields(
+    input.root,
+    'verify',
+    'data.verify.qa_cases[].',
+  )
+  const qaCases = Array.isArray(verify.qa_cases) ? verify.qa_cases : []
+
+  if (qaCases.length === 0) {
+    issues.push(issue('verify.qa_cases_missing', 'verify.qa_cases is required'))
+  }
+
+  for (const [index, qaCase] of qaCases.entries()) {
+    if (!isRecord(qaCase) || typeof qaCase.id !== 'string') {
+      issues.push(
+        issue('verify.case_shape', `QA case ${index + 1} MUST have an id`),
+      )
+      continue
+    }
+
+    for (const field of caseFields) {
+      if (
+        typeof qaCase[field] !== 'string' ||
+        (qaCase[field] as string).trim().length === 0
+      ) {
+        issues.push(
+          issue(
+            'verify.case_field',
+            `QA case ${qaCase.id} MUST include ${field}`,
+          ),
+        )
+      }
+    }
+  }
+
+  const acceptanceResults = Array.isArray(verify.acceptance_results)
+    ? verify.acceptance_results
+    : []
+
+  if (acceptanceResults.length === 0) {
+    issues.push(
+      issue(
+        'verify.acceptance_missing',
+        'verify.acceptance_results is required',
+      ),
+    )
+  }
+
+  const reportedIds = new Set<string>()
+
+  for (const [index, item] of acceptanceResults.entries()) {
+    if (!isRecord(item) || typeof item.id !== 'string') {
+      issues.push(
+        issue(
+          'verify.acceptance_shape',
+          `acceptance_results[${index}] MUST have an id`,
+        ),
+      )
+      continue
+    }
+
+    if (reportedIds.has(item.id)) {
+      issues.push(
+        issue(
+          'verify.acceptance_duplicate',
+          `Duplicate acceptance id: ${item.id}`,
+        ),
+      )
+    }
+
+    reportedIds.add(item.id)
+
+    if (typeof item.result !== 'string' || item.result.trim().length === 0) {
+      issues.push(
+        issue(
+          'verify.acceptance_result',
+          `Acceptance ${item.id} MUST declare a result`,
+        ),
+      )
+    }
+  }
+
+  const expectedIds = planAcceptanceCriterionIds(
+    input.root,
+    input.targetPath,
+    input.runState,
+  )
+
+  if (expectedIds.length > 0) {
+    const expectedSet = new Set(expectedIds)
+
+    for (const id of expectedIds) {
+      if (!reportedIds.has(id)) {
+        issues.push(
+          issue(
+            'verify.acceptance_missing',
+            `Verify MUST report acceptance result for ${id}`,
+          ),
+        )
+      }
+    }
+
+    for (const id of reportedIds) {
+      if (!expectedSet.has(id)) {
+        issues.push(
+          issue(
+            'verify.acceptance_unknown',
+            `Unknown acceptance id not in plan: ${id}`,
+          ),
+        )
+      }
+    }
+  }
+
+  const blockerFinding = findings.some(
+    (item) => isRecord(item) && item.severity === 'blocker',
+  )
+  const warningFinding = findings.some(
+    (item) => isRecord(item) && item.severity !== 'blocker',
+  )
+  const failedAcceptance = acceptanceResults.some(
+    (item) => isRecord(item) && item.result === 'fail',
+  )
+  const failedCase = qaCases.some(
+    (item) => isRecord(item) && item.result === 'fail',
+  )
+  const failingEvidence = blockerFinding || failedAcceptance || failedCase
+  const passingVerdict = verdict === 'pass' || verdict === 'pass_with_warnings'
+  const failingVerdict =
+    verdict === 'fail_remedial' || verdict === 'fail_severe'
+
+  if (passingVerdict && failingEvidence) {
+    issues.push(
+      issue(
+        'verify.verdict_inconsistent',
+        'passing verdict inconsistent with a blocker finding, failed acceptance criterion, or failed QA case',
+      ),
+    )
+  }
+
+  if (verdict === 'pass' && warningFinding) {
+    issues.push(
+      issue(
+        'verify.verdict_inconsistent',
+        'pass verdict with open findings MUST be pass_with_warnings',
+      ),
+    )
+  }
+
+  if (verdict === 'pass_with_warnings' && !warningFinding) {
+    issues.push(
+      issue(
+        'verify.verdict_inconsistent',
+        'pass_with_warnings requires at least one non-blocker finding',
+      ),
+    )
+  }
+
+  if (failingVerdict && !failingEvidence) {
+    issues.push(
+      issue(
+        'verify.verdict_inconsistent',
+        'failing verdict requires a blocker finding, failed acceptance criterion, or failed QA case',
+      ),
+    )
+  }
+
+  if (failingVerdict) {
+    const guidance =
+      typeof verify.remediation_guidance === 'string'
+        ? verify.remediation_guidance.trim()
+        : ''
+
+    if (guidance.length === 0) {
+      issues.push(
+        issue(
+          'verify.remediation_guidance',
+          'failing verdict MUST include reproducible remediation_guidance',
+        ),
+      )
+    }
+  }
+
+  if (verdict === 'fail_severe') {
+    const rationale =
+      typeof verify.severity_rationale === 'string'
+        ? verify.severity_rationale.trim()
+        : ''
+
+    if (rationale.length === 0) {
+      issues.push(
+        issue(
+          'verify.severity_rationale',
+          'fail_severe MUST justify why the failure is fundamental in severity_rationale',
+        ),
+      )
+    }
+  }
+
+  if (value.result === 'success' && failingVerdict) {
+    issues.push(
+      issue(
+        'verify.result_inconsistent',
+        'result success inconsistent with a failing verdict',
+      ),
+    )
+  }
+
+  if (value.result === 'failure' && passingVerdict) {
+    issues.push(
+      issue(
+        'verify.result_inconsistent',
+        'result failure inconsistent with a passing verdict',
+      ),
+    )
+  }
+
+  return { status: issues.length === 0 ? 'passed' : 'failed', issues }
+}
+
 export function validateReleaseOutput(input: HandlerInput): HandlerResult {
   const issues: HandlerResult['issues'] = []
   const value = readJson(path.join(input.root, input.targetPath)) as Record<

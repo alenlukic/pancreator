@@ -123,6 +123,84 @@
         }
       ]
     },
+    "verify": {
+      "validators": [
+        {
+          "registry_id": "VERIFY-VALIDATE-001",
+          "enforcement": "blocks"
+        }
+      ],
+      "fields": [
+        {
+          "path": "data.verify.verdict",
+          "type": "string",
+          "enum": ["pass", "pass_with_warnings", "fail_remedial", "fail_severe"]
+        },
+        {
+          "path": "data.verify.findings[].severity",
+          "type": "string",
+          "enum": ["blocker", "high", "medium", "low"]
+        },
+        {
+          "path": "data.verify.findings[].source",
+          "type": "string",
+          "enum": ["review", "qa"]
+        },
+        {
+          "path": "data.verify.qa_cases[].steps",
+          "type": "string"
+        },
+        {
+          "path": "data.verify.qa_cases[].expected",
+          "type": "string"
+        },
+        {
+          "path": "data.verify.qa_cases[].actual",
+          "type": "string"
+        },
+        {
+          "path": "data.verify.qa_cases[].result",
+          "type": "string",
+          "enum": ["pass", "fail", "blocked"]
+        }
+      ]
+    },
+    "remediate": {
+      "validators": [
+        {
+          "registry_id": "IMPLEMENTATION-CLAIMS-VALIDATE-001",
+          "enforcement": "blocks"
+        }
+      ],
+      "fields": [
+        {
+          "path": "data.acceptance_results[].evidence[]",
+          "type": "string",
+          "format": "path reference, prose observation, or pytest node id",
+          "accepted_shapes": [
+            "path_reference",
+            "prose_observation",
+            "pytest_node_id"
+          ]
+        },
+        {
+          "path": "data.implementation.tests_added[]",
+          "type": "string",
+          "format": "'<test file path>' optionally followed by '::<test case>' (pytest node ids and the spaced ' :: ' display form both resolve); the file portion must exist, e.g. 'tests/unit/example.test.ts::adds provenance rows'"
+        },
+        {
+          "path": "data.implementation.remediation[]",
+          "type": "object",
+          "required": ["cause", "action", "evidence"],
+          "format": "required on every remediation attempt; cause and action are non-empty strings, evidence is a non-empty string array"
+        },
+        {
+          "path": "data.implementation.remediation[].evidence[]",
+          "type": "string",
+          "format": "non-empty string array of paths, commands, or observations proving the remediation"
+        }
+      ]
+    },
     "ship": {
       "validators": [
         {

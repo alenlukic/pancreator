@@ -21,6 +21,8 @@ import type {
   StageExecutor,
   StageDefinition,
   StageGate,
+  StageEvidenceWorkerDefinition,
+  StagePersonaByVerdict,
   StageTransitions,
   WorkflowDefinition,
   WorkflowIndex,
@@ -243,6 +245,99 @@ function parseContext(
   }
 }
 
+function parsePersonaByVerdict(
+  value: unknown,
+  source: string,
+): StagePersonaByVerdict | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+
+  invariant(isRecord(value), `${source} MUST be an object when present.`, {
+    code: 'INVALID_WORKFLOW',
+  })
+
+  for (const key of ['source_stage', 'path'] as const) {
+    invariant(
+      typeof value[key] === 'string' && value[key].length > 0,
+      `${source}.${key} MUST be a non-empty string.`,
+      { code: 'INVALID_WORKFLOW' },
+    )
+  }
+
+  invariant(
+    isRecord(value.map) && Object.keys(value.map).length > 0,
+    `${source}.map MUST be a non-empty object.`,
+    { code: 'INVALID_WORKFLOW' },
+  )
+
+  for (const [verdict, persona] of Object.entries(value.map)) {
+    invariant(
+      typeof persona === 'string' && persona.length > 0,
+      `${source}.map.${verdict} MUST name a persona.`,
+      { code: 'INVALID_WORKFLOW' },
+    )
+  }
+
+  return {
+    source_stage: value.source_stage as string,
+    path: value.path as string,
+    map: value.map as Record<string, string>,
+  }
+}
+
+function parseEvidenceWorkers(
+  value: unknown,
+  source: string,
+): StageEvidenceWorkerDefinition[] | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+
+  invariant(
+    Array.isArray(value) && value.length > 0,
+    `${source} MUST be a non-empty array when present.`,
+    { code: 'INVALID_WORKFLOW' },
+  )
+
+  const roles = new Set<string>()
+  const workers = value.map((entry, index) => {
+    const entrySource = `${source}[${index}]`
+
+    invariant(isRecord(entry), `${entrySource} MUST be an object.`, {
+      code: 'INVALID_WORKFLOW',
+    })
+
+    for (const key of ['persona', 'role', 'scope'] as const) {
+      invariant(
+        typeof entry[key] === 'string' && entry[key].length > 0,
+        `${entrySource}.${key} MUST be a non-empty string.`,
+        { code: 'INVALID_WORKFLOW' },
+      )
+    }
+
+    const role = entry.role as string
+
+    invariant(
+      /^[a-z][a-z0-9-]*$/u.test(role),
+      `${entrySource}.role MUST be a lowercase slug.`,
+      { code: 'INVALID_WORKFLOW' },
+    )
+    invariant(!roles.has(role), `${source} roles MUST be unique.`, {
+      code: 'INVALID_WORKFLOW',
+    })
+    roles.add(role)
+
+    return {
+      persona: entry.persona as string,
+      role,
+      scope: entry.scope as string,
+    }
+  })
+
+  return workers
+}
+
 function parseRequiredData(
   value: unknown,
   source: string,
@@ -383,6 +478,24 @@ function parseStage(
 
   if (requiredData) {
     stage.required_data = requiredData
+  }
+
+  const personaByVerdict = parsePersonaByVerdict(
+    value.persona_by_verdict,
+    `${source}.persona_by_verdict`,
+  )
+
+  if (personaByVerdict) {
+    stage.persona_by_verdict = personaByVerdict
+  }
+
+  const evidenceWorkers = parseEvidenceWorkers(
+    value.evidence_workers,
+    `${source}.evidence_workers`,
+  )
+
+  if (evidenceWorkers) {
+    stage.evidence_workers = evidenceWorkers
   }
 
   return stage
@@ -541,9 +654,27 @@ export function listWorkflowSlugs(root: string): string[] {
     .sort()
 }
 
+/**
+ * Every persona one stage can run under: its default persona plus every
+ * verdict-mapped alternative.
+ */
+export function stagePersonaCandidates(stage: StageDefinition): string[] {
+  return [
+    ...new Set([
+      stage.persona,
+      ...Object.values(stage.persona_by_verdict?.map ?? {}),
+      ...(stage.evidence_workers ?? []).map((worker) => worker.persona),
+    ]),
+  ]
+}
+
 /** Every stage-worker persona a run of this workflow delegates to. */
 export function workflowPersonaNames(workflow: WorkflowDefinition): string[] {
-  return [...new Set(workflow.stages.map((stage) => stage.persona))].sort()
+  return [
+    ...new Set(
+      workflow.stages.flatMap((stage) => stagePersonaCandidates(stage)),
+    ),
+  ].sort()
 }
 
 export function stageBySlug(
@@ -655,6 +786,21 @@ export function validateWorkflow(
       invariant(
         slugs.has(selector.stage),
         `${source}: context selector '${stage.slug}' targets unknown stage '${selector.stage}'.`,
+        { code: 'INVALID_WORKFLOW' },
+      )
+    }
+
+    if (stage.persona_by_verdict) {
+      invariant(
+        slugs.has(stage.persona_by_verdict.source_stage),
+        `${source}: persona_by_verdict on '${stage.slug}' targets unknown ` +
+          `stage '${stage.persona_by_verdict.source_stage}'.`,
+        { code: 'INVALID_WORKFLOW' },
+      )
+      invariant(
+        stage.persona_by_verdict.source_stage !== stage.slug,
+        `${source}: persona_by_verdict on '${stage.slug}' MUST NOT target ` +
+          'the stage itself.',
         { code: 'INVALID_WORKFLOW' },
       )
     }

@@ -500,6 +500,93 @@ function requiredData(
     }
   }
 
+  if (workflowSlug === 'delivery') {
+    switch (stage) {
+      case 'plan':
+        return {
+          product_spec: {
+            summary: 'A harness',
+            user_stories: [{ id: 'US-01', statement: 'Run a workflow' }],
+            constraints: ['No runtime dependencies'],
+            out_of_scope: ['Remote services'],
+            open_questions: [],
+          },
+          engineering_plan: {
+            approach: 'Use files and a state machine',
+            components: ['engine'],
+            files: [
+              {
+                path: 'src/base.ts',
+                status: 'modified',
+                purpose: 'Workflow engine',
+              },
+            ],
+            risks: [],
+            validation: ['tests'],
+          },
+          acceptance_criteria: [
+            {
+              id: 'AC-01',
+              criterion: 'Workflow advances',
+              maps_to: ['US-01'],
+              verification: {
+                method: 'integration test',
+                expected: 'Workflow reaches ship',
+              },
+            },
+          ],
+          test_plan: [
+            {
+              id: 'TP-01',
+              acceptance_id: 'AC-01',
+              steps: 'Run the workflow fixture end to end',
+              expected: 'The run reaches ship',
+            },
+          ],
+          open_question_dispositions: [],
+        }
+      case 'verify':
+        return {
+          verify: {
+            verdict: 'pass',
+            findings: [],
+            qa_cases: [
+              {
+                id: 'TP-01',
+                steps: 'Run workflow fixture',
+                expected: 'advance',
+                actual: 'advance',
+                result: 'pass',
+              },
+            ],
+            acceptance_results: [
+              { id: 'AC-01', result: 'pass', evidence: ['fixture'] },
+            ],
+          },
+        }
+      case 'remediate':
+        return {
+          implementation: {
+            changed_files: [],
+            tests_added: [],
+            notes: ['fixture remediation'],
+            remediation: [
+              {
+                cause: 'Verify recorded a blocking failure.',
+                action: 'Address the recorded failure before resubmission.',
+                evidence: ['fixture remediation evidence'],
+              },
+            ],
+          },
+          acceptance_results: [
+            { id: 'AC-01', result: 'pass', evidence: ['fixture'] },
+          ],
+        }
+      default:
+        break
+    }
+  }
+
   switch (stage) {
     case 'intake':
       return {

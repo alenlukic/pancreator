@@ -26,7 +26,10 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 - `ENG-001` — engineering handbook baseline and proportionate automated-test coverage
 - `INTAKE-001` — faithful intake
 - `PLAN-001` — proportionate planning
+- `PLAN-002` — consolidated planning for the delivery workflow
 - `DEV-001` — implementation discipline
+- `VERIFY-001` — joint read-only verification with a graded verdict
+- `REMED-001` — verdict-routed remediation with verdict-scoped authority
 - `TS-001` — self-development-only TypeScript conformance
 - `PY-001` — Python conformance for detected Python workspaces
 - `REVIEW-001` — independent review

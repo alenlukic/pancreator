@@ -393,6 +393,72 @@
       "policies": ["CONTRACT-001", "ENG-001"]
     },
     {
+      "persona": "planner",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["CONTRACT-001", "ENG-001"]
+    },
+    {
+      "persona": "verifier",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["ENG-001", "CONTRACT-001", "BROWSER-001"]
+    },
+    {
+      "persona": "verifier",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["TS-001"]
+    },
+    {
+      "persona": "verifier",
+      "workflow": "*",
+      "stage": "*",
+      "technology": "python",
+      "policies": ["PY-001"]
+    },
+    {
+      "persona": "remediator",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["ENG-001", "CONTRACT-001"]
+    },
+    {
+      "persona": "remediator",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["TS-001"]
+    },
+    {
+      "persona": "remediator",
+      "workflow": "*",
+      "stage": "*",
+      "technology": "python",
+      "policies": ["PY-001"]
+    },
+    {
+      "persona": "remediator-severe",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["ENG-001", "CONTRACT-001"]
+    },
+    {
+      "persona": "remediator-severe",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["TS-001"]
+    },
+    {
+      "persona": "remediator-severe",
+      "workflow": "*",
+      "stage": "*",
+      "technology": "python",
+      "policies": ["PY-001"]
+    },
+    {
       "persona": "designer",
       "workflow": "*",
       "stage": "*",
@@ -446,6 +512,49 @@
       "stage": "review",
       "review_mode": "squad",
       "policies": ["REVIEW-002"]
+    },
+    {
+      "persona": "planner",
+      "workflow": "delivery",
+      "stage": "plan",
+      "policies": ["PLAN-002"]
+    },
+    {
+      "persona": "coder",
+      "workflow": "delivery",
+      "stage": "implement",
+      "policies": ["DEV-001"]
+    },
+    {
+      "persona": "verifier",
+      "workflow": "delivery",
+      "stage": "verify",
+      "policies": ["VERIFY-001", "WAIVER-001"]
+    },
+    {
+      "persona": "remediator",
+      "workflow": "delivery",
+      "stage": "remediate",
+      "policies": ["REMED-001"]
+    },
+    {
+      "persona": "remediator-severe",
+      "workflow": "delivery",
+      "stage": "remediate",
+      "policies": ["REMED-001"]
+    },
+    {
+      "persona": "release-steward",
+      "workflow": "delivery",
+      "stage": "ship",
+      "policies": ["SHIP-001", "WAIVER-001", "WORK-001"]
+    },
+    {
+      "persona": "release-steward",
+      "workflow": "delivery",
+      "stage": "ship",
+      "installation_scope": "self_development",
+      "policies": ["VERSION-001"]
     },
     {
       "persona": "*",
