@@ -1,0 +1,23 @@
+{
+  "id": "REVIEW-001",
+  "title": "Standalone review squad",
+  "severity": "hard",
+  "summary": "A standalone review session MUST resolve one review target, capture it once, delegate a single review-squad coordinator over that capture, and end with one ranked finding set and a verdict without changing a file.",
+  "instructions": [
+    "The session MUST resolve exactly one review target before it captures anything: a ref range, a pull request, or an operator-named path set. When the request names no target, the session MUST derive the range from the current branch against its merge base with the default branch and MUST state the range it chose. When the request is ambiguous rather than absent, the session MUST ask the operator instead of guessing.",
+    "The session MUST write the captured target to one file beside its governance card and MUST hand that path to the coordinator. A single capture is what keeps every dimension agent reading the same bytes; re-deriving the target per agent lets the review drift.",
+    "Before delegating, the session MUST bind the review workspace to the target's head commit and MUST tell the coordinator which path that is. A dimension agent confirms a finding by reading the code around it, so a workspace parked at another commit yields findings about files the capture never described. When the current checkout is not already at that head, the session MUST resolve a worktree from it rather than review against the wrong tree.",
+    "The session MUST run the harness review-scope check on the resolved target before it delegates. A reported conflict means the target changes the instrument itself \u2014 the lineup, a charter, the coordinator, the mode policy, or the command \u2014 and a charter cannot find a defect that was introduced into that charter. Conflicting paths MUST be excluded from the squad's verdict, MUST be routed to an independent reviewer that does not run the squad, and MUST be named in the operator report. The session MUST NOT present a squad verdict as covering a file that defines how the squad judges.",
+    "The session MUST delegate exactly one review-squad coordinator subagent per review round and MUST NOT spawn dimension agents itself. The coordinator resolves the lineup, delegates one agent per charter in a single message, and joins the returned findings into one ranked set.",
+    "The session MUST report which dimensions ran, which conditional dimensions the target did not activate, and which charters the coordinator applied itself because a subagent could not start. A dimension that returned nothing MUST appear as empty rather than be omitted.",
+    "Neither the session, nor the coordinator, nor any dimension agent MAY edit a file, stage a change, commit, push, or write workflow state. A standalone review yields findings only, and acting on them is a separate operator decision.",
+    "The session MUST close with one operator-facing report carrying the resolved target, the ranked findings in the squad finding shape, every dropped finding with the reason it was dropped, and a pass or fail verdict."
+  ],
+  "guidance_sources": [
+    {
+      "path": "library/skills/review-squad.md",
+      "start_heading": "## Principle",
+      "read_trigger": "Read this guidance before you resolve the lineup, delegate a charter, or judge a finding."
+    }
+  ]
+}

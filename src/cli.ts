@@ -119,7 +119,11 @@ import {
   scaffoldStageOutput,
 } from './lib/requirements/scaffold.js'
 import { auditDirectives } from './lib/governance/audit-directives.js'
-import { buildGovernanceCard } from './lib/governance-card.js'
+import { STANDALONE_MODES, buildGovernanceCard } from './lib/governance-card.js'
+import {
+  REVIEW_MACHINERY_PATTERNS,
+  resolveReviewScope,
+} from './lib/review-scope.js'
 import {
   assertRepositoryChecksValid,
   loadRepositoryChecks,
@@ -144,6 +148,11 @@ import {
   resolveOrCreateWorktree,
   resolveWorkspacePathOrWorktree,
 } from './lib/worktrees.js'
+
+// The help line is generated from the mode registry. A hand-written list
+// drifts the moment a mode is added, and the operator reads this to
+// discover what `--mode` accepts.
+const STANDALONE_MODE_NAMES = Object.keys(STANDALONE_MODES).sort().join('|')
 
 const HELP_BODY = `Usage:
   pan init --request <repo-relative-file> [--workflow delivery|prototype|design] [--title <title>] [--workspace <dir> | --worktree <name>] [--gates <file>] [--involvement <profile>] [--verification <level>] [--operator-artifacts]
@@ -186,7 +195,8 @@ const HELP_BODY = `Usage:
   pan output validate <run-id> --file <path> [--json]
   pan assessment scaffold <run-id> --invocation <path> --output <path> [--force]
   pan governance audit-directives [--json]
-  pan governance card --mode <pair|spotfix|shepherd|investigation|repair|decomposition|best-of-n> [--request <path>] [--worktree <name>] [--out <path>] [--json]
+  pan governance card --mode <${STANDALONE_MODE_NAMES}> [--request <path>] [--worktree <name>] [--out <path>] [--json]
+  pan governance review-scope --target <ref> [--base <ref>] [--default-branch <branch>] [--json]
   pan best-of-n init --request <path> --configs <path> [--workflow <slug>] [--consolidation-workflow <slug>] [--operator-artifacts] [--json]
   pan best-of-n status <bon-id> [--json]
   pan best-of-n refresh-agents <bon-id> [--json]
@@ -1830,6 +1840,24 @@ async function main(): Promise<void> {
           ]
             .filter((requirement) => requirement.executor !== 'harness')
             .map((requirement) => requirement.registry_id),
+        })
+        return
+      }
+
+      if (sub === 'review-scope') {
+        const scope = resolveReviewScope(root, {
+          head: requiredArgument(option(args, '--target'), '--target'),
+          base: option(args, '--base'),
+          defaultBranch: option(args, '--default-branch'),
+        })
+
+        print({
+          base: scope.base,
+          head: scope.head,
+          changed_path_count: scope.changed_paths.length,
+          machinery_patterns: [...REVIEW_MACHINERY_PATTERNS],
+          conflicts: scope.conflicts,
+          independent: scope.independent,
         })
         return
       }

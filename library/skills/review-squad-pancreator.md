@@ -1,8 +1,9 @@
 # Review squad (Pancreator)
 
-Use when a squad review under `SHEPHERD-001` reads a change to the Pancreator
-harness itself. `review-squad.md` supplies the method; this file supplies the
-lineup.
+Use when a squad review reads a change to the Pancreator harness itself, whether
+it arrives from a shepherd review under `SHEPHERD-001` or a standalone
+`/pan-review` session under `REVIEW-001`. `review-squad.md` supplies the method;
+this file supplies the lineup.
 
 This skill ships only in a Pancreator source checkout. `bin/install` drops it
 from the staged payload, so a target installation never carries the file and

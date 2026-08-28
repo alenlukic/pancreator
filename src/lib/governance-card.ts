@@ -115,6 +115,27 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST record every feedback item and its disposition in the session ledger, and MUST NOT post PR comments unless the operator directed it.',
     ],
   },
+  review: {
+    kind: 'review',
+    persona: 'reviewer',
+    workflow: 'standalone',
+    stage: 'review',
+    title: 'Review squad',
+    summary:
+      'One review-squad pass over an operator-named target — a ref range, a ' +
+      'pull request, or a path set. The session captures the target once, ' +
+      'delegates one coordinator that fans the review out across its ' +
+      'dimensions, and returns ranked findings with a verdict. It owns no ' +
+      'run, no stage contract, and no gate, and it changes nothing.',
+    boundaries: [
+      'You MUST capture the review target once and MUST give every reviewing agent that same capture.',
+      'You MUST delegate exactly one review-squad coordinator per round, and MUST NOT spawn dimension agents yourself.',
+      'You MUST NOT edit, stage, commit, push, or write workflow state; a standalone review returns findings and nothing else.',
+      PROTECTED_PATH_RULE,
+      'You MUST name the dimensions that ran, the ones the target did not activate, and any charter the coordinator had to apply itself.',
+      'You MUST leave remediation to the operator, who decides separately what to act on.',
+    ],
+  },
   'best-of-n': {
     kind: 'best_of_n',
     persona: 'meta-orchestrator',

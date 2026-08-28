@@ -61,6 +61,44 @@ export function gitRevParse(root: string, reference: string): string {
   return result.stdout.trim()
 }
 
+/** Merge-base of two revisions, or null when they share no history. */
+export function gitMergeBase(
+  root: string,
+  left: string,
+  right: string,
+): string | null {
+  const result = runGit(root, ['merge-base', '--end-of-options', left, right], {
+    allowFailure: true,
+  })
+
+  return result.status === 0 ? result.stdout.trim() : null
+}
+
+/**
+ * Repository-relative paths a three-dot diff changes between two revisions.
+ *
+ * Three dots, not two: a review judges what the head added since the branches
+ * parted, not what the base gained meanwhile.
+ */
+export function gitChangedPathsBetween(
+  root: string,
+  base: string,
+  head: string,
+): string[] {
+  const result = runGit(root, [
+    'diff',
+    '--name-only',
+    '--end-of-options',
+    `${base}...${head}`,
+  ])
+
+  return result.stdout
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .sort()
+}
+
 export function gitBranchExists(root: string, branch: string): boolean {
   const result = runGit(
     root,

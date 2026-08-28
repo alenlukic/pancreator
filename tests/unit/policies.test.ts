@@ -464,6 +464,23 @@ test('standalone shepherd resolves subagent supervision governance', () => {
   assert.ok(ids.includes('DELEGATE-001'))
 })
 
+test('standalone review resolves squad and delegation governance', () => {
+  const root = createFixture()
+  const ids = resolvePolicies(root, {
+    persona: 'reviewer',
+    workflow: 'standalone',
+    stage: 'review',
+    operator_artifacts: 'suppressed',
+  }).map((policy) => policy.id)
+
+  // The review session delegates a squad coordinator, so it needs delegation
+  // supervision authority alongside its own mode policy and the reviewer's
+  // engineering governance.
+  assert.ok(ids.includes('REVIEW-001'))
+  assert.ok(ids.includes('DELEGATE-001'))
+  assert.ok(ids.includes('ENG-001'))
+})
+
 test('the unbound mode resolves universal and delegation governance', () => {
   const root = createFixture()
   const ids = resolvePolicies(root, {

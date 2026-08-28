@@ -286,6 +286,27 @@ full report and the ledger path. Invoking the command authorizes commits and
 pushes to that PR's head branch only; merging stays with you. Do not run it
 while a mutating workflow agent is active in the same workspace.
 
+Use `/pan-review [<target>]` when you want the review squad without a pull
+request. It resolves one target — a ref range, a single ref against its merge
+base, a PR, or a path set, defaulting to the current branch — captures it once,
+and delegates the same `pan-shepherd-reviewer` coordinator `/pan-shepherd` uses.
+When the target is Pancreator itself, the squad swaps to the harness lineup.
+
+Two things the session settles before it delegates. It binds the workspace to
+the target's head, resolving a worktree when your checkout sits elsewhere, so
+the agents verify findings against the tree the diff applies to rather than
+whatever you happen to have open. And it runs
+`pan governance review-scope --target <ref>`, which reports whether the target
+edits the review machinery itself — the lineup, a charter, the coordinator, the
+mode policy, or either entry point. Those paths are excluded from the squad's
+verdict and routed to an independent `pan-reviewer`, because a charter cannot
+find a defect that was introduced into that charter. The report names what the
+squad could not grade.
+
+The session changes nothing: it returns ranked findings and a pass or fail
+verdict, and acting on them is a separate `/pan-spotfix` or a systematic run. Do not run
+it while a mutating workflow agent is active in the same workspace.
+
 Invoke `/pan-pair` **once per conversation**, not once per turn. It opens the
 session by generating the governance card; after that, every directive is an
 ordinary chat message and the agent loops on its own. Re-invoking is harmless but
@@ -556,7 +577,7 @@ A worktree is a second working directory of the same repository. Every worktree 
 - `create` makes the branch `worktree/<name>` from `--from` (a branch, a revision, or another recorded worktree) and defaults to the commit the main checkout currently holds. Names use lowercase letters, digits, and single hyphens, because the name becomes both a directory and a branch segment.
 - Worktrees live under `worktrees/operator/<name>` and are recorded in `worktrees/operator/index.json` with branch, commit, description, and creation date. That index is harness-owned generated state; change it only through these commands. Installations that still hold only `runtime/worktrees/operator/index.json` continue to use that legacy index in place, and new worktrees are created under `worktrees/operator/`. A `worktrees.root` you declare in `config.json` overrides both locations and is never relocated.
 - `list` adds live state to the recorded fields: whether Git still registers the directory, the current head commit, and whether the worktree is dirty. `--json` returns the same records for scripting.
-- `--worktree <name>` is one shared option with one contract: every workspace-aware command accepts it, resolves the name the same way, and creates the worktree when the index does not hold it. The workspace-aware commands are `init` (starts a workflow run there), `repository-check <profile>` (verifies it without a run), `technologies detect` (detects languages inside it), `doctor` (points its workspace diagnostics at it), and `governance card --mode <mode>` (targets a standalone persona — spotfix, pair, shepherd, debug, repair, decompose — at it through a card-level workspace section). Every other command rejects `--worktree` with an explicit error naming this list, because it does not run against a selectable workspace. The branch of the main checkout never changes.
+- `--worktree <name>` is one shared option with one contract: every workspace-aware command accepts it, resolves the name the same way, and creates the worktree when the index does not hold it. The workspace-aware commands are `init` (starts a workflow run there), `repository-check <profile>` (verifies it without a run), `technologies detect` (detects languages inside it), `doctor` (points its workspace diagnostics at it), and `governance card --mode <mode>` (targets a standalone persona — spotfix, pair, shepherd, review, debug, repair, decompose — at it through a card-level workspace section). Every other command rejects `--worktree` with an explicit error naming this list, because it does not run against a selectable workspace. The branch of the main checkout never changes.
 - `worktree resolve <name>` applies the same create-or-resolve behavior directly and reports the worktree record with a `created` flag. The projected commands that delegate a named persona outside the CLI — `/pan-build-docs` and `/pan-build-briefs` (librarian), `/pan-release` and `/pan-write-pr` (release steward) — bind their workspace to an operator-named worktree through it. `/pan-start` covers workflows: name a worktree in the request and the orchestrator passes `--worktree <name>` to `init`. Commands that act on an existing run (`/pan-resume`, `/pan-status`) take no worktree option, because a run binds its workspace once at creation.
 - `init --worktree <name>` records the worktree directory as the run's `workspace_root`. The run's repository-check baselines and deterministic gates then run inside the worktree. `--worktree` and `--workspace` name two different workspaces, so pass only one.
 - `pan repository-check <profile> --workspace <name>` also accepts a recorded worktree name or a directory path; unlike `--worktree`, it never creates anything.

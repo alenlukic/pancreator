@@ -201,7 +201,7 @@ test('an unknown mode lists the available modes', () => {
 
   assert.throws(
     () => buildGovernanceCard(root, { mode: 'nonsense' }),
-    /Available: best-of-n, decomposition, investigation, pair, repair, shepherd, spotfix/u,
+    /Available: best-of-n, decomposition, investigation, pair, repair, review, shepherd, spotfix/u,
   )
 })
 
@@ -215,5 +215,117 @@ test('a missing operator input is reported rather than silently omitted', () => 
         requestPath: 'runtime/inbox/does-not-exist.md',
       }),
     /Operator input does not exist/u,
+  )
+})
+
+test('the review card resolves reviewer governance and references the squad', () => {
+  const root = createFixture()
+  const card = buildGovernanceCard(root, {
+    mode: 'review',
+    outputPath: 'runtime/inbox/review-card.md',
+  })
+  const ids = card.policies.map((policy) => policy.id)
+
+  // A standalone review reads code, so the reviewer's engineering governance
+  // rides along with the mode policy and its delegation authority.
+  assert.ok(ids.includes('REVIEW-001'))
+  assert.ok(ids.includes('DELEGATE-001'))
+  assert.ok(ids.includes('ENG-001'))
+
+  const review = card.policies.find((policy) => policy.id === 'REVIEW-001')
+
+  assert.ok(review)
+
+  const guidance = (review.guidance ?? [])[0]
+
+  assert.ok(guidance, 'REVIEW-001 must carry its squad reference')
+  assert.equal(guidance.source_path, 'library/skills/review-squad.md')
+  assert.ok(guidance.reference)
+
+  const written = readFileSync(path.join(root, card.path), 'utf8')
+
+  // The card points at the squad skill and keeps the body out of the card.
+  assert.match(
+    written,
+    /### Guidance reference · `library\/skills\/review-squad\.md`/u,
+  )
+  assert.ok(!written.includes(guidance.content))
+})
+
+test('the review mode is bound to no run and edits nothing', () => {
+  const mode = STANDALONE_MODES.review
+
+  assert.ok(mode)
+  assert.equal(mode.workflow, 'standalone')
+  assert.equal(mode.stage, 'review')
+  assert.equal(mode.kind, 'review')
+  assert.ok(
+    mode.boundaries.some((boundary) => /MUST NOT edit/u.test(boundary)),
+    'a review session must be barred from editing',
+  )
+  assert.ok(
+    mode.boundaries.some((boundary) =>
+      /MUST NOT spawn dimension agents yourself/u.test(boundary),
+    ),
+    'the session delegates a coordinator rather than fanning out itself',
+  )
+})
+
+test('the review command routes through the card and the coordinator', () => {
+  const command = readFileSync(
+    path.join(process.cwd(), 'library/cursor/commands/pan-review.md'),
+    'utf8',
+  )
+
+  // Without these three the command is prose: the card resolves governance,
+  // the capture is what every dimension agent reads, and the coordinator is
+  // the only thing the session is allowed to spawn.
+  assert.match(command, /governance card --mode review/u)
+  assert.match(command, /review-target\.diff/u)
+  assert.match(command, /pan-shepherd-reviewer/u)
+  assert.match(command, /REVIEW-001/u)
+  // The command reviews any ref from any checkout, so it has to say how the
+  // reviewing agents end up reading the tree the diff applies to.
+  assert.match(command, /worktree create <name> --from <target-head>/u)
+  // The squad must not grade the files that define how it grades.
+  assert.match(command, /governance review-scope --target/u)
+  assert.match(command, /pan-reviewer/u)
+})
+
+test('the review policy binds the workspace to the target head', () => {
+  const root = createFixture()
+  const card = buildGovernanceCard(root, {
+    mode: 'review',
+    outputPath: 'runtime/inbox/review-card.md',
+  })
+  const review = card.policies.find((policy) => policy.id === 'REVIEW-001')
+
+  assert.ok(review)
+  assert.ok(
+    review.instructions.some(
+      (instruction) =>
+        /bind the review workspace to the target/u.test(instruction) &&
+        /worktree/u.test(instruction),
+    ),
+    'a review must read code from the tree its capture applies to',
+  )
+})
+
+test('the review policy refuses to let the squad grade its own instrument', () => {
+  const root = createFixture()
+  const card = buildGovernanceCard(root, {
+    mode: 'review',
+    outputPath: 'runtime/inbox/review-card.md',
+  })
+  const review = card.policies.find((policy) => policy.id === 'REVIEW-001')
+
+  assert.ok(review)
+  assert.ok(
+    review.instructions.some(
+      (instruction) =>
+        /review-scope check/u.test(instruction) &&
+        /independent reviewer/u.test(instruction),
+    ),
+    'a self-review conflict must route to a reviewer outside the squad',
   )
 })

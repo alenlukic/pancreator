@@ -661,6 +661,12 @@
       "policies": ["SHEPHERD-001", "DELEGATE-001"]
     },
     {
+      "persona": "reviewer",
+      "workflow": "standalone",
+      "stage": "review",
+      "policies": ["REVIEW-001", "DELEGATE-001"]
+    },
+    {
       "persona": "unbound",
       "workflow": "standalone",
       "stage": "unbound",

@@ -313,6 +313,7 @@ test('standalone persona commands expose the shared worktree option', () => {
     'pan-decompose',
     'pan-pair',
     'pan-repair',
+    'pan-review',
     'pan-shepherd',
     'pan-spotfix',
   ]) {
