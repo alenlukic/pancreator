@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict'
-import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  chmodSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -110,18 +116,18 @@ test('supervisor evidence activates future worker-card enforcement', () => {
   assert.equal(evidence.result, 'recorded')
   assert.ok(evidence.evidence_path.endsWith('.json'))
   assert.equal(getRunState(root, run.run_id).model_evidence?.length, 1)
-  assert.throws(
-    () =>
-      recordSupervisorModelEvidence(
-        root,
-        run.run_id,
-        'Different Model',
-        'Cursor session metadata',
-      ),
-    (error: unknown) =>
-      error instanceof Error &&
-      error.message.includes('already records supervisor model'),
+
+  // A supervising session can change model mid-run, usually because the
+  // operator changed it. The new fact is recorded instead of stopping the run.
+  const superseded = recordSupervisorModelEvidence(
+    root,
+    run.run_id,
+    'Different Model',
+    'Cursor session metadata',
   )
+
+  assert.equal(superseded.effective_model, 'Different Model')
+  assert.equal(getRunState(root, run.run_id).model_evidence?.length, 1)
 
   const prepared = prepareInvocation(root, run.run_id)
   const invocation = prepared.invocation
@@ -137,15 +143,31 @@ test('supervisor evidence activates future worker-card enforcement', () => {
   )
   writeCanonicalDelegation(root, invocation)
 
-  assert.throws(
-    () => submitOutput(root, run.run_id, invocation.output.path),
-    (error: unknown) =>
-      error instanceof Error &&
-      error.message.includes('no usable worker model evidence'),
+  // Missing worker evidence no longer rejects the submission. Discarding
+  // completed work over a fact about which model produced it cost more than the
+  // audit trail was worth, so the gap is recorded and the output stands.
+  const submitted = submitOutput(root, run.run_id, invocation.output.path)
+
+  assert.ok(
+    submitted.state.stage_history.some(
+      (item) => item.invocation_id === invocation.invocation_id,
+    ),
+  )
+  assert.match(
+    readFileSync(
+      path.join(
+        root,
+        'runtime/logs/workflows',
+        run.run_id,
+        'agent/events.jsonl',
+      ),
+      'utf8',
+    ),
+    /"type":"model_evidence_advisory"/u,
   )
 })
 
-test('worker probes persist matches and reject mismatches or missing metadata', () => {
+test('worker probes persist matches, mismatches, and missing metadata alike', () => {
   const root = createFixture()
   const run = createRun(root, {
     workflowSlug: 'delivery',
@@ -175,22 +197,21 @@ test('worker probes persist matches and reject mismatches or missing metadata', 
   assert.equal(matching.result, 'match')
   assert.equal(matching.effective_model, expected)
 
-  assert.throws(
-    () =>
-      withFakeCursorAgent(root, 'Unexpected Model', () =>
-        probeRunInvocationModel(root, run.run_id, invocation.invocation_id),
-      ),
-    (error: unknown) =>
-      error instanceof Error && error.message.includes('run snapshot expects'),
+  // The probe records what Cursor reported and succeeds either way, so a
+  // mismatch or missing metadata cannot halt a launch.
+  const mismatched = withFakeCursorAgent(root, 'Unexpected Model', () =>
+    probeRunInvocationModel(root, run.run_id, invocation.invocation_id),
   )
-  assert.throws(
-    () =>
-      withFakeCursorAgent(root, null, () =>
-        probeRunInvocationModel(root, run.run_id, invocation.invocation_id),
-      ),
-    (error: unknown) =>
-      error instanceof Error && error.message.includes('no system/init event'),
+
+  assert.equal(mismatched.result, 'mismatch')
+  assert.match(String(mismatched.error), /run snapshot expects/u)
+
+  const unavailable = withFakeCursorAgent(root, null, () =>
+    probeRunInvocationModel(root, run.run_id, invocation.invocation_id),
   )
+
+  assert.equal(unavailable.result, 'unavailable')
+  assert.match(String(unavailable.error), /no system\/init event/u)
 
   // A repaired probe supersedes the failed evidence, so the marked card
   // submits once the recorded worker model matches the run snapshot.
@@ -270,14 +291,86 @@ test('a bare model spec accepts any resolved Cursor variant', () => {
   assert.equal(resolved.result, 'match')
   assert.equal(resolved.effective_model, 'Auto Balance')
 
-  // A failed probe still reports unavailable evidence: bare is permissive
+  // A failed probe still records unavailable evidence: bare is permissive
   // about the variant, not about having evidence at all.
-  assert.throws(
-    () =>
-      withFakeCursorAgent(root, null, () =>
-        probeRunInvocationModel(root, run.run_id, invocation.invocation_id),
+  const unavailable = withFakeCursorAgent(root, null, () =>
+    probeRunInvocationModel(root, run.run_id, invocation.invocation_id),
+  )
+
+  assert.equal(unavailable.result, 'unavailable')
+  assert.match(String(unavailable.error), /no system\/init event/u)
+})
+
+// Run 63313_Aug-27-0109_cumulus-prot: the catalog reflects one Cursor account,
+// so `bin/install` deliberately omits it from every target payload. Treating
+// that intended absence as missing evidence made every bracketed spec in every
+// target installation unverifiable, and blocked the run at its first worker
+// launch.
+test('a bracketed spec without an installed catalog records rather than blocks', () => {
+  const root = createFixture()
+
+  rmSync(path.join(root, 'governance/registries/cursor_model_catalog.json'), {
+    force: true,
+  })
+
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title: 'Catalog-less run',
+  })
+
+  recordSupervisorModelEvidence(
+    root,
+    run.run_id,
+    'GPT 5.6 Sol',
+    'Cursor session metadata',
+  )
+
+  const invocation = prepareInvocation(root, run.run_id).invocation
+
+  assert.ok(invocation)
+  assert.ok(
+    invocation.stage.model.includes('['),
+    `expected a bracketed spec, got '${invocation.stage.model}'`,
+  )
+
+  const evidence = withFakeCursorAgent(root, 'GPT-5.6 Sol 272K High', () =>
+    probeRunInvocationModel(root, run.run_id, invocation.invocation_id),
+  )
+
+  assert.equal(evidence.result, 'recorded')
+  assert.equal(evidence.effective_model, 'GPT-5.6 Sol 272K High')
+  assert.equal(evidence.error, undefined)
+
+  const stage = stageBySlug(
+    loadWorkflow(root, 'delivery'),
+    invocation.stage.slug,
+  )
+
+  writeJson(
+    path.join(root, invocation.output.path),
+    makeOutput(root, invocation, stage),
+  )
+  writeCanonicalDelegation(root, invocation)
+
+  const submitted = submitOutput(root, run.run_id, invocation.output.path)
+
+  assert.ok(
+    submitted.state.stage_history.some(
+      (item) => item.invocation_id === invocation.invocation_id,
+    ),
+  )
+  // An intentionally absent catalog is not a gap, so it earns no advisory.
+  assert.doesNotMatch(
+    readFileSync(
+      path.join(
+        root,
+        'runtime/logs/workflows',
+        run.run_id,
+        'agent/events.jsonl',
       ),
-    (error: unknown) =>
-      error instanceof Error && error.message.includes('no system/init event'),
+      'utf8',
+    ),
+    /"type":"model_evidence_advisory"/u,
   )
 })

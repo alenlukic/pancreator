@@ -276,7 +276,11 @@ on the merits with the losing side recorded. Accepted items are implemented
 with proportionate tests, gated through the review squad coordinated by the
 `pan-shepherd-reviewer` subagent (its model comes from the `shepherd-reviewer`
 mapping in `config.json`, separate from the run-time `reviewer`), and pushed to
-the PR head branch only after the review passes. The session ends after a quiet
+the PR head branch only after the review passes. When the reviewed repository is
+Pancreator itself, the squad swaps its dimensions for the harness lineup in
+`library/skills/review-squad-pancreator.md` — correctness and consistency,
+agentic practice, and performance. That lineup is not installed into a target
+repository. The session ends after a quiet
 window, a fully rejected batch, or at most 8 windows, and always closes with a
 full report and the ledger path. Invoking the command authorizes commits and
 pushes to that PR's head branch only; merging stays with you. Do not run it

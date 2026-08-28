@@ -525,6 +525,15 @@ test('the verify field contract declares blocking validator ownership', () => {
   assert.deepEqual(contract.stages.verify?.validators, [
     { registry_id: 'VERIFY-VALIDATE-001', enforcement: 'blocks' },
   ])
+  assert.deepEqual(contract.stages.approach?.validators, [
+    { registry_id: 'PROTOTYPE-OUTPUT-VALIDATE-001', enforcement: 'blocks' },
+  ])
+  assert.deepEqual(contract.stages.build?.validators, [
+    { registry_id: 'PROTOTYPE-OUTPUT-VALIDATE-001', enforcement: 'blocks' },
+  ])
+  assert.deepEqual(contract.stages.evaluate?.validators, [
+    { registry_id: 'PROTOTYPE-OUTPUT-VALIDATE-001', enforcement: 'blocks' },
+  ])
 })
 
 test('implementation retry requires explicit remediation evidence', () => {

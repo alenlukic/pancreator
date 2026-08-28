@@ -66,148 +66,55 @@ test('repository validation rejects a target policy without its binding layer', 
   )
 })
 
-test('repository validation requires a policy to deliver each engineering handbook', () => {
+test('repository validation requires a policy to deliver every handbook', () => {
+  // One fixture and one validation pass cover all three handbook-delivery
+  // requirements: each strips guidance_sources from a different policy and
+  // each undelivered handbook produces its own independent error.
   const root = createFixture()
   prepareValidationFixture(root)
-  const policyPath = path.join(root, 'governance', 'policies', 'ENG-001.json')
-  const policy = JSON.parse(readFileSync(policyPath, 'utf8')) as {
-    guidance_sources?: unknown[]
+
+  for (const policyId of ['ENG-001', 'TS-001', 'DESIGN-001', 'PY-001']) {
+    const policyPath = path.join(
+      root,
+      'governance',
+      'policies',
+      `${policyId}.json`,
+    )
+    const policy = JSON.parse(readFileSync(policyPath, 'utf8')) as {
+      guidance_sources?: unknown[]
+    }
+
+    delete policy.guidance_sources
+
+    writeFileSync(policyPath, `${JSON.stringify(policy, null, 2)}\n`)
   }
 
-  delete policy.guidance_sources
-
-  writeFileSync(policyPath, `${JSON.stringify(policy, null, 2)}\n`)
-
   const result = validateRepository(root)
+  const errors = result.errors.join('\n')
 
   assert.equal(result.ok, false)
   assert.match(
-    result.errors.join('\n'),
+    errors,
     /governance\/handbooks\/eng\/engineering\.md MUST be delivered by at least one policy/u,
   )
-})
-
-test('repository validation requires code-review stages to load engineering handbook policies', () => {
-  const root = createFixture()
-  prepareValidationFixture(root)
-  const lookupPath = path.join(
-    root,
-    'governance',
-    'registries',
-    'policy_lookup_table.json',
-  )
-  const lookup = JSON.parse(readFileSync(lookupPath, 'utf8')) as {
-    rows: Array<{ persona: string }>
-  }
-
-  lookup.rows = lookup.rows.filter((row) => row.persona !== 'coder')
-
-  writeFileSync(lookupPath, `${JSON.stringify(lookup, null, 2)}\n`)
-
-  const result = validateRepository(root)
-
-  assert.equal(result.ok, false)
   assert.match(
-    result.errors.join('\n'),
-    /workflow stage 'delivery\/implement' persona 'coder' MUST load a policy for the engineering handbook/u,
-  )
-})
-
-test('repository validation requires a policy to deliver the TypeScript handbook', () => {
-  const root = createFixture()
-  prepareValidationFixture(root)
-  const policyPath = path.join(root, 'governance', 'policies', 'TS-001.json')
-  const policy = JSON.parse(readFileSync(policyPath, 'utf8')) as {
-    guidance_sources?: unknown[]
-  }
-
-  delete policy.guidance_sources
-
-  writeFileSync(policyPath, `${JSON.stringify(policy, null, 2)}\n`)
-
-  const result = validateRepository(root)
-
-  assert.equal(result.ok, false)
-  assert.match(
-    result.errors.join('\n'),
+    errors,
     /governance\/handbooks\/typescript\/style-guide\.md MUST be delivered by at least one policy/u,
   )
-})
-
-test('repository validation requires a policy to deliver the design handbook', () => {
-  const root = createFixture()
-  prepareValidationFixture(root)
-  const policyPath = path.join(
-    root,
-    'governance',
-    'policies',
-    'DESIGN-001.json',
-  )
-  const policy = JSON.parse(readFileSync(policyPath, 'utf8')) as {
-    guidance_sources?: unknown[]
-  }
-
-  delete policy.guidance_sources
-
-  writeFileSync(policyPath, `${JSON.stringify(policy, null, 2)}\n`)
-
-  const result = validateRepository(root)
-
-  assert.equal(result.ok, false)
   assert.match(
-    result.errors.join('\n'),
+    errors,
     /governance\/handbooks\/design\/ux-guide\.md MUST be delivered by at least one policy/u,
   )
-})
-
-test('repository validation requires design stages to load design handbook policies', () => {
-  const root = createFixture()
-  prepareValidationFixture(root)
-  const lookupPath = path.join(
-    root,
-    'governance',
-    'registries',
-    'policy_lookup_table.json',
-  )
-  const lookup = JSON.parse(readFileSync(lookupPath, 'utf8')) as {
-    rows: Array<{ persona: string }>
-  }
-
-  lookup.rows = lookup.rows.filter((row) => row.persona !== 'design-qa')
-
-  writeFileSync(lookupPath, `${JSON.stringify(lookup, null, 2)}\n`)
-
-  const result = validateRepository(root)
-
-  assert.equal(result.ok, false)
   assert.match(
-    result.errors.join('\n'),
-    /workflow stage 'design\/test' persona 'design-qa' MUST load a policy for the design handbook/u,
-  )
-})
-
-test('repository validation requires a policy to deliver the Python handbook', () => {
-  const root = createFixture()
-  prepareValidationFixture(root)
-  const policyPath = path.join(root, 'governance', 'policies', 'PY-001.json')
-  const policy = JSON.parse(readFileSync(policyPath, 'utf8')) as {
-    guidance_sources?: unknown[]
-  }
-
-  delete policy.guidance_sources
-
-  writeFileSync(policyPath, `${JSON.stringify(policy, null, 2)}\n`)
-
-  const result = validateRepository(root)
-
-  assert.equal(result.ok, false)
-  assert.match(
-    result.errors.join('\n'),
+    errors,
     /governance\/handbooks\/python\/style-guide\.md MUST be delivered by at least one policy/u,
   )
 })
 
-test('repository validation requires code-review and QA stages to load Python handbook policies', () => {
+test('repository validation requires stages to load their handbook policies', () => {
+  // One fixture and one validation pass cover the per-stage handbook checks
+  // for two personas at once: dropping every coder row and every design-qa
+  // row produces an independent error for each undelivered handbook.
   const root = createFixture()
   prepareValidationFixture(root)
   const lookupPath = path.join(
@@ -217,26 +124,26 @@ test('repository validation requires code-review and QA stages to load Python ha
     'policy_lookup_table.json',
   )
   const lookup = JSON.parse(readFileSync(lookupPath, 'utf8')) as {
-    rows: Array<{ persona: string; policies: string[] }>
+    rows: Array<{ persona: string }>
   }
 
-  lookup.rows = lookup.rows.map((row) =>
-    row.persona === 'coder'
-      ? {
-          ...row,
-          policies: row.policies.filter((policy) => policy !== 'PY-001'),
-        }
-      : row,
+  lookup.rows = lookup.rows.filter(
+    (row) => row.persona !== 'coder' && row.persona !== 'design-qa',
   )
 
   writeFileSync(lookupPath, `${JSON.stringify(lookup, null, 2)}\n`)
 
   const result = validateRepository(root)
+  const errors = result.errors.join('\n')
 
   assert.equal(result.ok, false)
   assert.match(
-    result.errors.join('\n'),
-    /workflow stage 'delivery\/implement' persona 'coder' MUST load a policy for the Python handbook/u,
+    errors,
+    /workflow stage 'delivery\/implement' persona 'coder' MUST load a policy for the engineering handbook/u,
+  )
+  assert.match(
+    errors,
+    /workflow stage 'design\/test' persona 'design-qa' MUST load a policy for the design handbook/u,
   )
 })
 
@@ -267,7 +174,9 @@ test('repository validation rejects static guidance references that are not decl
   )
 })
 
-test('repository validation requires code-review and QA stages to load TypeScript handbook policies', () => {
+test('repository validation requires code-review and QA stages to load language handbook policies', () => {
+  // Language handbooks bind through rows that keep their persona but drop
+  // the language policy; one mutation per language shares the validation.
   const root = createFixture()
   prepareValidationFixture(root)
   const lookupPath = path.join(
@@ -284,7 +193,9 @@ test('repository validation requires code-review and QA stages to load TypeScrip
     row.persona === 'coder'
       ? {
           ...row,
-          policies: row.policies.filter((policy) => policy !== 'TS-001'),
+          policies: row.policies.filter(
+            (policy) => policy !== 'TS-001' && policy !== 'PY-001',
+          ),
         }
       : row,
   )
@@ -292,11 +203,16 @@ test('repository validation requires code-review and QA stages to load TypeScrip
   writeFileSync(lookupPath, `${JSON.stringify(lookup, null, 2)}\n`)
 
   const result = validateRepository(root)
+  const errors = result.errors.join('\n')
 
   assert.equal(result.ok, false)
   assert.match(
-    result.errors.join('\n'),
+    errors,
     /workflow stage 'delivery\/implement' persona 'coder' MUST load a policy for the TypeScript handbook/u,
+  )
+  assert.match(
+    errors,
+    /workflow stage 'delivery\/implement' persona 'coder' MUST load a policy for the Python handbook/u,
   )
 })
 
@@ -815,11 +731,13 @@ function attestedFixture(root: string): {
   }
 }
 
-/** Last non-empty line of the selection, from the invocation's own policies. */
+/** Last content line of the selection, from the invocation's own policies. */
 function guidanceFinalLine(
   invocation: Invocation,
   entry: { policy_id: string; source_path: string },
 ): string {
+  const divider = /^\s*(?:[-_*]\s*){3,}$/u
+
   for (const policy of invocation.policies) {
     if (policy.id !== entry.policy_id) {
       continue
@@ -830,7 +748,7 @@ function guidanceFinalLine(
         const lines = guidance.content.split('\n')
 
         for (let index = lines.length - 1; index >= 0; index -= 1) {
-          if (lines[index].trim().length > 0) {
+          if (lines[index].trim().length > 0 && !divider.test(lines[index])) {
             return lines[index]
           }
         }
@@ -1110,7 +1028,7 @@ test('attestation validator requires guidance read evidence when the manifest re
   assert.equal(missingQuote.passed, false)
   assert.match(
     missingQuote.checks.find((check) => !check.passed)?.message ?? '',
-    /MUST quote the selection's last non-empty line/u,
+    /MUST quote the selection's last content line/u,
   )
 
   // A wrong quote fails: the line validates against the selected bytes.
@@ -1127,6 +1045,57 @@ test('attestation validator requires guidance read evidence when the manifest re
   assert.equal(mismatch.passed, false)
   assert.match(
     mismatch.checks.find((check) => !check.passed)?.message ?? '',
+    /final_line does not match/u,
+  )
+})
+
+test('guidance final-line evidence skips a trailing Markdown divider', () => {
+  const root = createFixture()
+  const { invocation, attestation } = attestedFixture(root)
+
+  assert.ok(attestation.guidance?.length)
+
+  // The RF-006 trap: a selection that ends with a `---` divider. The old
+  // contract demanded the literal last non-empty line, so the required quote
+  // was three dashes that prove nothing and invite a failed attempt.
+  const target = attestation.guidance[0]
+  const policy = invocation.policies.find(
+    (item) => item.id === target.policy_id,
+  )
+  const guidance = policy?.guidance?.find(
+    (item) => item.source_path === target.source_path,
+  )
+
+  assert.ok(guidance)
+
+  const contentLine = guidanceFinalLine(invocation, target)
+
+  assert.ok(contentLine.trim().length > 0)
+  guidance.content = `${guidance.content}\n\n---\n`
+
+  // Quoting the last real content line passes.
+  const evidence = attestation.guidance.map((entry, index) =>
+    index === 0 ? { ...entry, final_line: contentLine } : entry,
+  )
+  const accepted = validateInvocationAttestation(
+    invocation,
+    attestedOutput({ ...attestation, guidance: evidence }),
+  )
+
+  assert.equal(accepted.passed, true)
+
+  // Quoting the divider itself is not read evidence and fails.
+  const dividerQuote = attestation.guidance.map((entry, index) =>
+    index === 0 ? { ...entry, final_line: '---' } : entry,
+  )
+  const rejected = validateInvocationAttestation(
+    invocation,
+    attestedOutput({ ...attestation, guidance: dividerQuote }),
+  )
+
+  assert.equal(rejected.passed, false)
+  assert.match(
+    rejected.checks.find((check) => !check.passed)?.message ?? '',
     /final_line does not match/u,
   )
 })

@@ -875,7 +875,7 @@ test('the delivery prompt demands final-line read evidence per guidance entry', 
   // Read evidence is a quote the card does not carry — never a digest
   // transcription, which stays prefilled by the scaffold.
   assert.match(prompt, /set `final_line` to the/u)
-  assert.match(prompt, /verbatim last non-empty line/u)
+  assert.match(prompt, /verbatim last content line/u)
 
   for (const entry of manifest.guidance) {
     assert.ok(prompt.includes(entry.source_path))

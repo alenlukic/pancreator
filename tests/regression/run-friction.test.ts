@@ -10,7 +10,6 @@ import {
   setRunStage,
   submitOutput,
 } from '../../src/lib/engine.js'
-import { PanError } from '../../src/lib/errors.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
@@ -453,7 +452,7 @@ test('a persona mapping the run never resolves is not pipeline config drift', ()
   assert.equal(prepared.stage.slug, 'plan')
 })
 
-test('a changed mapping the run does resolve still fails as pipeline config drift', () => {
+test('a changed mapping the run does resolve is advisory, not a stop', () => {
   const root = createFixture()
   const state = createRun(root, {
     workflowSlug: 'delivery',
@@ -465,14 +464,19 @@ test('a changed mapping the run does resolve still fails as pipeline config drif
     defaults.coder = 'gpt-5.4'
   })
 
-  assert.throws(
-    () => prepareInvocation(root, state.run_id),
-    (error: unknown) => {
-      assert.ok(error instanceof PanError)
-      assert.equal(error.code, 'PIPELINE_CONFIG_DRIFT')
-      assert.deepEqual(error.details, { personas: ['coder'] })
+  // The operator owns the model choice, so a mapping edited mid-run is reported
+  // and the run keeps advancing. Refusing here stranded runs over an edit the
+  // operator had just made on purpose.
+  const prepared = prepareInvocation(root, state.run_id)
 
-      return true
-    },
+  assert.ok(prepared.invocation)
+  assert.equal(prepared.invocation.stage.slug, 'plan')
+  assert.ok(
+    prepared.advisories.some(
+      (advisory) =>
+        advisory.includes('coder') &&
+        advisory.includes('live model mapping changed'),
+    ),
+    `expected a coder drift advisory, got ${JSON.stringify(prepared.advisories)}`,
   )
 })

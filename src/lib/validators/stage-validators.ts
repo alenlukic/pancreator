@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process'
 import {
   fileExists,
   isRecord,
-  lastNonEmptyLine,
+  lastEvidenceLine,
   readJson,
   readText,
 } from '../io.js'
@@ -192,6 +192,9 @@ export function validateSharedFieldContract(
     'verify',
     'remediate',
     'ship',
+    'approach',
+    'build',
+    'evaluate',
   ]) {
     const stage = source.stages[stageSlug]
 
@@ -300,6 +303,55 @@ export function validateSharedFieldContract(
     ],
     'data.verify.findings[].severity': ['blocker', 'high', 'medium', 'low'],
     'data.verify.findings[].source': ['review', 'qa'],
+  }
+
+  const expectedPrototypeEnums: Record<string, Record<string, string[]>> = {
+    approach: {
+      'data.technical_approach.preconditions[].status': [
+        'ready',
+        'unavailable',
+        'unknown',
+      ],
+    },
+    build: {
+      'data.spike.precondition_checks[].status': [
+        'ready',
+        'unavailable',
+        'unknown',
+      ],
+    },
+    evaluate: {
+      'data.evaluation.verdict': [
+        'validated',
+        'invalidated',
+        'inconclusive',
+        'environment_blocked',
+      ],
+      'data.evaluation.question_results[].cause': [
+        'product',
+        'environment',
+        'mixed',
+        'none',
+      ],
+    },
+  }
+
+  for (const [stageSlug, fields] of Object.entries(expectedPrototypeEnums)) {
+    for (const [fieldPath, expected] of Object.entries(fields)) {
+      const actual = sharedEnum(input.root, stageSlug, fieldPath)
+
+      if (
+        actual.size !== expected.length ||
+        !expected.every((value) => actual.has(value))
+      ) {
+        issues.push(
+          issue(
+            'field_contract.prototype_enum',
+            `The ${stageSlug} field ${fieldPath} MUST declare its canonical values`,
+          ),
+        )
+      }
+    }
   }
 
   for (const [fieldPath, expected] of Object.entries(expectedVerifyEnums)) {
@@ -964,7 +1016,7 @@ export function validateTargetInstructionCoverage(
         issue(
           'TARGET_INSTRUCTION_READ_EVIDENCE_MISSING',
           `Target instruction evidence MUST include reads entry ` +
-            `{ path, final_line } quoting the last non-empty line of ` +
+            `{ path, final_line } quoting the last content line of ` +
             `${requiredPath}.`,
         ),
       )
@@ -977,14 +1029,15 @@ export function validateTargetInstructionCoverage(
       continue
     }
 
-    const expectedFinalLine = lastNonEmptyLine(readText(instructionAbsolute))
+    const expectedFinalLine = lastEvidenceLine(readText(instructionAbsolute))
 
     if (declaredFinalLine.trim() !== expectedFinalLine.trim()) {
       issues.push(
         issue(
           'TARGET_INSTRUCTION_READ_EVIDENCE_MISMATCH',
           `Target instruction read evidence for ${requiredPath} does not ` +
-            `quote the file's last non-empty line.`,
+            `quote the file's last content line (trailing divider lines ` +
+            `are skipped).`,
         ),
       )
     }

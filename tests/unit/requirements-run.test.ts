@@ -56,6 +56,34 @@ test('artifact validators resolve only when workflow artifacts are requested', (
   )
 })
 
+test('every prototype stage resolves the blocking output validator', () => {
+  const root = createFixture()
+  const stages: Array<[string, string]> = [
+    ['planner', 'approach'],
+    ['coder', 'build'],
+    ['reviewer', 'evaluate'],
+  ]
+
+  // AC-011 guard: the resolved requirement manifest — not only the schema
+  // file — must carry PROTOTYPE-OUTPUT-VALIDATE-001 for each prototype stage.
+  for (const [persona, stage] of stages) {
+    const manifest = resolveRequirements(root, {
+      persona,
+      workflow: 'prototype',
+      stage,
+      invocation: {
+        output_path: `runtime/logs/workflows/x/outputs/${stage}.json`,
+      },
+    })
+    const requirement = manifest.validation_requirements.find(
+      (item) => item.registry_id === 'PROTOTYPE-OUTPUT-VALIDATE-001',
+    )
+
+    assert.ok(requirement, `${stage} resolves PROTOTYPE-OUTPUT-VALIDATE-001`)
+    assert.notEqual(requirement.enforcement, 'advisory')
+  }
+})
+
 test('PR validators bind workflow artifact 1 and standalone output', () => {
   const root = createFixture()
   const workflow = resolveRequirements(root, {

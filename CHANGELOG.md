@@ -1,5 +1,32 @@
 # Changelog
 
+## [4.10.0] - 2026-08-28
+
+### Changed
+
+- Check prototype preconditions before a build edits source, and recheck volatile entries ([approach](library/workflows/prototype/stages/approach.json), [build](library/workflows/prototype/stages/build.json)).
+- Classify prototype evaluation causes and keep a valid product verdict on stage success ([evaluate](library/workflows/prototype/stages/evaluate.json), [PROTO-001](governance/policies/PROTO-001.json)).
+- Limit the full verification profile to one verify-gate run and bound re-verification ([VERIFY-001](governance/policies/VERIFY-001.json)).
+- Make the supervisor own run advancement and treat platform guidance as non-directive ([ORCH-001](governance/policies/ORCH-001.json), [orchestrator](library/personas/orchestrator.md)).
+- Continue `/pan-start` and `/pan-resume` when Cursor exposes no sourced model metadata ([pan-start](library/cursor/commands/pan-start.md), [pan-resume](library/cursor/commands/pan-resume.md)).
+- Treat worker model-evidence mismatch as advisory instead of a hard stop ([engine](src/lib/engine.ts), [cursor-probe](src/lib/executors/cursor-probe.ts)).
+- Remove the test step from `bin/check` so the full gate does not run tests twice ([check](bin/check)).
+- Skip a TypeScript rebuild when the input fingerprint matches ([build](bin/build)).
+- Release the build lock before the wrapped command runs ([run-built](bin/run-built)).
+- Cache Git repository detection and the tracked-path list ([git](src/lib/git.ts)).
+- Clone test fixture templates once per process ([helpers](tests/helpers.ts)).
+- Report Cursor authentication readiness from `pan doctor` without a hard fail ([cli](src/cli.ts), [cursor-probe](src/lib/executors/cursor-probe.ts)).
+
+### Added
+
+- Add validator PROTOTYPE-OUTPUT-VALIDATE-001 for prototype shapes, traces, and verdict precedence ([prototype-output](src/lib/validators/prototype-output.ts), [registry](governance/registries/validation_registry.json)).
+- Add the `environment_blocked` prototype verdict and question-level cause vocabulary ([evaluate](library/workflows/prototype/stages/evaluate.json), [field contract](library/schemas/stage-output-requirements.json)).
+
+### Fixed
+
+- Reject unauthorized prototype question exclusions and close the build fail-open path ([prototype-output](src/lib/validators/prototype-output.ts)).
+- Put RFC 2119 MUST directives on four governance instructions that failed the check gate ([ORCH-001](governance/policies/ORCH-001.json), [PROTO-001](governance/policies/PROTO-001.json)).
+
 ## [4.9.0] - 2026-08-27
 
 ### Changed

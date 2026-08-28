@@ -213,173 +213,182 @@ function submitFixtureStage(
   return submitOutput(root, runId, invocation.output.path)
 }
 
-test('a mixed-executor delivery run completes with claude-code plan and verify', () => {
-  const root = createFixture()
-  const stubPath = installClaudeCodeFixture(root, ['planner', 'verifier'])
+// Disabled by operator decision (2026-08-28): the claude-code executor is
+// not currently used. Re-enable when a claude-code pipeline returns to use.
+test(
+  'a mixed-executor delivery run completes with claude-code plan and verify',
+  { skip: 'claude-code executor is not currently used' },
+  () => {
+    const root = createFixture()
+    const stubPath = installClaudeCodeFixture(root, ['planner', 'verifier'])
 
-  withStub(stubPath, null, () => {
-    const state = createRun(root, {
-      workflowSlug: 'delivery',
-      requestPath: 'request.md',
-      title: 'Mixed executor run',
-    })
-    const runId = state.run_id
+    withStub(stubPath, null, () => {
+      const state = createRun(root, {
+        workflowSlug: 'delivery',
+        requestPath: 'request.md',
+        title: 'Mixed executor run',
+      })
+      const runId = state.run_id
 
-    // The snapshot records the executor dimension for every persona.
-    const snapshot = loadPipelineConfigSnapshot(
-      root,
-      state.pipeline_config?.path ?? '',
-    )
-
-    assert.equal(snapshot.executors?.planner, 'claude-code')
-    assert.equal(snapshot.executors?.verifier, 'claude-code')
-    assert.equal(snapshot.executors?.coder, 'cursor')
-    assert.equal(snapshot.personas.planner, CLAUDE_CODE_SPEC)
-
-    const externalStages = new Set(['plan', 'verify'])
-    const workflow = loadWorkflow(root, 'delivery')
-
-    for (const stageSlug of ['plan', 'implement', 'verify', 'ship']) {
-      const prepared = prepareInvocation(root, runId)
-      const invocation = prepared.invocation
-
-      assert.ok(invocation)
-      assert.equal(invocation.stage.slug, stageSlug)
-
-      const stage = stageBySlug(workflow, stageSlug)
-      const markdown = readFileSync(
-        path.join(root, prepared.state.current_invocation?.markdown_path ?? ''),
-        'utf8',
+      // The snapshot records the executor dimension for every persona.
+      const snapshot = loadPipelineConfigSnapshot(
+        root,
+        state.pipeline_config?.path ?? '',
       )
 
-      if (externalStages.has(stageSlug)) {
-        // The card renders the executor and routes delivery through the harness.
-        assert.equal(invocation.stage.persona_executor, 'claude-code')
-        assert.equal(
-          invocation.stage.model,
-          'claude-opus-5[permission-mode=default,session-resume=true]',
-        )
-        assert.equal(invocation.delegation?.executor, 'claude-code')
-        assert.equal(invocation.delegation?.cursor_agent_path, undefined)
-        assert.ok(markdown.includes('**Executor** `claude-code`'))
-        // The delegate command is supervisor-owned: it lives in the sibling
-        // procedure document, never on the worker-visible card.
-        assert.ok(!markdown.includes(`pan delegate ${runId}`))
-        assert.ok(invocation.delegation?.supervisor_procedure_path)
+      assert.equal(snapshot.executors?.planner, 'claude-code')
+      assert.equal(snapshot.executors?.verifier, 'claude-code')
+      assert.equal(snapshot.executors?.coder, 'cursor')
+      assert.equal(snapshot.personas.planner, CLAUDE_CODE_SPEC)
 
-        const procedure = readFileSync(
-          path.join(root, invocation.delegation.supervisor_procedure_path),
-          'utf8',
-        )
+      const externalStages = new Set(['plan', 'verify'])
+      const workflow = loadWorkflow(root, 'delivery')
 
-        assert.ok(procedure.includes(`pan delegate ${runId}`))
-        // Harness-piped delivery needs no read attestation machinery.
-        assert.equal(invocation.contract_manifest, undefined)
+      for (const stageSlug of ['plan', 'implement', 'verify', 'ship']) {
+        const prepared = prepareInvocation(root, runId)
+        const invocation = prepared.invocation
 
-        const delegated = delegateInvocation(root, runId)
+        assert.ok(invocation)
+        assert.equal(invocation.stage.slug, stageSlug)
 
-        assert.ok(delegated.execution)
-        assert.equal(delegated.execution.delegation_kind, 'fresh')
-        assert.equal(delegated.execution.executor, 'claude-code')
-        assert.ok(delegated.execution.session_id)
-        assert.ok(delegated.execution.argv.includes('--model'))
-        assert.ok(delegated.execution.argv.includes('claude-opus-5'))
-        assert.ok(delegated.execution.argv.includes('--permission-mode'))
-        assert.ok(!delegated.execution.argv.includes('--resume'))
-
-        // Non-source stages get write tools only inside the runtime tree.
-        if (stage.workspace_policy !== 'source_allowed') {
-          assert.ok(delegated.execution.argv.includes('Write(runtime/**)'))
-          assert.ok(!delegated.execution.argv.includes('Write'))
-        }
-
-        // The delegation artifact is the canonical card byte for byte.
-        const delegationArtifact = readFileSync(
-          invocationFile(
+        const stage = stageBySlug(workflow, stageSlug)
+        const markdown = readFileSync(
+          path.join(
             root,
-            runId,
-            invocation.invocation_id,
-            '.delegation.md',
+            prepared.state.current_invocation?.markdown_path ?? '',
           ),
           'utf8',
         )
 
-        assert.equal(delegationArtifact, markdown)
-        assert.ok(
-          existsSync(
+        if (externalStages.has(stageSlug)) {
+          // The card renders the executor and routes delivery through the harness.
+          assert.equal(invocation.stage.persona_executor, 'claude-code')
+          assert.equal(
+            invocation.stage.model,
+            'claude-opus-5[permission-mode=default,session-resume=true]',
+          )
+          assert.equal(invocation.delegation?.executor, 'claude-code')
+          assert.equal(invocation.delegation?.cursor_agent_path, undefined)
+          assert.ok(markdown.includes('**Executor** `claude-code`'))
+          // The delegate command is supervisor-owned: it lives in the sibling
+          // procedure document, never on the worker-visible card.
+          assert.ok(!markdown.includes(`pan delegate ${runId}`))
+          assert.ok(invocation.delegation?.supervisor_procedure_path)
+
+          const procedure = readFileSync(
+            path.join(root, invocation.delegation.supervisor_procedure_path),
+            'utf8',
+          )
+
+          assert.ok(procedure.includes(`pan delegate ${runId}`))
+          // Harness-piped delivery needs no read attestation machinery.
+          assert.equal(invocation.contract_manifest, undefined)
+
+          const delegated = delegateInvocation(root, runId)
+
+          assert.ok(delegated.execution)
+          assert.equal(delegated.execution.delegation_kind, 'fresh')
+          assert.equal(delegated.execution.executor, 'claude-code')
+          assert.ok(delegated.execution.session_id)
+          assert.ok(delegated.execution.argv.includes('--model'))
+          assert.ok(delegated.execution.argv.includes('claude-opus-5'))
+          assert.ok(delegated.execution.argv.includes('--permission-mode'))
+          assert.ok(!delegated.execution.argv.includes('--resume'))
+
+          // Non-source stages get write tools only inside the runtime tree.
+          if (stage.workspace_policy !== 'source_allowed') {
+            assert.ok(delegated.execution.argv.includes('Write(runtime/**)'))
+            assert.ok(!delegated.execution.argv.includes('Write'))
+          }
+
+          // The delegation artifact is the canonical card byte for byte.
+          const delegationArtifact = readFileSync(
             invocationFile(
               root,
               runId,
               invocation.invocation_id,
-              '.session.json',
+              '.delegation.md',
             ),
-          ),
-        )
-        assert.ok(
-          existsSync(
-            resolveRunLayout(root, runId).evidence(
-              `${invocation.invocation_id}.claude-code.stdout.json`,
-            ).absolute,
-          ),
-        )
-      } else {
-        assert.equal(invocation.stage.persona_executor, undefined)
+            'utf8',
+          )
 
-        if (stage.persona !== 'orchestrator') {
-          writeCanonicalDelegation(root, invocation)
+          assert.equal(delegationArtifact, markdown)
+          assert.ok(
+            existsSync(
+              invocationFile(
+                root,
+                runId,
+                invocation.invocation_id,
+                '.session.json',
+              ),
+            ),
+          )
+          assert.ok(
+            existsSync(
+              resolveRunLayout(root, runId).evidence(
+                `${invocation.invocation_id}.claude-code.stdout.json`,
+              ).absolute,
+            ),
+          )
+        } else {
+          assert.equal(invocation.stage.persona_executor, undefined)
+
+          if (stage.persona !== 'orchestrator') {
+            writeCanonicalDelegation(root, invocation)
+          }
+        }
+
+        const submitted = submitFixtureStage(root, runId, invocation, 'success')
+
+        assert.equal(
+          submitted.record.outcome,
+          'success',
+          `${stageSlug}: ${JSON.stringify(submitted.record.evaluation)}`,
+        )
+
+        if (externalStages.has(stageSlug)) {
+          // Delegation validation passes on the harness-authored record.
+          const validation = JSON.parse(
+            readFileSync(
+              path.join(
+                root,
+                delegationValidationPath(runId, invocation.invocation_id, root),
+              ),
+              'utf8',
+            ),
+          ) as { status: string }
+
+          assert.equal(validation.status, 'pass')
+        }
+
+        if (stageSlug === 'plan' || stageSlug === 'ship') {
+          // Plan and ship keep their operator gates under the standard profile.
+          assert.equal(submitted.state.status, 'awaiting_operator')
+          decideRun(root, runId, 'approve', 'fixture approval')
         }
       }
 
-      const submitted = submitFixtureStage(root, runId, invocation, 'success')
+      const final = getRunState(root, runId)
 
-      assert.equal(
-        submitted.record.outcome,
-        'success',
-        `${stageSlug}: ${JSON.stringify(submitted.record.evaluation)}`,
+      assert.equal(final.status, 'succeeded')
+
+      // stage_history records the executor per attempt.
+      const planHistory = final.stage_history.find(
+        (item) => item.stage === 'plan',
+      )
+      const verifyHistory = final.stage_history.find(
+        (item) => item.stage === 'verify',
+      )
+      const implementHistory = final.stage_history.find(
+        (item) => item.stage === 'implement',
       )
 
-      if (externalStages.has(stageSlug)) {
-        // Delegation validation passes on the harness-authored record.
-        const validation = JSON.parse(
-          readFileSync(
-            path.join(
-              root,
-              delegationValidationPath(runId, invocation.invocation_id, root),
-            ),
-            'utf8',
-          ),
-        ) as { status: string }
-
-        assert.equal(validation.status, 'pass')
-      }
-
-      if (stageSlug === 'plan' || stageSlug === 'ship') {
-        // Plan and ship keep their operator gates under the standard profile.
-        assert.equal(submitted.state.status, 'awaiting_operator')
-        decideRun(root, runId, 'approve', 'fixture approval')
-      }
-    }
-
-    const final = getRunState(root, runId)
-
-    assert.equal(final.status, 'succeeded')
-
-    // stage_history records the executor per attempt.
-    const planHistory = final.stage_history.find(
-      (item) => item.stage === 'plan',
-    )
-    const verifyHistory = final.stage_history.find(
-      (item) => item.stage === 'verify',
-    )
-    const implementHistory = final.stage_history.find(
-      (item) => item.stage === 'implement',
-    )
-
-    assert.equal(planHistory?.executor, 'claude-code')
-    assert.equal(verifyHistory?.executor, 'claude-code')
-    assert.equal(implementHistory?.executor, undefined)
-  })
-})
+      assert.equal(planHistory?.executor, 'claude-code')
+      assert.equal(verifyHistory?.executor, 'claude-code')
+      assert.equal(implementHistory?.executor, undefined)
+    })
+  },
+)
 
 test('run creation fails closed when the executor binary is missing', () => {
   const root = createFixture()
@@ -699,7 +708,7 @@ test('prepare skips frontmatter drift for external personas and still catches cu
     assert.ok(plan.invocation)
     assert.equal(plan.invocation.stage.persona_executor, 'claude-code')
 
-    // A cursor persona's projected frontmatter drifting still fails prepare.
+    // A cursor persona's projected frontmatter drifting is reported, not fatal.
     const coderAgent = path.join(root, '.cursor', 'agents', 'pan-coder.md')
     const coderContent = readFileSync(coderAgent, 'utf8')
 
@@ -710,22 +719,29 @@ test('prepare skips frontmatter drift for external personas and still catches cu
 
     submitFixtureStage(root, runId, plan.invocation)
     decideRun(root, runId, 'approve', 'fixture approval')
-    assert.throws(
-      () => prepareInvocation(root, runId),
-      /PIPELINE_CONFIG_NOT_SYNCED|do not match the run pipeline config/u,
+
+    const drifted = prepareInvocation(root, runId)
+
+    assert.equal(drifted.invocation?.stage.slug, 'implement')
+    assert.ok(
+      drifted.advisories.some((advisory) =>
+        advisory.includes('Projected Cursor agent models do not match'),
+      ),
+      `expected a projection advisory, got ${JSON.stringify(drifted.advisories)}`,
     )
 
-    // Restoring the projection lets the run continue.
+    // Restoring the projection clears the advisory.
     writeFileSync(coderAgent, coderContent)
 
     const implement = prepareInvocation(root, runId)
 
     assert.equal(implement.invocation?.stage.slug, 'implement')
     assert.equal(implement.invocation?.stage.persona_executor, undefined)
+    assert.deepEqual(implement.advisories, [])
   })
 })
 
-test('mixed-executor snapshots detect live mapping drift for any persona', () => {
+test('mixed-executor snapshots report live mapping drift for any persona', () => {
   const root = createFixture()
   const stubPath = installClaudeCodeFixture(root, ['planner'])
 
@@ -740,14 +756,22 @@ test('mixed-executor snapshots detect live mapping drift for any persona', () =>
       defaults: Record<string, string>
     }
 
-    // Changing the external persona's mapping mid-run is drift too.
+    // Changing the external persona's mapping mid-run is drift too, and it is
+    // reported against the run rather than blocking it.
     config.defaults.planner = 'claude-code:claude-sonnet-5'
     writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
     syncCursorProjection(root, { write: true })
 
-    assert.throws(
-      () => prepareInvocation(root, runId),
-      /live active mapping has changed/u,
+    const prepared = prepareInvocation(root, runId)
+
+    assert.ok(prepared.invocation)
+    assert.ok(
+      prepared.advisories.some(
+        (advisory) =>
+          advisory.includes('planner') &&
+          advisory.includes('live model mapping changed'),
+      ),
+      `expected a planner drift advisory, got ${JSON.stringify(prepared.advisories)}`,
     )
   })
 })

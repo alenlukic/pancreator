@@ -7,7 +7,7 @@ import {
   ensureDir,
   fileExists,
   isRecord,
-  lastNonEmptyLine,
+  lastEvidenceLine,
   readJson,
   readText,
   resolveInside,
@@ -965,7 +965,7 @@ function expectedGuidanceFinalLines(
 
         expected.set(
           `${policy.id}\0${guidance.source_path}\0${guidance.reference.content_sha256}`,
-          lastNonEmptyLine(guidance.content),
+          lastEvidenceLine(guidance.content),
         )
       }
     }
@@ -1042,8 +1042,8 @@ function guidanceAttestationChecks(
             finalLineMatches && declaredFinalLine.trim().length > 0
               ? `Guidance ${entry.source_path} (${entry.policy_id}) is attested as read with matching final-line evidence`
               : declaredFinalLine.trim().length === 0
-                ? `A read guidance entry MUST quote the selection's last non-empty line as final_line for ${entry.source_path}`
-                : `Guidance ${entry.source_path} (${entry.policy_id}) final_line does not match the selected content's last non-empty line`,
+                ? `A read guidance entry MUST quote the selection's last content line (skipping trailing dividers) as final_line for ${entry.source_path}`
+                : `Guidance ${entry.source_path} (${entry.policy_id}) final_line does not match the selected content's last content line (trailing divider lines are skipped)`,
         })
         break
       }
@@ -3056,6 +3056,9 @@ export function validateRepository(root: string): RepositoryValidationResult {
     required.push(
       'docs/operator-briefs/project.json',
       'docs/operator-briefs/project.css',
+      // The harness review lineup. `bin/install` drops it from the staged
+      // payload, so it is required here and absent from a target installation.
+      'library/skills/review-squad-pancreator.md',
     )
   }
 

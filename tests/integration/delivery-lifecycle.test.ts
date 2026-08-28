@@ -745,7 +745,7 @@ test('an operator revision returns the delivery plan to the planner', () => {
   assert.equal(getRunState(root, runId).current_stage, 'implement')
 })
 
-test('run preparation rejects live pipeline-config drift from its snapshot', () => {
+test('run preparation reports live pipeline-config drift from its snapshot', () => {
   const root = createFixture()
   const state = createRun(root, {
     workflowSlug: 'delivery',
@@ -755,14 +755,24 @@ test('run preparation rejects live pipeline-config drift from its snapshot', () 
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
     active_config: string
   }
+  const snapshotted = config.active_config
 
   config.active_config =
     config.active_config === 'balanced' ? 'advanced' : 'balanced'
   writeJson(configPath, config)
 
-  assert.throws(
-    () => prepareInvocation(root, state.run_id),
-    /live active mapping has changed/u,
+  // Switching the active config mid-run is the operator's call. The run keeps
+  // resolving its own snapshot and reports the difference.
+  const prepared = prepareInvocation(root, state.run_id)
+
+  assert.ok(prepared.invocation)
+  assert.ok(
+    prepared.advisories.some(
+      (advisory) =>
+        advisory.includes(`snapshotted pipeline config '${snapshotted}'`) &&
+        advisory.includes('is now active'),
+    ),
+    `expected an active-config advisory, got ${JSON.stringify(prepared.advisories)}`,
   )
 })
 

@@ -162,3 +162,39 @@ test('workflow validation rejects unknown transition targets', () => {
     /unknown 'missing'/,
   )
 })
+
+test('prototype approach requires preconditions and the verification criterion', () => {
+  const root = createFixture()
+  const approach = stageBySlug(loadWorkflow(root, 'prototype'), 'approach')
+
+  assert.ok(approach.required_data?.['technical_approach.preconditions'])
+  assert.ok(
+    approach.criteria.some(
+      (criterion) => criterion.id === 'approach.preconditions_verified',
+    ),
+  )
+})
+
+test('prototype build requires precondition recheck evidence', () => {
+  const root = createFixture()
+  const build = stageBySlug(loadWorkflow(root, 'prototype'), 'build')
+
+  assert.ok(build.required_data?.['spike.precondition_checks'])
+  assert.ok(
+    build.criteria.some(
+      (criterion) => criterion.id === 'build.preconditions_rechecked',
+    ),
+  )
+})
+
+test('prototype evaluate requires environment blockers and classification', () => {
+  const root = createFixture()
+  const evaluate = stageBySlug(loadWorkflow(root, 'prototype'), 'evaluate')
+
+  assert.ok(evaluate.required_data?.['evaluation.environment_blockers'])
+  assert.ok(
+    evaluate.criteria.some(
+      (criterion) => criterion.id === 'evaluate.environment_classified',
+    ),
+  )
+})

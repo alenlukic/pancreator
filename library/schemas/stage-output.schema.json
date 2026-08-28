@@ -218,7 +218,7 @@
     },
     "target_instruction_evidence": {
       "type": "object",
-      "description": "Concise evidence that the worker read every AGENTS.md file resolved from the declared and final changed paths. Each reads entry quotes the file's verbatim last non-empty line, which is the read evidence.",
+      "description": "Concise evidence that the worker read every AGENTS.md file resolved from the declared and final changed paths. Each reads entry quotes the file's verbatim last content line (empty lines and Markdown divider lines are skipped), which is the read evidence.",
       "required": ["read_paths"],
       "additionalProperties": false,
       "properties": {

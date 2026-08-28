@@ -31,7 +31,8 @@
     "spike.changed_files": "array",
     "spike.shortcuts_taken": "array",
     "spike.signal_evidence": "array",
-    "spike.notes": "array"
+    "spike.notes": "array",
+    "spike.precondition_checks": "array"
   },
   "criteria": [
     {
@@ -51,6 +52,12 @@
       "type": "judgment",
       "hard": true,
       "statement": "No existing test or check was deleted, skipped, or weakened to make the spike pass."
+    },
+    {
+      "id": "build.preconditions_rechecked",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Every volatile included precondition was rechecked immediately before source edits and remained ready."
     },
     {
       "id": "build.static",

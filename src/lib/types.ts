@@ -596,9 +596,10 @@ export interface WorkspaceChangeAttribution {
 export interface TargetInstructionRead {
   path: string
   /**
-   * Verbatim last non-empty line of the file. The card lists only the paths,
-   * so quoting the closing line is evidence the worker opened the file — a
-   * self-declared path list proves nothing.
+   * Verbatim last content line of the file, skipping empty lines and Markdown
+   * divider lines. The card lists only the paths, so quoting the closing line
+   * is evidence the worker opened the file — a self-declared path list proves
+   * nothing, and a `---` divider quote proves nothing either.
    */
   final_line: string
 }
@@ -666,10 +667,11 @@ export interface GuidanceAttestationEntry {
   content_sha256: string
   status: GuidanceAttestationStatus
   /**
-   * Verbatim last non-empty line of the selected guidance content. Required
-   * when status is `read`: the line is not printed on the card, so quoting it
-   * is evidence the worker actually held the selection, unlike a digest echo
-   * that can be copied from the card itself.
+   * Verbatim last content line of the selected guidance content, skipping
+   * empty lines and Markdown divider lines. Required when status is `read`:
+   * the line is not printed on the card, so quoting it is evidence the worker
+   * actually held the selection, unlike a digest echo that can be copied from
+   * the card itself.
    */
   final_line?: string
   /** Why the read trigger did not apply. Required when status is skipped. */

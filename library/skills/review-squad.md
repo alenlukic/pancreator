@@ -36,6 +36,15 @@ whether or not its rule matches.
 | --------- | -------------------------------------------------------- |
 | frontend  | the diff touches UI source or generated API client types |
 
+### Harness lineup
+
+A review whose target is the Pancreator harness itself uses a different set of
+dimensions. When `library/skills/review-squad-pancreator.md` is present, read it
+and resolve the lineup from there instead of the tables above; the rest of this
+skill still governs the pass. That file ships only in a Pancreator source
+checkout, so in a target installation it is absent and this paragraph does not
+apply.
+
 ## Process
 
 1. Capture the review target once to a scratch file under the run's runtime

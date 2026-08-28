@@ -316,12 +316,12 @@ test('requirements run selects required SPOT-001 binding for SPOTFIX-VALIDATE-00
   assert.equal(result.requirement_id, 'spotfix-validate')
 })
 
-test('output validate skips when no agent-owned requirement resolves', () => {
+test('output validate mirrors the deterministic submission checks', () => {
   const root = createFixture()
   const state = createRun(root, {
     workflowSlug: 'delivery',
     requestPath: 'request.md',
-    title: 'Output validation skip fixture',
+    title: 'Output validation submission mirror fixture',
   })
   const workflow = loadWorkflow(root, 'delivery')
   const invocation = prepareInvocation(root, state.run_id).invocation
@@ -336,8 +336,8 @@ test('output validate skips when no agent-owned requirement resolves', () => {
 
   writeJson(path.join(root, invocation.output.path), output)
 
-  // The worker follows its output contract, so a stage that resolves no
-  // agent-owned validator must report a skip rather than a caller error.
+  // A compliant output passes the submission mirror even when the stage
+  // resolves no agent-owned validator requirement.
   const stdout = execFileSync(
     process.execPath,
     [
@@ -355,33 +355,54 @@ test('output validate skips when no agent-owned requirement resolves', () => {
   )
   const result = JSON.parse(stdout) as {
     passed: boolean
-    skipped: boolean
-    reason: string
+    submission_checks: Array<{ id: string; passed: boolean }>
     results: unknown[]
   }
 
   assert.equal(result.passed, true)
-  assert.equal(result.skipped, true)
+  assert.ok(result.submission_checks.length > 0)
   assert.equal(result.results.length, 0)
-  assert.match(result.reason, /output validation is skipped/u)
 
-  const text = execFileSync(
-    process.execPath,
-    [
-      CLI,
-      'output',
-      'validate',
-      state.run_id,
-      '--file',
-      invocation.output.path,
-      '--invocation',
-      invocationRelative,
-    ],
-    { cwd: root, encoding: 'utf8' },
+  // A mechanical attestation defect (the RF-009 class: a worker attesting the
+  // wrong model) must fail here for free instead of consuming a stage attempt
+  // at submit time.
+  const corrupted = structuredClone(output) as unknown as Record<
+    string,
+    unknown
+  >
+  const attestation = corrupted.invocation_attestation as Record<
+    string,
+    unknown
+  >
+
+  attestation.model = 'wrong-model'
+  writeJson(path.join(root, invocation.output.path), corrupted)
+
+  assert.throws(
+    () =>
+      execFileSync(
+        process.execPath,
+        [
+          CLI,
+          'output',
+          'validate',
+          state.run_id,
+          '--file',
+          invocation.output.path,
+          '--invocation',
+          invocationRelative,
+        ],
+        { cwd: root, encoding: 'utf8' },
+      ),
+    (error: unknown) => {
+      const failure = error as { status?: number; stdout?: string }
+
+      assert.equal(failure.status, 1)
+      assert.match(String(failure.stdout), /attestation\.model: FAIL/u)
+
+      return true
+    },
   )
-
-  assert.match(text, /^skipped: /u)
-  assert.doesNotMatch(text, /INVALID_ARGUMENT/u)
 })
 
 test('requirements run preserves ambiguity when duplicate required bindings remain', () => {

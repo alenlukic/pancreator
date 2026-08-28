@@ -443,6 +443,16 @@ function requiredData(
             discard_conditions: [
               'Either provider needs caller-visible config.',
             ],
+            preconditions: [
+              {
+                id: 'PRE-01',
+                affected_questions: ['TQ-01'],
+                check: 'Fixture dependency check',
+                status: 'ready',
+                evidence: ['fixture-ready'],
+                volatile: false,
+              },
+            ],
           },
         }
       case 'build':
@@ -462,6 +472,13 @@ function requiredData(
               },
             ],
             notes: ['fixture spike'],
+            precondition_checks: [
+              {
+                precondition_id: 'PRE-01',
+                status: 'ready',
+                evidence: ['fixture recheck'],
+              },
+            ],
           },
         }
       case 'evaluate':
@@ -472,9 +489,12 @@ function requiredData(
               {
                 question_id: 'TQ-01',
                 result: 'answered',
+                cause: 'product',
                 evidence: ['fixture'],
+                discard_condition_met: false,
               },
             ],
+            environment_blockers: [],
             signal_assessment: [
               { signal: 'Both providers respond.', measures_question: true },
             ],
@@ -821,12 +841,17 @@ export function writeCanonicalDelegation(
   )
 }
 
-/** Verbatim last non-empty line of a text, or '' when none exists. */
+/**
+ * Verbatim last content line of a text, or '' when none exists. Mirrors the
+ * production read-evidence rule: empty lines and Markdown divider lines are
+ * skipped because a divider quote proves nothing about a read.
+ */
 function finalLineOf(content: string): string {
+  const divider = /^\s*(?:[-_*]\s*){3,}$/u
   const lines = content.split('\n')
 
   for (let index = lines.length - 1; index >= 0; index -= 1) {
-    if (lines[index].trim().length > 0) {
+    if (lines[index].trim().length > 0 && !divider.test(lines[index])) {
       return lines[index]
     }
   }
@@ -861,7 +886,7 @@ function guidanceFinalLine(
 
 /**
  * Attach compliant per-file read evidence for the given instruction paths,
- * quoting each file's actual last non-empty line from the fixture tree.
+ * quoting each file's actual last content line from the fixture tree.
  */
 export function attachTargetInstructionEvidence(
   root: string,

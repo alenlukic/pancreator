@@ -9,7 +9,7 @@ import {
   scaffoldOperatorBrief,
   validateBriefSystem,
 } from './briefs.js'
-import { errorMessage, invariant, PanError } from './errors.js'
+import { errorMessage, invariant } from './errors.js'
 import { canonicalPersonaMapping } from './executors/mapping.js'
 import {
   expectedCursorModelForSpec,
@@ -168,6 +168,7 @@ import {
   validateInvocationAttestation,
   validateInvocationMarkdown,
   validateStageOutput,
+  type ValidationCheck,
 } from './validation.js'
 import {
   loadStagePrompt,
@@ -266,6 +267,12 @@ function recordGovernanceArtifactIssues(
 export interface PrepareInvocationResult {
   state: RunState
   invocation: Invocation | null
+  /**
+   * Non-blocking observations about this run's environment, such as a model
+   * mapping that changed since the run snapshotted it. The supervisor reports
+   * and weighs these; none of them stops the run.
+   */
+  advisories: string[]
 }
 
 interface OperationProgressOptions {
@@ -312,18 +319,24 @@ function loadRunPipelineConfig(root: string, state: RunState) {
  * A run must keep resolving the models it snapshotted, but a mapping it never
  * resolves is not drift. Adding a persona would otherwise strand every run in
  * flight, including the self-development run that introduces that persona.
+ *
+ * Model drift is reported, never enforced. The operator owns the model choice,
+ * so a mapping that changed mid-run is a fact the supervisor weighs, not a
+ * reason to refuse to advance. Only a workflow criterion stops a run.
  */
-function assertRunPipelineConfigCurrent(
+function runPipelineConfigAdvisories(
   root: string,
   state: RunState,
   snapshot: ReturnType<typeof loadRunPipelineConfig>,
-): void {
+): string[] {
   if (!state.pipeline_config) {
-    return
+    return []
   }
 
+  const advisories: string[] = []
+
   // A best-of-N run pins its own persona map, so the active config is not its
-  // authority. Its run-scoped agent variants are what must still match.
+  // authority. Its run-scoped agent variants are what would drift.
   if (state.cursor_agent_suffix) {
     const variantDrift = projectPersonaVariants(
       root,
@@ -331,17 +344,15 @@ function assertRunPipelineConfigCurrent(
       personaSubset(snapshot.personas, loadRunWorkflow(root, state)),
     ).filter((entry) => entry.changed)
 
-    invariant(
-      variantDrift.length === 0,
-      `Run '${state.run_id}' delegates to run-scoped Cursor agent variants ` +
-        `that no longer match its pipeline snapshot.`,
-      {
-        code: 'PIPELINE_CONFIG_NOT_SYNCED',
-        details: { agents: variantDrift.map((entry) => entry.path) },
-      },
-    )
+    if (variantDrift.length > 0) {
+      advisories.push(
+        `Run-scoped Cursor agent variants no longer match this run's ` +
+          `pipeline snapshot: ${variantDrift.map((entry) => entry.path).join(', ')}. ` +
+          `Run ${panCommand(root)} models --sync to realign them.`,
+      )
+    }
 
-    return
+    return advisories
   }
 
   const live = loadPipelineConfig(root)
@@ -356,26 +367,34 @@ function assertRunPipelineConfigCurrent(
     })
     .map(([persona]) => persona)
 
-  invariant(
-    live.name === snapshot.name && driftedPersonas.length === 0,
-    `Run '${state.run_id}' uses pipeline config '${snapshot.name}', but the ` +
-      `live active mapping has changed. Restore that mapping and run ` +
-      `${panCommand(root)} models --sync before resuming this run.`,
-    { code: 'PIPELINE_CONFIG_DRIFT', details: { personas: driftedPersonas } },
-  )
+  if (live.name !== snapshot.name) {
+    advisories.push(
+      `This run snapshotted pipeline config '${snapshot.name}'; ` +
+        `'${live.name}' is now active. The run continues on its snapshot.`,
+    )
+  }
+
+  if (driftedPersonas.length > 0) {
+    advisories.push(
+      `The live model mapping changed for ${driftedPersonas.join(', ')} ` +
+        `since this run started. The run continues on its snapshot; run ` +
+        `${panCommand(root)} models --sync to delegate on the live mapping.`,
+    )
+  }
 
   const agentModelDrift = syncCursorProjection(root).filter(
     (entry) => entry.id === 'cursor-agents' && entry.changed,
   )
 
-  invariant(
-    agentModelDrift.length === 0,
-    `Cursor agent models do not match the run pipeline config. Run ${panCommand(root)} models --sync.`,
-    {
-      code: 'PIPELINE_CONFIG_NOT_SYNCED',
-      details: { agents: agentModelDrift.map((entry) => entry.path) },
-    },
-  )
+  if (agentModelDrift.length > 0) {
+    advisories.push(
+      `Projected Cursor agent models do not match this run's pipeline ` +
+        `config: ${agentModelDrift.map((entry) => entry.path).join(', ')}. ` +
+        `Run ${panCommand(root)} models --sync to realign them.`,
+    )
+  }
+
+  return advisories
 }
 
 /** Absolute path of the deliverable workspace this run fingerprints and gates. */
@@ -1327,13 +1346,17 @@ export function recordSupervisorModelEvidence(
         return existing
       }
 
-      throw new PanError(
-        `Run '${runId}' already records supervisor model '${existing.effective_model}'.`,
-        {
-          code: 'CURSOR_MODEL_MISMATCH',
-          details: { evidence_path: existing.evidence_path },
-        },
-      )
+      // A supervising session can legitimately change model mid-run, most often
+      // because the operator changed it. Record the new fact and note the
+      // supersession rather than refusing to continue the run.
+      persistRun(root, state, 'model_evidence_advisory', {
+        role: 'supervisor',
+        advisories: [
+          `The supervisor model changed from ` +
+            `'${existing.effective_model}' to '${effectiveModel.trim()}' ` +
+            `during this run.`,
+        ],
+      })
     }
 
     return persistModelEvidence(root, state, {
@@ -1387,26 +1410,37 @@ export function probeRunInvocationModel(
       undefined,
       probeEnvironment(root),
     )
-    const unavailable =
-      probe.resolved === null ||
-      probe.error !== undefined ||
-      (!bareSpec && expected === null)
-    const matches =
-      !unavailable &&
-      (expected === null ||
-        normalizedModelName(probe.resolved ?? '') ===
-          normalizedModelName(expected))
-    const result = unavailable
-      ? ('unavailable' as const)
-      : matches
-        ? ('match' as const)
-        : ('mismatch' as const)
-    const error = unavailable
-      ? (probe.error ??
-        `No catalog prediction exists for model spec '${declaredSpec}'.`)
-      : matches
-        ? undefined
-        : `Cursor resolved '${probe.resolved}', but the run snapshot expects '${expected}'.`
+    // Only a failed probe is unavailable. A bracketed spec that finds no
+    // catalog prediction is `recorded`: the run knows which model answered, it
+    // simply has nothing local to check it against. The catalog reflects one
+    // Cursor account, so `bin/install` deliberately omits it from every target
+    // payload, and calling that intended absence missing evidence made every
+    // bracketed spec in every target installation unverifiable — which blocked
+    // run 63313_Aug-27-0109_cumulus-prot at its first worker launch.
+    const result = ((): RunModelEvidence['result'] => {
+      if (probe.resolved === null || probe.error !== undefined) {
+        return 'unavailable'
+      }
+
+      if (bareSpec) {
+        return 'match'
+      }
+
+      if (expected === null) {
+        return 'recorded'
+      }
+
+      return normalizedModelName(probe.resolved) ===
+        normalizedModelName(expected)
+        ? 'match'
+        : 'mismatch'
+    })()
+    const error =
+      result === 'unavailable'
+        ? (probe.error ?? 'Cursor reported no resolvable model.')
+        : result === 'mismatch'
+          ? `Cursor resolved '${probe.resolved}', but the run snapshot expects '${expected}'.`
+          : undefined
     const evidence = persistModelEvidence(root, state, {
       role: 'worker',
       invocation_id: invocationId,
@@ -1418,40 +1452,35 @@ export function probeRunInvocationModel(
       ...(error ? { error } : {}),
     })
 
-    if (result === 'unavailable') {
-      throw new PanError(error ?? 'Cursor model evidence is unavailable.', {
-        code: 'CURSOR_MODEL_EVIDENCE_UNAVAILABLE',
-        details: { evidence_path: evidence.evidence_path },
-      })
-    }
-
-    if (result === 'mismatch') {
-      throw new PanError(error ?? 'Cursor worker model does not match.', {
-        code: 'CURSOR_MODEL_MISMATCH',
-        details: { evidence_path: evidence.evidence_path },
-      })
-    }
-
+    // The probe records what Cursor reported and succeeds either way. An
+    // unavailable or mismatched result is a fact the supervisor weighs, and
+    // failing here would halt a run over model bookkeeping alone.
     return evidence
   })
 }
 
-function assertRequiredModelEvidence(
+/**
+ * Model evidence is an audit trail, not an admission criterion. Rejecting a
+ * submission here would discard work a worker already completed over a fact
+ * about which model ran it, so every gap is recorded and the submission stands.
+ */
+function requiredModelEvidenceAdvisories(
   state: RunState,
   invocation: Invocation,
-): void {
+): string[] {
   if (invocation.model_evidence_required !== true) {
-    return
+    return []
   }
 
+  const advisories: string[] = []
   const supervisor = state.model_evidence?.find(
     (item) => item.role === 'supervisor' && item.result === 'recorded',
   )
 
   if (!supervisor?.effective_model) {
-    throw new PanError(
-      `Run '${state.run_id}' has no sourced supervisor model evidence.`,
-      { code: 'CURSOR_MODEL_EVIDENCE_UNAVAILABLE' },
+    advisories.push(
+      `This run records no sourced supervisor model evidence. Cursor did not ` +
+        `expose model metadata for the supervising session.`,
     )
   }
 
@@ -1461,28 +1490,32 @@ function assertRequiredModelEvidence(
   )
 
   if (!worker || worker.result === 'unavailable') {
-    throw new PanError(
-      `Invocation '${invocation.invocation_id}' has no usable worker model evidence.`,
-      {
-        code: 'CURSOR_MODEL_EVIDENCE_UNAVAILABLE',
-        details: { evidence_path: worker?.evidence_path ?? null },
-      },
+    advisories.push(
+      `Invocation '${invocation.invocation_id}' records no usable worker ` +
+        `model evidence, so the model that produced this output is unverified.`,
     )
+
+    return advisories
   }
 
+  // `recorded` means the probe resolved a model but no local catalog existed to
+  // predict it. That is the normal case in a target installation, so it is not
+  // a gap worth reporting.
   if (
-    worker.result !== 'match' ||
+    worker.result === 'mismatch' ||
     worker.persona !== invocation.stage.persona ||
     worker.declared_spec !== invocation.stage.model
   ) {
-    throw new PanError(
-      `Invocation '${invocation.invocation_id}' worker model evidence does not match its run snapshot.`,
-      {
-        code: 'CURSOR_MODEL_MISMATCH',
-        details: { evidence_path: worker.evidence_path },
-      },
+    advisories.push(
+      `Invocation '${invocation.invocation_id}' worker model evidence does ` +
+        `not match its run snapshot: the stage declared ` +
+        `'${invocation.stage.model}' for ${invocation.stage.persona} and the ` +
+        `probe resolved '${worker.effective_model ?? 'unknown'}' for ` +
+        `${worker.persona}. Judge whether that changes the output's weight.`,
     )
   }
+
+  return advisories
 }
 
 function runUsesModelEvidenceContract(state: RunState): boolean {
@@ -2135,6 +2168,12 @@ export function prepareInvocation(
       },
     )
 
+    const advisories = runPipelineConfigAdvisories(
+      root,
+      state,
+      loadRunPipelineConfig(root, state),
+    )
+
     if (options.operatorArtifacts) {
       const stageSlug = state.current_stage
 
@@ -2161,6 +2200,7 @@ export function prepareInvocation(
       return {
         state,
         invocation: readInvocation(root, state.current_invocation.json_path),
+        advisories,
       }
     }
 
@@ -2180,8 +2220,6 @@ export function prepareInvocation(
       stageBySlug(workflow, state.current_stage),
     )
     const pipelineConfig = loadRunPipelineConfig(root, state)
-
-    assertRunPipelineConfigCurrent(root, state, pipelineConfig)
 
     const mapping = resolvePersonaMapping(pipelineConfig, stage.persona)
     const model = mapping.model_spec
@@ -2223,7 +2261,7 @@ export function prepareInvocation(
         { reason },
       )
 
-      return { state, invocation: null }
+      return { state, invocation: null, advisories }
     }
 
     state.attempts[stage.slug] = attempt
@@ -2234,7 +2272,7 @@ export function prepareInvocation(
       pauseForVerificationRecommendation(root, state, recommendation)
       persistRun(root, state, 'run_paused', { reason: state.pause_reason })
 
-      return { state, invocation: null }
+      return { state, invocation: null, advisories }
     }
 
     ensureMutatingWorkflowInitialized(root, state, stage)
@@ -2249,7 +2287,7 @@ export function prepareInvocation(
     if (environmentBlocked) {
       persistRun(root, state, 'run_paused', { reason: state.pause_reason })
 
-      return { state, invocation: null }
+      return { state, invocation: null, advisories }
     }
 
     const baselineGaps = repositoryCheckBaselineGaps(root, state, stage)
@@ -2258,7 +2296,7 @@ export function prepareInvocation(
       pauseForRepositoryCheckBaselineGaps(root, state, stage, baselineGaps)
       persistRun(root, state, 'run_paused', { reason: state.pause_reason })
 
-      return { state, invocation: null }
+      return { state, invocation: null, advisories }
     }
 
     const invocationId = makeStageArtifactId(
@@ -2731,7 +2769,7 @@ export function prepareInvocation(
       model: invocation.stage.model,
     })
 
-    return { state, invocation }
+    return { state, invocation, advisories }
   })
 }
 
@@ -3411,7 +3449,18 @@ export function submitOutput(
     const stage = stageBySlug(workflow, state.current_stage)
     const invocation = readInvocation(root, state.current_invocation.json_path)
 
-    assertRequiredModelEvidence(state, invocation)
+    const modelEvidenceAdvisories = requiredModelEvidenceAdvisories(
+      state,
+      invocation,
+    )
+
+    if (modelEvidenceAdvisories.length > 0) {
+      persistRun(root, state, 'model_evidence_advisory', {
+        invocation_id: invocation.invocation_id,
+        stage: stage.slug,
+        advisories: modelEvidenceAdvisories,
+      })
+    }
 
     // Parallel evidence reports are supervisor-owned preconditions, so their
     // absence rejects the submission outright instead of consuming an attempt.
@@ -5130,4 +5179,83 @@ export function getRunStatus(
 
 export function getRunState(root: string, runId: string): RunState {
   return loadState(root, runId)
+}
+
+/**
+ * Deterministic pre-submit mirror of the cheap submission layers: evidence
+ * report presence, invocation read attestation, and the structural output
+ * contract. A failure in any of these at submit time consumes a stage attempt
+ * on a mechanical defect, so `pan output validate` runs the same code paths
+ * first. The shell gates and harness-authoritative validators stay
+ * submit-only: they are expensive and the harness reruns them anyway.
+ */
+export function validateOutputForSubmission(
+  root: string,
+  runId: string,
+  invocation: Invocation,
+  submittedValue: unknown,
+): { passed: boolean; checks: ValidationCheck[] } {
+  const checks: ValidationCheck[] = []
+
+  for (const worker of invocation.evidence_workers ?? []) {
+    let present = false
+
+    try {
+      const absolute = resolveInside(root, worker.evidence_path)
+
+      present = fileExists(absolute) && readText(absolute).trim().length > 0
+    } catch {
+      present = false
+    }
+
+    checks.push({
+      id: `evidence.${worker.role}`,
+      passed: present,
+      message: present
+        ? `Evidence report for role '${worker.role}' is present at ${worker.evidence_path}`
+        : `Evidence report for role '${worker.role}' is missing or empty at ${worker.evidence_path}`,
+    })
+  }
+
+  if (invocation.contract_manifest) {
+    checks.push(
+      ...validateInvocationAttestation(invocation, submittedValue).checks,
+    )
+  }
+
+  const state = loadState(root, runId)
+  const workflow = loadRunWorkflow(root, state)
+  const stage = stageBySlug(workflow, invocation.stage.slug)
+  const structural = validateStageOutput(
+    root,
+    stage,
+    invocation,
+    submittedValue,
+  )
+  // The harness renders the operator brief during submission, so its absence
+  // before submit is expected rather than a defect.
+  const renderedPath = invocation.output.operator_brief?.rendered_path
+  const structuralErrors = renderedPath
+    ? structural.errors.filter(
+        (message) => message !== `artifact does not exist: ${renderedPath}`,
+      )
+    : structural.errors
+
+  if (structuralErrors.length === 0) {
+    checks.push({
+      id: 'output.contract',
+      passed: true,
+      message: 'Output satisfies the structural stage contract',
+    })
+  } else {
+    checks.push(
+      ...structuralErrors.map((message, index) => ({
+        id: `output.contract.${index + 1}`,
+        passed: false,
+        message,
+      })),
+    )
+  }
+
+  return { passed: checks.every((check) => check.passed), checks }
 }

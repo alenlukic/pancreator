@@ -225,7 +225,8 @@ export function renderInvocationDeliveryPrompt(
             'the invocation JSON snapshot. The scaffold prefills one ' +
             '`invocation_attestation.guidance` entry per selection: for each ' +
             'one, set `status` to `read` and set `final_line` to the ' +
-            "selection's verbatim last non-empty line (or `skipped` with the " +
+            "selection's verbatim last content line — skip empty lines and " +
+            'Markdown divider lines such as `---` (or `skipped` with the ' +
             'reason the read trigger does not apply). The final line is not ' +
             'printed here — quoting it is your read evidence.',
           '',

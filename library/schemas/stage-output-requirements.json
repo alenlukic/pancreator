@@ -154,6 +154,61 @@
           "type": "string"
         }
       ]
+    },
+    "approach": {
+      "validators": [
+        {
+          "registry_id": "PROTOTYPE-OUTPUT-VALIDATE-001",
+          "enforcement": "blocks"
+        }
+      ],
+      "fields": [
+        {
+          "path": "data.technical_approach.preconditions[].status",
+          "type": "string",
+          "enum": ["ready", "unavailable", "unknown"]
+        }
+      ]
+    },
+    "build": {
+      "validators": [
+        {
+          "registry_id": "PROTOTYPE-OUTPUT-VALIDATE-001",
+          "enforcement": "blocks"
+        }
+      ],
+      "fields": [
+        {
+          "path": "data.spike.precondition_checks[].status",
+          "type": "string",
+          "enum": ["ready", "unavailable", "unknown"]
+        }
+      ]
+    },
+    "evaluate": {
+      "validators": [
+        {
+          "registry_id": "PROTOTYPE-OUTPUT-VALIDATE-001",
+          "enforcement": "blocks"
+        }
+      ],
+      "fields": [
+        {
+          "path": "data.evaluation.verdict",
+          "type": "string",
+          "enum": [
+            "validated",
+            "invalidated",
+            "inconclusive",
+            "environment_blocked"
+          ]
+        },
+        {
+          "path": "data.evaluation.question_results[].cause",
+          "type": "string",
+          "enum": ["product", "environment", "mixed", "none"]
+        }
+      ]
     }
   }
 }

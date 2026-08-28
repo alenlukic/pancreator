@@ -6,12 +6,35 @@
   "instructions": [
     "A prototype exists to make a technical approach observable. Every stage MUST serve the stated technical questions and MUST NOT expand into adjacent product scope.",
     "Design depth MUST be bounded to the decisions the spike actually tests. Agents MUST NOT produce component inventories, interface catalogues, or migration sequencing that the prototype will not exercise.",
-    "Deliberate shortcuts are expected and MUST be declared, not hidden. Stubs, hard-coded values, skipped error handling, copied code, and omitted persistence MUST each appear in the record with the reason it was acceptable for the spike.",
+    "Deliberate shortcuts are expected and MUST be declared, not hidden. Stubs, hard-coded values, skipped error handling, copied code, and omitted persistence MUST each appear in the record. Each entry MUST state why the shortcut was acceptable for the spike.",
     "Automated test coverage MUST be limited to what keeps the spike honest about its own signals. A prototype MUST NOT be failed for absent production test coverage, and MUST NOT claim coverage it does not have.",
     "The prototype MUST leave the repository statically sound. A new static-check or type diagnostic MUST be repaired before submission; a pre-existing one MUST be reported and MAY remain.",
-    "A prototype MUST NOT modify release metadata, delete or rewrite unrelated production code paths, or weaken an existing test to make the spike pass. Weakening an existing check MUST be reported as a blocker instead.",
-    "The evaluation MUST state, for each technical question, whether the prototype answered it, and MUST reach a verdict of validated, invalidated, or inconclusive. An inconclusive result MUST NOT be reported as validated.",
-    "The evaluation MUST describe the gap between the spike and production-ready work concretely enough for a later systematic run to be scoped from it.",
-    "When a prototype's approach is adopted, the productionization work MUST route to a systematic run rather than continuing inside the prototype run."
+    "A prototype MUST NOT modify release metadata or delete or rewrite unrelated production code paths. A prototype MUST NOT weaken an existing test to make the spike pass. Weakening an existing check MUST be reported as a blocker instead.",
+    "The approach stage MUST verify external preconditions before build changes source. Each precondition MUST record its affected questions, check method, status, evidence, and whether it is volatile.",
+    "When a required precondition is unavailable or unknown, the run MUST pause before build. The run MAY continue only when an explicit operator directive excludes every affected question with a cited decision path.",
+    "The build stage MUST recheck every volatile included precondition immediately before source edits. When a material precondition becomes unavailable, the build MUST block with an empty changed-files list.",
+    "The evaluation MUST state, for each technical question, whether the prototype answered it. Each question result MUST name a cause of product, environment, mixed, or none. The evaluation MUST reach a verdict of validated, invalidated, inconclusive, or environment_blocked.",
+    "An inconclusive result MUST NOT be reported as validated. An environment_blocked verdict MUST be used only when environment gaps prevent a decision and no independent product discard condition applies.",
+    "When product discard evidence is met, the evaluation MUST use invalidated instead of environment_blocked, even with remaining blockers.",
+    "When a brief explicitly tests environment readiness, the evaluator MUST treat the observed readiness result as product evidence.",
+    "The evaluator MUST classify explicit-readiness questions as product evidence by judgment. The validator does not infer this rule.",
+    "The evaluation MUST describe the gap between the spike and production-ready work. The description MUST be concrete enough to scope a later systematic run from it.",
+    "When a prototype's approach is adopted, the productionization work MUST route to a systematic run. The work MUST NOT continue inside the prototype run.",
+    "Before submission, prototype stage outputs MUST run their resolved policy-bound validators under VALID-001."
+  ],
+  "requirements": [
+    {
+      "id": "prototype-output-validate",
+      "registry_id": "PROTOTYPE-OUTPUT-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "harness",
+      "target": "invocation.output.path",
+      "enforcement": "required",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result",
+      "applicability": {
+        "workflow": "prototype"
+      }
+    }
   ]
 }

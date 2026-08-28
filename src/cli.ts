@@ -22,6 +22,7 @@ import {
   setRunStageAsAway,
   setRunVerification,
   submitOutput,
+  validateOutputForSubmission,
   waiveGate,
 } from './lib/engine.js'
 import {
@@ -34,7 +35,10 @@ import {
   refreshBestOfNAgents,
 } from './lib/best-of-n.js'
 import { personaExecutorOf } from './lib/executors/mapping.js'
-import { probeCursorModels } from './lib/executors/cursor-probe.js'
+import {
+  cursorAuthenticationReadiness,
+  probeCursorModels,
+} from './lib/executors/cursor-probe.js'
 import { claudeCodeVersionPreflight } from './lib/executors/claude-code.js'
 import { browserReadiness } from './lib/browser-readiness.js'
 import { errorMessage, PanError } from './lib/errors.js'
@@ -171,7 +175,7 @@ const HELP_BODY = `Usage:
   pan models [--sync] [--probe] [--migrate-from <previous-config.json>] [--json]
   pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source> [--json]
   pan models --probe --run <run-id> --invocation <invocation-id> [--json]
-      --probe launches one minimal cursor-agent call per distinct active model spec and fails loudly when the resolved variant differs from the catalog's prediction. Needs the cursor-agent CLI and CURSOR_API_KEY (process environment or repository .env) or a login.
+      --probe launches one minimal cursor-agent call per distinct active model spec and fails loudly when the resolved variant differs from the catalog's prediction. Needs the cursor-agent CLI and CURSOR_API_KEY (process environment, installation .env, or workspace-root .env) or a login. Run pan doctor to see which source resolves.
       --migrate-from preserves the previous effective model map across a tracked config.json replacement: every mapping the new file leaves empty is carried into config_overrides.json, and the replacement stops before mutation when any required mapping stays empty.
   pan validate [--json]
   pan doctor [--worktree <name>] [--json]
@@ -922,6 +926,7 @@ async function main(): Promise<void> {
           status: result.state.status,
           reason: result.state.pause_reason,
           decision_path: result.state.last_decision_path,
+          advisories: result.advisories,
         })
         return
       }
@@ -936,6 +941,7 @@ async function main(): Promise<void> {
         invocation_json: result.state.current_invocation?.json_path,
         invocation_markdown: result.state.current_invocation?.markdown_path,
         expected_output: result.state.current_invocation?.output_path,
+        advisories: result.advisories,
       })
       return
     }
@@ -2163,43 +2169,48 @@ async function main(): Promise<void> {
             item.enforcement !== 'advisory',
         )
 
-        // An invocation may legitimately resolve no agent-owned requirement. The
-        // command was asked to validate what applies, and nothing applies, so
-        // this is a successful skip rather than a caller error.
-        if (agentRequirements.length === 0) {
-          const reason =
-            'No agent-owned before_operation or pre_submit requirement resolved ' +
-            'for this invocation, so output validation is skipped.'
-
-          print(
-            hasFlag(args, '--json')
-              ? { passed: true, skipped: true, reason, results: [] }
-              : `skipped: ${reason}`,
-            hasFlag(args, '--json'),
-          )
-
-          return
-        }
-
-        const results = runAgentPreSubmitValidators(
+        // The deterministic submission mirror always runs: a mechanical defect
+        // in evidence presence, the read attestation, or the structural output
+        // contract consumes a stage attempt at submit time, so it must be
+        // catchable for free here first.
+        const submission = validateOutputForSubmission(
           root,
           runId,
-          invocation as unknown as Record<string, unknown>,
-          agentRequirements,
-          filePath,
+          invocation,
           submittedValue,
         )
-        const passed = results.every((item) => isPassingResult(item.result))
+        const results =
+          agentRequirements.length === 0
+            ? []
+            : runAgentPreSubmitValidators(
+                root,
+                runId,
+                invocation as unknown as Record<string, unknown>,
+                agentRequirements,
+                filePath,
+                submittedValue,
+              )
+        const passed =
+          submission.passed &&
+          results.every((item) => isPassingResult(item.result))
 
         print(
           hasFlag(args, '--json')
-            ? { passed, results }
-            : results
-                .map(
+            ? { passed, submission_checks: submission.checks, results }
+            : [
+                ...submission.checks
+                  .filter((check) => !check.passed)
+                  .map((check) => `${check.id}: FAIL ${check.message}`),
+                `submission checks: ${
+                  submission.passed
+                    ? `pass (${submission.checks.length} checks)`
+                    : 'fail'
+                }`,
+                ...results.map(
                   (item) =>
                     `${item.requirement.registry_id}: ${item.result.status}`,
-                )
-                .join('\n'),
+                ),
+              ].join('\n'),
           hasFlag(args, '--json'),
         )
 
@@ -2318,6 +2329,11 @@ async function main(): Promise<void> {
         // unready browser stack MUST NOT fail doctor. BROWSER-001 turns the gap
         // into an environment-blocked case at the point a verdict is owed.
         browser_automation: browserReadiness([root, workspaceRoot]),
+        // Advisory: an interactive `cursor-agent login` authenticates the CLI
+        // with no environment key, and an installation may route no persona to
+        // the cursor executor, so a missing credential MUST NOT fail doctor. It
+        // is reported here so the gap is visible before a probe fails mid-run.
+        cursor_authentication: cursorAuthenticationReadiness(root),
         // Git availability is a property of the deliverable workspace, not the
         // installation. These coincide only when the harness sits inside the
         // target, which a detached installation does not.
