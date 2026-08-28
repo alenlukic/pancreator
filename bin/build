@@ -3,6 +3,43 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+PATH="$ROOT/node_modules/.bin:$PATH"
+
+# Skip the rebuild when no TypeScript input changed since the last successful
+# build. The stamp hashes path, mtime, and size for every build input, so any
+# edit, addition, deletion, or rename invalidates it. A stale or absent stamp
+# keeps the original clean-rebuild guarantee (rm -rf dist) so deleted sources
+# never linger in dist.
+STAMP="dist/.build-stamp"
+
+stat_line() {
+  # BSD stat (macOS) first, GNU stat (Linux) as fallback.
+  stat -f '%N %m %z' "$@" 2>/dev/null || stat -c '%n %Y %s' "$@" 2>/dev/null || true
+}
+
+fingerprint() {
+  local dirs=()
+
+  [[ -d src ]] && dirs+=(src)
+  [[ -d tests ]] && dirs+=(tests)
+
+  {
+    stat_line tsconfig.json package.json package-lock.json
+    if [[ ${#dirs[@]} -gt 0 ]]; then
+      { find "${dirs[@]}" -name '*.ts' -type f -print0 2>/dev/null || true; } \
+        | { xargs -0 bash -c 'stat -f "%N %m %z" "$@" 2>/dev/null || stat -c "%n %Y %s" "$@" 2>/dev/null || true' _ 2>/dev/null || true; } \
+        | sort
+    fi
+  } | cksum
+}
+
+current="$(fingerprint)"
+
+if [[ -f "$STAMP" && -d dist && "$(cat "$STAMP")" == "$current" ]]; then
+  exit 0
+fi
 
 rm -rf dist
-exec tsc
+tsc
+
+printf '%s\n' "$current" >"$STAMP"

@@ -35,10 +35,29 @@ function runGit(
   return result
 }
 
+// Policy resolution asks "is this a repo" and "which files are tracked" for
+// every persona, stage, and mode it resolves, so an uncached answer spawns
+// thousands of identical git processes per validation pass. Positive repo
+// membership is stable for a live process (a directory does not stop being a
+// repository mid-run), so only `true` is cached; a negative answer is
+// re-checked because tests and installers initialize repositories after first
+// contact. Tracked paths are cached against the git index token below.
+const gitRepositoryCache = new Map<string, true>()
+
 export function isGitRepository(root: string): boolean {
+  const resolved = path.resolve(root)
+
+  if (gitRepositoryCache.has(resolved)) {
+    return true
+  }
+
   const result = runGit(root, ['rev-parse', '--is-inside-work-tree'], {
     allowFailure: true,
   })
+
+  if (result.status === 0) {
+    gitRepositoryCache.set(resolved, true)
+  }
 
   return result.status === 0
 }
@@ -260,9 +279,50 @@ function trackedWorkspacePath(
     : normalizedEntry
 }
 
+const gitDirCache = new Map<string, string>()
+const trackedPathsCache = new Map<string, { token: string; paths: string[] }>()
+
+/**
+ * Cheap invalidation token for the tracked-file list: the git index mtime and
+ * size. Every add, rm, mv, commit, and checkout rewrites the index, so a
+ * stale cache entry cannot survive a tracked-set change. Worktrees resolve
+ * their real git dir once and reuse it.
+ */
+function gitIndexToken(workspaceDir: string): string {
+  let gitDir = gitDirCache.get(workspaceDir)
+
+  if (!gitDir) {
+    const result = runGit(workspaceDir, ['rev-parse', '--absolute-git-dir'], {
+      allowFailure: true,
+    })
+
+    gitDir = result.status === 0 ? result.stdout.trim() : ''
+    gitDirCache.set(workspaceDir, gitDir)
+  }
+
+  if (!gitDir) {
+    return 'no-git-dir'
+  }
+
+  try {
+    const stats = statSync(path.join(gitDir, 'index'))
+
+    return `${stats.mtimeMs}:${stats.size}`
+  } catch {
+    return 'no-index'
+  }
+}
+
 export function gitTrackedWorkspacePaths(workspaceDir: string): string[] {
   if (!isGitRepository(workspaceDir)) {
     return []
+  }
+
+  const token = gitIndexToken(workspaceDir)
+  const cached = trackedPathsCache.get(workspaceDir)
+
+  if (cached && cached.token === token) {
+    return cached.paths
   }
 
   const prefixResult = runGit(workspaceDir, ['rev-parse', '--show-prefix'], {
@@ -278,7 +338,7 @@ export function gitTrackedWorkspacePaths(workspaceDir: string): string[] {
     ...protectedGitPathspecs(),
   ])
 
-  return tracked.stdout
+  const paths = tracked.stdout
     .split('\0')
     .filter(Boolean)
     .map((entry) => trackedWorkspacePath(entry, workspacePrefix))
@@ -290,6 +350,10 @@ export function gitTrackedWorkspacePaths(workspaceDir: string): string[] {
         !isProtectedWorkspacePath(relative),
     )
     .sort()
+
+  trackedPathsCache.set(workspaceDir, { token, paths })
+
+  return paths
 }
 
 function contentFingerprint(

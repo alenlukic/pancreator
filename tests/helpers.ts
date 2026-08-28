@@ -73,7 +73,32 @@ function pinFixtureInvolvement(root: string): void {
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
 }
 
+// Building a fixture copies the repository trees, syncs the Cursor projection,
+// and creates a Git history — several seconds of work that every test used to
+// pay. The template is built once per process and every createFixture() call
+// hands out a cheap clone. macOS `cp -c` uses clonefile for a copy-on-write
+// clone including `.git`; any failure falls back to a regular recursive copy.
+let fixtureTemplateRoot: string | null = null
+
+function cloneFixtureTemplate(template: string): string {
+  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-v2-'))
+
+  try {
+    execFileSync('cp', ['-Rc', `${template}/.`, root], {
+      timeout: FIXTURE_GIT_TIMEOUT_MS,
+    })
+  } catch {
+    cpSync(template, root, { recursive: true })
+  }
+
+  return root
+}
+
 export function createFixture(): string {
+  if (fixtureTemplateRoot) {
+    return cloneFixtureTemplate(fixtureTemplateRoot)
+  }
+
   const root = mkdtempSync(path.join(tmpdir(), 'pancreator-v2-'))
 
   for (const entry of [
@@ -175,7 +200,9 @@ export function createFixture(): string {
   fixtureGit(['add', '.'], { cwd: root, encoding: 'utf8' })
   fixtureGit(['commit', '-qm', 'fixture'], { cwd: root, encoding: 'utf8' })
 
-  return root
+  fixtureTemplateRoot = root
+
+  return cloneFixtureTemplate(root)
 }
 
 export function read(pathname: string): unknown {

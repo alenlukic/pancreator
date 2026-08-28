@@ -10,6 +10,16 @@ the captured output when it fails. npm lifecycle banners are disabled by the
 repository `.npmrc`. The aggregate `npm run check` command applies the same
 contract across lint, build, validation, and tests.
 
+When stderr is an interactive terminal, the wrapper prints one `.` to stderr
+for each five-second interval in which the wrapped command produced new
+output, then a closing newline. The dots track real progress, not wall
+clock: a flowing stream means the command is still emitting output, and a
+stopped stream means it has gone silent, which usually signals a hang.
+Ticks never appear in captured or redirected output, which stays
+byte-identical to the quiet contract. `PAN_PROGRESS=1` forces ticks on,
+`PAN_PROGRESS=0` forces them off, and `PAN_PROGRESS_INTERVAL_SECONDS`
+overrides the interval.
+
 Set `PAN_VERBOSE=1` to stream command output while diagnosing a problem:
 
 ```sh

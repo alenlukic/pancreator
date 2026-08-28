@@ -6,7 +6,11 @@ cd "$ROOT"
 
 QUIET="$ROOT/bin/run-quiet"
 
-for script_name in lint build validate test; do
+# Test execution is owned by the fast/full profile commands (npm test,
+# npm run test:coverage). Running the suite inside check made every full
+# gate execute all tests twice and made check's duration depend on whether
+# an earlier step failed fast.
+for script_name in lint build validate; do
   if "$QUIET" -- npm run "$script_name"; then
     continue
   fi

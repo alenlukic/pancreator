@@ -12,7 +12,7 @@
       "rationale": "The installer runs before the TypeScript payload exists. It needs the same token renderer without importing compiled code.",
       "evidence": [
         "tests/unit/projection.test.ts: installer and compiled projection renderers stay byte-identical",
-        "tests/integration/embedded-installation.test.ts: embedded installation projection coverage"
+        "tests/secondary/embedded-installation.test.ts: embedded installation projection coverage"
       ]
     },
     {
@@ -64,7 +64,7 @@
       "rationale": "Only one installation-specific bootstrap rule is projected. Both variants must retain the same supervisor and retrieval invariants.",
       "evidence": [
         "tests/unit/projection.test.ts: self-development and embedded projection coverage",
-        "tests/integration/embedded-installation.test.ts: embedded rule projection"
+        "tests/secondary/embedded-installation.test.ts: embedded rule projection"
       ]
     },
     {

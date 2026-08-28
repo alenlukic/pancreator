@@ -14,6 +14,16 @@ is_verbose() {
   esac
 }
 
+# Progress ticks default to interactive terminals only, so captured or
+# redirected output stays byte-identical to the quiet contract.
+progress_enabled() {
+  case "${PAN_PROGRESS:-}" in
+    1 | true | yes | TRUE | YES) return 0 ;;
+    0 | false | no | FALSE | NO) return 1 ;;
+    *) [[ -t 2 ]] ;;
+  esac
+}
+
 if [[ $# -eq 0 ]] || [[ "${1:-}" != '--' ]]; then
   usage
   exit 1
@@ -33,12 +43,60 @@ fi
 
 stdout_file="$(mktemp)"
 stderr_file="$(mktemp)"
-trap 'rm -f "$stdout_file" "$stderr_file"' EXIT
+tick_marker="$(mktemp)"
+rm -f "$tick_marker"
+ticker_pid=''
+
+# The cleanup MUST kill the ticker: an orphaned ticker keeps writing to the
+# terminal from outside the foreground process group, where Ctrl-C cannot
+# reach it. INT and TERM are trapped because bash skips EXIT traps on fatal
+# signals it has not trapped.
+cleanup() {
+  if [[ -n "$ticker_pid" ]]; then
+    kill "$ticker_pid" 2>/dev/null || true
+  fi
+  rm -f "$stdout_file" "$stderr_file" "$tick_marker"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+if progress_enabled; then
+  tick_interval="${PAN_PROGRESS_INTERVAL_SECONDS:-5}"
+  script_pid=$$
+  # A dot marks an interval in which the command produced new output, so a
+  # stopped dot stream shows the command has gone silent (a likely hang).
+  # The ticker also exits on its own when the wrapper is no longer alive.
+  (
+    last_bytes=0
+    while sleep "$tick_interval"; do
+      kill -0 "$script_pid" 2>/dev/null || exit 0
+      stdout_bytes="$(wc -c <"$stdout_file" 2>/dev/null || echo 0)"
+      stderr_bytes="$(wc -c <"$stderr_file" 2>/dev/null || echo 0)"
+      current_bytes=$((stdout_bytes + stderr_bytes))
+      if [[ "$current_bytes" -gt "$last_bytes" ]]; then
+        printf '.' >&2
+        : >"$tick_marker"
+        last_bytes="$current_bytes"
+      fi
+    done
+  ) &
+  ticker_pid=$!
+fi
 
 set +e
 "${command[@]}" >"$stdout_file" 2>"$stderr_file"
 status=$?
 set -e
+
+if [[ -n "$ticker_pid" ]]; then
+  kill "$ticker_pid" 2>/dev/null || true
+  wait "$ticker_pid" 2>/dev/null || true
+  ticker_pid=''
+  if [[ -e "$tick_marker" ]]; then
+    printf '\n' >&2
+  fi
+fi
 
 if [[ "$status" -eq 0 ]]; then
   exit 0

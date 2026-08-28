@@ -53,6 +53,7 @@ import {
   isTargetInstallation,
   isSelfDevelopmentInstallation,
 } from './project-config.js'
+import { gateCacheKey, gateCacheLookup, gateCacheStore } from './gate-cache.js'
 import {
   gitWorkspaceSnapshot,
   workspaceChangedPathsFromSnapshots,
@@ -2052,6 +2053,73 @@ function runShellCheck(
   const startedAt = new Date().toISOString()
   const profileName = remappedProfile ?? resolution.profile_name
 
+  // A clean pass of the same command at an unchanged workspace fingerprint is
+  // already proven; re-executing it spends minutes producing evidence the
+  // harness holds. Overridden gates stay uncached: an operator override is a
+  // run-scoped decision, not a reusable fact.
+  const cacheKey =
+    commandOverride === undefined && !resolution.removed_reason
+      ? gateCacheKey(root, workspaceFingerprint, command)
+      : null
+
+  if (cacheKey) {
+    const cached = gateCacheLookup(root, cacheKey)
+
+    if (cached) {
+      const cachedSafeId = criterion.id.replaceAll(/[^a-zA-Z0-9_.-]/g, '-')
+      const cachedEvidencePath = path.join(
+        runDirectory,
+        'evidence',
+        `${artifactId}-${cachedSafeId}.log`,
+      )
+      const explanation =
+        `Accepted cached clean pass of the same command at an unchanged ` +
+        `workspace fingerprint, recorded ${cached.cached_at} by run ` +
+        `${cached.run_id} (criterion ${cached.criterion_id}). Original ` +
+        `evidence: ${cached.evidence_path}.`
+
+      onProgress?.(
+        `${criterion.id} accepted cached pass recorded ${cached.cached_at} ` +
+          `by ${cached.run_id}`,
+      )
+      writeTextAtomic(
+        cachedEvidencePath,
+        [
+          `$ ${command}`,
+          'cached=true',
+          `cached_at=${cached.cached_at}`,
+          `source_run=${cached.run_id}`,
+          `source_criterion=${cached.criterion_id}`,
+          `source_evidence=${cached.evidence_path}`,
+          `workspace_fingerprint=${workspaceFingerprint}`,
+          'exit_code=0',
+          '',
+          explanation,
+        ].join('\n'),
+      )
+
+      return {
+        id: criterion.id,
+        type: 'shell',
+        hard: Boolean(criterion.hard),
+        passed: true,
+        cached: true,
+        explanation,
+        ...(remappedProfile && state.verification
+          ? { verification_level: state.verification.level }
+          : {}),
+        command,
+        exit_code: 0,
+        timed_out: false,
+        evidence_path: path
+          .relative(root, cachedEvidencePath)
+          .split(path.sep)
+          .join('/'),
+        workspace_fingerprint: workspaceFingerprint,
+      }
+    }
+  }
+
   let exitCode: number | null
   let signal: NodeJS.Signals | null = null
   let stdout: string
@@ -2200,6 +2268,23 @@ function runShellCheck(
   const inheritedFailureOnly = Boolean(
     baselineComparison?.passed && !commandSucceeded,
   )
+
+  // Only a clean pass is a reusable fact. A baseline-relative pass credits
+  // this run's own baseline, and a failure must re-run to observe its repair.
+  if (cacheKey && passed && commandSucceeded && !skipped && !timedOut) {
+    gateCacheStore(root, {
+      key: cacheKey,
+      criterion_id: criterion.id,
+      command,
+      workspace_fingerprint: workspaceFingerprint,
+      run_id: state.run_id,
+      cached_at: new Date().toISOString(),
+      evidence_path: path
+        .relative(root, evidencePath)
+        .split(path.sep)
+        .join('/'),
+    })
+  }
   const environmentBlocked = isEnvironmentBlockedDelta(
     stage,
     baselineResult,

@@ -38,7 +38,7 @@ Pancreator is a Cursor-native workflow harness written in strict TypeScript and 
 
 - `npm run format` and `npm run format:check` apply or verify Prettier formatting.
 - `npm run lint` runs `format:check`, `typecheck`, and `bash -n` over every Bash script in `bin/`.
-- `npm run check` runs `lint`, `build`, `validate`, and `test` in that order through `bin/check`.
+- `npm run check` runs `lint`, `build`, and `validate` in that order through `bin/check`. Test execution belongs to the profile commands (`npm test`, `npm run test:coverage`), so a passing check never runs the suite.
 - `npm run validate` (equivalently `./bin/pan validate`) checks required files, workflows, stage graphs, policies and the policy lookup table, registries, release metadata, model configuration and projection drift, repository-check configuration, question-tool access, directive ownership, and operator briefs.
 - `npm run validate:chat-markdown` validates fenced Markdown intended for Cursor chat, from stdin or a file path.
 - `./bin/pan doctor [--worktree <name>] [--json]` reports Node support, workspace and worktree resolution, Git availability, browser-automation readiness, the active pipeline mapping, repository-check probe coverage, and repository validation.
