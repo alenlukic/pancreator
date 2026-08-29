@@ -11,7 +11,8 @@
     "The starting agent MUST drive each progress check from one single-shot timer it arms itself, and MUST NOT pre-schedule a series of ticks. A queued tick is delivered only when the session next takes a turn, so a burst of them arrives after the work it was meant to guard.",
     "The timer payload MUST name the agents to inspect on wake and the check to perform on each.",
     "On each wake the starting agent MUST inspect every named agent's state, close the ones that reached a terminal state, and arm exactly one successor timer at the cadence above while any awaited agent remains unfinished.",
-    "A bounded sleep in the agent's own session MAY serve as the single-shot timer.",
+    "The single-shot timer MUST be a background shell sleep of the cadence length that the starting agent then awaits with the platform's shell-await turn (AwaitShell in Cursor). Awaiting keeps the agent's turn alive and hands control back the moment the sleep returns, so the check runs at the cadence rather than at the session's next turn.",
+    "The starting agent MUST NOT use a scheduled tick, an unawaited background sleep, or a foreground sleep as the timer: the first two are delivered only when the session next takes a turn, and the third blocks the operator conversation.",
     "A platform completion signal MAY end a wait early and MUST NOT replace the timer as the check mechanism.",
     "A foreground blocking call exposes no observation point, so no fixed cadence binds it; the starting agent MUST record launch evidence before the call and completion evidence with elapsed time and a terminal-state inspection after it returns.",
     "The starting agent owns the subagent outcome and MUST detect a crash, a stall, and a silent exit.",
@@ -20,6 +21,6 @@
     "An operator-facing agent MUST start a subagent or other asynchronous process in the background.",
     "An operator-facing agent MUST NOT block the operator conversation on a foreground subagent call.",
     "A supervisor MUST keep in-run worker delegation foreground and blocking, because it needs the worker result to advance the stage.",
-    "Agent nesting MUST NOT exceed two levels: top level \u2192 child agent \u2192 subagent, and no further. A child agent MAY spawn subagents only for auxiliary work that is not a stage delegation (repository exploration, debugging), accepting that such nested spawns always run the platform default model. A second-level subagent MUST NOT spawn anything."
+    "Agent nesting MUST NOT exceed two levels: top level → child agent → subagent, and no further. A child agent MAY spawn subagents only for auxiliary work that is not a stage delegation (repository exploration, debugging), accepting that such nested spawns always run the platform default model. A second-level subagent MUST NOT spawn anything."
   ]
 }
