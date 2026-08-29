@@ -120,10 +120,7 @@ import {
 } from './lib/requirements/scaffold.js'
 import { auditDirectives } from './lib/governance/audit-directives.js'
 import { STANDALONE_MODES, buildGovernanceCard } from './lib/governance-card.js'
-import {
-  REVIEW_MACHINERY_PATTERNS,
-  resolveReviewScope,
-} from './lib/review-scope.js'
+import { conflictsByTier, resolveReviewScope } from './lib/review-scope.js'
 import {
   assertRepositoryChecksValid,
   loadRepositoryChecks,
@@ -195,7 +192,8 @@ const HELP_BODY = `Usage:
   pan output validate <run-id> --file <path> [--json]
   pan assessment scaffold <run-id> --invocation <path> --output <path> [--force]
   pan governance audit-directives [--json]
-  pan governance card --mode <${STANDALONE_MODE_NAMES}> [--request <path>] [--worktree <name>] [--out <path>] [--json]
+  pan governance card --mode <${STANDALONE_MODE_NAMES}> [--request <path>] [--worktree <name>] [--out <path>] [--base <ref> [--target <ref>]] [--json]
+      --base (review mode) renders the base-revision text of every conduct policy the target changes, so the session reviews under the rule in force before the change.
   pan governance review-scope --target <ref> [--base <ref>] [--default-branch <branch>] [--json]
   pan best-of-n init --request <path> --configs <path> [--workflow <slug>] [--consolidation-workflow <slug>] [--operator-artifacts] [--json]
   pan best-of-n status <bon-id> [--json]
@@ -1821,6 +1819,8 @@ async function main(): Promise<void> {
           requestPath: option(args, '--request'),
           outputPath: option(args, '--out'),
           worktreeName: option(args, '--worktree'),
+          baseRef: option(args, '--base'),
+          targetRef: option(args, '--target'),
         })
 
         print({
@@ -1851,13 +1851,20 @@ async function main(): Promise<void> {
           defaultBranch: option(args, '--default-branch'),
         })
 
+        const tiers = conflictsByTier(scope.conflicts)
+
         print({
           base: scope.base,
           head: scope.head,
           changed_path_count: scope.changed_paths.length,
-          machinery_patterns: [...REVIEW_MACHINERY_PATTERNS],
-          conflicts: scope.conflicts,
           independent: scope.independent,
+          clean: scope.clean,
+          conflicts: {
+            instrument: tiers.instrument,
+            conduct: tiers.conduct,
+            substrate: tiers.substrate,
+          },
+          standards_delta: scope.standards_delta,
         })
         return
       }

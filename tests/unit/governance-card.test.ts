@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -333,5 +334,69 @@ test('the review policy refuses to let the squad grade its own instrument', () =
         /independent reviewer/u.test(instruction),
     ),
     'a self-review conflict must route to a reviewer outside the squad',
+  )
+})
+
+test('the review card renders base conduct for a card policy the target changes', () => {
+  const root = createFixture()
+  const policyPath = path.join(root, 'governance/policies/GLOBAL-002.json')
+  const policy = JSON.parse(readFileSync(policyPath, 'utf8')) as {
+    instructions: string[]
+  }
+  const baseInstructionCount = policy.instructions.length
+
+  policy.instructions.push(
+    'Agents MUST record a fixture-only clause added by the reviewed change.',
+  )
+  writeFileSync(policyPath, `${JSON.stringify(policy, null, 2)}\n`)
+  const git = (args: string[]) =>
+    execFileSync('git', args, { cwd: root, encoding: 'utf8' })
+
+  git(['add', 'governance/policies/GLOBAL-002.json'])
+  git(['-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-qm', 'change'])
+
+  const card = buildGovernanceCard(root, {
+    mode: 'review',
+    outputPath: 'runtime/inbox/review-card.md',
+    baseRef: 'HEAD~1',
+    targetRef: 'HEAD',
+  })
+  const written = readFileSync(path.join(root, card.path), 'utf8')
+
+  // GLOBAL-002 is on the reviewer's card, so the session reviews the change
+  // under the base text: the section renders base instructions and omits
+  // the clause the change added.
+  assert.match(written, /## 🧭 Conduct under the base revision/u)
+  assert.match(written, /\*\*GLOBAL-002 · base text\*\*/u)
+
+  const section =
+    written.split('## 🧭 Conduct under the base revision')[1] ?? ''
+
+  // The head text still renders under "Policies in force" — it is what the
+  // session is reviewing. Only the base-conduct section must omit the clause.
+  assert.ok(section.length > 0)
+  assert.ok(
+    !section.includes('fixture-only clause added by the reviewed change'),
+  )
+  assert.ok(
+    written.includes('fixture-only clause added by the reviewed change'),
+  )
+  const baseBullets = section
+    .split('\n')
+    .filter(
+      (line) =>
+        line.startsWith('- Agents MUST') ||
+        line.startsWith('- Source-changing'),
+    )
+
+  assert.equal(baseBullets.length, baseInstructionCount)
+})
+
+test('--base is refused outside the review mode', () => {
+  const root = createFixture()
+
+  assert.throws(
+    () => buildGovernanceCard(root, { mode: 'pair', baseRef: 'HEAD' }),
+    /--base applies to the review mode only/u,
   )
 })

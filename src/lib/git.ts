@@ -99,6 +99,21 @@ export function gitChangedPathsBetween(
     .sort()
 }
 
+/** Contents of a tracked file at a revision, or null when absent there. */
+export function gitShowFile(
+  root: string,
+  reference: string,
+  relativePath: string,
+): string | null {
+  const result = runGit(
+    root,
+    ['show', '--end-of-options', `${reference}:${relativePath}`],
+    { allowFailure: true },
+  )
+
+  return result.status === 0 ? result.stdout : null
+}
+
 export function gitBranchExists(root: string, branch: string): boolean {
   const result = runGit(
     root,

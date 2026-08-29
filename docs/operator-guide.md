@@ -296,12 +296,20 @@ Two things the session settles before it delegates. It binds the workspace to
 the target's head, resolving a worktree when your checkout sits elsewhere, so
 the agents verify findings against the tree the diff applies to rather than
 whatever you happen to have open. And it runs
-`pan governance review-scope --target <ref>`, which reports whether the target
-edits the review machinery itself — the lineup, a charter, the coordinator, the
-mode policy, or either entry point. Those paths are excluded from the squad's
-verdict and routed to an independent `pan-reviewer`, because a charter cannot
-find a defect that was introduced into that charter. The report names what the
-squad could not grade.
+`pan governance review-scope --target <ref>`, which reports every conflict of
+interest the target carries, by tier. **Instrument** paths — the lineup, a
+charter, the coordinator, the mode policy, an entry point, the scope check, or
+the reviewer's model mapping — leave the squad's verdict for an independent
+`pan-reviewer`, because a charter cannot find a defect introduced into that
+charter. **Conduct** paths — a policy on the reviewer's own card, computed from
+the card rather than a hand-kept list — stay in scope, and the session rebuilds
+its card with `--base` so it follows the rule in force before the change.
+**Substrate** paths — validators, test helpers, check wrappers, exemption
+registries — stay in scope and taint any verification that leans on them. The
+command also prints a standards delta for every changed policy: the
+instructions it removed and added. A rule that differs from its base is never a
+finding; the report puts the delta in front of you, and the merits of a rule
+change are yours to ratify.
 
 The session changes nothing: it returns ranked findings and a pass or fail
 verdict, and acting on them is a separate `/pan-spotfix` or a systematic run. Do not run

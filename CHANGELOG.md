@@ -18,6 +18,7 @@
 - Add validator PROTOTYPE-OUTPUT-VALIDATE-001 for prototype shapes, traces, and verdict precedence ([prototype-output](src/lib/validators/prototype-output.ts), [registry](governance/registries/validation_registry.json)).
 - Add the `environment_blocked` prototype verdict and question-level cause vocabulary ([evaluate](library/workflows/prototype/stages/evaluate.json), [field contract](library/schemas/stage-output-requirements.json)).
 - Add the Pancreator-only review-squad lineup and drop it from target installations ([review-squad-pancreator](library/skills/review-squad-pancreator.md), [install](bin/install), [validation](src/lib/validation.ts)).
+- Add `/pan-review`, the `review` standalone mode, and `REVIEW-001`, with a review-scope check that classifies a target's conflicts of interest by tier, derives the conduct tier from the review card, renders base conduct with `--base`, and reports a per-policy standards delta ([review-scope](src/lib/review-scope.ts), [governance-card](src/lib/governance-card.ts), [REVIEW-001](governance/policies/REVIEW-001.json)).
 
 ### Fixed
 
