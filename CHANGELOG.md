@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.0.1] - 2026-08-29
+
+### Fixed
+
+- Treat an empty model string in a named config's `personas` as "inherit the `defaults` entry" instead of rejecting the file, so `config_overrides.json` needs to name only the personas a config changes; an empty `defaults` entry is still rejected, and `pan models --migrate-from` reports a hole only when `defaults` leaves it empty too The installer applies the same rule when it ships the effective configuration and projects persona models ([pipeline-config](src/lib/pipeline-config.ts), [pipeline-config-migration](src/lib/pipeline-config-migration.ts), [install-support](bin/install-support), [operator guide](docs/operator-guide.md)).
+
 ## [5.0.0] - 2026-08-29
 
 This release absorbs the unreleased 4.10.0 candidate. It is a major release: stage-output contracts, the verification profile contract, the check wrappers, and several governance policies change in ways that an existing installation and its in-flight agents must adopt.

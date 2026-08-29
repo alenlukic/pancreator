@@ -81,13 +81,29 @@ function isEmptyMapping(value: unknown): boolean {
 }
 
 /**
+ * An empty slot in a named config inherits the default for that persona, so
+ * it is a hole only when the merged `defaults` map leaves it empty too.
+ */
+function inheritsDefault(
+  merged: Record<string, unknown>,
+  location: string,
+  persona: string,
+): boolean {
+  return (
+    location !== 'defaults' &&
+    !isEmptyMapping(personaMapAt(merged, ['defaults'])[persona])
+  )
+}
+
+/**
  * Carry a pre-change effective model map across a tracked `config.json`
  * replacement.
  *
  * The new tracked file owns the shape. For every persona whose merged new
  * value is empty, the migration preserves the merged old value at the same
  * location into the operator overrides. A persona that stays empty after
- * preservation is reported in `missing`, and the caller MUST NOT apply the
+ * preservation, and that `defaults` does not fill, is reported in `missing`,
+ * and the caller MUST NOT apply the
  * replacement — the pre-change effective map is unrecoverable for it, so
  * proceeding would strand the configuration exactly the way an incomplete
  * hand-copy does.
@@ -143,7 +159,9 @@ export function migratePipelineOverrides(options: {
       const candidate = previousMap[persona]
 
       if (isEmptyMapping(candidate)) {
-        missing.push(`${location}.${persona}`)
+        if (!inheritsDefault(options.next, location, persona)) {
+          missing.push(`${location}.${persona}`)
+        }
         continue
       }
 
@@ -164,7 +182,11 @@ export function migratePipelineOverrides(options: {
       for (const persona of Object.keys(map).sort()) {
         const entry = `${location}.${persona}`
 
-        if (isEmptyMapping(map[persona]) && !missing.includes(entry)) {
+        if (
+          isEmptyMapping(map[persona]) &&
+          !inheritsDefault(nextMerged, location, persona) &&
+          !missing.includes(entry)
+        ) {
           missing.push(entry)
         }
       }

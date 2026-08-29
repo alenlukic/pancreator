@@ -128,3 +128,32 @@ test('migration keeps complete local overrides unchanged', () => {
   // `changed === false` keeps the file byte-identical.
   assert.deepEqual(result.overrides, overrides)
 })
+
+test('migration does not report a named-config hole that defaults fill', () => {
+  const next = {
+    schema_version: 1,
+    active_config: 'simple',
+    defaults: { orchestrator: 'model-orchestrator', coder: 'default-coder' },
+    configs: {
+      simple: {
+        personas: { coder: '', 'brand-new-persona': '' },
+      },
+    },
+  }
+  const result = migratePipelineOverrides({
+    previous: {
+      schema_version: 1,
+      active_config: 'simple',
+      defaults: {},
+      configs: { simple: { personas: {} } },
+    },
+    next,
+    overrides: null,
+  })
+
+  // `coder` inherits `defaults.coder`; only the persona defaults omit is a hole.
+  assert.deepEqual(result.missing, [
+    'configs.simple.personas.brand-new-persona',
+  ])
+  assert.equal(result.changed, false)
+})

@@ -57,7 +57,10 @@ const CONFIG_PATH = 'config.json'
 function parsePersonaMap(
   value: unknown,
   source: string,
-  { allowEmpty = false }: { allowEmpty?: boolean } = {},
+  {
+    allowEmpty = false,
+    inheritEmpty = false,
+  }: { allowEmpty?: boolean; inheritEmpty?: boolean } = {},
 ): Record<string, string> {
   invariant(isRecord(value), `${source} MUST be an object.`, {
     code: 'INVALID_PIPELINE_CONFIG',
@@ -66,6 +69,14 @@ function parsePersonaMap(
   const personas: Record<string, string> = {}
 
   for (const [persona, model] of Object.entries(value)) {
+    // A named config lists only the personas it changes. An empty string
+    // there is a placeholder the tracked file ships, and it means "inherit
+    // the default", so it is dropped rather than rejected. `defaults` has
+    // nothing to inherit from and stays strict.
+    if (inheritEmpty && persona.length > 0 && model === '') {
+      continue
+    }
+
     invariant(
       persona.length > 0 && typeof model === 'string' && model.length > 0,
       `${source}.${persona} MUST be a non-empty model string.`,
@@ -99,6 +110,7 @@ function parseNamedConfig(value: unknown, source: string): NamedPipelineConfig {
 
   const personas = parsePersonaMap(value.personas, `${source}.personas`, {
     allowEmpty: true,
+    inheritEmpty: true,
   })
 
   return {

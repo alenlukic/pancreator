@@ -301,6 +301,40 @@ function cursorSourceFiles(sourceRoot) {
  * the tracked config.json and keeps the real specs in config_overrides.json,
  * so every installer read of a source config MUST see the effective merge.
  */
+/**
+ * An empty model string in a named config's personas inherits the default
+ * for that persona. Drop those placeholders so every `{...defaults,
+ * ...personas}` spread below resolves the same way `parsePipelineConfig` does.
+ * `defaults` keeps its entries; the parser rejects an empty default.
+ */
+function stripInheritedPlaceholders(config) {
+  if (typeof config !== 'object' || config === null) {
+    return config
+  }
+
+  for (const [name, namedConfig] of Object.entries(config.configs ?? {})) {
+    if (
+      typeof namedConfig !== 'object' ||
+      namedConfig === null ||
+      typeof namedConfig.personas !== 'object' ||
+      namedConfig.personas === null
+    ) {
+      continue
+    }
+
+    config.configs[name] = {
+      ...namedConfig,
+      personas: Object.fromEntries(
+        Object.entries(namedConfig.personas).filter(
+          ([, model]) => model !== '',
+        ),
+      ),
+    }
+  }
+
+  return config
+}
+
 function readConfigWithOverrides(configPath) {
   let config = readJson(configPath)
 
@@ -313,7 +347,7 @@ function readConfigWithOverrides(configPath) {
     }
   }
 
-  return config
+  return stripInheritedPlaceholders(config)
 }
 
 function personaModelsFromConfig(configPath) {
@@ -343,7 +377,7 @@ function personaModelsForProjection(personaConfigPath, sourceRoot) {
     return personaModelsFromConfig(sourceConfigPath)
   }
 
-  const targetConfig = readJson(personaConfigPath)
+  const targetConfig = stripInheritedPlaceholders(readJson(personaConfigPath))
   const activeConfigName =
     typeof targetConfig.active_config === 'string'
       ? targetConfig.active_config
@@ -1132,7 +1166,10 @@ function writeProject() {
   let config = readConfigWithOverrides(source)
 
   if (existsSync(destination)) {
-    config = mergeEmbeddedProjectConfig(config, readJson(destination))
+    config = mergeEmbeddedProjectConfig(
+      config,
+      stripInheritedPlaceholders(readJson(destination)),
+    )
   }
 
   // A detached harness has no stable relative path to its target, so the target
