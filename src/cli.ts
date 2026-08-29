@@ -33,6 +33,7 @@ import {
   pruneBestOfN,
   refreshBestOfNAgents,
 } from './lib/best-of-n.js'
+import { GATE_CACHE_ENV, gateCacheStatus } from './lib/gate-cache.js'
 import { personaExecutorOf } from './lib/executors/mapping.js'
 import { probeCursorModels } from './lib/executors/cursor-probe.js'
 import { claudeCodeVersionPreflight } from './lib/executors/claude-code.js'
@@ -2327,6 +2328,13 @@ async function main(): Promise<void> {
         pipeline_config: {
           active: pipelineConfig.name,
           personas: pipelineConfig.config.personas,
+        },
+        // A cached gate pass is a harness decision the operator may want to
+        // revoke; the report names the switch and the file so neither has to
+        // be found by reading source.
+        gate_cache: {
+          ...gateCacheStatus(root),
+          disable_with: `${GATE_CACHE_ENV}=0`,
         },
         repository_check_environment: {
           profiles_without_probes: Object.entries(repositoryChecks.profiles)

@@ -90,11 +90,38 @@ test('a silent command earns no ticks, exposing a hang as a stopped stream', () 
   assert.equal(result.stderr, '')
 })
 
+test('nested quiet wrappers tick from the step that produces output', () => {
+  // `npm run check` is a quiet wrapper around bin/check, which wraps each step
+  // in another quiet wrapper. The inner wrapper swallows its child's output on
+  // success, so the outer one observes no bytes; the inner wrapper therefore
+  // ticks to the sink the outer one exported instead of staying silent.
+  const env = { ...process.env }
+  delete env.PAN_VERBOSE
+  delete env.PAN_PROGRESS_FD
+  env.PAN_PROGRESS = '1'
+  env.PAN_PROGRESS_INTERVAL_SECONDS = '0.2'
+
+  const result = spawnSync(
+    QUIET_RUNNER,
+    [
+      '--',
+      QUIET_RUNNER,
+      '--',
+      process.execPath,
+      '-e',
+      "const timer = setInterval(() => process.stdout.write('line\\n'), 100); setTimeout(() => clearInterval(timer), 700)",
+    ],
+    { encoding: 'utf8', env, timeout: PROCESS_TIMEOUT_MS },
+  )
+
+  assert.equal(result.status, 0)
+  assert.equal(result.stdout, '')
+  assert.match(result.stderr, /^\.+\n$/u)
+})
+
 test('progress ticks stay quiet for a command faster than one interval', () => {
   // An interval wider than the command's lifetime removes the race between a
-  // first tick and a fast exit. It is kept short because the ticker's
-  // orphaned `sleep` holds the stderr pipe open, so the wrapper's exit is not
-  // observed until the interval elapses.
+  // first tick and a fast exit; it is kept short only so the test stays cheap.
   const result = runQuiet("process.stdout.write('quick\\n')", {
     progress: true,
     progressIntervalSeconds: '0.5',

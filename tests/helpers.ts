@@ -73,23 +73,55 @@ function pinFixtureInvolvement(root: string): void {
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
 }
 
+export interface CloneTreeOptions {
+  timeout?: number
+  verbatimSymlinks?: boolean
+}
+
+/**
+ * Copy a directory tree into `destination`, copy-on-write where the platform
+ * offers it. The ladder is the one `bin/build` uses for `stat`: BSD/macOS
+ * first (`cp -c` uses clonefile, including `.git`), then GNU
+ * (`--reflink=auto`), then a plain recursive copy. A rejected flag exits
+ * non-zero before copying anything, and its stderr is discarded so a probe
+ * failure never reads as command output.
+ */
+export function cloneTree(
+  template: string,
+  destination: string,
+  options: CloneTreeOptions = {},
+): void {
+  const timeout = options.timeout ?? FIXTURE_GIT_TIMEOUT_MS
+
+  for (const flags of [['-Rc'], ['-a', '--reflink=auto']]) {
+    try {
+      execFileSync('cp', [...flags, `${template}/.`, destination], {
+        stdio: 'ignore',
+        timeout,
+      })
+
+      return
+    } catch {
+      // Try the next rung.
+    }
+  }
+
+  cpSync(template, destination, {
+    recursive: true,
+    ...(options.verbatimSymlinks ? { verbatimSymlinks: true } : {}),
+  })
+}
+
 // Building a fixture copies the repository trees, syncs the Cursor projection,
 // and creates a Git history — several seconds of work that every test used to
 // pay. The template is built once per process and every createFixture() call
-// hands out a cheap clone. macOS `cp -c` uses clonefile for a copy-on-write
-// clone including `.git`; any failure falls back to a regular recursive copy.
+// hands out a cheap clone.
 let fixtureTemplateRoot: string | null = null
 
 function cloneFixtureTemplate(template: string): string {
   const root = mkdtempSync(path.join(tmpdir(), 'pancreator-v2-'))
 
-  try {
-    execFileSync('cp', ['-Rc', `${template}/.`, root], {
-      timeout: FIXTURE_GIT_TIMEOUT_MS,
-    })
-  } catch {
-    cpSync(template, root, { recursive: true })
-  }
+  cloneTree(template, root)
 
   return root
 }

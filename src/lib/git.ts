@@ -280,6 +280,10 @@ function trackedWorkspacePath(
 }
 
 const gitDirCache = new Map<string, string>()
+// `--show-toplevel` is as stable per workspace as the git dir: both change only
+// when the directory stops being the same repository, which is never within
+// one process. Positive answers only, so a transient failure is retried.
+const toplevelCache = new Map<string, string>()
 const trackedPathsCache = new Map<string, { token: string; paths: string[] }>()
 
 /**
@@ -420,15 +424,24 @@ export function gitWorkspaceSnapshot(workspaceDir: string): WorkspaceSnapshot {
     }
   }
 
-  const toplevelResult = runGit(
-    workspaceDir,
-    ['rev-parse', '--show-toplevel'],
-    {
-      allowFailure: true,
-    },
-  )
-  const toplevel =
-    toplevelResult.status === 0 ? toplevelResult.stdout.trim() : workspaceDir
+  let toplevel = toplevelCache.get(workspaceDir)
+
+  if (toplevel === undefined) {
+    const toplevelResult = runGit(
+      workspaceDir,
+      ['rev-parse', '--show-toplevel'],
+      {
+        allowFailure: true,
+      },
+    )
+
+    if (toplevelResult.status === 0) {
+      toplevel = toplevelResult.stdout.trim()
+      toplevelCache.set(workspaceDir, toplevel)
+    } else {
+      toplevel = workspaceDir
+    }
+  }
   const status = runGit(workspaceDir, [
     'status',
     '--porcelain=v1',

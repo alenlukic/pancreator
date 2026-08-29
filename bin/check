@@ -10,7 +10,10 @@ QUIET="$ROOT/bin/run-quiet"
 # npm run test:coverage). Running the suite inside check made every full
 # gate execute all tests twice and made check's duration depend on whether
 # an earlier step failed fast.
-for script_name in lint build validate; do
+#
+# Build runs before lint: the emitting tsc type-checks the same program, and
+# bin/lint skips its own tsc --noEmit when the build stamp is fresh.
+for script_name in build lint validate; do
   if "$QUIET" -- npm run "$script_name"; then
     continue
   fi

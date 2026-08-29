@@ -87,6 +87,7 @@ fi
 
 read -r root_key _ <<<"$(printf '%s' "$ROOT" | cksum)"
 BUILD_LOCK="${TMPDIR:-/tmp}/pancreator-build-${root_key}.lock"
+DIST_READERS="${TMPDIR:-/tmp}/pancreator-build-${root_key}.readers"
 
 # The lock serializes builds only. Holding it across the wrapped command made
 # every concurrent harness call wait behind long-running test suites.
@@ -96,6 +97,13 @@ release_lock
 trap - EXIT HUP INT TERM
 
 if [[ "$mode" == 'run' ]]; then
+  # The wrapped command loads dist lazily for as long as it runs, and a later
+  # build with a changed fingerprint deletes dist. Register this process as a
+  # live reader so bin/build waits for it before the destructive step. exec
+  # keeps the pid, so the file names the wrapped command itself; bin/build
+  # prunes any reader whose pid no longer answers.
+  mkdir -p "$DIST_READERS"
+  printf '%s\n' "$*" >"$DIST_READERS/$$" 2>/dev/null || true
   export PANCREATOR_BUILD_READY="$ROOT"
   exec "$@"
 fi

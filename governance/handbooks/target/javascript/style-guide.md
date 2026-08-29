@@ -44,7 +44,7 @@ Some installer functions deliberately mirror compiled TypeScript, because the in
 
 ## Type checking gap
 
-`tsconfig.json` includes only `src/**/*.ts` and `tests/**/*.ts`. JavaScript is therefore **not** covered by `npm run typecheck`. Correctness for `bin/install-support` rests on review and on its tests: the installer suites under `tests/secondary/` pin the installer behavior and `tests/unit/projection.test.ts` pins the compiled counterpart. Agents changing installer JavaScript MUST run those suites, through `npm run test:secondary` or the `runtime/repository-checks.json` profiles, which are the command authority.
+`tsconfig.json` includes only `src/**/*.ts` and `tests/**/*.ts`. JavaScript is therefore **not** covered by `npm run typecheck`. Correctness for `bin/install-support` rests on review and on its tests: the installer suites under `tests/secondary/` pin the installer behavior and `tests/unit/projection.test.ts` pins the compiled counterpart. Agents changing installer JavaScript MUST run those suites, through `npm run test:secondary` or the `secondary` and `full` profiles in `runtime/repository-checks.json`, which is the command authority.
 
 ## No target-specific convention found
 

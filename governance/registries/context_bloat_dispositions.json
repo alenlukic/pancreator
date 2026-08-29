@@ -51,7 +51,9 @@
       ],
       "disposition": "retain",
       "rationale": "Each independently invoked entry command must prevent nested supervision before it adopts the shared supervisor persona.",
-      "evidence": ["tests/regression/supervisor-entry-point-contract.test.ts"]
+      "evidence": [
+        "tests/regression/supervisor-delegation-contract.test.ts: entry commands and always-applied rules share the supervisor invariants"
+      ]
     },
     {
       "id": "installation-bootstrap-invariants",

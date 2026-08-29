@@ -1,12 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import {
-  chmodSync,
-  cpSync,
-  mkdtempSync,
-  readFileSync,
-  writeFileSync,
-} from 'node:fs'
+import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
@@ -33,6 +27,7 @@ import {
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
+  cloneTree as cloneSharedTree,
 } from '../helpers.js'
 
 /** A verify data payload whose verdict stays consistent with a failed stage. */
@@ -625,13 +620,7 @@ const templates = new Map<string, Template>()
 function cloneTree(template: string): string {
   const root = mkdtempSync(path.join(tmpdir(), 'pancreator-v2-cp-'))
 
-  try {
-    execFileSync('cp', ['-Rc', `${template}/.`, root], {
-      timeout: CLONE_TIMEOUT_MS,
-    })
-  } catch {
-    cpSync(template, root, { recursive: true })
-  }
+  cloneSharedTree(template, root, { timeout: CLONE_TIMEOUT_MS })
 
   return root
 }

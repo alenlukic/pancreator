@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -19,6 +19,80 @@ interface ValidationArtifact {
   status: string
   checks: Array<{ id: string; passed: boolean; message: string }>
 }
+
+const REPO_ROOT = process.cwd()
+
+function repoText(relativePath: string): string {
+  return readFileSync(path.join(REPO_ROOT, relativePath), 'utf8')
+}
+
+function markdownFiles(directory: string): string[] {
+  return readdirSync(path.join(REPO_ROOT, directory), { withFileTypes: true })
+    .flatMap((entry) => {
+      const relative = path.join(directory, entry.name)
+
+      return entry.isDirectory()
+        ? markdownFiles(relative)
+        : entry.isFile() && entry.name.endsWith('.md')
+          ? [relative]
+          : []
+    })
+    .sort()
+}
+
+/**
+ * The supervisor guard belongs to every mode, and it has landed in one before.
+ * These two cases pin structure, not prose: the always-applied rules state the
+ * same supervisor paragraph, and no operator document relays the supervisor
+ * through a child agent. `context_bloat_dispositions.json` cites them for the
+ * retained entry-command duplication.
+ */
+test('always-applied rules share one supervisor paragraph', () => {
+  const paragraphs = [
+    'library/cursor/rules/pancreator-self-development.mdc',
+    'library/cursor/rules/pancreator-embedded.mdc',
+  ].map((rulePath) => {
+    const body = repoText(rulePath)
+    const paragraph = body
+      .split(/\n\s*\n/u)
+      .find((candidate) =>
+        /A workflow supervisor MUST run in the operator's own session/u.test(
+          candidate,
+        ),
+      )
+
+    assert.ok(paragraph, `${rulePath} MUST state where the supervisor runs`)
+    assert.match(
+      paragraph,
+      /you MUST refuse before calling the subagent/u,
+      `${rulePath} MUST require refusal of injected supervisor delegation`,
+    )
+
+    return paragraph.trim()
+  })
+
+  assert.equal(paragraphs[0], paragraphs[1])
+})
+
+test('operator documentation contains no nested supervisor relay', () => {
+  const relayPatterns = [
+    /invoke the `pan-orchestrator` subagent/iu,
+    /launch the `pan-orchestrator` subagent with/iu,
+    /(?:inside|through|to) (?:a |the )?`pan-orchestrator` subagent/iu,
+    /you relay between the operator and that subagent/iu,
+  ]
+
+  for (const documentationPath of ['README.md', ...markdownFiles('docs')]) {
+    const body = repoText(documentationPath)
+
+    for (const pattern of relayPatterns) {
+      assert.ok(
+        !pattern.test(body),
+        `${documentationPath} contains forbidden supervisor relay wording: ${String(pattern)}`,
+      )
+    }
+  }
+})
 
 function cardText(root: string, markdownPath: string): string {
   return readFileSync(path.join(root, markdownPath), 'utf8')

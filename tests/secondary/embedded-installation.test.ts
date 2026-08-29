@@ -24,8 +24,9 @@ import {
 
 // The shared installed template IS the fresh install every other test clones,
 // so its layout is asserted here without another installer run. Layout facts
-// that `bin/install --smoke` (in the `full` repository-check profile) already
-// verifies are not repeated.
+// that `bin/install --smoke` (in the `full` repository-check profile; this
+// lane itself runs under `secondary` and `full`) already verifies are not
+// repeated.
 test('embedded installer creates a runnable-layout harness under .pancreator', () => {
   const project = installedProjectTemplate()
 

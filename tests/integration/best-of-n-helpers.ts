@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
-import { cpSync, mkdtempSync, readFileSync, realpathSync } from 'node:fs'
+import { mkdtempSync, readFileSync, realpathSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
@@ -24,6 +24,7 @@ import {
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
+  cloneTree as cloneSharedTree,
 } from '../helpers.js'
 
 export const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
@@ -244,11 +245,7 @@ function buildBestOfNTemplate(key: BestOfNCheckpointKey): {
 export function cloneTree(template: string): string {
   const root = mkdtempSync(path.join(tmpdir(), 'pancreator-v2-'))
 
-  try {
-    execFileSync('cp', ['-Rc', `${template}/.`, root], { timeout: 180_000 })
-  } catch {
-    cpSync(template, root, { recursive: true })
-  }
+  cloneSharedTree(template, root, { timeout: 180_000 })
 
   // Worktree bookkeeping compares Git's realpath output with the root, so the
   // root is handed out in the same form the CLI sees from process.cwd().

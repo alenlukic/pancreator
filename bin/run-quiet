@@ -15,8 +15,15 @@ is_verbose() {
 }
 
 # Progress ticks default to interactive terminals only, so captured or
-# redirected output stays byte-identical to the quiet contract.
+# redirected output stays byte-identical to the quiet contract. A wrapper
+# nested inside another quiet wrapper sees a captured stderr, so it takes the
+# outer wrapper's decision instead: PAN_PROGRESS_FD names the sink the outer
+# wrapper opened on the real terminal, and the inner wrapper ticks there.
 progress_enabled() {
+  if [[ -n "${PAN_PROGRESS_FD:-}" ]]; then
+    return 0
+  fi
+
   case "${PAN_PROGRESS:-}" in
     1 | true | yes | TRUE | YES) return 0 ;;
     0 | false | no | FALSE | NO) return 1 ;;
@@ -71,6 +78,15 @@ trap 'exit 143' TERM
 if progress_enabled; then
   tick_interval="${PAN_PROGRESS_INTERVAL_SECONDS:-5}"
   script_pid=$$
+  # The outermost ticking wrapper owns the sink: a private copy of its stderr
+  # on fd 9, exported by number so every nested wrapper inherits it and ticks
+  # to the terminal even though its own stderr is captured. A nested quiet
+  # wrapper swallows its child's output on success, so without the shared
+  # sink the outer wrapper would observe zero bytes and never tick.
+  if [[ -z "${PAN_PROGRESS_FD:-}" ]]; then
+    exec 9>&2
+    export PAN_PROGRESS_FD=9
+  fi
   # A dot marks an interval in which the command produced new output, so a
   # stopped dot stream shows the command has gone silent (a likely hang).
   # The ticker also exits on its own when the wrapper is no longer alive.
@@ -79,18 +95,18 @@ if progress_enabled; then
   # full tick. The sleep therefore holds no inherited stdio, and stop_ticker
   # kills it before the subshell.
   (
-    # Dots go to a private copy of stderr. The subshell's own stderr goes to
-    # /dev/null so bash's "Terminated" notice for the killed sleep never
-    # reaches the wrapper's caller, and the sleep inherits neither.
-    exec 3>&2 2>/dev/null
+    # Dots go to the shared sink. The subshell's own stderr goes to /dev/null
+    # so bash's "Terminated" notice for the killed sleep never reaches the
+    # wrapper's caller, and the sleep inherits neither.
+    exec 2>/dev/null
     last_bytes=0
-    while sleep "$tick_interval" >/dev/null 2>&1 </dev/null 3>&-; do
+    while sleep "$tick_interval" >/dev/null 2>&1 </dev/null 9>&-; do
       kill -0 "$script_pid" 2>/dev/null || exit 0
       stdout_bytes="$(wc -c <"$stdout_file" 2>/dev/null || echo 0)"
       stderr_bytes="$(wc -c <"$stderr_file" 2>/dev/null || echo 0)"
       current_bytes=$((stdout_bytes + stderr_bytes))
       if [[ "$current_bytes" -gt "$last_bytes" ]]; then
-        printf '.' >&3
+        printf '.' >&9
         : >"$tick_marker"
         last_bytes="$current_bytes"
       fi
@@ -109,7 +125,7 @@ if [[ -n "$ticker_pid" ]]; then
   wait "$ticker_pid" 2>/dev/null || true
   ticker_pid=''
   if [[ -e "$tick_marker" ]]; then
-    printf '\n' >&2
+    printf '\n' >&9
   fi
 fi
 

@@ -35,9 +35,76 @@ fingerprint() {
 
 current="$(fingerprint)"
 
-if [[ -f "$STAMP" && -d dist && "$(cat "$STAMP")" == "$current" ]]; then
+stamp_fresh() {
+  [[ -f "$STAMP" && -d dist && "$(cat "$STAMP")" == "$current" ]]
+}
+
+# `bin/build --stamp-fresh` answers whether dist already matches the inputs,
+# so a caller that has just built can skip work the build already did.
+if [[ "${1:-}" == '--stamp-fresh' ]]; then
+  stamp_fresh
+  exit $?
+fi
+
+if stamp_fresh; then
   exit 0
 fi
+
+# bin/run-built registers each wrapped command as a live reader of dist under
+# a per-root directory. Deleting dist under a running test lane makes every
+# not-yet-loaded module fail with a missing file, so the rebuild waits for
+# live readers first, pruning any whose pid is gone. The wait is bounded so a
+# hung reader cannot block builds forever.
+read -r root_key _ <<<"$(printf '%s' "$ROOT" | cksum)"
+DIST_READERS="${TMPDIR:-/tmp}/pancreator-build-${root_key}.readers"
+READER_WAIT_LIMIT_SECONDS="${PANCREATOR_BUILD_READER_WAIT_SECONDS:-900}"
+
+live_readers() {
+  local reader pid
+
+  [[ -d "$DIST_READERS" ]] || return 0
+
+  for reader in "$DIST_READERS"/*; do
+    [[ -e "$reader" ]] || continue
+    pid="${reader##*/}"
+
+    if [[ "$pid" =~ ^[0-9]+$ && "$pid" -ne $$ ]] && kill -0 "$pid" 2>/dev/null; then
+      printf '%s\n' "$pid"
+    else
+      rm -f "$reader"
+    fi
+  done
+}
+
+# run-built wraps this script in run-quiet, which captures stderr, so a wait
+# notice would surface only on failure. The terminal, when there is one, gets
+# it directly.
+notify() {
+  if ! { echo "$1" >/dev/tty; } 2>/dev/null; then
+    echo "$1" >&2
+  fi
+}
+
+waited=0
+announced=0
+
+while :; do
+  readers="$(live_readers)"
+  [[ -n "$readers" ]] || break
+
+  if [[ "$waited" -ge "$READER_WAIT_LIMIT_SECONDS" ]]; then
+    notify "[build] proceeding after ${waited}s: dist still in use by pid(s) $(printf '%s ' $readers)"
+    break
+  fi
+
+  if [[ "$announced" -eq 0 ]]; then
+    notify "[build] sources changed; waiting for running dist consumer(s) before rebuilding: $(printf '%s ' $readers)"
+    announced=1
+  fi
+
+  sleep 1
+  waited=$((waited + 1))
+done
 
 rm -rf dist
 tsc

@@ -60,9 +60,29 @@ test('directive audit rejects registry defects in one pass', () => {
 
   assert.ok(retained)
   retained.evidence = []
+  // A retained entry whose evidence names a file the tree no longer holds
+  // claims a guard that is gone. The fixture carries a `tests/` tree only as
+  // far as this marker, which makes the cited path checkable.
+  mkdirSync(path.join(root, 'tests', 'unit'), { recursive: true })
+  record.entries.push({
+    id: 'dangling-evidence',
+    category: 'duplicate',
+    sources: ['library/personas/coder.md', 'library/personas/planner.md'],
+    disposition: 'retain',
+    rationale: 'Evidence names a deleted test.',
+    evidence: ['tests/unit/deleted-contract.test.ts: pins the invariant'],
+  })
   writeDispositionRecord(root, record)
 
   const result = auditDirectives(root)
+
+  assert.ok(
+    result.errors.some((item) =>
+      item.includes(
+        'stale disposition evidence in dangling-evidence: tests/unit/deleted-contract.test.ts',
+      ),
+    ),
+  )
 
   assert.ok(
     result.errors.some((item) =>

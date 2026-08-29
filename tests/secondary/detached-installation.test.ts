@@ -20,10 +20,11 @@ import {
   runInstaller,
 } from './install-helpers.js'
 
-// `bin/install --smoke` (run by the `full` repository-check profile) already
-// covers the detached basics: harness outside the target, no `.pancreator` in
-// the target, projection present, absolute `bin/pan` in pan-status, config mode
-// and workspace_root, clean status. This test keeps what smoke lacks.
+// `bin/install --smoke` (run by the `full` repository-check profile; this lane
+// itself runs under `secondary` and `full`) already covers the detached basics:
+// harness outside the target, no `.pancreator` in the target, projection
+// present, absolute `bin/pan` in pan-status, config mode and workspace_root,
+// clean status. This test keeps what smoke lacks.
 test('detached installer places the harness outside the target tree and refreshes idempotently', () => {
   const project = makeSkeletonProject()
   const harness = mkdtempSync(path.join(tmpdir(), 'pancreator-harness-'))

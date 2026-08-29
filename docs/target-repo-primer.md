@@ -28,8 +28,8 @@ Pancreator is a Cursor-native workflow harness written in strict TypeScript and 
 
 ### Test
 
-- `npm test` is the documented default suite: it builds, then runs `node --test dist/tests/**/*.test.js`.
-- `npm run test:unit`, `npm run test:integration`, and `npm run test:regression` run the individual compiled subsets.
+- `npm test` is the documented default suite: it builds, then runs `node --test` over the compiled `unit`, `integration`, and `regression` lanes only.
+- `npm run test:unit`, `npm run test:integration`, and `npm run test:regression` run the individual compiled subsets. `npm run test:secondary` runs the `tests/secondary/` lane, which owns the installer suites and is outside `npm test`.
 - `npm run test:coverage` enforces 80% line and function coverage and 70% branch coverage over `dist/src/lib/**`.
 - `./bin/install --smoke` runs the deterministic embedded-installer smoke harness.
 - `npm run test:migrations` is still declared, but no `tests/migrations/` source directory exists.
@@ -41,7 +41,8 @@ Pancreator is a Cursor-native workflow harness written in strict TypeScript and 
 - `npm run check` runs `lint`, `build`, and `validate` in that order through `bin/check`. Test execution belongs to the profile commands (`npm test`, `npm run test:coverage`), so a passing check never runs the suite.
 - `npm run validate` (equivalently `./bin/pan validate`) checks required files, workflows, stage graphs, policies and the policy lookup table, registries, release metadata, model configuration and projection drift, repository-check configuration, question-tool access, directive ownership, and operator briefs.
 - `npm run validate:chat-markdown` validates fenced Markdown intended for Cursor chat, from stdin or a file path.
-- `./bin/pan doctor [--worktree <name>] [--json]` reports Node support, workspace and worktree resolution, Git availability, browser-automation readiness, the active pipeline mapping, repository-check probe coverage, and repository validation.
+- `./bin/pan doctor [--worktree <name>] [--json]` reports Node support, workspace and worktree resolution, Git availability, browser-automation readiness, the active pipeline mapping, gate-cache state, repository-check probe coverage, and repository validation.
+- Deterministic shell gates accept a recorded clean pass of the identical command at an unchanged Git workspace fingerprint for 24 hours (`DEV-001`); the cache lives at `runtime/cache/gate-results.json`, a result so accepted is marked `cached`, and `PAN_GATE_CACHE=0` forces every gate to execute.
 - `./bin/pan init --request runtime/inbox/<file>.md [--workflow delivery|prototype|design] [--involvement <profile>] [--verification <level>] [--worktree <name>]` starts a run; `prepare`, `delegate`, `submit`, `assess`, `decide`, `status`, `list`, `pause`, `resume`, `set-stage`, `waive-gate`, `abort`, and `archive` cover the rest of the lifecycle.
 - `./bin/pan involvement`, `./bin/pan verification [<run-id>]`, and `./bin/pan verification <run-id> set <level>` inspect gate profiles and verification levels, and change the level of a run already in flight.
 - `./bin/pan repository-check <profile> [--timeout-ms <ms>] [--worktree <name>]` runs a configured verification profile; `./bin/pan repository-check validate --json` validates the profile file without executing its commands.

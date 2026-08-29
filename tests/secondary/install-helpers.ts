@@ -10,6 +10,8 @@ import {
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
+import { cloneTree } from '../helpers.js'
+
 export const REPO_ROOT = process.cwd()
 export const INSTALLER = path.join(REPO_ROOT, 'bin', 'install')
 export const CURRENT_VERSION = readFileSync(
@@ -187,11 +189,7 @@ export function cloneInstalledProject(): string {
   const template = installedProjectTemplate()
   const project = mkdtempSync(path.join(tmpdir(), 'pancreator-embed-'))
 
-  try {
-    execFileSync('cp', ['-Rc', `${template}/.`, project])
-  } catch {
-    cpSync(template, project, { recursive: true, verbatimSymlinks: true })
-  }
+  cloneTree(template, project, { verbatimSymlinks: true })
 
   return project
 }
@@ -205,8 +203,6 @@ export function gitInit(project: string): void {
 // Building the release fixture copies the repository and commits it twice —
 // seconds of work every consuming test used to pay. The template is built
 // once per process and each createReleaseFixture() call hands out a clone.
-// macOS `cp -c` uses clonefile for a copy-on-write clone including `.git`;
-// any failure falls back to a regular recursive copy.
 let releaseFixtureTemplate: string | null = null
 
 export function createReleaseFixture(): string {
@@ -216,11 +212,7 @@ export function createReleaseFixture(): string {
 
   const fixture = mkdtempSync(path.join(tmpdir(), 'pancreator-release-source-'))
 
-  try {
-    execFileSync('cp', ['-Rc', `${releaseFixtureTemplate}/.`, fixture])
-  } catch {
-    cpSync(releaseFixtureTemplate, fixture, { recursive: true })
-  }
+  cloneTree(releaseFixtureTemplate, fixture)
 
   return fixture
 }

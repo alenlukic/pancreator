@@ -5,7 +5,12 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 npm run format:check
-npm run typecheck
+
+# The emitting build type-checks the identical program (same tsconfig include
+# set), so a fresh build stamp already proves what tsc --noEmit would.
+if ! "$ROOT/bin/build" --stamp-fresh; then
+  npm run typecheck
+fi
 
 for script in "$ROOT/bin"/*; do
   if [[ ! -f "$script" ]]; then
