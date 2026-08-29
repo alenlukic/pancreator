@@ -135,3 +135,39 @@ test('a run snapshot preserves its exact persona model strings', () => {
     snapshot.personas.reviewer,
   )
 })
+
+test('an empty named-config mapping inherits the default and an empty default is rejected', () => {
+  const file = parsePipelineConfig({
+    schema_version: 1,
+    active_config: 'advanced',
+    defaults: {
+      coder: 'default-coder',
+      remediator: 'default-remediator',
+    },
+    configs: {
+      advanced: {
+        personas: {
+          coder: 'advanced-coder',
+          remediator: '',
+        },
+      },
+    },
+  })
+
+  assert.deepEqual(resolveConfigPersonas(file, 'advanced'), {
+    coder: 'advanced-coder',
+    remediator: 'default-remediator',
+  })
+  assert.deepEqual(file.configs.advanced.personas, { coder: 'advanced-coder' })
+
+  assert.throws(
+    () =>
+      parsePipelineConfig({
+        schema_version: 1,
+        active_config: 'advanced',
+        defaults: { coder: '' },
+        configs: { advanced: { personas: {} } },
+      }),
+    /config\.json\.defaults\.coder MUST be a non-empty model string/u,
+  )
+})
