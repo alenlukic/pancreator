@@ -12,14 +12,15 @@ import test from 'node:test'
 
 import {
   createRun,
-  decideRun,
   getRunState,
   prepareInvocation,
   setRunStage,
   submitOutput,
 } from '../../src/lib/engine.js'
+import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
 import { runRepositoryCheck } from '../../src/lib/repository-checks.js'
-import { createWorktree } from '../../src/lib/worktrees.js'
+import { runDir } from '../../src/lib/state.js'
+import { evaluateDeterministicCriteria } from '../../src/lib/validation.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
@@ -27,6 +28,8 @@ import {
   writeCanonicalDelegation,
   writeJson,
 } from '../helpers.js'
+
+import { worktreeCheckpoint } from './worktree-helpers.js'
 
 function makeNestedRepo(root: string, relative: string): string {
   const repo = path.join(root, relative)
@@ -45,31 +48,9 @@ function makeNestedRepo(root: string, relative: string): string {
   return repo
 }
 
-test('init --workspace records the deliverable repo and surfaces it on the card', () => {
-  const root = createFixture()
-
-  makeNestedRepo(root, 'nested/project')
-
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Targeted run',
-    workspace: 'nested/project',
-  })
-
-  assert.equal(state.workspace_root, 'nested/project')
-
-  const prepared = prepareInvocation(root, state.run_id)
-
-  assert.ok(prepared.invocation)
-  assert.equal(prepared.invocation.workspace_root, 'nested/project')
-})
-
 test('repository checks run in an explicitly targeted workspace', () => {
-  const root = createFixture()
-  const worktree = createWorktree(root, 'alpha', {
-    description: 'Alpha worktree',
-  })
+  const { root, worktrees } = worktreeCheckpoint('single')
+  const worktree = worktrees.alpha
 
   writeJson(path.join(root, 'runtime/repository-checks.json'), {
     schema_version: 1,
@@ -88,10 +69,8 @@ test('repository checks run in an explicitly targeted workspace', () => {
 })
 
 test('pre-implementation baselines use the run workspace', () => {
-  const root = createFixture()
-  const worktree = createWorktree(root, 'baseline-target', {
-    description: 'Baseline worktree',
-  })
+  const { root, worktrees } = worktreeCheckpoint('single')
+  const worktree = worktrees.alpha
   const state = createRun(root, {
     workflowSlug: 'delivery',
     requestPath: 'request.md',
@@ -132,6 +111,9 @@ test('pre-implementation baselines use the run workspace', () => {
   )
 })
 
+// createRun snapshots the override file into state; the gate evaluator then
+// decides per shell criterion, so the evaluator is exercised directly on the
+// implement stage instead of through a plan and an implement submission.
 test('gate overrides replace and disable deterministic shell gates', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'delivery')
@@ -147,49 +129,33 @@ test('gate overrides replace and disable deterministic shell gates', () => {
     title: 'Gate override run',
     gatesPath: 'gates.json',
   })
-  const runId = state.run_id
 
   assert.deepEqual(state.gate_overrides, {
     'implement.lint': 'true',
     'implement.unit_tests': false,
   })
 
-  for (const stageSlug of ['plan', 'implement']) {
-    const prepared = prepareInvocation(root, runId)
-    const invocation = prepared.invocation
+  const stage = stageBySlug(workflow, 'implement')
+  const { results } = evaluateDeterministicCriteria(
+    root,
+    runDir(root, state.run_id),
+    state,
+    stage,
+    gitWorkspaceSnapshot(root),
+    root,
+    state.gate_overrides ?? {},
+  )
+  const overridden = results.find((item) => item.id === 'implement.lint')
+  const disabled = results.find((item) => item.id === 'implement.unit_tests')
 
-    assert.ok(invocation)
-
-    const stage = stageBySlug(workflow, stageSlug)
-    const output = makeOutput(root, invocation, stage)
-
-    writeJson(path.join(root, invocation.output.path), output)
-
-    if (stage.persona !== 'orchestrator') {
-      writeCanonicalDelegation(root, invocation)
-    }
-
-    const submitted = submitOutput(root, runId, invocation.output.path)
-
-    if (stageSlug === 'plan') {
-      decideRun(root, runId, 'approve', 'fixture approval')
-    } else {
-      const overridden = submitted.record.evaluation.deterministic.find(
-        (item) => item.id === 'implement.lint',
-      )
-      const disabled = submitted.record.evaluation.deterministic.find(
-        (item) => item.id === 'implement.unit_tests',
-      )
-
-      assert.ok(overridden)
-      assert.equal(overridden.overridden, true)
-      assert.equal(overridden.command, 'true')
-      assert.ok(disabled)
-      assert.equal(disabled.disabled, true)
-      assert.equal(disabled.passed, true)
-      assert.equal(submitted.record.outcome, 'success')
-    }
-  }
+  assert.ok(overridden)
+  assert.equal(overridden.overridden, true)
+  assert.equal(overridden.command, 'true')
+  assert.equal(overridden.passed, true)
+  assert.ok(disabled)
+  assert.equal(disabled.disabled, true)
+  assert.equal(disabled.passed, true)
+  assert.ok(results.every((item) => item.passed))
 })
 
 test('scope guard catches edits inside the targeted nested repo during a non-source stage', () => {
@@ -205,11 +171,15 @@ test('scope guard catches edits inside the targeted nested repo during a non-sou
   })
   const runId = state.run_id
 
+  // init --workspace records the deliverable repo and surfaces it on the card.
+  assert.equal(state.workspace_root, 'nested/project')
+
   const prepared = prepareInvocation(root, runId)
   const invocation = prepared.invocation
 
   assert.ok(invocation)
   assert.equal(invocation.stage.slug, 'plan')
+  assert.equal(invocation.workspace_root, 'nested/project')
 
   appendFileSync(path.join(repo, 'README.md'), 'unapproved edit\n')
 

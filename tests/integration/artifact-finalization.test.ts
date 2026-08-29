@@ -3,26 +3,23 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import {
-  abortRun,
-  createRun,
-  getRunState,
-  prepareInvocation,
-} from '../../src/lib/engine.js'
+import { abortRun, getRunState } from '../../src/lib/engine.js'
 import { loadState, loadStateRevision } from '../../src/lib/state.js'
-import { createFixture } from '../helpers.js'
+import { checkpoint } from './delivery-helpers.js'
 
 test('aborting a run finalizes artifact numbering and layout', () => {
-  const root = createFixture()
-  const created = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-  })
-  const runId = created.run_id
-  const prepared = prepareInvocation(root, runId)
+  const { root, runId, state, invocation } = checkpoint(
+    'delivery@plan-prepared',
+  )
 
-  assert.ok(prepared.invocation)
-  assert.match(prepared.invocation.invocation_id, /^99_plan-1_/u)
+  assert.ok(invocation)
+  assert.match(invocation.invocation_id, /^99_plan-1_/u)
+
+  // The prepared-invocation revision embeds the 99_-prefixed invocation id
+  // that finalization renames. Rewriting the revision artifact's content
+  // would invalidate its recorded digest and brick loadState/loadStateRevision
+  // for the closed run.
+  const preparedRevision = state.revision
 
   const canceled = abortRun(root, runId, 'operator canceled')
   const persisted = getRunState(root, runId)
@@ -45,26 +42,6 @@ test('aborting a run finalizes artifact numbering and layout', () => {
     readFileSync(path.join(agentDirectory, 'events.jsonl'), 'utf8'),
     /"type":"workflow_artifacts_finalized"/u,
   )
-})
-
-test('finalization preserves content-addressed state revisions', () => {
-  const root = createFixture()
-  const created = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-  })
-  const runId = created.run_id
-  const prepared = prepareInvocation(root, runId)
-
-  assert.ok(prepared.invocation)
-
-  // The prepared-invocation revision embeds the 99_-prefixed invocation id
-  // that finalization renames. Rewriting the revision artifact's content
-  // would invalidate its recorded digest and brick loadState/loadStateRevision
-  // for the closed run.
-  const preparedRevision = getRunState(root, runId).revision
-
-  abortRun(root, runId, 'operator canceled')
 
   const reloaded = loadState(root, runId)
 

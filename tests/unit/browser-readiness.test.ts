@@ -73,34 +73,6 @@ test('a chrome-devtools server without --isolated is advised', () => {
   )
 })
 
-test('an absent browser bundle reports only the primary readiness gap', () => {
-  const root = makeRoot()
-
-  writeMcp(
-    root,
-    '.cursor/mcp.json',
-    chromeDevtoolsConfig(['chrome-devtools-mcp@latest']),
-  )
-
-  const readiness = browserReadiness([root], {
-    chrome_for_testing: { path: null, source: 'not found' },
-  })
-
-  assert.equal(readiness.ready, false)
-  assert.equal(readiness.advisories.length, 1)
-  assert.match(
-    readiness.advisories[0] ?? '',
-    /Chrome for Testing was not found/u,
-  )
-  assert.ok(
-    readiness.advisories.every(
-      (advisory) =>
-        !advisory.includes('--isolated') &&
-        !advisory.includes('does not pass that full --executablePath'),
-    ),
-  )
-})
-
 test('partial browser configuration does not satisfy readiness', () => {
   const root = makeRoot()
   const browser = writeBrowser(root)

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -17,6 +18,20 @@ import {
   type WorktreeIndex,
 } from '../../src/lib/worktrees.js'
 import { createFixture, writeJson } from '../helpers.js'
+
+const MINIMAL_CONFIG = { schema_version: 1 }
+
+/**
+ * Bare root for the config and index helpers, which read only config.json
+ * and the operator worktree index; no repository clone is needed.
+ */
+function scratchRoot(): string {
+  const root = mkdtempSync(path.join(tmpdir(), 'pan-worktrees-'))
+
+  writeJson(path.join(root, 'config.json'), MINIMAL_CONFIG)
+
+  return root
+}
 
 test('worktree names use lowercase words with single hyphens', () => {
   assert.equal(isWorktreeName('feature-one'), true)
@@ -50,12 +65,9 @@ test('worktree config uses defaults and local overrides', () => {
 })
 
 test('project config rejects malformed worktree settings', () => {
-  const root = createFixture()
+  const root = scratchRoot()
   const configPath = path.join(root, 'config.json')
-  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
-    string,
-    unknown
-  >
+  const config: Record<string, unknown> = MINIMAL_CONFIG
 
   const rejected: Array<[unknown, RegExp]> = [
     ['runtime/worktrees', /config\.json\.worktrees MUST be an object/u],
@@ -99,7 +111,7 @@ test('project config rejects malformed worktree settings', () => {
 })
 
 test('worktree index round-trips through its atomic writer', () => {
-  const root = createFixture()
+  const root = scratchRoot()
   const index: WorktreeIndex = {
     schema_version: 1,
     worktrees: [
@@ -131,7 +143,7 @@ test('worktree index round-trips through its atomic writer', () => {
 })
 
 test('reconcile validates its target and source arguments before any merge', () => {
-  const root = createFixture()
+  const root = scratchRoot()
 
   assert.throws(
     () => reconcileWorktrees(root, {}, ['one', 'two']),
@@ -160,7 +172,7 @@ test('reconcile validates its target and source arguments before any merge', () 
 })
 
 test('workspace specifiers pass paths through and resolve recorded names', () => {
-  const root = createFixture()
+  const root = scratchRoot()
 
   assert.equal(
     resolveWorkspacePathOrWorktree(root, 'nested/project'),
@@ -214,17 +226,9 @@ test('legacy operator index remains active when the current index is absent', ()
   })
 
   assert.deepEqual(readWorktreeIndex(root).worktrees[0]?.name, 'legacy-one')
-})
 
-test('dual default operator indexes fail with a stable conflict error', () => {
-  const root = createFixture()
-  const legacyIndexPath = path.join(
-    root,
-    'runtime',
-    'worktrees',
-    'operator',
-    'index.json',
-  )
+  // Once the current index also exists, the ambiguity is a stable conflict
+  // error rather than a silent preference.
   const currentIndexPath = path.join(
     root,
     'worktrees',
@@ -232,9 +236,7 @@ test('dual default operator indexes fail with a stable conflict error', () => {
     'index.json',
   )
 
-  mkdirSync(path.dirname(legacyIndexPath), { recursive: true })
   mkdirSync(path.dirname(currentIndexPath), { recursive: true })
-  writeJson(legacyIndexPath, { schema_version: 1, worktrees: [] })
   writeJson(currentIndexPath, { schema_version: 1, worktrees: [] })
 
   assert.throws(

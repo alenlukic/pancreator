@@ -8,51 +8,65 @@ import {
 } from '../../src/lib/executors/mapping.js'
 
 test('a plain model string parses as a cursor mapping', () => {
-  const mapping = parsePersonaMapping(
-    'gpt-5.6-sol[context=272k,effort=high,fast=false]',
-  )
+  const cases: {
+    spec: string
+    executor: string
+    model: string
+    model_spec: string
+    options: Record<string, string>
+  }[] = [
+    {
+      spec: 'gpt-5.6-sol[context=272k,effort=high,fast=false]',
+      executor: 'cursor',
+      model: 'gpt-5.6-sol',
+      model_spec: 'gpt-5.6-sol[context=272k,effort=high,fast=false]',
+      options: { context: '272k', effort: 'high', fast: 'false' },
+    },
+    // Bare and empty-option cursor mappings parse unchanged.
+    {
+      spec: 'auto',
+      executor: 'cursor',
+      model: 'auto',
+      model_spec: 'auto',
+      options: {},
+    },
+    {
+      spec: 'kimi-k3[]',
+      executor: 'cursor',
+      model: 'kimi-k3',
+      model_spec: 'kimi-k3[]',
+      options: {},
+    },
+    // A claude-code mapping parses executor, model, and options.
+    {
+      spec: 'claude-code:claude-opus-5[permission-mode=default,session-resume=true]',
+      executor: 'claude-code',
+      model: 'claude-opus-5',
+      model_spec: 'claude-opus-5[permission-mode=default,session-resume=true]',
+      options: { 'permission-mode': 'default', 'session-resume': 'true' },
+    },
+    // An explicit cursor prefix is accepted and stripped from the model spec.
+    {
+      spec: 'cursor:composer-2.5[fast=false]',
+      executor: 'cursor',
+      model: 'composer-2.5',
+      model_spec: 'composer-2.5[fast=false]',
+      options: { fast: 'false' },
+    },
+  ]
 
-  assert.equal(mapping.executor, 'cursor')
-  assert.equal(
-    mapping.model_spec,
-    'gpt-5.6-sol[context=272k,effort=high,fast=false]',
-  )
-  assert.equal(mapping.model, 'gpt-5.6-sol')
-  assert.deepEqual(mapping.options, {
-    context: '272k',
-    effort: 'high',
-    fast: 'false',
-  })
-})
+  for (const expected of cases) {
+    const mapping = parsePersonaMapping(expected.spec)
+    assert.equal(mapping.executor, expected.executor, expected.spec)
+    assert.equal(mapping.model, expected.model, expected.spec)
+    assert.equal(mapping.model_spec, expected.model_spec, expected.spec)
+    assert.deepEqual(mapping.options, expected.options, expected.spec)
+  }
 
-test('bare and empty-option cursor mappings parse unchanged', () => {
-  assert.equal(parsePersonaMapping('auto').model, 'auto')
-  assert.deepEqual(parsePersonaMapping('kimi-k3[]').options, {})
-  assert.equal(parsePersonaMapping('kimi-k3[]').model_spec, 'kimi-k3[]')
-})
-
-test('a claude-code mapping parses executor, model, and options', () => {
-  const mapping = parsePersonaMapping(
-    'claude-code:claude-opus-5[permission-mode=default,session-resume=true]',
-  )
-
-  assert.equal(mapping.executor, 'claude-code')
-  assert.equal(mapping.model, 'claude-opus-5')
-  assert.equal(
-    mapping.model_spec,
-    'claude-opus-5[permission-mode=default,session-resume=true]',
-  )
-  assert.deepEqual(mapping.options, {
-    'permission-mode': 'default',
-    'session-resume': 'true',
-  })
-})
-
-test('an explicit cursor prefix is accepted and stripped from the model spec', () => {
-  const mapping = parsePersonaMapping('cursor:composer-2.5[fast=false]')
-
-  assert.equal(mapping.executor, 'cursor')
-  assert.equal(mapping.model_spec, 'composer-2.5[fast=false]')
+  // personaExecutorOf resolves the executor without full validation.
+  assert.equal(personaExecutorOf('claude-opus-5[thinking=true]'), 'cursor')
+  assert.equal(personaExecutorOf('claude-code:claude-opus-5'), 'claude-code')
+  assert.equal(personaExecutorOf('cursor:auto'), 'cursor')
 })
 
 test('unknown executor prefixes are rejected against the closed set', () => {
@@ -136,10 +150,4 @@ test('canonical mapping compares specs order-insensitively without renaming keys
     canonicalPersonaMapping('claude-code:claude-opus-5[permission-mode=plan]'),
     'claude-code:claude-opus-5[permission-mode=plan]',
   )
-})
-
-test('personaExecutorOf resolves the executor without full validation', () => {
-  assert.equal(personaExecutorOf('claude-opus-5[thinking=true]'), 'cursor')
-  assert.equal(personaExecutorOf('claude-code:claude-opus-5'), 'claude-code')
-  assert.equal(personaExecutorOf('cursor:auto'), 'cursor')
 })

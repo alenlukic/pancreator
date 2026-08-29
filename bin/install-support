@@ -76,7 +76,7 @@ const GUIDANCE_DIGEST_BASIS =
 // Installer-time mirror of src/lib/cursor-content.ts. The installer runs before
 // the staged payload is built, so it cannot import the compiled module.
 // `tests/unit/projection.test.ts` pins the compiled behavior and
-// `tests/integration/embedded-installation.test.ts` pins this one; keep the two
+// `tests/secondary/embedded-installation.test.ts` pins this one; keep the two
 // in step when either changes.
 function projectCursorContent(
   content,

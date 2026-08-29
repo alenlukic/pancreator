@@ -73,95 +73,58 @@ test('every standalone mode renders a card with its policies inlined', () => {
           `${name} card omits an instruction of ${policy.id}`,
         )
       }
+
+      // Guidance references render as a heading, a read trigger, and a digest;
+      // the guidance body itself stays out of the card.
+      for (const guidance of policy.guidance ?? []) {
+        if (!guidance.reference) continue
+
+        assert.ok(
+          written.includes(
+            `### Guidance reference · \`${guidance.source_path}\``,
+          ),
+          `${name} card omits the ${policy.id} guidance reference heading`,
+        )
+        assert.ok(
+          written.includes(`Read when: ${guidance.reference.read_trigger}`),
+          `${name} card omits the ${policy.id} read trigger`,
+        )
+        assert.ok(
+          written.includes(`sha256:${guidance.reference.content_sha256}`),
+          `${name} card omits the ${policy.id} guidance digest`,
+        )
+        assert.ok(
+          !written.includes(guidance.content),
+          `${name} card inlines the ${policy.id} guidance body`,
+        )
+      }
     }
   }
-})
 
-test('the best-of-N card flattens child supervision to stage workers', () => {
-  const root = createFixture()
-  const card = buildGovernanceCard(root, {
-    mode: 'best-of-n',
-    outputPath: 'runtime/inbox/best-of-n-card.md',
-  })
+  // The remediation modes carry their procedure documents by reference.
+  for (const [name, policyId, sourcePath] of [
+    ['spotfix', 'SPOT-001', 'library/skills/spotfix.md'],
+    ['shepherd', 'SHEPHERD-001', 'library/skills/shepherd-pr.md'],
+  ]) {
+    const card = buildGovernanceCard(root, {
+      mode: name,
+      outputPath: `runtime/inbox/${name}-procedure-card.md`,
+    })
+    const policy = card.policies.find((item) => item.id === policyId)
 
-  assert.match(
-    card.markdown,
-    /directly perform supervisor mechanics for every child run/u,
-  )
-  assert.match(
-    card.markdown,
-    /MUST NOT delegate a child run to another `pan-orchestrator`/u,
-  )
-  assert.match(
-    card.markdown,
-    /run-scoped worker agents with foreground, blocking calls/u,
-  )
-  assert.match(
-    card.markdown,
-    /terminal candidate failures without creating an operator gate/u,
-  )
-  assert.doesNotMatch(card.markdown, /operator's top-level agent/u)
-})
+    assert.ok(policy, `${name} must resolve ${policyId}`)
 
-test('the spotfix card references the spotfix procedure guidance', () => {
-  const root = createFixture()
-  const card = buildGovernanceCard(root, {
-    mode: 'spotfix',
-    outputPath: 'runtime/inbox/spotfix-card.md',
-  })
-  const spotfix = card.policies.find((policy) => policy.id === 'SPOT-001')
+    const guidance = (policy.guidance ?? [])[0]
 
-  assert.ok(spotfix)
-
-  const guidance = (spotfix.guidance ?? [])[0]
-
-  assert.ok(guidance, 'SPOT-001 must carry its procedure reference')
-  assert.ok(guidance.reference)
-
-  const written = readFileSync(path.join(root, card.path), 'utf8')
-
-  // The card points at library/skills/spotfix.md and keeps the body out.
-  assert.match(
-    written,
-    /### Guidance reference · `library\/skills\/spotfix\.md`/u,
-  )
-  assert.ok(written.includes(`Read when: ${guidance.reference.read_trigger}`))
-  assert.ok(written.includes(`sha256:${guidance.reference.content_sha256}`))
-  assert.ok(!written.includes(guidance.content))
-})
-
-test('the shepherd card resolves coder governance and references the procedure', () => {
-  const root = createFixture()
-  const card = buildGovernanceCard(root, {
-    mode: 'shepherd',
-    outputPath: 'runtime/inbox/shepherd-card.md',
-  })
-  const ids = card.policies.map((policy) => policy.id)
-
-  // The shepherd implements accepted feedback, so the coder's engineering
-  // governance must ride along with the loop procedure itself.
-  assert.ok(ids.includes('SHEPHERD-001'))
-  assert.ok(ids.includes('ENG-001'))
-  assert.ok(ids.includes('ACTION-001'))
-
-  const shepherd = card.policies.find((policy) => policy.id === 'SHEPHERD-001')
-
-  assert.ok(shepherd)
-
-  const guidance = (shepherd.guidance ?? [])[0]
-
-  assert.ok(guidance, 'SHEPHERD-001 must carry its procedure reference')
-  assert.ok(guidance.reference)
-
-  const written = readFileSync(path.join(root, card.path), 'utf8')
-
-  assert.match(
-    written,
-    /### Guidance reference · `library\/skills\/shepherd-pr\.md`/u,
-  )
-  assert.ok(written.includes(`Read when: ${guidance.reference.read_trigger}`))
-  assert.ok(!written.includes(guidance.content))
-  assert.match(written, /head branch/u)
+    assert.ok(guidance, `${policyId} must carry its procedure reference`)
+    assert.ok(guidance.reference)
+    assert.equal(guidance.source_path, sourcePath)
+    assert.ok(
+      readFileSync(path.join(root, card.path), 'utf8').includes(
+        `### Guidance reference · \`${sourcePath}\``,
+      ),
+    )
+  }
 })
 
 test('the shared worktree option resolves or creates the card workspace', () => {
@@ -201,15 +164,6 @@ test('the shared worktree option resolves or creates the card workspace', () => 
   assert.doesNotMatch(plain.markdown, /Workspace worktree/u)
 })
 
-test('an unknown mode lists the available modes', () => {
-  const root = createFixture()
-
-  assert.throws(
-    () => buildGovernanceCard(root, { mode: 'nonsense' }),
-    /Available: best-of-n, decomposition, investigation, pair, repair, review, shepherd, spotfix/u,
-  )
-})
-
 test('a missing operator input is reported rather than silently omitted', () => {
   const root = createFixture()
 
@@ -221,7 +175,16 @@ test('a missing operator input is reported rather than silently omitted', () => 
       }),
     /Operator input does not exist/u,
   )
+
+  // An unknown mode lists the available modes.
+  assert.throws(
+    () => buildGovernanceCard(root, { mode: 'nonsense' }),
+    /Available: best-of-n, decomposition, investigation, pair, repair, review, shepherd, spotfix, unbound/u,
+  )
 })
+
+// Rehomed from the governance branch at integration: these cases prove
+// rules that branch adds and have no other home in the consolidated suite.
 
 test('the review card resolves reviewer governance and references the squad', () => {
   const root = createFixture()
@@ -257,6 +220,27 @@ test('the review card resolves reviewer governance and references the squad', ()
   assert.ok(!written.includes(guidance.content))
 })
 
+test('the review command routes through the card and the coordinator', () => {
+  const command = readFileSync(
+    path.join(process.cwd(), 'library/cursor/commands/pan-review.md'),
+    'utf8',
+  )
+
+  // Without these three the command is prose: the card resolves governance,
+  // the capture is what every dimension agent reads, and the coordinator is
+  // the only thing the session is allowed to spawn.
+  assert.match(command, /governance card --mode review/u)
+  assert.match(command, /review-target\.diff/u)
+  assert.match(command, /pan-shepherd-reviewer/u)
+  assert.match(command, /REVIEW-001/u)
+  // The command reviews any ref from any checkout, so it has to say how the
+  // reviewing agents end up reading the tree the diff applies to.
+  assert.match(command, /worktree create <name> --from <target-head>/u)
+  // The squad must not grade the files that define how it grades.
+  assert.match(command, /governance review-scope --target/u)
+  assert.match(command, /pan-reviewer/u)
+})
+
 test('the review mode is bound to no run and edits nothing', () => {
   const mode = STANDALONE_MODES.review
 
@@ -280,27 +264,6 @@ test('the review mode is bound to no run and edits nothing', () => {
     ),
     'the coordinator alone owns the verdict',
   )
-})
-
-test('the review command routes through the card and the coordinator', () => {
-  const command = readFileSync(
-    path.join(process.cwd(), 'library/cursor/commands/pan-review.md'),
-    'utf8',
-  )
-
-  // Without these three the command is prose: the card resolves governance,
-  // the capture is what every dimension agent reads, and the coordinator is
-  // the only thing the session is allowed to spawn.
-  assert.match(command, /governance card --mode review/u)
-  assert.match(command, /review-target\.diff/u)
-  assert.match(command, /pan-shepherd-reviewer/u)
-  assert.match(command, /REVIEW-001/u)
-  // The command reviews any ref from any checkout, so it has to say how the
-  // reviewing agents end up reading the tree the diff applies to.
-  assert.match(command, /worktree create <name> --from <target-head>/u)
-  // The squad must not grade the files that define how it grades.
-  assert.match(command, /governance review-scope --target/u)
-  assert.match(command, /pan-reviewer/u)
 })
 
 test('the review policy binds the workspace to the target head', () => {

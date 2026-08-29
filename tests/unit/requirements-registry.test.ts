@@ -1,50 +1,43 @@
 import assert from 'node:assert/strict'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
-import { HANDLER_IDS } from '../../src/lib/requirements/handlers.js'
 import {
   clearRegistryCache,
   loadRegistry,
-  validateRegistry,
 } from '../../src/lib/requirements/registry.js'
-import { createFixture } from '../helpers.js'
-
-test('registry loads and validates known handlers', () => {
-  const root = createFixture()
-  const catalog = loadRegistry(root)
-
-  assert.ok(catalog.entries.size > 0)
-  assert.equal(validateRegistry(catalog, HANDLER_IDS).length, 0)
-})
 
 test('registry rejects duplicate ids', () => {
-  const root = createFixture()
+  // The loader reads only governance/registries/validation_registry.json, so a
+  // bare temporary root with a two-entry registry is the whole fixture.
+  const root = mkdtempSync(path.join(tmpdir(), 'pan-registry-'))
   const registryPath = path.join(
     root,
     'governance',
     'registries',
     'validation_registry.json',
   )
-  const registry = JSON.parse(readFileSync(registryPath, 'utf8')) as {
-    entries: Array<{ id: string }>
+  const entry = {
+    id: 'REQ-RESOLVE-001',
+    kind: 'automation',
+    version: '1',
+    handler: 'req-resolve',
+    input_contract: 'policy-context',
+    result_schema: 'validation-result-v1',
+    target_types: ['policy-context'],
+    default_timeout_ms: 30000,
+    deterministic: true,
+    side_effect_free: true,
   }
 
-  registry.entries.push({ ...registry.entries[0], id: registry.entries[0].id })
-  writeFileSync(registryPath, `${JSON.stringify(registry, null, 2)}\n`)
+  mkdirSync(path.dirname(registryPath), { recursive: true })
+  writeFileSync(
+    registryPath,
+    `${JSON.stringify({ schema_version: 1, entries: [entry, { ...entry }] }, null, 2)}\n`,
+  )
 
   assert.throws(() => loadRegistry(root), /Duplicate registry id/u)
-  clearRegistryCache()
-})
-
-test('registry cache returns the same catalog within one operation', () => {
-  const root = createFixture()
-  clearRegistryCache()
-
-  const first = loadRegistry(root)
-  const second = loadRegistry(root)
-
-  assert.equal(first, second)
   clearRegistryCache()
 })

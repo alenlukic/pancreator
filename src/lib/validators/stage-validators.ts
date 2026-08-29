@@ -571,7 +571,7 @@ function gitChangedFiles(root: string): GitDiffResult {
   return { ok: true, files: [...files] }
 }
 
-function isSpotfixDiffExempt(file: string): boolean {
+export function isSpotfixDiffExempt(file: string): boolean {
   if (file.endsWith('.md') || file.endsWith('.mdc')) {
     return true
   }

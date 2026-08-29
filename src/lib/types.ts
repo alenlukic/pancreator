@@ -1055,6 +1055,12 @@ export interface DeterministicResult {
    * workflow-declared repository-check profile.
    */
   verification_level?: string
+  /**
+   * Set when the gate accepted a cached clean pass of the same command at an
+   * unchanged workspace fingerprint instead of re-executing it. The evidence
+   * log records the provenance of the original execution.
+   */
+  cached?: boolean
   explanation?: string
   command?: string
   exit_code?: number | null

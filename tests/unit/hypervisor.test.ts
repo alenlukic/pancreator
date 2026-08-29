@@ -20,6 +20,7 @@ import {
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import type { AgentRecord, RunState } from '../../src/lib/types.js'
 import { createFixture } from '../helpers.js'
+import { checkpoint } from '../integration/delivery-helpers.js'
 
 const stalledObservation = {
   agent_id: 'agent-1',
@@ -146,16 +147,11 @@ test('hypervisor discovers the current Cursor subagent transcript', () => {
 })
 
 test('hypervisor observes an external executor session from run state', () => {
-  const root = createFixture()
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-  })
-  const invocation = prepareInvocation(root, state.run_id).invocation
+  const { root, runId, invocation } = checkpoint('delivery@plan-prepared')
 
   assert.ok(invocation)
 
-  const statePath = resolveRunLayout(root, state.run_id).state.absolute
+  const statePath = resolveRunLayout(root, runId).state.absolute
   const persisted = JSON.parse(readFileSync(statePath, 'utf8')) as RunState
 
   assert.ok(persisted.current_stage)
@@ -343,14 +339,7 @@ test('prepared invocation registration is idempotent and completable', () => {
 })
 
 test('redelivery refuses an invocation after workspace drift', () => {
-  const root = createFixture()
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-  })
-
-  prepareInvocation(root, state.run_id)
-
+  const { root } = checkpoint('delivery@plan-prepared')
   const agent = readAgentRegistry(root).agents[0]
 
   assert.ok(agent)

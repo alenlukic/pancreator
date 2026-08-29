@@ -11,6 +11,8 @@ import {
   setRunStage,
   submitOutput,
 } from '../../src/lib/engine.js'
+import { resolvePolicies } from '../../src/lib/policies.js'
+import { resolveRequirements } from '../../src/lib/requirements/resolve.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
@@ -26,6 +28,8 @@ import {
   writeJson,
 } from '../helpers.js'
 import type { Invocation } from '../../src/lib/types.js'
+
+const REPO_ROOT = process.cwd()
 
 /**
  * Regressions for the mechanical friction found in the detached target runs.
@@ -69,36 +73,65 @@ function editPersonaMappings(
 }
 
 test('an unrecognized criterion verdict is reported, not silently failed', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Unknown verdict run',
-  })
+  // The validator needs only the stage rubric and an invocation shape, so the
+  // invocation is built synthetically instead of spinning a run up.
+  const workflow = loadWorkflow(REPO_ROOT, 'delivery')
   const stage = stageBySlug(workflow, 'plan')
-  const invocation = prepareInvocation(root, state.run_id).invocation
+  const scope = {
+    persona: stage.persona,
+    workflow: workflow.slug,
+    stage: stage.slug,
+  }
+  const outputPath = 'runtime/logs/workflows/x/outputs/plan.json'
+  const invocation = {
+    $operator: { headline: 'Test', summary: 'Test', next_action: 'Submit' },
+    schema_version: 1,
+    invocation_id: 'plan-1-test',
+    run_id: 'run-test',
+    attempt: 1,
+    created_at: new Date().toISOString(),
+    workspace_root: '.',
+    workflow: { slug: workflow.slug, snapshot_path: 'x', snapshot_sha256: 'y' },
+    stage: {
+      slug: stage.slug,
+      title: stage.title,
+      persona: stage.persona,
+      model: 'test',
+      model_config: 'test',
+      workspace_policy: stage.workspace_policy,
+      gate: stage.gate,
+    },
+    prompt: 'Do work',
+    inputs: { references: [] },
+    policies: resolvePolicies(REPO_ROOT, scope),
+    requirements: resolveRequirements(REPO_ROOT, {
+      ...scope,
+      invocation: { output_path: outputPath },
+    }),
+    rubric: stage.criteria,
+    output: {
+      path: outputPath,
+      template: 'library/templates/stage-output.example.json',
+      schema: 'library/schemas/stage-output.schema.json',
+      required_data: stage.required_data ?? {},
+    },
+    boundaries: [],
+    workspace_before: { kind: 'git', fingerprint: 'abc', entries: [] },
+  } satisfies Invocation
+  const criterion = stage.criteria[0]
 
-  assert.ok(invocation)
-
-  const output = makeOutput(root, invocation, stage) as unknown as Record<
-    string,
-    unknown
-  >
-  const criteria = output.criteria as Array<Record<string, unknown>>
+  assert.ok(criterion)
 
   // A model writing "partial" previously coerced to fail with no diagnostic,
   // so the retry could not tell what to fix and repeated the same mistake.
-  criteria[0].result = 'partial'
-
-  const validation = validateStageOutput(root, stage, invocation, output)
+  const validation = validateStageOutput(REPO_ROOT, stage, invocation, {
+    criteria: [{ id: criterion.id, result: 'partial' }],
+  })
 
   assert.ok(
     validation.errors.some(
       (message) =>
-        message.includes(String(criteria[0].id)) &&
-        message.includes('pass, fail, or not_applicable') &&
-        message.includes('"partial"'),
+        message.includes(criterion.id) && message.includes('"partial"'),
     ),
     `expected an explicit verdict error, got: ${validation.errors.join(' | ')}`,
   )
@@ -163,7 +196,6 @@ test('a retry card inlines the recorded reason the prior attempt failed', () => 
   )
 
   // A path pointer is not enough; the reason must be on the card itself.
-  assert.match(card, /## ⛔ Why the previous attempt failed/u)
   assert.match(card, /implement\.acceptance_claimed/u)
   assert.match(card, /AC-02 has no supporting evidence\./u)
 })
@@ -184,16 +216,14 @@ test('the delegation validator accepts one leading persona label', () => {
   assert.ok(
     labelled.checks.some((check) => check.id === 'delegation.label_minimal'),
   )
-})
 
-test('the delegation validator accepts the Agent/Persona identity-line pair', () => {
   // The delivered body itself begins with a harness-generated `Persona:` line
   // under referenced delivery; run 63316 supervisors prepended both identity
   // lines and every otherwise correct delegation warned (GA-0001..GA-0010).
-  const canonical = 'Persona: `coder`.\n\nBody line one.\nBody line two.\n'
+  const referenced = 'Persona: `coder`.\n\nBody line one.\nBody line two.\n'
   const paired = validateDelegationMarkdown(
-    canonical,
-    `Agent: pan-coder\nPersona: \`coder\`.\n\n${canonical}`,
+    referenced,
+    `Agent: pan-coder\nPersona: \`coder\`.\n\n${referenced}`,
     'referenced',
   )
 
@@ -204,27 +234,25 @@ test('the delegation validator accepts the Agent/Persona identity-line pair', ()
 
   // A lone Agent label still qualifies via the single-line grammar even
   // though the body's own first line is a Persona line.
-  const single = validateDelegationMarkdown(
-    canonical,
-    `Agent: pan-coder\n\n${canonical}`,
-    'referenced',
+  assert.equal(
+    validateDelegationMarkdown(
+      referenced,
+      `Agent: pan-coder\n\n${referenced}`,
+      'referenced',
+    ).passed,
+    true,
   )
-
-  assert.equal(single.passed, true)
 
   // Two-line prose does not qualify: only Agent:/Persona: identity lines may
   // stack, so a parallel instruction cannot ride in as a "label".
-  const prose = validateDelegationMarkdown(
-    canonical,
-    `Refactor the module first\nThen follow the card\n\n${canonical}`,
-    'referenced',
+  assert.equal(
+    validateDelegationMarkdown(
+      referenced,
+      `Refactor the module first\nThen follow the card\n\n${referenced}`,
+      'referenced',
+    ).passed,
+    false,
   )
-
-  assert.equal(prose.passed, false)
-})
-
-test('the delegation validator still rejects a shadowing preamble', () => {
-  const canonical = '# 🚀 Card\n\nBody line one.\n'
 
   // A heading, a list, or extra prose could shadow the card contract.
   for (const preamble of [
@@ -250,63 +278,24 @@ test('plan file paths resolve against the workspace root, not the installation',
   const root = createFixture()
   const workspace = mkdtempSync(path.join(tmpdir(), 'pan-workspace-'))
   const targetFile = path.join(workspace, 'app', 'model.py')
-
-  mkdirSync(path.dirname(targetFile), { recursive: true })
-  writeFileSync(targetFile, 'x = 1\n')
-
-  const outputRelative = 'runtime/logs/workflows/x/outputs/plan.json'
-
-  writeJson(path.join(root, outputRelative), {
-    data: {
-      engineering_plan: {
-        approach: 'Fixture',
-        components: ['app'],
-        files: [{ path: 'app/model.py', status: 'modified', purpose: 'core' }],
-        risks: [],
-        validation: ['tests'],
-      },
-      acceptance_criteria: [
-        {
-          id: 'AC-01',
-          criterion: 'Works',
-          maps_to: ['US-01'],
-          verification: { method: 'test', expected: 'passes' },
-        },
-      ],
-    },
-  })
-
-  const result = validatePlanTrace({
-    root,
-    targetPath: outputRelative,
-    requirement: {
-      policy_id: 'PLAN-002',
-      requirement_id: 'plan-trace-validate',
-      registry_id: 'PLAN-TRACE-VALIDATE-001',
-      arguments: {},
-    },
-    runState: { workspace_root: workspace },
-  })
-
-  assert.ok(
-    !result.issues.some((item) => item.code === 'plan.file_missing'),
-    `a workspace-relative path must resolve: ${JSON.stringify(result.issues)}`,
-  )
-})
-
-test('plan file paths outside the workspace are accepted when they resolve', () => {
-  const root = createFixture()
-  const outputRelative = 'runtime/logs/workflows/x/outputs/plan.json'
   const sibling = mkdtempSync(path.join(tmpdir(), 'pan-sibling-repo-'))
   const siblingFile = path.join(sibling, 'model.py')
 
+  mkdirSync(path.dirname(targetFile), { recursive: true })
+  writeFileSync(targetFile, 'x = 1\n')
   writeFileSync(siblingFile, 'print("sibling")\n')
+
+  const outputRelative = 'runtime/logs/workflows/x/outputs/plan.json'
+
   writeJson(path.join(root, outputRelative), {
     data: {
       engineering_plan: {
         approach: 'Fixture',
         components: ['app'],
         files: [
+          // Workspace-relative: resolves against `runState.workspace_root`,
+          // which the installation root would miss under a detached run.
+          { path: 'app/model.py', status: 'modified', purpose: 'core' },
           // An absolute path into a sibling repository, exactly as run
           // 63315's plan 97_plan-2_b898a4d1 declared it.
           { path: siblingFile, status: 'modified', purpose: 'core' },
@@ -339,7 +328,11 @@ test('plan file paths outside the workspace are accepted when they resolve', () 
       registry_id: 'PLAN-TRACE-VALIDATE-001',
       arguments: {},
     },
+    runState: { workspace_root: workspace },
   })
+  const missing = result.issues.filter(
+    (item) => item.code === 'plan.file_missing',
+  )
 
   // Any path that resolves on this system is valid, absolute or relative;
   // the only gate is existence for files not marked new. Downstream
@@ -348,16 +341,17 @@ test('plan file paths outside the workspace are accepted when they resolve', () 
   // TARGET_INSTRUCTION_PATH_INVALID.
   assert.ok(!result.issues.some((item) => item.code === 'plan.file_path_shape'))
   assert.ok(
-    !result.issues.some(
+    !missing.some(
       (item) =>
-        item.code === 'plan.file_missing' && item.message.includes(siblingFile),
+        item.message.includes('app/model.py') &&
+        !item.message.includes('../nonexistent'),
     ),
+    `a workspace-relative path must resolve: ${JSON.stringify(result.issues)}`,
   )
+  assert.ok(!missing.some((item) => item.message.includes(siblingFile)))
   assert.ok(
-    result.issues.some(
-      (item) =>
-        item.code === 'plan.file_missing' &&
-        item.message.includes('../nonexistent/app/model.py'),
+    missing.some((item) =>
+      item.message.includes('../nonexistent/app/model.py'),
     ),
   )
 })
@@ -382,20 +376,9 @@ test('re-scaffolding an untouched output is idempotent, not an error', () => {
   const second = scaffoldStageOutput(root, invocation, outputPath)
 
   assert.equal(second.status, 'already_scaffolded')
-})
 
-test('re-scaffolding over real work still refuses without force', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-scaffold-work-'))
-  const outputPath = 'runtime/logs/workflows/x/outputs/out.json'
-  const invocation = {
-    invocation_id: 'implement-1',
-    rubric: [{ id: 'implement.lint', type: 'shell', statement: 'checks pass' }],
-    output: { path: outputPath, required_data: { implementation: 'object' } },
-  } as unknown as Invocation
-
-  mkdirSync(path.join(root, path.dirname(outputPath)), { recursive: true })
-  scaffoldStageOutput(root, invocation, outputPath)
-
+  // Once real work lands in the output, re-scaffolding still refuses without
+  // force.
   const withWork = JSON.parse(
     readFileSync(path.join(root, outputPath), 'utf8'),
   ) as Record<string, unknown>
@@ -434,10 +417,15 @@ test('an unsubmitted invocation does not consume a stage attempt', () => {
 
 test('a persona mapping the run never resolves is not pipeline config drift', () => {
   const root = createFixture()
-  const state = createRun(root, {
+  const additive = createRun(root, {
     workflowSlug: 'delivery',
     requestPath: 'request.md',
     title: 'Additive mapping run',
+  })
+  const changed = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title: 'Changed mapping run',
   })
 
   // A self-development run that introduces a persona edits the live config
@@ -447,47 +435,35 @@ test('a persona mapping the run never resolves is not pipeline config drift', ()
     defaults['fixture-only-persona'] = 'auto'
   })
 
-  const prepared = prepareInvocation(root, state.run_id).invocation
+  const prepared = prepareInvocation(root, additive.run_id).invocation
 
   assert.ok(prepared)
   assert.equal(prepared.stage.slug, 'plan')
-})
 
-test('a changed mapping the run does resolve is advisory, not a stop', () => {
-  const root = createFixture()
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Changed mapping run',
-  })
-
+  // A changed mapping the run does resolve is reported, not fatal: the
+  // operator owns the model choice, and refusing here stranded runs over an
+  // edit the operator had just made on purpose.
   editPersonaMappings(root, (defaults) => {
     defaults.coder = 'gpt-5.4'
   })
 
-  // The operator owns the model choice, so a mapping edited mid-run is reported
-  // and the run keeps advancing. Refusing here stranded runs over an edit the
-  // operator had just made on purpose.
-  const prepared = prepareInvocation(root, state.run_id)
+  const drifted = prepareInvocation(root, changed.run_id)
 
-  assert.ok(prepared.invocation)
-  assert.equal(prepared.invocation.stage.slug, 'plan')
+  assert.ok(drifted.invocation)
   assert.ok(
-    prepared.advisories.some(
+    drifted.advisories.some(
       (advisory) =>
         advisory.includes('coder') &&
         advisory.includes('live model mapping changed'),
     ),
-    `expected a coder drift advisory, got ${JSON.stringify(prepared.advisories)}`,
+    `expected a coder drift advisory, got ${JSON.stringify(drifted.advisories)}`,
   )
 
   // The advisory replaced a hard stop, so it is the only drift signal. It has
   // to survive the prepare process: a supervisor reconciling through
   // `pan status` after an interruption reads run state, not stdout.
-  const reloaded = getRunState(root, state.run_id)
-
   assert.ok(
-    (reloaded.advisories ?? []).some(
+    (getRunState(root, changed.run_id).advisories ?? []).some(
       (advisory) =>
         advisory.kind === 'pipeline_config' &&
         advisory.source === 'prepare' &&

@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { readdirSync, rmSync } from 'node:fs'
+import { readFileSync, readdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
 
 import { errorMessage, isNodeError } from './errors.js'
@@ -53,6 +53,12 @@ import {
   isTargetInstallation,
   isSelfDevelopmentInstallation,
 } from './project-config.js'
+import {
+  gateCacheKey,
+  gateCacheLookup,
+  gateCacheStore,
+  gateCacheableSnapshot,
+} from './gate-cache.js'
 import {
   gitWorkspaceSnapshot,
   workspaceChangedPathsFromSnapshots,
@@ -1738,7 +1744,7 @@ interface ShellCheckResolution {
   removed_reason?: string
 }
 
-function resolveShellCheck(
+export function resolveShellCheck(
   root: string,
   criterion: Criterion,
   requestedCommand: string,
@@ -2040,12 +2046,13 @@ function runShellCheck(
   state: RunState,
   stage: StageDefinition,
   criterion: Criterion,
-  workspaceFingerprint: string,
+  workspace: WorkspaceSnapshot,
   workspaceDir: string,
   commandOverride?: string,
   artifactId = stage.slug,
   onProgress?: (message: string) => void,
 ): DeterministicResult {
+  const workspaceFingerprint = workspace.fingerprint
   const requestedCommand = commandOverride ?? criterion.command ?? ''
   const resolution = resolveShellCheck(
     root,
@@ -2066,6 +2073,118 @@ function runShellCheck(
     : resolution.command
   const startedAt = new Date().toISOString()
   const profileName = remappedProfile ?? resolution.profile_name
+
+  // A profile gate is judged against the run's own baseline, so the baseline
+  // resolves before any cache decision: a run whose baseline is missing or
+  // unreadable fails closed below, and a recorded pass never bypasses that.
+  const baselineLoad =
+    profileName && !resolution.removed_reason
+      ? loadRepositoryCheckBaseline(root, state, profileName)
+      : undefined
+
+  // A clean pass of the same command at an unchanged workspace fingerprint is
+  // already proven; re-executing it spends minutes producing evidence the
+  // harness holds (DEV-001). Overridden gates stay uncached: an operator
+  // override is a run-scoped decision, not a reusable fact. A non-Git
+  // workspace fingerprints as a constant and is never cached.
+  const cacheKey =
+    commandOverride === undefined &&
+    !resolution.removed_reason &&
+    gateCacheableSnapshot(workspace) &&
+    !baselineLoad?.reason
+      ? gateCacheKey(root, workspaceFingerprint, command)
+      : null
+  const cached = cacheKey ? gateCacheLookup(root, cacheKey) : null
+  // A profile gate needs the recorded repository result to compute this run's
+  // delta; an entry without one predates that field and is a miss.
+  const cachedUsable =
+    cached !== null && (!profileName || cached.repository_result !== undefined)
+  let cachedSourceEvidence: string | null = null
+
+  if (cached && cachedUsable) {
+    try {
+      cachedSourceEvidence = readFileSync(
+        path.join(root, cached.evidence_path),
+        'utf8',
+      )
+    } catch {
+      cachedSourceEvidence = null
+    }
+  }
+
+  if (cached && cachedUsable && cachedSourceEvidence !== null) {
+    const cachedSafeId = criterion.id.replaceAll(/[^a-zA-Z0-9_.-]/g, '-')
+    const cachedEvidencePath = path.join(
+      runDirectory,
+      'evidence',
+      `${artifactId}-${cachedSafeId}.log`,
+    )
+    const cachedComparison =
+      profileName && cached.repository_result && baselineLoad?.result
+        ? compareRepositoryCheckToBaseline(
+            baselineLoad.result,
+            cached.repository_result,
+          )
+        : undefined
+    const explanation =
+      `Accepted cached clean pass of the same command at an unchanged ` +
+      `workspace fingerprint, recorded ${cached.cached_at} by run ` +
+      `${cached.run_id} (criterion ${cached.criterion_id}). Original ` +
+      `evidence: ${cached.evidence_path}.` +
+      (cachedComparison ? ` ${cachedComparison.explanation}` : '')
+
+    onProgress?.(
+      `${criterion.id} accepted cached pass recorded ${cached.cached_at} ` +
+        `by ${cached.run_id}`,
+    )
+    // The accepting run carries the original captured output, not a pointer:
+    // archival may move the source run, and a verifier spot-checking this
+    // gate must hold the bytes the pass rests on.
+    writeTextAtomic(
+      cachedEvidencePath,
+      [
+        `$ ${command}`,
+        'cached=true',
+        `cached_at=${cached.cached_at}`,
+        `source_run=${cached.run_id}`,
+        `source_criterion=${cached.criterion_id}`,
+        `source_evidence=${cached.evidence_path}`,
+        `workspace_fingerprint=${workspaceFingerprint}`,
+        'exit_code=0',
+        '',
+        explanation,
+        '',
+        '--- source evidence ---',
+        cachedSourceEvidence,
+      ].join('\n'),
+    )
+
+    return {
+      id: criterion.id,
+      type: 'shell',
+      hard: Boolean(criterion.hard),
+      passed: cachedComparison ? cachedComparison.passed : true,
+      cached: true,
+      explanation,
+      ...(cachedComparison
+        ? { repository_check_delta: cachedComparison.delta }
+        : {}),
+      ...(remappedProfile && state.verification
+        ? { verification_level: state.verification.level }
+        : {}),
+      command,
+      exit_code: 0,
+      timed_out: false,
+      evidence_path: path
+        .relative(root, cachedEvidencePath)
+        .split(path.sep)
+        .join('/'),
+      ...(baselineLoad?.artifact_path
+        ? { baseline_evidence_path: baselineLoad.artifact_path }
+        : {}),
+      workspace_fingerprint: workspaceFingerprint,
+    }
+  }
 
   let exitCode: number | null
   let signal: NodeJS.Signals | null = null
@@ -2143,7 +2262,8 @@ function runShellCheck(
   // inherited failure needs the credit recorded, and a first-time failure needs
   // to be named as new rather than inferred from an exit code.
   if (profileName && repositoryResult && !skipped) {
-    const load = loadRepositoryCheckBaseline(root, state, profileName)
+    const load =
+      baselineLoad ?? loadRepositoryCheckBaseline(root, state, profileName)
 
     if (load.result) {
       baselineResult = load.result
@@ -2215,6 +2335,24 @@ function runShellCheck(
   const inheritedFailureOnly = Boolean(
     baselineComparison?.passed && !commandSucceeded,
   )
+
+  // Only a clean pass is a reusable fact. A baseline-relative pass credits
+  // this run's own baseline, and a failure must re-run to observe its repair.
+  if (cacheKey && passed && commandSucceeded && !skipped && !timedOut) {
+    gateCacheStore(root, {
+      key: cacheKey,
+      criterion_id: criterion.id,
+      command,
+      workspace_fingerprint: workspaceFingerprint,
+      run_id: state.run_id,
+      cached_at: new Date().toISOString(),
+      evidence_path: path
+        .relative(root, evidencePath)
+        .split(path.sep)
+        .join('/'),
+      ...(repositoryResult ? { repository_result: repositoryResult } : {}),
+    })
+  }
   const environmentBlocked = isEnvironmentBlockedDelta(
     stage,
     baselineResult,
@@ -2641,7 +2779,7 @@ export function evaluateDeterministicCriteria(
             state,
             stage,
             criterion,
-            afterSnapshot.fingerprint,
+            afterSnapshot,
             workspaceDir,
             typeof override === 'string' ? override : undefined,
             artifactId,

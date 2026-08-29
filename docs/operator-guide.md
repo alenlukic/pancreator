@@ -721,6 +721,17 @@ be broad, structural, or unrelated to the approved change. New or changed diagno
 do block. This prevents unrelated repository debt from consuming repeated stage
 attempts without allowing the implementation to introduce additional failures.
 
+A deterministic shell gate whose exact command already passed cleanly at the
+same Git workspace fingerprint and repository-check configuration within the
+last 24 hours is accepted from `runtime/cache/gate-results.json` instead of
+re-executing (`DEV-001`). The result is marked `cached`, its evidence log carries
+the original captured output, and the acceptance never bypasses baseline
+resolution: a run whose baseline is missing still fails that gate closed.
+Failures, timeouts, skips, overrides, and baseline-relative passes are never
+cached, and a non-Git workspace is never cached. `./bin/pan doctor` reports the
+cache state. Set `PAN_GATE_CACHE=0` to force every gate to execute, or delete
+the cache file to forget every recorded pass.
+
 The review stage is source-allowed specifically for bounded remediation. The
 reviewer fixes local, low-risk issues when intended behavior is unambiguous and
 records the changed files and evidence. Architecture, public-interface, data or

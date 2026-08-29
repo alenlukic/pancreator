@@ -21,10 +21,20 @@
       "probes": ["node --version", "npm --version"],
       "commands": ["npm test"]
     },
+    "secondary": {
+      "description": "Run Pancreator's installer suites, which are outside the default lane.",
+      "probes": ["node --version", "npm --version"],
+      "commands": ["npm run test:secondary"]
+    },
     "full": {
       "description": "Run Pancreator's complete tests and configured coverage thresholds.",
       "probes": ["node --version", "npm --version"],
-      "commands": ["npm test", "npm run test:coverage"]
+      "commands": [
+        "npm test",
+        "npm run test:secondary",
+        "npm run test:coverage",
+        "./bin/install --smoke"
+      ]
     }
   }
 }

@@ -114,6 +114,55 @@ test('strict stage output rejects pass claims without evidence', () => {
     validation.errors.join('\n'),
     /pass claim MUST include evidence/u,
   )
+
+  // Artifacts MUST lead with the invocation-declared rendered brief path.
+  const misdeclared = baseOutput(invocation, stage)
+
+  misdeclared.artifacts = [
+    {
+      path: 'runtime/logs/workflows/run-test/artifacts/markdown/summary.md',
+      description: 'Legacy Markdown summary',
+    },
+    {
+      path: brief.source_path,
+      description: 'Brief source',
+    },
+  ]
+
+  assert.match(
+    validateStageOutput(root, stage, invocation, misdeclared).errors.join('\n'),
+    /artifacts\[0\]\.path MUST equal rendered operator brief path/u,
+  )
+
+  // A transient brief source is excluded from artifacts.
+  brief.source_transient = true
+  const transient = baseOutput(invocation, stage)
+
+  transient.artifacts = [
+    {
+      path: brief.rendered_path,
+      description: 'Rendered brief',
+    },
+  ]
+
+  const withoutSource = validateStageOutput(root, stage, invocation, transient)
+
+  assert.doesNotMatch(
+    withoutSource.errors.join('\n'),
+    /artifacts\[1\]|MUST NOT list transient/u,
+  )
+
+  transient.artifacts.push({
+    path: brief.source_path,
+    description: 'Transient source',
+  })
+
+  const withSource = validateStageOutput(root, stage, invocation, transient)
+
+  assert.match(
+    withSource.errors.join('\n'),
+    /MUST NOT list transient operator brief source/u,
+  )
 })
 
 test('strict stage output rejects success with failed self-evaluation', () => {
@@ -130,75 +179,4 @@ test('strict stage output rejects success with failed self-evaluation', () => {
   const validation = validateStageOutput(root, stage, invocation, output)
 
   assert.match(validation.errors.join('\n'), /contradicts failed criterion/u)
-})
-
-test('stage output requires invocation-declared HTML and brief source artifacts', () => {
-  const root = createFixture()
-  const { invocation, stage } = fixtureInvocation(
-    root,
-    'implement',
-    'implement-1-test',
-  )
-  const output = baseOutput(invocation, stage)
-  const brief = invocation.output.operator_brief
-
-  assert.ok(brief)
-
-  output.artifacts = [
-    {
-      path: 'runtime/logs/workflows/run-test/artifacts/markdown/summary.md',
-      description: 'Legacy Markdown summary',
-    },
-    {
-      path: brief.source_path,
-      description: 'Brief source',
-    },
-  ]
-
-  const validation = validateStageOutput(root, stage, invocation, output)
-
-  assert.match(
-    validation.errors.join('\n'),
-    /artifacts\[0\]\.path MUST equal rendered operator brief path/u,
-  )
-})
-
-test('stage output excludes a transient brief source from artifacts', () => {
-  const root = createFixture()
-  const { invocation, stage } = fixtureInvocation(
-    root,
-    'implement',
-    'implement-1-test',
-  )
-  const brief = invocation.output.operator_brief
-
-  assert.ok(brief)
-  brief.source_transient = true
-  const output = baseOutput(invocation, stage)
-
-  output.artifacts = [
-    {
-      path: brief.rendered_path,
-      description: 'Rendered brief',
-    },
-  ]
-
-  const withoutSource = validateStageOutput(root, stage, invocation, output)
-
-  assert.doesNotMatch(
-    withoutSource.errors.join('\n'),
-    /artifacts\[1\]|MUST NOT list transient/u,
-  )
-
-  output.artifacts.push({
-    path: brief.source_path,
-    description: 'Transient source',
-  })
-
-  const withSource = validateStageOutput(root, stage, invocation, output)
-
-  assert.match(
-    withSource.errors.join('\n'),
-    /MUST NOT list transient operator brief source/u,
-  )
 })

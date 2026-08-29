@@ -9,11 +9,62 @@ import {
   prepareInvocation,
   validateOutputForSubmission,
 } from '../../src/lib/engine.js'
+import { loadRegistry } from '../../src/lib/requirements/registry.js'
+import { resolveRequirements } from '../../src/lib/requirements/resolve.js'
+import { runRequirement } from '../../src/lib/requirements/run.js'
+import type { InvocationKind } from '../../src/lib/requirements/types.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { createFixture, makeOutput, writeJson } from '../helpers.js'
 
 const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
+
+interface StandaloneValidation {
+  persona: string
+  stage: string
+  kind: InvocationKind
+  registryId: string
+  targetPath: string
+}
+
+/**
+ * The standalone `pan requirements run` path: resolve the policy-bound
+ * requirement for the context, pick the one binding for the registry id, and
+ * run its validator against the target. The CLI spawn adds nothing that the
+ * SPOT-001 binding test does not already prove.
+ */
+function runStandaloneValidator(root: string, options: StandaloneValidation) {
+  const manifest = resolveRequirements(root, {
+    persona: options.persona,
+    workflow: 'standalone',
+    stage: options.stage,
+    invocation_kind: options.kind,
+    invocation: {
+      output_path: options.targetPath,
+      artifact_paths: [options.targetPath],
+    },
+  })
+  const requirements = [
+    ...manifest.automation_requirements,
+    ...manifest.validation_requirements,
+  ].filter((item) => item.registry_id === options.registryId)
+  const required = requirements.filter(
+    (item) => item.enforcement === 'required',
+  )
+  const selected =
+    requirements.length > 1 && required.length === 1 ? required : requirements
+
+  assert.equal(selected.length, 1, options.registryId)
+
+  return runRequirement({
+    root,
+    requirement: selected[0],
+    targetPath: options.targetPath,
+    executor: 'agent',
+    catalog: loadRegistry(root),
+    persist: false,
+  })
+}
 
 test('requirements run validates a standalone decomposition artifact', () => {
   const root = createFixture()
@@ -57,29 +108,13 @@ Run /pan-start.
 `,
   )
 
-  const stdout = execFileSync(
-    process.execPath,
-    [
-      CLI,
-      'requirements',
-      'run',
-      '--persona',
-      'decomposer',
-      '--workflow',
-      'standalone',
-      '--stage',
-      'decompose',
-      '--kind',
-      'decomposition',
-      '--registry',
-      'DECOMPOSITION-VALIDATE-001',
-      '--target',
-      targetPath,
-      '--json',
-    ],
-    { cwd: root, encoding: 'utf8' },
-  )
-  const result = JSON.parse(stdout) as { status: string; exit_code: number }
+  const result = runStandaloneValidator(root, {
+    persona: 'decomposer',
+    stage: 'decompose',
+    kind: 'decomposition',
+    registryId: 'DECOMPOSITION-VALIDATE-001',
+    targetPath,
+  })
 
   assert.equal(result.status, 'passed')
   assert.equal(result.exit_code, 0)
@@ -163,29 +198,13 @@ Run /pan-start with this intake.
 `,
   )
 
-  const stdout = execFileSync(
-    process.execPath,
-    [
-      CLI,
-      'requirements',
-      'run',
-      '--persona',
-      'harness-technician',
-      '--workflow',
-      'standalone',
-      '--stage',
-      'repair',
-      '--kind',
-      'repair',
-      '--registry',
-      'HARNESS-REPAIR-VALIDATE-001',
-      '--target',
-      targetPath,
-      '--json',
-    ],
-    { cwd: root, encoding: 'utf8' },
-  )
-  const result = JSON.parse(stdout) as { status: string; exit_code: number }
+  const result = runStandaloneValidator(root, {
+    persona: 'harness-technician',
+    stage: 'repair',
+    kind: 'repair',
+    registryId: 'HARNESS-REPAIR-VALIDATE-001',
+    targetPath,
+  })
 
   assert.equal(result.status, 'passed')
   assert.equal(result.exit_code, 0)
@@ -246,29 +265,13 @@ None identified.
 `,
   )
 
-  const stdout = execFileSync(
-    process.execPath,
-    [
-      CLI,
-      'requirements',
-      'run',
-      '--persona',
-      'librarian',
-      '--workflow',
-      'standalone',
-      '--stage',
-      'build-docs',
-      '--kind',
-      'documentation',
-      '--registry',
-      'TARGET-REPO-PRIMER-VALIDATE-001',
-      '--target',
-      targetPath,
-      '--json',
-    ],
-    { cwd: root, encoding: 'utf8' },
-  )
-  const result = JSON.parse(stdout) as { status: string; exit_code: number }
+  const result = runStandaloneValidator(root, {
+    persona: 'librarian',
+    stage: 'build-docs',
+    kind: 'documentation',
+    registryId: 'TARGET-REPO-PRIMER-VALIDATE-001',
+    targetPath,
+  })
 
   assert.equal(result.status, 'passed')
   assert.equal(result.exit_code, 0)
@@ -319,6 +322,69 @@ test('requirements run selects required SPOT-001 binding for SPOTFIX-VALIDATE-00
   assert.equal(result.policy_id, 'SPOT-001')
   assert.equal(result.requirement_id, 'spotfix-validate')
 })
+
+test('requirements run preserves ambiguity when duplicate required bindings remain', () => {
+  const root = createFixture()
+  const targetPath = 'runtime/inbox/spotfix-outcome.md'
+  const engPolicyPath = path.join(root, 'governance/policies/ENG-001.json')
+
+  writeFileSync(path.join(root, targetPath), SPOTFIX_OUTCOME)
+
+  const engPolicy = JSON.parse(readFileSync(engPolicyPath, 'utf8')) as {
+    requirements: Array<{ enforcement: string }>
+  }
+
+  engPolicy.requirements[0].enforcement = 'required'
+  writeFileSync(engPolicyPath, `${JSON.stringify(engPolicy, null, 2)}\n`)
+
+  // Resolution keeps both required bindings rather than collapsing them.
+  assert.equal(
+    resolveRequirements(root, {
+      persona: 'spotfixer',
+      workflow: 'standalone',
+      stage: 'spotfix',
+      invocation_kind: 'spotfix',
+      invocation: { output_path: targetPath, artifact_paths: [targetPath] },
+    }).validation_requirements.filter(
+      (item) =>
+        item.registry_id === 'SPOTFIX-VALIDATE-001' &&
+        item.enforcement === 'required',
+    ).length,
+    2,
+  )
+
+  // The CLI's single-binding selection refuses the ambiguity instead of
+  // choosing; that refusal lives in the command, so it is proven there.
+  assert.throws(
+    () =>
+      execFileSync(
+        process.execPath,
+        [
+          CLI,
+          'requirements',
+          'run',
+          '--persona',
+          'spotfixer',
+          '--workflow',
+          'standalone',
+          '--stage',
+          'spotfix',
+          '--kind',
+          'spotfix',
+          '--registry',
+          'SPOTFIX-VALIDATE-001',
+          '--target',
+          targetPath,
+          '--json',
+        ],
+        { cwd: root, encoding: 'utf8', stdio: 'pipe' },
+      ),
+    /resolved more than once/u,
+  )
+})
+
+// Rehomed from the governance branch at integration: these cases prove
+// rules that branch adds and have no other home in the consolidated suite.
 
 test('output validate mirrors the deterministic submission checks', () => {
   const root = createFixture()
@@ -406,48 +472,6 @@ test('output validate mirrors the deterministic submission checks', () => {
 
       return true
     },
-  )
-})
-
-test('requirements run preserves ambiguity when duplicate required bindings remain', () => {
-  const root = createFixture()
-  const targetPath = 'runtime/inbox/spotfix-outcome.md'
-  const engPolicyPath = path.join(root, 'governance/policies/ENG-001.json')
-
-  writeFileSync(path.join(root, targetPath), SPOTFIX_OUTCOME)
-
-  const engPolicy = JSON.parse(readFileSync(engPolicyPath, 'utf8')) as {
-    requirements: Array<{ enforcement: string }>
-  }
-
-  engPolicy.requirements[0].enforcement = 'required'
-  writeFileSync(engPolicyPath, `${JSON.stringify(engPolicy, null, 2)}\n`)
-
-  assert.throws(
-    () =>
-      execFileSync(
-        process.execPath,
-        [
-          CLI,
-          'requirements',
-          'run',
-          '--persona',
-          'spotfixer',
-          '--workflow',
-          'standalone',
-          '--stage',
-          'spotfix',
-          '--kind',
-          'spotfix',
-          '--registry',
-          'SPOTFIX-VALIDATE-001',
-          '--target',
-          targetPath,
-          '--json',
-        ],
-        { cwd: root, encoding: 'utf8' },
-      ),
-    /resolved more than once/u,
   )
 })
 

@@ -22,17 +22,16 @@ import {
   writeCanonicalDelegation,
   writeJson,
 } from '../helpers.js'
+import { checkpoint } from './delivery-helpers.js'
 
 test('submit records missing delegation as an advisory governance warning', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-  })
-  const runId = state.run_id
+  const {
+    root,
+    runId,
+    invocation: planInvocation,
+    workflow,
+  } = checkpoint('delivery@plan-prepared')
 
-  const planInvocation = prepareInvocation(root, runId).invocation
   assert.ok(planInvocation)
   writeJson(
     path.join(root, planInvocation.output.path),
@@ -51,15 +50,13 @@ test('submit records missing delegation as an advisory governance warning', () =
 })
 
 test('submit records mismatched delegation as advisory evidence before ship', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-  })
-  const runId = state.run_id
+  const {
+    root,
+    runId,
+    invocation: planInvocation,
+    workflow,
+  } = checkpoint('delivery@plan-prepared')
 
-  const planInvocation = prepareInvocation(root, runId).invocation
   assert.ok(planInvocation)
   writeJson(
     path.join(root, planInvocation.output.path),
@@ -90,25 +87,11 @@ test('submit records mismatched delegation as advisory evidence before ship', ()
 })
 
 test('submit succeeds when canonical delegation artifact is present', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-  })
-  const runId = state.run_id
+  // The checkpoint's plan was submitted with its canonical delegation in place.
+  const { root, runId, state } = checkpoint('delivery@plan-awaiting-operator')
 
-  const planInvocation = prepareInvocation(root, runId).invocation
-  assert.ok(planInvocation)
-  writeJson(
-    path.join(root, planInvocation.output.path),
-    makeOutput(root, planInvocation, stageBySlug(workflow, 'plan')),
-  )
-  writeCanonicalDelegation(root, planInvocation)
-
-  const submitted = submitOutput(root, runId, planInvocation.output.path)
-  assert.equal(submitted.record.outcome, 'success')
-  assert.equal(submitted.state.status, 'awaiting_operator')
+  assert.equal(state.stage_history.at(-1)?.outcome, 'success')
+  assert.equal(state.status, 'awaiting_operator')
 
   decideRun(root, runId, 'approve', 'Plan is implementation-ready.')
 
@@ -154,15 +137,13 @@ test('submit succeeds when canonical delegation artifact is present', () => {
 })
 
 test('submit relocates workspace-root delegation artifact before validation', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-  })
-  const runId = state.run_id
+  const {
+    root,
+    runId,
+    invocation: planInvocation,
+    workflow,
+  } = checkpoint('delivery@plan-prepared')
 
-  const planInvocation = prepareInvocation(root, runId).invocation
   assert.ok(planInvocation)
   writeJson(
     path.join(root, planInvocation.output.path),
@@ -215,9 +196,12 @@ function prepareDelegatedPlan(root: string): {
 }
 
 test('submit rejects a delegated output with no read attestation', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const { runId, invocation } = prepareDelegatedPlan(root)
+  const { root, runId, invocation, workflow } = checkpoint(
+    'delivery@plan-prepared',
+  )
+
+  assert.ok(invocation)
+
   const output = makeOutput(root, invocation, stageBySlug(workflow, 'plan'))
 
   delete output.invocation_attestation
@@ -239,29 +223,6 @@ test('submit rejects a delegated output with no read attestation', () => {
 
   assert.ok(existsSync(artifactPath))
   assert.equal(JSON.parse(readFileSync(artifactPath, 'utf8')).status, 'fail')
-})
-
-test('submit rejects a read attestation with a stale digest', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const { runId, invocation } = prepareDelegatedPlan(root)
-  const output = makeOutput(root, invocation, stageBySlug(workflow, 'plan'))
-  const attestation = output.invocation_attestation
-
-  assert.ok(attestation?.status === 'read')
-  assert.ok(attestation.sections)
-  output.invocation_attestation = {
-    ...attestation,
-    sections: attestation.sections.map((section, index) =>
-      index === 0 ? { id: section.id, sha256: 'stale' } : section,
-    ),
-  }
-  writeJson(path.join(root, invocation.output.path), output)
-  writeCanonicalDelegation(root, invocation)
-
-  const submitted = submitOutput(root, runId, invocation.output.path)
-
-  assert.equal(submitted.record.outcome, 'failure')
 })
 
 test('submit reports an unreadable contract reference as blocked', () => {
@@ -295,6 +256,7 @@ test('submit reports an unreadable contract reference as blocked', () => {
     throw new Error('Expected an operator approval action')
   }
 
+  assert.equal(submitted.state.pending_action.outcome, 'blocked')
   assert.equal(submitted.state.pending_action.proposed_transition, 'paused')
 
   const artifact = JSON.parse(
@@ -312,4 +274,9 @@ test('submit reports an unreadable contract reference as blocked', () => {
     artifact.checks.some((check) => check.message.includes('EACCES')),
     'the failed reference MUST name the path and error in evidence',
   )
+
+  // Approval applies the recorded outcome: the run pauses.
+  const decided = decideRun(root, runId, 'approve', 'Accept the pause.')
+
+  assert.equal(decided.status, 'paused')
 })

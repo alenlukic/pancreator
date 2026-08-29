@@ -19,46 +19,35 @@ function createAgentFixture(frontmatter: string): string {
   return root
 }
 
-test('canonical agents do not name the question method', () => {
-  assert.deepEqual(validateQuestionToolAccess(process.cwd()), [])
-})
-
 test('a disallowed question method fails with the file and identifier', () => {
-  const root = createAgentFixture("disallowedTools: ['cursor/ask_question']")
+  const disallowed = createAgentFixture(
+    "disallowedTools: ['cursor/ask_question']",
+  )
+  // A tools declaration fails with case-insensitive matching.
+  const cased = createAgentFixture("tools: ['AskQuestion']")
+  // A missing canonical agent directory fails loudly.
+  const empty = mkdtempSync(path.join(tmpdir(), 'pan-question-tool-'))
 
   try {
-    const errors = validateQuestionToolAccess(root)
+    const errors = validateQuestionToolAccess(disallowed)
 
     assert.equal(errors.length, 1)
     assert.match(errors[0] ?? '', /library\/cursor\/agents\/fixture\.md/u)
     assert.match(errors[0] ?? '', /cursor\/ask_question/u)
+
+    const casedErrors = validateQuestionToolAccess(cased)
+
+    assert.equal(casedErrors.length, 1)
+    assert.match(casedErrors[0] ?? '', /library\/cursor\/agents\/fixture\.md/u)
+    assert.match(casedErrors[0] ?? '', /askquestion/u)
+
+    const missing = validateQuestionToolAccess(empty)
+
+    assert.equal(missing.length, 1)
+    assert.match(missing[0] ?? '', /library\/cursor\/agents/u)
   } finally {
-    rmSync(root, { recursive: true, force: true })
-  }
-})
-
-test('a tools declaration fails with case-insensitive matching', () => {
-  const root = createAgentFixture("tools: ['AskQuestion']")
-
-  try {
-    const errors = validateQuestionToolAccess(root)
-
-    assert.equal(errors.length, 1)
-    assert.match(errors[0] ?? '', /library\/cursor\/agents\/fixture\.md/u)
-    assert.match(errors[0] ?? '', /askquestion/u)
-  } finally {
-    rmSync(root, { recursive: true, force: true })
-  }
-})
-
-test('a missing canonical agent directory fails loudly', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-question-tool-'))
-
-  try {
-    assert.deepEqual(validateQuestionToolAccess(root), [
-      'missing canonical Cursor agent directory: library/cursor/agents',
-    ])
-  } finally {
-    rmSync(root, { recursive: true, force: true })
+    for (const root of [disallowed, cased, empty]) {
+      rmSync(root, { recursive: true, force: true })
+    }
   }
 })

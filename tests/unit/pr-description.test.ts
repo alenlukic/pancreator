@@ -169,49 +169,23 @@ test('target PR validation rejects generic copy and accepts Rowspace copy', () =
 
     assert.equal(accepted.status, 'passed')
     assert.deepEqual(accepted.issues, [])
-  } finally {
-    rmSync(root, { recursive: true, force: true })
-  }
-})
 
-test('PR validation rejects a missing declared artifact', () => {
-  const root = makeRoot()
-
-  try {
-    const context = resolvePrDescriptionContext(root, [])
-    const result = validatePrDescription(validationInput(root, context))
-
-    assert.equal(result.status, 'failed')
-    assert.deepEqual(
-      result.issues.map((item) => item.code),
-      ['pr.file_missing'],
-    )
-  } finally {
-    rmSync(root, { recursive: true, force: true })
-  }
-})
-
-test('target PR validation rejects wrong order and empty required sections', () => {
-  const root = makeRoot()
-
-  try {
-    write(root, '.github/PULL_REQUEST_TEMPLATE.md', rowspaceTemplate())
-
-    const context = resolvePrDescriptionContext(root, [
-      targetPolicy('.github/PULL_REQUEST_TEMPLATE.md'),
-    ])
-
+    // Wrong heading order and an empty required section are both rejected.
     write(
       root,
       'pr.md',
       '## Confidence & risk\nRisk text.\n\n## Why\n\n## What changed\nChange text.\n',
     )
 
-    const result = validatePrDescription(validationInput(root, context))
+    const misordered = validatePrDescription(validationInput(root, context))
 
-    assert.equal(result.status, 'failed')
-    assert.ok(result.issues.some((item) => item.code === 'pr.heading_order'))
-    assert.ok(result.issues.some((item) => item.code === 'pr.section_empty'))
+    assert.equal(misordered.status, 'failed')
+    assert.ok(
+      misordered.issues.some((item) => item.code === 'pr.heading_order'),
+    )
+    assert.ok(
+      misordered.issues.some((item) => item.code === 'pr.section_empty'),
+    )
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
@@ -255,6 +229,15 @@ test('fallback PR validation keeps the Pancreator title and core sections', () =
 
   try {
     const context = resolvePrDescriptionContext(root, [])
+
+    // Before the declared artifact exists, validation fails closed on it.
+    const missing = validatePrDescription(validationInput(root, context))
+
+    assert.equal(missing.status, 'failed')
+    assert.deepEqual(
+      missing.issues.map((item) => item.code),
+      ['pr.file_missing'],
+    )
 
     write(
       root,

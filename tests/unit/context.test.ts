@@ -290,6 +290,40 @@ test('ship context selects effective records and indexes superseded history', ()
   assert.deepEqual(inputs.missing_required, undefined)
   assert.equal(byPath.get('VERSION')?.retrieval, 'required')
   assert.equal(byPath.get('release/index.json')?.retrieval, 'required')
+
+  // Ship context includes resolved target PR authority when one is supplied.
+  const prDescription: PrDescriptionContext = {
+    mode: 'target',
+    template_path: '.github/PULL_REQUEST_TEMPLATE.md',
+    instruction_paths: ['AGENTS.md', '.github/AGENTS.md', 'docs/pr-rules.md'],
+    heading_order: ['Why', 'Confidence & risk', 'What changed'],
+    required_headings: ['Why', 'Confidence & risk'],
+    optional_headings: ['What changed'],
+    allows_body_title: false,
+  }
+  const withPr = buildInvocationInputs({
+    root,
+    state,
+    stage,
+    attempt: 1,
+    invocationId: 'ship-pr-context',
+    workspaceFingerprint: 'fp-current',
+    prDescription,
+  })
+
+  assert.deepEqual(withPr.pr_description, prDescription)
+
+  for (const referencePath of [
+    '.github/PULL_REQUEST_TEMPLATE.md',
+    'AGENTS.md',
+    '.github/AGENTS.md',
+    'docs/pr-rules.md',
+  ]) {
+    assert.equal(
+      withPr.references.find((item) => item.path === referencePath)?.retrieval,
+      'required',
+    )
+  }
 })
 
 test('embedded ship context omits Pancreator self-development release metadata', () => {
@@ -320,43 +354,6 @@ test('embedded ship context omits Pancreator self-development release metadata',
     inputs.references.some((item) => item.path === 'release/index.json'),
     false,
   )
-})
-
-test('ship context includes resolved target PR authority', () => {
-  const root = createFixture()
-  const prDescription: PrDescriptionContext = {
-    mode: 'target',
-    template_path: '.github/PULL_REQUEST_TEMPLATE.md',
-    instruction_paths: ['AGENTS.md', '.github/AGENTS.md', 'docs/pr-rules.md'],
-    heading_order: ['Why', 'Confidence & risk', 'What changed'],
-    required_headings: ['Why', 'Confidence & risk'],
-    optional_headings: ['What changed'],
-    allows_body_title: false,
-  }
-
-  const inputs = buildInvocationInputs({
-    root,
-    state: stateWith([]),
-    stage: stageBySlug(loadWorkflow(root, 'delivery'), 'ship'),
-    attempt: 1,
-    invocationId: 'ship-pr-context',
-    workspaceFingerprint: 'fp-current',
-    prDescription,
-  })
-
-  assert.deepEqual(inputs.pr_description, prDescription)
-
-  for (const referencePath of [
-    '.github/PULL_REQUEST_TEMPLATE.md',
-    'AGENTS.md',
-    '.github/AGENTS.md',
-    'docs/pr-rules.md',
-  ]) {
-    assert.equal(
-      inputs.references.find((item) => item.path === referencePath)?.retrieval,
-      'required',
-    )
-  }
 })
 
 test('missing required stage outputs are explicit instead of triggering broad scans', () => {
