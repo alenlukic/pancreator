@@ -96,6 +96,11 @@ because an agent resolves it by guessing.
   without a retry path that reconstructs both, a logged-and-continued failure
   that hides missing state from the retry machinery, or a read-decide-write
   sequence with nothing serializing it.
+- **Instruction-text conformance.** A durable operator artifact, or an
+  agent-facing instruction, that breaks a writing rule `STE-001` names: a
+  sentence past the length bound, a semicolon carrying two instructions, a
+  directive keyword used loosely. This dimension owns that duty by operator
+  decision on 2026-08-28. Quote the rule and the sentence.
 - **Coverage shape.** A new rejection path with no test that asserts the
   rejection. Also the inverse defect: a test that pins prose bytes of a policy or
   persona, which fails on any legitimate rewording and teaches the next author to
