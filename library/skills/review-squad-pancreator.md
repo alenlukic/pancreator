@@ -35,6 +35,10 @@ reads the diff for a failure mode no core charter names.
   boundaries. Read that file first, then this one.
 - The operator MAY name a core charter as well. A named charter runs beside
   these three rather than replacing one of them.
+- The lineup carries no security charter by operator decision on 2026-08-28,
+  while the harness is not in broader use. Name the core security charter for a
+  review that needs it, and revisit the decision when the harness ships beyond
+  this repository.
 - State the swap in the review artifact and name the core dimensions it
   removed, so a reader knows which lenses produced the finding set and which
   were never applied.
