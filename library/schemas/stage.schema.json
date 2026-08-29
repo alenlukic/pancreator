@@ -151,6 +151,10 @@
         "include_workspace_ratifications": {
           "type": "boolean",
           "description": "Include the latest operator workspace ratification matching the current fingerprint."
+        },
+        "gate_evidence": {
+          "type": "boolean",
+          "description": "Include a reference to the passed evidence of each repository-check profile a harness gate or baseline already ran, carrying the profile and the workspace fingerprint it passed at, so evidence workers cite the gate instead of re-executing the profile."
         }
       }
     },

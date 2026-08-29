@@ -37,12 +37,19 @@ scope for this stage.
 Populate `data.technical_approach` (`hypothesis`, `strategy`, `touch_points`,
 `planned_shortcuts`, `observable_signals`, `discard_conditions`,
 `preconditions`). Per `PROTO-001`, each precondition entry MUST include `id`,
-`affected_questions`, `check`, `status`, `evidence`, and `volatile`. Use status
-values `ready`, `unavailable`, or `unknown`. When an operator directive
-narrows scope, record `exclusions` with `excluded_questions` and
-`operator_decision_path`. When `output.operator_brief` exists, edit its
-declared source and reference the rendered HTML. Do not run the renderer. When
-the contract omits `output.operator_brief`, do not create either brief file.
+`affected_questions`, `check`, `status`, `evidence`, and `volatile` (a
+boolean). Use status values `ready`, `unavailable`, or `unknown`.
+
+Each precondition entry MAY carry `exclusions`, an array of
+`{ excluded_questions, operator_decision_path }`. The path MUST name an
+operator decision recorded on this run, and that decision's note MUST name
+every question in `excluded_questions`. A file that merely exists under the
+run's decisions directory is not an operator decision; the harness writes its
+own pause records there.
+
+When `output.operator_brief` exists, edit its declared source and reference the
+rendered HTML. Do not run the renderer. When the contract omits
+`output.operator_brief`, do not create either brief file.
 
 ## Done when
 

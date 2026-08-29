@@ -25,9 +25,9 @@ reads the diff for a failure mode no core charter names.
 
 ## Activation and swap
 
-- Activate when the review target is the Pancreator repository, in a
-  self-development checkout or a worktree of one. Any other target keeps the
-  core lineup.
+- The lineup MUST swap to these three dimensions when the review target is the
+  Pancreator repository, in a self-development checkout or a worktree of one.
+  Any other target keeps the core lineup.
 - These three dimensions take the place of the core lineup and its conditional
   frontend dimension for that review.
 - Everything else in `review-squad.md` holds unchanged: capture the diff once,
@@ -35,8 +35,9 @@ reads the diff for a failure mode no core charter names.
   boundaries. Read that file first, then this one.
 - The operator MAY name a core charter as well. A named charter runs beside
   these three rather than replacing one of them.
-- State the swap in the review artifact, so a reader knows which lineup produced
-  the finding set.
+- State the swap in the review artifact and name the core dimensions it
+  removed, so a reader knows which lenses produced the finding set and which
+  were never applied.
 
 ## Lineup
 
@@ -57,9 +58,10 @@ And does the repository still agree with itself afterward? A contradiction
 between two normative surfaces is a defect of the same class as wrong output,
 because an agent resolves it by guessing.
 
-- **Behavior against stated intent.** Take each acceptance criterion, name the
-  code path that satisfies it, and name the input that defeats it. A criterion
-  satisfied only on the happy path is not satisfied.
+- **Behavior against stated intent.** Take each acceptance criterion, or each
+  claim in the intent brief when the target carries no criteria, and name the
+  code path that satisfies it and the input that defeats it. A claim satisfied
+  only on the happy path is not satisfied.
 - **Contradicted directive.** A clause added or changed here that a clause
   elsewhere already forbids or already requires differently. Quote both, with
   both paths. Search `governance/policies/`, `library/personas/`,
@@ -184,9 +186,10 @@ Method: for each loop, gate, fixture, and read, ask what it costs now and what i
 costs at a hundred times the current input. Prefer a measurement to an estimate
 and name the command that would produce it. Rank by absolute cost removed from
 the critical path, and separate one-time cost from cost paid every run. The
-operator's stated ceiling for a full suite pass is 60 seconds; a change that
-moves the suite toward or past that ceiling is a finding with its delta. Cost
-that sits off the critical path is a note.
+operator stated a 60-second ceiling for a full suite pass in the 2026-08-28
+run-friction record. Until a profile in `runtime/repository-checks.json` records
+that ceiling as `timeout_ms`, a change that moves the suite toward or past it is
+a finding with its delta. Cost that sits off the critical path is a note.
 
 ## Joining
 
@@ -202,5 +205,6 @@ The coordinator ranks the joined set with these tie-breaks:
   duplicate execution to the critical path. Other cost findings are follow-ups
   with their numbers recorded.
 
-Record the swap, the three dimensions, and any core charter the operator named,
-each with its findings or with an explicit empty result.
+Record the swap and the core dimensions it removed. Then record the three
+dimensions and any core charter the operator named, each with its findings or
+with an explicit empty result.

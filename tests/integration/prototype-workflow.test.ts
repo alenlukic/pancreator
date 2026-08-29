@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, writeFileSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -310,12 +309,9 @@ test('operator-authorized narrowing lets approach advance to build', () => {
   const decisionPath = `${layout}/decisions/operator-feedback-1.md`
 
   submitStage(root, runId, stageBySlug(workflow, 'intake'))
-  decideRun(root, runId, 'approve')
-  mkdirSync(path.dirname(path.join(root, decisionPath)), { recursive: true })
-  writeFileSync(
-    path.join(root, decisionPath),
-    '# Operator directive\n\nExclude TQ-01 from this spike.\n',
-  )
+  // The approval note is the operator directive; the harness records it on
+  // the run's operator-feedback ledger, which is what the validator consults.
+  decideRun(root, runId, 'approve', 'Exclude TQ-01 from this spike.')
 
   const invocation = prepareInvocation(root, runId).invocation
 
@@ -406,80 +402,4 @@ test('environment_blocked evaluation waits at the operator gate', () => {
 
   assert.equal(submitted.state.status, 'awaiting_operator')
   assert.equal(submitted.record.outcome, 'success')
-})
-
-test('mixed evidence keeps invalidated when a product discard condition is met', () => {
-  const root = createFixture()
-
-  writeChecks(root, 0, 0)
-
-  const workflow = loadWorkflow(root, 'prototype')
-  const state = createRun(root, {
-    workflowSlug: 'prototype',
-    requestPath: 'request.md',
-    title: 'Mixed spike',
-  })
-  const runId = state.run_id
-
-  advanceToBuild(root, runId, workflow)
-  submitStage(root, runId, stageBySlug(workflow, 'build'))
-
-  const invocation = prepareInvocation(root, runId).invocation
-
-  assert.ok(invocation)
-
-  const output = makeOutput(root, invocation, stageBySlug(workflow, 'evaluate'))
-  const evaluation = (output.data as { evaluation: Record<string, unknown> })
-    .evaluation
-
-  evaluation.verdict = 'invalidated'
-  evaluation.environment_blockers = [
-    { id: 'ENV-01', detail: 'Missing GitHub token scope' },
-    { id: 'ENV-02', detail: 'Missing CURSOR_API_KEY' },
-  ]
-  evaluation.question_results = [
-    {
-      question_id: 'TQ-01',
-      result: 'answered',
-      cause: 'product',
-      evidence: ['transaction data loss after failed commit'],
-      discard_condition_met: true,
-    },
-    {
-      question_id: 'TQ-02',
-      result: 'answered',
-      cause: 'product',
-      evidence: ['mock-only cursor judgment'],
-      discard_condition_met: true,
-    },
-    {
-      question_id: 'TQ-03',
-      result: 'answered',
-      cause: 'product',
-      evidence: ['browser console stylesheet errors'],
-      discard_condition_met: true,
-    },
-    {
-      question_id: 'TQ-04',
-      result: 'unanswered',
-      cause: 'environment',
-      evidence: ['GitHub HTTP 403'],
-      discard_condition_met: false,
-    },
-  ]
-  evaluation.recommendation = 'Iterate the spike after fixing product defects.'
-
-  writeJson(path.join(root, invocation.output.path), output)
-  writeCanonicalDelegation(root, invocation)
-
-  const submitted = submitOutput(root, runId, invocation.output.path)
-
-  assert.equal(submitted.state.status, 'awaiting_operator')
-  assert.equal(submitted.record.outcome, 'success')
-
-  const saved = JSON.parse(
-    readFileSync(path.join(root, invocation.output.path), 'utf8'),
-  ) as { data: { evaluation: { verdict: string } } }
-
-  assert.equal(saved.data.evaluation.verdict, 'invalidated')
 })

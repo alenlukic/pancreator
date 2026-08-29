@@ -11,7 +11,7 @@
     {
       "persona": "qa-tester",
       "role": "qa",
-      "scope": "Execute the ratified test plan against the resulting workspace. Run every case, record reproducible evidence (commands, observations, paths) per case, and state a result for each acceptance criterion the plan maps. Do not re-execute a deterministic repository profile a harness gate or baseline already passed for this workspace — cite that gate evidence instead; the harness reruns the authoritative profile at submission. Do not review code style or architecture — the parallel review worker owns that."
+      "scope": "Execute the ratified test plan against the resulting workspace. Run every case, record reproducible evidence (commands, observations, paths) per case, and state a result for each acceptance criterion the plan maps. Do not execute a repository-check profile agent-side: the harness gates own profile execution, and for a profile a gate or baseline already passed, cite the gate evidence reference on your card for the profile and fingerprint in question. Do not review code style or architecture — the parallel review worker owns that."
     }
   ],
   "prompt_path": "library/workflows/delivery/prompts/verify.md",
@@ -37,7 +37,8 @@
       }
     ],
     "prior_attempts": 1,
-    "operator_feedback": 1
+    "operator_feedback": 1,
+    "gate_evidence": true
   },
   "required_data": {
     "verify": "object",

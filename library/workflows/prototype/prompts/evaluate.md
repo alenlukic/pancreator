@@ -32,7 +32,9 @@ only whether the evidence answers the questions.
 7. When product discard evidence and environment gaps both exist, use
    `invalidated` if an independent product discard condition was met.
 8. When the brief explicitly tests environment readiness, treat the observed
-   readiness result as product evidence for that question.
+   readiness result as product evidence for that question and set
+   `readiness_question: true` on its result. Without that field, a `product`
+   cause on a question an environment blocker names is rejected.
 9. Describe the productionization gap: what the declared shortcuts would cost to
    undo, what the spike never touched, and what a systematic run would need to
    cover. Be concrete enough that the operator could scope a `delivery` run from it.
@@ -46,8 +48,11 @@ only whether the evidence answers the questions.
 Populate `data.evaluation` (`verdict`, `question_results`,
 `environment_blockers`, `signal_assessment`, `productionization_gap`,
 `recommendation`, `discard_candidates`). Each question result MUST include
-`question_id`, `result`, `cause`, `evidence`, and `discard_condition_met`.
-Valid verdicts are `validated`, `invalidated`, `inconclusive`, and
+`question_id`, `result`, `cause`, `evidence`, and `discard_condition_met`, and
+MAY include `readiness_question` (boolean) to claim the explicit-readiness
+exemption `PROTO-001` defines. Answer every `technical_questions` id the brief declares and no
+other. Each environment blocker MUST list the question ids it prevented a
+decision on in `affected_questions`. Valid verdicts are `validated`, `invalidated`, `inconclusive`, and
 `environment_blocked`. Use `environment-blocked` only in operator prose. When
 `output.operator_brief` exists, edit its declared source and reference the
 rendered HTML. Do not run the renderer. When the contract omits

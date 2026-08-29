@@ -3,6 +3,7 @@ import path from 'node:path'
 import { snapshotEntryPath } from './git.js'
 import { isRecord, readJson, resolveInside, writeJsonAtomic } from './io.js'
 import { isSelfDevelopmentInstallation } from './project-config.js'
+import { repositoryCheckProfileName } from './repository-checks.js'
 import { resolveRunLayout } from './run-layout.js'
 import { resolveTargetInstructionPaths } from './target-instructions.js'
 import { activeOperatorGateWaivers } from './waivers.js'
@@ -385,6 +386,94 @@ function selectExceptions(
   }
 }
 
+interface PassedGateEvidence {
+  profile: string
+  evidencePath: string
+  fingerprint: string
+  origin: string
+}
+
+/**
+ * The latest passed execution of each repository-check profile the run has
+ * recorded: harness gates in stage history, then pre-implementation baselines
+ * for profiles no gate has run yet. A skipped, disabled, or failed gate is not
+ * evidence and is left out.
+ */
+function passedGateEvidence(state: RunState): PassedGateEvidence[] {
+  const byProfile = new Map<string, PassedGateEvidence>()
+
+  for (const item of state.stage_history) {
+    for (const result of item.deterministic) {
+      const profile = repositoryCheckProfileName(result.command ?? '')
+      const executed =
+        result.passed &&
+        !result.skipped &&
+        !result.disabled &&
+        !result.overridden
+
+      if (!profile || !executed || !result.evidence_path) {
+        continue
+      }
+
+      byProfile.set(profile, {
+        profile,
+        evidencePath: result.evidence_path,
+        fingerprint: result.workspace_fingerprint,
+        origin: `${item.stage} attempt ${item.attempt} gate \`${result.id}\``,
+      })
+    }
+  }
+
+  for (const baseline of Object.values(
+    state.repository_check_baselines ?? {},
+  )) {
+    if (!baseline || baseline.status !== 'passed') {
+      continue
+    }
+
+    if (!byProfile.has(baseline.profile)) {
+      byProfile.set(baseline.profile, {
+        profile: baseline.profile,
+        evidencePath: baseline.artifact_path,
+        fingerprint: baseline.workspace_fingerprint,
+        origin: 'pre-implementation baseline',
+      })
+    }
+  }
+
+  return [...byProfile.values()]
+}
+
+function selectGateEvidence(
+  references: Map<string, InvocationReference>,
+  state: RunState,
+  stage: StageDefinition,
+  workspaceFingerprint: string,
+): void {
+  if (!stage.context.gate_evidence) {
+    return
+  }
+
+  for (const evidence of passedGateEvidence(state)) {
+    const currency =
+      evidence.fingerprint === workspaceFingerprint
+        ? 'the current workspace'
+        : 'a superseded workspace'
+
+    addReference(references, {
+      path: evidence.evidencePath,
+      description:
+        `Passed \`${evidence.profile}\` repository-check gate evidence ` +
+        `(${evidence.origin}) at workspace fingerprint ` +
+        `\`${evidence.fingerprint}\` — ${currency}`,
+      retrieval: 'conditional',
+      condition:
+        `Cite this evidence instead of re-executing the \`${evidence.profile}\` ` +
+        'profile agent-side. Read it only to confirm what the gate covered.',
+    })
+  }
+}
+
 function outputChangedPaths(
   root: string,
   state: RunState,
@@ -650,6 +739,7 @@ export function buildInvocationInputs(
   selectPriorAttempts(references, options.root, state, stage, options.attempt)
   selectOperatorFeedback(references, state, stage)
   selectExceptions(references, state, stage, options.workspaceFingerprint)
+  selectGateEvidence(references, state, stage, options.workspaceFingerprint)
   const targetInstructions = targetInstructionInput(options)
 
   for (const instructionPath of targetInstructions?.read_paths ?? []) {

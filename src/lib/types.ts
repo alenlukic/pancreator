@@ -142,6 +142,13 @@ export interface StageContextDefinition {
   prior_attempts?: number
   operator_feedback?: number
   include_workspace_ratifications?: boolean
+  /**
+   * Include a reference to the bounded evidence log of each repository-check
+   * profile a harness gate or baseline already passed, carrying the profile
+   * and the workspace fingerprint it passed at, so an evidence worker can cite
+   * the gate instead of re-executing the profile.
+   */
+  gate_evidence?: boolean
   legacy_full_history?: boolean
 }
 
@@ -1211,6 +1218,22 @@ export interface OperatorFeedbackItem {
   timestamp: string
 }
 
+/**
+ * A non-blocking observation the harness recorded about this run, such as a
+ * supervisor model that changed mid-run or a submission whose worker model is
+ * unverified. Advisories live in run state so `pan status` recovers them after
+ * an interruption without reading the event log. None of them stops the run.
+ */
+export interface RunAdvisory {
+  kind: 'model_evidence' | 'pipeline_config'
+  /** Which harness operation observed the condition. */
+  source: 'prepare' | 'submit' | 'supervisor_evidence'
+  stage?: string
+  invocation_id?: string
+  message: string
+  recorded_at: string
+}
+
 export interface RunModelEvidence {
   role: 'supervisor' | 'worker'
   invocation_id?: string
@@ -1363,6 +1386,11 @@ export interface RunState {
   stage_history: StageHistoryItem[]
   operator_feedback?: OperatorFeedbackItem[]
   model_evidence?: RunModelEvidence[]
+  /**
+   * Non-blocking observations recorded during this run, newest last. Absent on
+   * runs created before advisories were persisted to state.
+   */
+  advisories?: RunAdvisory[]
   revision: number
   created_at: string
   updated_at: string

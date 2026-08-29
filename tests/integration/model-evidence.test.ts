@@ -13,6 +13,7 @@ import {
   createRun,
   decideRun,
   getRunState,
+  getRunStatus,
   prepareInvocation,
   probeRunInvocationModel,
   recordSupervisorModelEvidence,
@@ -105,20 +106,24 @@ test('supervisor evidence activates future worker-card enforcement', () => {
     requestPath: 'request.md',
     title: 'Model evidence run',
   })
-  const evidence = recordSupervisorModelEvidence(
+  const recorded = recordSupervisorModelEvidence(
     root,
     run.run_id,
     'GPT 5.6 Sol',
     'Cursor session metadata',
   )
 
-  assert.equal(evidence.role, 'supervisor')
-  assert.equal(evidence.result, 'recorded')
-  assert.ok(evidence.evidence_path.endsWith('.json'))
+  assert.equal(recorded.evidence.role, 'supervisor')
+  assert.equal(recorded.evidence.result, 'recorded')
+  assert.ok(recorded.evidence.evidence_path.endsWith('.json'))
+  assert.deepEqual(recorded.advisories, [])
   assert.equal(getRunState(root, run.run_id).model_evidence?.length, 1)
+  assert.equal(getRunState(root, run.run_id).advisories, undefined)
 
   // A supervising session can change model mid-run, usually because the
-  // operator changed it. The new fact is recorded instead of stopping the run.
+  // operator changed it. The new fact is recorded instead of stopping the run,
+  // and the supersession is returned to the caller and kept in run state so a
+  // resumed session recovers it from `pan status`.
   const superseded = recordSupervisorModelEvidence(
     root,
     run.run_id,
@@ -126,8 +131,23 @@ test('supervisor evidence activates future worker-card enforcement', () => {
     'Cursor session metadata',
   )
 
-  assert.equal(superseded.effective_model, 'Different Model')
-  assert.equal(getRunState(root, run.run_id).model_evidence?.length, 1)
+  assert.equal(superseded.evidence.effective_model, 'Different Model')
+  assert.equal(superseded.advisories.length, 1)
+  assert.equal(superseded.advisories[0]?.kind, 'model_evidence')
+  assert.equal(superseded.advisories[0]?.source, 'supervisor_evidence')
+  assert.match(
+    superseded.advisories[0]?.message ?? '',
+    /changed from 'GPT 5.6 Sol' to 'Different Model'/u,
+  )
+
+  const supersededState = getRunState(root, run.run_id)
+
+  assert.equal(supersededState.model_evidence?.length, 1)
+  assert.deepEqual(supersededState.advisories, superseded.advisories)
+  assert.match(
+    getRunStatus(root, run.run_id) as string,
+    /## Advisories\n\n- supervisor_evidence: The supervisor model changed/u,
+  )
 
   const prepared = prepareInvocation(root, run.run_id)
   const invocation = prepared.invocation
@@ -164,6 +184,29 @@ test('supervisor evidence activates future worker-card enforcement', () => {
       'utf8',
     ),
     /"type":"model_evidence_advisory"/u,
+  )
+
+  // The submit-time observation reaches the supervisor through the return
+  // value and survives in run state, not only in the event log.
+  const workerGap = submitted.advisories.find((advisory) =>
+    advisory.message.includes('no usable worker model evidence'),
+  )
+
+  assert.ok(workerGap)
+  assert.equal(workerGap.kind, 'model_evidence')
+  assert.equal(workerGap.source, 'submit')
+  assert.equal(workerGap.stage, 'plan')
+  assert.equal(workerGap.invocation_id, invocation.invocation_id)
+
+  const submittedState = getRunState(root, run.run_id)
+
+  assert.deepEqual(submittedState.advisories, [
+    ...superseded.advisories,
+    ...submitted.advisories,
+  ])
+  assert.match(
+    getRunStatus(root, run.run_id) as string,
+    /- plan \(submit\): Invocation '.*' records no usable worker/u,
   )
 })
 

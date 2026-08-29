@@ -1370,6 +1370,14 @@ export interface StageOutputValidation {
   output: StageOutput
 }
 
+export interface StageOutputValidationOptions {
+  /**
+   * Declared artifacts the harness itself materializes later in the submission,
+   * so their absence at validation time is expected rather than a defect.
+   */
+  pendingArtifactPaths?: string[]
+}
+
 function valueAt(object: Record<string, unknown>, dottedPath: string): unknown {
   let value: unknown = object
 
@@ -1504,6 +1512,7 @@ export function validateStageOutput(
   stage: StageDefinition,
   invocation: Invocation,
   value: unknown,
+  { pendingArtifactPaths = [] }: StageOutputValidationOptions = {},
 ): StageOutputValidation {
   const errors: string[] = []
   const output = normalizeStageOutput(value, invocation)
@@ -1698,11 +1707,17 @@ export function validateStageOutput(
     }
   }
 
+  // Compare resolved locations so a pending artifact is exempt however its
+  // declared path is spelled.
+  const pendingAbsolutePaths = new Set(
+    pendingArtifactPaths.map((pendingPath) => resolveInside(root, pendingPath)),
+  )
+
   for (const artifact of output.artifacts) {
     try {
       const absolute = resolveInside(root, artifact.path)
 
-      if (!fileExists(absolute)) {
+      if (!pendingAbsolutePaths.has(absolute) && !fileExists(absolute)) {
         errors.push(`artifact does not exist: ${artifact.path}`)
       }
     } catch (error) {

@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import { createRun, prepareInvocation } from '../../src/lib/engine.js'
+import {
+  createRun,
+  prepareInvocation,
+  validateOutputForSubmission,
+} from '../../src/lib/engine.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { createFixture, makeOutput, writeJson } from '../helpers.js'
@@ -444,5 +448,84 @@ test('requirements run preserves ambiguity when duplicate required bindings rema
         { cwd: root, encoding: 'utf8' },
       ),
     /resolved more than once/u,
+  )
+})
+
+// The harness renders the operator brief during submission, so the mirror must
+// not report its absence as a defect. That exemption used to hinge on matching
+// the validator's error prose; it now names the pending artifact directly.
+test('output validate exempts the unrendered operator brief but not other missing artifacts', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title: 'Output validation operator brief fixture',
+    involvement: 'standard',
+    operatorArtifacts: true,
+  })
+  const workflow = loadWorkflow(root, 'delivery')
+  const invocation = prepareInvocation(root, state.run_id).invocation
+
+  assert.ok(invocation)
+
+  const brief = invocation.output.operator_brief
+
+  assert.ok(brief)
+
+  const output = makeOutput(
+    root,
+    invocation,
+    stageBySlug(workflow, invocation.stage.slug),
+  )
+
+  assert.ok(
+    output.artifacts.some((artifact) => artifact.path === brief.rendered_path),
+  )
+  rmSync(path.join(root, brief.rendered_path))
+
+  const beforeRender = validateOutputForSubmission(
+    root,
+    state.run_id,
+    invocation,
+    output,
+  )
+
+  assert.equal(
+    beforeRender.passed,
+    true,
+    JSON.stringify(beforeRender.checks, null, 2),
+  )
+
+  // A genuinely missing artifact is still a defect.
+  const withMissingArtifact = {
+    ...output,
+    artifacts: [
+      ...output.artifacts,
+      {
+        path: 'runtime/inbox/never-written.md',
+        description: 'Fixture artifact that was never written',
+      },
+    ],
+  }
+  const missing = validateOutputForSubmission(
+    root,
+    state.run_id,
+    invocation,
+    withMissingArtifact,
+  )
+
+  assert.equal(missing.passed, false)
+  assert.ok(
+    missing.checks.some(
+      (check) =>
+        !check.passed &&
+        check.message ===
+          'artifact does not exist: runtime/inbox/never-written.md',
+    ),
+  )
+  assert.ok(
+    missing.checks.every(
+      (check) => check.passed || !check.message.includes(brief.rendered_path),
+    ),
   )
 })

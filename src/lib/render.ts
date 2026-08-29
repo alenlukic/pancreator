@@ -1084,6 +1084,18 @@ export function renderStatus(
     }
   }
 
+  if ((state.advisories ?? []).length > 0) {
+    lines.push('', '## Advisories', '')
+
+    for (const advisory of state.advisories ?? []) {
+      const context = advisory.stage
+        ? `${advisory.stage} (${advisory.source})`
+        : advisory.source
+
+      lines.push(`- ${context}: ${advisory.message}`)
+    }
+  }
+
   if (validationStatus) {
     lines.push('', '## Validation', '')
     lines.push(

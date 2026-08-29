@@ -1,6 +1,6 @@
 import path from 'node:path'
 
-import { fileExists, isRecord, readJson, resolveInside } from '../io.js'
+import { fileExists, isRecord, readJson } from '../io.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
 
 const PRECONDITION_STATUSES = new Set(['ready', 'unavailable', 'unknown'])
@@ -11,6 +11,12 @@ const VERDICT_VALUES = new Set([
   'inconclusive',
   'environment_blocked',
 ])
+
+/** An operator decision recorded on the run's operator-feedback ledger. */
+interface OperatorDecision {
+  path: string
+  note: string
+}
 
 function issue(code: string, message: string): HandlerResult['issues'][number] {
   return { code, message }
@@ -98,50 +104,71 @@ function readPriorStageData(
   return isRecord(value) && isRecord(value.data) ? value.data : null
 }
 
-function runIdFromInput(input: HandlerInput): string | null {
-  return typeof input.runState?.run_id === 'string'
-    ? input.runState.run_id
-    : null
+/**
+ * The operator decisions this run has recorded. The ledger is the authority
+ * for exclusion claims: the harness writes its own pause records into the same
+ * decisions directory, so a path that merely exists there proves nothing.
+ */
+function operatorDecisions(input: HandlerInput): OperatorDecision[] {
+  const feedback = Array.isArray(input.runState?.operator_feedback)
+    ? input.runState.operator_feedback
+    : []
+  const decisions: OperatorDecision[] = []
+
+  for (const item of feedback) {
+    if (
+      !isRecord(item) ||
+      typeof item.path !== 'string' ||
+      typeof item.note !== 'string'
+    ) {
+      continue
+    }
+
+    // Records written before decision actors were stored carry no source;
+    // only an operator could have authored them.
+    if (item.source !== undefined && item.source !== 'operator') {
+      continue
+    }
+
+    decisions.push({ path: item.path, note: item.note })
+  }
+
+  return decisions
 }
 
-function operatorDecisionsPrefix(runId: string): string {
-  return `runtime/logs/workflows/${runId}/agent/decisions/`
-}
+/**
+ * Why an exclusion claim fails to match the operator ledger, or null when the
+ * cited decision is an operator's and its note names every excluded question.
+ */
+function exclusionAuthorityFailure(
+  decisions: OperatorDecision[],
+  exclusion: Record<string, unknown>,
+): string | null {
+  const decisionPath = exclusion.operator_decision_path
 
-function isAuthorizedOperatorDecisionPath(
-  root: string,
-  runId: string | null,
-  decisionPath: string,
-): boolean {
-  if (!runId || decisionPath.length === 0) {
-    return false
+  if (!nonEmptyString(decisionPath)) {
+    return 'MUST cite operator_decision_path'
   }
 
-  const prefix = operatorDecisionsPrefix(runId)
+  const decision = decisions.find((entry) => entry.path === decisionPath)
 
-  if (!decisionPath.startsWith(prefix)) {
-    return false
+  if (!decision) {
+    return `operator_decision_path ${decisionPath} does not name an operator decision recorded on this run`
   }
 
-  try {
-    const absolute = resolveInside(root, decisionPath)
-    const decisionsDir = resolveInside(root, prefix)
-    const relative = path.relative(decisionsDir, absolute)
+  const unnamed = stringArray(exclusion.excluded_questions).filter(
+    (questionId) => !decision.note.includes(questionId),
+  )
 
-    return (
-      relative !== '..' &&
-      !relative.startsWith('..') &&
-      !path.isAbsolute(relative) &&
-      fileExists(absolute)
-    )
-  } catch {
-    return false
+  if (unnamed.length > 0) {
+    return `operator decision ${decisionPath} does not name excluded question(s) ${unnamed.join(', ')}`
   }
+
+  return null
 }
 
 function excludedQuestions(
-  root: string,
-  runId: string | null,
+  decisions: OperatorDecision[],
   precondition: Record<string, unknown>,
 ): Set<string> {
   const excluded = new Set<string>()
@@ -150,16 +177,7 @@ function excludedQuestions(
     : []
 
   for (const entry of exclusions) {
-    if (!isRecord(entry)) {
-      continue
-    }
-
-    const decisionPath =
-      typeof entry.operator_decision_path === 'string'
-        ? entry.operator_decision_path
-        : ''
-
-    if (!isAuthorizedOperatorDecisionPath(root, runId, decisionPath)) {
+    if (!isRecord(entry) || exclusionAuthorityFailure(decisions, entry)) {
       continue
     }
 
@@ -171,9 +189,18 @@ function excludedQuestions(
   return excluded
 }
 
+function liveQuestions(
+  decisions: OperatorDecision[],
+  precondition: Record<string, unknown>,
+): string[] {
+  const affected = stringArray(precondition.affected_questions)
+  const excluded = excludedQuestions(decisions, precondition)
+
+  return affected.filter((questionId) => !excluded.has(questionId))
+}
+
 function preconditionBlocksApproach(
-  root: string,
-  runId: string | null,
+  decisions: OperatorDecision[],
   precondition: Record<string, unknown>,
 ): boolean {
   const status =
@@ -183,15 +210,16 @@ function preconditionBlocksApproach(
     return false
   }
 
-  const affected = stringArray(precondition.affected_questions)
-  const excluded = excludedQuestions(root, runId, precondition)
-
-  return affected.some((questionId) => !excluded.has(questionId))
+  return liveQuestions(decisions, precondition).length > 0
 }
 
+/**
+ * Volatile preconditions the build owes a recheck: those still carrying a
+ * question no operator decision excluded. An excluded precondition may stay
+ * unavailable without trapping the build.
+ */
 function includedVolatilePreconditions(
-  root: string,
-  runId: string | null,
+  decisions: OperatorDecision[],
   approachData: Record<string, unknown> | null,
 ): Record<string, unknown>[] {
   const approach = isRecord(approachData?.technical_approach)
@@ -204,13 +232,12 @@ function includedVolatilePreconditions(
   return preconditions.filter(
     (precondition) =>
       precondition.volatile === true &&
-      !preconditionBlocksApproach(root, runId, precondition),
+      liveQuestions(decisions, precondition).length > 0,
   )
 }
 
 function validatePreconditionEntry(
-  root: string,
-  runId: string | null,
+  decisions: OperatorDecision[],
   issues: HandlerResult['issues'],
   prefix: string,
   entry: unknown,
@@ -227,6 +254,7 @@ function validatePreconditionEntry(
     'check',
     'status',
     'evidence',
+    'volatile',
   ] as const) {
     const value = entry[field]
 
@@ -237,6 +265,16 @@ function validatePreconditionEntry(
             `${prefix}.${field}`,
             `${prefix}.${field} MUST be a non-empty array`,
           ),
+        )
+      }
+
+      continue
+    }
+
+    if (field === 'volatile') {
+      if (typeof value !== 'boolean') {
+        issues.push(
+          issue(`${prefix}.volatile`, `${prefix}.volatile MUST be a boolean`),
         )
       }
 
@@ -264,12 +302,6 @@ function validatePreconditionEntry(
     )
   }
 
-  if (entry.volatile !== undefined && typeof entry.volatile !== 'boolean') {
-    issues.push(
-      issue(`${prefix}.volatile`, `${prefix}.volatile MUST be a boolean`),
-    )
-  }
-
   const exclusions = Array.isArray(entry.exclusions) ? entry.exclusions : []
 
   for (const [index, exclusion] of exclusions.entries()) {
@@ -283,23 +315,13 @@ function validatePreconditionEntry(
       continue
     }
 
-    const decisionPath = exclusion.operator_decision_path
+    const failure = exclusionAuthorityFailure(decisions, exclusion)
 
-    if (!nonEmptyString(decisionPath)) {
-      issues.push(
-        issue(
-          `${prefix}.exclusions`,
-          `${prefix}.exclusions[${index}] MUST cite operator_decision_path`,
-        ),
-      )
-      continue
-    }
-
-    if (!isAuthorizedOperatorDecisionPath(root, runId, decisionPath)) {
+    if (failure) {
       issues.push(
         issue(
           'prototype.exclusion_authority',
-          `${prefix}.exclusions[${index}] operator_decision_path MUST name a run decision file`,
+          `${prefix}.exclusions[${index}] ${failure}`,
         ),
       )
     }
@@ -341,41 +363,30 @@ function validateApproachOutput(
   }
 
   const preconditions = approach.preconditions
-  const runId = runIdFromInput(input)
+  const decisions = operatorDecisions(input)
 
   let blocking = false
 
   for (const [index, entry] of preconditions.entries()) {
     const precondition = validatePreconditionEntry(
-      input.root,
-      runId,
+      decisions,
       issues,
       `technical_approach.preconditions[${index}]`,
       entry,
     )
 
-    if (
-      precondition &&
-      preconditionBlocksApproach(input.root, runId, precondition)
-    ) {
+    if (precondition && preconditionBlocksApproach(decisions, precondition)) {
       blocking = true
     }
   }
 
+  // A blocked approach needs no precondition cause: blocked is the
+  // harness-wide pause route and an operator question may block it as well.
   if (value.result === 'success' && blocking) {
     issues.push(
       issue(
         'prototype.approach_blocked',
         'Approach success is incompatible with a blocking precondition',
-      ),
-    )
-  }
-
-  if (value.result === 'blocked' && !blocking) {
-    issues.push(
-      issue(
-        'prototype.approach_unblocked',
-        'Approach blocked result requires at least one blocking precondition',
       ),
     )
   }
@@ -409,16 +420,14 @@ function validateBuildOutput(
   }
 
   const checks = spike.precondition_checks
-
+  const success = value.result === 'success'
   const approachData = readPriorStageData(input, 'approach')
-  const runId = runIdFromInput(input)
   const volatilePreconditions = includedVolatilePreconditions(
-    input.root,
-    runId,
+    operatorDecisions(input),
     approachData,
   )
 
-  if (value.result === 'success' && approachData === null) {
+  if (success && approachData === null) {
     issues.push(
       issue(
         'prototype.approach_unresolved',
@@ -427,7 +436,7 @@ function validateBuildOutput(
     )
   }
 
-  if (checks.length === 0 && volatilePreconditions.length > 0) {
+  if (success && checks.length === 0 && volatilePreconditions.length > 0) {
     issues.push(
       issue(
         'prototype.precondition_checks_missing',
@@ -437,6 +446,7 @@ function validateBuildOutput(
   }
 
   const checkById = new Map<string, Record<string, unknown>>()
+  let unreadyCheck = false
 
   for (const [index, entry] of checks.entries()) {
     if (!isRecord(entry)) {
@@ -469,6 +479,8 @@ function validateBuildOutput(
           `spike.precondition_checks[${index}].status MUST be ready, unavailable, or unknown`,
         ),
       )
+    } else if (status !== 'ready') {
+      unreadyCheck = true
     }
 
     if (!Array.isArray(entry.evidence) || entry.evidence.length === 0) {
@@ -485,15 +497,20 @@ function validateBuildOutput(
     ? spike.changed_files
     : []
 
-  // The rule reads unconditionally and applies unconditionally: a blocked
-  // build left no source edits behind, whatever blocked it.
-  if (value.result === 'blocked' && changedFiles.length > 0) {
+  // PROTO-001 conditions the empty changed-files rule on a precondition
+  // becoming unavailable. A build blocked for another reason keeps the
+  // harness-wide pause route, so it is not rewritten into a failure here.
+  if (value.result === 'blocked' && unreadyCheck && changedFiles.length > 0) {
     issues.push(
       issue(
         'prototype.blocked_changed_files',
-        'Blocked build MUST leave changed_files empty',
+        'A build blocked by an unavailable precondition MUST leave changed_files empty',
       ),
     )
+  }
+
+  if (!success) {
+    return issues
   }
 
   for (const precondition of volatilePreconditions) {
@@ -510,11 +527,7 @@ function validateBuildOutput(
       continue
     }
 
-    if (
-      check.status !== 'ready' &&
-      value.result === 'success' &&
-      changedFiles.length > 0
-    ) {
+    if (check.status !== 'ready' && changedFiles.length > 0) {
       issues.push(
         issue(
           'prototype.volatile_check_unready',
@@ -527,8 +540,50 @@ function validateBuildOutput(
   return issues
 }
 
+/**
+ * The technical question ids the intake brief declared, or null when the
+ * intake output cannot be resolved from the run's stage history.
+ */
+function declaredQuestionIds(input: HandlerInput): Set<string> | null {
+  const intakeData = readPriorStageData(input, 'intake')
+  const brief = isRecord(intakeData?.prototype_brief)
+    ? intakeData.prototype_brief
+    : null
+
+  if (!brief || !Array.isArray(brief.technical_questions)) {
+    return null
+  }
+
+  const ids = new Set<string>()
+
+  for (const question of brief.technical_questions) {
+    if (nonEmptyString(question)) {
+      ids.add(question)
+    } else if (isRecord(question) && nonEmptyString(question.id)) {
+      ids.add(question.id)
+    }
+  }
+
+  return ids
+}
+
+/** Question ids an environment blocker names, under either field spelling. */
+function blockerQuestionIds(blocker: unknown): string[] {
+  if (!isRecord(blocker)) {
+    return []
+  }
+
+  const ids = stringArray(blocker.affected_questions)
+
+  if (nonEmptyString(blocker.question_id)) {
+    ids.push(blocker.question_id)
+  }
+
+  return ids
+}
+
 function validateEvaluateOutput(
-  _input: HandlerInput,
+  input: HandlerInput,
   value: Record<string, unknown>,
 ): HandlerResult['issues'] {
   const issues: HandlerResult['issues'] = []
@@ -543,7 +598,11 @@ function validateEvaluateOutput(
     return issues
   }
 
-  if (!Array.isArray(evaluation.environment_blockers)) {
+  const blockers = Array.isArray(evaluation.environment_blockers)
+    ? evaluation.environment_blockers
+    : null
+
+  if (!blockers) {
     issues.push(
       issue(
         'prototype.environment_blockers',
@@ -566,11 +625,7 @@ function validateEvaluateOutput(
 
   // An environment_blocked verdict asserts that named gaps prevented a
   // decision; a verdict with no named blocker asserts nothing checkable.
-  if (
-    verdict === 'environment_blocked' &&
-    Array.isArray(evaluation.environment_blockers) &&
-    evaluation.environment_blockers.length === 0
-  ) {
+  if (verdict === 'environment_blocked' && blockers && blockers.length === 0) {
     issues.push(
       issue(
         'prototype.environment_blockers_empty',
@@ -592,6 +647,10 @@ function validateEvaluateOutput(
     )
   }
 
+  const blockedQuestionIds = new Set(
+    (blockers ?? []).flatMap((blocker) => blockerQuestionIds(blocker)),
+  )
+  const reportedQuestionIds = new Set<string>()
   let discardMet = false
 
   for (const [index, entry] of questionResults.entries()) {
@@ -614,6 +673,14 @@ function validateEvaluateOutput(
           ),
         )
       }
+    }
+
+    const questionId = nonEmptyString(entry.question_id)
+      ? entry.question_id
+      : ''
+
+    if (questionId.length > 0) {
+      reportedQuestionIds.add(questionId)
     }
 
     const cause = typeof entry.cause === 'string' ? entry.cause : ''
@@ -646,6 +713,34 @@ function validateEvaluateOutput(
         ),
       )
     }
+
+    if (
+      entry.readiness_question !== undefined &&
+      typeof entry.readiness_question !== 'boolean'
+    ) {
+      issues.push(
+        issue(
+          'prototype.readiness_question',
+          `evaluation.question_results[${index}].readiness_question MUST be a boolean`,
+        ),
+      )
+    }
+
+    // The explicit-readiness exemption lets an environment failure count as
+    // product evidence. The evaluator claims it with readiness_question so a
+    // blocker-named question cannot silently become a product cause.
+    if (
+      cause === 'product' &&
+      blockedQuestionIds.has(questionId) &&
+      entry.readiness_question !== true
+    ) {
+      issues.push(
+        issue(
+          'prototype.readiness_claim',
+          `evaluation.question_results[${index}] names a product cause for ${questionId} while an environment blocker names it; set readiness_question: true when the brief tests readiness`,
+        ),
+      )
+    }
   }
 
   if (verdict === 'environment_blocked' && discardMet) {
@@ -655,6 +750,34 @@ function validateEvaluateOutput(
         'environment_blocked is incompatible with a met product discard condition',
       ),
     )
+  }
+
+  const declared = declaredQuestionIds(input)
+
+  // Without a readable intake output there is no declared set to cover;
+  // mirror the build stage, which only demands traceability it can resolve.
+  if (declared) {
+    for (const questionId of declared) {
+      if (!reportedQuestionIds.has(questionId)) {
+        issues.push(
+          issue(
+            'prototype.question_coverage',
+            `evaluation.question_results MUST answer declared question ${questionId}`,
+          ),
+        )
+      }
+    }
+
+    for (const questionId of reportedQuestionIds) {
+      if (!declared.has(questionId)) {
+        issues.push(
+          issue(
+            'prototype.question_coverage',
+            `evaluation.question_results names ${questionId}, which the brief did not declare`,
+          ),
+        )
+      }
+    }
   }
 
   return issues

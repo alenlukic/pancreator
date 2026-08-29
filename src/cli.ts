@@ -175,7 +175,7 @@ const HELP_BODY = `Usage:
   pan models [--sync] [--probe] [--migrate-from <previous-config.json>] [--json]
   pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source> [--json]
   pan models --probe --run <run-id> --invocation <invocation-id> [--json]
-      --probe launches one minimal cursor-agent call per distinct active model spec and fails loudly when the resolved variant differs from the catalog's prediction. Needs the cursor-agent CLI and CURSOR_API_KEY (process environment, installation .env, or workspace-root .env) or a login. Run pan doctor to see which source resolves.
+      --probe launches one minimal cursor-agent call per distinct active model spec and records what Cursor resolved and reports match, recorded, mismatch, or unavailable per spec. It never fails the command, so read the result and error fields. Needs the cursor-agent CLI and CURSOR_API_KEY (process environment, installation .env, or workspace-root .env) or a login. Run pan doctor to see which source resolves.
       --migrate-from preserves the previous effective model map across a tracked config.json replacement: every mapping the new file leaves empty is carried into config_overrides.json, and the replacement stops before mutation when any required mapping stays empty.
   pan validate [--json]
   pan doctor [--worktree <name>] [--json]
@@ -1020,6 +1020,7 @@ async function main(): Promise<void> {
           )?.path ?? null,
         next_stage: result.state.current_stage,
         pending_action: result.state.pending_action,
+        advisories: result.advisories.map((advisory) => advisory.message),
       })
       return
     }
@@ -1599,16 +1600,21 @@ async function main(): Promise<void> {
           )
         }
 
-        print(
-          recordSupervisorModelEvidence(
-            root,
-            requiredArgument(runId, '--run'),
-            requiredArgument(
-              option(args, '--effective-model'),
-              '--effective-model',
-            ),
-            requiredArgument(option(args, '--source'), '--source'),
+        const recorded = recordSupervisorModelEvidence(
+          root,
+          requiredArgument(runId, '--run'),
+          requiredArgument(
+            option(args, '--effective-model'),
+            '--effective-model',
           ),
+          requiredArgument(option(args, '--source'), '--source'),
+        )
+
+        print(
+          {
+            ...recorded.evidence,
+            advisories: recorded.advisories.map((advisory) => advisory.message),
+          },
           true,
         )
         return

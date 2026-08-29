@@ -163,38 +163,30 @@ test('workflow validation rejects unknown transition targets', () => {
   )
 })
 
-test('prototype approach requires preconditions and the verification criterion', () => {
+test('prototype stages declare their precondition data and criteria', () => {
+  // One fixture serves three read-only assertions on immutable stage files.
   const root = createFixture()
-  const approach = stageBySlug(loadWorkflow(root, 'prototype'), 'approach')
+  const workflow = loadWorkflow(root, 'prototype')
 
-  assert.ok(approach.required_data?.['technical_approach.preconditions'])
-  assert.ok(
-    approach.criteria.some(
-      (criterion) => criterion.id === 'approach.preconditions_verified',
-    ),
-  )
-})
+  for (const [slug, dataKey, criterionId] of [
+    [
+      'approach',
+      'technical_approach.preconditions',
+      'approach.preconditions_verified',
+    ],
+    ['build', 'spike.precondition_checks', 'build.preconditions_rechecked'],
+    [
+      'evaluate',
+      'evaluation.environment_blockers',
+      'evaluate.environment_classified',
+    ],
+  ] as const) {
+    const stage = stageBySlug(workflow, slug)
 
-test('prototype build requires precondition recheck evidence', () => {
-  const root = createFixture()
-  const build = stageBySlug(loadWorkflow(root, 'prototype'), 'build')
-
-  assert.ok(build.required_data?.['spike.precondition_checks'])
-  assert.ok(
-    build.criteria.some(
-      (criterion) => criterion.id === 'build.preconditions_rechecked',
-    ),
-  )
-})
-
-test('prototype evaluate requires environment blockers and classification', () => {
-  const root = createFixture()
-  const evaluate = stageBySlug(loadWorkflow(root, 'prototype'), 'evaluate')
-
-  assert.ok(evaluate.required_data?.['evaluation.environment_blockers'])
-  assert.ok(
-    evaluate.criteria.some(
-      (criterion) => criterion.id === 'evaluate.environment_classified',
-    ),
-  )
+    assert.ok(stage.required_data?.[dataKey], `${slug} requires ${dataKey}`)
+    assert.ok(
+      stage.criteria.some((criterion) => criterion.id === criterionId),
+      `${slug} declares ${criterionId}`,
+    )
+  }
 })

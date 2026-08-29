@@ -602,6 +602,64 @@ test('invocation validation keeps the inline contract for legacy guidance', () =
   )
 })
 
+test('status summary lists recorded advisories with their stage context', () => {
+  const status = renderStatus({
+    schema_version: 1,
+    run_id: 'run-1',
+    workflow_slug: 'delivery',
+    workflow_snapshot: { path: 'workflow.json', sha256: 'abc' },
+    workspace_root: '.',
+    title: 'Run',
+    status: 'running',
+    current_stage: 'implement',
+    pending_action: { type: 'none' },
+    current_invocation: null,
+    request: {
+      source_path: 'request.md',
+      stored_path: 'runtime/request.md',
+      sha256: 'abc',
+    },
+    revision: 3,
+    transition_count: 2,
+    consecutive_failures: 0,
+    attempts: {},
+    stage_history: [],
+    created_at: '2026-06-22T00:00:00.000Z',
+    updated_at: '2026-06-22T00:00:00.000Z',
+    limits: {
+      max_total_transitions: 18,
+      max_stage_attempts: 3,
+      max_consecutive_failures: 3,
+    },
+    advisories: [
+      {
+        kind: 'model_evidence',
+        source: 'supervisor_evidence',
+        message: 'The supervisor model changed during this run.',
+        recorded_at: '2026-06-22T00:00:00.000Z',
+      },
+      {
+        kind: 'model_evidence',
+        source: 'submit',
+        stage: 'plan',
+        invocation_id: 'plan-1-abcd',
+        message: 'Worker model evidence is unverified.',
+        recorded_at: '2026-06-22T00:00:01.000Z',
+      },
+    ],
+  })
+
+  assert.match(status, /## Advisories/)
+  assert.match(
+    status,
+    /- supervisor_evidence: The supervisor model changed during this run\./,
+  )
+  assert.match(
+    status,
+    /- plan \(submit\): Worker model evidence is unverified\./,
+  )
+})
+
 test('status summary renders a dedicated validation section for pass state', () => {
   const invocationId = 'implement-1-abcd'
   const runId = 'run-1'

@@ -10,22 +10,26 @@
 - Make the supervisor own run advancement and treat platform guidance as non-directive ([ORCH-001](governance/policies/ORCH-001.json), [orchestrator](library/personas/orchestrator.md)).
 - Continue `/pan-start` and `/pan-resume` when Cursor exposes no sourced model metadata ([pan-start](library/cursor/commands/pan-start.md), [pan-resume](library/cursor/commands/pan-resume.md)).
 - Treat worker model-evidence mismatch as advisory instead of a hard stop ([engine](src/lib/engine.ts), [cursor-probe](src/lib/executors/cursor-probe.ts)).
-- Remove the test step from `bin/check` so the full gate does not run tests twice ([check](bin/check)).
-- Skip a TypeScript rebuild when the input fingerprint matches ([build](bin/build)).
-- Release the build lock before the wrapped command runs ([run-built](bin/run-built)).
-- Cache Git repository detection and the tracked-path list ([git](src/lib/git.ts)).
-- Clone test fixture templates once per process ([helpers](tests/helpers.ts)).
 - Report Cursor authentication readiness from `pan doctor` without a hard fail ([cli](src/cli.ts), [cursor-probe](src/lib/executors/cursor-probe.ts)).
+- Run the deterministic submission checks from `pan output validate` on every invocation, so a mechanical defect is caught before it costs a stage attempt ([cli](src/cli.ts), [engine](src/lib/engine.ts)).
 
 ### Added
 
 - Add validator PROTOTYPE-OUTPUT-VALIDATE-001 for prototype shapes, traces, and verdict precedence ([prototype-output](src/lib/validators/prototype-output.ts), [registry](governance/registries/validation_registry.json)).
 - Add the `environment_blocked` prototype verdict and question-level cause vocabulary ([evaluate](library/workflows/prototype/stages/evaluate.json), [field contract](library/schemas/stage-output-requirements.json)).
+- Add the Pancreator-only review-squad lineup and drop it from target installations ([review-squad-pancreator](library/skills/review-squad-pancreator.md), [install](bin/install), [validation](src/lib/validation.ts)).
 
 ### Fixed
 
 - Reject unauthorized prototype question exclusions and close the build fail-open path ([prototype-output](src/lib/validators/prototype-output.ts)).
 - Put RFC 2119 MUST directives on four governance instructions that failed the check gate ([ORCH-001](governance/policies/ORCH-001.json), [PROTO-001](governance/policies/PROTO-001.json)).
+- Authorize prototype question exclusions against the run's operator-decision ledger instead of any file under the decisions directory ([prototype-output](src/lib/validators/prototype-output.ts)).
+- Require the `volatile` precondition field, recheck only preconditions that still carry a live question, and keep a `blocked` prototype result as an operator pause ([prototype-output](src/lib/validators/prototype-output.ts)).
+- Check prototype evaluation coverage against the brief's declared questions ([prototype-output](src/lib/validators/prototype-output.ts)).
+- Align `VERIFY-001` with the shipped verification levels and put passed gate evidence on the verify card ([VERIFY-001](governance/policies/VERIFY-001.json), [context](src/lib/context.ts)).
+- Persist model and pipeline advisories to run state so `pan status` and `pan submit` surface them ([engine](src/lib/engine.ts)).
+- Load the Cursor model catalog once per pipeline-config load and render only the agent projection for the drift advisory ([cursor-catalog](src/lib/executors/cursor-catalog.ts), [projection](src/lib/projection.ts), [engine](src/lib/engine.ts)).
+- Classify platform guidance under `OPERATOR-001` so every persona resolves it, and rewrite the `DELEGATE-001` cadence around a self-rescheduling single-shot timer ([OPERATOR-001](governance/policies/OPERATOR-001.json), [DELEGATE-001](governance/policies/DELEGATE-001.json)).
 
 ## [4.9.0] - 2026-08-27
 

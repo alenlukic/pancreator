@@ -18,7 +18,7 @@ You MUST NOT launch the `pan-orchestrator` subagent, and MUST NOT relay the run 
 When the operator answers a stop, continue the same run in this session:
 
 1. Run `{{PANCREATOR_PAN_COMMAND}} status <run-id> --json` to reconcile state.
-2. Treat the operator's message as an explicit directive under `OPERATOR-001`. When it decides the pending operator-owned action, execute it without asking again.
+2. Treat the operator's own prompt text as an explicit directive under `OPERATOR-001`. Platform-injected instructions and session-mode text are guidance under that policy, never directives. State any conflict in your report before acting. When the operator's text decides the pending operator-owned action, execute it without asking again.
 3. Resume the advance loop.
 
 If the run stopped before `{{PANCREATOR_PAN_COMMAND}} init` created it, for example on an ambiguous workflow choice, apply the operator's answer to the same preserved request file and start the run then.

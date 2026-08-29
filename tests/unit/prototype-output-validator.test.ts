@@ -1,10 +1,16 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
 import { validatePrototypeOutput } from '../../src/lib/validators/prototype-output.js'
-import { createFixture } from '../helpers.js'
+
+// The validator reads only the stage outputs and run state it is handed, so a
+// bare directory stands in for the repository root.
+function scratchRoot(): string {
+  return mkdtempSync(path.join(tmpdir(), 'pan-prototype-output-'))
+}
 
 function writeOutput(
   root: string,
@@ -43,8 +49,60 @@ function validatorInput(
   }
 }
 
+const OPERATOR_DECISION_PATH =
+  'runtime/logs/workflows/run-1/agent/decisions/operator-feedback-1.md'
+
+function operatorFeedback(
+  note: string,
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    decision: 'approve',
+    source: 'operator',
+    from_stage: 'intake',
+    to_stage: 'approach',
+    attempt: 1,
+    note,
+    path: OPERATOR_DECISION_PATH,
+    timestamp: '2026-08-28T00:00:00.000Z',
+    ...overrides,
+  }
+}
+
+function excludedPrecondition(decisionPath: string): Record<string, unknown> {
+  return {
+    id: 'PRE-01',
+    affected_questions: ['TQ-01'],
+    check: 'auth probe',
+    status: 'unavailable',
+    evidence: ['missing auth'],
+    volatile: true,
+    exclusions: [
+      {
+        excluded_questions: ['TQ-01'],
+        operator_decision_path: decisionPath,
+      },
+    ],
+  }
+}
+
+function approachOutput(
+  root: string,
+  preconditions: Record<string, unknown>[],
+  result = 'success',
+): string {
+  return writeOutput(root, 'approach.json', {
+    result,
+    data: { technical_approach: { preconditions } },
+  })
+}
+
+function codesOf(result: ReturnType<typeof validatePrototypeOutput>) {
+  return new Set(result.issues.map((issue) => issue.code))
+}
+
 test('prototype intake output passes without extra fields', () => {
-  const root = createFixture()
+  const root = scratchRoot()
   const target = writeOutput(root, 'intake.json', {
     data: { prototype_brief: { objective: 'test' } },
   })
@@ -55,131 +113,171 @@ test('prototype intake output passes without extra fields', () => {
 })
 
 test('approach accepts canonical preconditions and rejects blocking success', () => {
-  const root = createFixture()
-  const target = writeOutput(root, 'approach.json', {
-    result: 'success',
-    data: {
-      technical_approach: {
-        preconditions: [
-          {
-            id: 'PRE-01',
-            affected_questions: ['TQ-01'],
-            check: 'auth probe',
-            status: 'unavailable',
-            evidence: ['missing auth'],
-            volatile: true,
-          },
-        ],
-      },
+  const root = scratchRoot()
+  const target = approachOutput(root, [
+    {
+      id: 'PRE-01',
+      affected_questions: ['TQ-01'],
+      check: 'auth probe',
+      status: 'unavailable',
+      evidence: ['missing auth'],
+      volatile: true,
     },
-  })
+  ])
 
   const result = validatePrototypeOutput(
     validatorInput(root, target, 'approach'),
   )
 
   assert.equal(result.status, 'failed')
-  assert.ok(
-    result.issues.some((issue) => issue.code === 'prototype.approach_blocked'),
-  )
+  assert.ok(codesOf(result).has('prototype.approach_blocked'))
 })
 
-test('approach allows narrowed scope with operator decision evidence', () => {
-  const root = createFixture()
-  const decisionPath =
-    'runtime/logs/workflows/run-1/agent/decisions/operator-feedback-1.md'
-
-  mkdirSync(path.dirname(path.join(root, decisionPath)), { recursive: true })
-  writeFileSync(path.join(root, decisionPath), '# operator decision\n')
-
-  const target = writeOutput(root, 'approach.json', {
-    result: 'success',
-    data: {
-      technical_approach: {
-        preconditions: [
-          {
-            id: 'PRE-01',
-            affected_questions: ['TQ-01'],
-            check: 'auth probe',
-            status: 'unavailable',
-            evidence: ['missing auth'],
-            volatile: true,
-            exclusions: [
-              {
-                excluded_questions: ['TQ-01'],
-                operator_decision_path: decisionPath,
-              },
-            ],
-          },
-          {
-            id: 'PRE-02',
-            affected_questions: ['TQ-02'],
-            check: 'fixture ready',
-            status: 'ready',
-            evidence: ['ready'],
-            volatile: false,
-          },
-        ],
-      },
+test('approach allows narrowed scope with a recorded operator decision', () => {
+  const root = scratchRoot()
+  const target = approachOutput(root, [
+    excludedPrecondition(OPERATOR_DECISION_PATH),
+    {
+      id: 'PRE-02',
+      affected_questions: ['TQ-02'],
+      check: 'fixture ready',
+      status: 'ready',
+      evidence: ['ready'],
+      volatile: false,
     },
-  })
+  ])
 
-  const result = validatePrototypeOutput({
-    ...validatorInput(root, target, 'approach', {
+  const result = validatePrototypeOutput(
+    validatorInput(root, target, 'approach', {
       run_id: 'run-1',
+      operator_feedback: [
+        operatorFeedback(
+          'Exclude TQ-01 from this spike; auth is out of scope.',
+        ),
+      ],
     }),
-  })
+  )
 
   assert.equal(result.status, 'passed')
 })
 
-test('approach rejects narrowing with a decision path outside run decisions', () => {
-  const root = createFixture()
-  writeFileSync(path.join(root, 'AGENTS.md'), '# agents\n')
+test('approach rejects narrowing cited to a harness pause record', () => {
+  const root = scratchRoot()
+  // The harness writes its own pause records into the decisions directory;
+  // an existing file there is not an operator directive.
+  const pausePath =
+    'runtime/logs/workflows/run-1/agent/decisions/2f1c9b3e-pause.json'
 
-  const target = writeOutput(root, 'approach.json', {
-    result: 'success',
-    data: {
-      technical_approach: {
-        preconditions: [
-          {
-            id: 'PRE-01',
-            affected_questions: ['TQ-01'],
-            check: 'auth probe',
-            status: 'unavailable',
-            evidence: ['missing auth'],
-            volatile: true,
-            exclusions: [
-              {
-                excluded_questions: ['TQ-01'],
-                operator_decision_path: 'AGENTS.md',
-              },
-            ],
-          },
-        ],
-      },
-    },
-  })
+  writeOutput(root, pausePath, { title: 'Approach paused', status: 'paused' })
 
-  const result = validatePrototypeOutput({
-    ...validatorInput(root, target, 'approach', {
+  const target = approachOutput(root, [excludedPrecondition(pausePath)])
+
+  const result = validatePrototypeOutput(
+    validatorInput(root, target, 'approach', {
       run_id: 'run-1',
+      operator_feedback: [],
     }),
-  })
+  )
+  const codes = codesOf(result)
 
   assert.equal(result.status, 'failed')
+  assert.ok(codes.has('prototype.exclusion_authority'))
+  assert.ok(codes.has('prototype.approach_blocked'))
+})
+
+test('approach rejects narrowing when the operator note omits the question', () => {
+  const root = scratchRoot()
+  const target = approachOutput(root, [
+    excludedPrecondition(OPERATOR_DECISION_PATH),
+  ])
+
+  const result = validatePrototypeOutput(
+    validatorInput(root, target, 'approach', {
+      run_id: 'run-1',
+      operator_feedback: [operatorFeedback('Keep the spike small.')],
+    }),
+  )
+  const codes = codesOf(result)
+
+  assert.equal(result.status, 'failed')
+  assert.ok(codes.has('prototype.exclusion_authority'))
   assert.ok(
     result.issues.some(
-      (issue) => issue.code === 'prototype.exclusion_authority',
+      (issue) =>
+        issue.code === 'prototype.exclusion_authority' &&
+        issue.message.includes('TQ-01'),
     ),
-  )
-  assert.ok(
-    result.issues.some((issue) => issue.code === 'prototype.approach_blocked'),
   )
 })
 
+test('approach rejects narrowing cited to an away-mode decision', () => {
+  const root = scratchRoot()
+  const target = approachOutput(root, [
+    excludedPrecondition(OPERATOR_DECISION_PATH),
+  ])
+
+  const result = validatePrototypeOutput(
+    validatorInput(root, target, 'approach', {
+      run_id: 'run-1',
+      operator_feedback: [
+        operatorFeedback('Exclude TQ-01.', { source: 'away' }),
+      ],
+    }),
+  )
+
+  assert.equal(result.status, 'failed')
+  assert.ok(codesOf(result).has('prototype.exclusion_authority'))
+})
+
+test('a precondition entry omitting volatile fails', () => {
+  const root = scratchRoot()
+  const target = approachOutput(root, [
+    {
+      id: 'PRE-01',
+      affected_questions: ['TQ-01'],
+      check: 'fixture ready',
+      status: 'ready',
+      evidence: ['ready'],
+    },
+  ])
+
+  const result = validatePrototypeOutput(
+    validatorInput(root, target, 'approach'),
+  )
+
+  assert.equal(result.status, 'failed')
+  assert.ok(codesOf(result).has('technical_approach.preconditions[0].volatile'))
+})
+
+test('an approach blocked on an operator question passes validation', () => {
+  const root = scratchRoot()
+  const target = approachOutput(
+    root,
+    [
+      {
+        id: 'PRE-01',
+        affected_questions: ['TQ-01'],
+        check: 'fixture ready',
+        status: 'ready',
+        evidence: ['ready'],
+        volatile: false,
+      },
+    ],
+    'blocked',
+  )
+
+  // blocked is the harness-wide pause route; the validator must let the
+  // operator question reach the operator instead of rewriting it to failure.
+  const result = validatePrototypeOutput(
+    validatorInput(root, target, 'approach'),
+  )
+
+  assert.equal(result.status, 'passed')
+  assert.equal(result.issues.length, 0)
+})
+
 test('build requires volatile rechecks before changed files', () => {
-  const root = createFixture()
+  const root = scratchRoot()
   const runId = 'run-volatile'
   const approachPath = writeOutput(
     root,
@@ -222,8 +320,8 @@ test('build requires volatile rechecks before changed files', () => {
     },
   )
 
-  const result = validatePrototypeOutput({
-    ...validatorInput(root, target, 'build', {
+  const result = validatePrototypeOutput(
+    validatorInput(root, target, 'build', {
       stage_history: [
         {
           stage: 'approach',
@@ -232,18 +330,75 @@ test('build requires volatile rechecks before changed files', () => {
         },
       ],
     }),
-  })
+  )
 
   assert.equal(result.status, 'failed')
-  assert.ok(
-    result.issues.some(
-      (issue) => issue.code === 'prototype.volatile_check_unready',
-    ),
+  assert.ok(codesOf(result).has('prototype.volatile_check_unready'))
+})
+
+test('build success with edits passes when an excluded volatile precondition stays unavailable', () => {
+  const root = scratchRoot()
+  const runId = 'run-1'
+  const approachPath = writeOutput(
+    root,
+    `runtime/logs/workflows/${runId}/agent/outputs/approach-1.json`,
+    {
+      result: 'success',
+      data: {
+        technical_approach: {
+          preconditions: [
+            excludedPrecondition(OPERATOR_DECISION_PATH),
+            {
+              id: 'PRE-02',
+              affected_questions: ['TQ-02'],
+              check: 'fixture ready',
+              status: 'ready',
+              evidence: ['ready'],
+              volatile: true,
+            },
+          ],
+        },
+      },
+    },
   )
+  const target = writeOutput(
+    root,
+    `runtime/logs/workflows/${runId}/agent/outputs/build-1.json`,
+    {
+      result: 'success',
+      data: {
+        spike: {
+          changed_files: ['src/spike.ts'],
+          precondition_checks: [
+            {
+              precondition_id: 'PRE-02',
+              status: 'ready',
+              evidence: ['fixture recheck passed'],
+            },
+          ],
+        },
+      },
+    },
+  )
+
+  // PRE-01 is excluded by the operator, so the build owes it no recheck and
+  // its unavailable status cannot trap the run.
+  const result = validatePrototypeOutput(
+    validatorInput(root, target, 'build', {
+      run_id: runId,
+      operator_feedback: [operatorFeedback('Exclude TQ-01 from this spike.')],
+      stage_history: [
+        { stage: 'approach', outcome: 'success', output_path: approachPath },
+      ],
+    }),
+  )
+
+  assert.equal(result.status, 'passed')
+  assert.equal(result.issues.length, 0)
 })
 
 test('evaluate rejects environment_blocked when discard condition met', () => {
-  const root = createFixture()
+  const root = scratchRoot()
   const target = writeOutput(root, 'evaluate.json', {
     result: 'success',
     data: {
@@ -275,28 +430,50 @@ test('evaluate rejects environment_blocked when discard condition met', () => {
   )
 
   assert.equal(result.status, 'failed')
-  assert.ok(
-    result.issues.some(
-      (issue) => issue.code === 'prototype.verdict_precedence',
-    ),
-  )
+  assert.ok(codesOf(result).has('prototype.verdict_precedence'))
 })
 
 test('evaluate accepts invalidated when product discard condition met', () => {
-  const root = createFixture()
+  const root = scratchRoot()
+  // Mixed evidence: three product discards and one environment gap. The
+  // product discard keeps the verdict at invalidated despite the blockers.
   const target = writeOutput(root, 'evaluate.json', {
     result: 'success',
     data: {
       evaluation: {
         verdict: 'invalidated',
-        environment_blockers: [{ id: 'ENV-01', detail: 'missing credential' }],
+        environment_blockers: [
+          { id: 'ENV-01', detail: 'Missing GitHub token scope' },
+          { id: 'ENV-02', detail: 'Missing CURSOR_API_KEY' },
+        ],
         question_results: [
           {
             question_id: 'TQ-01',
             result: 'answered',
             cause: 'product',
-            evidence: ['transaction loss'],
+            evidence: ['transaction data loss after failed commit'],
             discard_condition_met: true,
+          },
+          {
+            question_id: 'TQ-02',
+            result: 'answered',
+            cause: 'product',
+            evidence: ['mock-only cursor judgment'],
+            discard_condition_met: true,
+          },
+          {
+            question_id: 'TQ-03',
+            result: 'answered',
+            cause: 'product',
+            evidence: ['browser console stylesheet errors'],
+            discard_condition_met: true,
+          },
+          {
+            question_id: 'TQ-04',
+            result: 'unanswered',
+            cause: 'environment',
+            evidence: ['GitHub HTTP 403'],
+            discard_condition_met: false,
           },
         ],
       },
@@ -308,10 +485,16 @@ test('evaluate accepts invalidated when product discard condition met', () => {
   )
 
   assert.equal(result.status, 'passed')
+
+  const saved = JSON.parse(readFileSync(path.join(root, target), 'utf8')) as {
+    data: { evaluation: { verdict: string } }
+  }
+
+  assert.equal(saved.data.evaluation.verdict, 'invalidated')
 })
 
 test('evaluate rejects unknown verdict values', () => {
-  const root = createFixture()
+  const root = scratchRoot()
   const target = writeOutput(root, 'evaluate.json', {
     result: 'success',
     data: {
@@ -336,11 +519,11 @@ test('evaluate rejects unknown verdict values', () => {
   )
 
   assert.equal(result.status, 'failed')
-  assert.ok(result.issues.some((issue) => issue.code === 'prototype.verdict'))
+  assert.ok(codesOf(result).has('prototype.verdict'))
 })
 
 test('evaluate accepts invalidated without a met discard condition', () => {
-  const root = createFixture()
+  const root = scratchRoot()
   const target = writeOutput(root, 'evaluate.json', {
     result: 'success',
     data: {
@@ -367,14 +550,21 @@ test('evaluate accepts invalidated without a met discard condition', () => {
   assert.equal(result.status, 'passed')
 })
 
-test('evaluate accepts explicit-readiness product cause for a readiness question', () => {
-  const root = createFixture()
-  const target = writeOutput(root, 'evaluate.json', {
+function readinessEvaluation(
+  readinessQuestion: boolean | undefined,
+): Record<string, unknown> {
+  return {
     result: 'success',
     data: {
       evaluation: {
         verdict: 'validated',
-        environment_blockers: [],
+        environment_blockers: [
+          {
+            id: 'ENV-01',
+            detail: 'dependency probe failed',
+            affected_questions: ['TQ-ENV-READY'],
+          },
+        ],
         question_results: [
           {
             question_id: 'TQ-ENV-READY',
@@ -382,11 +572,19 @@ test('evaluate accepts explicit-readiness product cause for a readiness question
             cause: 'product',
             evidence: ['dependency probe failed during readiness test'],
             discard_condition_met: false,
+            ...(readinessQuestion === undefined
+              ? {}
+              : { readiness_question: readinessQuestion }),
           },
         ],
       },
     },
-  })
+  }
+}
+
+test('evaluate accepts explicit-readiness product cause for a readiness question', () => {
+  const root = scratchRoot()
+  const target = writeOutput(root, 'evaluate.json', readinessEvaluation(true))
 
   const result = validatePrototypeOutput(
     validatorInput(root, target, 'evaluate'),
@@ -395,8 +593,89 @@ test('evaluate accepts explicit-readiness product cause for a readiness question
   assert.equal(result.status, 'passed')
 })
 
+test('evaluate rejects a product cause on a blocker-named question without a readiness claim', () => {
+  const root = scratchRoot()
+  const target = writeOutput(
+    root,
+    'evaluate.json',
+    readinessEvaluation(undefined),
+  )
+
+  const result = validatePrototypeOutput(
+    validatorInput(root, target, 'evaluate'),
+  )
+
+  assert.equal(result.status, 'failed')
+  assert.ok(codesOf(result).has('prototype.readiness_claim'))
+})
+
+test('evaluate fails question coverage when a declared question is unanswered', () => {
+  const root = scratchRoot()
+  const runId = 'run-coverage'
+  const intakePath = writeOutput(
+    root,
+    `runtime/logs/workflows/${runId}/agent/outputs/intake-1.json`,
+    {
+      result: 'success',
+      data: {
+        prototype_brief: {
+          technical_questions: [
+            { id: 'TQ-01', question: 'Does the adapter cover provider A?' },
+            { id: 'TQ-02', question: 'Does the adapter cover provider B?' },
+          ],
+        },
+      },
+    },
+  )
+  const target = writeOutput(
+    root,
+    `runtime/logs/workflows/${runId}/agent/outputs/evaluate-1.json`,
+    {
+      result: 'success',
+      data: {
+        evaluation: {
+          verdict: 'validated',
+          environment_blockers: [],
+          question_results: [
+            {
+              question_id: 'TQ-01',
+              result: 'answered',
+              cause: 'product',
+              evidence: ['provider A responded'],
+              discard_condition_met: false,
+            },
+            {
+              question_id: 'TQ-09',
+              result: 'answered',
+              cause: 'none',
+              evidence: ['invented question'],
+              discard_condition_met: false,
+            },
+          ],
+        },
+      },
+    },
+  )
+
+  const result = validatePrototypeOutput(
+    validatorInput(root, target, 'evaluate', {
+      run_id: runId,
+      stage_history: [
+        { stage: 'intake', outcome: 'success', output_path: intakePath },
+      ],
+    }),
+  )
+  const coverage = result.issues.filter(
+    (issue) => issue.code === 'prototype.question_coverage',
+  )
+
+  assert.equal(result.status, 'failed')
+  assert.ok(coverage.some((issue) => issue.message.includes('TQ-02')))
+  assert.ok(coverage.some((issue) => issue.message.includes('TQ-09')))
+})
+
 test('a complete build success output passes', () => {
-  const root = createFixture()
+  const root = scratchRoot()
   const runId = 'run-success'
   const approachPath = writeOutput(
     root,
@@ -439,21 +718,45 @@ test('a complete build success output passes', () => {
     },
   )
 
-  const result = validatePrototypeOutput({
-    ...validatorInput(root, target, 'build', {
+  const result = validatePrototypeOutput(
+    validatorInput(root, target, 'build', {
       stage_history: [
         { stage: 'approach', outcome: 'success', output_path: approachPath },
       ],
     }),
-  })
+  )
 
   assert.equal(result.status, 'passed')
   assert.equal(result.issues.length, 0)
 })
 
-test('a blocked build with changed files fails regardless of preconditions', () => {
-  const root = createFixture()
+test('a build blocked by an unavailable precondition MUST leave changed files empty', () => {
+  const root = scratchRoot()
   const target = writeOutput(root, 'build-blocked.json', {
+    result: 'blocked',
+    data: {
+      spike: {
+        changed_files: ['src/spike.ts'],
+        precondition_checks: [
+          {
+            precondition_id: 'PRE-01',
+            status: 'unavailable',
+            evidence: ['auth expired'],
+          },
+        ],
+      },
+    },
+  })
+
+  const result = validatePrototypeOutput(validatorInput(root, target, 'build'))
+
+  assert.equal(result.status, 'failed')
+  assert.ok(codesOf(result).has('prototype.blocked_changed_files'))
+})
+
+test('a build blocked without a precondition cause keeps the pause route', () => {
+  const root = scratchRoot()
+  const target = writeOutput(root, 'build-blocked-question.json', {
     result: 'blocked',
     data: {
       spike: {
@@ -463,20 +766,15 @@ test('a blocked build with changed files fails regardless of preconditions', () 
     },
   })
 
-  // The rule reads unconditionally: no volatile precondition is required for
-  // a blocked build to owe an empty changed-files list.
+  // PROTO-001 conditions the empty changed-files rule on a precondition
+  // becoming unavailable; an operator question mid-build is not that.
   const result = validatePrototypeOutput(validatorInput(root, target, 'build'))
 
-  assert.equal(result.status, 'failed')
-  assert.ok(
-    result.issues.some(
-      (issue) => issue.code === 'prototype.blocked_changed_files',
-    ),
-  )
+  assert.equal(result.status, 'passed')
 })
 
 test('a blocked build with no changed files passes', () => {
-  const root = createFixture()
+  const root = scratchRoot()
   const target = writeOutput(root, 'build-blocked-clean.json', {
     result: 'blocked',
     data: {
@@ -493,7 +791,7 @@ test('a blocked build with no changed files passes', () => {
 })
 
 test('environment_blocked requires at least one named blocker', () => {
-  const root = createFixture()
+  const root = scratchRoot()
   const target = writeOutput(root, 'evaluate-empty-blockers.json', {
     result: 'success',
     data: {
@@ -518,15 +816,11 @@ test('environment_blocked requires at least one named blocker', () => {
   )
 
   assert.equal(result.status, 'failed')
-  assert.ok(
-    result.issues.some(
-      (issue) => issue.code === 'prototype.environment_blockers_empty',
-    ),
-  )
+  assert.ok(codesOf(result).has('prototype.environment_blockers_empty'))
 })
 
 test('environment_blocked with a named blocker and no discard passes', () => {
-  const root = createFixture()
+  const root = scratchRoot()
   const target = writeOutput(root, 'evaluate-env-blocked.json', {
     result: 'success',
     data: {
@@ -554,7 +848,7 @@ test('environment_blocked with a named blocker and no discard passes', () => {
 })
 
 test('missing stage payloads fail with their shape codes', () => {
-  const root = createFixture()
+  const root = scratchRoot()
 
   const approach = validatePrototypeOutput(
     validatorInput(
@@ -565,11 +859,7 @@ test('missing stage payloads fail with their shape codes', () => {
   )
 
   assert.equal(approach.status, 'failed')
-  assert.ok(
-    approach.issues.some(
-      (issue) => issue.code === 'prototype.approach_missing',
-    ),
-  )
+  assert.ok(codesOf(approach).has('prototype.approach_missing'))
 
   const build = validatePrototypeOutput(
     validatorInput(
@@ -580,9 +870,7 @@ test('missing stage payloads fail with their shape codes', () => {
   )
 
   assert.equal(build.status, 'failed')
-  assert.ok(
-    build.issues.some((issue) => issue.code === 'prototype.spike_missing'),
-  )
+  assert.ok(codesOf(build).has('prototype.spike_missing'))
 
   const evaluate = validatePrototypeOutput(
     validatorInput(
@@ -593,15 +881,11 @@ test('missing stage payloads fail with their shape codes', () => {
   )
 
   assert.equal(evaluate.status, 'failed')
-  assert.ok(
-    evaluate.issues.some(
-      (issue) => issue.code === 'prototype.evaluation_missing',
-    ),
-  )
+  assert.ok(codesOf(evaluate).has('prototype.evaluation_missing'))
 })
 
 test('question result field defects are each named', () => {
-  const root = createFixture()
+  const root = scratchRoot()
   const target = writeOutput(root, 'evaluate-bad-question.json', {
     result: 'success',
     data: {
@@ -624,7 +908,7 @@ test('question result field defects are each named', () => {
   const result = validatePrototypeOutput(
     validatorInput(root, target, 'evaluate'),
   )
-  const codes = new Set(result.issues.map((issue) => issue.code))
+  const codes = codesOf(result)
 
   assert.equal(result.status, 'failed')
   assert.ok(codes.has('prototype.question_result_cause'))
@@ -633,7 +917,7 @@ test('question result field defects are each named', () => {
 })
 
 test('precondition check entries are validated field by field', () => {
-  const root = createFixture()
+  const root = scratchRoot()
   const target = writeOutput(root, 'build-bad-checks.json', {
     result: 'failure',
     data: {
@@ -651,7 +935,7 @@ test('precondition check entries are validated field by field', () => {
   })
 
   const result = validatePrototypeOutput(validatorInput(root, target, 'build'))
-  const codes = new Set(result.issues.map((issue) => issue.code))
+  const codes = codesOf(result)
 
   assert.equal(result.status, 'failed')
   assert.ok(codes.has('prototype.precondition_check_id'))
@@ -659,39 +943,8 @@ test('precondition check entries are validated field by field', () => {
   assert.ok(codes.has('prototype.precondition_check_evidence'))
 })
 
-test('approach blocked result without a blocking precondition fails', () => {
-  const root = createFixture()
-  const target = writeOutput(root, 'approach-unblocked.json', {
-    result: 'blocked',
-    data: {
-      technical_approach: {
-        preconditions: [
-          {
-            id: 'PRE-01',
-            affected_questions: ['TQ-01'],
-            check: 'fixture ready',
-            status: 'ready',
-            evidence: ['ready'],
-          },
-        ],
-      },
-    },
-  })
-
-  const result = validatePrototypeOutput(
-    validatorInput(root, target, 'approach'),
-  )
-
-  assert.equal(result.status, 'failed')
-  assert.ok(
-    result.issues.some(
-      (issue) => issue.code === 'prototype.approach_unblocked',
-    ),
-  )
-})
-
 test('build rejects success when approach output is unreadable', () => {
-  const root = createFixture()
+  const root = scratchRoot()
   const target = writeOutput(root, 'build-unresolved.json', {
     result: 'success',
     data: {
@@ -705,9 +958,5 @@ test('build rejects success when approach output is unreadable', () => {
   const result = validatePrototypeOutput(validatorInput(root, target, 'build'))
 
   assert.equal(result.status, 'failed')
-  assert.ok(
-    result.issues.some(
-      (issue) => issue.code === 'prototype.approach_unresolved',
-    ),
-  )
+  assert.ok(codesOf(result).has('prototype.approach_unresolved'))
 })

@@ -136,6 +136,7 @@ import type {
   OperatorPauseContext,
   OperatorWorkspaceRatification,
   RunActionActor,
+  RunAdvisory,
   RunModelEvidence,
   RunState,
   SameReasonFailureTrackers,
@@ -283,6 +284,17 @@ interface PrepareInvocationOptions extends OperationProgressOptions {
   operatorArtifacts?: boolean
 }
 
+export interface SubmitOutputResult {
+  state: RunState
+  record: TaskRecord
+  /**
+   * Non-blocking observations this submission recorded, such as unverified
+   * worker model evidence. The supervisor carries them into its stage report.
+   */
+  advisories: RunAdvisory[]
+  idempotent?: boolean
+}
+
 function persistRun(
   root: string,
   state: RunState,
@@ -382,9 +394,13 @@ function runPipelineConfigAdvisories(
     )
   }
 
-  const agentModelDrift = syncCursorProjection(root).filter(
-    (entry) => entry.id === 'cursor-agents' && entry.changed,
-  )
+  // The advisory reads one projection, so render only that one, against the
+  // live config already in hand. A full render reloaded the pipeline config
+  // and re-rendered every command and rule to answer a question about agents.
+  const agentModelDrift = syncCursorProjection(root, {
+    only: ['cursor-agents'],
+    pipeline: live,
+  }).filter((entry) => entry.id === 'cursor-agents' && entry.changed)
 
   if (agentModelDrift.length > 0) {
     advisories.push(
@@ -1268,6 +1284,28 @@ function readInvocation(root: string, relativePath: string): Invocation {
   return value as unknown as Invocation
 }
 
+/**
+ * Append advisories to run state so a resumed session recovers them from
+ * `pan status`. The caller persists the state; the advisory event it emits
+ * alongside stays the audit record.
+ */
+function recordRunAdvisories(
+  state: RunState,
+  context: Omit<RunAdvisory, 'message' | 'recorded_at'>,
+  messages: string[],
+): RunAdvisory[] {
+  const recordedAt = now()
+  const added = messages.map((message) => ({
+    ...context,
+    message,
+    recorded_at: recordedAt,
+  }))
+
+  state.advisories = [...(state.advisories ?? []), ...added]
+
+  return added
+}
+
 function persistModelEvidence(
   root: string,
   state: RunState,
@@ -1314,13 +1352,19 @@ function persistModelEvidence(
   return evidence
 }
 
+export interface SupervisorModelEvidenceResult {
+  evidence: RunModelEvidence
+  /** Observations this call recorded, such as a mid-run model supersession. */
+  advisories: RunAdvisory[]
+}
+
 /** Record the unpinned supervisor model that Cursor exposes for this session. */
 export function recordSupervisorModelEvidence(
   root: string,
   runId: string,
   effectiveModel: string,
   source: string,
-): RunModelEvidence {
+): SupervisorModelEvidenceResult {
   return withOperationMutex(operationMutexPath(root, runId), () => {
     invariant(
       effectiveModel.trim().length > 0,
@@ -1337,29 +1381,35 @@ export function recordSupervisorModelEvidence(
     const existing = state.model_evidence?.find(
       (item) => item.role === 'supervisor',
     )
+    let advisories: RunAdvisory[] = []
 
     if (existing) {
       if (
         normalizedModelName(existing.effective_model ?? '') ===
         normalizedModelName(effectiveModel)
       ) {
-        return existing
+        return { evidence: existing, advisories }
       }
 
       // A supervising session can legitimately change model mid-run, most often
       // because the operator changed it. Record the new fact and note the
       // supersession rather than refusing to continue the run.
-      persistRun(root, state, 'model_evidence_advisory', {
-        role: 'supervisor',
-        advisories: [
+      advisories = recordRunAdvisories(
+        state,
+        { kind: 'model_evidence', source: 'supervisor_evidence' },
+        [
           `The supervisor model changed from ` +
             `'${existing.effective_model}' to '${effectiveModel.trim()}' ` +
             `during this run.`,
         ],
+      )
+      persistRun(root, state, 'model_evidence_advisory', {
+        role: 'supervisor',
+        advisories: advisories.map((advisory) => advisory.message),
       })
     }
 
-    return persistModelEvidence(root, state, {
+    const evidence = persistModelEvidence(root, state, {
       role: 'supervisor',
       persona: 'orchestrator',
       declared_spec: null,
@@ -1367,6 +1417,8 @@ export function recordSupervisorModelEvidence(
       source: source.trim(),
       result: 'recorded',
     })
+
+    return { evidence, advisories }
   })
 }
 
@@ -1725,9 +1777,10 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
       },
     )
   } else {
-    const agentModelDrift = syncCursorProjection(root).filter(
-      (entry) => entry.id === 'cursor-agents' && entry.changed,
-    )
+    const agentModelDrift = syncCursorProjection(root, {
+      only: ['cursor-agents'],
+      pipeline: pipelineConfig,
+    }).filter((entry) => entry.id === 'cursor-agents' && entry.changed)
 
     invariant(
       agentModelDrift.length === 0,
@@ -2168,11 +2221,10 @@ export function prepareInvocation(
       },
     )
 
-    const advisories = runPipelineConfigAdvisories(
-      root,
-      state,
-      loadRunPipelineConfig(root, state),
-    )
+    // Loaded once: the advisories and the persona mapping below read the same
+    // snapshot, and loading it validates every persona in every named config.
+    const pipelineConfig = loadRunPipelineConfig(root, state)
+    const advisories = runPipelineConfigAdvisories(root, state, pipelineConfig)
 
     if (options.operatorArtifacts) {
       const stageSlug = state.current_stage
@@ -2219,7 +2271,6 @@ export function prepareInvocation(
       state,
       stageBySlug(workflow, state.current_stage),
     )
-    const pipelineConfig = loadRunPipelineConfig(root, state)
 
     const mapping = resolvePersonaMapping(pipelineConfig, stage.persona)
     const model = mapping.model_spec
@@ -3367,7 +3418,7 @@ export function submitOutput(
   runId: string,
   submittedPath: string,
   options: OperationProgressOptions = {},
-): { state: RunState; record: TaskRecord; idempotent?: boolean } {
+): SubmitOutputResult {
   return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
     const submittedRaw = readJson(resolveInside(root, submittedPath))
@@ -3425,6 +3476,7 @@ export function submitOutput(
       return {
         state,
         record: readTaskRecord(root, recordPath),
+        advisories: [],
         idempotent: true,
       }
     }
@@ -3453,8 +3505,18 @@ export function submitOutput(
       state,
       invocation,
     )
+    const advisories = recordRunAdvisories(
+      state,
+      {
+        kind: 'model_evidence',
+        source: 'submit',
+        stage: stage.slug,
+        invocation_id: invocation.invocation_id,
+      },
+      modelEvidenceAdvisories,
+    )
 
-    if (modelEvidenceAdvisories.length > 0) {
+    if (advisories.length > 0) {
       persistRun(root, state, 'model_evidence_advisory', {
         invocation_id: invocation.invocation_id,
         stage: stage.slug,
@@ -3951,7 +4013,7 @@ export function submitOutput(
     })
     completeInvocationAgent(root, runId, invocation.invocation_id)
 
-    return { state, record }
+    return { state, record, advisories }
   })
 }
 
@@ -5226,20 +5288,17 @@ export function validateOutputForSubmission(
   const state = loadState(root, runId)
   const workflow = loadRunWorkflow(root, state)
   const stage = stageBySlug(workflow, invocation.stage.slug)
+  // The harness renders the operator brief during submission, so its absence
+  // before submit is expected rather than a defect.
+  const renderedPath = invocation.output.operator_brief?.rendered_path
   const structural = validateStageOutput(
     root,
     stage,
     invocation,
     submittedValue,
+    { pendingArtifactPaths: renderedPath ? [renderedPath] : [] },
   )
-  // The harness renders the operator brief during submission, so its absence
-  // before submit is expected rather than a defect.
-  const renderedPath = invocation.output.operator_brief?.rendered_path
-  const structuralErrors = renderedPath
-    ? structural.errors.filter(
-        (message) => message !== `artifact does not exist: ${renderedPath}`,
-      )
-    : structural.errors
+  const structuralErrors = structural.errors
 
   if (structuralErrors.length === 0) {
     checks.push({

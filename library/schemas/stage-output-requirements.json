@@ -167,6 +167,27 @@
           "path": "data.technical_approach.preconditions[].status",
           "type": "string",
           "enum": ["ready", "unavailable", "unknown"]
+        },
+        {
+          "path": "data.technical_approach.preconditions[].volatile",
+          "type": "boolean",
+          "format": "required on every precondition; true when the build MUST recheck it immediately before source edits"
+        },
+        {
+          "path": "data.technical_approach.preconditions[].exclusions[]",
+          "type": "object",
+          "required": ["excluded_questions", "operator_decision_path"],
+          "format": "optional; each entry cites one operator decision recorded on this run that excludes the listed questions"
+        },
+        {
+          "path": "data.technical_approach.preconditions[].exclusions[].excluded_questions[]",
+          "type": "string",
+          "format": "technical question id the operator decision excludes; the decision note MUST name it"
+        },
+        {
+          "path": "data.technical_approach.preconditions[].exclusions[].operator_decision_path",
+          "type": "string",
+          "format": "path of an operator decision on the run's operator-feedback ledger; a harness pause record does not qualify"
         }
       ]
     },
@@ -207,6 +228,16 @@
           "path": "data.evaluation.question_results[].cause",
           "type": "string",
           "enum": ["product", "environment", "mixed", "none"]
+        },
+        {
+          "path": "data.evaluation.question_results[].readiness_question",
+          "type": "boolean",
+          "format": "optional; true claims the explicit-readiness exemption so a readiness result may carry a product cause while an environment blocker names the same question"
+        },
+        {
+          "path": "data.evaluation.environment_blockers[].affected_questions[]",
+          "type": "string",
+          "format": "technical question ids the blocker prevented a decision on"
         }
       ]
     }

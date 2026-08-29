@@ -327,8 +327,8 @@ It runs intake → approach → build → evaluate. Compared with `delivery` it:
 - expects deliberate shortcuts and requires each one declared with the reason it
   was acceptable,
 - ends with an operator-ratified evaluation giving a `validated`,
-  `invalidated`, or `inconclusive` verdict, the productionization gap, and a
-  recommendation.
+  `invalidated`, `inconclusive`, or `environment_blocked` verdict, the
+  productionization gap, and a recommendation.
 
 `PROTO-001` prohibits representing a spike as production-ready. When you adopt an
 approach, start a separate systematic `delivery` run scoped from the evaluation's
@@ -336,6 +336,11 @@ productionization gap; the prototype run does not productionize its own output.
 
 An `invalidated` verdict is a successful prototype. The evaluation names the
 spike code to delete either way.
+
+An `environment_blocked` verdict means environment gaps prevented a decision and
+no product discard condition was met. The spike has not answered its questions.
+Provision the environment the evaluation names, then rerun, rather than treating
+the approach as adopted or discarded.
 
 ## Set how heavily you gate a run
 
@@ -378,10 +383,12 @@ Built-in levels:
 
 - `minimal` — static and fast checks gate the implement loop; QA runs manual
   cases without re-running a suite.
-- `light` (default) — as minimal, plus QA re-runs the fast suite against the
-  pre-implementation baseline.
-- `thorough` — QA runs the complete `full` profile, judged on its own result.
-  Explicit opt-in only.
+- `light` (default) — as minimal, plus the verify submission gate re-runs the
+  fast suite against the pre-implementation baseline. QA cites that gate
+  evidence from its card and runs only the plan cases.
+- `thorough` — the verify submission gate runs the complete `full` profile,
+  judged on its own result; QA cites it rather than executing it. Explicit
+  opt-in only.
 
 The default is deliberately lightweight: your team runs tests locally and CI
 runs them again, so the harness re-running integration and end-to-end suites
