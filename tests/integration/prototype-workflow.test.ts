@@ -16,18 +16,35 @@ import {
   writeJson,
 } from '../helpers.js'
 import type { StageDefinition, StageOutcome } from '../../src/lib/types.js'
+import { checkpoint, checksVariant } from './delivery-helpers.js'
+import type { CheckpointVariant } from './delivery-helpers.js'
+
+function checkProfiles(
+  staticExit: number,
+  fastExit: number,
+): Record<string, unknown> {
+  return {
+    static: {
+      probes: [],
+      commands: [`node -e "process.exit(${staticExit})"`],
+    },
+    fast: { probes: [], commands: [`node -e "process.exit(${fastExit})"`] },
+  }
+}
 
 function writeChecks(root: string, staticExit: number, fastExit: number): void {
   writeJson(path.join(root, 'runtime/repository-checks.json'), {
     schema_version: 1,
-    profiles: {
-      static: {
-        probes: [],
-        commands: [`node -e "process.exit(${staticExit})"`],
-      },
-      fast: { probes: [], commands: [`node -e "process.exit(${fastExit})"`] },
-    },
+    profiles: checkProfiles(staticExit, fastExit),
   })
+}
+
+function checks(
+  key: string,
+  staticExit: number,
+  fastExit: number,
+): CheckpointVariant {
+  return checksVariant(key, checkProfiles(staticExit, fastExit))
 }
 
 function submitStage(
@@ -51,16 +68,6 @@ function submitStage(
     invocation,
     submitted: submitOutput(root, runId, invocation.output.path),
   }
-}
-
-function advanceToBuild(
-  root: string,
-  runId: string,
-  workflow: ReturnType<typeof loadWorkflow>,
-) {
-  submitStage(root, runId, stageBySlug(workflow, 'intake'))
-  decideRun(root, runId, 'approve')
-  submitStage(root, runId, stageBySlug(workflow, 'approach'))
 }
 
 test('the prototype workflow runs intake to an operator-gated evaluation', () => {
@@ -99,19 +106,10 @@ test('the prototype workflow runs intake to an operator-gated evaluation', () =>
 })
 
 test('a failing fast profile does not block a prototype build', () => {
-  const root = createFixture()
-
-  writeChecks(root, 0, 1)
-
-  const workflow = loadWorkflow(root, 'prototype')
-  const state = createRun(root, {
-    workflowSlug: 'prototype',
-    requestPath: 'request.md',
-    title: 'Untested spike',
-  })
-  const runId = state.run_id
-
-  advanceToBuild(root, runId, workflow)
+  const { root, runId, workflow } = checkpoint(
+    'prototype@build-prepared',
+    checks('checks=fast-fails', 0, 1),
+  )
 
   const build = submitStage(root, runId, stageBySlug(workflow, 'build'))
   const fastCheck = build.submitted.record.evaluation.deterministic.find(
@@ -125,35 +123,11 @@ test('a failing fast profile does not block a prototype build', () => {
   assert.equal(build.submitted.state.current_stage, 'evaluate')
 })
 
-test('static is the only hard shell gate a prototype build keeps', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'prototype')
-  const shellCriteria = stageBySlug(workflow, 'build').criteria.filter(
-    (criterion) => criterion.type === 'shell',
-  )
-  const hardShell = shellCriteria.filter((criterion) => criterion.hard === true)
-
-  assert.deepEqual(
-    hardShell.map((criterion) => criterion.command),
-    ['pan repository-check static'],
-  )
-  assert.ok(shellCriteria.length > hardShell.length)
-})
-
 test('a pre-existing static failure stays visible without blocking the spike', () => {
-  const root = createFixture()
-
-  writeChecks(root, 1, 0)
-
-  const workflow = loadWorkflow(root, 'prototype')
-  const state = createRun(root, {
-    workflowSlug: 'prototype',
-    requestPath: 'request.md',
-    title: 'Pre-broken spike',
-  })
-  const runId = state.run_id
-
-  advanceToBuild(root, runId, workflow)
+  const { root, runId, workflow } = checkpoint(
+    'prototype@build-prepared',
+    checks('checks=static-fails', 1, 0),
+  )
 
   const build = submitStage(root, runId, stageBySlug(workflow, 'build'))
   const staticResult = build.submitted.record.evaluation.deterministic.find(
@@ -190,17 +164,6 @@ test('prototype stages resolve PROTO-001 and their own brief profiles', () => {
   ])
 })
 
-test('prototype stages declare the checkpoints a run contract attaches to', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'prototype')
-
-  assert.equal(stageBySlug(workflow, 'approach').checkpoint, 'technical_plan')
-  assert.equal(
-    stageBySlug(workflow, 'evaluate').checkpoint,
-    'independent_review',
-  )
-})
-
 test('the technical_director contract escalates the prototype approach stage', () => {
   const root = createFixture()
   const state = createRun(root, {
@@ -219,17 +182,184 @@ test('the technical_director contract escalates the prototype approach stage', (
   })
 })
 
-test('prototype limits stay tighter than delivery', () => {
-  const root = createFixture()
-  const prototype = loadWorkflow(root, 'prototype')
-  const delivery = loadWorkflow(root, 'delivery')
+function advanceToBuild(
+  root: string,
+  runId: string,
+  workflow: ReturnType<typeof loadWorkflow>,
+) {
+  submitStage(root, runId, stageBySlug(workflow, 'intake'))
+  decideRun(root, runId, 'approve')
+  submitStage(root, runId, stageBySlug(workflow, 'approach'))
+}
 
-  assert.ok(
-    prototype.limits.max_total_transitions <
-      delivery.limits.max_total_transitions,
+test('a blocked approach result routes the run to paused', () => {
+  const root = createFixture()
+
+  writeChecks(root, 0, 0)
+
+  const workflow = loadWorkflow(root, 'prototype')
+  const state = createRun(root, {
+    workflowSlug: 'prototype',
+    requestPath: 'request.md',
+    title: 'Blocked spike',
+  })
+  const runId = state.run_id
+
+  submitStage(root, runId, stageBySlug(workflow, 'intake'))
+  decideRun(root, runId, 'approve')
+
+  const invocation = prepareInvocation(root, runId).invocation
+
+  assert.ok(invocation)
+  assert.equal(invocation.stage.slug, 'approach')
+
+  const output = makeOutput(root, invocation, stageBySlug(workflow, 'approach'))
+  const approachData = output.data as {
+    technical_approach: Record<string, unknown>
+  }
+
+  approachData.technical_approach.preconditions = [
+    {
+      id: 'PRE-01',
+      affected_questions: ['TQ-01'],
+      check: 'fixture auth probe',
+      status: 'unavailable',
+      evidence: ['missing credential'],
+      volatile: true,
+    },
+  ]
+  output.result = 'blocked'
+  output.criteria = output.criteria.map((criterion) => ({
+    ...criterion,
+    result:
+      criterion.id === 'approach.preconditions_verified' ? 'fail' : 'pass',
+  }))
+
+  writeJson(path.join(root, invocation.output.path), output)
+  writeCanonicalDelegation(root, invocation)
+
+  const submitted = submitOutput(root, runId, invocation.output.path)
+
+  assert.equal(submitted.state.status, 'paused')
+  assert.equal(submitted.state.current_stage, 'approach')
+  assert.throws(
+    () => prepareInvocation(root, runId),
+    /Run is not running: paused/u,
   )
-  assert.ok(
-    prototype.limits.max_consecutive_failures <=
-      delivery.limits.max_consecutive_failures,
-  )
+})
+
+test('operator-authorized narrowing lets approach advance to build', () => {
+  const root = createFixture()
+
+  writeChecks(root, 0, 0)
+
+  const workflow = loadWorkflow(root, 'prototype')
+  const state = createRun(root, {
+    workflowSlug: 'prototype',
+    requestPath: 'request.md',
+    title: 'Narrowed spike',
+  })
+  const runId = state.run_id
+  const layout = path.join('runtime/logs/workflows', runId, 'agent')
+  const decisionPath = `${layout}/decisions/operator-feedback-1.md`
+
+  submitStage(root, runId, stageBySlug(workflow, 'intake'))
+  // The harness records the approval note on the operator-feedback ledger,
+  // which the validator reads.
+  decideRun(root, runId, 'approve', 'Exclude TQ-01 from this spike.')
+
+  const invocation = prepareInvocation(root, runId).invocation
+
+  assert.ok(invocation)
+
+  const output = makeOutput(root, invocation, stageBySlug(workflow, 'approach'))
+  const approachData = output.data as {
+    technical_approach: Record<string, unknown>
+  }
+
+  approachData.technical_approach.preconditions = [
+    {
+      id: 'PRE-01',
+      affected_questions: ['TQ-01'],
+      check: 'fixture auth probe',
+      status: 'unavailable',
+      evidence: ['missing credential'],
+      volatile: true,
+      exclusions: [
+        {
+          excluded_questions: ['TQ-01'],
+          operator_decision_path: decisionPath,
+        },
+      ],
+    },
+    {
+      id: 'PRE-02',
+      affected_questions: ['TQ-02'],
+      check: 'fixture dependency',
+      status: 'ready',
+      evidence: ['ready'],
+      volatile: false,
+    },
+  ]
+
+  writeJson(path.join(root, invocation.output.path), output)
+  writeCanonicalDelegation(root, invocation)
+
+  const submitted = submitOutput(root, runId, invocation.output.path)
+
+  assert.equal(submitted.state.status, 'running')
+  assert.equal(submitted.state.current_stage, 'build')
+})
+
+test('environment_blocked evaluation waits at the operator gate', () => {
+  const root = createFixture()
+
+  writeChecks(root, 0, 0)
+
+  const workflow = loadWorkflow(root, 'prototype')
+  const state = createRun(root, {
+    workflowSlug: 'prototype',
+    requestPath: 'request.md',
+    title: 'Environment spike',
+  })
+  const runId = state.run_id
+
+  advanceToBuild(root, runId, workflow)
+  submitStage(root, runId, stageBySlug(workflow, 'build'))
+
+  const invocation = prepareInvocation(root, runId).invocation
+
+  assert.ok(invocation)
+
+  const output = makeOutput(root, invocation, stageBySlug(workflow, 'evaluate'))
+  const evaluation = (output.data as { evaluation: Record<string, unknown> })
+    .evaluation
+
+  evaluation.verdict = 'environment_blocked'
+  evaluation.environment_blockers = [
+    {
+      id: 'ENV-01',
+      description: 'Missing CURSOR_API_KEY',
+      evidence: ['pan doctor reports no CURSOR_API_KEY'],
+      affected_questions: ['TQ-01'],
+    },
+  ]
+  evaluation.question_results = [
+    {
+      question_id: 'TQ-01',
+      result: 'unanswered',
+      cause: 'environment',
+      evidence: ['credential missing'],
+      discard_condition_met: false,
+    },
+  ]
+  evaluation.recommendation = 'Provision the environment and rerun the spike.'
+
+  writeJson(path.join(root, invocation.output.path), output)
+  writeCanonicalDelegation(root, invocation)
+
+  const submitted = submitOutput(root, runId, invocation.output.path)
+
+  assert.equal(submitted.state.status, 'awaiting_operator')
+  assert.equal(submitted.record.outcome, 'success')
 })

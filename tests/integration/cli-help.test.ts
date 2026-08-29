@@ -247,6 +247,7 @@ test('run-built exits after the requested command completes', () => {
 
 test('nested build-only reuses the prepared build in the same root', () => {
   const fixture = createBuildScriptFixture()
+  const second = createBuildScriptFixture()
 
   try {
     // Without root-scoped reuse this nested build-only call spins on the lock
@@ -267,50 +268,28 @@ test('nested build-only reuses the prepared build in the same root', () => {
       readFileSync(path.join(fixture.root, 'builds.log'), 'utf8'),
       'build\n',
     )
-  } finally {
-    rmSync(fixture.root, { recursive: true, force: true })
-  }
-})
 
-test('a prepared build in one root does not skip builds in another root', () => {
-  const first = createBuildScriptFixture()
-  const second = createBuildScriptFixture()
-
-  try {
-    const result = spawnSync(
+    // A prepared build in one root does not skip builds in another root.
+    const crossRoot = spawnSync(
       '/bin/bash',
-      [first.runBuilt, '--', second.runBuilt, '--build-only'],
+      [fixture.runBuilt, '--', second.runBuilt, '--build-only'],
       {
-        cwd: first.root,
+        cwd: fixture.root,
         encoding: 'utf8',
-        env: first.env,
+        env: fixture.env,
         timeout: 30_000,
       },
     )
 
-    assert.equal(result.status, 0, result.stderr)
+    assert.equal(crossRoot.status, 0, crossRoot.stderr)
     assert.equal(
       readFileSync(path.join(second.root, 'builds.log'), 'utf8'),
       'build\n',
     )
   } finally {
-    rmSync(first.root, { recursive: true, force: true })
+    rmSync(fixture.root, { recursive: true, force: true })
     rmSync(second.root, { recursive: true, force: true })
   }
-})
-
-test('command help does not create a workflow directory named --help', () => {
-  const root = createFixture()
-  const stdout = execFileSync(process.execPath, [CLI, 'prepare', '--help'], {
-    cwd: root,
-    encoding: 'utf8',
-  })
-
-  assert.match(stdout, /Usage:/u)
-  assert.equal(
-    existsSync(path.join(root, 'runtime/logs/workflows/--help')),
-    false,
-  )
 })
 
 test('workflow help exposes operator artifact controls', () => {
@@ -337,7 +316,13 @@ test('workflow help exposes operator artifact controls', () => {
   )
 
   assert.match(initHelp, /--operator-artifacts/u)
+  assert.match(prepareHelp, /Usage:/u)
   assert.match(prepareHelp, /--operator-artifacts/u)
+  // Command help must not create a workflow directory named --help.
+  assert.equal(
+    existsSync(path.join(root, 'runtime/logs/workflows/--help')),
+    false,
+  )
   assert.match(generateHelp, /--run <run-id>/u)
   assert.match(generateHelp, /--stage <stage-slug>/u)
   assert.match(generateHelp, /--force/u)

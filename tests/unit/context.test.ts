@@ -290,6 +290,39 @@ test('ship context selects effective records and indexes superseded history', ()
   assert.deepEqual(inputs.missing_required, undefined)
   assert.equal(byPath.get('VERSION')?.retrieval, 'required')
   assert.equal(byPath.get('release/index.json')?.retrieval, 'required')
+
+  const prDescription: PrDescriptionContext = {
+    mode: 'target',
+    template_path: '.github/PULL_REQUEST_TEMPLATE.md',
+    instruction_paths: ['AGENTS.md', '.github/AGENTS.md', 'docs/pr-rules.md'],
+    heading_order: ['Why', 'Confidence & risk', 'What changed'],
+    required_headings: ['Why', 'Confidence & risk'],
+    optional_headings: ['What changed'],
+    allows_body_title: false,
+  }
+  const withPr = buildInvocationInputs({
+    root,
+    state,
+    stage,
+    attempt: 1,
+    invocationId: 'ship-pr-context',
+    workspaceFingerprint: 'fp-current',
+    prDescription,
+  })
+
+  assert.deepEqual(withPr.pr_description, prDescription)
+
+  for (const referencePath of [
+    '.github/PULL_REQUEST_TEMPLATE.md',
+    'AGENTS.md',
+    '.github/AGENTS.md',
+    'docs/pr-rules.md',
+  ]) {
+    assert.equal(
+      withPr.references.find((item) => item.path === referencePath)?.retrieval,
+      'required',
+    )
+  }
 })
 
 test('embedded ship context omits Pancreator self-development release metadata', () => {
@@ -320,43 +353,6 @@ test('embedded ship context omits Pancreator self-development release metadata',
     inputs.references.some((item) => item.path === 'release/index.json'),
     false,
   )
-})
-
-test('ship context includes resolved target PR authority', () => {
-  const root = createFixture()
-  const prDescription: PrDescriptionContext = {
-    mode: 'target',
-    template_path: '.github/PULL_REQUEST_TEMPLATE.md',
-    instruction_paths: ['AGENTS.md', '.github/AGENTS.md', 'docs/pr-rules.md'],
-    heading_order: ['Why', 'Confidence & risk', 'What changed'],
-    required_headings: ['Why', 'Confidence & risk'],
-    optional_headings: ['What changed'],
-    allows_body_title: false,
-  }
-
-  const inputs = buildInvocationInputs({
-    root,
-    state: stateWith([]),
-    stage: stageBySlug(loadWorkflow(root, 'delivery'), 'ship'),
-    attempt: 1,
-    invocationId: 'ship-pr-context',
-    workspaceFingerprint: 'fp-current',
-    prDescription,
-  })
-
-  assert.deepEqual(inputs.pr_description, prDescription)
-
-  for (const referencePath of [
-    '.github/PULL_REQUEST_TEMPLATE.md',
-    'AGENTS.md',
-    '.github/AGENTS.md',
-    'docs/pr-rules.md',
-  ]) {
-    assert.equal(
-      inputs.references.find((item) => item.path === referencePath)?.retrieval,
-      'required',
-    )
-  }
 })
 
 test('missing required stage outputs are explicit instead of triggering broad scans', () => {
@@ -419,6 +415,134 @@ test('legacy workflow snapshots preserve all-history reference behavior', () => 
   )
   assert.equal(
     inputs.references.some((item) => item.retrieval === 'index_only'),
+    false,
+  )
+})
+
+test('verify context carries passed gate evidence with profile, path, and fingerprint', () => {
+  const root = createFixture()
+  const plan = historyItem('plan', 'plan-1', 'success')
+  const implement = historyItem('implement', 'implement-1', 'success')
+  implement.deterministic = [
+    {
+      id: 'implement.unit_tests',
+      type: 'shell',
+      hard: true,
+      passed: true,
+      command: 'pan repository-check fast',
+      exit_code: 0,
+      timed_out: false,
+      evidence_path: 'runtime/logs/workflows/run/evidence/implement-1.fast.log',
+      workspace_fingerprint: 'fp-current',
+    },
+    {
+      id: 'implement.lint',
+      type: 'shell',
+      hard: true,
+      passed: false,
+      command: 'pan repository-check static',
+      exit_code: 1,
+      timed_out: false,
+      evidence_path:
+        'runtime/logs/workflows/run/evidence/implement-1.static.log',
+      workspace_fingerprint: 'fp-current',
+    },
+  ]
+  const bareImplement = historyItem('implement', 'implement-2', 'success')
+
+  for (const item of [implement, bareImplement]) {
+    writeJson(path.join(root, item.output_path), {
+      data: { implementation: { changed_files: [] } },
+    })
+  }
+
+  const state = stateWith([plan, implement])
+  state.current_stage = 'verify'
+  state.repository_check_baselines = {
+    fast: {
+      profile: 'fast',
+      status: 'passed',
+      artifact_path:
+        'runtime/logs/workflows/run/evidence/pre-implementation-fast.json',
+      workspace_fingerprint: 'fp-before',
+      recorded_at: '2026-06-26T00:00:00.000Z',
+    },
+    static: {
+      profile: 'static',
+      status: 'passed',
+      artifact_path:
+        'runtime/logs/workflows/run/evidence/pre-implementation-static.json',
+      workspace_fingerprint: 'fp-before',
+      recorded_at: '2026-06-26T00:00:00.000Z',
+    },
+  }
+
+  const stage = stageBySlug(loadWorkflow(root, 'delivery'), 'verify')
+  const inputs = buildInvocationInputs({
+    root,
+    state,
+    stage,
+    attempt: 1,
+    invocationId: 'verify-1',
+    workspaceFingerprint: 'fp-current',
+  })
+  const byPath = new Map(inputs.references.map((item) => [item.path, item]))
+
+  const fastGate = byPath.get(
+    'runtime/logs/workflows/run/evidence/implement-1.fast.log',
+  )
+  assert.ok(fastGate)
+  assert.equal(fastGate.retrieval, 'conditional')
+  assert.match(fastGate.description, /`fast` repository-check gate evidence/u)
+  assert.match(fastGate.description, /`fp-current`/u)
+  assert.match(fastGate.description, /current workspace/u)
+  assert.equal(
+    byPath.has(
+      'runtime/logs/workflows/run/evidence/pre-implementation-fast.json',
+    ),
+    false,
+  )
+
+  // A failed gate is not evidence, but the passed baseline for the profile is.
+  assert.equal(
+    byPath.has('runtime/logs/workflows/run/evidence/implement-1.static.log'),
+    false,
+  )
+  const staticBaseline = byPath.get(
+    'runtime/logs/workflows/run/evidence/pre-implementation-static.json',
+  )
+  assert.ok(staticBaseline)
+  assert.match(staticBaseline.description, /`static`/u)
+  assert.match(staticBaseline.description, /`fp-before`/u)
+  assert.match(staticBaseline.description, /superseded workspace/u)
+  // No supervisor command re-runs the verify submission gate, so the condition
+  // must not send QA there.
+  assert.match(staticBaseline.condition ?? '', /verify submission gate/u)
+  assert.doesNotMatch(staticBaseline.condition ?? '', /supervisor/u)
+  assert.deepEqual(staticBaseline.gate_evidence, {
+    profile: 'static',
+    fingerprint: 'fp-before',
+    current: false,
+  })
+  assert.match(fastGate.condition ?? '', /gate_evidence_citations/u)
+  assert.deepEqual(fastGate.gate_evidence, {
+    profile: 'fast',
+    fingerprint: 'fp-current',
+    current: true,
+  })
+
+  const bare = buildInvocationInputs({
+    root,
+    state: stateWith([plan, bareImplement]),
+    stage,
+    attempt: 1,
+    invocationId: 'verify-2',
+    workspaceFingerprint: 'fp-current',
+  })
+  assert.equal(
+    bare.references.some((item) =>
+      /repository-check gate evidence/u.test(item.description),
+    ),
     false,
   )
 })

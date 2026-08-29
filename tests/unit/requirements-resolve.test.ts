@@ -21,6 +21,54 @@ test('requirement resolution is deterministic', () => {
 
   assert.equal(first.manifest_hash, second.manifest_hash)
   assert.equal(sha256(first), sha256(second))
+
+  const verify = resolveRequirements(root, {
+    persona: 'verifier',
+    workflow: 'delivery',
+    stage: 'verify',
+    invocation: {
+      output_path: 'runtime/logs/workflows/x/outputs/verify.json',
+    },
+  })
+  const registryIds = [
+    ...verify.automation_requirements,
+    ...verify.validation_requirements,
+  ].map((item) => item.registry_id)
+
+  assert.ok(!registryIds.includes('ASSESSMENT-SCAFFOLD-001'))
+  assert.ok(!registryIds.includes('SPOTFIX-ESCALATION-SCAFFOLD-001'))
+  assert.ok(!registryIds.includes('SPOTFIX-VALIDATE-001'))
+
+  for (const binding of [
+    {
+      persona: 'decomposer',
+      stage: 'decompose',
+      invocation_kind: 'decomposition' as const,
+      target: 'runtime/inbox/decomposition.md',
+      registry_id: 'DECOMPOSITION-VALIDATE-001',
+    },
+    {
+      persona: 'librarian',
+      stage: 'build-docs',
+      invocation_kind: 'documentation' as const,
+      target: 'docs/target-repo-primer.md',
+      registry_id: 'TARGET-REPO-PRIMER-VALIDATE-001',
+    },
+  ]) {
+    const manifest = resolveRequirements(root, {
+      persona: binding.persona,
+      workflow: 'standalone',
+      stage: binding.stage,
+      invocation_kind: binding.invocation_kind,
+      invocation: { artifact_paths: [binding.target] },
+    })
+    const requirement = manifest.validation_requirements.find(
+      (item) => item.registry_id === binding.registry_id,
+    )
+
+    assert.ok(requirement, `${binding.stage} must bind ${binding.registry_id}`)
+    assert.equal(requirement.resolved_target, binding.target)
+  }
 })
 
 test('requirement resolution fails on unknown registry id', () => {
@@ -42,60 +90,4 @@ test('requirement resolution fails on unknown registry id', () => {
       }),
     /unknown registry id/u,
   )
-})
-
-test('workflow invocations omit assessment and spotfix scaffolds', () => {
-  const root = createFixture()
-  const manifest = resolveRequirements(root, {
-    persona: 'verifier',
-    workflow: 'delivery',
-    stage: 'verify',
-    invocation: {
-      output_path: 'runtime/logs/workflows/x/outputs/verify.json',
-    },
-  })
-  const registryIds = [
-    ...manifest.automation_requirements,
-    ...manifest.validation_requirements,
-  ].map((item) => item.registry_id)
-
-  assert.ok(!registryIds.includes('ASSESSMENT-SCAFFOLD-001'))
-  assert.ok(!registryIds.includes('SPOTFIX-ESCALATION-SCAFFOLD-001'))
-  assert.ok(!registryIds.includes('SPOTFIX-VALIDATE-001'))
-})
-
-test('decomposition requirements bind the standalone artifact validator', () => {
-  const root = createFixture()
-  const target = 'runtime/inbox/decomposition.md'
-  const manifest = resolveRequirements(root, {
-    persona: 'decomposer',
-    workflow: 'standalone',
-    stage: 'decompose',
-    invocation_kind: 'decomposition',
-    invocation: { artifact_paths: [target] },
-  })
-  const requirement = manifest.validation_requirements.find(
-    (item) => item.registry_id === 'DECOMPOSITION-VALIDATE-001',
-  )
-
-  assert.ok(requirement)
-  assert.equal(requirement.resolved_target, target)
-})
-
-test('documentation requirements bind the target primer validator', () => {
-  const root = createFixture()
-  const target = 'docs/target-repo-primer.md'
-  const manifest = resolveRequirements(root, {
-    persona: 'librarian',
-    workflow: 'standalone',
-    stage: 'build-docs',
-    invocation_kind: 'documentation',
-    invocation: { artifact_paths: [target] },
-  })
-  const requirement = manifest.validation_requirements.find(
-    (item) => item.registry_id === 'TARGET-REPO-PRIMER-VALIDATE-001',
-  )
-
-  assert.ok(requirement)
-  assert.equal(requirement.resolved_target, target)
 })

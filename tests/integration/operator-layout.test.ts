@@ -99,6 +99,25 @@ test('submit reports the sole operator brief and removes its source', () => {
     false,
   )
 
+  assert.deepEqual(readdirSync(layout.root.absolute).sort(), [
+    'agent',
+    'operator',
+  ])
+  assert.deepEqual([...operatorFiles].sort(), [
+    `${invocation.invocation_id}.html`,
+    'request.md',
+  ])
+
+  const agentEntries = readdirSync(layout.agent.absolute)
+
+  assert.ok(agentEntries.includes('state.json'))
+  assert.ok(agentEntries.includes('events.jsonl'))
+  assert.ok(agentEntries.includes('outputs'))
+  assert.equal(
+    agentEntries.some((entry) => entry.endsWith('.html')),
+    false,
+  )
+
   // The complete before-and-after inventory proves submission removes the
   // brief source without a compensating file anywhere in the run directory.
   const briefSourceRelative = path.relative(
@@ -145,42 +164,6 @@ test('submit reports the sole operator brief and removes its source', () => {
   assert.equal(briefSourceRecord.status, 'rendered_and_validated')
   assert.equal(briefSourceRecord.source_path, brief.source_path)
   assert.match(briefSourceRecord.source_sha256, /^[a-f0-9]{64}$/u)
-})
-
-test('a submitted run holds operator files and harness records apart', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const { runId, invocation } = prepareFirstStage(root)
-  const output = makeOutput(
-    root,
-    invocation,
-    stageBySlug(workflow, invocation.stage.slug),
-  )
-
-  writeJson(path.join(root, invocation.output.path), output)
-  writeCanonicalDelegation(root, invocation)
-  submitOutput(root, runId, invocation.output.path)
-
-  const layout = resolveRunLayout(root, runId)
-
-  assert.deepEqual(readdirSync(layout.root.absolute).sort(), [
-    'agent',
-    'operator',
-  ])
-  assert.deepEqual(readdirSync(layout.operator.absolute).sort(), [
-    `${invocation.invocation_id}.html`,
-    'request.md',
-  ])
-
-  const agentEntries = readdirSync(layout.agent.absolute)
-
-  assert.ok(agentEntries.includes('state.json'))
-  assert.ok(agentEntries.includes('events.jsonl'))
-  assert.ok(agentEntries.includes('outputs'))
-  assert.equal(
-    agentEntries.some((entry) => entry.endsWith('.html')),
-    false,
-  )
 })
 
 // A default run suppresses operator artifacts, so its complete file inventory

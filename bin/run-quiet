@@ -14,6 +14,21 @@ is_verbose() {
   esac
 }
 
+# Ticks default to interactive terminals only, so captured output stays
+# byte-identical to the quiet contract. A nested wrapper ticks to
+# PAN_PROGRESS_FD, the sink the outer wrapper opened on the real terminal.
+progress_enabled() {
+  if [[ -n "${PAN_PROGRESS_FD:-}" ]]; then
+    return 0
+  fi
+
+  case "${PAN_PROGRESS:-}" in
+    1 | true | yes | TRUE | YES) return 0 ;;
+    0 | false | no | FALSE | NO) return 1 ;;
+    *) [[ -t 2 ]] ;;
+  esac
+}
+
 if [[ $# -eq 0 ]] || [[ "${1:-}" != '--' ]]; then
   usage
   exit 1
@@ -33,12 +48,76 @@ fi
 
 stdout_file="$(mktemp)"
 stderr_file="$(mktemp)"
-trap 'rm -f "$stdout_file" "$stderr_file"' EXIT
+tick_marker="$(mktemp)"
+rm -f "$tick_marker"
+ticker_pid=''
+
+# cleanup must kill the ticker. An orphaned ticker writes to the terminal
+# from outside the foreground process group, where Ctrl-C cannot reach it.
+# Bash skips the EXIT trap on untrapped fatal signals, so trap INT and TERM
+# as well.
+cleanup() {
+  if [[ -n "$ticker_pid" ]]; then
+    stop_ticker
+  fi
+  rm -f "$stdout_file" "$stderr_file" "$tick_marker"
+}
+
+# The in-flight sleep is a child of the ticker. Kill the children first, or
+# the sleep outlives the subshell.
+stop_ticker() {
+  pkill -P "$ticker_pid" 2>/dev/null || true
+  kill "$ticker_pid" 2>/dev/null || true
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+if progress_enabled; then
+  tick_interval="${PAN_PROGRESS_INTERVAL_SECONDS:-5}"
+  script_pid=$$
+  # The outermost wrapper copies its stderr to fd 9 and exports the number,
+  # so every nested wrapper ticks to the terminal.
+  if [[ -z "${PAN_PROGRESS_FD:-}" ]]; then
+    exec 9>&2
+    export PAN_PROGRESS_FD=9
+  fi
+  # A dot marks an interval with new output, so a stopped dot stream shows a
+  # silent command. The sleep holds no inherited stdio, or a captured stderr
+  # pipe stays open after the subshell dies.
+  (
+    # /dev/null hides the "Terminated" notice bash prints for the killed
+    # sleep.
+    exec 2>/dev/null
+    last_bytes=0
+    while sleep "$tick_interval" >/dev/null 2>&1 </dev/null 9>&-; do
+      kill -0 "$script_pid" 2>/dev/null || exit 0
+      stdout_bytes="$(wc -c <"$stdout_file" 2>/dev/null || echo 0)"
+      stderr_bytes="$(wc -c <"$stderr_file" 2>/dev/null || echo 0)"
+      current_bytes=$((stdout_bytes + stderr_bytes))
+      if [[ "$current_bytes" -gt "$last_bytes" ]]; then
+        printf '.' >&9
+        : >"$tick_marker"
+        last_bytes="$current_bytes"
+      fi
+    done
+  ) &
+  ticker_pid=$!
+fi
 
 set +e
 "${command[@]}" >"$stdout_file" 2>"$stderr_file"
 status=$?
 set -e
+
+if [[ -n "$ticker_pid" ]]; then
+  stop_ticker
+  wait "$ticker_pid" 2>/dev/null || true
+  ticker_pid=''
+  if [[ -e "$tick_marker" ]]; then
+    printf '\n' >&9
+  fi
+fi
 
 if [[ "$status" -eq 0 ]]; then
   exit 0

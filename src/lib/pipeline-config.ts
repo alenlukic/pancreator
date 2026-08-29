@@ -1,7 +1,10 @@
 import path from 'node:path'
 
 import { invariant } from './errors.js'
-import { resolveCursorModelSlug } from './executors/cursor-catalog.js'
+import {
+  createCursorModelResolver,
+  resolveCursorModelSlug,
+} from './executors/cursor-catalog.js'
 import {
   parsePersonaMapping,
   type ParsedPersonaMapping,
@@ -211,6 +214,8 @@ export function loadPipelineConfig(
   // Every named config receives strict validation here when the operator has
   // supplied an account-local Cursor model catalog. Without one, model specs
   // remain grammar-only because model availability is account-specific.
+  const resolveModel = createCursorModelResolver(root)
+
   for (const candidate of Object.keys(file.configs)) {
     for (const [persona, model] of Object.entries(
       resolveConfigPersonas(file, candidate),
@@ -218,7 +223,7 @@ export function loadPipelineConfig(
       const mapping = parsePersonaMapping(model, `${candidate}.${persona}`)
 
       if (mapping.executor === 'cursor') {
-        resolveCursorModelSlug(mapping, `${candidate}.${persona}`, root)
+        resolveModel(mapping, `${candidate}.${persona}`)
       }
     }
   }

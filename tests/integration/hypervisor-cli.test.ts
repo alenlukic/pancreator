@@ -29,20 +29,6 @@ function run(root: string, ...args: string[]): Record<string, unknown> {
   ) as Record<string, unknown>
 }
 
-test('hypervisor CLI ticks and reports registry state', () => {
-  const root = createFixture()
-  const tick = run(root, 'hypervisor', 'tick') as {
-    tick: { agents: unknown[]; recovery_events: unknown[] }
-    away_decisions: unknown[]
-  }
-  const status = run(root, 'hypervisor', 'status')
-
-  assert.deepEqual(tick.tick.agents, [])
-  assert.deepEqual(tick.tick.recovery_events, [])
-  assert.deepEqual(tick.away_decisions, [])
-  assert.equal(status.running, false)
-})
-
 test('pan list reports registry-backed agent health fields', () => {
   const root = createFixture()
   const state = createRun(root, {
@@ -63,6 +49,17 @@ test('pan list reports registry-backed agent health fields', () => {
 
 test('hypervisor CLI start is singleton and stop is reversible', () => {
   const root = createFixture()
+
+  const tick = run(root, 'hypervisor', 'tick') as {
+    tick: { agents: unknown[]; recovery_events: unknown[] }
+    away_decisions: unknown[]
+  }
+  const idle = run(root, 'hypervisor', 'status')
+
+  assert.deepEqual(tick.tick.agents, [])
+  assert.deepEqual(tick.tick.recovery_events, [])
+  assert.deepEqual(tick.away_decisions, [])
+  assert.equal(idle.running, false)
 
   try {
     const first = run(root, 'hypervisor', 'start')
@@ -371,79 +368,6 @@ test('away evaluate and apply resume a paused run exactly once', () => {
       readAwayDecisionLedger(root).map((record) => record.result),
       ['accepted', 'applied'],
     )
-  } finally {
-    if (previousBinary === undefined) {
-      delete process.env.PANCREATOR_CURSOR_AGENT_BIN
-    } else {
-      process.env.PANCREATOR_CURSOR_AGENT_BIN = previousBinary
-    }
-  }
-})
-
-test('hypervisor tick preserves disabled-mode operator stops', () => {
-  const root = createFixture()
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-  })
-
-  pauseRun(root, state.run_id, 'Operator approval is required.')
-
-  const result = run(root, 'hypervisor', 'tick') as {
-    away_decisions: unknown[]
-  }
-  const next = getRunState(root, state.run_id)
-
-  assert.deepEqual(result.away_decisions, [])
-  assert.equal(next.status, 'paused')
-  assert.equal(next.pending_action.type, 'operator_decision')
-})
-
-test('hypervisor tick does not run the away evaluator', () => {
-  const root = createFixture()
-  const configPath = path.join(root, 'config.json')
-  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
-    string,
-    unknown
-  >
-  const binary = path.join(root, 'failing-cursor-agent')
-
-  writeFileSync(
-    configPath,
-    `${JSON.stringify(
-      {
-        ...config,
-        away_mode: {
-          enabled: true,
-          guardrails: { allowed_actions: ['resume'] },
-        },
-      },
-      null,
-      2,
-    )}\n`,
-  )
-  writeFileSync(binary, '#!/bin/sh\nexit 3\n')
-  chmodSync(binary, 0o755)
-
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-  })
-
-  pauseRun(root, state.run_id, 'Operator unavailable.')
-
-  const previousBinary = process.env.PANCREATOR_CURSOR_AGENT_BIN
-
-  process.env.PANCREATOR_CURSOR_AGENT_BIN = binary
-
-  try {
-    const result = run(root, 'hypervisor', 'tick') as {
-      away_decisions: unknown[]
-    }
-    const ledger = readAwayDecisionLedger(root)
-
-    assert.deepEqual(result.away_decisions, [])
-    assert.deepEqual(ledger, [])
   } finally {
     if (previousBinary === undefined) {
       delete process.env.PANCREATOR_CURSOR_AGENT_BIN

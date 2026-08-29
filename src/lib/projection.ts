@@ -8,7 +8,7 @@ import {
 } from './cursor-content.js'
 import { invariant } from './errors.js'
 import { parsePersonaMapping } from './executors/mapping.js'
-import { resolveCursorModelSlug } from './executors/cursor-catalog.js'
+import { createCursorModelResolver } from './executors/cursor-catalog.js'
 import { loadPolicyCatalog } from './policies.js'
 import type { Policy } from './types.js'
 import {
@@ -19,7 +19,10 @@ import {
   sha256,
   writeTextAtomic,
 } from './io.js'
-import { loadPipelineConfig } from './pipeline-config.js'
+import {
+  loadPipelineConfig,
+  type LoadedPipelineConfig,
+} from './pipeline-config.js'
 import {
   harnessPathPrefix,
   loadProjectConfig,
@@ -295,7 +298,17 @@ interface ProjectionRemoval {
   target: string
 }
 
-function renderProjections(root: string): {
+export interface RenderProjectionsOptions {
+  /** Render only these projection ids. Omit to render every declared one. */
+  only?: readonly string[]
+  /** A pipeline config the caller already loaded, to skip a second load. */
+  pipeline?: LoadedPipelineConfig
+}
+
+function renderProjections(
+  root: string,
+  options: RenderProjectionsOptions = {},
+): {
   rendered: RenderedProjection[]
   removals: ProjectionRemoval[]
 } {
@@ -303,12 +316,18 @@ function renderProjections(root: string): {
   const mode = installationMode(root)
   const manifestMode = projectionMode(mode)
   const harnessPrefix = harnessPathPrefix(root)
-  const pipeline = loadPipelineConfig(root)
+  const pipeline = options.pipeline ?? loadPipelineConfig(root)
+  const resolveModel = createCursorModelResolver(root)
+  const only = options.only === undefined ? null : new Set(options.only)
   const rendered: RenderedProjection[] = []
   const removals: ProjectionRemoval[] = []
 
   for (const projection of manifest.projections) {
     if (!projection.installation_modes.includes(manifestMode)) {
+      continue
+    }
+
+    if (only !== null && !only.has(projection.id)) {
       continue
     }
 
@@ -378,7 +397,7 @@ function renderProjections(root: string): {
 
         content = content.replaceAll(
           '__PANCREATOR_MODEL__',
-          resolveCursorModelSlug(mapping, entry.variable, root),
+          resolveModel(mapping, entry.variable),
         )
       }
 
@@ -464,6 +483,7 @@ export function projectPersonaVariants(
 
   const mode = installationMode(root)
   const harnessPrefix = harnessPathPrefix(root)
+  const resolveModel = createCursorModelResolver(root)
   const changes: CursorProjectionChange[] = []
 
   for (const [persona, model] of Object.entries(personas)) {
@@ -503,7 +523,7 @@ export function projectPersonaVariants(
     const content = projectCursorContent(
       template.replaceAll(
         '__PANCREATOR_MODEL__',
-        resolveCursorModelSlug(mapping, persona, root),
+        resolveModel(mapping, persona),
       ),
       target,
       mode,
@@ -561,9 +581,9 @@ export function removePersonaVariants(root: string, suffix: string): string[] {
 
 export function syncCursorProjection(
   root: string,
-  options: { write?: boolean } = {},
+  options: { write?: boolean } & RenderProjectionsOptions = {},
 ): CursorProjectionChange[] {
-  const { rendered, removals } = renderProjections(root)
+  const { rendered, removals } = renderProjections(root, options)
   const changes: CursorProjectionChange[] = rendered.map((entry) => {
     const targetPath = path.join(root, entry.target)
     const previous = fileExists(targetPath) ? readText(targetPath) : null

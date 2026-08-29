@@ -5,10 +5,35 @@
 ## npm scripts
 
 Verification-oriented scripts run through `bin/run-quiet`. The wrapper
-captures stdout and stderr, emits nothing when the command succeeds, and replays
-the captured output when it fails. npm lifecycle banners are disabled by the
-repository `.npmrc`. The aggregate `npm run check` command applies the same
-contract across lint, build, validation, and tests.
+captures stdout and stderr, emits nothing on stdout when the command succeeds,
+and replays the captured output when it fails. npm lifecycle banners are
+disabled by the repository `.npmrc`. The aggregate `npm run check` command
+applies the same contract across build, lint, and validation. Test execution
+belongs to `npm test` and `npm run test:coverage`, so a passing check never
+runs the suite.
+
+When stderr is an interactive terminal, the wrapper prints one `.` to stderr
+for each five-second interval in which the wrapped command produced new
+output, then a closing newline. The dots track real progress, not wall
+clock: a flowing stream means the command is still emitting output, and a
+stopped stream means it has gone silent, which usually signals a hang.
+By default ticks stay off whenever stderr is not a terminal, so captured or
+redirected output stays byte-identical to the quiet contract. `PAN_PROGRESS=1`
+forces ticks on even when stderr is captured, in which case the dots land in
+the capture; a caller that compares captured bytes clears the opt-in.
+`PAN_PROGRESS=0` forces them off, and `PAN_PROGRESS_INTERVAL_SECONDS`
+overrides the interval.
+
+Nested wrappers share one tick sink. The outermost wrapper that enables ticks
+opens a private copy of its stderr and exports it as `PAN_PROGRESS_FD`; every
+wrapper below it writes dots there and treats the variable as its enable
+condition. `npm run check` therefore ticks from the step that is producing
+output, even though the outer wrapper observes no bytes until a step fails.
+
+Test scripts run `node --test` with the failures-only reporter at
+`tests/reporters/failures-only.ts`. The reporter prints one block per failed
+test, with its name, location, and error, and then the run summary. It prints
+nothing for a passing test, so a failing run replays only the failures.
 
 Set `PAN_VERBOSE=1` to stream command output while diagnosing a problem:
 
@@ -23,8 +48,9 @@ step remains quiet.
 Deterministic coverage:
 
 - `tests/unit/quiet-command.test.ts`
-- `tests/unit/npm-verbosity.test.ts`
-- `tests/unit/bin-layout.test.ts`
+
+The former `tests/unit/npm-verbosity.test.ts` and `tests/unit/bin-layout.test.ts` were deleted as
+config-shape tests; `runtime/inbox/test-audit-20260829-verdicts.md` records both verdicts.
 
 ## Cursor SDK invocations
 

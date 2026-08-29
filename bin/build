@@ -3,6 +3,101 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+PATH="$ROOT/node_modules/.bin:$PATH"
+
+# Skip the rebuild when no TypeScript input changed. The stamp hashes path,
+# mtime, and size, so any edit, addition, deletion, or rename invalidates it.
+STAMP="dist/.build-stamp"
+
+stat_line() {
+  stat -f '%N %m %z' "$@" 2>/dev/null || stat -c '%n %Y %s' "$@" 2>/dev/null || true
+}
+
+fingerprint() {
+  local dirs=()
+
+  [[ -d src ]] && dirs+=(src)
+  [[ -d tests ]] && dirs+=(tests)
+
+  {
+    stat_line tsconfig.json package.json package-lock.json
+    if [[ ${#dirs[@]} -gt 0 ]]; then
+      { find "${dirs[@]}" -name '*.ts' -type f -print0 2>/dev/null || true; } \
+        | { xargs -0 bash -c 'stat -f "%N %m %z" "$@" 2>/dev/null || stat -c "%n %Y %s" "$@" 2>/dev/null || true' _ 2>/dev/null || true; } \
+        | sort
+    fi
+  } | cksum
+}
+
+current="$(fingerprint)"
+
+stamp_fresh() {
+  [[ -f "$STAMP" && -d dist && "$(cat "$STAMP")" == "$current" ]]
+}
+
+# `bin/build --stamp-fresh` reports whether dist already matches the inputs.
+if [[ "${1:-}" == '--stamp-fresh' ]]; then
+  stamp_fresh
+  exit $?
+fi
+
+if stamp_fresh; then
+  exit 0
+fi
+
+# bin/run-built registers each wrapped command as a live reader of dist. A
+# rebuild deletes dist and breaks the lazy imports of a live reader, so wait
+# for the live readers to exit first.
+read -r root_key _ <<<"$(printf '%s' "$ROOT" | cksum)"
+DIST_READERS="${TMPDIR:-/tmp}/pancreator-build-${root_key}.readers"
+READER_WAIT_LIMIT_SECONDS="${PANCREATOR_BUILD_READER_WAIT_SECONDS:-900}"
+
+live_readers() {
+  local reader pid
+
+  [[ -d "$DIST_READERS" ]] || return 0
+
+  for reader in "$DIST_READERS"/*; do
+    [[ -e "$reader" ]] || continue
+    pid="${reader##*/}"
+
+    if [[ "$pid" =~ ^[0-9]+$ && "$pid" -ne $$ ]] && kill -0 "$pid" 2>/dev/null; then
+      printf '%s\n' "$pid"
+    else
+      rm -f "$reader"
+    fi
+  done
+}
+
+# run-quiet captures stderr, so send the notice straight to the terminal.
+notify() {
+  if ! { echo "$1" >/dev/tty; } 2>/dev/null; then
+    echo "$1" >&2
+  fi
+}
+
+waited=0
+announced=0
+
+while :; do
+  readers="$(live_readers)"
+  [[ -n "$readers" ]] || break
+
+  if [[ "$waited" -ge "$READER_WAIT_LIMIT_SECONDS" ]]; then
+    notify "[build] proceeding after ${waited}s: dist still in use by pid(s) $(printf '%s ' $readers)"
+    break
+  fi
+
+  if [[ "$announced" -eq 0 ]]; then
+    notify "[build] sources changed; waiting for running dist consumer(s) before rebuilding: $(printf '%s ' $readers)"
+    announced=1
+  fi
+
+  sleep 1
+  waited=$((waited + 1))
+done
 
 rm -rf dist
-exec tsc
+tsc
+
+printf '%s\n' "$current" >"$STAMP"

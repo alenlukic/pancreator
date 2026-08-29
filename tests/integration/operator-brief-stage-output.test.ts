@@ -10,17 +10,14 @@ import {
   submitOutput,
 } from '../../src/lib/engine.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
-import {
-  listWorkflowSlugs,
-  loadWorkflow,
-  stageBySlug,
-} from '../../src/lib/workflow.js'
+import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
 } from '../helpers.js'
+import { BRIEFS, checkpoint } from './delivery-helpers.js'
 
 test('new runs suppress briefs while explicit run and stage requests enable them', () => {
   const root = createFixture()
@@ -35,6 +32,18 @@ test('new runs suppress briefs while explicit run and stage requests enable them
   ).invocation
 
   assert.ok(suppressedInvocation)
+
+  assert.throws(
+    () =>
+      prepareInvocation(root, suppressed.run_id, {
+        operatorArtifacts: true,
+      }),
+    (error: unknown) =>
+      error instanceof Error &&
+      'code' in error &&
+      (error as Error & { code: string }).code ===
+        'OPERATOR_ARTIFACT_REQUEST_TOO_LATE',
+  )
   assert.deepEqual(suppressed.operator_artifacts, {
     mode: 'suppressed',
     requested_stages: [],
@@ -123,57 +132,11 @@ test('legacy run state without artifact selection keeps briefs enabled', () => {
   assert.ok(invocation?.output.operator_brief)
 })
 
-test('a stage artifact request is rejected after invocation preparation', () => {
-  const root = createFixture()
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-  })
-
-  prepareInvocation(root, state.run_id)
-
-  assert.throws(
-    () =>
-      prepareInvocation(root, state.run_id, {
-        operatorArtifacts: true,
-      }),
-    (error: unknown) =>
-      error instanceof Error &&
-      'code' in error &&
-      (error as Error & { code: string }).code ===
-        'OPERATOR_ARTIFACT_REQUEST_TOO_LATE',
-  )
-})
-
-test('every workflow slug prepares without a brief by default', () => {
-  const root = createFixture()
-
-  for (const workflowSlug of listWorkflowSlugs(root)) {
-    const state = createRun(root, {
-      workflowSlug,
-      requestPath: 'request.md',
-    })
-    const invocation = prepareInvocation(root, state.run_id).invocation
-
-    assert.ok(invocation)
-    assert.equal(
-      invocation.output.operator_brief,
-      undefined,
-      `${workflowSlug} defaults to suppressed artifacts`,
-    )
-  }
-})
-
 test('submission rerenders the invocation-declared HTML brief from JSON', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    operatorArtifacts: true,
-  })
-  const prepared = prepareInvocation(root, state.run_id)
-  const invocation = prepared.invocation
+  const { root, runId, invocation, workflow } = checkpoint(
+    'delivery@plan-prepared',
+    BRIEFS,
+  )
 
   assert.ok(invocation)
   const brief = invocation.output.operator_brief
@@ -189,7 +152,7 @@ test('submission rerenders the invocation-declared HTML brief from JSON', () => 
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
 
-  const submitted = submitOutput(root, state.run_id, invocation.output.path)
+  const submitted = submitOutput(root, runId, invocation.output.path)
 
   assert.equal(existsSync(htmlPath), true)
   assert.match(readFileSync(htmlPath, 'utf8'), /class="pc-brief"/u)

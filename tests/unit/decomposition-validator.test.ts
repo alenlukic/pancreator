@@ -1,15 +1,22 @@
 import assert from 'node:assert/strict'
-import { writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
 import { validateDecompositionArtifact } from '../../src/lib/validators/stage-validators.js'
-import { createFixture } from '../helpers.js'
+
+// The validator reads only the Markdown under the root, so a bare temporary
+// directory is enough.
+function scratchRoot(): string {
+  return mkdtempSync(path.join(tmpdir(), 'pan-decomposition-'))
+}
 
 function validate(content: string) {
-  const root = createFixture()
+  const root = scratchRoot()
   const targetPath = 'runtime/inbox/decomposition.md'
 
+  mkdirSync(path.dirname(path.join(root, targetPath)), { recursive: true })
   writeFileSync(path.join(root, targetPath), content)
 
   return validateDecompositionArtifact({

@@ -1,6 +1,6 @@
 {
   "name": "pancreator-v2-prototype",
-  "version": "4.9.0",
+  "version": "5.0.0",
   "private": true,
   "type": "module",
   "description": "Cursor-native workflow harness with a dependency-free runtime.",
@@ -17,12 +17,13 @@
     "typecheck": "./bin/run-quiet -- tsc --noEmit",
     "lint": "./bin/run-quiet -- ./bin/lint",
     "validate:chat-markdown": "./bin/validate-chat-markdown",
-    "test": "./bin/run-quiet -- ./bin/run-built -- node --test dist/tests/**/*.test.js",
-    "test:unit": "./bin/run-quiet -- ./bin/run-built -- node --test dist/tests/unit/*.test.js",
-    "test:migrations": "./bin/run-quiet -- ./bin/run-built -- node --test dist/tests/migrations/*.test.js",
-    "test:integration": "./bin/run-quiet -- ./bin/run-built -- node --test dist/tests/integration/*.test.js",
-    "test:regression": "./bin/run-quiet -- ./bin/run-built -- node --test dist/tests/regression/*.test.js",
-    "test:coverage": "./bin/run-quiet -- ./bin/run-built -- node --test --experimental-test-coverage --test-coverage-lines=80 --test-coverage-functions=80 --test-coverage-branches=70 --test-coverage-include=dist/src/lib/** dist/tests/**/*.test.js",
+    "test": "./bin/run-quiet -- ./bin/run-built -- node --test --test-reporter=./dist/tests/reporters/failures-only.js --test-reporter-destination=stdout dist/tests/unit/*.test.js dist/tests/integration/*.test.js dist/tests/regression/*.test.js",
+    "test:unit": "./bin/run-quiet -- ./bin/run-built -- node --test --test-reporter=./dist/tests/reporters/failures-only.js --test-reporter-destination=stdout dist/tests/unit/*.test.js",
+    "test:migrations": "./bin/run-quiet -- ./bin/run-built -- node --test --test-reporter=./dist/tests/reporters/failures-only.js --test-reporter-destination=stdout dist/tests/migrations/*.test.js",
+    "test:integration": "./bin/run-quiet -- ./bin/run-built -- node --test --test-reporter=./dist/tests/reporters/failures-only.js --test-reporter-destination=stdout dist/tests/integration/*.test.js",
+    "test:regression": "./bin/run-quiet -- ./bin/run-built -- node --test --test-reporter=./dist/tests/reporters/failures-only.js --test-reporter-destination=stdout dist/tests/regression/*.test.js",
+    "test:secondary": "./bin/run-quiet -- ./bin/run-built -- node --test --test-reporter=./dist/tests/reporters/failures-only.js --test-reporter-destination=stdout dist/tests/secondary/*.test.js",
+    "test:coverage": "./bin/run-quiet -- ./bin/run-built -- node --test --test-reporter=./dist/tests/reporters/failures-only.js --test-reporter-destination=stdout --experimental-test-coverage --test-coverage-lines=80 --test-coverage-functions=80 --test-coverage-branches=70 --test-coverage-include=dist/src/lib/** dist/tests/**/*.test.js",
     "check": "./bin/run-quiet -- ./bin/check"
   },
   "engines": {

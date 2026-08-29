@@ -153,27 +153,20 @@ test('finalizeWorkflowArtifacts rejects non-terminal runs', () => {
   )
 })
 
-test('finalizeWorkflowArtifacts finalizes terminal runs from persisted state', () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'pancreator-finalize-'))
-  const runId = '63379_Jun-22_5f354f23'
-  const runDirectory = path.join(root, 'runtime/logs/workflows', runId)
-
-  writeState(root, runId, 'succeeded')
-
-  const summary = finalizeWorkflowArtifacts(root, runId)
-
-  assert.equal(typeof summary.artifact_files, 'number')
-  assert.equal(typeof summary.layout_files, 'number')
-  assert.equal(typeof summary.updated_files, 'number')
-  assert.equal(path.basename(runDirectory), runId)
-})
-
 test('workflow migration finalizes closed runs and consolidates artifacts', () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'pancreator-migration-'))
   const oldRunId = '20260622T212254051Z-5f354f23'
   const newRunId = migratedRunId(oldRunId)
 
   assert.equal(newRunId, '63379_Jun-22-0158_5f354f23')
+  assert.equal(
+    migratedRunId(
+      '63379_Jun-22_5f354f23',
+      new Date('2026-06-22T21:22:54.051Z'),
+    ),
+    '63379_Jun-22-0158_5f354f23',
+  )
+  assert.equal(migratedRunId('63379_Jun-22-0158_5f354f23'), null)
 
   const logDirectory = path.join(root, 'runtime/logs/workflows', oldRunId)
   const stateDirectory = path.join(root, 'runtime/workflows', oldRunId)
@@ -369,17 +362,6 @@ test('workflow migration repairs in-flight prefixes without finalizing', () => {
   })
 })
 
-test('migratedRunId upgrades day-only ids and ignores current-format ids', () => {
-  assert.equal(
-    migratedRunId(
-      '63379_Jun-22_5f354f23',
-      new Date('2026-06-22T21:22:54.051Z'),
-    ),
-    '63379_Jun-22-0158_5f354f23',
-  )
-  assert.equal(migratedRunId('63379_Jun-22-0158_5f354f23'), null)
-})
-
 test('workflow archive moves runs older than retention into archive directories', () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'pancreator-archive-'))
   const oldRunId = '63379_Jun-22-0158_5f354f23'
@@ -527,9 +509,11 @@ test('run directory hash suffixes migrate to keyword suffixes', () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'pan-suffixes-'))
   const first = '63379_Jun-22-0158_5f354f23'
   const second = '63379_Jun-22-0157_6f354f23'
+  const sameMinute = '63379_Jun-22-0158_7f354f23'
 
   writeState(root, first, 'succeeded')
   writeState(root, second, 'succeeded')
+  writeState(root, sameMinute, 'succeeded')
   write(
     path.join(root, 'runtime/workflows', first, 'modifications.jsonl'),
     `${JSON.stringify({ run_id: first })}\n`,
@@ -558,9 +542,15 @@ test('run directory hash suffixes migrate to keyword suffixes', () => {
 
   const summary = migrateRunSuffixes(root)
 
-  // Both runs share the fixture title, so the second keeps the keywords with
-  // an ordinal instead of colliding or falling back to hex.
-  assert.equal(summary.run_directories, 2)
+  // All runs share the fixture title, so the same-minute run keeps the keywords
+  // with an ordinal.
+  assert.equal(summary.run_directories, 3)
+  assert.equal(
+    existsSync(
+      path.join(root, 'runtime/logs/workflows/63379_Jun-22-0158_fixture-2'),
+    ),
+    true,
+  )
   assert.equal(summary.session_directories, 1)
   assert.equal(summary.best_of_n_directories, 1)
   assert.equal(
@@ -603,79 +593,42 @@ test('run directory hash suffixes migrate to keyword suffixes', () => {
   assert.equal(migrateRunSuffixes(root).run_directories, 0)
 })
 
-test('suffix migration deduplicates same-minute keyword collisions', () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'pan-suffix-dedupe-'))
-  const first = '63379_Jun-22-0158_5f354f23'
-  const second = '63379_Jun-22-0158_6f354f23'
-
-  writeState(root, first, 'succeeded')
-  writeState(root, second, 'succeeded')
-
-  const summary = migrateRunSuffixes(root)
-
-  assert.equal(summary.run_directories, 2)
-  assert.equal(
-    existsSync(
-      path.join(root, 'runtime/logs/workflows/63379_Jun-22-0158_fixture'),
-    ),
-    true,
-  )
-  assert.equal(
-    existsSync(
-      path.join(root, 'runtime/logs/workflows/63379_Jun-22-0158_fixture-2'),
-    ),
-    true,
-  )
-})
-
 test('suffix migration skips best-of-N sessions with live worktrees at the current root', () => {
   const root = mkdtempSync(
     path.join(os.tmpdir(), 'pan-suffix-worktree-current-'),
   )
   const bonId = '63379_Jun-22-0158_dddd4444'
+  const legacyBonId = '63379_Jun-22-0158_cccc3333'
 
-  write(
-    path.join(root, 'runtime/logs/best-of-n', bonId, 'state.json'),
-    `${JSON.stringify({
-      bon_id: bonId,
-      request: { source_path: 'runtime/inbox/2026-06-22-live-session.md' },
-    })}\n`,
-  )
+  for (const id of [bonId, legacyBonId]) {
+    write(
+      path.join(root, 'runtime/logs/best-of-n', id, 'state.json'),
+      `${JSON.stringify({
+        bon_id: id,
+        request: { source_path: 'runtime/inbox/2026-06-22-live-session.md' },
+      })}\n`,
+    )
+  }
   mkdirSync(path.join(root, 'worktrees', bonId, 'slot-a'), {
     recursive: true,
   })
-
-  const summary = migrateRunSuffixes(root)
-
-  assert.equal(summary.best_of_n_directories, 0)
-  assert.deepEqual(summary.skipped_directories, [
-    `runtime/logs/best-of-n/${bonId}`,
-  ])
-})
-
-test('suffix migration skips best-of-N sessions with live worktrees', () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'pan-suffix-worktree-'))
-  const bonId = '63379_Jun-22-0158_cccc3333'
-
-  write(
-    path.join(root, 'runtime/logs/best-of-n', bonId, 'state.json'),
-    `${JSON.stringify({
-      bon_id: bonId,
-      request: { source_path: 'runtime/inbox/2026-06-22-live-session.md' },
-    })}\n`,
-  )
-  mkdirSync(path.join(root, 'runtime/worktrees', bonId, 'slot-a'), {
+  // The legacy runtime/worktrees location counts as live just the same.
+  mkdirSync(path.join(root, 'runtime/worktrees', legacyBonId, 'slot-a'), {
     recursive: true,
   })
 
   const summary = migrateRunSuffixes(root)
 
   assert.equal(summary.best_of_n_directories, 0)
-  assert.deepEqual(summary.skipped_directories, [
-    `runtime/logs/best-of-n/${bonId}`,
-  ])
+  assert.deepEqual(
+    [...summary.skipped_directories].sort(),
+    [
+      `runtime/logs/best-of-n/${bonId}`,
+      `runtime/logs/best-of-n/${legacyBonId}`,
+    ].sort(),
+  )
   assert.equal(
-    existsSync(path.join(root, 'runtime/logs/best-of-n', bonId)),
+    existsSync(path.join(root, 'runtime/logs/best-of-n', legacyBonId)),
     true,
   )
 })
@@ -684,7 +637,13 @@ test('archival covers best-of-N sessions and temporal runtime files', () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'pan-archive-extended-'))
   const oldBonId = '63379_Jun-22-0158_output-simpl'
   const freshBonId = '63372_Jun-29-0158_other-keywor'
+  const oldSessionId = '63379_Jun-22-0158_aaaaaaaa'
+  const freshSessionId = '63372_Jun-29-0158_bbbbbbbb'
+  const oldSession = path.join(root, 'runtime/logs/sessions', oldSessionId)
+  const freshSession = path.join(root, 'runtime/logs/sessions', freshSessionId)
 
+  write(path.join(oldSession, 'pair-card.md'), '# Pair programming\n')
+  write(path.join(freshSession, 'pair-card.md'), '# Pair programming\n')
   write(
     path.join(root, 'runtime/logs/best-of-n', oldBonId, 'state.json'),
     `${JSON.stringify({
@@ -758,23 +717,6 @@ test('archival covers best-of-N sessions and temporal runtime files', () => {
     ),
     true,
   )
-})
-
-test('archival covers standalone-mode session directories', () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'pan-session-archive-'))
-  const oldSessionId = '63379_Jun-22-0158_aaaaaaaa'
-  const freshSessionId = '63372_Jun-29-0158_bbbbbbbb'
-  const oldSession = path.join(root, 'runtime/logs/sessions', oldSessionId)
-  const freshSession = path.join(root, 'runtime/logs/sessions', freshSessionId)
-
-  write(path.join(oldSession, 'pair-card.md'), '# Pair programming\n')
-  write(path.join(freshSession, 'pair-card.md'), '# Pair programming\n')
-
-  const summary = archiveWorkflowDirectories(root, {
-    retentionDays: 7,
-    now: new Date('2026-07-01T22:00:00.000Z'),
-  })
-
   // Standalone cards live outside the workflow tree but are just as disposable;
   // without this they accumulate for the life of the installation.
   assert.deepEqual(summary.session_ids, [oldSessionId])

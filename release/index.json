@@ -4,6 +4,10 @@
     {
       "version": "4.0.0",
       "commit": "d67a8ebcf734ace8fffd842c782fbeed34c96d62"
+    },
+    {
+      "version": "5.0.0",
+      "commit": "0c727a1927df33c8e22b47291b82d290ff00888b"
     }
   ]
 }

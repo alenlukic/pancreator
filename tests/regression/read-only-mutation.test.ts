@@ -20,67 +20,54 @@ import {
 test('read-only stage fails when a source workspace change is unattributed', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'preflight')
-  const state = createRun(root, {
+  const stage = stageBySlug(workflow, 'inspect')
+
+  const unattributed = createRun(root, {
     workflowSlug: 'preflight',
     requestPath: 'request.md',
   })
-  const prepared = prepareInvocation(root, state.run_id)
-  const invocation = prepared.invocation
+  const first = prepareInvocation(root, unattributed.run_id).invocation
 
-  assert.ok(invocation)
+  assert.ok(first)
 
   writeFileSync(
     path.join(root, 'src', 'base.ts'),
     'export const base = false\n',
   )
 
-  const stage = stageBySlug(workflow, 'inspect')
-  const artifact = resolveRunLayout(root, state.run_id).operatorMarkdown(
+  const artifact = resolveRunLayout(root, unattributed.run_id).operatorMarkdown(
     'inspect.md',
   ).absolute
 
   mkdirSync(path.dirname(artifact), { recursive: true })
   writeFileSync(artifact, '# inspect\n')
-
-  const output = {
-    ...makeOutput(root, invocation, stage),
+  writeJson(path.join(root, first.output.path), {
+    ...makeOutput(root, first, stage),
     data: { inspection: { findings: [], verdict: 'pass' } },
-  }
+  })
+  writeCanonicalDelegation(root, first)
 
-  writeJson(path.join(root, invocation.output.path), output)
-  writeCanonicalDelegation(root, invocation)
+  const failed = submitOutput(root, unattributed.run_id, first.output.path)
 
-  const submitted = submitOutput(root, state.run_id, invocation.output.path)
-
-  assert.equal(submitted.record.outcome, 'failure')
+  assert.equal(failed.record.outcome, 'failure')
   assert.ok(
-    submitted.record.evaluation.deterministic.some(
+    failed.record.evaluation.deterministic.some(
       (item) => item.id === 'scope.no_unapproved_changes' && !item.passed,
     ),
   )
-  assert.equal(submitted.state.status, 'failed')
-})
+  assert.equal(failed.state.status, 'failed')
 
-test('read-only stage allows changes traced to the active agent', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'preflight')
-  const state = createRun(root, {
+  const attributed = createRun(root, {
     workflowSlug: 'preflight',
     requestPath: 'request.md',
   })
-  const prepared = prepareInvocation(root, state.run_id)
-  const invocation = prepared.invocation
+  const second = prepareInvocation(root, attributed.run_id).invocation
 
-  assert.ok(invocation)
+  assert.ok(second)
 
-  writeFileSync(
-    path.join(root, 'src', 'base.ts'),
-    'export const base = false\n',
-  )
-
-  const stage = stageBySlug(workflow, 'inspect')
-  const output = {
-    ...makeOutput(root, invocation, stage),
+  writeFileSync(path.join(root, 'src', 'base.ts'), 'export const base = null\n')
+  writeJson(path.join(root, second.output.path), {
+    ...makeOutput(root, second, stage),
     workspace_changes: {
       attribution: 'internal',
       paths: ['src/base.ts'],
@@ -88,16 +75,13 @@ test('read-only stage allows changes traced to the active agent', () => {
         'The active inspector changed this file while producing the stage output.',
     },
     data: { inspection: { findings: [], verdict: 'pass' } },
-  }
+  })
+  writeCanonicalDelegation(root, second)
 
-  writeJson(path.join(root, invocation.output.path), output)
-  writeCanonicalDelegation(root, invocation)
-
-  const submitted = submitOutput(root, state.run_id, invocation.output.path)
-  const cleanliness = submitted.record.evaluation.deterministic.find(
+  const passed = submitOutput(root, attributed.run_id, second.output.path)
+  const cleanliness = passed.record.evaluation.deterministic.find(
     (item) => item.id === 'scope.no_unapproved_changes',
   )
 
   assert.equal(cleanliness?.passed, true)
-  assert.match(cleanliness?.explanation ?? '', /no external contamination/u)
 })

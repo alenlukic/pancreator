@@ -11,6 +11,13 @@ import { resolveRequirements } from './requirements/resolve.js'
 import type { InvocationKind } from './requirements/types.js'
 import { PROTECTED_PATH_RULE } from './workspace/protected-paths.js'
 import { resolveOrCreateWorktree } from './worktrees.js'
+import { gitShowFile } from './git.js'
+import {
+  REVIEW_MODE_CONTEXT,
+  conflictsByTier,
+  resolveReviewScope,
+  type ReviewScope,
+} from './review-scope.js'
 import type { WorktreeRecord } from './worktrees.js'
 import type { Policy, RequirementManifest } from './types.js'
 
@@ -115,6 +122,30 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST record every feedback item and its disposition in the session ledger, and MUST NOT post PR comments unless the operator directed it.',
     ],
   },
+  review: {
+    kind: 'review',
+    persona: 'reviewer',
+    ...REVIEW_MODE_CONTEXT,
+    title: 'Review squad',
+    summary:
+      'One review-squad pass over an operator-named target — a ref range, a ' +
+      'pull request, or a path set. The session captures the target once, ' +
+      'delegates one coordinator that fans the review out across its ' +
+      'dimensions, and returns ranked findings with a verdict. It owns no ' +
+      'run, no stage contract, and no gate, and it changes nothing.',
+    boundaries: [
+      'You MUST capture the review target once and MUST give every reviewing agent that same capture.',
+      'You MUST delegate exactly one review-squad coordinator per round. It alone resolves the lineup and owns the join, the ranking, and the verdict.',
+      'You MUST issue the dimension fan-out yourself, at the top level and in one message, with the charters the coordinator resolved, because a nested spawn runs on the platform default model. You MUST NOT join, rank, or grade findings yourself.',
+      'You MUST NOT edit, stage, commit, push, or write workflow state; a standalone review returns findings and nothing else.',
+      'Under this card the reviewer persona holds no remediation duty. Its bounded-remediation rules do not apply, and it edits nothing.',
+      'You MUST run the review-scope check and act by tier: instrument conflicts leave the squad verdict for an independent reviewer, conduct conflicts are reviewed under the base text this card renders with --base, and substrate conflicts taint any verification that leans on them.',
+      'You MUST NOT reject a change for differing from the standard it replaces. Report the standards delta and leave the merits of a rule change to the operator.',
+      PROTECTED_PATH_RULE,
+      'You MUST name the dimensions that ran, the ones the target did not activate, and any charter the coordinator had to apply itself.',
+      'You MUST leave remediation to the operator, who decides separately what to act on.',
+    ],
+  },
   'best-of-n': {
     kind: 'best_of_n',
     persona: 'meta-orchestrator',
@@ -187,6 +218,159 @@ export interface GovernanceCardOptions {
   requestPath?: string | null
   outputPath?: string | null
   worktreeName?: string | null
+  /** Review mode only. Conduct policies render from this base revision. */
+  baseRef?: string | null
+  /** Review mode only. The target head. Use it with `baseRef`. */
+  targetRef?: string | null
+}
+
+interface BaseConductPolicy {
+  id: string
+  path: string
+  summary: string | null
+  instructions: string[]
+}
+
+interface BaseConductBlock {
+  base: string
+  head: string
+  policies: BaseConductPolicy[]
+  /** Conduct-tier paths whose base text the card cannot inline. */
+  other_conduct: string[]
+  /** Instrument-tier paths the squad must not grade. */
+  excluded: string[]
+  /** Substrate paths that taint verification. */
+  tainted: string[]
+}
+
+function baseConductBlock(root: string, scope: ReviewScope): BaseConductBlock {
+  const tiers = conflictsByTier(scope.conflicts)
+  const policies: BaseConductPolicy[] = []
+  const otherConduct: string[] = []
+
+  for (const conflict of tiers.conduct) {
+    const match = /^governance\/policies\/([^/]+)\.json$/u.exec(conflict.path)
+
+    if (!match) {
+      // A guidance or registry path carries no inlinable policy text.
+      otherConduct.push(conflict.path)
+      continue
+    }
+
+    const text = gitShowFile(root, scope.base, conflict.path)
+
+    if (text === null) {
+      // The change added this policy, so no base rule binds the session.
+      continue
+    }
+
+    let value: unknown = null
+
+    try {
+      value = JSON.parse(text)
+    } catch {
+      value = null
+    }
+
+    const record = isRecordValue(value) ? value : {}
+
+    policies.push({
+      id: match[1],
+      path: conflict.path,
+      summary: typeof record.summary === 'string' ? record.summary : null,
+      instructions: Array.isArray(record.instructions)
+        ? record.instructions.filter(
+            (item): item is string => typeof item === 'string',
+          )
+        : [],
+    })
+  }
+
+  return {
+    base: scope.base,
+    head: scope.head,
+    policies,
+    other_conduct: otherConduct,
+    excluded: tiers.instrument.map((item) => item.path),
+    tainted: tiers.substrate.map((item) => item.path),
+  }
+}
+
+function isRecordValue(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function renderBaseConduct(block: BaseConductBlock): string[] {
+  const lines = [
+    '## 🧭 Conduct under the base revision',
+    '',
+    `The review target changes rules this card carries. Base \`${block.base.slice(0, 12)}\`, ` +
+      `head \`${block.head.slice(0, 12)}\`. Your conduct follows the base text of ` +
+      'each policy below; the head text is part of what you are reviewing. A ' +
+      'difference between the two is a standards delta for the operator, never ' +
+      'a finding on its own.',
+    '',
+  ]
+
+  if (block.policies.length === 0 && block.other_conduct.length === 0) {
+    lines.push('No conduct conflict exists between base and head.', '')
+  } else if (block.policies.length === 0) {
+    lines.push(
+      'Every conduct conflict on this card is listed below; none of them is ' +
+        'a policy file whose text can be inlined.',
+      '',
+    )
+  }
+
+  for (const policy of block.policies) {
+    lines.push(`**${policy.id} · base text**`, '')
+
+    if (policy.summary) {
+      lines.push(policy.summary, '')
+    }
+
+    lines.push(...policy.instructions.map((item) => `- ${item}`), '')
+  }
+
+  if (block.policies.length > 0) {
+    lines.push(
+      '_Guidance digests are not rendered for a base text; open the base ' +
+        'file if the guidance itself is under review._',
+      '',
+    )
+  }
+
+  for (const conductPath of block.other_conduct) {
+    lines.push(
+      `**\`${conductPath}\` · base text not inlined**`,
+      '',
+      `Read it with \`git show ${block.base.slice(0, 12)}:${conductPath}\` ` +
+        'before you apply this guidance; the head text is under review.',
+      '',
+    )
+  }
+
+  if (block.excluded.length > 0) {
+    lines.push(
+      '**Excluded from the squad verdict (instrument tier)**',
+      '',
+      ...block.excluded.map((path) => `- \`${path}\``),
+      '',
+    )
+  }
+
+  if (block.tainted.length > 0) {
+    lines.push(
+      '**Verification substrate in the change (tainted)**',
+      '',
+      'A finding elsewhere that relies on these to verify itself MUST say so.',
+      '',
+      ...block.tainted.map((path) => `- \`${path}\``),
+      '',
+    )
+  }
+
+  return lines
 }
 
 function renderGovernanceCardMarkdown(options: {
@@ -196,6 +380,7 @@ function renderGovernanceCardMarkdown(options: {
   requestPath: string | null
   harnessPrefixNote: string | null
   worktree: WorktreeRecord | null
+  baseConduct: BaseConductBlock | null
 }): string {
   const { mode, policies, requirements, requestPath } = options
   const agentRequirements = [
@@ -203,7 +388,18 @@ function renderGovernanceCardMarkdown(options: {
     ...requirements.validation_requirements,
   ].filter((requirement) => requirement.executor !== 'harness')
 
-  const policyBlocks = renderPolicyBlocks(policies, 3)
+  const policyIdOf = (policyPath: string) =>
+    /^governance\/policies\/([^/]+)\.json$/u.exec(policyPath)?.[1] ?? null
+  const policyBlocks = renderPolicyBlocks(
+    policies,
+    3,
+    new Set((options.baseConduct?.policies ?? []).map((policy) => policy.id)),
+    new Set(
+      (options.baseConduct?.excluded ?? [])
+        .map(policyIdOf)
+        .filter((id): id is string => id !== null),
+    ),
+  )
 
   return `${[
     `# 🤝 ${mode.title}`,
@@ -240,6 +436,7 @@ function renderGovernanceCardMarkdown(options: {
     '',
     ...policyBlocks,
     '',
+    ...(options.baseConduct ? renderBaseConduct(options.baseConduct) : []),
     ...(agentRequirements.length > 0
       ? [
           '## ✅ Agent validation requirements',
@@ -285,6 +482,30 @@ export function buildGovernanceCard(
     { code: 'UNKNOWN_STANDALONE_MODE' },
   )
 
+  // Check the options before any side effect, so a rejected call leaves no
+  // worktree behind.
+  invariant(
+    !options.baseRef || options.mode === 'review',
+    '--base applies to the review mode only.',
+    { code: 'INVALID_GOVERNANCE_CARD_OPTION' },
+  )
+  invariant(
+    !options.targetRef || options.baseRef,
+    '--target requires --base.',
+    {
+      code: 'INVALID_GOVERNANCE_CARD_OPTION',
+    },
+  )
+  // Without --target the card grades HEAD, which is the target only in the
+  // review workspace.
+  invariant(
+    !options.baseRef || options.targetRef,
+    '--base requires --target in the review mode.',
+    {
+      code: 'INVALID_GOVERNANCE_CARD_OPTION',
+    },
+  )
+
   if (options.requestPath) {
     invariant(
       fileExists(resolveInside(root, options.requestPath)),
@@ -322,10 +543,21 @@ export function buildGovernanceCard(
       path.join(root, 'runtime', 'logs', 'sessions'),
       keywordRunSuffix(options.mode),
     )}/${options.mode}-card.md`
+
+  const baseConduct = options.baseRef
+    ? baseConductBlock(
+        root,
+        resolveReviewScope(root, {
+          head: options.targetRef ?? 'HEAD',
+          base: options.baseRef,
+        }),
+      )
+    : null
   const markdown = renderGovernanceCardMarkdown({
     mode,
     policies,
     requirements,
+    baseConduct,
     requestPath: options.requestPath ?? null,
     harnessPrefixNote: isTargetInstallation(root)
       ? `Harness-relative paths beginning \`runtime/\`, \`library/\`, or ` +

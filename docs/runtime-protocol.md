@@ -292,9 +292,11 @@ or from `pan init --verification <level>`. The level maps shell-criterion ids
 to the repository-check profile each gate actually runs (or `false` to skip a
 gate), and the run snapshots the resolved mapping so later config edits cannot
 change it. Under the default `light` level the implement loop gates on
-`static` and `fast` and QA re-runs `fast`; the expensive `full` profile never
-runs unless the operator explicitly selects a level whose gates leave it in
-place (`thorough`) — teams and CI own the suites the level leaves out.
+`static` and `fast`, the verify submission gate re-runs `fast` against the
+pre-implementation baseline, and QA cites that gate evidence from its card
+instead of executing a profile itself. The expensive `full` profile never runs
+unless the operator explicitly selects a level whose gates leave it in place
+(`thorough`) — teams and CI own the suites the level leaves out.
 
 Intake and plan workers MAY set `data.verification_recommendation`
 (`{ "level": ..., "reason": ... }`) when the change warrants a different

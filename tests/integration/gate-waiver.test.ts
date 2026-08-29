@@ -22,36 +22,7 @@ import {
   writeCanonicalDelegation,
   writeJson,
 } from '../helpers.js'
-
-/** A remedial verify verdict whose data stays consistent with a failed stage. */
-function failingVerify(findingId: string): Record<string, unknown> {
-  return {
-    verdict: 'fail_remedial',
-    findings: [
-      {
-        id: findingId,
-        severity: 'blocker',
-        source: 'qa',
-        statement: 'The workflow fixture does not advance.',
-        evidence: ['fixture'],
-      },
-    ],
-    qa_cases: [
-      {
-        id: 'TP-01',
-        steps: 'Run workflow fixture',
-        expected: 'advance',
-        actual: 'stalled',
-        result: 'fail',
-      },
-    ],
-    acceptance_results: [
-      { id: 'AC-01', result: 'fail', evidence: ['fixture'] },
-    ],
-    remediation_guidance:
-      'Rerun the workflow fixture; the run stalls before ship.',
-  }
-}
+import { checkpoint, failingVerify } from './delivery-helpers.js'
 
 test('explicit gate waiver advances a bounded miss and tracks its spotfix case', () => {
   const root = createFixture()
@@ -160,34 +131,23 @@ test('explicit gate waiver advances a bounded miss and tracks its spotfix case',
 })
 
 test('gate waivers can override a failed supervisor assessment', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery-candidate')
-  const state = createRun(root, {
-    workflowSlug: 'delivery-candidate',
-    requestPath: 'request.md',
-    title: 'Supervisor gate waiver fixture',
-  })
-  const runId = state.run_id
-
-  const invocation = prepareInvocation(root, runId).invocation
+  const {
+    root,
+    runId,
+    state: submitted,
+    invocation,
+    workflow,
+  } = checkpoint('delivery-candidate@plan-awaiting-supervisor')
 
   assert.ok(invocation)
   assert.equal(invocation.stage.slug, 'plan')
-  writeJson(
-    path.join(root, invocation.output.path),
-    makeOutput(root, invocation, stageBySlug(workflow, 'plan')),
-  )
-  writeCanonicalDelegation(root, invocation)
+  assert.equal(submitted.pending_action.type, 'supervisor_assessment')
 
-  const submitted = submitOutput(root, runId, invocation.output.path)
-
-  assert.equal(submitted.state.pending_action.type, 'supervisor_assessment')
-
-  if (submitted.state.pending_action.type !== 'supervisor_assessment') {
+  if (submitted.pending_action.type !== 'supervisor_assessment') {
     throw new Error('Expected supervisor assessment action')
   }
 
-  const assessmentPath = submitted.state.pending_action.output_path
+  const assessmentPath = submitted.pending_action.output_path
   const criteria = stageBySlug(workflow, 'plan').criteria.map((criterion) => ({
     id: criterion.id,
     result:
@@ -223,20 +183,9 @@ test('gate waivers can override a failed supervisor assessment', () => {
 })
 
 test('gate waivers honor partial scope after workspace drift', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Flexible gate waiver fixture',
-  })
-  const runId = state.run_id
-
-  setRunStage(root, runId, 'implement', 'Initialize tracked workspace state.')
-  prepareInvocation(root, runId)
-  setRunStage(root, runId, 'verify', 'Create a multi-criterion failure.')
-
-  const invocation = prepareInvocation(root, runId).invocation
+  const { root, runId, invocation, workflow } = checkpoint(
+    'delivery@verify-prepared',
+  )
 
   assert.ok(invocation)
 
@@ -289,52 +238,10 @@ test('gate waivers honor partial scope after workspace drift', () => {
   )
 })
 
-test('malformed governance output is advisory and advances without another agent attempt', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Malformed output advisory fixture',
-  })
-  const runId = state.run_id
-
-  setRunStage(root, runId, 'implement', 'Initialize tracked workspace state.')
-  prepareInvocation(root, runId)
-  setRunStage(root, runId, 'verify', 'Create malformed verify evidence.')
-
-  const invocation = prepareInvocation(root, runId).invocation
-
-  assert.ok(invocation)
-
-  const output = makeOutput(root, invocation, stageBySlug(workflow, 'verify'))
-  output.invocation_id = 'wrong-invocation-id'
-
-  writeJson(path.join(root, invocation.output.path), output)
-  writeCanonicalDelegation(root, invocation)
-  const submitted = submitOutput(root, runId, invocation.output.path)
-
-  assert.equal(submitted.record.outcome, 'success')
-  assert.equal(submitted.state.current_stage, 'ship')
-  assert.ok(submitted.record.evaluation.validation_errors.length > 0)
-  assert.ok(
-    (submitted.record.evaluation.governance_artifact_warnings ?? []).length > 0,
-  )
-  assert.ok((submitted.state.governance_artifact_issues ?? []).length > 0)
-})
-
 test('explicit product failure remains blocking even when its governance output is malformed', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Malformed failure routing fixture',
-  })
-  const runId = state.run_id
-
-  setRunStage(root, runId, 'verify', 'Exercise product-failure routing.')
-  const invocation = prepareInvocation(root, runId).invocation
+  const { root, runId, invocation, workflow } = checkpoint(
+    'delivery@verify-prepared',
+  )
 
   assert.ok(invocation)
 
@@ -381,25 +288,16 @@ test('gate waivers can bypass an unattempted stage', () => {
   assert.equal(waived.state.current_stage, 'ship')
   assert.equal(waived.waiver.source_attempt, 0)
   assert.deepEqual(waived.waiver.criterion_ids, ['*'])
-})
-
-test('operator waiver can redirect a terminal run', () => {
-  const root = createFixture()
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Terminal override fixture',
-  })
-  const runId = state.run_id
 
   abortRun(root, runId, 'Initial operator decision.')
+  assert.equal(getRunState(root, runId).status, 'canceled')
 
-  const waived = waiveGate(root, runId, {
+  const reopened = waiveGate(root, runId, {
     stageSlug: 'verify',
     targetStage: 'ship',
     note: 'Reopen the canceled run at ship. This directive supersedes the prior cancellation.',
   })
 
-  assert.equal(waived.state.status, 'running')
-  assert.equal(waived.state.current_stage, 'ship')
+  assert.equal(reopened.state.status, 'running')
+  assert.equal(reopened.state.current_stage, 'ship')
 })

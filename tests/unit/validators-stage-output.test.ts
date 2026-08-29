@@ -114,6 +114,53 @@ test('strict stage output rejects pass claims without evidence', () => {
     validation.errors.join('\n'),
     /pass claim MUST include evidence/u,
   )
+
+  const misdeclared = baseOutput(invocation, stage)
+
+  misdeclared.artifacts = [
+    {
+      path: 'runtime/logs/workflows/run-test/artifacts/markdown/summary.md',
+      description: 'Legacy Markdown summary',
+    },
+    {
+      path: brief.source_path,
+      description: 'Brief source',
+    },
+  ]
+
+  assert.match(
+    validateStageOutput(root, stage, invocation, misdeclared).errors.join('\n'),
+    /artifacts\[0\]\.path MUST equal rendered operator brief path/u,
+  )
+
+  brief.source_transient = true
+  const transient = baseOutput(invocation, stage)
+
+  transient.artifacts = [
+    {
+      path: brief.rendered_path,
+      description: 'Rendered brief',
+    },
+  ]
+
+  const withoutSource = validateStageOutput(root, stage, invocation, transient)
+
+  assert.doesNotMatch(
+    withoutSource.errors.join('\n'),
+    /artifacts\[1\]|MUST NOT list transient/u,
+  )
+
+  transient.artifacts.push({
+    path: brief.source_path,
+    description: 'Transient source',
+  })
+
+  const withSource = validateStageOutput(root, stage, invocation, transient)
+
+  assert.match(
+    withSource.errors.join('\n'),
+    /MUST NOT list transient operator brief source/u,
+  )
 })
 
 test('strict stage output rejects success with failed self-evaluation', () => {
@@ -132,73 +179,44 @@ test('strict stage output rejects success with failed self-evaluation', () => {
   assert.match(validation.errors.join('\n'), /contradicts failed criterion/u)
 })
 
-test('stage output requires invocation-declared HTML and brief source artifacts', () => {
+test('stage output accepts a platform guidance conflict list and rejects a bare entry', () => {
   const root = createFixture()
   const { invocation, stage } = fixtureInvocation(
     root,
     'implement',
-    'implement-1-test',
+    'implement-1',
   )
-  const output = baseOutput(invocation, stage)
-  const brief = invocation.output.operator_brief
-
-  assert.ok(brief)
-
-  output.artifacts = [
-    {
-      path: 'runtime/logs/workflows/run-test/artifacts/markdown/summary.md',
-      description: 'Legacy Markdown summary',
-    },
-    {
-      path: brief.source_path,
-      description: 'Brief source',
-    },
-  ]
-
-  const validation = validateStageOutput(root, stage, invocation, output)
-
-  assert.match(
-    validation.errors.join('\n'),
-    /artifacts\[0\]\.path MUST equal rendered operator brief path/u,
-  )
-})
-
-test('stage output excludes a transient brief source from artifacts', () => {
-  const root = createFixture()
-  const { invocation, stage } = fixtureInvocation(
-    root,
-    'implement',
-    'implement-1-test',
-  )
-  const brief = invocation.output.operator_brief
-
-  assert.ok(brief)
-  brief.source_transient = true
-  const output = baseOutput(invocation, stage)
-
-  output.artifacts = [
-    {
-      path: brief.rendered_path,
-      description: 'Rendered brief',
-    },
-  ]
-
-  const withoutSource = validateStageOutput(root, stage, invocation, output)
-
-  assert.doesNotMatch(
-    withoutSource.errors.join('\n'),
-    /artifacts\[1\]|MUST NOT list transient/u,
-  )
-
-  output.artifacts.push({
-    path: brief.source_path,
-    description: 'Transient source',
+  const stated = validateStageOutput(root, stage, invocation, {
+    ...baseOutput(invocation, stage),
+    platform_guidance_conflicts: [
+      {
+        guidance: 'Plan mode: do not edit files',
+        covered_step: 'implement the accepted change',
+        authority_followed: 'the implement invocation card and DEV-001',
+      },
+    ],
   })
 
-  const withSource = validateStageOutput(root, stage, invocation, output)
+  // OPERATOR-001 gives the conflict statement a field, so the validator must
+  // accept it.
+  assert.ok(
+    !stated.errors.some((message) =>
+      message.includes('platform_guidance_conflicts'),
+    ),
+    stated.errors.join('\n'),
+  )
+  assert.equal(stated.output.platform_guidance_conflicts?.length, 1)
 
-  assert.match(
-    withSource.errors.join('\n'),
-    /MUST NOT list transient operator brief source/u,
+  const bare = validateStageOutput(root, stage, invocation, {
+    ...baseOutput(invocation, stage),
+    platform_guidance_conflicts: [{ guidance: 'Plan mode' }],
+  })
+
+  assert.ok(
+    bare.errors.some((message) =>
+      /platform_guidance_conflicts\[0\] MUST name guidance, covered_step, and authority_followed/u.test(
+        message,
+      ),
+    ),
   )
 })

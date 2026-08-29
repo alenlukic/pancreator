@@ -35,10 +35,24 @@ function runGit(
   return result
 }
 
+// Cache a positive answer only. A directory can become a repository after a
+// negative check, but a repository never stops being one in a live process.
+const gitRepositoryCache = new Map<string, true>()
+
 export function isGitRepository(root: string): boolean {
+  const resolved = path.resolve(root)
+
+  if (gitRepositoryCache.has(resolved)) {
+    return true
+  }
+
   const result = runGit(root, ['rev-parse', '--is-inside-work-tree'], {
     allowFailure: true,
   })
+
+  if (result.status === 0) {
+    gitRepositoryCache.set(resolved, true)
+  }
 
   return result.status === 0
 }
@@ -59,6 +73,57 @@ export function gitRevParse(root: string, reference: string): string {
   ])
 
   return result.stdout.trim()
+}
+
+/** Merge-base of two revisions, or null when they share no history. */
+export function gitMergeBase(
+  root: string,
+  left: string,
+  right: string,
+): string | null {
+  const result = runGit(root, ['merge-base', '--end-of-options', left, right], {
+    allowFailure: true,
+  })
+
+  return result.status === 0 ? result.stdout.trim() : null
+}
+
+/** Repository-relative paths a three-dot diff changes between two revisions. */
+export function gitChangedPathsBetween(
+  root: string,
+  base: string,
+  head: string,
+  options: { detectRenames?: boolean } = {},
+): string[] {
+  // With rename detection on, Git names only the destination of a rename.
+  const result = runGit(root, [
+    'diff',
+    '--name-only',
+    ...(options.detectRenames === false ? ['--no-renames'] : []),
+    '--end-of-options',
+    `${base}...${head}`,
+  ])
+
+  return result.stdout
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .sort()
+}
+
+/** Contents of a tracked file at a revision, or null when absent there. */
+export function gitShowFile(
+  root: string,
+  reference: string,
+  relativePath: string,
+): string | null {
+  const result = runGit(
+    root,
+    ['show', '--end-of-options', `${reference}:${relativePath}`],
+    { allowFailure: true },
+  )
+
+  return result.status === 0 ? result.stdout : null
 }
 
 export function gitBranchExists(root: string, branch: string): boolean {
@@ -260,9 +325,49 @@ function trackedWorkspacePath(
     : normalizedEntry
 }
 
+const gitDirCache = new Map<string, string>()
+const toplevelCache = new Map<string, string>()
+const trackedPathsCache = new Map<string, { token: string; paths: string[] }>()
+
+/**
+ * Invalidation token for the tracked-file cache. Every write to the git index
+ * changes its mtime or size.
+ */
+function gitIndexToken(workspaceDir: string): string {
+  let gitDir = gitDirCache.get(workspaceDir)
+
+  if (!gitDir) {
+    const result = runGit(workspaceDir, ['rev-parse', '--absolute-git-dir'], {
+      allowFailure: true,
+    })
+
+    gitDir = result.status === 0 ? result.stdout.trim() : ''
+    gitDirCache.set(workspaceDir, gitDir)
+  }
+
+  if (!gitDir) {
+    return 'no-git-dir'
+  }
+
+  try {
+    const stats = statSync(path.join(gitDir, 'index'))
+
+    return `${stats.mtimeMs}:${stats.size}`
+  } catch {
+    return 'no-index'
+  }
+}
+
 export function gitTrackedWorkspacePaths(workspaceDir: string): string[] {
   if (!isGitRepository(workspaceDir)) {
     return []
+  }
+
+  const token = gitIndexToken(workspaceDir)
+  const cached = trackedPathsCache.get(workspaceDir)
+
+  if (cached && cached.token === token) {
+    return cached.paths
   }
 
   const prefixResult = runGit(workspaceDir, ['rev-parse', '--show-prefix'], {
@@ -278,7 +383,7 @@ export function gitTrackedWorkspacePaths(workspaceDir: string): string[] {
     ...protectedGitPathspecs(),
   ])
 
-  return tracked.stdout
+  const paths = tracked.stdout
     .split('\0')
     .filter(Boolean)
     .map((entry) => trackedWorkspacePath(entry, workspacePrefix))
@@ -290,6 +395,10 @@ export function gitTrackedWorkspacePaths(workspaceDir: string): string[] {
         !isProtectedWorkspacePath(relative),
     )
     .sort()
+
+  trackedPathsCache.set(workspaceDir, { token, paths })
+
+  return paths
 }
 
 function contentFingerprint(
@@ -356,15 +465,24 @@ export function gitWorkspaceSnapshot(workspaceDir: string): WorkspaceSnapshot {
     }
   }
 
-  const toplevelResult = runGit(
-    workspaceDir,
-    ['rev-parse', '--show-toplevel'],
-    {
-      allowFailure: true,
-    },
-  )
-  const toplevel =
-    toplevelResult.status === 0 ? toplevelResult.stdout.trim() : workspaceDir
+  let toplevel = toplevelCache.get(workspaceDir)
+
+  if (toplevel === undefined) {
+    const toplevelResult = runGit(
+      workspaceDir,
+      ['rev-parse', '--show-toplevel'],
+      {
+        allowFailure: true,
+      },
+    )
+
+    if (toplevelResult.status === 0) {
+      toplevel = toplevelResult.stdout.trim()
+      toplevelCache.set(workspaceDir, toplevel)
+    } else {
+      toplevel = workspaceDir
+    }
+  }
   const status = runGit(workspaceDir, [
     'status',
     '--porcelain=v1',

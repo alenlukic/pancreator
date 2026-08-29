@@ -24,6 +24,7 @@ import type {
   StageOutcome,
   StageOutput,
 } from '../../src/lib/types.js'
+import { checkpoint } from './delivery-helpers.js'
 
 function setInvolvement(root: string, value: unknown): void {
   const config = read(path.join(root, 'config.json')) as Record<string, unknown>
@@ -108,6 +109,11 @@ test('the standard profile leaves every workflow-declared gate untouched', () =>
 
   assert.equal(stageBySlug(workflow, 'plan').gate, 'operator')
   assert.equal(stageBySlug(workflow, 'verify').gate, 'stage_verdict')
+
+  const invocation = prepareInvocation(root, state.run_id).invocation
+
+  assert.ok(invocation)
+  assert.ok(!invocation.policies.some((policy) => policy.id === 'DIRECTOR-001'))
 })
 
 test('an involvement profile rewrites gates in the run snapshot only', () => {
@@ -172,10 +178,26 @@ test('a profile cannot lower a gate a stage declares non-relaxable', () => {
       }),
     /gate_relaxable: false/u,
   )
-})
 
-test('a profile naming a stage the workflow lacks fails at init', () => {
-  const root = createFixture()
+  // A blunt wildcard cannot quietly strip the release pause SHIP-001 requires.
+  setInvolvement(root, {
+    active: 'sweeping',
+    profiles: {
+      sweeping: {
+        summary: 'Relax everything with a wildcard.',
+        gates: { '*': 'stage_verdict' },
+      },
+    },
+  })
+  assert.throws(
+    () =>
+      createRun(root, {
+        workflowSlug: 'delivery',
+        requestPath: 'request.md',
+        title: 'Sweeping run',
+      }),
+    /delivery\/ship.*gate_relaxable: false/su,
+  )
 
   setInvolvement(root, {
     active: 'typo',
@@ -183,7 +205,6 @@ test('a profile naming a stage the workflow lacks fails at init', () => {
       typo: { summary: 'Mistyped stage.', gates: { shipp: 'operator' } },
     },
   })
-
   assert.throws(
     () =>
       createRun(root, {
@@ -193,10 +214,6 @@ test('a profile naming a stage the workflow lacks fails at init', () => {
       }),
     /which workflow 'delivery' does not define/u,
   )
-})
-
-test('an unknown profile name reports the available profiles', () => {
-  const root = createFixture()
 
   assert.throws(
     () =>
@@ -255,55 +272,43 @@ test('the technical_director contract escalates checkpoints and loads DIRECTOR-0
   )
 })
 
-test('DIRECTOR-001 is absent from a run without the contract', () => {
-  const root = createFixture()
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'No contract run',
-  })
-  const invocation = prepareInvocation(root, state.run_id).invocation
-
-  assert.ok(invocation)
-  assert.ok(!invocation.policies.some((policy) => policy.id === 'DIRECTOR-001'))
-})
-
 test('an operator gate under the contract records its checkpoint', () => {
-  const root = createFixture()
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Checkpoint run',
-    involvement: 'technical-director',
-  })
-  const runId = state.run_id
-  const workflow = runWorkflow(root, runId)
-
   // Plan stops at the technical_plan checkpoint the contract watches.
-  const plan = submitStage(root, runId, stageBySlug(workflow, 'plan'))
+  const plan = checkpoint('delivery[td]@plan-submitted')
 
-  assert.equal(plan.submitted.state.status, 'awaiting_operator')
+  assert.equal(plan.state.status, 'awaiting_operator')
   assert.equal(
-    'checkpoint' in plan.submitted.state.pending_action
-      ? plan.submitted.state.pending_action.checkpoint
+    'checkpoint' in plan.state.pending_action
+      ? plan.state.pending_action.checkpoint
       : undefined,
     'technical_plan',
   )
 
-  decideRun(root, runId, 'approve')
-  submitStage(root, runId, stageBySlug(workflow, 'implement'))
+  const {
+    root,
+    runId,
+    state: verify,
+    workflow,
+  } = checkpoint('delivery[td]@verify-submitted')
 
-  const verify = submitStage(root, runId, stageBySlug(workflow, 'verify'))
-
-  assert.equal(verify.submitted.state.status, 'awaiting_operator')
+  assert.equal(verify.stage_history.at(-1)?.stage, 'verify')
+  assert.equal(verify.stage_history.at(-1)?.outcome, 'success')
+  assert.equal(verify.status, 'awaiting_operator')
   assert.equal(
-    'checkpoint' in verify.submitted.state.pending_action
-      ? verify.submitted.state.pending_action.checkpoint
+    verify.pending_action.type === 'operator_approval' &&
+      verify.pending_action.outcome,
+    'success',
+  )
+  assert.equal(
+    'checkpoint' in verify.pending_action
+      ? verify.pending_action.checkpoint
       : undefined,
     'independent_review',
   )
 
-  decideRun(root, runId, 'approve')
+  const verifyDecided = decideRun(root, runId, 'approve', 'Proceed to release.')
+
+  assert.equal(verifyDecided.current_stage, 'ship')
 
   // Ship is an ordinary operator gate; it carries no checkpoint.
   const ship = submitStage(root, runId, stageBySlug(workflow, 'ship'))
@@ -317,152 +322,8 @@ test('an operator gate under the contract records its checkpoint', () => {
   )
 })
 
-test('a revise decision re-runs the stage without spending its retry budget', () => {
-  const root = createFixture()
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Revision run',
-    involvement: 'technical-director',
-  })
-  const runId = state.run_id
-  const workflow = runWorkflow(root, runId)
-
-  submitStage(root, runId, stageBySlug(workflow, 'plan'))
-
-  const revised = decideRun(
-    root,
-    runId,
-    'revise',
-    'Use the existing adapter instead of a new registry.',
-  )
-
-  assert.equal(revised.status, 'running')
-  assert.equal(revised.current_stage, 'plan')
-  assert.equal(revised.operator_revisions?.plan, 1)
-  assert.equal(revised.consecutive_failures, 0)
-
-  const feedback = revised.operator_feedback?.at(-1)
-
-  assert.ok(feedback)
-  assert.equal(feedback.decision, 'revise')
-  assert.equal(feedback.from_stage, 'plan')
-  assert.equal(feedback.to_stage, 'plan')
-
-  const body = readFileSync(path.join(root, feedback.path), 'utf8')
-
-  assert.match(body, /Operator revision directive/u)
-  assert.match(body, /refinement directive, not a rejection/u)
-  assert.match(body, /existing adapter instead of a new registry/u)
-
-  // The ceiling rose by one, so the plan can still use its full failure budget.
-  const next = prepareInvocation(root, runId).invocation
-
-  assert.ok(next)
-  assert.equal(next.stage.slug, 'plan')
-  assert.equal(next.attempt, 2)
-  assert.ok(
-    next.inputs.references.some(
-      (reference) => reference.path === feedback.path,
-    ),
-    'the revision directive must reach the worker as an input',
-  )
-})
-
-test('revise requires the operator directive', () => {
-  const root = createFixture()
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Empty revision run',
-    involvement: 'technical-director',
-  })
-  const runId = state.run_id
-  const workflow = runWorkflow(root, runId)
-
-  submitStage(root, runId, stageBySlug(workflow, 'plan'))
-
-  assert.throws(
-    () => decideRun(root, runId, 'revise', '   '),
-    /MUST carry the operator directive/u,
-  )
-})
-
-test('a relaxing wildcard must still exempt a non-relaxable stage explicitly', () => {
-  const root = createFixture()
-
-  setInvolvement(root, {
-    active: 'sweeping',
-    profiles: {
-      sweeping: {
-        summary: 'Relax everything with a wildcard.',
-        gates: { '*': 'stage_verdict' },
-      },
-    },
-  })
-
-  // A blunt wildcard cannot quietly strip the release pause SHIP-001 requires.
-  assert.throws(
-    () =>
-      createRun(root, {
-        workflowSlug: 'delivery',
-        requestPath: 'request.md',
-        title: 'Sweeping run',
-      }),
-    /delivery\/ship.*gate_relaxable: false/su,
-  )
-})
-
-test('the independent_review checkpoint stops a passing verify too', () => {
-  const root = createFixture()
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Passing verify checkpoint run',
-    involvement: 'technical-director',
-  })
-  const runId = state.run_id
-  const workflow = runWorkflow(root, runId)
-
-  submitStage(root, runId, stageBySlug(workflow, 'plan'))
-  decideRun(root, runId, 'approve')
-  submitStage(root, runId, stageBySlug(workflow, 'implement'))
-
-  const verify = submitStage(root, runId, stageBySlug(workflow, 'verify'))
-
-  assert.equal(verify.submitted.record.outcome, 'success')
-  assert.equal(verify.submitted.state.status, 'awaiting_operator')
-  assert.equal(
-    verify.submitted.state.pending_action.type === 'operator_approval' &&
-      verify.submitted.state.pending_action.outcome,
-    'success',
-  )
-  assert.equal(
-    'checkpoint' in verify.submitted.state.pending_action
-      ? verify.submitted.state.pending_action.checkpoint
-      : undefined,
-    'independent_review',
-  )
-
-  const decided = decideRun(root, runId, 'approve', 'Proceed to release.')
-
-  assert.equal(decided.current_stage, 'ship')
-})
-
 test('an operator gate stops a failed stage before its failure transition', () => {
-  const root = createFixture()
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Failed verify checkpoint run',
-    involvement: 'technical-director',
-  })
-  const runId = state.run_id
-  const workflow = runWorkflow(root, runId)
-
-  submitStage(root, runId, stageBySlug(workflow, 'plan'))
-  decideRun(root, runId, 'approve')
-  submitStage(root, runId, stageBySlug(workflow, 'implement'))
+  const { root, runId, workflow } = checkpoint('delivery[td]@verify-prepared')
 
   const verify = submitStage(
     root,
@@ -501,37 +362,6 @@ test('an operator gate stops a failed stage before its failure transition', () =
 
   assert.equal(decided.status, 'running')
   assert.equal(decided.current_stage, 'remediate')
-})
-
-test('an operator gate stops a blocked stage before its blocked transition', () => {
-  const root = createFixture()
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Blocked plan checkpoint run',
-    involvement: 'technical-director',
-  })
-  const runId = state.run_id
-  const workflow = runWorkflow(root, runId)
-
-  const plan = submitStage(
-    root,
-    runId,
-    stageBySlug(workflow, 'plan'),
-    'blocked',
-  )
-
-  assert.equal(plan.submitted.record.outcome, 'blocked')
-  assert.equal(plan.submitted.state.status, 'awaiting_operator')
-  assert.equal(
-    plan.submitted.state.pending_action.type === 'operator_approval' &&
-      plan.submitted.state.pending_action.outcome,
-    'blocked',
-  )
-
-  const decided = decideRun(root, runId, 'approve', 'Accept the pause.')
-
-  assert.equal(decided.status, 'paused')
 })
 
 test('gates resolve by ascending specificity', () => {

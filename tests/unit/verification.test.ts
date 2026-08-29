@@ -71,13 +71,6 @@ test('operator levels merge over the built-ins and can change the active level',
   assert.ok(file.levels.thorough)
 })
 
-test('an active level that is not defined is rejected loudly', () => {
-  assert.throws(
-    () => parseVerification({ verification: { active: 'exhaustive' } }),
-    /not a defined verification level/u,
-  )
-})
-
 test('a gate value that is neither a profile name nor false is rejected', () => {
   assert.throws(
     () =>
@@ -89,6 +82,11 @@ test('a gate value that is neither a profile name nor false is rejected', () => 
         },
       }),
     /MUST name a repository-check profile or be false/u,
+  )
+
+  assert.throws(
+    () => parseVerification({ verification: { active: 'exhaustive' } }),
+    /not a defined verification level/u,
   )
 })
 

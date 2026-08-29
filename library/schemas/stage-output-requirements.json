@@ -93,6 +93,32 @@
           "path": "data.verify.qa_cases[].result",
           "type": "string",
           "enum": ["pass", "fail", "blocked"]
+        },
+        {
+          "path": "data.verify.qa_cases[].steps",
+          "type": "string",
+          "format": "focused scenario steps; MUST NOT contain a configured repository-check profile command or 'pan repository-check <profile>', because the gate already ran that profile"
+        },
+        {
+          "path": "data.verify.gate_evidence_citations[]",
+          "type": "object",
+          "required": ["profile", "fingerprint", "evidence_path"],
+          "format": "one entry per current gate-evidence reference on the card; cites the profile, the workspace fingerprint it passed at, and the evidence path instead of re-executing the profile"
+        },
+        {
+          "path": "data.verify.gate_evidence_citations[].profile",
+          "type": "string",
+          "format": "repository-check profile name the gate ran"
+        },
+        {
+          "path": "data.verify.gate_evidence_citations[].fingerprint",
+          "type": "string",
+          "format": "workspace fingerprint named by the card's gate-evidence reference"
+        },
+        {
+          "path": "data.verify.gate_evidence_citations[].evidence_path",
+          "type": "string",
+          "format": "harness-relative path of the gate evidence artifact"
         }
       ]
     },
@@ -152,6 +178,102 @@
         {
           "path": "data.release.validation[].workspace_fingerprint",
           "type": "string"
+        }
+      ]
+    },
+    "approach": {
+      "validators": [
+        {
+          "registry_id": "PROTOTYPE-OUTPUT-VALIDATE-001",
+          "enforcement": "blocks"
+        }
+      ],
+      "fields": [
+        {
+          "path": "data.technical_approach.preconditions[].status",
+          "type": "string",
+          "enum": ["ready", "unavailable", "unknown"]
+        },
+        {
+          "path": "data.technical_approach.preconditions[].volatile",
+          "type": "boolean",
+          "format": "required on every precondition; true when the build MUST recheck it immediately before source edits"
+        },
+        {
+          "path": "data.technical_approach.preconditions[].exclusions[]",
+          "type": "object",
+          "required": ["excluded_questions", "operator_decision_path"],
+          "format": "optional; each entry cites one operator decision recorded on this run that excludes the listed questions"
+        },
+        {
+          "path": "data.technical_approach.preconditions[].exclusions[].excluded_questions[]",
+          "type": "string",
+          "format": "technical question id the operator decision excludes; the decision note MUST name it"
+        },
+        {
+          "path": "data.technical_approach.preconditions[].exclusions[].operator_decision_path",
+          "type": "string",
+          "format": "path of an operator decision on the run's operator-feedback ledger; a harness pause record does not qualify"
+        }
+      ]
+    },
+    "build": {
+      "validators": [
+        {
+          "registry_id": "PROTOTYPE-OUTPUT-VALIDATE-001",
+          "enforcement": "blocks"
+        }
+      ],
+      "fields": [
+        {
+          "path": "data.spike.precondition_checks[].status",
+          "type": "string",
+          "enum": ["ready", "unavailable", "unknown"]
+        }
+      ]
+    },
+    "evaluate": {
+      "validators": [
+        {
+          "registry_id": "PROTOTYPE-OUTPUT-VALIDATE-001",
+          "enforcement": "blocks"
+        }
+      ],
+      "fields": [
+        {
+          "path": "data.evaluation.verdict",
+          "type": "string",
+          "enum": [
+            "validated",
+            "invalidated",
+            "inconclusive",
+            "environment_blocked"
+          ]
+        },
+        {
+          "path": "data.evaluation.question_results[].cause",
+          "type": "string",
+          "enum": ["product", "environment", "mixed", "none"]
+        },
+        {
+          "path": "data.evaluation.question_results[].readiness_question",
+          "type": "boolean",
+          "format": "optional; true claims the explicit-readiness exemption so a readiness result may carry a product cause while an environment blocker names the same question"
+        },
+        {
+          "path": "data.evaluation.environment_blockers[].description",
+          "type": "string",
+          "format": "required; non-empty statement of the environment gap"
+        },
+        {
+          "path": "data.evaluation.environment_blockers[].evidence[]",
+          "type": "string",
+          "format": "required; non-empty array of reproducible evidence for the gap"
+        },
+        {
+          "path": "data.evaluation.environment_blockers[].affected_questions[]",
+          "type": "string",
+          "format": "required; non-empty array of declared technical question ids the blocker prevented a decision on"
         }
       ]
     }

@@ -96,14 +96,16 @@ test('ship gate fails when neither current fingerprint nor acceptance matches', 
   const result = evaluateStateCriterion(state, CRITERION, 'fp-current')
 
   assert.equal(result.passed, false)
-})
 
-test('ship gate fails when review or QA evidence is absent even if accepted', () => {
-  const state = stateWith([historyItem('review', 'fp-current')], 'fp-current')
+  const missingQa = stateWith(
+    [historyItem('review', 'fp-current')],
+    'fp-current',
+  )
 
-  const result = evaluateStateCriterion(state, CRITERION, 'fp-current')
-
-  assert.equal(result.passed, false)
+  assert.equal(
+    evaluateStateCriterion(missingQa, CRITERION, 'fp-current').passed,
+    false,
+  )
 })
 
 test('ship gate passes when review failed but operator waived advancement to QA', () => {
@@ -118,23 +120,39 @@ test('ship gate passes when review failed but operator waived advancement to QA'
 
   assert.equal(result.passed, true)
   assert.match(result.explanation ?? '', /operator-waived/i)
-})
 
-test('ship gate passes with operator-waived review when ship fingerprint drifted after acceptance', () => {
-  const review = historyItem('review', 'fp-deliverable', 'failure')
-  const state = stateWith(
-    [review, historyItem('test', 'fp-deliverable')],
-    'fp-deliverable',
-    [waiverFor(review)],
+  // The waiver carries the gate after the ship fingerprint drifted.
+  const drifted = historyItem('review', 'fp-deliverable', 'failure')
+  const driftedResult = evaluateStateCriterion(
+    stateWith(
+      [drifted, historyItem('test', 'fp-deliverable')],
+      'fp-deliverable',
+      [waiverFor(drifted)],
+    ),
+    CRITERION,
+    'fp-post-ship-edit',
   )
 
-  const result = evaluateStateCriterion(state, CRITERION, 'fp-post-ship-edit')
-
-  assert.equal(result.passed, true)
+  assert.equal(driftedResult.passed, true)
   assert.match(
-    result.explanation ?? '',
+    driftedResult.explanation ?? '',
     /operator-accepted workspace fingerprint/i,
   )
+
+  // The review waiver is not fingerprint-bound, so another fingerprint still
+  // passes.
+  const waiver = waiverFor(review)
+
+  waiver.workspace_fingerprint = 'fp-other'
+
+  const otherResult = evaluateStateCriterion(
+    stateWith([review, historyItem('test', 'fp-current')], null, [waiver]),
+    CRITERION,
+    'fp-current',
+  )
+
+  assert.equal(otherResult.passed, true)
+  assert.match(otherResult.explanation ?? '', /operator-waived/i)
 })
 
 test('ship gate does not infer a waiver from an operator resume note', () => {
@@ -159,20 +177,4 @@ test('ship gate does not infer a waiver from an operator resume note', () => {
   const result = evaluateStateCriterion(state, CRITERION, 'fp-current')
 
   assert.equal(result.passed, false)
-})
-
-test('ship gate honors an operator waiver despite a different fingerprint', () => {
-  const review = historyItem('review', 'fp-current', 'failure')
-  const waiver = waiverFor(review)
-
-  waiver.workspace_fingerprint = 'fp-other'
-
-  const state = stateWith([review, historyItem('test', 'fp-current')], null, [
-    waiver,
-  ])
-
-  const result = evaluateStateCriterion(state, CRITERION, 'fp-current')
-
-  assert.equal(result.passed, true)
-  assert.match(result.explanation ?? '', /operator-waived/i)
 })

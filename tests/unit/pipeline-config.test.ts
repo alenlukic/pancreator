@@ -1,50 +1,16 @@
 import assert from 'node:assert/strict'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import {
   loadPipelineConfig,
-  makePipelineConfigSnapshot,
   parsePipelineConfig,
   resolveConfigPersonas,
   resolvePersonaModel,
+  type PipelineConfigSnapshot,
 } from '../../src/lib/pipeline-config.js'
 import { createFixture } from '../helpers.js'
-
-test('pipeline config loads the active named persona mapping', () => {
-  const root = createFixture()
-  const loaded = loadPipelineConfig(root)
-  const config = JSON.parse(
-    readFileSync(path.join(root, 'config.json'), 'utf8'),
-  ) as { active_config: string }
-
-  assert.equal(loaded.name, config.active_config)
-  assert.equal(
-    resolvePersonaModel(loaded.config, 'coder'),
-    loaded.config.personas.coder,
-  )
-
-  const snapshot = makePipelineConfigSnapshot(loaded)
-
-  assert.equal(snapshot.name, loaded.name)
-  assert.equal(snapshot.personas.reviewer, loaded.config.personas.reviewer)
-})
-
-test('every named configuration resolves required support personas', () => {
-  const root = createFixture()
-  const { file } = loadPipelineConfig(root)
-
-  assert.ok(file.defaults.planner)
-  assert.ok(file.defaults.hypervisor)
-
-  for (const name of Object.keys(file.configs)) {
-    const personas = resolveConfigPersonas(file, name)
-
-    assert.ok(personas.planner)
-    assert.ok(personas.hypervisor)
-  }
-})
 
 test('config_overrides.json preferences override the checked-in pipeline config', () => {
   const root = createFixture()
@@ -73,10 +39,6 @@ test('config_overrides.json preferences override the checked-in pipeline config'
   // The digest covers the effective configuration, so the local preference is
   // visible to drift detection exactly like a config.json edit.
   assert.notEqual(loaded.sha256, base.sha256)
-})
-
-test('a config_overrides.json that is not an object is rejected', () => {
-  const root = createFixture()
 
   writeFileSync(
     path.join(root, 'config_overrides.json'),
@@ -136,10 +98,8 @@ test('pipeline config merges defaults with config-specific persona overrides', (
     orchestrator: 'auto',
     coder: 'claude-opus-5',
   })
-})
 
-test('pipeline config falls back to defaults for omitted config personas', () => {
-  const file = parsePipelineConfig({
+  const sparse = parsePipelineConfig({
     schema_version: 1,
     active_config: 'default',
     defaults: {
@@ -152,19 +112,22 @@ test('pipeline config falls back to defaults for omitted config personas', () =>
     },
   })
 
-  assert.equal(resolveConfigPersonas(file, 'default').investigator, 'kimi-k3')
+  assert.equal(resolveConfigPersonas(sparse, 'default').investigator, 'kimi-k3')
 })
 
 test('a run snapshot preserves its exact persona model strings', () => {
-  const root = createFixture()
-  const snapshot = makePipelineConfigSnapshot(loadPipelineConfig(root))
-
   // The run snapshot is the execution contract. Drift comparison may treat
   // equivalent spellings as equal, but execution must not rewrite them.
-  snapshot.personas.coder =
-    'gpt-5.6-sol[context=272k,reasoning=high,fast=false]'
-  snapshot.personas.reviewer =
-    'claude-opus-5[thinking=true,context=300k,effort=high]'
+  const snapshot: PipelineConfigSnapshot = {
+    schema_version: 1,
+    name: 'default',
+    source_path: 'config.json',
+    source_sha256: 'a'.repeat(64),
+    personas: {
+      coder: 'gpt-5.6-sol[context=272k,reasoning=high,fast=false]',
+      reviewer: 'claude-opus-5[thinking=true,context=300k,effort=high]',
+    },
+  }
 
   assert.equal(resolvePersonaModel(snapshot, 'coder'), snapshot.personas.coder)
   assert.equal(

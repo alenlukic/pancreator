@@ -10,9 +10,10 @@ interface ValidateOptions {
   installationMode?: 'embedded' | 'detached'
 }
 
-function validate(content: string, options?: ValidateOptions) {
+let variantCounter = 0
+
+function fixtureRoot(options?: ValidateOptions): string {
   const root = createFixture()
-  const targetPath = 'docs/target-repo-primer.md'
 
   if (options?.installationMode) {
     const config = JSON.parse(
@@ -28,6 +29,13 @@ function validate(content: string, options?: ValidateOptions) {
     )
   }
 
+  return root
+}
+
+function validateIn(root: string, content: string) {
+  variantCounter += 1
+  const targetPath = `docs/target-repo-primer-${variantCounter}.md`
+
   writeFileSync(path.join(root, targetPath), content)
 
   return validateTargetRepoPrimer({
@@ -40,6 +48,10 @@ function validate(content: string, options?: ValidateOptions) {
       arguments: {},
     },
   })
+}
+
+function validate(content: string, options?: ValidateOptions) {
+  return validateIn(fixtureRoot(options), content)
 }
 
 const VALID_PRIMER = `# Target repository primer
@@ -119,22 +131,10 @@ test('target repository primer validator accepts a complete primer', () => {
   assert.deepEqual(result.issues, [])
 })
 
-test('target repository primer validator rejects the bootstrap primer', () => {
-  const result = validate(
-    VALID_PRIMER.replace(
-      'pancreator-primer-status: ready',
-      'pancreator-primer-status: unbuilt',
-    ),
-  )
-
-  assert.equal(result.status, 'failed')
-  assert.ok(
-    result.issues.some((item) => item.code === 'primer.status_not_ready'),
-  )
-})
-
 test('target repository primer validator requires commands and Mermaid architecture', () => {
-  const result = validate(
+  const root = fixtureRoot()
+  const result = validateIn(
+    root,
     VALID_PRIMER.replace('### Test\n\nRun `npm test`.\n\n', '').replace(
       '```mermaid\nflowchart LR\n  CLI --> Service\n  Service --> Store\n```',
       'Architecture is undocumented.',
@@ -150,41 +150,41 @@ test('target repository primer validator requires commands and Mermaid architect
   assert.ok(
     result.issues.some((item) => item.code === 'primer.architecture_mermaid'),
   )
+
+  const bootstrap = validateIn(
+    root,
+    VALID_PRIMER.replace(
+      'pancreator-primer-status: ready',
+      'pancreator-primer-status: unbuilt',
+    ),
+  )
+
+  assert.equal(bootstrap.status, 'failed')
+  assert.ok(
+    bootstrap.issues.some((item) => item.code === 'primer.status_not_ready'),
+  )
 })
 
 test('target repository primer validator accepts external frontend and flow sections', () => {
-  const result = validate(VALID_EXTERNAL_PRIMER, {
-    installationMode: 'embedded',
-  })
+  const root = fixtureRoot({ installationMode: 'embedded' })
+  const result = validateIn(root, VALID_EXTERNAL_PRIMER)
 
   assert.equal(result.status, 'passed')
   assert.deepEqual(result.issues, [])
-})
 
-test('target repository primer validator applies external sections to detached installations', () => {
-  const result = validate(VALID_EXTERNAL_PRIMER, {
-    installationMode: 'detached',
-  })
-
-  assert.equal(result.status, 'passed')
-  assert.deepEqual(result.issues, [])
-})
-
-test('target repository primer validator accepts a verified frontend state without a route', () => {
-  const result = validate(
+  const withState = validateIn(
+    root,
     VALID_EXTERNAL_PRIMER.replace(
       '- **Route/state:** `/dashboard`',
       '- **State:** authenticated dashboard',
     ),
-    { installationMode: 'embedded' },
   )
 
-  assert.equal(result.status, 'passed')
-  assert.deepEqual(result.issues, [])
-})
+  assert.equal(withState.status, 'passed')
+  assert.deepEqual(withState.issues, [])
 
-test('target repository primer validator accepts explicit not-applicable frontend guidance', () => {
-  const result = validate(
+  const notApplicable = validateIn(
+    root,
     VALID_EXTERNAL_PRIMER.replace(
       EXTERNAL_SECTIONS,
       `
@@ -198,19 +198,28 @@ Not applicable — no client/frontend detected.
 None identified.
 `,
     ),
-    { installationMode: 'embedded' },
   )
 
+  assert.equal(notApplicable.status, 'passed')
+})
+
+test('target repository primer validator applies external sections to detached installations', () => {
+  const result = validate(VALID_EXTERNAL_PRIMER, {
+    installationMode: 'detached',
+  })
+
   assert.equal(result.status, 'passed')
+  assert.deepEqual(result.issues, [])
 })
 
 test('target repository primer validator rejects malformed external flow steps', () => {
-  const result = validate(
+  const root = fixtureRoot({ installationMode: 'embedded' })
+  const result = validateIn(
+    root,
     VALID_EXTERNAL_PRIMER.replace(
       '#### Step 1: Authenticate\n- **Input shape:** `{ email: string, password: string }`\n- **Logic excerpt:** `validateCredentials(input)`\n- **Output shape:** `{ token: string }`',
       '#### Step 1: Authenticate\n- **Input shape:** `{ email: string }`\n- **Output shape:** `{ token: string }`',
     ),
-    { installationMode: 'embedded' },
   )
 
   assert.equal(result.status, 'failed')
@@ -219,10 +228,9 @@ test('target repository primer validator rejects malformed external flow steps',
       (item) => item.code === 'primer.major_flow_logic_missing',
     ),
   )
-})
 
-test('target repository primer validator rejects empty external field values', () => {
-  const result = validate(
+  const emptyValues = validateIn(
+    root,
     VALID_EXTERNAL_PRIMER.replace(
       '- **Startup:** `npm run dev`',
       '- **Startup:**',
@@ -235,57 +243,52 @@ test('target repository primer validator rejects empty external field values', (
         '- **Output shape:** `{ token: string }`',
         '- **Output shape:**',
       ),
-    { installationMode: 'embedded' },
   )
 
-  assert.equal(result.status, 'failed')
+  assert.equal(emptyValues.status, 'failed')
   assert.ok(
-    result.issues.some((item) => item.code === 'primer.frontend_startup_empty'),
+    emptyValues.issues.some(
+      (item) => item.code === 'primer.frontend_startup_empty',
+    ),
   )
   assert.ok(
-    result.issues.some((item) => item.code === 'primer.major_flow_logic_empty'),
+    emptyValues.issues.some(
+      (item) => item.code === 'primer.major_flow_logic_empty',
+    ),
   )
   assert.ok(
-    result.issues.some(
+    emptyValues.issues.some(
       (item) => item.code === 'primer.major_flow_output_empty',
     ),
   )
-})
 
-test('target repository primer validator requires ordered flow step headings', () => {
-  const result = validate(
+  const unordered = validateIn(
+    root,
     VALID_EXTERNAL_PRIMER.replace(
       '#### Step 1: Authenticate',
       '#### Authenticate',
     ),
-    { installationMode: 'embedded' },
   )
 
-  assert.equal(result.status, 'failed')
+  assert.equal(unordered.status, 'failed')
   assert.ok(
-    result.issues.some((item) => item.code === 'primer.major_flow_step_order'),
+    unordered.issues.some(
+      (item) => item.code === 'primer.major_flow_step_order',
+    ),
   )
-})
 
-test('target repository primer validator rejects a named flow without steps', () => {
-  const result = validate(
+  const stepless = validateIn(
+    root,
     VALID_EXTERNAL_PRIMER.replace(
       '### Login flow',
       '### Empty flow\n\nNo steps documented.\n\n### Login flow',
     ),
-    { installationMode: 'embedded' },
   )
 
-  assert.equal(result.status, 'failed')
+  assert.equal(stepless.status, 'failed')
   assert.ok(
-    result.issues.some(
+    stepless.issues.some(
       (item) => item.code === 'primer.major_flow_steps_missing',
     ),
   )
-})
-
-test('self-development primer validation remains unchanged without external sections', () => {
-  const result = validate(VALID_PRIMER)
-
-  assert.equal(result.status, 'passed')
 })

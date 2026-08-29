@@ -1,7 +1,8 @@
 # Review squad
 
-Use when a shepherd review under `SHEPHERD-001` must cover several review
-dimensions at once.
+Use when a review must cover several review dimensions at once. Two callers
+reach this skill: a shepherd review under `SHEPHERD-001`, and a standalone
+`/pan-review` session under `REVIEW-001`.
 
 The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** use RFC
 2119 meanings.
@@ -36,34 +37,56 @@ whether or not its rule matches.
 | --------- | -------------------------------------------------------- |
 | frontend  | the diff touches UI source or generated API client types |
 
+### Harness lineup
+
+A review whose target is the Pancreator harness itself uses a different set of
+dimensions. When `library/skills/review-squad-pancreator.md` is present, read it
+and resolve the lineup from there instead of the tables above. The rest of this
+skill still governs the pass. That file ships only in a Pancreator source
+checkout. In a target installation it is absent and this paragraph does not
+apply.
+
 ## Process
 
-1. Capture the review target once to a scratch file under the run's runtime
-   directory. Every dimension agent reads that same captured diff.
-2. Read the card, the plan, the acceptance criteria, and the implementation
-   record. Write a short intent brief: what the change does, why, and which
-   follow-ups the plan defers.
+1. Capture the review target once to a scratch file: under the run's runtime
+   directory when a run owns the review, and beside the governance card when a
+   standalone session does. The coordinator captures when a run owns the
+   review; the session captures for a standalone review. Every dimension agent
+   reads that same captured diff.
+2. Read whatever states the intent — the card, the plan, the acceptance
+   criteria, the implementation record, or, for a standalone target, its commit
+   subjects and the operator's request. Write a short intent brief: what the
+   change does, why, and which follow-ups it defers. When the target states no
+   intent, say so in the brief; nothing can then be dropped as already answered.
 3. Resolve the lineup. State which conditional dimensions activated and which
    ones the diff skipped.
 4. Delegate one subagent per dimension in the lineup, in one message, so they run
-   at the same time. Each prompt MUST carry the captured diff path, the intent
-   brief, the dimension charter text, and the finding shape. These dimension
+   at the same time. Each prompt MUST carry the captured diff path, the review
+   workspace path, the intent brief, the dimension charter text, and the
+   finding shape. These dimension
    agents are nested spawns, so Cursor runs them on its default model by
-   platform behavior — that is accepted for charter-scoped finding work — and
-   they sit at the nesting limit: a dimension agent MUST NOT spawn further
-   subagents.
+   platform behavior. A shepherd review accepts that for charter-scoped finding
+   work. A standalone session under `REVIEW-001` does not, and issues this
+   fan-out itself at the top level, then returns the raw findings to the
+   coordinator. Either way a dimension agent sits at the nesting limit and MUST
+   NOT spawn further subagents.
 5. When a subagent cannot start, apply that charter yourself before you join the
-   results. Do not drop a dimension from a stated lineup without saying so.
+   results. Do not drop a dimension from a stated lineup without saying so. A
+   standalone session reports an undelivered charter to the coordinator at
+   join time rather than applying it.
 6. Join the findings. Merge duplicates, drop what the intent brief already
-   answers, then rank.
+   answers, then rank. Under `REVIEW-001` the session does not do this: it
+   returns the raw findings to the coordinator, which joins them in join mode.
 7. Judge the ranked set as the coordinator: repair what falls inside your
    remediation boundary, amend any acceptance criterion the findings prove
    unworkable as written, and route the rest. Criterion amendment belongs to
-   the coordinator, never to a dimension agent.
+   the coordinator, never to a dimension agent. A standalone review has no
+   remediation boundary and no criteria to amend, so the coordinator routes
+   everything and the session acts on nothing.
 
 ### Repeat reviews
 
-A repeat review on the same run covers the delta, not the whole change again.
+A repeat review of the same target covers the delta, not the whole change again.
 Anchor on the prior review artifact, then review what changed after it.
 Mark each prior finding as resolved, unresolved, or worse than before. When the
 delta rewrites most of the change, review the whole change again and say why.
@@ -74,6 +97,9 @@ Every dimension agent and the coordinator MUST hold this bar:
 
 - Verify a finding against the surrounding code before you report it. An
   unverified finding carries low confidence and MUST NOT be raised above it.
+  Read that code in the workspace the coordinator names, which holds the tree
+  the capture applies to. A checkout at some other commit answers a different
+  question.
 - Give a concrete alternative, not an objection. Name the existing helper, the
   rewrite, or the query.
 - Put a number on cost where one exists. A counted cost lands, and "this is

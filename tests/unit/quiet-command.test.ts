@@ -9,15 +9,29 @@ const PROCESS_MAX_BUFFER = 1024 * 1024
 
 function runQuiet(
   source: string,
-  options: { verbose?: boolean } = {},
+  options: {
+    verbose?: boolean
+    progress?: boolean
+    progressIntervalSeconds?: string
+  } = {},
 ): SpawnSyncReturns<string> {
-  // PAN_VERBOSE is a documented operator diagnostic, so an inherited value would
-  // otherwise make run-quiet stream output and fail the suppression case.
+  // An inherited operator diagnostic would change the output and fail these
+  // cases.
   const env = { ...process.env }
   delete env.PAN_VERBOSE
+  delete env.PAN_PROGRESS
+  delete env.PAN_PROGRESS_INTERVAL_SECONDS
+  // An interactive `npm test` exports its own tick sink, which would take the
+  // ticks this file captures.
+  delete env.PAN_PROGRESS_FD
 
   if (options.verbose) {
     env.PAN_VERBOSE = '1'
+  }
+
+  if (options.progress) {
+    env.PAN_PROGRESS = '1'
+    env.PAN_PROGRESS_INTERVAL_SECONDS = options.progressIntervalSeconds ?? '0.2'
   }
 
   return spawnSync(QUIET_RUNNER, ['--', process.execPath, '-e', source], {
@@ -55,5 +69,65 @@ test('quiet command streams successful output in verbose mode', () => {
 
   assert.equal(result.status, 0)
   assert.equal(result.stdout, 'visible\n')
+  assert.equal(result.stderr, '')
+})
+
+test('progress ticks mark intervals in which the command produced output', () => {
+  // Captured output has no terminal, so ticks need the explicit opt-in.
+  const result = runQuiet(
+    "const timer = setInterval(() => process.stdout.write('line\\n'), 100); setTimeout(() => clearInterval(timer), 700)",
+    { progress: true },
+  )
+
+  assert.equal(result.status, 0)
+  assert.equal(result.stdout, '')
+  assert.match(result.stderr, /^\.+\n$/u)
+})
+
+test('a silent command earns no ticks, exposing a hang as a stopped stream', () => {
+  const result = runQuiet('setTimeout(() => {}, 700)', { progress: true })
+
+  assert.equal(result.status, 0)
+  assert.equal(result.stdout, '')
+  assert.equal(result.stderr, '')
+})
+
+test('nested quiet wrappers tick from the step that produces output', () => {
+  // The inner wrapper swallows the output of its child on success, so it ticks
+  // to the sink the outer wrapper exported.
+  const env = { ...process.env }
+  delete env.PAN_VERBOSE
+  delete env.PAN_PROGRESS_FD
+  env.PAN_PROGRESS = '1'
+  env.PAN_PROGRESS_INTERVAL_SECONDS = '0.2'
+
+  const result = spawnSync(
+    QUIET_RUNNER,
+    [
+      '--',
+      QUIET_RUNNER,
+      '--',
+      process.execPath,
+      '-e',
+      "const timer = setInterval(() => process.stdout.write('line\\n'), 100); setTimeout(() => clearInterval(timer), 700)",
+    ],
+    { encoding: 'utf8', env, timeout: PROCESS_TIMEOUT_MS },
+  )
+
+  assert.equal(result.status, 0)
+  assert.equal(result.stdout, '')
+  assert.match(result.stderr, /^\.+\n$/u)
+})
+
+test('progress ticks stay quiet for a command faster than one interval', () => {
+  // An interval wider than the lifetime of the command removes the race with a
+  // first tick.
+  const result = runQuiet("process.stdout.write('quick\\n')", {
+    progress: true,
+    progressIntervalSeconds: '0.5',
+  })
+
+  assert.equal(result.status, 0)
+  assert.equal(result.stdout, '')
   assert.equal(result.stderr, '')
 })

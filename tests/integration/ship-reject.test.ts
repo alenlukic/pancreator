@@ -3,73 +3,13 @@ import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import {
-  createRun,
-  decideRun,
-  getRunState,
-  prepareInvocation,
-  submitOutput,
-} from '../../src/lib/engine.js'
-import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
-import type { RunState } from '../../src/lib/types.js'
-import {
-  createFixture,
-  makeOutput,
-  writeCanonicalDelegation,
-  writeJson,
-} from '../helpers.js'
-
-function advanceToShipGate(root: string, runId: string): RunState {
-  const workflow = loadWorkflow(root, 'delivery')
-
-  for (const stageSlug of ['plan', 'implement', 'verify', 'ship']) {
-    const prepared = prepareInvocation(root, runId)
-    const invocation = prepared.invocation
-
-    assert.ok(invocation)
-    assert.equal(invocation.stage.slug, stageSlug)
-
-    const stage = stageBySlug(workflow, stageSlug)
-    const output = makeOutput(
-      root,
-      invocation,
-      stage,
-      'success',
-      getRunState(root, runId),
-    )
-
-    writeJson(path.join(root, invocation.output.path), output)
-    writeCanonicalDelegation(root, invocation)
-
-    const submitted = submitOutput(root, runId, invocation.output.path)
-
-    assert.equal(
-      submitted.record.outcome,
-      'success',
-      `${stageSlug}: ${JSON.stringify(submitted.record.evaluation)}`,
-    )
-
-    if (stageSlug === 'plan') {
-      assert.equal(submitted.state.status, 'awaiting_operator')
-      decideRun(root, runId, 'approve', 'fixture approval')
-    } else if (stageSlug === 'ship') {
-      assert.equal(submitted.state.status, 'awaiting_operator')
-    }
-  }
-
-  return getRunState(root, runId)
-}
+import { decideRun, prepareInvocation } from '../../src/lib/engine.js'
+import { checkpoint } from './delivery-helpers.js'
 
 test('ship reject defaults to a paused operator decision instead of an implementation loop', () => {
-  const root = createFixture()
-  const created = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Reject routing run',
-  })
-  const runId = created.run_id
+  const { root, runId, state } = checkpoint('delivery@ship-awaiting-operator')
 
-  advanceToShipGate(root, runId)
+  assert.equal(state.status, 'awaiting_operator')
 
   const decided = decideRun(root, runId, 'reject', 'Commit message is wrong.')
 
@@ -79,19 +19,16 @@ test('ship reject defaults to a paused operator decision instead of an implement
 })
 
 test('ship reject with --stage routes to the chosen stage and resets attempts', () => {
-  const root = createFixture()
-  const created = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Reject to plan run',
-  })
-  const runId = created.run_id
-
-  const atGate = advanceToShipGate(root, runId)
+  const {
+    root,
+    runId,
+    state: atGate,
+  } = checkpoint('delivery@ship-awaiting-operator')
 
   // A stage the run has already left holds no retry counter: max_stage_attempts
   // bounds retries of the active stage, not lifetime visits. The per-attempt
   // history remains in stage_history.
+  assert.equal(atGate.status, 'awaiting_operator')
   assert.equal(atGate.attempts.implement, undefined)
   assert.equal(atGate.attempts.ship, 1)
   assert.equal(
@@ -113,45 +50,25 @@ test('ship reject with --stage routes to the chosen stage and resets attempts', 
   assert.equal(decided.attempts.implement, undefined)
   assert.equal(decided.attempts.ship, undefined)
   assert.equal(decided.consecutive_failures, 0)
-})
-
-test('operator rejection feedback is persisted and surfaced to the remediation worker', () => {
-  const root = createFixture()
-  const created = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Feedback carry run',
-  })
-  const runId = created.run_id
-
-  advanceToShipGate(root, runId)
-
-  const decided = decideRun(
-    root,
-    runId,
-    'reject',
-    'Rollback steps are not credible.',
-    'implement',
-  )
 
   assert.ok(decided.operator_feedback)
   const feedback = decided.operator_feedback?.find(
-    (item) => item.decision === 'reject' && item.to_stage === 'implement',
+    (item) => item.decision === 'reject' && item.to_stage === 'plan',
   )
 
   assert.ok(feedback)
   assert.equal(feedback.from_stage, 'ship')
-  assert.equal(feedback.to_stage, 'implement')
+  assert.equal(feedback.to_stage, 'plan')
+  assert.ok(existsSync(path.join(root, feedback.path)))
 
   const feedbackBody = readFileSync(path.join(root, feedback.path), 'utf8')
 
-  assert.match(feedbackBody, /Rollback steps are not credible/)
-  assert.ok(existsSync(path.join(root, feedback.path)))
+  assert.match(feedbackBody, /Architecture is wrong; replan/u)
 
   const prepared = prepareInvocation(root, runId)
 
   assert.ok(prepared.invocation)
-  assert.equal(prepared.invocation.stage.slug, 'implement')
+  assert.equal(prepared.invocation.stage.slug, 'plan')
   assert.ok(
     prepared.invocation.inputs.references.some(
       (reference) => reference.path === feedback.path,

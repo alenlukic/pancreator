@@ -43,6 +43,11 @@ test('detects sorted manifest and source language evidence', () => {
     writeFileSync(path.join(root, 'src', 'server.rs'), 'fn main() {}\n')
     mkdirSync(path.join(root, 'node_modules'), { recursive: true })
     writeFileSync(path.join(root, 'node_modules', 'ignored.py'), 'VALUE = 1\n')
+    mkdirSync(path.join(root, '.pancreator', 'target'), { recursive: true })
+    writeFileSync(
+      path.join(root, '.pancreator', 'target', 'main.py'),
+      'VALUE = 1\n',
+    )
 
     assert.deepEqual(detectWorkspaceTechnologies(root), {
       languages: [
@@ -52,23 +57,6 @@ test('detects sorted manifest and source language evidence', () => {
       ],
       unsupported_evidence: ['src/server.rs'],
     })
-  } finally {
-    rmSync(root, { recursive: true, force: true })
-  }
-})
-
-test('does not infer languages from ignored paths', () => {
-  const root = createTechnologyFixture()
-
-  try {
-    mkdirSync(path.join(root, '.pancreator', 'target'), { recursive: true })
-    writeFileSync(
-      path.join(root, '.pancreator', 'target', 'main.py'),
-      'VALUE = 1\n',
-    )
-
-    const detection = detectWorkspaceTechnologies(root)
-    assert.ok(!detection.languages.some((language) => language.id === 'python'))
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

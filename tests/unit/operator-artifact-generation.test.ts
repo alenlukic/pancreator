@@ -112,28 +112,17 @@ test('post-stage generation creates validated HTML from canonical records', () =
   })
 
   assert.equal(repeated.artifacts[0]?.status, 'skipped')
-})
 
-test('generation without a stage covers missing briefs and force replaces', () => {
-  const root = createFixture()
-  const { runId, invocationId } = submitSuppressedPlan(root)
-  const initial = generateOperatorArtifacts(root, { runId })
+  const withoutStage = generateOperatorArtifacts(root, { runId })
 
-  assert.equal(initial.artifacts.length, 1)
-  assert.equal(initial.artifacts[0]?.stage, 'plan')
-  assert.equal(initial.artifacts[0]?.status, 'generated')
-
-  const repeated = generateOperatorArtifacts(root, { runId })
-
-  assert.equal(repeated.artifacts[0]?.status, 'skipped')
+  assert.equal(withoutStage.artifacts.length, 1)
+  assert.equal(withoutStage.artifacts[0]?.stage, 'plan')
+  assert.equal(withoutStage.artifacts[0]?.status, 'skipped')
 
   const forced = generateOperatorArtifacts(root, { runId, force: true })
 
   assert.equal(forced.artifacts[0]?.status, 'generated')
-
-  const layout = resolveRunLayout(root, runId)
-
-  assert.equal(existsSync(layout.operatorHtml(invocationId).absolute), true)
+  assert.equal(existsSync(htmlPath), true)
 })
 
 test('forced generation preserves existing HTML and source after render failure', () => {

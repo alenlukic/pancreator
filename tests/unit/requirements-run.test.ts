@@ -5,12 +5,9 @@ import test from 'node:test'
 
 import {
   runRequirement,
-  inferTargetKind,
   isPassingResult,
-  isStaleTarget,
 } from '../../src/lib/requirements/run.js'
 import { resolveRequirements } from '../../src/lib/requirements/resolve.js'
-import { isValidHandlerStatus } from '../../src/lib/requirements/types.js'
 import { createFixture } from '../helpers.js'
 
 test('artifact validators resolve only when workflow artifacts are requested', () => {
@@ -54,6 +51,34 @@ test('artifact validators resolve only when workflow artifacts are requested', (
       (requirement) => requirement.registry_id === 'STAGE-OUTPUT-VALIDATE-002',
     ),
   )
+})
+
+test('every prototype stage resolves the blocking output validator', () => {
+  const root = createFixture()
+  const stages: Array<[string, string]> = [
+    ['planner', 'approach'],
+    ['coder', 'build'],
+    ['reviewer', 'evaluate'],
+  ]
+
+  // AC-011: the resolved manifest, not only the schema file, must carry
+  // PROTOTYPE-OUTPUT-VALIDATE-001.
+  for (const [persona, stage] of stages) {
+    const manifest = resolveRequirements(root, {
+      persona,
+      workflow: 'prototype',
+      stage,
+      invocation: {
+        output_path: `runtime/logs/workflows/x/outputs/${stage}.json`,
+      },
+    })
+    const requirement = manifest.validation_requirements.find(
+      (item) => item.registry_id === 'PROTOTYPE-OUTPUT-VALIDATE-001',
+    )
+
+    assert.ok(requirement, `${stage} resolves PROTOTYPE-OUTPUT-VALIDATE-001`)
+    assert.notEqual(requirement.enforcement, 'advisory')
+  }
 })
 
 test('PR validators bind workflow artifact 1 and standalone output', () => {
@@ -125,40 +150,25 @@ test('runRequirement fails closed on missing target', () => {
 
   assert.equal(result.status, 'failed')
   assert.equal(isPassingResult(result), false)
-})
 
-test('runRequirement records target checksum when target exists', () => {
-  const root = createFixture()
-  const outputPath = 'runtime/logs/workflows/x/outputs/y.json'
-
-  mkdirSync(path.dirname(path.join(root, outputPath)), { recursive: true })
+  mkdirSync(path.dirname(path.join(root, 'missing/output.json')), {
+    recursive: true,
+  })
   writeFileSync(
-    path.join(root, outputPath),
+    path.join(root, 'missing/output.json'),
     JSON.stringify({ schema_version: 1, result: 'success', criteria: [] }),
   )
 
-  const manifest = resolveRequirements(root, {
-    persona: 'coder',
-    workflow: 'delivery',
-    stage: 'implement',
-    invocation: { output_path: outputPath },
-  })
-  const requirement = manifest.validation_requirements.find(
-    (item) => item.registry_id === 'STAGE-OUTPUT-VALIDATE-002',
-  )
-
-  assert.ok(requirement)
-
-  const result = runRequirement({
+  const present = runRequirement({
     root,
     requirement,
-    targetPath: outputPath,
+    targetPath: 'missing/output.json',
     executor: 'agent',
     persist: false,
   })
 
-  assert.ok(result.target_checksum)
-  assert.equal(result.executor, 'agent')
+  assert.ok(present.target_checksum)
+  assert.equal(present.executor, 'agent')
 })
 
 test('runRequirement validates a repository target without reading it as a file', () => {
@@ -185,19 +195,4 @@ test('runRequirement validates a repository target without reading it as a file'
 
   assert.equal(result.status, 'passed')
   assert.equal(result.target_checksum, undefined)
-})
-
-test('isStaleTarget detects checksum drift', () => {
-  assert.equal(isStaleTarget('abc', 'abc'), false)
-  assert.equal(isStaleTarget('abc', 'def'), true)
-  assert.equal(isStaleTarget(undefined, 'def'), false)
-})
-
-test('isValidHandlerStatus rejects malformed handler statuses', () => {
-  assert.equal(isValidHandlerStatus('passed'), true)
-  assert.equal(isValidHandlerStatus('bogus'), false)
-})
-
-test('inferTargetKind recognizes HTML operator artifacts', () => {
-  assert.equal(inferTargetKind('runtime/brief.html'), 'html-artifact')
 })

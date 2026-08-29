@@ -126,8 +126,8 @@ MUST NOT post any PR comment unless the operator directed it.
 2. Capture the diff against the last pushed SHA to a file under the session
    directory.
 3. Delegate one `pan-shepherd-reviewer` subagent with: the captured diff path,
-   an intent brief listing each accepted item and why it was accepted, and the
-   ledger path. It coordinates the review squad per `library/skills/review-squad.md`
+   the repository root as the review workspace path, an intent brief listing
+   each accepted item and why it was accepted, and the ledger path. It coordinates the review squad per `library/skills/review-squad.md`
    and returns a ranked finding set with a pass or fail verdict. It edits
    nothing. Its model comes from the `shepherd-reviewer` mapping in
    `config.json`, so the squad's model is configured independently of the
