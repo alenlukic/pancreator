@@ -193,9 +193,9 @@ const HELP_BODY = `Usage:
   pan output validate <run-id> --file <path> [--json]
   pan assessment scaffold <run-id> --invocation <path> --output <path> [--force]
   pan governance audit-directives [--json]
-  pan governance card --mode <${STANDALONE_MODE_NAMES}> [--request <path>] [--worktree <name>] [--out <path>] [--base <ref> [--target <ref>]] [--json]
+  pan governance card --mode <${STANDALONE_MODE_NAMES}> [--request <path>] [--worktree <name>] [--out <path>] [--base <ref> --target <ref>] [--json]
       --base (review mode) renders the base-revision text of every conduct policy the target changes, so the session reviews under the rule in force before the change.
-  pan governance review-scope --target <ref> [--base <ref>] [--default-branch <branch>] [--json]
+  pan governance review-scope --target <ref> [--base <ref>] [--default-branch <branch>] [--closure-revision <ref>] [--json]
   pan best-of-n init --request <path> --configs <path> [--workflow <slug>] [--consolidation-workflow <slug>] [--operator-artifacts] [--json]
   pan best-of-n status <bon-id> [--json]
   pan best-of-n refresh-agents <bon-id> [--json]
@@ -1850,6 +1850,7 @@ async function main(): Promise<void> {
           head: requiredArgument(option(args, '--target'), '--target'),
           base: option(args, '--base'),
           defaultBranch: option(args, '--default-branch'),
+          closureRevision: option(args, '--closure-revision'),
         })
 
         const tiers = conflictsByTier(scope.conflicts)
@@ -1857,6 +1858,7 @@ async function main(): Promise<void> {
         print({
           base: scope.base,
           head: scope.head,
+          closure_revision: scope.closure_revision,
           changed_path_count: scope.changed_paths.length,
           independent: scope.independent,
           clean: scope.clean,

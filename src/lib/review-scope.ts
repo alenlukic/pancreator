@@ -62,10 +62,24 @@ export const REVIEW_MACHINERY_PATTERNS = [
 ] as const
 
 /**
+ * The tests of each machinery module, derived from the module list so a new
+ * machinery entry brings its tests into the substrate tier without a second
+ * edit. `src/lib/<module>.ts` yields `tests/*\/<module>*.test.ts`, which
+ * reaches `review-scope.test.ts` and `review-scope-resolve.test.ts` alike.
+ */
+export const MACHINERY_TEST_PATTERNS: readonly string[] =
+  REVIEW_MACHINERY_PATTERNS.filter(
+    (pattern) => pattern.startsWith('src/lib/') && pattern.endsWith('.ts'),
+  ).map(
+    (pattern) =>
+      `tests/*/${pattern.slice('src/lib/'.length, -'.ts'.length)}*.test.ts`,
+  )
+
+/**
  * Paths the reviewer trusts when it verifies a finding or reads a green
  * result. Not what it looks for — what it believes.
  */
-export const VERIFICATION_SUBSTRATE_PATTERNS = [
+export const VERIFICATION_SUBSTRATE_PATTERNS: readonly string[] = [
   'src/lib/validation.ts',
   'src/lib/validators/*',
   'src/lib/requirements/*',
@@ -76,21 +90,63 @@ export const VERIFICATION_SUBSTRATE_PATTERNS = [
   'src/lib/projection.ts',
   'src/lib/cursor-content.ts',
   'tests/helpers.ts',
-  'tests/*/*-helpers.ts',
   'tests/*/*helpers.ts',
+  ...MACHINERY_TEST_PATTERNS,
   'bin/run-quiet',
   'bin/run-built',
   'bin/check',
   'bin/build',
+  'bin/lint',
+  'bin/install',
   'library/templates/repository-checks*',
   'governance/registries/directive_exemptions.json',
   'governance/registries/context_bloat_dispositions.json',
   'governance/registries/validation_registry.json',
   'CHANGELOG.md',
-] as const
+]
+
+/**
+ * The `governance` case of `src/cli.ts` is where `governance card` and
+ * `governance review-scope` are wired: the entry points of the review mode.
+ * The rest of that file is every other command, so the whole path is not
+ * machinery; only a change inside this case is.
+ */
+export function cliGovernanceBlock(text: string | null): string | null {
+  if (text === null) {
+    return null
+  }
+
+  const start = text.indexOf("case 'governance': {")
+
+  if (start === -1) {
+    return null
+  }
+
+  const next = text.indexOf("\n    case '", start)
+
+  return next === -1 ? text.slice(start) : text.slice(start, next)
+}
+
+/** True when the change edits the governance entry points of `src/cli.ts`. */
+export function cliGovernanceBlocksChanged(
+  baseText: string | null,
+  headText: string | null,
+): boolean {
+  return cliGovernanceBlock(baseText) !== cliGovernanceBlock(headText)
+}
 
 /** The personas whose cards define the reviewer's conduct. */
 export const REVIEW_PERSONAS = ['reviewer', 'shepherd-reviewer'] as const
+
+/**
+ * The lookup-table identifiers the standalone review mode resolves under.
+ * The review card and the closure must agree on them, or the card would bind
+ * one policy set and the scope check would guard another.
+ */
+export const REVIEW_MODE_CONTEXT = {
+  workflow: 'standalone',
+  stage: 'review',
+} as const
 
 /**
  * Everything the review card pulls in: the policies resolved for the review
@@ -158,8 +214,7 @@ export function buildReviewClosure(root: string): ReviewClosure {
   for (const persona of REVIEW_PERSONAS) {
     const resolved = resolvePolicies(root, {
       persona,
-      workflow: 'standalone',
-      stage: 'review',
+      ...REVIEW_MODE_CONTEXT,
       contracts: [],
       operator_artifacts: 'suppressed',
     })
@@ -347,15 +402,28 @@ export function diffPolicyTexts(
     }
   }
 
+  const summaryChanged = base.summary !== head.summary
+  const removed = base.instructions.filter((item) => !headSet.has(item))
+  const added = head.instructions.filter((item) => !baseSet.has(item))
+
+  // A row with nothing for the operator to weigh — a reformat, a metadata
+  // edit — is not a standards delta. Only the instruction and summary text are.
+  if (
+    status === 'changed' &&
+    !summaryChanged &&
+    removed.length === 0 &&
+    added.length === 0
+  ) {
+    return null
+  }
+
   return {
     policy,
     path,
     status,
-    summary_changed: base.summary !== head.summary,
-    removed_instructions: base.instructions.filter(
-      (item) => !headSet.has(item),
-    ),
-    added_instructions: head.instructions.filter((item) => !baseSet.has(item)),
+    summary_changed: summaryChanged,
+    removed_instructions: removed,
+    added_instructions: added,
     malformed: null,
   }
 }
@@ -387,7 +455,10 @@ function reviewMappings(text: string | null): string {
   }
 
   if (isRecord(value.configs)) {
-    for (const [name, config] of Object.entries(value.configs)) {
+    // Key order in config.json is not a mapping change.
+    for (const [name, config] of Object.entries(value.configs).sort(
+      ([left], [right]) => left.localeCompare(right),
+    )) {
       const personas =
         isRecord(config) && isRecord(config.personas) ? config.personas : {}
 
@@ -415,6 +486,12 @@ export function reviewerMappingChanged(
 export interface ReviewScope {
   base: string
   head: string
+  /**
+   * The working-tree revision the review closure was read from. The closure
+   * resolves the review card from disk, so this is the checkout's HEAD; it
+   * equals `head` unless the caller named the revision on purpose.
+   */
+  closure_revision: string
   /** Every path the three-dot diff changes. */
   changed_paths: string[]
   conflicts: ReviewConflict[]
@@ -433,6 +510,12 @@ export interface ResolveReviewScopeOptions {
   /** Defaults to the merge base of `head` and the repository's default branch. */
   base?: string | null
   defaultBranch?: string | null
+  /**
+   * The revision the caller asserts the working tree sits at. Required when
+   * that tree is not at `head`, so a closure read from another revision is
+   * an explicit choice rather than an accident of which checkout ran the check.
+   */
+  closureRevision?: string | null
 }
 
 /**
@@ -450,6 +533,26 @@ export function resolveReviewScope(
   const base = options.base
     ? gitRevParse(root, options.base)
     : gitMergeBase(root, options.defaultBranch ?? 'main', head)
+  // The closure comes from the working tree, so the tree must be the target
+  // head or the caller must say which revision it is reading from instead.
+  const closureRevision = gitRevParse(root, 'HEAD')
+
+  if (closureRevision !== head) {
+    invariant(
+      options.closureRevision,
+      `The review closure is read from the working tree at ` +
+        `${closureRevision.slice(0, 12)}, which is not the target head ` +
+        `${head.slice(0, 12)}. Run the scope check from the review ` +
+        'workspace, or name the working-tree revision with --closure-revision.',
+      { code: 'REVIEW_CLOSURE_REVISION_MISMATCH' },
+    )
+    invariant(
+      gitRevParse(root, options.closureRevision) === closureRevision,
+      `--closure-revision '${options.closureRevision}' does not resolve to ` +
+        `the working tree HEAD ${closureRevision.slice(0, 12)}.`,
+      { code: 'REVIEW_CLOSURE_REVISION_MISMATCH' },
+    )
+  }
 
   invariant(
     base,
@@ -464,6 +567,20 @@ export function resolveReviewScope(
     detectRenames: false,
   })
   const conflicts = classifyReviewPaths(changedPaths, buildReviewClosure(root))
+
+  if (
+    changedPaths.includes('src/cli.ts') &&
+    cliGovernanceBlocksChanged(
+      gitShowFile(root, base, 'src/cli.ts'),
+      gitShowFile(root, head, 'src/cli.ts'),
+    )
+  ) {
+    conflicts.push({
+      path: 'src/cli.ts',
+      tier: 'instrument',
+      source: 'governance card or review-scope entry point changed',
+    })
+  }
 
   if (
     changedPaths.includes('config.json') &&
@@ -499,6 +616,7 @@ export function resolveReviewScope(
   return {
     base,
     head,
+    closure_revision: closureRevision,
     changed_paths: changedPaths,
     conflicts,
     independent: !conflicts.some((item) => item.tier === 'instrument'),

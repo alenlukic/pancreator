@@ -1596,7 +1596,7 @@ function requiredModelEvidenceAdvisories(
         `not match its run snapshot: the stage declared ` +
         `'${invocation.stage.model}' for ${invocation.stage.persona} and the ` +
         `probe resolved '${worker.effective_model ?? 'unknown'}' for ` +
-        `${worker.persona}. Judge whether that changes the output's weight.`,
+        `${worker.persona}. Carry this probe result into the stage report.`,
     )
   }
 
@@ -3735,6 +3735,37 @@ export function submitOutput(
       resolveInside(root, state.current_invocation.output_path),
       submittedValue,
     )
+
+    // OPERATOR-001: a platform-guidance conflict the worker stated lands on
+    // run state as an advisory, so `pan status` lists it and the supervisor
+    // can carry it into the run-friction intake after any interruption.
+    const guidanceConflicts =
+      validation.output.platform_guidance_conflicts ?? []
+
+    if (guidanceConflicts.length > 0) {
+      const messages = guidanceConflicts.map(
+        (conflict) =>
+          `Platform guidance conflict: "${conflict.guidance}" covered ` +
+          `${conflict.covered_step}; the worker followed ` +
+          `${conflict.authority_followed}.`,
+      )
+
+      recordRunAdvisories(
+        state,
+        {
+          kind: 'platform_guidance',
+          source: 'submit',
+          stage: stage.slug,
+          invocation_id: invocation.invocation_id,
+        },
+        messages,
+      )
+      persistRun(root, state, 'platform_guidance_conflict', {
+        invocation_id: invocation.invocation_id,
+        stage: stage.slug,
+        conflicts: guidanceConflicts,
+      })
+    }
 
     // A shell gate can only confirm a success — `effectiveOutcome` decides
     // failure from a declared non-success result, a failed hard

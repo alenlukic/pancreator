@@ -518,6 +518,21 @@ test('verify context carries passed gate evidence with profile, path, and finger
   assert.match(staticBaseline.description, /`static`/u)
   assert.match(staticBaseline.description, /`fp-before`/u)
   assert.match(staticBaseline.description, /superseded workspace/u)
+  // The re-execution path is the verify submission gate, which no supervisor
+  // command re-runs on request; the condition must not send QA there.
+  assert.match(staticBaseline.condition ?? '', /verify submission gate/u)
+  assert.doesNotMatch(staticBaseline.condition ?? '', /supervisor/u)
+  assert.deepEqual(staticBaseline.gate_evidence, {
+    profile: 'static',
+    fingerprint: 'fp-before',
+    current: false,
+  })
+  assert.match(fastGate.condition ?? '', /gate_evidence_citations/u)
+  assert.deepEqual(fastGate.gate_evidence, {
+    profile: 'fast',
+    fingerprint: 'fp-current',
+    current: true,
+  })
 
   // A run with no passed gate simply carries no gate evidence.
   const bare = buildInvocationInputs({

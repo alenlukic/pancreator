@@ -343,7 +343,12 @@ test('environment_blocked evaluation waits at the operator gate', () => {
 
   evaluation.verdict = 'environment_blocked'
   evaluation.environment_blockers = [
-    { id: 'ENV-01', detail: 'Missing CURSOR_API_KEY' },
+    {
+      id: 'ENV-01',
+      description: 'Missing CURSOR_API_KEY',
+      evidence: ['pan doctor reports no CURSOR_API_KEY'],
+      affected_questions: ['TQ-01'],
+    },
   ]
   evaluation.question_results = [
     {

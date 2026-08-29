@@ -30,6 +30,11 @@ wrapper below it writes dots there and treats the variable as its enable
 condition. `npm run check` therefore ticks from the step that is producing
 output, even though the outer wrapper observes no bytes until a step fails.
 
+Test scripts run `node --test` with the failures-only reporter at
+`tests/reporters/failures-only.ts`. The reporter prints one block per failed
+test, with its name, location, and error, and then the run summary. It prints
+nothing for a passing test, so a failing run replays only the failures.
+
 Set `PAN_VERBOSE=1` to stream command output while diagnosing a problem:
 
 ```sh
@@ -43,8 +48,9 @@ step remains quiet.
 Deterministic coverage:
 
 - `tests/unit/quiet-command.test.ts`
-- `tests/unit/npm-verbosity.test.ts`
-- `tests/unit/bin-layout.test.ts`
+
+The former `tests/unit/npm-verbosity.test.ts` and `tests/unit/bin-layout.test.ts` were deleted as
+config-shape tests; `runtime/inbox/test-audit-20260829-verdicts.md` records both verdicts.
 
 ## Cursor SDK invocations
 

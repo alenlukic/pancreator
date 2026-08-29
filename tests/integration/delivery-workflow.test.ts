@@ -196,7 +196,7 @@ test('delivery severe verdict escalates the remediator and warnings reach the in
   assert.equal(getRunState(root, runId).current_stage, 'verify')
 
   const secondVerify = runStage(root, runId, 'verify', (output) => {
-    output.data.verify = warningVerify()
+    Object.assign(output.data.verify as object, warningVerify())
   })
 
   assert.equal(

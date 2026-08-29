@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -157,4 +157,87 @@ test('a malformed policy is reported as malformed, not as a wholesale removal', 
   assert.equal(delta.malformed, 'base')
   assert.deepEqual(delta.removed_instructions, [])
   assert.deepEqual(delta.added_instructions, [])
+})
+
+test('a scope check from a checkout at another head is refused unless the revision is named', () => {
+  const root = createFixture()
+  const base = git(root, ['rev-parse', 'HEAD'])
+
+  writeFileSync(path.join(root, 'docs', 'fixture-note.md'), 'note\n')
+
+  const later = commitAll(root, 'move the working tree past the target')
+
+  // The closure is read from the working tree, which now sits past the
+  // target: without an explicit revision the check would classify against
+  // the wrong tree and say nothing about it.
+  assert.throws(
+    () => resolveReviewScope(root, { head: base, base }),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'REVIEW_CLOSURE_REVISION_MISMATCH',
+  )
+  assert.throws(
+    () => resolveReviewScope(root, { head: base, base, closureRevision: base }),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'REVIEW_CLOSURE_REVISION_MISMATCH',
+  )
+
+  const scope = resolveReviewScope(root, {
+    head: base,
+    base,
+    closureRevision: 'HEAD',
+  })
+
+  assert.equal(scope.closure_revision, later)
+  assert.equal(scope.head, base)
+})
+
+test('a change inside the governance case of cli.ts is an instrument conflict', () => {
+  const root = createFixture()
+  // The fixture carries no CLI source, so a minimal switch stands in for it:
+  // one governance case between two neighbours, in the shape the predicate reads.
+  const cliPath = path.join(root, 'src', 'cli.ts')
+  const cli = [
+    "    case 'validate': {",
+    '      return 1',
+    '    }',
+    "    case 'governance': {",
+    "      if (sub === 'review-scope') {",
+    '        return scope()',
+    '      }',
+    '    }',
+    "    case 'best-of-n': {",
+    '      return 2',
+    '    }',
+    '',
+  ].join('\n')
+
+  mkdirSync(path.dirname(cliPath), { recursive: true })
+  writeFileSync(cliPath, cli)
+
+  const base = commitAll(root, 'add a cli fixture')
+
+  writeFileSync(
+    cliPath,
+    cli.replace(
+      "      if (sub === 'review-scope') {",
+      "      if (sub === 'review-scope') {\n        // fixture edit",
+    ),
+  )
+
+  const head = commitAll(root, 'edit the review-scope entry point')
+  const scope = resolveReviewScope(root, { head, base })
+
+  assert.deepEqual(
+    scope.conflicts.filter((item) => item.path === 'src/cli.ts'),
+    [
+      {
+        path: 'src/cli.ts',
+        tier: 'instrument',
+        source: 'governance card or review-scope entry point changed',
+      },
+    ],
+  )
+  assert.equal(scope.closure_revision, head)
 })

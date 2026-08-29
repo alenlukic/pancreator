@@ -1643,3 +1643,222 @@ test('verify validator binds acceptance coverage to the accepted plan', () => {
     ),
   )
 })
+
+test('verify validator requires a citation for each current gate evidence reference', () => {
+  const root = validatorFixtureRoot('pan-verify-gate-citation-')
+  const target = 'output.json'
+  const invocation = {
+    inputs: {
+      references: [
+        {
+          path: 'runtime/logs/workflows/run/evidence/implement-1.fast.log',
+          description: 'Passed `fast` repository-check gate evidence',
+          gate_evidence: {
+            profile: 'fast',
+            fingerprint: 'fp-1',
+            current: true,
+          },
+        },
+        {
+          path: 'runtime/logs/workflows/run/evidence/pre-implementation-static.json',
+          description: 'Passed `static` repository-check gate evidence',
+          gate_evidence: {
+            profile: 'static',
+            fingerprint: 'fp-0',
+            current: false,
+          },
+        },
+      ],
+    },
+  }
+
+  writeVerifyOutput(root, target, {
+    verdict: 'pass',
+    findings: [],
+    qa_cases: [passingQaCase],
+    acceptance_results: [{ id: 'AC-01', result: 'pass' }],
+    gate_evidence_citations: [{ profile: 'fast', fingerprint: '' }],
+  })
+
+  const missing = validateVerifyOutput({
+    root,
+    targetPath: target,
+    requirement: verifyRequirement(),
+    invocation,
+  })
+  const missingCodes = missing.issues.map((item) => item.code)
+
+  assert.equal(missing.status, 'failed')
+  assert.ok(missingCodes.includes('verify.gate_citation_shape'))
+  assert.ok(
+    missing.issues.some(
+      (item) =>
+        item.code === 'verify.gate_citation_missing' &&
+        item.message.includes('`fast`') &&
+        item.message.includes('fp-1'),
+    ),
+  )
+  // The superseded static evidence is not current, so it needs no citation.
+  assert.ok(
+    !missing.issues.some(
+      (item) =>
+        item.code === 'verify.gate_citation_missing' &&
+        item.message.includes('`static`'),
+    ),
+  )
+
+  writeVerifyOutput(root, target, {
+    verdict: 'pass',
+    findings: [],
+    qa_cases: [passingQaCase],
+    acceptance_results: [{ id: 'AC-01', result: 'pass' }],
+    gate_evidence_citations: [
+      {
+        profile: 'fast',
+        fingerprint: 'fp-1',
+        evidence_path:
+          'runtime/logs/workflows/run/evidence/implement-1.fast.log',
+      },
+    ],
+  })
+
+  const cited = validateVerifyOutput({
+    root,
+    targetPath: target,
+    requirement: verifyRequirement(),
+    invocation,
+  })
+
+  assert.equal(cited.status, 'passed', JSON.stringify(cited.issues))
+})
+
+test('verify validator rejects a QA case whose steps rerun a configured profile', () => {
+  const root = validatorFixtureRoot('pan-verify-profile-rerun-')
+  const target = 'output.json'
+
+  mkdirSync(path.join(root, 'runtime'), { recursive: true })
+  writeFileSync(
+    path.join(root, 'runtime', 'repository-checks.json'),
+    `${JSON.stringify({
+      schema_version: 1,
+      setup: [],
+      profiles: {
+        fast: { description: 'fast', probes: [], commands: ['npm test'] },
+        static: {
+          description: 'static',
+          probes: [],
+          commands: ['npm run lint'],
+        },
+      },
+    })}\n`,
+  )
+
+  const cases = [
+    {
+      ...passingQaCase,
+      id: 'TP-CMD',
+      steps: 'Run `npm test` and read the summary',
+    },
+    {
+      ...passingQaCase,
+      id: 'TP-PAN',
+      steps: 'Run ./bin/pan repository-check static',
+    },
+    {
+      ...passingQaCase,
+      id: 'TP-OK',
+      steps: 'Run npm run test:unit -- --grep gate',
+    },
+  ]
+
+  writeVerifyOutput(root, target, {
+    verdict: 'pass',
+    findings: [],
+    qa_cases: cases,
+    acceptance_results: [{ id: 'AC-01', result: 'pass' }],
+  })
+
+  const result = validateVerifyOutput({
+    root,
+    targetPath: target,
+    requirement: verifyRequirement(),
+  })
+  const reruns = result.issues.filter(
+    (item) => item.code === 'verify.case_reruns_profile',
+  )
+
+  assert.equal(result.status, 'failed')
+  assert.deepEqual(reruns.map((item) => item.message.split(' ')[2]).sort(), [
+    'TP-CMD',
+    'TP-PAN',
+  ])
+  assert.ok(reruns.some((item) => item.message.includes('`fast`')))
+  assert.ok(reruns.some((item) => item.message.includes('`static`')))
+})
+
+test('plan trace rejects a test-plan case that reruns a profile', () => {
+  const root = validatorFixtureRoot('pan-plan-profile-rerun-')
+  const target = 'output.json'
+
+  mkdirSync(path.join(root, 'runtime'), { recursive: true })
+  writeFileSync(
+    path.join(root, 'runtime', 'repository-checks.json'),
+    `${JSON.stringify({
+      schema_version: 1,
+      setup: [],
+      profiles: {
+        fast: { description: 'fast', probes: [], commands: ['npm test'] },
+      },
+    })}\n`,
+  )
+  writeFileSync(
+    path.join(root, target),
+    `${JSON.stringify({
+      data: {
+        acceptance_criteria: [
+          {
+            id: 'AC-01',
+            maps_to: ['US-01'],
+            verification: { method: 'test', expected: 'passes' },
+          },
+        ],
+        product_spec: { user_stories: [{ id: 'US-01' }] },
+        test_plan: [
+          { id: 'TP-SUITE', criterion: 'AC-01', action: 'Run npm test' },
+          {
+            id: 'TP-LITERAL',
+            criterion: 'AC-01',
+            action: 'Run pan repository-check secondary',
+          },
+          {
+            id: 'TP-FOCUSED',
+            criterion: 'AC-01',
+            action: 'Run node --test dist/tests/unit/plan.test.js',
+          },
+        ],
+      },
+    })}\n`,
+  )
+
+  const result = validatePlanTrace({
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'PLAN-001',
+      requirement_id: 'plan',
+      registry_id: 'PLAN-TRACE-VALIDATE-001',
+      arguments: {},
+    },
+  })
+  const reruns = result.issues.filter(
+    (item) => item.code === 'plan.case_reruns_profile',
+  )
+
+  assert.equal(result.status, 'failed')
+  assert.deepEqual(reruns.map((item) => item.message.split(' ')[2]).sort(), [
+    'TP-LITERAL',
+    'TP-SUITE',
+  ])
+  assert.ok(reruns.some((item) => item.message.includes('`fast`')))
+  assert.ok(reruns.some((item) => item.message.includes('`secondary`')))
+})

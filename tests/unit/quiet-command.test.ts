@@ -21,6 +21,10 @@ function runQuiet(
   delete env.PAN_VERBOSE
   delete env.PAN_PROGRESS
   delete env.PAN_PROGRESS_INTERVAL_SECONDS
+  // An interactive `npm test` exports the outer wrapper's tick sink. Left in
+  // place, the wrapper under test would tick to the terminal instead of its
+  // own stderr, and the captured bytes this file compares would be empty.
+  delete env.PAN_PROGRESS_FD
 
   if (options.verbose) {
     env.PAN_VERBOSE = '1'

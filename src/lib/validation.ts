@@ -1492,6 +1492,24 @@ function normalizeStageOutput(
     criteria: normalizeCriteria(record.criteria),
     risks: normalizeStringArray(record.risks),
     unknowns: normalizeStringArray(record.unknowns),
+    ...(Array.isArray(record.platform_guidance_conflicts)
+      ? {
+          platform_guidance_conflicts: record.platform_guidance_conflicts
+            .filter(isRecord)
+            .map((entry) => ({
+              guidance:
+                typeof entry.guidance === 'string' ? entry.guidance : '',
+              covered_step:
+                typeof entry.covered_step === 'string'
+                  ? entry.covered_step
+                  : '',
+              authority_followed:
+                typeof entry.authority_followed === 'string'
+                  ? entry.authority_followed
+                  : '',
+            })),
+        }
+      : {}),
     ...(isRecord(record.workspace_changes)
       ? {
           workspace_changes: {
@@ -1562,6 +1580,35 @@ export function validateStageOutput(
   for (const key of ['risks', 'unknowns']) {
     if (record[key] !== undefined && !Array.isArray(record[key])) {
       errors.push(`${key} MUST be an array when present`)
+    }
+  }
+
+  // OPERATOR-001: a platform-guidance conflict is stated before the covered
+  // step is acted on. Absent means none arose; a present entry must name all
+  // three parts or the statement is not auditable.
+  if (record.platform_guidance_conflicts !== undefined) {
+    if (!Array.isArray(record.platform_guidance_conflicts)) {
+      errors.push('platform_guidance_conflicts MUST be an array when present')
+    } else {
+      for (const [
+        index,
+        entry,
+      ] of record.platform_guidance_conflicts.entries()) {
+        const complete =
+          isRecord(entry) &&
+          (['guidance', 'covered_step', 'authority_followed'] as const).every(
+            (field) =>
+              typeof entry[field] === 'string' &&
+              (entry[field] as string).trim().length > 0,
+          )
+
+        if (!complete) {
+          errors.push(
+            `platform_guidance_conflicts[${index}] MUST name guidance, ` +
+              'covered_step, and authority_followed as non-empty strings',
+          )
+        }
+      }
     }
   }
 

@@ -698,6 +698,70 @@ function validateEvaluateOutput(
     )
   }
 
+  const declared = declaredQuestionIds(input)
+
+  // A blocker is a claim that named gaps stopped a decision. An empty object
+  // names nothing, so it would clear the readiness guard below without ever
+  // being checkable. Each blocker therefore carries what it blocked and why.
+  for (const [index, blocker] of (blockers ?? []).entries()) {
+    if (!isRecord(blocker)) {
+      issues.push(
+        issue(
+          'prototype.environment_blocker_shape',
+          `evaluation.environment_blockers[${index}] MUST be an object`,
+        ),
+      )
+      continue
+    }
+
+    if (!nonEmptyString(blocker.description)) {
+      issues.push(
+        issue(
+          'prototype.environment_blocker_description',
+          `evaluation.environment_blockers[${index}].description MUST be non-empty`,
+        ),
+      )
+    }
+
+    if (!Array.isArray(blocker.evidence) || blocker.evidence.length === 0) {
+      issues.push(
+        issue(
+          'prototype.environment_blocker_evidence',
+          `evaluation.environment_blockers[${index}].evidence MUST be a non-empty array`,
+        ),
+      )
+    }
+
+    const affected = Array.isArray(blocker.affected_questions)
+      ? blocker.affected_questions
+      : []
+
+    if (
+      affected.length === 0 ||
+      affected.some((entry) => !nonEmptyString(entry))
+    ) {
+      issues.push(
+        issue(
+          'prototype.environment_blocker_questions',
+          `evaluation.environment_blockers[${index}].affected_questions MUST be a non-empty array of question ids`,
+        ),
+      )
+    }
+
+    if (declared) {
+      for (const questionId of stringArray(affected)) {
+        if (!declared.has(questionId)) {
+          issues.push(
+            issue(
+              'prototype.environment_blocker_questions',
+              `evaluation.environment_blockers[${index}].affected_questions names ${questionId}, which the brief did not declare`,
+            ),
+          )
+        }
+      }
+    }
+  }
+
   const blockedQuestionIds = new Set(
     (blockers ?? []).flatMap((blocker) => blockerQuestionIds(blocker)),
   )
@@ -802,8 +866,6 @@ function validateEvaluateOutput(
       ),
     )
   }
-
-  const declared = declaredQuestionIds(input)
 
   // Without a readable intake output there is no declared set to cover;
   // mirror the build stage, which only demands traceability it can resolve.

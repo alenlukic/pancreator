@@ -2,9 +2,11 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  MACHINERY_TEST_PATTERNS,
   REVIEW_MACHINERY_PATTERNS,
   VERIFICATION_SUBSTRATE_PATTERNS,
   classifyReviewPaths,
+  cliGovernanceBlocksChanged,
   conflictsByTier,
   diffPolicyTexts,
   reviewMachineryConflicts,
@@ -263,4 +265,113 @@ test('only the reviewer and coordinator mappings count as a model-routing change
   assert.equal(reviewerMappingChanged(base, coderOnly), false)
   assert.equal(reviewerMappingChanged(base, reviewerMoved), true)
   assert.equal(reviewerMappingChanged(base, base), false)
+})
+
+test('the check wrappers lint and install are verification substrate', () => {
+  const tiers = conflictsByTier(
+    classifyReviewPaths(['bin/lint', 'bin/install', 'bin/pan'], CLOSURE),
+  )
+
+  // bin/lint decides whether typecheck runs at all and bin/install is what
+  // the smoke harness exercises; a reviewer reading a green result trusts both.
+  assert.deepEqual(
+    tiers.substrate.map((item) => item.path),
+    ['bin/install', 'bin/lint'],
+  )
+})
+
+test('the tests of each machinery module are derived substrate', () => {
+  assert.deepEqual(MACHINERY_TEST_PATTERNS, [
+    'tests/*/review-scope*.test.ts',
+    'tests/*/governance-card*.test.ts',
+    'tests/*/policies*.test.ts',
+    'tests/*/policy-guidance*.test.ts',
+  ])
+
+  const tiers = conflictsByTier(
+    classifyReviewPaths(
+      [
+        'tests/unit/review-scope.test.ts',
+        'tests/unit/review-scope-resolve.test.ts',
+        'tests/unit/governance-card.test.ts',
+        'tests/unit/workflow.test.ts',
+      ],
+      CLOSURE,
+    ),
+  )
+
+  assert.deepEqual(
+    tiers.substrate.map((item) => item.path),
+    [
+      'tests/unit/governance-card.test.ts',
+      'tests/unit/review-scope-resolve.test.ts',
+      'tests/unit/review-scope.test.ts',
+    ],
+  )
+})
+
+test('only a change inside the governance case of cli.ts is an entry-point change', () => {
+  const before = [
+    "    case 'validate': {",
+    '      return 1',
+    '    }',
+    "    case 'governance': {",
+    "      if (sub === 'card') {",
+    '        return build()',
+    '      }',
+    '    }',
+    "    case 'best-of-n': {",
+    '      return 2',
+    '    }',
+  ].join('\n')
+  const cardChanged = before.replace('return build()', 'return build(opts)')
+  const otherChanged = before.replace('return 2', 'return 3')
+
+  assert.equal(cliGovernanceBlocksChanged(before, cardChanged), true)
+  assert.equal(cliGovernanceBlocksChanged(before, otherChanged), false)
+  assert.equal(cliGovernanceBlocksChanged(before, before), false)
+  // A file that gains or loses the case altogether changed the entry point.
+  assert.equal(cliGovernanceBlocksChanged(null, before), true)
+})
+
+test('a policy row with no instruction or summary change is not a standards delta', () => {
+  const base = JSON.stringify({
+    id: 'Z-001',
+    summary: 'same',
+    instructions: ['Agents MUST z.'],
+  })
+  const reformatted = JSON.stringify(
+    { id: 'Z-001', summary: 'same', instructions: ['Agents MUST z.'] },
+    null,
+    2,
+  )
+  const retitled = JSON.stringify({
+    id: 'Z-001',
+    title: 'new title',
+    summary: 'same',
+    instructions: ['Agents MUST z.'],
+  })
+
+  // The operator weighs rules, not whitespace or metadata.
+  assert.equal(diffPolicyTexts('p', base, reformatted), null)
+  assert.equal(diffPolicyTexts('p', base, retitled), null)
+})
+
+test('reordering config keys is not a reviewer mapping change', () => {
+  const base = JSON.stringify({
+    defaults: { reviewer: 'a', 'shepherd-reviewer': 's' },
+    configs: {
+      balanced: { personas: { reviewer: 'a' } },
+      fast: { personas: { reviewer: 'b' } },
+    },
+  })
+  const reordered = JSON.stringify({
+    defaults: { reviewer: 'a', 'shepherd-reviewer': 's' },
+    configs: {
+      fast: { personas: { reviewer: 'b' } },
+      balanced: { personas: { reviewer: 'a' } },
+    },
+  })
+
+  assert.equal(reviewerMappingChanged(base, reordered), false)
 })

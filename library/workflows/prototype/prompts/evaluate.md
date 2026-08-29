@@ -51,8 +51,9 @@ Populate `data.evaluation` (`verdict`, `question_results`,
 `question_id`, `result`, `cause`, `evidence`, and `discard_condition_met`, and
 MAY include `readiness_question` (boolean) to claim the explicit-readiness
 exemption `PROTO-001` defines. Answer every `technical_questions` id the brief declares and no
-other. Each environment blocker MUST list the question ids it prevented a
-decision on in `affected_questions`. Valid verdicts are `validated`, `invalidated`, `inconclusive`, and
+other. Each environment blocker MUST carry a non-empty `description`, a
+non-empty `evidence` array, and a non-empty `affected_questions` array. Each
+`affected_questions` entry MUST be a declared technical question id. Valid verdicts are `validated`, `invalidated`, `inconclusive`, and
 `environment_blocked`. Use `environment-blocked` only in operator prose. When
 `output.operator_brief` exists, edit its declared source and reference the
 rendered HTML. Do not run the renderer. When the contract omits

@@ -4,6 +4,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
+import { PanError } from '../../src/lib/errors.js'
 import {
   STANDALONE_MODES,
   buildGovernanceCard,
@@ -12,7 +13,7 @@ import {
   buildReviewClosure,
   reviewMachineryConflicts,
 } from '../../src/lib/review-scope.js'
-import { createFixture } from '../helpers.js'
+import { createFixture, sharedFixture } from '../helpers.js'
 
 test('the pair card resolves coder governance without workflow structure', () => {
   const root = createFixture()
@@ -165,7 +166,7 @@ test('the shared worktree option resolves or creates the card workspace', () => 
 })
 
 test('a missing operator input is reported rather than silently omitted', () => {
-  const root = createFixture()
+  const root = sharedFixture()
 
   assert.throws(
     () =>
@@ -362,10 +363,16 @@ test('the review card renders base conduct for a card policy the target changes'
     )
 
   assert.equal(baseBullets.length, baseInstructionCount)
+  // One digest sentence for the whole section, not one per base policy.
+  assert.equal(
+    section.match(/Guidance digests are not rendered for a base text/gu)
+      ?.length,
+    1,
+  )
 })
 
 test('--target without --base is refused before any side effect', () => {
-  const root = createFixture()
+  const root = sharedFixture()
 
   assert.throws(
     () =>
@@ -375,6 +382,24 @@ test('--target without --base is refused before any side effect', () => {
         worktreeName: 'never-created',
       }),
     /--target requires --base/u,
+  )
+  assert.equal(existsSync(path.join(root, 'worktrees')), false)
+})
+
+test('--base without --target is refused with the option error code', () => {
+  const root = sharedFixture()
+
+  assert.throws(
+    () =>
+      buildGovernanceCard(root, {
+        mode: 'review',
+        baseRef: 'HEAD~1',
+        worktreeName: 'never-created',
+      }),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'INVALID_GOVERNANCE_CARD_OPTION' &&
+      /--base requires --target/u.test(error.message),
   )
   assert.equal(existsSync(path.join(root, 'worktrees')), false)
 })
@@ -408,6 +433,22 @@ test('an instrument-only policy change renders no base conduct block', () => {
   assert.doesNotMatch(written, /\*\*REVIEW-001 · base text\*\*/u)
   assert.match(written, /No conduct conflict exists between base and head/u)
   assert.match(written, /governance\/policies\/REVIEW-001\.json/u)
+
+  // The instrument policy carries its own marker, distinct from the conduct
+  // one, and exactly once: under its heading in the policies-in-force list.
+  const instrumentMarkers = written.match(
+    /> Under review by an independent reviewer\./gu,
+  )
+
+  assert.equal(instrumentMarkers?.length, 1)
+  assert.doesNotMatch(written, /> Under review\. The text below/u)
+
+  const reviewBlock = written.split('**REVIEW-001 · ')[1] ?? ''
+
+  assert.match(
+    reviewBlock.split('\n\n')[1] ?? '',
+    /^> Under review by an independent reviewer\./u,
+  )
 })
 
 test('a guidance-only conduct conflict names the base text command', () => {
@@ -471,7 +512,7 @@ test('the projected coordinator agent carries the resolve and join shapes', () =
 })
 
 test('--base is refused outside the review mode', () => {
-  const root = createFixture()
+  const root = sharedFixture()
 
   assert.throws(
     () => buildGovernanceCard(root, { mode: 'pair', baseRef: 'HEAD' }),

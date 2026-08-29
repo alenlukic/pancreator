@@ -454,7 +454,14 @@ test('evaluate rejects environment_blocked when discard condition met', () => {
     data: {
       evaluation: {
         verdict: 'environment_blocked',
-        environment_blockers: [{ id: 'ENV-01', detail: 'missing credential' }],
+        environment_blockers: [
+          {
+            id: 'ENV-01',
+            description: 'missing credential',
+            evidence: ['credential probe exited 1'],
+            affected_questions: ['TQ-01'],
+          },
+        ],
         question_results: [
           {
             question_id: 'TQ-01',
@@ -493,8 +500,18 @@ test('evaluate accepts invalidated when product discard condition met', () => {
       evaluation: {
         verdict: 'invalidated',
         environment_blockers: [
-          { id: 'ENV-01', detail: 'Missing GitHub token scope' },
-          { id: 'ENV-02', detail: 'Missing CURSOR_API_KEY' },
+          {
+            id: 'ENV-01',
+            description: 'Missing GitHub token scope',
+            evidence: ['gh api returned 403'],
+            affected_questions: ['TQ-04'],
+          },
+          {
+            id: 'ENV-02',
+            description: 'Missing CURSOR_API_KEY',
+            evidence: ['.env has no CURSOR_API_KEY'],
+            affected_questions: ['TQ-04'],
+          },
         ],
         question_results: [
           {
@@ -611,7 +628,8 @@ function readinessEvaluation(
         environment_blockers: [
           {
             id: 'ENV-01',
-            detail: 'dependency probe failed',
+            description: 'dependency probe failed',
+            evidence: ['npm ls exited 1'],
             affected_questions: ['TQ-ENV-READY'],
           },
         ],
@@ -876,7 +894,14 @@ test('environment_blocked with a named blocker and no discard passes', () => {
     data: {
       evaluation: {
         verdict: 'environment_blocked',
-        environment_blockers: [{ id: 'ENV-01', detail: 'missing credential' }],
+        environment_blockers: [
+          {
+            id: 'ENV-01',
+            description: 'missing credential',
+            evidence: ['credential probe exited 1'],
+            affected_questions: ['TQ-01'],
+          },
+        ],
         question_results: [
           {
             question_id: 'TQ-01',
@@ -1198,4 +1223,138 @@ test('build rejects success when approach output is unreadable', () => {
 
   assert.equal(result.status, 'failed')
   assert.ok(codesOf(result).has('prototype.approach_unresolved'))
+})
+
+test('an empty environment blocker fails on every required field', () => {
+  const root = scratchRoot()
+  const target = writeOutput(root, 'evaluate-empty-blocker-object.json', {
+    result: 'success',
+    data: {
+      evaluation: {
+        verdict: 'environment_blocked',
+        environment_blockers: [{}],
+        question_results: [
+          {
+            question_id: 'TQ-01',
+            result: 'unanswered',
+            cause: 'environment',
+            evidence: ['missing credential'],
+            discard_condition_met: false,
+          },
+        ],
+      },
+    },
+  })
+
+  const result = validatePrototypeOutput(
+    validatorInput(root, target, 'evaluate'),
+  )
+  const codes = codesOf(result)
+
+  assert.equal(result.status, 'failed')
+  assert.ok(codes.has('prototype.environment_blocker_description'))
+  assert.ok(codes.has('prototype.environment_blocker_evidence'))
+  assert.ok(codes.has('prototype.environment_blocker_questions'))
+})
+
+test('a blocker with an empty affected_questions array fails', () => {
+  const root = scratchRoot()
+  const target = writeOutput(root, 'evaluate-blocker-no-questions.json', {
+    result: 'success',
+    data: {
+      evaluation: {
+        verdict: 'environment_blocked',
+        environment_blockers: [
+          {
+            id: 'ENV-01',
+            description: 'missing credential',
+            evidence: ['credential probe exited 1'],
+            affected_questions: [],
+          },
+        ],
+        question_results: [
+          {
+            question_id: 'TQ-01',
+            result: 'unanswered',
+            cause: 'environment',
+            evidence: ['missing credential'],
+            discard_condition_met: false,
+          },
+        ],
+      },
+    },
+  })
+
+  const result = validatePrototypeOutput(
+    validatorInput(root, target, 'evaluate'),
+  )
+  const codes = codesOf(result)
+
+  assert.equal(result.status, 'failed')
+  assert.ok(codes.has('prototype.environment_blocker_questions'))
+  assert.ok(!codes.has('prototype.environment_blocker_description'))
+  assert.ok(!codes.has('prototype.environment_blocker_evidence'))
+})
+
+test('a blocker that names an undeclared question id fails', () => {
+  const root = scratchRoot()
+  const runId = 'run-blocker-undeclared'
+  const intakePath = writeOutput(
+    root,
+    `runtime/logs/workflows/${runId}/agent/outputs/intake-1.json`,
+    {
+      result: 'success',
+      data: {
+        prototype_brief: {
+          technical_questions: [
+            { id: 'TQ-01', question: 'Does the adapter cover provider A?' },
+          ],
+        },
+      },
+    },
+  )
+  const target = writeOutput(
+    root,
+    `runtime/logs/workflows/${runId}/agent/outputs/evaluate-1.json`,
+    {
+      result: 'success',
+      data: {
+        evaluation: {
+          verdict: 'environment_blocked',
+          environment_blockers: [
+            {
+              id: 'ENV-01',
+              description: 'missing credential',
+              evidence: ['credential probe exited 1'],
+              affected_questions: ['TQ-99'],
+            },
+          ],
+          question_results: [
+            {
+              question_id: 'TQ-01',
+              result: 'unanswered',
+              cause: 'environment',
+              evidence: ['missing credential'],
+              discard_condition_met: false,
+            },
+          ],
+        },
+      },
+    },
+  )
+
+  const result = validatePrototypeOutput(
+    validatorInput(root, target, 'evaluate', {
+      run_id: runId,
+      stage_history: [
+        { stage: 'intake', outcome: 'success', output_path: intakePath },
+      ],
+    }),
+  )
+  const undeclared = result.issues.filter(
+    (issue) => issue.code === 'prototype.environment_blocker_questions',
+  )
+
+  assert.equal(result.status, 'failed')
+  assert.ok(undeclared.some((issue) => issue.message.includes('TQ-99')))
 })

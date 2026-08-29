@@ -126,6 +126,19 @@ function cloneFixtureTemplate(template: string): string {
   return root
 }
 
+let sharedFixtureRoot: string | null = null
+
+/**
+ * One fixture clone per process for tests that only read. A read-only test
+ * pays no clone of its own; a test that writes into its root MUST keep using
+ * createFixture(), because a shared root carries every earlier write forward.
+ */
+export function sharedFixture(): string {
+  sharedFixtureRoot ??= createFixture()
+
+  return sharedFixtureRoot
+}
+
 export function createFixture(): string {
   if (fixtureTemplateRoot) {
     return cloneFixtureTemplate(fixtureTemplateRoot)
@@ -460,6 +473,23 @@ function artifactBrief(
   }
 }
 
+/** The citations a passing verify output owes for the card's current gate evidence. */
+function gateEvidenceCitations(
+  invocation?: Invocation,
+): { profile: string; fingerprint: string; evidence_path: string }[] {
+  return (invocation?.inputs.references ?? []).flatMap((reference) =>
+    reference.gate_evidence?.current === true
+      ? [
+          {
+            profile: reference.gate_evidence.profile,
+            fingerprint: reference.gate_evidence.fingerprint,
+            evidence_path: reference.path,
+          },
+        ]
+      : [],
+  )
+}
+
 function requiredData(
   stage: string,
   root?: string,
@@ -635,6 +665,9 @@ function requiredData(
               result: 'pass',
             },
           ],
+          // VERIFY-001: QA cites every current gate-evidence reference the
+          // card carries instead of re-running the profile.
+          gate_evidence_citations: gateEvidenceCitations(invocation),
           acceptance_results: [
             { id: 'AC-01', result: 'pass', evidence: ['fixture'] },
           ],

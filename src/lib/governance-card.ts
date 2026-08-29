@@ -13,6 +13,7 @@ import { PROTECTED_PATH_RULE } from './workspace/protected-paths.js'
 import { resolveOrCreateWorktree } from './worktrees.js'
 import { gitShowFile } from './git.js'
 import {
+  REVIEW_MODE_CONTEXT,
   conflictsByTier,
   resolveReviewScope,
   type ReviewScope,
@@ -124,8 +125,7 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
   review: {
     kind: 'review',
     persona: 'reviewer',
-    workflow: 'standalone',
-    stage: 'review',
+    ...REVIEW_MODE_CONTEXT,
     title: 'Review squad',
     summary:
       'One review-squad pass over an operator-named target — a ref range, a ' +
@@ -138,6 +138,7 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST delegate exactly one review-squad coordinator per round. It alone resolves the lineup and owns the join, the ranking, and the verdict.',
       'You MUST issue the dimension fan-out yourself, at the top level and in one message, with the charters the coordinator resolved, because a nested spawn runs on the platform default model. You MUST NOT join, rank, or grade findings yourself.',
       'You MUST NOT edit, stage, commit, push, or write workflow state; a standalone review returns findings and nothing else.',
+      'Under this card the reviewer persona holds no remediation duty. Its bounded-remediation rules do not apply, and it edits nothing.',
       'You MUST run the review-scope check and act by tier: instrument conflicts leave the squad verdict for an independent reviewer, conduct conflicts are reviewed under the base text this card renders with --base, and substrate conflicts taint any verification that leans on them.',
       'You MUST NOT reject a change for differing from the standard it replaces. Report the standards delta and leave the merits of a rule change to the operator.',
       PROTECTED_PATH_RULE,
@@ -223,7 +224,7 @@ export interface GovernanceCardOptions {
    * follows the rule in force before the change it is grading.
    */
   baseRef?: string | null
-  /** Review mode only. The target head; defaults to HEAD. */
+  /** Review mode only. The target head; required with `baseRef`. */
   targetRef?: string | null
 }
 
@@ -344,6 +345,9 @@ function renderBaseConduct(block: BaseConductBlock): string[] {
     }
 
     lines.push(...policy.instructions.map((item) => `- ${item}`), '')
+  }
+
+  if (block.policies.length > 0) {
     lines.push(
       '_Guidance digests are not rendered for a base text; open the base ' +
         'file if the guidance itself is under review._',
@@ -399,10 +403,17 @@ function renderGovernanceCardMarkdown(options: {
     ...requirements.validation_requirements,
   ].filter((requirement) => requirement.executor !== 'harness')
 
+  const policyIdOf = (policyPath: string) =>
+    /^governance\/policies\/([^/]+)\.json$/u.exec(policyPath)?.[1] ?? null
   const policyBlocks = renderPolicyBlocks(
     policies,
     3,
     new Set((options.baseConduct?.policies ?? []).map((policy) => policy.id)),
+    new Set(
+      (options.baseConduct?.excluded ?? [])
+        .map(policyIdOf)
+        .filter((id): id is string => id !== null),
+    ),
   )
 
   return `${[
@@ -496,6 +507,15 @@ export function buildGovernanceCard(
   invariant(
     !options.targetRef || options.baseRef,
     '--target requires --base.',
+    {
+      code: 'INVALID_GOVERNANCE_CARD_OPTION',
+    },
+  )
+  // A base with no target would silently grade HEAD, which is the target
+  // only when the card is built from the review workspace.
+  invariant(
+    !options.baseRef || options.targetRef,
+    '--base requires --target in the review mode.',
     {
       code: 'INVALID_GOVERNANCE_CARD_OPTION',
     },

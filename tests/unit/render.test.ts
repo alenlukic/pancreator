@@ -844,3 +844,52 @@ test('status summary lists recorded advisories with their stage context', () => 
     /- plan \(submit\): Worker model evidence is unverified\./,
   )
 })
+
+test('status summary lists a recorded platform guidance conflict', () => {
+  const status = renderStatus({
+    schema_version: 1,
+    run_id: 'run-1',
+    workflow_slug: 'delivery',
+    workflow_snapshot: { path: 'workflow.json', sha256: 'abc' },
+    workspace_root: '.',
+    title: 'Run',
+    status: 'running',
+    current_stage: 'implement',
+    pending_action: { type: 'none' },
+    current_invocation: null,
+    request: {
+      source_path: 'request.md',
+      stored_path: 'runtime/request.md',
+      sha256: 'abc',
+    },
+    revision: 3,
+    transition_count: 2,
+    consecutive_failures: 0,
+    attempts: {},
+    stage_history: [],
+    created_at: '2026-06-22T00:00:00.000Z',
+    updated_at: '2026-06-22T00:00:00.000Z',
+    limits: {
+      max_total_transitions: 18,
+      max_stage_attempts: 3,
+      max_consecutive_failures: 3,
+    },
+    advisories: [
+      {
+        kind: 'platform_guidance',
+        source: 'submit',
+        stage: 'implement',
+        invocation_id: 'implement-1-abcd',
+        message:
+          'Platform guidance conflict: "Plan mode" covered the edit; the worker followed DEV-001.',
+        recorded_at: '2026-06-22T00:00:01.000Z',
+      },
+    ],
+  })
+
+  assert.match(status, /## Advisories/u)
+  assert.match(
+    status,
+    /- implement \(submit\): Platform guidance conflict: "Plan mode" covered the edit; the worker followed DEV-001\./u,
+  )
+})

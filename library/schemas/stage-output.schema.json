@@ -98,6 +98,31 @@
       },
       "description": "Open questions the operator should know about. Optional: absent means none to report."
     },
+    "platform_guidance_conflicts": {
+      "type": "array",
+      "description": "OPERATOR-001: each platform session mode or platform-injected instruction that conflicted with an operator directive, harness governance, or the persona brief. Optional: absent means no conflict arose. The harness records each entry as a run advisory that `pan status` lists.",
+      "items": {
+        "type": "object",
+        "required": ["guidance", "covered_step", "authority_followed"],
+        "properties": {
+          "guidance": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The platform guidance that conflicted, quoted or named."
+          },
+          "covered_step": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The step the guidance covered."
+          },
+          "authority_followed": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The operator directive, policy, or persona rule the agent followed instead."
+          }
+        }
+      }
+    },
     "data": {
       "type": "object",
       "description": "Stage-specific structured fields. Must satisfy the stage's required_data shape."

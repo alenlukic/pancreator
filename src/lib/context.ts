@@ -462,8 +462,8 @@ function selectGateEvidence(
 
     // VERIFY-001 conditions citation on the profile and the fingerprint. A
     // superseded artifact is still listed so QA knows the profile once passed,
-    // but the instruction changes: it is not current, and the supervisor, not
-    // QA, owns re-running the gate.
+    // but the instruction changes: it is not current, and the verify
+    // submission gate is the only path that executes the profile again.
     addReference(references, {
       path: evidence.evidencePath,
       description:
@@ -472,12 +472,20 @@ function selectGateEvidence(
         `\`${evidence.fingerprint}\` — ${currency}`,
       retrieval: 'conditional',
       condition: current
-        ? `Cite this evidence instead of re-executing the \`${evidence.profile}\` ` +
-          'profile agent-side. Read it only to confirm what the gate covered.'
+        ? `Cite this evidence in \`data.verify.gate_evidence_citations\` with ` +
+          `profile \`${evidence.profile}\`, fingerprint \`${evidence.fingerprint}\`, ` +
+          'and this path. Do not run the profile agent-side. Read the ' +
+          'evidence only to confirm what the gate covered.'
         : `This evidence predates the current workspace fingerprint ` +
-          `\`${workspaceFingerprint}\`. Do not cite it as current and do not ` +
-          `re-execute the \`${evidence.profile}\` profile yourself; report the ` +
-          'gap to the supervisor, which owns re-running the gate.',
+          `\`${workspaceFingerprint}\`. Do not cite it as current. Do not ` +
+          `run the \`${evidence.profile}\` profile yourself. The verify ` +
+          'submission gate is the single path that runs the profile the ' +
+          'level assigns to it. Record the gap in your verify output.',
+      gate_evidence: {
+        profile: evidence.profile,
+        fingerprint: evidence.fingerprint,
+        current,
+      },
     })
   }
 }

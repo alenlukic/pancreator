@@ -195,11 +195,10 @@ arithmetic shown. A cost with no number is not a finding here.
 Method: for each loop, gate, fixture, and read, ask what it costs now and what it
 costs at a hundred times the current input. Prefer a measurement to an estimate
 and name the command that would produce it. Rank by absolute cost removed from
-the critical path, and separate one-time cost from cost paid every run. The
-operator stated a 60-second ceiling for a full suite pass in the 2026-08-28
-run-friction record. Until a profile in `runtime/repository-checks.json` records
-that ceiling as `timeout_ms`, a change that moves the suite toward or past it is
-a finding with its delta. Cost that sits off the critical path is a note.
+the critical path, and separate one-time cost from cost paid every run. No
+suite-duration ceiling is in force. Judge a suite-cost change by its delta
+against the base revision, not against a fixed bound. Cost that sits off the
+critical path is a note.
 
 ## Joining
 

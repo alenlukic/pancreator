@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { createFixture } from '../helpers.js'
+import { createFixture, sharedFixture } from '../helpers.js'
 import { loadPolicyCatalog, resolvePolicies } from '../../src/lib/policies.js'
 
 function writePolicyExtension(
@@ -329,7 +329,7 @@ test('target policy lookup extensions reject duplicates and malformed JSON', () 
 })
 
 test('policy resolution unions global and stage-specific policies', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const catalog = loadPolicyCatalog(root)
   assert.ok(catalog.size >= 8)
   const ids = resolvePolicies(root, {
@@ -361,7 +361,7 @@ test('policy resolution unions global and stage-specific policies', () => {
 })
 
 test('representative contexts exclude policies outside their remit', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const ids = (persona: string, workflow: string, stage: string): string[] =>
     resolvePolicies(root, {
       persona,
@@ -449,7 +449,7 @@ test('representative contexts exclude policies outside their remit', () => {
 })
 
 test('pull-request policy follows operator-artifact selection', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const ids = (operatorArtifacts: 'requested' | 'suppressed'): string[] =>
     resolvePolicies(root, {
       persona: 'release-steward',
@@ -463,7 +463,7 @@ test('pull-request policy follows operator-artifact selection', () => {
 })
 
 test('best-of-N stages carry the same policies as the delivery stages they mirror', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const ids = (persona: string, workflow: string, stage: string): string[] =>
     resolvePolicies(root, { persona, workflow, stage }).map(
       (policy) => policy.id,
@@ -570,7 +570,7 @@ test('Python policy loads only for detected Python workspaces', () => {
 })
 
 test('delivery plan resolves planning guidance without supervisor policies', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const planIds = resolvePolicies(root, {
     persona: 'planner',
     workflow: 'delivery',
@@ -656,7 +656,7 @@ function generatedReadTrigger(policyId: string): string {
 }
 
 test('every checked-in policy declares its own guidance read trigger', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const catalog = loadPolicyCatalog(root)
 
   const sources = [...catalog.values()].flatMap((policy) =>
@@ -700,7 +700,7 @@ test('a policy without a declared trigger keeps the generated fallback', () => {
 // rules that branch adds and have no other home in the consolidated suite.
 
 test('standalone review resolves squad and delegation governance', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const ids = resolvePolicies(root, {
     persona: 'reviewer',
     workflow: 'standalone',

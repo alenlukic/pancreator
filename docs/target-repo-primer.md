@@ -37,8 +37,8 @@ Pancreator is a Cursor-native workflow harness written in strict TypeScript and 
 ### Other
 
 - `npm run format` and `npm run format:check` apply or verify Prettier formatting.
-- `npm run lint` runs `format:check`, `typecheck`, and `bash -n` over every Bash script in `bin/`.
-- `npm run check` runs `lint`, `build`, and `validate` in that order through `bin/check`. Test execution belongs to the profile commands (`npm test`, `npm run test:coverage`), so a passing check never runs the suite.
+- `npm run lint` runs `format:check`, then `bash -n` over every Bash script in `bin/`. It runs `typecheck` only when `bin/build --stamp-fresh` reports a stale build stamp; a fresh stamp proves the emitting build already type-checked the same program.
+- `npm run check` runs `build`, `lint`, and `validate` in that order through `bin/check`, so the fresh build stamp lets `lint` skip its own `typecheck`. Test execution belongs to the profile commands (`npm test`, `npm run test:coverage`), so a passing check never runs the suite.
 - `npm run validate` (equivalently `./bin/pan validate`) checks required files, workflows, stage graphs, policies and the policy lookup table, registries, release metadata, model configuration and projection drift, repository-check configuration, question-tool access, directive ownership, and operator briefs.
 - `npm run validate:chat-markdown` validates fenced Markdown intended for Cursor chat, from stdin or a file path.
 - `./bin/pan governance review-scope --target <ref> [--base <ref>] [--json]` reports a review target's conflicts of interest by tier — instrument paths the squad must not grade, conduct policies on the reviewer's own card (derived from the card), and verification substrate that taints findings — plus a per-policy standards delta of removed and added instructions. `pan governance card --mode review --base <ref>` renders the base text of each conduct policy the target changes.

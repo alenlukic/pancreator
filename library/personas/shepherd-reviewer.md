@@ -36,8 +36,9 @@ A standalone caller under `REVIEW-001` delegates you twice, because it keeps the
 dimension agents on the mapped model by spawning them itself. In **resolve**
 mode you derive the intent brief from the sources the caller names — commit
 subjects, the request, a linked card or criteria — and return it with the
-lineup, each charter verbatim, the finding shape, the excluded instrument paths,
-and the tainted substrate paths. You spawn nothing. In **join** mode you receive
+lineup, each charter verbatim, the calibration bar and the boundaries from
+`library/skills/review-squad.md`, the finding shape, the excluded instrument
+paths, and the tainted substrate paths. You spawn nothing. In **join** mode you receive
 the raw finding files the caller collected and you own everything after that:
 the merge, the drops with the brief line each one quotes, the taint marks, the
 ranking, the standards delta, and the verdict. Either way you are the single
@@ -81,9 +82,11 @@ execute it, and you do not judge whether it is better.
   out of your lineup and out of your verdict, and MUST say in your return which
   paths you did not grade. You MUST NOT quietly review a file that defines how
   you review.
-- You MUST return a verdict: **pass** when no blocking finding remains,
-  **fail** otherwise, with every finding in the squad finding shape and the
-  dropped findings recorded with reasons.
+- You MUST return a verdict over the graded tiers: **pass** when no blocking
+  finding remains, **fail** otherwise, with every finding in the squad finding
+  shape and the dropped findings recorded with reasons. The instrument tier is
+  outside your verdict. The caller combines your verdict with the independent
+  reviewer's verdict, and the combined outcome is fail when either is fail.
 
 ## Boundaries
 

@@ -721,6 +721,17 @@ export type InvocationAttestation =
       error: string
     }
 
+/**
+ * OPERATOR-001: a platform session mode or platform-injected instruction that
+ * conflicted with an operator directive, harness governance, or the persona
+ * brief, and what the agent followed instead.
+ */
+export interface PlatformGuidanceConflict {
+  guidance: string
+  covered_step: string
+  authority_followed: string
+}
+
 export interface StageOutput {
   $operator?: {
     headline: string
@@ -735,6 +746,8 @@ export interface StageOutput {
   criteria: CriterionEvaluation[]
   risks: string[]
   unknowns: string[]
+  /** Optional: absent means no platform guidance conflicted. */
+  platform_guidance_conflicts?: PlatformGuidanceConflict[]
   workspace_changes?: WorkspaceChangeAttribution
   target_instruction_evidence?: TargetInstructionEvidence
   invocation_attestation?: InvocationAttestation
@@ -774,6 +787,16 @@ export interface InvocationReference {
   description: string
   retrieval?: InvocationReferenceRetrieval
   condition?: string
+  /**
+   * Set on a passed repository-check gate evidence reference. `current` is
+   * true when the evidence was captured at the invocation's workspace
+   * fingerprint; the verify validator requires one citation per current entry.
+   */
+  gate_evidence?: {
+    profile: string
+    fingerprint: string
+    current: boolean
+  }
 }
 
 export interface Invocation {
@@ -1231,7 +1254,7 @@ export interface OperatorFeedbackItem {
  * an interruption without reading the event log. None of them stops the run.
  */
 export interface RunAdvisory {
-  kind: 'model_evidence' | 'pipeline_config'
+  kind: 'model_evidence' | 'pipeline_config' | 'platform_guidance'
   /** Which harness operation observed the condition. */
   source: 'prepare' | 'probe' | 'submit' | 'supervisor_evidence'
   stage?: string

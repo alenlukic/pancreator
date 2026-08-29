@@ -15,6 +15,7 @@ import { hasHeading, operatorLeadPresent, parseMarkdown } from '../markdown.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
 import { activeOperatorGateWaivers } from '../waivers.js'
 import { readProjectConfig } from '../project-config.js'
+import { loadRepositoryChecks } from '../repository-checks.js'
 import { resolveRunLayout } from '../run-layout.js'
 import { resolveTargetInstructionPaths } from '../target-instructions.js'
 import {
@@ -1653,6 +1654,37 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
     }
   }
 
+  // ORCH-001 names a whole-suite rerun encoded as a plan case as a run-level
+  // defect. The gate runs each profile once, so a case that runs it again is
+  // rejected here rather than left to the supervisor's judgment.
+  const testPlan = Array.isArray(data.test_plan) ? data.test_plan : []
+
+  for (const [index, testCase] of testPlan.entries()) {
+    if (!isRecord(testCase)) {
+      continue
+    }
+
+    const caseId =
+      typeof testCase.id === 'string' ? testCase.id : `test_plan[${index}]`
+    const text = ['setup', 'action', 'command', 'steps']
+      .map((field) => testCase[field])
+      .filter((entry): entry is string => typeof entry === 'string')
+      .join('\n')
+    const rerun =
+      text.length > 0 ? profileCommandInText(input.root, text) : null
+
+    if (rerun) {
+      issues.push(
+        issue(
+          'plan.case_reruns_profile',
+          `Test-plan case ${caseId} runs \`${rerun.command}\`, the ` +
+            `\`${rerun.profile}\` profile; the gate runs that profile once, so ` +
+            'the case must exercise a focused scenario instead',
+        ),
+      )
+    }
+  }
+
   issues.push(
     ...openQuestionDispositionIssues(input, data, criteria, productSpec),
   )
@@ -1869,6 +1901,99 @@ function openQuestionDispositionIssues(
  * reproducible remediation guidance because that guidance is the remediation
  * stage's primary input.
  */
+/**
+ * The configured repository-check profile command that a free-text case names,
+ * if any. A QA or plan case that reruns a profile duplicates a gate that runs
+ * the same profile once, so the validators reject it rather than leave the
+ * duplication to judgment. The literal `pan repository-check <profile>` counts
+ * for every configured profile name.
+ */
+export function profileCommandInText(
+  root: string,
+  text: string,
+): { profile: string; command: string } | null {
+  let profiles: Record<string, { commands: string[] }>
+
+  try {
+    profiles = loadRepositoryChecks(root).profiles
+  } catch {
+    return null
+  }
+
+  const boundary = String.raw`(?:^|[\s\x60'"(;&|])`
+  const terminal = String.raw`(?:$|[\s\x60'");&|])`
+
+  for (const [profile, definition] of Object.entries(profiles)) {
+    for (const command of definition.commands ?? []) {
+      const escaped = command.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+
+      if (new RegExp(`${boundary}${escaped}${terminal}`, 'u').test(text)) {
+        return { profile, command }
+      }
+    }
+
+    const literal = new RegExp(
+      `${boundary}(?:\\./bin/)?pan repository-check ${profile}${terminal}`,
+      'u',
+    )
+
+    if (literal.test(text)) {
+      return { profile, command: `pan repository-check ${profile}` }
+    }
+  }
+
+  // The literal form names a profile even when this checkout has none
+  // configured; `validate` is the one subcommand that runs nothing.
+  const anyProfile = new RegExp(
+    `${boundary}(?:\\./bin/)?pan repository-check ([a-z][a-z0-9_-]*)${terminal}`,
+    'u',
+  ).exec(text)
+
+  if (anyProfile && anyProfile[1] !== 'validate') {
+    return {
+      profile: anyProfile[1],
+      command: `pan repository-check ${anyProfile[1]}`,
+    }
+  }
+
+  return null
+}
+
+/** Current gate-evidence references on the invocation card, if it carries any. */
+function currentGateEvidenceReferences(
+  invocation: Record<string, unknown> | undefined,
+): { path: string; profile: string; fingerprint: string }[] {
+  const inputs =
+    isRecord(invocation) && isRecord(invocation.inputs)
+      ? invocation.inputs
+      : null
+  const references = Array.isArray(inputs?.references) ? inputs.references : []
+  const current: { path: string; profile: string; fingerprint: string }[] = []
+
+  for (const reference of references) {
+    if (!isRecord(reference) || !isRecord(reference.gate_evidence)) {
+      continue
+    }
+
+    const evidence = reference.gate_evidence
+
+    if (
+      evidence.current === true &&
+      typeof reference.path === 'string' &&
+      typeof evidence.profile === 'string' &&
+      typeof evidence.fingerprint === 'string'
+    ) {
+      current.push({
+        path: reference.path,
+        profile: evidence.profile,
+        fingerprint: evidence.fingerprint,
+      })
+    }
+  }
+
+  return current
+}
+
 export function validateVerifyOutput(input: HandlerInput): HandlerResult {
   const issues: HandlerResult['issues'] = []
   const value = readJson(path.join(input.root, input.targetPath)) as Record<
@@ -1997,6 +2122,67 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
           ),
         )
       }
+    }
+
+    const rerun =
+      typeof qaCase.steps === 'string'
+        ? profileCommandInText(input.root, qaCase.steps)
+        : null
+
+    if (rerun) {
+      issues.push(
+        issue(
+          'verify.case_reruns_profile',
+          `QA case ${qaCase.id} runs \`${rerun.command}\`, the \`${rerun.profile}\` ` +
+            'profile; cite the gate evidence for that profile instead',
+        ),
+      )
+    }
+  }
+
+  // VERIFY-001 makes QA cite the gate evidence for a profile that already
+  // passed. The card lists each current evidence reference; the output must
+  // cite every one of them, so the duty leaves a checkable trace.
+  const citations = Array.isArray(verify.gate_evidence_citations)
+    ? verify.gate_evidence_citations
+    : []
+  const citedKeys = new Set<string>()
+
+  for (const [index, citation] of citations.entries()) {
+    if (
+      !isRecord(citation) ||
+      typeof citation.profile !== 'string' ||
+      citation.profile.trim().length === 0 ||
+      typeof citation.fingerprint !== 'string' ||
+      citation.fingerprint.trim().length === 0 ||
+      typeof citation.evidence_path !== 'string' ||
+      citation.evidence_path.trim().length === 0
+    ) {
+      issues.push(
+        issue(
+          'verify.gate_citation_shape',
+          `gate_evidence_citations[${index}] MUST carry profile, fingerprint, and evidence_path`,
+        ),
+      )
+      continue
+    }
+
+    citedKeys.add(
+      `${citation.profile}\u0000${citation.fingerprint}\u0000${citation.evidence_path}`,
+    )
+  }
+
+  for (const reference of currentGateEvidenceReferences(input.invocation)) {
+    const key = `${reference.profile}\u0000${reference.fingerprint}\u0000${reference.path}`
+
+    if (!citedKeys.has(key)) {
+      issues.push(
+        issue(
+          'verify.gate_citation_missing',
+          `gate_evidence_citations MUST cite the \`${reference.profile}\` gate ` +
+            `evidence at fingerprint \`${reference.fingerprint}\` (${reference.path})`,
+        ),
+      )
     }
   }
 

@@ -93,6 +93,32 @@
           "path": "data.verify.qa_cases[].result",
           "type": "string",
           "enum": ["pass", "fail", "blocked"]
+        },
+        {
+          "path": "data.verify.qa_cases[].steps",
+          "type": "string",
+          "format": "focused scenario steps; MUST NOT contain a configured repository-check profile command or 'pan repository-check <profile>', because the gate already ran that profile"
+        },
+        {
+          "path": "data.verify.gate_evidence_citations[]",
+          "type": "object",
+          "required": ["profile", "fingerprint", "evidence_path"],
+          "format": "one entry per current gate-evidence reference on the card; cites the profile, the workspace fingerprint it passed at, and the evidence path instead of re-executing the profile"
+        },
+        {
+          "path": "data.verify.gate_evidence_citations[].profile",
+          "type": "string",
+          "format": "repository-check profile name the gate ran"
+        },
+        {
+          "path": "data.verify.gate_evidence_citations[].fingerprint",
+          "type": "string",
+          "format": "workspace fingerprint named by the card's gate-evidence reference"
+        },
+        {
+          "path": "data.verify.gate_evidence_citations[].evidence_path",
+          "type": "string",
+          "format": "harness-relative path of the gate evidence artifact"
         }
       ]
     },
@@ -235,9 +261,19 @@
           "format": "optional; true claims the explicit-readiness exemption so a readiness result may carry a product cause while an environment blocker names the same question"
         },
         {
+          "path": "data.evaluation.environment_blockers[].description",
+          "type": "string",
+          "format": "required; non-empty statement of the environment gap"
+        },
+        {
+          "path": "data.evaluation.environment_blockers[].evidence[]",
+          "type": "string",
+          "format": "required; non-empty array of reproducible evidence for the gap"
+        },
+        {
           "path": "data.evaluation.environment_blockers[].affected_questions[]",
           "type": "string",
-          "format": "technical question ids the blocker prevented a decision on"
+          "format": "required; non-empty array of declared technical question ids the blocker prevented a decision on"
         }
       ]
     }

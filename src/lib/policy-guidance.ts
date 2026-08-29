@@ -110,6 +110,7 @@ export function renderPolicyBlocks(
   policies: Policy[],
   guidanceLevel: GuidanceHeadingLevel,
   supersededIds: ReadonlySet<string> = new Set(),
+  instrumentIds: ReadonlySet<string> = new Set(),
 ): string[] {
   if (policies.length === 0) {
     return ['- Only global boundaries apply.']
@@ -142,7 +143,17 @@ export function renderPolicyBlocks(
               '**Conduct under the base revision**.',
             '',
           ]
-        : []),
+        : instrumentIds.has(policy.id)
+          ? [
+              // An instrument policy leaves the squad verdict: no base text is
+              // rendered for it, and the independent reviewer reports on it.
+              '> Under review by an independent reviewer. This policy is ' +
+                'instrument tier: the squad does not grade it. Follow the ' +
+                'text below as written; the independent reviewer reports on ' +
+                'the change.',
+              '',
+            ]
+          : []),
       ...(seen.has(summary) ? [] : [policy.summary, '']),
       ...instructions.map((instruction) => `- ${instruction}`),
     ]

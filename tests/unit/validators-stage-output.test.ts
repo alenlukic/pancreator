@@ -180,3 +180,45 @@ test('strict stage output rejects success with failed self-evaluation', () => {
 
   assert.match(validation.errors.join('\n'), /contradicts failed criterion/u)
 })
+
+test('stage output accepts a platform guidance conflict list and rejects a bare entry', () => {
+  const root = createFixture()
+  const { invocation, stage } = fixtureInvocation(
+    root,
+    'implement',
+    'implement-1',
+  )
+  const stated = validateStageOutput(root, stage, invocation, {
+    ...baseOutput(invocation, stage),
+    platform_guidance_conflicts: [
+      {
+        guidance: 'Plan mode: do not edit files',
+        covered_step: 'implement the accepted change',
+        authority_followed: 'the implement invocation card and DEV-001',
+      },
+    ],
+  })
+
+  // OPERATOR-001 gives the conflict statement a field; the validator must
+  // accept it rather than treat the disclosure as an unknown shape.
+  assert.ok(
+    !stated.errors.some((message) =>
+      message.includes('platform_guidance_conflicts'),
+    ),
+    stated.errors.join('\n'),
+  )
+  assert.equal(stated.output.platform_guidance_conflicts?.length, 1)
+
+  const bare = validateStageOutput(root, stage, invocation, {
+    ...baseOutput(invocation, stage),
+    platform_guidance_conflicts: [{ guidance: 'Plan mode' }],
+  })
+
+  assert.ok(
+    bare.errors.some((message) =>
+      /platform_guidance_conflicts\[0\] MUST name guidance, covered_step, and authority_followed/u.test(
+        message,
+      ),
+    ),
+  )
+})
