@@ -73,7 +73,71 @@ function pinFixtureInvolvement(root: string): void {
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
 }
 
+export interface CloneTreeOptions {
+  timeout?: number
+  verbatimSymlinks?: boolean
+}
+
+/**
+ * Copy a directory tree into `destination`. Uses copy-on-write when the
+ * platform offers it and falls back to a plain recursive copy.
+ */
+export function cloneTree(
+  template: string,
+  destination: string,
+  options: CloneTreeOptions = {},
+): void {
+  const timeout = options.timeout ?? FIXTURE_GIT_TIMEOUT_MS
+
+  for (const flags of [['-Rc'], ['-a', '--reflink=auto']]) {
+    try {
+      execFileSync('cp', [...flags, `${template}/.`, destination], {
+        stdio: 'ignore',
+        timeout,
+      })
+
+      return
+    } catch {
+      // Fall back to the next flag set.
+    }
+  }
+
+  cpSync(template, destination, {
+    recursive: true,
+    ...(options.verbatimSymlinks ? { verbatimSymlinks: true } : {}),
+  })
+}
+
+// A fixture build costs several seconds, so the process builds one template
+// and every createFixture() call returns a clone of it.
+let fixtureTemplateRoot: string | null = null
+
+function cloneFixtureTemplate(template: string): string {
+  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-v2-'))
+
+  cloneTree(template, root)
+
+  return root
+}
+
+let sharedFixtureRoot: string | null = null
+
+/**
+ * One fixture clone per process for tests that only read. A test that writes
+ * into its root must use createFixture(), because a shared root keeps every
+ * earlier write.
+ */
+export function sharedFixture(): string {
+  sharedFixtureRoot ??= createFixture()
+
+  return sharedFixtureRoot
+}
+
 export function createFixture(): string {
+  if (fixtureTemplateRoot) {
+    return cloneFixtureTemplate(fixtureTemplateRoot)
+  }
+
   const root = mkdtempSync(path.join(tmpdir(), 'pancreator-v2-'))
 
   for (const entry of [
@@ -175,7 +239,9 @@ export function createFixture(): string {
   fixtureGit(['add', '.'], { cwd: root, encoding: 'utf8' })
   fixtureGit(['commit', '-qm', 'fixture'], { cwd: root, encoding: 'utf8' })
 
-  return root
+  fixtureTemplateRoot = root
+
+  return cloneFixtureTemplate(root)
 }
 
 export function read(pathname: string): unknown {
@@ -401,6 +467,22 @@ function artifactBrief(
   }
 }
 
+function gateEvidenceCitations(
+  invocation?: Invocation,
+): { profile: string; fingerprint: string; evidence_path: string }[] {
+  return (invocation?.inputs.references ?? []).flatMap((reference) =>
+    reference.gate_evidence?.current === true
+      ? [
+          {
+            profile: reference.gate_evidence.profile,
+            fingerprint: reference.gate_evidence.fingerprint,
+            evidence_path: reference.path,
+          },
+        ]
+      : [],
+  )
+}
+
 function requiredData(
   stage: string,
   root?: string,
@@ -443,6 +525,16 @@ function requiredData(
             discard_conditions: [
               'Either provider needs caller-visible config.',
             ],
+            preconditions: [
+              {
+                id: 'PRE-01',
+                affected_questions: ['TQ-01'],
+                check: 'Fixture dependency check',
+                status: 'ready',
+                evidence: ['fixture-ready'],
+                volatile: false,
+              },
+            ],
           },
         }
       case 'build':
@@ -462,6 +554,13 @@ function requiredData(
               },
             ],
             notes: ['fixture spike'],
+            precondition_checks: [
+              {
+                precondition_id: 'PRE-01',
+                status: 'ready',
+                evidence: ['fixture recheck'],
+              },
+            ],
           },
         }
       case 'evaluate':
@@ -472,9 +571,12 @@ function requiredData(
               {
                 question_id: 'TQ-01',
                 result: 'answered',
+                cause: 'product',
                 evidence: ['fixture'],
+                discard_condition_met: false,
               },
             ],
+            environment_blockers: [],
             signal_assessment: [
               { signal: 'Both providers respond.', measures_question: true },
             ],
@@ -556,6 +658,9 @@ function requiredData(
               result: 'pass',
             },
           ],
+          // VERIFY-001: QA cites the card's current gate evidence. QA does
+          // not run the profile again.
+          gate_evidence_citations: gateEvidenceCitations(invocation),
           acceptance_results: [
             { id: 'AC-01', result: 'pass', evidence: ['fixture'] },
           ],
@@ -821,12 +926,16 @@ export function writeCanonicalDelegation(
   )
 }
 
-/** Verbatim last non-empty line of a text, or '' when none exists. */
+/**
+ * Verbatim last content line of a text, or '' when none exists. Skips empty
+ * lines and Markdown divider lines, as the read-evidence rule does.
+ */
 function finalLineOf(content: string): string {
+  const divider = /^\s*(?:[-_*]\s*){3,}$/u
   const lines = content.split('\n')
 
   for (let index = lines.length - 1; index >= 0; index -= 1) {
-    if (lines[index].trim().length > 0) {
+    if (lines[index].trim().length > 0 && !divider.test(lines[index])) {
       return lines[index]
     }
   }
@@ -860,8 +969,9 @@ function guidanceFinalLine(
 }
 
 /**
- * Attach compliant per-file read evidence for the given instruction paths,
- * quoting each file's actual last non-empty line from the fixture tree.
+ * Attach compliant per-file read evidence for the given instruction paths.
+ * Each entry quotes the file's actual last content line from the fixture
+ * tree.
  */
 export function attachTargetInstructionEvidence(
   root: string,

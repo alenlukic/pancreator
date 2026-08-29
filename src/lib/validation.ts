@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { readdirSync, rmSync } from 'node:fs'
+import { readFileSync, readdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
 
 import { errorMessage, isNodeError } from './errors.js'
@@ -7,7 +7,7 @@ import {
   ensureDir,
   fileExists,
   isRecord,
-  lastNonEmptyLine,
+  lastEvidenceLine,
   readJson,
   readText,
   resolveInside,
@@ -53,6 +53,12 @@ import {
   isTargetInstallation,
   isSelfDevelopmentInstallation,
 } from './project-config.js'
+import {
+  gateCacheKey,
+  gateCacheLookup,
+  gateCacheStore,
+  gateCacheableSnapshot,
+} from './gate-cache.js'
 import {
   gitWorkspaceSnapshot,
   workspaceChangedPathsFromSnapshots,
@@ -965,7 +971,7 @@ function expectedGuidanceFinalLines(
 
         expected.set(
           `${policy.id}\0${guidance.source_path}\0${guidance.reference.content_sha256}`,
-          lastNonEmptyLine(guidance.content),
+          lastEvidenceLine(guidance.content),
         )
       }
     }
@@ -1042,8 +1048,8 @@ function guidanceAttestationChecks(
             finalLineMatches && declaredFinalLine.trim().length > 0
               ? `Guidance ${entry.source_path} (${entry.policy_id}) is attested as read with matching final-line evidence`
               : declaredFinalLine.trim().length === 0
-                ? `A read guidance entry MUST quote the selection's last non-empty line as final_line for ${entry.source_path}`
-                : `Guidance ${entry.source_path} (${entry.policy_id}) final_line does not match the selected content's last non-empty line`,
+                ? `A read guidance entry MUST quote the selection's last content line (skipping trailing dividers) as final_line for ${entry.source_path}`
+                : `Guidance ${entry.source_path} (${entry.policy_id}) final_line does not match the selected content's last content line (trailing divider lines are skipped)`,
         })
         break
       }
@@ -1370,6 +1376,11 @@ export interface StageOutputValidation {
   output: StageOutput
 }
 
+export interface StageOutputValidationOptions {
+  /** Artifacts the harness writes later. Absence is not a defect. */
+  pendingArtifactPaths?: string[]
+}
+
 function valueAt(object: Record<string, unknown>, dottedPath: string): unknown {
   let value: unknown = object
 
@@ -1478,6 +1489,24 @@ function normalizeStageOutput(
     criteria: normalizeCriteria(record.criteria),
     risks: normalizeStringArray(record.risks),
     unknowns: normalizeStringArray(record.unknowns),
+    ...(Array.isArray(record.platform_guidance_conflicts)
+      ? {
+          platform_guidance_conflicts: record.platform_guidance_conflicts
+            .filter(isRecord)
+            .map((entry) => ({
+              guidance:
+                typeof entry.guidance === 'string' ? entry.guidance : '',
+              covered_step:
+                typeof entry.covered_step === 'string'
+                  ? entry.covered_step
+                  : '',
+              authority_followed:
+                typeof entry.authority_followed === 'string'
+                  ? entry.authority_followed
+                  : '',
+            })),
+        }
+      : {}),
     ...(isRecord(record.workspace_changes)
       ? {
           workspace_changes: {
@@ -1504,6 +1533,7 @@ export function validateStageOutput(
   stage: StageDefinition,
   invocation: Invocation,
   value: unknown,
+  { pendingArtifactPaths = [] }: StageOutputValidationOptions = {},
 ): StageOutputValidation {
   const errors: string[] = []
   const output = normalizeStageOutput(value, invocation)
@@ -1547,6 +1577,33 @@ export function validateStageOutput(
   for (const key of ['risks', 'unknowns']) {
     if (record[key] !== undefined && !Array.isArray(record[key])) {
       errors.push(`${key} MUST be an array when present`)
+    }
+  }
+
+  // OPERATOR-001: an entry must name all three parts to be auditable.
+  if (record.platform_guidance_conflicts !== undefined) {
+    if (!Array.isArray(record.platform_guidance_conflicts)) {
+      errors.push('platform_guidance_conflicts MUST be an array when present')
+    } else {
+      for (const [
+        index,
+        entry,
+      ] of record.platform_guidance_conflicts.entries()) {
+        const complete =
+          isRecord(entry) &&
+          (['guidance', 'covered_step', 'authority_followed'] as const).every(
+            (field) =>
+              typeof entry[field] === 'string' &&
+              (entry[field] as string).trim().length > 0,
+          )
+
+        if (!complete) {
+          errors.push(
+            `platform_guidance_conflicts[${index}] MUST name guidance, ` +
+              'covered_step, and authority_followed as non-empty strings',
+          )
+        }
+      }
     }
   }
 
@@ -1698,11 +1755,16 @@ export function validateStageOutput(
     }
   }
 
+  // Compare resolved paths so a pending artifact is exempt however spelled.
+  const pendingAbsolutePaths = new Set(
+    pendingArtifactPaths.map((pendingPath) => resolveInside(root, pendingPath)),
+  )
+
   for (const artifact of output.artifacts) {
     try {
       const absolute = resolveInside(root, artifact.path)
 
-      if (!fileExists(absolute)) {
+      if (!pendingAbsolutePaths.has(absolute) && !fileExists(absolute)) {
         errors.push(`artifact does not exist: ${artifact.path}`)
       }
     } catch (error) {
@@ -1723,7 +1785,7 @@ interface ShellCheckResolution {
   removed_reason?: string
 }
 
-function resolveShellCheck(
+export function resolveShellCheck(
   root: string,
   criterion: Criterion,
   requestedCommand: string,
@@ -2025,12 +2087,13 @@ function runShellCheck(
   state: RunState,
   stage: StageDefinition,
   criterion: Criterion,
-  workspaceFingerprint: string,
+  workspace: WorkspaceSnapshot,
   workspaceDir: string,
   commandOverride?: string,
   artifactId = stage.slug,
   onProgress?: (message: string) => void,
 ): DeterministicResult {
+  const workspaceFingerprint = workspace.fingerprint
   const requestedCommand = commandOverride ?? criterion.command ?? ''
   const resolution = resolveShellCheck(
     root,
@@ -2051,6 +2114,110 @@ function runShellCheck(
     : resolution.command
   const startedAt = new Date().toISOString()
   const profileName = remappedProfile ?? resolution.profile_name
+
+  // Resolve the baseline before any cache decision so a missing baseline still
+  // fails the gate below.
+  const baselineLoad =
+    profileName && !resolution.removed_reason
+      ? loadRepositoryCheckBaseline(root, state, profileName)
+      : undefined
+
+  // DEV-001. An operator override is run-scoped, so it stays uncached.
+  const cacheKey =
+    commandOverride === undefined &&
+    !resolution.removed_reason &&
+    gateCacheableSnapshot(workspace) &&
+    !baselineLoad?.reason
+      ? gateCacheKey(root, workspaceFingerprint, command)
+      : null
+  const cached = cacheKey ? gateCacheLookup(root, cacheKey) : null
+  // A profile gate needs the recorded repository result for this run's delta.
+  const cachedUsable =
+    cached !== null && (!profileName || cached.repository_result !== undefined)
+  let cachedSourceEvidence: string | null = null
+
+  if (cached && cachedUsable) {
+    try {
+      cachedSourceEvidence = readFileSync(
+        path.join(root, cached.evidence_path),
+        'utf8',
+      )
+    } catch {
+      cachedSourceEvidence = null
+    }
+  }
+
+  if (cached && cachedUsable && cachedSourceEvidence !== null) {
+    const cachedSafeId = criterion.id.replaceAll(/[^a-zA-Z0-9_.-]/g, '-')
+    const cachedEvidencePath = path.join(
+      runDirectory,
+      'evidence',
+      `${artifactId}-${cachedSafeId}.log`,
+    )
+    const cachedComparison =
+      profileName && cached.repository_result && baselineLoad?.result
+        ? compareRepositoryCheckToBaseline(
+            baselineLoad.result,
+            cached.repository_result,
+          )
+        : undefined
+    const explanation =
+      `Accepted cached clean pass of the same command at an unchanged ` +
+      `workspace fingerprint, recorded ${cached.cached_at} by run ` +
+      `${cached.run_id} (criterion ${cached.criterion_id}). Original ` +
+      `evidence: ${cached.evidence_path}.` +
+      (cachedComparison ? ` ${cachedComparison.explanation}` : '')
+
+    onProgress?.(
+      `${criterion.id} accepted cached pass recorded ${cached.cached_at} ` +
+        `by ${cached.run_id}`,
+    )
+    // Copy the original output because archival can move the source run.
+    writeTextAtomic(
+      cachedEvidencePath,
+      [
+        `$ ${command}`,
+        'cached=true',
+        `cached_at=${cached.cached_at}`,
+        `source_run=${cached.run_id}`,
+        `source_criterion=${cached.criterion_id}`,
+        `source_evidence=${cached.evidence_path}`,
+        `workspace_fingerprint=${workspaceFingerprint}`,
+        'exit_code=0',
+        '',
+        explanation,
+        '',
+        '--- source evidence ---',
+        cachedSourceEvidence,
+      ].join('\n'),
+    )
+
+    return {
+      id: criterion.id,
+      type: 'shell',
+      hard: Boolean(criterion.hard),
+      passed: cachedComparison ? cachedComparison.passed : true,
+      cached: true,
+      explanation,
+      ...(cachedComparison
+        ? { repository_check_delta: cachedComparison.delta }
+        : {}),
+      ...(remappedProfile && state.verification
+        ? { verification_level: state.verification.level }
+        : {}),
+      command,
+      exit_code: 0,
+      timed_out: false,
+      evidence_path: path
+        .relative(root, cachedEvidencePath)
+        .split(path.sep)
+        .join('/'),
+      ...(baselineLoad?.artifact_path
+        ? { baseline_evidence_path: baselineLoad.artifact_path }
+        : {}),
+      workspace_fingerprint: workspaceFingerprint,
+    }
+  }
 
   let exitCode: number | null
   let signal: NodeJS.Signals | null = null
@@ -2128,7 +2295,8 @@ function runShellCheck(
   // inherited failure needs the credit recorded, and a first-time failure needs
   // to be named as new rather than inferred from an exit code.
   if (profileName && repositoryResult && !skipped) {
-    const load = loadRepositoryCheckBaseline(root, state, profileName)
+    const load =
+      baselineLoad ?? loadRepositoryCheckBaseline(root, state, profileName)
 
     if (load.result) {
       baselineResult = load.result
@@ -2200,6 +2368,24 @@ function runShellCheck(
   const inheritedFailureOnly = Boolean(
     baselineComparison?.passed && !commandSucceeded,
   )
+
+  // Cache only a clean pass. A baseline-relative pass credits this run's own
+  // baseline.
+  if (cacheKey && passed && commandSucceeded && !skipped && !timedOut) {
+    gateCacheStore(root, {
+      key: cacheKey,
+      criterion_id: criterion.id,
+      command,
+      workspace_fingerprint: workspaceFingerprint,
+      run_id: state.run_id,
+      cached_at: new Date().toISOString(),
+      evidence_path: path
+        .relative(root, evidencePath)
+        .split(path.sep)
+        .join('/'),
+      ...(repositoryResult ? { repository_result: repositoryResult } : {}),
+    })
+  }
   const environmentBlocked = isEnvironmentBlockedDelta(
     stage,
     baselineResult,
@@ -2626,7 +2812,7 @@ export function evaluateDeterministicCriteria(
             state,
             stage,
             criterion,
-            afterSnapshot.fingerprint,
+            afterSnapshot,
             workspaceDir,
             typeof override === 'string' ? override : undefined,
             artifactId,
@@ -3056,6 +3242,8 @@ export function validateRepository(root: string): RepositoryValidationResult {
     required.push(
       'docs/operator-briefs/project.json',
       'docs/operator-briefs/project.css',
+      // `bin/install` drops this file, so a target installation lacks it.
+      'library/skills/review-squad-pancreator.md',
     )
   }
 

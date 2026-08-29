@@ -17,25 +17,16 @@ function fixture(name: string): string {
 }
 
 test('the audited delivery and delegation byte pair now matches', () => {
-  const result = validateDelegationMarkdown(
-    fixture('intake-1-delivery.md'),
-    fixture('intake-1-delegation.md'),
-    'referenced',
-  )
+  const delivery = fixture('intake-1-delivery.md')
+  const delegation = fixture('intake-1-delegation.md')
 
+  const result = validateDelegationMarkdown(delivery, delegation, 'referenced')
   assert.equal(result.passed, true)
-})
 
-test('a non-whitespace byte difference still fails the equality check', () => {
-  const delegation = fixture('intake-1-delegation.md').replace(
-    'invocation',
-    'inv0cation',
-  )
-  const result = validateDelegationMarkdown(
-    fixture('intake-1-delivery.md'),
-    delegation,
+  const corrupted = validateDelegationMarkdown(
+    delivery,
+    delegation.replace('invocation', 'inv0cation'),
     'referenced',
   )
-
-  assert.equal(result.passed, false)
+  assert.equal(corrupted.passed, false)
 })

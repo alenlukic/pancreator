@@ -447,6 +447,23 @@ function dispositionSourceExists(root: string, sourcePath: string): boolean {
   return relative.length > 0 && fileExists(path.join(root, relative))
 }
 
+/** File component of an evidence string, or null when the evidence is prose. */
+function dispositionEvidenceFile(evidence: string): string | null {
+  const candidate = evidence.split(/[:\s]/u, 1)[0] ?? ''
+
+  return candidate.includes('/') ? candidate : null
+}
+
+/**
+ * True when root carries the top directory of the evidence path. A fixture
+ * without that tree skips the staleness check.
+ */
+function evidenceTreePresent(root: string, evidenceFile: string): boolean {
+  const top = evidenceFile.split('/', 1)[0] ?? ''
+
+  return top.length > 0 && fileExists(path.join(root, top))
+}
+
 function sourceCovered(candidate: string, declared: string): boolean {
   const normalized = declared.split('#', 1)[0] ?? declared
 
@@ -479,6 +496,21 @@ function dispositionErrors(
       if (!dispositionSourceExists(root, sourcePath)) {
         errors.push(
           `stale disposition source in ${disposition.id}: ${sourcePath}`,
+        )
+      }
+    }
+
+    // A retained duplication claims a guard, so a file it names must exist.
+    for (const evidence of disposition.evidence) {
+      const evidenceFile = dispositionEvidenceFile(evidence)
+
+      if (
+        evidenceFile &&
+        evidenceTreePresent(root, evidenceFile) &&
+        !fileExists(path.join(root, evidenceFile))
+      ) {
+        errors.push(
+          `stale disposition evidence in ${disposition.id}: ${evidenceFile}`,
         )
       }
     }

@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process'
 import {
   fileExists,
   isRecord,
-  lastNonEmptyLine,
+  lastEvidenceLine,
   readJson,
   readText,
 } from '../io.js'
@@ -15,6 +15,7 @@ import { hasHeading, operatorLeadPresent, parseMarkdown } from '../markdown.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
 import { activeOperatorGateWaivers } from '../waivers.js'
 import { readProjectConfig } from '../project-config.js'
+import { loadRepositoryChecks } from '../repository-checks.js'
 import { resolveRunLayout } from '../run-layout.js'
 import { resolveTargetInstructionPaths } from '../target-instructions.js'
 import {
@@ -67,8 +68,8 @@ function sharedFieldRequirements(
     'stage-output-requirements.json',
   )
   // No process.cwd() fallback: in a broken installation it would silently
-  // substitute whatever contract the launching checkout carries, validating
-  // the target's outputs against a foreign document.
+  // substitute the contract of whatever checkout started the run, and
+  // validate the target's outputs against a foreign document.
   invariant(
     fileExists(sourcePath),
     `${sourcePath} is missing. The installation MUST ship the shared stage ` +
@@ -192,6 +193,9 @@ export function validateSharedFieldContract(
     'verify',
     'remediate',
     'ship',
+    'approach',
+    'build',
+    'evaluate',
   ]) {
     const stage = source.stages[stageSlug]
 
@@ -300,6 +304,55 @@ export function validateSharedFieldContract(
     ],
     'data.verify.findings[].severity': ['blocker', 'high', 'medium', 'low'],
     'data.verify.findings[].source': ['review', 'qa'],
+  }
+
+  const expectedPrototypeEnums: Record<string, Record<string, string[]>> = {
+    approach: {
+      'data.technical_approach.preconditions[].status': [
+        'ready',
+        'unavailable',
+        'unknown',
+      ],
+    },
+    build: {
+      'data.spike.precondition_checks[].status': [
+        'ready',
+        'unavailable',
+        'unknown',
+      ],
+    },
+    evaluate: {
+      'data.evaluation.verdict': [
+        'validated',
+        'invalidated',
+        'inconclusive',
+        'environment_blocked',
+      ],
+      'data.evaluation.question_results[].cause': [
+        'product',
+        'environment',
+        'mixed',
+        'none',
+      ],
+    },
+  }
+
+  for (const [stageSlug, fields] of Object.entries(expectedPrototypeEnums)) {
+    for (const [fieldPath, expected] of Object.entries(fields)) {
+      const actual = sharedEnum(input.root, stageSlug, fieldPath)
+
+      if (
+        actual.size !== expected.length ||
+        !expected.every((value) => actual.has(value))
+      ) {
+        issues.push(
+          issue(
+            'field_contract.prototype_enum',
+            `The ${stageSlug} field ${fieldPath} MUST declare its canonical values`,
+          ),
+        )
+      }
+    }
   }
 
   for (const [fieldPath, expected] of Object.entries(expectedVerifyEnums)) {
@@ -519,7 +572,7 @@ function gitChangedFiles(root: string): GitDiffResult {
   return { ok: true, files: [...files] }
 }
 
-function isSpotfixDiffExempt(file: string): boolean {
+export function isSpotfixDiffExempt(file: string): boolean {
   if (file.endsWith('.md') || file.endsWith('.mdc')) {
     return true
   }
@@ -964,7 +1017,7 @@ export function validateTargetInstructionCoverage(
         issue(
           'TARGET_INSTRUCTION_READ_EVIDENCE_MISSING',
           `Target instruction evidence MUST include reads entry ` +
-            `{ path, final_line } quoting the last non-empty line of ` +
+            `{ path, final_line } quoting the last content line of ` +
             `${requiredPath}.`,
         ),
       )
@@ -977,14 +1030,15 @@ export function validateTargetInstructionCoverage(
       continue
     }
 
-    const expectedFinalLine = lastNonEmptyLine(readText(instructionAbsolute))
+    const expectedFinalLine = lastEvidenceLine(readText(instructionAbsolute))
 
     if (declaredFinalLine.trim() !== expectedFinalLine.trim()) {
       issues.push(
         issue(
           'TARGET_INSTRUCTION_READ_EVIDENCE_MISMATCH',
           `Target instruction read evidence for ${requiredPath} does not ` +
-            `quote the file's last non-empty line.`,
+            `quote the file's last content line (trailing divider lines ` +
+            `are skipped).`,
         ),
       )
     }
@@ -1600,6 +1654,35 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
     }
   }
 
+  // ORCH-001: the gate runs each profile once, so a case must not rerun one.
+  const testPlan = Array.isArray(data.test_plan) ? data.test_plan : []
+
+  for (const [index, testCase] of testPlan.entries()) {
+    if (!isRecord(testCase)) {
+      continue
+    }
+
+    const caseId =
+      typeof testCase.id === 'string' ? testCase.id : `test_plan[${index}]`
+    const text = ['setup', 'action', 'command', 'steps']
+      .map((field) => testCase[field])
+      .filter((entry): entry is string => typeof entry === 'string')
+      .join('\n')
+    const rerun =
+      text.length > 0 ? profileCommandInText(input.root, text) : null
+
+    if (rerun) {
+      issues.push(
+        issue(
+          'plan.case_reruns_profile',
+          `Test-plan case ${caseId} runs \`${rerun.command}\`, the ` +
+            `\`${rerun.profile}\` profile; the gate runs that profile once, so ` +
+            'the case must exercise a focused scenario instead',
+        ),
+      )
+    }
+  }
+
   issues.push(
     ...openQuestionDispositionIssues(input, data, criteria, productSpec),
   )
@@ -1806,6 +1889,92 @@ function openQuestionDispositionIssues(
   return issues
 }
 
+/** The repository-check profile command that free text names, if any. */
+export function profileCommandInText(
+  root: string,
+  text: string,
+): { profile: string; command: string } | null {
+  let profiles: Record<string, { commands: string[] }>
+
+  try {
+    profiles = loadRepositoryChecks(root).profiles
+  } catch {
+    return null
+  }
+
+  const boundary = String.raw`(?:^|[\s\x60'"(;&|])`
+  const terminal = String.raw`(?:$|[\s\x60'");&|])`
+
+  for (const [profile, definition] of Object.entries(profiles)) {
+    for (const command of definition.commands ?? []) {
+      const escaped = command.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+
+      if (new RegExp(`${boundary}${escaped}${terminal}`, 'u').test(text)) {
+        return { profile, command }
+      }
+    }
+
+    const literal = new RegExp(
+      `${boundary}(?:\\./bin/)?pan repository-check ${profile}${terminal}`,
+      'u',
+    )
+
+    if (literal.test(text)) {
+      return { profile, command: `pan repository-check ${profile}` }
+    }
+  }
+
+  // The literal form names a profile even when none is configured here. The
+  // `validate` subcommand runs no profile.
+  const anyProfile = new RegExp(
+    `${boundary}(?:\\./bin/)?pan repository-check ([a-z][a-z0-9_-]*)${terminal}`,
+    'u',
+  ).exec(text)
+
+  if (anyProfile && anyProfile[1] !== 'validate') {
+    return {
+      profile: anyProfile[1],
+      command: `pan repository-check ${anyProfile[1]}`,
+    }
+  }
+
+  return null
+}
+
+function currentGateEvidenceReferences(
+  invocation: Record<string, unknown> | undefined,
+): { path: string; profile: string; fingerprint: string }[] {
+  const inputs =
+    isRecord(invocation) && isRecord(invocation.inputs)
+      ? invocation.inputs
+      : null
+  const references = Array.isArray(inputs?.references) ? inputs.references : []
+  const current: { path: string; profile: string; fingerprint: string }[] = []
+
+  for (const reference of references) {
+    if (!isRecord(reference) || !isRecord(reference.gate_evidence)) {
+      continue
+    }
+
+    const evidence = reference.gate_evidence
+
+    if (
+      evidence.current === true &&
+      typeof reference.path === 'string' &&
+      typeof evidence.profile === 'string' &&
+      typeof evidence.fingerprint === 'string'
+    ) {
+      current.push({
+        path: reference.path,
+        profile: evidence.profile,
+        fingerprint: evidence.fingerprint,
+      })
+    }
+  }
+
+  return current
+}
+
 /**
  * Joint verification output for the delivery workflow's verify stage. One
  * stage carries both the review findings and the QA evidence, and one verdict
@@ -1944,6 +2113,65 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
           ),
         )
       }
+    }
+
+    const rerun =
+      typeof qaCase.steps === 'string'
+        ? profileCommandInText(input.root, qaCase.steps)
+        : null
+
+    if (rerun) {
+      issues.push(
+        issue(
+          'verify.case_reruns_profile',
+          `QA case ${qaCase.id} runs \`${rerun.command}\`, the \`${rerun.profile}\` ` +
+            'profile; cite the gate evidence for that profile instead',
+        ),
+      )
+    }
+  }
+
+  // VERIFY-001: the output must cite every current gate-evidence reference.
+  const citations = Array.isArray(verify.gate_evidence_citations)
+    ? verify.gate_evidence_citations
+    : []
+  const citedKeys = new Set<string>()
+
+  for (const [index, citation] of citations.entries()) {
+    if (
+      !isRecord(citation) ||
+      typeof citation.profile !== 'string' ||
+      citation.profile.trim().length === 0 ||
+      typeof citation.fingerprint !== 'string' ||
+      citation.fingerprint.trim().length === 0 ||
+      typeof citation.evidence_path !== 'string' ||
+      citation.evidence_path.trim().length === 0
+    ) {
+      issues.push(
+        issue(
+          'verify.gate_citation_shape',
+          `gate_evidence_citations[${index}] MUST carry profile, fingerprint, and evidence_path`,
+        ),
+      )
+      continue
+    }
+
+    citedKeys.add(
+      `${citation.profile}\u0000${citation.fingerprint}\u0000${citation.evidence_path}`,
+    )
+  }
+
+  for (const reference of currentGateEvidenceReferences(input.invocation)) {
+    const key = `${reference.profile}\u0000${reference.fingerprint}\u0000${reference.path}`
+
+    if (!citedKeys.has(key)) {
+      issues.push(
+        issue(
+          'verify.gate_citation_missing',
+          `gate_evidence_citations MUST cite the \`${reference.profile}\` gate ` +
+            `evidence at fingerprint \`${reference.fingerprint}\` (${reference.path})`,
+        ),
+      )
     }
   }
 

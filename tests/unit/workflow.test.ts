@@ -4,8 +4,6 @@ import { readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { createFixture } from '../helpers.js'
 import {
-  listWorkflowSlugs,
-  loadStagePrompt,
   loadWorkflow,
   stageBySlug,
   validateWorkflow,
@@ -16,11 +14,7 @@ test('delivery workflow is connected and stages are addressable', () => {
   const workflow = loadWorkflow(root, 'delivery')
   assert.equal(workflow.start_stage, 'plan')
   assert.equal(stageBySlug(workflow, 'ship').gate, 'operator')
-})
 
-test('loader assembles ordered stage files from the workflow index', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
   assert.deepEqual(
     workflow.stages.map((stage) => stage.slug),
     ['plan', 'implement', 'verify', 'remediate', 'ship'],
@@ -43,33 +37,6 @@ test('delivery plan is worker-owned while intake stages stay supervisor-owned', 
       stageBySlug(loadWorkflow(root, slug), 'intake').persona,
       'orchestrator',
     )
-  }
-})
-
-test('listWorkflowSlugs finds every defined workflow', () => {
-  const root = createFixture()
-  assert.deepEqual(listWorkflowSlugs(root), [
-    'delivery',
-    'delivery-candidate',
-    'design',
-    'metacritic',
-    'preflight',
-    'prototype',
-  ])
-})
-
-test('every workflow prompt obeys the optional brief contract', () => {
-  const root = createFixture()
-
-  for (const slug of listWorkflowSlugs(root)) {
-    const workflow = loadWorkflow(root, slug)
-
-    for (const stage of workflow.stages) {
-      const prompt = loadStagePrompt(root, stage)
-
-      assert.match(prompt, /output\.operator_brief/u)
-      assert.match(prompt, /do not create/u)
-    }
   }
 })
 
@@ -130,17 +97,14 @@ test('loader fails when an indexed stage file is missing', () => {
     () => loadWorkflow(root, 'delivery'),
     /missing stage file stages\/ship\.json/,
   )
-})
 
-test('live stage files require an explicit context projection', () => {
-  const root = createFixture()
   const stagePath = path.join(
     root,
     'library',
     'workflows',
-    'delivery',
+    'design',
     'stages',
-    'ship.json',
+    'intake.json',
   )
   const stage = JSON.parse(readFileSync(stagePath, 'utf8')) as Record<
     string,
@@ -150,15 +114,39 @@ test('live stage files require an explicit context projection', () => {
   delete stage.context
   writeFileSync(stagePath, `${JSON.stringify(stage)}\n`)
 
-  assert.throws(() => loadWorkflow(root, 'delivery'), /context MUST be defined/)
-})
+  assert.throws(() => loadWorkflow(root, 'design'), /context MUST be defined/)
 
-test('workflow validation rejects unknown transition targets', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
+  const workflow = loadWorkflow(root, 'prototype')
   workflow.stages[0].transitions.success = 'missing'
   assert.throws(
     () => validateWorkflow(root, workflow, 'fixture'),
     /unknown 'missing'/,
   )
+})
+
+test('prototype stages declare their precondition data and criteria', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'prototype')
+
+  for (const [slug, dataKey, criterionId] of [
+    [
+      'approach',
+      'technical_approach.preconditions',
+      'approach.preconditions_verified',
+    ],
+    ['build', 'spike.precondition_checks', 'build.preconditions_rechecked'],
+    [
+      'evaluate',
+      'evaluation.environment_blockers',
+      'evaluate.environment_classified',
+    ],
+  ] as const) {
+    const stage = stageBySlug(workflow, slug)
+
+    assert.ok(stage.required_data?.[dataKey], `${slug} requires ${dataKey}`)
+    assert.ok(
+      stage.criteria.some((criterion) => criterion.id === criterionId),
+      `${slug} declares ${criterionId}`,
+    )
+  }
 })

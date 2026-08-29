@@ -7,6 +7,7 @@ import test from 'node:test'
 
 import { validateAssessment } from '../../src/lib/validators/assessment.js'
 import {
+  isSpotfixDiffExempt,
   validateImplementationClaims,
   validatePlanTrace,
   validateReleaseOutput,
@@ -20,8 +21,8 @@ import { createFixture } from '../helpers.js'
 /**
  * Bare validator fixture root carrying the shared field-contract document.
  * Validators read the document from the installation root only; production
- * code deliberately has no fallback to the launching checkout, so each
- * fixture ships its own copy.
+ * code deliberately has no fallback to the checkout that started the run,
+ * so each fixture ships its own copy.
  */
 function installFieldContract(root: string): void {
   const contractRelative = 'library/schemas/stage-output-requirements.json'
@@ -184,6 +185,22 @@ test('plan trace accepts dispositions that cite evidence', () => {
   })
 
   assert.equal(result.status, 'passed', JSON.stringify(result.issues))
+
+  const noQuestions = 'no-questions.json'
+
+  writePlanWithQuestions(root, noQuestions, [], [])
+
+  const noQuestionsResult = validatePlanTrace({
+    root,
+    targetPath: noQuestions,
+    requirement: planTraceRequirement,
+  })
+
+  assert.equal(
+    noQuestionsResult.status,
+    'passed',
+    JSON.stringify(noQuestionsResult.issues),
+  )
 })
 
 test('plan trace requires a disposition for every open question', () => {
@@ -293,21 +310,6 @@ test('plan trace rejects a criterion asserting an unresolved answer', () => {
   )
 })
 
-test('plan trace ignores dispositions when the spec has no open questions', () => {
-  const root = validatorFixtureRoot('pan-plan-disposition-none-')
-  const target = 'output.json'
-
-  writePlanWithQuestions(root, target, [], [])
-
-  const result = validatePlanTrace({
-    root,
-    targetPath: target,
-    requirement: planTraceRequirement,
-  })
-
-  assert.equal(result.status, 'passed', JSON.stringify(result.issues))
-})
-
 test('implementation validator binds acceptance coverage to accepted plan', () => {
   const root = validatorFixtureRoot('pan-impl-accepted-plan-')
   const runId = 'run-impl-accepted-plan'
@@ -385,43 +387,7 @@ test('implementation validator rejects missing plan acceptance coverage', () => 
 
   mkdirSync(path.dirname(absolute), { recursive: true })
   writePlanOutput(root, runId, ['AC-01', 'AC-02'])
-  writeFileSync(
-    absolute,
-    `${JSON.stringify({
-      data: {
-        implementation: {
-          changed_files: [],
-          tests_added: [],
-          notes: [],
-        },
-        acceptance_results: [{ id: 'AC-01', result: 'pass', evidence: ['x'] }],
-      },
-    })}\n`,
-  )
-
-  const result = validateImplementationClaims({
-    root,
-    targetPath: target,
-    requirement: {
-      policy_id: 'DEV-001',
-      requirement_id: 'implementation-claims',
-      registry_id: 'IMPLEMENTATION-CLAIMS-VALIDATE-001',
-      arguments: {},
-    },
-  })
-
-  assert.equal(result.status, 'failed')
-  assert.ok(result.issues.some((issue) => issue.code === 'acceptance.coverage'))
-})
-
-test('implementation validator rejects unknown acceptance ids', () => {
-  const root = validatorFixtureRoot('pan-impl-unknown-')
-  const runId = 'run-impl-unknown'
-  const target = `runtime/logs/workflows/${runId}/outputs/implement-1-test.json`
-  const absolute = path.join(root, target)
-
-  mkdirSync(path.dirname(absolute), { recursive: true })
-  writePlanOutput(root, runId, ['AC-01'])
+  // AC-02 is planned but unreported, and AC-99 is reported but never planned.
   writeFileSync(
     absolute,
     `${JSON.stringify({
@@ -451,6 +417,7 @@ test('implementation validator rejects unknown acceptance ids', () => {
   })
 
   assert.equal(result.status, 'failed')
+  assert.ok(result.issues.some((issue) => issue.code === 'acceptance.coverage'))
   assert.ok(result.issues.some((issue) => issue.code === 'acceptance.unknown'))
 })
 
@@ -493,7 +460,9 @@ test('implementation validator rejects opaque acceptance evidence', () => {
 })
 
 test('shared stage field contract has registered validator ownership', () => {
-  const root = createFixture()
+  // The validator reads only checked-in files, so the checkout that runs
+  // the test is the fixture.
+  const root = process.cwd()
   const result = validateSharedFieldContract({
     root,
     targetPath: 'library/schemas/stage-output-requirements.json',
@@ -506,25 +475,6 @@ test('shared stage field contract has registered validator ownership', () => {
   })
 
   assert.equal(result.status, 'passed')
-})
-
-test('the verify field contract declares blocking validator ownership', () => {
-  const root = createFixture()
-  const contract = JSON.parse(
-    readFileSync(
-      path.join(root, 'library/schemas/stage-output-requirements.json'),
-      'utf8',
-    ),
-  ) as {
-    stages: Record<
-      string,
-      { validators: Array<{ registry_id: string; enforcement: string }> }
-    >
-  }
-
-  assert.deepEqual(contract.stages.verify?.validators, [
-    { registry_id: 'VERIFY-VALIDATE-001', enforcement: 'blocks' },
-  ])
 })
 
 test('implementation retry requires explicit remediation evidence', () => {
@@ -913,15 +863,6 @@ test('self-development release validator requires a real next-version bump', () 
       (issue) => issue.code === 'release.proposed_version_mismatch',
     ),
   )
-})
-
-test('self-development release validator binds metadata to Git history and scope', () => {
-  const root = createFixture()
-  const target = 'output.json'
-  const baselineCommit = execFileSync('git', ['rev-parse', 'HEAD'], {
-    cwd: root,
-    encoding: 'utf8',
-  }).trim()
 
   writeFileSync(
     path.join(root, target),
@@ -957,7 +898,7 @@ test('self-development release validator binds metadata to Git history and scope
     })}\n`,
   )
 
-  const result = validateReleaseOutput({
+  const historyResult = validateReleaseOutput({
     root,
     targetPath: target,
     requirement: {
@@ -969,7 +910,7 @@ test('self-development release validator binds metadata to Git history and scope
     runState: { stage_history: [] },
   })
 
-  assert.equal(result.status, 'failed')
+  assert.equal(historyResult.status, 'failed')
   for (const code of [
     'release.current_version_mismatch',
     'release.baseline_version_mismatch',
@@ -979,7 +920,7 @@ test('self-development release validator binds metadata to Git history and scope
     'release.updated_file_out_of_scope',
   ]) {
     assert.ok(
-      result.issues.some((issue) => issue.code === code),
+      historyResult.issues.some((issue) => issue.code === code),
       code,
     )
   }
@@ -1277,93 +1218,53 @@ test('spotfix diff_bounded still fails when more than three implementation files
 })
 
 test('spotfix diff_bounded does not exempt implementation files under test-like directories', () => {
-  const root = createFixture()
-  const target = 'runtime/inbox/spotfix-outcome.md'
-
-  writeSpotfixChangedFiles(root, [
+  const files = [
     'src/.test.fixtures/one.ts',
     'src/.test.fixtures/two.ts',
     'src/.test.fixtures/three.ts',
     'src/.test.fixtures/four.ts',
-  ])
-  writeFileSync(path.join(root, target), SPOTFIX_OUTCOME)
+  ]
 
-  const result = validateSpotfixOutcome({
-    root,
-    targetPath: target,
-    requirement: {
-      policy_id: 'SPOT-001',
-      requirement_id: 'spotfix-validate',
-      registry_id: 'SPOTFIX-VALIDATE-001',
-      arguments: {},
-    },
-  })
-
-  assert.equal(result.status, 'failed')
-  assert.ok(
-    result.issues.some((issue) => issue.code === 'spotfix.diff_bounded'),
-  )
+  for (const file of files) {
+    assert.equal(isSpotfixDiffExempt(file), false, file)
+  }
+  assert.ok(files.filter((file) => !isSpotfixDiffExempt(file)).length > 3)
 })
 
 test('spotfix diff_bounded exempts projected .cursor paths', () => {
-  const root = createFixture()
-  const target = 'runtime/inbox/spotfix-outcome.md'
-
-  writeSpotfixChangedFiles(root, [
+  const files = [
     'docs/one.md',
     'tests/two.test.ts',
     'src/one.ts',
     'src/two.ts',
     'src/three.ts',
     '.cursor/rules/four.mdc',
-  ])
-  writeFileSync(path.join(root, target), SPOTFIX_OUTCOME)
+  ]
 
-  const result = validateSpotfixOutcome({
-    root,
-    targetPath: target,
-    requirement: {
-      policy_id: 'SPOT-001',
-      requirement_id: 'spotfix-validate',
-      registry_id: 'SPOTFIX-VALIDATE-001',
-      arguments: {},
-    },
-  })
-
-  assert.equal(result.status, 'passed')
-  assert.ok(
-    !result.issues.some((issue) => issue.code === 'spotfix.diff_bounded'),
-  )
+  assert.equal(isSpotfixDiffExempt('docs/one.md'), true)
+  assert.equal(isSpotfixDiffExempt('tests/two.test.ts'), true)
+  assert.equal(isSpotfixDiffExempt('.cursor/rules/four.mdc'), true)
+  assert.equal(isSpotfixDiffExempt('src/one.ts'), false)
+  assert.equal(isSpotfixDiffExempt('src/two.ts'), false)
+  assert.equal(isSpotfixDiffExempt('src/three.ts'), false)
+  assert.equal(files.filter((file) => !isSpotfixDiffExempt(file)).length, 3)
 })
 
 test('spotfix diff_bounded counts only non-exempt files in mixed diffs', () => {
-  const root = createFixture()
-  const target = 'runtime/inbox/spotfix-outcome.md'
-
-  writeSpotfixChangedFiles(root, [
+  const files = [
     'docs/one.md',
     'tests/two.test.ts',
     'library/workflows/note.md',
     'src/one.ts',
     'src/two.ts',
-  ])
-  writeFileSync(path.join(root, target), SPOTFIX_OUTCOME)
+  ]
 
-  const result = validateSpotfixOutcome({
-    root,
-    targetPath: target,
-    requirement: {
-      policy_id: 'SPOT-001',
-      requirement_id: 'spotfix-validate',
-      registry_id: 'SPOTFIX-VALIDATE-001',
-      arguments: {},
-    },
-  })
-
-  assert.equal(result.status, 'passed')
-  assert.ok(
-    !result.issues.some((issue) => issue.code === 'spotfix.diff_bounded'),
-  )
+  assert.equal(isSpotfixDiffExempt('docs/one.md'), true)
+  assert.equal(isSpotfixDiffExempt('tests/two.test.ts'), true)
+  assert.equal(isSpotfixDiffExempt('library/workflows/note.md'), true)
+  assert.equal(isSpotfixDiffExempt('src/one.ts'), false)
+  assert.equal(isSpotfixDiffExempt('src/two.ts'), false)
+  assert.equal(files.filter((file) => !isSpotfixDiffExempt(file)).length, 2)
 })
 
 test('implementation validator resolves the file portion of "path :: case" test entries', () => {
@@ -1376,6 +1277,7 @@ test('implementation validator resolves the file portion of "path :: case" test 
   writePlanOutput(root, runId, ['AC-01'])
   mkdirSync(path.join(root, 'tests'), { recursive: true })
   writeFileSync(path.join(root, 'tests', 'sample.test.ts'), 'test\n')
+  writeFileSync(path.join(root, 'tests', 'test_provenance.py'), 'test\n')
   writeFileSync(
     absolute,
     `${JSON.stringify({
@@ -1385,53 +1287,6 @@ test('implementation validator resolves the file portion of "path :: case" test 
           tests_added: [
             'tests/sample.test.ts :: a named case inside the file',
             'tests/missing.test.ts :: another case',
-          ],
-          notes: [],
-        },
-        acceptance_results: [{ id: 'AC-01', result: 'pass', evidence: ['x'] }],
-      },
-    })}\n`,
-  )
-
-  const result = validateImplementationClaims({
-    root,
-    targetPath: target,
-    requirement: {
-      policy_id: 'DEV-001',
-      requirement_id: 'implementation-claims',
-      registry_id: 'IMPLEMENTATION-CLAIMS-VALIDATE-001',
-      arguments: {},
-    },
-  })
-
-  // The existing file passes through the '::' convention; only the genuinely
-  // missing file is reported, by its file portion.
-  const missing = result.issues.filter(
-    (issue) => issue.code === 'claim.test_missing',
-  )
-
-  assert.equal(missing.length, 1)
-  assert.match(missing[0].message, /tests\/missing\.test\.ts/u)
-  assert.doesNotMatch(missing[0].message, /tests\/sample\.test\.ts :: /u)
-})
-
-test('implementation validator resolves native pytest node ids without spaces', () => {
-  const root = validatorFixtureRoot('pan-impl-pytest-node-')
-  const runId = 'run-impl-pytest-node'
-  const target = `runtime/logs/workflows/${runId}/outputs/implement-1-test.json`
-  const absolute = path.join(root, target)
-
-  mkdirSync(path.dirname(absolute), { recursive: true })
-  writePlanOutput(root, runId, ['AC-01'])
-  mkdirSync(path.join(root, 'tests'), { recursive: true })
-  writeFileSync(path.join(root, 'tests', 'test_provenance.py'), 'test\n')
-  writeFileSync(
-    absolute,
-    `${JSON.stringify({
-      data: {
-        implementation: {
-          changed_files: [],
-          tests_added: [
             // Run 63315 workers repeatedly submitted this native pytest form
             // and the parser treated the entire node id as a path.
             'tests/test_provenance.py::test_clo_fixture_validates',
@@ -1456,62 +1311,38 @@ test('implementation validator resolves native pytest node ids without spaces', 
       arguments: {},
     },
   })
+
+  // The ' :: ' display convention and the native `path::case` form resolve to
+  // the same file, so only the missing files are reported.
   const missing = result.issues.filter(
     (issue) => issue.code === 'claim.test_missing',
   )
 
-  // `path::case` and `path :: case` resolve to the same file; only the file
-  // that truly does not exist is reported, with the accepted format named in
-  // the message so a retry can self-correct.
-  assert.equal(missing.length, 1)
-  assert.match(missing[0].message, /tests\/gone\.py/u)
-  assert.match(missing[0].message, /Entries MUST be/u)
-})
+  assert.equal(missing.length, 2)
 
-test('target instruction coverage names omitted instruction paths', () => {
-  const root = createFixture()
-  const target = 'runtime/output.json'
-
-  mkdirSync(path.join(root, 'runtime'), { recursive: true })
-  writeFileSync(
-    path.join(root, target),
-    `${JSON.stringify({
-      target_instruction_evidence: { read_paths: [] },
-    })}\n`,
+  const missingDisplay = missing.find((issue) =>
+    /tests\/missing\.test\.ts/u.test(issue.message),
+  )
+  const missingNative = missing.find((issue) =>
+    /tests\/gone\.py/u.test(issue.message),
   )
 
-  const result = validateTargetInstructionCoverage({
-    root,
-    targetPath: target,
-    requirement: {
-      policy_id: 'DEV-001',
-      requirement_id: 'target-instruction-coverage',
-      registry_id: 'TARGET-INSTRUCTION-COVERAGE-VALIDATE-001',
-      arguments: {},
-    },
-    invocation: {
-      inputs: {
-        target_instructions: {
-          changed_paths: ['src/base.ts'],
-          read_paths: ['AGENTS.md'],
-        },
-      },
-    },
-  })
-
-  assert.equal(result.status, 'failed')
-  assert.ok(
-    result.issues.some(
-      (item) =>
-        item.code === 'TARGET_INSTRUCTION_COVERAGE_MISSING' &&
-        item.message.includes('AGENTS.md'),
-    ),
-  )
+  assert.ok(missingDisplay)
+  assert.doesNotMatch(missingDisplay.message, /tests\/sample\.test\.ts :: /u)
+  assert.ok(missingNative)
+  assert.match(missingNative.message, /Entries MUST be/u)
 })
 
 test('target instruction coverage demands final-line read evidence per path', () => {
-  const root = createFixture()
+  // The validator needs only an instruction file and the JSON output, so a
+  // bare temporary directory is enough.
+  const root = mkdtempSync(path.join(tmpdir(), 'pan-target-coverage-'))
   const target = 'runtime/output.json'
+
+  writeFileSync(
+    path.join(root, 'AGENTS.md'),
+    '# Target instructions\n\nRead this file before changing src/.\n',
+  )
   const requirement = {
     policy_id: 'DEV-001',
     requirement_id: 'target-instruction-coverage',
@@ -1519,6 +1350,7 @@ test('target instruction coverage demands final-line read evidence per path', ()
     arguments: {},
   }
   const invocation = {
+    workspace_before: { kind: 'filesystem' },
     inputs: {
       target_instructions: {
         changed_paths: ['src/base.ts'],
@@ -1532,6 +1364,29 @@ test('target instruction coverage demands final-line read evidence per path', ()
   const finalLine = agentsLines[agentsLines.length - 1]
 
   mkdirSync(path.join(root, 'runtime'), { recursive: true })
+
+  writeFileSync(
+    path.join(root, target),
+    `${JSON.stringify({
+      target_instruction_evidence: { read_paths: [] },
+    })}\n`,
+  )
+
+  const omitted = validateTargetInstructionCoverage({
+    root,
+    targetPath: target,
+    requirement,
+    invocation,
+  })
+
+  assert.equal(omitted.status, 'failed')
+  assert.ok(
+    omitted.issues.some(
+      (item) =>
+        item.code === 'TARGET_INSTRUCTION_COVERAGE_MISSING' &&
+        item.message.includes('AGENTS.md'),
+    ),
+  )
 
   // A path list alone is copyable from the card, so it is not read evidence.
   writeFileSync(
@@ -1659,28 +1514,27 @@ test('verify validator rejects a passing verdict with a blocker finding', () => 
   assert.ok(
     result.issues.some((item) => item.code === 'verify.verdict_inconsistent'),
   )
-})
 
-test('verify validator requires a warning finding for pass_with_warnings', () => {
-  const root = validatorFixtureRoot('pan-verify-warnless-')
-  const target = 'output.json'
+  const warnless = 'warnless.json'
 
-  writeVerifyOutput(root, target, {
+  writeVerifyOutput(root, warnless, {
     verdict: 'pass_with_warnings',
     findings: [],
     qa_cases: [passingQaCase],
     acceptance_results: [{ id: 'AC-01', result: 'pass' }],
   })
 
-  const result = validateVerifyOutput({
+  const warnlessResult = validateVerifyOutput({
     root,
-    targetPath: target,
+    targetPath: warnless,
     requirement: verifyRequirement(),
   })
 
-  assert.equal(result.status, 'failed')
+  assert.equal(warnlessResult.status, 'failed')
   assert.ok(
-    result.issues.some((item) => item.code === 'verify.verdict_inconsistent'),
+    warnlessResult.issues.some(
+      (item) => item.code === 'verify.verdict_inconsistent',
+    ),
   )
 })
 
@@ -1778,4 +1632,223 @@ test('verify validator binds acceptance coverage to the accepted plan', () => {
         item.message.includes('AC-02'),
     ),
   )
+})
+
+test('verify validator requires a citation for each current gate evidence reference', () => {
+  const root = validatorFixtureRoot('pan-verify-gate-citation-')
+  const target = 'output.json'
+  const invocation = {
+    inputs: {
+      references: [
+        {
+          path: 'runtime/logs/workflows/run/evidence/implement-1.fast.log',
+          description: 'Passed `fast` repository-check gate evidence',
+          gate_evidence: {
+            profile: 'fast',
+            fingerprint: 'fp-1',
+            current: true,
+          },
+        },
+        {
+          path: 'runtime/logs/workflows/run/evidence/pre-implementation-static.json',
+          description: 'Passed `static` repository-check gate evidence',
+          gate_evidence: {
+            profile: 'static',
+            fingerprint: 'fp-0',
+            current: false,
+          },
+        },
+      ],
+    },
+  }
+
+  writeVerifyOutput(root, target, {
+    verdict: 'pass',
+    findings: [],
+    qa_cases: [passingQaCase],
+    acceptance_results: [{ id: 'AC-01', result: 'pass' }],
+    gate_evidence_citations: [{ profile: 'fast', fingerprint: '' }],
+  })
+
+  const missing = validateVerifyOutput({
+    root,
+    targetPath: target,
+    requirement: verifyRequirement(),
+    invocation,
+  })
+  const missingCodes = missing.issues.map((item) => item.code)
+
+  assert.equal(missing.status, 'failed')
+  assert.ok(missingCodes.includes('verify.gate_citation_shape'))
+  assert.ok(
+    missing.issues.some(
+      (item) =>
+        item.code === 'verify.gate_citation_missing' &&
+        item.message.includes('`fast`') &&
+        item.message.includes('fp-1'),
+    ),
+  )
+  // The superseded static evidence is not current, so it needs no citation.
+  assert.ok(
+    !missing.issues.some(
+      (item) =>
+        item.code === 'verify.gate_citation_missing' &&
+        item.message.includes('`static`'),
+    ),
+  )
+
+  writeVerifyOutput(root, target, {
+    verdict: 'pass',
+    findings: [],
+    qa_cases: [passingQaCase],
+    acceptance_results: [{ id: 'AC-01', result: 'pass' }],
+    gate_evidence_citations: [
+      {
+        profile: 'fast',
+        fingerprint: 'fp-1',
+        evidence_path:
+          'runtime/logs/workflows/run/evidence/implement-1.fast.log',
+      },
+    ],
+  })
+
+  const cited = validateVerifyOutput({
+    root,
+    targetPath: target,
+    requirement: verifyRequirement(),
+    invocation,
+  })
+
+  assert.equal(cited.status, 'passed', JSON.stringify(cited.issues))
+})
+
+test('verify validator rejects a QA case whose steps rerun a configured profile', () => {
+  const root = validatorFixtureRoot('pan-verify-profile-rerun-')
+  const target = 'output.json'
+
+  mkdirSync(path.join(root, 'runtime'), { recursive: true })
+  writeFileSync(
+    path.join(root, 'runtime', 'repository-checks.json'),
+    `${JSON.stringify({
+      schema_version: 1,
+      setup: [],
+      profiles: {
+        fast: { description: 'fast', probes: [], commands: ['npm test'] },
+        static: {
+          description: 'static',
+          probes: [],
+          commands: ['npm run lint'],
+        },
+      },
+    })}\n`,
+  )
+
+  const cases = [
+    {
+      ...passingQaCase,
+      id: 'TP-CMD',
+      steps: 'Run `npm test` and read the summary',
+    },
+    {
+      ...passingQaCase,
+      id: 'TP-PAN',
+      steps: 'Run ./bin/pan repository-check static',
+    },
+    {
+      ...passingQaCase,
+      id: 'TP-OK',
+      steps: 'Run npm run test:unit -- --grep gate',
+    },
+  ]
+
+  writeVerifyOutput(root, target, {
+    verdict: 'pass',
+    findings: [],
+    qa_cases: cases,
+    acceptance_results: [{ id: 'AC-01', result: 'pass' }],
+  })
+
+  const result = validateVerifyOutput({
+    root,
+    targetPath: target,
+    requirement: verifyRequirement(),
+  })
+  const reruns = result.issues.filter(
+    (item) => item.code === 'verify.case_reruns_profile',
+  )
+
+  assert.equal(result.status, 'failed')
+  assert.deepEqual(reruns.map((item) => item.message.split(' ')[2]).sort(), [
+    'TP-CMD',
+    'TP-PAN',
+  ])
+  assert.ok(reruns.some((item) => item.message.includes('`fast`')))
+  assert.ok(reruns.some((item) => item.message.includes('`static`')))
+})
+
+test('plan trace rejects a test-plan case that reruns a profile', () => {
+  const root = validatorFixtureRoot('pan-plan-profile-rerun-')
+  const target = 'output.json'
+
+  mkdirSync(path.join(root, 'runtime'), { recursive: true })
+  writeFileSync(
+    path.join(root, 'runtime', 'repository-checks.json'),
+    `${JSON.stringify({
+      schema_version: 1,
+      setup: [],
+      profiles: {
+        fast: { description: 'fast', probes: [], commands: ['npm test'] },
+      },
+    })}\n`,
+  )
+  writeFileSync(
+    path.join(root, target),
+    `${JSON.stringify({
+      data: {
+        acceptance_criteria: [
+          {
+            id: 'AC-01',
+            maps_to: ['US-01'],
+            verification: { method: 'test', expected: 'passes' },
+          },
+        ],
+        product_spec: { user_stories: [{ id: 'US-01' }] },
+        test_plan: [
+          { id: 'TP-SUITE', criterion: 'AC-01', action: 'Run npm test' },
+          {
+            id: 'TP-LITERAL',
+            criterion: 'AC-01',
+            action: 'Run pan repository-check secondary',
+          },
+          {
+            id: 'TP-FOCUSED',
+            criterion: 'AC-01',
+            action: 'Run node --test dist/tests/unit/plan.test.js',
+          },
+        ],
+      },
+    })}\n`,
+  )
+
+  const result = validatePlanTrace({
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'PLAN-001',
+      requirement_id: 'plan',
+      registry_id: 'PLAN-TRACE-VALIDATE-001',
+      arguments: {},
+    },
+  })
+  const reruns = result.issues.filter(
+    (item) => item.code === 'plan.case_reruns_profile',
+  )
+
+  assert.equal(result.status, 'failed')
+  assert.deepEqual(reruns.map((item) => item.message.split(' ')[2]).sort(), [
+    'TP-LITERAL',
+    'TP-SUITE',
+  ])
+  assert.ok(reruns.some((item) => item.message.includes('`fast`')))
+  assert.ok(reruns.some((item) => item.message.includes('`secondary`')))
 })

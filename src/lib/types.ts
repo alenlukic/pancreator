@@ -142,6 +142,11 @@ export interface StageContextDefinition {
   prior_attempts?: number
   operator_feedback?: number
   include_workspace_ratifications?: boolean
+  /**
+   * Include passed gate evidence so a worker cites the gate and does not run
+   * the profile again.
+   */
+  gate_evidence?: boolean
   legacy_full_history?: boolean
 }
 
@@ -596,9 +601,8 @@ export interface WorkspaceChangeAttribution {
 export interface TargetInstructionRead {
   path: string
   /**
-   * Verbatim last non-empty line of the file. The card lists only the paths,
-   * so quoting the closing line is evidence the worker opened the file — a
-   * self-declared path list proves nothing.
+   * Verbatim last content line of the file. Skip empty lines and Markdown
+   * divider lines.
    */
   final_line: string
 }
@@ -666,10 +670,8 @@ export interface GuidanceAttestationEntry {
   content_sha256: string
   status: GuidanceAttestationStatus
   /**
-   * Verbatim last non-empty line of the selected guidance content. Required
-   * when status is `read`: the line is not printed on the card, so quoting it
-   * is evidence the worker actually held the selection, unlike a digest echo
-   * that can be copied from the card itself.
+   * Verbatim last content line of the selected guidance content. Skip empty
+   * lines and Markdown divider lines. Required when status is `read`.
    */
   final_line?: string
   /** Why the read trigger did not apply. Required when status is skipped. */
@@ -712,6 +714,17 @@ export type InvocationAttestation =
       error: string
     }
 
+/**
+ * OPERATOR-001: a platform instruction that conflicts with an operator
+ * directive, harness governance, or the persona brief, and the authority the
+ * agent followed.
+ */
+export interface PlatformGuidanceConflict {
+  guidance: string
+  covered_step: string
+  authority_followed: string
+}
+
 export interface StageOutput {
   $operator?: {
     headline: string
@@ -726,6 +739,7 @@ export interface StageOutput {
   criteria: CriterionEvaluation[]
   risks: string[]
   unknowns: string[]
+  platform_guidance_conflicts?: PlatformGuidanceConflict[]
   workspace_changes?: WorkspaceChangeAttribution
   target_instruction_evidence?: TargetInstructionEvidence
   invocation_attestation?: InvocationAttestation
@@ -765,6 +779,15 @@ export interface InvocationReference {
   description: string
   retrieval?: InvocationReferenceRetrieval
   condition?: string
+  /**
+   * `current` is true when the evidence matches the invocation workspace
+   * fingerprint. The verify validator needs one citation per current entry.
+   */
+  gate_evidence?: {
+    profile: string
+    fingerprint: string
+    current: boolean
+  }
 }
 
 export interface Invocation {
@@ -1046,6 +1069,11 @@ export interface DeterministicResult {
    * workflow-declared repository-check profile.
    */
   verification_level?: string
+  /**
+   * Set when the gate accepted a cached clean pass and did not run the
+   * command.
+   */
+  cached?: boolean
   explanation?: string
   command?: string
   exit_code?: number | null
@@ -1209,6 +1237,18 @@ export interface OperatorFeedbackItem {
   timestamp: string
 }
 
+/**
+ * A non-blocking observation about this run. An advisory never stops the run.
+ */
+export interface RunAdvisory {
+  kind: 'model_evidence' | 'pipeline_config' | 'platform_guidance'
+  source: 'prepare' | 'probe' | 'submit' | 'supervisor_evidence'
+  stage?: string
+  invocation_id?: string
+  message: string
+  recorded_at: string
+}
+
 export interface RunModelEvidence {
   role: 'supervisor' | 'worker'
   invocation_id?: string
@@ -1361,6 +1401,8 @@ export interface RunState {
   stage_history: StageHistoryItem[]
   operator_feedback?: OperatorFeedbackItem[]
   model_evidence?: RunModelEvidence[]
+  /** Non-blocking observations recorded during this run, newest last. */
+  advisories?: RunAdvisory[]
   revision: number
   created_at: string
   updated_at: string

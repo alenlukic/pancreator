@@ -29,6 +29,7 @@ export type InvocationKind =
   | 'standalone'
   | 'pair'
   | 'shepherd'
+  | 'review'
   | 'best_of_n'
 
 export interface RequirementContext {

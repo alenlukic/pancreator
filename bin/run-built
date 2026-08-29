@@ -87,12 +87,20 @@ fi
 
 read -r root_key _ <<<"$(printf '%s' "$ROOT" | cksum)"
 BUILD_LOCK="${TMPDIR:-/tmp}/pancreator-build-${root_key}.lock"
+DIST_READERS="${TMPDIR:-/tmp}/pancreator-build-${root_key}.readers"
 
+# The lock serializes builds only. Release it before the wrapped command runs.
 acquire_lock
 run_build
+release_lock
+trap - EXIT HUP INT TERM
 
 if [[ "$mode" == 'run' ]]; then
+  # The wrapped command loads dist lazily, and a later build deletes dist.
+  # Register this process as a live reader so bin/build waits for it. exec
+  # keeps the pid, so the file names the wrapped command itself.
+  mkdir -p "$DIST_READERS"
+  printf '%s\n' "$*" >"$DIST_READERS/$$" 2>/dev/null || true
   export PANCREATOR_BUILD_READY="$ROOT"
-  "$@"
-  exit 0
+  exec "$@"
 fi

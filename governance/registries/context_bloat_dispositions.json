@@ -12,7 +12,7 @@
       "rationale": "The installer runs before the TypeScript payload exists. It needs the same token renderer without importing compiled code.",
       "evidence": [
         "tests/unit/projection.test.ts: installer and compiled projection renderers stay byte-identical",
-        "tests/integration/embedded-installation.test.ts: embedded installation projection coverage"
+        "tests/secondary/embedded-installation.test.ts: embedded installation projection coverage"
       ]
     },
     {
@@ -51,7 +51,9 @@
       ],
       "disposition": "retain",
       "rationale": "Each independently invoked entry command must prevent nested supervision before it adopts the shared supervisor persona.",
-      "evidence": ["tests/regression/supervisor-entry-point-contract.test.ts"]
+      "evidence": [
+        "tests/regression/supervisor-delegation-contract.test.ts: entry commands and always-applied rules share the supervisor invariants"
+      ]
     },
     {
       "id": "installation-bootstrap-invariants",
@@ -64,7 +66,7 @@
       "rationale": "Only one installation-specific bootstrap rule is projected. Both variants must retain the same supervisor and retrieval invariants.",
       "evidence": [
         "tests/unit/projection.test.ts: self-development and embedded projection coverage",
-        "tests/integration/embedded-installation.test.ts: embedded rule projection"
+        "tests/secondary/embedded-installation.test.ts: embedded rule projection"
       ]
     },
     {

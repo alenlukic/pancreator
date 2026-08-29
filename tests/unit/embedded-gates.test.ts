@@ -4,10 +4,17 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { createFixture } from '../helpers.js'
-import { evaluateDeterministicCriteria } from '../../src/lib/validation.js'
+import {
+  evaluateDeterministicCriteria,
+  resolveShellCheck,
+} from '../../src/lib/validation.js'
 import { resolveRoots } from '../../src/lib/workspace/roots.js'
 import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
-import type { RunState, StageDefinition } from '../../src/lib/types.js'
+import type {
+  Criterion,
+  RunState,
+  StageDefinition,
+} from '../../src/lib/types.js'
 
 function configureEmbeddedFixture(root: string): void {
   const projectPath = path.join(root, 'config.json')
@@ -117,38 +124,23 @@ test('embedded legacy standalone coverage gates are removed, not passed', () => 
 
   configureEmbeddedFixture(root)
 
-  const { state, workspaceBefore, runDirectory } = fixtureState(root)
-  const stage: StageDefinition = {
-    slug: 'test',
-    title: 'Quality assurance',
-    persona: 'qa-tester',
-    workspace_policy: 'read_only',
-    gate: 'stage_verdict',
-    context: { request: 'omit' },
-    criteria: [
-      {
-        id: 'test.coverage',
-        type: 'shell',
-        hard: true,
-        statement: 'Legacy coverage gate.',
-        command: 'npm run test:coverage',
-      },
-    ],
-    transitions: { success: 'ship', failure: 'implement', blocked: 'paused' },
+  const criterion: Criterion = {
+    id: 'test.coverage',
+    type: 'shell',
+    hard: true,
+    statement: 'Legacy coverage gate.',
+    command: 'npm run test:coverage',
   }
-
-  const evaluated = evaluateDeterministicCriteria(
+  const resolution = resolveShellCheck(
     root,
-    runDirectory,
-    state,
-    stage,
-    workspaceBefore,
-    root,
+    criterion,
+    'npm run test:coverage',
+    false,
   )
-  const result = evaluated.results.find((item) => item.id === 'test.coverage')
 
-  assert.ok(result)
-  assert.equal(result.disabled, true)
-  assert.equal(result.passed, false)
-  assert.match(result.explanation ?? '', /standalone coverage gate removed/u)
+  assert.equal(resolution.profile_name, null)
+  assert.match(
+    resolution.removed_reason ?? '',
+    /standalone coverage gate removed/u,
+  )
 })

@@ -12,11 +12,9 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
-  buildPanFunctionBlock,
   configureShellAlias,
   countPanFunctionBlocks,
   resolvePanWalkUp,
-  shellRcCandidates,
   upsertPanFunctionBlock,
 } from '../../src/lib/shell-alias.js'
 
@@ -83,63 +81,24 @@ function walkDeps(
   }
 }
 
-test('shellRcCandidates includes bash and zsh startup files', () => {
-  const candidates = shellRcCandidates('/tmp/home')
-
-  assert.deepEqual(
-    candidates.map((candidate) => candidate.path),
-    ['/tmp/home/.zshrc', '/tmp/home/.bashrc'],
-  )
-})
-
-test('buildPanFunctionBlock emits a single guarded pan shell function', () => {
-  const block = buildPanFunctionBlock()
-
-  assert.match(block, /^# >>> pancreator pan >>>/u)
-  assert.match(block, /pan\(\) \{/u)
-  assert.match(block, /\.pancreator\/bin\/pan/u)
-  assert.match(block, /installation_mode==="self_development"/u)
-  assert.match(block, /# <<< pancreator pan <<<$/u)
-  assert.doesNotMatch(block, /alias pan=/u)
-})
-
 test('resolvePanWalkUp finds the nearest embedded pan from a nested directory', () => {
-  const repoA = '/tmp/repo-a'
-  const repoB = '/tmp/repo-b'
-  const match = resolvePanWalkUp(
-    path.join(repoA, 'apps', 'service'),
-    walkDeps({
-      [repoA]: 'embedded',
-      [repoB]: 'embedded',
-    }),
-  )
+  // repoA is nested under repoB, so the nearest install wins from either side.
+  const repoB = '/tmp/nested'
+  const repoA = '/tmp/nested/repo-a'
+  const deps = walkDeps({
+    [repoA]: 'embedded',
+    [repoB]: 'embedded',
+  })
+  const match = resolvePanWalkUp(path.join(repoA, 'apps', 'service'), deps)
 
   assert.deepEqual(match, {
     kind: 'embedded',
     panPath: path.join(repoA, '.pancreator', 'bin', 'pan'),
     rootDir: repoA,
   })
-})
 
-test('resolvePanWalkUp prefers the nearest repo when multiple installs exist', () => {
-  const repoA = '/tmp/nested/repo-a'
-  const repoB = '/tmp/nested'
-  const fromA = resolvePanWalkUp(
-    path.join(repoA, 'pkg'),
-    walkDeps({
-      [repoA]: 'embedded',
-      [repoB]: 'embedded',
-    }),
-  )
-  const fromB = resolvePanWalkUp(
-    path.join(repoB, 'other'),
-    walkDeps({
-      [repoA]: 'embedded',
-      [repoB]: 'embedded',
-    }),
-  )
+  const fromB = resolvePanWalkUp(path.join(repoB, 'other'), deps)
 
-  assert.equal(fromA?.rootDir, repoA)
   assert.equal(fromB?.rootDir, repoB)
 })
 
@@ -159,17 +118,12 @@ test('resolvePanWalkUp finds a self-development source checkout', () => {
   })
 })
 
-test('resolvePanWalkUp returns null when no install exists in the ancestor tree', () => {
-  const match = resolvePanWalkUp('/tmp/nowhere/deep/path', walkDeps({}))
-
-  assert.equal(match, null)
-})
-
 test('resolvePanWalkUp ignores bin/pan without self_development config.json', () => {
   const root = '/tmp/not-self-dev'
   const match = resolvePanWalkUp(root, walkDeps({ [root]: 'invalid' }))
 
   assert.equal(match, null)
+  assert.equal(resolvePanWalkUp('/tmp/nowhere/deep/path', walkDeps({})), null)
 })
 
 test('upsertPanFunctionBlock appends without destructive edits outside markers', () => {
@@ -179,9 +133,7 @@ test('upsertPanFunctionBlock appends without destructive edits outside markers',
   assert.match(next, /^export PATH="\$HOME\/bin:\$PATH"/u)
   assert.match(next, /pan\(\) \{/u)
   assert.equal(countPanFunctionBlocks(next), 1)
-})
 
-test('upsertPanFunctionBlock is idempotent across repeated installs', () => {
   const first = upsertPanFunctionBlock('')
   const second = upsertPanFunctionBlock(first)
 

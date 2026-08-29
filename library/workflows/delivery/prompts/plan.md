@@ -39,7 +39,10 @@ states the question `id`, a `disposition` of `resolved`, `deferred`, or
 `escalated`, an `answer` naming the answer or the decision still required, and
 `evidence`, which is required and must be non-empty for a resolved question.
 Each test-plan entry states `id`, the acceptance criterion it verifies
-(`criterion`), `setup`, `action`, and `expected`. When `output.operator_brief`
+(`criterion`), `setup`, `action`, and `expected`. A test-plan case MUST NOT run
+a configured repository-check profile command or `pan repository-check
+<profile>`. The gates run those profiles, and the validator rejects such a case
+with `plan.case_reruns_profile`. When `output.operator_brief`
 exists, edit its declared source and reference the rendered HTML. Do not run
 the renderer. When the contract omits `output.operator_brief`, do not create a
 brief source or rendered stage HTML.

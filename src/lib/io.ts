@@ -349,14 +349,18 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
 
-/** Verbatim last non-empty line of a text, or '' when none exists. */
-export function lastNonEmptyLine(content: string): string {
+/**
+ * Verbatim last content line of a text, or '' when none exists. Skips empty
+ * lines and Markdown divider lines (`---`, `***`, `___`).
+ */
+export function lastEvidenceLine(content: string): string {
+  const divider = /^\s*(?:[-_*]\s*){3,}$/u
   const lines = content.split('\n')
 
   for (let index = lines.length - 1; index >= 0; index -= 1) {
     const line = lines[index]
 
-    if (line.trim().length > 0) {
+    if (line.trim().length > 0 && !divider.test(line)) {
       return line
     }
   }

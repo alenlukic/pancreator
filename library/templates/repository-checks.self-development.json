@@ -21,10 +21,19 @@
       "probes": ["node --version", "npm --version"],
       "commands": ["npm test"]
     },
-    "full": {
-      "description": "Run Pancreator's complete tests and configured coverage thresholds.",
+    "secondary": {
+      "description": "Run Pancreator's installer suites, which are outside the default lane.",
       "probes": ["node --version", "npm --version"],
-      "commands": ["npm test", "npm run test:coverage"]
+      "commands": ["npm run test:secondary"]
+    },
+    "full": {
+      "description": "Run complete documented verification: the aggregate lint/build/validate check, coverage thresholds, and the deterministic installer smoke harness. The coverage run executes every test lane once, so no lane runs twice.",
+      "probes": ["node --version", "npm --version"],
+      "commands": [
+        "npm run check",
+        "npm run test:coverage",
+        "./bin/install --smoke"
+      ]
     }
   }
 }

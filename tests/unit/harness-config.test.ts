@@ -43,24 +43,23 @@ function useLegacyConfigName(root: string): void {
   renameSync(path.join(root, 'config.json'), path.join(root, 'project.json'))
 }
 
-test('harnessConfigName reports the current configuration name', () => {
-  const root = createFixture()
+function scratchRoot(): string {
+  return mkdtempSync(path.join(tmpdir(), 'pancreator-harness-config-'))
+}
 
-  assert.equal(harnessConfigName(root), 'config.json')
-})
+function minimalConfigRoot(overrides: Record<string, unknown>): string {
+  const root = scratchRoot()
 
-test('harnessConfigName falls back to the pre-rename name', () => {
-  const root = createFixture()
+  writeFileSync(
+    path.join(root, 'config.json'),
+    `${JSON.stringify({ schema_version: 1, ...overrides }, null, 2)}\n`,
+  )
 
-  useLegacyConfigName(root)
-
-  assert.equal(harnessConfigName(root), 'project.json')
-})
+  return root
+}
 
 test('harnessConfigName returns null when no configuration exists', () => {
-  const root = createFixture()
-
-  rmSync(path.join(root, 'config.json'))
+  const root = scratchRoot()
 
   assert.equal(harnessConfigName(root), null)
   assert.equal(readProjectConfig(root), null)
@@ -113,18 +112,12 @@ test('loadProjectConfig reads an unmigrated installation', () => {
   const root = createFixture()
   const expected = loadProjectConfig(root)
 
-  useLegacyConfigName(root)
-
-  assert.deepEqual(loadProjectConfig(root), expected)
-})
-
-test('loadPipelineConfig records the configuration name it actually read', () => {
-  const root = createFixture()
-
   assert.equal(loadPipelineConfig(root).path, 'config.json')
 
   useLegacyConfigName(root)
 
+  assert.deepEqual(loadProjectConfig(root), expected)
+  assert.equal(harnessConfigName(root), 'project.json')
   assert.equal(loadPipelineConfig(root).path, 'project.json')
 })
 
@@ -145,24 +138,6 @@ test('config.json wins when both names are present', () => {
   assert.notEqual(loadProjectConfig(root).state_root, 'stale')
 })
 
-test('detached installation is a target installation but not embedded', () => {
-  const root = createFixture()
-  const workspace = mkdtempSync(path.join(tmpdir(), 'pancreator-target-'))
-
-  try {
-    configure(root, {
-      installation_mode: 'detached',
-      workspace_root: workspace,
-    })
-
-    assert.equal(isDetachedInstallation(root), true)
-    assert.equal(isTargetInstallation(root), true)
-    assert.equal(isEmbeddedInstallation(root), false)
-  } finally {
-    rmSync(workspace, { recursive: true, force: true })
-  }
-})
-
 test('detached installation addresses the harness by absolute path', () => {
   const root = createFixture()
   const workspace = mkdtempSync(path.join(tmpdir(), 'pancreator-target-'))
@@ -175,15 +150,19 @@ test('detached installation addresses the harness by absolute path', () => {
 
     assert.equal(harnessPathPrefix(root), root)
     assert.equal(panCommand(root), path.join(root, 'bin', 'pan'))
+    assert.equal(isDetachedInstallation(root), true)
+    assert.equal(isTargetInstallation(root), true)
+    assert.equal(isEmbeddedInstallation(root), false)
   } finally {
     rmSync(workspace, { recursive: true, force: true })
   }
 })
 
 test('embedded installation keeps the relative harness prefix', () => {
-  const root = createFixture()
-
-  configure(root, { installation_mode: 'embedded', workspace_root: '..' })
+  const root = minimalConfigRoot({
+    installation_mode: 'embedded',
+    workspace_root: '..',
+  })
 
   assert.equal(harnessPathPrefix(root), '.pancreator')
   assert.equal(panCommand(root), './.pancreator/bin/pan')
@@ -191,23 +170,20 @@ test('embedded installation keeps the relative harness prefix', () => {
 })
 
 test('detached installation rejects a relative workspace root', () => {
-  const root = createFixture()
-
-  configure(root, { installation_mode: 'detached', workspace_root: '..' })
+  const root = minimalConfigRoot({
+    installation_mode: 'detached',
+    workspace_root: '..',
+  })
 
   assert.throws(
     () => loadProjectConfig(root),
     /workspace_root MUST be an absolute path for a detached installation/u,
   )
-})
 
-test('an unknown installation mode is rejected', () => {
-  const root = createFixture()
-
-  configure(root, { installation_mode: 'nonsense' })
+  const unknown = minimalConfigRoot({ installation_mode: 'nonsense' })
 
   assert.throws(
-    () => loadProjectConfig(root),
+    () => loadProjectConfig(unknown),
     /installation_mode MUST be self_development, embedded, or detached/u,
   )
 })

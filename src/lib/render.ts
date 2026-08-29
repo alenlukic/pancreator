@@ -1,3 +1,4 @@
+import { passedGateEvidence } from './context.js'
 import { sha256 } from './io.js'
 import { renderPolicyBlocks } from './policy-guidance.js'
 import type {
@@ -225,7 +226,8 @@ export function renderInvocationDeliveryPrompt(
             'the invocation JSON snapshot. The scaffold prefills one ' +
             '`invocation_attestation.guidance` entry per selection: for each ' +
             'one, set `status` to `read` and set `final_line` to the ' +
-            "selection's verbatim last non-empty line (or `skipped` with the " +
+            "selection's verbatim last content line — skip empty lines and " +
+            'Markdown divider lines such as `---` (or `skipped` with the ' +
             'reason the read trigger does not apply). The final line is not ' +
             'printed here — quoting it is your read evidence.',
           '',
@@ -1080,6 +1082,38 @@ export function renderStatus(
         `Fingerprint: ${latest.workspace_fingerprint}`,
         `Artifact: ${latest.artifact_path}`,
       )
+    }
+  }
+
+  // ORCH-001: the supervisor reads this inventory to avoid a duplicate run.
+  const gateEvidence = passedGateEvidence(state)
+
+  if (gateEvidence.length > 0) {
+    const latestFingerprint =
+      state.stage_history.at(-1)?.workspace_fingerprint ?? null
+
+    lines.push('', '## Gate evidence', '')
+
+    for (const evidence of gateEvidence) {
+      const currency =
+        evidence.fingerprint === latestFingerprint ? 'current' : 'superseded'
+
+      lines.push(
+        `- ${evidence.profile}: passed at ${evidence.fingerprint} ` +
+          `(${evidence.origin}) — ${evidence.evidencePath} [${currency}]`,
+      )
+    }
+  }
+
+  if ((state.advisories ?? []).length > 0) {
+    lines.push('', '## Advisories', '')
+
+    for (const advisory of state.advisories ?? []) {
+      const context = advisory.stage
+        ? `${advisory.stage} (${advisory.source})`
+        : advisory.source
+
+      lines.push(`- ${context}: ${advisory.message}`)
     }
   }
 

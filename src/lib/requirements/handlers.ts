@@ -42,6 +42,7 @@ import {
   validateAwayDecisionLedger,
   validateHypervisorState,
 } from '../validators/autonomy-state.js'
+import { validatePrototypeOutput } from '../validators/prototype-output.js'
 
 function passed(): HandlerResult {
   return { status: 'passed', issues: [] }
@@ -238,6 +239,7 @@ export const HANDLERS: Record<string, ValidatorHandler> = {
   'invocation-validate': invocationValidateHandler,
   'delegation-validate': delegationValidateHandler,
   'invocation-attest-validate': invocationAttestValidateHandler,
+  'prototype-output-validate': validatePrototypeOutput,
 }
 
 export const HANDLER_IDS = new Set(Object.keys(HANDLERS))

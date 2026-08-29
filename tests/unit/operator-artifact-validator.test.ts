@@ -39,15 +39,11 @@ test('operator artifact validator accepts semantic HTML briefs', () => {
   )
 
   assert.equal(result.status, 'passed', JSON.stringify(result.issues))
-})
 
-test('operator artifact validator requires the executive summary first', () => {
-  const root = createFixture()
-  const targetPath = 'runtime/implementation.html'
+  const latePath = 'runtime/implementation-late-summary.html'
 
-  mkdirSync(path.dirname(path.join(root, targetPath)), { recursive: true })
   writeFileSync(
-    path.join(root, targetPath),
+    path.join(root, latePath),
     `<!doctype html><main class="pc-brief" data-brief-type="general">
       <section data-section-semantic="changes"><h2>Changes</h2></section>
       <section data-section-semantic="executive-summary"><h2>Summary</h2><p>Late summary with enough text to otherwise pass validation.</p></section>
@@ -55,14 +51,11 @@ test('operator artifact validator requires the executive summary first', () => {
     </main>`,
   )
 
-  const result = validateOperatorArtifact(
-    input(root, targetPath),
-    'implementation',
-  )
+  const late = validateOperatorArtifact(input(root, latePath), 'implementation')
 
-  assert.equal(result.status, 'failed')
+  assert.equal(late.status, 'failed')
   assert.ok(
-    result.issues.some(
+    late.issues.some(
       (issue) => issue.code === 'operator.executive_summary_missing',
     ),
   )

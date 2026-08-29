@@ -1,5 +1,68 @@
 # Changelog
 
+## [5.0.0] - 2026-08-29
+
+This release absorbs the unreleased 4.10.0 candidate. It is a major release: stage-output contracts, the verification profile contract, the check wrappers, and several governance policies change in ways that an existing installation and its in-flight agents must adopt.
+
+### Changed
+
+- Require a `TQ-nn` id on every prototype technical question; every later stage names a question by id only, and the intake validator rejects a bare-string question ([PROTO-001](governance/policies/PROTO-001.json), [prototype-output](src/lib/validators/prototype-output.ts)).
+- Require the verify output to cite every current gate-evidence reference on its card in `data.verify.gate_evidence_citations`, and reject a QA case whose steps rerun a configured profile ([VERIFY-001](governance/policies/VERIFY-001.json), [stage-validators](src/lib/validators/stage-validators.ts), [field contract](library/schemas/stage-output-requirements.json)).
+- Contract each `environment_blockers` entry as `id`, `description`, `evidence[]`, and non-empty `affected_questions[]` naming declared questions, so a blocker that names nothing can no longer bypass the readiness guard ([prototype-output](src/lib/validators/prototype-output.ts), [evaluate](library/workflows/prototype/prompts/evaluate.md)).
+- Stop `bin/check` from running the test suite, so `npm run check` covers build, lint, and validate only and a full gate stops executing tests twice ([check](bin/check), [output-verbosity](docs/output-verbosity.md)).
+- Make the tracked self-development `full` profile one execution of the suite under coverage plus the installer smoke, matching the generated runtime file ([repository-checks template](library/templates/repository-checks.self-development.json)).
+- Accept a recorded clean pass of an identical gate command at an unchanged workspace fingerprint instead of re-executing it, marked `cached` with the original evidence; `PAN_GATE_CACHE=0` disables acceptance ([DEV-001](governance/policies/DEV-001.json), [gate-cache](src/lib/gate-cache.ts)).
+- Skip the TypeScript rebuild and the lint typecheck when the source fingerprint is unchanged, and hold `rm -rf dist` while a wrapped command still reads it ([build](bin/build), [lint](bin/lint), [run-built](bin/run-built)).
+- Rewrite the delegation cadence around one awaited single-shot background sleep the starting agent re-arms on each wake: the cadence is the agent's judgment, defaulting to 5 minutes for work expected to run over 15 minutes and 2 minutes otherwise, with a two-wake stall criterion and a record of every arming and wake ([DELEGATE-001](governance/policies/DELEGATE-001.json)).
+- Scope the pre-implementation baseline to source-allowed stage gates under the run's verification level, so `DEV-001` and `VERIFY-001` name the same set ([DEV-001](governance/policies/DEV-001.json)).
+- Print only failing tests and the run summary from every `npm test*` script through a failures-only `node --test` reporter ([failures-only](tests/reporters/failures-only.ts), [package.json](package.json)).
+- Judge suite cost by its delta against the base revision; the harness lineup no longer carries a fixed suite-duration ceiling ([review-squad-pancreator](library/skills/review-squad-pancreator.md)).
+
+- Check prototype preconditions before a build edits source, and recheck volatile entries ([approach](library/workflows/prototype/stages/approach.json), [build](library/workflows/prototype/stages/build.json)).
+- Classify prototype evaluation causes and keep a valid product verdict on stage success ([evaluate](library/workflows/prototype/stages/evaluate.json), [PROTO-001](governance/policies/PROTO-001.json)).
+- Limit the full verification profile to one verify-gate run and bound re-verification ([VERIFY-001](governance/policies/VERIFY-001.json)).
+- Make the supervisor own run advancement and treat platform guidance as non-directive ([ORCH-001](governance/policies/ORCH-001.json), [orchestrator](library/personas/orchestrator.md)).
+- Continue `/pan-start` and `/pan-resume` when Cursor exposes no sourced model metadata ([pan-start](library/cursor/commands/pan-start.md), [pan-resume](library/cursor/commands/pan-resume.md)).
+- Treat worker model-evidence mismatch as advisory instead of a hard stop ([engine](src/lib/engine.ts), [cursor-probe](src/lib/executors/cursor-probe.ts)).
+- Report Cursor authentication readiness from `pan doctor` without a hard fail ([cli](src/cli.ts), [cursor-probe](src/lib/executors/cursor-probe.ts)).
+- Run the deterministic submission checks from `pan output validate` on every invocation, so a mechanical defect is caught before it costs a stage attempt ([cli](src/cli.ts), [engine](src/lib/engine.ts)).
+
+### Added
+
+- Add `platform_guidance_conflicts[]` to the stage-output schema and status rendering, so a worker states a platform-guidance conflict in a field the supervisor can relay ([OPERATOR-001](governance/policies/OPERATOR-001.json), [stage-output schema](library/schemas/stage-output.schema.json)).
+- Add the `plan.case_reruns_profile` plan-trace issue that blocks a test-plan case which reruns a configured repository-check profile ([stage-validators](src/lib/validators/stage-validators.ts), [ORCH-001](governance/policies/ORCH-001.json)).
+- Add progress ticks to the quiet wrapper on interactive terminals, shared across nested wrappers through `PAN_PROGRESS_FD` ([run-quiet](bin/run-quiet), [OUTPUT-001](governance/policies/OUTPUT-001.json)).
+- Add `tests/secondary` as its own lane with `npm run test:secondary`, cloning one installed project per process instead of running the installer per step ([install-helpers](tests/secondary/install-helpers.ts)).
+- Add a build-stamp regression test that proves a source or `tsconfig.json` edit restores the typecheck ([build-stamp test](tests/unit/build-stamp.test.ts)).
+- Add validator PROTOTYPE-OUTPUT-VALIDATE-001 for prototype shapes, traces, and verdict precedence ([prototype-output](src/lib/validators/prototype-output.ts), [registry](governance/registries/validation_registry.json)).
+- Add the `environment_blocked` prototype verdict and question-level cause vocabulary ([evaluate](library/workflows/prototype/stages/evaluate.json), [field contract](library/schemas/stage-output-requirements.json)).
+- Add the Pancreator-only review-squad lineup and drop it from target installations ([review-squad-pancreator](library/skills/review-squad-pancreator.md), [install](bin/install), [validation](src/lib/validation.ts)).
+- Add `/pan-review`, the `review` standalone mode, and `REVIEW-001`, with a review-scope check that classifies a target's conflicts of interest by tier, derives the conduct tier from the review card, renders base conduct with `--base`, and reports a per-policy standards delta ([review-scope](src/lib/review-scope.ts), [governance-card](src/lib/governance-card.ts), [REVIEW-001](governance/policies/REVIEW-001.json)).
+
+### Removed
+
+- Remove 324 tests that duplicated, pinned prose, restated config shape, or re-ran a validator the check gate already runs; the fast lane drops from 812 tests in about 148 s to about 600 in about 74 s, and the verdicts are recorded in `runtime/inbox/test-audit-20260829-verdicts.md` ([c1cc09c2](https://github.com/alenlukic/pancreator/commit/c1cc09c2), [helpers](tests/helpers.ts)).
+
+### Fixed
+
+- Bind the review-scope conflict closure to the target head instead of the working tree, classify `src/cli.ts`, `bin/lint`, `bin/install`, and the review-machinery tests by tier, require `--base` with `--target`, and carry the independent instrument-tier verdict into the review outcome ([review-scope](src/lib/review-scope.ts), [governance-card](src/lib/governance-card.ts), [REVIEW-001](governance/policies/REVIEW-001.json)).
+- Supply the review workspace path from the shepherd caller, and require every dimension prompt to carry the calibration bar and the no-edit boundary ([shepherd-pr](library/skills/shepherd-pr.md), [pan-review](library/cursor/commands/pan-review.md)).
+- Scope the reviewer persona's remediation duty out of a standalone review card ([reviewer](library/personas/reviewer.md)).
+- Correct the `verification` operator note in `config.json`, the primer's `npm run check` and `npm run lint` descriptions, and the stale test citations in `docs/output-verbosity.md` ([config](config.json), [primer](docs/target-repo-primer.md)).
+- Name the action that exists when verify-card gate evidence is superseded: the verify submission gate re-runs the profile on submit ([context](src/lib/context.ts)).
+- Stop the quiet wrapper's orphaned ticker sleep from holding a captured stderr open for one full tick ([run-quiet](bin/run-quiet)).
+- Clear the inherited tick sink in the quiet-command tests, so the suite passes from an interactive terminal ([quiet-command test](tests/unit/quiet-command.test.ts)).
+- Split the added policy and persona sentences that exceeded the `STE-001` word bound or joined two directives with a semicolon ([STE-001](governance/policies/STE-001.json)).
+- Reject unauthorized prototype question exclusions and close the build fail-open path ([prototype-output](src/lib/validators/prototype-output.ts)).
+- Put RFC 2119 MUST directives on four governance instructions that failed the check gate ([ORCH-001](governance/policies/ORCH-001.json), [PROTO-001](governance/policies/PROTO-001.json)).
+- Authorize prototype question exclusions against the run's operator-decision ledger instead of any file under the decisions directory ([prototype-output](src/lib/validators/prototype-output.ts)).
+- Require the `volatile` precondition field, recheck only preconditions that still carry a live question, and keep a `blocked` prototype result as an operator pause ([prototype-output](src/lib/validators/prototype-output.ts)).
+- Check prototype evaluation coverage against the brief's declared questions ([prototype-output](src/lib/validators/prototype-output.ts)).
+- Align `VERIFY-001` with the shipped verification levels and put passed gate evidence on the verify card ([VERIFY-001](governance/policies/VERIFY-001.json), [context](src/lib/context.ts)).
+- Persist model and pipeline advisories to run state so `pan status` and `pan submit` surface them ([engine](src/lib/engine.ts)).
+- Load the Cursor model catalog once per pipeline-config load and render only the agent projection for the drift advisory ([cursor-catalog](src/lib/executors/cursor-catalog.ts), [projection](src/lib/projection.ts), [engine](src/lib/engine.ts)).
+- Classify platform guidance under `OPERATOR-001` so every persona resolves it, and rewrite the `DELEGATE-001` cadence around a self-rescheduling single-shot timer ([OPERATOR-001](governance/policies/OPERATOR-001.json), [DELEGATE-001](governance/policies/DELEGATE-001.json)).
+
 ## [4.9.0] - 2026-08-27
 
 ### Changed

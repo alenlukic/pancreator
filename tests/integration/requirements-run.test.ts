@@ -1,15 +1,64 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import { createRun, prepareInvocation } from '../../src/lib/engine.js'
+import {
+  createRun,
+  prepareInvocation,
+  validateOutputForSubmission,
+} from '../../src/lib/engine.js'
+import { loadRegistry } from '../../src/lib/requirements/registry.js'
+import { resolveRequirements } from '../../src/lib/requirements/resolve.js'
+import { runRequirement } from '../../src/lib/requirements/run.js'
+import type { InvocationKind } from '../../src/lib/requirements/types.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { createFixture, makeOutput, writeJson } from '../helpers.js'
 
 const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
+
+interface StandaloneValidation {
+  persona: string
+  stage: string
+  kind: InvocationKind
+  registryId: string
+  targetPath: string
+}
+
+function runStandaloneValidator(root: string, options: StandaloneValidation) {
+  const manifest = resolveRequirements(root, {
+    persona: options.persona,
+    workflow: 'standalone',
+    stage: options.stage,
+    invocation_kind: options.kind,
+    invocation: {
+      output_path: options.targetPath,
+      artifact_paths: [options.targetPath],
+    },
+  })
+  const requirements = [
+    ...manifest.automation_requirements,
+    ...manifest.validation_requirements,
+  ].filter((item) => item.registry_id === options.registryId)
+  const required = requirements.filter(
+    (item) => item.enforcement === 'required',
+  )
+  const selected =
+    requirements.length > 1 && required.length === 1 ? required : requirements
+
+  assert.equal(selected.length, 1, options.registryId)
+
+  return runRequirement({
+    root,
+    requirement: selected[0],
+    targetPath: options.targetPath,
+    executor: 'agent',
+    catalog: loadRegistry(root),
+    persist: false,
+  })
+}
 
 test('requirements run validates a standalone decomposition artifact', () => {
   const root = createFixture()
@@ -53,29 +102,13 @@ Run /pan-start.
 `,
   )
 
-  const stdout = execFileSync(
-    process.execPath,
-    [
-      CLI,
-      'requirements',
-      'run',
-      '--persona',
-      'decomposer',
-      '--workflow',
-      'standalone',
-      '--stage',
-      'decompose',
-      '--kind',
-      'decomposition',
-      '--registry',
-      'DECOMPOSITION-VALIDATE-001',
-      '--target',
-      targetPath,
-      '--json',
-    ],
-    { cwd: root, encoding: 'utf8' },
-  )
-  const result = JSON.parse(stdout) as { status: string; exit_code: number }
+  const result = runStandaloneValidator(root, {
+    persona: 'decomposer',
+    stage: 'decompose',
+    kind: 'decomposition',
+    registryId: 'DECOMPOSITION-VALIDATE-001',
+    targetPath,
+  })
 
   assert.equal(result.status, 'passed')
   assert.equal(result.exit_code, 0)
@@ -159,29 +192,13 @@ Run /pan-start with this intake.
 `,
   )
 
-  const stdout = execFileSync(
-    process.execPath,
-    [
-      CLI,
-      'requirements',
-      'run',
-      '--persona',
-      'harness-technician',
-      '--workflow',
-      'standalone',
-      '--stage',
-      'repair',
-      '--kind',
-      'repair',
-      '--registry',
-      'HARNESS-REPAIR-VALIDATE-001',
-      '--target',
-      targetPath,
-      '--json',
-    ],
-    { cwd: root, encoding: 'utf8' },
-  )
-  const result = JSON.parse(stdout) as { status: string; exit_code: number }
+  const result = runStandaloneValidator(root, {
+    persona: 'harness-technician',
+    stage: 'repair',
+    kind: 'repair',
+    registryId: 'HARNESS-REPAIR-VALIDATE-001',
+    targetPath,
+  })
 
   assert.equal(result.status, 'passed')
   assert.equal(result.exit_code, 0)
@@ -242,29 +259,13 @@ None identified.
 `,
   )
 
-  const stdout = execFileSync(
-    process.execPath,
-    [
-      CLI,
-      'requirements',
-      'run',
-      '--persona',
-      'librarian',
-      '--workflow',
-      'standalone',
-      '--stage',
-      'build-docs',
-      '--kind',
-      'documentation',
-      '--registry',
-      'TARGET-REPO-PRIMER-VALIDATE-001',
-      '--target',
-      targetPath,
-      '--json',
-    ],
-    { cwd: root, encoding: 'utf8' },
-  )
-  const result = JSON.parse(stdout) as { status: string; exit_code: number }
+  const result = runStandaloneValidator(root, {
+    persona: 'librarian',
+    stage: 'build-docs',
+    kind: 'documentation',
+    registryId: 'TARGET-REPO-PRIMER-VALIDATE-001',
+    targetPath,
+  })
 
   assert.equal(result.status, 'passed')
   assert.equal(result.exit_code, 0)
@@ -316,74 +317,6 @@ test('requirements run selects required SPOT-001 binding for SPOTFIX-VALIDATE-00
   assert.equal(result.requirement_id, 'spotfix-validate')
 })
 
-test('output validate skips when no agent-owned requirement resolves', () => {
-  const root = createFixture()
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Output validation skip fixture',
-  })
-  const workflow = loadWorkflow(root, 'delivery')
-  const invocation = prepareInvocation(root, state.run_id).invocation
-
-  assert.ok(invocation)
-
-  const output = makeOutput(root, invocation, stageBySlug(workflow, 'plan'))
-  const invocationRelative = resolveRunLayout(root, state.run_id).invocation(
-    invocation.invocation_id,
-    '.json',
-  ).relative
-
-  writeJson(path.join(root, invocation.output.path), output)
-
-  // The worker follows its output contract, so a stage that resolves no
-  // agent-owned validator must report a skip rather than a caller error.
-  const stdout = execFileSync(
-    process.execPath,
-    [
-      CLI,
-      'output',
-      'validate',
-      state.run_id,
-      '--file',
-      invocation.output.path,
-      '--invocation',
-      invocationRelative,
-      '--json',
-    ],
-    { cwd: root, encoding: 'utf8' },
-  )
-  const result = JSON.parse(stdout) as {
-    passed: boolean
-    skipped: boolean
-    reason: string
-    results: unknown[]
-  }
-
-  assert.equal(result.passed, true)
-  assert.equal(result.skipped, true)
-  assert.equal(result.results.length, 0)
-  assert.match(result.reason, /output validation is skipped/u)
-
-  const text = execFileSync(
-    process.execPath,
-    [
-      CLI,
-      'output',
-      'validate',
-      state.run_id,
-      '--file',
-      invocation.output.path,
-      '--invocation',
-      invocationRelative,
-    ],
-    { cwd: root, encoding: 'utf8' },
-  )
-
-  assert.match(text, /^skipped: /u)
-  assert.doesNotMatch(text, /INVALID_ARGUMENT/u)
-})
-
 test('requirements run preserves ambiguity when duplicate required bindings remain', () => {
   const root = createFixture()
   const targetPath = 'runtime/inbox/spotfix-outcome.md'
@@ -397,6 +330,21 @@ test('requirements run preserves ambiguity when duplicate required bindings rema
 
   engPolicy.requirements[0].enforcement = 'required'
   writeFileSync(engPolicyPath, `${JSON.stringify(engPolicy, null, 2)}\n`)
+
+  assert.equal(
+    resolveRequirements(root, {
+      persona: 'spotfixer',
+      workflow: 'standalone',
+      stage: 'spotfix',
+      invocation_kind: 'spotfix',
+      invocation: { output_path: targetPath, artifact_paths: [targetPath] },
+    }).validation_requirements.filter(
+      (item) =>
+        item.registry_id === 'SPOTFIX-VALIDATE-001' &&
+        item.enforcement === 'required',
+    ).length,
+    2,
+  )
 
   assert.throws(
     () =>
@@ -420,8 +368,171 @@ test('requirements run preserves ambiguity when duplicate required bindings rema
           targetPath,
           '--json',
         ],
-        { cwd: root, encoding: 'utf8' },
+        { cwd: root, encoding: 'utf8', stdio: 'pipe' },
       ),
     /resolved more than once/u,
+  )
+})
+
+test('output validate mirrors the deterministic submission checks', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title: 'Output validation submission mirror fixture',
+  })
+  const workflow = loadWorkflow(root, 'delivery')
+  const invocation = prepareInvocation(root, state.run_id).invocation
+
+  assert.ok(invocation)
+
+  const output = makeOutput(root, invocation, stageBySlug(workflow, 'plan'))
+  const invocationRelative = resolveRunLayout(root, state.run_id).invocation(
+    invocation.invocation_id,
+    '.json',
+  ).relative
+
+  writeJson(path.join(root, invocation.output.path), output)
+
+  // The stage resolves no agent-owned validator requirement, so results is
+  // empty.
+  const stdout = execFileSync(
+    process.execPath,
+    [
+      CLI,
+      'output',
+      'validate',
+      state.run_id,
+      '--file',
+      invocation.output.path,
+      '--invocation',
+      invocationRelative,
+      '--json',
+    ],
+    { cwd: root, encoding: 'utf8' },
+  )
+  const result = JSON.parse(stdout) as {
+    passed: boolean
+    submission_checks: Array<{ id: string; passed: boolean }>
+    results: unknown[]
+  }
+
+  assert.equal(result.passed, true)
+  assert.ok(result.submission_checks.length > 0)
+  assert.equal(result.results.length, 0)
+
+  const corrupted = structuredClone(output) as unknown as Record<
+    string,
+    unknown
+  >
+  const attestation = corrupted.invocation_attestation as Record<
+    string,
+    unknown
+  >
+
+  attestation.model = 'wrong-model'
+  writeJson(path.join(root, invocation.output.path), corrupted)
+
+  assert.throws(
+    () =>
+      execFileSync(
+        process.execPath,
+        [
+          CLI,
+          'output',
+          'validate',
+          state.run_id,
+          '--file',
+          invocation.output.path,
+          '--invocation',
+          invocationRelative,
+        ],
+        { cwd: root, encoding: 'utf8' },
+      ),
+    (error: unknown) => {
+      const failure = error as { status?: number; stdout?: string }
+
+      assert.equal(failure.status, 1)
+      assert.match(String(failure.stdout), /attestation\.model: FAIL/u)
+
+      return true
+    },
+  )
+})
+
+// The harness renders the operator brief during submission, so the mirror must
+// not report its absence as a defect.
+test('output validate exempts the unrendered operator brief but not other missing artifacts', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title: 'Output validation operator brief fixture',
+    involvement: 'standard',
+    operatorArtifacts: true,
+  })
+  const workflow = loadWorkflow(root, 'delivery')
+  const invocation = prepareInvocation(root, state.run_id).invocation
+
+  assert.ok(invocation)
+
+  const brief = invocation.output.operator_brief
+
+  assert.ok(brief)
+
+  const output = makeOutput(
+    root,
+    invocation,
+    stageBySlug(workflow, invocation.stage.slug),
+  )
+
+  assert.ok(
+    output.artifacts.some((artifact) => artifact.path === brief.rendered_path),
+  )
+  rmSync(path.join(root, brief.rendered_path))
+
+  const beforeRender = validateOutputForSubmission(
+    root,
+    state.run_id,
+    invocation,
+    output,
+  )
+
+  assert.equal(
+    beforeRender.passed,
+    true,
+    JSON.stringify(beforeRender.checks, null, 2),
+  )
+
+  const withMissingArtifact = {
+    ...output,
+    artifacts: [
+      ...output.artifacts,
+      {
+        path: 'runtime/inbox/never-written.md',
+        description: 'Fixture artifact that was never written',
+      },
+    ],
+  }
+  const missing = validateOutputForSubmission(
+    root,
+    state.run_id,
+    invocation,
+    withMissingArtifact,
+  )
+
+  assert.equal(missing.passed, false)
+  assert.ok(
+    missing.checks.some(
+      (check) =>
+        !check.passed &&
+        check.message ===
+          'artifact does not exist: runtime/inbox/never-written.md',
+    ),
+  )
+  assert.ok(
+    missing.checks.every(
+      (check) => check.passed || !check.message.includes(brief.rendered_path),
+    ),
   )
 })

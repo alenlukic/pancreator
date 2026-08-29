@@ -127,7 +127,7 @@
   "verification": {
     "$operator": {
       "summary": "Named verification levels controlling which repository-check profile each shell gate runs. Select one per run with ./bin/pan init --verification <level>; omitting the flag uses active.",
-      "note": "Built-in levels: minimal (implement gates only, QA runs no suite), light (QA re-runs the fast suite), thorough (QA runs the full profile; explicit opt-in only). The full profile never runs unless a selected level names it, and it is never baselined before implementation. Operator-declared levels here merge over the built-ins. Runs snapshot the resolved level; change an in-flight run with ./bin/pan verification <run-id> set <level>. Inspect levels with ./bin/pan verification."
+      "note": "Built-in levels: minimal (implement gates only, no verify suite gate), light (the verify submission gate runs the fast profile once), thorough (the verify submission gate runs the full profile once, explicit opt-in only). QA cites the gate evidence on its card and never runs a profile. The full profile never runs unless a selected level names it. It is never baselined before implementation. Operator-declared levels here merge over the built-ins. Runs snapshot the resolved level. Change an in-flight run with ./bin/pan verification <run-id> set <level>. Inspect levels with ./bin/pan verification."
     },
     "active": "light"
   },

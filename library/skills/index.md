@@ -35,6 +35,15 @@ recurring job. Read the skill relevant to your current step.
 - [`write-pr-description.md`](write-pr-description.md) - draft a merge-ready PR
   body from a workflow run or a standalone base-to-worktree comparison.
 
+## Pancreator self-development only
+
+These skills ship only in a Pancreator source checkout. `bin/install` drops them
+from the staged payload, so a target installation does not carry them. They are
+listed without links for that reason.
+
+- `review-squad-pancreator.md` - the harness review lineup that replaces the
+  core squad dimensions when the review target is Pancreator itself.
+
 ## Design
 
 - [`design-spec.md`](design-spec.md) - author a UI/UX design specification.

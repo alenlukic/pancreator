@@ -45,16 +45,21 @@ export const BUILT_IN_VERIFICATION_LEVELS: Record<string, VerificationLevel> = {
   },
   light: {
     summary:
-      'Static and fast checks gate the implement loop, and QA re-runs the ' +
-      'fast suite against the pre-implementation baseline. Integration and ' +
-      'end-to-end suites are left to the team and CI.',
+      'Static and fast checks gate the implement loop, and the verify ' +
+      'submission gate re-runs the fast profile against the ' +
+      'pre-implementation baseline. QA cites that gate evidence and runs ' +
+      'only the plan cases. Integration and end-to-end suites are left to ' +
+      'the team and CI.',
     gates: { 'test.full_suite': 'fast', 'verify.full_suite': 'fast' },
   },
   thorough: {
     summary:
-      'QA runs the complete full profile. Explicit operator opt-in: the full ' +
-      'profile is never baselined before implementation, so a pre-existing ' +
-      'failure fails the gate and needs an operator decision.',
+      'The verify submission gate runs the complete full profile once, ' +
+      'after the verify report is submitted. QA cites the static and fast ' +
+      'gate evidence on its card and MUST NOT cite or execute the full ' +
+      'profile, which has not run when QA works. Explicit operator opt-in: ' +
+      'the full profile is never baselined before implementation, so a ' +
+      'pre-existing failure fails the gate and needs an operator decision.',
     gates: {},
   },
 }

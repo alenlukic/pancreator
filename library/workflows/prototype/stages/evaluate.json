@@ -29,6 +29,7 @@
     "evaluation": "object",
     "evaluation.verdict": "string",
     "evaluation.question_results": "array",
+    "evaluation.environment_blockers": "array",
     "evaluation.signal_assessment": "array",
     "evaluation.productionization_gap": "array",
     "evaluation.recommendation": "string",
@@ -45,7 +46,13 @@
       "id": "evaluate.verdict_supported",
       "type": "judgment",
       "hard": true,
-      "statement": "The verdict is validated, invalidated, or inconclusive, and the evidence supports it; an inconclusive result is not reported as validated."
+      "statement": "The verdict is validated, invalidated, inconclusive, or environment_blocked, and the evidence supports it. An inconclusive result is not reported as validated."
+    },
+    {
+      "id": "evaluate.environment_classified",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Each technical question names a cause. Every environment gap that affects the verdict is recorded as a structured blocker."
     },
     {
       "id": "evaluate.gap_scoped",

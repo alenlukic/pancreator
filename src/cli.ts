@@ -22,6 +22,7 @@ import {
   setRunStageAsAway,
   setRunVerification,
   submitOutput,
+  validateOutputForSubmission,
   waiveGate,
 } from './lib/engine.js'
 import {
@@ -33,8 +34,12 @@ import {
   pruneBestOfN,
   refreshBestOfNAgents,
 } from './lib/best-of-n.js'
+import { GATE_CACHE_ENV, gateCacheStatus } from './lib/gate-cache.js'
 import { personaExecutorOf } from './lib/executors/mapping.js'
-import { probeCursorModels } from './lib/executors/cursor-probe.js'
+import {
+  cursorAuthenticationReadiness,
+  probeCursorModels,
+} from './lib/executors/cursor-probe.js'
 import { claudeCodeVersionPreflight } from './lib/executors/claude-code.js'
 import { browserReadiness } from './lib/browser-readiness.js'
 import { errorMessage, PanError } from './lib/errors.js'
@@ -115,7 +120,8 @@ import {
   scaffoldStageOutput,
 } from './lib/requirements/scaffold.js'
 import { auditDirectives } from './lib/governance/audit-directives.js'
-import { buildGovernanceCard } from './lib/governance-card.js'
+import { STANDALONE_MODES, buildGovernanceCard } from './lib/governance-card.js'
+import { conflictsByTier, resolveReviewScope } from './lib/review-scope.js'
 import {
   assertRepositoryChecksValid,
   loadRepositoryChecks,
@@ -140,6 +146,8 @@ import {
   resolveOrCreateWorktree,
   resolveWorkspacePathOrWorktree,
 } from './lib/worktrees.js'
+
+const STANDALONE_MODE_NAMES = Object.keys(STANDALONE_MODES).sort().join('|')
 
 const HELP_BODY = `Usage:
   pan init --request <repo-relative-file> [--workflow delivery|prototype|design] [--title <title>] [--workspace <dir> | --worktree <name>] [--gates <file>] [--involvement <profile>] [--verification <level>] [--operator-artifacts]
@@ -171,7 +179,7 @@ const HELP_BODY = `Usage:
   pan models [--sync] [--probe] [--migrate-from <previous-config.json>] [--json]
   pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source> [--json]
   pan models --probe --run <run-id> --invocation <invocation-id> [--json]
-      --probe launches one minimal cursor-agent call per distinct active model spec and fails loudly when the resolved variant differs from the catalog's prediction. Needs the cursor-agent CLI and CURSOR_API_KEY (process environment or repository .env) or a login.
+      --probe launches one minimal cursor-agent call per distinct active model spec and records what Cursor resolved and reports match, recorded, mismatch, or unavailable per spec. It never fails the command, so read the result and error fields. Needs the cursor-agent CLI and CURSOR_API_KEY (process environment, installation .env, or workspace-root .env) or a login. Run pan doctor to see which source resolves.
       --migrate-from preserves the previous effective model map across a tracked config.json replacement: every mapping the new file leaves empty is carried into config_overrides.json, and the replacement stops before mutation when any required mapping stays empty.
   pan validate [--json]
   pan doctor [--worktree <name>] [--json]
@@ -182,7 +190,9 @@ const HELP_BODY = `Usage:
   pan output validate <run-id> --file <path> [--json]
   pan assessment scaffold <run-id> --invocation <path> --output <path> [--force]
   pan governance audit-directives [--json]
-  pan governance card --mode <pair|spotfix|shepherd|investigation|repair|decomposition|best-of-n> [--request <path>] [--worktree <name>] [--out <path>] [--json]
+  pan governance card --mode <${STANDALONE_MODE_NAMES}> [--request <path>] [--worktree <name>] [--out <path>] [--base <ref> --target <ref>] [--json]
+      --base (review mode) renders the base-revision text of every conduct policy the target changes, so the session reviews under the rule in force before the change.
+  pan governance review-scope --target <ref> [--base <ref>] [--default-branch <branch>] [--closure-revision <ref>] [--json]
   pan best-of-n init --request <path> --configs <path> [--workflow <slug>] [--consolidation-workflow <slug>] [--operator-artifacts] [--json]
   pan best-of-n status <bon-id> [--json]
   pan best-of-n refresh-agents <bon-id> [--json]
@@ -922,6 +932,7 @@ async function main(): Promise<void> {
           status: result.state.status,
           reason: result.state.pause_reason,
           decision_path: result.state.last_decision_path,
+          advisories: result.advisories,
         })
         return
       }
@@ -936,6 +947,7 @@ async function main(): Promise<void> {
         invocation_json: result.state.current_invocation?.json_path,
         invocation_markdown: result.state.current_invocation?.markdown_path,
         expected_output: result.state.current_invocation?.output_path,
+        advisories: result.advisories,
       })
       return
     }
@@ -1014,6 +1026,7 @@ async function main(): Promise<void> {
           )?.path ?? null,
         next_stage: result.state.current_stage,
         pending_action: result.state.pending_action,
+        advisories: result.advisories.map((advisory) => advisory.message),
       })
       return
     }
@@ -1593,16 +1606,21 @@ async function main(): Promise<void> {
           )
         }
 
-        print(
-          recordSupervisorModelEvidence(
-            root,
-            requiredArgument(runId, '--run'),
-            requiredArgument(
-              option(args, '--effective-model'),
-              '--effective-model',
-            ),
-            requiredArgument(option(args, '--source'), '--source'),
+        const recorded = recordSupervisorModelEvidence(
+          root,
+          requiredArgument(runId, '--run'),
+          requiredArgument(
+            option(args, '--effective-model'),
+            '--effective-model',
           ),
+          requiredArgument(option(args, '--source'), '--source'),
+        )
+
+        print(
+          {
+            ...recorded.evidence,
+            advisories: recorded.advisories.map((advisory) => advisory.message),
+          },
           true,
         )
         return
@@ -1799,6 +1817,8 @@ async function main(): Promise<void> {
           requestPath: option(args, '--request'),
           outputPath: option(args, '--out'),
           worktreeName: option(args, '--worktree'),
+          baseRef: option(args, '--base'),
+          targetRef: option(args, '--target'),
         })
 
         print({
@@ -1818,6 +1838,33 @@ async function main(): Promise<void> {
           ]
             .filter((requirement) => requirement.executor !== 'harness')
             .map((requirement) => requirement.registry_id),
+        })
+        return
+      }
+
+      if (sub === 'review-scope') {
+        const scope = resolveReviewScope(root, {
+          head: requiredArgument(option(args, '--target'), '--target'),
+          base: option(args, '--base'),
+          defaultBranch: option(args, '--default-branch'),
+          closureRevision: option(args, '--closure-revision'),
+        })
+
+        const tiers = conflictsByTier(scope.conflicts)
+
+        print({
+          base: scope.base,
+          head: scope.head,
+          closure_revision: scope.closure_revision,
+          changed_path_count: scope.changed_paths.length,
+          independent: scope.independent,
+          clean: scope.clean,
+          conflicts: {
+            instrument: tiers.instrument,
+            conduct: tiers.conduct,
+            substrate: tiers.substrate,
+          },
+          standards_delta: scope.standards_delta,
         })
         return
       }
@@ -2163,43 +2210,46 @@ async function main(): Promise<void> {
             item.enforcement !== 'advisory',
         )
 
-        // An invocation may legitimately resolve no agent-owned requirement. The
-        // command was asked to validate what applies, and nothing applies, so
-        // this is a successful skip rather than a caller error.
-        if (agentRequirements.length === 0) {
-          const reason =
-            'No agent-owned before_operation or pre_submit requirement resolved ' +
-            'for this invocation, so output validation is skipped.'
-
-          print(
-            hasFlag(args, '--json')
-              ? { passed: true, skipped: true, reason, results: [] }
-              : `skipped: ${reason}`,
-            hasFlag(args, '--json'),
-          )
-
-          return
-        }
-
-        const results = runAgentPreSubmitValidators(
+        // Always run the submission mirror. A mechanical defect that reaches
+        // submit time consumes a stage attempt.
+        const submission = validateOutputForSubmission(
           root,
           runId,
-          invocation as unknown as Record<string, unknown>,
-          agentRequirements,
-          filePath,
+          invocation,
           submittedValue,
         )
-        const passed = results.every((item) => isPassingResult(item.result))
+        const results =
+          agentRequirements.length === 0
+            ? []
+            : runAgentPreSubmitValidators(
+                root,
+                runId,
+                invocation as unknown as Record<string, unknown>,
+                agentRequirements,
+                filePath,
+                submittedValue,
+              )
+        const passed =
+          submission.passed &&
+          results.every((item) => isPassingResult(item.result))
 
         print(
           hasFlag(args, '--json')
-            ? { passed, results }
-            : results
-                .map(
+            ? { passed, submission_checks: submission.checks, results }
+            : [
+                ...submission.checks
+                  .filter((check) => !check.passed)
+                  .map((check) => `${check.id}: FAIL ${check.message}`),
+                `submission checks: ${
+                  submission.passed
+                    ? `pass (${submission.checks.length} checks)`
+                    : 'fail'
+                }`,
+                ...results.map(
                   (item) =>
                     `${item.requirement.registry_id}: ${item.result.status}`,
-                )
-                .join('\n'),
+                ),
+              ].join('\n'),
           hasFlag(args, '--json'),
         )
 
@@ -2318,6 +2368,9 @@ async function main(): Promise<void> {
         // unready browser stack MUST NOT fail doctor. BROWSER-001 turns the gap
         // into an environment-blocked case at the point a verdict is owed.
         browser_automation: browserReadiness([root, workspaceRoot]),
+        // Advisory: a missing credential MUST NOT fail doctor. An interactive
+        // `cursor-agent login` authenticates the CLI with no environment key.
+        cursor_authentication: cursorAuthenticationReadiness(root),
         // Git availability is a property of the deliverable workspace, not the
         // installation. These coincide only when the harness sits inside the
         // target, which a detached installation does not.
@@ -2327,6 +2380,10 @@ async function main(): Promise<void> {
         pipeline_config: {
           active: pipelineConfig.name,
           personas: pipelineConfig.config.personas,
+        },
+        gate_cache: {
+          ...gateCacheStatus(root),
+          disable_with: `${GATE_CACHE_ENV}=0`,
         },
         repository_check_environment: {
           profiles_without_probes: Object.entries(repositoryChecks.profiles)

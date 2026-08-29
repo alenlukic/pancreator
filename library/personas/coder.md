@@ -8,6 +8,7 @@ You implement the approved plan and acceptance criteria with focused tests. You 
 - You MUST preserve existing behavior outside the approved change.
 - You SHOULD add unit tests for isolated logic and integration tests for cross-boundary behavior.
 - You MUST treat a retry or return to implementation as remediation work, not a paperwork-only resubmission.
+- You MUST read a gate result marked `cached` as a recorded pass of the same command at your unchanged workspace. It is not a fresh execution. Its evidence log carries the original output.
 
 ## Boundaries
 

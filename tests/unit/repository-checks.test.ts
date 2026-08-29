@@ -59,6 +59,13 @@ test('repository checks report missing profiles without guessing commands', () =
 
   assert.equal(result.status, 'not_configured')
   assert.deepEqual(result.results, [])
+
+  writeChecks(root, {})
+
+  const setup = runRepositorySetup(root)
+
+  assert.equal(setup.status, 'not_configured')
+  assert.deepEqual(setup.results, [])
 })
 
 test('self-development uses a tracked fallback without requiring runtime state', () => {
@@ -330,6 +337,15 @@ test('baseline delta credits a repaired inherited failure as fixed', () => {
   assert.match(comparison.delta.fixed[0]?.diagnostic ?? '', /no-old/u)
   assert.equal(comparison.delta.carried.length, 1)
   assert.match(comparison.explanation, /0 new, 1 fixed, 1 carried/u)
+
+  const repaired = compareRepositoryCheckToBaseline(baseline, passedCheck())
+
+  assert.equal(repaired.passed, true)
+  assert.equal(repaired.delta.new.length, 0)
+  assert.equal(
+    repaired.delta.fixed.some((item) => item.diagnostic.includes('no-example')),
+    true,
+  )
 })
 
 test('baseline delta counts a duplicated diagnostic as new', () => {
@@ -365,34 +381,30 @@ test('baseline delta ignores xdist scheduling and passing test output', () => {
 })
 
 test('repeated fast profiles ignore reordered xdist pass output', () => {
-  const { root, workspace } = makeInstallation()
-
-  writeFileSync(
-    path.join(workspace, 'check.mjs'),
+  const transcript = (tests: string[]): string =>
     [
-      "import { readFileSync } from 'node:fs'",
-      "const reverse = readFileSync('order.txt', 'utf8').trim() === 'reverse'",
-      "const tests = ['test_a', 'test_b']",
-      'if (reverse) tests.reverse()',
-      "console.log('plugins: xdist-3.8.0')",
-      'for (const [index, name] of tests.entries()) {',
-      '  console.log(`[gw${index}] [ ${index * 50}%] tests/example.py::${name} PASSED`)',
-      '}',
-      "console.log('================ 2 passed in 0.01s ================')",
-    ].join('\n'),
-  )
-  writeChecks(root, {
-    fast: {
-      timeout_ms: 5_000,
-      probes: [],
-      commands: ['node check.mjs'],
-    },
-  })
-  writeFileSync(path.join(workspace, 'order.txt'), 'forward\n')
-  const baseline = runRepositoryCheck(root, 'fast')
+      'plugins: xdist-3.8.0',
+      ...tests.map(
+        (name, index) =>
+          `[gw${index}] [ ${index * 50}%] tests/example.py::${name} PASSED`,
+      ),
+      '================ 2 passed in 0.01s ================',
+      '',
+    ].join('\n')
+  const passingRun = (stdout: string): RepositoryCheckResult => {
+    const check = passedCheck()
 
-  writeFileSync(path.join(workspace, 'order.txt'), 'reverse\n')
-  const current = runRepositoryCheck(root, 'fast')
+    check.profile = 'fast'
+    check.results[0] = {
+      ...check.results[0],
+      command: 'node check.mjs',
+      stdout,
+    }
+
+    return check
+  }
+  const baseline = passingRun(transcript(['test_a', 'test_b']))
+  const current = passingRun(transcript(['test_b', 'test_a']))
   const comparison = compareRepositoryCheckToBaseline(baseline, current)
 
   assert.equal(comparison.passed, true)
@@ -416,16 +428,6 @@ test('baseline delta retains failures that mention PASSED', () => {
       item.diagnostic.includes('expected PASSED but got FAILED'),
     ),
   )
-})
-
-test('gate explanations prefer printed failures over command status', () => {
-  const comparison = compareRepositoryCheckToBaseline(
-    passedCheck(),
-    failedCheck('AssertionError: expected true\n'),
-  )
-
-  assert.match(comparison.explanation, /AssertionError: expected true/u)
-  assert.doesNotMatch(comparison.explanation, /<status>/u)
 })
 
 test('gate explanations do not quote passing-output churn', () => {
@@ -462,10 +464,29 @@ test('baseline delta treats a first-time failing command as new', () => {
 
   assert.equal(comparison.passed, false)
   assert.equal(comparison.delta.new.length > 0, true)
+
+  const explained = compareRepositoryCheckToBaseline(
+    passedCheck(),
+    failedCheck('AssertionError: expected true\n'),
+  )
+
+  assert.match(explained.explanation, /AssertionError: expected true/u)
+  assert.doesNotMatch(explained.explanation, /<status>/u)
 })
 
 test('baseline delta treats a changed exit status as new', () => {
   const baseline = failedCheck('same diagnostic text\n')
+
+  const unchanged = compareRepositoryCheckToBaseline(
+    baseline,
+    failedCheck('same diagnostic text\n'),
+  )
+
+  assert.equal(unchanged.passed, true)
+  assert.equal(unchanged.delta.new.length, 0)
+  assert.equal(unchanged.delta.fixed.length, 0)
+  assert.equal(unchanged.delta.carried.length, 1)
+
   const current = failedCheck('same diagnostic text\n', '/workspace', {
     timed_out: true,
     exit_code: null,
@@ -477,35 +498,6 @@ test('baseline delta treats a changed exit status as new', () => {
   assert.equal(
     comparison.delta.new.some((item) =>
       item.diagnostic.includes('timed_out=true'),
-    ),
-    true,
-  )
-})
-
-test('baseline delta ignores an unchanged exit status', () => {
-  const baseline = failedCheck('same diagnostic text\n')
-  const current = failedCheck('same diagnostic text\n')
-
-  const comparison = compareRepositoryCheckToBaseline(baseline, current)
-
-  assert.equal(comparison.passed, true)
-  assert.equal(comparison.delta.new.length, 0)
-  assert.equal(comparison.delta.fixed.length, 0)
-  assert.equal(comparison.delta.carried.length, 1)
-})
-
-test('baseline delta passes a fully repaired check', () => {
-  const baseline = failedCheck(
-    '/workspace/src/a.ts:10:2 error Unexpected value no-example\n',
-  )
-
-  const comparison = compareRepositoryCheckToBaseline(baseline, passedCheck())
-
-  assert.equal(comparison.passed, true)
-  assert.equal(comparison.delta.new.length, 0)
-  assert.equal(
-    comparison.delta.fixed.some((item) =>
-      item.diagnostic.includes('no-example'),
     ),
     true,
   )
@@ -541,11 +533,12 @@ test('streaming repository checks emit subprocess output before returning the re
 test('stage-requested timeout overrides the profile default', () => {
   const { root } = makeInstallation()
 
+  // The floor for timeout_ms is 1000 ms, so the command sleeps just past it.
   writeChecks(root, {
     fast: {
       timeout_ms: 1_000,
       probes: [],
-      commands: ['node -e "setTimeout(() => process.exit(0), 2000)"'],
+      commands: ['node -e "setTimeout(() => process.exit(0), 1300)"'],
     },
   })
 
@@ -554,24 +547,12 @@ test('stage-requested timeout overrides the profile default', () => {
   assert.equal(result.status, 'passed')
   assert.equal(result.timeout_ms, 5_000)
   assert.equal(result.results[0]?.timed_out, false)
-})
 
-test('direct repository checks use the profile timeout default', () => {
-  const { root } = makeInstallation()
+  const direct = runRepositoryCheck(root, 'fast')
 
-  writeChecks(root, {
-    fast: {
-      timeout_ms: 1_000,
-      probes: [],
-      commands: ['node -e "setTimeout(() => process.exit(0), 2000)"'],
-    },
-  })
-
-  const result = runRepositoryCheck(root, 'fast')
-
-  assert.equal(result.status, 'failed')
-  assert.equal(result.timeout_ms, 1_000)
-  assert.equal(result.results[0]?.timed_out, true)
+  assert.equal(direct.status, 'failed')
+  assert.equal(direct.timeout_ms, 1_000)
+  assert.equal(direct.results[0]?.timed_out, true)
 })
 
 test('a new pytest failure with spaces in bracketed parameters is detected', () => {
@@ -620,29 +601,26 @@ test('a current-path harness-managed worktree resolves the owning installation r
   writeChecks(root, { fast: { probes: [], commands: ['echo ok'] } })
 
   const worktree = path.join(root, 'worktrees', 'operator', 'wt')
+  const runtimeWorktree = path.join(
+    root,
+    'runtime',
+    'worktrees',
+    'operator',
+    'wt',
+  )
 
   mkdirSync(worktree, { recursive: true })
+  mkdirSync(runtimeWorktree, { recursive: true })
 
   assert.equal(
     repositoryChecksSourcePath(worktree),
     path.join(root, 'runtime', 'repository-checks.json'),
   )
-})
-
-test('a harness-managed worktree resolves the owning installation runtime config', () => {
-  const { root } = makeInstallation()
-
-  writeChecks(root, { fast: { probes: [], commands: ['echo ok'] } })
-
-  const worktree = path.join(root, 'runtime', 'worktrees', 'operator', 'wt')
-
-  mkdirSync(worktree, { recursive: true })
-
   // The runtime configuration is untracked, so the worktree never carries it;
   // resolution must reach the owning installation rather than fall back to a
   // weaker template suite.
   assert.equal(
-    repositoryChecksSourcePath(worktree),
+    repositoryChecksSourcePath(runtimeWorktree),
     path.join(root, 'runtime', 'repository-checks.json'),
   )
 })
@@ -673,15 +651,4 @@ test('workspace setup commands load, run in order, and stop at the first failure
   assert.equal(result.results.length, 2)
   assert.equal(result.results[0].passed, true)
   assert.equal(result.results[1].passed, false)
-})
-
-test('workspace setup reports not_configured when the config declares none', () => {
-  const { root } = makeInstallation()
-
-  writeChecks(root, {})
-
-  const result = runRepositorySetup(root)
-
-  assert.equal(result.status, 'not_configured')
-  assert.deepEqual(result.results, [])
 })

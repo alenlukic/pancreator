@@ -6,41 +6,6 @@ import test from 'node:test'
 import { auditDirectives } from '../../src/lib/governance/audit-directives.js'
 import { createFixture } from '../helpers.js'
 
-test('directive audit passes on fixture repository', () => {
-  const root = createFixture()
-  const criteriaRoot = path.join(root, 'governance', 'criteria')
-
-  mkdirSync(criteriaRoot, { recursive: true })
-  writeFileSync(path.join(criteriaRoot, 'index.md'), '# Criteria\n')
-
-  const result = auditDirectives(root)
-
-  assert.equal(result.errors.length, 0)
-  assert.deepEqual(
-    new Set(result.source_coverage.map((item) => item.category)),
-    new Set([
-      'bootstrap',
-      'criterion',
-      'cursor_source',
-      'generated_projection',
-      'guidance',
-      'persona',
-      'policy',
-      'projection_manifest',
-      'selector',
-      'skill',
-      'workflow_prompt',
-    ]),
-  )
-  assert.ok(result.duplicate_groups.length > 0)
-  assert.equal(
-    result.source_coverage
-      .flatMap((item) => item.paths)
-      .some((item) => item.startsWith('.cursor/')),
-    false,
-  )
-})
-
 function dispositionRecord(root: string): {
   entries: Array<Record<string, unknown>>
 } {
@@ -71,21 +36,57 @@ function writeDispositionRecord(
   )
 }
 
-test('directive audit rejects an undisposed duplicate group', () => {
+test('directive audit rejects registry defects in one pass', () => {
   const root = createFixture()
   const record = dispositionRecord(root)
 
   record.entries = record.entries.filter(
     (entry) => entry.id !== 'reviewer-hard-evidence-boundary',
   )
+  record.entries.push({
+    id: 'stale-retain',
+    category: 'duplicate',
+    sources: ['library/personas/missing.md'],
+    disposition: 'retain',
+    rationale: 'A stale fixture.',
+    evidence: ['tests/unit/directive-audit.test.ts'],
+  })
+  const retained = record.entries.find(
+    (entry) => entry.id === 'language-appendix-boundaries',
+  )
+
+  assert.ok(retained)
+  retained.evidence = []
+  // The fixture needs a `tests/` tree to make the cited evidence path checkable.
+  mkdirSync(path.join(root, 'tests', 'unit'), { recursive: true })
+  record.entries.push({
+    id: 'dangling-evidence',
+    category: 'duplicate',
+    sources: ['library/personas/coder.md', 'library/personas/planner.md'],
+    disposition: 'retain',
+    rationale: 'Evidence names a deleted test.',
+    evidence: ['tests/unit/deleted-contract.test.ts: pins the invariant'],
+  })
   writeDispositionRecord(root, record)
 
   const result = auditDirectives(root)
 
   assert.ok(
     result.errors.some((item) =>
+      item.includes(
+        'stale disposition evidence in dangling-evidence: tests/unit/deleted-contract.test.ts',
+      ),
+    ),
+  )
+
+  assert.ok(
+    result.errors.some((item) =>
       item.includes('duplicate group lacks a disposition'),
     ),
+  )
+  assert.ok(result.errors.some((item) => item.includes('is invalid')))
+  assert.ok(
+    result.errors.some((item) => item.includes('stale disposition source')),
   )
 })
 
@@ -112,7 +113,7 @@ function writeDispositionExtension(
   )
 }
 
-test('a target extension restating a harness directive needs no disposition', () => {
+test('tolerated directive collisions raise no disposition demand', () => {
   const root = createFixture()
   const harnessSkill = path.join(root, 'library', 'skills', 'write-pr.md')
   const directive =
@@ -120,6 +121,19 @@ test('a target extension restating a harness directive needs no disposition', ()
 
   mkdirSync(path.dirname(harnessSkill), { recursive: true })
   writeFileSync(harnessSkill, `# Write a PR\n\n${directive}`)
+
+  const preambleDirectory = path.join(
+    root,
+    'governance',
+    'handbooks',
+    'target-owned',
+  )
+  const preamble =
+    '# Guidance\n\nThe terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in this document indicate\nrequirement levels as defined by RFC 2119 and RFC 8174.\n'
+
+  mkdirSync(preambleDirectory, { recursive: true })
+  writeFileSync(path.join(preambleDirectory, 'first.md'), preamble)
+  writeFileSync(path.join(preambleDirectory, 'second.md'), preamble)
 
   // A target extension declares its own policy and handbook, the way an
   // installed target does, and restates the harness rule in its own wording.
@@ -166,21 +180,8 @@ test('a target extension restating a harness directive needs no disposition', ()
     result.errors.some((item) => item.includes(handbook)),
     false,
   )
-})
 
-test('a wrapped RFC 2119 preamble is not a duplicate directive', () => {
-  const root = createFixture()
-  const directory = path.join(root, 'governance', 'handbooks', 'target-owned')
-  // Two files carrying the preamble wrapped the way a formatter emits it.
-  const preamble =
-    '# Guidance\n\nThe terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in this document indicate\nrequirement levels as defined by RFC 2119 and RFC 8174.\n'
-
-  mkdirSync(directory, { recursive: true })
-  writeFileSync(path.join(directory, 'first.md'), preamble)
-  writeFileSync(path.join(directory, 'second.md'), preamble)
-
-  const result = auditDirectives(root)
-
+  // The wrapped preamble is boilerplate, not a duplicate directive.
   assert.equal(
     result.errors.some(
       (item) =>
@@ -191,7 +192,7 @@ test('a wrapped RFC 2119 preamble is not a duplicate directive', () => {
   )
 })
 
-test('a target-authored disposition layer covers a duplicate group', () => {
+test('disposition layers cover groups, bind filenames, and reject id reuse', () => {
   const root = createFixture()
   const record = dispositionRecord(root)
   const moved = record.entries.find(
@@ -206,6 +207,27 @@ test('a target-authored disposition layer covers a duplicate group', () => {
   writeDispositionRecord(root, record)
   writeDispositionExtension(root, 'target-layer', [moved])
 
+  const reused = record.entries[0]
+
+  assert.ok(reused)
+  writeDispositionExtension(root, 'reuse-layer', [reused])
+
+  const directory = path.join(
+    root,
+    'governance',
+    'registries',
+    'context_bloat_dispositions.d',
+  )
+
+  writeFileSync(
+    path.join(directory, 'mismatched.json'),
+    `${JSON.stringify({
+      schema_version: 1,
+      extension_id: 'other-layer',
+      entries: [],
+    })}\n`,
+  )
+
   const result = auditDirectives(root)
 
   assert.equal(
@@ -214,77 +236,14 @@ test('a target-authored disposition layer covers a duplicate group', () => {
     ),
     false,
   )
-})
-
-test('a disposition layer filename MUST match its extension id', () => {
-  const root = createFixture()
-  const directory = path.join(
-    root,
-    'governance',
-    'registries',
-    'context_bloat_dispositions.d',
-  )
-
-  mkdirSync(directory, { recursive: true })
-  writeFileSync(
-    path.join(directory, 'mismatched.json'),
-    `${JSON.stringify({
-      schema_version: 1,
-      extension_id: 'target-layer',
-      entries: [],
-    })}\n`,
-  )
-
-  const result = auditDirectives(root)
-
   assert.ok(
     result.errors.some((item) =>
-      item.includes('MUST match extension_id target-layer'),
+      item.includes('MUST match extension_id other-layer'),
     ),
   )
-})
-
-test('a disposition layer MUST NOT reuse a harness disposition id', () => {
-  const root = createFixture()
-  const record = dispositionRecord(root)
-  const existing = record.entries[0]
-
-  assert.ok(existing)
-  writeDispositionExtension(root, 'target-layer', [existing])
-
-  const result = auditDirectives(root)
-
   assert.ok(
     result.errors.some((item) =>
-      item.includes(`duplicates disposition id ${String(existing.id)}`),
+      item.includes(`duplicates disposition id ${String(reused.id)}`),
     ),
-  )
-})
-
-test('directive audit rejects stale sources and missing retain evidence', () => {
-  const root = createFixture()
-  const record = dispositionRecord(root)
-
-  record.entries.push({
-    id: 'stale-retain',
-    category: 'duplicate',
-    sources: ['library/personas/missing.md'],
-    disposition: 'retain',
-    rationale: 'A stale fixture.',
-    evidence: ['tests/unit/directive-audit.test.ts'],
-  })
-  const retained = record.entries.find(
-    (entry) => entry.id === 'language-appendix-boundaries',
-  )
-
-  assert.ok(retained)
-  retained.evidence = []
-  writeDispositionRecord(root, record)
-
-  const result = auditDirectives(root)
-
-  assert.ok(result.errors.some((item) => item.includes('is invalid')))
-  assert.ok(
-    result.errors.some((item) => item.includes('stale disposition source')),
   )
 })

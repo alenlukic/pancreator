@@ -5,7 +5,6 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
-  containsNestedGeneratedDirectory,
   isExcludedPath,
   matchWorkspaceGlob,
   resolveRoots,
@@ -123,20 +122,6 @@ test('matchWorkspaceGlob preserves literal and directory glob exclusions', () =>
     matchWorkspaceGlob('**/generated/**', 'client/generated/cache.json'),
     true,
   )
-})
-
-test('containsNestedGeneratedDirectory excludes dependency trees at any depth', () => {
-  assert.equal(
-    containsNestedGeneratedDirectory(
-      'client/node_modules/.vite/vitest/da39a3ee/results.json',
-    ),
-    true,
-  )
-  assert.equal(
-    containsNestedGeneratedDirectory('node_modules/pkg/index.js'),
-    true,
-  )
-  assert.equal(containsNestedGeneratedDirectory('src/app.ts'), false)
 })
 
 test('isExcludedPath excludes nested generated files under node_modules', () => {

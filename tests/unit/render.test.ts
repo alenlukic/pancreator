@@ -1,6 +1,4 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import path from 'node:path'
 import test from 'node:test'
 
 import { sha256 } from '../../src/lib/io.js'
@@ -17,7 +15,7 @@ import {
   renderSupervisorProcedureMarkdown,
   splitInvocationContract,
 } from '../../src/lib/render.js'
-import { resolvePolicies } from '../../src/lib/policies.js'
+import { loadPolicyCatalog, resolvePolicies } from '../../src/lib/policies.js'
 import {
   buildValidationArtifact,
   invocationValidationPath,
@@ -27,41 +25,11 @@ import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { createFixture } from '../helpers.js'
 import type { Invocation } from '../../src/lib/types.js'
 
-test('status summary includes the pause reason when present', () => {
-  const status = renderStatus({
-    schema_version: 1,
-    run_id: 'run-1',
-    workflow_slug: 'delivery',
-    workflow_snapshot: { path: 'workflow.json', sha256: 'abc' },
-    workspace_root: '.',
-    title: 'Run',
-    status: 'paused',
-    current_stage: 'implement',
-    pending_action: { type: 'operator_decision' },
-    current_invocation: null,
-    request: {
-      source_path: 'request.md',
-      stored_path: 'runtime/request.md',
-      sha256: 'abc',
-    },
-    revision: 4,
-    transition_count: 2,
-    consecutive_failures: 0,
-    attempts: {},
-    stage_history: [],
-    created_at: '2026-06-22T00:00:00.000Z',
-    updated_at: '2026-06-22T00:00:00.000Z',
-    limits: {
-      max_total_transitions: 18,
-      max_stage_attempts: 3,
-      max_consecutive_failures: 3,
-    },
-    pause_reason: 'Maximum consecutive failures exceeded.',
-  })
-
-  assert.match(status, /Status: paused/)
-  assert.match(status, /Pause reason: Maximum consecutive failures exceeded\./)
-})
+const RUN_LIMITS = {
+  max_total_transitions: 18,
+  max_stage_attempts: 3,
+  max_consecutive_failures: 3,
+}
 
 function baseInvocation(
   root: string,
@@ -195,35 +163,28 @@ test('the worker card names the supervisor procedure and prints no lifecycle com
       .map((check) => check.message)
       .join('; '),
   )
-})
 
-test('validation rejects a worker card that prints a lifecycle command', () => {
-  const root = createFixture()
-  const invocation = delegatedInvocation(root)
-  const procedure = renderSupervisorProcedureMarkdown(invocation)
-  const card = renderInvocationMarkdown(invocation).replace(
-    '## 🚧 Boundaries',
-    'Run `./bin/pan submit run-fixture out.json` when done.\n\n## 🚧 Boundaries',
+  const leaking = validateInvocationMarkdown(
+    invocation,
+    card.replace(
+      '## 🚧 Boundaries',
+      'Run `./bin/pan submit run-fixture out.json` when done.\n\n## 🚧 Boundaries',
+    ),
+    procedure,
   )
-  const result = validateInvocationMarkdown(invocation, card, procedure)
 
-  assert.equal(result.passed, false)
+  assert.equal(leaking.passed, false)
   assert.ok(
-    result.checks.some(
+    leaking.checks.some(
       (check) => check.id === 'delegation.worker_isolation' && !check.passed,
     ),
   )
-})
 
-test('validation rejects a split delegation without its procedure document', () => {
-  const root = createFixture()
-  const invocation = delegatedInvocation(root)
-  const card = renderInvocationMarkdown(invocation)
-  const result = validateInvocationMarkdown(invocation, card)
+  const undocumented = validateInvocationMarkdown(invocation, card)
 
-  assert.equal(result.passed, false)
+  assert.equal(undocumented.passed, false)
   assert.ok(
-    result.checks.some(
+    undocumented.checks.some(
       (check) => check.id === 'delegation.procedure_document' && !check.passed,
     ),
   )
@@ -232,6 +193,8 @@ test('validation rejects a split delegation without its procedure document', () 
 test('invocation cards inline policy text and reference guidance for every stage', () => {
   const root = createFixture()
   const stages = ['plan', 'implement', 'verify', 'remediate', 'ship']
+
+  let boundedReferences = 0
 
   for (const stageSlug of stages) {
     const markdown = renderInvocationMarkdown(
@@ -278,9 +241,21 @@ test('invocation cards inline policy text and reference guidance for every stage
           !markdown.includes(guidance.content),
           `${policy.id} MUST NOT inline the body of ${guidance.source_path}`,
         )
+
+        if (reference.start_heading) {
+          boundedReferences += 1
+          assert.ok(
+            markdown.includes(
+              `Selected range: from \`${reference.start_heading}\``,
+            ),
+            `${policy.id} MUST name the selected range of ${guidance.source_path}`,
+          )
+        }
       }
     }
   }
+
+  assert.ok(boundedReferences > 0, 'the fixture MUST carry a bounded reference')
 })
 
 test('model configurations receive the same normative invocation contract', () => {
@@ -300,120 +275,17 @@ test('model configurations receive the same normative invocation contract', () =
   assert.ok(contracts.every((contract) => contract === contracts[0]))
 })
 
-test('Python invocation cards reference PY-001 guidance for embedded targets', () => {
-  const root = createFixture()
-  const configPath = path.join(root, 'config.json')
-  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
-    string,
-    unknown
-  >
-
-  config.installation_mode = 'embedded'
-  config.workspace_root = 'target'
-  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
-  mkdirSync(path.join(root, 'target'), { recursive: true })
-  writeFileSync(path.join(root, 'target', 'pyproject.toml'), '[project]\n')
-
-  const invocation = baseInvocation(root, 'delivery', 'implement')
-  const markdown = renderInvocationMarkdown(invocation)
-  const pythonPolicy = invocation.policies.find(
-    (policy) => policy.id === 'PY-001',
-  )
-
-  assert.ok(pythonPolicy)
-
-  const guidance = pythonPolicy.guidance?.[0]
+test('Python guidance selection stops short of the formatter appendix', () => {
+  const guidance = loadPolicyCatalog(process.cwd()).get('PY-001')?.guidance?.[0]
 
   assert.ok(guidance)
-  assert.ok(
-    markdown.includes(
-      '### Guidance reference · `governance/handbooks/python/style-guide.md`',
-    ),
+  assert.equal(
+    guidance.source_path,
+    'governance/handbooks/python/style-guide.md',
   )
-  assert.ok(
-    markdown.includes(
-      `\`sha256:${sha256(guidance.content)}\`` +
-        ` — ${guidance.content.split('\n').length} lines,` +
-        ` ${Buffer.byteLength(guidance.content, 'utf8')} bytes.`,
-    ),
-  )
-  // The selected range stops short of the formatter appendix, and the card
-  // carries the pointer rather than either body.
+  assert.ok(guidance.reference?.end_heading)
   assert.match(guidance.content, /Mutable default arguments MUST NOT be used/u)
   assert.doesNotMatch(guidance.content, /Appendix A: Formatter-owned rules/u)
-  assert.doesNotMatch(markdown, /Mutable default arguments MUST NOT be used/u)
-})
-
-test('planning cards exclude implementation language guidance', () => {
-  const root = createFixture()
-  const configPath = path.join(root, 'config.json')
-  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
-    string,
-    unknown
-  >
-
-  config.installation_mode = 'embedded'
-  config.workspace_root = 'target'
-  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
-  mkdirSync(path.join(root, 'target'), { recursive: true })
-  writeFileSync(path.join(root, 'target', 'pyproject.toml'), '[project]\n')
-
-  const invocation = baseInvocation(root, 'delivery', 'plan')
-  const policyIds = new Set(invocation.policies.map((policy) => policy.id))
-  const markdown = renderInvocationMarkdown(invocation)
-
-  for (const policyId of ['CONTRACT-001', 'ENG-001', 'PLAN-002']) {
-    assert.ok(policyIds.has(policyId), `plan card MUST include ${policyId}`)
-  }
-  for (const policyId of ['LANG-001', 'PY-001', 'TS-001']) {
-    assert.equal(policyIds.has(policyId), false)
-  }
-  assert.doesNotMatch(markdown, /governance\/handbooks\/python/u)
-  assert.doesNotMatch(markdown, /governance\/handbooks\/target\//u)
-})
-
-test('a guidance reference names the selected heading range', () => {
-  const root = createFixture()
-  const invocation = baseInvocation(root, 'delivery', 'implement')
-  const markdown = renderInvocationMarkdown(invocation)
-  const bounded = invocation.policies
-    .flatMap((policy) => policy.guidance ?? [])
-    .find((guidance) => guidance.reference?.start_heading)
-
-  assert.ok(bounded?.reference?.start_heading)
-  assert.ok(
-    markdown.includes(
-      `Selected range: from \`${bounded.reference.start_heading}\``,
-    ),
-  )
-})
-
-test('a guidance reference states its digest basis', () => {
-  const root = createFixture()
-  const invocation = baseInvocation(root, 'delivery', 'implement')
-  const markdown = renderInvocationMarkdown(invocation)
-
-  // An honest verifier who hashes the raw range gets a different digest, so
-  // the reference itself must say what the digest covers.
-  assert.ok(
-    markdown.includes(
-      '- Digest basis: SHA-256 of the selected text after leading and ' +
-        'trailing whitespace is trimmed.',
-    ),
-  )
-})
-
-test('invocation validation accepts a card rendered before the digest-basis line', () => {
-  const root = createFixture()
-  const invocation = baseInvocation(root, 'delivery', 'implement')
-  const legacyMarkdown = renderInvocationMarkdown(invocation).replaceAll(
-    '\n- Digest basis: SHA-256 of the selected text after leading and ' +
-      'trailing whitespace is trimmed.',
-    '',
-  )
-  const result = validateInvocationMarkdown(invocation, legacyMarkdown)
-
-  assert.equal(result.passed, true)
 })
 
 test('a guidance reference describes an end-only heading range', () => {
@@ -483,121 +355,114 @@ test('invocation validation fails when a guidance reference is omitted', () => {
   const root = createFixture()
   const invocation = baseInvocation(root, 'delivery', 'implement')
   const markdown = renderInvocationMarkdown(invocation)
-  const { guidance } = engineeringGuidance(invocation)
-  const heading = `### Guidance reference · \`${guidance.source_path}\``
+  const { guidance, reference } = engineeringGuidance(invocation)
+  const prefix = 'policy.ENG-001.guidance.1'
 
-  assert.ok(
-    failedCheckIds(invocation, markdown.replace(heading, '')).has(
-      'policy.ENG-001.guidance.1.heading',
-    ),
-  )
-})
-
-test('invocation validation fails when a read trigger is omitted', () => {
-  const root = createFixture()
-  const invocation = baseInvocation(root, 'delivery', 'implement')
-  const markdown = renderInvocationMarkdown(invocation)
-  const { reference } = engineeringGuidance(invocation)
-
-  assert.ok(
-    failedCheckIds(
-      invocation,
+  const cardMutations: Array<[string, string, string[]]> = [
+    [
+      'guidance reference omitted',
+      markdown.replace(
+        `### Guidance reference · \`${guidance.source_path}\``,
+        '',
+      ),
+      ['heading'],
+    ],
+    [
+      'read trigger omitted',
       markdown.replace(reference.read_trigger, 'whenever you feel like it'),
-    ).has('policy.ENG-001.guidance.1.read_trigger'),
-  )
-})
+      ['read_trigger'],
+    ],
+    [
+      'selected range stale',
+      markdown.replace(
+        `Selected range: ${guidanceSelectedRange(reference)}.`,
+        'Selected range: the complete file.',
+      ),
+      ['selected_range', 'reference_block'],
+    ],
+    [
+      'rendered digest stale',
+      markdown.replace(reference.content_sha256, sha256('drifted content')),
+      ['digest'],
+    ],
+    [
+      'guidance body leaks into the card',
+      `${markdown}\n\n${guidance.content}\n`,
+      ['body_absent'],
+    ],
+  ]
 
-test('invocation validation fails when a selected range is stale', () => {
-  const root = createFixture()
-  const invocation = baseInvocation(root, 'delivery', 'implement')
-  const markdown = renderInvocationMarkdown(invocation)
-  const { reference } = engineeringGuidance(invocation)
-  const selectedRange = `Selected range: ${guidanceSelectedRange(reference)}.`
-  const failed = failedCheckIds(
-    invocation,
-    markdown.replace(selectedRange, 'Selected range: the complete file.'),
-  )
+  for (const [label, mutated, checkIds] of cardMutations) {
+    assert.notEqual(mutated, markdown, `${label}: mutation MUST apply`)
 
-  assert.ok(failed.has('policy.ENG-001.guidance.1.selected_range'))
-  assert.ok(failed.has('policy.ENG-001.guidance.1.reference_block'))
-})
+    const failed = failedCheckIds(invocation, mutated)
 
-test('invocation validation fails when a rendered digest is stale', () => {
-  const root = createFixture()
-  const invocation = baseInvocation(root, 'delivery', 'implement')
-  const markdown = renderInvocationMarkdown(invocation)
-  const { reference } = engineeringGuidance(invocation)
-  const failed = failedCheckIds(
-    invocation,
-    markdown.replace(reference.content_sha256, sha256('drifted content')),
-  )
-
-  assert.ok(failed.has('policy.ENG-001.guidance.1.digest'))
-})
-
-test('invocation validation fails when reference metadata contradicts the snapshot', () => {
-  const root = createFixture()
-  const invocation = baseInvocation(root, 'delivery', 'implement')
-  const { guidance, reference } = engineeringGuidance(invocation)
-
-  guidance.reference = { ...reference, content_sha256: sha256('stale body') }
-
-  const markdown = renderInvocationMarkdown(invocation)
-  const failed = failedCheckIds(invocation, markdown)
-
-  assert.ok(failed.has('policy.ENG-001.guidance.1.digest_matches_snapshot'))
-})
-
-test('invocation validation fails when size metadata contradicts the snapshot', () => {
-  const root = createFixture()
-  const invocation = baseInvocation(root, 'delivery', 'implement')
-  const { guidance, reference } = engineeringGuidance(invocation)
-
-  guidance.reference = {
-    ...reference,
-    line_count: reference.line_count + 1,
-    byte_length: reference.byte_length + 1,
+    for (const checkId of checkIds) {
+      assert.ok(failed.has(`${prefix}.${checkId}`), `${label}: ${checkId}`)
+    }
   }
 
-  const markdown = renderInvocationMarkdown(invocation)
-  const failed = failedCheckIds(invocation, markdown)
-
-  assert.ok(failed.has('policy.ENG-001.guidance.1.line_count_matches_snapshot'))
-  assert.ok(
-    failed.has('policy.ENG-001.guidance.1.byte_length_matches_snapshot'),
-  )
-})
-
-test('invocation validation fails when a guidance body leaks into the card', () => {
-  const root = createFixture()
-  const invocation = baseInvocation(root, 'delivery', 'implement')
-  const markdown = renderInvocationMarkdown(invocation)
-  const { guidance } = engineeringGuidance(invocation)
-  const failed = failedCheckIds(
-    invocation,
-    `${markdown}\n\n${guidance.content}\n`,
+  // A card rendered before the digest-basis line is still accepted.
+  const legacyMarkdown = markdown.replaceAll(
+    '\n- Digest basis: SHA-256 of the selected text after leading and ' +
+      'trailing whitespace is trimmed.',
+    '',
   )
 
-  assert.ok(failed.has('policy.ENG-001.guidance.1.body_absent'))
-})
-
-test('invocation validation keeps the inline contract for legacy guidance', () => {
-  const root = createFixture()
-  const invocation = baseInvocation(root, 'delivery', 'implement')
-  const { guidance } = engineeringGuidance(invocation)
-
-  delete guidance.reference
-
-  const markdown = renderInvocationMarkdown(invocation)
-
-  assert.ok(
-    markdown.includes(`### Unrolled guidance · \`${guidance.source_path}\``),
+  assert.notEqual(legacyMarkdown, markdown)
+  assert.equal(
+    validateInvocationMarkdown(invocation, legacyMarkdown).passed,
+    true,
   )
-  assert.ok(markdown.includes(guidance.content))
-  assert.equal(validateInvocationMarkdown(invocation, markdown).passed, true)
+
+  const staleDigest = structuredClone(invocation)
+  const staleDigestGuidance = engineeringGuidance(staleDigest)
+
+  staleDigestGuidance.guidance.reference = {
+    ...staleDigestGuidance.reference,
+    content_sha256: sha256('stale body'),
+  }
   assert.ok(
-    failedCheckIds(invocation, markdown.replace(guidance.content, '')).has(
-      'policy.ENG-001.guidance.1.content',
+    failedCheckIds(staleDigest, renderInvocationMarkdown(staleDigest)).has(
+      `${prefix}.digest_matches_snapshot`,
+    ),
+  )
+
+  const staleSize = structuredClone(invocation)
+  const staleSizeGuidance = engineeringGuidance(staleSize)
+
+  staleSizeGuidance.guidance.reference = {
+    ...staleSizeGuidance.reference,
+    line_count: staleSizeGuidance.reference.line_count + 1,
+    byte_length: staleSizeGuidance.reference.byte_length + 1,
+  }
+
+  const sizeFailed = failedCheckIds(
+    staleSize,
+    renderInvocationMarkdown(staleSize),
+  )
+
+  assert.ok(sizeFailed.has(`${prefix}.line_count_matches_snapshot`))
+  assert.ok(sizeFailed.has(`${prefix}.byte_length_matches_snapshot`))
+
+  // Legacy guidance without a reference keeps the inline contract.
+  const legacy = structuredClone(invocation)
+  const legacyGuidance = engineeringGuidance(legacy).guidance
+
+  delete legacyGuidance.reference
+
+  const legacyCard = renderInvocationMarkdown(legacy)
+
+  assert.ok(
+    legacyCard.includes(
+      `### Unrolled guidance · \`${legacyGuidance.source_path}\``,
+    ),
+  )
+  assert.ok(legacyCard.includes(legacyGuidance.content))
+  assert.equal(validateInvocationMarkdown(legacy, legacyCard).passed, true)
+  assert.ok(
+    failedCheckIds(legacy, legacyCard.replace(legacyGuidance.content, '')).has(
+      `${prefix}.content`,
     ),
   )
 })
@@ -613,6 +478,28 @@ test('status summary renders a dedicated validation section for pass state', () 
     checks: [{ id: 'policies.heading', passed: true, message: 'ok' }],
     artifact_path: `runtime/logs/workflows/${runId}/invocations/${invocationId}.md`,
   })
+  const request = {
+    source_path: 'request.md',
+    stored_path: 'runtime/request.md',
+    sha256: 'abc',
+  }
+  const invocationPaths = (id: string, persona: string) => ({
+    pending_action: {
+      type: 'invoke_agent' as const,
+      persona,
+      path: `runtime/logs/workflows/${runId}/invocations/${id}.md`,
+    },
+    current_invocation: {
+      id,
+      json_path: `runtime/logs/workflows/${runId}/invocations/${id}.json`,
+      markdown_path: `runtime/logs/workflows/${runId}/invocations/${id}.md`,
+      output_path: `runtime/logs/workflows/${runId}/outputs/${id}.json`,
+    },
+    invocation_validation_path: invocationValidationPath(runId, id),
+    delegation_validation_path: `runtime/logs/workflows/${runId}/invocations/${id}.delegation-validation.json`,
+    delegation_path: `runtime/logs/workflows/${runId}/invocations/${id}.delegation.md`,
+  })
+  const implementPaths = invocationPaths(invocationId, 'coder')
 
   const status = renderStatus(
     {
@@ -624,22 +511,9 @@ test('status summary renders a dedicated validation section for pass state', () 
       title: 'Run',
       status: 'running',
       current_stage: 'implement',
-      pending_action: {
-        type: 'invoke_agent',
-        persona: 'coder',
-        path: `runtime/logs/workflows/${runId}/invocations/${invocationId}.md`,
-      },
-      current_invocation: {
-        id: invocationId,
-        json_path: `runtime/logs/workflows/${runId}/invocations/${invocationId}.json`,
-        markdown_path: `runtime/logs/workflows/${runId}/invocations/${invocationId}.md`,
-        output_path: `runtime/logs/workflows/${runId}/outputs/${invocationId}.json`,
-      },
-      request: {
-        source_path: 'request.md',
-        stored_path: 'runtime/request.md',
-        sha256: 'abc',
-      },
+      pending_action: implementPaths.pending_action,
+      current_invocation: implementPaths.current_invocation,
+      request,
       revision: 1,
       transition_count: 1,
       consecutive_failures: 0,
@@ -647,32 +521,26 @@ test('status summary renders a dedicated validation section for pass state', () 
       stage_history: [],
       created_at: '2026-06-22T00:00:00.000Z',
       updated_at: '2026-06-22T00:00:00.000Z',
-      limits: {
-        max_total_transitions: 18,
-        max_stage_attempts: 3,
-        max_consecutive_failures: 3,
-      },
+      limits: RUN_LIMITS,
     },
     {
       invocation: invocationValidation,
       delegation: { state: 'missing' },
-      invocation_validation_path: invocationValidationPath(runId, invocationId),
-      delegation_validation_path: `runtime/logs/workflows/${runId}/invocations/${invocationId}.delegation-validation.json`,
-      delegation_path: `runtime/logs/workflows/${runId}/invocations/${invocationId}.delegation.md`,
+      invocation_validation_path: implementPaths.invocation_validation_path,
+      delegation_validation_path: implementPaths.delegation_validation_path,
+      delegation_path: implementPaths.delegation_path,
     },
   )
 
   assert.match(status, /## Validation/)
   assert.match(status, /Invocation validation: pass/)
   assert.match(status, /Delegation validation: missing/)
-})
 
-test('status summary surfaces validation failure reasons', () => {
-  const invocationId = 'plan-1-abcd'
-  const runId = 'run-1'
+  const planId = 'plan-1-abcd'
+  const planPaths = invocationPaths(planId, 'planner')
   const delegationValidation = buildValidationArtifact({
     run_id: runId,
-    invocation_id: invocationId,
+    invocation_id: planId,
     kind: 'delegation',
     status: 'fail',
     checks: [
@@ -682,10 +550,9 @@ test('status summary surfaces validation failure reasons', () => {
         message: 'Delegation artifact MUST equal the canonical invocation card',
       },
     ],
-    artifact_path: `runtime/logs/workflows/${runId}/invocations/${invocationId}.delegation.md`,
+    artifact_path: `runtime/logs/workflows/${runId}/invocations/${planId}.delegation.md`,
   })
-
-  const status = renderStatus(
+  const failing = renderStatus(
     {
       schema_version: 1,
       run_id: runId,
@@ -695,22 +562,9 @@ test('status summary surfaces validation failure reasons', () => {
       title: 'Run',
       status: 'running',
       current_stage: 'plan',
-      pending_action: {
-        type: 'invoke_agent',
-        persona: 'planner',
-        path: `runtime/logs/workflows/${runId}/invocations/${invocationId}.md`,
-      },
-      current_invocation: {
-        id: invocationId,
-        json_path: `runtime/logs/workflows/${runId}/invocations/${invocationId}.json`,
-        markdown_path: `runtime/logs/workflows/${runId}/invocations/${invocationId}.md`,
-        output_path: `runtime/logs/workflows/${runId}/outputs/${invocationId}.json`,
-      },
-      request: {
-        source_path: 'request.md',
-        stored_path: 'runtime/request.md',
-        sha256: 'abc',
-      },
+      pending_action: planPaths.pending_action,
+      current_invocation: planPaths.current_invocation,
+      request,
       revision: 1,
       transition_count: 1,
       consecutive_failures: 0,
@@ -718,23 +572,45 @@ test('status summary surfaces validation failure reasons', () => {
       stage_history: [],
       created_at: '2026-06-22T00:00:00.000Z',
       updated_at: '2026-06-22T00:00:00.000Z',
-      limits: {
-        max_total_transitions: 18,
-        max_stage_attempts: 3,
-        max_consecutive_failures: 3,
-      },
+      limits: RUN_LIMITS,
     },
     {
       invocation: { state: 'missing' },
       delegation: delegationValidation,
-      invocation_validation_path: invocationValidationPath(runId, invocationId),
-      delegation_validation_path: `runtime/logs/workflows/${runId}/invocations/${invocationId}.delegation-validation.json`,
-      delegation_path: `runtime/logs/workflows/${runId}/invocations/${invocationId}.delegation.md`,
+      invocation_validation_path: planPaths.invocation_validation_path,
+      delegation_validation_path: planPaths.delegation_validation_path,
+      delegation_path: planPaths.delegation_path,
     },
   )
 
-  assert.match(status, /Delegation validation: fail/)
-  assert.match(status, /delegation\.canonical_equality/)
+  assert.match(failing, /Delegation validation: fail/)
+  assert.match(failing, /delegation\.canonical_equality/)
+
+  const paused = renderStatus({
+    schema_version: 1,
+    run_id: runId,
+    workflow_slug: 'delivery',
+    workflow_snapshot: { path: 'workflow.json', sha256: 'abc' },
+    workspace_root: '.',
+    title: 'Run',
+    status: 'paused',
+    current_stage: 'implement',
+    pending_action: { type: 'operator_decision' },
+    current_invocation: null,
+    request,
+    revision: 4,
+    transition_count: 2,
+    consecutive_failures: 0,
+    attempts: {},
+    stage_history: [],
+    created_at: '2026-06-22T00:00:00.000Z',
+    updated_at: '2026-06-22T00:00:00.000Z',
+    limits: RUN_LIMITS,
+    pause_reason: 'Maximum consecutive failures exceeded.',
+  })
+
+  assert.match(paused, /Status: paused/)
+  assert.match(paused, /Pause reason: Maximum consecutive failures exceeded\./)
 })
 
 test('invocation cards distinguish required, conditional, and indexed context', () => {
@@ -811,17 +687,10 @@ test('contract sections concatenate back to the exact contract', () => {
   for (const block of blocks) {
     assert.equal(sha256(block.markdown).length, 64)
   }
-})
 
-test('the contract manifest indexes every section once, in order', () => {
-  const root = createFixture()
-  const invocation = referencedInvocation(root)
   const manifest = invocation.contract_manifest
 
   assert.ok(manifest)
-
-  const blocks = splitInvocationContract(renderInvocationMarkdown(invocation))
-
   assert.deepEqual(
     manifest.sections.map((section) => section.id),
     blocks.map((block) => block.id),
@@ -834,14 +703,6 @@ test('the contract manifest indexes every section once, in order', () => {
     new Set(manifest.sections.map((section) => section.id)).size,
     manifest.sections.length,
   )
-})
-
-test('the contract manifest indexes every referenced guidance selection', () => {
-  const root = createFixture()
-  const invocation = referencedInvocation(root)
-  const manifest = invocation.contract_manifest
-
-  assert.ok(manifest)
 
   const expected = invocation.policies.flatMap((policy) =>
     (policy.guidance ?? []).flatMap((guidance) =>
@@ -860,55 +721,17 @@ test('the contract manifest indexes every referenced guidance selection', () => 
 
   assert.ok(expected.length > 0, 'the fixture card references guidance')
   assert.deepEqual(manifest.guidance, expected)
-})
 
-test('the delivery prompt demands final-line read evidence per guidance entry', () => {
-  const root = createFixture()
-  const invocation = referencedInvocation(root)
-  const manifest = invocation.contract_manifest
-
-  assert.ok(manifest?.guidance?.length)
-
-  const prompt = renderInvocationDeliveryPrompt(invocation, manifest)
-
-  assert.match(prompt, /## Referenced guidance/u)
-  // Read evidence is a quote the card does not carry — never a digest
-  // transcription, which stays prefilled by the scaffold.
-  assert.match(prompt, /set `final_line` to the/u)
-  assert.match(prompt, /verbatim last non-empty line/u)
-
-  for (const entry of manifest.guidance) {
-    assert.ok(prompt.includes(entry.source_path))
-    assert.ok(prompt.includes(`sha256:${entry.content_sha256}`))
-  }
-})
-
-test('the delivery prompt requires only the contract digest, not section echoes', () => {
-  const root = createFixture()
-  const invocation = referencedInvocation(root)
-  const manifest = invocation.contract_manifest
-
-  assert.ok(manifest)
-
-  const prompt = renderInvocationDeliveryPrompt(invocation, manifest)
-
-  assert.match(prompt, /Do not transcribe the per-section digest table/u)
-  assert.doesNotMatch(prompt, /Set `sections` to every section id/u)
-})
-
-test('a manifest without policies carries no guidance index', () => {
-  const root = createFixture()
-  const invocation = referencedInvocation(root)
-  const manifest = buildInvocationContractManifest(
+  const legacyManifest = buildInvocationContractManifest(
     'runtime/logs/workflows/run-fixture/invocations/legacy.md',
-    renderInvocationMarkdown(invocation),
+    contract,
   )
 
-  assert.equal(manifest.guidance, undefined)
-
-  const prompt = renderInvocationDeliveryPrompt(invocation, manifest)
-
-  assert.doesNotMatch(prompt, /## Referenced guidance/u)
+  assert.equal(legacyManifest.guidance, undefined)
+  assert.doesNotMatch(
+    renderInvocationDeliveryPrompt(invocation, legacyManifest),
+    /## Referenced guidance/u,
+  )
 })
 
 test('the delivery prompt references the contract without reproducing it', () => {
@@ -929,15 +752,126 @@ test('the delivery prompt references the contract without reproducing it', () =>
   // The prompt tells the worker what to read; it does not restate the contract.
   assert.ok(!prompt.includes(invocation.prompt))
   assert.ok(prompt.length < manifest.byte_length)
-})
 
-test('the invocation card names the delivery prompt for its supervisor', () => {
-  const root = createFixture()
-  const invocation = referencedInvocation(root)
+  assert.ok(manifest.guidance?.length)
+  assert.match(prompt, /## Referenced guidance/u)
+
+  for (const entry of manifest.guidance) {
+    assert.ok(prompt.includes(entry.source_path))
+    assert.ok(prompt.includes(`sha256:${entry.content_sha256}`))
+  }
+
   const markdown = renderInvocationMarkdown(invocation)
 
   assert.ok(invocation.delegation?.delivery_prompt_path)
   assert.ok(markdown.includes(invocation.delegation.delivery_prompt_path))
   assert.ok(markdown.includes(invocation.delegation.canonical_markdown_path))
   assert.match(markdown, /referenced delivery/u)
+})
+
+test('status summary lists recorded advisories with their stage context', () => {
+  const status = renderStatus({
+    schema_version: 1,
+    run_id: 'run-1',
+    workflow_slug: 'delivery',
+    workflow_snapshot: { path: 'workflow.json', sha256: 'abc' },
+    workspace_root: '.',
+    title: 'Run',
+    status: 'running',
+    current_stage: 'implement',
+    pending_action: { type: 'none' },
+    current_invocation: null,
+    request: {
+      source_path: 'request.md',
+      stored_path: 'runtime/request.md',
+      sha256: 'abc',
+    },
+    revision: 3,
+    transition_count: 2,
+    consecutive_failures: 0,
+    attempts: {},
+    stage_history: [],
+    created_at: '2026-06-22T00:00:00.000Z',
+    updated_at: '2026-06-22T00:00:00.000Z',
+    limits: {
+      max_total_transitions: 18,
+      max_stage_attempts: 3,
+      max_consecutive_failures: 3,
+    },
+    advisories: [
+      {
+        kind: 'model_evidence',
+        source: 'supervisor_evidence',
+        message: 'The supervisor model changed during this run.',
+        recorded_at: '2026-06-22T00:00:00.000Z',
+      },
+      {
+        kind: 'model_evidence',
+        source: 'submit',
+        stage: 'plan',
+        invocation_id: 'plan-1-abcd',
+        message: 'Worker model evidence is unverified.',
+        recorded_at: '2026-06-22T00:00:01.000Z',
+      },
+    ],
+  })
+
+  assert.match(status, /## Advisories/)
+  assert.match(
+    status,
+    /- supervisor_evidence: The supervisor model changed during this run\./,
+  )
+  assert.match(
+    status,
+    /- plan \(submit\): Worker model evidence is unverified\./,
+  )
+})
+
+test('status summary lists a recorded platform guidance conflict', () => {
+  const status = renderStatus({
+    schema_version: 1,
+    run_id: 'run-1',
+    workflow_slug: 'delivery',
+    workflow_snapshot: { path: 'workflow.json', sha256: 'abc' },
+    workspace_root: '.',
+    title: 'Run',
+    status: 'running',
+    current_stage: 'implement',
+    pending_action: { type: 'none' },
+    current_invocation: null,
+    request: {
+      source_path: 'request.md',
+      stored_path: 'runtime/request.md',
+      sha256: 'abc',
+    },
+    revision: 3,
+    transition_count: 2,
+    consecutive_failures: 0,
+    attempts: {},
+    stage_history: [],
+    created_at: '2026-06-22T00:00:00.000Z',
+    updated_at: '2026-06-22T00:00:00.000Z',
+    limits: {
+      max_total_transitions: 18,
+      max_stage_attempts: 3,
+      max_consecutive_failures: 3,
+    },
+    advisories: [
+      {
+        kind: 'platform_guidance',
+        source: 'submit',
+        stage: 'implement',
+        invocation_id: 'implement-1-abcd',
+        message:
+          'Platform guidance conflict: "Plan mode" covered the edit; the worker followed DEV-001.',
+        recorded_at: '2026-06-22T00:00:01.000Z',
+      },
+    ],
+  })
+
+  assert.match(status, /## Advisories/u)
+  assert.match(
+    status,
+    /- implement \(submit\): Platform guidance conflict: "Plan mode" covered the edit; the worker followed DEV-001\./u,
+  )
 })

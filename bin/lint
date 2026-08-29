@@ -5,7 +5,12 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 npm run format:check
-npm run typecheck
+
+# The emitting build type-checks the same program, so a fresh build stamp
+# replaces tsc --noEmit.
+if ! "$ROOT/bin/build" --stamp-fresh; then
+  npm run typecheck
+fi
 
 for script in "$ROOT/bin"/*; do
   if [[ ! -f "$script" ]]; then

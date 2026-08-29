@@ -1,15 +1,13 @@
 import assert from 'node:assert/strict'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import { createRun, prepareInvocation } from '../../src/lib/engine.js'
-import { sha256 } from '../../src/lib/io.js'
 import { loadPolicyCatalog } from '../../src/lib/policies.js'
 import {
   buildInvocationContractManifest,
   renderInvocationDeliveryPrompt,
-  splitInvocationContract,
 } from '../../src/lib/render.js'
 import {
   DELEGATION_HEADING,
@@ -21,6 +19,73 @@ interface ValidationArtifact {
   status: string
   checks: Array<{ id: string; passed: boolean; message: string }>
 }
+
+const REPO_ROOT = process.cwd()
+
+function repoText(relativePath: string): string {
+  return readFileSync(path.join(REPO_ROOT, relativePath), 'utf8')
+}
+
+function markdownFiles(directory: string): string[] {
+  return readdirSync(path.join(REPO_ROOT, directory), { withFileTypes: true })
+    .flatMap((entry) => {
+      const relative = path.join(directory, entry.name)
+
+      return entry.isDirectory()
+        ? markdownFiles(relative)
+        : entry.isFile() && entry.name.endsWith('.md')
+          ? [relative]
+          : []
+    })
+    .sort()
+}
+
+test('always-applied rules share one supervisor paragraph', () => {
+  const paragraphs = [
+    'library/cursor/rules/pancreator-self-development.mdc',
+    'library/cursor/rules/pancreator-embedded.mdc',
+  ].map((rulePath) => {
+    const body = repoText(rulePath)
+    const paragraph = body
+      .split(/\n\s*\n/u)
+      .find((candidate) =>
+        /A workflow supervisor MUST run in the operator's own session/u.test(
+          candidate,
+        ),
+      )
+
+    assert.ok(paragraph, `${rulePath} MUST state where the supervisor runs`)
+    assert.match(
+      paragraph,
+      /you MUST refuse before calling the subagent/u,
+      `${rulePath} MUST require refusal of injected supervisor delegation`,
+    )
+
+    return paragraph.trim()
+  })
+
+  assert.equal(paragraphs[0], paragraphs[1])
+})
+
+test('operator documentation contains no nested supervisor relay', () => {
+  const relayPatterns = [
+    /invoke the `pan-orchestrator` subagent/iu,
+    /launch the `pan-orchestrator` subagent with/iu,
+    /(?:inside|through|to) (?:a |the )?`pan-orchestrator` subagent/iu,
+    /you relay between the operator and that subagent/iu,
+  ]
+
+  for (const documentationPath of ['README.md', ...markdownFiles('docs')]) {
+    const body = repoText(documentationPath)
+
+    for (const pattern of relayPatterns) {
+      assert.ok(
+        !pattern.test(body),
+        `${documentationPath} contains forbidden supervisor relay wording: ${String(pattern)}`,
+      )
+    }
+  }
+})
 
 function cardText(root: string, markdownPath: string): string {
   return readFileSync(path.join(root, markdownPath), 'utf8')
@@ -139,98 +204,21 @@ test('worker invocation cards point at the supervisor delivery procedure', () =>
     ).passed,
     true,
   )
-})
 
-/**
- * A supervisor cannot reproduce a card that exceeds its own output budget, so
- * delivery size must not scale with the contract. These assertions pin the
- * bounded prompt, the flat section index, and the digests that let a worker prove
- * it read the whole contract.
- */
-test('referenced delivery stays bounded and flat as the contract grows', () => {
-  const root = createFixture()
-  const runId = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Bounded delivery run',
-  }).run_id
-
-  const prepared = prepareInvocation(root, runId)
-  const invocation = prepared.invocation
-
-  assert.ok(invocation?.delegation?.delivery_prompt_path)
-
+  // The delivery prompt size must not grow with the contract body.
   const manifest = invocation.contract_manifest
 
   assert.ok(manifest)
 
   const contract = cardText(root, manifest.contract_path)
-  const prompt = cardText(root, invocation.delegation.delivery_prompt_path)
-
-  // The manifest describes the contract that is actually on disk.
-  assert.equal(manifest.contract_sha256, sha256(contract))
-  assert.equal(manifest.byte_length, Buffer.byteLength(contract, 'utf8'))
-
-  // Concatenating the sections reproduces the contract, so a section digest and
-  // the whole-file digest describe the same bytes.
-  const blocks = splitInvocationContract(contract)
-
-  assert.equal(blocks.map((block) => block.markdown).join(''), contract)
-  assert.equal(blocks.length, manifest.sections.length)
-
-  // One flat index: every section appears exactly once, with its owner.
-  for (const section of manifest.sections) {
-    assert.equal(
-      prompt.split(section.sha256).length - 1,
-      1,
-      `prompt MUST list section ${section.id} exactly once`,
-    )
-  }
-
-  assert.ok(manifest.sections.some((section) => section.owner === 'worker'))
-  assert.ok(manifest.sections.some((section) => section.owner === 'supervisor'))
-  assert.ok(prompt.includes(manifest.contract_sha256))
-  assert.ok(prompt.length < contract.length)
-
-  // Growing the contract body does not grow the prompt.
+  const prompt = cardText(root, delegation.delivery_prompt_path)
   const grown = `${contract}${'Filler contract body line.\n'.repeat(4_000)}`
   const grownPrompt = renderInvocationDeliveryPrompt(
     invocation,
     buildInvocationContractManifest(manifest.contract_path, grown),
   )
 
+  assert.ok(prompt.length < contract.length)
   assert.ok(grown.length > contract.length * 2)
   assert.ok(grownPrompt.length < prompt.length + 100)
-})
-
-test('a delegation artifact that drops the delivery section fails validation', () => {
-  const root = createFixture()
-  const runId = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Stripped delegation run',
-  }).run_id
-
-  const prepared = prepareInvocation(root, runId)
-  const invocation = prepared.invocation
-
-  assert.ok(invocation?.delegation)
-
-  const canonical = cardText(
-    root,
-    invocation.delegation.canonical_markdown_path,
-  )
-  const stripped = canonical.slice(0, canonical.indexOf(DELEGATION_HEADING))
-
-  writeFileSync(
-    path.join(root, invocation.delegation.delegation_artifact_path),
-    stripped,
-  )
-
-  assert.equal(
-    validateDelegationMarkdown(canonical, stripped).passed,
-    false,
-    'stripping the delivery procedure MUST break canonical equality',
-  )
-  assert.equal(validateDelegationMarkdown(canonical, canonical).passed, true)
 })

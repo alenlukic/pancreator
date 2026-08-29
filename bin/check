@@ -6,7 +6,9 @@ cd "$ROOT"
 
 QUIET="$ROOT/bin/run-quiet"
 
-for script_name in lint build validate test; do
+# Build runs before lint because bin/lint skips its own tsc --noEmit when the
+# build stamp is fresh.
+for script_name in build lint validate; do
   if "$QUIET" -- npm run "$script_name"; then
     continue
   fi

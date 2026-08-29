@@ -23,7 +23,7 @@ Governance registries are indexed in [`governance/registries/index.md`](../gover
 2. Add a registry entry to `governance/registries/validation_registry.json`.
 3. Add a `requirements[]` item to the owning policy JSON referencing the registry id.
 4. Add unit tests for success and failure cases.
-5. Run `npm run check`.
+5. Run `npm run check` and `npm test`.
 
 ## Failure semantics
 

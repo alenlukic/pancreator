@@ -24,7 +24,8 @@
     "technical_approach.touch_points": "array",
     "technical_approach.planned_shortcuts": "array",
     "technical_approach.observable_signals": "array",
-    "technical_approach.discard_conditions": "array"
+    "technical_approach.discard_conditions": "array",
+    "technical_approach.preconditions": "array"
   },
   "criteria": [
     {
@@ -44,6 +45,12 @@
       "type": "judgment",
       "hard": true,
       "statement": "The approach states what result would invalidate the hypothesis, so a negative answer is a usable outcome."
+    },
+    {
+      "id": "approach.preconditions_verified",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Every included external precondition is verified ready, or every affected question is excluded by an explicit operator directive."
     }
   ],
   "transitions": {

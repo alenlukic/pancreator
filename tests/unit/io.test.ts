@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { createFixture } from '../helpers.js'
-import { writeFileSync } from 'node:fs'
 import {
   clearStaleOperationMutex,
   readJson,
@@ -13,8 +13,18 @@ import {
   writeJsonAtomic,
 } from '../../src/lib/io.js'
 
+// The io helpers are pure filesystem primitives, so a bare temporary directory
+// is enough.
+function scratchRoot(): string {
+  const root = mkdtempSync(path.join(tmpdir(), 'pan-io-'))
+
+  mkdirSync(path.join(root, 'runtime'), { recursive: true })
+
+  return root
+}
+
 test('atomic JSON writes and stable hashes are deterministic', () => {
-  const root = createFixture()
+  const root = scratchRoot()
   const file = path.join(root, 'runtime', 'value.json')
   writeJsonAtomic(file, { b: 2, a: 1 })
   assert.deepEqual(readJson(file), { b: 2, a: 1 })
@@ -23,7 +33,7 @@ test('atomic JSON writes and stable hashes are deterministic', () => {
 })
 
 test('repository path resolution rejects escapes and run operations serialize access', () => {
-  const root = createFixture()
+  const root = scratchRoot()
   assert.throws(
     () => resolveInside(root, '../escape'),
     /escapes repository root/,
@@ -32,13 +42,8 @@ test('repository path resolution rejects escapes and run operations serialize ac
   writeFileSync(mutex, '99999999\n')
   const result = withOperationMutex(mutex, () => 'ok')
   assert.equal(result, 'ok')
-})
 
-test('dead operation mutexes are removed explicitly for status recovery', () => {
-  const root = createFixture()
-  const mutex = path.join(root, 'runtime', '.operation-mutex')
   writeFileSync(mutex, '99999999\n')
-
   assert.equal(clearStaleOperationMutex(mutex), true)
   assert.equal(clearStaleOperationMutex(mutex), false)
 })

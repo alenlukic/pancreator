@@ -109,6 +109,8 @@ export function renderGuidanceBlock(
 export function renderPolicyBlocks(
   policies: Policy[],
   guidanceLevel: GuidanceHeadingLevel,
+  supersededIds: ReadonlySet<string> = new Set(),
+  instrumentIds: ReadonlySet<string> = new Set(),
 ): string[] {
   if (policies.length === 0) {
     return ['- Only global boundaries apply.']
@@ -130,6 +132,24 @@ export function renderPolicyBlocks(
     const lines = [
       `**${policy.id} · ${policy.title}**`,
       '',
+      // The marker sits under the heading, so the reader meets it before the
+      // first instruction.
+      ...(supersededIds.has(policy.id)
+        ? [
+            '> Under review. The text below is the head text you are grading. ' +
+              "Your conduct follows this policy's base text in " +
+              '**Conduct under the base revision**.',
+            '',
+          ]
+        : instrumentIds.has(policy.id)
+          ? [
+              '> Under review by an independent reviewer. This policy is ' +
+                'instrument tier: the squad does not grade it. Follow the ' +
+                'text below as written; the independent reviewer reports on ' +
+                'the change.',
+              '',
+            ]
+          : []),
       ...(seen.has(summary) ? [] : [policy.summary, '']),
       ...instructions.map((instruction) => `- ${instruction}`),
     ]
