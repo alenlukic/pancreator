@@ -40,7 +40,6 @@ test('config_overrides.json preferences override the checked-in pipeline config'
   // visible to drift detection exactly like a config.json edit.
   assert.notEqual(loaded.sha256, base.sha256)
 
-  // A config_overrides.json that is not an object is rejected.
   writeFileSync(
     path.join(root, 'config_overrides.json'),
     JSON.stringify(['active_config']),
@@ -100,7 +99,6 @@ test('pipeline config merges defaults with config-specific persona overrides', (
     coder: 'claude-opus-5',
   })
 
-  // A config that names no persona falls back to the defaults entirely.
   const sparse = parsePipelineConfig({
     schema_version: 1,
     active_config: 'default',

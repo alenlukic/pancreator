@@ -134,8 +134,8 @@ test('intake contracts the question identifier every later stage keys on', () =>
     ),
   )
 
-  // A bare sentence, a missing question text, and a repeated id each fail
-  // here, where the id is born, rather than at the evaluate coverage gate.
+  // These three shapes fail where the id is born, not at the evaluate
+  // coverage gate.
   assert.equal(bare.status, 'failed')
   assert.equal(
     bare.issues.filter((item) => item.code === 'prototype.question_id').length,
@@ -213,8 +213,8 @@ test('approach allows narrowed scope with a recorded operator decision', () => {
 
 test('approach rejects narrowing cited to a harness pause record', () => {
   const root = scratchRoot()
-  // The harness writes its own pause records into the decisions directory;
-  // an existing file there is not an operator directive.
+  // The harness writes its own pause records here, so such a file is not an
+  // operator directive.
   const pausePath =
     'runtime/logs/workflows/run-1/agent/decisions/2f1c9b3e-pause.json'
 
@@ -316,8 +316,8 @@ test('an approach blocked on an operator question passes validation', () => {
     'blocked',
   )
 
-  // blocked is the harness-wide pause route; the validator must let the
-  // operator question reach the operator instead of rewriting it to failure.
+  // blocked is the harness pause route, so the validator must pass the
+  // operator question through and must not rewrite it to a failure.
   const result = validatePrototypeOutput(
     validatorInput(root, target, 'approach'),
   )
@@ -431,8 +431,7 @@ test('build success with edits passes when an excluded volatile precondition sta
     },
   )
 
-  // PRE-01 is excluded by the operator, so the build owes it no recheck and
-  // its unavailable status cannot trap the run.
+  // The operator excluded PRE-01, so the build owes it no recheck.
   const result = validatePrototypeOutput(
     validatorInput(root, target, 'build', {
       run_id: runId,
@@ -492,8 +491,8 @@ test('evaluate rejects environment_blocked when discard condition met', () => {
 
 test('evaluate accepts invalidated when product discard condition met', () => {
   const root = scratchRoot()
-  // Mixed evidence: three product discards and one environment gap. The
-  // product discard keeps the verdict at invalidated despite the blockers.
+  // A product discard keeps the verdict at invalidated despite the
+  // environment gap.
   const target = writeOutput(root, 'evaluate.json', {
     result: 'success',
     data: {
@@ -834,8 +833,8 @@ test('a build blocked without a precondition cause keeps the pause route', () =>
     },
   })
 
-  // PROTO-001 conditions the empty changed-files rule on a precondition
-  // becoming unavailable; an operator question mid-build is not that.
+  // PROTO-001 ties the empty changed-files rule to an unavailable
+  // precondition, not to an operator question.
   const result = validatePrototypeOutput(validatorInput(root, target, 'build'))
 
   assert.equal(result.status, 'passed')
@@ -1186,8 +1185,8 @@ test('every remaining rejection code has a case that triggers it', () => {
     'prototype.precondition_checks_missing',
     runState,
   )
-  // The recheck list exists but names another precondition: the volatile one
-  // the build depended on has no recheck entry at all.
+  // The recheck list names another precondition, so the volatile one has no
+  // entry.
   rejects(
     'volatile-missing',
     'build',

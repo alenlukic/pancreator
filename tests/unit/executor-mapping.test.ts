@@ -22,7 +22,6 @@ test('a plain model string parses as a cursor mapping', () => {
       model_spec: 'gpt-5.6-sol[context=272k,effort=high,fast=false]',
       options: { context: '272k', effort: 'high', fast: 'false' },
     },
-    // Bare and empty-option cursor mappings parse unchanged.
     {
       spec: 'auto',
       executor: 'cursor',
@@ -37,7 +36,6 @@ test('a plain model string parses as a cursor mapping', () => {
       model_spec: 'kimi-k3[]',
       options: {},
     },
-    // A claude-code mapping parses executor, model, and options.
     {
       spec: 'claude-code:claude-opus-5[permission-mode=default,session-resume=true]',
       executor: 'claude-code',
@@ -45,7 +43,6 @@ test('a plain model string parses as a cursor mapping', () => {
       model_spec: 'claude-opus-5[permission-mode=default,session-resume=true]',
       options: { 'permission-mode': 'default', 'session-resume': 'true' },
     },
-    // An explicit cursor prefix is accepted and stripped from the model spec.
     {
       spec: 'cursor:composer-2.5[fast=false]',
       executor: 'cursor',
@@ -63,7 +60,6 @@ test('a plain model string parses as a cursor mapping', () => {
     assert.deepEqual(mapping.options, expected.options, expected.spec)
   }
 
-  // personaExecutorOf resolves the executor without full validation.
   assert.equal(personaExecutorOf('claude-opus-5[thinking=true]'), 'cursor')
   assert.equal(personaExecutorOf('claude-code:claude-opus-5'), 'claude-code')
   assert.equal(personaExecutorOf('cursor:auto'), 'cursor')

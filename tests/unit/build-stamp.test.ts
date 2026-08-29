@@ -16,13 +16,6 @@ import test from 'node:test'
 const REPO_ROOT = process.cwd()
 const PROCESS_TIMEOUT_MS = 30_000
 
-/**
- * `bin/lint` skips `tsc --noEmit` when `bin/build --stamp-fresh` reports that
- * dist already matches every build input. These cases run the two scripts
- * against a throwaway fixture with a stub `tsc` and a stub `npm` on PATH, so
- * the skip and the stale-path typecheck are pinned by behavior rather than by
- * reading the scripts.
- */
 interface Fixture {
   root: string
   stubBin: string
@@ -111,7 +104,6 @@ test('a fresh build stamp reports fresh and a changed input reports stale', () =
   touchForward(path.join(fixture.root, 'src', 'index.ts'))
   assert.equal(run(fixture, 'build', ['--stamp-fresh']).status, 1)
 
-  // A rebuild restores freshness; then an edited tsconfig invalidates it again.
   assert.equal(run(fixture, 'build').status, 0)
   assert.equal(run(fixture, 'build', ['--stamp-fresh']).status, 0)
 

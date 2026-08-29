@@ -12,32 +12,13 @@ import {
 import type { RepositoryCheckResult } from './repository-checks.js'
 import type { WorkspaceSnapshot } from './types.js'
 
-/**
- * Persistent cache of clean deterministic gate passes, keyed on the workspace
- * fingerprint, the exact resolved command, and the repository-check
- * configuration bytes. A gate whose command already passed cleanly at an
- * unchanged workspace re-executes nothing and proves nothing, so the harness
- * accepts the recorded pass instead (RF-006, RF-011). `DEV-001` names the
- * acceptance and its bounds.
- *
- * Only clean passes enter the cache: exit code 0, no timeout, no skip, no
- * baseline-relative credit, no operator override. A failure is never cached —
- * re-running a failing gate is how a repair is observed.
- *
- * Only a Git workspace is cacheable. A non-Git workspace fingerprints as one
- * constant, so a key built from it would accept the first pass for every
- * later state of the tree.
- *
- * `runtime/repository-checks.json` is outside both git and the workspace
- * fingerprint, yet it defines what a profile command means, so its content
- * hash is part of the key. Entries expire after a TTL because environmental
- * drift (toolchains, network-dependent installers) is not fingerprinted.
- *
- * A hit is only as good as the evidence it points at. The lookup treats an
- * entry whose original evidence log is gone (archived, pruned) as a miss, and
- * the accepting gate copies the original bytes into its own evidence log so a
- * verifier never holds a bare pointer.
- */
+// Cache of clean deterministic gate passes (DEV-001). The key covers the
+// workspace fingerprint, the resolved command, and the content hash of
+// `runtime/repository-checks.json`, which defines what a profile command means.
+// Only a clean pass enters the cache, because a re-run of a failed gate is how
+// a repair is observed. Only a Git workspace is cacheable: another kind
+// fingerprints as one constant. An entry expires after a TTL because toolchain
+// drift is not fingerprinted.
 
 export interface GateCacheEntry {
   key: string
@@ -47,11 +28,7 @@ export interface GateCacheEntry {
   run_id: string
   cached_at: string
   evidence_path: string
-  /**
-   * Set for a repository-check profile gate. A later run compares this result
-   * against its own baseline, so the cached pass yields the same delta the
-   * execution would have.
-   */
+  /** A later run compares this result against its own baseline. */
   repository_result?: RepositoryCheckResult
 }
 
@@ -87,7 +64,6 @@ function checksConfigHash(root: string): string {
   }
 }
 
-/** Whether a snapshot discriminates workspace content well enough to key on. */
 export function gateCacheableSnapshot(snapshot: WorkspaceSnapshot): boolean {
   return snapshot.kind === 'git'
 }
@@ -154,8 +130,7 @@ export function gateCacheLookup(
   const entries = freshEntries(loadEntries(root), Date.now())
   const entry = entries.find((candidate) => candidate.key === key) ?? null
 
-  // Evidence that no longer exists cannot be copied into the accepting run,
-  // so the gate executes again rather than pointing at a path that is gone.
+  // A missing evidence file is a miss: the accepting run must copy the bytes.
   if (entry && !fileExists(path.join(root, entry.evidence_path))) {
     return null
   }
@@ -181,7 +156,6 @@ export function gateCacheStore(root: string, entry: GateCacheEntry): void {
   })
 }
 
-/** Operator-facing state of the cache, for `pan doctor`. */
 export function gateCacheStatus(root: string): GateCacheStatus {
   const entries = loadEntries(root)
 

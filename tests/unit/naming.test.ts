@@ -27,7 +27,6 @@ test('workflow run IDs use UTC days to the 2200 anchor', () => {
     makeWorkflowRunId(new Date('2026-07-03T23:00:00.000Z'), '3974ddd5'),
     '63368_Jul-03-0060_3974ddd5',
   )
-  // The temporal name prefix is the run ID minus its suffix.
   assert.equal(temporalNamePrefix(date), '63379_Jun-22-0158')
 })
 
@@ -50,10 +49,8 @@ test('keyword suffixes strip temporal tokens, noise words, and hex fragments', (
   assert.equal(keywordRunSuffix('request-20260810T054345Z-6df4ab84.md'), null)
   assert.equal(keywordRunSuffix('20260803T165512Z'), null)
   assert.equal(keywordRunSuffix(''), null)
-  // Truncation never leaves a suffix ending mid-hyphen.
   assert.equal(keywordRunSuffix('workspace targets everywhere'), 'workspace-ta')
   assert.equal(keywordRunSuffix('one-two-three-four'), 'one-two-thre')
-  // Derivation falls back to content lines when the file name carries nothing.
   assert.equal(
     keywordRunSuffixFrom('request.md', '# Fix the workflow engine\n'),
     'fix-workflow',
@@ -89,8 +86,8 @@ test('stage artifact IDs include run sequence and stage iteration', () => {
     makeCompletedStageArtifactId(2, 7, 'implement', 3, 'df603be8'),
     '04_implement-3_df603be8',
   )
-  // In-flight prefixes count down from 99; completed prefixes count down to
-  // zero across the run's total step count.
+  // In-flight prefixes count down from 99. Completed prefixes count down to
+  // zero across the total step count of the run.
   assert.equal(pipelineStepPrefix(0), '99')
   assert.equal(pipelineStepPrefix(8), '91')
   assert.equal(pipelineStepPrefix(94), '05')

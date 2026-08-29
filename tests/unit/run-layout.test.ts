@@ -49,14 +49,12 @@ test('legacy runs keep root-level machine and artifacts paths', () => {
     `runtime/logs/workflows/${runId}/artifacts/html/97_implement-1_abcd1234.html`,
   )
 
-  // Legacy artifact directories identify a partial v1 run.
   const partial = fixture()
 
   mkdirSync(path.join(partial.runRoot, 'outputs'))
 
   assert.equal(detectRunLayout(partial.root, partial.runId), 'v1')
 
-  // Agent state selects v2 when both state locations exist.
   mkdirSync(path.join(runRoot, 'agent'), { recursive: true })
   writeFileSync(path.join(runRoot, 'agent', 'state.json'), '{}\n')
 

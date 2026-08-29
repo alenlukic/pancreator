@@ -33,7 +33,6 @@ test('new runs suppress briefs while explicit run and stage requests enable them
 
   assert.ok(suppressedInvocation)
 
-  // Once the invocation is prepared, a stage artifact request is too late.
   assert.throws(
     () =>
       prepareInvocation(root, suppressed.run_id, {

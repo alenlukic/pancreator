@@ -218,17 +218,12 @@ export interface GovernanceCardOptions {
   requestPath?: string | null
   outputPath?: string | null
   worktreeName?: string | null
-  /**
-   * Review mode only. The base revision of the review target. Every conduct
-   * policy the target changes is rendered from this revision, so the session
-   * follows the rule in force before the change it is grading.
-   */
+  /** Review mode only. Conduct policies render from this base revision. */
   baseRef?: string | null
-  /** Review mode only. The target head; required with `baseRef`. */
+  /** Review mode only. The target head. Use it with `baseRef`. */
   targetRef?: string | null
 }
 
-/** One conduct policy rendered from the base revision. */
 interface BaseConductPolicy {
   id: string
   path: string
@@ -240,10 +235,7 @@ interface BaseConductBlock {
   base: string
   head: string
   policies: BaseConductPolicy[]
-  /**
-   * Conduct-tier paths whose base text cannot be inlined: guidance files and
-   * registries. Each names the command that yields its base text.
-   */
+  /** Conduct-tier paths whose base text the card cannot inline. */
   other_conduct: string[]
   /** Instrument-tier paths the squad must not grade. */
   excluded: string[]
@@ -256,17 +248,11 @@ function baseConductBlock(root: string, scope: ReviewScope): BaseConductBlock {
   const policies: BaseConductPolicy[] = []
   const otherConduct: string[] = []
 
-  // The base-revision remedy binds conduct only. An instrument policy is
-  // excluded from the squad verdict and graded by the independent reviewer;
-  // rendering its base text under a heading that governs conduct would leave
-  // the session with two protocols and no rule for choosing.
   for (const conflict of tiers.conduct) {
     const match = /^governance\/policies\/([^/]+)\.json$/u.exec(conflict.path)
 
     if (!match) {
-      // Guidance and registry rows change what binds the reviewer without
-      // being a policy file. Their base text is not inlined, but the path and
-      // the command that yields it are, so the remedy never goes silent.
+      // A guidance or registry path carries no inlinable policy text.
       otherConduct.push(conflict.path)
       continue
     }
@@ -274,8 +260,7 @@ function baseConductBlock(root: string, scope: ReviewScope): BaseConductBlock {
     const text = gitShowFile(root, scope.base, conflict.path)
 
     if (text === null) {
-      // Added by the change: there is no base rule to follow, so the session
-      // works without it and the head text is under review like any other.
+      // The change added this policy, so no base rule binds the session.
       continue
     }
 
@@ -497,8 +482,8 @@ export function buildGovernanceCard(
     { code: 'UNKNOWN_STANDALONE_MODE' },
   )
 
-  // Option invariants run before any side effect, so a rejected invocation
-  // never leaves a worktree behind.
+  // Check the options before any side effect, so a rejected call leaves no
+  // worktree behind.
   invariant(
     !options.baseRef || options.mode === 'review',
     '--base applies to the review mode only.',
@@ -511,8 +496,8 @@ export function buildGovernanceCard(
       code: 'INVALID_GOVERNANCE_CARD_OPTION',
     },
   )
-  // A base with no target would silently grade HEAD, which is the target
-  // only when the card is built from the review workspace.
+  // Without --target the card grades HEAD, which is the target only in the
+  // review workspace.
   invariant(
     !options.baseRef || options.targetRef,
     '--base requires --target in the review mode.',

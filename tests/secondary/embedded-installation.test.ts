@@ -22,17 +22,12 @@ import {
   runInstaller,
 } from './install-helpers.js'
 
-// The shared installed template IS the fresh install every other test clones,
-// so its layout is asserted here without another installer run. Layout facts
-// that `bin/install --smoke` (in the `full` repository-check profile; this
-// lane itself runs under `secondary` and `full`) already verifies are not
-// repeated.
 test('embedded installer creates a runnable-layout harness under .pancreator', () => {
   const project = installedProjectTemplate()
 
   assert.equal(existsSync(path.join(project, 'config.json')), false)
-  // The harness review lineup is self-development-only: the installer strips
-  // it from staging while the core squad skill still ships.
+  // The installer strips the self-development-only harness lineup from staging
+  // but still ships the core squad skill.
   assert.equal(
     existsSync(
       path.join(
@@ -83,14 +78,12 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
     ).includes(`model: ${harnessTechnicianModel}`),
   )
 
-  // The symlink is relative, which is what makes the installed tree portable.
+  // A relative symlink keeps the installed tree portable.
   const link = path.join(project, '.pancreator', '.cursor')
 
   assert.equal(lstatSync(link).isSymbolicLink(), true)
   assert.equal(existsSync(path.join(project, '.pancreator', 'src')), true)
 
-  // The browser contract installs as a rule generated from BROWSER-001, so the
-  // policy travels in the payload and the always-apply rule names it.
   assert.equal(
     existsSync(
       path.join(
@@ -129,7 +122,6 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
   assert.deepEqual(repositoryChecks.profiles.secondary?.commands, [])
   assert.deepEqual(repositoryChecks.profiles.full?.commands, [])
 
-  // Embedded projection rewrites harness paths to the `.pancreator` prefix.
   for (const [command, patterns] of [
     [
       'pan-build-docs.md',
@@ -177,11 +169,11 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
   )
 
   assert.match(orchestratorAgent, /\.\/\.pancreator\/bin\/pan/)
-  // Run-relative records are resolved from the active card rather than named
-  // as a literal, so the projection has no run subdirectory to rewrite.
+  // The agent resolves run-relative records from the active card, so the
+  // projection has no run subdirectory to rewrite.
   assert.doesNotMatch(orchestratorAgent, /runtime\/logs\/workflows/u)
 
-  // Nothing was displaced on a bare skeleton, so nothing was backed up.
+  // A bare skeleton displaces nothing, so the installer takes no backup.
   assert.equal(
     existsSync(path.join(project, '.pancreator', 'backups', 'cursor')),
     false,
@@ -200,8 +192,8 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
   assert.equal('target_root' in marker, false)
   assert.ok(marker.payload_entries.includes('governance'))
   assert.ok(marker.payload_entries.includes('release'))
-  // The payload manifest describes release-owned files so later updates can
-  // separate local fixes and target extensions from shipped content.
+  // The manifest lists release-owned files so an update can separate local
+  // fixes and target extensions from shipped content.
   assert.ok(
     marker.payload_files.some(
       (entry) =>
@@ -218,10 +210,8 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
   )
 })
 
-// What exists before the first install is the condition under test here (a
-// committed repository with a legacy ignore entry, local exclude content, and a
-// target-owned agent), so this cannot start from the template. `--smoke`
-// covers the bare git target: exclude rule, no .gitignore created, clean status.
+// The state before the first install is the condition under test, so this test
+// cannot start from the shared template.
 test('embedded installer stays out of target git state', () => {
   const project = makeSkeletonProject()
 
@@ -261,8 +251,7 @@ test('embedded installer stays out of target git state', () => {
     )
     assert.equal(git(project, ['rev-parse', 'HEAD']), head)
 
-    // Unrelated exclude content survives, and a refresh MUST NOT duplicate
-    // the managed block.
+    // A refresh MUST NOT duplicate the managed block.
     const exclude = readFileSync(
       path.join(project, '.git', 'info', 'exclude'),
       'utf8',
@@ -273,8 +262,8 @@ test('embedded installer stays out of target git state', () => {
     assert.match(exclude, /^\/\.pancreator\/$/mu)
     assert.match(exclude, /^\/\.cursor\/agents\/pan-\*\.md$/mu)
 
-    // The target's own untracked agent stays visible to its operators; only
-    // Pancreator's namespaced projection and payload are excluded.
+    // Git excludes only the pan- projection and the payload, so the target's
+    // own agent stays visible.
     const status = git(project, [
       'status',
       '--porcelain',
@@ -290,10 +279,8 @@ test('embedded installer stays out of target git state', () => {
   }
 })
 
-// Pre-seeded Cursor state is the condition under test, so this needs its own
-// install. `--smoke` covers "a custom rule survives"; the unique cases here are
-// the namespace squat that is replaced and backed up, and target-owned files
-// whose pan- counterparts install alongside.
+// Pre-seeded Cursor state is the condition under test, so this test needs its
+// own install.
 test('embedded installer warns on existing Cursor state, preserves custom files, and backs up conflicts', () => {
   const project = makeSkeletonProject()
   const targetCoder = path.join(project, '.cursor', 'agents', 'coder.md')
@@ -337,8 +324,6 @@ test('embedded installer warns on existing Cursor state, preserves custom files,
       '{"custom":true}\n',
     )
 
-    // The target's own agentic configuration survives byte-identical while
-    // Pancreator's equivalents install under the pan namespace.
     assert.equal(readFileSync(targetCoder, 'utf8'), 'target-authored coder\n')
     assert.equal(
       readFileSync(targetRule, 'utf8'),
@@ -351,8 +336,8 @@ test('embedded installer warns on existing Cursor state, preserves custom files,
       true,
     )
 
-    // pan-coder.md squats on Pancreator's namespace: it is replaced and the
-    // displaced content is backed up.
+    // pan-coder.md squats on the pan namespace, so the installer replaces it
+    // and backs up the displaced content.
     assert.notEqual(
       readFileSync(
         path.join(project, '.cursor', 'agents', 'pan-coder.md'),

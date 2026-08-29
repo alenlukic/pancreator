@@ -21,10 +21,7 @@ import { createFixture, writeJson } from '../helpers.js'
 
 const MINIMAL_CONFIG = { schema_version: 1 }
 
-/**
- * Bare root for the config and index helpers, which read only config.json
- * and the operator worktree index; no repository clone is needed.
- */
+/** Bare root for helpers that read only config.json and the worktree index. */
 function scratchRoot(): string {
   const root = mkdtempSync(path.join(tmpdir(), 'pan-worktrees-'))
 
@@ -227,8 +224,6 @@ test('legacy operator index remains active when the current index is absent', ()
 
   assert.deepEqual(readWorktreeIndex(root).worktrees[0]?.name, 'legacy-one')
 
-  // Once the current index also exists, the ambiguity is a stable conflict
-  // error rather than a silent preference.
   const currentIndexPath = path.join(
     root,
     'worktrees',

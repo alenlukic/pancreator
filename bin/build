@@ -5,15 +5,11 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 PATH="$ROOT/node_modules/.bin:$PATH"
 
-# Skip the rebuild when no TypeScript input changed since the last successful
-# build. The stamp hashes path, mtime, and size for every build input, so any
-# edit, addition, deletion, or rename invalidates it. A stale or absent stamp
-# keeps the original clean-rebuild guarantee (rm -rf dist) so deleted sources
-# never linger in dist.
+# Skip the rebuild when no TypeScript input changed. The stamp hashes path,
+# mtime, and size, so any edit, addition, deletion, or rename invalidates it.
 STAMP="dist/.build-stamp"
 
 stat_line() {
-  # BSD stat (macOS) first, GNU stat (Linux) as fallback.
   stat -f '%N %m %z' "$@" 2>/dev/null || stat -c '%n %Y %s' "$@" 2>/dev/null || true
 }
 
@@ -39,8 +35,7 @@ stamp_fresh() {
   [[ -f "$STAMP" && -d dist && "$(cat "$STAMP")" == "$current" ]]
 }
 
-# `bin/build --stamp-fresh` answers whether dist already matches the inputs,
-# so a caller that has just built can skip work the build already did.
+# `bin/build --stamp-fresh` reports whether dist already matches the inputs.
 if [[ "${1:-}" == '--stamp-fresh' ]]; then
   stamp_fresh
   exit $?
@@ -50,11 +45,9 @@ if stamp_fresh; then
   exit 0
 fi
 
-# bin/run-built registers each wrapped command as a live reader of dist under
-# a per-root directory. Deleting dist under a running test lane makes every
-# not-yet-loaded module fail with a missing file, so the rebuild waits for
-# live readers first, pruning any whose pid is gone. The wait is bounded so a
-# hung reader cannot block builds forever.
+# bin/run-built registers each wrapped command as a live reader of dist. A
+# rebuild deletes dist and breaks the lazy imports of a live reader, so wait
+# for the live readers to exit first.
 read -r root_key _ <<<"$(printf '%s' "$ROOT" | cksum)"
 DIST_READERS="${TMPDIR:-/tmp}/pancreator-build-${root_key}.readers"
 READER_WAIT_LIMIT_SECONDS="${PANCREATOR_BUILD_READER_WAIT_SECONDS:-900}"
@@ -76,9 +69,7 @@ live_readers() {
   done
 }
 
-# run-built wraps this script in run-quiet, which captures stderr, so a wait
-# notice would surface only on failure. The terminal, when there is one, gets
-# it directly.
+# run-quiet captures stderr, so send the notice straight to the terminal.
 notify() {
   if ! { echo "$1" >/dev/tty; } 2>/dev/null; then
     echo "$1" >&2

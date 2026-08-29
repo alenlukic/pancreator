@@ -126,7 +126,6 @@ test('full delivery workflow persists gates and reaches operator-approved succes
     assert.equal(existsSync(path.join(root, brief.source_path)), false)
 
     if (stageSlug === 'verify') {
-      // A clean verify pass emits no inbox item and routes straight to ship.
       assert.equal(submitted.state.current_stage, 'ship')
       assert.equal(
         existsSync(
@@ -201,12 +200,8 @@ test('full delivery workflow persists gates and reaches operator-approved succes
   )
 })
 
-/**
- * Away mode is snapshotted into the run at creation, and the run reaches the
- * ship gate under away authority: the plan gate is decided by the away
- * evaluator while the checkpoint is driven, so the run's event log never holds
- * an operator decision.
- */
+// Away mode is snapshotted into the run at creation, so the event log holds no
+// operator decision.
 const AWAY: CheckpointVariant = {
   key: 'away',
   fixture: (root) => {
@@ -321,7 +316,6 @@ test('away resume cannot ratify workspace changes made during a pause', () => {
   })
   const runId = state.run_id
 
-  // An unchanged paused run resumes under away authority without ratification.
   pauseRun(root, runId, 'Pause without workspace edits.')
 
   const awayResumed = resumeRunAsAway(root, runId)
@@ -583,8 +577,6 @@ test('run preparation reports live pipeline-config drift from its snapshot', () 
     config.active_config === 'balanced' ? 'advanced' : 'balanced'
   writeJson(configPath, config)
 
-  // Switching the active config mid-run is the operator's call. The run keeps
-  // resolving its own snapshot and reports the difference.
   const prepared = prepareInvocation(root, state.run_id)
 
   assert.ok(prepared.invocation)
@@ -709,7 +701,6 @@ test('operator set-stage bypasses transitions and injects repair context', () =>
   const feedbackBody = readFileSync(path.join(root, feedback.path), 'utf8')
   assert.match(feedbackBody, /independently verifying the current workspace/u)
 
-  // The away variant records away authorship and its own event type.
   const eventsPath = resolveRunLayout(root, runId).events.absolute
   const operatorStageSetCount = (
     readFileSync(eventsPath, 'utf8').match(/operator_stage_set/gu) ?? []

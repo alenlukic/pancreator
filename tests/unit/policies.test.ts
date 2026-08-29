@@ -201,8 +201,6 @@ test('structured target policy extensions reject missing and stale bindings', ()
       error.message.includes('policy_lookup.d/target.json'),
   )
 
-  // An unstructured row naming an unknown policy fails loudly with the file
-  // name and the policy id.
   const unknownRoot = createFixture()
 
   writePolicyExtension(unknownRoot, 'missing.json', [
@@ -402,12 +400,8 @@ test('representative contexts exclude policies outside their remit', () => {
     )
   }
 
-  // Include-only checks for contexts whose remit is defined by one or two
-  // policies riding along with the universal set.
+  // Each row lists only the policies beyond the universal set.
   const expectedIncludes: Array<[string, string, string, string[]]> = [
-    // Shepherd delegates the review squad, so it needs delegation supervision
-    // authority alongside its own mode policy and the coder's engineering
-    // governance.
     [
       'coder',
       'standalone',
@@ -427,7 +421,6 @@ test('representative contexts exclude policies outside their remit', () => {
       'best-of-n',
       ['BESTOFN-001', 'WORK-001'],
     ],
-    // The review evidence worker loads the engineering and language handbooks.
     [
       'reviewer',
       'delivery',
@@ -509,7 +502,6 @@ test('Python policy loads only for detected Python workspaces', () => {
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
   mkdirSync(path.join(root, 'target'), { recursive: true })
 
-  // A non-Python embedded workspace does not load Python guidance.
   writeFileSync(path.join(root, 'target', 'package.json'), '{}\n')
 
   const nonPythonIds = resolvePolicies(root, {
@@ -538,8 +530,6 @@ test('Python policy loads only for detected Python workspaces', () => {
   assert.ok(pythonIds.includes('PY-001'))
   assert.ok(!pythonIds.includes('TS-001'))
 
-  // Planning excludes implementation language guidance even when Python is
-  // detected.
   const plannerIds = resolvePolicies(root, {
     persona: 'planner',
     workflow: 'delivery',
@@ -631,7 +621,6 @@ test('self-development version policy is excluded from embedded installations', 
   assert.ok(releaseIds.includes('REPO-001'))
   assert.ok(releaseIds.includes('SHIP-001'))
 
-  // Embedded coding stages exclude Pancreator language and binary policies.
   const coderIds = resolvePolicies(root, {
     persona: 'coder',
     workflow: 'delivery',
@@ -696,9 +685,6 @@ test('a policy without a declared trigger keeps the generated fallback', () => {
   )
 })
 
-// Rehomed from the governance branch at integration: these cases prove
-// rules that branch adds and have no other home in the consolidated suite.
-
 test('standalone review resolves squad and delegation governance', () => {
   const root = sharedFixture()
   const ids = resolvePolicies(root, {
@@ -708,9 +694,6 @@ test('standalone review resolves squad and delegation governance', () => {
     operator_artifacts: 'suppressed',
   }).map((policy) => policy.id)
 
-  // The review session delegates a squad coordinator, so it needs delegation
-  // supervision authority alongside its own mode policy and the reviewer's
-  // engineering governance.
   assert.ok(ids.includes('REVIEW-001'))
   assert.ok(ids.includes('DELEGATE-001'))
   assert.ok(ids.includes('ENG-001'))

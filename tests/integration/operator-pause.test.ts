@@ -70,7 +70,6 @@ test('operator changes made during a pause are ratified and stale cards are repl
   })
   const runId = state.run_id
 
-  // A pause taken while the run awaits prepare_invocation resumes to prepare.
   const pausedBeforePrepare = pauseRun(root, runId, 'Stepping away.')
 
   assert.equal(pausedBeforePrepare.status, 'paused')
@@ -91,8 +90,7 @@ test('operator changes made during a pause are ratified and stale cards are repl
   assert.ok(firstInvocation)
   assert.equal(firstInvocation.attempt, 1)
 
-  // A no-stage resume note replaces the prepared worker card and reaches the
-  // replacement as an input reference.
+  // A resume note with no stage replaces the prepared worker card.
   pauseRun(root, runId, 'Need an operator directive.')
 
   const notedResume = resumeRun(

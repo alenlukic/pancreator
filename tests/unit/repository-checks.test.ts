@@ -60,7 +60,6 @@ test('repository checks report missing profiles without guessing commands', () =
   assert.equal(result.status, 'not_configured')
   assert.deepEqual(result.results, [])
 
-  // A configuration that declares no setup commands reports the same.
   writeChecks(root, {})
 
   const setup = runRepositorySetup(root)
@@ -339,7 +338,6 @@ test('baseline delta credits a repaired inherited failure as fixed', () => {
   assert.equal(comparison.delta.carried.length, 1)
   assert.match(comparison.explanation, /0 new, 1 fixed, 1 carried/u)
 
-  // A fully repaired check passes with every inherited failure fixed.
   const repaired = compareRepositoryCheckToBaseline(baseline, passedCheck())
 
   assert.equal(repaired.passed, true)
@@ -383,8 +381,6 @@ test('baseline delta ignores xdist scheduling and passing test output', () => {
 })
 
 test('repeated fast profiles ignore reordered xdist pass output', () => {
-  // The same passing xdist transcript, with the "::test PASSED" lines
-  // scheduled onto different workers in a different order.
   const transcript = (tests: string[]): string =>
     [
       'plugins: xdist-3.8.0',
@@ -469,7 +465,6 @@ test('baseline delta treats a first-time failing command as new', () => {
   assert.equal(comparison.passed, false)
   assert.equal(comparison.delta.new.length > 0, true)
 
-  // The explanation quotes the printed failure rather than the exit status.
   const explained = compareRepositoryCheckToBaseline(
     passedCheck(),
     failedCheck('AssertionError: expected true\n'),
@@ -482,7 +477,6 @@ test('baseline delta treats a first-time failing command as new', () => {
 test('baseline delta treats a changed exit status as new', () => {
   const baseline = failedCheck('same diagnostic text\n')
 
-  // An identical current run carries the failure without anything new.
   const unchanged = compareRepositoryCheckToBaseline(
     baseline,
     failedCheck('same diagnostic text\n'),
@@ -539,8 +533,7 @@ test('streaming repository checks emit subprocess output before returning the re
 test('stage-requested timeout overrides the profile default', () => {
   const { root } = makeInstallation()
 
-  // The configuration floor for timeout_ms is 1000 ms, so the command sleeps
-  // just past that floor.
+  // The floor for timeout_ms is 1000 ms, so the command sleeps just past it.
   writeChecks(root, {
     fast: {
       timeout_ms: 1_000,
@@ -555,8 +548,6 @@ test('stage-requested timeout overrides the profile default', () => {
   assert.equal(result.timeout_ms, 5_000)
   assert.equal(result.results[0]?.timed_out, false)
 
-  // Without the override, the profile default applies and the command times
-  // out.
   const direct = runRepositoryCheck(root, 'fast')
 
   assert.equal(direct.status, 'failed')

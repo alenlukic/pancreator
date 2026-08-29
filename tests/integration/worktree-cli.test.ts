@@ -86,7 +86,6 @@ test('worktree create, list, source selection, and targeted init preserve the ma
   assert.equal(listedAlpha.dirty, false)
   assert.equal(listedAlpha.registered, true)
 
-  // Resolve creates a worktree once and resolves it afterward.
   const resolvedExisting = runCli<{
     status: string
     created: boolean
@@ -209,8 +208,6 @@ test('init --worktree creates a missing worktree and setup commands prepare it',
   assert.match(conflicting.stderr, /cannot be used together/u)
 })
 
-// The CLI maps a PanError code onto stderr once (proven by the shared-option
-// rejection test), so the removal rules are asserted on the library call.
 test('worktree remove refuses dirty files unless force is explicit and keeps the branch', () => {
   const { root, worktrees } = worktreeCheckpoint('single')
   const worktree = worktrees.alpha
@@ -285,7 +282,6 @@ test('repository-check --worktree creates the worktree and runs inside it', () =
     ['checks'],
   )
 
-  // The shared option also points technologies detect at the worktree.
   const baseline = runCli<{ languages: Array<{ id: string }> }>(root, [
     'technologies',
     'detect',

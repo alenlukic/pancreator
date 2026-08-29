@@ -79,12 +79,8 @@ export interface CloneTreeOptions {
 }
 
 /**
- * Copy a directory tree into `destination`, copy-on-write where the platform
- * offers it. The ladder is the one `bin/build` uses for `stat`: BSD/macOS
- * first (`cp -c` uses clonefile, including `.git`), then GNU
- * (`--reflink=auto`), then a plain recursive copy. A rejected flag exits
- * non-zero before copying anything, and its stderr is discarded so a probe
- * failure never reads as command output.
+ * Copy a directory tree into `destination`. Uses copy-on-write when the
+ * platform offers it and falls back to a plain recursive copy.
  */
 export function cloneTree(
   template: string,
@@ -102,7 +98,7 @@ export function cloneTree(
 
       return
     } catch {
-      // Try the next rung.
+      // Fall back to the next flag set.
     }
   }
 
@@ -112,10 +108,8 @@ export function cloneTree(
   })
 }
 
-// Building a fixture copies the repository trees, syncs the Cursor projection,
-// and creates a Git history — several seconds of work that every test used to
-// pay. The template is built once per process and every createFixture() call
-// hands out a cheap clone.
+// A fixture build costs several seconds, so the process builds one template
+// and every createFixture() call returns a clone of it.
 let fixtureTemplateRoot: string | null = null
 
 function cloneFixtureTemplate(template: string): string {
@@ -129,9 +123,9 @@ function cloneFixtureTemplate(template: string): string {
 let sharedFixtureRoot: string | null = null
 
 /**
- * One fixture clone per process for tests that only read. A read-only test
- * pays no clone of its own; a test that writes into its root MUST keep using
- * createFixture(), because a shared root carries every earlier write forward.
+ * One fixture clone per process for tests that only read. A test that writes
+ * into its root must use createFixture(), because a shared root keeps every
+ * earlier write.
  */
 export function sharedFixture(): string {
   sharedFixtureRoot ??= createFixture()
@@ -473,7 +467,6 @@ function artifactBrief(
   }
 }
 
-/** The citations a passing verify output owes for the card's current gate evidence. */
 function gateEvidenceCitations(
   invocation?: Invocation,
 ): { profile: string; fingerprint: string; evidence_path: string }[] {
@@ -665,8 +658,8 @@ function requiredData(
               result: 'pass',
             },
           ],
-          // VERIFY-001: QA cites every current gate-evidence reference the
-          // card carries instead of re-running the profile.
+          // VERIFY-001: QA cites the card's current gate evidence. QA does
+          // not run the profile again.
           gate_evidence_citations: gateEvidenceCitations(invocation),
           acceptance_results: [
             { id: 'AC-01', result: 'pass', evidence: ['fixture'] },
@@ -934,9 +927,8 @@ export function writeCanonicalDelegation(
 }
 
 /**
- * Verbatim last content line of a text, or '' when none exists. Mirrors the
- * production read-evidence rule: empty lines and Markdown divider lines are
- * skipped because a divider quote proves nothing about a read.
+ * Verbatim last content line of a text, or '' when none exists. Skips empty
+ * lines and Markdown divider lines, as the read-evidence rule does.
  */
 function finalLineOf(content: string): string {
   const divider = /^\s*(?:[-_*]\s*){3,}$/u
@@ -977,8 +969,9 @@ function guidanceFinalLine(
 }
 
 /**
- * Attach compliant per-file read evidence for the given instruction paths,
- * quoting each file's actual last content line from the fixture tree.
+ * Attach compliant per-file read evidence for the given instruction paths.
+ * Each entry quotes the file's actual last content line from the fixture
+ * tree.
  */
 export function attachTargetInstructionEvidence(
   root: string,

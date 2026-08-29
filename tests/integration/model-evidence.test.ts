@@ -122,10 +122,6 @@ test('supervisor evidence activates future worker-card enforcement', () => {
   assert.equal(getRunState(root, run.run_id).model_evidence?.length, 1)
   assert.equal(getRunState(root, run.run_id).advisories, undefined)
 
-  // A supervising session can change model mid-run, usually because the
-  // operator changed it. The new fact is recorded instead of stopping the run,
-  // and the supersession is returned to the caller and kept in run state so a
-  // resumed session recovers it from `pan status`.
   const superseded = recordSupervisorModelEvidence(
     root,
     run.run_id,
@@ -165,9 +161,6 @@ test('supervisor evidence activates future worker-card enforcement', () => {
   )
   writeCanonicalDelegation(root, invocation)
 
-  // Missing worker evidence no longer rejects the submission. Discarding
-  // completed work over a fact about which model produced it cost more than the
-  // audit trail was worth, so the gap is recorded and the output stands.
   const submitted = submitOutput(root, run.run_id, invocation.output.path)
 
   assert.ok(
@@ -188,8 +181,6 @@ test('supervisor evidence activates future worker-card enforcement', () => {
     /"type":"model_evidence_advisory"/u,
   )
 
-  // The submit-time observation reaches the supervisor through the return
-  // value and survives in run state, not only in the event log.
   const workerGap = submitted.advisories.find((advisory) =>
     advisory.message.includes('no usable worker model evidence'),
   )
@@ -215,16 +206,11 @@ test('supervisor evidence activates future worker-card enforcement', () => {
 test('a bare model spec accepts any resolved Cursor variant', () => {
   const root = createFixture()
 
-  // Run 63316 record 02_ship-1_abe84794: a bare spec delegates the variant
-  // choice to Cursor, so comparing the spec id literally with the resolved
-  // display name produced a false CURSOR_MODEL_MISMATCH ('auto' vs 'Auto
-  // Balance') that made ship unsubmittable without a harness repair. The rule
-  // lives in the probe module: a bare spec has no catalog prediction to
-  // compare against, while a bracketed spec of the same model does.
+  // A bare spec has no catalog prediction, but a bracketed spec of the same
+  // model does.
   assert.equal(expectedCursorModelForSpec(root, 'auto-smart'), null)
   assert.notEqual(expectedCursorModelForSpec(root, 'auto-smart[]'), null)
 
-  // Whatever variant Cursor reports for the bare spec is the resolved model.
   const resolved = withFakeCursorAgent(root, 'Auto Balance', () =>
     probeCursorModelSpec('auto-smart'),
   )
@@ -232,8 +218,7 @@ test('a bare model spec accepts any resolved Cursor variant', () => {
   assert.equal(resolved.resolved, 'Auto Balance')
   assert.equal(resolved.error, undefined)
 
-  // A failed probe still reports unavailable evidence: bare is permissive
-  // about the variant, not about having evidence at all.
+  // A bare spec is permissive about the variant, not about missing evidence.
   const missing = withFakeCursorAgent(root, null, () =>
     probeCursorModelSpec('auto-smart'),
   )
@@ -241,9 +226,6 @@ test('a bare model spec accepts any resolved Cursor variant', () => {
   assert.equal(missing.resolved, null)
   assert.match(missing.error ?? '', /no system\/init event/u)
 })
-
-// Rehomed from the governance branch at integration: these cases prove
-// rules that branch adds and have no other home in the consolidated suite.
 
 test('worker probes persist matches, mismatches, and missing metadata alike', () => {
   const root = createFixture()
@@ -275,8 +257,6 @@ test('worker probes persist matches, mismatches, and missing metadata alike', ()
   assert.equal(matching.result, 'match')
   assert.equal(matching.effective_model, expected)
 
-  // The probe records what Cursor reported and succeeds either way, so a
-  // mismatch or missing metadata cannot halt a launch.
   const mismatched = withFakeCursorAgent(root, 'Unexpected Model', () =>
     probeRunInvocationModel(root, run.run_id, invocation.invocation_id),
   )
@@ -321,11 +301,8 @@ test('worker probes persist matches, mismatches, and missing metadata alike', ()
   )
 })
 
-// Run 63313_Aug-27-0109_cumulus-prot: the catalog reflects one Cursor account,
-// so `bin/install` deliberately omits it from every target payload. Treating
-// that intended absence as missing evidence made every bracketed spec in every
-// target installation unverifiable, and blocked the run at its first worker
-// launch.
+// `bin/install` omits the catalog from a target payload because the catalog
+// covers one Cursor account.
 test('a bracketed spec without an installed catalog records rather than blocks', () => {
   const root = createFixture()
 
@@ -380,7 +357,7 @@ test('a bracketed spec without an installed catalog records rather than blocks',
       (item) => item.invocation_id === invocation.invocation_id,
     ),
   )
-  // An intentionally absent catalog is not a gap, so it earns no advisory.
+  // An absent catalog is not a gap, so it earns no advisory.
   assert.doesNotMatch(
     readFileSync(
       path.join(

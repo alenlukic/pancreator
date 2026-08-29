@@ -15,7 +15,6 @@ test('delivery workflow is connected and stages are addressable', () => {
   assert.equal(workflow.start_stage, 'plan')
   assert.equal(stageBySlug(workflow, 'ship').gate, 'operator')
 
-  // The loader assembles ordered stage files from the workflow index.
   assert.deepEqual(
     workflow.stages.map((stage) => stage.slug),
     ['plan', 'implement', 'verify', 'remediate', 'ship'],
@@ -99,7 +98,6 @@ test('loader fails when an indexed stage file is missing', () => {
     /missing stage file stages\/ship\.json/,
   )
 
-  // Live stage files require an explicit context projection.
   const stagePath = path.join(
     root,
     'library',
@@ -118,7 +116,6 @@ test('loader fails when an indexed stage file is missing', () => {
 
   assert.throws(() => loadWorkflow(root, 'design'), /context MUST be defined/)
 
-  // Workflow validation rejects unknown transition targets.
   const workflow = loadWorkflow(root, 'prototype')
   workflow.stages[0].transitions.success = 'missing'
   assert.throws(
@@ -128,7 +125,6 @@ test('loader fails when an indexed stage file is missing', () => {
 })
 
 test('prototype stages declare their precondition data and criteria', () => {
-  // One fixture serves three read-only assertions on immutable stage files.
   const root = createFixture()
   const workflow = loadWorkflow(root, 'prototype')
 

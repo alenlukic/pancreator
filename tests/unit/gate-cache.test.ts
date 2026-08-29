@@ -47,9 +47,9 @@ function fixtureState(
 }
 
 /**
- * A gate stage whose command appends one byte to `runtime/gate-marker.log`.
- * The marker sits under `runtime/`, which is outside the workspace
- * fingerprint, so executions are countable without changing the fingerprint.
+ * A gate stage that appends one byte to `runtime/gate-marker.log`. The marker
+ * sits outside the workspace fingerprint, so it counts executions without
+ * changing that fingerprint.
  */
 function markerStage(passing: boolean): StageDefinition {
   const append =
@@ -108,8 +108,6 @@ test('a clean gate pass is cached and accepted at an unchanged fingerprint', () 
   assert.equal(firstResult.cached, undefined)
   assert.equal(markerCount(root), 1)
 
-  // Same command, unchanged workspace: the recorded pass is accepted and the
-  // command does not execute again — even from a different run.
   const second = fixtureState(root, 'run-b')
   const evaluated = evaluateDeterministicCriteria(
     root,
@@ -129,7 +127,6 @@ test('a clean gate pass is cached and accepted at an unchanged fingerprint', () 
   assert.match(cachedResult.explanation ?? '', /cached clean pass/u)
   assert.equal(markerCount(root), 1)
 
-  // The cached acceptance writes its own evidence log with provenance.
   const evidence = readFileSync(
     path.join(root, cachedResult.evidence_path ?? ''),
     'utf8',
@@ -138,7 +135,6 @@ test('a clean gate pass is cached and accepted at an unchanged fingerprint', () 
   assert.match(evidence, /cached=true/u)
   assert.match(evidence, /source_run=run-a/u)
 
-  // A workspace change invalidates the fingerprint and the command runs.
   writeFileSync(path.join(root, 'cache-buster.txt'), 'changed\n')
 
   const third = fixtureState(root, 'run-c')
@@ -182,7 +178,7 @@ test('a failing gate is never cached', () => {
     assert.equal(result.cached, undefined)
   }
 
-  // Both submissions executed: a failure must re-run to observe its repair.
+  // A failure must re-run to show its repair, so both submissions executed.
   assert.equal(markerCount(root), 2)
 })
 
@@ -192,9 +188,8 @@ test('PAN_GATE_CACHE=0 disables lookup and store', () => {
 
   mkdirSync(path.join(root, 'runtime'), { recursive: true })
 
-  // The key binds the repository-check configuration bytes: profile semantics
-  // can change without a workspace fingerprint change, so the key must change
-  // with the configuration bytes.
+  // Profile semantics change without a fingerprint change, so the key binds
+  // the repository-check configuration bytes.
   const before = gateCacheKey(root, 'fingerprint', 'npm test')
 
   writeFileSync(
@@ -245,8 +240,6 @@ test('PAN_GATE_CACHE=0 disables lookup and store', () => {
 })
 
 test('a non-git workspace is never cached: its fingerprint is a constant', () => {
-  // Without git, every state of the tree fingerprints identically, so a
-  // recorded pass would be accepted for a workspace that has since changed.
   const root = createFixture()
 
   rmSync(path.join(root, '.git'), { recursive: true, force: true })
@@ -314,8 +307,8 @@ test('cached evidence carries the original output, and a gone source is a miss',
   assert.ok(cachedResult?.evidence_path)
   assert.equal(cachedResult.cached, true)
 
-  // A verifier holding the accepting run's log holds the bytes the pass rests
-  // on, not a pointer into another run directory.
+  // The accepting run's log holds the bytes the pass rests on, not a pointer
+  // into another run directory.
   const cachedEvidence = readFileSync(
     path.join(root, cachedResult.evidence_path),
     'utf8',
@@ -325,8 +318,8 @@ test('cached evidence carries the original output, and a gone source is a miss',
   assert.ok(cachedEvidence.includes(sourceEvidence))
   assert.equal(markerCount(root), 1)
 
-  // Archival or pruning removes the source run: the entry no longer proves
-  // anything the harness can show, so the gate executes again.
+  // The source run is gone, so the entry proves nothing and the gate runs
+  // again.
   rmSync(path.join(root, 'runtime', 'logs', 'workflows', 'run-a'), {
     recursive: true,
     force: true,
@@ -367,8 +360,8 @@ test('a profile gate whose baseline cannot resolve is never served from the cach
 
   stage.criteria[0].command = 'pan repository-check fast'
 
-  // Run A baselined under a verification level that does not baseline `fast`,
-  // so the gate is judged on its own result: a clean pass, and cacheable.
+  // Run A uses a level that does not baseline `fast`, so its clean pass is
+  // cacheable.
   const first = fixtureState(root, 'run-a')
 
   first.state.repository_check_baselines = {}
@@ -391,8 +384,8 @@ test('a profile gate whose baseline cannot resolve is never served from the cach
   assert.equal(firstResult.cached, undefined)
   assert.equal(markerCount(root), 1)
 
-  // Run B expects a `fast` baseline and has none. The uncached path fails
-  // that gate closed; a recorded pass must not step around that rule.
+  // Run B expects a `fast` baseline and has none, so the gate fails closed
+  // even against a recorded pass.
   const second = fixtureState(root, 'run-b')
 
   second.state.repository_check_baselines = {}
@@ -412,8 +405,7 @@ test('a profile gate whose baseline cannot resolve is never served from the cach
   assert.match(gapResult.explanation ?? '', /fails closed/u)
   assert.equal(markerCount(root), 2)
 
-  // Run C matches run A: the recorded pass is accepted, and the entry carried
-  // the repository result a baseline comparison would need.
+  // Run C matches run A, so the recorded pass is accepted.
   const third = fixtureState(root, 'run-c')
 
   third.state.repository_check_baselines = {}

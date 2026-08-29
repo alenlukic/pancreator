@@ -50,21 +50,15 @@ function writeArtifact(
 test('word count treats an inline code span as one word (STE 8.6)', () => {
   const cases: Array<[string, number, string]> = [
     ['Run `./bin/pan validate` to check the state.', 6, 'inline code span'],
-    // A path, a flag, and an identifier count as one word each.
     ['The gate for policy STE-001 failed.', 6, 'identifier'],
     ['Read governance/policies/STE-001.json now.', 3, 'path'],
     ['Pass --involvement to the command.', 5, 'flag'],
-    // A hyphenated word is one word (STE 8.7).
     ['The main-gear-door handle moved.', 4, 'hyphenated word'],
-    // Text in parentheses is one word (STE 8.5).
     ['The stage closed (the operator approved it) today.', 5, 'parentheses'],
-    // Quoted text and an acronym are one word each (STE 8.6).
     ['The heading "Release Overview" changed.', 4, 'quoted text'],
     ['The NASA report arrived.', 4, 'acronym'],
-    // A number joins its unit but not a bare noun (STE 8.6).
     ['The check took 30 ms.', 4, 'number with unit'],
     ['The suite has 30 tests.', 5, 'number with bare noun'],
-    // A step number is ignored but the remaining words count (STE 8.6).
     ['1. Run the command.', 3, 'numbered step'],
     ['- Check the workspace state.', 4, 'bulleted step'],
   ]
@@ -121,7 +115,6 @@ test('an imperative sentence uses the 20-word instruction limit (STE 5.1)', () =
   assert.match(tooLong.message, /STE 5\.1/u)
   assert.match(tooLong.message, /instruction/u)
 
-  // An explanation sentence uses the 25-word limit (STE 6.3).
   const explanation =
     'The validate command reported one hard failure and the operator must decide whether the run continues or stops before the next stage begins again tomorrow morning.'
 
@@ -138,7 +131,6 @@ test('an imperative sentence uses the 20-word instruction limit (STE 5.1)', () =
   assert.match(explanationTooLong.message, /STE 6\.3/u)
   assert.match(explanationTooLong.message, /explanation/u)
 
-  // A sentence at the limit reports no length issue.
   assert.deepEqual(codes('Run the command.'), [])
   assert.deepEqual(codes('The gate passed and the run continued.'), [])
 })
@@ -165,7 +157,6 @@ test('banned punctuation, contractions, and Latin abbreviations are reported', (
       'ste.latin_abbreviation',
     ),
   )
-  // Gender-specific pronouns and word substitutions are reported.
   assert.ok(
     codes('The reviewer approved it and he closed the stage.').includes(
       'ste.gendered_pronoun',
@@ -212,8 +203,8 @@ test('HTML prose extraction reads brief body text and skips code', () => {
 })
 
 test('the validator passes a conformant Markdown artifact', () => {
-  // validateSimplifiedEnglish only reads root + targetPath, so a bare
-  // temporary root serves every file-level case.
+  // validateSimplifiedEnglish reads only root and targetPath, so a bare
+  // temporary root is enough.
   const root = scratchRoot()
   const target = writeArtifact(
     root,
@@ -235,13 +226,11 @@ test('the validator passes a conformant Markdown artifact', () => {
   assert.equal(result.status, 'passed')
   assert.deepEqual(result.issues, [])
 
-  // The validator reports a missing artifact.
   const missing = validateSimplifiedEnglish(input(root, 'runtime/absent.md'))
 
   assert.equal(missing.status, 'failed')
   assert.equal(missing.issues[0].code, 'artifact.missing')
 
-  // The validator reports a line number and elides beyond the ceiling.
   const long = writeArtifact(
     root,
     'runtime/long.md',

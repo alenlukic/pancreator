@@ -50,7 +50,6 @@ test('pan list reports registry-backed agent health fields', () => {
 test('hypervisor CLI start is singleton and stop is reversible', () => {
   const root = createFixture()
 
-  // Before any start, a tick reports empty registry state and status is idle.
   const tick = run(root, 'hypervisor', 'tick') as {
     tick: { agents: unknown[]; recovery_events: unknown[] }
     away_decisions: unknown[]

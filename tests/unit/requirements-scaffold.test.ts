@@ -129,7 +129,6 @@ test('scaffold copies the contract manifest into a pending attestation', () => {
     ],
   )
 
-  // A legacy invocation without a contract manifest scaffolds no attestation.
   const legacy = {
     invocation_id: 'implement-1',
     rubric: [],
@@ -166,8 +165,6 @@ test('the scaffold interface rejects the Markdown contract by artifact type', ()
       error.message.includes(jsonPath),
   )
 
-  // The rejection stands without a sibling snapshot; the hint then names the
-  // missing .json snapshot instead of pointing at one.
   rmSync(absoluteJson)
 
   assert.throws(

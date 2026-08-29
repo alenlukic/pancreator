@@ -207,7 +207,6 @@ test('best-of-N init isolates every candidate in its own worktree and model set'
     /gpt-5\.4|claude-opus-5/u,
   )
 
-  // A candidate run delegates to its own agent variant.
   const candidate = session.candidates[0]
   const prepared = prepareInvocation(root, candidate.run_id)
   const status = bestOfNStatus(root, session.bon_id)
@@ -223,8 +222,6 @@ test('best-of-N init isolates every candidate in its own worktree and model set'
   )
 })
 
-// The CLI projects `best-of-n init` output from the session record, so a field
-// the record never holds cannot reach the output either.
 test('best-of-N init output omits unused supervisor agent paths', () => {
   const { root, session } = bestOfNCheckpoint('ready')
   const status = bestOfNStatus(root, session.bon_id)
@@ -309,9 +306,6 @@ test('a candidate run keeps workflow-declared gates under a high-touch profile',
   assert.ok(snapshot.stages.every((stage) => stage.gate !== 'operator'))
 })
 
-// The remediation cap that fails a candidate is an engine contract. The
-// best-of-N fact is that a failed child run is terminal for the session: it
-// leaves nothing unresolved and asks nothing of the operator.
 test('a candidate circuit breaker ends that candidate without operator input', () => {
   const { root, session } = bestOfNCheckpoint('ready')
   const candidate = session.candidates[0]

@@ -23,9 +23,7 @@ test('a disallowed question method fails with the file and identifier', () => {
   const disallowed = createAgentFixture(
     "disallowedTools: ['cursor/ask_question']",
   )
-  // A tools declaration fails with case-insensitive matching.
   const cased = createAgentFixture("tools: ['AskQuestion']")
-  // A missing canonical agent directory fails loudly.
   const empty = mkdtempSync(path.join(tmpdir(), 'pan-question-tool-'))
 
   try {

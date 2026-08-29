@@ -394,10 +394,9 @@ interface PassedGateEvidence {
 }
 
 /**
- * The latest passed execution of each repository-check profile the run has
- * recorded: harness gates in stage history, then pre-implementation baselines
- * for profiles no gate has run yet. A skipped, disabled, or failed gate is not
- * evidence and is left out.
+ * The latest passed run of each repository-check profile, from stage-history
+ * gates first and pre-implementation baselines second. A skipped, disabled, or
+ * failed gate is not evidence.
  */
 export function passedGateEvidence(state: RunState): PassedGateEvidence[] {
   const byProfile = new Map<string, PassedGateEvidence>()
@@ -460,10 +459,7 @@ function selectGateEvidence(
       ? 'the current workspace'
       : 'a superseded workspace'
 
-    // VERIFY-001 conditions citation on the profile and the fingerprint. A
-    // superseded artifact is still listed so QA knows the profile once passed,
-    // but the instruction changes: it is not current, and the verify
-    // submission gate is the only path that executes the profile again.
+    // A superseded artifact stays listed, but its condition denies citation.
     addReference(references, {
       path: evidence.evidencePath,
       description:

@@ -192,12 +192,6 @@ function advanceToBuild(
   submitStage(root, runId, stageBySlug(workflow, 'approach'))
 }
 
-// Rehomed from the governance branch at integration: these cases prove
-// rules that branch adds and have no other home in the consolidated suite.
-
-// This asserts the pre-existing blocked→paused routing for the approach
-// stage; it does not discriminate the precondition validator, whose
-// discriminating case lives in tests/unit/prototype-output-validator.test.ts.
 test('a blocked approach result routes the run to paused', () => {
   const root = createFixture()
 
@@ -270,8 +264,8 @@ test('operator-authorized narrowing lets approach advance to build', () => {
   const decisionPath = `${layout}/decisions/operator-feedback-1.md`
 
   submitStage(root, runId, stageBySlug(workflow, 'intake'))
-  // The approval note is the operator directive; the harness records it on
-  // the run's operator-feedback ledger, which is what the validator consults.
+  // The harness records the approval note on the operator-feedback ledger,
+  // which the validator reads.
   decideRun(root, runId, 'approve', 'Exclude TQ-01 from this spike.')
 
   const invocation = prepareInvocation(root, runId).invocation

@@ -132,10 +132,8 @@ export function renderPolicyBlocks(
     const lines = [
       `**${policy.id} · ${policy.title}**`,
       '',
-      // A review card under --base renders the head text of a changed policy
-      // here because that text is under review; the reader must not act on
-      // it. The marker sits directly under the heading so it is met before
-      // the first instruction, not after the whole policy body.
+      // The marker sits under the heading, so the reader meets it before the
+      // first instruction.
       ...(supersededIds.has(policy.id)
         ? [
             '> Under review. The text below is the head text you are grading. ' +
@@ -145,8 +143,6 @@ export function renderPolicyBlocks(
           ]
         : instrumentIds.has(policy.id)
           ? [
-              // An instrument policy leaves the squad verdict: no base text is
-              // rendered for it, and the independent reviewer reports on it.
               '> Under review by an independent reviewer. This policy is ' +
                 'instrument tier: the squad does not grade it. Follow the ' +
                 'text below as written; the independent reviewer reports on ' +

@@ -40,7 +40,6 @@ import {
 
 const PASS = `node -e "process.exit(0)"`
 
-/** Every gated profile green: the shape the baseline-damage tests corrupt. */
 const GREEN_CHECKS = checksVariant('checks=green', {
   static: { probes: [], commands: [PASS] },
   fast: { probes: [], commands: [PASS] },
@@ -77,8 +76,7 @@ test('a failing verify verdict routes without executing the full suite', () => {
   assert.equal(suite.evidence_path, undefined)
   assert.match(suite.explanation ?? '', /the stage reported result 'failure'/u)
 
-  // Contamination detection is outcome-independent: the scope state criterion
-  // still evaluates even when every shell gate is skipped.
+  // The scope state criterion still evaluates when every shell gate is skipped.
   const scope = failed.record.evaluation.deterministic.find(
     (item) => item.id === 'scope.no_unapproved_changes',
   )
@@ -193,7 +191,6 @@ test('a retry may submit a merge-patch revision instead of the whole document', 
 
   assert.ok(invocation)
   assert.equal(invocation.attempt, 2)
-  // The retry card names the prior invocation and teaches the revision form.
   const card = readFileSync(
     path.join(root, prepared.state.current_invocation?.markdown_path ?? ''),
     'utf8',
@@ -202,8 +199,6 @@ test('a retry may submit a merge-patch revision instead of the whole document', 
   assert.match(card, /"revises"/u)
   assert.ok(card.includes(firstInvocationId))
 
-  // Author attempt 2's brief (paths differ per attempt), then submit only a
-  // patch: flip the verdicts, attest to the new card, add the remediation.
   const template = makeOutput(root, invocation, implementStage)
   const patch = {
     revises: firstInvocationId,
@@ -242,7 +237,6 @@ test('a retry may submit a merge-patch revision instead of the whole document', 
 
   assert.equal(historyItem?.revised_from, firstInvocationId)
 
-  // The merged document carries attempt 1's untouched content plus the patch.
   const merged = JSON.parse(
     readFileSync(path.join(root, invocation.output.path), 'utf8'),
   ) as Record<string, Record<string, unknown>>
@@ -264,15 +258,14 @@ test('a retry may submit a merge-patch revision instead of the whole document', 
     1,
   )
 
-  // Resubmitting the same patch is idempotent.
   const replay = submitOutput(root, runId, invocation.output.path)
 
   assert.equal(replay.idempotent, true)
 })
 
 test('pre-implementation baselines capture only source-mutating gate profiles', () => {
-  // Capture happens at prepare, so the prepared checkpoint already holds the
-  // baselines; no submission is needed to observe which profiles were kept.
+  // Capture happens at prepare, so the prepared checkpoint already holds
+  // the baselines.
   const { state } = checkpoint(
     'delivery@implement-prepared',
     checksVariant('checks=static,fast,full-fails,configuration', {
@@ -286,10 +279,8 @@ test('pre-implementation baselines capture only source-mutating gate profiles', 
 
   assert.equal(baselines.static?.status, 'passed')
   assert.equal(baselines.fast?.status, 'passed')
-  // Baselines answer one question — did this run's own edits break a check —
-  // so only the implement loop's profiles are captured. The expensive `full`
-  // profile and the ship-stage configuration check never run before the coder
-  // starts; their gates are judged on their own results.
+  // Only the implement loop's profiles are captured. The full and
+  // configuration gates are judged on their own results.
   assert.equal(baselines.full, undefined)
   assert.equal(baselines.configuration, undefined)
 })
@@ -328,8 +319,8 @@ test('a failed environment probe pauses before source-stage delegation', () => {
   assert.match(prepared.state.pause_reason ?? '', /environment probe failed/u)
   assert.equal(prepared.state.repository_check_baselines, undefined)
 
-  // The paused run must stay loadable: the persisted state digest has to match
-  // the referenced state artifact after the baseline pointer is cleared.
+  // The paused run must stay loadable. The state digest must match the state
+  // artifact after the run clears the baseline pointer.
   const reloaded = getRunState(root, state.run_id)
 
   assert.equal(reloaded.status, 'paused')
@@ -383,7 +374,6 @@ test('the default light level gates verification on the fast profile and never r
   assert.equal(fullSuite.verification_level, 'light')
   assert.equal(fullSuite.passed, true)
   assert.equal(submitted.record.outcome, 'success')
-  // The broken full profile never executed at any point in the run.
   assert.equal(existsSync(fullMarker), false)
 })
 
@@ -402,9 +392,7 @@ test('thorough verification runs full at verify on its own result', () => {
     ),
   )
 
-  // Even under thorough, full is never baselined before implementation: the
-  // operator opted into absolute judgment, so a pre-existing failure fails
-  // the gate and needs an operator decision instead of passing on a delta.
+  // Thorough opts into absolute judgment, so the run never baselines full.
   assert.equal(state.repository_check_baselines?.full, undefined)
 
   const submitted = submitStageOutput(
@@ -509,8 +497,7 @@ test('a repository-check gate credits an inherited failure the stage fixed', () 
   assert.equal(beforeRepair?.passed, true)
   assert.equal(beforeRepair?.preexisting_failure, true)
 
-  // The same worker now repairs the inherited failure and submits the same stage
-  // output again. Credit for the repair must not need an operator waiver.
+  // Credit for the repair must not need an operator waiver.
   setRunStage(root, runId, 'implement', 'Repair the inherited lint failure.')
   writeFileSync(path.join(root, 'src/base.ts'), 'export const base = true\n')
 
@@ -546,9 +533,8 @@ test('a repository-check gate credits an inherited failure the stage fixed', () 
 })
 
 test('an elided inherited failure stays carried from the full baseline', () => {
-  // The gate compares against the untruncated baseline when the inline result
-  // was elided, so the comparison is exercised directly on a baseline artifact
-  // whose inline result is elided and whose full_result_path holds the truth.
+  // The gate compares against the untruncated baseline at full_result_path
+  // when the inline result is elided.
   const root = mkdtempSync(path.join(tmpdir(), 'pancreator-elided-'))
   const diagnostics = Array.from(
     { length: 5000 },
@@ -651,8 +637,8 @@ test('a missing baseline artifact pauses the run before delegation', () => {
 
   const prepared = prepareInvocation(root, runId)
 
-  // A gate judged against a baseline cannot run without it, and the worker
-  // cannot influence that fault, so the stage attempt must not be spent.
+  // The worker cannot influence a missing baseline, so the run pauses and
+  // does not spend the stage attempt.
   assert.equal(prepared.invocation, null)
   assert.equal(prepared.state.status, 'paused')
   assert.equal(prepared.state.pending_action.type, 'operator_decision')
@@ -680,10 +666,8 @@ test('a wiped baseline map degrades gates to absolute judgment without recapture
   writeJson(statePath, damagedState)
   setRunStage(root, runId, 'implement', 'Re-enter with no baseline pointers.')
 
-  // The capture-once invariant holds: nothing is recaptured after
-  // implementation. An absent pointer under a verification level means the
-  // gate is judged on its own result instead of failing closed, so the run
-  // proceeds without an operator pause.
+  // The run captures no baseline after implementation. An absent pointer
+  // degrades the gate to its own result instead of a closed failure.
   const submitted = submitStageOutput(root, runId, implementStage, 'success')
   const staticResult = submitted.record.evaluation.deterministic.find(
     (item) => item.id === 'implement.lint',
@@ -734,8 +718,7 @@ test('a repository-check gate fails closed when its baseline disappears', () => 
     (result) => result.id === 'implement.lint',
   )
 
-  // A green exit code is not evidence of parity when the comparison the gate
-  // depends on cannot be made.
+  // A green exit code is not proof of parity when the gate cannot compare.
   assert.equal(staticResult?.passed, false)
   assert.match(staticResult?.explanation ?? '', /baseline artifact is missing/u)
   assert.equal(submitted.record.outcome, 'failure')

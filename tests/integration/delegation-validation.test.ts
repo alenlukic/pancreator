@@ -87,7 +87,6 @@ test('submit records mismatched delegation as advisory evidence before ship', ()
 })
 
 test('submit succeeds when canonical delegation artifact is present', () => {
-  // The checkpoint's plan was submitted with its canonical delegation in place.
   const { root, runId, state } = checkpoint('delivery@plan-awaiting-operator')
 
   assert.equal(state.stage_history.at(-1)?.outcome, 'success')
@@ -275,7 +274,6 @@ test('submit reports an unreadable contract reference as blocked', () => {
     'the failed reference MUST name the path and error in evidence',
   )
 
-  // Approval applies the recorded outcome: the run pauses.
   const decided = decideRun(root, runId, 'approve', 'Accept the pause.')
 
   assert.equal(decided.status, 'paused')

@@ -115,7 +115,6 @@ test('strict stage output rejects pass claims without evidence', () => {
     /pass claim MUST include evidence/u,
   )
 
-  // Artifacts MUST lead with the invocation-declared rendered brief path.
   const misdeclared = baseOutput(invocation, stage)
 
   misdeclared.artifacts = [
@@ -134,7 +133,6 @@ test('strict stage output rejects pass claims without evidence', () => {
     /artifacts\[0\]\.path MUST equal rendered operator brief path/u,
   )
 
-  // A transient brief source is excluded from artifacts.
   brief.source_transient = true
   const transient = baseOutput(invocation, stage)
 
@@ -199,8 +197,8 @@ test('stage output accepts a platform guidance conflict list and rejects a bare 
     ],
   })
 
-  // OPERATOR-001 gives the conflict statement a field; the validator must
-  // accept it rather than treat the disclosure as an unknown shape.
+  // OPERATOR-001 gives the conflict statement a field, so the validator must
+  // accept it.
   assert.ok(
     !stated.errors.some((message) =>
       message.includes('platform_guidance_conflicts'),

@@ -27,12 +27,6 @@ interface StandaloneValidation {
   targetPath: string
 }
 
-/**
- * The standalone `pan requirements run` path: resolve the policy-bound
- * requirement for the context, pick the one binding for the registry id, and
- * run its validator against the target. The CLI spawn adds nothing that the
- * SPOT-001 binding test does not already prove.
- */
 function runStandaloneValidator(root: string, options: StandaloneValidation) {
   const manifest = resolveRequirements(root, {
     persona: options.persona,
@@ -337,7 +331,6 @@ test('requirements run preserves ambiguity when duplicate required bindings rema
   engPolicy.requirements[0].enforcement = 'required'
   writeFileSync(engPolicyPath, `${JSON.stringify(engPolicy, null, 2)}\n`)
 
-  // Resolution keeps both required bindings rather than collapsing them.
   assert.equal(
     resolveRequirements(root, {
       persona: 'spotfixer',
@@ -353,8 +346,6 @@ test('requirements run preserves ambiguity when duplicate required bindings rema
     2,
   )
 
-  // The CLI's single-binding selection refuses the ambiguity instead of
-  // choosing; that refusal lives in the command, so it is proven there.
   assert.throws(
     () =>
       execFileSync(
@@ -383,9 +374,6 @@ test('requirements run preserves ambiguity when duplicate required bindings rema
   )
 })
 
-// Rehomed from the governance branch at integration: these cases prove
-// rules that branch adds and have no other home in the consolidated suite.
-
 test('output validate mirrors the deterministic submission checks', () => {
   const root = createFixture()
   const state = createRun(root, {
@@ -406,8 +394,8 @@ test('output validate mirrors the deterministic submission checks', () => {
 
   writeJson(path.join(root, invocation.output.path), output)
 
-  // A compliant output passes the submission mirror even when the stage
-  // resolves no agent-owned validator requirement.
+  // The stage resolves no agent-owned validator requirement, so results is
+  // empty.
   const stdout = execFileSync(
     process.execPath,
     [
@@ -433,9 +421,6 @@ test('output validate mirrors the deterministic submission checks', () => {
   assert.ok(result.submission_checks.length > 0)
   assert.equal(result.results.length, 0)
 
-  // A mechanical attestation defect (the RF-009 class: a worker attesting the
-  // wrong model) must fail here for free instead of consuming a stage attempt
-  // at submit time.
   const corrupted = structuredClone(output) as unknown as Record<
     string,
     unknown
@@ -476,8 +461,7 @@ test('output validate mirrors the deterministic submission checks', () => {
 })
 
 // The harness renders the operator brief during submission, so the mirror must
-// not report its absence as a defect. That exemption used to hinge on matching
-// the validator's error prose; it now names the pending artifact directly.
+// not report its absence as a defect.
 test('output validate exempts the unrendered operator brief but not other missing artifacts', () => {
   const root = createFixture()
   const state = createRun(root, {
@@ -520,7 +504,6 @@ test('output validate exempts the unrendered operator brief but not other missin
     JSON.stringify(beforeRender.checks, null, 2),
   )
 
-  // A genuinely missing artifact is still a defect.
   const withMissingArtifact = {
     ...output,
     artifacts: [

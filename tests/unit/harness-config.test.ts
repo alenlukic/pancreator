@@ -47,7 +47,6 @@ function scratchRoot(): string {
   return mkdtempSync(path.join(tmpdir(), 'pancreator-harness-config-'))
 }
 
-/** A bare directory holding only a minimal config.json. */
 function minimalConfigRoot(overrides: Record<string, unknown>): string {
   const root = scratchRoot()
 
@@ -118,7 +117,6 @@ test('loadProjectConfig reads an unmigrated installation', () => {
   useLegacyConfigName(root)
 
   assert.deepEqual(loadProjectConfig(root), expected)
-  // Both the harness and pipeline readers report the name they actually read.
   assert.equal(harnessConfigName(root), 'project.json')
   assert.equal(loadPipelineConfig(root).path, 'project.json')
 })
@@ -152,7 +150,6 @@ test('detached installation addresses the harness by absolute path', () => {
 
     assert.equal(harnessPathPrefix(root), root)
     assert.equal(panCommand(root), path.join(root, 'bin', 'pan'))
-    // Detached is a target installation, but not an embedded one.
     assert.equal(isDetachedInstallation(root), true)
     assert.equal(isTargetInstallation(root), true)
     assert.equal(isEmbeddedInstallation(root), false)
@@ -183,7 +180,6 @@ test('detached installation rejects a relative workspace root', () => {
     /workspace_root MUST be an absolute path for a detached installation/u,
   )
 
-  // An unknown installation mode is rejected the same way.
   const unknown = minimalConfigRoot({ installation_mode: 'nonsense' })
 
   assert.throws(

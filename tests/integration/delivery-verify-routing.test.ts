@@ -38,8 +38,8 @@ test('a scaled verification timeout preserves the environment-blocked route', ()
   const commandDelayMs = 1_500
   const resolvedTimeoutMs = 5_000
 
-  // Under the light level the verify gate runs the fast profile, so the
-  // infrastructure scenario and the timeout scaling both route through it.
+  // Under the light level the verify gate runs the fast profile, so both
+  // scenarios route through it.
   for (const [stageFile, criterionId] of [
     ['verify.json', 'verify.full_suite'],
     ['implement.json', 'implement.unit_tests'],
@@ -68,9 +68,8 @@ test('a scaled verification timeout preserves the environment-blocked route', ()
   })
   const environmentPath = path.join(root, 'runtime', 'environment.txt')
   const completionPath = path.join(root, 'runtime', 'completed.txt')
-  // The emitted diagnostic must carry a genuine infrastructure artifact
-  // shape (a pytest collection error): the classifier anchors on shapes, not
-  // keyword substrings, so a line merely containing 'timeout' never counts.
+  // The classifier anchors on artifact shapes, not keyword substrings, so the
+  // command emits a real pytest collection error.
   const infrastructureCommand =
     `node -e "const fs=require('node:fs'); ` +
     `setTimeout(() => { const value=fs.readFileSync('runtime/environment.txt','utf8').trim(); ` +
@@ -241,8 +240,6 @@ test('same-reason tracker resets on stage pass, waive-gate, and set-stage', () =
     output.data.verify = failingVerify(findingId)
   }
 
-  // Every clone starts one same-reason verify failure in, with the run at
-  // remediate and the tracker holding repeat_count 1.
   {
     const { root, runId, state, workflow } = checkpoint(
       'delivery@verify-failed-once',
@@ -253,8 +250,8 @@ test('same-reason tracker resets on stage pass, waive-gate, and set-stage', () =
     assert.equal(state.same_reason_failures?.verify?.repeat_count, 1)
     assert.equal(state.current_stage, 'remediate')
 
-    // Control case: an ordinary pause/resume preserves the tracker across
-    // remediation work, so the next same-reason failure pauses the run.
+    // A pause and a resume keep the tracker, so the next same-reason failure
+    // pauses the run.
     pauseRun(root, runId, 'Operator pauses before remediation continues.')
     resumeRun(
       root,
@@ -345,7 +342,8 @@ test('same-reason tracker resets on stage pass, waive-gate, and set-stage', () =
   }
 
   {
-    // Remediated once, the next same-reason failure pauses; a waiver clears it.
+    // After one remediation, the next same-reason failure pauses. A waiver
+    // clears the tracker.
     const { root, runId, workflow } = checkpoint(
       'delivery@verify-failed-once-remediated',
     )
@@ -394,9 +392,9 @@ test('governance and artifact defects are advisory before ship and never loop to
   assert.equal(existsSync(path.join(root, brief.source_path)), true)
   assert.equal(existsSync(path.join(root, brief.rendered_path)), false)
 
-  // Submission still gates hard on the parallel evidence reports and the
-  // required verify validator, so the minimal output carries valid verify
-  // data; every other defect below stays advisory.
+  // Submission gates hard on the evidence reports and the verify validator,
+  // so this minimal output carries valid verify data. Every other defect
+  // below stays advisory.
   writeEvidenceReports(root, invocation)
   writeJson(path.join(root, invocation.output.path), {
     schema_version: 1,
@@ -465,8 +463,7 @@ test('ship owns governance artifact review and pauses instead of looping to impl
   const submitted = submitOutput(root, runId, invocation.output.path)
 
   assert.equal(submitted.record.outcome, 'failure')
-  // Ship carries an operator gate, so the failure stops for a decision before it
-  // takes the failure route.
+  // Ship carries an operator gate, so a failure stops for a decision first.
   assert.equal(submitted.state.status, 'awaiting_operator')
   assert.equal(submitted.state.pending_action.type, 'operator_approval')
   assert.equal(
@@ -506,10 +503,9 @@ test('a required implement validator failure blocks the stage transition', () =>
   const output = makeOutput(root, invocation, implementStage)
   const implementation = output.data.implementation as Record<string, unknown>
 
-  // The exact defect of run 63315 record 93_implement-3_c7ba51e2: claimed
-  // test files that do not exist. DEV-001 declares the claims validator
-  // required with failure_route stage_failure, so the submit MUST fail the
-  // stage instead of advancing to verification with a governance warning.
+  // The claimed test file does not exist. DEV-001 declares the claims
+  // validator required with failure_route stage_failure, so the submit must
+  // fail the stage instead of a governance warning.
   implementation.tests_added = [
     'tests/unit/tools/custom_dashboard/test_source_citations.py::test_accepts_valid_shape',
   ]
@@ -535,8 +531,7 @@ test('baseline capture disclosed dirty paths and predecessor provenance', () => 
   })
   const runId = state.run_id
 
-  // Leave uncommitted prior-run changes in the tree, as run 63316 left the
-  // lineage_loader type error for run 63315 to inherit.
+  // Leave an uncommitted prior-run change in the tree.
   writeFileSync(
     path.join(root, 'src', 'base.ts'),
     'export const base = true // inherited edit\n',

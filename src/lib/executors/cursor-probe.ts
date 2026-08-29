@@ -28,26 +28,24 @@ export interface CursorModelProbe {
   error?: string
 }
 
-/** Where a resolved `CURSOR_API_KEY` came from. */
 export type CursorApiKeySource = 'process_environment' | 'dotenv'
 
 /**
- * Presence-only report for one candidate `.env`. The credential value, any
- * part of it, and its length are deliberately absent: a doctor report is
- * operator-readable output that may be pasted into an issue or a chat.
+ * Presence-only report for one candidate `.env`. It must never carry the
+ * credential value or its length, because operators paste doctor output.
  */
 export interface CursorDotEnvInspection {
   /** Absolute path of the candidate file. */
   path: string
   exists: boolean
-  /** False when the file could not be read or parsed, null when absent. */
+  /** False when the file cannot be read or parsed, null when it is absent. */
   parsable: boolean | null
-  /** Null when the file does not exist or could not be parsed. */
+  /** Null when the file does not exist or cannot be parsed. */
   declares_key: boolean | null
 }
 
 export interface CursorAuthenticationReadiness {
-  /** Whether a spawned cursor-agent probe would carry a credential. */
+  /** True when a spawned cursor-agent probe carries a credential. */
   key_available: boolean
   source: CursorApiKeySource | null
   /** Absolute path of the `.env` that supplied the key, null otherwise. */
@@ -63,15 +61,8 @@ interface DotEnvCandidate extends CursorDotEnvInspection {
 }
 
 /**
- * Roots whose `.env` may carry the probe credential, in precedence order.
- *
- * The installation root comes first, because a credential placed beside the
- * harness configuration is unambiguously harness-scoped. The deliverable
- * workspace root follows: an embedded harness lives at `<target>/.pancreator`
- * and a detached harness lives outside the target entirely, so an operator who
- * keeps repository secrets at the target repository root would otherwise have
- * no discoverable location at all. The two coincide in a self-development
- * checkout, which then yields one candidate.
+ * Roots whose `.env` can carry the probe credential, in precedence order: the
+ * installation root first, then the workspace root.
  */
 function credentialSearchRoots(root: string): string[] {
   const installationRoot = path.resolve(root)
@@ -80,8 +71,8 @@ function credentialSearchRoots(root: string): string[] {
   try {
     configuredWorkspace = readProjectConfig(root)?.workspace_root
   } catch {
-    // A malformed harness configuration is `pan validate`'s to report. Probe
-    // authentication still works from the installation root alone.
+    // `pan validate` reports a malformed configuration. The probe still
+    // authenticates from the installation root alone.
   }
 
   if (configuredWorkspace === undefined) {
@@ -134,9 +125,9 @@ function inspectDotEnv(filePath: string): DotEnvCandidate {
 }
 
 /**
- * The single resolution order shared by `probeEnvironment` and
- * `cursorAuthenticationReadiness`, so a readiness report can never describe a
- * path the probe itself does not read.
+ * The one resolution order that `probeEnvironment` and
+ * `cursorAuthenticationReadiness` share, so a readiness report never names a
+ * path the probe skips.
  */
 function dotEnvCandidates(root: string): DotEnvCandidate[] {
   return credentialSearchRoots(root).map((searchRoot) =>
@@ -154,11 +145,10 @@ function withoutSecret(candidate: DotEnvCandidate): CursorDotEnvInspection {
 }
 
 /**
- * Environment for a spawned probe. When the parent process already carries
- * `CURSOR_API_KEY` it wins; otherwise a `.env` supplies it, so a probe
- * authenticates the same way ASK-001 expects an agent to recover a secret.
- * Only that one key crosses into the child, the parent environment is never
- * mutated, and the value is never logged or returned.
+ * Build the environment for a spawned probe. A parent `CURSOR_API_KEY` wins,
+ * otherwise a `.env` supplies it, as ASK-001 expects. Only that one key
+ * crosses into the child. The harness never changes the parent environment and
+ * never logs or returns the value.
  */
 export function probeEnvironment(root: string): NodeJS.ProcessEnv | undefined {
   const existing = process.env.CURSOR_API_KEY
@@ -180,11 +170,9 @@ export function probeEnvironment(root: string): NodeJS.ProcessEnv | undefined {
 
 /**
  * Report whether a Cursor model probe or a cursor-executor stage can
- * authenticate, without spawning anything.
- *
- * This is advisory. An interactive `cursor-agent login` authenticates the CLI
- * with no environment key at all, so an absent key is a readiness gap rather
- * than proof that a probe will fail.
+ * authenticate. This starts no process. An absent key is a readiness gap,
+ * not a certain failure, because `cursor-agent login` authenticates the CLI
+ * without one.
  */
 export function cursorAuthenticationReadiness(
   root: string,

@@ -447,10 +447,7 @@ function dispositionSourceExists(root: string, sourcePath: string): boolean {
   return relative.length > 0 && fileExists(path.join(root, relative))
 }
 
-/**
- * File component of an evidence string such as `tests/unit/x.test.ts: what it
- * pins`. Prose evidence with no path component is not checked.
- */
+/** File component of an evidence string, or null when the evidence is prose. */
 function dispositionEvidenceFile(evidence: string): string | null {
   const candidate = evidence.split(/[:\s]/u, 1)[0] ?? ''
 
@@ -458,9 +455,8 @@ function dispositionEvidenceFile(evidence: string): string | null {
 }
 
 /**
- * A fixture or installation that carries no `tests/` tree cannot be asked to
- * hold the test the harness registry cites; the check applies only where the
- * top-level directory of the evidence path exists.
+ * True when root carries the top directory of the evidence path. A fixture
+ * without that tree skips the staleness check.
  */
 function evidenceTreePresent(root: string, evidenceFile: string): boolean {
   const top = evidenceFile.split('/', 1)[0] ?? ''
@@ -504,8 +500,7 @@ function dispositionErrors(
       }
     }
 
-    // A retained duplication claims a guard. When the evidence names a file,
-    // that file must exist, or the claim outlives the test that backed it.
+    // A retained duplication claims a guard, so a file it names must exist.
     for (const evidence of disposition.evidence) {
       const evidenceFile = dispositionEvidenceFile(evidence)
 

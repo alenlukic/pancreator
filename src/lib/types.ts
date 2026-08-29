@@ -143,10 +143,8 @@ export interface StageContextDefinition {
   operator_feedback?: number
   include_workspace_ratifications?: boolean
   /**
-   * Include a reference to the bounded evidence log of each repository-check
-   * profile a harness gate or baseline already passed, carrying the profile
-   * and the workspace fingerprint it passed at, so an evidence worker can cite
-   * the gate instead of re-executing the profile.
+   * Include passed gate evidence so a worker cites the gate and does not run
+   * the profile again.
    */
   gate_evidence?: boolean
   legacy_full_history?: boolean
@@ -603,10 +601,8 @@ export interface WorkspaceChangeAttribution {
 export interface TargetInstructionRead {
   path: string
   /**
-   * Verbatim last content line of the file, skipping empty lines and Markdown
-   * divider lines. The card lists only the paths, so quoting the closing line
-   * is evidence the worker opened the file — a self-declared path list proves
-   * nothing, and a `---` divider quote proves nothing either.
+   * Verbatim last content line of the file. Skip empty lines and Markdown
+   * divider lines.
    */
   final_line: string
 }
@@ -674,11 +670,8 @@ export interface GuidanceAttestationEntry {
   content_sha256: string
   status: GuidanceAttestationStatus
   /**
-   * Verbatim last content line of the selected guidance content, skipping
-   * empty lines and Markdown divider lines. Required when status is `read`:
-   * the line is not printed on the card, so quoting it is evidence the worker
-   * actually held the selection, unlike a digest echo that can be copied from
-   * the card itself.
+   * Verbatim last content line of the selected guidance content. Skip empty
+   * lines and Markdown divider lines. Required when status is `read`.
    */
   final_line?: string
   /** Why the read trigger did not apply. Required when status is skipped. */
@@ -722,9 +715,9 @@ export type InvocationAttestation =
     }
 
 /**
- * OPERATOR-001: a platform session mode or platform-injected instruction that
- * conflicted with an operator directive, harness governance, or the persona
- * brief, and what the agent followed instead.
+ * OPERATOR-001: a platform instruction that conflicts with an operator
+ * directive, harness governance, or the persona brief, and the authority the
+ * agent followed.
  */
 export interface PlatformGuidanceConflict {
   guidance: string
@@ -746,7 +739,6 @@ export interface StageOutput {
   criteria: CriterionEvaluation[]
   risks: string[]
   unknowns: string[]
-  /** Optional: absent means no platform guidance conflicted. */
   platform_guidance_conflicts?: PlatformGuidanceConflict[]
   workspace_changes?: WorkspaceChangeAttribution
   target_instruction_evidence?: TargetInstructionEvidence
@@ -788,9 +780,8 @@ export interface InvocationReference {
   retrieval?: InvocationReferenceRetrieval
   condition?: string
   /**
-   * Set on a passed repository-check gate evidence reference. `current` is
-   * true when the evidence was captured at the invocation's workspace
-   * fingerprint; the verify validator requires one citation per current entry.
+   * `current` is true when the evidence matches the invocation workspace
+   * fingerprint. The verify validator needs one citation per current entry.
    */
   gate_evidence?: {
     profile: string
@@ -1079,9 +1070,8 @@ export interface DeterministicResult {
    */
   verification_level?: string
   /**
-   * Set when the gate accepted a cached clean pass of the same command at an
-   * unchanged workspace fingerprint instead of re-executing it. The evidence
-   * log records the provenance of the original execution.
+   * Set when the gate accepted a cached clean pass and did not run the
+   * command.
    */
   cached?: boolean
   explanation?: string
@@ -1248,14 +1238,10 @@ export interface OperatorFeedbackItem {
 }
 
 /**
- * A non-blocking observation the harness recorded about this run, such as a
- * supervisor model that changed mid-run or a submission whose worker model is
- * unverified. Advisories live in run state so `pan status` recovers them after
- * an interruption without reading the event log. None of them stops the run.
+ * A non-blocking observation about this run. An advisory never stops the run.
  */
 export interface RunAdvisory {
   kind: 'model_evidence' | 'pipeline_config' | 'platform_guidance'
-  /** Which harness operation observed the condition. */
   source: 'prepare' | 'probe' | 'submit' | 'supervisor_evidence'
   stage?: string
   invocation_id?: string
@@ -1415,10 +1401,7 @@ export interface RunState {
   stage_history: StageHistoryItem[]
   operator_feedback?: OperatorFeedbackItem[]
   model_evidence?: RunModelEvidence[]
-  /**
-   * Non-blocking observations recorded during this run, newest last. Absent on
-   * runs created before advisories were persisted to state.
-   */
+  /** Non-blocking observations recorded during this run, newest last. */
   advisories?: RunAdvisory[]
   revision: number
   created_at: string

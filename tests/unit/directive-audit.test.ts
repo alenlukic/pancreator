@@ -37,9 +37,6 @@ function writeDispositionRecord(
 }
 
 test('directive audit rejects registry defects in one pass', () => {
-  // One audit covers three independent registry defects: a removed
-  // disposition exposes its duplicate group, an entry with a stale source is
-  // invalid, and a retain entry without evidence is invalid.
   const root = createFixture()
   const record = dispositionRecord(root)
 
@@ -60,9 +57,7 @@ test('directive audit rejects registry defects in one pass', () => {
 
   assert.ok(retained)
   retained.evidence = []
-  // A retained entry whose evidence names a file the tree no longer holds
-  // claims a guard that is gone. The fixture carries a `tests/` tree only as
-  // far as this marker, which makes the cited path checkable.
+  // The fixture needs a `tests/` tree to make the cited evidence path checkable.
   mkdirSync(path.join(root, 'tests', 'unit'), { recursive: true })
   record.entries.push({
     id: 'dangling-evidence',
@@ -119,9 +114,6 @@ function writeDispositionExtension(
 }
 
 test('tolerated directive collisions raise no disposition demand', () => {
-  // One audit covers two tolerated-collision rules: a target extension
-  // restating a harness directive, and a formatter-wrapped RFC 2119
-  // preamble shared by two target-owned files.
   const root = createFixture()
   const harnessSkill = path.join(root, 'library', 'skills', 'write-pr.md')
   const directive =
@@ -130,8 +122,6 @@ test('tolerated directive collisions raise no disposition demand', () => {
   mkdirSync(path.dirname(harnessSkill), { recursive: true })
   writeFileSync(harnessSkill, `# Write a PR\n\n${directive}`)
 
-  // Two target-owned files carrying the preamble wrapped the way a
-  // formatter emits it.
   const preambleDirectory = path.join(
     root,
     'governance',
@@ -203,9 +193,6 @@ test('tolerated directive collisions raise no disposition demand', () => {
 })
 
 test('disposition layers cover groups, bind filenames, and reject id reuse', () => {
-  // One audit covers three layer rules through three distinct layer files: a
-  // valid layer that satisfies a duplicate group, a layer whose filename
-  // does not match its extension id, and a layer reusing a harness id.
   const root = createFixture()
   const record = dispositionRecord(root)
   const moved = record.entries.find(

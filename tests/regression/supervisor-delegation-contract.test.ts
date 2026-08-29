@@ -40,13 +40,6 @@ function markdownFiles(directory: string): string[] {
     .sort()
 }
 
-/**
- * The supervisor guard belongs to every mode, and it has landed in one before.
- * These two cases pin structure, not prose: the always-applied rules state the
- * same supervisor paragraph, and no operator document relays the supervisor
- * through a child agent. `context_bloat_dispositions.json` cites them for the
- * retained entry-command duplication.
- */
 test('always-applied rules share one supervisor paragraph', () => {
   const paragraphs = [
     'library/cursor/rules/pancreator-self-development.mdc',
@@ -212,10 +205,7 @@ test('worker invocation cards point at the supervisor delivery procedure', () =>
     true,
   )
 
-  // A supervisor cannot reproduce a card that exceeds its own output budget,
-  // so delivery size must not scale with the contract: growing the contract
-  // body does not grow the prompt. (The manifest digest and section-index
-  // assertions live in unit/render.)
+  // The delivery prompt size must not grow with the contract body.
   const manifest = invocation.contract_manifest
 
   assert.ok(manifest)

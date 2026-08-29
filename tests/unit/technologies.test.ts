@@ -43,8 +43,6 @@ test('detects sorted manifest and source language evidence', () => {
     writeFileSync(path.join(root, 'src', 'server.rs'), 'fn main() {}\n')
     mkdirSync(path.join(root, 'node_modules'), { recursive: true })
     writeFileSync(path.join(root, 'node_modules', 'ignored.py'), 'VALUE = 1\n')
-    // Ignored paths (dependency trees, the embedded harness target) never
-    // contribute language evidence.
     mkdirSync(path.join(root, '.pancreator', 'target'), { recursive: true })
     writeFileSync(
       path.join(root, '.pancreator', 'target', 'main.py'),

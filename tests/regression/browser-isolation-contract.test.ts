@@ -8,14 +8,6 @@ import { loadPolicyCatalog, resolvePolicies } from '../../src/lib/policies.js'
 
 const REPO_ROOT = process.cwd()
 
-/**
- * The previous version of this file required every isolation token to be
- * restated in six separate surfaces, which is exactly why those surfaces drifted
- * apart. It now asserts the opposite: `BROWSER-001` holds the contract, and every
- * surface that needs it receives it by policy delivery or generation, never by
- * restatement.
- */
-
 /** Surfaces that used to restate the contract and must no longer do so. */
 const NON_RESTATING_SURFACES = [
   'library/personas/qa-tester.md',
@@ -96,8 +88,6 @@ test('browser-touching personas resolve BROWSER-001', () => {
   }
 })
 
-// unit/projection proves the installer's rendered rule is byte-identical to
-// `renderPolicyCursorRule`, so the renderer is exercised directly here.
 test('the generated rule reproduces the policy text and references its procedure', () => {
   const policy = loadPolicyCatalog(REPO_ROOT).get('BROWSER-001')
 
@@ -129,7 +119,6 @@ test('the generated rule reproduces the policy text and references its procedure
     assert.ok(!content.includes(guidance.content))
   }
 
-  // No hand-maintained rule template may reappear alongside the generated one.
   assert.equal(
     existsSync(
       path.join(REPO_ROOT, 'library/cursor/rules/visual-qa-isolation.mdc'),

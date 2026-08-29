@@ -61,8 +61,8 @@ test('every prototype stage resolves the blocking output validator', () => {
     ['reviewer', 'evaluate'],
   ]
 
-  // AC-011 guard: the resolved requirement manifest — not only the schema
-  // file — must carry PROTOTYPE-OUTPUT-VALIDATE-001 for each prototype stage.
+  // AC-011: the resolved manifest, not only the schema file, must carry
+  // PROTOTYPE-OUTPUT-VALIDATE-001.
   for (const [persona, stage] of stages) {
     const manifest = resolveRequirements(root, {
       persona,
@@ -151,7 +151,6 @@ test('runRequirement fails closed on missing target', () => {
   assert.equal(result.status, 'failed')
   assert.equal(isPassingResult(result), false)
 
-  // Once the target exists, the run records its checksum and executor.
   mkdirSync(path.dirname(path.join(root, 'missing/output.json')), {
     recursive: true,
   })

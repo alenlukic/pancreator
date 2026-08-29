@@ -37,7 +37,7 @@ export const CONFIGS = {
   consolidation: { personas: { metacritic: 'gpt-5.6-sol' } },
 }
 
-/** Above every supported pid range, so this owner is provably not running. */
+/** Above every supported pid range, so no process owns this pid. */
 export const DEAD_PID = 2 ** 31 - 1
 export const EXCLUSION_NOTE = 'Operator stopped this candidate.'
 
@@ -49,7 +49,6 @@ export function git(root: string, args: string[]): string {
   })
 }
 
-/** The session id a failed initialization names in its recovery guidance. */
 export function sessionIdFromFailure(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error)
   const match = /runtime\/logs\/best-of-n\/([^/]+)\/state\.json/u.exec(message)
@@ -148,14 +147,12 @@ export function submitCandidateStage(
   return assessStage(root, runId, assessmentPath).state
 }
 
-/** Advance one autonomous candidate run from plan to a terminal outcome. */
 export function driveCandidate(root: string, runId: string): void {
   for (const stageSlug of ['plan', 'implement', 'verify']) {
     submitCandidateStage(root, runId, stageSlug)
   }
 }
 
-/** Mutate a verify output into a remediable failing verdict. */
 export function failCandidateVerify(
   findingId: string,
 ): (output: StageOutput) => void {
@@ -193,23 +190,14 @@ export function failCandidateVerify(
   }
 }
 
-// ---------------------------------------------------------------------------
-// Checkpoints
-//
-// Most lifecycle facts (mutex refusals, loader validators, cleanup guards)
-// need a ready session but not a fresh one. The session is built once per
-// process on top of a fixture and every later call clones it with `cp -Rc`
-// (clonefile; a plain recursive copy is the fallback). The clone carries the
-// candidate worktrees, whose Git registration `git worktree repair` points at
-// the clone before the checkpoint is handed out, so no test ever mutates the
-// template through a stale gitdir pointer.
-// ---------------------------------------------------------------------------
+// The process builds each session template once and clones it per call. Every
+// clone repairs its worktrees, so no test writes through a stale gitdir
+// pointer into the template.
 
 export type BestOfNCheckpointKey = 'ready' | 'consolidated'
 
 export interface BestOfNCheckpoint {
   root: string
-  /** The session record as the clone holds it. */
   session: BestOfNState
 }
 
@@ -229,8 +217,8 @@ function buildBestOfNTemplate(key: BestOfNCheckpointKey): {
     return { root, bonId: session.bon_id }
   }
 
-  // `consolidated` extends `ready`: alpha finishes, beta is abandoned, and the
-  // consolidation metacritic run exists but has not started.
+  // `consolidated` extends `ready`. The consolidation run exists but has not
+  // started.
   const { root, session } = bestOfNCheckpoint('ready')
   const [alpha, beta] = session.candidates
 
@@ -241,20 +229,19 @@ function buildBestOfNTemplate(key: BestOfNCheckpointKey): {
   return { root, bonId: session.bon_id }
 }
 
-/** Clone a directory tree; clonefile when available, recursive copy otherwise. */
 export function cloneTree(template: string): string {
   const root = mkdtempSync(path.join(tmpdir(), 'pancreator-v2-'))
 
   cloneSharedTree(template, root, { timeout: 180_000 })
 
-  // Worktree bookkeeping compares Git's realpath output with the root, so the
-  // root is handed out in the same form the CLI sees from process.cwd().
+  // Worktree bookkeeping compares Git's realpath output with the root, so hand
+  // out the root in the form the CLI sees from process.cwd().
   return realpathSync(root)
 }
 
 /**
- * Re-point every linked worktree of a cloned repository at the clone and prove
- * the registration no longer names any other repository.
+ * Re-point every linked worktree at the clone and prove that no registration
+ * names another repository.
  */
 export function repairClonedWorktrees(
   root: string,

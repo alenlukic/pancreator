@@ -49,8 +49,8 @@ test('clean refuses to discard uncommitted candidate work without force', () => 
 
   assert.ok(candidate)
 
-  // Fresh candidate runs are still in flight with clean worktrees, which is
-  // exactly the state a dirtiness-only preflight would remove.
+  // Fresh candidate runs are in flight with clean worktrees, so the refusal is
+  // about liveness.
   assert.throws(
     () => cleanBestOfN(root, session.bon_id),
     /Finish or abort the run first/u,
@@ -60,8 +60,7 @@ test('clean refuses to discard uncommitted candidate work without force', () => 
     assert.equal(existsSync(path.join(root, entry.worktree_path)), true)
   }
 
-  // Terminal runs put the dirtiness refusal — not the liveness refusal — under
-  // test.
+  // Terminal runs put the dirtiness refusal under test, not the liveness one.
   for (const entry of session.candidates) {
     terminateRun(root, entry.run_id)
   }
@@ -104,8 +103,7 @@ test('clean refuses while the consolidation run is in flight', () => {
   const consolidation = session.consolidation
 
   assert.ok(consolidation)
-  // The candidate worktrees are the consolidation run's declared inputs and
-  // its agent variants gate every later engine operation on the run.
+  // The candidate worktrees are the consolidation run's declared inputs.
   assert.throws(
     () => cleanBestOfN(root, session.bon_id),
     /consolidation run .* is still/u,
@@ -218,8 +216,7 @@ test('an interrupted candidate handoff is adopted from the run state', () => {
   const { root, session } = bestOfNCheckpoint('ready')
   const [alpha, beta] = session.candidates
 
-  // Reproduce a process killed between createRun and the session-record write:
-  // the beta run exists durably while the session still shows a pending slot.
+  // Reproduce a process killed between createRun and the session-record write.
   writeJson(sessionStatePath(root, session.bon_id), {
     ...session,
     status: 'initializing',
@@ -242,8 +239,7 @@ test('an interrupted candidate handoff is adopted from the run state', () => {
     [alpha.run_id, beta.run_id].sort(),
   )
 
-  // Cleanup must reconcile before it decides which worktrees and live runs the
-  // session owns. Terminal runs make the non-forced cleanup safe.
+  // Terminal runs make the non-forced cleanup safe.
   terminateRun(root, alpha.run_id)
   terminateRun(root, beta.run_id)
 
@@ -269,14 +265,11 @@ test('an interrupted consolidation handoff cannot start a second consolidation r
 
   assert.ok(consolidationRunId)
 
-  // Reproduce a process killed between createRun and the session-record write:
-  // the consolidation run exists durably while the session records none.
+  // Reproduce a process killed between createRun and the session-record write.
   const { consolidation: _consolidation, ...withoutConsolidation } = session
 
   writeJson(sessionStatePath(root, session.bon_id), withoutConsolidation)
 
-  // A retry adopts the existing run instead of creating a duplicate against
-  // the same workspace.
   assert.throws(
     () => consolidateBestOfN(root, session.bon_id),
     /already started consolidation run/u,
@@ -325,8 +318,6 @@ test('init validates the consolidation config before any candidate runs', () => 
     /Consolidation config 'consolidation' maps unknown persona 'metacritick'/u,
   )
 
-  // A consolidation persona with neither a mapping nor a default fails at
-  // init, not after N candidate runs completed.
   const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
     defaults: Record<string, string>
@@ -348,7 +339,6 @@ test('init validates the consolidation config before any candidate runs', () => 
     /maps no model for persona 'metacritic'/u,
   )
 
-  // Nothing was created for any rejected config.
   assert.equal(existsSync(path.join(root, 'worktrees')), false)
   assert.equal(existsSync(path.join(root, 'runtime', 'worktrees')), false)
 })

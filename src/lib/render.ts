@@ -1085,10 +1085,7 @@ export function renderStatus(
     }
   }
 
-  // ORCH-001 makes the supervisor answer for duplicate execution of evidence
-  // the run already holds. This is the inventory that duty needs: the latest
-  // passing execution per profile, marked against the newest recorded
-  // workspace fingerprint so a stale artifact reads as superseded.
+  // ORCH-001: the supervisor reads this inventory to avoid a duplicate run.
   const gateEvidence = passedGateEvidence(state)
 
   if (gateEvidence.length > 0) {

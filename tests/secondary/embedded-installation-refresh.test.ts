@@ -19,11 +19,6 @@ import {
 } from './install-helpers.js'
 
 test('embedded installer refresh reconciles persona mappings and agent ownership while preserving target state', () => {
-  // One refresh over one cloned install covers every refresh behavior at
-  // once, because each seeds a disjoint piece of pre-refresh state: an
-  // operator model mapping to preserve, a retired persona to prune, a
-  // pre-namespace agent to reclaim, target-owned primer/docs/Cursor files and
-  // runtime state to keep, and legacy runtime artifacts to migrate or drop.
   const project = cloneInstalledProject()
   const pancreatorDir = path.join(project, '.pancreator')
   const customCoderModel = 'operator-custom-coder-model[fast=false]'
@@ -34,8 +29,6 @@ test('embedded installer refresh reconciles persona mappings and agent ownership
   const configJsonPath = path.join(pancreatorDir, 'config.json')
 
   try {
-    // An operator customization the refresh must keep, plus a mapping for a
-    // persona the release no longer ships.
     const config = readJson<{
       active_config: string
       defaults: Record<string, string>
@@ -48,8 +41,8 @@ test('embedded installer refresh reconciles persona mappings and agent ownership
     config.configs.simple.personas[retiredPersona] = retiredModel
     writeFileSync(configJsonPath, `${JSON.stringify(config, null, 2)}\n`)
 
-    // Reproduce an installation made before agents were namespaced: the old
-    // path exists and the marker records Pancreator as its owner.
+    // Reproduce an install made before agents were namespaced, where the
+    // marker records Pancreator as the owner of the old path.
     const contents = 'pancreator-owned coder\n'
 
     writeFileSync(legacyAgent, contents)
@@ -62,7 +55,6 @@ test('embedded installer refresh reconciles persona mappings and agent ownership
     })
     writeFileSync(markerPath, `${JSON.stringify(marker, null, 2)}\n`)
 
-    // Target-owned state that MUST survive.
     writeFileSync(
       path.join(pancreatorDir, 'runtime', 'inbox', 'request.md'),
       'keep me\n',
@@ -131,7 +123,6 @@ test('embedded installer refresh reconciles persona mappings and agent ownership
     mkdirSync(path.dirname(legacyWorktreeNote), { recursive: true })
     writeFileSync(legacyWorktreeNote, 'legacy bytes\n')
 
-    // Legacy runtime artifacts the refresh drops, migrates, or archives.
     mkdirSync(path.join(pancreatorDir, 'runtime', 'locks'), {
       recursive: true,
     })
@@ -183,8 +174,8 @@ test('embedded installer refresh reconciles persona mappings and agent ownership
     )
 
     const oldRunId = '63379_Jun-22_5f354f23'
-    // Prefix migration adds the minute component; suffix migration then
-    // replaces the hex fragment with keywords from the run title.
+    // The prefix migration adds the minute component. The suffix migration
+    // then replaces the hex fragment with keywords from the run title.
     const migratedOldRunId = '63379_Jun-22-0158_old-run'
     const oldRunDirectory = path.join(
       pancreatorDir,
@@ -231,7 +222,6 @@ test('embedded installer refresh reconciles persona mappings and agent ownership
     assert.equal(result.status, 0, result.stderr)
     assert.match(result.stdout, /Installation refresh completed/)
 
-    // The operator mapping survives and the projected agent picks it up.
     const refreshed = readJson<{
       active_config: string
       defaults: Record<string, string>
@@ -247,7 +237,6 @@ test('embedded installer refresh reconciles persona mappings and agent ownership
       ).includes(`model: ${customCoderModel}`),
     )
 
-    // The retired persona is pruned everywhere.
     assert.equal(refreshed.defaults[retiredPersona], undefined)
     assert.equal(
       refreshed.configs.simple.personas[retiredPersona],
@@ -255,15 +244,14 @@ test('embedded installer refresh reconciles persona mappings and agent ownership
       'a retired persona MUST NOT survive a refresh',
     )
 
-    // Ownership transfers to the namespaced path and the orphan is reclaimed.
     assert.equal(existsSync(legacyAgent), false)
     assert.equal(
       existsSync(path.join(project, '.cursor', 'agents', 'pan-coder.md')),
       true,
     )
 
-    // Runtime maintenance standardizes loose inbox names onto the temporal
-    // prefix scheme; the content survives under the new name.
+    // Runtime maintenance renames a loose inbox file onto the temporal prefix
+    // scheme and keeps the content.
     const inboxDirectory = path.join(pancreatorDir, 'runtime', 'inbox')
     const standardizedRequest = readdirSync(inboxDirectory).find((name) =>
       /^\d+_[A-Z][a-z]{2}-\d{2}-\d{4}_request\.md$/u.test(name),
@@ -312,8 +300,6 @@ test('embedded installer refresh reconciles persona mappings and agent ownership
     assert.equal(readFileSync(legacyWorktreeNote, 'utf8'), 'legacy bytes\n')
     assert.equal(existsSync(path.join(pancreatorDir, 'worktrees')), true)
 
-    // Legacy locks, retired validation files, and the retired workspace
-    // directory are gone; old runs are archived under their migrated ids.
     assert.equal(
       existsSync(path.join(pancreatorDir, 'runtime', 'locks')),
       false,
@@ -366,7 +352,6 @@ test('embedded installer refresh reconciles persona mappings and agent ownership
       true,
     )
 
-    // The payload and projection are still complete after the refresh.
     assert.equal(
       existsSync(
         path.join(pancreatorDir, 'governance', 'policies', 'OPERATOR-001.json'),

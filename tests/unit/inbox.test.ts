@@ -38,7 +38,7 @@ test('listInbox ignores nested directories and non-Markdown files', () => {
     writeInboxFile(root, 'newest.md', '# Newest\n', newest)
     writeInboxFile(root, 'notes.txt', 'ignore me\n', newest)
     writeInboxFile(root, 'nested/deep.md', '# Nested\n', newest)
-    // Two files sharing the oldest mtime sort by file name.
+    // Two files share the oldest mtime, so the file name breaks the tie.
     writeInboxFile(root, 'zebra.md', '# Z\n', oldest)
     writeInboxFile(root, 'alpha.md', '# A\n', oldest)
 
@@ -52,7 +52,6 @@ test('listInbox ignores nested directories and non-Markdown files', () => {
       items.map((item) => item.title),
       ['Newest', 'Middle', 'A', 'Oldest', 'Z'],
     )
-    // Modification times are ISO 8601 UTC.
     assert.equal(items[0]?.modified_at, newest.toISOString())
   } finally {
     rmSync(root, { recursive: true, force: true })

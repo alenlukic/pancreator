@@ -164,7 +164,6 @@ test('the worker card names the supervisor procedure and prints no lifecycle com
       .join('; '),
   )
 
-  // Validation rejects a worker card that prints a lifecycle command.
   const leaking = validateInvocationMarkdown(
     invocation,
     card.replace(
@@ -181,7 +180,6 @@ test('the worker card names the supervisor procedure and prints no lifecycle com
     ),
   )
 
-  // Validation rejects a split delegation without its procedure document.
   const undocumented = validateInvocationMarkdown(invocation, card)
 
   assert.equal(undocumented.passed, false)
@@ -244,7 +242,6 @@ test('invocation cards inline policy text and reference guidance for every stage
           `${policy.id} MUST NOT inline the body of ${guidance.source_path}`,
         )
 
-        // A guidance reference names the selected heading range.
         if (reference.start_heading) {
           boundedReferences += 1
           assert.ok(
@@ -279,8 +276,6 @@ test('model configurations receive the same normative invocation contract', () =
 })
 
 test('Python guidance selection stops short of the formatter appendix', () => {
-  // Card-level reference rendering is proven for every stage above and PY-001
-  // selection by policies.test; the unique fact here is the appendix cutoff.
   const guidance = loadPolicyCatalog(process.cwd()).get('PY-001')?.guidance?.[0]
 
   assert.ok(guidance)
@@ -363,7 +358,6 @@ test('invocation validation fails when a guidance reference is omitted', () => {
   const { guidance, reference } = engineeringGuidance(invocation)
   const prefix = 'policy.ENG-001.guidance.1'
 
-  // Card mutations against the unchanged snapshot.
   const cardMutations: Array<[string, string, string[]]> = [
     [
       'guidance reference omitted',
@@ -421,8 +415,6 @@ test('invocation validation fails when a guidance reference is omitted', () => {
     true,
   )
 
-  // Snapshot mutations: the card renders from a snapshot that contradicts the
-  // selected guidance.
   const staleDigest = structuredClone(invocation)
   const staleDigestGuidance = engineeringGuidance(staleDigest)
 
@@ -544,7 +536,6 @@ test('status summary renders a dedicated validation section for pass state', () 
   assert.match(status, /Invocation validation: pass/)
   assert.match(status, /Delegation validation: missing/)
 
-  // The status summary surfaces validation failure reasons.
   const planId = 'plan-1-abcd'
   const planPaths = invocationPaths(planId, 'planner')
   const delegationValidation = buildValidationArtifact({
@@ -595,7 +586,6 @@ test('status summary renders a dedicated validation section for pass state', () 
   assert.match(failing, /Delegation validation: fail/)
   assert.match(failing, /delegation\.canonical_equality/)
 
-  // The status summary includes the pause reason when present.
   const paused = renderStatus({
     schema_version: 1,
     run_id: runId,
@@ -698,7 +688,6 @@ test('contract sections concatenate back to the exact contract', () => {
     assert.equal(sha256(block.markdown).length, 64)
   }
 
-  // The contract manifest indexes every section once, in order.
   const manifest = invocation.contract_manifest
 
   assert.ok(manifest)
@@ -715,7 +704,6 @@ test('contract sections concatenate back to the exact contract', () => {
     manifest.sections.length,
   )
 
-  // The contract manifest indexes every referenced guidance selection.
   const expected = invocation.policies.flatMap((policy) =>
     (policy.guidance ?? []).flatMap((guidance) =>
       guidance.reference
@@ -734,7 +722,6 @@ test('contract sections concatenate back to the exact contract', () => {
   assert.ok(expected.length > 0, 'the fixture card references guidance')
   assert.deepEqual(manifest.guidance, expected)
 
-  // A manifest without policies carries no guidance index.
   const legacyManifest = buildInvocationContractManifest(
     'runtime/logs/workflows/run-fixture/invocations/legacy.md',
     contract,
@@ -766,7 +753,6 @@ test('the delivery prompt references the contract without reproducing it', () =>
   assert.ok(!prompt.includes(invocation.prompt))
   assert.ok(prompt.length < manifest.byte_length)
 
-  // The delivery prompt demands read evidence per guidance entry.
   assert.ok(manifest.guidance?.length)
   assert.match(prompt, /## Referenced guidance/u)
 
@@ -775,7 +761,6 @@ test('the delivery prompt references the contract without reproducing it', () =>
     assert.ok(prompt.includes(`sha256:${entry.content_sha256}`))
   }
 
-  // The invocation card names the delivery prompt for its supervisor.
   const markdown = renderInvocationMarkdown(invocation)
 
   assert.ok(invocation.delegation?.delivery_prompt_path)
@@ -783,9 +768,6 @@ test('the delivery prompt references the contract without reproducing it', () =>
   assert.ok(markdown.includes(invocation.delegation.canonical_markdown_path))
   assert.match(markdown, /referenced delivery/u)
 })
-
-// Rehomed from the governance branch at integration: these cases prove
-// rules that branch adds and have no other home in the consolidated suite.
 
 test('status summary lists recorded advisories with their stage context', () => {
   const status = renderStatus({

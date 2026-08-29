@@ -6,8 +6,8 @@ import test from 'node:test'
 
 import { validateDecompositionArtifact } from '../../src/lib/validators/stage-validators.js'
 
-// The validator reads only the Markdown under the root, so a bare
-// temporary directory replaces the repository fixture clone.
+// The validator reads only the Markdown under the root, so a bare temporary
+// directory is enough.
 function scratchRoot(): string {
   return mkdtempSync(path.join(tmpdir(), 'pan-decomposition-'))
 }

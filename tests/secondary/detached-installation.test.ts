@@ -20,11 +20,6 @@ import {
   runInstaller,
 } from './install-helpers.js'
 
-// `bin/install --smoke` (run by the `full` repository-check profile; this lane
-// itself runs under `secondary` and `full`) already covers the detached basics:
-// harness outside the target, no `.pancreator` in the target, projection
-// present, absolute `bin/pan` in pan-status, config mode and workspace_root,
-// clean status. This test keeps what smoke lacks.
 test('detached installer places the harness outside the target tree and refreshes idempotently', () => {
   const project = makeSkeletonProject()
   const harness = mkdtempSync(path.join(tmpdir(), 'pancreator-harness-'))
@@ -32,8 +27,8 @@ test('detached installer places the harness outside the target tree and refreshe
   try {
     gitInit(project)
 
-    // Target-owned instructions and scoped Cursor files seeded before the
-    // install MUST come through byte-identical.
+    // The install MUST leave the target-owned instructions and Cursor files
+    // byte-identical.
     const targetAgents = path.join(project, 'AGENTS.md')
     const targetRule = path.join(
       project,
@@ -87,8 +82,6 @@ test('detached installer places the harness outside the target tree and refreshe
       true,
     )
 
-    // The runtime reaches the Cursor surface through an absolute symlink, and
-    // runtime state plus the worktrees root live with the harness.
     const link = path.join(harness, '.cursor')
 
     assert.equal(lstatSync(link).isSymbolicLink(), true)
@@ -96,8 +89,8 @@ test('detached installer places the harness outside the target tree and refreshe
     assert.equal(existsSync(path.join(harness, 'runtime', 'inbox')), true)
     assert.equal(existsSync(path.join(harness, 'worktrees')), true)
 
-    // Nothing sits at .pancreator/, so that exclude rule must not be emitted;
-    // the namespaced projection still is.
+    // Detached mode puts nothing at .pancreator/, so the installer omits that
+    // exclude rule.
     const exclude = readFileSync(
       path.join(project, '.git', 'info', 'exclude'),
       'utf8',
@@ -107,8 +100,8 @@ test('detached installer places the harness outside the target tree and refreshe
     assert.match(exclude, /^\/\.cursor\/agents\/pan-\*\.md$/mu)
     assert.equal(git(project, ['status', '--porcelain']), '')
 
-    // A refresh is idempotent and leaves live target instructions alone: the
-    // rule changed after install is untouched and no policy copy is taken.
+    // A refresh leaves live target instructions alone and takes no policy
+    // copy.
     writeFileSync(
       targetRule,
       '---\nalwaysApply: true\n---\n\nUpdated target rule after install.\n',
@@ -141,8 +134,6 @@ test('detached installer places the harness outside the target tree and refreshe
   }
 })
 
-// Kept although `--smoke` has the same scenario: the smoke run no longer
-// executes in this lane, so it cannot stand in for the refusal here.
 test('detached installer refuses a harness inside the target', () => {
   const project = makeSkeletonProject()
 

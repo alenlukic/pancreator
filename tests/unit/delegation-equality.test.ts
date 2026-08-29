@@ -23,7 +23,6 @@ test('the audited delivery and delegation byte pair now matches', () => {
   const result = validateDelegationMarkdown(delivery, delegation, 'referenced')
   assert.equal(result.passed, true)
 
-  // A non-whitespace byte difference still fails the equality check.
   const corrupted = validateDelegationMarkdown(
     delivery,
     delegation.replace('invocation', 'inv0cation'),

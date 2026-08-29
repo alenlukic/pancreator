@@ -40,7 +40,6 @@ test('operator artifact validator accepts semantic HTML briefs', () => {
 
   assert.equal(result.status, 'passed', JSON.stringify(result.issues))
 
-  // The executive summary must come first; a late summary fails the brief.
   const latePath = 'runtime/implementation-late-summary.html'
 
   writeFileSync(

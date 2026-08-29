@@ -301,11 +301,7 @@ interface ProjectionRemoval {
 export interface RenderProjectionsOptions {
   /** Render only these projection ids. Omit to render every declared one. */
   only?: readonly string[]
-  /**
-   * A pipeline config the caller already loaded. Loading it validates every
-   * persona in every named config, so a caller that holds one passes it in
-   * rather than paying that twice.
-   */
+  /** A pipeline config the caller already loaded, to skip a second load. */
   pipeline?: LoadedPipelineConfig
 }
 

@@ -97,7 +97,6 @@ test('ship gate fails when neither current fingerprint nor acceptance matches', 
 
   assert.equal(result.passed, false)
 
-  // Acceptance cannot stand in for absent review or QA evidence.
   const missingQa = stateWith(
     [historyItem('review', 'fp-current')],
     'fp-current',
@@ -122,8 +121,7 @@ test('ship gate passes when review failed but operator waived advancement to QA'
   assert.equal(result.passed, true)
   assert.match(result.explanation ?? '', /operator-waived/i)
 
-  // The waiver still carries the gate when the ship fingerprint drifted after
-  // the operator accepted the deliverable.
+  // The waiver carries the gate after the ship fingerprint drifted.
   const drifted = historyItem('review', 'fp-deliverable', 'failure')
   const driftedResult = evaluateStateCriterion(
     stateWith(
@@ -141,8 +139,8 @@ test('ship gate passes when review failed but operator waived advancement to QA'
     /operator-accepted workspace fingerprint/i,
   )
 
-  // A waiver recorded against a different fingerprint is honored: the review
-  // waiver is not fingerprint-bound.
+  // The review waiver is not fingerprint-bound, so another fingerprint still
+  // passes.
   const waiver = waiverFor(review)
 
   waiver.workspace_fingerprint = 'fp-other'

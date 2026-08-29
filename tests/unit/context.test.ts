@@ -291,7 +291,6 @@ test('ship context selects effective records and indexes superseded history', ()
   assert.equal(byPath.get('VERSION')?.retrieval, 'required')
   assert.equal(byPath.get('release/index.json')?.retrieval, 'required')
 
-  // Ship context includes resolved target PR authority when one is supplied.
   const prDescription: PrDescriptionContext = {
     mode: 'target',
     template_path: '.github/PULL_REQUEST_TEMPLATE.md',
@@ -489,8 +488,6 @@ test('verify context carries passed gate evidence with profile, path, and finger
   })
   const byPath = new Map(inputs.references.map((item) => [item.path, item]))
 
-  // The passed fast gate wins over its pre-implementation baseline and names
-  // the profile and the fingerprint it passed at.
   const fastGate = byPath.get(
     'runtime/logs/workflows/run/evidence/implement-1.fast.log',
   )
@@ -506,7 +503,7 @@ test('verify context carries passed gate evidence with profile, path, and finger
     false,
   )
 
-  // A failed gate is not evidence; the passed baseline for that profile is.
+  // A failed gate is not evidence, but the passed baseline for the profile is.
   assert.equal(
     byPath.has('runtime/logs/workflows/run/evidence/implement-1.static.log'),
     false,
@@ -518,8 +515,8 @@ test('verify context carries passed gate evidence with profile, path, and finger
   assert.match(staticBaseline.description, /`static`/u)
   assert.match(staticBaseline.description, /`fp-before`/u)
   assert.match(staticBaseline.description, /superseded workspace/u)
-  // The re-execution path is the verify submission gate, which no supervisor
-  // command re-runs on request; the condition must not send QA there.
+  // No supervisor command re-runs the verify submission gate, so the condition
+  // must not send QA there.
   assert.match(staticBaseline.condition ?? '', /verify submission gate/u)
   assert.doesNotMatch(staticBaseline.condition ?? '', /supervisor/u)
   assert.deepEqual(staticBaseline.gate_evidence, {
@@ -534,7 +531,6 @@ test('verify context carries passed gate evidence with profile, path, and finger
     current: true,
   })
 
-  // A run with no passed gate simply carries no gate evidence.
   const bare = buildInvocationInputs({
     root,
     state: stateWith([plan, bareImplement]),

@@ -36,15 +36,12 @@ SOURCE_PAYLOAD_ENTRIES=(
 )
 GENERATED_PAYLOAD_ENTRIES=(AGENTS.md .gitignore dist node_modules)
 
-# Payload paths that belong to Pancreator self-development only. They are copied
-# with their parent directory, then removed from staging before the payload is
-# hashed, so a target installation never receives them and the payload manifest
-# never claims them.
+# Paths for Pancreator self-development only. The copy takes them with their
+# parent directory, so remove them from staging before the payload hash runs.
 SELF_DEVELOPMENT_ONLY_PAYLOAD_PATHS=(
   # Cursor model availability is account-specific and operator-local.
   governance/registries/cursor_model_catalog.json
-  # The harness review lineup reviews Pancreator's own governance, projections,
-  # and run cost. It has no meaning against a target repository.
+  # The Pancreator review lineup has no meaning against a target repository.
   library/skills/review-squad-pancreator.md
 )
 

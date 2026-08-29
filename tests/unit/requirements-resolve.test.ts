@@ -22,7 +22,6 @@ test('requirement resolution is deterministic', () => {
   assert.equal(first.manifest_hash, second.manifest_hash)
   assert.equal(sha256(first), sha256(second))
 
-  // Workflow invocations omit assessment and spotfix scaffolds.
   const verify = resolveRequirements(root, {
     persona: 'verifier',
     workflow: 'delivery',
@@ -40,7 +39,6 @@ test('requirement resolution is deterministic', () => {
   assert.ok(!registryIds.includes('SPOTFIX-ESCALATION-SCAFFOLD-001'))
   assert.ok(!registryIds.includes('SPOTFIX-VALIDATE-001'))
 
-  // Standalone artifact validators bind to the invocation's artifact path.
   for (const binding of [
     {
       persona: 'decomposer',

@@ -56,9 +56,6 @@ function assertEachDiagnostic(
   }
 }
 
-// Pass A: every compatible policy/config mutation on ONE fixture, ONE
-// validateRepository run; each expected diagnostic is asserted individually so
-// a regression stays attributable.
 test('repository validation requires a policy to deliver each engineering handbook', () => {
   const root = createFixture()
   prepareValidationFixture(root)
@@ -71,7 +68,6 @@ test('repository validation requires a policy to deliver each engineering handbo
   )
   const configPath = path.join(root, 'config.json')
 
-  // Each handbook MUST be delivered by at least one policy.
   for (const policyId of ['ENG-001', 'TS-001', 'DESIGN-001', 'PY-001']) {
     const policyPath = path.join(policiesDirectory, `${policyId}.json`)
     const policy = readJson<{ guidance_sources?: unknown[] }>(policyPath)
@@ -80,7 +76,6 @@ test('repository validation requires a policy to deliver each engineering handbo
     writeJsonFile(policyPath, policy)
   }
 
-  // Static guidance references MUST be declared in guidance_sources.
   const actionPath = path.join(policiesDirectory, 'ACTION-001.json')
   const action = readJson<{ instructions: string[] }>(actionPath)
 
@@ -89,8 +84,7 @@ test('repository validation requires a policy to deliver each engineering handbo
   )
   writeJsonFile(actionPath, action)
 
-  // Lookup rows: drop a referenced policy dependency (WAIVER-001 requires
-  // OPERATOR-001).
+  // WAIVER-001 references OPERATOR-001, so this removal breaks the dependency.
   const lookup = readJson<{
     rows: Array<{
       persona: string
@@ -141,10 +135,8 @@ test('repository validation requires a policy to deliver each engineering handbo
     ],
   ])
 
-  // An unsupported technology selector fails the lookup table load itself and
-  // a missing persona mapping aborts projection validation; both mask the
-  // governance diagnostics above, so they run as a second pass on the same
-  // fixture.
+  // The next two mutations mask the diagnostics above, so they run as a
+  // second pass on the same fixture.
   lookup.rows.push({
     persona: 'coder',
     workflow: '*',
@@ -154,7 +146,6 @@ test('repository validation requires a policy to deliver each engineering handbo
   })
   writeJsonFile(lookupPath, lookup)
 
-  // Every pipeline config MUST map every standalone Cursor agent.
   const config = readJson<{
     defaults: Record<string, string>
     configs: Record<string, { personas: Record<string, string> }>
@@ -179,7 +170,6 @@ test('repository validation requires a policy to deliver each engineering handbo
   ])
 })
 
-// Pass B: lookup-row removals on ONE fixture, ONE validateRepository run.
 test('repository validation requires code-review stages to load engineering handbook policies', () => {
   const root = createFixture()
   prepareValidationFixture(root)
@@ -314,7 +304,6 @@ test('invocation validator passes for canonical rendered markdown', () => {
 
   assert.equal(result.passed, true)
 
-  // The policy heading MUST be present verbatim.
   const headingless = validateInvocationMarkdown(
     invocation,
     markdown.replace(POLICIES_HEADING, '## Policies'),
@@ -326,7 +315,6 @@ test('invocation validator passes for canonical rendered markdown', () => {
     false,
   )
 
-  // Every policy summary MUST be present.
   const policy = invocation.policies[0]
   const summaryless = validateInvocationMarkdown(
     invocation,
@@ -365,15 +353,14 @@ test('delegation source falls back to the layout of the run it belongs to', () =
     path: 'runtime/logs/workflows/run-fixture/agent/invocations/implement-1-fixture.md',
     mode: 'verbatim',
   })
-  // Per-invocation validation artifacts follow the layout of their own run.
   assert.deepEqual(validationPaths(), [
     `${runRelative}/agent/validations/implement-1-fixture.invocation-validation.json`,
     `${runRelative}/agent/validations/implement-1-fixture.delegation-validation.json`,
     `${runRelative}/agent/validations/implement-1-fixture.attestation-validation.json`,
   ])
 
-  // A layout-v1 run wrote these artifacts beside its invocation, so a resumed
-  // run must keep reading and writing that location.
+  // A layout-v1 run keeps these artifacts beside its invocation, so a resumed
+  // run must read and write that location.
   writeFileSync(path.join(legacyRunDirectory, 'state.json'), '{}\n')
 
   const legacyLayout = expectedDelegationSource(root, invocation)
@@ -417,14 +404,12 @@ test('delegation validator normalizes trailing whitespace', () => {
     true,
   )
 
-  // Line endings normalize.
   assert.equal(
     validateDelegationMarkdown(canonical, canonical.replaceAll('\n', '\r\n'))
       .passed,
     true,
   )
 
-  // The final newline normalizes.
   assert.equal(
     validateDelegationMarkdown(canonical, canonical.trimEnd()).passed,
     true,
@@ -477,9 +462,7 @@ function rerunWithExtraStderr(
   }
 }
 
-// The classification keys on the QA-owning personas: the delivery verify
-// stage's verifier, plus qa-tester for standalone and evidence-worker QA.
-// The fixture pins qa-tester to keep that persona's path under test.
+// The fixture pins qa-tester to keep that QA persona's path under test.
 function qaPersonaStage(root: string) {
   return {
     ...stageBySlug(loadWorkflow(root, 'delivery'), 'verify'),
@@ -508,7 +491,6 @@ test('preserved full-suite evidence classifies as environment-blocked', () => {
       blocked: true,
     },
     {
-      // A genuine product failure on carried infrastructure.
       label: 'product assertion failure on a QA persona',
       stage: qaStage,
       stderr:
@@ -516,23 +498,20 @@ test('preserved full-suite evidence classifies as environment-blocked', () => {
       blocked: false,
     },
     {
-      // The delivery verify stage's verifier owns QA too.
       label: 'carried infrastructure failure on the delivery verifier',
       stage: verifyStage,
       stderr: importError,
       blocked: true,
     },
     {
-      // A non-QA persona never classifies as environment-blocked.
       label: 'carried infrastructure failure on the coder',
       stage: implementStage,
       stderr: importError,
       blocked: false,
     },
     {
-      // A genuinely new product regression whose node id names a timeout:
-      // keyword matching classified this as environmental, inviting a waiver
-      // that would ship the regression.
+      // The node id names a timeout, but the failure is a new product
+      // regression, so it is not environment-blocked.
       label: 'new failing test that mentions a timeout',
       stage: qaStage,
       stderr:
@@ -660,7 +639,6 @@ test('attestation validator passes a complete in-order declaration', () => {
   assert.equal(complete.passed, true)
   assert.equal(complete.status, 'read')
 
-  // Status routes.
   const missing = validate(attestedOutput(undefined))
 
   assert.equal(missing.passed, false)
@@ -682,7 +660,6 @@ test('attestation validator passes a complete in-order declaration', () => {
   assert.equal(malformed.status, 'malformed')
   assert.ok(failedCheck(malformed, 'attestation.status'))
 
-  // Section declarations.
   const partial = validate(
     attestedOutput({
       ...attestation,
@@ -720,7 +697,6 @@ test('attestation validator passes a complete in-order declaration', () => {
   assert.equal(staleContract.passed, false)
   assert.ok(failedCheck(staleContract, 'attestation.contract_digest'))
 
-  // Guidance routes.
   assert.ok(
     attestation.guidance?.length,
     'the fixture contract references guidance',
@@ -824,7 +800,6 @@ test('attestation validator passes a complete in-order declaration', () => {
   assert.equal(mismatch.passed, false)
   assert.match(firstFailureMessage(mismatch), /final_line does not match/u)
 
-  // Contract reference failures.
   const referenceFailure = {
     invocation_id: attestation.invocation_id,
     model: invocation.stage.model,
@@ -865,7 +840,6 @@ test('attestation validator passes a complete in-order declaration', () => {
     true,
   )
 
-  // An invocation without a contract manifest owes no attestation at all.
   assert.equal(
     validateInvocationAttestation(
       fixtureInvocation(root, 'implement'),
@@ -889,18 +863,12 @@ test('attestation model matching accepts executor-selected models under auto', (
   assert.equal(attestationModelMatches('another-model', 'gpt-5.4'), false)
 })
 
-// Rehomed from the governance branch at integration: these cases prove
-// rules that branch adds and have no other home in the consolidated suite.
-
 test('guidance final-line evidence skips a trailing Markdown divider', () => {
   const root = createFixture()
   const { invocation, attestation } = attestedFixture(root)
 
   assert.ok(attestation.guidance?.length)
 
-  // The RF-006 trap: a selection that ends with a `---` divider. The old
-  // contract demanded the literal last non-empty line, so the required quote
-  // was three dashes that prove nothing and invite a failed attempt.
   const target = attestation.guidance[0]
   const policy = invocation.policies.find(
     (item) => item.id === target.policy_id,
@@ -916,7 +884,6 @@ test('guidance final-line evidence skips a trailing Markdown divider', () => {
   assert.ok(contentLine.trim().length > 0)
   guidance.content = `${guidance.content}\n\n---\n`
 
-  // Quoting the last real content line passes.
   const evidence = attestation.guidance.map((entry, index) =>
     index === 0 ? { ...entry, final_line: contentLine } : entry,
   )
@@ -927,7 +894,6 @@ test('guidance final-line evidence skips a trailing Markdown divider', () => {
 
   assert.equal(accepted.passed, true)
 
-  // Quoting the divider itself is not read evidence and fails.
   const dividerQuote = attestation.guidance.map((entry, index) =>
     index === 0 ? { ...entry, final_line: '---' } : entry,
   )

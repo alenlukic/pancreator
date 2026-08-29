@@ -75,9 +75,6 @@ test('worktree reconcile merges each source and records the operator invocation'
   assert.equal(evidence[1].outcome, 'merged')
 })
 
-// The target-kind variants below exercise reconcileWorktrees directly on a
-// cloned two-source checkpoint; the CLI's JSON and exit-code contract is
-// proven by the --into tests above and below.
 test('worktree reconcile merges into an existing branch through a recorded worktree', () => {
   const { root, mainHead } = worktreeCheckpoint('two-sources')
 
@@ -127,7 +124,6 @@ test('worktree reconcile merges into the branch the main checkout holds', () => 
   assert.equal(result.target_path, '.')
   assert.deepEqual(result.merged_sources, TWO_SOURCES)
 
-  // The main checkout stays on its branch, clean, with the merges applied.
   assert.equal(
     git(root, ['symbolic-ref', '--short', 'HEAD']).trim(),
     mainBranch,
@@ -140,7 +136,7 @@ test('worktree reconcile merges into the branch the main checkout holds', () => 
     2,
   )
 
-  // No worktree is materialized for a branch a checkout already holds.
+  // git creates no worktree for a branch a checkout already holds.
   assert.equal(
     listWorktrees(root).some((entry) => entry.branch === mainBranch),
     false,

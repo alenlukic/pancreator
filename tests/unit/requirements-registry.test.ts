@@ -11,7 +11,7 @@ import {
 
 test('registry rejects duplicate ids', () => {
   // The loader reads only governance/registries/validation_registry.json, so a
-  // bare temporary root with a two-entry registry is the whole fixture.
+  // bare temporary root is enough.
   const root = mkdtempSync(path.join(tmpdir(), 'pan-registry-'))
   const registryPath = path.join(
     root,

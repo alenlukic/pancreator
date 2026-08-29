@@ -170,7 +170,6 @@ test('target PR validation rejects generic copy and accepts Rowspace copy', () =
     assert.equal(accepted.status, 'passed')
     assert.deepEqual(accepted.issues, [])
 
-    // Wrong heading order and an empty required section are both rejected.
     write(
       root,
       'pr.md',
@@ -230,7 +229,6 @@ test('fallback PR validation keeps the Pancreator title and core sections', () =
   try {
     const context = resolvePrDescriptionContext(root, [])
 
-    // Before the declared artifact exists, validation fails closed on it.
     const missing = validatePrDescription(validationInput(root, context))
 
     assert.equal(missing.status, 'failed')

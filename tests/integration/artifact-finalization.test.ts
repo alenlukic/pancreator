@@ -15,10 +15,9 @@ test('aborting a run finalizes artifact numbering and layout', () => {
   assert.ok(invocation)
   assert.match(invocation.invocation_id, /^99_plan-1_/u)
 
-  // The prepared-invocation revision embeds the 99_-prefixed invocation id
-  // that finalization renames. Rewriting the revision artifact's content
-  // would invalidate its recorded digest and brick loadState/loadStateRevision
-  // for the closed run.
+  // Finalization renames the 99_-prefixed invocation id. Do not rewrite the
+  // revision artifact content, because a new digest breaks loadState for the
+  // closed run.
   const preparedRevision = state.revision
 
   const canceled = abortRun(root, runId, 'operator canceled')

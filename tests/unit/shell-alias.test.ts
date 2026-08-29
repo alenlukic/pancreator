@@ -123,7 +123,6 @@ test('resolvePanWalkUp ignores bin/pan without self_development config.json', ()
   const match = resolvePanWalkUp(root, walkDeps({ [root]: 'invalid' }))
 
   assert.equal(match, null)
-  // No install anywhere in the ancestor tree is the other null route.
   assert.equal(resolvePanWalkUp('/tmp/nowhere/deep/path', walkDeps({})), null)
 })
 
@@ -135,7 +134,6 @@ test('upsertPanFunctionBlock appends without destructive edits outside markers',
   assert.match(next, /pan\(\) \{/u)
   assert.equal(countPanFunctionBlocks(next), 1)
 
-  // Repeated installs are idempotent.
   const first = upsertPanFunctionBlock('')
   const second = upsertPanFunctionBlock(first)
 

@@ -75,8 +75,6 @@ test('every standalone mode renders a card with its policies inlined', () => {
         )
       }
 
-      // Guidance references render as a heading, a read trigger, and a digest;
-      // the guidance body itself stays out of the card.
       for (const guidance of policy.guidance ?? []) {
         if (!guidance.reference) continue
 
@@ -102,7 +100,6 @@ test('every standalone mode renders a card with its policies inlined', () => {
     }
   }
 
-  // The remediation modes carry their procedure documents by reference.
   for (const [name, policyId, sourcePath] of [
     ['spotfix', 'SPOT-001', 'library/skills/spotfix.md'],
     ['shepherd', 'SHEPHERD-001', 'library/skills/shepherd-pr.md'],
@@ -146,7 +143,6 @@ test('the shared worktree option resolves or creates the card workspace', () => 
   assert.ok(written.includes('`worktrees/operator/fix-it`'))
   assert.match(written, /Do not change the main checkout/u)
 
-  // A second card with the same name reuses the recorded worktree.
   const again = buildGovernanceCard(root, {
     mode: 'pair',
     outputPath: 'runtime/inbox/pair-worktree-card.md',
@@ -155,7 +151,6 @@ test('the shared worktree option resolves or creates the card workspace', () => 
 
   assert.equal(again.worktree?.path, card.worktree.path)
 
-  // Without the option, no workspace section is rendered.
   const plain = buildGovernanceCard(root, {
     mode: 'pair',
     outputPath: 'runtime/inbox/pair-plain-card.md',
@@ -177,15 +172,11 @@ test('a missing operator input is reported rather than silently omitted', () => 
     /Operator input does not exist/u,
   )
 
-  // An unknown mode lists the available modes.
   assert.throws(
     () => buildGovernanceCard(root, { mode: 'nonsense' }),
     /Available: best-of-n, decomposition, investigation, pair, repair, review, shepherd, spotfix, unbound/u,
   )
 })
-
-// Rehomed from the governance branch at integration: these cases prove
-// rules that branch adds and have no other home in the consolidated suite.
 
 test('the review card resolves reviewer governance and references the squad', () => {
   const root = createFixture()
@@ -195,8 +186,6 @@ test('the review card resolves reviewer governance and references the squad', ()
   })
   const ids = card.policies.map((policy) => policy.id)
 
-  // A standalone review reads code, so the reviewer's engineering governance
-  // rides along with the mode policy and its delegation authority.
   assert.ok(ids.includes('REVIEW-001'))
   assert.ok(ids.includes('DELEGATE-001'))
   assert.ok(ids.includes('ENG-001'))
@@ -213,7 +202,6 @@ test('the review card resolves reviewer governance and references the squad', ()
 
   const written = readFileSync(path.join(root, card.path), 'utf8')
 
-  // The card points at the squad skill and keeps the body out of the card.
   assert.match(
     written,
     /### Guidance reference · `library\/skills\/review-squad\.md`/u,
@@ -227,15 +215,12 @@ test('the review command routes through the card and the coordinator', () => {
     'utf8',
   )
 
-  // Without these three the command is prose: the card resolves governance,
-  // the capture is what every dimension agent reads, and the coordinator is
-  // the only thing the session is allowed to spawn.
   assert.match(command, /governance card --mode review/u)
   assert.match(command, /review-target\.diff/u)
   assert.match(command, /pan-shepherd-reviewer/u)
   assert.match(command, /REVIEW-001/u)
-  // The command reviews any ref from any checkout, so it has to say how the
-  // reviewing agents end up reading the tree the diff applies to.
+  // The command reviews any ref, so it must name how agents check out the
+  // target tree.
   assert.match(command, /worktree create <name> --from <target-head>/u)
   // The squad must not grade the files that define how it grades.
   assert.match(command, /governance review-scope --target/u)
@@ -331,18 +316,13 @@ test('the review card renders base conduct for a card policy the target changes'
   })
   const written = readFileSync(path.join(root, card.path), 'utf8')
 
-  // GLOBAL-002 is on the reviewer's card, so the session reviews the change
-  // under the base text: the section renders base instructions and omits
-  // the clause the change added.
   assert.match(written, /## 🧭 Conduct under the base revision/u)
   assert.match(written, /\*\*GLOBAL-002 · base text\*\*/u)
 
   const section =
     written.split('## 🧭 Conduct under the base revision')[1] ?? ''
 
-  // The head text still renders under "Policies in force" — it is what the
-  // session is reviewing — and it is marked as under review directly under its
-  // heading, so a reader meets the marker before the first instruction.
+  // The marker sits directly under the heading, before the first instruction.
   const inline = written.split('## 🧭 Conduct under the base revision')[0] ?? ''
   const globalBlock = inline.split('**GLOBAL-002 · ')[1] ?? ''
 
@@ -427,15 +407,11 @@ test('an instrument-only policy change renders no base conduct block', () => {
   })
   const written = readFileSync(path.join(root, card.path), 'utf8')
 
-  // REVIEW-001 is instrument tier: excluded from the squad verdict and graded
-  // by the independent reviewer. Binding conduct to its base text would hand
-  // the session two protocols, so it is excluded, not rendered as conduct.
   assert.doesNotMatch(written, /\*\*REVIEW-001 · base text\*\*/u)
   assert.match(written, /No conduct conflict exists between base and head/u)
   assert.match(written, /governance\/policies\/REVIEW-001\.json/u)
 
-  // The instrument policy carries its own marker, distinct from the conduct
-  // one, and exactly once: under its heading in the policies-in-force list.
+  // The instrument marker differs from the conduct marker and renders once.
   const instrumentMarkers = written.match(
     /> Under review by an independent reviewer\./gu,
   )
@@ -484,9 +460,6 @@ test('a guidance-only conduct conflict names the base text command', () => {
   })
   const written = readFileSync(path.join(root, card.path), 'utf8')
 
-  // The remedy the session performed must not go silent: the card names the
-  // path and the command that yields its base text instead of denying that
-  // any conduct rule changed.
   assert.doesNotMatch(written, /No conduct conflict exists/u)
   assert.match(written, /base text not inlined/u)
   assert.match(written, /git show [0-9a-f]{12}:/u)
@@ -499,9 +472,8 @@ test('the projected coordinator agent carries the resolve and join shapes', () =
     'utf8',
   )
 
-  // The agent file is the first normative text the coordinator reads. An
-  // unconditional fan-out there reintroduces nested dimension spawns on the
-  // platform default model, which REVIEW-001 moved to the session.
+  // An unconditional fan-out here restores nested dimension spawns, which
+  // REVIEW-001 moved to the session.
   assert.match(agent, /\*\*resolve\*\* mode/u)
   assert.match(agent, /\*\*join\*\* mode/u)
   assert.match(agent, /spawn nothing/u)

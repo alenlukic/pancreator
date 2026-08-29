@@ -1377,10 +1377,7 @@ export interface StageOutputValidation {
 }
 
 export interface StageOutputValidationOptions {
-  /**
-   * Declared artifacts the harness itself materializes later in the submission,
-   * so their absence at validation time is expected rather than a defect.
-   */
+  /** Artifacts the harness writes later. Absence is not a defect. */
   pendingArtifactPaths?: string[]
 }
 
@@ -1583,9 +1580,7 @@ export function validateStageOutput(
     }
   }
 
-  // OPERATOR-001: a platform-guidance conflict is stated before the covered
-  // step is acted on. Absent means none arose; a present entry must name all
-  // three parts or the statement is not auditable.
+  // OPERATOR-001: an entry must name all three parts to be auditable.
   if (record.platform_guidance_conflicts !== undefined) {
     if (!Array.isArray(record.platform_guidance_conflicts)) {
       errors.push('platform_guidance_conflicts MUST be an array when present')
@@ -1760,8 +1755,7 @@ export function validateStageOutput(
     }
   }
 
-  // Compare resolved locations so a pending artifact is exempt however its
-  // declared path is spelled.
+  // Compare resolved paths so a pending artifact is exempt however spelled.
   const pendingAbsolutePaths = new Set(
     pendingArtifactPaths.map((pendingPath) => resolveInside(root, pendingPath)),
   )
@@ -2121,19 +2115,14 @@ function runShellCheck(
   const startedAt = new Date().toISOString()
   const profileName = remappedProfile ?? resolution.profile_name
 
-  // A profile gate is judged against the run's own baseline, so the baseline
-  // resolves before any cache decision: a run whose baseline is missing or
-  // unreadable fails closed below, and a recorded pass never bypasses that.
+  // Resolve the baseline before any cache decision so a missing baseline still
+  // fails the gate below.
   const baselineLoad =
     profileName && !resolution.removed_reason
       ? loadRepositoryCheckBaseline(root, state, profileName)
       : undefined
 
-  // A clean pass of the same command at an unchanged workspace fingerprint is
-  // already proven; re-executing it spends minutes producing evidence the
-  // harness holds (DEV-001). Overridden gates stay uncached: an operator
-  // override is a run-scoped decision, not a reusable fact. A non-Git
-  // workspace fingerprints as a constant and is never cached.
+  // DEV-001. An operator override is run-scoped, so it stays uncached.
   const cacheKey =
     commandOverride === undefined &&
     !resolution.removed_reason &&
@@ -2142,8 +2131,7 @@ function runShellCheck(
       ? gateCacheKey(root, workspaceFingerprint, command)
       : null
   const cached = cacheKey ? gateCacheLookup(root, cacheKey) : null
-  // A profile gate needs the recorded repository result to compute this run's
-  // delta; an entry without one predates that field and is a miss.
+  // A profile gate needs the recorded repository result for this run's delta.
   const cachedUsable =
     cached !== null && (!profileName || cached.repository_result !== undefined)
   let cachedSourceEvidence: string | null = null
@@ -2184,9 +2172,7 @@ function runShellCheck(
       `${criterion.id} accepted cached pass recorded ${cached.cached_at} ` +
         `by ${cached.run_id}`,
     )
-    // The accepting run carries the original captured output, not a pointer:
-    // archival may move the source run, and a verifier spot-checking this
-    // gate must hold the bytes the pass rests on.
+    // Copy the original output because archival can move the source run.
     writeTextAtomic(
       cachedEvidencePath,
       [
@@ -2383,8 +2369,8 @@ function runShellCheck(
     baselineComparison?.passed && !commandSucceeded,
   )
 
-  // Only a clean pass is a reusable fact. A baseline-relative pass credits
-  // this run's own baseline, and a failure must re-run to observe its repair.
+  // Cache only a clean pass. A baseline-relative pass credits this run's own
+  // baseline.
   if (cacheKey && passed && commandSucceeded && !skipped && !timedOut) {
     gateCacheStore(root, {
       key: cacheKey,
@@ -3256,8 +3242,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
     required.push(
       'docs/operator-briefs/project.json',
       'docs/operator-briefs/project.css',
-      // The harness review lineup. `bin/install` drops it from the staged
-      // payload, so it is required here and absent from a target installation.
+      // `bin/install` drops this file, so a target installation lacks it.
       'library/skills/review-squad-pancreator.md',
     )
   }

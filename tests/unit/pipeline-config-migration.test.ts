@@ -105,7 +105,6 @@ test('migration fails before mutation when a required mapping stays empty', () =
   // Nothing else moved, so the caller has nothing to write.
   assert.equal(result.changed, false)
 
-  // An empty override the operator wrote by hand is a hole too.
   const handWritten = migratePipelineOverrides({
     previous,
     next: structuredClone(previous),

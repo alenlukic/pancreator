@@ -280,19 +280,16 @@ export function resolveCursorModelSlug(
   )
 }
 
-/** Resolves persona mappings against one catalog load. */
+/** Resolves a persona mapping against one catalog load. */
 export type CursorModelResolver = (
   mapping: ParsedPersonaMapping,
   source?: string,
 ) => string
 
 /**
- * Load the catalog once and return a resolver for many mappings.
- *
- * `loadPipelineConfig` validates every persona in every named config, and a
- * projection sync renders every agent, so a per-call catalog load was parsed
- * around a hundred times per harness command. The catalog cannot change inside
- * one synchronous unit of work, so one load serves the whole loop.
+ * Load the catalog once and return a resolver for many mappings. The catalog
+ * cannot change inside one synchronous unit of work, so one load serves the
+ * whole loop.
  */
 export function createCursorModelResolver(root: string): CursorModelResolver {
   const catalog = loadCursorCatalog(root)
@@ -302,8 +299,8 @@ export function createCursorModelResolver(root: string): CursorModelResolver {
 }
 
 /**
- * `catalog` undefined means no root was given, so the spec stays grammar-only.
- * `catalog` null means the operator has no local catalog, with the same result.
+ * `catalog` undefined means the caller gave no root, and `catalog` null means
+ * the operator has no local catalog. Both keep the spec grammar-only.
  */
 function resolveAgainstCatalog(
   catalog: CursorCatalog | null | undefined,

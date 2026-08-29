@@ -51,7 +51,6 @@ test('state events use recoverable content-addressed references', () => {
 
   assert.equal(recovered.revision, state.revision)
 
-  // Every referenced event revision round-trips.
   const firstRevision = state.revision
   const firstTitle = state.title
 
@@ -236,7 +235,6 @@ test('project configuration overrides the state-size budget', () => {
   )
 })
 
-/** A hand-built run state carrying what liveness and status rendering read. */
 function invocationState(preparedAt: string): RunState {
   return {
     schema_version: 2,
@@ -301,9 +299,8 @@ test('legacy invocation quiet time does not claim agent health', () => {
   assert.match(rendered, /Agent health: unknown/u)
   assert.doesNotMatch(rendered, /Invocation activity/u)
 
-  // The run is not waiting on a delegated worker while it waits on the
-  // operator, so "stale, re-deliver the card" advice would be impossible to
-  // follow: liveness is not reported at all.
+  // The run waits on the operator, not on a delegated worker, so the render
+  // reports no liveness.
   const waiting = invocationState('2020-01-01T00:00:00.000Z')
 
   waiting.pending_action = { type: 'operator_decision' }

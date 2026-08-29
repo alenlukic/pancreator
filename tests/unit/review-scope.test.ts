@@ -32,8 +32,6 @@ test('a change to the lineup or a charter is a self-review conflict', () => {
     'library/skills/review-squad-pancreator.md',
   ])
 
-  // The charters are what the dimension agents are told to look for, so a
-  // defect introduced into one is a defect in the instrument doing the looking.
   assert.deepEqual(conflicts, [
     'library/skills/review-squad-pancreator.md',
     'library/skills/review-squad.md',
@@ -55,8 +53,6 @@ test('the coordinator, its policy, and both entry points are machinery', () => {
 })
 
 test('a future lineup variant is covered without editing the pattern list', () => {
-  // The lineup pattern is a prefix so that adding, say, a frontend lineup does
-  // not silently fall outside the self-review check.
   const conflicts = reviewMachineryConflicts([
     'library/skills/review-squad-frontend.md',
   ])
@@ -72,8 +68,7 @@ test('a near-miss path is not treated as machinery', () => {
     'docs/review-notes.md',
   ])
 
-  // The independent reviewer is the escape hatch for a conflict, so it must
-  // not itself count as machinery — otherwise nothing could ever grade it.
+  // The independent reviewer grades a conflict, so it is not machinery itself.
   assert.deepEqual(conflicts, [])
 })
 
@@ -128,8 +123,6 @@ test('a policy on the review card is a conduct conflict, not an instrument one',
     CLOSURE,
   )
 
-  // The squad can still review GLOBAL-002 — under its base text. Only the
-  // instrument tier leaves the verdict.
   assert.deepEqual(conflicts, [
     {
       path: 'governance/policies/GLOBAL-002.json',
@@ -261,7 +254,6 @@ test('only the reviewer and coordinator mappings count as a model-routing change
     configs: { balanced: { personas: { reviewer: 'b' } } },
   })
 
-  // config.json changes constantly; the check is on the two mappings.
   assert.equal(reviewerMappingChanged(base, coderOnly), false)
   assert.equal(reviewerMappingChanged(base, reviewerMoved), true)
   assert.equal(reviewerMappingChanged(base, base), false)
@@ -272,8 +264,6 @@ test('the check wrappers lint and install are verification substrate', () => {
     classifyReviewPaths(['bin/lint', 'bin/install', 'bin/pan'], CLOSURE),
   )
 
-  // bin/lint decides whether typecheck runs at all and bin/install is what
-  // the smoke harness exercises; a reviewer reading a green result trusts both.
   assert.deepEqual(
     tiers.substrate.map((item) => item.path),
     ['bin/install', 'bin/lint'],
@@ -330,7 +320,7 @@ test('only a change inside the governance case of cli.ts is an entry-point chang
   assert.equal(cliGovernanceBlocksChanged(before, cardChanged), true)
   assert.equal(cliGovernanceBlocksChanged(before, otherChanged), false)
   assert.equal(cliGovernanceBlocksChanged(before, before), false)
-  // A file that gains or loses the case altogether changed the entry point.
+  // A null side means the file gained the case, which changes the entry point.
   assert.equal(cliGovernanceBlocksChanged(null, before), true)
 })
 
@@ -352,7 +342,6 @@ test('a policy row with no instruction or summary change is not a standards delt
     instructions: ['Agents MUST z.'],
   })
 
-  // The operator weighs rules, not whitespace or metadata.
   assert.equal(diffPolicyTexts('p', base, reformatted), null)
   assert.equal(diffPolicyTexts('p', base, retitled), null)
 })

@@ -291,7 +291,6 @@ test('an operator gate under the contract records its checkpoint', () => {
     workflow,
   } = checkpoint('delivery[td]@verify-submitted')
 
-  // The independent_review checkpoint stops a passing verify too.
   assert.equal(verify.stage_history.at(-1)?.stage, 'verify')
   assert.equal(verify.stage_history.at(-1)?.outcome, 'success')
   assert.equal(verify.status, 'awaiting_operator')

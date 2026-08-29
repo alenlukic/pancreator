@@ -15,10 +15,7 @@ function makeRoot(): string {
   return mkdtempSync(path.join(tmpdir(), 'pan-probe-env-'))
 }
 
-/**
- * An embedded harness at `<target>/.pancreator`, whose deliverable workspace
- * root is the target repository one level up. Returns both roots.
- */
+/** Make an embedded harness at `<target>/.pancreator`, below the target. */
 function makeEmbeddedInstallation(): { target: string; harness: string } {
   const target = makeRoot()
   const harness = path.join(target, '.pancreator')
@@ -236,8 +233,8 @@ test('readiness distinguishes a .env that declares no credential', () => {
 test('readiness reports an unreadable .env instead of throwing', () => {
   const root = makeRoot()
 
-  // A directory occupying the `.env` path fails the same read-and-parse step
-  // that malformed content fails, without depending on parser tolerance.
+  // A directory at the `.env` path fails the same read step that malformed
+  // content fails.
   mkdirSync(path.join(root, '.env'))
 
   withCursorApiKey(undefined, () => {

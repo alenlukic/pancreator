@@ -350,10 +350,8 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Verbatim last content-bearing line of a text, or '' when none exists.
- * Empty lines and Markdown divider lines (`---`, `***`, `___`) are skipped:
- * a divider quote proves nothing about a read, so it cannot serve as
- * final-line read evidence.
+ * Verbatim last content line of a text, or '' when none exists. Skips empty
+ * lines and Markdown divider lines (`---`, `***`, `___`).
  */
 export function lastEvidenceLine(content: string): string {
   const divider = /^\s*(?:[-_*]\s*){3,}$/u

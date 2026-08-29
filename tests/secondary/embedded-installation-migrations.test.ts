@@ -23,7 +23,6 @@ test('embedded installer migrates a legacy project.json to config.json', () => {
   const legacyPath = path.join(pancreatorDir, 'project.json')
 
   try {
-    // Reproduce a pre-rename installation carrying an operator edit.
     const config = readJson<{
       active_config: string
       configs: Record<string, { personas: Record<string, string> }>
@@ -52,8 +51,8 @@ test('embedded installer migrates a legacy project.json to config.json', () => {
     assert.equal(migrated.installation_mode, 'embedded')
     assert.equal(migrated.configs.simple.personas.coder, customCoderModel)
 
-    // The projected agent must pick the migrated mapping up, proving the
-    // migration ran before persona projection rather than after.
+    // The projected agent carries the migrated mapping, which proves the
+    // migration runs before persona projection.
     const coderAgent = readFileSync(
       path.join(project, '.cursor', 'agents', 'pan-coder.md'),
       'utf8',
@@ -66,10 +65,6 @@ test('embedded installer migrates a legacy project.json to config.json', () => {
 })
 
 test('embedded installer refresh clears superseded legacy state in one pass', () => {
-  // One refresh covers four migrations at once, because each seeds a disjoint
-  // artifact: a superseded project.json beside the live config.json, a
-  // runtime-located primer, a fast profile that duplicates full, and a
-  // config.json whose active configuration needs compaction.
   const project = cloneInstalledProject()
   const pancreatorDir = path.join(project, '.pancreator')
   const configJsonPath = path.join(pancreatorDir, 'config.json')
@@ -91,17 +86,16 @@ test('embedded installer refresh clears superseded legacy state in one pass', ()
   )
 
   try {
-    // A legacy project.json alongside the live config.json is superseded.
     writeFileSync(
       legacyProjectJsonPath,
       '{"schema_version":1,"active_config":"stale"}\n',
     )
 
-    // A primer still living under runtime predates the docs move.
     rmSync(currentPrimer)
     writeFileSync(legacyPrimer, 'legacy generated primer\n')
 
-    // A generated fast profile that duplicates full must be disabled.
+    // The generated fast profile duplicates full apart from whitespace, so
+    // the refresh MUST disable it.
     writeFileSync(
       checksPath,
       `${JSON.stringify(
@@ -125,9 +119,9 @@ test('embedded installer refresh clears superseded legacy state in one pass', ()
       )}\n`,
     )
 
-    // The active configuration restates one inherited default (to compact),
-    // omits one of its own entries (to restore), and carries an operator
-    // model (to preserve).
+    // The active configuration restates one inherited default to compact,
+    // drops one of its own entries to restore, and carries one operator model
+    // to preserve.
     const config = readJson<{
       active_config: string
       defaults: Record<string, string>
@@ -159,7 +153,6 @@ test('embedded installer refresh clears superseded legacy state in one pass', ()
 
     assert.equal(result.status, 0, result.stderr)
 
-    // The superseded project.json is retained only as a backup.
     assert.equal(existsSync(legacyProjectJsonPath), false)
 
     const configBackupRoot = path.join(pancreatorDir, 'backups', 'config')
@@ -171,14 +164,12 @@ test('embedded installer refresh clears superseded legacy state in one pass', ()
       true,
     )
 
-    // The runtime primer moved into docs with its content intact.
     assert.equal(
       readFileSync(currentPrimer, 'utf8'),
       'legacy generated primer\n',
     )
     assert.equal(existsSync(legacyPrimer), false)
 
-    // The duplicated fast profile was disabled and the original backed up.
     const migrated = readJson<{
       profiles: Record<string, { commands: string[]; probes: string[] }>
       $operator?: { migration_notes?: string[] }
@@ -210,8 +201,6 @@ test('embedded installer refresh clears superseded legacy state in one pass', ()
       /incorrect generated fast profile/u,
     )
 
-    // Compaction: the restated default is dropped, the omitted entry is
-    // restored, the operator model survives and reaches the projected agent.
     const refreshed = readJson<{
       active_config: string
       configs: Record<string, { personas: Record<string, string> }>

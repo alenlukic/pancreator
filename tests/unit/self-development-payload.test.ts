@@ -11,7 +11,6 @@ function readRepositoryFile(relative: string): string {
   return readFileSync(path.join(ROOT, relative), 'utf8')
 }
 
-/** Parse the installer's self-development-only payload array. */
 function selfDevelopmentOnlyPaths(): string[] {
   const installer = readRepositoryFile('bin/install')
   const block = /SELF_DEVELOPMENT_ONLY_PAYLOAD_PATHS=\(\n([\s\S]*?)\n\)/u.exec(
@@ -68,9 +67,8 @@ test('the core squad guards its harness-lineup reference on presence', () => {
   const squad = readRepositoryFile('library/skills/review-squad.md')
 
   assert.ok(squad.includes(HARNESS_LINEUP))
-  // The file is absent in a target installation, so every mention has to sit
-  // in a conditional sentence rather than a flat instruction to read it. The
-  // wording is free; the condition is the contract.
+  // The file is absent in a target installation, so every mention must sit in
+  // a conditional sentence.
   const sentences = squad
     .replaceAll('\n', ' ')
     .split(/(?<=[.!?])\s+/u)

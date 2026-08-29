@@ -77,7 +77,6 @@ test('Cursor SDK logger renders concise narrative and grouped tool calls', () =>
   assert.match(rendered, /  Searched automation in runtime/u)
   assert.match(rendered, /The operating contract is loaded/u)
   assert.doesNotMatch(rendered, /\[pan/u)
-  // A failing tool call is surfaced as a significant issue in the same stream.
   assert.match(rendered, /Ran 1 command/u)
   assert.match(rendered, /  Ran npm test/u)
   assert.match(rendered, /Issue: shell failed — two tests failed/u)

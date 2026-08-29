@@ -61,15 +61,8 @@ export function commitFile(
   return git(worktreePath, ['rev-parse', 'HEAD']).trim()
 }
 
-// ---------------------------------------------------------------------------
-// Checkpoints
-//
-// Registered operator worktrees are built once per process and cloned with
-// `cp -Rc` for every later call. Linked worktrees carry absolute gitdir
-// pointers in both directions, so each clone is repaired with
-// `git worktree repair` and checked against the template's paths before it is
-// handed out (see repairClonedWorktrees).
-// ---------------------------------------------------------------------------
+// A linked worktree holds absolute gitdir pointers, so each `cp -Rc` clone
+// needs `git worktree repair` before use.
 
 /**
  * - `single`: one operator worktree `alpha`.

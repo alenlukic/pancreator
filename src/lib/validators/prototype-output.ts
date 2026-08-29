@@ -12,7 +12,7 @@ const VERDICT_VALUES = new Set([
   'environment_blocked',
 ])
 
-/** An operator decision recorded on the run's operator-feedback ledger. */
+/** One entry on the run's operator-feedback ledger. */
 interface OperatorDecision {
   path: string
   note: string
@@ -105,9 +105,8 @@ function readPriorStageData(
 }
 
 /**
- * The operator decisions this run has recorded. The ledger is the authority
- * for exclusion claims: the harness writes its own pause records into the same
- * decisions directory, so a path that merely exists there proves nothing.
+ * The operator decisions on the run ledger. The harness writes its own pause
+ * records to the same directory, so a path there alone proves nothing.
  */
 function operatorDecisions(input: HandlerInput): OperatorDecision[] {
   const feedback = Array.isArray(input.runState?.operator_feedback)
@@ -124,8 +123,8 @@ function operatorDecisions(input: HandlerInput): OperatorDecision[] {
       continue
     }
 
-    // Records written before decision actors were stored carry no source;
-    // only an operator could have authored them.
+    // A record without a source predates actor tracking, so an operator
+    // wrote it.
     if (item.source !== undefined && item.source !== 'operator') {
       continue
     }
@@ -137,8 +136,8 @@ function operatorDecisions(input: HandlerInput): OperatorDecision[] {
 }
 
 /**
- * Why an exclusion claim fails to match the operator ledger, or null when the
- * cited decision is an operator's and its note names every excluded question.
+ * Reason an exclusion claim does not match the operator ledger. Returns null
+ * when an operator decision note names every excluded question.
  */
 function exclusionAuthorityFailure(
   decisions: OperatorDecision[],
@@ -214,9 +213,8 @@ function preconditionBlocksApproach(
 }
 
 /**
- * Volatile preconditions the build owes a recheck: those still carrying a
- * question no operator decision excluded. An excluded precondition may stay
- * unavailable without trapping the build.
+ * Volatile preconditions the build must recheck: those with a question that no
+ * operator decision excluded.
  */
 function includedVolatilePreconditions(
   decisions: OperatorDecision[],
@@ -380,8 +378,7 @@ function validateApproachOutput(
     }
   }
 
-  // A blocked approach needs no precondition cause: blocked is the
-  // harness-wide pause route and an operator question may block it as well.
+  // A blocked approach uses the harness pause route, so only success conflicts.
   if (value.result === 'success' && blocking) {
     issues.push(
       issue(
@@ -497,9 +494,8 @@ function validateBuildOutput(
     ? spike.changed_files
     : []
 
-  // PROTO-001 conditions the empty changed-files rule on a precondition
-  // becoming unavailable. A build blocked for another reason keeps the
-  // harness-wide pause route, so it is not rewritten into a failure here.
+  // PROTO-001 limits this rule to an unavailable precondition. A build blocked
+  // for another reason keeps the harness pause route.
   if (value.result === 'blocked' && unreadyCheck && changedFiles.length > 0) {
     issues.push(
       issue(
@@ -541,8 +537,8 @@ function validateBuildOutput(
 }
 
 /**
- * The technical question ids the intake brief declared, or null when the
- * intake output cannot be resolved from the run's stage history.
+ * The technical question ids the intake brief declared, or null when the run
+ * has no readable intake output.
  */
 function declaredQuestionIds(input: HandlerInput): Set<string> | null {
   const intakeData = readPriorStageData(input, 'intake')
@@ -556,8 +552,6 @@ function declaredQuestionIds(input: HandlerInput): Set<string> | null {
 
   const ids = new Set<string>()
 
-  // Only a contracted id counts. A bare string would make the identifier the
-  // whole sentence, which no later stage can be expected to reproduce.
   for (const question of brief.technical_questions) {
     if (isRecord(question) && nonEmptyString(question.id)) {
       ids.add(question.id)
@@ -567,11 +561,6 @@ function declaredQuestionIds(input: HandlerInput): Set<string> | null {
   return ids
 }
 
-/**
- * The intake brief is where the question identifier is born. Every later
- * stage names a question by id, so an entry without one fails here rather
- * than at the evaluate gate, where the evaluator could only guess.
- */
 function validateIntakeOutput(
   value: Record<string, unknown>,
 ): HandlerResult['issues'] {
@@ -674,8 +663,6 @@ function validateEvaluateOutput(
     )
   }
 
-  // An environment_blocked verdict asserts that named gaps prevented a
-  // decision; a verdict with no named blocker asserts nothing checkable.
   if (verdict === 'environment_blocked' && blockers && blockers.length === 0) {
     issues.push(
       issue(
@@ -700,9 +687,8 @@ function validateEvaluateOutput(
 
   const declared = declaredQuestionIds(input)
 
-  // A blocker is a claim that named gaps stopped a decision. An empty object
-  // names nothing, so it would clear the readiness guard below without ever
-  // being checkable. Each blocker therefore carries what it blocked and why.
+  // An empty blocker object would clear the readiness guard below without
+  // naming anything checkable.
   for (const [index, blocker] of (blockers ?? []).entries()) {
     if (!isRecord(blocker)) {
       issues.push(
@@ -841,9 +827,7 @@ function validateEvaluateOutput(
       )
     }
 
-    // The explicit-readiness exemption lets an environment failure count as
-    // product evidence. The evaluator claims it with readiness_question so a
-    // blocker-named question cannot silently become a product cause.
+    // readiness_question lets an environment failure count as product evidence.
     if (
       cause === 'product' &&
       blockedQuestionIds.has(questionId) &&
@@ -867,8 +851,7 @@ function validateEvaluateOutput(
     )
   }
 
-  // Without a readable intake output there is no declared set to cover;
-  // mirror the build stage, which only demands traceability it can resolve.
+  // A null declared set means no readable intake output, so demand no coverage.
   if (declared) {
     for (const questionId of declared) {
       if (!reportedQuestionIds.has(questionId)) {

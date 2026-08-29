@@ -268,7 +268,6 @@ test('run creation fails closed when the executor binary is missing', () => {
 })
 
 test('an unauthenticated executor pauses delegation with an operator decision', () => {
-  // Plan is the first delegated stage.
   const { root, runId, invocation } = checkpoint(
     'delivery[claude-code:planner]@plan-prepared',
   )
@@ -530,7 +529,6 @@ test('moving a persona cursor→claude-code→cursor leaves .cursor clean', () =
 })
 
 test('prepare skips frontmatter drift for external personas and still catches cursor drift', () => {
-  // No projected agent exists for the external persona, yet prepare works.
   const prepared = checkpoint('delivery[claude-code:planner]@plan-prepared')
 
   assert.equal(
@@ -545,7 +543,6 @@ test('prepare skips frontmatter drift for external personas and still catches cu
   )
 
   withStub(claudeStubPath(root), null, () => {
-    // A cursor persona's projected frontmatter drifting is reported, not fatal.
     const coderAgent = path.join(root, '.cursor', 'agents', 'pan-coder.md')
     const coderContent = readFileSync(coderAgent, 'utf8')
 

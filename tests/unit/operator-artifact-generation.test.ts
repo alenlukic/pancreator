@@ -113,8 +113,6 @@ test('post-stage generation creates validated HTML from canonical records', () =
 
   assert.equal(repeated.artifacts[0]?.status, 'skipped')
 
-  // Without a stage, generation covers every submitted stage that lacks a
-  // brief; the existing one is skipped again, and force replaces it.
   const withoutStage = generateOperatorArtifacts(root, { runId })
 
   assert.equal(withoutStage.artifacts.length, 1)

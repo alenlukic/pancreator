@@ -99,7 +99,6 @@ test('submit reports the sole operator brief and removes its source', () => {
     false,
   )
 
-  // Operator files and harness records are held apart.
   assert.deepEqual(readdirSync(layout.root.absolute).sort(), [
     'agent',
     'operator',

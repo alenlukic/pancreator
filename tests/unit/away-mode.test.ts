@@ -72,7 +72,6 @@ function scratchRoot(): string {
   return mkdtempSync(path.join(tmpdir(), 'pancreator-away-mode-'))
 }
 
-/** A resolved away-mode configuration with every action allowed. */
 function awayConfig(
   guardrails: Partial<ResolvedAwayModeConfig['guardrails']> = {},
 ): ResolvedAwayModeConfig {
@@ -88,7 +87,7 @@ function awayConfig(
   }
 }
 
-/** A hand-built run state carrying only what awayModeTrigger reads. */
+/** A run state that carries only the fields awayModeTrigger reads. */
 function runStateLiteral(overrides: Partial<RunState>): RunState {
   return {
     run_id: 'run-literal',
@@ -171,8 +170,6 @@ test('away mode skips options outside operator guardrails', () => {
   assert.equal(ledger.length, 2)
   assert.notEqual(ledger[0]?.decision_id, ledger[1]?.decision_id)
 
-  // Deterministic ship approval obeys the same guardrails: approve is not
-  // allowed here, so a successful ship packet is still refused.
   const shipState = { ...state }
 
   successfulShipGate(shipState)
@@ -261,8 +258,6 @@ test('hypervisor quarantine appends a decision when away mode is disabled', () =
     requestPath: 'request.md',
   })
 
-  // Away mode is disabled for this run, so deterministic ship approval is
-  // refused and the ledger stays empty.
   const shipState = { ...state }
 
   successfulShipGate(shipState)
@@ -298,8 +293,6 @@ test('away mode records successful ship approval outside the decision budget', (
   enableAwayMode(root, { allowed_actions: ['approve'] })
   const state = blockedRun(root)
 
-  // Without a successful ship packet the approval is refused: first while the
-  // run waits on an operator decision, then when the packet reports failure.
   assert.throws(
     () => recordDeterministicShipApproval(root, state, []),
     /does not have a successful ship packet/u,
@@ -365,7 +358,6 @@ function blockedHistoryItem(stage: string): StageHistoryItem {
 }
 
 test('a stale blocked outcome does not trigger on a progressing run', () => {
-  // Disabled away mode never triggers, whatever the run is doing.
   assert.equal(
     awayModeTrigger(
       runStateLiteral({
@@ -377,7 +369,6 @@ test('a stale blocked outcome does not trigger on a progressing run', () => {
     null,
   )
 
-  // An enabled, progressing run only triggers on a named blocker class.
   const running = runStateLiteral({ away_mode: awayConfig() })
 
   assert.equal(awayModeTrigger(running), null)
@@ -389,7 +380,6 @@ test('a stale blocked outcome does not trigger on a progressing run', () => {
     'hypervisor_incident',
   )
 
-  // Blocked history alone is stale once the run has moved on.
   const state = runStateLiteral({
     away_mode: awayConfig(),
     stage_history: [blockedHistoryItem('plan')],
@@ -422,7 +412,6 @@ test('the decision limit also bounds evaluator failure records', () => {
     '2026-08-21T12:00:00.000Z',
   )
 
-  // An evaluator process failure is recorded as a rejected decision.
   assert.equal(failure.result, 'rejected')
   assert.equal(failure.selected_action, null)
   assert.equal(failure.error, 'The evaluator failed.')

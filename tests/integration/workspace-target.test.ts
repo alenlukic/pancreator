@@ -111,9 +111,6 @@ test('pre-implementation baselines use the run workspace', () => {
   )
 })
 
-// createRun snapshots the override file into state; the gate evaluator then
-// decides per shell criterion, so the evaluator is exercised directly on the
-// implement stage instead of through a plan and an implement submission.
 test('gate overrides replace and disable deterministic shell gates', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'delivery')
@@ -171,7 +168,6 @@ test('scope guard catches edits inside the targeted nested repo during a non-sou
   })
   const runId = state.run_id
 
-  // init --workspace records the deliverable repo and surfaces it on the card.
   assert.equal(state.workspace_root, 'nested/project')
 
   const prepared = prepareInvocation(root, runId)

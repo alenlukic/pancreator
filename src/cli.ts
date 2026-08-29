@@ -147,9 +147,6 @@ import {
   resolveWorkspacePathOrWorktree,
 } from './lib/worktrees.js'
 
-// The help line is generated from the mode registry. A hand-written list
-// drifts the moment a mode is added, and the operator reads this to
-// discover what `--mode` accepts.
 const STANDALONE_MODE_NAMES = Object.keys(STANDALONE_MODES).sort().join('|')
 
 const HELP_BODY = `Usage:
@@ -2213,10 +2210,8 @@ async function main(): Promise<void> {
             item.enforcement !== 'advisory',
         )
 
-        // The deterministic submission mirror always runs: a mechanical defect
-        // in evidence presence, the read attestation, or the structural output
-        // contract consumes a stage attempt at submit time, so it must be
-        // catchable for free here first.
+        // Always run the submission mirror. A mechanical defect that reaches
+        // submit time consumes a stage attempt.
         const submission = validateOutputForSubmission(
           root,
           runId,
@@ -2373,10 +2368,8 @@ async function main(): Promise<void> {
         // unready browser stack MUST NOT fail doctor. BROWSER-001 turns the gap
         // into an environment-blocked case at the point a verdict is owed.
         browser_automation: browserReadiness([root, workspaceRoot]),
-        // Advisory: an interactive `cursor-agent login` authenticates the CLI
-        // with no environment key, and an installation may route no persona to
-        // the cursor executor, so a missing credential MUST NOT fail doctor. It
-        // is reported here so the gap is visible before a probe fails mid-run.
+        // Advisory: a missing credential MUST NOT fail doctor. An interactive
+        // `cursor-agent login` authenticates the CLI with no environment key.
         cursor_authentication: cursorAuthenticationReadiness(root),
         // Git availability is a property of the deliverable workspace, not the
         // installation. These coincide only when the harness sits inside the
@@ -2388,9 +2381,6 @@ async function main(): Promise<void> {
           active: pipelineConfig.name,
           personas: pipelineConfig.config.personas,
         },
-        // A cached gate pass is a harness decision the operator may want to
-        // revoke; the report names the switch and the file so neither has to
-        // be found by reading source.
         gate_cache: {
           ...gateCacheStatus(root),
           disable_with: `${GATE_CACHE_ENV}=0`,

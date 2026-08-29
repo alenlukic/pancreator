@@ -14,11 +14,9 @@ is_verbose() {
   esac
 }
 
-# Progress ticks default to interactive terminals only, so captured or
-# redirected output stays byte-identical to the quiet contract. A wrapper
-# nested inside another quiet wrapper sees a captured stderr, so it takes the
-# outer wrapper's decision instead: PAN_PROGRESS_FD names the sink the outer
-# wrapper opened on the real terminal, and the inner wrapper ticks there.
+# Ticks default to interactive terminals only, so captured output stays
+# byte-identical to the quiet contract. A nested wrapper ticks to
+# PAN_PROGRESS_FD, the sink the outer wrapper opened on the real terminal.
 progress_enabled() {
   if [[ -n "${PAN_PROGRESS_FD:-}" ]]; then
     return 0
@@ -54,10 +52,10 @@ tick_marker="$(mktemp)"
 rm -f "$tick_marker"
 ticker_pid=''
 
-# The cleanup MUST kill the ticker: an orphaned ticker keeps writing to the
-# terminal from outside the foreground process group, where Ctrl-C cannot
-# reach it. INT and TERM are trapped because bash skips EXIT traps on fatal
-# signals it has not trapped.
+# cleanup must kill the ticker. An orphaned ticker writes to the terminal
+# from outside the foreground process group, where Ctrl-C cannot reach it.
+# Bash skips the EXIT trap on untrapped fatal signals, so trap INT and TERM
+# as well.
 cleanup() {
   if [[ -n "$ticker_pid" ]]; then
     stop_ticker
@@ -65,8 +63,8 @@ cleanup() {
   rm -f "$stdout_file" "$stderr_file" "$tick_marker"
 }
 
-# The ticker's in-flight sleep is its child. Killing the subshell alone would
-# orphan that sleep, so its children go first, then the subshell.
+# The in-flight sleep is a child of the ticker. Kill the children first, or
+# the sleep outlives the subshell.
 stop_ticker() {
   pkill -P "$ticker_pid" 2>/dev/null || true
   kill "$ticker_pid" 2>/dev/null || true
@@ -78,26 +76,18 @@ trap 'exit 143' TERM
 if progress_enabled; then
   tick_interval="${PAN_PROGRESS_INTERVAL_SECONDS:-5}"
   script_pid=$$
-  # The outermost ticking wrapper owns the sink: a private copy of its stderr
-  # on fd 9, exported by number so every nested wrapper inherits it and ticks
-  # to the terminal even though its own stderr is captured. A nested quiet
-  # wrapper swallows its child's output on success, so without the shared
-  # sink the outer wrapper would observe zero bytes and never tick.
+  # The outermost wrapper copies its stderr to fd 9 and exports the number,
+  # so every nested wrapper ticks to the terminal.
   if [[ -z "${PAN_PROGRESS_FD:-}" ]]; then
     exec 9>&2
     export PAN_PROGRESS_FD=9
   fi
-  # A dot marks an interval in which the command produced new output, so a
-  # stopped dot stream shows the command has gone silent (a likely hang).
-  # The ticker also exits on its own when the wrapper is no longer alive.
-  # A sleep that inherited stderr would keep a captured stderr pipe open
-  # after the subshell died, so a fast command cost whoever captured it one
-  # full tick. The sleep therefore holds no inherited stdio, and stop_ticker
-  # kills it before the subshell.
+  # A dot marks an interval with new output, so a stopped dot stream shows a
+  # silent command. The sleep holds no inherited stdio, or a captured stderr
+  # pipe stays open after the subshell dies.
   (
-    # Dots go to the shared sink. The subshell's own stderr goes to /dev/null
-    # so bash's "Terminated" notice for the killed sleep never reaches the
-    # wrapper's caller, and the sleep inherits neither.
+    # /dev/null hides the "Terminated" notice bash prints for the killed
+    # sleep.
     exec 2>/dev/null
     last_bytes=0
     while sleep "$tick_interval" >/dev/null 2>&1 </dev/null 9>&-; do

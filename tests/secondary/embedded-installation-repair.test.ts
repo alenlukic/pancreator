@@ -67,8 +67,6 @@ test('embedded installer requires an explicit partial-install decision', () => {
   }
 })
 
-// `--choice r` is covered by `bin/install --smoke` ("partial install repair"
-// plus smoke_verify) in the `full` repository-check profile.
 test('embedded installer supports deterministic clean and abort choices', () => {
   for (const choice of ['c', 'a']) {
     const project = makeSkeletonProject()
@@ -82,7 +80,7 @@ test('embedded installer supports deterministic clean and abort choices', () => 
       assert.equal(result.status, 0, result.stderr)
 
       if (choice === 'a') {
-        // Aborting happens before any payload copy.
+        // The abort happens before any payload copy.
         assert.match(result.stdout, /Aborted/)
         assert.equal(
           existsSync(path.join(project, '.pancreator', 'install.json')),
@@ -105,8 +103,6 @@ test('embedded installer supports deterministic clean and abort choices', () => 
   }
 })
 
-// `--smoke` covers the superseded/restored/backed-up `docs/runtime-protocol.md`
-// and a preserved docs extension; this keeps the policy-extension half.
 test('embedded installer refresh preserves policy extensions and migrates legacy policy rows', () => {
   const project = cloneInstalledProject()
 

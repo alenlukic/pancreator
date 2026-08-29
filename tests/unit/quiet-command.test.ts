@@ -15,15 +15,14 @@ function runQuiet(
     progressIntervalSeconds?: string
   } = {},
 ): SpawnSyncReturns<string> {
-  // PAN_VERBOSE and PAN_PROGRESS are documented operator diagnostics, so an
-  // inherited value would otherwise change output and fail the pinned cases.
+  // An inherited operator diagnostic would change the output and fail these
+  // cases.
   const env = { ...process.env }
   delete env.PAN_VERBOSE
   delete env.PAN_PROGRESS
   delete env.PAN_PROGRESS_INTERVAL_SECONDS
-  // An interactive `npm test` exports the outer wrapper's tick sink. Left in
-  // place, the wrapper under test would tick to the terminal instead of its
-  // own stderr, and the captured bytes this file compares would be empty.
+  // An interactive `npm test` exports its own tick sink, which would take the
+  // ticks this file captures.
   delete env.PAN_PROGRESS_FD
 
   if (options.verbose) {
@@ -74,8 +73,7 @@ test('quiet command streams successful output in verbose mode', () => {
 })
 
 test('progress ticks mark intervals in which the command produced output', () => {
-  // Captured output has no terminal, so ticks require the opt-in; the
-  // suppression tests above pin that the default emits nothing.
+  // Captured output has no terminal, so ticks need the explicit opt-in.
   const result = runQuiet(
     "const timer = setInterval(() => process.stdout.write('line\\n'), 100); setTimeout(() => clearInterval(timer), 700)",
     { progress: true },
@@ -95,10 +93,8 @@ test('a silent command earns no ticks, exposing a hang as a stopped stream', () 
 })
 
 test('nested quiet wrappers tick from the step that produces output', () => {
-  // `npm run check` is a quiet wrapper around bin/check, which wraps each step
-  // in another quiet wrapper. The inner wrapper swallows its child's output on
-  // success, so the outer one observes no bytes; the inner wrapper therefore
-  // ticks to the sink the outer one exported instead of staying silent.
+  // The inner wrapper swallows the output of its child on success, so it ticks
+  // to the sink the outer wrapper exported.
   const env = { ...process.env }
   delete env.PAN_VERBOSE
   delete env.PAN_PROGRESS_FD
@@ -124,8 +120,8 @@ test('nested quiet wrappers tick from the step that produces output', () => {
 })
 
 test('progress ticks stay quiet for a command faster than one interval', () => {
-  // An interval wider than the command's lifetime removes the race between a
-  // first tick and a fast exit; it is kept short only so the test stays cheap.
+  // An interval wider than the lifetime of the command removes the race with a
+  // first tick.
   const result = runQuiet("process.stdout.write('quick\\n')", {
     progress: true,
     progressIntervalSeconds: '0.5',

@@ -289,7 +289,6 @@ test('gate waivers can bypass an unattempted stage', () => {
   assert.equal(waived.waiver.source_attempt, 0)
   assert.deepEqual(waived.waiver.criterion_ids, ['*'])
 
-  // An operator waiver can also redirect a terminal run.
   abortRun(root, runId, 'Initial operator decision.')
   assert.equal(getRunState(root, runId).status, 'canceled')
 

@@ -1,11 +1,4 @@
-/**
- * A node --test reporter that prints only failures and the final summary.
- *
- * The default TAP reporter lists every passing test, so the failing ones are
- * buried in hundreds of `ok` lines when the quiet wrapper replays output.
- * This reporter writes one block per failed test (name, location, error) and
- * one summary line, and nothing for a passing test.
- */
+/** A node --test reporter that prints only failures and the final summary. */
 import type { TestEvent } from 'node:test/reporters'
 
 interface FailureData {
@@ -41,8 +34,6 @@ export default async function* failuresOnly(
         break
       }
       case 'test:diagnostic': {
-        // Only the run summary: node emits `tests`, `pass`, `fail`, and
-        // `duration_ms` as diagnostics at the end of the run.
         if (
           /^(tests|pass|fail|cancelled|skipped|todo|duration_ms) /u.test(
             event.data.message,
@@ -52,8 +43,7 @@ export default async function* failuresOnly(
         }
         break
       }
-      // Passthrough output from tests that spawn the CLI is noise here. A
-      // failing test's own error block carries what the reader needs.
+      // Drop test output. The failure block carries what the reader needs.
       case 'test:stderr':
       case 'test:stdout':
         break

@@ -26,11 +26,6 @@ function commitAll(root: string, message: string): string {
   return git(root, ['rev-parse', 'HEAD'])
 }
 
-/**
- * `resolveReviewScope` is the one entry point the review command calls. These
- * cases run it against a real fixture repository, because the closure paths
- * and the git wiring are exactly what a hand-built closure cannot pin.
- */
 test('the closure names real persona surfaces', () => {
   const root = createFixture()
   const closure = buildReviewClosure(root)
@@ -103,10 +98,8 @@ test('a policy change yields one standards delta and a rename keeps both sides',
 
   policy.instructions.push('Agents MUST honor a fixture-only clause.')
   writeFileSync(policyPath, `${JSON.stringify(policy, null, 2)}\n`)
-  // Renaming a lineup file is the ordinary way a charter gets restructured.
-  // Both sides must stay in the change set, or the instrument conflict on the
-  // old path disappears. The harness lineup is renamed rather than the core
-  // skill, because the closure reads the core skill from the working tree.
+  // The closure reads the core skill from the working tree, so rename the
+  // harness lineup instead.
   git(root, [
     'mv',
     'library/skills/review-squad-pancreator.md',
@@ -141,9 +134,7 @@ test('a malformed policy is reported as malformed, not as a wholesale removal', 
   const policyPath = path.join(root, 'governance/policies/GLOBAL-002.json')
   const valid = readFileSync(policyPath, 'utf8')
 
-  // The malformed side is the base: the working tree, which the closure
-  // reads, holds the head. A change that repairs a broken policy file must
-  // read as a repair, not as the addition of every instruction it carries.
+  // The closure reads the working tree, so the malformed side must be the base.
   writeFileSync(policyPath, '{ "id": "GLOBAL-002", "instructions": [ not json')
 
   const base = commitAll(root, 'break a policy file')
@@ -167,9 +158,6 @@ test('a scope check from a checkout at another head is refused unless the revisi
 
   const later = commitAll(root, 'move the working tree past the target')
 
-  // The closure is read from the working tree, which now sits past the
-  // target: without an explicit revision the check would classify against
-  // the wrong tree and say nothing about it.
   assert.throws(
     () => resolveReviewScope(root, { head: base, base }),
     (error: unknown) =>
@@ -195,8 +183,7 @@ test('a scope check from a checkout at another head is refused unless the revisi
 
 test('a change inside the governance case of cli.ts is an instrument conflict', () => {
   const root = createFixture()
-  // The fixture carries no CLI source, so a minimal switch stands in for it:
-  // one governance case between two neighbours, in the shape the predicate reads.
+  // The fixture carries no CLI source, so this minimal switch stands in for it.
   const cliPath = path.join(root, 'src', 'cli.ts')
   const cli = [
     "    case 'validate': {",

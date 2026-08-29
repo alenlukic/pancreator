@@ -12,11 +12,6 @@ interface ValidateOptions {
 
 let variantCounter = 0
 
-/**
- * Build one fixture root for the given installation mode. Variants of one
- * primer are written to their own paths under a shared root, so a test that
- * checks several variants spins up a single fixture.
- */
 function fixtureRoot(options?: ValidateOptions): string {
   const root = createFixture()
 
@@ -156,7 +151,6 @@ test('target repository primer validator requires commands and Mermaid architect
     result.issues.some((item) => item.code === 'primer.architecture_mermaid'),
   )
 
-  // The bootstrap primer, still marked unbuilt, is rejected.
   const bootstrap = validateIn(
     root,
     VALID_PRIMER.replace(
@@ -178,7 +172,6 @@ test('target repository primer validator accepts external frontend and flow sect
   assert.equal(result.status, 'passed')
   assert.deepEqual(result.issues, [])
 
-  // A verified frontend state stands in for a route.
   const withState = validateIn(
     root,
     VALID_EXTERNAL_PRIMER.replace(
@@ -190,7 +183,6 @@ test('target repository primer validator accepts external frontend and flow sect
   assert.equal(withState.status, 'passed')
   assert.deepEqual(withState.issues, [])
 
-  // Explicit not-applicable guidance is accepted too.
   const notApplicable = validateIn(
     root,
     VALID_EXTERNAL_PRIMER.replace(
@@ -237,7 +229,6 @@ test('target repository primer validator rejects malformed external flow steps',
     ),
   )
 
-  // Empty external field values are rejected with independent codes.
   const emptyValues = validateIn(
     root,
     VALID_EXTERNAL_PRIMER.replace(
@@ -271,7 +262,6 @@ test('target repository primer validator rejects malformed external flow steps',
     ),
   )
 
-  // Flow step headings MUST be ordered.
   const unordered = validateIn(
     root,
     VALID_EXTERNAL_PRIMER.replace(
@@ -287,7 +277,6 @@ test('target repository primer validator rejects malformed external flow steps',
     ),
   )
 
-  // A named flow without steps is rejected.
   const stepless = validateIn(
     root,
     VALID_EXTERNAL_PRIMER.replace(

@@ -68,8 +68,8 @@ function sharedFieldRequirements(
     'stage-output-requirements.json',
   )
   // No process.cwd() fallback: in a broken installation it would silently
-  // substitute whatever contract the launching checkout carries, validating
-  // the target's outputs against a foreign document.
+  // substitute the contract of whatever checkout started the run, and
+  // validate the target's outputs against a foreign document.
   invariant(
     fileExists(sourcePath),
     `${sourcePath} is missing. The installation MUST ship the shared stage ` +
@@ -1654,9 +1654,7 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
     }
   }
 
-  // ORCH-001 names a whole-suite rerun encoded as a plan case as a run-level
-  // defect. The gate runs each profile once, so a case that runs it again is
-  // rejected here rather than left to the supervisor's judgment.
+  // ORCH-001: the gate runs each profile once, so a case must not rerun one.
   const testPlan = Array.isArray(data.test_plan) ? data.test_plan : []
 
   for (const [index, testCase] of testPlan.entries()) {
@@ -1891,23 +1889,7 @@ function openQuestionDispositionIssues(
   return issues
 }
 
-/**
- * Joint verification output for the delivery workflow's verify stage. One
- * stage carries both the review findings and the QA evidence, and one verdict
- * routes the run: pass and pass_with_warnings advance, fail_remedial and
- * fail_severe route to remediation. The demotion rule is deterministic here:
- * a passing verdict cannot coexist with a blocker finding, a failed
- * acceptance criterion, or a failed QA case, and a failing verdict must carry
- * reproducible remediation guidance because that guidance is the remediation
- * stage's primary input.
- */
-/**
- * The configured repository-check profile command that a free-text case names,
- * if any. A QA or plan case that reruns a profile duplicates a gate that runs
- * the same profile once, so the validators reject it rather than leave the
- * duplication to judgment. The literal `pan repository-check <profile>` counts
- * for every configured profile name.
- */
+/** The repository-check profile command that free text names, if any. */
 export function profileCommandInText(
   root: string,
   text: string,
@@ -1942,8 +1924,8 @@ export function profileCommandInText(
     }
   }
 
-  // The literal form names a profile even when this checkout has none
-  // configured; `validate` is the one subcommand that runs nothing.
+  // The literal form names a profile even when none is configured here. The
+  // `validate` subcommand runs no profile.
   const anyProfile = new RegExp(
     `${boundary}(?:\\./bin/)?pan repository-check ([a-z][a-z0-9_-]*)${terminal}`,
     'u',
@@ -1959,7 +1941,6 @@ export function profileCommandInText(
   return null
 }
 
-/** Current gate-evidence references on the invocation card, if it carries any. */
 function currentGateEvidenceReferences(
   invocation: Record<string, unknown> | undefined,
 ): { path: string; profile: string; fingerprint: string }[] {
@@ -1994,6 +1975,16 @@ function currentGateEvidenceReferences(
   return current
 }
 
+/**
+ * Joint verification output for the delivery workflow's verify stage. One
+ * stage carries both the review findings and the QA evidence, and one verdict
+ * routes the run: pass and pass_with_warnings advance, fail_remedial and
+ * fail_severe route to remediation. The demotion rule is deterministic here:
+ * a passing verdict cannot coexist with a blocker finding, a failed
+ * acceptance criterion, or a failed QA case, and a failing verdict must carry
+ * reproducible remediation guidance because that guidance is the remediation
+ * stage's primary input.
+ */
 export function validateVerifyOutput(input: HandlerInput): HandlerResult {
   const issues: HandlerResult['issues'] = []
   const value = readJson(path.join(input.root, input.targetPath)) as Record<
@@ -2140,9 +2131,7 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
     }
   }
 
-  // VERIFY-001 makes QA cite the gate evidence for a profile that already
-  // passed. The card lists each current evidence reference; the output must
-  // cite every one of them, so the duty leaves a checkable trace.
+  // VERIFY-001: the output must cite every current gate-evidence reference.
   const citations = Array.isArray(verify.gate_evidence_citations)
     ? verify.gate_evidence_citations
     : []

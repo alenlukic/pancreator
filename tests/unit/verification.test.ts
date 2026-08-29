@@ -84,7 +84,6 @@ test('a gate value that is neither a profile name nor false is rejected', () => 
     /MUST name a repository-check profile or be false/u,
   )
 
-  // An active level that is not defined is rejected loudly.
   assert.throws(
     () => parseVerification({ verification: { active: 'exhaustive' } }),
     /not a defined verification level/u,

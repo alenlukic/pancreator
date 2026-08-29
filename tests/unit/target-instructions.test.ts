@@ -31,7 +31,6 @@ test('resolves exact root-to-file instruction chains across subtrees', () => {
     ['AGENTS.md', 'apps/AGENTS.md', 'services/AGENTS.md', 'apps/web/AGENTS.md'],
   )
 
-  // Absolute in-workspace paths resolve their chains like relative ones.
   assert.deepEqual(
     resolveTargetInstructionPaths(root, [
       path.join(root, 'apps', 'web', 'src', 'file.ts'),
@@ -39,7 +38,6 @@ test('resolves exact root-to-file instruction chains across subtrees', () => {
     ['AGENTS.md', 'apps/AGENTS.md', 'apps/web/AGENTS.md'],
   )
 
-  // Paths outside the workspace contribute no instruction chain.
   assert.deepEqual(resolveTargetInstructionPaths(root, ['../outside.ts']), [])
   assert.deepEqual(
     resolveTargetInstructionPaths(root, [
@@ -49,7 +47,6 @@ test('resolves exact root-to-file instruction chains across subtrees', () => {
     ['AGENTS.md', 'services/AGENTS.md'],
   )
 
-  // Empty changed paths are rejected.
   assert.throws(
     () => resolveTargetInstructionPaths(root, ['']),
     (error: unknown) =>

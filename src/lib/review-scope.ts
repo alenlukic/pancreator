@@ -9,43 +9,22 @@ import { invariant } from './errors.js'
 import { resolvePolicies } from './policies.js'
 
 /**
- * A reviewer depends on more than the diff it reads. It depends on the
- * charters that tell it what to look for, the policies that bind how it
- * behaves, the code that builds its card and captures its target, the tests
- * and validators it trusts when it "verifies" a finding, and the registries
- * that can excuse a defect. A change to any of those is a conflict of
- * interest, and the conflicts differ in what the session can still do:
+ * How a conflict of interest limits the session:
  *
- * - `instrument`: the lineup, a charter, the coordinator, the mode policy, an
- *   entry point, the scope check itself, or the reviewer's model mapping. A
- *   charter cannot find a defect introduced into that charter. Excluded from
- *   the squad's verdict and routed to an independent reviewer.
- * - `conduct`: a policy on the reviewer's own card, or guidance it delivers.
- *   The squad can review it — under the base version of that rule, so the
- *   change cannot relax the rule that would catch it. A difference from the
- *   base standard is never a finding; the standards delta goes to the
- *   operator, who owns the merits of a rule change.
- * - `substrate`: what the reviewer trusts when it verifies — validation code,
- *   test helpers, the check wrappers, the gate cache, exemption registries,
- *   the changelog. Reviewed normally, but verification that leans on them is
- *   tainted and must say so.
+ * - `instrument`: an independent reviewer grades the path.
+ * - `conduct`: the squad grades the path under the base version of the rule.
+ * - `substrate`: the squad grades the path and marks verification tainted.
  */
 export type ConflictTier = 'instrument' | 'conduct' | 'substrate'
 
 export interface ReviewConflict {
   path: string
   tier: ConflictTier
-  /** Why the path is in the closure, for the operator report. */
+  /** Why the path is in the closure. */
   source: string
 }
 
-/**
- * Static instrument paths that no card can enumerate: the lineup files, the
- * coordinator and its projected agent, both entry points, and this module.
- * Everything else in the closure is derived from the review card.
- *
- * A trailing `*` matches any suffix; every other pattern matches one path.
- */
+/** Instrument paths that no review card can enumerate. */
 export const REVIEW_MACHINERY_PATTERNS = [
   'governance/policies/REVIEW-001.json',
   'governance/policies/SHEPHERD-001.json',
@@ -61,12 +40,6 @@ export const REVIEW_MACHINERY_PATTERNS = [
   'src/lib/policy-guidance.ts',
 ] as const
 
-/**
- * The tests of each machinery module, derived from the module list so a new
- * machinery entry brings its tests into the substrate tier without a second
- * edit. `src/lib/<module>.ts` yields `tests/*\/<module>*.test.ts`, which
- * reaches `review-scope.test.ts` and `review-scope-resolve.test.ts` alike.
- */
 export const MACHINERY_TEST_PATTERNS: readonly string[] =
   REVIEW_MACHINERY_PATTERNS.filter(
     (pattern) => pattern.startsWith('src/lib/') && pattern.endsWith('.ts'),
@@ -75,10 +48,7 @@ export const MACHINERY_TEST_PATTERNS: readonly string[] =
       `tests/*/${pattern.slice('src/lib/'.length, -'.ts'.length)}*.test.ts`,
   )
 
-/**
- * Paths the reviewer trusts when it verifies a finding or reads a green
- * result. Not what it looks for — what it believes.
- */
+/** Paths the reviewer trusts when it verifies a finding or a green result. */
 export const VERIFICATION_SUBSTRATE_PATTERNS: readonly string[] = [
   'src/lib/validation.ts',
   'src/lib/validators/*',
@@ -106,10 +76,8 @@ export const VERIFICATION_SUBSTRATE_PATTERNS: readonly string[] = [
 ]
 
 /**
- * The `governance` case of `src/cli.ts` is where `governance card` and
- * `governance review-scope` are wired: the entry points of the review mode.
- * The rest of that file is every other command, so the whole path is not
- * machinery; only a change inside this case is.
+ * Return the `governance` case of `src/cli.ts`, which wires the review-mode
+ * entry points. The rest of the file is not review machinery.
  */
 export function cliGovernanceBlock(text: string | null): string | null {
   if (text === null) {
@@ -135,39 +103,32 @@ export function cliGovernanceBlocksChanged(
   return cliGovernanceBlock(baseText) !== cliGovernanceBlock(headText)
 }
 
-/** The personas whose cards define the reviewer's conduct. */
 export const REVIEW_PERSONAS = ['reviewer', 'shepherd-reviewer'] as const
 
 /**
- * The lookup-table identifiers the standalone review mode resolves under.
- * The review card and the closure must agree on them, or the card would bind
- * one policy set and the scope check would guard another.
+ * The review card and this closure must resolve under the same identifiers,
+ * or the card binds one policy set and the scope check guards another.
  */
 export const REVIEW_MODE_CONTEXT = {
   workflow: 'standalone',
   stage: 'review',
 } as const
 
-/**
- * Everything the review card pulls in: the policies resolved for the review
- * personas and the guidance those policies deliver. Computed from the current
- * checkout, so a policy the change adds is in the closure too.
- */
+/** What the review card pulls in, read from the current checkout. */
 export interface ReviewClosure {
   /** policy id → repository path */
   policies: Record<string, string>
   /** guidance path → the policy id that delivers it */
   guidance: Record<string, string>
-  /** Persona and projected-agent files for the review personas. */
+  /** Persona files and the agent files projected from them. */
   persona_paths: string[]
-  /** Registries that select or project the above. */
+  /** Registries that select or project the policies and personas. */
   registry_paths: string[]
 }
 
 /**
- * A trailing `*` matches any suffix. An interior `*` matches one path segment,
- * so `tests/*\/*-helpers.ts` reaches every lane's helper without crossing into
- * deeper directories. No other glob syntax is supported.
+ * A trailing `*` matches any suffix. An interior `*` matches one path segment.
+ * No other glob syntax is supported.
  */
 function matchesPattern(candidate: string, pattern: string): boolean {
   if (!pattern.includes('*')) {
@@ -206,7 +167,6 @@ export function reviewMachineryConflicts(changedPaths: string[]): string[] {
   return [...new Set(conflicts)].sort()
 }
 
-/** Build the card-derived closure for the review personas. */
 export function buildReviewClosure(root: string): ReviewClosure {
   const policies: Record<string, string> = {}
   const guidance: Record<string, string> = {}
@@ -242,10 +202,6 @@ export function buildReviewClosure(root: string): ReviewClosure {
   }
 }
 
-/**
- * Classify every changed path against the closure. Pure, so a test can hand
- * it a closure without a repository.
- */
 export function classifyReviewPaths(
   changedPaths: string[],
   closure: ReviewClosure,
@@ -318,11 +274,7 @@ export interface StandardsDelta {
   summary_changed: boolean
   removed_instructions: string[]
   added_instructions: string[]
-  /**
-   * Which side failed to parse as a policy record. A malformed file is a
-   * defect to fix, never a wholesale instruction removal for the operator to
-   * weigh, so the instruction lists stay empty when this is set.
-   */
+  /** Which side failed to parse. The instruction lists stay empty when set. */
   malformed: 'base' | 'head' | 'both' | null
 }
 
@@ -360,10 +312,7 @@ function policyFields(text: string | null): {
   }
 }
 
-/**
- * What a change did to a standard, stated as the instructions it removed and
- * the instructions it added. Pure over the two texts.
- */
+/** State what a change did to a standard as removed and added instructions. */
 export function diffPolicyTexts(
   path: string,
   baseText: string | null,
@@ -406,8 +355,7 @@ export function diffPolicyTexts(
   const removed = base.instructions.filter((item) => !headSet.has(item))
   const added = head.instructions.filter((item) => !baseSet.has(item))
 
-  // A row with nothing for the operator to weigh — a reformat, a metadata
-  // edit — is not a standards delta. Only the instruction and summary text are.
+  // A reformat or a metadata edit is not a standards delta.
   if (
     status === 'changed' &&
     !summaryChanged &&
@@ -473,8 +421,7 @@ function reviewMappings(text: string | null): string {
 
 /**
  * True when the change alters which model the reviewer or the coordinator
- * runs on. `config.json` changes constantly for other reasons, so this is
- * judged on the two mappings, not on the path.
+ * runs on. `config.json` changes for other reasons, so judge the mappings.
  */
 export function reviewerMappingChanged(
   baseConfig: string | null,
@@ -487,18 +434,14 @@ export interface ReviewScope {
   base: string
   head: string
   /**
-   * The working-tree revision the review closure was read from. The closure
-   * resolves the review card from disk, so this is the checkout's HEAD; it
-   * equals `head` unless the caller named the revision on purpose.
+   * The working-tree revision the closure was read from. It equals `head`
+   * unless the caller named another revision.
    */
   closure_revision: string
   /** Every path the three-dot diff changes. */
   changed_paths: string[]
   conflicts: ReviewConflict[]
-  /**
-   * True when no instrument-tier conflict exists: the squad can grade every
-   * changed path, possibly under base conduct or with tainted verification.
-   */
+  /** True when no instrument-tier conflict exists. */
   independent: boolean
   /** True when no conflict exists at any tier. */
   clean: boolean
@@ -511,20 +454,13 @@ export interface ResolveReviewScopeOptions {
   base?: string | null
   defaultBranch?: string | null
   /**
-   * The revision the caller asserts the working tree sits at. Required when
-   * that tree is not at `head`, so a closure read from another revision is
-   * an explicit choice rather than an accident of which checkout ran the check.
+   * The revision the caller asserts the working tree sits at. Needed when
+   * that tree is not at `head`.
    */
   closureRevision?: string | null
 }
 
-/**
- * Resolve one review target and report every conflict of interest it carries.
- *
- * The caller passes the target it already resolved; this does not guess a
- * target from the working tree, because the session states its range before
- * anything reads it.
- */
+/** Resolve one review target and report every conflict of interest. */
 export function resolveReviewScope(
   root: string,
   options: ResolveReviewScopeOptions,
@@ -533,8 +469,6 @@ export function resolveReviewScope(
   const base = options.base
     ? gitRevParse(root, options.base)
     : gitMergeBase(root, options.defaultBranch ?? 'main', head)
-  // The closure comes from the working tree, so the tree must be the target
-  // head or the caller must say which revision it is reading from instead.
   const closureRevision = gitRevParse(root, 'HEAD')
 
   if (closureRevision !== head) {
@@ -561,8 +495,7 @@ export function resolveReviewScope(
     { code: 'REVIEW_BASE_UNRESOLVED' },
   )
 
-  // Both sides of a rename must appear: a renamed lineup file otherwise
-  // leaves the instrument tier, and a renamed policy loses its removed half.
+  // Rename detection hides the removed half of a renamed policy or lineup file.
   const changedPaths = gitChangedPathsBetween(root, base, head, {
     detectRenames: false,
   })
@@ -629,7 +562,6 @@ function tierRank(tier: ConflictTier): number {
   return tier === 'instrument' ? 0 : tier === 'conduct' ? 1 : 2
 }
 
-/** Conflicts grouped by tier, for the CLI and the card. */
 export function conflictsByTier(
   conflicts: ReviewConflict[],
 ): Record<ConflictTier, ReviewConflict[]> {

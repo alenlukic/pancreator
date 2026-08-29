@@ -159,8 +159,6 @@ test('workflow migration finalizes closed runs and consolidates artifacts', () =
   const newRunId = migratedRunId(oldRunId)
 
   assert.equal(newRunId, '63379_Jun-22-0158_5f354f23')
-  // Day-only ids upgrade from their creation time; current-format ids are left
-  // alone.
   assert.equal(
     migratedRunId(
       '63379_Jun-22_5f354f23',
@@ -544,9 +542,8 @@ test('run directory hash suffixes migrate to keyword suffixes', () => {
 
   const summary = migrateRunSuffixes(root)
 
-  // All runs share the fixture title. Different minutes keep distinct prefixes;
-  // the same-minute run keeps the keywords with an ordinal instead of
-  // colliding or falling back to hex.
+  // All runs share the fixture title, so the same-minute run keeps the keywords
+  // with an ordinal.
   assert.equal(summary.run_directories, 3)
   assert.equal(
     existsSync(

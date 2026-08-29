@@ -35,13 +35,8 @@ function runGit(
   return result
 }
 
-// Policy resolution asks "is this a repo" and "which files are tracked" for
-// every persona, stage, and mode it resolves, so an uncached answer spawns
-// thousands of identical git processes per validation pass. Positive repo
-// membership is stable for a live process (a directory does not stop being a
-// repository mid-run), so only `true` is cached; a negative answer is
-// re-checked because tests and installers initialize repositories after first
-// contact. Tracked paths are cached against the git index token below.
+// Cache a positive answer only. A directory can become a repository after a
+// negative check, but a repository never stops being one in a live process.
 const gitRepositoryCache = new Map<string, true>()
 
 export function isGitRepository(root: string): boolean {
@@ -93,20 +88,14 @@ export function gitMergeBase(
   return result.status === 0 ? result.stdout.trim() : null
 }
 
-/**
- * Repository-relative paths a three-dot diff changes between two revisions.
- *
- * Three dots, not two: a review judges what the head added since the branches
- * parted, not what the base gained meanwhile.
- */
+/** Repository-relative paths a three-dot diff changes between two revisions. */
 export function gitChangedPathsBetween(
   root: string,
   base: string,
   head: string,
   options: { detectRenames?: boolean } = {},
 ): string[] {
-  // With rename detection on, Git names only the destination of a rename. A
-  // consumer that matches paths against patterns needs both sides.
+  // With rename detection on, Git names only the destination of a rename.
   const result = runGit(root, [
     'diff',
     '--name-only',
@@ -337,17 +326,12 @@ function trackedWorkspacePath(
 }
 
 const gitDirCache = new Map<string, string>()
-// `--show-toplevel` is as stable per workspace as the git dir: both change only
-// when the directory stops being the same repository, which is never within
-// one process. Positive answers only, so a transient failure is retried.
 const toplevelCache = new Map<string, string>()
 const trackedPathsCache = new Map<string, { token: string; paths: string[] }>()
 
 /**
- * Cheap invalidation token for the tracked-file list: the git index mtime and
- * size. Every add, rm, mv, commit, and checkout rewrites the index, so a
- * stale cache entry cannot survive a tracked-set change. Worktrees resolve
- * their real git dir once and reuse it.
+ * Invalidation token for the tracked-file cache. Every write to the git index
+ * changes its mtime or size.
  */
 function gitIndexToken(workspaceDir: string): string {
   let gitDir = gitDirCache.get(workspaceDir)

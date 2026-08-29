@@ -76,9 +76,8 @@ test('preserved xdist output yields an empty delta across two orders', () => {
   assert.equal(reorderedComparison.delta.new.length, 0)
   assert.equal(reorderedComparison.delta.fixed.length, 0)
 
-  // Against an empty passing baseline, the pass, progress, and session lines
-  // form no identity: the failed command contributes only its synthetic status
-  // identity because this preserved transcript contains no genuine failure.
+  // This transcript holds no genuine failure, so the synthetic status line is
+  // the only new identity.
   const comparison = compareRepositoryCheckToBaseline(
     checkResult('', 'passed'),
     checkResult(FIXTURE, 'failed'),
@@ -103,13 +102,10 @@ test('preserved xdist output yields an empty delta across two orders', () => {
     assert.doesNotMatch(line, /^-- Docs:/u, line)
   }
 
-  // The gate explanation quotes no pass or formatting line either.
   assert.doesNotMatch(comparison.explanation, /PASSED/u)
   assert.doesNotMatch(comparison.explanation, /-- Docs:/u)
   assert.doesNotMatch(comparison.explanation, /test session starts/u)
 
-  // A genuine failure appended to the same transcript is kept while the
-  // application log noise is still dropped.
   const failure =
     'FAILED tests/unit/test_example.py::test_value - AssertionError: mismatch'
   const withFailure = compareRepositoryCheckToBaseline(

@@ -26,7 +26,6 @@ test('release metadata validation requires synchronized version files', () => {
   const root = createFixture()
   const version = readFileSync(path.join(root, 'VERSION'), 'utf8').trim()
 
-  // package.json drifts from VERSION.
   const packagePath = path.join(root, 'package.json')
   const packageJson = JSON.parse(readFileSync(packagePath, 'utf8')) as {
     version: string
@@ -35,7 +34,6 @@ test('release metadata validation requires synchronized version files', () => {
   packageJson.version = '2.0.1'
   writeFileSync(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`)
 
-  // The changelog's latest release drifts from VERSION.
   const changelogPath = path.join(root, 'CHANGELOG.md')
   const changelog = readFileSync(changelogPath, 'utf8').replace(
     /^## \[[^\]]+\] - \d{4}-\d{2}-\d{2}$/mu,
@@ -44,7 +42,6 @@ test('release metadata validation requires synchronized version files', () => {
 
   writeFileSync(changelogPath, changelog)
 
-  // A version-bearing doc drifts from VERSION.
   const embeddedPath = path.join(root, 'docs', 'embedded-installation.md')
   const embedded = readFileSync(embeddedPath, 'utf8').replace(
     /currently agree on `[^`]+`/u,
@@ -53,7 +50,6 @@ test('release metadata validation requires synchronized version files', () => {
 
   writeFileSync(embeddedPath, embedded)
 
-  // The three errors are independent, so one validation reports all of them.
   const errors = validateReleaseMetadata(root).errors.join('\n')
 
   assert.match(errors, /package\.json\.version MUST match VERSION/u)

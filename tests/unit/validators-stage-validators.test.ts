@@ -21,8 +21,8 @@ import { createFixture } from '../helpers.js'
 /**
  * Bare validator fixture root carrying the shared field-contract document.
  * Validators read the document from the installation root only; production
- * code deliberately has no fallback to the launching checkout, so each
- * fixture ships its own copy.
+ * code deliberately has no fallback to the checkout that started the run,
+ * so each fixture ships its own copy.
  */
 function installFieldContract(root: string): void {
   const contractRelative = 'library/schemas/stage-output-requirements.json'
@@ -186,7 +186,6 @@ test('plan trace accepts dispositions that cite evidence', () => {
 
   assert.equal(result.status, 'passed', JSON.stringify(result.issues))
 
-  // With no open questions in the spec, dispositions are simply not required.
   const noQuestions = 'no-questions.json'
 
   writePlanWithQuestions(root, noQuestions, [], [])
@@ -388,7 +387,7 @@ test('implementation validator rejects missing plan acceptance coverage', () => 
 
   mkdirSync(path.dirname(absolute), { recursive: true })
   writePlanOutput(root, runId, ['AC-01', 'AC-02'])
-  // AC-02 is planned but unreported; AC-99 is reported but never planned.
+  // AC-02 is planned but unreported, and AC-99 is reported but never planned.
   writeFileSync(
     absolute,
     `${JSON.stringify({
@@ -461,8 +460,8 @@ test('implementation validator rejects opaque acceptance evidence', () => {
 })
 
 test('shared stage field contract has registered validator ownership', () => {
-  // The validator reads only the checked-in contract document and registry,
-  // so the launching checkout is the fixture.
+  // The validator reads only checked-in files, so the checkout that runs
+  // the test is the fixture.
   const root = process.cwd()
   const result = validateSharedFieldContract({
     root,
@@ -865,10 +864,6 @@ test('self-development release validator requires a real next-version bump', () 
     ),
   )
 
-  // Release metadata is bound to Git history and the release scope: the
-  // current version must match the baseline commit's VERSION, the narrative
-  // fields must be present, and updated files must stay inside the release
-  // metadata scope.
   writeFileSync(
     path.join(root, target),
     `${JSON.stringify({
@@ -1317,10 +1312,8 @@ test('implementation validator resolves the file portion of "path :: case" test 
     },
   })
 
-  // Existing files pass through both the ' :: ' display convention and the
-  // native `path::case` form, which resolve to the same file. Only the
-  // genuinely missing files are reported, by their file portion, with the
-  // accepted format named in the message so a retry can self-correct.
+  // The ' :: ' display convention and the native `path::case` form resolve to
+  // the same file, so only the missing files are reported.
   const missing = result.issues.filter(
     (issue) => issue.code === 'claim.test_missing',
   )
@@ -1341,9 +1334,8 @@ test('implementation validator resolves the file portion of "path :: case" test 
 })
 
 test('target instruction coverage demands final-line read evidence per path', () => {
-  // The validator needs only an instruction file and the JSON output; a
-  // filesystem workspace_before spares it the Git diff a repository fixture
-  // would supply.
+  // The validator needs only an instruction file and the JSON output, so a
+  // bare temporary directory is enough.
   const root = mkdtempSync(path.join(tmpdir(), 'pan-target-coverage-'))
   const target = 'runtime/output.json'
 
@@ -1373,7 +1365,6 @@ test('target instruction coverage demands final-line read evidence per path', ()
 
   mkdirSync(path.join(root, 'runtime'), { recursive: true })
 
-  // An omitted instruction path is named in the coverage failure.
   writeFileSync(
     path.join(root, target),
     `${JSON.stringify({
@@ -1524,7 +1515,6 @@ test('verify validator rejects a passing verdict with a blocker finding', () => 
     result.issues.some((item) => item.code === 'verify.verdict_inconsistent'),
   )
 
-  // pass_with_warnings without a warning finding is equally inconsistent.
   const warnless = 'warnless.json'
 
   writeVerifyOutput(root, warnless, {

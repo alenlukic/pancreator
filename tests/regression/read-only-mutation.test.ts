@@ -22,8 +22,6 @@ test('read-only stage fails when a source workspace change is unattributed', () 
   const workflow = loadWorkflow(root, 'preflight')
   const stage = stageBySlug(workflow, 'inspect')
 
-  // An unattributed change under `workspace_policy: read_only` fails the
-  // `scope.no_unapproved_changes` check and the run.
   const unattributed = createRun(root, {
     workflowSlug: 'preflight',
     requestPath: 'request.md',
@@ -59,7 +57,6 @@ test('read-only stage fails when a source workspace change is unattributed', () 
   )
   assert.equal(failed.state.status, 'failed')
 
-  // The same change traced to the active agent passes the check.
   const attributed = createRun(root, {
     workflowSlug: 'preflight',
     requestPath: 'request.md',

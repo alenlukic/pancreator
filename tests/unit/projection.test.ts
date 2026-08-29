@@ -30,9 +30,8 @@ import { createFixture } from '../helpers.js'
 
 test('embedded Cursor projection prefixes durable harness docs paths', () => {
   const { cliPath, harnessPath, panCommand } = CURSOR_PROJECTION_TOKENS
-  // Durable docs and the intake directory take the installed-harness prefix,
-  // the pan command resolves to the installed binary, and CLI targets stay
-  // harness-relative because the binary already runs from the harness root.
+  // CLI targets stay harness-relative because the binary already runs from the
+  // harness root.
   const projected = projectCursorContent(
     `Read \`${harnessPath}docs/target-repo-primer.md\` before running ` +
       `\`${harnessPath}library/skills/x.md\`. ` +
@@ -179,10 +178,7 @@ test('run-scoped agent variants carry pinned models without touching the base ag
   const baseCoderPath = path.join(root, '.cursor', 'agents', 'pan-coder.md')
   const baseCoder = readFileSync(baseCoderPath, 'utf8')
 
-  // A stored best-of-N variant map is that candidate's execution contract. The
-  // harness once rewrote reasoning=xhigh to effort=xhigh on the way to the
-  // agent file Cursor reads, so a candidate ran under a value nobody recorded.
-  // The spec must reach the frontmatter byte-identical.
+  // The variant spec must reach the frontmatter byte-identical.
   const coderSpec = 'gpt-5.6-sol[context=272k,reasoning=xhigh,fast=true]'
   const changes = projectPersonaVariants(
     root,
@@ -228,8 +224,6 @@ test('run-scoped agent variants carry pinned models without touching the base ag
     false,
   )
 
-  // A variant suffix a Cursor filename cannot carry is rejected before any
-  // filesystem work.
   assert.throws(
     () => projectPersonaVariants(root, 'Alpha One', { coder: 'model' }),
     /MUST be lowercase alphanumeric/u,
@@ -276,8 +270,6 @@ test('Cursor sync renders ignored local files from canonical library sources', (
   )
   assert.match(readFileSync(sourcePath, 'utf8'), /__PANCREATOR_MODEL__/u)
 
-  // The planner agent is projected from its persona source with its own
-  // resolved model, and the synced projection carries no drift.
   const planner = readFileSync(
     path.join(root, '.cursor', 'agents', 'pan-planner.md'),
     'utf8',

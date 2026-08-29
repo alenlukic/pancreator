@@ -50,7 +50,6 @@ test('pan inbox plain output shows columns, titles, run IDs, and empty states', 
     new Date('2024-02-02T10:00:00.000Z'),
   )
 
-  // Only direct Markdown files are listed, newest first.
   writeInboxFile(
     root,
     'oldest.md',
@@ -111,7 +110,6 @@ test('pan inbox plain output shows columns, titles, run IDs, and empty states', 
     expectedOrder,
   )
 
-  // --json returns the same ordered item array with a stable key set.
   const jsonOutput = execFileSync(process.execPath, [CLI, 'inbox', '--json'], {
     cwd: root,
     encoding: 'utf8',

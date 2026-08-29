@@ -268,11 +268,7 @@ function recordGovernanceArtifactIssues(
 export interface PrepareInvocationResult {
   state: RunState
   invocation: Invocation | null
-  /**
-   * Non-blocking observations about this run's environment, such as a model
-   * mapping that changed since the run snapshotted it. The supervisor reports
-   * and weighs these; none of them stops the run.
-   */
+  /** Non-blocking observations about the run. None of them stops the run. */
   advisories: string[]
 }
 
@@ -287,10 +283,7 @@ interface PrepareInvocationOptions extends OperationProgressOptions {
 export interface SubmitOutputResult {
   state: RunState
   record: TaskRecord
-  /**
-   * Non-blocking observations this submission recorded, such as unverified
-   * worker model evidence. The supervisor carries them into its stage report.
-   */
+  /** Observations this submission recorded. None of them stops the run. */
   advisories: RunAdvisory[]
   idempotent?: boolean
 }
@@ -331,10 +324,6 @@ function loadRunPipelineConfig(root: string, state: RunState) {
  * A run must keep resolving the models it snapshotted, but a mapping it never
  * resolves is not drift. Adding a persona would otherwise strand every run in
  * flight, including the self-development run that introduces that persona.
- *
- * Model drift is reported, never enforced. The operator owns the model choice,
- * so a mapping that changed mid-run is a fact the supervisor weighs, not a
- * reason to refuse to advance. Only a workflow criterion stops a run.
  */
 function runPipelineConfigAdvisories(
   root: string,
@@ -347,8 +336,8 @@ function runPipelineConfigAdvisories(
 
   const advisories: string[] = []
 
-  // A best-of-N run pins its own persona map, so the active config is not its
-  // authority. Its run-scoped agent variants are what would drift.
+  // A best-of-N run pins its own persona map, so its run-scoped agent
+  // variants are what drift.
   if (state.cursor_agent_suffix) {
     const variantDrift = projectPersonaVariants(
       root,
@@ -394,9 +383,8 @@ function runPipelineConfigAdvisories(
     )
   }
 
-  // The advisory reads one projection, so render only that one, against the
-  // live config already in hand. A full render reloaded the pipeline config
-  // and re-rendered every command and rule to answer a question about agents.
+  // The advisory reads one projection, so render only that one against the
+  // live config.
   const agentModelDrift = syncCursorProjection(root, {
     only: ['cursor-agents'],
     pipeline: live,
@@ -1249,9 +1237,6 @@ function applyTransition(
       state.pause_reason,
       [
         `Resume with: ${panCommand(root)} resume ${state.run_id}`,
-        // A bare resume re-prepares the same stage against the same facts. A
-        // blocked precondition or an open question clears only through a
-        // recorded operator decision, and the note is what records one.
         `Or resume with a directive the stage can act on: ${panCommand(root)} ` +
           `resume ${state.run_id} --stage ${stage.slug} --note "<directive>"`,
       ],
@@ -1292,9 +1277,8 @@ function readInvocation(root: string, relativePath: string): Invocation {
 }
 
 /**
- * Append advisories to run state so a resumed session recovers them from
- * `pan status`. The caller persists the state; the advisory event it emits
- * alongside stays the audit record.
+ * Append advisories to run state so `pan status` recovers them after a resume.
+ * The caller must persist the state.
  */
 function recordRunAdvisories(
   state: RunState,
@@ -1361,7 +1345,6 @@ function persistModelEvidence(
 
 export interface SupervisorModelEvidenceResult {
   evidence: RunModelEvidence
-  /** Observations this call recorded, such as a mid-run model supersession. */
   advisories: RunAdvisory[]
 }
 
@@ -1398,9 +1381,8 @@ export function recordSupervisorModelEvidence(
         return { evidence: existing, advisories }
       }
 
-      // A supervising session can legitimately change model mid-run, most often
-      // because the operator changed it. Record the new fact and note the
-      // supersession rather than refusing to continue the run.
+      // A mid-run model change is legitimate, so record the new fact and
+      // continue the run.
       advisories = recordRunAdvisories(
         state,
         { kind: 'model_evidence', source: 'supervisor_evidence' },
@@ -1469,13 +1451,9 @@ export function probeRunInvocationModel(
       undefined,
       probeEnvironment(root),
     )
-    // Only a failed probe is unavailable. A bracketed spec that finds no
-    // catalog prediction is `recorded`: the run knows which model answered, it
-    // simply has nothing local to check it against. The catalog reflects one
-    // Cursor account, so `bin/install` deliberately omits it from every target
-    // payload, and calling that intended absence missing evidence made every
-    // bracketed spec in every target installation unverifiable — which blocked
-    // run 63313_Aug-27-0109_cumulus-prot at its first worker launch.
+    // Only a failed probe is unavailable. A bracketed spec with no catalog
+    // prediction is `recorded`, because a target installation carries no
+    // catalog.
     const result = ((): RunModelEvidence['result'] => {
       if (probe.resolved === null || probe.error !== undefined) {
         return 'unavailable'
@@ -1511,11 +1489,8 @@ export function probeRunInvocationModel(
       ...(error ? { error } : {}),
     })
 
-    // The probe records what Cursor reported and succeeds either way. An
-    // unavailable or mismatched result is a fact the supervisor weighs, and
-    // failing here would halt a run over model bookkeeping alone. It is
-    // recorded as an advisory so `pan status` recovers it after an
-    // interruption, the way the supervisor-evidence path already does.
+    // A probe result never fails the run. Record it as an advisory so
+    // `pan status` recovers it after an interruption.
     const advisories = error
       ? recordRunAdvisories(
           state,
@@ -1544,11 +1519,7 @@ export function probeRunInvocationModel(
   })
 }
 
-/**
- * Model evidence is an audit trail, not an admission criterion. Rejecting a
- * submission here would discard work a worker already completed over a fact
- * about which model ran it, so every gap is recorded and the submission stands.
- */
+/** Model evidence is an audit trail, not an admission criterion. */
 function requiredModelEvidenceAdvisories(
   state: RunState,
   invocation: Invocation,
@@ -1583,9 +1554,8 @@ function requiredModelEvidenceAdvisories(
     return advisories
   }
 
-  // `recorded` means the probe resolved a model but no local catalog existed to
-  // predict it. That is the normal case in a target installation, so it is not
-  // a gap worth reporting.
+  // `recorded` means the probe resolved a model with no local catalog to
+  // predict it, which is normal in a target installation.
   if (
     worker.result === 'mismatch' ||
     worker.persona !== invocation.stage.persona ||
@@ -2254,15 +2224,10 @@ export function prepareInvocation(
       },
     )
 
-    // Loaded once: the advisories and the persona mapping below read the same
-    // snapshot, and loading it validates every persona in every named config.
+    // Load once, so the advisories and the persona mapping read one snapshot.
     const pipelineConfig = loadRunPipelineConfig(root, state)
     const advisories = runPipelineConfigAdvisories(root, state, pipelineConfig)
 
-    // The advisory replaced a run-halting invariant, so it is the only signal
-    // that the live mapping drifted from the run snapshot. It has to survive
-    // this process: a supervisor that reconciles through `pan status` after
-    // an interruption must still see it.
     if (advisories.length > 0) {
       recordRunAdvisories(
         state,
@@ -3736,9 +3701,8 @@ export function submitOutput(
       submittedValue,
     )
 
-    // OPERATOR-001: a platform-guidance conflict the worker stated lands on
-    // run state as an advisory, so `pan status` lists it and the supervisor
-    // can carry it into the run-friction intake after any interruption.
+    // OPERATOR-001: record a platform-guidance conflict as an advisory, so
+    // `pan status` lists it for the supervisor.
     const guidanceConflicts =
       validation.output.platform_guidance_conflicts ?? []
 
@@ -5328,12 +5292,9 @@ export function getRunState(root: string, runId: string): RunState {
 }
 
 /**
- * Deterministic pre-submit mirror of the cheap submission layers: evidence
- * report presence, invocation read attestation, and the structural output
- * contract. A failure in any of these at submit time consumes a stage attempt
- * on a mechanical defect, so `pan output validate` runs the same code paths
- * first. The shell gates and harness-authoritative validators stay
- * submit-only: they are expensive and the harness reruns them anyway.
+ * Mirror the cheap submission layers before submit, so a mechanical defect
+ * does not consume a stage attempt. The shell gates and the
+ * harness-authoritative validators stay submit-only.
  */
 export function validateOutputForSubmission(
   root: string,
@@ -5373,7 +5334,7 @@ export function validateOutputForSubmission(
   const workflow = loadRunWorkflow(root, state)
   const stage = stageBySlug(workflow, invocation.stage.slug)
   // The harness renders the operator brief during submission, so its absence
-  // before submit is expected rather than a defect.
+  // before submit is expected.
   const renderedPath = invocation.output.operator_brief?.rendered_path
   const structural = validateStageOutput(
     root,

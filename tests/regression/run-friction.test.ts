@@ -73,8 +73,6 @@ function editPersonaMappings(
 }
 
 test('an unrecognized criterion verdict is reported, not silently failed', () => {
-  // The validator needs only the stage rubric and an invocation shape, so the
-  // invocation is built synthetically instead of spinning a run up.
   const workflow = loadWorkflow(REPO_ROOT, 'delivery')
   const stage = stageBySlug(workflow, 'plan')
   const scope = {
@@ -293,8 +291,8 @@ test('plan file paths resolve against the workspace root, not the installation',
         approach: 'Fixture',
         components: ['app'],
         files: [
-          // Workspace-relative: resolves against `runState.workspace_root`,
-          // which the installation root would miss under a detached run.
+          // A workspace-relative path resolves against `workspace_root`, not
+          // the installation root.
           { path: 'app/model.py', status: 'modified', purpose: 'core' },
           // An absolute path into a sibling repository, exactly as run
           // 63315's plan 97_plan-2_b898a4d1 declared it.
@@ -377,8 +375,6 @@ test('re-scaffolding an untouched output is idempotent, not an error', () => {
 
   assert.equal(second.status, 'already_scaffolded')
 
-  // Once real work lands in the output, re-scaffolding still refuses without
-  // force.
   const withWork = JSON.parse(
     readFileSync(path.join(root, outputPath), 'utf8'),
   ) as Record<string, unknown>
@@ -440,9 +436,6 @@ test('a persona mapping the run never resolves is not pipeline config drift', ()
   assert.ok(prepared)
   assert.equal(prepared.stage.slug, 'plan')
 
-  // A changed mapping the run does resolve is reported, not fatal: the
-  // operator owns the model choice, and refusing here stranded runs over an
-  // edit the operator had just made on purpose.
   editPersonaMappings(root, (defaults) => {
     defaults.coder = 'gpt-5.4'
   })
@@ -459,9 +452,8 @@ test('a persona mapping the run never resolves is not pipeline config drift', ()
     `expected a coder drift advisory, got ${JSON.stringify(drifted.advisories)}`,
   )
 
-  // The advisory replaced a hard stop, so it is the only drift signal. It has
-  // to survive the prepare process: a supervisor reconciling through
-  // `pan status` after an interruption reads run state, not stdout.
+  // The advisory must reach run state. `pan status` reads run state, not
+  // stdout.
   assert.ok(
     (getRunState(root, changed.run_id).advisories ?? []).some(
       (advisory) =>

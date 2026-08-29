@@ -140,9 +140,7 @@ const root = createCatalogRoot()
 
 test('a valid spec is emitted verbatim in Cursor bracket grammar', () => {
   // Bracket notation is Cursor's documented grammar for the subagent model
-  // field. Every historical rewrite here (flat slugs, key renames, option
-  // reordering) produced strings Cursor silently degraded on. Aliases
-  // (`auto`, `example`) resolve to a catalog model and are echoed as written.
+  // field.
   for (const spec of [
     'example-gpt[context=272k,reasoning=high,fast=false]',
     'example-claude[thinking=true,context=1m,effort=high]',
@@ -161,9 +159,6 @@ test('a valid spec is emitted verbatim in Cursor bracket grammar', () => {
 })
 
 test('parameters are validated per model, not per family', () => {
-  // Parameters are declared per model; every declared parameter is required,
-  // values must be declared, the model must exist, and the bracket spec must
-  // name a declared variant combination rather than merely valid values.
   const rejections: Array<[string, RegExp]> = [
     [
       'example-gpt[context=272k,effort=high,fast=false]',

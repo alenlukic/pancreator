@@ -13,8 +13,8 @@ import {
   writeJsonAtomic,
 } from '../../src/lib/io.js'
 
-// The io helpers are pure filesystem primitives; a bare temporary directory is
-// all they need.
+// The io helpers are pure filesystem primitives, so a bare temporary directory
+// is enough.
 function scratchRoot(): string {
   const root = mkdtempSync(path.join(tmpdir(), 'pan-io-'))
 
@@ -43,8 +43,6 @@ test('repository path resolution rejects escapes and run operations serialize ac
   const result = withOperationMutex(mutex, () => 'ok')
   assert.equal(result, 'ok')
 
-  // A dead operation mutex is removed explicitly for status recovery; a
-  // second clear reports that nothing was left to remove.
   writeFileSync(mutex, '99999999\n')
   assert.equal(clearStaleOperationMutex(mutex), true)
   assert.equal(clearStaleOperationMutex(mutex), false)

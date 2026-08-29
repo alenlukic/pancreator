@@ -51,7 +51,6 @@ test('ship reject with --stage routes to the chosen stage and resets attempts', 
   assert.equal(decided.attempts.ship, undefined)
   assert.equal(decided.consecutive_failures, 0)
 
-  // The rejection feedback is persisted and surfaced to the routed worker.
   assert.ok(decided.operator_feedback)
   const feedback = decided.operator_feedback?.find(
     (item) => item.decision === 'reject' && item.to_stage === 'plan',

@@ -30,7 +30,7 @@ import {
   cloneTree as cloneSharedTree,
 } from '../helpers.js'
 
-/** A verify data payload whose verdict stays consistent with a failed stage. */
+/** A verify payload whose verdict matches a failed stage. */
 export function failingVerify(findingId: string): Record<string, unknown> {
   return {
     verdict: 'fail_remedial',
@@ -60,7 +60,7 @@ export function failingVerify(findingId: string): Record<string, unknown> {
   }
 }
 
-/** Prepare, fill, and submit the current stage's output in one step. */
+/** Prepare, fill, and submit the given stage's output. */
 export function submitStageOutput(
   root: string,
   runId: string,
@@ -96,9 +96,8 @@ export function runWorkflow(root: string, state: RunState): WorkflowDefinition {
 }
 
 /**
- * Prepare (idempotently), fill, and submit whatever stage the run is at, for
- * any workflow. External (claude-code) stages leave the delegation artifact to
- * the harness, the way the executor tests do.
+ * Prepare, fill, and submit whatever stage the run is at, for any workflow.
+ * A claude-code stage leaves the delegation artifact to the harness.
  */
 export function submitCurrentStage(
   root: string,
@@ -136,18 +135,13 @@ export function submitCurrentStage(
   return { invocation, ...submitOutput(root, runId, invocation.output.path) }
 }
 
-// ---------------------------------------------------------------------------
-// Claude Code executor fixture
-// ---------------------------------------------------------------------------
-
 export const CLAUDE_CODE_SPEC =
   'claude-code:claude-opus-5[permission-mode=default,session-resume=true]'
 
 /**
- * Stand-in for the Claude Code CLI. It answers `--version`, treats a positional
- * `-p` prompt as the credential probe, and reads real invocations from stdin —
- * the same interface the executor drives. CLAUDE_STUB_MODE selects the failure
- * being simulated.
+ * Stand-in for the Claude Code CLI. It answers `--version`, treats a
+ * positional `-p` prompt as the credential probe, and reads invocations from
+ * stdin. CLAUDE_STUB_MODE selects the simulated failure.
  */
 const CLAUDE_STUB = `#!/usr/bin/env node
 const args = process.argv.slice(2)
@@ -204,14 +198,13 @@ process.stdin.on('end', () => {
 })
 `
 
-/** Where installClaudeCodeFixture places the stub inside a fixture root. */
 export function claudeStubPath(root: string): string {
   return path.join(root, 'claude-stub.cjs')
 }
 
 /**
- * Route personas to the claude-code executor and install the stub binary,
- * committing both so the workspace stays clean for fingerprinting. Returns the
+ * Route the personas to the claude-code executor and install the stub binary.
+ * Commits both, so the workspace stays clean for fingerprinting. Returns the
  * stub path for PANCREATOR_CLAUDE_BIN.
  */
 export function installClaudeCodeFixture(
@@ -229,9 +222,8 @@ export function installClaudeCodeFixture(
     configs?: Record<string, { personas?: Record<string, string> }>
   }
 
-  // A named entry under `configs` overrides `defaults`, so the routing has to be
-  // cleared there too. Otherwise the fixture silently depends on whichever
-  // `active_config` the checked-in configuration declares.
+  // A named entry under `configs` overrides `defaults`, so clear the routing
+  // there too. Otherwise the fixture depends on the checked-in `active_config`.
   for (const persona of personas) {
     config.defaults[persona] = CLAUDE_CODE_SPEC
 
@@ -243,7 +235,7 @@ export function installClaudeCodeFixture(
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
   syncCursorProjection(root, { write: true })
   execFileSync('git', ['add', 'config.json', 'claude-stub.cjs'], { cwd: root })
-  // Amend rather than commit: the ship-stage release validator requires the
+  // Amend instead of commit. The ship-stage release validator needs the
   // baseline commit to be the one that introduced the current VERSION.
   execFileSync('git', ['commit', '-q', '--amend', '-m', 'fixture'], {
     cwd: root,
@@ -285,44 +277,26 @@ export function withStub<T>(
   }
 }
 
-// ---------------------------------------------------------------------------
-// Run checkpoints
-// ---------------------------------------------------------------------------
-//
-// The harness keeps every piece of run state on disk under the fixture root,
-// and the root holds no absolute paths, so a run driven to a given stage can
-// be copied wholesale. Each checkpoint below is built once per process (by
-// cloning its parent checkpoint and driving the remaining steps) and every
-// `checkpoint()` call hands out a fresh copy-on-write clone of that template.
-// A test that needs a fixture parameter written before the run exists (a
-// repository-checks profile, an involvement profile, briefs) passes a variant;
-// each variant key owns its own template chain.
+// A fixture root holds the whole run state and no absolute path, so a driven
+// run can be cloned. Each variant key owns its own template chain.
 
 type CreateRunOptions = Parameters<typeof createRun>[1]
 
 export interface CheckpointVariant {
-  /** Template cache key; distinct keys never share a template. */
+  /** Template cache key. Distinct keys never share a template. */
   key: string
   /** Fixture edits applied before createRun (repository-checks.json, config). */
   fixture?: (root: string) => void
-  /** createRun option overrides (operatorArtifacts, verification, …). */
   run?: Partial<CreateRunOptions>
-  /**
-   * How the plan gate is decided while driving past it (default: operator
-   * approve). Away-mode tests decide it under away authority so the run's
-   * event log never records an operator decision.
-   */
+  /** How to decide the plan gate. The default is an operator approval. */
   decidePlan?: (root: string, runId: string) => void
 }
 
 export interface CheckpointClone {
   root: string
   runId: string
-  /** The run state as persisted in the clone. */
   state: RunState
-  /** The invocation the clone's run currently points at, when one exists. */
   invocation: Invocation | null
-  /** The run's snapshotted workflow definition. */
   workflow: WorkflowDefinition
 }
 
@@ -350,7 +324,7 @@ export function checksVariant(
 
 interface Family {
   createRun: (root: string, run: Partial<CreateRunOptions>) => RunState
-  /** Wrap every drive step (the claude-code family needs its stub on PATH). */
+  /** Wrap every drive step. The claude-code family needs its stub on PATH. */
   wrap?: <T>(root: string, body: () => T) => T
 }
 
@@ -450,7 +424,6 @@ function approvePlan(
 }
 
 const STEPS: Record<string, StepDefinition> = {
-  // --- delivery -----------------------------------------------------------
   'delivery@created': { parent: null, drive: () => {} },
   'delivery@plan-prepared': { parent: 'delivery@created', drive: prepare },
   'delivery@plan-awaiting-operator': {
@@ -478,8 +451,6 @@ const STEPS: Record<string, StepDefinition> = {
     parent: 'delivery@implement-prepared',
     drive: submitSuccess,
   },
-  // A successful implement lands the run at verify, so verification starts
-  // from a run that really baselined and passed implementation.
   'delivery@verify-prepared': {
     parent: 'delivery@implement-baselined',
     drive: (root, runId) => {
@@ -525,8 +496,6 @@ const STEPS: Record<string, StepDefinition> = {
       assert.equal(getRunState(root, runId).status, 'awaiting_operator')
     },
   },
-
-  // --- delivery under the technical-director contract ---------------------
   'delivery[td]@created': { parent: null, drive: () => {} },
   'delivery[td]@plan-submitted': {
     parent: 'delivery[td]@created',
@@ -544,8 +513,6 @@ const STEPS: Record<string, StepDefinition> = {
     parent: 'delivery[td]@verify-prepared',
     drive: submitSuccess,
   },
-
-  // --- delivery with the planner on claude-code ---------------------------
   'delivery[claude-code:planner]@created': { parent: null, drive: () => {} },
   'delivery[claude-code:planner]@plan-prepared': {
     parent: 'delivery[claude-code:planner]@created',
@@ -558,8 +525,6 @@ const STEPS: Record<string, StepDefinition> = {
       approvePlan(root, runId, variant)
     },
   },
-
-  // --- delivery-candidate -------------------------------------------------
   'delivery-candidate@created': { parent: null, drive: () => {} },
   'delivery-candidate@plan-prepared': {
     parent: 'delivery-candidate@created',
@@ -575,8 +540,6 @@ const STEPS: Record<string, StepDefinition> = {
       )
     },
   },
-
-  // --- prototype ----------------------------------------------------------
   'prototype@created': { parent: null, drive: () => {} },
   'prototype@build-prepared': {
     parent: 'prototype@created',
@@ -688,9 +651,9 @@ function readClone(root: string, runId: string): CheckpointClone {
 }
 
 /**
- * A fresh clone of a run driven to the named checkpoint. The first call per
- * (checkpoint, variant) in a process builds the template; every call returns
- * its own root, so a test may mutate the clone freely.
+ * A fresh clone of a run driven to the named checkpoint. The first call for a
+ * (checkpoint, variant) pair builds the template. Every call returns its own
+ * root, so a test can mutate the clone freely.
  */
 export function checkpoint(
   name: Checkpoint,
