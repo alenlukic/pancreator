@@ -53,9 +53,16 @@ ticker_pid=''
 # signals it has not trapped.
 cleanup() {
   if [[ -n "$ticker_pid" ]]; then
-    kill "$ticker_pid" 2>/dev/null || true
+    stop_ticker
   fi
   rm -f "$stdout_file" "$stderr_file" "$tick_marker"
+}
+
+# The ticker's in-flight sleep is its child. Killing the subshell alone would
+# orphan that sleep, so its children go first, then the subshell.
+stop_ticker() {
+  pkill -P "$ticker_pid" 2>/dev/null || true
+  kill "$ticker_pid" 2>/dev/null || true
 }
 trap cleanup EXIT
 trap 'exit 130' INT
@@ -67,15 +74,23 @@ if progress_enabled; then
   # A dot marks an interval in which the command produced new output, so a
   # stopped dot stream shows the command has gone silent (a likely hang).
   # The ticker also exits on its own when the wrapper is no longer alive.
+  # A sleep that inherited stderr would keep a captured stderr pipe open
+  # after the subshell died, so a fast command cost whoever captured it one
+  # full tick. The sleep therefore holds no inherited stdio, and stop_ticker
+  # kills it before the subshell.
   (
+    # Dots go to a private copy of stderr. The subshell's own stderr goes to
+    # /dev/null so bash's "Terminated" notice for the killed sleep never
+    # reaches the wrapper's caller, and the sleep inherits neither.
+    exec 3>&2 2>/dev/null
     last_bytes=0
-    while sleep "$tick_interval"; do
+    while sleep "$tick_interval" >/dev/null 2>&1 </dev/null 3>&-; do
       kill -0 "$script_pid" 2>/dev/null || exit 0
       stdout_bytes="$(wc -c <"$stdout_file" 2>/dev/null || echo 0)"
       stderr_bytes="$(wc -c <"$stderr_file" 2>/dev/null || echo 0)"
       current_bytes=$((stdout_bytes + stderr_bytes))
       if [[ "$current_bytes" -gt "$last_bytes" ]]; then
-        printf '.' >&2
+        printf '.' >&3
         : >"$tick_marker"
         last_bytes="$current_bytes"
       fi
@@ -90,7 +105,7 @@ status=$?
 set -e
 
 if [[ -n "$ticker_pid" ]]; then
-  kill "$ticker_pid" 2>/dev/null || true
+  stop_ticker
   wait "$ticker_pid" 2>/dev/null || true
   ticker_pid=''
   if [[ -e "$tick_marker" ]]; then
