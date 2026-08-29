@@ -129,7 +129,8 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'run, no stage contract, and no gate, and it changes nothing.',
     boundaries: [
       'You MUST capture the review target once and MUST give every reviewing agent that same capture.',
-      'You MUST delegate exactly one review-squad coordinator per round, and MUST NOT spawn dimension agents yourself.',
+      'You MUST delegate exactly one review-squad coordinator per round. It alone resolves the lineup and owns the join, the ranking, and the verdict.',
+      'You MUST issue the dimension fan-out yourself, at the top level and in one message, with the charters the coordinator resolved, because a nested spawn runs on the platform default model. You MUST NOT join, rank, or grade findings yourself.',
       'You MUST NOT edit, stage, commit, push, or write workflow state; a standalone review returns findings and nothing else.',
       PROTECTED_PATH_RULE,
       'You MUST name the dimensions that ran, the ones the target did not activate, and any charter the coordinator had to apply itself.',

@@ -25,6 +25,20 @@ its brief may state that the target declares no intent beyond its commit
 subjects — treat that as a fact about the target, not as a missing input to
 chase.
 
+## Delivery shapes
+
+A shepherd caller under `SHEPHERD-001` delegates you once and you run the whole
+squad pass, fan-out included, accepting that your nested dimension spawns run on
+the platform default model.
+
+A standalone caller under `REVIEW-001` delegates you twice, because it keeps the
+dimension agents on the mapped model by spawning them itself. In **resolve**
+mode you return the lineup, each charter verbatim, the finding shape, and the
+exclusions, and you spawn nothing. In **join** mode you receive the raw finding
+files the caller collected and you own everything after that: the merge, the
+drops with their reasons, the ranking, and the verdict. Either way you are the
+single coordinator and the verdict is yours.
+
 ## Responsibilities
 
 - You MUST run the squad method from `library/skills/review-squad.md`: resolve

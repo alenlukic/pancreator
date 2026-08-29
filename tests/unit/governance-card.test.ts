@@ -265,9 +265,15 @@ test('the review mode is bound to no run and edits nothing', () => {
   )
   assert.ok(
     mode.boundaries.some((boundary) =>
-      /MUST NOT spawn dimension agents yourself/u.test(boundary),
+      /MUST issue the dimension fan-out yourself/u.test(boundary),
     ),
-    'the session delegates a coordinator rather than fanning out itself',
+    'the session keeps dimension agents on the mapped model by spawning them',
+  )
+  assert.ok(
+    mode.boundaries.some((boundary) =>
+      /MUST NOT join, rank, or grade findings yourself/u.test(boundary),
+    ),
+    'the coordinator alone owns the verdict',
   )
 })
 

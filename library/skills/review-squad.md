@@ -63,9 +63,11 @@ apply.
    workspace path, the intent brief, the dimension charter text, and the
    finding shape. These dimension
    agents are nested spawns, so Cursor runs them on its default model by
-   platform behavior — that is accepted for charter-scoped finding work — and
-   they sit at the nesting limit: a dimension agent MUST NOT spawn further
-   subagents.
+   platform behavior. A shepherd review accepts that for charter-scoped finding
+   work. A standalone session under `REVIEW-001` does not, and issues this
+   fan-out itself at the top level, then returns the raw findings to the
+   coordinator. Either way a dimension agent sits at the nesting limit and MUST
+   NOT spawn further subagents.
 5. When a subagent cannot start, apply that charter yourself before you join the
    results. Do not drop a dimension from a stated lineup without saying so.
 6. Join the findings. Merge duplicates, drop what the intent brief already
