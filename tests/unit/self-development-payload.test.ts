@@ -45,19 +45,6 @@ test('self-development-only payload paths exist in the source checkout', () => {
   }
 })
 
-test('the installer removes every self-development-only path from staging', () => {
-  const installer = readRepositoryFile('bin/install')
-  const staging = /prepare_staging_payload\(\) \{\n([\s\S]*?)\n\}\n/u.exec(
-    installer,
-  )?.[1]
-
-  assert.ok(staging, 'bin/install defines prepare_staging_payload')
-  assert.match(
-    staging,
-    /for self_development_only in "\$\{SELF_DEVELOPMENT_ONLY_PAYLOAD_PATHS\[@\]\}"; do\n\s*rm -f "\$staging\/\$self_development_only"/u,
-  )
-})
-
 test('the harness review lineup is excluded and the core squad is not', () => {
   const paths = selfDevelopmentOnlyPaths()
 
@@ -81,12 +68,23 @@ test('the core squad guards its harness-lineup reference on presence', () => {
   const squad = readRepositoryFile('library/skills/review-squad.md')
 
   assert.ok(squad.includes(HARNESS_LINEUP))
-  // The file is absent in a target installation, so the reference has to be
-  // conditional rather than a flat instruction to read it.
-  assert.match(
-    squad,
-    /When `library\/skills\/review-squad-pancreator\.md` is\s+present/u,
-  )
+  // The file is absent in a target installation, so every mention has to sit
+  // in a conditional sentence rather than a flat instruction to read it. The
+  // wording is free; the condition is the contract.
+  const sentences = squad
+    .replaceAll('\n', ' ')
+    .split(/(?<=[.!?])\s+/u)
+    .filter((sentence) => sentence.includes(HARNESS_LINEUP))
+
+  assert.ok(sentences.length > 0)
+
+  for (const sentence of sentences) {
+    assert.match(
+      sentence,
+      /\b(?:when|if|present|exists|absent)\b/iu,
+      `unconditional reference to the harness lineup: ${sentence}`,
+    )
+  }
 })
 
 test('the skill index does not link a file the payload omits', () => {

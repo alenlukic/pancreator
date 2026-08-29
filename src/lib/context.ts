@@ -399,7 +399,7 @@ interface PassedGateEvidence {
  * for profiles no gate has run yet. A skipped, disabled, or failed gate is not
  * evidence and is left out.
  */
-function passedGateEvidence(state: RunState): PassedGateEvidence[] {
+export function passedGateEvidence(state: RunState): PassedGateEvidence[] {
   const byProfile = new Map<string, PassedGateEvidence>()
 
   for (const item of state.stage_history) {
@@ -455,11 +455,15 @@ function selectGateEvidence(
   }
 
   for (const evidence of passedGateEvidence(state)) {
-    const currency =
-      evidence.fingerprint === workspaceFingerprint
-        ? 'the current workspace'
-        : 'a superseded workspace'
+    const current = evidence.fingerprint === workspaceFingerprint
+    const currency = current
+      ? 'the current workspace'
+      : 'a superseded workspace'
 
+    // VERIFY-001 conditions citation on the profile and the fingerprint. A
+    // superseded artifact is still listed so QA knows the profile once passed,
+    // but the instruction changes: it is not current, and the supervisor, not
+    // QA, owns re-running the gate.
     addReference(references, {
       path: evidence.evidencePath,
       description:
@@ -467,9 +471,13 @@ function selectGateEvidence(
         `(${evidence.origin}) at workspace fingerprint ` +
         `\`${evidence.fingerprint}\` — ${currency}`,
       retrieval: 'conditional',
-      condition:
-        `Cite this evidence instead of re-executing the \`${evidence.profile}\` ` +
-        'profile agent-side. Read it only to confirm what the gate covered.',
+      condition: current
+        ? `Cite this evidence instead of re-executing the \`${evidence.profile}\` ` +
+          'profile agent-side. Read it only to confirm what the gate covered.'
+        : `This evidence predates the current workspace fingerprint ` +
+          `\`${workspaceFingerprint}\`. Do not cite it as current and do not ` +
+          `re-execute the \`${evidence.profile}\` profile yourself; report the ` +
+          'gap to the supervisor, which owns re-running the gate.',
     })
   }
 }

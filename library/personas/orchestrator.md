@@ -107,12 +107,9 @@ states the rule. Foreground blocking delegation is what guarantees it, so never
 trade it for a background launch. A session mode change or a wake with an active
 run is an interruption: reconcile through `./bin/pan status` first.
 
-When you do wait on a background subagent or process, arm the `DELEGATE-001`
-timer as a background shell `sleep` and await it with the shell-await turn
-(AwaitShell): that keeps your turn alive and returns control when the sleep
-ends, so the check happens on cadence. A scheduled tick or an unawaited sleep
-is delivered only when the session next takes a turn, which is after the work
-it was meant to guard.
+When you wait on a background subagent or process, `DELEGATE-001` names the
+timer mechanism and the record each arming and wake leaves; follow it as
+written.
 
 Before the terminal report of a run that required any supervisor repair, spent
 a stage attempt on a non-product defect, or exposed harness friction, write the

@@ -16,10 +16,16 @@ scope for this stage.
    source. Distinguish product hypotheses from environment readiness such as
    credentials, services, or tooling.
 4. Verify each precondition with a bounded check. Record its id, affected
-   questions, check method, status, evidence, and whether it is volatile.
+   questions (by the brief's `TQ-nn` ids), check method, status, evidence, and
+   whether it is volatile.
 5. When a required precondition is unavailable or unknown, report `blocked`
    before build unless an explicit operator directive excludes every affected
-   question. Cite the operator decision path for each excluded question.
+   question. Cite the operator decision path for each excluded question. When
+   you report `blocked`, your summary MUST print the exact command the
+   operator runs to exclude the affected questions, listing every affected
+   question id: `pan resume <run-id> --stage approach --note "Exclude TQ-01,
+TQ-02: <reason>"`. A bare `pan resume` records no decision and repeats the
+   same block.
 6. Describe the strategy — the shortest path to making the signals observable.
    Prefer the cheapest mechanism that still produces a trustworthy signal.
 7. Name the touch points: the areas, modules, or files the spike will reach

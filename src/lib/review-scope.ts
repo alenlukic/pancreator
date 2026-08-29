@@ -263,15 +263,22 @@ export interface StandardsDelta {
   summary_changed: boolean
   removed_instructions: string[]
   added_instructions: string[]
+  /**
+   * Which side failed to parse as a policy record. A malformed file is a
+   * defect to fix, never a wholesale instruction removal for the operator to
+   * weigh, so the instruction lists stay empty when this is set.
+   */
+  malformed: 'base' | 'head' | 'both' | null
 }
 
 function policyFields(text: string | null): {
   id: string | null
   summary: string | null
   instructions: string[]
+  parsed: boolean
 } {
   if (text === null) {
-    return { id: null, summary: null, instructions: [] }
+    return { id: null, summary: null, instructions: [], parsed: true }
   }
 
   let value: unknown
@@ -279,14 +286,15 @@ function policyFields(text: string | null): {
   try {
     value = JSON.parse(text)
   } catch {
-    return { id: null, summary: null, instructions: [] }
+    return { id: null, summary: null, instructions: [], parsed: false }
   }
 
   if (!isRecord(value)) {
-    return { id: null, summary: null, instructions: [] }
+    return { id: null, summary: null, instructions: [], parsed: false }
   }
 
   return {
+    parsed: true,
     id: typeof value.id === 'string' ? value.id : null,
     summary: typeof value.summary === 'string' ? value.summary : null,
     instructions: Array.isArray(value.instructions)
@@ -314,18 +322,41 @@ export function diffPolicyTexts(
   const head = policyFields(headText)
   const baseSet = new Set(base.instructions)
   const headSet = new Set(head.instructions)
+  const malformed =
+    !base.parsed && !head.parsed
+      ? 'both'
+      : !base.parsed
+        ? 'base'
+        : !head.parsed
+          ? 'head'
+          : null
+  const policy =
+    head.id ?? base.id ?? path.replace(/^.*\//u, '').replace(/\.json$/u, '')
+  const status =
+    baseText === null ? 'added' : headText === null ? 'removed' : 'changed'
+
+  if (malformed) {
+    return {
+      policy,
+      path,
+      status,
+      summary_changed: false,
+      removed_instructions: [],
+      added_instructions: [],
+      malformed,
+    }
+  }
 
   return {
-    policy:
-      head.id ?? base.id ?? path.replace(/^.*\//u, '').replace(/\.json$/u, ''),
+    policy,
     path,
-    status:
-      baseText === null ? 'added' : headText === null ? 'removed' : 'changed',
+    status,
     summary_changed: base.summary !== head.summary,
     removed_instructions: base.instructions.filter(
       (item) => !headSet.has(item),
     ),
     added_instructions: head.instructions.filter((item) => !baseSet.has(item)),
+    malformed: null,
   }
 }
 
@@ -427,7 +458,11 @@ export function resolveReviewScope(
     { code: 'REVIEW_BASE_UNRESOLVED' },
   )
 
-  const changedPaths = gitChangedPathsBetween(root, base, head)
+  // Both sides of a rename must appear: a renamed lineup file otherwise
+  // leaves the instrument tier, and a renamed policy loses its removed half.
+  const changedPaths = gitChangedPathsBetween(root, base, head, {
+    detectRenames: false,
+  })
   const conflicts = classifyReviewPaths(changedPaths, buildReviewClosure(root))
 
   if (

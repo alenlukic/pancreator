@@ -5,6 +5,7 @@
   "summary": "A prototype run MUST answer a stated technical question with the fastest credible implementation, MUST declare every shortcut it took, and MUST NOT be represented as production-ready work.",
   "instructions": [
     "A prototype exists to make a technical approach observable. Every stage MUST serve the stated technical questions and MUST NOT expand into adjacent product scope.",
+    "Each technical question in the intake brief MUST be an object with a stable id of the form TQ-nn and its question text. Every later stage MUST name a question by that id only, and the harness MUST reject an intake brief whose questions carry no id.",
     "Design depth MUST be bounded to the decisions the spike actually tests. Agents MUST NOT produce component inventories, interface catalogues, or migration sequencing that the prototype will not exercise.",
     "Deliberate shortcuts are expected and MUST be declared, not hidden. Stubs, hard-coded values, skipped error handling, copied code, and omitted persistence MUST each appear in the record. Each entry MUST state why the shortcut was acceptable for the spike.",
     "Automated test coverage MUST be limited to what keeps the spike honest about its own signals. A prototype MUST NOT be failed for absent production test coverage, and MUST NOT claim coverage it does not have.",

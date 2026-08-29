@@ -1,3 +1,4 @@
+import { passedGateEvidence } from './context.js'
 import { sha256 } from './io.js'
 import { renderPolicyBlocks } from './policy-guidance.js'
 import type {
@@ -1080,6 +1081,29 @@ export function renderStatus(
         '',
         `Fingerprint: ${latest.workspace_fingerprint}`,
         `Artifact: ${latest.artifact_path}`,
+      )
+    }
+  }
+
+  // ORCH-001 makes the supervisor answer for duplicate execution of evidence
+  // the run already holds. This is the inventory that duty needs: the latest
+  // passing execution per profile, marked against the newest recorded
+  // workspace fingerprint so a stale artifact reads as superseded.
+  const gateEvidence = passedGateEvidence(state)
+
+  if (gateEvidence.length > 0) {
+    const latestFingerprint =
+      state.stage_history.at(-1)?.workspace_fingerprint ?? null
+
+    lines.push('', '## Gate evidence', '')
+
+    for (const evidence of gateEvidence) {
+      const currency =
+        evidence.fingerprint === latestFingerprint ? 'current' : 'superseded'
+
+      lines.push(
+        `- ${evidence.profile}: passed at ${evidence.fingerprint} ` +
+          `(${evidence.origin}) — ${evidence.evidencePath} [${currency}]`,
       )
     }
   }

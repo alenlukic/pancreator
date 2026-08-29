@@ -50,7 +50,9 @@ apply.
 
 1. Capture the review target once to a scratch file: under the run's runtime
    directory when a run owns the review, and beside the governance card when a
-   standalone session does. Every dimension agent reads that same captured diff.
+   standalone session does. The coordinator captures when a run owns the
+   review; the session captures for a standalone review. Every dimension agent
+   reads that same captured diff.
 2. Read whatever states the intent — the card, the plan, the acceptance
    criteria, the implementation record, or, for a standalone target, its commit
    subjects and the operator's request. Write a short intent brief: what the
@@ -69,14 +71,18 @@ apply.
    coordinator. Either way a dimension agent sits at the nesting limit and MUST
    NOT spawn further subagents.
 5. When a subagent cannot start, apply that charter yourself before you join the
-   results. Do not drop a dimension from a stated lineup without saying so.
+   results. Do not drop a dimension from a stated lineup without saying so. A
+   standalone session reports an undelivered charter to the coordinator at
+   join time rather than applying it.
 6. Join the findings. Merge duplicates, drop what the intent brief already
-   answers, then rank.
+   answers, then rank. Under `REVIEW-001` the session does not do this: it
+   returns the raw findings to the coordinator, which joins them in join mode.
 7. Judge the ranked set as the coordinator: repair what falls inside your
    remediation boundary, amend any acceptance criterion the findings prove
    unworkable as written, and route the rest. Criterion amendment belongs to
    the coordinator, never to a dimension agent. A standalone review has no
-   remediation boundary and no criteria to amend, so it routes everything.
+   remediation boundary and no criteria to amend, so the coordinator routes
+   everything and the session acts on nothing.
 
 ### Repeat reviews
 

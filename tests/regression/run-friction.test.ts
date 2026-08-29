@@ -6,6 +6,7 @@ import test from 'node:test'
 
 import {
   createRun,
+  getRunState,
   prepareInvocation,
   setRunStage,
   submitOutput,
@@ -478,5 +479,20 @@ test('a changed mapping the run does resolve is advisory, not a stop', () => {
         advisory.includes('live model mapping changed'),
     ),
     `expected a coder drift advisory, got ${JSON.stringify(prepared.advisories)}`,
+  )
+
+  // The advisory replaced a hard stop, so it is the only drift signal. It has
+  // to survive the prepare process: a supervisor reconciling through
+  // `pan status` after an interruption reads run state, not stdout.
+  const reloaded = getRunState(root, state.run_id)
+
+  assert.ok(
+    (reloaded.advisories ?? []).some(
+      (advisory) =>
+        advisory.kind === 'pipeline_config' &&
+        advisory.source === 'prepare' &&
+        advisory.message.includes('coder'),
+    ),
+    'the prepare-time pipeline advisory must persist to run state',
   )
 })

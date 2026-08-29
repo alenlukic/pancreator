@@ -556,15 +556,66 @@ function declaredQuestionIds(input: HandlerInput): Set<string> | null {
 
   const ids = new Set<string>()
 
+  // Only a contracted id counts. A bare string would make the identifier the
+  // whole sentence, which no later stage can be expected to reproduce.
   for (const question of brief.technical_questions) {
-    if (nonEmptyString(question)) {
-      ids.add(question)
-    } else if (isRecord(question) && nonEmptyString(question.id)) {
+    if (isRecord(question) && nonEmptyString(question.id)) {
       ids.add(question.id)
     }
   }
 
   return ids
+}
+
+/**
+ * The intake brief is where the question identifier is born. Every later
+ * stage names a question by id, so an entry without one fails here rather
+ * than at the evaluate gate, where the evaluator could only guess.
+ */
+function validateIntakeOutput(
+  value: Record<string, unknown>,
+): HandlerResult['issues'] {
+  const issues: HandlerResult['issues'] = []
+  const data = isRecord(value.data) ? value.data : {}
+  const brief = isRecord(data.prototype_brief) ? data.prototype_brief : null
+  const questions = Array.isArray(brief?.technical_questions)
+    ? brief.technical_questions
+    : []
+  const seen = new Set<string>()
+
+  for (const [index, question] of questions.entries()) {
+    if (!isRecord(question) || !nonEmptyString(question.id)) {
+      issues.push(
+        issue(
+          'prototype.question_id',
+          `data.prototype_brief.technical_questions[${index}] MUST be an object with a non-empty id (TQ-nn) and question`,
+        ),
+      )
+      continue
+    }
+
+    if (!nonEmptyString(question.question)) {
+      issues.push(
+        issue(
+          'prototype.question_id',
+          `data.prototype_brief.technical_questions[${index}] (${question.id}) MUST carry the question text`,
+        ),
+      )
+    }
+
+    if (seen.has(question.id)) {
+      issues.push(
+        issue(
+          'prototype.question_id',
+          `data.prototype_brief.technical_questions[${index}] repeats id ${question.id}`,
+        ),
+      )
+    }
+
+    seen.add(question.id)
+  }
+
+  return issues
 }
 
 /** Question ids an environment blocker names, under either field spelling. */
@@ -789,11 +840,6 @@ export function validatePrototypeOutput(input: HandlerInput): HandlerResult {
   }
 
   const slug = stageSlug(input)
-
-  if (slug === 'intake') {
-    return { status: 'passed', issues: [] }
-  }
-
   const value = readJson(path.join(input.root, input.targetPath))
 
   if (!isRecord(value)) {
@@ -806,6 +852,9 @@ export function validatePrototypeOutput(input: HandlerInput): HandlerResult {
   let issues: HandlerResult['issues'] = []
 
   switch (slug) {
+    case 'intake':
+      issues = validateIntakeOutput(value)
+      break
     case 'approach':
       issues = validateApproachOutput(input, value)
       break

@@ -12,7 +12,10 @@ does not enumerate features.
 2. State the objective in one or two sentences: the technical approach or
    design being tested, not the feature that would eventually ship.
 3. Write the technical questions the spike must answer. Each one must be
-   decidable by looking at a running result, not by argument.
+   decidable by looking at a running result, not by argument. Give each one a
+   stable id of the form `TQ-01`, `TQ-02`, and write the entry as
+   `{ "id": "TQ-01", "question": "..." }`. Every later stage names a question
+   by that id and never by its text.
 4. For each question, name at least one observable success signal — something
    the spike will produce that shows the answer.
 5. List the shortcuts that are acceptable in advance: what the spike may stub,
@@ -26,7 +29,10 @@ does not enumerate features.
 ## Output
 
 Populate `data.prototype_brief` (`objective`, `technical_questions`,
-`success_signals`, `acceptable_shortcuts`, `out_of_scope`). When
+`success_signals`, `acceptable_shortcuts`, `out_of_scope`). Each
+`technical_questions` entry MUST be an object with a non-empty `id` and
+`question` (`PROTO-001`); the harness rejects a bare string, because the evaluator has no
+other way to learn the identifier it must answer. When
 `output.operator_brief` exists, edit its declared source and reference the
 rendered HTML. Do not run the renderer. When the contract omits
 `output.operator_brief`, do not create either brief file.

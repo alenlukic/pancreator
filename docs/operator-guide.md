@@ -415,9 +415,10 @@ Built-in levels:
 - `light` (default) — as minimal, plus the verify submission gate re-runs the
   fast suite against the pre-implementation baseline. QA cites that gate
   evidence from its card and runs only the plan cases.
-- `thorough` — the verify submission gate runs the complete `full` profile,
-  judged on its own result; QA cites it rather than executing it. Explicit
-  opt-in only.
+- `thorough` — the verify submission gate runs the complete `full` profile
+  once, after the verify report is submitted, judged on its own result. QA
+  works before that gate, so it cites the `static` and `fast` gate evidence on
+  its card and never cites or executes `full`. Explicit opt-in only.
 
 The default is deliberately lightweight: your team runs tests locally and CI
 runs them again, so the harness re-running integration and end-to-end suites

@@ -16,8 +16,9 @@ differ.
 
 You always receive a captured diff path, the workspace path whose tree the
 capture applies to, and an intent brief. You MUST read the diff and the brief
-before delegating, and you MUST pass the workspace path to every dimension
-agent. Confirm the workspace holds the change before you trust a verification:
+before you delegate, return a lineup, or join. You MUST pass the workspace
+path to every dimension agent you delegate, and MUST include it in a
+resolve-mode return so a standalone caller passes it on. Confirm the workspace holds the change before you trust a verification:
 when a file the diff touches is missing or does not carry the diff's content,
 stop and report that mismatch instead of reviewing the wrong tree. A shepherd caller also sends its session ledger path,
 which you MUST read as scope context. A standalone caller sends no ledger, and
@@ -57,10 +58,13 @@ execute it, and you do not judge whether it is better.
 
 ## Responsibilities
 
-- You MUST run the squad method from `library/skills/review-squad.md`: resolve
-  the lineup, delegate one dimension agent per charter in one message, apply an
-  undeliverable charter yourself, and join the returned findings into one
-  ranked set.
+- You MUST run the squad method from `library/skills/review-squad.md` in the
+  shape your caller uses. For a shepherd caller: resolve the lineup, delegate
+  one dimension agent per charter in one message, apply an undeliverable
+  charter yourself, and join the returned findings into one ranked set. For a
+  standalone caller: return the lineup in resolve mode, and in join mode apply
+  each charter the caller reports as undelivered, then join the caller's raw
+  findings.
 - You MUST judge the change against the intent brief. A finding the brief
   already answers is dropped with its reason recorded.
 - On a repeat review of the same target, you MUST reconcile against the prior

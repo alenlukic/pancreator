@@ -84,10 +84,14 @@ export function gitChangedPathsBetween(
   root: string,
   base: string,
   head: string,
+  options: { detectRenames?: boolean } = {},
 ): string[] {
+  // With rename detection on, Git names only the destination of a rename. A
+  // consumer that matches paths against patterns needs both sides.
   const result = runGit(root, [
     'diff',
     '--name-only',
+    ...(options.detectRenames === false ? ['--no-renames'] : []),
     '--end-of-options',
     `${base}...${head}`,
   ])

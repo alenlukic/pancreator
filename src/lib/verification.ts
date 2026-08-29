@@ -54,11 +54,12 @@ export const BUILT_IN_VERIFICATION_LEVELS: Record<string, VerificationLevel> = {
   },
   thorough: {
     summary:
-      'The verify submission gate runs the complete full profile once per ' +
-      'attempt; QA cites that gate evidence instead of executing it. ' +
-      'Explicit operator opt-in: the full profile is never baselined before ' +
-      'implementation, so a pre-existing failure fails the gate and needs ' +
-      'an operator decision.',
+      'The verify submission gate runs the complete full profile once, ' +
+      'after the verify report is submitted. QA cites the static and fast ' +
+      'gate evidence on its card and MUST NOT cite or execute the full ' +
+      'profile, which has not run when QA works. Explicit operator opt-in: ' +
+      'the full profile is never baselined before implementation, so a ' +
+      'pre-existing failure fails the gate and needs an operator decision.',
     gates: {},
   },
 }

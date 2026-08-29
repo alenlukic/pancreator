@@ -1247,7 +1247,14 @@ function applyTransition(
       state,
       'Workflow needs operator input',
       state.pause_reason,
-      [`Resume with: ${panCommand(root)} resume ${state.run_id}`],
+      [
+        `Resume with: ${panCommand(root)} resume ${state.run_id}`,
+        // A bare resume re-prepares the same stage against the same facts. A
+        // blocked precondition or an open question clears only through a
+        // recorded operator decision, and the note is what records one.
+        `Or resume with a directive the stage can act on: ${panCommand(root)} ` +
+          `resume ${state.run_id} --stage ${stage.slug} --note "<directive>"`,
+      ],
     )
     return
   }
@@ -1431,7 +1438,7 @@ export function probeRunInvocationModel(
   root: string,
   runId: string,
   invocationId: string,
-): RunModelEvidence {
+): RunModelEvidence & { advisories: string[] } {
   return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
 
@@ -1506,8 +1513,34 @@ export function probeRunInvocationModel(
 
     // The probe records what Cursor reported and succeeds either way. An
     // unavailable or mismatched result is a fact the supervisor weighs, and
-    // failing here would halt a run over model bookkeeping alone.
-    return evidence
+    // failing here would halt a run over model bookkeeping alone. It is
+    // recorded as an advisory so `pan status` recovers it after an
+    // interruption, the way the supervisor-evidence path already does.
+    const advisories = error
+      ? recordRunAdvisories(
+          state,
+          {
+            kind: 'model_evidence',
+            source: 'probe',
+            stage: invocation.stage.slug,
+            invocation_id: invocationId,
+          },
+          [error],
+        )
+      : []
+
+    if (advisories.length > 0) {
+      persistRun(root, state, 'model_evidence_advisory', {
+        invocation_id: invocationId,
+        stage: invocation.stage.slug,
+        advisories: advisories.map((advisory) => advisory.message),
+      })
+    }
+
+    return {
+      ...evidence,
+      advisories: advisories.map((advisory) => advisory.message),
+    }
   })
 }
 
@@ -2225,6 +2258,26 @@ export function prepareInvocation(
     // snapshot, and loading it validates every persona in every named config.
     const pipelineConfig = loadRunPipelineConfig(root, state)
     const advisories = runPipelineConfigAdvisories(root, state, pipelineConfig)
+
+    // The advisory replaced a run-halting invariant, so it is the only signal
+    // that the live mapping drifted from the run snapshot. It has to survive
+    // this process: a supervisor that reconciles through `pan status` after
+    // an interruption must still see it.
+    if (advisories.length > 0) {
+      recordRunAdvisories(
+        state,
+        {
+          kind: 'pipeline_config',
+          source: 'prepare',
+          ...(state.current_stage ? { stage: state.current_stage } : {}),
+        },
+        advisories,
+      )
+      persistRun(root, state, 'pipeline_config_advisory', {
+        stage: state.current_stage,
+        advisories,
+      })
+    }
 
     if (options.operatorArtifacts) {
       const stageSlug = state.current_stage

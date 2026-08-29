@@ -239,6 +239,11 @@ interface BaseConductBlock {
   base: string
   head: string
   policies: BaseConductPolicy[]
+  /**
+   * Conduct-tier paths whose base text cannot be inlined: guidance files and
+   * registries. Each names the command that yields its base text.
+   */
+  other_conduct: string[]
   /** Instrument-tier paths the squad must not grade. */
   excluded: string[]
   /** Substrate paths that taint verification. */
@@ -248,11 +253,20 @@ interface BaseConductBlock {
 function baseConductBlock(root: string, scope: ReviewScope): BaseConductBlock {
   const tiers = conflictsByTier(scope.conflicts)
   const policies: BaseConductPolicy[] = []
+  const otherConduct: string[] = []
 
-  for (const conflict of [...tiers.instrument, ...tiers.conduct]) {
+  // The base-revision remedy binds conduct only. An instrument policy is
+  // excluded from the squad verdict and graded by the independent reviewer;
+  // rendering its base text under a heading that governs conduct would leave
+  // the session with two protocols and no rule for choosing.
+  for (const conflict of tiers.conduct) {
     const match = /^governance\/policies\/([^/]+)\.json$/u.exec(conflict.path)
 
     if (!match) {
+      // Guidance and registry rows change what binds the reviewer without
+      // being a policy file. Their base text is not inlined, but the path and
+      // the command that yields it are, so the remedy never goes silent.
+      otherConduct.push(conflict.path)
       continue
     }
 
@@ -290,6 +304,7 @@ function baseConductBlock(root: string, scope: ReviewScope): BaseConductBlock {
     base: scope.base,
     head: scope.head,
     policies,
+    other_conduct: otherConduct,
     excluded: tiers.instrument.map((item) => item.path),
     tainted: tiers.substrate.map((item) => item.path),
   }
@@ -311,9 +326,12 @@ function renderBaseConduct(block: BaseConductBlock): string[] {
     '',
   ]
 
-  if (block.policies.length === 0) {
+  if (block.policies.length === 0 && block.other_conduct.length === 0) {
+    lines.push('No conduct conflict exists between base and head.', '')
+  } else if (block.policies.length === 0) {
     lines.push(
-      'No conduct policy on this card changes between base and head.',
+      'Every conduct conflict on this card is listed below; none of them is ' +
+        'a policy file whose text can be inlined.',
       '',
     )
   }
@@ -329,6 +347,16 @@ function renderBaseConduct(block: BaseConductBlock): string[] {
     lines.push(
       '_Guidance digests are not rendered for a base text; open the base ' +
         'file if the guidance itself is under review._',
+      '',
+    )
+  }
+
+  for (const conductPath of block.other_conduct) {
+    lines.push(
+      `**\`${conductPath}\` · base text not inlined**`,
+      '',
+      `Read it with \`git show ${block.base.slice(0, 12)}:${conductPath}\` ` +
+        'before you apply this guidance; the head text is under review.',
       '',
     )
   }
@@ -371,7 +399,11 @@ function renderGovernanceCardMarkdown(options: {
     ...requirements.validation_requirements,
   ].filter((requirement) => requirement.executor !== 'harness')
 
-  const policyBlocks = renderPolicyBlocks(policies, 3)
+  const policyBlocks = renderPolicyBlocks(
+    policies,
+    3,
+    new Set((options.baseConduct?.policies ?? []).map((policy) => policy.id)),
+  )
 
   return `${[
     `# 🤝 ${mode.title}`,
@@ -454,6 +486,21 @@ export function buildGovernanceCard(
     { code: 'UNKNOWN_STANDALONE_MODE' },
   )
 
+  // Option invariants run before any side effect, so a rejected invocation
+  // never leaves a worktree behind.
+  invariant(
+    !options.baseRef || options.mode === 'review',
+    '--base applies to the review mode only.',
+    { code: 'INVALID_GOVERNANCE_CARD_OPTION' },
+  )
+  invariant(
+    !options.targetRef || options.baseRef,
+    '--target requires --base.',
+    {
+      code: 'INVALID_GOVERNANCE_CARD_OPTION',
+    },
+  )
+
   if (options.requestPath) {
     invariant(
       fileExists(resolveInside(root, options.requestPath)),
@@ -491,11 +538,6 @@ export function buildGovernanceCard(
       path.join(root, 'runtime', 'logs', 'sessions'),
       keywordRunSuffix(options.mode),
     )}/${options.mode}-card.md`
-  invariant(
-    !options.baseRef || options.mode === 'review',
-    '--base applies to the review mode only.',
-    { code: 'INVALID_GOVERNANCE_CARD_OPTION' },
-  )
 
   const baseConduct = options.baseRef
     ? baseConductBlock(

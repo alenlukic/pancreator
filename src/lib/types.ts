@@ -1227,7 +1227,7 @@ export interface OperatorFeedbackItem {
 export interface RunAdvisory {
   kind: 'model_evidence' | 'pipeline_config'
   /** Which harness operation observed the condition. */
-  source: 'prepare' | 'submit' | 'supervisor_evidence'
+  source: 'prepare' | 'probe' | 'submit' | 'supervisor_evidence'
   stage?: string
   invocation_id?: string
   message: string
