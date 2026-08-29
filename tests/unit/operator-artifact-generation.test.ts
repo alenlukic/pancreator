@@ -3,11 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import {
-  createRun,
-  prepareInvocation,
-  submitOutput,
-} from '../../src/lib/engine.js'
+import { prepareInvocation } from '../../src/lib/engine.js'
 import { generateOperatorArtifacts } from '../../src/lib/operator-artifact-generation.js'
 import {
   generatedOperatorBrief,
@@ -17,9 +13,11 @@ import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
+  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
+  submitAsSupervisor,
 } from '../helpers.js'
 
 test('every workflow artifact profile maps canonical data into required sections', () => {
@@ -71,7 +69,7 @@ function submitSuppressedPlan(root: string): {
 
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
-  submitOutput(root, state.run_id, invocation.output.path)
+  submitAsSupervisor(root, state.run_id, invocation.output.path)
 
   return { runId: state.run_id, invocationId: invocation.invocation_id }
 }

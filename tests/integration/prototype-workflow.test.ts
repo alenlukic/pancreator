@@ -2,18 +2,15 @@ import assert from 'node:assert/strict'
 import path from 'node:path'
 import test from 'node:test'
 
-import {
-  createRun,
-  decideRun,
-  prepareInvocation,
-  submitOutput,
-} from '../../src/lib/engine.js'
+import { decideRun, prepareInvocation } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
+  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
+  submitAsSupervisor,
 } from '../helpers.js'
 import type { StageDefinition, StageOutcome } from '../../src/lib/types.js'
 import { checkpoint, checksVariant } from './delivery-helpers.js'
@@ -66,7 +63,7 @@ function submitStage(
 
   return {
     invocation,
-    submitted: submitOutput(root, runId, invocation.output.path),
+    submitted: submitAsSupervisor(root, runId, invocation.output.path),
   }
 }
 
@@ -238,7 +235,7 @@ test('a blocked approach result routes the run to paused', () => {
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
 
-  const submitted = submitOutput(root, runId, invocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
   assert.equal(submitted.state.status, 'paused')
   assert.equal(submitted.state.current_stage, 'approach')
@@ -305,7 +302,7 @@ test('operator-authorized narrowing lets approach advance to build', () => {
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
 
-  const submitted = submitOutput(root, runId, invocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
   assert.equal(submitted.state.status, 'running')
   assert.equal(submitted.state.current_stage, 'build')
@@ -358,7 +355,7 @@ test('environment_blocked evaluation waits at the operator gate', () => {
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
 
-  const submitted = submitOutput(root, runId, invocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
   assert.equal(submitted.state.status, 'awaiting_operator')
   assert.equal(submitted.record.outcome, 'success')

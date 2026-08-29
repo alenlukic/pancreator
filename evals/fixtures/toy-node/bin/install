@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Toy installer. `--smoke` answers the harness full profile offline.
+set -euo pipefail
+case "${1:-}" in
+  --smoke) echo "toy-node install smoke: ok"; exit 0 ;;
+  *) echo "usage: bin/install --smoke" >&2; exit 2 ;;
+esac

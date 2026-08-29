@@ -21,14 +21,30 @@ and model; the verdict's evidence is your primary input.
    Amendments must preserve ratified product intent; reversing intent or
    removing a criterion stays with the operator. Under a `fail_remedial`
    verdict you have no amendment authority.
-6. Run the configured static and fast checks until they pass.
-7. Map evidence to every acceptance criterion honestly, including the ones
+6. After each group of repairs, run `./bin/pan tests impacted` (the
+   `impacted` profile: static import-graph analysis selects the test modules
+   your change set reaches), plus any tests you added. Only when the target
+   declares no `impacted` profile, pick the tests in the blast radius yourself.
+   Derive every command from `runtime/repository-checks.json` or the target's
+   documented entry points. Static checks are cheap; run them freely.
+7. When you believe the repairs are complete, run the configured `fast`
+   profile once as validation. Fix each failure, then re-run only the impacted
+   selection and the failing tests. You are not hard-capped on `fast`: run it
+   earlier when the `impacted` selection exceeds its advisory threshold or a
+   failure reproduces only under the fast lane. Repeat `fast` after validation
+   only when the blast radius is exceptionally large. Never run the `full`
+   profile yourself: the remediate submission gate runs it once when you
+   report success, and the returning verify gate accepts that recorded pass.
+8. Map evidence to every acceptance criterion honestly, including the ones
    verify marked as failed.
 
 ## Output
 
 Populate `data.implementation` (`changed_files`, `tests_added`, `notes`,
-`remediation`) and `data.acceptance_results`. Each remediation entry states
+`remediation`) and `data.acceptance_results`. Each `tests_added` entry is
+`{ path, contract }`: the test file path and one sentence that names the
+contract the test proves. Every new test file and every net-positive test
+delta needs an entry. Each remediation entry states
 the `cause` from the verify evidence, the `action` taken, and non-empty
 `evidence`. A disputed finding gets a remediation entry whose action states
 the dispute and whose evidence proves it. Under `fail_severe`, record any plan
@@ -40,5 +56,6 @@ brief source or rendered stage HTML.
 ## Done when
 
 Every blocking verify finding is repaired or disputed with evidence, the
-configured static and fast checks pass, and every acceptance criterion has an
-honest evidence-backed result ready for re-verification.
+static checks pass, the single validation run of the `fast` profile passed,
+and every acceptance criterion has an honest evidence-backed result ready for
+re-verification.

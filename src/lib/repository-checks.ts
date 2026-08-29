@@ -11,6 +11,28 @@ import type {
   RepositoryCheckDelta,
   RepositoryCheckDiagnostic,
 } from './types.js'
+import { TEST_PROFILE_ENV } from './suite-profile.js'
+
+/**
+ * The environment a profile command runs in. The harness process environment
+ * is the base. `PAN_TEST_PROFILE` never leaks from an outer test run: a gate
+ * that does not set it runs with it removed, so only the profiled full gate
+ * writes a suite profile.
+ */
+function profileCommandEnv(
+  env: Record<string, string>,
+): Record<string, string | undefined> {
+  const merged: Record<string, string | undefined> = {
+    ...process.env,
+    ...env,
+  }
+
+  if (!(TEST_PROFILE_ENV in env)) {
+    delete merged[TEST_PROFILE_ENV]
+  }
+
+  return merged
+}
 
 const DEFAULT_TIMEOUT_MS = 600_000
 const MAX_CAPTURE_BYTES = 10 * 1024 * 1024
@@ -71,6 +93,12 @@ export interface RepositoryCheckRunOptions {
    * checkout.
    */
   workspace?: string
+  /**
+   * Extra environment variables for the profile commands, layered over the
+   * harness process environment. A gate uses this to hand the test reporter
+   * its profile target.
+   */
+  env?: Record<string, string>
 }
 
 export interface RepositoryCheckStreamingOptions extends RepositoryCheckRunOptions {
@@ -905,6 +933,7 @@ function execute(
   command: string,
   workspaceRoot: string,
   timeoutMs: number,
+  env: Record<string, string> = {},
 ): RepositoryCheckCommandResult {
   const startedAt = Date.now()
   const result = spawnSync(command, {
@@ -913,7 +942,7 @@ function execute(
     shell: true,
     maxBuffer: MAX_CAPTURE_BYTES,
     timeout: timeoutMs,
-    env: { ...process.env },
+    env: profileCommandEnv(env),
   })
 
   return {
@@ -948,7 +977,7 @@ function executeStreaming(
       cwd: workspaceRoot,
       shell: true,
       stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env },
+      env: profileCommandEnv(options.env ?? {}),
     })
     let stdout = ''
     let stderr = ''
@@ -1090,7 +1119,13 @@ export function runRepositoryCheck(
     ...(profile.environment_probes ?? []),
     ...profile.probes,
   ]) {
-    const result = execute('probe', command, workspaceRoot, timeoutMs)
+    const result = execute(
+      'probe',
+      command,
+      workspaceRoot,
+      timeoutMs,
+      options.env,
+    )
     results.push(result)
 
     if (!result.passed) {
@@ -1114,7 +1149,13 @@ export function runRepositoryCheck(
   let commandsPassed = true
 
   for (const command of profile.commands) {
-    const result = execute('command', command, workspaceRoot, timeoutMs)
+    const result = execute(
+      'command',
+      command,
+      workspaceRoot,
+      timeoutMs,
+      options.env,
+    )
     results.push(result)
 
     if (!result.passed) {

@@ -22,6 +22,10 @@ implementation, joint verification evidence, and current workspace.
    evidence, an amended criterion, or a demoted warning as an ordinary pass.
 6. Summarize scope, changed files, validation performed, residual risks, and
    rollback guidance.
+   Read the `Suite profile` section of this card when it exists. Carry its
+   test count, wall clock, and delta into `release.validation` as advisory
+   text. The profile gates nothing. A card without the section records no
+   profile; state that and continue.
 7. When Git metadata is available, draft a proposed commit message that
    accurately describes the diff.
 8. When `output.operator_brief` exists, apply the PR-description procedure

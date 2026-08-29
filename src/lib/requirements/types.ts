@@ -31,6 +31,7 @@ export type InvocationKind =
   | 'shepherd'
   | 'review'
   | 'best_of_n'
+  | 'supervisor'
 
 export interface RequirementContext {
   persona: string

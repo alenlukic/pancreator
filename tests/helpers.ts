@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import {
+  chmodSync,
   cpSync,
   existsSync,
   mkdirSync,
@@ -11,10 +12,21 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 import { renderBrief } from '../src/lib/briefs.js'
+import {
+  createRun as createEngineRun,
+  submitOutput,
+} from '../src/lib/engine.js'
+import type { OperationProgressOptions } from '../src/lib/engine.js'
+import {
+  attestSupervisorCard as attestEngineSupervisorCard,
+  buildSupervisorCard,
+} from '../src/lib/governance/supervisor-card.js'
 import { readHarnessConfig } from '../src/lib/project-config.js'
 import { syncCursorProjection } from '../src/lib/projection.js'
 import { resolveRunLayout } from '../src/lib/run-layout.js'
+import { loadState } from '../src/lib/state.js'
 import { nextSemanticVersion } from '../src/lib/versioning.js'
+import { recordForegroundReturn } from '../src/lib/watch.js'
 
 import type {
   Invocation,
@@ -214,6 +226,7 @@ export function createFixture(): string {
         private: true,
         type: 'module',
         scripts: {
+          check: 'node -e "process.exit(0)"',
           lint: 'node -e "process.exit(0)"',
           test: 'node -e "process.exit(0)"',
           'test:coverage': 'node -e "process.exit(0)"',
@@ -224,6 +237,12 @@ export function createFixture(): string {
       2,
     ),
   )
+  // The self-development template's full profile also runs the installer
+  // smoke harness; the fixture answers with a passing stub so a full gate
+  // (verify and remediate submission) can pass without the real installer.
+  mkdirSync(path.join(root, 'bin'), { recursive: true })
+  writeFileSync(path.join(root, 'bin', 'install'), '#!/bin/sh\nexit 0\n')
+  chmodSync(path.join(root, 'bin', 'install'), 0o755)
 
   syncCursorProjection(root, { write: true })
 
@@ -985,6 +1004,91 @@ export function attachTargetInstructionEvidence(
       final_line: finalLineOf(readFileSync(path.join(root, readPath), 'utf8')),
     })),
   }
+}
+
+/**
+ * Attest the run's current supervisor card, the way a compliant supervisor does
+ * after reading it. `pan prepare` and `pan submit` refuse an unattested card.
+ */
+export function attestRunCard(root: string, runId: string): void {
+  const card = buildSupervisorCard(root, runId)
+
+  attestEngineSupervisorCard(root, runId, card.sha256)
+}
+
+/**
+ * Create a run and attest its supervisor card. Tests drive runs as the
+ * supervisor, so they carry the supervisor's attestation duty; the engine
+ * function itself renders the card and leaves it unattested.
+ */
+export function createRun(
+  root: string,
+  options: Parameters<typeof createEngineRun>[1],
+): RunState {
+  const state = createEngineRun(root, options)
+
+  attestRunCard(root, state.run_id)
+
+  // The attestation advanced the persisted revision, so hand back the state
+  // the disk holds rather than the pre-attestation object.
+  return loadState(root, state.run_id)
+}
+
+/**
+ * Record the foreground-return attestation a compliant supervisor writes after
+ * a Cursor worker launch returns. DELEGATE-001 requires it, or a completed
+ * `pan watch` record, for every Cursor worker invocation, and `pan submit`
+ * refuses with `DELEGATION_UNOBSERVED` otherwise. An external-executor
+ * invocation is exempt because `pan delegate` writes its own evidence. A run
+ * without a current invocation gets no record, so the submission reports its
+ * own error.
+ */
+export function attestForegroundReturn(root: string, runId: string): void {
+  let current: RunState['current_invocation']
+
+  try {
+    current = loadState(root, runId).current_invocation
+  } catch {
+    return
+  }
+
+  if (!current) {
+    return
+  }
+
+  const invocationAbsolute = path.join(root, current.json_path)
+
+  if (!existsSync(invocationAbsolute)) {
+    return
+  }
+
+  const invocation = JSON.parse(
+    readFileSync(invocationAbsolute, 'utf8'),
+  ) as Invocation
+  const executor = invocation.stage.persona_executor ?? 'cursor'
+
+  if (executor !== 'cursor') {
+    return
+  }
+
+  recordForegroundReturn(root, runId, { invocationId: current.id })
+}
+
+/**
+ * Submit a stage output the way a supervisor does: attest the foreground
+ * return of the current worker launch, then run the submission. Tests that
+ * drive a run through submit MUST use this helper; a test of the
+ * `DELEGATION_UNOBSERVED` refusal itself calls `submitOutput` directly.
+ */
+export function submitAsSupervisor(
+  root: string,
+  runId: string,
+  outputPath: string,
+  options: OperationProgressOptions = {},
+): ReturnType<typeof submitOutput> {
+  attestForegroundReturn(root, runId)
+
+  return submitOutput(root, runId, outputPath, options)
 }
 
 /** The read attestation a worker owes for a referenced invocation contract. */

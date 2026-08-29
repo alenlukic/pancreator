@@ -1,0 +1,16 @@
+{
+  "name": "toy-node",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Toy target repository for Pancreator evals. Every script is fast and offline.",
+  "scripts": {
+    "build": "node -e \"process.exit(0)\"",
+    "lint": "node --check src/greet.mjs && node --check tests/greet.test.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "test:secondary": "node -e \"process.exit(0)\"",
+    "test:coverage": "node --test tests/*.test.mjs",
+    "check": "npm run lint && npm test",
+    "validate": "node -e \"process.exit(0)\""
+  }
+}

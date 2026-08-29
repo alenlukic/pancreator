@@ -23,25 +23,72 @@ test('a config without a verification block gets the built-in levels and the lig
   )
 })
 
-test('the built-in levels never run the full profile by default', () => {
-  // The default level must be lightweight: `full` may only run when the
-  // operator explicitly selects a level whose gates name it. No built-in
-  // level remaps a gate onto `full`, and only `thorough` (explicit opt-in)
-  // leaves the workflow-declared `full` gate in place.
+test('the default light level maps the verify and remediate submission gates to full', () => {
+  // The full profile runs only as a submission gate: once at verify on a
+  // passing verdict, once at remediate when the repair is ready to ship. No
+  // built-in level maps an interior (implement-loop) gate onto full.
   assert.deepEqual(BUILT_IN_VERIFICATION_LEVELS.light.gates, {
-    'test.full_suite': 'fast',
-    'verify.full_suite': 'fast',
+    'test.full_suite': 'full',
+    'verify.full_suite': 'full',
+    'remediate.full_suite': 'full',
   })
+  assert.equal(
+    effectiveRepositoryCheckProfile(
+      {
+        level: 'light',
+        summary: '',
+        gates: BUILT_IN_VERIFICATION_LEVELS.light.gates,
+      },
+      { id: 'verify.full_suite', command: 'pan repository-check full' },
+    ).profile,
+    'full',
+  )
+  assert.equal(
+    effectiveRepositoryCheckProfile(
+      {
+        level: 'light',
+        summary: '',
+        gates: BUILT_IN_VERIFICATION_LEVELS.light.gates,
+      },
+      { id: 'remediate.full_suite', command: 'pan repository-check full' },
+    ).profile,
+    'full',
+  )
+
+  for (const level of Object.values(BUILT_IN_VERIFICATION_LEVELS)) {
+    for (const [criterionId, profile] of Object.entries(level.gates)) {
+      assert.ok(criterionId.endsWith('.full_suite'))
+      assert.notEqual(profile, 'fast')
+    }
+  }
+})
+
+test('minimal disables every full gate and thorough is an alias of light', () => {
   assert.deepEqual(BUILT_IN_VERIFICATION_LEVELS.minimal.gates, {
     'test.full_suite': false,
     'verify.full_suite': false,
+    'remediate.full_suite': false,
   })
+  // thorough keeps every workflow-declared profile, which is full at both
+  // submission gates: the same effective mapping as light.
   assert.deepEqual(BUILT_IN_VERIFICATION_LEVELS.thorough.gates, {})
 
-  for (const level of Object.values(BUILT_IN_VERIFICATION_LEVELS)) {
-    for (const profile of Object.values(level.gates)) {
-      assert.notEqual(profile, 'full')
-    }
+  for (const criterionId of ['verify.full_suite', 'remediate.full_suite']) {
+    const criterion = { id: criterionId, command: 'pan repository-check full' }
+    const light = effectiveRepositoryCheckProfile(
+      {
+        level: 'light',
+        summary: '',
+        gates: BUILT_IN_VERIFICATION_LEVELS.light.gates,
+      },
+      criterion,
+    )
+    const thorough = effectiveRepositoryCheckProfile(
+      { level: 'thorough', summary: '', gates: {} },
+      criterion,
+    )
+
+    assert.deepEqual(thorough, light)
   }
 })
 
@@ -104,6 +151,7 @@ test('resolveVerification snapshots the named level from config.json', () => {
   assert.deepEqual(active.gates, {
     'test.full_suite': false,
     'verify.full_suite': false,
+    'remediate.full_suite': false,
   })
 
   const named = resolveVerification(root, 'thorough')

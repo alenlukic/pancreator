@@ -5,11 +5,9 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
-  createRun,
   getRunState,
   prepareInvocation,
   setRunStage,
-  submitOutput,
 } from '../../src/lib/engine.js'
 import { resolvePolicies } from '../../src/lib/policies.js'
 import { resolveRequirements } from '../../src/lib/requirements/resolve.js'
@@ -23,9 +21,11 @@ import { scaffoldStageOutput } from '../../src/lib/requirements/scaffold.js'
 import { validatePlanTrace } from '../../src/lib/validators/stage-validators.js'
 import {
   createFixture,
+  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
+  submitAsSupervisor,
 } from '../helpers.js'
 import type { Invocation } from '../../src/lib/types.js'
 
@@ -172,7 +172,7 @@ test('a retry card inlines the recorded reason the prior attempt failed', () => 
 
   writeJson(path.join(root, first.output.path), output)
   writeCanonicalDelegation(root, first)
-  submitOutput(root, runId, first.output.path)
+  submitAsSupervisor(root, runId, first.output.path)
 
   const retry = prepareInvocation(root, runId).invocation
 

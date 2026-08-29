@@ -9,6 +9,7 @@ You independently gate the resulting workspace and MUST verify reality rather th
 - You MUST evaluate maintainability, scope control, security, and regression risk.
 - Review MUST apply the target repository's own language and style guidance. Pancreator self-development TypeScript guidance applies only when the active installation scope is `self_development`; detected Python workspaces receive `PY-001` through the active invocation. Applicable language handbooks MUST be read from the guidance the active invocation references.
 - You MUST repair findings that are bounded, local, low-risk, and unambiguous, then validate the affected behavior before choosing a verdict.
+- You MUST check a claim with the narrowest test in its blast radius. You MAY run the `fast` profile once as validation of your evidence and MUST NOT run it again or run the `full` profile.
 
 ## Remediation boundary
 

@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "name": "prototype-environment-blocked",
+  "description": "A toy prototype spike whose technical question needs an external service the toy repository cannot reach. The run must reach the evaluate operator gate with an environment_blocked verdict and a structured blocker, not a validated or inconclusive verdict.",
+  "policy_instructions": [
+    {
+      "policy_id": "PROTO-001",
+      "instruction": 8,
+      "summary": "The approach stage verifies external preconditions before build changes source."
+    },
+    {
+      "policy_id": "PROTO-001",
+      "instruction": 11,
+      "summary": "The evaluation names a cause per technical question and reaches one of the four verdicts."
+    },
+    {
+      "policy_id": "PROTO-001",
+      "instruction": 12,
+      "summary": "environment_blocked is used only when environment gaps prevent a decision and no product discard condition applies."
+    },
+    {
+      "policy_id": "PROTO-001",
+      "instruction": 6,
+      "summary": "The prototype leaves the repository statically sound; the static gate is the only hard shell gate."
+    }
+  ],
+  "fixture": "toy-node",
+  "request": "# Spike: greet through the remote name service\n\nTechnical question: can `greet` fetch the display name from the name service at `https://names.invalid/v1/display` and fall back to the raw name when the service is unreachable?\n\nThe service does not exist in this environment. There is no network. Treat the missing service as an environment gap, not as a product failure. Record the gap as an environment blocker and reach the verdict the evidence supports.\n",
+  "workflow": "prototype",
+  "verification": "light",
+  "involvement": "standard",
+  "operator_decisions": [
+    {
+      "stage": "intake",
+      "decision": "approve"
+    }
+  ],
+  "expected": {
+    "status": "awaiting_operator",
+    "current_stage": "evaluate",
+    "pending_action": "operator_approval",
+    "stage_sequence": ["intake", "approach", "build", "evaluate"],
+    "output_assertions": [
+      {
+        "stage": "evaluate",
+        "path": "evaluation.verdict",
+        "equals": "environment_blocked"
+      }
+    ]
+  },
+  "graders": [
+    {
+      "id": "stage-order-and-terminal-state",
+      "policy": "PROTO-001#12"
+    },
+    {
+      "id": "profile-executions",
+      "policy": "PROTO-001#6",
+      "config": {
+        "limits": [
+          {
+            "profile": "static",
+            "source": "harness",
+            "scope": "attempt",
+            "max": 1
+          },
+          {
+            "profile": "fast",
+            "source": "harness",
+            "scope": "attempt",
+            "max": 1
+          },
+          {
+            "profile": "full",
+            "source": "any",
+            "scope": "run",
+            "max": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "attempts-not-spent-on-mechanics",
+      "policy": "ORCH-001#25"
+    }
+  ]
+}

@@ -17,7 +17,7 @@ import path from 'node:path'
 import test from 'node:test'
 import { setTimeout as delay } from 'node:timers/promises'
 
-import { createFixture } from '../helpers.js'
+import { attestRunCard, createFixture } from '../helpers.js'
 
 const ROOT = process.cwd()
 const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
@@ -372,6 +372,10 @@ test('CLI artifact options persist run-wide and stage selections', () => {
       { cwd: root, encoding: 'utf8' },
     ),
   ) as { run_id: string; state_path: string }
+
+  // The CLI drove init, so the test carries the supervisor's attestation duty
+  // before prepare, exactly as a supervisor session does.
+  attestRunCard(root, stageOnly.run_id)
 
   execFileSync(
     process.execPath,

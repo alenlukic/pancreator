@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import { createRun, prepareInvocation } from '../../src/lib/engine.js'
+import { prepareInvocation } from '../../src/lib/engine.js'
 import { loadPolicyCatalog } from '../../src/lib/policies.js'
 import {
   buildInvocationContractManifest,
@@ -13,7 +13,12 @@ import {
   DELEGATION_HEADING,
   validateDelegationMarkdown,
 } from '../../src/lib/validation.js'
-import { createFixture, read, writeCanonicalDelegation } from '../helpers.js'
+import {
+  createFixture,
+  createRun,
+  read,
+  writeCanonicalDelegation,
+} from '../helpers.js'
 
 interface ValidationArtifact {
   status: string

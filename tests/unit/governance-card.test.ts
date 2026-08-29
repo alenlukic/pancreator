@@ -53,6 +53,11 @@ test('every standalone mode renders a card with its policies inlined', () => {
   const root = createFixture()
 
   for (const name of Object.keys(STANDALONE_MODES)) {
+    if (name === 'supervisor') {
+      // The supervisor card binds to a run; supervisor-card.test.ts covers it.
+      continue
+    }
+
     const card = buildGovernanceCard(root, {
       mode: name,
       outputPath: `runtime/inbox/${name}-card.md`,
@@ -174,7 +179,7 @@ test('a missing operator input is reported rather than silently omitted', () => 
 
   assert.throws(
     () => buildGovernanceCard(root, { mode: 'nonsense' }),
-    /Available: best-of-n, decomposition, investigation, pair, repair, review, shepherd, spotfix, unbound/u,
+    /Available: best-of-n, build-briefs, build-docs, decomposition, investigation, pair, qa-workflow, release, repair, review, shepherd, spotfix, supervisor, unbound, write-pr/u,
   )
 })
 
@@ -490,4 +495,38 @@ test('--base is refused outside the review mode', () => {
     () => buildGovernanceCard(root, { mode: 'pair', baseRef: 'HEAD' }),
     /--base applies to the review mode only/u,
   )
+})
+
+test('the supervisor mode refuses a run-less card', () => {
+  const root = sharedFixture()
+
+  assert.throws(
+    () => buildGovernanceCard(root, { mode: 'supervisor' }),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'SUPERVISOR_CARD_REQUIRES_RUN',
+  )
+})
+
+test('the card-less command modes resolve their persona governance', () => {
+  const root = createFixture()
+  const expectations: Record<string, string[]> = {
+    release: ['REPO-001', 'OPERATOR-001'],
+    'write-pr': ['PR-001', 'REPO-001'],
+    'build-docs': ['PRIMER-001', 'REPO-001'],
+    'build-briefs': ['BRIEF-001', 'REPO-001'],
+    'qa-workflow': ['DELEGATE-001', 'RUNTIME-001'],
+  }
+
+  for (const [mode, expected] of Object.entries(expectations)) {
+    const card = buildGovernanceCard(root, {
+      mode,
+      outputPath: `runtime/inbox/${mode}-card.md`,
+    })
+    const ids = card.policies.map((policy) => policy.id)
+
+    for (const id of expected) {
+      assert.ok(ids.includes(id), `${mode} card omits ${id}: ${ids.join(', ')}`)
+    }
+  }
 })

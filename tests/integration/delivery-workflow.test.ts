@@ -4,20 +4,20 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
-  createRun,
   decideRun,
   getRunState,
   prepareInvocation,
-  submitOutput,
 } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import type { StageOutput } from '../../src/lib/types.js'
 import {
   createFixture,
+  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeEvidenceReports,
   writeJson,
+  submitAsSupervisor,
 } from '../helpers.js'
 import { checkpoint, submitCurrentStage } from './delivery-helpers.js'
 
@@ -109,7 +109,7 @@ function runStage(
   expectedStage: string,
   mutate?: (output: StageOutput) => void,
   result: 'success' | 'failure' = 'success',
-): ReturnType<typeof submitOutput> {
+): ReturnType<typeof submitAsSupervisor> {
   const workflow = loadWorkflow(root, 'delivery')
   const invocation = prepareInvocation(root, runId).invocation
 
@@ -124,7 +124,7 @@ function runStage(
   writeCanonicalDelegation(root, invocation)
   writeEvidenceReports(root, invocation)
 
-  return submitOutput(root, runId, invocation.output.path)
+  return submitAsSupervisor(root, runId, invocation.output.path)
 }
 
 function advanceToVerify(root: string): string {
@@ -185,7 +185,11 @@ test('delivery severe verdict escalates the remediator and warnings reach the in
   writeJson(path.join(root, remediateInvocation.output.path), remediateOutput)
   writeCanonicalDelegation(root, remediateInvocation)
 
-  const remediated = submitOutput(root, runId, remediateInvocation.output.path)
+  const remediated = submitAsSupervisor(
+    root,
+    runId,
+    remediateInvocation.output.path,
+  )
 
   assert.equal(
     remediated.record.outcome,
@@ -299,13 +303,13 @@ test('delivery verify resolves parallel evidence workers and gates submission on
   }
 
   assert.throws(
-    () => submitOutput(root, runId, invocation.output.path),
+    () => submitAsSupervisor(root, runId, invocation.output.path),
     /Evidence report for role 'review'/u,
   )
 
   writeEvidenceReports(root, invocation)
 
-  const submitted = submitOutput(root, runId, invocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
   assert.equal(
     submitted.record.outcome,

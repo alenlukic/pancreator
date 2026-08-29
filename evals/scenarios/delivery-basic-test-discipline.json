@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "name": "delivery-basic-test-discipline",
+  "description": "A toy delivery run adds one function and one test. Grades repository-check profile discipline (baseline once per interior profile, one live gate per attempt, at most one agent-side fast run per attempt, the full profile only as the verify submission gate), stage order, and that no stage attempt is consumed by a pre-submit validator.",
+  "policy_instructions": [
+    {
+      "policy_id": "DEV-001",
+      "instruction": 3,
+      "summary": "The harness runs and persists one baseline per interior gate profile before the first coder invocation."
+    },
+    {
+      "policy_id": "DEV-001",
+      "instruction": 7,
+      "summary": "The coder runs the fast profile once as validation when it believes the change is complete."
+    },
+    {
+      "policy_id": "DEV-001",
+      "instruction": 8,
+      "summary": "A retry that changed only output claims or evidence runs no test profile."
+    },
+    {
+      "policy_id": "VERIFY-001",
+      "instruction": 6,
+      "summary": "Each evidence worker may run the fast profile once and never runs full."
+    },
+    {
+      "policy_id": "VERIFY-001",
+      "instruction": 7,
+      "summary": "The verifier runs no profile; the level assigns one profile to the verify submission gate, which runs it once."
+    },
+    {
+      "policy_id": "ORCH-001",
+      "instruction": 25,
+      "summary": "The supervisor runs pan output validate and repairs mechanical defects instead of spending a stage attempt."
+    }
+  ],
+  "fixture": "toy-node",
+  "request": "# Add a farewell\n\nAdd `farewell(name)` to `src/greet.mjs` that returns `Goodbye, <name>!`.\n\nAdd one test for it in `tests/greet.test.mjs`. Do not add dependencies. Do not change `greet`.\n",
+  "workflow": "delivery",
+  "verification": "light",
+  "involvement": "standard",
+  "operator_decisions": [
+    {
+      "stage": "plan",
+      "decision": "approve"
+    },
+    {
+      "stage": "ship",
+      "decision": "approve"
+    }
+  ],
+  "expected": {
+    "status": "succeeded",
+    "stage_sequence": [
+      {
+        "stage": "plan",
+        "outcome": "success"
+      },
+      {
+        "stage": "implement",
+        "outcome": "success"
+      },
+      {
+        "stage": "verify",
+        "outcome": "success"
+      },
+      {
+        "stage": "ship",
+        "outcome": "success"
+      }
+    ]
+  },
+  "graders": [
+    {
+      "id": "profile-executions",
+      "policy": "DEV-001#7",
+      "config": {
+        "limits": [
+          {
+            "profile": "fast",
+            "source": "baseline",
+            "scope": "run",
+            "max": 1
+          },
+          {
+            "profile": "static",
+            "source": "baseline",
+            "scope": "run",
+            "max": 1
+          },
+          {
+            "profile": "full",
+            "source": "baseline",
+            "scope": "run",
+            "max": 0
+          },
+          {
+            "profile": "fast",
+            "source": "agent",
+            "scope": "attempt",
+            "max": 1
+          },
+          {
+            "profile": "static",
+            "source": "agent",
+            "scope": "attempt",
+            "max": 1
+          },
+          {
+            "profile": "fast",
+            "source": "harness",
+            "scope": "attempt",
+            "max": 1
+          },
+          {
+            "profile": "static",
+            "source": "harness",
+            "scope": "attempt",
+            "max": 1
+          },
+          {
+            "profile": "fast",
+            "source": "agent",
+            "scope": "stage",
+            "stage": "verify",
+            "max": 0
+          },
+          {
+            "profile": "full",
+            "source": "agent",
+            "scope": "run",
+            "max": 0
+          },
+          {
+            "profile": "full",
+            "source": "harness",
+            "scope": "run",
+            "max": 1,
+            "min": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "attempts-not-spent-on-mechanics",
+      "policy": "ORCH-001#25"
+    },
+    {
+      "id": "stage-order-and-terminal-state"
+    }
+  ]
+}

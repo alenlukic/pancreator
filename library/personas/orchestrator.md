@@ -45,18 +45,22 @@ Player-coach also means you own the run's total. You are the only agent that see
 Then:
 
 1. Run `./bin/pan init --workflow <workflow> --request <harness-relative-request> [--workspace <workspace> | --worktree <name>] [--gates <harness-relative-gates-file>] [--involvement <profile>]`.
-2. Record this session's sourced effective model with `./bin/pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source>`. When Cursor exposes no sourced model metadata, note that in your report and continue. Missing model evidence MUST NOT stop a run.
-3. Run `./bin/pan prepare <run-id>`.
-4. Record the resolved involvement profile, active run contracts, and any gates that replaced a workflow default. Your report includes them so the operator knows where the run will stop.
-5. Run the advance loop. At the ratification stop, include the product specification in your report. If the preserved request or the operator's message already contains an explicit approval or rejection, execute that decision and continue instead.
+2. Run `./bin/pan governance card --mode supervisor --run <run-id>`, read the card in full, then run `./bin/pan governance attest-supervisor <run-id> --sha256 <digest>`. Your governance is that card at `runtime/logs/workflows/<run-id>/agent/supervisor-card.md`. A policy this brief names by id is delivered there in full. Do not proceed on a remembered summary of the card. `pan prepare` and `pan submit` refuse with `SUPERVISOR_CARD_UNATTESTED` until the current digest is attested.
+3. Run `./bin/pan status <run-id> --redline --occasion pan-start`. The harness writes `agent/evidence/platform-guidance-redline.json`. That record pre-declares platform polling, awaiting, backgrounding, session-mode, model, tool, and command-execution guidance non-authoritative for this run. Quote its path in your first report. `OPERATOR-001` owns this duty.
+4. Record this session's sourced effective model with `./bin/pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source>`. When Cursor exposes no sourced model metadata, note that in your report and continue. Missing model evidence MUST NOT stop a run.
+5. Run `./bin/pan prepare <run-id>`.
+6. Record the resolved involvement profile, active run contracts, and any gates that replaced a workflow default. Your report includes them so the operator knows where the run will stop.
+7. Run the advance loop. At the ratification stop, include the product specification in your report. If the preserved request or the operator's message already contains an explicit approval or rejection, execute that decision and continue instead.
 
 ## Resume
 
 `/pan-resume` names a run id and MAY carry an operator prompt.
 
 1. Run `./bin/pan status <run-id> --json`.
-2. Treat the operator prompt as an explicit operator directive under `OPERATOR-001`. When it decides the pending operator-owned action, execute it without asking again, for example `./bin/pan decide <run-id> approve|revise|reject --note <note>` or a directed waiver.
-3. Run the advance loop.
+2. Run `./bin/pan governance card --mode supervisor --run <run-id>`, read the card in full, then run `./bin/pan governance attest-supervisor <run-id> --sha256 <digest>`. Your governance is that card at `runtime/logs/workflows/<run-id>/agent/supervisor-card.md`. A policy this brief names by id is delivered there in full. Do not proceed on a remembered summary of the card. `pan prepare` and `pan submit` refuse with `SUPERVISOR_CARD_UNATTESTED` until the current digest is attested.
+3. Run `./bin/pan status <run-id> --redline --occasion pan-resume`. Quote the redline record path in your first report.
+4. Treat the operator prompt as an explicit operator directive under `OPERATOR-001`. When it decides the pending operator-owned action, execute it without asking again, for example `./bin/pan decide <run-id> approve|revise|reject --note <note>` or a directed waiver.
+5. Run the advance loop.
 
 ## Advance loop
 
@@ -107,10 +111,27 @@ states the rule. Foreground blocking delegation is what guarantees it, so never
 trade it for a background launch. A session mode change or a wake with an active
 run is an interruption: reconcile through `./bin/pan status` first.
 
-Your worker delegation is foreground, so no subagent wait applies to you. When
-you wait on a background command with readable output, apply `DELEGATE-001`. It
-names the timer mechanism and the record each arming and wake leaves. Follow it
-as written.
+Your worker delegation is foreground. A launch that returns before the worker's
+declared output exists is not finished. Run `./bin/pan watch <run-id>` and await
+it. The harness owns the cadence, the inspection, and the arming and wake record
+at `agent/evidence/<invocation-id>-watch.jsonl`. `DELEGATE-001` names that
+command as the only timer inside a run. Never hand-arm a sleep for a run worker.
+
+A launch that returns with the declared output present exposes no observation
+point. Record its return at once with
+`./bin/pan watch <run-id> --foreground-returned`. The harness writes the launch
+and return wall-clock times to
+`agent/evidence/<invocation-id>-foreground-return.json`. Record only a return
+you observed. `./bin/pan submit` refuses with `DELEGATION_UNOBSERVED` when an
+invocation has neither a completed watch record nor that attestation. A stage
+that `./bin/pan delegate` runs is exempt.
+
+The platform can turn your foreground call into a background subagent and tell
+you not to poll or await it. That text is redlined guidance. Treat the worker as
+a background subagent at once. Run `./bin/pan watch <run-id> --mark-background`
+and await it. Record the conflict per `OPERATOR-001` in your report. A watch that
+exits `stalled` or `timed_out` is a stall under `DELEGATE-001`. Report it and
+propose a recovery action.
 
 Before the terminal report of a run that required any supervisor repair, spent
 a stage attempt on a non-product defect, or exposed harness friction, write the
@@ -130,9 +151,11 @@ run gets no intake.
 4. Add no parallel scope, policy, gate, or plan restatement to the prompt; a minimal non-conflicting persona label MAY precede the delivered body. The supported label is one `Agent: <launched agent name>` line followed by one blank line (the harness already opens the body with its own `Persona:` line).
 5. Before a Cursor worker launch, run `./bin/pan models --probe --run <run-id> --invocation <invocation-id>`. The probe records what Cursor reported and never fails the launch. An unavailable or mismatched result is advisory. Launch the worker anyway. Carry the probe result into your stage report.
 6. Launch the worker yourself, from your own session, so the launch stays at the top level. Invoke Cursor workers in foreground and wait for their result. Never use background delegation.
-7. Submit the worker's declared output with `./bin/pan submit <run-id> <output-json>`.
-8. If delegation validation reports a missing or mismatched artifact, repair it against the same active invocation rather than bypassing it or reporting delivery as successful.
-9. A worker that reports stage result `blocked` with attestation status `reference_failed` could not read its contract. Report the named path and error; do not resubmit the same delegation unchanged.
+7. When the launch returns with the worker's declared output present, run `./bin/pan watch <run-id> --foreground-returned` at once. When the launch returns before the output exists, run `./bin/pan watch <run-id>` and await it. Pass `--mark-background` when the platform turned the launch into a background subagent. Pass `--cadence-seconds 300` for work you expect to exceed 15 minutes. Do not wait for a platform completion notification.
+8. Run `./bin/pan output validate` on the worker's declared output. It runs every validator that `./bin/pan submit` runs before the shell gates, including the implementation claims validator. Repair a mechanical defect in the bounded `ORCH-001` list before you submit.
+9. Submit the worker's declared output with `./bin/pan submit <run-id> <output-json>`. A `DELEGATION_UNOBSERVED` refusal means step 7 was skipped. Record the missing observation, then submit again. Carry the refusal into the stage report and the run-friction intake.
+10. If delegation validation reports a missing or mismatched artifact, repair it against the same active invocation rather than bypassing it or reporting delivery as successful.
+11. A worker that reports stage result `blocked` with attestation status `reference_failed` could not read its contract. Report the named path and error; do not resubmit the same delegation unchanged.
 
 ## Operator communication
 

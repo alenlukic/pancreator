@@ -30,9 +30,21 @@ import {
   writeJsonAtomic,
   writeTextAtomic,
 } from './io.js'
+import {
+  assertSupervisorCardAttested,
+  renderSupervisorCard,
+  supervisorAttestCommand,
+} from './governance/supervisor-card.js'
 import { applyJsonMergePatch } from './json-merge-patch.js'
 import { keywordRunSuffixFrom, makeStageArtifactId } from './naming.js'
 import { resolveRunLayout } from './run-layout.js'
+import { buildSuiteProfileSummary } from './suite-profile.js'
+import {
+  DELEGATION_UNOBSERVED,
+  delegationUnobservedMessage,
+  summarizeDelegationObservation,
+  type DelegationObservation,
+} from './watch.js'
 import {
   OPERATOR_ARTIFACT_PROFILE_HEADINGS,
   operatorArtifactProfileForStage,
@@ -146,6 +158,7 @@ import type {
   StageOutcome,
   StageOutput,
   RequirementFailureRoute,
+  ResolvedRequirement,
   SupervisorAssessment,
   TaskRecord,
   WorkflowDefinition,
@@ -217,6 +230,11 @@ interface CreateRunOptions {
    */
   useWorkflowDeclaredGates?: boolean
   bestOfN?: BestOfNRunRole | null
+  /**
+   * Named pipeline config to snapshot instead of the active one. An eval run
+   * uses it to route every worker persona to an external executor.
+   */
+  pipelineConfigName?: string | null
 }
 
 interface StatusOptions {
@@ -272,7 +290,7 @@ export interface PrepareInvocationResult {
   advisories: string[]
 }
 
-interface OperationProgressOptions {
+export interface OperationProgressOptions {
   onProgress?: (message: string) => void
 }
 
@@ -519,6 +537,8 @@ function readGateOverrides(
   return overrides
 }
 
+const FULL_PROFILE = 'full'
+
 function collectStageRepositoryCheckProfiles(
   stages: StageDefinition[],
   state: RunState,
@@ -545,6 +565,13 @@ function collectStageRepositoryCheckProfiles(
         state.verification,
         criterion,
       )
+
+      // DEV-001: the full profile is a submission gate judged on its own
+      // result, never an interior gate, so it is never baselined even when a
+      // source-allowed stage (remediate) gates on it.
+      if (profile === FULL_PROFILE) {
+        continue
+      }
 
       if (profile && !profiles.has(profile)) {
         profiles.set(profile, criterion.timeout_ms)
@@ -1706,7 +1733,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
 
   const pipelineConfig = pipelineOverride
     ? overriddenPipelineConfig(loadPipelineConfig(root), pipelineOverride)
-    : loadPipelineConfig(root)
+    : loadPipelineConfig(root, options.pipelineConfigName ?? undefined)
   let workflowUsesClaudeCode = false
 
   // The orchestrator persona is the supervisor running in the Cursor chat, so it
@@ -1780,9 +1807,18 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
       },
     )
   } else {
+    // The `.cursor/` projection renders the active config. A run pinned to
+    // another named config is judged against the projection's own source, so
+    // the check still proves the projection is current without demanding that
+    // the checkout be re-projected for one run.
+    const projectionSource =
+      options.pipelineConfigName &&
+      options.pipelineConfigName !== pipelineConfig.file.active_config
+        ? loadPipelineConfig(root)
+        : pipelineConfig
     const agentModelDrift = syncCursorProjection(root, {
       only: ['cursor-agents'],
-      pipeline: pipelineConfig,
+      pipeline: projectionSource,
     }).filter((entry) => entry.id === 'cursor-agents' && entry.changed)
 
     invariant(
@@ -1927,7 +1963,16 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     updated_at: now(),
   }
 
+  // The supervisor card is rendered with the run so `pan init` already
+  // reports the digest the supervisor must attest before `pan prepare`.
+  const supervisorCard = renderSupervisorCard(root, state, workflow)
+
   persistRun(root, state, 'run_created', {
+    supervisor_card: {
+      path: supervisorCard.state.path,
+      sha256: supervisorCard.state.sha256,
+      policies: supervisorCard.policies.map((policy) => policy.id),
+    },
     workflow: workflow.slug,
     pipeline_config: pipelineConfig.name,
     workspace_root: workspaceRoot,
@@ -1966,27 +2011,29 @@ function outcomeFromFailureRoutes(
   return 'failure'
 }
 
-function runHarnessAuthoritativeValidators(
+/** One harness-authoritative validator `pan submit` runs, with its target. */
+export interface ResolvedSubmitValidator {
+  requirement: ResolvedRequirement
+  target_path: string
+}
+
+/**
+ * Resolve the harness-authoritative validators a submission runs for one
+ * invocation. `pan submit` and `pan output validate` MUST resolve this same
+ * set from the same requirements, so a mechanical defect surfaces before a
+ * stage attempt is spent on it.
+ */
+export function resolveSubmitValidators(
   root: string,
-  runId: string,
   invocation: Invocation,
-  workspaceFingerprint: string,
   submittedValue: Record<string, unknown>,
-  runState?: Record<string, unknown>,
-): {
-  errors: string[]
-  blocking_errors: string[]
-  validatorOutcome: StageOutcome | null
-} {
-  const errors: string[] = []
-  const blockingErrors: string[] = []
-  const failedRoutes: RequirementFailureRoute[] = []
+  catalog: ReturnType<typeof loadRegistry> = loadRegistry(root),
+): ResolvedSubmitValidator[] {
+  const resolved: ResolvedSubmitValidator[] = []
 
   if (!invocation.requirements) {
-    return { errors, blocking_errors: blockingErrors, validatorOutcome: null }
+    return resolved
   }
-
-  const catalog = loadRegistry(root)
 
   for (const requirement of invocation.requirements.validation_requirements) {
     if (INLINE_SUBMIT_VALIDATORS.has(requirement.registry_id)) {
@@ -2032,7 +2079,7 @@ function runHarnessAuthoritativeValidators(
       resolveRequirementTargetPath(
         requirement,
         invocation.output.path,
-        submittedValue as Record<string, unknown>,
+        submittedValue,
       ) ?? invocation.output.path
     const targetKind = inferTargetKind(targetPath)
 
@@ -2040,6 +2087,33 @@ function runHarnessAuthoritativeValidators(
       continue
     }
 
+    resolved.push({ requirement, target_path: targetPath })
+  }
+
+  return resolved
+}
+
+function runHarnessAuthoritativeValidators(
+  root: string,
+  runId: string,
+  invocation: Invocation,
+  workspaceFingerprint: string,
+  submittedValue: Record<string, unknown>,
+  runState?: Record<string, unknown>,
+): {
+  errors: string[]
+  blocking_errors: string[]
+  validatorOutcome: StageOutcome | null
+} {
+  const errors: string[] = []
+  const blockingErrors: string[] = []
+  const failedRoutes: RequirementFailureRoute[] = []
+  const catalog = loadRegistry(root)
+
+  for (const {
+    requirement,
+    target_path: targetPath,
+  } of resolveSubmitValidators(root, invocation, submittedValue, catalog)) {
     const result = runRequirement({
       root,
       runId,
@@ -2223,6 +2297,29 @@ export function prepareInvocation(
         code: 'RUN_NOT_RUNNING',
       },
     )
+
+    // Refresh the supervisor card first: a changed policy set re-binds the
+    // supervisor before any stage work, and an unattested card stops here.
+    const supervisorCard = renderSupervisorCard(
+      root,
+      state,
+      loadRunWorkflow(root, state),
+    )
+
+    if (supervisorCard.changed) {
+      persistRun(root, state, 'supervisor_card_rendered', {
+        path: supervisorCard.state.path,
+        sha256: supervisorCard.state.sha256,
+        first: supervisorCard.first,
+        policies: supervisorCard.policies.map((policy) => policy.id),
+      })
+    }
+
+    // A run created before the card existed gains it on this prepare and is
+    // bound from the next lifecycle action on.
+    if (!supervisorCard.first) {
+      assertSupervisorCardAttested(root, state, 'prepare')
+    }
 
     // Load once, so the advisories and the persona mapping read one snapshot.
     const pipelineConfig = loadRunPipelineConfig(root, state)
@@ -2471,6 +2568,17 @@ export function prepareInvocation(
     // on the artifact it must already read to perform the delegation. For an
     // external executor the harness moves the bytes itself, so delivery is
     // `verbatim` by construction and no compact delivery prompt is generated.
+    const supervisorCardReference = state.supervisor_card
+      ? {
+          path: state.supervisor_card.path,
+          sha256: state.supervisor_card.sha256,
+          attest_command: supervisorAttestCommand(
+            root,
+            runId,
+            state.supervisor_card.sha256,
+          ),
+        }
+      : null
     const delegation =
       stage.persona === 'orchestrator'
         ? undefined
@@ -2489,6 +2597,9 @@ export function prepareInvocation(
               supervisor_procedure_path: supervisorProcedurePath,
               submit_command: `${panCommand(root)} submit ${runId} ${outputPath}`,
               mode: 'verbatim' as const,
+              ...(supervisorCardReference
+                ? { supervisor_card: supervisorCardReference }
+                : {}),
               policies: resolvePolicies(root, {
                 persona: 'orchestrator',
                 workflow: workflow.slug,
@@ -2515,7 +2626,11 @@ export function prepareInvocation(
               delegation_artifact_path: delegationArtifactPath,
               supervisor_procedure_path: supervisorProcedurePath,
               submit_command: `${panCommand(root)} submit ${runId} ${outputPath}`,
+              watch_command: `${panCommand(root)} watch ${runId} --invocation ${invocationId}`,
               mode: 'referenced' as const,
+              ...(supervisorCardReference
+                ? { supervisor_card: supervisorCardReference }
+                : {}),
               delivery_prompt_path: deliveryPromptPath(
                 runId,
                 invocationId,
@@ -2566,6 +2681,11 @@ export function prepareInvocation(
       })
     }
 
+    // Advisory: the profiled full run before ship, when the run recorded one.
+    const suiteProfile = stage.context.suite_profile
+      ? buildSuiteProfileSummary(root, state)
+      : null
+
     const invocation: Invocation = {
       $operator: {
         headline: `${stage.title} is ready`,
@@ -2583,6 +2703,9 @@ export function prepareInvocation(
       attempt,
       created_at: now(),
       workspace_root: state.workspace_root || '.',
+      ...(state.workspace_root && state.workspace_root !== '.'
+        ? { harness_root: root }
+        : {}),
       ...(state.gate_overrides ? { gate_overrides: state.gate_overrides } : {}),
       ...(state.operator_involvement
         ? { operator_involvement: state.operator_involvement }
@@ -2617,6 +2740,7 @@ export function prepareInvocation(
         ...(prDescription ? { prDescription } : {}),
       }),
       ...(evidenceWorkers ? { evidence_workers: evidenceWorkers } : {}),
+      ...(suiteProfile ? { suite_profile: suiteProfile } : {}),
       policies,
       requirements,
       rubric: stage.criteria,
@@ -2931,7 +3055,7 @@ function claudeCodeWriteRules(root: string, workspaceDir: string): string[] {
  * runtime tree. This is defense in depth — `scope.no_unapproved_changes`
  * remains the gate of record for workspace mutation.
  */
-function claudeCodeToolPolicy(
+export function claudeCodeToolPolicy(
   root: string,
   workspaceDir: string,
   stage: StageDefinition,
@@ -3506,6 +3630,7 @@ export function submitOutput(
         code: 'RUN_NOT_RUNNING',
       },
     )
+    assertSupervisorCardAttested(root, state, 'submit')
     invariant(
       state.pending_action.type === 'invoke_agent',
       'Run is not awaiting stage output.',
@@ -3558,6 +3683,43 @@ export function submitOutput(
       )
     }
 
+    // DELEGATE-001: the harness must have seen the worker reach a terminal
+    // state. A completed `pan watch` record or a foreground-return attestation
+    // is that evidence for a Cursor worker; `pan delegate` writes its own for
+    // an external executor. Like a missing evidence report, this is a
+    // supervisor-owned precondition and rejects outright without consuming an
+    // attempt.
+    const personaExecutor = invocation.stage.persona_executor ?? 'cursor'
+    const delegationObservation: DelegationObservation | undefined =
+      stage.persona !== 'orchestrator'
+        ? summarizeDelegationObservation(
+            root,
+            runId,
+            invocation.invocation_id,
+            { externalExecutor: personaExecutor !== 'cursor' },
+          )
+        : undefined
+
+    if (delegationObservation) {
+      invariant(
+        delegationObservation.observed,
+        delegationUnobservedMessage(
+          delegationObservation,
+          panCommand(root),
+          runId,
+          invocation.invocation_id,
+        ),
+        {
+          code: DELEGATION_UNOBSERVED,
+          details: {
+            watch_record_path: delegationObservation.watch.record_path,
+            foreground_return_path:
+              delegationObservation.foreground_return.record_path,
+          },
+        },
+      )
+    }
+
     if (priorForRevision) {
       invariant(
         priorForRevision.stage === stage.slug,
@@ -3569,8 +3731,6 @@ export function submitOutput(
 
     const governanceArtifactWarnings: string[] = []
     const attestationErrors: string[] = []
-
-    const personaExecutor = invocation.stage.persona_executor ?? 'cursor'
 
     if (stage.persona !== 'orchestrator') {
       if (personaExecutor === 'cursor') {
@@ -3731,12 +3891,47 @@ export function submitOutput(
       })
     }
 
-    // A shell gate can only confirm a success — `effectiveOutcome` decides
-    // failure from a declared non-success result, a failed hard
-    // self-criterion, or a failed attestation before deterministic results
-    // are consulted. When one of those has already decided the outcome,
-    // running the gate commands (QA's full suite above all) spends minutes
-    // proving nothing, so they are recorded as skipped instead of executed.
+    // Claim, attestation, and artifact validators run before any repository
+    // check gate. A shell gate can only confirm a success — `effectiveOutcome`
+    // decides failure from a declared non-success result, a failed hard
+    // self-criterion, a failed attestation, or a blocking harness validator
+    // before deterministic results are consulted. When one of those has
+    // already decided the outcome, running the gate commands (QA's full suite
+    // above all) spends minutes proving nothing, so they are recorded as
+    // skipped with the deciding reason instead of executed.
+    const workspaceAfter = gitWorkspaceSnapshot(workspaceDirectory(root, state))
+    const harnessValidation = runHarnessAuthoritativeValidators(
+      root,
+      runId,
+      invocation,
+      workspaceAfter.fingerprint,
+      submittedValue as Record<string, unknown>,
+      state as unknown as Record<string, unknown>,
+    )
+    const filterBriefDerivatives = (messages: string[]): string[] =>
+      briefRenderFailed && briefRenderedPath
+        ? messages.filter((message) => !message.includes(briefRenderedPath))
+        : messages
+    // A missing or mismatched attestation blocks every stage, because it means
+    // the harness cannot show that the worker held the contract it acted on.
+    // A required or authoritative harness validator failure blocks whichever
+    // stage its policy binds it to — the enforcement and failure route the
+    // card declares must be the enforcement the engine applies. Advisory
+    // validator failures stay governance warnings on every stage, or the
+    // advisory enforcement declared on the card would be false. Ship
+    // additionally blocks on operator-brief and stage-output diagnostics.
+    const blockingValidatorErrors = filterBriefDerivatives(
+      harnessValidation.blocking_errors,
+    ).map((message) => `Validator: ${message}`)
+    const blockingValidationErrors =
+      stage.slug === 'ship'
+        ? [
+            ...attestationErrors,
+            ...briefErrors.map((message) => `Operator brief: ${message}`),
+            ...validation.errors.map((message) => `Stage output: ${message}`),
+            ...blockingValidatorErrors,
+          ]
+        : [...attestationErrors, ...blockingValidatorErrors]
     const declaredNonSuccess =
       isRecord(submittedValue) &&
       (submittedValue.result === 'failure' ||
@@ -3750,13 +3945,26 @@ export function submitOutput(
       (criterion) =>
         criterion.hard && selfEvaluations.get(criterion.id)?.result === 'fail',
     )
+    const rejectingValidatorIds = [
+      ...new Set(
+        harnessValidation.blocking_errors
+          .map(
+            (message) => /^harness validator (\S+) failed/u.exec(message)?.[1],
+          )
+          .filter((value): value is string => typeof value === 'string'),
+      ),
+    ]
     const gateSkipReason = declaredNonSuccess
       ? `the stage reported result '${declaredNonSuccess}'`
       : attestationErrors.length > 0
         ? 'the invocation read attestation failed'
-        : failedHardSelfCriterion
-          ? `hard criterion '${failedHardSelfCriterion.id}' was self-evaluated as failed`
-          : null
+        : rejectingValidatorIds.length > 0
+          ? `harness validator ${rejectingValidatorIds.join(', ')} rejected the output`
+          : blockingValidationErrors.length > 0
+            ? 'a blocking artifact or stage-output validator rejected the output'
+            : failedHardSelfCriterion
+              ? `hard criterion '${failedHardSelfCriterion.id}' was self-evaluated as failed`
+              : null
     const evaluated = evaluateDeterministicCriteria(
       root,
       runDir(root, runId),
@@ -3769,25 +3977,15 @@ export function submitOutput(
       validation.output,
       options.onProgress,
       gateSkipReason,
-    )
-    const harnessValidation = runHarnessAuthoritativeValidators(
-      root,
-      runId,
-      invocation,
-      evaluated.workspace.fingerprint,
-      submittedValue as Record<string, unknown>,
-      state as unknown as Record<string, unknown>,
+      workspaceAfter,
     )
     governanceArtifactWarnings.push(
       ...attestationErrors,
       ...briefErrors.map((message) => `Operator brief: ${message}`),
       ...validation.errors.map((message) => `Stage output: ${message}`),
-      ...(briefRenderFailed && briefRenderedPath
-        ? harnessValidation.errors.filter(
-            (message) => !message.includes(briefRenderedPath),
-          )
-        : harnessValidation.errors
-      ).map((message) => `Validator: ${message}`),
+      ...filterBriefDerivatives(harnessValidation.errors).map(
+        (message) => `Validator: ${message}`,
+      ),
     )
     recordGovernanceArtifactIssues(
       root,
@@ -3798,30 +3996,6 @@ export function submitOutput(
       governanceArtifactWarnings,
     )
 
-    // A missing or mismatched attestation blocks every stage, because it means
-    // the harness cannot show that the worker held the contract it acted on.
-    // A required or authoritative harness validator failure blocks whichever
-    // stage its policy binds it to — the enforcement and failure route the
-    // card declares must be the enforcement the engine applies. Advisory
-    // validator failures stay governance warnings on every stage, or the
-    // advisory enforcement declared on the card would be false. Ship
-    // additionally blocks on operator-brief and stage-output diagnostics.
-    const blockingValidatorErrors = (
-      briefRenderFailed && briefRenderedPath
-        ? harnessValidation.blocking_errors.filter(
-            (message) => !message.includes(briefRenderedPath),
-          )
-        : harnessValidation.blocking_errors
-    ).map((message) => `Validator: ${message}`)
-    const blockingValidationErrors =
-      stage.slug === 'ship'
-        ? [
-            ...attestationErrors,
-            ...briefErrors.map((message) => `Operator brief: ${message}`),
-            ...validation.errors.map((message) => `Stage output: ${message}`),
-            ...blockingValidatorErrors,
-          ]
-        : [...attestationErrors, ...blockingValidatorErrors]
     const explicitlyDeclaredProductFailure =
       isRecord(submittedValue) &&
       (submittedValue.result === 'failure' ||
@@ -4037,6 +4211,20 @@ export function submitOutput(
         self: validation.output.criteria,
       },
       workspace_fingerprint: evaluated.workspace.fingerprint,
+      ...(delegationObservation
+        ? {
+            delegation_observation: {
+              source: delegationObservation.source,
+              ...(delegationObservation.watch.record_present ||
+              delegationObservation.watch.background_marked
+                ? { watch: delegationObservation.watch }
+                : {}),
+              ...(delegationObservation.foreground_return.record_present
+                ? { foreground_return: delegationObservation.foreground_return }
+                : {}),
+            },
+          }
+        : {}),
       next_state: nextState,
       timestamp: now(),
     }
@@ -5284,7 +5472,11 @@ export function getRunStatus(
     ? loadInvocationValidationStatus(root, runId, state.current_invocation.id)
     : null
 
-  return renderStatus(statusState, validationStatus)
+  return renderStatus(
+    statusState,
+    validationStatus,
+    buildSuiteProfileSummary(root, state),
+  )
 }
 
 export function getRunState(root: string, runId: string): RunState {
@@ -5292,15 +5484,21 @@ export function getRunState(root: string, runId: string): RunState {
 }
 
 /**
- * Mirror the cheap submission layers before submit, so a mechanical defect
- * does not consume a stage attempt. The shell gates and the
- * harness-authoritative validators stay submit-only.
+ * Mirror every validator `pan submit` runs before its shell gates, so a
+ * mechanical defect does not consume a stage attempt. Only the shell gates
+ * stay submit-only; the harness-authoritative validators run here from the
+ * same resolved set `resolveSubmitValidators` gives the submission, without
+ * persisting a validation record.
  */
 export function validateOutputForSubmission(
   root: string,
   runId: string,
   invocation: Invocation,
   submittedValue: unknown,
+  options: {
+    /** Harness-relative path of the file under validation, when it exists. */
+    submittedPath?: string
+  } = {},
 ): { passed: boolean; checks: ValidationCheck[] } {
   const checks: ValidationCheck[] = []
 
@@ -5361,5 +5559,232 @@ export function validateOutputForSubmission(
     )
   }
 
+  const catalog = loadRegistry(root)
+  const submittedRecord = isRecord(submittedValue)
+    ? submittedValue
+    : ({} as Record<string, unknown>)
+  // Before submit the output may still sit outside its declared path, or
+  // only in memory. Output-targeted validators then read the file under
+  // validation, or a scratch copy of the value that is removed afterwards, so
+  // the mirror judges the same bytes the submission would.
+  const declaredOutputExists = fileExists(
+    resolveInside(root, invocation.output.path),
+  )
+  const submittedAbsolute =
+    options.submittedPath !== undefined
+      ? resolveInside(root, options.submittedPath)
+      : null
+  let scratchOutput: string | null = null
+  const outputTargetPath = (): string => {
+    if (declaredOutputExists) {
+      return invocation.output.path
+    }
+
+    if (
+      options.submittedPath !== undefined &&
+      submittedAbsolute &&
+      fileExists(submittedAbsolute)
+    ) {
+      return options.submittedPath
+    }
+
+    // Handlers resolve a relative target against the harness root, so the
+    // scratch copy lives under runtime/cache and is removed afterwards.
+    if (scratchOutput === null) {
+      scratchOutput = path.posix.join(
+        'runtime',
+        'cache',
+        'output-validate',
+        runId,
+        path.basename(invocation.output.path),
+      )
+      writeJsonAtomic(resolveInside(root, scratchOutput), submittedRecord)
+    }
+
+    return scratchOutput
+  }
+
+  try {
+    for (const {
+      requirement,
+      target_path: targetPath,
+    } of resolveSubmitValidators(root, invocation, submittedRecord, catalog)) {
+      if (renderedPath && targetPath === renderedPath) {
+        checks.push({
+          id: `validator.${requirement.registry_id}`,
+          passed: true,
+          message:
+            `${requirement.registry_id} deferred to submit: the harness ` +
+            `renders ${renderedPath} during submission`,
+        })
+        continue
+      }
+
+      const result = runRequirement({
+        root,
+        runId,
+        requirement,
+        targetPath:
+          targetPath === invocation.output.path
+            ? outputTargetPath()
+            : targetPath,
+        executor: 'harness',
+        workspaceFingerprint: invocation.workspace_before.fingerprint,
+        invocation: invocation as unknown as Record<string, unknown>,
+        runState: state as unknown as Record<string, unknown>,
+        catalog,
+        persist: false,
+      })
+      const passed = isPassingResult(result)
+
+      checks.push({
+        id: `validator.${requirement.registry_id}`,
+        passed,
+        message: passed
+          ? `${requirement.registry_id} passed (${requirement.enforcement})`
+          : `${requirement.registry_id} ${result.status} (${requirement.enforcement}): ` +
+            result.issues.map((issue) => issue.message).join('; '),
+      })
+    }
+  } finally {
+    if (scratchOutput !== null) {
+      rmSync(path.dirname(resolveInside(root, scratchOutput)), {
+        recursive: true,
+        force: true,
+      })
+    }
+  }
+
   return { passed: checks.every((check) => check.passed), checks }
+}
+
+export interface EvidenceWorkerDelegation {
+  role: string
+  persona: string
+  evidence_path: string
+  skipped: 'already_present' | 'cursor_persona' | null
+  ok: boolean
+  exit_code: number | null
+  duration_ms: number
+  stdout_path: string | null
+  stderr_path: string | null
+  error?: string
+}
+
+/**
+ * Run the active invocation's parallel evidence workers through the
+ * claude-code executor. The supervisor owns these launches for Cursor
+ * personas; an eval driver or an external-executor supervisor uses this path
+ * so the evidence reports exist before the stage worker is delegated. A worker
+ * whose persona maps to Cursor is reported as skipped, never launched.
+ */
+export function delegateEvidenceWorkers(
+  root: string,
+  runId: string,
+  options: OperationProgressOptions = {},
+): EvidenceWorkerDelegation[] {
+  const state = loadState(root, runId)
+
+  invariant(
+    state.pending_action.type === 'invoke_agent' && state.current_invocation,
+    'Run is not awaiting delegation. Run prepare first.',
+    { code: 'INVALID_RUN_ACTION', details: { pending: state.pending_action } },
+  )
+
+  const workflow = loadRunWorkflow(root, state)
+  const stage = stageBySlug(workflow, state.current_stage)
+  const invocation = readInvocation(root, state.current_invocation.json_path)
+  const pipelineConfig = loadRunPipelineConfig(root, state)
+  const workspaceDir = workspaceDirectory(root, state)
+  const policy = claudeCodeToolPolicy(root, workspaceDir, stage)
+  const evidenceDir = resolveRunLayout(root, runId).evidence('').relative
+  const results: EvidenceWorkerDelegation[] = []
+
+  for (const worker of invocation.evidence_workers ?? []) {
+    const evidenceAbsolute = resolveInside(root, worker.evidence_path)
+    const base = {
+      role: worker.role,
+      persona: worker.persona,
+      evidence_path: worker.evidence_path,
+    }
+
+    if (fileExists(evidenceAbsolute) && readText(evidenceAbsolute).trim()) {
+      results.push({
+        ...base,
+        skipped: 'already_present',
+        ok: true,
+        exit_code: null,
+        duration_ms: 0,
+        stdout_path: null,
+        stderr_path: null,
+      })
+      continue
+    }
+
+    const mapping = resolvePersonaMapping(pipelineConfig, worker.persona)
+
+    if (mapping.executor !== 'claude-code') {
+      results.push({
+        ...base,
+        skipped: 'cursor_persona',
+        ok: false,
+        exit_code: null,
+        duration_ms: 0,
+        stdout_path: null,
+        stderr_path: null,
+      })
+      continue
+    }
+
+    const brief = readText(resolveInside(root, worker.brief_path))
+    const prompt =
+      `${brief}\n\n## Evidence report destination\n\n` +
+      `Write your complete evidence report as Markdown to ` +
+      `\`${path.resolve(root, worker.evidence_path)}\`. ` +
+      `That file is the only file you write outside the workspace. ` +
+      `Do not submit the stage output; the stage worker owns it.\n`
+    const configuredTimeout = mapping.options['timeout-ms']
+
+    options.onProgress?.(
+      `launching ${worker.role} evidence worker (${worker.persona}) via claude-code`,
+    )
+
+    const result = runClaudeCode({
+      prompt,
+      cwd: workspaceDir,
+      model: mapping.model,
+      permissionMode: mapping.options['permission-mode'] ?? 'default',
+      allowedTools: policy.allowedTools,
+      addDirs: policy.addDirs,
+      ...(configuredTimeout ? { timeoutMs: Number(configuredTimeout) } : {}),
+    })
+    const stdoutPath = `${evidenceDir}/${invocation.invocation_id}.claude-code.${worker.role}.stdout.json`
+    const stderrPath = `${evidenceDir}/${invocation.invocation_id}.claude-code.${worker.role}.stderr.log`
+
+    writeTextAtomic(resolveInside(root, stdoutPath), result.stdout)
+    writeTextAtomic(resolveInside(root, stderrPath), result.stderr)
+
+    const present =
+      fileExists(evidenceAbsolute) &&
+      readText(evidenceAbsolute).trim().length > 0
+
+    results.push({
+      ...base,
+      skipped: null,
+      ok: result.ok && present,
+      exit_code: result.exit_code,
+      duration_ms: result.duration_ms,
+      stdout_path: stdoutPath,
+      stderr_path: stderrPath,
+      ...(result.error
+        ? { error: result.error }
+        : present
+          ? {}
+          : {
+              error: `evidence report not written at ${worker.evidence_path}`,
+            }),
+    })
+  }
+
+  return results
 }

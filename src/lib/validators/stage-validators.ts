@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { readdirSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 
 import {
@@ -651,6 +651,136 @@ function attemptChangedPaths(
   }
 }
 
+interface TestsAddedEntry {
+  /** The entry as submitted, for messages. */
+  raw: string
+  /** File portion of the entry. */
+  file: string
+  contract?: string
+}
+
+/**
+ * Parse one `tests_added` entry. A bare string is the legacy `<path>` or
+ * `<path>::<case>` form and parses as `{ path }` without a contract. An
+ * object carries `path` and an optional `contract`.
+ */
+function parseTestsAddedEntry(entry: unknown): TestsAddedEntry | null {
+  if (typeof entry === 'string') {
+    return { raw: entry, file: testFilePortion(entry) }
+  }
+
+  if (
+    isRecord(entry) &&
+    typeof entry.path === 'string' &&
+    (entry.contract === undefined || typeof entry.contract === 'string')
+  ) {
+    return {
+      raw: entry.path,
+      file: testFilePortion(entry.path),
+      ...(typeof entry.contract === 'string'
+        ? { contract: entry.contract }
+        : {}),
+    }
+  }
+
+  return null
+}
+
+/**
+ * An entry names a test file, optionally followed by '::<case name>' in native
+ * pytest/Jest notation or the spaced display form ' :: <case>'. Both resolve
+ * to the same file: only the file portion resolves against the workspace.
+ */
+function testFilePortion(entry: string): string {
+  return entry.split(/\s*::\s*/u)[0].trim()
+}
+
+const TEST_FILE_PATTERN =
+  /(?:^|\/)(?:[^/]+\.(?:test|spec)\.[^/]+|test_[^/]+\.py|[^/]+_test\.(?:py|go))$/u
+
+/** JavaScript/TypeScript `test(`/`it(` call sites and Python `def test_`. */
+function countTestCallSites(source: string): number {
+  const matches = source.match(
+    /^[ \t]*(?:(?:test|it)(?:\.\w+)*\s*\(|(?:async\s+)?def\s+test_\w+\s*\()/gmu,
+  )
+
+  return matches?.length ?? 0
+}
+
+export interface TestDelta {
+  path: string
+  kind: 'new_file' | 'net_positive'
+  count: number
+}
+
+/**
+ * The attempt's observable test delta: new `*.test.*` files and changed test
+ * files whose `test(`/`it(` call-site count rose against `HEAD`. Measured over
+ * the paths this attempt changed (the invocation `workspace_before` snapshot),
+ * falling back to the cumulative working-tree diff when no snapshot exists.
+ * A filesystem workspace or an unavailable Git leaves the delta unobservable
+ * and reports nothing; the caller has already failed closed on Git errors.
+ */
+export function attemptTestDelta(
+  input: HandlerInput,
+  workspaceRoot: string,
+): TestDelta[] {
+  const workspaceBefore =
+    isRecord(input.invocation) && isRecord(input.invocation.workspace_before)
+      ? input.invocation.workspace_before
+      : null
+
+  if (workspaceBefore?.kind === 'filesystem') {
+    return []
+  }
+
+  let changed = attemptChangedPaths(input, workspaceRoot)
+
+  if (changed === null) {
+    const diff = workspaceSourceChanges(workspaceRoot)
+
+    if (!diff.ok) {
+      return []
+    }
+
+    changed = diff.files
+  }
+
+  const deltas: TestDelta[] = []
+
+  for (const relativePath of [...new Set(changed)].sort()) {
+    if (!TEST_FILE_PATTERN.test(relativePath)) {
+      continue
+    }
+
+    const absolute = path.join(workspaceRoot, relativePath)
+
+    if (!fileExists(absolute)) {
+      continue
+    }
+
+    const current = countTestCallSites(readFileSync(absolute, 'utf8'))
+    const head = gitOutput(workspaceRoot, ['show', `HEAD:${relativePath}`])
+
+    if (!head.ok) {
+      // Not in HEAD: a new file. Zero call sites means no test was added.
+      if (current > 0) {
+        deltas.push({ path: relativePath, kind: 'new_file', count: current })
+      }
+
+      continue
+    }
+
+    const net = current - countTestCallSites(head.stdout)
+
+    if (net > 0) {
+      deltas.push({ path: relativePath, kind: 'net_positive', count: net })
+    }
+  }
+
+  return deltas
+}
+
 function gitUnavailableIssue(error: string): HandlerResult['issues'][number] {
   return issue(
     'git.unavailable',
@@ -1298,44 +1428,71 @@ export function validateImplementationClaims(
   const testsAddedRaw = Array.isArray(implementation.tests_added)
     ? (implementation.tests_added as unknown[])
     : []
-  const testsAdded = testsAddedRaw.filter(
-    (testPath): testPath is string => typeof testPath === 'string',
-  )
+  const testsAdded: TestsAddedEntry[] = []
 
   for (const entry of testsAddedRaw) {
-    if (typeof entry !== 'string') {
+    const parsed = parseTestsAddedEntry(entry)
+
+    if (parsed) {
+      testsAdded.push(parsed)
+    } else {
       issues.push(
         issue(
           'claim.entry_shape',
-          `implementation.tests_added entries MUST be strings; got ${JSON.stringify(entry)}`,
+          `implementation.tests_added entries MUST be '<test file path>' ` +
+            `strings or { path, contract } objects; got ${JSON.stringify(entry)}`,
         ),
       )
     }
   }
 
-  for (const testPath of testsAdded) {
-    // An entry names a test file, optionally followed by '::<case name>' in
-    // native pytest/Jest notation or the spaced display form ' :: <case>'.
-    // Both resolve to the same file: only the file portion resolves against
-    // the workspace.
-    const testFile = testPath.split(/\s*::\s*/u)[0].trim()
+  for (const entry of testsAdded) {
     const resolved = resolveWorkspaceRelativeFilePath(
       input.root,
-      workspaceRootFromInput(input),
-      testFile,
+      workspaceRoot,
+      entry.file,
     )
 
     if (!fileExists(resolved)) {
       issues.push(
         issue(
           'claim.test_missing',
-          `Listed test file does not exist: ${testFile} (from entry: ` +
-            `${testPath}). Entries MUST be '<test file path>' optionally ` +
+          `Listed test file does not exist: ${entry.file} (from entry: ` +
+            `${entry.raw}). Entries MUST be '<test file path>' optionally ` +
             `followed by '::<test case>', e.g. ` +
             `'tests/unit/example.test.ts::adds provenance rows'.`,
         ),
       )
     }
+  }
+
+  // Each new test file and each net-positive test delta needs a contract.
+  // A change that adds no tests needs no entry.
+  for (const delta of attemptTestDelta(input, workspaceRoot)) {
+    const covered = testsAdded.some(
+      (entry) =>
+        entry.file === delta.path &&
+        typeof entry.contract === 'string' &&
+        entry.contract.trim().length > 0,
+    )
+
+    if (covered) {
+      continue
+    }
+
+    const shape =
+      delta.kind === 'new_file'
+        ? `is a new test file with ${delta.count} test call site(s)`
+        : `gained ${delta.count} net test call site(s)`
+
+    issues.push(
+      issue(
+        'implementation.tests_added_contract_missing',
+        `${delta.path} ${shape}; implementation.tests_added MUST carry ` +
+          `{ "path": "${delta.path}", "contract": "<one sentence naming the ` +
+          `behavior the test proves>" }.`,
+      ),
+    )
   }
 
   return {

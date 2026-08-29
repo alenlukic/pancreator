@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pancreator://eval-scenario/v1",
+  "title": "Pancreator eval scenario",
+  "description": "A bounded toy workflow run plus deterministic graders over its records. `pan eval run <name>` drives the run; `pan eval grade <run-id> --scenario <name>` grades any run's records. `pan validate` checks every file under evals/scenarios/ against this shape.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "name",
+    "description",
+    "policy_instructions",
+    "fixture",
+    "request",
+    "workflow",
+    "verification",
+    "expected",
+    "graders"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "Scenario id. Must equal the file name without .json."
+    },
+    "description": { "type": "string", "minLength": 1 },
+    "policy_instructions": {
+      "type": "array",
+      "minItems": 1,
+      "description": "The policy instructions this scenario exercises, by policy id and 1-based instruction number.",
+      "items": {
+        "type": "object",
+        "required": ["policy_id", "instruction", "summary"],
+        "additionalProperties": false,
+        "properties": {
+          "policy_id": { "type": "string", "pattern": "^[A-Z]+-[0-9]{3}$" },
+          "instruction": { "type": "integer", "minimum": 1 },
+          "summary": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "fixture": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "Directory name under evals/fixtures/. The toy target repository the run mutates. Never this harness's own tree."
+    },
+    "request": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Markdown request body written to the eval run's request.md."
+    },
+    "workflow": {
+      "type": "string",
+      "enum": ["delivery", "prototype", "design"]
+    },
+    "verification": { "type": "string", "minLength": 1 },
+    "involvement": { "type": "string", "minLength": 1 },
+    "pipeline_config": { "type": "string", "minLength": 1 },
+    "operator_decisions": {
+      "type": "array",
+      "description": "Scripted operator decisions `pan eval run` applies through `pan decide` when the run stops at the named stage.",
+      "items": {
+        "type": "object",
+        "required": ["stage", "decision"],
+        "additionalProperties": false,
+        "properties": {
+          "stage": { "type": "string", "minLength": 1 },
+          "decision": {
+            "type": "string",
+            "enum": ["approve", "reject", "revise"]
+          },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    "expected": {
+      "type": "object",
+      "required": ["status"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "running",
+            "awaiting_supervisor",
+            "awaiting_operator",
+            "paused",
+            "succeeded",
+            "failed",
+            "canceled"
+          ]
+        },
+        "current_stage": { "type": ["string", "null"] },
+        "pending_action": { "type": "string" },
+        "stage_sequence": {
+          "type": "array",
+          "description": "Expected stage_history prefix, in order. A string matches the stage slug; an object also matches the outcome.",
+          "items": {
+            "oneOf": [
+              { "type": "string", "minLength": 1 },
+              {
+                "type": "object",
+                "required": ["stage"],
+                "additionalProperties": false,
+                "properties": {
+                  "stage": { "type": "string", "minLength": 1 },
+                  "outcome": {
+                    "type": "string",
+                    "enum": ["success", "failure", "blocked"]
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "output_assertions": {
+          "type": "array",
+          "description": "Dot-path assertions over the latest output data of a stage, for example evaluation.verdict equals environment_blocked.",
+          "items": {
+            "type": "object",
+            "required": ["stage", "path", "equals"],
+            "additionalProperties": false,
+            "properties": {
+              "stage": { "type": "string", "minLength": 1 },
+              "path": { "type": "string", "minLength": 1 },
+              "equals": {}
+            }
+          }
+        }
+      }
+    },
+    "graders": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": [
+              "profile-executions",
+              "delegation-watch-record",
+              "platform-guidance-conflict-recorded",
+              "attempts-not-spent-on-mechanics",
+              "stage-order-and-terminal-state"
+            ]
+          },
+          "policy": {
+            "type": "string",
+            "description": "Policy reference the grader enforces, `POLICY-001#n`.",
+            "pattern": "^[A-Z]+-[0-9]{3}(#[0-9]+)?$"
+          },
+          "config": { "type": "object" }
+        }
+      }
+    }
+  }
+}

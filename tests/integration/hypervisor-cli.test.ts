@@ -6,7 +6,6 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
-  createRun,
   getRunState,
   pauseRun,
   prepareInvocation,
@@ -16,7 +15,7 @@ import {
   agentRegistryPath,
   readAgentRegistry,
 } from '../../src/lib/hypervisor.js'
-import { createFixture } from '../helpers.js'
+import { createFixture, createRun } from '../helpers.js'
 
 const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
 

@@ -3,12 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import {
-  createRun,
-  decideRun,
-  prepareInvocation,
-  submitOutput,
-} from '../../src/lib/engine.js'
+import { decideRun, prepareInvocation } from '../../src/lib/engine.js'
 import {
   attestationValidationPath,
   delegationPath,
@@ -18,9 +13,11 @@ import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import type { Invocation } from '../../src/lib/types.js'
 import {
   createFixture,
+  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
+  submitAsSupervisor,
 } from '../helpers.js'
 import { checkpoint } from './delivery-helpers.js'
 
@@ -38,7 +35,7 @@ test('submit records missing delegation as an advisory governance warning', () =
     makeOutput(root, planInvocation, stageBySlug(workflow, 'plan')),
   )
 
-  const submitted = submitOutput(root, runId, planInvocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, planInvocation.output.path)
 
   assert.equal(submitted.record.outcome, 'success')
   assert.equal(submitted.state.status, 'awaiting_operator')
@@ -69,7 +66,7 @@ test('submit records mismatched delegation as advisory evidence before ship', ()
   )
   writeFileSync(delegationArtifact, '# rewritten delegation prompt\n')
 
-  const submitted = submitOutput(root, runId, planInvocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, planInvocation.output.path)
 
   assert.equal(submitted.record.outcome, 'success')
   assert.equal(submitted.state.status, 'awaiting_operator')
@@ -158,7 +155,7 @@ test('submit relocates workspace-root delegation artifact before validation', ()
   )
   writeFileSync(misplacedDelegation, readFileSync(deliveredBody, 'utf8'))
 
-  const submitted = submitOutput(root, runId, planInvocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, planInvocation.output.path)
 
   assert.equal(submitted.record.outcome, 'success')
   assert.equal(existsSync(misplacedDelegation), false)
@@ -207,7 +204,7 @@ test('submit rejects a delegated output with no read attestation', () => {
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
 
-  const submitted = submitOutput(root, runId, invocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
   assert.equal(submitted.record.outcome, 'failure')
   assert.match(
@@ -243,7 +240,7 @@ test('submit reports an unreadable contract reference as blocked', () => {
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
 
-  const submitted = submitOutput(root, runId, invocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
   assert.equal(submitted.record.outcome, 'blocked')
 

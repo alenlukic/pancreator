@@ -208,6 +208,75 @@ legacy all-history input behavior for compatibility. New runs use the scoped
 `ORCH-001` defines how the supervisor consumes `pending_action`, which actions it
 must continue through, and where operator handoff is required.
 
+Continuation never depends on a platform completion notification. When a worker
+launch returns before the declared output exists, the supervisor awaits
+`pan watch <run-id>`. The command loops on the `DELEGATE-001` cadence,
+inspects the invocation's output and evidence paths, and appends every arming
+and wake to `agent/evidence/<invocation-id>-watch.jsonl`. It exits `completed`
+(0), `stalled` (2), or `timed_out` (3). `--mark-background` writes
+`agent/evidence/<invocation-id>-delegation-background.json` when the platform
+turned the launch into a background subagent.
+
+A launch that returns with the declared output already present exposes no
+observation point. The supervisor records that return with
+`pan watch <run-id> --foreground-returned [--invocation <id>] [--launched-at <iso-8601>]`,
+which writes `agent/evidence/<invocation-id>-foreground-return.json` beside the
+watch record with the launch and return wall-clock times, the elapsed seconds,
+and a terminal-state inspection. The launch time defaults to the modification
+time of the delegation artifact the supervisor persists immediately before the
+launch.
+
+`pan submit` requires one of the two records for every `cursor`-executor
+worker invocation: a watch record whose last wake carries
+`terminal_state: completed`, or the foreground-return attestation. A
+submission with neither fails with the hard error `DELEGATION_UNOBSERVED`
+before any validator or gate runs. Like a missing evidence report, the refusal
+is a supervisor-owned precondition: it changes no run state and consumes no
+attempt. Stages whose invocation names an external `persona_executor` are
+exempt because `pan delegate` writes their delegation-execution record. The
+stage record carries the observation as `delegation_observation` with its
+`source` (`watch_completed`, `foreground_return`, or `external_executor`), the
+watch digest when a watch record or background marker exists, and the
+attestation digest when one exists.
+
+`pan status <run-id> --redline` writes
+`agent/evidence/platform-guidance-redline.json` and records the event
+`platform_guidance_redline_recorded`. The record is the supervisor's
+pre-declaration that platform polling, awaiting, backgrounding, session-mode,
+model, tool, and command-execution guidance is non-authoritative for the run.
+
+### Supervisor governance card
+
+The supervisor holds no invocation card of its own, so the harness renders one
+for the run. `pan init` and every `pan prepare` render
+`runtime/logs/workflows/<run-id>/agent/supervisor-card.md` with the full text of
+every policy the lookup table resolves for the `orchestrator` persona and the
+run's workflow (the wildcard stage plus each declared stage), the guidance
+digests, and the run binding. `pan governance card --mode supervisor --run
+<run-id>` renders or refreshes the same card on demand and reports its digest.
+
+Run state records the card as `supervisor_card = { path, sha256, rendered_at,
+attested_sha256?, attested_at? }` and the events
+`supervisor_card_rendered` and `supervisor_card_attested`. The render is
+idempotent: an unchanged digest rewrites nothing. A changed policy set produces
+a new digest, and the previous attestation stays on record as evidence but no
+longer binds.
+
+The supervisor MUST read the card in full and attest the reported digest with
+`pan governance attest-supervisor <run-id> --sha256 <digest>`. `pan prepare`
+and `pan submit` MUST fail with `SUPERVISOR_CARD_UNATTESTED` while the current
+digest is unattested; the failure is a hard error, never an advisory. A digest
+that does not match the current card fails with
+`SUPERVISOR_CARD_DIGEST_MISMATCH`.
+
+A run created before the card existed has no `supervisor_card`. Its next
+`pan prepare` renders the card and proceeds once; every later prepare and
+submit requires the attestation.
+
+Each `<invocation-id>.supervisor.md` procedure prints the card path, the
+digest, and the attest command beside the inlined delivery policy, so the
+supervisor's complete governance is one read away from every delegation.
+
 ### Away-mode control loop
 
 The top-level supervisor owns ordinary workflow continuation. It reads the full
@@ -269,6 +338,28 @@ A stage is successful only when all of the following hold:
 
 A `blocked` result pauses. A failure follows the declared remediation transition. A successful result may still wait at a supervisor or operator gate.
 
+### Validator order at submit
+
+`pan submit` runs the claim, attestation, and artifact validators before any
+repository-check shell gate. The harness-authoritative policy validators (for
+example `IMPLEMENTATION-CLAIMS-VALIDATE-001` and
+`TARGET-INSTRUCTION-COVERAGE-VALIDATE-001`) come from `resolveSubmitValidators`,
+the one resolution both `pan submit` and `pan output validate` use, so the two
+commands never disagree about which validators apply to an invocation.
+`pan output validate` runs the same set without persisting validation records;
+`pan submit` persists one record per requirement under `agent/validations/`.
+
+A shell gate can only confirm a success. When the submission has already
+decided a non-success outcome — a declared `failure` or `blocked` result, a
+failed read attestation, a blocking harness validator, a blocking artifact or
+stage-output diagnostic at ship, or a failed hard self-criterion — every shell
+gate is recorded with `skipped: true` and an `explanation` that names the
+deciding reason (for example
+`harness validator IMPLEMENTATION-CLAIMS-VALIDATE-001 rejected the output`)
+instead of executing. State criteria such as workspace scope still evaluate.
+A skipped gate keeps `passed: true` so it never masquerades as the failure
+reason.
+
 ### Same-reason circuit breaker
 
 The broad workflow attempt and consecutive-failure limits are not the only retry
@@ -292,11 +383,16 @@ or from `pan init --verification <level>`. The level maps shell-criterion ids
 to the repository-check profile each gate actually runs (or `false` to skip a
 gate), and the run snapshots the resolved mapping so later config edits cannot
 change it. Under the default `light` level the implement loop gates on
-`static` and `fast`, the verify submission gate re-runs `fast` against the
-pre-implementation baseline, and QA cites that gate evidence from its card
-instead of executing a profile itself. The expensive `full` profile never runs
-unless the operator explicitly selects a level whose gates leave it in place
-(`thorough`) — teams and CI own the suites the level leaves out.
+`static` and `fast`; the verify submission gate runs `full` once on a passing
+verdict (a failing verdict routes to remediate with the gate skipped); and the
+remediate submission gate runs `full` once when the stage reports success.
+When remediation returns to verify, the verify gate accepts the remediate
+gate's recorded `full` pass at the unchanged fingerprint from the gate cache
+(`DEV-001`), so `full` executes exactly once per remediate→verify cycle.
+Agents never run `full`: the coder, remediator, reviewer, and QA worker iterate
+on blast-radius tests and run `fast` at most once each as validation, and the
+consolidating verifier runs neither. `minimal` disables both `full` gates;
+`thorough` is an alias of `light`.
 
 Intake and plan workers MAY set `data.verification_recommendation`
 (`{ "level": ..., "reason": ... }`) when the change warrants a different
@@ -317,10 +413,10 @@ recorded as a visible `preexisting_failure` but passes the workflow gate. Any
 new command failure, changed exit behavior, or new/changed diagnostic fails
 the gate. A passing baseline that later fails always blocks.
 
-A gate at a later non-mutating stage reuses a baseline when its effective
-profile has one (QA's `fast` re-run under `light`) and is judged on its own
-result otherwise (QA's `full` under `thorough`, ship's `configuration`): the
-expensive profiles are never run early just to have a comparison point. A
+A gate reuses a baseline when its effective profile has one (remediate's
+`static` gate) and is judged on its own result otherwise (the `full` gates at
+verify and remediate, ship's `configuration`): the `full` profile is never
+baselined, even though the source-allowed remediate stage gates on it. A
 recorded baseline that is unreadable or incompatible still pauses the run
 before delegation.
 

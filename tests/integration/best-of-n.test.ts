@@ -15,7 +15,7 @@ import {
 import { getRunState, prepareInvocation } from '../../src/lib/engine.js'
 import { withOperationMutex } from '../../src/lib/io.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
-import { createFixture, writeJson } from '../helpers.js'
+import { attestRunCard, createFixture, writeJson } from '../helpers.js'
 
 import {
   CONFIGS,
@@ -208,6 +208,9 @@ test('best-of-N init isolates every candidate in its own worktree and model set'
   )
 
   const candidate = session.candidates[0]
+
+  attestRunCard(root, candidate.run_id)
+
   const prepared = prepareInvocation(root, candidate.run_id)
   const status = bestOfNStatus(root, session.bon_id)
 
@@ -389,6 +392,8 @@ test('consolidation waits for every candidate and then evaluates all of them', (
   assert.equal(consolidationRun.workflow_slug, 'metacritic')
   assert.equal(consolidationRun.workspace_root, '.')
   assert.equal(consolidationRun.best_of_n?.role, 'consolidation')
+
+  attestRunCard(root, consolidationRunId)
 
   const prepared = prepareInvocation(root, consolidationRunId)
 

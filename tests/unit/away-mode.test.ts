@@ -18,7 +18,6 @@ import {
   recordHypervisorQuarantine,
   selectAwayOption,
 } from '../../src/lib/away-mode.js'
-import { createRun } from '../../src/lib/engine.js'
 import {
   AWAY_MODE_ACTIONS,
   resolveAwayModeConfig,
@@ -30,7 +29,7 @@ import type {
   RunState,
   StageHistoryItem,
 } from '../../src/lib/types.js'
-import { createFixture } from '../helpers.js'
+import { createFixture, createRun } from '../helpers.js'
 
 function enableAwayMode(
   root: string,
