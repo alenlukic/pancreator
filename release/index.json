@@ -8,6 +8,10 @@
     {
       "version": "5.0.0",
       "commit": "0c727a1927df33c8e22b47291b82d290ff00888b"
+    },
+    {
+      "version": "5.0.1",
+      "commit": "bc1ec28acfb556894922f131f1aef2cb3f874d58"
     }
   ]
 }
