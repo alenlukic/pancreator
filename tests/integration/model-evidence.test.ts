@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -12,9 +12,11 @@ import {
   recordSupervisorModelEvidence,
   submitOutput,
 } from '../../src/lib/engine.js'
-import { expectedCursorModelForSpec } from '../../src/lib/executors/cursor-probe.js'
+import {
+  expectedCursorModelForSpec,
+  probeCursorModelSpec,
+} from '../../src/lib/executors/cursor-probe.js'
 import { stageBySlug, loadWorkflow } from '../../src/lib/workflow.js'
-import { syncCursorProjection } from '../../src/lib/projection.js'
 import {
   createFixture,
   makeOutput,
@@ -224,60 +226,30 @@ test('worker probes persist matches and reject mismatches or missing metadata', 
 
 test('a bare model spec accepts any resolved Cursor variant', () => {
   const root = createFixture()
-  const configPath = path.join(root, 'config.json')
-  const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
-    defaults: Record<string, string>
-    configs?: Record<string, { personas?: Record<string, string> }>
-  }
 
   // Run 63316 record 02_ship-1_abe84794: a bare spec delegates the variant
   // choice to Cursor, so comparing the spec id literally with the resolved
   // display name produced a false CURSOR_MODEL_MISMATCH ('auto' vs 'Auto
-  // Balance') that made ship unsubmittable without a harness repair.
-  // A named entry under `configs` overrides `defaults`, so the persona is
-  // cleared there too.
-  config.defaults.planner = 'auto-smart'
+  // Balance') that made ship unsubmittable without a harness repair. The rule
+  // lives in the probe module: a bare spec has no catalog prediction to
+  // compare against, while a bracketed spec of the same model does.
+  assert.equal(expectedCursorModelForSpec(root, 'auto-smart'), null)
+  assert.notEqual(expectedCursorModelForSpec(root, 'auto-smart[]'), null)
 
-  for (const named of Object.values(config.configs ?? {})) {
-    delete named.personas?.planner
-  }
-
-  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
-  syncCursorProjection(root, { write: true })
-
-  const run = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Bare spec run',
-  })
-
-  recordSupervisorModelEvidence(
-    root,
-    run.run_id,
-    'GPT 5.6 Sol',
-    'Cursor session metadata',
-  )
-
-  const invocation = prepareInvocation(root, run.run_id).invocation
-
-  assert.ok(invocation)
-  assert.equal(invocation.stage.model, 'auto-smart')
-
+  // Whatever variant Cursor reports for the bare spec is the resolved model.
   const resolved = withFakeCursorAgent(root, 'Auto Balance', () =>
-    probeRunInvocationModel(root, run.run_id, invocation.invocation_id),
+    probeCursorModelSpec('auto-smart'),
   )
 
-  assert.equal(resolved.result, 'match')
-  assert.equal(resolved.effective_model, 'Auto Balance')
+  assert.equal(resolved.resolved, 'Auto Balance')
+  assert.equal(resolved.error, undefined)
 
   // A failed probe still reports unavailable evidence: bare is permissive
   // about the variant, not about having evidence at all.
-  assert.throws(
-    () =>
-      withFakeCursorAgent(root, null, () =>
-        probeRunInvocationModel(root, run.run_id, invocation.invocation_id),
-      ),
-    (error: unknown) =>
-      error instanceof Error && error.message.includes('no system/init event'),
+  const missing = withFakeCursorAgent(root, null, () =>
+    probeCursorModelSpec('auto-smart'),
   )
+
+  assert.equal(missing.resolved, null)
+  assert.match(missing.error ?? '', /no system\/init event/u)
 })

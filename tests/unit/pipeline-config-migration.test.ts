@@ -104,6 +104,14 @@ test('migration fails before mutation when a required mapping stays empty', () =
   ])
   // Nothing else moved, so the caller has nothing to write.
   assert.equal(result.changed, false)
+
+  // An empty override the operator wrote by hand is a hole too.
+  const handWritten = migratePipelineOverrides({
+    previous,
+    next: structuredClone(previous),
+    overrides: { configs: { simple: { personas: { coder: '' } } } },
+  })
+  assert.deepEqual(handWritten.missing, ['configs.simple.personas.coder'])
 })
 
 test('migration keeps complete local overrides unchanged', () => {
@@ -120,15 +128,4 @@ test('migration keeps complete local overrides unchanged', () => {
   // Deep-equal to the input: a caller that skips the write on
   // `changed === false` keeps the file byte-identical.
   assert.deepEqual(result.overrides, overrides)
-})
-
-test('an empty override the operator wrote by hand fails the migration', () => {
-  const next = structuredClone(previous)
-  const result = migratePipelineOverrides({
-    previous,
-    next,
-    overrides: { configs: { simple: { personas: { coder: '' } } } },
-  })
-
-  assert.deepEqual(result.missing, ['configs.simple.personas.coder'])
 })

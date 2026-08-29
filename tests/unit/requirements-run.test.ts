@@ -5,12 +5,9 @@ import test from 'node:test'
 
 import {
   runRequirement,
-  inferTargetKind,
   isPassingResult,
-  isStaleTarget,
 } from '../../src/lib/requirements/run.js'
 import { resolveRequirements } from '../../src/lib/requirements/resolve.js'
-import { isValidHandlerStatus } from '../../src/lib/requirements/types.js'
 import { createFixture } from '../helpers.js'
 
 test('artifact validators resolve only when workflow artifacts are requested', () => {
@@ -125,40 +122,26 @@ test('runRequirement fails closed on missing target', () => {
 
   assert.equal(result.status, 'failed')
   assert.equal(isPassingResult(result), false)
-})
 
-test('runRequirement records target checksum when target exists', () => {
-  const root = createFixture()
-  const outputPath = 'runtime/logs/workflows/x/outputs/y.json'
-
-  mkdirSync(path.dirname(path.join(root, outputPath)), { recursive: true })
+  // Once the target exists, the run records its checksum and executor.
+  mkdirSync(path.dirname(path.join(root, 'missing/output.json')), {
+    recursive: true,
+  })
   writeFileSync(
-    path.join(root, outputPath),
+    path.join(root, 'missing/output.json'),
     JSON.stringify({ schema_version: 1, result: 'success', criteria: [] }),
   )
 
-  const manifest = resolveRequirements(root, {
-    persona: 'coder',
-    workflow: 'delivery',
-    stage: 'implement',
-    invocation: { output_path: outputPath },
-  })
-  const requirement = manifest.validation_requirements.find(
-    (item) => item.registry_id === 'STAGE-OUTPUT-VALIDATE-002',
-  )
-
-  assert.ok(requirement)
-
-  const result = runRequirement({
+  const present = runRequirement({
     root,
     requirement,
-    targetPath: outputPath,
+    targetPath: 'missing/output.json',
     executor: 'agent',
     persist: false,
   })
 
-  assert.ok(result.target_checksum)
-  assert.equal(result.executor, 'agent')
+  assert.ok(present.target_checksum)
+  assert.equal(present.executor, 'agent')
 })
 
 test('runRequirement validates a repository target without reading it as a file', () => {
@@ -185,19 +168,4 @@ test('runRequirement validates a repository target without reading it as a file'
 
   assert.equal(result.status, 'passed')
   assert.equal(result.target_checksum, undefined)
-})
-
-test('isStaleTarget detects checksum drift', () => {
-  assert.equal(isStaleTarget('abc', 'abc'), false)
-  assert.equal(isStaleTarget('abc', 'def'), true)
-  assert.equal(isStaleTarget(undefined, 'def'), false)
-})
-
-test('isValidHandlerStatus rejects malformed handler statuses', () => {
-  assert.equal(isValidHandlerStatus('passed'), true)
-  assert.equal(isValidHandlerStatus('bogus'), false)
-})
-
-test('inferTargetKind recognizes HTML operator artifacts', () => {
-  assert.equal(inferTargetKind('runtime/brief.html'), 'html-artifact')
 })

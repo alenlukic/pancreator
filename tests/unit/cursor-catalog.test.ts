@@ -141,11 +141,13 @@ const root = createCatalogRoot()
 test('a valid spec is emitted verbatim in Cursor bracket grammar', () => {
   // Bracket notation is Cursor's documented grammar for the subagent model
   // field. Every historical rewrite here (flat slugs, key renames, option
-  // reordering) produced strings Cursor silently degraded on.
+  // reordering) produced strings Cursor silently degraded on. Aliases
+  // (`auto`, `example`) resolve to a catalog model and are echoed as written.
   for (const spec of [
     'example-gpt[context=272k,reasoning=high,fast=false]',
     'example-claude[thinking=true,context=1m,effort=high]',
     'auto',
+    'example[context=272k,reasoning=high,fast=false]',
   ]) {
     assert.equal(
       resolveCursorModelSlug(
@@ -159,99 +161,53 @@ test('a valid spec is emitted verbatim in Cursor bracket grammar', () => {
 })
 
 test('parameters are validated per model, not per family', () => {
-  // Parameters are declared per model.
-  assert.throws(
-    () =>
-      resolveCursorModelSlug(
-        parsePersonaMapping('example-gpt[context=272k,effort=high,fast=false]'),
-        'persona mapping',
-        root,
-      ),
-    /has no parameter 'effort'/u,
-  )
-  assert.throws(
-    () =>
-      resolveCursorModelSlug(
-        parsePersonaMapping('example-claude[reasoning=high]'),
-        'persona mapping',
-        root,
-      ),
-    /has no parameter 'reasoning'/u,
-  )
-})
+  // Parameters are declared per model; every declared parameter is required,
+  // values must be declared, the model must exist, and the bracket spec must
+  // name a declared variant combination rather than merely valid values.
+  const rejections: Array<[string, RegExp]> = [
+    [
+      'example-gpt[context=272k,effort=high,fast=false]',
+      /has no parameter 'effort'/u,
+    ],
+    ['example-claude[reasoning=high]', /has no parameter 'reasoning'/u],
+    [
+      'example-gpt[context=272k,reasoning=invalid,fast=false]',
+      /parameter 'reasoning' has no value 'invalid'/u,
+    ],
+    ['example-claude[]', /missing parameter/u],
+    ['example-claude[context=1m,effort=high]', /missing parameter/u],
+    ['unknown-model', /not in the Cursor model catalog/u],
+    [
+      'example-gpt[context=1m,reasoning=high,fast=true]',
+      /declares no variant matching 'context=1m,fast=true,reasoning=high'/u,
+    ],
+  ]
 
-test('parameter values are validated against the model declaration', () => {
-  assert.throws(
-    () =>
-      resolveCursorModelSlug(
-        parsePersonaMapping(
-          'example-gpt[context=272k,reasoning=invalid,fast=false]',
+  for (const [spec, message] of rejections) {
+    assert.throws(
+      () =>
+        resolveCursorModelSlug(
+          parsePersonaMapping(spec),
+          'persona mapping',
+          root,
         ),
-        'persona mapping',
-        root,
-      ),
-    /parameter 'reasoning' has no value 'invalid'/u,
-  )
-  assert.equal(
-    resolveCursorModelSlug(
-      parsePersonaMapping('example-gpt[context=1m,reasoning=high,fast=false]'),
-      'persona mapping',
-      root,
-    ),
+      message,
+    )
+  }
+
+  for (const spec of [
     'example-gpt[context=1m,reasoning=high,fast=false]',
-  )
-})
-
-test('an underspecified spec fails: every declared parameter is required', () => {
-  assert.throws(
-    () =>
+    'example-gpt[context=272k,reasoning=high,fast=true]',
+  ]) {
+    assert.equal(
       resolveCursorModelSlug(
-        parsePersonaMapping('example-claude[]'),
+        parsePersonaMapping(spec),
         'persona mapping',
         root,
       ),
-    /missing parameter/u,
-  )
-  assert.throws(
-    () =>
-      resolveCursorModelSlug(
-        parsePersonaMapping('example-claude[context=1m,effort=high]'),
-        'persona mapping',
-        root,
-      ),
-    /missing parameter/u,
-  )
-})
-
-test('an unknown model fails loudly when a local catalog is present', () => {
-  assert.throws(
-    () =>
-      resolveCursorModelSlug(
-        parsePersonaMapping('unknown-model'),
-        'persona mapping',
-        root,
-      ),
-    /not in the Cursor model catalog/u,
-  )
-})
-
-test('aliases resolve to a catalog model', () => {
-  assert.equal(
-    resolveCursorModelSlug(
-      parsePersonaMapping('auto'),
-      'persona mapping',
-      root,
-    ),
-    'auto',
-  )
-  assert.equal(
-    resolveCursorModelSlug(
-      parsePersonaMapping('example[context=272k,reasoning=high,fast=false]'),
-      'persona mapping',
-      root,
-    ),
-    'example[context=272k,reasoning=high,fast=false]',
-  )
+      spec,
+    )
+  }
 })
 
 test('without a local catalog the resolution is grammar-only', () => {
@@ -272,41 +228,6 @@ test('without a local catalog the resolution is grammar-only', () => {
   assert.equal(
     resolveCursorModelSlug(parsePersonaMapping('unknown-model[foo=bar]')),
     'unknown-model[foo=bar]',
-  )
-})
-
-test('the catalog loads models, aliases, and per-model parameters', () => {
-  const catalog = loadCursorCatalog(root)
-  const exampleGpt = catalog?.models.get('example-gpt')
-
-  assert.ok(exampleGpt)
-  assert.deepEqual([...exampleGpt.parameters.keys()].sort(), [
-    'context',
-    'fast',
-    'reasoning',
-  ])
-  assert.ok(exampleGpt.parameters.get('reasoning')?.has('high'))
-  assert.ok(!exampleGpt.parameters.get('reasoning')?.has('invalid'))
-  assert.ok(catalog?.aliases.get('example')?.length)
-})
-
-test('a bracket spec must name a declared variant combination, not just valid values', () => {
-  assert.throws(
-    () =>
-      resolveCursorModelSlug(
-        parsePersonaMapping('example-gpt[context=1m,reasoning=high,fast=true]'),
-        'persona mapping',
-        root,
-      ),
-    /declares no variant matching 'context=1m,fast=true,reasoning=high'/u,
-  )
-  assert.equal(
-    resolveCursorModelSlug(
-      parsePersonaMapping('example-gpt[context=272k,reasoning=high,fast=true]'),
-      'persona mapping',
-      root,
-    ),
-    'example-gpt[context=272k,reasoning=high,fast=true]',
   )
 })
 

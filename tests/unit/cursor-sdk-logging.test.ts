@@ -54,25 +54,6 @@ test('Cursor SDK logger renders concise narrative and grouped tool calls', () =>
   logger.progress(
     'The operating contract is loaded; I am now checking runtime evidence.',
   )
-  logger.close()
-
-  const rendered = output.join('')
-  assert.match(rendered, /^I will read the operating contract/u)
-  assert.match(rendered, /Explored 2 files/u)
-  assert.match(rendered, /  Read AGENTS\.md L1–85/u)
-  assert.match(rendered, /  Searched automation in runtime/u)
-  assert.match(rendered, /The operating contract is loaded/u)
-  assert.doesNotMatch(rendered, /\[pan/u)
-})
-
-test('Cursor SDK logger surfaces tool failures as significant issues', () => {
-  const output: string[] = []
-  const logger = createCursorSdkInvocationLogger({
-    task: 'running validation',
-    write: (chunk) => output.push(chunk),
-    idleUpdateMs: 0,
-  })
-
   logger.observe({
     type: 'tool_call',
     call_id: 'shell-1',
@@ -90,6 +71,13 @@ test('Cursor SDK logger surfaces tool failures as significant issues', () => {
   logger.close()
 
   const rendered = output.join('')
+  assert.match(rendered, /^I will read the operating contract/u)
+  assert.match(rendered, /Explored 2 files/u)
+  assert.match(rendered, /  Read AGENTS\.md L1–85/u)
+  assert.match(rendered, /  Searched automation in runtime/u)
+  assert.match(rendered, /The operating contract is loaded/u)
+  assert.doesNotMatch(rendered, /\[pan/u)
+  // A failing tool call is surfaced as a significant issue in the same stream.
   assert.match(rendered, /Ran 1 command/u)
   assert.match(rendered, /  Ran npm test/u)
   assert.match(rendered, /Issue: shell failed — two tests failed/u)

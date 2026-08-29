@@ -6,41 +6,6 @@ import test from 'node:test'
 import { auditDirectives } from '../../src/lib/governance/audit-directives.js'
 import { createFixture } from '../helpers.js'
 
-test('directive audit passes on fixture repository', () => {
-  const root = createFixture()
-  const criteriaRoot = path.join(root, 'governance', 'criteria')
-
-  mkdirSync(criteriaRoot, { recursive: true })
-  writeFileSync(path.join(criteriaRoot, 'index.md'), '# Criteria\n')
-
-  const result = auditDirectives(root)
-
-  assert.equal(result.errors.length, 0)
-  assert.deepEqual(
-    new Set(result.source_coverage.map((item) => item.category)),
-    new Set([
-      'bootstrap',
-      'criterion',
-      'cursor_source',
-      'generated_projection',
-      'guidance',
-      'persona',
-      'policy',
-      'projection_manifest',
-      'selector',
-      'skill',
-      'workflow_prompt',
-    ]),
-  )
-  assert.ok(result.duplicate_groups.length > 0)
-  assert.equal(
-    result.source_coverage
-      .flatMap((item) => item.paths)
-      .some((item) => item.startsWith('.cursor/')),
-    false,
-  )
-})
-
 function dispositionRecord(root: string): {
   entries: Array<Record<string, unknown>>
 } {

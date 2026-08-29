@@ -1,15 +1,13 @@
 import assert from 'node:assert/strict'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import { createRun, prepareInvocation } from '../../src/lib/engine.js'
-import { sha256 } from '../../src/lib/io.js'
 import { loadPolicyCatalog } from '../../src/lib/policies.js'
 import {
   buildInvocationContractManifest,
   renderInvocationDeliveryPrompt,
-  splitInvocationContract,
 } from '../../src/lib/render.js'
 import {
   DELEGATION_HEADING,
@@ -139,98 +137,24 @@ test('worker invocation cards point at the supervisor delivery procedure', () =>
     ).passed,
     true,
   )
-})
 
-/**
- * A supervisor cannot reproduce a card that exceeds its own output budget, so
- * delivery size must not scale with the contract. These assertions pin the
- * bounded prompt, the flat section index, and the digests that let a worker prove
- * it read the whole contract.
- */
-test('referenced delivery stays bounded and flat as the contract grows', () => {
-  const root = createFixture()
-  const runId = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Bounded delivery run',
-  }).run_id
-
-  const prepared = prepareInvocation(root, runId)
-  const invocation = prepared.invocation
-
-  assert.ok(invocation?.delegation?.delivery_prompt_path)
-
+  // A supervisor cannot reproduce a card that exceeds its own output budget,
+  // so delivery size must not scale with the contract: growing the contract
+  // body does not grow the prompt. (The manifest digest and section-index
+  // assertions live in unit/render.)
   const manifest = invocation.contract_manifest
 
   assert.ok(manifest)
 
   const contract = cardText(root, manifest.contract_path)
-  const prompt = cardText(root, invocation.delegation.delivery_prompt_path)
-
-  // The manifest describes the contract that is actually on disk.
-  assert.equal(manifest.contract_sha256, sha256(contract))
-  assert.equal(manifest.byte_length, Buffer.byteLength(contract, 'utf8'))
-
-  // Concatenating the sections reproduces the contract, so a section digest and
-  // the whole-file digest describe the same bytes.
-  const blocks = splitInvocationContract(contract)
-
-  assert.equal(blocks.map((block) => block.markdown).join(''), contract)
-  assert.equal(blocks.length, manifest.sections.length)
-
-  // One flat index: every section appears exactly once, with its owner.
-  for (const section of manifest.sections) {
-    assert.equal(
-      prompt.split(section.sha256).length - 1,
-      1,
-      `prompt MUST list section ${section.id} exactly once`,
-    )
-  }
-
-  assert.ok(manifest.sections.some((section) => section.owner === 'worker'))
-  assert.ok(manifest.sections.some((section) => section.owner === 'supervisor'))
-  assert.ok(prompt.includes(manifest.contract_sha256))
-  assert.ok(prompt.length < contract.length)
-
-  // Growing the contract body does not grow the prompt.
+  const prompt = cardText(root, delegation.delivery_prompt_path)
   const grown = `${contract}${'Filler contract body line.\n'.repeat(4_000)}`
   const grownPrompt = renderInvocationDeliveryPrompt(
     invocation,
     buildInvocationContractManifest(manifest.contract_path, grown),
   )
 
+  assert.ok(prompt.length < contract.length)
   assert.ok(grown.length > contract.length * 2)
   assert.ok(grownPrompt.length < prompt.length + 100)
-})
-
-test('a delegation artifact that drops the delivery section fails validation', () => {
-  const root = createFixture()
-  const runId = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Stripped delegation run',
-  }).run_id
-
-  const prepared = prepareInvocation(root, runId)
-  const invocation = prepared.invocation
-
-  assert.ok(invocation?.delegation)
-
-  const canonical = cardText(
-    root,
-    invocation.delegation.canonical_markdown_path,
-  )
-  const stripped = canonical.slice(0, canonical.indexOf(DELEGATION_HEADING))
-
-  writeFileSync(
-    path.join(root, invocation.delegation.delegation_artifact_path),
-    stripped,
-  )
-
-  assert.equal(
-    validateDelegationMarkdown(canonical, stripped).passed,
-    false,
-    'stripping the delivery procedure MUST break canonical equality',
-  )
-  assert.equal(validateDelegationMarkdown(canonical, canonical).passed, true)
 })

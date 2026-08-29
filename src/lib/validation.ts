@@ -1724,7 +1724,7 @@ interface ShellCheckResolution {
   removed_reason?: string
 }
 
-function resolveShellCheck(
+export function resolveShellCheck(
   root: string,
   criterion: Criterion,
   requestedCommand: string,

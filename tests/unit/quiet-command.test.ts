@@ -91,10 +91,13 @@ test('a silent command earns no ticks, exposing a hang as a stopped stream', () 
 })
 
 test('progress ticks stay quiet for a command faster than one interval', () => {
-  // A wide interval removes the race between a first tick and a fast exit.
+  // An interval wider than the command's lifetime removes the race between a
+  // first tick and a fast exit. It is kept short because the ticker's
+  // orphaned `sleep` holds the stderr pipe open, so the wrapper's exit is not
+  // observed until the interval elapses.
   const result = runQuiet("process.stdout.write('quick\\n')", {
     progress: true,
-    progressIntervalSeconds: '5',
+    progressIntervalSeconds: '0.5',
   })
 
   assert.equal(result.status, 0)

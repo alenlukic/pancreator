@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict'
-import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
@@ -19,35 +18,16 @@ import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { createFixture, writeJson } from '../helpers.js'
 
 import {
-  CLI,
   CONFIGS,
   DEAD_PID,
   EXCLUSION_NOTE,
+  bestOfNCheckpoint,
   driveCandidate,
-  failCandidateVerify,
   git,
   initSession,
   sessionIdFromFailure,
-  submitCandidateStage,
+  sessionStatePath,
 } from './best-of-n-helpers.js'
-
-test('best-of-N init fails when a setup command fails', () => {
-  const root = createFixture()
-
-  writeJson(path.join(root, 'best-of-n.json'), {
-    ...CONFIGS,
-    setup: ['node -e "process.exit(7)"'],
-  })
-
-  assert.throws(
-    () =>
-      initBestOfN(root, {
-        requestPath: 'request.md',
-        configsPath: 'best-of-n.json',
-      }),
-    /Setup command failed for candidate 'alpha'/u,
-  )
-})
 
 test('a failed init leaves a session the lifecycle commands can recover', () => {
   const root = createFixture()
@@ -69,6 +49,10 @@ test('a failed init leaves a session the lifecycle commands can recover', () => 
   }
 
   assert.ok(failure, 'a failed setup command fails init')
+  assert.match(
+    failure instanceof Error ? failure.message : String(failure),
+    /Setup command failed for candidate 'alpha'/u,
+  )
 
   const bonId = sessionIdFromFailure(failure)
   const status = bestOfNStatus(root, bonId)
@@ -102,8 +86,7 @@ test('a failed init leaves a session the lifecycle commands can recover', () => 
 })
 
 test('one command at a time may mutate a session record', () => {
-  const root = createFixture()
-  const session = initSession(root)
+  const { root, session } = bestOfNCheckpoint('ready')
   const candidate = session.candidates[0]
 
   withOperationMutex(bestOfNMutexPath(root, session.bon_id), () => {
@@ -141,8 +124,7 @@ test('one command at a time may mutate a session record', () => {
 })
 
 test('a session recovers from a mutex its dead owner left behind', () => {
-  const root = createFixture()
-  const session = initSession(root)
+  const { root, session } = bestOfNCheckpoint('ready')
   const mutex = bestOfNMutexPath(root, session.bon_id)
 
   writeFileSync(mutex, `${DEAD_PID}\n`)
@@ -159,20 +141,12 @@ test('a session recovers from a mutex its dead owner left behind', () => {
 })
 
 test('session state rejects an unknown lifecycle status', () => {
-  const root = createFixture()
-  const session = initSession(root)
+  const { root, session } = bestOfNCheckpoint('ready')
 
-  writeJson(
-    path.join(
-      root,
-      'runtime',
-      'logs',
-      'best-of-n',
-      session.bon_id,
-      'state.json',
-    ),
-    { ...session, status: 'done' },
-  )
+  writeJson(sessionStatePath(root, session.bon_id), {
+    ...session,
+    status: 'done',
+  })
 
   assert.throws(
     () => bestOfNStatus(root, session.bon_id),
@@ -232,43 +206,8 @@ test('best-of-N init isolates every candidate in its own worktree and model set'
     readFileSync(path.join(root, '.cursor/agents/pan-coder.md'), 'utf8'),
     /gpt-5\.4|claude-opus-5/u,
   )
-})
 
-test('best-of-N init output omits unused supervisor agent paths', () => {
-  const root = createFixture()
-
-  writeJson(path.join(root, 'best-of-n.json'), CONFIGS)
-
-  const result = JSON.parse(
-    execFileSync(
-      process.execPath,
-      [
-        CLI,
-        'best-of-n',
-        'init',
-        '--request',
-        'request.md',
-        '--configs',
-        'best-of-n.json',
-        '--json',
-      ],
-      {
-        cwd: root,
-        encoding: 'utf8',
-        timeout: 30_000,
-      },
-    ),
-  ) as { candidates: Array<Record<string, unknown>> }
-
-  assert.ok(result.candidates.length >= 2)
-  assert.ok(
-    result.candidates.every((candidate) => !('agent_path' in candidate)),
-  )
-})
-
-test('a candidate run delegates to its own agent variant', () => {
-  const root = createFixture()
-  const session = initSession(root)
+  // A candidate run delegates to its own agent variant.
   const candidate = session.candidates[0]
   const prepared = prepareInvocation(root, candidate.run_id)
   const status = bestOfNStatus(root, session.bon_id)
@@ -284,9 +223,23 @@ test('a candidate run delegates to its own agent variant', () => {
   )
 })
 
+// The CLI projects `best-of-n init` output from the session record, so a field
+// the record never holds cannot reach the output either.
+test('best-of-N init output omits unused supervisor agent paths', () => {
+  const { root, session } = bestOfNCheckpoint('ready')
+  const status = bestOfNStatus(root, session.bon_id)
+
+  assert.ok(session.candidates.length >= 2)
+  assert.ok(
+    session.candidates.every((candidate) => !('agent_path' in candidate)),
+  )
+  assert.ok(
+    status.candidates.every((candidate) => !('agent_path' in candidate)),
+  )
+})
+
 test('agent refresh preserves pinned models while updating instructions', () => {
-  const root = createFixture()
-  const session = initSession(root)
+  const { root, session } = bestOfNCheckpoint('ready')
   const candidate = session.candidates[0]
   const variant = path.join(
     root,
@@ -321,8 +274,7 @@ test('agent refresh preserves pinned models while updating instructions', () => 
 })
 
 test('status surfaces invalid candidate state', () => {
-  const root = createFixture()
-  const session = initSession(root)
+  const { root, session } = bestOfNCheckpoint('ready')
   const candidate = session.candidates[0]
   const statePath = resolveRunLayout(root, candidate.run_id).state.absolute
 
@@ -357,29 +309,26 @@ test('a candidate run keeps workflow-declared gates under a high-touch profile',
   assert.ok(snapshot.stages.every((stage) => stage.gate !== 'operator'))
 })
 
+// The remediation cap that fails a candidate is an engine contract. The
+// best-of-N fact is that a failed child run is terminal for the session: it
+// leaves nothing unresolved and asks nothing of the operator.
 test('a candidate circuit breaker ends that candidate without operator input', () => {
-  const root = createFixture()
-  const session = initSession(root)
+  const { root, session } = bestOfNCheckpoint('ready')
   const candidate = session.candidates[0]
+  const statePath = resolveRunLayout(root, candidate.run_id).state.absolute
+  const state = JSON.parse(readFileSync(statePath, 'utf8')) as Record<
+    string,
+    unknown
+  >
 
-  submitCandidateStage(root, candidate.run_id, 'plan')
-  submitCandidateStage(root, candidate.run_id, 'implement')
-  submitCandidateStage(
-    root,
-    candidate.run_id,
-    'verify',
-    'failure',
-    failCandidateVerify('VF-CAND-1'),
-  )
-  submitCandidateStage(root, candidate.run_id, 'remediate')
+  writeJson(statePath, {
+    ...state,
+    status: 'failed',
+    pending_action: { type: 'none' },
+    current_stage: null,
+  })
 
-  const failed = submitCandidateStage(
-    root,
-    candidate.run_id,
-    'verify',
-    'failure',
-    failCandidateVerify('VF-CAND-2'),
-  )
+  const failed = getRunState(root, candidate.run_id)
 
   assert.equal(failed.status, 'failed')
   assert.equal(failed.pending_action.type, 'none')

@@ -1,10 +1,16 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { cpSync, mkdtempSync, readFileSync, realpathSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 
-import { initBestOfN } from '../../src/lib/best-of-n.js'
+import {
+  abandonBestOfNCandidate,
+  consolidateBestOfN,
+  initBestOfN,
+} from '../../src/lib/best-of-n.js'
+import type { BestOfNState } from '../../src/lib/best-of-n.js'
 import {
   assessStage,
   prepareInvocation,
@@ -13,7 +19,12 @@ import {
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import type { StageOutput } from '../../src/lib/types.js'
-import { makeOutput, writeCanonicalDelegation, writeJson } from '../helpers.js'
+import {
+  createFixture,
+  makeOutput,
+  writeCanonicalDelegation,
+  writeJson,
+} from '../helpers.js'
 
 export const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
 export const CONFIGS = {
@@ -64,13 +75,10 @@ export function sessionStatePath(root: string, bonId: string): string {
   return path.join(root, 'runtime', 'logs', 'best-of-n', bonId, 'state.json')
 }
 
-export function readSessionState(
-  root: string,
-  bonId: string,
-): ReturnType<typeof initBestOfN> {
+export function readSessionState(root: string, bonId: string): BestOfNState {
   return JSON.parse(
     readFileSync(sessionStatePath(root, bonId), 'utf8'),
-  ) as ReturnType<typeof initBestOfN>
+  ) as BestOfNState
 }
 
 /** Mark a child run terminal so lifecycle guards treat it as finished. */
@@ -182,4 +190,128 @@ export function failCandidateVerify(
       result: criterion.id === 'verify.acceptance_met' ? 'fail' : 'pass',
     }))
   }
+}
+
+// ---------------------------------------------------------------------------
+// Checkpoints
+//
+// Most lifecycle facts (mutex refusals, loader validators, cleanup guards)
+// need a ready session but not a fresh one. The session is built once per
+// process on top of a fixture and every later call clones it with `cp -Rc`
+// (clonefile; a plain recursive copy is the fallback). The clone carries the
+// candidate worktrees, whose Git registration `git worktree repair` points at
+// the clone before the checkpoint is handed out, so no test ever mutates the
+// template through a stale gitdir pointer.
+// ---------------------------------------------------------------------------
+
+export type BestOfNCheckpointKey = 'ready' | 'consolidated'
+
+export interface BestOfNCheckpoint {
+  root: string
+  /** The session record as the clone holds it. */
+  session: BestOfNState
+}
+
+const bestOfNCheckpointTemplates = new Map<
+  BestOfNCheckpointKey,
+  { root: string; bonId: string }
+>()
+
+function buildBestOfNTemplate(key: BestOfNCheckpointKey): {
+  root: string
+  bonId: string
+} {
+  if (key === 'ready') {
+    const root = createFixture()
+    const session = initSession(root)
+
+    return { root, bonId: session.bon_id }
+  }
+
+  // `consolidated` extends `ready`: alpha finishes, beta is abandoned, and the
+  // consolidation metacritic run exists but has not started.
+  const { root, session } = bestOfNCheckpoint('ready')
+  const [alpha, beta] = session.candidates
+
+  driveCandidate(root, alpha.run_id)
+  abandonBestOfNCandidate(root, session.bon_id, beta.run_id, EXCLUSION_NOTE)
+  consolidateBestOfN(root, session.bon_id)
+
+  return { root, bonId: session.bon_id }
+}
+
+/** Clone a directory tree; clonefile when available, recursive copy otherwise. */
+export function cloneTree(template: string): string {
+  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-v2-'))
+
+  try {
+    execFileSync('cp', ['-Rc', `${template}/.`, root], { timeout: 180_000 })
+  } catch {
+    cpSync(template, root, { recursive: true })
+  }
+
+  // Worktree bookkeeping compares Git's realpath output with the root, so the
+  // root is handed out in the same form the CLI sees from process.cwd().
+  return realpathSync(root)
+}
+
+/**
+ * Re-point every linked worktree of a cloned repository at the clone and prove
+ * the registration no longer names any other repository.
+ */
+export function repairClonedWorktrees(
+  root: string,
+  relativeWorktreePaths: string[],
+): void {
+  if (relativeWorktreePaths.length > 0) {
+    execFileSync(
+      'git',
+      [
+        'worktree',
+        'repair',
+        ...relativeWorktreePaths.map((relative) => path.join(root, relative)),
+      ],
+      { cwd: root, encoding: 'utf8', timeout: 30_000, stdio: 'pipe' },
+    )
+  }
+
+  const registered = git(root, ['worktree', 'list', '--porcelain'])
+    .split('\n')
+    .filter((line) => line.startsWith('worktree '))
+    .map((line) => line.slice('worktree '.length).trim())
+
+  for (const entry of registered) {
+    assert.ok(
+      entry === root || entry.startsWith(`${root}${path.sep}`),
+      `cloned checkpoint registers a foreign worktree: ${entry}`,
+    )
+  }
+
+  for (const relative of relativeWorktreePaths) {
+    assert.ok(
+      registered.includes(path.join(root, relative)),
+      `cloned checkpoint lost worktree ${relative}`,
+    )
+  }
+}
+
+export function bestOfNCheckpoint(
+  key: BestOfNCheckpointKey,
+): BestOfNCheckpoint {
+  let template = bestOfNCheckpointTemplates.get(key)
+
+  if (!template) {
+    template = buildBestOfNTemplate(key)
+    bestOfNCheckpointTemplates.set(key, template)
+  }
+
+  const root = cloneTree(template.root)
+  const session = readSessionState(root, template.bonId)
+
+  repairClonedWorktrees(
+    root,
+    session.candidates.map((candidate) => candidate.worktree_path),
+  )
+
+  return { root, session }
 }

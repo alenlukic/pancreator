@@ -1,5 +1,12 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  writeFileSync,
+  existsSync,
+} from 'node:fs'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -66,6 +73,10 @@ function markerStage(passing: boolean): StageDefinition {
     ],
     transitions: { success: 'verify', failure: 'implement', blocked: 'paused' },
   }
+}
+
+function scratchRoot(): string {
+  return mkdtempSync(path.join(tmpdir(), 'pancreator-gate-cache-'))
 }
 
 function markerCount(root: string): number {
@@ -174,8 +185,15 @@ test('a failing gate is never cached', () => {
   assert.equal(markerCount(root), 2)
 })
 
-test('the cache key binds the repository-check configuration bytes', () => {
-  const root = createFixture()
+test('PAN_GATE_CACHE=0 disables lookup and store', () => {
+  // The cache only needs a runtime/ directory, not a full fixture.
+  const root = scratchRoot()
+
+  mkdirSync(path.join(root, 'runtime'), { recursive: true })
+
+  // The key binds the repository-check configuration bytes: profile semantics
+  // can change without a workspace fingerprint change, so the key must change
+  // with the configuration bytes.
   const before = gateCacheKey(root, 'fingerprint', 'npm test')
 
   writeFileSync(
@@ -183,14 +201,10 @@ test('the cache key binds the repository-check configuration bytes', () => {
     `${JSON.stringify({ schema_version: 1, profiles: {} }, null, 2)}\n`,
   )
 
-  // Profile semantics changed without a workspace fingerprint change, so the
-  // key must change with the configuration bytes.
-  assert.notEqual(gateCacheKey(root, 'fingerprint', 'npm test'), before)
-})
-
-test('PAN_GATE_CACHE=0 disables lookup and store', () => {
-  const root = createFixture()
   const key = gateCacheKey(root, 'fingerprint', 'npm test')
+
+  assert.notEqual(key, before)
+
   const entry = {
     key,
     criterion_id: 'implement.unit_tests',
@@ -204,6 +218,17 @@ test('PAN_GATE_CACHE=0 disables lookup and store', () => {
   gateCacheStore(root, entry)
   assert.ok(gateCacheLookup(root, key))
 
+  // An entry older than the acceptance window is not accepted.
+  const expiredKey = gateCacheKey(root, 'fingerprint', 'npm run lint')
+
+  gateCacheStore(root, {
+    ...entry,
+    key: expiredKey,
+    command: 'npm run lint',
+    cached_at: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+  })
+  assert.equal(gateCacheLookup(root, expiredKey), null)
+
   process.env.PAN_GATE_CACHE = '0'
 
   try {
@@ -211,21 +236,4 @@ test('PAN_GATE_CACHE=0 disables lookup and store', () => {
   } finally {
     delete process.env.PAN_GATE_CACHE
   }
-})
-
-test('an expired cache entry is not accepted', () => {
-  const root = createFixture()
-  const key = gateCacheKey(root, 'fingerprint', 'npm test')
-
-  gateCacheStore(root, {
-    key,
-    criterion_id: 'implement.unit_tests',
-    command: 'npm test',
-    workspace_fingerprint: 'fingerprint',
-    run_id: 'run-a',
-    cached_at: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
-    evidence_path: 'runtime/logs/workflows/run-a/evidence/x.log',
-  })
-
-  assert.equal(gateCacheLookup(root, key), null)
 })

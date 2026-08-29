@@ -1,5 +1,13 @@
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -10,6 +18,10 @@ import {
   setRunStage,
   submitOutput,
 } from '../../src/lib/engine.js'
+import { compareRepositoryCheckToBaseline } from '../../src/lib/repository-checks.js'
+import type { RepositoryCheckResult } from '../../src/lib/repository-checks.js'
+import { loadRepositoryCheckBaseline } from '../../src/lib/validation.js'
+import type { RunState } from '../../src/lib/types.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import {
@@ -19,20 +31,26 @@ import {
   writeCanonicalDelegation,
   writeJson,
 } from '../helpers.js'
-import { failingVerify, submitStageOutput } from './delivery-helpers.js'
+import {
+  checkpoint,
+  checksVariant,
+  failingVerify,
+  submitStageOutput,
+} from './delivery-helpers.js'
+
+const PASS = `node -e "process.exit(0)"`
+
+/** Every gated profile green: the shape the baseline-damage tests corrupt. */
+const GREEN_CHECKS = checksVariant('checks=green', {
+  static: { probes: [], commands: [PASS] },
+  fast: { probes: [], commands: [PASS] },
+  full: { probes: [], commands: [`node -e "process.exit(0) /* full */"`] },
+  configuration: { probes: [], commands: [PASS] },
+})
 
 test('a failing verify verdict routes without executing the full suite', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Verify gate skip fixture',
-  })
-  const runId = state.run_id
+  const { root, runId, workflow } = checkpoint('delivery@verify-prepared')
   const verifyStage = stageBySlug(workflow, 'verify')
-
-  setRunStage(root, runId, 'verify', 'Seed verification for gate-skip testing.')
 
   const failed = submitStageOutput(
     root,
@@ -70,17 +88,8 @@ test('a failing verify verdict routes without executing the full suite', () => {
 })
 
 test('a failed hard self-criterion skips shell gates on a declared success', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Self-criterion gate skip fixture',
-  })
-  const runId = state.run_id
+  const { root, runId, workflow } = checkpoint('delivery@implement-prepared')
   const implementStage = stageBySlug(workflow, 'implement')
-
-  setRunStage(root, runId, 'implement', 'Seed implementation for gate skips.')
 
   const submitted = submitStageOutput(root, runId, implementStage, 'success', [
     'implement.acceptance_claimed',
@@ -105,19 +114,10 @@ test('a failed hard self-criterion skips shell gates on a declared success', () 
 })
 
 test('a failed read attestation skips shell gates before executing them', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Attestation gate skip fixture',
-  })
-  const runId = state.run_id
+  const { root, runId, invocation, workflow } = checkpoint(
+    'delivery@implement-prepared',
+  )
   const implementStage = stageBySlug(workflow, 'implement')
-
-  setRunStage(root, runId, 'implement', 'Seed implementation for gate skips.')
-
-  const invocation = prepareInvocation(root, runId).invocation
 
   assert.ok(invocation)
 
@@ -149,30 +149,17 @@ test('a failed read attestation skips shell gates before executing them', () => 
 })
 
 test('implementation same-reason failure twice pauses before a third attempt', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Same-reason implementation fixture',
-  })
-  const runId = state.run_id
-  const implementStage = stageBySlug(workflow, 'implement')
-
-  setRunStage(
+  const {
     root,
     runId,
-    'implement',
-    'Seed implementation for direct self-loop testing.',
-  )
+    state: first,
+    workflow,
+  } = checkpoint('delivery@implement-failed-once')
+  const implementStage = stageBySlug(workflow, 'implement')
 
-  const first = submitStageOutput(root, runId, implementStage, 'failure', [
-    'implement.acceptance_claimed',
-  ])
-
-  assert.equal(first.state.status, 'running')
-  assert.equal(first.state.current_stage, 'implement')
-  assert.equal(first.state.same_reason_failures?.implement?.repeat_count, 1)
+  assert.equal(first.status, 'running')
+  assert.equal(first.current_stage, 'implement')
+  assert.equal(first.same_reason_failures?.implement?.repeat_count, 1)
 
   const second = submitStageOutput(root, runId, implementStage, 'failure', [
     'implement.acceptance_claimed',
@@ -185,31 +172,21 @@ test('implementation same-reason failure twice pauses before a third attempt', (
 })
 
 test('a retry may submit a merge-patch revision instead of the whole document', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Revision submission fixture',
-  })
-  const runId = state.run_id
+  const {
+    root,
+    runId,
+    state: first,
+    workflow,
+  } = checkpoint('delivery@implement-failed-once')
   const implementStage = stageBySlug(workflow, 'implement')
-
-  setRunStage(root, runId, 'implement', 'Seed a failing first attempt.')
-
-  const first = submitStageOutput(root, runId, implementStage, 'failure', [
-    'implement.acceptance_claimed',
-  ])
-  const firstInvocationId = first.record.invocation_id
+  const firstHistory = first.stage_history[0]
+  const firstInvocationId = firstHistory.invocation_id
   const firstOutput = JSON.parse(
-    readFileSync(
-      path.join(root, first.state.stage_history[0].output_path),
-      'utf8',
-    ),
+    readFileSync(path.join(root, firstHistory.output_path), 'utf8'),
   ) as Record<string, Record<string, unknown>>
 
-  assert.equal(first.record.outcome, 'failure')
-  assert.equal(first.state.current_stage, 'implement')
+  assert.equal(firstHistory.outcome, 'failure')
+  assert.equal(first.current_stage, 'implement')
 
   const prepared = prepareInvocation(root, runId)
   const invocation = prepared.invocation
@@ -293,87 +270,19 @@ test('a retry may submit a merge-patch revision instead of the whole document', 
   assert.equal(replay.idempotent, true)
 })
 
-test('unchanged pre-existing repository-check failures do not block implementation', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Pre-existing repository failure fixture',
-  })
-  const runId = state.run_id
-  const implementStage = stageBySlug(workflow, 'implement')
-
-  writeJson(path.join(root, 'runtime/repository-checks.json'), {
-    schema_version: 1,
-    profiles: {
-      static: {
-        probes: [],
-        commands: [
-          `node -e "console.error('known lint failure'); process.exit(1)"`,
-        ],
-      },
-      fast: {
-        probes: [],
-        commands: [`node -e "process.exit(0)"`],
-      },
-    },
-  })
-  setRunStage(root, runId, 'implement', 'Exercise baseline-aware gates.')
-
-  const invocation = prepareInvocation(root, runId).invocation
-  assert.ok(invocation)
-  const baseline = getRunState(root, runId).repository_check_baselines?.static
-
-  assert.equal(baseline?.status, 'failed')
-  assert.ok(baseline && existsSync(path.join(root, baseline.artifact_path)))
-  assert.ok(
-    invocation.inputs.references.some(
-      (reference) => reference.path === baseline?.artifact_path,
-    ),
-  )
-
-  const output = makeOutput(root, invocation, implementStage)
-  writeJson(path.join(root, invocation.output.path), output)
-  writeCanonicalDelegation(root, invocation)
-
-  const submitted = submitOutput(root, runId, invocation.output.path)
-  const staticResult = submitted.record.evaluation.deterministic.find(
-    (result) => result.id === 'implement.lint',
-  )
-
-  assert.equal(submitted.record.outcome, 'success')
-  assert.equal(submitted.state.current_stage, 'verify')
-  assert.equal(staticResult?.passed, true)
-  assert.equal(staticResult?.preexisting_failure, true)
-  assert.equal(staticResult?.exit_code, 1)
-  assert.equal(staticResult?.baseline_evidence_path, baseline?.artifact_path)
-})
-
 test('pre-implementation baselines capture only source-mutating gate profiles', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Workflow-wide baseline fixture',
-  })
-  const runId = state.run_id
-  const implementStage = stageBySlug(workflow, 'implement')
-
-  writeJson(path.join(root, 'runtime/repository-checks.json'), {
-    schema_version: 1,
-    profiles: {
-      static: { probes: [], commands: [`node -e "process.exit(0)"`] },
-      fast: { probes: [], commands: [`node -e "process.exit(0)"`] },
+  // Capture happens at prepare, so the prepared checkpoint already holds the
+  // baselines; no submission is needed to observe which profiles were kept.
+  const { state } = checkpoint(
+    'delivery@implement-prepared',
+    checksVariant('checks=static,fast,full-fails,configuration', {
+      static: { probes: [], commands: [PASS] },
+      fast: { probes: [], commands: [PASS] },
       full: { probes: [], commands: [`node -e "process.exit(1)"`] },
-      configuration: { probes: [], commands: [`node -e "process.exit(0)"`] },
-    },
-  })
-  setRunStage(root, runId, 'implement', 'Capture workflow-wide checks.')
-
-  submitStageOutput(root, runId, implementStage, 'success')
-  const baselines = getRunState(root, runId).repository_check_baselines ?? {}
+      configuration: { probes: [], commands: [PASS] },
+    }),
+  )
+  const baselines = state.repository_check_baselines ?? {}
 
   assert.equal(baselines.static?.status, 'passed')
   assert.equal(baselines.fast?.status, 'passed')
@@ -479,38 +388,25 @@ test('the default light level gates verification on the fast profile and never r
 })
 
 test('thorough verification runs full at verify on its own result', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Thorough verification fixture',
-    verification: 'thorough',
-  })
-  const runId = state.run_id
-
-  writeJson(path.join(root, 'runtime/repository-checks.json'), {
-    schema_version: 1,
-    profiles: {
-      static: { probes: [], commands: [`node -e "process.exit(0)"`] },
-      fast: { probes: [], commands: [`node -e "process.exit(0)"`] },
-      full: { probes: [], commands: [`node -e "process.exit(1)"`] },
-      configuration: { probes: [], commands: [`node -e "process.exit(0)"`] },
-    },
-  })
-
-  setRunStage(root, runId, 'implement', 'Baseline the implement-loop profiles.')
-  submitStageOutput(root, runId, stageBySlug(workflow, 'implement'), 'success')
+  const { root, runId, state, workflow } = checkpoint(
+    'delivery@verify-prepared',
+    checksVariant(
+      'verification=thorough,checks=full-fails',
+      {
+        static: { probes: [], commands: [PASS] },
+        fast: { probes: [], commands: [PASS] },
+        full: { probes: [], commands: [`node -e "process.exit(1)"`] },
+        configuration: { probes: [], commands: [PASS] },
+      },
+      { verification: 'thorough' },
+    ),
+  )
 
   // Even under thorough, full is never baselined before implementation: the
   // operator opted into absolute judgment, so a pre-existing failure fails
   // the gate and needs an operator decision instead of passing on a delta.
-  assert.equal(
-    getRunState(root, runId).repository_check_baselines?.full,
-    undefined,
-  )
+  assert.equal(state.repository_check_baselines?.full, undefined)
 
-  setRunStage(root, runId, 'verify', 'Run verification under thorough.')
   const submitted = submitStageOutput(
     root,
     runId,
@@ -529,34 +425,20 @@ test('thorough verification runs full at verify on its own result', () => {
 })
 
 test('new repository-check diagnostics still block implementation', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Repository regression fixture',
-  })
-  const runId = state.run_id
-  const implementStage = stageBySlug(workflow, 'implement')
-
-  writeJson(path.join(root, 'runtime/repository-checks.json'), {
-    schema_version: 1,
-    profiles: {
+  const { root, runId, invocation, workflow } = checkpoint(
+    'delivery@implement-prepared',
+    checksVariant('checks=static-echoes-src/base.ts', {
       static: {
         probes: [],
         commands: [
           `node -e "const fs=require('node:fs'); console.error(fs.readFileSync('src/base.ts','utf8').trim()); process.exit(1)"`,
         ],
       },
-      fast: {
-        probes: [],
-        commands: [`node -e "process.exit(0)"`],
-      },
-    },
-  })
-  setRunStage(root, runId, 'implement', 'Exercise regression-aware gates.')
+      fast: { probes: [], commands: [PASS] },
+    }),
+  )
+  const implementStage = stageBySlug(workflow, 'implement')
 
-  const invocation = prepareInvocation(root, runId).invocation
   assert.ok(invocation)
   writeFileSync(path.join(root, 'src/base.ts'), 'export const base = false\n')
   const output = makeOutput(root, invocation, implementStage)
@@ -664,102 +546,103 @@ test('a repository-check gate credits an inherited failure the stage fixed', () 
 })
 
 test('an elided inherited failure stays carried from the full baseline', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Large inherited failure fixture',
+  // The gate compares against the untruncated baseline when the inline result
+  // was elided, so the comparison is exercised directly on a baseline artifact
+  // whose inline result is elided and whose full_result_path holds the truth.
+  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-elided-'))
+  const diagnostics = Array.from(
+    { length: 5000 },
+    (_, index) => `stable diagnostic ${index}`,
+  )
+  const check = (stderr: string): RepositoryCheckResult => ({
+    profile: 'static',
+    status: 'failed',
+    config_path: 'runtime/repository-checks.json',
+    workspace_root: '.',
+    timeout_ms: 60_000,
+    results: [
+      {
+        kind: 'command',
+        command: 'node -e "..."',
+        exit_code: 1,
+        signal: null,
+        stdout: '',
+        stderr,
+        passed: false,
+        timed_out: false,
+        duration_ms: 1,
+      },
+    ],
+    total_duration_ms: 1,
+    advisories: [],
   })
-  const runId = state.run_id
-  const implementStage = stageBySlug(workflow, 'implement')
-  const largeFailure =
-    `node -e "const fs=require('node:fs');` +
-    `process.stderr.write(fs.readFileSync('src/diagnostics.txt','utf8'));` +
-    `process.exit(1)"`
-
-  writeJson(path.join(root, 'runtime/repository-checks.json'), {
+  const artifactDirectory = 'runtime/logs/workflows/run-1/agent/artifacts/json'
+  const summaryPath = `${artifactDirectory}/baseline-static.json`
+  const fullPath = `${artifactDirectory}/baseline-static.full.json`
+  const artifact = (result: RepositoryCheckResult, full?: string) => ({
     schema_version: 1,
-    profiles: {
-      static: { probes: [], commands: [largeFailure] },
-      fast: { probes: [], commands: [`node -e "process.exit(0)"`] },
-    },
+    run_id: 'run-1',
+    stage: 'implement',
+    profile: 'static',
+    workspace_fingerprint: 'fixture',
+    recorded_at: '2026-08-24T00:00:00.000Z',
+    result,
+    ...(full ? { full_result_path: full } : {}),
   })
-  writeFileSync(
-    path.join(root, 'src/diagnostics.txt'),
-    `${Array.from({ length: 5000 }, (_, index) => `stable diagnostic ${index}`).join('\n')}\n`,
+
+  mkdirSync(path.join(root, artifactDirectory), { recursive: true })
+  writeJson(
+    path.join(root, summaryPath),
+    artifact(
+      check(
+        `${diagnostics.slice(0, 10).join('\n')}\n…[bytes elided; see the full result artifact]…\n`,
+      ),
+      fullPath,
+    ),
   )
-  setRunStage(root, runId, 'implement', 'Compare a large inherited failure.')
-
-  const invocation = prepareInvocation(root, runId).invocation
-
-  assert.ok(invocation)
-
-  const baseline = getRunState(root, runId).repository_check_baselines?.static
-
-  assert.ok(baseline)
-
-  const baselineArtifact = JSON.parse(
-    readFileSync(path.join(root, baseline.artifact_path), 'utf8'),
-  ) as { full_result_path?: string }
-
-  assert.ok(baselineArtifact.full_result_path)
-
-  writeFileSync(
-    path.join(root, 'src/diagnostics.txt'),
-    'stable diagnostic 2500\n',
+  writeJson(
+    path.join(root, fullPath),
+    artifact(check(`${diagnostics.join('\n')}\n`)),
   )
 
-  const output = makeOutput(root, invocation, implementStage)
-  const implementation = output.data.implementation as Record<string, unknown>
+  const state = {
+    repository_check_baselines: {
+      static: {
+        profile: 'static',
+        status: 'failed',
+        artifact_path: summaryPath,
+        workspace_fingerprint: 'fixture',
+        recorded_at: '2026-08-24T00:00:00.000Z',
+      },
+    },
+  } as unknown as RunState
+  const baseline = loadRepositoryCheckBaseline(root, state, 'static')
 
-  implementation.changed_files = ['src/diagnostics.txt']
-  attachTargetInstructionEvidence(root, output, ['AGENTS.md'])
-  writeJson(path.join(root, invocation.output.path), output)
-  writeCanonicalDelegation(root, invocation)
+  assert.ok(baseline.result)
+  assert.equal(baseline.artifact_path, fullPath)
 
-  const submitted = submitOutput(root, runId, invocation.output.path)
-  const staticResult = submitted.record.evaluation.deterministic.find(
-    (result) => result.id === 'implement.lint',
+  const staticResult = compareRepositoryCheckToBaseline(
+    baseline.result,
+    check('stable diagnostic 2500\n'),
   )
 
-  assert.equal(submitted.record.outcome, 'success')
-  assert.equal(staticResult?.passed, true)
-  assert.equal(staticResult?.repository_check_delta?.new.length, 0)
+  assert.equal(staticResult.passed, true)
+  assert.equal(staticResult.delta.new.length, 0)
   assert.ok(
-    staticResult?.repository_check_delta?.carried.some((diagnostic) =>
+    staticResult.delta.carried.some((diagnostic) =>
       diagnostic.diagnostic.includes('stable diagnostic 2500'),
     ),
   )
-  assert.equal(
-    staticResult?.baseline_evidence_path,
-    baselineArtifact.full_result_path,
-  )
+
+  rmSync(root, { recursive: true, force: true })
 })
 
 test('a missing baseline artifact pauses the run before delegation', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Missing baseline fixture',
-  })
-  const runId = state.run_id
-
-  writeJson(path.join(root, 'runtime/repository-checks.json'), {
-    schema_version: 1,
-    profiles: {
-      static: { probes: [], commands: [`node -e "process.exit(0)"`] },
-      fast: { probes: [], commands: [`node -e "process.exit(0)"`] },
-      full: { probes: [], commands: [`node -e "process.exit(0) /* full */"`] },
-      configuration: { probes: [], commands: [`node -e "process.exit(0)"`] },
-    },
-  })
-  setRunStage(root, runId, 'implement', 'Capture baselines to delete one.')
-  submitStageOutput(root, runId, stageBySlug(workflow, 'implement'), 'success')
-
-  const baseline = getRunState(root, runId).repository_check_baselines?.static
+  const { root, runId, state } = checkpoint(
+    'delivery@implement-baselined',
+    GREEN_CHECKS,
+  )
+  const baseline = state.repository_check_baselines?.static
 
   assert.ok(baseline)
   rmSync(path.join(root, baseline.artifact_path))
@@ -782,26 +665,11 @@ test('a missing baseline artifact pauses the run before delegation', () => {
 })
 
 test('a wiped baseline map degrades gates to absolute judgment without recapture', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Missing baseline map fixture',
-  })
-  const runId = state.run_id
+  const { root, runId, workflow } = checkpoint(
+    'delivery@implement-baselined',
+    GREEN_CHECKS,
+  )
   const implementStage = stageBySlug(workflow, 'implement')
-
-  writeJson(path.join(root, 'runtime/repository-checks.json'), {
-    schema_version: 1,
-    profiles: {
-      static: { probes: [], commands: [`node -e "process.exit(0)"`] },
-      fast: { probes: [], commands: [`node -e "process.exit(0)"`] },
-    },
-  })
-  setRunStage(root, runId, 'implement', 'Capture baselines before damage.')
-  submitStageOutput(root, runId, implementStage, 'success')
-
   const statePath = resolveRunLayout(root, runId).state.absolute
   const damagedState = JSON.parse(readFileSync(statePath, 'utf8')) as Record<
     string,
@@ -874,28 +742,11 @@ test('a repository-check gate fails closed when its baseline disappears', () => 
 })
 
 test('an incompatible baseline artifact pauses the run before delegation', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Incompatible baseline fixture',
-  })
-  const runId = state.run_id
-
-  writeJson(path.join(root, 'runtime/repository-checks.json'), {
-    schema_version: 1,
-    profiles: {
-      static: { probes: [], commands: [`node -e "process.exit(0)"`] },
-      fast: { probes: [], commands: [`node -e "process.exit(0)"`] },
-      full: { probes: [], commands: [`node -e "process.exit(0) /* full */"`] },
-      configuration: { probes: [], commands: [`node -e "process.exit(0)"`] },
-    },
-  })
-  setRunStage(root, runId, 'implement', 'Capture baselines to corrupt one.')
-  submitStageOutput(root, runId, stageBySlug(workflow, 'implement'), 'success')
-
-  const baseline = getRunState(root, runId).repository_check_baselines?.static
+  const { root, runId, state } = checkpoint(
+    'delivery@implement-baselined',
+    GREEN_CHECKS,
+  )
+  const baseline = state.repository_check_baselines?.static
 
   assert.ok(baseline)
   writeJson(path.join(root, baseline.artifact_path), {

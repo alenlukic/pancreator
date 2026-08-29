@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
@@ -128,20 +128,22 @@ test('scaffold copies the contract manifest into a pending attestation', () => {
       },
     ],
   )
-})
 
-test('scaffold omits the attestation for a legacy invocation', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-scaffold-'))
-  const outputPath = 'runtime/logs/workflows/x/outputs/out.json'
-  const invocation = {
+  // A legacy invocation without a contract manifest scaffolds no attestation.
+  const legacy = {
     invocation_id: 'implement-1',
     rubric: [],
-    output: { path: outputPath, required_data: {} },
+    output: {
+      path: 'runtime/logs/workflows/x/outputs/legacy.json',
+      required_data: {},
+    },
   } as unknown as Invocation
 
-  const result = scaffoldStageOutput(root, invocation, outputPath, false)
-
-  assert.equal(result.output.invocation_attestation, undefined)
+  assert.equal(
+    scaffoldStageOutput(root, legacy, legacy.output.path, false).output
+      .invocation_attestation,
+    undefined,
+  )
 })
 
 test('the scaffold interface rejects the Markdown contract by artifact type', () => {
@@ -163,14 +165,10 @@ test('the scaffold interface rejects the Markdown contract by artifact type', ()
       error.code === 'INVOCATION_ARTIFACT_TYPE' &&
       error.message.includes(jsonPath),
   )
-})
 
-test('the artifact-type rejection stands even without a sibling snapshot', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-scaffold-'))
-  const markdownPath = 'runtime/logs/workflows/x/invocations/implement-1.md'
-
-  mkdirSync(path.join(root, path.dirname(markdownPath)), { recursive: true })
-  writeFileSync(path.join(root, markdownPath), '# Card\n')
+  // The rejection stands without a sibling snapshot; the hint then names the
+  // missing .json snapshot instead of pointing at one.
+  rmSync(absoluteJson)
 
   assert.throws(
     () => readInvocationFromPath(root, markdownPath),

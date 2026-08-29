@@ -3,11 +3,9 @@ import test from 'node:test'
 
 import { validateChatMarkdown } from '../../src/lib/validators/markdown-validator.js'
 
-test('chat markdown validator accepts balanced standalone fences', () => {
-  assert.deepEqual(validateChatMarkdown('```ts\nconst value = 1\n```\n'), [])
-})
-
 test('chat markdown validator reports malformed fences', () => {
+  assert.deepEqual(validateChatMarkdown('```ts\nconst value = 1\n```\n'), [])
+
   const issues = validateChatMarkdown('- ```ts\nconst value = 1\n')
   const ids = issues.map((issue) => issue.id)
 

@@ -18,7 +18,7 @@ import {
   persist,
   statePath,
 } from '../../src/lib/state.js'
-import type { StageHistoryItem } from '../../src/lib/types.js'
+import type { RunState, StageHistoryItem } from '../../src/lib/types.js'
 import { createFixture } from '../helpers.js'
 
 test('state events use recoverable content-addressed references', () => {
@@ -50,14 +50,8 @@ test('state events use recoverable content-addressed references', () => {
   const recovered = loadState(root, state.run_id)
 
   assert.equal(recovered.revision, state.revision)
-})
 
-test('every referenced event revision round-trips', () => {
-  const root = createFixture()
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-  })
+  // Every referenced event revision round-trips.
   const firstRevision = state.revision
   const firstTitle = state.title
 
@@ -242,27 +236,53 @@ test('project configuration overrides the state-size budget', () => {
   )
 })
 
-test('legacy invocation quiet time does not claim agent health', () => {
-  const root = createFixture()
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-  })
-  const preparedAt = '2026-08-14T12:00:00.000Z'
+/** A hand-built run state carrying what liveness and status rendering read. */
+function invocationState(preparedAt: string): RunState {
+  return {
+    schema_version: 2,
+    run_id: 'run-literal',
+    workflow_slug: 'delivery',
+    workflow_snapshot: { path: 'workflow.json', sha256: 'a'.repeat(64) },
+    workspace_root: '.',
+    title: 'Literal run',
+    status: 'running',
+    current_stage: 'implement',
+    pending_action: {
+      type: 'invoke_agent',
+      persona: 'coder',
+      path: 'invocation.md',
+    },
+    current_invocation: {
+      id: 'implement-1',
+      json_path: 'invocation.json',
+      markdown_path: 'invocation.md',
+      output_path: 'output.json',
+      prepared_at: preparedAt,
+      last_activity_at: preparedAt,
+    },
+    request: {
+      source_path: 'request.md',
+      stored_path: 'request.md',
+      sha256: '',
+    },
+    limits: {
+      max_total_transitions: 20,
+      max_stage_attempts: 3,
+      max_consecutive_failures: 3,
+    },
+    attempts: {},
+    transition_count: 0,
+    consecutive_failures: 0,
+    stage_history: [],
+    revision: 1,
+    created_at: preparedAt,
+    updated_at: preparedAt,
+  }
+}
 
-  state.current_invocation = {
-    id: 'implement-1',
-    json_path: 'invocation.json',
-    markdown_path: 'invocation.md',
-    output_path: 'output.json',
-    prepared_at: preparedAt,
-    last_activity_at: preparedAt,
-  }
-  state.pending_action = {
-    type: 'invoke_agent',
-    persona: 'coder',
-    path: 'invocation.md',
-  }
+test('legacy invocation quiet time does not claim agent health', () => {
+  const preparedAt = '2026-08-14T12:00:00.000Z'
+  const state = invocationState(preparedAt)
 
   assert.equal(
     invocationLiveness(state, Date.parse(preparedAt) + 1_000, 2_000)?.status,
@@ -280,6 +300,22 @@ test('legacy invocation quiet time does not claim agent health', () => {
 
   assert.match(rendered, /Agent health: unknown/u)
   assert.doesNotMatch(rendered, /Invocation activity/u)
+
+  // The run is not waiting on a delegated worker while it waits on the
+  // operator, so "stale, re-deliver the card" advice would be impossible to
+  // follow: liveness is not reported at all.
+  const waiting = invocationState('2020-01-01T00:00:00.000Z')
+
+  waiting.pending_action = { type: 'operator_decision' }
+
+  assert.equal(
+    invocationLiveness(
+      waiting,
+      Date.parse('2020-01-01T00:00:00.000Z') + 10_000,
+      2_000,
+    ),
+    null,
+  )
 })
 
 test('run status reports registry-backed agent health', () => {
@@ -368,31 +404,5 @@ test('persist rejects payloads that shadow reserved event envelope keys', () => 
   assert.throws(
     () => persist(root, state, 'fixture_event', { revision: 1 }),
     /reserved envelope key 'revision'/u,
-  )
-})
-
-test('liveness is not reported while the run waits on the operator', () => {
-  const root = createFixture()
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-  })
-  const preparedAt = '2020-01-01T00:00:00.000Z'
-
-  state.current_invocation = {
-    id: 'verify-1',
-    json_path: 'invocation.json',
-    markdown_path: 'invocation.md',
-    output_path: 'output.json',
-    prepared_at: preparedAt,
-    last_activity_at: preparedAt,
-  }
-  state.pending_action = { type: 'operator_decision' }
-
-  // The run is not waiting on a delegated worker, so "stale, re-deliver the
-  // card" advice would be impossible to follow.
-  assert.equal(
-    invocationLiveness(state, Date.parse(preparedAt) + 10_000, 2_000),
-    null,
   )
 })

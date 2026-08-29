@@ -156,6 +156,52 @@ function buildReleaseFixtureTemplate(): string {
   return fixture
 }
 
+// A fresh embedded install costs ~2 s and most secondary tests opened with the
+// identical one. The installer records no absolute path inside the target
+// (config.json `workspace_root` is `..`, `.pancreator/.cursor` is a relative
+// symlink, no `.git/info/exclude` exists for a non-git skeleton), so a
+// clonefile copy of one installed skeleton is itself a valid installed project:
+// `pan doctor` and a `--yes` refresh both succeed inside the clone. The template
+// is installed once per process and MUST be treated as read-only; every test
+// that mutates or refreshes takes its own clone.
+let installedTemplate: string | null = null
+
+export function installedProjectTemplate(): string {
+  if (installedTemplate === null) {
+    const project = makeSkeletonProject()
+    const result = runInstaller(project)
+
+    if (result.status !== 0) {
+      throw new Error(
+        `installed-project template failed to build: ${result.stderr}`,
+      )
+    }
+
+    installedTemplate = project
+  }
+
+  return installedTemplate
+}
+
+export function cloneInstalledProject(): string {
+  const template = installedProjectTemplate()
+  const project = mkdtempSync(path.join(tmpdir(), 'pancreator-embed-'))
+
+  try {
+    execFileSync('cp', ['-Rc', `${template}/.`, project])
+  } catch {
+    cpSync(template, project, { recursive: true, verbatimSymlinks: true })
+  }
+
+  return project
+}
+
+export function gitInit(project: string): void {
+  git(project, ['init', '-q'])
+  git(project, ['config', 'user.email', 'fixture@example.com'])
+  git(project, ['config', 'user.name', 'Fixture'])
+}
+
 // Building the release fixture copies the repository and commits it twice —
 // seconds of work every consuming test used to pay. The template is built
 // once per process and each createReleaseFixture() call hands out a clone.

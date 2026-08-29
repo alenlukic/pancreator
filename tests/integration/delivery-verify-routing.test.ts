@@ -26,7 +26,11 @@ import {
   writeEvidenceReports,
   writeJson,
 } from '../helpers.js'
-import { failingVerify, submitStageOutput } from './delivery-helpers.js'
+import {
+  checkpoint,
+  failingVerify,
+  submitStageOutput,
+} from './delivery-helpers.js'
 
 test('a scaled verification timeout preserves the environment-blocked route', () => {
   const root = createFixture()
@@ -158,35 +162,16 @@ test('a scaled verification timeout preserves the environment-blocked route', ()
 })
 
 test('verify same-reason failure twice pauses for operator_decision', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Same-reason verify fixture',
-  })
-  const runId = state.run_id
-  const verifyStage = stageBySlug(workflow, 'verify')
-  const remediateStage = stageBySlug(workflow, 'remediate')
-
-  setRunStage(root, runId, 'verify', 'Seed verify for same-reason testing.')
-
-  const first = submitStageOutput(
-    root,
-    runId,
-    verifyStage,
-    'failure',
-    ['verify.acceptance_met'],
-    (output) => {
-      output.data.verify = failingVerify('VF-SAME-1')
-    },
-  )
+  const first = checkpoint('delivery@verify-failed-once')
 
   assert.equal(first.state.status, 'running')
   assert.equal(first.state.current_stage, 'remediate')
   assert.equal(first.state.same_reason_failures?.verify?.repeat_count, 1)
 
-  submitStageOutput(root, runId, remediateStage, 'success')
+  const { root, runId, workflow } = checkpoint(
+    'delivery@verify-failed-once-remediated',
+  )
+  const verifyStage = stageBySlug(workflow, 'verify')
 
   const second = submitStageOutput(
     root,
@@ -206,35 +191,10 @@ test('verify same-reason failure twice pauses for operator_decision', () => {
 })
 
 test('different verify failure reasons keep the remediation route', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Different-reason verify fixture',
-  })
-  const runId = state.run_id
+  const { root, runId, workflow } = checkpoint(
+    'delivery@verify-failed-once-remediated',
+  )
   const verifyStage = stageBySlug(workflow, 'verify')
-  const remediateStage = stageBySlug(workflow, 'remediate')
-
-  setRunStage(
-    root,
-    runId,
-    'verify',
-    'Seed verify for different-reason testing.',
-  )
-
-  submitStageOutput(
-    root,
-    runId,
-    verifyStage,
-    'failure',
-    ['verify.acceptance_met'],
-    (output) => {
-      output.data.verify = failingVerify('VF-DIFF-1')
-    },
-  )
-  submitStageOutput(root, runId, remediateStage, 'success')
 
   const second = submitStageOutput(
     root,
@@ -256,30 +216,10 @@ test('different verify failure reasons keep the remediation route', () => {
 })
 
 test('strict superset verify failures trigger same-reason pause', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Superset verify fixture',
-  })
-  const runId = state.run_id
-  const verifyStage = stageBySlug(workflow, 'verify')
-  const remediateStage = stageBySlug(workflow, 'remediate')
-
-  setRunStage(root, runId, 'verify', 'Seed verify for superset testing.')
-
-  submitStageOutput(
-    root,
-    runId,
-    verifyStage,
-    'failure',
-    ['verify.acceptance_met'],
-    (output) => {
-      output.data.verify = failingVerify('VF-SUP-1')
-    },
+  const { root, runId, workflow } = checkpoint(
+    'delivery@verify-failed-once-remediated',
   )
-  submitStageOutput(root, runId, remediateStage, 'success')
+  const verifyStage = stageBySlug(workflow, 'verify')
 
   const second = submitStageOutput(
     root,
@@ -297,196 +237,142 @@ test('strict superset verify failures trigger same-reason pause', () => {
 })
 
 test('same-reason tracker resets on stage pass, waive-gate, and set-stage', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Same-reason reset fixture',
-  })
-  const runId = state.run_id
-  const verifyStage = stageBySlug(workflow, 'verify')
-  const remediateStage = stageBySlug(workflow, 'remediate')
   const failAcceptance = (output: StageOutput, findingId: string): void => {
     output.data.verify = failingVerify(findingId)
   }
 
-  setRunStage(root, runId, 'verify', 'Seed verify for reset testing.')
-  submitStageOutput(
-    root,
-    runId,
-    verifyStage,
-    'failure',
-    ['verify.acceptance_met'],
-    (output) => failAcceptance(output, 'VF-RESET-1'),
-  )
-  assert.equal(
-    getRunState(root, runId).same_reason_failures?.verify?.repeat_count,
-    1,
-  )
+  // Every clone starts one same-reason verify failure in, with the run at
+  // remediate and the tracker holding repeat_count 1.
+  {
+    const { root, runId, state, workflow } = checkpoint(
+      'delivery@verify-failed-once',
+    )
+    const verifyStage = stageBySlug(workflow, 'verify')
+    const remediateStage = stageBySlug(workflow, 'remediate')
 
-  setRunStage(
-    root,
-    runId,
-    'verify',
-    'Operator repair clears same-reason memory.',
-  )
-  assert.equal(getRunState(root, runId).same_reason_failures?.verify, undefined)
+    assert.equal(state.same_reason_failures?.verify?.repeat_count, 1)
+    assert.equal(state.current_stage, 'remediate')
 
-  submitStageOutput(
-    root,
-    runId,
-    verifyStage,
-    'failure',
-    ['verify.acceptance_met'],
-    (output) => failAcceptance(output, 'VF-RESET-2'),
-  )
-  submitStageOutput(root, runId, remediateStage, 'success')
-  submitStageOutput(root, runId, verifyStage, 'success')
-  assert.equal(getRunState(root, runId).same_reason_failures?.verify, undefined)
+    // Control case: an ordinary pause/resume preserves the tracker across
+    // remediation work, so the next same-reason failure pauses the run.
+    pauseRun(root, runId, 'Operator pauses before remediation continues.')
+    resumeRun(
+      root,
+      runId,
+      'remediate',
+      'Resume remediation without forgiving verification.',
+    )
+    assert.equal(
+      getRunState(root, runId).same_reason_failures?.verify?.repeat_count,
+      1,
+    )
 
-  setRunStage(root, runId, 'verify', 'Prepare waiver reset coverage.')
-  const failed = submitStageOutput(
-    root,
-    runId,
-    verifyStage,
-    'failure',
-    ['verify.acceptance_met'],
-    (output) => failAcceptance(output, 'VF-RESET-3'),
-  )
-  assert.equal(failed.state.current_stage, 'remediate')
-  submitStageOutput(root, runId, remediateStage, 'success')
-  const paused = submitStageOutput(
-    root,
-    runId,
-    verifyStage,
-    'failure',
-    ['verify.acceptance_met'],
-    (output) => failAcceptance(output, 'VF-RESET-4'),
-  )
-  assert.equal(paused.state.status, 'paused')
+    submitStageOutput(root, runId, remediateStage, 'success')
 
-  const waived = waiveGate(root, runId, {
-    stageSlug: 'verify',
-    criterionIds: ['verify.acceptance_met'],
-    note: 'Bounded verify miss is isolated and does not block downstream validation.',
-  })
+    const repeated = submitStageOutput(
+      root,
+      runId,
+      verifyStage,
+      'failure',
+      ['verify.acceptance_met'],
+      (output) => failAcceptance(output, 'VF-RESET-2'),
+    )
 
-  assert.equal(waived.state.status, 'running')
-  assert.equal(waived.state.current_stage, 'ship')
-  assert.equal(getRunState(root, runId).same_reason_failures?.verify, undefined)
-})
+    assert.equal(repeated.state.status, 'paused')
+    assert.equal(repeated.state.pending_action.type, 'operator_decision')
+  }
 
-test('set-stage to remediate clears tracked verify same-reason memory', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Set-stage to remediate reset fixture',
-  })
-  const runId = state.run_id
-  const verifyStage = stageBySlug(workflow, 'verify')
-  const remediateStage = stageBySlug(workflow, 'remediate')
+  {
+    const { root, runId, workflow } = checkpoint('delivery@verify-failed-once')
+    const verifyStage = stageBySlug(workflow, 'verify')
+    const remediateStage = stageBySlug(workflow, 'remediate')
 
-  setRunStage(root, runId, 'verify', 'Seed verify for set-stage reset testing.')
-  submitStageOutput(
-    root,
-    runId,
-    verifyStage,
-    'failure',
-    ['verify.acceptance_met'],
-    (output) => {
-      output.data.verify = failingVerify('VF-STAGE-1')
-    },
-  )
-  assert.equal(
-    getRunState(root, runId).same_reason_failures?.verify?.repeat_count,
-    1,
-  )
-  assert.equal(getRunState(root, runId).current_stage, 'remediate')
+    // Set-stage to remediate clears the tracked verify memory too.
+    setRunStage(
+      root,
+      runId,
+      'remediate',
+      'Operator repair targets remediation and clears verify memory.',
+    )
+    assert.equal(
+      getRunState(root, runId).same_reason_failures?.verify,
+      undefined,
+    )
 
-  setRunStage(
-    root,
-    runId,
-    'remediate',
-    'Operator repair targets remediation and clears verify memory.',
-  )
-  assert.equal(getRunState(root, runId).same_reason_failures?.verify, undefined)
+    submitStageOutput(root, runId, remediateStage, 'success')
 
-  submitStageOutput(root, runId, remediateStage, 'success')
+    const afterRemediateRepair = submitStageOutput(
+      root,
+      runId,
+      verifyStage,
+      'failure',
+      ['verify.acceptance_met'],
+      (output) => failAcceptance(output, 'VF-RESET-3'),
+    )
 
-  const second = submitStageOutput(
-    root,
-    runId,
-    verifyStage,
-    'failure',
-    ['verify.acceptance_met'],
-    (output) => {
-      output.data.verify = failingVerify('VF-STAGE-2')
-    },
-  )
+    assert.equal(afterRemediateRepair.state.status, 'running')
+    assert.equal(afterRemediateRepair.state.current_stage, 'remediate')
+    assert.equal(
+      afterRemediateRepair.state.same_reason_failures?.verify?.repeat_count,
+      1,
+    )
 
-  assert.equal(second.state.status, 'running')
-  assert.equal(second.state.current_stage, 'remediate')
-  assert.equal(second.state.same_reason_failures?.verify?.repeat_count, 1)
-})
+    setRunStage(
+      root,
+      runId,
+      'verify',
+      'Operator repair clears same-reason memory.',
+    )
+    assert.equal(
+      getRunState(root, runId).same_reason_failures?.verify,
+      undefined,
+    )
 
-test('ordinary resume preserves same-reason tracker across remediation work', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Resume preserves tracker fixture',
-  })
-  const runId = state.run_id
-  const verifyStage = stageBySlug(workflow, 'verify')
-  const remediateStage = stageBySlug(workflow, 'remediate')
+    submitStageOutput(
+      root,
+      runId,
+      verifyStage,
+      'failure',
+      ['verify.acceptance_met'],
+      (output) => failAcceptance(output, 'VF-RESET-4'),
+    )
+    submitStageOutput(root, runId, remediateStage, 'success')
+    submitStageOutput(root, runId, verifyStage, 'success')
+    assert.equal(
+      getRunState(root, runId).same_reason_failures?.verify,
+      undefined,
+    )
+  }
 
-  setRunStage(root, runId, 'verify', 'Seed verify for resume testing.')
-  submitStageOutput(
-    root,
-    runId,
-    verifyStage,
-    'failure',
-    ['verify.acceptance_met'],
-    (output) => {
-      output.data.verify = failingVerify('VF-RESUME-1')
-    },
-  )
-  assert.equal(
-    getRunState(root, runId).same_reason_failures?.verify?.repeat_count,
-    1,
-  )
+  {
+    // Remediated once, the next same-reason failure pauses; a waiver clears it.
+    const { root, runId, workflow } = checkpoint(
+      'delivery@verify-failed-once-remediated',
+    )
+    const verifyStage = stageBySlug(workflow, 'verify')
+    const paused = submitStageOutput(
+      root,
+      runId,
+      verifyStage,
+      'failure',
+      ['verify.acceptance_met'],
+      (output) => failAcceptance(output, 'VF-RESET-6'),
+    )
+    assert.equal(paused.state.status, 'paused')
 
-  pauseRun(root, runId, 'Operator pauses before remediation continues.')
-  resumeRun(
-    root,
-    runId,
-    'remediate',
-    'Resume remediation without forgiving verification.',
-  )
-  assert.equal(
-    getRunState(root, runId).same_reason_failures?.verify?.repeat_count,
-    1,
-  )
+    const waived = waiveGate(root, runId, {
+      stageSlug: 'verify',
+      criterionIds: ['verify.acceptance_met'],
+      note: 'Bounded verify miss is isolated and does not block downstream validation.',
+    })
 
-  submitStageOutput(root, runId, remediateStage, 'success')
-
-  const second = submitStageOutput(
-    root,
-    runId,
-    verifyStage,
-    'failure',
-    ['verify.acceptance_met'],
-    (output) => {
-      output.data.verify = failingVerify('VF-RESUME-2')
-    },
-  )
-
-  assert.equal(second.state.status, 'paused')
-  assert.equal(second.state.pending_action.type, 'operator_decision')
+    assert.equal(waived.state.status, 'running')
+    assert.equal(waived.state.current_stage, 'ship')
+    assert.equal(
+      getRunState(root, runId).same_reason_failures?.verify,
+      undefined,
+    )
+  }
 })
 
 test('governance and artifact defects are advisory before ship and never loop to implementation', () => {

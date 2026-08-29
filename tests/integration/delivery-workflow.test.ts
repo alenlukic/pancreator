@@ -19,6 +19,7 @@ import {
   writeEvidenceReports,
   writeJson,
 } from '../helpers.js'
+import { checkpoint, submitCurrentStage } from './delivery-helpers.js'
 
 interface VerifyShape {
   verdict: string
@@ -220,20 +221,19 @@ test('delivery severe verdict escalates the remediator and warnings reach the in
 })
 
 test('delivery remedial verdict keeps the base remediator persona', () => {
-  const root = createFixture()
-  const runId = advanceToVerify(root)
+  const { root, runId } = checkpoint('delivery@verify-prepared')
 
-  const verify = runStage(
+  const verify = submitCurrentStage(
     root,
     runId,
-    'verify',
+    'failure',
+    ['verify.cases_executed'],
     (output) => {
       output.data.verify = failingVerify('fail_remedial', 'VF-REM-1')
-      failOnly(output, 'verify.cases_executed')
     },
-    'failure',
   )
 
+  assert.equal(verify.invocation.stage.slug, 'verify')
   assert.equal(verify.record.outcome, 'failure')
   assert.equal(getRunState(root, runId).current_stage, 'remediate')
 
@@ -243,30 +243,10 @@ test('delivery remedial verdict keeps the base remediator persona', () => {
   assert.equal(invocation.stage.persona, 'remediator')
 })
 
-test('delivery clean verify pass emits no inbox item and routes to ship', () => {
-  const root = createFixture()
-  const runId = advanceToVerify(root)
-
-  const verify = runStage(root, runId, 'verify')
-
-  assert.equal(
-    verify.record.outcome,
-    'success',
-    JSON.stringify(verify.record.evaluation),
-  )
-  assert.equal(getRunState(root, runId).current_stage, 'ship')
-  assert.equal(
-    existsSync(
-      path.join(root, 'runtime', 'inbox', `${runId}-verify-warnings.md`),
-    ),
-    false,
-  )
-})
-
 test('delivery verify resolves parallel evidence workers and gates submission on their reports', () => {
-  const root = createFixture()
-  const runId = advanceToVerify(root)
-  const invocation = prepareInvocation(root, runId).invocation
+  const { root, runId, state, invocation, workflow } = checkpoint(
+    'delivery@verify-prepared',
+  )
 
   assert.ok(invocation)
   assert.equal(invocation.stage.slug, 'verify')
@@ -294,7 +274,6 @@ test('delivery verify resolves parallel evidence workers and gates submission on
     )
   }
 
-  const state = getRunState(root, runId)
   const markdownPath = state.current_invocation?.markdown_path ?? ''
   const card = readFileSync(path.join(root, markdownPath), 'utf8')
 
@@ -307,7 +286,6 @@ test('delivery verify resolves parallel evidence workers and gates submission on
 
   assert.match(procedure, /Launch every parallel evidence worker/u)
 
-  const workflow = loadWorkflow(root, 'delivery')
   const stage = stageBySlug(workflow, 'verify')
   const output = makeOutput(root, invocation, stage)
 
@@ -334,46 +312,4 @@ test('delivery verify resolves parallel evidence workers and gates submission on
     'success',
     JSON.stringify(submitted.record.evaluation),
   )
-})
-
-test('delivery verify pauses after repeated same-reason failures', () => {
-  const root = createFixture()
-  const runId = advanceToVerify(root)
-
-  const first = runStage(
-    root,
-    runId,
-    'verify',
-    (output) => {
-      output.data.verify = failingVerify('fail_remedial', 'VF-LOOP-1')
-      failOnly(output, 'verify.acceptance_met')
-    },
-    'failure',
-  )
-
-  assert.equal(first.record.outcome, 'failure')
-  assert.equal(getRunState(root, runId).current_stage, 'remediate')
-
-  const remediated = runStage(root, runId, 'remediate')
-
-  assert.equal(remediated.record.outcome, 'success')
-  assert.equal(getRunState(root, runId).current_stage, 'verify')
-
-  const second = runStage(
-    root,
-    runId,
-    'verify',
-    (output) => {
-      output.data.verify = failingVerify('fail_remedial', 'VF-LOOP-2')
-      failOnly(output, 'verify.acceptance_met')
-    },
-    'failure',
-  )
-
-  assert.equal(second.record.outcome, 'failure')
-
-  const state = getRunState(root, runId)
-
-  assert.equal(state.status, 'paused')
-  assert.match(state.pause_reason ?? '', /same/iu)
 })

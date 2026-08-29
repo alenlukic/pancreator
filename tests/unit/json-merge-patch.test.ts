@@ -36,12 +36,6 @@ test('objects merge recursively, null deletes, arrays replace whole', () => {
   assert.equal(target.data.stray, 'delete me')
 })
 
-test('a non-object patch replaces the target and a patch onto a scalar builds an object', () => {
-  assert.deepEqual(applyJsonMergePatch({ a: 1 }, [1, 2]), [1, 2])
-  assert.equal(applyJsonMergePatch({ a: 1 }, 'text'), 'text')
-  assert.deepEqual(applyJsonMergePatch('scalar', { a: 1 }), { a: 1 })
-})
-
 test('RFC 7386 appendix examples hold', () => {
   assert.deepEqual(applyJsonMergePatch({ a: 'b' }, { a: 'c' }), { a: 'c' })
   assert.deepEqual(applyJsonMergePatch({ a: 'b' }, { b: 'c' }), {
@@ -61,4 +55,10 @@ test('RFC 7386 appendix examples hold', () => {
   assert.deepEqual(applyJsonMergePatch({ a: [{ b: 'c' }] }, { a: [1] }), {
     a: [1],
   })
+
+  // A non-object patch replaces the target and a patch onto a scalar builds
+  // an object.
+  assert.deepEqual(applyJsonMergePatch({ a: 1 }, [1, 2]), [1, 2])
+  assert.equal(applyJsonMergePatch({ a: 1 }, 'text'), 'text')
+  assert.deepEqual(applyJsonMergePatch('scalar', { a: 1 }), { a: 1 })
 })

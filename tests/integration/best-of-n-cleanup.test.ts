@@ -17,8 +17,7 @@ import { createFixture, writeJson } from '../helpers.js'
 import {
   CLI,
   CONFIGS,
-  EXCLUSION_NOTE,
-  driveCandidate,
+  bestOfNCheckpoint,
   git,
   initSession,
   readSessionState,
@@ -27,8 +26,7 @@ import {
 } from './best-of-n-helpers.js'
 
 test('consolidation refuses a session no candidate finished', () => {
-  const root = createFixture()
-  const session = initSession(root)
+  const { root, session } = bestOfNCheckpoint('ready')
 
   for (const candidate of session.candidates) {
     abandonBestOfNCandidate(
@@ -46,11 +44,21 @@ test('consolidation refuses a session no candidate finished', () => {
 })
 
 test('clean refuses to discard uncommitted candidate work without force', () => {
-  const root = createFixture()
-  const session = initSession(root)
+  const { root, session } = bestOfNCheckpoint('ready')
   const candidate = session.candidates.at(-1)
 
   assert.ok(candidate)
+
+  // Fresh candidate runs are still in flight with clean worktrees, which is
+  // exactly the state a dirtiness-only preflight would remove.
+  assert.throws(
+    () => cleanBestOfN(root, session.bon_id),
+    /Finish or abort the run first/u,
+  )
+
+  for (const entry of session.candidates) {
+    assert.equal(existsSync(path.join(root, entry.worktree_path)), true)
+  }
 
   // Terminal runs put the dirtiness refusal — not the liveness refusal — under
   // test.
@@ -91,45 +99,11 @@ test('clean refuses to discard uncommitted candidate work without force', () => 
   )
 })
 
-test('clean refuses to remove a live candidate workspace without force', () => {
-  const root = createFixture()
-  const session = initSession(root)
-
-  // Fresh candidate runs are still in flight with clean worktrees, which is
-  // exactly the state a dirtiness-only preflight would remove.
-  assert.throws(
-    () => cleanBestOfN(root, session.bon_id),
-    /Finish or abort the run first/u,
-  )
-
-  for (const candidate of session.candidates) {
-    assert.equal(existsSync(path.join(root, candidate.worktree_path)), true)
-  }
-
-  for (const candidate of session.candidates) {
-    terminateRun(root, candidate.run_id)
-  }
-
-  const result = cleanBestOfN(root, session.bon_id)
-
-  assert.deepEqual(
-    result.removed_worktrees,
-    session.candidates.map((entry) => entry.worktree_path).sort(),
-  )
-})
-
 test('clean refuses while the consolidation run is in flight', () => {
-  const root = createFixture()
-  const session = initSession(root)
-  const [alpha, beta] = session.candidates
+  const { root, session } = bestOfNCheckpoint('consolidated')
+  const consolidation = session.consolidation
 
-  driveCandidate(root, alpha.run_id)
-  abandonBestOfNCandidate(root, session.bon_id, beta.run_id, EXCLUSION_NOTE)
-
-  const consolidated = consolidateBestOfN(root, session.bon_id)
-  const consolidationRunId = consolidated.consolidation?.run_id
-
-  assert.ok(consolidationRunId)
+  assert.ok(consolidation)
   // The candidate worktrees are the consolidation run's declared inputs and
   // its agent variants gate every later engine operation on the run.
   assert.throws(
@@ -137,13 +111,13 @@ test('clean refuses while the consolidation run is in flight', () => {
     /consolidation run .* is still/u,
   )
 
-  terminateRun(root, consolidationRunId)
+  terminateRun(root, consolidation.run_id)
 
   const result = cleanBestOfN(root, session.bon_id)
 
   assert.ok(
     result.removed_agents.some((name) =>
-      name.includes(consolidated.consolidation?.agent_suffix ?? ''),
+      name.includes(consolidation.agent_suffix),
     ),
   )
 })
@@ -241,8 +215,7 @@ test('best-of-N prune is available through the CLI', () => {
 })
 
 test('an interrupted candidate handoff is adopted from the run state', () => {
-  const root = createFixture()
-  const session = initSession(root)
+  const { root, session } = bestOfNCheckpoint('ready')
   const [alpha, beta] = session.candidates
 
   // Reproduce a process killed between createRun and the session-record write:
@@ -291,22 +264,14 @@ test('an interrupted candidate handoff is adopted from the run state', () => {
 })
 
 test('an interrupted consolidation handoff cannot start a second consolidation run', () => {
-  const root = createFixture()
-  const session = initSession(root)
-  const [alpha, beta] = session.candidates
-
-  driveCandidate(root, alpha.run_id)
-  abandonBestOfNCandidate(root, session.bon_id, beta.run_id, EXCLUSION_NOTE)
-
-  const consolidated = consolidateBestOfN(root, session.bon_id)
-  const consolidationRunId = consolidated.consolidation?.run_id
+  const { root, session } = bestOfNCheckpoint('consolidated')
+  const consolidationRunId = session.consolidation?.run_id
 
   assert.ok(consolidationRunId)
 
   // Reproduce a process killed between createRun and the session-record write:
   // the consolidation run exists durably while the session records none.
-  const { consolidation: _consolidation, ...withoutConsolidation } =
-    readSessionState(root, session.bon_id)
+  const { consolidation: _consolidation, ...withoutConsolidation } = session
 
   writeJson(sessionStatePath(root, session.bon_id), withoutConsolidation)
 
@@ -326,7 +291,7 @@ test('an interrupted consolidation handoff cannot start a second consolidation r
   )
 })
 
-test('init rejects a candidate config that maps an unknown persona', () => {
+test('init validates the consolidation config before any candidate runs', () => {
   const root = createFixture()
 
   writeJson(path.join(root, 'best-of-n.json'), {
@@ -345,10 +310,6 @@ test('init rejects a candidate config that maps an unknown persona', () => {
       }),
     /Candidate 'alpha' maps unknown persona 'codeer'/u,
   )
-})
-
-test('init validates the consolidation config before any candidate runs', () => {
-  const root = createFixture()
 
   writeJson(path.join(root, 'best-of-n.json'), {
     ...CONFIGS,
@@ -387,14 +348,13 @@ test('init validates the consolidation config before any candidate runs', () => 
     /maps no model for persona 'metacritic'/u,
   )
 
-  // Nothing was created for either rejected config.
+  // Nothing was created for any rejected config.
   assert.equal(existsSync(path.join(root, 'worktrees')), false)
   assert.equal(existsSync(path.join(root, 'runtime', 'worktrees')), false)
 })
 
 test('consolidate refuses a stored configs file that drifted since init', () => {
-  const root = createFixture()
-  const session = initSession(root)
+  const { root, session } = bestOfNCheckpoint('ready')
   const storedConfigs = path.join(
     root,
     'runtime',

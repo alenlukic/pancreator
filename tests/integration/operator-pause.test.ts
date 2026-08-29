@@ -11,41 +11,27 @@ import {
   resumeRun,
   submitOutput,
 } from '../../src/lib/engine.js'
-import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
+import { stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
 } from '../helpers.js'
+import { checkpoint } from './delivery-helpers.js'
 
 test('operator pause preserves supervisor gate and resume restores it', () => {
-  const root = createFixture()
   // The delivery-candidate plan is the supervisor-gated stage.
-  const workflow = loadWorkflow(root, 'delivery-candidate')
-  const state = createRun(root, {
-    workflowSlug: 'delivery-candidate',
-    requestPath: 'request.md',
-    title: 'Pause fixture',
-  })
-  const runId = state.run_id
-
-  prepareInvocation(root, runId)
-  const planPrepared = prepareInvocation(root, runId)
-  const planInvocation = planPrepared.invocation
+  const {
+    root,
+    runId,
+    state: submitted,
+    invocation: planInvocation,
+  } = checkpoint('delivery-candidate@plan-awaiting-supervisor')
 
   assert.ok(planInvocation)
-
-  writeJson(
-    path.join(root, planInvocation.output.path),
-    makeOutput(root, planInvocation, stageBySlug(workflow, 'plan')),
-  )
-  writeCanonicalDelegation(root, planInvocation)
-
-  const submitted = submitOutput(root, runId, planInvocation.output.path)
-
-  assert.equal(submitted.state.status, 'awaiting_supervisor')
-  assert.equal(submitted.state.pending_action.type, 'supervisor_assessment')
+  assert.equal(submitted.status, 'awaiting_supervisor')
+  assert.equal(submitted.pending_action.type, 'supervisor_assessment')
 
   const paused = pauseRun(root, runId, 'Need to edit the repo first.')
 
@@ -75,72 +61,6 @@ test('operator pause preserves supervisor gate and resume restores it', () => {
   assert.equal(resumed.current_invocation?.id, planInvocation.invocation_id)
 })
 
-test('no-stage resume note replaces a prepared worker card', () => {
-  const root = createFixture()
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Resume note fixture',
-  })
-  const runId = state.run_id
-  const original = prepareInvocation(root, runId).invocation
-
-  assert.ok(original)
-  pauseRun(root, runId, 'Need an operator directive.')
-
-  const resumed = resumeRun(
-    root,
-    runId,
-    null,
-    'Preserve the compatibility boundary.',
-  )
-
-  assert.equal(resumed.status, 'running')
-  assert.equal(resumed.pending_action.type, 'prepare_invocation')
-  assert.equal(resumed.current_invocation, null)
-
-  const replacement = prepareInvocation(root, runId).invocation
-
-  assert.ok(replacement)
-  assert.notEqual(replacement.invocation_id, original.invocation_id)
-  const feedback = getRunState(root, runId).operator_feedback?.find(
-    (item) =>
-      item.decision === 'resume' &&
-      item.note === 'Preserve the compatibility boundary.',
-  )
-
-  assert.ok(feedback)
-  assert.ok(
-    replacement.inputs.references.some(
-      (reference) => reference.path === feedback.path,
-    ),
-  )
-})
-
-test('operator pause from running prepare_invocation resumes to prepare', () => {
-  const root = createFixture()
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Pause fixture',
-  })
-  const runId = state.run_id
-
-  const paused = pauseRun(root, runId, 'Stepping away.')
-
-  assert.equal(paused.status, 'paused')
-  assert.equal(paused.operator_pause?.prior_status, 'running')
-  assert.equal(
-    paused.operator_pause?.prior_pending_action.type,
-    'prepare_invocation',
-  )
-
-  const resumed = resumeRun(root, runId)
-
-  assert.equal(resumed.status, 'running')
-  assert.equal(resumed.pending_action.type, 'prepare_invocation')
-})
-
 test('operator changes made during a pause are ratified and stale cards are replaced', () => {
   const root = createFixture()
   const state = createRun(root, {
@@ -149,11 +69,63 @@ test('operator changes made during a pause are ratified and stale cards are repl
     title: 'Paused operator edit fixture',
   })
   const runId = state.run_id
+
+  // A pause taken while the run awaits prepare_invocation resumes to prepare.
+  const pausedBeforePrepare = pauseRun(root, runId, 'Stepping away.')
+
+  assert.equal(pausedBeforePrepare.status, 'paused')
+  assert.equal(pausedBeforePrepare.operator_pause?.prior_status, 'running')
+  assert.equal(
+    pausedBeforePrepare.operator_pause?.prior_pending_action.type,
+    'prepare_invocation',
+  )
+
+  const resumedToPrepare = resumeRun(root, runId)
+
+  assert.equal(resumedToPrepare.status, 'running')
+  assert.equal(resumedToPrepare.pending_action.type, 'prepare_invocation')
+
   const prepared = prepareInvocation(root, runId)
-  const originalInvocation = prepared.invocation
+  const firstInvocation = prepared.invocation
+
+  assert.ok(firstInvocation)
+  assert.equal(firstInvocation.attempt, 1)
+
+  // A no-stage resume note replaces the prepared worker card and reaches the
+  // replacement as an input reference.
+  pauseRun(root, runId, 'Need an operator directive.')
+
+  const notedResume = resumeRun(
+    root,
+    runId,
+    null,
+    'Preserve the compatibility boundary.',
+  )
+
+  assert.equal(notedResume.status, 'running')
+  assert.equal(notedResume.pending_action.type, 'prepare_invocation')
+  assert.equal(notedResume.current_invocation, null)
+
+  const originalInvocation = prepareInvocation(root, runId).invocation
 
   assert.ok(originalInvocation)
-  assert.equal(originalInvocation.attempt, 1)
+  assert.notEqual(
+    originalInvocation.invocation_id,
+    firstInvocation.invocation_id,
+  )
+
+  const resumeFeedback = getRunState(root, runId).operator_feedback?.find(
+    (item) =>
+      item.decision === 'resume' &&
+      item.note === 'Preserve the compatibility boundary.',
+  )
+
+  assert.ok(resumeFeedback)
+  assert.ok(
+    originalInvocation.inputs.references.some(
+      (reference) => reference.path === resumeFeedback.path,
+    ),
+  )
 
   pauseRun(root, runId, 'Operator is applying an authorized correction.')
   writeFileSync(
@@ -185,20 +157,14 @@ test('operator changes made during a pause are ratified and stale cards are repl
 })
 
 test('harness pause resume still restarts at prepare_invocation', () => {
-  const root = createFixture()
   // A blocked plan under the supervisor gate pauses the run without an
   // operator pause record; delivery-candidate declares that gate.
-  const workflow = loadWorkflow(root, 'delivery-candidate')
-  const state = createRun(root, {
-    workflowSlug: 'delivery-candidate',
-    requestPath: 'request.md',
-    title: 'Pause fixture',
-  })
-  const runId = state.run_id
-
-  prepareInvocation(root, runId)
-  const planPrepared = prepareInvocation(root, runId)
-  const planInvocation = planPrepared.invocation
+  const {
+    root,
+    runId,
+    invocation: planInvocation,
+    workflow,
+  } = checkpoint('delivery-candidate@plan-prepared')
 
   assert.ok(planInvocation)
 

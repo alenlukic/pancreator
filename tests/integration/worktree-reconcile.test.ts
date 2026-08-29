@@ -4,6 +4,8 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
+import { PanError } from '../../src/lib/errors.js'
+import { listWorktrees, reconcileWorktrees } from '../../src/lib/worktrees.js'
 import { createFixture } from '../helpers.js'
 
 import {
@@ -12,7 +14,10 @@ import {
   createWorktree,
   git,
   runCli,
+  worktreeCheckpoint,
 } from './worktree-helpers.js'
+
+const TWO_SOURCES = ['source-one', 'source-two']
 
 test('worktree reconcile merges each source and records the operator invocation', () => {
   const root = createFixture()
@@ -70,46 +75,26 @@ test('worktree reconcile merges each source and records the operator invocation'
   assert.equal(evidence[1].outcome, 'merged')
 })
 
+// The target-kind variants below exercise reconcileWorktrees directly on a
+// cloned two-source checkpoint; the CLI's JSON and exit-code contract is
+// proven by the --into tests above and below.
 test('worktree reconcile merges into an existing branch through a recorded worktree', () => {
-  const root = createFixture()
-  const mainHead = git(root, ['rev-parse', 'HEAD']).trim()
+  const { root, mainHead } = worktreeCheckpoint('two-sources')
 
   git(root, ['branch', 'integration', mainHead])
 
-  const sourceOne = createWorktree(root, 'branch-source-one')
-  const sourceTwo = createWorktree(root, 'branch-source-two')
-
-  commitFile(path.join(root, sourceOne.path), 'one.txt', 'one\n')
-  commitFile(path.join(root, sourceTwo.path), 'two.txt', 'two\n')
-
-  const result = runCli<{
-    status: 'merged'
-    target: string
-    target_branch: string
-    merged_sources: string[]
-  }>(root, [
-    'worktree',
-    'reconcile',
-    '--into-branch',
-    'integration',
-    '--source',
-    'branch-source-one',
-    '--source',
-    'branch-source-two',
-  ])
+  const result = reconcileWorktrees(
+    root,
+    { into_branch: 'integration' },
+    TWO_SOURCES,
+  )
 
   assert.equal(result.status, 'merged')
   assert.equal(result.target, 'integration')
   assert.equal(result.target_branch, 'integration')
-  assert.deepEqual(result.merged_sources, [
-    'branch-source-one',
-    'branch-source-two',
-  ])
+  assert.deepEqual(result.merged_sources, TWO_SOURCES)
 
-  const listed = runCli<{
-    worktrees: Array<{ name: string; branch: string }>
-  }>(root, ['worktree', 'list'])
-  const targetEntry = listed.worktrees.find(
+  const targetEntry = listWorktrees(root).find(
     (entry) => entry.name === 'integration',
   )
 
@@ -127,38 +112,20 @@ test('worktree reconcile merges into an existing branch through a recorded workt
 })
 
 test('worktree reconcile merges into the branch the main checkout holds', () => {
-  const root = createFixture()
-  const mainBranch = git(root, ['symbolic-ref', '--short', 'HEAD']).trim()
-  const sourceOne = createWorktree(root, 'held-one')
-  const sourceTwo = createWorktree(root, 'held-two')
+  const { root, mainBranch } = worktreeCheckpoint('two-sources')
 
-  commitFile(path.join(root, sourceOne.path), 'one.txt', 'one\n')
-  commitFile(path.join(root, sourceTwo.path), 'two.txt', 'two\n')
-
-  const result = runCli<{
-    status: 'merged'
-    target: string
-    target_branch: string
-    target_kind: string
-    target_path: string
-    merged_sources: string[]
-  }>(root, [
-    'worktree',
-    'reconcile',
-    '--into-branch',
-    mainBranch,
-    '--source',
-    'held-one',
-    '--source',
-    'held-two',
-  ])
+  const result = reconcileWorktrees(
+    root,
+    { into_branch: mainBranch },
+    TWO_SOURCES,
+  )
 
   assert.equal(result.status, 'merged')
   assert.equal(result.target, mainBranch)
   assert.equal(result.target_branch, mainBranch)
   assert.equal(result.target_kind, 'checkout')
   assert.equal(result.target_path, '.')
-  assert.deepEqual(result.merged_sources, ['held-one', 'held-two'])
+  assert.deepEqual(result.merged_sources, TWO_SOURCES)
 
   // The main checkout stays on its branch, clean, with the merges applied.
   assert.equal(
@@ -174,48 +141,25 @@ test('worktree reconcile merges into the branch the main checkout holds', () => 
   )
 
   // No worktree is materialized for a branch a checkout already holds.
-  const listed = runCli<{
-    worktrees: Array<{ branch: string }>
-  }>(root, ['worktree', 'list'])
-
   assert.equal(
-    listed.worktrees.some((entry) => entry.branch === mainBranch),
+    listWorktrees(root).some((entry) => entry.branch === mainBranch),
     false,
   )
 })
 
 test('worktree reconcile refuses a dirty checkout that holds the target branch', () => {
-  const root = createFixture()
-  const mainBranch = git(root, ['symbolic-ref', '--short', 'HEAD']).trim()
-  const sourceOne = createWorktree(root, 'dirty-held-one')
-  const sourceTwo = createWorktree(root, 'dirty-held-two')
+  const { root, mainBranch, mainHead } = worktreeCheckpoint('two-sources')
 
-  commitFile(path.join(root, sourceOne.path), 'one.txt', 'one\n')
-  commitFile(path.join(root, sourceTwo.path), 'two.txt', 'two\n')
   writeFileSync(path.join(root, 'uncommitted.txt'), 'operator work\n')
 
-  const preHead = git(root, ['rev-parse', 'HEAD']).trim()
-  const refused = spawnSync(
-    process.execPath,
-    [
-      CLI,
-      'worktree',
-      'reconcile',
-      '--into-branch',
-      mainBranch,
-      '--source',
-      'dirty-held-one',
-      '--source',
-      'dirty-held-two',
-      '--json',
-    ],
-    { cwd: root, encoding: 'utf8', timeout: 120_000 },
+  assert.throws(
+    () => reconcileWorktrees(root, { into_branch: mainBranch }, TWO_SOURCES),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'WORKTREE_DIRTY' &&
+      /holds branch/u.test(error.message),
   )
-
-  assert.notEqual(refused.status, 0)
-  assert.match(refused.stderr, /WORKTREE_DIRTY/u)
-  assert.match(refused.stderr, /holds branch/u)
-  assert.equal(git(root, ['rev-parse', 'HEAD']).trim(), preHead)
+  assert.equal(git(root, ['rev-parse', 'HEAD']).trim(), mainHead)
   assert.equal(
     readFileSync(path.join(root, 'uncommitted.txt'), 'utf8'),
     'operator work\n',
@@ -223,49 +167,19 @@ test('worktree reconcile refuses a dirty checkout that holds the target branch',
 })
 
 test('a held-checkout conflict aborts only the conflicted merge', () => {
-  const root = createFixture()
-  const mainBranch = git(root, ['symbolic-ref', '--short', 'HEAD']).trim()
-  const sourceOne = createWorktree(root, 'held-conflict-one')
-  const sourceTwo = createWorktree(root, 'held-conflict-two')
+  const { root, mainBranch, mainHead: preHead } = worktreeCheckpoint('conflict')
 
-  commitFile(path.join(root, sourceOne.path), 'one.txt', 'one\n')
-  commitFile(path.join(root, sourceTwo.path), 'shared.txt', 'source\n')
-
-  const preHead = commitFile(root, 'shared.txt', 'target\n')
-  const conflicted = spawnSync(
-    process.execPath,
-    [
-      CLI,
-      'worktree',
-      'reconcile',
-      '--into-branch',
-      mainBranch,
-      '--source',
-      'held-conflict-one',
-      '--source',
-      'held-conflict-two',
-      '--json',
-    ],
-    { cwd: root, encoding: 'utf8', timeout: 120_000 },
+  const result = reconcileWorktrees(
+    root,
+    { into_branch: mainBranch },
+    TWO_SOURCES,
   )
-
-  assert.equal(conflicted.status, 1)
-
-  const result = JSON.parse(conflicted.stdout) as {
-    status: 'conflict'
-    target_kind: string
-    merge_aborted: boolean
-    merged_sources: string[]
-    conflicted_source: string
-    conflicted_paths: string[]
-    conflict_request: string
-  }
 
   assert.equal(result.status, 'conflict')
   assert.equal(result.target_kind, 'checkout')
   assert.equal(result.merge_aborted, true)
-  assert.deepEqual(result.merged_sources, ['held-conflict-one'])
-  assert.equal(result.conflicted_source, 'held-conflict-two')
+  assert.deepEqual(result.merged_sources, ['source-one'])
+  assert.equal(result.conflicted_source, 'source-two')
   assert.deepEqual(result.conflicted_paths, ['shared.txt'])
 
   // The checkout retains the completed merge and aborts only the conflict.
@@ -274,84 +188,45 @@ test('a held-checkout conflict aborts only the conflicted merge', () => {
   assert.equal(readFileSync(path.join(root, 'shared.txt'), 'utf8'), 'target\n')
   assert.equal(readFileSync(path.join(root, 'one.txt'), 'utf8'), 'one\n')
 
+  assert.ok(result.conflict_request)
+
   const request = readFileSync(path.join(root, result.conflict_request), 'utf8')
 
   assert.match(request, /aborted/u)
   assert.match(request, /--into <worktree>/u)
 })
+
 test('branch reconcile validates sources before creating its target worktree', () => {
-  const root = createFixture()
-  const mainHead = git(root, ['rev-parse', 'HEAD']).trim()
+  const { root, mainHead, worktrees } = worktreeCheckpoint('two-sources')
 
   git(root, ['branch', 'integration', mainHead])
-  const sourceOne = createWorktree(root, 'source-one')
-  createWorktree(root, 'source-two')
 
-  const result = spawnSync(
-    process.execPath,
-    [
-      CLI,
-      'worktree',
-      'reconcile',
-      '--into-branch',
-      'integration',
-      '--source',
-      'source-one',
-      '--source',
-      'missing-source',
-      '--json',
-    ],
-    {
-      cwd: root,
-      encoding: 'utf8',
-      timeout: 120_000,
-    },
+  assert.throws(
+    () =>
+      reconcileWorktrees(root, { into_branch: 'integration' }, [
+        'source-one',
+        'missing-source',
+      ]),
+    (error: unknown) =>
+      error instanceof PanError && error.code === 'WORKTREE_NOT_FOUND',
   )
-
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /WORKTREE_NOT_FOUND/u)
-
-  const listed = runCli<{
-    worktrees: Array<{ name: string; branch: string }>
-  }>(root, ['worktree', 'list'])
-
   assert.equal(
-    listed.worktrees.some((entry) => entry.branch === 'integration'),
+    listWorktrees(root).some((entry) => entry.branch === 'integration'),
     false,
   )
 
-  writeFileSync(path.join(root, sourceOne.path, 'dirty.txt'), 'dirty\n')
-
-  const dirtyResult = spawnSync(
-    process.execPath,
-    [
-      CLI,
-      'worktree',
-      'reconcile',
-      '--into-branch',
-      'integration',
-      '--source',
-      'source-one',
-      '--source',
-      'source-two',
-      '--json',
-    ],
-    {
-      cwd: root,
-      encoding: 'utf8',
-      timeout: 120_000,
-    },
+  writeFileSync(
+    path.join(root, worktrees['source-one'].path, 'dirty.txt'),
+    'dirty\n',
   )
 
-  assert.notEqual(dirtyResult.status, 0)
-  assert.match(dirtyResult.stderr, /WORKTREE_DIRTY/u)
-
-  const afterDirty = runCli<{
-    worktrees: Array<{ name: string; branch: string }>
-  }>(root, ['worktree', 'list'])
-
+  assert.throws(
+    () => reconcileWorktrees(root, { into_branch: 'integration' }, TWO_SOURCES),
+    (error: unknown) =>
+      error instanceof PanError && error.code === 'WORKTREE_DIRTY',
+  )
   assert.equal(
-    afterDirty.worktrees.some((entry) => entry.branch === 'integration'),
+    listWorktrees(root).some((entry) => entry.branch === 'integration'),
     false,
   )
 })

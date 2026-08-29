@@ -33,12 +33,16 @@ import {
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { nextSemanticVersion } from '../../src/lib/versioning.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
+import type { TaskRecord } from '../../src/lib/types.js'
 import {
   createFixture,
   makeOutput,
+  read,
   writeCanonicalDelegation,
   writeJson,
 } from '../helpers.js'
+import { BRIEFS, checkpoint } from './delivery-helpers.js'
+import type { CheckpointVariant } from './delivery-helpers.js'
 
 test('full delivery workflow persists gates and reaches operator-approved success', () => {
   const root = createFixture()
@@ -121,6 +125,17 @@ test('full delivery workflow persists gates and reaches operator-approved succes
     )
     assert.equal(existsSync(path.join(root, brief.source_path)), false)
 
+    if (stageSlug === 'verify') {
+      // A clean verify pass emits no inbox item and routes straight to ship.
+      assert.equal(submitted.state.current_stage, 'ship')
+      assert.equal(
+        existsSync(
+          path.join(root, 'runtime', 'inbox', `${runId}-verify-warnings.md`),
+        ),
+        false,
+      )
+    }
+
     if (stageSlug === 'plan') {
       const repeated = submitOutput(root, runId, invocation.output.path)
 
@@ -186,110 +201,94 @@ test('full delivery workflow persists gates and reaches operator-approved succes
   )
 })
 
-test('enabled away mode continues after one decision and completes ship', () => {
-  const root = createFixture()
-  const configPath = path.join(root, 'config.json')
-  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
-    string,
-    unknown
-  >
+/**
+ * Away mode is snapshotted into the run at creation, and the run reaches the
+ * ship gate under away authority: the plan gate is decided by the away
+ * evaluator while the checkpoint is driven, so the run's event log never holds
+ * an operator decision.
+ */
+const AWAY: CheckpointVariant = {
+  key: 'away',
+  fixture: (root) => {
+    const configPath = path.join(root, 'config.json')
+    const config = read(configPath) as Record<string, unknown>
 
-  writeFileSync(
-    configPath,
-    `${JSON.stringify(
-      {
-        ...config,
-        away_mode: {
-          enabled: true,
-          guardrails: {
-            allowed_actions: ['approve'],
-            max_decisions_per_run: 1,
-          },
-        },
-      },
-      null,
-      2,
-    )}\n`,
-  )
-
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Away continuation fixture',
-  })
-  const runId = state.run_id
-
-  for (const stageSlug of ['plan', 'implement', 'verify', 'ship']) {
-    const invocation = prepareInvocation(root, runId).invocation
-
-    assert.ok(invocation)
-    const stage = stageBySlug(workflow, stageSlug)
-    const output = makeOutput(
-      root,
-      invocation,
-      stage,
-      'success',
-      stageSlug === 'ship' ? getRunState(root, runId) : undefined,
-    )
-
-    writeJson(path.join(root, invocation.output.path), output)
-    writeCanonicalDelegation(root, invocation)
-
-    const submitted = submitOutput(root, runId, invocation.output.path)
-
-    assert.equal(
-      submitted.record.outcome,
-      'success',
-      `${stageSlug}: ${JSON.stringify(submitted.record.evaluation)}`,
-    )
-
-    if (stageSlug === 'plan') {
-      const blocker = awayModeTrigger(submitted.state)
-
-      assert.ok(blocker)
-      const decision = recordAwayEvaluation(root, submitted.state, blocker, {
-        ranked_options: [
-          {
-            rank: 1,
-            action: 'approve',
-            feasible: true,
-            rationale: 'Approve the ratified plan.',
-            evidence: [invocation.output.path],
-            rollback_plan: {
-              steps: ['Route a later run to plan.'],
-              verification: 'Confirm the later run starts at plan.',
+    writeFileSync(
+      configPath,
+      `${JSON.stringify(
+        {
+          ...config,
+          away_mode: {
+            enabled: true,
+            guardrails: {
+              allowed_actions: ['approve'],
+              max_decisions_per_run: 1,
             },
           },
-        ],
-      })
-      const next = decideRunAsAway(
-        root,
-        runId,
-        'approve',
-        decision.selected_action?.rationale ?? '',
-      )
+        },
+        null,
+        2,
+      )}\n`,
+    )
+  },
+  run: { title: 'Away continuation fixture' },
+  decidePlan: (root, runId) => {
+    const state = getRunState(root, runId)
+    const planOutputPath = state.stage_history.at(-1)?.output_path ?? ''
+    const blocker = awayModeTrigger(state)
 
-      recordAwayApplyResult(root, decision, 'applied')
-      assert.equal(next.current_stage, 'implement')
-      assert.equal(next.pending_action.type, 'prepare_invocation')
-    } else if (stageSlug === 'ship') {
-      const decision = recordDeterministicShipApproval(root, submitted.state, [
-        resolveRunLayout(root, runId).state.relative,
-        invocation.output.path,
-      ])
-      const next = decideRunAsAway(
-        root,
-        runId,
-        'approve',
-        decision.selected_action?.rationale ?? '',
-      )
+    assert.ok(blocker)
+    const decision = recordAwayEvaluation(root, state, blocker, {
+      ranked_options: [
+        {
+          rank: 1,
+          action: 'approve',
+          feasible: true,
+          rationale: 'Approve the ratified plan.',
+          evidence: [planOutputPath],
+          rollback_plan: {
+            steps: ['Route a later run to plan.'],
+            verification: 'Confirm the later run starts at plan.',
+          },
+        },
+      ],
+    })
+    const next = decideRunAsAway(
+      root,
+      runId,
+      'approve',
+      decision.selected_action?.rationale ?? '',
+    )
 
-      recordAwayApplyResult(root, decision, 'applied')
-      assert.equal(next.status, 'succeeded')
-      assert.equal(next.pending_action.type, 'none')
-    }
-  }
+    recordAwayApplyResult(root, decision, 'applied')
+    assert.equal(next.current_stage, 'implement')
+    assert.equal(next.pending_action.type, 'prepare_invocation')
+  },
+}
+
+test('enabled away mode continues after one decision and completes ship', () => {
+  const { root, runId, state } = checkpoint(
+    'delivery@ship-awaiting-operator',
+    AWAY,
+  )
+  const shipOutputPath = state.stage_history.at(-1)?.output_path ?? ''
+
+  assert.equal(state.stage_history.at(-1)?.stage, 'ship')
+
+  const decision = recordDeterministicShipApproval(root, state, [
+    resolveRunLayout(root, runId).state.relative,
+    shipOutputPath,
+  ])
+  const next = decideRunAsAway(
+    root,
+    runId,
+    'approve',
+    decision.selected_action?.rationale ?? '',
+  )
+
+  recordAwayApplyResult(root, decision, 'applied')
+  assert.equal(next.status, 'succeeded')
+  assert.equal(next.pending_action.type, 'none')
 
   const ledger = readAwayDecisionLedger(root)
 
@@ -322,6 +321,20 @@ test('away resume cannot ratify workspace changes made during a pause', () => {
   })
   const runId = state.run_id
 
+  // An unchanged paused run resumes under away authority without ratification.
+  pauseRun(root, runId, 'Pause without workspace edits.')
+
+  const awayResumed = resumeRunAsAway(root, runId)
+
+  assert.equal(awayResumed.status, 'running')
+  assert.equal(awayResumed.pending_action.type, 'prepare_invocation')
+  assert.equal(awayResumed.operator_pause, null)
+  assert.equal(awayResumed.operator_workspace_ratifications, undefined)
+  assert.match(
+    readFileSync(resolveRunLayout(root, runId).events.absolute, 'utf8'),
+    /away_run_resumed/u,
+  )
+
   pauseRun(root, runId, 'Pause before an external edit.')
   writeFileSync(
     path.join(root, 'src', 'base.ts'),
@@ -340,86 +353,10 @@ test('away resume cannot ratify workspace changes made during a pause', () => {
   assert.equal(resumed.operator_workspace_ratifications?.length, 1)
 })
 
-test('away resume restores an unchanged paused run without ratification', () => {
-  const root = createFixture()
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Away resume fixture',
-  })
-  const runId = state.run_id
-
-  pauseRun(root, runId, 'Pause without workspace edits.')
-
-  const resumed = resumeRunAsAway(root, runId)
-
-  assert.equal(resumed.status, 'running')
-  assert.equal(resumed.pending_action.type, 'prepare_invocation')
-  assert.equal(resumed.operator_pause, null)
-  assert.equal(resumed.operator_workspace_ratifications, undefined)
-
-  const events = readFileSync(
-    resolveRunLayout(root, runId).events.absolute,
-    'utf8',
-  )
-
-  assert.match(events, /away_run_resumed/u)
-})
-
-test('away stage repair records away authorship', () => {
-  const root = createFixture()
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Away stage repair fixture',
-  })
-  const runId = state.run_id
-  const repaired = setRunStageAsAway(
-    root,
-    runId,
-    'implement',
-    'Skip ahead for a bounded repair.',
-  )
-
-  assert.equal(repaired.current_stage, 'implement')
-  assert.equal(repaired.pending_action.type, 'prepare_invocation')
-
-  const feedback = repaired.operator_feedback?.at(-1)
-
-  assert.equal(feedback?.decision, 'set-stage')
-  assert.equal(feedback?.source, 'away')
-  assert.match(feedback?.path ?? '', /away-feedback-1\.md$/u)
-
-  const events = readFileSync(
-    resolveRunLayout(root, runId).events.absolute,
-    'utf8',
-  )
-
-  assert.match(events, /away_stage_set/u)
-  assert.doesNotMatch(events, /operator_stage_set/u)
-})
-
 test('away revise re-runs the stage without an operator revision allowance', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Away revise fixture',
-  })
-  const runId = state.run_id
-  const invocation = prepareInvocation(root, runId).invocation
+  const { root, runId, state } = checkpoint('delivery@plan-awaiting-operator')
 
-  assert.ok(invocation)
-  writeJson(
-    path.join(root, invocation.output.path),
-    makeOutput(root, invocation, stageBySlug(workflow, 'plan')),
-  )
-  writeCanonicalDelegation(root, invocation)
-
-  const submitted = submitOutput(root, runId, invocation.output.path)
-
-  assert.equal(submitted.state.pending_action.type, 'operator_approval')
+  assert.equal(state.pending_action.type, 'operator_approval')
 
   const revised = decideRunAsAway(
     root,
@@ -440,17 +377,10 @@ test('away revise re-runs the stage without an operator revision allowance', () 
 })
 
 test('ship cannot succeed without its declared PR artifact', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Missing PR artifact',
-    operatorArtifacts: true,
-  })
-
-  setRunStage(root, state.run_id, 'ship', 'Exercise the ship validator.')
-  const invocation = prepareInvocation(root, state.run_id).invocation
+  const { root, runId, invocation, workflow } = checkpoint(
+    'delivery@ship-prepared',
+    BRIEFS,
+  )
 
   assert.ok(invocation)
   const stage = stageBySlug(workflow, 'ship')
@@ -462,7 +392,7 @@ test('ship cannot succeed without its declared PR artifact', () => {
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
 
-  const submitted = submitOutput(root, state.run_id, invocation.output.path)
+  const submitted = submitOutput(root, runId, invocation.output.path)
 
   assert.equal(submitted.record.outcome, 'blocked')
   assert.match(
@@ -472,17 +402,10 @@ test('ship cannot succeed without its declared PR artifact', () => {
 })
 
 test('ship cannot succeed when its PR artifact violates resolved authority', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Invalid PR artifact',
-    operatorArtifacts: true,
-  })
-
-  setRunStage(root, state.run_id, 'ship', 'Exercise the ship validator.')
-  const invocation = prepareInvocation(root, state.run_id).invocation
+  const { root, runId, invocation, workflow } = checkpoint(
+    'delivery@ship-prepared',
+    BRIEFS,
+  )
 
   assert.ok(invocation)
   const stage = stageBySlug(workflow, 'ship')
@@ -497,7 +420,7 @@ test('ship cannot succeed when its PR artifact violates resolved authority', () 
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
 
-  const submitted = submitOutput(root, state.run_id, invocation.output.path)
+  const submitted = submitOutput(root, runId, invocation.output.path)
 
   assert.equal(submitted.record.outcome, 'blocked')
   assert.match(
@@ -506,78 +429,42 @@ test('ship cannot succeed when its PR artifact violates resolved authority', () 
   )
 })
 
-test('delivery plan is delegated to the planner and still awaits ratification', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const runId = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Plan delegation run',
-    involvement: 'standard',
-  }).run_id
-  const prepared = prepareInvocation(root, runId)
-  const invocation = prepared.invocation
+test('a non-empty approval note becomes required context for the routed stage', () => {
+  const prepared = checkpoint('delivery@plan-prepared')
+  const first = prepared.invocation
 
-  assert.ok(invocation)
-  assert.equal(invocation.stage.slug, 'plan')
-  assert.equal(invocation.stage.persona, 'planner')
+  assert.ok(first)
+  assert.equal(first.stage.slug, 'plan')
+  assert.equal(first.stage.persona, 'planner')
 
   // The first stage of the run is delegated, so it owes the same delivery
   // contract and read attestation every other worker stage owes.
   assert.equal(prepared.state.pending_action.type, 'invoke_agent')
-  assert.equal(invocation.delegation?.mode, 'referenced')
+  assert.equal(first.delegation?.mode, 'referenced')
   assert.equal(
-    invocation.delegation?.cursor_agent_path,
+    first.delegation?.cursor_agent_path,
     '.cursor/agents/pan-planner.md',
   )
-  assert.ok(invocation.contract_manifest)
+  assert.ok(first.contract_manifest)
 
-  writeJson(
-    path.join(root, invocation.output.path),
-    makeOutput(root, invocation, stageBySlug(workflow, 'plan')),
+  const { root, runId, state } = checkpoint('delivery@plan-awaiting-operator')
+  const planHistory = state.stage_history.at(-1)
+
+  assert.ok(planHistory?.record_path)
+
+  const record = read(path.join(root, planHistory.record_path)) as TaskRecord
+  const warnings = (record.evaluation.governance_artifact_warnings ?? []).join(
+    '\n',
   )
-  writeCanonicalDelegation(root, invocation)
 
-  const submitted = submitOutput(root, runId, invocation.output.path)
-  const warnings = (
-    submitted.record.evaluation.governance_artifact_warnings ?? []
-  ).join('\n')
-
-  assert.equal(submitted.record.outcome, 'success')
+  assert.equal(record.outcome, 'success')
   assert.doesNotMatch(warnings, /[Dd]elegation/u)
   assert.doesNotMatch(warnings, /attestation/u)
 
   // Worker ownership must not change where the operator stops the run.
-  assert.equal(submitted.state.status, 'awaiting_operator')
-  assert.equal(submitted.state.pending_action.type, 'operator_approval')
-  assert.equal(submitted.state.current_stage, 'plan')
-
-  decideRun(root, runId, 'approve', 'fixture approval')
-  assert.equal(getRunState(root, runId).current_stage, 'implement')
-})
-
-test('a non-empty approval note becomes required context for the routed stage', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const planStage = stageBySlug(workflow, 'plan')
-  const runId = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Approval note run',
-    involvement: 'standard',
-  }).run_id
-  const first = prepareInvocation(root, runId).invocation
-
-  assert.ok(first)
-  writeJson(
-    path.join(root, first.output.path),
-    makeOutput(root, first, planStage),
-  )
-  writeCanonicalDelegation(root, first)
-  assert.equal(
-    submitOutput(root, runId, first.output.path).state.status,
-    'awaiting_operator',
-  )
+  assert.equal(state.status, 'awaiting_operator')
+  assert.equal(state.pending_action.type, 'operator_approval')
+  assert.equal(state.current_stage, 'plan')
 
   const directive =
     'Adopt cross-run cache persistence explicitly during implementation.'
@@ -596,6 +483,7 @@ test('a non-empty approval note becomes required context for the routed stage', 
     readFileSync(path.join(root, feedback.path), 'utf8'),
     /Operator directive attached to approval/u,
   )
+  assert.equal(getRunState(root, runId).current_stage, 'implement')
 
   const implement = prepareInvocation(root, runId).invocation
 
@@ -611,24 +499,8 @@ test('a non-empty approval note becomes required context for the routed stage', 
 })
 
 test('an empty approval note records no operator feedback', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const planStage = stageBySlug(workflow, 'plan')
-  const runId = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Plain approval run',
-    involvement: 'standard',
-  }).run_id
-  const first = prepareInvocation(root, runId).invocation
+  const { root, runId } = checkpoint('delivery@plan-awaiting-operator')
 
-  assert.ok(first)
-  writeJson(
-    path.join(root, first.output.path),
-    makeOutput(root, first, planStage),
-  )
-  writeCanonicalDelegation(root, first)
-  submitOutput(root, runId, first.output.path)
   decideRun(root, runId, 'approve')
 
   const state = getRunState(root, runId)
@@ -638,26 +510,16 @@ test('an empty approval note records no operator feedback', () => {
 })
 
 test('an operator revision returns the delivery plan to the planner', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const planStage = stageBySlug(workflow, 'plan')
-  const runId = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Plan revision run',
-    involvement: 'standard',
-  }).run_id
-  const first = prepareInvocation(root, runId).invocation
-
-  assert.ok(first)
-  writeJson(
-    path.join(root, first.output.path),
-    makeOutput(root, first, planStage),
+  const { root, runId, state, workflow } = checkpoint(
+    'delivery@plan-awaiting-operator',
   )
-  writeCanonicalDelegation(root, first)
-  assert.equal(
-    submitOutput(root, runId, first.output.path).state.status,
-    'awaiting_operator',
+  const planStage = stageBySlug(workflow, 'plan')
+
+  assert.equal(state.status, 'awaiting_operator')
+
+  assert.throws(
+    () => decideRun(root, runId, 'revise', '   '),
+    /MUST carry the operator directive/u,
   )
 
   const directive = 'Record the retention window as an explicit constraint.'
@@ -727,29 +589,13 @@ test('run preparation rejects live pipeline-config drift from its snapshot', () 
 })
 
 test('paused remediation note is attached to the next implement invocation', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Fixture run',
-    involvement: 'standard',
-  })
-  const runId = state.run_id
+  const {
+    root,
+    runId,
+    invocation: implementInvocation,
+    workflow,
+  } = checkpoint('delivery@implement-prepared')
 
-  const planInvocation = prepareInvocation(root, runId).invocation
-  assert.ok(planInvocation)
-  writeJson(
-    path.join(root, planInvocation.output.path),
-    makeOutput(root, planInvocation, stageBySlug(workflow, 'plan')),
-  )
-  writeCanonicalDelegation(root, planInvocation)
-
-  const planSubmitted = submitOutput(root, runId, planInvocation.output.path)
-  assert.equal(planSubmitted.state.status, 'awaiting_operator')
-  decideRun(root, runId, 'approve', 'fixture approval')
-
-  const implementInvocation = prepareInvocation(root, runId).invocation
   assert.ok(implementInvocation)
   const blockedOutput = makeOutput(
     root,
@@ -811,6 +657,15 @@ test('operator set-stage bypasses transitions and injects repair context', () =>
   assert.equal(originalInvocation.stage.slug, 'plan')
   assert.match(originalInvocation.invocation_id, /^99_plan-1_/u)
 
+  assert.throws(
+    () => setRunStage(root, runId, 'verify', '   '),
+    /Stage repair note MUST be non-empty/u,
+  )
+  assert.throws(
+    () => setRunStage(root, runId, 'missing', 'repair target'),
+    /Workflow delivery has no stage 'missing'/u,
+  )
+
   const note =
     'Repair the run by independently verifying the current workspace.'
   const repaired = setRunStage(root, runId, 'verify', note)
@@ -843,21 +698,37 @@ test('operator set-stage bypasses transitions and injects repair context', () =>
 
   const feedbackBody = readFileSync(path.join(root, feedback.path), 'utf8')
   assert.match(feedbackBody, /independently verifying the current workspace/u)
-})
 
-test('operator set-stage requires a valid target and non-empty repair note', () => {
-  const root = createFixture()
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-  })
+  // The away variant records away authorship and its own event type.
+  const eventsPath = resolveRunLayout(root, runId).events.absolute
+  const operatorStageSetCount = (
+    readFileSync(eventsPath, 'utf8').match(/operator_stage_set/gu) ?? []
+  ).length
 
-  assert.throws(
-    () => setRunStage(root, state.run_id, 'verify', '   '),
-    /Stage repair note MUST be non-empty/u,
+  assert.equal(operatorStageSetCount, 1)
+
+  const awayRepaired = setRunStageAsAway(
+    root,
+    runId,
+    'implement',
+    'Skip ahead for a bounded repair.',
   )
-  assert.throws(
-    () => setRunStage(root, state.run_id, 'missing', 'repair target'),
-    /Workflow delivery has no stage 'missing'/u,
+
+  assert.equal(awayRepaired.current_stage, 'implement')
+  assert.equal(awayRepaired.pending_action.type, 'prepare_invocation')
+
+  const awayFeedback = awayRepaired.operator_feedback?.at(-1)
+
+  assert.equal(awayFeedback?.decision, 'set-stage')
+  assert.equal(awayFeedback?.source, 'away')
+  assert.match(awayFeedback?.path ?? '', /away-feedback-2\.md$/u)
+
+  const events = readFileSync(eventsPath, 'utf8')
+
+  assert.match(events, /away_stage_set/u)
+  assert.equal(
+    (events.match(/operator_stage_set/gu) ?? []).length,
+    operatorStageSetCount,
+    'an away stage repair MUST NOT be recorded as an operator stage set',
   )
 })
