@@ -87,6 +87,75 @@ test('a failing verify verdict routes without executing the full suite', () => {
   assert.equal(scope.skipped, undefined)
 })
 
+test('an unevaluated verify criterion blocks success before the full suite', () => {
+  const { root, runId, workflow } = checkpoint('delivery@verify-prepared')
+  const verifyStage = stageBySlug(workflow, 'verify')
+
+  const submitted = submitStageOutput(
+    root,
+    runId,
+    verifyStage,
+    'success',
+    [],
+    (output) => {
+      const criterion = output.criteria.find(
+        (item) => item.id === 'verify.tests_correct',
+      )
+
+      assert.ok(criterion)
+      criterion.result = 'unevaluated'
+    },
+  )
+  const suite = submitted.record.evaluation.deterministic.find(
+    (item) => item.id === 'verify.full_suite',
+  )
+
+  assert.equal(submitted.record.outcome, 'failure')
+  assert.equal(submitted.state.current_stage, 'remediate')
+  assert.ok(suite)
+  assert.equal(suite.skipped, true)
+  assert.equal(suite.exit_code, undefined)
+  assert.match(
+    submitted.record.evaluation.validation_errors.join('\n'),
+    /verify\.tests_correct' is unevaluated/u,
+  )
+})
+
+test('a blocked verify submission pauses without product-field errors', () => {
+  const { root, runId, workflow } = checkpoint('delivery@verify-prepared')
+  const verifyStage = stageBySlug(workflow, 'verify')
+
+  const submitted = submitStageOutput(
+    root,
+    runId,
+    verifyStage,
+    'blocked',
+    [],
+    (output) => {
+      output.criteria = output.criteria.map((criterion) => ({
+        ...criterion,
+        result: 'skipped',
+        explanation: 'Verification lacks the required evidence.',
+      }))
+      output.data.verify = {
+        blocking_reason: 'Required evidence reports are missing.',
+        missing_evidence_paths: ['review-evidence.md', 'qa-evidence.md'],
+      }
+    },
+  )
+  const suite = submitted.record.evaluation.deterministic.find(
+    (item) => item.id === 'verify.full_suite',
+  )
+
+  assert.equal(submitted.record.outcome, 'blocked')
+  assert.equal(submitted.state.status, 'paused')
+  assert.equal(submitted.state.current_stage, 'verify')
+  assert.deepEqual(submitted.record.evaluation.validation_errors, [])
+  assert.ok(suite)
+  assert.equal(suite.skipped, true)
+  assert.equal(suite.exit_code, undefined)
+})
+
 test('a failed hard self-criterion skips shell gates on a declared success', () => {
   const { root, runId, workflow } = checkpoint('delivery@implement-prepared')
   const implementStage = stageBySlug(workflow, 'implement')

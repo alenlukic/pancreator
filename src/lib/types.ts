@@ -101,7 +101,12 @@ export type StageCheckpoint = 'technical_plan' | 'independent_review'
 
 export type CriterionType = 'judgment' | 'shell' | 'state'
 
-export type CriterionResultValue = 'pass' | 'fail' | 'not_applicable'
+export type CriterionResultValue =
+  | 'pass'
+  | 'fail'
+  | 'not_applicable'
+  | 'unevaluated'
+  | 'skipped'
 
 export type JsonTypeName = 'object' | 'array' | 'string' | 'number' | 'boolean'
 
@@ -798,6 +803,9 @@ export interface InvocationReference {
     profile: string
     fingerprint: string
     current: boolean
+    acceptance_mode?: 'clean_pass' | 'baseline_relative_acceptance' | 'unknown'
+    raw_exit_code?: number | null
+    preexisting_failure?: boolean
   }
 }
 
@@ -908,6 +916,7 @@ export interface Invocation {
     scaffold_command?: string
     artifacts?: ArtifactReference[]
     field_contract?: {
+      criterion_results?: Record<string, string>
       validators: Array<{
         registry_id: string
         enforcement: 'blocks' | 'advises'

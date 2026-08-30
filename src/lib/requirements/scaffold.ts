@@ -111,13 +111,20 @@ export function isUntouchedScaffold(value: unknown): boolean {
     return false
   }
 
-  return value.criteria.every(
-    (item) =>
-      isRecord(item) &&
-      item.result === 'not_applicable' &&
-      (typeof item.explanation !== 'string' ||
-        item.explanation.trim().length === 0),
-  )
+  return value.criteria.every((item) => {
+    if (!isRecord(item)) {
+      return false
+    }
+
+    const result = item.result
+    const untouched =
+      result === 'unevaluated' ||
+      (result === 'not_applicable' &&
+        (typeof item.explanation !== 'string' ||
+          item.explanation.trim().length === 0))
+
+    return untouched
+  })
 }
 
 export interface StageOutputScaffoldResult {
@@ -219,7 +226,7 @@ export function scaffoldStageOutput(
         : []),
     criteria: invocation.rubric.map((criterion) => ({
       id: criterion.id,
-      result: 'not_applicable',
+      result: 'unevaluated',
       evidence: [],
       explanation: '',
     })),

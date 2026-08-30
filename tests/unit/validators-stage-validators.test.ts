@@ -16,7 +16,7 @@ import {
   validateTargetInstructionCoverage,
   validateVerifyOutput,
 } from '../../src/lib/validators/stage-validators.js'
-import { createFixture } from '../helpers.js'
+import { createFixture, writeJson } from '../helpers.js'
 import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
 
 /**
@@ -2056,4 +2056,159 @@ test('tests_added requires a contract for a net-positive delta and ignores uncha
   )
 
   assert.equal(contractIssues(cumulative.issues).length, 1)
+})
+
+test('verify validator accepts a blocked output with reason and missing paths only', () => {
+  const root = validatorFixtureRoot('pan-verify-blocked-')
+  const target = 'output.json'
+
+  writeFileSync(
+    path.join(root, target),
+    `${JSON.stringify({
+      result: 'blocked',
+      data: {
+        verify: {
+          blocking_reason: 'Required model evidence reports are missing.',
+          missing_evidence_paths: [
+            'runtime/logs/workflows/run/evidence/model-evidence-review.json',
+            'runtime/logs/workflows/run/evidence/model-evidence-qa.json',
+          ],
+        },
+      },
+    })}\n`,
+  )
+
+  const result = validateVerifyOutput({
+    root,
+    targetPath: target,
+    requirement: verifyRequirement(),
+  })
+
+  assert.equal(result.status, 'passed', JSON.stringify(result.issues))
+})
+
+test('verify validator rejects product fields on a blocked output', () => {
+  const root = validatorFixtureRoot('pan-verify-blocked-product-')
+  const target = 'output.json'
+
+  writeFileSync(
+    path.join(root, target),
+    `${JSON.stringify({
+      result: 'blocked',
+      data: {
+        verify: {
+          blocking_reason: 'Evidence missing.',
+          missing_evidence_paths: ['runtime/missing.json'],
+          verdict: 'fail_remedial',
+        },
+      },
+    })}\n`,
+  )
+
+  const result = validateVerifyOutput({
+    root,
+    targetPath: target,
+    requirement: verifyRequirement(),
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.ok(
+    result.issues.some(
+      (item) => item.code === 'verify.blocked_forbidden_field',
+    ),
+  )
+})
+
+test('field contract validator rejects enforced_fields that lack a declared shape', () => {
+  const root = createFixture()
+  const contractPath = 'library/schemas/stage-output-requirements.json'
+  const source = JSON.parse(
+    readFileSync(path.join(root, contractPath), 'utf8'),
+  ) as Record<string, unknown>
+  const plan = (source.stages as Record<string, unknown>).plan as Record<
+    string,
+    unknown
+  >
+
+  plan.validators = [
+    {
+      registry_id: 'PLAN-TRACE-VALIDATE-001',
+      enforcement: 'blocks',
+      enforced_fields: [
+        'data.acceptance_criteria[].maps_to',
+        'data.missing.field',
+      ],
+    },
+  ]
+
+  writeJson(path.join(root, contractPath), source)
+
+  const result = validateSharedFieldContract({
+    root,
+    targetPath: contractPath,
+    requirement: {
+      policy_id: 'CONTRACT-001',
+      requirement_id: 'shared-stage-field-contract',
+      registry_id: 'FIELD-CONTRACT-VALIDATE-001',
+      arguments: {},
+    },
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.ok(
+    result.issues.some(
+      (item) =>
+        item.code === 'field_contract.enforced_field' &&
+        item.message.includes('data.missing.field'),
+    ),
+  )
+})
+
+test('plan field contract declares every validator-enforced shape', () => {
+  const root = createFixture()
+  const contractPath = 'library/schemas/stage-output-requirements.json'
+  const source = JSON.parse(
+    readFileSync(path.join(root, contractPath), 'utf8'),
+  ) as {
+    stages: {
+      plan: {
+        validators: Array<{ enforced_fields?: string[] }>
+        fields: Array<{ path: string }>
+      }
+    }
+  }
+  const declared = new Set(source.stages.plan.fields.map((field) => field.path))
+  const enforced = new Set(
+    source.stages.plan.validators.flatMap(
+      (validator) => validator.enforced_fields ?? [],
+    ),
+  )
+
+  for (const fieldPath of [
+    'data.acceptance_criteria[].id',
+    'data.acceptance_criteria[].maps_to',
+    'data.acceptance_criteria[].verification',
+    'data.test_plan[]',
+    'data.open_question_dispositions[].id',
+    'data.open_question_dispositions[].answer',
+    'data.open_question_dispositions[].disposition',
+    'data.open_question_dispositions[].evidence',
+    'data.verification_recommendation',
+  ]) {
+    assert.ok(declared.has(fieldPath), `${fieldPath} is not declared`)
+    assert.ok(enforced.has(fieldPath), `${fieldPath} is not enforced`)
+  }
+
+  const result = validateSharedFieldContract({
+    root,
+    targetPath: contractPath,
+    requirement: {
+      policy_id: 'CONTRACT-001',
+      requirement_id: 'shared-stage-field-contract',
+      registry_id: 'FIELD-CONTRACT-VALIDATE-001',
+      arguments: {},
+    },
+  })
+
+  assert.equal(result.status, 'passed', JSON.stringify(result.issues))
 })

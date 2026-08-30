@@ -1,4 +1,4 @@
-import { passedGateEvidence } from './context.js'
+import { gateEvidenceLabel, passedGateEvidence } from './context.js'
 import {
   renderSuiteProfileSection,
   renderSuiteProfileStatusLine,
@@ -778,6 +778,14 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
     ? [
         '',
         'Shared field contract:',
+        ...(invocation.output.field_contract.criterion_results
+          ? [
+              '- `criteria[].result` values:',
+              ...Object.entries(
+                invocation.output.field_contract.criterion_results,
+              ).map(([value, meaning]) => `  - \`${value}\`: ${meaning}`),
+            ]
+          : []),
         ...invocation.output.field_contract.validators.map(
           (validator) =>
             `- \`${validator.registry_id}\` ${validator.enforcement} the stage.`,
@@ -1190,9 +1198,10 @@ export function renderStatus(
     for (const evidence of gateEvidence) {
       const currency =
         evidence.fingerprint === latestFingerprint ? 'current' : 'superseded'
+      const label = gateEvidenceLabel(evidence)
 
       lines.push(
-        `- ${evidence.profile}: passed at ${evidence.fingerprint} ` +
+        `- ${evidence.profile}: ${label} at ${evidence.fingerprint} ` +
           `(${evidence.origin}) — ${evidence.evidencePath} [${currency}]`,
       )
     }

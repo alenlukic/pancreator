@@ -5,6 +5,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
+  isUntouchedScaffold,
   readInvocationFromPath,
   scaffoldDataFromRequiredData,
   scaffoldStageOutput,
@@ -224,4 +225,45 @@ test('scaffold retains only non-transient brief sources as artifacts', () => {
     transient.output.artifacts.map((artifact) => artifact.path),
     [renderedPath],
   )
+})
+
+test('scaffold marks every criterion as unevaluated', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'pan-scaffold-'))
+  const outputPath = 'runtime/logs/workflows/x/outputs/out.json'
+  const invocation = {
+    invocation_id: 'implement-1',
+    stage: { model: 'gpt-5.6-sol' },
+    rubric: [
+      { id: 'implement.lint', hard: true },
+      { id: 'implement.unit_tests', hard: true },
+    ],
+    output: { path: outputPath, required_data: {} },
+  } as unknown as Invocation
+
+  const result = scaffoldStageOutput(root, invocation, outputPath, false)
+
+  assert.equal(result.output.criteria.length, invocation.rubric.length)
+  assert.ok(
+    result.output.criteria.every(
+      (criterion) => criterion.result === 'unevaluated',
+    ),
+  )
+})
+
+test('isUntouchedScaffold recognizes legacy not_applicable and new unevaluated scaffolds', () => {
+  const legacy = {
+    summary: '',
+    criteria: [
+      { id: 'a', result: 'not_applicable', evidence: [], explanation: '' },
+    ],
+  }
+  const current = {
+    summary: '',
+    criteria: [
+      { id: 'a', result: 'unevaluated', evidence: [], explanation: '' },
+    ],
+  }
+
+  assert.equal(isUntouchedScaffold(legacy), true)
+  assert.equal(isUntouchedScaffold(current), true)
 })

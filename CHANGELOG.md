@@ -1,5 +1,37 @@
 # Changelog
 
+## [5.3.0] - 2026-08-30
+
+### Changed
+
+- Prefill every scaffolded criterion as `unevaluated`. Submission rejects that value and names the criterion ([scaffold](src/lib/requirements/scaffold.ts), [validation](src/lib/validation.ts), [schema](library/schemas/stage-output.schema.json)).
+- Permit `skipped` only on a blocked output or a failed shell criterion. Forbid it on success ([validation](src/lib/validation.ts)).
+- Declare every plan and verify field shape in the shared registry. Check each `enforced_fields` reference ([field contract](library/schemas/stage-output-requirements.json), [stage-validators](src/lib/validators/stage-validators.ts)).
+- Classify gate evidence as `clean_pass` or `baseline_relative_acceptance`. Show the raw exit code and the carried-failure state ([context](src/lib/context.ts), [render](src/lib/render.ts)).
+- Validate a blocked verify output from `blocking_reason` and `missing_evidence_paths` only. Reject product-verdict fields ([stage-validators](src/lib/validators/stage-validators.ts)).
+- Promote unevaluated and skipped-on-success errors so submission fails before shell gates run ([engine](src/lib/engine.ts)).
+- State the narrow watch completion rule and the residual risk in `DELEGATE-001` ([DELEGATE-001](governance/policies/DELEGATE-001.json)).
+- Place `DELEGATE-001` on the delegation procedure. Arm the watch in the launch turn without a condition ([engine](src/lib/engine.ts), [render](src/lib/render.ts), [de517582](src/lib/engine.ts)).
+- Refuse an early output as `unverified` unless agent state is completed. Record `terminal_basis` on every completed wake ([watch](src/lib/watch.ts), [bb87b426](src/lib/watch.ts)).
+- Treat an untouched scaffold as nonterminal. A pending attestation also marks a scaffold ([scaffold](src/lib/requirements/scaffold.ts), [watch](src/lib/watch.ts), [de517582](src/lib/watch.ts)).
+- Pass only optional Cursor flags that the installed CLI declares ([cursor-agent](src/lib/executors/cursor-agent.ts), [de517582](src/lib/executors/cursor-agent.ts)).
+- Name evidence workers first in the operator next action when the invocation declares them ([render](src/lib/render.ts)).
+- State the six primer labels in `PRIMER-001`. Build the validator patterns from those labels ([PRIMER-001](governance/policies/PRIMER-001.json), [primer validator](src/lib/validators/target-repo-primer.ts), [bb87b426](src/lib/validators/target-repo-primer.ts)).
+
+### Added
+
+- Add `docs/issues/` with the output-contract intake and the out-of-band adjustment record ([e74a8c60](docs/issues/harness-repair-20260830T164220Z-output-contracts-and-gate-evidence.md), [adjustment record](docs/issues/20260830T164220Z-out-of-band-harness-adjustments-against-main.md)).
+- Add `--agent-state` to `pan watch` and the `unverified` exit ([watch](src/lib/watch.ts), [cli](src/cli.ts), [bb87b426](src/cli.ts)).
+- Add a late-supervision advisory when the watch arm delay exceeds 60 seconds ([watch](src/lib/watch.ts), [de517582](src/lib/watch.ts)).
+- Add `writeFixtureCursorCatalog` so model-evidence tests do not read the operator catalog ([helpers](tests/helpers.ts), [bb87b426](tests/helpers.ts)).
+
+### Fixed
+
+- Stop an unevaluated success output from advancing to ship ([engine](src/lib/engine.ts), [delivery-gates](tests/integration/delivery-gates.test.ts)).
+- Stop a blocked verify output from raising false required-data errors for forbidden product fields ([validation](src/lib/validation.ts)).
+- Remove the duplicate `qa_cases[].steps` field declaration ([field contract](library/schemas/stage-output-requirements.json)).
+- Classify a passed baseline as a clean pass ([context](src/lib/context.ts)).
+
 ## [5.2.0] - 2026-08-29
 
 ### Changed

@@ -2164,7 +2164,13 @@ function stageFieldContract(
   )
 
   invariant(
-    isRecord(source) && source.schema_version === 1 && isRecord(source.stages),
+    isRecord(source) &&
+      source.schema_version === 1 &&
+      isRecord(source.criterion_results) &&
+      Object.values(source.criterion_results).every(
+        (value) => typeof value === 'string',
+      ) &&
+      isRecord(source.stages),
     'stage-output-requirements.json MUST contain a schema_version 1 stage map.',
     { code: 'INVALID_STAGE_OUTPUT_REQUIREMENTS' },
   )
@@ -2227,6 +2233,7 @@ function stageFieldContract(
   })
 
   return {
+    criterion_results: source.criterion_results as Record<string, string>,
     validators,
     fields: stage.fields as NonNullable<
       Invocation['output']['field_contract']
@@ -3511,6 +3518,14 @@ function effectiveOutcome(
   return 'success'
 }
 
+function blockingCriterionStateErrors(errors: string[]): string[] {
+  return errors.filter(
+    (message) =>
+      /criteria '.+' is unevaluated;/u.test(message) ||
+      /criteria '.+' MUST NOT be skipped on a success result/u.test(message),
+  )
+}
+
 /**
  * Persist non-blocking verify findings as an operator inbox item. A
  * pass-with-warnings verdict advances the run because QA demonstrated the
@@ -3976,6 +3991,9 @@ export function submitOutput(
     const blockingValidatorErrors = filterBriefDerivatives(
       harnessValidation.blocking_errors,
     ).map((message) => `Validator: ${message}`)
+    const blockingCriterionErrors = blockingCriterionStateErrors(
+      validation.errors,
+    ).map((message) => `Stage output: ${message}`)
     const blockingValidationErrors =
       stage.slug === 'ship'
         ? [
@@ -3984,7 +4002,11 @@ export function submitOutput(
             ...validation.errors.map((message) => `Stage output: ${message}`),
             ...blockingValidatorErrors,
           ]
-        : [...attestationErrors, ...blockingValidatorErrors]
+        : [
+            ...attestationErrors,
+            ...blockingCriterionErrors,
+            ...blockingValidatorErrors,
+          ]
     const declaredNonSuccess =
       isRecord(submittedValue) &&
       (submittedValue.result === 'failure' ||

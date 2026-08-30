@@ -3,7 +3,10 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import { buildInvocationInputs } from '../../src/lib/context.js'
+import {
+  buildInvocationInputs,
+  gateEvidenceLabel,
+} from '../../src/lib/context.js'
 import type {
   OperatorGateWaiver,
   PrDescriptionContext,
@@ -514,6 +517,7 @@ test('verify context carries passed gate evidence with profile, path, and finger
   assert.ok(staticBaseline)
   assert.match(staticBaseline.description, /`static`/u)
   assert.match(staticBaseline.description, /`fp-before`/u)
+  assert.match(staticBaseline.description, /clean pass/u)
   assert.match(staticBaseline.description, /superseded workspace/u)
   // No supervisor command re-runs the verify submission gate, so the condition
   // must not send QA there.
@@ -523,12 +527,19 @@ test('verify context carries passed gate evidence with profile, path, and finger
     profile: 'static',
     fingerprint: 'fp-before',
     current: false,
+    acceptance_mode: 'clean_pass',
+    raw_exit_code: 0,
+    preexisting_failure: false,
   })
   assert.match(fastGate.condition ?? '', /gate_evidence_citations/u)
+  assert.match(fastGate.description, /clean pass/u)
   assert.deepEqual(fastGate.gate_evidence, {
     profile: 'fast',
     fingerprint: 'fp-current',
     current: true,
+    acceptance_mode: 'clean_pass',
+    raw_exit_code: 0,
+    preexisting_failure: false,
   })
 
   const bare = buildInvocationInputs({
@@ -544,5 +555,71 @@ test('verify context carries passed gate evidence with profile, path, and finger
       /repository-check gate evidence/u.test(item.description),
     ),
     false,
+  )
+})
+
+test('verify context distinguishes clean pass from baseline-relative gate evidence', () => {
+  const root = createFixture()
+  const plan = historyItem('plan', 'plan-1', 'success')
+  const implement = historyItem('implement', 'implement-1', 'success')
+  implement.deterministic = [
+    {
+      id: 'implement.lint',
+      type: 'shell',
+      hard: true,
+      passed: true,
+      preexisting_failure: true,
+      command: 'pan repository-check static',
+      exit_code: 1,
+      timed_out: false,
+      evidence_path:
+        'runtime/logs/workflows/run/evidence/implement-1.static.log',
+      workspace_fingerprint: 'fp-current',
+    },
+  ]
+
+  writeJson(path.join(root, implement.output_path), {
+    data: { implementation: { changed_files: [] } },
+  })
+
+  const inputs = buildInvocationInputs({
+    root,
+    state: stateWith([plan, implement]),
+    stage: stageBySlug(loadWorkflow(root, 'delivery'), 'verify'),
+    attempt: 1,
+    invocationId: 'verify-baseline',
+    workspaceFingerprint: 'fp-current',
+  })
+  const gate = inputs.references.find((item) =>
+    item.path.endsWith('implement-1.static.log'),
+  )
+
+  assert.ok(gate)
+  assert.match(gate.description, /baseline-relative acceptance/u)
+  assert.match(gate.description, /raw exit code 1/u)
+  assert.equal(
+    gate.gate_evidence?.acceptance_mode,
+    'baseline_relative_acceptance',
+  )
+  assert.equal(gate.gate_evidence?.raw_exit_code, 1)
+  assert.equal(gate.gate_evidence?.preexisting_failure, true)
+})
+
+test('gate evidence labels preserve raw acceptance details', () => {
+  assert.equal(
+    gateEvidenceLabel({
+      acceptanceMode: 'baseline_relative_acceptance',
+      rawExitCode: 1,
+      preexistingFailure: true,
+    }),
+    'baseline-relative acceptance (raw exit code 1, carried failure)',
+  )
+  assert.equal(
+    gateEvidenceLabel({
+      acceptanceMode: 'clean_pass',
+      rawExitCode: 0,
+      preexistingFailure: false,
+    }),
+    'clean pass',
   )
 })
