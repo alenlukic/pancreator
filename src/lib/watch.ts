@@ -36,7 +36,20 @@ import {
   loadDelegationExecutionRecord,
 } from './validation.js'
 
-export type WatchTerminalState = 'completed' | 'stalled' | 'timed_out'
+export type WatchTerminalState =
+  | 'completed'
+  | 'stalled'
+  | 'timed_out'
+  | 'unverified'
+
+/**
+ * What the supervisor saw when it inspected the launched agent itself.
+ *
+ * `DELEGATE-001` makes the agent's state the observation point, not the
+ * output file. The harness cannot read a Cursor subagent's state, so the
+ * supervisor supplies it.
+ */
+export type WatchAgentState = 'running' | 'completed'
 
 /** Cadence `DELEGATE-001` names for a background subagent under 15 minutes. */
 export const DEFAULT_WATCH_CADENCE_SECONDS = 120
@@ -53,6 +66,7 @@ export const WATCH_EXIT_CODES: Record<WatchTerminalState, number> = {
   completed: 0,
   stalled: 2,
   timed_out: 3,
+  unverified: 4,
 }
 
 export interface WatchedPathObservation {
@@ -87,6 +101,8 @@ export interface WatchRecordEntry {
   wake_due_at?: string
   /** Present on `wake`. */
   observation?: WatchObservation
+  /** Present when the supervisor reported what the agent itself was doing. */
+  agent_state?: WatchAgentState
   changed?: boolean
   unchanged_wakes?: number
   terminal_state?: WatchTerminalState
@@ -115,6 +131,8 @@ export interface WatchOptions {
   stallWakes?: number
   timeoutSeconds?: number
   markBackground?: boolean
+  /** The launched agent's state, as the supervisor observed it. */
+  agentState?: WatchAgentState
   /** Injected for tests. Defaults to a real timer. */
   sleep?: (milliseconds: number) => Promise<void>
   onWake?: (entry: WatchRecordEntry) => void
@@ -382,6 +400,22 @@ export function parseCadenceSeconds(value: string | null): number {
   return parsed
 }
 
+export function parseAgentState(value: string | null): WatchAgentState | null {
+  if (value === null) {
+    return null
+  }
+
+  if (value !== 'running' && value !== 'completed') {
+    throw new PanError(
+      `--agent-state MUST be 'running' or 'completed', not '${value}'. It ` +
+        `reports what you saw when you inspected the launched agent itself.`,
+      { code: 'INVALID_ARGUMENT' },
+    )
+  }
+
+  return value
+}
+
 export function parsePositiveInteger(
   value: string | null,
   name: string,
@@ -464,6 +498,30 @@ export function isTerminalObservation(observation: WatchObservation): boolean {
     observation.output_parses &&
     observation.output_matches_invocation
   )
+}
+
+/**
+ * Seconds between the launch and the output the watch is about to call
+ * terminal, or null when neither time is readable. The delegation artifact is
+ * written immediately before the launch, so its mtime is the launch time the
+ * foreground-return attestation already uses.
+ */
+export function launchToOutputSeconds(
+  root: string,
+  runId: string,
+  invocationId: string,
+): number | null {
+  const launch = observePath(root, delegationPath(runId, invocationId, root))
+  const output = observePath(
+    root,
+    resolveRunLayout(root, runId).output(invocationId).relative,
+  )
+
+  if (launch.mtime_ms === null || output.mtime_ms === null) {
+    return null
+  }
+
+  return (output.mtime_ms - launch.mtime_ms) / 1000
 }
 
 function foregroundReturnNotTerminalMessage(
@@ -663,21 +721,55 @@ export async function watchInvocation(
   const initial = observeInvocation(root, invocation)
 
   if (isComplete(initial)) {
-    append({
-      schema_version: 1,
-      event: 'wake',
-      run_id: runId,
-      invocation_id: invocationId,
-      recorded_at: initial.observed_at,
-      cadence_seconds: cadenceSeconds,
-      wake: 0,
-      observation: initial,
-      changed: true,
-      unchanged_wakes: 0,
-      terminal_state: 'completed',
-    })
+    // A worker that writes its output moments after launch has not finished;
+    // it has written a draft it will rewrite. Presence alone cannot tell the
+    // two apart, so an implausibly early output needs the supervisor's own
+    // inspection of the agent before the harness will call it terminal.
+    const sinceLaunch = launchToOutputSeconds(root, runId, invocationId)
+    const implausible = sinceLaunch !== null && sinceLaunch < cadenceSeconds
+    const state: WatchTerminalState =
+      options.agentState === 'completed'
+        ? 'completed'
+        : options.agentState === 'running' || implausible
+          ? 'unverified'
+          : 'completed'
 
-    return finish('completed', 0, 0)
+    if (state === 'completed') {
+      append({
+        schema_version: 1,
+        event: 'wake',
+        run_id: runId,
+        invocation_id: invocationId,
+        recorded_at: initial.observed_at,
+        cadence_seconds: cadenceSeconds,
+        wake: 0,
+        observation: initial,
+        ...(options.agentState ? { agent_state: options.agentState } : {}),
+        changed: true,
+        unchanged_wakes: 0,
+        terminal_state: 'completed',
+      })
+
+      return finish('completed', 0, 0)
+    }
+
+    if (options.agentState === undefined) {
+      append({
+        schema_version: 1,
+        event: 'wake',
+        run_id: runId,
+        invocation_id: invocationId,
+        recorded_at: initial.observed_at,
+        cadence_seconds: cadenceSeconds,
+        wake: 0,
+        observation: initial,
+        changed: true,
+        unchanged_wakes: 0,
+        terminal_state: 'unverified',
+      })
+
+      return finish('unverified', 0, 0)
+    }
   }
 
   let previousFingerprint = initial.fingerprint
@@ -886,11 +978,18 @@ export function delegationUnobservedMessage(
   runId: string,
   invocationId: string,
 ): string {
-  const watchDetail = observation.watch.record_present
-    ? `the watch record ${observation.watch.record_path} ends without a ` +
-      `completed wake (${observation.watch.wakes} wakes, last state ` +
-      `${observation.watch.terminal_state ?? 'none'})`
-    : `no watch record exists at ${observation.watch.record_path}`
+  const watchDetail =
+    observation.watch.terminal_state === 'unverified'
+      ? `the watch record ${observation.watch.record_path} ends unverified: ` +
+        `the output was already present when the watch began, and it landed ` +
+        `too soon after the launch to be a finished worker's output. The ` +
+        `harness reads files, not agents, so it cannot tell that output from ` +
+        `a draft the worker is still rewriting`
+      : observation.watch.record_present
+        ? `the watch record ${observation.watch.record_path} ends without a ` +
+          `completed wake (${observation.watch.wakes} wakes, last state ` +
+          `${observation.watch.terminal_state ?? 'none'})`
+        : `no watch record exists at ${observation.watch.record_path}`
   const attestationDetail =
     observation.foreground_return.record_present &&
     observation.foreground_return.output_present_at_return !== true
@@ -917,7 +1016,14 @@ export function delegationUnobservedMessage(
     `\`${panCommandLine} watch ${runId} --foreground-returned --invocation ` +
     `${invocationId}\`. When it returned before the output existed, run ` +
     `\`${panCommandLine} watch ${runId} --invocation ${invocationId}\` and ` +
-    `await it.`
+    `await it.` +
+    (observation.watch.terminal_state === 'unverified'
+      ? ` Inspect the launched agent itself and re-run the watch with what ` +
+        `you saw: \`--agent-state running\` to keep watching, or ` +
+        `\`--agent-state completed\` once the agent has stopped or reported ` +
+        `it finished. The window is measured from the launch to the output, ` +
+        `not from now, so an unchanged re-run returns unverified again.`
+      : '')
   )
 }
 

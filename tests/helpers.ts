@@ -17,6 +17,7 @@ import {
   submitOutput,
 } from '../src/lib/engine.js'
 import type { OperationProgressOptions } from '../src/lib/engine.js'
+import { parsePersonaMapping } from '../src/lib/executors/mapping.js'
 import { delegationExecutionPath } from '../src/lib/validation.js'
 import { writeRedlineRecord } from '../src/lib/watch.js'
 import {
@@ -1296,4 +1297,101 @@ export function makeOutput(
       : {}),
     ...(attestation ? { invocation_attestation: attestation } : {}),
   }
+}
+
+/**
+ * Write a Cursor model catalog into a fixture covering every cursor-executor
+ * spec that fixture's own config names.
+ *
+ * The real catalog at `governance/registries/cursor_model_catalog.json` is
+ * account-local and untracked, so `createFixture` copies one only on a machine
+ * whose operator happens to have it. A test that needs a catalog prediction
+ * must therefore bring its own, or it passes and fails by whose checkout it
+ * runs in.
+ */
+export function writeFixtureCursorCatalog(root: string): void {
+  const config = readHarnessConfig(root, path.join(root, 'config.json')) as {
+    defaults?: Record<string, string>
+    configs?: Record<string, { personas?: Record<string, string> }>
+  }
+  const specs = [
+    ...Object.values(config.defaults ?? {}),
+    ...Object.values(config.configs ?? {}).flatMap((entry) =>
+      Object.values(entry.personas ?? {}),
+    ),
+  ]
+  const collected = new Map<
+    string,
+    { parameters: Map<string, Set<string>>; variants: Record<string, string>[] }
+  >()
+
+  for (const raw of specs) {
+    if (typeof raw !== 'string' || raw.length === 0) {
+      continue
+    }
+
+    const mapping = parsePersonaMapping(raw, 'fixture catalog')
+
+    if (mapping.executor !== 'cursor') {
+      continue
+    }
+
+    const model = collected.get(mapping.model) ?? {
+      parameters: new Map<string, Set<string>>(),
+      variants: [],
+    }
+
+    for (const [key, value] of Object.entries(mapping.options)) {
+      const values = model.parameters.get(key) ?? new Set<string>()
+
+      values.add(value)
+      model.parameters.set(key, values)
+    }
+
+    // Every spec the config names must be a declared combination, or loading
+    // that config against this catalog fails.
+    model.variants.push({ ...mapping.options })
+    collected.set(mapping.model, model)
+  }
+
+  // `auto-smart` stands in for the bare-id case a catalog still has to know.
+  if (!collected.has('auto-smart')) {
+    collected.set('auto-smart', {
+      parameters: new Map<string, Set<string>>(),
+      variants: [{}],
+    })
+  }
+
+  const catalogPath = path.join(
+    root,
+    'governance',
+    'registries',
+    'cursor_model_catalog.json',
+  )
+
+  mkdirSync(path.dirname(catalogPath), { recursive: true })
+  writeFileSync(
+    catalogPath,
+    `${JSON.stringify(
+      {
+        models: [...collected].map(([id, model]) => ({
+          id,
+          displayName: id,
+          aliases: [],
+          parameters: [...model.parameters].map(([parameter, values]) => ({
+            id: parameter,
+            values: [...values].map((value) => ({ value, displayName: value })),
+          })),
+          variants: model.variants.map((variant) => ({
+            params: Object.entries(variant).map(([id, value]) => ({
+              id,
+              value,
+            })),
+          })),
+        })),
+      },
+      null,
+      2,
+    )}\n`,
+  )
 }

@@ -402,8 +402,11 @@ test('submit carries a completed watch record into the stage record without an a
   fillPreparedOutput(root, state)
   markDelegationBackground(root, state.run_id, invocationId)
 
+  // The output lands in the same instant as the launch, so the completion is
+  // only credible because the supervisor inspected the agent behind it.
   const watched = await watchInvocation(root, state.run_id, {
     cadenceSeconds: CADENCE_SECONDS,
+    agentState: 'completed',
   })
 
   assert.equal(watched.state, 'completed')
@@ -698,3 +701,77 @@ function await_message(
 ): string {
   return delegationUnobservedMessage(observation, 'pan', 'run', 'invocation')
 }
+
+// Run 63310 genre-label: the worker wrote a 2 KB output 35 seconds after
+// launch and kept rewriting it for another seven minutes. `pan watch` read the
+// file, called it terminal, and returned with no armings, so the supervisor
+// submitted a stage whose worker was still running. Presence is not
+// completion, and only the supervisor can see the agent behind the file.
+test('a background launch whose output lands too soon after it records unverified', async () => {
+  const { root, state, invocationId, outputPath } = preparedRun()
+
+  fillPreparedOutput(root, state)
+  markDelegationBackground(root, state.run_id, invocationId)
+
+  const watched = await watchInvocation(root, state.run_id, {
+    cadenceSeconds: CADENCE_SECONDS,
+  })
+
+  assert.equal(watched.state, 'unverified')
+  assert.equal(watched.armings, 0)
+
+  const entries = readWatchRecord(root, state.run_id, invocationId)
+
+  assert.equal(entries.at(-1)?.terminal_state, 'unverified')
+  assert.throws(
+    () => submitOutput(root, state.run_id, outputPath),
+    (error: unknown) => {
+      const failure = error as { code?: string; message: string }
+
+      assert.equal(failure.code, DELEGATION_UNOBSERVED)
+      assert.match(failure.message, /ends unverified/u)
+      assert.match(failure.message, /--agent-state completed/u)
+
+      return true
+    },
+  )
+})
+
+test('the supervisor inspecting the agent is what makes an early output submittable', async () => {
+  const { root, state, invocationId, outputPath } = preparedRun()
+
+  fillPreparedOutput(root, state)
+  markDelegationBackground(root, state.run_id, invocationId)
+
+  const watched = await watchInvocation(root, state.run_id, {
+    cadenceSeconds: CADENCE_SECONDS,
+    agentState: 'completed',
+  })
+
+  assert.equal(watched.state, 'completed')
+
+  const entries = readWatchRecord(root, state.run_id, invocationId)
+
+  assert.equal(entries.at(-1)?.agent_state, 'completed')
+  assert.equal(
+    submitOutput(root, state.run_id, outputPath).record.outcome,
+    'success',
+  )
+})
+
+test('an agent the supervisor saw still running keeps the watch on its cadence', async () => {
+  const { root, state, invocationId } = preparedRun()
+
+  fillPreparedOutput(root, state)
+  markDelegationBackground(root, state.run_id, invocationId)
+
+  const watched = await watchInvocation(root, state.run_id, {
+    cadenceSeconds: CADENCE_SECONDS,
+    agentState: 'running',
+  })
+
+  // The output is present, so the first wake ends it — but it cost an arming,
+  // which is the difference between a watch and a file stat.
+  assert.equal(watched.state, 'completed')
+  assert.ok(watched.armings >= 1)
+})

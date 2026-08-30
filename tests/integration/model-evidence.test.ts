@@ -29,6 +29,7 @@ import {
   writeCanonicalDelegation,
   writeJson,
   submitAsSupervisor,
+  writeFixtureCursorCatalog,
 } from '../helpers.js'
 
 function withFakeCursorAgent<T>(
@@ -206,6 +207,8 @@ test('supervisor evidence activates future worker-card enforcement', () => {
 test('a bare model spec accepts any resolved Cursor variant', () => {
   const root = createFixture()
 
+  writeFixtureCursorCatalog(root)
+
   // A bare spec has no catalog prediction, but a bracketed spec of the same
   // model does.
   assert.equal(expectedCursorModelForSpec(root, 'auto-smart'), null)
@@ -229,6 +232,9 @@ test('a bare model spec accepts any resolved Cursor variant', () => {
 
 test('worker probes persist matches, mismatches, and missing metadata alike', () => {
   const root = createFixture()
+
+  writeFixtureCursorCatalog(root)
+
   const run = createRun(root, {
     workflowSlug: 'delivery',
     requestPath: 'request.md',

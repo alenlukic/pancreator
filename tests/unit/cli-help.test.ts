@@ -35,7 +35,7 @@ test('pan watch help documents the cadence, stall, timeout, and marker options',
 
   assert.match(
     text,
-    /pan watch <run-id> \[--invocation <invocation-id>\] \[--cadence-seconds <n>\] \[--stall-wakes <n>\] \[--timeout-seconds <n>\] \[--mark-background\] \[--json\]/u,
+    /pan watch <run-id> \[--invocation <invocation-id>\] \[--cadence-seconds <n>\] \[--stall-wakes <n>\] \[--timeout-seconds <n>\] \[--mark-background\] \[--agent-state running\|completed\] \[--json\]/u,
   )
   assert.match(
     text,

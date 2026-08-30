@@ -48,6 +48,36 @@ interface RequiredField {
   label: string
 }
 
+/**
+ * Bold labels the external-only sections MUST carry, verbatim. Governance
+ * quotes these strings, so they are declared once here and the patterns are
+ * built from them: a label the validator enforces but no policy states is a
+ * contract the librarian cannot follow.
+ */
+export const PRIMER_FRONTEND_LABELS = [
+  'Startup',
+  'Route/state',
+  'Browser inspection',
+] as const
+
+export const PRIMER_FLOW_STEP_LABELS = [
+  'Input shape',
+  'Logic excerpt',
+  'Output shape',
+] as const
+
+/**
+ * Match one bold label and the value on its line. The value MUST share the
+ * label's line; a label alone on a line captures the empty string and reports
+ * as empty rather than missing.
+ */
+function labelPattern(alternation: string): RegExp {
+  return new RegExp(
+    String.raw`^[ \t]*(?:[-*][ \t]*)?\*\*(?:${alternation}):\*\*[ \t]*([^\r\n]*)[ \t]*$`,
+    'imu',
+  )
+}
+
 function validateRequiredFields(
   body: string,
   fields: RequiredField[],
@@ -91,25 +121,24 @@ function validateFrontendInspectionSection(
 
   const requiredLabels = [
     {
-      pattern:
-        /^[ \t]*(?:[-*][ \t]*)?\*\*Startup:\*\*[ \t]*([^\r\n]*)[ \t]*$/imu,
+      pattern: labelPattern('Startup'),
       missingCode: 'primer.frontend_startup_missing',
       emptyCode: 'primer.frontend_startup_empty',
-      label: 'Startup',
+      label: PRIMER_FRONTEND_LABELS[0],
     },
     {
-      pattern:
-        /^[ \t]*(?:[-*][ \t]*)?\*\*(?:Route(?:\/state)?|State):\*\*[ \t]*([^\r\n]*)[ \t]*$/imu,
+      // The canonical label is `Route/state`; `Route` and `State` alone stay
+      // accepted for primers written before the label was fixed.
+      pattern: labelPattern(String.raw`Route(?:\/state)?|State`),
       missingCode: 'primer.frontend_route_missing',
       emptyCode: 'primer.frontend_route_empty',
-      label: 'Route/state',
+      label: PRIMER_FRONTEND_LABELS[1],
     },
     {
-      pattern:
-        /^[ \t]*(?:[-*][ \t]*)?\*\*Browser inspection:\*\*[ \t]*([^\r\n]*)[ \t]*$/imu,
+      pattern: labelPattern('Browser inspection'),
       missingCode: 'primer.frontend_browser_missing',
       emptyCode: 'primer.frontend_browser_empty',
-      label: 'Browser inspection',
+      label: PRIMER_FRONTEND_LABELS[2],
     },
   ]
 
@@ -208,25 +237,22 @@ function validateFlowSteps(body: string): HandlerResult['issues'] {
         stepBody,
         [
           {
-            pattern:
-              /^[ \t]*(?:[-*][ \t]*)?\*\*Input shape:\*\*[ \t]*([^\r\n]*)[ \t]*$/imu,
+            pattern: labelPattern('Input shape'),
             missingCode: 'primer.major_flow_input_missing',
             emptyCode: 'primer.major_flow_input_empty',
-            label: 'Input shape',
+            label: PRIMER_FLOW_STEP_LABELS[0],
           },
           {
-            pattern:
-              /^[ \t]*(?:[-*][ \t]*)?\*\*Logic excerpt:\*\*[ \t]*([^\r\n]*)[ \t]*$/imu,
+            pattern: labelPattern('Logic excerpt'),
             missingCode: 'primer.major_flow_logic_missing',
             emptyCode: 'primer.major_flow_logic_empty',
-            label: 'Logic excerpt',
+            label: PRIMER_FLOW_STEP_LABELS[1],
           },
           {
-            pattern:
-              /^[ \t]*(?:[-*][ \t]*)?\*\*Output shape:\*\*[ \t]*([^\r\n]*)[ \t]*$/imu,
+            pattern: labelPattern('Output shape'),
             missingCode: 'primer.major_flow_output_missing',
             emptyCode: 'primer.major_flow_output_empty',
-            label: 'Output shape',
+            label: PRIMER_FLOW_STEP_LABELS[2],
           },
         ],
         'Each documented flow step',

@@ -152,6 +152,7 @@ import {
   DEFAULT_STALL_WAKES,
   WATCH_EXIT_CODES,
   formatWakeLine,
+  parseAgentState,
   parseCadenceSeconds,
   parsePositiveInteger,
   parseTimeoutSeconds,
@@ -177,8 +178,8 @@ const HELP_BODY = `Usage:
   pan init --request <repo-relative-file> [--workflow delivery|prototype|design] [--title <title>] [--workspace <dir> | --worktree <name>] [--gates <file>] [--involvement <profile>] [--verification <level>] [--operator-artifacts]
   pan prepare <run-id> [--operator-artifacts]
   pan delegate <run-id> [--timeout-ms <milliseconds>]
-  pan watch <run-id> [--invocation <invocation-id>] [--cadence-seconds <n>] [--stall-wakes <n>] [--timeout-seconds <n>] [--mark-background] [--json]
-      Await a launched worker on a fixed cadence and record every arming and wake to agent/evidence/<invocation-id>-watch.jsonl. Exit 0 when the output is present, 2 on a stall, 3 at the timeout. --mark-background records that the platform turned the launch into a background subagent.
+  pan watch <run-id> [--invocation <invocation-id>] [--cadence-seconds <n>] [--stall-wakes <n>] [--timeout-seconds <n>] [--mark-background] [--agent-state running|completed] [--json]
+      Await a launched worker on a fixed cadence and record every arming and wake to agent/evidence/<invocation-id>-watch.jsonl. Exit 0 when the output is present, 2 on a stall, 3 at the timeout, 4 when the completion is unverified. --mark-background records that the platform turned the launch into a background subagent. --agent-state reports what you saw when you inspected the launched agent itself; the watch reads files and cannot see a worker that is still writing. An output already present at the first observation that landed less than one cadence after the launch records unverified without it.
   pan watch <run-id> --foreground-returned [--invocation <invocation-id>] [--launched-at <iso-8601>] [--json]
       Record that a foreground launch returned, with the launch and return wall-clock times, at agent/evidence/<invocation-id>-foreground-return.json. The launch time defaults to the delegation artifact's modification time. pan submit requires this record or a completed watch record for every Cursor worker invocation and fails with DELEGATION_UNOBSERVED otherwise.
   pan submit <run-id> <output-json>
@@ -2460,6 +2461,7 @@ async function main(): Promise<void> {
         return
       }
 
+      const agentState = parseAgentState(option(args, '--agent-state'))
       const result = await watchInvocation(root, runId, {
         ...(invocationId ? { invocationId } : {}),
         cadenceSeconds: parseCadenceSeconds(option(args, '--cadence-seconds')),
@@ -2470,6 +2472,7 @@ async function main(): Promise<void> {
         ),
         timeoutSeconds: parseTimeoutSeconds(option(args, '--timeout-seconds')),
         markBackground: hasFlag(args, '--mark-background'),
+        ...(agentState ? { agentState } : {}),
         // OUTPUT-001: progress lines only on an interactive terminal, so a
         // captured watch stays byte-identical to the JSON result.
         onWake: process.stderr.isTTY

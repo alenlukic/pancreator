@@ -413,7 +413,14 @@ function renderSupervisorProcedureBody(
             `\`${delegation.watch_command}\` and await it until it exits. ` +
             'Add `--mark-background` when the platform turned the launch ' +
             'into a background subagent. `pan submit` refuses with ' +
-            '`DELEGATION_UNOBSERVED` when neither record exists.',
+            '`DELEGATION_UNOBSERVED` when neither record exists. The watch ' +
+            'reads files, not agents, so it cannot see a worker that is ' +
+            'still writing: inspect the launched agent yourself and report ' +
+            'what you saw with `--agent-state running` or `--agent-state ' +
+            'completed`. A watch that finds the output already present, ' +
+            'landed less than one cadence after the launch, and carries no ' +
+            '`--agent-state`, records `unverified` rather than a completed ' +
+            'wake, and submission refuses it.',
         ]
       : []),
     `4. Submit with \`${delegation.submit_command}\`.`,
