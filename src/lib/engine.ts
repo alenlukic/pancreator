@@ -5576,16 +5576,18 @@ export function validateOutputForSubmission(
       : null
   let scratchOutput: string | null = null
   const outputTargetPath = (): string => {
-    if (declaredOutputExists) {
-      return invocation.output.path
-    }
-
+    // The operator's file wins. A stale copy at the declared path must not
+    // stand in for the bytes the operator asked to validate.
     if (
       options.submittedPath !== undefined &&
       submittedAbsolute &&
       fileExists(submittedAbsolute)
     ) {
       return options.submittedPath
+    }
+
+    if (options.submittedPath === undefined && declaredOutputExists) {
+      return invocation.output.path
     }
 
     // Handlers resolve a relative target against the harness root, so the

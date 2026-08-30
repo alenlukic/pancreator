@@ -6,7 +6,6 @@ import test from 'node:test'
 
 import { decideRun, prepareInvocation } from '../../src/lib/engine.js'
 import type { EvalReport } from '../../src/lib/evals/index.js'
-import { attestSupervisorCard } from '../../src/lib/governance/supervisor-card.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
@@ -91,12 +90,8 @@ test('pan eval grade grades a fixture run against a scenario and writes a report
     title: 'Eval grade fixture',
   })
 
-  // The test stands in for the supervisor: it attests the rendered card so the
-  // harness prepares the plan invocation.
-  if (state.supervisor_card) {
-    attestSupervisorCard(root, state.run_id, state.supervisor_card.sha256)
-  }
-
+  // `createRun` already attested the card and wrote the session redline, the
+  // way a compliant supervisor does before the harness prepares anything.
   const invocation = prepareInvocation(root, state.run_id).invocation
 
   assert.ok(invocation)

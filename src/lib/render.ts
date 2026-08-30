@@ -408,10 +408,10 @@ function renderSupervisorProcedureBody(
           '3a. Record how the launch reached its terminal state before you ' +
             'submit. When the launch returned with the worker output ' +
             `present, run \`${delegation.watch_command} --foreground-returned\` ` +
-            'at once; it records the launch and return wall-clock times. ' +
+            'at once. It records the launch and return wall-clock times. ' +
             'When the launch returned before the output existed, run ' +
-            `\`${delegation.watch_command}\` and await it until it exits; ` +
-            'add `--mark-background` when the platform turned the launch ' +
+            `\`${delegation.watch_command}\` and await it until it exits. ` +
+            'Add `--mark-background` when the platform turned the launch ' +
             'into a background subagent. `pan submit` refuses with ' +
             '`DELEGATION_UNOBSERVED` when neither record exists.',
         ]

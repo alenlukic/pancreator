@@ -637,7 +637,7 @@ test('platform-guidance-conflict-recorded fails an unrecorded mention and passes
   }
 })
 
-test('platform-guidance-conflict-recorded accepts the redline record and enforces min_recorded', () => {
+test('platform-guidance-conflict-recorded reports the redline but never lets it stand in for a conflict record', () => {
   const run = new SyntheticRun()
     .addHistory({ stage: 'implement', attempt: 1, invocationId: 'i1' })
     .output('i1', 'success', {
@@ -650,26 +650,72 @@ test('platform-guidance-conflict-recorded accepts the redline record and enforce
     .write()
 
   try {
+    // OPERATOR-001: a later conflict with redlined guidance MUST still be
+    // recorded. The mention has no conflict entry, so the redline alone fails.
     const verdict = grade(run, { id: 'platform-guidance-conflict-recorded' })
 
-    assert.equal(verdict.passed, true, verdict.summary)
+    assert.equal(verdict.passed, false, verdict.summary)
     assert.equal(
       verdict.details.redline_record,
       run.relative('evidence', 'platform-guidance-redline.json'),
     )
+    assert.equal(verdict.details.recorded, 0)
+    assert.match(
+      String((verdict.details.failures as string[])[0]),
+      /without a platform_guidance_conflicts entry/u,
+    )
 
+    // The redline does not count toward min_recorded either.
     const demanding = grade(run, {
       id: 'platform-guidance-conflict-recorded',
-      config: { min_recorded: 2 },
+      config: { min_recorded: 1 },
     })
 
-    assert.equal(demanding.passed, false)
     assert.match(
-      String((demanding.details.failures as string[])[0]),
-      /1 conflict record\(s\) found, scenario needs at least 2/u,
+      String((demanding.details.failures as string[]).at(-1)),
+      /0 conflict record\(s\) found, scenario needs at least 1/u,
     )
   } finally {
     run.dispose()
+  }
+
+  const recorded = new SyntheticRun()
+    .addHistory({ stage: 'implement', attempt: 1, invocationId: 'i1' })
+    .output(
+      'i1',
+      'success',
+      { implementation: { notes: ['session mode changed mid-run'] } },
+      {
+        platform_guidance_conflicts: [
+          {
+            guidance: 'session mode',
+            covered_step: 'launch worker',
+            authority_followed: 'OPERATOR-001',
+          },
+        ],
+      },
+    )
+    .evidenceFile(
+      'platform-guidance-redline.json',
+      JSON.stringify({ categories: ['session-mode'] }),
+    )
+    .write()
+
+  try {
+    const verdict = grade(recorded, {
+      id: 'platform-guidance-conflict-recorded',
+      config: { min_recorded: 1 },
+    })
+
+    assert.equal(verdict.passed, true, verdict.summary)
+    assert.equal(verdict.details.recorded, 1)
+    assert.ok(
+      (verdict.evidence as string[]).includes(
+        recorded.relative('evidence', 'platform-guidance-redline.json'),
+      ),
+    )
+  } finally {
+    recorded.dispose()
   }
 })
 

@@ -13,6 +13,7 @@ import {
   buildReviewClosure,
   reviewMachineryConflicts,
 } from '../../src/lib/review-scope.js'
+import { createWorktree } from '../../src/lib/worktrees.js'
 import { createFixture, sharedFixture } from '../helpers.js'
 
 test('the pair card resolves coder governance without workflow structure', () => {
@@ -529,4 +530,72 @@ test('the card-less command modes resolve their persona governance', () => {
       assert.ok(ids.includes(id), `${mode} card omits ${id}: ${ids.join(', ')}`)
     }
   }
+})
+
+test('the review card scopes the closure from the bound worktree when the main checkout sits at the base', () => {
+  const root = createFixture()
+  const git = (args: string[]) =>
+    execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim()
+  const base = git(['rev-parse', 'HEAD'])
+  const policyPath = path.join(root, 'governance/policies/GLOBAL-002.json')
+  const policy = JSON.parse(readFileSync(policyPath, 'utf8')) as {
+    instructions: string[]
+  }
+
+  policy.instructions.push('Agents MUST record a worktree-scoped clause.')
+  writeFileSync(policyPath, `${JSON.stringify(policy, null, 2)}\n`)
+  git(['add', 'governance/policies/GLOBAL-002.json'])
+  git(['-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-qm', 'change'])
+
+  const head = git(['rev-parse', 'HEAD'])
+
+  // The reviewing checkout stays at the base, as it does when an operator
+  // reviews a branch from main. The worktree sits at the target head.
+  git(['checkout', '-q', base])
+  createWorktree(root, 'review-target', { from: head })
+
+  // Without the worktree, the scope check reads the closure from the main
+  // checkout, which is not the target head.
+  assert.throws(
+    () =>
+      buildGovernanceCard(root, {
+        mode: 'review',
+        outputPath: 'runtime/inbox/review-card-unbound.md',
+        baseRef: base,
+        targetRef: head,
+      }),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'REVIEW_CLOSURE_REVISION_MISMATCH',
+  )
+
+  const card = buildGovernanceCard(root, {
+    mode: 'review',
+    outputPath: 'runtime/inbox/review-card.md',
+    worktreeName: 'review-target',
+    baseRef: base,
+    targetRef: head,
+  })
+
+  assert.equal(card.worktree?.name, 'review-target')
+
+  const written = readFileSync(path.join(root, card.path), 'utf8')
+
+  assert.match(written, /## 🧭 Conduct under the base revision/u)
+  assert.match(written, /\*\*GLOBAL-002 · base text\*\*/u)
+  assert.match(written, /## 🌳 Workspace worktree/u)
+
+  // An explicit closure revision also unblocks the unbound form.
+  const explicit = buildGovernanceCard(root, {
+    mode: 'review',
+    outputPath: 'runtime/inbox/review-card-explicit.md',
+    baseRef: base,
+    targetRef: head,
+    closureRevision: base,
+  })
+
+  assert.match(
+    readFileSync(path.join(root, explicit.path), 'utf8'),
+    /## 🧭 Conduct under the base revision/u,
+  )
 })

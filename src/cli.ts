@@ -202,7 +202,7 @@ const HELP_BODY = `Usage:
   pan worktree list [--json]
   pan worktree remove <name> [--force] [--json]
   pan worktree reconcile (--into <worktree> | --into-branch <branch>) --source <worktree> --source <worktree> [--json]
-  pan status <run-id> [--redline] [--json]
+  pan status <run-id> [--redline] [--occasion pan-start|pan-resume] [--json]
       --redline writes agent/evidence/platform-guidance-redline.json, the run's pre-declaration that platform guidance is non-authoritative.
   pan list [--json]
   pan inbox [--json]
@@ -222,7 +222,7 @@ const HELP_BODY = `Usage:
   pan output validate <run-id> --file <path> --invocation <path> [--json]
   pan assessment scaffold <run-id> --invocation <path> --output <path> [--force]
   pan governance audit-directives [--json]
-  pan governance card --mode <${STANDALONE_MODE_NAMES}> [--request <path>] [--worktree <name>] [--out <path>] [--base <ref> --target <ref>] [--json]
+  pan governance card --mode <${STANDALONE_MODE_NAMES}> [--request <path>] [--worktree <name>] [--out <path>] [--base <ref> --target <ref> [--closure-revision <ref>]] [--json]
       --base (review mode) renders the base-revision text of every conduct policy the target changes, so the session reviews under the rule in force before the change.
   pan governance card --mode supervisor --run <run-id> [--json]
   pan governance attest-supervisor <run-id> --sha256 <digest> [--json]
@@ -1617,7 +1617,7 @@ async function main(): Promise<void> {
         const record = writeRedlineRecord(
           root,
           runId,
-          option(args, '--occasion', 'session') ?? 'session',
+          option(args, '--occasion') ?? 'session',
         )
         print(
           json
@@ -1908,7 +1908,9 @@ async function main(): Promise<void> {
           card_path: card.path,
           sha256: card.sha256,
           attested_at: card.attested_at,
-          next_command: `${pan} prepare ${runId}`,
+          session_generation: card.session_generation,
+          next_command: `${pan} status ${runId} --redline --occasion <pan-start|pan-resume>`,
+          then: `${pan} prepare ${runId}`,
         })
         return
       }
@@ -1921,6 +1923,7 @@ async function main(): Promise<void> {
           worktreeName: option(args, '--worktree'),
           baseRef: option(args, '--base'),
           targetRef: option(args, '--target'),
+          closureRevision: option(args, '--closure-revision'),
         })
 
         print({

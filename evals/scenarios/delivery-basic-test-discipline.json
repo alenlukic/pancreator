@@ -137,6 +137,14 @@
             "scope": "run",
             "max": 1,
             "min": 1
+          },
+          {
+            "profile": "fast",
+            "source": "agent",
+            "scope": "stage",
+            "stage": "implement",
+            "min": 1,
+            "max": 1
           }
         ]
       }

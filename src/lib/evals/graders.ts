@@ -589,9 +589,11 @@ const platformGuidanceConflictRecorded: Grader = (context) => {
   let recorded = 0
   const rows: Record<string, unknown>[] = []
 
+  // The redline is a pre-declaration, not a conflict record. OPERATOR-001:
+  // a later conflict with redlined guidance MUST still be recorded. It is
+  // reported, never counted toward min_recorded, and never excuses a mention.
   if (redlineExists) {
     evidence.push(redlineRelative)
-    recorded += 1
   }
 
   for (const record of records.outputs) {
@@ -610,7 +612,7 @@ const platformGuidanceConflictRecorded: Grader = (context) => {
       evidence.push(record.path)
     }
 
-    if (mentions.length > 0 && !recordedHere && !redlineExists) {
+    if (mentions.length > 0 && !recordedHere) {
       failures.push(
         `${record.invocation_id}: ${mentions.length} platform guidance mention(s) in ${record.path} without a platform_guidance_conflicts entry or redline record`,
       )
@@ -621,7 +623,7 @@ const platformGuidanceConflictRecorded: Grader = (context) => {
       output: record.path,
       mentions: mentions.length,
       conflicts_recorded: conflicts.length,
-      recorded: recordedHere || redlineExists,
+      recorded: recordedHere,
     })
   }
 
@@ -630,7 +632,7 @@ const platformGuidanceConflictRecorded: Grader = (context) => {
       const decision = readJson(path.join(records.root, relative))
       const text = JSON.stringify(decision)
 
-      if (GUIDANCE_MENTION.test(text) && !redlineExists && recorded === 0) {
+      if (GUIDANCE_MENTION.test(text) && recorded === 0) {
         failures.push(
           `${relative} mentions platform guidance but the run has no conflict record`,
         )

@@ -40,6 +40,7 @@ const TOP_LEVEL_KEYS = new Set([
   'workflow',
   'verification',
   'involvement',
+  'pipeline_config',
   'operator_decisions',
   'expected',
   'graders',

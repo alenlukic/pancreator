@@ -13,8 +13,10 @@ import {
 } from '../engine.js'
 import { PanError } from '../errors.js'
 import { personaExecutorOf } from '../executors/mapping.js'
+import { writeRedlineRecord } from '../watch.js'
 import {
   attestSupervisorCard,
+  redlineCurrent,
   supervisorAttestCommand,
 } from '../governance/supervisor-card.js'
 import { ensureDir, readJson, writeJsonAtomic, writeTextAtomic } from '../io.js'
@@ -293,7 +295,21 @@ export function runEval(
         `attesting the supervisor card ${card.path} on the operator's behalf`,
       )
       attestSupervisorCard(root, runId, card.sha256)
+      writeRedlineRecord(root, runId, 'pan-start')
       metadata.supervisor_card_attested_by = 'eval-driver'
+      continue
+    }
+
+    if (card && !redlineCurrent(root, state).current) {
+      if (!options.attestSupervisorCard) {
+        handoffReason = `supervisor session ${card.session_generation} has written no platform-guidance redline; a supervisor must run pan status --redline before the harness prepares an invocation`
+        break
+      }
+
+      onProgress?.(
+        "writing the platform-guidance redline on the operator's behalf",
+      )
+      writeRedlineRecord(root, runId, 'pan-start')
       continue
     }
 

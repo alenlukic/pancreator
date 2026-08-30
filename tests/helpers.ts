@@ -17,6 +17,8 @@ import {
   submitOutput,
 } from '../src/lib/engine.js'
 import type { OperationProgressOptions } from '../src/lib/engine.js'
+import { delegationExecutionPath } from '../src/lib/validation.js'
+import { writeRedlineRecord } from '../src/lib/watch.js'
 import {
   attestSupervisorCard as attestEngineSupervisorCard,
   buildSupervisorCard,
@@ -1014,6 +1016,8 @@ export function attestRunCard(root: string, runId: string): void {
   const card = buildSupervisorCard(root, runId)
 
   attestEngineSupervisorCard(root, runId, card.sha256)
+  // The attestation opens a supervisor session; the session's redline follows.
+  writeRedlineRecord(root, runId, 'pan-start')
 }
 
 /**
@@ -1068,6 +1072,40 @@ export function attestForegroundReturn(root: string, runId: string): void {
   const executor = invocation.stage.persona_executor ?? 'cursor'
 
   if (executor !== 'cursor') {
+    // `pan submit` exempts an external-executor stage only when the
+    // delegation-execution record `pan delegate` writes exists. A test that
+    // drives such a stage without spawning the executor stands in for that
+    // delegation here, the way it stands in for the supervisor elsewhere.
+    const recordAbsolute = path.join(
+      root,
+      delegationExecutionPath(runId, current.id, root),
+    )
+
+    if (!existsSync(recordAbsolute)) {
+      writeJson(recordAbsolute, {
+        schema_version: 1,
+        run_id: runId,
+        invocation_id: current.id,
+        stage: invocation.stage.slug,
+        executor,
+        delegation_kind: 'fresh',
+        binary: 'test-stub',
+        argv: [],
+        exit_code: 0,
+        timed_out: false,
+        duration_ms: 0,
+        stdout_path: delegationExecutionPath(runId, current.id, root).replace(
+          /\.delegation-execution\.json$/u,
+          '.stdout.log',
+        ),
+        stderr_path: delegationExecutionPath(runId, current.id, root).replace(
+          /\.delegation-execution\.json$/u,
+          '.stderr.log',
+        ),
+        test_stand_in: true,
+      })
+    }
+
     return
   }
 

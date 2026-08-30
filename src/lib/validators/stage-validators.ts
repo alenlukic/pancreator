@@ -724,6 +724,12 @@ export interface TestDelta {
 export function attemptTestDelta(
   input: HandlerInput,
   workspaceRoot: string,
+  precomputed: {
+    /** This attempt's changed paths, when the caller already snapshotted them. */
+    attemptFiles?: string[] | null
+    /** The cumulative workspace diff, when the caller already ran it. */
+    diff?: ReturnType<typeof workspaceSourceChanges>
+  } = {},
 ): TestDelta[] {
   const workspaceBefore =
     isRecord(input.invocation) && isRecord(input.invocation.workspace_before)
@@ -734,10 +740,13 @@ export function attemptTestDelta(
     return []
   }
 
-  let changed = attemptChangedPaths(input, workspaceRoot)
+  let changed =
+    precomputed.attemptFiles !== undefined
+      ? precomputed.attemptFiles
+      : attemptChangedPaths(input, workspaceRoot)
 
   if (changed === null) {
-    const diff = workspaceSourceChanges(workspaceRoot)
+    const diff = precomputed.diff ?? workspaceSourceChanges(workspaceRoot)
 
     if (!diff.ok) {
       return []
@@ -1276,6 +1285,9 @@ export function validateImplementationClaims(
     : []
   const workspaceRoot = workspaceRootFromInput(input)
   const diffResult = workspaceSourceChanges(workspaceRoot)
+  // Snapshotted once: the disclosure check and the test-delta check below
+  // both read this attempt's changed paths.
+  const attemptFiles = attemptChangedPaths(input, workspaceRoot)
 
   if (!diffResult.ok) {
     if (changedFiles.length > 0) {
@@ -1285,7 +1297,6 @@ export function validateImplementationClaims(
     const diffFiles = diffResult.files
     // Disclosure is owed for what this attempt changed. Existence is checked
     // against the cumulative diff, which still catches a fabricated claim.
-    const attemptFiles = attemptChangedPaths(input, workspaceRoot)
     const owedDisclosure = attemptFiles ?? diffFiles
 
     if (diffFiles.length > 0 && changedFiles.length > 0) {
@@ -1468,7 +1479,10 @@ export function validateImplementationClaims(
 
   // Each new test file and each net-positive test delta needs a contract.
   // A change that adds no tests needs no entry.
-  for (const delta of attemptTestDelta(input, workspaceRoot)) {
+  for (const delta of attemptTestDelta(input, workspaceRoot, {
+    attemptFiles,
+    diff: diffResult,
+  })) {
     const covered = testsAdded.some(
       (entry) =>
         entry.file === delta.path &&

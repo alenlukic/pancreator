@@ -42,5 +42,8 @@ test('pan watch help documents the cadence, stall, timeout, and marker options',
     /pan watch <run-id> --foreground-returned \[--invocation <invocation-id>\] \[--launched-at <iso-8601>\] \[--json\]/u,
   )
   assert.match(text, /DELEGATION_UNOBSERVED/u)
-  assert.match(text, /pan status <run-id> \[--redline\] \[--json\]/u)
+  assert.match(
+    text,
+    /pan status <run-id> \[--redline\] \[--occasion pan-start\|pan-resume\] \[--json\]/u,
+  )
 })

@@ -325,18 +325,83 @@ export function referencesFixture(source: string, name: string): boolean {
   return pattern.test(source)
 }
 
-function referencesCli(source: string): boolean {
-  return (
-    /dist\/src\/cli\.js|['"]cli\.js['"]/u.test(source) ||
-    referencesBinScript(source, 'pan')
-  )
-}
-
 export function isLaneTest(file: string): boolean {
   return (
     file.endsWith('.test.ts') &&
     TEST_LANES.some((lane) => file.startsWith(`${lane}/`))
   )
+}
+
+interface SpecialReferences {
+  bin: Set<string>
+  fixtures: Set<string>
+  cli: boolean
+}
+
+const BIN_REFERENCE = /bin(?:\/|['"],\s*['"])([\w.-]+)/gu
+const FIXTURE_REFERENCE = /fixtures(?:\/|['"],\s*['"])([\w.-]+)/gu
+const CLI_REFERENCE = /dist\/src\/cli\.js|['"]cli\.js['"]/u
+
+/**
+ * Extract every bin script, fixture directory, and CLI reference from one
+ * source in a single pass per kind. The captured name must be a known bin or
+ * fixture, which is the same test `referencesBinScript` and
+ * `referencesFixture` apply one name at a time.
+ */
+export function extractSpecialReferences(
+  source: string,
+  binScripts: readonly string[],
+  fixtureDirectories: readonly string[],
+): SpecialReferences {
+  const knownBins = new Set(binScripts)
+  const knownFixtures = new Set(fixtureDirectories)
+  const bin = new Set<string>()
+  const fixtures = new Set<string>()
+
+  for (const match of source.matchAll(BIN_REFERENCE)) {
+    const name = match[1] ?? ''
+
+    if (knownBins.has(name)) {
+      bin.add(name)
+    }
+  }
+
+  for (const match of source.matchAll(FIXTURE_REFERENCE)) {
+    const name = match[1] ?? ''
+
+    if (knownFixtures.has(name)) {
+      fixtures.add(name)
+    }
+  }
+
+  return { bin, fixtures, cli: CLI_REFERENCE.test(source) || bin.has('pan') }
+}
+
+/** The lane tests that are the module itself or import it, transitively. */
+function laneTestsDependingOn(
+  module: string,
+  dependents: Map<string, Set<string>>,
+): Set<string> {
+  const seen = new Set<string>([module])
+  const queue = [module]
+  const tests = new Set<string>()
+
+  while (queue.length > 0) {
+    const current = queue.shift() as string
+
+    if (isLaneTest(current)) {
+      tests.add(current)
+    }
+
+    for (const dependent of dependents.get(current) ?? []) {
+      if (!seen.has(dependent)) {
+        seen.add(dependent)
+        queue.push(dependent)
+      }
+    }
+  }
+
+  return tests
 }
 
 function addEdge(map: Map<string, Set<string>>, from: string, to: string) {
@@ -364,6 +429,7 @@ export async function buildModuleGraph(
   const binReferences = new Map<string, Set<string>>()
   const fixtureReferences = new Map<string, Set<string>>()
   const typeOnlyTargets = new Set<string>()
+  const specialReferences = new Map<string, SpecialReferences>()
   const cliSource = fileSet.has('src/cli.ts') ? 'src/cli.ts' : null
 
   for (const file of files) {
@@ -391,26 +457,38 @@ export async function buildModuleGraph(
       }
     }
 
-    if (!isLaneTest(file)) {
-      continue
-    }
+    // One pass per module extracts every bin, fixture, and CLI reference. A
+    // helper's references propagate to the lane tests that import it below.
+    const refs = extractSpecialReferences(
+      source,
+      binScripts,
+      fixtureDirectories,
+    )
 
-    for (const name of binScripts) {
-      if (referencesBinScript(source, name)) {
-        addEdge(binReferences, `bin/${name}`, file)
+    if (refs.bin.size > 0 || refs.fixtures.size > 0 || refs.cli) {
+      specialReferences.set(file, refs)
+    }
+  }
+
+  // Propagate: a lane test depends on every special reference reachable
+  // through the modules it imports, including test helpers.
+  for (const [module, refs] of specialReferences) {
+    const tests = laneTestsDependingOn(module, dependents)
+
+    for (const test of tests) {
+      for (const name of refs.bin) {
+        addEdge(binReferences, `bin/${name}`, test)
       }
-    }
 
-    for (const name of fixtureDirectories) {
-      if (referencesFixture(source, name)) {
-        addEdge(fixtureReferences, `tests/fixtures/${name}`, file)
+      for (const name of refs.fixtures) {
+        addEdge(fixtureReferences, `tests/fixtures/${name}`, test)
       }
-    }
 
-    // A test that spawns the CLI depends on the whole CLI program.
-    if (cliSource && referencesCli(source)) {
-      addEdge(imports, file, cliSource)
-      addEdge(dependents, cliSource, file)
+      // A test that spawns the CLI depends on the whole CLI program.
+      if (refs.cli && cliSource) {
+        addEdge(imports, test, cliSource)
+        addEdge(dependents, cliSource, test)
+      }
     }
   }
 

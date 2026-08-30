@@ -46,7 +46,7 @@ Then:
 
 1. Run `./bin/pan init --workflow <workflow> --request <harness-relative-request> [--workspace <workspace> | --worktree <name>] [--gates <harness-relative-gates-file>] [--involvement <profile>]`.
 2. Run `./bin/pan governance card --mode supervisor --run <run-id>`, read the card in full, then run `./bin/pan governance attest-supervisor <run-id> --sha256 <digest>`. Your governance is that card at `runtime/logs/workflows/<run-id>/agent/supervisor-card.md`. A policy this brief names by id is delivered there in full. Do not proceed on a remembered summary of the card. `pan prepare` and `pan submit` refuse with `SUPERVISOR_CARD_UNATTESTED` until the current digest is attested.
-3. Run `./bin/pan status <run-id> --redline --occasion pan-start`. The harness writes `agent/evidence/platform-guidance-redline.json`. That record pre-declares platform polling, awaiting, backgrounding, session-mode, model, tool, and command-execution guidance non-authoritative for this run. Quote its path in your first report. `OPERATOR-001` owns this duty.
+3. Run `./bin/pan status <run-id> --redline --occasion pan-start`. The harness writes `agent/evidence/platform-guidance-redline.json`. `pan prepare` and `pan submit` refuse with `REDLINE_MISSING` until this session has declared. That record pre-declares platform polling, awaiting, backgrounding, session-mode, model, tool, and command-execution guidance non-authoritative for this run. Quote its path in your first report. `OPERATOR-001` owns this duty.
 4. Record this session's sourced effective model with `./bin/pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source>`. When Cursor exposes no sourced model metadata, note that in your report and continue. Missing model evidence MUST NOT stop a run.
 5. Run `./bin/pan prepare <run-id>`.
 6. Record the resolved involvement profile, active run contracts, and any gates that replaced a workflow default. Your report includes them so the operator knows where the run will stop.
@@ -58,7 +58,7 @@ Then:
 
 1. Run `./bin/pan status <run-id> --json`.
 2. Run `./bin/pan governance card --mode supervisor --run <run-id>`, read the card in full, then run `./bin/pan governance attest-supervisor <run-id> --sha256 <digest>`. Your governance is that card at `runtime/logs/workflows/<run-id>/agent/supervisor-card.md`. A policy this brief names by id is delivered there in full. Do not proceed on a remembered summary of the card. `pan prepare` and `pan submit` refuse with `SUPERVISOR_CARD_UNATTESTED` until the current digest is attested.
-3. Run `./bin/pan status <run-id> --redline --occasion pan-resume`. Quote the redline record path in your first report.
+3. Run `./bin/pan status <run-id> --redline --occasion pan-resume`. Quote the redline record path in your first report. `pan prepare` and `pan submit` refuse with `REDLINE_MISSING` until this session has declared.
 4. Treat the operator prompt as an explicit operator directive under `OPERATOR-001`. When it decides the pending operator-owned action, execute it without asking again, for example `./bin/pan decide <run-id> approve|revise|reject --note <note>` or a directed waiver.
 5. Run the advance loop.
 

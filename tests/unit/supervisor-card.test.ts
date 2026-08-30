@@ -13,11 +13,14 @@ import { PanError } from '../../src/lib/errors.js'
 import {
   attestSupervisorCard,
   buildSupervisorCard,
+  redlineCurrent,
   supervisorCardAttested,
 } from '../../src/lib/governance/supervisor-card.js'
 import { sha256 } from '../../src/lib/io.js'
+import { writeRedlineRecord } from '../../src/lib/watch.js'
 import { readPolicyLookupTable } from '../../src/lib/policies.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
+import { createWorktree } from '../../src/lib/worktrees.js'
 import {
   createFixture,
   makeOutput,
@@ -137,7 +140,23 @@ test('attesting the current digest unlocks prepare and submit; a wrong digest is
 
   assert.equal(attested.attested_sha256, card.sha256)
   assert.ok(attested.attested_at)
+  assert.equal(attested.session_generation, 1)
   assert.ok(supervisorCardAttested(getRunState(root, state.run_id)))
+
+  // The attestation opened a supervisor session; the session's redline is
+  // owed before the harness prepares anything (OPERATOR-001).
+  assert.throws(
+    () => prepareInvocation(root, state.run_id),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'REDLINE_MISSING' &&
+      error.message.includes('--redline --occasion'),
+  )
+  assert.equal(getRunState(root, state.run_id).current_invocation, null)
+
+  const redline = writeRedlineRecord(root, state.run_id, 'pan-start')
+
+  assert.equal(redline.declarations[0]?.session_generation, 1)
 
   const prepared = prepareInvocation(root, state.run_id)
 
@@ -196,6 +215,7 @@ test('the card render is idempotent and a policy change re-binds the supervisor'
   )
 
   attestSupervisorCard(root, state.run_id, card.sha256)
+  writeRedlineRecord(root, state.run_id, 'pan-start')
 
   // A policy edit changes the resolved text, so the next prepare renders a new
   // digest and refuses until that digest is attested.
@@ -225,7 +245,59 @@ test('the card render is idempotent and a policy change re-binds the supervisor'
   )
 
   attestSupervisorCard(root, state.run_id, refreshed.sha256)
+  writeRedlineRecord(root, state.run_id, 'pan-start')
   assert.ok(prepareInvocation(root, state.run_id).invocation)
+})
+
+test('a resume re-attests the card, opens a new session generation, and owes a new redline', () => {
+  const root = createFixture()
+  const state = unattestedRun(root)
+  const card = state.supervisor_card
+
+  assert.ok(card)
+  attestSupervisorCard(root, state.run_id, card.sha256)
+  writeRedlineRecord(root, state.run_id, 'pan-start')
+  assert.ok(prepareInvocation(root, state.run_id).invocation)
+
+  // `/pan-resume` re-attests the unchanged digest. That is a new session.
+  const resumed = attestSupervisorCard(root, state.run_id, card.sha256)
+
+  assert.equal(resumed.session_generation, 2)
+
+  const pointer = getRunState(root, state.run_id).current_invocation!
+  const invocation = read(path.join(root, pointer.json_path)) as Parameters<
+    typeof makeOutput
+  >[1]
+  const workflow = loadWorkflow(root, 'delivery')
+
+  writeJson(
+    path.join(root, pointer.output_path),
+    makeOutput(
+      root,
+      invocation,
+      stageBySlug(workflow, invocation.stage.slug),
+      'success',
+      getRunState(root, state.run_id),
+    ),
+  )
+
+  assert.throws(
+    () => submitAsSupervisor(root, state.run_id, pointer.output_path),
+    (error: unknown) =>
+      error instanceof PanError && error.code === 'REDLINE_MISSING',
+  )
+
+  const redline = writeRedlineRecord(root, state.run_id, 'pan-resume')
+
+  assert.deepEqual(
+    redline.declarations.map((declaration) => declaration.session_generation),
+    [1, 2],
+  )
+  assert.equal(redline.declarations[1]?.occasion, 'pan-resume')
+  assert.equal(
+    redlineCurrent(root, getRunState(root, state.run_id)).current,
+    true,
+  )
 })
 
 test('a run created before the card existed gains it on prepare and is bound afterwards', () => {
@@ -315,12 +387,61 @@ test('the CLI renders, reports, and attests the supervisor card', () => {
   ])
 
   assert.equal(attested.status, 0, attested.stderr)
-  assert.equal(
-    (JSON.parse(attested.stdout) as { status: string }).status,
-    'attested',
-  )
+
+  const attestation = JSON.parse(attested.stdout) as {
+    status: string
+    session_generation: number
+    next_command: string
+  }
+
+  assert.equal(attestation.status, 'attested')
+  assert.equal(attestation.session_generation, 1)
+  assert.match(attestation.next_command, /--redline --occasion/u)
+
+  const unredlined = pan(root, ['prepare', state.run_id])
+
+  assert.notEqual(unredlined.status, 0)
+  assert.match(unredlined.stderr + unredlined.stdout, /REDLINE_MISSING/u)
+
+  const redlined = pan(root, [
+    'status',
+    state.run_id,
+    '--redline',
+    '--occasion',
+    'pan-start',
+  ])
+
+  assert.equal(redlined.status, 0, redlined.stderr)
 
   const prepared = pan(root, ['prepare', state.run_id])
 
   assert.equal(prepared.status, 0, prepared.stderr)
+})
+
+test('a worktree-bound run names its worktree on the supervisor card', () => {
+  const root = createFixture()
+  const record = createWorktree(root, 'card-bound')
+  const state = createEngineRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    workspace: record.path,
+  })
+  const card = state.supervisor_card
+
+  assert.ok(card)
+
+  const written = readFileSync(path.join(root, card.path), 'utf8')
+
+  assert.match(written, /## 🌳 Workspace worktree/u)
+  assert.ok(written.includes(`- Worktree: \`card-bound\``))
+  assert.ok(written.includes(`- Path: \`${record.path}\``))
+
+  // A run in the main checkout renders no worktree section.
+  const plain = unattestedRun(root)
+  const plainCard = readFileSync(
+    path.join(root, plain.supervisor_card!.path),
+    'utf8',
+  )
+
+  assert.ok(!plainCard.includes('## 🌳 Workspace worktree'))
 })

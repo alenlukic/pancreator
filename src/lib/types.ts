@@ -1525,6 +1525,12 @@ export interface SupervisorCardState {
   /** Digest the supervisor attested to have read, when any. */
   attested_sha256?: string
   attested_at?: string
+  /**
+   * Counts attestations. Each `/pan-start` and `/pan-resume` attests, so each
+   * increment opens one supervisor session. The redline record must carry a
+   * declaration for the current generation before prepare or submit proceed.
+   */
+  session_generation?: number
 }
 
 export interface SupervisorAssessment {

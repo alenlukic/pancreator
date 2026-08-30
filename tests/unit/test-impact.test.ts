@@ -6,6 +6,7 @@ import test from 'node:test'
 
 import {
   buildModuleGraph,
+  extractSpecialReferences,
   laneTests,
   parseImpactArgs,
   parseSpecifiersByRegex,
@@ -60,6 +61,15 @@ function createSyntheticTree(): string {
   write(
     'tests/unit/helper-user.test.ts',
     `import { helper } from '../helpers.js'\ntest(helper)\n`,
+  )
+  // A helper that spawns the CLI and reads a fixture on behalf of its tests.
+  write(
+    'tests/integration/cli-helpers.ts',
+    `export const CLI = path.join(root, 'dist', 'src', 'cli.js')\nexport const lint = path.join(root, 'bin', 'lint')\nexport const sample = 'tests/fixtures/sample/case.json'\n`,
+  )
+  write(
+    'tests/integration/via-helper.test.ts',
+    `import { CLI, lint, sample } from './cli-helpers.js'\ntest(CLI, lint, sample)\n`,
   )
   write(
     'tests/integration/cli.test.ts',
@@ -171,17 +181,39 @@ test('buildModuleGraph records imports, dependents, bin and fixture references',
         [...(graph.binReferences.get('bin/pan') ?? [])],
         ['tests/integration/cli.test.ts'],
       )
+      // References inside an imported helper reach the tests that import it.
       assert.deepEqual(
-        [...(graph.binReferences.get('bin/lint') ?? [])],
-        ['tests/integration/lint-script.test.ts'],
+        [...(graph.binReferences.get('bin/lint') ?? [])].sort(),
+        [
+          'tests/integration/lint-script.test.ts',
+          'tests/integration/via-helper.test.ts',
+        ],
       )
       assert.deepEqual(
-        [...(graph.fixtureReferences.get('tests/fixtures/sample') ?? [])],
-        ['tests/regression/fixture-user.test.ts'],
+        [
+          ...(graph.fixtureReferences.get('tests/fixtures/sample') ?? []),
+        ].sort(),
+        [
+          'tests/integration/via-helper.test.ts',
+          'tests/regression/fixture-user.test.ts',
+        ],
+      )
+      assert.ok(
+        graph.dependents
+          .get('src/cli.ts')
+          ?.has('tests/integration/via-helper.test.ts'),
+        'a CLI reference in a helper makes its tests depend on src/cli.ts',
+      )
+      // The helper itself is not a lane test and gets no reference edge.
+      assert.ok(
+        ![...(graph.binReferences.get('bin/lint') ?? [])].includes(
+          'tests/integration/cli-helpers.ts',
+        ),
       )
       assert.deepEqual(laneTests(graph), [
         'tests/integration/cli.test.ts',
         'tests/integration/lint-script.test.ts',
+        'tests/integration/via-helper.test.ts',
         'tests/regression/fixture-user.test.ts',
         'tests/unit/core.test.ts',
         'tests/unit/feature.test.ts',
@@ -236,16 +268,18 @@ test('selectImpactedTests selects the reverse closure, bin and fixture tests, an
     const feature = selectImpactedTests(graph, ['src/lib/feature.ts'])
     assert.deepEqual(feature.selected, [
       'tests/integration/cli.test.ts',
+      'tests/integration/via-helper.test.ts',
       'tests/unit/feature.test.ts',
     ])
-    assert.equal(feature.lane_count, 7)
-    assert.deepEqual(feature.by_depth, { '1': 1, '2': 1 })
+    assert.equal(feature.lane_count, 8)
+    assert.deepEqual(feature.by_depth, { '1': 1, '2': 2 })
     assert.equal(feature.advisory, null)
     assert.deepEqual(feature.unreached, [])
 
     const core = selectImpactedTests(graph, ['src/lib/core.ts'])
     assert.deepEqual(core.selected, [
       'tests/integration/cli.test.ts',
+      'tests/integration/via-helper.test.ts',
       'tests/unit/core.test.ts',
       'tests/unit/feature.test.ts',
       'tests/unit/helper-user.test.ts',
@@ -257,9 +291,18 @@ test('selectImpactedTests selects the reverse closure, bin and fixture tests, an
     assert.equal(direct.depth_limit, 1)
 
     const bin = selectImpactedTests(graph, ['bin/lint'])
-    assert.deepEqual(bin.selected, ['tests/integration/lint-script.test.ts'])
+    assert.deepEqual(bin.selected, [
+      'tests/integration/lint-script.test.ts',
+      'tests/integration/via-helper.test.ts',
+    ])
     assert.equal(
       bin.reasons['tests/integration/lint-script.test.ts'],
+      'bin/lint',
+    )
+    // The helper indirection is the reason N3 exists: a bin change reaches a
+    // test whose only reference to the script sits in an imported helper.
+    assert.equal(
+      bin.reasons['tests/integration/via-helper.test.ts'],
       'bin/lint',
     )
 
@@ -267,6 +310,7 @@ test('selectImpactedTests selects the reverse closure, bin and fixture tests, an
       'tests/fixtures/sample/case.json',
     ])
     assert.deepEqual(fixture.selected, [
+      'tests/integration/via-helper.test.ts',
       'tests/regression/fixture-user.test.ts',
     ])
 
@@ -401,10 +445,11 @@ test('runTestsImpacted --list --json reports the selection on a synthetic tree a
     assert.deepEqual(parsed.changed, ['src/lib/feature.ts'])
     assert.deepEqual(parsed.selected, [
       'tests/integration/cli.test.ts',
+      'tests/integration/via-helper.test.ts',
       'tests/unit/feature.test.ts',
     ])
-    assert.equal(parsed.selected_count, 2)
-    assert.equal(parsed.lane_count, 7)
+    assert.equal(parsed.selected_count, 3)
+    assert.equal(parsed.lane_count, 8)
     assert.equal(parsed.advisory, null)
     assert.equal(typeof parsed.duration_ms, 'number')
 
@@ -450,7 +495,7 @@ test('runTestsImpacted --list --json reports the selection on a synthetic tree a
       records.map((record) => record.status),
       ['listed', 'nothing_changed', 'no_tests_reached'],
     )
-    assert.equal(records[0]?.selected_count, 2)
+    assert.equal(records[0]?.selected_count, 3)
     assert.equal(records[0]?.result, 'none')
     assert.equal(typeof records[0]?.fingerprint, 'string')
   } finally {
@@ -495,4 +540,35 @@ test('self-test: a synthetic change to src/lib/naming.ts selects the naming test
   assert.ok(
     !direct.selected.some((file) => file.startsWith('tests/secondary/')),
   )
+})
+
+test('extractSpecialReferences finds every known bin, fixture, and CLI reference in one pass', () => {
+  const source = [
+    `spawn(path.join(root, 'bin', 'pan'))`,
+    `spawnSync('bash', ['bin/lint'])`,
+    `spawnSync('bash', ['bin/unknown-script'])`,
+    `const a = 'tests/fixtures/sample/case.json'`,
+    `const b = path.join('fixtures', 'other')`,
+    `const c = 'tests/fixtures/sample-extended/x.json'`,
+  ].join('\n')
+  const refs = extractSpecialReferences(
+    source,
+    ['pan', 'lint'],
+    ['sample', 'other'],
+  )
+
+  assert.deepEqual([...refs.bin].sort(), ['lint', 'pan'])
+  // `sample-extended` is not `sample`, matching the one-name predicate.
+  assert.deepEqual([...refs.fixtures].sort(), ['other', 'sample'])
+  assert.equal(refs.cli, true)
+
+  const plain = extractSpecialReferences(
+    `const CLI = path.join(root, 'dist', 'src', 'cli.js')`,
+    ['lint'],
+    [],
+  )
+
+  assert.deepEqual([...plain.bin], [])
+  assert.equal(plain.cli, true)
+  assert.equal(extractSpecialReferences('nothing here', ['pan'], []).cli, false)
 })

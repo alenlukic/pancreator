@@ -30,7 +30,11 @@ import {
 import { resolveRunLayout } from './run-layout.js'
 import { loadState, operationMutexPath, persist } from './state.js'
 import type { Invocation, RunState } from './types.js'
-import { delegationPath } from './validation.js'
+import {
+  delegationExecutionPath,
+  delegationPath,
+  loadDelegationExecutionRecord,
+} from './validation.js'
 
 export type WatchTerminalState = 'completed' | 'stalled' | 'timed_out'
 
@@ -180,6 +184,9 @@ export interface DelegationObservation {
   source: DelegationObservationSource | null
   watch: DelegationWatchSummary
   foreground_return: ForegroundReturnSummary
+  /** Where `pan delegate` writes the external-executor record, when relevant. */
+  execution_record_path: string | null
+  execution_record_present: boolean
 }
 
 export interface ForegroundReturnOptions {
@@ -450,6 +457,27 @@ function parseIsoTime(value: string, name: string): number {
   return parsed
 }
 
+/** The three conditions that make an observation terminal. */
+export function isTerminalObservation(observation: WatchObservation): boolean {
+  return (
+    observation.output_present &&
+    observation.output_parses &&
+    observation.output_matches_invocation
+  )
+}
+
+function foregroundReturnNotTerminalMessage(
+  observation: WatchObservation,
+): string {
+  return (
+    `A foreground return cannot be attested: the output ` +
+    `${observation.output_path} does not exist. The attestation records a ` +
+    `launch the harness saw finish, and the output path is unique to this ` +
+    `invocation. When the launch returned before the output existed, await ` +
+    `\`pan watch <run-id>\` instead.`
+  )
+}
+
 /**
  * Record that a foreground launch returned, with the launch and return
  * wall-clock times. The launch time defaults to the delegation artifact's
@@ -500,6 +528,27 @@ export function recordForegroundReturn(
     { code: 'INVALID_ARGUMENT' },
   )
 
+  // The attestation is evidence that the harness saw the worker finish, so it
+  // requires the worker's output to exist rather than the supervisor's word.
+  // The output path is unique to the invocation. Whether the output parses
+  // and names the invocation is the submission's judgment: a malformed output
+  // is still a returned worker, and submit must be able to fail it.
+  const observation = observeInvocation(root, invocation)
+
+  invariant(
+    observation.output_present,
+    foregroundReturnNotTerminalMessage(observation),
+    {
+      code: 'FOREGROUND_RETURN_NOT_TERMINAL',
+      details: {
+        output_path: observation.output_path,
+        output_present: observation.output_present,
+        output_parses: observation.output_parses,
+        output_matches_invocation: observation.output_matches_invocation,
+      },
+    },
+  )
+
   const record: ForegroundReturnRecord = {
     schema_version: 1,
     run_id: runId,
@@ -509,7 +558,7 @@ export function recordForegroundReturn(
     launched_at_source: launchedAtSource,
     returned_at: new Date(returnedMs).toISOString(),
     elapsed_seconds: (returnedMs - launchedMs) / 1000,
-    observation: observeInvocation(root, invocation),
+    observation,
     watch_record_path: watchRecordPath(root, runId, invocationId),
     recorded_at: new Date(returnedMs).toISOString(),
   }
@@ -607,10 +656,7 @@ export async function watchInvocation(
       background_marker_path: backgroundMarker,
     }
   }
-  const isComplete = (observation: WatchObservation): boolean =>
-    observation.output_present &&
-    observation.output_parses &&
-    observation.output_matches_invocation
+  const isComplete = isTerminalObservation
 
   // An already-present output needs no timer. The wake record still proves
   // the terminal inspection happened.
@@ -803,11 +849,21 @@ export function summarizeDelegationObservation(
 ): DelegationObservation {
   const watch = summarizeDelegationWatch(root, runId, invocationId)
   const foregroundReturn = summarizeForegroundReturn(root, runId, invocationId)
-  const source: DelegationObservationSource | null = options.externalExecutor
+  // The exemption rests on the execution record `pan delegate` writes. A
+  // hand-supplied output for an external-executor stage has no such record
+  // and is as unobserved as any other.
+  const executionRecord = options.externalExecutor
+    ? loadDelegationExecutionRecord(root, runId, invocationId)
+    : null
+  const executionRecordMatches =
+    executionRecord !== null &&
+    executionRecord.run_id === runId &&
+    executionRecord.invocation_id === invocationId
+  const source: DelegationObservationSource | null = executionRecordMatches
     ? 'external_executor'
     : watch.terminal_state === 'completed'
       ? 'watch_completed'
-      : foregroundReturn.record_present
+      : foregroundReturn.output_present_at_return === true
         ? 'foreground_return'
         : null
 
@@ -816,6 +872,10 @@ export function summarizeDelegationObservation(
     source,
     watch,
     foreground_return: foregroundReturn,
+    execution_record_path: options.externalExecutor
+      ? delegationExecutionPath(runId, invocationId, root)
+      : null,
+    execution_record_present: executionRecord !== null,
   }
 }
 
@@ -831,6 +891,19 @@ export function delegationUnobservedMessage(
       `completed wake (${observation.watch.wakes} wakes, last state ` +
       `${observation.watch.terminal_state ?? 'none'})`
     : `no watch record exists at ${observation.watch.record_path}`
+  const attestationDetail =
+    observation.foreground_return.record_present &&
+    observation.foreground_return.output_present_at_return !== true
+      ? `the attestation at ${observation.foreground_return.record_path} ` +
+        `recorded no output present at return and does not count`
+      : `no attestation exists at ${observation.foreground_return.record_path}`
+  const external =
+    observation.execution_record_path !== null &&
+    !observation.execution_record_present
+      ? ` The stage names an external executor, but no execution record ` +
+        `exists at ${observation.execution_record_path}, so \`pan delegate\` ` +
+        `did not run this worker.`
+      : ''
   const background = observation.watch.background_marked
     ? ' The launch was marked as a background subagent.'
     : ''
@@ -838,8 +911,7 @@ export function delegationUnobservedMessage(
   return (
     `${DELEGATION_UNOBSERVED}: invocation ${invocationId} has neither a ` +
     `completed watch record nor a foreground-return attestation: ` +
-    `${watchDetail}, and no attestation exists at ` +
-    `${observation.foreground_return.record_path}.${background} ` +
+    `${watchDetail}, and ${attestationDetail}.${background}${external} ` +
     `DELEGATE-001 requires the supervisor to observe the worker reach a ` +
     `terminal state. When the launch returned with the output present, run ` +
     `\`${panCommandLine} watch ${runId} --foreground-returned --invocation ` +
@@ -934,6 +1006,8 @@ export function readAuthorityOrder(root: string): string[] {
 export interface RedlineDeclaration {
   declared_at: string
   occasion: string
+  /** The supervisor-card generation this declaration belongs to. */
+  session_generation: number | null
   run_status: string
   current_stage: string | null
   pending_action: string
@@ -954,6 +1028,23 @@ export interface RedlineRecord {
 export function redlineRecordPath(root: string, runId: string): string {
   return resolveRunLayout(root, runId).evidence(REDLINE_RECORD_FILENAME)
     .relative
+}
+
+export function readRedlineRecord(
+  root: string,
+  runId: string,
+): RedlineRecord | null {
+  const absolute = resolveInside(root, redlineRecordPath(root, runId))
+
+  if (!fileExists(absolute)) {
+    return null
+  }
+
+  const value = readJson(absolute)
+
+  return isRecord(value) && value.schema_version === 1
+    ? (value as unknown as RedlineRecord)
+    : null
 }
 
 /**
@@ -978,6 +1069,7 @@ export function writeRedlineRecord(
     const declaration: RedlineDeclaration = {
       declared_at: new Date().toISOString(),
       occasion,
+      session_generation: state.supervisor_card?.session_generation ?? null,
       run_status: state.status,
       current_stage: state.current_stage ?? null,
       pending_action: state.pending_action.type,

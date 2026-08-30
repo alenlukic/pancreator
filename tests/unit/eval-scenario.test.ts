@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
@@ -55,6 +61,37 @@ test('every shipped scenario validates and names an existing fixture', () => {
     assert.equal(loaded.scenario.name, name)
     assert.ok(loaded.scenario.policy_instructions.length > 0)
     assert.ok(loaded.scenario.graders.length > 0)
+  }
+})
+
+test('a scenario that names a pipeline configuration loads', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'pan-eval-scenario-'))
+
+  try {
+    mkdirSync(path.join(root, 'evals', 'scenarios'), { recursive: true })
+    mkdirSync(path.join(root, 'evals', 'fixtures', 'toy-node'), {
+      recursive: true,
+    })
+    mkdirSync(path.join(root, 'library', 'schemas'), { recursive: true })
+    copyFileSync(
+      path.join(REPO_ROOT, 'library', 'schemas', 'eval-scenario.schema.json'),
+      path.join(root, 'library', 'schemas', 'eval-scenario.schema.json'),
+    )
+    writeFileSync(
+      path.join(root, 'evals', 'scenarios', 'pinned.json'),
+      JSON.stringify({
+        ...validScenario(),
+        name: 'pinned',
+        pipeline_config: 'eval-claude-code',
+      }),
+    )
+
+    const scenario = loadEvalScenario(root, 'pinned')
+
+    assert.equal(scenario.scenario.pipeline_config, 'eval-claude-code')
+    assert.deepEqual(validateEvalScenarios(root), [])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
   }
 })
 

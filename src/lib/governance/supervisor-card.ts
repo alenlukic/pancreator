@@ -14,7 +14,10 @@ import {
   withOperationMutex,
   writeTextAtomic,
 } from '../io.js'
-import { resolvePolicies } from '../policies.js'
+import { loadPolicySources, resolvePolicies } from '../policies.js'
+import { readRedlineRecord, redlineRecordPath } from '../watch.js'
+import { readWorktreeIndex } from '../worktrees.js'
+import type { WorktreeRecord } from '../worktrees.js'
 import {
   harnessPathPrefix,
   isTargetInstallation,
@@ -69,20 +72,37 @@ export function resolveSupervisorPolicies(
   contracts: RunContract[] = [],
 ): Policy[] {
   const byId = new Map<string, Policy>()
+  // One catalog read serves every stage context.
+  const sources = loadPolicySources(root)
 
   for (const stage of ['*', ...workflow.stages.map((item) => item.slug)]) {
-    for (const policy of resolvePolicies(root, {
-      persona: 'orchestrator',
-      workflow: workflow.slug,
-      stage,
-      contracts,
-      operator_artifacts: 'suppressed',
-    })) {
+    for (const policy of resolvePolicies(
+      root,
+      {
+        persona: 'orchestrator',
+        workflow: workflow.slug,
+        stage,
+        contracts,
+        operator_artifacts: 'suppressed',
+      },
+      sources,
+    )) {
       byId.set(policy.id, policy)
     }
   }
 
   return [...byId.keys()].sort().map((id) => byId.get(id) as Policy)
+}
+
+/** The operator worktree whose path is this run's workspace root, if any. */
+function runWorktree(root: string, state: RunState): WorktreeRecord | null {
+  const workspaceRoot = path.resolve(root, state.workspace_root)
+
+  return (
+    readWorktreeIndex(root).worktrees.find(
+      (record) => path.resolve(root, record.path) === workspaceRoot,
+    ) ?? null
+  )
 }
 
 /**
@@ -122,7 +142,7 @@ export function renderSupervisorCard(
         `\`governance/\` are rooted at \`${harnessPathPrefix(root)}/\` when ` +
         'accessed from the target repository.'
       : null,
-    worktree: null,
+    worktree: runWorktree(root, state),
     baseConduct: null,
     run: {
       run_id: state.run_id,
@@ -176,8 +196,37 @@ export function supervisorCardAttested(state: RunState): boolean {
   return card !== undefined && card.attested_sha256 === card.sha256
 }
 
+/** The redline command for one occasion. */
+export function redlineCommand(root: string, runId: string): string {
+  return `${panCommand(root)} status ${runId} --redline --occasion <pan-start|pan-resume>`
+}
+
 /**
- * Refuse a lifecycle action while the current supervisor card is unattested.
+ * Whether the redline record carries a declaration for the card's current
+ * session generation. A run without a card, or with a card attested before
+ * generations existed, passes.
+ */
+export function redlineCurrent(
+  root: string,
+  state: RunState,
+): { current: boolean; generation: number | null; declared: number[] } {
+  const generation = state.supervisor_card?.session_generation ?? null
+
+  if (generation === null) {
+    return { current: true, generation, declared: [] }
+  }
+
+  const record = readRedlineRecord(root, state.run_id)
+  const declared = (record?.declarations ?? [])
+    .map((declaration) => declaration.session_generation ?? null)
+    .filter((value): value is number => value !== null)
+
+  return { current: declared.includes(generation), generation, declared }
+}
+
+/**
+ * Refuse a lifecycle action while the current supervisor card is unattested,
+ * or while the current supervisor session has written no redline declaration.
  * A run without a card (created before the card existed) passes; it gains a
  * card on its next prepare and is bound from then on.
  */
@@ -192,6 +241,36 @@ export function assertSupervisorCardAttested(
     return
   }
 
+  assertCardDigestAttested(root, state, action, card)
+
+  // OPERATOR-001: the redline is written at start and on every resume. The
+  // attestation marks the session, so the redline must name its generation.
+  const redline = redlineCurrent(root, state)
+
+  invariant(
+    redline.current,
+    `pan ${action} refused: supervisor session ${redline.generation} of run ` +
+      `${state.run_id} has written no platform-guidance redline. Run ` +
+      `${redlineCommand(root, state.run_id)} after attesting the card, then ` +
+      'quote the record path in your report.',
+    {
+      code: 'REDLINE_MISSING',
+      details: {
+        run_id: state.run_id,
+        session_generation: redline.generation,
+        declared_generations: redline.declared,
+        redline_record_path: redlineRecordPath(root, state.run_id),
+      },
+    },
+  )
+}
+
+function assertCardDigestAttested(
+  root: string,
+  state: RunState,
+  action: 'prepare' | 'submit',
+  card: NonNullable<RunState['supervisor_card']>,
+): void {
   invariant(
     card.attested_sha256 === card.sha256,
     `pan ${action} refused: the supervisor card for run ` +
@@ -294,15 +373,16 @@ export function attestSupervisorCard(
       { code: 'SUPERVISOR_CARD_STALE' },
     )
 
-    if (card.attested_sha256 === card.sha256) {
-      return card
-    }
-
+    // Every attestation opens a supervisor session generation, including a
+    // re-attestation of an unchanged digest on resume. The redline record must
+    // then carry a declaration for that generation.
     card.attested_sha256 = card.sha256
     card.attested_at = now()
+    card.session_generation = (card.session_generation ?? 0) + 1
     persist(root, state, 'supervisor_card_attested', {
       path: card.path,
       sha256: card.sha256,
+      session_generation: card.session_generation,
     })
 
     return card

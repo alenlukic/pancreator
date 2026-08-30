@@ -327,6 +327,11 @@ export interface GovernanceCardOptions {
   baseRef?: string | null
   /** Review mode only. The target head. Use it with `baseRef`. */
   targetRef?: string | null
+  /**
+   * Review mode only. The revision whose checked-out tree the scope check may
+   * read when the scoping checkout sits away from the target head.
+   */
+  closureRevision?: string | null
 }
 
 interface BaseConductPolicy {
@@ -688,10 +693,17 @@ export function buildGovernanceCard(
   const baseConduct = options.baseRef
     ? baseConductBlock(
         root,
-        resolveReviewScope(root, {
-          head: options.targetRef ?? 'HEAD',
-          base: options.baseRef,
-        }),
+        // The scope check reads the closure from its own checkout, so it runs
+        // in the worktree bound to the target head. Both revisions share one
+        // object database, so the base-conduct block keeps reading `root`.
+        resolveReviewScope(
+          worktree ? path.resolve(root, worktree.path) : root,
+          {
+            head: options.targetRef ?? 'HEAD',
+            base: options.baseRef,
+            closureRevision: options.closureRevision,
+          },
+        ),
       )
     : null
   const markdown = renderGovernanceCardMarkdown({

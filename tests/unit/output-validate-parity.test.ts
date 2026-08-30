@@ -132,3 +132,50 @@ test('pan output validate reports a changed-files omission the way submit reject
   assert.equal(claims.passed, false)
   assert.match(claims.message, /not listed in changed_files: src\/extra\.ts/u)
 })
+
+test('pan output validate --file judges the named file, not a stale copy at the declared output path', () => {
+  const { root, runId, invocation, workflow } = checkpoint(
+    'delivery@implement-prepared',
+  )
+
+  assert.ok(invocation)
+
+  writeFileSync(path.join(root, 'src/base.ts'), 'export const base = false\n')
+  writeFileSync(path.join(root, 'src/extra.ts'), 'export const extra = 1\n')
+
+  const stage = stageBySlug(workflow, 'implement')
+  const valid = makeOutput(root, invocation, stage)
+  const validImplementation = valid.data.implementation as Record<
+    string,
+    unknown
+  >
+
+  validImplementation.changed_files = ['src/base.ts', 'src/extra.ts']
+  attachTargetInstructionEvidence(root, valid, ['AGENTS.md'])
+  // A valid output already sits at the declared path.
+  writeJson(path.join(root, invocation.output.path), valid)
+
+  const invalid = makeOutput(root, invocation, stage)
+  const invalidImplementation = invalid.data.implementation as Record<
+    string,
+    unknown
+  >
+
+  invalidImplementation.changed_files = ['src/base.ts']
+  attachTargetInstructionEvidence(root, invalid, ['AGENTS.md'])
+
+  const submittedPath = 'runtime/inbox/draft-output.json'
+
+  writeJson(path.join(root, submittedPath), invalid)
+
+  const mirror = validateOutputForSubmission(root, runId, invocation, invalid, {
+    submittedPath,
+  })
+  const claims = mirror.checks.find(
+    (check) => check.id === 'validator.IMPLEMENTATION-CLAIMS-VALIDATE-001',
+  )
+
+  assert.equal(mirror.passed, false)
+  assert.ok(claims)
+  assert.match(claims.message, /not listed in changed_files: src\/extra\.ts/u)
+})

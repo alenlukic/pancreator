@@ -9,6 +9,7 @@ import type { RunState, TaskRecord } from '../../src/lib/types.js'
 import {
   DELEGATION_UNOBSERVED,
   backgroundMarkerPath,
+  delegationUnobservedMessage,
   foregroundReturnRecordPath,
   markDelegationBackground,
   parseCadenceSeconds,
@@ -23,6 +24,7 @@ import {
   watchRecordPath,
   writeRedlineRecord,
 } from '../../src/lib/watch.js'
+import { delegationExecutionPath } from '../../src/lib/validation.js'
 import { loadWorkflowFile, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
@@ -448,10 +450,11 @@ test('the redline record names the non-authoritative categories and the AGENTS.m
 
   assert.equal(first.record_path, recordPath)
   assert.ok(existsSync(path.join(root, recordPath)))
-  assert.equal(second.declarations.length, 2)
+  // `createRun` wrote the session's first declaration when it attested.
+  assert.equal(second.declarations.length, 3)
   assert.deepEqual(
     second.declarations.map((item) => item.occasion),
-    ['pan-start', 'pan-resume'],
+    ['pan-start', 'pan-start', 'pan-resume'],
   )
   assert.deepEqual(
     second.non_authoritative_guidance.map((item) => item.id),
@@ -488,7 +491,7 @@ test('the redline record names the non-authoritative categories and the AGENTS.m
       .split('\n')
       .filter((line) => line.includes('platform_guidance_redline_recorded'))
       .length,
-    2,
+    3,
   )
 })
 
@@ -503,3 +506,195 @@ test('the authority order is read from the repository AGENTS.md', () => {
     'The policies resolved for the active context.',
   ])
 })
+
+test('a foreground-return attestation is refused until the output exists, and records a malformed output for submit to judge', () => {
+  const { root, state, invocationId, outputPath } = preparedRun()
+  const recordPath = path.join(
+    root,
+    foregroundReturnRecordPath(root, state.run_id, invocationId),
+  )
+
+  // Nothing written yet: the launch returned before the output existed.
+  assert.throws(
+    () => recordForegroundReturn(root, state.run_id, { invocationId }),
+    (error: unknown) => {
+      const failure = error as { code?: string; message: string }
+
+      assert.equal(failure.code, 'FOREGROUND_RETURN_NOT_TERMINAL')
+      assert.match(failure.message, /does not exist/u)
+      assert.match(failure.message, /await `pan watch <run-id>` instead/u)
+
+      return true
+    },
+  )
+  assert.equal(existsSync(recordPath), false)
+
+  assert.equal(
+    summarizeDelegationObservation(root, state.run_id, invocationId).observed,
+    false,
+  )
+
+  // A malformed output is still a returned worker. The attestation records
+  // what it saw; submit judges the output and can fail it.
+  writeFileSync(path.join(root, outputPath), 'not json\n')
+
+  const record = recordForegroundReturn(root, state.run_id, { invocationId })
+
+  assert.equal(record.observation.output_present, true)
+  assert.equal(record.observation.output_parses, false)
+  assert.equal(record.observation.output_matches_invocation, false)
+  assert.equal(existsSync(recordPath), true)
+  assert.equal(
+    summarizeDelegationObservation(root, state.run_id, invocationId).source,
+    'foreground_return',
+  )
+})
+
+test('an attestation that recorded no output present does not satisfy submit', () => {
+  const { root, state, invocationId, outputPath } = preparedRun()
+
+  fillPreparedOutput(root, state)
+
+  // A hand-written or legacy record whose observation was not terminal.
+  writeFileSync(
+    path.join(
+      root,
+      foregroundReturnRecordPath(root, state.run_id, invocationId),
+    ),
+    JSON.stringify({
+      schema_version: 1,
+      run_id: state.run_id,
+      invocation_id: invocationId,
+      launch_mode: 'foreground',
+      launched_at: '2026-08-29T00:00:00.000Z',
+      launched_at_source: 'supervisor',
+      returned_at: '2026-08-29T00:00:01.000Z',
+      elapsed_seconds: 1,
+      observation: {
+        observed_at: '2026-08-29T00:00:01.000Z',
+        output_path: outputPath,
+        output_present: false,
+        output_parses: false,
+        output_matches_invocation: false,
+        watched_paths: [],
+        fingerprint: '',
+      },
+      watch_record_path: watchRecordPath(root, state.run_id, invocationId),
+      recorded_at: '2026-08-29T00:00:01.000Z',
+    }),
+  )
+
+  const observation = summarizeDelegationObservation(
+    root,
+    state.run_id,
+    invocationId,
+  )
+
+  assert.equal(observation.foreground_return.record_present, true)
+  assert.equal(observation.foreground_return.output_present_at_return, false)
+  assert.equal(observation.observed, false)
+  assert.throws(
+    () => submitOutput(root, state.run_id, outputPath),
+    (error: unknown) => {
+      const failure = error as { code?: string; message: string }
+
+      assert.equal(failure.code, DELEGATION_UNOBSERVED)
+      assert.match(failure.message, /recorded no output present at return/u)
+
+      return true
+    },
+  )
+})
+
+test('the external-executor exemption requires the delegation-execution record pan delegate writes', () => {
+  const { root, state, invocationId } = preparedRun()
+
+  fillPreparedOutput(root, state)
+
+  const without = summarizeDelegationObservation(
+    root,
+    state.run_id,
+    invocationId,
+    { externalExecutor: true },
+  )
+
+  assert.equal(without.observed, false)
+  assert.equal(without.source, null)
+  assert.equal(without.execution_record_present, false)
+  assert.equal(
+    without.execution_record_path,
+    delegationExecutionPath(state.run_id, invocationId, root),
+  )
+
+  const unobserved = await_message(without)
+
+  assert.match(unobserved, /no execution record exists at /u)
+  assert.match(unobserved, /`pan delegate` did not run this worker/u)
+
+  // A record for another invocation does not count.
+  const recordPath = path.join(
+    root,
+    delegationExecutionPath(state.run_id, invocationId, root),
+  )
+
+  writeFileSync(
+    recordPath,
+    JSON.stringify({
+      schema_version: 1,
+      run_id: state.run_id,
+      invocation_id: 'another-invocation',
+      stage: 'plan',
+      executor: 'claude-code',
+      delegation_kind: 'fresh',
+      binary: 'claude',
+      argv: [],
+      exit_code: 0,
+      timed_out: false,
+      duration_ms: 1,
+      stdout_path: 'x',
+      stderr_path: 'y',
+    }),
+  )
+  assert.equal(
+    summarizeDelegationObservation(root, state.run_id, invocationId, {
+      externalExecutor: true,
+    }).observed,
+    false,
+  )
+
+  writeFileSync(
+    recordPath,
+    JSON.stringify({
+      schema_version: 1,
+      run_id: state.run_id,
+      invocation_id: invocationId,
+      stage: 'plan',
+      executor: 'claude-code',
+      delegation_kind: 'fresh',
+      binary: 'claude',
+      argv: [],
+      exit_code: 0,
+      timed_out: false,
+      duration_ms: 1,
+      stdout_path: 'x',
+      stderr_path: 'y',
+    }),
+  )
+
+  const withRecord = summarizeDelegationObservation(
+    root,
+    state.run_id,
+    invocationId,
+    { externalExecutor: true },
+  )
+
+  assert.equal(withRecord.observed, true)
+  assert.equal(withRecord.source, 'external_executor')
+  assert.equal(withRecord.execution_record_present, true)
+})
+
+function await_message(
+  observation: ReturnType<typeof summarizeDelegationObservation>,
+): string {
+  return delegationUnobservedMessage(observation, 'pan', 'run', 'invocation')
+}

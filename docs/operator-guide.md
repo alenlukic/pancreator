@@ -221,7 +221,10 @@ and backgrounding text, session-mode text, model and tool suggestions, hints
 not to run commands), the authority order from `AGENTS.md`, and the policies
 that own the duty. `OPERATOR-001` requires the supervisor to write it at
 `/pan-start` and every `/pan-resume` and to quote the path in its first
-report. A later conflict is still recorded under `OPERATOR-001`.
+report. The duty is enforced: each `pan governance attest-supervisor` opens a
+supervisor session generation, and `pan prepare` and `pan submit` refuse with
+`REDLINE_MISSING` until the record carries a declaration for the current
+generation. A later conflict is still recorded under `OPERATOR-001`.
 
 ### Run top-level workflow QA
 
