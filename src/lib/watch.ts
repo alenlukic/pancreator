@@ -27,6 +27,7 @@ import {
   withOperationMutex,
   writeJsonAtomic,
 } from './io.js'
+import { isUntouchedScaffold } from './requirements/scaffold.js'
 import { resolveRunLayout } from './run-layout.js'
 import { loadState, operationMutexPath, persist } from './state.js'
 import type { Invocation, RunState } from './types.js'
@@ -83,6 +84,12 @@ export interface WatchObservation {
   output_parses: boolean
   /** The parsed output names this invocation. */
   output_matches_invocation: boolean
+  /**
+   * The output is still the scaffold the worker writes before it starts.
+   * `AUTO-001` requires that file, so its presence marks a worker that began,
+   * never one that finished.
+   */
+  output_is_scaffold: boolean
   watched_paths: WatchedPathObservation[]
   /** Stable digest of the watched paths; equal digests mean no change. */
   fingerprint: string
@@ -103,6 +110,15 @@ export interface WatchRecordEntry {
   observation?: WatchObservation
   /** Present when the supervisor reported what the agent itself was doing. */
   agent_state?: WatchAgentState
+  /**
+   * What a `completed` verdict rests on. `agent_state` means the supervisor
+   * inspected the launched agent and said so. `output_plausible` means only
+   * that a non-scaffold output landed far enough after the launch to be a
+   * finished one — files cannot rule out a worker still editing, so the
+   * record says which of the two it was rather than presenting both as the
+   * same fact.
+   */
+  terminal_basis?: 'agent_state' | 'output_plausible'
   changed?: boolean
   unchanged_wakes?: number
   terminal_state?: WatchTerminalState
@@ -143,15 +159,28 @@ export interface DelegationWatchSummary {
   record_path: string
   record_present: boolean
   background_marked: boolean
+  /** Seconds from the launch to the first background mark, when both are known. */
+  background_mark_delay_seconds: number | null
+  /** The first mark came later than `DELEGATION_WATCH_LATE_SECONDS`. */
+  background_watch_late: boolean
   armings: number
   wakes: number
   first_armed_at: string | null
   last_wake_at: string | null
   terminal_state: WatchTerminalState | null
+  /** What the terminal verdict rested on, when it was `completed`. */
+  terminal_basis: 'agent_state' | 'output_plausible' | null
   cadence_seconds: number | null
 }
 
 export const DELEGATION_UNOBSERVED = 'DELEGATION_UNOBSERVED'
+export const DELEGATION_WATCH_LATE = 'DELEGATION_WATCH_LATE'
+/**
+ * How long after a launch a background watch may be armed before the run
+ * records that supervision was late. `DELEGATE-001` says "immediately"; this
+ * is the number that makes the word auditable.
+ */
+export const DELEGATION_WATCH_LATE_SECONDS = 60
 
 /**
  * The supervisor's attestation that a foreground launch returned with the
@@ -340,6 +369,7 @@ export function observeInvocation(
   let outputPresent = false
   let outputParses = false
   let outputMatches = false
+  let outputIsScaffold = false
 
   if (fileExists(outputAbsolute)) {
     outputPresent = true
@@ -354,6 +384,7 @@ export function observeInvocation(
           // A revision submission names the current card inside its patch.
           (isRecord(parsed.patch) &&
             parsed.patch.invocation_id === invocation.invocation_id))
+      outputIsScaffold = isUntouchedScaffold(parsed)
     } catch {
       outputParses = false
     }
@@ -377,6 +408,7 @@ export function observeInvocation(
     output_path: outputPath,
     output_present: outputPresent,
     output_parses: outputParses,
+    output_is_scaffold: outputIsScaffold,
     output_matches_invocation: outputMatches,
     watched_paths: watched,
     fingerprint,
@@ -462,16 +494,33 @@ export function markDelegationBackground(
   const absolute = resolveInside(root, relative)
   const existing = fileExists(absolute) ? readJson(absolute) : null
   const markedAt = new Date().toISOString()
+  const firstMarkedAt =
+    isRecord(existing) && typeof existing.first_marked_at === 'string'
+      ? existing.first_marked_at
+      : markedAt
+  // The delegation artifact is written immediately before the launch, so its
+  // mtime is when supervision was owed. Without this number a supervisor that
+  // armed the watch at once and one that armed it after an operator
+  // reprimand leave identical evidence.
+  const launch = observePath(root, delegationPath(runId, invocationId, root))
+  const launchedAt =
+    launch.mtime_ms === null
+      ? null
+      : new Date(Math.floor(launch.mtime_ms)).toISOString()
+  const delaySeconds =
+    launchedAt === null
+      ? null
+      : (Date.parse(firstMarkedAt) - Date.parse(launchedAt)) / 1000
 
   writeJsonAtomic(absolute, {
     schema_version: 1,
     run_id: runId,
     invocation_id: invocationId,
     launch_mode: 'background',
-    first_marked_at:
-      isRecord(existing) && typeof existing.first_marked_at === 'string'
-        ? existing.first_marked_at
-        : markedAt,
+    launched_at: launchedAt,
+    first_marked_at: firstMarkedAt,
+    mark_delay_seconds: delaySeconds,
+    late: delaySeconds !== null && delaySeconds > DELEGATION_WATCH_LATE_SECONDS,
     marked_at: markedAt,
     watch_record_path: watchRecordPath(root, runId, invocationId),
   })
@@ -496,7 +545,8 @@ export function isTerminalObservation(observation: WatchObservation): boolean {
   return (
     observation.output_present &&
     observation.output_parses &&
-    observation.output_matches_invocation
+    observation.output_matches_invocation &&
+    !observation.output_is_scaffold
   )
 }
 
@@ -522,6 +572,39 @@ export function launchToOutputSeconds(
   }
 
   return (output.mtime_ms - launch.mtime_ms) / 1000
+}
+
+/**
+ * The terminal verdict for one observation, or null when the worker has not
+ * produced a finished output yet.
+ *
+ * Both the pre-loop check and every wake run this. Run 63310 genre-label
+ * showed why: the early-output guard sat only before the timer, so a draft
+ * that appeared after the loop started still terminated the watch.
+ */
+export function terminalStateForObservation(
+  observation: WatchObservation,
+  sinceLaunchSeconds: number | null,
+  cadenceSeconds: number,
+  agentState?: WatchAgentState,
+): 'completed' | 'unverified' | null {
+  if (!isTerminalObservation(observation)) {
+    return null
+  }
+
+  if (agentState === 'completed') {
+    return 'completed'
+  }
+
+  if (agentState === 'running') {
+    return 'unverified'
+  }
+
+  // An output written within one cadence of the launch is a draft far more
+  // often than a finished stage, and files cannot tell the two apart.
+  return sinceLaunchSeconds !== null && sinceLaunchSeconds < cadenceSeconds
+    ? 'unverified'
+    : 'completed'
 }
 
 function foregroundReturnNotTerminalMessage(
@@ -714,25 +797,19 @@ export async function watchInvocation(
       background_marker_path: backgroundMarker,
     }
   }
-  const isComplete = isTerminalObservation
-
   // An already-present output needs no timer. The wake record still proves
   // the terminal inspection happened.
   const initial = observeInvocation(root, invocation)
 
-  if (isComplete(initial)) {
-    // A worker that writes its output moments after launch has not finished;
-    // it has written a draft it will rewrite. Presence alone cannot tell the
-    // two apart, so an implausibly early output needs the supervisor's own
-    // inspection of the agent before the harness will call it terminal.
-    const sinceLaunch = launchToOutputSeconds(root, runId, invocationId)
-    const implausible = sinceLaunch !== null && sinceLaunch < cadenceSeconds
-    const state: WatchTerminalState =
-      options.agentState === 'completed'
-        ? 'completed'
-        : options.agentState === 'running' || implausible
-          ? 'unverified'
-          : 'completed'
+  const initialState = terminalStateForObservation(
+    initial,
+    launchToOutputSeconds(root, runId, invocationId),
+    cadenceSeconds,
+    options.agentState,
+  )
+
+  if (initialState !== null) {
+    const state = initialState
 
     if (state === 'completed') {
       append({
@@ -745,6 +822,10 @@ export async function watchInvocation(
         wake: 0,
         observation: initial,
         ...(options.agentState ? { agent_state: options.agentState } : {}),
+        terminal_basis:
+          options.agentState === 'completed'
+            ? 'agent_state'
+            : 'output_plausible',
         changed: true,
         unchanged_wakes: 0,
         terminal_state: 'completed',
@@ -803,10 +884,32 @@ export async function watchInvocation(
 
     let terminal: WatchTerminalState | undefined
 
-    if (isComplete(observation)) {
-      terminal = 'completed'
+    // `running` describes what the supervisor saw when it started the watch,
+    // not a standing verdict: it suppresses the pre-loop short-circuit, and a
+    // later wake that finds a finished output still completes normally.
+    const decided = terminalStateForObservation(
+      observation,
+      launchToOutputSeconds(root, runId, invocationId),
+      cadenceSeconds,
+      options.agentState === 'completed' ? 'completed' : undefined,
+    )
+
+    if (decided !== null) {
+      terminal = decided
     } else if (unchangedWakes >= stallWakes) {
-      terminal = 'stalled'
+      // A worker that scaffolded its output and then died leaves the same
+      // still files as one that is thinking. The harness cannot tell those
+      // apart, so it reports what it knows and sends the supervisor to the
+      // agent rather than calling a working worker stalled — unless the
+      // supervisor already looked and said the agent is running, which is the
+      // answer the stall check was asking for.
+      if (observation.output_is_scaffold) {
+        if (options.agentState !== 'running') {
+          terminal = 'unverified'
+        }
+      } else {
+        terminal = 'stalled'
+      }
     } else if (Date.now() - startedMs >= timeoutSeconds * 1000) {
       terminal = 'timed_out'
     }
@@ -820,6 +923,14 @@ export async function watchInvocation(
       cadence_seconds: cadenceSeconds,
       wake: wakes,
       observation,
+      ...(options.agentState ? { agent_state: options.agentState } : {}),
+      ...(terminal === 'completed'
+        ? {
+            terminal_basis: (options.agentState === 'completed'
+              ? 'agent_state'
+              : 'output_plausible') as 'agent_state' | 'output_plausible',
+          }
+        : {}),
       changed,
       unchanged_wakes: unchangedWakes,
       ...(terminal ? { terminal_state: terminal } : {}),
@@ -838,9 +949,13 @@ export async function watchInvocation(
 export function formatWakeLine(entry: WatchRecordEntry): string {
   const observation = entry.observation
   const output = observation?.output_present
-    ? observation.output_matches_invocation
-      ? 'output present'
-      : 'output present (other invocation)'
+    ? observation.output_is_scaffold
+      ? // Naming it here means the supervisor never has to open the file and
+        // rediscover that a present output is the pre-work scaffold.
+        'output present (still the scaffold, worker has not written yet)'
+      : observation.output_matches_invocation
+        ? 'output present'
+        : 'output present (other invocation)'
     : 'no output'
   const suffix = entry.terminal_state ? ` -> ${entry.terminal_state}` : ''
 
@@ -895,17 +1010,29 @@ export function summarizeDelegationWatch(
     .reverse()
     .find((entry) => entry.terminal_state !== undefined)
 
+  const markerPath = resolveInside(
+    root,
+    backgroundMarkerPath(root, runId, invocationId),
+  )
+  const marker = fileExists(markerPath) ? readJson(markerPath) : null
+  const markDelay =
+    isRecord(marker) && typeof marker.mark_delay_seconds === 'number'
+      ? marker.mark_delay_seconds
+      : null
+
   return {
     record_path: watchRecordPath(root, runId, invocationId),
     record_present: entries.length > 0,
-    background_marked: fileExists(
-      resolveInside(root, backgroundMarkerPath(root, runId, invocationId)),
-    ),
+    background_marked: marker !== null,
+    background_mark_delay_seconds: markDelay,
+    background_watch_late:
+      markDelay !== null && markDelay > DELEGATION_WATCH_LATE_SECONDS,
     armings: armings.length,
     wakes: wakes.length,
     first_armed_at: armings[0]?.recorded_at ?? null,
     last_wake_at: wakes.at(-1)?.recorded_at ?? null,
     terminal_state: terminal?.terminal_state ?? null,
+    terminal_basis: terminal?.terminal_basis ?? null,
     cadence_seconds: entries[0]?.cadence_seconds ?? null,
   }
 }

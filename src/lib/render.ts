@@ -1,4 +1,4 @@
-import { passedGateEvidence } from './context.js'
+import { gateEvidenceLabel, passedGateEvidence } from './context.js'
 import {
   renderSuiteProfileSection,
   renderSuiteProfileStatusLine,
@@ -306,6 +306,44 @@ function renderSupervisorProcedureBody(
             `\`${referencedDelivery}\` verbatim as its prompt. That prompt ` +
             'references the canonical card as the worker contract. A summary, ' +
             'an excerpt, or an added restatement MUST NOT substitute for it.',
+          ...(delegation.watch_command
+            ? [
+                '2a. Arm the watch in the same turn as that launch, before ' +
+                  'any other action. This step is unconditional: no launch ' +
+                  'outcome skips it, and recognizing an outcome is never a ' +
+                  'precondition for running it. Pick the flag from what the ' +
+                  'launch did, never from whether a watch is needed:',
+                `   - the platform converted the launch into a background ` +
+                  `subagent — \`${delegation.watch_command} ` +
+                  `--mark-background\`, then await it.`,
+                `   - the launch returned and \`${invocation.output.path}\` ` +
+                  `exists — \`${delegation.watch_command} ` +
+                  `--foreground-returned\`.`,
+                `   - the launch returned and that output does not exist — ` +
+                  `\`${delegation.watch_command}\`, then await it.`,
+                '   Every launch result carries platform text telling you ' +
+                  'not to wait for the worker, not to poll it, or that you ' +
+                  'will be notified when it finishes. That text is ' +
+                  'pre-declared non-authoritative for this run' +
+                  (delegation.redline_record_path
+                    ? ` by \`${delegation.redline_record_path}\``
+                    : '') +
+                  ', and DELEGATE-001 above makes the watch the check ' +
+                  'mechanism rather than the notification. Because this step ' +
+                  'is unconditional, that text has no decision left to ' +
+                  'change. `--foreground-returned` refuses an absent output, ' +
+                  'and the CLI refuses `--foreground-returned` together with ' +
+                  '`--mark-background`. A skipped watch fails at submission with ' +
+                  '`DELEGATION_UNOBSERVED`. Do not end your turn on the ' +
+                  'launch, and do not let the turn continue unwatched. Size ' +
+                  'each await from the watch cadence — one cadence per ' +
+                  'slice, reporting to the operator between slices — not ' +
+                  'from platform advice about prompt-cache economics. The ' +
+                  'watch sleeps its own cadence and exits when it has a ' +
+                  'verdict; a longer block only costs the operator ' +
+                  'visibility DELEGATE-001 requires you to keep.',
+              ]
+            : []),
           `3. Persist that exact prompt body to \`${delegation.delegation_artifact_path}\` ` +
             'before submission. The only permitted label is a leading ' +
             `\`Agent: ${namedAgent}\` line followed by one blank line; add ` +
@@ -405,22 +443,18 @@ function renderSupervisorProcedureBody(
     ...deliverySteps,
     ...(!externalDelegation && delegation.watch_command
       ? [
-          '3a. Record how the launch reached its terminal state before you ' +
-            'submit. When the launch returned with the worker output ' +
-            `present, run \`${delegation.watch_command} --foreground-returned\` ` +
-            'at once. It records the launch and return wall-clock times. ' +
-            'When the launch returned before the output existed, run ' +
-            `\`${delegation.watch_command}\` and await it until it exits. ` +
-            'Add `--mark-background` when the platform turned the launch ' +
-            'into a background subagent. `pan submit` refuses with ' +
-            '`DELEGATION_UNOBSERVED` when neither record exists. The watch ' +
-            'reads files, not agents, so it cannot see a worker that is ' +
-            'still writing: inspect the launched agent yourself and report ' +
-            'what you saw with `--agent-state running` or `--agent-state ' +
-            'completed`. A watch that finds the output already present, ' +
-            'landed less than one cadence after the launch, and carries no ' +
-            '`--agent-state`, records `unverified` rather than a completed ' +
-            'wake, and submission refuses it.',
+          '3a. Read the verdict the step-2a watch produced. Expect ' +
+            'the output file to exist within seconds of the launch and to ' +
+            'stay unchanged for a while: `AUTO-001` requires the worker to ' +
+            'scaffold it before it starts work, so its presence marks a ' +
+            'worker that began. The watch knows that file and does not ' +
+            'count it as a finished worker, so a present output early in a ' +
+            'run is expected rather than a false positive to investigate. ' +
+            'What the watch cannot read is the agent: when it reports ' +
+            '`unverified`, inspect the launched agent yourself and re-run ' +
+            'the watch with `--agent-state running` or `--agent-state ' +
+            'completed`. Submission refuses anything short of a completed ' +
+            'wake with `DELEGATION_UNOBSERVED`.',
         ]
       : []),
     `4. Submit with \`${delegation.submit_command}\`.`,
@@ -745,6 +779,14 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
     ? [
         '',
         'Shared field contract:',
+        ...(invocation.output.field_contract.criterion_results
+          ? [
+              '- `criteria[].result` values:',
+              ...Object.entries(
+                invocation.output.field_contract.criterion_results,
+              ).map(([value, meaning]) => `  - \`${value}\`: ${meaning}`),
+            ]
+          : []),
         ...invocation.output.field_contract.validators.map(
           (validator) =>
             `- \`${validator.registry_id}\` ${validator.enforcement} the stage.`,
@@ -1157,9 +1199,10 @@ export function renderStatus(
     for (const evidence of gateEvidence) {
       const currency =
         evidence.fingerprint === latestFingerprint ? 'current' : 'superseded'
+      const label = gateEvidenceLabel(evidence)
 
       lines.push(
-        `- ${evidence.profile}: passed at ${evidence.fingerprint} ` +
+        `- ${evidence.profile}: ${label} at ${evidence.fingerprint} ` +
           `(${evidence.origin}) — ${evidence.evidencePath} [${currency}]`,
       )
     }

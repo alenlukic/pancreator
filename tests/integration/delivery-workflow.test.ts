@@ -7,6 +7,7 @@ import {
   decideRun,
   getRunState,
   prepareInvocation,
+  setRunStage,
 } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import type { StageOutput } from '../../src/lib/types.js'
@@ -316,4 +317,47 @@ test('delivery verify resolves parallel evidence workers and gates submission on
     'success',
     JSON.stringify(submitted.record.evaluation),
   )
+})
+
+test('plan and verify cards render the complete shared field contract', () => {
+  const root = createFixture()
+  const runId = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title: 'Shared field contract run',
+  }).run_id
+  const plan = prepareInvocation(root, runId)
+  const planPath = plan.state.current_invocation?.markdown_path
+
+  assert.ok(planPath)
+  const planCard = readFileSync(path.join(root, planPath), 'utf8')
+
+  for (const fieldPath of [
+    'data.acceptance_criteria[].id',
+    'data.acceptance_criteria[].maps_to',
+    'data.acceptance_criteria[].verification',
+    'data.test_plan[]',
+    'data.open_question_dispositions[].id',
+    'data.open_question_dispositions[].answer',
+    'data.verification_recommendation',
+  ]) {
+    assert.ok(planCard.includes(`\`${fieldPath}\``), fieldPath)
+  }
+
+  for (const result of ['unevaluated', 'skipped', 'not_applicable']) {
+    assert.ok(planCard.includes(`  - \`${result}\`:`))
+  }
+
+  setRunStage(root, runId, 'verify', 'Inspect the verify field contract.')
+
+  const verify = prepareInvocation(root, runId)
+  const verifyPath = verify.state.current_invocation?.markdown_path
+
+  assert.ok(verifyPath)
+  const verifyCard = readFileSync(path.join(root, verifyPath), 'utf8')
+  const stepsPath = '`data.verify.qa_cases[].steps`'
+
+  assert.equal(verifyCard.split(stepsPath).length - 1, 1)
+  assert.match(verifyCard, /focused scenario steps/u)
+  assert.match(verifyCard, /required when top-level result is blocked/u)
 })

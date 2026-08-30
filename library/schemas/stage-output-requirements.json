@@ -2,19 +2,114 @@
   "schema_version": 1,
   "policy_id": "CONTRACT-001",
   "validator_id": "FIELD-CONTRACT-VALIDATE-001",
+  "criterion_results": {
+    "unevaluated": "Scaffold-only. The harness writes this value and submission rejects it.",
+    "skipped": "Terminal non-success. Permitted on a blocked output or on a shell criterion when the stage already failed. Forbidden on success.",
+    "not_applicable": "Worker judgment that a criterion does not apply. Hard criteria MUST NOT use it."
+  },
   "stages": {
     "plan": {
       "validators": [
         {
           "registry_id": "PLAN-TRACE-VALIDATE-001",
-          "enforcement": "blocks"
+          "enforcement": "blocks",
+          "enforced_fields": [
+            "data.acceptance_criteria[].id",
+            "data.acceptance_criteria[].maps_to",
+            "data.acceptance_criteria[].verification",
+            "data.acceptance_criteria[].verification.method",
+            "data.acceptance_criteria[].verification.expected",
+            "data.engineering_plan.files[]",
+            "data.test_plan[]",
+            "data.open_question_dispositions[].id",
+            "data.open_question_dispositions[].answer",
+            "data.open_question_dispositions[].disposition",
+            "data.open_question_dispositions[].evidence",
+            "data.verification_recommendation",
+            "data.verification_recommendation.level",
+            "data.verification_recommendation.reason"
+          ]
         }
       ],
       "fields": [
         {
+          "path": "data.acceptance_criteria[].id",
+          "type": "string"
+        },
+        {
+          "path": "data.acceptance_criteria[].maps_to",
+          "type": "array",
+          "format": "string array of user-story ids (US-*) or related registry ids"
+        },
+        {
+          "path": "data.acceptance_criteria[].verification",
+          "type": "object",
+          "required": ["method", "expected"],
+          "format": "verification method and expected outcome for the criterion"
+        },
+        {
+          "path": "data.acceptance_criteria[].verification.method",
+          "type": "string"
+        },
+        {
+          "path": "data.acceptance_criteria[].verification.expected",
+          "type": "string"
+        },
+        {
+          "path": "data.engineering_plan.files[]",
+          "type": "object",
+          "required": ["path", "status", "purpose"],
+          "format": "each planned file with path, status (new or modified), and purpose"
+        },
+        {
+          "path": "data.engineering_plan.files[].path",
+          "type": "string"
+        },
+        {
+          "path": "data.engineering_plan.files[].status",
+          "type": "string",
+          "enum": ["new", "modified"]
+        },
+        {
+          "path": "data.engineering_plan.files[].purpose",
+          "type": "string"
+        },
+        {
+          "path": "data.test_plan[]",
+          "type": "object",
+          "format": "focused scenario; setup, action, command, and steps MUST NOT contain a configured repository-check profile command or 'pan repository-check <profile>', because the gate runs that profile once"
+        },
+        {
+          "path": "data.open_question_dispositions[].id",
+          "type": "string"
+        },
+        {
+          "path": "data.open_question_dispositions[].answer",
+          "type": "string"
+        },
+        {
           "path": "data.open_question_dispositions[].disposition",
           "type": "string",
           "enum": ["resolved", "deferred", "escalated"]
+        },
+        {
+          "path": "data.open_question_dispositions[].evidence",
+          "type": "array",
+          "format": "string array of paths or observations supporting the disposition"
+        },
+        {
+          "path": "data.verification_recommendation",
+          "type": "object",
+          "required": ["level", "reason"],
+          "format": "optional recommendation for the operator to change the run verification level"
+        },
+        {
+          "path": "data.verification_recommendation.level",
+          "type": "string"
+        },
+        {
+          "path": "data.verification_recommendation.reason",
+          "type": "string"
         }
       ]
     },
@@ -59,7 +154,21 @@
       "validators": [
         {
           "registry_id": "VERIFY-VALIDATE-001",
-          "enforcement": "blocks"
+          "enforcement": "blocks",
+          "enforced_fields": [
+            "data.verify.verdict",
+            "data.verify.findings[].severity",
+            "data.verify.findings[].source",
+            "data.verify.qa_cases[].steps",
+            "data.verify.qa_cases[].expected",
+            "data.verify.qa_cases[].actual",
+            "data.verify.qa_cases[].result",
+            "data.verify.gate_evidence_citations[]",
+            "data.verify.remediation_guidance",
+            "data.verify.severity_rationale",
+            "data.verify.blocking_reason",
+            "data.verify.missing_evidence_paths"
+          ]
         }
       ],
       "fields": [
@@ -77,10 +186,6 @@
           "path": "data.verify.findings[].source",
           "type": "string",
           "enum": ["review", "qa"]
-        },
-        {
-          "path": "data.verify.qa_cases[].steps",
-          "type": "string"
         },
         {
           "path": "data.verify.qa_cases[].expected",
@@ -120,6 +225,26 @@
           "path": "data.verify.gate_evidence_citations[].evidence_path",
           "type": "string",
           "format": "harness-relative path of the gate evidence artifact"
+        },
+        {
+          "path": "data.verify.remediation_guidance",
+          "type": "string",
+          "format": "required when verdict is fail_remedial or fail_severe; reproducible remediation steps"
+        },
+        {
+          "path": "data.verify.severity_rationale",
+          "type": "string",
+          "format": "required when verdict is fail_severe; explains why the failure is fundamental"
+        },
+        {
+          "path": "data.verify.blocking_reason",
+          "type": "string",
+          "format": "required when top-level result is blocked; states why verification cannot proceed"
+        },
+        {
+          "path": "data.verify.missing_evidence_paths",
+          "type": "array",
+          "format": "required when top-level result is blocked; non-empty string array of missing evidence paths"
         }
       ]
     },

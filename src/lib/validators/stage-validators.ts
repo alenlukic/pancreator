@@ -172,6 +172,7 @@ export function validateSharedFieldContract(
     source.schema_version !== 1 ||
     source.policy_id !== 'CONTRACT-001' ||
     source.validator_id !== 'FIELD-CONTRACT-VALIDATE-001' ||
+    !isRecord(source.criterion_results) ||
     !isRecord(source.stages)
   ) {
     return {
@@ -182,6 +183,19 @@ export function validateSharedFieldContract(
           'The shared field contract MUST declare its schema, policy, validator, and stages',
         ),
       ],
+    }
+  }
+
+  for (const result of ['unevaluated', 'skipped', 'not_applicable']) {
+    const meaning = source.criterion_results[result]
+
+    if (typeof meaning !== 'string' || meaning.trim().length === 0) {
+      issues.push(
+        issue(
+          'field_contract.criterion_result',
+          `The shared field contract MUST explain criterion result ${result}`,
+        ),
+      )
     }
   }
 
@@ -215,6 +229,15 @@ export function validateSharedFieldContract(
       continue
     }
 
+    const declaredPaths = new Set(
+      stage.fields
+        .filter(
+          (field): field is Record<string, unknown> =>
+            isRecord(field) && typeof field.path === 'string',
+        )
+        .map((field) => field.path as string),
+    )
+
     for (const validator of stage.validators) {
       if (
         !isRecord(validator) ||
@@ -229,6 +252,24 @@ export function validateSharedFieldContract(
             `The ${stageSlug} field contract contains an invalid validator`,
           ),
         )
+        continue
+      }
+
+      const enforcedFields = Array.isArray(validator.enforced_fields)
+        ? validator.enforced_fields.filter(
+            (entry): entry is string => typeof entry === 'string',
+          )
+        : []
+
+      for (const fieldPath of enforcedFields) {
+        if (!declaredPaths.has(fieldPath)) {
+          issues.push(
+            issue(
+              'field_contract.enforced_field',
+              `Validator ${validator.registry_id} enforces undeclared field ${fieldPath}`,
+            ),
+          )
+        }
       }
     }
 
@@ -245,7 +286,18 @@ export function validateSharedFieldContract(
   }
 
   const requiredFieldPaths: Record<string, string[]> = {
-    plan: ['data.open_question_dispositions[].disposition'],
+    plan: [
+      'data.acceptance_criteria[].id',
+      'data.acceptance_criteria[].maps_to',
+      'data.acceptance_criteria[].verification',
+      'data.engineering_plan.files[]',
+      'data.test_plan[]',
+      'data.open_question_dispositions[].id',
+      'data.open_question_dispositions[].answer',
+      'data.open_question_dispositions[].disposition',
+      'data.open_question_dispositions[].evidence',
+      'data.verification_recommendation',
+    ],
     implement: ['data.acceptance_results[].evidence[]'],
     verify: [
       'data.verify.verdict',
@@ -254,6 +306,10 @@ export function validateSharedFieldContract(
       'data.verify.qa_cases[].steps',
       'data.verify.qa_cases[].expected',
       'data.verify.qa_cases[].actual',
+      'data.verify.remediation_guidance',
+      'data.verify.severity_rationale',
+      'data.verify.blocking_reason',
+      'data.verify.missing_evidence_paths',
     ],
     ship: [
       'data.release.change_list[]',
@@ -2162,6 +2218,74 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
     string,
     unknown
   >
+
+  if (value.result === 'blocked') {
+    const data = isRecord(value.data) ? value.data : {}
+    const verify = isRecord(data.verify) ? data.verify : null
+
+    if (!verify) {
+      return {
+        status: 'failed',
+        issues: [issue('verify.missing', 'data.verify is required')],
+      }
+    }
+
+    const blockingReason =
+      typeof verify.blocking_reason === 'string'
+        ? verify.blocking_reason.trim()
+        : ''
+
+    if (blockingReason.length === 0) {
+      issues.push(
+        issue(
+          'verify.blocking_reason',
+          'blocked verify output MUST include a non-empty blocking_reason',
+        ),
+      )
+    }
+
+    const missingPaths = Array.isArray(verify.missing_evidence_paths)
+      ? verify.missing_evidence_paths
+      : []
+
+    if (
+      missingPaths.length === 0 ||
+      !missingPaths.every(
+        (entry) => typeof entry === 'string' && entry.trim().length > 0,
+      )
+    ) {
+      issues.push(
+        issue(
+          'verify.missing_evidence',
+          'blocked verify output MUST include non-empty missing_evidence_paths',
+        ),
+      )
+    }
+
+    const forbiddenFields = [
+      'verdict',
+      'findings',
+      'qa_cases',
+      'acceptance_results',
+      'gate_evidence_citations',
+      'remediation_guidance',
+      'severity_rationale',
+    ] as const
+
+    for (const field of forbiddenFields) {
+      if (verify[field] !== undefined) {
+        issues.push(
+          issue(
+            'verify.blocked_forbidden_field',
+            `blocked verify output MUST NOT include data.verify.${field}`,
+          ),
+        )
+      }
+    }
+
+    return { status: issues.length === 0 ? 'passed' : 'failed', issues }
+  }
+
   const data = isRecord(value.data) ? value.data : {}
   const verify = isRecord(data.verify) ? data.verify : null
 

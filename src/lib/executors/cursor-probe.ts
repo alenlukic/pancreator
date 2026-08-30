@@ -9,7 +9,13 @@ import {
   loadCursorCatalog,
   type CursorCatalog,
 } from './cursor-catalog.js'
+import {
+  resetCursorAgentCapabilities,
+  withSupportedFlags,
+} from './cursor-agent.js'
 import { parsePersonaMapping } from './mapping.js'
+
+export { resetCursorAgentCapabilities }
 
 const PROBE_TIMEOUT_MS = 120_000
 const PROBE_PROMPT = 'Reply with the single word OK.'
@@ -253,9 +259,7 @@ export function probeCursorModelSpec(
       '-p',
       '--output-format',
       'stream-json',
-      '--mode',
-      'ask',
-      '--trust',
+      ...withSupportedFlags([['--mode', 'ask'], ['--trust']], env),
       '--model',
       spec,
       PROBE_PROMPT,

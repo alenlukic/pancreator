@@ -29,6 +29,8 @@
     "An operator-facing agent MUST NOT block the operator conversation on a foreground subagent call.",
     "A supervisor MUST keep in-run worker delegation foreground and blocking, because it needs the worker result to advance the stage.",
     "Agent nesting MUST NOT exceed two levels: top level → child agent → subagent, and no further. A child agent MAY spawn subagents only for auxiliary work that is not a stage delegation (repository exploration, debugging), accepting that such nested spawns always run the platform default model. A second-level subagent MUST NOT spawn anything.",
-    "For a Cursor worker invocation `pan submit` MUST require a completed watch record or a foreground-return attestation. Without one it MUST fail with `DELEGATION_UNOBSERVED`, not an advisory. An external-executor stage that `pan delegate` runs is exempt. The harness writes that stage's delegation evidence."
+    "For a Cursor worker invocation `pan submit` MUST require a completed watch record or a foreground-return attestation. Without one it MUST fail with `DELEGATION_UNOBSERVED`, not an advisory. An external-executor stage that `pan delegate` runs is exempt. The harness writes that stage's delegation evidence.",
+    "A watch MAY record `completed` when agent state is `completed`, or when the output is plausible after one cadence elapsed since launch. When agent state is not `completed`, output within one cadence MUST NOT complete the watch. Output plausibility alone carries a false-positive risk: a worker can write a complete-looking output and continue editing.",
+    "Every completed watch wake MUST record `terminal_basis` as `agent_state` or `output_plausible`."
   ]
 }

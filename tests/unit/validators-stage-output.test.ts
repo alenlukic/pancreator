@@ -179,6 +179,110 @@ test('strict stage output rejects success with failed self-evaluation', () => {
   assert.match(validation.errors.join('\n'), /contradicts failed criterion/u)
 })
 
+test('stage output rejects an unevaluated criterion on every result', () => {
+  const root = createFixture()
+  const { invocation, stage } = fixtureInvocation(
+    root,
+    'verify',
+    'verify-1-unevaluated',
+  )
+
+  for (const result of ['success', 'failure', 'blocked'] as const) {
+    const output = baseOutput(invocation, stage)
+    const criterion = output.criteria.find(
+      (item) => item.id === 'verify.tests_correct',
+    )
+
+    assert.ok(criterion)
+    output.result = result
+    criterion.result = 'unevaluated'
+
+    const validation = validateStageOutput(root, stage, invocation, output)
+    const matches = validation.errors.filter((message) =>
+      message.includes(
+        "criteria 'verify.tests_correct' is unevaluated; the worker must fill every criterion before submission",
+      ),
+    )
+
+    assert.equal(
+      matches.length,
+      1,
+      `${result} reported ${matches.length} times`,
+    )
+  }
+})
+
+test('stage output rejects a skipped criterion on success', () => {
+  const root = createFixture()
+  const { invocation, stage } = fixtureInvocation(
+    root,
+    'verify',
+    'verify-1-skipped-success',
+  )
+  const output = baseOutput(invocation, stage)
+  const criterion = output.criteria.find(
+    (item) => item.id === 'verify.full_suite',
+  )
+
+  assert.ok(criterion)
+  criterion.result = 'skipped'
+
+  const validation = validateStageOutput(root, stage, invocation, output)
+
+  assert.match(
+    validation.errors.join('\n'),
+    /verify\.full_suite' MUST NOT be skipped on a success result/u,
+  )
+})
+
+test('stage output rejects a skipped judgment criterion on failure', () => {
+  const root = createFixture()
+  const { invocation, stage } = fixtureInvocation(
+    root,
+    'verify',
+    'verify-1-skipped-judgment',
+  )
+  const output = baseOutput(invocation, stage)
+  const criterion = output.criteria.find(
+    (item) => item.id === 'verify.tests_correct',
+  )
+
+  assert.ok(criterion)
+  output.result = 'failure'
+  criterion.result = 'skipped'
+
+  const validation = validateStageOutput(root, stage, invocation, output)
+
+  assert.match(
+    validation.errors.join('\n'),
+    /verify\.tests_correct' MUST NOT be skipped on a failure result unless it is a shell criterion/u,
+  )
+})
+
+test('stage output permits a skipped shell criterion on failure', () => {
+  const root = createFixture()
+  const { invocation, stage } = fixtureInvocation(
+    root,
+    'verify',
+    'verify-1-skipped-shell',
+  )
+  const output = baseOutput(invocation, stage)
+  const criterion = output.criteria.find(
+    (item) => item.id === 'verify.full_suite',
+  )
+
+  assert.ok(criterion)
+  output.result = 'failure'
+  criterion.result = 'skipped'
+
+  const validation = validateStageOutput(root, stage, invocation, output)
+
+  assert.doesNotMatch(
+    validation.errors.join('\n'),
+    /verify\.full_suite'.*skipped/u,
+  )
+})
+
 test('stage output accepts a platform guidance conflict list and rejects a bare entry', () => {
   const root = createFixture()
   const { invocation, stage } = fixtureInvocation(

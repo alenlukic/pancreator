@@ -391,6 +391,83 @@ interface PassedGateEvidence {
   evidencePath: string
   fingerprint: string
   origin: string
+  acceptanceMode: 'clean_pass' | 'baseline_relative_acceptance' | 'unknown'
+  rawExitCode: number | null
+  preexistingFailure: boolean
+}
+
+function classifyGateAcceptance(result: {
+  exit_code?: number | null
+  preexisting_failure?: boolean
+  passed: boolean
+}): Pick<
+  PassedGateEvidence,
+  'acceptanceMode' | 'rawExitCode' | 'preexistingFailure'
+> {
+  const rawExitCode =
+    typeof result.exit_code === 'number' ? result.exit_code : null
+  const preexistingFailure = Boolean(result.preexisting_failure)
+
+  if (
+    preexistingFailure ||
+    (result.passed && rawExitCode !== null && rawExitCode !== 0)
+  ) {
+    return {
+      acceptanceMode: 'baseline_relative_acceptance',
+      rawExitCode,
+      preexistingFailure,
+    }
+  }
+
+  if (result.passed && rawExitCode === 0) {
+    return {
+      acceptanceMode: 'clean_pass',
+      rawExitCode,
+      preexistingFailure: false,
+    }
+  }
+
+  return {
+    acceptanceMode: 'unknown',
+    rawExitCode,
+    preexistingFailure,
+  }
+}
+
+export function gateEvidenceLabel(
+  evidence: Pick<
+    PassedGateEvidence,
+    'acceptanceMode' | 'rawExitCode' | 'preexistingFailure'
+  >,
+): string {
+  if (evidence.acceptanceMode === 'clean_pass') {
+    return 'clean pass'
+  }
+
+  if (evidence.acceptanceMode === 'baseline_relative_acceptance') {
+    const exitCode = evidence.rawExitCode ?? 'unknown'
+    const carriedFailure = evidence.preexistingFailure
+      ? ', carried failure'
+      : ''
+
+    return `baseline-relative acceptance (raw exit code ${exitCode}${carriedFailure})`
+  }
+
+  return 'passed gate evidence'
+}
+
+function gateEvidenceDescription(
+  evidence: PassedGateEvidence,
+  current: boolean,
+): string {
+  const currency = current ? 'the current workspace' : 'a superseded workspace'
+  const modeLabel = gateEvidenceLabel(evidence)
+
+  return (
+    `\`${modeLabel}\` \`${evidence.profile}\` repository-check gate evidence ` +
+    `(${evidence.origin}) at workspace fingerprint ` +
+    `\`${evidence.fingerprint}\` — ${currency}`
+  )
 }
 
 /**
@@ -419,6 +496,7 @@ export function passedGateEvidence(state: RunState): PassedGateEvidence[] {
         evidencePath: result.evidence_path,
         fingerprint: result.workspace_fingerprint,
         origin: `${item.stage} attempt ${item.attempt} gate \`${result.id}\``,
+        ...classifyGateAcceptance(result),
       })
     }
   }
@@ -436,6 +514,9 @@ export function passedGateEvidence(state: RunState): PassedGateEvidence[] {
         evidencePath: baseline.artifact_path,
         fingerprint: baseline.workspace_fingerprint,
         origin: 'pre-implementation baseline',
+        acceptanceMode: 'clean_pass',
+        rawExitCode: 0,
+        preexistingFailure: false,
       })
     }
   }
@@ -455,17 +536,11 @@ function selectGateEvidence(
 
   for (const evidence of passedGateEvidence(state)) {
     const current = evidence.fingerprint === workspaceFingerprint
-    const currency = current
-      ? 'the current workspace'
-      : 'a superseded workspace'
 
     // A superseded artifact stays listed, but its condition denies citation.
     addReference(references, {
       path: evidence.evidencePath,
-      description:
-        `Passed \`${evidence.profile}\` repository-check gate evidence ` +
-        `(${evidence.origin}) at workspace fingerprint ` +
-        `\`${evidence.fingerprint}\` — ${currency}`,
+      description: gateEvidenceDescription(evidence, current),
       retrieval: 'conditional',
       condition: current
         ? `Cite this evidence in \`data.verify.gate_evidence_citations\` with ` +
@@ -484,6 +559,9 @@ function selectGateEvidence(
         profile: evidence.profile,
         fingerprint: evidence.fingerprint,
         current,
+        acceptance_mode: evidence.acceptanceMode,
+        raw_exit_code: evidence.rawExitCode,
+        preexisting_failure: evidence.preexistingFailure,
       },
     })
   }

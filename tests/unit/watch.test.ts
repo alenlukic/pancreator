@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, utimesSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import { prepareInvocation, submitOutput } from '../../src/lib/engine.js'
+import { scaffoldStageOutput } from '../../src/lib/requirements/scaffold.js'
 import { loadState } from '../../src/lib/state.js'
 import type { RunState, TaskRecord } from '../../src/lib/types.js'
 import {
@@ -21,10 +22,15 @@ import {
   summarizeDelegationObservation,
   summarizeDelegationWatch,
   watchInvocation,
+  observeInvocation,
+  isTerminalObservation,
   watchRecordPath,
   writeRedlineRecord,
 } from '../../src/lib/watch.js'
-import { delegationExecutionPath } from '../../src/lib/validation.js'
+import {
+  delegationExecutionPath,
+  delegationPath,
+} from '../../src/lib/validation.js'
 import { loadWorkflowFile, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
@@ -770,8 +776,230 @@ test('an agent the supervisor saw still running keeps the watch on its cadence',
     agentState: 'running',
   })
 
-  // The output is present, so the first wake ends it — but it cost an arming,
-  // which is the difference between a watch and a file stat.
-  assert.equal(watched.state, 'completed')
-  assert.ok(watched.armings >= 1)
+  // A supervisor that says the agent is still running never gets the instant
+  // verdict: the timer arms and the record carries a real arming, which is
+  // the whole difference between a watch and a file stat.
+  assert.ok(watched.armings >= 1, 'running MUST suppress the short-circuit')
+
+  const entries = readWatchRecord(root, state.run_id, invocationId)
+
+  assert.ok(entries.some((entry) => entry.event === 'armed'))
+  assert.notEqual(entries[0]?.terminal_state, 'completed')
+})
+
+// Run 63310 genre-label, post-fix: the supervisor found a `completed` wake,
+// opened the output, and discovered it was the scaffold — empty summary,
+// attestation `pending`. It recovered, but it had to treat a guaranteed
+// condition as a surprise. AUTO-001 makes the worker scaffold its output
+// `before_operation`, so every scaffolded stage has a present, parsing,
+// invocation-matching output from its first seconds. Presence marks a worker
+// that began.
+test('the scaffold a worker writes before it starts is not a finished worker', async () => {
+  const { root, state, invocationId } = preparedRun()
+  const invocation = read(
+    path.join(root, state.current_invocation!.json_path),
+  ) as Parameters<typeof scaffoldStageOutput>[1]
+
+  writeCanonicalDelegation(root, invocation)
+  scaffoldStageOutput(root, invocation, invocation.output.path)
+
+  const scaffolded = observeInvocation(root, invocation)
+
+  assert.equal(scaffolded.output_present, true)
+  assert.equal(scaffolded.output_parses, true)
+  assert.equal(scaffolded.output_matches_invocation, true)
+  assert.equal(scaffolded.output_is_scaffold, true)
+  assert.equal(isTerminalObservation(scaffolded), false)
+
+  // Files alone cannot separate a worker still thinking from one that died
+  // after scaffolding, so the watch says so instead of guessing either way.
+  const watched = await watchInvocation(root, state.run_id, {
+    cadenceSeconds: CADENCE_SECONDS,
+  })
+
+  assert.equal(watched.state, 'unverified')
+  assert.ok(watched.armings >= 1, 'a scaffold MUST NOT short-circuit the timer')
+
+  const entries = readWatchRecord(root, state.run_id, invocationId)
+
+  assert.ok(
+    entries.every((entry) => entry.terminal_state !== 'completed'),
+    'no wake over a scaffold may report completed',
+  )
+})
+
+test('a watch over a scaffold completes once the worker writes its output', async () => {
+  const { root, state, invocationId } = preparedRun()
+  const invocation = read(
+    path.join(root, state.current_invocation!.json_path),
+  ) as Parameters<typeof scaffoldStageOutput>[1]
+
+  writeCanonicalDelegation(root, invocation)
+  scaffoldStageOutput(root, invocation, invocation.output.path)
+
+  // The worker finishes several cadences in, clear of the window that treats
+  // an output landing right after the launch as a draft.
+  const finish = setTimeout(
+    () => {
+      writeStageOutput(root, state)
+    },
+    CADENCE_SECONDS * 4 * 1000,
+  )
+
+  try {
+    const watched = await watchInvocation(root, state.run_id, {
+      cadenceSeconds: CADENCE_SECONDS,
+      // The stall check is exercised separately; this test is about the
+      // watch noticing real content replace the scaffold.
+      stallWakes: 20,
+    })
+
+    assert.equal(watched.state, 'completed')
+    assert.ok(watched.wakes >= 1)
+
+    const entries = readWatchRecord(root, state.run_id, invocationId)
+
+    assert.equal(entries.at(-1)?.terminal_state, 'completed')
+    assert.equal(entries.at(-1)?.observation?.output_is_scaffold, false)
+  } finally {
+    clearTimeout(finish)
+  }
+})
+
+// Run 63310 genre-label: the platform backgrounded three launches, and the
+// supervisor armed the watch late twice, each time only after an operator
+// reprimand. The marker recorded that a mark happened, never how late, so a
+// supervisor that complied and one that had to be told left identical
+// evidence. DELEGATE-001 says "immediately"; this is the number that makes
+// the word auditable.
+test('the background marker records how late supervision was armed', async () => {
+  const { root, state, invocationId, outputPath } = preparedRun()
+
+  fillPreparedOutput(root, state)
+
+  const marker = path.join(
+    root,
+    markDelegationBackground(root, state.run_id, invocationId),
+  )
+  const record = read(marker) as {
+    launched_at: string | null
+    mark_delay_seconds: number | null
+    late: boolean
+  }
+
+  assert.equal(typeof record.launched_at, 'string')
+  assert.equal(typeof record.mark_delay_seconds, 'number')
+  assert.equal(record.late, false, 'a mark taken at once is not late')
+
+  // Backdate the launch so the same mark reads as a minute-plus late arming.
+  const backdated = new Date(Date.parse(record.launched_at!) - 10 * 60 * 1000)
+
+  utimesSync(
+    path.join(root, delegationPath(state.run_id, invocationId, root)),
+    backdated,
+    backdated,
+  )
+  markDelegationBackground(root, state.run_id, invocationId)
+
+  const summary = summarizeDelegationObservation(
+    root,
+    state.run_id,
+    invocationId,
+  )
+
+  assert.equal(summary.watch.background_watch_late, true)
+  assert.ok((summary.watch.background_mark_delay_seconds ?? 0) > 60)
+
+  // Late supervision still submits — the work was observed — but the run says so.
+  await watchInvocation(root, state.run_id, {
+    cadenceSeconds: CADENCE_SECONDS,
+    agentState: 'completed',
+  })
+
+  const submitted = submitOutput(root, state.run_id, outputPath)
+  const advisory = submitted.advisories.find((item) =>
+    item.message.includes('DELEGATION_WATCH_LATE'),
+  )
+
+  assert.ok(advisory, 'a late arming MUST be recorded as an advisory')
+  assert.equal(advisory.kind, 'delegation_supervision')
+  assert.equal(submitted.record.outcome, 'success')
+})
+
+// FR-6, run 63310_Aug-30-0872: the implement watch reported `completed` at its
+// first wake on a non-scaffold output with no `--agent-state`, while the
+// remediation text said completion required one. Files cannot rule out a
+// worker still editing, so the record names which of the two a verdict rests
+// on instead of presenting both as the same fact.
+test('a completed verdict records whether an agent or a file produced it', async () => {
+  const inferred = preparedRun()
+
+  writeCanonicalDelegation(
+    inferred.root,
+    read(
+      path.join(inferred.root, inferred.state.current_invocation!.json_path),
+    ) as Parameters<typeof scaffoldStageOutput>[1],
+  )
+  writeStageOutput(inferred.root, inferred.state)
+
+  // Backdate the launch so the output reads as landing well after it, which
+  // is the case where files alone are allowed to produce a verdict.
+  const launched = new Date(Date.now() - 10_000)
+
+  utimesSync(
+    path.join(
+      inferred.root,
+      delegationPath(
+        inferred.state.run_id,
+        inferred.invocationId,
+        inferred.root,
+      ),
+    ),
+    launched,
+    launched,
+  )
+
+  const fileVerdict = await watchInvocation(
+    inferred.root,
+    inferred.state.run_id,
+    { cadenceSeconds: CADENCE_SECONDS, stallWakes: 20 },
+  )
+
+  assert.equal(fileVerdict.state, 'completed')
+  assert.equal(
+    readWatchRecord(
+      inferred.root,
+      inferred.state.run_id,
+      inferred.invocationId,
+    ).at(-1)?.terminal_basis,
+    'output_plausible',
+  )
+
+  const attested = preparedRun()
+
+  fillPreparedOutput(attested.root, attested.state)
+
+  const agentVerdict = await watchInvocation(
+    attested.root,
+    attested.state.run_id,
+    { cadenceSeconds: CADENCE_SECONDS, agentState: 'completed' },
+  )
+
+  assert.equal(agentVerdict.state, 'completed')
+  assert.equal(
+    readWatchRecord(
+      attested.root,
+      attested.state.run_id,
+      attested.invocationId,
+    ).at(-1)?.terminal_basis,
+    'agent_state',
+  )
+  assert.equal(
+    summarizeDelegationObservation(
+      attested.root,
+      attested.state.run_id,
+      attested.invocationId,
+    ).watch.terminal_basis,
+    'agent_state',
+  )
 })

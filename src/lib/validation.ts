@@ -1453,9 +1453,12 @@ function normalizeCriteria(value: unknown): CriterionEvaluation[] {
     const result =
       item.result === 'pass' ||
       item.result === 'fail' ||
-      item.result === 'not_applicable'
+      item.result === 'not_applicable' ||
+      item.result === 'skipped'
         ? item.result
-        : 'fail'
+        : item.result === 'unevaluated'
+          ? 'unevaluated'
+          : 'fail'
 
     return [
       {
@@ -1621,6 +1624,15 @@ export function validateStageOutput(
   for (const [dataPath, expectedType] of Object.entries(
     stage.required_data ?? {},
   )) {
+    const blockedVerifyProductField =
+      stage.slug === 'verify' &&
+      output.result === 'blocked' &&
+      dataPath.startsWith('verify.')
+
+    if (blockedVerifyProductField) {
+      continue
+    }
+
     const dataValue = valueAt(output.data, dataPath)
 
     if (!hasType(dataValue, expectedType)) {
@@ -1645,11 +1657,13 @@ export function validateStageOutput(
       if (
         item.result !== 'pass' &&
         item.result !== 'fail' &&
-        item.result !== 'not_applicable'
+        item.result !== 'not_applicable' &&
+        item.result !== 'unevaluated' &&
+        item.result !== 'skipped'
       ) {
         errors.push(
-          `criteria '${item.id}' result MUST be pass, fail, or ` +
-            `not_applicable (got ${JSON.stringify(item.result)})`,
+          `criteria '${item.id}' result MUST be pass, fail, not_applicable, ` +
+            `unevaluated, or skipped (got ${JSON.stringify(item.result)})`,
         )
       }
     }
@@ -1665,7 +1679,10 @@ export function validateStageOutput(
     // An explanation is required only where it carries information: why a
     // criterion failed, or why it does not apply. Demanding prose on every
     // passing entry produced boilerplate nobody read.
-    if (item.result !== 'pass' && item.explanation.length === 0) {
+    if (
+      (item.result === 'fail' || item.result === 'not_applicable') &&
+      item.explanation.length === 0
+    ) {
       errors.push(
         `criteria '${item.id}' ${item.result} verdict MUST carry an explanation`,
       )
@@ -1684,6 +1701,32 @@ export function validateStageOutput(
 
     if (criterion.hard && evaluation.result === 'not_applicable') {
       errors.push(`hard criterion '${criterion.id}' MUST NOT be not_applicable`)
+    }
+
+    if (evaluation.result === 'skipped') {
+      if (output.result === 'success') {
+        errors.push(
+          `criteria '${criterion.id}' MUST NOT be skipped on a success result`,
+        )
+      } else if (output.result === 'failure' && criterion.type !== 'shell') {
+        errors.push(
+          `criteria '${criterion.id}' MUST NOT be skipped on a failure ` +
+            'result unless it is a shell criterion',
+        )
+      }
+
+      if (evaluation.explanation.length === 0) {
+        errors.push(
+          `criteria '${criterion.id}' skipped verdict MUST carry an explanation`,
+        )
+      }
+    }
+
+    if (evaluation.result === 'unevaluated') {
+      errors.push(
+        `criteria '${criterion.id}' is unevaluated; the worker must fill ` +
+          'every criterion before submission',
+      )
     }
 
     if (
