@@ -327,6 +327,55 @@ test('the launch step carries the platform text it has to survive', () => {
     !procedure.includes('Add `--mark-background` when'),
     'a backgrounded launch is an immediate action, never an optional flag',
   )
+  assert.ok(
+    !procedure.includes('A wrong flag fails loudly'),
+    'the procedure MUST NOT claim every mismatched flag is rejected',
+  )
+  assert.ok(
+    procedure.includes('`--foreground-returned` refuses an absent output'),
+    'the procedure MUST state the foreground-return check the harness enforces',
+  )
+  assert.ok(
+    procedure.includes(
+      'refuses `--foreground-returned` together with `--mark-background`',
+    ),
+    'the procedure MUST state the flag combination the CLI rejects',
+  )
+
+  const supervisorSurfaces = [
+    'library/personas/orchestrator.md',
+    'library/cursor/commands/pan-start.md',
+    'library/cursor/commands/pan-resume.md',
+  ]
+
+  for (const surface of supervisorSurfaces) {
+    const text = repoText(surface)
+
+    assert.ok(
+      text.includes('Arm the watch in the launch turn before any other action'),
+      `${surface} MUST arm the watch unconditionally in the launch turn`,
+    )
+
+    for (const flag of [
+      '--mark-background',
+      '--foreground-returned',
+      '--agent-state running',
+      '--agent-state completed',
+    ]) {
+      assert.ok(text.includes(flag), `${surface} MUST name ${flag}`)
+    }
+  }
+
+  const orchestrator = repoText('library/personas/orchestrator.md')
+  const launchTurnRules = orchestrator.match(
+    /Arm the watch in the launch turn before any other action/gu,
+  )
+
+  assert.equal(
+    launchTurnRules?.length,
+    2,
+    'the orchestrator redline and launch steps MUST both require launch-turn arming',
+  )
 })
 
 // Run 63310 genre-label HR-004: the verify invocation defined two evidence

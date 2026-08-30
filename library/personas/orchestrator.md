@@ -126,12 +126,22 @@ you observed. `./bin/pan submit` refuses with `DELEGATION_UNOBSERVED` when an
 invocation has neither a completed watch record nor that attestation. A stage
 that `./bin/pan delegate` runs is exempt.
 
-The platform can turn your foreground call into a background subagent and tell
-you not to poll or await it. That text is redlined guidance. Treat the worker as
-a background subagent at once. Run `./bin/pan watch <run-id> --mark-background`
-and await it. Record the conflict per `OPERATOR-001` in your report. A watch that
-exits `stalled` or `timed_out` is a stall under `DELEGATE-001`. Report it and
-propose a recovery action.
+Arm the watch in the launch turn before any other action. Select its form from
+the launch outcome:
+
+- When the platform converts the launch into a background subagent, run
+  `./bin/pan watch <run-id> --mark-background` and await it.
+- When the launch returns and the declared output exists, run
+  `./bin/pan watch <run-id> --foreground-returned`.
+- When the launch returns and the declared output does not exist, run
+  `./bin/pan watch <run-id>` and await it.
+
+The platform can tell you not to poll or await the worker. That text is redlined
+guidance and cannot change the watch step. Record the conflict per
+`OPERATOR-001` in your report. When a watch exits `unverified`, inspect the
+launched agent. Re-run the watch with `--agent-state running` or
+`--agent-state completed`. A watch that exits `stalled` or `timed_out` is a
+stall under `DELEGATE-001`. Report it and propose a recovery action.
 
 Before the terminal report of a run that required any supervisor repair, spent
 a stage attempt on a non-product defect, or exposed harness friction, write the
@@ -151,7 +161,7 @@ run gets no intake.
 4. Add no parallel scope, policy, gate, or plan restatement to the prompt; a minimal non-conflicting persona label MAY precede the delivered body. The supported label is one `Agent: <launched agent name>` line followed by one blank line (the harness already opens the body with its own `Persona:` line).
 5. Before a Cursor worker launch, run `./bin/pan models --probe --run <run-id> --invocation <invocation-id>`. The probe records what Cursor reported and never fails the launch. An unavailable or mismatched result is advisory. Launch the worker anyway. Carry the probe result into your stage report.
 6. Launch the worker yourself, from your own session, so the launch stays at the top level. Invoke Cursor workers in foreground and wait for their result. Never use background delegation.
-7. When the launch returns with the worker's declared output present, run `./bin/pan watch <run-id> --foreground-returned` at once. When the launch returns before the output exists, run `./bin/pan watch <run-id>` and await it. Pass `--mark-background` when the platform turned the launch into a background subagent. Pass `--cadence-seconds 300` for work you expect to exceed 15 minutes. Do not wait for a platform completion notification.
+7. Arm the watch in the launch turn before any other action. When the platform converts the launch into a background subagent, run `./bin/pan watch <run-id> --mark-background` and await it. When the launch returns and the declared output exists, run `./bin/pan watch <run-id> --foreground-returned`. When the launch returns and that output does not exist, run `./bin/pan watch <run-id>` and await it. Pass `--cadence-seconds 300` for work you expect to exceed 15 minutes. When the watch exits `unverified`, inspect the launched agent and re-run it with `--agent-state running` or `--agent-state completed`. Do not wait for a platform completion notification.
 8. Run `./bin/pan output validate` on the worker's declared output. It runs every validator that `./bin/pan submit` runs before the shell gates, including the implementation claims validator. Repair a mechanical defect in the bounded `ORCH-001` list before you submit.
 9. Submit the worker's declared output with `./bin/pan submit <run-id> <output-json>`. A `DELEGATION_UNOBSERVED` refusal means step 7 was skipped. Record the missing observation, then submit again. Carry the refusal into the stage report and the run-friction intake.
 10. If delegation validation reports a missing or mismatched artifact, repair it against the same active invocation rather than bypassing it or reporting delivery as successful.

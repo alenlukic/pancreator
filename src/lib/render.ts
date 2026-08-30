@@ -331,8 +331,9 @@ function renderSupervisorProcedureBody(
                   ', and DELEGATE-001 above makes the watch the check ' +
                   'mechanism rather than the notification. Because this step ' +
                   'is unconditional, that text has no decision left to ' +
-                  'change. A wrong flag fails loudly and names the one to ' +
-                  'use instead; a skipped watch fails at submission with ' +
+                  'change. `--foreground-returned` refuses an absent output, ' +
+                  'and the CLI refuses `--foreground-returned` together with ' +
+                  '`--mark-background`. A skipped watch fails at submission with ' +
                   '`DELEGATION_UNOBSERVED`. Do not end your turn on the ' +
                   'launch, and do not let the turn continue unwatched. Size ' +
                   'each await from the watch cadence — one cadence per ' +
