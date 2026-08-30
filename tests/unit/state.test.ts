@@ -3,11 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import {
-  createRun,
-  getRunStatus,
-  quarantineRunForAgent,
-} from '../../src/lib/engine.js'
+import { getRunStatus, quarantineRunForAgent } from '../../src/lib/engine.js'
 import { tickHypervisor } from '../../src/lib/hypervisor.js'
 import { renderStatus } from '../../src/lib/render.js'
 import {
@@ -19,7 +15,7 @@ import {
   statePath,
 } from '../../src/lib/state.js'
 import type { RunState, StageHistoryItem } from '../../src/lib/types.js'
-import { createFixture } from '../helpers.js'
+import { createFixture, createRun } from '../helpers.js'
 
 test('state events use recoverable content-addressed references', () => {
   const root = createFixture()

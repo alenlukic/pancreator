@@ -10,14 +10,12 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
-  createRun,
   decideRun,
   getRunState,
   getRunStatus,
   prepareInvocation,
   probeRunInvocationModel,
   recordSupervisorModelEvidence,
-  submitOutput,
 } from '../../src/lib/engine.js'
 import {
   expectedCursorModelForSpec,
@@ -26,9 +24,11 @@ import {
 import { stageBySlug, loadWorkflow } from '../../src/lib/workflow.js'
 import {
   createFixture,
+  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
+  submitAsSupervisor,
 } from '../helpers.js'
 
 function withFakeCursorAgent<T>(
@@ -85,7 +85,7 @@ test('supervisor evidence activates future worker-card enforcement', () => {
     makeOutput(legacyRoot, legacyInvocation, legacyStage),
   )
   writeCanonicalDelegation(legacyRoot, legacyInvocation)
-  submitOutput(legacyRoot, legacyRun.run_id, legacyInvocation.output.path)
+  submitAsSupervisor(legacyRoot, legacyRun.run_id, legacyInvocation.output.path)
   decideRun(legacyRoot, legacyRun.run_id, 'approve')
   recordSupervisorModelEvidence(
     legacyRoot,
@@ -161,7 +161,7 @@ test('supervisor evidence activates future worker-card enforcement', () => {
   )
   writeCanonicalDelegation(root, invocation)
 
-  const submitted = submitOutput(root, run.run_id, invocation.output.path)
+  const submitted = submitAsSupervisor(root, run.run_id, invocation.output.path)
 
   assert.ok(
     submitted.state.stage_history.some(
@@ -292,7 +292,7 @@ test('worker probes persist matches, mismatches, and missing metadata alike', ()
   )
   writeCanonicalDelegation(root, invocation)
 
-  const submitted = submitOutput(root, run.run_id, invocation.output.path)
+  const submitted = submitAsSupervisor(root, run.run_id, invocation.output.path)
 
   assert.ok(
     submitted.state.stage_history.some(
@@ -350,7 +350,7 @@ test('a bracketed spec without an installed catalog records rather than blocks',
   )
   writeCanonicalDelegation(root, invocation)
 
-  const submitted = submitOutput(root, run.run_id, invocation.output.path)
+  const submitted = submitAsSupervisor(root, run.run_id, invocation.output.path)
 
   assert.ok(
     submitted.state.stage_history.some(

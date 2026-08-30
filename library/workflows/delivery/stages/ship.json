@@ -30,7 +30,8 @@
     ],
     "prior_attempts": 1,
     "operator_feedback": 1,
-    "include_workspace_ratifications": true
+    "include_workspace_ratifications": true,
+    "suite_profile": true
   },
   "required_data": {
     "release": "object",

@@ -5,22 +5,22 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
-  createRun,
   decideRun,
   pauseRun,
   prepareInvocation,
   resumeRun,
   setRunStage,
-  submitOutput,
   waiveGate,
 } from '../../src/lib/engine.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
+  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
+  submitAsSupervisor,
 } from '../helpers.js'
 
 import type { Invocation, RunState } from '../../src/lib/types.js'
@@ -73,6 +73,13 @@ test('submit reports the sole operator brief and removes its source', () => {
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
 
+  // The supervisor records the foreground return before it submits; without
+  // the attestation `pan submit` refuses with DELEGATION_UNOBSERVED.
+  execFileSync(
+    process.execPath,
+    [CLI, 'watch', runId, '--foreground-returned', '--json'],
+    { cwd: root, encoding: 'utf8' },
+  )
   const layout = resolveRunLayout(root, runId)
   const filesBefore = listRunFiles(layout.root.absolute)
   const result = JSON.parse(
@@ -191,7 +198,7 @@ test('a default run prepares and submits without any brief file', () => {
 
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
-  submitOutput(root, runId, invocation.output.path)
+  submitAsSupervisor(root, runId, invocation.output.path)
 
   const filesAfter = listRunFiles(layout.root.absolute)
   const added = filesAfter.filter((file) => !filesBefore.includes(file))
@@ -225,7 +232,7 @@ test('operator control records stay out of the operator directory', () => {
 
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
-  submitOutput(root, runId, invocation.output.path)
+  submitAsSupervisor(root, runId, invocation.output.path)
 
   // Rejection feedback at the plan operator gate.
   decideRun(root, runId, 'reject', 'Re-derive the plan with narrower scope.')
@@ -299,7 +306,7 @@ test('a submission with validation errors keeps the brief source', () => {
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
 
-  const submitted = submitOutput(root, runId, invocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
   const layout = resolveRunLayout(root, runId)
   const state = JSON.parse(
     readFileSync(layout.state.absolute, 'utf8'),

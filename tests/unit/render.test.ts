@@ -119,6 +119,13 @@ function delegatedInvocation(root: string): Invocation {
     submit_command: `./bin/pan submit run-fixture ${invocation.output.path}`,
     mode: 'referenced',
     delivery_prompt_path: `${prefix}.delivery.md`,
+    supervisor_card: {
+      path: 'runtime/logs/workflows/run-fixture/agent/supervisor-card.md',
+      sha256: 'a'.repeat(64),
+      attest_command:
+        './bin/pan governance attest-supervisor run-fixture --sha256 ' +
+        'a'.repeat(64),
+    },
     policies: resolvePolicies(root, {
       persona: 'orchestrator',
       workflow: 'delivery',
@@ -134,6 +141,16 @@ test('the worker card names the supervisor procedure and prints no lifecycle com
   const invocation = delegatedInvocation(root)
   const card = renderInvocationMarkdown(invocation)
   const procedure = renderSupervisorProcedureMarkdown(invocation)
+
+  // The procedure delivers the supervisor's complete governance pointer, not
+  // only the delivery policy, and the worker card never carries it.
+  assert.ok(
+    procedure.includes(invocation.delegation?.supervisor_card?.path ?? '!'),
+  )
+  assert.ok(procedure.includes(`sha256:${'a'.repeat(64)}`))
+  assert.ok(procedure.includes('governance attest-supervisor run-fixture'))
+  assert.ok(procedure.includes('SUPERVISOR_CARD_UNATTESTED'))
+  assert.ok(!card.includes('attest-supervisor'))
 
   assert.ok(invocation.delegation)
   assert.ok(

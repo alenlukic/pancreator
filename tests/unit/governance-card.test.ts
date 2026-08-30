@@ -13,6 +13,7 @@ import {
   buildReviewClosure,
   reviewMachineryConflicts,
 } from '../../src/lib/review-scope.js'
+import { createWorktree } from '../../src/lib/worktrees.js'
 import { createFixture, sharedFixture } from '../helpers.js'
 
 test('the pair card resolves coder governance without workflow structure', () => {
@@ -53,6 +54,11 @@ test('every standalone mode renders a card with its policies inlined', () => {
   const root = createFixture()
 
   for (const name of Object.keys(STANDALONE_MODES)) {
+    if (name === 'supervisor') {
+      // The supervisor card binds to a run; supervisor-card.test.ts covers it.
+      continue
+    }
+
     const card = buildGovernanceCard(root, {
       mode: name,
       outputPath: `runtime/inbox/${name}-card.md`,
@@ -174,7 +180,7 @@ test('a missing operator input is reported rather than silently omitted', () => 
 
   assert.throws(
     () => buildGovernanceCard(root, { mode: 'nonsense' }),
-    /Available: best-of-n, decomposition, investigation, pair, repair, review, shepherd, spotfix, unbound/u,
+    /Available: best-of-n, build-briefs, build-docs, decomposition, investigation, pair, qa-workflow, release, repair, review, shepherd, spotfix, supervisor, unbound, write-pr/u,
   )
 })
 
@@ -489,5 +495,107 @@ test('--base is refused outside the review mode', () => {
   assert.throws(
     () => buildGovernanceCard(root, { mode: 'pair', baseRef: 'HEAD' }),
     /--base applies to the review mode only/u,
+  )
+})
+
+test('the supervisor mode refuses a run-less card', () => {
+  const root = sharedFixture()
+
+  assert.throws(
+    () => buildGovernanceCard(root, { mode: 'supervisor' }),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'SUPERVISOR_CARD_REQUIRES_RUN',
+  )
+})
+
+test('the card-less command modes resolve their persona governance', () => {
+  const root = createFixture()
+  const expectations: Record<string, string[]> = {
+    release: ['REPO-001', 'OPERATOR-001'],
+    'write-pr': ['PR-001', 'REPO-001'],
+    'build-docs': ['PRIMER-001', 'REPO-001'],
+    'build-briefs': ['BRIEF-001', 'REPO-001'],
+    'qa-workflow': ['DELEGATE-001', 'RUNTIME-001'],
+  }
+
+  for (const [mode, expected] of Object.entries(expectations)) {
+    const card = buildGovernanceCard(root, {
+      mode,
+      outputPath: `runtime/inbox/${mode}-card.md`,
+    })
+    const ids = card.policies.map((policy) => policy.id)
+
+    for (const id of expected) {
+      assert.ok(ids.includes(id), `${mode} card omits ${id}: ${ids.join(', ')}`)
+    }
+  }
+})
+
+test('the review card scopes the closure from the bound worktree when the main checkout sits at the base', () => {
+  const root = createFixture()
+  const git = (args: string[]) =>
+    execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim()
+  const base = git(['rev-parse', 'HEAD'])
+  const policyPath = path.join(root, 'governance/policies/GLOBAL-002.json')
+  const policy = JSON.parse(readFileSync(policyPath, 'utf8')) as {
+    instructions: string[]
+  }
+
+  policy.instructions.push('Agents MUST record a worktree-scoped clause.')
+  writeFileSync(policyPath, `${JSON.stringify(policy, null, 2)}\n`)
+  git(['add', 'governance/policies/GLOBAL-002.json'])
+  git(['-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-qm', 'change'])
+
+  const head = git(['rev-parse', 'HEAD'])
+
+  // The reviewing checkout stays at the base, as it does when an operator
+  // reviews a branch from main. The worktree sits at the target head.
+  git(['checkout', '-q', base])
+  createWorktree(root, 'review-target', { from: head })
+
+  // Without the worktree, the scope check reads the closure from the main
+  // checkout, which is not the target head.
+  assert.throws(
+    () =>
+      buildGovernanceCard(root, {
+        mode: 'review',
+        outputPath: 'runtime/inbox/review-card-unbound.md',
+        baseRef: base,
+        targetRef: head,
+      }),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'REVIEW_CLOSURE_REVISION_MISMATCH',
+  )
+
+  const card = buildGovernanceCard(root, {
+    mode: 'review',
+    outputPath: 'runtime/inbox/review-card.md',
+    worktreeName: 'review-target',
+    baseRef: base,
+    targetRef: head,
+  })
+
+  assert.equal(card.worktree?.name, 'review-target')
+
+  const written = readFileSync(path.join(root, card.path), 'utf8')
+
+  assert.match(written, /## 🧭 Conduct under the base revision/u)
+  assert.match(written, /\*\*GLOBAL-002 · base text\*\*/u)
+  assert.match(written, /## 🌳 Workspace worktree/u)
+
+  // An explicit closure revision also unblocks the unbound form.
+  const explicit = buildGovernanceCard(root, {
+    mode: 'review',
+    outputPath: 'runtime/inbox/review-card-explicit.md',
+    baseRef: base,
+    targetRef: head,
+    closureRevision: base,
+  })
+
+  assert.match(
+    readFileSync(path.join(root, explicit.path), 'utf8'),
+    /## 🧭 Conduct under the base revision/u,
   )
 })

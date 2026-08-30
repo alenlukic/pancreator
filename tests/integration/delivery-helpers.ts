@@ -5,12 +5,10 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 import {
-  createRun,
   decideRun,
   getRunState,
   prepareInvocation,
   setRunStage,
-  submitOutput,
 } from '../../src/lib/engine.js'
 import { syncCursorProjection } from '../../src/lib/projection.js'
 import type {
@@ -23,11 +21,13 @@ import type {
 } from '../../src/lib/types.js'
 import { loadWorkflowFile, stageBySlug } from '../../src/lib/workflow.js'
 import {
+  cloneTree as cloneSharedTree,
   createFixture,
+  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
-  cloneTree as cloneSharedTree,
+  submitAsSupervisor,
 } from '../helpers.js'
 
 /** A verify payload whose verdict matches a failed stage. */
@@ -87,7 +87,7 @@ export function submitStageOutput(
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
 
-  return submitOutput(root, runId, invocation.output.path)
+  return submitAsSupervisor(root, runId, invocation.output.path)
 }
 
 /** The workflow definition a run snapshotted at creation. */
@@ -132,7 +132,10 @@ export function submitCurrentStage(
     writeCanonicalDelegation(root, invocation)
   }
 
-  return { invocation, ...submitOutput(root, runId, invocation.output.path) }
+  return {
+    invocation,
+    ...submitAsSupervisor(root, runId, invocation.output.path),
+  }
 }
 
 export const CLAUDE_CODE_SPEC =

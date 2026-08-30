@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "read_only_commands": ["pan-status", "pan-summarize-context", "pan-validate"],
+  "supervisor_commands": ["pan-resume", "pan-start"],
+  "pending_card_steps": []
+}

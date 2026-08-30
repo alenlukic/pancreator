@@ -619,6 +619,30 @@
       "policies": ["VERSION-001"]
     },
     {
+      "persona": "release-steward",
+      "workflow": "standalone",
+      "stage": "write-pr",
+      "policies": ["PR-001"]
+    },
+    {
+      "persona": "librarian",
+      "workflow": "standalone",
+      "stage": "build-briefs",
+      "policies": ["BRIEF-001"]
+    },
+    {
+      "persona": "librarian",
+      "workflow": "standalone",
+      "stage": "build-docs",
+      "policies": ["PRIMER-001", "REPO-001"]
+    },
+    {
+      "persona": "harness-workflow-qa",
+      "workflow": "standalone",
+      "stage": "qa-workflow",
+      "policies": ["DELEGATE-001", "RUNTIME-001"]
+    },
+    {
       "persona": "decomposer",
       "workflow": "*",
       "stage": "*",

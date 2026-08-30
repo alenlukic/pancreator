@@ -43,7 +43,7 @@ The meta-orchestrator performs supervisor mechanics for every child run. It MUST
 
 1. Run `{{PANCREATOR_PAN_COMMAND}} status <run-id> --json` for each non-terminal child.
 2. Record this session's sourced effective model for each child that has no supervisor evidence. Use `{{PANCREATOR_PAN_COMMAND}} models evidence --run <run-id> --role supervisor --effective-model <model> --source <source>`.
-3. Handle `prepare_invocation` with `{{PANCREATOR_PAN_COMMAND}} prepare <run-id>`, then read the generated card.
+3. Before the first `prepare` of each child run, run `{{PANCREATOR_PAN_COMMAND}} governance card --mode supervisor --run <run-id>`, read it in full, and run `{{PANCREATOR_PAN_COMMAND}} governance attest-supervisor <run-id> --sha256 <digest>`. Handle `prepare_invocation` with `{{PANCREATOR_PAN_COMMAND}} prepare <run-id>`, then read the generated card. Re-attest when `prepare` refuses with `SUPERVISOR_CARD_UNATTESTED`.
 4. Handle cursor `invoke_agent` actions with **Worker delivery**. Launch all ready workers together for parallel execution.
 5. Handle external `invoke_agent` actions with `{{PANCREATOR_PAN_COMMAND}} delegate <run-id>` and wait for completion.
 6. Handle `supervisor_assessment` by judging only the listed criteria and running `{{PANCREATOR_PAN_COMMAND}} assess`.
@@ -61,8 +61,9 @@ The delivery rules in `BESTOFN-001`, on your governance card, govern every worke
 4. Invoke the card's run-scoped `pan-<persona>` agent with that exact body.
 5. Run `{{PANCREATOR_PAN_COMMAND}} models --probe --run <run-id> --invocation <invocation-id>` before each Cursor worker launch.
 6. Keep every worker call foreground and blocking. Never use background delegation.
-7. Submit the worker's declared output with `{{PANCREATOR_PAN_COMMAND}} submit <run-id> <output-json>`.
-8. Re-check the run's `pending_action` and continue.
+7. When the call returns with the worker's declared output present, run `{{PANCREATOR_PAN_COMMAND}} watch <run-id> --foreground-returned` at once. When it returns before the output exists, run `{{PANCREATOR_PAN_COMMAND}} watch <run-id>` and await it. `{{PANCREATOR_PAN_COMMAND}} submit` refuses with `DELEGATION_UNOBSERVED` when neither record exists.
+8. Submit the worker's declared output with `{{PANCREATOR_PAN_COMMAND}} submit <run-id> <output-json>`.
+9. Re-check the run's `pending_action` and continue.
 
 ## Failure policy
 

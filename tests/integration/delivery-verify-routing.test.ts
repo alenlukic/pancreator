@@ -4,14 +4,12 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
-  createRun,
   decideRun,
   getRunState,
   pauseRun,
   prepareInvocation,
   resumeRun,
   setRunStage,
-  submitOutput,
   waiveGate,
 } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
@@ -19,12 +17,15 @@ import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import type { StageDefinition, StageOutput } from '../../src/lib/types.js'
 import {
+  attachTargetInstructionEvidence,
   createFixture,
+  createRun,
   makeAttestation,
   makeOutput,
   writeCanonicalDelegation,
   writeEvidenceReports,
   writeJson,
+  submitAsSupervisor,
 } from '../helpers.js'
 import {
   checkpoint,
@@ -38,8 +39,26 @@ test('a scaled verification timeout preserves the environment-blocked route', ()
   const commandDelayMs = 1_500
   const resolvedTimeoutMs = 5_000
 
-  // Under the light level the verify gate runs the fast profile, so both
-  // scenarios route through it.
+  // The environment-blocked route needs a failed baseline of the same
+  // profile, and only interior profiles are baselined. An operator level
+  // keeps the verify gate on fast so both scenarios route through it.
+  const configPath = path.join(root, 'config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  config.verification = {
+    active: 'infra-fast',
+    levels: {
+      'infra-fast': {
+        summary: 'Verify gate re-runs fast against the baseline.',
+        gates: { 'verify.full_suite': 'fast' },
+      },
+    },
+  }
+  writeJson(configPath, config)
+
   for (const [stageFile, criterionId] of [
     ['verify.json', 'verify.full_suite'],
     ['implement.json', 'implement.unit_tests'],
@@ -100,6 +119,10 @@ test('a scaled verification timeout preserves the environment-blocked route', ()
     state.run_id,
     stageBySlug(workflow, 'implement'),
     'success',
+    [],
+    // Compliant read evidence keeps the pre-gate validators green, so the
+    // implement gate executes instead of being skipped.
+    (output) => attachTargetInstructionEvidence(root, output, ['AGENTS.md']),
   )
   const fastBaseline = getRunState(root, state.run_id)
     .repository_check_baselines?.fast
@@ -421,7 +444,7 @@ test('governance and artifact defects are advisory before ship and never loop to
     },
   })
 
-  const submitted = submitOutput(root, runId, invocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
   assert.equal(submitted.record.outcome, 'success')
   assert.equal(submitted.state.current_stage, 'ship')
@@ -460,7 +483,7 @@ test('ship owns governance artifact review and pauses instead of looping to impl
     invocation_attestation: makeAttestation(invocation),
   })
 
-  const submitted = submitOutput(root, runId, invocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
   assert.equal(submitted.record.outcome, 'failure')
   // Ship carries an operator gate, so a failure stops for a decision first.
@@ -512,7 +535,7 @@ test('a required implement validator failure blocks the stage transition', () =>
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
 
-  const submitted = submitOutput(root, runId, invocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
   assert.equal(submitted.record.outcome, 'failure')
   assert.notEqual(submitted.state.current_stage, 'verify')

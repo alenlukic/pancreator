@@ -3,18 +3,16 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import {
-  createRun,
-  prepareInvocation,
-  submitOutput,
-} from '../../src/lib/engine.js'
+import { prepareInvocation } from '../../src/lib/engine.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
+  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
+  submitAsSupervisor,
 } from '../helpers.js'
 
 test('read-only stage fails when a source workspace change is unattributed', () => {
@@ -47,7 +45,11 @@ test('read-only stage fails when a source workspace change is unattributed', () 
   })
   writeCanonicalDelegation(root, first)
 
-  const failed = submitOutput(root, unattributed.run_id, first.output.path)
+  const failed = submitAsSupervisor(
+    root,
+    unattributed.run_id,
+    first.output.path,
+  )
 
   assert.equal(failed.record.outcome, 'failure')
   assert.ok(
@@ -78,7 +80,7 @@ test('read-only stage fails when a source workspace change is unattributed', () 
   })
   writeCanonicalDelegation(root, second)
 
-  const passed = submitOutput(root, attributed.run_id, second.output.path)
+  const passed = submitAsSupervisor(root, attributed.run_id, second.output.path)
   const cleanliness = passed.record.evaluation.deterministic.find(
     (item) => item.id === 'scope.no_unapproved_changes',
   )

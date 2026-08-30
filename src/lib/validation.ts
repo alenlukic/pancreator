@@ -15,6 +15,7 @@ import {
   toRepoRelative,
   writeTextAtomic,
 } from './io.js'
+import { validateEvalScenarios } from './evals/scenario.js'
 import { loadPipelineConfig, resolveConfigPersonas } from './pipeline-config.js'
 import {
   assertRepositoryChecksValid,
@@ -31,6 +32,11 @@ import type { LoadedPipelineConfig } from './pipeline-config.js'
 import { auditDirectives } from './governance/audit-directives.js'
 import { HANDLER_IDS } from './requirements/handlers.js'
 import { resolveRunLayout } from './run-layout.js'
+import {
+  SUITE_PROFILE_GATE_PROFILE,
+  TEST_PROFILE_ENV,
+  suiteProfileEvidencePath,
+} from './suite-profile.js'
 import { loadRegistry, validateRegistry } from './requirements/registry.js'
 import {
   resolveRequirements,
@@ -63,6 +69,7 @@ import {
   gitWorkspaceSnapshot,
   workspaceChangedPathsFromSnapshots,
 } from './git.js'
+import { validateCommandGovernance } from './governance/command-coverage.js'
 import { listWorkflowSlugs, loadWorkflow } from './workflow.js'
 import {
   applyOperatorInvolvement,
@@ -2192,12 +2199,21 @@ function runShellCheck(
       ].join('\n'),
     )
 
+    // The profile recorded with the original execution stands in for a
+    // re-profile the cached pass never performs.
+    const cachedSuiteProfile =
+      cached.suite_profile_path &&
+      fileExists(path.join(root, cached.suite_profile_path))
+        ? cached.suite_profile_path
+        : undefined
+
     return {
       id: criterion.id,
       type: 'shell',
       hard: Boolean(criterion.hard),
       passed: cachedComparison ? cachedComparison.passed : true,
       cached: true,
+      ...(cachedSuiteProfile ? { suite_profile_path: cachedSuiteProfile } : {}),
       explanation,
       ...(cachedComparison
         ? { repository_check_delta: cachedComparison.delta }
@@ -2227,6 +2243,13 @@ function runShellCheck(
   let timedOut = false
   let skipped = false
   let repositoryResult: RepositoryCheckResult | undefined
+  // Only the `full` profile is profiled: it is the last suite execution before
+  // ship. Baselines, interior gates, and agent-side runs never set the
+  // variable. The artifact exists only when the profile ran the reporter.
+  const suiteProfileTarget =
+    profileName === SUITE_PROFILE_GATE_PROFILE
+      ? suiteProfileEvidencePath(runDirectory, artifactId)
+      : null
 
   if (resolution.removed_reason) {
     exitCode = 0
@@ -2242,6 +2265,9 @@ function runShellCheck(
     repositoryResult = runRepositoryCheck(root, profileName, {
       timeout_ms: criterion.timeout_ms,
       workspace: workspaceDir,
+      ...(suiteProfileTarget
+        ? { env: { [TEST_PROFILE_ENV]: suiteProfileTarget } }
+        : {}),
     })
     onProgress?.(
       `${criterion.id} ${repositoryResult.status} in ${(repositoryResult.total_duration_ms / 1000).toFixed(1)}s`,
@@ -2369,6 +2395,11 @@ function runShellCheck(
     baselineComparison?.passed && !commandSucceeded,
   )
 
+  const suiteProfilePath =
+    suiteProfileTarget && repositoryResult && fileExists(suiteProfileTarget)
+      ? path.relative(root, suiteProfileTarget).split(path.sep).join('/')
+      : undefined
+
   // Cache only a clean pass. A baseline-relative pass credits this run's own
   // baseline.
   if (cacheKey && passed && commandSucceeded && !skipped && !timedOut) {
@@ -2384,6 +2415,7 @@ function runShellCheck(
         .split(path.sep)
         .join('/'),
       ...(repositoryResult ? { repository_result: repositoryResult } : {}),
+      ...(suiteProfilePath ? { suite_profile_path: suiteProfilePath } : {}),
     })
   }
   const environmentBlocked = isEnvironmentBlockedDelta(
@@ -2432,6 +2464,7 @@ function runShellCheck(
     ...(baselineEvidencePath
       ? { baseline_evidence_path: baselineEvidencePath }
       : {}),
+    ...(suiteProfilePath ? { suite_profile_path: suiteProfilePath } : {}),
     workspace_fingerprint: workspaceFingerprint,
   }
 }
@@ -2679,8 +2712,8 @@ export function evaluateDeterministicCriteria(
   stageOutput?: StageOutput,
   onProgress?: (message: string) => void,
   gateSkipReason: string | null = null,
+  afterSnapshot: WorkspaceSnapshot = gitWorkspaceSnapshot(workspaceDir),
 ): { results: DeterministicResult[]; workspace: WorkspaceSnapshot } {
-  const afterSnapshot = gitWorkspaceSnapshot(workspaceDir)
   const results: DeterministicResult[] = []
   let scopePassed = true
 
@@ -3254,6 +3287,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
   }
 
   errors.push(...validateQuestionToolAccess(root))
+  errors.push(...validateEvalScenarios(root))
   errors.push(...validateReleaseMetadata(root).errors)
 
   try {
@@ -3523,6 +3557,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
   }
 
   validateAdHocModelInheritanceGuidance(root, errors)
+  validateCommandGovernance(root, errors, warnings)
 
   if (
     fileExists(path.join(root, 'library', 'cursor', 'commands', 'pan-repo.md'))

@@ -38,8 +38,9 @@
         },
         {
           "path": "data.implementation.tests_added[]",
-          "type": "string",
-          "format": "'<test file path>' optionally followed by '::<test case>' (pytest node ids and the spaced ' :: ' display form both resolve); the file portion must exist, e.g. 'tests/unit/example.test.ts::adds provenance rows'"
+          "type": "object",
+          "required": ["path", "contract"],
+          "format": "{ path, contract }: path is '<test file path>' optionally followed by '::<test case>' (pytest node ids and the spaced ' :: ' display form both resolve) and the file portion must exist, e.g. 'tests/unit/example.test.ts::adds provenance rows'; contract is one non-empty sentence naming the behavior the test proves. Every new test file and every changed test file with a net-positive test(/it( count MUST have an entry with a contract. A bare string still parses as { path } and fails only when that delta requires a contract. A change that adds no tests needs no entry."
         },
         {
           "path": "data.implementation.remediation[]",
@@ -142,8 +143,9 @@
         },
         {
           "path": "data.implementation.tests_added[]",
-          "type": "string",
-          "format": "'<test file path>' optionally followed by '::<test case>' (pytest node ids and the spaced ' :: ' display form both resolve); the file portion must exist, e.g. 'tests/unit/example.test.ts::adds provenance rows'"
+          "type": "object",
+          "required": ["path", "contract"],
+          "format": "{ path, contract }: path is '<test file path>' optionally followed by '::<test case>' (pytest node ids and the spaced ' :: ' display form both resolve) and the file portion must exist, e.g. 'tests/unit/example.test.ts::adds provenance rows'; contract is one non-empty sentence naming the behavior the test proves. Every new test file and every changed test file with a net-positive test(/it( count MUST have an entry with a contract. A bare string still parses as { path } and fails only when that delta requires a contract. A change that adds no tests needs no entry."
         },
         {
           "path": "data.implementation.remediation[]",

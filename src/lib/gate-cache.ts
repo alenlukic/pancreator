@@ -30,6 +30,8 @@ export interface GateCacheEntry {
   evidence_path: string
   /** A later run compares this result against its own baseline. */
   repository_result?: RepositoryCheckResult
+  /** Suite profile the reporter wrote during the original execution. */
+  suite_profile_path?: string
 }
 
 export interface GateCacheStatus {

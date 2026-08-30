@@ -470,8 +470,11 @@ function selectGateEvidence(
       condition: current
         ? `Cite this evidence in \`data.verify.gate_evidence_citations\` with ` +
           `profile \`${evidence.profile}\`, fingerprint \`${evidence.fingerprint}\`, ` +
-          'and this path. Do not run the profile agent-side. Read the ' +
-          'evidence only to confirm what the gate covered.'
+          'and this path. Read the evidence to confirm what the gate ' +
+          'covered. The verifier does not run this profile. An evidence ' +
+          'worker may run the fast profile once, as validation of its own ' +
+          'evidence, and never the full profile. After a remediation, no ' +
+          'agent runs any profile.'
         : `This evidence predates the current workspace fingerprint ` +
           `\`${workspaceFingerprint}\`. Do not cite it as current. Do not ` +
           `run the \`${evidence.profile}\` profile yourself. The verify ` +

@@ -5,7 +5,6 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
-  createRun,
   prepareInvocation,
   validateOutputForSubmission,
 } from '../../src/lib/engine.js'
@@ -15,7 +14,7 @@ import { runRequirement } from '../../src/lib/requirements/run.js'
 import type { InvocationKind } from '../../src/lib/requirements/types.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
-import { createFixture, makeOutput, writeJson } from '../helpers.js'
+import { createFixture, createRun, makeOutput, writeJson } from '../helpers.js'
 
 const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
 

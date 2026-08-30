@@ -186,6 +186,111 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST NOT commit, push, merge, publish, deploy, or perform destructive source-control actions unless the operator explicitly directs that action.',
     ],
   },
+  supervisor: {
+    kind: 'supervisor',
+    persona: 'orchestrator',
+    workflow: 'standalone',
+    stage: '*',
+    title: 'Run supervisor',
+    summary:
+      'The supervisor of one workflow run. The card carries the full text of ' +
+      'every policy the lookup table resolves for the orchestrator persona ' +
+      'and the run workflow. `pan init` and `pan prepare` render it, and ' +
+      '`pan prepare` and `pan submit` refuse until the supervisor attests ' +
+      'the current digest with `pan governance attest-supervisor`.',
+    boundaries: [
+      'You MUST read this card in full before you prepare, delegate, or submit for the run, and MUST attest its digest with the command the card names.',
+      'You MUST re-read and re-attest the card when `pan prepare` reports a new digest.',
+      'You MUST NOT launch a nested supervisor; every stage worker launches from this session.',
+      PROTECTED_PATH_RULE,
+      'You MUST NOT commit, push, merge, publish, deploy, or perform destructive source-control actions unless the operator explicitly directs that action.',
+    ],
+  },
+  release: {
+    kind: 'standalone',
+    persona: 'release-steward',
+    workflow: 'standalone',
+    stage: 'release',
+    title: 'Release metadata preparation',
+    summary:
+      'Prepare or regenerate Pancreator release metadata from the complete ' +
+      'repository delta, outside a workflow ship stage. Self-development ' +
+      'installations only.',
+    boundaries: [
+      'You MUST stop without mutation unless the installation mode is `self_development`.',
+      'You MUST stop when a mutating workflow is active against this workspace.',
+      'You MUST edit only `CHANGELOG.md`, `VERSION`, `package.json`, `package-lock.json`, `README.md`, and version-bearing Markdown under `docs/`, and MUST NOT edit `release/index.json`.',
+      PROTECTED_PATH_RULE,
+      'You MUST NOT commit, push, open or merge a pull request, publish, deploy, rewrite history, or invent the future release commit hash.',
+    ],
+  },
+  'write-pr': {
+    kind: 'standalone',
+    persona: 'release-steward',
+    workflow: 'standalone',
+    stage: 'write-pr',
+    title: 'Pull-request description',
+    summary:
+      'Write one pull-request description for the current branch and ' +
+      'worktree against an operator-selected base ref. The session writes ' +
+      'one Markdown artifact and nothing else.',
+    boundaries: [
+      'You MUST write only the declared description path under `runtime/pr-descriptions/`.',
+      'You MUST compare the branch and worktree against the merge base, never only `HEAD` or only the unstaged diff.',
+      PROTECTED_PATH_RULE,
+      'You MUST NOT modify source, workflow state, release metadata, commits, branches, remotes, or pull requests, and MUST NOT run `gh pr create`, commit, push, merge, publish, or deploy.',
+    ],
+  },
+  'build-docs': {
+    kind: 'documentation',
+    persona: 'librarian',
+    workflow: 'standalone',
+    stage: 'build-docs',
+    title: 'Target repository primer',
+    summary:
+      'Build or rebuild the target repository primer and the verification ' +
+      'profile from verified target sources.',
+    boundaries: [
+      'You MUST write only `docs/target-repo-primer.md`, `runtime/repository-checks.json`, and the declared generated language-handbook outputs.',
+      'You MUST preserve operator customization in the existing outputs and MUST surface any conflict with fresh detection.',
+      PROTECTED_PATH_RULE,
+      'You MUST NOT modify target source or workflow state, and MUST NOT commit, push, merge, publish, or deploy.',
+    ],
+  },
+  'build-briefs': {
+    kind: 'documentation',
+    persona: 'librarian',
+    workflow: 'standalone',
+    stage: 'build-briefs',
+    title: 'Operator brief system',
+    summary:
+      'Build or regenerate the target repository operator brief ontology and ' +
+      'project design system.',
+    boundaries: [
+      'You MUST write only `docs/operator-briefs/project.json` and `docs/operator-briefs/project.css`.',
+      'You MUST NOT duplicate or override a Pancreator-owned semantic key or shared primitive.',
+      PROTECTED_PATH_RULE,
+      'You MUST NOT modify target source, workflow state, shared primitives, or governance, and MUST NOT commit, push, merge, publish, or deploy.',
+    ],
+  },
+  'qa-workflow': {
+    kind: 'standalone',
+    persona: 'harness-workflow-qa',
+    workflow: 'standalone',
+    stage: 'qa-workflow',
+    title: 'Top-level workflow QA',
+    summary:
+      'Drive one workflow run in the top-level session to validate harness ' +
+      'changes, record the QA evidence, and investigate every flagged issue ' +
+      'to its root cause. The run itself is governed by its supervisor card.',
+    boundaries: [
+      'You MUST attest the supervisor card of the driven run before you prepare or submit for it.',
+      'You MUST write the QA record under the run `operator/qa/` directory.',
+      'You MUST keep commit, push, merge, publication, deployment, branch deletion, and destructive actions outside every waiver.',
+      PROTECTED_PATH_RULE,
+      'You MUST NOT invoke a supervisor subagent.',
+    ],
+  },
   decomposition: {
     kind: 'decomposition',
     persona: 'decomposer',
@@ -222,6 +327,11 @@ export interface GovernanceCardOptions {
   baseRef?: string | null
   /** Review mode only. The target head. Use it with `baseRef`. */
   targetRef?: string | null
+  /**
+   * Review mode only. The revision whose checked-out tree the scope check may
+   * read when the scoping checkout sits away from the target head.
+   */
+  closureRevision?: string | null
 }
 
 interface BaseConductPolicy {
@@ -373,7 +483,14 @@ function renderBaseConduct(block: BaseConductBlock): string[] {
   return lines
 }
 
-function renderGovernanceCardMarkdown(options: {
+export interface GovernanceCardRunBinding {
+  run_id: string
+  workflow_slug: string
+  /** Command the supervisor runs after reading the card. */
+  attest_command: string
+}
+
+export function renderGovernanceCardMarkdown(options: {
   mode: StandaloneMode
   policies: Policy[]
   requirements: RequirementManifest
@@ -381,8 +498,11 @@ function renderGovernanceCardMarkdown(options: {
   harnessPrefixNote: string | null
   worktree: WorktreeRecord | null
   baseConduct: BaseConductBlock | null
+  /** Present only on the supervisor card, which binds to one run. */
+  run?: GovernanceCardRunBinding | null
 }): string {
   const { mode, policies, requirements, requestPath } = options
+  const run = options.run ?? null
   const agentRequirements = [
     ...requirements.automation_requirements,
     ...requirements.validation_requirements,
@@ -405,14 +525,34 @@ function renderGovernanceCardMarkdown(options: {
     `# 🤝 ${mode.title}`,
     '',
     `**Mode** \`${mode.kind}\` · **Persona** \`${mode.persona}\` · ` +
-      '**Workflow** none',
+      (run ? `**Workflow** \`${run.workflow_slug}\`` : '**Workflow** none'),
     '',
     mode.summary,
     '',
-    'This card is the complete governance contract for this mode. It is not a ' +
-      'workflow stage: there is no gate, no declared stage output, and no ' +
-      'transition. The operator decides what to do and when it is finished.',
-    '',
+    ...(run
+      ? [
+          `This card is the complete supervisor governance contract for run ` +
+            `\`${run.run_id}\`. Every policy below binds the supervisor for ` +
+            'the whole run. A policy named elsewhere by id only is delivered ' +
+            'here in full.',
+          '',
+          '## ✍️ Attestation',
+          '',
+          `- Run: \`${run.run_id}\``,
+          `- Attest command: \`${run.attest_command}\``,
+          '',
+          'Read this card in full, then run the attest command with the ' +
+            'digest `pan governance card --mode supervisor` reported. ' +
+            '`pan prepare` and `pan submit` fail with ' +
+            '`SUPERVISOR_CARD_UNATTESTED` until the current digest is attested.',
+          '',
+        ]
+      : [
+          'This card is the complete governance contract for this mode. It is not a ' +
+            'workflow stage: there is no gate, no declared stage output, and no ' +
+            'transition. The operator decides what to do and when it is finished.',
+          '',
+        ]),
     ...(requestPath
       ? ['## 📥 Operator input', '', `- \`${requestPath}\``, '']
       : []),
@@ -481,6 +621,12 @@ export function buildGovernanceCard(
       `${Object.keys(STANDALONE_MODES).sort().join(', ')}.`,
     { code: 'UNKNOWN_STANDALONE_MODE' },
   )
+  invariant(
+    options.mode !== 'supervisor',
+    'The supervisor card binds to one run. Run ' +
+      '`pan governance card --mode supervisor --run <run-id>`.',
+    { code: 'SUPERVISOR_CARD_REQUIRES_RUN' },
+  )
 
   // Check the options before any side effect, so a rejected call leaves no
   // worktree behind.
@@ -547,10 +693,17 @@ export function buildGovernanceCard(
   const baseConduct = options.baseRef
     ? baseConductBlock(
         root,
-        resolveReviewScope(root, {
-          head: options.targetRef ?? 'HEAD',
-          base: options.baseRef,
-        }),
+        // The scope check reads the closure from its own checkout, so it runs
+        // in the worktree bound to the target head. Both revisions share one
+        // object database, so the base-conduct block keeps reading `root`.
+        resolveReviewScope(
+          worktree ? path.resolve(root, worktree.path) : root,
+          {
+            head: options.targetRef ?? 'HEAD',
+            base: options.baseRef,
+            closureRevision: options.closureRevision,
+          },
+        ),
       )
     : null
   const markdown = renderGovernanceCardMarkdown({

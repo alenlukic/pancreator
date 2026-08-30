@@ -5,12 +5,10 @@ import test from 'node:test'
 
 import {
   abortRun,
-  createRun,
   decideRun,
   delegateInvocation,
   getRunState,
   prepareInvocation,
-  submitOutput,
 } from '../../src/lib/engine.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { delegationValidationPath } from '../../src/lib/validation.js'
@@ -24,9 +22,11 @@ import type {
 import { syncCursorProjection } from '../../src/lib/projection.js'
 import {
   createFixture,
+  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
+  submitAsSupervisor,
 } from '../helpers.js'
 import {
   CLAUDE_CODE_SPEC,
@@ -65,7 +65,7 @@ function submitFixtureStage(
   invocation: Invocation,
   result: 'success' | 'failure' = 'success',
   mutate?: (output: StageOutput) => void,
-): ReturnType<typeof submitOutput> {
+): ReturnType<typeof submitAsSupervisor> {
   const workflow = loadWorkflow(root, 'delivery')
   const stage = stageBySlug(workflow, invocation.stage.slug)
   const output = makeOutput(
@@ -79,7 +79,7 @@ function submitFixtureStage(
   mutate?.(output)
   writeJson(path.join(root, invocation.output.path), output)
 
-  return submitOutput(root, runId, invocation.output.path)
+  return submitAsSupervisor(root, runId, invocation.output.path)
 }
 
 test('a mixed-executor delivery run completes with claude-code plan and verify', () => {

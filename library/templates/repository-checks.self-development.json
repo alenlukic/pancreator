@@ -21,6 +21,11 @@
       "probes": ["node --version", "npm --version"],
       "commands": ["npm test"]
     },
+    "impacted": {
+      "description": "Iteration profile, never a gate: select and run only the lane tests whose static import closure reaches the changed files. Run fast once at the end.",
+      "probes": ["node --version", "npm --version"],
+      "commands": ["./bin/pan tests impacted"]
+    },
     "secondary": {
       "description": "Run Pancreator's installer suites, which are outside the default lane.",
       "probes": ["node --version", "npm --version"],

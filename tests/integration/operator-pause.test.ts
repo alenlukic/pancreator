@@ -4,19 +4,19 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
-  createRun,
   getRunState,
   pauseRun,
   prepareInvocation,
   resumeRun,
-  submitOutput,
 } from '../../src/lib/engine.js'
 import { stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
+  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
+  submitAsSupervisor,
 } from '../helpers.js'
 import { checkpoint } from './delivery-helpers.js'
 
@@ -178,7 +178,7 @@ test('harness pause resume still restarts at prepare_invocation', () => {
   writeJson(path.join(root, planInvocation.output.path), blockedOutput)
   writeCanonicalDelegation(root, planInvocation)
 
-  const submitted = submitOutput(root, runId, planInvocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, planInvocation.output.path)
 
   assert.equal(submitted.state.status, 'paused')
   assert.equal(submitted.state.operator_pause, undefined)

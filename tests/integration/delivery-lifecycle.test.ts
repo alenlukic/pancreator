@@ -10,7 +10,6 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
-  createRun,
   decideRun,
   decideRunAsAway,
   getRunState,
@@ -20,7 +19,6 @@ import {
   resumeRunAsAway,
   setRunStage,
   setRunStageAsAway,
-  submitOutput,
 } from '../../src/lib/engine.js'
 import {
   awayModeTrigger,
@@ -36,10 +34,12 @@ import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import type { TaskRecord } from '../../src/lib/types.js'
 import {
   createFixture,
+  createRun,
   makeOutput,
   read,
   writeCanonicalDelegation,
   writeJson,
+  submitAsSupervisor,
 } from '../helpers.js'
 import { BRIEFS, checkpoint } from './delivery-helpers.js'
 import type { CheckpointVariant } from './delivery-helpers.js'
@@ -116,7 +116,7 @@ test('full delivery workflow persists gates and reaches operator-approved succes
     writeJson(path.join(root, invocation.output.path), output)
     writeCanonicalDelegation(root, invocation)
 
-    const submitted = submitOutput(root, runId, invocation.output.path)
+    const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
     assert.equal(
       submitted.record.outcome,
@@ -136,7 +136,7 @@ test('full delivery workflow persists gates and reaches operator-approved succes
     }
 
     if (stageSlug === 'plan') {
-      const repeated = submitOutput(root, runId, invocation.output.path)
+      const repeated = submitAsSupervisor(root, runId, invocation.output.path)
 
       assert.equal(repeated.idempotent, true)
       assert.equal(repeated.record.invocation_id, invocation.invocation_id)
@@ -386,7 +386,7 @@ test('ship cannot succeed without its declared PR artifact', () => {
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
 
-  const submitted = submitOutput(root, runId, invocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
   assert.equal(submitted.record.outcome, 'blocked')
   assert.match(
@@ -414,7 +414,7 @@ test('ship cannot succeed when its PR artifact violates resolved authority', () 
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
 
-  const submitted = submitOutput(root, runId, invocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
   assert.equal(submitted.record.outcome, 'blocked')
   assert.match(
@@ -553,7 +553,7 @@ test('an operator revision returns the delivery plan to the planner', () => {
   )
   writeCanonicalDelegation(root, second)
 
-  const revised = submitOutput(root, runId, second.output.path)
+  const revised = submitAsSupervisor(root, runId, second.output.path)
 
   assert.equal(revised.record.outcome, 'success')
   assert.equal(revised.state.status, 'awaiting_operator')
@@ -609,7 +609,7 @@ test('paused remediation note is attached to the next implement invocation', () 
   writeJson(path.join(root, implementInvocation.output.path), blockedOutput)
   writeCanonicalDelegation(root, implementInvocation)
 
-  const implementSubmitted = submitOutput(
+  const implementSubmitted = submitAsSupervisor(
     root,
     runId,
     implementInvocation.output.path,

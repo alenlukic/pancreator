@@ -628,17 +628,35 @@ export function loadPolicyCatalog(root: string): Map<string, Policy> {
  * Resolve the policies for one invocation context by unioning every matching
  * lookup row and returning the policy objects sorted by id.
  */
+export interface LoadedPolicySources {
+  lookup: PolicyLookupTable
+  catalog: Map<string, Policy>
+  selfDevelopment: boolean
+  technologies: string[]
+}
+
+/**
+ * Read the lookup table, the catalog, and the workspace facts once so a caller
+ * resolving several contexts (the supervisor card resolves one per stage) does
+ * not reload the catalog per context.
+ */
+export function loadPolicySources(root: string): LoadedPolicySources {
+  return {
+    lookup: loadLookupTable(root),
+    catalog: loadPolicyCatalog(root),
+    selfDevelopment: isSelfDevelopmentInstallation(root),
+    technologies: [...detectWorkspaceTechnologies(root)],
+  }
+}
+
 export function resolvePolicies(
   root: string,
   context: PolicyContext,
+  sources: LoadedPolicySources = loadPolicySources(root),
 ): Policy[] {
-  const lookup = loadLookupTable(root)
-  const catalog = loadPolicyCatalog(root)
+  const { lookup, catalog, selfDevelopment } = sources
   const policyIds = new Set<string>()
-  const selfDevelopment = isSelfDevelopmentInstallation(root)
-  const technologies = new Set(
-    context.technologies ?? [...detectWorkspaceTechnologies(root)],
-  )
+  const technologies = new Set(context.technologies ?? sources.technologies)
   const contracts = new Set(context.contracts ?? [])
   const operatorArtifacts = context.operator_artifacts ?? 'requested'
 

@@ -3,7 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import { createRun, prepareInvocation } from '../../src/lib/engine.js'
+import { prepareInvocation } from '../../src/lib/engine.js'
 import {
   completeInvocationAgent,
   createAgentRecoveryRunner,
@@ -19,7 +19,7 @@ import {
 } from '../../src/lib/hypervisor.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import type { AgentRecord, RunState } from '../../src/lib/types.js'
-import { createFixture } from '../helpers.js'
+import { createFixture, createRun } from '../helpers.js'
 import { checkpoint } from '../integration/delivery-helpers.js'
 
 const stalledObservation = {

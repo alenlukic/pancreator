@@ -17,6 +17,7 @@ import {
   validateVerifyOutput,
 } from '../../src/lib/validators/stage-validators.js'
 import { createFixture } from '../helpers.js'
+import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
 
 /**
  * Bare validator fixture root carrying the shared field-contract document.
@@ -1851,4 +1852,208 @@ test('plan trace rejects a test-plan case that reruns a profile', () => {
   ])
   assert.ok(reruns.some((item) => item.message.includes('`fast`')))
   assert.ok(reruns.some((item) => item.message.includes('`secondary`')))
+})
+
+function claimsValidatorInput(
+  root: string,
+  target: string,
+  invocation?: Record<string, unknown>,
+) {
+  return {
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'DEV-001',
+      requirement_id: 'implementation-claims',
+      registry_id: 'IMPLEMENTATION-CLAIMS-VALIDATE-001',
+      arguments: {},
+    },
+    ...(invocation ? { invocation } : {}),
+  }
+}
+
+function writeImplementOutput(
+  root: string,
+  target: string,
+  testsAdded: unknown[],
+): void {
+  const absolute = path.join(root, target)
+
+  mkdirSync(path.dirname(absolute), { recursive: true })
+  writeFileSync(
+    absolute,
+    `${JSON.stringify({
+      data: {
+        implementation: {
+          changed_files: [],
+          tests_added: testsAdded,
+          notes: [],
+        },
+        acceptance_results: [
+          { id: 'AC-01', result: 'pass', evidence: ['fixture evidence'] },
+        ],
+      },
+    })}\n`,
+  )
+}
+
+function contractIssues(issues: Array<{ code: string; message: string }>) {
+  return issues.filter(
+    (issue) => issue.code === 'implementation.tests_added_contract_missing',
+  )
+}
+
+test('tests_added requires a contract for a new test file and accepts one that names it', () => {
+  const root = createFixture()
+  const target =
+    'runtime/logs/workflows/run-contract/outputs/implement-1-test.json'
+  const before = gitWorkspaceSnapshot(root)
+
+  mkdirSync(path.join(root, 'tests/unit'), { recursive: true })
+  writeFileSync(
+    path.join(root, 'tests/unit/fresh.test.ts'),
+    "test('one', () => {})\nit('two', () => {})\n",
+  )
+
+  // A bare string still parses as { path } and fails only because the delta
+  // requires a contract.
+  writeImplementOutput(root, target, ['tests/unit/fresh.test.ts'])
+
+  const bare = validateImplementationClaims(
+    claimsValidatorInput(root, target, { workspace_before: before }),
+  )
+  const missing = contractIssues(bare.issues)
+
+  assert.equal(bare.status, 'failed')
+  assert.equal(missing.length, 1)
+  assert.match(
+    missing[0].message,
+    /tests\/unit\/fresh\.test\.ts is a new test file with 2 test call site\(s\)/u,
+  )
+  assert.ok(!bare.issues.some((issue) => issue.code === 'claim.entry_shape'))
+
+  writeImplementOutput(root, target, [
+    {
+      path: 'tests/unit/fresh.test.ts',
+      contract: 'A fresh file proves the fixture accepts a contract.',
+    },
+  ])
+
+  const named = validateImplementationClaims(
+    claimsValidatorInput(root, target, { workspace_before: before }),
+  )
+
+  assert.equal(named.status, 'passed', JSON.stringify(named.issues))
+
+  // An entry object without a path is a shape defect, not a missing contract.
+  writeImplementOutput(root, target, [{ contract: 'no path' }])
+
+  const malformed = validateImplementationClaims(
+    claimsValidatorInput(root, target, { workspace_before: before }),
+  )
+
+  assert.ok(
+    malformed.issues.some((issue) => issue.code === 'claim.entry_shape'),
+  )
+})
+
+test('tests_added requires a contract for a net-positive delta and ignores unchanged tests', () => {
+  const root = createFixture()
+  const target =
+    'runtime/logs/workflows/run-delta/outputs/implement-1-test.json'
+
+  mkdirSync(path.join(root, 'tests/unit'), { recursive: true })
+  writeFileSync(
+    path.join(root, 'tests/unit/grown.test.ts'),
+    "test('one', () => {})\n",
+  )
+  writeFileSync(
+    path.join(root, 'tests/unit/steady.test.ts'),
+    "test('steady', () => {})\n",
+  )
+  execFileSync('git', ['add', '.'], { cwd: root })
+  execFileSync(
+    'git',
+    ['-c', 'user.email=f@e.com', '-c', 'user.name=F', 'commit', '-qm', 'tests'],
+    {
+      cwd: root,
+    },
+  )
+
+  const before = gitWorkspaceSnapshot(root)
+
+  // A source change with no test change needs nothing.
+  writeFileSync(path.join(root, 'src/base.ts'), 'export const base = false\n')
+  writeImplementOutput(root, target, [])
+
+  const untouched = validateImplementationClaims(
+    claimsValidatorInput(root, target, { workspace_before: before }),
+  )
+
+  assert.equal(untouched.status, 'passed', JSON.stringify(untouched.issues))
+
+  // Rewording an existing test keeps the count flat: still nothing required.
+  writeFileSync(
+    path.join(root, 'tests/unit/steady.test.ts'),
+    "test('steady renamed', () => {})\n",
+  )
+
+  const reworded = validateImplementationClaims(
+    claimsValidatorInput(root, target, { workspace_before: before }),
+  )
+
+  assert.equal(contractIssues(reworded.issues).length, 0)
+
+  // Two new call sites in a tracked file need one covering entry.
+  writeFileSync(
+    path.join(root, 'tests/unit/grown.test.ts'),
+    "test('one', () => {})\ntest('two', () => {})\ntest.skip('three', () => {})\n",
+  )
+
+  const grown = validateImplementationClaims(
+    claimsValidatorInput(root, target, { workspace_before: before }),
+  )
+  const missing = contractIssues(grown.issues)
+
+  assert.equal(missing.length, 1)
+  assert.match(
+    missing[0].message,
+    /tests\/unit\/grown\.test\.ts gained 2 net test call site\(s\)/u,
+  )
+
+  // An empty contract does not cover the delta; a sentence does.
+  writeImplementOutput(root, target, [
+    { path: 'tests/unit/grown.test.ts', contract: '  ' },
+  ])
+  assert.equal(
+    contractIssues(
+      validateImplementationClaims(
+        claimsValidatorInput(root, target, { workspace_before: before }),
+      ).issues,
+    ).length,
+    1,
+  )
+
+  writeImplementOutput(root, target, [
+    {
+      path: 'tests/unit/grown.test.ts::two',
+      contract: 'The grown file proves a second contract.',
+    },
+  ])
+
+  const covered = validateImplementationClaims(
+    claimsValidatorInput(root, target, { workspace_before: before }),
+  )
+
+  assert.equal(covered.status, 'passed', JSON.stringify(covered.issues))
+
+  // Without an invocation snapshot the cumulative working-tree diff is the
+  // observable delta and reports the same file.
+  writeImplementOutput(root, target, [])
+
+  const cumulative = validateImplementationClaims(
+    claimsValidatorInput(root, target),
+  )
+
+  assert.equal(contractIssues(cumulative.issues).length, 1)
 })

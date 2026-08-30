@@ -1,4 +1,8 @@
 import { passedGateEvidence } from './context.js'
+import {
+  renderSuiteProfileSection,
+  renderSuiteProfileStatusLine,
+} from './suite-profile.js'
 import { sha256 } from './io.js'
 import { renderPolicyBlocks } from './policy-guidance.js'
 import type {
@@ -9,6 +13,7 @@ import type {
   InvocationEvidenceWorker,
   Policy,
   RunState,
+  SuiteProfileSummary,
 } from './types.js'
 import { DELEGATION_HEADING, normalizeMarkdownContent } from './validation.js'
 import type { InvocationValidationStatus } from './validation.js'
@@ -357,6 +362,22 @@ function renderSupervisorProcedureBody(
           '',
         ]
       : []),
+    ...(delegation.supervisor_card
+      ? [
+          '**Supervisor governance card**',
+          '',
+          `- Card: \`${delegation.supervisor_card.path}\``,
+          `- Digest: \`sha256:${delegation.supervisor_card.sha256}\``,
+          `- Attest: \`${delegation.supervisor_card.attest_command}\``,
+          '',
+          'The card carries the full text of every policy that binds the ' +
+            'supervisor for this run; the blocks above are only the delivery ' +
+            'policy. `pan submit` fails with `SUPERVISOR_CARD_UNATTESTED` ' +
+            'until the current digest is attested. Re-read and re-attest ' +
+            'when `pan prepare` reports a new digest.',
+          '',
+        ]
+      : []),
     'Resolved paths for this invocation:',
     '',
     `1. Confirm \`${delegation.invocation_validation_path}\` reports \`pass\`. ` +
@@ -382,6 +403,19 @@ function renderSupervisorProcedureBody(
         ]
       : []),
     ...deliverySteps,
+    ...(!externalDelegation && delegation.watch_command
+      ? [
+          '3a. Record how the launch reached its terminal state before you ' +
+            'submit. When the launch returned with the worker output ' +
+            `present, run \`${delegation.watch_command} --foreground-returned\` ` +
+            'at once. It records the launch and return wall-clock times. ' +
+            'When the launch returned before the output existed, run ' +
+            `\`${delegation.watch_command}\` and await it until it exits. ` +
+            'Add `--mark-background` when the platform turned the launch ' +
+            'into a background subagent. `pan submit` refuses with ' +
+            '`DELEGATION_UNOBSERVED` when neither record exists.',
+        ]
+      : []),
     `4. Submit with \`${delegation.submit_command}\`.`,
     '5. When `pan status` marks the invocation stale, re-deliver this card ' +
       'only when the invocation validation still passes. Re-prepare the ' +
@@ -758,6 +792,17 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
     '',
     `**Workspace** \`${invocation.workspace_root}\` — fingerprints, ` +
       'deterministic gate commands, and scope checks target this directory.',
+    ...(invocation.harness_root
+      ? [
+          '',
+          `**Harness root** \`${invocation.harness_root}\` — every harness-relative ` +
+            'path in this contract (`runtime/…`, `library/…`, `governance/…`, ' +
+            '`docs/…`) and every `./bin/pan` command resolve against this ' +
+            'directory, not the workspace. Write the stage output at ' +
+            `\`${invocation.harness_root}/${invocation.output.path}\`. ` +
+            'Target source paths resolve against the workspace.',
+        ]
+      : []),
     '',
     '## Operator view',
     '',
@@ -831,6 +876,9 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
       : []),
     ...involvementLines,
     ...verificationLines,
+    ...(invocation.suite_profile
+      ? renderSuiteProfileSection(invocation.suite_profile)
+      : []),
     '## 📤 Output contract',
     '',
     `Write JSON to \`${invocation.output.path}\` using ` +
@@ -978,6 +1026,7 @@ function formatValidationArtifactStatus(
 export function renderStatus(
   state: RunState,
   validationStatus: InvocationValidationStatus | null = null,
+  suiteProfile: SuiteProfileSummary | null = null,
 ): string {
   const lines = [
     `Run ${state.run_id}`,
@@ -1021,6 +1070,10 @@ export function renderStatus(
 
   if (state.pause_reason) {
     lines.push(`Pause reason: ${state.pause_reason}`)
+  }
+
+  if (suiteProfile) {
+    lines.push(renderSuiteProfileStatusLine(suiteProfile))
   }
 
   if ((state.operator_gate_waivers ?? []).length > 0) {

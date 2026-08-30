@@ -115,6 +115,117 @@ When away mode is disabled, stop at each unresolved operator gate as before.
 When the active request already supplies a decision, execute it instead of
 asking again.
 
+### Supervisor governance card and attestation
+
+A supervisor session receives its policies the same way a worker does: as one
+harness-resolved card, never as a list of policy ids to look up. After
+`pan init`, or before the first `pan prepare` of a resumed run, the supervisor
+runs:
+
+```bash
+./bin/pan governance card --mode supervisor --run <run-id>
+./bin/pan governance attest-supervisor <run-id> --sha256 <digest>
+```
+
+The first command writes
+`runtime/logs/workflows/<run-id>/agent/supervisor-card.md` and reports its
+`sha256`. The supervisor reads the card in full, then attests that digest.
+`pan prepare` and `pan submit` refuse with `SUPERVISOR_CARD_UNATTESTED` until
+the current digest is attested. When a policy changes mid-run, the next
+`pan prepare` reports a new digest and refuses until the supervisor re-reads and
+re-attests. `pan status <run-id> --json` shows the `supervisor_card` record.
+
+The same rule covers every standalone command. `/pan-release`, `/pan-write-pr`,
+`/pan-build-docs`, `/pan-build-briefs`, and `/pan-qa-workflow` start with
+`pan governance card --mode <mode>` and paste the card into the delegated
+prompt. Only `/pan-status`, `/pan-validate`, and `/pan-summarize-context` run
+without a card, and `pan validate` enforces that list from
+`governance/registries/command_governance.json`.
+
+### Watch a worker launch
+
+A worker launch can return before the worker's declared output exists. Cursor
+can also turn a foreground subagent call into a background launch and tell the
+supervisor not to poll or await it. Run 63311 lost its supervisor to exactly
+that text. The polling therefore no longer depends on model judgment:
+
+```bash
+./bin/pan watch <run-id> [--invocation <invocation-id>] [--cadence-seconds <n>] [--stall-wakes <n>] [--timeout-seconds <n>] [--mark-background] [--json]
+```
+
+The command resolves the run's pending invocation, sleeps one cadence, and
+inspects the invocation's output path, delegation artifact, and evidence
+files. It appends one JSONL line per arming and per wake to
+`agent/evidence/<invocation-id>-watch.jsonl`, with the wall-clock time, the
+invocation watched, and the observed state. That file is the `DELEGATE-001`
+arming and wake record, written by the harness. The default cadence is 120
+seconds. Pass `--cadence-seconds 300` for work expected to exceed 15 minutes.
+Fractional seconds are accepted.
+
+Exit codes: `0` and `{"state":"completed"}` when the output is present and
+names the invocation. `2` and `stalled` after `--stall-wakes` (default 2)
+consecutive wakes with no change. `3` and `timed_out` at `--timeout-seconds`.
+The command is safe to await in the foreground and safe to re-run. It returns
+`completed` at once when the output already exists. Wake lines print to
+stderr only on an interactive terminal.
+
+`--mark-background` records that the platform turned the launch into a
+background subagent. A launch that returns with the worker output already
+present exposes no observation point to watch, so the supervisor records its
+return instead:
+
+```bash
+./bin/pan watch <run-id> --foreground-returned [--invocation <invocation-id>] [--launched-at <iso-8601>] [--json]
+```
+
+The command writes `agent/evidence/<invocation-id>-foreground-return.json`
+with the launch and return wall-clock times, the elapsed seconds, and a
+terminal-state inspection of the output and evidence paths. The launch time
+defaults to the modification time of the delegation artifact the supervisor
+persisted immediately before the launch; `--launched-at` overrides it with a
+time the supervisor recorded itself. `--foreground-returned` and
+`--mark-background` are exclusive.
+
+`pan submit` requires one of the two records for every Cursor worker
+invocation: a watch record that ends in a completed wake, or the
+foreground-return attestation. A submission with neither fails with the hard
+error `DELEGATION_UNOBSERVED` before any validator or gate runs and consumes
+no stage attempt; the supervisor records the missing observation and submits
+again. External-executor stages that `pan delegate` runs are exempt because
+the harness writes their delegation evidence. The stage record carries the
+observation as `delegation_observation`, naming which record proved the
+worker reached a terminal state.
+
+`pan output validate <run-id> --file <path> --invocation <path>` runs every
+validator `pan submit` runs before its shell gates — the evidence-report,
+attestation, and structural checks plus the harness-authoritative policy
+validators such as `IMPLEMENTATION-CLAIMS-VALIDATE-001` — from the same
+resolved requirement set, without persisting a validation record. A defect it
+reports would otherwise reject the submission after the static and fast gates
+had already run, so the supervisor repairs mechanical defects from its
+`ORCH-001` list before it submits.
+
+### Platform-guidance redline
+
+An agent cannot delete platform-injected text from its own context or from a
+subagent's. What it can do is pre-commit, in a harness record, that named
+categories of platform guidance are non-authoritative before it meets them:
+
+```bash
+./bin/pan status <run-id> --redline [--occasion pan-start|pan-resume]
+```
+
+The command writes `agent/evidence/platform-guidance-redline.json` and appends
+one declaration per call. The record names the categories (polling, awaiting,
+and backgrounding text, session-mode text, model and tool suggestions, hints
+not to run commands), the authority order from `AGENTS.md`, and the policies
+that own the duty. `OPERATOR-001` requires the supervisor to write it at
+`/pan-start` and every `/pan-resume` and to quote the path in its first
+report. The duty is enforced: each `pan governance attest-supervisor` opens a
+supervisor session generation, and `pan prepare` and `pan submit` refuse with
+`REDLINE_MISSING` until the record carries a declaration for the current
+generation. A later conflict is still recorded under `OPERATOR-001`.
+
 ### Run top-level workflow QA
 
 `/pan-qa-workflow` adopts both the orchestrator and harness workflow QA briefs
@@ -410,24 +521,34 @@ run with `./bin/pan verification <run-id> [set <level>]`.
 
 Built-in levels:
 
-- `minimal` — static and fast checks gate the implement loop; QA runs manual
-  cases without re-running a suite.
-- `light` (default) — as minimal, plus the verify submission gate re-runs the
-  fast suite against the pre-implementation baseline. QA cites that gate
-  evidence from its card and runs only the plan cases.
-- `thorough` — the verify submission gate runs the complete `full` profile
-  once, after the verify report is submitted, judged on its own result. QA
-  works before that gate, so it cites the `static` and `fast` gate evidence on
-  its card and never cites or executes `full`. Explicit opt-in only.
+- `minimal` — static and fast checks gate the implement and remediate loops;
+  no submission gate runs `full`. QA argues from manual cases and prior gate
+  evidence.
+- `light` (default) — as minimal, plus the verify submission gate runs the
+  complete `full` profile once on a passing verdict, and the remediate
+  submission gate runs it once when the repair is ready to ship. When
+  remediation returns to verify, the verify gate accepts that recorded pass at
+  an unchanged fingerprint instead of running `full` again. `full` is judged on
+  its own result and never baselined before implementation, so a pre-existing
+  failure needs an operator decision.
+- `thorough` — an alias of `light` kept for existing run snapshots and
+  operator scripts; every submission gate keeps its workflow-declared profile.
 
-The default is deliberately lightweight: your team runs tests locally and CI
-runs them again, so the harness re-running integration and end-to-end suites
-inside the delivery loop buys long waits for evidence that already exists. The
-`full` profile never runs — and is never baselined before implementation —
-unless you select a level whose gates leave it in place. The plan worker may
-recommend a different level for a risky change; the run pauses
-once with the exact apply command, and resuming declines it. Runs snapshot the
-resolved level at init.
+Who runs which suite: the coder and the remediator iterate with
+`./bin/pan tests impacted` (the `impacted` profile — static import-graph
+analysis selects the test modules the change set reaches; it is an iteration
+profile, never a gate) plus the tests they added, and fall back to blast-radius
+judgment only for a target without an `impacted` profile. The two verify
+evidence workers (reviewer and QA) iterate on blast-radius tests. Each of the
+four then runs the `fast` profile once as validation; the remediator may run
+it earlier when the impacted selection is large or a failure reproduces only
+under the fast lane, and a repeat run after validation needs an exceptionally
+large blast radius. A retry that changed only claims or evidence runs no suite. The consolidating
+verifier runs neither `fast` nor `full`: its passing verdict is what triggers
+the single `full` run as the verify gate, and a failing verdict forwards to
+remediation without running it. The plan worker may recommend a different
+level for a risky change; the run pauses once with the exact apply command,
+and resuming declines it. Runs snapshot the resolved level at init.
 
 `ship` cannot be relaxed by a profile: `SHIP-001` requires a pause before commit,
 push, merge, publication, or deployment. You keep every in-the-moment override
@@ -737,6 +858,80 @@ reviewer fixes local, low-risk issues when intended behavior is unambiguous and
 records the changed files and evidence. Architecture, public-interface, data or
 persistence model, security-boundary, dependency, migration, requirement, or
 broad cross-component changes return to implementation.
+
+## Run harness evals
+
+Evals are bounded toy workflow runs plus deterministic graders over the run's records. They show whether the agents obeyed the delivered policies, which no unit test can show. Run them on demand, never inside `npm test`:
+
+```sh
+./bin/pan eval list
+./bin/pan eval run delivery-basic-test-discipline --attest-supervisor-card
+./bin/pan eval grade <run-id> --scenario delivery-basic-test-discipline
+```
+
+`eval run` copies the scenario's toy fixture to `runtime/logs/evals/<eval-id>/workspace`, creates a run there, drives every harness-owned step, and stops with exact operator steps when a Cursor persona or an unscripted operator decision is next. `eval grade` grades any existing run, including a production run. See [`docs/evals.md`](evals.md) for the scenario format, the graders, and how to add either.
+
+## Running only impacted tests
+
+`./bin/pan tests impacted` is the iteration profile. It is never a gate. The
+command builds the runtime import graph of `src/**/*.ts` and `tests/**/*.ts`
+with the TypeScript parser, takes the change set from Git, and runs every test
+in `tests/unit`, `tests/integration`, and `tests/regression` that the change
+reaches. The `fast` profile stays the validation run at the end of an iteration
+loop, and `full` stays the verify gate.
+
+A test is selected when:
+
+- it transitively imports a changed `src/` or `tests/` module through runtime
+  imports (`import type` edges do not count; the build type-checks them);
+- it is itself a changed test file;
+- it names a changed `bin/` script (`bin/<name>` or `'bin', '<name>'`);
+- it names a changed fixture directory under `tests/fixtures/`;
+- it spawns the CLI (`dist/src/cli.js` or `bin/pan`) and any module `src/cli.ts`
+  reaches changed;
+- `--include <glob>` names it.
+
+A change to `package.json`, `package-lock.json`, `tsconfig.json`, or the test
+reporter selects the whole lane. `tests/secondary` and `tests/migrations` are
+never selected.
+
+```sh
+./bin/pan tests impacted                       # dirty working tree vs HEAD
+./bin/pan tests impacted --list                # print the selection, run nothing
+./bin/pan tests impacted --list --json         # machine-readable selection
+./bin/pan tests impacted --changed main        # main...HEAD plus the dirty tree
+./bin/pan tests impacted --staged              # staged changes only
+./bin/pan tests impacted --file src/lib/x.ts   # a hypothetical change
+./bin/pan tests impacted --depth 1             # direct importers only
+./bin/pan tests impacted --include 'tests/unit/naming*.test.ts'
+npm run test:impacted                          # the same command as an npm script
+```
+
+The text output lists each selected test with the changed file that reached it
+and the import depth, then a per-depth count. `--json` emits `changed`,
+`selected`, `selected_count`, `lane_count`, `ratio`, `advisory`, `unreached`,
+`type_only`, `reasons`, `depths`, `by_depth`, `graph_build_ms`, `exit_code`,
+and `duration_ms`. The exit code follows `node --test`; `--list` exits 0.
+
+The module graph of this repository is dense: `engine.ts` imports most of
+`src/lib`, and most tests import `engine.ts` or `tests/helpers.ts`. A change to
+a shared module can therefore reach half the lane or more. When the selection
+reaches 60% of the lane (`--advisory-ratio` changes the threshold) the command
+prints an advisory that the `fast` profile is the cheaper choice and names the
+direct-importer count. Iterate with `--depth 1` in that case, then run `fast`
+once.
+
+No changed file selects nothing and exits 0. A change that no lane test
+reaches also exits 0 and lists the changed files so you know to add a test; a
+file other modules import only for types is marked as verified by the build.
+
+Every invocation appends one record to `runtime/cache/test-impact.jsonl`:
+timestamp, change-set fingerprint, changed and selected counts, lane count,
+ratio, advisory flag, graph build time, duration, and the run result.
+
+The `impacted` profile in `runtime/repository-checks.json` runs the same
+command. An embedded target may declare its own `impacted` command in its
+`repository-checks.json`; the harness never treats that profile as a gate.
 
 ## Write a standalone PR description
 
