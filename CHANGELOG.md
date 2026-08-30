@@ -1,5 +1,16 @@
 # Changelog
 
+## [5.3.1] - 2026-08-30
+
+### Changed
+
+- Arm the watch in the launch turn on every supervisor-facing surface. The orchestrator brief, `/pan-start`, and `/pan-resume` now match the rendered procedure: pick `--mark-background`, `--foreground-returned`, or a blocking watch from the launch outcome, and re-run with `--agent-state` when the watch exits `unverified` ([572ff142](library/personas/orchestrator.md), [pan-start](library/cursor/commands/pan-start.md), [pan-resume](library/cursor/commands/pan-resume.md), [regression](tests/regression/supervisor-delegation-contract.test.ts)).
+
+### Fixed
+
+- State only the watch-flag refusals the CLI enforces. The rendered procedure no longer claims a wrong flag fails loudly for mismatches the harness does not reject ([572ff142](src/lib/render.ts)).
+- Record the current release-index membership in the primer. The index already maps 4.0.0 through 5.3.0 ([2d27a496](release/index.json), [dc82b8c3](release/index.json), [primer](docs/target-repo-primer.md)).
+
 ## [5.3.0] - 2026-08-30
 
 ### Changed
