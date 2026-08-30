@@ -17,9 +17,11 @@ import {
   probeRunInvocationModel,
   recordSupervisorModelEvidence,
 } from '../../src/lib/engine.js'
+import { runCursorAgentJson } from '../../src/lib/executors/cursor-agent.js'
 import {
   expectedCursorModelForSpec,
   probeCursorModelSpec,
+  resetCursorAgentCapabilities,
 } from '../../src/lib/executors/cursor-probe.js'
 import { stageBySlug, loadWorkflow } from '../../src/lib/workflow.js'
 import {
@@ -54,11 +56,74 @@ function withFakeCursorAgent<T>(
   )
   chmodSync(executable, 0o755)
   process.env.PATH = `${bin}${path.delimiter}${priorPath ?? ''}`
+  // The capability read is cached per process, so each installed fake CLI
+  // must start from a clean read.
+  resetCursorAgentCapabilities()
 
   try {
     return operation()
   } finally {
     process.env.PATH = priorPath
+    resetCursorAgentCapabilities()
+  }
+}
+
+/**
+ * A cursor-agent that rejects unknown options the way the real one does.
+ * `--mode` was removed from the CLI, and run 63310 genre-label lost every
+ * worker model probe to `unknown option '--mode'`.
+ */
+function withStrictCursorAgent<T>(
+  root: string,
+  supportedFlags: string[],
+  model: string,
+  operation: () => T,
+): T {
+  const bin = path.join(root, 'strict-bin')
+  const executable = path.join(bin, 'cursor-agent')
+  const priorPath = process.env.PATH
+
+  mkdirSync(bin, { recursive: true })
+  writeFileSync(
+    executable,
+    [
+      '#!/bin/sh',
+      'if [ "$1" = "--help" ]; then',
+      `  printf '%s\n' "Usage: cursor-agent${supportedFlags
+        .map((flag) => ` ${flag}`)
+        .join('')}"`,
+      '  exit 0',
+      'fi',
+      'for arg in "$@"; do',
+      '  case "$arg" in',
+      '    --*)',
+      `      case " ${supportedFlags.join(' ')} " in`,
+      '        *" $arg "*) ;;',
+      '        *)',
+      '          echo "error: unknown option \'$arg\'" >&2',
+      '          exit 1',
+      '          ;;',
+      '      esac',
+      '      ;;',
+      '  esac',
+      'done',
+      `printf '%s\n' '${JSON.stringify({
+        type: 'system',
+        subtype: 'init',
+        model,
+      })}'`,
+      '',
+    ].join('\n'),
+  )
+  chmodSync(executable, 0o755)
+  process.env.PATH = `${bin}${path.delimiter}${priorPath ?? ''}`
+  resetCursorAgentCapabilities()
+
+  try {
+    return operation()
+  } finally {
+    process.env.PATH = priorPath
+    resetCursorAgentCapabilities()
   }
 }
 
@@ -376,4 +441,101 @@ test('a bracketed spec without an installed catalog records rather than blocks',
     ),
     /"type":"model_evidence_advisory"/u,
   )
+})
+
+// Run 63310 genre-label: every one of four worker probes failed with
+// `unknown option '--mode'`, so every submission carried an unverified-model
+// advisory. The probe hard-coded an option the installed CLI had dropped.
+test('the probe adapts to the flags the installed cursor-agent accepts', () => {
+  const root = createFixture()
+
+  // Run 63310_Aug-30-0872: guarding only --mode moved the failure to
+  // `unknown option '--trust'`. Every optional flag has to be asked for.
+  assert.deepEqual(
+    withStrictCursorAgent(
+      root,
+      ['--output-format', '--model'],
+      'Current Variant',
+      () => probeCursorModelSpec('example-model'),
+    ),
+    { resolved: 'Current Variant' },
+  )
+
+  // A CLI that still declares both keeps receiving both.
+  assert.deepEqual(
+    withStrictCursorAgent(
+      root,
+      ['--output-format', '--mode', '--trust', '--model'],
+      'Legacy Variant',
+      () => probeCursorModelSpec('example-model'),
+    ),
+    { resolved: 'Legacy Variant' },
+  )
+
+  // One flag present and the other gone is the shape a partial upgrade takes.
+  assert.deepEqual(
+    withStrictCursorAgent(
+      root,
+      ['--output-format', '--trust', '--model'],
+      'Mixed Variant',
+      () => probeCursorModelSpec('example-model'),
+    ),
+    { resolved: 'Mixed Variant' },
+  )
+})
+
+// The away evaluator and every external stage run through the executor, not
+// the probe. Run 63310_Aug-30-0872 lost the plan-gate away evaluation to the
+// same rejected flag, so an operator-owned ratification became a supervisor
+// stand-in.
+test('the executor sends only the flags the installed cursor-agent declares', () => {
+  const root = createFixture()
+  const bin = path.join(root, 'argv-bin')
+  const executable = path.join(bin, 'cursor-agent')
+  const argvLog = path.join(root, 'argv.txt')
+
+  mkdirSync(bin, { recursive: true })
+  writeFileSync(
+    executable,
+    [
+      '#!/bin/sh',
+      'if [ "$1" = "--help" ]; then',
+      '  printf "%s\\n" "Usage: cursor-agent --output-format --model"',
+      '  exit 0',
+      'fi',
+      `printf '%s\\n' "$@" > ${argvLog}`,
+      `printf '%s\\n' '${JSON.stringify({
+        type: 'system',
+        subtype: 'init',
+        model: 'Executor Variant',
+      })}'`,
+      '',
+    ].join('\n'),
+  )
+  chmodSync(executable, 0o755)
+
+  const priorBin = process.env.PANCREATOR_CURSOR_AGENT_BIN
+
+  process.env.PANCREATOR_CURSOR_AGENT_BIN = executable
+  resetCursorAgentCapabilities()
+
+  try {
+    runCursorAgentJson({ prompt: 'probe', cwd: root, timeoutMs: 20_000 })
+
+    const argv = readFileSync(argvLog, 'utf8')
+
+    assert.ok(
+      !argv.includes('--trust'),
+      'an undeclared --trust MUST be dropped',
+    )
+    assert.ok(!argv.includes('--mode'), 'an undeclared --mode MUST be dropped')
+    assert.ok(argv.includes('--output-format'))
+  } finally {
+    if (priorBin === undefined) {
+      delete process.env.PANCREATOR_CURSOR_AGENT_BIN
+    } else {
+      process.env.PANCREATOR_CURSOR_AGENT_BIN = priorBin
+    }
+    resetCursorAgentCapabilities()
+  }
 })

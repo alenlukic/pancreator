@@ -1057,6 +1057,13 @@ export interface InvocationDelegationContract {
    * external-executor and legacy invocations.
    */
   watch_command?: string
+  /**
+   * The run's platform-guidance redline record. The procedure document names
+   * it at the launch step, where the platform's "do not wait for it" text
+   * arrives, rather than leaving the supervisor to recall a declaration made
+   * before the run began.
+   */
+  redline_record_path?: string
   /** Absent on legacy invocations, which the harness treats as `verbatim`. */
   mode?: InvocationDeliveryMode
   /** The exact prompt body the supervisor delivers under `referenced` mode. */
@@ -1314,7 +1321,11 @@ export interface OperatorFeedbackItem {
  * A non-blocking observation about this run. An advisory never stops the run.
  */
 export interface RunAdvisory {
-  kind: 'model_evidence' | 'pipeline_config' | 'platform_guidance'
+  kind:
+    | 'model_evidence'
+    | 'pipeline_config'
+    | 'platform_guidance'
+    | 'delegation_supervision'
   source: 'prepare' | 'probe' | 'submit' | 'supervisor_evidence'
   stage?: string
   invocation_id?: string

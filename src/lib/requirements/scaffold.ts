@@ -79,10 +79,26 @@ export function scaffoldDataFromRequiredData(
  * unevaluated and no summary written. Re-scaffolding one of these is a no-op, so
  * it must not be an error — a required automation whose ordinary second
  * invocation throws forces the agent to argue that a failure was really success.
+ *
+ * The watch reads this too. `AUTO-001` requires the worker to scaffold its
+ * output `before_operation`, so the output file exists, parses, and names the
+ * invocation from the first seconds of every scaffolded stage. Presence alone
+ * therefore cannot mean the worker finished — it means the worker started.
+ * The scaffold is what the harness itself wrote, so it is exactly knowable
+ * rather than something an observer has to infer.
  */
-function isUntouchedScaffold(value: unknown): boolean {
+export function isUntouchedScaffold(value: unknown): boolean {
   if (!isRecord(value)) {
     return false
+  }
+
+  // The schema calls `pending` the scaffold value and rejects it at
+  // submission; an output still carrying it has not been written yet.
+  if (
+    isRecord(value.invocation_attestation) &&
+    value.invocation_attestation.status === 'pending'
+  ) {
+    return true
   }
 
   const summary = typeof value.summary === 'string' ? value.summary.trim() : ''

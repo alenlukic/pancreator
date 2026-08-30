@@ -41,7 +41,10 @@ import { resolveRunLayout } from './run-layout.js'
 import { buildSuiteProfileSummary } from './suite-profile.js'
 import {
   DELEGATION_UNOBSERVED,
+  DELEGATION_WATCH_LATE,
+  DELEGATION_WATCH_LATE_SECONDS,
   delegationUnobservedMessage,
+  redlineRecordPath,
   summarizeDelegationObservation,
   type DelegationObservation,
 } from './watch.js'
@@ -2559,7 +2562,21 @@ export function prepareInvocation(
             `execute the '${stage.persona}' stage under the ` +
             `'${externalExecutor}' executor with model '${model}', then ` +
             `submit ${outputPath}.`
-          : `Launch the named Cursor agent for persona '${stage.persona}' ` +
+          : // The next action must name the first executable step in this
+            // invocation's real dependency graph. Naming the consolidating
+            // worker while its evidence workers are still unrun sends the
+            // supervisor past a precondition the card only states further
+            // down, and the worker then correctly reports `blocked`.
+            ((evidenceWorkers ?? []).length > 0
+              ? `Launch the ${(evidenceWorkers ?? []).length} parallel evidence ` +
+                `worker(s) first — ` +
+                (evidenceWorkers ?? [])
+                  .map((worker) => `${worker.agent} -> ${worker.evidence_path}`)
+                  .join(', ') +
+                ` — and confirm every report exists and is non-empty. Only ` +
+                `then launch `
+              : 'Launch ') +
+            `the named Cursor agent for persona '${stage.persona}' ` +
             `(never an ad-hoc subagent; only the named definition runs ` +
             `'${model}') with this card, write delegation evidence to ` +
             `${delegationArtifactPath}, then submit ${outputPath}.`
@@ -2627,6 +2644,7 @@ export function prepareInvocation(
               supervisor_procedure_path: supervisorProcedurePath,
               submit_command: `${panCommand(root)} submit ${runId} ${outputPath}`,
               watch_command: `${panCommand(root)} watch ${runId} --invocation ${invocationId}`,
+              redline_record_path: redlineRecordPath(root, runId),
               mode: 'referenced' as const,
               ...(supervisorCardReference
                 ? { supervisor_card: supervisorCardReference }
@@ -2636,11 +2654,19 @@ export function prepareInvocation(
                 invocationId,
                 root,
               ),
+              // DELEGATE-001 governs the launch and the watch that follows
+              // it, so it travels on the document that carries those steps.
+              // The card alone put it 300 lines away from the moment the
+              // platform says not to wait.
               policies: resolvePolicies(root, {
                 persona: 'orchestrator',
                 workflow: workflow.slug,
                 stage: stage.slug,
-              }).filter((policy) => policy.id === 'INVOCATION-001'),
+              }).filter(
+                (policy) =>
+                  policy.id === 'INVOCATION-001' ||
+                  policy.id === 'DELEGATE-001',
+              ),
             }
 
     const artifactProfile = operatorArtifactProfileForStage(
@@ -3648,16 +3674,18 @@ export function submitOutput(
       state,
       invocation,
     )
-    const advisories = recordRunAdvisories(
-      state,
-      {
-        kind: 'model_evidence',
-        source: 'submit',
-        stage: stage.slug,
-        invocation_id: invocation.invocation_id,
-      },
-      modelEvidenceAdvisories,
-    )
+    const advisories = [
+      ...recordRunAdvisories(
+        state,
+        {
+          kind: 'model_evidence',
+          source: 'submit',
+          stage: stage.slug,
+          invocation_id: invocation.invocation_id,
+        },
+        modelEvidenceAdvisories,
+      ),
+    ]
 
     if (advisories.length > 0) {
       persistRun(root, state, 'model_evidence_advisory', {
@@ -3718,6 +3746,31 @@ export function submitOutput(
           },
         },
       )
+
+      // DELEGATE-001 says a background conversion is watched immediately.
+      // A late arming still submits — the work was observed — but the run
+      // records how late, so a supervisor that armed at once and one that
+      // armed after an operator reprimand stop looking identical.
+      if (delegationObservation.watch.background_watch_late) {
+        advisories.push(
+          ...recordRunAdvisories(
+            state,
+            {
+              kind: 'delegation_supervision',
+              source: 'submit',
+              stage: stage.slug,
+              invocation_id: invocation.invocation_id,
+            },
+            [
+              `${DELEGATION_WATCH_LATE}: the background watch for ` +
+                `${invocation.invocation_id} was armed ` +
+                `${delegationObservation.watch.background_mark_delay_seconds?.toFixed(0)}s ` +
+                `after the launch, past the ${DELEGATION_WATCH_LATE_SECONDS}s ` +
+                `DELEGATE-001 allows. Supervision was late, not absent.`,
+            ],
+          ),
+        )
+      }
     }
 
     if (priorForRevision) {

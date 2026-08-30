@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import { prepareInvocation } from '../../src/lib/engine.js'
+import { prepareInvocation, setRunStage } from '../../src/lib/engine.js'
 import { loadPolicyCatalog } from '../../src/lib/policies.js'
 import {
   buildInvocationContractManifest,
@@ -226,4 +226,146 @@ test('worker invocation cards point at the supervisor delivery procedure', () =>
   assert.ok(prompt.length < contract.length)
   assert.ok(grown.length > contract.length * 2)
   assert.ok(grownPrompt.length < prompt.length + 100)
+})
+
+/**
+ * Run 63310 genre-label, twice, on two different supervisor models. Both let
+ * the turn continue unwatched after Cursor backgrounded the launch and said
+ * not to wait, and both explained afterwards that they knew the rule. The
+ * rule was on the attested card 300 lines from the launch step; the procedure
+ * document the supervisor actually follows carried only the delivery policy,
+ * mentioned the platform text nowhere, and framed `--mark-background` as a
+ * flag on a later bookkeeping step. Governance that is correct but absent at
+ * the decision point is governance that does not bind.
+ */
+test('the launch step carries the platform text it has to survive', () => {
+  const root = createFixture()
+  const runId = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title: 'Backgrounded launch run',
+  }).run_id
+  const prepared = prepareInvocation(root, runId)
+  const delegation = prepared.invocation?.delegation
+
+  assert.ok(delegation)
+  assert.ok(delegation.supervisor_procedure_path)
+
+  const procedure = readFileSync(
+    path.join(root, delegation.supervisor_procedure_path),
+    'utf8',
+  )
+
+  // The policy that governs the launch and its watch travels with the steps
+  // that perform them, not only on the card.
+  assert.ok(
+    procedure.includes('**DELEGATE-001'),
+    'the procedure document MUST carry DELEGATE-001 inline',
+  )
+
+  // The platform's own words, at the step where they arrive.
+  for (const phrase of [
+    'not to wait for the worker',
+    'not to poll it',
+    'notified when it finishes',
+  ]) {
+    assert.ok(
+      procedure.includes(phrase),
+      `the launch step MUST name the platform text: ${phrase}`,
+    )
+  }
+
+  // Arming the watch must not be conditional on recognizing a background
+  // conversion. A conditional puts a judgment call at the exact moment the
+  // platform argues against acting, and that judgment is the failure point:
+  // every mode has a watch form, so the step runs always and only the flag
+  // varies.
+  assert.ok(
+    procedure.includes('This step is unconditional'),
+    'the watch step MUST be unconditional, not triggered by an outcome',
+  )
+
+  for (const flag of [
+    '--mark-background',
+    '--foreground-returned',
+    '--agent-state running',
+  ]) {
+    assert.ok(
+      procedure.includes(flag),
+      `the mechanical flag table MUST name ${flag}`,
+    )
+  }
+
+  assert.ok(
+    !/The moment the launch is backgrounded/u.test(procedure),
+    'a recognized trigger MUST NOT gate the watch',
+  )
+
+  assert.ok(
+    delegation.redline_record_path,
+    'the procedure needs the redline record to cite',
+  )
+  assert.ok(
+    procedure.includes(delegation.redline_record_path),
+    'the launch step MUST cite the redline record that pre-declares that text non-authoritative',
+  )
+  assert.ok(
+    procedure.includes(`${delegation.watch_command} --mark-background`),
+    'the launch step MUST name the exact command that answers the platform text',
+  )
+
+  // The watch is armed in the launch turn, ahead of every later step.
+  const launchIndex = procedure.indexOf('2a. Arm the watch')
+  const verdictIndex = procedure.indexOf('3a. Read the verdict')
+
+  assert.ok(launchIndex > 0)
+  assert.ok(
+    launchIndex < verdictIndex,
+    'the watch MUST be armed before the step that reads its verdict',
+  )
+  assert.ok(
+    !procedure.includes('Add `--mark-background` when'),
+    'a backgrounded launch is an immediate action, never an optional flag',
+  )
+})
+
+// Run 63310 genre-label HR-004: the verify invocation defined two evidence
+// workers that had to finish first, and its operator-facing next action still
+// said to launch the verifier. The supervisor followed the prominent action,
+// the verifier found no reports, and the run spent an attempt on a delivery
+// defect. A call to action must name the first executable step in the
+// invocation's real dependency graph.
+test('an invocation with evidence workers names them before the consolidator', () => {
+  const root = createFixture()
+  const runId = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title: 'Evidence worker ordering run',
+  }).run_id
+
+  // Verify is the delivery stage that declares parallel evidence workers.
+  setRunStage(root, runId, 'verify', 'regression: reach the evidence stage')
+
+  const invocation = prepareInvocation(root, runId).invocation
+
+  assert.ok(invocation)
+
+  const workers = invocation.evidence_workers ?? []
+
+  assert.ok(workers.length > 0, 'the fixture must reach an evidence stage')
+
+  const nextAction = invocation.$operator.next_action
+
+  for (const worker of workers) {
+    assert.ok(
+      nextAction.includes(worker.agent),
+      `the next action MUST name evidence worker ${worker.agent}`,
+    )
+  }
+
+  assert.ok(
+    nextAction.indexOf(workers[0].agent) <
+      nextAction.indexOf(`persona '${invocation.stage.persona}'`),
+    'evidence workers MUST come before the consolidating worker',
+  )
 })
