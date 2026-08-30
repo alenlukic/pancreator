@@ -84,6 +84,30 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
   assert.equal(lstatSync(link).isSymbolicLink(), true)
   assert.equal(existsSync(path.join(project, '.pancreator', 'src')), true)
 
+  // The harness suite covers Pancreator internals a target never changes, so
+  // neither its sources nor its compiled output belong in an installation.
+  assert.equal(existsSync(path.join(project, '.pancreator', 'tests')), false)
+  assert.equal(
+    existsSync(path.join(project, '.pancreator', 'dist', 'tests')),
+    false,
+  )
+
+  const installedPackage = readJson<{
+    scripts: Record<string, string>
+  }>(path.join(project, '.pancreator', 'package.json'))
+  const installedScripts = Object.keys(installedPackage.scripts)
+
+  assert.equal(
+    installedScripts.some(
+      (name) => name === 'test' || name.startsWith('test:'),
+    ),
+    false,
+  )
+  assert.ok(installedPackage.scripts.build)
+  assert.ok(installedPackage.scripts.check)
+  assert.ok(installedPackage.scripts.lint)
+  assert.ok(installedPackage.scripts.validate)
+
   assert.equal(
     existsSync(
       path.join(
@@ -192,6 +216,7 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
   assert.equal('target_root' in marker, false)
   assert.ok(marker.payload_entries.includes('governance'))
   assert.ok(marker.payload_entries.includes('release'))
+  assert.equal(marker.payload_entries.includes('tests'), false)
   // The manifest lists release-owned files so an update can separate local
   // fixes and target extensions from shipped content.
   assert.ok(

@@ -26,7 +26,7 @@
       "id": "preflight.tests",
       "type": "shell",
       "hard": true,
-      "statement": "Harness tests pass.",
+      "statement": "Automated tests pass: the harness suite in self-development, the configured fast profile in an installation.",
       "command": "npm --prefix \"$PANCREATOR_ROOT\" test",
       "timeout_ms": 300000
     }

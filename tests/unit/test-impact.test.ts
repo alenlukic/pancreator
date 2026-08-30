@@ -4,7 +4,9 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
+import { PanError } from '../../src/lib/errors.js'
 import {
+  HARNESS_TESTS_SELF_DEVELOPMENT_ONLY,
   buildModuleGraph,
   extractSpecialReferences,
   laneTests,
@@ -500,6 +502,40 @@ test('runTestsImpacted --list --json reports the selection on a synthetic tree a
     assert.equal(typeof records[0]?.fingerprint, 'string')
   } finally {
     rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('runTestsImpacted refuses in target installations', async () => {
+  for (const mode of ['embedded', 'detached'] as const) {
+    const root = createSyntheticTree()
+
+    try {
+      writeFileSync(
+        path.join(root, 'config.json'),
+        `${JSON.stringify(
+          {
+            schema_version: 1,
+            installation_mode: mode,
+            workspace_root: mode === 'detached' ? root : '.',
+          },
+          null,
+          2,
+        )}\n`,
+      )
+
+      await assert.rejects(
+        () =>
+          runTestsImpacted(root, ['--list', '--file', 'src/lib/feature.ts']),
+        (error: unknown) => {
+          assert.ok(error instanceof PanError)
+          assert.equal(error.code, 'HARNESS_TESTS_SELF_DEVELOPMENT_ONLY')
+          assert.equal(error.message, HARNESS_TESTS_SELF_DEVELOPMENT_ONLY)
+          return true
+        },
+      )
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
   }
 })
 

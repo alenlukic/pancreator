@@ -5,7 +5,8 @@
  * `tests/`, takes the change set from Git, and selects every test file in the
  * mainline lanes whose import closure reaches a changed module. The selection
  * is the deterministic blast radius a coder or remediator iterates on instead
- * of the whole `fast` profile. It is an iteration aid, never a gate.
+ * of the whole `fast` profile. It is a self-development iteration aid, never a
+ * gate, and it refuses in embedded and detached installations.
  */
 import { spawnSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
@@ -16,6 +17,7 @@ import { pathToFileURL } from 'node:url'
 import { PanError } from './errors.js'
 import { gitChangedPathsBetween, gitHead, isGitRepository } from './git.js'
 import { appendJsonLine, sha256 } from './io.js'
+import { readProjectConfig } from './project-config.js'
 
 export const TEST_LANES = [
   'tests/unit',
@@ -34,6 +36,11 @@ export const GLOBAL_FILES = [
 export const DEFAULT_ADVISORY_RATIO = 0.6
 export const RECORD_RELATIVE_PATH = 'runtime/cache/test-impact.jsonl'
 export const IMPACTED_COMMAND = './bin/pan tests impacted'
+
+export const HARNESS_TESTS_SELF_DEVELOPMENT_ONLY =
+  'Harness-internal test selection is available only in self-development. ' +
+  'Use the target impacted profile in runtime/repository-checks.json, ' +
+  "or select blast-radius tests from the target's documented entry points."
 
 const TEST_REPORTER_ARGS = [
   '--test-reporter=./dist/tests/reporters/failures-only.js',
@@ -945,6 +952,14 @@ export async function runTestsImpacted(
   args: string[],
   write: (text: string) => void = (text) => process.stdout.write(text),
 ): Promise<ImpactResult> {
+  const mode = readProjectConfig(root)?.installation_mode
+
+  if (mode === 'embedded' || mode === 'detached') {
+    throw new PanError(HARNESS_TESTS_SELF_DEVELOPMENT_ONLY, {
+      code: 'HARNESS_TESTS_SELF_DEVELOPMENT_ONLY',
+    })
+  }
+
   const started = performance.now()
   const options = parseImpactArgs(args)
   const graph = await buildModuleGraph(root)

@@ -11,7 +11,7 @@ You repair a fundamental failure a joint verification recorded under a `fail_sev
 - You MUST NOT weaken, skip, or delete tests to make a failure pass.
 - You MUST list each added test in `tests_added` with the contract it proves, in one sentence.
 - You MUST map evidence to every acceptance criterion honestly, including any amended criterion, before handing the workspace back to verification.
-- You MUST iterate with `./bin/pan tests impacted` (the `impacted` profile) plus the tests you added, and fall back to blast-radius judgment only where no `impacted` profile exists. You MUST run the `fast` profile once as validation when you believe the repairs are complete, and you MAY run it earlier when the impacted selection is large or a failure reproduces only under the fast lane. A repeat `fast` run after validation needs an exceptionally large blast radius. You MUST NOT run the `full` profile: the remediate submission gate runs it once when you report success.
+- You MUST iterate with the declared `impacted` profile plus the tests you added. Self-development uses `./bin/pan tests impacted`. A target installation uses the target's `impacted` profile, or blast-radius judgment when none exists. You MUST run the `fast` profile once as validation when you believe the repairs are complete, and you MAY run it earlier when the impacted selection is large or a failure reproduces only under the fast lane. A repeat `fast` run after validation needs an exceptionally large blast radius. You MUST NOT run the `full` profile: the remediate submission gate runs it once when you report success.
 
 ## Boundaries
 

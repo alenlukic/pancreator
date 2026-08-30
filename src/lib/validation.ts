@@ -1888,13 +1888,13 @@ export function resolveShellCheck(
     }
   }
 
-  if (
-    criterion.id === 'preflight.tests' &&
-    requestedCommand.trim() === 'npm test'
-  ) {
+  // An installation ships no harness test suite, so the gate runs the target's
+  // own fast profile instead. An unconfigured profile records as not
+  // configured rather than executing a guessed command.
+  if (criterion.id === 'preflight.tests') {
     return {
-      command: 'npm --prefix "$PANCREATOR_ROOT" test',
-      profile_name: null,
+      command: 'pan repository-check fast',
+      profile_name: 'fast',
     }
   }
 
@@ -3590,10 +3590,15 @@ export function validateRepository(root: string): RepositoryValidationResult {
     }
   }
 
-  const legacyModules = [
-    ...readdirSync(path.join(root, 'src'), { recursive: true }),
-    ...readdirSync(path.join(root, 'tests'), { recursive: true }),
-  ].filter((entry) => typeof entry === 'string' && entry.endsWith('.mjs'))
+  // An installation carries `src/` but no test suite, so a missing `tests/`
+  // is the expected shape rather than a defect.
+  const legacyModules = ['src', 'tests']
+    .map((directory) => path.join(root, directory))
+    .filter((absolute) => fileExists(absolute))
+    .flatMap((absolute) =>
+      readdirSync(absolute, { encoding: 'utf8', recursive: true }),
+    )
+    .filter((entry) => entry.endsWith('.mjs'))
 
   if (legacyModules.length > 0) {
     errors.push('src/ and tests/ MUST NOT contain legacy .mjs modules')

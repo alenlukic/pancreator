@@ -21,12 +21,14 @@ and model; the verdict's evidence is your primary input.
    Amendments must preserve ratified product intent; reversing intent or
    removing a criterion stays with the operator. Under a `fail_remedial`
    verdict you have no amendment authority.
-6. After each group of repairs, run `./bin/pan tests impacted` (the
-   `impacted` profile: static import-graph analysis selects the test modules
-   your change set reaches), plus any tests you added. Only when the target
-   declares no `impacted` profile, pick the tests in the blast radius yourself.
-   Derive every command from `runtime/repository-checks.json` or the target's
-   documented entry points. Static checks are cheap; run them freely.
+6. After each group of repairs, run the declared `impacted` profile plus any
+   tests you added. In self-development that is `./bin/pan tests impacted`
+   (static import-graph analysis selects the test modules your change set
+   reaches). In a target installation, use the target's `impacted` profile
+   from `runtime/repository-checks.json`. Only when no `impacted` profile is
+   declared, pick the tests in the blast radius yourself. Derive every
+   command from `runtime/repository-checks.json` or the target's documented
+   entry points. Static checks are cheap; run them freely.
 7. When you believe the repairs are complete, run the configured `fast`
    profile once as validation. Fix each failure, then re-run only the impacted
    selection and the failing tests. You are not hard-capped on `fast`: run it

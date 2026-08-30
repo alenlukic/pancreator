@@ -31,10 +31,14 @@ SOURCE_PAYLOAD_ENTRIES=(
   prettier.config.js
   release
   src
-  tests
   tsconfig.json
 )
 GENERATED_PAYLOAD_ENTRIES=(AGENTS.md .gitignore dist node_modules)
+
+# Entries earlier releases installed and current releases do not. A refresh
+# removes them, because remove_previous_payload only clears entries the
+# current payload still lists.
+RETIRED_PAYLOAD_ENTRIES=(tests)
 
 # Paths for Pancreator self-development only. The copy takes them with their
 # parent directory, so remove them from staging before the payload hash runs.
@@ -220,6 +224,10 @@ run_smoke() {
         "$project/.pancreator/library/workflows/delivery/stages/verify.json" \
       && test ! -e "$project/.pancreator/workdesk" \
       && test ! -e "$project/.pancreator/runtime/workflows" \
+      && test ! -e "$project/.pancreator/tests" \
+      && test ! -e "$project/.pancreator/dist/tests" \
+      && node -e 'const s=require(process.argv[1]).scripts||{}; process.exit(Object.keys(s).some((k)=>k==="test"||k.startsWith("test:"))||!s.build||!s.check||!s.lint||!s.validate?1:0)' \
+        "$project/.pancreator/package.json" \
       && test -d "$project/.pancreator/worktrees"
   }
 
@@ -227,6 +235,10 @@ run_smoke() {
   smoke_step "fresh install" bash "$0" --target "$fresh_project" \
     --pancreator-root "$PANCREATOR_ROOT" --skip-dependencies --skip-shell-alias
   smoke_step "verify fresh install" smoke_verify "$fresh_project"
+  # Stand in for an installation from a release that still shipped the harness
+  # suite; the refresh below must remove that retired payload entry.
+  mkdir -p "$fresh_project/.pancreator/tests/unit"
+  printf 'stale\n' >"$fresh_project/.pancreator/tests/unit/legacy.test.ts"
   smoke_step "idempotent refresh" bash "$0" --target "$fresh_project" \
     --pancreator-root "$PANCREATOR_ROOT" --yes --skip-dependencies --skip-shell-alias
   smoke_step "verify idempotent refresh" smoke_verify "$fresh_project"
@@ -686,6 +698,11 @@ prepare_persistent_layout() {
     "$DOCS_DIR" \
     "$PANCREATOR_DIR/worktrees"
 
+  local retired
+  for retired in "${RETIRED_PAYLOAD_ENTRIES[@]}"; do
+    rm -rf "${PANCREATOR_DIR:?}/$retired"
+  done
+
   # Per-file workspace locks were removed. Refreshes clean up stale lock files
   # from older installations so they can never block run completion again.
   rm -rf "$RUNTIME_DIR/locks"
@@ -853,6 +870,11 @@ prepare_staging_payload() {
     rm -f "$staging/$self_development_only"
   done
 
+  # The harness test suite is not installed, so the staged package must not
+  # advertise scripts that would invoke it.
+  node "$PANCREATOR_ROOT/bin/install-support" strip-harness-test-scripts \
+    --package "$staging/package.json"
+
   if [[ "$DETACHED" -eq 1 ]]; then
     cp "$PANCREATOR_ROOT/library/templates/detached-AGENTS.md" \
       "$staging/AGENTS.md"
@@ -876,6 +898,9 @@ prepare_staging_payload() {
     )
   elif [[ -d "$PANCREATOR_ROOT/dist" ]]; then
     cp -Rp "$PANCREATOR_ROOT/dist" "$staging/dist"
+    # A built payload compiles no test sources. Copying the self-development
+    # dist would otherwise reintroduce the compiled harness suite.
+    rm -rf "$staging/dist/tests"
   fi
 }
 

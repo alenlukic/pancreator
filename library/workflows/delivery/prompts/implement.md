@@ -15,13 +15,13 @@ acceptance criterion.
 4. Add or update tests that prove the changed behavior. Do not weaken, skip,
    or delete existing tests to make the change pass; a needed test change must
    be disclosed in the notes with its reason.
-5. After each group of changes, run `./bin/pan tests impacted` (the
-   `impacted` profile: static import-graph analysis selects the test modules
-   your change set reaches), plus any tests you added. Only when the target
-   declares no `impacted` profile, pick the tests in the immediate blast
-   radius yourself (for example `node --test dist/tests/unit/<file>.test.js`
-   after `./bin/build`, or the target's equivalent). Static checks are cheap;
-   run them freely.
+5. After each group of changes, run the declared `impacted` profile plus any
+   tests you added. In self-development that is `./bin/pan tests impacted`
+   (static import-graph analysis selects the test modules your change set
+   reaches). In a target installation, use the target's `impacted` profile
+   from `runtime/repository-checks.json`. Only when no `impacted` profile is
+   declared, pick the tests in the immediate blast radius yourself from the
+   target's documented entry points. Static checks are cheap; run them freely.
 6. When you believe the change is complete, run the configured `fast` profile
    once as validation. Fix each failure, then re-run only the impacted
    selection and the failing tests. You may run `fast` earlier when the

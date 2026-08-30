@@ -197,7 +197,7 @@ const HELP_BODY = `Usage:
       --timeout-ms raises the effective bound only: resolution keeps the maximum of the request, the profile's own bound, and subset-profile timeouts.
   pan repository-check validate [--json]
   pan tests impacted [--changed <ref> | --staged | --worktree-dirty] [--file <path>]... [--include <glob>]... [--depth <n>] [--list] [--json] [--advisory-ratio <0..1>]
-      Select and run the lane tests whose import closure reaches the changed files. The default change set is the dirty working tree. An iteration aid, never a gate.
+      Self-development only. Select and run the lane tests whose import closure reaches the changed files. The default change set is the dirty working tree. An iteration aid, never a gate.
   pan worktree create <name> [--from <branch|commit|worktree>] [--description <text>] [--json]
   pan worktree resolve <name> [--description <text>] [--json]
   pan worktree list [--json]

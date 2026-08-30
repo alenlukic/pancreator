@@ -16,7 +16,10 @@ import type {
   StageDefinition,
 } from '../../src/lib/types.js'
 
-function configureEmbeddedFixture(root: string): void {
+function configureEmbeddedFixture(
+  root: string,
+  extraProfiles: Record<string, { probes: string[]; commands: string[] }> = {},
+): void {
   const projectPath = path.join(root, 'config.json')
   const project = JSON.parse(readFileSync(projectPath, 'utf8')) as Record<
     string,
@@ -43,6 +46,7 @@ function configureEmbeddedFixture(root: string): void {
             probes: ['node --version'],
             commands: ['node -e "process.exit(0)"'],
           },
+          ...extraProfiles,
         },
       },
       null,
@@ -117,6 +121,98 @@ test('embedded legacy npm gates route through target-owned profiles', () => {
   assert.equal(result.command, 'pan repository-check static')
   assert.equal(result.passed, true)
   assert.equal(result.disabled, undefined)
+})
+
+const HARNESS_TEST_COMMAND = 'npm --prefix "$PANCREATOR_ROOT" test'
+
+function preflightStage(): StageDefinition {
+  return {
+    slug: 'inspect',
+    title: 'Inspect repository',
+    persona: 'reviewer',
+    workspace_policy: 'read_only',
+    gate: 'stage_verdict',
+    context: { request: 'omit' },
+    criteria: [
+      {
+        id: 'preflight.tests',
+        type: 'shell',
+        hard: true,
+        statement: 'Automated tests pass.',
+        command: HARNESS_TEST_COMMAND,
+      },
+    ],
+    transitions: {
+      success: 'succeeded',
+      failure: 'failed',
+      blocked: 'paused',
+    },
+  }
+}
+
+function preflightTestResult(root: string) {
+  const { state, workspaceBefore, runDirectory } = fixtureState(root)
+  const evaluated = evaluateDeterministicCriteria(
+    root,
+    runDirectory,
+    state,
+    preflightStage(),
+    workspaceBefore,
+    root,
+  )
+
+  return evaluated.results.find((item) => item.id === 'preflight.tests')
+}
+
+test('embedded preflight test gates run the target fast profile', () => {
+  const root = createFixture()
+
+  configureEmbeddedFixture(root, {
+    fast: {
+      probes: ['node --version'],
+      commands: ['node -e "process.exit(0)"'],
+    },
+  })
+
+  const result = preflightTestResult(root)
+
+  assert.ok(result)
+  assert.equal(result.command, 'pan repository-check fast')
+  assert.equal(result.passed, true)
+  assert.equal(result.disabled, undefined)
+})
+
+test('embedded preflight test gates no-op when no fast profile is configured', () => {
+  const root = createFixture()
+
+  configureEmbeddedFixture(root)
+
+  const result = preflightTestResult(root)
+
+  assert.ok(result)
+  assert.equal(result.command, 'pan repository-check fast')
+  assert.equal(result.disabled, true)
+  assert.match(result.explanation ?? '', /not configured/u)
+})
+
+test('self-development preflight test gates still run the harness suite', () => {
+  const root = createFixture()
+  const criterion: Criterion = {
+    id: 'preflight.tests',
+    type: 'shell',
+    hard: true,
+    statement: 'Automated tests pass.',
+    command: HARNESS_TEST_COMMAND,
+  }
+  const resolution = resolveShellCheck(
+    root,
+    criterion,
+    HARNESS_TEST_COMMAND,
+    false,
+  )
+
+  assert.equal(resolution.profile_name, null)
+  assert.equal(resolution.command, HARNESS_TEST_COMMAND)
 })
 
 test('embedded legacy standalone coverage gates are removed, not passed', () => {

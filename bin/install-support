@@ -1296,6 +1296,33 @@ function foreignCursorEntries(targetRoot) {
   return found.sort()
 }
 
+function stripHarnessTestScripts() {
+  const packagePath = path.resolve(requiredOption('--package'))
+  const value = readJson(packagePath)
+
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    fail(`${packagePath} MUST contain a package object.`)
+  }
+
+  if (
+    typeof value.scripts !== 'object' ||
+    value.scripts === null ||
+    Array.isArray(value.scripts)
+  ) {
+    fail(`${packagePath} MUST contain a scripts object.`)
+  }
+
+  const scripts = { ...value.scripts }
+
+  for (const name of Object.keys(scripts)) {
+    if (name === 'test' || name.startsWith('test:')) {
+      delete scripts[name]
+    }
+  }
+
+  writeJson(packagePath, { ...value, scripts })
+}
+
 function detectExistingHarness() {
   const targetRoot = path.resolve(requiredOption('--target-root'))
   const sourceRoot = path.resolve(requiredOption('--source-root'))
@@ -1430,6 +1457,8 @@ if (command === 'project-cursor') {
   hashPayload()
 } else if (command === 'configure-shell-alias') {
   await configureShellAlias()
+} else if (command === 'strip-harness-test-scripts') {
+  stripHarnessTestScripts()
 } else {
   fail(`Unknown install support command: ${command ?? '(missing)'}`)
 }
