@@ -14,6 +14,14 @@
       "commit": "bc1ec28acfb556894922f131f1aef2cb3f874d58"
     },
     {
+      "version": "5.1.0",
+      "commit": "733ad2eb000a7e6ba502e330ef8fe722c3660148"
+    },
+    {
+      "version": "5.2.0",
+      "commit": "17a698ab5cdfeecc6da12422f5ccd4a4e6a83e3e"
+    },
+    {
       "version": "5.3.0",
       "commit": "2ff3487ef9f804c9e3f011797e7934cb7b7e67d9"
     }
