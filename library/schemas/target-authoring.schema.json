@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pancreator://target-authoring/v1",
+  "title": "Target extension authoring draft",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "extension_id",
+    "kind",
+    "title",
+    "summary",
+    "content",
+    "policy_persona",
+    "policies"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "extension_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "kind": {
+      "enum": ["command", "skill", "persona"]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "content": {
+      "type": "string",
+      "minLength": 1
+    },
+    "policy_persona": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "policies": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Z][A-Z0-9-]*-[0-9]{3}$"
+      }
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expected_manifest_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "persona"
+          }
+        }
+      },
+      "then": {
+        "required": ["model"]
+      },
+      "else": {
+        "not": {
+          "required": ["model"]
+        }
+      }
+    }
+  ]
+}

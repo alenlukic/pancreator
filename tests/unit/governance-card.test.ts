@@ -54,8 +54,8 @@ test('every standalone mode renders a card with its policies inlined', () => {
   const root = createFixture()
 
   for (const name of Object.keys(STANDALONE_MODES)) {
-    if (name === 'supervisor') {
-      // The supervisor card binds to a run; supervisor-card.test.ts covers it.
+    if (name === 'supervisor' || name === 'target') {
+      // These cards require a run or target-extension binding.
       continue
     }
 
@@ -180,7 +180,7 @@ test('a missing operator input is reported rather than silently omitted', () => 
 
   assert.throws(
     () => buildGovernanceCard(root, { mode: 'nonsense' }),
-    /Available: best-of-n, build-briefs, build-docs, decomposition, investigation, pair, qa-workflow, release, repair, review, shepherd, spotfix, supervisor, tune-harness, unbound, write-pr/u,
+    /Available: author, best-of-n, build-briefs, build-docs, decomposition, investigation, pair, qa-workflow, release, repair, review, shepherd, spotfix, supervisor, target, tune-harness, unbound, write-pr/u,
   )
 })
 

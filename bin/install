@@ -31,6 +31,7 @@ SOURCE_PAYLOAD_ENTRIES=(
   prettier.config.js
   release
   src
+  target-extensions
   tsconfig.json
 )
 GENERATED_PAYLOAD_ENTRIES=(AGENTS.md .gitignore dist node_modules)
@@ -628,6 +629,16 @@ report_existing_harness() {
   node "$PANCREATOR_ROOT/bin/install-support" "${args[@]}"
 }
 
+report_clean_target_extensions() {
+  if [[ ! -d "$PANCREATOR_DIR/target-extensions" ]]; then
+    return
+  fi
+
+  node "$PANCREATOR_ROOT/bin/install-support" report-clean-target-extensions \
+    --harness-root "$PANCREATOR_DIR" \
+    --target-root "$TARGET_DIR"
+}
+
 report_legacy_gitignore() {
   local gitignore="$TARGET_DIR/.gitignore"
 
@@ -1192,6 +1203,7 @@ if is_complete_install; then
       previous_marker_copy="$(mktemp "${TMPDIR:-/tmp}/pancreator-marker.XXXXXX")"
       trap 'rm -f "$previous_marker_copy"' EXIT
       cp "$INSTALL_MARKER" "$previous_marker_copy"
+      report_clean_target_extensions
       rm -rf "$PANCREATOR_DIR"
       install_payload "$HARNESS_PREEXISTING" "$previous_marker_copy"
       rm -f "$previous_marker_copy"
@@ -1218,6 +1230,7 @@ if is_partial_install; then
       echo "Repair completed."
       ;;
     clean)
+      report_clean_target_extensions
       rm -rf "$PANCREATOR_DIR"
       install_payload "$HARNESS_PREEXISTING"
       echo "Clean reinstall completed."

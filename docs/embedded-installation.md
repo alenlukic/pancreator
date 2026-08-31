@@ -290,6 +290,54 @@ Targets can add lookup rows under
 files. Invalid JSON, duplicate rows, and missing policy identifiers stop policy
 resolution before card preparation.
 
+## Target command, skill, and persona authoring
+
+Run `/pan-author` in an embedded or detached installation to create one
+target-owned command, skill, or persona. The command writes a complete draft
+under `runtime/inbox/target-authoring/`, then passes that draft to:
+
+```sh
+./.pancreator/bin/pan author apply --input runtime/inbox/target-authoring/<id>.json
+./.pancreator/bin/pan author validate --extension <id>
+```
+
+The canonical manifest and Markdown content live under
+`.pancreator/target-extensions/<id>/`. One binding-only lookup file lives at
+`.pancreator/governance/registries/policy_lookup.d/<id>.json`. A command is
+projected to `.cursor/commands/<id>.md`, and a persona is projected to
+`.cursor/agents/<id>.md` from its generated
+`.pancreator/target-extensions/<id>/agent.md`. A skill remains canonical inside
+the harness.
+Authored Cursor basenames cannot start with `pan-` or `pancreator.` and never
+enter Pancreator's projection manifest or persona configuration.
+
+The manifest records the artifact context, model where applicable, policy ids,
+canonical digest, and projected digest. A coding artifact resolves the current
+coder policy set at authoring time. A TypeScript target includes `TS-001`
+through the normal technology-scoped lookup. Each executable artifact opens
+`governance card --mode target --extension <id>` before it reads its canonical
+content, so sessions receive resolved policy text and guidance references
+without reading policy JSON directly.
+
+Applying identical input is a no-op. A changed draft must carry the current
+`expected_manifest_sha256`, which prevents an old draft from replacing a newer
+extension. Validation restores a missing or stale lookup file, Cursor
+projection, and clone-local exclusion from canonical manifest data. Repeated
+apply and validation operations keep one manifest, content file, lookup row,
+and projection.
+
+Refresh, repair, and indexed update preserve unmanifested target-extension
+files through payload reconciliation. They also preserve binding-only lookup
+files and never replace foreign Cursor projections. A clean reinstall removes
+the canonical extensions and policy bindings with the harness. It retains
+foreign Cursor files, reports their exact paths as inert copies, and directs
+the operator to remove or re-author them.
+
+Authoring never changes the target `.gitignore` or another target-tracked file.
+For Git targets, exact foreign Cursor projection paths enter a separate managed
+block in `.git/info/exclude`. Repeated authoring replaces that block without
+changing unrelated clone-local exclusions.
+
 ## Target context-bloat dispositions
 
 A policy carrying `target_extension: <name>` is target-authored, and so is every
@@ -399,7 +447,7 @@ blanket-deleted.
 
 ## Harness versioning
 
-`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `5.4.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
+`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `5.5.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
 
 `release/index.json` is the internal mapping from harness version to immutable
 Git commit. Because a commit cannot contain its own hash, release publication is

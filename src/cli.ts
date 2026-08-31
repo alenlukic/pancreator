@@ -93,6 +93,7 @@ import {
   readJson,
   readText,
   resolveInside,
+  sha256,
   writeJsonAtomic,
   writeTextAtomic,
 } from './lib/io.js'
@@ -172,6 +173,11 @@ import {
 } from './lib/worktrees.js'
 import { runTestsImpacted } from './lib/test-impact.js'
 import {
+  applyTargetAuthoringDraft,
+  readTargetExtensionManifest,
+  validateTargetAuthoring,
+} from './lib/target-authoring.js'
+import {
   finalizePreparedTuneSession,
   prepareTuneSession,
   validateAudit,
@@ -203,6 +209,8 @@ const HELP_BODY = `Usage:
   pan repository-check validate [--json]
   pan tests impacted [--changed <ref> | --staged | --worktree-dirty] [--file <path>]... [--include <glob>]... [--depth <n>] [--list] [--json] [--advisory-ratio <0..1>]
       Self-development only. Select and run the lane tests whose import closure reaches the changed files. The default change set is the dirty working tree. An iteration aid, never a gate.
+  pan author apply --input <draft-json> [--json]
+  pan author validate [--extension <id>] [--json]
   pan tune prepare [--baseline <ref>] [--json]
       Self-development only. Create a tune session, inventory current tests, and resolve the retained set.
   pan tune finalize --session <id> [--json]
@@ -234,7 +242,7 @@ const HELP_BODY = `Usage:
   pan output validate <run-id> --file <path> --invocation <path> [--json]
   pan assessment scaffold <run-id> --invocation <path> --output <path> [--force]
   pan governance audit-directives [--json]
-  pan governance card --mode <${STANDALONE_MODE_NAMES}> [--request <path>] [--worktree <name>] [--out <path>] [--base <ref> --target <ref> [--closure-revision <ref>]] [--json]
+  pan governance card --mode <${STANDALONE_MODE_NAMES}> [--extension <id>] [--request <path>] [--worktree <name>] [--out <path>] [--base <ref> --target <ref> [--closure-revision <ref>]] [--json]
       --base (review mode) renders the base-revision text of every conduct policy the target changes, so the session reviews under the rule in force before the change.
   pan governance card --mode supervisor --run <run-id> [--json]
   pan governance attest-supervisor <run-id> --sha256 <digest> [--json]
@@ -333,6 +341,7 @@ const WORKTREE_CAPABLE_SURFACES = [
 
 const SUBCOMMAND_STYLE_COMMANDS = new Set([
   'assessment',
+  'author',
   'away',
   'best-of-n',
   'briefs',
@@ -1933,6 +1942,47 @@ async function main(): Promise<void> {
       print(buildValidationMap(root), hasFlag(args, '--json'))
       return
     }
+    case 'author': {
+      const sub = args[0]
+
+      if (sub === 'apply') {
+        const result = applyTargetAuthoringDraft(
+          root,
+          requiredArgument(option(args, '--input'), '--input'),
+        )
+
+        print(result, hasFlag(args, '--json'))
+        return
+      }
+
+      if (sub === 'validate') {
+        const extensionId = option(args, '--extension')
+        const result = validateTargetAuthoring(root, {
+          ...(extensionId ? { extensionId } : {}),
+          repair: true,
+        })
+        const manifestSha256 = extensionId
+          ? sha256(readTargetExtensionManifest(root, extensionId))
+          : null
+
+        print(
+          {
+            ...result,
+            manifest_sha256: manifestSha256,
+          },
+          hasFlag(args, '--json'),
+        )
+
+        if (!result.ok) {
+          process.exitCode = 1
+        }
+        return
+      }
+
+      throw new PanError(`Unknown author subcommand: ${sub ?? '(missing)'}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
+    }
     case 'governance': {
       const sub = args[0]
 
@@ -1984,6 +2034,7 @@ async function main(): Promise<void> {
       if (sub === 'card') {
         const card = buildGovernanceCard(root, {
           mode: requiredArgument(option(args, '--mode'), '--mode'),
+          extensionId: option(args, '--extension'),
           requestPath: option(args, '--request'),
           outputPath: option(args, '--out'),
           worktreeName: option(args, '--worktree'),

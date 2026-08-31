@@ -70,6 +70,7 @@ import {
   workspaceChangedPathsFromSnapshots,
 } from './git.js'
 import { validateCommandGovernance } from './governance/command-coverage.js'
+import { validateTargetAuthoring } from './target-authoring.js'
 import { listWorkflowSlugs, loadWorkflow } from './workflow.js'
 import {
   applyOperatorInvolvement,
@@ -3124,7 +3125,8 @@ function lookupRowCovers(
     lookupPatternCovers(provider.persona, consumer.persona) &&
     lookupPatternCovers(provider.workflow, consumer.workflow) &&
     lookupPatternCovers(provider.stage, consumer.stage) &&
-    (provider.technology === undefined ||
+    (consumer.technology === undefined ||
+      provider.technology === undefined ||
       provider.technology === consumer.technology) &&
     // A contract-scoped row only resolves for runs carrying that contract, so it
     // cannot satisfy a dependency for a row that resolves without one.
@@ -3260,6 +3262,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'config.json',
     'library/schemas/config.schema.json',
     'library/schemas/stage-output.schema.json',
+    'library/schemas/target-authoring.schema.json',
     'library/schemas/workflow.schema.json',
     'library/schemas/stage.schema.json',
     'library/cursor/commands/pan-start.md',
@@ -3312,6 +3315,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'governance/policies/DIRECTOR-001.json',
     'library/workflows/prototype/workflow.json',
     'src/cli.ts',
+    'target-extensions/.gitkeep',
   ]
 
   if (selfDevelopment) {
@@ -3612,6 +3616,17 @@ export function validateRepository(root: string): RepositoryValidationResult {
 
   validateAdHocModelInheritanceGuidance(root, errors)
   validateCommandGovernance(root, errors, warnings)
+
+  const targetExtensionRoot = path.join(root, 'target-extensions')
+  const hasTargetExtensions =
+    fileExists(targetExtensionRoot) &&
+    readdirSync(targetExtensionRoot, { withFileTypes: true }).some((entry) =>
+      entry.isDirectory(),
+    )
+
+  if (hasTargetExtensions) {
+    errors.push(...validateTargetAuthoring(root).errors)
+  }
 
   if (
     fileExists(path.join(root, 'library', 'cursor', 'commands', 'pan-repo.md'))

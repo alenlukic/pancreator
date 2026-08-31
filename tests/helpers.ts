@@ -165,6 +165,7 @@ export function createFixture(): string {
     'library',
     'release',
     'docs',
+    'target-extensions',
     '.pancreator',
   ]) {
     const source = path.join(REPO_ROOT, entry)

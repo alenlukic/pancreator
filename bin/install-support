@@ -1494,6 +1494,62 @@ function writeMarker() {
   })
 }
 
+function reportCleanTargetExtensions() {
+  const harnessRoot = path.resolve(requiredOption('--harness-root'))
+  const targetRoot = path.resolve(requiredOption('--target-root'))
+  const extensionRoot = path.join(harnessRoot, 'target-extensions')
+
+  if (!existsSync(extensionRoot)) {
+    return
+  }
+
+  const removed = []
+  const retained = []
+
+  for (const name of readdirSync(extensionRoot).sort()) {
+    const manifestPath = path.join(extensionRoot, name, 'manifest.json')
+
+    if (!existsSync(manifestPath)) {
+      continue
+    }
+
+    const manifest = readJson(manifestPath)
+
+    removed.push(
+      `target-extensions/${name}`,
+      `governance/registries/policy_lookup.d/${name}.json`,
+    )
+
+    if (
+      typeof manifest.projection_path === 'string' &&
+      existsSync(path.join(targetRoot, manifest.projection_path))
+    ) {
+      retained.push(manifest.projection_path)
+    }
+  }
+
+  if (removed.length === 0) {
+    return
+  }
+
+  process.stdout.write(
+    [
+      '',
+      'Clean reinstall removes these target extension paths:',
+      ...removed.map((relative) => `  removed   ${relative}`),
+      ...(retained.length > 0
+        ? [
+            '',
+            'Clean reinstall retains these foreign Cursor files as inert copies:',
+            ...retained.map((relative) => `  retained  ${relative}`),
+            'Remove or re-author each retained file before use.',
+          ]
+        : []),
+      '',
+    ].join('\n'),
+  )
+}
+
 const command = process.argv[2]
 
 if (command === 'project-cursor') {
@@ -1518,6 +1574,8 @@ if (command === 'project-cursor') {
   await configureShellAlias()
 } else if (command === 'strip-harness-test-scripts') {
   stripHarnessTestScripts()
+} else if (command === 'report-clean-target-extensions') {
+  reportCleanTargetExtensions()
 } else {
   fail(`Unknown install support command: ${command ?? '(missing)'}`)
 }

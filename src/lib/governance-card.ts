@@ -9,6 +9,7 @@ import { renderPolicyBlocks } from './policy-guidance.js'
 import { harnessPathPrefix, isTargetInstallation } from './project-config.js'
 import { resolveRequirements } from './requirements/resolve.js'
 import type { InvocationKind } from './requirements/types.js'
+import { readTargetExtensionManifest } from './target-authoring.js'
 import { PROTECTED_PATH_RULE } from './workspace/protected-paths.js'
 import { resolveOrCreateWorktree } from './worktrees.js'
 import { gitShowFile } from './git.js'
@@ -39,6 +40,38 @@ export interface StandaloneMode {
 }
 
 export const STANDALONE_MODES: Record<string, StandaloneMode> = {
+  author: {
+    kind: 'standalone',
+    persona: 'coder',
+    workflow: 'standalone',
+    stage: 'author',
+    title: 'Target extension authoring',
+    summary:
+      'Create or update one target-owned command, skill, or persona through ' +
+      'the deterministic target authoring interface.',
+    boundaries: [
+      'You MUST run only in an embedded or detached target installation.',
+      'You MUST write the complete draft under runtime before you apply it.',
+      'You MUST NOT write target-tracked files or the target `.gitignore`.',
+      PROTECTED_PATH_RULE,
+      'You MUST NOT create target policies, workflows, or repository-check profiles.',
+    ],
+  },
+  target: {
+    kind: 'standalone',
+    persona: 'unbound',
+    workflow: 'standalone',
+    stage: 'target-extension',
+    title: 'Target extension',
+    summary:
+      'Run one target-owned extension with policies resolved from its saved context.',
+    boundaries: [
+      'You MUST read the canonical target extension content after you read this card.',
+      'You MUST stay inside the extension content and this card.',
+      PROTECTED_PATH_RULE,
+      'You MUST NOT edit Pancreator release-owned authoring paths.',
+    ],
+  },
   pair: {
     kind: 'pair',
     persona: 'coder',
@@ -341,6 +374,8 @@ export interface GovernanceCard {
 
 export interface GovernanceCardOptions {
   mode: string
+  /** Target mode only. Identifier of the target-owned extension. */
+  extensionId?: string | null
   requestPath?: string | null
   outputPath?: string | null
   worktreeName?: string | null
@@ -634,14 +669,43 @@ export function buildGovernanceCard(
   root: string,
   options: GovernanceCardOptions,
 ): GovernanceCard {
-  const mode = STANDALONE_MODES[options.mode]
+  const registeredMode = STANDALONE_MODES[options.mode]
 
   invariant(
-    mode,
+    registeredMode,
     `Unknown standalone mode '${options.mode}'. Available: ` +
       `${Object.keys(STANDALONE_MODES).sort().join(', ')}.`,
     { code: 'UNKNOWN_STANDALONE_MODE' },
   )
+  invariant(
+    options.extensionId === undefined ||
+      options.extensionId === null ||
+      options.mode === 'target',
+    '--extension applies to the target mode only.',
+    { code: 'INVALID_GOVERNANCE_CARD_OPTION' },
+  )
+
+  let mode = registeredMode
+
+  if (options.mode === 'target') {
+    invariant(options.extensionId, 'The target mode requires --extension.', {
+      code: 'TARGET_EXTENSION_REQUIRED',
+    })
+
+    const manifest = readTargetExtensionManifest(root, options.extensionId)
+
+    mode = {
+      ...registeredMode,
+      persona: manifest.context.persona,
+      stage: manifest.context.stage,
+      title: manifest.title,
+      summary: manifest.summary,
+      boundaries: [
+        `You MUST read \`${manifest.content_path}\` after you read this card.`,
+        ...registeredMode.boundaries.slice(1),
+      ],
+    }
+  }
   invariant(
     options.mode !== 'supervisor',
     'The supervisor card binds to one run. Run ' +
