@@ -439,11 +439,10 @@ function loadLookupTable(root: string): PolicyLookupTable {
         )
         invariant(
           Array.isArray(extension.policies) &&
-            extension.policies.length > 0 &&
             extension.policies.every(
               (policy) => typeof policy === 'string' && policy.length > 0,
             ),
-          `${extensionSource}.policies MUST be a non-empty string array.`,
+          `${extensionSource}.policies MUST be a string array.`,
           { code: 'INVALID_POLICY_EXTENSION' },
         )
 

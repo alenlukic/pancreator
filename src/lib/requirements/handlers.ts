@@ -44,6 +44,7 @@ import {
 } from '../validators/autonomy-state.js'
 import { validatePrototypeOutput } from '../validators/prototype-output.js'
 import { validateTuneRecord } from '../validators/tune-record.js'
+import { validateTargetAuthoring } from '../target-authoring.js'
 
 function passed(): HandlerResult {
   return { status: 'passed', issues: [] }
@@ -99,6 +100,18 @@ function questionToolValidateHandler(input: HandlerInput): HandlerResult {
     status: errors.length === 0 ? 'passed' : 'failed',
     issues: errors.map((message) => ({
       code: 'question-tool.invalid',
+      message,
+    })),
+  }
+}
+
+function targetAuthoringValidateHandler(input: HandlerInput): HandlerResult {
+  const result = validateTargetAuthoring(input.root)
+
+  return {
+    status: result.ok ? 'passed' : 'failed',
+    issues: result.errors.map((message) => ({
+      code: 'target-authoring.invalid',
       message,
     })),
   }
@@ -242,6 +255,7 @@ export const HANDLERS: Record<string, ValidatorHandler> = {
   'invocation-attest-validate': invocationAttestValidateHandler,
   'prototype-output-validate': validatePrototypeOutput,
   'tune-record-validate': validateTuneRecord,
+  'target-authoring-validate': targetAuthoringValidateHandler,
 }
 
 export const HANDLER_IDS = new Set(Object.keys(HANDLERS))

@@ -25,12 +25,19 @@ interface ReadOnlyCardEntry {
   card_mode: string
 }
 
+interface CardCommandEntry {
+  command: string
+  card_mode: string
+}
+
 type ReadOnlyCommandEntry = string | ReadOnlyCardEntry
 
 interface CommandGovernanceRegistry {
-  schema_version: 1 | 2
+  schema_version: 1 | 2 | 3
   /** Commands that read run or repository state and delegate nothing. */
   read_only_commands: ReadOnlyCommandEntry[]
+  /** Commands whose exact standalone card mode is part of their contract. */
+  card_commands: CardCommandEntry[]
   /** Commands that open a supervisor session and MUST run the supervisor card. */
   supervisor_commands: string[]
   /**
@@ -54,6 +61,15 @@ function isReadOnlyEntry(value: unknown): value is ReadOnlyCommandEntry {
     value !== null &&
     typeof (value as ReadOnlyCardEntry).command === 'string' &&
     typeof (value as ReadOnlyCardEntry).card_mode === 'string'
+  )
+}
+
+function isCardCommandEntry(value: unknown): value is CardCommandEntry {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as CardCommandEntry).command === 'string' &&
+    typeof (value as CardCommandEntry).card_mode === 'string'
   )
 }
 
@@ -88,9 +104,14 @@ function loadRegistry(
   const value = readJson(absolute) as Partial<CommandGovernanceRegistry>
 
   if (
-    (value.schema_version !== 1 && value.schema_version !== 2) ||
+    (value.schema_version !== 1 &&
+      value.schema_version !== 2 &&
+      value.schema_version !== 3) ||
     !Array.isArray(value.read_only_commands) ||
     !value.read_only_commands.every(isReadOnlyEntry) ||
+    (value.schema_version === 3 &&
+      (!Array.isArray(value.card_commands) ||
+        !value.card_commands.every(isCardCommandEntry))) ||
     !isStringArray(value.supervisor_commands) ||
     !Array.isArray(value.pending_card_steps) ||
     !value.pending_card_steps.every(
@@ -102,13 +123,17 @@ function loadRegistry(
     )
   ) {
     errors.push(
-      `${COMMAND_GOVERNANCE_REGISTRY_PATH} MUST declare schema_version 1 or 2, ` +
-        'read_only_commands, supervisor_commands, and pending_card_steps',
+      `${COMMAND_GOVERNANCE_REGISTRY_PATH} MUST declare a supported schema, ` +
+        'read_only_commands, card_commands in schema 3, supervisor_commands, ' +
+        'and pending_card_steps',
     )
     return null
   }
 
-  return value as CommandGovernanceRegistry
+  return {
+    ...(value as CommandGovernanceRegistry),
+    card_commands: value.card_commands ?? [],
+  }
 }
 
 function listCommands(root: string): string[] {
@@ -145,6 +170,9 @@ export function validateCommandGovernance(
   }
 
   const readOnly = normalizeReadOnlyCommands(registry.read_only_commands)
+  const cardCommands = new Map(
+    registry.card_commands.map((entry) => [entry.command, entry.card_mode]),
+  )
   const supervisor = new Set(registry.supervisor_commands)
   const pending = new Map(
     registry.pending_card_steps.map((item) => [
@@ -155,7 +183,12 @@ export function validateCommandGovernance(
   const commands = listCommands(root)
   const known = new Set(commands)
 
-  for (const name of [...readOnly.keys(), ...supervisor, ...pending.keys()]) {
+  for (const name of [
+    ...readOnly.keys(),
+    ...cardCommands.keys(),
+    ...supervisor,
+    ...pending.keys(),
+  ]) {
     if (!known.has(name)) {
       errors.push(
         `${COMMAND_GOVERNANCE_REGISTRY_PATH} names command '${name}', which ` +
@@ -165,7 +198,7 @@ export function validateCommandGovernance(
   }
 
   for (const [name, cardMode] of readOnly) {
-    if (supervisor.has(name) || pending.has(name)) {
+    if (cardCommands.has(name) || supervisor.has(name) || pending.has(name)) {
       errors.push(
         `${COMMAND_GOVERNANCE_REGISTRY_PATH} lists '${name}' as read-only ` +
           'and as a card-bearing command',
@@ -173,6 +206,15 @@ export function validateCommandGovernance(
     }
 
     if (cardMode !== null && !(cardMode in STANDALONE_MODES)) {
+      errors.push(
+        `${COMMAND_GOVERNANCE_REGISTRY_PATH} lists '${name}' with card_mode ` +
+          `'${cardMode}', which is not a registered mode`,
+      )
+    }
+  }
+
+  for (const [name, cardMode] of cardCommands) {
+    if (!(cardMode in STANDALONE_MODES)) {
       errors.push(
         `${COMMAND_GOVERNANCE_REGISTRY_PATH} lists '${name}' with card_mode ` +
           `'${cardMode}', which is not a registered mode`,
@@ -225,7 +267,9 @@ export function validateCommandGovernance(
       )
     }
 
-    const expectedMode = supervisor.has(name) ? SUPERVISOR_MODE : null
+    const expectedMode = supervisor.has(name)
+      ? SUPERVISOR_MODE
+      : (cardCommands.get(name) ?? null)
 
     if (modes.length === 0) {
       const expiresWith = pending.get(name)
@@ -265,8 +309,8 @@ export function validateCommandGovernance(
 
     if (expectedMode && !modes.includes(expectedMode)) {
       errors.push(
-        `${relative} opens a supervisor session and MUST run ` +
-          `\`pan governance card --mode ${SUPERVISOR_MODE} --run <run-id>\``,
+        `${relative} MUST run \`pan governance card --mode ${expectedMode}\`` +
+          (expectedMode === SUPERVISOR_MODE ? ' --run <run-id>`' : '`'),
       )
     }
 
@@ -304,7 +348,11 @@ export function validateCommandGovernance(
   const modeStages = new Map<string, string>()
 
   for (const [name, mode] of Object.entries(STANDALONE_MODES)) {
-    if (mode.workflow !== 'standalone' || mode.stage === '*') {
+    if (
+      name === 'target' ||
+      mode.workflow !== 'standalone' ||
+      mode.stage === '*'
+    ) {
       continue
     }
 
@@ -330,7 +378,7 @@ export function validateCommandGovernance(
       continue
     }
 
-    if (!modeStages.has(row.stage)) {
+    if (!modeStages.has(row.stage) && !row.stage.startsWith('target-')) {
       errors.push(
         `policy_lookup_table.json row (persona ${row.persona}, workflow standalone, ` +
           `stage ${row.stage}) names a stage no STANDALONE_MODES entry declares`,

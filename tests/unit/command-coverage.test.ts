@@ -29,6 +29,35 @@ test('every canonical command delivers a card or is an allowlisted read-only uti
   assert.deepEqual(pending, [])
 })
 
+test('pan-author is explicitly registered with its author card', () => {
+  const root = createFixture()
+  const registryPath = path.join(root, COMMAND_GOVERNANCE_REGISTRY_PATH)
+  const registry = JSON.parse(readFileSync(registryPath, 'utf8')) as {
+    card_commands: Array<{ command: string; card_mode: string }>
+  }
+  const author = registry.card_commands.find(
+    (entry) => entry.command === 'pan-author',
+  )
+
+  assert.deepEqual(author, {
+    command: 'pan-author',
+    card_mode: 'author',
+  })
+  assert.deepEqual(run(root).errors, [])
+
+  assert.ok(author)
+  author.card_mode = 'review'
+  writeJson(registryPath, registry)
+
+  assert.ok(
+    run(root).errors.some((error) =>
+      error.includes(
+        'pan-author.md MUST run `pan governance card --mode review`',
+      ),
+    ),
+  )
+})
+
 test('a new command without a card fails validation with the fix named', () => {
   const root = createFixture()
 

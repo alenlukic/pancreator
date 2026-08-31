@@ -108,6 +108,16 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
   assert.ok(installedPackage.scripts.check)
   assert.ok(installedPackage.scripts.lint)
   assert.ok(installedPackage.scripts.validate)
+  assert.equal(
+    existsSync(
+      path.join(project, '.pancreator', 'target-extensions', '.gitkeep'),
+    ),
+    true,
+  )
+  assert.deepEqual(
+    readdirSync(path.join(project, '.pancreator', 'target-extensions')),
+    ['.gitkeep'],
+  )
 
   assert.equal(
     existsSync(
@@ -192,6 +202,13 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
       ],
     ],
     ['pan-start.md', [/\.pancreator\/runtime\/inbox/u]],
+    [
+      'pan-author.md',
+      [
+        /governance card --mode author/u,
+        /author apply --input runtime\/inbox\/target-authoring/u,
+      ],
+    ],
   ] as const) {
     const body = readFileSync(
       path.join(project, '.cursor', 'commands', command),

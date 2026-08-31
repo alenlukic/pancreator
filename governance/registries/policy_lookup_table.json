@@ -251,29 +251,29 @@
       "persona": "coder",
       "workflow": "*",
       "stage": "*",
-      "installation_scope": "self_development",
-      "policies": ["TS-001"]
+      "policies": ["TS-001"],
+      "technology": "typescript"
     },
     {
       "persona": "reviewer",
       "workflow": "*",
       "stage": "*",
-      "installation_scope": "self_development",
-      "policies": ["TS-001"]
+      "policies": ["TS-001"],
+      "technology": "typescript"
     },
     {
       "persona": "qa-tester",
       "workflow": "*",
       "stage": "*",
-      "installation_scope": "self_development",
-      "policies": ["TS-001"]
+      "policies": ["TS-001"],
+      "technology": "typescript"
     },
     {
       "persona": "spotfixer",
       "workflow": "*",
       "stage": "*",
-      "installation_scope": "self_development",
-      "policies": ["TS-001"]
+      "policies": ["TS-001"],
+      "technology": "typescript"
     },
     {
       "persona": "coder",
@@ -340,8 +340,8 @@
       "persona": "metacritic",
       "workflow": "*",
       "stage": "*",
-      "installation_scope": "self_development",
-      "policies": ["TS-001"]
+      "policies": ["TS-001"],
+      "technology": "typescript"
     },
     {
       "persona": "metacritic",
@@ -423,8 +423,8 @@
       "persona": "verifier",
       "workflow": "*",
       "stage": "*",
-      "installation_scope": "self_development",
-      "policies": ["TS-001"]
+      "policies": ["TS-001"],
+      "technology": "typescript"
     },
     {
       "persona": "verifier",
@@ -450,8 +450,8 @@
       "persona": "remediator",
       "workflow": "*",
       "stage": "*",
-      "installation_scope": "self_development",
-      "policies": ["TS-001"]
+      "policies": ["TS-001"],
+      "technology": "typescript"
     },
     {
       "persona": "remediator",
@@ -477,8 +477,8 @@
       "persona": "remediator-severe",
       "workflow": "*",
       "stage": "*",
-      "installation_scope": "self_development",
-      "policies": ["TS-001"]
+      "policies": ["TS-001"],
+      "technology": "typescript"
     },
     {
       "persona": "remediator-severe",
@@ -618,8 +618,8 @@
       "persona": "hypervisor",
       "workflow": "*",
       "stage": "*",
-      "installation_scope": "self_development",
-      "policies": ["TS-001"]
+      "policies": ["TS-001"],
+      "technology": "typescript"
     },
     {
       "persona": "metacritic",
@@ -713,6 +713,12 @@
       "workflow": "*",
       "stage": "*",
       "policies": ["ENG-001", "WORK-001", "SPOT-001", "CONTRACT-001"]
+    },
+    {
+      "persona": "coder",
+      "workflow": "standalone",
+      "stage": "author",
+      "policies": ["CONTRACT-001", "ENG-001"]
     },
     {
       "persona": "coder",

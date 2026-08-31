@@ -1,5 +1,24 @@
 # Changelog
 
+## [5.5.0] - 2026-08-31
+
+### Changed
+
+- Preserve target-owned extensions through refresh, repair, and indexed update ([target-authoring](src/lib/target-authoring.ts), [install](bin/install)).
+- Permit binding-only policy lookup rows for target-authored artifacts ([policies](src/lib/policies.ts)).
+- Scope `TS-001` to TypeScript coding contexts in target installations ([policy_lookup_table.json](governance/registries/policy_lookup_table.json)).
+
+### Added
+
+- Add `/pan-author` so operators can author target commands, skills, and personas ([pan-author](library/cursor/commands/pan-author.md), [target-authoring](src/lib/target-authoring.ts)).
+- Add `author` and `target` governance card modes for authored artifacts ([governance-card](src/lib/governance-card.ts)).
+- Add `TARGET-AUTHORING-VALIDATE-001` for installed target extensions ([validation_registry.json](governance/registries/validation_registry.json)).
+- Add an empty `target-extensions/` root to the install payload ([target-extensions/.gitkeep](target-extensions/.gitkeep)).
+
+### Removed
+
+- Remove `docs/test-audit-2026-08-29.md` after the 5.4.0 release (commit `65617f5195f7b427974b7a83fedba42e747bb1b3`).
+
 ## [5.4.0] - 2026-08-31
 
 ### Changed

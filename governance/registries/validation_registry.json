@@ -396,6 +396,18 @@
       "default_timeout_ms": 30000,
       "deterministic": true,
       "side_effect_free": true
+    },
+    {
+      "id": "TARGET-AUTHORING-VALIDATE-001",
+      "kind": "validator",
+      "version": "1",
+      "handler": "target-authoring-validate",
+      "input_contract": "target-extension-repository",
+      "result_schema": "validation-result-v1",
+      "target_types": ["repository"],
+      "default_timeout_ms": 30000,
+      "deterministic": true,
+      "side_effect_free": true
     }
   ]
 }
