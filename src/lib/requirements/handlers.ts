@@ -43,6 +43,7 @@ import {
   validateHypervisorState,
 } from '../validators/autonomy-state.js'
 import { validatePrototypeOutput } from '../validators/prototype-output.js'
+import { validateTuneRecord } from '../validators/tune-record.js'
 
 function passed(): HandlerResult {
   return { status: 'passed', issues: [] }
@@ -240,6 +241,7 @@ export const HANDLERS: Record<string, ValidatorHandler> = {
   'delegation-validate': delegationValidateHandler,
   'invocation-attest-validate': invocationAttestValidateHandler,
   'prototype-output-validate': validatePrototypeOutput,
+  'tune-record-validate': validateTuneRecord,
 }
 
 export const HANDLER_IDS = new Set(Object.keys(HANDLERS))

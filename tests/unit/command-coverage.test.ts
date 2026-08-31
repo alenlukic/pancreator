@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync, unlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -117,6 +117,69 @@ test('an unknown mode, a stale pending entry, and a missing supervisor card are 
   )
 })
 
+test('a read-only command with a required card mode is accepted', () => {
+  const root = createFixture()
+  const commandPath = path.join(
+    root,
+    'library/cursor/commands/pan-tune-harness.md',
+  )
+
+  assert.ok(existsSync(commandPath))
+
+  const { errors } = run(root)
+
+  assert.ok(
+    !errors.some((item) => item.includes('pan-tune-harness')),
+    errors.join('\n'),
+  )
+
+  const command = readFileSync(commandPath, 'utf8')
+
+  writeFileSync(
+    commandPath,
+    command.replace(
+      'governance card --mode tune-harness',
+      'governance card --mode review',
+    ),
+  )
+
+  const missingCard = run(root)
+
+  assert.ok(
+    missingCard.errors.some((item) =>
+      item.includes('MUST run `pan governance card --mode tune-harness`'),
+    ),
+    missingCard.errors.join('\n'),
+  )
+
+  writeFileSync(commandPath, command)
+
+  const registryPath = path.join(root, COMMAND_GOVERNANCE_REGISTRY_PATH)
+  const registry = JSON.parse(readFileSync(registryPath, 'utf8')) as {
+    read_only_commands: Array<string | { command: string; card_mode: string }>
+  }
+  const tuneEntry = registry.read_only_commands.find(
+    (item) => typeof item !== 'string' && item.command === 'pan-tune-harness',
+  )
+
+  assert.ok(tuneEntry && typeof tuneEntry !== 'string')
+
+  if (tuneEntry && typeof tuneEntry !== 'string') {
+    tuneEntry.card_mode = 'missing-mode'
+  }
+
+  writeJson(registryPath, registry)
+
+  const invalidMode = run(root)
+
+  assert.ok(
+    invalidMode.errors.some((item) =>
+      item.includes("card_mode 'missing-mode', which is not a registered mode"),
+    ),
+    invalidMode.errors.join('\n'),
+  )
+})
+
 test('a read-only command that runs a card and a registry naming a missing command are errors', () => {
   const root = createFixture()
   const registryPath = path.join(root, COMMAND_GOVERNANCE_REGISTRY_PATH)
@@ -131,7 +194,7 @@ test('a read-only command that runs a card and a registry naming a missing comma
 
   assert.ok(
     errors.some((item) =>
-      /pan-pair\.md runs a governance card but .* lists it as read-only/u.test(
+      /pan-pair\.md runs a governance card but .* lists it as a cardless read-only utility/u.test(
         item,
       ),
     ),

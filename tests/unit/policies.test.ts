@@ -5,6 +5,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { createFixture, sharedFixture } from '../helpers.js'
 import { loadPolicyCatalog, resolvePolicies } from '../../src/lib/policies.js'
+import { resolveRequirements } from '../../src/lib/requirements/resolve.js'
 
 function writePolicyExtension(
   root: string,
@@ -353,6 +354,7 @@ test('policy resolution unions global and stage-specific policies', () => {
     'REPO-001',
     'RUNTIME-001',
     'STE-001',
+    'TEST-001',
     'TS-001',
     'VALID-001',
   ])
@@ -697,4 +699,78 @@ test('standalone review resolves squad and delegation governance', () => {
   assert.ok(ids.includes('REVIEW-001'))
   assert.ok(ids.includes('DELEGATE-001'))
   assert.ok(ids.includes('ENG-001'))
+})
+
+test('TEST-001 resolves testing.md for self-development test personas', () => {
+  const root = sharedFixture()
+  const catalog = loadPolicyCatalog(root)
+  const testPolicy = catalog.get('TEST-001')
+
+  assert.ok(testPolicy)
+  assert.equal(
+    testPolicy?.guidance?.[0]?.source_path,
+    'governance/handbooks/eng/testing.md',
+  )
+
+  const personas = [
+    'coder',
+    'remediator',
+    'remediator-severe',
+    'reviewer',
+    'qa-tester',
+    'verifier',
+  ] as const
+
+  for (const persona of personas) {
+    const policies = resolvePolicies(root, {
+      persona,
+      workflow: 'delivery',
+      stage: 'implement',
+      operator_artifacts: 'suppressed',
+    })
+    const resolvedTestPolicy = policies.find(
+      (policy) => policy.id === 'TEST-001',
+    )
+
+    assert.ok(resolvedTestPolicy, `${persona} MUST resolve TEST-001`)
+  }
+
+  const targetRoot = createFixture()
+  const configPath = path.join(targetRoot, 'config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  config.installation_mode = 'embedded'
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+
+  const targetIds = resolvePolicies(targetRoot, {
+    persona: 'coder',
+    workflow: 'delivery',
+    stage: 'implement',
+    operator_artifacts: 'suppressed',
+  }).map((policy) => policy.id)
+
+  assert.equal(targetIds.includes('TEST-001'), false)
+})
+
+test('TUNE-001 resolves its record validator for tune-harness sessions', () => {
+  const manifest = resolveRequirements(sharedFixture(), {
+    persona: 'reviewer',
+    workflow: 'standalone',
+    stage: 'tune-harness',
+    invocation_kind: 'standalone',
+    invocation: {
+      artifact_paths: ['runtime/tune-harness/records/session.json'],
+    },
+  })
+  const validator = manifest.validation_requirements.find(
+    (item) => item.registry_id === 'TUNE-RECORD-VALIDATE-001',
+  )
+
+  assert.equal(
+    validator?.resolved_target,
+    'runtime/tune-harness/records/session.json',
+  )
 })

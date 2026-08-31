@@ -1,0 +1,43 @@
+{
+  "id": "TUNE-001",
+  "title": "Harness test tuning command",
+  "severity": "hard",
+  "summary": "The standalone tune command MUST audit the harness test suite outside workflow runs, run benchmark, comparison, and judgment passes in parallel, and write validated records under runtime/tune-harness/ without editing source files.",
+  "instructions": [
+    "The command MUST run only in self-development because installed Pancreator payloads contain no harness tests.",
+    "The command MUST NOT edit tests or other tracked source files.",
+    "The command MUST prepare one session, inventory current tests, and start benchmark, retained-set comparison, and handbook judgment in one top-level parallel fan-out.",
+    "The judgment pass MUST read the handbook and prepared inventory. It MUST NOT read benchmark or comparison output.",
+    "The judgment pass MUST record its exact handbook, inventory, and similarity inputs in the session provenance file.",
+    "Each tune record MUST name the harness version, Git commit, workspace fingerprint, retained set, and measured file costs.",
+    "The first run MAY accept --baseline <ref> and derive the retained set from that revision through a temporary detached worktree.",
+    "A baseline revision runs its install, build, and test scripts. The operator MUST trust that revision before use.",
+    "Tune state MUST live under runtime/tune-harness/ so pan archive does not move it.",
+    "Finalization MUST validate completeness, overlap, references, and record shape before it atomically writes the immutable record, ranked report, and latest pointer.",
+    "No deterministic check MAY judge whether a verdict is correct. Validators check structure and orchestration facts only.",
+    "A DEMOTE recommendation MUST name a secondary destination or a cheaper direct form."
+  ],
+  "requirements": [
+    {
+      "id": "tune-record-validate",
+      "registry_id": "TUNE-RECORD-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "agent",
+      "target": "artifact:0",
+      "enforcement": "required",
+      "failure_route": "blocked",
+      "evidence_class": "validation-result",
+      "applicability": {
+        "invocation_kind": "standalone",
+        "stage": "tune-harness"
+      }
+    }
+  ],
+  "guidance_sources": [
+    {
+      "path": "governance/handbooks/eng/testing.md",
+      "start_heading": "## Verdict vocabulary",
+      "read_trigger": "Read this guidance before you assign tune verdicts or validate tune records."
+    }
+  ]
+}

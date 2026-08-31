@@ -97,6 +97,12 @@ function createSyntheticTree(): string {
   return root
 }
 
+function elapsedCpuMs(startedAt: NodeJS.CpuUsage): number {
+  const elapsed = process.cpuUsage(startedAt)
+
+  return (elapsed.user + elapsed.system) / 1_000
+}
+
 test('parseSpecifiersByRegex separates runtime and type-only specifiers', () => {
   const parsed = parseSpecifiersByRegex(
     [
@@ -151,10 +157,12 @@ test('buildModuleGraph records imports, dependents, bin and fixture references',
 
   try {
     for (const parser of ['typescript', 'regex'] as const) {
+      const startedAt = process.cpuUsage()
       const graph = await buildModuleGraph(root, { parser })
+      const cpuMs = elapsedCpuMs(startedAt)
 
       assert.equal(graph.parser, parser)
-      assert.ok(graph.build_ms < 1_000, `graph build took ${graph.build_ms} ms`)
+      assert.ok(cpuMs < 1_000, `graph build used ${cpuMs} ms of CPU`)
       assert.deepEqual(
         [...(graph.imports.get('src/lib/feature.ts') ?? [])],
         ['src/lib/core.ts'],
@@ -541,6 +549,7 @@ test('runTestsImpacted refuses in target installations', async () => {
 
 test('self-test: a synthetic change to src/lib/naming.ts selects the naming test and not the whole lane', async () => {
   let output = ''
+  const startedAt = process.cpuUsage()
   const result = await runTestsImpacted(
     REPO_ROOT,
     ['--list', '--json', '--file', 'src/lib/naming.ts'],
@@ -548,6 +557,7 @@ test('self-test: a synthetic change to src/lib/naming.ts selects the naming test
       output += text
     },
   )
+  const cpuMs = elapsedCpuMs(startedAt)
   const parsed = JSON.parse(output) as typeof result
 
   assert.equal(parsed.status, 'listed')
@@ -557,10 +567,7 @@ test('self-test: a synthetic change to src/lib/naming.ts selects the naming test
     parsed.selected_count < parsed.lane_count,
     `selected ${parsed.selected_count} of ${parsed.lane_count}`,
   )
-  assert.ok(
-    parsed.graph_build_ms < 2_000,
-    `graph build took ${parsed.graph_build_ms} ms`,
-  )
+  assert.ok(cpuMs < 2_000, `impact selection used ${cpuMs} ms of CPU`)
 
   const direct = await runTestsImpacted(
     REPO_ROOT,

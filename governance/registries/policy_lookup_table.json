@@ -324,6 +324,13 @@
       "policies": ["ENG-001", "CONTRACT-001"]
     },
     {
+      "persona": "coder",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["TEST-001"]
+    },
+    {
       "persona": "metacritic",
       "workflow": "*",
       "stage": "*",
@@ -350,10 +357,24 @@
       "policies": ["ENG-001", "CONTRACT-001"]
     },
     {
+      "persona": "reviewer",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["TEST-001"]
+    },
+    {
       "persona": "qa-tester",
       "workflow": "*",
       "stage": "*",
       "policies": ["ENG-001", "BROWSER-001"]
+    },
+    {
+      "persona": "qa-tester",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["TEST-001"]
     },
     {
       "persona": "designer",
@@ -396,6 +417,13 @@
       "workflow": "*",
       "stage": "*",
       "installation_scope": "self_development",
+      "policies": ["TEST-001"]
+    },
+    {
+      "persona": "verifier",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
       "policies": ["TS-001"]
     },
     {
@@ -416,6 +444,13 @@
       "workflow": "*",
       "stage": "*",
       "installation_scope": "self_development",
+      "policies": ["TEST-001"]
+    },
+    {
+      "persona": "remediator",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
       "policies": ["TS-001"]
     },
     {
@@ -430,6 +465,13 @@
       "workflow": "*",
       "stage": "*",
       "policies": ["ENG-001", "CONTRACT-001"]
+    },
+    {
+      "persona": "remediator-severe",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["TEST-001"]
     },
     {
       "persona": "remediator-severe",
@@ -689,6 +731,12 @@
       "workflow": "standalone",
       "stage": "review",
       "policies": ["REVIEW-001", "DELEGATE-001"]
+    },
+    {
+      "persona": "reviewer",
+      "workflow": "standalone",
+      "stage": "tune-harness",
+      "policies": ["TUNE-001", "DELEGATE-001"]
     },
     {
       "persona": "unbound",

@@ -146,6 +146,27 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST leave remediation to the operator, who decides separately what to act on.',
     ],
   },
+  'tune-harness': {
+    kind: 'standalone',
+    persona: 'reviewer',
+    workflow: 'standalone',
+    stage: 'tune-harness',
+    title: 'Harness test tuning',
+    summary:
+      'One source-read-only audit of the Pancreator harness test suite outside ' +
+      'every workflow run. The session prepares one tune session, runs ' +
+      'benchmark, retained-set comparison, and handbook judgment in parallel, ' +
+      'then finalizes a validated record under runtime/tune-harness/.',
+    boundaries: [
+      'You MUST run only in self-development because installed payloads contain no harness tests.',
+      'You MUST NOT edit tests or other tracked source files.',
+      'You MUST prepare the session with `./bin/pan tune prepare` before the passes start.',
+      'The judgment pass MUST read the handbook and inventory only. It MUST NOT read benchmark or comparison output.',
+      'You MUST finalize only after every pass completes and `./bin/pan tune finalize` validates the record shape.',
+      PROTECTED_PATH_RULE,
+      'You MUST NOT commit, push, merge, publish, deploy, or write workflow state.',
+    ],
+  },
   'best-of-n': {
     kind: 'best_of_n',
     persona: 'meta-orchestrator',

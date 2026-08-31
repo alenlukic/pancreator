@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 import { cloneTree } from '../helpers.js'
+import { recordFixtureEvent } from '../reporters/fixture-profile.js'
 
 export const REPO_ROOT = process.cwd()
 export const INSTALLER = path.join(REPO_ROOT, 'bin', 'install')
@@ -165,6 +166,7 @@ let installedTemplate: string | null = null
 
 export function installedProjectTemplate(): string {
   if (installedTemplate === null) {
+    const started = performance.now()
     const project = makeSkeletonProject()
     const result = runInstaller(project)
 
@@ -174,6 +176,11 @@ export function installedProjectTemplate(): string {
       )
     }
 
+    recordFixtureEvent(
+      'template_build',
+      'secondary',
+      performance.now() - started,
+    )
     installedTemplate = project
   }
 
@@ -182,9 +189,11 @@ export function installedProjectTemplate(): string {
 
 export function cloneInstalledProject(): string {
   const template = installedProjectTemplate()
+  const started = performance.now()
   const project = mkdtempSync(path.join(tmpdir(), 'pancreator-embed-'))
 
   cloneTree(template, project, { verbatimSymlinks: true })
+  recordFixtureEvent('template_clone', 'secondary', performance.now() - started)
 
   return project
 }

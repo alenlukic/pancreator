@@ -1,5 +1,31 @@
 # Changelog
 
+## [5.4.0] - 2026-08-31
+
+### Changed
+
+- Extend read-only command governance so one entry can name a required card mode ([command_governance.json](governance/registries/command_governance.json), [command-coverage](src/lib/governance/command-coverage.ts)).
+- Scope repository validation so self-development audits stay out of an embedded install ([77b7279b](src/lib/validation.ts)).
+- Treat an explicit `pan repository-check --timeout-ms` as the bound for the whole profile ([0b358a58](src/lib/repository-checks.ts)).
+
+### Added
+
+- Add `governance/handbooks/eng/testing.md`, `TEST-001`, and self-development persona bindings for the test standard ([testing handbook](governance/handbooks/eng/testing.md), [TEST-001](governance/policies/TEST-001.json)).
+- Add `/pan-tune-harness`, the `tune-harness` standalone mode, `TUNE-001`, `pan tune` CLI commands, and archive-independent records under `runtime/tune-harness/` ([test-tuning](src/lib/test-tuning.ts), [TUNE-001](governance/policies/TUNE-001.json), [pan-tune-harness](library/cursor/commands/pan-tune-harness.md)).
+- Add inventory and fixture sidecar reporters, complete suite-profile timings, and `TUNE-RECORD-VALIDATE-001` ([inventory reporter](tests/reporters/inventory.ts), [failures-only](tests/reporters/failures-only.ts), [tune-record validator](src/lib/validators/tune-record.ts)).
+- Add the worked audit for the `c1cc09c2..96c5b639` test set ([docs/test-audit-2026-08-29.md](docs/test-audit-2026-08-29.md)).
+
+### Removed
+
+- Remove the resolved `docs/issues/` records and keep `.gitkeep` ([9cdee2f8](docs/issues/.gitkeep)).
+
+### Fixed
+
+- Fix historical baseline inventory so `pan tune validate-audit` reports 513 identities from a detached worktree ([test-tuning](src/lib/test-tuning.ts)).
+- Consume each fixture sidecar once so a repeated profiled run does not double-count cost ([failures-only](tests/reporters/failures-only.ts)).
+- Compare graph-build cost with process CPU time so coverage contention does not fail the gate ([test-impact](tests/unit/test-impact.test.ts)).
+- Tighten installer payload hygiene and the embedded-install leakage guard ([b69eabe4](bin/install), [77b7279b](tests/secondary/embedded-installation.test.ts)).
+
 ## [5.3.1] - 2026-08-30
 
 ### Changed
