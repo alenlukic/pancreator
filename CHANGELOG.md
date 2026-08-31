@@ -1,5 +1,18 @@
 # Changelog
 
+## [5.6.0] - 2026-08-31
+
+### Changed
+
+- Extend policy STE-001 so chat reports use simple language, banned jargon, and required issue and outcome shapes ([STE-001](governance/policies/STE-001.json), [handbook](governance/handbooks/writing/simplified-technical-english.md)).
+- Point the orchestrator persona to policy STE-001 for the chat-report shape ([orchestrator](library/personas/orchestrator.md)).
+- Replace `load-bearing` with `critical` in the verifier persona and both verify prompts ([verifier](library/personas/verifier.md), [delivery verify](library/workflows/delivery/prompts/verify.md), [metacritic verify](library/workflows/metacritic/prompts/verify.md)).
+- Register `/pan-augment` as a read-only command ([67f8bf4c](governance/registries/command_governance.json)).
+
+### Added
+
+- Add `/pan-augment` and the prompt-augmentation skill so an operator can expand one prompt in one shot ([67f8bf4c](library/cursor/commands/pan-augment.md), [prompt-augmentation](library/skills/prompt-augmentation.md)).
+
 ## [5.5.0] - 2026-08-31
 
 ### Changed
