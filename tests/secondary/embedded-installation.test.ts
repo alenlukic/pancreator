@@ -19,6 +19,7 @@ import {
   installedProjectTemplate,
   makeSkeletonProject,
   readJson,
+  run,
   runInstaller,
 } from './install-helpers.js'
 
@@ -145,6 +146,26 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
   assert.deepEqual(repositoryChecks.profiles.static?.commands, [])
   assert.deepEqual(repositoryChecks.profiles.secondary?.commands, [])
   assert.deepEqual(repositoryChecks.profiles.full?.commands, [])
+
+  const doctor = run(
+    process.execPath,
+    [path.join(project, '.pancreator', 'dist', 'src', 'cli.js'), 'doctor'],
+    path.join(project, '.pancreator'),
+  )
+
+  assert.equal(doctor.status, 0, `${doctor.stdout}\n${doctor.stderr}`)
+
+  const doctorReport = JSON.parse(doctor.stdout) as {
+    validation: {
+      ok: boolean
+      errors: string[]
+      warnings: string[]
+    }
+  }
+
+  assert.equal(doctorReport.validation.ok, true)
+  assert.deepEqual(doctorReport.validation.errors, [])
+  assert.deepEqual(doctorReport.validation.warnings, [])
 
   for (const [command, patterns] of [
     [

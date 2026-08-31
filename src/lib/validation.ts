@@ -3391,9 +3391,15 @@ export function validateRepository(root: string): RepositoryValidationResult {
       }
     }
 
-    const directiveAudit = auditDirectives(root)
-    errors.push(...directiveAudit.errors)
-    warnings.push(...directiveAudit.warnings)
+    // Directive ownership and disposition evidence describe Pancreator source
+    // authoring. Target installations omit that source evidence and validate
+    // their generated guidance through its policy-bound validators instead.
+    if (selfDevelopment) {
+      const directiveAudit = auditDirectives(root)
+
+      errors.push(...directiveAudit.errors)
+      warnings.push(...directiveAudit.warnings)
+    }
 
     const projection = validateProjectionDrift(root)
     errors.push(...projection.errors)

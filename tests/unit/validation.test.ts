@@ -209,7 +209,7 @@ test('repository validation requires code-review stages to load engineering hand
   ])
 })
 
-test('embedded repository validation does not impose the TypeScript handbook on target stages', () => {
+test('embedded repository validation excludes self-development authoring audits', () => {
   const root = createFixture()
   prepareValidationFixture(root)
   const configPath = path.join(root, 'config.json')
@@ -220,6 +220,8 @@ test('embedded repository validation does not impose the TypeScript handbook on 
 
   config.installation_mode = 'embedded'
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+  mkdirSync(path.join(root, 'tests', 'unit'), { recursive: true })
+  writeFileSync(path.join(root, 'tests', 'unit', 'placeholder.test.ts'), '')
 
   const result = validateRepository(root)
 
@@ -227,6 +229,8 @@ test('embedded repository validation does not impose the TypeScript handbook on 
     result.errors.join('\n'),
     /MUST load a policy for the TypeScript handbook/u,
   )
+  assert.doesNotMatch(result.errors.join('\n'), /stale disposition evidence/u)
+  assert.doesNotMatch(result.warnings.join('\n'), /unowned advisory directive/u)
 })
 
 function fixtureInvocation(root: string, stageSlug: string): Invocation {
