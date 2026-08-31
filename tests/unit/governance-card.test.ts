@@ -180,7 +180,7 @@ test('a missing operator input is reported rather than silently omitted', () => 
 
   assert.throws(
     () => buildGovernanceCard(root, { mode: 'nonsense' }),
-    /Available: best-of-n, build-briefs, build-docs, decomposition, investigation, pair, qa-workflow, release, repair, review, shepherd, spotfix, supervisor, unbound, write-pr/u,
+    /Available: best-of-n, build-briefs, build-docs, decomposition, investigation, pair, qa-workflow, release, repair, review, shepherd, spotfix, supervisor, tune-harness, unbound, write-pr/u,
   )
 })
 
@@ -598,4 +598,17 @@ test('the review card scopes the closure from the bound worktree when the main c
     readFileSync(path.join(root, explicit.path), 'utf8'),
     /## 🧭 Conduct under the base revision/u,
   )
+})
+
+test('the tune-harness card resolves TUNE-001 and forbids source edits', () => {
+  const root = createFixture()
+  const card = buildGovernanceCard(root, {
+    mode: 'tune-harness',
+    outputPath: 'runtime/inbox/tune-card.md',
+  })
+  const ids = card.policies.map((policy) => policy.id)
+  const written = readFileSync(path.join(root, card.path), 'utf8')
+
+  assert.ok(ids.includes('TUNE-001'))
+  assert.match(written, /MUST NOT edit tests or other tracked source files/u)
 })

@@ -171,6 +171,11 @@ import {
   resolveWorkspacePathOrWorktree,
 } from './lib/worktrees.js'
 import { runTestsImpacted } from './lib/test-impact.js'
+import {
+  finalizePreparedTuneSession,
+  prepareTuneSession,
+  validateAudit,
+} from './lib/test-tuning.js'
 
 const STANDALONE_MODE_NAMES = Object.keys(STANDALONE_MODES).sort().join('|')
 
@@ -198,6 +203,12 @@ const HELP_BODY = `Usage:
   pan repository-check validate [--json]
   pan tests impacted [--changed <ref> | --staged | --worktree-dirty] [--file <path>]... [--include <glob>]... [--depth <n>] [--list] [--json] [--advisory-ratio <0..1>]
       Self-development only. Select and run the lane tests whose import closure reaches the changed files. The default change set is the dirty working tree. An iteration aid, never a gate.
+  pan tune prepare [--baseline <ref>] [--json]
+      Self-development only. Create a tune session, inventory current tests, and resolve the retained set.
+  pan tune finalize --session <id> [--json]
+      Load validated session files, assemble the benchmark, then atomically write the tune record, report, and latest pointer.
+  pan tune validate-audit --record <path> --baseline <ref> --target <ref> [--json]
+      Verify a worked audit covers every net-new test identity in the baseline..target range.
   pan worktree create <name> [--from <branch|commit|worktree>] [--description <text>] [--json]
   pan worktree resolve <name> [--description <text>] [--json]
   pan worktree list [--json]
@@ -332,6 +343,7 @@ const SUBCOMMAND_STYLE_COMMANDS = new Set([
   'requirements',
   'spotfix',
   'technologies',
+  'tune',
   'worktree',
 ])
 
@@ -1538,6 +1550,59 @@ async function main(): Promise<void> {
       const impact = await runTestsImpacted(root, args.slice(1))
       process.exitCode = impact.exit_code
       return
+    }
+    case 'tune': {
+      const sub = args[0]
+      const asJson = hasFlag(args, '--json')
+
+      if (sub === 'prepare') {
+        const prepared = prepareTuneSession(root, {
+          ...(option(args, '--baseline')
+            ? { baselineRef: option(args, '--baseline')! }
+            : {}),
+        })
+
+        print({ status: 'prepared', ...prepared }, asJson)
+        return
+      }
+
+      if (sub === 'finalize') {
+        const sessionId = requiredArgument(
+          option(args, '--session'),
+          '--session',
+        )
+        const result = finalizePreparedTuneSession(root, sessionId)
+
+        print({ status: 'finalized', ...result }, asJson)
+        return
+      }
+
+      if (sub === 'validate-audit') {
+        const result = validateAudit(root, {
+          recordPath: requiredArgument(option(args, '--record'), '--record'),
+          baselineRef: requiredArgument(
+            option(args, '--baseline'),
+            '--baseline',
+          ),
+          targetRef: requiredArgument(option(args, '--target'), '--target'),
+          json: asJson,
+        })
+
+        print(
+          { status: result.complete ? 'valid' : 'invalid', ...result },
+          asJson,
+        )
+
+        if (!result.complete) {
+          process.exitCode = 1
+        }
+
+        return
+      }
+
+      throw new PanError(`Unknown tune subcommand: ${sub ?? '(missing)'}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
     }
     case 'worktree': {
       const sub = args[0]

@@ -6,7 +6,14 @@
  * the end of the run. The variable unset leaves the output byte-identical and
  * writes nothing.
  */
-import { mkdirSync, realpathSync, writeFileSync } from 'node:fs'
+import {
+  mkdirSync,
+  readdirSync,
+  realpathSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import type { TestEvent } from 'node:test/reporters'
 
@@ -14,10 +21,12 @@ import { TEST_PROFILE_ENV } from '../../src/lib/suite-profile.js'
 import type {
   SuiteProfile,
   SuiteProfileFile,
+  SuiteProfileFixtureCost,
   SuiteProfileTest,
 } from '../../src/lib/suite-profile.js'
 
 const SLOWEST_TEST_LIMIT = 15
+const FIXTURE_SIDECAR_SUFFIX = '.fixture-profile.'
 
 interface FailureData {
   name: string
@@ -81,11 +90,56 @@ function laneOf(files: string[]): string {
   return lanes.size > 0 ? [...lanes].sort().join('+') : 'unknown'
 }
 
+function readFixtureCost(
+  profileTarget: string,
+): SuiteProfileFixtureCost | null {
+  const directory = path.dirname(profileTarget)
+  const prefix = `${path.basename(profileTarget)}${FIXTURE_SIDECAR_SUFFIX}`
+  let sidecars: string[]
+
+  try {
+    sidecars = readdirSync(directory)
+      .filter((entry) => entry.startsWith(prefix) && entry.endsWith('.json'))
+      .sort()
+  } catch {
+    return null
+  }
+
+  let template_ms = 0
+  let clone_ms = 0
+
+  for (const sidecar of sidecars) {
+    const sidecarPath = path.join(directory, sidecar)
+
+    try {
+      const value = JSON.parse(readFileSync(sidecarPath, 'utf8')) as {
+        events?: Array<{ kind: string; duration_ms: number }>
+      }
+
+      for (const event of value.events ?? []) {
+        if (event.kind === 'template_build') {
+          template_ms += event.duration_ms
+        } else if (event.kind === 'template_clone') {
+          clone_ms += event.duration_ms
+        }
+      }
+    } catch {
+      continue
+    } finally {
+      rmSync(sidecarPath, { force: true })
+    }
+  }
+
+  return template_ms === 0 && clone_ms === 0 ? null : { template_ms, clone_ms }
+}
+
 class ProfileCollector {
   private readonly files = new Map<string, SuiteProfileFile>()
   private readonly tests: SuiteProfileTest[] = []
   private readonly startedAt = Date.now()
   private total: SummaryData | null = null
+
+  constructor(private readonly profileTarget: string) {}
 
   private fileEntry(file: string): SuiteProfileFile {
     let entry = this.files.get(file)
@@ -153,6 +207,10 @@ class ProfileCollector {
     const round = (value: number): number => Math.round(value * 1000) / 1000
     const sum = (select: (entry: SuiteProfileFile) => number): number =>
       files.reduce((total, entry) => total + select(entry), 0)
+    const allTests = [...this.tests].sort(
+      (left, right) => right.duration_ms - left.duration_ms,
+    )
+    const fixtureCost = readFixtureCost(this.profileTarget)
 
     return {
       schema_version: 1,
@@ -168,10 +226,14 @@ class ProfileCollector {
         ...entry,
         duration_ms: round(entry.duration_ms),
       })),
-      slowest_tests: [...this.tests]
-        .sort((left, right) => right.duration_ms - left.duration_ms)
+      slowest_tests: allTests
         .slice(0, SLOWEST_TEST_LIMIT)
         .map((entry) => ({ ...entry, duration_ms: round(entry.duration_ms) })),
+      all_tests: allTests.map((entry) => ({
+        ...entry,
+        duration_ms: round(entry.duration_ms),
+      })),
+      ...(fixtureCost ? { fixture_cost: fixtureCost } : {}),
     }
   }
 
@@ -187,7 +249,7 @@ export default async function* failuresOnly(
   const profileTarget = process.env[TEST_PROFILE_ENV]?.trim()
   const collector =
     profileTarget && path.isAbsolute(profileTarget)
-      ? new ProfileCollector()
+      ? new ProfileCollector(profileTarget)
       : null
 
   for await (const event of source) {

@@ -11,6 +11,8 @@ import {
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
+import { recordFixtureEvent } from './reporters/fixture-profile.js'
+
 import { renderBrief } from '../src/lib/briefs.js'
 import {
   createRun as createEngineRun,
@@ -128,9 +130,11 @@ export function cloneTree(
 let fixtureTemplateRoot: string | null = null
 
 function cloneFixtureTemplate(template: string): string {
+  const started = performance.now()
   const root = mkdtempSync(path.join(tmpdir(), 'pancreator-v2-'))
 
   cloneTree(template, root)
+  recordFixtureEvent('template_clone', 'main', performance.now() - started)
 
   return root
 }
@@ -153,6 +157,7 @@ export function createFixture(): string {
     return cloneFixtureTemplate(fixtureTemplateRoot)
   }
 
+  const buildStarted = performance.now()
   const root = mkdtempSync(path.join(tmpdir(), 'pancreator-v2-'))
 
   for (const entry of [
@@ -261,6 +266,7 @@ export function createFixture(): string {
   fixtureGit(['add', '.'], { cwd: root, encoding: 'utf8' })
   fixtureGit(['commit', '-qm', 'fixture'], { cwd: root, encoding: 'utf8' })
 
+  recordFixtureEvent('template_build', 'main', performance.now() - buildStarted)
   fixtureTemplateRoot = root
 
   return cloneFixtureTemplate(root)

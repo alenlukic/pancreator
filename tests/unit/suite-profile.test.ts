@@ -15,6 +15,7 @@ import {
 } from '../../src/lib/suite-profile.js'
 import { renderStatus } from '../../src/lib/render.js'
 import type { RunState, SuiteProfileSummary } from '../../src/lib/types.js'
+import { fixtureSidecarPath } from '../reporters/fixture-profile.js'
 
 const REPORTER = path.resolve(
   process.cwd(),
@@ -101,6 +102,72 @@ test('the reporter writes a suite profile only when PAN_TEST_PROFILE is set', ()
     'alpha',
     'beta',
   ])
+  assert.deepEqual(profile.all_tests?.map((entry) => entry.name).sort(), [
+    'alpha',
+    'beta',
+  ])
+})
+
+test('the reporter consumes process-specific fixture sidecars once', () => {
+  const { cwd, file } = tinyLane()
+  const target = path.join(cwd, 'out', 'profile.json')
+  const first = fixtureSidecarPath(target, 101)
+  const second = fixtureSidecarPath(target, 202)
+
+  assert.notEqual(first, second)
+
+  mkdirSync(path.dirname(first), { recursive: true })
+  writeFileSync(
+    first,
+    JSON.stringify({
+      events: [
+        { kind: 'template_build', duration_ms: 4 },
+        { kind: 'template_clone', duration_ms: 2 },
+      ],
+    }),
+  )
+  writeFileSync(
+    second,
+    JSON.stringify({
+      events: [
+        { kind: 'template_build', duration_ms: 6 },
+        { kind: 'template_clone', duration_ms: 3 },
+      ],
+    }),
+  )
+
+  const result = runReporter(cwd, file, { [TEST_PROFILE_ENV]: target })
+
+  assert.equal(result.status, 0, result.stderr)
+
+  const profile = loadSuiteProfile(cwd, 'out/profile.json')
+
+  assert.deepEqual(profile?.fixture_cost, {
+    template_ms: 10,
+    clone_ms: 5,
+  })
+  assert.equal(existsSync(first), false)
+  assert.equal(existsSync(second), false)
+
+  const next = fixtureSidecarPath(target, 303)
+  writeFileSync(
+    next,
+    JSON.stringify({
+      events: [
+        { kind: 'template_build', duration_ms: 1 },
+        { kind: 'template_clone', duration_ms: 1 },
+      ],
+    }),
+  )
+
+  const repeated = runReporter(cwd, file, { [TEST_PROFILE_ENV]: target })
+
+  assert.equal(repeated.status, 0, repeated.stderr)
+  assert.deepEqual(loadSuiteProfile(cwd, 'out/profile.json')?.fixture_cost, {
+    template_ms: 1,
+    clone_ms: 1,
+  })
+  assert.equal(existsSync(next), false)
 })
 
 function runState(

@@ -30,6 +30,22 @@ test('pan output validate help names the required --invocation argument', () => 
   )
 })
 
+test('pan tune prepare help names the baseline option', () => {
+  const lines = help().split('\n')
+  const line = lines.find((item) => item.includes('pan tune prepare '))
+
+  assert.ok(line, 'help lists pan tune prepare')
+  assert.equal(line.trim(), 'pan tune prepare [--baseline <ref>] [--json]')
+})
+
+test('pan tune finalize help names the required session argument', () => {
+  const lines = help().split('\n')
+  const line = lines.find((item) => item.includes('pan tune finalize '))
+
+  assert.ok(line, 'help lists pan tune finalize')
+  assert.equal(line.trim(), 'pan tune finalize --session <id> [--json]')
+})
+
 test('pan watch help documents the cadence, stall, timeout, and marker options', () => {
   const text = help()
 

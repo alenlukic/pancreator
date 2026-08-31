@@ -37,6 +37,11 @@ export interface SuiteProfileTest {
   duration_ms: number
 }
 
+export interface SuiteProfileFixtureCost {
+  template_ms: number
+  clone_ms: number
+}
+
 /** The document `PAN_TEST_PROFILE` produces. */
 export interface SuiteProfile {
   schema_version: 1
@@ -48,6 +53,9 @@ export interface SuiteProfile {
   wall_clock_ms: number
   files: SuiteProfileFile[]
   slowest_tests: SuiteProfileTest[]
+  /** Every test timing when tune profiling requests complete metrics. */
+  all_tests?: SuiteProfileTest[]
+  fixture_cost?: SuiteProfileFixtureCost
 }
 
 /** Absolute artifact path for the profile of one gate execution. */
@@ -60,6 +68,19 @@ export function suiteProfileEvidencePath(
 
 function isNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
+}
+
+function parseSuiteProfileTest(value: unknown): SuiteProfileTest | null {
+  return isRecord(value) &&
+    typeof value.file === 'string' &&
+    typeof value.name === 'string' &&
+    isNumber(value.duration_ms)
+    ? {
+        file: value.file,
+        name: value.name,
+        duration_ms: value.duration_ms,
+      }
+    : null
 }
 
 export function loadSuiteProfile(
@@ -98,13 +119,23 @@ export function loadSuiteProfile(
       isNumber(entry.duration_ms) &&
       isNumber(entry.test_count),
   )
-  const tests = value.slowest_tests.filter(
-    (entry): entry is SuiteProfileTest =>
-      isRecord(entry) &&
-      typeof entry.file === 'string' &&
-      typeof entry.name === 'string' &&
-      isNumber(entry.duration_ms),
-  )
+  const tests = value.slowest_tests
+    .map(parseSuiteProfileTest)
+    .filter((entry): entry is SuiteProfileTest => entry !== null)
+  const allTests = Array.isArray(value.all_tests)
+    ? value.all_tests
+        .map(parseSuiteProfileTest)
+        .filter((entry): entry is SuiteProfileTest => entry !== null)
+    : undefined
+  const fixtureCost =
+    isRecord(value.fixture_cost) &&
+    isNumber(value.fixture_cost.template_ms) &&
+    isNumber(value.fixture_cost.clone_ms)
+      ? {
+          template_ms: value.fixture_cost.template_ms,
+          clone_ms: value.fixture_cost.clone_ms,
+        }
+      : undefined
 
   return {
     schema_version: 1,
@@ -116,6 +147,8 @@ export function loadSuiteProfile(
     wall_clock_ms: value.wall_clock_ms,
     files,
     slowest_tests: tests,
+    ...(allTests ? { all_tests: allTests } : {}),
+    ...(fixtureCost ? { fixture_cost: fixtureCost } : {}),
   }
 }
 

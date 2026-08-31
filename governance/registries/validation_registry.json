@@ -384,6 +384,18 @@
       "default_timeout_ms": 30000,
       "deterministic": true,
       "side_effect_free": true
+    },
+    {
+      "id": "TUNE-RECORD-VALIDATE-001",
+      "kind": "validator",
+      "version": "1",
+      "handler": "tune-record-validate",
+      "input_contract": "tune-record",
+      "result_schema": "validation-result-v1",
+      "target_types": ["tune-record-json"],
+      "default_timeout_ms": 30000,
+      "deterministic": true,
+      "side_effect_free": true
     }
   ]
 }

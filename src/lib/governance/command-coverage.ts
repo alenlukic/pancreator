@@ -20,10 +20,17 @@ const CARD_STEP_PATTERN = /governance card --mode ([a-z0-9-]+)/gu
 const SUPERVISOR_MODE = 'supervisor'
 const POLICY_FILE_PATTERN = /governance\/policies\/[A-Z]+-\d{3}\.json/gu
 
+interface ReadOnlyCardEntry {
+  command: string
+  card_mode: string
+}
+
+type ReadOnlyCommandEntry = string | ReadOnlyCardEntry
+
 interface CommandGovernanceRegistry {
-  schema_version: 1
+  schema_version: 1 | 2
   /** Commands that read run or repository state and delegate nothing. */
-  read_only_commands: string[]
+  read_only_commands: ReadOnlyCommandEntry[]
   /** Commands that open a supervisor session and MUST run the supervisor card. */
   supervisor_commands: string[]
   /**
@@ -35,6 +42,36 @@ interface CommandGovernanceRegistry {
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string')
+}
+
+function isReadOnlyEntry(value: unknown): value is ReadOnlyCommandEntry {
+  if (typeof value === 'string') {
+    return value.length > 0
+  }
+
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as ReadOnlyCardEntry).command === 'string' &&
+    typeof (value as ReadOnlyCardEntry).card_mode === 'string'
+  )
+}
+
+function normalizeReadOnlyCommands(
+  entries: ReadOnlyCommandEntry[],
+): Map<string, string | null> {
+  const map = new Map<string, string | null>()
+
+  for (const entry of entries) {
+    if (typeof entry === 'string') {
+      map.set(entry, null)
+      continue
+    }
+
+    map.set(entry.command, entry.card_mode)
+  }
+
+  return map
 }
 
 function loadRegistry(
@@ -51,8 +88,9 @@ function loadRegistry(
   const value = readJson(absolute) as Partial<CommandGovernanceRegistry>
 
   if (
-    value.schema_version !== 1 ||
-    !isStringArray(value.read_only_commands) ||
+    (value.schema_version !== 1 && value.schema_version !== 2) ||
+    !Array.isArray(value.read_only_commands) ||
+    !value.read_only_commands.every(isReadOnlyEntry) ||
     !isStringArray(value.supervisor_commands) ||
     !Array.isArray(value.pending_card_steps) ||
     !value.pending_card_steps.every(
@@ -64,7 +102,7 @@ function loadRegistry(
     )
   ) {
     errors.push(
-      `${COMMAND_GOVERNANCE_REGISTRY_PATH} MUST declare schema_version 1, ` +
+      `${COMMAND_GOVERNANCE_REGISTRY_PATH} MUST declare schema_version 1 or 2, ` +
         'read_only_commands, supervisor_commands, and pending_card_steps',
     )
     return null
@@ -106,7 +144,7 @@ export function validateCommandGovernance(
     return
   }
 
-  const readOnly = new Set(registry.read_only_commands)
+  const readOnly = normalizeReadOnlyCommands(registry.read_only_commands)
   const supervisor = new Set(registry.supervisor_commands)
   const pending = new Map(
     registry.pending_card_steps.map((item) => [
@@ -117,7 +155,7 @@ export function validateCommandGovernance(
   const commands = listCommands(root)
   const known = new Set(commands)
 
-  for (const name of [...readOnly, ...supervisor, ...pending.keys()]) {
+  for (const name of [...readOnly.keys(), ...supervisor, ...pending.keys()]) {
     if (!known.has(name)) {
       errors.push(
         `${COMMAND_GOVERNANCE_REGISTRY_PATH} names command '${name}', which ` +
@@ -126,11 +164,18 @@ export function validateCommandGovernance(
     }
   }
 
-  for (const name of readOnly) {
+  for (const [name, cardMode] of readOnly) {
     if (supervisor.has(name) || pending.has(name)) {
       errors.push(
         `${COMMAND_GOVERNANCE_REGISTRY_PATH} lists '${name}' as read-only ` +
           'and as a card-bearing command',
+      )
+    }
+
+    if (cardMode !== null && !(cardMode in STANDALONE_MODES)) {
+      errors.push(
+        `${COMMAND_GOVERNANCE_REGISTRY_PATH} lists '${name}' with card_mode ` +
+          `'${cardMode}', which is not a registered mode`,
       )
     }
   }
@@ -152,10 +197,20 @@ export function validateCommandGovernance(
     ]
 
     if (readOnly.has(name)) {
-      if (modes.length > 0) {
+      const requiredMode = readOnly.get(name)
+
+      if (requiredMode === null || requiredMode === undefined) {
+        if (modes.length > 0) {
+          errors.push(
+            `${relative} runs a governance card but ${COMMAND_GOVERNANCE_REGISTRY_PATH} ` +
+              'lists it as a cardless read-only utility',
+          )
+        }
+      } else if (!modes.includes(requiredMode)) {
         errors.push(
-          `${relative} runs a governance card but ${COMMAND_GOVERNANCE_REGISTRY_PATH} ` +
-            'lists it as read-only; remove it from read_only_commands',
+          `${relative} MUST run \`pan governance card --mode ${requiredMode}\` ` +
+            `because ${COMMAND_GOVERNANCE_REGISTRY_PATH} registers it as read-only ` +
+            'with that card mode',
         )
       }
 
