@@ -35,9 +35,9 @@ SOURCE_PAYLOAD_ENTRIES=(
 )
 GENERATED_PAYLOAD_ENTRIES=(AGENTS.md .gitignore dist node_modules)
 
-# Entries earlier releases installed and current releases do not. A refresh
-# removes them, because remove_previous_payload only clears entries the
-# current payload still lists.
+# Entries earlier releases installed and current releases do not. Payload
+# reconciliation removes only files whose recorded release digest is unchanged.
+# Changed and target-added files are retained and backed up.
 RETIRED_PAYLOAD_ENTRIES=(tests)
 
 # Paths for Pancreator self-development only. The copy takes them with their
@@ -239,6 +239,24 @@ run_smoke() {
   # suite; the refresh below must remove that retired payload entry.
   mkdir -p "$fresh_project/.pancreator/tests/unit"
   printf 'stale\n' >"$fresh_project/.pancreator/tests/unit/legacy.test.ts"
+  node -e '
+    const crypto = require("node:crypto")
+    const fs = require("node:fs")
+    const markerPath = process.argv[1]
+    const payloadPath = process.argv[2]
+    const marker = JSON.parse(fs.readFileSync(markerPath, "utf8"))
+    const relative = "tests/unit/legacy.test.ts"
+    marker.payload_entries.push("tests")
+    marker.payload_files.push({
+      path: relative,
+      sha256: crypto
+        .createHash("sha256")
+        .update(fs.readFileSync(payloadPath))
+        .digest("hex"),
+    })
+    fs.writeFileSync(markerPath, `${JSON.stringify(marker, null, 2)}\n`)
+  ' "$fresh_project/.pancreator/install.json" \
+    "$fresh_project/.pancreator/tests/unit/legacy.test.ts"
   smoke_step "idempotent refresh" bash "$0" --target "$fresh_project" \
     --pancreator-root "$PANCREATOR_ROOT" --yes --skip-dependencies --skip-shell-alias
   smoke_step "verify idempotent refresh" smoke_verify "$fresh_project"
@@ -575,6 +593,20 @@ payload_entries_csv() {
   printf '%s' "$joined"
 }
 
+retired_payload_entries_csv() {
+  local joined=""
+  local entry
+
+  for entry in "${RETIRED_PAYLOAD_ENTRIES[@]}"; do
+    if [[ -n "$joined" ]]; then
+      joined+=","
+    fi
+    joined+="$entry"
+  done
+
+  printf '%s' "$joined"
+}
+
 report_existing_harness() {
   local previous_marker="$1"
   local args=(
@@ -697,11 +729,6 @@ prepare_persistent_layout() {
     "$RUNTIME_DIR/backlog" \
     "$DOCS_DIR" \
     "$PANCREATOR_DIR/worktrees"
-
-  local retired
-  for retired in "${RETIRED_PAYLOAD_ENTRIES[@]}"; do
-    rm -rf "${PANCREATOR_DIR:?}/$retired"
-  done
 
   # Per-file workspace locks were removed. Refreshes clean up stale lock files
   # from older installations so they can never block run completion again.
@@ -975,7 +1002,8 @@ install_payload() {
       --staging-root "$staging" \
       --previous-marker "$previous_marker" \
       --backup-root "$PANCREATOR_DIR/backups/payload/${installed_at//:/-}" \
-      --entries "$(payload_entries_csv)"
+      --entries "$(payload_entries_csv)" \
+      --retired-entries "$(retired_payload_entries_csv)"
   fi
 
   node "$PANCREATOR_ROOT/bin/install-support" migrate-policy-extensions \

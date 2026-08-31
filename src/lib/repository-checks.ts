@@ -889,11 +889,14 @@ function effectiveTimeout(
   profile: RepositoryCheckProfile | undefined,
   requested: number | undefined,
 ): number {
+  if (requested !== undefined) {
+    return requested
+  }
+
   // The profile's own bound participates as its explicit timeout or the
   // default, so a shorter subset timeout can only raise the result, never
   // lower it below what the profile would get on its own.
   const candidates = [
-    requested,
     profile === undefined
       ? undefined
       : (profile.timeout_ms ?? DEFAULT_TIMEOUT_MS),
@@ -1047,6 +1050,60 @@ function executeStreaming(
   })
 }
 
+function profileTimeoutResult(
+  kind: RepositoryCheckCommandResult['kind'],
+  command: string,
+  timeoutMs: number,
+): RepositoryCheckCommandResult {
+  return {
+    kind,
+    command,
+    exit_code: null,
+    signal: null,
+    stdout: '',
+    stderr: '',
+    passed: false,
+    timed_out: true,
+    duration_ms: 0,
+    error: `Profile timed out after ${timeoutMs}ms before this entry could start.`,
+  }
+}
+
+function executeWithinProfileBudget(
+  kind: RepositoryCheckCommandResult['kind'],
+  command: string,
+  workspaceRoot: string,
+  deadlineMs: number,
+  timeoutMs: number,
+  env: Record<string, string> = {},
+): RepositoryCheckCommandResult {
+  const remainingMs = deadlineMs - Date.now()
+
+  if (remainingMs <= 0) {
+    return profileTimeoutResult(kind, command, timeoutMs)
+  }
+
+  return execute(kind, command, workspaceRoot, remainingMs, env)
+}
+
+async function executeStreamingWithinProfileBudget(
+  kind: RepositoryCheckCommandResult['kind'],
+  command: string,
+  workspaceRoot: string,
+  deadlineMs: number,
+  timeoutMs: number,
+  options: RepositoryCheckStreamingOptions,
+): Promise<RepositoryCheckCommandResult> {
+  const remainingMs = deadlineMs - Date.now()
+
+  if (remainingMs <= 0) {
+    options.on_start?.(kind, command)
+    return profileTimeoutResult(kind, command, timeoutMs)
+  }
+
+  return executeStreaming(kind, command, workspaceRoot, remainingMs, options)
+}
+
 function baseResult(
   root: string,
   profileName: string,
@@ -1114,15 +1171,17 @@ export function runRepositoryCheck(
   }
 
   const results: RepositoryCheckCommandResult[] = []
+  const deadlineMs = Date.now() + timeoutMs
 
   for (const command of [
     ...(profile.environment_probes ?? []),
     ...profile.probes,
   ]) {
-    const result = execute(
+    const result = executeWithinProfileBudget(
       'probe',
       command,
       workspaceRoot,
+      deadlineMs,
       timeoutMs,
       options.env,
     )
@@ -1149,10 +1208,11 @@ export function runRepositoryCheck(
   let commandsPassed = true
 
   for (const command of profile.commands) {
-    const result = execute(
+    const result = executeWithinProfileBudget(
       'command',
       command,
       workspaceRoot,
+      deadlineMs,
       timeoutMs,
       options.env,
     )
@@ -1160,6 +1220,10 @@ export function runRepositoryCheck(
 
     if (!result.passed) {
       commandsPassed = false
+    }
+
+    if (result.timed_out) {
+      break
     }
   }
 
@@ -1208,15 +1272,17 @@ export async function runRepositoryCheckStreaming(
   }
 
   const results: RepositoryCheckCommandResult[] = []
+  const deadlineMs = Date.now() + timeoutMs
 
   for (const command of [
     ...(profile.environment_probes ?? []),
     ...profile.probes,
   ]) {
-    const result = await executeStreaming(
+    const result = await executeStreamingWithinProfileBudget(
       'probe',
       command,
       workspaceRoot,
+      deadlineMs,
       timeoutMs,
       options,
     )
@@ -1241,10 +1307,11 @@ export async function runRepositoryCheckStreaming(
   let commandsPassed = true
 
   for (const command of profile.commands) {
-    const result = await executeStreaming(
+    const result = await executeStreamingWithinProfileBudget(
       'command',
       command,
       workspaceRoot,
+      deadlineMs,
       timeoutMs,
       options,
     )
@@ -1252,6 +1319,10 @@ export async function runRepositoryCheckStreaming(
 
     if (!result.passed) {
       commandsPassed = false
+    }
+
+    if (result.timed_out) {
+      break
     }
   }
 

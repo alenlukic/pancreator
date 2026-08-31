@@ -372,3 +372,80 @@ test('embedded installer refresh reconciles persona mappings and agent ownership
     rmSync(project, { recursive: true, force: true })
   }
 })
+
+test('refresh removes only unmodified files from retired payload entries', () => {
+  const project = cloneInstalledProject()
+  const pancreatorDir = path.join(project, '.pancreator')
+  const markerPath = path.join(pancreatorDir, 'install.json')
+  const testsDirectory = path.join(pancreatorDir, 'tests', 'unit')
+  const unmodifiedPath = path.join(testsDirectory, 'unmodified.test.ts')
+  const modifiedPath = path.join(testsDirectory, 'modified.test.ts')
+  const targetAddedPath = path.join(testsDirectory, 'target-added.test.ts')
+  const shippedUnmodified = 'shipped unmodified\n'
+  const shippedModified = 'shipped original\n'
+  const localModified = 'local modification\n'
+  const targetAdded = 'target addition\n'
+
+  try {
+    mkdirSync(testsDirectory, { recursive: true })
+    writeFileSync(unmodifiedPath, shippedUnmodified)
+    writeFileSync(modifiedPath, localModified)
+    writeFileSync(targetAddedPath, targetAdded)
+
+    const marker = readJson<InstallMarker>(markerPath)
+
+    marker.payload_entries.push('tests')
+    marker.payload_files.push(
+      {
+        path: 'tests/unit/unmodified.test.ts',
+        sha256: createHash('sha256').update(shippedUnmodified).digest('hex'),
+      },
+      {
+        path: 'tests/unit/modified.test.ts',
+        sha256: createHash('sha256').update(shippedModified).digest('hex'),
+      },
+    )
+    writeFileSync(markerPath, `${JSON.stringify(marker, null, 2)}\n`)
+
+    const result = runInstaller(project, ['--yes'])
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(existsSync(unmodifiedPath), false)
+    assert.equal(readFileSync(modifiedPath, 'utf8'), localModified)
+    assert.equal(readFileSync(targetAddedPath, 'utf8'), targetAdded)
+    assert.match(result.stdout, /retained  tests\/unit\/modified\.test\.ts/u)
+    assert.match(
+      result.stdout,
+      /retained  tests\/unit\/target-added\.test\.ts/u,
+    )
+    assert.match(result.stdout, /retired  tests\/unit\/unmodified\.test\.ts/u)
+
+    const backupRoot = path.join(
+      pancreatorDir,
+      'backups',
+      'payload',
+      readdirSync(path.join(pancreatorDir, 'backups', 'payload'))[0] ?? '',
+    )
+
+    assert.equal(
+      readFileSync(
+        path.join(backupRoot, 'tests', 'unit', 'modified.test.ts'),
+        'utf8',
+      ),
+      localModified,
+    )
+    assert.equal(
+      readFileSync(
+        path.join(backupRoot, 'tests', 'unit', 'target-added.test.ts'),
+        'utf8',
+      ),
+      targetAdded,
+    )
+    assert.equal(
+      readJson<InstallMarker>(markerPath).payload_entries.includes('tests'),
+      false,
+    )
+  } finally {
+    rmSync(project, { recursive: true, force: true })
+  }
+})

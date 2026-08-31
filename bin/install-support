@@ -9,6 +9,7 @@ import {
   readFileSync,
   readdirSync,
   renameSync,
+  rmdirSync,
   rmSync,
   writeFileSync,
 } from 'node:fs'
@@ -822,6 +823,22 @@ function previousPayloadManifest(markerPath) {
   )
 }
 
+function removeEmptyParents(filePath, rootDir) {
+  let directory = path.dirname(filePath)
+
+  while (
+    directory !== rootDir &&
+    directory.startsWith(`${rootDir}${path.sep}`)
+  ) {
+    if (readdirSync(directory).length > 0) {
+      return
+    }
+
+    rmdirSync(directory)
+    directory = path.dirname(directory)
+  }
+}
+
 /**
  * Reconcile the installed payload with the staged release before the payload
  * swap. Local modifications to harness-owned files lose to the Pancreator
@@ -835,13 +852,17 @@ function reconcilePayload() {
   const markerPath = path.resolve(requiredOption('--previous-marker'))
   const backupRoot = path.resolve(requiredOption('--backup-root'))
   const entries = requiredOption('--entries').split(',').filter(Boolean)
+  const retiredEntries = (option('--retired-entries') ?? '')
+    .split(',')
+    .filter(Boolean)
   const manifest = previousPayloadManifest(markerPath)
 
   if (manifest.size === 0) {
     if (existsSync(markerPath)) {
       process.stdout.write(
         'Installed payload predates local-change tracking: harness-owned ' +
-          'files are replaced wholesale this update and tracked from now on.\n',
+          'files are replaced wholesale this update and tracked from now on. ' +
+          'Retired entries remain because their ownership cannot be proven.\n',
       )
     }
 
@@ -851,6 +872,8 @@ function reconcilePayload() {
   const superseded = []
   const preserved = []
   const restored = []
+  const retainedRetired = []
+  const removedRetired = []
 
   const backup = (relative) => {
     const destination = path.join(backupRoot, relative)
@@ -887,6 +910,22 @@ function reconcilePayload() {
       backup(entry.path)
       superseded.push(entry.path)
     }
+  }
+
+  for (const entry of listPayloadFiles(existingRoot, retiredEntries)) {
+    const recordedDigest = manifest.get(entry.path)
+
+    if (recordedDigest === entry.sha256) {
+      const existingPath = path.join(existingRoot, entry.path)
+
+      rmSync(existingPath)
+      removeEmptyParents(existingPath, existingRoot)
+      removedRetired.push(entry.path)
+      continue
+    }
+
+    backup(entry.path)
+    retainedRetired.push(entry.path)
   }
 
   for (const relative of manifest.keys()) {
@@ -926,6 +965,26 @@ function reconcilePayload() {
       'Target-specific extensions preserved through the update:',
       '',
       ...preserved.sort().map((relative) => `  preserved  ${relative}`),
+    )
+  }
+
+  if (retainedRetired.length > 0) {
+    lines.push(
+      '',
+      'Changed or target-added files under retired payload entries were retained.',
+      'Each retained version is also preserved under',
+      `${backupRoot}:`,
+      '',
+      ...retainedRetired.sort().map((relative) => `  retained  ${relative}`),
+    )
+  }
+
+  if (removedRetired.length > 0) {
+    lines.push(
+      '',
+      'Unmodified release-owned files removed from retired payload entries:',
+      '',
+      ...removedRetired.sort().map((relative) => `  retired  ${relative}`),
     )
   }
 

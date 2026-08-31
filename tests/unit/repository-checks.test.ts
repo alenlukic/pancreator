@@ -530,7 +530,7 @@ test('streaming repository checks emit subprocess output before returning the re
   assert.match(stdout.join(''), /first\nsecond/u)
 })
 
-test('stage-requested timeout overrides the profile default', () => {
+test('stage-requested timeout replaces the profile default', () => {
   const { root } = makeInstallation()
 
   // The floor for timeout_ms is 1000 ms, so the command sleeps just past it.
@@ -553,6 +553,53 @@ test('stage-requested timeout overrides the profile default', () => {
   assert.equal(direct.status, 'failed')
   assert.equal(direct.timeout_ms, 1_000)
   assert.equal(direct.results[0]?.timed_out, true)
+})
+
+test('stage-requested timeout bounds the entire synchronous profile', () => {
+  const { root } = makeInstallation()
+
+  writeChecks(root, {
+    fast: {
+      timeout_ms: 5_000,
+      probes: ['node -e "setTimeout(() => process.exit(0), 1200)"'],
+      commands: ['node -e "setTimeout(() => process.exit(0), 1200)"'],
+    },
+  })
+
+  const result = runRepositoryCheck(root, 'fast', { timeout_ms: 2_000 })
+
+  assert.equal(result.status, 'failed')
+  assert.equal(result.timeout_ms, 2_000)
+  assert.equal(result.results.length, 2)
+  assert.equal(result.results[0]?.passed, true)
+  assert.equal(result.results[1]?.timed_out, true)
+  assert.ok(result.total_duration_ms < 2_750)
+})
+
+test('stage-requested timeout bounds the entire streaming profile', async () => {
+  const { root } = makeInstallation()
+  const starts: string[] = []
+
+  writeChecks(root, {
+    fast: {
+      timeout_ms: 5_000,
+      probes: ['node -e "setTimeout(() => process.exit(0), 1200)"'],
+      commands: ['node -e "setTimeout(() => process.exit(0), 1200)"'],
+    },
+  })
+
+  const result = await runRepositoryCheckStreaming(root, 'fast', {
+    timeout_ms: 2_000,
+    on_start: (kind, command) => starts.push(`${kind}:${command}`),
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.equal(result.timeout_ms, 2_000)
+  assert.equal(result.results.length, 2)
+  assert.equal(result.results[0]?.passed, true)
+  assert.equal(result.results[1]?.timed_out, true)
+  assert.equal(starts.length, 2)
+  assert.ok(result.total_duration_ms < 2_750)
 })
 
 test('a new pytest failure with spaces in bracketed parameters is detected', () => {
