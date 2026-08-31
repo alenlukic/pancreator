@@ -1,6 +1,7 @@
 {
   "schema_version": 2,
   "read_only_commands": [
+    "pan-augment",
     "pan-status",
     "pan-summarize-context",
     "pan-validate",
