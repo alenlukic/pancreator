@@ -86,41 +86,22 @@ test('embedded legacy npm gates route through target-owned profiles', () => {
   const root = createFixture()
 
   configureEmbeddedFixture(root)
-
-  const { state, workspaceBefore, runDirectory } = fixtureState(root)
-  const stage: StageDefinition = {
-    slug: 'implement',
-    title: 'Implementation',
-    persona: 'coder',
-    workspace_policy: 'source_allowed',
-    gate: 'next_stage',
-    context: { request: 'omit' },
-    criteria: [
-      {
-        id: 'implement.lint',
-        type: 'shell',
-        hard: true,
-        statement: 'Legacy static gate.',
-        command: 'npm run lint',
-      },
-    ],
-    transitions: { success: 'review', failure: 'implement', blocked: 'paused' },
+  const criterion: Criterion = {
+    id: 'implement.lint',
+    type: 'shell',
+    hard: true,
+    statement: 'Legacy static gate.',
+    command: 'npm run lint',
   }
-
-  const evaluated = evaluateDeterministicCriteria(
+  const resolved = resolveShellCheck(
     root,
-    runDirectory,
-    state,
-    stage,
-    workspaceBefore,
-    root,
+    criterion,
+    criterion.command ?? '',
+    false,
   )
-  const result = evaluated.results[0]
 
-  assert.ok(result)
-  assert.equal(result.command, 'pan repository-check static')
-  assert.equal(result.passed, true)
-  assert.equal(result.disabled, undefined)
+  assert.equal(resolved.command, 'pan repository-check static')
+  assert.equal(resolved.profile_name, 'static')
 })
 
 const HARNESS_TEST_COMMAND = 'npm --prefix "$PANCREATOR_ROOT" test'

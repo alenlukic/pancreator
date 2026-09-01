@@ -90,7 +90,7 @@ function laneOf(files: string[]): string {
   return lanes.size > 0 ? [...lanes].sort().join('+') : 'unknown'
 }
 
-function readFixtureCost(
+export function readFixtureCost(
   profileTarget: string,
 ): SuiteProfileFixtureCost | null {
   const directory = path.dirname(profileTarget)

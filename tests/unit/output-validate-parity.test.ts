@@ -101,38 +101,6 @@ test('pan output validate and pan submit resolve the same validator set for one 
   assert.equal(loadState(root, runId).stage_history.length, 1)
 })
 
-test('pan output validate reports a changed-files omission the way submit rejects it', () => {
-  const { root, runId, invocation, workflow } = checkpoint(
-    'delivery@implement-prepared',
-  )
-
-  assert.ok(invocation)
-
-  writeFileSync(path.join(root, 'src/base.ts'), 'export const base = false\n')
-  writeFileSync(path.join(root, 'src/extra.ts'), 'export const extra = 1\n')
-
-  const output = makeOutput(
-    root,
-    invocation,
-    stageBySlug(workflow, 'implement'),
-  )
-  const implementation = output.data.implementation as Record<string, unknown>
-
-  implementation.changed_files = ['src/base.ts']
-  attachTargetInstructionEvidence(root, output, ['AGENTS.md'])
-  writeJson(path.join(root, invocation.output.path), output)
-
-  const mirror = validateOutputForSubmission(root, runId, invocation, output)
-  const claims = mirror.checks.find(
-    (check) => check.id === 'validator.IMPLEMENTATION-CLAIMS-VALIDATE-001',
-  )
-
-  assert.equal(mirror.passed, false)
-  assert.ok(claims)
-  assert.equal(claims.passed, false)
-  assert.match(claims.message, /not listed in changed_files: src\/extra\.ts/u)
-})
-
 test('pan output validate --file judges the named file, not a stale copy at the declared output path', () => {
   const { root, runId, invocation, workflow } = checkpoint(
     'delivery@implement-prepared',

@@ -62,7 +62,10 @@ test('scaffold copies the contract manifest into a pending attestation', () => {
   const invocation = {
     invocation_id: 'implement-1',
     stage: { model: 'gpt-5.6-sol' },
-    rubric: [],
+    rubric: [
+      { id: 'implement.lint', hard: true },
+      { id: 'implement.unit_tests', hard: true },
+    ],
     output: { path: outputPath, required_data: {} },
     contract_manifest: {
       contract_path: contractPath,
@@ -106,6 +109,12 @@ test('scaffold copies the contract manifest into a pending attestation', () => {
   assert.equal(attestation.invocation_id, 'implement-1')
   assert.equal(attestation.model, 'gpt-5.6-sol')
   assert.equal(attestation.contract_path, contractPath)
+  assert.equal(result.output.criteria.length, invocation.rubric.length)
+  assert.ok(
+    result.output.criteria.every(
+      (criterion) => criterion.result === 'unevaluated',
+    ),
+  )
   assert.equal(
     attestation.status === 'pending' ? attestation.contract_sha256 : '',
     'a'.repeat(64),
@@ -224,29 +233,6 @@ test('scaffold retains only non-transient brief sources as artifacts', () => {
   assert.deepEqual(
     transient.output.artifacts.map((artifact) => artifact.path),
     [renderedPath],
-  )
-})
-
-test('scaffold marks every criterion as unevaluated', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-scaffold-'))
-  const outputPath = 'runtime/logs/workflows/x/outputs/out.json'
-  const invocation = {
-    invocation_id: 'implement-1',
-    stage: { model: 'gpt-5.6-sol' },
-    rubric: [
-      { id: 'implement.lint', hard: true },
-      { id: 'implement.unit_tests', hard: true },
-    ],
-    output: { path: outputPath, required_data: {} },
-  } as unknown as Invocation
-
-  const result = scaffoldStageOutput(root, invocation, outputPath, false)
-
-  assert.equal(result.output.criteria.length, invocation.rubric.length)
-  assert.ok(
-    result.output.criteria.every(
-      (criterion) => criterion.result === 'unevaluated',
-    ),
   )
 })
 

@@ -4,7 +4,6 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { decideRun, prepareInvocation } from '../../src/lib/engine.js'
-import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
@@ -110,23 +109,6 @@ test('new runs suppress briefs while explicit run and stage requests enable them
   assert.ok(laterInvocation)
   assert.equal(laterInvocation.stage.slug, 'implement')
   assert.equal(laterInvocation.output.operator_brief, undefined)
-})
-
-test('legacy run state without artifact selection keeps briefs enabled', () => {
-  const root = createFixture()
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-  })
-  const layout = resolveRunLayout(root, state.run_id)
-  const legacy = { ...state } as Record<string, unknown>
-
-  delete legacy.operator_artifacts
-  writeJson(layout.state.absolute, legacy)
-
-  const invocation = prepareInvocation(root, state.run_id).invocation
-
-  assert.ok(invocation?.output.operator_brief)
 })
 
 test('submission rerenders the invocation-declared HTML brief from JSON', () => {

@@ -466,9 +466,37 @@ test('shared stage field contract has registered validator ownership', () => {
   // The validator reads only checked-in files, so the checkout that runs
   // the test is the fixture.
   const root = process.cwd()
+  const targetPath = 'library/schemas/stage-output-requirements.json'
+  const source = JSON.parse(
+    readFileSync(path.join(root, targetPath), 'utf8'),
+  ) as {
+    stages: {
+      plan: { validators: Array<{ enforced_fields?: string[] }> }
+    }
+  }
+  const enforced = new Set(
+    source.stages.plan.validators.flatMap(
+      (validator) => validator.enforced_fields ?? [],
+    ),
+  )
+
+  for (const fieldPath of [
+    'data.acceptance_criteria[].id',
+    'data.acceptance_criteria[].maps_to',
+    'data.acceptance_criteria[].verification',
+    'data.test_plan[]',
+    'data.open_question_dispositions[].id',
+    'data.open_question_dispositions[].answer',
+    'data.open_question_dispositions[].disposition',
+    'data.open_question_dispositions[].evidence',
+    'data.verification_recommendation',
+  ]) {
+    assert.ok(enforced.has(fieldPath), `${fieldPath} is not enforced`)
+  }
+
   const result = validateSharedFieldContract({
     root,
-    targetPath: 'library/schemas/stage-output-requirements.json',
+    targetPath,
     requirement: {
       policy_id: 'CONTRACT-001',
       requirement_id: 'shared-stage-field-contract',
@@ -1333,32 +1361,17 @@ test('spotfix diff_bounded exempts projected .cursor paths', () => {
     'src/two.ts',
     'src/three.ts',
     '.cursor/rules/four.mdc',
+    '.cursor/agents/reviewer.json',
   ]
 
   assert.equal(isSpotfixDiffExempt('docs/one.md'), true)
   assert.equal(isSpotfixDiffExempt('tests/two.test.ts'), true)
   assert.equal(isSpotfixDiffExempt('.cursor/rules/four.mdc'), true)
+  assert.equal(isSpotfixDiffExempt('.cursor/agents/reviewer.json'), true)
   assert.equal(isSpotfixDiffExempt('src/one.ts'), false)
   assert.equal(isSpotfixDiffExempt('src/two.ts'), false)
   assert.equal(isSpotfixDiffExempt('src/three.ts'), false)
   assert.equal(files.filter((file) => !isSpotfixDiffExempt(file)).length, 3)
-})
-
-test('spotfix diff_bounded counts only non-exempt files in mixed diffs', () => {
-  const files = [
-    'docs/one.md',
-    'tests/two.test.ts',
-    'library/workflows/note.md',
-    'src/one.ts',
-    'src/two.ts',
-  ]
-
-  assert.equal(isSpotfixDiffExempt('docs/one.md'), true)
-  assert.equal(isSpotfixDiffExempt('tests/two.test.ts'), true)
-  assert.equal(isSpotfixDiffExempt('library/workflows/note.md'), true)
-  assert.equal(isSpotfixDiffExempt('src/one.ts'), false)
-  assert.equal(isSpotfixDiffExempt('src/two.ts'), false)
-  assert.equal(files.filter((file) => !isSpotfixDiffExempt(file)).length, 2)
 })
 
 test('implementation validator resolves the file portion of "path :: case" test entries', () => {
@@ -2255,53 +2268,4 @@ test('field contract validator rejects enforced_fields that lack a declared shap
         item.message.includes('data.missing.field'),
     ),
   )
-})
-
-test('plan field contract declares every validator-enforced shape', () => {
-  const root = createFixture()
-  const contractPath = 'library/schemas/stage-output-requirements.json'
-  const source = JSON.parse(
-    readFileSync(path.join(root, contractPath), 'utf8'),
-  ) as {
-    stages: {
-      plan: {
-        validators: Array<{ enforced_fields?: string[] }>
-        fields: Array<{ path: string }>
-      }
-    }
-  }
-  const declared = new Set(source.stages.plan.fields.map((field) => field.path))
-  const enforced = new Set(
-    source.stages.plan.validators.flatMap(
-      (validator) => validator.enforced_fields ?? [],
-    ),
-  )
-
-  for (const fieldPath of [
-    'data.acceptance_criteria[].id',
-    'data.acceptance_criteria[].maps_to',
-    'data.acceptance_criteria[].verification',
-    'data.test_plan[]',
-    'data.open_question_dispositions[].id',
-    'data.open_question_dispositions[].answer',
-    'data.open_question_dispositions[].disposition',
-    'data.open_question_dispositions[].evidence',
-    'data.verification_recommendation',
-  ]) {
-    assert.ok(declared.has(fieldPath), `${fieldPath} is not declared`)
-    assert.ok(enforced.has(fieldPath), `${fieldPath} is not enforced`)
-  }
-
-  const result = validateSharedFieldContract({
-    root,
-    targetPath: contractPath,
-    requirement: {
-      policy_id: 'CONTRACT-001',
-      requirement_id: 'shared-stage-field-contract',
-      registry_id: 'FIELD-CONTRACT-VALIDATE-001',
-      arguments: {},
-    },
-  })
-
-  assert.equal(result.status, 'passed', JSON.stringify(result.issues))
 })

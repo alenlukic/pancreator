@@ -13,7 +13,7 @@ import {
   setRunStage,
   waiveGate,
 } from '../../src/lib/engine.js'
-import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
+import { stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
   createRun,
@@ -25,20 +25,12 @@ import {
 import { checkpoint, failingVerify } from './delivery-helpers.js'
 
 test('explicit gate waiver advances a bounded miss and tracks its spotfix case', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Gate waiver fixture',
-  })
-  const runId = state.run_id
-
-  setRunStage(root, runId, 'implement', 'Initialize tracked workspace state.')
-  prepareInvocation(root, runId)
-  setRunStage(root, runId, 'verify', 'Exercise operator gate waiver flow.')
-
-  const verifyInvocation = prepareInvocation(root, runId).invocation
+  const {
+    root,
+    workflow,
+    runId,
+    invocation: verifyInvocation,
+  } = checkpoint('delivery@verify-prepared')
 
   assert.ok(verifyInvocation)
 

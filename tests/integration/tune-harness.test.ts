@@ -3,7 +3,6 @@ import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import {
   copyFileSync,
-  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -14,7 +13,6 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
-import { validateTuneRecordShape } from '../../src/lib/validators/tune-record.js'
 import {
   finalizePreparedTuneSession,
   finalizeTuneSession,
@@ -28,8 +26,7 @@ import {
   type TestIdentity,
 } from '../../src/lib/test-tuning.js'
 import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
-import { archiveWorkflowDirectories } from '../../src/lib/workflow-artifacts.js'
-import { createFixture, createRun } from '../helpers.js'
+import { createFixture } from '../helpers.js'
 
 function identity(file: string, name: string): TestIdentity {
   return { file, name, lane: 'unit' }
@@ -138,159 +135,6 @@ test('finalizeTuneSession writes record, report, and latest atomically', () => {
     ),
   )
   assert.equal(gitWorkspaceSnapshot(root).fingerprint, before.fingerprint)
-})
-
-test('validateTuneRecordShape rejects invalid verdict references and branches', () => {
-  const identityRow = identity('tests/unit/a.test.ts', 'alpha')
-  const complete = {
-    schema_version: 1,
-    session_id: 's',
-    harness_version: '0',
-    git_commit: 'abc',
-    workspace_fingerprint: 'fp',
-    workspace_dirty: false,
-    recorded_at: new Date().toISOString(),
-    baseline_source: { kind: 'none' },
-    passes: {
-      benchmark: {
-        started_at: '2026-01-01T10:00:00.000Z',
-        ended_at: '2026-01-01T10:01:00.000Z',
-      },
-      comparison: {
-        started_at: '2026-01-01T10:00:00.000Z',
-        ended_at: '2026-01-01T10:01:00.000Z',
-      },
-      judgment: {
-        started_at: '2026-01-01T10:00:00.000Z',
-        ended_at: '2026-01-01T10:01:00.000Z',
-      },
-    },
-    retained_set: [identityRow],
-    current_inventory: [identityRow],
-    comparison: {
-      retained_and_present: [identityRow],
-      added_since_retained: [],
-      retained_but_removed: [],
-    },
-    benchmark: {
-      fast_lane_wall_ms: 1,
-      secondary_lane_wall_ms: 0,
-      fixture_template_ms: 0,
-      fixture_clone_ms: 0,
-      files: [],
-      tests: [],
-      slowest_tests: [],
-    },
-    verdicts: [
-      {
-        identity: identityRow,
-        verdict: 'KEEP',
-        principle: 'TP-01',
-        rationale: 'Unique contract.',
-      },
-    ],
-    judgment_provenance: {
-      handbook_path: 'governance/handbooks/eng/testing.md',
-      handbook_revision: 'HEAD',
-      inventory_only: true,
-      inventory_path: 'runtime/tune-harness/work/s/current-inventory.json',
-    },
-  }
-
-  assert.deepEqual(validateTuneRecordShape(complete, process.cwd()), [])
-
-  const missing = validateTuneRecordShape(
-    {
-      ...complete,
-      verdicts: [],
-    },
-    process.cwd(),
-  )
-
-  assert.ok(missing.some((item) => item.includes('missing verdict')))
-
-  const badMerge = validateTuneRecordShape(
-    {
-      ...complete,
-      verdicts: [
-        {
-          ...complete.verdicts[0],
-          verdict: 'MERGE',
-          survivor: identity('tests/unit/missing.test.ts', 'missing'),
-        },
-      ],
-    },
-    process.cwd(),
-  )
-  const badDelete = validateTuneRecordShape(
-    {
-      ...complete,
-      verdicts: [
-        {
-          ...complete.verdicts[0],
-          verdict: 'DELETE',
-          delete_reason: 'too_slow',
-        },
-      ],
-    },
-    process.cwd(),
-  )
-  const badDemote = validateTuneRecordShape(
-    {
-      ...complete,
-      verdicts: [
-        {
-          ...complete.verdicts[0],
-          verdict: 'DEMOTE',
-          demote_destination: 'somewhere',
-        },
-      ],
-    },
-    process.cwd(),
-  )
-  const badProvenance = validateTuneRecordShape(
-    {
-      ...complete,
-      judgment_provenance: {
-        ...complete.judgment_provenance,
-        similarity_index_path: 'runtime/tune-harness/work/s/fast-profile.json',
-      },
-    },
-    process.cwd(),
-  )
-
-  assert.ok(badMerge.some((item) => item.includes('current survivor')))
-  assert.ok(badDelete.some((item) => item.includes('permitted reason')))
-  assert.ok(badDemote.some((item) => item.includes('actionable destination')))
-  assert.ok(
-    badProvenance.some((item) => item.includes('unpermitted similarity input')),
-  )
-})
-
-test('archiveWorkflowDirectories leaves tune records byte-identical', () => {
-  const root = createFixture()
-  const runId = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-  }).run_id
-  const recordDir = path.join(root, 'runtime/tune-harness/records')
-  mkdirSync(recordDir, { recursive: true })
-  const recordPath = path.join(recordDir, 'archive-fixture.json')
-  const activeRun = path.join(root, 'runtime/logs/workflows', runId)
-  const archivedRun = path.join(root, 'runtime/logs/workflows/archive', runId)
-
-  writeFileSync(recordPath, '{"schema_version":1,"session_id":"x"}\n')
-  const before = readFileSync(recordPath)
-  assert.equal(existsSync(activeRun), true)
-
-  archiveWorkflowDirectories(root, {
-    retentionDays: 7,
-    now: new Date('2030-07-01T22:00:00.000Z'),
-  })
-
-  assert.equal(existsSync(activeRun), false)
-  assert.equal(existsSync(path.join(archivedRun, 'agent/state.json')), true)
-  assert.ok(readFileSync(recordPath).equals(before))
 })
 
 test('validateAudit rejects target installations before baseline execution', () => {

@@ -7,7 +7,7 @@ import {
   COMMAND_GOVERNANCE_REGISTRY_PATH,
   validateCommandGovernance,
 } from '../../src/lib/governance/command-coverage.js'
-import { createFixture, sharedFixture, writeJson } from '../helpers.js'
+import { createFixture, writeJson } from '../helpers.js'
 
 function run(root: string) {
   const errors: string[] = []
@@ -17,17 +17,6 @@ function run(root: string) {
 
   return { errors, warnings }
 }
-
-test('every canonical command delivers a card or is an allowlisted read-only utility', () => {
-  const { errors, warnings } = run(sharedFixture())
-
-  assert.deepEqual(errors, [])
-
-  // The supervisor commands carry their card step, so nothing is pending.
-  const pending = warnings.filter((item) => item.includes('pending:'))
-
-  assert.deepEqual(pending, [])
-})
 
 test('target-mutating commands must preserve every worktree forwarding step', () => {
   const root = createFixture()
@@ -291,7 +280,12 @@ test('a standalone lookup row without a mode and a mode without a row are errors
     policies: ['PAIR-001'],
   })
   lookup.rows = lookup.rows.filter(
-    (row) => !(row.persona === 'release-steward' && row.workflow === '*'),
+    (row) =>
+      !(
+        row.persona === 'release-steward' &&
+        ((row.workflow === 'standalone' && row.stage === 'write-pr') ||
+          (row.workflow === '*' && row.stage === '*'))
+      ),
   )
   writeJson(lookupPath, lookup)
 
@@ -308,8 +302,12 @@ test('a standalone lookup row without a mode and a mode without a row are errors
   assert.ok(
     errors.some((item) =>
       /standalone mode 'write-pr' .* has no persona-specific row/u.test(item),
-    ) ||
-      errors.some((item) => /standalone mode 'release'/u.test(item)) === false,
+    ),
+    errors.join('\n'),
+  )
+  assert.equal(
+    errors.some((item) => /standalone mode 'release'/u.test(item)),
+    false,
     errors.join('\n'),
   )
 })

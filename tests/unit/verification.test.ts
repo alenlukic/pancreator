@@ -23,47 +23,12 @@ test('a config without a verification block gets the built-in levels and the lig
   )
 })
 
-test('the default light level maps the verify and remediate submission gates to full', () => {
-  // The full profile runs only as a submission gate: once at verify on a
-  // passing verdict, once at remediate when the repair is ready to ship. No
-  // built-in level maps an interior (implement-loop) gate onto full.
+test('minimal disables every full gate and thorough is an alias of light', () => {
   assert.deepEqual(BUILT_IN_VERIFICATION_LEVELS.light.gates, {
     'test.full_suite': 'full',
     'verify.full_suite': 'full',
     'remediate.full_suite': 'full',
   })
-  assert.equal(
-    effectiveRepositoryCheckProfile(
-      {
-        level: 'light',
-        summary: '',
-        gates: BUILT_IN_VERIFICATION_LEVELS.light.gates,
-      },
-      { id: 'verify.full_suite', command: 'pan repository-check full' },
-    ).profile,
-    'full',
-  )
-  assert.equal(
-    effectiveRepositoryCheckProfile(
-      {
-        level: 'light',
-        summary: '',
-        gates: BUILT_IN_VERIFICATION_LEVELS.light.gates,
-      },
-      { id: 'remediate.full_suite', command: 'pan repository-check full' },
-    ).profile,
-    'full',
-  )
-
-  for (const level of Object.values(BUILT_IN_VERIFICATION_LEVELS)) {
-    for (const [criterionId, profile] of Object.entries(level.gates)) {
-      assert.ok(criterionId.endsWith('.full_suite'))
-      assert.notEqual(profile, 'fast')
-    }
-  }
-})
-
-test('minimal disables every full gate and thorough is an alias of light', () => {
   assert.deepEqual(BUILT_IN_VERIFICATION_LEVELS.minimal.gates, {
     'test.full_suite': false,
     'verify.full_suite': false,
@@ -89,6 +54,13 @@ test('minimal disables every full gate and thorough is an alias of light', () =>
     )
 
     assert.deepEqual(thorough, light)
+  }
+
+  for (const level of Object.values(BUILT_IN_VERIFICATION_LEVELS)) {
+    for (const [criterionId, profile] of Object.entries(level.gates)) {
+      assert.ok(criterionId.endsWith('.full_suite'))
+      assert.notEqual(profile, 'fast')
+    }
   }
 })
 

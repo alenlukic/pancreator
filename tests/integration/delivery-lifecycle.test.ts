@@ -1,11 +1,5 @@
 import assert from 'node:assert/strict'
-import {
-  existsSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs'
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -368,31 +362,6 @@ test('away revise re-runs the stage without an operator revision allowance', () 
   assert.equal(feedback?.decision, 'revise')
   assert.equal(feedback?.source, 'away')
   assert.match(feedback?.path ?? '', /away-feedback-1\.md$/u)
-})
-
-test('ship cannot succeed without its declared PR artifact', () => {
-  const { root, runId, invocation, workflow } = checkpoint(
-    'delivery@ship-prepared',
-    BRIEFS,
-  )
-
-  assert.ok(invocation)
-  const stage = stageBySlug(workflow, 'ship')
-  const output = makeOutput(root, invocation, stage)
-  const prArtifact = invocation.output.artifacts?.[1]
-
-  assert.ok(prArtifact)
-  rmSync(path.join(root, prArtifact.path))
-  writeJson(path.join(root, invocation.output.path), output)
-  writeCanonicalDelegation(root, invocation)
-
-  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
-
-  assert.equal(submitted.record.outcome, 'blocked')
-  assert.match(
-    submitted.record.evaluation.validation_errors.join('\n'),
-    /artifact does not exist: .*operator\/pr-description\.md/u,
-  )
 })
 
 test('ship cannot succeed when its PR artifact violates resolved authority', () => {

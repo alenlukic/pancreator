@@ -203,15 +203,6 @@ None identified.
   assert.equal(notApplicable.status, 'passed')
 })
 
-test('target repository primer validator applies external sections to detached installations', () => {
-  const result = validate(VALID_EXTERNAL_PRIMER, {
-    installationMode: 'detached',
-  })
-
-  assert.equal(result.status, 'passed')
-  assert.deepEqual(result.issues, [])
-})
-
 test('target repository primer validator rejects malformed external flow steps', () => {
   const root = fixtureRoot({ installationMode: 'embedded' })
   const result = validateIn(

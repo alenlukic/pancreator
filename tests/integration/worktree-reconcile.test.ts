@@ -228,15 +228,7 @@ test('branch reconcile validates sources before creating its target worktree', (
 })
 
 test('worktree reconcile stops on conflict and writes a resolution request', () => {
-  const root = createFixture()
-  const target = createWorktree(root, 'conflict-target')
-  const sourceOne = createWorktree(root, 'conflict-one')
-  const sourceTwo = createWorktree(root, 'conflict-two')
-  const targetPath = path.join(root, target.path)
-
-  commitFile(targetPath, 'shared.txt', 'target\n')
-  commitFile(path.join(root, sourceOne.path), 'shared.txt', 'source\n')
-  commitFile(path.join(root, sourceTwo.path), 'other.txt', 'other\n')
+  const { root } = worktreeCheckpoint('target-conflict')
 
   const conflicted = spawnSync(
     process.execPath,

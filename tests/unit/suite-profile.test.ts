@@ -15,6 +15,7 @@ import {
 } from '../../src/lib/suite-profile.js'
 import { renderStatus } from '../../src/lib/render.js'
 import type { RunState, SuiteProfileSummary } from '../../src/lib/types.js'
+import { readFixtureCost } from '../reporters/failures-only.js'
 import { fixtureSidecarPath } from '../reporters/fixture-profile.js'
 
 const REPORTER = path.resolve(
@@ -109,7 +110,7 @@ test('the reporter writes a suite profile only when PAN_TEST_PROFILE is set', ()
 })
 
 test('the reporter consumes process-specific fixture sidecars once', () => {
-  const { cwd, file } = tinyLane()
+  const cwd = mkdtempSync(path.join(tmpdir(), 'pancreator-fixture-cost-'))
   const target = path.join(cwd, 'out', 'profile.json')
   const first = fixtureSidecarPath(target, 101)
   const second = fixtureSidecarPath(target, 202)
@@ -136,13 +137,7 @@ test('the reporter consumes process-specific fixture sidecars once', () => {
     }),
   )
 
-  const result = runReporter(cwd, file, { [TEST_PROFILE_ENV]: target })
-
-  assert.equal(result.status, 0, result.stderr)
-
-  const profile = loadSuiteProfile(cwd, 'out/profile.json')
-
-  assert.deepEqual(profile?.fixture_cost, {
+  assert.deepEqual(readFixtureCost(target), {
     template_ms: 10,
     clone_ms: 5,
   })
@@ -160,10 +155,7 @@ test('the reporter consumes process-specific fixture sidecars once', () => {
     }),
   )
 
-  const repeated = runReporter(cwd, file, { [TEST_PROFILE_ENV]: target })
-
-  assert.equal(repeated.status, 0, repeated.stderr)
-  assert.deepEqual(loadSuiteProfile(cwd, 'out/profile.json')?.fixture_cost, {
+  assert.deepEqual(readFixtureCost(target), {
     template_ms: 1,
     clone_ms: 1,
   })

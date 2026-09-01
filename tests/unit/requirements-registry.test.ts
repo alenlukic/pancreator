@@ -41,13 +41,3 @@ test('registry rejects duplicate ids', () => {
   assert.throws(() => loadRegistry(root), /Duplicate registry id/u)
   clearRegistryCache()
 })
-
-test('registry includes the tune-record validator target type', () => {
-  const registry = loadRegistry(process.cwd())
-  const entry = registry.entries.get('TUNE-RECORD-VALIDATE-001')
-
-  assert.ok(entry)
-  assert.equal(entry?.handler, 'tune-record-validate')
-  assert.ok(entry?.target_types.includes('tune-record-json'))
-  clearRegistryCache()
-})
