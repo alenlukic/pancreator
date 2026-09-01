@@ -1,5 +1,16 @@
 # Changelog
 
+## [5.7.0] - 2026-09-01
+
+### Changed
+
+- Copy the recognized local override into a new self-development worktree before setup ([worktrees](src/lib/worktrees.ts)).
+- Read mutable release Git history, VERSION, metadata, and source diffs from the selected workspace ([stage-validators](src/lib/validators/stage-validators.ts)).
+
+### Added
+
+- Add the `/pan-augment` command and prompt-augmentation skill files ([2f27af7c](library/cursor/commands/pan-augment.md), [prompt-augmentation](library/skills/prompt-augmentation.md)).
+
 ## [5.6.0] - 2026-08-31
 
 ### Changed

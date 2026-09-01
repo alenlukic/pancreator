@@ -1,3 +1,4 @@
+import { copyFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { invariant } from './errors.js'
@@ -35,7 +36,9 @@ import {
   configuredWorkspaceRoot,
   configuredWorktreeRoot,
   DEFAULT_WORKTREE_ROOT,
+  isSelfDevelopmentInstallation,
   LEGACY_DEFAULT_WORKTREE_ROOT,
+  localConfigName,
   worktreesConfig,
 } from './project-config.js'
 import { runSetupCommands } from './setup-commands.js'
@@ -172,6 +175,29 @@ function worktreeMutexPath(root: string): string {
 
 function newWorktreeRoot(root: string): string {
   return resolveOperatorWorktreeStore(root).newWorktreeRoot
+}
+
+/**
+ * Copy the recognized local harness override into a new self-development
+ * worktree before setup runs. Target installations keep harness configuration
+ * at the installation root and receive no override copy.
+ */
+function handoffSelfDevelopmentLocalConfig(
+  installationRoot: string,
+  worktreePath: string,
+): void {
+  if (!isSelfDevelopmentInstallation(installationRoot)) {
+    return
+  }
+
+  const configName = localConfigName(installationRoot)
+  const sourcePath = path.join(installationRoot, configName)
+
+  if (!fileExists(sourcePath)) {
+    return
+  }
+
+  copyFileSync(sourcePath, path.join(worktreePath, configName))
 }
 
 function parseWorktreeRecord(value: unknown, source: string): WorktreeRecord {
@@ -457,6 +483,7 @@ function addWorktree(
     schema_version: 1,
     worktrees: [...index.worktrees, record],
   })
+  handoffSelfDevelopmentLocalConfig(root, worktreePath)
   runSetupCommands(config.setup, worktreePath, {
     label: `worktree '${name}'`,
     code: 'WORKTREE_SETUP_FAILED',

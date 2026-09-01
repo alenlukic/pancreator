@@ -2657,6 +2657,7 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
 
 export function validateReleaseOutput(input: HandlerInput): HandlerResult {
   const issues: HandlerResult['issues'] = []
+  const workspaceRoot = workspaceRootFromInput(input)
   const value = readJson(path.join(input.root, input.targetPath)) as Record<
     string,
     unknown
@@ -2766,7 +2767,10 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
           ),
         )
       } else {
-        const committedVersion = gitOutput(input.root, ['show', 'HEAD:VERSION'])
+        const committedVersion = gitOutput(workspaceRoot, [
+          'show',
+          'HEAD:VERSION',
+        ])
 
         if (!committedVersion.ok) {
           issues.push(
@@ -2784,7 +2788,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
           )
         }
 
-        const baselineVersion = gitOutput(input.root, [
+        const baselineVersion = gitOutput(workspaceRoot, [
           'show',
           `${baselineCommit}:VERSION`,
         ])
@@ -2801,7 +2805,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
           )
         }
 
-        const ancestor = gitOutput(input.root, [
+        const ancestor = gitOutput(workspaceRoot, [
           'merge-base',
           '--is-ancestor',
           baselineCommit,
@@ -2817,7 +2821,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
           )
         }
 
-        const parentVersion = gitOutput(input.root, [
+        const parentVersion = gitOutput(workspaceRoot, [
           'show',
           `${baselineCommit}^:VERSION`,
         ])
@@ -2901,7 +2905,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
         }
       }
 
-      const diskVersion = readText(path.join(input.root, 'VERSION')).trim()
+      const diskVersion = readText(path.join(workspaceRoot, 'VERSION')).trim()
 
       if (diskVersion !== proposedVersion) {
         issues.push(
@@ -2912,7 +2916,8 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
         )
       }
 
-      for (const metadataError of validateReleaseMetadata(input.root).errors) {
+      for (const metadataError of validateReleaseMetadata(workspaceRoot)
+        .errors) {
         issues.push(issue('release.metadata_invalid', metadataError))
       }
     }

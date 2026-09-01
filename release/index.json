@@ -28,6 +28,10 @@
     {
       "version": "5.4.0",
       "commit": "2b28a4f241f88c76a45a0c8a0f92b095203004e0"
+    },
+    {
+      "version": "5.7.0",
+      "commit": "706bffd0fa1ec3c1c354fbf2f8ed86daead5654a"
     }
   ]
 }
