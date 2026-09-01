@@ -17,7 +17,7 @@ import { VALID_EXECUTORS, VALID_FAILURE_ROUTES, VALID_PHASES } from './types.js'
 
 const INLINE_PATH_PATTERN = /\.\/bin\/|\bnpm run\b|\bnode\s+/u
 const VALID_TARGET_PATTERN =
-  /^(invocation\.output\.path|artifact:\d+|repository|\.)$/u
+  /^(invocation\.output\.path|artifact:(?:\d+|[a-z][a-z0-9_-]*)|repository|\.)$/u
 
 function matchesPattern(pattern: string, value: string): boolean {
   return pattern === '*' || pattern === value
@@ -98,8 +98,11 @@ function resolveTarget(
   }
 
   if (target.startsWith('artifact:')) {
-    const index = Number.parseInt(target.slice('artifact:'.length), 10)
-    const artifactPath = context.invocation?.artifact_paths?.[index]
+    const key = target.slice('artifact:'.length)
+    const numeric = /^\d+$/u.test(key)
+    const artifactPath = numeric
+      ? context.invocation?.artifact_paths?.[Number.parseInt(key, 10)]
+      : context.invocation?.artifact_targets?.[key]
 
     return artifactPath ? { resolved: artifactPath } : { unresolved: target }
   }

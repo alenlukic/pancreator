@@ -69,6 +69,49 @@ test('requirement resolution is deterministic', () => {
     assert.ok(requirement, `${binding.stage} must bind ${binding.registry_id}`)
     assert.equal(requirement.resolved_target, binding.target)
   }
+
+  const prPath = 'runtime/logs/workflows/release/operator/pr-description.md'
+  const ship = resolveRequirements(root, {
+    persona: 'release-steward',
+    workflow: 'delivery',
+    stage: 'ship',
+    invocation_kind: 'workflow',
+    invocation: {
+      output_path: 'runtime/logs/workflows/release/outputs/ship.json',
+      artifact_paths: [prPath],
+      artifact_targets: { pr_description: prPath },
+    },
+    operator_artifacts: 'suppressed',
+  })
+  const prValidators = ship.validation_requirements.filter(
+    (requirement) =>
+      requirement.resolved_target === prPath &&
+      (requirement.requirement_id === 'workflow-pr-description-validate' ||
+        requirement.requirement_id ===
+          'workflow-pr-simplified-english-validate'),
+  )
+
+  assert.deepEqual(
+    prValidators.map((requirement) => requirement.registry_id).sort(),
+    ['PR-DESCRIPTION-VALIDATE-001', 'SIMPLIFIED-ENGLISH-VALIDATE-001'],
+  )
+
+  const standalone = resolveRequirements(root, {
+    persona: 'release-steward',
+    workflow: 'standalone',
+    stage: 'write-pr',
+    invocation_kind: 'standalone',
+    invocation: { output_path: prPath },
+    operator_artifacts: 'suppressed',
+  })
+
+  assert.ok(
+    standalone.validation_requirements.some(
+      (requirement) =>
+        requirement.registry_id === 'SIMPLIFIED-ENGLISH-VALIDATE-001' &&
+        requirement.resolved_target === prPath,
+    ),
+  )
 })
 
 test('requirement resolution fails on unknown registry id', () => {

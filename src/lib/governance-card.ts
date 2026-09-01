@@ -267,15 +267,14 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
     stage: 'release',
     title: 'Release metadata preparation',
     summary:
-      'Prepare or regenerate Pancreator release metadata from the complete ' +
-      'repository delta, outside a workflow ship stage. Self-development ' +
-      'installations only.',
+      'Prepare a complete local Pancreator release from checkpoint through ' +
+      'final PR copy, outside a workflow ship stage. Self-development only.',
     boundaries: [
       'You MUST stop without mutation unless the installation mode is `self_development`.',
       'You MUST stop when a mutating workflow is active against this workspace.',
-      'You MUST edit only `CHANGELOG.md`, `VERSION`, `package.json`, `package-lock.json`, `README.md`, and version-bearing Markdown under `docs/`, and MUST NOT edit `release/index.json`.',
+      'You MUST edit release metadata only after synchronization and MUST use `pan release finalize` to edit `release/index.json` and create final commits.',
       PROTECTED_PATH_RULE,
-      'You MUST NOT commit, push, open or merge a pull request, publish, deploy, rewrite history, or invent the future release commit hash.',
+      'You MUST NOT push, open or merge a pull request, publish, deploy, rewrite history, or invent commit hashes.',
     ],
   },
   'write-pr': {

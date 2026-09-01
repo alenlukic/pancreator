@@ -11,6 +11,7 @@ import {
   gitMergeAbort,
   gitMergeBranch,
   gitRevParse,
+  gitSwitchBranch,
   gitWorktreeAddOnBranch,
   gitWorktreeAddOnExistingBranch,
   gitWorktreeForBranch,
@@ -43,13 +44,11 @@ import {
 } from './project-config.js'
 import { runSetupCommands } from './setup-commands.js'
 import { now } from './state.js'
+import type { ManagedWorktreeReference } from './types.js'
 
 const WORKTREE_NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u
 
-export interface WorktreeRecord {
-  name: string
-  path: string
-  branch: string
+export interface WorktreeRecord extends ManagedWorktreeReference {
   created_from: string
   description: string
   created_at: string
@@ -447,7 +446,7 @@ function addWorktree(
     { code: 'WORKTREE_PATH_EXISTS' },
   )
 
-  const branch = `${config.branch_prefix}${name}`
+  const branch = name
 
   invariant(
     gitBranchNameIsValid(repositoryRoot, branch),
@@ -521,9 +520,36 @@ export function resolveWorktreeWorkspace(root: string, name: string): string {
     `Indexed worktree '${name}' is not registered with Git.`,
     { code: 'WORKTREE_NOT_REGISTERED' },
   )
+  const currentBranch = gitCurrentBranch(worktreePath)
+
+  if (currentBranch !== record.branch) {
+    invariant(
+      gitBranchExists(repositoryRoot, record.branch),
+      `Recorded branch does not exist: ${record.branch}`,
+      { code: 'WORKTREE_BRANCH_NOT_FOUND' },
+    )
+
+    const heldBy = gitWorktreeForBranch(repositoryRoot, record.branch)
+
+    invariant(
+      !heldBy || path.resolve(heldBy) === path.resolve(worktreePath),
+      `Recorded branch '${record.branch}' is checked out at '${heldBy}'.`,
+      { code: 'WORKTREE_BRANCH_HELD' },
+    )
+    invariant(
+      !gitWorktreeIsDirty(worktreePath),
+      `Worktree '${name}' is on branch '${currentBranch ?? '(detached)'}' ` +
+        `with uncommitted work. Clean it before switching to ` +
+        `'${record.branch}'.`,
+      { code: 'WORKTREE_DIRTY_BRANCH_MISMATCH' },
+    )
+
+    gitSwitchBranch(worktreePath, record.branch)
+  }
+
   invariant(
     gitCurrentBranch(worktreePath) === record.branch,
-    `Indexed worktree '${name}' is not on its recorded branch '${record.branch}'.`,
+    `Indexed worktree '${name}' could not switch to its recorded branch '${record.branch}'.`,
     { code: 'WORKTREE_BRANCH_MISMATCH' },
   )
 

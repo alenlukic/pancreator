@@ -106,8 +106,8 @@ function installationMode(root: string): CursorInstallationMode {
   return mode
 }
 
-function targetRoot(root: string): string {
-  return path.resolve(root, configuredWorkspaceRoot(root))
+function targetRoot(root: string, workspace?: string): string {
+  return path.resolve(root, workspace ?? configuredWorkspaceRoot(root))
 }
 
 function extensionDirectory(root: string, extensionId: string): string {
@@ -656,9 +656,9 @@ function renderExcludeBlock(
   ].join('\n')
 }
 
-function updateTargetExclusions(root: string): void {
-  const workspace = targetRoot(root)
-  const excludePath = gitExcludePath(workspace)
+function updateTargetExclusions(root: string, workspace?: string): void {
+  const workspaceRoot = targetRoot(root, workspace)
+  const excludePath = gitExcludePath(workspaceRoot)
 
   if (!excludePath) {
     return
@@ -680,6 +680,7 @@ function samePublishedState(
   manifest: TargetExtensionManifest,
   previous: TargetExtensionManifest,
   projection: string | null,
+  workspace?: string,
 ): boolean {
   if (sha256(manifest) !== sha256(previous)) {
     return false
@@ -707,7 +708,10 @@ function samePublishedState(
   }
 
   if (manifest.projection_path && projection) {
-    const projectedPath = path.join(targetRoot(root), manifest.projection_path)
+    const projectedPath = path.join(
+      targetRoot(root, workspace),
+      manifest.projection_path,
+    )
 
     return (
       fileExists(projectedPath) &&
@@ -722,6 +726,7 @@ function samePublishedState(
 export function applyTargetAuthoringDraft(
   root: string,
   inputPath: string,
+  options: { workspace?: string } = {},
 ): TargetAuthoringApplyResult {
   invariant(
     isTargetInstallation(root),
@@ -739,8 +744,11 @@ export function applyTargetAuthoringDraft(
   const manifest = manifestFor(draft, policies, projection)
   const manifestDigest = sha256(manifest)
 
-  if (previous && samePublishedState(root, manifest, previous, projection)) {
-    updateTargetExclusions(root)
+  if (
+    previous &&
+    samePublishedState(root, manifest, previous, projection, options.workspace)
+  ) {
+    updateTargetExclusions(root, options.workspace)
 
     return resultFor(manifest, manifestDigest, 'unchanged')
   }
@@ -773,7 +781,7 @@ export function applyTargetAuthoringDraft(
 
   if (manifest.projection_path && projection) {
     writeTextAtomic(
-      path.join(targetRoot(root), manifest.projection_path),
+      path.join(targetRoot(root, options.workspace), manifest.projection_path),
       projection,
     )
   }
@@ -782,7 +790,7 @@ export function applyTargetAuthoringDraft(
     path.join(root, manifestRelativePath(draft.extension_id)),
     manifest,
   )
-  updateTargetExclusions(root)
+  updateTargetExclusions(root, options.workspace)
 
   return resultFor(manifest, manifestDigest, 'applied')
 }
@@ -829,6 +837,7 @@ function validateOne(
   manifest: TargetExtensionManifest,
   repair: boolean,
   errors: string[],
+  workspace?: string,
 ): void {
   const contentPath = path.join(root, manifest.content_path)
 
@@ -879,7 +888,10 @@ function validateOne(
       return
     }
 
-    const projectionPath = path.join(targetRoot(root), manifest.projection_path)
+    const projectionPath = path.join(
+      targetRoot(root, workspace),
+      manifest.projection_path,
+    )
 
     if (
       repair ||
@@ -940,7 +952,11 @@ function validateOne(
  */
 export function validateTargetAuthoring(
   root: string,
-  options: { extensionId?: string; repair?: boolean } = {},
+  options: {
+    extensionId?: string
+    repair?: boolean
+    workspace?: string
+  } = {},
 ): TargetAuthoringValidationResult {
   if (!isTargetInstallation(root)) {
     return { ok: true, errors: [], extensions: [] }
@@ -955,13 +971,19 @@ export function validateTargetAuthoring(
       : listManifests(root)
 
     for (const manifest of manifests) {
-      validateOne(root, manifest, options.repair === true, errors)
+      validateOne(
+        root,
+        manifest,
+        options.repair === true,
+        errors,
+        options.workspace,
+      )
     }
 
     if (options.repair) {
-      updateTargetExclusions(root)
+      updateTargetExclusions(root, options.workspace)
     } else {
-      validateTargetExclusions(root, errors)
+      validateTargetExclusions(root, errors, options.workspace)
     }
   } catch (error) {
     errors.push(String(error))
@@ -974,8 +996,12 @@ export function validateTargetAuthoring(
   }
 }
 
-function validateTargetExclusions(root: string, errors: string[]): void {
-  const excludePath = gitExcludePath(targetRoot(root))
+function validateTargetExclusions(
+  root: string,
+  errors: string[],
+  workspace?: string,
+): void {
+  const excludePath = gitExcludePath(targetRoot(root, workspace))
 
   if (!excludePath) {
     return

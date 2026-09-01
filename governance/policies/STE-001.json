@@ -23,6 +23,7 @@
     "Chat-report issue and outcome shapes MUST remain judgment-only. The deterministic check does not test these shapes.",
     "This policy adopts Part 1 writing rules of ASD-STE100 and does not adopt the Part 2 controlled dictionary as a gate. Agents MUST NOT describe an artifact as conformant to ASD-STE100, because full conformance requires the dictionary.",
     "Agents MAY use RFC 2119 requirement keywords in governance-bearing prose, because those keywords are terms of art in this repository rather than ordinary wording.",
+    "The deterministic check MUST pass for final PR descriptions and remains advisory for other operator artifacts.",
     "The deterministic check bound to this policy covers only the countable rules and is advisory. Agents MUST NOT treat a passing check as conformance, and a review gate MUST evaluate terminology consistency, noun-group length, voice, and risk-notice correctness by judgment."
   ],
   "guidance_sources": [
@@ -44,6 +45,34 @@
       "evidence_class": "validation-result",
       "applicability": {
         "operator_artifacts": "requested"
+      }
+    },
+    {
+      "id": "workflow-pr-simplified-english-validate",
+      "registry_id": "SIMPLIFIED-ENGLISH-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "harness",
+      "target": "artifact:pr_description",
+      "enforcement": "required",
+      "failure_route": "retry",
+      "evidence_class": "validation-result",
+      "applicability": {
+        "invocation_kind": "workflow",
+        "stage": "ship"
+      }
+    },
+    {
+      "id": "standalone-pr-simplified-english-validate",
+      "registry_id": "SIMPLIFIED-ENGLISH-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "agent",
+      "target": "invocation.output.path",
+      "enforcement": "required",
+      "failure_route": "retry",
+      "evidence_class": "validation-result",
+      "applicability": {
+        "invocation_kind": "standalone",
+        "stage": "write-pr"
       }
     }
   ]

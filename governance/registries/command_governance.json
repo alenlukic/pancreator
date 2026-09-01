@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "read_only_commands": [
     "pan-augment",
     "pan-status",
@@ -17,5 +17,45 @@
     }
   ],
   "supervisor_commands": ["pan-resume", "pan-start"],
+  "target_mutating_commands": [
+    {
+      "command": "pan-author",
+      "worktree_forwarding": [
+        "author apply --input runtime/inbox/target-authoring/<id>.json --worktree <name> --json",
+        "author validate --extension <id> --worktree <name> --json"
+      ]
+    },
+    {
+      "command": "pan-qa-workflow",
+      "worktree_forwarding": [
+        "--worktree <name>",
+        "prepare <run-id> --worktree <name>",
+        "submit <run-id> <output-json> --worktree <name>"
+      ]
+    },
+    {
+      "command": "pan-release",
+      "worktree_forwarding": [
+        "release sync --worktree <name>",
+        "release continue --worktree <name>",
+        "release finalize --worktree <name>"
+      ]
+    },
+    {
+      "command": "pan-resume",
+      "worktree_forwarding": [
+        "prepare <run-id> --worktree <name>",
+        "resume <run-id> --worktree <name>",
+        "submit <run-id> <output-json> --worktree <name>"
+      ]
+    },
+    {
+      "command": "pan-start",
+      "worktree_forwarding": [
+        "prepare <run-id> --worktree <name>",
+        "submit <run-id> <output-json> --worktree <name>"
+      ]
+    }
+  ],
   "pending_card_steps": []
 }

@@ -1,5 +1,26 @@
 # Changelog
 
+## [5.8.0] - 2026-09-01
+
+### Changed
+
+- Isolate target mutations in a named managed worktree and restore a clean recorded branch before the first write ([worktrees](src/lib/worktrees.ts)).
+- Bind each delivery run to one managed worktree and reject a later selection that differs ([engine](src/lib/engine.ts)).
+- Keep existing worktree records and their registered branches. Use the worktree name as the branch only for new worktrees ([worktrees](src/lib/worktrees.ts)).
+- Limit Pancreator fallback PR copy to Summary and Changelist. Keep target templates authoritative ([PR-001](governance/policies/PR-001.json), [pr-description](src/lib/pr-description.ts)).
+- Move self-development release preparation through local sync, continue, and finalize before any remote action ([VERSION-001](governance/policies/VERSION-001.json), [SHIP-001](governance/policies/SHIP-001.json)).
+- Document `/pan-release` as the local release sequence that ends with PR copy ([README](README.md), [pan-release](library/cursor/commands/pan-release.md)).
+
+### Added
+
+- Add `pan release sync`, `pan release continue`, and `pan release finalize` for local release preparation ([release-preparation](src/lib/release-preparation.ts)).
+- Add worktree checks for classified target-mutating commands ([command_governance](governance/registries/command_governance.json)).
+
+### Fixed
+
+- Fix release continuation so an active rebase does not restore the recorded branch too early ([release-preparation](src/lib/release-preparation.ts)).
+- Fix named PR validator resolution when invocation precomputation is absent ([requirements](src/lib/requirements/run.ts)).
+
 ## [5.7.0] - 2026-09-01
 
 ### Changed

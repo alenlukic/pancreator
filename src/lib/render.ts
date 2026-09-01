@@ -841,6 +841,14 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
     '',
     `**Workspace** \`${invocation.workspace_root}\` — fingerprints, ` +
       'deterministic gate commands, and scope checks target this directory.',
+    ...(invocation.managed_worktree
+      ? [
+          '',
+          `**Managed worktree** \`${invocation.managed_worktree.name}\` · ` +
+            `**Branch** \`${invocation.managed_worktree.branch}\` · ` +
+            `**Path** \`${invocation.managed_worktree.path}\``,
+        ]
+      : []),
     ...(invocation.harness_root
       ? [
           '',
@@ -1022,6 +1030,9 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
       invocation_id: invocation.invocation_id,
       workflow: invocation.workflow,
       workspace_root: invocation.workspace_root,
+      ...(invocation.managed_worktree
+        ? { managed_worktree: invocation.managed_worktree }
+        : {}),
       workspace_fingerprint: invocation.workspace_before.fingerprint,
       model: stage.model,
       model_config: stage.model_config,
@@ -1083,6 +1094,12 @@ export function renderStatus(
     `Workflow: ${state.workflow_slug}`,
     `Model config: ${state.pipeline_config?.name ?? 'live default'}`,
     `Workspace: ${state.workspace_root || '.'}`,
+    ...(state.managed_worktree
+      ? [
+          `Managed worktree: ${state.managed_worktree.name}`,
+          `Managed branch: ${state.managed_worktree.branch}`,
+        ]
+      : []),
     `Current stage: ${state.current_stage ?? 'none'}`,
     `Pending action: ${state.pending_action.type}`,
     `Revision: ${state.revision}`,

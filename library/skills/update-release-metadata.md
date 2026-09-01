@@ -5,13 +5,14 @@ Use during a Pancreator self-development ship stage and in standalone
 
 ## Outcome
 
-Prepare one complete, reviewable release candidate without committing it:
+Prepare one complete local release:
 
 - determine the actual change range since the last committed release bump
 - select exactly one Semantic Versioning bump: `major`, `minor`, or `patch`
 - author or regenerate the current Common Changelog release entry
 - synchronize every current-version metadata and documentation reference
-- leave `release/index.json` unchanged until the release commit exists
+- create the immutable release commit before indexing it
+- create a separate commit that changes only `release/index.json`
 
 ## Establish the baseline
 
@@ -90,9 +91,11 @@ Do not rewrite historical versions, examples, migration references, or
 4. In workflow mode, populate `release.versioning` with:
    `current_version`, `recommendation`, `proposed_version`, `baseline_commit`,
    `rationale`, `compatibility`, `updated_files`, and `release_index_action`.
+5. Run `pan release finalize` with the managed worktree and fetched-main hash.
+   Record the resulting release and index commit hashes.
 
 ## Boundaries
 
-Do not edit `release/index.json`. Do not commit, push, open or merge a PR,
-publish, deploy, rewrite history, or invent commit hashes. The operator owns the
-release commit; its immutable hash can be indexed only afterward.
+Only `pan release finalize` may edit `release/index.json` and create the two
+final local commits. Do not push, open or merge a PR, publish, deploy, rewrite
+history, or invent commit hashes.

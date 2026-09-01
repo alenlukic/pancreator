@@ -21,6 +21,7 @@ import {
   isWorktreeName,
   readWorktreeIndex,
   reconcileWorktrees,
+  resolveWorktreeWorkspace,
   resolveWorkspacePathOrWorktree,
   writeWorktreeIndex,
   type WorktreeIndex,
@@ -264,6 +265,7 @@ test('new worktrees use the current root when the legacy index is active', () =>
   const record = createWorktree(root, 'fresh')
 
   assert.equal(record.path, 'worktrees/operator/fresh')
+  assert.equal(record.branch, 'fresh')
   assert.equal(readWorktreeIndex(root).worktrees[0]?.path, record.path)
 })
 
@@ -521,4 +523,125 @@ test('target worktrees keep harness config at installation root', () => {
   } finally {
     rmSync(targetRoot, { recursive: true, force: true })
   }
+})
+
+test('worktree resolution restores the recorded branch only when clean', () => {
+  const root = createFixture()
+  const record = createWorktree(root, 'release-one')
+  const worktreePath = path.join(root, record.path)
+
+  execFileSync('git', ['switch', '-c', 'other-clean'], {
+    cwd: worktreePath,
+  })
+
+  assert.equal(resolveWorktreeWorkspace(root, record.name), record.path)
+  assert.equal(
+    execFileSync('git', ['branch', '--show-current'], {
+      cwd: worktreePath,
+      encoding: 'utf8',
+    }).trim(),
+    'release-one',
+  )
+
+  execFileSync('git', ['switch', '-c', 'other-dirty'], {
+    cwd: worktreePath,
+  })
+  writeFileSync(path.join(worktreePath, 'dirty.txt'), 'preserve me\n')
+
+  const snapshot = (): Record<string, string> => ({
+    branch: execFileSync('git', ['branch', '--show-current'], {
+      cwd: worktreePath,
+      encoding: 'utf8',
+    }).trim(),
+    head: execFileSync('git', ['rev-parse', 'HEAD'], {
+      cwd: worktreePath,
+      encoding: 'utf8',
+    }).trim(),
+    index: execFileSync('git', ['diff', '--cached'], {
+      cwd: worktreePath,
+      encoding: 'utf8',
+    }),
+    status: execFileSync('git', ['status', '--porcelain=v1'], {
+      cwd: worktreePath,
+      encoding: 'utf8',
+    }),
+    file: readFileSync(path.join(worktreePath, 'dirty.txt'), 'utf8'),
+    registry: readFileSync(
+      path.join(root, 'worktrees', 'operator', 'index.json'),
+      'utf8',
+    ),
+  })
+  const before = snapshot()
+
+  assert.throws(
+    () => resolveWorktreeWorkspace(root, record.name),
+    (error: unknown) =>
+      error instanceof Error &&
+      'code' in error &&
+      error.code === 'WORKTREE_DIRTY_BRANCH_MISMATCH',
+  )
+  assert.deepEqual(snapshot(), before)
+})
+
+test('worktree resolution preserves legacy branches and rejects unavailable recorded branches', () => {
+  const legacyRoot = createFixture()
+  const legacyRecord = createWorktree(legacyRoot, 'legacy-one')
+  const legacyPath = path.join(legacyRoot, legacyRecord.path)
+
+  execFileSync('git', ['branch', '-m', 'worktree/legacy-one'], {
+    cwd: legacyPath,
+  })
+  writeWorktreeIndex(legacyRoot, {
+    schema_version: 1,
+    worktrees: [{ ...legacyRecord, branch: 'worktree/legacy-one' }],
+  })
+  execFileSync('git', ['switch', '-c', 'legacy-alternate'], {
+    cwd: legacyPath,
+  })
+
+  assert.equal(
+    resolveWorktreeWorkspace(legacyRoot, legacyRecord.name),
+    legacyRecord.path,
+  )
+  assert.equal(
+    execFileSync('git', ['branch', '--show-current'], {
+      cwd: legacyPath,
+      encoding: 'utf8',
+    }).trim(),
+    'worktree/legacy-one',
+  )
+
+  const missingRoot = createFixture()
+  const missingRecord = createWorktree(missingRoot, 'missing-one')
+  const missingPath = path.join(missingRoot, missingRecord.path)
+
+  execFileSync('git', ['switch', '-c', 'missing-alternate'], {
+    cwd: missingPath,
+  })
+  execFileSync('git', ['branch', '-D', missingRecord.branch], {
+    cwd: missingRoot,
+  })
+
+  assert.throws(
+    () => resolveWorktreeWorkspace(missingRoot, missingRecord.name),
+    (error: unknown) =>
+      error instanceof Error &&
+      'code' in error &&
+      error.code === 'WORKTREE_BRANCH_NOT_FOUND',
+  )
+
+  const heldRoot = createFixture()
+  const heldRecord = createWorktree(heldRoot, 'held-one')
+  const heldPath = path.join(heldRoot, heldRecord.path)
+
+  execFileSync('git', ['switch', '-c', 'held-alternate'], { cwd: heldPath })
+  execFileSync('git', ['switch', heldRecord.branch], { cwd: heldRoot })
+
+  assert.throws(
+    () => resolveWorktreeWorkspace(heldRoot, heldRecord.name),
+    (error: unknown) =>
+      error instanceof Error &&
+      'code' in error &&
+      error.code === 'WORKTREE_BRANCH_HELD',
+  )
 })

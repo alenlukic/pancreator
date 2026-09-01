@@ -8,6 +8,7 @@ import {
   lastEvidenceLine,
   readJson,
   readText,
+  resolveInside,
 } from '../io.js'
 import { invariant } from '../errors.js'
 import { loadRegistry } from '../requirements/registry.js'
@@ -2657,7 +2658,6 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
 
 export function validateReleaseOutput(input: HandlerInput): HandlerResult {
   const issues: HandlerResult['issues'] = []
-  const workspaceRoot = workspaceRootFromInput(input)
   const value = readJson(path.join(input.root, input.targetPath)) as Record<
     string,
     unknown
@@ -2673,6 +2673,144 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
   }
 
   if (readProjectConfig(input.root)?.installation_mode === 'self_development') {
+    const workspaceRoot = workspaceRootFromInput(input)
+    const localReleaseRequired = isRecord(input.invocation?.managed_worktree)
+    const localRelease = isRecord(release.local_release)
+      ? release.local_release
+      : null
+    const releaseCommit =
+      localRelease && typeof localRelease.release_commit === 'string'
+        ? localRelease.release_commit
+        : ''
+    const indexCommit =
+      localRelease && typeof localRelease.index_commit === 'string'
+        ? localRelease.index_commit
+        : ''
+    const fetchedMain =
+      localRelease && typeof localRelease.fetched_main === 'string'
+        ? localRelease.fetched_main
+        : ''
+    const localBranch =
+      localRelease && typeof localRelease.branch === 'string'
+        ? localRelease.branch
+        : ''
+    const prDescriptionPath =
+      localRelease && typeof localRelease.pr_description_path === 'string'
+        ? localRelease.pr_description_path
+        : ''
+
+    if (
+      localReleaseRequired &&
+      (!localRelease ||
+        !/^[0-9a-f]{40}$/u.test(releaseCommit) ||
+        !/^[0-9a-f]{40}$/u.test(indexCommit) ||
+        !/^[0-9a-f]{40}$/u.test(fetchedMain) ||
+        localBranch.length === 0 ||
+        prDescriptionPath.length === 0)
+    ) {
+      issues.push(
+        issue(
+          'release.local_release_missing',
+          'Self-development release output MUST include complete local release commit, ancestry, branch, and PR evidence',
+        ),
+      )
+    } else if (localReleaseRequired && localRelease) {
+      const head = gitOutput(workspaceRoot, ['rev-parse', 'HEAD'])
+      const indexParent = gitOutput(workspaceRoot, [
+        'rev-parse',
+        `${indexCommit}^`,
+      ])
+      const fetchedAncestor = gitOutput(workspaceRoot, [
+        'merge-base',
+        '--is-ancestor',
+        fetchedMain,
+        releaseCommit,
+      ])
+      const clean = gitOutput(workspaceRoot, [
+        'status',
+        '--porcelain=v1',
+        '--untracked-files=all',
+      ])
+      const indexDiff = gitOutput(workspaceRoot, [
+        'diff-tree',
+        '--no-commit-id',
+        '--name-only',
+        '-r',
+        indexCommit,
+      ])
+      const branch = gitOutput(workspaceRoot, ['branch', '--show-current'])
+
+      if (
+        !head.ok ||
+        head.stdout !== indexCommit ||
+        !indexParent.ok ||
+        indexParent.stdout !== releaseCommit
+      ) {
+        issues.push(
+          issue(
+            'release.commit_order',
+            'The index commit MUST be HEAD with the immutable release commit as its parent',
+          ),
+        )
+      }
+
+      if (!fetchedAncestor.ok) {
+        issues.push(
+          issue(
+            'release.fetched_main_not_ancestor',
+            'Fetched main MUST be an ancestor of the release commit',
+          ),
+        )
+      }
+
+      if (!clean.ok || clean.stdout.length > 0) {
+        issues.push(
+          issue(
+            'release.worktree_dirty',
+            'Release finalization MUST leave a clean worktree',
+          ),
+        )
+      }
+
+      if (!branch.ok || branch.stdout !== localBranch) {
+        issues.push(
+          issue(
+            'release.branch_mismatch',
+            'release.local_release.branch MUST match the finalized worktree branch',
+          ),
+        )
+      }
+
+      if (!indexDiff.ok || indexDiff.stdout !== 'release/index.json') {
+        issues.push(
+          issue(
+            'release.index_commit_scope',
+            'The index commit MUST change only release/index.json',
+          ),
+        )
+      }
+
+      const prPath = resolveInside(input.root, prDescriptionPath)
+
+      if (!fileExists(prPath)) {
+        issues.push(
+          issue(
+            'release.pr_description_missing',
+            `Final PR description is missing: ${prDescriptionPath}`,
+          ),
+        )
+      } else if (
+        !readText(prPath).includes(`${releaseCommit}..${indexCommit}`)
+      ) {
+        issues.push(
+          issue(
+            'release.pr_commit_range_missing',
+            'The final PR description MUST include the completed local release commit range',
+          ),
+        )
+      }
+    }
+
     const versioning = isRecord(release.versioning) ? release.versioning : null
 
     if (!versioning) {
@@ -2769,7 +2907,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
       } else {
         const committedVersion = gitOutput(workspaceRoot, [
           'show',
-          'HEAD:VERSION',
+          localReleaseRequired ? `${releaseCommit}^:VERSION` : 'HEAD:VERSION',
         ])
 
         if (!committedVersion.ok) {
@@ -2861,7 +2999,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
         issues.push(
           issue(
             'release.index_action_missing',
-            'release.versioning.release_index_action MUST describe deferred indexing after the release commit exists',
+            'release.versioning.release_index_action MUST describe the completed separate index commit',
           ),
         )
       }
@@ -2914,6 +3052,31 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
             'VERSION MUST equal release.versioning.proposed_version before ship submission',
           ),
         )
+      }
+
+      if (localReleaseRequired) {
+        const indexedRelease = readJson(
+          path.join(workspaceRoot, 'release', 'index.json'),
+        )
+        const indexedEntries =
+          isRecord(indexedRelease) && Array.isArray(indexedRelease.releases)
+            ? indexedRelease.releases
+            : []
+        const indexed = indexedEntries.find(
+          (entry) =>
+            isRecord(entry) &&
+            entry.version === proposedVersion &&
+            entry.commit === releaseCommit,
+        )
+
+        if (!indexed) {
+          issues.push(
+            issue(
+              'release.index_mapping',
+              'release/index.json MUST map proposed_version to release_commit',
+            ),
+          )
+        }
       }
 
       for (const metadataError of validateReleaseMetadata(workspaceRoot)

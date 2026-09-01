@@ -67,6 +67,12 @@
       "statement": "Pancreator self-development release metadata is synchronized and records a real major, minor, or patch bump; embedded target workflows do not modify Pancreator release metadata."
     },
     {
+      "id": "ship.local_release_complete",
+      "type": "state",
+      "hard": true,
+      "statement": "Managed self-development runs record synchronized ancestry, separate release and index commits, a clean worktree, and final PR copy."
+    },
+    {
       "id": "ship.validate",
       "type": "shell",
       "hard": true,

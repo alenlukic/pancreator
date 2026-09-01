@@ -1,4 +1,5 @@
 Author one target-owned command, skill, or persona from `$ARGUMENTS`.
+Accept one optional `--worktree <name>` selection and forward it to each target mutation.
 
 1. Read `{{PANCREATOR_HARNESS_PATH}}AGENTS.md`.
 2. Run `{{PANCREATOR_PAN_COMMAND}} governance card --mode author` and read the complete card.
@@ -11,7 +12,7 @@ Author one target-owned command, skill, or persona from `$ARGUMENTS`.
 9. For a persona, include `Responsibilities` and `Boundaries` sections and select one Cursor model.
 10. Set `policy_persona` to the persona whose existing policy set governs the artifact. Add only existing policy ids to `policies`.
 11. When the draft changes an existing extension, set `expected_manifest_sha256` to the digest from step 6.
-12. Run `{{PANCREATOR_PAN_COMMAND}} author apply --input runtime/inbox/target-authoring/<id>.json --json`.
-13. Run `{{PANCREATOR_PAN_COMMAND}} author validate --extension <id> --json`.
+12. Run `{{PANCREATOR_PAN_COMMAND}} author apply --input runtime/inbox/target-authoring/<id>.json --worktree <name> --json`.
+13. Run `{{PANCREATOR_PAN_COMMAND}} author validate --extension <id> --worktree <name> --json`.
 14. Report the canonical path, policy binding, Cursor projection, resolved policy ids, and validation result.
 15. Do not write a target-tracked file, target `.gitignore`, Pancreator library authoring path, workflow, verification profile, or policy document.

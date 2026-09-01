@@ -66,6 +66,8 @@ import {
   gateCacheableSnapshot,
 } from './gate-cache.js'
 import {
+  gitHead,
+  gitIsAncestor,
   gitWorkspaceSnapshot,
   workspaceChangedPathsFromSnapshots,
 } from './git.js'
@@ -2898,9 +2900,59 @@ export function evaluateDeterministicCriteria(
         )
       }
     } else if (criterion.type === 'state') {
+      if (criterion.id === 'ship.local_release_complete') {
+        const release = isRecord(stageOutput?.data.release)
+          ? stageOutput.data.release
+          : null
+        const local =
+          release && isRecord(release.local_release)
+            ? release.local_release
+            : null
+        const releaseCommit =
+          local && typeof local.release_commit === 'string'
+            ? local.release_commit
+            : ''
+        const indexCommit =
+          local && typeof local.index_commit === 'string'
+            ? local.index_commit
+            : ''
+        const fetchedMain =
+          local && typeof local.fetched_main === 'string'
+            ? local.fetched_main
+            : ''
+        const legacyUnboundRelease =
+          isSelfDevelopmentInstallation(root) && !state.managed_worktree
+        const passed =
+          isTargetInstallation(root) || legacyUnboundRelease
+            ? true
+            : /^[0-9a-f]{40}$/u.test(releaseCommit) &&
+              /^[0-9a-f]{40}$/u.test(indexCommit) &&
+              /^[0-9a-f]{40}$/u.test(fetchedMain) &&
+              gitHead(workspaceDir) === indexCommit &&
+              gitIsAncestor(workspaceDir, releaseCommit, indexCommit) &&
+              gitIsAncestor(workspaceDir, fetchedMain, releaseCommit) &&
+              afterSnapshot.entries.length === 0
+
+        results.push({
+          id: criterion.id,
+          type: 'state',
+          hard: Boolean(criterion.hard),
+          passed,
+          explanation: isTargetInstallation(root)
+            ? 'Embedded ship creates no Pancreator local release commits.'
+            : legacyUnboundRelease
+              ? 'This legacy run has no managed worktree binding, so local release commits do not apply.'
+              : passed
+                ? 'Fetched main, release commit, index commit, and clean worktree topology are complete.'
+                : 'Local release commit topology or worktree cleanliness is incomplete.',
+          workspace_fingerprint: afterSnapshot.fingerprint,
+        })
+        continue
+      }
+
       if (criterion.id === 'ship.release_metadata_updated') {
         const metadataErrors = isSelfDevelopmentInstallation(root)
-          ? validateReleaseMetadata(root).errors
+          ? validateReleaseMetadata(workspaceDir).errors
           : []
 
         results.push({
