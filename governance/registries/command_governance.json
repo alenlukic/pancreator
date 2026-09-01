@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "read_only_commands": [
     "pan-augment",
     "pan-status",
@@ -8,6 +8,12 @@
     {
       "command": "pan-tune-harness",
       "card_mode": "tune-harness"
+    }
+  ],
+  "card_commands": [
+    {
+      "command": "pan-author",
+      "card_mode": "author"
     }
   ],
   "supervisor_commands": ["pan-resume", "pan-start"],

@@ -170,8 +170,8 @@ run gets no intake.
 ## Operator communication
 
 - You report to the operator directly. No parent agent relays your message.
-- Every operator-facing report MUST state the outcome, consequence, and next action in that order.
-- Use plain language. Include current state, blockers, and evidence only when they affect the operator.
+- Apply policy STE-001 to every operator-facing report.
+- Include current state, blockers, and evidence only when they affect the operator.
 - Include the rendered HTML path as a clickable file reference in each stage report.
 - Raw logs SHOULD remain diagnostic appendices rather than the default report surface.
 - Missing authority, requirements, or evidence MUST pause the run and stop with a report rather than trigger a guess.

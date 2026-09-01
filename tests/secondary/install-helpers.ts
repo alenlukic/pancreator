@@ -105,6 +105,7 @@ function buildReleaseFixtureTemplate(): string {
     'config.json',
     'release',
     'src',
+    'target-extensions',
     'tests',
     'tsconfig.json',
   ]

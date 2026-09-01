@@ -18,6 +18,7 @@ import {
 } from '../../src/lib/cursor-content.js'
 import { loadPolicyCatalog } from '../../src/lib/policies.js'
 import {
+  isPancreatorOwnedCursorBasename,
   projectPersonaVariants,
   removePersonaVariants,
   syncCursorProjection,
@@ -100,6 +101,12 @@ test('projection rejects unresolved path tokens', () => {
       ),
     /contains unresolved projection tokens/u,
   )
+})
+
+test('target extensions can reuse the unchanged Cursor ownership predicate', () => {
+  assert.equal(isPancreatorOwnedCursorBasename('pan-tool.md'), true)
+  assert.equal(isPancreatorOwnedCursorBasename('pancreator.tool.md'), true)
+  assert.equal(isPancreatorOwnedCursorBasename('acme-tool.md'), false)
 })
 
 test('repository validation does not require a local Cursor projection', () => {

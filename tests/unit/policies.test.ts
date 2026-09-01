@@ -134,6 +134,33 @@ test('structured target policy extensions bind their owned policies', () => {
   )
 })
 
+test('binding-only target extensions reference existing policies without ownership', () => {
+  const root = createFixture()
+
+  writePolicyExtension(
+    root,
+    'acme-tool.json',
+    [
+      {
+        persona: 'coder',
+        workflow: 'standalone',
+        stage: 'target-acme-tool',
+        policies: ['ENG-001', 'REPO-001'],
+      },
+    ],
+    { extension_id: 'acme-tool', policies: [] },
+  )
+
+  const ids = resolvePolicies(root, {
+    persona: 'coder',
+    workflow: 'standalone',
+    stage: 'target-acme-tool',
+  }).map((policy) => policy.id)
+
+  assert.ok(ids.includes('ENG-001'))
+  assert.ok(ids.includes('REPO-001'))
+})
+
 test('target PR authority rejects paths outside the workspace', () => {
   const root = createFixture()
 
@@ -630,7 +657,7 @@ test('self-development version policy is excluded from embedded installations', 
   }).map((policy) => policy.id)
 
   assert.ok(!coderIds.includes('BIN-001'))
-  assert.ok(!coderIds.includes('TS-001'))
+  assert.ok(coderIds.includes('TS-001'))
   assert.ok(coderIds.includes('ENG-001'))
   assert.ok(coderIds.includes('REPO-001'))
 })
