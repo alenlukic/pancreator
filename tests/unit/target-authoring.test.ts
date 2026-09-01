@@ -82,12 +82,13 @@ function commandDraft(extensionId: string): Record<string, unknown> {
 function applyDraft(
   root: string,
   draft: Record<string, unknown>,
+  options: { workspace?: string } = {},
 ): ReturnType<typeof applyTargetAuthoringDraft> {
   const input = `runtime/inbox/target-authoring/${String(draft.extension_id)}.json`
 
   writeJson(path.join(root, input), draft)
 
-  return applyTargetAuthoringDraft(root, input)
+  return applyTargetAuthoringDraft(root, input, options)
 }
 
 test('target authoring publishes every artifact kind with resolved governance', () => {
@@ -177,6 +178,40 @@ test('target authoring publishes every artifact kind with resolved governance', 
       manifest.policies,
     )
     assert.doesNotMatch(card.markdown, /read .*governance\/policies\//iu)
+  } finally {
+    cleanupTargetFixture(fixture)
+  }
+})
+
+test('target authoring writes projections to the selected workspace', () => {
+  const fixture = createTargetFixture()
+  const { root, target } = fixture
+  const selected = path.join(root, 'target-worktree')
+
+  try {
+    mkdirSync(selected, { recursive: true })
+
+    applyDraft(root, commandDraft('selected-tool'), {
+      workspace: 'target-worktree',
+    })
+
+    assert.equal(
+      existsSync(
+        path.join(selected, '.cursor', 'commands', 'selected-tool.md'),
+      ),
+      true,
+    )
+    assert.equal(
+      existsSync(path.join(target, '.cursor', 'commands', 'selected-tool.md')),
+      false,
+    )
+    assert.equal(
+      validateTargetAuthoring(root, {
+        extensionId: 'selected-tool',
+        workspace: 'target-worktree',
+      }).ok,
+      true,
+    )
   } finally {
     cleanupTargetFixture(fixture)
   }

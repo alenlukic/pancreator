@@ -476,12 +476,15 @@ test('ship owns governance artifact review and pauses instead of looping to impl
   setRunStage(root, runId, 'ship', 'Exercise ship-stage escalation.')
   const invocation = prepareInvocation(root, runId).invocation
   assert.ok(invocation)
-  writeJson(path.join(root, invocation.output.path), {
-    schema_version: 1,
-    invocation_id: invocation.invocation_id,
-    result: 'success',
-    invocation_attestation: makeAttestation(invocation),
-  })
+  const output = makeOutput(
+    root,
+    invocation,
+    stageBySlug(loadWorkflow(root, 'delivery'), 'ship'),
+    'success',
+    getRunState(root, runId),
+  )
+
+  writeJson(path.join(root, invocation.output.path), output)
 
   const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 

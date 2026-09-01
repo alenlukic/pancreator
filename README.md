@@ -60,11 +60,12 @@ Pancreator adds a set of Cursor commands, supporting agents, and repository-awar
    - Use `/pan-repair <problem-or-artifact>` when Pancreator itself may have failed or missed governance.
    - Use `/pan-summarize-context` before continuing the work in a fresh agent conversation.
    - Use `/pan-spotfix <request>` for an explicitly small, bounded change.
-   - Use `/pan-release` when you want Pancreator to prepare release metadata.
+   - Use `/pan-release` to complete local release preparation through final PR copy.
 
 5. Continue the run with `/pan-resume <run-id> [prompt]` whenever Pancreator pauses for the next operator decision. Both commands adopt the supervisor brief and advance the workflow directly in the operator's session.
 
-Workflow runs suppress stage briefs and workflow PR copy by default. Pass
+Workflow runs suppress stage briefs by default. Self-development ship always
+creates final PR copy after local release commits. Pass
 `--operator-artifacts` to `pan init` for all stages or to `pan prepare` for the
 current stage. Use `pan briefs generate --run <run-id> [--stage <slug>]` after
 submission to create validated HTML from retained stage records.
@@ -96,7 +97,7 @@ For indexed release updates:
 - `/pan-build-docs`: generate or refresh repository orientation for future agent work
 - `/pan-build-briefs`: generate or refresh project brief semantics and design tokens
 - `/pan-summarize-context`: emit a copyable Markdown handoff for a fresh agent conversation
-- `/pan-release`: prepare version metadata and release notes
+- `/pan-release`: checkpoint, rebase, finalize local release commits, and write PR copy
 - `/pan-write-pr [base-branch]`: draft a pull request description from the current branch
 
 ## Learn More

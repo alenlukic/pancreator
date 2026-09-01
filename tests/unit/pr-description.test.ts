@@ -247,6 +247,19 @@ test('fallback PR validation keeps the Pancreator title and core sections', () =
 
     assert.equal(result.status, 'passed')
     assert.deepEqual(result.issues, [])
+
+    write(
+      root,
+      'pr.md',
+      'fix: preserve fallback\n\n## Summary\nSummary text.\n\n## Changelist\n- One change.\n\n## Testing\n- Extra section.\n',
+    )
+
+    const extraSection = validatePrDescription(validationInput(root, context))
+
+    assert.equal(extraSection.status, 'failed')
+    assert.ok(
+      extraSection.issues.some((item) => item.code === 'pr.heading_unexpected'),
+    )
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

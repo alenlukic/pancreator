@@ -6,6 +6,7 @@ import test from 'node:test'
 import {
   runRequirement,
   isPassingResult,
+  resolveRequirementTargetPath,
 } from '../../src/lib/requirements/run.js'
 import { resolveRequirements } from '../../src/lib/requirements/resolve.js'
 import { createFixture } from '../helpers.js'
@@ -81,7 +82,7 @@ test('every prototype stage resolves the blocking output validator', () => {
   }
 })
 
-test('PR validators bind workflow artifact 1 and standalone output', () => {
+test('PR validators bind named workflow artifact and standalone output', () => {
   const root = createFixture()
   const workflow = resolveRequirements(root, {
     persona: 'release-steward',
@@ -95,6 +96,9 @@ test('PR validators bind workflow artifact 1 and standalone output', () => {
         'runtime/logs/workflows/x/operator/ship.html',
         'runtime/logs/workflows/x/operator/pr-description.md',
       ],
+      artifact_targets: {
+        pr_description: 'runtime/logs/workflows/x/operator/pr-description.md',
+      },
     },
   })
   const workflowRequirement = workflow.validation_requirements.find(
@@ -123,6 +127,23 @@ test('PR validators bind workflow artifact 1 and standalone output', () => {
   assert.equal(
     standaloneRequirement?.resolved_target,
     'runtime/pr-descriptions/branch.md',
+  )
+})
+
+test('named artifact targets resolve when precomputation is absent', () => {
+  assert.equal(
+    resolveRequirementTargetPath(
+      {
+        target: 'artifact:pr_description',
+      } as never,
+      'runtime/output.json',
+      {
+        artifact_targets: {
+          pr_description: 'runtime/pr-descriptions/final.md',
+        },
+      },
+    ),
+    'runtime/pr-descriptions/final.md',
   )
 })
 

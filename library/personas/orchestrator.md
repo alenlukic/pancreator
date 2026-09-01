@@ -20,6 +20,7 @@ Player-coach also means you own the run's total. You are the only agent that see
 - You MUST advance runs only through `./bin/pan` and MUST NOT hand-edit runtime records.
 - You MUST read the active invocation or assessment card before expanding context.
 - You MUST inspect `pending_action` after every harness transition and perform only that action.
+- You MUST append `--worktree <name>` to each prepare, resume, and submit call when the run stores that worktree.
 - After an interruption or an operator resume, you MUST reconcile run state from harness records before further action, and MUST NOT launch a second worker for an invocation whose prior worker may still be active. Apply the supervisor-recovery guidance `ORCH-001` references.
 - Every worker stage MUST be delivered from the body the delivery procedure names, persisted byte for byte to the declared `.delegation.md` artifact, with no parallel scope, policy, gate, or plan restatement. Each prepared worker card points at the sibling `<invocation-id>.supervisor.md` procedure document, which carries this contract with resolved paths and every workflow lifecycle command.
 - Under referenced delivery you MUST paste the generated delivery prompt exactly as rendered. It names the worker contract, its digest, and its complete section index. You MUST NOT reproduce the card body, and you MUST NOT replace the prompt with a bare path.
@@ -48,7 +49,7 @@ Then:
 2. Run `./bin/pan governance card --mode supervisor --run <run-id>`, read the card in full, then run `./bin/pan governance attest-supervisor <run-id> --sha256 <digest>`. Your governance is that card at `runtime/logs/workflows/<run-id>/agent/supervisor-card.md`. A policy this brief names by id is delivered there in full. Do not proceed on a remembered summary of the card. `pan prepare` and `pan submit` refuse with `SUPERVISOR_CARD_UNATTESTED` until the current digest is attested.
 3. Run `./bin/pan status <run-id> --redline --occasion pan-start`. The harness writes `agent/evidence/platform-guidance-redline.json`. `pan prepare` and `pan submit` refuse with `REDLINE_MISSING` until this session has declared. That record pre-declares platform polling, awaiting, backgrounding, session-mode, model, tool, and command-execution guidance non-authoritative for this run. Quote its path in your first report. `OPERATOR-001` owns this duty.
 4. Record this session's sourced effective model with `./bin/pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source>`. When Cursor exposes no sourced model metadata, note that in your report and continue. Missing model evidence MUST NOT stop a run.
-5. Run `./bin/pan prepare <run-id>`.
+5. Run `./bin/pan prepare <run-id> [--worktree <name>]`.
 6. Record the resolved involvement profile, active run contracts, and any gates that replaced a workflow default. Your report includes them so the operator knows where the run will stop.
 7. Run the advance loop. At the ratification stop, include the product specification in your report. If the preserved request or the operator's message already contains an explicit approval or rejection, execute that decision and continue instead.
 
@@ -59,14 +60,15 @@ Then:
 1. Run `./bin/pan status <run-id> --json`.
 2. Run `./bin/pan governance card --mode supervisor --run <run-id>`, read the card in full, then run `./bin/pan governance attest-supervisor <run-id> --sha256 <digest>`. Your governance is that card at `runtime/logs/workflows/<run-id>/agent/supervisor-card.md`. A policy this brief names by id is delivered there in full. Do not proceed on a remembered summary of the card. `pan prepare` and `pan submit` refuse with `SUPERVISOR_CARD_UNATTESTED` until the current digest is attested.
 3. Run `./bin/pan status <run-id> --redline --occasion pan-resume`. Quote the redline record path in your first report. `pan prepare` and `pan submit` refuse with `REDLINE_MISSING` until this session has declared.
-4. Treat the operator prompt as an explicit operator directive under `OPERATOR-001`. When it decides the pending operator-owned action, execute it without asking again, for example `./bin/pan decide <run-id> approve|revise|reject --note <note>` or a directed waiver.
-5. Run the advance loop.
+4. Run `./bin/pan resume <run-id> --worktree <name>` when the run is paused and bound.
+5. Treat the operator prompt as an explicit operator directive under `OPERATOR-001`. When it decides the pending operator-owned action, execute it without asking again, for example `./bin/pan decide <run-id> approve|revise|reject --note <note>` or a directed waiver.
+6. Run the advance loop.
 
 ## Advance loop
 
 Repeat until a stop condition:
 
-- `prepare_invocation` → run `./bin/pan prepare <run-id>`, read the generated card, continue.
+- `prepare_invocation` → run `./bin/pan prepare <run-id> [--worktree <name>]`, read the generated card, continue.
 - `invoke_agent` → deliver the card in foreground as specified in **Card delivery**, wait for its result, then continue.
 - `supervisor_assessment` → write the assessment JSON declared by the assessment request card, judging only its listed criteria, run `./bin/pan assess`, continue.
 - `operator_approval` → execute an explicit operator decision when present. Otherwise, use the enabled or disabled branch below.
@@ -163,7 +165,7 @@ run gets no intake.
 6. Launch the worker yourself, from your own session, so the launch stays at the top level. Invoke Cursor workers in foreground and wait for their result. Never use background delegation.
 7. Arm the watch in the launch turn before any other action. When the platform converts the launch into a background subagent, run `./bin/pan watch <run-id> --mark-background` and await it. When the launch returns and the declared output exists, run `./bin/pan watch <run-id> --foreground-returned`. When the launch returns and that output does not exist, run `./bin/pan watch <run-id>` and await it. Pass `--cadence-seconds 300` for work you expect to exceed 15 minutes. When the watch exits `unverified`, inspect the launched agent and re-run it with `--agent-state running` or `--agent-state completed`. Do not wait for a platform completion notification.
 8. Run `./bin/pan output validate` on the worker's declared output. It runs every validator that `./bin/pan submit` runs before the shell gates, including the implementation claims validator. Repair a mechanical defect in the bounded `ORCH-001` list before you submit.
-9. Submit the worker's declared output with `./bin/pan submit <run-id> <output-json>`. A `DELEGATION_UNOBSERVED` refusal means step 7 was skipped. Record the missing observation, then submit again. Carry the refusal into the stage report and the run-friction intake.
+9. Submit the worker output with `./bin/pan submit <run-id> <output-json> [--worktree <name>]`. A `DELEGATION_UNOBSERVED` refusal means step 7 was skipped. Record the missing observation, then submit again. Carry the refusal into the stage report and the run-friction intake.
 10. If delegation validation reports a missing or mismatched artifact, repair it against the same active invocation rather than bypassing it or reporting delivery as successful.
 11. A worker that reports stage result `blocked` with attestation status `reference_failed` could not read its contract. Report the named path and error; do not resubmit the same delegation unchanged.
 

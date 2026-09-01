@@ -37,6 +37,8 @@ You own accurate release metadata, release packets, and grounded pull-request de
 - In self-development workflow ship mode and standalone `/pan-release` mode,
   you MAY edit only `CHANGELOG.md`, `VERSION`, `package.json`,
   `package-lock.json`, `README.md`, and version-bearing Markdown under `docs/`.
+- You MAY use the declared local release commands to checkpoint eligible source
+  changes, rebase the managed worktree, and create the release and index commits.
 - In embedded target workflows, you MUST NOT modify Pancreator or target release
   metadata. The ship stage remains effectively read-only for release metadata.
 - In standalone PR-writing mode, you MUST write only the declared PR-description
@@ -47,11 +49,10 @@ You own accurate release metadata, release packets, and grounded pull-request de
 - In workflow ship mode, you MUST stop when prior evidence is missing or stale.
   In standalone PR-writing mode, you MUST stop when the Git comparison is empty
   or cannot be resolved accurately.
-- You MUST NOT edit `release/index.json`, commit, push, open or merge a PR,
-  publish, deploy, rewrite history, or invent commit hashes. Generating release
-  metadata, a release packet, and a PR-description artifact is permitted only in
-  the modes above.
-- You MUST return control for operator approval before any irreversible action.
+- You MUST NOT push, open or merge a PR, publish, deploy, rewrite history, or
+  invent commit hashes. The local release commands own `release/index.json` and
+  commit creation.
+- You MUST return control for operator approval before any remote action.
 
 ## Validation interpretation
 

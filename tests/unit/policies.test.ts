@@ -470,7 +470,7 @@ test('representative contexts exclude policies outside their remit', () => {
   }
 })
 
-test('pull-request policy follows operator-artifact selection', () => {
+test('self-development ship keeps PR policy when briefs are suppressed', () => {
   const root = sharedFixture()
   const ids = (operatorArtifacts: 'requested' | 'suppressed'): string[] =>
     resolvePolicies(root, {
@@ -481,7 +481,30 @@ test('pull-request policy follows operator-artifact selection', () => {
     }).map((policy) => policy.id)
 
   assert.ok(ids('requested').includes('PR-001'))
-  assert.equal(ids('suppressed').includes('PR-001'), false)
+  assert.ok(ids('suppressed').includes('PR-001'))
+})
+
+test('embedded ship excludes PR policy when artifacts are suppressed', () => {
+  const root = createFixture()
+  const configPath = path.join(root, 'config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  config.installation_mode = 'embedded'
+  config.workspace_root = 'target'
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+  mkdirSync(path.join(root, 'target'), { recursive: true })
+
+  const ids = resolvePolicies(root, {
+    persona: 'release-steward',
+    workflow: 'delivery',
+    stage: 'ship',
+    operator_artifacts: 'suppressed',
+  }).map((policy) => policy.id)
+
+  assert.equal(ids.includes('PR-001'), false)
 })
 
 test('best-of-N stages carry the same policies as the delivery stages they mirror', () => {

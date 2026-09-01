@@ -479,6 +479,41 @@ export interface ResolvedWorktreesConfig {
   setup: string[]
 }
 
+/** Stable identity of one managed operator worktree. */
+export interface ManagedWorktreeReference {
+  name: string
+  path: string
+  branch: string
+}
+
+export interface LocalReleaseSyncResult {
+  status: 'synchronized' | 'conflict'
+  worktree: ManagedWorktreeReference
+  branch: string
+  remote: string
+  fetched_main: string
+  checkpoint_commit: string | null
+  conflicted_paths: string[]
+}
+
+export interface LocalReleaseContinueResult {
+  status: 'complete' | 'conflict'
+  worktree: ManagedWorktreeReference
+  branch: string
+  conflicted_paths: string[]
+}
+
+export interface LocalReleaseFinalizeResult {
+  status: 'finalized'
+  worktree: ManagedWorktreeReference
+  branch: string
+  version: string
+  fetched_main: string
+  release_commit: string
+  index_commit: string
+  clean: boolean
+}
+
 export type AwayModeAction =
   | 'approve'
   | 'reject'
@@ -853,6 +888,8 @@ export interface Invocation {
   attempt: number
   created_at: string
   workspace_root: string
+  /** Managed worktree identity bound to this run, when selected at init. */
+  managed_worktree?: ManagedWorktreeReference
   /** Absolute harness root. Present when the workspace is not the harness checkout, so an external worker resolves harness-relative paths. */
   harness_root?: string
   gate_overrides?: Record<string, string | false>
@@ -915,6 +952,7 @@ export interface Invocation {
      */
     scaffold_command?: string
     artifacts?: ArtifactReference[]
+    artifact_targets?: Record<string, string>
     field_contract?: {
       criterion_results?: Record<string, string>
       validators: Array<{
@@ -1430,6 +1468,8 @@ export interface RunState {
     sha256: string
   }
   workspace_root: string
+  /** Managed worktree identity selected when this run started. */
+  managed_worktree?: ManagedWorktreeReference
   workspace_id?: string
   installation_root?: string
   state_root?: string

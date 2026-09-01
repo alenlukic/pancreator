@@ -12,6 +12,7 @@ import {
 
 interface RunGitOptions {
   allowFailure?: boolean
+  env?: NodeJS.ProcessEnv
 }
 
 function runGit(
@@ -22,6 +23,7 @@ function runGit(
   const result = spawnSync('git', args, {
     cwd: root,
     encoding: 'utf8',
+    env: options.env,
     maxBuffer: 20 * 1024 * 1024,
   })
 
@@ -151,6 +153,213 @@ export function gitCurrentBranch(root: string): string | null {
   })
 
   return result.status === 0 ? result.stdout.trim() : null
+}
+
+/** Switch one clean checkout to an existing local branch. */
+export function gitSwitchBranch(root: string, branch: string): void {
+  runGit(root, ['switch', branch])
+}
+
+/** Sorted worktree paths reported by porcelain status. */
+export function gitStatusPaths(root: string): string[] {
+  const result = runGit(root, [
+    'status',
+    '--porcelain=v1',
+    '--untracked-files=all',
+    '-z',
+  ])
+
+  const entries = result.stdout.split('\0').filter(Boolean)
+  const paths = new Set<string>()
+
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index] ?? ''
+    const status = entry.slice(0, 2)
+
+    paths.add(snapshotEntryPath(entry))
+
+    if (/[RC]/u.test(status)) {
+      const source = entries[index + 1]
+
+      if (source) {
+        paths.add(source)
+        index += 1
+      }
+    }
+  }
+
+  return [...paths].sort()
+}
+
+/** Stage an explicit set of repository-relative paths. */
+export function gitStagePaths(root: string, paths: string[]): void {
+  if (paths.length === 0) {
+    return
+  }
+
+  runGit(root, ['add', '--', ...paths])
+}
+
+/** Create one local commit and return its immutable hash. */
+export function gitCommit(root: string, message: string): string {
+  runGit(root, ['commit', '-m', message])
+
+  const head = gitHead(root)
+
+  if (!head) {
+    throw new PanError('Git created no readable commit.', {
+      code: 'GIT_COMMIT_MISSING',
+    })
+  }
+
+  return head
+}
+
+/** Configured remote names, sorted. */
+export function gitRemotes(root: string): string[] {
+  const result = runGit(root, ['remote'])
+
+  return result.stdout.split(/\r?\n/u).filter(Boolean).sort()
+}
+
+/** Remote configured as the current branch upstream, when one exists. */
+export function gitUpstreamRemote(root: string): string | null {
+  const result = runGit(
+    root,
+    ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}'],
+    { allowFailure: true },
+  )
+
+  if (result.status !== 0) {
+    return null
+  }
+
+  const upstream = result.stdout.trim()
+  const separator = upstream.indexOf('/')
+
+  return separator > 0 ? upstream.slice(0, separator) : null
+}
+
+/** Fetch one remote branch and return the fetched commit. */
+export function gitFetchBranch(
+  root: string,
+  remote: string,
+  branch: string,
+): string {
+  runGit(root, ['fetch', '--no-tags', remote, branch])
+
+  return gitRevParse(root, 'FETCH_HEAD')
+}
+
+export interface GitRebaseResult {
+  succeeded: boolean
+  stdout: string
+  stderr: string
+  conflicted_paths: string[]
+}
+
+/** Rebase the current branch and preserve conflicts for later continuation. */
+export function gitRebaseOnto(root: string, commit: string): GitRebaseResult {
+  const result = runGit(root, ['rebase', commit], { allowFailure: true })
+
+  return {
+    succeeded: result.status === 0,
+    stdout: result.stdout,
+    stderr: result.stderr,
+    conflicted_paths: gitConflictedPaths(root),
+  }
+}
+
+/** Continue a prepared rebase without opening an interactive editor. */
+export function gitRebaseContinue(root: string): GitRebaseResult {
+  const result = runGit(root, ['rebase', '--continue'], {
+    allowFailure: true,
+    env: { ...process.env, GIT_EDITOR: 'true' },
+  })
+
+  return {
+    succeeded: result.status === 0,
+    stdout: result.stdout,
+    stderr: result.stderr,
+    conflicted_paths: gitConflictedPaths(root),
+  }
+}
+
+/** True when Git reports an active rebase state for this checkout. */
+export function gitRebaseInProgress(root: string): boolean {
+  const result = runGit(root, ['rev-parse', '--git-path', 'rebase-merge'], {
+    allowFailure: true,
+  })
+  const mergePath = result.status === 0 ? result.stdout.trim() : ''
+  const applyResult = runGit(
+    root,
+    ['rev-parse', '--git-path', 'rebase-apply'],
+    {
+      allowFailure: true,
+    },
+  )
+  const applyPath = applyResult.status === 0 ? applyResult.stdout.trim() : ''
+
+  return (
+    (mergePath.length > 0 && statPathExists(root, mergePath)) ||
+    (applyPath.length > 0 && statPathExists(root, applyPath))
+  )
+}
+
+function statPathExists(root: string, candidate: string): boolean {
+  try {
+    statSync(
+      path.isAbsolute(candidate) ? candidate : path.join(root, candidate),
+    )
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** True when `ancestor` is reachable from `descendant`. */
+export function gitIsAncestor(
+  root: string,
+  ancestor: string,
+  descendant = 'HEAD',
+): boolean {
+  const result = runGit(
+    root,
+    ['merge-base', '--is-ancestor', ancestor, descendant],
+    { allowFailure: true },
+  )
+
+  return result.status === 0
+}
+
+/** First parent of one commit, or null for a root commit. */
+export function gitCommitParent(root: string, commit: string): string | null {
+  const result = runGit(root, ['rev-parse', '--verify', `${commit}^`], {
+    allowFailure: true,
+  })
+
+  return result.status === 0 ? result.stdout.trim() : null
+}
+
+/** Sorted paths changed by one commit against its first parent. */
+export function gitCommitChangedPaths(root: string, commit: string): string[] {
+  const result = runGit(root, [
+    'diff-tree',
+    '--no-commit-id',
+    '--name-only',
+    '-r',
+    '-z',
+    commit,
+  ])
+
+  return result.stdout.split('\0').filter(Boolean).sort()
+}
+
+/** Subject line recorded by one commit. */
+export function gitCommitSubject(root: string, commit: string): string {
+  const result = runGit(root, ['show', '-s', '--format=%s', commit])
+
+  return result.stdout.trim()
 }
 
 /**

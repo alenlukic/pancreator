@@ -14,15 +14,15 @@ the irreversible action; it makes the decision easy and safe.
 - Validation: which gates passed and against which workspace fingerprint.
 - Residual risks: every unresolved non-blocking risk, stated plainly.
 - Rollback: a credible way to undo the change.
-- Proposed commit message when Git metadata is available.
-- For Pancreator self-development, the completed version bump, baseline commit,
-  release-note update, synchronized files, and deferred `release/index.json`
-  action produced by `update-release-metadata.md`.
+- For Pancreator self-development, the completed version bump, fetched-main
+  hash, immutable release commit, separate release-index commit, and clean
+  worktree result.
 - PR description artifact at
   `runtime/logs/workflows/<run-id>/operator/pr-description.md` for layout v2.
   For layout v1, use
   `runtime/logs/workflows/<run-id>/artifacts/markdown/pr-description.md`.
   Produce it through `write-pr-description.md`.
+  Put `<release-commit>..<index-commit>` in its Changelist.
 
 ## Checks before proposing
 
@@ -32,5 +32,5 @@ the irreversible action; it makes the decision easy and safe.
 
 ## Boundaries
 
-Do not edit `release/index.json`, commit, push, open or merge a PR, publish, or
-deploy. Stop for operator approval.
+Use only the local release command to edit `release/index.json` and commit. Do
+not push, open or merge a PR, publish, or deploy. Stop for operator approval.

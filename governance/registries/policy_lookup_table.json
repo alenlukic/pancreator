@@ -642,6 +642,13 @@
     },
     {
       "persona": "release-steward",
+      "workflow": "delivery",
+      "stage": "ship",
+      "installation_scope": "self_development",
+      "policies": ["PR-001"]
+    },
+    {
+      "persona": "release-steward",
       "workflow": "metacritic",
       "stage": "ship",
       "policies": ["SHIP-001", "WAIVER-001", "WORK-001"]

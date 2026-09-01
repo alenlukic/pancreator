@@ -48,6 +48,7 @@ export interface RequirementContext {
   invocation?: {
     output_path?: string
     artifact_paths?: string[]
+    artifact_targets?: Record<string, string>
   }
 }
 

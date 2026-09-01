@@ -48,7 +48,7 @@ test('worktree reconcile merges each source and records the operator invocation'
   ])
 
   assert.equal(result.target, 'target')
-  assert.equal(result.target_branch, 'worktree/target')
+  assert.equal(result.target_branch, 'target')
   assert.deepEqual(result.sources, ['source-one', 'source-two'])
   assert.deepEqual(result.merged_sources, ['source-one', 'source-two'])
   assert.deepEqual(result.conflicted_paths, [])

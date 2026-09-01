@@ -146,6 +146,7 @@ import type {
   ExternalDelegationRecord,
   GovernanceArtifactIssue,
   Invocation,
+  ManagedWorktreeReference,
   OperatorFeedbackItem,
   OperatorGateWaiver,
   OperatorPauseContext,
@@ -221,6 +222,8 @@ interface CreateRunOptions {
   requestPath: string | null
   title?: string | null
   workspace?: string | null
+  /** Managed worktree resolved by the CLI before run creation. */
+  worktree?: ManagedWorktreeReference | null
   gatesPath?: string | null
   involvement?: string | null
   verification?: string | null
@@ -1917,6 +1920,13 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     resolveInside(root, pipelineConfigSnapshot),
     pipelineConfigSnapshotValue,
   )
+  const managedWorktree = options.worktree
+    ? {
+        name: options.worktree.name,
+        path: options.worktree.path,
+        branch: options.worktree.branch,
+      }
+    : null
 
   const state: RunState = {
     schema_version: 2,
@@ -1932,6 +1942,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
       sha256: sha256(pipelineConfigSnapshotValue),
     },
     workspace_root: workspaceRoot,
+    ...(managedWorktree ? { managed_worktree: managedWorktree } : {}),
     workspace_id: roots.workspace_id,
     installation_root: roots.installation_root,
     state_root: roots.state_root,
@@ -1979,6 +1990,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     workflow: workflow.slug,
     pipeline_config: pipelineConfig.name,
     workspace_root: workspaceRoot,
+    ...(managedWorktree ? { managed_worktree: managedWorktree } : {}),
     state_root: roots.state_root,
     involvement_profile: involvement.profile,
     run_contracts: involvement.contracts,
@@ -2079,11 +2091,12 @@ export function resolveSubmitValidators(
     }
 
     const targetPath =
-      resolveRequirementTargetPath(
-        requirement,
-        invocation.output.path,
-        submittedValue,
-      ) ?? invocation.output.path
+      resolveRequirementTargetPath(requirement, invocation.output.path, {
+        ...submittedValue,
+        ...(invocation.output.artifact_targets
+          ? { artifact_targets: invocation.output.artifact_targets }
+          : {}),
+      }) ?? invocation.output.path
     const targetKind = inferTargetKind(targetPath)
 
     if (!entry.target_types.includes(targetKind)) {
@@ -2542,9 +2555,9 @@ export function prepareInvocation(
       operator_artifacts: artifactsRequested ? 'requested' : 'suppressed',
     })
     const prDescription =
-      artifactsRequested &&
       stage.persona === 'release-steward' &&
-      stage.slug === 'ship'
+      stage.slug === 'ship' &&
+      (artifactsRequested || isSelfDevelopmentInstallation(root))
         ? resolvePrDescriptionContext(workspaceDirectory(root, state), policies)
         : undefined
     const requirements = resolveRequirements(root, {
@@ -2556,7 +2569,12 @@ export function prepareInvocation(
         output_path: outputPath,
         artifact_paths: artifactsRequested
           ? [briefRenderedPath, ...(prDescription ? [prDescriptionPath] : [])]
-          : [],
+          : prDescription
+            ? [prDescriptionPath]
+            : [],
+        ...(prDescription
+          ? { artifact_targets: { pr_description: prDescriptionPath } }
+          : {}),
       },
       operator_artifacts: artifactsRequested ? 'requested' : 'suppressed',
     })
@@ -2712,6 +2730,17 @@ export function prepareInvocation(
         'release.versioning.updated_files': 'array',
         'release.versioning.release_index_action': 'string',
       })
+
+      if (state.managed_worktree) {
+        Object.assign(requiredData, {
+          'release.local_release': 'object',
+          'release.local_release.fetched_main': 'string',
+          'release.local_release.release_commit': 'string',
+          'release.local_release.index_commit': 'string',
+          'release.local_release.branch': 'string',
+          'release.local_release.pr_description_path': 'string',
+        })
+      }
     }
 
     // Advisory: the profiled full run before ship, when the run recorded one.
@@ -2736,6 +2765,9 @@ export function prepareInvocation(
       attempt,
       created_at: now(),
       workspace_root: state.workspace_root || '.',
+      ...(state.managed_worktree
+        ? { managed_worktree: state.managed_worktree }
+        : {}),
       ...(state.workspace_root && state.workspace_root !== '.'
         ? { harness_root: root }
         : {}),
@@ -2795,11 +2827,15 @@ export function prepareInvocation(
         ...(prDescription
           ? {
               artifacts: [
-                {
-                  path: briefRenderedPath,
-                  description:
-                    'Primary self-contained HTML brief for the operator.',
-                },
+                ...(artifactsRequested
+                  ? [
+                      {
+                        path: briefRenderedPath,
+                        description:
+                          'Primary self-contained HTML brief for the operator.',
+                      },
+                    ]
+                  : []),
                 {
                   path: prDescriptionPath,
                   description:
@@ -2846,6 +2882,7 @@ export function prepareInvocation(
               ...(isSelfDevelopmentInstallation(root)
                 ? [
                     'You MAY also edit only CHANGELOG.md, VERSION, package.json, package-lock.json, README.md, and version-bearing Markdown under docs/ as required by VERSION-001.',
+                    'You MAY run the declared local release commands to checkpoint eligible source, rebase, and create the release and index commits.',
                   ]
                 : []),
               'You MAY repair Pancreator runtime governance and artifact files for this run. You MUST NOT modify target source during ship.',
@@ -2862,7 +2899,14 @@ export function prepareInvocation(
               ]),
         'You MUST NOT alter workflow state directly.',
         'While a mutating workflow is active, external edits to tracked files SHOULD be avoided because they make stage attribution ambiguous; pause the run before operator-authored changes.',
-        'You MUST NOT commit, push, merge, publish, deploy, or perform destructive source-control actions.',
+        ...(stage.workspace_policy === 'release_metadata_only' &&
+        isSelfDevelopmentInstallation(root)
+          ? [
+              'You MUST NOT push, open or merge a pull request, publish, deploy, rewrite history, or perform other destructive source-control actions.',
+            ]
+          : [
+              'You MUST NOT commit, push, merge, publish, deploy, or perform destructive source-control actions.',
+            ]),
       ],
       ...(delegation ? { delegation } : {}),
       ...(!externalExecutor &&

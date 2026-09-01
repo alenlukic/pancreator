@@ -29,6 +29,45 @@ test('every canonical command delivers a card or is an allowlisted read-only uti
   assert.deepEqual(pending, [])
 })
 
+test('target-mutating commands must preserve every worktree forwarding step', () => {
+  const root = createFixture()
+  const releasePath = path.join(root, 'library/cursor/commands/pan-release.md')
+  const release = readFileSync(releasePath, 'utf8')
+
+  writeFileSync(
+    releasePath,
+    release.replaceAll('--worktree <name>', '--workspace-omitted'),
+  )
+
+  const missingForwarding = run(root)
+
+  assert.ok(
+    missingForwarding.errors.some(
+      (error) =>
+        error.includes('pan-release.md is target-mutating') &&
+        error.includes('worktree'),
+    ),
+    missingForwarding.errors.join('\n'),
+  )
+
+  writeFileSync(releasePath, release)
+
+  const registryPath = path.join(root, COMMAND_GOVERNANCE_REGISTRY_PATH)
+  const registry = JSON.parse(readFileSync(registryPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  delete registry.target_mutating_commands
+  writeJson(registryPath, registry)
+
+  assert.ok(
+    run(root).errors.some((error) =>
+      error.includes('target_mutating_commands in schema 4'),
+    ),
+  )
+})
+
 test('pan-author is explicitly registered with its author card', () => {
   const root = createFixture()
   const registryPath = path.join(root, COMMAND_GOVERNANCE_REGISTRY_PATH)

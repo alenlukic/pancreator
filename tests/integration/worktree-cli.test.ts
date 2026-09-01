@@ -38,7 +38,7 @@ test('worktree create, list, source selection, and targeted init preserve the ma
   const alphaPath = path.join(root, alpha.path)
 
   assert.equal(alpha.created_from, mainHead)
-  assert.equal(alpha.branch, 'worktree/alpha')
+  assert.equal(alpha.branch, 'alpha')
   assert.equal(alpha.path, 'worktrees/operator/alpha')
   assert.equal(alpha.description, 'Primary feature work')
   assert.ok(git(root, ['worktree', 'list', '--porcelain']).includes(alphaPath))
@@ -78,7 +78,7 @@ test('worktree create, list, source selection, and targeted init preserve the ma
   const listedAlpha = listed.worktrees.find((entry) => entry.name === 'alpha')
 
   assert.ok(listedAlpha)
-  assert.equal(listedAlpha.branch, 'worktree/alpha')
+  assert.equal(listedAlpha.branch, 'alpha')
   assert.equal(listedAlpha.created_from, mainHead)
   assert.equal(listedAlpha.description, 'Primary feature work')
   assert.equal(typeof listedAlpha.created_at, 'string')
@@ -106,7 +106,7 @@ test('worktree create, list, source selection, and targeted init preserve the ma
   assert.equal(resolved.status, 'resolved')
   assert.equal(resolved.created, true)
   assert.equal(resolved.worktree.path, 'worktrees/operator/utility')
-  assert.equal(resolved.worktree.branch, 'worktree/utility')
+  assert.equal(resolved.worktree.branch, 'utility')
   assert.equal(
     existsSync(path.join(root, resolved.worktree.path, '.git')),
     true,
@@ -148,15 +148,42 @@ test('worktree create, list, source selection, and targeted init preserve the ma
       resolveRunLayout(root, initialized.run_id).state.absolute,
       'utf8',
     ),
-  ) as { workspace_root: string }
+  ) as {
+    workspace_root: string
+    managed_worktree: { name: string; path: string; branch: string }
+  }
 
   assert.equal(initialized.workspace_root, alpha.path)
   assert.equal(state.workspace_root, alpha.path)
+  assert.deepEqual(state.managed_worktree, {
+    name: 'alpha',
+    path: alpha.path,
+    branch: 'alpha',
+  })
   assert.equal(git(root, ['rev-parse', 'HEAD']).trim(), mainHead)
   assert.equal(
     git(root, ['status', '--porcelain=v1', '--untracked-files=all']),
     mainStatus,
   )
+
+  const mismatched = spawnSync(
+    process.execPath,
+    [CLI, 'prepare', initialized.run_id, '--worktree', 'utility', '--json'],
+    { cwd: root, encoding: 'utf8', timeout: 120_000 },
+  )
+
+  assert.notEqual(mismatched.status, 0)
+  assert.match(mismatched.stderr, /RUN_WORKTREE_MISMATCH/u)
+
+  git(alphaPath, ['switch', '-c', 'alpha-temporary'])
+
+  spawnSync(process.execPath, [CLI, 'prepare', initialized.run_id, '--json'], {
+    cwd: root,
+    encoding: 'utf8',
+    timeout: 120_000,
+  })
+
+  assert.equal(git(alphaPath, ['branch', '--show-current']).trim(), 'alpha')
 })
 
 test('init --worktree creates a missing worktree and setup commands prepare it', () => {
@@ -225,10 +252,10 @@ test('worktree remove refuses dirty files unless force is explicit and keeps the
   const removed = removeWorktree(root, 'alpha', { force: true })
 
   assert.equal(removed.removed_worktree, true)
-  assert.equal(removed.kept_branch, 'worktree/alpha')
+  assert.equal(removed.kept_branch, 'alpha')
   assert.equal(existsSync(worktreePath), false)
   assert.doesNotThrow(() =>
-    git(root, ['show-ref', '--verify', 'refs/heads/worktree/alpha']),
+    git(root, ['show-ref', '--verify', 'refs/heads/alpha']),
   )
 
   const stale = createWorktreeRecord(root, 'stale')

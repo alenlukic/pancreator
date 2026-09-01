@@ -30,16 +30,23 @@ interface CardCommandEntry {
   card_mode: string
 }
 
+interface TargetMutatingCommandEntry {
+  command: string
+  worktree_forwarding: string[]
+}
+
 type ReadOnlyCommandEntry = string | ReadOnlyCardEntry
 
 interface CommandGovernanceRegistry {
-  schema_version: 1 | 2 | 3
+  schema_version: 1 | 2 | 3 | 4
   /** Commands that read run or repository state and delegate nothing. */
   read_only_commands: ReadOnlyCommandEntry[]
   /** Commands whose exact standalone card mode is part of their contract. */
   card_commands: CardCommandEntry[]
   /** Commands that open a supervisor session and MUST run the supervisor card. */
   supervisor_commands: string[]
+  /** Target mutation commands and their required worktree forwarding steps. */
+  target_mutating_commands: TargetMutatingCommandEntry[]
   /**
    * Commands whose card step is known to be missing until a named insertion
    * lands. Each entry is a warning until then and an error once the step exists.
@@ -70,6 +77,19 @@ function isCardCommandEntry(value: unknown): value is CardCommandEntry {
     value !== null &&
     typeof (value as CardCommandEntry).command === 'string' &&
     typeof (value as CardCommandEntry).card_mode === 'string'
+  )
+}
+
+function isTargetMutatingCommandEntry(
+  value: unknown,
+): value is TargetMutatingCommandEntry {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as TargetMutatingCommandEntry).command === 'string' &&
+    (value as TargetMutatingCommandEntry).command.length > 0 &&
+    isStringArray((value as TargetMutatingCommandEntry).worktree_forwarding) &&
+    (value as TargetMutatingCommandEntry).worktree_forwarding.length > 0
   )
 }
 
@@ -106,12 +126,16 @@ function loadRegistry(
   if (
     (value.schema_version !== 1 &&
       value.schema_version !== 2 &&
-      value.schema_version !== 3) ||
+      value.schema_version !== 3 &&
+      value.schema_version !== 4) ||
     !Array.isArray(value.read_only_commands) ||
     !value.read_only_commands.every(isReadOnlyEntry) ||
-    (value.schema_version === 3 &&
+    ((value.schema_version === 3 || value.schema_version === 4) &&
       (!Array.isArray(value.card_commands) ||
         !value.card_commands.every(isCardCommandEntry))) ||
+    (value.schema_version === 4 &&
+      (!Array.isArray(value.target_mutating_commands) ||
+        !value.target_mutating_commands.every(isTargetMutatingCommandEntry))) ||
     !isStringArray(value.supervisor_commands) ||
     !Array.isArray(value.pending_card_steps) ||
     !value.pending_card_steps.every(
@@ -125,7 +149,7 @@ function loadRegistry(
     errors.push(
       `${COMMAND_GOVERNANCE_REGISTRY_PATH} MUST declare a supported schema, ` +
         'read_only_commands, card_commands in schema 3, supervisor_commands, ' +
-        'and pending_card_steps',
+        'target_mutating_commands in schema 4, and pending_card_steps',
     )
     return null
   }
@@ -133,6 +157,7 @@ function loadRegistry(
   return {
     ...(value as CommandGovernanceRegistry),
     card_commands: value.card_commands ?? [],
+    target_mutating_commands: value.target_mutating_commands ?? [],
   }
 }
 
@@ -174,6 +199,12 @@ export function validateCommandGovernance(
     registry.card_commands.map((entry) => [entry.command, entry.card_mode]),
   )
   const supervisor = new Set(registry.supervisor_commands)
+  const targetMutating = new Map(
+    registry.target_mutating_commands.map((entry) => [
+      entry.command,
+      entry.worktree_forwarding,
+    ]),
+  )
   const pending = new Map(
     registry.pending_card_steps.map((item) => [
       item.command,
@@ -187,6 +218,7 @@ export function validateCommandGovernance(
     ...readOnly.keys(),
     ...cardCommands.keys(),
     ...supervisor,
+    ...targetMutating.keys(),
     ...pending.keys(),
   ]) {
     if (!known.has(name)) {
@@ -237,6 +269,19 @@ export function validateCommandGovernance(
           .flatMap((line) => line.match(POLICY_FILE_PATTERN) ?? []),
       ),
     ]
+
+    const worktreeForwarding = targetMutating.get(name)
+
+    if (worktreeForwarding) {
+      for (const requiredFragment of worktreeForwarding) {
+        if (!content.includes(requiredFragment)) {
+          errors.push(
+            `${relative} is target-mutating and MUST forward its worktree ` +
+              `through \`${requiredFragment}\``,
+          )
+        }
+      }
+    }
 
     if (readOnly.has(name)) {
       const requiredMode = readOnly.get(name)
