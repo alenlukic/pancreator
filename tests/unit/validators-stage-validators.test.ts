@@ -18,6 +18,8 @@ import {
 } from '../../src/lib/validators/stage-validators.js'
 import { createFixture, writeJson } from '../helpers.js'
 import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
+import { createWorktree } from '../../src/lib/worktrees.js'
+import { nextSemanticVersion } from '../../src/lib/versioning.js'
 
 /**
  * Bare validator fixture root carrying the shared field-contract document.
@@ -925,6 +927,97 @@ test('self-development release validator requires a real next-version bump', () 
       code,
     )
   }
+})
+
+test('release validator reads metadata from selected workspace', () => {
+  const root = createFixture()
+  const target = 'output.json'
+  const currentVersion = readFileSync(path.join(root, 'VERSION'), 'utf8').trim()
+  const proposedVersion = nextSemanticVersion(currentVersion, 'patch')
+  const baselineCommit = execFileSync('git', ['rev-parse', 'HEAD'], {
+    cwd: root,
+    encoding: 'utf8',
+  }).trim()
+
+  assert.ok(proposedVersion)
+
+  const record = createWorktree(root, 'release-check')
+  const worktreePath = path.join(root, record.path)
+
+  writeFileSync(path.join(worktreePath, 'VERSION'), `${proposedVersion}\n`)
+  const packagePath = path.join(worktreePath, 'package.json')
+  const packageJson = JSON.parse(readFileSync(packagePath, 'utf8')) as {
+    version: string
+  }
+
+  packageJson.version = proposedVersion ?? ''
+  writeFileSync(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`)
+
+  const lockPath = path.join(worktreePath, 'package-lock.json')
+  const lockJson = JSON.parse(readFileSync(lockPath, 'utf8')) as {
+    version: string
+    packages: Record<string, { version?: string }>
+  }
+
+  lockJson.version = proposedVersion ?? ''
+  if (lockJson.packages['']) {
+    lockJson.packages[''].version = proposedVersion ?? ''
+  }
+
+  writeFileSync(lockPath, `${JSON.stringify(lockJson, null, 2)}\n`)
+
+  writeFileSync(
+    path.join(root, target),
+    `${JSON.stringify({
+      data: {
+        release: {
+          summary: 'ready',
+          versioning: {
+            current_version: currentVersion,
+            recommendation: 'patch',
+            proposed_version: proposedVersion,
+            baseline_commit: baselineCommit,
+            rationale: 'Worktree release bump.',
+            compatibility: 'Backward compatible.',
+            updated_files: [
+              'CHANGELOG.md',
+              'README.md',
+              'VERSION',
+              'docs/embedded-installation.md',
+              'package-lock.json',
+              'package.json',
+            ],
+            release_index_action: 'Index after the release commit exists.',
+          },
+          change_list: [],
+          validation: [],
+          rollback: 'revert commit',
+          waivers: [],
+          follow_up_cases: [],
+        },
+      },
+    })}\n`,
+  )
+
+  const result = validateReleaseOutput({
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'VERSION-001',
+      requirement_id: 'release-validate',
+      registry_id: 'RELEASE-VALIDATE-001',
+      arguments: {},
+    },
+    runState: {
+      workspace_root: record.path,
+      stage_history: [],
+    },
+  })
+  const issueCodes = new Set(result.issues.map((entry) => entry.code))
+
+  assert.equal(issueCodes.has('release.version_not_applied'), false)
+  assert.equal(issueCodes.has('release.current_version_mismatch'), false)
+  assert.equal(issueCodes.has('release.baseline_version_mismatch'), false)
 })
 
 test('release validator rejects waiver fingerprint mismatch', () => {
