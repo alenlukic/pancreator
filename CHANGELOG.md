@@ -1,5 +1,24 @@
 # Changelog
 
+## [5.10.0] - 2026-09-01
+
+### Changed
+
+- Move inbox items through `queue`, `active`, `complete`, and `canceled` status directories ([inbox](src/lib/inbox.ts), [engine](src/lib/engine.ts)).
+- Write new unactioned items to `runtime/inbox/queue` ([52404951](src/lib/inbox.ts)).
+- Keep `pan inbox` on queue items and preserve its table and JSON fields ([inbox](src/lib/inbox.ts)).
+- Archive expired complete items from the complete directory by default ([workflow-artifacts](src/lib/workflow-artifacts.ts)).
+
+### Added
+
+- Add `--complete` and `--canceled` so `pan archive` can select terminal inbox statuses ([cli](src/cli.ts)).
+- Classify legacy direct inbox files into status directories during runtime maintenance ([inbox](src/lib/inbox.ts)).
+
+### Fixed
+
+- Recover a missing active item from stored run evidence before a terminal move ([inbox](src/lib/inbox.ts)).
+- Restore a failed claim to the exact original path, including a legacy path ([engine](src/lib/engine.ts)).
+
 ## [5.9.0] - 2026-09-01
 
 ### Changed
