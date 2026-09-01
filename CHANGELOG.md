@@ -1,5 +1,23 @@
 # Changelog
 
+## [5.9.0] - 2026-09-01
+
+### Changed
+
+- Accept documented test lanes as DEMOTE destinations in `/pan-tune-harness`, TUNE-001, and the testing handbook ([test-tuning](src/lib/test-tuning.ts), [TUNE-001](governance/policies/TUNE-001.json)).
+- Apply the first tune-harness audit: remove 16 redundant tests and fold 38 tests that overlap into survivors ([e1371b07](https://github.com/alenlukic/pancreator/commit/e1371b077e7a8cfc6eecd34774c074479cfb36c5)).
+- Point ordinary installer tests at one memoized indexed release fixture. Keep an explicit `--pancreator-root` override ([install-helpers](tests/secondary/install-helpers.ts)).
+- Guard the CLI entrypoint so an import of `HELP_BODY` does not run `main` ([cli](src/cli.ts)).
+
+### Added
+
+- Add secondary-lane coverage for installer and compiled projection renderer parity ([projection test](tests/secondary/projection.test.ts)).
+
+### Fixed
+
+- Restore unique contracts that the first audit pass dropped. Cover DEMOTE validator branches and suite-profile attachment ([e1371b07](https://github.com/alenlukic/pancreator/commit/e1371b077e7a8cfc6eecd34774c074479cfb36c5)).
+- Change installer fixture versions through parsed JSON instead of blanket text replacement ([install-helpers](tests/secondary/install-helpers.ts)).
+
 ## [5.8.0] - 2026-09-01
 
 ### Changed
