@@ -368,6 +368,10 @@ test('workflow archive moves runs older than retention into archive directories'
   const recentRunId = '63372_Jun-29-0158_6f354f23'
   const oldLogDirectory = path.join(root, 'runtime/logs/workflows', oldRunId)
   const oldStateDirectory = path.join(root, 'runtime/workflows', oldRunId)
+  const tuneRecord = path.join(
+    root,
+    'runtime/tune-harness/records/archive-fixture.json',
+  )
 
   writeState(root, oldRunId, 'succeeded')
   writeState(root, recentRunId, 'running', [], '2026-06-29T21:22:54.051Z')
@@ -381,6 +385,8 @@ test('workflow archive moves runs older than retention into archive directories'
     path.join(oldLogDirectory, 'evidence', 'path.txt'),
     `runtime/workflows/${oldRunId}/modifications.jsonl\n`,
   )
+  write(tuneRecord, '{"schema_version":1,"session_id":"x"}\n')
+  const tuneRecordBefore = readFileSync(tuneRecord)
 
   const summary = archiveWorkflowDirectories(root, {
     retentionDays: 7,
@@ -400,6 +406,7 @@ test('workflow archive moves runs older than retention into archive directories'
     existsSync(path.join(root, 'runtime/workflows/archive', oldRunId)),
     true,
   )
+  assert.ok(readFileSync(tuneRecord).equals(tuneRecordBefore))
   assert.equal(
     existsSync(
       path.join(root, 'runtime/logs/workflows', recentRunId, 'state.json'),

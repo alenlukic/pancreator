@@ -179,7 +179,7 @@ test('away mode skips options outside operator guardrails', () => {
   assert.equal(readAwayDecisionLedger(root).length, 2)
 })
 
-test('away mode rejects malformed evaluator output', () => {
+test('away mode rejects duplicate ranks and missing action details', () => {
   assert.throws(
     () =>
       parseAwayOptions({
@@ -187,9 +187,6 @@ test('away mode rejects malformed evaluator output', () => {
       }),
     /MUST be approve/u,
   )
-})
-
-test('away mode rejects duplicate ranks and missing action details', () => {
   assert.throws(
     () =>
       parseAwayOptions({

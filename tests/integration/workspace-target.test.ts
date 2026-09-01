@@ -49,8 +49,10 @@ function makeNestedRepo(root: string, relative: string): string {
 }
 
 test('repository checks run in an explicitly targeted workspace', () => {
-  const { root, worktrees } = worktreeCheckpoint('single')
-  const worktree = worktrees.alpha
+  const root = createFixture()
+  const workspace = path.join(root, 'nested-workspace')
+
+  mkdirSync(workspace)
 
   writeJson(path.join(root, 'runtime/repository-checks.json'), {
     schema_version: 1,
@@ -59,13 +61,10 @@ test('repository checks run in an explicitly targeted workspace', () => {
     },
   })
 
-  const check = runRepositoryCheck(root, 'fast', { workspace: worktree.path })
+  const check = runRepositoryCheck(root, 'fast', { workspace })
 
   assert.equal(check.status, 'passed')
-  assert.equal(
-    realpathSync(check.workspace_root),
-    realpathSync(path.join(root, worktree.path)),
-  )
+  assert.equal(realpathSync(check.workspace_root), realpathSync(workspace))
 })
 
 test('pre-implementation baselines use the run workspace', () => {

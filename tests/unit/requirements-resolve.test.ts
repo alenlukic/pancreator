@@ -54,6 +54,13 @@ test('requirement resolution is deterministic', () => {
       target: 'docs/target-repo-primer.md',
       registry_id: 'TARGET-REPO-PRIMER-VALIDATE-001',
     },
+    {
+      persona: 'harness-technician',
+      stage: 'repair',
+      invocation_kind: 'repair' as const,
+      target: 'runtime/inbox/harness-repair.md',
+      registry_id: 'HARNESS-REPAIR-VALIDATE-001',
+    },
   ]) {
     const manifest = resolveRequirements(root, {
       persona: binding.persona,

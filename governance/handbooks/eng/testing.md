@@ -47,7 +47,7 @@ Place each test in the documented lane that matches its cost and boundary:
 - **Regression** — replay of a prior defect with a minimal reproduction.
 - **Secondary** — slow installer or release paths the mainline lane excludes.
 
-A DEMOTE recommendation MUST name a secondary destination or a cheaper direct form that still proves the contract.
+A DEMOTE recommendation MUST name a documented lane destination or a cheaper direct form that still proves the contract.
 
 ## Verdict vocabulary
 

@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
 import {
   existsSync,
-  mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
@@ -13,15 +12,9 @@ import test from 'node:test'
 
 import {
   getRunState,
-  getRunStatus,
   prepareInvocation,
   setRunStage,
 } from '../../src/lib/engine.js'
-import { renderInvocationMarkdown } from '../../src/lib/render.js'
-import { compareRepositoryCheckToBaseline } from '../../src/lib/repository-checks.js'
-import type { RepositoryCheckResult } from '../../src/lib/repository-checks.js'
-import { loadRepositoryCheckBaseline } from '../../src/lib/validation.js'
-import type { RunState } from '../../src/lib/types.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import {
@@ -334,28 +327,6 @@ test('a retry may submit a merge-patch revision instead of the whole document', 
   assert.equal(replay.idempotent, true)
 })
 
-test('pre-implementation baselines capture only source-mutating gate profiles', () => {
-  // Capture happens at prepare, so the prepared checkpoint already holds
-  // the baselines.
-  const { state } = checkpoint(
-    'delivery@implement-prepared',
-    checksVariant('checks=static,fast,full-fails,configuration', {
-      static: { probes: [], commands: [PASS] },
-      fast: { probes: [], commands: [PASS] },
-      full: { probes: [], commands: [`node -e "process.exit(1)"`] },
-      configuration: { probes: [], commands: [PASS] },
-    }),
-  )
-  const baselines = state.repository_check_baselines ?? {}
-
-  assert.equal(baselines.static?.status, 'passed')
-  assert.equal(baselines.fast?.status, 'passed')
-  // Only the implement loop's profiles are captured. The full and
-  // configuration gates are judged on their own results.
-  assert.equal(baselines.full, undefined)
-  assert.equal(baselines.configuration, undefined)
-})
-
 test('a failed environment probe pauses before source-stage delegation', () => {
   const root = createFixture()
   const state = createRun(root, {
@@ -399,6 +370,18 @@ test('a failed environment probe pauses before source-stage delegation', () => {
 })
 
 const FULL_MARKER_COMMAND = `node -e "require('node:fs').appendFileSync('runtime/full-ran.txt','x'); process.exit(0)"`
+// The full command writes a fixture profile at the reporter's target. Every
+// other profile records a leak marker when it sees the variable at all.
+const PROFILE_FULL_COMMAND =
+  `node -e "const fs=require('node:fs');const t=process.env.PAN_TEST_PROFILE;` +
+  `if(!t){process.exit(9)};fs.writeFileSync(t,JSON.stringify({schema_version:1,` +
+  `lane:'unit',recorded_at:'x',test_count:3,pass_count:3,fail_count:0,` +
+  `wall_clock_ms:1200,files:[{file:'tests/unit/a.test.ts',duration_ms:800,` +
+  `test_count:3,pass_count:3,fail_count:0}],slowest_tests:[{file:'tests/unit/a.test.ts',` +
+  `name:'alpha',duration_ms:500}]}));fs.appendFileSync('runtime/full-ran.txt','x')"`
+const PROFILE_LEAK_COMMAND =
+  `node -e "if(process.env.PAN_TEST_PROFILE){require('node:fs')` +
+  `.appendFileSync('runtime/profile-leak.txt','x')}"`
 
 function fullRuns(root: string): number {
   const marker = path.join(root, 'runtime', 'full-ran.txt')
@@ -436,6 +419,7 @@ test('the default light level runs full once as the verify gate on a passing ver
   assert.ok(baselined?.fast)
   assert.ok(baselined?.static)
   assert.equal(baselined?.full, undefined)
+  assert.equal(baselined?.configuration, undefined)
   assert.equal(fullRuns(root), 0)
 
   setRunStage(root, runId, 'verify', 'Run verification under the light level.')
@@ -463,10 +447,10 @@ test('a remediate to verify return executes the full profile exactly once', () =
   const { root, runId, workflow, state } = checkpoint(
     'delivery@verify-prepared',
     checksVariant('checks=full-marker', {
-      static: { probes: [], commands: [PASS] },
-      fast: { probes: [], commands: [PASS] },
-      full: { probes: [], commands: [FULL_MARKER_COMMAND] },
-      configuration: { probes: [], commands: [PASS] },
+      static: { probes: [], commands: [PROFILE_LEAK_COMMAND] },
+      fast: { probes: [], commands: [PROFILE_LEAK_COMMAND] },
+      full: { probes: [], commands: [PROFILE_FULL_COMMAND] },
+      configuration: { probes: [], commands: [PROFILE_LEAK_COMMAND] },
     }),
   )
   const verifyStage = stageBySlug(workflow, 'verify')
@@ -475,6 +459,7 @@ test('a remediate to verify return executes the full profile exactly once', () =
   assert.equal(state.verification?.level, 'light')
   assert.equal(state.repository_check_baselines?.full, undefined)
   assert.equal(fullRuns(root), 0)
+  assert.equal(existsSync(path.join(root, 'runtime/profile-leak.txt')), false)
 
   // A failing verdict forwards to remediate without running full.
   const failed = submitStageOutput(
@@ -503,6 +488,11 @@ test('a remediate to verify return executes the full profile exactly once', () =
   assert.equal(remediateGate.command, 'pan repository-check full')
   assert.equal(remediateGate.passed, true)
   assert.equal(remediateGate.cached, undefined)
+  const profilePath = remediateGate.suite_profile_path
+
+  assert.ok(profilePath)
+  assert.ok(existsSync(path.join(root, profilePath)))
+  assert.equal(existsSync(path.join(root, 'runtime/profile-leak.txt')), false)
   assert.equal(
     remediated.record.evaluation.deterministic.some(
       (item) => item.id === 'implement.unit_tests',
@@ -527,9 +517,16 @@ test('a remediate to verify return executes the full profile exactly once', () =
   assert.equal(verifyGate.command, 'pan repository-check full')
   assert.equal(verifyGate.passed, true)
   assert.equal(verifyGate.cached, true)
+  assert.equal(verifyGate.suite_profile_path, profilePath)
   assert.match(verifyGate.explanation ?? '', /cached clean pass/u)
   assert.equal(verified.record.outcome, 'success')
   assert.equal(verified.state.current_stage, 'ship')
+
+  const ship = prepareInvocation(root, runId).invocation
+
+  assert.ok(ship)
+  assert.equal(ship.suite_profile?.profile_path, profilePath)
+  assert.equal(ship.suite_profile?.cached, true)
   assert.equal(fullRuns(root), 1)
 })
 
@@ -690,97 +687,6 @@ test('a repository-check gate credits an inherited failure the stage fixed', () 
     'the repaired diagnostic must be recorded as fixed',
   )
   assert.deepEqual(getRunState(root, runId).operator_gate_waivers ?? [], [])
-})
-
-test('an elided inherited failure stays carried from the full baseline', () => {
-  // The gate compares against the untruncated baseline at full_result_path
-  // when the inline result is elided.
-  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-elided-'))
-  const diagnostics = Array.from(
-    { length: 5000 },
-    (_, index) => `stable diagnostic ${index}`,
-  )
-  const check = (stderr: string): RepositoryCheckResult => ({
-    profile: 'static',
-    status: 'failed',
-    config_path: 'runtime/repository-checks.json',
-    workspace_root: '.',
-    timeout_ms: 60_000,
-    results: [
-      {
-        kind: 'command',
-        command: 'node -e "..."',
-        exit_code: 1,
-        signal: null,
-        stdout: '',
-        stderr,
-        passed: false,
-        timed_out: false,
-        duration_ms: 1,
-      },
-    ],
-    total_duration_ms: 1,
-    advisories: [],
-  })
-  const artifactDirectory = 'runtime/logs/workflows/run-1/agent/artifacts/json'
-  const summaryPath = `${artifactDirectory}/baseline-static.json`
-  const fullPath = `${artifactDirectory}/baseline-static.full.json`
-  const artifact = (result: RepositoryCheckResult, full?: string) => ({
-    schema_version: 1,
-    run_id: 'run-1',
-    stage: 'implement',
-    profile: 'static',
-    workspace_fingerprint: 'fixture',
-    recorded_at: '2026-08-24T00:00:00.000Z',
-    result,
-    ...(full ? { full_result_path: full } : {}),
-  })
-
-  mkdirSync(path.join(root, artifactDirectory), { recursive: true })
-  writeJson(
-    path.join(root, summaryPath),
-    artifact(
-      check(
-        `${diagnostics.slice(0, 10).join('\n')}\n…[bytes elided; see the full result artifact]…\n`,
-      ),
-      fullPath,
-    ),
-  )
-  writeJson(
-    path.join(root, fullPath),
-    artifact(check(`${diagnostics.join('\n')}\n`)),
-  )
-
-  const state = {
-    repository_check_baselines: {
-      static: {
-        profile: 'static',
-        status: 'failed',
-        artifact_path: summaryPath,
-        workspace_fingerprint: 'fixture',
-        recorded_at: '2026-08-24T00:00:00.000Z',
-      },
-    },
-  } as unknown as RunState
-  const baseline = loadRepositoryCheckBaseline(root, state, 'static')
-
-  assert.ok(baseline.result)
-  assert.equal(baseline.artifact_path, fullPath)
-
-  const staticResult = compareRepositoryCheckToBaseline(
-    baseline.result,
-    check('stable diagnostic 2500\n'),
-  )
-
-  assert.equal(staticResult.passed, true)
-  assert.equal(staticResult.delta.new.length, 0)
-  assert.ok(
-    staticResult.delta.carried.some((diagnostic) =>
-      diagnostic.diagnostic.includes('stable diagnostic 2500'),
-    ),
-  )
-
-  rmSync(root, { recursive: true, force: true })
 })
 
 test('a missing baseline artifact pauses the run before delegation', () => {
@@ -967,102 +873,4 @@ test('a claims omission rejects the submission before any shell gate executes', 
     ),
   )
   rmSync(markerDir, { recursive: true, force: true })
-})
-
-// The full command writes a fixture profile at the reporter's target. Every
-// other profile records a leak marker when it sees the variable at all.
-const PROFILE_FULL_COMMAND =
-  `node -e "const fs=require('node:fs');const t=process.env.PAN_TEST_PROFILE;` +
-  `if(!t){process.exit(9)};fs.writeFileSync(t,JSON.stringify({schema_version:1,` +
-  `lane:'unit',recorded_at:'x',test_count:3,pass_count:3,fail_count:0,` +
-  `wall_clock_ms:1200,files:[{file:'tests/unit/a.test.ts',duration_ms:800,` +
-  `test_count:3,pass_count:3,fail_count:0}],slowest_tests:[{file:'tests/unit/a.test.ts',` +
-  `name:'alpha',duration_ms:500}]}));fs.appendFileSync('runtime/full-ran.txt','x')"`
-const PROFILE_LEAK_COMMAND =
-  `node -e "if(process.env.PAN_TEST_PROFILE){require('node:fs')` +
-  `.appendFileSync('runtime/profile-leak.txt','x')}"`
-
-test('only the full gate is profiled, and a cached full gate carries the original profile path', () => {
-  const { root, runId, workflow } = checkpoint(
-    'delivery@verify-prepared',
-    checksVariant('checks=profile-marker', {
-      static: { probes: [], commands: [PROFILE_LEAK_COMMAND] },
-      fast: { probes: [], commands: [PROFILE_LEAK_COMMAND] },
-      full: { probes: [], commands: [PROFILE_FULL_COMMAND] },
-      configuration: { probes: [], commands: [PROFILE_LEAK_COMMAND] },
-    }),
-  )
-  const verifyStage = stageBySlug(workflow, 'verify')
-  const remediateStage = stageBySlug(workflow, 'remediate')
-
-  // Baselines and interior gates already ran static and fast: no leak.
-  assert.equal(existsSync(path.join(root, 'runtime/profile-leak.txt')), false)
-  assert.equal(fullRuns(root), 0)
-  assert.doesNotMatch(getRunStatus(root, runId) as string, /Suite profile:/u)
-
-  const failed = submitStageOutput(
-    root,
-    runId,
-    verifyStage,
-    'failure',
-    ['verify.acceptance_met'],
-    (output) => {
-      output.data.verify = failingVerify('VF-PROFILE-1')
-    },
-  )
-
-  assert.equal(failed.state.current_stage, 'remediate')
-
-  const remediated = submitStageOutput(root, runId, remediateStage, 'success')
-  const remediateGate = remediated.record.evaluation.deterministic.find(
-    (item) => item.id === 'remediate.full_suite',
-  )
-
-  assert.ok(remediateGate)
-  assert.equal(remediateGate.cached, undefined)
-  assert.equal(fullRuns(root), 1)
-
-  const profilePath = remediateGate.suite_profile_path
-
-  assert.ok(profilePath)
-  assert.equal(
-    profilePath,
-    `runtime/logs/workflows/${runId}/agent/evidence/` +
-      `${remediated.record.invocation_id}-suite-profile.json`,
-  )
-  assert.ok(existsSync(path.join(root, profilePath)))
-  assert.equal(existsSync(path.join(root, 'runtime/profile-leak.txt')), false)
-
-  // The returning verify gate accepts the cached pass and references the
-  // profile of the original execution instead of profiling again.
-  const verified = submitStageOutput(root, runId, verifyStage, 'success')
-  const verifyGate = verified.record.evaluation.deterministic.find(
-    (item) => item.id === 'verify.full_suite',
-  )
-
-  assert.ok(verifyGate)
-  assert.equal(verifyGate.cached, true)
-  assert.equal(verifyGate.suite_profile_path, profilePath)
-  assert.equal(fullRuns(root), 1)
-  assert.equal(verified.state.current_stage, 'ship')
-
-  const status = getRunStatus(root, runId) as string
-
-  assert.match(
-    status,
-    /^Suite profile: 3 tests in 1\.2s at verify gate verify\.full_suite, cached/mu,
-  )
-
-  const ship = prepareInvocation(root, runId).invocation
-
-  assert.ok(ship)
-  assert.equal(ship.suite_profile?.profile_path, profilePath)
-  assert.equal(ship.suite_profile?.cached, true)
-
-  const card = renderInvocationMarkdown(ship)
-
-  assert.match(card, /## 📈 Suite profile/u)
-  assert.match(card, /Tests: 3 \(3 passed, 0 failed\)/u)
-  assert.match(card, /Delta: none\./u)
-  assert.match(card, /`tests\/unit\/a\.test\.ts` — 0\.8s, 3 tests/u)
 })

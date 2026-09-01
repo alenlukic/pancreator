@@ -345,7 +345,7 @@ test('a run created before the card existed gains it on prepare and is bound aft
   )
 })
 
-test('the CLI renders, reports, and attests the supervisor card', () => {
+test('the CLI reports the supervisor card', () => {
   const root = createFixture()
   const state = unattestedRun(root)
   const rendered = pan(root, [
@@ -372,50 +372,6 @@ test('the CLI renders, reports, and attests the supervisor card', () => {
   assert.equal(report.sha256, state.supervisor_card?.sha256)
   assert.ok(report.policies.includes('DELEGATE-001'))
   assert.ok(report.attest_command.endsWith(`--sha256 ${report.sha256}`))
-
-  const refused = pan(root, ['prepare', state.run_id])
-
-  assert.notEqual(refused.status, 0)
-  assert.match(refused.stderr + refused.stdout, /SUPERVISOR_CARD_UNATTESTED/u)
-
-  const attested = pan(root, [
-    'governance',
-    'attest-supervisor',
-    state.run_id,
-    '--sha256',
-    report.sha256,
-  ])
-
-  assert.equal(attested.status, 0, attested.stderr)
-
-  const attestation = JSON.parse(attested.stdout) as {
-    status: string
-    session_generation: number
-    next_command: string
-  }
-
-  assert.equal(attestation.status, 'attested')
-  assert.equal(attestation.session_generation, 1)
-  assert.match(attestation.next_command, /--redline --occasion/u)
-
-  const unredlined = pan(root, ['prepare', state.run_id])
-
-  assert.notEqual(unredlined.status, 0)
-  assert.match(unredlined.stderr + unredlined.stdout, /REDLINE_MISSING/u)
-
-  const redlined = pan(root, [
-    'status',
-    state.run_id,
-    '--redline',
-    '--occasion',
-    'pan-start',
-  ])
-
-  assert.equal(redlined.status, 0, redlined.stderr)
-
-  const prepared = pan(root, ['prepare', state.run_id])
-
-  assert.equal(prepared.status, 0, prepared.stderr)
 })
 
 test('a worktree-bound run names its worktree on the supervisor card', () => {

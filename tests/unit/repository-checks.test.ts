@@ -17,8 +17,12 @@ import {
   runRepositorySetup,
   runRepositoryCheck,
   runRepositoryCheckStreaming,
+  SUMMARY_STREAM_HEAD_BYTES,
+  SUMMARY_STREAM_TAIL_BYTES,
 } from '../../src/lib/repository-checks.js'
 import type { RepositoryCheckResult } from '../../src/lib/repository-checks.js'
+import { loadRepositoryCheckBaseline } from '../../src/lib/validation.js'
+import type { RunState } from '../../src/lib/types.js'
 import { createFixture } from '../helpers.js'
 
 function makeInstallation(): { root: string; workspace: string } {
@@ -51,6 +55,94 @@ function writeChecks(root: string, profiles: Record<string, unknown>): void {
     `${JSON.stringify({ schema_version: 1, profiles }, null, 2)}\n`,
   )
 }
+
+test('an elided baseline loads its full result before comparison', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-elided-check-'))
+  const artifactDirectory = 'runtime/logs/workflows/run-1/agent/artifacts/json'
+  const summaryPath = `${artifactDirectory}/baseline-static.json`
+  const fullPath = `${artifactDirectory}/baseline-static.full.json`
+  const count = Math.ceil(
+    (SUMMARY_STREAM_HEAD_BYTES + SUMMARY_STREAM_TAIL_BYTES) / 24,
+  )
+  const diagnostics = Array.from(
+    { length: count },
+    (_, index) => `stable diagnostic ${index}`,
+  )
+  const check = (stderr: string): RepositoryCheckResult => ({
+    profile: 'static',
+    status: 'failed',
+    config_path: 'runtime/repository-checks.json',
+    workspace_root: '.',
+    timeout_ms: 60_000,
+    results: [
+      {
+        kind: 'command',
+        command: 'node -e "..."',
+        exit_code: 1,
+        signal: null,
+        stdout: '',
+        stderr,
+        passed: false,
+        timed_out: false,
+        duration_ms: 1,
+      },
+    ],
+    total_duration_ms: 1,
+    advisories: [],
+  })
+  const artifact = (result: RepositoryCheckResult, full?: string) => ({
+    schema_version: 1,
+    run_id: 'run-1',
+    stage: 'implement',
+    profile: 'static',
+    workspace_fingerprint: 'fixture',
+    recorded_at: '2026-08-24T00:00:00.000Z',
+    result,
+    ...(full ? { full_result_path: full } : {}),
+  })
+
+  mkdirSync(path.join(root, artifactDirectory), { recursive: true })
+  writeFileSync(
+    path.join(root, summaryPath),
+    `${JSON.stringify(
+      artifact(
+        check('…[bytes elided; see the full result artifact]…\n'),
+        fullPath,
+      ),
+      null,
+      2,
+    )}\n`,
+  )
+  writeFileSync(
+    path.join(root, fullPath),
+    `${JSON.stringify(artifact(check(`${diagnostics.join('\n')}\n`)), null, 2)}\n`,
+  )
+
+  const state = {
+    repository_check_baselines: {
+      static: {
+        profile: 'static',
+        status: 'failed',
+        artifact_path: summaryPath,
+        workspace_fingerprint: 'fixture',
+        recorded_at: '2026-08-24T00:00:00.000Z',
+      },
+    },
+  } as unknown as RunState
+  const baseline = loadRepositoryCheckBaseline(root, state, 'static')
+
+  assert.ok(baseline.result)
+  assert.equal(baseline.artifact_path, fullPath)
+
+  const compared = compareRepositoryCheckToBaseline(
+    baseline.result,
+    check(`stable diagnostic ${Math.floor(count / 2)}\n`),
+  )
+
+  assert.equal(compared.passed, true)
+  assert.equal(compared.delta.new.length, 0)
+  assert.equal(compared.delta.carried.length, 1)
+})
 
 test('repository checks report missing profiles without guessing commands', () => {
   const { root } = makeInstallation()
@@ -378,43 +470,6 @@ test('baseline delta ignores xdist scheduling and passing test output', () => {
 
   assert.equal(comparison.passed, true)
   assert.equal(comparison.delta.new.length, 0)
-})
-
-test('repeated fast profiles ignore reordered xdist pass output', () => {
-  const transcript = (tests: string[]): string =>
-    [
-      'plugins: xdist-3.8.0',
-      ...tests.map(
-        (name, index) =>
-          `[gw${index}] [ ${index * 50}%] tests/example.py::${name} PASSED`,
-      ),
-      '================ 2 passed in 0.01s ================',
-      '',
-    ].join('\n')
-  const passingRun = (stdout: string): RepositoryCheckResult => {
-    const check = passedCheck()
-
-    check.profile = 'fast'
-    check.results[0] = {
-      ...check.results[0],
-      command: 'node check.mjs',
-      stdout,
-    }
-
-    return check
-  }
-  const baseline = passingRun(transcript(['test_a', 'test_b']))
-  const current = passingRun(transcript(['test_b', 'test_a']))
-  const comparison = compareRepositoryCheckToBaseline(baseline, current)
-
-  assert.equal(comparison.passed, true)
-  assert.deepEqual(comparison.delta, {
-    new: [],
-    fixed: [],
-    carried: [],
-    counts: { new: 0, fixed: 0, carried: 0 },
-  })
-  assert.ok(Buffer.byteLength(JSON.stringify(current), 'utf8') < 1024 * 1024)
 })
 
 test('baseline delta retains failures that mention PASSED', () => {

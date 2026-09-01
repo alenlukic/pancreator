@@ -12,7 +12,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
-  CURRENT_VERSION,
+  RELEASE_FIXTURE_VERSION,
   type InstallMarker,
   git,
   gitInit,
@@ -246,7 +246,7 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
   )
 
   assert.equal(marker.schema_version, 4)
-  assert.equal(marker.version, CURRENT_VERSION)
+  assert.equal(marker.version, RELEASE_FIXTURE_VERSION)
   assert.equal(typeof marker.source_dirty, 'boolean')
   assert.equal(typeof marker.source_indexed, 'boolean')
   assert.equal(marker.source_dirty && marker.source_indexed, false)

@@ -26,7 +26,6 @@ import {
   git,
   initSession,
   sessionIdFromFailure,
-  sessionStatePath,
 } from './best-of-n-helpers.js'
 
 test('a failed init leaves a session the lifecycle commands can recover', () => {
@@ -140,20 +139,6 @@ test('a session recovers from a mutex its dead owner left behind', () => {
   assert.equal(existsSync(mutex), false)
 })
 
-test('session state rejects an unknown lifecycle status', () => {
-  const { root, session } = bestOfNCheckpoint('ready')
-
-  writeJson(sessionStatePath(root, session.bon_id), {
-    ...session,
-    status: 'done',
-  })
-
-  assert.throws(
-    () => bestOfNStatus(root, session.bon_id),
-    /MUST record status 'initializing' or 'ready'/u,
-  )
-})
-
 test('best-of-N init isolates every candidate in its own worktree and model set', () => {
   const root = createFixture()
   const session = initSession(root, true)
@@ -223,19 +208,10 @@ test('best-of-N init isolates every candidate in its own worktree and model set'
     status.candidates[0].resume_command,
     `/pan-resume ${candidate.run_id}`,
   )
-})
 
-test('best-of-N init output omits unused supervisor agent paths', () => {
-  const { root, session } = bestOfNCheckpoint('ready')
-  const status = bestOfNStatus(root, session.bon_id)
-
-  assert.ok(session.candidates.length >= 2)
-  assert.ok(
-    session.candidates.every((candidate) => !('agent_path' in candidate)),
-  )
-  assert.ok(
-    status.candidates.every((candidate) => !('agent_path' in candidate)),
-  )
+  for (const record of [...session.candidates, ...status.candidates]) {
+    assert.equal('agent_path' in record, false)
+  }
 })
 
 test('agent refresh preserves pinned models while updating instructions', () => {

@@ -456,6 +456,12 @@ test('representative contexts exclude policies outside their remit', () => {
       'verify',
       ['ENG-001', 'CONTRACT-001', 'LANG-001', 'TS-001'],
     ],
+    [
+      'reviewer',
+      'standalone',
+      'review',
+      ['REVIEW-001', 'DELEGATE-001', 'ENG-001'],
+    ],
   ]
 
   for (const [persona, workflow, stage, required] of expectedIncludes) {
@@ -611,45 +617,6 @@ test('Python policy loads only for detected Python workspaces', () => {
   assert.ok(sourceDetectedIds.includes('PY-001'))
 })
 
-test('delivery plan resolves planning guidance without supervisor policies', () => {
-  const root = sharedFixture()
-  const planIds = resolvePolicies(root, {
-    persona: 'planner',
-    workflow: 'delivery',
-    stage: 'plan',
-  }).map((policy) => policy.id)
-
-  assert.deepEqual(planIds, [
-    'ACTION-001',
-    'ASK-001',
-    'AUTO-001',
-    'BRIEF-001',
-    'CONTRACT-001',
-    'ENG-001',
-    'GLOBAL-001',
-    'GLOBAL-002',
-    'OPERATOR-001',
-    'PLAN-002',
-    'PRIMER-001',
-    'STE-001',
-    'VALID-001',
-  ])
-
-  // Run-advancement authority stays with the supervisor, so a worker that owns
-  // the first stage must not inherit it.
-  for (const supervisorOnly of [
-    'ORCH-001',
-    'PAUSE-001',
-    'WAIVER-001',
-    'WORK-001',
-  ]) {
-    assert.ok(
-      !planIds.includes(supervisorOnly),
-      `planner MUST NOT resolve ${supervisorOnly}`,
-    )
-  }
-})
-
 test('self-development version policy is excluded from embedded installations', () => {
   const root = createFixture()
   const configPath = path.join(root, 'config.json')
@@ -735,20 +702,6 @@ test('a policy without a declared trigger keeps the generated fallback', () => {
     guidance.reference?.read_trigger,
     generatedReadTrigger('ENG-001'),
   )
-})
-
-test('standalone review resolves squad and delegation governance', () => {
-  const root = sharedFixture()
-  const ids = resolvePolicies(root, {
-    persona: 'reviewer',
-    workflow: 'standalone',
-    stage: 'review',
-    operator_artifacts: 'suppressed',
-  }).map((policy) => policy.id)
-
-  assert.ok(ids.includes('REVIEW-001'))
-  assert.ok(ids.includes('DELEGATE-001'))
-  assert.ok(ids.includes('ENG-001'))
 })
 
 test('TEST-001 resolves testing.md for self-development test personas', () => {

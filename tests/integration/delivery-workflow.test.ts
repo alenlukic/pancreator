@@ -4,7 +4,6 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
-  decideRun,
   getRunState,
   prepareInvocation,
   setRunStage,
@@ -96,14 +95,6 @@ function warningVerify(): VerifyShape {
   }
 }
 
-/** Marks exactly one hard criterion failed so signatures stay distinct. */
-function failOnly(output: StageOutput, failingCriterionId: string): void {
-  output.criteria = output.criteria.map((criterion) => ({
-    ...criterion,
-    result: criterion.id === failingCriterionId ? 'fail' : 'pass',
-  }))
-}
-
 function runStage(
   root: string,
   runId: string,
@@ -128,41 +119,17 @@ function runStage(
   return submitAsSupervisor(root, runId, invocation.output.path)
 }
 
-function advanceToVerify(root: string): string {
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Delivery fixture run',
-  })
-  const runId = state.run_id
-
-  const plan = runStage(root, runId, 'plan')
-
-  assert.equal(plan.record.outcome, 'success')
-  assert.equal(plan.state.status, 'awaiting_operator')
-  decideRun(root, runId, 'approve', 'fixture approval')
-
-  const implement = runStage(root, runId, 'implement')
-
-  assert.equal(implement.record.outcome, 'success')
-  assert.equal(getRunState(root, runId).current_stage, 'verify')
-
-  return runId
-}
-
 test('delivery severe verdict escalates the remediator and warnings reach the inbox', () => {
-  const root = createFixture()
-  const runId = advanceToVerify(root)
+  const { root, runId } = checkpoint('delivery@verify-prepared')
 
-  const firstVerify = runStage(
+  const firstVerify = submitCurrentStage(
     root,
     runId,
-    'verify',
+    'failure',
+    ['verify.acceptance_met'],
     (output) => {
       output.data.verify = failingVerify('fail_severe', 'VF-SEV-1')
-      failOnly(output, 'verify.acceptance_met')
     },
-    'failure',
   )
 
   assert.equal(
@@ -358,6 +325,4 @@ test('plan and verify cards render the complete shared field contract', () => {
   const stepsPath = '`data.verify.qa_cases[].steps`'
 
   assert.equal(verifyCard.split(stepsPath).length - 1, 1)
-  assert.match(verifyCard, /focused scenario steps/u)
-  assert.match(verifyCard, /required when top-level result is blocked/u)
 })

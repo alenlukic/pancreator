@@ -15,10 +15,7 @@ import { recordFixtureEvent } from '../reporters/fixture-profile.js'
 
 export const REPO_ROOT = process.cwd()
 export const INSTALLER = path.join(REPO_ROOT, 'bin', 'install')
-export const CURRENT_VERSION = readFileSync(
-  path.join(REPO_ROOT, 'VERSION'),
-  'utf8',
-).trim()
+export const RELEASE_FIXTURE_VERSION = '0.1.0'
 
 export interface CommandResult {
   stdout: string
@@ -67,11 +64,20 @@ export function runInstaller(
   project: string,
   args: string[] = [],
 ): CommandResult {
+  const hasExplicitSource = args.some(
+    (arg) =>
+      arg === '--pancreator-root' || arg.startsWith('--pancreator-root='),
+  )
+  const sourceArgs = hasExplicitSource
+    ? []
+    : ['--pancreator-root', releaseFixtureSource()]
+
   return run(INSTALLER, [
     '--target',
     project,
     '--skip-dependencies',
     '--skip-shell-alias',
+    ...sourceArgs,
     ...args,
   ])
 }
@@ -88,6 +94,10 @@ function buildReleaseFixtureTemplate(): string {
   const fixture = mkdtempSync(
     path.join(tmpdir(), 'pancreator-release-template-'),
   )
+  const sourceVersion = readFileSync(
+    path.join(REPO_ROOT, 'VERSION'),
+    'utf8',
+  ).trim()
   const entries = [
     '.gitignore',
     '.npmrc',
@@ -116,6 +126,13 @@ function buildReleaseFixtureTemplate(): string {
     })
   }
 
+  // A release payload is already built. Installer tests skip dependency
+  // installation, so carry the compiled runtime that the installer copies into
+  // staging and uses for maintenance migrations.
+  cpSync(path.join(REPO_ROOT, 'dist'), path.join(fixture, 'dist'), {
+    recursive: true,
+  })
+
   // The tracked config.json blanks its model values. The effective specs live
   // in the untracked overrides file that a real operator checkout carries.
   if (existsSync(path.join(REPO_ROOT, 'config_overrides.json'))) {
@@ -125,7 +142,49 @@ function buildReleaseFixtureTemplate(): string {
     )
   }
 
-  writeFileSync(path.join(fixture, 'VERSION'), '0.1.0\n')
+  writeFileSync(path.join(fixture, 'VERSION'), `${RELEASE_FIXTURE_VERSION}\n`)
+
+  const packagePath = path.join(fixture, 'package.json')
+  const packageDocument = readJson<{ version?: string }>(packagePath)
+
+  if (packageDocument.version !== sourceVersion) {
+    throw new Error('release fixture package version does not match VERSION')
+  }
+  packageDocument.version = RELEASE_FIXTURE_VERSION
+  writeFileSync(packagePath, `${JSON.stringify(packageDocument, null, 2)}\n`)
+
+  const lockPath = path.join(fixture, 'package-lock.json')
+  const lockDocument = readJson<{
+    version?: string
+    packages?: Record<string, { version?: string }>
+  }>(lockPath)
+  const rootPackage = lockDocument.packages?.['']
+
+  if (
+    lockDocument.version !== sourceVersion ||
+    rootPackage?.version !== sourceVersion
+  ) {
+    throw new Error('release fixture lock version does not match VERSION')
+  }
+  lockDocument.version = RELEASE_FIXTURE_VERSION
+  rootPackage.version = RELEASE_FIXTURE_VERSION
+  writeFileSync(lockPath, `${JSON.stringify(lockDocument, null, 2)}\n`)
+
+  const documentationPath = path.join(fixture, 'docs/embedded-installation.md')
+
+  if (existsSync(documentationPath)) {
+    writeFileSync(
+      documentationPath,
+      readFileSync(documentationPath, 'utf8').replaceAll(
+        sourceVersion,
+        RELEASE_FIXTURE_VERSION,
+      ),
+    )
+  }
+  writeFileSync(
+    path.join(fixture, 'CHANGELOG.md'),
+    `# Changelog\n\n## [${RELEASE_FIXTURE_VERSION}] - 2026-09-01\n\n### Changed\n\n- Build the release fixture.\n`,
+  )
 
   writeFileSync(
     path.join(fixture, 'release', 'index.json'),
@@ -139,7 +198,7 @@ function buildReleaseFixtureTemplate(): string {
   git(fixture, ['config', 'user.email', 'fixture@example.com'])
   git(fixture, ['config', 'user.name', 'Fixture'])
   git(fixture, ['add', '.'])
-  git(fixture, ['commit', '-qm', 'release 0.1.0'])
+  git(fixture, ['commit', '-qm', `release ${RELEASE_FIXTURE_VERSION}`])
 
   const release01 = git(fixture, ['rev-parse', 'HEAD'])
 
@@ -148,14 +207,14 @@ function buildReleaseFixtureTemplate(): string {
     `${JSON.stringify(
       {
         schema_version: 1,
-        releases: [{ version: '0.1.0', commit: release01 }],
+        releases: [{ version: RELEASE_FIXTURE_VERSION, commit: release01 }],
       },
       null,
       2,
     )}\n`,
   )
   git(fixture, ['add', 'release/index.json'])
-  git(fixture, ['commit', '-qm', 'index 0.1.0'])
+  git(fixture, ['commit', '-qm', `index ${RELEASE_FIXTURE_VERSION}`])
 
   return fixture
 }
@@ -207,14 +266,18 @@ export function gitInit(project: string): void {
 
 let releaseFixtureTemplate: string | null = null
 
-export function createReleaseFixture(): string {
+function releaseFixtureSource(): string {
   if (releaseFixtureTemplate === null) {
     releaseFixtureTemplate = buildReleaseFixtureTemplate()
   }
 
+  return releaseFixtureTemplate
+}
+
+export function createReleaseFixture(): string {
   const fixture = mkdtempSync(path.join(tmpdir(), 'pancreator-release-source-'))
 
-  cloneTree(releaseFixtureTemplate, fixture)
+  cloneTree(releaseFixtureSource(), fixture)
 
   return fixture
 }

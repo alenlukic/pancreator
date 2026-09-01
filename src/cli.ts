@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-import { readdirSync } from 'node:fs'
+import { readdirSync, realpathSync } from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import {
   abortRun,
@@ -192,7 +193,7 @@ import {
 
 const STANDALONE_MODE_NAMES = Object.keys(STANDALONE_MODES).sort().join('|')
 
-const HELP_BODY = `Usage:
+export const HELP_BODY = `Usage:
   pan init --request <repo-relative-file> [--workflow delivery|prototype|design] [--title <title>] [--workspace <dir> | --worktree <name>] [--gates <file>] [--involvement <profile>] [--verification <level>] [--operator-artifacts]
   pan prepare <run-id> [--worktree <name>] [--operator-artifacts]
   pan delegate <run-id> [--timeout-ms <milliseconds>]
@@ -2980,15 +2981,22 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error: unknown) => {
-  const known = error instanceof PanError
-  const message = error instanceof Error ? error.message : String(error)
-  const payload = {
-    error: known ? error.code : 'UNEXPECTED_ERROR',
-    message,
-    ...(known && error.details !== undefined ? { details: error.details } : {}),
-  }
+if (
+  process.argv[1] !== undefined &&
+  realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
+  main().catch((error: unknown) => {
+    const known = error instanceof PanError
+    const message = error instanceof Error ? error.message : String(error)
+    const payload = {
+      error: known ? error.code : 'UNEXPECTED_ERROR',
+      message,
+      ...(known && error.details !== undefined
+        ? { details: error.details }
+        : {}),
+    }
 
-  process.stderr.write(`${JSON.stringify(payload, null, 2)}\n`)
-  process.exitCode = known ? error.exitCode : 1
-})
+    process.stderr.write(`${JSON.stringify(payload, null, 2)}\n`)
+    process.exitCode = known ? error.exitCode : 1
+  })
+}

@@ -7,9 +7,9 @@ import test from 'node:test'
 import {
   buildBenchmarkFromProfiles,
   identityKey,
-  intervalsOverlap,
   partitionRetainedSet,
   validatePassOverlap,
+  validateTuneRecordShape,
   type PassInterval,
   type TestIdentity,
   type TuneRecord,
@@ -99,20 +99,151 @@ test('validatePassOverlap requires all three passes to overlap', () => {
   )
 })
 
+test('tune record validation accepts documented DEMOTE lanes only', () => {
+  const identity = sample('tests/unit/a.test.ts', 'alpha')
+  const interval = {
+    started_at: '2026-01-01T10:00:00.000Z',
+    ended_at: '2026-01-01T10:01:00.000Z',
+  }
+  const record: TuneRecord = {
+    schema_version: 1,
+    session_id: 's',
+    harness_version: '0',
+    git_commit: 'abc',
+    workspace_fingerprint: 'fp',
+    workspace_dirty: false,
+    recorded_at: '2026-01-01T10:01:00.000Z',
+    baseline_source: { kind: 'none' },
+    passes: {
+      benchmark: interval,
+      comparison: interval,
+      judgment: interval,
+    },
+    retained_set: [identity],
+    current_inventory: [identity],
+    comparison: {
+      retained_and_present: [identity],
+      added_since_retained: [],
+      retained_but_removed: [],
+    },
+    benchmark: {
+      fast_lane_wall_ms: 1,
+      secondary_lane_wall_ms: 0,
+      fixture_template_ms: 0,
+      fixture_clone_ms: 0,
+      files: [],
+      tests: [],
+      slowest_tests: [],
+    },
+    verdicts: [],
+    judgment_provenance: {
+      handbook_path: 'governance/handbooks/eng/testing.md',
+      handbook_revision: 'HEAD',
+      inventory_only: true,
+      inventory_path: 'runtime/tune-harness/work/s/current-inventory.json',
+    },
+  }
+
+  for (const destination of [
+    'tests/unit',
+    'tests/unit/example.test.ts',
+    'tests/integration',
+    'tests/integration/example.test.ts',
+    'tests/regression',
+    'tests/regression/example.test.ts',
+    'tests/secondary',
+    'tests/secondary/example.test.ts',
+    'cheaper direct form: call the exported function',
+  ]) {
+    const candidate = {
+      ...record,
+      verdicts: [
+        {
+          identity,
+          verdict: 'DEMOTE' as const,
+          principle: 'TP-03',
+          rationale: 'Use the documented lane.',
+          demote_destination: destination,
+        },
+      ],
+    }
+
+    assert.deepEqual(validateTuneRecordShape(candidate, process.cwd()), [])
+  }
+
+  const invalid = {
+    ...record,
+    verdicts: [
+      {
+        identity,
+        verdict: 'DEMOTE' as const,
+        principle: 'TP-03',
+        rationale: 'Use an unknown lane.',
+        demote_destination: 'tests/unknown/example.test.ts',
+      },
+    ],
+  }
+
+  assert.ok(
+    validateTuneRecordShape(invalid, process.cwd()).some((error) =>
+      error.includes('actionable destination'),
+    ),
+  )
+
+  const badMerge = {
+    ...record,
+    verdicts: [
+      {
+        identity,
+        verdict: 'MERGE' as const,
+        principle: 'TP-01',
+        rationale: 'Use the current survivor.',
+        survivor: sample('tests/unit/missing.test.ts', 'missing'),
+      },
+    ],
+  }
+  const badDelete = {
+    ...record,
+    verdicts: [
+      {
+        identity,
+        verdict: 'DELETE' as const,
+        principle: 'TP-01',
+        rationale: 'Delete the duplicate.',
+        delete_reason: 'too_slow',
+      },
+    ],
+  }
+  const badProvenance = {
+    ...record,
+    judgment_provenance: {
+      ...record.judgment_provenance,
+      similarity_index_path: 'runtime/tune-harness/work/s/fast-profile.json',
+    },
+  }
+
+  assert.ok(
+    validateTuneRecordShape(badMerge, process.cwd()).some((error) =>
+      error.includes('current survivor'),
+    ),
+  )
+  assert.ok(
+    validateTuneRecordShape(badDelete, process.cwd()).some((error) =>
+      error.includes('permitted reason'),
+    ),
+  )
+  assert.ok(
+    validateTuneRecordShape(badProvenance, process.cwd()).some((error) =>
+      error.includes('unpermitted similarity input'),
+    ),
+  )
+})
+
 test('identityKey includes occurrence suffix for duplicate names', () => {
   const first = { ...sample('dup.test.ts', 'same'), occurrence: 1 }
   const second = { ...sample('dup.test.ts', 'same'), occurrence: 2 }
 
   assert.notEqual(identityKey(first), identityKey(second))
-})
-
-test('intervalsOverlap is reflexive for identical intervals', () => {
-  const interval: PassInterval = {
-    started_at: '2026-01-01T10:00:00.000Z',
-    ended_at: '2026-01-01T10:01:00.000Z',
-  }
-
-  assert.equal(intervalsOverlap(interval, interval), true)
 })
 
 test('buildBenchmarkFromProfiles preserves every timing and fixture cost', () => {

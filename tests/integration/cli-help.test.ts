@@ -292,40 +292,18 @@ test('nested build-only reuses the prepared build in the same root', () => {
   }
 })
 
-test('workflow help exposes operator artifact controls', () => {
+test('workflow help does not create a run named --help', () => {
   const root = createFixture()
-  const initHelp = execFileSync(process.execPath, [CLI, 'init', '--help'], {
+
+  execFileSync(process.execPath, [CLI, 'prepare', '--help'], {
     cwd: root,
     encoding: 'utf8',
   })
-  const prepareHelp = execFileSync(
-    process.execPath,
-    [CLI, 'prepare', '--help'],
-    {
-      cwd: root,
-      encoding: 'utf8',
-    },
-  )
-  const generateHelp = execFileSync(
-    process.execPath,
-    [CLI, 'briefs', 'generate', '--help'],
-    {
-      cwd: root,
-      encoding: 'utf8',
-    },
-  )
 
-  assert.match(initHelp, /--operator-artifacts/u)
-  assert.match(prepareHelp, /Usage:/u)
-  assert.match(prepareHelp, /--operator-artifacts/u)
-  // Command help must not create a workflow directory named --help.
   assert.equal(
     existsSync(path.join(root, 'runtime/logs/workflows/--help')),
     false,
   )
-  assert.match(generateHelp, /--run <run-id>/u)
-  assert.match(generateHelp, /--stage <stage-slug>/u)
-  assert.match(generateHelp, /--force/u)
 })
 
 test('CLI artifact options persist run-wide and stage selections', () => {

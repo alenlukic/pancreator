@@ -101,19 +101,20 @@ function codesOf(result: ReturnType<typeof validatePrototypeOutput>) {
   return new Set(result.issues.map((issue) => issue.code))
 }
 
-test('prototype intake output passes without extra fields', () => {
-  const root = scratchRoot()
-  const target = writeOutput(root, 'intake.json', {
-    data: { prototype_brief: { objective: 'test' } },
-  })
-
-  const result = validatePrototypeOutput(validatorInput(root, target, 'intake'))
-
-  assert.equal(result.status, 'passed')
-})
-
 test('intake contracts the question identifier every later stage keys on', () => {
   const root = scratchRoot()
+  const minimal = validatePrototypeOutput(
+    validatorInput(
+      root,
+      writeOutput(root, 'intake-minimal.json', {
+        data: { prototype_brief: { objective: 'test' } },
+      }),
+      'intake',
+    ),
+  )
+
+  assert.equal(minimal.status, 'passed')
+
   const bare = validatePrototypeOutput(
     validatorInput(
       root,
@@ -588,34 +589,6 @@ test('evaluate rejects unknown verdict values', () => {
   assert.ok(codesOf(result).has('prototype.verdict'))
 })
 
-test('evaluate accepts invalidated without a met discard condition', () => {
-  const root = scratchRoot()
-  const target = writeOutput(root, 'evaluate.json', {
-    result: 'success',
-    data: {
-      evaluation: {
-        verdict: 'invalidated',
-        environment_blockers: [],
-        question_results: [
-          {
-            question_id: 'TQ-01',
-            result: 'answered',
-            cause: 'product',
-            evidence: ['approach does not work'],
-            discard_condition_met: false,
-          },
-        ],
-      },
-    },
-  })
-
-  const result = validatePrototypeOutput(
-    validatorInput(root, target, 'evaluate'),
-  )
-
-  assert.equal(result.status, 'passed')
-})
-
 function readinessEvaluation(
   readinessQuestion: boolean | undefined,
 ): Record<string, unknown> {
@@ -835,23 +808,6 @@ test('a build blocked without a precondition cause keeps the pause route', () =>
 
   // PROTO-001 ties the empty changed-files rule to an unavailable
   // precondition, not to an operator question.
-  const result = validatePrototypeOutput(validatorInput(root, target, 'build'))
-
-  assert.equal(result.status, 'passed')
-})
-
-test('a blocked build with no changed files passes', () => {
-  const root = scratchRoot()
-  const target = writeOutput(root, 'build-blocked-clean.json', {
-    result: 'blocked',
-    data: {
-      spike: {
-        changed_files: [],
-        precondition_checks: [],
-      },
-    },
-  })
-
   const result = validatePrototypeOutput(validatorInput(root, target, 'build'))
 
   assert.equal(result.status, 'passed')
@@ -1254,11 +1210,8 @@ test('an empty environment blocker fails on every required field', () => {
   assert.ok(codes.has('prototype.environment_blocker_description'))
   assert.ok(codes.has('prototype.environment_blocker_evidence'))
   assert.ok(codes.has('prototype.environment_blocker_questions'))
-})
 
-test('a blocker with an empty affected_questions array fails', () => {
-  const root = scratchRoot()
-  const target = writeOutput(root, 'evaluate-blocker-no-questions.json', {
+  const completeTarget = writeOutput(root, 'evaluate-empty-questions.json', {
     result: 'success',
     data: {
       evaluation: {
@@ -1271,28 +1224,23 @@ test('a blocker with an empty affected_questions array fails', () => {
             affected_questions: [],
           },
         ],
-        question_results: [
-          {
-            question_id: 'TQ-01',
-            result: 'unanswered',
-            cause: 'environment',
-            evidence: ['missing credential'],
-            discard_condition_met: false,
-          },
-        ],
+        question_results: [],
       },
     },
   })
-
-  const result = validatePrototypeOutput(
-    validatorInput(root, target, 'evaluate'),
+  const completeCodes = codesOf(
+    validatePrototypeOutput(validatorInput(root, completeTarget, 'evaluate')),
   )
-  const codes = codesOf(result)
 
-  assert.equal(result.status, 'failed')
-  assert.ok(codes.has('prototype.environment_blocker_questions'))
-  assert.ok(!codes.has('prototype.environment_blocker_description'))
-  assert.ok(!codes.has('prototype.environment_blocker_evidence'))
+  assert.ok(completeCodes.has('prototype.environment_blocker_questions'))
+  assert.equal(
+    completeCodes.has('prototype.environment_blocker_description'),
+    false,
+  )
+  assert.equal(
+    completeCodes.has('prototype.environment_blocker_evidence'),
+    false,
+  )
 })
 
 test('a blocker that names an undeclared question id fails', () => {

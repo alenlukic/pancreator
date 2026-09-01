@@ -257,29 +257,20 @@ test('stage output rejects a skipped judgment criterion on failure', () => {
     validation.errors.join('\n'),
     /verify\.tests_correct' MUST NOT be skipped on a failure result unless it is a shell criterion/u,
   )
-})
 
-test('stage output permits a skipped shell criterion on failure', () => {
-  const root = createFixture()
-  const { invocation, stage } = fixtureInvocation(
-    root,
-    'verify',
-    'verify-1-skipped-shell',
-  )
-  const output = baseOutput(invocation, stage)
-  const criterion = output.criteria.find(
+  criterion.result = 'pass'
+  const shellCriterion = output.criteria.find(
     (item) => item.id === 'verify.full_suite',
   )
 
-  assert.ok(criterion)
-  output.result = 'failure'
-  criterion.result = 'skipped'
+  assert.ok(shellCriterion)
+  shellCriterion.result = 'skipped'
 
-  const validation = validateStageOutput(root, stage, invocation, output)
+  const shellValidation = validateStageOutput(root, stage, invocation, output)
 
   assert.doesNotMatch(
-    validation.errors.join('\n'),
-    /verify\.full_suite'.*skipped/u,
+    shellValidation.errors.join('\n'),
+    /verify\.full_suite' MUST NOT be skipped on a failure result/u,
   )
 })
 

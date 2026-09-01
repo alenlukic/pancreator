@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync, readdirSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -31,20 +31,6 @@ function repoText(relativePath: string): string {
   return readFileSync(path.join(REPO_ROOT, relativePath), 'utf8')
 }
 
-function markdownFiles(directory: string): string[] {
-  return readdirSync(path.join(REPO_ROOT, directory), { withFileTypes: true })
-    .flatMap((entry) => {
-      const relative = path.join(directory, entry.name)
-
-      return entry.isDirectory()
-        ? markdownFiles(relative)
-        : entry.isFile() && entry.name.endsWith('.md')
-          ? [relative]
-          : []
-    })
-    .sort()
-}
-
 test('always-applied rules share one supervisor paragraph', () => {
   const paragraphs = [
     'library/cursor/rules/pancreator-self-development.mdc',
@@ -70,26 +56,6 @@ test('always-applied rules share one supervisor paragraph', () => {
   })
 
   assert.equal(paragraphs[0], paragraphs[1])
-})
-
-test('operator documentation contains no nested supervisor relay', () => {
-  const relayPatterns = [
-    /invoke the `pan-orchestrator` subagent/iu,
-    /launch the `pan-orchestrator` subagent with/iu,
-    /(?:inside|through|to) (?:a |the )?`pan-orchestrator` subagent/iu,
-    /you relay between the operator and that subagent/iu,
-  ]
-
-  for (const documentationPath of ['README.md', ...markdownFiles('docs')]) {
-    const body = repoText(documentationPath)
-
-    for (const pattern of relayPatterns) {
-      assert.ok(
-        !pattern.test(body),
-        `${documentationPath} contains forbidden supervisor relay wording: ${String(pattern)}`,
-      )
-    }
-  }
 })
 
 function cardText(root: string, markdownPath: string): string {

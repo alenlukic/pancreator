@@ -15,7 +15,7 @@
     "Tune state MUST live under runtime/tune-harness/ so pan archive does not move it.",
     "Finalization MUST validate completeness, overlap, references, and record shape before it atomically writes the immutable record, ranked report, and latest pointer.",
     "No deterministic check MAY judge whether a verdict is correct. Validators check structure and orchestration facts only.",
-    "A DEMOTE recommendation MUST name a secondary destination or a cheaper direct form."
+    "A DEMOTE recommendation MUST name a documented lane destination or a cheaper direct form."
   ],
   "requirements": [
     {

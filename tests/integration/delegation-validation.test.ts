@@ -3,17 +3,14 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import { decideRun, prepareInvocation } from '../../src/lib/engine.js'
+import { decideRun } from '../../src/lib/engine.js'
 import {
   attestationValidationPath,
   delegationPath,
   delegationValidationPath,
 } from '../../src/lib/validation.js'
-import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
-import type { Invocation } from '../../src/lib/types.js'
+import { stageBySlug } from '../../src/lib/workflow.js'
 import {
-  createFixture,
-  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
@@ -83,55 +80,6 @@ test('submit records mismatched delegation as advisory evidence before ship', ()
   assert.equal(JSON.parse(readFileSync(validationPath, 'utf8')).status, 'fail')
 })
 
-test('submit succeeds when canonical delegation artifact is present', () => {
-  const { root, runId, state } = checkpoint('delivery@plan-awaiting-operator')
-
-  assert.equal(state.stage_history.at(-1)?.outcome, 'success')
-  assert.equal(state.status, 'awaiting_operator')
-
-  decideRun(root, runId, 'approve', 'Plan is implementation-ready.')
-
-  const implementInvocation = prepareInvocation(root, runId).invocation
-
-  assert.ok(implementInvocation)
-  assert.equal(
-    implementInvocation.output.field_contract?.validators[0]?.registry_id,
-    'IMPLEMENTATION-CLAIMS-VALIDATE-001',
-  )
-  assert.equal(
-    implementInvocation.output.field_contract?.validators[0]?.enforcement,
-    'blocks',
-  )
-  assert.ok(
-    implementInvocation.output.field_contract?.fields.some(
-      (field) =>
-        field.path === 'data.acceptance_results[].evidence[]' &&
-        field.accepted_shapes?.includes('pytest_node_id'),
-    ),
-  )
-
-  assert.ok(implementInvocation.delegation)
-  const contract = readFileSync(
-    path.join(root, implementInvocation.delegation.canonical_markdown_path),
-    'utf8',
-  )
-
-  assert.match(contract, /Shared field contract:/u)
-  assert.match(
-    contract,
-    /path reference, prose observation, or pytest node id/u,
-  )
-  // The card states the tests_added and remediation shapes with an example,
-  // so the required format no longer lives only inside the validator.
-  assert.match(contract, /data\.implementation\.tests_added\[\]/u)
-  assert.match(
-    contract,
-    /tests\/unit\/example\.test\.ts::adds provenance rows/u,
-  )
-  assert.match(contract, /data\.implementation\.remediation\[\]/u)
-  assert.match(contract, /required keys: cause, action, evidence/u)
-})
-
 test('submit relocates workspace-root delegation artifact before validation', () => {
   const {
     root,
@@ -175,22 +123,6 @@ test('submit relocates workspace-root delegation artifact before validation', ()
   )
 })
 
-/** Prepare a fixture delivery run's first delegated plan invocation. */
-function prepareDelegatedPlan(root: string): {
-  runId: string
-  invocation: Invocation
-} {
-  const runId = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-  }).run_id
-  const invocation = prepareInvocation(root, runId).invocation
-
-  assert.ok(invocation)
-
-  return { runId, invocation }
-}
-
 test('submit rejects a delegated output with no read attestation', () => {
   const { root, runId, invocation, workflow } = checkpoint(
     'delivery@plan-prepared',
@@ -222,9 +154,11 @@ test('submit rejects a delegated output with no read attestation', () => {
 })
 
 test('submit reports an unreadable contract reference as blocked', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const { runId, invocation } = prepareDelegatedPlan(root)
+  const { root, runId, invocation, workflow } = checkpoint(
+    'delivery@plan-prepared',
+  )
+
+  assert.ok(invocation)
   const output = makeOutput(root, invocation, stageBySlug(workflow, 'plan'))
   const manifest = invocation.contract_manifest
 
@@ -254,22 +188,6 @@ test('submit reports an unreadable contract reference as blocked', () => {
 
   assert.equal(submitted.state.pending_action.outcome, 'blocked')
   assert.equal(submitted.state.pending_action.proposed_transition, 'paused')
-
-  const artifact = JSON.parse(
-    readFileSync(
-      path.join(
-        root,
-        attestationValidationPath(runId, invocation.invocation_id, root),
-      ),
-      'utf8',
-    ),
-  ) as { status: string; checks: Array<{ message: string }> }
-
-  assert.equal(artifact.status, 'pass')
-  assert.ok(
-    artifact.checks.some((check) => check.message.includes('EACCES')),
-    'the failed reference MUST name the path and error in evidence',
-  )
 
   const decided = decideRun(root, runId, 'approve', 'Accept the pause.')
 

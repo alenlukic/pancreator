@@ -70,8 +70,14 @@ export function commitFile(
  *   (`one.txt` / `two.txt`).
  * - `conflict`: `source-one` commits `one.txt`, `source-two` commits
  *   `shared.txt`, and the main checkout commits a conflicting `shared.txt`.
+ * - `target-conflict`: a worktree target conflicts with the first of two
+ *   source worktrees.
  */
-export type WorktreeCheckpointKey = 'single' | 'two-sources' | 'conflict'
+export type WorktreeCheckpointKey =
+  | 'single'
+  | 'two-sources'
+  | 'conflict'
+  | 'target-conflict'
 
 export interface WorktreeCheckpoint {
   root: string
@@ -95,6 +101,25 @@ function buildWorktreeTemplate(key: WorktreeCheckpointKey): WorktreeCheckpoint {
 
   if (key === 'single') {
     add('alpha', 'Alpha worktree')
+  } else if (key === 'target-conflict') {
+    add('conflict-target', 'Conflict target')
+    add('conflict-one', 'First conflict source')
+    add('conflict-two', 'Second conflict source')
+    commitFile(
+      path.join(root, worktrees['conflict-target'].path),
+      'shared.txt',
+      'target\n',
+    )
+    commitFile(
+      path.join(root, worktrees['conflict-one'].path),
+      'shared.txt',
+      'source\n',
+    )
+    commitFile(
+      path.join(root, worktrees['conflict-two'].path),
+      'other.txt',
+      'other\n',
+    )
   } else {
     add('source-one', 'First source')
     add('source-two', 'Second source')

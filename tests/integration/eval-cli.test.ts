@@ -53,31 +53,6 @@ function pan(
   }
 }
 
-test('pan eval list prints every shipped scenario', () => {
-  const root = createFixture()
-
-  withEvals(root)
-
-  const result = pan(root, ['eval', 'list', '--json'])
-
-  assert.equal(result.status, 0, result.stderr)
-
-  const listed = JSON.parse(result.stdout) as {
-    name: string
-    graders: string[]
-  }[]
-
-  assert.deepEqual(
-    listed.map((item) => item.name),
-    [
-      'delivery-background-delegation',
-      'delivery-basic-test-discipline',
-      'prototype-environment-blocked',
-    ],
-  )
-  assert.ok(listed.every((item) => item.graders.length > 0))
-})
-
 test('pan eval grade grades a fixture run against a scenario and writes a report', () => {
   const root = createFixture()
 

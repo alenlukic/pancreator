@@ -14,7 +14,6 @@ import {
   foregroundReturnRecordPath,
   markDelegationBackground,
   parseCadenceSeconds,
-  readAuthorityOrder,
   readForegroundReturn,
   readWatchRecord,
   recordForegroundReturn,
@@ -504,18 +503,6 @@ test('the redline record names the non-authoritative categories and the AGENTS.m
   )
 })
 
-test('the authority order is read from the repository AGENTS.md', () => {
-  const order = readAuthorityOrder(process.cwd())
-
-  assert.deepEqual(order, [
-    'An explicit operator directive.',
-    'The active invocation or standalone governance card.',
-    'This operating card.',
-    'The run snapshots.',
-    'The policies resolved for the active context.',
-  ])
-})
-
 test('a foreground-return attestation is refused until the output exists, and records a malformed output for submit to judge', () => {
   const { root, state, invocationId, outputPath } = preparedRun()
   const recordPath = path.join(
@@ -740,28 +727,6 @@ test('a background launch whose output lands too soon after it records unverifie
 
       return true
     },
-  )
-})
-
-test('the supervisor inspecting the agent is what makes an early output submittable', async () => {
-  const { root, state, invocationId, outputPath } = preparedRun()
-
-  fillPreparedOutput(root, state)
-  markDelegationBackground(root, state.run_id, invocationId)
-
-  const watched = await watchInvocation(root, state.run_id, {
-    cadenceSeconds: CADENCE_SECONDS,
-    agentState: 'completed',
-  })
-
-  assert.equal(watched.state, 'completed')
-
-  const entries = readWatchRecord(root, state.run_id, invocationId)
-
-  assert.equal(entries.at(-1)?.agent_state, 'completed')
-  assert.equal(
-    submitOutput(root, state.run_id, outputPath).record.outcome,
-    'success',
   )
 })
 

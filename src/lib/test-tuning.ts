@@ -726,11 +726,13 @@ function isTestIdentity(value: unknown): value is TestIdentity {
 }
 
 function validDemoteDestination(value: unknown): boolean {
+  const documentedLane =
+    typeof value === 'string' &&
+    /^tests\/(?:unit|integration|regression|secondary)(?:\/.+)?$/u.test(value)
+
   return (
     typeof value === 'string' &&
-    (value === 'tests/secondary' ||
-      value.startsWith('tests/secondary/') ||
-      /^cheaper direct form:\s*\S/u.test(value))
+    (documentedLane || /^cheaper direct form:\s*\S/u.test(value))
   )
 }
 

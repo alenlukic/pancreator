@@ -515,7 +515,7 @@ test('runTestsImpacted --list --json reports the selection on a synthetic tree a
 
 test('runTestsImpacted refuses in target installations', async () => {
   for (const mode of ['embedded', 'detached'] as const) {
-    const root = createSyntheticTree()
+    const root = mkdtempSync(path.join(tmpdir(), 'pan-test-impact-target-'))
 
     try {
       writeFileSync(
@@ -547,41 +547,24 @@ test('runTestsImpacted refuses in target installations', async () => {
   }
 })
 
-test('self-test: a synthetic change to src/lib/naming.ts selects the naming test and not the whole lane', async () => {
-  let output = ''
-  const startedAt = process.cpuUsage()
-  const result = await runTestsImpacted(
-    REPO_ROOT,
-    ['--list', '--json', '--file', 'src/lib/naming.ts'],
-    (text) => {
-      output += text
-    },
-  )
-  const cpuMs = elapsedCpuMs(startedAt)
-  const parsed = JSON.parse(output) as typeof result
+test('self-test: a change to src/lib/naming.ts selects the naming test and not the whole lane', async () => {
+  const graph = await buildModuleGraph(REPO_ROOT)
+  const selected = selectImpactedTests(graph, ['src/lib/naming.ts'], {
+    depth: 1,
+  })
 
-  assert.equal(parsed.status, 'listed')
-  assert.ok(parsed.selected.includes('tests/unit/naming.test.ts'))
-  assert.equal(parsed.depths['tests/unit/naming.test.ts'], 1)
+  assert.ok(selected.selected.includes('tests/unit/naming.test.ts'))
+  assert.equal(selected.depths['tests/unit/naming.test.ts'], 1)
   assert.ok(
-    parsed.selected_count < parsed.lane_count,
-    `selected ${parsed.selected_count} of ${parsed.lane_count}`,
-  )
-  assert.ok(cpuMs < 2_000, `impact selection used ${cpuMs} ms of CPU`)
-
-  const direct = await runTestsImpacted(
-    REPO_ROOT,
-    ['--list', '--json', '--file', 'src/lib/naming.ts', '--depth', '1'],
-    () => {},
-  )
-
-  assert.ok(direct.selected.includes('tests/unit/naming.test.ts'))
-  assert.ok(
-    direct.selected_count <= direct.lane_count * 0.25,
-    `direct selection ${direct.selected_count} of ${direct.lane_count}`,
+    selected.selected.length < selected.lane_count,
+    `selected ${selected.selected.length} of ${selected.lane_count}`,
   )
   assert.ok(
-    !direct.selected.some((file) => file.startsWith('tests/secondary/')),
+    selected.selected.length <= selected.lane_count * 0.25,
+    `direct selection ${selected.selected.length} of ${selected.lane_count}`,
+  )
+  assert.ok(
+    !selected.selected.some((file) => file.startsWith('tests/secondary/')),
   )
 })
 

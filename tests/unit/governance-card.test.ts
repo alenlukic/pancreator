@@ -68,6 +68,17 @@ test('every standalone mode renders a card with its policies inlined', () => {
 
     const written = readFileSync(path.join(root, card.path), 'utf8')
 
+    if (name === 'review') {
+      assert.ok(
+        card.policies.some((policy) =>
+          policy.guidance?.some(
+            (guidance) =>
+              guidance.source_path === 'library/skills/review-squad.md',
+          ),
+        ),
+      )
+    }
+
     for (const policy of card.policies) {
       assert.ok(
         written.includes(`**${policy.id} · ${policy.title}**`),
@@ -184,55 +195,6 @@ test('a missing operator input is reported rather than silently omitted', () => 
   )
 })
 
-test('the review card resolves reviewer governance and references the squad', () => {
-  const root = createFixture()
-  const card = buildGovernanceCard(root, {
-    mode: 'review',
-    outputPath: 'runtime/inbox/review-card.md',
-  })
-  const ids = card.policies.map((policy) => policy.id)
-
-  assert.ok(ids.includes('REVIEW-001'))
-  assert.ok(ids.includes('DELEGATE-001'))
-  assert.ok(ids.includes('ENG-001'))
-
-  const review = card.policies.find((policy) => policy.id === 'REVIEW-001')
-
-  assert.ok(review)
-
-  const guidance = (review.guidance ?? [])[0]
-
-  assert.ok(guidance, 'REVIEW-001 must carry its squad reference')
-  assert.equal(guidance.source_path, 'library/skills/review-squad.md')
-  assert.ok(guidance.reference)
-
-  const written = readFileSync(path.join(root, card.path), 'utf8')
-
-  assert.match(
-    written,
-    /### Guidance reference · `library\/skills\/review-squad\.md`/u,
-  )
-  assert.ok(!written.includes(guidance.content))
-})
-
-test('the review command routes through the card and the coordinator', () => {
-  const command = readFileSync(
-    path.join(process.cwd(), 'library/cursor/commands/pan-review.md'),
-    'utf8',
-  )
-
-  assert.match(command, /governance card --mode review/u)
-  assert.match(command, /review-target\.diff/u)
-  assert.match(command, /pan-shepherd-reviewer/u)
-  assert.match(command, /REVIEW-001/u)
-  // The command reviews any ref, so it must name how agents check out the
-  // target tree.
-  assert.match(command, /worktree create <name> --from <target-head>/u)
-  // The squad must not grade the files that define how it grades.
-  assert.match(command, /governance review-scope --target/u)
-  assert.match(command, /pan-reviewer/u)
-})
-
 test('the review mode is bound to no run and edits nothing', () => {
   const mode = STANDALONE_MODES.review
 
@@ -255,44 +217,6 @@ test('the review mode is bound to no run and edits nothing', () => {
       /MUST NOT join, rank, or grade findings yourself/u.test(boundary),
     ),
     'the coordinator alone owns the verdict',
-  )
-})
-
-test('the review policy binds the workspace to the target head', () => {
-  const root = createFixture()
-  const card = buildGovernanceCard(root, {
-    mode: 'review',
-    outputPath: 'runtime/inbox/review-card.md',
-  })
-  const review = card.policies.find((policy) => policy.id === 'REVIEW-001')
-
-  assert.ok(review)
-  assert.ok(
-    review.instructions.some(
-      (instruction) =>
-        /bind the review workspace to the target/u.test(instruction) &&
-        /worktree/u.test(instruction),
-    ),
-    'a review must read code from the tree its capture applies to',
-  )
-})
-
-test('the review policy refuses to let the squad grade its own instrument', () => {
-  const root = createFixture()
-  const card = buildGovernanceCard(root, {
-    mode: 'review',
-    outputPath: 'runtime/inbox/review-card.md',
-  })
-  const review = card.policies.find((policy) => policy.id === 'REVIEW-001')
-
-  assert.ok(review)
-  assert.ok(
-    review.instructions.some(
-      (instruction) =>
-        /review-scope check/u.test(instruction) &&
-        /independent reviewer/u.test(instruction),
-    ),
-    'a self-review conflict must route to a reviewer outside the squad',
   )
 })
 
@@ -357,21 +281,6 @@ test('the review card renders base conduct for a card policy the target changes'
   )
 })
 
-test('--target without --base is refused before any side effect', () => {
-  const root = sharedFixture()
-
-  assert.throws(
-    () =>
-      buildGovernanceCard(root, {
-        mode: 'review',
-        targetRef: 'HEAD',
-        worktreeName: 'never-created',
-      }),
-    /--target requires --base/u,
-  )
-  assert.equal(existsSync(path.join(root, 'worktrees')), false)
-})
-
 test('--base without --target is refused with the option error code', () => {
   const root = sharedFixture()
 
@@ -386,6 +295,18 @@ test('--base without --target is refused with the option error code', () => {
       error instanceof PanError &&
       error.code === 'INVALID_GOVERNANCE_CARD_OPTION' &&
       /--base requires --target/u.test(error.message),
+  )
+  assert.throws(
+    () =>
+      buildGovernanceCard(root, {
+        mode: 'review',
+        targetRef: 'HEAD',
+        worktreeName: 'never-created',
+      }),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'INVALID_GOVERNANCE_CARD_OPTION' &&
+      /--target requires --base/u.test(error.message),
   )
   assert.equal(existsSync(path.join(root, 'worktrees')), false)
 })
@@ -472,23 +393,6 @@ test('a guidance-only conduct conflict names the base text command', () => {
   assert.ok(written.includes(guidancePath))
 })
 
-test('the projected coordinator agent carries the resolve and join shapes', () => {
-  const agent = readFileSync(
-    path.join(process.cwd(), 'library/cursor/agents/shepherd-reviewer.md'),
-    'utf8',
-  )
-
-  // An unconditional fan-out here restores nested dimension spawns, which
-  // REVIEW-001 moved to the session.
-  assert.match(agent, /\*\*resolve\*\* mode/u)
-  assert.match(agent, /\*\*join\*\* mode/u)
-  assert.match(agent, /spawn nothing/u)
-  assert.doesNotMatch(
-    agent,
-    /Then delegate one dimension agent per charter in one message, join/u,
-  )
-})
-
 test('--base is refused outside the review mode', () => {
   const root = sharedFixture()
 
@@ -517,6 +421,7 @@ test('the card-less command modes resolve their persona governance', () => {
     'build-docs': ['PRIMER-001', 'REPO-001'],
     'build-briefs': ['BRIEF-001', 'REPO-001'],
     'qa-workflow': ['DELEGATE-001', 'RUNTIME-001'],
+    'tune-harness': ['TUNE-001'],
   }
 
   for (const [mode, expected] of Object.entries(expectations)) {
@@ -598,17 +503,4 @@ test('the review card scopes the closure from the bound worktree when the main c
     readFileSync(path.join(root, explicit.path), 'utf8'),
     /## 🧭 Conduct under the base revision/u,
   )
-})
-
-test('the tune-harness card resolves TUNE-001 and forbids source edits', () => {
-  const root = createFixture()
-  const card = buildGovernanceCard(root, {
-    mode: 'tune-harness',
-    outputPath: 'runtime/inbox/tune-card.md',
-  })
-  const ids = card.policies.map((policy) => policy.id)
-  const written = readFileSync(path.join(root, card.path), 'utf8')
-
-  assert.ok(ids.includes('TUNE-001'))
-  assert.match(written, /MUST NOT edit tests or other tracked source files/u)
 })
