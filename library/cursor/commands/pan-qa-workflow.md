@@ -4,7 +4,7 @@ Drive a workflow in this top-level session to validate harness changes.
 2. Read `AGENTS.md`. Then run `./bin/pan governance card --mode qa-workflow` and read the card it writes in full. The card is the complete resolved governance for the QA role. Do not assemble policy text by hand and do not generate a second card for the same session.
 3. Read `library/personas/orchestrator.md`, `library/personas/harness-workflow-qa.md`, and `library/personas/harness-technician.md`. Adopt the orchestrator and QA persona briefs in this session. Use the harness technician brief for post-run investigation. Do not invoke a supervisor subagent.
 4. Use the workspace from `AGENTS.md`. Ask the operator for the QA target when `--qa-target` is absent.
-5. Use `--task` when present. Otherwise, select one unimplemented `runtime/inbox/` item. Create an intake only when no item qualifies.
+5. Use `--task` when present. Otherwise, select one unimplemented `runtime/inbox/queue/` item. Create an intake only when no item qualifies.
 6. Resolve the active model configuration. Pass the selected worktree to `init`.
 7. For a bound run, use `./bin/pan prepare <run-id> --worktree <name>`.
 8. Run the supervisor card and attestation steps from the normal orchestrator procedure.
@@ -20,5 +20,5 @@ Drive a workflow in this top-level session to validate harness changes.
 18. Write the complete QA record under the run's `operator/qa/` directory. Include the RCA, checklists, check-ins, issues, remediation, waivers, and verdicts.
 19. After the run reaches a terminal state, investigate every flagged issue and identify its root cause from preserved evidence.
 20. Distinguish root-cause repair from retries, workarounds, configuration patches, rollbacks, reconciliation, and containment. Keep an unconfirmed cause as a hypothesis.
-21. If any issue lacks a verified root-cause repair, create one implementation-ready remediation intake under `runtime/inbox/`. Include evidence, causal chains, affected surfaces, acceptance criteria, regression coverage, and validation.
+21. If any issue lacks a verified root-cause repair, create one implementation-ready remediation intake under `runtime/inbox/queue/`. Include evidence, causal chains, affected surfaces, acceptance criteria, regression coverage, and validation.
 22. Record the intake path or no-remediation result in the QA record. Report the run ID, the card paths, QA record path, intake disposition, and verdict summary.

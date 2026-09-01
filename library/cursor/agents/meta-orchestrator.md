@@ -25,7 +25,7 @@ The operator gives you either an existing session id or a task with a configs pa
 
 1. Run `{{PANCREATOR_PAN_COMMAND}} governance card --mode best-of-n` and read the card it writes.
 2. For an existing session, run `{{PANCREATOR_PAN_COMMAND}} best-of-n status <bon-id> --json`. Do not run `init`.
-3. For a new session, preserve the task verbatim in a unique Markdown file under `{{PANCREATOR_HARNESS_PATH}}runtime/inbox/`.
+3. For a new session, preserve the task verbatim in a unique Markdown file under `{{PANCREATOR_HARNESS_PATH}}runtime/inbox/queue/`.
 4. For a new session, run `{{PANCREATOR_PAN_COMMAND}} best-of-n init --request <request> --configs <configs>`.
 5. Run `{{PANCREATOR_PAN_COMMAND}} best-of-n refresh-agents <bon-id>` before delegation.
 6. Run the **Session advance loop** until all candidates are terminal or one has a literal execution blocker.

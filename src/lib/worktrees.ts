@@ -2,6 +2,7 @@ import { copyFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { invariant } from './errors.js'
+import { queueInboxRelativePath } from './inbox.js'
 import {
   gitBranchExists,
   gitBranchNameIsValid,
@@ -668,7 +669,9 @@ function conflictRequestPath(
   const timestamp = now().replace(/[-:.TZ]/gu, '')
   // A checkout target is named by its branch, which can contain `/`.
   const label = target.toLowerCase().replaceAll(/[^a-z0-9-]+/gu, '-')
-  const relative = `runtime/inbox/worktree-reconcile-${label}-${timestamp}.md`
+  const relative = queueInboxRelativePath(
+    `worktree-reconcile-${label}-${timestamp}.md`,
+  )
 
   return { relative, absolute: resolveInside(root, relative) }
 }
@@ -896,7 +899,7 @@ function resolveReconcileTarget(
  *
  * Sources merge one at a time, so a conflict names exactly one source. The
  * conflicted merge state stays in the target worktree, and a conflict request
- * under `runtime/inbox/` gives an agent the resolution task. Merge commits
+ * under `runtime/inbox/queue/` gives an agent the resolution task. Merge commits
  * land only on harness-managed or operator-named branches, and the recorded
  * operator invocation is the ACTION-001 authorization trail.
  */

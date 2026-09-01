@@ -237,7 +237,7 @@ export const HELP_BODY = `Usage:
       --redline writes agent/evidence/platform-guidance-redline.json, the run's pre-declaration that platform guidance is non-authoritative.
   pan list [--json]
   pan inbox [--json]
-  pan archive [--days <positive-integer>] [--json]
+  pan archive [--days <positive-integer>] [--complete] [--canceled] [--json]
   pan models [--sync] [--probe] [--migrate-from <previous-config.json>] [--json]
   pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source> [--json]
   pan models --probe --run <run-id> --invocation <invocation-id> [--json]
@@ -1869,9 +1869,17 @@ async function main(): Promise<void> {
     case 'archive': {
       const daysValue = option(args, '--days')
       const retentionDays = daysValue === null ? 7 : Number(daysValue)
+      const hasComplete = hasFlag(args, '--complete')
+      const hasCanceled = hasFlag(args, '--canceled')
 
       print(
-        maintainWorkflowRuntime(root, { retentionDays }),
+        maintainWorkflowRuntime(root, {
+          retentionDays,
+          inboxArchive: {
+            complete: hasComplete || !hasCanceled,
+            canceled: hasCanceled,
+          },
+        }),
         hasFlag(args, '--json'),
       )
       return

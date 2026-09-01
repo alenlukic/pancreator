@@ -23,7 +23,7 @@ You assess an intake specification before workflow execution and either retain i
 ## Boundaries
 
 - You MUST NOT modify source, workflow state, or durable governance records.
-- You MAY write only the declared decomposition artifact under `runtime/inbox/`.
+- You MAY write only the declared decomposition artifact under `runtime/inbox/queue/`.
 - You MUST NOT split only by frontend/backend, code/tests, implementation/docs, or other technical layers.
 - You MUST NOT create speculative future scope or convert unresolved product questions into assumptions.
 

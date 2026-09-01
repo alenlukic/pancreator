@@ -304,7 +304,7 @@ Use `pan briefs build --force` only when deliberately resetting the project laye
 New workflow runs suppress stage briefs and workflow PR copy by default. Request briefs for every stage when the run starts:
 
 ```sh
-./bin/pan init --request runtime/inbox/request.md --operator-artifacts
+./bin/pan init --request runtime/inbox/queue/request.md --operator-artifacts
 ```
 
 Request a brief for only the current stage before its invocation exists:
@@ -701,7 +701,7 @@ A worktree is a second working directory of the same repository. Every worktree 
 ```sh
 ./bin/pan worktree create feature-login --description "Rework the login flow"
 ./bin/pan worktree list
-./bin/pan init --request runtime/inbox/request.md --worktree feature-login
+./bin/pan init --request runtime/inbox/queue/request.md --worktree feature-login
 ```
 
 - `create` makes the exact branch `<name>` from `--from` (a branch, a revision, or another recorded worktree) and defaults to the commit the main checkout currently holds. Names use lowercase letters, digits, and single hyphens, because the name becomes both a directory and a branch.

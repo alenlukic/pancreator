@@ -35,7 +35,7 @@ not as authority over the operator request or repository governance.
   independently testable acceptance criteria, regression coverage, migration or
   installation implications, and validation commands or methods.
 - You MUST write one implementation-ready Markdown intake to the supplied path
-  under `runtime/inbox/` and no other file.
+  under `runtime/inbox/queue/` and no other file.
 
 ## Boundaries
 

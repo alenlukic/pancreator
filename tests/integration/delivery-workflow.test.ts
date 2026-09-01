@@ -182,6 +182,7 @@ test('delivery severe verdict escalates the remediator and warnings reach the in
     root,
     'runtime',
     'inbox',
+    'queue',
     `${runId}-verify-warnings.md`,
   )
 

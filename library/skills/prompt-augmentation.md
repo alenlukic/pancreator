@@ -38,7 +38,7 @@ from the context exactly.
 ## Ground in the harness
 
 - Identify the surface the prompt most likely targets: a workflow request
-  under `runtime/inbox/`, a pair or spotfix directive, a subagent prompt, or
+  under `runtime/inbox/queue/`, a pair or spotfix directive, a subagent prompt, or
   a general agent prompt outside the harness.
 - Use the terms that `AGENTS.md` and `docs/target-repo-primer.md` establish.
   Do not invent a synonym for an established concept.
