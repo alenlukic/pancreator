@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.10.1] - 2026-09-02
+
+### Fixed
+
+- Skip quiet capture for fresh build stamps, while preserving quiet capture for stale builds ([a2f96cb1](https://github.com/alenlukic/pancreator/commit/a2f96cb17937ef9549e1470fb78a32d5ffc0b57e)).
+
 ## [5.10.0] - 2026-09-01
 
 ### Changed
