@@ -40,6 +40,13 @@ acquire_lock() {
 }
 
 run_build() {
+  # The common path is already fresh. Check it directly so every pan command
+  # does not allocate run-quiet capture files before dispatch.
+  if PATH="$ROOT/node_modules/.bin:$PATH" \
+    "$ROOT/bin/build" --stamp-fresh; then
+    return
+  fi
+
   PATH="$ROOT/node_modules/.bin:$PATH" \
     "$ROOT/bin/run-quiet" -- "$ROOT/bin/build"
 }

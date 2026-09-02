@@ -245,6 +245,56 @@ test('run-built exits after the requested command completes', () => {
   }
 })
 
+test('run-built bypasses quiet capture when the build stamp is fresh', () => {
+  const fixture = createBuildScriptFixture()
+  const quietRunner = path.join(fixture.root, 'bin', 'run-quiet')
+
+  try {
+    const initial = spawnSync(
+      '/bin/bash',
+      [fixture.runBuilt, '--', '/usr/bin/true'],
+      {
+        cwd: fixture.root,
+        encoding: 'utf8',
+        env: fixture.env,
+      },
+    )
+
+    assert.equal(initial.status, 0, initial.stderr)
+
+    writeFileSync(quietRunner, '#!/usr/bin/env bash\nexit 91\n')
+    chmodSync(quietRunner, 0o755)
+
+    const fresh = spawnSync(
+      '/bin/bash',
+      [fixture.runBuilt, '--', '/usr/bin/true'],
+      {
+        cwd: fixture.root,
+        encoding: 'utf8',
+        env: fixture.env,
+      },
+    )
+
+    assert.equal(fresh.status, 0, fresh.stderr)
+
+    writeFileSync(path.join(fixture.root, 'package.json'), '{}\n')
+
+    const stale = spawnSync(
+      '/bin/bash',
+      [fixture.runBuilt, '--', '/usr/bin/true'],
+      {
+        cwd: fixture.root,
+        encoding: 'utf8',
+        env: fixture.env,
+      },
+    )
+
+    assert.equal(stale.status, 91, stale.stderr)
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
 test('nested build-only reuses the prepared build in the same root', () => {
   const fixture = createBuildScriptFixture()
   const second = createBuildScriptFixture()
