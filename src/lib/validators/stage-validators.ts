@@ -2747,7 +2747,6 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
 
 export function validateReleaseOutput(input: HandlerInput): HandlerResult {
   const issues: HandlerResult['issues'] = []
-  const workspaceRoot = workspaceRootFromInput(input)
   const value = readJson(path.join(input.root, input.targetPath)) as Record<
     string,
     unknown
