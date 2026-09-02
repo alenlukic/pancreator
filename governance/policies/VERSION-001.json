@@ -13,7 +13,9 @@
     "The release steward MUST update VERSION, package.json.version, the top-level and root package versions in package-lock.json, docs/embedded-installation.md current-version reference, and every other durable docs Markdown statement that explicitly represents the current Pancreator version. README.md carries no version.",
     "The release steward MUST populate release.versioning with current_version, recommendation, proposed_version, baseline_commit, rationale, compatibility, updated_files, and release_index_action. current_version is the committed release version before the candidate; proposed_version is the exact next version selected by the bump.",
     "VERSION, package.json.version, the package-lock.json versions, the latest versioned CHANGELOG.md entry, and validated version-bearing documentation MUST agree before the ship output is submitted.",
-    "The release steward MUST NOT edit release/index.json, create commits, push, publish, deploy, or invent the future release commit hash. release_index_action MUST explain that the immutable release commit is indexed only after that commit exists.",
+    "The release steward MUST create the immutable release commit before it edits release/index.json, then MUST create a separate release-index commit.",
+    "The release steward MUST use the shared local release phases for checkpoint, fetch, rebase, release commit, and index commit operations.",
+    "The release steward MUST NOT push, create or merge a pull request, publish, deploy, or invent a commit hash.",
     "When /pan-release finds no committed or worktree changes after the last release bump and no release candidate requiring regeneration, it MUST stop without modifying files or incrementing VERSION."
   ],
   "guidance_sources": [

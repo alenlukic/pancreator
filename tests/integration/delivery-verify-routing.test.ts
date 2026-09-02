@@ -4,27 +4,28 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
-  createRun,
   decideRun,
   getRunState,
   pauseRun,
   prepareInvocation,
   resumeRun,
   setRunStage,
-  submitOutput,
   waiveGate,
 } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
-import type { StageDefinition, StageOutput } from '../../src/lib/types.js'
+import type { StageOutput } from '../../src/lib/types.js'
 import {
+  attachTargetInstructionEvidence,
   createFixture,
+  createRun,
   makeAttestation,
   makeOutput,
   writeCanonicalDelegation,
   writeEvidenceReports,
   writeJson,
+  submitAsSupervisor,
 } from '../helpers.js'
 import {
   checkpoint,
@@ -32,33 +33,28 @@ import {
   submitStageOutput,
 } from './delivery-helpers.js'
 
-test('a scaled verification timeout preserves the environment-blocked route', () => {
+test('an infrastructure failure preserves the environment-blocked route', () => {
   const root = createFixture()
-  const configuredTimeoutMs = 1_000
-  const commandDelayMs = 1_500
-  const resolvedTimeoutMs = 5_000
 
-  // Under the light level the verify gate runs the fast profile, so both
-  // scenarios route through it.
-  for (const [stageFile, criterionId] of [
-    ['verify.json', 'verify.full_suite'],
-    ['implement.json', 'implement.unit_tests'],
-  ] as const) {
-    const stagePath = path.join(
-      root,
-      'library/workflows/delivery/stages',
-      stageFile,
-    )
-    const stageDefinition = JSON.parse(
-      readFileSync(stagePath, 'utf8'),
-    ) as StageDefinition
-    const criterion = stageDefinition.criteria.find(
-      (item) => item.id === criterionId,
-    )
-    assert.ok(criterion)
-    criterion.timeout_ms = resolvedTimeoutMs
-    writeJson(stagePath, stageDefinition)
+  // The environment-blocked route needs a failed baseline of the same
+  // profile, and only interior profiles are baselined. An operator level
+  // keeps the verify gate on fast so both scenarios route through it.
+  const configPath = path.join(root, 'config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  config.verification = {
+    active: 'infra-fast',
+    levels: {
+      'infra-fast': {
+        summary: 'Verify gate re-runs fast against the baseline.',
+        gates: { 'verify.full_suite': 'fast' },
+      },
+    },
   }
+  writeJson(configPath, config)
 
   const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
@@ -67,14 +63,12 @@ test('a scaled verification timeout preserves the environment-blocked route', ()
     title: 'Verification infrastructure fixture',
   })
   const environmentPath = path.join(root, 'runtime', 'environment.txt')
-  const completionPath = path.join(root, 'runtime', 'completed.txt')
   // The classifier anchors on artifact shapes, not keyword substrings, so the
   // command emits a real pytest collection error.
   const infrastructureCommand =
-    `node -e "const fs=require('node:fs'); ` +
-    `setTimeout(() => { const value=fs.readFileSync('runtime/environment.txt','utf8').trim(); ` +
-    `fs.appendFileSync('runtime/completed.txt',value+'\\n'); ` +
-    `console.error('ERROR collecting tests/integration '+value); process.exit(1) }, ${commandDelayMs})"`
+    `node -e "const fs=require('node:fs');` +
+    `const value=fs.readFileSync('runtime/environment.txt','utf8').trim();` +
+    `console.error('ERROR collecting tests/integration '+value);process.exit(1)"`
 
   writeFileSync(environmentPath, 'baseline\n')
   writeJson(path.join(root, 'runtime/repository-checks.json'), {
@@ -82,7 +76,6 @@ test('a scaled verification timeout preserves the environment-blocked route', ()
     profiles: {
       static: { probes: [], commands: ['node -e "process.exit(0)"'] },
       fast: {
-        timeout_ms: configuredTimeoutMs,
         probes: [],
         commands: [infrastructureCommand],
       },
@@ -100,39 +93,14 @@ test('a scaled verification timeout preserves the environment-blocked route', ()
     state.run_id,
     stageBySlug(workflow, 'implement'),
     'success',
+    [],
+    // Compliant read evidence keeps the pre-gate validators green, so the
+    // implement gate executes instead of being skipped.
+    (output) => attachTargetInstructionEvidence(root, output, ['AGENTS.md']),
   )
   const fastBaseline = getRunState(root, state.run_id)
     .repository_check_baselines?.fast
   assert.ok(fastBaseline)
-  const baselineResult = JSON.parse(
-    readFileSync(path.join(root, fastBaseline.artifact_path), 'utf8'),
-  ) as {
-    result: {
-      timeout_ms: number
-      results: Array<{
-        kind: string
-        exit_code: number | null
-        stderr: string
-        timed_out: boolean
-        duration_ms: number
-      }>
-    }
-  }
-  const baselineCommand = baselineResult.result.results.find(
-    (result) => result.kind === 'command',
-  )
-
-  assert.ok(baselineCommand)
-  assert.equal(baselineResult.result.timeout_ms, resolvedTimeoutMs)
-  assert.ok(baselineCommand.duration_ms > configuredTimeoutMs)
-  assert.equal(baselineCommand.timed_out, false)
-  assert.equal(baselineCommand.exit_code, 1)
-  assert.match(
-    baselineCommand.stderr,
-    /ERROR collecting tests\/integration baseline/u,
-  )
-  // Baseline capture plus the implement gate's own fast run.
-  assert.equal(readFileSync(completionPath, 'utf8'), 'baseline\nbaseline\n')
 
   writeFileSync(environmentPath, 'current\n')
   setRunStage(root, state.run_id, 'verify', 'Recheck the QA infrastructure.')
@@ -149,10 +117,6 @@ test('a scaled verification timeout preserves the environment-blocked route', ()
 
   assert.equal(fullSuite?.timed_out, false)
   assert.equal(fullSuite?.command, 'pan repository-check fast')
-  assert.equal(
-    readFileSync(completionPath, 'utf8'),
-    'baseline\nbaseline\ncurrent\n',
-  )
   assert.equal(fullSuite?.environment_blocked, true)
   assert.equal(submitted.record.outcome, 'failure')
   assert.equal(submitted.state.status, 'paused')
@@ -421,7 +385,7 @@ test('governance and artifact defects are advisory before ship and never loop to
     },
   })
 
-  const submitted = submitOutput(root, runId, invocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
   assert.equal(submitted.record.outcome, 'success')
   assert.equal(submitted.state.current_stage, 'ship')
@@ -453,14 +417,17 @@ test('ship owns governance artifact review and pauses instead of looping to impl
   setRunStage(root, runId, 'ship', 'Exercise ship-stage escalation.')
   const invocation = prepareInvocation(root, runId).invocation
   assert.ok(invocation)
-  writeJson(path.join(root, invocation.output.path), {
-    schema_version: 1,
-    invocation_id: invocation.invocation_id,
-    result: 'success',
-    invocation_attestation: makeAttestation(invocation),
-  })
+  const output = makeOutput(
+    root,
+    invocation,
+    stageBySlug(loadWorkflow(root, 'delivery'), 'ship'),
+    'success',
+    getRunState(root, runId),
+  )
 
-  const submitted = submitOutput(root, runId, invocation.output.path)
+  writeJson(path.join(root, invocation.output.path), output)
+
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
   assert.equal(submitted.record.outcome, 'failure')
   // Ship carries an operator gate, so a failure stops for a decision first.
@@ -512,7 +479,7 @@ test('a required implement validator failure blocks the stage transition', () =>
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
 
-  const submitted = submitOutput(root, runId, invocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
   assert.equal(submitted.record.outcome, 'failure')
   assert.notEqual(submitted.state.current_stage, 'verify')

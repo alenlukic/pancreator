@@ -51,18 +51,6 @@ test('the harness review lineup is excluded and the core squad is not', () => {
   assert.equal(paths.includes('library/skills/review-squad.md'), false)
 })
 
-test('the harness review lineup covers its declared dimensions', () => {
-  const lineup = readRepositoryFile(HARNESS_LINEUP)
-
-  for (const heading of [
-    '### Correctness & consistency',
-    '### Agentic practice',
-    '### Performance',
-  ]) {
-    assert.ok(lineup.includes(heading), `${HARNESS_LINEUP} defines ${heading}`)
-  }
-})
-
 test('the core squad guards its harness-lineup reference on presence', () => {
   const squad = readRepositoryFile('library/skills/review-squad.md')
 

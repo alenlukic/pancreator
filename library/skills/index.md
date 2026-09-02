@@ -13,6 +13,8 @@ recurring job. Read the skill relevant to your current step.
 - [`evaluate-evidence.md`](evaluate-evidence.md) - judge whether evidence
   supports a criterion.
 - [`scope-control.md`](scope-control.md) - keep a change minimal and bounded.
+- [`prompt-augmentation.md`](prompt-augmentation.md) - augment an operator
+  prompt for one-shot execution.
 - [`spotfix.md`](spotfix.md) - execute or escalate one operator-selected lightweight change.
 - [`shepherd-pr.md`](shepherd-pr.md) - watch one GitHub PR for review feedback,
   judge it, implement what survives, and gate each push through the review

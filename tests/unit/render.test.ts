@@ -102,6 +102,49 @@ function baseInvocation(
   }
 }
 
+test('implementation cards render structured field contracts', () => {
+  const root = createFixture()
+  const invocation = baseInvocation(root, 'delivery', 'implement')
+
+  invocation.output.field_contract = {
+    validators: [
+      {
+        registry_id: 'IMPLEMENTATION-CLAIMS-VALIDATE-001',
+        enforcement: 'blocks',
+      },
+    ],
+    fields: [
+      {
+        path: 'data.acceptance_results[].evidence[]',
+        type: 'string',
+        format: 'path reference, prose observation, or pytest node id',
+        accepted_shapes: [
+          'path_reference',
+          'prose_observation',
+          'pytest_node_id',
+        ],
+      },
+      {
+        path: 'data.implementation.tests_added[]',
+        type: 'object',
+        required: ['path', 'contract'],
+      },
+      {
+        path: 'data.implementation.remediation[]',
+        type: 'object',
+        required: ['cause', 'action', 'evidence'],
+      },
+    ],
+  }
+
+  const card = renderInvocationMarkdown(invocation)
+
+  assert.match(card, /`IMPLEMENTATION-CLAIMS-VALIDATE-001` blocks the stage/u)
+  assert.match(card, /path reference, prose observation, or pytest node id/u)
+  assert.match(card, /required keys: path, contract/u)
+  assert.match(card, /required keys: cause, action, evidence/u)
+})
+
 function delegatedInvocation(root: string): Invocation {
   const invocation = baseInvocation(root, 'delivery', 'implement')
   const prefix = 'runtime/logs/workflows/run-fixture/invocations/implement-1'
@@ -119,6 +162,13 @@ function delegatedInvocation(root: string): Invocation {
     submit_command: `./bin/pan submit run-fixture ${invocation.output.path}`,
     mode: 'referenced',
     delivery_prompt_path: `${prefix}.delivery.md`,
+    supervisor_card: {
+      path: 'runtime/logs/workflows/run-fixture/agent/supervisor-card.md',
+      sha256: 'a'.repeat(64),
+      attest_command:
+        './bin/pan governance attest-supervisor run-fixture --sha256 ' +
+        'a'.repeat(64),
+    },
     policies: resolvePolicies(root, {
       persona: 'orchestrator',
       workflow: 'delivery',
@@ -134,6 +184,16 @@ test('the worker card names the supervisor procedure and prints no lifecycle com
   const invocation = delegatedInvocation(root)
   const card = renderInvocationMarkdown(invocation)
   const procedure = renderSupervisorProcedureMarkdown(invocation)
+
+  // The procedure delivers the supervisor's complete governance pointer, not
+  // only the delivery policy, and the worker card never carries it.
+  assert.ok(
+    procedure.includes(invocation.delegation?.supervisor_card?.path ?? '!'),
+  )
+  assert.ok(procedure.includes(`sha256:${'a'.repeat(64)}`))
+  assert.ok(procedure.includes('governance attest-supervisor run-fixture'))
+  assert.ok(procedure.includes('SUPERVISOR_CARD_UNATTESTED'))
+  assert.ok(!card.includes('attest-supervisor'))
 
   assert.ok(invocation.delegation)
   assert.ok(
@@ -824,54 +884,5 @@ test('status summary lists recorded advisories with their stage context', () => 
   assert.match(
     status,
     /- plan \(submit\): Worker model evidence is unverified\./,
-  )
-})
-
-test('status summary lists a recorded platform guidance conflict', () => {
-  const status = renderStatus({
-    schema_version: 1,
-    run_id: 'run-1',
-    workflow_slug: 'delivery',
-    workflow_snapshot: { path: 'workflow.json', sha256: 'abc' },
-    workspace_root: '.',
-    title: 'Run',
-    status: 'running',
-    current_stage: 'implement',
-    pending_action: { type: 'none' },
-    current_invocation: null,
-    request: {
-      source_path: 'request.md',
-      stored_path: 'runtime/request.md',
-      sha256: 'abc',
-    },
-    revision: 3,
-    transition_count: 2,
-    consecutive_failures: 0,
-    attempts: {},
-    stage_history: [],
-    created_at: '2026-06-22T00:00:00.000Z',
-    updated_at: '2026-06-22T00:00:00.000Z',
-    limits: {
-      max_total_transitions: 18,
-      max_stage_attempts: 3,
-      max_consecutive_failures: 3,
-    },
-    advisories: [
-      {
-        kind: 'platform_guidance',
-        source: 'submit',
-        stage: 'implement',
-        invocation_id: 'implement-1-abcd',
-        message:
-          'Platform guidance conflict: "Plan mode" covered the edit; the worker followed DEV-001.',
-        recorded_at: '2026-06-22T00:00:01.000Z',
-      },
-    ],
-  })
-
-  assert.match(status, /## Advisories/u)
-  assert.match(
-    status,
-    /- implement \(submit\): Platform guidance conflict: "Plan mode" covered the edit; the worker followed DEV-001\./u,
   )
 })

@@ -11,20 +11,18 @@ import {
   initBestOfN,
 } from '../../src/lib/best-of-n.js'
 import type { BestOfNState } from '../../src/lib/best-of-n.js'
-import {
-  assessStage,
-  prepareInvocation,
-  submitOutput,
-} from '../../src/lib/engine.js'
+import { assessStage, prepareInvocation } from '../../src/lib/engine.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import type { StageOutput } from '../../src/lib/types.js'
 import {
+  attestRunCard,
   createFixture,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
   cloneTree as cloneSharedTree,
+  submitAsSupervisor,
 } from '../helpers.js'
 
 export const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
@@ -100,6 +98,9 @@ export function submitCandidateStage(
   mutate?: (output: StageOutput) => void,
 ) {
   const workflow = loadWorkflow(root, 'delivery-candidate')
+
+  attestRunCard(root, runId)
+
   const prepared = prepareInvocation(root, runId)
   const invocation = prepared.invocation
 
@@ -116,7 +117,7 @@ export function submitCandidateStage(
     writeCanonicalDelegation(root, invocation)
   }
 
-  const submitted = submitOutput(root, runId, invocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
   assert.equal(
     submitted.record.outcome,

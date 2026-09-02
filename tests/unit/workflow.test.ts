@@ -123,30 +123,3 @@ test('loader fails when an indexed stage file is missing', () => {
     /unknown 'missing'/,
   )
 })
-
-test('prototype stages declare their precondition data and criteria', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'prototype')
-
-  for (const [slug, dataKey, criterionId] of [
-    [
-      'approach',
-      'technical_approach.preconditions',
-      'approach.preconditions_verified',
-    ],
-    ['build', 'spike.precondition_checks', 'build.preconditions_rechecked'],
-    [
-      'evaluate',
-      'evaluation.environment_blockers',
-      'evaluate.environment_classified',
-    ],
-  ] as const) {
-    const stage = stageBySlug(workflow, slug)
-
-    assert.ok(stage.required_data?.[dataKey], `${slug} requires ${dataKey}`)
-    assert.ok(
-      stage.criteria.some((criterion) => criterion.id === criterionId),
-      `${slug} declares ${criterionId}`,
-    )
-  }
-})

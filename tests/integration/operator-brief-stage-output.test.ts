@@ -3,19 +3,15 @@ import { existsSync, readFileSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import {
-  createRun,
-  decideRun,
-  prepareInvocation,
-  submitOutput,
-} from '../../src/lib/engine.js'
-import { resolveRunLayout } from '../../src/lib/run-layout.js'
+import { decideRun, prepareInvocation } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
+  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
+  submitAsSupervisor,
 } from '../helpers.js'
 import { BRIEFS, checkpoint } from './delivery-helpers.js'
 
@@ -102,7 +98,7 @@ test('new runs suppress briefs while explicit run and stage requests enable them
 
   writeJson(path.join(root, stageInvocation.output.path), stageOutput)
   writeCanonicalDelegation(root, stageInvocation)
-  submitOutput(root, stageRequested.run_id, stageInvocation.output.path)
+  submitAsSupervisor(root, stageRequested.run_id, stageInvocation.output.path)
   decideRun(root, stageRequested.run_id, 'approve')
 
   const laterInvocation = prepareInvocation(
@@ -113,23 +109,6 @@ test('new runs suppress briefs while explicit run and stage requests enable them
   assert.ok(laterInvocation)
   assert.equal(laterInvocation.stage.slug, 'implement')
   assert.equal(laterInvocation.output.operator_brief, undefined)
-})
-
-test('legacy run state without artifact selection keeps briefs enabled', () => {
-  const root = createFixture()
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-  })
-  const layout = resolveRunLayout(root, state.run_id)
-  const legacy = { ...state } as Record<string, unknown>
-
-  delete legacy.operator_artifacts
-  writeJson(layout.state.absolute, legacy)
-
-  const invocation = prepareInvocation(root, state.run_id).invocation
-
-  assert.ok(invocation?.output.operator_brief)
 })
 
 test('submission rerenders the invocation-declared HTML brief from JSON', () => {
@@ -152,7 +131,7 @@ test('submission rerenders the invocation-declared HTML brief from JSON', () => 
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
 
-  const submitted = submitOutput(root, runId, invocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
   assert.equal(existsSync(htmlPath), true)
   assert.match(readFileSync(htmlPath, 'utf8'), /class="pc-brief"/u)

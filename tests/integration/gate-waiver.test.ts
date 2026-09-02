@@ -7,38 +7,30 @@ import test from 'node:test'
 import {
   abortRun,
   assessStage,
-  createRun,
   getRunState,
   pauseRun,
   prepareInvocation,
   setRunStage,
-  submitOutput,
   waiveGate,
 } from '../../src/lib/engine.js'
-import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
+import { stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
+  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
+  submitAsSupervisor,
 } from '../helpers.js'
 import { checkpoint, failingVerify } from './delivery-helpers.js'
 
 test('explicit gate waiver advances a bounded miss and tracks its spotfix case', () => {
-  const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Gate waiver fixture',
-  })
-  const runId = state.run_id
-
-  setRunStage(root, runId, 'implement', 'Initialize tracked workspace state.')
-  prepareInvocation(root, runId)
-  setRunStage(root, runId, 'verify', 'Exercise operator gate waiver flow.')
-
-  const verifyInvocation = prepareInvocation(root, runId).invocation
+  const {
+    root,
+    workflow,
+    runId,
+    invocation: verifyInvocation,
+  } = checkpoint('delivery@verify-prepared')
 
   assert.ok(verifyInvocation)
 
@@ -60,7 +52,7 @@ test('explicit gate waiver advances a bounded miss and tracks its spotfix case',
   writeJson(path.join(root, verifyInvocation.output.path), verifyOutput)
   writeCanonicalDelegation(root, verifyInvocation)
 
-  const verified = submitOutput(root, runId, verifyInvocation.output.path)
+  const verified = submitAsSupervisor(root, runId, verifyInvocation.output.path)
 
   assert.equal(verified.record.outcome, 'failure')
   assert.equal(verified.state.current_stage, 'remediate')
@@ -112,7 +104,7 @@ test('explicit gate waiver advances a bounded miss and tracks its spotfix case',
   writeJson(path.join(root, shipInvocation.output.path), shipOutput)
   writeCanonicalDelegation(root, shipInvocation)
 
-  const shipped = submitOutput(root, runId, shipInvocation.output.path)
+  const shipped = submitAsSupervisor(root, runId, shipInvocation.output.path)
   const priorGates = shipped.record.evaluation.deterministic.find(
     (criterion) => criterion.id === 'ship.prior_gates_current',
   )
@@ -204,7 +196,7 @@ test('gate waivers honor partial scope after workspace drift', () => {
 
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
-  const failed = submitOutput(root, runId, invocation.output.path)
+  const failed = submitAsSupervisor(root, runId, invocation.output.path)
 
   assert.equal(failed.state.current_stage, 'remediate')
 
@@ -259,7 +251,7 @@ test('explicit product failure remains blocking even when its governance output 
 
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
-  const submitted = submitOutput(root, runId, invocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
   assert.equal(submitted.record.outcome, 'failure')
   assert.equal(submitted.state.current_stage, 'remediate')

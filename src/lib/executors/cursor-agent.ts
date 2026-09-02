@@ -10,6 +10,68 @@ export function cursorAgentBinary(): string {
   return process.env.PANCREATOR_CURSOR_AGENT_BIN?.trim() || 'cursor-agent'
 }
 
+const HELP_TIMEOUT_MS = 10_000
+/** Flags the installed CLI declares, cached per binary for the process. */
+const declaredFlags = new Map<string, Set<string> | null>()
+
+/**
+ * Whether the installed `cursor-agent` accepts an optional flag.
+ *
+ * Cursor removes options between releases. Run 63310 genre-label lost every
+ * worker model probe to `unknown option '--mode'`; the next run lost them to
+ * `unknown option '--trust'` and took the away-mode evaluator down with them,
+ * so an operator-owned ratification silently became a supervisor stand-in.
+ * Every optional flag has to be asked for rather than assumed.
+ *
+ * An unreadable help output keeps the documented argument form: a capability
+ * check that fails closed would strip flags a working CLI needs.
+ */
+export function cursorAgentSupportsFlag(
+  flag: string,
+  env?: NodeJS.ProcessEnv,
+): boolean {
+  const binary = cursorAgentBinary()
+
+  if (!declaredFlags.has(binary)) {
+    const help = spawnSync(binary, ['--help'], {
+      encoding: 'utf8',
+      input: '',
+      timeout: HELP_TIMEOUT_MS,
+      ...(env ? { env } : {}),
+    })
+
+    declaredFlags.set(
+      binary,
+      help.error || typeof help.stdout !== 'string'
+        ? null
+        : new Set(
+            [...help.stdout.matchAll(/(--[a-z0-9][a-z0-9-]*)/gu)].map(
+              (match) => match[1],
+            ),
+          ),
+    )
+  }
+
+  const flags = declaredFlags.get(binary) ?? null
+
+  return flags === null ? true : flags.has(flag)
+}
+
+/** Reset the cached capability read. Tests install different fake CLIs. */
+export function resetCursorAgentCapabilities(): void {
+  declaredFlags.clear()
+}
+
+/** Keep only the optional flags the installed CLI declares. */
+export function withSupportedFlags(
+  pairs: Array<[string, ...string[]]>,
+  env?: NodeJS.ProcessEnv,
+): string[] {
+  return pairs.flatMap((pair) =>
+    cursorAgentSupportsFlag(pair[0], env) ? pair : [],
+  )
+}
+
 export interface CursorAgentRequest {
   prompt: string
   cwd: string
@@ -129,10 +191,10 @@ function runCursorAgent(
   const argv = ['-p', '--output-format', 'stream-json']
 
   if (options.toolFree) {
-    argv.push('--mode', 'ask')
+    argv.push(...withSupportedFlags([['--mode', 'ask']]))
   }
 
-  argv.push('--trust')
+  argv.push(...withSupportedFlags([['--trust']]))
 
   if (request.model) {
     argv.push('--model', request.model)

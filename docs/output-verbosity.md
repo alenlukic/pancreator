@@ -34,6 +34,9 @@ Test scripts run `node --test` with the failures-only reporter at
 `tests/reporters/failures-only.ts`. The reporter prints one block per failed
 test, with its name, location, and error, and then the run summary. It prints
 nothing for a passing test, so a failing run replays only the failures.
+`./bin/pan tests impacted` (`npm run test:impacted`) runs the same reporter over
+only the lane tests the changed files reach; `--list` prints the selection
+without a run.
 
 Set `PAN_VERBOSE=1` to stream command output while diagnosing a problem:
 

@@ -63,12 +63,12 @@
       "timeout_ms": 240000
     },
     {
-      "id": "implement.unit_tests",
+      "id": "remediate.full_suite",
       "type": "shell",
       "hard": true,
-      "statement": "Configured repository fast checks pass.",
-      "command": "pan repository-check fast",
-      "timeout_ms": 300000
+      "statement": "The verification suite selected by the run's verification level passes once the remediation is ready to ship.",
+      "command": "pan repository-check full",
+      "timeout_ms": 600000
     }
   ],
   "transitions": {

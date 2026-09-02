@@ -1,5 +1,243 @@
 # Changelog
 
+## [5.10.1] - 2026-09-02
+
+### Fixed
+
+- Skip quiet capture for fresh build stamps, while preserving quiet capture for stale builds ([a2f96cb1](https://github.com/alenlukic/pancreator/commit/a2f96cb17937ef9549e1470fb78a32d5ffc0b57e)).
+
+## [5.10.0] - 2026-09-01
+
+### Changed
+
+- Move inbox items through `queue`, `active`, `complete`, and `canceled` status directories ([inbox](src/lib/inbox.ts), [engine](src/lib/engine.ts)).
+- Write new unactioned items to `runtime/inbox/queue` ([52404951](src/lib/inbox.ts)).
+- Keep `pan inbox` on queue items and preserve its table and JSON fields ([inbox](src/lib/inbox.ts)).
+- Archive expired complete items from the complete directory by default ([workflow-artifacts](src/lib/workflow-artifacts.ts)).
+
+### Added
+
+- Add `--complete` and `--canceled` so `pan archive` can select terminal inbox statuses ([cli](src/cli.ts)).
+- Classify legacy direct inbox files into status directories during runtime maintenance ([inbox](src/lib/inbox.ts)).
+
+### Fixed
+
+- Recover a missing active item from stored run evidence before a terminal move ([inbox](src/lib/inbox.ts)).
+- Restore a failed claim to the exact original path, including a legacy path ([engine](src/lib/engine.ts)).
+
+## [5.9.0] - 2026-09-01
+
+### Changed
+
+- Accept documented test lanes as DEMOTE destinations in `/pan-tune-harness`, TUNE-001, and the testing handbook ([test-tuning](src/lib/test-tuning.ts), [TUNE-001](governance/policies/TUNE-001.json)).
+- Apply the first tune-harness audit: remove 16 redundant tests and fold 38 tests that overlap into survivors ([e1371b07](https://github.com/alenlukic/pancreator/commit/e1371b077e7a8cfc6eecd34774c074479cfb36c5)).
+- Point ordinary installer tests at one memoized indexed release fixture. Keep an explicit `--pancreator-root` override ([install-helpers](tests/secondary/install-helpers.ts)).
+- Guard the CLI entrypoint so an import of `HELP_BODY` does not run `main` ([cli](src/cli.ts)).
+
+### Added
+
+- Add secondary-lane coverage for installer and compiled projection renderer parity ([projection test](tests/secondary/projection.test.ts)).
+
+### Fixed
+
+- Restore unique contracts that the first audit pass dropped. Cover DEMOTE validator branches and suite-profile attachment ([e1371b07](https://github.com/alenlukic/pancreator/commit/e1371b077e7a8cfc6eecd34774c074479cfb36c5)).
+- Change installer fixture versions through parsed JSON instead of blanket text replacement ([install-helpers](tests/secondary/install-helpers.ts)).
+
+## [5.8.0] - 2026-09-01
+
+### Changed
+
+- Isolate target mutations in a named managed worktree and restore a clean recorded branch before the first write ([worktrees](src/lib/worktrees.ts)).
+- Bind each delivery run to one managed worktree and reject a later selection that differs ([engine](src/lib/engine.ts)).
+- Keep existing worktree records and their registered branches. Use the worktree name as the branch only for new worktrees ([worktrees](src/lib/worktrees.ts)).
+- Limit Pancreator fallback PR copy to Summary and Changelist. Keep target templates authoritative ([PR-001](governance/policies/PR-001.json), [pr-description](src/lib/pr-description.ts)).
+- Move self-development release preparation through local sync, continue, and finalize before any remote action ([VERSION-001](governance/policies/VERSION-001.json), [SHIP-001](governance/policies/SHIP-001.json)).
+- Document `/pan-release` as the local release sequence that ends with PR copy ([README](README.md), [pan-release](library/cursor/commands/pan-release.md)).
+
+### Added
+
+- Add `pan release sync`, `pan release continue`, and `pan release finalize` for local release preparation ([release-preparation](src/lib/release-preparation.ts)).
+- Add worktree checks for classified target-mutating commands ([command_governance](governance/registries/command_governance.json)).
+
+### Fixed
+
+- Fix release continuation so an active rebase does not restore the recorded branch too early ([release-preparation](src/lib/release-preparation.ts)).
+- Fix named PR validator resolution when invocation precomputation is absent ([requirements](src/lib/requirements/run.ts)).
+
+## [5.7.0] - 2026-09-01
+
+### Changed
+
+- Copy the recognized local override into a new self-development worktree before setup ([worktrees](src/lib/worktrees.ts)).
+- Read mutable release Git history, VERSION, metadata, and source diffs from the selected workspace ([stage-validators](src/lib/validators/stage-validators.ts)).
+
+### Added
+
+- Add the `/pan-augment` command and prompt-augmentation skill files ([2f27af7c](library/cursor/commands/pan-augment.md), [prompt-augmentation](library/skills/prompt-augmentation.md)).
+
+## [5.6.0] - 2026-08-31
+
+### Changed
+
+- Extend policy STE-001 so chat reports use simple language, banned jargon, and required issue and outcome shapes ([STE-001](governance/policies/STE-001.json), [handbook](governance/handbooks/writing/simplified-technical-english.md)).
+- Point the orchestrator persona to policy STE-001 for the chat-report shape ([orchestrator](library/personas/orchestrator.md)).
+- Replace `load-bearing` with `critical` in the verifier persona and both verify prompts ([verifier](library/personas/verifier.md), [delivery verify](library/workflows/delivery/prompts/verify.md), [metacritic verify](library/workflows/metacritic/prompts/verify.md)).
+- Register `/pan-augment` as a read-only command ([67f8bf4c](governance/registries/command_governance.json)).
+
+### Added
+
+- Add `/pan-augment` and the prompt-augmentation skill so an operator can expand one prompt in one shot ([67f8bf4c](library/cursor/commands/pan-augment.md), [prompt-augmentation](library/skills/prompt-augmentation.md)).
+
+## [5.5.0] - 2026-08-31
+
+### Changed
+
+- Preserve target-owned extensions through refresh, repair, and indexed update ([target-authoring](src/lib/target-authoring.ts), [install](bin/install)).
+- Permit binding-only policy lookup rows for target-authored artifacts ([policies](src/lib/policies.ts)).
+- Scope `TS-001` to TypeScript coding contexts in target installations ([policy_lookup_table.json](governance/registries/policy_lookup_table.json)).
+
+### Added
+
+- Add `/pan-author` so operators can author target commands, skills, and personas ([pan-author](library/cursor/commands/pan-author.md), [target-authoring](src/lib/target-authoring.ts)).
+- Add `author` and `target` governance card modes for authored artifacts ([governance-card](src/lib/governance-card.ts)).
+- Add `TARGET-AUTHORING-VALIDATE-001` for installed target extensions ([validation_registry.json](governance/registries/validation_registry.json)).
+- Add an empty `target-extensions/` root to the install payload ([target-extensions/.gitkeep](target-extensions/.gitkeep)).
+
+### Removed
+
+- Remove `docs/test-audit-2026-08-29.md` after the 5.4.0 release (commit `65617f5195f7b427974b7a83fedba42e747bb1b3`).
+
+## [5.4.0] - 2026-08-31
+
+### Changed
+
+- Extend read-only command governance so one entry can name a required card mode ([command_governance.json](governance/registries/command_governance.json), [command-coverage](src/lib/governance/command-coverage.ts)).
+- Scope repository validation so self-development audits stay out of an embedded install ([77b7279b](src/lib/validation.ts)).
+- Treat an explicit `pan repository-check --timeout-ms` as the bound for the whole profile ([0b358a58](src/lib/repository-checks.ts)).
+
+### Added
+
+- Add `governance/handbooks/eng/testing.md`, `TEST-001`, and self-development persona bindings for the test standard ([testing handbook](governance/handbooks/eng/testing.md), [TEST-001](governance/policies/TEST-001.json)).
+- Add `/pan-tune-harness`, the `tune-harness` standalone mode, `TUNE-001`, `pan tune` CLI commands, and archive-independent records under `runtime/tune-harness/` ([test-tuning](src/lib/test-tuning.ts), [TUNE-001](governance/policies/TUNE-001.json), [pan-tune-harness](library/cursor/commands/pan-tune-harness.md)).
+- Add inventory and fixture sidecar reporters, complete suite-profile timings, and `TUNE-RECORD-VALIDATE-001` ([inventory reporter](tests/reporters/inventory.ts), [failures-only](tests/reporters/failures-only.ts), [tune-record validator](src/lib/validators/tune-record.ts)).
+- Add the worked audit for the `c1cc09c2..96c5b639` test set ([docs/test-audit-2026-08-29.md](docs/test-audit-2026-08-29.md)).
+
+### Removed
+
+- Remove the resolved `docs/issues/` records and keep `.gitkeep` ([9cdee2f8](docs/issues/.gitkeep)).
+
+### Fixed
+
+- Fix historical baseline inventory so `pan tune validate-audit` reports 513 identities from a detached worktree ([test-tuning](src/lib/test-tuning.ts)).
+- Consume each fixture sidecar once so a repeated profiled run does not double-count cost ([failures-only](tests/reporters/failures-only.ts)).
+- Compare graph-build cost with process CPU time so coverage contention does not fail the gate ([test-impact](tests/unit/test-impact.test.ts)).
+- Tighten installer payload hygiene and the embedded-install leakage guard ([b69eabe4](bin/install), [77b7279b](tests/secondary/embedded-installation.test.ts)).
+
+## [5.3.1] - 2026-08-30
+
+### Changed
+
+- Arm the watch in the launch turn on every supervisor-facing surface. The orchestrator brief, `/pan-start`, and `/pan-resume` now match the rendered procedure: pick `--mark-background`, `--foreground-returned`, or a blocking watch from the launch outcome, and re-run with `--agent-state` when the watch exits `unverified` ([572ff142](library/personas/orchestrator.md), [pan-start](library/cursor/commands/pan-start.md), [pan-resume](library/cursor/commands/pan-resume.md), [regression](tests/regression/supervisor-delegation-contract.test.ts)).
+
+### Fixed
+
+- State only the watch-flag refusals the CLI enforces. The rendered procedure no longer claims a wrong flag fails loudly for mismatches the harness does not reject ([572ff142](src/lib/render.ts)).
+- Record the current release-index membership in the primer. The index already maps 4.0.0 through 5.3.0 ([2d27a496](release/index.json), [dc82b8c3](release/index.json), [primer](docs/target-repo-primer.md)).
+
+## [5.3.0] - 2026-08-30
+
+### Changed
+
+- Prefill every scaffolded criterion as `unevaluated`. Submission rejects that value and names the criterion ([scaffold](src/lib/requirements/scaffold.ts), [validation](src/lib/validation.ts), [schema](library/schemas/stage-output.schema.json)).
+- Permit `skipped` only on a blocked output or a failed shell criterion. Forbid it on success ([validation](src/lib/validation.ts)).
+- Declare every plan and verify field shape in the shared registry. Check each `enforced_fields` reference ([field contract](library/schemas/stage-output-requirements.json), [stage-validators](src/lib/validators/stage-validators.ts)).
+- Classify gate evidence as `clean_pass` or `baseline_relative_acceptance`. Show the raw exit code and the carried-failure state ([context](src/lib/context.ts), [render](src/lib/render.ts)).
+- Validate a blocked verify output from `blocking_reason` and `missing_evidence_paths` only. Reject product-verdict fields ([stage-validators](src/lib/validators/stage-validators.ts)).
+- Promote unevaluated and skipped-on-success errors so submission fails before shell gates run ([engine](src/lib/engine.ts)).
+- State the narrow watch completion rule and the residual risk in `DELEGATE-001` ([DELEGATE-001](governance/policies/DELEGATE-001.json)).
+- Place `DELEGATE-001` on the delegation procedure. Arm the watch in the launch turn without a condition ([engine](src/lib/engine.ts), [render](src/lib/render.ts), [de517582](src/lib/engine.ts)).
+- Refuse an early output as `unverified` unless agent state is completed. Record `terminal_basis` on every completed wake ([watch](src/lib/watch.ts), [bb87b426](src/lib/watch.ts)).
+- Treat an untouched scaffold as nonterminal. A pending attestation also marks a scaffold ([scaffold](src/lib/requirements/scaffold.ts), [watch](src/lib/watch.ts), [de517582](src/lib/watch.ts)).
+- Pass only optional Cursor flags that the installed CLI declares ([cursor-agent](src/lib/executors/cursor-agent.ts), [de517582](src/lib/executors/cursor-agent.ts)).
+- Name evidence workers first in the operator next action when the invocation declares them ([render](src/lib/render.ts)).
+- State the six primer labels in `PRIMER-001`. Build the validator patterns from those labels ([PRIMER-001](governance/policies/PRIMER-001.json), [primer validator](src/lib/validators/target-repo-primer.ts), [bb87b426](src/lib/validators/target-repo-primer.ts)).
+
+### Added
+
+- Add `docs/issues/` with the output-contract intake and the out-of-band adjustment record ([e74a8c60](docs/issues/harness-repair-20260830T164220Z-output-contracts-and-gate-evidence.md), [adjustment record](docs/issues/20260830T164220Z-out-of-band-harness-adjustments-against-main.md)).
+- Add `--agent-state` to `pan watch` and the `unverified` exit ([watch](src/lib/watch.ts), [cli](src/cli.ts), [bb87b426](src/cli.ts)).
+- Add a late-supervision advisory when the watch arm delay exceeds 60 seconds ([watch](src/lib/watch.ts), [de517582](src/lib/watch.ts)).
+- Add `writeFixtureCursorCatalog` so model-evidence tests do not read the operator catalog ([helpers](tests/helpers.ts), [bb87b426](tests/helpers.ts)).
+
+### Fixed
+
+- Stop an unevaluated success output from advancing to ship ([engine](src/lib/engine.ts), [delivery-gates](tests/integration/delivery-gates.test.ts)).
+- Stop a blocked verify output from raising false required-data errors for forbidden product fields ([validation](src/lib/validation.ts)).
+- Remove the duplicate `qa_cases[].steps` field declaration ([field contract](library/schemas/stage-output-requirements.json)).
+- Classify a passed baseline as a clean pass ([context](src/lib/context.ts)).
+
+## [5.2.0] - 2026-08-29
+
+### Changed
+
+- Enforce the platform-guidance redline. Each `pan governance attest-supervisor` opens a supervisor session generation in `state.supervisor_card.session_generation`. Every attestation increments it, including a resume that re-attests an unchanged digest. Each redline declaration records the generation it was written under. `pan prepare` and `pan submit` refuse with `REDLINE_MISSING` until the record carries a declaration for the current generation. The attest command's output names the redline command as the next step ([supervisor-card](src/lib/governance/supervisor-card.ts), [watch](src/lib/watch.ts), [cli](src/cli.ts), [OPERATOR-001](governance/policies/OPERATOR-001.json), [ORCH-001](governance/policies/ORCH-001.json), [orchestrator](library/personas/orchestrator.md), [pan-start](library/cursor/commands/pan-start.md), [pan-resume](library/cursor/commands/pan-resume.md), [operator guide](docs/operator-guide.md)).
+- Compute this attempt's changed paths once in `IMPLEMENTATION-CLAIMS-VALIDATE-001`. The test-delta check reuses them instead of re-running the Git snapshot ([stage-validators](src/lib/validators/stage-validators.ts)).
+- Load the policy lookup table, catalog, and workspace technologies once per supervisor-card render. Every stage context resolves from those shared values. `resolvePolicies` accepts preloaded sources from `loadPolicySources` ([policies](src/lib/policies.ts), [supervisor-card](src/lib/governance/supervisor-card.ts)).
+- Require at least one agent-side `fast` run in the implement stage of `delivery-basic-test-discipline`. A coder that ran no validation now fails the scenario ([scenario](evals/scenarios/delivery-basic-test-discipline.json)).
+- Require each `tests_added` entry to name the contract the test proves. Entries are `{ path, contract }`. `IMPLEMENTATION-CLAIMS-VALIDATE-001` computes the attempt's test delta from the invocation `workspace_before` snapshot. The delta holds new `*.test.*` files and changed test files whose `test(` or `it(` call-site count rose against `HEAD`. Each delta without a contract fails with `implementation.tests_added_contract_missing`. A bare string still parses as `{ path }` and fails only when the delta requires a contract. A change with no new tests needs no entry. The reviewer evidence worker judges each contract for an existing assertion and for the cheapest form ([stage-validators](src/lib/validators/stage-validators.ts), [field contract](library/schemas/stage-output-requirements.json), [DEV-001](governance/policies/DEV-001.json), [implement](library/workflows/delivery/prompts/implement.md), [remediate](library/workflows/delivery/prompts/remediate.md), [verify stage](library/workflows/delivery/stages/verify.json), personas).
+
+### Added
+
+- Add the advisory suite profile. The failures-only reporter writes per-test and per-file durations to the JSON path in `PAN_TEST_PROFILE`. It writes nothing when the variable is unset. The harness sets the variable for exactly one execution: the `full`-profile gate that is the last suite run before ship. That gate is `verify.full_suite`, or `remediate.full_suite` when remediation ran. The variable is never set for a baseline, an interior gate, `impacted`, or an agent-side run. The artifact lands at `agent/evidence/<invocation-id>-suite-profile.json`, and the gate result records it as `suite_profile_path`. A cached full gate references the profile of the original execution. The ship card carries a `Suite profile` section with the test count, wall clock, and slowest files and tests. It also shows the delta against the previous succeeded run in the same workspace. `pan status` prints a one-line summary. No count and no duration gates anything ([reporter](tests/reporters/failures-only.ts), [suite-profile](src/lib/suite-profile.ts), [validation](src/lib/validation.ts), [render](src/lib/render.ts), [ship stage](library/workflows/delivery/stages/ship.json), [ship prompt](library/workflows/delivery/prompts/ship.md)).
+
+### Fixed
+
+- Refuse `pan watch --foreground-returned` with `FOREGROUND_RETURN_NOT_TERMINAL` when the worker output does not exist. `pan submit` counts an attestation only when its recorded observation saw the output present. The attestation can no longer stand in for a return the harness never saw. A malformed output still attests, and submit judges it ([watch](src/lib/watch.ts), [watch tests](tests/unit/watch.test.ts)).
+- Grant the external-executor exemption from `DELEGATION_UNOBSERVED` only when the delegation-execution record exists and names the run and invocation. `pan delegate` writes that record. A hand-supplied output for an external-executor stage is unobserved ([watch](src/lib/watch.ts)).
+- Make `pan output validate --file` validate the named file, even when a copy already sits at the declared path ([engine](src/lib/engine.ts), [parity tests](tests/unit/output-validate-parity.test.ts)).
+- Accept `pipeline_config` as a scenario top-level key, so a scenario that pins a named pipeline configuration loads ([scenario](src/lib/evals/scenario.ts)).
+- Stop the `platform-guidance-conflict-recorded` grader from treating the redline record as a conflict record. A mention without a `platform_guidance_conflicts[]` entry fails whether or not a redline exists. The redline does not count toward `min_recorded` ([graders](src/lib/evals/graders.ts), [evals guide](docs/evals.md)).
+- Apply the `{ path, contract }` shape of `tests_added` to the metacritic consolidation prompt ([consolidate](library/workflows/metacritic/prompts/consolidate.md)).
+- Render one gate-evidence instruction the evidence workers can follow. The verifier runs no profile. An evidence worker may run `fast` once and never `full`. No agent runs a profile after remediation. The reference no longer says "do not run the profile agent-side" beside a scope that permits one run ([context](src/lib/context.ts)).
+- Propagate bin, fixture, and CLI references found in test helpers to the lane tests that import them. `pan tests impacted` now selects `tests/integration/worktree-cli.test.ts` for a `src/cli.ts` change. Those references are extracted in one pass per module instead of one scan per bin script and fixture ([test-impact](src/lib/test-impact.ts), [test-impact tests](tests/unit/test-impact.test.ts)).
+- Run the review-mode scope check inside the worktree that `--worktree` binds, and accept `--closure-revision` on `pan governance card`. The review card no longer fails with `REVIEW_CLOSURE_REVISION_MISMATCH` when the main checkout sits at the base ([governance-card](src/lib/governance-card.ts), [cli](src/cli.ts)).
+- Document `--occasion` on `pan status --redline` in `pan help` and drop the unreachable default coalesce ([cli](src/cli.ts)).
+- Name the run's operator worktree on the supervisor card ([supervisor-card](src/lib/governance/supervisor-card.ts)).
+- Remove the two semicolons from the generated supervisor procedure ([render](src/lib/render.ts)).
+
+## [5.1.0] - 2026-08-29
+
+### Changed
+
+- Replace "run the static and fast checks until they pass" with an impacted-test discipline: the coder and remediator iterate with `./bin/pan tests impacted` (the `impacted` profile, selected by static import-graph analysis) plus the tests they added, the reviewer and QA worker iterate on blast-radius tests, each runs the `fast` profile once as validation, and none runs `full`; a retry that changed only claims or evidence runs no suite ([DEV-001](governance/policies/DEV-001.json), [VERIFY-001](governance/policies/VERIFY-001.json), [REMED-001](governance/policies/REMED-001.json), [implement](library/workflows/delivery/prompts/implement.md), [remediate](library/workflows/delivery/prompts/remediate.md), [verify](library/workflows/delivery/prompts/verify.md), personas).
+- Make the consolidating verifier run no suite and let its passing verdict alone trigger the `full` profile as the verify submission gate; the default `light` level now maps `verify.full_suite` to `full` instead of `fast`, and `thorough` becomes a documented alias of `light` ([verification](src/lib/verification.ts), [operator guide](docs/operator-guide.md), [runtime protocol](docs/runtime-protocol.md)).
+- Replace the remediate stage's `fast` gate with a `remediate.full_suite` gate on the `full` profile, exclude `full` from pre-implementation baselines even when a source-allowed stage gates on it, and rely on the gate cache so a remediate→verify return executes `full` exactly once ([remediate stage](library/workflows/delivery/stages/remediate.json), [delivery-candidate](library/workflows/delivery-candidate/stages/remediate.json), [engine](src/lib/engine.ts), [delivery-gates](tests/integration/delivery-gates.test.ts)).
+- Allow each verify evidence worker one agent-side `fast` run recorded in its evidence report, replacing the blanket QA prohibition; a QA case still must not consist of a profile run ([VERIFY-001](governance/policies/VERIFY-001.json), [verify stage](library/workflows/delivery/stages/verify.json)).
+- Require the supervisor to use `pan watch` as its timer and record inside a run, to treat a launch the platform backgrounds as a background subagent at once, and to write the platform-guidance redline at `/pan-start` and every `/pan-resume` ([DELEGATE-001](governance/policies/DELEGATE-001.json), [ORCH-001](governance/policies/ORCH-001.json), [OPERATOR-001](governance/policies/OPERATOR-001.json), [orchestrator](library/personas/orchestrator.md), [pan-start](library/cursor/commands/pan-start.md), [pan-resume](library/cursor/commands/pan-resume.md)).
+- Run every claim, attestation, and artifact validator in `pan submit` before any repository-check shell gate, and record each gate as skipped with the deciding validator when one rejects the output, so a mechanical claims defect no longer costs the 81 seconds of static and fast checks first ([engine](src/lib/engine.ts), [validation](src/lib/validation.ts), [delivery-gates](tests/integration/delivery-gates.test.ts)).
+- Require a delegation observation at `pan submit`: a Cursor worker invocation needs a completed `pan watch` record or a foreground-return attestation, and a submission with neither fails with the hard error `DELEGATION_UNOBSERVED`; external-executor stages that `pan delegate` runs are exempt, and the `DELEGATION_WATCH_MISSING` advisory is folded into the refusal ([engine](src/lib/engine.ts), [watch](src/lib/watch.ts), [DELEGATE-001](governance/policies/DELEGATE-001.json), [ORCH-001](governance/policies/ORCH-001.json), [orchestrator](library/personas/orchestrator.md), [pan-start](library/cursor/commands/pan-start.md), [pan-resume](library/cursor/commands/pan-resume.md), [meta-orchestrator](library/cursor/agents/meta-orchestrator.md)).
+- Extend the supervisor's bounded mechanical-repair list to a `changed_files` claim that omits a path the recorded workspace delta shows the attempt changed ([ORCH-001](governance/policies/ORCH-001.json)).
+- Make the `delegation-watch-record` grader accept a foreground-return attestation or external-executor evidence, drop its advisory scan, and demand a record for every delegation in the `delivery-background-delegation` scenario ([graders](src/lib/evals/graders.ts), [scenario](evals/scenarios/delivery-background-delegation.json), [evals guide](docs/evals.md)).
+
+### Added
+
+- Add the supervisor governance card: `pan init` and `pan prepare` render `agent/supervisor-card.md` with the full text of every policy the lookup table resolves for the orchestrator persona and the run workflow, record `state.supervisor_card`, and `pan governance card --mode supervisor --run <run-id>` refreshes it on demand ([supervisor-card](src/lib/governance/supervisor-card.ts), [engine](src/lib/engine.ts), [runtime protocol](docs/runtime-protocol.md)).
+- Add `pan governance attest-supervisor <run-id> --sha256 <digest>`; `pan prepare` and `pan submit` now fail with `SUPERVISOR_CARD_UNATTESTED` until the current card digest is attested, and each `<invocation-id>.supervisor.md` prints the card path, digest, and attest command ([cli](src/cli.ts), [render](src/lib/render.ts), [supervisor-card tests](tests/unit/supervisor-card.test.ts)).
+- Add the `release`, `write-pr`, `build-docs`, `build-briefs`, and `qa-workflow` governance card modes with their lookup rows, and rewrite the matching commands so step one runs `pan governance card --mode <mode>` and the delegated prompt inlines the card instead of hand-read policy files ([governance-card](src/lib/governance-card.ts), [lookup table](governance/registries/policy_lookup_table.json), [commands](library/cursor/commands/)).
+- Add the command governance guard to `pan validate`: every canonical command runs a registered card mode or is allowlisted read-only in `governance/registries/command_governance.json`, no command reads a policy file by hand, and every standalone mode and standalone lookup row match ([command-coverage](src/lib/governance/command-coverage.ts), [workflow authoring](docs/workflow-authoring.md)).
+- Add on-demand harness evals: `pan eval list|grade|run`, JSON scenarios under `evals/scenarios/` validated by `pan validate` against `library/schemas/eval-scenario.schema.json`, the `toy-node` fixture, five deterministic graders over run records (profile executions, delegation watch records, platform guidance conflict records, attempts spent on mechanics, stage order and terminal state), and STE-style JSON + Markdown reports under `runtime/logs/evals/<eval-id>/` ([evals](src/lib/evals/index.ts), [evals guide](docs/evals.md)).
+- Add `pan watch <run-id>`, the harness-owned worker watch that sleeps on the `DELEGATE-001` cadence, inspects the invocation output and evidence paths, and appends every arming and wake to `agent/evidence/<invocation-id>-watch.jsonl`, exiting `completed`, `stalled`, or `timed_out` ([watch](src/lib/watch.ts), [cli](src/cli.ts)).
+- Add `pan status <run-id> --redline`, which writes `agent/evidence/platform-guidance-redline.json` naming the platform-guidance categories pre-declared non-authoritative and the `AGENTS.md` authority order ([watch](src/lib/watch.ts)).
+- Carry the delegation observation into the stage record as `delegation_observation`, naming whether a completed watch, a foreground-return attestation, or external-executor evidence proved the worker reached a terminal state ([engine](src/lib/engine.ts)).
+- Add `pan watch <run-id> --foreground-returned [--invocation <id>] [--launched-at <iso-8601>]`, which records the launch and return wall-clock times of a foreground worker launch at `agent/evidence/<invocation-id>-foreground-return.json`, defaulting the launch time to the delegation artifact's modification time, and print the matching step in every `<invocation-id>.supervisor.md` procedure ([watch](src/lib/watch.ts), [cli](src/cli.ts), [render](src/lib/render.ts)).
+- Add `submitAsSupervisor` to the test helpers so every test that drives a run through submit records the foreground attestation the way a supervisor does ([helpers](tests/helpers.ts)).
+- Add `./bin/pan tests impacted`, which builds the runtime import graph of `src/` and `tests/` with the TypeScript parser, takes the change set from the dirty working tree (`--changed <ref>`, `--staged`, or `--file <path>` override it), and selects every mainline lane test whose import closure, bin-script reference, or fixture reference reaches a change; `--list` and `--json` report the selection, `--depth <n>` bounds the closure for iteration, an advisory names the `fast` profile when the selection passes 60% of the lane, each run appends to `runtime/cache/test-impact.jsonl`, and the new `impacted` repository-check profile and `npm run test:impacted` script expose it as an iteration aid that is never a gate ([test-impact](src/lib/test-impact.ts), [cli](src/cli.ts), [operator guide](docs/operator-guide.md)).
+
+### Fixed
+
+- Show `--invocation <path>` in the `pan output validate` help line and guard it with a CLI help regression test ([cli](src/cli.ts), [cli-help](tests/unit/cli-help.test.ts)).
+- Make `pan output validate` run the same harness-authoritative validator set `pan submit` runs, including `IMPLEMENTATION-CLAIMS-VALIDATE-001`, from the shared `resolveSubmitValidators` resolution, so a claims omission surfaces before an attempt is spent ([engine](src/lib/engine.ts), [output-validate-parity](tests/unit/output-validate-parity.test.ts)).
+
 ## [5.0.1] - 2026-08-29
 
 ### Fixed

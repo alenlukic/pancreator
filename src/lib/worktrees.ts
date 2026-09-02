@@ -1,6 +1,8 @@
+import { copyFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { invariant } from './errors.js'
+import { queueInboxRelativePath } from './inbox.js'
 import {
   gitBranchExists,
   gitBranchNameIsValid,
@@ -10,6 +12,7 @@ import {
   gitMergeAbort,
   gitMergeBranch,
   gitRevParse,
+  gitSwitchBranch,
   gitWorktreeAddOnBranch,
   gitWorktreeAddOnExistingBranch,
   gitWorktreeForBranch,
@@ -35,18 +38,18 @@ import {
   configuredWorkspaceRoot,
   configuredWorktreeRoot,
   DEFAULT_WORKTREE_ROOT,
+  isSelfDevelopmentInstallation,
   LEGACY_DEFAULT_WORKTREE_ROOT,
+  localConfigName,
   worktreesConfig,
 } from './project-config.js'
 import { runSetupCommands } from './setup-commands.js'
 import { now } from './state.js'
+import type { ManagedWorktreeReference } from './types.js'
 
 const WORKTREE_NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u
 
-export interface WorktreeRecord {
-  name: string
-  path: string
-  branch: string
+export interface WorktreeRecord extends ManagedWorktreeReference {
   created_from: string
   description: string
   created_at: string
@@ -172,6 +175,29 @@ function worktreeMutexPath(root: string): string {
 
 function newWorktreeRoot(root: string): string {
   return resolveOperatorWorktreeStore(root).newWorktreeRoot
+}
+
+/**
+ * Copy the recognized local harness override into a new self-development
+ * worktree before setup runs. Target installations keep harness configuration
+ * at the installation root and receive no override copy.
+ */
+function handoffSelfDevelopmentLocalConfig(
+  installationRoot: string,
+  worktreePath: string,
+): void {
+  if (!isSelfDevelopmentInstallation(installationRoot)) {
+    return
+  }
+
+  const configName = localConfigName(installationRoot)
+  const sourcePath = path.join(installationRoot, configName)
+
+  if (!fileExists(sourcePath)) {
+    return
+  }
+
+  copyFileSync(sourcePath, path.join(worktreePath, configName))
 }
 
 function parseWorktreeRecord(value: unknown, source: string): WorktreeRecord {
@@ -421,7 +447,7 @@ function addWorktree(
     { code: 'WORKTREE_PATH_EXISTS' },
   )
 
-  const branch = `${config.branch_prefix}${name}`
+  const branch = name
 
   invariant(
     gitBranchNameIsValid(repositoryRoot, branch),
@@ -457,6 +483,7 @@ function addWorktree(
     schema_version: 1,
     worktrees: [...index.worktrees, record],
   })
+  handoffSelfDevelopmentLocalConfig(root, worktreePath)
   runSetupCommands(config.setup, worktreePath, {
     label: `worktree '${name}'`,
     code: 'WORKTREE_SETUP_FAILED',
@@ -494,9 +521,36 @@ export function resolveWorktreeWorkspace(root: string, name: string): string {
     `Indexed worktree '${name}' is not registered with Git.`,
     { code: 'WORKTREE_NOT_REGISTERED' },
   )
+  const currentBranch = gitCurrentBranch(worktreePath)
+
+  if (currentBranch !== record.branch) {
+    invariant(
+      gitBranchExists(repositoryRoot, record.branch),
+      `Recorded branch does not exist: ${record.branch}`,
+      { code: 'WORKTREE_BRANCH_NOT_FOUND' },
+    )
+
+    const heldBy = gitWorktreeForBranch(repositoryRoot, record.branch)
+
+    invariant(
+      !heldBy || path.resolve(heldBy) === path.resolve(worktreePath),
+      `Recorded branch '${record.branch}' is checked out at '${heldBy}'.`,
+      { code: 'WORKTREE_BRANCH_HELD' },
+    )
+    invariant(
+      !gitWorktreeIsDirty(worktreePath),
+      `Worktree '${name}' is on branch '${currentBranch ?? '(detached)'}' ` +
+        `with uncommitted work. Clean it before switching to ` +
+        `'${record.branch}'.`,
+      { code: 'WORKTREE_DIRTY_BRANCH_MISMATCH' },
+    )
+
+    gitSwitchBranch(worktreePath, record.branch)
+  }
+
   invariant(
     gitCurrentBranch(worktreePath) === record.branch,
-    `Indexed worktree '${name}' is not on its recorded branch '${record.branch}'.`,
+    `Indexed worktree '${name}' could not switch to its recorded branch '${record.branch}'.`,
     { code: 'WORKTREE_BRANCH_MISMATCH' },
   )
 
@@ -615,7 +669,9 @@ function conflictRequestPath(
   const timestamp = now().replace(/[-:.TZ]/gu, '')
   // A checkout target is named by its branch, which can contain `/`.
   const label = target.toLowerCase().replaceAll(/[^a-z0-9-]+/gu, '-')
-  const relative = `runtime/inbox/worktree-reconcile-${label}-${timestamp}.md`
+  const relative = queueInboxRelativePath(
+    `worktree-reconcile-${label}-${timestamp}.md`,
+  )
 
   return { relative, absolute: resolveInside(root, relative) }
 }
@@ -843,7 +899,7 @@ function resolveReconcileTarget(
  *
  * Sources merge one at a time, so a conflict names exactly one source. The
  * conflicted merge state stays in the target worktree, and a conflict request
- * under `runtime/inbox/` gives an agent the resolution task. Merge commits
+ * under `runtime/inbox/queue/` gives an agent the resolution task. Merge commits
  * land only on harness-managed or operator-named branches, and the recorded
  * operator invocation is the ACTION-001 authorization trail.
  */

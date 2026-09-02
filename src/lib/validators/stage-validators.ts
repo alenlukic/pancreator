@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { readdirSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 
 import {
@@ -8,6 +8,7 @@ import {
   lastEvidenceLine,
   readJson,
   readText,
+  resolveInside,
 } from '../io.js'
 import { invariant } from '../errors.js'
 import { loadRegistry } from '../requirements/registry.js'
@@ -172,6 +173,7 @@ export function validateSharedFieldContract(
     source.schema_version !== 1 ||
     source.policy_id !== 'CONTRACT-001' ||
     source.validator_id !== 'FIELD-CONTRACT-VALIDATE-001' ||
+    !isRecord(source.criterion_results) ||
     !isRecord(source.stages)
   ) {
     return {
@@ -182,6 +184,19 @@ export function validateSharedFieldContract(
           'The shared field contract MUST declare its schema, policy, validator, and stages',
         ),
       ],
+    }
+  }
+
+  for (const result of ['unevaluated', 'skipped', 'not_applicable']) {
+    const meaning = source.criterion_results[result]
+
+    if (typeof meaning !== 'string' || meaning.trim().length === 0) {
+      issues.push(
+        issue(
+          'field_contract.criterion_result',
+          `The shared field contract MUST explain criterion result ${result}`,
+        ),
+      )
     }
   }
 
@@ -215,6 +230,15 @@ export function validateSharedFieldContract(
       continue
     }
 
+    const declaredPaths = new Set(
+      stage.fields
+        .filter(
+          (field): field is Record<string, unknown> =>
+            isRecord(field) && typeof field.path === 'string',
+        )
+        .map((field) => field.path as string),
+    )
+
     for (const validator of stage.validators) {
       if (
         !isRecord(validator) ||
@@ -229,6 +253,24 @@ export function validateSharedFieldContract(
             `The ${stageSlug} field contract contains an invalid validator`,
           ),
         )
+        continue
+      }
+
+      const enforcedFields = Array.isArray(validator.enforced_fields)
+        ? validator.enforced_fields.filter(
+            (entry): entry is string => typeof entry === 'string',
+          )
+        : []
+
+      for (const fieldPath of enforcedFields) {
+        if (!declaredPaths.has(fieldPath)) {
+          issues.push(
+            issue(
+              'field_contract.enforced_field',
+              `Validator ${validator.registry_id} enforces undeclared field ${fieldPath}`,
+            ),
+          )
+        }
       }
     }
 
@@ -245,7 +287,18 @@ export function validateSharedFieldContract(
   }
 
   const requiredFieldPaths: Record<string, string[]> = {
-    plan: ['data.open_question_dispositions[].disposition'],
+    plan: [
+      'data.acceptance_criteria[].id',
+      'data.acceptance_criteria[].maps_to',
+      'data.acceptance_criteria[].verification',
+      'data.engineering_plan.files[]',
+      'data.test_plan[]',
+      'data.open_question_dispositions[].id',
+      'data.open_question_dispositions[].answer',
+      'data.open_question_dispositions[].disposition',
+      'data.open_question_dispositions[].evidence',
+      'data.verification_recommendation',
+    ],
     implement: ['data.acceptance_results[].evidence[]'],
     verify: [
       'data.verify.verdict',
@@ -254,6 +307,10 @@ export function validateSharedFieldContract(
       'data.verify.qa_cases[].steps',
       'data.verify.qa_cases[].expected',
       'data.verify.qa_cases[].actual',
+      'data.verify.remediation_guidance',
+      'data.verify.severity_rationale',
+      'data.verify.blocking_reason',
+      'data.verify.missing_evidence_paths',
     ],
     ship: [
       'data.release.change_list[]',
@@ -649,6 +706,145 @@ function attemptChangedPaths(
   } catch {
     return null
   }
+}
+
+interface TestsAddedEntry {
+  /** The entry as submitted, for messages. */
+  raw: string
+  /** File portion of the entry. */
+  file: string
+  contract?: string
+}
+
+/**
+ * Parse one `tests_added` entry. A bare string is the legacy `<path>` or
+ * `<path>::<case>` form and parses as `{ path }` without a contract. An
+ * object carries `path` and an optional `contract`.
+ */
+function parseTestsAddedEntry(entry: unknown): TestsAddedEntry | null {
+  if (typeof entry === 'string') {
+    return { raw: entry, file: testFilePortion(entry) }
+  }
+
+  if (
+    isRecord(entry) &&
+    typeof entry.path === 'string' &&
+    (entry.contract === undefined || typeof entry.contract === 'string')
+  ) {
+    return {
+      raw: entry.path,
+      file: testFilePortion(entry.path),
+      ...(typeof entry.contract === 'string'
+        ? { contract: entry.contract }
+        : {}),
+    }
+  }
+
+  return null
+}
+
+/**
+ * An entry names a test file, optionally followed by '::<case name>' in native
+ * pytest/Jest notation or the spaced display form ' :: <case>'. Both resolve
+ * to the same file: only the file portion resolves against the workspace.
+ */
+function testFilePortion(entry: string): string {
+  return entry.split(/\s*::\s*/u)[0].trim()
+}
+
+const TEST_FILE_PATTERN =
+  /(?:^|\/)(?:[^/]+\.(?:test|spec)\.[^/]+|test_[^/]+\.py|[^/]+_test\.(?:py|go))$/u
+
+/** JavaScript/TypeScript `test(`/`it(` call sites and Python `def test_`. */
+function countTestCallSites(source: string): number {
+  const matches = source.match(
+    /^[ \t]*(?:(?:test|it)(?:\.\w+)*\s*\(|(?:async\s+)?def\s+test_\w+\s*\()/gmu,
+  )
+
+  return matches?.length ?? 0
+}
+
+export interface TestDelta {
+  path: string
+  kind: 'new_file' | 'net_positive'
+  count: number
+}
+
+/**
+ * The attempt's observable test delta: new `*.test.*` files and changed test
+ * files whose `test(`/`it(` call-site count rose against `HEAD`. Measured over
+ * the paths this attempt changed (the invocation `workspace_before` snapshot),
+ * falling back to the cumulative working-tree diff when no snapshot exists.
+ * A filesystem workspace or an unavailable Git leaves the delta unobservable
+ * and reports nothing; the caller has already failed closed on Git errors.
+ */
+export function attemptTestDelta(
+  input: HandlerInput,
+  workspaceRoot: string,
+  precomputed: {
+    /** This attempt's changed paths, when the caller already snapshotted them. */
+    attemptFiles?: string[] | null
+    /** The cumulative workspace diff, when the caller already ran it. */
+    diff?: ReturnType<typeof workspaceSourceChanges>
+  } = {},
+): TestDelta[] {
+  const workspaceBefore =
+    isRecord(input.invocation) && isRecord(input.invocation.workspace_before)
+      ? input.invocation.workspace_before
+      : null
+
+  if (workspaceBefore?.kind === 'filesystem') {
+    return []
+  }
+
+  let changed =
+    precomputed.attemptFiles !== undefined
+      ? precomputed.attemptFiles
+      : attemptChangedPaths(input, workspaceRoot)
+
+  if (changed === null) {
+    const diff = precomputed.diff ?? workspaceSourceChanges(workspaceRoot)
+
+    if (!diff.ok) {
+      return []
+    }
+
+    changed = diff.files
+  }
+
+  const deltas: TestDelta[] = []
+
+  for (const relativePath of [...new Set(changed)].sort()) {
+    if (!TEST_FILE_PATTERN.test(relativePath)) {
+      continue
+    }
+
+    const absolute = path.join(workspaceRoot, relativePath)
+
+    if (!fileExists(absolute)) {
+      continue
+    }
+
+    const current = countTestCallSites(readFileSync(absolute, 'utf8'))
+    const head = gitOutput(workspaceRoot, ['show', `HEAD:${relativePath}`])
+
+    if (!head.ok) {
+      // Not in HEAD: a new file. Zero call sites means no test was added.
+      if (current > 0) {
+        deltas.push({ path: relativePath, kind: 'new_file', count: current })
+      }
+
+      continue
+    }
+
+    const net = current - countTestCallSites(head.stdout)
+
+    if (net > 0) {
+      deltas.push({ path: relativePath, kind: 'net_positive', count: net })
+    }
+  }
+
+  return deltas
 }
 
 function gitUnavailableIssue(error: string): HandlerResult['issues'][number] {
@@ -1146,6 +1342,9 @@ export function validateImplementationClaims(
     : []
   const workspaceRoot = workspaceRootFromInput(input)
   const diffResult = workspaceSourceChanges(workspaceRoot)
+  // Snapshotted once: the disclosure check and the test-delta check below
+  // both read this attempt's changed paths.
+  const attemptFiles = attemptChangedPaths(input, workspaceRoot)
 
   if (!diffResult.ok) {
     if (changedFiles.length > 0) {
@@ -1155,7 +1354,6 @@ export function validateImplementationClaims(
     const diffFiles = diffResult.files
     // Disclosure is owed for what this attempt changed. Existence is checked
     // against the cumulative diff, which still catches a fabricated claim.
-    const attemptFiles = attemptChangedPaths(input, workspaceRoot)
     const owedDisclosure = attemptFiles ?? diffFiles
 
     if (diffFiles.length > 0 && changedFiles.length > 0) {
@@ -1298,44 +1496,74 @@ export function validateImplementationClaims(
   const testsAddedRaw = Array.isArray(implementation.tests_added)
     ? (implementation.tests_added as unknown[])
     : []
-  const testsAdded = testsAddedRaw.filter(
-    (testPath): testPath is string => typeof testPath === 'string',
-  )
+  const testsAdded: TestsAddedEntry[] = []
 
   for (const entry of testsAddedRaw) {
-    if (typeof entry !== 'string') {
+    const parsed = parseTestsAddedEntry(entry)
+
+    if (parsed) {
+      testsAdded.push(parsed)
+    } else {
       issues.push(
         issue(
           'claim.entry_shape',
-          `implementation.tests_added entries MUST be strings; got ${JSON.stringify(entry)}`,
+          `implementation.tests_added entries MUST be '<test file path>' ` +
+            `strings or { path, contract } objects; got ${JSON.stringify(entry)}`,
         ),
       )
     }
   }
 
-  for (const testPath of testsAdded) {
-    // An entry names a test file, optionally followed by '::<case name>' in
-    // native pytest/Jest notation or the spaced display form ' :: <case>'.
-    // Both resolve to the same file: only the file portion resolves against
-    // the workspace.
-    const testFile = testPath.split(/\s*::\s*/u)[0].trim()
+  for (const entry of testsAdded) {
     const resolved = resolveWorkspaceRelativeFilePath(
       input.root,
-      workspaceRootFromInput(input),
-      testFile,
+      workspaceRoot,
+      entry.file,
     )
 
     if (!fileExists(resolved)) {
       issues.push(
         issue(
           'claim.test_missing',
-          `Listed test file does not exist: ${testFile} (from entry: ` +
-            `${testPath}). Entries MUST be '<test file path>' optionally ` +
+          `Listed test file does not exist: ${entry.file} (from entry: ` +
+            `${entry.raw}). Entries MUST be '<test file path>' optionally ` +
             `followed by '::<test case>', e.g. ` +
             `'tests/unit/example.test.ts::adds provenance rows'.`,
         ),
       )
     }
+  }
+
+  // Each new test file and each net-positive test delta needs a contract.
+  // A change that adds no tests needs no entry.
+  for (const delta of attemptTestDelta(input, workspaceRoot, {
+    attemptFiles,
+    diff: diffResult,
+  })) {
+    const covered = testsAdded.some(
+      (entry) =>
+        entry.file === delta.path &&
+        typeof entry.contract === 'string' &&
+        entry.contract.trim().length > 0,
+    )
+
+    if (covered) {
+      continue
+    }
+
+    const shape =
+      delta.kind === 'new_file'
+        ? `is a new test file with ${delta.count} test call site(s)`
+        : `gained ${delta.count} net test call site(s)`
+
+    issues.push(
+      issue(
+        'implementation.tests_added_contract_missing',
+        `${delta.path} ${shape}; implementation.tests_added MUST carry ` +
+          `{ "path": "${delta.path}", "contract": "<one sentence naming the ` +
+          `behavior the test proves>" }.`,
+      ),
+    )
   }
 
   return {
@@ -1991,6 +2219,74 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
     string,
     unknown
   >
+
+  if (value.result === 'blocked') {
+    const data = isRecord(value.data) ? value.data : {}
+    const verify = isRecord(data.verify) ? data.verify : null
+
+    if (!verify) {
+      return {
+        status: 'failed',
+        issues: [issue('verify.missing', 'data.verify is required')],
+      }
+    }
+
+    const blockingReason =
+      typeof verify.blocking_reason === 'string'
+        ? verify.blocking_reason.trim()
+        : ''
+
+    if (blockingReason.length === 0) {
+      issues.push(
+        issue(
+          'verify.blocking_reason',
+          'blocked verify output MUST include a non-empty blocking_reason',
+        ),
+      )
+    }
+
+    const missingPaths = Array.isArray(verify.missing_evidence_paths)
+      ? verify.missing_evidence_paths
+      : []
+
+    if (
+      missingPaths.length === 0 ||
+      !missingPaths.every(
+        (entry) => typeof entry === 'string' && entry.trim().length > 0,
+      )
+    ) {
+      issues.push(
+        issue(
+          'verify.missing_evidence',
+          'blocked verify output MUST include non-empty missing_evidence_paths',
+        ),
+      )
+    }
+
+    const forbiddenFields = [
+      'verdict',
+      'findings',
+      'qa_cases',
+      'acceptance_results',
+      'gate_evidence_citations',
+      'remediation_guidance',
+      'severity_rationale',
+    ] as const
+
+    for (const field of forbiddenFields) {
+      if (verify[field] !== undefined) {
+        issues.push(
+          issue(
+            'verify.blocked_forbidden_field',
+            `blocked verify output MUST NOT include data.verify.${field}`,
+          ),
+        )
+      }
+    }
+
+    return { status: issues.length === 0 ? 'passed' : 'failed', issues }
+  }
+
   const data = isRecord(value.data) ? value.data : {}
   const verify = isRecord(data.verify) ? data.verify : null
 
@@ -2377,6 +2673,144 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
   }
 
   if (readProjectConfig(input.root)?.installation_mode === 'self_development') {
+    const workspaceRoot = workspaceRootFromInput(input)
+    const localReleaseRequired = isRecord(input.invocation?.managed_worktree)
+    const localRelease = isRecord(release.local_release)
+      ? release.local_release
+      : null
+    const releaseCommit =
+      localRelease && typeof localRelease.release_commit === 'string'
+        ? localRelease.release_commit
+        : ''
+    const indexCommit =
+      localRelease && typeof localRelease.index_commit === 'string'
+        ? localRelease.index_commit
+        : ''
+    const fetchedMain =
+      localRelease && typeof localRelease.fetched_main === 'string'
+        ? localRelease.fetched_main
+        : ''
+    const localBranch =
+      localRelease && typeof localRelease.branch === 'string'
+        ? localRelease.branch
+        : ''
+    const prDescriptionPath =
+      localRelease && typeof localRelease.pr_description_path === 'string'
+        ? localRelease.pr_description_path
+        : ''
+
+    if (
+      localReleaseRequired &&
+      (!localRelease ||
+        !/^[0-9a-f]{40}$/u.test(releaseCommit) ||
+        !/^[0-9a-f]{40}$/u.test(indexCommit) ||
+        !/^[0-9a-f]{40}$/u.test(fetchedMain) ||
+        localBranch.length === 0 ||
+        prDescriptionPath.length === 0)
+    ) {
+      issues.push(
+        issue(
+          'release.local_release_missing',
+          'Self-development release output MUST include complete local release commit, ancestry, branch, and PR evidence',
+        ),
+      )
+    } else if (localReleaseRequired && localRelease) {
+      const head = gitOutput(workspaceRoot, ['rev-parse', 'HEAD'])
+      const indexParent = gitOutput(workspaceRoot, [
+        'rev-parse',
+        `${indexCommit}^`,
+      ])
+      const fetchedAncestor = gitOutput(workspaceRoot, [
+        'merge-base',
+        '--is-ancestor',
+        fetchedMain,
+        releaseCommit,
+      ])
+      const clean = gitOutput(workspaceRoot, [
+        'status',
+        '--porcelain=v1',
+        '--untracked-files=all',
+      ])
+      const indexDiff = gitOutput(workspaceRoot, [
+        'diff-tree',
+        '--no-commit-id',
+        '--name-only',
+        '-r',
+        indexCommit,
+      ])
+      const branch = gitOutput(workspaceRoot, ['branch', '--show-current'])
+
+      if (
+        !head.ok ||
+        head.stdout !== indexCommit ||
+        !indexParent.ok ||
+        indexParent.stdout !== releaseCommit
+      ) {
+        issues.push(
+          issue(
+            'release.commit_order',
+            'The index commit MUST be HEAD with the immutable release commit as its parent',
+          ),
+        )
+      }
+
+      if (!fetchedAncestor.ok) {
+        issues.push(
+          issue(
+            'release.fetched_main_not_ancestor',
+            'Fetched main MUST be an ancestor of the release commit',
+          ),
+        )
+      }
+
+      if (!clean.ok || clean.stdout.length > 0) {
+        issues.push(
+          issue(
+            'release.worktree_dirty',
+            'Release finalization MUST leave a clean worktree',
+          ),
+        )
+      }
+
+      if (!branch.ok || branch.stdout !== localBranch) {
+        issues.push(
+          issue(
+            'release.branch_mismatch',
+            'release.local_release.branch MUST match the finalized worktree branch',
+          ),
+        )
+      }
+
+      if (!indexDiff.ok || indexDiff.stdout !== 'release/index.json') {
+        issues.push(
+          issue(
+            'release.index_commit_scope',
+            'The index commit MUST change only release/index.json',
+          ),
+        )
+      }
+
+      const prPath = resolveInside(input.root, prDescriptionPath)
+
+      if (!fileExists(prPath)) {
+        issues.push(
+          issue(
+            'release.pr_description_missing',
+            `Final PR description is missing: ${prDescriptionPath}`,
+          ),
+        )
+      } else if (
+        !readText(prPath).includes(`${releaseCommit}..${indexCommit}`)
+      ) {
+        issues.push(
+          issue(
+            'release.pr_commit_range_missing',
+            'The final PR description MUST include the completed local release commit range',
+          ),
+        )
+      }
+    }
+
     const versioning = isRecord(release.versioning) ? release.versioning : null
 
     if (!versioning) {
@@ -2471,7 +2905,10 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
           ),
         )
       } else {
-        const committedVersion = gitOutput(input.root, ['show', 'HEAD:VERSION'])
+        const committedVersion = gitOutput(workspaceRoot, [
+          'show',
+          localReleaseRequired ? `${releaseCommit}^:VERSION` : 'HEAD:VERSION',
+        ])
 
         if (!committedVersion.ok) {
           issues.push(
@@ -2489,7 +2926,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
           )
         }
 
-        const baselineVersion = gitOutput(input.root, [
+        const baselineVersion = gitOutput(workspaceRoot, [
           'show',
           `${baselineCommit}:VERSION`,
         ])
@@ -2506,7 +2943,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
           )
         }
 
-        const ancestor = gitOutput(input.root, [
+        const ancestor = gitOutput(workspaceRoot, [
           'merge-base',
           '--is-ancestor',
           baselineCommit,
@@ -2522,7 +2959,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
           )
         }
 
-        const parentVersion = gitOutput(input.root, [
+        const parentVersion = gitOutput(workspaceRoot, [
           'show',
           `${baselineCommit}^:VERSION`,
         ])
@@ -2562,7 +2999,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
         issues.push(
           issue(
             'release.index_action_missing',
-            'release.versioning.release_index_action MUST describe deferred indexing after the release commit exists',
+            'release.versioning.release_index_action MUST describe the completed separate index commit',
           ),
         )
       }
@@ -2606,7 +3043,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
         }
       }
 
-      const diskVersion = readText(path.join(input.root, 'VERSION')).trim()
+      const diskVersion = readText(path.join(workspaceRoot, 'VERSION')).trim()
 
       if (diskVersion !== proposedVersion) {
         issues.push(
@@ -2617,7 +3054,33 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
         )
       }
 
-      for (const metadataError of validateReleaseMetadata(input.root).errors) {
+      if (localReleaseRequired) {
+        const indexedRelease = readJson(
+          path.join(workspaceRoot, 'release', 'index.json'),
+        )
+        const indexedEntries =
+          isRecord(indexedRelease) && Array.isArray(indexedRelease.releases)
+            ? indexedRelease.releases
+            : []
+        const indexed = indexedEntries.find(
+          (entry) =>
+            isRecord(entry) &&
+            entry.version === proposedVersion &&
+            entry.commit === releaseCommit,
+        )
+
+        if (!indexed) {
+          issues.push(
+            issue(
+              'release.index_mapping',
+              'release/index.json MUST map proposed_version to release_commit',
+            ),
+          )
+        }
+      }
+
+      for (const metadataError of validateReleaseMetadata(workspaceRoot)
+        .errors) {
         issues.push(issue('release.metadata_invalid', metadataError))
       }
     }

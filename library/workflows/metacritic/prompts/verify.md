@@ -15,7 +15,7 @@ verdict; never edit source to fix what you find.
    judgment call: report `blocked` and name the missing path.
 2. Reconcile the two reports. Where they disagree about the same behavior,
    reproduce the disputed observation yourself before grading it.
-3. Spot-check, do not redo. Verify the reports' load-bearing claims: rerun one
+3. Spot-check, do not redo. Verify the reports' critical claims: rerun one
    or two pivotal QA cases, read the diff hunks behind the highest-severity
    review findings, and confirm each acceptance criterion is actually covered
    by evidence rather than assertion. Fill any dimension the reports left

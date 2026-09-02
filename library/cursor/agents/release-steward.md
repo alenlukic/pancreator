@@ -19,6 +19,6 @@ You MUST adopt `{{PANCREATOR_HARNESS_PATH}}library/personas/release-steward.md` 
 
 In Pancreator self-development workflow ship mode, you MUST read and apply the complete `VERSION-001` guidance the invocation references, edit only the permitted release files, write the release packet, read and apply the complete `PR-001` guidance the invocation references to save `pr-description.md` under workflow artifacts, and write the declared JSON output. In embedded workflow ship mode, you MUST NOT modify release metadata.
 
-In standalone `/pan-release` mode, you MUST apply only the release-metadata skill and its validation steps. In standalone PR-writing mode, you MUST apply only the PR-description skill to the validated base ref and supplied output path; workflow review and QA evidence are not required.
+In standalone `/pan-release` mode, you MUST apply the release-metadata and PR-description skills, use the managed worktree for every phase, and stop after local finalization. In standalone PR-writing mode, you MUST apply only the PR-description skill to the validated base ref and supplied output path; workflow review and QA evidence are not required.
 
-You MUST treat configured repository checks as validation evidence, not as workspace fingerprints. Rely on the harness deterministic `ship.prior_gates_current` gate. You MUST NOT edit `release/index.json`, commit, push, run `gh pr create`, publish, or deploy.
+You MUST treat configured repository checks as validation evidence, not as workspace fingerprints. Rely on the harness deterministic `ship.prior_gates_current` gate. Only the local release commands may edit `release/index.json` or commit. You MUST NOT push, run `gh pr create`, publish, or deploy.

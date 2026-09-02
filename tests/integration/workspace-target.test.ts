@@ -11,11 +11,9 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
-  createRun,
   getRunState,
   prepareInvocation,
   setRunStage,
-  submitOutput,
 } from '../../src/lib/engine.js'
 import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
 import { runRepositoryCheck } from '../../src/lib/repository-checks.js'
@@ -24,9 +22,11 @@ import { evaluateDeterministicCriteria } from '../../src/lib/validation.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
+  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
+  submitAsSupervisor,
 } from '../helpers.js'
 
 import { worktreeCheckpoint } from './worktree-helpers.js'
@@ -49,8 +49,10 @@ function makeNestedRepo(root: string, relative: string): string {
 }
 
 test('repository checks run in an explicitly targeted workspace', () => {
-  const { root, worktrees } = worktreeCheckpoint('single')
-  const worktree = worktrees.alpha
+  const root = createFixture()
+  const workspace = path.join(root, 'nested-workspace')
+
+  mkdirSync(workspace)
 
   writeJson(path.join(root, 'runtime/repository-checks.json'), {
     schema_version: 1,
@@ -59,13 +61,10 @@ test('repository checks run in an explicitly targeted workspace', () => {
     },
   })
 
-  const check = runRepositoryCheck(root, 'fast', { workspace: worktree.path })
+  const check = runRepositoryCheck(root, 'fast', { workspace })
 
   assert.equal(check.status, 'passed')
-  assert.equal(
-    realpathSync(check.workspace_root),
-    realpathSync(path.join(root, worktree.path)),
-  )
+  assert.equal(realpathSync(check.workspace_root), realpathSync(workspace))
 })
 
 test('pre-implementation baselines use the run workspace', () => {
@@ -185,7 +184,7 @@ test('scope guard catches edits inside the targeted nested repo during a non-sou
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
 
-  const submitted = submitOutput(root, runId, invocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
   const scope = submitted.record.evaluation.deterministic.find(
     (item) => item.id === 'scope.no_unapproved_changes',
   )

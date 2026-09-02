@@ -4,20 +4,20 @@ import test from 'node:test'
 import { readFileSync } from 'node:fs'
 
 import {
-  createRun,
   decideRun,
   getRunState,
   prepareInvocation,
-  submitOutput,
 } from '../../src/lib/engine.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadWorkflowFile, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
+  createRun,
   makeOutput,
   read,
   writeCanonicalDelegation,
   writeJson,
+  submitAsSupervisor,
 } from '../helpers.js'
 import type {
   StageDefinition,
@@ -59,7 +59,7 @@ function submitStage(
 
   return {
     invocation,
-    submitted: submitOutput(root, runId, invocation.output.path),
+    submitted: submitAsSupervisor(root, runId, invocation.output.path),
   }
 }
 

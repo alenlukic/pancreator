@@ -5,10 +5,19 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { createFixture } from '../helpers.js'
 import {
+  gitStatusPaths,
   gitWorkspaceSnapshot,
   snapshotChanged,
   workspaceChangedPathsFromSnapshots,
 } from '../../src/lib/git.js'
+
+test('status paths include both sides of a rename', () => {
+  const root = createFixture()
+
+  execFileSync('git', ['mv', 'src/base.ts', 'src/renamed.ts'], { cwd: root })
+
+  assert.deepEqual(gitStatusPaths(root), ['src/base.ts', 'src/renamed.ts'])
+})
 
 test('workspace fingerprint detects content changes when status labels stay the same', () => {
   const root = createFixture()

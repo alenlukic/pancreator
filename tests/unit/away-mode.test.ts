@@ -18,7 +18,6 @@ import {
   recordHypervisorQuarantine,
   selectAwayOption,
 } from '../../src/lib/away-mode.js'
-import { createRun } from '../../src/lib/engine.js'
 import {
   AWAY_MODE_ACTIONS,
   resolveAwayModeConfig,
@@ -30,7 +29,7 @@ import type {
   RunState,
   StageHistoryItem,
 } from '../../src/lib/types.js'
-import { createFixture } from '../helpers.js'
+import { createFixture, createRun } from '../helpers.js'
 
 function enableAwayMode(
   root: string,
@@ -180,7 +179,7 @@ test('away mode skips options outside operator guardrails', () => {
   assert.equal(readAwayDecisionLedger(root).length, 2)
 })
 
-test('away mode rejects malformed evaluator output', () => {
+test('away mode rejects duplicate ranks and missing action details', () => {
   assert.throws(
     () =>
       parseAwayOptions({
@@ -188,9 +187,6 @@ test('away mode rejects malformed evaluator output', () => {
       }),
     /MUST be approve/u,
   )
-})
-
-test('away mode rejects duplicate ranks and missing action details', () => {
   assert.throws(
     () =>
       parseAwayOptions({

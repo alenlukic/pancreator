@@ -11,6 +11,28 @@ import type {
   RepositoryCheckDelta,
   RepositoryCheckDiagnostic,
 } from './types.js'
+import { TEST_PROFILE_ENV } from './suite-profile.js'
+
+/**
+ * The environment a profile command runs in. The harness process environment
+ * is the base. `PAN_TEST_PROFILE` never leaks from an outer test run: a gate
+ * that does not set it runs with it removed, so only the profiled full gate
+ * writes a suite profile.
+ */
+function profileCommandEnv(
+  env: Record<string, string>,
+): Record<string, string | undefined> {
+  const merged: Record<string, string | undefined> = {
+    ...process.env,
+    ...env,
+  }
+
+  if (!(TEST_PROFILE_ENV in env)) {
+    delete merged[TEST_PROFILE_ENV]
+  }
+
+  return merged
+}
 
 const DEFAULT_TIMEOUT_MS = 600_000
 const MAX_CAPTURE_BYTES = 10 * 1024 * 1024
@@ -71,6 +93,12 @@ export interface RepositoryCheckRunOptions {
    * checkout.
    */
   workspace?: string
+  /**
+   * Extra environment variables for the profile commands, layered over the
+   * harness process environment. A gate uses this to hand the test reporter
+   * its profile target.
+   */
+  env?: Record<string, string>
 }
 
 export interface RepositoryCheckStreamingOptions extends RepositoryCheckRunOptions {
@@ -861,11 +889,14 @@ function effectiveTimeout(
   profile: RepositoryCheckProfile | undefined,
   requested: number | undefined,
 ): number {
+  if (requested !== undefined) {
+    return requested
+  }
+
   // The profile's own bound participates as its explicit timeout or the
   // default, so a shorter subset timeout can only raise the result, never
   // lower it below what the profile would get on its own.
   const candidates = [
-    requested,
     profile === undefined
       ? undefined
       : (profile.timeout_ms ?? DEFAULT_TIMEOUT_MS),
@@ -905,6 +936,7 @@ function execute(
   command: string,
   workspaceRoot: string,
   timeoutMs: number,
+  env: Record<string, string> = {},
 ): RepositoryCheckCommandResult {
   const startedAt = Date.now()
   const result = spawnSync(command, {
@@ -913,7 +945,7 @@ function execute(
     shell: true,
     maxBuffer: MAX_CAPTURE_BYTES,
     timeout: timeoutMs,
-    env: { ...process.env },
+    env: profileCommandEnv(env),
   })
 
   return {
@@ -948,7 +980,7 @@ function executeStreaming(
       cwd: workspaceRoot,
       shell: true,
       stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env },
+      env: profileCommandEnv(options.env ?? {}),
     })
     let stdout = ''
     let stderr = ''
@@ -1018,6 +1050,60 @@ function executeStreaming(
   })
 }
 
+function profileTimeoutResult(
+  kind: RepositoryCheckCommandResult['kind'],
+  command: string,
+  timeoutMs: number,
+): RepositoryCheckCommandResult {
+  return {
+    kind,
+    command,
+    exit_code: null,
+    signal: null,
+    stdout: '',
+    stderr: '',
+    passed: false,
+    timed_out: true,
+    duration_ms: 0,
+    error: `Profile timed out after ${timeoutMs}ms before this entry could start.`,
+  }
+}
+
+function executeWithinProfileBudget(
+  kind: RepositoryCheckCommandResult['kind'],
+  command: string,
+  workspaceRoot: string,
+  deadlineMs: number,
+  timeoutMs: number,
+  env: Record<string, string> = {},
+): RepositoryCheckCommandResult {
+  const remainingMs = deadlineMs - Date.now()
+
+  if (remainingMs <= 0) {
+    return profileTimeoutResult(kind, command, timeoutMs)
+  }
+
+  return execute(kind, command, workspaceRoot, remainingMs, env)
+}
+
+async function executeStreamingWithinProfileBudget(
+  kind: RepositoryCheckCommandResult['kind'],
+  command: string,
+  workspaceRoot: string,
+  deadlineMs: number,
+  timeoutMs: number,
+  options: RepositoryCheckStreamingOptions,
+): Promise<RepositoryCheckCommandResult> {
+  const remainingMs = deadlineMs - Date.now()
+
+  if (remainingMs <= 0) {
+    options.on_start?.(kind, command)
+    return profileTimeoutResult(kind, command, timeoutMs)
+  }
+
+  return executeStreaming(kind, command, workspaceRoot, remainingMs, options)
+}
+
 function baseResult(
   root: string,
   profileName: string,
@@ -1085,12 +1171,20 @@ export function runRepositoryCheck(
   }
 
   const results: RepositoryCheckCommandResult[] = []
+  const deadlineMs = Date.now() + timeoutMs
 
   for (const command of [
     ...(profile.environment_probes ?? []),
     ...profile.probes,
   ]) {
-    const result = execute('probe', command, workspaceRoot, timeoutMs)
+    const result = executeWithinProfileBudget(
+      'probe',
+      command,
+      workspaceRoot,
+      deadlineMs,
+      timeoutMs,
+      options.env,
+    )
     results.push(result)
 
     if (!result.passed) {
@@ -1114,11 +1208,22 @@ export function runRepositoryCheck(
   let commandsPassed = true
 
   for (const command of profile.commands) {
-    const result = execute('command', command, workspaceRoot, timeoutMs)
+    const result = executeWithinProfileBudget(
+      'command',
+      command,
+      workspaceRoot,
+      deadlineMs,
+      timeoutMs,
+      options.env,
+    )
     results.push(result)
 
     if (!result.passed) {
       commandsPassed = false
+    }
+
+    if (result.timed_out) {
+      break
     }
   }
 
@@ -1167,15 +1272,17 @@ export async function runRepositoryCheckStreaming(
   }
 
   const results: RepositoryCheckCommandResult[] = []
+  const deadlineMs = Date.now() + timeoutMs
 
   for (const command of [
     ...(profile.environment_probes ?? []),
     ...profile.probes,
   ]) {
-    const result = await executeStreaming(
+    const result = await executeStreamingWithinProfileBudget(
       'probe',
       command,
       workspaceRoot,
+      deadlineMs,
       timeoutMs,
       options,
     )
@@ -1200,10 +1307,11 @@ export async function runRepositoryCheckStreaming(
   let commandsPassed = true
 
   for (const command of profile.commands) {
-    const result = await executeStreaming(
+    const result = await executeStreamingWithinProfileBudget(
       'command',
       command,
       workspaceRoot,
+      deadlineMs,
       timeoutMs,
       options,
     )
@@ -1211,6 +1319,10 @@ export async function runRepositoryCheckStreaming(
 
     if (!result.passed) {
       commandsPassed = false
+    }
+
+    if (result.timed_out) {
+      break
     }
   }
 

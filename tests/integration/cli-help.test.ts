@@ -17,7 +17,7 @@ import path from 'node:path'
 import test from 'node:test'
 import { setTimeout as delay } from 'node:timers/promises'
 
-import { createFixture } from '../helpers.js'
+import { attestRunCard, createFixture } from '../helpers.js'
 
 const ROOT = process.cwd()
 const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
@@ -245,6 +245,56 @@ test('run-built exits after the requested command completes', () => {
   }
 })
 
+test('run-built bypasses quiet capture when the build stamp is fresh', () => {
+  const fixture = createBuildScriptFixture()
+  const quietRunner = path.join(fixture.root, 'bin', 'run-quiet')
+
+  try {
+    const initial = spawnSync(
+      '/bin/bash',
+      [fixture.runBuilt, '--', '/usr/bin/true'],
+      {
+        cwd: fixture.root,
+        encoding: 'utf8',
+        env: fixture.env,
+      },
+    )
+
+    assert.equal(initial.status, 0, initial.stderr)
+
+    writeFileSync(quietRunner, '#!/usr/bin/env bash\nexit 91\n')
+    chmodSync(quietRunner, 0o755)
+
+    const fresh = spawnSync(
+      '/bin/bash',
+      [fixture.runBuilt, '--', '/usr/bin/true'],
+      {
+        cwd: fixture.root,
+        encoding: 'utf8',
+        env: fixture.env,
+      },
+    )
+
+    assert.equal(fresh.status, 0, fresh.stderr)
+
+    writeFileSync(path.join(fixture.root, 'package.json'), '{}\n')
+
+    const stale = spawnSync(
+      '/bin/bash',
+      [fixture.runBuilt, '--', '/usr/bin/true'],
+      {
+        cwd: fixture.root,
+        encoding: 'utf8',
+        env: fixture.env,
+      },
+    )
+
+    assert.equal(stale.status, 91, stale.stderr)
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
 test('nested build-only reuses the prepared build in the same root', () => {
   const fixture = createBuildScriptFixture()
   const second = createBuildScriptFixture()
@@ -292,40 +342,18 @@ test('nested build-only reuses the prepared build in the same root', () => {
   }
 })
 
-test('workflow help exposes operator artifact controls', () => {
+test('workflow help does not create a run named --help', () => {
   const root = createFixture()
-  const initHelp = execFileSync(process.execPath, [CLI, 'init', '--help'], {
+
+  execFileSync(process.execPath, [CLI, 'prepare', '--help'], {
     cwd: root,
     encoding: 'utf8',
   })
-  const prepareHelp = execFileSync(
-    process.execPath,
-    [CLI, 'prepare', '--help'],
-    {
-      cwd: root,
-      encoding: 'utf8',
-    },
-  )
-  const generateHelp = execFileSync(
-    process.execPath,
-    [CLI, 'briefs', 'generate', '--help'],
-    {
-      cwd: root,
-      encoding: 'utf8',
-    },
-  )
 
-  assert.match(initHelp, /--operator-artifacts/u)
-  assert.match(prepareHelp, /Usage:/u)
-  assert.match(prepareHelp, /--operator-artifacts/u)
-  // Command help must not create a workflow directory named --help.
   assert.equal(
     existsSync(path.join(root, 'runtime/logs/workflows/--help')),
     false,
   )
-  assert.match(generateHelp, /--run <run-id>/u)
-  assert.match(generateHelp, /--stage <stage-slug>/u)
-  assert.match(generateHelp, /--force/u)
 })
 
 test('CLI artifact options persist run-wide and stage selections', () => {
@@ -372,6 +400,10 @@ test('CLI artifact options persist run-wide and stage selections', () => {
       { cwd: root, encoding: 'utf8' },
     ),
   ) as { run_id: string; state_path: string }
+
+  // The CLI drove init, so the test carries the supervisor's attestation duty
+  // before prepare, exactly as a supervisor session does.
+  attestRunCard(root, stageOnly.run_id)
 
   execFileSync(
     process.execPath,

@@ -228,14 +228,9 @@ export function resolvePrDescriptionContext(
       mode: 'fallback',
       template_path: null,
       instruction_paths: [],
-      heading_order: [
-        'Summary',
-        'Changelist',
-        'How to read this PR',
-        'Delivery Pipeline Manifest',
-      ],
+      heading_order: ['Summary', 'Changelist'],
       required_headings: ['Summary', 'Changelist'],
-      optional_headings: ['How to read this PR', 'Delivery Pipeline Manifest'],
+      optional_headings: [],
       allows_body_title: true,
     }
   }

@@ -239,4 +239,27 @@ normalized signature pauses before a third invocation can be prepared.
   terminal status or an existing stage.
 - `start_stage` exists and every stage is reachable.
 
+## Command governance rule
+
+Every canonical command under `library/cursor/commands/` MUST deliver its
+governance through a harness-resolved card, or be listed as read-only in
+`governance/registries/command_governance.json`. `pan validate` enforces:
+
+- A command MUST contain `pan governance card --mode <mode>` where `<mode>` is a
+  registered `STANDALONE_MODES` entry, unless it appears in
+  `read_only_commands`.
+- A command in `supervisor_commands` (`pan-start`, `pan-resume`) MUST run
+  `pan governance card --mode supervisor --run <run-id>`.
+- A command MUST NOT tell the session to read or inline a
+  `governance/policies/*.json` file by hand; the card is the only delivery path.
+- A `pending_card_steps` entry turns a missing step into a warning until the
+  named insertion lands, and becomes an error once the step exists.
+- Every standalone mode MUST have a persona-specific lookup row, and every
+  `workflow: standalone` lookup row MUST name a stage some mode declares.
+
+A new mode therefore needs three edits together: the `STANDALONE_MODES` entry in
+`src/lib/governance-card.ts`, its lookup row in
+`governance/registries/policy_lookup_table.json`, and the card step in the
+command file. Run `./bin/pan models --sync` afterwards.
+
 Run `./bin/pan validate` after editing any workflow file.

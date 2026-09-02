@@ -27,14 +27,76 @@ An agent MUST NOT rewrite quoted text to satisfy this standard (STE 8.6). Preser
 
 ## Chat reports
 
-A chat report is not a durable artifact. Use plain language and this three-part shape:
+A chat report is not a durable artifact. Use simple, concise, action-oriented language and give the point first.
+
+Use this three-part shape:
 
 1. State the outcome.
 2. State the consequence for the operator.
 3. State the next action, or state that no action is necessary.
 
+Do not write dense paragraphs that include all context. The operator can request more detail.
+Do not use LLM-native jargon, such as `load-bearing` or `pinned`.
+Do not use a journalistic hook or delay the conclusion.
+
 Apply this handbook's sentence and paragraph limits to each chat report.
 Keep evidence links close to the statement they support. Do not repeat internal workflow mechanics unless they affect the operator.
+
+### Issue reports
+
+When a chat report flags an issue, use this shape:
+
+1. State the issue concisely.
+2. State the existing consequences.
+3. State the anticipated consequences.
+4. State the remediations already applied.
+5. Give the mitigation options and their tradeoffs.
+6. Recommend one option.
+
+Use the operator-question route from policy ASK-001 when the options need an operator decision.
+
+Example:
+
+> The release index lacks the new version.
+>
+> Existing consequence: Operators cannot update to that version.
+>
+> Anticipated consequence: New installations will continue to use the previous version.
+>
+> Applied remediation: The release files now agree on the version.
+>
+> Options: Add the index entry after the release commit, or postpone publication. The first option completes the release. The second option avoids a premature entry.
+>
+> Recommendation: Add the index entry after the release commit.
+
+### Outcome summaries
+
+When a chat report summarizes outcomes, use this shape:
+
+1. List the key outcomes.
+2. List each outstanding item.
+3. Give one or more action options for each outstanding item.
+4. Identify the actor as an agent, the operator, or either.
+
+When one operator-owned path resolves an item, give numbered steps. Put each command in a fenced code block with exact parameters.
+
+Example:
+
+> Outcomes:
+>
+> - The production package passed validation.
+> - The release record is complete.
+>
+> Outstanding items:
+>
+> - Operator: Publish version 5.4.0. The operator must use the approved production account.
+>
+> 1. Confirm the production account.
+> 2. Run the publication command:
+>
+> ```sh
+> publish-release --environment production --version 5.4.0
+> ```
 
 ## Durable instruction text
 
@@ -254,5 +316,7 @@ Apply these counting rules as well:
 The standard defines no conformance scheme, and human judgment remains the control (STE General introduction). This repository checks conformance in two ways.
 
 The harness runs a deterministic check on the countable rules. That check reports sentence length, paragraph length, semicolons, contractions, complex verb constructions, Latin abbreviations, gender-specific pronouns, and the substitutions listed above. The check is advisory, so it reports a violation and does not block a stage.
+
+The chat-report issue and outcome shapes are judgment-only. The deterministic check does not test these shapes.
 
 The remaining rules need a reasoning agent. A review gate MUST evaluate terminology consistency, noun-group length, voice, one-topic-per-paragraph, and the correctness of a risk notice. The deterministic check does not test these rules, and a passing check MUST NOT be read as conformance.

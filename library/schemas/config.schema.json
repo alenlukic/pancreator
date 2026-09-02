@@ -159,7 +159,7 @@
     },
     "worktrees": {
       "type": "object",
-      "description": "Defaults for operator worktrees created by `pan worktree create` and `pan init --worktree`. Every field is optional; absent fields use the code defaults worktrees/operator, worktree/, and no setup commands.",
+      "description": "Defaults for operator worktrees created by `pan worktree create` and `pan init --worktree`. Every field is optional. New worktrees use their exact names as branches. The code defaults to worktrees/operator and no setup commands.",
       "additionalProperties": false,
       "properties": {
         "root": {
@@ -171,7 +171,7 @@
           "type": "string",
           "minLength": 1,
           "pattern": "^\\S+$",
-          "description": "Prefix joined to the worktree name to form its branch."
+          "description": "Deprecated compatibility input. Existing indexed branches keep their recorded names. New worktree branches ignore this value and use the exact worktree name."
         },
         "setup": {
           "type": "array",

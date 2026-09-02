@@ -2,18 +2,15 @@ import assert from 'node:assert/strict'
 import path from 'node:path'
 import test from 'node:test'
 
-import {
-  createRun,
-  decideRun,
-  prepareInvocation,
-  submitOutput,
-} from '../../src/lib/engine.js'
+import { decideRun, prepareInvocation } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
+  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
+  submitAsSupervisor,
 } from '../helpers.js'
 import type { StageDefinition, StageOutcome } from '../../src/lib/types.js'
 import { checkpoint, checksVariant } from './delivery-helpers.js'
@@ -66,7 +63,7 @@ function submitStage(
 
   return {
     invocation,
-    submitted: submitOutput(root, runId, invocation.output.path),
+    submitted: submitAsSupervisor(root, runId, invocation.output.path),
   }
 }
 
@@ -182,16 +179,6 @@ test('the technical_director contract escalates the prototype approach stage', (
   })
 })
 
-function advanceToBuild(
-  root: string,
-  runId: string,
-  workflow: ReturnType<typeof loadWorkflow>,
-) {
-  submitStage(root, runId, stageBySlug(workflow, 'intake'))
-  decideRun(root, runId, 'approve')
-  submitStage(root, runId, stageBySlug(workflow, 'approach'))
-}
-
 test('a blocked approach result routes the run to paused', () => {
   const root = createFixture()
 
@@ -238,7 +225,7 @@ test('a blocked approach result routes the run to paused', () => {
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
 
-  const submitted = submitOutput(root, runId, invocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
   assert.equal(submitted.state.status, 'paused')
   assert.equal(submitted.state.current_stage, 'approach')
@@ -305,31 +292,29 @@ test('operator-authorized narrowing lets approach advance to build', () => {
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
 
-  const submitted = submitOutput(root, runId, invocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
   assert.equal(submitted.state.status, 'running')
   assert.equal(submitted.state.current_stage, 'build')
 })
 
 test('environment_blocked evaluation waits at the operator gate', () => {
-  const root = createFixture()
+  const { root, runId, workflow } = checkpoint('prototype@build-prepared')
 
-  writeChecks(root, 0, 0)
-
-  const workflow = loadWorkflow(root, 'prototype')
-  const state = createRun(root, {
-    workflowSlug: 'prototype',
-    requestPath: 'request.md',
-    title: 'Environment spike',
-  })
-  const runId = state.run_id
-
-  advanceToBuild(root, runId, workflow)
   submitStage(root, runId, stageBySlug(workflow, 'build'))
 
   const invocation = prepareInvocation(root, runId).invocation
 
   assert.ok(invocation)
+  assert.equal(
+    invocation.output.required_data['evaluation.environment_blockers'],
+    'array',
+  )
+  assert.ok(
+    invocation.rubric.some(
+      (criterion) => criterion.id === 'evaluate.environment_classified',
+    ),
+  )
 
   const output = makeOutput(root, invocation, stageBySlug(workflow, 'evaluate'))
   const evaluation = (output.data as { evaluation: Record<string, unknown> })
@@ -358,7 +343,7 @@ test('environment_blocked evaluation waits at the operator gate', () => {
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
 
-  const submitted = submitOutput(root, runId, invocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
   assert.equal(submitted.state.status, 'awaiting_operator')
   assert.equal(submitted.record.outcome, 'success')

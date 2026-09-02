@@ -12,6 +12,11 @@ import {
 import path from 'node:path'
 
 import { invariant } from './errors.js'
+import {
+  type InboxLegacyMigrationSummary,
+  inboxTemporalScanDirectories,
+  migrateLegacyInboxLayout,
+} from './inbox.js'
 import { findProjectRoot, isRecord, writeJsonAtomic } from './io.js'
 import {
   RUN_SUFFIX_MAX_LENGTH,
@@ -1088,10 +1093,16 @@ export interface WorkflowArchiveSummary {
   pr_description_files: string[]
 }
 
+export interface InboxArchiveSelection {
+  complete: boolean
+  canceled: boolean
+}
+
 export interface WorkflowRuntimeMaintenanceSummary {
   names: RuntimeNameStandardizationSummary
   migration: WorkflowNameMigrationSummary
   suffixes: RunSuffixMigrationSummary
+  inbox_layout: InboxLegacyMigrationSummary
   archive: WorkflowArchiveSummary
 }
 
@@ -1474,7 +1485,8 @@ export function migrateWorkflowNames(
 
 // Runtime directories whose loose files are non-durable: their names MUST use
 // the temporal prefix scheme so age is legible and archiving can rely on it.
-const TEMPORAL_FILE_DIRECTORIES = ['runtime/inbox', 'runtime/pr-descriptions']
+const TEMPORAL_FILE_DIRECTORIES = ['runtime/pr-descriptions']
+const INBOX_TEMPORAL_SCAN_DIRECTORIES = inboxTemporalScanDirectories()
 
 const EMBEDDED_TIMESTAMP_NAME_PATTERN =
   /^(?:request-)?(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(\d{3})?Z-?(.*)$/u
@@ -1593,6 +1605,46 @@ export function standardizeRuntimeFileNames(
   root = findProjectRoot(),
 ): RuntimeNameStandardizationSummary {
   const mappings = new Map<string, string>()
+
+  for (const parentRelative of INBOX_TEMPORAL_SCAN_DIRECTORIES) {
+    const parent = path.join(root, parentRelative)
+
+    if (!existsSync(parent)) {
+      continue
+    }
+
+    const taken = new Set(readdirSync(parent))
+
+    for (const entry of readdirSync(parent, { withFileTypes: true })) {
+      if (
+        !entry.isFile() ||
+        entry.name.startsWith('.') ||
+        isCompliantTemporalFileName(entry.name)
+      ) {
+        continue
+      }
+
+      const absolute = path.join(parent, entry.name)
+      const { date, slugSeed } = temporalFileSource(absolute)
+      const extension = path.extname(entry.name)
+      const slug = standardizedFileSlug(absolute, slugSeed)
+      const prefix = temporalNamePrefix(date)
+      let target = `${prefix}_${slug}${extension}`
+      let ordinal = 2
+
+      while (taken.has(target)) {
+        target = `${prefix}_${slug}-${ordinal}${extension}`
+        ordinal += 1
+      }
+
+      taken.add(target)
+      renameSync(absolute, path.join(parent, target))
+      mappings.set(
+        `${parentRelative}/${entry.name}`,
+        `${parentRelative}/${target}`,
+      )
+    }
+  }
 
   for (const directoryRelative of TEMPORAL_FILE_DIRECTORIES) {
     for (const parentRelative of [
@@ -1942,10 +1994,18 @@ function archiveDirectory(parent: string, runId: string): void {
 
 export function archiveWorkflowDirectories(
   root = findProjectRoot(),
-  options: { retentionDays?: number; now?: Date } = {},
+  options: {
+    retentionDays?: number
+    now?: Date
+    inboxArchive?: InboxArchiveSelection
+  } = {},
 ): WorkflowArchiveSummary {
   const retentionDays = options.retentionDays ?? 7
   const now = options.now ?? new Date()
+  const inboxArchive = options.inboxArchive ?? {
+    complete: true,
+    canceled: false,
+  }
 
   invariant(
     Number.isInteger(retentionDays) && retentionDays >= 1,
@@ -2074,6 +2134,56 @@ export function archiveWorkflowDirectories(
   // standardized temporal prefix is the age authority.
   const archivedFiles = new Map<string, string[]>()
   const fileMappings = new Map<string, string>()
+  const inboxArchivedNames: string[] = []
+
+  const inboxStatuses: Array<'complete' | 'canceled'> = []
+
+  if (inboxArchive.complete) {
+    inboxStatuses.push('complete')
+  }
+
+  if (inboxArchive.canceled) {
+    inboxStatuses.push('canceled')
+  }
+
+  for (const status of inboxStatuses) {
+    const parentRelative = path.join('runtime', 'inbox', status)
+    const parent = path.join(root, parentRelative)
+
+    if (!existsSync(parent)) {
+      continue
+    }
+
+    for (const entry of readdirSync(parent, { withFileTypes: true })) {
+      if (!entry.isFile()) {
+        continue
+      }
+
+      const createdAt = temporalFileDate(entry.name)
+
+      if (!createdAt || createdAt.getTime() >= cutoff.getTime()) {
+        continue
+      }
+
+      const archiveRoot = path.join(root, 'runtime', 'inbox', 'archive')
+      const target = path.join(archiveRoot, entry.name)
+
+      invariant(
+        !existsSync(target),
+        `Archive target already exists: ${target}`,
+        { code: 'ARCHIVE_COLLISION' },
+      )
+      mkdirSync(archiveRoot, { recursive: true })
+      renameSync(path.join(parent, entry.name), target)
+      fileMappings.set(
+        `${parentRelative}/${entry.name}`,
+        `runtime/inbox/archive/${entry.name}`,
+      )
+      inboxArchivedNames.push(entry.name)
+    }
+  }
+
+  archivedFiles.set('runtime/inbox', inboxArchivedNames)
 
   for (const parentRelative of TEMPORAL_FILE_DIRECTORIES) {
     const parent = path.join(root, parentRelative)
@@ -2139,12 +2249,19 @@ export function archiveWorkflowDirectories(
 
 export function maintainWorkflowRuntime(
   root = findProjectRoot(),
-  options: { retentionDays?: number; now?: Date } = {},
+  options: {
+    retentionDays?: number
+    now?: Date
+    inboxArchive?: InboxArchiveSelection
+  } = {},
 ): WorkflowRuntimeMaintenanceSummary {
+  const inboxLayout = migrateLegacyInboxLayout(root)
+
   return {
     names: standardizeRuntimeFileNames(root),
     migration: migrateWorkflowNames(root),
     suffixes: migrateRunSuffixes(root),
+    inbox_layout: inboxLayout,
     archive: archiveWorkflowDirectories(root, options),
   }
 }

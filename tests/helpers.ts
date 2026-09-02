@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import {
+  chmodSync,
   cpSync,
   existsSync,
   mkdirSync,
@@ -10,11 +11,27 @@ import {
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
+import { recordFixtureEvent } from './reporters/fixture-profile.js'
+
 import { renderBrief } from '../src/lib/briefs.js'
+import {
+  createRun as createEngineRun,
+  submitOutput,
+} from '../src/lib/engine.js'
+import type { OperationProgressOptions } from '../src/lib/engine.js'
+import { parsePersonaMapping } from '../src/lib/executors/mapping.js'
+import { delegationExecutionPath } from '../src/lib/validation.js'
+import { writeRedlineRecord } from '../src/lib/watch.js'
+import {
+  attestSupervisorCard as attestEngineSupervisorCard,
+  buildSupervisorCard,
+} from '../src/lib/governance/supervisor-card.js'
 import { readHarnessConfig } from '../src/lib/project-config.js'
 import { syncCursorProjection } from '../src/lib/projection.js'
 import { resolveRunLayout } from '../src/lib/run-layout.js'
+import { loadState } from '../src/lib/state.js'
 import { nextSemanticVersion } from '../src/lib/versioning.js'
+import { recordForegroundReturn } from '../src/lib/watch.js'
 
 import type {
   Invocation,
@@ -113,9 +130,11 @@ export function cloneTree(
 let fixtureTemplateRoot: string | null = null
 
 function cloneFixtureTemplate(template: string): string {
+  const started = performance.now()
   const root = mkdtempSync(path.join(tmpdir(), 'pancreator-v2-'))
 
   cloneTree(template, root)
+  recordFixtureEvent('template_clone', 'main', performance.now() - started)
 
   return root
 }
@@ -138,6 +157,7 @@ export function createFixture(): string {
     return cloneFixtureTemplate(fixtureTemplateRoot)
   }
 
+  const buildStarted = performance.now()
   const root = mkdtempSync(path.join(tmpdir(), 'pancreator-v2-'))
 
   for (const entry of [
@@ -145,6 +165,7 @@ export function createFixture(): string {
     'library',
     'release',
     'docs',
+    'target-extensions',
     '.pancreator',
   ]) {
     const source = path.join(REPO_ROOT, entry)
@@ -214,6 +235,7 @@ export function createFixture(): string {
         private: true,
         type: 'module',
         scripts: {
+          check: 'node -e "process.exit(0)"',
           lint: 'node -e "process.exit(0)"',
           test: 'node -e "process.exit(0)"',
           'test:coverage': 'node -e "process.exit(0)"',
@@ -224,6 +246,12 @@ export function createFixture(): string {
       2,
     ),
   )
+  // The self-development template's full profile also runs the installer
+  // smoke harness; the fixture answers with a passing stub so a full gate
+  // (verify and remediate submission) can pass without the real installer.
+  mkdirSync(path.join(root, 'bin'), { recursive: true })
+  writeFileSync(path.join(root, 'bin', 'install'), '#!/bin/sh\nexit 0\n')
+  chmodSync(path.join(root, 'bin', 'install'), 0o755)
 
   syncCursorProjection(root, { write: true })
 
@@ -239,6 +267,7 @@ export function createFixture(): string {
   fixtureGit(['add', '.'], { cwd: root, encoding: 'utf8' })
   fixtureGit(['commit', '-qm', 'fixture'], { cwd: root, encoding: 'utf8' })
 
+  recordFixtureEvent('template_build', 'main', performance.now() - buildStarted)
   fixtureTemplateRoot = root
 
   return cloneFixtureTemplate(root)
@@ -987,6 +1016,127 @@ export function attachTargetInstructionEvidence(
   }
 }
 
+/**
+ * Attest the run's current supervisor card, the way a compliant supervisor does
+ * after reading it. `pan prepare` and `pan submit` refuse an unattested card.
+ */
+export function attestRunCard(root: string, runId: string): void {
+  const card = buildSupervisorCard(root, runId)
+
+  attestEngineSupervisorCard(root, runId, card.sha256)
+  // The attestation opens a supervisor session; the session's redline follows.
+  writeRedlineRecord(root, runId, 'pan-start')
+}
+
+/**
+ * Create a run and attest its supervisor card. Tests drive runs as the
+ * supervisor, so they carry the supervisor's attestation duty; the engine
+ * function itself renders the card and leaves it unattested.
+ */
+export function createRun(
+  root: string,
+  options: Parameters<typeof createEngineRun>[1],
+): RunState {
+  const state = createEngineRun(root, options)
+
+  attestRunCard(root, state.run_id)
+
+  // The attestation advanced the persisted revision, so hand back the state
+  // the disk holds rather than the pre-attestation object.
+  return loadState(root, state.run_id)
+}
+
+/**
+ * Record the foreground-return attestation a compliant supervisor writes after
+ * a Cursor worker launch returns. DELEGATE-001 requires it, or a completed
+ * `pan watch` record, for every Cursor worker invocation, and `pan submit`
+ * refuses with `DELEGATION_UNOBSERVED` otherwise. An external-executor
+ * invocation is exempt because `pan delegate` writes its own evidence. A run
+ * without a current invocation gets no record, so the submission reports its
+ * own error.
+ */
+export function attestForegroundReturn(root: string, runId: string): void {
+  let current: RunState['current_invocation']
+
+  try {
+    current = loadState(root, runId).current_invocation
+  } catch {
+    return
+  }
+
+  if (!current) {
+    return
+  }
+
+  const invocationAbsolute = path.join(root, current.json_path)
+
+  if (!existsSync(invocationAbsolute)) {
+    return
+  }
+
+  const invocation = JSON.parse(
+    readFileSync(invocationAbsolute, 'utf8'),
+  ) as Invocation
+  const executor = invocation.stage.persona_executor ?? 'cursor'
+
+  if (executor !== 'cursor') {
+    // `pan submit` exempts an external-executor stage only when the
+    // delegation-execution record `pan delegate` writes exists. A test that
+    // drives such a stage without spawning the executor stands in for that
+    // delegation here, the way it stands in for the supervisor elsewhere.
+    const recordAbsolute = path.join(
+      root,
+      delegationExecutionPath(runId, current.id, root),
+    )
+
+    if (!existsSync(recordAbsolute)) {
+      writeJson(recordAbsolute, {
+        schema_version: 1,
+        run_id: runId,
+        invocation_id: current.id,
+        stage: invocation.stage.slug,
+        executor,
+        delegation_kind: 'fresh',
+        binary: 'test-stub',
+        argv: [],
+        exit_code: 0,
+        timed_out: false,
+        duration_ms: 0,
+        stdout_path: delegationExecutionPath(runId, current.id, root).replace(
+          /\.delegation-execution\.json$/u,
+          '.stdout.log',
+        ),
+        stderr_path: delegationExecutionPath(runId, current.id, root).replace(
+          /\.delegation-execution\.json$/u,
+          '.stderr.log',
+        ),
+        test_stand_in: true,
+      })
+    }
+
+    return
+  }
+
+  recordForegroundReturn(root, runId, { invocationId: current.id })
+}
+
+/**
+ * Submit a stage output the way a supervisor does: attest the foreground
+ * return of the current worker launch, then run the submission. Tests that
+ * drive a run through submit MUST use this helper; a test of the
+ * `DELEGATION_UNOBSERVED` refusal itself calls `submitOutput` directly.
+ */
+export function submitAsSupervisor(
+  root: string,
+  runId: string,
+  outputPath: string,
+  options: OperationProgressOptions = {},
+): ReturnType<typeof submitOutput> {
+  attestForegroundReturn(root, runId)
+
+  return submitOutput(root, runId, outputPath, options)
+}
+
 /** The read attestation a worker owes for a referenced invocation contract. */
 export function makeAttestation(
   invocation: Invocation,
@@ -1154,4 +1304,101 @@ export function makeOutput(
       : {}),
     ...(attestation ? { invocation_attestation: attestation } : {}),
   }
+}
+
+/**
+ * Write a Cursor model catalog into a fixture covering every cursor-executor
+ * spec that fixture's own config names.
+ *
+ * The real catalog at `governance/registries/cursor_model_catalog.json` is
+ * account-local and untracked, so `createFixture` copies one only on a machine
+ * whose operator happens to have it. A test that needs a catalog prediction
+ * must therefore bring its own, or it passes and fails by whose checkout it
+ * runs in.
+ */
+export function writeFixtureCursorCatalog(root: string): void {
+  const config = readHarnessConfig(root, path.join(root, 'config.json')) as {
+    defaults?: Record<string, string>
+    configs?: Record<string, { personas?: Record<string, string> }>
+  }
+  const specs = [
+    ...Object.values(config.defaults ?? {}),
+    ...Object.values(config.configs ?? {}).flatMap((entry) =>
+      Object.values(entry.personas ?? {}),
+    ),
+  ]
+  const collected = new Map<
+    string,
+    { parameters: Map<string, Set<string>>; variants: Record<string, string>[] }
+  >()
+
+  for (const raw of specs) {
+    if (typeof raw !== 'string' || raw.length === 0) {
+      continue
+    }
+
+    const mapping = parsePersonaMapping(raw, 'fixture catalog')
+
+    if (mapping.executor !== 'cursor') {
+      continue
+    }
+
+    const model = collected.get(mapping.model) ?? {
+      parameters: new Map<string, Set<string>>(),
+      variants: [],
+    }
+
+    for (const [key, value] of Object.entries(mapping.options)) {
+      const values = model.parameters.get(key) ?? new Set<string>()
+
+      values.add(value)
+      model.parameters.set(key, values)
+    }
+
+    // Every spec the config names must be a declared combination, or loading
+    // that config against this catalog fails.
+    model.variants.push({ ...mapping.options })
+    collected.set(mapping.model, model)
+  }
+
+  // `auto-smart` stands in for the bare-id case a catalog still has to know.
+  if (!collected.has('auto-smart')) {
+    collected.set('auto-smart', {
+      parameters: new Map<string, Set<string>>(),
+      variants: [{}],
+    })
+  }
+
+  const catalogPath = path.join(
+    root,
+    'governance',
+    'registries',
+    'cursor_model_catalog.json',
+  )
+
+  mkdirSync(path.dirname(catalogPath), { recursive: true })
+  writeFileSync(
+    catalogPath,
+    `${JSON.stringify(
+      {
+        models: [...collected].map(([id, model]) => ({
+          id,
+          displayName: id,
+          aliases: [],
+          parameters: [...model.parameters].map(([parameter, values]) => ({
+            id: parameter,
+            values: [...values].map((value) => ({ value, displayName: value })),
+          })),
+          variants: model.variants.map((variant) => ({
+            params: Object.entries(variant).map(([id, value]) => ({
+              id,
+              value,
+            })),
+          })),
+        })),
+      },
+      null,
+      2,
+    )}\n`,
+  )
 }

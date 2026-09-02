@@ -10,7 +10,7 @@ self-development intake without implementing the repair.
    - A link supplied by the operator is opened when the current Cursor tool
      context can resolve it; otherwise preserve the link and record the access
      failure as an evidence gap.
-3. Choose a unique harness-relative output path under `{{PANCREATOR_HARNESS_PATH}}runtime/inbox/` named
+3. Choose a unique harness-relative output path under `{{PANCREATOR_HARNESS_PATH}}runtime/inbox/queue/` named
    `harness-repair-<UTC timestamp>-<slug>.md`.
 4. When the input identifies a workflow run, collect the relevant agent
    transcripts before delegation. Use transcripts present in the current Cursor

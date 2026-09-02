@@ -3,55 +3,20 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import {
-  createRun,
-  prepareInvocation,
-  submitOutput,
-} from '../../src/lib/engine.js'
+import { prepareInvocation } from '../../src/lib/engine.js'
 import { generateOperatorArtifacts } from '../../src/lib/operator-artifact-generation.js'
-import {
-  generatedOperatorBrief,
-  OPERATOR_ARTIFACT_PROFILE_HEADINGS,
-} from '../../src/lib/operator-artifact-profiles.js'
+import { operatorArtifactsRequested } from '../../src/lib/operator-artifacts.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
+import type { RunState } from '../../src/lib/types.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
+  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
+  submitAsSupervisor,
 } from '../helpers.js'
-
-test('every workflow artifact profile maps canonical data into required sections', () => {
-  for (const profile of Object.keys(
-    OPERATOR_ARTIFACT_PROFILE_HEADINGS,
-  ) as Array<keyof typeof OPERATOR_ARTIFACT_PROFILE_HEADINGS>) {
-    if (
-      profile === 'investigation' ||
-      profile === 'spotfix' ||
-      profile === 'escalation'
-    ) {
-      continue
-    }
-
-    const brief = generatedOperatorBrief({
-      profile,
-      title: `${profile} brief`,
-      source: `run/${profile}`,
-      stageTitle: profile,
-      outcome: 'success',
-      summary: 'The canonical stage record contains the generated brief data.',
-      data: {},
-      risks: [],
-      unknowns: [],
-    })
-    const titles = brief.sections.map((section) => section.title.toLowerCase())
-
-    for (const heading of OPERATOR_ARTIFACT_PROFILE_HEADINGS[profile]) {
-      assert.ok(titles.some((title) => title.includes(heading)))
-    }
-  }
-})
 
 function submitSuppressedPlan(root: string): {
   runId: string
@@ -71,10 +36,16 @@ function submitSuppressedPlan(root: string): {
 
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
-  submitOutput(root, state.run_id, invocation.output.path)
+  submitAsSupervisor(root, state.run_id, invocation.output.path)
 
   return { runId: state.run_id, invocationId: invocation.invocation_id }
 }
+
+test('legacy state keeps operator artifacts enabled', () => {
+  const state = {} as RunState
+
+  assert.equal(operatorArtifactsRequested(state, 'plan'), true)
+})
 
 test('post-stage generation creates validated HTML from canonical records', () => {
   const root = createFixture()

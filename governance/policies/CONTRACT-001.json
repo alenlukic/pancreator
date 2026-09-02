@@ -46,6 +46,16 @@
       "enforcement": "authoritative",
       "failure_route": "blocked",
       "evidence_class": "validation-result"
+    },
+    {
+      "id": "target-authoring-validate",
+      "registry_id": "TARGET-AUTHORING-VALIDATE-001",
+      "phase": "gate",
+      "executor": "harness",
+      "target": "repository",
+      "enforcement": "authoritative",
+      "failure_route": "blocked",
+      "evidence_class": "validation-result"
     }
   ]
 }

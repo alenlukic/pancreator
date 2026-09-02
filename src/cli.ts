@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-import { readdirSync } from 'node:fs'
+import { readdirSync, realpathSync } from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import {
   abortRun,
@@ -53,6 +54,11 @@ import {
 import { resolvePolicies } from './lib/policies.js'
 import { resolvePrDescriptionContext } from './lib/pr-description.js'
 import {
+  continueLocalRelease,
+  finalizeLocalRelease,
+  syncLocalRelease,
+} from './lib/release-preparation.js'
+import {
   awayDecisionLedgerPath,
   awayModeTrigger,
   countAwayDecisions,
@@ -93,6 +99,7 @@ import {
   readJson,
   readText,
   resolveInside,
+  sha256,
   writeJsonAtomic,
   writeTextAtomic,
 } from './lib/io.js'
@@ -120,7 +127,18 @@ import {
   scaffoldStageOutput,
 } from './lib/requirements/scaffold.js'
 import { auditDirectives } from './lib/governance/audit-directives.js'
+import {
+  gradeEvalRun,
+  listEvalScenarios,
+  renderEvalReportMarkdown,
+  runEval,
+  writeEvalReport,
+} from './lib/evals/index.js'
 import { STANDALONE_MODES, buildGovernanceCard } from './lib/governance-card.js'
+import {
+  attestSupervisorCard,
+  buildSupervisorCard,
+} from './lib/governance/supervisor-card.js'
 import { conflictsByTier, resolveReviewScope } from './lib/review-scope.js'
 import {
   assertRepositoryChecksValid,
@@ -138,26 +156,56 @@ import {
 import { generateOperatorArtifacts } from './lib/operator-artifact-generation.js'
 import { maintainWorkflowRuntime } from './lib/workflow-artifacts.js'
 import {
+  DEFAULT_STALL_WAKES,
+  WATCH_EXIT_CODES,
+  formatWakeLine,
+  parseAgentState,
+  parseCadenceSeconds,
+  parsePositiveInteger,
+  parseTimeoutSeconds,
+  watchInvocation,
+  recordForegroundReturn,
+  foregroundReturnRecordPath,
+  writeRedlineRecord,
+} from './lib/watch.js'
+import {
   createWorktree,
   listWorktrees,
   readWorktreeIndex,
   reconcileWorktrees,
   removeWorktree,
   resolveOrCreateWorktree,
+  resolveWorktreeWorkspace,
   resolveWorkspacePathOrWorktree,
+  type WorktreeRecord,
 } from './lib/worktrees.js'
+import { runTestsImpacted } from './lib/test-impact.js'
+import {
+  applyTargetAuthoringDraft,
+  readTargetExtensionManifest,
+  validateTargetAuthoring,
+} from './lib/target-authoring.js'
+import {
+  finalizePreparedTuneSession,
+  prepareTuneSession,
+  validateAudit,
+} from './lib/test-tuning.js'
 
 const STANDALONE_MODE_NAMES = Object.keys(STANDALONE_MODES).sort().join('|')
 
-const HELP_BODY = `Usage:
+export const HELP_BODY = `Usage:
   pan init --request <repo-relative-file> [--workflow delivery|prototype|design] [--title <title>] [--workspace <dir> | --worktree <name>] [--gates <file>] [--involvement <profile>] [--verification <level>] [--operator-artifacts]
-  pan prepare <run-id> [--operator-artifacts]
+  pan prepare <run-id> [--worktree <name>] [--operator-artifacts]
   pan delegate <run-id> [--timeout-ms <milliseconds>]
-  pan submit <run-id> <output-json>
+  pan watch <run-id> [--invocation <invocation-id>] [--cadence-seconds <n>] [--stall-wakes <n>] [--timeout-seconds <n>] [--mark-background] [--agent-state running|completed] [--json]
+      Await a launched worker on a fixed cadence and record every arming and wake to agent/evidence/<invocation-id>-watch.jsonl. Exit 0 when the output is present, 2 on a stall, 3 at the timeout, 4 when the completion is unverified. --mark-background records that the platform turned the launch into a background subagent. --agent-state reports what you saw when you inspected the launched agent itself; the watch reads files and cannot see a worker that is still writing. An output already present at the first observation that landed less than one cadence after the launch records unverified without it.
+  pan watch <run-id> --foreground-returned [--invocation <invocation-id>] [--launched-at <iso-8601>] [--json]
+      Record that a foreground launch returned, with the launch and return wall-clock times, at agent/evidence/<invocation-id>-foreground-return.json. The launch time defaults to the delegation artifact's modification time. pan submit requires this record or a completed watch record for every Cursor worker invocation and fails with DELEGATION_UNOBSERVED otherwise.
+  pan submit <run-id> <output-json> [--worktree <name>]
   pan assess <run-id> <assessment-json>
   pan decide <run-id> <approve|reject|revise> [--note <text>] [--stage <stage-slug>]
   pan pause <run-id> [--note <text>]
-  pan resume <run-id> [--stage <stage-slug>] [--note <text>]
+  pan resume <run-id> [--worktree <name>] [--stage <stage-slug>] [--note <text>]
   pan set-stage <run-id> --stage <stage-slug> --note <reason>
   pan waive-gate <run-id> --note <directive> [--stage <stage-slug>] [--to <stage-slug>] [--criteria <id[,id...]>] [--defer <AC-id[,AC-id...]> --spotfix]
   pan abort <run-id> [--note <text>]
@@ -167,31 +215,48 @@ const HELP_BODY = `Usage:
   pan repository-check <profile> [--timeout-ms <milliseconds>] [--workspace <dir|worktree> | --worktree <name>] [--json]
       --timeout-ms raises the effective bound only: resolution keeps the maximum of the request, the profile's own bound, and subset-profile timeouts.
   pan repository-check validate [--json]
+  pan tests impacted [--changed <ref> | --staged | --worktree-dirty] [--file <path>]... [--include <glob>]... [--depth <n>] [--list] [--json] [--advisory-ratio <0..1>]
+      Self-development only. Select and run the lane tests whose import closure reaches the changed files. The default change set is the dirty working tree. An iteration aid, never a gate.
+  pan release sync --worktree <name> --message <message> [--run <run-id>] [--json]
+  pan release continue --worktree <name> [--run <run-id>] [--json]
+  pan release finalize --worktree <name> --fetched-main <commit> [--run <run-id>] [--json]
+  pan author apply --input <draft-json> [--json]
+  pan author validate [--extension <id>] [--json]
+  pan tune prepare [--baseline <ref>] [--json]
+      Self-development only. Create a tune session, inventory current tests, and resolve the retained set.
+  pan tune finalize --session <id> [--json]
+      Load validated session files, assemble the benchmark, then atomically write the tune record, report, and latest pointer.
+  pan tune validate-audit --record <path> --baseline <ref> --target <ref> [--json]
+      Verify a worked audit covers every net-new test identity in the baseline..target range.
   pan worktree create <name> [--from <branch|commit|worktree>] [--description <text>] [--json]
   pan worktree resolve <name> [--description <text>] [--json]
   pan worktree list [--json]
   pan worktree remove <name> [--force] [--json]
   pan worktree reconcile (--into <worktree> | --into-branch <branch>) --source <worktree> --source <worktree> [--json]
-  pan status <run-id> [--json]
+  pan status <run-id> [--redline] [--occasion pan-start|pan-resume] [--json]
+      --redline writes agent/evidence/platform-guidance-redline.json, the run's pre-declaration that platform guidance is non-authoritative.
   pan list [--json]
   pan inbox [--json]
-  pan archive [--days <positive-integer>] [--json]
+  pan archive [--days <positive-integer>] [--complete] [--canceled] [--json]
   pan models [--sync] [--probe] [--migrate-from <previous-config.json>] [--json]
   pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source> [--json]
   pan models --probe --run <run-id> --invocation <invocation-id> [--json]
       --probe launches one minimal cursor-agent call per distinct active model spec and records what Cursor resolved and reports match, recorded, mismatch, or unavailable per spec. It never fails the command, so read the result and error fields. Needs the cursor-agent CLI and CURSOR_API_KEY (process environment, installation .env, or workspace-root .env) or a login. Run pan doctor to see which source resolves.
       --migrate-from preserves the previous effective model map across a tracked config.json replacement: every mapping the new file leaves empty is carried into config_overrides.json, and the replacement stops before mutation when a mapping stays empty that defaults does not fill.
   pan validate [--json]
+  pan eval list [--json] | pan eval grade <run-id> --scenario <name> [--out <dir>] [--json] | pan eval run <scenario> [--attest-supervisor-card] [--pipeline-config <name>] [--json]
   pan doctor [--worktree <name>] [--json]
   pan requirements resolve --persona <p> --workflow <w> --stage <s> [--kind <kind>] [--output-path <path>] [--json]
   pan requirements run --persona <p> --workflow <w> --stage <s> --kind <kind> --registry <id> --target <path> [--worktree <name>] [--json]
   pan pr-description context [--worktree <name>] [--json]
   pan output scaffold <run-id> --invocation <path> --output <path> [--force]
-  pan output validate <run-id> --file <path> [--json]
+  pan output validate <run-id> --file <path> --invocation <path> [--json]
   pan assessment scaffold <run-id> --invocation <path> --output <path> [--force]
   pan governance audit-directives [--json]
-  pan governance card --mode <${STANDALONE_MODE_NAMES}> [--request <path>] [--worktree <name>] [--out <path>] [--base <ref> --target <ref>] [--json]
+  pan governance card --mode <${STANDALONE_MODE_NAMES}> [--extension <id>] [--request <path>] [--worktree <name>] [--out <path>] [--base <ref> --target <ref> [--closure-revision <ref>]] [--json]
       --base (review mode) renders the base-revision text of every conduct policy the target changes, so the session reviews under the rule in force before the change.
+  pan governance card --mode supervisor --run <run-id> [--json]
+  pan governance attest-supervisor <run-id> --sha256 <digest> [--json]
   pan governance review-scope --target <ref> [--base <ref>] [--default-branch <branch>] [--closure-revision <ref>] [--json]
   pan best-of-n init --request <path> --configs <path> [--workflow <slug>] [--consolidation-workflow <slug>] [--operator-artifacts] [--json]
   pan best-of-n status <bon-id> [--json]
@@ -279,6 +344,11 @@ function hasFlag(args: string[], name: string): boolean {
  */
 const WORKTREE_CAPABLE_SURFACES = [
   'init',
+  'prepare',
+  'resume',
+  'submit',
+  'author apply|validate',
+  'release sync|continue|finalize',
   'repository-check <profile>',
   'technologies detect',
   'doctor',
@@ -287,16 +357,19 @@ const WORKTREE_CAPABLE_SURFACES = [
 
 const SUBCOMMAND_STYLE_COMMANDS = new Set([
   'assessment',
+  'author',
   'away',
   'best-of-n',
   'briefs',
   'governance',
   'hypervisor',
   'output',
+  'release',
   'repository-check',
   'requirements',
   'spotfix',
   'technologies',
+  'tune',
   'worktree',
 ])
 
@@ -304,7 +377,13 @@ function acceptsWorktreeOption(command: string, args: string[]): boolean {
   switch (command) {
     case 'init':
     case 'doctor':
+    case 'prepare':
+    case 'resume':
+    case 'submit':
+    case 'release':
       return true
+    case 'author':
+      return args[0] === 'apply' || args[0] === 'validate'
     case 'repository-check':
       return args[0] !== 'validate'
     case 'technologies':
@@ -340,7 +419,7 @@ function sharedWorktreeWorkspace(
   root: string,
   args: string[],
   description?: string | null,
-): { name: string; path: string } | null {
+): WorktreeRecord | null {
   const name = option(args, '--worktree')
 
   if (!name) {
@@ -353,7 +432,59 @@ function sharedWorktreeWorkspace(
     description ?? `Worktree '${name}'`,
   )
 
-  return { name, path: record.path }
+  return record
+}
+
+/**
+ * Check a lifecycle worktree selection against the identity stored at init.
+ *
+ * The name comparison occurs before worktree resolution, so a conflicting
+ * selection cannot create or switch an unrelated worktree.
+ */
+function assertRunWorktreeBinding(
+  root: string,
+  runId: string,
+  args: string[],
+): void {
+  const name = option(args, '--worktree')
+  const state = getRunState(root, runId)
+  const binding = state.managed_worktree
+
+  if ((name && !binding) || (name && binding?.name !== name)) {
+    throw new PanError(
+      `Run '${runId}' is bound to worktree ` +
+        `'${binding?.name ?? '(none)'}', not '${name}'.`,
+      { code: 'RUN_WORKTREE_MISMATCH' },
+    )
+  }
+
+  if (!binding) {
+    return
+  }
+
+  const resolved = readWorktreeIndex(root).worktrees.find(
+    (entry) => entry.name === binding.name,
+  )
+
+  if (
+    !resolved ||
+    resolved.path !== binding.path ||
+    resolved.branch !== binding.branch
+  ) {
+    throw new PanError(
+      `Run '${runId}' worktree identity no longer matches the index.`,
+      { code: 'RUN_WORKTREE_IDENTITY_MISMATCH' },
+    )
+  }
+
+  const resolvedPath = resolveWorktreeWorkspace(root, binding.name)
+
+  if (resolvedPath !== binding.path) {
+    throw new PanError(
+      `Run '${runId}' resolved worktree path no longer matches its binding.`,
+      { code: 'RUN_WORKTREE_IDENTITY_MISMATCH' },
+    )
+  }
 }
 
 function commaSeparatedOption(args: string[], name: string): string[] {
@@ -796,11 +927,13 @@ function runAgentPreSubmitValidators(
       return []
     }
 
-    const targetPath = resolveRequirementTargetPath(
-      requirement,
-      filePath,
-      submittedValue,
-    )
+    const targetPath = resolveRequirementTargetPath(requirement, filePath, {
+      ...submittedValue,
+      ...(isRecord(invocation.output) &&
+      isRecord(invocation.output.artifact_targets)
+        ? { artifact_targets: invocation.output.artifact_targets }
+        : {}),
+    })
 
     if (!targetPath) {
       return [
@@ -897,6 +1030,7 @@ async function main(): Promise<void> {
         requestPath: option(args, '--request'),
         title,
         workspace: worktreeWorkspace ? worktreeWorkspace.path : workspace,
+        worktree: worktreeWorkspace,
         gatesPath: option(args, '--gates'),
         involvement: option(args, '--involvement'),
         verification: option(args, '--verification'),
@@ -908,6 +1042,7 @@ async function main(): Promise<void> {
         run_id: state.run_id,
         workflow: state.workflow_slug,
         workspace_root: state.workspace_root,
+        managed_worktree: state.managed_worktree ?? null,
         pipeline_config: state.pipeline_config?.name,
         involvement_profile: state.operator_involvement?.profile,
         run_contracts: state.operator_involvement?.contracts ?? [],
@@ -921,6 +1056,9 @@ async function main(): Promise<void> {
     }
     case 'prepare': {
       const runId = requiredArgument(args[0], 'run-id')
+
+      assertRunWorktreeBinding(root, runId, args)
+
       const result = prepareInvocation(root, runId, {
         operatorArtifacts: hasFlag(args, '--operator-artifacts'),
         onProgress: (message) =>
@@ -1007,6 +1145,9 @@ async function main(): Promise<void> {
     case 'submit': {
       const runId = requiredArgument(args[0], 'run-id')
       const outputPath = requiredArgument(args[1], 'output-json')
+
+      assertRunWorktreeBinding(root, runId, args)
+
       process.stderr.write(
         `[pan submit:${runId}] validating stage output, brief, and repository checks...\n`,
       )
@@ -1152,6 +1293,9 @@ async function main(): Promise<void> {
     }
     case 'resume': {
       const runId = requiredArgument(args[0], 'run-id')
+
+      assertRunWorktreeBinding(root, runId, args)
+
       const state = resumeRun(
         root,
         runId,
@@ -1491,6 +1635,129 @@ async function main(): Promise<void> {
       }
       return
     }
+    case 'tests': {
+      const sub = args[0]
+
+      if (sub !== 'impacted') {
+        throw new PanError(`Unknown tests subcommand: ${sub ?? '(missing)'}`, {
+          code: 'UNKNOWN_COMMAND',
+        })
+      }
+
+      const impact = await runTestsImpacted(root, args.slice(1))
+      process.exitCode = impact.exit_code
+      return
+    }
+    case 'release': {
+      const sub = requiredArgument(args[0], 'release subcommand')
+      const worktreeName = requiredArgument(
+        option(args, '--worktree'),
+        '--worktree',
+      )
+
+      if (sub === 'sync') {
+        const result = syncLocalRelease(
+          root,
+          worktreeName,
+          requiredArgument(option(args, '--message'), '--message'),
+          option(args, '--run') ?? undefined,
+        )
+
+        print(result, hasFlag(args, '--json'))
+
+        if (result.status === 'conflict') {
+          process.exitCode = 1
+        }
+
+        return
+      }
+
+      if (sub === 'continue') {
+        const result = continueLocalRelease(
+          root,
+          worktreeName,
+          option(args, '--run') ?? undefined,
+        )
+
+        print(result, hasFlag(args, '--json'))
+
+        if (result.status === 'conflict') {
+          process.exitCode = 1
+        }
+
+        return
+      }
+
+      if (sub === 'finalize') {
+        print(
+          finalizeLocalRelease(
+            root,
+            worktreeName,
+            requiredArgument(option(args, '--fetched-main'), '--fetched-main'),
+            option(args, '--run') ?? undefined,
+          ),
+          hasFlag(args, '--json'),
+        )
+        return
+      }
+
+      throw new PanError(`Unknown release subcommand: ${sub}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
+    }
+    case 'tune': {
+      const sub = args[0]
+      const asJson = hasFlag(args, '--json')
+
+      if (sub === 'prepare') {
+        const prepared = prepareTuneSession(root, {
+          ...(option(args, '--baseline')
+            ? { baselineRef: option(args, '--baseline')! }
+            : {}),
+        })
+
+        print({ status: 'prepared', ...prepared }, asJson)
+        return
+      }
+
+      if (sub === 'finalize') {
+        const sessionId = requiredArgument(
+          option(args, '--session'),
+          '--session',
+        )
+        const result = finalizePreparedTuneSession(root, sessionId)
+
+        print({ status: 'finalized', ...result }, asJson)
+        return
+      }
+
+      if (sub === 'validate-audit') {
+        const result = validateAudit(root, {
+          recordPath: requiredArgument(option(args, '--record'), '--record'),
+          baselineRef: requiredArgument(
+            option(args, '--baseline'),
+            '--baseline',
+          ),
+          targetRef: requiredArgument(option(args, '--target'), '--target'),
+          json: asJson,
+        })
+
+        print(
+          { status: result.complete ? 'valid' : 'invalid', ...result },
+          asJson,
+        )
+
+        if (!result.complete) {
+          process.exitCode = 1
+        }
+
+        return
+      }
+
+      throw new PanError(`Unknown tune subcommand: ${sub ?? '(missing)'}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
+    }
     case 'worktree': {
       const sub = args[0]
       const rest = args.slice(1)
@@ -1565,6 +1832,23 @@ async function main(): Promise<void> {
     }
     case 'status': {
       const runId = requiredArgument(args[0], 'run-id')
+
+      if (hasFlag(args, '--redline')) {
+        const record = writeRedlineRecord(
+          root,
+          runId,
+          option(args, '--occasion') ?? 'session',
+        )
+        print(
+          json
+            ? record
+            : `Platform-guidance redline recorded at ${record.record_path} ` +
+                `(declaration ${record.declarations.length}).`,
+          json,
+        )
+        return
+      }
+
       print(getRunStatus(root, runId, { json }), json)
       return
     }
@@ -1585,9 +1869,17 @@ async function main(): Promise<void> {
     case 'archive': {
       const daysValue = option(args, '--days')
       const retentionDays = daysValue === null ? 7 : Number(daysValue)
+      const hasComplete = hasFlag(args, '--complete')
+      const hasCanceled = hasFlag(args, '--canceled')
 
       print(
-        maintainWorkflowRuntime(root, { retentionDays }),
+        maintainWorkflowRuntime(root, {
+          retentionDays,
+          inboxArchive: {
+            complete: hasComplete || !hasCanceled,
+            canceled: hasCanceled,
+          },
+        }),
         hasFlag(args, '--json'),
       )
       return
@@ -1803,6 +2095,53 @@ async function main(): Promise<void> {
       print(buildValidationMap(root), hasFlag(args, '--json'))
       return
     }
+    case 'author': {
+      const sub = args[0]
+
+      if (sub === 'apply') {
+        const worktreeWorkspace = sharedWorktreeWorkspace(root, args)
+        const result = applyTargetAuthoringDraft(
+          root,
+          requiredArgument(option(args, '--input'), '--input'),
+          {
+            ...(worktreeWorkspace ? { workspace: worktreeWorkspace.path } : {}),
+          },
+        )
+
+        print(result, hasFlag(args, '--json'))
+        return
+      }
+
+      if (sub === 'validate') {
+        const worktreeWorkspace = sharedWorktreeWorkspace(root, args)
+        const extensionId = option(args, '--extension')
+        const result = validateTargetAuthoring(root, {
+          ...(extensionId ? { extensionId } : {}),
+          repair: true,
+          ...(worktreeWorkspace ? { workspace: worktreeWorkspace.path } : {}),
+        })
+        const manifestSha256 = extensionId
+          ? sha256(readTargetExtensionManifest(root, extensionId))
+          : null
+
+        print(
+          {
+            ...result,
+            manifest_sha256: manifestSha256,
+          },
+          hasFlag(args, '--json'),
+        )
+
+        if (!result.ok) {
+          process.exitCode = 1
+        }
+        return
+      }
+
+      throw new PanError(`Unknown author subcommand: ${sub ?? '(missing)'}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
+    }
     case 'governance': {
       const sub = args[0]
 
@@ -1811,14 +2150,56 @@ async function main(): Promise<void> {
         return
       }
 
+      if (sub === 'card' && option(args, '--mode') === 'supervisor') {
+        const card = buildSupervisorCard(
+          root,
+          requiredArgument(option(args, '--run'), '--run'),
+        )
+
+        print({
+          status: 'ready',
+          mode: 'supervisor',
+          run_id: card.run_id,
+          card_path: card.path,
+          sha256: card.sha256,
+          attested: card.attested,
+          attest_command: card.attest_command,
+          policies: card.policies,
+        })
+        return
+      }
+
+      if (sub === 'attest-supervisor') {
+        const runId = requiredArgument(args[1], 'run-id')
+        const card = attestSupervisorCard(
+          root,
+          runId,
+          requiredArgument(option(args, '--sha256'), '--sha256'),
+        )
+
+        print({
+          status: 'attested',
+          run_id: runId,
+          card_path: card.path,
+          sha256: card.sha256,
+          attested_at: card.attested_at,
+          session_generation: card.session_generation,
+          next_command: `${pan} status ${runId} --redline --occasion <pan-start|pan-resume>`,
+          then: `${pan} prepare ${runId}`,
+        })
+        return
+      }
+
       if (sub === 'card') {
         const card = buildGovernanceCard(root, {
           mode: requiredArgument(option(args, '--mode'), '--mode'),
+          extensionId: option(args, '--extension'),
           requestPath: option(args, '--request'),
           outputPath: option(args, '--out'),
           worktreeName: option(args, '--worktree'),
           baseRef: option(args, '--base'),
           targetRef: option(args, '--target'),
+          closureRevision: option(args, '--closure-revision'),
         })
 
         print({
@@ -2217,6 +2598,7 @@ async function main(): Promise<void> {
           runId,
           invocation,
           submittedValue,
+          { submittedPath: filePath },
         )
         const results =
           agentRequirements.length === 0
@@ -2320,6 +2702,70 @@ async function main(): Promise<void> {
         code: 'UNKNOWN_COMMAND',
       })
     }
+    case 'watch': {
+      const runId = requiredArgument(args[0], 'run-id')
+      const invocationId = option(args, '--invocation')
+
+      if (hasFlag(args, '--foreground-returned')) {
+        if (hasFlag(args, '--mark-background')) {
+          throw new PanError(
+            '--foreground-returned and --mark-background are exclusive: a ' +
+              'launch returned in the foreground or it became a background ' +
+              'subagent.',
+            { code: 'INVALID_ARGUMENT' },
+          )
+        }
+
+        const launchedAt = option(args, '--launched-at')
+        const record = recordForegroundReturn(root, runId, {
+          ...(invocationId ? { invocationId } : {}),
+          ...(launchedAt ? { launchedAt } : {}),
+        })
+
+        print(
+          json
+            ? record
+            : `foreground return recorded: invocation ${record.invocation_id}, ` +
+                `launched ${record.launched_at} (${record.launched_at_source}), ` +
+                `returned ${record.returned_at} after ` +
+                `${record.elapsed_seconds.toFixed(1)}s, output ` +
+                `${record.observation.output_present ? 'present' : 'absent'}, ` +
+                `record ${foregroundReturnRecordPath(root, runId, record.invocation_id)}`,
+          json,
+        )
+        return
+      }
+
+      const agentState = parseAgentState(option(args, '--agent-state'))
+      const result = await watchInvocation(root, runId, {
+        ...(invocationId ? { invocationId } : {}),
+        cadenceSeconds: parseCadenceSeconds(option(args, '--cadence-seconds')),
+        stallWakes: parsePositiveInteger(
+          option(args, '--stall-wakes'),
+          '--stall-wakes',
+          DEFAULT_STALL_WAKES,
+        ),
+        timeoutSeconds: parseTimeoutSeconds(option(args, '--timeout-seconds')),
+        markBackground: hasFlag(args, '--mark-background'),
+        ...(agentState ? { agentState } : {}),
+        // OUTPUT-001: progress lines only on an interactive terminal, so a
+        // captured watch stays byte-identical to the JSON result.
+        onWake: process.stderr.isTTY
+          ? (entry) => process.stderr.write(`${formatWakeLine(entry)}\n`)
+          : undefined,
+      })
+
+      print(
+        json
+          ? result
+          : `watch ${result.state}: invocation ${result.invocation_id}, ` +
+              `${result.wakes} wakes over ${result.elapsed_seconds.toFixed(1)}s, ` +
+              `record ${result.record_path}`,
+        json,
+      )
+      process.exitCode = WATCH_EXIT_CODES[result.state]
+      return
+    }
     case 'validate': {
       const result = validateRepository(root)
       print(result, true)
@@ -2328,6 +2774,116 @@ async function main(): Promise<void> {
         process.exitCode = 1
       }
       return
+    }
+    case 'eval': {
+      const sub = args[0]
+      const asJson = hasFlag(args, '--json')
+
+      if (sub === 'list') {
+        const scenarios = listEvalScenarios(root).map(
+          ({ scenario, path: file }) => ({
+            name: scenario.name,
+            workflow: scenario.workflow,
+            verification: scenario.verification,
+            fixture: scenario.fixture,
+            policy_instructions: scenario.policy_instructions.map(
+              (item) => `${item.policy_id}#${item.instruction}`,
+            ),
+            graders: scenario.graders.map((grader) => grader.id),
+            description: scenario.description,
+            path: file,
+          }),
+        )
+
+        print(
+          asJson
+            ? scenarios
+            : scenarios.length === 0
+              ? 'No eval scenarios under evals/scenarios/.'
+              : scenarios
+                  .map(
+                    (item) =>
+                      `${item.name}  [${item.workflow}/${item.verification}, fixture ${item.fixture}]\n` +
+                      `    ${item.description}\n` +
+                      `    policies: ${item.policy_instructions.join(', ')}\n` +
+                      `    graders: ${item.graders.join(', ')}`,
+                  )
+                  .join('\n'),
+          asJson,
+        )
+        return
+      }
+
+      if (sub === 'grade') {
+        const runId = requiredArgument(args[1], 'run-id')
+        const scenarioName = requiredArgument(
+          option(args, '--scenario'),
+          '--scenario',
+        )
+        const report = gradeEvalRun(root, runId, scenarioName)
+        const outDir = option(args, '--out')
+        const written = outDir ? writeEvalReport(root, outDir, report) : null
+
+        print(
+          asJson
+            ? { ...report, ...(written ? { report_paths: written } : {}) }
+            : renderEvalReportMarkdown(report) +
+                (written
+                  ? `\nReport written to ${written.json_path} and ${written.markdown_path}.\n`
+                  : ''),
+          asJson,
+        )
+
+        if (!report.passed) {
+          process.exitCode = 1
+        }
+
+        return
+      }
+
+      if (sub === 'run') {
+        const scenarioName = requiredArgument(args[1], 'scenario')
+        const result = runEval(root, scenarioName, {
+          attestSupervisorCard: hasFlag(args, '--attest-supervisor-card'),
+          ...(typeof option(args, '--pipeline-config') === 'string'
+            ? {
+                pipelineConfigName: option(args, '--pipeline-config') as string,
+              }
+            : {}),
+          onProgress: (message) =>
+            process.stderr.write(`[pan eval:${scenarioName}] ${message}\n`),
+        })
+
+        print(
+          asJson
+            ? { ...result, report: result.report }
+            : [
+                `Eval ${result.eval_id} (${result.status}) for run ${result.run_id}.`,
+                `Workspace: ${result.workspace}`,
+                `Report: ${result.report_paths.markdown_path}`,
+                ...(result.operator_steps.length > 0
+                  ? [
+                      '',
+                      'Operator steps:',
+                      ...result.operator_steps.map(
+                        (step, index) => `${index + 1}. ${step}`,
+                      ),
+                    ]
+                  : ['', `Graders: ${result.report.passed ? 'PASS' : 'FAIL'}`]),
+              ].join('\n'),
+          asJson,
+        )
+
+        if (result.status === 'graded' && !result.report.passed) {
+          process.exitCode = 1
+        }
+
+        return
+      }
+
+      throw new PanError(`Unknown eval subcommand: ${sub ?? '(missing)'}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
     }
     case 'doctor': {
       const worktreeWorkspace = sharedWorktreeWorkspace(root, args)
@@ -2433,15 +2989,22 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error: unknown) => {
-  const known = error instanceof PanError
-  const message = error instanceof Error ? error.message : String(error)
-  const payload = {
-    error: known ? error.code : 'UNEXPECTED_ERROR',
-    message,
-    ...(known && error.details !== undefined ? { details: error.details } : {}),
-  }
+if (
+  process.argv[1] !== undefined &&
+  realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
+  main().catch((error: unknown) => {
+    const known = error instanceof PanError
+    const message = error instanceof Error ? error.message : String(error)
+    const payload = {
+      error: known ? error.code : 'UNEXPECTED_ERROR',
+      message,
+      ...(known && error.details !== undefined
+        ? { details: error.details }
+        : {}),
+    }
 
-  process.stderr.write(`${JSON.stringify(payload, null, 2)}\n`)
-  process.exitCode = known ? error.exitCode : 1
-})
+    process.stderr.write(`${JSON.stringify(payload, null, 2)}\n`)
+    process.exitCode = known ? error.exitCode : 1
+  })
+}

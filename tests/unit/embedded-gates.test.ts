@@ -16,7 +16,10 @@ import type {
   StageDefinition,
 } from '../../src/lib/types.js'
 
-function configureEmbeddedFixture(root: string): void {
+function configureEmbeddedFixture(
+  root: string,
+  extraProfiles: Record<string, { probes: string[]; commands: string[] }> = {},
+): void {
   const projectPath = path.join(root, 'config.json')
   const project = JSON.parse(readFileSync(projectPath, 'utf8')) as Record<
     string,
@@ -43,6 +46,7 @@ function configureEmbeddedFixture(root: string): void {
             probes: ['node --version'],
             commands: ['node -e "process.exit(0)"'],
           },
+          ...extraProfiles,
         },
       },
       null,
@@ -82,41 +86,114 @@ test('embedded legacy npm gates route through target-owned profiles', () => {
   const root = createFixture()
 
   configureEmbeddedFixture(root)
+  const criterion: Criterion = {
+    id: 'implement.lint',
+    type: 'shell',
+    hard: true,
+    statement: 'Legacy static gate.',
+    command: 'npm run lint',
+  }
+  const resolved = resolveShellCheck(
+    root,
+    criterion,
+    criterion.command ?? '',
+    false,
+  )
 
-  const { state, workspaceBefore, runDirectory } = fixtureState(root)
-  const stage: StageDefinition = {
-    slug: 'implement',
-    title: 'Implementation',
-    persona: 'coder',
-    workspace_policy: 'source_allowed',
-    gate: 'next_stage',
+  assert.equal(resolved.command, 'pan repository-check static')
+  assert.equal(resolved.profile_name, 'static')
+})
+
+const HARNESS_TEST_COMMAND = 'npm --prefix "$PANCREATOR_ROOT" test'
+
+function preflightStage(): StageDefinition {
+  return {
+    slug: 'inspect',
+    title: 'Inspect repository',
+    persona: 'reviewer',
+    workspace_policy: 'read_only',
+    gate: 'stage_verdict',
     context: { request: 'omit' },
     criteria: [
       {
-        id: 'implement.lint',
+        id: 'preflight.tests',
         type: 'shell',
         hard: true,
-        statement: 'Legacy static gate.',
-        command: 'npm run lint',
+        statement: 'Automated tests pass.',
+        command: HARNESS_TEST_COMMAND,
       },
     ],
-    transitions: { success: 'review', failure: 'implement', blocked: 'paused' },
+    transitions: {
+      success: 'succeeded',
+      failure: 'failed',
+      blocked: 'paused',
+    },
   }
+}
 
+function preflightTestResult(root: string) {
+  const { state, workspaceBefore, runDirectory } = fixtureState(root)
   const evaluated = evaluateDeterministicCriteria(
     root,
     runDirectory,
     state,
-    stage,
+    preflightStage(),
     workspaceBefore,
     root,
   )
-  const result = evaluated.results[0]
+
+  return evaluated.results.find((item) => item.id === 'preflight.tests')
+}
+
+test('embedded preflight test gates run the target fast profile', () => {
+  const root = createFixture()
+
+  configureEmbeddedFixture(root, {
+    fast: {
+      probes: ['node --version'],
+      commands: ['node -e "process.exit(0)"'],
+    },
+  })
+
+  const result = preflightTestResult(root)
 
   assert.ok(result)
-  assert.equal(result.command, 'pan repository-check static')
+  assert.equal(result.command, 'pan repository-check fast')
   assert.equal(result.passed, true)
   assert.equal(result.disabled, undefined)
+})
+
+test('embedded preflight test gates no-op when no fast profile is configured', () => {
+  const root = createFixture()
+
+  configureEmbeddedFixture(root)
+
+  const result = preflightTestResult(root)
+
+  assert.ok(result)
+  assert.equal(result.command, 'pan repository-check fast')
+  assert.equal(result.disabled, true)
+  assert.match(result.explanation ?? '', /not configured/u)
+})
+
+test('self-development preflight test gates still run the harness suite', () => {
+  const root = createFixture()
+  const criterion: Criterion = {
+    id: 'preflight.tests',
+    type: 'shell',
+    hard: true,
+    statement: 'Automated tests pass.',
+    command: HARNESS_TEST_COMMAND,
+  }
+  const resolution = resolveShellCheck(
+    root,
+    criterion,
+    HARNESS_TEST_COMMAND,
+    false,
+  )
+
+  assert.equal(resolution.profile_name, null)
+  assert.equal(resolution.command, HARNESS_TEST_COMMAND)
 })
 
 test('embedded legacy standalone coverage gates are removed, not passed', () => {

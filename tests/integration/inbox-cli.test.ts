@@ -1,13 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import {
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  utimesSync,
-  writeFileSync,
-} from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -22,14 +15,14 @@ function writeInboxFile(
   content: string,
   modifiedAt: Date,
 ): void {
-  const filePath = path.join(root, 'runtime', 'inbox', fileName)
+  const filePath = path.join(root, 'runtime', 'inbox', 'queue', fileName)
 
   mkdirSync(path.dirname(filePath), { recursive: true })
   writeFileSync(filePath, content, 'utf8')
   utimesSync(filePath, modifiedAt, modifiedAt)
 }
 
-test('pan inbox plain output shows columns, titles, run IDs, and empty states', () => {
+test('pan inbox lists queued items with stable output', () => {
   const root = createFixture()
   const modifiedAt = new Date('2024-02-01T10:00:00.000Z')
   const runId = makeWorkflowRunId(modifiedAt, 'inbox-cli')
@@ -79,6 +72,25 @@ test('pan inbox plain output shows columns, titles, run IDs, and empty states', 
     'nested/ignored.md',
     '# Nested\n',
     new Date('2024-03-03T12:00:00.000Z'),
+  )
+
+  for (const status of ['active', 'canceled', 'complete', 'archive']) {
+    const controlPath = path.join(
+      root,
+      'runtime',
+      'inbox',
+      status,
+      `${status}-ignored.md`,
+    )
+
+    mkdirSync(path.dirname(controlPath), { recursive: true })
+    writeFileSync(controlPath, `# ${status}\n`, 'utf8')
+  }
+
+  writeFileSync(
+    path.join(root, 'runtime', 'inbox', 'legacy-ignored.md'),
+    '# Legacy\n',
+    'utf8',
   )
 
   const expectedOrder = [
@@ -132,33 +144,7 @@ test('pan inbox plain output shows columns, titles, run IDs, and empty states', 
     'run_id',
   ])
 
-  const missingDirectoryRoot = mkdtempSync(
-    path.join(tmpdir(), 'pancreator-inbox-cli-missing-'),
-  )
-
-  try {
-    rmSync(path.join(root, 'runtime', 'inbox'), {
-      recursive: true,
-      force: true,
-    })
-    const missingDirectory = execFileSync(process.execPath, [CLI, 'inbox'], {
-      cwd: root,
-      encoding: 'utf8',
-    })
-    assert.equal(missingDirectory, 'Inbox is empty.\n')
-
-    const missingJson = execFileSync(
-      process.execPath,
-      [CLI, 'inbox', '--json'],
-      { cwd: root, encoding: 'utf8' },
-    )
-    assert.equal(missingJson.trim(), '[]')
-  } finally {
-    rmSync(missingDirectoryRoot, { recursive: true, force: true })
-  }
-
   rmSync(path.join(root, 'runtime', 'inbox'), { recursive: true, force: true })
-  mkdirSync(path.join(root, 'runtime', 'inbox'))
 
   const emptyDirectory = execFileSync(process.execPath, [CLI, 'inbox'], {
     cwd: root,

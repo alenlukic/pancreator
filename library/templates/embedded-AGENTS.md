@@ -39,7 +39,7 @@ This directory contains the Pancreator harness installed for the parent reposito
 - A worker holding a referenced contract MUST read it in full first and MUST declare that read in `invocation_attestation`, resolving every prefilled guidance entry as `read`, `skipped` with a reason, or `reference_failed` with the concrete error. A contract it cannot read MUST be reported as result `blocked` with status `reference_failed`.
 - Ad-hoc Subagent calls MUST omit `model` to inherit the parent model unless the
   operator explicitly selects one; named personas retain their projected model.
-- `/pan-repair` MUST delegate to the non-mutating harness technician, include relevant agent transcripts when investigating a workflow run, and write a validated intake under `.pancreator/runtime/inbox/` for Pancreator self-development follow-up.
+- `/pan-repair` MUST delegate to the non-mutating harness technician, include relevant agent transcripts when investigating a workflow run, and write a validated intake under `.pancreator/runtime/inbox/queue/` for Pancreator self-development follow-up.
 - Agents MUST write only declared outputs and permitted evidence.
 - Deterministic transitions and gates belong to the harness.
 - Before the first source-allowed stage, the harness captures every repository-check profile referenced by deterministic stage gates. A gate whose expected baseline is absent or incompatible pauses the run before delegation.

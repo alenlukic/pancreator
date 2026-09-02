@@ -32,6 +32,11 @@ import {
 /** Filenames Pancreator may own inside a target repository's `.cursor/`. */
 const PANCREATOR_OWNED_BASENAME = /^pan(-|creator\.)/u
 
+/** True when a Cursor basename belongs to Pancreator's reserved namespace. */
+export function isPancreatorOwnedCursorBasename(basename: string): boolean {
+  return PANCREATOR_OWNED_BASENAME.test(basename)
+}
+
 /**
  * Separator between a persona and a run-scoped variant suffix. Two hyphens keep
  * a variant filename distinguishable from a persona whose own name contains a

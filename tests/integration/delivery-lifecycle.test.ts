@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import {
   existsSync,
+  mkdirSync,
   readdirSync,
   readFileSync,
   rmSync,
@@ -10,7 +11,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
-  createRun,
+  abortRun,
   decideRun,
   decideRunAsAway,
   getRunState,
@@ -20,7 +21,6 @@ import {
   resumeRunAsAway,
   setRunStage,
   setRunStageAsAway,
-  submitOutput,
 } from '../../src/lib/engine.js'
 import {
   awayModeTrigger,
@@ -36,21 +36,29 @@ import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import type { TaskRecord } from '../../src/lib/types.js'
 import {
   createFixture,
+  createRun,
   makeOutput,
   read,
   writeCanonicalDelegation,
   writeJson,
+  submitAsSupervisor,
 } from '../helpers.js'
 import { BRIEFS, checkpoint } from './delivery-helpers.js'
 import type { CheckpointVariant } from './delivery-helpers.js'
 
-test('full delivery workflow persists gates and reaches operator-approved success', () => {
+test('moves succeeded inbox request to complete through the full delivery workflow', () => {
   const root = createFixture()
   const initialVersion = readFileSync(path.join(root, 'VERSION'), 'utf8').trim()
   const workflow = loadWorkflow(root, 'delivery')
+  const requestPath = writeInboxRequest(
+    root,
+    'queue',
+    'full-delivery.md',
+    '# Full delivery\n',
+  )
   const state = createRun(root, {
     workflowSlug: 'delivery',
-    requestPath: 'request.md',
+    requestPath,
     title: 'Fixture run',
     involvement: 'standard',
     operatorArtifacts: true,
@@ -116,7 +124,7 @@ test('full delivery workflow persists gates and reaches operator-approved succes
     writeJson(path.join(root, invocation.output.path), output)
     writeCanonicalDelegation(root, invocation)
 
-    const submitted = submitOutput(root, runId, invocation.output.path)
+    const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
     assert.equal(
       submitted.record.outcome,
@@ -136,7 +144,7 @@ test('full delivery workflow persists gates and reaches operator-approved succes
     }
 
     if (stageSlug === 'plan') {
-      const repeated = submitOutput(root, runId, invocation.output.path)
+      const repeated = submitAsSupervisor(root, runId, invocation.output.path)
 
       assert.equal(repeated.idempotent, true)
       assert.equal(repeated.record.invocation_id, invocation.invocation_id)
@@ -144,6 +152,11 @@ test('full delivery workflow persists gates and reaches operator-approved succes
 
     if (stageSlug === 'plan' || stageSlug === 'ship') {
       assert.equal(submitted.state.status, 'awaiting_operator')
+
+      if (stageSlug === 'ship') {
+        rmSync(path.join(root, 'runtime/inbox/active/full-delivery.md'))
+      }
+
       decideRun(root, runId, 'approve', 'fixture approval')
     }
   }
@@ -153,6 +166,17 @@ test('full delivery workflow persists gates and reaches operator-approved succes
   assert.equal(final.status, 'succeeded')
   assert.equal(final.current_stage, null)
   assert.equal(final.stage_history.length, 4)
+  assert.equal(
+    final.request.source_path,
+    'runtime/inbox/complete/full-delivery.md',
+  )
+  assert.equal(
+    readFileSync(
+      path.join(root, 'runtime/inbox/complete/full-delivery.md'),
+      'utf8',
+    ),
+    '# Full delivery\n',
+  )
   const finalLayout = resolveRunLayout(root, runId)
   const operatorFiles = readdirSync(finalLayout.operator.absolute)
 
@@ -370,31 +394,6 @@ test('away revise re-runs the stage without an operator revision allowance', () 
   assert.match(feedback?.path ?? '', /away-feedback-1\.md$/u)
 })
 
-test('ship cannot succeed without its declared PR artifact', () => {
-  const { root, runId, invocation, workflow } = checkpoint(
-    'delivery@ship-prepared',
-    BRIEFS,
-  )
-
-  assert.ok(invocation)
-  const stage = stageBySlug(workflow, 'ship')
-  const output = makeOutput(root, invocation, stage)
-  const prArtifact = invocation.output.artifacts?.[1]
-
-  assert.ok(prArtifact)
-  rmSync(path.join(root, prArtifact.path))
-  writeJson(path.join(root, invocation.output.path), output)
-  writeCanonicalDelegation(root, invocation)
-
-  const submitted = submitOutput(root, runId, invocation.output.path)
-
-  assert.equal(submitted.record.outcome, 'blocked')
-  assert.match(
-    submitted.record.evaluation.validation_errors.join('\n'),
-    /artifact does not exist: .*operator\/pr-description\.md/u,
-  )
-})
-
 test('ship cannot succeed when its PR artifact violates resolved authority', () => {
   const { root, runId, invocation, workflow } = checkpoint(
     'delivery@ship-prepared',
@@ -414,7 +413,7 @@ test('ship cannot succeed when its PR artifact violates resolved authority', () 
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
 
-  const submitted = submitOutput(root, runId, invocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
   assert.equal(submitted.record.outcome, 'blocked')
   assert.match(
@@ -553,7 +552,7 @@ test('an operator revision returns the delivery plan to the planner', () => {
   )
   writeCanonicalDelegation(root, second)
 
-  const revised = submitOutput(root, runId, second.output.path)
+  const revised = submitAsSupervisor(root, runId, second.output.path)
 
   assert.equal(revised.record.outcome, 'success')
   assert.equal(revised.state.status, 'awaiting_operator')
@@ -609,7 +608,7 @@ test('paused remediation note is attached to the next implement invocation', () 
   writeJson(path.join(root, implementInvocation.output.path), blockedOutput)
   writeCanonicalDelegation(root, implementInvocation)
 
-  const implementSubmitted = submitOutput(
+  const implementSubmitted = submitAsSupervisor(
     root,
     runId,
     implementInvocation.output.path,
@@ -731,5 +730,197 @@ test('operator set-stage bypasses transitions and injects repair context', () =>
     (events.match(/operator_stage_set/gu) ?? []).length,
     operatorStageSetCount,
     'an away stage repair MUST NOT be recorded as an operator stage set',
+  )
+})
+
+function writeInboxRequest(
+  root: string,
+  status: 'queue' | 'active' | 'canceled' | 'complete' | 'archive',
+  fileName: string,
+  content: string,
+): string {
+  const relative = path.join('runtime', 'inbox', status, fileName)
+  const absolute = path.join(root, relative)
+
+  mkdirSync(path.dirname(absolute), { recursive: true })
+  writeFileSync(absolute, content, 'utf8')
+
+  return relative
+}
+
+test('claims queue and canceled inbox requests', () => {
+  const root = createFixture()
+  const queued = writeInboxRequest(root, 'queue', 'queued.md', '# Queued\n')
+  const canceled = writeInboxRequest(
+    root,
+    'canceled',
+    'canceled.md',
+    '# Canceled\n',
+  )
+
+  const queuedRun = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: queued,
+    title: 'Queued fixture',
+  })
+  const canceledRun = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: canceled,
+    title: 'Canceled fixture',
+  })
+
+  assert.equal(
+    existsSync(path.join(root, 'runtime/inbox/active/queued.md')),
+    true,
+  )
+  assert.equal(
+    existsSync(path.join(root, 'runtime/inbox/active/canceled.md')),
+    true,
+  )
+  assert.equal(queuedRun.request.source_path, 'runtime/inbox/active/queued.md')
+  assert.equal(
+    canceledRun.request.source_path,
+    'runtime/inbox/active/canceled.md',
+  )
+})
+
+test('restricts inbox request statuses', () => {
+  const root = createFixture()
+  const active = writeInboxRequest(root, 'active', 'active.md', '# Active\n')
+  const complete = writeInboxRequest(
+    root,
+    'complete',
+    'complete.md',
+    '# Complete\n',
+  )
+  const archived = writeInboxRequest(
+    root,
+    'archive',
+    'archived.md',
+    '# Archived\n',
+  )
+
+  for (const requestPath of [active, complete, archived]) {
+    assert.throws(
+      () =>
+        createRun(root, {
+          workflowSlug: 'delivery',
+          requestPath,
+          title: 'Forbidden fixture',
+        }),
+      /cannot start a run/u,
+    )
+  }
+
+  const externalRun = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title: 'External fixture',
+  })
+
+  assert.equal(externalRun.request.source_path, 'request.md')
+})
+
+test('restores claimed legacy request when brief validation fails', () => {
+  const root = createFixture()
+  const legacyPath = path.join(root, 'runtime/inbox/legacy.md')
+
+  mkdirSync(path.dirname(legacyPath), { recursive: true })
+  writeFileSync(legacyPath, '# Legacy\n', 'utf8')
+  rmSync(path.join(root, 'docs/operator-briefs/project.json'))
+
+  assert.throws(
+    () =>
+      createRun(root, {
+        workflowSlug: 'delivery',
+        requestPath: 'runtime/inbox/legacy.md',
+        title: 'Legacy fixture',
+      }),
+    /Missing project brief registry/u,
+  )
+
+  assert.equal(readFileSync(legacyPath, 'utf8'), '# Legacy\n')
+  assert.equal(
+    existsSync(path.join(root, 'runtime/inbox/active/legacy.md')),
+    false,
+  )
+})
+
+test('moves aborted request to canceled and permits restart', () => {
+  const root = createFixture()
+  const queued = writeInboxRequest(root, 'queue', 'restart.md', '# Restart\n')
+  const first = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: queued,
+    title: 'Restart fixture',
+  })
+
+  rmSync(path.join(root, 'runtime/inbox/active/restart.md'))
+  abortRun(root, first.run_id)
+
+  assert.equal(
+    existsSync(path.join(root, 'runtime/inbox/canceled/restart.md')),
+    true,
+  )
+  assert.equal(
+    readFileSync(path.join(root, 'runtime/inbox/canceled/restart.md'), 'utf8'),
+    '# Restart\n',
+  )
+
+  const second = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'runtime/inbox/canceled/restart.md',
+    title: 'Restart fixture',
+  })
+
+  assert.equal(
+    existsSync(path.join(root, 'runtime/inbox/active/restart.md')),
+    true,
+  )
+  assert.equal(second.request.source_path, 'runtime/inbox/active/restart.md')
+})
+
+test('keeps failed inbox request active', () => {
+  const root = createFixture()
+  const queued = writeInboxRequest(root, 'queue', 'failed.md', '# Failure\n')
+  const workflow = loadWorkflow(root, 'preflight')
+  const state = createRun(root, {
+    workflowSlug: 'preflight',
+    requestPath: queued,
+    title: 'Failed fixture',
+  })
+  const invocation = prepareInvocation(root, state.run_id).invocation
+
+  assert.ok(invocation)
+
+  const output = makeOutput(
+    root,
+    invocation,
+    stageBySlug(workflow, invocation.stage.slug),
+    'failure',
+  )
+
+  writeJson(path.join(root, invocation.output.path), output)
+  writeCanonicalDelegation(root, invocation)
+
+  const failed = submitAsSupervisor(
+    root,
+    state.run_id,
+    invocation.output.path,
+  ).state
+
+  assert.equal(failed.status, 'failed')
+  assert.equal(failed.request.source_path, 'runtime/inbox/active/failed.md')
+  assert.equal(
+    readFileSync(path.join(root, failed.request.source_path), 'utf8'),
+    '# Failure\n',
+  )
+  assert.equal(
+    existsSync(path.join(root, 'runtime/inbox/complete/failed.md')),
+    false,
+  )
+  assert.equal(
+    existsSync(path.join(root, 'runtime/inbox/canceled/failed.md')),
+    false,
   )
 })

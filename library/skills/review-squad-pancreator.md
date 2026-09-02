@@ -105,7 +105,9 @@ because an agent resolves it by guessing.
 - **Coverage shape.** A new rejection path with no test that asserts the
   rejection. Also the inverse defect: a test that pins prose bytes of a policy or
   persona, which fails on any legitimate rewording and teaches the next author to
-  edit the test instead of thinking.
+  edit the test instead of thinking. Test-quality findings MUST cite
+  `governance/handbooks/eng/testing.md` with a stable TP identifier and concrete
+  test evidence.
 
 Method: read the whole diff and build a model of the intent before judging any
 hunk. For every normative sentence the change adds or edits, search the

@@ -251,29 +251,29 @@
       "persona": "coder",
       "workflow": "*",
       "stage": "*",
-      "installation_scope": "self_development",
-      "policies": ["TS-001"]
+      "policies": ["TS-001"],
+      "technology": "typescript"
     },
     {
       "persona": "reviewer",
       "workflow": "*",
       "stage": "*",
-      "installation_scope": "self_development",
-      "policies": ["TS-001"]
+      "policies": ["TS-001"],
+      "technology": "typescript"
     },
     {
       "persona": "qa-tester",
       "workflow": "*",
       "stage": "*",
-      "installation_scope": "self_development",
-      "policies": ["TS-001"]
+      "policies": ["TS-001"],
+      "technology": "typescript"
     },
     {
       "persona": "spotfixer",
       "workflow": "*",
       "stage": "*",
-      "installation_scope": "self_development",
-      "policies": ["TS-001"]
+      "policies": ["TS-001"],
+      "technology": "typescript"
     },
     {
       "persona": "coder",
@@ -324,6 +324,13 @@
       "policies": ["ENG-001", "CONTRACT-001"]
     },
     {
+      "persona": "coder",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["TEST-001"]
+    },
+    {
       "persona": "metacritic",
       "workflow": "*",
       "stage": "*",
@@ -333,8 +340,8 @@
       "persona": "metacritic",
       "workflow": "*",
       "stage": "*",
-      "installation_scope": "self_development",
-      "policies": ["TS-001"]
+      "policies": ["TS-001"],
+      "technology": "typescript"
     },
     {
       "persona": "metacritic",
@@ -350,10 +357,24 @@
       "policies": ["ENG-001", "CONTRACT-001"]
     },
     {
+      "persona": "reviewer",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["TEST-001"]
+    },
+    {
       "persona": "qa-tester",
       "workflow": "*",
       "stage": "*",
       "policies": ["ENG-001", "BROWSER-001"]
+    },
+    {
+      "persona": "qa-tester",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["TEST-001"]
     },
     {
       "persona": "designer",
@@ -396,7 +417,14 @@
       "workflow": "*",
       "stage": "*",
       "installation_scope": "self_development",
-      "policies": ["TS-001"]
+      "policies": ["TEST-001"]
+    },
+    {
+      "persona": "verifier",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["TS-001"],
+      "technology": "typescript"
     },
     {
       "persona": "verifier",
@@ -416,7 +444,14 @@
       "workflow": "*",
       "stage": "*",
       "installation_scope": "self_development",
-      "policies": ["TS-001"]
+      "policies": ["TEST-001"]
+    },
+    {
+      "persona": "remediator",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["TS-001"],
+      "technology": "typescript"
     },
     {
       "persona": "remediator",
@@ -436,7 +471,14 @@
       "workflow": "*",
       "stage": "*",
       "installation_scope": "self_development",
-      "policies": ["TS-001"]
+      "policies": ["TEST-001"]
+    },
+    {
+      "persona": "remediator-severe",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["TS-001"],
+      "technology": "typescript"
     },
     {
       "persona": "remediator-severe",
@@ -576,8 +618,8 @@
       "persona": "hypervisor",
       "workflow": "*",
       "stage": "*",
-      "installation_scope": "self_development",
-      "policies": ["TS-001"]
+      "policies": ["TS-001"],
+      "technology": "typescript"
     },
     {
       "persona": "metacritic",
@@ -600,6 +642,13 @@
     },
     {
       "persona": "release-steward",
+      "workflow": "delivery",
+      "stage": "ship",
+      "installation_scope": "self_development",
+      "policies": ["PR-001"]
+    },
+    {
+      "persona": "release-steward",
       "workflow": "metacritic",
       "stage": "ship",
       "policies": ["SHIP-001", "WAIVER-001", "WORK-001"]
@@ -617,6 +666,30 @@
       "stage": "release",
       "installation_scope": "self_development",
       "policies": ["VERSION-001"]
+    },
+    {
+      "persona": "release-steward",
+      "workflow": "standalone",
+      "stage": "write-pr",
+      "policies": ["PR-001"]
+    },
+    {
+      "persona": "librarian",
+      "workflow": "standalone",
+      "stage": "build-briefs",
+      "policies": ["BRIEF-001"]
+    },
+    {
+      "persona": "librarian",
+      "workflow": "standalone",
+      "stage": "build-docs",
+      "policies": ["PRIMER-001", "REPO-001"]
+    },
+    {
+      "persona": "harness-workflow-qa",
+      "workflow": "standalone",
+      "stage": "qa-workflow",
+      "policies": ["DELEGATE-001", "RUNTIME-001"]
     },
     {
       "persona": "decomposer",
@@ -651,6 +724,12 @@
     {
       "persona": "coder",
       "workflow": "standalone",
+      "stage": "author",
+      "policies": ["CONTRACT-001", "ENG-001"]
+    },
+    {
+      "persona": "coder",
+      "workflow": "standalone",
       "stage": "pair",
       "policies": ["PAIR-001"]
     },
@@ -665,6 +744,12 @@
       "workflow": "standalone",
       "stage": "review",
       "policies": ["REVIEW-001", "DELEGATE-001"]
+    },
+    {
+      "persona": "reviewer",
+      "workflow": "standalone",
+      "stage": "tune-harness",
+      "policies": ["TUNE-001", "DELEGATE-001"]
     },
     {
       "persona": "unbound",

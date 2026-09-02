@@ -12,13 +12,10 @@
     "The Pancreator fallback format MUST apply only when no target template or target PR instruction exists.",
     "Target-template mode MUST preserve target section names and order.",
     "Target-template mode MUST omit a body title when the target template has no title field.",
-    "Fallback mode MUST contain a suggested title, Summary, and Changelist.",
-    "In fallback mode, the How to read this PR walkthrough MUST use only the registered applicable subheadings.",
-    "In fallback mode, the release steward MUST omit the walkthrough when the Changelist already tells the whole story.",
-    "The release steward MUST state a decision reason, a rejected alternative, or a claimed benefit in the walkthrough only when the Git delta or an artifact it read evidences that claim. It MUST describe the change and omit the reason rather than reconstruct intent from the shape of the final code.",
+    "Fallback mode MUST contain a suggested title, Summary, and Changelist, with no other top-level section.",
     "Every claim MUST be traceable to the Git delta or a workflow artifact that was read; the release steward MUST stop rather than invent changes or describe an empty or ambiguous comparison.",
     "Standalone PR-writing MUST NOT require workflow review or QA evidence and MUST write only the command-supplied output path.",
-    "The release steward MUST NOT create, update, merge, or otherwise mutate a pull request, commit, branch, remote, published release, or deployment. The self-development release-metadata policy separately permits bounded local edits in workflow ship and /pan-release modes."
+    "The release steward MUST NOT push, create or mutate a pull request, merge, publish, or deploy. The self-development release policy separately permits its bounded local rebase and commit operations before PR copy is written."
   ],
   "requirements": [
     {
@@ -26,14 +23,14 @@
       "registry_id": "PR-DESCRIPTION-VALIDATE-001",
       "phase": "pre_submit",
       "executor": "harness",
-      "target": "artifact:1",
+      "target": "artifact:pr_description",
       "enforcement": "authoritative",
       "failure_route": "blocked",
       "evidence_class": "validation-result",
       "applicability": {
         "invocation_kind": "workflow",
         "stage": "ship",
-        "operator_artifacts": "requested"
+        "operator_artifacts": "*"
       }
     },
     {

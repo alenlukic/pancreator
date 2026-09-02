@@ -1,0 +1,21 @@
+{
+  "id": "TEST-001",
+  "title": "Self-development test standard",
+  "severity": "hard",
+  "summary": "Agents writing, reviewing, or testing Pancreator self-development tests MUST apply the testing handbook this policy references for contract value, proof cost, fixtures, and lane placement.",
+  "instructions": [
+    "Agents writing, reviewing, or testing tests in self-development MUST read the complete testing guidance this policy references, and MUST apply it before completion.",
+    "Each added test MUST appear in tests_added with one sentence naming the contract it proves. That existing disclosure contract remains unchanged.",
+    "No workflow stage, stage gate, self-criterion, or validator MAY judge handbook compliance automatically.",
+    "No count budget or duration ceiling MAY decide compliance or a verdict.",
+    "Duration MAY support a MERGE or DEMOTE verdict only after signal and contract analysis support that verdict.",
+    "Review findings about test value, cost, fixtures, or lane placement MUST cite a stable TP identifier from the handbook and concrete test evidence."
+  ],
+  "guidance_sources": [
+    {
+      "path": "governance/handbooks/eng/testing.md",
+      "start_heading": "## Principles",
+      "read_trigger": "Read this guidance before you write, review, or test self-development tests."
+    }
+  ]
+}

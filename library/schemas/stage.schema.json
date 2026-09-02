@@ -155,6 +155,10 @@
         "gate_evidence": {
           "type": "boolean",
           "description": "Include a reference to the passed evidence of each repository-check profile a harness gate or baseline already ran, carrying the profile and the workspace fingerprint it passed at, so evidence workers cite the gate instead of re-executing the profile."
+        },
+        "suite_profile": {
+          "type": "boolean",
+          "description": "Include the advisory suite profile the run's last full-profile gate recorded, with its delta against the previous succeeded run in the same workspace. Advisory only; never a gate."
         }
       }
     },

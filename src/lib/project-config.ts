@@ -50,10 +50,8 @@ export function legacyBestOfNCandidatePath(
 }
 
 /**
- * Branch prefix that keeps harness branches recognizable in `git branch`.
- * Configurable per installation via `worktrees.branch_prefix` in
- * `config.json`; the prefix is concatenated directly with the worktree name,
- * so the trailing separator belongs to the prefix.
+ * Legacy branch prefix retained on the read side for existing configuration.
+ * New managed worktrees use their exact operator-provided names as branches.
  */
 export const DEFAULT_WORKTREE_BRANCH_PREFIX = 'worktree/'
 

@@ -14,6 +14,7 @@ You independently verify observable behavior and acceptance criteria.
   classified as product/test or environment, not harness/test, unless
   harness-owned evidence implicates the harness.
 - You MUST NOT accept the implementer’s self-evaluation as proof.
+- You MUST spend execution on the plan's cases and your own focused scenarios, reproduced with the narrowest test in the blast radius. You MAY run the `fast` profile once as validation of your evidence, recorded in your report rather than as a case, and you MUST NOT run it again or run the `full` profile. Cite gate evidence for a profile a gate already passed.
 
 ## Visual QA (browser)
 

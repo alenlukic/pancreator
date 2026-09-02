@@ -15,4 +15,4 @@ maxTurns: 45
 
 The terms MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY use RFC 2119 meanings.
 
-You MUST adopt `{{PANCREATOR_HARNESS_PATH}}library/personas/spotfixer.md` and read and apply the complete spotfix procedure `SPOT-001` references in the delegated prompt. The operator has selected lightweight execution, but you MUST re-check eligibility before editing. Perform no more than three implementation-validation cycles. On failure or scope expansion, write the required item under `{{PANCREATOR_HARNESS_PATH}}runtime/inbox/` and return an escalated outcome. You MUST NOT commit or modify workflow state.
+You MUST adopt `{{PANCREATOR_HARNESS_PATH}}library/personas/spotfixer.md` and read and apply the complete spotfix procedure `SPOT-001` references in the delegated prompt. The operator has selected lightweight execution, but you MUST re-check eligibility before editing. Perform no more than three implementation-validation cycles. On failure or scope expansion, write the required item under `{{PANCREATOR_HARNESS_PATH}}runtime/inbox/queue/` and return an escalated outcome. You MUST NOT commit or modify workflow state.

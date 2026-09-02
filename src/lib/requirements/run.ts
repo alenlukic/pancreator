@@ -48,10 +48,20 @@ export function resolveRequirementTargetPath(
   }
 
   if (requirement.target.startsWith('artifact:')) {
-    const index = Number.parseInt(
-      requirement.target.slice('artifact:'.length),
-      10,
-    )
+    const selector = requirement.target.slice('artifact:'.length)
+    const artifactTargets = isRecord(context?.artifact_targets)
+      ? context.artifact_targets
+      : null
+
+    if (artifactTargets && typeof artifactTargets[selector] === 'string') {
+      return artifactTargets[selector]
+    }
+
+    if (!/^\d+$/u.test(selector)) {
+      return null
+    }
+
+    const index = Number(selector)
     const submittedArtifacts = Array.isArray(context?.artifacts)
       ? context.artifacts
       : []

@@ -204,6 +204,7 @@ function parseContext(
   for (const key of [
     'include_workspace_ratifications',
     'gate_evidence',
+    'suite_profile',
   ] as const) {
     if (value[key] === undefined) {
       continue
@@ -247,6 +248,9 @@ function parseContext(
       : {}),
     ...(value.gate_evidence !== undefined
       ? { gate_evidence: value.gate_evidence as boolean }
+      : {}),
+    ...(value.suite_profile !== undefined
+      ? { suite_profile: value.suite_profile as boolean }
       : {}),
   }
 }

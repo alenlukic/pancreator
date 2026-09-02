@@ -19,7 +19,6 @@ import {
   migratedRunId,
   standardizeRuntimeFileNames,
 } from '../../src/lib/workflow-artifacts.js'
-
 function write(filePath: string, content: string): void {
   mkdirSync(path.dirname(filePath), { recursive: true })
   writeFileSync(filePath, content, 'utf8')
@@ -368,6 +367,10 @@ test('workflow archive moves runs older than retention into archive directories'
   const recentRunId = '63372_Jun-29-0158_6f354f23'
   const oldLogDirectory = path.join(root, 'runtime/logs/workflows', oldRunId)
   const oldStateDirectory = path.join(root, 'runtime/workflows', oldRunId)
+  const tuneRecord = path.join(
+    root,
+    'runtime/tune-harness/records/archive-fixture.json',
+  )
 
   writeState(root, oldRunId, 'succeeded')
   writeState(root, recentRunId, 'running', [], '2026-06-29T21:22:54.051Z')
@@ -381,6 +384,8 @@ test('workflow archive moves runs older than retention into archive directories'
     path.join(oldLogDirectory, 'evidence', 'path.txt'),
     `runtime/workflows/${oldRunId}/modifications.jsonl\n`,
   )
+  write(tuneRecord, '{"schema_version":1,"session_id":"x"}\n')
+  const tuneRecordBefore = readFileSync(tuneRecord)
 
   const summary = archiveWorkflowDirectories(root, {
     retentionDays: 7,
@@ -400,6 +405,7 @@ test('workflow archive moves runs older than retention into archive directories'
     existsSync(path.join(root, 'runtime/workflows/archive', oldRunId)),
     true,
   )
+  assert.ok(readFileSync(tuneRecord).equals(tuneRecordBefore))
   assert.equal(
     existsSync(
       path.join(root, 'runtime/logs/workflows', recentRunId, 'state.json'),
@@ -432,18 +438,18 @@ test('runtime file names standardize onto the temporal prefix scheme', () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'pan-names-'))
 
   write(
-    path.join(root, 'runtime/inbox/2026-08-14-archive-utils.md'),
+    path.join(root, 'runtime/inbox/queue/2026-08-14-archive-utils.md'),
     '# File prefix standardization\n',
   )
   write(
     path.join(
       root,
-      'runtime/inbox/request-20260812T035755Z-worktree-management.md',
+      'runtime/inbox/queue/request-20260812T035755Z-worktree-management.md',
     ),
     'Manage worktrees.\n',
   )
   write(
-    path.join(root, 'runtime/inbox/request-20260810T054345Z-6df4ab84.md'),
+    path.join(root, 'runtime/inbox/queue/request-20260810T054345Z-6df4ab84.md'),
     'Implement a best-of-n mode for the dev workflow.\n',
   )
   write(
@@ -457,7 +463,7 @@ test('runtime file names standardize onto the temporal prefix scheme', () => {
     path.join(root, 'runtime/logs/workflows/some-run/state.json'),
     `${JSON.stringify({
       request: {
-        source_path: 'runtime/inbox/2026-08-14-archive-utils.md',
+        source_path: 'runtime/inbox/queue/2026-08-14-archive-utils.md',
       },
     })}\n`,
   )
@@ -467,20 +473,23 @@ test('runtime file names standardize onto the temporal prefix scheme', () => {
   assert.equal(summary.renamed_files, 4)
   assert.equal(
     existsSync(
-      path.join(root, 'runtime/inbox/63326_Aug-14-0720_archive-utils.md'),
+      path.join(root, 'runtime/inbox/queue/63326_Aug-14-0720_archive-utils.md'),
     ),
     true,
   )
   assert.equal(
     existsSync(
-      path.join(root, 'runtime/inbox/63328_Aug-12-1203_worktree-management.md'),
+      path.join(
+        root,
+        'runtime/inbox/queue/63328_Aug-12-1203_worktree-management.md',
+      ),
     ),
     true,
   )
   // The opaque hex slug is replaced by keywords from the file content.
   assert.equal(
     existsSync(
-      path.join(root, 'runtime/inbox/63330_Aug-10-1097_implement-be.md'),
+      path.join(root, 'runtime/inbox/queue/63330_Aug-10-1097_implement-be.md'),
     ),
     true,
   )
@@ -499,7 +508,7 @@ test('runtime file names standardize onto the temporal prefix scheme', () => {
       path.join(root, 'runtime/logs/workflows/some-run/state.json'),
       'utf8',
     ),
-    /runtime\/inbox\/63326_Aug-14-0720_archive-utils\.md/u,
+    /runtime\/inbox\/queue\/63326_Aug-14-0720_archive-utils\.md/u,
   )
   // A second pass finds nothing left to standardize.
   assert.equal(standardizeRuntimeFileNames(root).renamed_files, 0)
@@ -659,11 +668,11 @@ test('archival covers best-of-N sessions and temporal runtime files', () => {
     })}\n`,
   )
   write(
-    path.join(root, 'runtime/inbox/63379_Jun-22-0158_stale-reques.md'),
+    path.join(root, 'runtime/inbox/complete/63379_Jun-22-0158_stale-reques.md'),
     'Stale request.\n',
   )
   write(
-    path.join(root, 'runtime/inbox/63372_Jun-29-0158_fresh-reques.md'),
+    path.join(root, 'runtime/inbox/complete/63372_Jun-29-0158_fresh-reques.md'),
     'Fresh request.\n',
   )
   write(
@@ -704,7 +713,10 @@ test('archival covers best-of-N sessions and temporal runtime files', () => {
   )
   assert.equal(
     existsSync(
-      path.join(root, 'runtime/inbox/63372_Jun-29-0158_fresh-reques.md'),
+      path.join(
+        root,
+        'runtime/inbox/complete/63372_Jun-29-0158_fresh-reques.md',
+      ),
     ),
     true,
   )
@@ -734,18 +746,18 @@ test('runtime name standardization never scans or rewrites worktree checkouts', 
   const root = mkdtempSync(path.join(os.tmpdir(), 'pan-names-worktrees-'))
 
   write(
-    path.join(root, 'runtime/inbox/2026-08-14-scoped-rename.md'),
+    path.join(root, 'runtime/inbox/queue/2026-08-14-scoped-rename.md'),
     'Scoped rename fixture.\n',
   )
   // A reference inside a worktree checkout must stay untouched: worktrees are
   // target source trees, not runtime records.
   write(
     path.join(root, 'runtime/worktrees/operator/wt/notes.md'),
-    'see runtime/inbox/2026-08-14-scoped-rename.md\n',
+    'see runtime/inbox/queue/2026-08-14-scoped-rename.md\n',
   )
   write(
     path.join(root, 'runtime/logs/orchestrator/events.jsonl'),
-    `${JSON.stringify({ path: 'runtime/inbox/2026-08-14-scoped-rename.md' })}\n`,
+    `${JSON.stringify({ path: 'runtime/inbox/queue/2026-08-14-scoped-rename.md' })}\n`,
   )
 
   const summary = standardizeRuntimeFileNames(root)
@@ -763,6 +775,6 @@ test('runtime name standardization never scans or rewrites worktree checkouts', 
       path.join(root, 'runtime/worktrees/operator/wt/notes.md'),
       'utf8',
     ),
-    'see runtime/inbox/2026-08-14-scoped-rename.md\n',
+    'see runtime/inbox/queue/2026-08-14-scoped-rename.md\n',
   )
 })

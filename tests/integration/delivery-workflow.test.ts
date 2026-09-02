@@ -4,20 +4,20 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
-  createRun,
-  decideRun,
   getRunState,
   prepareInvocation,
-  submitOutput,
+  setRunStage,
 } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import type { StageOutput } from '../../src/lib/types.js'
 import {
   createFixture,
+  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeEvidenceReports,
   writeJson,
+  submitAsSupervisor,
 } from '../helpers.js'
 import { checkpoint, submitCurrentStage } from './delivery-helpers.js'
 
@@ -95,21 +95,13 @@ function warningVerify(): VerifyShape {
   }
 }
 
-/** Marks exactly one hard criterion failed so signatures stay distinct. */
-function failOnly(output: StageOutput, failingCriterionId: string): void {
-  output.criteria = output.criteria.map((criterion) => ({
-    ...criterion,
-    result: criterion.id === failingCriterionId ? 'fail' : 'pass',
-  }))
-}
-
 function runStage(
   root: string,
   runId: string,
   expectedStage: string,
   mutate?: (output: StageOutput) => void,
   result: 'success' | 'failure' = 'success',
-): ReturnType<typeof submitOutput> {
+): ReturnType<typeof submitAsSupervisor> {
   const workflow = loadWorkflow(root, 'delivery')
   const invocation = prepareInvocation(root, runId).invocation
 
@@ -124,44 +116,20 @@ function runStage(
   writeCanonicalDelegation(root, invocation)
   writeEvidenceReports(root, invocation)
 
-  return submitOutput(root, runId, invocation.output.path)
-}
-
-function advanceToVerify(root: string): string {
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Delivery fixture run',
-  })
-  const runId = state.run_id
-
-  const plan = runStage(root, runId, 'plan')
-
-  assert.equal(plan.record.outcome, 'success')
-  assert.equal(plan.state.status, 'awaiting_operator')
-  decideRun(root, runId, 'approve', 'fixture approval')
-
-  const implement = runStage(root, runId, 'implement')
-
-  assert.equal(implement.record.outcome, 'success')
-  assert.equal(getRunState(root, runId).current_stage, 'verify')
-
-  return runId
+  return submitAsSupervisor(root, runId, invocation.output.path)
 }
 
 test('delivery severe verdict escalates the remediator and warnings reach the inbox', () => {
-  const root = createFixture()
-  const runId = advanceToVerify(root)
+  const { root, runId } = checkpoint('delivery@verify-prepared')
 
-  const firstVerify = runStage(
+  const firstVerify = submitCurrentStage(
     root,
     runId,
-    'verify',
+    'failure',
+    ['verify.acceptance_met'],
     (output) => {
       output.data.verify = failingVerify('fail_severe', 'VF-SEV-1')
-      failOnly(output, 'verify.acceptance_met')
     },
-    'failure',
   )
 
   assert.equal(
@@ -185,7 +153,11 @@ test('delivery severe verdict escalates the remediator and warnings reach the in
   writeJson(path.join(root, remediateInvocation.output.path), remediateOutput)
   writeCanonicalDelegation(root, remediateInvocation)
 
-  const remediated = submitOutput(root, runId, remediateInvocation.output.path)
+  const remediated = submitAsSupervisor(
+    root,
+    runId,
+    remediateInvocation.output.path,
+  )
 
   assert.equal(
     remediated.record.outcome,
@@ -210,6 +182,7 @@ test('delivery severe verdict escalates the remediator and warnings reach the in
     root,
     'runtime',
     'inbox',
+    'queue',
     `${runId}-verify-warnings.md`,
   )
 
@@ -299,17 +272,58 @@ test('delivery verify resolves parallel evidence workers and gates submission on
   }
 
   assert.throws(
-    () => submitOutput(root, runId, invocation.output.path),
+    () => submitAsSupervisor(root, runId, invocation.output.path),
     /Evidence report for role 'review'/u,
   )
 
   writeEvidenceReports(root, invocation)
 
-  const submitted = submitOutput(root, runId, invocation.output.path)
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
   assert.equal(
     submitted.record.outcome,
     'success',
     JSON.stringify(submitted.record.evaluation),
   )
+})
+
+test('plan and verify cards render the complete shared field contract', () => {
+  const root = createFixture()
+  const runId = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title: 'Shared field contract run',
+  }).run_id
+  const plan = prepareInvocation(root, runId)
+  const planPath = plan.state.current_invocation?.markdown_path
+
+  assert.ok(planPath)
+  const planCard = readFileSync(path.join(root, planPath), 'utf8')
+
+  for (const fieldPath of [
+    'data.acceptance_criteria[].id',
+    'data.acceptance_criteria[].maps_to',
+    'data.acceptance_criteria[].verification',
+    'data.test_plan[]',
+    'data.open_question_dispositions[].id',
+    'data.open_question_dispositions[].answer',
+    'data.verification_recommendation',
+  ]) {
+    assert.ok(planCard.includes(`\`${fieldPath}\``), fieldPath)
+  }
+
+  for (const result of ['unevaluated', 'skipped', 'not_applicable']) {
+    assert.ok(planCard.includes(`  - \`${result}\`:`))
+  }
+
+  setRunStage(root, runId, 'verify', 'Inspect the verify field contract.')
+
+  const verify = prepareInvocation(root, runId)
+  const verifyPath = verify.state.current_invocation?.markdown_path
+
+  assert.ok(verifyPath)
+  const verifyCard = readFileSync(path.join(root, verifyPath), 'utf8')
+  const stepsPath = '`data.verify.qa_cases[].steps`'
+
+  assert.equal(verifyCard.split(stepsPath).length - 1, 1)
 })

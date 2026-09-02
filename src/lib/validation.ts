@@ -15,6 +15,7 @@ import {
   toRepoRelative,
   writeTextAtomic,
 } from './io.js'
+import { validateEvalScenarios } from './evals/scenario.js'
 import { loadPipelineConfig, resolveConfigPersonas } from './pipeline-config.js'
 import {
   assertRepositoryChecksValid,
@@ -31,6 +32,11 @@ import type { LoadedPipelineConfig } from './pipeline-config.js'
 import { auditDirectives } from './governance/audit-directives.js'
 import { HANDLER_IDS } from './requirements/handlers.js'
 import { resolveRunLayout } from './run-layout.js'
+import {
+  SUITE_PROFILE_GATE_PROFILE,
+  TEST_PROFILE_ENV,
+  suiteProfileEvidencePath,
+} from './suite-profile.js'
 import { loadRegistry, validateRegistry } from './requirements/registry.js'
 import {
   resolveRequirements,
@@ -60,9 +66,13 @@ import {
   gateCacheableSnapshot,
 } from './gate-cache.js'
 import {
+  gitHead,
+  gitIsAncestor,
   gitWorkspaceSnapshot,
   workspaceChangedPathsFromSnapshots,
 } from './git.js'
+import { validateCommandGovernance } from './governance/command-coverage.js'
+import { validateTargetAuthoring } from './target-authoring.js'
 import { listWorkflowSlugs, loadWorkflow } from './workflow.js'
 import {
   applyOperatorInvolvement,
@@ -1446,9 +1456,12 @@ function normalizeCriteria(value: unknown): CriterionEvaluation[] {
     const result =
       item.result === 'pass' ||
       item.result === 'fail' ||
-      item.result === 'not_applicable'
+      item.result === 'not_applicable' ||
+      item.result === 'skipped'
         ? item.result
-        : 'fail'
+        : item.result === 'unevaluated'
+          ? 'unevaluated'
+          : 'fail'
 
     return [
       {
@@ -1614,6 +1627,15 @@ export function validateStageOutput(
   for (const [dataPath, expectedType] of Object.entries(
     stage.required_data ?? {},
   )) {
+    const blockedVerifyProductField =
+      stage.slug === 'verify' &&
+      output.result === 'blocked' &&
+      dataPath.startsWith('verify.')
+
+    if (blockedVerifyProductField) {
+      continue
+    }
+
     const dataValue = valueAt(output.data, dataPath)
 
     if (!hasType(dataValue, expectedType)) {
@@ -1638,11 +1660,13 @@ export function validateStageOutput(
       if (
         item.result !== 'pass' &&
         item.result !== 'fail' &&
-        item.result !== 'not_applicable'
+        item.result !== 'not_applicable' &&
+        item.result !== 'unevaluated' &&
+        item.result !== 'skipped'
       ) {
         errors.push(
-          `criteria '${item.id}' result MUST be pass, fail, or ` +
-            `not_applicable (got ${JSON.stringify(item.result)})`,
+          `criteria '${item.id}' result MUST be pass, fail, not_applicable, ` +
+            `unevaluated, or skipped (got ${JSON.stringify(item.result)})`,
         )
       }
     }
@@ -1658,7 +1682,10 @@ export function validateStageOutput(
     // An explanation is required only where it carries information: why a
     // criterion failed, or why it does not apply. Demanding prose on every
     // passing entry produced boilerplate nobody read.
-    if (item.result !== 'pass' && item.explanation.length === 0) {
+    if (
+      (item.result === 'fail' || item.result === 'not_applicable') &&
+      item.explanation.length === 0
+    ) {
       errors.push(
         `criteria '${item.id}' ${item.result} verdict MUST carry an explanation`,
       )
@@ -1677,6 +1704,32 @@ export function validateStageOutput(
 
     if (criterion.hard && evaluation.result === 'not_applicable') {
       errors.push(`hard criterion '${criterion.id}' MUST NOT be not_applicable`)
+    }
+
+    if (evaluation.result === 'skipped') {
+      if (output.result === 'success') {
+        errors.push(
+          `criteria '${criterion.id}' MUST NOT be skipped on a success result`,
+        )
+      } else if (output.result === 'failure' && criterion.type !== 'shell') {
+        errors.push(
+          `criteria '${criterion.id}' MUST NOT be skipped on a failure ` +
+            'result unless it is a shell criterion',
+        )
+      }
+
+      if (evaluation.explanation.length === 0) {
+        errors.push(
+          `criteria '${criterion.id}' skipped verdict MUST carry an explanation`,
+        )
+      }
+    }
+
+    if (evaluation.result === 'unevaluated') {
+      errors.push(
+        `criteria '${criterion.id}' is unevaluated; the worker must fill ` +
+          'every criterion before submission',
+      )
     }
 
     if (
@@ -1838,13 +1891,13 @@ export function resolveShellCheck(
     }
   }
 
-  if (
-    criterion.id === 'preflight.tests' &&
-    requestedCommand.trim() === 'npm test'
-  ) {
+  // An installation ships no harness test suite, so the gate runs the target's
+  // own fast profile instead. An unconfigured profile records as not
+  // configured rather than executing a guessed command.
+  if (criterion.id === 'preflight.tests') {
     return {
-      command: 'npm --prefix "$PANCREATOR_ROOT" test',
-      profile_name: null,
+      command: 'pan repository-check fast',
+      profile_name: 'fast',
     }
   }
 
@@ -2192,12 +2245,21 @@ function runShellCheck(
       ].join('\n'),
     )
 
+    // The profile recorded with the original execution stands in for a
+    // re-profile the cached pass never performs.
+    const cachedSuiteProfile =
+      cached.suite_profile_path &&
+      fileExists(path.join(root, cached.suite_profile_path))
+        ? cached.suite_profile_path
+        : undefined
+
     return {
       id: criterion.id,
       type: 'shell',
       hard: Boolean(criterion.hard),
       passed: cachedComparison ? cachedComparison.passed : true,
       cached: true,
+      ...(cachedSuiteProfile ? { suite_profile_path: cachedSuiteProfile } : {}),
       explanation,
       ...(cachedComparison
         ? { repository_check_delta: cachedComparison.delta }
@@ -2227,6 +2289,13 @@ function runShellCheck(
   let timedOut = false
   let skipped = false
   let repositoryResult: RepositoryCheckResult | undefined
+  // Only the `full` profile is profiled: it is the last suite execution before
+  // ship. Baselines, interior gates, and agent-side runs never set the
+  // variable. The artifact exists only when the profile ran the reporter.
+  const suiteProfileTarget =
+    profileName === SUITE_PROFILE_GATE_PROFILE
+      ? suiteProfileEvidencePath(runDirectory, artifactId)
+      : null
 
   if (resolution.removed_reason) {
     exitCode = 0
@@ -2242,6 +2311,9 @@ function runShellCheck(
     repositoryResult = runRepositoryCheck(root, profileName, {
       timeout_ms: criterion.timeout_ms,
       workspace: workspaceDir,
+      ...(suiteProfileTarget
+        ? { env: { [TEST_PROFILE_ENV]: suiteProfileTarget } }
+        : {}),
     })
     onProgress?.(
       `${criterion.id} ${repositoryResult.status} in ${(repositoryResult.total_duration_ms / 1000).toFixed(1)}s`,
@@ -2369,6 +2441,11 @@ function runShellCheck(
     baselineComparison?.passed && !commandSucceeded,
   )
 
+  const suiteProfilePath =
+    suiteProfileTarget && repositoryResult && fileExists(suiteProfileTarget)
+      ? path.relative(root, suiteProfileTarget).split(path.sep).join('/')
+      : undefined
+
   // Cache only a clean pass. A baseline-relative pass credits this run's own
   // baseline.
   if (cacheKey && passed && commandSucceeded && !skipped && !timedOut) {
@@ -2384,6 +2461,7 @@ function runShellCheck(
         .split(path.sep)
         .join('/'),
       ...(repositoryResult ? { repository_result: repositoryResult } : {}),
+      ...(suiteProfilePath ? { suite_profile_path: suiteProfilePath } : {}),
     })
   }
   const environmentBlocked = isEnvironmentBlockedDelta(
@@ -2432,6 +2510,7 @@ function runShellCheck(
     ...(baselineEvidencePath
       ? { baseline_evidence_path: baselineEvidencePath }
       : {}),
+    ...(suiteProfilePath ? { suite_profile_path: suiteProfilePath } : {}),
     workspace_fingerprint: workspaceFingerprint,
   }
 }
@@ -2679,8 +2758,8 @@ export function evaluateDeterministicCriteria(
   stageOutput?: StageOutput,
   onProgress?: (message: string) => void,
   gateSkipReason: string | null = null,
+  afterSnapshot: WorkspaceSnapshot = gitWorkspaceSnapshot(workspaceDir),
 ): { results: DeterministicResult[]; workspace: WorkspaceSnapshot } {
-  const afterSnapshot = gitWorkspaceSnapshot(workspaceDir)
   const results: DeterministicResult[] = []
   let scopePassed = true
 
@@ -2821,9 +2900,59 @@ export function evaluateDeterministicCriteria(
         )
       }
     } else if (criterion.type === 'state') {
+      if (criterion.id === 'ship.local_release_complete') {
+        const release = isRecord(stageOutput?.data.release)
+          ? stageOutput.data.release
+          : null
+        const local =
+          release && isRecord(release.local_release)
+            ? release.local_release
+            : null
+        const releaseCommit =
+          local && typeof local.release_commit === 'string'
+            ? local.release_commit
+            : ''
+        const indexCommit =
+          local && typeof local.index_commit === 'string'
+            ? local.index_commit
+            : ''
+        const fetchedMain =
+          local && typeof local.fetched_main === 'string'
+            ? local.fetched_main
+            : ''
+        const legacyUnboundRelease =
+          isSelfDevelopmentInstallation(root) && !state.managed_worktree
+        const passed =
+          isTargetInstallation(root) || legacyUnboundRelease
+            ? true
+            : /^[0-9a-f]{40}$/u.test(releaseCommit) &&
+              /^[0-9a-f]{40}$/u.test(indexCommit) &&
+              /^[0-9a-f]{40}$/u.test(fetchedMain) &&
+              gitHead(workspaceDir) === indexCommit &&
+              gitIsAncestor(workspaceDir, releaseCommit, indexCommit) &&
+              gitIsAncestor(workspaceDir, fetchedMain, releaseCommit) &&
+              afterSnapshot.entries.length === 0
+
+        results.push({
+          id: criterion.id,
+          type: 'state',
+          hard: Boolean(criterion.hard),
+          passed,
+          explanation: isTargetInstallation(root)
+            ? 'Embedded ship creates no Pancreator local release commits.'
+            : legacyUnboundRelease
+              ? 'This legacy run has no managed worktree binding, so local release commits do not apply.'
+              : passed
+                ? 'Fetched main, release commit, index commit, and clean worktree topology are complete.'
+                : 'Local release commit topology or worktree cleanliness is incomplete.',
+          workspace_fingerprint: afterSnapshot.fingerprint,
+        })
+        continue
+      }
+
       if (criterion.id === 'ship.release_metadata_updated') {
         const metadataErrors = isSelfDevelopmentInstallation(root)
-          ? validateReleaseMetadata(root).errors
+          ? validateReleaseMetadata(workspaceDir).errors
           : []
 
         results.push({
@@ -3048,7 +3177,8 @@ function lookupRowCovers(
     lookupPatternCovers(provider.persona, consumer.persona) &&
     lookupPatternCovers(provider.workflow, consumer.workflow) &&
     lookupPatternCovers(provider.stage, consumer.stage) &&
-    (provider.technology === undefined ||
+    (consumer.technology === undefined ||
+      provider.technology === undefined ||
       provider.technology === consumer.technology) &&
     // A contract-scoped row only resolves for runs carrying that contract, so it
     // cannot satisfy a dependency for a row that resolves without one.
@@ -3184,6 +3314,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'config.json',
     'library/schemas/config.schema.json',
     'library/schemas/stage-output.schema.json',
+    'library/schemas/target-authoring.schema.json',
     'library/schemas/workflow.schema.json',
     'library/schemas/stage.schema.json',
     'library/cursor/commands/pan-start.md',
@@ -3236,6 +3367,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'governance/policies/DIRECTOR-001.json',
     'library/workflows/prototype/workflow.json',
     'src/cli.ts',
+    'target-extensions/.gitkeep',
   ]
 
   if (selfDevelopment) {
@@ -3254,6 +3386,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
   }
 
   errors.push(...validateQuestionToolAccess(root))
+  errors.push(...validateEvalScenarios(root))
   errors.push(...validateReleaseMetadata(root).errors)
 
   try {
@@ -3314,9 +3447,15 @@ export function validateRepository(root: string): RepositoryValidationResult {
       }
     }
 
-    const directiveAudit = auditDirectives(root)
-    errors.push(...directiveAudit.errors)
-    warnings.push(...directiveAudit.warnings)
+    // Directive ownership and disposition evidence describe Pancreator source
+    // authoring. Target installations omit that source evidence and validate
+    // their generated guidance through its policy-bound validators instead.
+    if (selfDevelopment) {
+      const directiveAudit = auditDirectives(root)
+
+      errors.push(...directiveAudit.errors)
+      warnings.push(...directiveAudit.warnings)
+    }
 
     const projection = validateProjectionDrift(root)
     errors.push(...projection.errors)
@@ -3513,16 +3652,33 @@ export function validateRepository(root: string): RepositoryValidationResult {
     }
   }
 
-  const legacyModules = [
-    ...readdirSync(path.join(root, 'src'), { recursive: true }),
-    ...readdirSync(path.join(root, 'tests'), { recursive: true }),
-  ].filter((entry) => typeof entry === 'string' && entry.endsWith('.mjs'))
+  // An installation carries `src/` but no test suite, so a missing `tests/`
+  // is the expected shape rather than a defect.
+  const legacyModules = ['src', 'tests']
+    .map((directory) => path.join(root, directory))
+    .filter((absolute) => fileExists(absolute))
+    .flatMap((absolute) =>
+      readdirSync(absolute, { encoding: 'utf8', recursive: true }),
+    )
+    .filter((entry) => entry.endsWith('.mjs'))
 
   if (legacyModules.length > 0) {
     errors.push('src/ and tests/ MUST NOT contain legacy .mjs modules')
   }
 
   validateAdHocModelInheritanceGuidance(root, errors)
+  validateCommandGovernance(root, errors, warnings)
+
+  const targetExtensionRoot = path.join(root, 'target-extensions')
+  const hasTargetExtensions =
+    fileExists(targetExtensionRoot) &&
+    readdirSync(targetExtensionRoot, { withFileTypes: true }).some((entry) =>
+      entry.isDirectory(),
+    )
+
+  if (hasTargetExtensions) {
+    errors.push(...validateTargetAuthoring(root).errors)
+  }
 
   if (
     fileExists(path.join(root, 'library', 'cursor', 'commands', 'pan-repo.md'))

@@ -1,3 +1,9 @@
+import type {
+  DelegationObservationSource,
+  DelegationWatchSummary,
+  ForegroundReturnSummary,
+} from './watch.js'
+
 export type StageOutcome = 'success' | 'failure' | 'blocked'
 
 export type RunStatus =
@@ -95,7 +101,12 @@ export type StageCheckpoint = 'technical_plan' | 'independent_review'
 
 export type CriterionType = 'judgment' | 'shell' | 'state'
 
-export type CriterionResultValue = 'pass' | 'fail' | 'not_applicable'
+export type CriterionResultValue =
+  | 'pass'
+  | 'fail'
+  | 'not_applicable'
+  | 'unevaluated'
+  | 'skipped'
 
 export type JsonTypeName = 'object' | 'array' | 'string' | 'number' | 'boolean'
 
@@ -147,6 +158,11 @@ export interface StageContextDefinition {
    * the profile again.
    */
   gate_evidence?: boolean
+  /**
+   * Include the advisory suite profile of the run's last `full` gate and its
+   * delta against the previous succeeded run in the same workspace.
+   */
+  suite_profile?: boolean
   legacy_full_history?: boolean
 }
 
@@ -461,6 +477,41 @@ export interface ResolvedWorktreesConfig {
   root: string
   branch_prefix: string
   setup: string[]
+}
+
+/** Stable identity of one managed operator worktree. */
+export interface ManagedWorktreeReference {
+  name: string
+  path: string
+  branch: string
+}
+
+export interface LocalReleaseSyncResult {
+  status: 'synchronized' | 'conflict'
+  worktree: ManagedWorktreeReference
+  branch: string
+  remote: string
+  fetched_main: string
+  checkpoint_commit: string | null
+  conflicted_paths: string[]
+}
+
+export interface LocalReleaseContinueResult {
+  status: 'complete' | 'conflict'
+  worktree: ManagedWorktreeReference
+  branch: string
+  conflicted_paths: string[]
+}
+
+export interface LocalReleaseFinalizeResult {
+  status: 'finalized'
+  worktree: ManagedWorktreeReference
+  branch: string
+  version: string
+  fetched_main: string
+  release_commit: string
+  index_commit: string
+  clean: boolean
 }
 
 export type AwayModeAction =
@@ -787,7 +838,42 @@ export interface InvocationReference {
     profile: string
     fingerprint: string
     current: boolean
+    acceptance_mode?: 'clean_pass' | 'baseline_relative_acceptance' | 'unknown'
+    raw_exit_code?: number | null
+    preexisting_failure?: boolean
   }
+}
+
+export interface SuiteProfileEntry {
+  file: string
+  name?: string
+  duration_ms: number
+  test_count?: number
+}
+
+export interface SuiteProfileDelta {
+  run_id: string
+  profile_path: string
+  test_count: number
+  wall_clock_ms: number
+  test_count_delta: number
+  wall_clock_ms_delta: number
+}
+
+/** Rendered on the ship card and in `pan status`. Advisory only. */
+export interface SuiteProfileSummary {
+  profile_path: string
+  gate_id: string
+  stage: string
+  cached: boolean
+  lane: string
+  test_count: number
+  pass_count: number
+  fail_count: number
+  wall_clock_ms: number
+  slowest_files: SuiteProfileEntry[]
+  slowest_tests: SuiteProfileEntry[]
+  previous?: SuiteProfileDelta
 }
 
 export interface Invocation {
@@ -802,6 +888,10 @@ export interface Invocation {
   attempt: number
   created_at: string
   workspace_root: string
+  /** Managed worktree identity bound to this run, when selected at init. */
+  managed_worktree?: ManagedWorktreeReference
+  /** Absolute harness root. Present when the workspace is not the harness checkout, so an external worker resolves harness-relative paths. */
+  harness_root?: string
   gate_overrides?: Record<string, string | false>
   operator_involvement?: ResolvedOperatorInvolvement
   verification?: ResolvedVerification
@@ -841,6 +931,11 @@ export interface Invocation {
    * evidence report is missing.
    */
   evidence_workers?: InvocationEvidenceWorker[]
+  /**
+   * Advisory suite profile section data, present when the stage context asks
+   * for it and the run recorded a profile. Never a gate.
+   */
+  suite_profile?: SuiteProfileSummary
   policies: Policy[]
   requirements?: RequirementManifest
   rubric: Criterion[]
@@ -857,7 +952,9 @@ export interface Invocation {
      */
     scaffold_command?: string
     artifacts?: ArtifactReference[]
+    artifact_targets?: Record<string, string>
     field_contract?: {
+      criterion_results?: Record<string, string>
       validators: Array<{
         registry_id: string
         enforcement: 'blocks' | 'advises'
@@ -1000,11 +1097,35 @@ export interface InvocationDelegationContract {
    */
   supervisor_procedure_path?: string
   submit_command: string
+  /**
+   * `pan watch <run-id> --invocation <id>` for a `cursor`-executor
+   * delegation. With `--foreground-returned` it records the attestation
+   * `pan submit` requires; awaited, it is the DELEGATE-001 timer. Absent on
+   * external-executor and legacy invocations.
+   */
+  watch_command?: string
+  /**
+   * The run's platform-guidance redline record. The procedure document names
+   * it at the launch step, where the platform's "do not wait for it" text
+   * arrives, rather than leaving the supervisor to recall a declaration made
+   * before the run began.
+   */
+  redline_record_path?: string
   /** Absent on legacy invocations, which the harness treats as `verbatim`. */
   mode?: InvocationDeliveryMode
   /** The exact prompt body the supervisor delivers under `referenced` mode. */
   delivery_prompt_path?: string
   policies: Policy[]
+  /**
+   * The run's supervisor governance card at prepare time. The procedure
+   * document prints it so the supervisor holds its complete policy set, not
+   * only the delivery policy inlined in `policies`.
+   */
+  supervisor_card?: {
+    path: string
+    sha256: string
+    attest_command: string
+  }
 }
 
 /** One normalized diagnostic identity and how many times a run reported it. */
@@ -1074,6 +1195,12 @@ export interface DeterministicResult {
    * command.
    */
   cached?: boolean
+  /**
+   * Harness-relative path of the suite profile the test reporter wrote while
+   * this gate ran the `full` profile. A cached pass carries the path the
+   * original execution recorded. Absent when the profile ran no reporter.
+   */
+  suite_profile_path?: string
   explanation?: string
   command?: string
   exit_code?: number | null
@@ -1241,7 +1368,11 @@ export interface OperatorFeedbackItem {
  * A non-blocking observation about this run. An advisory never stops the run.
  */
 export interface RunAdvisory {
-  kind: 'model_evidence' | 'pipeline_config' | 'platform_guidance'
+  kind:
+    | 'model_evidence'
+    | 'pipeline_config'
+    | 'platform_guidance'
+    | 'delegation_supervision'
   source: 'prepare' | 'probe' | 'submit' | 'supervisor_evidence'
   stage?: string
   invocation_id?: string
@@ -1337,6 +1468,8 @@ export interface RunState {
     sha256: string
   }
   workspace_root: string
+  /** Managed worktree identity selected when this run started. */
+  managed_worktree?: ManagedWorktreeReference
   workspace_id?: string
   installation_root?: string
   state_root?: string
@@ -1431,10 +1564,33 @@ export interface RunState {
   }
   governance_artifact_issues?: GovernanceArtifactIssue[]
   governance_artifact_issues_path?: string
+  /**
+   * The rendered supervisor governance card for this run. `pan init` and
+   * `pan prepare` render it; `pan prepare` and `pan submit` refuse while the
+   * current digest is not attested. Absent on runs created before the card
+   * existed, which gain it on their next prepare.
+   */
+  supervisor_card?: SupervisorCardState
   repository_check_baselines?: Record<
     string,
     RepositoryCheckBaselinePointer | undefined
   >
+}
+
+/** Run-state record of the supervisor governance card and its attestation. */
+export interface SupervisorCardState {
+  path: string
+  sha256: string
+  rendered_at: string
+  /** Digest the supervisor attested to have read, when any. */
+  attested_sha256?: string
+  attested_at?: string
+  /**
+   * Counts attestations. Each `/pan-start` and `/pan-resume` attests, so each
+   * increment opens one supervisor session. The redline record must carry a
+   * declaration for the current generation before prepare or submit proceed.
+   */
+  session_generation?: number
 }
 
 export interface SupervisorAssessment {
@@ -1468,6 +1624,17 @@ export interface TaskRecord {
     self: CriterionEvaluation[]
   }
   workspace_fingerprint: string
+  /**
+   * How the harness saw this delegation reach a terminal state: a completed
+   * `pan watch` record, a foreground-return attestation, or the external
+   * executor's own evidence. It proves DELEGATE-001 was kept by the harness,
+   * not asserted. Absent for a supervisor-persona stage with no worker.
+   */
+  delegation_observation?: {
+    source: DelegationObservationSource | null
+    watch?: DelegationWatchSummary
+    foreground_return?: ForegroundReturnSummary
+  }
   next_state: string | null
   timestamp: string
 }

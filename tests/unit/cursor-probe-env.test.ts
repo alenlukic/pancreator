@@ -163,15 +163,6 @@ test('readiness names the .env that supplies the credential', () => {
     assert.equal(readiness.source, 'dotenv')
     assert.equal(readiness.source_path, path.join(target, '.env'))
     assert.deepEqual(readiness.advisories, [])
-  })
-})
-
-test('readiness inspects the installation and workspace roots in order', () => {
-  const { target, harness } = makeEmbeddedInstallation()
-
-  withCursorApiKey(undefined, () => {
-    const readiness = cursorAuthenticationReadiness(harness)
-
     assert.deepEqual(
       readiness.dotenv_files.map((file) => file.path),
       [path.join(harness, '.env'), path.join(target, '.env')],

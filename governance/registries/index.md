@@ -8,6 +8,7 @@ lives in this directory:
 - `policy_lookup_table.json` selects policies by persona, workflow, stage, and optional detected workspace technology.
 - `validation_registry.json` defines durable automation and validator handlers.
 - `directive_exemptions.json` records reviewed directive-audit exemptions.
+- `command_governance.json` declares how each canonical Cursor command receives governance: a `pan governance card --mode <mode>` step, the supervisor card, or an explicit read-only allowlist entry. `pan validate` fails a command that does neither.
 - `projection_manifest.json` declares generated projections from canonical `library/` or `src/` files into disposable local surfaces such as `.cursor/`.
 - `cursor_model_catalog.json` is an optional operator-local catalog. It validates only the current Cursor account's models and is never tracked or installed.
 

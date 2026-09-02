@@ -5,6 +5,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
+  isUntouchedScaffold,
   readInvocationFromPath,
   scaffoldDataFromRequiredData,
   scaffoldStageOutput,
@@ -61,7 +62,10 @@ test('scaffold copies the contract manifest into a pending attestation', () => {
   const invocation = {
     invocation_id: 'implement-1',
     stage: { model: 'gpt-5.6-sol' },
-    rubric: [],
+    rubric: [
+      { id: 'implement.lint', hard: true },
+      { id: 'implement.unit_tests', hard: true },
+    ],
     output: { path: outputPath, required_data: {} },
     contract_manifest: {
       contract_path: contractPath,
@@ -105,6 +109,12 @@ test('scaffold copies the contract manifest into a pending attestation', () => {
   assert.equal(attestation.invocation_id, 'implement-1')
   assert.equal(attestation.model, 'gpt-5.6-sol')
   assert.equal(attestation.contract_path, contractPath)
+  assert.equal(result.output.criteria.length, invocation.rubric.length)
+  assert.ok(
+    result.output.criteria.every(
+      (criterion) => criterion.result === 'unevaluated',
+    ),
+  )
   assert.equal(
     attestation.status === 'pending' ? attestation.contract_sha256 : '',
     'a'.repeat(64),
@@ -224,4 +234,22 @@ test('scaffold retains only non-transient brief sources as artifacts', () => {
     transient.output.artifacts.map((artifact) => artifact.path),
     [renderedPath],
   )
+})
+
+test('isUntouchedScaffold recognizes legacy not_applicable and new unevaluated scaffolds', () => {
+  const legacy = {
+    summary: '',
+    criteria: [
+      { id: 'a', result: 'not_applicable', evidence: [], explanation: '' },
+    ],
+  }
+  const current = {
+    summary: '',
+    criteria: [
+      { id: 'a', result: 'unevaluated', evidence: [], explanation: '' },
+    ],
+  }
+
+  assert.equal(isUntouchedScaffold(legacy), true)
+  assert.equal(isUntouchedScaffold(current), true)
 })

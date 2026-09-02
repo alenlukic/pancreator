@@ -4,19 +4,19 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
-  createRun,
   decideRun,
   getRunState,
   prepareInvocation,
-  submitOutput,
 } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { syncCursorProjection } from '../../src/lib/projection.js'
 import {
   createFixture,
+  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
+  submitAsSupervisor,
 } from '../helpers.js'
 
 test('delivery workflow runs to completion without a Git repository', () => {
@@ -64,7 +64,7 @@ test('delivery workflow runs to completion without a Git repository', () => {
       writeCanonicalDelegation(root, invocation)
     }
 
-    const submitted = submitOutput(root, runId, invocation.output.path)
+    const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
     assert.equal(
       submitted.record.outcome,

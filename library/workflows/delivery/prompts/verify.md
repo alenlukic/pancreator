@@ -15,13 +15,18 @@ find.
    stage, not a judgment call: report `blocked` and name the missing path.
 2. Reconcile the two reports. Where they disagree about the same behavior,
    reproduce the disputed observation yourself before grading it.
-3. Spot-check, do not redo. Verify the reports' load-bearing claims: rerun one
+3. Spot-check, do not redo. Verify the reports' critical claims: rerun one
    or two pivotal QA cases, read the diff hunks behind the highest-severity
    review findings, and confirm each acceptance criterion is actually covered
    by evidence rather than assertion. Fill any dimension the reports left
    uncovered with your own bounded checks.
 4. Read `runtime/repository-checks.json` and preserve the target's documented
-   profile boundaries when reproducing deterministic behavior. Any browser
+   profile boundaries when reproducing deterministic behavior. Do not run the
+   `fast` or `full` profile yourself: reproduce with the narrowest test in the
+   blast radius. On a passing verdict the verify submission gate runs the
+   `full` profile once; on a failing verdict the run forwards to remediate
+   and the suite does not run. After a remediation returns, the gate accepts
+   the remediate gate's recorded `full` pass at an unchanged fingerprint. Any browser
    inspection during reproduction follows `BROWSER-001` and the guidance it
    references on the active invocation. Classify an intermittent timeout of a
    configured full-suite target check as product/test or environment rather

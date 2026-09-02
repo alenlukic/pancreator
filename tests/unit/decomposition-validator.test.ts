@@ -172,36 +172,7 @@ Run Chunk 1 through /pan-start.
 test('decomposition validator rejects unstructured over-fragmentation', () => {
   const chunks = Array.from(
     { length: 6 },
-    (_, index) => `## Chunk ${index + 1}: Fragment ${index + 1}
-
-### Objective
-
-Fragment.
-
-### In scope
-
-One detail.
-
-### Out of scope
-
-Everything else.
-
-### Acceptance criteria
-
-1. The detail works.
-
-### Dependencies
-
-None.
-
-### Validation
-
-Run a check.
-
-### Handoff contract
-
-No handoff.
-`,
+    (_, index) => `## Chunk ${index + 1}: Fragment ${index + 1}`,
   ).join('\n')
   const result = validate(`${COMMON}
 

@@ -30,9 +30,33 @@ import {
   writeJsonAtomic,
   writeTextAtomic,
 } from './io.js'
+import {
+  assertSupervisorCardAttested,
+  renderSupervisorCard,
+  supervisorAttestCommand,
+} from './governance/supervisor-card.js'
+import {
+  assertClaimableInboxRequest,
+  claimInboxRequest,
+  finishInboxRequest,
+  inboxStatusOf,
+  isInboxRequestPath,
+  queueInboxRelativePath,
+  rollbackInboxClaim,
+} from './inbox.js'
 import { applyJsonMergePatch } from './json-merge-patch.js'
 import { keywordRunSuffixFrom, makeStageArtifactId } from './naming.js'
 import { resolveRunLayout } from './run-layout.js'
+import { buildSuiteProfileSummary } from './suite-profile.js'
+import {
+  DELEGATION_UNOBSERVED,
+  DELEGATION_WATCH_LATE,
+  DELEGATION_WATCH_LATE_SECONDS,
+  delegationUnobservedMessage,
+  redlineRecordPath,
+  summarizeDelegationObservation,
+  type DelegationObservation,
+} from './watch.js'
 import {
   OPERATOR_ARTIFACT_PROFILE_HEADINGS,
   operatorArtifactProfileForStage,
@@ -131,6 +155,7 @@ import type {
   ExternalDelegationRecord,
   GovernanceArtifactIssue,
   Invocation,
+  ManagedWorktreeReference,
   OperatorFeedbackItem,
   OperatorGateWaiver,
   OperatorPauseContext,
@@ -146,6 +171,7 @@ import type {
   StageOutcome,
   StageOutput,
   RequirementFailureRoute,
+  ResolvedRequirement,
   SupervisorAssessment,
   TaskRecord,
   WorkflowDefinition,
@@ -205,6 +231,8 @@ interface CreateRunOptions {
   requestPath: string | null
   title?: string | null
   workspace?: string | null
+  /** Managed worktree resolved by the CLI before run creation. */
+  worktree?: ManagedWorktreeReference | null
   gatesPath?: string | null
   involvement?: string | null
   verification?: string | null
@@ -217,6 +245,11 @@ interface CreateRunOptions {
    */
   useWorkflowDeclaredGates?: boolean
   bestOfN?: BestOfNRunRole | null
+  /**
+   * Named pipeline config to snapshot instead of the active one. An eval run
+   * uses it to route every worker persona to an external executor.
+   */
+  pipelineConfigName?: string | null
 }
 
 interface StatusOptions {
@@ -272,7 +305,7 @@ export interface PrepareInvocationResult {
   advisories: string[]
 }
 
-interface OperationProgressOptions {
+export interface OperationProgressOptions {
   onProgress?: (message: string) => void
 }
 
@@ -519,6 +552,8 @@ function readGateOverrides(
   return overrides
 }
 
+const FULL_PROFILE = 'full'
+
 function collectStageRepositoryCheckProfiles(
   stages: StageDefinition[],
   state: RunState,
@@ -545,6 +580,13 @@ function collectStageRepositoryCheckProfiles(
         state.verification,
         criterion,
       )
+
+      // DEV-001: the full profile is a submission gate judged on its own
+      // result, never an interior gate, so it is never baselined even when a
+      // source-allowed stage (remediate) gates on it.
+      if (profile === FULL_PROFILE) {
+        continue
+      }
 
       if (profile && !profiles.has(profile)) {
         profiles.set(profile, criterion.timeout_ms)
@@ -1219,6 +1261,20 @@ function applyTransition(
   }
 
   if (target === 'succeeded' || target === 'failed' || target === 'canceled') {
+    if (target === 'succeeded' || target === 'canceled') {
+      const destination = target === 'succeeded' ? 'complete' : 'canceled'
+      const moved = finishInboxRequest(
+        root,
+        state.request.source_path,
+        destination,
+        state.request.stored_path,
+      )
+
+      if (moved) {
+        state.request.source_path = moved
+      }
+    }
+
     state.status = target
     state.current_stage = null
     state.pending_action = { type: 'none' }
@@ -1706,7 +1762,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
 
   const pipelineConfig = pipelineOverride
     ? overriddenPipelineConfig(loadPipelineConfig(root), pipelineOverride)
-    : loadPipelineConfig(root)
+    : loadPipelineConfig(root, options.pipelineConfigName ?? undefined)
   let workflowUsesClaudeCode = false
 
   // The orchestrator persona is the supervisor running in the Cursor chat, so it
@@ -1780,9 +1836,18 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
       },
     )
   } else {
+    // The `.cursor/` projection renders the active config. A run pinned to
+    // another named config is judged against the projection's own source, so
+    // the check still proves the projection is current without demanding that
+    // the checkout be re-projected for one run.
+    const projectionSource =
+      options.pipelineConfigName &&
+      options.pipelineConfigName !== pipelineConfig.file.active_config
+        ? loadPipelineConfig(root)
+        : pipelineConfig
     const agentModelDrift = syncCursorProjection(root, {
       only: ['cursor-agents'],
-      pipeline: pipelineConfig,
+      pipeline: projectionSource,
     }).filter((entry) => entry.id === 'cursor-agents' && entry.changed)
 
     invariant(
@@ -1795,152 +1860,207 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     )
   }
 
-  const source = resolveInside(root, requestPath)
-
-  invariant(fileExists(source), `Request file does not exist: ${requestPath}`, {
-    code: 'REQUEST_NOT_FOUND',
-  })
-
-  const briefSystem = validateBriefSystem(root)
+  const sourceAbsolute = resolveInside(root, requestPath)
 
   invariant(
-    briefSystem.status === 'passed',
-    `${briefSystem.errors.join(' ')} Run ${panCommand(root)} briefs build or /pan-build-briefs before starting a workflow.`,
-    { code: 'INVALID_BRIEF_SYSTEM', details: briefSystem },
+    fileExists(sourceAbsolute),
+    `Request file does not exist: ${requestPath}`,
+    {
+      code: 'REQUEST_NOT_FOUND',
+    },
   )
 
-  const id = makeUniqueRunId(
-    path.join(root, 'runtime', 'logs', 'workflows'),
-    keywordRunSuffixFrom(path.basename(source), readText(source)),
-  )
-  const layout = resolveRunLayout(root, id)
-  const directory = layout.agent.absolute
+  let source = sourceAbsolute
+  let sourceRelative = toRepoRelative(root, source)
+  let inboxClaim: {
+    activePath: string
+    originalPath: string
+  } | null = null
 
-  for (const child of [
-    'invocations',
-    'outputs',
-    'assessments',
-    'evidence',
-    'decisions',
-    'validations',
-    'artifacts/json',
-  ]) {
-    ensureDir(path.join(directory, child))
-  }
-  ensureDir(layout.operator.absolute)
+  if (isInboxRequestPath(sourceRelative)) {
+    assertClaimableInboxRequest(sourceRelative)
+    const status = inboxStatusOf(sourceRelative)
 
-  const requestExtension = path.extname(source) || '.md'
-  const storedRequest = layout.request(requestExtension).relative
-  copyFileSync(source, resolveInside(root, storedRequest))
+    if (status === 'queue' || status === 'canceled' || status === 'legacy') {
+      const activePath = claimInboxRequest(root, sourceRelative)
 
-  const workspaceRoot = normalizeWorkspaceRoot(root, options.workspace)
-  const roots = resolveRoots({
-    installation_root: root,
-    workspace_root: path.resolve(root, workspaceRoot),
-  })
-  const gateOverrides = readGateOverrides(root, options.gatesPath)
-
-  const workflowSnapshot = layout.workflowSnapshot.relative
-  const workflowSnapshotValue = structuredClone(workflow)
-
-  for (const stage of workflowSnapshotValue.stages) {
-    stage.prompt = loadStagePrompt(root, stage)
-    stage.prompt_sha256 = sha256(stage.prompt)
+      inboxClaim = { activePath, originalPath: sourceRelative }
+      sourceRelative = activePath
+      source = resolveInside(root, activePath)
+    }
   }
 
-  // The snapshot is authoritative for this run's gates, so the involvement
-  // profile is resolved once here rather than re-derived on every transition.
-  // A later edit to config.json cannot change a run already in flight.
-  const involvementSelection = selectInvolvementProfile(
-    loadOperatorInvolvementFile(root),
-    options.involvement,
-  )
-  const involvement = options.useWorkflowDeclaredGates
-    ? {
-        profile: involvementSelection.name,
-        summary: involvementSelection.profile.summary,
-        contracts: [],
-        applied_gates: {},
-      }
-    : applyOperatorInvolvement(workflowSnapshotValue, involvementSelection)
+  try {
+    const briefSystem = validateBriefSystem(root)
 
-  const awayMode = resolveAwayModeConfig(root)
-  // Snapshotted likewise. The level decides which repository-check profiles
-  // gate this run and which baselines the first mutating stage captures.
-  const verification = resolveVerification(root, options.verification)
+    invariant(
+      briefSystem.status === 'passed',
+      `${briefSystem.errors.join(' ')} Run ${panCommand(root)} briefs build or /pan-build-briefs before starting a workflow.`,
+      { code: 'INVALID_BRIEF_SYSTEM', details: briefSystem },
+    )
 
-  writeJsonAtomic(resolveInside(root, workflowSnapshot), workflowSnapshotValue)
+    const id = makeUniqueRunId(
+      path.join(root, 'runtime', 'logs', 'workflows'),
+      keywordRunSuffixFrom(path.basename(source), readText(source)),
+    )
+    const layout = resolveRunLayout(root, id)
+    const directory = layout.agent.absolute
 
-  const pipelineConfigSnapshot = layout.pipelineConfigSnapshot.relative
-  const pipelineConfigSnapshotValue = makePipelineConfigSnapshot(pipelineConfig)
+    for (const child of [
+      'invocations',
+      'outputs',
+      'assessments',
+      'evidence',
+      'decisions',
+      'validations',
+      'artifacts/json',
+    ]) {
+      ensureDir(path.join(directory, child))
+    }
+    ensureDir(layout.operator.absolute)
 
-  writeJsonAtomic(
-    resolveInside(root, pipelineConfigSnapshot),
-    pipelineConfigSnapshotValue,
-  )
+    const requestExtension = path.extname(source) || '.md'
+    const storedRequest = layout.request(requestExtension).relative
+    copyFileSync(source, resolveInside(root, storedRequest))
 
-  const state: RunState = {
-    schema_version: 2,
-    run_id: id,
-    workflow_slug: workflow.slug,
-    workflow_snapshot: {
-      path: workflowSnapshot,
-      sha256: sha256(workflowSnapshotValue),
-    },
-    pipeline_config: {
-      name: pipelineConfig.name,
-      path: pipelineConfigSnapshot,
-      sha256: sha256(pipelineConfigSnapshotValue),
-    },
-    workspace_root: workspaceRoot,
-    workspace_id: roots.workspace_id,
-    installation_root: roots.installation_root,
-    state_root: roots.state_root,
-    scope_hash: roots.scope_hash,
-    ...(gateOverrides ? { gate_overrides: gateOverrides } : {}),
-    operator_involvement: involvement,
-    verification,
-    away_mode: awayMode,
-    operator_artifacts: {
-      mode: options.operatorArtifacts ? 'requested' : 'suppressed',
-      requested_stages: [],
-    },
-    ...(agentSuffix ? { cursor_agent_suffix: agentSuffix } : {}),
-    ...(options.bestOfN ? { best_of_n: options.bestOfN } : {}),
-    title: options.title ?? path.basename(requestPath),
-    status: 'running',
-    current_stage: workflow.start_stage,
-    pending_action: { type: 'prepare_invocation' },
-    current_invocation: null,
-    request: {
-      source_path: toRepoRelative(root, source),
-      stored_path: storedRequest,
-      sha256: sha256(readText(source)),
-    },
-    limits: workflow.limits,
-    attempts: {},
-    transition_count: 0,
-    consecutive_failures: 0,
-    stage_history: [],
-    revision: 0,
-    created_at: now(),
-    updated_at: now(),
+    const workspaceRoot = normalizeWorkspaceRoot(root, options.workspace)
+    const roots = resolveRoots({
+      installation_root: root,
+      workspace_root: path.resolve(root, workspaceRoot),
+    })
+    const gateOverrides = readGateOverrides(root, options.gatesPath)
+
+    const workflowSnapshot = layout.workflowSnapshot.relative
+    const workflowSnapshotValue = structuredClone(workflow)
+
+    for (const stage of workflowSnapshotValue.stages) {
+      stage.prompt = loadStagePrompt(root, stage)
+      stage.prompt_sha256 = sha256(stage.prompt)
+    }
+
+    // The snapshot is authoritative for this run's gates, so the involvement
+    // profile is resolved once here rather than re-derived on every transition.
+    // A later edit to config.json cannot change a run already in flight.
+    const involvementSelection = selectInvolvementProfile(
+      loadOperatorInvolvementFile(root),
+      options.involvement,
+    )
+    const involvement = options.useWorkflowDeclaredGates
+      ? {
+          profile: involvementSelection.name,
+          summary: involvementSelection.profile.summary,
+          contracts: [],
+          applied_gates: {},
+        }
+      : applyOperatorInvolvement(workflowSnapshotValue, involvementSelection)
+
+    const awayMode = resolveAwayModeConfig(root)
+    // Snapshotted likewise. The level decides which repository-check profiles
+    // gate this run and which baselines the first mutating stage captures.
+    const verification = resolveVerification(root, options.verification)
+
+    writeJsonAtomic(
+      resolveInside(root, workflowSnapshot),
+      workflowSnapshotValue,
+    )
+
+    const pipelineConfigSnapshot = layout.pipelineConfigSnapshot.relative
+    const pipelineConfigSnapshotValue =
+      makePipelineConfigSnapshot(pipelineConfig)
+
+    writeJsonAtomic(
+      resolveInside(root, pipelineConfigSnapshot),
+      pipelineConfigSnapshotValue,
+    )
+
+    const managedWorktree = options.worktree
+      ? {
+          name: options.worktree.name,
+          path: options.worktree.path,
+          branch: options.worktree.branch,
+        }
+      : null
+
+    const state: RunState = {
+      schema_version: 2,
+      run_id: id,
+      workflow_slug: workflow.slug,
+      workflow_snapshot: {
+        path: workflowSnapshot,
+        sha256: sha256(workflowSnapshotValue),
+      },
+      pipeline_config: {
+        name: pipelineConfig.name,
+        path: pipelineConfigSnapshot,
+        sha256: sha256(pipelineConfigSnapshotValue),
+      },
+      workspace_root: workspaceRoot,
+      ...(managedWorktree ? { managed_worktree: managedWorktree } : {}),
+      workspace_id: roots.workspace_id,
+      installation_root: roots.installation_root,
+      state_root: roots.state_root,
+      scope_hash: roots.scope_hash,
+      ...(gateOverrides ? { gate_overrides: gateOverrides } : {}),
+      operator_involvement: involvement,
+      verification,
+      away_mode: awayMode,
+      operator_artifacts: {
+        mode: options.operatorArtifacts ? 'requested' : 'suppressed',
+        requested_stages: [],
+      },
+      ...(agentSuffix ? { cursor_agent_suffix: agentSuffix } : {}),
+      ...(options.bestOfN ? { best_of_n: options.bestOfN } : {}),
+      title: options.title ?? path.basename(requestPath),
+      status: 'running',
+      current_stage: workflow.start_stage,
+      pending_action: { type: 'prepare_invocation' },
+      current_invocation: null,
+      request: {
+        source_path: sourceRelative,
+        stored_path: storedRequest,
+        sha256: sha256(readText(source)),
+      },
+      limits: workflow.limits,
+      attempts: {},
+      transition_count: 0,
+      consecutive_failures: 0,
+      stage_history: [],
+      revision: 0,
+      created_at: now(),
+      updated_at: now(),
+    }
+
+    // The supervisor card is rendered with the run so `pan init` already
+    // reports the digest the supervisor must attest before `pan prepare`.
+    const supervisorCard = renderSupervisorCard(root, state, workflow)
+
+    persistRun(root, state, 'run_created', {
+      supervisor_card: {
+        path: supervisorCard.state.path,
+        sha256: supervisorCard.state.sha256,
+        policies: supervisorCard.policies.map((policy) => policy.id),
+      },
+      workflow: workflow.slug,
+      pipeline_config: pipelineConfig.name,
+      workspace_root: workspaceRoot,
+      ...(managedWorktree ? { managed_worktree: managedWorktree } : {}),
+      state_root: roots.state_root,
+      involvement_profile: involvement.profile,
+      run_contracts: involvement.contracts,
+      applied_gates: involvement.applied_gates,
+      verification_level: verification.level,
+      away_mode_enabled: awayMode.enabled,
+      operator_artifacts: state.operator_artifacts,
+    })
+
+    return state
+  } catch (error) {
+    if (inboxClaim) {
+      rollbackInboxClaim(root, inboxClaim.activePath, inboxClaim.originalPath)
+    }
+
+    throw error
   }
-
-  persistRun(root, state, 'run_created', {
-    workflow: workflow.slug,
-    pipeline_config: pipelineConfig.name,
-    workspace_root: workspaceRoot,
-    state_root: roots.state_root,
-    involvement_profile: involvement.profile,
-    run_contracts: involvement.contracts,
-    applied_gates: involvement.applied_gates,
-    verification_level: verification.level,
-    away_mode_enabled: awayMode.enabled,
-    operator_artifacts: state.operator_artifacts,
-  })
-
-  return state
 }
 
 const INLINE_SUBMIT_VALIDATORS = new Set([
@@ -1966,27 +2086,29 @@ function outcomeFromFailureRoutes(
   return 'failure'
 }
 
-function runHarnessAuthoritativeValidators(
+/** One harness-authoritative validator `pan submit` runs, with its target. */
+export interface ResolvedSubmitValidator {
+  requirement: ResolvedRequirement
+  target_path: string
+}
+
+/**
+ * Resolve the harness-authoritative validators a submission runs for one
+ * invocation. `pan submit` and `pan output validate` MUST resolve this same
+ * set from the same requirements, so a mechanical defect surfaces before a
+ * stage attempt is spent on it.
+ */
+export function resolveSubmitValidators(
   root: string,
-  runId: string,
   invocation: Invocation,
-  workspaceFingerprint: string,
   submittedValue: Record<string, unknown>,
-  runState?: Record<string, unknown>,
-): {
-  errors: string[]
-  blocking_errors: string[]
-  validatorOutcome: StageOutcome | null
-} {
-  const errors: string[] = []
-  const blockingErrors: string[] = []
-  const failedRoutes: RequirementFailureRoute[] = []
+  catalog: ReturnType<typeof loadRegistry> = loadRegistry(root),
+): ResolvedSubmitValidator[] {
+  const resolved: ResolvedSubmitValidator[] = []
 
   if (!invocation.requirements) {
-    return { errors, blocking_errors: blockingErrors, validatorOutcome: null }
+    return resolved
   }
-
-  const catalog = loadRegistry(root)
 
   for (const requirement of invocation.requirements.validation_requirements) {
     if (INLINE_SUBMIT_VALIDATORS.has(requirement.registry_id)) {
@@ -2029,17 +2151,45 @@ function runHarnessAuthoritativeValidators(
     }
 
     const targetPath =
-      resolveRequirementTargetPath(
-        requirement,
-        invocation.output.path,
-        submittedValue as Record<string, unknown>,
-      ) ?? invocation.output.path
+      resolveRequirementTargetPath(requirement, invocation.output.path, {
+        ...submittedValue,
+        ...(invocation.output.artifact_targets
+          ? { artifact_targets: invocation.output.artifact_targets }
+          : {}),
+      }) ?? invocation.output.path
     const targetKind = inferTargetKind(targetPath)
 
     if (!entry.target_types.includes(targetKind)) {
       continue
     }
 
+    resolved.push({ requirement, target_path: targetPath })
+  }
+
+  return resolved
+}
+
+function runHarnessAuthoritativeValidators(
+  root: string,
+  runId: string,
+  invocation: Invocation,
+  workspaceFingerprint: string,
+  submittedValue: Record<string, unknown>,
+  runState?: Record<string, unknown>,
+): {
+  errors: string[]
+  blocking_errors: string[]
+  validatorOutcome: StageOutcome | null
+} {
+  const errors: string[] = []
+  const blockingErrors: string[] = []
+  const failedRoutes: RequirementFailureRoute[] = []
+  const catalog = loadRegistry(root)
+
+  for (const {
+    requirement,
+    target_path: targetPath,
+  } of resolveSubmitValidators(root, invocation, submittedValue, catalog)) {
     const result = runRequirement({
       root,
       runId,
@@ -2087,7 +2237,13 @@ function stageFieldContract(
   )
 
   invariant(
-    isRecord(source) && source.schema_version === 1 && isRecord(source.stages),
+    isRecord(source) &&
+      source.schema_version === 1 &&
+      isRecord(source.criterion_results) &&
+      Object.values(source.criterion_results).every(
+        (value) => typeof value === 'string',
+      ) &&
+      isRecord(source.stages),
     'stage-output-requirements.json MUST contain a schema_version 1 stage map.',
     { code: 'INVALID_STAGE_OUTPUT_REQUIREMENTS' },
   )
@@ -2150,6 +2306,7 @@ function stageFieldContract(
   })
 
   return {
+    criterion_results: source.criterion_results as Record<string, string>,
     validators,
     fields: stage.fields as NonNullable<
       Invocation['output']['field_contract']
@@ -2223,6 +2380,29 @@ export function prepareInvocation(
         code: 'RUN_NOT_RUNNING',
       },
     )
+
+    // Refresh the supervisor card first: a changed policy set re-binds the
+    // supervisor before any stage work, and an unattested card stops here.
+    const supervisorCard = renderSupervisorCard(
+      root,
+      state,
+      loadRunWorkflow(root, state),
+    )
+
+    if (supervisorCard.changed) {
+      persistRun(root, state, 'supervisor_card_rendered', {
+        path: supervisorCard.state.path,
+        sha256: supervisorCard.state.sha256,
+        first: supervisorCard.first,
+        policies: supervisorCard.policies.map((policy) => policy.id),
+      })
+    }
+
+    // A run created before the card existed gains it on this prepare and is
+    // bound from the next lifecycle action on.
+    if (!supervisorCard.first) {
+      assertSupervisorCardAttested(root, state, 'prepare')
+    }
 
     // Load once, so the advisories and the persona mapping read one snapshot.
     const pipelineConfig = loadRunPipelineConfig(root, state)
@@ -2435,9 +2615,9 @@ export function prepareInvocation(
       operator_artifacts: artifactsRequested ? 'requested' : 'suppressed',
     })
     const prDescription =
-      artifactsRequested &&
       stage.persona === 'release-steward' &&
-      stage.slug === 'ship'
+      stage.slug === 'ship' &&
+      (artifactsRequested || isSelfDevelopmentInstallation(root))
         ? resolvePrDescriptionContext(workspaceDirectory(root, state), policies)
         : undefined
     const requirements = resolveRequirements(root, {
@@ -2449,7 +2629,12 @@ export function prepareInvocation(
         output_path: outputPath,
         artifact_paths: artifactsRequested
           ? [briefRenderedPath, ...(prDescription ? [prDescriptionPath] : [])]
-          : [],
+          : prDescription
+            ? [prDescriptionPath]
+            : [],
+        ...(prDescription
+          ? { artifact_targets: { pr_description: prDescriptionPath } }
+          : {}),
       },
       operator_artifacts: artifactsRequested ? 'requested' : 'suppressed',
     })
@@ -2462,7 +2647,21 @@ export function prepareInvocation(
             `execute the '${stage.persona}' stage under the ` +
             `'${externalExecutor}' executor with model '${model}', then ` +
             `submit ${outputPath}.`
-          : `Launch the named Cursor agent for persona '${stage.persona}' ` +
+          : // The next action must name the first executable step in this
+            // invocation's real dependency graph. Naming the consolidating
+            // worker while its evidence workers are still unrun sends the
+            // supervisor past a precondition the card only states further
+            // down, and the worker then correctly reports `blocked`.
+            ((evidenceWorkers ?? []).length > 0
+              ? `Launch the ${(evidenceWorkers ?? []).length} parallel evidence ` +
+                `worker(s) first — ` +
+                (evidenceWorkers ?? [])
+                  .map((worker) => `${worker.agent} -> ${worker.evidence_path}`)
+                  .join(', ') +
+                ` — and confirm every report exists and is non-empty. Only ` +
+                `then launch `
+              : 'Launch ') +
+            `the named Cursor agent for persona '${stage.persona}' ` +
             `(never an ad-hoc subagent; only the named definition runs ` +
             `'${model}') with this card, write delegation evidence to ` +
             `${delegationArtifactPath}, then submit ${outputPath}.`
@@ -2471,6 +2670,17 @@ export function prepareInvocation(
     // on the artifact it must already read to perform the delegation. For an
     // external executor the harness moves the bytes itself, so delivery is
     // `verbatim` by construction and no compact delivery prompt is generated.
+    const supervisorCardReference = state.supervisor_card
+      ? {
+          path: state.supervisor_card.path,
+          sha256: state.supervisor_card.sha256,
+          attest_command: supervisorAttestCommand(
+            root,
+            runId,
+            state.supervisor_card.sha256,
+          ),
+        }
+      : null
     const delegation =
       stage.persona === 'orchestrator'
         ? undefined
@@ -2489,6 +2699,9 @@ export function prepareInvocation(
               supervisor_procedure_path: supervisorProcedurePath,
               submit_command: `${panCommand(root)} submit ${runId} ${outputPath}`,
               mode: 'verbatim' as const,
+              ...(supervisorCardReference
+                ? { supervisor_card: supervisorCardReference }
+                : {}),
               policies: resolvePolicies(root, {
                 persona: 'orchestrator',
                 workflow: workflow.slug,
@@ -2515,17 +2728,30 @@ export function prepareInvocation(
               delegation_artifact_path: delegationArtifactPath,
               supervisor_procedure_path: supervisorProcedurePath,
               submit_command: `${panCommand(root)} submit ${runId} ${outputPath}`,
+              watch_command: `${panCommand(root)} watch ${runId} --invocation ${invocationId}`,
+              redline_record_path: redlineRecordPath(root, runId),
               mode: 'referenced' as const,
+              ...(supervisorCardReference
+                ? { supervisor_card: supervisorCardReference }
+                : {}),
               delivery_prompt_path: deliveryPromptPath(
                 runId,
                 invocationId,
                 root,
               ),
+              // DELEGATE-001 governs the launch and the watch that follows
+              // it, so it travels on the document that carries those steps.
+              // The card alone put it 300 lines away from the moment the
+              // platform says not to wait.
               policies: resolvePolicies(root, {
                 persona: 'orchestrator',
                 workflow: workflow.slug,
                 stage: stage.slug,
-              }).filter((policy) => policy.id === 'INVOCATION-001'),
+              }).filter(
+                (policy) =>
+                  policy.id === 'INVOCATION-001' ||
+                  policy.id === 'DELEGATE-001',
+              ),
             }
 
     const artifactProfile = operatorArtifactProfileForStage(
@@ -2564,7 +2790,23 @@ export function prepareInvocation(
         'release.versioning.updated_files': 'array',
         'release.versioning.release_index_action': 'string',
       })
+
+      if (state.managed_worktree) {
+        Object.assign(requiredData, {
+          'release.local_release': 'object',
+          'release.local_release.fetched_main': 'string',
+          'release.local_release.release_commit': 'string',
+          'release.local_release.index_commit': 'string',
+          'release.local_release.branch': 'string',
+          'release.local_release.pr_description_path': 'string',
+        })
+      }
     }
+
+    // Advisory: the profiled full run before ship, when the run recorded one.
+    const suiteProfile = stage.context.suite_profile
+      ? buildSuiteProfileSummary(root, state)
+      : null
 
     const invocation: Invocation = {
       $operator: {
@@ -2583,6 +2825,12 @@ export function prepareInvocation(
       attempt,
       created_at: now(),
       workspace_root: state.workspace_root || '.',
+      ...(state.managed_worktree
+        ? { managed_worktree: state.managed_worktree }
+        : {}),
+      ...(state.workspace_root && state.workspace_root !== '.'
+        ? { harness_root: root }
+        : {}),
       ...(state.gate_overrides ? { gate_overrides: state.gate_overrides } : {}),
       ...(state.operator_involvement
         ? { operator_involvement: state.operator_involvement }
@@ -2617,6 +2865,7 @@ export function prepareInvocation(
         ...(prDescription ? { prDescription } : {}),
       }),
       ...(evidenceWorkers ? { evidence_workers: evidenceWorkers } : {}),
+      ...(suiteProfile ? { suite_profile: suiteProfile } : {}),
       policies,
       requirements,
       rubric: stage.criteria,
@@ -2638,11 +2887,15 @@ export function prepareInvocation(
         ...(prDescription
           ? {
               artifacts: [
-                {
-                  path: briefRenderedPath,
-                  description:
-                    'Primary self-contained HTML brief for the operator.',
-                },
+                ...(artifactsRequested
+                  ? [
+                      {
+                        path: briefRenderedPath,
+                        description:
+                          'Primary self-contained HTML brief for the operator.',
+                      },
+                    ]
+                  : []),
                 {
                   path: prDescriptionPath,
                   description:
@@ -2689,6 +2942,7 @@ export function prepareInvocation(
               ...(isSelfDevelopmentInstallation(root)
                 ? [
                     'You MAY also edit only CHANGELOG.md, VERSION, package.json, package-lock.json, README.md, and version-bearing Markdown under docs/ as required by VERSION-001.',
+                    'You MAY run the declared local release commands to checkpoint eligible source, rebase, and create the release and index commits.',
                   ]
                 : []),
               'You MAY repair Pancreator runtime governance and artifact files for this run. You MUST NOT modify target source during ship.',
@@ -2705,7 +2959,14 @@ export function prepareInvocation(
               ]),
         'You MUST NOT alter workflow state directly.',
         'While a mutating workflow is active, external edits to tracked files SHOULD be avoided because they make stage attribution ambiguous; pause the run before operator-authored changes.',
-        'You MUST NOT commit, push, merge, publish, deploy, or perform destructive source-control actions.',
+        ...(stage.workspace_policy === 'release_metadata_only' &&
+        isSelfDevelopmentInstallation(root)
+          ? [
+              'You MUST NOT push, open or merge a pull request, publish, deploy, rewrite history, or perform other destructive source-control actions.',
+            ]
+          : [
+              'You MUST NOT commit, push, merge, publish, deploy, or perform destructive source-control actions.',
+            ]),
       ],
       ...(delegation ? { delegation } : {}),
       ...(!externalExecutor &&
@@ -2931,7 +3192,7 @@ function claudeCodeWriteRules(root: string, workspaceDir: string): string[] {
  * runtime tree. This is defense in depth — `scope.no_unapproved_changes`
  * remains the gate of record for workspace mutation.
  */
-function claudeCodeToolPolicy(
+export function claudeCodeToolPolicy(
   root: string,
   workspaceDir: string,
   stage: StageDefinition,
@@ -3361,6 +3622,14 @@ function effectiveOutcome(
   return 'success'
 }
 
+function blockingCriterionStateErrors(errors: string[]): string[] {
+  return errors.filter(
+    (message) =>
+      /criteria '.+' is unevaluated;/u.test(message) ||
+      /criteria '.+' MUST NOT be skipped on a success result/u.test(message),
+  )
+}
+
 /**
  * Persist non-blocking verify findings as an operator inbox item. A
  * pass-with-warnings verdict advances the run because QA demonstrated the
@@ -3418,14 +3687,11 @@ function emitVerifyWarningsInboxItem(
     }
   }
 
-  const relativePath = path.join(
-    'runtime',
-    'inbox',
+  const relativePath = queueInboxRelativePath(
     `${state.run_id}-verify-warnings.md`,
   )
   const absolutePath = resolveInside(root, relativePath)
 
-  ensureDir(path.dirname(absolutePath))
   writeTextAtomic(absolutePath, `${lines.join('\n').trimEnd()}\n`)
 
   return relativePath
@@ -3506,6 +3772,7 @@ export function submitOutput(
         code: 'RUN_NOT_RUNNING',
       },
     )
+    assertSupervisorCardAttested(root, state, 'submit')
     invariant(
       state.pending_action.type === 'invoke_agent',
       'Run is not awaiting stage output.',
@@ -3523,16 +3790,18 @@ export function submitOutput(
       state,
       invocation,
     )
-    const advisories = recordRunAdvisories(
-      state,
-      {
-        kind: 'model_evidence',
-        source: 'submit',
-        stage: stage.slug,
-        invocation_id: invocation.invocation_id,
-      },
-      modelEvidenceAdvisories,
-    )
+    const advisories = [
+      ...recordRunAdvisories(
+        state,
+        {
+          kind: 'model_evidence',
+          source: 'submit',
+          stage: stage.slug,
+          invocation_id: invocation.invocation_id,
+        },
+        modelEvidenceAdvisories,
+      ),
+    ]
 
     if (advisories.length > 0) {
       persistRun(root, state, 'model_evidence_advisory', {
@@ -3558,6 +3827,68 @@ export function submitOutput(
       )
     }
 
+    // DELEGATE-001: the harness must have seen the worker reach a terminal
+    // state. A completed `pan watch` record or a foreground-return attestation
+    // is that evidence for a Cursor worker; `pan delegate` writes its own for
+    // an external executor. Like a missing evidence report, this is a
+    // supervisor-owned precondition and rejects outright without consuming an
+    // attempt.
+    const personaExecutor = invocation.stage.persona_executor ?? 'cursor'
+    const delegationObservation: DelegationObservation | undefined =
+      stage.persona !== 'orchestrator'
+        ? summarizeDelegationObservation(
+            root,
+            runId,
+            invocation.invocation_id,
+            { externalExecutor: personaExecutor !== 'cursor' },
+          )
+        : undefined
+
+    if (delegationObservation) {
+      invariant(
+        delegationObservation.observed,
+        delegationUnobservedMessage(
+          delegationObservation,
+          panCommand(root),
+          runId,
+          invocation.invocation_id,
+        ),
+        {
+          code: DELEGATION_UNOBSERVED,
+          details: {
+            watch_record_path: delegationObservation.watch.record_path,
+            foreground_return_path:
+              delegationObservation.foreground_return.record_path,
+          },
+        },
+      )
+
+      // DELEGATE-001 says a background conversion is watched immediately.
+      // A late arming still submits — the work was observed — but the run
+      // records how late, so a supervisor that armed at once and one that
+      // armed after an operator reprimand stop looking identical.
+      if (delegationObservation.watch.background_watch_late) {
+        advisories.push(
+          ...recordRunAdvisories(
+            state,
+            {
+              kind: 'delegation_supervision',
+              source: 'submit',
+              stage: stage.slug,
+              invocation_id: invocation.invocation_id,
+            },
+            [
+              `${DELEGATION_WATCH_LATE}: the background watch for ` +
+                `${invocation.invocation_id} was armed ` +
+                `${delegationObservation.watch.background_mark_delay_seconds?.toFixed(0)}s ` +
+                `after the launch, past the ${DELEGATION_WATCH_LATE_SECONDS}s ` +
+                `DELEGATE-001 allows. Supervision was late, not absent.`,
+            ],
+          ),
+        )
+      }
+    }
+
     if (priorForRevision) {
       invariant(
         priorForRevision.stage === stage.slug,
@@ -3569,8 +3900,6 @@ export function submitOutput(
 
     const governanceArtifactWarnings: string[] = []
     const attestationErrors: string[] = []
-
-    const personaExecutor = invocation.stage.persona_executor ?? 'cursor'
 
     if (stage.persona !== 'orchestrator') {
       if (personaExecutor === 'cursor') {
@@ -3731,12 +4060,54 @@ export function submitOutput(
       })
     }
 
-    // A shell gate can only confirm a success — `effectiveOutcome` decides
-    // failure from a declared non-success result, a failed hard
-    // self-criterion, or a failed attestation before deterministic results
-    // are consulted. When one of those has already decided the outcome,
-    // running the gate commands (QA's full suite above all) spends minutes
-    // proving nothing, so they are recorded as skipped instead of executed.
+    // Claim, attestation, and artifact validators run before any repository
+    // check gate. A shell gate can only confirm a success — `effectiveOutcome`
+    // decides failure from a declared non-success result, a failed hard
+    // self-criterion, a failed attestation, or a blocking harness validator
+    // before deterministic results are consulted. When one of those has
+    // already decided the outcome, running the gate commands (QA's full suite
+    // above all) spends minutes proving nothing, so they are recorded as
+    // skipped with the deciding reason instead of executed.
+    const workspaceAfter = gitWorkspaceSnapshot(workspaceDirectory(root, state))
+    const harnessValidation = runHarnessAuthoritativeValidators(
+      root,
+      runId,
+      invocation,
+      workspaceAfter.fingerprint,
+      submittedValue as Record<string, unknown>,
+      state as unknown as Record<string, unknown>,
+    )
+    const filterBriefDerivatives = (messages: string[]): string[] =>
+      briefRenderFailed && briefRenderedPath
+        ? messages.filter((message) => !message.includes(briefRenderedPath))
+        : messages
+    // A missing or mismatched attestation blocks every stage, because it means
+    // the harness cannot show that the worker held the contract it acted on.
+    // A required or authoritative harness validator failure blocks whichever
+    // stage its policy binds it to — the enforcement and failure route the
+    // card declares must be the enforcement the engine applies. Advisory
+    // validator failures stay governance warnings on every stage, or the
+    // advisory enforcement declared on the card would be false. Ship
+    // additionally blocks on operator-brief and stage-output diagnostics.
+    const blockingValidatorErrors = filterBriefDerivatives(
+      harnessValidation.blocking_errors,
+    ).map((message) => `Validator: ${message}`)
+    const blockingCriterionErrors = blockingCriterionStateErrors(
+      validation.errors,
+    ).map((message) => `Stage output: ${message}`)
+    const blockingValidationErrors =
+      stage.slug === 'ship'
+        ? [
+            ...attestationErrors,
+            ...briefErrors.map((message) => `Operator brief: ${message}`),
+            ...validation.errors.map((message) => `Stage output: ${message}`),
+            ...blockingValidatorErrors,
+          ]
+        : [
+            ...attestationErrors,
+            ...blockingCriterionErrors,
+            ...blockingValidatorErrors,
+          ]
     const declaredNonSuccess =
       isRecord(submittedValue) &&
       (submittedValue.result === 'failure' ||
@@ -3750,13 +4121,26 @@ export function submitOutput(
       (criterion) =>
         criterion.hard && selfEvaluations.get(criterion.id)?.result === 'fail',
     )
+    const rejectingValidatorIds = [
+      ...new Set(
+        harnessValidation.blocking_errors
+          .map(
+            (message) => /^harness validator (\S+) failed/u.exec(message)?.[1],
+          )
+          .filter((value): value is string => typeof value === 'string'),
+      ),
+    ]
     const gateSkipReason = declaredNonSuccess
       ? `the stage reported result '${declaredNonSuccess}'`
       : attestationErrors.length > 0
         ? 'the invocation read attestation failed'
-        : failedHardSelfCriterion
-          ? `hard criterion '${failedHardSelfCriterion.id}' was self-evaluated as failed`
-          : null
+        : rejectingValidatorIds.length > 0
+          ? `harness validator ${rejectingValidatorIds.join(', ')} rejected the output`
+          : blockingValidationErrors.length > 0
+            ? 'a blocking artifact or stage-output validator rejected the output'
+            : failedHardSelfCriterion
+              ? `hard criterion '${failedHardSelfCriterion.id}' was self-evaluated as failed`
+              : null
     const evaluated = evaluateDeterministicCriteria(
       root,
       runDir(root, runId),
@@ -3769,25 +4153,15 @@ export function submitOutput(
       validation.output,
       options.onProgress,
       gateSkipReason,
-    )
-    const harnessValidation = runHarnessAuthoritativeValidators(
-      root,
-      runId,
-      invocation,
-      evaluated.workspace.fingerprint,
-      submittedValue as Record<string, unknown>,
-      state as unknown as Record<string, unknown>,
+      workspaceAfter,
     )
     governanceArtifactWarnings.push(
       ...attestationErrors,
       ...briefErrors.map((message) => `Operator brief: ${message}`),
       ...validation.errors.map((message) => `Stage output: ${message}`),
-      ...(briefRenderFailed && briefRenderedPath
-        ? harnessValidation.errors.filter(
-            (message) => !message.includes(briefRenderedPath),
-          )
-        : harnessValidation.errors
-      ).map((message) => `Validator: ${message}`),
+      ...filterBriefDerivatives(harnessValidation.errors).map(
+        (message) => `Validator: ${message}`,
+      ),
     )
     recordGovernanceArtifactIssues(
       root,
@@ -3798,30 +4172,6 @@ export function submitOutput(
       governanceArtifactWarnings,
     )
 
-    // A missing or mismatched attestation blocks every stage, because it means
-    // the harness cannot show that the worker held the contract it acted on.
-    // A required or authoritative harness validator failure blocks whichever
-    // stage its policy binds it to — the enforcement and failure route the
-    // card declares must be the enforcement the engine applies. Advisory
-    // validator failures stay governance warnings on every stage, or the
-    // advisory enforcement declared on the card would be false. Ship
-    // additionally blocks on operator-brief and stage-output diagnostics.
-    const blockingValidatorErrors = (
-      briefRenderFailed && briefRenderedPath
-        ? harnessValidation.blocking_errors.filter(
-            (message) => !message.includes(briefRenderedPath),
-          )
-        : harnessValidation.blocking_errors
-    ).map((message) => `Validator: ${message}`)
-    const blockingValidationErrors =
-      stage.slug === 'ship'
-        ? [
-            ...attestationErrors,
-            ...briefErrors.map((message) => `Operator brief: ${message}`),
-            ...validation.errors.map((message) => `Stage output: ${message}`),
-            ...blockingValidatorErrors,
-          ]
-        : [...attestationErrors, ...blockingValidatorErrors]
     const explicitlyDeclaredProductFailure =
       isRecord(submittedValue) &&
       (submittedValue.result === 'failure' ||
@@ -4037,6 +4387,20 @@ export function submitOutput(
         self: validation.output.criteria,
       },
       workspace_fingerprint: evaluated.workspace.fingerprint,
+      ...(delegationObservation
+        ? {
+            delegation_observation: {
+              source: delegationObservation.source,
+              ...(delegationObservation.watch.record_present ||
+              delegationObservation.watch.background_marked
+                ? { watch: delegationObservation.watch }
+                : {}),
+              ...(delegationObservation.foreground_return.record_present
+                ? { foreground_return: delegationObservation.foreground_return }
+                : {}),
+            },
+          }
+        : {}),
       next_state: nextState,
       timestamp: now(),
     }
@@ -4959,9 +5323,9 @@ function writeSpotfixCase(
   sourceEvidencePath: string,
 ): string {
   const timestamp = now().replaceAll(/[-:.]/gu, '')
-  const relativePath =
-    `runtime/inbox/spotfix-case-${timestamp}-${state.run_id.slice(-8)}-` +
-    `${stage.slug}.md`
+  const relativePath = queueInboxRelativePath(
+    `spotfix-case-${timestamp}-${state.run_id.slice(-8)}-${stage.slug}.md`,
+  )
   const body = [
     '# Deferred spotfix case',
     '',
@@ -5255,6 +5619,17 @@ export function abortRun(root: string, runId: string, note = ''): RunState {
       { code: 'RUN_TERMINAL' },
     )
 
+    const moved = finishInboxRequest(
+      root,
+      state.request.source_path,
+      'canceled',
+      state.request.stored_path,
+    )
+
+    if (moved) {
+      state.request.source_path = moved
+    }
+
     state.status = 'canceled'
     state.current_stage = null
     state.pending_action = { type: 'none' }
@@ -5284,7 +5659,11 @@ export function getRunStatus(
     ? loadInvocationValidationStatus(root, runId, state.current_invocation.id)
     : null
 
-  return renderStatus(statusState, validationStatus)
+  return renderStatus(
+    statusState,
+    validationStatus,
+    buildSuiteProfileSummary(root, state),
+  )
 }
 
 export function getRunState(root: string, runId: string): RunState {
@@ -5292,15 +5671,21 @@ export function getRunState(root: string, runId: string): RunState {
 }
 
 /**
- * Mirror the cheap submission layers before submit, so a mechanical defect
- * does not consume a stage attempt. The shell gates and the
- * harness-authoritative validators stay submit-only.
+ * Mirror every validator `pan submit` runs before its shell gates, so a
+ * mechanical defect does not consume a stage attempt. Only the shell gates
+ * stay submit-only; the harness-authoritative validators run here from the
+ * same resolved set `resolveSubmitValidators` gives the submission, without
+ * persisting a validation record.
  */
 export function validateOutputForSubmission(
   root: string,
   runId: string,
   invocation: Invocation,
   submittedValue: unknown,
+  options: {
+    /** Harness-relative path of the file under validation, when it exists. */
+    submittedPath?: string
+  } = {},
 ): { passed: boolean; checks: ValidationCheck[] } {
   const checks: ValidationCheck[] = []
 
@@ -5361,5 +5746,234 @@ export function validateOutputForSubmission(
     )
   }
 
+  const catalog = loadRegistry(root)
+  const submittedRecord = isRecord(submittedValue)
+    ? submittedValue
+    : ({} as Record<string, unknown>)
+  // Before submit the output may still sit outside its declared path, or
+  // only in memory. Output-targeted validators then read the file under
+  // validation, or a scratch copy of the value that is removed afterwards, so
+  // the mirror judges the same bytes the submission would.
+  const declaredOutputExists = fileExists(
+    resolveInside(root, invocation.output.path),
+  )
+  const submittedAbsolute =
+    options.submittedPath !== undefined
+      ? resolveInside(root, options.submittedPath)
+      : null
+  let scratchOutput: string | null = null
+  const outputTargetPath = (): string => {
+    // The operator's file wins. A stale copy at the declared path must not
+    // stand in for the bytes the operator asked to validate.
+    if (
+      options.submittedPath !== undefined &&
+      submittedAbsolute &&
+      fileExists(submittedAbsolute)
+    ) {
+      return options.submittedPath
+    }
+
+    if (options.submittedPath === undefined && declaredOutputExists) {
+      return invocation.output.path
+    }
+
+    // Handlers resolve a relative target against the harness root, so the
+    // scratch copy lives under runtime/cache and is removed afterwards.
+    if (scratchOutput === null) {
+      scratchOutput = path.posix.join(
+        'runtime',
+        'cache',
+        'output-validate',
+        runId,
+        path.basename(invocation.output.path),
+      )
+      writeJsonAtomic(resolveInside(root, scratchOutput), submittedRecord)
+    }
+
+    return scratchOutput
+  }
+
+  try {
+    for (const {
+      requirement,
+      target_path: targetPath,
+    } of resolveSubmitValidators(root, invocation, submittedRecord, catalog)) {
+      if (renderedPath && targetPath === renderedPath) {
+        checks.push({
+          id: `validator.${requirement.registry_id}`,
+          passed: true,
+          message:
+            `${requirement.registry_id} deferred to submit: the harness ` +
+            `renders ${renderedPath} during submission`,
+        })
+        continue
+      }
+
+      const result = runRequirement({
+        root,
+        runId,
+        requirement,
+        targetPath:
+          targetPath === invocation.output.path
+            ? outputTargetPath()
+            : targetPath,
+        executor: 'harness',
+        workspaceFingerprint: invocation.workspace_before.fingerprint,
+        invocation: invocation as unknown as Record<string, unknown>,
+        runState: state as unknown as Record<string, unknown>,
+        catalog,
+        persist: false,
+      })
+      const passed = isPassingResult(result)
+
+      checks.push({
+        id: `validator.${requirement.registry_id}`,
+        passed,
+        message: passed
+          ? `${requirement.registry_id} passed (${requirement.enforcement})`
+          : `${requirement.registry_id} ${result.status} (${requirement.enforcement}): ` +
+            result.issues.map((issue) => issue.message).join('; '),
+      })
+    }
+  } finally {
+    if (scratchOutput !== null) {
+      rmSync(path.dirname(resolveInside(root, scratchOutput)), {
+        recursive: true,
+        force: true,
+      })
+    }
+  }
+
   return { passed: checks.every((check) => check.passed), checks }
+}
+
+export interface EvidenceWorkerDelegation {
+  role: string
+  persona: string
+  evidence_path: string
+  skipped: 'already_present' | 'cursor_persona' | null
+  ok: boolean
+  exit_code: number | null
+  duration_ms: number
+  stdout_path: string | null
+  stderr_path: string | null
+  error?: string
+}
+
+/**
+ * Run the active invocation's parallel evidence workers through the
+ * claude-code executor. The supervisor owns these launches for Cursor
+ * personas; an eval driver or an external-executor supervisor uses this path
+ * so the evidence reports exist before the stage worker is delegated. A worker
+ * whose persona maps to Cursor is reported as skipped, never launched.
+ */
+export function delegateEvidenceWorkers(
+  root: string,
+  runId: string,
+  options: OperationProgressOptions = {},
+): EvidenceWorkerDelegation[] {
+  const state = loadState(root, runId)
+
+  invariant(
+    state.pending_action.type === 'invoke_agent' && state.current_invocation,
+    'Run is not awaiting delegation. Run prepare first.',
+    { code: 'INVALID_RUN_ACTION', details: { pending: state.pending_action } },
+  )
+
+  const workflow = loadRunWorkflow(root, state)
+  const stage = stageBySlug(workflow, state.current_stage)
+  const invocation = readInvocation(root, state.current_invocation.json_path)
+  const pipelineConfig = loadRunPipelineConfig(root, state)
+  const workspaceDir = workspaceDirectory(root, state)
+  const policy = claudeCodeToolPolicy(root, workspaceDir, stage)
+  const evidenceDir = resolveRunLayout(root, runId).evidence('').relative
+  const results: EvidenceWorkerDelegation[] = []
+
+  for (const worker of invocation.evidence_workers ?? []) {
+    const evidenceAbsolute = resolveInside(root, worker.evidence_path)
+    const base = {
+      role: worker.role,
+      persona: worker.persona,
+      evidence_path: worker.evidence_path,
+    }
+
+    if (fileExists(evidenceAbsolute) && readText(evidenceAbsolute).trim()) {
+      results.push({
+        ...base,
+        skipped: 'already_present',
+        ok: true,
+        exit_code: null,
+        duration_ms: 0,
+        stdout_path: null,
+        stderr_path: null,
+      })
+      continue
+    }
+
+    const mapping = resolvePersonaMapping(pipelineConfig, worker.persona)
+
+    if (mapping.executor !== 'claude-code') {
+      results.push({
+        ...base,
+        skipped: 'cursor_persona',
+        ok: false,
+        exit_code: null,
+        duration_ms: 0,
+        stdout_path: null,
+        stderr_path: null,
+      })
+      continue
+    }
+
+    const brief = readText(resolveInside(root, worker.brief_path))
+    const prompt =
+      `${brief}\n\n## Evidence report destination\n\n` +
+      `Write your complete evidence report as Markdown to ` +
+      `\`${path.resolve(root, worker.evidence_path)}\`. ` +
+      `That file is the only file you write outside the workspace. ` +
+      `Do not submit the stage output; the stage worker owns it.\n`
+    const configuredTimeout = mapping.options['timeout-ms']
+
+    options.onProgress?.(
+      `launching ${worker.role} evidence worker (${worker.persona}) via claude-code`,
+    )
+
+    const result = runClaudeCode({
+      prompt,
+      cwd: workspaceDir,
+      model: mapping.model,
+      permissionMode: mapping.options['permission-mode'] ?? 'default',
+      allowedTools: policy.allowedTools,
+      addDirs: policy.addDirs,
+      ...(configuredTimeout ? { timeoutMs: Number(configuredTimeout) } : {}),
+    })
+    const stdoutPath = `${evidenceDir}/${invocation.invocation_id}.claude-code.${worker.role}.stdout.json`
+    const stderrPath = `${evidenceDir}/${invocation.invocation_id}.claude-code.${worker.role}.stderr.log`
+
+    writeTextAtomic(resolveInside(root, stdoutPath), result.stdout)
+    writeTextAtomic(resolveInside(root, stderrPath), result.stderr)
+
+    const present =
+      fileExists(evidenceAbsolute) &&
+      readText(evidenceAbsolute).trim().length > 0
+
+    results.push({
+      ...base,
+      skipped: null,
+      ok: result.ok && present,
+      exit_code: result.exit_code,
+      duration_ms: result.duration_ms,
+      stdout_path: stdoutPath,
+      stderr_path: stderrPath,
+      ...(result.error
+        ? { error: result.error }
+        : present
+          ? {}
+          : {
+              error: `evidence report not written at ${worker.evidence_path}`,
+            }),
+    })
+  }
+
+  return results
 }

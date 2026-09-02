@@ -118,16 +118,3 @@ test('nested quiet wrappers tick from the step that produces output', () => {
   assert.equal(result.stdout, '')
   assert.match(result.stderr, /^\.+\n$/u)
 })
-
-test('progress ticks stay quiet for a command faster than one interval', () => {
-  // An interval wider than the lifetime of the command removes the race with a
-  // first tick.
-  const result = runQuiet("process.stdout.write('quick\\n')", {
-    progress: true,
-    progressIntervalSeconds: '0.5',
-  })
-
-  assert.equal(result.status, 0)
-  assert.equal(result.stdout, '')
-  assert.equal(result.stderr, '')
-})

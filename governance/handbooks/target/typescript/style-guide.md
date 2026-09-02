@@ -8,7 +8,7 @@ This handbook records conventions verified in this repository. It is not a gener
 
 ## Detection evidence
 
-The technology detector reported `typescript` from `src/cli.ts`, `src/lib/best-of-n.ts`, `tests/helpers.ts`, and `tsconfig.json`.
+The technology detector reported `typescript` from `tsconfig.json` and the tracked TypeScript sources under `src/` and `tests/`, including `src/cli.ts`, `src/lib/away-mode.ts`, and `tests/helpers.ts`.
 
 ## Compiler contract
 
@@ -37,7 +37,7 @@ The technology detector reported `typescript` from `src/cli.ts`, `src/lib/best-o
 
 `src/lib/errors.ts` is the shared failure vocabulary and SHOULD be reused rather than duplicated.
 
-- `PanError` carries a stable `code`, optional `details`, and an `exitCode`. Thrown failures use an UPPER_SNAKE code such as `INVALID_POLICY`, `INVALID_ARGUMENT`, or `PATH_ESCAPE`.
+- `PanError` carries a stable `code`, optional `details`, and an `exitCode`. Thrown failures use an UPPER_SNAKE code such as `INVALID_REPOSITORY_CHECKS`, `INVALID_ARGUMENT`, or `PATH_ESCAPE`.
 - `invariant(condition, message, { code })` asserts a precondition and narrows the type through `asserts condition`. Use it for contract violations instead of a bare `throw`.
 - `errorMessage(error)` normalizes an unknown catch binding to a string; `isNodeError(error)` narrows to `NodeJS.ErrnoException`.
 
@@ -45,7 +45,7 @@ The technology detector reported `typescript` from `src/cli.ts`, `src/lib/best-o
 
 `prettier.config.js` is authoritative and its output MUST be treated as correct: 80-column print width, two-space indentation, no tabs, no semicolons, single quotes, `quoteProps: 'as-needed'`, `trailingComma: 'all'`, bracket spacing, always-parenthesized arrow parameters, and LF line endings.
 
-Run `npm run lint` before completion. It chains `npm run format:check`, `npm run typecheck`, and `bash -n` over the scripts in `bin/`.
+Run `npm run lint` before completion. It runs `npm run format:check`, then `bash -n` over the scripts in `bin/`, and adds `npm run typecheck` only when `bin/build --stamp-fresh` reports a stale build stamp, because the emitting build type-checks the same program.
 
 ## Comments
 
@@ -54,9 +54,9 @@ Comments explain intent, a constraint, or a non-obvious trade-off. Exported and 
 ## Tests
 
 - Tests use the Node built-in runner: `import test from 'node:test'` with `import assert from 'node:assert/strict'`.
-- Suites live in `tests/unit/`, `tests/integration/`, and `tests/regression/`, and import the implementation through its compiled specifier, as in `'../../src/lib/repository-checks.js'`.
+- Mainline suites live in `tests/unit/`, `tests/integration/`, and `tests/regression/`, and import the implementation through its compiled specifier, as in `'../../src/lib/repository-checks.js'`. The slow installer suites live in `tests/secondary/`, which `npm test` excludes.
 - Filesystem fixtures use `mkdtempSync(path.join(tmpdir(), 'pancreator-<area>-'))` and are removed with `rmSync(dir, { recursive: true, force: true })` inside `finally`. Shared helpers live in `tests/helpers.ts`.
-- Verify with `npm test` for the default suite, or the profiles in `runtime/repository-checks.json`, which is the command authority.
+- Verify with `npm test` for the default suite, `npm run test:secondary` for the installer lane, or the profiles in `runtime/repository-checks.json`, which is the command authority.
 
 ## Relationship to durable guidance
 

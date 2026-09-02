@@ -29,37 +29,46 @@ export interface VerificationFile {
 }
 
 /**
- * Built-in levels. The default is deliberately lightweight: teams run their
- * own tests locally and in CI, so the harness re-running a repository's entire
- * documented verification universe (integration suites, end-to-end browsers)
- * inside a delivery loop buys minutes-to-hours of latency for evidence that
- * already exists elsewhere. The `full` profile therefore never runs unless the
- * operator explicitly selects a level that names it.
+ * Built-in levels. Agents iterate on blast-radius tests and run the fast
+ * profile once as validation; the harness owns every heavier execution. The
+ * `full` profile runs only as a submission gate: once at verify on a passing
+ * verdict, or once at remediate when the repair is ready to ship, after which
+ * the returning verify gate accepts the recorded pass from the gate cache.
+ * `full` is never baselined before implementation, so a pre-existing failure
+ * fails the gate on its own result and needs an operator decision.
  */
 export const BUILT_IN_VERIFICATION_LEVELS: Record<string, VerificationLevel> = {
   minimal: {
     summary:
-      'Static and fast checks gate the implement loop; QA argues from manual ' +
-      'cases and prior gate evidence without re-running a suite.',
-    gates: { 'test.full_suite': false, 'verify.full_suite': false },
+      'Static and fast checks gate the implement and remediate loops; no ' +
+      'submission gate runs the full profile. QA argues from manual cases ' +
+      'and prior gate evidence.',
+    gates: {
+      'test.full_suite': false,
+      'verify.full_suite': false,
+      'remediate.full_suite': false,
+    },
   },
   light: {
     summary:
-      'Static and fast checks gate the implement loop, and the verify ' +
-      'submission gate re-runs the fast profile against the ' +
-      'pre-implementation baseline. QA cites that gate evidence and runs ' +
-      'only the plan cases. Integration and end-to-end suites are left to ' +
-      'the team and CI.',
-    gates: { 'test.full_suite': 'fast', 'verify.full_suite': 'fast' },
+      'Static and fast checks gate the implement loop. The verify ' +
+      'submission gate runs the full profile once on a passing verdict, and ' +
+      'the remediate submission gate runs it once when the repair is ready ' +
+      'to ship; the returning verify gate accepts that recorded pass at an ' +
+      'unchanged fingerprint. Agents run the fast profile at most once each ' +
+      'as validation and never run full.',
+    gates: {
+      'test.full_suite': 'full',
+      'verify.full_suite': 'full',
+      'remediate.full_suite': 'full',
+    },
   },
   thorough: {
     summary:
-      'The verify submission gate runs the complete full profile once, ' +
-      'after the verify report is submitted. QA cites the static and fast ' +
-      'gate evidence on its card and MUST NOT cite or execute the full ' +
-      'profile, which has not run when QA works. Explicit operator opt-in: ' +
-      'the full profile is never baselined before implementation, so a ' +
-      'pre-existing failure fails the gate and needs an operator decision.',
+      'Alias of light kept for existing run snapshots and operator scripts: ' +
+      'every submission gate keeps its workflow-declared profile, so verify ' +
+      'and remediate run the full profile once each and the returning ' +
+      'verify gate accepts the recorded remediate pass.',
     gates: {},
   },
 }

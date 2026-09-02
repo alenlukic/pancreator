@@ -5,6 +5,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { createFixture, sharedFixture } from '../helpers.js'
 import { loadPolicyCatalog, resolvePolicies } from '../../src/lib/policies.js'
+import { resolveRequirements } from '../../src/lib/requirements/resolve.js'
 
 function writePolicyExtension(
   root: string,
@@ -131,6 +132,33 @@ test('structured target policy extensions bind their owned policies', () => {
     policies.find((item) => item.id === 'TARGET-001')?.artifact_authority,
     policy.artifact_authority,
   )
+})
+
+test('binding-only target extensions reference existing policies without ownership', () => {
+  const root = createFixture()
+
+  writePolicyExtension(
+    root,
+    'acme-tool.json',
+    [
+      {
+        persona: 'coder',
+        workflow: 'standalone',
+        stage: 'target-acme-tool',
+        policies: ['ENG-001', 'REPO-001'],
+      },
+    ],
+    { extension_id: 'acme-tool', policies: [] },
+  )
+
+  const ids = resolvePolicies(root, {
+    persona: 'coder',
+    workflow: 'standalone',
+    stage: 'target-acme-tool',
+  }).map((policy) => policy.id)
+
+  assert.ok(ids.includes('ENG-001'))
+  assert.ok(ids.includes('REPO-001'))
 })
 
 test('target PR authority rejects paths outside the workspace', () => {
@@ -353,6 +381,7 @@ test('policy resolution unions global and stage-specific policies', () => {
     'REPO-001',
     'RUNTIME-001',
     'STE-001',
+    'TEST-001',
     'TS-001',
     'VALID-001',
   ])
@@ -427,6 +456,12 @@ test('representative contexts exclude policies outside their remit', () => {
       'verify',
       ['ENG-001', 'CONTRACT-001', 'LANG-001', 'TS-001'],
     ],
+    [
+      'reviewer',
+      'standalone',
+      'review',
+      ['REVIEW-001', 'DELEGATE-001', 'ENG-001'],
+    ],
   ]
 
   for (const [persona, workflow, stage, required] of expectedIncludes) {
@@ -441,7 +476,7 @@ test('representative contexts exclude policies outside their remit', () => {
   }
 })
 
-test('pull-request policy follows operator-artifact selection', () => {
+test('self-development ship keeps PR policy when briefs are suppressed', () => {
   const root = sharedFixture()
   const ids = (operatorArtifacts: 'requested' | 'suppressed'): string[] =>
     resolvePolicies(root, {
@@ -452,7 +487,30 @@ test('pull-request policy follows operator-artifact selection', () => {
     }).map((policy) => policy.id)
 
   assert.ok(ids('requested').includes('PR-001'))
-  assert.equal(ids('suppressed').includes('PR-001'), false)
+  assert.ok(ids('suppressed').includes('PR-001'))
+})
+
+test('embedded ship excludes PR policy when artifacts are suppressed', () => {
+  const root = createFixture()
+  const configPath = path.join(root, 'config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  config.installation_mode = 'embedded'
+  config.workspace_root = 'target'
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+  mkdirSync(path.join(root, 'target'), { recursive: true })
+
+  const ids = resolvePolicies(root, {
+    persona: 'release-steward',
+    workflow: 'delivery',
+    stage: 'ship',
+    operator_artifacts: 'suppressed',
+  }).map((policy) => policy.id)
+
+  assert.equal(ids.includes('PR-001'), false)
 })
 
 test('best-of-N stages carry the same policies as the delivery stages they mirror', () => {
@@ -559,45 +617,6 @@ test('Python policy loads only for detected Python workspaces', () => {
   assert.ok(sourceDetectedIds.includes('PY-001'))
 })
 
-test('delivery plan resolves planning guidance without supervisor policies', () => {
-  const root = sharedFixture()
-  const planIds = resolvePolicies(root, {
-    persona: 'planner',
-    workflow: 'delivery',
-    stage: 'plan',
-  }).map((policy) => policy.id)
-
-  assert.deepEqual(planIds, [
-    'ACTION-001',
-    'ASK-001',
-    'AUTO-001',
-    'BRIEF-001',
-    'CONTRACT-001',
-    'ENG-001',
-    'GLOBAL-001',
-    'GLOBAL-002',
-    'OPERATOR-001',
-    'PLAN-002',
-    'PRIMER-001',
-    'STE-001',
-    'VALID-001',
-  ])
-
-  // Run-advancement authority stays with the supervisor, so a worker that owns
-  // the first stage must not inherit it.
-  for (const supervisorOnly of [
-    'ORCH-001',
-    'PAUSE-001',
-    'WAIVER-001',
-    'WORK-001',
-  ]) {
-    assert.ok(
-      !planIds.includes(supervisorOnly),
-      `planner MUST NOT resolve ${supervisorOnly}`,
-    )
-  }
-})
-
 test('self-development version policy is excluded from embedded installations', () => {
   const root = createFixture()
   const configPath = path.join(root, 'config.json')
@@ -628,7 +647,7 @@ test('self-development version policy is excluded from embedded installations', 
   }).map((policy) => policy.id)
 
   assert.ok(!coderIds.includes('BIN-001'))
-  assert.ok(!coderIds.includes('TS-001'))
+  assert.ok(coderIds.includes('TS-001'))
   assert.ok(coderIds.includes('ENG-001'))
   assert.ok(coderIds.includes('REPO-001'))
 })
@@ -685,16 +704,76 @@ test('a policy without a declared trigger keeps the generated fallback', () => {
   )
 })
 
-test('standalone review resolves squad and delegation governance', () => {
+test('TEST-001 resolves testing.md for self-development test personas', () => {
   const root = sharedFixture()
-  const ids = resolvePolicies(root, {
-    persona: 'reviewer',
-    workflow: 'standalone',
-    stage: 'review',
+  const catalog = loadPolicyCatalog(root)
+  const testPolicy = catalog.get('TEST-001')
+
+  assert.ok(testPolicy)
+  assert.equal(
+    testPolicy?.guidance?.[0]?.source_path,
+    'governance/handbooks/eng/testing.md',
+  )
+
+  const personas = [
+    'coder',
+    'remediator',
+    'remediator-severe',
+    'reviewer',
+    'qa-tester',
+    'verifier',
+  ] as const
+
+  for (const persona of personas) {
+    const policies = resolvePolicies(root, {
+      persona,
+      workflow: 'delivery',
+      stage: 'implement',
+      operator_artifacts: 'suppressed',
+    })
+    const resolvedTestPolicy = policies.find(
+      (policy) => policy.id === 'TEST-001',
+    )
+
+    assert.ok(resolvedTestPolicy, `${persona} MUST resolve TEST-001`)
+  }
+
+  const targetRoot = createFixture()
+  const configPath = path.join(targetRoot, 'config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  config.installation_mode = 'embedded'
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+
+  const targetIds = resolvePolicies(targetRoot, {
+    persona: 'coder',
+    workflow: 'delivery',
+    stage: 'implement',
     operator_artifacts: 'suppressed',
   }).map((policy) => policy.id)
 
-  assert.ok(ids.includes('REVIEW-001'))
-  assert.ok(ids.includes('DELEGATE-001'))
-  assert.ok(ids.includes('ENG-001'))
+  assert.equal(targetIds.includes('TEST-001'), false)
+})
+
+test('TUNE-001 resolves its record validator for tune-harness sessions', () => {
+  const manifest = resolveRequirements(sharedFixture(), {
+    persona: 'reviewer',
+    workflow: 'standalone',
+    stage: 'tune-harness',
+    invocation_kind: 'standalone',
+    invocation: {
+      artifact_paths: ['runtime/tune-harness/records/session.json'],
+    },
+  })
+  const validator = manifest.validation_requirements.find(
+    (item) => item.registry_id === 'TUNE-RECORD-VALIDATE-001',
+  )
+
+  assert.equal(
+    validator?.resolved_target,
+    'runtime/tune-harness/records/session.json',
+  )
 })

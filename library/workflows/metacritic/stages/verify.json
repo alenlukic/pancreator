@@ -6,12 +6,12 @@
     {
       "persona": "reviewer",
       "role": "review",
-      "scope": "Independently review the implementation diff and resulting workspace against the ratified plan: acceptance-criteria coverage, test quality and honesty (weakened, deleted, gamed, or narrowed tests), scope control, maintainability, and security. Read code; do not execute the test plan \u2014 the parallel QA worker owns execution."
+      "scope": "Independently review the implementation diff and resulting workspace against the ratified plan: acceptance-criteria coverage, test quality and honesty (weakened, deleted, gamed, or narrowed tests), scope control, maintainability, and security. Read code; do not execute the test plan — the parallel QA worker owns execution. While checking a claim, run only the tests in the blast radius of the change. You may run the fast profile once as validation of your findings. Never run the full profile, and never run the fast profile a second time."
     },
     {
       "persona": "qa-tester",
       "role": "qa",
-      "scope": "Execute the ratified test plan against the resulting workspace. Run every case, record reproducible evidence (commands, observations, paths) per case, and state a result for each acceptance criterion the plan maps. Do not execute a repository-check profile agent-side: the harness gates own profile execution, and for a profile a gate or baseline already passed, cite the gate evidence reference on your card for the profile and fingerprint in question. Do not review code style or architecture \u2014 the parallel review worker owns that."
+      "scope": "Execute the ratified test plan against the resulting workspace. Run every case, record reproducible evidence (commands, observations, paths) per case, and state a result for each acceptance criterion the plan maps. While iterating, run only the tests in the blast radius of the change. You may run the fast profile once as validation of your own evidence and must record that run in your evidence report, not as a QA case. Never run the full profile, and never run the fast profile a second time. For a profile a gate or baseline already passed, cite the gate evidence reference on your card for the profile and fingerprint in question. Do not review code style or architecture — the parallel review worker owns that."
     }
   ],
   "prompt_path": "library/workflows/metacritic/prompts/verify.md",

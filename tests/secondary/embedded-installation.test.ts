@@ -12,13 +12,14 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
-  CURRENT_VERSION,
+  RELEASE_FIXTURE_VERSION,
   type InstallMarker,
   git,
   gitInit,
   installedProjectTemplate,
   makeSkeletonProject,
   readJson,
+  run,
   runInstaller,
 } from './install-helpers.js'
 
@@ -84,6 +85,40 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
   assert.equal(lstatSync(link).isSymbolicLink(), true)
   assert.equal(existsSync(path.join(project, '.pancreator', 'src')), true)
 
+  // The harness suite covers Pancreator internals a target never changes, so
+  // neither its sources nor its compiled output belong in an installation.
+  assert.equal(existsSync(path.join(project, '.pancreator', 'tests')), false)
+  assert.equal(
+    existsSync(path.join(project, '.pancreator', 'dist', 'tests')),
+    false,
+  )
+
+  const installedPackage = readJson<{
+    scripts: Record<string, string>
+  }>(path.join(project, '.pancreator', 'package.json'))
+  const installedScripts = Object.keys(installedPackage.scripts)
+
+  assert.equal(
+    installedScripts.some(
+      (name) => name === 'test' || name.startsWith('test:'),
+    ),
+    false,
+  )
+  assert.ok(installedPackage.scripts.build)
+  assert.ok(installedPackage.scripts.check)
+  assert.ok(installedPackage.scripts.lint)
+  assert.ok(installedPackage.scripts.validate)
+  assert.equal(
+    existsSync(
+      path.join(project, '.pancreator', 'target-extensions', '.gitkeep'),
+    ),
+    true,
+  )
+  assert.deepEqual(
+    readdirSync(path.join(project, '.pancreator', 'target-extensions')),
+    ['.gitkeep'],
+  )
+
   assert.equal(
     existsSync(
       path.join(
@@ -122,6 +157,26 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
   assert.deepEqual(repositoryChecks.profiles.secondary?.commands, [])
   assert.deepEqual(repositoryChecks.profiles.full?.commands, [])
 
+  const doctor = run(
+    process.execPath,
+    [path.join(project, '.pancreator', 'dist', 'src', 'cli.js'), 'doctor'],
+    path.join(project, '.pancreator'),
+  )
+
+  assert.equal(doctor.status, 0, `${doctor.stdout}\n${doctor.stderr}`)
+
+  const doctorReport = JSON.parse(doctor.stdout) as {
+    validation: {
+      ok: boolean
+      errors: string[]
+      warnings: string[]
+    }
+  }
+
+  assert.equal(doctorReport.validation.ok, true)
+  assert.deepEqual(doctorReport.validation.errors, [])
+  assert.deepEqual(doctorReport.validation.warnings, [])
+
   for (const [command, patterns] of [
     [
       'pan-build-docs.md',
@@ -147,6 +202,13 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
       ],
     ],
     ['pan-start.md', [/\.pancreator\/runtime\/inbox/u]],
+    [
+      'pan-author.md',
+      [
+        /governance card --mode author/u,
+        /author apply --input runtime\/inbox\/target-authoring/u,
+      ],
+    ],
   ] as const) {
     const body = readFileSync(
       path.join(project, '.cursor', 'commands', command),
@@ -184,7 +246,7 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
   )
 
   assert.equal(marker.schema_version, 4)
-  assert.equal(marker.version, CURRENT_VERSION)
+  assert.equal(marker.version, RELEASE_FIXTURE_VERSION)
   assert.equal(typeof marker.source_dirty, 'boolean')
   assert.equal(typeof marker.source_indexed, 'boolean')
   assert.equal(marker.source_dirty && marker.source_indexed, false)
@@ -192,6 +254,7 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
   assert.equal('target_root' in marker, false)
   assert.ok(marker.payload_entries.includes('governance'))
   assert.ok(marker.payload_entries.includes('release'))
+  assert.equal(marker.payload_entries.includes('tests'), false)
   // The manifest lists release-owned files so an update can separate local
   // fixes and target extensions from shipped content.
   assert.ok(

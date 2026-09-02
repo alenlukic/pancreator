@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "library/schemas/tune-record.schema.json",
+  "title": "Tune harness record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "session_id",
+    "harness_version",
+    "git_commit",
+    "workspace_fingerprint",
+    "workspace_dirty",
+    "recorded_at",
+    "baseline_source",
+    "passes",
+    "retained_set",
+    "current_inventory",
+    "comparison",
+    "benchmark",
+    "verdicts"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "session_id": { "type": "string", "minLength": 1 },
+    "harness_version": { "type": "string", "minLength": 1 },
+    "git_commit": { "type": "string", "minLength": 1 },
+    "workspace_fingerprint": { "type": "string", "minLength": 1 },
+    "workspace_dirty": { "type": "boolean" },
+    "recorded_at": { "type": "string", "format": "date-time" },
+    "prior_record_id": { "type": "string" },
+    "baseline_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "enum": ["baseline_ref", "prior_record", "none"] },
+        "ref": { "type": "string" },
+        "prior_session_id": { "type": "string" }
+      }
+    },
+    "passes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["benchmark", "comparison", "judgment"],
+      "properties": {
+        "benchmark": { "$ref": "#/$defs/pass_interval" },
+        "comparison": { "$ref": "#/$defs/pass_interval" },
+        "judgment": { "$ref": "#/$defs/pass_interval" }
+      }
+    },
+    "retained_set": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/test_identity" }
+    },
+    "current_inventory": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/test_identity" }
+    },
+    "comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "retained_and_present",
+        "added_since_retained",
+        "retained_but_removed"
+      ],
+      "properties": {
+        "retained_and_present": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/test_identity" }
+        },
+        "added_since_retained": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/test_identity" }
+        },
+        "retained_but_removed": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/test_identity" }
+        }
+      }
+    },
+    "benchmark": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fast_lane_wall_ms",
+        "secondary_lane_wall_ms",
+        "files",
+        "tests",
+        "fixture_template_ms",
+        "fixture_clone_ms"
+      ],
+      "properties": {
+        "fast_lane_wall_ms": { "type": "number", "minimum": 0 },
+        "secondary_lane_wall_ms": { "type": "number", "minimum": 0 },
+        "summed_file_ms": { "type": "number", "minimum": 0 },
+        "fixture_template_ms": { "type": "number", "minimum": 0 },
+        "fixture_clone_ms": { "type": "number", "minimum": 0 },
+        "prior_deltas": {
+          "type": "object",
+          "additionalProperties": { "type": "number" }
+        },
+        "files": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/file_cost" }
+        },
+        "tests": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/test_cost" }
+        },
+        "slowest_tests": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/test_cost" }
+        }
+      }
+    },
+    "verdicts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/verdict" }
+    },
+    "judgment_provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "handbook_path",
+        "handbook_revision",
+        "inventory_only",
+        "inventory_path"
+      ],
+      "properties": {
+        "handbook_path": { "type": "string" },
+        "handbook_revision": { "type": "string" },
+        "inventory_only": { "const": true },
+        "inventory_path": { "type": "string", "minLength": 1 },
+        "similarity_index_path": { "type": "string" }
+      }
+    }
+  },
+  "$defs": {
+    "pass_interval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["started_at", "ended_at"],
+      "properties": {
+        "started_at": { "type": "string", "format": "date-time" },
+        "ended_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "test_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "name", "lane"],
+      "properties": {
+        "file": {
+          "type": "string",
+          "pattern": "^tests/.+\\.test\\.ts$"
+        },
+        "name": { "type": "string", "minLength": 1 },
+        "lane": { "type": "string", "minLength": 1 },
+        "occurrence": { "type": "integer", "minimum": 1 },
+        "line": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "file_cost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "duration_ms", "test_count"],
+      "properties": {
+        "file": { "type": "string" },
+        "duration_ms": { "type": "number", "minimum": 0 },
+        "test_count": { "type": "integer", "minimum": 0 },
+        "prior_duration_ms": { "type": "number", "minimum": 0 }
+      }
+    },
+    "test_cost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "name", "duration_ms"],
+      "properties": {
+        "file": { "type": "string" },
+        "name": { "type": "string" },
+        "duration_ms": { "type": "number", "minimum": 0 },
+        "prior_duration_ms": { "type": "number", "minimum": 0 }
+      }
+    },
+    "verdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "verdict", "principle", "rationale"],
+      "properties": {
+        "identity": { "$ref": "#/$defs/test_identity" },
+        "verdict": { "enum": ["KEEP", "MERGE", "DEMOTE", "DELETE"] },
+        "principle": { "type": "string", "pattern": "^TP-[0-9]{2}$" },
+        "rationale": { "type": "string", "minLength": 1 },
+        "survivor": { "$ref": "#/$defs/test_identity" },
+        "delete_reason": {
+          "enum": [
+            "duplicate_contract",
+            "gate_duplication",
+            "prose_pin",
+            "no_contract",
+            "obsolete"
+          ]
+        },
+        "demote_destination": { "type": "string", "minLength": 1 },
+        "claimed_savings_ms": { "type": "number", "minimum": 0 }
+      }
+    }
+  }
+}
