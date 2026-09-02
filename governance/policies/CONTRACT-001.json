@@ -14,7 +14,8 @@
     "Repository validation MUST validate canonical projection sources and manifest coverage independently of whether a local `.cursor/` projection exists; when a local projection exists, drift MAY be reported with the registered regeneration command.",
     "The context-bloat disposition record MUST cover each detected duplicate group and installer monkeypatch through the registered directive-audit requirement, with a rationale and evidence for each retained exception.",
     "Embedded installation and refresh MUST place Pancreator-owned ignore patterns in the target clone's `.git/info/exclude` through the managed installer block, MUST NOT create, rewrite, or remove target `.gitignore` content, MUST preserve unrelated clone-local exclude content, and MUST keep the managed block idempotent across refreshes.",
-    "Generated invocation manifests MAY persist resolved requirement ids, versions, paths, arguments, targets, and failure routes for auditability, but agents MUST receive only the entries relevant to the active invocation."
+    "Generated invocation manifests MAY persist resolved requirement ids, versions, paths, arguments, targets, and failure routes for auditability, but agents MUST receive only the entries relevant to the active invocation.",
+    "Required plan-file child fields MUST declare their shape and registered validator enforcement in the shared stage-output requirements contract."
   ],
   "requirements": [
     {

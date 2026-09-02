@@ -524,7 +524,6 @@ test('target worktrees keep harness config at installation root', () => {
     rmSync(targetRoot, { recursive: true, force: true })
   }
 })
-
 test('worktree resolution restores the recorded branch only when clean', () => {
   const root = createFixture()
   const record = createWorktree(root, 'release-one')

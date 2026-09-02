@@ -141,6 +141,18 @@ function sharedChildFields(
     )
 }
 
+function sharedRequiredChildFields(
+  root: string,
+  stageSlug: string,
+  parentPath: string,
+): string[] {
+  const parent = sharedFieldRequirements(root, stageSlug).find(
+    (field) => field.path === parentPath,
+  )
+
+  return parent?.required ?? []
+}
+
 function validEvidenceShape(
   entry: string,
   acceptedShapes: Set<string>,
@@ -238,6 +250,7 @@ export function validateSharedFieldContract(
         )
         .map((field) => field.path as string),
     )
+    const enforcedPaths = new Set<string>()
 
     for (const validator of stage.validators) {
       if (
@@ -263,11 +276,51 @@ export function validateSharedFieldContract(
         : []
 
       for (const fieldPath of enforcedFields) {
+        enforcedPaths.add(fieldPath)
+
         if (!declaredPaths.has(fieldPath)) {
           issues.push(
             issue(
               'field_contract.enforced_field',
               `Validator ${validator.registry_id} enforces undeclared field ${fieldPath}`,
+            ),
+          )
+        }
+      }
+    }
+
+    for (const field of stage.fields) {
+      if (
+        stageSlug !== 'plan' ||
+        !isRecord(field) ||
+        typeof field.path !== 'string' ||
+        field.path !== 'data.engineering_plan.files[]' ||
+        !Array.isArray(field.required)
+      ) {
+        continue
+      }
+
+      for (const child of field.required) {
+        if (typeof child !== 'string') {
+          continue
+        }
+
+        const childPath = `${field.path}.${child}`
+
+        if (!declaredPaths.has(childPath)) {
+          issues.push(
+            issue(
+              'field_contract.required_child_shape',
+              `Required child ${childPath} MUST declare its field shape`,
+            ),
+          )
+        }
+
+        if (!enforcedPaths.has(childPath)) {
+          issues.push(
+            issue(
+              'field_contract.required_child_enforcement',
+              `Required child ${childPath} MUST name validator enforcement`,
             ),
           )
         }
@@ -1849,15 +1902,51 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
   // workspace root. Resolving them against the installation root fails every
   // path in a detached install, where the two are different directories.
   const workspaceRoot = workspaceRootFromInput(input)
+  const requiredFileFields = sharedRequiredChildFields(
+    input.root,
+    'plan',
+    'data.engineering_plan.files[]',
+  )
+  const fileStatusValues = sharedEnum(
+    input.root,
+    'plan',
+    'data.engineering_plan.files[].status',
+  )
 
   for (const [index, file] of files.entries()) {
-    if (!isRecord(file) || typeof file.path !== 'string') {
+    if (!isRecord(file)) {
       issues.push(
         issue(
-          'plan.file_shape',
-          `engineering_plan.files[${index}] MUST have path`,
+          'plan.file_required',
+          `engineering_plan.files[${index}] MUST be an object`,
         ),
       )
+      continue
+    }
+
+    for (const field of requiredFileFields) {
+      const value = file[field]
+
+      if (field === 'status') {
+        if (typeof value !== 'string' || !fileStatusValues.has(value)) {
+          issues.push(
+            issue(
+              'plan.file_status',
+              `engineering_plan.files[${index}].status MUST be new or modified`,
+            ),
+          )
+        }
+      } else if (typeof value !== 'string' || value.trim().length === 0) {
+        issues.push(
+          issue(
+            'plan.file_required',
+            `engineering_plan.files[${index}].${field} MUST be a non-empty string`,
+          ),
+        )
+      }
+    }
+
+    if (typeof file.path !== 'string' || file.path.trim().length === 0) {
       continue
     }
 
@@ -2658,6 +2747,7 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
 
 export function validateReleaseOutput(input: HandlerInput): HandlerResult {
   const issues: HandlerResult['issues'] = []
+  const workspaceRoot = workspaceRootFromInput(input)
   const value = readJson(path.join(input.root, input.targetPath)) as Record<
     string,
     unknown
@@ -3078,6 +3168,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
           )
         }
       }
+
 
       for (const metadataError of validateReleaseMetadata(workspaceRoot)
         .errors) {

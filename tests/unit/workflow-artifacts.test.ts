@@ -17,6 +17,7 @@ import {
   migrateRunSuffixes,
   migrateWorkflowNames,
   migratedRunId,
+  repairWorkflowInboxReferences,
   standardizeRuntimeFileNames,
 } from '../../src/lib/workflow-artifacts.js'
 function write(filePath: string, content: string): void {
@@ -150,6 +151,126 @@ test('finalizeWorkflowArtifacts rejects non-terminal runs', () => {
     (error: unknown) =>
       error instanceof PanError && error.code === 'RUN_NOT_TERMINAL',
   )
+})
+
+test('finalization rewrites exact-run inbox references only', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'pancreator-finalize-inbox-'))
+  const runId = '63308_Sep-01-0091_finalize'
+  const runDirectory = path.join(root, 'runtime/logs/workflows', runId)
+  const invocationIds = ['plan-1-aaaaaaaa', 'verify-1-bbbbbbbb']
+
+  writeWorkflowSnapshot(runDirectory)
+  writeEvents(runDirectory, invocationIds)
+  writeState(runDirectory, runId, 'succeeded', invocationIds)
+  writeLegacyArtifacts(runDirectory, runId, invocationIds)
+
+  for (const [index, invocationId] of invocationIds.entries()) {
+    writeInvocation(runDirectory, runId, invocationId, index)
+    write(
+      path.join(runDirectory, 'outputs', `${invocationId}.json`),
+      `${JSON.stringify({ invocation_id: invocationId })}\n`,
+    )
+    write(
+      path.join(runDirectory, 'evidence', `${invocationId}.log`),
+      `Evidence for ${invocationId}\n`,
+    )
+    write(
+      path.join(runDirectory, 'assessments', `assessment-${invocationId}.json`),
+      `${JSON.stringify({ invocation_id: invocationId })}\n`,
+    )
+  }
+
+  const selectedInbox = path.join(
+    root,
+    'runtime/inbox',
+    `${runId}-verify-warnings.md`,
+  )
+  const referencedPaths = [
+    `runtime/logs/workflows/${runId}/invocations/${invocationIds[0]}.json`,
+    `runtime/logs/workflows/${runId}/outputs/${invocationIds[0]}.json`,
+    `runtime/logs/workflows/${runId}/evidence/${invocationIds[0]}.log`,
+    `runtime/logs/workflows/${runId}/assessments/assessment-${invocationIds[0]}.json`,
+    `runtime/logs/workflows/${runId}/artifacts/${invocationIds[0]}.md`,
+  ]
+
+  write(
+    selectedInbox,
+    `${referencedPaths.map((item) => `- \`${item}\``).join('\n')}\n`,
+  )
+
+  const unrelatedInbox = path.join(root, 'runtime/inbox/unrelated.md')
+  const unrelatedContent = `Keep ${invocationIds[0]} unchanged.\n`
+
+  write(unrelatedInbox, unrelatedContent)
+  finalizeWorkflowArtifacts(root, runId)
+
+  const updated = readFileSync(selectedInbox, 'utf8')
+  const finalInvocationId = '01_plan-1_aaaaaaaa'
+
+  assert.ok(updated.includes(finalInvocationId))
+  assert.ok(!updated.includes(invocationIds[0]))
+
+  for (const match of updated.matchAll(/`([^`]+)`/gu)) {
+    assert.equal(existsSync(path.join(root, match[1])), true, match[1])
+  }
+
+  assert.equal(readFileSync(unrelatedInbox, 'utf8'), unrelatedContent)
+})
+
+test('historical repair reports unique changes and preserves ambiguities', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'pancreator-repair-inbox-'))
+  const runId = '63308_Sep-01-0091_repair'
+  const runDirectory = path.join(root, 'runtime/logs/workflows', runId)
+  const invocationIds = [
+    '02_plan-1_aaaaaaaa',
+    '01_plan-1_aaaaaaaa',
+    '00_verify-1_bbbbbbbb',
+  ]
+
+  writeWorkflowSnapshot(runDirectory)
+  writeEvents(runDirectory, invocationIds)
+  writeState(runDirectory, runId, 'succeeded', invocationIds)
+
+  const uniquePath = path.join(root, 'runtime/inbox', `${runId}-friction.md`)
+  const ambiguousPath = path.join(root, 'runtime/inbox', `${runId}-warnings.md`)
+  const unrelatedPath = path.join(root, 'runtime/inbox/other-run.md')
+  const immutablePath = path.join(
+    runDirectory,
+    `state-revision-1-${'a'.repeat(64)}.json`,
+  )
+  const ambiguousContent = 'Reference plan-1-aaaaaaaa must stay unchanged.\n'
+  const unrelatedContent = 'Reference verify-1-bbbbbbbb must stay unchanged.\n'
+  const immutableContent = '{"invocation_id":"verify-1-bbbbbbbb"}\n'
+
+  write(uniquePath, 'Reference verify-1-bbbbbbbb needs repair.\n')
+  write(ambiguousPath, ambiguousContent)
+  write(unrelatedPath, unrelatedContent)
+  write(immutablePath, immutableContent)
+
+  const summary = repairWorkflowInboxReferences(root)
+
+  assert.deepEqual(summary.changed_paths, [
+    `runtime/inbox/${runId}-friction.md`,
+  ])
+  assert.equal(
+    readFileSync(uniquePath, 'utf8'),
+    'Reference 00_verify-1_bbbbbbbb needs repair.\n',
+  )
+  assert.equal(readFileSync(ambiguousPath, 'utf8'), ambiguousContent)
+  assert.equal(readFileSync(unrelatedPath, 'utf8'), unrelatedContent)
+  assert.equal(readFileSync(immutablePath, 'utf8'), immutableContent)
+  assert.deepEqual(summary.ambiguities, [
+    {
+      path: `runtime/inbox/${runId}-warnings.md`,
+      reference: 'plan-1-aaaaaaaa',
+      candidates: ['01_plan-1_aaaaaaaa', '02_plan-1_aaaaaaaa'],
+    },
+  ])
+
+  assert.deepEqual(repairWorkflowInboxReferences(root), {
+    changed_paths: [],
+    ambiguities: summary.ambiguities,
+  })
 })
 
 test('workflow migration finalizes closed runs and consolidates artifacts', () => {
