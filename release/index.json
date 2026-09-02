@@ -44,6 +44,10 @@
     {
       "version": "5.10.0",
       "commit": "9fe932de787f5dee5c2e32de7016dcbe731f5263"
+    },
+    {
+      "version": "5.10.1",
+      "commit": "ff3f2e140f6ab4a89491cc4722a898abc9adb702"
     }
   ]
 }
