@@ -3169,7 +3169,6 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
         }
       }
 
-
       for (const metadataError of validateReleaseMetadata(workspaceRoot)
         .errors) {
         issues.push(issue('release.metadata_invalid', metadataError))
