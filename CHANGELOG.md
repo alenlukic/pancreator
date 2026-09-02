@@ -1,5 +1,22 @@
 # Changelog
 
+## [5.11.0] - 2026-09-02
+
+### Changed
+
+- Validate full documents and RFC 7386 revisions through one effective document before preflight and submit ([8c45d60a](https://github.com/alenlukic/pancreator/commit/8c45d60ad19d0f92d85ff61461ec6204b92eadc5)).
+- Gate hard criterion states on stable issue codes instead of diagnostic message text ([8c45d60a](https://github.com/alenlukic/pancreator/commit/8c45d60ad19d0f92d85ff61461ec6204b92eadc5)).
+- Enforce required plan-file children from the shared field declaration ([8c45d60a](https://github.com/alenlukic/pancreator/commit/8c45d60ad19d0f92d85ff61461ec6204b92eadc5)).
+
+### Added
+
+- Rewrite exact-run inbox references during terminal finalization ([8c45d60a](https://github.com/alenlukic/pancreator/commit/8c45d60ad19d0f92d85ff61461ec6204b92eadc5)).
+- Repair historical run-linked inbox aliases through runtime maintenance and report ambiguities ([8c45d60a](https://github.com/alenlukic/pancreator/commit/8c45d60ad19d0f92d85ff61461ec6204b92eadc5)).
+
+### Fixed
+
+- Restore a distinct release-owned active model during installer refresh ([8c45d60a](https://github.com/alenlukic/pancreator/commit/8c45d60ad19d0f92d85ff61461ec6204b92eadc5)).
+
 ## [5.10.1] - 2026-09-02
 
 ### Fixed

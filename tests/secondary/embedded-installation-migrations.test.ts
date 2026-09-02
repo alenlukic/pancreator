@@ -11,7 +11,9 @@ import test from 'node:test'
 
 import {
   cloneInstalledProject,
+  createReleaseFixture,
   readJson,
+  run,
   runInstaller,
 } from './install-helpers.js'
 
@@ -66,6 +68,7 @@ test('embedded installer migrates a legacy project.json to config.json', () => {
 
 test('embedded installer refresh clears superseded legacy state in one pass', () => {
   const project = cloneInstalledProject()
+  const source = createReleaseFixture()
   const pancreatorDir = path.join(project, '.pancreator')
   const configJsonPath = path.join(pancreatorDir, 'config.json')
   const legacyProjectJsonPath = path.join(pancreatorDir, 'project.json')
@@ -84,8 +87,32 @@ test('embedded installer refresh clears superseded legacy state in one pass', ()
     'runtime',
     'repository-checks.json',
   )
+  const sourceConfigPath = path.join(source, 'config.json')
+  const activeConfigName = 'extreme'
+  const restoredPersona = 'planner'
+  const inheritedPersona = 'meta-orchestrator'
+  const fixtureDefaultModel = 'fixture-default-model[fast=false]'
+  const restoredModel = 'fixture-restored-planner[fast=false]'
 
   try {
+    const sourceConfig = readJson<{
+      defaults: Record<string, string>
+      configs: Record<string, { personas: Record<string, string> }>
+    }>(sourceConfigPath)
+
+    for (const persona of Object.keys(sourceConfig.defaults)) {
+      sourceConfig.defaults[persona] = fixtureDefaultModel
+    }
+
+    sourceConfig.configs[activeConfigName].personas[restoredPersona] =
+      restoredModel
+    writeFileSync(
+      sourceConfigPath,
+      `${JSON.stringify(sourceConfig, null, 2)}\n`,
+    )
+    rmSync(path.join(source, 'config_overrides.json'), { force: true })
+    rmSync(path.join(pancreatorDir, 'config_overrides.json'), { force: true })
+
     writeFileSync(
       legacyProjectJsonPath,
       '{"schema_version":1,"active_config":"stale"}\n',
@@ -120,36 +147,35 @@ test('embedded installer refresh clears superseded legacy state in one pass', ()
     )
 
     // The active configuration restates one inherited default to compact,
-    // drops one of its own entries to restore, and carries one operator model
-    // to preserve.
+    // deletes one release-owned model to restore, and carries one operator
+    // model to preserve.
     const config = readJson<{
       active_config: string
       defaults: Record<string, string>
       configs: Record<string, { personas: Record<string, string> }>
     }>(configJsonPath)
-    const activeConfigName = 'extreme'
     const activePersonas = config.configs[activeConfigName].personas
-    const inheritedEntry = Object.entries(config.defaults).find(
-      ([persona]) => activePersonas[persona] === undefined,
-    )
-    const omittedEntry = Object.entries(activePersonas).find(
-      ([persona]) => persona !== 'reviewer',
-    )
 
-    assert.ok(inheritedEntry)
-    assert.ok(omittedEntry)
+    const inheritedModel = config.defaults[inheritedPersona]
+
+    assert.ok(inheritedModel)
 
     const customReviewerModel = 'operator-custom-reviewer[fast=false]'
-    const [inheritedPersona, inheritedModel] = inheritedEntry
-    const [omittedPersona, omittedModel] = omittedEntry
 
     config.active_config = activeConfigName
     activePersonas.reviewer = customReviewerModel
     activePersonas[inheritedPersona] = inheritedModel
-    delete activePersonas[omittedPersona]
+    activePersonas[restoredPersona] = restoredModel
+    delete activePersonas[restoredPersona]
     writeFileSync(configJsonPath, `${JSON.stringify(config, null, 2)}\n`)
 
-    const result = runInstaller(project, ['--yes'])
+    const result = run(path.join(source, 'bin', 'install'), [
+      '--target',
+      project,
+      '--skip-dependencies',
+      '--skip-shell-alias',
+      '--yes',
+    ])
 
     assert.equal(result.status, 0, result.stderr)
 
@@ -210,7 +236,7 @@ test('embedded installer refresh clears superseded legacy state in one pass', ()
     assert.equal(refreshed.active_config, activeConfigName)
     assert.equal(active.personas.reviewer, customReviewerModel)
     assert.equal(active.personas[inheritedPersona], undefined)
-    assert.equal(active.personas[omittedPersona], omittedModel)
+    assert.equal(active.personas[restoredPersona], restoredModel)
     assert.ok(
       readFileSync(
         path.join(project, '.cursor', 'agents', `pan-${inheritedPersona}.md`),
@@ -219,5 +245,6 @@ test('embedded installer refresh clears superseded legacy state in one pass', ()
     )
   } finally {
     rmSync(project, { recursive: true, force: true })
+    rmSync(source, { recursive: true, force: true })
   }
 })

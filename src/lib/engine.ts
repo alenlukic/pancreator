@@ -195,6 +195,7 @@ import {
   validateInvocationAttestation,
   validateInvocationMarkdown,
   validateStageOutput,
+  type StageOutputValidation,
   type ValidationCheck,
 } from './validation.js'
 import {
@@ -3622,12 +3623,77 @@ function effectiveOutcome(
   return 'success'
 }
 
-function blockingCriterionStateErrors(errors: string[]): string[] {
-  return errors.filter(
-    (message) =>
-      /criteria '.+' is unevaluated;/u.test(message) ||
-      /criteria '.+' MUST NOT be skipped on a success result/u.test(message),
+function blockingCriterionStateErrors(
+  issues: StageOutputValidation['issues'],
+): string[] {
+  const blockingCodes = new Set([
+    'criterion.unevaluated',
+    'criterion.skipped_on_success',
+  ])
+
+  return issues
+    .filter((issue) => blockingCodes.has(issue.code))
+    .map((issue) => issue.message)
+}
+
+export interface MaterializedSubmission {
+  value: unknown
+  revisedFrom?: StageHistoryItem
+}
+
+/**
+ * Materialize a full output document from either accepted submission form.
+ */
+export function materializeOutputSubmission(
+  root: string,
+  state: RunState,
+  submittedValue: unknown,
+  expectedInvocationId?: string,
+): MaterializedSubmission {
+  if (!isRecord(submittedValue) || !('revises' in submittedValue)) {
+    return { value: submittedValue }
+  }
+
+  invariant(
+    typeof submittedValue.revises === 'string' &&
+      submittedValue.revises.length > 0,
+    'A revision submission MUST name the prior invocation in revises.',
+    { code: 'INVALID_REVISION' },
   )
+  invariant(
+    isRecord(submittedValue.patch),
+    'A revision submission MUST carry an object merge patch in patch.',
+    { code: 'INVALID_REVISION' },
+  )
+  invariant(
+    typeof submittedValue.patch.invocation_id === 'string' &&
+      submittedValue.patch.invocation_id.length > 0 &&
+      submittedValue.patch.invocation_id !== submittedValue.revises &&
+      (expectedInvocationId === undefined ||
+        submittedValue.patch.invocation_id === expectedInvocationId),
+    `A revision patch MUST set invocation_id to the current card's ` +
+      `invocation id, not the revised attempt's.`,
+    { code: 'INVALID_REVISION' },
+  )
+
+  const revisedFrom = state.stage_history.find(
+    (item) => item.invocation_id === submittedValue.revises,
+  )
+
+  invariant(
+    revisedFrom,
+    `Revision names invocation '${submittedValue.revises}', which this run ` +
+      `has no submitted attempt for.`,
+    { code: 'INVALID_REVISION' },
+  )
+
+  return {
+    value: applyJsonMergePatch(
+      readJson(resolveInside(root, revisedFrom.output_path)),
+      submittedValue.patch,
+    ),
+    revisedFrom,
+  }
 }
 
 /**
@@ -3706,48 +3772,25 @@ export function submitOutput(
   return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
     const submittedRaw = readJson(resolveInside(root, submittedPath))
-    // A revision submission patches the prior attempt's document instead of
-    // re-emitting it: `{ revises: <prior invocation id>, patch: <RFC 7386
-    // merge patch> }`. The merged document flows through every check a full
-    // submission would.
-    const revision =
-      isRecord(submittedRaw) && typeof submittedRaw.revises === 'string'
-        ? { revises: submittedRaw.revises, patch: submittedRaw.patch }
-        : null
-    let priorForRevision: StageHistoryItem | undefined
-    let submittedValue = submittedRaw
-
-    if (revision) {
-      invariant(
-        isRecord(revision.patch),
-        'A revision submission MUST carry an object merge patch in patch.',
-        { code: 'INVALID_REVISION' },
-      )
-      invariant(
-        typeof revision.patch.invocation_id === 'string' &&
-          revision.patch.invocation_id.length > 0 &&
-          revision.patch.invocation_id !== revision.revises,
-        `A revision patch MUST set invocation_id to the current card's ` +
-          `invocation id, not the revised attempt's.`,
-        { code: 'INVALID_REVISION' },
-      )
-
-      priorForRevision = state.stage_history.find(
-        (item) => item.invocation_id === revision.revises,
-      )
-
-      invariant(
-        priorForRevision,
-        `Revision names invocation '${revision.revises}', which this run ` +
-          `has no submitted attempt for.`,
-        { code: 'INVALID_REVISION' },
-      )
-
-      submittedValue = applyJsonMergePatch(
-        readJson(resolveInside(root, priorForRevision.output_path)),
-        revision.patch,
-      )
-    }
+    const submittedInvocation =
+      isRecord(submittedRaw) && isRecord(submittedRaw.patch)
+        ? submittedRaw.patch.invocation_id
+        : isRecord(submittedRaw)
+          ? submittedRaw.invocation_id
+          : undefined
+    const expectedInvocationId =
+      state.current_invocation?.id ??
+      (typeof submittedInvocation === 'string'
+        ? submittedInvocation
+        : undefined)
+    const materialized = materializeOutputSubmission(
+      root,
+      state,
+      submittedRaw,
+      expectedInvocationId,
+    )
+    const submittedValue = materialized.value
+    const priorForRevision = materialized.revisedFrom
 
     const invocationId = submittedInvocationId(submittedValue)
     const existing = invocationId
@@ -4093,7 +4136,7 @@ export function submitOutput(
       harnessValidation.blocking_errors,
     ).map((message) => `Validator: ${message}`)
     const blockingCriterionErrors = blockingCriterionStateErrors(
-      validation.errors,
+      validation.issues,
     ).map((message) => `Stage output: ${message}`)
     const blockingValidationErrors =
       stage.slug === 'ship'
@@ -5688,6 +5731,14 @@ export function validateOutputForSubmission(
   } = {},
 ): { passed: boolean; checks: ValidationCheck[] } {
   const checks: ValidationCheck[] = []
+  const state = loadState(root, runId)
+  const materialized = materializeOutputSubmission(
+    root,
+    state,
+    submittedValue,
+    invocation.invocation_id,
+  )
+  const effectiveValue = materialized.value
 
   for (const worker of invocation.evidence_workers ?? []) {
     let present = false
@@ -5711,11 +5762,10 @@ export function validateOutputForSubmission(
 
   if (invocation.contract_manifest) {
     checks.push(
-      ...validateInvocationAttestation(invocation, submittedValue).checks,
+      ...validateInvocationAttestation(invocation, effectiveValue).checks,
     )
   }
 
-  const state = loadState(root, runId)
   const workflow = loadRunWorkflow(root, state)
   const stage = stageBySlug(workflow, invocation.stage.slug)
   // The harness renders the operator brief during submission, so its absence
@@ -5725,7 +5775,7 @@ export function validateOutputForSubmission(
     root,
     stage,
     invocation,
-    submittedValue,
+    effectiveValue,
     { pendingArtifactPaths: renderedPath ? [renderedPath] : [] },
   )
   const structuralErrors = structural.errors
@@ -5747,8 +5797,8 @@ export function validateOutputForSubmission(
   }
 
   const catalog = loadRegistry(root)
-  const submittedRecord = isRecord(submittedValue)
-    ? submittedValue
+  const submittedRecord = isRecord(effectiveValue)
+    ? effectiveValue
     : ({} as Record<string, unknown>)
   // Before submit the output may still sit outside its declared path, or
   // only in memory. Output-targeted validators then read the file under
@@ -5766,6 +5816,7 @@ export function validateOutputForSubmission(
     // The operator's file wins. A stale copy at the declared path must not
     // stand in for the bytes the operator asked to validate.
     if (
+      materialized.revisedFrom === undefined &&
       options.submittedPath !== undefined &&
       submittedAbsolute &&
       fileExists(submittedAbsolute)
