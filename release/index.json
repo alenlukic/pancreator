@@ -40,6 +40,10 @@
     {
       "version": "5.9.0",
       "commit": "19e6495e1fcfbbd8d174954a2bbce53effbe28fd"
+    },
+    {
+      "version": "5.10.0",
+      "commit": "9fe932de787f5dee5c2e32de7016dcbe731f5263"
     }
   ]
 }

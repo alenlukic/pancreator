@@ -32,10 +32,15 @@ one takes an ordinal (`…_fixture-2`), and when no keywords are derivable the
 suffix falls back to the legacy 8-hex UUID fragment, which remains valid.
 Best-of-N session and standalone session directories use the same convention.
 
-Every non-durable file under `runtime/inbox/` and `runtime/pr-descriptions/`
-uses the same temporal prefix: `<prefix>_<slug>.<ext>`. Operator-chosen keyword
-slugs are kept verbatim; only missing or opaque hex slugs are re-derived from
-file content.
+Every non-durable file under `runtime/inbox/<status>/` (for `queue`, `active`,
+`canceled`, `complete`, and `archive`) and `runtime/pr-descriptions/` uses the
+same temporal prefix: `<prefix>_<slug>.<ext>`. Operator-chosen keyword slugs are
+kept verbatim; only missing or opaque hex slugs are re-derived from file content.
+
+Inbox-backed workflow requests start in `runtime/inbox/queue/` or may restart from
+`runtime/inbox/canceled/`. A started run moves the item to `active`. A succeeded
+run moves it to `complete`; an aborted run moves it to `canceled`. A terminal
+failed run leaves the item in `active`.
 
 Stage-scoped artifact IDs are
 `<reverse-step>_<stage>-<stage-iteration>_<uuid-suffix>`. While a run is open,
@@ -70,10 +75,12 @@ prefix: `<invocation-id>.assessment-request.json` and
 
 `./bin/pan archive` performs idempotent runtime maintenance in four passes:
 
-1. **Name standardization** renames non-compliant files under `runtime/inbox/`
-   and `runtime/pr-descriptions/` onto the temporal prefix scheme, recovering
-   the timestamp from the legacy name when one is embedded and from file
-   modification time otherwise, then rewrites persisted references.
+1. **Name standardization** renames non-compliant files under each inbox status
+   directory and under `runtime/pr-descriptions/` onto the temporal prefix
+   scheme, recovering the timestamp from the legacy name when one is embedded
+   and from file modification time otherwise, then rewrites persisted references.
+   Legacy Markdown files still sitting directly under `runtime/inbox/` migrate
+   into status directories before archiving runs.
 2. **Prefix migration** migrates recognized legacy workflow directory names,
    chooses open or terminal artifact numbering from run status, consolidates
    legacy `records/` and flat `artifacts/` contents, removes redundant rendered
@@ -88,13 +95,16 @@ prefix: `<invocation-id>.assessment-request.json` and
 4. **Archiving** moves everything non-durable older than the retention window
    into the owning directory's `archive/` child: workflow directories from both
    `runtime/logs/workflows/` and the legacy `runtime/workflows/` mirror,
-   standalone session directories, best-of-N session directories, and temporal
-   files in `runtime/inbox/` and `runtime/pr-descriptions/` (their prefix is
-   the age authority). Archived items are excluded from active discovery.
+   standalone session directories, best-of-N session directories, expired inbox
+   items from selected terminal statuses (`complete` by default; `--complete`
+   and/or `--canceled` override the selection), and temporal files in
+   `runtime/pr-descriptions/` (their prefix is the age authority). Archived items
+   are excluded from active discovery.
 
 The default retention window is seven days. Use `--days <positive-integer>`
-only when deliberately overriding it. Embedded installs run the same
-maintenance on every refresh and update.
+only when deliberately overriding it. Use `--complete` and/or `--canceled` to
+select which inbox terminal statuses `./bin/pan archive` moves into
+`runtime/inbox/archive/`. With no inbox flags, only `complete` is selected.
 
 ## Invocation and delegation validation
 

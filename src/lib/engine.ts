@@ -35,6 +35,15 @@ import {
   renderSupervisorCard,
   supervisorAttestCommand,
 } from './governance/supervisor-card.js'
+import {
+  assertClaimableInboxRequest,
+  claimInboxRequest,
+  finishInboxRequest,
+  inboxStatusOf,
+  isInboxRequestPath,
+  queueInboxRelativePath,
+  rollbackInboxClaim,
+} from './inbox.js'
 import { applyJsonMergePatch } from './json-merge-patch.js'
 import { keywordRunSuffixFrom, makeStageArtifactId } from './naming.js'
 import { resolveRunLayout } from './run-layout.js'
@@ -1252,6 +1261,20 @@ function applyTransition(
   }
 
   if (target === 'succeeded' || target === 'failed' || target === 'canceled') {
+    if (target === 'succeeded' || target === 'canceled') {
+      const destination = target === 'succeeded' ? 'complete' : 'canceled'
+      const moved = finishInboxRequest(
+        root,
+        state.request.source_path,
+        destination,
+        state.request.stored_path,
+      )
+
+      if (moved) {
+        state.request.source_path = moved
+      }
+    }
+
     state.status = target
     state.current_stage = null
     state.pending_action = { type: 'none' }
@@ -1837,170 +1860,207 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     )
   }
 
-  const source = resolveInside(root, requestPath)
-
-  invariant(fileExists(source), `Request file does not exist: ${requestPath}`, {
-    code: 'REQUEST_NOT_FOUND',
-  })
-
-  const briefSystem = validateBriefSystem(root)
+  const sourceAbsolute = resolveInside(root, requestPath)
 
   invariant(
-    briefSystem.status === 'passed',
-    `${briefSystem.errors.join(' ')} Run ${panCommand(root)} briefs build or /pan-build-briefs before starting a workflow.`,
-    { code: 'INVALID_BRIEF_SYSTEM', details: briefSystem },
+    fileExists(sourceAbsolute),
+    `Request file does not exist: ${requestPath}`,
+    {
+      code: 'REQUEST_NOT_FOUND',
+    },
   )
 
-  const id = makeUniqueRunId(
-    path.join(root, 'runtime', 'logs', 'workflows'),
-    keywordRunSuffixFrom(path.basename(source), readText(source)),
-  )
-  const layout = resolveRunLayout(root, id)
-  const directory = layout.agent.absolute
+  let source = sourceAbsolute
+  let sourceRelative = toRepoRelative(root, source)
+  let inboxClaim: {
+    activePath: string
+    originalPath: string
+  } | null = null
 
-  for (const child of [
-    'invocations',
-    'outputs',
-    'assessments',
-    'evidence',
-    'decisions',
-    'validations',
-    'artifacts/json',
-  ]) {
-    ensureDir(path.join(directory, child))
-  }
-  ensureDir(layout.operator.absolute)
+  if (isInboxRequestPath(sourceRelative)) {
+    assertClaimableInboxRequest(sourceRelative)
+    const status = inboxStatusOf(sourceRelative)
 
-  const requestExtension = path.extname(source) || '.md'
-  const storedRequest = layout.request(requestExtension).relative
-  copyFileSync(source, resolveInside(root, storedRequest))
+    if (status === 'queue' || status === 'canceled' || status === 'legacy') {
+      const activePath = claimInboxRequest(root, sourceRelative)
 
-  const workspaceRoot = normalizeWorkspaceRoot(root, options.workspace)
-  const roots = resolveRoots({
-    installation_root: root,
-    workspace_root: path.resolve(root, workspaceRoot),
-  })
-  const gateOverrides = readGateOverrides(root, options.gatesPath)
-
-  const workflowSnapshot = layout.workflowSnapshot.relative
-  const workflowSnapshotValue = structuredClone(workflow)
-
-  for (const stage of workflowSnapshotValue.stages) {
-    stage.prompt = loadStagePrompt(root, stage)
-    stage.prompt_sha256 = sha256(stage.prompt)
+      inboxClaim = { activePath, originalPath: sourceRelative }
+      sourceRelative = activePath
+      source = resolveInside(root, activePath)
+    }
   }
 
-  // The snapshot is authoritative for this run's gates, so the involvement
-  // profile is resolved once here rather than re-derived on every transition.
-  // A later edit to config.json cannot change a run already in flight.
-  const involvementSelection = selectInvolvementProfile(
-    loadOperatorInvolvementFile(root),
-    options.involvement,
-  )
-  const involvement = options.useWorkflowDeclaredGates
-    ? {
-        profile: involvementSelection.name,
-        summary: involvementSelection.profile.summary,
-        contracts: [],
-        applied_gates: {},
-      }
-    : applyOperatorInvolvement(workflowSnapshotValue, involvementSelection)
+  try {
+    const briefSystem = validateBriefSystem(root)
 
-  const awayMode = resolveAwayModeConfig(root)
-  // Snapshotted likewise. The level decides which repository-check profiles
-  // gate this run and which baselines the first mutating stage captures.
-  const verification = resolveVerification(root, options.verification)
+    invariant(
+      briefSystem.status === 'passed',
+      `${briefSystem.errors.join(' ')} Run ${panCommand(root)} briefs build or /pan-build-briefs before starting a workflow.`,
+      { code: 'INVALID_BRIEF_SYSTEM', details: briefSystem },
+    )
 
-  writeJsonAtomic(resolveInside(root, workflowSnapshot), workflowSnapshotValue)
+    const id = makeUniqueRunId(
+      path.join(root, 'runtime', 'logs', 'workflows'),
+      keywordRunSuffixFrom(path.basename(source), readText(source)),
+    )
+    const layout = resolveRunLayout(root, id)
+    const directory = layout.agent.absolute
 
-  const pipelineConfigSnapshot = layout.pipelineConfigSnapshot.relative
-  const pipelineConfigSnapshotValue = makePipelineConfigSnapshot(pipelineConfig)
+    for (const child of [
+      'invocations',
+      'outputs',
+      'assessments',
+      'evidence',
+      'decisions',
+      'validations',
+      'artifacts/json',
+    ]) {
+      ensureDir(path.join(directory, child))
+    }
+    ensureDir(layout.operator.absolute)
 
-  writeJsonAtomic(
-    resolveInside(root, pipelineConfigSnapshot),
-    pipelineConfigSnapshotValue,
-  )
-  const managedWorktree = options.worktree
-    ? {
-        name: options.worktree.name,
-        path: options.worktree.path,
-        branch: options.worktree.branch,
-      }
-    : null
+    const requestExtension = path.extname(source) || '.md'
+    const storedRequest = layout.request(requestExtension).relative
+    copyFileSync(source, resolveInside(root, storedRequest))
 
-  const state: RunState = {
-    schema_version: 2,
-    run_id: id,
-    workflow_slug: workflow.slug,
-    workflow_snapshot: {
-      path: workflowSnapshot,
-      sha256: sha256(workflowSnapshotValue),
-    },
-    pipeline_config: {
-      name: pipelineConfig.name,
-      path: pipelineConfigSnapshot,
-      sha256: sha256(pipelineConfigSnapshotValue),
-    },
-    workspace_root: workspaceRoot,
-    ...(managedWorktree ? { managed_worktree: managedWorktree } : {}),
-    workspace_id: roots.workspace_id,
-    installation_root: roots.installation_root,
-    state_root: roots.state_root,
-    scope_hash: roots.scope_hash,
-    ...(gateOverrides ? { gate_overrides: gateOverrides } : {}),
-    operator_involvement: involvement,
-    verification,
-    away_mode: awayMode,
-    operator_artifacts: {
-      mode: options.operatorArtifacts ? 'requested' : 'suppressed',
-      requested_stages: [],
-    },
-    ...(agentSuffix ? { cursor_agent_suffix: agentSuffix } : {}),
-    ...(options.bestOfN ? { best_of_n: options.bestOfN } : {}),
-    title: options.title ?? path.basename(requestPath),
-    status: 'running',
-    current_stage: workflow.start_stage,
-    pending_action: { type: 'prepare_invocation' },
-    current_invocation: null,
-    request: {
-      source_path: toRepoRelative(root, source),
-      stored_path: storedRequest,
-      sha256: sha256(readText(source)),
-    },
-    limits: workflow.limits,
-    attempts: {},
-    transition_count: 0,
-    consecutive_failures: 0,
-    stage_history: [],
-    revision: 0,
-    created_at: now(),
-    updated_at: now(),
+    const workspaceRoot = normalizeWorkspaceRoot(root, options.workspace)
+    const roots = resolveRoots({
+      installation_root: root,
+      workspace_root: path.resolve(root, workspaceRoot),
+    })
+    const gateOverrides = readGateOverrides(root, options.gatesPath)
+
+    const workflowSnapshot = layout.workflowSnapshot.relative
+    const workflowSnapshotValue = structuredClone(workflow)
+
+    for (const stage of workflowSnapshotValue.stages) {
+      stage.prompt = loadStagePrompt(root, stage)
+      stage.prompt_sha256 = sha256(stage.prompt)
+    }
+
+    // The snapshot is authoritative for this run's gates, so the involvement
+    // profile is resolved once here rather than re-derived on every transition.
+    // A later edit to config.json cannot change a run already in flight.
+    const involvementSelection = selectInvolvementProfile(
+      loadOperatorInvolvementFile(root),
+      options.involvement,
+    )
+    const involvement = options.useWorkflowDeclaredGates
+      ? {
+          profile: involvementSelection.name,
+          summary: involvementSelection.profile.summary,
+          contracts: [],
+          applied_gates: {},
+        }
+      : applyOperatorInvolvement(workflowSnapshotValue, involvementSelection)
+
+    const awayMode = resolveAwayModeConfig(root)
+    // Snapshotted likewise. The level decides which repository-check profiles
+    // gate this run and which baselines the first mutating stage captures.
+    const verification = resolveVerification(root, options.verification)
+
+    writeJsonAtomic(
+      resolveInside(root, workflowSnapshot),
+      workflowSnapshotValue,
+    )
+
+    const pipelineConfigSnapshot = layout.pipelineConfigSnapshot.relative
+    const pipelineConfigSnapshotValue =
+      makePipelineConfigSnapshot(pipelineConfig)
+
+    writeJsonAtomic(
+      resolveInside(root, pipelineConfigSnapshot),
+      pipelineConfigSnapshotValue,
+    )
+
+    const managedWorktree = options.worktree
+      ? {
+          name: options.worktree.name,
+          path: options.worktree.path,
+          branch: options.worktree.branch,
+        }
+      : null
+
+    const state: RunState = {
+      schema_version: 2,
+      run_id: id,
+      workflow_slug: workflow.slug,
+      workflow_snapshot: {
+        path: workflowSnapshot,
+        sha256: sha256(workflowSnapshotValue),
+      },
+      pipeline_config: {
+        name: pipelineConfig.name,
+        path: pipelineConfigSnapshot,
+        sha256: sha256(pipelineConfigSnapshotValue),
+      },
+      workspace_root: workspaceRoot,
+      ...(managedWorktree ? { managed_worktree: managedWorktree } : {}),
+      workspace_id: roots.workspace_id,
+      installation_root: roots.installation_root,
+      state_root: roots.state_root,
+      scope_hash: roots.scope_hash,
+      ...(gateOverrides ? { gate_overrides: gateOverrides } : {}),
+      operator_involvement: involvement,
+      verification,
+      away_mode: awayMode,
+      operator_artifacts: {
+        mode: options.operatorArtifacts ? 'requested' : 'suppressed',
+        requested_stages: [],
+      },
+      ...(agentSuffix ? { cursor_agent_suffix: agentSuffix } : {}),
+      ...(options.bestOfN ? { best_of_n: options.bestOfN } : {}),
+      title: options.title ?? path.basename(requestPath),
+      status: 'running',
+      current_stage: workflow.start_stage,
+      pending_action: { type: 'prepare_invocation' },
+      current_invocation: null,
+      request: {
+        source_path: sourceRelative,
+        stored_path: storedRequest,
+        sha256: sha256(readText(source)),
+      },
+      limits: workflow.limits,
+      attempts: {},
+      transition_count: 0,
+      consecutive_failures: 0,
+      stage_history: [],
+      revision: 0,
+      created_at: now(),
+      updated_at: now(),
+    }
+
+    // The supervisor card is rendered with the run so `pan init` already
+    // reports the digest the supervisor must attest before `pan prepare`.
+    const supervisorCard = renderSupervisorCard(root, state, workflow)
+
+    persistRun(root, state, 'run_created', {
+      supervisor_card: {
+        path: supervisorCard.state.path,
+        sha256: supervisorCard.state.sha256,
+        policies: supervisorCard.policies.map((policy) => policy.id),
+      },
+      workflow: workflow.slug,
+      pipeline_config: pipelineConfig.name,
+      workspace_root: workspaceRoot,
+      ...(managedWorktree ? { managed_worktree: managedWorktree } : {}),
+      state_root: roots.state_root,
+      involvement_profile: involvement.profile,
+      run_contracts: involvement.contracts,
+      applied_gates: involvement.applied_gates,
+      verification_level: verification.level,
+      away_mode_enabled: awayMode.enabled,
+      operator_artifacts: state.operator_artifacts,
+    })
+
+    return state
+  } catch (error) {
+    if (inboxClaim) {
+      rollbackInboxClaim(root, inboxClaim.activePath, inboxClaim.originalPath)
+    }
+
+    throw error
   }
-
-  // The supervisor card is rendered with the run so `pan init` already
-  // reports the digest the supervisor must attest before `pan prepare`.
-  const supervisorCard = renderSupervisorCard(root, state, workflow)
-
-  persistRun(root, state, 'run_created', {
-    supervisor_card: {
-      path: supervisorCard.state.path,
-      sha256: supervisorCard.state.sha256,
-      policies: supervisorCard.policies.map((policy) => policy.id),
-    },
-    workflow: workflow.slug,
-    pipeline_config: pipelineConfig.name,
-    workspace_root: workspaceRoot,
-    ...(managedWorktree ? { managed_worktree: managedWorktree } : {}),
-    state_root: roots.state_root,
-    involvement_profile: involvement.profile,
-    run_contracts: involvement.contracts,
-    applied_gates: involvement.applied_gates,
-    verification_level: verification.level,
-    away_mode_enabled: awayMode.enabled,
-    operator_artifacts: state.operator_artifacts,
-  })
-
-  return state
 }
 
 const INLINE_SUBMIT_VALIDATORS = new Set([
@@ -3627,14 +3687,11 @@ function emitVerifyWarningsInboxItem(
     }
   }
 
-  const relativePath = path.join(
-    'runtime',
-    'inbox',
+  const relativePath = queueInboxRelativePath(
     `${state.run_id}-verify-warnings.md`,
   )
   const absolutePath = resolveInside(root, relativePath)
 
-  ensureDir(path.dirname(absolutePath))
   writeTextAtomic(absolutePath, `${lines.join('\n').trimEnd()}\n`)
 
   return relativePath
@@ -5266,9 +5323,9 @@ function writeSpotfixCase(
   sourceEvidencePath: string,
 ): string {
   const timestamp = now().replaceAll(/[-:.]/gu, '')
-  const relativePath =
-    `runtime/inbox/spotfix-case-${timestamp}-${state.run_id.slice(-8)}-` +
-    `${stage.slug}.md`
+  const relativePath = queueInboxRelativePath(
+    `spotfix-case-${timestamp}-${state.run_id.slice(-8)}-${stage.slug}.md`,
+  )
   const body = [
     '# Deferred spotfix case',
     '',
@@ -5561,6 +5618,17 @@ export function abortRun(root: string, runId: string, note = ''): RunState {
       'Run is already terminal.',
       { code: 'RUN_TERMINAL' },
     )
+
+    const moved = finishInboxRequest(
+      root,
+      state.request.source_path,
+      'canceled',
+      state.request.stored_path,
+    )
+
+    if (moved) {
+      state.request.source_path = moved
+    }
 
     state.status = 'canceled'
     state.current_stage = null

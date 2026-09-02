@@ -7,6 +7,7 @@ import {
   readFileSync,
   renameSync,
   rmSync,
+  utimesSync,
   writeFileSync,
 } from 'node:fs'
 import path from 'node:path'
@@ -15,6 +16,7 @@ import test from 'node:test'
 import { pauseRun } from '../../src/lib/engine.js'
 import { createFixture, createRun } from '../helpers.js'
 import { makeWorkflowRunId } from '../../src/lib/naming.js'
+import { resolveRunLayout } from '../../src/lib/run-layout.js'
 
 const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
 
@@ -97,6 +99,60 @@ test('pan archive migrates and archives old workflow directories', () => {
       ),
     ),
     true,
+  )
+})
+
+test('archives migrated legacy complete items in one pass', () => {
+  const root = createFixture()
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title: 'Legacy inbox fixture',
+  })
+  const statePath = resolveRunLayout(root, run.run_id).state.absolute
+  const state = JSON.parse(readFileSync(statePath, 'utf8')) as {
+    status: string
+    current_stage: string | null
+    pending_action: { type: string }
+    request: { source_path: string }
+  }
+  const legacyRelative = 'runtime/inbox/legacy-complete.md'
+  const legacyAbsolute = path.join(root, legacyRelative)
+
+  state.status = 'succeeded'
+  state.current_stage = null
+  state.pending_action = { type: 'none' }
+  state.request.source_path = legacyRelative
+  writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`, 'utf8')
+
+  write(legacyAbsolute, '# Legacy complete\n')
+  utimesSync(
+    legacyAbsolute,
+    new Date('2026-06-22T21:22:54.051Z'),
+    new Date('2026-06-22T21:22:54.051Z'),
+  )
+
+  const output = execFileSync(
+    process.execPath,
+    [CLI, 'archive', '--days', '7', '--json'],
+    { cwd: root, encoding: 'utf8' },
+  )
+  const summary = JSON.parse(output) as {
+    inbox_layout: { migrated_files: number }
+    archive: { inbox_files: string[] }
+  }
+  const archivedName = summary.archive.inbox_files[0]
+
+  assert.equal(summary.inbox_layout.migrated_files, 1)
+  assert.equal(summary.archive.inbox_files.length, 1)
+  assert.ok(archivedName)
+  assert.equal(existsSync(legacyAbsolute), false)
+  assert.equal(
+    readFileSync(
+      path.join(root, 'runtime/inbox/archive', archivedName),
+      'utf8',
+    ),
+    '# Legacy complete\n',
   )
 })
 
@@ -187,4 +243,143 @@ test('status, resume, and archive preserve an unconverted v1 run', () => {
     existsSync(path.join(runDirectory, 'agent', 'state.json')),
     false,
   )
+})
+
+test('archives complete inbox items by default', () => {
+  const root = createFixture()
+  const writeStatusFile = (
+    status: 'queue' | 'active' | 'canceled' | 'complete',
+    fileName: string,
+    modifiedAt: string,
+  ): void => {
+    const absolute = path.join(root, 'runtime/inbox', status, fileName)
+
+    mkdirSync(path.dirname(absolute), { recursive: true })
+    writeFileSync(absolute, `${status} fixture\n`, 'utf8')
+    utimesSync(absolute, new Date(modifiedAt), new Date(modifiedAt))
+  }
+
+  writeStatusFile(
+    'queue',
+    '63379_Jun-22-0158_old-queue.md',
+    '2026-06-22T21:22:54.051Z',
+  )
+  writeStatusFile(
+    'active',
+    '63379_Jun-22-0158_old-active.md',
+    '2026-06-22T21:22:54.051Z',
+  )
+  writeStatusFile(
+    'canceled',
+    '63379_Jun-22-0158_old-canceled.md',
+    '2026-06-22T21:22:54.051Z',
+  )
+  writeStatusFile(
+    'complete',
+    '63379_Jun-22-0158_old-complete.md',
+    '2026-06-22T21:22:54.051Z',
+  )
+  writeStatusFile(
+    'complete',
+    '63328_Aug-25-1200_fresh-complete.md',
+    new Date().toISOString(),
+  )
+
+  const output = execFileSync(
+    process.execPath,
+    [CLI, 'archive', '--days', '7', '--json'],
+    { cwd: root, encoding: 'utf8' },
+  )
+  const summary = JSON.parse(output) as {
+    archive: { inbox_files: string[] }
+  }
+
+  assert.deepEqual(summary.archive.inbox_files, [
+    '63379_Jun-22-0158_old-complete.md',
+  ])
+  assert.equal(
+    existsSync(
+      path.join(
+        root,
+        'runtime/inbox/archive/63379_Jun-22-0158_old-complete.md',
+      ),
+    ),
+    true,
+  )
+  assert.equal(
+    existsSync(
+      path.join(
+        root,
+        'runtime/inbox/canceled/63379_Jun-22-0158_old-canceled.md',
+      ),
+    ),
+    true,
+  )
+})
+
+test('selects complete canceled or both inbox archives', () => {
+  const canceledRoot = createFixture()
+  const writeExpired = (
+    root: string,
+    status: 'complete' | 'canceled',
+    fileName: string,
+  ) => {
+    const absolute = path.join(root, 'runtime/inbox', status, fileName)
+
+    mkdirSync(path.dirname(absolute), { recursive: true })
+    writeFileSync(absolute, `${status}\n`, 'utf8')
+    utimesSync(
+      absolute,
+      new Date('2026-06-22T21:22:54.051Z'),
+      new Date('2026-06-22T21:22:54.051Z'),
+    )
+  }
+
+  writeExpired(canceledRoot, 'canceled', '63379_Jun-22-0158_flag-canceled.md')
+
+  const canceledOnly = JSON.parse(
+    execFileSync(
+      process.execPath,
+      [CLI, 'archive', '--days', '7', '--canceled', '--json'],
+      { cwd: canceledRoot, encoding: 'utf8' },
+    ) as string,
+  ) as { archive: { inbox_files: string[] } }
+
+  assert.deepEqual(canceledOnly.archive.inbox_files, [
+    '63379_Jun-22-0158_flag-canceled.md',
+  ])
+
+  const completeRoot = createFixture()
+
+  writeExpired(completeRoot, 'complete', '63379_Jun-22-0158_flag-complete.md')
+
+  const completeOnly = JSON.parse(
+    execFileSync(
+      process.execPath,
+      [CLI, 'archive', '--days', '7', '--complete', '--json'],
+      { cwd: completeRoot, encoding: 'utf8' },
+    ) as string,
+  ) as { archive: { inbox_files: string[] } }
+
+  assert.deepEqual(completeOnly.archive.inbox_files, [
+    '63379_Jun-22-0158_flag-complete.md',
+  ])
+
+  const bothRoot = createFixture()
+
+  writeExpired(bothRoot, 'complete', '63379_Jun-22-0158_both-complete.md')
+  writeExpired(bothRoot, 'canceled', '63379_Jun-22-0158_both-canceled.md')
+
+  const both = JSON.parse(
+    execFileSync(
+      process.execPath,
+      [CLI, 'archive', '--days', '7', '--complete', '--canceled', '--json'],
+      { cwd: bothRoot, encoding: 'utf8' },
+    ) as string,
+  ) as { archive: { inbox_files: string[] } }
+
+  assert.deepEqual(both.archive.inbox_files.sort(), [
+    '63379_Jun-22-0158_both-canceled.md',
+    '63379_Jun-22-0158_both-complete.md',
+  ])
 })

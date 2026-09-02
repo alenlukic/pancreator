@@ -250,16 +250,16 @@ test('embedded installer refresh reconciles persona mappings and agent ownership
       true,
     )
 
-    // Runtime maintenance renames a loose inbox file onto the temporal prefix
-    // scheme and keeps the content.
-    const inboxDirectory = path.join(pancreatorDir, 'runtime', 'inbox')
-    const standardizedRequest = readdirSync(inboxDirectory).find((name) =>
+    // Runtime maintenance migrates a loose inbox file to queue, renames it
+    // onto the temporal prefix scheme, and keeps the content.
+    const queueDirectory = path.join(pancreatorDir, 'runtime', 'inbox', 'queue')
+    const standardizedRequest = readdirSync(queueDirectory).find((name) =>
       /^\d+_[A-Z][a-z]{2}-\d{2}-\d{4}_request\.md$/u.test(name),
     )
 
     assert.ok(standardizedRequest, 'inbox request was not standardized')
     assert.equal(
-      readFileSync(path.join(inboxDirectory, standardizedRequest), 'utf8'),
+      readFileSync(path.join(queueDirectory, standardizedRequest), 'utf8'),
       'keep me\n',
     )
     assert.equal(

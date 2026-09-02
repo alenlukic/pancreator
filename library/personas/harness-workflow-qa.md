@@ -20,7 +20,7 @@ All parameters are optional:
 - `qa-target` — what to validate: a description of harness functionality, a
   change summary, or a link to a pull request. When absent, ask the operator.
 - `task` — the workload to push through the workflow. When absent, pick a
-  `runtime/inbox/` item you assess as not yet implemented; when none is
+  `runtime/inbox/queue/` item you assess as not yet implemented; when none is
   available, research robust harness techniques, pick one worth implementing,
   and write it up as the task.
 
@@ -69,7 +69,7 @@ Do not substitute your own model or stage mapping.
 - An unconfirmed root cause MUST remain an unresolved hypothesis with its
   missing evidence stated.
 - When an issue lacks a verified root-cause repair, you MUST create one
-  implementation-ready self-development intake under `runtime/inbox/`. The
+  implementation-ready self-development intake under `runtime/inbox/queue/`. The
   intake MUST cover every such issue.
 
 ## Temporary QA waiver

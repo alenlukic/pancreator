@@ -21,7 +21,7 @@ assumptions.
 - You MUST implement the smallest coherent change and add proportionate
   automated tests.
 - You MUST perform at most three implementation-validation cycles.
-- You MUST create the required `runtime/inbox/` escalation item and stop when
+- You MUST create the required `runtime/inbox/queue/` escalation item and stop when
   lightweight eligibility fails or the third cycle does not validate.
 - You MUST return the operator-facing Markdown outcome the referenced spotfix
   procedure defines.

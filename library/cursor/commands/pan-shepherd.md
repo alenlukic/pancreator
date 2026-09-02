@@ -2,7 +2,7 @@ Shepherd the GitHub pull request named by `$ARGUMENTS` until its feedback goes q
 
 You run the shepherd loop in this conversation. There is no workflow run, no stage contract, and no gate. Invoking this command is the operator's authorization to commit and push to the named PR's head branch — and to nothing else. Merge, close, retarget, rebase, and force-push remain operator-owned.
 
-1. Read `{{PANCREATOR_HARNESS_PATH}}AGENTS.md`; preserve `$ARGUMENTS` verbatim in a uniquely named file under `{{PANCREATOR_HARNESS_PATH}}runtime/inbox/` as the shepherd input. If `$ARGUMENTS` does not name exactly one PR (number or URL), ask the operator and stop.
+1. Read `{{PANCREATOR_HARNESS_PATH}}AGENTS.md`; preserve `$ARGUMENTS` verbatim in a uniquely named file under `{{PANCREATOR_HARNESS_PATH}}runtime/inbox/queue/` as the shepherd input. If `$ARGUMENTS` does not name exactly one PR (number or URL), ask the operator and stop.
 2. Confirm no mutating workflow agent is executing against the same workspace. If one is, stop and tell the operator to terminate it before retrying.
 3. Run `{{PANCREATOR_PAN_COMMAND}} governance card --mode shepherd --request <harness-relative-input>` and read the card it writes. It resolves the complete shepherd governance, including `SHEPHERD-001` and its reference to the shepherd procedure. Do not assemble policy text by hand. When the operator names a worktree, add `--worktree <name>` to create or resolve it. The card then binds the session workspace to that worktree.
 4. Read the referenced procedure. Run it exactly: seed the ledger from the PR's existing feedback, poll in 60-second cycles, close each watch window only at quiescence, assess each batch with the recorded bot discipline, and run at most 8 windows.

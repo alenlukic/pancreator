@@ -39,7 +39,7 @@ Player-coach also means you own the run's total. You are the only agent that see
 - By default, omit `--workspace` so `config.json.workspace_root` remains authoritative, and use no `gates` override.
 - If the preserved request or the operator's message names a worktree for the run, pass `--worktree <name>`. The option creates or resolves that worktree and binds the run's workspace to it. Do not combine it with `--workspace`.
 - If the preserved request is JSON containing `workspace_root` (for example a prior run state payload), use it as `--workspace`.
-- If the preserved request is JSON containing `gate_overrides`, write that object to a uniquely named JSON file under `runtime/inbox/`. Pass its harness-relative path as `--gates`.
+- If the preserved request is JSON containing `gate_overrides`, write that object to a uniquely named JSON file under `runtime/inbox/queue/`. Pass its harness-relative path as `--gates`.
 - Default to `--workflow delivery`. Use `--workflow prototype` only when the operator asked for a prototype, spike, or proof of concept, or asked to test an approach rather than deliver it. Use `--workflow design` only when the operator asked for UI/UX design work preceding implementation. When the request and the operator's message leave delivering versus spiking ambiguous, STOP and report the question instead of initializing.
 - Omit `--involvement` unless the request names a profile or asks for a specific level of involvement; the configured `active` profile applies otherwise. Run `./bin/pan involvement` to list profiles when the request asks what is available.
 
@@ -147,7 +147,7 @@ stall under `DELEGATE-001`. Report it and propose a recovery action.
 
 Before the terminal report of a run that required any supervisor repair, spent
 a stage attempt on a non-product defect, or exposed harness friction, write the
-run-friction intake `ORCH-001` requires to `runtime/inbox/<run-id>-run-friction.md`.
+run-friction intake `ORCH-001` requires to `runtime/inbox/queue/<run-id>-run-friction.md`.
 List each issue, its evidence path, and the systematic fix it suggests. A clean
 run gets no intake.
 

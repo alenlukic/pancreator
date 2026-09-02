@@ -15,14 +15,14 @@ function writeInboxFile(
   content: string,
   modifiedAt: Date,
 ): void {
-  const filePath = path.join(root, 'runtime', 'inbox', fileName)
+  const filePath = path.join(root, 'runtime', 'inbox', 'queue', fileName)
 
   mkdirSync(path.dirname(filePath), { recursive: true })
   writeFileSync(filePath, content, 'utf8')
   utimesSync(filePath, modifiedAt, modifiedAt)
 }
 
-test('pan inbox plain output shows columns, titles, run IDs, and empty states', () => {
+test('pan inbox lists queued items with stable output', () => {
   const root = createFixture()
   const modifiedAt = new Date('2024-02-01T10:00:00.000Z')
   const runId = makeWorkflowRunId(modifiedAt, 'inbox-cli')
@@ -43,7 +43,63 @@ test('pan inbox plain output shows columns, titles, run IDs, and empty states', 
     new Date('2024-02-02T10:00:00.000Z'),
   )
 
-  const expectedOrder = ['heading-free.md', `${runId}-verify-warnings.md`]
+  writeInboxFile(
+    root,
+    'oldest.md',
+    '# Oldest\n',
+    new Date('2024-01-01T12:00:00.000Z'),
+  )
+  writeInboxFile(
+    root,
+    'middle.md',
+    '# Middle\n',
+    new Date('2024-01-02T12:00:00.000Z'),
+  )
+  writeInboxFile(
+    root,
+    'newest.md',
+    '# Newest\n',
+    new Date('2024-03-03T12:00:00.000Z'),
+  )
+  writeInboxFile(
+    root,
+    'ignore.txt',
+    'skip\n',
+    new Date('2024-03-03T12:00:00.000Z'),
+  )
+  writeInboxFile(
+    root,
+    'nested/ignored.md',
+    '# Nested\n',
+    new Date('2024-03-03T12:00:00.000Z'),
+  )
+
+  for (const status of ['active', 'canceled', 'complete', 'archive']) {
+    const controlPath = path.join(
+      root,
+      'runtime',
+      'inbox',
+      status,
+      `${status}-ignored.md`,
+    )
+
+    mkdirSync(path.dirname(controlPath), { recursive: true })
+    writeFileSync(controlPath, `# ${status}\n`, 'utf8')
+  }
+
+  writeFileSync(
+    path.join(root, 'runtime', 'inbox', 'legacy-ignored.md'),
+    '# Legacy\n',
+    'utf8',
+  )
+
+  const expectedOrder = [
+    'newest.md',
+    'heading-free.md',
+    `${runId}-verify-warnings.md`,
+    'middle.md',
+    'oldest.md',
+  ]
   const populated = execFileSync(process.execPath, [CLI, 'inbox'], {
     cwd: root,
     encoding: 'utf8',

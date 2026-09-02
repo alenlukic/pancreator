@@ -65,7 +65,7 @@ Escalate immediately when the request is not small-scope, and escalate after the
 third failed validation cycle.
 
 Create a uniquely named Markdown item at
-`runtime/inbox/spotfix-escalation-<UTC timestamp>-<slug>.md` containing:
+`runtime/inbox/queue/spotfix-escalation-<UTC timestamp>-<slug>.md` containing:
 
 - the original request or investigator output verbatim;
 - acceptance criteria;

@@ -135,6 +135,45 @@ test('an unrecognized criterion verdict is reported, not silently failed', () =>
   )
 })
 
+test('writes new inbox items to queue', () => {
+  const producerPaths = [
+    'bin/install',
+    'governance/policies/ORCH-001.json',
+    'governance/policies/SPOT-001.json',
+    'library/cursor/agents/decomposer.md',
+    'library/cursor/agents/harness-technician.md',
+    'library/cursor/agents/meta-orchestrator.md',
+    'library/cursor/agents/spotfixer.md',
+    'library/cursor/commands/pan-debug.md',
+    'library/cursor/commands/pan-decompose.md',
+    'library/cursor/commands/pan-qa-workflow.md',
+    'library/cursor/commands/pan-repair.md',
+    'library/cursor/commands/pan-review.md',
+    'library/cursor/commands/pan-shepherd.md',
+    'library/cursor/commands/pan-spotfix.md',
+    'library/cursor/commands/pan-start.md',
+    'library/personas/decomposer.md',
+    'library/personas/harness-technician.md',
+    'library/personas/harness-workflow-qa.md',
+    'library/personas/orchestrator.md',
+    'library/personas/spotfixer.md',
+    'library/skills/prompt-augmentation.md',
+    'library/skills/spotfix.md',
+    'library/templates/detached-AGENTS.md',
+    'library/templates/embedded-AGENTS.md',
+  ]
+
+  for (const producerPath of producerPaths) {
+    const content = readFileSync(path.join(REPO_ROOT, producerPath), 'utf8')
+
+    assert.match(
+      content,
+      /runtime\/inbox\/queue\//u,
+      `${producerPath} must route new inbox items to queue`,
+    )
+  }
+})
+
 test('a retry card inlines the recorded reason the prior attempt failed', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'delivery')
