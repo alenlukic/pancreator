@@ -147,7 +147,7 @@ test('hypervisor discovers the current Cursor subagent transcript', () => {
 })
 
 test('hypervisor observes an external executor session from run state', () => {
-  const { root, runId, invocation } = checkpoint('delivery@plan-prepared')
+  const { root, runId, invocation } = checkpoint('planning@plan-prepared')
 
   assert.ok(invocation)
 
@@ -339,7 +339,7 @@ test('prepared invocation registration is idempotent and completable', () => {
 })
 
 test('redelivery refuses an invocation after workspace drift', () => {
-  const { root } = checkpoint('delivery@plan-prepared')
+  const { root } = checkpoint('planning@plan-prepared')
   const agent = readAgentRegistry(root).agents[0]
 
   assert.ok(agent)

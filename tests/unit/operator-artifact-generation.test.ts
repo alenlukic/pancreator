@@ -22,9 +22,9 @@ function submitSuppressedPlan(root: string): {
   runId: string
   invocationId: string
 } {
-  const workflow = loadWorkflow(root, 'delivery')
+  const workflow = loadWorkflow(root, 'planning')
   const state = createRun(root, {
-    workflowSlug: 'delivery',
+    workflowSlug: 'planning',
     requestPath: 'request.md',
   })
   const invocation = prepareInvocation(root, state.run_id).invocation
@@ -125,7 +125,7 @@ test('forced generation preserves existing HTML and source after render failure'
 test('generation rejects unknown and unsubmitted stages with stable codes', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'delivery',
+    workflowSlug: 'planning',
     requestPath: 'request.md',
   })
 

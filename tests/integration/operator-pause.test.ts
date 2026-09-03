@@ -131,12 +131,17 @@ test('operator changes made during a pause are ratified and stale cards are repl
     'export const base = true\nexport const operatorFix = true\n',
   )
 
-  const resumed = resumeRun(root, runId, 'plan', 'Authorized operator fix.')
+  const resumed = resumeRun(
+    root,
+    runId,
+    'implement',
+    'Authorized operator fix.',
+  )
 
   assert.equal(resumed.status, 'running')
   assert.equal(resumed.pending_action.type, 'prepare_invocation')
   assert.equal(resumed.current_invocation, null)
-  assert.equal(resumed.attempts.plan, 0)
+  assert.equal(resumed.attempts.implement, 0)
   assert.equal(resumed.operator_workspace_ratifications?.length, 1)
   assert.equal(
     resumed.accepted_workspace_fingerprint,

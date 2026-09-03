@@ -317,6 +317,35 @@ function workspaceRepositoryRoot(root: string): string {
   return repositoryRoot
 }
 
+/**
+ * Absolute path of the checkout that already holds one local branch.
+ *
+ * A merge must run inside the checkout Git gave the branch, because Git refuses
+ * to move a branch that another worktree holds. Callers that merge a single
+ * source cannot use `reconcileWorktrees`, which demands two, so they resolve
+ * the held checkout through this function instead of guessing the main root.
+ */
+export function resolveBranchCheckout(root: string, branch: string): string {
+  const repositoryRoot = workspaceRepositoryRoot(root)
+
+  invariant(
+    gitBranchExists(repositoryRoot, branch),
+    `Branch does not exist: ${branch}`,
+    { code: 'WORKTREE_BRANCH_NOT_FOUND' },
+  )
+
+  const held = gitWorktreeForBranch(repositoryRoot, branch)
+
+  invariant(
+    held,
+    `Branch '${branch}' is not checked out anywhere, so there is no checkout ` +
+      'to merge into. Check it out first, or reconcile into a worktree.',
+    { code: 'WORKTREE_BRANCH_NOT_HELD' },
+  )
+
+  return held
+}
+
 function recordByName(index: WorktreeIndex, name: string): WorktreeRecord {
   const record = index.worktrees.find((entry) => entry.name === name)
 

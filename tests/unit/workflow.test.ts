@@ -9,28 +9,49 @@ import {
   validateWorkflow,
 } from '../../src/lib/workflow.js'
 
-test('delivery workflow is connected and stages are addressable', () => {
+test('delivery workflow starts at implement and stages are addressable', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'delivery')
-  assert.equal(workflow.start_stage, 'plan')
+  assert.equal(workflow.start_stage, 'implement')
   assert.equal(stageBySlug(workflow, 'ship').gate, 'operator')
 
   assert.deepEqual(
     workflow.stages.map((stage) => stage.slug),
-    ['plan', 'implement', 'verify', 'remediate', 'ship'],
+    ['implement', 'verify', 'remediate', 'ship'],
   )
   assert.ok(workflow.stages.every((stage) => typeof stage.persona === 'string'))
+
+  // Planning lives in its own workflow, so no delivery stage reads a plan
+  // stage output; the ratified child specification arrives as the request.
+  for (const stage of workflow.stages) {
+    assert.ok(
+      !(stage.context.required_stage_outputs ?? []).some(
+        (selector) => selector.stage === 'plan',
+      ),
+      `${stage.slug} MUST NOT require a plan stage output`,
+    )
+  }
+
+  // Every delivery stage reads the ratified child specification, so the
+  // request stays a required reference rather than a conditional one.
+  for (const stage of workflow.stages) {
+    assert.equal(
+      stage.context.request,
+      'required',
+      `${stage.slug} MUST receive the run request as a required reference`,
+    )
+  }
 })
 
-test('delivery plan is worker-owned while intake stages stay supervisor-owned', () => {
+test('the planning plan stage is worker-owned while intake stages stay supervisor-owned', () => {
   const root = createFixture()
-  const deliveryPlan = stageBySlug(loadWorkflow(root, 'delivery'), 'plan')
+  const planningPlan = stageBySlug(loadWorkflow(root, 'planning'), 'plan')
 
-  assert.equal(deliveryPlan.persona, 'planner')
-  // Consolidating intake into plan must not relax the ratification gate or
-  // widen the worker's workspace beyond runtime records.
-  assert.equal(deliveryPlan.gate, 'operator')
-  assert.equal(deliveryPlan.workspace_policy, 'runtime_only')
+  assert.equal(planningPlan.persona, 'planner')
+  // Moving planning into its own workflow must not relax the ratification
+  // gate or widen the worker's workspace beyond runtime records.
+  assert.equal(planningPlan.gate, 'operator')
+  assert.equal(planningPlan.workspace_policy, 'runtime_only')
 
   for (const slug of ['design', 'prototype']) {
     assert.equal(

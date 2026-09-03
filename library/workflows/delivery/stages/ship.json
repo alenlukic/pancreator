@@ -7,12 +7,8 @@
   "gate": "operator",
   "gate_relaxable": false,
   "context": {
-    "request": "conditional",
+    "request": "required",
     "required_stage_outputs": [
-      {
-        "stage": "plan",
-        "selection": "latest_success"
-      },
       {
         "stage": "implement",
         "selection": "latest"

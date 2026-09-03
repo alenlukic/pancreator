@@ -9,9 +9,11 @@ find.
 
 ## Steps
 
-1. Read the card, the ratified plan (specification, acceptance criteria, test
-   plan), the implementation record, and both parallel evidence reports listed
-   under the card's inputs. A missing or empty evidence report is a blocked
+1. Read the card, the ratified plan the card delivers as this run's request
+   (the child specification with its acceptance criteria and validation plan,
+   and the parent specification through its audited context reference when
+   the read trigger applies), the implementation record, and both parallel
+   evidence reports listed under the card's inputs. A missing or empty evidence report is a blocked
    stage, not a judgment call: report `blocked` and name the missing path.
 2. Reconcile the two reports. Where they disagree about the same behavior,
    reproduce the disputed observation yourself before grading it.

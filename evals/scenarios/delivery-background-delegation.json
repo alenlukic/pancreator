@@ -46,17 +46,13 @@
   "involvement": "standard",
   "operator_decisions": [
     {
-      "stage": "plan",
-      "decision": "approve"
-    },
-    {
       "stage": "ship",
       "decision": "approve"
     }
   ],
   "expected": {
     "status": "succeeded",
-    "stage_sequence": ["plan", "implement", "verify", "ship"]
+    "stage_sequence": ["implement", "verify", "ship"]
   },
   "graders": [
     {

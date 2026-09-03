@@ -18,6 +18,7 @@ import {
   createRun as createEngineRun,
   submitOutput,
 } from '../src/lib/engine.js'
+import { sha256 } from '../src/lib/io.js'
 import type { OperationProgressOptions } from '../src/lib/engine.js'
 import { parsePersonaMapping } from '../src/lib/executors/mapping.js'
 import { delegationExecutionPath } from '../src/lib/validation.js'
@@ -88,6 +89,38 @@ function pinFixtureInvolvement(root: string): void {
   config.operator_involvement.active = FIXTURE_INVOLVEMENT_PROFILE
 
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+}
+
+/**
+ * Pin the model one persona resolves to in a fixture, in every named config.
+ *
+ * A fixture copies this checkout's effective configuration, so the operator's
+ * untracked `config_overrides.json` would otherwise decide which model the
+ * active config maps for the persona. The pin lives in `defaults` and no named
+ * config shadows it, so the mapping is identical in every checkout. The Cursor
+ * projection is re-synced so projected agent frontmatter agrees with it.
+ */
+export function pinFixturePersonaModel(
+  root: string,
+  persona: string,
+  model: string,
+): void {
+  const configPath = path.join(root, 'config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
+    defaults?: Record<string, string>
+    configs?: Record<string, { personas?: Record<string, string> }>
+  }
+
+  config.defaults = { ...config.defaults, [persona]: model }
+
+  for (const entry of Object.values(config.configs ?? {})) {
+    if (entry.personas) {
+      delete entry.personas[persona]
+    }
+  }
+
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+  syncCursorProjection(root, { write: true })
 }
 
 export interface CloneTreeOptions {
@@ -512,6 +545,105 @@ function gateEvidenceCitations(
   )
 }
 
+/** Repository-relative paths of the planning fixture's specification files. */
+export const PLANNING_FIXTURE_SPECS = {
+  parent: 'runtime/specs/parent-specification.md',
+  child: 'runtime/specs/c1.md',
+} as const
+
+/**
+ * A child specification the child-spec validator accepts.
+ *
+ * The parent is referenced through an audited block rather than copied, and
+ * `In scope` names the originating items the chunk owns, one time each.
+ */
+export function childSpecificationMarkdown(options: {
+  parentPath: string
+  parentDigest: string
+  inScope: string[]
+}): string {
+  return [
+    '# Child specification',
+    '',
+    '## Parent specification',
+    '',
+    `- Source: \`${options.parentPath}\``,
+    '- Selected range: the complete file.',
+    `- Content digest: \`${options.parentDigest}\``,
+    '- Read when: read the parent before you decide anything outside this chunk.',
+    '',
+    '## Objective',
+    '',
+    'Deliver one coherent outcome.',
+    '',
+    '## In scope',
+    '',
+    ...options.inScope.map((item) => `- ${item}`),
+    '',
+    '## Out of scope',
+    '',
+    'Everything another chunk owns.',
+    '',
+    '## Acceptance criteria',
+    '',
+    '- The chunk behaves as stated.',
+    '',
+    '## Dependencies',
+    '',
+    'None.',
+    '',
+    '## Validation',
+    '',
+    'Run the configured fast profile.',
+    '',
+    '## Handoff contract',
+    '',
+    'The branch merges cleanly into the base branch.',
+    '',
+  ].join('\n')
+}
+
+/**
+ * Write the parent and the single child specification a planning fixture
+ * ratifies, and return the matching `cohort_plan` data.
+ */
+export function writePlanningFixtureSpecs(
+  root: string,
+): Record<string, unknown> {
+  const parentBody = '# Parent specification\n\nThe complete record.\n'
+  const parentAbsolute = path.join(root, PLANNING_FIXTURE_SPECS.parent)
+
+  mkdirSync(path.dirname(parentAbsolute), { recursive: true })
+  writeFileSync(parentAbsolute, parentBody)
+  writeFileSync(
+    path.join(root, PLANNING_FIXTURE_SPECS.child),
+    childSpecificationMarkdown({
+      parentPath: PLANNING_FIXTURE_SPECS.parent,
+      parentDigest: `sha256:${sha256(parentBody.trim())}`,
+      // The single chunk owns every labeled originating item of the fixture
+      // product specification, so the child-spec validator's exactly-once
+      // check is exercised for real rather than bypassed by unlabeled prose.
+      inScope: ['US-01', 'C-1', 'OOS-1'],
+    }),
+  )
+
+  return {
+    parent_spec_path: PLANNING_FIXTURE_SPECS.parent,
+    chunks: [
+      {
+        id: 'c1',
+        title: 'Run a workflow',
+        cohort_index: 1,
+        child_spec_path: PLANNING_FIXTURE_SPECS.child,
+        depends_on: [],
+      },
+    ],
+    edges: [],
+    cohorts: [{ index: 1, chunks: ['c1'] }],
+    serial_justification: 'The fixture change is one indivisible outcome.',
+  }
+}
+
 function requiredData(
   stage: string,
   root?: string,
@@ -519,6 +651,13 @@ function requiredData(
   runState?: RunState,
   workflowSlug?: string,
 ): Record<string, unknown> {
+  if (workflowSlug === 'planning' && stage === 'plan' && root) {
+    return {
+      ...requiredData(stage, root, invocation, runState, 'delivery'),
+      cohort_plan: writePlanningFixtureSpecs(root),
+    }
+  }
+
   if (workflowSlug === 'prototype') {
     switch (stage) {
       case 'intake':
@@ -625,8 +764,8 @@ function requiredData(
         product_spec: {
           summary: 'A harness',
           user_stories: [{ id: 'US-01', statement: 'Run a workflow' }],
-          constraints: ['No runtime dependencies'],
-          out_of_scope: ['Remote services'],
+          constraints: ['C-1: No runtime dependencies'],
+          out_of_scope: ['OOS-1: Remote services'],
           open_questions: [],
         },
       }
@@ -635,8 +774,8 @@ function requiredData(
         product_spec: {
           summary: 'A harness',
           user_stories: [{ id: 'US-01', statement: 'Run a workflow' }],
-          constraints: ['No runtime dependencies'],
-          out_of_scope: ['Remote services'],
+          constraints: ['C-1: No runtime dependencies'],
+          out_of_scope: ['OOS-1: Remote services'],
           open_questions: [],
         },
         engineering_plan: {

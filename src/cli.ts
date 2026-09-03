@@ -36,6 +36,15 @@ import {
   pruneBestOfN,
   refreshBestOfNAgents,
 } from './lib/best-of-n.js'
+import {
+  abandonChunk,
+  cleanCohortSession,
+  cohortStatus,
+  initCohortSession,
+  integrateCohort,
+  maybeAutostartCohort,
+  startCohort,
+} from './lib/cohorts.js'
 import { GATE_CACHE_ENV, gateCacheStatus } from './lib/gate-cache.js'
 import { personaExecutorOf } from './lib/executors/mapping.js'
 import {
@@ -195,7 +204,9 @@ import {
 const STANDALONE_MODE_NAMES = Object.keys(STANDALONE_MODES).sort().join('|')
 
 export const HELP_BODY = `Usage:
-  pan init --request <repo-relative-file> [--workflow delivery|prototype|design] [--title <title>] [--workspace <dir> | --worktree <name>] [--gates <file>] [--involvement <profile>] [--verification <level>] [--operator-artifacts]
+  pan init --request <repo-relative-file> [--workflow planning|delivery|prototype|design] [--title <title>] [--workspace <dir> | --worktree <name>] [--gates <file>] [--involvement <profile>] [--verification <level>] [--operator-artifacts] [--context-reference <repo-relative-file>] [--autostart]
+      --context-reference records an audited pointer to wider context every stage reads and never copies, for example the parent specification of one cohort chunk.
+      --autostart applies only to the planning workflow: approving the ratified planning gate starts cohort 1.
   pan prepare <run-id> [--worktree <name>] [--operator-artifacts]
   pan delegate <run-id> [--timeout-ms <milliseconds>]
   pan watch <run-id> [--invocation <invocation-id>] [--cadence-seconds <n>] [--stall-wakes <n>] [--timeout-seconds <n>] [--mark-background] [--agent-state running|completed] [--json]
@@ -266,6 +277,15 @@ export const HELP_BODY = `Usage:
   pan best-of-n consolidate <bon-id> [--json]
   pan best-of-n clean <bon-id> [--force] [--json]
   pan best-of-n prune [--force] [--json]
+  pan cohort init --plan-run <run-id> [--from <branch>] [--json]
+  pan cohort start <cohort-id> [--cohort <index>] [--json]
+      Create one worktree and one delivery run per chunk of the next unsatisfied cohort. It performs no source-control action beyond adding worktrees.
+      --cohort names a cohort explicitly; a cohort whose predecessor is unsatisfied is refused with COHORT_PREDECESSOR_UNSATISFIED.
+  pan cohort status <cohort-id> [--json]
+  pan cohort integrate <cohort-id> [--json]
+      Merge the committed chunk branches of the finished cohort into its base branch and record the satisfaction entry the next cohort needs.
+  pan cohort abandon <cohort-id> --chunk <id> --note <reason> [--json]
+  pan cohort clean <cohort-id> [--force] [--json]
   pan briefs build [--force] [--json]
   pan briefs validate [--json]
   pan briefs render --input <brief-json> --output <brief-html> [--json]
@@ -1046,6 +1066,8 @@ async function main(): Promise<void> {
         involvement: option(args, '--involvement'),
         verification: option(args, '--verification'),
         operatorArtifacts: hasFlag(args, '--operator-artifacts'),
+        contextReferencePath: option(args, '--context-reference'),
+        autostartCohort: hasFlag(args, '--autostart'),
       })
 
       print({
@@ -1060,6 +1082,8 @@ async function main(): Promise<void> {
         applied_gates: state.operator_involvement?.applied_gates ?? {},
         verification_level: state.verification?.level,
         operator_artifacts: state.operator_artifacts,
+        context_reference: state.request.context_reference ?? null,
+        autostart_cohort: state.autostart_cohort ?? false,
         next_command: `${pan} prepare ${state.run_id}`,
         state_path: resolveRunLayout(root, state.run_id).state.relative,
       })
@@ -1205,6 +1229,13 @@ async function main(): Promise<void> {
         option(args, '--note', '') ?? '',
         option(args, '--stage'),
       )
+      // The hook runs after the decision is durable and outside the run mutex,
+      // so cohort run creation takes its own mutexes and a fan-out failure
+      // cannot roll back the recorded approval.
+      const autostart = maybeAutostartCohort(root, state, {
+        actor: 'operator',
+        action: decision,
+      })
 
       print({
         status: state.status,
@@ -1212,6 +1243,7 @@ async function main(): Promise<void> {
         next_stage: state.current_stage,
         operator_revisions: state.operator_revisions ?? {},
         pending_action: state.pending_action,
+        ...(autostart ? { autostart } : {}),
       })
       return
     }
@@ -2372,6 +2404,101 @@ async function main(): Promise<void> {
           code: 'UNKNOWN_COMMAND',
         },
       )
+    }
+    case 'cohort': {
+      const sub = args[0]
+      const rest = args.slice(1)
+      const asJson = hasFlag(args, '--json')
+
+      if (sub === 'init') {
+        const state = initCohortSession(root, {
+          planRunId: requiredArgument(option(args, '--plan-run'), '--plan-run'),
+          from: option(args, '--from'),
+        })
+
+        print(
+          {
+            status: 'created',
+            cohort_id: state.cohort_id,
+            plan_run_id: state.plan_run_id,
+            parent_spec_path: state.parent_spec_path,
+            base_branch: state.base_branch,
+            cohorts: state.cohorts,
+            next_command: `${pan} cohort start ${state.cohort_id}`,
+            state_path: `runtime/logs/cohorts/${state.cohort_id}/state.json`,
+          },
+          asJson,
+        )
+        return
+      }
+
+      if (sub === 'start') {
+        const cohortOption = option(rest, '--cohort')
+        const cohortIndex =
+          cohortOption === null ? undefined : Number(cohortOption)
+
+        if (cohortIndex !== undefined && !Number.isInteger(cohortIndex)) {
+          throw new PanError('--cohort requires an integer cohort index.', {
+            code: 'INVALID_ARGUMENT',
+          })
+        }
+
+        print(
+          {
+            status: 'started',
+            ...startCohort(root, requiredArgument(rest[0], 'cohort-id'), {
+              cohortIndex,
+            }),
+          },
+          asJson,
+        )
+        return
+      }
+
+      if (sub === 'status') {
+        print(
+          cohortStatus(root, requiredArgument(rest[0], 'cohort-id')),
+          asJson,
+        )
+        return
+      }
+
+      if (sub === 'integrate') {
+        print(
+          {
+            status: 'integrated',
+            ...integrateCohort(root, requiredArgument(rest[0], 'cohort-id')),
+          },
+          asJson,
+        )
+        return
+      }
+
+      if (sub === 'abandon') {
+        const state = abandonChunk(
+          root,
+          requiredArgument(rest[0], 'cohort-id'),
+          requiredArgument(option(args, '--chunk'), '--chunk'),
+          requiredArgument(option(args, '--note'), '--note'),
+        )
+
+        print({ status: 'abandoned', chunks: state.chunks }, asJson)
+        return
+      }
+
+      if (sub === 'clean') {
+        print(
+          cleanCohortSession(root, requiredArgument(rest[0], 'cohort-id'), {
+            force: hasFlag(args, '--force'),
+          }),
+          asJson,
+        )
+        return
+      }
+
+      throw new PanError(`Unknown cohort subcommand: ${sub ?? '(missing)'}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
     }
     case 'pr-description': {
       const sub = args[0]

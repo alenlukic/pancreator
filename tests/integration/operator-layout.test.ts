@@ -40,14 +40,17 @@ function listRunFiles(runRootAbsolute: string): string[] {
     .sort()
 }
 
-function prepareFirstStage(root: string): {
+function prepareFirstStage(
+  root: string,
+  involvement: 'standard' | 'technical-director' = 'standard',
+): {
   runId: string
   invocation: Invocation
 } {
   const runId = createRun(root, {
     workflowSlug: 'delivery',
     requestPath: 'request.md',
-    involvement: 'standard',
+    involvement,
     operatorArtifacts: true,
   }).run_id
   const invocation = prepareInvocation(root, runId).invocation
@@ -55,6 +58,21 @@ function prepareFirstStage(root: string): {
   assert.ok(invocation)
 
   return { runId, invocation }
+}
+
+/** Fill and submit the run's current invocation as a success. */
+function submitStage(root: string, runId: string, invocation: Invocation) {
+  const workflow = loadWorkflow(root, 'delivery')
+  const output = makeOutput(
+    root,
+    invocation,
+    stageBySlug(workflow, invocation.stage.slug),
+  )
+
+  writeJson(path.join(root, invocation.output.path), output)
+  writeCanonicalDelegation(root, invocation)
+
+  return submitAsSupervisor(root, runId, invocation.output.path)
 }
 
 test('submit reports the sole operator brief and removes its source', () => {
@@ -150,10 +168,13 @@ test('submit reports the sole operator brief and removes its source', () => {
   assert.ok(stateRevisions.length <= 1)
   assert.deepEqual(nonStateAdditions, [
     `agent/artifacts/json/${invocation.invocation_id}.json`,
+    `agent/evidence/${invocation.invocation_id}-implement.lint.log`,
+    `agent/evidence/${invocation.invocation_id}-implement.unit_tests.log`,
     `agent/validations/${invocation.invocation_id}.attestation-validation.json`,
     `agent/validations/${invocation.invocation_id}.delegation-validation.json`,
+    'agent/validations/DEV-001-implementation-claims-validate-harness.json',
+    'agent/validations/DEV-001-target-instruction-coverage-validate-harness.json',
     'agent/validations/GLOBAL-001-operator-artifact-validate-harness.json',
-    'agent/validations/PLAN-002-plan-trace-validate-harness.json',
     'agent/validations/STE-001-simplified-english-validate-harness.json',
   ])
   assert.ok(filesAfter.includes(`operator/${invocation.invocation_id}.html`))
@@ -222,20 +243,19 @@ test('a default run prepares and submits without any brief file', () => {
 // belongs beside the decision records under agent/decisions/.
 test('operator control records stay out of the operator directory', () => {
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
-  const { runId, invocation } = prepareFirstStage(root)
-  const output = makeOutput(
-    root,
-    invocation,
-    stageBySlug(workflow, invocation.stage.slug),
-  )
+  // The technical-director contract gates verify, which gives the run an
+  // operator gate to reject at.
+  const { runId, invocation } = prepareFirstStage(root, 'technical-director')
 
-  writeJson(path.join(root, invocation.output.path), output)
-  writeCanonicalDelegation(root, invocation)
-  submitAsSupervisor(root, runId, invocation.output.path)
+  submitStage(root, runId, invocation)
 
-  // Rejection feedback at the plan operator gate.
-  decideRun(root, runId, 'reject', 'Re-derive the plan with narrower scope.')
+  const verifyInvocation = prepareInvocation(root, runId).invocation
+
+  assert.ok(verifyInvocation)
+  submitStage(root, runId, verifyInvocation)
+
+  // Rejection feedback at the verify operator gate.
+  decideRun(root, runId, 'reject', 'Re-verify with narrower scope.')
 
   // Stage-repair feedback from an operator-directed stage change.
   setRunStage(root, runId, 'implement', 'Initialize tracked workspace state.')
@@ -281,6 +301,7 @@ test('operator control records stay out of the operator directory', () => {
   }
 
   assert.deepEqual(readdirSync(layout.operator.absolute).sort(), [
+    `${verifyInvocation.invocation_id}.html`,
     `${invocation.invocation_id}.html`,
     'request.md',
   ])

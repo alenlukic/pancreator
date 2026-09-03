@@ -1408,10 +1408,15 @@ export function validateImplementationClaims(
     // Disclosure is owed for what this attempt changed. Existence is checked
     // against the cumulative diff, which still catches a fabricated claim.
     const owedDisclosure = attemptFiles ?? diffFiles
+    // The cumulative diff lists existing files only, so a file this attempt
+    // deleted appears in the attempt delta and nowhere else. It is a real
+    // change the worker must disclose, not a fabricated claim.
+    const knownChange = (file: string): boolean =>
+      diffFiles.includes(file) || owedDisclosure.includes(file)
 
     if (diffFiles.length > 0 && changedFiles.length > 0) {
       for (const file of changedFiles) {
-        if (!diffFiles.includes(file)) {
+        if (!knownChange(file)) {
           issues.push(
             issue(
               'claim.not_in_diff',
@@ -1433,7 +1438,10 @@ export function validateImplementationClaims(
       }
     } else if (changedFiles.length > 0) {
       for (const file of changedFiles) {
-        if (!fileExists(path.join(workspaceRoot, file))) {
+        if (
+          !owedDisclosure.includes(file) &&
+          !fileExists(path.join(workspaceRoot, file))
+        ) {
           issues.push(
             issue(
               'claim.file_missing',

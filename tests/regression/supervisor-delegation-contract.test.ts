@@ -67,8 +67,8 @@ function cardText(root: string, markdownPath: string): string {
  * of its own. These assertions pin the delivery contract to the sibling
  * supervisor procedure document the card names, so compliance never depends
  * on recalling `AGENTS.md` — while the worker-visible card itself carries no
- * workflow lifecycle command. Delivery plan is the first delegated stage, so
- * the run has no supervisor-owned stage to fall back on.
+ * workflow lifecycle command. Delivery implement is the first delegated
+ * stage, so the run has no supervisor-owned stage to fall back on.
  */
 test('worker invocation cards point at the supervisor delivery procedure', () => {
   const root = createFixture()
@@ -82,17 +82,17 @@ test('worker invocation cards point at the supervisor delivery procedure', () =>
     title: 'Delegation contract run',
   }).run_id
 
-  // Plan is the first delegated worker stage, so the contract must already
-  // hold on the very first card the supervisor delivers.
+  // Implement is the first delegated worker stage, so the contract must
+  // already hold on the very first card the supervisor delivers.
   const prepared = prepareInvocation(root, runId)
   const invocation = prepared.invocation
   const delegation = invocation?.delegation
 
   assert.ok(invocation)
-  assert.equal(invocation.stage.slug, 'plan')
-  assert.equal(invocation.stage.persona, 'planner')
+  assert.equal(invocation.stage.slug, 'implement')
+  assert.equal(invocation.stage.persona, 'coder')
   assert.ok(delegation)
-  assert.equal(delegation.cursor_agent_path, '.cursor/agents/pan-planner.md')
+  assert.equal(delegation.cursor_agent_path, '.cursor/agents/pan-coder.md')
 
   const markdown = cardText(
     root,

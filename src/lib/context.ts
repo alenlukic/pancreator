@@ -1,13 +1,24 @@
 import path from 'node:path'
 
+import { invariant } from './errors.js'
 import { snapshotEntryPath } from './git.js'
-import { isRecord, readJson, resolveInside, writeJsonAtomic } from './io.js'
+import {
+  fileExists,
+  isRecord,
+  readJson,
+  readText,
+  resolveInside,
+  sha256,
+  writeJsonAtomic,
+} from './io.js'
 import { isSelfDevelopmentInstallation } from './project-config.js'
 import { repositoryCheckProfileName } from './repository-checks.js'
 import { resolveRunLayout } from './run-layout.js'
 import { resolveTargetInstructionPaths } from './target-instructions.js'
 import { activeOperatorGateWaivers } from './waivers.js'
 import type {
+  ContextReference,
+  ContextReferenceStatus,
   Invocation,
   InvocationReference,
   InvocationReferenceRetrieval,
@@ -56,6 +67,89 @@ function normalizedRetrieval(
   reference: InvocationReference,
 ): InvocationReferenceRetrieval {
   return reference.retrieval ?? 'required'
+}
+
+export const DEFAULT_CONTEXT_REFERENCE_READ_TRIGGER =
+  'Read this source before you decide anything that depends on scope outside your own work unit.'
+
+/**
+ * Build an audited pointer to one harness-relative document.
+ *
+ * The digest covers the trimmed file, which is the basis `GUIDANCE_DIGEST_BASIS`
+ * states, so a reader who recomputes it from the same rule gets the same value.
+ */
+export function buildContextReference(
+  root: string,
+  relativePath: string,
+  readTrigger: string = DEFAULT_CONTEXT_REFERENCE_READ_TRIGGER,
+): ContextReference {
+  const absolute = resolveInside(root, relativePath)
+
+  invariant(
+    fileExists(absolute),
+    `Context reference source does not exist: ${relativePath}`,
+    { code: 'CONTEXT_REFERENCE_NOT_FOUND', details: { path: relativePath } },
+  )
+
+  const selected = readText(absolute).trim()
+
+  return {
+    source_path: relativePath,
+    content_sha256: sha256(selected),
+    line_count: selected.split('\n').length,
+    byte_length: Buffer.byteLength(selected, 'utf8'),
+    read_trigger: readTrigger,
+  }
+}
+
+/**
+ * Compare a recorded context reference with the source on disk.
+ *
+ * Drift is reported rather than repaired. A silently refreshed digest would
+ * hide an edit the run never read, and a hard failure would strand a run whose
+ * parent specification gained an unrelated correction.
+ */
+export function contextReferenceStatus(
+  root: string,
+  reference: ContextReference,
+): ContextReferenceStatus {
+  return inspectContextReference(root, reference).status
+}
+
+export interface ContextReferenceInspection {
+  status: ContextReferenceStatus
+  /** Digest of the source on disk. Absent when the source is missing. */
+  actual_content_sha256?: string
+}
+
+/**
+ * Read the source a context reference points at and report how it compares
+ * with the recorded digest. The actual digest travels with a drift report so
+ * the card can print both values and a reader can tell an edit from a
+ * substituted file.
+ */
+export function inspectContextReference(
+  root: string,
+  reference: ContextReference,
+): ContextReferenceInspection {
+  let absolute: string
+
+  try {
+    absolute = resolveInside(root, reference.source_path)
+  } catch {
+    return { status: 'missing' }
+  }
+
+  if (!fileExists(absolute)) {
+    return { status: 'missing' }
+  }
+
+  const actual = sha256(readText(absolute).trim())
+
+  return {
+    status: actual === reference.content_sha256 ? 'current' : 'drifted',
+    actual_content_sha256: actual,
+  }
 }
 
 function addReference(
@@ -622,8 +716,15 @@ function targetInstructionInput(
 
   const sourceStage =
     state.workflow_slug === 'metacritic' ? 'consolidate' : 'implement'
+  // An editing stage reads the paths the plan declared, when the run holds a
+  // plan stage, and the paths an earlier implement attempt already changed.
+  // A delivery run starts at implement and holds no plan output, so its
+  // remediate stage learns its scope from the implement output alone.
   const declared = editingStages.includes(stage.slug)
-    ? outputChangedPaths(root, state, 'plan')
+    ? [
+        ...outputChangedPaths(root, state, 'plan'),
+        ...outputChangedPaths(root, state, sourceStage),
+      ]
     : outputChangedPaths(root, state, sourceStage)
   const current = editingStages.includes(stage.slug)
     ? []
@@ -815,6 +916,26 @@ export function buildInvocationInputs(
     })
   }
 
+  // The wider context stays a required read for every stage, independent of
+  // `context.request`. A stage that reads a child specification without the
+  // parent decides cross-unit questions on partial scope.
+  const contextReference = state.request.context_reference
+  const contextReferenceInspection = contextReference
+    ? inspectContextReference(options.root, contextReference)
+    : undefined
+
+  if (contextReference && contextReferenceInspection) {
+    addReference(references, {
+      path: contextReference.source_path,
+      description: 'Parent context this work unit reads by reference',
+      retrieval: 'required',
+    })
+
+    if (contextReferenceInspection.status === 'missing') {
+      missingRequired.push(contextReference.source_path)
+    }
+  }
+
   selectStageOutputs(
     references,
     missingRequired,
@@ -919,5 +1040,20 @@ export function buildInvocationInputs(
       : {}),
     ...(targetInstructions ? { target_instructions: targetInstructions } : {}),
     ...(options.prDescription ? { pr_description: options.prDescription } : {}),
+    ...(contextReference && contextReferenceInspection
+      ? {
+          context_reference: {
+            ...contextReference,
+            reference_status: contextReferenceInspection.status,
+            ...(contextReferenceInspection.status === 'drifted' &&
+            contextReferenceInspection.actual_content_sha256
+              ? {
+                  actual_content_sha256:
+                    contextReferenceInspection.actual_content_sha256,
+                }
+              : {}),
+          },
+        }
+      : {}),
   }
 }

@@ -120,6 +120,8 @@ export function registryStageSlug(registryId: string): string | null {
   const mapping: Record<string, string> = {
     'INTAKE-VALIDATE-001': 'intake',
     'PLAN-TRACE-VALIDATE-001': 'plan',
+    'COHORT-PLAN-VALIDATE-001': 'plan',
+    'CHILD-SPEC-VALIDATE-001': 'plan',
     'IMPLEMENTATION-CLAIMS-VALIDATE-001': 'implement',
     'REVIEW-VALIDATE-001': 'review',
     'QA-VALIDATE-001': 'test',

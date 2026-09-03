@@ -4,7 +4,10 @@ import {
   renderSuiteProfileStatusLine,
 } from './suite-profile.js'
 import { sha256 } from './io.js'
-import { renderPolicyBlocks } from './policy-guidance.js'
+import {
+  renderContextReferenceBlock,
+  renderPolicyBlocks,
+} from './policy-guidance.js'
 import type {
   Invocation,
   InvocationContractGuidance,
@@ -554,6 +557,15 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
   const conditionalReferences = referenceLines('conditional')
   const indexReferences = referenceLines('index_only')
   const missingRequired = invocation.inputs.missing_required ?? []
+  const contextReference = invocation.inputs.context_reference
+  const contextReferenceLines = contextReference
+    ? renderContextReferenceBlock(
+        3,
+        contextReference,
+        contextReference.reference_status,
+        contextReference.actual_content_sha256,
+      ).slice(1)
+    : []
   const policies = renderPolicyBlocks(invocation.policies, 3)
   const requirements = invocation.requirements
     ? [
@@ -896,6 +908,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
           '',
         ]
       : []),
+    ...(contextReferenceLines.length > 0 ? [...contextReferenceLines, ''] : []),
     ...(conditionalReferences.length > 0
       ? ['### Conditional references', '', ...conditionalReferences, '']
       : []),

@@ -518,6 +518,12 @@
       "policies": ["PLAN-002"]
     },
     {
+      "persona": "planner",
+      "workflow": "planning",
+      "stage": "plan",
+      "policies": ["PLAN-002", "CONTRACT-001", "ENG-001", "COHORT-001"]
+    },
+    {
       "persona": "coder",
       "workflow": "delivery",
       "stage": "implement",

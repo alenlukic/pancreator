@@ -54,6 +54,8 @@ The operator owns approvals, waivers, stage changes, pauses, and irreversible de
 
 Do not run concurrent mutating workflows against one workspace. Pancreator enforces this rule through governance, not persistent locks.
 
+Cohort fan-out satisfies that rule through worktree isolation. `pan cohort start` gives each chunk run its own worktree, so no two concurrent chunk runs share one workspace root.
+
 ## Governance and projections
 
 Normative behavior belongs in policy JSON. Role judgment belongs in personas. Task procedure belongs in stage prompts or referenced skills.

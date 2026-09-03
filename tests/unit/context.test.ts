@@ -240,10 +240,15 @@ test('ship context selects effective records and indexes superseded history', ()
   })
   const byPath = new Map(inputs.references.map((item) => [item.path, item]))
 
-  for (const item of [planCurrent, implementCurrent, verifyCurrent]) {
+  for (const item of [implementCurrent, verifyCurrent]) {
     assert.equal(byPath.get(item.output_path)?.retrieval, 'required')
     assert.equal(byPath.get(item.record_path ?? '')?.retrieval, 'conditional')
   }
+
+  // Delivery declares no plan stage, so a plan output in the history (for
+  // example from a run repaired across the graph change) is superseded
+  // history, not ship context.
+  assert.equal(byPath.has(planCurrent.output_path), false)
 
   // Remediation is declared conditional ship context, not required reading.
   assert.equal(
@@ -255,7 +260,9 @@ test('ship context selects effective records and indexes superseded history', ()
     assert.equal(byPath.has(item.output_path), false)
   }
 
-  assert.equal(byPath.get(state.request.stored_path)?.retrieval, 'conditional')
+  // Ship reads the ratified child specification as this run's request, so the
+  // request arrives as a required reference rather than a conditional one.
+  assert.equal(byPath.get(state.request.stored_path)?.retrieval, 'required')
   assert.equal(
     byPath.get(
       'runtime/logs/workflows/run/artifacts/markdown/feedback-current.md',
@@ -374,12 +381,13 @@ test('missing required stage outputs are explicit instead of triggering broad sc
   })
 
   assert.deepEqual(inputs.missing_required, [
-    "latest success output for stage 'plan'",
     "latest output for stage 'implement'",
   ])
+  // Verify reads the ratified specification as the run's request.
   assert.equal(
-    inputs.references.some((item) => item.path === state.request.stored_path),
-    false,
+    inputs.references.find((item) => item.path === state.request.stored_path)
+      ?.retrieval,
+    'required',
   )
   assert.equal(
     inputs.references.some((item) => item.retrieval === 'index_only'),

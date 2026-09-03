@@ -40,35 +40,34 @@ test('ship reject with --stage routes to the chosen stage and resets attempts', 
     root,
     runId,
     'reject',
-    'Architecture is wrong; replan.',
-    'plan',
+    'Architecture is wrong; reimplement.',
+    'implement',
   )
 
   assert.equal(decided.status, 'running')
-  assert.equal(decided.current_stage, 'plan')
-  assert.equal(decided.attempts.plan, undefined)
+  assert.equal(decided.current_stage, 'implement')
   assert.equal(decided.attempts.implement, undefined)
   assert.equal(decided.attempts.ship, undefined)
   assert.equal(decided.consecutive_failures, 0)
 
   assert.ok(decided.operator_feedback)
   const feedback = decided.operator_feedback?.find(
-    (item) => item.decision === 'reject' && item.to_stage === 'plan',
+    (item) => item.decision === 'reject' && item.to_stage === 'implement',
   )
 
   assert.ok(feedback)
   assert.equal(feedback.from_stage, 'ship')
-  assert.equal(feedback.to_stage, 'plan')
+  assert.equal(feedback.to_stage, 'implement')
   assert.ok(existsSync(path.join(root, feedback.path)))
 
   const feedbackBody = readFileSync(path.join(root, feedback.path), 'utf8')
 
-  assert.match(feedbackBody, /Architecture is wrong; replan/u)
+  assert.match(feedbackBody, /Architecture is wrong; reimplement/u)
 
   const prepared = prepareInvocation(root, runId)
 
   assert.ok(prepared.invocation)
-  assert.equal(prepared.invocation.stage.slug, 'plan')
+  assert.equal(prepared.invocation.stage.slug, 'implement')
   assert.ok(
     prepared.invocation.inputs.references.some(
       (reference) => reference.path === feedback.path,

@@ -157,10 +157,12 @@ test('gate overrides replace and disable deterministic shell gates', () => {
 test('scope guard catches edits inside the targeted nested repo during a non-source stage', () => {
   const root = createFixture()
   const repo = makeNestedRepo(root, 'nested/project')
-  const workflow = loadWorkflow(root, 'delivery')
+  // Planning owns the plan stage, the runtime-only stage a scope guard must
+  // catch source edits during.
+  const workflow = loadWorkflow(root, 'planning')
 
   const state = createRun(root, {
-    workflowSlug: 'delivery',
+    workflowSlug: 'planning',
     requestPath: 'request.md',
     title: 'Scope guard run',
     workspace: 'nested/project',

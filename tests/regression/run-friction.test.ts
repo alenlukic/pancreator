@@ -73,7 +73,7 @@ function editPersonaMappings(
 }
 
 test('an unrecognized criterion verdict is reported, not silently failed', () => {
-  const workflow = loadWorkflow(REPO_ROOT, 'delivery')
+  const workflow = loadWorkflow(REPO_ROOT, 'planning')
   const stage = stageBySlug(workflow, 'plan')
   const scope = {
     persona: stage.persona,
@@ -442,7 +442,12 @@ test('an unsubmitted invocation does not consume a stage attempt', () => {
 
   // Supersede the prepared card without submitting it, as an operator pause and
   // re-prepare does. The discarded card performed no work.
-  setRunStage(root, runId, 'plan', 'Re-prepare plan after a config change.')
+  setRunStage(
+    root,
+    runId,
+    'implement',
+    'Re-prepare implement after a config change.',
+  )
 
   const second = prepareInvocation(root, runId).invocation
 
@@ -473,7 +478,7 @@ test('a persona mapping the run never resolves is not pipeline config drift', ()
   const prepared = prepareInvocation(root, additive.run_id).invocation
 
   assert.ok(prepared)
-  assert.equal(prepared.stage.slug, 'plan')
+  assert.equal(prepared.stage.slug, 'implement')
 
   editPersonaMappings(root, (defaults) => {
     defaults.coder = 'gpt-5.4'

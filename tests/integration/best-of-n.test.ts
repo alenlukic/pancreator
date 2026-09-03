@@ -15,7 +15,12 @@ import {
 import { getRunState, prepareInvocation } from '../../src/lib/engine.js'
 import { withOperationMutex } from '../../src/lib/io.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
-import { attestRunCard, createFixture, writeJson } from '../helpers.js'
+import {
+  attestRunCard,
+  createFixture,
+  pinFixturePersonaModel,
+  writeJson,
+} from '../helpers.js'
 
 import {
   CONFIGS,
@@ -141,6 +146,11 @@ test('a session recovers from a mutex its dead owner left behind', () => {
 
 test('best-of-N init isolates every candidate in its own worktree and model set', () => {
   const root = createFixture()
+
+  // The base coder mapping must differ from both candidate models whatever
+  // this checkout's config_overrides.json maps for it.
+  pinFixturePersonaModel(root, 'coder', 'gpt-5.6-sol')
+
   const session = initSession(root, true)
 
   assert.equal(session.candidates.length, 2)
@@ -187,10 +197,13 @@ test('best-of-N init isolates every candidate in its own worktree and model set'
   }
 
   // Base agents keep the active mapping, so an ordinary run is unaffected.
-  assert.doesNotMatch(
-    readFileSync(path.join(root, '.cursor/agents/pan-coder.md'), 'utf8'),
-    /gpt-5\.4|claude-opus-5/u,
+  const baseAgent = readFileSync(
+    path.join(root, '.cursor/agents/pan-coder.md'),
+    'utf8',
   )
+
+  assert.match(baseAgent, /^model: gpt-5\.6-sol$/mu)
+  assert.doesNotMatch(baseAgent, /gpt-5\.4|claude-opus-5/u)
 
   const candidate = session.candidates[0]
 

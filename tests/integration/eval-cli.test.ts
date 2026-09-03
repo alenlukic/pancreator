@@ -4,7 +4,7 @@ import { cpSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import { decideRun, prepareInvocation } from '../../src/lib/engine.js'
+import { prepareInvocation } from '../../src/lib/engine.js'
 import type { EvalReport } from '../../src/lib/evals/index.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
@@ -22,6 +22,13 @@ const CLI = path.join(REPO_ROOT, 'dist', 'src', 'cli.js')
 function withEvals(root: string): void {
   cpSync(path.join(REPO_ROOT, 'evals'), path.join(root, 'evals'), {
     recursive: true,
+  })
+  // A delivery run starts at implement, whose target-instruction coverage
+  // check reads the cumulative workspace diff, so the copied scenario tree
+  // joins the fixture baseline instead of appearing as untracked work.
+  execFileSync('git', ['add', 'evals'], { cwd: root })
+  execFileSync('git', ['commit', '-q', '--amend', '-m', 'fixture'], {
+    cwd: root,
   })
 }
 
@@ -71,20 +78,26 @@ test('pan eval grade grades a fixture run against a scenario and writes a report
 
   assert.ok(invocation)
 
-  const output = makeOutput(root, invocation, stageBySlug(workflow, 'plan'))
+  const output = makeOutput(
+    root,
+    invocation,
+    stageBySlug(workflow, 'implement'),
+    'success',
+    state,
+  )
 
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)
   submitAsSupervisor(root, state.run_id, invocation.output.path)
-  decideRun(root, state.run_id, 'approve')
 
-  // A scenario that expects exactly this open state: plan approved, implement next.
+  // A scenario that expects exactly this open state: implement succeeded,
+  // verify next.
   writeFileSync(
-    path.join(root, 'evals', 'scenarios', 'fixture-plan-approved.json'),
+    path.join(root, 'evals', 'scenarios', 'fixture-implement-submitted.json'),
     JSON.stringify({
       schema_version: 1,
-      name: 'fixture-plan-approved',
-      description: 'Fixture run after plan approval.',
+      name: 'fixture-implement-submitted',
+      description: 'Fixture run after the implement submission.',
       policy_instructions: [
         {
           policy_id: 'ORCH-001',
@@ -98,9 +111,9 @@ test('pan eval grade grades a fixture run against a scenario and writes a report
       verification: 'light',
       expected: {
         status: 'running',
-        current_stage: 'implement',
+        current_stage: 'verify',
         pending_action: 'prepare_invocation',
-        stage_sequence: [{ stage: 'plan', outcome: 'success' }],
+        stage_sequence: [{ stage: 'implement', outcome: 'success' }],
       },
       graders: [
         { id: 'stage-order-and-terminal-state' },
@@ -122,7 +135,7 @@ test('pan eval grade grades a fixture run against a scenario and writes a report
     'grade',
     state.run_id,
     '--scenario',
-    'fixture-plan-approved',
+    'fixture-implement-submitted',
     '--out',
     'runtime/logs/evals/manual',
     '--json',
@@ -215,19 +228,19 @@ test('pan eval run materializes the toy workspace, creates the run, and hands of
     report_paths: { json_path: string; markdown_path: string }
   }
 
-  // The fixture maps every persona to Cursor, so the driver prepares the plan
-  // card and stops instead of pretending to be the supervisor.
+  // The fixture maps every persona to Cursor, so the driver prepares the
+  // implement card and stops instead of pretending to be the supervisor.
   assert.equal(run.status, 'handoff')
   assert.match(
     run.handoff_reason ?? '',
-    /persona 'planner' maps to the cursor executor/u,
+    /persona 'coder' maps to the cursor executor/u,
   )
   assert.ok(
     run.operator_steps.some((step) =>
       step.includes(`/pan-resume ${run.run_id}`),
     ),
   )
-  assert.ok(run.operator_steps.some((step) => step.includes('plan -> approve')))
+  assert.ok(run.operator_steps.some((step) => step.includes('ship -> approve')))
 
   // The toy fixture, not the harness tree, is the run's workspace.
   assert.equal(run.workspace, `${run.eval_dir}/workspace`)

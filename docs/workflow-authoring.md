@@ -100,7 +100,7 @@ mapping before resuming the run.
 
 - `checkpoint` - optional role this stage plays for run contracts, one of
   `technical_plan` or `independent_review`. Contracts attach by role rather than
-  by stage slug, so the same contract applies unchanged to `delivery/plan`,
+  by stage slug, so the same contract applies unchanged to `planning/plan`,
   `prototype/approach`, and `design/review`. At most one stage per workflow may
   declare a given checkpoint.
 - `context` - the deterministic stage-scoped input projection:
@@ -143,11 +143,12 @@ mapping before resuming the run.
 
 ## Shipped workflows
 
-- `delivery` - production-ready delivery: consolidated plan (specification,
-  engineering plan, acceptance criteria, test plan), implement, joint verify
-  with parallel review and QA evidence workers and a graded verdict,
-  verdict-routed remediate, and ship. `delivery-candidate` is the autonomous
-  best-of-N variant without ship.
+- `delivery` - production-ready delivery of one ratified specification:
+  implement, joint verify with parallel review and QA evidence workers and a
+  graded verdict, verdict-routed remediate, and ship. The run starts at
+  `implement` and reads its request, normally a child specification the
+  `planning` workflow ratified, as the plan. `delivery-candidate` is the
+  autonomous best-of-N variant; it keeps its own `plan` stage and omits ship.
 - `prototype` - a fast spike that answers a technical question: intake,
   approach, build, evaluate. It applies `PROTO-001`, keeps the approach stage
   deliberately thin and ungated, gates only the `static` repository-check
@@ -155,6 +156,24 @@ mapping before resuming the run.
   validation rejects any other hard shell gate in this workflow, because a hard
   full-suite gate would reintroduce the cost the workflow exists to avoid.
 - `design` - UI/UX predecessor that hands off to a separately started `delivery` run.
+- `planning` - planning on its own: one `plan` stage owned by the `planner`
+  persona, behind one operator gate that records the `technical_plan`
+  checkpoint. It keeps the `runtime_only` workspace policy, hard criteria
+  ids, and required data contract of the plan stage that `delivery` held
+  before the split, so a contract that attaches by criterion id keeps
+  attaching. It adds the `cohort_plan` data
+  contract and resolves `PLAN-002` and `COHORT-001` through the policy lookup
+  table rather than through prompt text. Ratifying its artifact produces a
+  parent specification, one child specification per chunk, and the cohort plan
+  the `pan cohort` lifecycle fans out: `cohort init` opens the session,
+  `cohort start` creates one `delivery` run per chunk of the active cohort,
+  and `cohort integrate` merges the finished chunk branches and records the
+  satisfaction entry that unblocks the next cohort. `pan init --autostart`
+  on a planning run makes the approval of its plan gate open the session and
+  start cohort 1. A run created before this workflow existed keeps its own
+  snapshotted graph and needs no migration; a new `planning` run from the
+  same request is how in-flight planning work reaches the cohort lifecycle.
+  See the operator guide for the full lifecycle.
 
 ## Operator involvement profiles
 

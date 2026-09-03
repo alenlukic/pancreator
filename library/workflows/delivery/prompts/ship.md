@@ -1,7 +1,8 @@
 ## Objective
 
-Prepare an operator-readable release packet from the ratified plan,
-implementation, joint verification evidence, and current workspace.
+Prepare an operator-readable release packet from the ratified plan (the
+specification this run received as its request), implementation, joint
+verification evidence, and current workspace.
 
 ## Steps
 

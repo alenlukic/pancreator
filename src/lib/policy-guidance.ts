@@ -1,4 +1,6 @@
 import type {
+  ContextReference,
+  ContextReferenceStatus,
   Policy,
   PolicyGuidance,
   PolicyGuidanceReference,
@@ -99,6 +101,75 @@ export function renderGuidanceBlock(
     `- Content digest: \`${guidanceDigestToken(reference)}\` — ` +
       `${reference.line_count} lines, ${reference.byte_length} bytes.`,
     `- Digest basis: ${GUIDANCE_DIGEST_BASIS}`,
+  ]
+}
+
+export function contextReferenceDigestToken(
+  reference: ContextReference,
+): string {
+  return `sha256:${reference.content_sha256}`
+}
+
+/**
+ * Render one context reference in the guidance-reference shape.
+ *
+ * A context reference points at a document the run must read and never copies,
+ * so the block carries the source path, the digest of the exact selected bytes,
+ * the basis a reader recomputes the digest from, and the condition that makes
+ * the document apply. `status` reports drift the harness already detected, so a
+ * reader meets a stale parent as a stated fact rather than as a silent
+ * mismatch.
+ */
+export function renderContextReferenceBlock(
+  level: GuidanceHeadingLevel,
+  reference: ContextReference,
+  status?: ContextReferenceStatus,
+  actualContentSha256?: string,
+): string[] {
+  return [
+    '',
+    `${'#'.repeat(level)} Context reference · \`${reference.source_path}\``,
+    '',
+    `- Read when: ${reference.read_trigger}`,
+    '- Selected range: the complete file.',
+    `- Content digest: \`${contextReferenceDigestToken(reference)}\` — ` +
+      `${reference.line_count} lines, ${reference.byte_length} bytes.`,
+    `- Digest basis: ${GUIDANCE_DIGEST_BASIS}`,
+    ...(status ? [`- Reference status: ${status}.`] : []),
+    ...(status && status !== 'current'
+      ? renderContextReferenceFailure(reference, status, actualContentSha256)
+      : []),
+  ]
+}
+
+/**
+ * Reference-failure block for a drifted or missing context reference.
+ *
+ * The worker cannot attest a read against the recorded digest, because the
+ * recorded bytes no longer exist on disk and the harness keeps no copy of a
+ * context reference. The block names both digests so the operator can tell an
+ * edit from a substituted file, and it states the only attestation submission
+ * accepts.
+ */
+function renderContextReferenceFailure(
+  reference: ContextReference,
+  status: Exclude<ContextReferenceStatus, 'current'>,
+  actualContentSha256?: string,
+): string[] {
+  const recorded = contextReferenceDigestToken(reference)
+  const actual = actualContentSha256
+    ? `\`sha256:${actualContentSha256}\``
+    : 'unavailable, because the source is absent'
+
+  return [
+    '',
+    `**Reference failure · ${status}.** ` +
+      (status === 'drifted'
+        ? `The source no longer matches the recorded digest. Recorded digest: \`${recorded}\`. Actual digest: ${actual}.`
+        : `The source does not exist at \`${reference.source_path}\`. Recorded digest: \`${recorded}\`.`),
+    '',
+    'Do not attest this reference as `read`. Set its `invocation_attestation.context_references[]` entry to `reference_failed`, ' +
+      'put both digests in `error`, and set the stage `result` to `blocked`. The operator re-plans or re-issues the cohort.',
   ]
 }
 

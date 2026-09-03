@@ -8,8 +8,10 @@ and model; the verdict's evidence is your primary input.
 
 1. Read the verify output first: the verdict, every blocking finding, every
    failed acceptance criterion or QA case, and the remediation guidance.
-2. Read the ratified plan. Read the implementation record only when the verify
-   evidence does not explain the workspace you find.
+2. Read the ratified plan, which the card delivers as this run's request: the
+   child specification, with the parent specification reachable through its
+   audited context reference. Read the implementation record only when the
+   verify evidence does not explain the workspace you find.
 3. Reproduce each failure before changing anything. A failure you cannot
    reproduce is a finding to dispute with evidence, not to patch blindly.
 4. Repair each failure within the ratified plan's scope. Fix causes, not

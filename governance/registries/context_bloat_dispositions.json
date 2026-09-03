@@ -29,6 +29,20 @@
       ]
     },
     {
+      "id": "planner-and-standalone-chunking",
+      "category": "duplicate",
+      "sources": [
+        "governance/policies/PLAN-002.json",
+        "governance/policies/DECOMP-001.json"
+      ],
+      "disposition": "retain",
+      "rationale": "The operator kept both chunking surfaces. The planner carves ratified scope inside one gate, and the standalone decomposition mode assesses an unratified intake, so each surface needs its own independence and economics rules bound to its own context.",
+      "evidence": [
+        "tests/unit/cohort-plan-validator.test.ts: planner chunking rules are enforced against the planning stage output",
+        "tests/integration/planning-workflow.test.ts: the planning stage resolves PLAN-002 and COHORT-001 while the standalone decomposition mode stays bound to DECOMP-001"
+      ]
+    },
+    {
       "id": "reviewer-hard-evidence-boundary",
       "category": "duplicate",
       "sources": [

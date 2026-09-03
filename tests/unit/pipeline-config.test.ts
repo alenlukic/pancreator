@@ -10,11 +10,19 @@ import {
   resolvePersonaModel,
   type PipelineConfigSnapshot,
 } from '../../src/lib/pipeline-config.js'
-import { createFixture } from '../helpers.js'
+import { createFixture, pinFixturePersonaModel } from '../helpers.js'
 
 test('config_overrides.json preferences override the checked-in pipeline config', () => {
   const root = createFixture()
+
+  // A named-config mapping shadows a defaults override, so the orchestrator
+  // must resolve from defaults whatever this checkout's config_overrides.json
+  // maps for it.
+  pinFixturePersonaModel(root, 'orchestrator', 'gpt-5.6-sol')
+
   const base = loadPipelineConfig(root)
+
+  assert.equal(base.config.personas.orchestrator, 'gpt-5.6-sol')
 
   writeFileSync(
     path.join(root, 'config_overrides.json'),

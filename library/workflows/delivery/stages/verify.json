@@ -19,12 +19,8 @@
   "gate": "stage_verdict",
   "checkpoint": "independent_review",
   "context": {
-    "request": "omit",
+    "request": "required",
     "required_stage_outputs": [
-      {
-        "stage": "plan",
-        "selection": "latest_success"
-      },
       {
         "stage": "implement",
         "selection": "latest"

@@ -107,7 +107,7 @@ test('the standard profile leaves every workflow-declared gate untouched', () =>
 
   const workflow = runWorkflow(root, state.run_id)
 
-  assert.equal(stageBySlug(workflow, 'plan').gate, 'operator')
+  assert.equal(stageBySlug(workflow, 'ship').gate, 'operator')
   assert.equal(stageBySlug(workflow, 'verify').gate, 'stage_verdict')
 
   const invocation = prepareInvocation(root, state.run_id).invocation
@@ -130,8 +130,10 @@ test('an involvement profile rewrites gates in the run snapshot only', () => {
     },
   })
 
+  // The plan gate lives in the planning workflow, so the profile is applied
+  // to a planning run.
   const state = createRun(root, {
-    workflowSlug: 'delivery',
+    workflowSlug: 'planning',
     requestPath: 'request.md',
     title: 'Hands-off run',
     involvement: 'hands-off',
@@ -240,9 +242,9 @@ test('the technical_director contract escalates checkpoints and loads DIRECTOR-0
   assert.deepEqual(state.operator_involvement?.contracts, [
     'technical_director',
   ])
-  // Escalation attaches by checkpoint role, not by stage slug. The plan already
+  // Escalation attaches by checkpoint role, not by stage slug. Ship already
   // stops for the operator, so the contract records only the verify escalation.
-  assert.equal(stageBySlug(workflow, 'plan').gate, 'operator')
+  assert.equal(stageBySlug(workflow, 'ship').gate, 'operator')
   assert.equal(stageBySlug(workflow, 'verify').gate, 'operator')
   assert.equal(
     state.operator_involvement?.applied_gates.verify?.source,
@@ -274,7 +276,7 @@ test('the technical_director contract escalates checkpoints and loads DIRECTOR-0
 
 test('an operator gate under the contract records its checkpoint', () => {
   // Plan stops at the technical_plan checkpoint the contract watches.
-  const plan = checkpoint('delivery[td]@plan-submitted')
+  const plan = checkpoint('planning[td]@plan-submitted')
 
   assert.equal(plan.state.status, 'awaiting_operator')
   assert.equal(
@@ -372,7 +374,12 @@ test('gates resolve by ascending specificity', () => {
     profiles: {
       specificity: {
         summary: 'Exercise every layer of gate resolution.',
-        gates: { '*': 'stage_verdict', ship: 'operator', plan: 'supervisor' },
+        gates: { '*': 'stage_verdict', ship: 'operator' },
+        contracts: ['technical_director'],
+      },
+      'planning-specificity': {
+        summary: 'An explicit stage override against the contract.',
+        gates: { plan: 'supervisor' },
         contracts: ['technical_director'],
       },
     },
@@ -389,8 +396,20 @@ test('gates resolve by ascending specificity', () => {
   assert.equal(stageBySlug(workflow, 'implement').gate, 'stage_verdict')
   // verify: the contract escalation outranks the wildcard.
   assert.equal(stageBySlug(workflow, 'verify').gate, 'operator')
-  // plan: an explicit per-stage override outranks the contract.
-  assert.equal(stageBySlug(workflow, 'plan').gate, 'supervisor')
   // ship: explicitly held at its declared gate.
   assert.equal(stageBySlug(workflow, 'ship').gate, 'operator')
+
+  // plan: an explicit per-stage override outranks the contract, which would
+  // otherwise hold the technical_plan checkpoint at an operator gate.
+  const planning = createRun(root, {
+    workflowSlug: 'planning',
+    requestPath: 'request.md',
+    title: 'Planning specificity run',
+    involvement: 'planning-specificity',
+  })
+
+  assert.equal(
+    stageBySlug(runWorkflow(root, planning.run_id), 'plan').gate,
+    'supervisor',
+  )
 })

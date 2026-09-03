@@ -338,6 +338,23 @@ export interface PolicyGuidance {
   reference?: PolicyGuidanceReference
 }
 
+/**
+ * An audited pointer to a document a run must read but never copies. It shares
+ * the guidance-reference shape and digest basis, so a card can print it in the
+ * same block and a stage output can attest it the same way. Cohort fan-out uses
+ * it to hand every child run the same parent specification.
+ */
+export interface ContextReference {
+  source_path: string
+  content_sha256: string
+  line_count: number
+  byte_length: number
+  /** Imperative condition that tells the reader when to open the source. */
+  read_trigger: string
+}
+
+export type ContextReferenceStatus = 'current' | 'drifted' | 'missing'
+
 export interface PrDescriptionAuthority {
   template_path?: string
   instruction_paths?: string[]
@@ -731,6 +748,17 @@ export interface GuidanceAttestationEntry {
   error?: string
 }
 
+/** What a worker did with one context reference the invocation carried. */
+export interface ContextReferenceAttestationEntry {
+  source_path: string
+  content_sha256: string
+  status: GuidanceAttestationStatus
+  /** Why the read trigger did not apply. Required when status is skipped. */
+  reason?: string
+  /** Concrete read error. Required when status is reference_failed. */
+  error?: string
+}
+
 /**
  * A worker's declaration that it read the complete referenced contract. The
  * declaration is the only observable a harness has: it cannot inspect the model
@@ -756,6 +784,7 @@ export type InvocationAttestation =
       status: 'pending' | 'read'
       sections?: InvocationAttestationSection[]
       guidance?: GuidanceAttestationEntry[]
+      context_references?: ContextReferenceAttestationEntry[]
     }
   | {
       invocation_id: string
@@ -922,6 +951,20 @@ export interface Invocation {
     missing_required?: string[]
     target_instructions?: TargetInstructionInput
     pr_description?: PrDescriptionContext
+    /**
+     * Wider context this run reads by reference. `reference_status` is
+     * computed at preparation, so a drifted or missing source is stated on the
+     * card instead of discovered by the worker.
+     */
+    context_reference?: ContextReference & {
+      reference_status: ContextReferenceStatus
+      /**
+       * Digest of the source as it stands on disk at preparation. Present only
+       * when the source drifted, so the card and the submission check can
+       * name both digests instead of one.
+       */
+      actual_content_sha256?: string
+    }
   }
   /**
    * Parallel evidence workers resolved for this attempt. The supervisor
@@ -1454,6 +1497,67 @@ export interface BestOfNRunRole {
   slot: string
 }
 
+/** Membership of one cohort fan-out, recorded on the chunk's delivery run. */
+export interface CohortRunBinding {
+  cohort_id: string
+  /** 1-based index of the cohort this chunk belongs to. */
+  cohort_index: number
+  chunk: string
+}
+
+/** One unit of ratified work a single delivery run owns. */
+export interface CohortChunkRecord {
+  id: string
+  title: string
+  cohort_index: number
+  child_spec_path: string
+  depends_on: string[]
+  worktree?: string
+  branch?: string
+  run_id?: string
+  /** Operator note recorded when a chunk is abandoned. */
+  abandoned?: {
+    note: string
+    recorded_at: string
+  }
+}
+
+export interface CohortDependencyEdge {
+  from: string
+  to: string
+}
+
+export interface CohortGroupRecord {
+  index: number
+  chunks: string[]
+}
+
+/**
+ * Proof that one cohort finished and merged. `integrateCohort` is the only
+ * writer, so a later cohort cannot start on an unmerged predecessor.
+ */
+export interface CohortSatisfactionRecord {
+  cohort_index: number
+  recorded_at: string
+  base_branch: string
+  merge_commit: string
+  evidence_path: string
+}
+
+export interface CohortSessionState {
+  schema_version: 1
+  cohort_id: string
+  plan_run_id: string
+  parent_spec_path: string
+  base_branch: string
+  created_at: string
+  updated_at: string
+  chunks: CohortChunkRecord[]
+  edges: CohortDependencyEdge[]
+  cohorts: CohortGroupRecord[]
+  satisfaction: CohortSatisfactionRecord[]
+}
+
 export interface RunState {
   schema_version: 1 | 2
   run_id: string
@@ -1508,6 +1612,13 @@ export interface RunState {
   cursor_agent_suffix?: string
   /** Membership of a best-of-N session. Absent on an ordinary run. */
   best_of_n?: BestOfNRunRole
+  /** Membership of a cohort fan-out. Absent on an ordinary run. */
+  cohort?: CohortRunBinding
+  /**
+   * Start cohort 1 when the operator approves the ratified planning artifact.
+   * Accepted only for the `planning` workflow.
+   */
+  autostart_cohort?: boolean
   title: string
   status: RunStatus
   current_stage: string | null
@@ -1526,6 +1637,11 @@ export interface RunState {
     source_path: string
     stored_path: string
     sha256: string
+    /**
+     * Wider context the request depends on, delivered by reference. A cohort
+     * chunk run points at the parent specification here.
+     */
+    context_reference?: ContextReference
   }
   limits: SerializedWorkflowLimits
   attempts: Record<string, number>

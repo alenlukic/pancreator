@@ -13,12 +13,8 @@
   "workspace_policy": "source_allowed",
   "gate": "next_stage",
   "context": {
-    "request": "conditional",
+    "request": "required",
     "required_stage_outputs": [
-      {
-        "stage": "plan",
-        "selection": "latest_success"
-      },
       {
         "stage": "verify",
         "selection": "latest"

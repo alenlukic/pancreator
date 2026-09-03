@@ -24,7 +24,7 @@ test('submit records missing delegation as an advisory governance warning', () =
     runId,
     invocation: planInvocation,
     workflow,
-  } = checkpoint('delivery@plan-prepared')
+  } = checkpoint('planning@plan-prepared')
 
   assert.ok(planInvocation)
   writeJson(
@@ -49,7 +49,7 @@ test('submit records mismatched delegation as advisory evidence before ship', ()
     runId,
     invocation: planInvocation,
     workflow,
-  } = checkpoint('delivery@plan-prepared')
+  } = checkpoint('planning@plan-prepared')
 
   assert.ok(planInvocation)
   writeJson(
@@ -86,7 +86,7 @@ test('submit relocates workspace-root delegation artifact before validation', ()
     runId,
     invocation: planInvocation,
     workflow,
-  } = checkpoint('delivery@plan-prepared')
+  } = checkpoint('planning@plan-prepared')
 
   assert.ok(planInvocation)
   writeJson(
@@ -125,7 +125,7 @@ test('submit relocates workspace-root delegation artifact before validation', ()
 
 test('submit rejects a delegated output with no read attestation', () => {
   const { root, runId, invocation, workflow } = checkpoint(
-    'delivery@plan-prepared',
+    'planning@plan-prepared',
   )
 
   assert.ok(invocation)
@@ -155,7 +155,7 @@ test('submit rejects a delegated output with no read attestation', () => {
 
 test('submit reports an unreadable contract reference as blocked', () => {
   const { root, runId, invocation, workflow } = checkpoint(
-    'delivery@plan-prepared',
+    'planning@plan-prepared',
   )
 
   assert.ok(invocation)

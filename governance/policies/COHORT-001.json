@@ -1,0 +1,21 @@
+{
+  "id": "COHORT-001",
+  "title": "Cohort fan-out execution",
+  "severity": "hard",
+  "summary": "A ratified plan MUST execute as ordered groups of parallel delivery runs, where each run owns its own worktree, each group merges before the next one starts, and every ordering decision rests on durable records rather than agent judgment.",
+  "instructions": [
+    "Each unit of work MUST execute in its own Git worktree on its own branch, so two concurrent runs never mutate one workspace.",
+    "The harness MUST hold the execution graph, the group assignment, each unit's run id, and each group's completion proof in one durable record under runtime/logs/cohorts/.",
+    "A group MUST be treated as complete only when every one of its runs reports success in that run's own state and the durable record holds the merge proof for that group.",
+    "Starting a group MUST be refused while an earlier group is incomplete, and the refusal MUST name the session, the refused group, and the earlier group that blocks it.",
+    "Advancing one bound run directly MUST meet the same refusal, so the ordering blocker cannot be bypassed by working around the group command.",
+    "Merging a completed group into its base branch MUST be an explicit operator command, and it MUST write the merge proof only after the merge lands cleanly.",
+    "A run that has not succeeded, a workspace with uncommitted work, or a conflicting merge MUST leave the merge proof unwritten and the next group blocked.",
+    "Excluding one unit from a group MUST be an operator decision recorded with the operator's stated reason.",
+    "Removing a unit's workspace MUST be refused while its run is live or its workspace holds uncommitted work, unless the operator explicitly forces the removal.",
+    "Creating the runs of a group MUST perform no source-control action beyond adding worktrees; committing, merging, pushing, and branch deletion stay operator-owned.",
+    "Every run of a group MUST reach the shared context of the ratified plan through an audited reference that states the source path, the content digest, and the read trigger, and it MUST NOT receive a copy of that context.",
+    "Starting the first group automatically MUST require an explicit operator opt-in recorded when the run was created, MUST fire only for the operator's own approval of a ratified plan, and MUST leave the recorded approval and the ratified plan unchanged when it fails.",
+    "An automatic start that fails MUST report the concrete error together with the manual commands that perform the same work."
+  ]
+}
