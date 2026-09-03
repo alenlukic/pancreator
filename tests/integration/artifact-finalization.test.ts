@@ -9,7 +9,7 @@ import { checkpoint } from './delivery-helpers.js'
 
 test('aborting a run finalizes artifact numbering and layout', () => {
   const { root, runId, state, invocation } = checkpoint(
-    'delivery@plan-prepared',
+    'planning@plan-prepared',
   )
 
   assert.ok(invocation)

@@ -291,8 +291,6 @@ export interface CheckpointVariant {
   /** Fixture edits applied before createRun (repository-checks.json, config). */
   fixture?: (root: string) => void
   run?: Partial<CreateRunOptions>
-  /** How to decide the plan gate. The default is an operator approval. */
-  decidePlan?: (root: string, runId: string) => void
 }
 
 export interface CheckpointClone {
@@ -362,13 +360,32 @@ const FAMILIES: Record<string, Family> = {
         ...run,
       }),
   },
-  'delivery[claude-code:planner]': {
+  planning: {
+    createRun: (root, run) =>
+      createRun(root, {
+        workflowSlug: 'planning',
+        requestPath: 'request.md',
+        title: 'Checkpoint planning run',
+        ...run,
+      }),
+  },
+  'planning[td]': {
+    createRun: (root, run) =>
+      createRun(root, {
+        workflowSlug: 'planning',
+        requestPath: 'request.md',
+        title: 'Checkpoint technical-director planning run',
+        involvement: 'technical-director',
+        ...run,
+      }),
+  },
+  'planning[claude-code:planner]': {
     createRun: (root, run) => {
       const stubPath = installClaudeCodeFixture(root, ['planner'])
 
       return withStub(stubPath, null, () =>
         createRun(root, {
-          workflowSlug: 'delivery',
+          workflowSlug: 'planning',
           requestPath: 'request.md',
           ...run,
         }),
@@ -412,33 +429,18 @@ function submitSuccess(root: string, runId: string): void {
   )
 }
 
-function approvePlan(
-  root: string,
-  runId: string,
-  variant: CheckpointVariant | undefined,
-): void {
+function submitAwaitingOperator(root: string, runId: string): void {
+  submitSuccess(root, runId)
   assert.equal(getRunState(root, runId).status, 'awaiting_operator')
-
-  if (variant?.decidePlan) {
-    variant.decidePlan(root, runId)
-  } else {
-    decideRun(root, runId, 'approve', 'fixture approval')
-  }
 }
 
+// The delivery workflow starts at implement: planning is its own workflow,
+// whose ratified child specification a delivery run receives as its request.
 const STEPS: Record<string, StepDefinition> = {
   'delivery@created': { parent: null, drive: () => {} },
-  'delivery@plan-prepared': { parent: 'delivery@created', drive: prepare },
-  'delivery@plan-awaiting-operator': {
-    parent: 'delivery@plan-prepared',
-    drive: submitSuccess,
-  },
   'delivery@implement-prepared': {
     parent: 'delivery@created',
-    drive: (root, runId) => {
-      setRunStage(root, runId, 'implement', 'Checkpoint: enter implement.')
-      prepare(root, runId)
-    },
+    drive: prepare,
   },
   'delivery@implement-failed-once': {
     parent: 'delivery@implement-prepared',
@@ -490,43 +492,40 @@ const STEPS: Record<string, StepDefinition> = {
     },
   },
   'delivery@ship-awaiting-operator': {
-    parent: 'delivery@plan-awaiting-operator',
-    drive: (root, runId, variant) => {
-      approvePlan(root, runId, variant)
-      submitSuccess(root, runId) // implement
+    parent: 'delivery@implement-baselined',
+    drive: (root, runId) => {
       submitSuccess(root, runId) // verify
-      submitSuccess(root, runId) // ship
-      assert.equal(getRunState(root, runId).status, 'awaiting_operator')
+      submitAwaitingOperator(root, runId) // ship
     },
   },
   'delivery[td]@created': { parent: null, drive: () => {} },
-  'delivery[td]@plan-submitted': {
+  'delivery[td]@implement-submitted': {
     parent: 'delivery[td]@created',
     drive: submitSuccess,
   },
   'delivery[td]@verify-prepared': {
-    parent: 'delivery[td]@plan-submitted',
-    drive: (root, runId, variant) => {
-      approvePlan(root, runId, variant)
-      submitSuccess(root, runId) // implement
-      prepare(root, runId)
-    },
+    parent: 'delivery[td]@implement-submitted',
+    drive: prepare,
   },
   'delivery[td]@verify-submitted': {
     parent: 'delivery[td]@verify-prepared',
-    drive: submitSuccess,
+    drive: submitAwaitingOperator,
   },
-  'delivery[claude-code:planner]@created': { parent: null, drive: () => {} },
-  'delivery[claude-code:planner]@plan-prepared': {
-    parent: 'delivery[claude-code:planner]@created',
+  'planning@created': { parent: null, drive: () => {} },
+  'planning@plan-prepared': { parent: 'planning@created', drive: prepare },
+  'planning@plan-awaiting-operator': {
+    parent: 'planning@plan-prepared',
+    drive: submitAwaitingOperator,
+  },
+  'planning[td]@created': { parent: null, drive: () => {} },
+  'planning[td]@plan-submitted': {
+    parent: 'planning[td]@created',
+    drive: submitAwaitingOperator,
+  },
+  'planning[claude-code:planner]@created': { parent: null, drive: () => {} },
+  'planning[claude-code:planner]@plan-prepared': {
+    parent: 'planning[claude-code:planner]@created',
     drive: prepare,
-  },
-  'delivery[claude-code:planner]@plan-approved': {
-    parent: 'delivery[claude-code:planner]@plan-prepared',
-    drive: (root, runId, variant) => {
-      submitSuccess(root, runId)
-      approvePlan(root, runId, variant)
-    },
   },
   'delivery-candidate@created': { parent: null, drive: () => {} },
   'delivery-candidate@plan-prepared': {
@@ -557,8 +556,6 @@ const STEPS: Record<string, StepDefinition> = {
 }
 
 export type Checkpoint =
-  | 'delivery@plan-prepared'
-  | 'delivery@plan-awaiting-operator'
   | 'delivery@implement-prepared'
   | 'delivery@implement-failed-once'
   | 'delivery@implement-baselined'
@@ -567,11 +564,13 @@ export type Checkpoint =
   | 'delivery@verify-failed-once-remediated'
   | 'delivery@ship-prepared'
   | 'delivery@ship-awaiting-operator'
-  | 'delivery[td]@plan-submitted'
+  | 'delivery[td]@implement-submitted'
   | 'delivery[td]@verify-prepared'
   | 'delivery[td]@verify-submitted'
-  | 'delivery[claude-code:planner]@plan-prepared'
-  | 'delivery[claude-code:planner]@plan-approved'
+  | 'planning@plan-prepared'
+  | 'planning@plan-awaiting-operator'
+  | 'planning[td]@plan-submitted'
+  | 'planning[claude-code:planner]@plan-prepared'
   | 'delivery-candidate@plan-prepared'
   | 'delivery-candidate@plan-awaiting-supervisor'
   | 'prototype@build-prepared'

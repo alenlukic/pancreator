@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
@@ -2162,6 +2168,73 @@ test('tests_added requires a contract for a net-positive delta and ignores uncha
   )
 
   assert.equal(contractIssues(cumulative.issues).length, 1)
+})
+
+test('a file the attempt deleted is disclosed in changed_files, not rejected', () => {
+  const root = createFixture()
+  const target =
+    'runtime/logs/workflows/run-deletion/outputs/implement-1-test.json'
+  const before = gitWorkspaceSnapshot(root)
+  const writeClaims = (changedFiles: string[]): void => {
+    writeJson(path.join(root, target), {
+      data: {
+        implementation: {
+          changed_files: changedFiles,
+          tests_added: [],
+          notes: [],
+        },
+        acceptance_results: [
+          { id: 'AC-01', result: 'pass', evidence: ['fixture evidence'] },
+        ],
+      },
+    })
+  }
+
+  // The cumulative diff lists existing files only, so a deletion appears in
+  // the attempt delta alone. Before this rule a deletion was unsubmittable:
+  // listing it failed as not in the diff and omitting it failed as
+  // undisclosed.
+  writeFileSync(path.join(root, 'src/base.ts'), 'export const base = false\n')
+  rmSync(path.join(root, 'README.md'))
+
+  writeClaims(['src/base.ts', 'README.md'])
+
+  const disclosed = validateImplementationClaims(
+    claimsValidatorInput(root, target, { workspace_before: before }),
+  )
+
+  assert.equal(disclosed.status, 'passed', JSON.stringify(disclosed.issues))
+
+  writeClaims(['src/base.ts'])
+
+  const undisclosed = validateImplementationClaims(
+    claimsValidatorInput(root, target, { workspace_before: before }),
+  )
+
+  assert.ok(
+    undisclosed.issues.some(
+      (issue) =>
+        issue.code === 'claim.diff_not_disclosed' &&
+        issue.message.includes('README.md'),
+    ),
+    JSON.stringify(undisclosed.issues),
+  )
+
+  // A path that neither exists nor changed is still a fabricated claim.
+  writeClaims(['src/base.ts', 'README.md', 'src/never-existed.ts'])
+
+  const fabricated = validateImplementationClaims(
+    claimsValidatorInput(root, target, { workspace_before: before }),
+  )
+
+  assert.ok(
+    fabricated.issues.some(
+      (issue) =>
+        issue.code === 'claim.not_in_diff' &&
+        issue.message.includes('src/never-existed.ts'),
+    ),
+    JSON.stringify(fabricated.issues),
+  )
 })
 
 test('verify validator accepts a blocked output with reason and missing paths only', () => {

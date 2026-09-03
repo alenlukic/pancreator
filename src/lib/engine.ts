@@ -2,7 +2,15 @@ import { randomUUID } from 'node:crypto'
 import { copyFileSync, readdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
 
-import { buildInvocationInputs, summarizePriorFailure } from './context.js'
+import {
+  assertCohortRunUnblocked,
+  COHORT_PLAN_WORKFLOW_SLUG,
+} from './cohorts.js'
+import {
+  buildContextReference,
+  buildInvocationInputs,
+  summarizePriorFailure,
+} from './context.js'
 import {
   renderBrief,
   resolveBriefVocabulary,
@@ -150,6 +158,7 @@ import {
 } from './state.js'
 import type {
   BestOfNRunRole,
+  CohortRunBinding,
   CriterionEvaluation,
   DeterministicResult,
   ExternalDelegationRecord,
@@ -246,6 +255,15 @@ interface CreateRunOptions {
    */
   useWorkflowDeclaredGates?: boolean
   bestOfN?: BestOfNRunRole | null
+  /** Cohort membership recorded when a fan-out creates this chunk's run. */
+  cohort?: CohortRunBinding | null
+  /**
+   * Harness-relative document this run reads by reference. A cohort chunk run
+   * points at the parent specification, which it must never copy.
+   */
+  contextReferencePath?: string | null
+  /** Start cohort 1 when the operator approves the ratified planning artifact. */
+  autostartCohort?: boolean
   /**
    * Named pipeline config to snapshot instead of the active one. An eval run
    * uses it to route every worker persona to an external executor.
@@ -1751,6 +1769,15 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     code: 'REQUEST_REQUIRED',
   })
 
+  // Autostart only means something behind the planning gate: the hook reads a
+  // ratified cohort plan, and no other workflow produces one. Rejecting the
+  // flag at creation keeps a silently inert flag off the run state.
+  invariant(
+    !options.autostartCohort || workflowSlug === COHORT_PLAN_WORKFLOW_SLUG,
+    `--autostart is accepted only for the '${COHORT_PLAN_WORKFLOW_SLUG}' workflow.`,
+    { code: 'INVALID_ARGUMENT', details: { workflow: workflowSlug } },
+  )
+
   const workflow = loadWorkflow(root, workflowSlug)
   const pipelineOverride = options.pipelineOverride ?? null
   const agentSuffix = options.cursorAgentSuffix ?? null
@@ -2011,6 +2038,8 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
       },
       ...(agentSuffix ? { cursor_agent_suffix: agentSuffix } : {}),
       ...(options.bestOfN ? { best_of_n: options.bestOfN } : {}),
+      ...(options.cohort ? { cohort: options.cohort } : {}),
+      ...(options.autostartCohort ? { autostart_cohort: true } : {}),
       title: options.title ?? path.basename(requestPath),
       status: 'running',
       current_stage: workflow.start_stage,
@@ -2020,6 +2049,14 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
         source_path: sourceRelative,
         stored_path: storedRequest,
         sha256: sha256(readText(source)),
+        ...(options.contextReferencePath
+          ? {
+              context_reference: buildContextReference(
+                root,
+                options.contextReferencePath,
+              ),
+            }
+          : {}),
       },
       limits: workflow.limits,
       attempts: {},
@@ -2381,6 +2418,10 @@ export function prepareInvocation(
         code: 'RUN_NOT_RUNNING',
       },
     )
+
+    // A cohort-bound run is blocked here, not only at `pan cohort start`, so
+    // advancing the run directly cannot bypass the ordering blocker.
+    assertCohortRunUnblocked(root, state)
 
     // Refresh the supervisor card first: a changed policy set re-binds the
     // supervisor before any stage work, and an unattested card stops here.

@@ -26,6 +26,10 @@ import {
 } from '../validators/operator-artifact.js'
 import { validateSimplifiedEnglish } from '../validators/simplified-english.js'
 import {
+  validateChildSpecifications,
+  validateCohortPlan,
+} from '../validators/cohort-plan.js'
+import {
   validateDecompositionArtifact,
   validateHarnessRepairIntake,
   validateImplementationClaims,
@@ -234,6 +238,8 @@ export const HANDLERS: Record<string, ValidatorHandler> = {
   'simplified-english-validate': validateSimplifiedEnglish,
   'intake-validate': validateIntakeOutput,
   'plan-trace-validate': validatePlanTrace,
+  'cohort-plan-validate': validateCohortPlan,
+  'child-spec-validate': validateChildSpecifications,
   'implementation-claims-validate': validateImplementationClaims,
   'target-instruction-coverage-validate': validateTargetInstructionCoverage,
   'verify-validate': validateVerifyOutput,

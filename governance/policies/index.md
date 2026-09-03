@@ -25,7 +25,7 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 - `WAIVER-001` — flexible operator waiver directives and optional follow-up
 - `ENG-001` — engineering handbook baseline and proportionate automated-test coverage
 - `INTAKE-001` — faithful intake (design workflow)
-- `PLAN-002` — consolidated planning for the delivery workflow
+- `PLAN-002` — consolidated planning, the parent and child specification hierarchy, and the chunk carve-up
 - `DEV-001` — implementation discipline
 - `VERIFY-001` — joint read-only verification with a graded verdict
 - `REMED-001` — verdict-routed remediation with verdict-scoped authority
@@ -45,5 +45,15 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 - `PROTO-001` — prototype spike discipline and declared shortcuts
 - `BESTOFN-001` — best-of-N session boundaries: isolated worktrees, operator-owned repair, and no source-control action
 - `DIRECTOR-001` — technical-director checkpoints for contract-enabled runs
+- `COHORT-001` — cohort fan-out execution: worktree isolation, ordered groups, durable completion proof, and bounded autostart
 
 The prototype MUST NOT use an implicit policy override hierarchy. Conflicting policy text MUST be treated as a configuration defect and resolved directly.
+
+## Chunking surfaces
+
+Two surfaces carve work into units, and the operator kept both.
+
+- `PLAN-002` governs the planner's carve-up of scope the operator already ratified inside one planning gate. It owns the parent and child specification hierarchy, the chunk independence bar, the fragmentation economics, the cohort assignment, and the serial outcome.
+- `DECOMP-001` governs the standalone decomposition mode, which assesses an unratified intake before a plan exists. It stays bound only to that mode and is unchanged.
+
+`governance/registries/context_bloat_dispositions.json` records the retained overlap between the two under `planner-and-standalone-chunking`.

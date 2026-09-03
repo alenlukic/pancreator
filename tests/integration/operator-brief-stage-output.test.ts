@@ -3,7 +3,7 @@ import { existsSync, readFileSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import { decideRun, prepareInvocation } from '../../src/lib/engine.js'
+import { prepareInvocation } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
@@ -57,7 +57,7 @@ test('new runs suppress briefs while explicit run and stage requests enable them
   const output = makeOutput(
     root,
     suppressedInvocation,
-    stageBySlug(workflow, 'plan'),
+    stageBySlug(workflow, 'implement'),
   )
 
   assert.deepEqual(output.artifacts, [])
@@ -83,7 +83,7 @@ test('new runs suppress briefs while explicit run and stage requests enable them
   assert.ok(stagePrepared.invocation?.output.operator_brief)
   assert.deepEqual(stagePrepared.state.operator_artifacts, {
     mode: 'suppressed',
-    requested_stages: ['plan'],
+    requested_stages: ['implement'],
   })
 
   const stageInvocation = stagePrepared.invocation
@@ -93,13 +93,12 @@ test('new runs suppress briefs while explicit run and stage requests enable them
   const stageOutput = makeOutput(
     root,
     stageInvocation,
-    stageBySlug(workflow, 'plan'),
+    stageBySlug(workflow, 'implement'),
   )
 
   writeJson(path.join(root, stageInvocation.output.path), stageOutput)
   writeCanonicalDelegation(root, stageInvocation)
   submitAsSupervisor(root, stageRequested.run_id, stageInvocation.output.path)
-  decideRun(root, stageRequested.run_id, 'approve')
 
   const laterInvocation = prepareInvocation(
     root,
@@ -107,13 +106,13 @@ test('new runs suppress briefs while explicit run and stage requests enable them
   ).invocation
 
   assert.ok(laterInvocation)
-  assert.equal(laterInvocation.stage.slug, 'implement')
+  assert.equal(laterInvocation.stage.slug, 'verify')
   assert.equal(laterInvocation.output.operator_brief, undefined)
 })
 
 test('submission rerenders the invocation-declared HTML brief from JSON', () => {
   const { root, runId, invocation, workflow } = checkpoint(
-    'delivery@plan-prepared',
+    'planning@plan-prepared',
     BRIEFS,
   )
 

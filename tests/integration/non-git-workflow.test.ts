@@ -41,7 +41,7 @@ test('delivery workflow runs to completion without a Git repository', () => {
   })
   const runId = state.run_id
 
-  for (const stageSlug of ['plan', 'implement', 'verify', 'ship']) {
+  for (const stageSlug of ['implement', 'verify', 'ship']) {
     const prepared = prepareInvocation(root, runId)
 
     const invocation = prepared.invocation
@@ -72,7 +72,7 @@ test('delivery workflow runs to completion without a Git repository', () => {
       `${stageSlug}: ${JSON.stringify(submitted.record.evaluation)}`,
     )
 
-    if (stageSlug === 'plan' || stageSlug === 'ship') {
+    if (stageSlug === 'ship') {
       decideRun(root, runId, 'approve', 'fixture approval')
     }
   }

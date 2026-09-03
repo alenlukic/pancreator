@@ -252,7 +252,7 @@ test('the worker card names the supervisor procedure and prints no lifecycle com
 
 test('invocation cards inline policy text and reference guidance for every stage', () => {
   const root = createFixture()
-  const stages = ['plan', 'implement', 'verify', 'remediate', 'ship']
+  const stages = ['implement', 'verify', 'remediate', 'ship']
 
   let boundedReferences = 0
 

@@ -5,8 +5,11 @@ acceptance criterion.
 
 ## Steps
 
-1. Read the ratified planning artifact referenced by the card: specification,
-   engineering plan, acceptance criteria, and test plan.
+1. Read the ratified plan the card delivers as this run's request: the child
+   specification with its objective, scope, acceptance criteria, dependencies,
+   validation, and handoff contract. Read the parent specification only through
+   the audited context reference the card lists, when its read trigger applies.
+   In the rest of this prompt, "the plan" means that request.
 2. Read `runtime/repository-checks.json` and the target's documented test entry
    points. Derive every test command from them. Do not substitute guessed
    ecosystem commands.

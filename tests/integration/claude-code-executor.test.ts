@@ -66,15 +66,10 @@ function submitFixtureStage(
   result: 'success' | 'failure' = 'success',
   mutate?: (output: StageOutput) => void,
 ): ReturnType<typeof submitAsSupervisor> {
-  const workflow = loadWorkflow(root, 'delivery')
+  const state = getRunState(root, runId)
+  const workflow = loadWorkflow(root, state.workflow_slug)
   const stage = stageBySlug(workflow, invocation.stage.slug)
-  const output = makeOutput(
-    root,
-    invocation,
-    stage,
-    result,
-    getRunState(root, runId),
-  )
+  const output = makeOutput(root, invocation, stage, result, state)
 
   mutate?.(output)
   writeJson(path.join(root, invocation.output.path), output)
@@ -82,9 +77,9 @@ function submitFixtureStage(
   return submitAsSupervisor(root, runId, invocation.output.path)
 }
 
-test('a mixed-executor delivery run completes with claude-code plan and verify', () => {
+test('a mixed-executor delivery run completes with a claude-code verify', () => {
   const root = createFixture()
-  const stubPath = installClaudeCodeFixture(root, ['planner', 'verifier'])
+  const stubPath = installClaudeCodeFixture(root, ['verifier'])
 
   withStub(stubPath, null, () => {
     const state = createRun(root, {
@@ -100,15 +95,14 @@ test('a mixed-executor delivery run completes with claude-code plan and verify',
       state.pipeline_config?.path ?? '',
     )
 
-    assert.equal(snapshot.executors?.planner, 'claude-code')
     assert.equal(snapshot.executors?.verifier, 'claude-code')
     assert.equal(snapshot.executors?.coder, 'cursor')
-    assert.equal(snapshot.personas.planner, CLAUDE_CODE_SPEC)
+    assert.equal(snapshot.personas.verifier, CLAUDE_CODE_SPEC)
 
-    const externalStages = new Set(['plan', 'verify'])
+    const externalStages = new Set(['verify'])
     const workflow = loadWorkflow(root, 'delivery')
 
-    for (const stageSlug of ['plan', 'implement', 'verify', 'ship']) {
+    for (const stageSlug of ['implement', 'verify', 'ship']) {
       const prepared = prepareInvocation(root, runId)
       const invocation = prepared.invocation
 
@@ -222,8 +216,8 @@ test('a mixed-executor delivery run completes with claude-code plan and verify',
         assert.equal(validation.status, 'pass')
       }
 
-      if (stageSlug === 'plan' || stageSlug === 'ship') {
-        // Plan and ship keep their operator gates under the standard profile.
+      if (stageSlug === 'ship') {
+        // Ship keeps its operator gate under the standard profile.
         assert.equal(submitted.state.status, 'awaiting_operator')
         decideRun(root, runId, 'approve', 'fixture approval')
       }
@@ -234,9 +228,6 @@ test('a mixed-executor delivery run completes with claude-code plan and verify',
     assert.equal(final.status, 'succeeded')
 
     // stage_history records the executor per attempt.
-    const planHistory = final.stage_history.find(
-      (item) => item.stage === 'plan',
-    )
     const verifyHistory = final.stage_history.find(
       (item) => item.stage === 'verify',
     )
@@ -244,7 +235,6 @@ test('a mixed-executor delivery run completes with claude-code plan and verify',
       (item) => item.stage === 'implement',
     )
 
-    assert.equal(planHistory?.executor, 'claude-code')
     assert.equal(verifyHistory?.executor, 'claude-code')
     assert.equal(implementHistory?.executor, undefined)
   })
@@ -253,7 +243,7 @@ test('a mixed-executor delivery run completes with claude-code plan and verify',
 test('run creation fails closed when the executor binary is missing', () => {
   const root = createFixture()
 
-  installClaudeCodeFixture(root, ['planner'])
+  installClaudeCodeFixture(root, ['coder'])
 
   withStub(path.join(root, 'no-such-binary.cjs'), null, () => {
     assert.throws(
@@ -269,7 +259,7 @@ test('run creation fails closed when the executor binary is missing', () => {
 
 test('an unauthenticated executor pauses delegation with an operator decision', () => {
   const { root, runId, invocation } = checkpoint(
-    'delivery[claude-code:planner]@plan-prepared',
+    'planning[claude-code:planner]@plan-prepared',
   )
 
   assert.ok(invocation)
@@ -287,7 +277,7 @@ test('an unauthenticated executor pauses delegation with an operator decision', 
 
 test('executor process failures are audited and surface as errors', () => {
   const { root, runId, invocation } = checkpoint(
-    'delivery[claude-code:planner]@plan-prepared',
+    'planning[claude-code:planner]@plan-prepared',
   )
   const stubPath = claudeStubPath(root)
 
@@ -335,7 +325,7 @@ test('operator revision resumes the session; fallback and post-failure retries d
 
   withStub(stubPath, null, () => {
     const state = createRun(root, {
-      workflowSlug: 'delivery',
+      workflowSlug: 'planning',
       requestPath: 'request.md',
       involvement: 'technical-director',
     })
@@ -356,7 +346,8 @@ test('operator revision resumes the session; fallback and post-failure retries d
     submitFixtureStage(root, runId, round1.invocation)
 
     // Plan stops at the operator checkpoint under the technical-director
-    // contract (and carries an operator gate in delivery regardless).
+    // contract (and carries an operator gate in the planning workflow
+    // regardless).
     assert.equal(getRunState(root, runId).status, 'awaiting_operator')
     decideRun(root, runId, 'revise', 'Tighten the rollout plan for phase two.')
 
@@ -455,7 +446,7 @@ test('operator revision resumes the session; fallback and post-failure retries d
 
 test('an external stage writing outside its permitted scope fails the scope gate', () => {
   const { root, runId, invocation } = checkpoint(
-    'delivery[claude-code:planner]@plan-prepared',
+    'planning[claude-code:planner]@plan-prepared',
   )
 
   assert.ok(invocation)
@@ -529,7 +520,7 @@ test('moving a persona cursor→claude-code→cursor leaves .cursor clean', () =
 })
 
 test('prepare skips frontmatter drift for external personas and still catches cursor drift', () => {
-  const prepared = checkpoint('delivery[claude-code:planner]@plan-prepared')
+  const prepared = checkpoint('planning[claude-code:planner]@plan-prepared')
 
   assert.equal(
     existsSync(path.join(prepared.root, '.cursor', 'agents', 'pan-planner.md')),
@@ -538,11 +529,16 @@ test('prepare skips frontmatter drift for external personas and still catches cu
   assert.ok(prepared.invocation)
   assert.equal(prepared.invocation.stage.persona_executor, 'claude-code')
 
-  const { root, runId } = checkpoint(
-    'delivery[claude-code:planner]@plan-approved',
-  )
+  // A delivery run whose verifier is external still prepares its cursor
+  // implement stage against the projected agent files.
+  const root = createFixture()
+  const stubPath = installClaudeCodeFixture(root, ['verifier'])
 
-  withStub(claudeStubPath(root), null, () => {
+  withStub(stubPath, null, () => {
+    const runId = createRun(root, {
+      workflowSlug: 'delivery',
+      requestPath: 'request.md',
+    }).run_id
     const coderAgent = path.join(root, '.cursor', 'agents', 'pan-coder.md')
     const coderContent = readFileSync(coderAgent, 'utf8')
 

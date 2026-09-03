@@ -193,10 +193,10 @@ test('status, resume, and archive preserve an unconverted v1 run', () => {
   state.pipeline_config.path = `runtime/logs/workflows/${runId}/pipeline-config.snapshot.json`
   state.request.stored_path = `runtime/logs/workflows/${runId}/request.md`
   state.stage_history.push({
-    stage: 'plan',
+    stage: 'implement',
     attempt: 1,
-    invocation_id: '99_plan-1_renamed-prefix',
-    output_path: `runtime/logs/workflows/${runId}/outputs/99_plan-1_renamed-prefix.json`,
+    invocation_id: '99_implement-1_renamed-prefix',
+    output_path: `runtime/logs/workflows/${runId}/outputs/99_implement-1_renamed-prefix.json`,
     outcome: 'success',
     submitted_at: new Date().toISOString(),
     workspace_fingerprint: 'legacy-fixture',
@@ -225,7 +225,7 @@ test('status, resume, and archive preserve an unconverted v1 run', () => {
       'resume',
       runId,
       '--stage',
-      'plan',
+      'implement',
       '--note',
       'resume legacy fixture',
       '--json',

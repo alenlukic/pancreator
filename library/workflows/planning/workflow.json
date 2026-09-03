@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "slug": "planning",
+  "title": "Ratified planning and cohort fan-out plan",
+  "description": "Operator-ratified planning that produces one parent technical specification, one child specification per chunk, and a cohort execution plan the harness fans out into parallel delivery runs.",
+  "start_stage": "plan",
+  "limits": {
+    "max_total_transitions": 4,
+    "max_stage_attempts": 3,
+    "max_consecutive_failures": 3
+  },
+  "stages": ["plan"]
+}

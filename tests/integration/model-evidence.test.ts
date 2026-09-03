@@ -10,7 +10,6 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
-  decideRun,
   getRunState,
   getRunStatus,
   prepareInvocation,
@@ -152,7 +151,6 @@ test('supervisor evidence activates future worker-card enforcement', () => {
   )
   writeCanonicalDelegation(legacyRoot, legacyInvocation)
   submitAsSupervisor(legacyRoot, legacyRun.run_id, legacyInvocation.output.path)
-  decideRun(legacyRoot, legacyRun.run_id, 'approve')
   recordSupervisorModelEvidence(
     legacyRoot,
     legacyRun.run_id,
@@ -170,7 +168,7 @@ test('supervisor evidence activates future worker-card enforcement', () => {
 
   const root = createFixture()
   const run = createRun(root, {
-    workflowSlug: 'delivery',
+    workflowSlug: 'planning',
     requestPath: 'request.md',
     title: 'Model evidence run',
   })
@@ -219,7 +217,7 @@ test('supervisor evidence activates future worker-card enforcement', () => {
   assert.ok(invocation)
   assert.equal(invocation.model_evidence_required, true)
 
-  const stage = stageBySlug(loadWorkflow(root, 'delivery'), 'plan')
+  const stage = stageBySlug(loadWorkflow(root, 'planning'), 'plan')
 
   writeJson(
     path.join(root, invocation.output.path),

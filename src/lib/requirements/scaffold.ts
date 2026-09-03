@@ -196,6 +196,18 @@ export function scaffoldStageOutput(
               })),
             }
           : {}),
+        ...(invocation.inputs?.context_reference
+          ? {
+              context_references: [
+                {
+                  source_path: invocation.inputs.context_reference.source_path,
+                  content_sha256:
+                    invocation.inputs.context_reference.content_sha256,
+                  status: 'pending' as const,
+                },
+              ],
+            }
+          : {}),
       }
     : undefined
 

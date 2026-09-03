@@ -1105,6 +1105,128 @@ function guidanceAttestationChecks(
 }
 
 /**
+ * Check the attestation of the context reference the invocation carried.
+ *
+ * The reference is a required read that the card never inlines, so the worker
+ * owes the same status flip guidance owes. There is no `final_line` here: the
+ * card prints the digest and the source stays readable, so the digest match is
+ * the evidence a drifted or substituted source cannot fake.
+ */
+function contextReferenceAttestationChecks(
+  invocation: Invocation,
+  attestation: Record<string, unknown>,
+  stageResult: unknown,
+): ValidationCheck[] {
+  const expected = invocation.inputs.context_reference
+
+  if (!expected) {
+    return []
+  }
+
+  const declared = Array.isArray(attestation.context_references)
+    ? attestation.context_references
+    : []
+  const id = `attestation.context_reference.${expected.source_path}`
+  const claim = isRecord(declared[0]) ? declared[0] : {}
+
+  if (
+    declared.length !== 1 ||
+    claim.source_path !== expected.source_path ||
+    claim.content_sha256 !== expected.content_sha256
+  ) {
+    return [
+      {
+        id,
+        passed: false,
+        message:
+          'Attestation MUST declare one context reference naming source ' +
+          `'${expected.source_path}' and digest '${expected.content_sha256}'`,
+      },
+    ]
+  }
+
+  const reason = typeof claim.reason === 'string' ? claim.reason.trim() : ''
+  const error = typeof claim.error === 'string' ? claim.error.trim() : ''
+  const drift =
+    expected.reference_status === 'current'
+      ? null
+      : expected.reference_status === 'drifted'
+        ? `the source drifted after the run recorded it (recorded sha256:${expected.content_sha256}, actual ${
+            expected.actual_content_sha256
+              ? `sha256:${expected.actual_content_sha256}`
+              : 'unavailable'
+          })`
+        : `the source is missing at ${expected.source_path}`
+
+  switch (claim.status) {
+    case 'read':
+      // The card recorded the digest at preparation. A read attested against a
+      // drifted or missing source claims bytes the worker cannot have read, so
+      // the audited chain refuses it instead of letting drift pass silently.
+      return [
+        {
+          id,
+          passed: drift === null,
+          message:
+            drift === null
+              ? `Context reference ${expected.source_path} is attested as read`
+              : `Context reference ${expected.source_path} MUST NOT be attested as read: ${drift}. Report it as reference_failed with a blocked result.`,
+        },
+      ]
+    case 'skipped':
+      // A skip is a judgment that the read trigger did not apply. It is not a
+      // route around drift: a drifted or missing source must surface as a
+      // reference failure whatever the worker decided about reading it.
+      return [
+        {
+          id,
+          passed: drift === null && reason.length > 0,
+          message:
+            drift !== null
+              ? `Context reference ${expected.source_path} MUST NOT be attested as skipped: ${drift}. Report it as reference_failed with a blocked result.`
+              : reason.length > 0
+                ? `Context reference ${expected.source_path} is skipped: ${reason}`
+                : `A skipped context reference MUST carry the concrete reason the trigger did not apply for ${expected.source_path}`,
+        },
+      ]
+    case 'reference_failed':
+      // Mirrors the contract attestation: a reference failure is accepted only
+      // with its concrete error and a blocked stage result, so an unreadable or
+      // drifted parent stays loud and never becomes a product verdict.
+      return [
+        {
+          id,
+          passed: error.length > 0 && stageResult === 'blocked',
+          message:
+            error.length === 0
+              ? `A reference_failed context reference MUST carry the concrete read error for ${expected.source_path}`
+              : stageResult !== 'blocked'
+                ? `A reference_failed context reference MUST accompany result blocked (${expected.source_path}: ${error})`
+                : `Context reference ${expected.source_path} is reported as a reference failure: ${error}`,
+        },
+      ]
+    case 'pending':
+      return [
+        {
+          id,
+          passed: false,
+          message:
+            `Context reference ${expected.source_path} is still the scaffold value pending; ` +
+            'set it to read, or to skipped with the reason the trigger does not apply',
+        },
+      ]
+    default:
+      return [
+        {
+          id,
+          passed: false,
+          message: `Context reference status MUST be read, skipped, or reference_failed (got ${JSON.stringify(claim.status)})`,
+        },
+      ]
+  }
+}
+
+/**
  * Check a worker's read attestation against the invocation contract manifest.
  *
  * The attestation is the only observable the harness has for a referenced
@@ -1308,6 +1430,11 @@ export function validateInvocationAttestation(
       manifest,
       attestation,
       expectedGuidanceFinalLines(invocation),
+    ),
+    ...contextReferenceAttestationChecks(
+      invocation,
+      attestation,
+      record.result,
     ),
   )
 

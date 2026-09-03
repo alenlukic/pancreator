@@ -6,13 +6,7 @@
   "workspace_policy": "source_allowed",
   "gate": "next_stage",
   "context": {
-    "request": "conditional",
-    "required_stage_outputs": [
-      {
-        "stage": "plan",
-        "selection": "latest_success"
-      }
-    ],
+    "request": "required",
     "prior_attempts": 1,
     "operator_feedback": 1
   },

@@ -27,6 +27,8 @@ import {
 } from '../../src/lib/render.js'
 import { resolvePolicies } from '../../src/lib/policies.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
+import { buildContextReference } from '../../src/lib/context.js'
+import { scaffoldStageOutput } from '../../src/lib/requirements/scaffold.js'
 import { createFixture } from '../helpers.js'
 import type { Invocation, InvocationAttestation } from '../../src/lib/types.js'
 
@@ -910,5 +912,172 @@ test('guidance final-line evidence skips a trailing Markdown divider', () => {
   assert.match(
     rejected.checks.find((check) => !check.passed)?.message ?? '',
     /final_line does not match/u,
+  )
+})
+
+test('a parent context reference is scaffolded pending and must be declared read', () => {
+  const root = createFixture()
+  const { invocation, attestation } = attestedFixture(root)
+  const parentPath = 'runtime/specs/parent-specification.md'
+
+  mkdirSync(path.join(root, 'runtime', 'specs'), { recursive: true })
+  writeFileSync(
+    path.join(root, parentPath),
+    '# Parent specification\n\nOne requirement.\n',
+  )
+
+  const reference = buildContextReference(root, parentPath)
+
+  invocation.inputs.context_reference = {
+    ...reference,
+    reference_status: 'current',
+  }
+
+  // The scaffold prefills the entry the worker owes, at the digest the card
+  // printed, with the status only the worker may change.
+  const scaffoldPath =
+    'runtime/logs/workflows/run-fixture/outputs/scaffold.json'
+
+  scaffoldStageOutput(root, invocation, scaffoldPath)
+
+  const scaffolded = readJson<{
+    invocation_attestation: {
+      context_references: Array<Record<string, unknown>>
+    }
+  }>(path.join(root, scaffoldPath))
+
+  assert.deepEqual(scaffolded.invocation_attestation.context_references, [
+    {
+      source_path: parentPath,
+      content_sha256: reference.content_sha256,
+      status: 'pending',
+    },
+  ])
+
+  const declared = (entry: Record<string, unknown>) =>
+    validateInvocationAttestation(
+      invocation,
+      attestedOutput({ ...attestation, context_references: [entry] }),
+    )
+  const base = {
+    source_path: parentPath,
+    content_sha256: reference.content_sha256,
+  }
+  const pending = declared({ ...base, status: 'pending' })
+
+  assert.equal(pending.passed, false)
+  assert.match(
+    pending.checks.find((check) => !check.passed)?.message ?? '',
+    /still the scaffold value pending/u,
+  )
+
+  assert.equal(declared({ ...base, status: 'read' }).passed, true)
+  assert.equal(
+    declared({ ...base, status: 'skipped' }).passed,
+    false,
+    'a skipped reference owes the reason the trigger did not apply',
+  )
+  assert.equal(
+    declared({ ...base, status: 'skipped', reason: 'No shared context.' })
+      .passed,
+    true,
+  )
+
+  // An omitted or re-digested declaration cannot pass for a read.
+  assert.equal(
+    validateInvocationAttestation(invocation, attestedOutput(attestation))
+      .passed,
+    false,
+  )
+  assert.equal(
+    declared({ ...base, content_sha256: 'other', status: 'read' }).passed,
+    false,
+  )
+})
+
+test('a read attestation against a drifted parent is rejected and a blocked reference failure is accepted', () => {
+  const root = createFixture()
+  const { invocation, attestation } = attestedFixture(root)
+  const parentPath = 'runtime/specs/parent-specification.md'
+
+  mkdirSync(path.join(root, 'runtime', 'specs'), { recursive: true })
+  writeFileSync(
+    path.join(root, parentPath),
+    '# Parent specification\n\nOne requirement.\n',
+  )
+
+  const reference = buildContextReference(root, parentPath)
+  const actual = 'b'.repeat(64)
+
+  invocation.inputs.context_reference = {
+    ...reference,
+    reference_status: 'drifted',
+    actual_content_sha256: actual,
+  }
+
+  const base = {
+    source_path: parentPath,
+    content_sha256: reference.content_sha256,
+  }
+  const declared = (
+    entry: Record<string, unknown>,
+    result: 'success' | 'blocked' = 'success',
+  ) =>
+    validateInvocationAttestation(
+      invocation,
+      attestedOutput({ ...attestation, context_references: [entry] }, result),
+    )
+  const read = declared({ ...base, status: 'read' })
+  const readFailure = read.checks.find((check) => !check.passed)?.message ?? ''
+
+  assert.equal(read.passed, false)
+  assert.match(readFailure, /MUST NOT be attested as read/u)
+  assert.match(
+    readFailure,
+    new RegExp(`recorded sha256:${base.content_sha256}`, 'u'),
+  )
+  assert.match(readFailure, new RegExp(`actual sha256:${actual}`, 'u'))
+
+  const failure = {
+    ...base,
+    status: 'reference_failed',
+    error: `Parent drifted: recorded sha256:${base.content_sha256}, actual sha256:${actual}`,
+  }
+
+  assert.equal(
+    declared(failure).passed,
+    false,
+    'a reference failure on a success result is refused',
+  )
+  assert.equal(
+    declared({ ...base, status: 'reference_failed' }, 'blocked').passed,
+    false,
+    'a reference failure without its error is refused',
+  )
+  assert.equal(declared(failure, 'blocked').passed, true)
+
+  // A skip with any reason must not become the quiet route around the drift
+  // refusal that the read branch already enforces.
+  const skipped = declared({
+    ...base,
+    status: 'skipped',
+    reason: 'No shared context.',
+  })
+
+  assert.equal(skipped.passed, false)
+  assert.match(
+    skipped.checks.find((check) => !check.passed)?.message ?? '',
+    /MUST NOT be attested as skipped/u,
+  )
+
+  invocation.inputs.context_reference = {
+    ...reference,
+    reference_status: 'missing',
+  }
+  assert.equal(
+    declared({ ...base, status: 'skipped', reason: 'No shared context.' })
+      .passed,
+    false,
+    'a skip against a missing source is refused as well',
   )
 })

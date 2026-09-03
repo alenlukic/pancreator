@@ -121,11 +121,11 @@ test('requirements run preserves ambiguity when duplicate required bindings rema
 test('output validate mirrors the deterministic submission checks', () => {
   const root = createFixture()
   const state = createRun(root, {
-    workflowSlug: 'delivery',
+    workflowSlug: 'planning',
     requestPath: 'request.md',
     title: 'Output validation submission mirror fixture',
   })
-  const workflow = loadWorkflow(root, 'delivery')
+  const workflow = loadWorkflow(root, 'planning')
   const invocation = prepareInvocation(root, state.run_id).invocation
 
   assert.ok(invocation)

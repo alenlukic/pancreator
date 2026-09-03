@@ -41,10 +41,6 @@
   "involvement": "standard",
   "operator_decisions": [
     {
-      "stage": "plan",
-      "decision": "approve"
-    },
-    {
       "stage": "ship",
       "decision": "approve"
     }
@@ -52,10 +48,6 @@
   "expected": {
     "status": "succeeded",
     "stage_sequence": [
-      {
-        "stage": "plan",
-        "outcome": "success"
-      },
       {
         "stage": "implement",
         "outcome": "success"

@@ -225,6 +225,38 @@
               }
             }
           }
+        },
+        "context_references": {
+          "type": "array",
+          "description": "One entry per context reference the invocation carries. Optional; validated only when present.",
+          "items": {
+            "type": "object",
+            "required": ["source_path", "content_sha256", "status"],
+            "properties": {
+              "source_path": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Context reference source path named by the invocation."
+              },
+              "content_sha256": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Digest of the selected content: SHA-256 of the selected text after leading and trailing whitespace is trimmed."
+              },
+              "status": {
+                "enum": ["pending", "read", "skipped", "reference_failed"],
+                "description": "pending is the scaffold value and is rejected at submission. read means the source was read. skipped requires reason. reference_failed requires error and fails the attestation."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why the read trigger did not apply. Required when status is skipped."
+              },
+              "error": {
+                "type": "string",
+                "description": "Concrete read error. Required when status is reference_failed."
+              }
+            }
+          }
         }
       }
     },

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
 import {
   existsSync,
   mkdirSync,
@@ -72,7 +73,8 @@ test('moves succeeded inbox request to complete through the full delivery workfl
     /pipeline-config\.snapshot\.json$/u,
   )
 
-  const stageSlugs = ['plan', 'implement', 'verify', 'ship']
+  // Delivery starts at implement: the ratified plan is the request itself.
+  const stageSlugs = ['implement', 'verify', 'ship']
 
   for (const [stageSequence, stageSlug] of stageSlugs.entries()) {
     const prepared = prepareInvocation(root, runId)
@@ -143,20 +145,16 @@ test('moves succeeded inbox request to complete through the full delivery workfl
       )
     }
 
-    if (stageSlug === 'plan') {
+    if (stageSlug === 'implement') {
       const repeated = submitAsSupervisor(root, runId, invocation.output.path)
 
       assert.equal(repeated.idempotent, true)
       assert.equal(repeated.record.invocation_id, invocation.invocation_id)
     }
 
-    if (stageSlug === 'plan' || stageSlug === 'ship') {
+    if (stageSlug === 'ship') {
       assert.equal(submitted.state.status, 'awaiting_operator')
-
-      if (stageSlug === 'ship') {
-        rmSync(path.join(root, 'runtime/inbox/active/full-delivery.md'))
-      }
-
+      rmSync(path.join(root, 'runtime/inbox/active/full-delivery.md'))
       decideRun(root, runId, 'approve', 'fixture approval')
     }
   }
@@ -165,7 +163,7 @@ test('moves succeeded inbox request to complete through the full delivery workfl
 
   assert.equal(final.status, 'succeeded')
   assert.equal(final.current_stage, null)
-  assert.equal(final.stage_history.length, 4)
+  assert.equal(final.stage_history.length, 3)
   assert.equal(
     final.request.source_path,
     'runtime/inbox/complete/full-delivery.md',
@@ -181,14 +179,14 @@ test('moves succeeded inbox request to complete through the full delivery workfl
   const operatorFiles = readdirSync(finalLayout.operator.absolute)
 
   assert.equal(existsSync(finalLayout.state.absolute), true)
-  assert.equal(operatorFiles.filter((item) => item.endsWith('.html')).length, 4)
+  assert.equal(operatorFiles.filter((item) => item.endsWith('.html')).length, 3)
   assert.equal(
     operatorFiles.some((item) => item.endsWith('.json')),
     false,
   )
   assert.deepEqual(
     final.stage_history.map((item) => item.invocation_id.slice(0, 2)),
-    ['03', '02', '01', '00'],
+    ['02', '01', '00'],
   )
   assert.equal(
     existsSync(path.join(root, `runtime/logs/workflows/${runId}/records`)),
@@ -249,43 +247,62 @@ const AWAY: CheckpointVariant = {
         2,
       )}\n`,
     )
+    // Delivery starts at implement, whose target-instruction coverage check
+    // reads the cumulative workspace diff. Fold the fixture edit into the
+    // baseline commit so the run starts from a clean tree; amend rather than
+    // commit because the ship release validator needs the baseline commit to
+    // be the one that introduced VERSION.
+    execFileSync('git', ['add', 'config.json'], { cwd: root })
+    execFileSync('git', ['commit', '-q', '--amend', '-m', 'fixture'], {
+      cwd: root,
+    })
   },
   run: { title: 'Away continuation fixture' },
-  decidePlan: (root, runId) => {
-    const state = getRunState(root, runId)
-    const planOutputPath = state.stage_history.at(-1)?.output_path ?? ''
-    const blocker = awayModeTrigger(state)
-
-    assert.ok(blocker)
-    const decision = recordAwayEvaluation(root, state, blocker, {
-      ranked_options: [
-        {
-          rank: 1,
-          action: 'approve',
-          feasible: true,
-          rationale: 'Approve the ratified plan.',
-          evidence: [planOutputPath],
-          rollback_plan: {
-            steps: ['Route a later run to plan.'],
-            verification: 'Confirm the later run starts at plan.',
-          },
-        },
-      ],
-    })
-    const next = decideRunAsAway(
-      root,
-      runId,
-      'approve',
-      decision.selected_action?.rationale ?? '',
-    )
-
-    recordAwayApplyResult(root, decision, 'applied')
-    assert.equal(next.current_stage, 'implement')
-    assert.equal(next.pending_action.type, 'prepare_invocation')
-  },
 }
 
-test('enabled away mode continues after one decision and completes ship', () => {
+test('enabled away mode approves a ratified planning gate', () => {
+  const { root, runId, state } = checkpoint(
+    'planning@plan-awaiting-operator',
+    AWAY,
+  )
+  const planOutputPath = state.stage_history.at(-1)?.output_path ?? ''
+  const blocker = awayModeTrigger(state)
+
+  assert.ok(blocker)
+
+  const decision = recordAwayEvaluation(root, state, blocker, {
+    ranked_options: [
+      {
+        rank: 1,
+        action: 'approve',
+        feasible: true,
+        rationale: 'Approve the ratified plan.',
+        evidence: [planOutputPath],
+        rollback_plan: {
+          steps: ['Start a later planning run from the same request.'],
+          verification: 'Confirm the later run starts at plan.',
+        },
+      },
+    ],
+  })
+  const next = decideRunAsAway(
+    root,
+    runId,
+    'approve',
+    decision.selected_action?.rationale ?? '',
+  )
+
+  recordAwayApplyResult(root, decision, 'applied')
+  assert.equal(next.status, 'succeeded')
+  assert.equal(next.pending_action.type, 'none')
+  assert.equal(countAwayDecisions(root, runId), 1)
+  assert.deepEqual(
+    readAwayDecisionLedger(root).map((record) => record.decision_kind),
+    ['evaluated', 'evaluated'],
+  )
+})
+
+test('enabled away mode completes ship through a deterministic approval', () => {
   const { root, runId, state } = checkpoint(
     'delivery@ship-awaiting-operator',
     AWAY,
@@ -311,15 +328,12 @@ test('enabled away mode continues after one decision and completes ship', () => 
 
   const ledger = readAwayDecisionLedger(root)
 
-  assert.equal(countAwayDecisions(root, runId), 1)
+  // Delivery holds no plan gate, so the run reaches ship without spending an
+  // evaluated away decision; the deterministic ship approval is not budgeted.
+  assert.equal(countAwayDecisions(root, runId), 0)
   assert.deepEqual(
     ledger.map((record) => record.decision_kind),
-    [
-      'evaluated',
-      'evaluated',
-      'deterministic_ship_approval',
-      'deterministic_ship_approval',
-    ],
+    ['deterministic_ship_approval', 'deterministic_ship_approval'],
   )
 
   const events = readFileSync(
@@ -360,19 +374,24 @@ test('away resume cannot ratify workspace changes made during a pause', () => {
   )
 
   assert.throws(
-    () => resumeRunAsAway(root, runId, 'plan', 'Resume past the edit.'),
+    () => resumeRunAsAway(root, runId, 'implement', 'Resume past the edit.'),
     /cannot ratify workspace changes/u,
   )
   assert.equal(getRunState(root, runId).status, 'paused')
 
-  const resumed = resumeRun(root, runId, 'plan', 'Authorized operator fix.')
+  const resumed = resumeRun(
+    root,
+    runId,
+    'implement',
+    'Authorized operator fix.',
+  )
 
   assert.equal(resumed.status, 'running')
   assert.equal(resumed.operator_workspace_ratifications?.length, 1)
 })
 
 test('away revise re-runs the stage without an operator revision allowance', () => {
-  const { root, runId, state } = checkpoint('delivery@plan-awaiting-operator')
+  const { root, runId, state } = checkpoint('planning@plan-awaiting-operator')
 
   assert.equal(state.pending_action.type, 'operator_approval')
 
@@ -423,12 +442,12 @@ test('ship cannot succeed when its PR artifact violates resolved authority', () 
 })
 
 test('a non-empty approval note becomes required context for the routed stage', () => {
-  const prepared = checkpoint('delivery@plan-prepared')
+  const prepared = checkpoint('delivery@implement-prepared')
   const first = prepared.invocation
 
   assert.ok(first)
-  assert.equal(first.stage.slug, 'plan')
-  assert.equal(first.stage.persona, 'planner')
+  assert.equal(first.stage.slug, 'implement')
+  assert.equal(first.stage.persona, 'coder')
 
   // The first stage of the run is delegated, so it owes the same delivery
   // contract and read attestation every other worker stage owes.
@@ -436,16 +455,18 @@ test('a non-empty approval note becomes required context for the routed stage', 
   assert.equal(first.delegation?.mode, 'referenced')
   assert.equal(
     first.delegation?.cursor_agent_path,
-    '.cursor/agents/pan-planner.md',
+    '.cursor/agents/pan-coder.md',
   )
   assert.ok(first.contract_manifest)
 
-  const { root, runId, state } = checkpoint('delivery@plan-awaiting-operator')
-  const planHistory = state.stage_history.at(-1)
+  // The technical-director contract gates verify, so the operator stops at a
+  // worker-owned stage whose approval routes to a later stage.
+  const { root, runId, state } = checkpoint('delivery[td]@verify-submitted')
+  const verifyHistory = state.stage_history.at(-1)
 
-  assert.ok(planHistory?.record_path)
+  assert.ok(verifyHistory?.record_path)
 
-  const record = read(path.join(root, planHistory.record_path)) as TaskRecord
+  const record = read(path.join(root, verifyHistory.record_path)) as TaskRecord
   const warnings = (record.evaluation.governance_artifact_warnings ?? []).join(
     '\n',
   )
@@ -457,10 +478,10 @@ test('a non-empty approval note becomes required context for the routed stage', 
   // Worker ownership must not change where the operator stops the run.
   assert.equal(state.status, 'awaiting_operator')
   assert.equal(state.pending_action.type, 'operator_approval')
-  assert.equal(state.current_stage, 'plan')
+  assert.equal(state.current_stage, 'verify')
 
   const directive =
-    'Adopt cross-run cache persistence explicitly during implementation.'
+    'Call out the cache persistence change in the release packet.'
 
   decideRun(root, runId, 'approve', directive)
 
@@ -468,22 +489,22 @@ test('a non-empty approval note becomes required context for the routed stage', 
 
   assert.ok(feedback)
   assert.equal(feedback.decision, 'approve')
-  assert.equal(feedback.from_stage, 'plan')
-  assert.equal(feedback.to_stage, 'implement')
+  assert.equal(feedback.from_stage, 'verify')
+  assert.equal(feedback.to_stage, 'ship')
   assert.equal(feedback.note, directive)
   assert.ok(existsSync(path.join(root, feedback.path)))
   assert.match(
     readFileSync(path.join(root, feedback.path), 'utf8'),
     /Operator directive attached to approval/u,
   )
-  assert.equal(getRunState(root, runId).current_stage, 'implement')
+  assert.equal(getRunState(root, runId).current_stage, 'ship')
 
-  const implement = prepareInvocation(root, runId).invocation
+  const ship = prepareInvocation(root, runId).invocation
 
-  assert.ok(implement)
-  assert.equal(implement.stage.slug, 'implement')
+  assert.ok(ship)
+  assert.equal(ship.stage.slug, 'ship')
 
-  const reference = implement.inputs.references.find(
+  const reference = ship.inputs.references.find(
     (entry) => entry.path === feedback.path,
   )
 
@@ -492,19 +513,19 @@ test('a non-empty approval note becomes required context for the routed stage', 
 })
 
 test('an empty approval note records no operator feedback', () => {
-  const { root, runId } = checkpoint('delivery@plan-awaiting-operator')
+  const { root, runId } = checkpoint('delivery[td]@verify-submitted')
 
   decideRun(root, runId, 'approve')
 
   const state = getRunState(root, runId)
 
-  assert.equal(state.current_stage, 'implement')
+  assert.equal(state.current_stage, 'ship')
   assert.equal(state.operator_feedback, undefined)
 })
 
-test('an operator revision returns the delivery plan to the planner', () => {
+test('an operator revision returns the ratified plan to the planner', () => {
   const { root, runId, state, workflow } = checkpoint(
-    'delivery@plan-awaiting-operator',
+    'planning@plan-awaiting-operator',
   )
   const planStage = stageBySlug(workflow, 'plan')
 
@@ -557,7 +578,7 @@ test('an operator revision returns the delivery plan to the planner', () => {
   assert.equal(revised.record.outcome, 'success')
   assert.equal(revised.state.status, 'awaiting_operator')
   decideRun(root, runId, 'approve', 'fixture approval')
-  assert.equal(getRunState(root, runId).current_stage, 'implement')
+  assert.equal(getRunState(root, runId).status, 'succeeded')
 })
 
 test('run preparation reports live pipeline-config drift from its snapshot', () => {
@@ -655,8 +676,8 @@ test('operator set-stage bypasses transitions and injects repair context', () =>
   const originalInvocation = prepareInvocation(root, runId).invocation
 
   assert.ok(originalInvocation)
-  assert.equal(originalInvocation.stage.slug, 'plan')
-  assert.match(originalInvocation.invocation_id, /^99_plan-1_/u)
+  assert.equal(originalInvocation.stage.slug, 'implement')
+  assert.match(originalInvocation.invocation_id, /^99_implement-1_/u)
 
   assert.throws(
     () => setRunStage(root, runId, 'verify', '   '),
@@ -687,7 +708,7 @@ test('operator set-stage bypasses transitions and injects repair context', () =>
 
   const feedback = getRunState(root, runId).operator_feedback?.at(-1)
   assert.ok(feedback)
-  assert.equal(feedback.from_stage, 'plan')
+  assert.equal(feedback.from_stage, 'implement')
   assert.equal(feedback.to_stage, 'verify')
   assert.ok(
     invocation.inputs.references.some(

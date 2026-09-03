@@ -45,8 +45,16 @@ function waitForProcess(
   })
 }
 
+// The wait only sequences the second launch after the first command started.
+// The first build in a freshly written temporary root can take several
+// seconds on a loaded host, because every copied script runs for the first
+// time there, so the budget is generous rather than a measure of the contract.
+const STARTED_WAIT_MS = 15_000
+
 async function waitForPath(filePath: string): Promise<void> {
-  for (let attempt = 0; attempt < 200; attempt++) {
+  const deadline = Date.now() + STARTED_WAIT_MS
+
+  while (Date.now() < deadline) {
     if (existsSync(filePath)) {
       return
     }

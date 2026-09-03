@@ -1,8 +1,8 @@
 {
   "slug": "plan",
-  "title": "Consolidated plan",
+  "title": "Ratified plan and cohort fan-out",
   "persona": "planner",
-  "prompt_path": "library/workflows/delivery/prompts/plan.md",
+  "prompt_path": "library/workflows/planning/prompts/plan.md",
   "workspace_policy": "runtime_only",
   "gate": "operator",
   "checkpoint": "technical_plan",
@@ -26,7 +26,12 @@
     "engineering_plan.validation": "array",
     "acceptance_criteria": "array",
     "test_plan": "array",
-    "open_question_dispositions": "array"
+    "open_question_dispositions": "array",
+    "cohort_plan": "object",
+    "cohort_plan.parent_spec_path": "string",
+    "cohort_plan.chunks": "array",
+    "cohort_plan.edges": "array",
+    "cohort_plan.cohorts": "array"
   },
   "criteria": [
     {
@@ -61,7 +66,7 @@
     }
   ],
   "transitions": {
-    "success": "implement",
+    "success": "succeeded",
     "failure": "plan",
     "blocked": "paused"
   }

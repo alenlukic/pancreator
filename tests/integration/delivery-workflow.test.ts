@@ -289,12 +289,12 @@ test('delivery verify resolves parallel evidence workers and gates submission on
 
 test('plan and verify cards render the complete shared field contract', () => {
   const root = createFixture()
-  const runId = createRun(root, {
-    workflowSlug: 'delivery',
+  const planningRunId = createRun(root, {
+    workflowSlug: 'planning',
     requestPath: 'request.md',
-    title: 'Shared field contract run',
+    title: 'Shared field contract planning run',
   }).run_id
-  const plan = prepareInvocation(root, runId)
+  const plan = prepareInvocation(root, planningRunId)
   const planPath = plan.state.current_invocation?.markdown_path
 
   assert.ok(planPath)
@@ -315,6 +315,12 @@ test('plan and verify cards render the complete shared field contract', () => {
   for (const result of ['unevaluated', 'skipped', 'not_applicable']) {
     assert.ok(planCard.includes(`  - \`${result}\`:`))
   }
+
+  const runId = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title: 'Shared field contract run',
+  }).run_id
 
   setRunStage(root, runId, 'verify', 'Inspect the verify field contract.')
 
