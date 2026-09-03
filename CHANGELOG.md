@@ -1,5 +1,29 @@
 # Changelog
 
+## [5.12.0] - 2026-09-03
+
+### Changed
+
+- Move planning out of delivery into a separate planning workflow with one operator-gated plan stage ([482cd150](https://github.com/alenlukic/pancreator/commit/482cd150460e221ac505333426d157a157807a34), [planning workflow](library/workflows/planning/workflow.json)).
+- Start new delivery runs at implement. In-flight runs keep their snapshotted graph ([delivery workflow](library/workflows/delivery/workflow.json)).
+- Deliver each chunk request as a child specification. Deliver the parent as an audited context reference ([context](src/lib/context.ts)).
+
+### Added
+
+- Add `pan cohort` commands for init, start, status, integrate, abandon, and clean ([cohorts](src/lib/cohorts.ts)).
+- Add `--autostart` on a planning run so approval starts cohort 1 ([cli](src/cli.ts)).
+- Add policy COHORT-001 and the cohort-plan and child-specification validators ([COHORT-001](governance/policies/COHORT-001.json)).
+- Add a shared-item disposition so a cross-cutting requirement can belong to more than one chunk ([cohort-plan](src/lib/validators/cohort-plan.ts)).
+
+### Removed
+
+- Remove the delivery plan stage from the current delivery graph ([delivery stages](library/workflows/delivery/)).
+
+### Fixed
+
+- Accept a declared shared item in the child-specification validator. Refuse an undeclared double trace ([cohort-plan](src/lib/validators/cohort-plan.ts)).
+- Isolate two fixture tests from a local untracked `config_overrides.json` ([best-of-n](tests/integration/best-of-n.test.ts), [pipeline-config](tests/unit/pipeline-config.test.ts)).
+
 ## [5.11.1] - 2026-09-03
 
 ### Changed
