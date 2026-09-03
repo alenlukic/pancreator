@@ -131,7 +131,8 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'Non-mutating forensics on Pancreator failures or run artifacts, ending in ' +
       'a validated self-development intake item.',
     boundaries: [
-      'You MUST NOT modify any file outside the declared intake artifact.',
+      'You MUST NOT modify any file outside the declared intake artifacts.',
+      'You MUST write one intake unless the operator requests more than one.',
       PROTECTED_PATH_RULE,
       'You MUST ground every finding in run evidence rather than inference.',
     ],

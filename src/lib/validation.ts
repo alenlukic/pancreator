@@ -1382,8 +1382,14 @@ export function loadInvocationValidationStatus(
 }
 
 export interface StageOutputValidation {
+  issues: StageOutputIssue[]
   errors: string[]
   output: StageOutput
+}
+
+export interface StageOutputIssue {
+  code: string
+  message: string
 }
 
 export interface StageOutputValidationOptions {
@@ -1549,6 +1555,11 @@ export function validateStageOutput(
   { pendingArtifactPaths = [] }: StageOutputValidationOptions = {},
 ): StageOutputValidation {
   const errors: string[] = []
+  const issueCodes = new Map<string, string>()
+  const addIssue = (code: string, message: string): void => {
+    issueCodes.set(message, code)
+    errors.push(message)
+  }
   const output = normalizeStageOutput(value, invocation)
   const record = isRecord(value) ? value : {}
 
@@ -1664,7 +1675,8 @@ export function validateStageOutput(
         item.result !== 'unevaluated' &&
         item.result !== 'skipped'
       ) {
-        errors.push(
+        addIssue(
+          'criterion.result',
           `criteria '${item.id}' result MUST be pass, fail, not_applicable, ` +
             `unevaluated, or skipped (got ${JSON.stringify(item.result)})`,
         )
@@ -1676,7 +1688,7 @@ export function validateStageOutput(
 
   for (const item of output.criteria) {
     if (criteria.has(item.id)) {
-      errors.push(`duplicate criteria result: ${item.id}`)
+      addIssue('criterion.duplicate', `duplicate criteria result: ${item.id}`)
     }
 
     // An explanation is required only where it carries information: why a
@@ -1686,7 +1698,8 @@ export function validateStageOutput(
       (item.result === 'fail' || item.result === 'not_applicable') &&
       item.explanation.length === 0
     ) {
-      errors.push(
+      addIssue(
+        'criterion.explanation_required',
         `criteria '${item.id}' ${item.result} verdict MUST carry an explanation`,
       )
     }
@@ -1698,37 +1711,46 @@ export function validateStageOutput(
     const evaluation = criteria.get(criterion.id)
 
     if (!evaluation) {
-      errors.push(`missing self-evaluation for criterion '${criterion.id}'`)
+      addIssue(
+        'criterion.missing',
+        `missing self-evaluation for criterion '${criterion.id}'`,
+      )
       continue
     }
 
     if (criterion.hard && evaluation.result === 'not_applicable') {
-      errors.push(`hard criterion '${criterion.id}' MUST NOT be not_applicable`)
+      addIssue(
+        'criterion.hard_not_applicable',
+        `hard criterion '${criterion.id}' MUST NOT be not_applicable`,
+      )
     }
 
     if (evaluation.result === 'skipped') {
       if (output.result === 'success') {
-        errors.push(
-          `criteria '${criterion.id}' MUST NOT be skipped on a success result`,
+        addIssue(
+          'criterion.skipped_on_success',
+          `A success result cannot skip criterion '${criterion.id}'`,
         )
       } else if (output.result === 'failure' && criterion.type !== 'shell') {
-        errors.push(
+        addIssue(
+          'criterion.skipped_on_failure',
           `criteria '${criterion.id}' MUST NOT be skipped on a failure ` +
             'result unless it is a shell criterion',
         )
       }
 
       if (evaluation.explanation.length === 0) {
-        errors.push(
+        addIssue(
+          'criterion.skipped_explanation',
           `criteria '${criterion.id}' skipped verdict MUST carry an explanation`,
         )
       }
     }
 
     if (evaluation.result === 'unevaluated') {
-      errors.push(
-        `criteria '${criterion.id}' is unevaluated; the worker must fill ` +
-          'every criterion before submission',
+      addIssue(
+        'criterion.unevaluated',
+        `Criterion '${criterion.id}' remains unevaluated and cannot be submitted`,
       )
     }
 
@@ -1737,7 +1759,10 @@ export function validateStageOutput(
       evaluation.result === 'pass' &&
       evaluation.evidence.length === 0
     ) {
-      errors.push(`criteria '${criterion.id}' pass claim MUST include evidence`)
+      addIssue(
+        'criterion.pass_evidence',
+        `criteria '${criterion.id}' pass claim MUST include evidence`,
+      )
     }
   }
 
@@ -1753,7 +1778,7 @@ export function validateStageOutput(
 
   for (const item of output.criteria) {
     if (!knownCriterionIds.has(item.id)) {
-      errors.push(`unknown criteria result: ${item.id}`)
+      addIssue('criterion.unknown', `unknown criteria result: ${item.id}`)
     }
   }
 
@@ -1829,7 +1854,12 @@ export function validateStageOutput(
     }
   }
 
-  return { errors, output }
+  const issues = errors.map((message) => ({
+    code: issueCodes.get(message) ?? 'stage_output.invalid',
+    message,
+  }))
+
+  return { issues, errors, output }
 }
 
 interface ShellCheckResolution {

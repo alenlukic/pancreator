@@ -777,3 +777,69 @@ test('TUNE-001 resolves its record validator for tune-harness sessions', () => {
     'runtime/tune-harness/records/session.json',
   )
 })
+
+test('REPAIR-001 allows several intakes and keeps one as the default', () => {
+  const root = sharedFixture()
+  const policy = JSON.parse(
+    readFileSync(
+      path.join(root, 'governance', 'policies', 'REPAIR-001.json'),
+      'utf8',
+    ),
+  ) as { instructions: string[] }
+  const instructions = policy.instructions.join('\n')
+
+  assert.match(instructions, /MUST write one intake by default/u)
+  assert.match(
+    instructions,
+    /more than one intake only when the operator requests more than one/u,
+  )
+  assert.match(
+    instructions,
+    /one intake for each distinct root cause and MUST NOT split one root cause/u,
+  )
+  assert.match(instructions, /Every completed intake MUST pass/u)
+})
+
+test('every repair instruction surface agrees that several intakes are allowed', () => {
+  const root = sharedFixture()
+
+  // The multi-intake contract is spread across a policy, a persona, a projected
+  // agent, and a command. A reverted singular phrase on any one of them makes
+  // the harness technician refuse the second intake the operator asked for, so
+  // each surface is pinned to the plural contract here.
+  const surfaces = [
+    'library/personas/harness-technician.md',
+    'library/cursor/agents/harness-technician.md',
+    'library/cursor/commands/pan-repair.md',
+  ].map((relative) => ({
+    relative,
+    text: readFileSync(path.join(root, relative), 'utf8'),
+  }))
+
+  for (const surface of surfaces) {
+    assert.match(
+      surface.text,
+      /more than one/u,
+      `${surface.relative} must admit more than one intake`,
+    )
+    assert.doesNotMatch(
+      surface.text,
+      /write only the declared intake under/u,
+      `${surface.relative} must not fence writes to a single intake`,
+    )
+  }
+
+  const persona = surfaces[0]?.text ?? ''
+
+  assert.match(persona, /one intake for each\s+distinct root cause/u)
+  assert.doesNotMatch(
+    persona,
+    /write one implementation-ready Markdown intake/u,
+    'the persona must not mandate exactly one intake',
+  )
+
+  const command = surfaces[2]?.text ?? ''
+
+  assert.match(command, /once for each intake path/u)
+  assert.match(command, /default to one intake/u)
+})

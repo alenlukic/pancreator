@@ -220,6 +220,33 @@ test('the review mode is bound to no run and edits nothing', () => {
   )
 })
 
+test('the repair mode bounds intakes without forbidding a second one', () => {
+  const mode = STANDALONE_MODES.repair
+
+  assert.ok(mode)
+  assert.equal(mode.persona, 'harness-technician')
+  assert.equal(mode.kind, 'repair')
+
+  // The boundary must still fence writes to the declared intakes. A singular
+  // "the declared intake artifact" silently re-forbids the second intake the
+  // operator asked for, so the plural form is the contract.
+  const writeFence = mode.boundaries.find((boundary) =>
+    /outside the declared intake/u.test(boundary),
+  )
+
+  assert.ok(writeFence, 'the repair card must fence writes to the intakes')
+  assert.match(writeFence, /intake artifacts\./u)
+
+  assert.ok(
+    mode.boundaries.some((boundary) =>
+      /MUST write one intake unless the operator requests more than one/u.test(
+        boundary,
+      ),
+    ),
+    'one intake stays the default and more than one needs an operator request',
+  )
+})
+
 test('the review card renders base conduct for a card policy the target changes', () => {
   const root = createFixture()
   const policyPath = path.join(root, 'governance/policies/GLOBAL-002.json')

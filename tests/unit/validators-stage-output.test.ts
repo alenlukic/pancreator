@@ -198,10 +198,8 @@ test('stage output rejects an unevaluated criterion on every result', () => {
     criterion.result = 'unevaluated'
 
     const validation = validateStageOutput(root, stage, invocation, output)
-    const matches = validation.errors.filter((message) =>
-      message.includes(
-        "criteria 'verify.tests_correct' is unevaluated; the worker must fill every criterion before submission",
-      ),
+    const matches = validation.issues.filter(
+      (issue) => issue.code === 'criterion.unevaluated',
     )
 
     assert.equal(
@@ -209,6 +207,7 @@ test('stage output rejects an unevaluated criterion on every result', () => {
       1,
       `${result} reported ${matches.length} times`,
     )
+    assert.match(matches[0].message, /remains unevaluated/u)
   }
 })
 
@@ -229,9 +228,11 @@ test('stage output rejects a skipped criterion on success', () => {
 
   const validation = validateStageOutput(root, stage, invocation, output)
 
-  assert.match(
-    validation.errors.join('\n'),
-    /verify\.full_suite' MUST NOT be skipped on a success result/u,
+  assert.deepEqual(
+    validation.issues
+      .filter((issue) => issue.code === 'criterion.skipped_on_success')
+      .map((issue) => issue.message),
+    ["A success result cannot skip criterion 'verify.full_suite'"],
   )
 })
 

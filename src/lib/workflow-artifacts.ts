@@ -33,6 +33,8 @@ import type { RunState, RunStatus } from './types.js'
 
 const ARTIFACT_ID_PATTERN =
   /^(?:\d{2,3}_)?([a-zA-Z][a-zA-Z0-9-]*)-(\d+)[_-]([a-zA-Z0-9]+)$/u
+const ARTIFACT_REFERENCE_PATTERN =
+  /\b(?:\d{2,3}_)?[a-zA-Z][a-zA-Z0-9-]*-\d+[_-][a-zA-Z0-9]+\b/gu
 const UUID_SUFFIX_PATTERN = /^[0-9a-f]{8}$/u
 
 export type WorkflowArtifactSequenceMode = 'in-flight' | 'completed'
@@ -455,6 +457,17 @@ function replacementMappings(
     }
   }
 
+  for (const [oldInvocationId, newInvocationId] of [...mappings]) {
+    mappings.set(
+      `assessment-${oldInvocationId}.request.json`,
+      `${newInvocationId}.assessment-request.json`,
+    )
+    mappings.set(
+      `assessment-${oldInvocationId}.json`,
+      `${newInvocationId}.assessment.json`,
+    )
+  }
+
   return mappings
 }
 
@@ -670,6 +683,19 @@ function updateFiles(
       updatedFiles.add(filePath)
     }
   }
+}
+
+function exactRunInboxFiles(root: string, runId: string): string[] {
+  const inboxDirectory = path.join(root, 'runtime', 'inbox')
+
+  if (!existsSync(inboxDirectory)) {
+    return []
+  }
+
+  return readdirSync(inboxDirectory, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.startsWith(runId))
+    .map((entry) => path.join(inboxDirectory, entry.name))
+    .sort()
 }
 
 function migratedArtifactName(
@@ -983,6 +1009,7 @@ export function rewriteWorkflowArtifacts(
     updatedFiles,
   )
   updateFiles(listFiles(stateDirectory), mappings, updatedFiles)
+  updateFiles(exactRunInboxFiles(root, runId), mappings, updatedFiles)
 
   if (state) {
     const rewritten = rewriteRunStateValue(state, occurrences, mappings)
@@ -1004,6 +1031,7 @@ export function rewriteWorkflowArtifacts(
 
   updateFiles(listFiles(runDirectory), layout.mappings, updatedFiles)
   updateFiles(listFiles(stateDirectory), layout.mappings, updatedFiles)
+  updateFiles(exactRunInboxFiles(root, runId), layout.mappings, updatedFiles)
 
   if (state) {
     replaceRunStateObject(state, layout.mappings)
@@ -1103,7 +1131,19 @@ export interface WorkflowRuntimeMaintenanceSummary {
   migration: WorkflowNameMigrationSummary
   suffixes: RunSuffixMigrationSummary
   inbox_layout: InboxLegacyMigrationSummary
+  references: WorkflowReferenceRepairSummary
   archive: WorkflowArchiveSummary
+}
+
+export interface WorkflowReferenceAmbiguity {
+  path: string
+  reference: string
+  candidates: string[]
+}
+
+export interface WorkflowReferenceRepairSummary {
+  changed_paths: string[]
+  ambiguities: WorkflowReferenceAmbiguity[]
 }
 
 interface RunMigration {
@@ -1963,6 +2003,107 @@ function activeWorkflowDirectoryNames(directory: string): string[] {
     .sort()
 }
 
+function referenceCandidates(
+  reference: string,
+  stageSlugs: ReadonlySet<string>,
+  finalInvocationIds: string[],
+): string[] {
+  const identity = artifactIdentity(reference, stageSlugs)
+
+  if (!identity) {
+    return []
+  }
+
+  const suffix = normalizedUuidSuffix(identity)
+
+  return finalInvocationIds.filter((invocationId) => {
+    const candidate = artifactIdentity(invocationId, stageSlugs)
+
+    return (
+      candidate !== null &&
+      candidate.stageSlug === identity.stageSlug &&
+      candidate.stageIteration === identity.stageIteration &&
+      normalizedUuidSuffix(candidate) === suffix
+    )
+  })
+}
+
+export function repairWorkflowInboxReferences(
+  root = findProjectRoot(),
+): WorkflowReferenceRepairSummary {
+  const logRoot = path.join(root, 'runtime', 'logs', 'workflows')
+  const changedPaths: string[] = []
+  const ambiguities: WorkflowReferenceAmbiguity[] = []
+
+  for (const runId of activeWorkflowDirectoryNames(logRoot)) {
+    const runDirectory = path.join(logRoot, runId)
+
+    if (!isClosedRunStatus(readRunStatus(runDirectory))) {
+      continue
+    }
+
+    const stageSlugs = workflowStageSlugs(runDirectory)
+    const finalInvocationIds = collectInvocationIds(runDirectory)
+
+    for (const filePath of exactRunInboxFiles(root, runId)) {
+      const content = textFileContent(filePath)
+
+      if (content === null) {
+        continue
+      }
+
+      const mappings = new Map<string, string>()
+      const fileAmbiguities = new Map<string, WorkflowReferenceAmbiguity>()
+
+      for (const reference of new Set(
+        content.match(ARTIFACT_REFERENCE_PATTERN) ?? [],
+      )) {
+        const candidates = referenceCandidates(
+          reference,
+          stageSlugs,
+          finalInvocationIds,
+        )
+
+        if (candidates.length === 1 && candidates[0] !== reference) {
+          mappings.set(reference, candidates[0])
+        } else if (candidates.length > 1) {
+          const relativePath = path
+            .relative(root, filePath)
+            .split(path.sep)
+            .join('/')
+
+          fileAmbiguities.set(reference, {
+            path: relativePath,
+            reference,
+            candidates: [...candidates].sort(),
+          })
+        }
+      }
+
+      if (fileAmbiguities.size > 0) {
+        ambiguities.push(...fileAmbiguities.values())
+        continue
+      }
+
+      const updated = replaceMappings(content, mappings)
+
+      if (updated !== content) {
+        writeFileSync(filePath, updated, 'utf8')
+        changedPaths.push(
+          path.relative(root, filePath).split(path.sep).join('/'),
+        )
+      }
+    }
+  }
+
+  return {
+    changed_paths: changedPaths.sort(),
+    ambiguities: ambiguities.sort((left, right) =>
+      left.path.localeCompare(right.path),
+    ),
+  }
+}
+
 function bestOfNCreatedAt(directory: string): Date | null {
   const statePath = path.join(directory, 'state.json')
 
@@ -2256,12 +2397,18 @@ export function maintainWorkflowRuntime(
   } = {},
 ): WorkflowRuntimeMaintenanceSummary {
   const inboxLayout = migrateLegacyInboxLayout(root)
+  const names = standardizeRuntimeFileNames(root)
+  const migration = migrateWorkflowNames(root)
+  const suffixes = migrateRunSuffixes(root)
+  const references = repairWorkflowInboxReferences(root)
+  const archive = archiveWorkflowDirectories(root, options)
 
   return {
-    names: standardizeRuntimeFileNames(root),
-    migration: migrateWorkflowNames(root),
-    suffixes: migrateRunSuffixes(root),
+    names,
+    migration,
+    suffixes,
     inbox_layout: inboxLayout,
-    archive: archiveWorkflowDirectories(root, options),
+    references,
+    archive,
   }
 }

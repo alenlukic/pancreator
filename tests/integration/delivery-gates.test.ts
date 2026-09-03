@@ -110,7 +110,11 @@ test('an unevaluated verify criterion blocks success before the full suite', () 
   assert.equal(suite.exit_code, undefined)
   assert.match(
     submitted.record.evaluation.validation_errors.join('\n'),
-    /verify\.tests_correct' is unevaluated/u,
+    /Criterion 'verify\.tests_correct' remains unevaluated/u,
+  )
+  assert.doesNotMatch(
+    submitted.record.evaluation.validation_errors.join('\n'),
+    /criteria '.+' is unevaluated;/u,
   )
 })
 

@@ -1,5 +1,31 @@
 # Changelog
 
+## [5.11.1] - 2026-09-03
+
+### Changed
+
+- Allow the harness technician to write several repair intakes when the operator requests more than one, keeping one intake as the default ([REPAIR-001](governance/policies/REPAIR-001.json), [harness technician](library/personas/harness-technician.md)).
+- Require one intake for each distinct root cause, and forbid splitting one root cause across two intakes ([harness technician](library/personas/harness-technician.md)).
+- Validate every repair intake individually, and report each intake result separately ([pan-repair](library/cursor/commands/pan-repair.md)).
+- Bound the repair card to the declared intakes instead of a single intake artifact ([governance card](src/lib/governance-card.ts)).
+
+## [5.11.0] - 2026-09-02
+
+### Changed
+
+- Validate full documents and RFC 7386 revisions through one effective document before preflight and submit ([8c45d60a](https://github.com/alenlukic/pancreator/commit/8c45d60ad19d0f92d85ff61461ec6204b92eadc5)).
+- Gate hard criterion states on stable issue codes instead of diagnostic message text ([8c45d60a](https://github.com/alenlukic/pancreator/commit/8c45d60ad19d0f92d85ff61461ec6204b92eadc5)).
+- Enforce required plan-file children from the shared field declaration ([8c45d60a](https://github.com/alenlukic/pancreator/commit/8c45d60ad19d0f92d85ff61461ec6204b92eadc5)).
+
+### Added
+
+- Rewrite exact-run inbox references during terminal finalization ([8c45d60a](https://github.com/alenlukic/pancreator/commit/8c45d60ad19d0f92d85ff61461ec6204b92eadc5)).
+- Repair historical run-linked inbox aliases through runtime maintenance and report ambiguities ([8c45d60a](https://github.com/alenlukic/pancreator/commit/8c45d60ad19d0f92d85ff61461ec6204b92eadc5)).
+
+### Fixed
+
+- Restore a distinct release-owned active model during installer refresh ([8c45d60a](https://github.com/alenlukic/pancreator/commit/8c45d60ad19d0f92d85ff61461ec6204b92eadc5)).
+
 ## [5.10.1] - 2026-09-02
 
 ### Fixed

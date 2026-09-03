@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readdirSync, realpathSync } from 'node:fs'
+import { readdirSync, realpathSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -12,6 +12,7 @@ import {
   delegateInvocation,
   getRunStatus,
   getRunState,
+  materializeOutputSubmission,
   pauseRun,
   prepareInvocation,
   probeRunInvocationModel,
@@ -909,6 +910,10 @@ function runAgentPreSubmitValidators(
     isRecord(invocation.stage) && typeof invocation.stage.slug === 'string'
       ? invocation.stage.slug
       : ''
+  const declaredOutputPath =
+    isRecord(invocation.output) && typeof invocation.output.path === 'string'
+      ? invocation.output.path
+      : null
 
   return requirements.flatMap((requirement) => {
     const entry = catalog.entries.get(requirement.registry_id)
@@ -927,13 +932,19 @@ function runAgentPreSubmitValidators(
       return []
     }
 
-    const targetPath = resolveRequirementTargetPath(requirement, filePath, {
-      ...submittedValue,
-      ...(isRecord(invocation.output) &&
-      isRecord(invocation.output.artifact_targets)
-        ? { artifact_targets: invocation.output.artifact_targets }
-        : {}),
-    })
+    const resolvedTargetPath = resolveRequirementTargetPath(
+      requirement,
+      filePath,
+      {
+        ...submittedValue,
+        ...(isRecord(invocation.output) &&
+        isRecord(invocation.output.artifact_targets)
+          ? { artifact_targets: invocation.output.artifact_targets }
+          : {}),
+      },
+    )
+    const targetPath =
+      resolvedTargetPath === declaredOutputPath ? filePath : resolvedTargetPath
 
     if (!targetPath) {
       return [
@@ -2577,9 +2588,31 @@ async function main(): Promise<void> {
           '--invocation',
         )
         const invocation = readInvocationFromPath(root, invocationPath)
-        const submittedValue = readJson(
-          resolveInside(root, filePath),
-        ) as Record<string, unknown>
+        const submittedValue = readJson(resolveInside(root, filePath))
+        const materialized = materializeOutputSubmission(
+          root,
+          getRunState(root, runId),
+          submittedValue,
+          invocation.invocation_id,
+        )
+        const effectiveValue = materialized.value
+        const effectiveRecord = isRecord(effectiveValue) ? effectiveValue : {}
+        const scratchPath =
+          materialized.revisedFrom === undefined
+            ? null
+            : path.posix.join(
+                'runtime',
+                'cache',
+                'output-validate',
+                runId,
+                path.basename(invocation.output.path),
+              )
+        const effectivePath = scratchPath ?? filePath
+
+        if (scratchPath !== null) {
+          writeJsonAtomic(resolveInside(root, scratchPath), effectiveValue)
+        }
+
         const agentRequirements = [
           ...(invocation.requirements?.validation_requirements ?? []),
           ...(invocation.requirements?.automation_requirements ?? []),
@@ -2591,26 +2624,38 @@ async function main(): Promise<void> {
             item.enforcement !== 'advisory',
         )
 
-        // Always run the submission mirror. A mechanical defect that reaches
-        // submit time consumes a stage attempt.
-        const submission = validateOutputForSubmission(
-          root,
-          runId,
-          invocation,
-          submittedValue,
-          { submittedPath: filePath },
-        )
-        const results =
-          agentRequirements.length === 0
-            ? []
-            : runAgentPreSubmitValidators(
-                root,
-                runId,
-                invocation as unknown as Record<string, unknown>,
-                agentRequirements,
-                filePath,
-                submittedValue,
-              )
+        let submission: ReturnType<typeof validateOutputForSubmission>
+        let results: ReturnType<typeof runAgentPreSubmitValidators>
+
+        try {
+          // Always run the submission mirror. A mechanical defect that reaches
+          // submit time consumes a stage attempt.
+          submission = validateOutputForSubmission(
+            root,
+            runId,
+            invocation,
+            effectiveValue,
+            { submittedPath: effectivePath },
+          )
+          results =
+            agentRequirements.length === 0
+              ? []
+              : runAgentPreSubmitValidators(
+                  root,
+                  runId,
+                  invocation as unknown as Record<string, unknown>,
+                  agentRequirements,
+                  effectivePath,
+                  effectiveRecord,
+                )
+        } finally {
+          if (scratchPath !== null) {
+            rmSync(path.dirname(resolveInside(root, scratchPath)), {
+              recursive: true,
+              force: true,
+            })
+          }
+        }
         const passed =
           submission.passed &&
           results.every((item) => isPassingResult(item.result))

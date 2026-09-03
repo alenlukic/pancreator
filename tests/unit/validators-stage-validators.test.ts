@@ -2268,4 +2268,109 @@ test('field contract validator rejects enforced_fields that lack a declared shap
         item.message.includes('data.missing.field'),
     ),
   )
+  assert.ok(
+    result.issues.some(
+      (item) =>
+        item.code === 'field_contract.required_child_enforcement' &&
+        item.message.includes('data.engineering_plan.files[].purpose'),
+    ),
+  )
+})
+
+test('plan trace enforces every required plan file child', () => {
+  const root = validatorFixtureRoot('pan-plan-file-fields-')
+  const target = 'output.json'
+
+  writeFileSync(path.join(root, 'existing.ts'), 'export const value = 1\n')
+
+  for (const field of ['path', 'status', 'purpose'] as const) {
+    const file: Partial<Record<'path' | 'status' | 'purpose', string>> = {
+      path: 'existing.ts',
+      status: 'modified',
+      purpose: 'Update the existing fixture.',
+    }
+
+    delete file[field]
+    writeJson(path.join(root, target), {
+      data: {
+        acceptance_criteria: [],
+        engineering_plan: { files: [file] },
+        test_plan: [],
+        open_question_dispositions: [],
+        verification_recommendation: {
+          level: 'light',
+          reason: 'The fixture change is bounded.',
+        },
+      },
+    })
+
+    const result = validatePlanTrace({
+      root,
+      targetPath: target,
+      requirement: planTraceRequirement,
+    })
+    const expectedCode =
+      field === 'status' ? 'plan.file_status' : 'plan.file_required'
+
+    assert.ok(
+      result.issues.some(
+        (item) =>
+          item.code === expectedCode &&
+          item.message.includes(`files[0].${field}`),
+      ),
+      `${field}: ${JSON.stringify(result.issues)}`,
+    )
+  }
+})
+test('plan field contract declares every validator-enforced shape', () => {
+  const root = createFixture()
+  const contractPath = 'library/schemas/stage-output-requirements.json'
+  const source = JSON.parse(
+    readFileSync(path.join(root, contractPath), 'utf8'),
+  ) as {
+    stages: {
+      plan: {
+        validators: Array<{ enforced_fields?: string[] }>
+        fields: Array<{ path: string }>
+      }
+    }
+  }
+  const declared = new Set(source.stages.plan.fields.map((field) => field.path))
+  const enforced = new Set(
+    source.stages.plan.validators.flatMap(
+      (validator) => validator.enforced_fields ?? [],
+    ),
+  )
+
+  for (const fieldPath of [
+    'data.acceptance_criteria[].id',
+    'data.acceptance_criteria[].maps_to',
+    'data.acceptance_criteria[].verification',
+    'data.engineering_plan.files[]',
+    'data.engineering_plan.files[].path',
+    'data.engineering_plan.files[].status',
+    'data.engineering_plan.files[].purpose',
+    'data.test_plan[]',
+    'data.open_question_dispositions[].id',
+    'data.open_question_dispositions[].answer',
+    'data.open_question_dispositions[].disposition',
+    'data.open_question_dispositions[].evidence',
+    'data.verification_recommendation',
+  ]) {
+    assert.ok(declared.has(fieldPath), `${fieldPath} is not declared`)
+    assert.ok(enforced.has(fieldPath), `${fieldPath} is not enforced`)
+  }
+
+  const result = validateSharedFieldContract({
+    root,
+    targetPath: contractPath,
+    requirement: {
+      policy_id: 'CONTRACT-001',
+      requirement_id: 'shared-stage-field-contract',
+      registry_id: 'FIELD-CONTRACT-VALIDATE-001',
+      arguments: {},
+    },
+  })
+
+  assert.equal(result.status, 'passed', JSON.stringify(result.issues))
 })
