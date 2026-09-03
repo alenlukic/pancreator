@@ -45,59 +45,37 @@ if stamp_fresh; then
   exit 0
 fi
 
-# bin/run-built registers each wrapped command as a live reader of dist. A
-# rebuild deletes dist and breaks the lazy imports of a live reader, so wait
-# for the live readers to exit first.
-read -r root_key _ <<<"$(printf '%s' "$ROOT" | cksum)"
-DIST_READERS="${TMPDIR:-/tmp}/pancreator-build-${root_key}.readers"
-READER_WAIT_LIMIT_SECONDS="${PANCREATOR_BUILD_READER_WAIT_SECONDS:-900}"
+# Compile into a private staging directory and swap it into place with two
+# renames. `dist/` is therefore never absent or half-written: a process that
+# already loaded the previous build keeps running from memory, a process that
+# starts during the compile still finds the previous complete build, and a
+# process that starts after the swap finds the new one. No live-reader
+# bookkeeping is needed, so a long-lived `pan watch` cannot delay a build.
+staging="dist.build-$$"
+retired="dist.retired-$$"
 
-live_readers() {
-  local reader pid
-
-  [[ -d "$DIST_READERS" ]] || return 0
-
-  for reader in "$DIST_READERS"/*; do
-    [[ -e "$reader" ]] || continue
-    pid="${reader##*/}"
-
-    if [[ "$pid" =~ ^[0-9]+$ && "$pid" -ne $$ ]] && kill -0 "$pid" 2>/dev/null; then
-      printf '%s\n' "$pid"
-    else
-      rm -f "$reader"
-    fi
-  done
+cleanup_staging() {
+  rm -rf "$staging" "$retired"
 }
 
-# run-quiet captures stderr, so send the notice straight to the terminal.
-notify() {
-  if ! { echo "$1" >/dev/tty; } 2>/dev/null; then
-    echo "$1" >&2
+trap cleanup_staging EXIT HUP INT TERM
+
+rm -rf "$staging"
+tsc --outDir "$staging"
+
+# Retired staging directories from a build that died mid-swap are harmless
+# but untidy; remove any that no live process owns.
+for stale in dist.build-* dist.retired-*; do
+  [[ -e "$stale" ]] || continue
+  pid="${stale##*-}"
+  if [[ "$pid" =~ ^[0-9]+$ && "$pid" -ne $$ ]] && ! kill -0 "$pid" 2>/dev/null; then
+    rm -rf "$stale"
   fi
-}
-
-waited=0
-announced=0
-
-while :; do
-  readers="$(live_readers)"
-  [[ -n "$readers" ]] || break
-
-  if [[ "$waited" -ge "$READER_WAIT_LIMIT_SECONDS" ]]; then
-    notify "[build] proceeding after ${waited}s: dist still in use by pid(s) $(printf '%s ' $readers)"
-    break
-  fi
-
-  if [[ "$announced" -eq 0 ]]; then
-    notify "[build] sources changed; waiting for running dist consumer(s) before rebuilding: $(printf '%s ' $readers)"
-    announced=1
-  fi
-
-  sleep 1
-  waited=$((waited + 1))
 done
 
-rm -rf dist
-tsc
+if [[ -d dist ]]; then
+  mv dist "$retired"
+fi
+mv "$staging" dist
 
 printf '%s\n' "$current" >"$STAMP"

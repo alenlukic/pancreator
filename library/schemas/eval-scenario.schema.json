@@ -52,11 +52,21 @@
     },
     "workflow": {
       "type": "string",
-      "enum": ["delivery", "prototype", "design"]
+      "enum": ["delivery", "prototype", "design", "planning"]
     },
     "verification": { "type": "string", "minLength": 1 },
     "involvement": { "type": "string", "minLength": 1 },
     "pipeline_config": { "type": "string", "minLength": 1 },
+    "cohort": {
+      "type": "object",
+      "description": "Cohort fan-out options for a planning scenario: create the plan run with --autostart and record the session's parallelism limit.",
+      "required": ["autostart"],
+      "additionalProperties": false,
+      "properties": {
+        "autostart": { "type": "boolean" },
+        "max_parallel": { "type": "integer", "minimum": 1 }
+      }
+    },
     "operator_decisions": {
       "type": "array",
       "description": "Scripted operator decisions `pan eval run` applies through `pan decide` when the run stops at the named stage.",
@@ -145,7 +155,8 @@
               "delegation-watch-record",
               "platform-guidance-conflict-recorded",
               "attempts-not-spent-on-mechanics",
-              "stage-order-and-terminal-state"
+              "stage-order-and-terminal-state",
+              "cohort-fanout"
             ]
           },
           "policy": {

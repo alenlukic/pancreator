@@ -52,6 +52,7 @@ test('the scenario loader returns every shipped scenario and grader set', () => 
   assert.deepEqual(names, [
     'delivery-background-delegation',
     'delivery-basic-test-discipline',
+    'planning-cohort-fanout',
     'prototype-environment-blocked',
   ])
 
@@ -116,6 +117,32 @@ test('validateEvalScenarioDocument reports each structural defect', () => {
   assert.match(joined, /expected\.status MUST be a run status/u)
   assert.match(joined, /stage_sequence\[0\] MUST be a stage slug/u)
   assert.match(joined, /unknown top-level field 'surprise'/u)
+})
+
+test('validateEvalScenarioDocument binds cohort options to the planning workflow', () => {
+  const planning = validateEvalScenarioDocument(
+    {
+      ...validScenario(),
+      workflow: 'planning',
+      cohort: { autostart: true, max_parallel: 2 },
+    },
+    'sample',
+  )
+
+  assert.deepEqual(planning, [])
+
+  const errors = validateEvalScenarioDocument(
+    {
+      ...validScenario(),
+      cohort: { autostart: 'yes', max_parallel: 0, extra: 1 },
+    },
+    'sample',
+  ).join('\n')
+
+  assert.match(errors, /cohort is accepted only with the 'planning' workflow/u)
+  assert.match(errors, /cohort\.autostart MUST be a boolean/u)
+  assert.match(errors, /cohort\.max_parallel MUST be an integer of at least 1/u)
+  assert.match(errors, /unknown cohort field 'extra'/u)
 })
 
 test('validateEvalScenarioDocument rejects a name that differs from the file', () => {

@@ -15,11 +15,25 @@ export const EVAL_GRADER_IDS = [
   'platform-guidance-conflict-recorded',
   'attempts-not-spent-on-mechanics',
   'stage-order-and-terminal-state',
+  'cohort-fanout',
 ] as const
 
 export type EvalGraderId = (typeof EVAL_GRADER_IDS)[number]
 
-export const EVAL_WORKFLOWS = ['delivery', 'prototype', 'design'] as const
+export const EVAL_WORKFLOWS = [
+  'delivery',
+  'prototype',
+  'design',
+  'planning',
+] as const
+
+/** Cohort fan-out options a planning scenario passes to the run it creates. */
+export interface EvalCohortOptions {
+  /** Create the plan run with `--autostart` so approval fans out cohort 1. */
+  autostart: boolean
+  /** Parallelism limit the autostarted session records; default 4. */
+  max_parallel?: number
+}
 
 export interface EvalPolicyInstruction {
   policy_id: string
@@ -69,6 +83,8 @@ export interface EvalScenario {
   involvement?: string
   /** Named pipeline config the run snapshots; the CLI flag overrides it. */
   pipeline_config?: string
+  /** Fan-out options; accepted only with the `planning` workflow. */
+  cohort?: EvalCohortOptions
   operator_decisions?: EvalOperatorDecision[]
   expected: EvalExpectedState
   graders: EvalGraderSpec[]

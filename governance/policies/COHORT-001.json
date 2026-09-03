@@ -16,6 +16,11 @@
     "Creating the runs of a group MUST perform no source-control action beyond adding worktrees; committing, merging, pushing, and branch deletion stay operator-owned.",
     "Every run of a group MUST reach the shared context of the ratified plan through an audited reference that states the source path, the content digest, and the read trigger, and it MUST NOT receive a copy of that context.",
     "Starting the first group automatically MUST require an explicit operator opt-in recorded when the run was created, MUST fire only for the operator's own approval of a ratified plan, and MUST leave the recorded approval and the ratified plan unchanged when it fails.",
-    "An automatic start that fails MUST report the concrete error together with the manual commands that perform the same work."
+    "An automatic start that fails MUST report the concrete error together with the manual commands that perform the same work.",
+    "Each unit MUST run the `delivery-chunk` workflow and MUST end at a verified implementation on its own branch. Release preparation MUST happen once, on the integrated result, never per unit.",
+    "The number of concurrent unit runs MUST NOT exceed the parallelism limit recorded on the session (`pan cohort init --max-parallel`, default 4). `pan cohort start` MUST create runs only for the free slots, MUST name the deferred units, and MUST be run again to start them once a unit run reaches a terminal state.",
+    "One operator session MAY supervise every live unit run of the active group at once. It MUST launch the ready worker of each distinct run in the same message so the launches execute in parallel, MUST keep every launch foreground, MUST observe each launched run with its own `pan watch <run-id>`, and MUST perform each run's pending action independently so one gated or stalled run never blocks its siblings.",
+    "A cohort supervisor MUST NOT launch two workers for one run, and MUST NOT launch a nested supervisor for a unit run.",
+    "Committing a finished unit branch stays operator-owned. A supervisor commits a unit worktree only under an explicit operator directive that covers that commit, MUST commit only that worktree's changes, and MUST name the unit id and run id in the commit message."
   ]
 }

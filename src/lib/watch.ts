@@ -17,6 +17,7 @@ import { readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 
 import { PanError, invariant } from './errors.js'
+import { gitWorkspaceActivityFingerprint } from './git.js'
 import {
   appendJsonLine,
   fileExists,
@@ -24,6 +25,7 @@ import {
   readJson,
   readText,
   resolveInside,
+  sha256,
   withOperationMutex,
   writeJsonAtomic,
 } from './io.js'
@@ -91,6 +93,19 @@ export interface WatchObservation {
    */
   output_is_scaffold: boolean
   watched_paths: WatchedPathObservation[]
+  /**
+   * Digest of every file under the run's `agent/` tree, by path, size, and
+   * mtime. A worker that writes evidence to a declared path the invocation
+   * prefix does not cover still registers as progress.
+   */
+  run_tree_fingerprint?: string
+  /**
+   * Digest of the workspace Git state: status entries, index, and dirty file
+   * content. A source-allowed worker spends most of its life editing the
+   * workspace before it writes any output, and without this a watch calls
+   * that worker stalled.
+   */
+  workspace_fingerprint?: string
   /** Stable digest of the watched paths; equal digests mean no change. */
   fingerprint: string
 }
@@ -151,6 +166,8 @@ export interface WatchOptions {
   agentState?: WatchAgentState
   /** Injected for tests. Defaults to a real timer. */
   sleep?: (milliseconds: number) => Promise<void>
+  /** Injected for tests alongside `sleep`. Defaults to `Date.now`. */
+  now?: () => number
   onWake?: (entry: WatchRecordEntry) => void
 }
 
@@ -359,6 +376,82 @@ function invocationEvidencePaths(
   }
 }
 
+/**
+ * Digest of every regular file under one directory tree by relative path,
+ * size, and mtime. The run's `agent/` tree is small, so a full walk per wake
+ * costs less than one missed evidence write.
+ */
+function directoryTreeFingerprint(
+  directory: string,
+  exclude: (relativePath: string) => boolean,
+): string {
+  const lines: string[] = []
+  const pending = [directory]
+
+  while (pending.length > 0) {
+    const current = pending.pop() as string
+    let names: string[]
+
+    try {
+      names = readdirSync(current)
+    } catch {
+      continue
+    }
+
+    for (const name of names) {
+      const absolute = path.join(current, name)
+
+      try {
+        const stats = statSync(absolute)
+
+        if (stats.isDirectory()) {
+          pending.push(absolute)
+        } else if (stats.isFile()) {
+          const relative = path.relative(directory, absolute)
+
+          if (!exclude(relative)) {
+            lines.push(`${relative}:${stats.size}:${stats.mtimeMs}`)
+          }
+        }
+      } catch {
+        continue
+      }
+    }
+  }
+
+  return sha256(lines.sort().join('\n'))
+}
+
+/**
+ * Fingerprint of the workspace the invocation edits, or null when the
+ * invocation names no readable workspace. Failures are swallowed: a watch
+ * must never die because a fingerprint could not be taken.
+ */
+function workspaceFingerprint(
+  root: string,
+  invocation: Invocation,
+): string | null {
+  const declared = invocation.workspace_root
+
+  if (typeof declared !== 'string' || declared.length === 0) {
+    return null
+  }
+
+  const workspace = path.isAbsolute(declared)
+    ? declared
+    : path.resolve(root, declared)
+
+  if (!fileExists(workspace)) {
+    return null
+  }
+
+  try {
+    return gitWorkspaceActivityFingerprint(workspace)
+  } catch {
+    return null
+  }
+}
+
 /** Inspect the invocation's output and evidence paths once. */
 export function observeInvocation(
   root: string,
@@ -399,9 +492,29 @@ export function observeInvocation(
       invocation.invocation_id,
     ),
   ].map((relative) => observePath(root, relative))
-  const fingerprint = watched
-    .map((item) => `${item.path}:${item.exists}:${item.size}:${item.mtime_ms}`)
-    .join('|')
+  // The watch's own records, the background marker, and the event log change
+  // on every wake by construction, so they are excluded from the progress
+  // digest; otherwise no watch could ever observe a stall.
+  const layout = resolveRunLayout(root, invocation.run_id)
+  const runTree = directoryTreeFingerprint(layout.root.absolute, (relative) => {
+    const name = path.basename(relative)
+
+    return (
+      name.endsWith('-watch.jsonl') ||
+      name.endsWith('-delegation-background.json') ||
+      name === 'events.jsonl' ||
+      name === 'state.json' ||
+      name.startsWith('.')
+    )
+  })
+  const workspace = workspaceFingerprint(root, invocation)
+  const fingerprint = [
+    ...watched.map(
+      (item) => `${item.path}:${item.exists}:${item.size}:${item.mtime_ms}`,
+    ),
+    `run-tree:${runTree}`,
+    `workspace:${workspace ?? 'none'}`,
+  ].join('|')
 
   return {
     observed_at: new Date().toISOString(),
@@ -411,6 +524,8 @@ export function observeInvocation(
     output_is_scaffold: outputIsScaffold,
     output_matches_invocation: outputMatches,
     watched_paths: watched,
+    run_tree_fingerprint: runTree,
+    ...(workspace ? { workspace_fingerprint: workspace } : {}),
     fingerprint,
   }
 }
@@ -762,9 +877,10 @@ export async function watchInvocation(
   const stallWakes = options.stallWakes ?? DEFAULT_STALL_WAKES
   const timeoutSeconds = options.timeoutSeconds ?? DEFAULT_WATCH_TIMEOUT_SECONDS
   const sleep = options.sleep ?? defaultSleep
+  const now = options.now ?? Date.now
   const recordRelative = watchRecordPath(root, runId, invocationId)
   const recordAbsolute = resolveInside(root, recordRelative)
-  const startedMs = Date.now()
+  const startedMs = now()
   const startedAt = new Date(startedMs).toISOString()
   const backgroundMarker = options.markBackground
     ? markDelegationBackground(root, runId, invocationId)
@@ -778,7 +894,7 @@ export async function watchInvocation(
     armings: number,
     wakes: number,
   ): WatchResult => {
-    const endedMs = Date.now()
+    const endedMs = now()
 
     return {
       state,
@@ -857,10 +973,22 @@ export async function watchInvocation(
   let unchangedWakes = 0
   let armings = 0
   let wakes = 0
+  // Wakes keep an absolute schedule so the time an observation takes does not
+  // push every later wake back. A wake that already fell due is taken at once;
+  // the schedule then restarts from now rather than firing a burst.
+  // Whole milliseconds: `0.1 * 3 * 1000` is not 300 in floating point, and a
+  // due time that misses the timeout by a rounding error costs a whole wake.
+  const cadenceMs = Math.round(cadenceSeconds * 1000)
+  const timeoutMs = Math.round(timeoutSeconds * 1000)
+  let dueMs = startedMs + cadenceMs
 
   for (;;) {
     armings += 1
-    const armedAt = Date.now()
+    const armedAt = now()
+
+    if (dueMs < armedAt) {
+      dueMs = armedAt + cadenceMs
+    }
 
     append({
       schema_version: 1,
@@ -870,10 +998,11 @@ export async function watchInvocation(
       recorded_at: new Date(armedAt).toISOString(),
       cadence_seconds: cadenceSeconds,
       wake: wakes + 1,
-      wake_due_at: new Date(armedAt + cadenceSeconds * 1000).toISOString(),
+      wake_due_at: new Date(dueMs).toISOString(),
     })
 
-    await sleep(cadenceSeconds * 1000)
+    await sleep(Math.max(0, dueMs - now()))
+    dueMs += cadenceMs
 
     wakes += 1
     const observation = observeInvocation(root, invocation)
@@ -910,7 +1039,7 @@ export async function watchInvocation(
       } else {
         terminal = 'stalled'
       }
-    } else if (Date.now() - startedMs >= timeoutSeconds * 1000) {
+    } else if (now() - startedMs >= timeoutMs) {
       terminal = 'timed_out'
     }
 

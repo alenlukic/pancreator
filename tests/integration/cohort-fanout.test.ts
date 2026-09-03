@@ -171,7 +171,11 @@ test('starting a cohort fans out one worktree and one run per chunk', () => {
   for (const chunk of started.chunks) {
     const run = loadState(root, chunk.run_id)
 
-    assert.equal(run.workflow_slug, 'delivery')
+    assert.equal(
+      run.workflow_slug,
+      'delivery-chunk',
+      'a chunk run ends at verified implementation and carries no ship stage',
+    )
     assert.equal(run.cohort?.cohort_id, session.cohort_id)
     assert.equal(run.cohort?.cohort_index, 1)
     assert.equal(run.cohort?.chunk, chunk.chunk)
@@ -212,6 +216,78 @@ test('starting a cohort fans out one worktree and one run per chunk', () => {
     () => startCohort(root, session.cohort_id),
     (error: unknown) =>
       error instanceof PanError && error.code === 'COHORT_ALREADY_STARTED',
+  )
+})
+
+test('the parallelism limit starts a wide cohort in batches', () => {
+  const root = createFixture()
+  const planRunId = ratifiedPlanRun(root, [
+    { id: 'a', cohort_index: 1 },
+    { id: 'b', cohort_index: 1 },
+    { id: 'c', cohort_index: 1 },
+    { id: 'd', cohort_index: 1 },
+    { id: 'e', cohort_index: 1 },
+  ])
+  const session = initCohortSession(root, { planRunId, maxParallel: 2 })
+
+  assert.equal(session.max_parallel, 2)
+
+  const first = startCohort(root, session.cohort_id)
+
+  assert.deepEqual(
+    first.chunks.map((chunk) => chunk.chunk),
+    ['a', 'b'],
+    'only as many chunks start as the limit allows',
+  )
+  assert.deepEqual(first.deferred_chunks, ['c', 'd', 'e'])
+  assert.equal(readWorktreeIndex(root).worktrees.length, 2)
+
+  // Every slot is taken, so a second start is refused rather than ignored,
+  // and the refusal names the waiting chunks.
+  assert.throws(
+    () => startCohort(root, session.cohort_id),
+    (error: unknown) =>
+      error instanceof PanError && error.code === 'COHORT_PARALLELISM_LIMIT',
+  )
+
+  const full = cohortStatus(root, session.cohort_id)
+
+  assert.equal(full.max_parallel, 2)
+  assert.equal(full.live_chunk_runs, 2)
+  assert.equal(full.start_command, null, 'no slot is free')
+
+  // A terminal run frees exactly one slot.
+  markSucceeded(root, first.chunks[0].run_id)
+
+  const freed = cohortStatus(root, session.cohort_id)
+
+  assert.equal(freed.live_chunk_runs, 1)
+  assert.equal(
+    freed.start_command,
+    `./bin/pan cohort start ${session.cohort_id}`,
+  )
+
+  const second = startCohort(root, session.cohort_id)
+
+  assert.deepEqual(
+    second.chunks.map((chunk) => chunk.chunk),
+    ['c'],
+  )
+  assert.deepEqual(second.deferred_chunks, ['d', 'e'])
+
+  // Re-approving the plan run must not start beyond the limit either: the
+  // autostart reports the batch that already exists.
+  const planState = loadState(root, planRunId)
+  const autostart = maybeAutostartCohort(
+    root,
+    { ...planState, autostart_cohort: true },
+    { actor: 'operator', action: 'approve' },
+  )
+
+  assert.equal(autostart?.status, 'already_started')
+  assert.deepEqual(
+    autostart?.status === 'already_started' ? autostart.deferred_chunks : [],
+    ['d', 'e'],
   )
 })
 

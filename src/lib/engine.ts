@@ -264,6 +264,8 @@ interface CreateRunOptions {
   contextReferencePath?: string | null
   /** Start cohort 1 when the operator approves the ratified planning artifact. */
   autostartCohort?: boolean
+  /** Parallelism limit the autostarted cohort session records. */
+  autostartMaxParallel?: number | null
   /**
    * Named pipeline config to snapshot instead of the active one. An eval run
    * uses it to route every worker persona to an external executor.
@@ -1778,6 +1780,20 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     { code: 'INVALID_ARGUMENT', details: { workflow: workflowSlug } },
   )
 
+  const autostartMaxParallel = options.autostartMaxParallel ?? null
+
+  invariant(
+    autostartMaxParallel === null || options.autostartCohort,
+    '--max-parallel requires --autostart.',
+    { code: 'INVALID_ARGUMENT' },
+  )
+  invariant(
+    autostartMaxParallel === null ||
+      (Number.isInteger(autostartMaxParallel) && autostartMaxParallel >= 1),
+    '--max-parallel MUST be an integer of at least 1.',
+    { code: 'INVALID_ARGUMENT' },
+  )
+
   const workflow = loadWorkflow(root, workflowSlug)
   const pipelineOverride = options.pipelineOverride ?? null
   const agentSuffix = options.cursorAgentSuffix ?? null
@@ -2040,6 +2056,9 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
       ...(options.bestOfN ? { best_of_n: options.bestOfN } : {}),
       ...(options.cohort ? { cohort: options.cohort } : {}),
       ...(options.autostartCohort ? { autostart_cohort: true } : {}),
+      ...(autostartMaxParallel !== null
+        ? { autostart_max_parallel: autostartMaxParallel }
+        : {}),
       title: options.title ?? path.basename(requestPath),
       status: 'running',
       current_stage: workflow.start_stage,

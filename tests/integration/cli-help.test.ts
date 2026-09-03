@@ -23,6 +23,11 @@ const ROOT = process.cwd()
 const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
 const PAN = path.join(ROOT, 'bin', 'pan')
 
+// bin/build compiles into a staging directory named by `--outDir` and swaps it
+// into place, so a fake compiler must honor that flag to be found.
+const FAKE_TSC_OUT_DIR =
+  'out=dist; while [[ $# -gt 0 ]]; do if [[ "$1" == "--outDir" ]]; then out="$2"; shift; fi; shift; done'
+
 interface ProcessResult {
   status: number | null
   stderr: string
@@ -116,9 +121,10 @@ test('build lock keeps the CLI available during concurrent commands', async () =
       [
         '#!/usr/bin/env bash',
         'set -euo pipefail',
+        `${FAKE_TSC_OUT_DIR}`,
         'sleep 0.5',
-        'mkdir -p dist/src',
-        `printf '%s\\n' "process.stdout.write('ready')" > dist/src/cli.js`,
+        'mkdir -p "$out/src"',
+        `printf '%s\\n' "process.stdout.write('ready')" > "$out/src/cli.js"`,
         '',
       ].join('\n'),
     )
@@ -193,7 +199,7 @@ function createBuildScriptFixture(): BuildScriptFixture {
   }
 
   // The fake compiler appends outside dist/ so builds stay countable across
-  // the rm -rf dist step in bin/build.
+  // the dist swap in bin/build.
   const compiler = path.join(toolDirectory, 'tsc')
 
   writeFileSync(
@@ -201,7 +207,8 @@ function createBuildScriptFixture(): BuildScriptFixture {
     [
       '#!/usr/bin/env bash',
       'set -euo pipefail',
-      'mkdir -p dist/src',
+      `${FAKE_TSC_OUT_DIR}`,
+      'mkdir -p "$out/src"',
       `printf '%s\\n' build >> builds.log`,
       '',
     ].join('\n'),
@@ -347,6 +354,74 @@ test('nested build-only reuses the prepared build in the same root', () => {
   } finally {
     rmSync(fixture.root, { recursive: true, force: true })
     rmSync(second.root, { recursive: true, force: true })
+  }
+})
+
+test('a long-lived wrapped command does not delay a rebuild on its root', async () => {
+  const fixture = createBuildScriptFixture()
+  const started = path.join(fixture.root, 'watcher-started')
+  const watcher = path.join(fixture.root, 'watcher')
+
+  try {
+    writeFileSync(
+      watcher,
+      [
+        '#!/usr/bin/env bash',
+        'set -euo pipefail',
+        `touch "${started}"`,
+        'sleep 30',
+        '',
+      ].join('\n'),
+    )
+    chmodSync(watcher, 0o755)
+
+    // A watch-like command holds its run-built wrapper for its whole life.
+    const longLived = spawn('/bin/bash', [fixture.runBuilt, '--', watcher], {
+      cwd: fixture.root,
+      env: fixture.env,
+    })
+
+    try {
+      await waitForPath(started)
+
+      // Invalidate the stamp so the next call must compile.
+      writeFileSync(path.join(fixture.root, 'package.json'), '{"v":2}\n')
+
+      const startedAt = Date.now()
+      const rebuild = spawnSync(
+        '/bin/bash',
+        [fixture.runBuilt, '--build-only'],
+        {
+          cwd: fixture.root,
+          encoding: 'utf8',
+          env: fixture.env,
+          timeout: 30_000,
+        },
+      )
+
+      assert.equal(rebuild.status, 0, rebuild.stderr)
+      assert.ok(
+        Date.now() - startedAt < 10_000,
+        'a rebuild must not wait for an unrelated long-lived wrapped command',
+      )
+      assert.equal(
+        readFileSync(path.join(fixture.root, 'builds.log'), 'utf8'),
+        'build\nbuild\n',
+      )
+      assert.equal(
+        longLived.exitCode,
+        null,
+        'the wrapped command keeps running',
+      )
+      assert.equal(
+        existsSync(path.join(fixture.root, 'dist', '.build-stamp')),
+        true,
+      )
+    } finally {
+      longLived.kill('SIGKILL')
+    }
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
   }
 })
 

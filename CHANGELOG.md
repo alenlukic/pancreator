@@ -1,5 +1,27 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Build into a staging directory and swap it into `dist` atomically. Serialize only the compile step behind a file lock, and report a holder that keeps the lock past five seconds. Wrapped commands no longer register as `dist` readers, so a long `pan watch` can no longer block every later build ([build](bin/build), [run-built](bin/run-built)).
+- Observe the whole run tree and the workspace Git activity on every `pan watch` wake, so a worker that edits source or nested evidence is no longer called stalled. Keep wakes on an absolute schedule ([watch](src/lib/watch.ts), [git](src/lib/git.ts)).
+- Bind every worktree record and every cohort session to the Git repository it belongs to, so a plan run against another workspace fans out into that repository ([worktrees](src/lib/worktrees.ts), [cohorts](src/lib/cohorts.ts)).
+- Run each cohort chunk through the `delivery-chunk` workflow, which ends at a verified implementation and carries no ship stage ([delivery-chunk](library/workflows/delivery-chunk/workflow.json)).
+- Permit one supervisor session to launch and observe the workers of several cohort runs in one message, foreground and within the parallelism limit ([COHORT-001](governance/policies/COHORT-001.json), [DELEGATE-001](governance/policies/DELEGATE-001.json), [ORCH-001](governance/policies/ORCH-001.json), [orchestrator](library/personas/orchestrator.md)).
+
+### Added
+
+- Add `--max-parallel` to `pan cohort init` and to `pan init --autostart`, and start a wide cohort in batches that fill only the free slots ([cohorts](src/lib/cohorts.ts), [cli](src/cli.ts)).
+- Add the `/pan-cohort` supervisor command for every live chunk run of a session ([pan-cohort](library/cursor/commands/pan-cohort.md)).
+- Add `--run` and `--worktree` to `pan requirements run` so a check binds to that workspace ([cli](src/cli.ts)).
+- Add the `planning-cohort-fanout` eval scenario, the `cohort-fanout` grader, and the `cohort` scenario field that autostarts the fan-out on approval ([scenario](evals/scenarios/planning-cohort-fanout.json), [graders](src/lib/evals/graders.ts), [evals](docs/evals.md)).
+
+### Fixed
+
+- Name the valid kinds in the `UNKNOWN_INVOCATION_KIND` error ([cli](src/cli.ts)).
+- Make the watch unit tests independent of suite load through an injected clock, and round the watch cadence and timeout to whole milliseconds ([watch](src/lib/watch.ts), [watch tests](tests/unit/watch.test.ts)).
+
 ## [5.12.0] - 2026-09-03
 
 ### Changed

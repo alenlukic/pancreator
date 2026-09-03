@@ -51,10 +51,19 @@ function buildFixture(): Fixture {
   writeFileSync(path.join(root, 'package-lock.json'), '{}\n')
   writeFileSync(path.join(root, 'src', 'index.ts'), 'export const a = 1\n')
 
-  // The stub compiler only proves it ran and gives dist a file to stamp.
+  // The stub compiler only proves it ran and gives the staging directory a
+  // file to stamp. bin/build compiles into `--outDir` and swaps it into dist.
   writeExecutable(
     path.join(stubBin, 'tsc'),
-    `#!/usr/bin/env bash\nprintf '%s\\n' "tsc $*" >>"${tscLog}"\nmkdir -p dist\nprintf 'built\\n' >dist/index.js\n`,
+    [
+      '#!/usr/bin/env bash',
+      `printf '%s\\n' "tsc $*" >>"${tscLog}"`,
+      'out=dist',
+      'while [[ $# -gt 0 ]]; do if [[ "$1" == "--outDir" ]]; then out="$2"; shift; fi; shift; done',
+      'mkdir -p "$out"',
+      `printf 'built\\n' >"$out/index.js"`,
+      '',
+    ].join('\n'),
   )
   writeExecutable(
     path.join(stubBin, 'npm'),

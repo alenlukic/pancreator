@@ -561,6 +561,36 @@
       "policies": ["VERSION-001"]
     },
     {
+      "persona": "coder",
+      "workflow": "delivery-chunk",
+      "stage": "implement",
+      "policies": ["DEV-001"]
+    },
+    {
+      "persona": "verifier",
+      "workflow": "delivery-chunk",
+      "stage": "verify",
+      "policies": ["VERIFY-001", "WAIVER-001"]
+    },
+    {
+      "persona": "remediator",
+      "workflow": "delivery-chunk",
+      "stage": "remediate",
+      "policies": ["REMED-001"]
+    },
+    {
+      "persona": "remediator-severe",
+      "workflow": "delivery-chunk",
+      "stage": "remediate",
+      "policies": ["REMED-001"]
+    },
+    {
+      "persona": "*",
+      "workflow": "delivery-chunk",
+      "stage": "*",
+      "policies": ["COHORT-001"]
+    },
+    {
       "persona": "planner",
       "workflow": "delivery-candidate",
       "stage": "plan",

@@ -16,7 +16,7 @@
       "card_mode": "author"
     }
   ],
-  "supervisor_commands": ["pan-resume", "pan-start"],
+  "supervisor_commands": ["pan-cohort", "pan-resume", "pan-start"],
   "target_mutating_commands": [
     {
       "command": "pan-author",
@@ -39,6 +39,14 @@
         "release sync --worktree <name>",
         "release continue --worktree <name>",
         "release finalize --worktree <name>"
+      ]
+    },
+    {
+      "command": "pan-cohort",
+      "worktree_forwarding": [
+        "prepare <run-id> --worktree <name>",
+        "resume <run-id> --worktree <name>",
+        "submit <run-id> <output-json> --worktree <name>"
       ]
     },
     {
