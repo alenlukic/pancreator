@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.11.1] - 2026-09-03
+
+### Changed
+
+- Allow the harness technician to write several repair intakes when the operator requests more than one, keeping one intake as the default ([REPAIR-001](governance/policies/REPAIR-001.json), [harness technician](library/personas/harness-technician.md)).
+- Require one intake for each distinct root cause, and forbid splitting one root cause across two intakes ([harness technician](library/personas/harness-technician.md)).
+- Validate every repair intake individually, and report each intake result separately ([pan-repair](library/cursor/commands/pan-repair.md)).
+- Bound the repair card to the declared intakes instead of a single intake artifact ([governance card](src/lib/governance-card.ts)).
+
 ## [5.11.0] - 2026-09-02
 
 ### Changed
