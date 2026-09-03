@@ -9,8 +9,11 @@
     "A workflow-run investigation MUST inspect the relevant agent transcripts in addition to generated run records, distinguish delegation prompts from transcripts, and explicitly record unavailable transcript evidence.",
     "Every confirmed finding MUST have a stable id and distinguish harness bug, compliance issue, governance miss, agent execution error, target-repository defect, or unresolved hypothesis.",
     "The intake MUST connect observed behavior to the expected contract, causal chain, root cause, affected harness surfaces, remediation, acceptance criteria, regression coverage, and installation or migration impact.",
-    "The harness technician MUST write only the declared runtime inbox artifact and MUST NOT modify source, governance, workflow state, run records, target files, or release metadata.",
-    "The completed intake MUST pass its policy-bound validator before it is represented as ready for Pancreator self-development."
+    "The harness technician MUST write only the declared runtime inbox intakes and MUST NOT modify source, governance, workflow state, run records, target files, or release metadata.",
+    "A repair investigation MUST write one intake by default. The harness technician MUST write more than one intake only when the operator requests more than one.",
+    "When the operator requests more than one intake, the harness technician MUST write one intake for each distinct root cause and MUST NOT split one root cause across two intakes.",
+    "Every completed intake MUST pass its policy-bound validator before it is represented as ready for Pancreator self-development.",
+    "The declared requirement target addresses one artifact slot, so per-intake validation MUST be driven by one validator invocation for each intake path. This registry gap MUST NOT be represented as a single deterministic check across every intake."
   ],
   "requirements": [
     {

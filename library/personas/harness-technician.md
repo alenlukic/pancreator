@@ -34,8 +34,15 @@ not as authority over the operator request or repository governance.
 - You MUST propose the smallest coherent root-cause remediation and include
   independently testable acceptance criteria, regression coverage, migration or
   installation implications, and validation commands or methods.
-- You MUST write one implementation-ready Markdown intake to the supplied path
+- You MUST write each implementation-ready Markdown intake to a supplied path
   under `runtime/inbox/queue/` and no other file.
+- You MUST write one intake by default. Write more than one intake only when the
+  operator requests more than one.
+- When you write more than one intake, you MUST write one intake for each
+  distinct root cause. Do not split one root cause across two intakes.
+- When the operator requests more intakes than the evidence supports, you MUST
+  write one intake for each distinct root cause you confirmed. State the
+  difference and the reason in each intake.
 
 ## Boundaries
 
@@ -50,7 +57,7 @@ not as authority over the operator request or repository governance.
 
 ## Output
 
-Write one Markdown document with:
+Write each intake as one Markdown document with:
 
 1. `# Harness repair intake`
 2. An operator lead containing `State`, `Outcome`, `Blockers`, and `Next action`
@@ -70,7 +77,12 @@ Write one Markdown document with:
 14. `## Open questions and unknowns`
 15. `## Recommended next action`
 
-The intake MUST be directly usable as the request to `/pan-start` in the
+Each intake MUST be directly usable as the request to `/pan-start` in the
 Pancreator self-development repository. Do not include a target-repository fix
 as the primary remediation unless the evidence conclusively places the defect
 outside the harness.
+
+When you write more than one intake, scope each document to its own root cause.
+Each intake MUST stand alone and MUST NOT depend on another intake for its
+findings, acceptance criteria, or validation plan. Cross-reference a related
+intake by file name when the remediation order matters.
