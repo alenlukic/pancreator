@@ -25,6 +25,7 @@ import {
   writeJsonAtomic,
 } from './io.js'
 import { keywordRunSuffixFrom } from './naming.js'
+import { panCommand } from './project-config.js'
 import { loadState, makeUniqueRunId, now, statePath } from './state.js'
 import type {
   CohortChunkRecord,
@@ -348,6 +349,8 @@ function assertPredecessorsSatisfied(
   state: CohortSessionState,
   cohortIndex: number,
 ): void {
+  const pan = panCommand(root)
+
   for (const index of cohortIndexes(state)) {
     if (index >= cohortIndex) {
       break
@@ -357,7 +360,7 @@ function assertPredecessorsSatisfied(
       cohortIsSatisfied(root, state, index),
       `Cohort ${cohortIndex} of session ${state.cohort_id} cannot proceed ` +
         `while cohort ${index} is unsatisfied. Finish every chunk run of ` +
-        `cohort ${index}, then run './bin/pan cohort integrate ` +
+        `cohort ${index}, then run '${pan} cohort integrate ` +
         `${state.cohort_id}'.`,
       {
         code: 'COHORT_PREDECESSOR_UNSATISFIED',
@@ -710,8 +713,8 @@ export interface StartCohortOptions {
 }
 
 /**
- * Create one worktree and one delivery run per chunk of the next unsatisfied
- * cohort, or of the cohort the operator names.
+ * Create one worktree and one `delivery-chunk` run per chunk of the next
+ * unsatisfied cohort, or of the cohort the operator names.
  *
  * This performs no source-control action beyond adding worktrees: committing a
  * chunk branch and integrating a finished cohort stay operator-owned. Each
@@ -743,13 +746,14 @@ export function startCohort(
 
     assertPredecessorsSatisfied(root, loaded, cohortIndex)
 
+    const pan = panCommand(root)
     const unstarted = unstartedChunksOfCohort(loaded, cohortIndex)
 
     invariant(
       unstarted.length > 0,
       `Cohort ${cohortIndex} of session ${cohortId} has no chunk left to ` +
         'start: every chunk is already running or abandoned. Finish the ' +
-        `running chunk runs, then run './bin/pan cohort integrate ` +
+        `running chunk runs, then run '${pan} cohort integrate ` +
         `${cohortId}'.`,
       { code: 'COHORT_ALREADY_STARTED' },
     )
@@ -767,7 +771,7 @@ export function startCohort(
         `chunk run(s), the session's parallelism limit (${maxParallel}). ` +
         `${unstarted.length} chunk(s) wait for a slot: ` +
         `${unstarted.map((chunk) => chunk.id).join(', ')}. Finish or abandon a ` +
-        `live chunk, then run './bin/pan cohort start ${cohortId}' again.`,
+        `live chunk, then run '${pan} cohort start ${cohortId}' again.`,
       {
         code: 'COHORT_PARALLELISM_LIMIT',
         details: {
@@ -879,6 +883,8 @@ export function cohortStatus(root: string, cohortId: string): CohortStatusView {
   const live =
     activeIndex === null ? 0 : liveChunkRuns(root, state, activeIndex)
 
+  const pan = panCommand(root)
+
   return {
     cohort_id: cohortId,
     plan_run_id: state.plan_run_id,
@@ -892,13 +898,13 @@ export function cohortStatus(root: string, cohortId: string): CohortStatusView {
       cohortIsSatisfied(root, state, index),
     ),
     integrate_command: readyToIntegrate
-      ? `./bin/pan cohort integrate ${cohortId}`
+      ? `${pan} cohort integrate ${cohortId}`
       : null,
     start_command:
       activeIndex !== null &&
       unstartedChunksOfCohort(state, activeIndex).length > 0 &&
       live < maxParallel
-        ? `./bin/pan cohort start ${cohortId}`
+        ? `${pan} cohort start ${cohortId}`
         : null,
     max_parallel: maxParallel,
     live_chunk_runs: live,
@@ -940,6 +946,7 @@ export function integrateCohort(
     }
 
     const index = readWorktreeIndex(root)
+    const pan = panCommand(root)
 
     for (const chunk of chunks) {
       const run = chunkRunState(root, chunk.run_id)
@@ -968,7 +975,7 @@ export function integrateCohort(
       invariant(
         !gitWorktreeIsDirty(resolveInside(root, record.path)),
         `Chunk '${chunk.id}' has uncommitted work in ${record.path}. Commit ` +
-          `it, then run './bin/pan cohort integrate ${cohortId}' again.`,
+          `it, then run '${pan} cohort integrate ${cohortId}' again.`,
         { code: 'COHORT_INTEGRATION_INCOMPLETE', details: { chunk: chunk.id } },
       )
     }
@@ -1126,7 +1133,7 @@ function mergeThroughReconcile(
             'before integration). '
           : `No chunk was merged; '${state.base_branch}' is unchanged. `) +
         `The record is at ${recordPath}. Resolve the conflict, then run ` +
-        `'./bin/pan cohort integrate ${state.cohort_id}' again.`,
+        `'${panCommand(root)} cohort integrate ${state.cohort_id}' again.`,
       {
         code: 'COHORT_INTEGRATION_INCOMPLETE',
         details: {
@@ -1380,9 +1387,10 @@ export function maybeAutostartCohort(
     return null
   }
 
+  const pan = panCommand(root)
   const manualCommands = [
-    `./bin/pan cohort init --plan-run ${state.run_id}`,
-    './bin/pan cohort start <cohort-id>',
+    `${pan} cohort init --plan-run ${state.run_id}`,
+    `${pan} cohort start <cohort-id>`,
   ]
 
   try {

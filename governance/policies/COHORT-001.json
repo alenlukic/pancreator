@@ -1,9 +1,17 @@
 {
   "id": "COHORT-001",
-  "title": "Cohort fan-out execution",
+  "title": "Cohort plan hierarchy and fan-out execution",
   "severity": "hard",
-  "summary": "A ratified plan MUST execute as ordered groups of parallel delivery runs, where each run owns its own worktree, each group merges before the next one starts, and every ordering decision rests on durable records rather than agent judgment.",
+  "summary": "A ratified cohort plan MUST hold one parent specification and one child specification per unit of work, and MUST execute as ordered groups of parallel delivery runs, where each run owns its own worktree, each group merges before the next one starts, and every ordering decision rests on durable records rather than agent judgment.",
   "instructions": [
+    "The ratified artifact MUST hold one parent specification carrying the complete record of the request, and one child specification for each unit of work a single delivery run owns.",
+    "A child specification MUST reach its parent through an audited reference stating the parent path, the selected range, the content digest, and the read trigger, and MUST NOT reproduce the parent body.",
+    "For its own unit of work a child specification governs, and for context that spans units the parent governs; each child MUST state that relationship.",
+    "Every requirement, constraint, out-of-scope statement, and open question of the request MUST appear across the child specifications exactly once, as owned, shared, or deferred, and the parent MUST keep the complete record.",
+    "A unit of work MUST own one coherent operator outcome, carry independently testable acceptance criteria, and reach a valid standalone completion state.",
+    "Splitting the ratified scope MUST reduce implementation and review risk by more than the coordination cost of the extra delivery runs it creates; when it does not, the plan MUST stay whole and MUST state why.",
+    "Units of work MUST be grouped into ordered groups numbered from 1, where no unit depends on another unit of its own group and every dependency names a unit of an earlier group.",
+    "When the ratified scope stays one unit, the artifact MUST record the reason the work remains serial.",
     "Each unit of work MUST execute in its own Git worktree on its own branch, so two concurrent runs never mutate one workspace.",
     "The harness MUST hold the execution graph, the group assignment, each unit's run id, and each group's completion proof in one durable record under runtime/logs/cohorts/.",
     "A group MUST be treated as complete only when every one of its runs reports success in that run's own state and the durable record holds the merge proof for that group.",
@@ -22,5 +30,33 @@
     "One operator session MAY supervise every live unit run of the active group at once. It MUST launch the ready worker of each distinct run in the same message so the launches execute in parallel, MUST keep every launch foreground, MUST observe each launched run with its own `pan watch <run-id>`, and MUST perform each run's pending action independently so one gated or stalled run never blocks its siblings.",
     "A cohort supervisor MUST NOT launch two workers for one run, and MUST NOT launch a nested supervisor for a unit run.",
     "Committing a finished unit branch stays operator-owned. A supervisor commits a unit worktree only under an explicit operator directive that covers that commit, MUST commit only that worktree's changes, and MUST name the unit id and run id in the commit message."
+  ],
+  "requirements": [
+    {
+      "id": "cohort-plan-validate",
+      "registry_id": "COHORT-PLAN-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "harness",
+      "target": "invocation.output.path",
+      "enforcement": "required",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result",
+      "applicability": {
+        "workflow": "planning"
+      }
+    },
+    {
+      "id": "child-spec-validate",
+      "registry_id": "CHILD-SPEC-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "harness",
+      "target": "invocation.output.path",
+      "enforcement": "required",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result",
+      "applicability": {
+        "workflow": "planning"
+      }
+    }
   ]
 }

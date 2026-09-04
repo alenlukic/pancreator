@@ -9,7 +9,6 @@
     "The supervisor owns run advancement. Run continuation MUST NOT depend on an external signal. A completion notification, callback, or platform delivery MAY inform the supervisor and MUST NOT be its continuation mechanism.",
     "The supervisor MUST NOT end its session turn while a supervisor-owned `pending_action` is resolvable in the current session.",
     "Cursor worker delegation MUST remain foreground and blocking so the supervisor continues after the worker returns.",
-    "A supervisor MAY hold several runs of one cohort at once. It MUST reconcile each run with `pan status <run-id>` on every wake and MUST perform each run's pending action independently, so a gated or stalled run never blocks the others.",
     "When a worker launch returns without the worker's declared output present, the supervisor MUST run `pan watch <run-id>` and await it. The supervisor MUST NOT wait for a platform completion notification instead.",
     "The supervisor MUST write the platform-guidance redline record at `/pan-start` and at each `/pan-resume`, after attesting the supervisor card, as the operator-supremacy policy requires. It MUST quote the record path in its first report. `pan prepare` and `pan submit` refuse with `REDLINE_MISSING` while the current session has no declaration.",
     "`pan submit` fails with `DELEGATION_UNOBSERVED` when a Cursor worker invocation has no completed watch record and no foreground-return attestation. After a foreground launch returns with the output present, the supervisor MUST run `pan watch <run-id> --foreground-returned` at once. When the launch returned before the output existed, the supervisor MUST await `pan watch <run-id>` instead. The supervisor MUST NOT record the attestation for a launch it did not observe return. The supervisor MUST carry a `DELEGATION_UNOBSERVED` refusal into the stage report and the run-friction intake.",
@@ -39,7 +38,8 @@
     "When a run reaches a terminal state, the supervisor MUST write a run-friction intake to `runtime/inbox/queue/<run-id>-run-friction.md` when the run required a supervisor repair, spent a stage attempt on a non-product defect, or exposed harness friction. The intake MUST record each issue, its evidence path, and the systematic fix it suggests, so self-repair happens continuously rather than after mounting frustration. A run without such friction MUST NOT produce an empty intake.",
     "After any interruption, session mode change, or session wake with an active run, the supervisor MUST reconcile run state. It MUST run `pan status` before further action.",
     "One prepared invocation MUST have at most one active worker. Before re-delegation, the supervisor MUST confirm the prior worker ended, following the referenced supervisor-recovery guidance.",
-    "Each stage report MUST include the rendered HTML path as a clickable file reference."
+    "Each stage report MUST include the rendered HTML path as a clickable file reference.",
+    "A supervisor MAY hold several runs of one cohort at once. It MUST reconcile each run with `pan status <run-id>` on every wake and MUST perform each run's pending action independently, so a gated or stalled run never blocks the others."
   ],
   "guidance_sources": [
     {

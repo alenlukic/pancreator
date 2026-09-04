@@ -166,7 +166,7 @@ mapping before resuming the run.
   table rather than through prompt text. Ratifying its artifact produces a
   parent specification, one child specification per chunk, and the cohort plan
   the `pan cohort` lifecycle fans out: `cohort init` opens the session,
-  `cohort start` creates one `delivery` run per chunk of the active cohort,
+  `cohort start` creates one `delivery-chunk` run per chunk of the active cohort,
   and `cohort integrate` merges the finished chunk branches and records the
   satisfaction entry that unblocks the next cohort. `pan init --autostart`
   on a planning run makes the approval of its plan gate open the session and

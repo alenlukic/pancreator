@@ -135,6 +135,21 @@ function commitInChunk(root: string, workspace: string, chunk: string): void {
   git(absolute, ['commit', '-m', `feat: ${chunk}`])
 }
 
+/**
+ * Re-declare the fixture as an embedded harness. Integration resolves the
+ * repository from `workspace_root`, which stays the fixture root, so only the
+ * emitted pan entrypoint changes.
+ */
+function markEmbedded(root: string): void {
+  const configPath = path.join(root, 'config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  writeJson(configPath, { ...config, installation_mode: 'embedded' })
+}
+
 test('starting a cohort fans out one worktree and one run per chunk', () => {
   const root = createFixture()
   const planRunId = ratifiedPlanRun(root, [
@@ -392,13 +407,17 @@ test('a dirty chunk worktree leaves the cohort unsatisfied', () => {
   commitInChunk(root, workspace, 'alpha')
   markSucceeded(root, started.chunks[0].run_id)
   writeFileSync(path.join(root, workspace, 'alpha.txt'), 'uncommitted\n')
+  markEmbedded(root)
 
   assert.throws(
     () => integrateCohort(root, session.cohort_id),
     (error: unknown) =>
       error instanceof PanError &&
       error.code === 'COHORT_INTEGRATION_INCOMPLETE' &&
-      error.message.includes('uncommitted work'),
+      error.message.includes('uncommitted work') &&
+      error.message.includes(
+        `'./.pancreator/bin/pan cohort integrate ${session.cohort_id}' again`,
+      ),
   )
   assert.deepEqual(
     cohortStatus(root, session.cohort_id).satisfied_cohort_indexes,
@@ -621,6 +640,7 @@ test('a multi-chunk conflict records which chunks already landed', () => {
     markSucceeded(root, chunk.run_id)
   }
 
+  markEmbedded(root)
   writeFileSync(path.join(root, 'shared.txt'), 'base side\n')
   git(root, ['add', '-A'])
   git(root, ['commit', '-m', 'chore: base side'])
@@ -630,7 +650,8 @@ test('a multi-chunk conflict records which chunks already landed', () => {
 
   // Alpha merges first and lands; beta conflicts. The error and the durable
   // record both say so, because the merge that landed cannot be undone by the
-  // harness without rewriting the operator's branch.
+  // harness without rewriting the operator's branch. The retry command names
+  // the installed entrypoint the operator can actually run.
   assert.throws(
     () => integrateCohort(root, session.cohort_id),
     (error: unknown) =>
@@ -639,7 +660,10 @@ test('a multi-chunk conflict records which chunks already landed', () => {
       error.message.includes("conflicted on chunk 'beta'") &&
       error.message.includes('already merged') &&
       error.message.includes('alpha') &&
-      error.message.includes(recordPath),
+      error.message.includes(recordPath) &&
+      error.message.includes(
+        `'./.pancreator/bin/pan cohort integrate ${session.cohort_id}' again`,
+      ),
   )
 
   const record = JSON.parse(

@@ -1,8 +1,9 @@
 ## Objective
 
-Prepare an operator-readable release packet from the ratified plan (the
-specification this run received as its request), implementation, joint
-verification evidence, and current workspace.
+Prepare an operator-readable release packet from the ratified plan,
+implementation, joint verification evidence, and current workspace. The plan
+is the `plan` stage output when the card lists one under its required inputs,
+otherwise the request the card delivers, which is the ratified specification.
 
 ## Steps
 

@@ -25,7 +25,7 @@ function handlerInput(root: string, targetPath: string): HandlerInput {
     root,
     targetPath,
     requirement: {
-      policy_id: 'PLAN-002',
+      policy_id: 'COHORT-001',
       requirement_id: 'cohort-plan-validate',
       registry_id: 'COHORT-PLAN-VALIDATE-001',
       arguments: {},
