@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [5.13.0] - 2026-09-03
 
 ### Changed
 
@@ -9,6 +9,11 @@
 - Bind every worktree record and every cohort session to the Git repository it belongs to, so a plan run against another workspace fans out into that repository ([worktrees](src/lib/worktrees.ts), [cohorts](src/lib/cohorts.ts)).
 - Run each cohort chunk through the `delivery-chunk` workflow, which ends at a verified implementation and carries no ship stage ([delivery-chunk](library/workflows/delivery-chunk/workflow.json)).
 - Permit one supervisor session to launch and observe the workers of several cohort runs in one message, foreground and within the parallelism limit ([COHORT-001](governance/policies/COHORT-001.json), [DELEGATE-001](governance/policies/DELEGATE-001.json), [ORCH-001](governance/policies/ORCH-001.json), [orchestrator](library/personas/orchestrator.md)).
+- Move the specification hierarchy and cohort rules out of `PLAN-002` into `COHORT-001`, so a best-of-N candidate planner no longer receives chunking rules that do not apply to it ([PLAN-002](governance/policies/PLAN-002.json), [COHORT-001](governance/policies/COHORT-001.json)).
+- Locate the plan from the card in the shared delivery prompts, so a candidate stage resolves the plan it was given instead of assuming the request is the plan ([implement](library/workflows/delivery/prompts/implement.md), [verify](library/workflows/delivery/prompts/verify.md)).
+- Scope spotfixer test selection: iterate on the impacted profile plus added tests, run `fast` exactly once as final validation, and never run `full` ([SPOT-001](governance/policies/SPOT-001.json), [spotfix skill](library/skills/spotfix.md), [spotfixer](library/personas/spotfixer.md)).
+- Require a named judgment cohort whenever a changed path reaches no impacted test ([DEV-001](governance/policies/DEV-001.json), [REMED-001](governance/policies/REMED-001.json), [VERIFY-001](governance/policies/VERIFY-001.json)).
+- State that the gate cache is harness-owned and that agents do not set or clear `PAN_GATE_CACHE`, which an agent-run `repository-check` never consults ([REPO-001](governance/policies/REPO-001.json)).
 
 ### Added
 
@@ -16,10 +21,14 @@
 - Add the `/pan-cohort` supervisor command for every live chunk run of a session ([pan-cohort](library/cursor/commands/pan-cohort.md)).
 - Add `--run` and `--worktree` to `pan requirements run` so a check binds to that workspace ([cli](src/cli.ts)).
 - Add the `planning-cohort-fanout` eval scenario, the `cohort-fanout` grader, and the `cohort` scenario field that autostarts the fan-out on approval ([scenario](evals/scenarios/planning-cohort-fanout.json), [graders](src/lib/evals/graders.ts), [evals](docs/evals.md)).
+- Select impacted tests for changes under `governance/`, `library/`, `docs/`, and configuration, which the import-graph selector could not reach before, and report an entirely unmapped change set as an explicit advisory ([test-impact](src/lib/test-impact.ts)).
 
 ### Fixed
 
 - Name the valid kinds in the `UNKNOWN_INVOCATION_KIND` error ([cli](src/cli.ts)).
+- Run the cohort fan-out through the resolved `pan` command instead of a hard-coded `./bin/pan`, so a fan-out works in an embedded or detached installation ([cohorts](src/lib/cohorts.ts)).
+- Append the new cohort instructions to `ORCH-001` and `DELEGATE-001` instead of inserting them mid-array, so existing citations by instruction number keep pointing at the text they cite ([ORCH-001](governance/policies/ORCH-001.json), [DELEGATE-001](governance/policies/DELEGATE-001.json)).
+- Correct the operator and authoring guides to name the `delivery-chunk` run per chunk, and to supervise a cohort with `/pan-cohort` rather than `/pan-resume` ([operator guide](docs/operator-guide.md), [workflow authoring](docs/workflow-authoring.md)).
 - Make the watch unit tests independent of suite load through an injected clock, and round the watch cadence and timeout to whole milliseconds ([watch](src/lib/watch.ts), [watch tests](tests/unit/watch.test.ts)).
 
 ## [5.12.0] - 2026-09-03
