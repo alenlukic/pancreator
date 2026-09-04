@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -9,9 +8,10 @@ import {
   matchWorkspaceGlob,
   resolveRoots,
 } from '../../src/lib/workspace/roots.js'
+import { createTestTempDirectory } from '../temp.js'
 
 function makeWorkspace(name: string): string {
-  const root = mkdtempSync(path.join(tmpdir(), `pancreator-roots-${name}-`))
+  const root = createTestTempDirectory(`pancreator-roots-${name}-`)
 
   mkdirSync(path.join(root, '.pancreator'), { recursive: true })
   writeFileSync(path.join(root, 'README.md'), '# fixture\n')

@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import { detectWorkspaceTechnologies } from '../../src/lib/technologies.js'
+import { createTestTempDirectory } from '../temp.js'
 
 function createTechnologyFixture(): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-technologies-'))
+  const root = createTestTempDirectory('pancreator-technologies-')
 
   writeFileSync(
     path.join(root, 'config.json'),

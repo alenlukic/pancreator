@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -20,6 +19,7 @@ import {
   selectImpactedTests,
   testCommandArgs,
 } from '../../src/lib/test-impact.js'
+import { createTestTempDirectory } from '../temp.js'
 
 const REPO_ROOT = process.cwd()
 
@@ -29,7 +29,7 @@ const REPO_ROOT = process.cwd()
  * repository's own graph.
  */
 function createSyntheticTree(): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-test-impact-'))
+  const root = createTestTempDirectory('pan-test-impact-')
   const write = (relative: string, content: string): void => {
     mkdirSync(path.dirname(path.join(root, relative)), { recursive: true })
     writeFileSync(path.join(root, relative), content)
@@ -517,7 +517,7 @@ test('runTestsImpacted --list --json reports the selection on a synthetic tree a
 
 test('runTestsImpacted refuses in target installations', async () => {
   for (const mode of ['embedded', 'detached'] as const) {
-    const root = mkdtempSync(path.join(tmpdir(), 'pan-test-impact-target-'))
+    const root = createTestTempDirectory('pan-test-impact-target-')
 
     try {
       writeFileSync(
@@ -658,7 +658,7 @@ test('dataSeedKeys names the path, its filename, its id, and ancestors below the
 })
 
 test('a src module naming a data path does not seed it; only the test side does', async () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-test-impact-data-'))
+  const root = createTestTempDirectory('pan-test-impact-data-')
 
   try {
     const write = (relative: string, content: string): void => {
@@ -694,7 +694,7 @@ test('a src module naming a data path does not seed it; only the test side does'
 })
 
 test('an unmapped change is reported as unreached and raises the advisory', async () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-test-impact-gap-'))
+  const root = createTestTempDirectory('pan-test-impact-gap-')
 
   try {
     const write = (relative: string, content: string): void => {

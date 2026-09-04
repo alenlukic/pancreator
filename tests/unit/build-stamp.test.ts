@@ -4,14 +4,14 @@ import {
   chmodSync,
   copyFileSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
   utimesSync,
   writeFileSync,
 } from 'node:fs'
-import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
+
+import { createTestTempDirectory } from '../temp.js'
 
 const REPO_ROOT = process.cwd()
 const PROCESS_TIMEOUT_MS = 30_000
@@ -29,7 +29,7 @@ function writeExecutable(filePath: string, body: string): void {
 }
 
 function buildFixture(): Fixture {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-build-stamp-'))
+  const root = createTestTempDirectory('pan-build-stamp-')
   const stubBin = path.join(root, 'stub-bin')
   const npmLog = path.join(root, 'npm.log')
   const tscLog = path.join(root, 'tsc.log')

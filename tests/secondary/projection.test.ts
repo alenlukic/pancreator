@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { readFileSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -11,12 +10,11 @@ import {
 } from '../../src/lib/cursor-content.js'
 import { loadPolicyCatalog } from '../../src/lib/policies.js'
 import { createFixture } from '../helpers.js'
+import { createTestTempDirectory } from '../temp.js'
 
 test('installer and compiled projection renderers stay byte-identical', () => {
   const root = createFixture()
-  const targetRoot = mkdtempSync(
-    path.join(tmpdir(), 'pancreator-installer-projection-'),
-  )
+  const targetRoot = createTestTempDirectory('pancreator-installer-projection-')
   const policy = loadPolicyCatalog(root).get('BROWSER-001')
 
   assert.ok(policy)

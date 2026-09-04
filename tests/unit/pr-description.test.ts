@@ -1,15 +1,15 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import { resolvePrDescriptionContext } from '../../src/lib/pr-description.js'
 import type { Policy, PrDescriptionContext } from '../../src/lib/types.js'
 import { validatePrDescription } from '../../src/lib/validators/pr-description.js'
+import { createTestTempDirectory } from '../temp.js'
 
 function makeRoot(): string {
-  return mkdtempSync(path.join(tmpdir(), 'pancreator-pr-description-'))
+  return createTestTempDirectory('pancreator-pr-description-')
 }
 
 function write(root: string, relativePath: string, content: string): void {

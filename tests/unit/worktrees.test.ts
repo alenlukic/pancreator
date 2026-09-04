@@ -2,13 +2,11 @@ import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import {
   mkdirSync,
-  mkdtempSync,
   readFileSync,
   rmSync,
   writeFileSync,
   existsSync,
 } from 'node:fs'
-import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -27,12 +25,13 @@ import {
   type WorktreeIndex,
 } from '../../src/lib/worktrees.js'
 import { createFixture, writeJson } from '../helpers.js'
+import { createTestTempDirectory } from '../temp.js'
 
 const MINIMAL_CONFIG = { schema_version: 1 }
 
 /** Bare root for helpers that read only config.json and the worktree index. */
 function scratchRoot(): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-worktrees-'))
+  const root = createTestTempDirectory('pan-worktrees-')
 
   writeJson(path.join(root, 'config.json'), MINIMAL_CONFIG)
 
@@ -482,7 +481,7 @@ test('target worktrees keep harness config at installation root', () => {
   assert.equal(gitStatus(embeddedHarness), embeddedStatusBefore)
 
   const detachedHarness = createFixture()
-  const targetRoot = mkdtempSync(path.join(tmpdir(), 'pan-target-'))
+  const targetRoot = createTestTempDirectory('pan-target-')
 
   try {
     initTargetRepository(targetRoot)

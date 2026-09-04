@@ -2,12 +2,10 @@ import assert from 'node:assert/strict'
 import {
   chmodSync,
   existsSync,
-  mkdtempSync,
   readFileSync,
   rmSync,
   writeFileSync,
 } from 'node:fs'
-import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -17,9 +15,10 @@ import {
   resolvePanWalkUp,
   upsertPanFunctionBlock,
 } from '../../src/lib/shell-alias.js'
+import { createTestTempDirectory } from '../temp.js'
 
 function makeHome(): string {
-  return mkdtempSync(path.join(tmpdir(), 'pancreator-shell-home-'))
+  return createTestTempDirectory('pancreator-shell-home-')
 }
 
 function walkDeps(

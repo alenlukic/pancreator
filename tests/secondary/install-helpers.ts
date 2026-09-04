@@ -3,15 +3,14 @@ import {
   chmodSync,
   cpSync,
   existsSync,
-  mkdtempSync,
   readFileSync,
   writeFileSync,
 } from 'node:fs'
-import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 import { cloneTree } from '../helpers.js'
 import { recordFixtureEvent } from '../reporters/fixture-profile.js'
+import { createTestTempDirectory } from '../temp.js'
 
 export const REPO_ROOT = process.cwd()
 export const INSTALLER = path.join(REPO_ROOT, 'bin', 'install')
@@ -35,7 +34,7 @@ export interface InstallMarker {
 }
 
 export function makeSkeletonProject(): string {
-  const project = mkdtempSync(path.join(tmpdir(), 'pancreator-embed-'))
+  const project = createTestTempDirectory('pancreator-embed-')
 
   writeFileSync(path.join(project, 'README.md'), '# skeleton\n')
 
@@ -91,9 +90,7 @@ export function git(root: string, args: string[]): string {
 }
 
 function buildReleaseFixtureTemplate(): string {
-  const fixture = mkdtempSync(
-    path.join(tmpdir(), 'pancreator-release-template-'),
-  )
+  const fixture = createTestTempDirectory('pancreator-release-template-')
   const sourceVersion = readFileSync(
     path.join(REPO_ROOT, 'VERSION'),
     'utf8',
@@ -250,7 +247,7 @@ export function installedProjectTemplate(): string {
 export function cloneInstalledProject(): string {
   const template = installedProjectTemplate()
   const started = performance.now()
-  const project = mkdtempSync(path.join(tmpdir(), 'pancreator-embed-'))
+  const project = createTestTempDirectory('pancreator-embed-')
 
   cloneTree(template, project, { verbatimSymlinks: true })
   recordFixtureEvent('template_clone', 'secondary', performance.now() - started)
@@ -275,7 +272,7 @@ function releaseFixtureSource(): string {
 }
 
 export function createReleaseFixture(): string {
-  const fixture = mkdtempSync(path.join(tmpdir(), 'pancreator-release-source-'))
+  const fixture = createTestTempDirectory('pancreator-release-source-')
 
   cloneTree(releaseFixtureSource(), fixture)
 

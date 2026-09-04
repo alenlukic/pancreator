@@ -1,16 +1,10 @@
 import assert from 'node:assert/strict'
-import {
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import { validateTargetLanguageHandbooks } from '../../src/lib/validators/target-language-handbooks.js'
+import { createTestTempDirectory } from '../temp.js'
 
 const GENERATED_BY = 'pancreator-target-language-handbooks'
 
@@ -20,7 +14,7 @@ function writeJson(filePath: string, value: unknown): void {
 }
 
 function createLanguageFixture(): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-language-handbook-'))
+  const root = createTestTempDirectory('pancreator-language-handbook-')
 
   writeJson(path.join(root, 'config.json'), {
     schema_version: 1,

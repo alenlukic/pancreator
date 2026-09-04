@@ -1,8 +1,7 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import type { SpawnSyncReturns } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -17,6 +16,7 @@ import { renderStatus } from '../../src/lib/render.js'
 import type { RunState, SuiteProfileSummary } from '../../src/lib/types.js'
 import { readFixtureCost } from '../reporters/failures-only.js'
 import { fixtureSidecarPath } from '../reporters/fixture-profile.js'
+import { createTestTempDirectory } from '../temp.js'
 
 const REPORTER = path.resolve(
   process.cwd(),
@@ -24,7 +24,7 @@ const REPORTER = path.resolve(
 )
 
 function tinyLane(): { cwd: string; file: string } {
-  const cwd = mkdtempSync(path.join(tmpdir(), 'pancreator-suite-profile-'))
+  const cwd = createTestTempDirectory('pancreator-suite-profile-')
   const laneDir = path.join(cwd, 'tests', 'unit')
 
   mkdirSync(laneDir, { recursive: true })
@@ -110,7 +110,7 @@ test('the reporter writes a suite profile only when PAN_TEST_PROFILE is set', ()
 })
 
 test('the reporter consumes process-specific fixture sidecars once', () => {
-  const cwd = mkdtempSync(path.join(tmpdir(), 'pancreator-fixture-cost-'))
+  const cwd = createTestTempDirectory('pancreator-fixture-cost-')
   const target = path.join(cwd, 'out', 'profile.json')
   const first = fixtureSidecarPath(target, 101)
   const second = fixtureSidecarPath(target, 202)
@@ -272,7 +272,7 @@ function writeRunState(root: string, state: RunState): void {
 }
 
 test('the ship card section renders the profile with and without a prior succeeded run', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-suite-summary-'))
+  const root = createTestTempDirectory('pancreator-suite-summary-')
   const currentPath =
     'runtime/logs/workflows/run-b/agent/evidence/verify-1-run-b-suite-profile.json'
 

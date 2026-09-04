@@ -1,13 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import {
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -26,6 +19,7 @@ import { createFixture, writeJson } from '../helpers.js'
 import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
 import { createWorktree } from '../../src/lib/worktrees.js'
 import { nextSemanticVersion } from '../../src/lib/versioning.js'
+import { createTestTempDirectory } from '../temp.js'
 
 /**
  * Bare validator fixture root carrying the shared field-contract document.
@@ -44,7 +38,7 @@ function installFieldContract(root: string): void {
 }
 
 function validatorFixtureRoot(prefix: string): string {
-  const root = mkdtempSync(path.join(tmpdir(), prefix))
+  const root = createTestTempDirectory(prefix)
 
   installFieldContract(root)
 
@@ -1449,7 +1443,7 @@ test('implementation validator resolves the file portion of "path :: case" test 
 test('target instruction coverage demands final-line read evidence per path', () => {
   // The validator needs only an instruction file and the JSON output, so a
   // bare temporary directory is enough.
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-target-coverage-'))
+  const root = createTestTempDirectory('pan-target-coverage-')
   const target = 'runtime/output.json'
 
   writeFileSync(

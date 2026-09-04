@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import { validateQuestionToolAccess } from '../../src/lib/validation.js'
+import { createTestTempDirectory } from '../temp.js'
 
 function createAgentFixture(frontmatter: string): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-question-tool-'))
+  const root = createTestTempDirectory('pan-question-tool-')
   const directory = path.join(root, 'library', 'cursor', 'agents')
 
   mkdirSync(directory, { recursive: true })
@@ -24,7 +24,7 @@ test('a disallowed question method fails with the file and identifier', () => {
     "disallowedTools: ['cursor/ask_question']",
   )
   const cased = createAgentFixture("tools: ['AskQuestion']")
-  const empty = mkdtempSync(path.join(tmpdir(), 'pan-question-tool-'))
+  const empty = createTestTempDirectory('pan-question-tool-')
 
   try {
     const errors = validateQuestionToolAccess(disallowed)

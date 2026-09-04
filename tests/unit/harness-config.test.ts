@@ -1,12 +1,5 @@
 import assert from 'node:assert/strict'
-import {
-  mkdtempSync,
-  readFileSync,
-  renameSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs'
-import { tmpdir } from 'node:os'
+import { readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -24,6 +17,7 @@ import {
 import { loadPipelineConfig } from '../../src/lib/pipeline-config.js'
 import { loadOperatorInvolvementFile } from '../../src/lib/operator-involvement.js'
 import { findProjectRoot } from '../../src/lib/io.js'
+import { createTestTempDirectory } from '../temp.js'
 
 /** Rewrite the fixture's harness configuration with the supplied overrides. */
 function configure(root: string, overrides: Record<string, unknown>): void {
@@ -44,7 +38,7 @@ function useLegacyConfigName(root: string): void {
 }
 
 function scratchRoot(): string {
-  return mkdtempSync(path.join(tmpdir(), 'pancreator-harness-config-'))
+  return createTestTempDirectory('pancreator-harness-config-')
 }
 
 function minimalConfigRoot(overrides: Record<string, unknown>): string {
@@ -140,7 +134,7 @@ test('config.json wins when both names are present', () => {
 
 test('detached installation addresses the harness by absolute path', () => {
   const root = createFixture()
-  const workspace = mkdtempSync(path.join(tmpdir(), 'pancreator-target-'))
+  const workspace = createTestTempDirectory('pancreator-target-')
 
   try {
     configure(root, {
@@ -190,13 +184,15 @@ test('detached installation rejects a relative workspace root', () => {
 
 test('PANCREATOR_ROOT locates a harness outside the working directory', () => {
   const root = createFixture()
-  const elsewhere = mkdtempSync(path.join(tmpdir(), 'pancreator-cwd-'))
+  const elsewhere = createTestTempDirectory('pancreator-cwd-')
   const previous = process.env.PANCREATOR_ROOT
 
   try {
     // Walking up from an unrelated directory can never reach a detached
-    // harness, so the explicit override is the only way to find it.
-    assert.throws(() => findProjectRoot(elsewhere), /ROOT_NOT_FOUND|locate/u)
+    // harness, so the explicit override is the only way to find it. The
+    // scratch directory lives inside this checkout, so the walk finds this
+    // checkout rather than nothing; either way it is not the fixture.
+    assert.notEqual(findProjectRoot(elsewhere), root)
 
     process.env.PANCREATOR_ROOT = root
 
@@ -212,7 +208,7 @@ test('PANCREATOR_ROOT locates a harness outside the working directory', () => {
 })
 
 test('PANCREATOR_ROOT rejects a directory that is not a harness', () => {
-  const elsewhere = mkdtempSync(path.join(tmpdir(), 'pancreator-cwd-'))
+  const elsewhere = createTestTempDirectory('pancreator-cwd-')
   const previous = process.env.PANCREATOR_ROOT
 
   try {

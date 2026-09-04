@@ -1,12 +1,5 @@
 import assert from 'node:assert/strict'
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  writeFileSync,
-} from 'node:fs'
-import os from 'node:os'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -20,6 +13,7 @@ import {
   repairWorkflowInboxReferences,
   standardizeRuntimeFileNames,
 } from '../../src/lib/workflow-artifacts.js'
+import { createTestTempDirectory } from '../temp.js'
 function write(filePath: string, content: string): void {
   mkdirSync(path.dirname(filePath), { recursive: true })
   writeFileSync(filePath, content, 'utf8')
@@ -141,7 +135,7 @@ function writeLegacyArtifacts(
 }
 
 test('finalizeWorkflowArtifacts rejects non-terminal runs', () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'pancreator-finalize-'))
+  const root = createTestTempDirectory('pancreator-finalize-')
   const runId = '63379_Jun-22_5f354f23'
 
   writeState(root, runId, 'running')
@@ -154,7 +148,7 @@ test('finalizeWorkflowArtifacts rejects non-terminal runs', () => {
 })
 
 test('finalization rewrites exact-run inbox references only', () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'pancreator-finalize-inbox-'))
+  const root = createTestTempDirectory('pancreator-finalize-inbox-')
   const runId = '63308_Sep-01-0091_finalize'
   const runDirectory = path.join(root, 'runtime/logs/workflows', runId)
   const invocationIds = ['plan-1-aaaaaaaa', 'verify-1-bbbbbbbb']
@@ -218,7 +212,7 @@ test('finalization rewrites exact-run inbox references only', () => {
 })
 
 test('historical repair reports unique changes and preserves ambiguities', () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'pancreator-repair-inbox-'))
+  const root = createTestTempDirectory('pancreator-repair-inbox-')
   const runId = '63308_Sep-01-0091_repair'
   const runDirectory = path.join(root, 'runtime/logs/workflows', runId)
   const invocationIds = [
@@ -274,7 +268,7 @@ test('historical repair reports unique changes and preserves ambiguities', () =>
 })
 
 test('workflow migration finalizes closed runs and consolidates artifacts', () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'pancreator-migration-'))
+  const root = createTestTempDirectory('pancreator-migration-')
   const oldRunId = '20260622T212254051Z-5f354f23'
   const newRunId = migratedRunId(oldRunId)
 
@@ -427,7 +421,7 @@ test('workflow migration finalizes closed runs and consolidates artifacts', () =
 })
 
 test('workflow migration repairs in-flight prefixes without finalizing', () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'pancreator-migration-'))
+  const root = createTestTempDirectory('pancreator-migration-')
   const runId = '63379_Jun-22_5f354f23'
   const migratedId = '63379_Jun-22-0158_5f354f23'
   const runDirectory = path.join(root, 'runtime/logs/workflows', runId)
@@ -483,7 +477,7 @@ test('workflow migration repairs in-flight prefixes without finalizing', () => {
 })
 
 test('workflow archive moves runs older than retention into archive directories', () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'pancreator-archive-'))
+  const root = createTestTempDirectory('pancreator-archive-')
   const oldRunId = '63379_Jun-22-0158_5f354f23'
   const recentRunId = '63372_Jun-29-0158_6f354f23'
   const oldLogDirectory = path.join(root, 'runtime/logs/workflows', oldRunId)
@@ -556,7 +550,7 @@ test('workflow archive moves runs older than retention into archive directories'
 })
 
 test('runtime file names standardize onto the temporal prefix scheme', () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'pan-names-'))
+  const root = createTestTempDirectory('pan-names-')
 
   write(
     path.join(root, 'runtime/inbox/queue/2026-08-14-archive-utils.md'),
@@ -636,7 +630,7 @@ test('runtime file names standardize onto the temporal prefix scheme', () => {
 })
 
 test('run directory hash suffixes migrate to keyword suffixes', () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'pan-suffixes-'))
+  const root = createTestTempDirectory('pan-suffixes-')
   const first = '63379_Jun-22-0158_5f354f23'
   const second = '63379_Jun-22-0157_6f354f23'
   const sameMinute = '63379_Jun-22-0158_7f354f23'
@@ -724,9 +718,7 @@ test('run directory hash suffixes migrate to keyword suffixes', () => {
 })
 
 test('suffix migration skips best-of-N sessions with live worktrees at the current root', () => {
-  const root = mkdtempSync(
-    path.join(os.tmpdir(), 'pan-suffix-worktree-current-'),
-  )
+  const root = createTestTempDirectory('pan-suffix-worktree-current-')
   const bonId = '63379_Jun-22-0158_dddd4444'
   const legacyBonId = '63379_Jun-22-0158_cccc3333'
 
@@ -764,7 +756,7 @@ test('suffix migration skips best-of-N sessions with live worktrees at the curre
 })
 
 test('archival covers best-of-N sessions and temporal runtime files', () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'pan-archive-extended-'))
+  const root = createTestTempDirectory('pan-archive-extended-')
   const oldBonId = '63379_Jun-22-0158_output-simpl'
   const freshBonId = '63372_Jun-29-0158_other-keywor'
   const oldSessionId = '63379_Jun-22-0158_aaaaaaaa'
@@ -864,7 +856,7 @@ test('archival covers best-of-N sessions and temporal runtime files', () => {
 })
 
 test('runtime name standardization never scans or rewrites worktree checkouts', () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'pan-names-worktrees-'))
+  const root = createTestTempDirectory('pan-names-worktrees-')
 
   write(
     path.join(root, 'runtime/inbox/queue/2026-08-14-scoped-rename.md'),

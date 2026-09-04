@@ -38,6 +38,10 @@ Do not replay a whole repository-check profile inside a unit test when the gate 
 
 Keep fixture setup proportional to the contract. Share templates across tests in one file. Record template-build and clone cost only when profiling is active; normal runs MUST stay unchanged.
 
+### TP-09 · Scratch space
+
+Allocate fixture scratch space with `createTestTempDirectory` from `tests/temp.ts`. It lives under `runtime/tmp/tests/`, per root and so per worktree, and `bin/run-tests` removes it when the run ends. A test MUST NOT call `tmpdir()`: the shared OS temp directory is unbounded, every program on the host pays for what accumulates there, and a fixture placed in it outlives the run that made it.
+
 ## Lanes
 
 Place each test in the documented lane that matches its cost and boundary:

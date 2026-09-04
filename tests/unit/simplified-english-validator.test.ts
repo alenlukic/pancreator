@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -12,6 +11,7 @@ import {
   splitSentences,
   validateSimplifiedEnglish,
 } from '../../src/lib/validators/simplified-english.js'
+import { createTestTempDirectory } from '../temp.js'
 
 function input(root: string, targetPath: string) {
   return {
@@ -27,7 +27,7 @@ function input(root: string, targetPath: string) {
 }
 
 function scratchRoot(): string {
-  return mkdtempSync(path.join(tmpdir(), 'pan-ste-'))
+  return createTestTempDirectory('pan-ste-')
 }
 
 function codes(markdown: string): string[] {

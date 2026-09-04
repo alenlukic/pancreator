@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import test from 'node:test'
-import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 import {
@@ -10,9 +9,10 @@ import {
   resolveCursorModelSlug,
 } from '../../src/lib/executors/cursor-catalog.js'
 import { parsePersonaMapping } from '../../src/lib/executors/mapping.js'
+import { createTestTempDirectory } from '../temp.js'
 
 function createCatalogRoot(): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-catalog-'))
+  const root = createTestTempDirectory('pancreator-catalog-')
   const catalog = {
     models: [
       {
@@ -206,8 +206,8 @@ test('parameters are validated per model, not per family', () => {
 })
 
 test('without a local catalog the resolution is grammar-only', () => {
-  const rootWithoutCatalog = mkdtempSync(
-    path.join(tmpdir(), 'pancreator-catalog-empty-'),
+  const rootWithoutCatalog = createTestTempDirectory(
+    'pancreator-catalog-empty-',
   )
 
   assert.equal(loadCursorCatalog(rootWithoutCatalog), null)
