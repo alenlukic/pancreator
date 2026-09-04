@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "slug": "delivery-chunk",
+  "title": "Cohort chunk delivery",
+  "description": "Delivery of one chunk of a ratified cohort plan in its own worktree: implementation of the child specification, joint read-only verification with a graded verdict, and verdict-routed remediation. The run ends at a verified implementation on the chunk branch. Release preparation belongs to the integrated cohort, so no chunk carries a ship stage.",
+  "start_stage": "implement",
+  "limits": {
+    "max_total_transitions": 12,
+    "max_stage_attempts": 3,
+    "max_consecutive_failures": 3
+  },
+  "stages": ["implement", "verify", "remediate"]
+}

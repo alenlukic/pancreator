@@ -547,6 +547,83 @@ test('best-of-N stages carry the same policies as the delivery stages they mirro
   assert.ok(ids('release-steward', 'metacritic', 'ship').includes('SHIP-001'))
 })
 
+test('the best-of-N candidate planner receives no specification hierarchy or cohort rules', () => {
+  const root = sharedFixture()
+  const candidate = resolvePolicies(root, {
+    persona: 'planner',
+    workflow: 'delivery-candidate',
+    stage: 'plan',
+  })
+  const ids = candidate.map((policy) => policy.id)
+
+  assert.ok(ids.includes('PLAN-002'))
+  assert.equal(ids.includes('COHORT-001'), false)
+
+  // The candidate plan stage declares no cohort_plan data and no child
+  // specification path, so no instruction on its card may demand either.
+  const hierarchyTerms = [
+    'child specification',
+    'parent specification',
+    'cohort',
+    'unit of work',
+  ]
+
+  for (const policy of candidate) {
+    for (const text of [policy.summary, ...policy.instructions]) {
+      for (const term of hierarchyTerms) {
+        assert.equal(
+          text.toLowerCase().includes(term),
+          false,
+          `${policy.id} MUST NOT reach the candidate planner with "${term}"`,
+        )
+      }
+    }
+  }
+
+  const hierarchyValidators = [
+    'COHORT-PLAN-VALIDATE-001',
+    'CHILD-SPEC-VALIDATE-001',
+  ]
+  const boundFor = (workflow: string, persona: string, stage: string) =>
+    resolveRequirements(root, { persona, workflow, stage })
+      .validation_requirements.map((requirement) => requirement.registry_id)
+      .filter((registryId) => hierarchyValidators.includes(registryId))
+
+  assert.deepEqual(boundFor('delivery-candidate', 'planner', 'plan'), [])
+  // The cohort policy also reaches every delivery-chunk worker, whose stage
+  // output is not a plan; the validators stay scoped to the planning workflow.
+  assert.deepEqual(boundFor('delivery-chunk', 'coder', 'implement'), [])
+  assert.deepEqual(
+    boundFor('planning', 'planner', 'plan').sort(),
+    [...hierarchyValidators].sort(),
+  )
+})
+
+test('the specification hierarchy rules live in exactly one policy', () => {
+  const catalog = loadPolicyCatalog(sharedFixture())
+  const owners = [...catalog.values()].filter((policy) =>
+    policy.instructions.some((instruction) =>
+      instruction.includes('one child specification for each unit of work'),
+    ),
+  )
+
+  assert.deepEqual(
+    owners.map((policy) => policy.id),
+    ['COHORT-001'],
+  )
+
+  const shared = catalog.get('PLAN-002')
+
+  assert.ok(shared)
+  assert.equal(
+    shared.instructions.some((instruction) =>
+      /child specification|cohort|unit of work/iu.test(instruction),
+    ),
+    false,
+    'PLAN-002 MUST keep only the consolidated-planning rules both planners share',
+  )
+})
+
 test('Python policy loads only for detected Python workspaces', () => {
   const root = createFixture()
   const configPath = path.join(root, 'config.json')

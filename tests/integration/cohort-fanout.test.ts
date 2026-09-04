@@ -135,6 +135,21 @@ function commitInChunk(root: string, workspace: string, chunk: string): void {
   git(absolute, ['commit', '-m', `feat: ${chunk}`])
 }
 
+/**
+ * Re-declare the fixture as an embedded harness. Integration resolves the
+ * repository from `workspace_root`, which stays the fixture root, so only the
+ * emitted pan entrypoint changes.
+ */
+function markEmbedded(root: string): void {
+  const configPath = path.join(root, 'config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  writeJson(configPath, { ...config, installation_mode: 'embedded' })
+}
+
 test('starting a cohort fans out one worktree and one run per chunk', () => {
   const root = createFixture()
   const planRunId = ratifiedPlanRun(root, [
@@ -171,7 +186,11 @@ test('starting a cohort fans out one worktree and one run per chunk', () => {
   for (const chunk of started.chunks) {
     const run = loadState(root, chunk.run_id)
 
-    assert.equal(run.workflow_slug, 'delivery')
+    assert.equal(
+      run.workflow_slug,
+      'delivery-chunk',
+      'a chunk run ends at verified implementation and carries no ship stage',
+    )
     assert.equal(run.cohort?.cohort_id, session.cohort_id)
     assert.equal(run.cohort?.cohort_index, 1)
     assert.equal(run.cohort?.chunk, chunk.chunk)
@@ -212,6 +231,78 @@ test('starting a cohort fans out one worktree and one run per chunk', () => {
     () => startCohort(root, session.cohort_id),
     (error: unknown) =>
       error instanceof PanError && error.code === 'COHORT_ALREADY_STARTED',
+  )
+})
+
+test('the parallelism limit starts a wide cohort in batches', () => {
+  const root = createFixture()
+  const planRunId = ratifiedPlanRun(root, [
+    { id: 'a', cohort_index: 1 },
+    { id: 'b', cohort_index: 1 },
+    { id: 'c', cohort_index: 1 },
+    { id: 'd', cohort_index: 1 },
+    { id: 'e', cohort_index: 1 },
+  ])
+  const session = initCohortSession(root, { planRunId, maxParallel: 2 })
+
+  assert.equal(session.max_parallel, 2)
+
+  const first = startCohort(root, session.cohort_id)
+
+  assert.deepEqual(
+    first.chunks.map((chunk) => chunk.chunk),
+    ['a', 'b'],
+    'only as many chunks start as the limit allows',
+  )
+  assert.deepEqual(first.deferred_chunks, ['c', 'd', 'e'])
+  assert.equal(readWorktreeIndex(root).worktrees.length, 2)
+
+  // Every slot is taken, so a second start is refused rather than ignored,
+  // and the refusal names the waiting chunks.
+  assert.throws(
+    () => startCohort(root, session.cohort_id),
+    (error: unknown) =>
+      error instanceof PanError && error.code === 'COHORT_PARALLELISM_LIMIT',
+  )
+
+  const full = cohortStatus(root, session.cohort_id)
+
+  assert.equal(full.max_parallel, 2)
+  assert.equal(full.live_chunk_runs, 2)
+  assert.equal(full.start_command, null, 'no slot is free')
+
+  // A terminal run frees exactly one slot.
+  markSucceeded(root, first.chunks[0].run_id)
+
+  const freed = cohortStatus(root, session.cohort_id)
+
+  assert.equal(freed.live_chunk_runs, 1)
+  assert.equal(
+    freed.start_command,
+    `./bin/pan cohort start ${session.cohort_id}`,
+  )
+
+  const second = startCohort(root, session.cohort_id)
+
+  assert.deepEqual(
+    second.chunks.map((chunk) => chunk.chunk),
+    ['c'],
+  )
+  assert.deepEqual(second.deferred_chunks, ['d', 'e'])
+
+  // Re-approving the plan run must not start beyond the limit either: the
+  // autostart reports the batch that already exists.
+  const planState = loadState(root, planRunId)
+  const autostart = maybeAutostartCohort(
+    root,
+    { ...planState, autostart_cohort: true },
+    { actor: 'operator', action: 'approve' },
+  )
+
+  assert.equal(autostart?.status, 'already_started')
+  assert.deepEqual(
+    autostart?.status === 'already_started' ? autostart.deferred_chunks : [],
+    ['d', 'e'],
   )
 })
 
@@ -316,13 +407,17 @@ test('a dirty chunk worktree leaves the cohort unsatisfied', () => {
   commitInChunk(root, workspace, 'alpha')
   markSucceeded(root, started.chunks[0].run_id)
   writeFileSync(path.join(root, workspace, 'alpha.txt'), 'uncommitted\n')
+  markEmbedded(root)
 
   assert.throws(
     () => integrateCohort(root, session.cohort_id),
     (error: unknown) =>
       error instanceof PanError &&
       error.code === 'COHORT_INTEGRATION_INCOMPLETE' &&
-      error.message.includes('uncommitted work'),
+      error.message.includes('uncommitted work') &&
+      error.message.includes(
+        `'./.pancreator/bin/pan cohort integrate ${session.cohort_id}' again`,
+      ),
   )
   assert.deepEqual(
     cohortStatus(root, session.cohort_id).satisfied_cohort_indexes,
@@ -545,6 +640,7 @@ test('a multi-chunk conflict records which chunks already landed', () => {
     markSucceeded(root, chunk.run_id)
   }
 
+  markEmbedded(root)
   writeFileSync(path.join(root, 'shared.txt'), 'base side\n')
   git(root, ['add', '-A'])
   git(root, ['commit', '-m', 'chore: base side'])
@@ -554,7 +650,8 @@ test('a multi-chunk conflict records which chunks already landed', () => {
 
   // Alpha merges first and lands; beta conflicts. The error and the durable
   // record both say so, because the merge that landed cannot be undone by the
-  // harness without rewriting the operator's branch.
+  // harness without rewriting the operator's branch. The retry command names
+  // the installed entrypoint the operator can actually run.
   assert.throws(
     () => integrateCohort(root, session.cohort_id),
     (error: unknown) =>
@@ -563,7 +660,10 @@ test('a multi-chunk conflict records which chunks already landed', () => {
       error.message.includes("conflicted on chunk 'beta'") &&
       error.message.includes('already merged') &&
       error.message.includes('alpha') &&
-      error.message.includes(recordPath),
+      error.message.includes(recordPath) &&
+      error.message.includes(
+        `'./.pancreator/bin/pan cohort integrate ${session.cohort_id}' again`,
+      ),
   )
 
   const record = JSON.parse(

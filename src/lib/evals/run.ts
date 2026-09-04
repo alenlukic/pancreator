@@ -11,6 +11,7 @@ import {
   prepareInvocation,
   submitOutput,
 } from '../engine.js'
+import { maybeAutostartCohort } from '../cohorts.js'
 import { PanError } from '../errors.js'
 import { personaExecutorOf } from '../executors/mapping.js'
 import { writeRedlineRecord } from '../watch.js'
@@ -164,7 +165,14 @@ function operatorSteps(
           .map((item) => `${item.stage} -> ${item.decision}`)
           .join(', ')} (\`${pan} decide ${runId} <decision>\`).`
       : 'The scenario scripts no operator decisions.',
-    `When the run reaches status '${loaded.scenario.expected.status}', run \`${pan} eval grade ${runId} --scenario ${loaded.scenario.name} --out ${evalDir}\`.`,
+    ...(loaded.scenario.cohort?.autostart
+      ? [
+          `Approving the ratified plan autostarts cohort 1 with a parallelism limit of ${loaded.scenario.cohort.max_parallel ?? 'the session default'}. Supervise the chunk runs with the \`/pan-cohort <cohort-id>\` command the decide response names, start deferred chunks with \`${pan} cohort start <cohort-id>\` as slots free, and integrate each finished cohort with \`${pan} cohort integrate <cohort-id>\`.`,
+          `When every cohort is satisfied (\`${pan} cohort status <cohort-id>\`), run \`${pan} eval grade ${runId} --scenario ${loaded.scenario.name} --out ${evalDir}\`.`,
+        ]
+      : [
+          `When the run reaches status '${loaded.scenario.expected.status}', run \`${pan} eval grade ${runId} --scenario ${loaded.scenario.name} --out ${evalDir}\`.`,
+        ]),
   ]
 }
 
@@ -217,6 +225,10 @@ export function runEval(
     involvement: scenario.involvement ?? null,
     pipelineConfigName:
       options.pipelineConfigName ?? scenario.pipeline_config ?? null,
+    autostartCohort: scenario.cohort?.autostart ?? false,
+    autostartMaxParallel: scenario.cohort?.autostart
+      ? (scenario.cohort.max_parallel ?? null)
+      : null,
   })
   const runId = created.run_id
   const decisionsApplied: { stage: string; decision: string }[] = []
@@ -273,8 +285,28 @@ export function runEval(
       onProgress?.(
         `applying scripted decision ${decision.decision} at ${stage}`,
       )
-      decideRun(root, runId, decision.decision, decision.note ?? '')
+      const decided = decideRun(
+        root,
+        runId,
+        decision.decision,
+        decision.note ?? '',
+      )
       decisionsApplied.push({ stage, decision: decision.decision })
+
+      // Same hook `pan decide` runs: an approved --autostart planning run
+      // fans out cohort 1 here, outside the run mutex the decision took.
+      const autostart = maybeAutostartCohort(root, decided, {
+        actor: 'operator',
+        action: decision.decision,
+      })
+
+      if (autostart) {
+        onProgress?.(
+          autostart.status === 'failed'
+            ? `cohort autostart failed: ${autostart.error}`
+            : `cohort ${autostart.cohort_id} ${autostart.status}: ${autostart.chunks.length} chunk run(s), ${autostart.deferred_chunks.length} deferred`,
+        )
+      }
       continue
     }
 

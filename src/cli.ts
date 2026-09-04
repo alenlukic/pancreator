@@ -204,9 +204,9 @@ import {
 const STANDALONE_MODE_NAMES = Object.keys(STANDALONE_MODES).sort().join('|')
 
 export const HELP_BODY = `Usage:
-  pan init --request <repo-relative-file> [--workflow planning|delivery|prototype|design] [--title <title>] [--workspace <dir> | --worktree <name>] [--gates <file>] [--involvement <profile>] [--verification <level>] [--operator-artifacts] [--context-reference <repo-relative-file>] [--autostart]
+  pan init --request <repo-relative-file> [--workflow planning|delivery|prototype|design] [--title <title>] [--workspace <dir> | --worktree <name>] [--gates <file>] [--involvement <profile>] [--verification <level>] [--operator-artifacts] [--context-reference <repo-relative-file>] [--autostart [--max-parallel <n>]]
       --context-reference records an audited pointer to wider context every stage reads and never copies, for example the parent specification of one cohort chunk.
-      --autostart applies only to the planning workflow: approving the ratified planning gate starts cohort 1.
+      --autostart applies only to the planning workflow: approving the ratified planning gate starts cohort 1. --max-parallel caps the concurrent chunk runs of that session (default 4).
   pan prepare <run-id> [--worktree <name>] [--operator-artifacts]
   pan delegate <run-id> [--timeout-ms <milliseconds>]
   pan watch <run-id> [--invocation <invocation-id>] [--cadence-seconds <n>] [--stall-wakes <n>] [--timeout-seconds <n>] [--mark-background] [--agent-state running|completed] [--json]
@@ -259,7 +259,8 @@ export const HELP_BODY = `Usage:
   pan eval list [--json] | pan eval grade <run-id> --scenario <name> [--out <dir>] [--json] | pan eval run <scenario> [--attest-supervisor-card] [--pipeline-config <name>] [--json]
   pan doctor [--worktree <name>] [--json]
   pan requirements resolve --persona <p> --workflow <w> --stage <s> [--kind <kind>] [--output-path <path>] [--json]
-  pan requirements run --persona <p> --workflow <w> --stage <s> --kind <kind> --registry <id> --target <path> [--worktree <name>] [--json]
+  pan requirements run --persona <p> --workflow <w> --stage <s> --kind <workflow|assessment|spotfix|investigation|repair|decomposition|documentation|standalone> --registry <id> --target <path> [--run <run-id> | --worktree <name>] [--json]
+      --run or --worktree binds the check to that run's or worktree's workspace instead of the installation root.
   pan pr-description context [--worktree <name>] [--json]
   pan output scaffold <run-id> --invocation <path> --output <path> [--force]
   pan output validate <run-id> --file <path> --invocation <path> [--json]
@@ -277,11 +278,13 @@ export const HELP_BODY = `Usage:
   pan best-of-n consolidate <bon-id> [--json]
   pan best-of-n clean <bon-id> [--force] [--json]
   pan best-of-n prune [--force] [--json]
-  pan cohort init --plan-run <run-id> [--from <branch>] [--json]
+  pan cohort init --plan-run <run-id> [--from <branch>] [--max-parallel <n>] [--json]
+      --max-parallel caps the concurrent chunk runs of the session (default 4).
   pan cohort start <cohort-id> [--cohort <index>] [--json]
-      Create one worktree and one delivery run per chunk of the next unsatisfied cohort. It performs no source-control action beyond adding worktrees.
+      Create one worktree and one delivery-chunk run per unstarted chunk of the next unsatisfied cohort, up to the free parallelism slots. Run it again as chunk runs finish to start the deferred chunks. It performs no source-control action beyond adding worktrees.
       --cohort names a cohort explicitly; a cohort whose predecessor is unsatisfied is refused with COHORT_PREDECESSOR_UNSATISFIED.
   pan cohort status <cohort-id> [--json]
+      Reports the active cohort, each chunk's run status, the free parallelism slots, and the start, supervise (/pan-cohort), and integrate commands that apply.
   pan cohort integrate <cohort-id> [--json]
       Merge the committed chunk branches of the finished cohort into its base branch and record the satisfaction entry the next cohort needs.
   pan cohort abandon <cohort-id> --chunk <id> --note <reason> [--json]
@@ -349,6 +352,25 @@ function requiredArgument(
 
 function hasFlag(args: string[], name: string): boolean {
   return args.includes(name)
+}
+
+/** Integer-valued option, or null when absent. A non-integer value is refused. */
+function integerOption(args: string[], name: string): number | null {
+  const raw = option(args, name)
+
+  if (raw === null) {
+    return null
+  }
+
+  const value = Number(raw)
+
+  if (!Number.isInteger(value)) {
+    throw new PanError(`${name} requires an integer.`, {
+      code: 'INVALID_ARGUMENT',
+    })
+  }
+
+  return value
 }
 
 /**
@@ -568,9 +590,15 @@ function invocationKindOption(
   }
 
   if (!INVOCATION_KINDS.has(value as InvocationKind)) {
-    throw new PanError(`Unknown invocation kind: ${value}`, {
-      code: 'INVALID_ARGUMENT',
-    })
+    // Agents guess a registry name, artifact type, or requirement phase here,
+    // so the error spells the closed set and disambiguates it from --registry.
+    throw new PanError(
+      `Unknown invocation kind: ${value}. --kind names the invocation kind, ` +
+        `one of ${[...INVOCATION_KINDS].join(', ')}. It is not the registry ` +
+        'id (use --registry), the artifact type, or the requirement phase. ' +
+        "A worker inside a workflow run passes '--kind workflow'.",
+      { code: 'INVALID_ARGUMENT' },
+    )
   }
 
   return value as InvocationKind
@@ -1068,6 +1096,7 @@ async function main(): Promise<void> {
         operatorArtifacts: hasFlag(args, '--operator-artifacts'),
         contextReferencePath: option(args, '--context-reference'),
         autostartCohort: hasFlag(args, '--autostart'),
+        autostartMaxParallel: integerOption(args, '--max-parallel'),
       })
 
       print({
@@ -2414,6 +2443,7 @@ async function main(): Promise<void> {
         const state = initCohortSession(root, {
           planRunId: requiredArgument(option(args, '--plan-run'), '--plan-run'),
           from: option(args, '--from'),
+          maxParallel: integerOption(args, '--max-parallel'),
         })
 
         print(
@@ -2423,6 +2453,7 @@ async function main(): Promise<void> {
             plan_run_id: state.plan_run_id,
             parent_spec_path: state.parent_spec_path,
             base_branch: state.base_branch,
+            max_parallel: state.max_parallel,
             cohorts: state.cohorts,
             next_command: `${pan} cohort start ${state.cohort_id}`,
             state_path: `runtime/logs/cohorts/${state.cohort_id}/state.json`,
@@ -2579,12 +2610,43 @@ async function main(): Promise<void> {
         )
         let validatorInvocation: Record<string, unknown> | undefined
 
-        if (registryId === 'PR-DESCRIPTION-VALIDATE-001') {
-          const worktreeWorkspace = sharedWorktreeWorkspace(root, args)
-          const workspaceRoot = path.resolve(
-            root,
-            worktreeWorkspace?.path ?? configuredWorkspaceRoot(root),
+        // Handlers that inspect the workspace (changed files, Git state,
+        // evidence paths) resolve it from the run state. Outside a submit the
+        // agent names the bound run or its worktree, so the check runs against
+        // the stage workspace rather than the installation root.
+        const runOption = option(args, '--run')
+        const boundRunState = runOption
+          ? (getRunState(root, runOption) as unknown as Record<string, unknown>)
+          : null
+        const worktreeOption = option(args, '--worktree')
+        const worktreeWorkspace = worktreeOption
+          ? readWorktreeIndex(root).worktrees.find(
+              (entry) => entry.name === worktreeOption,
+            )
+          : undefined
+
+        if (worktreeOption && !worktreeWorkspace) {
+          // A read-only check must not create a worktree from a typo.
+          throw new PanError(
+            `No worktree named '${worktreeOption}' is recorded. Run ` +
+              `'pan worktree list' to see the recorded worktrees.`,
+            { code: 'WORKTREE_NOT_FOUND' },
           )
+        }
+
+        const workspaceRoot = path.resolve(
+          root,
+          worktreeWorkspace?.path ??
+            (typeof boundRunState?.workspace_root === 'string'
+              ? boundRunState.workspace_root
+              : configuredWorkspaceRoot(root)),
+        )
+        const validatorRunState: Record<string, unknown> = {
+          ...(boundRunState ?? {}),
+          workspace_root: workspaceRoot,
+        }
+
+        if (registryId === 'PR-DESCRIPTION-VALIDATE-001') {
           const policies = resolvePolicies(root, {
             persona,
             workflow,
@@ -2661,6 +2723,7 @@ async function main(): Promise<void> {
           targetPath,
           executor: 'agent',
           ...(validatorInvocation ? { invocation: validatorInvocation } : {}),
+          runState: validatorRunState,
           catalog,
           persist: false,
         })

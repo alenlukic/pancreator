@@ -124,35 +124,6 @@ test('an infrastructure failure preserves the environment-blocked route', () => 
   assert.equal(submitted.state.current_stage, 'verify')
 })
 
-test('verify same-reason failure twice pauses for operator_decision', () => {
-  const first = checkpoint('delivery@verify-failed-once')
-
-  assert.equal(first.state.status, 'running')
-  assert.equal(first.state.current_stage, 'remediate')
-  assert.equal(first.state.same_reason_failures?.verify?.repeat_count, 1)
-
-  const { root, runId, workflow } = checkpoint(
-    'delivery@verify-failed-once-remediated',
-  )
-  const verifyStage = stageBySlug(workflow, 'verify')
-
-  const second = submitStageOutput(
-    root,
-    runId,
-    verifyStage,
-    'failure',
-    ['verify.acceptance_met'],
-    (output) => {
-      output.data.verify = failingVerify('VF-SAME-2')
-    },
-  )
-
-  assert.equal(second.state.status, 'paused')
-  assert.equal(second.state.pending_action.type, 'operator_decision')
-  assert.equal(second.state.current_stage, 'verify')
-  assert.match(second.state.pause_reason ?? '', /same deterministic reason/u)
-})
-
 test('different verify failure reasons keep the remediation route', () => {
   const { root, runId, workflow } = checkpoint(
     'delivery@verify-failed-once-remediated',
@@ -199,7 +170,9 @@ test('strict superset verify failures trigger same-reason pause', () => {
   assert.equal(second.state.pending_action.type, 'operator_decision')
 })
 
-test('same-reason tracker resets on stage pass, waive-gate, and set-stage', () => {
+// The same-reason pause and every tracker reset share one test so the
+// checkpoint clones are paid once. Each block below owns its own run.
+test('verify same-reason failure twice pauses for operator_decision and the tracker resets on stage pass, waive-gate, and set-stage', () => {
   const failAcceptance = (output: StageOutput, findingId: string): void => {
     output.data.verify = failingVerify(findingId)
   }
@@ -211,6 +184,9 @@ test('same-reason tracker resets on stage pass, waive-gate, and set-stage', () =
     const verifyStage = stageBySlug(workflow, 'verify')
     const remediateStage = stageBySlug(workflow, 'remediate')
 
+    // The first same-reason failure routes to remediation and starts the
+    // tracker without pausing.
+    assert.equal(state.status, 'running')
     assert.equal(state.same_reason_failures?.verify?.repeat_count, 1)
     assert.equal(state.current_stage, 'remediate')
 
@@ -306,8 +282,8 @@ test('same-reason tracker resets on stage pass, waive-gate, and set-stage', () =
   }
 
   {
-    // After one remediation, the next same-reason failure pauses. A waiver
-    // clears the tracker.
+    // After one remediation, the next same-reason failure pauses at verify
+    // for an operator decision. A waiver clears the tracker.
     const { root, runId, workflow } = checkpoint(
       'delivery@verify-failed-once-remediated',
     )
@@ -321,6 +297,9 @@ test('same-reason tracker resets on stage pass, waive-gate, and set-stage', () =
       (output) => failAcceptance(output, 'VF-RESET-6'),
     )
     assert.equal(paused.state.status, 'paused')
+    assert.equal(paused.state.pending_action.type, 'operator_decision')
+    assert.equal(paused.state.current_stage, 'verify')
+    assert.match(paused.state.pause_reason ?? '', /same deterministic reason/u)
 
     const waived = waiveGate(root, runId, {
       stageSlug: 'verify',

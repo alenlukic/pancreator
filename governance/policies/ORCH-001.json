@@ -38,7 +38,8 @@
     "When a run reaches a terminal state, the supervisor MUST write a run-friction intake to `runtime/inbox/queue/<run-id>-run-friction.md` when the run required a supervisor repair, spent a stage attempt on a non-product defect, or exposed harness friction. The intake MUST record each issue, its evidence path, and the systematic fix it suggests, so self-repair happens continuously rather than after mounting frustration. A run without such friction MUST NOT produce an empty intake.",
     "After any interruption, session mode change, or session wake with an active run, the supervisor MUST reconcile run state. It MUST run `pan status` before further action.",
     "One prepared invocation MUST have at most one active worker. Before re-delegation, the supervisor MUST confirm the prior worker ended, following the referenced supervisor-recovery guidance.",
-    "Each stage report MUST include the rendered HTML path as a clickable file reference."
+    "Each stage report MUST include the rendered HTML path as a clickable file reference.",
+    "A supervisor MAY hold several runs of one cohort at once. It MUST reconcile each run with `pan status <run-id>` on every wake and MUST perform each run's pending action independently, so a gated or stalled run never blocks the others."
   ],
   "guidance_sources": [
     {

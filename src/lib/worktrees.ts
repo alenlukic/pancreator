@@ -12,6 +12,7 @@ import {
   gitMergeAbort,
   gitMergeBranch,
   gitRevParse,
+  gitToplevel,
   gitSwitchBranch,
   gitWorktreeAddOnBranch,
   gitWorktreeAddOnExistingBranch,
@@ -53,6 +54,14 @@ export interface WorktreeRecord extends ManagedWorktreeReference {
   created_from: string
   description: string
   created_at: string
+  /**
+   * Absolute path of the Git repository this worktree belongs to, when it is
+   * not the configured workspace repository. A cohort fanned out from a plan
+   * run whose workspace is another repository (an eval fixture, an explicit
+   * `--workspace`) records it here so listing, removal, and reconciliation
+   * address the right repository.
+   */
+  repository_root?: string
 }
 
 export interface WorktreeIndex {
@@ -69,6 +78,12 @@ export interface ListedWorktree extends WorktreeRecord {
 export interface CreateWorktreeOptions {
   from?: string | null
   description?: string | null
+  /**
+   * Git repository to add the worktree to. Defaults to the configured
+   * workspace repository; a cohort passes the repository of its plan run's
+   * workspace.
+   */
+  repositoryRoot?: string | null
 }
 
 export interface RemoveWorktreeResult {
@@ -302,7 +317,7 @@ export function writeWorktreeIndex(root: string, index: WorktreeIndex): void {
  * the installation, so a detached harness reaches its target instead of
  * itself. The index and the worktree directories stay harness-relative.
  */
-function workspaceRepositoryRoot(root: string): string {
+export function workspaceRepositoryRoot(root: string): string {
   const configured = configuredWorkspaceRoot(root)
   const repositoryRoot = path.isAbsolute(configured)
     ? path.resolve(configured)
@@ -318,6 +333,27 @@ function workspaceRepositoryRoot(root: string): string {
 }
 
 /**
+ * Resolve an explicitly named repository root: the Git top level of the
+ * given directory, which must be a repository.
+ */
+export function resolveRepositoryRoot(directory: string): string {
+  const absolute = path.resolve(directory)
+
+  invariant(
+    isGitRepository(absolute),
+    `${absolute} is not inside a Git repository.`,
+    { code: 'WORKTREE_REQUIRES_GIT' },
+  )
+
+  return gitToplevel(absolute)
+}
+
+/** Repository one recorded worktree belongs to. */
+function recordRepositoryRoot(root: string, record: WorktreeRecord): string {
+  return record.repository_root ?? workspaceRepositoryRoot(root)
+}
+
+/**
  * Absolute path of the checkout that already holds one local branch.
  *
  * A merge must run inside the checkout Git gave the branch, because Git refuses
@@ -325,8 +361,12 @@ function workspaceRepositoryRoot(root: string): string {
  * source cannot use `reconcileWorktrees`, which demands two, so they resolve
  * the held checkout through this function instead of guessing the main root.
  */
-export function resolveBranchCheckout(root: string, branch: string): string {
-  const repositoryRoot = workspaceRepositoryRoot(root)
+export function resolveBranchCheckout(
+  root: string,
+  branch: string,
+  repositoryRootOverride?: string | null,
+): string {
+  const repositoryRoot = repositoryRootOverride ?? workspaceRepositoryRoot(root)
 
   invariant(
     gitBranchExists(repositoryRoot, branch),
@@ -468,7 +508,10 @@ function addWorktree(
     { code: 'WORKTREE_PATH_EXISTS' },
   )
 
-  const repositoryRoot = workspaceRepositoryRoot(root)
+  const configuredRepositoryRoot = workspaceRepositoryRoot(root)
+  const repositoryRoot = options.repositoryRoot
+    ? resolveRepositoryRoot(options.repositoryRoot)
+    : configuredRepositoryRoot
 
   invariant(
     !registeredWorktreePaths(repositoryRoot).has(path.resolve(worktreePath)),
@@ -503,6 +546,9 @@ function addWorktree(
     created_from: commit,
     description,
     created_at: now(),
+    ...(path.resolve(repositoryRoot) !== path.resolve(configuredRepositoryRoot)
+      ? { repository_root: repositoryRoot }
+      : {}),
   }
 
   // The index entry is written before the setup commands run, so a failed
@@ -522,12 +568,26 @@ function addWorktree(
 }
 
 export function listWorktrees(root: string): ListedWorktree[] {
-  const repositoryRoot = workspaceRepositoryRoot(root)
-  const registered = registeredWorktreePaths(repositoryRoot)
+  const registrations = new Map<string, Set<string>>()
+  const registeredFor = (repositoryRoot: string): Set<string> => {
+    let known = registrations.get(repositoryRoot)
+
+    if (!known) {
+      known = fileExists(repositoryRoot)
+        ? registeredWorktreePaths(repositoryRoot)
+        : new Set<string>()
+      registrations.set(repositoryRoot, known)
+    }
+
+    return known
+  }
 
   return readWorktreeIndex(root).worktrees.map((record) => {
     const worktreePath = absoluteWorktreePath(root, record)
-    const present = isPresent(registered, worktreePath)
+    const present = isPresent(
+      registeredFor(recordRepositoryRoot(root, record)),
+      worktreePath,
+    )
 
     return {
       ...record,
@@ -542,7 +602,7 @@ export function listWorktrees(root: string): ListedWorktree[] {
 export function resolveWorktreeWorkspace(root: string, name: string): string {
   const index = readWorktreeIndex(root)
   const record = recordByName(index, name)
-  const repositoryRoot = workspaceRepositoryRoot(root)
+  const repositoryRoot = recordRepositoryRoot(root, record)
   const worktreePath = absoluteWorktreePath(root, record)
 
   invariant(
@@ -645,11 +705,10 @@ export function removeWorktree(
     const index = readWorktreeIndex(root)
     const record = recordByName(index, name)
     const worktreePath = absoluteWorktreePath(root, record)
-    const repositoryRoot = workspaceRepositoryRoot(root)
-    const present = isPresent(
-      registeredWorktreePaths(repositoryRoot),
-      worktreePath,
-    )
+    const repositoryRoot = recordRepositoryRoot(root, record)
+    const present = fileExists(repositoryRoot)
+      ? isPresent(registeredWorktreePaths(repositoryRoot), worktreePath)
+      : false
 
     invariant(
       !present || options.force || !gitWorktreeIsDirty(worktreePath),
@@ -660,7 +719,7 @@ export function removeWorktree(
 
     if (present) {
       gitWorktreeRemove(repositoryRoot, worktreePath, options.force ?? false)
-    } else {
+    } else if (fileExists(repositoryRoot)) {
       gitWorktreePrune(repositoryRoot)
     }
 
@@ -959,9 +1018,22 @@ export function reconcileWorktrees(
   )
 
   return withOperationMutex(worktreeMutexPath(root), () => {
-    const repositoryRoot = workspaceRepositoryRoot(root)
     const index = readWorktreeIndex(root)
     const sources = sourceNames.map((name) => recordByName(index, name))
+    // Every source must belong to one repository, which is also where the
+    // target branch lives: a merge across repositories has no meaning.
+    const repositoryRoots = new Set(
+      sources.map((record) => path.resolve(recordRepositoryRoot(root, record))),
+    )
+
+    invariant(
+      repositoryRoots.size === 1,
+      'Reconcile source worktrees MUST belong to one Git repository; ' +
+        `found ${[...repositoryRoots].join(', ')}.`,
+      { code: 'WORKTREE_REPOSITORY_MISMATCH' },
+    )
+
+    const [repositoryRoot] = [...repositoryRoots] as [string]
     const sourceRegistrations = registeredWorktreePaths(repositoryRoot)
 
     for (const record of sources) {

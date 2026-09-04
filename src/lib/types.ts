@@ -1550,6 +1550,18 @@ export interface CohortSessionState {
   plan_run_id: string
   parent_spec_path: string
   base_branch: string
+  /**
+   * Absolute path of the Git repository the chunks fan out from: the plan
+   * run's workspace repository. Records older than the field use the
+   * configured workspace repository.
+   */
+  repository_root?: string
+  /**
+   * Concurrent chunk runs the session allows. `pan cohort start` fills only
+   * the slots that terminal runs freed. Records older than the field default
+   * to four.
+   */
+  max_parallel?: number
   created_at: string
   updated_at: string
   chunks: CohortChunkRecord[]
@@ -1619,6 +1631,11 @@ export interface RunState {
    * Accepted only for the `planning` workflow.
    */
   autostart_cohort?: boolean
+  /**
+   * Parallelism limit the autostarted cohort session records. Absent means
+   * the session default.
+   */
+  autostart_max_parallel?: number
   title: string
   status: RunStatus
   current_stage: string | null

@@ -65,6 +65,11 @@ export function gitHead(root: string): string | null {
   return result.status === 0 ? result.stdout.trim() : null
 }
 
+/** Absolute top-level directory of the repository that contains `directory`. */
+export function gitToplevel(directory: string): string {
+  return runGit(directory, ['rev-parse', '--show-toplevel']).stdout.trim()
+}
+
 /** Commit hash of a branch, tag, or revision expression. */
 export function gitRevParse(root: string, reference: string): string {
   const result = runGit(root, [
@@ -653,6 +658,123 @@ function indexEntryPath(entry: string): string {
   const tab = entry.indexOf('\t')
 
   return tab === -1 ? entry : entry.slice(tab + 1)
+}
+
+/**
+ * Cheap activity digest of a workspace: its Git status entries plus the size
+ * and mtime of every path they name. It answers "did anything move since the
+ * last look" in one Git call and no content hashing, which is what a
+ * fixed-cadence watch needs; `gitWorkspaceSnapshot` remains the fingerprint
+ * that attributes changes.
+ */
+export function gitWorkspaceActivityFingerprint(workspaceDir: string): string {
+  if (!isGitRepository(workspaceDir)) {
+    return sha256('no-git')
+  }
+
+  // Porcelain v2 with --branch carries the HEAD oid in the same call, so a
+  // commit registers as activity without a second Git process.
+  const status = runGit(
+    workspaceDir,
+    [
+      'status',
+      '--porcelain=v2',
+      '--branch',
+      '--untracked-files=all',
+      '-z',
+      '--',
+      '.',
+    ],
+    { allowFailure: true },
+  )
+
+  if (status.status !== 0) {
+    return sha256(`status-failed:${status.status}`)
+  }
+
+  let toplevel = toplevelCache.get(workspaceDir)
+
+  if (toplevel === undefined) {
+    const toplevelResult = runGit(
+      workspaceDir,
+      ['rev-parse', '--show-toplevel'],
+      { allowFailure: true },
+    )
+
+    toplevel =
+      toplevelResult.status === 0 ? toplevelResult.stdout.trim() : workspaceDir
+    toplevelCache.set(workspaceDir, toplevel)
+  }
+
+  const lines = status.stdout
+    .split('\0')
+    .filter(Boolean)
+    .map((entry) => {
+      const relative = statusV2EntryPath(entry)
+
+      if (relative === null) {
+        return entry
+      }
+
+      if (relative.startsWith('runtime/')) {
+        return null
+      }
+
+      try {
+        const stats = statSync(path.join(toplevel as string, relative))
+
+        return `${entry}:${stats.size}:${stats.mtimeMs}`
+      } catch {
+        return `${entry}:missing`
+      }
+    })
+    .filter((line): line is string => line !== null)
+    .sort()
+
+  return sha256(lines.join('\n'))
+}
+
+/**
+ * Path of one `git status --porcelain=v2 -z` entry, or null for a header line.
+ * Ordinary entries (`1`), renames (`2`), unmerged entries (`u`), untracked
+ * (`?`), and ignored (`!`) all end with the path; in `-z` mode a rename's
+ * original path arrives as the following NUL-separated field, which the
+ * caller sees as a headerless entry and keeps verbatim.
+ */
+function statusV2EntryPath(entry: string): string | null {
+  if (entry.startsWith('# ')) {
+    return null
+  }
+
+  if (entry.startsWith('? ') || entry.startsWith('! ')) {
+    return entry.slice(2)
+  }
+
+  const fieldCount = entry.startsWith('1 ')
+    ? 8
+    : entry.startsWith('2 ')
+      ? 9
+      : entry.startsWith('u ')
+        ? 10
+        : 0
+
+  if (fieldCount === 0) {
+    return null
+  }
+
+  let offset = 0
+
+  for (let field = 0; field < fieldCount; field += 1) {
+    const next = entry.indexOf(' ', offset)
+
+    if (next === -1) {
+      return null
+    }
+
+    offset = next + 1
+  }
+
+  return entry.slice(offset)
 }
 
 /**

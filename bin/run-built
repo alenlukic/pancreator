@@ -7,6 +7,13 @@ usage() {
   echo "Usage: bin/run-built --build-only | -- <command> [args...]" >&2
 }
 
+# run-quiet captures stderr, so send a wait notice straight to the terminal.
+notify() {
+  if ! { echo "$1" >/dev/tty; } 2>/dev/null; then
+    echo "$1" >&2
+  fi
+}
+
 release_lock() {
   local owner
 
@@ -19,8 +26,14 @@ release_lock() {
   fi
 }
 
+# The lock serializes compiles of one root. It is held only while bin/build
+# runs, and bin/build never waits on another process, so the longest a caller
+# can wait here is one compile. A wait past the notice threshold names the
+# holder so a stalled caller is diagnosable rather than silent.
+LOCK_NOTICE_SECONDS="${PANCREATOR_BUILD_LOCK_NOTICE_SECONDS:-5}"
+
 acquire_lock() {
-  local owner
+  local owner waited=0 announced=0
 
   while ! (set -o noclobber; printf '%s\n' "$$" >"$BUILD_LOCK") 2>/dev/null; do
     if ! IFS= read -r owner 2>/dev/null <"$BUILD_LOCK"; then
@@ -29,7 +42,13 @@ acquire_lock() {
     fi
 
     if [[ "$owner" =~ ^[0-9]+$ ]] && kill -0 "$owner" 2>/dev/null; then
+      if [[ "$announced" -eq 0 && "$waited" -ge $((LOCK_NOTICE_SECONDS * 10)) ]]; then
+        notify "[run-built] waiting for the build lock held by pid $owner ($BUILD_LOCK); it is released when that build finishes"
+        announced=1
+      fi
+
       sleep 0.1
+      waited=$((waited + 1))
       continue
     fi
 
@@ -94,20 +113,20 @@ fi
 
 read -r root_key _ <<<"$(printf '%s' "$ROOT" | cksum)"
 BUILD_LOCK="${TMPDIR:-/tmp}/pancreator-build-${root_key}.lock"
-DIST_READERS="${TMPDIR:-/tmp}/pancreator-build-${root_key}.readers"
 
 # The lock serializes builds only. Release it before the wrapped command runs.
+# A stale reader directory from an older wrapper is removed so it cannot be
+# mistaken for live state; this wrapper registers no readers.
+rm -rf "${TMPDIR:-/tmp}/pancreator-build-${root_key}.readers" 2>/dev/null || true
 acquire_lock
 run_build
 release_lock
 trap - EXIT HUP INT TERM
 
 if [[ "$mode" == 'run' ]]; then
-  # The wrapped command loads dist lazily, and a later build deletes dist.
-  # Register this process as a live reader so bin/build waits for it. exec
-  # keeps the pid, so the file names the wrapped command itself.
-  mkdir -p "$DIST_READERS"
-  printf '%s\n' "$*" >"$DIST_READERS/$$" 2>/dev/null || true
+  # bin/build swaps a complete new dist into place rather than deleting the
+  # old one, so the wrapped command needs no reader registration to survive a
+  # concurrent rebuild.
   export PANCREATOR_BUILD_READY="$ROOT"
   exec "$@"
 fi

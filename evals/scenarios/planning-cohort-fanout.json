@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "name": "planning-cohort-fanout",
+  "description": "A toy planning run whose request carries four independent additions. The planner is expected to carve them into one wide cohort of independent chunks; approving the ratified plan autostarts the fan-out with a parallelism limit of two, so the supervisor must run the first two chunks in parallel, start the deferred two as slots free, and integrate the cohort. Grades that every chunk ran the delivery-chunk workflow to success in its own worktree, that attempt windows overlapped without exceeding the limit, and that the cohort was merged back.",
+  "policy_instructions": [
+    {
+      "policy_id": "COHORT-001",
+      "instruction": 1,
+      "summary": "Each unit of work executes in its own Git worktree on its own branch."
+    },
+    {
+      "policy_id": "COHORT-001",
+      "instruction": 3,
+      "summary": "A group is complete only when every run succeeded and the durable record holds the merge proof."
+    },
+    {
+      "policy_id": "COHORT-001",
+      "instruction": 12,
+      "summary": "Automatic start of the first group requires the recorded opt-in and fires only for the operator's own approval."
+    },
+    {
+      "policy_id": "COHORT-001",
+      "instruction": 14,
+      "summary": "Each unit runs the delivery-chunk workflow and ends at a verified implementation on its own branch."
+    },
+    {
+      "policy_id": "COHORT-001",
+      "instruction": 15,
+      "summary": "Concurrent unit runs never exceed the session's parallelism limit; deferred units start as slots free."
+    },
+    {
+      "policy_id": "COHORT-001",
+      "instruction": 16,
+      "summary": "One supervisor session launches the ready worker of each live unit run in the same message and observes each with its own pan watch."
+    },
+    {
+      "policy_id": "DELEGATE-001",
+      "instruction": 12,
+      "summary": "pan watch appends each arming and wake to agent/evidence/<invocation-id>-watch.jsonl."
+    }
+  ],
+  "fixture": "toy-node",
+  "request": "# Four greeting helpers\n\nAdd four independent helpers to the toy module, each in its own new file with its own new test file. No helper depends on another, and none may edit an existing file.\n\n1. `src/shout.mjs` exports `shout(name)` returning the upper-case greeting, for example `HELLO, TOY!`. Test in `tests/shout.test.mjs`.\n2. `src/whisper.mjs` exports `whisper(name)` returning the lower-case greeting, for example `hello, toy!`. Test in `tests/whisper.test.mjs`.\n3. `src/greet-all.mjs` exports `greetAll(names)` returning one greeting per name joined by a newline. Test in `tests/greet-all.test.mjs`.\n4. `src/farewell.mjs` exports `farewell(name)` returning `Goodbye, <name>!`. Test in `tests/farewell.test.mjs`.\n\nEach helper may import `greet` from `src/greet.mjs` but must not change it. Do not change `package.json`, `src/greet.mjs`, or `tests/greet.test.mjs`. Do not add dependencies.\n\nPlan the work as four independent chunks in one cohort so they can run in parallel.\n",
+  "workflow": "planning",
+  "verification": "light",
+  "involvement": "standard",
+  "cohort": {
+    "autostart": true,
+    "max_parallel": 2
+  },
+  "operator_decisions": [
+    {
+      "stage": "plan",
+      "decision": "approve"
+    }
+  ],
+  "expected": {
+    "status": "succeeded",
+    "stage_sequence": ["plan"]
+  },
+  "graders": [
+    {
+      "id": "stage-order-and-terminal-state"
+    },
+    {
+      "id": "cohort-fanout",
+      "policy": "COHORT-001#15",
+      "config": {
+        "min_chunks": 4,
+        "max_cohorts": 1,
+        "min_concurrent": 2,
+        "require_integrated": true
+      }
+    },
+    {
+      "id": "attempts-not-spent-on-mechanics",
+      "policy": "ORCH-001#25"
+    }
+  ]
+}

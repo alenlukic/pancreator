@@ -41,6 +41,7 @@ const TOP_LEVEL_KEYS = new Set([
   'verification',
   'involvement',
   'pipeline_config',
+  'cohort',
   'operator_decisions',
   'expected',
   'graders',
@@ -156,6 +157,34 @@ export function validateEvalScenarioDocument(
     !nonEmptyString(value.pipeline_config)
   ) {
     errors.push('pipeline_config MUST be a non-empty string when present')
+  }
+
+  if (value.cohort !== undefined) {
+    if (!isRecord(value.cohort)) {
+      errors.push('cohort MUST be an object when present')
+    } else {
+      if (value.workflow !== 'planning') {
+        errors.push("cohort is accepted only with the 'planning' workflow")
+      }
+
+      for (const key of Object.keys(value.cohort)) {
+        if (key !== 'autostart' && key !== 'max_parallel') {
+          errors.push(`unknown cohort field '${key}'`)
+        }
+      }
+
+      if (typeof value.cohort.autostart !== 'boolean') {
+        errors.push('cohort.autostart MUST be a boolean')
+      }
+
+      if (
+        value.cohort.max_parallel !== undefined &&
+        (!Number.isInteger(value.cohort.max_parallel) ||
+          (value.cohort.max_parallel as number) < 1)
+      ) {
+        errors.push('cohort.max_parallel MUST be an integer of at least 1')
+      }
+    }
   }
 
   if (value.operator_decisions !== undefined) {

@@ -25,6 +25,7 @@ import {
   writeJsonAtomic,
 } from './io.js'
 import { keywordRunSuffixFrom } from './naming.js'
+import { panCommand } from './project-config.js'
 import { loadState, makeUniqueRunId, now, statePath } from './state.js'
 import type {
   CohortChunkRecord,
@@ -39,12 +40,21 @@ import {
   reconcileWorktrees,
   removeWorktree,
   resolveBranchCheckout,
+  resolveRepositoryRoot,
   readWorktreeIndex,
+  workspaceRepositoryRoot,
 } from './worktrees.js'
 
 /** Workflow whose ratified artifact a cohort fan-out reads. */
 export const COHORT_PLAN_WORKFLOW_SLUG = 'planning'
-const CHUNK_WORKFLOW = 'delivery'
+/**
+ * Workflow each chunk run executes. It ends at a verified implementation on the
+ * chunk branch; release preparation belongs to the integrated result, not to
+ * every chunk, so the chunk workflow carries no ship stage.
+ */
+export const COHORT_CHUNK_WORKFLOW_SLUG = 'delivery-chunk'
+/** Concurrent chunk runs one cohort session allows unless the operator sets another limit. */
+export const DEFAULT_COHORT_MAX_PARALLEL = 4
 const COHORT_ID_PATTERN =
   /^\d+_[A-Z][a-z]{2}-\d{2}-\d{4}_[a-z0-9](?:[a-z0-9-]{0,10}[a-z0-9])?$/u
 const TERMINAL_STATUSES = new Set<RunStatus>([
@@ -73,11 +83,22 @@ export interface CohortStatusView {
   satisfied_cohort_indexes: number[]
   integrate_command: string | null
   start_command: string | null
+  /** Concurrent chunk runs the session allows. */
+  max_parallel: number
+  /** Chunk runs of the active cohort that are started and not terminal. */
+  live_chunk_runs: number
+  /** Operator command that supervises every live chunk run at once, or null when none is live. */
+  supervise_command: string | null
 }
 
 export interface CohortStartResult {
   cohort_id: string
   cohort_index: number
+  /** Chunks of the cohort left unstarted because the parallelism limit was reached. */
+  deferred_chunks: string[]
+  max_parallel: number
+  /** Operator command that supervises every live chunk run of the cohort at once. */
+  supervise_command: string
   chunks: Array<{
     chunk: string
     run_id: string
@@ -194,6 +215,48 @@ function chunksOfCohort(
   return state.chunks.filter((chunk) => chunk.cohort_index === cohortIndex)
 }
 
+/** Parallelism limit of one session; older records predate the field. */
+export function cohortMaxParallel(state: CohortSessionState): number {
+  const recorded = state.max_parallel
+
+  return Number.isInteger(recorded) && Number(recorded) >= 1
+    ? Number(recorded)
+    : DEFAULT_COHORT_MAX_PARALLEL
+}
+
+/**
+ * Chunk runs of one cohort that exist and have not reached a terminal state.
+ * A chunk whose run record is missing counts as live, because the fan-out that
+ * created it may still be writing it.
+ */
+function liveChunkRuns(
+  root: string,
+  state: CohortSessionState,
+  cohortIndex: number,
+): number {
+  return chunksOfCohort(state, cohortIndex).filter((chunk) => {
+    if (!chunk.run_id || chunk.abandoned) {
+      return false
+    }
+
+    const run = chunkRunState(root, chunk.run_id)
+
+    return run === null || !TERMINAL_STATUSES.has(run.status)
+  }).length
+}
+
+/**
+ * Git repository that holds the base branch and every chunk worktree: the one
+ * recorded at init from the plan run's workspace, else the configured
+ * workspace repository for sessions that predate the field.
+ */
+function cohortRepositoryRoot(
+  root: string,
+  state?: Pick<CohortSessionState, 'repository_root'>,
+): string {
+  return state?.repository_root ?? workspaceRepositoryRoot(root)
+}
+
 /**
  * Chunks of one cohort that still need a run.
  *
@@ -286,6 +349,8 @@ function assertPredecessorsSatisfied(
   state: CohortSessionState,
   cohortIndex: number,
 ): void {
+  const pan = panCommand(root)
+
   for (const index of cohortIndexes(state)) {
     if (index >= cohortIndex) {
       break
@@ -295,7 +360,7 @@ function assertPredecessorsSatisfied(
       cohortIsSatisfied(root, state, index),
       `Cohort ${cohortIndex} of session ${state.cohort_id} cannot proceed ` +
         `while cohort ${index} is unsatisfied. Finish every chunk run of ` +
-        `cohort ${index}, then run './bin/pan cohort integrate ` +
+        `cohort ${index}, then run '${pan} cohort integrate ` +
         `${state.cohort_id}'.`,
       {
         code: 'COHORT_PREDECESSOR_UNSATISFIED',
@@ -546,6 +611,8 @@ export interface InitCohortOptions {
   planRunId: string
   /** Branch every chunk worktree starts from and integrates back into. */
   from?: string | null
+  /** Concurrent chunk runs the session allows; defaults to four. */
+  maxParallel?: number | null
 }
 
 /**
@@ -559,15 +626,32 @@ export function initCohortSession(
   root: string,
   options: InitCohortOptions,
 ): CohortSessionState {
+  // The repository is the plan run's workspace, not the harness's: an embedded
+  // or detached installation fans out worktrees of the target repository, and
+  // a plan run started against another workspace (an eval fixture, an explicit
+  // --workspace) fans out into that repository.
+  const planState = loadState(root, options.planRunId)
+  const planWorkspace = path.resolve(root, planState.workspace_root || '.')
+
   invariant(
-    isGitRepository(root),
-    'Cohort fan-out requires a Git repository, because each chunk runs in a ' +
+    isGitRepository(planWorkspace),
+    `Cohort fan-out requires a Git repository workspace; the plan run's ` +
+      `workspace ${planWorkspace} is not one, because each chunk runs in a ` +
       'worktree.',
     { code: 'COHORT_REQUIRES_GIT' },
   )
 
+  const repositoryRoot = resolveRepositoryRoot(planWorkspace)
+  const maxParallel = options.maxParallel ?? DEFAULT_COHORT_MAX_PARALLEL
+
+  invariant(
+    Number.isInteger(maxParallel) && maxParallel >= 1,
+    '--max-parallel MUST be an integer of at least 1.',
+    { code: 'INVALID_ARGUMENT' },
+  )
+
   const plan = readRatifiedCohortPlan(root, options.planRunId)
-  const baseBranch = options.from?.trim() || gitCurrentBranch(root)
+  const baseBranch = options.from?.trim() || gitCurrentBranch(repositoryRoot)
 
   invariant(
     baseBranch,
@@ -608,6 +692,8 @@ export function initCohortSession(
     plan_run_id: options.planRunId,
     parent_spec_path: plan.parent_spec_path,
     base_branch: baseBranch,
+    repository_root: repositoryRoot,
+    max_parallel: maxParallel,
     created_at: now(),
     updated_at: now(),
     chunks: plan.chunks,
@@ -627,8 +713,8 @@ export interface StartCohortOptions {
 }
 
 /**
- * Create one worktree and one delivery run per chunk of the next unsatisfied
- * cohort, or of the cohort the operator names.
+ * Create one worktree and one `delivery-chunk` run per chunk of the next
+ * unsatisfied cohort, or of the cohort the operator names.
  *
  * This performs no source-control action beyond adding worktrees: committing a
  * chunk branch and integrating a finished cohort stay operator-owned. Each
@@ -660,16 +746,45 @@ export function startCohort(
 
     assertPredecessorsSatisfied(root, loaded, cohortIndex)
 
-    const pending = unstartedChunksOfCohort(loaded, cohortIndex)
+    const pan = panCommand(root)
+    const unstarted = unstartedChunksOfCohort(loaded, cohortIndex)
 
     invariant(
-      pending.length > 0,
+      unstarted.length > 0,
       `Cohort ${cohortIndex} of session ${cohortId} has no chunk left to ` +
         'start: every chunk is already running or abandoned. Finish the ' +
-        `running chunk runs, then run './bin/pan cohort integrate ` +
+        `running chunk runs, then run '${pan} cohort integrate ` +
         `${cohortId}'.`,
       { code: 'COHORT_ALREADY_STARTED' },
     )
+
+    // The limit bounds concurrent chunk runs, not cohort size. A wide cohort
+    // starts in batches: each call fills the slots that terminal runs freed,
+    // so the same command both starts a cohort and tops it up.
+    const maxParallel = cohortMaxParallel(loaded)
+    const live = liveChunkRuns(root, loaded, cohortIndex)
+    const slots = Math.max(0, maxParallel - live)
+
+    invariant(
+      slots > 0,
+      `Cohort ${cohortIndex} of session ${cohortId} already has ${live} live ` +
+        `chunk run(s), the session's parallelism limit (${maxParallel}). ` +
+        `${unstarted.length} chunk(s) wait for a slot: ` +
+        `${unstarted.map((chunk) => chunk.id).join(', ')}. Finish or abandon a ` +
+        `live chunk, then run '${pan} cohort start ${cohortId}' again.`,
+      {
+        code: 'COHORT_PARALLELISM_LIMIT',
+        details: {
+          cohort_index: cohortIndex,
+          live_chunk_runs: live,
+          max_parallel: maxParallel,
+          waiting_chunks: unstarted.map((chunk) => chunk.id),
+        },
+      },
+    )
+
+    const pending = unstarted.slice(0, slots)
+    const deferred = unstarted.slice(slots).map((chunk) => chunk.id)
 
     let state = loaded
     const started: CohortStartResult['chunks'] = []
@@ -682,6 +797,7 @@ export function startCohort(
       const record = createWorktree(root, worktreeName, {
         from: state.base_branch,
         description: `Cohort ${cohortIndex} chunk '${chunk.id}'`,
+        repositoryRoot: cohortRepositoryRoot(root, state),
       })
 
       state = updateChunk(root, state, chunk.id, {
@@ -690,7 +806,7 @@ export function startCohort(
       })
 
       const run = createRun(root, {
-        workflowSlug: CHUNK_WORKFLOW,
+        workflowSlug: COHORT_CHUNK_WORKFLOW_SLUG,
         requestPath: chunk.child_spec_path,
         title: `${chunk.id} · ${chunk.title}`,
         workspace: record.path,
@@ -711,7 +827,14 @@ export function startCohort(
       })
     }
 
-    return { cohort_id: cohortId, cohort_index: cohortIndex, chunks: started }
+    return {
+      cohort_id: cohortId,
+      cohort_index: cohortIndex,
+      deferred_chunks: deferred,
+      max_parallel: maxParallel,
+      supervise_command: `/pan-cohort ${cohortId}`,
+      chunks: started,
+    }
   })
 }
 
@@ -756,6 +879,11 @@ export function cohortStatus(root: string, cohortId: string): CohortStatusView {
     activeIndex !== null &&
     cohortRunsSucceeded(root, state, activeIndex) &&
     !state.satisfaction.some((entry) => entry.cohort_index === activeIndex)
+  const maxParallel = cohortMaxParallel(state)
+  const live =
+    activeIndex === null ? 0 : liveChunkRuns(root, state, activeIndex)
+
+  const pan = panCommand(root)
 
   return {
     cohort_id: cohortId,
@@ -770,13 +898,17 @@ export function cohortStatus(root: string, cohortId: string): CohortStatusView {
       cohortIsSatisfied(root, state, index),
     ),
     integrate_command: readyToIntegrate
-      ? `./bin/pan cohort integrate ${cohortId}`
+      ? `${pan} cohort integrate ${cohortId}`
       : null,
     start_command:
       activeIndex !== null &&
-      unstartedChunksOfCohort(state, activeIndex).length > 0
-        ? `./bin/pan cohort start ${cohortId}`
+      unstartedChunksOfCohort(state, activeIndex).length > 0 &&
+      live < maxParallel
+        ? `${pan} cohort start ${cohortId}`
         : null,
+    max_parallel: maxParallel,
+    live_chunk_runs: live,
+    supervise_command: live > 0 ? `/pan-cohort ${cohortId}` : null,
   }
 }
 
@@ -814,6 +946,7 @@ export function integrateCohort(
     }
 
     const index = readWorktreeIndex(root)
+    const pan = panCommand(root)
 
     for (const chunk of chunks) {
       const run = chunkRunState(root, chunk.run_id)
@@ -842,7 +975,7 @@ export function integrateCohort(
       invariant(
         !gitWorktreeIsDirty(resolveInside(root, record.path)),
         `Chunk '${chunk.id}' has uncommitted work in ${record.path}. Commit ` +
-          `it, then run './bin/pan cohort integrate ${cohortId}' again.`,
+          `it, then run '${pan} cohort integrate ${cohortId}' again.`,
         { code: 'COHORT_INTEGRATION_INCOMPLETE', details: { chunk: chunk.id } },
       )
     }
@@ -900,7 +1033,10 @@ function recordAbandonedCohort(
     note: chunk.abandoned?.note ?? '',
     recorded_at: chunk.abandoned?.recorded_at ?? '',
   }))
-  const baseHead = gitRevParse(root, state.base_branch)
+  const baseHead = gitRevParse(
+    cohortRepositoryRoot(root, state),
+    state.base_branch,
+  )
   const evidencePath = `runtime/logs/cohorts/${state.cohort_id}/integration-${cohortIndex}.json`
 
   writeJsonAtomic(resolveInside(root, evidencePath), {
@@ -952,7 +1088,8 @@ function mergeThroughReconcile(
   cohortIndex: number,
   chunks: CohortChunkRecord[],
 ): MergeOutcome {
-  const baseBefore = gitRevParse(root, state.base_branch)
+  const repositoryRoot = cohortRepositoryRoot(root, state)
+  const baseBefore = gitRevParse(repositoryRoot, state.base_branch)
   const worktreeNames = chunks.map((chunk) => chunk.worktree as string)
   const chunkOfWorktree = (name: string): string =>
     chunks.find((chunk) => chunk.worktree === name)?.id ?? name
@@ -973,7 +1110,10 @@ function mergeThroughReconcile(
       cohort_index: cohortIndex,
       base_branch: state.base_branch,
       base_commit_before_merge: baseBefore,
-      base_commit_after_conflict: gitRevParse(root, state.base_branch),
+      base_commit_after_conflict: gitRevParse(
+        repositoryRoot,
+        state.base_branch,
+      ),
       merged_chunks: landed,
       conflicted_chunk: conflicted,
       conflicted_paths: result.conflicted_paths,
@@ -993,7 +1133,7 @@ function mergeThroughReconcile(
             'before integration). '
           : `No chunk was merged; '${state.base_branch}' is unchanged. `) +
         `The record is at ${recordPath}. Resolve the conflict, then run ` +
-        `'./bin/pan cohort integrate ${state.cohort_id}' again.`,
+        `'${panCommand(root)} cohort integrate ${state.cohort_id}' again.`,
       {
         code: 'COHORT_INTEGRATION_INCOMPLETE',
         details: {
@@ -1009,7 +1149,7 @@ function mergeThroughReconcile(
   }
 
   return {
-    merge_commit: gitRevParse(root, state.base_branch),
+    merge_commit: gitRevParse(repositoryRoot, state.base_branch),
     evidence_path: result.evidence_path,
   }
 }
@@ -1043,7 +1183,11 @@ function mergeSingleChunkBranch(
     { code: 'COHORT_INTEGRATION_INCOMPLETE', details: { chunk: chunk.id } },
   )
 
-  const checkout = resolveBranchCheckout(root, state.base_branch)
+  const checkout = resolveBranchCheckout(
+    root,
+    state.base_branch,
+    cohortRepositoryRoot(root, state),
+  )
 
   invariant(
     !gitWorktreeIsDirty(checkout),
@@ -1243,9 +1387,10 @@ export function maybeAutostartCohort(
     return null
   }
 
+  const pan = panCommand(root)
   const manualCommands = [
-    `./bin/pan cohort init --plan-run ${state.run_id}`,
-    './bin/pan cohort start <cohort-id>',
+    `${pan} cohort init --plan-run ${state.run_id}`,
+    `${pan} cohort start <cohort-id>`,
   ]
 
   try {
@@ -1260,7 +1405,11 @@ export function maybeAutostartCohort(
     }
 
     const session =
-      existing ?? initCohortSession(root, { planRunId: state.run_id })
+      existing ??
+      initCohortSession(root, {
+        planRunId: state.run_id,
+        maxParallel: state.autostart_max_parallel ?? null,
+      })
 
     return { status: 'started', ...startCohort(root, session.cohort_id) }
   } catch (error) {
@@ -1273,8 +1422,8 @@ export function maybeAutostartCohort(
 }
 
 /**
- * The chunk runs of the first cohort when every one of them already exists,
- * or null when at least one chunk still waits to be started.
+ * The chunk runs of the first cohort when at least one already exists, or null
+ * when the cohort has not been started at all.
  */
 function startedChunksOfFirstCohort(
   root: string,
@@ -1285,10 +1434,11 @@ function startedChunksOfFirstCohort(
     (chunk) => chunk.run_id,
   )
 
-  if (
-    chunks.length === 0 ||
-    unstartedChunksOfCohort(state, firstIndex).length > 0
-  ) {
+  // The autostart fires the first batch only. A cohort wider than the
+  // parallelism limit legitimately keeps unstarted chunks, which the operator
+  // starts with `pan cohort start` as slots free up, so any started chunk
+  // means the hook already did its work.
+  if (chunks.length === 0) {
     return null
   }
 
@@ -1297,6 +1447,11 @@ function startedChunksOfFirstCohort(
   return {
     cohort_id: state.cohort_id,
     cohort_index: firstIndex,
+    deferred_chunks: unstartedChunksOfCohort(state, firstIndex).map(
+      (chunk) => chunk.id,
+    ),
+    max_parallel: cohortMaxParallel(state),
+    supervise_command: `/pan-cohort ${state.cohort_id}`,
     chunks: chunks.map((chunk) => ({
       chunk: chunk.id,
       run_id: chunk.run_id as string,

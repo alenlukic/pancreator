@@ -1,0 +1,75 @@
+{
+  "slug": "remediate",
+  "title": "Remediation",
+  "persona": "remediator",
+  "persona_by_verdict": {
+    "source_stage": "verify",
+    "path": "verify.verdict",
+    "map": {
+      "fail_severe": "remediator-severe"
+    }
+  },
+  "prompt_path": "library/workflows/delivery/prompts/remediate.md",
+  "workspace_policy": "source_allowed",
+  "gate": "next_stage",
+  "context": {
+    "request": "required",
+    "required_stage_outputs": [
+      {
+        "stage": "verify",
+        "selection": "latest"
+      }
+    ],
+    "conditional_stage_outputs": [
+      {
+        "stage": "implement",
+        "selection": "latest"
+      }
+    ],
+    "prior_attempts": 1,
+    "operator_feedback": 1
+  },
+  "required_data": {
+    "implementation": "object",
+    "implementation.changed_files": "array",
+    "implementation.tests_added": "array",
+    "implementation.notes": "array",
+    "implementation.remediation": "array",
+    "acceptance_results": "array"
+  },
+  "criteria": [
+    {
+      "id": "remediate.addresses_verdict",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The remediation addresses every blocking verify finding, failed acceptance criterion, and failed QA case, or records why one stands."
+    },
+    {
+      "id": "implement.acceptance_claimed",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The output maps evidence to every acceptance criterion and does not claim unsupported completion."
+    },
+    {
+      "id": "implement.lint",
+      "type": "shell",
+      "hard": true,
+      "statement": "Configured repository static checks pass.",
+      "command": "pan repository-check static",
+      "timeout_ms": 240000
+    },
+    {
+      "id": "remediate.full_suite",
+      "type": "shell",
+      "hard": true,
+      "statement": "The verification suite selected by the run's verification level passes once the remediation is ready to ship.",
+      "command": "pan repository-check full",
+      "timeout_ms": 600000
+    }
+  ],
+  "transitions": {
+    "success": "verify",
+    "failure": "remediate",
+    "blocked": "paused"
+  }
+}

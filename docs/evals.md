@@ -37,7 +37,7 @@ Evals run outside `npm test`, outside every repository-check profile, and outsid
 
 - `prepare_invocation` runs `prepareInvocation`, which for a source-allowed stage also runs the workspace setup commands and captures the baselines in the toy workspace.
 - `invoke_agent` for a persona whose mapping carries the `claude-code:` executor prefix runs the same path as `pan delegate`, then submits the output the executor wrote.
-- An operator stop at a stage the scenario scripts applies that decision through the same path as `pan decide`.
+- An operator stop at a stage the scenario scripts applies that decision through the same path as `pan decide`, including the cohort autostart hook: a `planning` scenario with `cohort.autostart` creates the run with `--autostart` (and `--max-parallel` when `cohort.max_parallel` is set), so the scripted approval opens the cohort session and starts the first batch of chunk runs.
 
 Every run renders a supervisor card that a supervisor must read and attest before the first `prepare`. The eval driver is not a supervisor, so by default it hands off at that point and prints the exact `pan governance attest-supervisor` command. Pass `--attest-supervisor-card` to let the driver attest on your behalf; `eval.json` then records `supervisor_card_attested_by: "eval-driver"` so the report never hides who attested.
 
@@ -64,6 +64,9 @@ What the graders cannot observe is stated in each verdict. Worker transcripts ar
 | `delivery-basic-test-discipline` | delivery / light  | `DEV-001#3`, `#7`, `#8`; `VERIFY-001#6`, `#7`; `ORCH-001#25`                | `profile-executions` with explicit limits, `attempts-not-spent-on-mechanics`, `stage-order-and-terminal-state`                                                |
 | `delivery-background-delegation` | delivery / light  | `DELEGATE-001#11`, `#12`, `#14`; `OPERATOR-001#5`, `#6`; `ORCH-001#8`, `#9` | `delegation-watch-record` with `require_for: all`, `platform-guidance-conflict-recorded`, `attempts-not-spent-on-mechanics`, `stage-order-and-terminal-state` |
 | `prototype-environment-blocked`  | prototype / light | `PROTO-001#8`, `#11`, `#12`, `#6`                                           | `stage-order-and-terminal-state` with an `evaluation.verdict` assertion, `profile-executions`, `attempts-not-spent-on-mechanics`                              |
+| `planning-cohort-fanout`         | planning / light  | `COHORT-001#1`, `#3`, `#12`, `#14`, `#15`, `#16`; `DELEGATE-001#12`         | `stage-order-and-terminal-state`, `cohort-fanout` with `min_chunks: 4`, `max_cohorts: 1`, `min_concurrent: 2`, `attempts-not-spent-on-mechanics`              |
+
+The planning scenario asks for four helpers that touch no shared file, so the planner should ratify one cohort of four independent chunks. `cohort.autostart` with `max_parallel: 2` means approving the plan starts two chunk runs and defers two; the supervisor runs the live pair in parallel under `/pan-cohort`, starts the deferred pair with `pan cohort start` as slots free, and merges the cohort with `pan cohort integrate`. Grade the planning run after the cohort is satisfied, not when the plan run itself succeeds: the `cohort-fanout` grader reads the chunk runs and the integration evidence, and a peak concurrency of one means the chunks ran one after another even though the harness offered two slots.
 
 The prototype scenario expects the run to stop at the `evaluate` operator gate (`awaiting_operator`, `pending_action: operator_approval`) with `data.evaluation.verdict` equal to `environment_blocked`. `PROTO-001#12` allows that verdict only when environment gaps prevent a decision, so the request names a service that does not exist and says there is no network.
 
@@ -72,7 +75,7 @@ The prototype scenario expects the run to stop at the `evaluate` operator gate (
 1. Copy an existing file under `evals/scenarios/` to `<name>.json`. The `name` field must equal the file name.
 2. Name every policy instruction the scenario exercises in `policy_instructions[]` as `{policy_id, instruction, summary}`; the number is the 1-based position in the policy's `instructions[]`.
 3. Choose a fixture, or add one under `evals/fixtures/<fixture>/`. A fixture must answer every command in `runtime/repository-checks.json` (`setup` and every profile) quickly and offline, and must not be this checkout.
-4. Write the request Markdown, the workflow, the verification level, and any scripted `operator_decisions[]`.
+4. Write the request Markdown, the workflow, the verification level, and any scripted `operator_decisions[]`. A `planning` scenario may add `cohort: {autostart, max_parallel}` to fan out on approval.
 5. State the `expected` end state and list the `graders[]` with their policy references and configuration.
 6. Run `./bin/pan validate` and `./bin/pan eval list`.
 

@@ -52,7 +52,7 @@ Then:
 4. Record this session's sourced effective model with `./bin/pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source>`. When Cursor exposes no sourced model metadata, note that in your report and continue. Missing model evidence MUST NOT stop a run.
 5. Run `./bin/pan prepare <run-id> [--worktree <name>]`.
 6. Record the resolved involvement profile, active run contracts, and any gates that replaced a workflow default. Your report includes them so the operator knows where the run will stop.
-7. Run the advance loop. At the ratification stop, include the product specification in your report. If the preserved request or the operator's message already contains an explicit approval or rejection, execute that decision and continue instead. When an approval on a planning run created with `--autostart` returns an `autostart` object, report its `status` and, for `started` or `already_started`, each chunk's run id and `/pan-resume <run-id>` command; for `failed`, report the error and the `manual_commands` it lists. Do not launch the chunk runs yourself: each one is its own top-level `/pan-resume` session, which is what keeps its model mapping.
+7. Run the advance loop. At the ratification stop, include the product specification in your report. If the preserved request or the operator's message already contains an explicit approval or rejection, execute that decision and continue instead. When an approval on a planning run created with `--autostart` returns an `autostart` object, report its `status` and, for `started` or `already_started`, each chunk's run id and `/pan-resume <run-id>` command; for `failed`, report the error and the `manual_commands` it lists. The chunk runs are supervised from a top-level session, which is what keeps their model mapping: either one `/pan-cohort <cohort-id>` session for the whole cohort (see **Cohort supervision**), or one `/pan-resume <run-id>` session per chunk. A planning session that the operator directed to carry the build through MAY continue as the cohort supervisor itself.
 
 ## Resume
 
@@ -151,6 +151,38 @@ a stage attempt on a non-product defect, or exposed harness friction, write the
 run-friction intake `ORCH-001` requires to `runtime/inbox/queue/<run-id>-run-friction.md`.
 List each issue, its evidence path, and the systematic fix it suggests. A clean
 run gets no intake.
+
+## Cohort supervision
+
+`/pan-cohort <cohort-id>` makes you the supervisor of every live chunk run of
+the active cohort at once. The cohort policy arrives on each chunk run's
+supervisor card and governs the session. Each chunk run is an ordinary run: it
+has its own supervisor card, redline declaration, worktree, watch record, and
+pending action, and you perform each of those per run.
+
+1. Run `./bin/pan cohort status <cohort-id> --json`. When `start_command` is
+   present, run it; it starts only as many chunks as the recorded parallelism
+   limit allows and names the deferred chunks.
+2. For every chunk run that is not terminal, complete the **Resume** steps for
+   that run id with its own worktree name.
+3. Advance the runs together. In one message, run `prepare` for every run whose
+   pending action is `prepare_invocation`; then, in one message, launch the
+   worker of every run whose pending action is `invoke_agent`. Each launch
+   stays foreground; issuing them in one message is what makes them run in
+   parallel. Never launch two workers for one run, and never launch more
+   workers than the limit.
+4. Arm one watch per launched run in the launch turn, exactly as the
+   single-run rules above require, and await the watches together. A stall in
+   one run is reported for that run and does not stop the others.
+5. After each wake, reconcile every live run with `./bin/pan status <run-id>`
+   and perform each run's pending action independently. A gated or stalled run
+   never blocks the sibling runs.
+6. When a chunk run reaches a terminal state, re-run `cohort status`; a freed
+   slot makes `start_command` present again, and you run it in the same turn.
+7. When every chunk of the cohort is terminal, report the cohort: each chunk's
+   outcome, worktree, branch, and evidence paths, and the `integrate_command`
+   when it is present. Committing a chunk branch and integrating the cohort are
+   operator-owned unless the operator's directive already covers them.
 
 ## Card delivery
 

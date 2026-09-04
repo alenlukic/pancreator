@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -155,6 +155,32 @@ function writeSpecs(root: string): void {
     )
   }
 }
+
+/**
+ * Turn the self-development fixture into a target installation. A detached
+ * harness must record its target absolutely, and the fixture root stands in
+ * for that target.
+ */
+function setInstallationMode(
+  root: string,
+  mode: 'embedded' | 'detached',
+): void {
+  const configPath = path.join(root, 'config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  config.installation_mode = mode
+
+  if (mode === 'detached') {
+    config.workspace_root = root
+  }
+
+  writeJson(configPath, config)
+}
+
+const EMBEDDED_PAN = './.pancreator/bin/pan'
 
 test('a cohort plan is parsed only when its shape supports fan-out', () => {
   const parsed = parseCohortPlan(planFixture(), 'data.cohort_plan')
@@ -351,6 +377,142 @@ test('starting a later cohort is refused while an earlier one is unsatisfied', (
   )
 })
 
+test('cohort status names the pan entrypoint of the installation', () => {
+  const root = createFixture()
+
+  writeCohortState(root)
+  setInstallationMode(root, 'embedded')
+
+  // The supervisor runs start_command verbatim from the target root, where
+  // only the embedded harness path resolves.
+  const unstarted = cohortStatus(root, COHORT_ID)
+
+  assert.equal(
+    unstarted.start_command,
+    `${EMBEDDED_PAN} cohort start ${COHORT_ID}`,
+  )
+  assert.equal(unstarted.integrate_command, null)
+
+  writeCohortState(root, {
+    chunks: [
+      {
+        id: 'c1',
+        title: 'First outcome',
+        cohort_index: 1,
+        child_spec_path: 'runtime/specs/c1.md',
+        depends_on: [],
+        run_id: 'chunk-c1',
+      },
+      {
+        id: 'c2',
+        title: 'Second outcome',
+        cohort_index: 2,
+        child_spec_path: 'runtime/specs/c2.md',
+        depends_on: ['c1'],
+      },
+    ],
+  })
+  writeChunkRun(root, 'chunk-c1', 'succeeded')
+
+  const ready = cohortStatus(root, COHORT_ID)
+
+  assert.equal(
+    ready.integrate_command,
+    `${EMBEDDED_PAN} cohort integrate ${COHORT_ID}`,
+  )
+  assert.equal(ready.start_command, null)
+
+  setInstallationMode(root, 'detached')
+  assert.equal(
+    cohortStatus(root, COHORT_ID).integrate_command,
+    `${path.join(root, 'bin', 'pan')} cohort integrate ${COHORT_ID}`,
+  )
+})
+
+test('cohort refusals name the pan entrypoint of the installation', () => {
+  const root = createFixture()
+
+  writeSpecs(root)
+  writeCohortState(root, {
+    max_parallel: 1,
+    chunks: [
+      {
+        id: 'c1',
+        title: 'First outcome',
+        cohort_index: 1,
+        child_spec_path: 'runtime/specs/c1.md',
+        depends_on: [],
+        run_id: 'chunk-c1',
+      },
+      {
+        id: 'c3',
+        title: 'Sibling outcome',
+        cohort_index: 1,
+        child_spec_path: 'runtime/specs/c1.md',
+        depends_on: [],
+      },
+      {
+        id: 'c2',
+        title: 'Second outcome',
+        cohort_index: 2,
+        child_spec_path: 'runtime/specs/c2.md',
+        depends_on: ['c1'],
+      },
+    ],
+    cohorts: [
+      { index: 1, chunks: ['c1', 'c3'] },
+      { index: 2, chunks: ['c2'] },
+    ],
+  })
+  writeChunkRun(root, 'chunk-c1', 'running')
+  setInstallationMode(root, 'embedded')
+
+  const namesEmbeddedPan =
+    (code: string, command: string) => (error: unknown) =>
+      error instanceof PanError &&
+      error.code === code &&
+      error.message.includes(
+        `'${EMBEDDED_PAN} cohort ${command} ${COHORT_ID}'`,
+      ) &&
+      !error.message.includes("'./bin/pan")
+
+  assert.throws(
+    () => startCohort(root, COHORT_ID),
+    namesEmbeddedPan('COHORT_PARALLELISM_LIMIT', 'start'),
+  )
+  assert.throws(
+    () => startCohort(root, COHORT_ID, { cohortIndex: 2 }),
+    namesEmbeddedPan('COHORT_PREDECESSOR_UNSATISFIED', 'integrate'),
+  )
+
+  // Every chunk of cohort 1 has a run, so there is nothing left to start.
+  writeCohortState(root, {
+    chunks: [
+      {
+        id: 'c1',
+        title: 'First outcome',
+        cohort_index: 1,
+        child_spec_path: 'runtime/specs/c1.md',
+        depends_on: [],
+        run_id: 'chunk-c1',
+      },
+      {
+        id: 'c2',
+        title: 'Second outcome',
+        cohort_index: 2,
+        child_spec_path: 'runtime/specs/c2.md',
+        depends_on: ['c1'],
+      },
+    ],
+  })
+  writeChunkRun(root, 'chunk-c1', 'succeeded')
+
+  assert.throws(
+    () => startCohort(root, COHORT_ID),
+    namesEmbeddedPan('COHORT_ALREADY_STARTED', 'integrate'),
+  )
+})
+
 test('integration writes no merge proof while a chunk run has not succeeded', () => {
   const root = createFixture()
 
@@ -483,6 +645,25 @@ test('an autostart failure reports the error and the manual commands', () => {
     assert.deepEqual(result.manual_commands, [
       './bin/pan cohort init --plan-run plan-run-missing',
       './bin/pan cohort start <cohort-id>',
+    ])
+  }
+
+  // The operator types these commands from the target root, so an embedded
+  // harness must name its own entrypoint.
+  setInstallationMode(root, 'embedded')
+
+  const embedded = maybeAutostartCohort(root, state, {
+    actor: 'operator',
+    action: 'approve',
+  })
+
+  assert.ok(embedded)
+  assert.equal(embedded.status, 'failed')
+
+  if (embedded.status === 'failed') {
+    assert.deepEqual(embedded.manual_commands, [
+      `${EMBEDDED_PAN} cohort init --plan-run plan-run-missing`,
+      `${EMBEDDED_PAN} cohort start <cohort-id>`,
     ])
   }
 })

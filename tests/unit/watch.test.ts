@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync, utimesSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -40,7 +46,27 @@ import {
 } from '../helpers.js'
 
 // Cadence short enough for a unit test yet above the module floor.
-const CADENCE_SECONDS = 0.05
+// Each wake observes the run tree and the workspace Git state, which costs a
+// few tens of milliseconds, so the cadence leaves room for that inside a wake.
+const CADENCE_SECONDS = 0.1
+
+/**
+ * Deterministic clock for the watch loop: `sleep` advances it instead of
+ * waiting, so a wake happens exactly when it is due whatever the load.
+ */
+function fakeClock(): {
+  now: () => number
+  sleep: (milliseconds: number) => Promise<void>
+} {
+  let current = Date.now()
+
+  return {
+    now: () => current,
+    sleep: async (milliseconds) => {
+      current += milliseconds
+    },
+  }
+}
 
 function preparedRun(): {
   root: string
@@ -90,17 +116,21 @@ function writeStageOutput(root: string, state: RunState): void {
 test('watch completes when the invocation output appears and records every arming and wake', async () => {
   const { root, state, invocationId } = preparedRun()
 
-  // The output lands after the second wake, so the record shows one unchanged
-  // wake before the completing one.
-  setTimeout(
-    () => writeStageOutput(root, state),
-    CADENCE_SECONDS * 2 * 1000 + 20,
-  )
-
+  // The output lands right after the first wake observed nothing, so the
+  // record shows one unchanged wake before the completing one. Writing from
+  // the wake hook rather than a wall-clock timer keeps the order fixed when the
+  // suite runs under load.
+  let written = false
   const result = await watchInvocation(root, state.run_id, {
     cadenceSeconds: CADENCE_SECONDS,
     stallWakes: 10,
     timeoutSeconds: 5,
+    onWake: () => {
+      if (!written) {
+        written = true
+        writeStageOutput(root, state)
+      }
+    },
   })
 
   assert.equal(result.state, 'completed')
@@ -158,6 +188,69 @@ test('watch reports stalled after the configured unchanged wakes', async () => {
   assert.equal(wakes.at(-1)?.terminal_state, 'stalled')
 })
 
+test('a worker that edits only the workspace or nested evidence is not called stalled', async () => {
+  const { root, state } = preparedRun()
+  const nestedEvidence = path.join(
+    root,
+    'runtime',
+    'logs',
+    'workflows',
+    state.run_id,
+    'agent',
+    'evidence',
+    'qa',
+  )
+
+  mkdirSync(path.join(root, 'src'), { recursive: true })
+  mkdirSync(nestedEvidence, { recursive: true })
+
+  // Neither write touches the output or an invocation-prefixed evidence file,
+  // which is exactly what a coder mid-implementation or a QA tester writing to
+  // its declared evidence directory looks like. The churn lands from the wake
+  // hook against a fake clock, so the wake count does not depend on how long
+  // an observation takes under suite load.
+  const clock = fakeClock()
+  let tick = 0
+  const churn = (): void => {
+    tick += 1
+
+    if (tick % 2 === 0) {
+      writeFileSync(path.join(root, 'src', 'feature.ts'), `// ${tick}\n`)
+    } else {
+      writeFileSync(path.join(nestedEvidence, 'report.md'), `tick ${tick}\n`)
+    }
+  }
+
+  churn()
+
+  const result = await watchInvocation(root, state.run_id, {
+    cadenceSeconds: CADENCE_SECONDS,
+    stallWakes: 2,
+    timeoutSeconds: CADENCE_SECONDS * 4,
+    ...clock,
+    onWake: churn,
+  })
+
+  assert.equal(
+    result.state,
+    'timed_out',
+    'progress in the workspace is progress',
+  )
+  assert.equal(result.wakes, 4)
+
+  const wakes = readWatchRecord(
+    root,
+    state.run_id,
+    result.invocation_id,
+  ).filter((entry) => entry.event === 'wake')
+
+  assert.ok(
+    wakes.every((entry) => entry.observation?.workspace_fingerprint),
+    'each wake records the workspace fingerprint',
+  )
+  assert.ok(wakes.every((entry) => entry.observation?.run_tree_fingerprint))
+})
+
 test('watch reports timed_out at the timeout when the paths keep changing', async () => {
   const { root, state } = preparedRun()
   const evidenceDir = path.join(
@@ -169,28 +262,30 @@ test('watch reports timed_out at the timeout when the paths keep changing', asyn
     'agent',
     'evidence',
   )
+  const clock = fakeClock()
   let tick = 0
-  const churn = setInterval(() => {
+  const churn = (): void => {
     tick += 1
     writeFileSync(
       path.join(evidenceDir, `${state.current_invocation!.id}-progress.log`),
       `tick ${tick}\n`.repeat(tick),
     )
-  }, 10)
-
-  try {
-    const result = await watchInvocation(root, state.run_id, {
-      cadenceSeconds: CADENCE_SECONDS,
-      stallWakes: 2,
-      timeoutSeconds: CADENCE_SECONDS * 3,
-    })
-
-    assert.equal(result.state, 'timed_out')
-    assert.ok(result.wakes >= 3)
-    assert.ok(result.elapsed_seconds >= CADENCE_SECONDS * 3)
-  } finally {
-    clearInterval(churn)
   }
+
+  churn()
+
+  const result = await watchInvocation(root, state.run_id, {
+    cadenceSeconds: CADENCE_SECONDS,
+    stallWakes: 2,
+    timeoutSeconds: CADENCE_SECONDS * 3,
+    ...clock,
+    onWake: churn,
+  })
+
+  assert.equal(result.state, 'timed_out')
+  assert.equal(result.wakes, 3)
+  // Whole milliseconds on the fake clock: 300 ms, not 0.1 * 3 in floating point.
+  assert.ok(result.elapsed_seconds >= 0.3)
 })
 
 test('watch returns completed at once for an output already present and stays idempotent', async () => {

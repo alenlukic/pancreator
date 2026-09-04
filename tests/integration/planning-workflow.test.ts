@@ -125,15 +125,20 @@ test('the planning stage binds the plan and cohort validators at pre-submit', ()
     (requirement) => requirement.phase === 'pre_submit',
   )
 
-  for (const registryId of [
-    'PLAN-TRACE-VALIDATE-001',
-    'COHORT-PLAN-VALIDATE-001',
-    'CHILD-SPEC-VALIDATE-001',
-  ]) {
+  // The trace validator belongs to the consolidated-planning policy every
+  // planner shares; the hierarchy validators belong to the cohort policy that
+  // only the planning workflow resolves.
+  const owners: Array<[string, string]> = [
+    ['PLAN-TRACE-VALIDATE-001', 'PLAN-002'],
+    ['COHORT-PLAN-VALIDATE-001', 'COHORT-001'],
+    ['CHILD-SPEC-VALIDATE-001', 'COHORT-001'],
+  ]
+
+  for (const [registryId, policyId] of owners) {
     const requirement = bound.find((entry) => entry.registry_id === registryId)
 
     assert.ok(requirement, `${registryId} MUST bind at pre_submit`)
-    assert.equal(requirement.policy_id, 'PLAN-002')
+    assert.equal(requirement.policy_id, policyId)
     assert.equal(requirement.enforcement, 'required')
   }
 })
