@@ -6,8 +6,11 @@ import { Worker } from 'node:worker_threads'
 
 import {
   awayDecisionLedgerPath,
+  awayEvaluatorPrompt,
+  awayGateContext,
   awayModeTrigger,
   countAwayDecisions,
+  countAwayEvaluatorFailures,
   parseAwayOptions,
   readAwayDecisionLedger,
   recordAwayApplyResult,
@@ -353,6 +356,90 @@ function blockedHistoryItem(stage: string): StageHistoryItem {
   }
 }
 
+test('the evaluator prompt carries the request, the outcome, and the artifact', () => {
+  // The evaluator stands in for the operator. Given only state.json it once
+  // ranked "revise" above "approve" on a passing plan because not advancing
+  // read as safest. The prompt now hands it what the operator would read and
+  // tells it that a passing gate whose summary satisfies the request approves.
+  const root = createFixture()
+
+  enableAwayMode(root)
+  const state = createRun(root, {
+    workflowSlug: 'planning',
+    requestPath: 'request.md',
+  })
+  const outputRelative = `runtime/logs/workflows/${state.run_id}/agent/outputs/plan.json`
+
+  mkdirSync(path.dirname(path.join(root, outputRelative)), { recursive: true })
+  writeFileSync(
+    path.join(root, outputRelative),
+    JSON.stringify({
+      summary: 'Three chunks in two cohorts, as the request fixed the shape.',
+      artifacts: [
+        { path: 'runtime/logs/workflows/run/operator/specs/parent.md' },
+        { path: 'runtime/logs/workflows/run/operator/specs/greeting.md' },
+      ],
+    }),
+  )
+  state.status = 'awaiting_operator'
+  state.pending_action = {
+    type: 'operator_approval',
+    stage: 'plan',
+    outcome: 'success',
+    proposed_transition: 'succeeded',
+  }
+  state.stage_history = [
+    {
+      ...blockedHistoryItem('plan'),
+      outcome: 'success',
+      output_path: outputRelative,
+    },
+  ]
+  const blocker = awayModeTrigger(state)
+
+  assert.ok(blocker)
+
+  const context = awayGateContext(root, state)
+
+  assert.equal(context.stage_outcome, 'success')
+  assert.match(
+    context.operator_request ?? '',
+    /dependency-free workflow harness/u,
+  )
+  assert.equal(
+    context.stage_summary,
+    'Three chunks in two cohorts, as the request fixed the shape.',
+  )
+  assert.deepEqual(context.stage_artifacts, [
+    'runtime/logs/workflows/run/operator/specs/parent.md',
+    'runtime/logs/workflows/run/operator/specs/greeting.md',
+  ])
+
+  const prompt = awayEvaluatorPrompt(root, state, blocker, {
+    hypervisorEventsPath: 'runtime/logs/hypervisor/events.jsonl',
+  })
+  const payload = JSON.parse(prompt.split('\n').at(-1) ?? '') as Record<
+    string,
+    unknown
+  >
+
+  assert.doesNotMatch(prompt, /safest to least safe/u)
+  assert.match(prompt, /ranks approve first/u)
+  assert.equal(payload.stage_outcome, 'success')
+  assert.equal(payload.stage_summary, context.stage_summary)
+  assert.deepEqual(payload.stage_artifacts, context.stage_artifacts)
+  assert.ok(
+    (payload.evidence_references as string[]).includes(outputRelative),
+    'the stage output is citable evidence',
+  )
+  assert.ok(
+    (payload.evidence_references as string[]).includes(
+      'runtime/logs/workflows/run/operator/specs/parent.md',
+    ),
+    'each artifact is citable evidence',
+  )
+})
+
 test('a stale blocked outcome does not trigger on a progressing run', () => {
   assert.equal(
     awayModeTrigger(
@@ -392,7 +479,7 @@ test('a stale blocked outcome does not trigger on a progressing run', () => {
   assert.equal(blocker?.stage, 'plan')
 })
 
-test('the decision limit also bounds evaluator failure records', () => {
+test('evaluator failures have their own ceiling and leave the decision budget alone', () => {
   const root = createFixture()
 
   enableAwayMode(root, { max_decisions_per_run: 1 })
@@ -408,15 +495,35 @@ test('the decision limit also bounds evaluator failure records', () => {
     '2026-08-21T12:00:00.000Z',
   )
 
+  assert.equal(failure.decision_kind, 'evaluator_failure')
   assert.equal(failure.result, 'rejected')
   assert.equal(failure.selected_action, null)
   assert.equal(failure.error, 'The evaluator failed.')
   assert.equal(readAwayDecisionLedger(root).length, 1)
+  // A spawn that could not run says nothing about what the operator would
+  // decide, so the one decision this run may make is still available.
+  assert.equal(countAwayDecisions(root, state.run_id), 0)
+  assert.equal(countAwayEvaluatorFailures(root, state.run_id), 1)
 
+  // The failure ceiling is the same number, so the ledger stays bounded.
   assert.throws(
     () => recordAwayEvaluationFailure(root, state, blocker, 'It failed again.'),
-    /decision limit for this run is exhausted/u,
+    /failed as many times as the decision limit allows/u,
   )
+
+  // A ranking the parser rejects is an evaluator defect, not a decision, so
+  // it takes the same route and hits the same ceiling.
+  assert.throws(
+    () => recordAwayEvaluation(root, state, blocker, { options: [] }),
+    /failed as many times as the decision limit allows/u,
+  )
+
+  const decided = recordAwayEvaluation(root, state, blocker, {
+    ranked_options: [option(1, 'resume')],
+  })
+
+  assert.equal(decided.result, 'accepted')
+  assert.equal(countAwayDecisions(root, state.run_id), 1)
   assert.throws(
     () =>
       recordAwayEvaluation(root, state, blocker, {
@@ -424,7 +531,7 @@ test('the decision limit also bounds evaluator failure records', () => {
       }),
     /decision limit for this run is exhausted/u,
   )
-  assert.equal(readAwayDecisionLedger(root).length, 1)
+  assert.equal(readAwayDecisionLedger(root).length, 2)
 })
 
 interface ConcurrentEvaluationResult {

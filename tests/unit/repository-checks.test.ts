@@ -578,6 +578,33 @@ test('streaming repository checks emit subprocess output before returning the re
   assert.match(stdout.join(''), /first\nsecond/u)
 })
 
+test('a streaming timeout ends the whole process tree, not only the shell', async () => {
+  // `npm test` fans out into run-built, run-tests, and node. Killing the
+  // shell alone left that tree running and holding the pipes, so the gate
+  // returned only when the suite finished on its own, 130 s late in the field.
+  const { root } = makeInstallation()
+
+  writeChecks(root, {
+    fast: {
+      timeout_ms: 1_000,
+      probes: [],
+      // A grandchild that inherits stdout and would live far past the bound.
+      commands: ['sh -c "sleep 30; echo late" & wait'],
+    },
+  })
+
+  const startedAt = Date.now()
+  const result = await runRepositoryCheckStreaming(root, 'fast', {})
+  const elapsed = Date.now() - startedAt
+
+  assert.equal(result.status, 'failed')
+  assert.equal(result.results[0]?.timed_out, true)
+  assert.ok(
+    elapsed < 10_000,
+    `the gate returned after ${elapsed}ms; the orphaned tree kept it waiting`,
+  )
+})
+
 test('stage-requested timeout replaces the profile default', () => {
   const { root } = makeInstallation()
 
@@ -706,6 +733,15 @@ test('a current-path harness-managed worktree resolves the owning installation r
 
   mkdirSync(worktree, { recursive: true })
   mkdirSync(runtimeWorktree, { recursive: true })
+  // A linked worktree carries a `.git` file that names its gitdir.
+  writeFileSync(
+    path.join(worktree, '.git'),
+    'gitdir: ../../../.git/worktrees/wt\n',
+  )
+  writeFileSync(
+    path.join(runtimeWorktree, '.git'),
+    'gitdir: ../../../../.git/worktrees/wt\n',
+  )
 
   assert.equal(
     repositoryChecksSourcePath(worktree),
@@ -717,6 +753,45 @@ test('a current-path harness-managed worktree resolves the owning installation r
   assert.equal(
     repositoryChecksSourcePath(runtimeWorktree),
     path.join(root, 'runtime', 'repository-checks.json'),
+  )
+})
+
+test('a directory under a worktree that is not itself a worktree keeps its own resolution', () => {
+  // Test fixtures live under <checkout>/runtime/tmp/tests/. When the checkout
+  // is a cohort worktree, every fixture path contains a `worktrees` segment.
+  // The path alone must not send the fixture to the installation's file.
+  const { root } = makeInstallation()
+
+  writeChecks(root, { fast: { probes: [], commands: ['echo ok'] } })
+
+  const worktree = path.join(root, 'worktrees', 'operator', 'wt')
+  const fixture = path.join(
+    worktree,
+    'runtime',
+    'tmp',
+    'tests',
+    'run-1',
+    'checks-1',
+  )
+
+  mkdirSync(fixture, { recursive: true })
+  writeFileSync(
+    path.join(worktree, '.git'),
+    'gitdir: ../../../.git/worktrees/wt\n',
+  )
+  writeFileSync(
+    path.join(fixture, 'config.json'),
+    `${JSON.stringify({ schema_version: 1, workspace_root: '.', state_root: 'runtime', installation_mode: 'self_development' })}\n`,
+  )
+
+  assert.equal(
+    repositoryChecksSourcePath(fixture),
+    path.join(
+      fixture,
+      'library',
+      'templates',
+      'repository-checks.self-development.json',
+    ),
   )
 })
 

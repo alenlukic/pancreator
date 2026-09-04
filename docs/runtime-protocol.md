@@ -327,7 +327,11 @@ Applied away actions use away authorship. They do not create operator decision,
 resume, or stage-repair events. Evaluated accepted and rejected records consume
 `max_decisions_per_run`. Legacy records without `decision_kind` count as
 evaluated. Hypervisor quarantine records and deterministic ship approvals do
-not consume that budget.
+not consume that budget. An `evaluator_failure` record, written when the
+evaluator process could not run, was killed, or returned no parsable ranking,
+does not consume it either: it is not a decision. Those records have their own
+ceiling of the same size per run, refused with `AWAY_EVALUATOR_FAILURE_LIMIT`,
+so a failing evaluator still cannot grow the ledger without bound.
 
 A successful ship packet can receive deterministic away approval only when the
 snapshot enables away mode and `allowed_actions` includes `approve`. The

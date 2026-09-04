@@ -1,4 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process'
+import { statSync } from 'node:fs'
 import path from 'node:path'
 
 import { PanError, invariant } from './errors.js'
@@ -616,8 +617,24 @@ export function repositoryChecksPath(root: string): string {
   return path.join(root, 'runtime', 'repository-checks.json')
 }
 
+/** A linked Git worktree carries a `.git` file that names its gitdir. */
+function isLinkedWorktree(root: string): boolean {
+  try {
+    return statSync(path.join(root, '.git')).isFile()
+  } catch {
+    return false
+  }
+}
+
 /** `<installation>/worktrees/...` and legacy paths resolve to the installation root. */
 function owningInstallationRoot(root: string): string | null {
+  // The path alone is not enough: a test fixture under a worktree's
+  // runtime/tmp/tests/ also has a `worktrees` segment, and must not read the
+  // installation's configuration in place of its own.
+  if (!isLinkedWorktree(root)) {
+    return null
+  }
+
   const segments = path.resolve(root).split(path.sep)
   const index = segments.lastIndexOf('worktrees')
 
@@ -976,12 +993,29 @@ function executeStreaming(
   const startedAt = Date.now()
 
   return new Promise((resolve) => {
+    // The child leads its own process group, so a timeout can end the whole
+    // tree (`npm -> run-built -> run-tests -> node`) at once. Killing the
+    // shell alone orphaned the suite, which kept the pipes open and delayed
+    // `close` until the tests finished on their own.
     const child = spawn(command, {
       cwd: workspaceRoot,
       shell: true,
       stdio: ['ignore', 'pipe', 'pipe'],
       env: profileCommandEnv(options.env ?? {}),
+      detached: process.platform !== 'win32',
     })
+    const killTree = (signal: NodeJS.Signals): void => {
+      if (child.pid !== undefined && process.platform !== 'win32') {
+        try {
+          process.kill(-child.pid, signal)
+          return
+        } catch {
+          // The group is already gone; fall through to the direct kill.
+        }
+      }
+
+      child.kill(signal)
+    }
     let stdout = ''
     let stderr = ''
     let timedOut = false
@@ -1042,8 +1076,8 @@ function executeStreaming(
 
     timeoutHandle = setTimeout(() => {
       timedOut = true
-      child.kill('SIGTERM')
-      killHandle = setTimeout(() => child.kill('SIGKILL'), 2_000)
+      killTree('SIGTERM')
+      killHandle = setTimeout(() => killTree('SIGKILL'), 2_000)
       killHandle.unref()
     }, timeoutMs)
     timeoutHandle.unref()

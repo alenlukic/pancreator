@@ -205,6 +205,12 @@ test('starting a cohort fans out one worktree and one run per chunk', () => {
       'the parent specification arrives as an audited reference',
     )
     assert.equal(chunk.resume_command, `/pan-resume ${chunk.run_id}`)
+    // Bound like `pan init --worktree`, so the `--worktree <name>` option the
+    // cohort supervisor passes on every lifecycle command is accepted.
+    assert.equal(run.managed_worktree?.path, chunk.worktree)
+    assert.equal(run.managed_worktree?.path, run.workspace_root)
+    assert.equal(run.managed_worktree?.name, path.basename(chunk.worktree))
+    assert.equal(typeof run.managed_worktree?.branch, 'string')
   }
 
   // The durable record alone answers what is running and what comes next.

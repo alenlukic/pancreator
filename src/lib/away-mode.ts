@@ -6,10 +6,12 @@ import {
   appendJsonLine,
   fileExists,
   isRecord,
+  readJson,
   readText,
   withOperationMutex,
 } from './io.js'
 import { AWAY_MODE_ACTIONS } from './project-config.js'
+import { resolveRunLayout } from './run-layout.js'
 import type {
   AgentHealth,
   AwayDecisionKind,
@@ -355,6 +357,23 @@ export function countAwayDecisions(root: string, runId: string): number {
   ).length
 }
 
+/**
+ * Evaluator execution failures for one run. They are not decisions, so they
+ * do not spend `max_decisions_per_run`; a spawn that could not authenticate
+ * or a process the platform killed says nothing about what the operator
+ * would decide. They are bounded by the same number on their own, so a
+ * continually failing evaluator still cannot grow the ledger without limit.
+ */
+export function countAwayEvaluatorFailures(
+  root: string,
+  runId: string,
+): number {
+  return readAwayDecisionLedger(root).filter(
+    (record) =>
+      record.run_id === runId && record.decision_kind === 'evaluator_failure',
+  ).length
+}
+
 /** Append a non-budgeted approval for one successful ship packet. */
 export function recordDeterministicShipApproval(
   root: string,
@@ -470,6 +489,110 @@ export function recordHypervisorQuarantine(
   return record
 }
 
+// The evaluator stands in for the operator at a gate, so the prompt hands it
+// what the operator would read: the request, the stage outcome, and the
+// worker's summary and artifacts. Bounded so a long summary cannot swamp it.
+const AWAY_PROMPT_TEXT_MAX = 6_000
+
+function boundedText(text: string, max = AWAY_PROMPT_TEXT_MAX): string {
+  return text.length <= max ? text : `${text.slice(0, max)}\n[truncated]`
+}
+
+export function awayGateContext(
+  root: string,
+  state: RunState,
+): {
+  operator_request: string | null
+  stage_outcome: string | null
+  stage_summary: string | null
+  stage_artifacts: string[]
+  stage_output_path: string | null
+} {
+  const layout = resolveRunLayout(root, state.run_id)
+  const requestPath = layout.request().absolute
+  const operatorRequest = fileExists(requestPath)
+    ? boundedText(readText(requestPath))
+    : null
+  const last = state.stage_history.at(-1)
+  let summary: string | null = null
+  const artifacts: string[] = []
+
+  if (last?.output_path && fileExists(path.join(root, last.output_path))) {
+    try {
+      const output = readJson(path.join(root, last.output_path))
+
+      if (isRecord(output)) {
+        if (typeof output.summary === 'string') {
+          summary = boundedText(output.summary)
+        }
+
+        if (Array.isArray(output.artifacts)) {
+          for (const artifact of output.artifacts) {
+            if (isRecord(artifact) && typeof artifact.path === 'string') {
+              artifacts.push(artifact.path)
+            }
+          }
+        }
+      }
+    } catch {
+      // A malformed output is itself a defect the evaluator can weigh from
+      // the outcome alone; the prompt still goes out.
+    }
+  }
+
+  return {
+    operator_request: operatorRequest,
+    stage_outcome: last?.outcome ?? null,
+    stage_summary: summary,
+    stage_artifacts: artifacts,
+    stage_output_path: last?.output_path ?? null,
+  }
+}
+
+export function awayEvaluatorPrompt(
+  root: string,
+  state: RunState,
+  blocker: AwayBlocker,
+  options: { hypervisorEventsPath: string },
+): string {
+  const allowedActions = state.away_mode?.guardrails.allowed_actions ?? []
+  const gate = awayGateContext(root, state)
+  const evidenceReferences = [
+    resolveRunLayout(root, state.run_id).state.relative,
+    ...(gate.stage_output_path ? [gate.stage_output_path] : []),
+    ...gate.stage_artifacts,
+    options.hypervisorEventsPath,
+  ]
+
+  return [
+    'Return JSON only.',
+    "You decide the pending operator action on the operator's behalf while the operator is away.",
+    'Rank the supplied actions from most to least fit for this gate. Fitness means: the action the operator would take given the request, the stage outcome, and the artifact.',
+    'Not advancing is not safer by default. A gate with stage_outcome "success" and a stage_summary that satisfies operator_request ranks approve first.',
+    'Rank revise or reject first only for a concrete defect you can name in the artifact against the request, and put that defect in the note. Do not ask for material the summary already reports.',
+    'Read the stage_artifacts when the summary alone cannot settle the decision.',
+    'Return exactly one object of the shape {"ranked_options": [...]} with no other top-level key and no prose.',
+    'Each option needs rank, action, feasible, rationale, evidence, and rollback_plan.',
+    'Evidence entries must use the supplied repository-relative paths.',
+    'rollback_plan needs non-empty steps and verification.',
+    'revise needs note. set-stage needs stage.',
+    JSON.stringify({
+      run_id: state.run_id,
+      invocation_id: state.current_invocation?.id ?? null,
+      current_stage: state.current_stage,
+      status: state.status,
+      pending_action: state.pending_action,
+      blocker,
+      stage_outcome: gate.stage_outcome,
+      operator_request: gate.operator_request,
+      stage_summary: gate.stage_summary,
+      stage_artifacts: gate.stage_artifacts,
+      allowed_actions: allowedActions,
+      evidence_references: evidenceReferences,
+    }),
+  ].join('\n')
+}
+
 /** Append one rejected record when the evaluator cannot return ranked options. */
 export function recordAwayEvaluationFailure(
   root: string,
@@ -487,7 +610,7 @@ export function recordAwayEvaluationFailure(
   const record: AwayDecisionRecord = {
     schema_version: 1,
     decision_id: randomUUID(),
-    decision_kind: 'evaluated',
+    decision_kind: 'evaluator_failure',
     run_id: state.run_id,
     invocation_id: state.current_invocation?.id ?? null,
     blocker,
@@ -501,16 +624,17 @@ export function recordAwayEvaluationFailure(
     error,
   }
 
-  // Failure records consume the same budget as evaluations, so a continually
-  // failing evaluator cannot grow the ledger past the operator's limit.
+  // An execution failure is not a decision, so it leaves the decision budget
+  // alone. It has its own ceiling of the same size, so the ledger stays
+  // bounded when the evaluator fails every time.
   return withOperationMutex(
     awayPath(root, LEDGER_LOCK),
     (): AwayDecisionRecord => {
       invariant(
-        countAwayDecisions(root, state.run_id) <
+        countAwayEvaluatorFailures(root, state.run_id) <
           awayMode.guardrails.max_decisions_per_run,
-        'The away-mode decision limit for this run is exhausted.',
-        { code: 'AWAY_DECISION_LIMIT' },
+        'The away evaluator failed as many times as the decision limit allows for this run.',
+        { code: 'AWAY_EVALUATOR_FAILURE_LIMIT' },
       )
 
       appendJsonLine(awayDecisionLedgerPath(root), record)
@@ -534,6 +658,22 @@ export function recordAwayEvaluation(
     code: 'AWAY_MODE_DISABLED',
   })
 
+  // A ranking the parser rejects is an evaluator defect, not a decision the
+  // operator's budget should pay for. It takes the failure route and ceiling.
+  let options: AwayOption[]
+
+  try {
+    options = parseAwayOptions(evaluatorValue)
+  } catch (error) {
+    return recordAwayEvaluationFailure(
+      root,
+      state,
+      blocker,
+      errorMessage(error),
+      recordedAt,
+    )
+  }
+
   // The decision limit is checked and the record appended under one lock, so
   // concurrent evaluations cannot both pass the limit before either appends.
   return withOperationMutex(
@@ -545,32 +685,6 @@ export function recordAwayEvaluation(
         'The away-mode decision limit for this run is exhausted.',
         { code: 'AWAY_DECISION_LIMIT' },
       )
-
-      let options: AwayOption[]
-
-      try {
-        options = parseAwayOptions(evaluatorValue)
-      } catch (error) {
-        const rejected: AwayDecisionRecord = {
-          schema_version: 1,
-          decision_id: randomUUID(),
-          decision_kind: 'evaluated',
-          run_id: state.run_id,
-          invocation_id: state.current_invocation?.id ?? null,
-          blocker,
-          ranked_options: [],
-          selected_action: null,
-          rejected_options: [{ rank: 0, reason: errorMessage(error) }],
-          guardrails: awayMode.guardrails,
-          result: 'rejected',
-          evidence_references: [],
-          recorded_at: recordedAt,
-          error: errorMessage(error),
-        }
-
-        appendJsonLine(awayDecisionLedgerPath(root), rejected)
-        return rejected
-      }
 
       const selection = selectAwayOption(options, awayMode)
       const record: AwayDecisionRecord = {

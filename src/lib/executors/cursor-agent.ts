@@ -1,6 +1,25 @@
 import { spawnSync } from 'node:child_process'
 
 import { isRecord } from '../io.js'
+import { probeEnvironment } from './cursor-auth.js'
+
+// A failed spawn's ledger record used to say only "exited with status 1". The
+// last stderr line is what names the cause, so it rides along, bounded.
+const STDERR_SUMMARY_MAX = 300
+
+function stderrSummary(stderr: string): string {
+  const lastLine = stderr
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .at(-1)
+
+  if (!lastLine) {
+    return ''
+  }
+
+  return ` ${lastLine.slice(0, STDERR_SUMMARY_MAX)}`
+}
 
 const DEFAULT_TIMEOUT_MS = 120_000
 const MAX_OUTPUT_BYTES = 16 * 1024 * 1024
@@ -209,6 +228,11 @@ function runCursorAgent(
   const startedAt = Date.now()
   const spawned = spawnSync(binary, argv, {
     cwd: request.cwd,
+    // ASK-001: a CURSOR_API_KEY in the process environment wins, otherwise the
+    // installation or workspace .env supplies it. Every cursor-agent spawn
+    // authenticates the same way the model probe does, so an away evaluator
+    // or an external-executor stage never fails auth that the probe passed.
+    env: probeEnvironment(request.cwd),
     encoding: 'utf8',
     input: '',
     timeout: request.timeoutMs ?? DEFAULT_TIMEOUT_MS,
@@ -246,7 +270,9 @@ function runCursorAgent(
       stderr,
       error: timedOut
         ? `Cursor agent timed out after ${request.timeoutMs ?? DEFAULT_TIMEOUT_MS}ms.`
-        : `Cursor agent exited with status ${String(spawned.status)}.`,
+        : spawned.signal
+          ? `Cursor agent was killed by ${spawned.signal}.${stderrSummary(stderr)}`
+          : `Cursor agent exited with status ${String(spawned.status)}.${stderrSummary(stderr)}`,
     }
   }
 

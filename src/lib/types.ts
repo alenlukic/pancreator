@@ -542,6 +542,8 @@ export type AwayDecisionKind =
   | 'evaluated'
   | 'deterministic_ship_approval'
   | 'hypervisor_quarantine'
+  /** The evaluator could not run or returned no ranking; not a decision. */
+  | 'evaluator_failure'
 
 export type RunActionActor = 'operator' | 'away'
 

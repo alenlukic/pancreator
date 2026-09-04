@@ -70,8 +70,10 @@ import {
 } from './lib/release-preparation.js'
 import {
   awayDecisionLedgerPath,
+  awayEvaluatorPrompt,
   awayModeTrigger,
   countAwayDecisions,
+  countAwayEvaluatorFailures,
   readAwayDecisionLedger,
   recordAwayApplyResult,
   recordAwayEvaluation,
@@ -693,37 +695,6 @@ function hypervisorModelForRun(root: string, state: RunState): string {
   return model
 }
 
-function awayEvaluatorPrompt(
-  root: string,
-  state: RunState,
-  blocker: NonNullable<ReturnType<typeof awayModeTrigger>>,
-): string {
-  const allowedActions = state.away_mode?.guardrails.allowed_actions ?? []
-  const evidenceReferences = [
-    resolveRunLayout(root, state.run_id).state.relative,
-    path.relative(root, hypervisorEventsPath(root)).split(path.sep).join('/'),
-  ]
-
-  return [
-    'Return JSON only.',
-    'Rank the supplied actions from safest to least safe.',
-    'Each option needs rank, action, feasible, rationale, evidence, and rollback_plan.',
-    'Evidence entries must use the supplied repository-relative paths.',
-    'rollback_plan needs non-empty steps and verification.',
-    'revise needs note. set-stage needs stage.',
-    JSON.stringify({
-      run_id: state.run_id,
-      invocation_id: state.current_invocation?.id ?? null,
-      current_stage: state.current_stage,
-      status: state.status,
-      pending_action: state.pending_action,
-      blocker,
-      allowed_actions: allowedActions,
-      evidence_references: evidenceReferences,
-    }),
-  ].join('\n')
-}
-
 function applyAwayDecision(
   root: string,
   state: RunState,
@@ -799,10 +770,22 @@ function evaluateAwayState(
     )
   }
 
+  if (countAwayEvaluatorFailures(root, state.run_id) >= budget) {
+    throw new PanError(
+      'The away evaluator failed as many times as the decision limit allows for this run.',
+      { code: 'AWAY_EVALUATOR_FAILURE_LIMIT' },
+    )
+  }
+
   const evaluation = runCursorAgentJson({
     cwd: root,
     model: hypervisorModelForRun(root, state),
-    prompt: awayEvaluatorPrompt(root, state, blocker),
+    prompt: awayEvaluatorPrompt(root, state, blocker, {
+      hypervisorEventsPath: path
+        .relative(root, hypervisorEventsPath(root))
+        .split(path.sep)
+        .join('/'),
+    }),
   })
 
   if (!evaluation.ok || evaluation.value === undefined) {

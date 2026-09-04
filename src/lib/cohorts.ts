@@ -676,10 +676,14 @@ export function initCohortSession(
   }
 
   const base = path.join(root, 'runtime', 'logs', 'cohorts')
+  // The parent specification is always named parent-specification.md, so its
+  // basename would give every cohort the same suffix. The plan run's own
+  // suffix names the request; the specification text is the fallback.
+  const planRunSuffix = options.planRunId.split('_').slice(2).join('_')
   const cohortId = makeUniqueRunId(
     base,
     keywordRunSuffixFrom(
-      path.basename(plan.parent_spec_path),
+      planRunSuffix || path.basename(plan.parent_spec_path),
       readText(resolveInside(root, plan.parent_spec_path)),
     ),
   )
@@ -805,11 +809,19 @@ export function startCohort(
         branch: record.branch,
       })
 
+      // The run is bound to its worktree exactly as `pan init --worktree`
+      // binds one, so `--worktree <name>` is accepted on every lifecycle
+      // command and the identity check guards against a swapped checkout.
       const run = createRun(root, {
         workflowSlug: COHORT_CHUNK_WORKFLOW_SLUG,
         requestPath: chunk.child_spec_path,
         title: `${chunk.id} · ${chunk.title}`,
         workspace: record.path,
+        worktree: {
+          name: record.name,
+          path: record.path,
+          branch: record.branch,
+        },
         contextReferencePath: state.parent_spec_path,
         cohort: {
           cohort_id: cohortId,
