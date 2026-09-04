@@ -55,7 +55,7 @@ Comments explain intent, a constraint, or a non-obvious trade-off. Exported and 
 
 - Tests use the Node built-in runner: `import test from 'node:test'` with `import assert from 'node:assert/strict'`.
 - Mainline suites live in `tests/unit/`, `tests/integration/`, and `tests/regression/`, and import the implementation through its compiled specifier, as in `'../../src/lib/repository-checks.js'`. The slow installer suites live in `tests/secondary/`, which `npm test` excludes.
-- Filesystem fixtures use `mkdtempSync(path.join(tmpdir(), 'pancreator-<area>-'))` and are removed with `rmSync(dir, { recursive: true, force: true })` inside `finally`. Shared helpers live in `tests/helpers.ts`.
+- Filesystem fixtures use `createTestTempDirectory('pancreator-<area>-')` from `tests/temp.ts`, which places them under `runtime/tmp/tests/` where `bin/run-tests` removes them after every run. Tests never call `tmpdir()`; `pan validate` rejects it under `tests/`. Removing a fixture with `rmSync(dir, { recursive: true, force: true })` inside `finally` is still good manners but no longer load-bearing. Shared helpers live in `tests/helpers.ts`.
 - Verify with `npm test` for the default suite, `npm run test:secondary` for the installer lane, or the profiles in `runtime/repository-checks.json`, which is the command authority.
 
 ## Relationship to durable guidance

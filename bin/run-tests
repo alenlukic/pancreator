@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+usage() {
+  echo "Usage: bin/run-tests -- <command> [args...]" >&2
+}
+
+# Every suite run gets one scratch directory under the root, and the run
+# removes it when it ends. Fixtures never touch the shared OS temp directory:
+# that directory is written by every program on the host, nothing bounds it,
+# and once it accumulated 166,000 leaked fixtures every create and unlink in
+# it stalled for seconds. A directory the runner owns is per-root, so cohort
+# worktrees never share one, and it cannot outlive the run that made it.
+#
+# A run that dies by signal skips its own cleanup. The next run sweeps any
+# directory whose owner is gone, so a leak lasts one run at most and never
+# accumulates. runtime/ is gitignored.
+TESTS_TMP_ROOT="$ROOT/runtime/tmp/tests"
+
+# A pid alone cannot identify a run: a directory orphaned by SIGKILL names a
+# pid the kernel later reassigns. Pairing the pid with the process start time
+# tells the original owner apart from a namesake, and ps reads start times
+# across users, so it also distinguishes "no such process" from "not mine".
+# This is the same identity bin/run-built uses for the build lock.
+owner_token() {
+  local started
+
+  started="$(ps -o lstart= -p "$1" 2>/dev/null)" || return 1
+  started="$(printf '%s' "$started" | tr -d ' ')"
+
+  [[ -n "$started" ]] || return 1
+
+  printf '%s' "$started"
+}
+
+sweep_dead_runs() {
+  local run owner token live
+
+  for run in "$TESTS_TMP_ROOT"/run-*; do
+    [[ -d "$run" ]] || continue
+
+    owner=''
+    token=''
+    { IFS= read -r owner; IFS= read -r token; } <"$run/.owner" 2>/dev/null || true
+
+    live=''
+
+    if [[ "$owner" =~ ^[0-9]+$ ]]; then
+      live="$(owner_token "$owner" || true)"
+    fi
+
+    if [[ -n "$live" && "$live" == "$token" ]]; then
+      # A run that is still executing. Leave its fixtures alone.
+      continue
+    fi
+
+    rm -rf "$run"
+  done
+}
+
+if [[ "${1:-}" != '--' ]]; then
+  usage
+  exit 1
+fi
+
+shift
+
+if [[ $# -eq 0 ]]; then
+  usage
+  exit 1
+fi
+
+if ! mkdir -p "$TESTS_TMP_ROOT" 2>/dev/null; then
+  echo "[run-tests] cannot create the test scratch directory $TESTS_TMP_ROOT" >&2
+  exit 1
+fi
+
+# Node resolves a .js file's module type from the nearest package.json above
+# it. Without this file that would be this checkout's, whose "type": "module"
+# would turn a fixture's CommonJS script into a syntax error. An empty
+# package.json ends the walk here and, having no "type", leaves the default
+# in force, which is what a fixture in the shared temp directory got.
+if [[ ! -f "$TESTS_TMP_ROOT/package.json" ]]; then
+  printf '{}\n' >"$TESTS_TMP_ROOT/package.json"
+fi
+
+sweep_dead_runs
+
+RUN_DIRECTORY="$(mktemp -d "$TESTS_TMP_ROOT/run-XXXXXXXX")"
+SELF_TOKEN="$(owner_token "$$" || printf 'unidentified-%s' "$$")"
+
+printf '%s\n%s\n' "$$" "$SELF_TOKEN" >"$RUN_DIRECTORY/.owner"
+
+remove_run_directory() {
+  rm -rf "$RUN_DIRECTORY"
+}
+
+trap remove_run_directory EXIT HUP INT TERM
+
+export PANCREATOR_TEST_TMP="$RUN_DIRECTORY"
+
+# The run directory sits inside this checkout, which is itself a Git
+# repository. Without a ceiling, git discovery from a fixture that has no
+# .git of its own would walk up and find this checkout, and a test that
+# expects "not a repository" would instead read this checkout's dirty files.
+# The shared temp directory had no repository above it; the ceiling restores
+# that property. Fixtures that init their own repository are unaffected, since
+# discovery finds their .git before reaching the ceiling.
+export GIT_CEILING_DIRECTORIES="$RUN_DIRECTORY${GIT_CEILING_DIRECTORIES:+:$GIT_CEILING_DIRECTORIES}"
+
+# Run the suite as a foreground child rather than exec it, so the trap above
+# fires when it ends and the exit status passes through unchanged. A terminal
+# interrupt reaches the suite directly, since it shares this process group.
+# A signal sent to this wrapper alone is acted on once the suite exits, so
+# cleanup is deferred in that case rather than skipped. A wrapper killed
+# outright leaves one directory, which the next run's sweep removes.
+status=0
+"$@" || status=$?
+
+exit "$status"

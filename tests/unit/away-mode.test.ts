@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 import { Worker } from 'node:worker_threads'
@@ -30,6 +29,7 @@ import type {
   StageHistoryItem,
 } from '../../src/lib/types.js'
 import { createFixture, createRun } from '../helpers.js'
+import { createTestTempDirectory } from '../temp.js'
 
 function enableAwayMode(
   root: string,
@@ -68,7 +68,7 @@ function option(rank: number, action: AwayModeAction): Record<string, unknown> {
 }
 
 function scratchRoot(): string {
-  return mkdtempSync(path.join(tmpdir(), 'pancreator-away-mode-'))
+  return createTestTempDirectory('pancreator-away-mode-')
 }
 
 function awayConfig(

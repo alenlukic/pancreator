@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -12,6 +11,7 @@ import {
 } from '../../src/lib/requirements/scaffold.js'
 import { PanError } from '../../src/lib/errors.js'
 import type { Invocation } from '../../src/lib/types.js'
+import { createTestTempDirectory } from '../temp.js'
 
 test('scaffold builds nested data from dotted required_data paths', () => {
   const data = scaffoldDataFromRequiredData({
@@ -33,7 +33,7 @@ test('scaffold builds nested data from dotted required_data paths', () => {
 })
 
 test('scaffold refuses to overwrite a non-empty output without force', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-scaffold-'))
+  const root = createTestTempDirectory('pan-scaffold-')
   const outputPath = 'runtime/logs/workflows/x/outputs/out.json'
   const absolute = path.join(root, outputPath)
 
@@ -56,7 +56,7 @@ test('scaffold refuses to overwrite a non-empty output without force', () => {
 })
 
 test('scaffold copies the contract manifest into a pending attestation', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-scaffold-'))
+  const root = createTestTempDirectory('pan-scaffold-')
   const outputPath = 'runtime/logs/workflows/x/outputs/out.json'
   const contractPath = 'runtime/logs/workflows/x/invocations/implement-1.md'
   const invocation = {
@@ -156,7 +156,7 @@ test('scaffold copies the contract manifest into a pending attestation', () => {
 })
 
 test('the scaffold interface rejects the Markdown contract by artifact type', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-scaffold-'))
+  const root = createTestTempDirectory('pan-scaffold-')
   const markdownPath = 'runtime/logs/workflows/x/invocations/implement-1.md'
   const jsonPath = 'runtime/logs/workflows/x/invocations/implement-1.json'
   const absoluteJson = path.join(root, jsonPath)
@@ -187,7 +187,7 @@ test('the scaffold interface rejects the Markdown contract by artifact type', ()
 })
 
 test('scaffold retains only non-transient brief sources as artifacts', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-scaffold-'))
+  const root = createTestTempDirectory('pan-scaffold-')
   const sourcePath =
     'runtime/logs/workflows/x/artifacts/json/implement-1.brief.json'
   const renderedPath =

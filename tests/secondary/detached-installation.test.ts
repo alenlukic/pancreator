@@ -3,12 +3,10 @@ import {
   existsSync,
   lstatSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
   rmSync,
   writeFileSync,
 } from 'node:fs'
-import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -19,10 +17,11 @@ import {
   readJson,
   runInstaller,
 } from './install-helpers.js'
+import { createTestTempDirectory } from '../temp.js'
 
 test('detached installer places the harness outside the target tree and refreshes idempotently', () => {
   const project = makeSkeletonProject()
-  const harness = mkdtempSync(path.join(tmpdir(), 'pancreator-harness-'))
+  const harness = createTestTempDirectory('pancreator-harness-')
 
   try {
     gitInit(project)

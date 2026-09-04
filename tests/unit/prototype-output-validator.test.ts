@@ -1,15 +1,15 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import { validatePrototypeOutput } from '../../src/lib/validators/prototype-output.js'
+import { createTestTempDirectory } from '../helpers.js'
 
 // The validator reads only the stage outputs and run state it is handed, so a
 // bare directory stands in for the repository root.
 function scratchRoot(): string {
-  return mkdtempSync(path.join(tmpdir(), 'pan-prototype-output-'))
+  return createTestTempDirectory('prototype-output-')
 }
 
 function writeOutput(

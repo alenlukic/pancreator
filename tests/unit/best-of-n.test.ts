@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -9,6 +8,7 @@ import {
   loadBestOfNState,
   parseBestOfNConfigs,
 } from '../../src/lib/best-of-n.js'
+import { createTestTempDirectory } from '../temp.js'
 
 const VALID = {
   schema_version: 1,
@@ -32,7 +32,7 @@ test('session paths reject an invalid session id', () => {
 })
 
 test('session state rejects an unknown lifecycle status', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-best-of-n-state-'))
+  const root = createTestTempDirectory('pancreator-best-of-n-state-')
   const bonId = '63308_Sep-01-0459_sample'
   const statePath = path.join(bestOfNDir(root, bonId), 'state.json')
 

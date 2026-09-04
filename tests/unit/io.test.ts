@@ -1,7 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import {
   clearStaleOperationMutex,
@@ -12,11 +11,12 @@ import {
   withOperationMutex,
   writeJsonAtomic,
 } from '../../src/lib/io.js'
+import { createTestTempDirectory } from '../temp.js'
 
 // The io helpers are pure filesystem primitives, so a bare temporary directory
 // is enough.
 function scratchRoot(): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-io-'))
+  const root = createTestTempDirectory('pan-io-')
 
   mkdirSync(path.join(root, 'runtime'), { recursive: true })
 

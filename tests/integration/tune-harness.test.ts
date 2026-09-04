@@ -4,12 +4,10 @@ import { createHash } from 'node:crypto'
 import {
   copyFileSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
   readdirSync,
   writeFileSync,
 } from 'node:fs'
-import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -27,6 +25,7 @@ import {
 } from '../../src/lib/test-tuning.js'
 import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
 import { createFixture } from '../helpers.js'
+import { createTestTempDirectory } from '../temp.js'
 
 function identity(file: string, name: string): TestIdentity {
   return { file, name, lane: 'unit' }
@@ -363,7 +362,7 @@ test('finalizePreparedTuneSession uses the prior record for second-run deltas', 
 })
 
 test('the inventory reporter keeps duplicate top-level names', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-tune-inventory-'))
+  const root = createTestTempDirectory('pan-tune-inventory-')
   const testFile = path.join(root, 'duplicate.test.cjs')
   const inventoryPath = path.join(root, 'inventory.json')
   const reporter = path.join(process.cwd(), 'dist/tests/reporters/inventory.js')

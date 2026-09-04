@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtempSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -11,6 +10,7 @@ import {
   parseVerification,
   resolveVerification,
 } from '../../src/lib/verification.js'
+import { createTestTempDirectory } from '../temp.js'
 
 test('a config without a verification block gets the built-in levels and the light default', () => {
   const file = parseVerification({})
@@ -110,7 +110,7 @@ test('a gate value that is neither a profile name nor false is rejected', () => 
 })
 
 test('resolveVerification snapshots the named level from config.json', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-verification-'))
+  const root = createTestTempDirectory('pan-verification-')
 
   writeFileSync(
     path.join(root, 'config.json'),

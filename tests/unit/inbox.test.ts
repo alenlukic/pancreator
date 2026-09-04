@@ -2,13 +2,11 @@ import assert from 'node:assert/strict'
 import {
   existsSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
   rmSync,
   utimesSync,
   writeFileSync,
 } from 'node:fs'
-import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -22,6 +20,7 @@ import {
 import { PanError } from '../../src/lib/errors.js'
 import { makeWorkflowRunId } from '../../src/lib/naming.js'
 import { createFixture } from '../helpers.js'
+import { createTestTempDirectory } from '../temp.js'
 
 function writeInboxFile(
   root: string,
@@ -37,7 +36,7 @@ function writeInboxFile(
 }
 
 test('listInbox ignores nested directories and non-Markdown files', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-inbox-unit-'))
+  const root = createTestTempDirectory('pancreator-inbox-unit-')
   const oldest = new Date('2024-01-01T12:00:00.000Z')
   const middle = new Date('2024-01-02T12:00:00.000Z')
   const newest = new Date('2024-01-03T12:00:00.000Z')
@@ -69,7 +68,7 @@ test('listInbox ignores nested directories and non-Markdown files', () => {
 })
 
 test('listInbox selects the first valid level-one heading and falls back to the file name', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-inbox-unit-'))
+  const root = createTestTempDirectory('pancreator-inbox-unit-')
   const modifiedAt = new Date('2024-03-01T10:00:00.000Z')
 
   try {
@@ -101,7 +100,7 @@ test('listInbox selects the first valid level-one heading and falls back to the 
 })
 
 test('listInbox matches the longest known run prefix', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-inbox-unit-'))
+  const root = createTestTempDirectory('pancreator-inbox-unit-')
   const modifiedAt = new Date('2024-04-01T11:00:00.000Z')
   const shortRunId = makeWorkflowRunId(modifiedAt, 'short')
   const longRunId = makeWorkflowRunId(modifiedAt, 'longer-run')
@@ -134,7 +133,7 @@ test('listInbox matches the longest known run prefix', () => {
 })
 
 test('listInbox falls back to a unique date-sequence base match', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-inbox-unit-'))
+  const root = createTestTempDirectory('pancreator-inbox-unit-')
   const modifiedAt = new Date('2024-04-02T11:00:00.000Z')
   const runId = '63319_Aug-21-0127_operator-upd'
 
@@ -184,7 +183,7 @@ test('listInbox falls back to a unique date-sequence base match', () => {
 })
 
 test('listInbox returns an empty list when the inbox directory is missing', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-inbox-unit-'))
+  const root = createTestTempDirectory('pancreator-inbox-unit-')
 
   try {
     assert.deepEqual(listInbox(root), [])

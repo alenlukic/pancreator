@@ -37,6 +37,7 @@ import {
   TEST_PROFILE_ENV,
   suiteProfileEvidencePath,
 } from './suite-profile.js'
+import { auditTestScratchDirectories } from './test-scratch-audit.js'
 import { loadRegistry, validateRegistry } from './requirements/registry.js'
 import {
   resolveRequirements,
@@ -3612,6 +3613,10 @@ export function validateRepository(root: string): RepositoryValidationResult {
 
       errors.push(...directiveAudit.errors)
       warnings.push(...directiveAudit.warnings)
+
+      // The test suite is self-development only, so its scratch discipline is
+      // checked here rather than in a target installation.
+      errors.push(...auditTestScratchDirectories(root).errors)
     }
 
     const projection = validateProjectionDrift(root)

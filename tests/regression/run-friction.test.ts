@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -28,6 +27,7 @@ import {
   submitAsSupervisor,
 } from '../helpers.js'
 import type { Invocation } from '../../src/lib/types.js'
+import { createTestTempDirectory } from '../temp.js'
 
 const REPO_ROOT = process.cwd()
 
@@ -313,9 +313,9 @@ test('the delegation validator accepts one leading persona label', () => {
 
 test('plan file paths resolve against the workspace root, not the installation', () => {
   const root = createFixture()
-  const workspace = mkdtempSync(path.join(tmpdir(), 'pan-workspace-'))
+  const workspace = createTestTempDirectory('pan-workspace-')
   const targetFile = path.join(workspace, 'app', 'model.py')
-  const sibling = mkdtempSync(path.join(tmpdir(), 'pan-sibling-repo-'))
+  const sibling = createTestTempDirectory('pan-sibling-repo-')
   const siblingFile = path.join(sibling, 'model.py')
 
   mkdirSync(path.dirname(targetFile), { recursive: true })
@@ -394,7 +394,7 @@ test('plan file paths resolve against the workspace root, not the installation',
 })
 
 test('re-scaffolding an untouched output is idempotent, not an error', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-scaffold-idem-'))
+  const root = createTestTempDirectory('pan-scaffold-idem-')
   const outputPath = 'runtime/logs/workflows/x/outputs/out.json'
   const invocation = {
     invocation_id: 'implement-1',

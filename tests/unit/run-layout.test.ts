@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict'
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
-import os from 'node:os'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import { detectRunLayout, resolveRunLayout } from '../../src/lib/run-layout.js'
+import { createTestTempDirectory } from '../temp.js'
 
 function fixture(): { root: string; runId: string; runRoot: string } {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'pan-run-layout-'))
+  const root = createTestTempDirectory('pan-run-layout-')
   const runId = '63327_Aug-13-1079_deadbeef'
   const runRoot = path.join(root, 'runtime', 'logs', 'workflows', runId)
 

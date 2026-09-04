@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { chmodSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
 import {
@@ -24,6 +23,7 @@ import {
   cloneTree as cloneSharedTree,
   createFixture,
   createRun,
+  createTestTempDirectory,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
@@ -583,7 +583,7 @@ interface Template {
 const templates = new Map<string, Template>()
 
 function cloneTree(template: string): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-v2-cp-'))
+  const root = createTestTempDirectory('v2-cp-')
 
   cloneSharedTree(template, root, { timeout: CLONE_TIMEOUT_MS })
 

@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -16,6 +15,7 @@ import type {
   EvalScenario,
   LoadedEvalScenario,
 } from '../../src/lib/evals/index.js'
+import { createTestTempDirectory } from '../temp.js'
 
 const RUN_ID = '63300_Aug-29-0100_synthetic'
 
@@ -56,7 +56,7 @@ class SyntheticRun {
   private readonly events: Record<string, unknown>[] = []
 
   constructor() {
-    this.root = mkdtempSync(path.join(tmpdir(), 'pancreator-eval-graders-'))
+    this.root = createTestTempDirectory('pancreator-eval-graders-')
     this.agent = path.join(
       this.root,
       'runtime',

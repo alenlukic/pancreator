@@ -1,23 +1,24 @@
 import assert from 'node:assert/strict'
 import { execFileSync, spawn, spawnSync } from 'node:child_process'
+import type { SpawnSyncReturns } from 'node:child_process'
 import {
   appendFileSync,
   chmodSync,
   copyFileSync,
   existsSync,
   mkdirSync,
-  mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs'
-import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 import { setTimeout as delay } from 'node:timers/promises'
 
 import { attestRunCard, createFixture } from '../helpers.js'
+import { createTestTempDirectory } from '../temp.js'
 
 const ROOT = process.cwd()
 const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
@@ -71,7 +72,7 @@ async function waitForPath(filePath: string): Promise<void> {
 }
 
 test('pan reuses the prepared build during a repository test run', () => {
-  const toolDirectory = mkdtempSync(path.join(tmpdir(), 'pancreator-tools-'))
+  const toolDirectory = createTestTempDirectory('pancreator-tools-')
 
   try {
     symlinkSync(process.execPath, path.join(toolDirectory, 'node'))
@@ -95,7 +96,7 @@ test('pan reuses the prepared build during a repository test run', () => {
 })
 
 test('build lock keeps the CLI available during concurrent commands', async () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-build-lock-'))
+  const root = createTestTempDirectory('pancreator-build-lock-')
   const binDirectory = path.join(root, 'bin')
   const toolDirectory = path.join(root, 'tools')
   const runBuilt = path.join(binDirectory, 'run-built')
@@ -183,7 +184,7 @@ interface BuildScriptFixture {
 }
 
 function createBuildScriptFixture(): BuildScriptFixture {
-  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-build-reuse-'))
+  const root = createTestTempDirectory('pancreator-build-reuse-')
   const binDirectory = path.join(root, 'bin')
   const toolDirectory = path.join(root, 'tools')
 
@@ -191,7 +192,7 @@ function createBuildScriptFixture(): BuildScriptFixture {
   mkdirSync(toolDirectory, { recursive: true })
   symlinkSync(process.execPath, path.join(toolDirectory, 'node'))
 
-  for (const script of ['build', 'run-built', 'run-quiet']) {
+  for (const script of ['build', 'run-built', 'run-quiet', 'run-tests']) {
     const target = path.join(binDirectory, script)
 
     copyFileSync(path.join(ROOT, 'bin', script), target)
@@ -224,6 +225,218 @@ function createBuildScriptFixture(): BuildScriptFixture {
 
   return { root, runBuilt: path.join(binDirectory, 'run-built'), env }
 }
+
+// The wrapper pairs the holder's pid with its start time, so these helpers
+// build the same token bin/run-built writes.
+function ownerToken(pid: number): string {
+  return execFileSync('ps', ['-o', 'lstart=', '-p', String(pid)], {
+    encoding: 'utf8',
+  })
+    .replace(/ /gu, '')
+    .trim()
+}
+
+// A reclaim test must not inherit the production ceiling. If ownership
+// checking regresses, these cases should fail in seconds instead of waiting
+// out the default five minutes.
+function reclaimEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  return { ...env, PANCREATOR_BUILD_LOCK_TIMEOUT_SECONDS: '20' }
+}
+
+function writeBuildLock(root: string, contents: string): string {
+  const lock = path.join(root, 'runtime', 'build', 'build.lock')
+
+  mkdirSync(path.dirname(lock), { recursive: true })
+  writeFileSync(lock, contents)
+
+  return lock
+}
+
+// The lock lives under the root, so it outlives the reboot that resets pid
+// assignment. A lock abandoned by SIGKILL or by power loss can therefore name
+// a pid the kernel has since given to something else, and a liveness test
+// that only asks whether the pid exists would wait on that stranger forever.
+test('a build lock naming a recycled pid is reclaimed', () => {
+  const fixture = createBuildScriptFixture()
+  // Stands in for whatever the kernel later assigned the dead holder's pid.
+  const squatter = spawn('/bin/sleep', ['30'])
+
+  try {
+    assert.ok(squatter.pid)
+
+    const lock = writeBuildLock(
+      fixture.root,
+      `${squatter.pid}\nMonJan109:00:002001\n`,
+    )
+
+    const result = spawnSync(
+      '/bin/bash',
+      [fixture.runBuilt, '--', '/usr/bin/true'],
+      { cwd: fixture.root, encoding: 'utf8', env: reclaimEnv(fixture.env) },
+    )
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(existsSync(lock), false)
+  } finally {
+    squatter.kill()
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
+test('a build lock written by an older single-line wrapper is reclaimed', () => {
+  const fixture = createBuildScriptFixture()
+  const squatter = spawn('/bin/sleep', ['30'])
+
+  try {
+    assert.ok(squatter.pid)
+
+    const lock = writeBuildLock(fixture.root, `${squatter.pid}\n`)
+
+    const result = spawnSync(
+      '/bin/bash',
+      [fixture.runBuilt, '--', '/usr/bin/true'],
+      { cwd: fixture.root, encoding: 'utf8', env: reclaimEnv(fixture.env) },
+    )
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(existsSync(lock), false)
+  } finally {
+    squatter.kill()
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
+// A verified holder still serializes, but every pan command passes through
+// this wait, so it ends with a diagnosable failure rather than a hang.
+test('a wait on a verified live lock holder ends at a bound', () => {
+  const fixture = createBuildScriptFixture()
+  const holder = spawn('/bin/sleep', ['30'])
+
+  try {
+    assert.ok(holder.pid)
+
+    const lock = writeBuildLock(
+      fixture.root,
+      `${holder.pid}\n${ownerToken(holder.pid)}\n`,
+    )
+
+    const result = spawnSync(
+      '/bin/bash',
+      [fixture.runBuilt, '--', '/usr/bin/true'],
+      {
+        cwd: fixture.root,
+        encoding: 'utf8',
+        env: {
+          ...fixture.env,
+          PANCREATOR_BUILD_LOCK_NOTICE_SECONDS: '1',
+          PANCREATOR_BUILD_LOCK_TIMEOUT_SECONDS: '2',
+        },
+      },
+    )
+
+    assert.equal(result.status, 1)
+    assert.match(result.stderr, /gave up after 2s waiting for the build lock/u)
+    // Only an unverifiable lock is reclaimed, so a live holder keeps its own.
+    assert.equal(existsSync(lock), true)
+  } finally {
+    holder.kill()
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
+function runTests(
+  fixture: BuildScriptFixture,
+  command: string[],
+): SpawnSyncReturns<string> {
+  return spawnSync(
+    '/bin/bash',
+    [path.join(fixture.root, 'bin', 'run-tests'), '--', ...command],
+    { cwd: fixture.root, encoding: 'utf8', env: fixture.env },
+  )
+}
+
+function scratchRuns(root: string): string[] {
+  const scratch = path.join(root, 'runtime', 'tmp', 'tests')
+
+  return existsSync(scratch)
+    ? readdirSync(scratch).filter((entry) => entry.startsWith('run-'))
+    : []
+}
+
+// Fixtures never touch the shared OS temp directory. The wrapper hands the
+// suite a directory under the root, fences git discovery at it so a fixture
+// without its own repository reads as none, and removes it when the suite
+// ends, whatever the suite's exit status.
+test('run-tests scopes the suite to a scratch directory it removes afterwards', () => {
+  const fixture = createBuildScriptFixture()
+  const observed = path.join(fixture.root, 'observed')
+
+  try {
+    const result = runTests(fixture, [
+      '/bin/bash',
+      '-c',
+      `printf '%s\\n%s\\n' "$PANCREATOR_TEST_TMP" "$GIT_CEILING_DIRECTORIES" > "${observed}"; test -d "$PANCREATOR_TEST_TMP"; exit 7`,
+    ])
+
+    assert.equal(result.status, 7, result.stderr)
+
+    const [scratch, ceiling] = readFileSync(observed, 'utf8').split('\n')
+
+    assert.ok(scratch)
+    assert.equal(
+      path.dirname(scratch),
+      path.join(fixture.root, 'runtime', 'tmp', 'tests'),
+    )
+    assert.match(path.basename(scratch), /^run-/u)
+    assert.equal(ceiling?.split(':')[0], scratch)
+    assert.equal(existsSync(scratch), false)
+    assert.deepEqual(scratchRuns(fixture.root), [])
+    // A fixture's .js files must not inherit this checkout's module type.
+    assert.equal(
+      readFileSync(path.join(path.dirname(scratch), 'package.json'), 'utf8'),
+      '{}\n',
+    )
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
+// A run killed outright skips its own cleanup, so the next run sweeps what it
+// left. The sweep uses the same pid-plus-start-time identity as the build
+// lock: a directory naming a recycled pid is garbage, a live run's is not.
+test('run-tests sweeps scratch left by a dead run and keeps a live one', () => {
+  const fixture = createBuildScriptFixture()
+  const squatter = spawn('/bin/sleep', ['30'])
+  const holder = spawn('/bin/sleep', ['30'])
+  const scratch = path.join(fixture.root, 'runtime', 'tmp', 'tests')
+
+  try {
+    assert.ok(squatter.pid)
+    assert.ok(holder.pid)
+
+    mkdirSync(path.join(scratch, 'run-dead'), { recursive: true })
+    writeFileSync(
+      path.join(scratch, 'run-dead', '.owner'),
+      `${squatter.pid}\nMonJan109:00:002001\n`,
+    )
+    writeFileSync(path.join(scratch, 'run-dead', 'fixture'), '')
+
+    mkdirSync(path.join(scratch, 'run-live'), { recursive: true })
+    writeFileSync(
+      path.join(scratch, 'run-live', '.owner'),
+      `${holder.pid}\n${ownerToken(holder.pid)}\n`,
+    )
+
+    const result = runTests(fixture, ['/usr/bin/true'])
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.deepEqual(scratchRuns(fixture.root), ['run-live'])
+  } finally {
+    squatter.kill()
+    holder.kill()
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
 
 test('run-built exits after the requested command completes', () => {
   const fixture = createBuildScriptFixture()

@@ -3,12 +3,10 @@ import { execFileSync } from 'node:child_process'
 import {
   chmodSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
   rmSync,
   writeFileSync,
 } from 'node:fs'
-import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -28,6 +26,7 @@ import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { nextSemanticVersion } from '../../src/lib/versioning.js'
 import { createFixture, writeJson } from '../helpers.js'
 import type { StageOutput } from '../../src/lib/types.js'
+import { createTestTempDirectory } from '../temp.js'
 
 function git(root: string, args: string[]): string {
   return execFileSync('git', args, {
@@ -49,7 +48,7 @@ function startProcessAudit(): {
   logPath: string
   restore: () => void
 } {
-  const directory = mkdtempSync(path.join(tmpdir(), 'pan-release-audit-'))
+  const directory = createTestTempDirectory('pan-release-audit-')
   const logPath = path.join(directory, 'calls.log')
   const gitExecutable = execFileSync('which', ['git'], {
     encoding: 'utf8',
@@ -139,7 +138,7 @@ function prepareReleaseCandidate(name: string): {
   version: string
 } {
   const root = createFixture()
-  const remote = mkdtempSync(path.join(tmpdir(), 'pan-release-recovery-'))
+  const remote = createTestTempDirectory('pan-release-recovery-')
 
   execFileSync('git', ['init', '--bare', '-q'], { cwd: remote })
   git(root, ['branch', '-M', 'main'])
@@ -187,7 +186,7 @@ function commitReleaseMetadata(worktreePath: string, version: string): string {
 
 test('local release sync checkpoints changes and finalizes two commits', () => {
   const root = createFixture()
-  const remote = mkdtempSync(path.join(tmpdir(), 'pan-release-remote-'))
+  const remote = createTestTempDirectory('pan-release-remote-')
   let processAudit: ReturnType<typeof startProcessAudit> | null = null
 
   try {
@@ -444,7 +443,7 @@ test('local release sync checkpoints changes and finalizes two commits', () => {
 
 test('release continuation preserves unresolved conflicts and completes staged resolutions', () => {
   const root = createFixture()
-  const remote = mkdtempSync(path.join(tmpdir(), 'pan-release-conflict-'))
+  const remote = createTestTempDirectory('pan-release-conflict-')
 
   try {
     execFileSync('git', ['init', '--bare', '-q'], { cwd: remote })

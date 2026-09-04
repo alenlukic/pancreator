@@ -905,10 +905,17 @@ export function testCommandArgs(selected: string[]): string[] {
 
 function runSelected(root: string, selected: string[]): number {
   const runBuilt = path.join(root, 'bin', 'run-built')
-  const result = spawnSync(runBuilt, ['--', ...testCommandArgs(selected)], {
-    cwd: root,
-    stdio: 'inherit',
-  })
+  // run-tests gives the selection its own scratch directory under the root
+  // and removes it afterwards, the same as every npm test script.
+  const runTests = path.join(root, 'bin', 'run-tests')
+  const result = spawnSync(
+    runBuilt,
+    ['--', runTests, '--', ...testCommandArgs(selected)],
+    {
+      cwd: root,
+      stdio: 'inherit',
+    },
+  )
 
   if (result.error) {
     throw new PanError(

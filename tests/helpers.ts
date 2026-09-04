@@ -4,14 +4,13 @@ import {
   cpSync,
   existsSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
   writeFileSync,
 } from 'node:fs'
-import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 import { recordFixtureEvent } from './reporters/fixture-profile.js'
+import { createTestTempDirectory } from './temp.js'
 
 import { renderBrief } from '../src/lib/briefs.js'
 import {
@@ -158,13 +157,18 @@ export function cloneTree(
   })
 }
 
+// Scratch space comes from tests/temp.ts, which allocates under the runner's
+// per-run directory rather than the shared OS temp directory. Re-exported so
+// existing imports from helpers keep working.
+export { createTestTempDirectory } from './temp.js'
+
 // A fixture build costs several seconds, so the process builds one template
 // and every createFixture() call returns a clone of it.
 let fixtureTemplateRoot: string | null = null
 
 function cloneFixtureTemplate(template: string): string {
   const started = performance.now()
-  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-v2-'))
+  const root = createTestTempDirectory('v2-')
 
   cloneTree(template, root)
   recordFixtureEvent('template_clone', 'main', performance.now() - started)
@@ -191,7 +195,7 @@ export function createFixture(): string {
   }
 
   const buildStarted = performance.now()
-  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-v2-'))
+  const root = createTestTempDirectory('v2-')
 
   for (const entry of [
     'governance',

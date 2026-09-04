@@ -1,12 +1,5 @@
 import assert from 'node:assert/strict'
-import {
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -32,6 +25,7 @@ import {
   failingVerify,
   submitStageOutput,
 } from './delivery-helpers.js'
+import { createTestTempDirectory } from '../temp.js'
 
 const PASS = `node -e "process.exit(0)"`
 
@@ -818,7 +812,7 @@ test('an incompatible baseline artifact pauses the run before delegation', () =>
 })
 
 test('a claims omission rejects the submission before any shell gate executes', () => {
-  const markerDir = mkdtempSync(path.join(tmpdir(), 'pancreator-gate-marker-'))
+  const markerDir = createTestTempDirectory('pancreator-gate-marker-')
   const marker = path.join(markerDir, 'gate-executed')
   const writeMarker = (profile: string): string =>
     `node -e "require('node:fs').writeFileSync(${JSON.stringify(marker)}, '${profile}')"`

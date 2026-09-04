@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -8,11 +7,12 @@ import {
   clearRegistryCache,
   loadRegistry,
 } from '../../src/lib/requirements/registry.js'
+import { createTestTempDirectory } from '../temp.js'
 
 test('registry rejects duplicate ids', () => {
   // The loader reads only governance/registries/validation_registry.json, so a
   // bare temporary root is enough.
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-registry-'))
+  const root = createTestTempDirectory('pan-registry-')
   const registryPath = path.join(
     root,
     'governance',

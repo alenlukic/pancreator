@@ -1,12 +1,5 @@
 import assert from 'node:assert/strict'
-import {
-  copyFileSync,
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs'
-import { tmpdir } from 'node:os'
+import { copyFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -16,6 +9,7 @@ import {
   validateEvalScenarioDocument,
   validateEvalScenarios,
 } from '../../src/lib/evals/index.js'
+import { createTestTempDirectory } from '../temp.js'
 
 const REPO_ROOT = process.cwd()
 
@@ -62,7 +56,7 @@ test('the scenario loader returns every shipped scenario and grader set', () => 
 })
 
 test('a scenario that names a pipeline configuration loads', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-eval-scenario-'))
+  const root = createTestTempDirectory('pan-eval-scenario-')
 
   try {
     mkdirSync(path.join(root, 'evals', 'scenarios'), { recursive: true })
@@ -152,7 +146,7 @@ test('validateEvalScenarioDocument rejects a name that differs from the file', (
 })
 
 test('validateEvalScenarios is silent without an evals directory and strict with one', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-eval-scenarios-'))
+  const root = createTestTempDirectory('pancreator-eval-scenarios-')
 
   try {
     assert.deepEqual(validateEvalScenarios(root), [])

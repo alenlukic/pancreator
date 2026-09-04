@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict'
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
-import os from 'node:os'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import { resolveTargetInstructionPaths } from '../../src/lib/target-instructions.js'
+import { createTestTempDirectory } from '../temp.js'
 
 function fixture(): string {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'pan-target-instructions-'))
+  const root = createTestTempDirectory('pan-target-instructions-')
 
   writeFileSync(path.join(root, 'AGENTS.md'), '# Root\n')
   mkdirSync(path.join(root, 'apps', 'web', 'src'), { recursive: true })

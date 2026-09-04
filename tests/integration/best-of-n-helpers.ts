@@ -1,8 +1,7 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, realpathSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { readFileSync, realpathSync } from 'node:fs'
 import path from 'node:path'
 
 import {
@@ -18,6 +17,7 @@ import type { StageOutput } from '../../src/lib/types.js'
 import {
   attestRunCard,
   createFixture,
+  createTestTempDirectory,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
@@ -231,7 +231,7 @@ function buildBestOfNTemplate(key: BestOfNCheckpointKey): {
 }
 
 export function cloneTree(template: string): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-v2-'))
+  const root = createTestTempDirectory('v2-')
 
   cloneSharedTree(template, root, { timeout: 180_000 })
 

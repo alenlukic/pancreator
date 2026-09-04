@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -14,6 +13,7 @@ import {
   type TestIdentity,
   type TuneRecord,
 } from '../../src/lib/test-tuning.js'
+import { createTestTempDirectory } from '../temp.js'
 
 const sample = (file: string, name: string): TestIdentity => ({
   file,
@@ -247,7 +247,7 @@ test('identityKey includes occurrence suffix for duplicate names', () => {
 })
 
 test('buildBenchmarkFromProfiles preserves every timing and fixture cost', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pan-tune-benchmark-'))
+  const root = createTestTempDirectory('pan-tune-benchmark-')
   const profileDir = path.join(root, 'runtime/tune-harness/work/session')
 
   mkdirSync(profileDir, { recursive: true })

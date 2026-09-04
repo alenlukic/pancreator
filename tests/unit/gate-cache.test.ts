@@ -1,13 +1,11 @@
 import assert from 'node:assert/strict'
 import {
   mkdirSync,
-  mkdtempSync,
   readFileSync,
   rmSync,
   writeFileSync,
   existsSync,
 } from 'node:fs'
-import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -20,6 +18,7 @@ import {
 } from '../../src/lib/gate-cache.js'
 import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
 import type { RunState, StageDefinition } from '../../src/lib/types.js'
+import { createTestTempDirectory } from '../temp.js'
 
 function fixtureState(
   root: string,
@@ -77,7 +76,7 @@ function markerStage(passing: boolean): StageDefinition {
 }
 
 function scratchRoot(): string {
-  return mkdtempSync(path.join(tmpdir(), 'pancreator-gate-cache-'))
+  return createTestTempDirectory('pancreator-gate-cache-')
 }
 
 function markerCount(root: string): number {

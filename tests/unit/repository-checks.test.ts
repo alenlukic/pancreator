@@ -1,12 +1,5 @@
 import assert from 'node:assert/strict'
-import {
-  mkdirSync,
-  mkdtempSync,
-  realpathSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -23,10 +16,10 @@ import {
 import type { RepositoryCheckResult } from '../../src/lib/repository-checks.js'
 import { loadRepositoryCheckBaseline } from '../../src/lib/validation.js'
 import type { RunState } from '../../src/lib/types.js'
-import { createFixture } from '../helpers.js'
+import { createFixture, createTestTempDirectory } from '../helpers.js'
 
 function makeInstallation(): { root: string; workspace: string } {
-  const parent = mkdtempSync(path.join(tmpdir(), 'pancreator-checks-'))
+  const parent = createTestTempDirectory('checks-')
   const root = path.join(parent, '.pancreator')
   const workspace = path.join(parent, 'workspace')
 
@@ -57,7 +50,7 @@ function writeChecks(root: string, profiles: Record<string, unknown>): void {
 }
 
 test('an elided baseline loads its full result before comparison', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-elided-check-'))
+  const root = createTestTempDirectory('elided-check-')
   const artifactDirectory = 'runtime/logs/workflows/run-1/agent/artifacts/json'
   const summaryPath = `${artifactDirectory}/baseline-static.json`
   const fullPath = `${artifactDirectory}/baseline-static.full.json`
