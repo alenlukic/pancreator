@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -8,11 +7,12 @@ import {
   cursorAuthenticationReadiness,
   probeEnvironment,
 } from '../../src/lib/executors/cursor-probe.js'
+import { createTestTempDirectory } from '../helpers.js'
 
 const SECRET = 'sk-cursor-super-secret-value'
 
 function makeRoot(): string {
-  return mkdtempSync(path.join(tmpdir(), 'pan-probe-env-'))
+  return createTestTempDirectory('probe-env-')
 }
 
 /** Make an embedded harness at `<target>/.pancreator`, below the target. */
