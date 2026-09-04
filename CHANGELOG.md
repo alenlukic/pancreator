@@ -1,5 +1,21 @@
 # Changelog
 
+## [5.13.1] - 2026-09-04
+
+### Changed
+
+- Give every test run one scratch directory under `runtime/tmp/tests/` that `bin/run-tests` removes when the run ends, and sweep directories left by runs that died. Fixtures never touch the shared OS temp directory, which had accumulated 166,000 leaked entries and slowed every create and unlink there for every program on the host ([run-tests](bin/run-tests), [temp](tests/temp.ts), [d7ae30f4](https://github.com/alenlukic/pancreator/commit/d7ae30f4)).
+- Fence git discovery and Node module-type resolution at the scratch directory, so a fixture without its own repository or `package.json` behaves as it did in the shared temp directory rather than inheriting this checkout's ([run-tests](bin/run-tests)).
+- Move the build lock to `runtime/build/` and the `run-quiet` capture files to `runtime/tmp/`, so no `pan` invocation touches the shared temp directory. Pair the lock owner's pid with its start time and bound the wait, so an orphaned lock can never wedge a root ([run-built](bin/run-built), [run-quiet](bin/run-quiet), [a82d3eaf](https://github.com/alenlukic/pancreator/commit/a82d3eaf)).
+
+### Added
+
+- Reject `tmpdir()` under `tests/` in `pan validate`, so the leak cannot recur ([test-scratch-audit](src/lib/test-scratch-audit.ts), [TP-09](governance/handbooks/eng/testing.md)).
+
+### Fixed
+
+- `pan --help` fell from 7.97s to 0.21s and `pan models --sync` from 3.21s to 0.23s once the wrappers stopped mutating the shared temp directory ([a82d3eaf](https://github.com/alenlukic/pancreator/commit/a82d3eaf)).
+
 ## [5.13.0] - 2026-09-03
 
 ### Changed
