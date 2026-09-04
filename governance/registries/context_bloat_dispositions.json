@@ -123,6 +123,20 @@
       ]
     },
     {
+      "id": "unreached-path-cohort-rule",
+      "category": "duplicate",
+      "sources": [
+        "governance/policies/DEV-001.json",
+        "governance/policies/REMED-001.json"
+      ],
+      "disposition": "retain",
+      "rationale": "The impacted mapping reaches no data path, so each implementation role needs the judgment-cohort recovery on its own card. The lookup table resolves DEV-001 for the coder and REMED-001 for the remediator, and neither policy reaches the other role. A shared owner would put plan-scoped implementation rules on a remediation card.",
+      "evidence": [
+        "tests/unit/test-impact.test.ts: an unmapped change is reported as unreached and raises the advisory",
+        "tests/unit/policies.test.ts: policy structure and instruction coverage"
+      ]
+    },
+    {
       "id": "delivery-remediator-personas",
       "category": "duplicate",
       "sources": [

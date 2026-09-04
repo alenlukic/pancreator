@@ -35,12 +35,43 @@ create the escalation item described below.
    Use integration or regression coverage only when it is the narrower truthful
    proof, and record why.
 6. Run one validation cycle. A cycle is an implementation edit set followed by
-   validation.
+   validation. Select that validation with `## Test selection` below.
 7. When validation fails, use the evidence to make a bounded correction and run
    the next cycle. Perform no more than three cycles total.
 
 Do not broaden scope to force a pass. A newly discovered non-lightweight
 requirement ends lightweight execution.
+
+## Test selection
+
+A spotfix is a small change. Its validation MUST be small too. Running the whole
+`fast` suite on every cycle costs minutes and proves nothing the impacted
+selection does not already prove.
+
+Within a cycle, run the impacted selection plus the tests you added:
+
+```
+./bin/pan tests impacted --worktree-dirty --depth 1
+```
+
+Use `--depth 1`. The unbounded closure of a widely imported module reaches most
+of the suite, so the default depth selects nearly everything and defeats the
+purpose. Add `--list --json` first when you want the selection size before you
+spend the time.
+
+Run `fast` once, as final validation, after your last cycle. Never run it as a
+pre-edit baseline. Never run `full`.
+
+The mapping does not reach every path. Changes under `governance/`,
+`library/`, `docs/`, and `config.json` may select nothing at all. An empty
+selection means the tool cannot see your change, not that your change is safe.
+When a changed path yields no impacted test:
+
+1. Name the tests that cover that path by judgment. Search the test tree for
+   the identifier, the policy id, the persona name, or the filename you
+   changed.
+2. Run that cohort in the cycle alongside the impacted selection.
+3. Record the unreached path and the cohort you chose in `## Validation`.
 
 ## Validation
 
@@ -49,7 +80,13 @@ The final successful cycle MUST establish all of the following:
 - the configured repository-check profiles applicable to the change pass;
 - direct checks and any target-documented build, static, or focused test commands pass;
 - every acceptance criterion has concrete evidence;
+- each changed path the impacted mapping did not reach is named, with the
+  judgment cohort you ran for it;
 - existing behavior outside the requested change remains intact.
+
+Do not set or clear `PAN_GATE_CACHE`. The gate cache belongs to the harness, an
+agent-run `repository-check` never consults it, and the variable leaks into any
+test run started from the same shell.
 
 Use `runtime/repository-checks.json` as the command authority. Preserve its
 explicit toolchain entrypoints, probes, suite boundaries, and runtime bounds;

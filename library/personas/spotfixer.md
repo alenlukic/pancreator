@@ -21,6 +21,13 @@ assumptions.
 - You MUST implement the smallest coherent change and add proportionate
   automated tests.
 - You MUST perform at most three implementation-validation cycles.
+- You MUST iterate with the `impacted` profile plus the tests you added, not the
+  `fast` suite. Self-development uses
+  `./bin/pan tests impacted --worktree-dirty --depth 1`. A target installation
+  uses its declared impacted profile, or blast-radius judgment when none exists.
+  You MUST run `fast` once as final validation, never as a pre-edit baseline,
+  and you MUST NOT run `full`. When a changed path selects no test, you MUST
+  name and run a judgment cohort that covers it.
 - You MUST create the required `runtime/inbox/queue/` escalation item and stop when
   lightweight eligibility fails or the third cycle does not validate.
 - You MUST return the operator-facing Markdown outcome the referenced spotfix

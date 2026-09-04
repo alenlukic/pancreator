@@ -33,6 +33,23 @@ export const GLOBAL_FILES = [
   'tests/reporters/failures-only.ts',
 ]
 
+/**
+ * Directories of data the lane reads but no module imports. The import graph
+ * cannot reach them, so a change under one selects tests by the literal
+ * references those tests carry instead.
+ */
+export const DATA_ROOTS = ['governance', 'library', 'docs']
+
+/** Single data files outside `DATA_ROOTS` that the lane reads the same way. */
+export const DATA_FILES = ['config.json']
+
+/**
+ * Harness-generated trees. A change here is run state rather than a change
+ * under test, so it is excluded from the unreached report. The rest of
+ * `runtime/` is reported, because a hand-edited runtime file can break tests.
+ */
+export const GENERATED_ROOTS = ['runtime/logs/', 'runtime/cache/', 'dist/']
+
 export const DEFAULT_ADVISORY_RATIO = 0.6
 export const RECORD_RELATIVE_PATH = 'runtime/cache/test-impact.jsonl'
 export const IMPACTED_COMMAND = './bin/pan tests impacted'
@@ -58,6 +75,8 @@ export interface ModuleGraph {
   binReferences: Map<string, Set<string>>
   /** fixture directory (`tests/fixtures/<name>`) → test files that name it. */
   fixtureReferences: Map<string, Set<string>>
+  /** data path or id literal → test files that name it. */
+  dataReferences: Map<string, Set<string>>
   /** Files at least one module imports only for types. */
   typeOnlyTargets: Set<string>
   /** Parser that produced the specifiers. */
@@ -342,6 +361,7 @@ export function isLaneTest(file: string): boolean {
 interface SpecialReferences {
   bin: Set<string>
   fixtures: Set<string>
+  data: Set<string>
   cli: boolean
 }
 
@@ -349,10 +369,34 @@ const BIN_REFERENCE = /bin(?:\/|['"],\s*['"])([\w.-]+)/gu
 const FIXTURE_REFERENCE = /fixtures(?:\/|['"],\s*['"])([\w.-]+)/gu
 const CLI_REFERENCE = /dist\/src\/cli\.js|['"]cli\.js['"]/u
 
+/** A quoted string literal, which is how a module names a data path or id. */
+const STRING_LITERAL = /['"`]([^'"`\n]{1,200})['"`]/gu
+
+/** A policy, criterion, or registry id such as `SPOT-001`. */
+export const DATA_ID = /^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-\d{3}$/u
+
+/** A bare data filename such as `implement.md`, which tests join to a root. */
+const DATA_BASENAME = /^[\w.-]+\.(?:md|json|ya?ml)$/u
+
+/** Whether a string literal names data under `DATA_ROOTS` or `DATA_FILES`. */
+export function isDataReference(literal: string): boolean {
+  if (
+    DATA_FILES.includes(literal) ||
+    DATA_ID.test(literal) ||
+    DATA_BASENAME.test(literal)
+  ) {
+    return true
+  }
+
+  return DATA_ROOTS.some(
+    (root) => literal === root || literal.startsWith(`${root}/`),
+  )
+}
+
 /**
- * Extract every bin script, fixture directory, and CLI reference from one
- * source in a single pass per kind. The captured name must be a known bin or
- * fixture, which is the same test `referencesBinScript` and
+ * Extract every bin script, fixture directory, data reference, and CLI
+ * reference from one source in a single pass per kind. The captured name must
+ * be a known bin or fixture, which is the same test `referencesBinScript` and
  * `referencesFixture` apply one name at a time.
  */
 export function extractSpecialReferences(
@@ -364,6 +408,15 @@ export function extractSpecialReferences(
   const knownFixtures = new Set(fixtureDirectories)
   const bin = new Set<string>()
   const fixtures = new Set<string>()
+  const data = new Set<string>()
+
+  for (const match of source.matchAll(STRING_LITERAL)) {
+    const literal = match[1] ?? ''
+
+    if (isDataReference(literal)) {
+      data.add(literal)
+    }
+  }
 
   for (const match of source.matchAll(BIN_REFERENCE)) {
     const name = match[1] ?? ''
@@ -381,7 +434,12 @@ export function extractSpecialReferences(
     }
   }
 
-  return { bin, fixtures, cli: CLI_REFERENCE.test(source) || bin.has('pan') }
+  return {
+    bin,
+    fixtures,
+    data,
+    cli: CLI_REFERENCE.test(source) || bin.has('pan'),
+  }
 }
 
 /** The lane tests that are the module itself or import it, transitively. */
@@ -435,6 +493,7 @@ export async function buildModuleGraph(
   const dependents = new Map<string, Set<string>>()
   const binReferences = new Map<string, Set<string>>()
   const fixtureReferences = new Map<string, Set<string>>()
+  const dataReferences = new Map<string, Set<string>>()
   const typeOnlyTargets = new Set<string>()
   const specialReferences = new Map<string, SpecialReferences>()
   const cliSource = fileSet.has('src/cli.ts') ? 'src/cli.ts' : null
@@ -472,7 +531,12 @@ export async function buildModuleGraph(
       fixtureDirectories,
     )
 
-    if (refs.bin.size > 0 || refs.fixtures.size > 0 || refs.cli) {
+    if (
+      refs.bin.size > 0 ||
+      refs.fixtures.size > 0 ||
+      refs.data.size > 0 ||
+      refs.cli
+    ) {
       specialReferences.set(file, refs)
     }
   }
@@ -491,6 +555,15 @@ export async function buildModuleGraph(
         addEdge(fixtureReferences, `tests/fixtures/${name}`, test)
       }
 
+      // Only the test side seeds data references. A `governance/policies`
+      // literal inside a src module would otherwise propagate to every test
+      // that transitively imports it, which is most of the lane.
+      if (module.startsWith('tests/')) {
+        for (const literal of refs.data) {
+          addEdge(dataReferences, literal, test)
+        }
+      }
+
       // A test that spawns the CLI depends on the whole CLI program.
       if (refs.cli && cliSource) {
         addEdge(imports, test, cliSource)
@@ -505,6 +578,7 @@ export async function buildModuleGraph(
     dependents,
     binReferences,
     fixtureReferences,
+    dataReferences,
     typeOnlyTargets,
     parser: ts ? 'typescript' : 'regex',
     build_ms: Math.round(performance.now() - started),
@@ -575,6 +649,43 @@ function globToRegex(glob: string): RegExp {
   return new RegExp(`^${escaped}$`, 'u')
 }
 
+/**
+ * The literals a lane test could carry for one changed data file: its exact
+ * path, each ancestor directory a test may read whole, and its id when the
+ * basename is one. A test that names any of them reads what changed.
+ */
+export function dataSeedKeys(file: string): string[] {
+  if (DATA_FILES.includes(file)) {
+    return [file]
+  }
+
+  const segments = file.split('/')
+
+  if (!DATA_ROOTS.includes(segments[0] ?? '')) {
+    return []
+  }
+
+  const keys = [file]
+
+  // Ancestors start below the root. A bare `governance` or `library` literal
+  // appears in almost every test, so it selects the lane instead of narrowing
+  // it. `governance/policies` is specific enough to mean something.
+  for (let depth = 2; depth < segments.length; depth += 1) {
+    keys.push(segments.slice(0, depth).join('/'))
+  }
+
+  const filename = segments.at(-1) ?? ''
+  const basename = filename.replace(/\.[^.]+$/u, '')
+
+  keys.push(filename)
+
+  if (DATA_ID.test(basename)) {
+    keys.push(basename)
+  }
+
+  return keys
+}
+
 /** Select the lane tests a change set impacts. */
 export function selectImpactedTests(
   graph: ModuleGraph,
@@ -633,6 +744,12 @@ export function selectImpactedTests(
         select(test, file)
       }
     }
+
+    for (const key of dataSeedKeys(file)) {
+      for (const test of graph.dataReferences.get(key) ?? []) {
+        select(test, file)
+      }
+    }
   }
 
   for (const glob of options.include ?? []) {
@@ -657,18 +774,24 @@ export function selectImpactedTests(
   }
 
   const directCount = (byDepth['0'] ?? 0) + (byDepth['1'] ?? 0)
+  const unreached = normalizedChanged.filter(
+    (file) =>
+      !reachedBy.has(file) &&
+      !(globalChange && GLOBAL_FILES.includes(file)) &&
+      !GENERATED_ROOTS.some((root) => file.startsWith(root)),
+  )
   const advisory =
     selected.length > 0 && ratio >= threshold
       ? `The change reaches ${selected.length} of ${lane.length} lane tests ` +
         `(${Math.round(ratio * 100)}%). The fast profile is the cheaper choice. ` +
         `Iterate on the ${directCount} direct tests with --depth 1, then run fast once.`
-      : null
-  const unreached = normalizedChanged.filter(
-    (file) =>
-      !reachedBy.has(file) &&
-      !(globalChange && GLOBAL_FILES.includes(file)) &&
-      !file.startsWith('runtime/'),
-  )
+      : unreached.length > 0
+        ? `${unreached.length} of ${normalizedChanged.length} changed files ` +
+          `reach no test: ${unreached.slice(0, 5).join(', ')}` +
+          `${unreached.length > 5 ? ', …' : ''}. ` +
+          'This selection does not cover them. Choose a judgment cohort for ' +
+          'each one and run it alongside the selection.'
+        : null
 
   const typeOnly = unreached.filter((file) => graph.typeOnlyTargets.has(file))
 

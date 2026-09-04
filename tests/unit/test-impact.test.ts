@@ -8,7 +8,9 @@ import { PanError } from '../../src/lib/errors.js'
 import {
   HARNESS_TESTS_SELF_DEVELOPMENT_ONLY,
   buildModuleGraph,
+  dataSeedKeys,
   extractSpecialReferences,
+  isDataReference,
   laneTests,
   parseImpactArgs,
   parseSpecifiersByRegex,
@@ -597,4 +599,160 @@ test('extractSpecialReferences finds every known bin, fixture, and CLI reference
   assert.deepEqual([...plain.bin], [])
   assert.equal(plain.cli, true)
   assert.equal(extractSpecialReferences('nothing here', ['pan'], []).cli, false)
+})
+
+test('isDataReference accepts data paths, ids, and filenames, and nothing else', () => {
+  for (const literal of [
+    'governance',
+    'governance/policies',
+    'governance/policies/SPOT-001.json',
+    'library/personas/spotfixer.md',
+    'docs/operator-guide.md',
+    'config.json',
+    'SPOT-001',
+    'HARNESS-REPAIR-VALIDATE-001',
+    'implement.md',
+  ]) {
+    assert.equal(isDataReference(literal), true, literal)
+  }
+
+  for (const literal of [
+    'src/lib/test-impact.ts',
+    'tests/unit/policies.test.ts',
+    'runtime/logs/workflows',
+    'governanceish',
+    'SPOT',
+    'spotfixer',
+    'a plain sentence',
+  ]) {
+    assert.equal(isDataReference(literal), false, literal)
+  }
+})
+
+test('dataSeedKeys names the path, its filename, its id, and ancestors below the root', () => {
+  assert.deepEqual(dataSeedKeys('governance/policies/SPOT-001.json'), [
+    'governance/policies/SPOT-001.json',
+    'governance/policies',
+    'SPOT-001.json',
+    'SPOT-001',
+  ])
+
+  // The bare root is absent on purpose: a `governance` literal appears in
+  // almost every test, so seeding it would select the lane instead of narrowing
+  // it.
+  assert.ok(
+    !dataSeedKeys('governance/policies/SPOT-001.json').includes('governance'),
+  )
+
+  assert.deepEqual(dataSeedKeys('library/workflows/delivery/prompts/ship.md'), [
+    'library/workflows/delivery/prompts/ship.md',
+    'library/workflows',
+    'library/workflows/delivery',
+    'library/workflows/delivery/prompts',
+    'ship.md',
+  ])
+
+  assert.deepEqual(dataSeedKeys('config.json'), ['config.json'])
+  assert.deepEqual(dataSeedKeys('src/lib/test-impact.ts'), [])
+  assert.deepEqual(dataSeedKeys('runtime/logs/workflows/state.json'), [])
+})
+
+test('a src module naming a data path does not seed it; only the test side does', async () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'pan-test-impact-data-'))
+
+  try {
+    const write = (relative: string, content: string): void => {
+      mkdirSync(path.dirname(path.join(root, relative)), { recursive: true })
+      writeFileSync(path.join(root, relative), content)
+    }
+
+    // The loader names the directory, and nearly every test imports it. Were
+    // the src side a seed, one policy edit would select the whole lane.
+    write(
+      'src/lib/loader.ts',
+      `export const DIR = 'governance/policies'\nexport const load = () => DIR\n`,
+    )
+    write(
+      'tests/unit/reader.test.ts',
+      `import { load } from '../../src/lib/loader.js'\ntest(load)\n`,
+    )
+    write(
+      'tests/unit/policies.test.ts',
+      `const dir = 'governance/policies'\ntest(dir)\n`,
+    )
+
+    const graph = await buildModuleGraph(root)
+    const selected = selectImpactedTests(graph, [
+      'governance/policies/SPOT-001.json',
+    ])
+
+    assert.deepEqual(selected.selected, ['tests/unit/policies.test.ts'])
+    assert.deepEqual(selected.unreached, [])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('an unmapped change is reported as unreached and raises the advisory', async () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'pan-test-impact-gap-'))
+
+  try {
+    const write = (relative: string, content: string): void => {
+      mkdirSync(path.dirname(path.join(root, relative)), { recursive: true })
+      writeFileSync(path.join(root, relative), content)
+    }
+
+    write('src/lib/core.ts', `export const core = 1\n`)
+    write(
+      'tests/unit/core.test.ts',
+      `import { core } from '../../src/lib/core.js'\ntest(core)\n`,
+    )
+
+    const graph = await buildModuleGraph(root)
+    const orphan = selectImpactedTests(graph, [
+      'library/workflows/delivery/prompts/ship.md',
+    ])
+
+    assert.deepEqual(orphan.selected, [])
+    assert.deepEqual(orphan.unreached, [
+      'library/workflows/delivery/prompts/ship.md',
+    ])
+    assert.match(String(orphan.advisory), /reach no test/u)
+    assert.match(String(orphan.advisory), /judgment cohort/u)
+
+    // Generated run state is not a change under test, so it stays quiet.
+    const generated = selectImpactedTests(graph, [
+      'runtime/logs/workflows/state.json',
+      'runtime/cache/test-impact.jsonl',
+    ])
+
+    assert.deepEqual(generated.unreached, [])
+    assert.equal(generated.advisory, null)
+
+    // A hand-edited runtime file outside the generated trees still reports.
+    const handEdited = selectImpactedTests(graph, [
+      'runtime/repository-checks.json',
+    ])
+
+    assert.deepEqual(handEdited.unreached, ['runtime/repository-checks.json'])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('self-test: a governance policy change selects its governance tests, not the lane', async () => {
+  const graph = await buildModuleGraph(REPO_ROOT)
+  const selected = selectImpactedTests(graph, [
+    'governance/policies/SPOT-001.json',
+  ])
+
+  assert.ok(
+    selected.selected.includes('tests/unit/policies.test.ts'),
+    `selected ${selected.selected.join(', ')}`,
+  )
+  assert.deepEqual(selected.unreached, [])
+  assert.ok(
+    selected.selected.length <= selected.lane_count * 0.25,
+    `selected ${selected.selected.length} of ${selected.lane_count}`,
+  )
 })
