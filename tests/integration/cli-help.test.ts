@@ -225,6 +225,124 @@ function createBuildScriptFixture(): BuildScriptFixture {
   return { root, runBuilt: path.join(binDirectory, 'run-built'), env }
 }
 
+// The wrapper pairs the holder's pid with its start time, so these helpers
+// build the same token bin/run-built writes.
+function ownerToken(pid: number): string {
+  return execFileSync('ps', ['-o', 'lstart=', '-p', String(pid)], {
+    encoding: 'utf8',
+  })
+    .replace(/ /gu, '')
+    .trim()
+}
+
+// A reclaim test must not inherit the production ceiling. If ownership
+// checking regresses, these cases should fail in seconds instead of waiting
+// out the default five minutes.
+function reclaimEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  return { ...env, PANCREATOR_BUILD_LOCK_TIMEOUT_SECONDS: '20' }
+}
+
+function writeBuildLock(root: string, contents: string): string {
+  const lock = path.join(root, 'runtime', 'build', 'build.lock')
+
+  mkdirSync(path.dirname(lock), { recursive: true })
+  writeFileSync(lock, contents)
+
+  return lock
+}
+
+// The lock lives under the root, so it outlives the reboot that resets pid
+// assignment. A lock abandoned by SIGKILL or by power loss can therefore name
+// a pid the kernel has since given to something else, and a liveness test
+// that only asks whether the pid exists would wait on that stranger forever.
+test('a build lock naming a recycled pid is reclaimed', () => {
+  const fixture = createBuildScriptFixture()
+  // Stands in for whatever the kernel later assigned the dead holder's pid.
+  const squatter = spawn('/bin/sleep', ['30'])
+
+  try {
+    assert.ok(squatter.pid)
+
+    const lock = writeBuildLock(
+      fixture.root,
+      `${squatter.pid}\nMonJan109:00:002001\n`,
+    )
+
+    const result = spawnSync(
+      '/bin/bash',
+      [fixture.runBuilt, '--', '/usr/bin/true'],
+      { cwd: fixture.root, encoding: 'utf8', env: reclaimEnv(fixture.env) },
+    )
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(existsSync(lock), false)
+  } finally {
+    squatter.kill()
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
+test('a build lock written by an older single-line wrapper is reclaimed', () => {
+  const fixture = createBuildScriptFixture()
+  const squatter = spawn('/bin/sleep', ['30'])
+
+  try {
+    assert.ok(squatter.pid)
+
+    const lock = writeBuildLock(fixture.root, `${squatter.pid}\n`)
+
+    const result = spawnSync(
+      '/bin/bash',
+      [fixture.runBuilt, '--', '/usr/bin/true'],
+      { cwd: fixture.root, encoding: 'utf8', env: reclaimEnv(fixture.env) },
+    )
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(existsSync(lock), false)
+  } finally {
+    squatter.kill()
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
+// A verified holder still serializes, but every pan command passes through
+// this wait, so it ends with a diagnosable failure rather than a hang.
+test('a wait on a verified live lock holder ends at a bound', () => {
+  const fixture = createBuildScriptFixture()
+  const holder = spawn('/bin/sleep', ['30'])
+
+  try {
+    assert.ok(holder.pid)
+
+    const lock = writeBuildLock(
+      fixture.root,
+      `${holder.pid}\n${ownerToken(holder.pid)}\n`,
+    )
+
+    const result = spawnSync(
+      '/bin/bash',
+      [fixture.runBuilt, '--', '/usr/bin/true'],
+      {
+        cwd: fixture.root,
+        encoding: 'utf8',
+        env: {
+          ...fixture.env,
+          PANCREATOR_BUILD_LOCK_NOTICE_SECONDS: '1',
+          PANCREATOR_BUILD_LOCK_TIMEOUT_SECONDS: '2',
+        },
+      },
+    )
+
+    assert.equal(result.status, 1)
+    assert.match(result.stderr, /gave up after 2s waiting for the build lock/u)
+    // Only an unverifiable lock is reclaimed, so a live holder keeps its own.
+    assert.equal(existsSync(lock), true)
+  } finally {
+    holder.kill()
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
 test('run-built exits after the requested command completes', () => {
   const fixture = createBuildScriptFixture()
 

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
 MAX_CAPTURE_BYTES=$((16 * 1024 * 1024))
 
 usage() {
@@ -46,9 +48,24 @@ if is_verbose; then
   exec "${command[@]}"
 fi
 
-stdout_file="$(mktemp)"
-stderr_file="$(mktemp)"
-tick_marker="$(mktemp)"
+# Capture files live under the root rather than in the shared temp directory.
+# This wrapper allocates three of them per invocation and wraps every npm
+# script, so a temp directory that any other process has made slow would tax
+# every build, check, and test run. runtime/ is gitignored, and the paths stay
+# per-root, so concurrent roots never contend.
+CAPTURE_DIRECTORY="$ROOT/runtime/tmp"
+
+if mkdir -p "$CAPTURE_DIRECTORY" 2>/dev/null; then
+  capture_template="$CAPTURE_DIRECTORY/quiet.XXXXXX"
+else
+  # An unwritable root must not break every wrapped command; the shared temp
+  # directory still works, it is only slower.
+  capture_template="${TMPDIR:-/tmp}/pancreator-quiet.XXXXXX"
+fi
+
+stdout_file="$(mktemp "$capture_template")"
+stderr_file="$(mktemp "$capture_template")"
+tick_marker="$(mktemp "$capture_template")"
 rm -f "$tick_marker"
 ticker_pid=''
 

@@ -6,6 +6,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  rmSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -158,13 +159,42 @@ export function cloneTree(
   })
 }
 
+// Fixture roots used to be created directly in the shared temp directory and
+// nothing ever removed them, so a long-lived checkout accumulated tens of
+// thousands of them. The cost of a create or unlink in a directory grows with
+// what that directory already holds, and every process on the host pays it,
+// so the leak taxed unrelated programs as well as the suite. Every fixture
+// now lives inside one per-process directory that is removed when the process
+// exits, which leaves a single entry behind at worst.
+let testTempParent: string | null = null
+
+/**
+ * A directory for one fixture, inside this process's temp parent. Prefer this
+ * over mkdtempSync(path.join(tmpdir(), ...)) so the directory is cleaned up.
+ */
+export function createTestTempDirectory(prefix: string): string {
+  if (!testTempParent) {
+    testTempParent = mkdtempSync(path.join(tmpdir(), 'pancreator-tests-'))
+
+    const parent = testTempParent
+
+    // rmSync is synchronous, so this completes before the process exits. A
+    // process killed by a signal skips it and leaks only the one parent.
+    process.once('exit', () => {
+      rmSync(parent, { recursive: true, force: true })
+    })
+  }
+
+  return mkdtempSync(path.join(testTempParent, prefix))
+}
+
 // A fixture build costs several seconds, so the process builds one template
 // and every createFixture() call returns a clone of it.
 let fixtureTemplateRoot: string | null = null
 
 function cloneFixtureTemplate(template: string): string {
   const started = performance.now()
-  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-v2-'))
+  const root = createTestTempDirectory('v2-')
 
   cloneTree(template, root)
   recordFixtureEvent('template_clone', 'main', performance.now() - started)
@@ -191,7 +221,7 @@ export function createFixture(): string {
   }
 
   const buildStarted = performance.now()
-  const root = mkdtempSync(path.join(tmpdir(), 'pancreator-v2-'))
+  const root = createTestTempDirectory('v2-')
 
   for (const entry of [
     'governance',

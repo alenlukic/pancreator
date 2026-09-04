@@ -14,14 +14,36 @@ notify() {
   fi
 }
 
+# A pid alone cannot identify the lock holder. The lock lives under the root,
+# so it survives a reboot, and a lock orphaned by SIGKILL or by power loss
+# names a pid the kernel later reassigns to an unrelated process. Pairing the
+# pid with the holder's start time tells the original holder apart from a
+# namesake, because ps reports no start time for a dead pid and a different
+# one for a recycled pid. ps reads start times across users, so this also
+# replaces a `kill -0` liveness test that could not distinguish "no such
+# process" from "not permitted".
+owner_token() {
+  local started
+
+  started="$(ps -o lstart= -p "$1" 2>/dev/null)" || return 1
+
+  # ps pads the date, and the token only has to compare equal, so drop the
+  # spaces and keep it a single field.
+  started="$(printf '%s' "$started" | tr -d ' ')"
+
+  [[ -n "$started" ]] || return 1
+
+  printf '%s' "$started"
+}
+
 release_lock() {
-  local owner
+  local owner token
 
-  if ! IFS= read -r owner 2>/dev/null <"$BUILD_LOCK"; then
-    return
-  fi
+  { IFS= read -r owner; IFS= read -r token; } <"$BUILD_LOCK" 2>/dev/null || return
 
-  if [[ "$owner" == "$$" ]]; then
+  # Compare the whole identity. This process could hold a pid that an
+  # abandoned lock also names.
+  if [[ "$owner" == "$$" && "$token" == "$SELF_TOKEN" ]]; then
     rm -f "$BUILD_LOCK"
   fi
 }
@@ -32,19 +54,29 @@ release_lock() {
 # holder so a stalled caller is diagnosable rather than silent.
 LOCK_NOTICE_SECONDS="${PANCREATOR_BUILD_LOCK_NOTICE_SECONDS:-5}"
 
+# No build legitimately runs this long, and every pan command passes through
+# here, so an unbounded wait would let one wedged lock disable a whole root.
+# Past the ceiling the wait fails with the holder named and a remedy.
+LOCK_TIMEOUT_SECONDS="${PANCREATOR_BUILD_LOCK_TIMEOUT_SECONDS:-300}"
+
 acquire_lock() {
-  local owner waited=0 announced=0
+  local owner token live waited=0 announced=0 unidentified=0
 
-  while ! (set -o noclobber; printf '%s\n' "$$" >"$BUILD_LOCK") 2>/dev/null; do
-    if ! IFS= read -r owner 2>/dev/null <"$BUILD_LOCK"; then
-      sleep 0.1
-      continue
-    fi
+  while ! (set -o noclobber; printf '%s\n%s\n' "$$" "$SELF_TOKEN" >"$BUILD_LOCK") 2>/dev/null; do
+    owner=''
+    token=''
+    { IFS= read -r owner; IFS= read -r token; } <"$BUILD_LOCK" 2>/dev/null || true
 
-    if [[ "$owner" =~ ^[0-9]+$ ]] && kill -0 "$owner" 2>/dev/null; then
-      if [[ "$announced" -eq 0 && "$waited" -ge $((LOCK_NOTICE_SECONDS * 10)) ]]; then
-        notify "[run-built] waiting for the build lock held by pid $owner ($BUILD_LOCK); it is released when that build finishes"
-        announced=1
+    if [[ -z "$owner" || -z "$token" ]]; then
+      # Either the holder won the create but has not written its identity
+      # yet, or this is a single-line lock from an older wrapper. Waiting
+      # briefly keeps two builds off one root; past that it is garbage.
+      unidentified=$((unidentified + 1))
+
+      if [[ "$unidentified" -gt 20 ]]; then
+        rm -f "$BUILD_LOCK"
+        unidentified=0
+        continue
       fi
 
       sleep 0.1
@@ -52,7 +84,31 @@ acquire_lock() {
       continue
     fi
 
-    rm -f "$BUILD_LOCK"
+    live=''
+
+    if [[ "$owner" =~ ^[0-9]+$ ]]; then
+      live="$(owner_token "$owner" || true)"
+    fi
+
+    if [[ -z "$live" || "$live" != "$token" ]]; then
+      # The holder is gone, or the pid now belongs to a different process.
+      rm -f "$BUILD_LOCK"
+      continue
+    fi
+
+    if [[ "$announced" -eq 0 && "$waited" -ge $((LOCK_NOTICE_SECONDS * 10)) ]]; then
+      notify "[run-built] waiting for the build lock held by pid $owner ($BUILD_LOCK); it is released when that build finishes"
+      announced=1
+    fi
+
+    if [[ "$waited" -ge $((LOCK_TIMEOUT_SECONDS * 10)) ]]; then
+      echo "[run-built] gave up after ${LOCK_TIMEOUT_SECONDS}s waiting for the build lock at $BUILD_LOCK, held by live pid $owner." >&2
+      echo "[run-built] if pid $owner is not building this root, delete that file and run the command again." >&2
+      exit 1
+    fi
+
+    sleep 0.1
+    waited=$((waited + 1))
   done
 
   trap release_lock EXIT HUP INT TERM
@@ -111,13 +167,32 @@ if [[ "$mode" == 'build' && "$ready" == "$ROOT" ]]; then
   exit 0
 fi
 
-read -r root_key _ <<<"$(printf '%s' "$ROOT" | cksum)"
-BUILD_LOCK="${TMPDIR:-/tmp}/pancreator-build-${root_key}.lock"
+# The lock lives under the root it serializes rather than in the shared
+# temp directory. A create or unlink in a temp directory costs whatever that
+# directory currently costs, and any process on the host can make it slow, so
+# every invocation paid an unbounded tax before dispatch. A path under the
+# root is one directory per root, which keeps the lock strictly per-root:
+# concurrent roots such as cohort worktrees hold different files and never
+# serialize against each other. runtime/ is gitignored.
+BUILD_LOCK_DIRECTORY="$ROOT/runtime/build"
+BUILD_LOCK="$BUILD_LOCK_DIRECTORY/build.lock"
+
+# acquire_lock spins until it can create the file, so an unwritable directory
+# would hang instead of failing. Fail loudly here.
+if ! mkdir -p "$BUILD_LOCK_DIRECTORY" 2>/dev/null; then
+  echo "[run-built] cannot create the build lock directory $BUILD_LOCK_DIRECTORY" >&2
+  exit 1
+fi
+
+# The identity this process writes into the lock and checks before removing
+# it. A shell that cannot read its own start time cannot prove ownership of a
+# lock either, so it records a token no live process can match: a waiter then
+# reclaims the lock instead of waiting on an unverifiable holder. That trades
+# strict serialization for liveness, and bin/build swaps a complete dist into
+# place rather than mutating one, so a concurrent compile stays safe.
+SELF_TOKEN="$(owner_token "$$" || printf 'unidentified-%s' "$$")"
 
 # The lock serializes builds only. Release it before the wrapped command runs.
-# A stale reader directory from an older wrapper is removed so it cannot be
-# mistaken for live state; this wrapper registers no readers.
-rm -rf "${TMPDIR:-/tmp}/pancreator-build-${root_key}.readers" 2>/dev/null || true
 acquire_lock
 run_build
 release_lock
