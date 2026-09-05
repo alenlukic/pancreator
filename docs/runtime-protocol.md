@@ -327,7 +327,11 @@ Applied away actions use away authorship. They do not create operator decision,
 resume, or stage-repair events. Evaluated accepted and rejected records consume
 `max_decisions_per_run`. Legacy records without `decision_kind` count as
 evaluated. Hypervisor quarantine records and deterministic ship approvals do
-not consume that budget.
+not consume that budget. An `evaluator_failure` record, written when the
+evaluator process could not run, was killed, or returned no parsable ranking,
+does not consume it either: it is not a decision. Those records have their own
+ceiling of the same size per run, refused with `AWAY_EVALUATOR_FAILURE_LIMIT`,
+so a failing evaluator still cannot grow the ledger without bound.
 
 A successful ship packet can receive deterministic away approval only when the
 snapshot enables away mode and `allowed_actions` includes `approve`. The
@@ -401,8 +405,15 @@ gate's recorded `full` pass at the unchanged fingerprint from the gate cache
 (`DEV-001`), so `full` executes exactly once per remediate→verify cycle.
 Agents never run `full`: the coder, remediator, reviewer, and QA worker iterate
 on blast-radius tests and run `fast` at most once each as validation, and the
-consolidating verifier runs neither. `minimal` disables both `full` gates;
-`thorough` is an alias of `light`.
+consolidating verifier runs neither. A worker that runs
+`pan repository-check <profile> --worktree <name>` inside a bound run's
+worktree leaves one line per execution in that run's
+`agent/evidence/repository-check-runs.jsonl` (`profile`,
+`workspace_fingerprint`, `status`, `duration_ms`, `started_at`, and
+`invoked_by: "agent"`), which is how the supervisor audits the once-only rule
+from harness records rather than from the worker's narrative. An execution
+without a live bound run records nothing. `minimal` disables both `full`
+gates; `thorough` is an alias of `light`.
 
 Intake and plan workers MAY set `data.verification_recommendation`
 (`{ "level": ..., "reason": ... }`) when the change warrants a different

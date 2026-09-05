@@ -1,5 +1,33 @@
 # Changelog
 
+## [5.14.0] - 2026-09-05
+
+### Changed
+
+- Bind each cohort chunk run to its worktree so later lifecycle commands accept `--worktree` on that run ([cohorts](src/lib/cohorts.ts), [4566eff9](https://github.com/alenlukic/pancreator/commit/4566eff9)).
+- Seed cohort ids from the plan-run suffix instead of the parent-specification basename ([4566eff9](https://github.com/alenlukic/pancreator/commit/4566eff9)).
+- Send the `cursor-agent` prompt over stdin so a large argv element is not killed at exec ([cursor-agent](src/lib/executors/cursor-agent.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
+- Show the literal away-mode option shape in the evaluator prompt, persist every evaluator exchange as run evidence, and rank options by fitness for the gate ([away-mode](src/lib/away-mode.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
+- Consume an away-mode decision only after a successful apply, and start the cohort with `--autostart` when away mode approves a planning gate ([COHORT-001](governance/policies/COHORT-001.json), [operator guide](docs/operator-guide.md), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
+- Capture repository-check output to files, lead a process group, and kill the group on timeout. Raise fast and full gate bounds to 1200 s ([repository-checks](src/lib/repository-checks.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
+- Name the workspace and worktree in evidence-worker briefs ([render](src/lib/render.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
+- Validate a child-specification parent digest on the trimmed file and name the expected digest ([cohort-plan](src/lib/validators/cohort-plan.ts), [c64b0d60](https://github.com/alenlukic/pancreator/commit/c64b0d60)).
+- Authenticate away-mode `cursor-agent` spawns through the same `probeEnvironment` path as the model probe ([cursor-auth](src/lib/executors/cursor-auth.ts), [4566eff9](https://github.com/alenlukic/pancreator/commit/4566eff9)).
+
+### Added
+
+- Add `cohort integrate --into-branch` so integration can target a dedicated branch when a dirty checkout holds the base ([cohorts](src/lib/cohorts.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
+- Credit a changed source that a changed test imports in `pan tests impacted` ([test-impact](src/lib/test-impact.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
+- Write `integration-<n>.json` for every cohort integration path, including the multi-chunk reconcile merge ([COHORT-001](governance/policies/COHORT-001.json), [c64b0d60](https://github.com/alenlukic/pancreator/commit/c64b0d60)).
+- Record `pan repository-check --worktree` runs in the bound run's `agent/evidence/repository-check-runs.jsonl` ([repository-checks](src/lib/repository-checks.ts), [c64b0d60](https://github.com/alenlukic/pancreator/commit/c64b0d60)).
+- Record evaluator failures as `evaluator_failure` with their own ceiling instead of consuming `max_decisions_per_run` ([away-mode](src/lib/away-mode.ts), [4566eff9](https://github.com/alenlukic/pancreator/commit/4566eff9)).
+
+### Fixed
+
+- Deduplicate colliding inbox terminal names with a numeric suffix ([inbox](src/lib/inbox.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
+- Keep fixtures whose path contains `worktrees` sandboxed from the installation root ([repository-checks](src/lib/repository-checks.ts), [4566eff9](https://github.com/alenlukic/pancreator/commit/4566eff9)).
+- Document the autostart response as `{status, chunks, …}` and name `pan init --request` in the supervisor procedure ([operator guide](docs/operator-guide.md), [pan-start](library/cursor/commands/pan-start.md), [c64b0d60](https://github.com/alenlukic/pancreator/commit/c64b0d60)).
+
 ## [5.13.1] - 2026-09-04
 
 ### Changed

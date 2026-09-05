@@ -10,7 +10,10 @@ import {
   pauseRun,
   prepareInvocation,
 } from '../../src/lib/engine.js'
-import { readAwayDecisionLedger } from '../../src/lib/away-mode.js'
+import {
+  readAwayDecisionLedger,
+  recordAwayApplyResult,
+} from '../../src/lib/away-mode.js'
 import {
   agentRegistryPath,
   readAgentRegistry,
@@ -330,6 +333,24 @@ test('away evaluate and apply resume a paused run exactly once', () => {
       },
     )
 
+    // A failed apply leaves its ledger record but does not consume the
+    // decision: it stays apply-ready and a retry succeeds once the cause is
+    // repaired.
+    const accepted = readAwayDecisionLedger(root).find(
+      (record) => record.decision_id === evaluated.decision_id,
+    )
+
+    assert.ok(accepted)
+    recordAwayApplyResult(root, accepted, 'failed', 'Inbox move collision.')
+
+    const afterFailure = run(root, 'away', 'status', state.run_id) as {
+      apply_ready_decision_ids: string[]
+    }
+
+    assert.deepEqual(afterFailure.apply_ready_decision_ids, [
+      evaluated.decision_id,
+    ])
+
     const applied = run(
       root,
       'away',
@@ -365,7 +386,7 @@ test('away evaluate and apply resume a paused run exactly once', () => {
     )
     assert.deepEqual(
       readAwayDecisionLedger(root).map((record) => record.result),
-      ['accepted', 'applied'],
+      ['accepted', 'failed', 'applied'],
     )
   } finally {
     if (previousBinary === undefined) {

@@ -740,6 +740,71 @@ test('an unmapped change is reported as unreached and raises the advisory', asyn
   }
 })
 
+test('a changed source is reached when the changed test that imports it is selected', async () => {
+  const root = createTestTempDirectory('pan-test-impact-changed-pair-')
+
+  try {
+    const write = (relative: string, content: string): void => {
+      mkdirSync(path.dirname(path.join(root, relative)), { recursive: true })
+      writeFileSync(path.join(root, relative), content)
+    }
+
+    // The drill scenario: a chunk adds a source module together with its test.
+    // Both files are seeds, so the test enters the closure at depth 0 and the
+    // multi-source walk never credits it to the source it imports.
+    write('src/lib/salutations/greeting.ts', `export const greeting = 'hi'\n`)
+    write(
+      'tests/unit/salutations-greeting.test.ts',
+      `import { greeting } from '../../src/lib/salutations/greeting.js'\ntest(greeting)\n`,
+    )
+    write(
+      'tests/unit/other.test.ts',
+      `import { greeting } from '../../src/lib/salutations/greeting.js'\ntest(greeting)\n`,
+    )
+
+    const graph = await buildModuleGraph(root)
+    const pair = selectImpactedTests(graph, [
+      'src/lib/salutations/greeting.ts',
+      'tests/unit/salutations-greeting.test.ts',
+    ])
+
+    assert.deepEqual(pair.selected, [
+      'tests/unit/other.test.ts',
+      'tests/unit/salutations-greeting.test.ts',
+    ])
+    assert.deepEqual(pair.unreached, [])
+    assert.doesNotMatch(String(pair.advisory), /reach no test/u)
+
+    // The bound applies from the source too: its own test is one hop away.
+    const direct = selectImpactedTests(
+      graph,
+      [
+        'src/lib/salutations/greeting.ts',
+        'tests/unit/salutations-greeting.test.ts',
+      ],
+      { depth: 1 },
+    )
+
+    assert.deepEqual(direct.unreached, [])
+
+    // A changed source that only a changed, unrelated test accompanies stays
+    // unreached: the credit needs an import path, not mere co-selection.
+    write('src/lib/salutations/farewell.ts', `export const farewell = 'bye'\n`)
+
+    const unrelated = selectImpactedTests(await buildModuleGraph(root), [
+      'src/lib/salutations/farewell.ts',
+      'tests/unit/salutations-greeting.test.ts',
+    ])
+
+    assert.deepEqual(unrelated.selected, [
+      'tests/unit/salutations-greeting.test.ts',
+    ])
+    assert.deepEqual(unrelated.unreached, ['src/lib/salutations/farewell.ts'])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
 test('self-test: a governance policy change selects its governance tests, not the lane', async () => {
   const graph = await buildModuleGraph(REPO_ROOT)
   const selected = selectImpactedTests(graph, [

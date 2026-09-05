@@ -160,6 +160,15 @@ export function gitCurrentBranch(root: string): string | null {
   return result.status === 0 ? result.stdout.trim() : null
 }
 
+/** Create a local branch at one commit without checking it out. */
+export function gitCreateBranch(
+  root: string,
+  branch: string,
+  commit: string,
+): void {
+  runGit(root, ['branch', '--end-of-options', branch, commit])
+}
+
 /** Switch one clean checkout to an existing local branch. */
 export function gitSwitchBranch(root: string, branch: string): void {
   runGit(root, ['switch', branch])

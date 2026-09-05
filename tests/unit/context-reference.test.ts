@@ -8,7 +8,7 @@ import {
   buildInvocationInputs,
   contextReferenceStatus,
 } from '../../src/lib/context.js'
-import { sha256 } from '../../src/lib/io.js'
+import { referenceContentSha256, sha256 } from '../../src/lib/io.js'
 import { renderContextReferenceBlock } from '../../src/lib/policy-guidance.js'
 import type { ContextReference, RunState } from '../../src/lib/types.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
@@ -69,6 +69,15 @@ test('a context reference digests the trimmed source', () => {
     reference.content_sha256,
     sha256('# Parent\n\nOne requirement.'),
     'the digest basis is the trimmed selection, so a reader recomputes it',
+  )
+  assert.equal(
+    reference.content_sha256,
+    referenceContentSha256('\n# Parent\n\nOne requirement.\n\n'),
+    'the card and the child-specification validator share one digest helper',
+  )
+  assert.notEqual(
+    reference.content_sha256,
+    sha256('\n# Parent\n\nOne requirement.\n\n'),
   )
   assert.equal(reference.line_count, 3)
   assert.ok(reference.read_trigger.length > 0)

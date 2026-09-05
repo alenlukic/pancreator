@@ -7,8 +7,8 @@ import {
   isRecord,
   readJson,
   readText,
+  referenceContentSha256,
   resolveInside,
-  sha256,
   writeJsonAtomic,
 } from './io.js'
 import { isSelfDevelopmentInstallation } from './project-config.js'
@@ -75,8 +75,9 @@ export const DEFAULT_CONTEXT_REFERENCE_READ_TRIGGER =
 /**
  * Build an audited pointer to one harness-relative document.
  *
- * The digest covers the trimmed file, which is the basis `GUIDANCE_DIGEST_BASIS`
- * states, so a reader who recomputes it from the same rule gets the same value.
+ * The digest covers the trimmed file through `referenceContentSha256`, which
+ * is the basis `GUIDANCE_DIGEST_BASIS` states, so a reader who recomputes it
+ * from the same rule gets the same value.
  */
 export function buildContextReference(
   root: string,
@@ -95,7 +96,7 @@ export function buildContextReference(
 
   return {
     source_path: relativePath,
-    content_sha256: sha256(selected),
+    content_sha256: referenceContentSha256(selected),
     line_count: selected.split('\n').length,
     byte_length: Buffer.byteLength(selected, 'utf8'),
     read_trigger: readTrigger,
@@ -144,7 +145,7 @@ export function inspectContextReference(
     return { status: 'missing' }
   }
 
-  const actual = sha256(readText(absolute).trim())
+  const actual = referenceContentSha256(readText(absolute))
 
   return {
     status: actual === reference.content_sha256 ? 'current' : 'drifted',

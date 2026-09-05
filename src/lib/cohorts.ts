@@ -4,9 +4,13 @@ import path from 'node:path'
 import { createRun } from './engine.js'
 import { errorMessage, invariant } from './errors.js'
 import {
+  gitBranchExists,
+  gitBranchNameIsValid,
+  gitCreateBranch,
   gitCurrentBranch,
   gitConflictedPaths,
   gitHead,
+  gitIsAncestor,
   gitMergeAbort,
   gitMergeBranch,
   gitRevParse,
@@ -37,9 +41,9 @@ import type {
 } from './types.js'
 import {
   createWorktree,
+  materializeBranchCheckout,
   reconcileWorktrees,
   removeWorktree,
-  resolveBranchCheckout,
   resolveRepositoryRoot,
   readWorktreeIndex,
   workspaceRepositoryRoot,
@@ -74,6 +78,8 @@ export interface CohortStatusView {
   plan_run_id: string
   parent_spec_path: string
   base_branch: string
+  /** Branch cohorts merge into and later cohorts branch from. */
+  integration_branch: string
   /** Lowest cohort index that is not satisfied yet, or null when all are. */
   active_cohort_index: number | null
   /** Cohort index whose start is refused, with the predecessor that blocks it. */
@@ -111,6 +117,8 @@ export interface CohortIntegrationResult {
   cohort_id: string
   cohort_index: number
   base_branch: string
+  /** Branch the cohort merged into; `base_branch` unless retargeted. */
+  integration_branch: string
   merge_commit: string
   merged_chunks: string[]
   evidence_path: string
@@ -255,6 +263,19 @@ function cohortRepositoryRoot(
   state?: Pick<CohortSessionState, 'repository_root'>,
 ): string {
   return state?.repository_root ?? workspaceRepositoryRoot(root)
+}
+
+/**
+ * Branch the session's cohorts merge into and later cohorts branch from.
+ *
+ * It is the base branch unless the operator retargeted integration, which
+ * happens when the checkout that holds the base branch carries unrelated
+ * uncommitted work the operator will not commit or stash for a cohort merge.
+ */
+function integrationBranch(
+  state: Pick<CohortSessionState, 'base_branch' | 'integration_branch'>,
+): string {
+  return state.integration_branch ?? state.base_branch
 }
 
 /**
@@ -676,10 +697,14 @@ export function initCohortSession(
   }
 
   const base = path.join(root, 'runtime', 'logs', 'cohorts')
+  // The parent specification is always named parent-specification.md, so its
+  // basename would give every cohort the same suffix. The plan run's own
+  // suffix names the request; the specification text is the fallback.
+  const planRunSuffix = options.planRunId.split('_').slice(2).join('_')
   const cohortId = makeUniqueRunId(
     base,
     keywordRunSuffixFrom(
-      path.basename(plan.parent_spec_path),
+      planRunSuffix || path.basename(plan.parent_spec_path),
       readText(resolveInside(root, plan.parent_spec_path)),
     ),
   )
@@ -795,7 +820,7 @@ export function startCohort(
       state = updateChunk(root, state, chunk.id, { worktree: worktreeName })
 
       const record = createWorktree(root, worktreeName, {
-        from: state.base_branch,
+        from: integrationBranch(state),
         description: `Cohort ${cohortIndex} chunk '${chunk.id}'`,
         repositoryRoot: cohortRepositoryRoot(root, state),
       })
@@ -805,11 +830,19 @@ export function startCohort(
         branch: record.branch,
       })
 
+      // The run is bound to its worktree exactly as `pan init --worktree`
+      // binds one, so `--worktree <name>` is accepted on every lifecycle
+      // command and the identity check guards against a swapped checkout.
       const run = createRun(root, {
         workflowSlug: COHORT_CHUNK_WORKFLOW_SLUG,
         requestPath: chunk.child_spec_path,
         title: `${chunk.id} · ${chunk.title}`,
         workspace: record.path,
+        worktree: {
+          name: record.name,
+          path: record.path,
+          branch: record.branch,
+        },
         contextReferencePath: state.parent_spec_path,
         cohort: {
           cohort_id: cohortId,
@@ -890,6 +923,7 @@ export function cohortStatus(root: string, cohortId: string): CohortStatusView {
     plan_run_id: state.plan_run_id,
     parent_spec_path: state.parent_spec_path,
     base_branch: state.base_branch,
+    integration_branch: integrationBranch(state),
     active_cohort_index: activeIndex,
     blocked_cohort_index: blockedIndex,
     blocking_predecessor_index: blockedIndex === null ? null : activeIndex,
@@ -921,12 +955,23 @@ export function cohortStatus(root: string, cohortId: string): CohortStatusView {
  * chunk worktree, or a conflict therefore leaves the next cohort blocked rather
  * than letting it branch from work that never landed. A cohort whose every
  * chunk the operator abandoned has nothing to merge and is recorded satisfied.
+ *
+ * `intoBranch` retargets the session: this cohort and every later one merge
+ * into that branch, and later cohorts branch from it. The option exists for the
+ * checkout that holds the base branch and carries unrelated uncommitted work,
+ * which a merge must not touch. The branch is created from the current
+ * integration head when it does not exist, and an existing branch is accepted
+ * only when it already contains that head, so no earlier cohort merge is lost.
  */
 export function integrateCohort(
   root: string,
   cohortId: string,
+  options: { intoBranch?: string | null } = {},
 ): CohortIntegrationResult {
-  return withCohortSession(root, cohortId, (loaded) => {
+  return withCohortSession(root, cohortId, (initial) => {
+    const loaded = options.intoBranch
+      ? retargetIntegration(root, initial, options.intoBranch)
+      : initial
     const cohortIndex = firstUnsatisfiedIndex(root, loaded)
 
     invariant(
@@ -993,6 +1038,7 @@ export function integrateCohort(
           cohort_index: cohortIndex,
           recorded_at: now(),
           base_branch: loaded.base_branch,
+          integration_branch: integrationBranch(loaded),
           merge_commit: merged.merge_commit,
           evidence_path: merged.evidence_path,
         },
@@ -1003,6 +1049,7 @@ export function integrateCohort(
       cohort_id: cohortId,
       cohort_index: cohortIndex,
       base_branch: loaded.base_branch,
+      integration_branch: integrationBranch(loaded),
       merge_commit: merged.merge_commit,
       merged_chunks: chunks.map((chunk) => chunk.id),
       evidence_path: merged.evidence_path,
@@ -1013,6 +1060,112 @@ export function integrateCohort(
 interface MergeOutcome {
   merge_commit: string
   evidence_path: string
+}
+
+function integrationRecordPath(cohortId: string, cohortIndex: number): string {
+  return `runtime/logs/cohorts/${cohortId}/integration-${cohortIndex}.json`
+}
+
+/**
+ * Write the durable integration record of one cohort and return its path.
+ *
+ * `COHORT-001` makes this record the merge proof of the cohort, so every
+ * integration path writes the same shape: the branches and chunk runs that
+ * landed, the integration head before and after, and the ledger entry a
+ * reconcile appended, when one did. A caller that returned the shared
+ * reconcile ledger instead left the per-cohort proof unwritten.
+ */
+function writeIntegrationRecord(
+  root: string,
+  state: CohortSessionState,
+  cohortIndex: number,
+  record: {
+    merged: CohortChunkRecord[]
+    abandoned?: Array<{ chunk: string; note: string; recorded_at: string }>
+    base_commit_before_merge: string
+    merge_commit: string
+    reconcile_evidence_path?: string
+  },
+): string {
+  const repositoryRoot = cohortRepositoryRoot(root, state)
+  const evidencePath = integrationRecordPath(state.cohort_id, cohortIndex)
+
+  writeJsonAtomic(resolveInside(root, evidencePath), {
+    schema_version: 1,
+    cohort_id: state.cohort_id,
+    cohort_index: cohortIndex,
+    base_branch: state.base_branch,
+    integration_branch: integrationBranch(state),
+    merged_branches: record.merged.flatMap((chunk) =>
+      chunk.branch ? [chunk.branch] : [],
+    ),
+    merged_chunks: record.merged.map((chunk) => ({
+      chunk: chunk.id,
+      run_id: chunk.run_id ?? null,
+      branch: chunk.branch ?? null,
+      worktree: chunk.worktree ?? null,
+      branch_head: chunk.branch
+        ? gitRevParse(repositoryRoot, chunk.branch)
+        : null,
+    })),
+    abandoned_chunks: record.abandoned ?? [],
+    base_commit_before_merge: record.base_commit_before_merge,
+    merge_commit: record.merge_commit,
+    ...(record.reconcile_evidence_path
+      ? { reconcile_evidence_path: record.reconcile_evidence_path }
+      : {}),
+    recorded_at: now(),
+  })
+
+  return evidencePath
+}
+
+/**
+ * Record a new integration branch on the session. The caller holds the session
+ * mutex.
+ *
+ * The branch must carry every merge already recorded, so a new branch starts at
+ * the current integration head and an existing branch must contain it. A
+ * branch that does not is refused rather than silently dropping cohort work.
+ */
+function retargetIntegration(
+  root: string,
+  state: CohortSessionState,
+  requested: string,
+): CohortSessionState {
+  const branch = requested.trim()
+  const repositoryRoot = cohortRepositoryRoot(root, state)
+  const current = integrationBranch(state)
+
+  invariant(
+    branch.length > 0 && gitBranchNameIsValid(repositoryRoot, branch),
+    `--into-branch MUST name a valid Git branch; got '${requested}'.`,
+    { code: 'INVALID_ARGUMENT' },
+  )
+
+  if (branch === current) {
+    return state
+  }
+
+  const currentHead = gitRevParse(repositoryRoot, current)
+
+  if (gitBranchExists(repositoryRoot, branch)) {
+    invariant(
+      gitIsAncestor(repositoryRoot, currentHead, branch),
+      `Branch '${branch}' does not contain the head of '${current}' ` +
+        `(${currentHead.slice(0, 12)}), so integrating into it would drop ` +
+        `work already landed there. Name a branch that contains it, or a ` +
+        'new branch name to create from it.',
+      {
+        code: 'COHORT_INTEGRATION_TARGET_DIVERGED',
+        details: { branch, current_branch: current, current_head: currentHead },
+      },
+    )
+  } else {
+    gitCreateBranch(repositoryRoot, branch, currentHead)
+  }
+
+  return persistCohortState(root, { ...state, integration_branch: branch })
 }
 
 /**
@@ -1033,22 +1186,15 @@ function recordAbandonedCohort(
     note: chunk.abandoned?.note ?? '',
     recorded_at: chunk.abandoned?.recorded_at ?? '',
   }))
-  const baseHead = gitRevParse(
-    cohortRepositoryRoot(root, state),
-    state.base_branch,
-  )
-  const evidencePath = `runtime/logs/cohorts/${state.cohort_id}/integration-${cohortIndex}.json`
-
-  writeJsonAtomic(resolveInside(root, evidencePath), {
-    schema_version: 1,
-    cohort_id: state.cohort_id,
-    cohort_index: cohortIndex,
-    base_branch: state.base_branch,
-    merged_chunks: [],
-    abandoned_chunks: abandoned,
+  const target = integrationBranch(state)
+  const baseHead = gitRevParse(cohortRepositoryRoot(root, state), target)
+  const evidencePath = writeIntegrationRecord(root, state, cohortIndex, {
+    merged: [],
+    abandoned,
+    base_commit_before_merge: baseHead,
     merge_commit: baseHead,
-    recorded_at: now(),
   })
+
   persistCohortState(root, {
     ...state,
     satisfaction: [
@@ -1057,6 +1203,7 @@ function recordAbandonedCohort(
         cohort_index: cohortIndex,
         recorded_at: now(),
         base_branch: state.base_branch,
+        integration_branch: target,
         merge_commit: baseHead,
         evidence_path: evidencePath,
       },
@@ -1067,6 +1214,7 @@ function recordAbandonedCohort(
     cohort_id: state.cohort_id,
     cohort_index: cohortIndex,
     base_branch: state.base_branch,
+    integration_branch: target,
     merge_commit: baseHead,
     merged_chunks: [],
     evidence_path: evidencePath,
@@ -1089,13 +1237,14 @@ function mergeThroughReconcile(
   chunks: CohortChunkRecord[],
 ): MergeOutcome {
   const repositoryRoot = cohortRepositoryRoot(root, state)
-  const baseBefore = gitRevParse(repositoryRoot, state.base_branch)
+  const target = integrationBranch(state)
+  const baseBefore = gitRevParse(repositoryRoot, target)
   const worktreeNames = chunks.map((chunk) => chunk.worktree as string)
   const chunkOfWorktree = (name: string): string =>
     chunks.find((chunk) => chunk.worktree === name)?.id ?? name
   const result = reconcileWorktrees(
     root,
-    { into_branch: state.base_branch },
+    { into_branch: target },
     worktreeNames,
   )
 
@@ -1109,11 +1258,9 @@ function mergeThroughReconcile(
       cohort_id: state.cohort_id,
       cohort_index: cohortIndex,
       base_branch: state.base_branch,
+      integration_branch: target,
       base_commit_before_merge: baseBefore,
-      base_commit_after_conflict: gitRevParse(
-        repositoryRoot,
-        state.base_branch,
-      ),
+      base_commit_after_conflict: gitRevParse(repositoryRoot, target),
       merged_chunks: landed,
       conflicted_chunk: conflicted,
       conflicted_paths: result.conflicted_paths,
@@ -1125,13 +1272,13 @@ function mergeThroughReconcile(
     invariant(
       false,
       `Merging cohort ${cohortIndex} of session ${state.cohort_id} into ` +
-        `'${state.base_branch}' conflicted on chunk '${conflicted}': ` +
+        `'${target}' conflicted on chunk '${conflicted}': ` +
         `${result.conflicted_paths.join(', ')}. ` +
         (landed.length > 0
-          ? `Chunks already merged onto '${state.base_branch}': ` +
+          ? `Chunks already merged onto '${target}': ` +
             `${landed.join(', ')} (base was ${baseBefore.slice(0, 12)} ` +
             'before integration). '
-          : `No chunk was merged; '${state.base_branch}' is unchanged. `) +
+          : `No chunk was merged; '${target}' is unchanged. `) +
         `The record is at ${recordPath}. Resolve the conflict, then run ` +
         `'${panCommand(root)} cohort integrate ${state.cohort_id}' again.`,
       {
@@ -1148,9 +1295,16 @@ function mergeThroughReconcile(
     )
   }
 
+  const mergeCommit = gitRevParse(repositoryRoot, target)
+
   return {
-    merge_commit: gitRevParse(repositoryRoot, state.base_branch),
-    evidence_path: result.evidence_path,
+    merge_commit: mergeCommit,
+    evidence_path: writeIntegrationRecord(root, state, cohortIndex, {
+      merged: chunks,
+      base_commit_before_merge: baseBefore,
+      merge_commit: mergeCommit,
+      reconcile_evidence_path: result.evidence_path,
+    }),
   }
 }
 
@@ -1165,9 +1319,11 @@ function incompleteIntegrationPath(
  * Merge one chunk branch into the base branch.
  *
  * `reconcileWorktrees` demands at least two sources, so a single-chunk cohort
- * merges directly inside the checkout that holds the base branch. A conflict is
- * aborted, which restores that checkout instead of leaving the operator's own
- * workspace in a stopped merge.
+ * merges directly inside the working tree that holds the integration branch,
+ * resolved by the same rules a reconcile target uses: the checkout that holds
+ * it, else a recorded worktree on it, else a worktree created for it. A
+ * conflict is aborted, which restores that checkout instead of leaving the
+ * operator's own workspace in a stopped merge.
  */
 function mergeSingleChunkBranch(
   root: string,
@@ -1176,6 +1332,7 @@ function mergeSingleChunkBranch(
   chunk: CohortChunkRecord,
 ): MergeOutcome {
   const branch = chunk.branch
+  const target = integrationBranch(state)
 
   invariant(
     branch,
@@ -1183,19 +1340,18 @@ function mergeSingleChunkBranch(
     { code: 'COHORT_INTEGRATION_INCOMPLETE', details: { chunk: chunk.id } },
   )
 
-  const checkout = resolveBranchCheckout(
-    root,
-    state.base_branch,
-    cohortRepositoryRoot(root, state),
-  )
+  const repositoryRoot = cohortRepositoryRoot(root, state)
+  const checkout = materializeBranchCheckout(root, target, repositoryRoot)
 
   invariant(
     !gitWorktreeIsDirty(checkout),
-    `The checkout that holds '${state.base_branch}' has uncommitted work. ` +
-      'Commit or stash it, then integrate again.',
+    `The checkout that holds '${target}' has uncommitted work. Commit or ` +
+      'stash it, or integrate again with --into-branch <branch> to merge ' +
+      'into a dedicated integration branch.',
     { code: 'COHORT_INTEGRATION_INCOMPLETE' },
   )
 
+  const baseBefore = gitRevParse(repositoryRoot, target)
   const merge = gitMergeBranch(checkout, branch)
 
   if (!merge.succeeded) {
@@ -1205,7 +1361,7 @@ function mergeSingleChunkBranch(
 
     invariant(
       false,
-      `Merging chunk '${chunk.id}' into '${state.base_branch}' conflicted on ` +
+      `Merging chunk '${chunk.id}' into '${target}' conflicted on ` +
         `${conflicted.join(', ') || 'an unknown path'}. The merge was ` +
         'aborted. Resolve the divergence, then integrate again.',
       {
@@ -1221,19 +1377,14 @@ function mergeSingleChunkBranch(
     code: 'COHORT_INTEGRATION_INCOMPLETE',
   })
 
-  const evidencePath = `runtime/logs/cohorts/${state.cohort_id}/integration-${cohortIndex}.json`
-
-  writeJsonAtomic(resolveInside(root, evidencePath), {
-    schema_version: 1,
-    cohort_id: state.cohort_id,
-    cohort_index: cohortIndex,
-    base_branch: state.base_branch,
-    merged_branch: branch,
+  return {
     merge_commit: mergeCommit,
-    recorded_at: now(),
-  })
-
-  return { merge_commit: mergeCommit, evidence_path: evidencePath }
+    evidence_path: writeIntegrationRecord(root, state, cohortIndex, {
+      merged: [chunk],
+      base_commit_before_merge: baseBefore,
+      merge_commit: mergeCommit,
+    }),
+  }
 }
 
 /**
@@ -1372,13 +1523,20 @@ export function cohortSessionForPlanRun(
  * failure is reported with the manual commands, because the approval and the
  * ratified plan remain valid whatever happened to the fan-out.
  */
+/**
+ * Start cohort 1 after the ratified planning gate is approved on a run the
+ * operator flagged with `--autostart`. The flag is the operator's directive,
+ * recorded on the run at `pan init`, so the approval that triggers it may come
+ * from the operator or from away mode acting on the operator's behalf. Cohort
+ * start only adds worktrees and branches, which stays inside the away-mode
+ * bounds (no commit, push, deletion, publication, or waiver).
+ */
 export function maybeAutostartCohort(
   root: string,
   state: RunState,
   decision: { actor: 'operator' | 'away'; action: string },
 ): CohortAutostartResult | null {
   if (
-    decision.actor !== 'operator' ||
     decision.action !== 'approve' ||
     state.workflow_slug !== COHORT_PLAN_WORKFLOW_SLUG ||
     state.status !== 'succeeded' ||

@@ -1,15 +1,28 @@
-import { spawn, spawnSync } from 'node:child_process'
+import { spawn, spawnSync, type SpawnSyncOptions } from 'node:child_process'
+import {
+  closeSync,
+  mkdtempSync,
+  openSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+} from 'node:fs'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 import { PanError, invariant } from './errors.js'
-import { fileExists, isRecord, readJson } from './io.js'
+import { gitWorkspaceSnapshot } from './git.js'
+import { appendJsonLine, fileExists, isRecord, readJson } from './io.js'
 import {
   configuredWorkspaceRoot,
   isSelfDevelopmentInstallation,
 } from './project-config.js'
+import { resolveRunLayout } from './run-layout.js'
 import type {
   RepositoryCheckDelta,
   RepositoryCheckDiagnostic,
+  RunStatus,
 } from './types.js'
 import { TEST_PROFILE_ENV } from './suite-profile.js'
 
@@ -616,8 +629,24 @@ export function repositoryChecksPath(root: string): string {
   return path.join(root, 'runtime', 'repository-checks.json')
 }
 
+/** A linked Git worktree carries a `.git` file that names its gitdir. */
+function isLinkedWorktree(root: string): boolean {
+  try {
+    return statSync(path.join(root, '.git')).isFile()
+  } catch {
+    return false
+  }
+}
+
 /** `<installation>/worktrees/...` and legacy paths resolve to the installation root. */
 function owningInstallationRoot(root: string): string | null {
+  // The path alone is not enough: a test fixture under a worktree's
+  // runtime/tmp/tests/ also has a `worktrees` segment, and must not read the
+  // installation's configuration in place of its own.
+  if (!isLinkedWorktree(root)) {
+    return null
+  }
+
   const segments = path.resolve(root).split(path.sep)
   const index = segments.lastIndexOf('worktrees')
 
@@ -842,6 +871,85 @@ export interface RepositorySetupResult {
   total_duration_ms: number
 }
 
+/** Evidence file, relative to a run's `agent/evidence/`, of agent-run profiles. */
+export const AGENT_REPOSITORY_CHECK_RUNS_FILE = 'repository-check-runs.jsonl'
+
+const LIVE_RUN_STATUSES = new Set<RunStatus>([
+  'running',
+  'awaiting_supervisor',
+  'awaiting_operator',
+  'paused',
+])
+
+/**
+ * Append an agent-run profile execution to every live run bound to a worktree.
+ *
+ * `DEV-001` lets an agent run `fast` at most once, and the supervisor can audit
+ * that rule only from harness records. A worker runs
+ * `pan repository-check <profile> --worktree <name>` inside its run's
+ * worktree, so the run's managed-worktree binding is what resolves it. No
+ * bound live run means nothing to record. The record is bounded on purpose:
+ * the command output stays on the worker's terminal, and the fingerprint is
+ * what lets a later gate compare the execution with the workspace it judges.
+ */
+export function recordAgentRepositoryCheck(
+  root: string,
+  worktreeName: string,
+  result: RepositoryCheckResult,
+  startedAt: string,
+): string[] {
+  const base = path.join(root, 'runtime', 'logs', 'workflows')
+
+  if (!fileExists(base)) {
+    return []
+  }
+
+  const recorded: string[] = []
+  let fingerprint: string | null = null
+
+  for (const entry of readdirSync(base, { withFileTypes: true })) {
+    if (!entry.isDirectory()) {
+      continue
+    }
+
+    const layout = resolveRunLayout(root, entry.name)
+    let state: unknown
+
+    try {
+      state = fileExists(layout.state.absolute)
+        ? readJson(layout.state.absolute)
+        : null
+    } catch {
+      continue
+    }
+
+    if (
+      !isRecord(state) ||
+      !isRecord(state.managed_worktree) ||
+      state.managed_worktree.name !== worktreeName ||
+      !LIVE_RUN_STATUSES.has(state.status as RunStatus)
+    ) {
+      continue
+    }
+
+    fingerprint ??= gitWorkspaceSnapshot(result.workspace_root).fingerprint
+
+    const evidence = layout.evidence(AGENT_REPOSITORY_CHECK_RUNS_FILE)
+
+    appendJsonLine(evidence.absolute, {
+      profile: result.profile,
+      workspace_fingerprint: fingerprint,
+      status: result.status,
+      duration_ms: result.total_duration_ms,
+      started_at: startedAt,
+      invoked_by: 'agent',
+    })
+    recorded.push(evidence.relative)
+  }
+
+  return recorded
+}
+
 /**
  * Run the target-declared workspace setup commands (dependency install,
  * build) in the given workspace, stopping at the first failure.
@@ -931,6 +1039,15 @@ function appendCaptured(current: string, chunk: string): string {
   return `${current}${truncated}\n[output truncated by Pancreator]\n`
 }
 
+/** Read a captured stream file, bounded the same way the streaming path is. */
+function readCapturedFile(filePath: string): string {
+  try {
+    return appendCaptured('', readFileSync(filePath, 'utf8'))
+  } catch {
+    return ''
+  }
+}
+
 function execute(
   kind: RepositoryCheckCommandResult['kind'],
   command: string,
@@ -939,29 +1056,70 @@ function execute(
   env: Record<string, string> = {},
 ): RepositoryCheckCommandResult {
   const startedAt = Date.now()
-  const result = spawnSync(command, {
-    cwd: workspaceRoot,
-    encoding: 'utf8',
-    shell: true,
-    maxBuffer: MAX_CAPTURE_BYTES,
-    timeout: timeoutMs,
-    env: profileCommandEnv(env),
-  })
+  // Output goes to files, not pipes. `spawnSync` with pipes returns only when
+  // every holder of the pipe has closed it, so a timed-out `npm test` whose
+  // shell was killed still blocked the gate until the orphaned node processes
+  // finished on their own: 916 s against a 600 s bound in the field. With
+  // files the call returns when the shell exits, and the process group the
+  // child leads is then killed as a whole.
+  const captureDirectory = mkdtempSync(
+    path.join(tmpdir(), 'pan-repository-check-'),
+  )
+  const stdoutPath = path.join(captureDirectory, 'stdout')
+  const stderrPath = path.join(captureDirectory, 'stderr')
+  const stdoutFd = openSync(stdoutPath, 'w')
+  const stderrFd = openSync(stderrPath, 'w')
+  const detached = process.platform !== 'win32'
+  let closed = false
 
-  return {
-    kind,
-    command,
-    exit_code: result.status,
-    signal: result.signal,
-    stdout: result.stdout ?? '',
-    stderr: result.stderr ?? '',
-    passed: result.status === 0 && !result.error,
-    timed_out:
+  try {
+    // `detached` is honoured by spawnSync at runtime (the child leads its own
+    // process group) but is absent from its typings.
+    const spawnOptions: SpawnSyncOptions & { detached: boolean } = {
+      cwd: workspaceRoot,
+      shell: true,
+      stdio: ['ignore', stdoutFd, stderrFd],
+      timeout: timeoutMs,
+      env: profileCommandEnv(env),
+      detached,
+    }
+    const result = spawnSync(command, [], spawnOptions)
+    const timedOut =
       result.error instanceof Error &&
       'code' in result.error &&
-      result.error.code === 'ETIMEDOUT',
-    duration_ms: Date.now() - startedAt,
-    ...(result.error ? { error: result.error.message } : {}),
+      result.error.code === 'ETIMEDOUT'
+
+    if (timedOut && detached && typeof result.pid === 'number') {
+      try {
+        process.kill(-result.pid, 'SIGKILL')
+      } catch {
+        // The group already ended with the shell.
+      }
+    }
+
+    closeSync(stdoutFd)
+    closeSync(stderrFd)
+    closed = true
+
+    return {
+      kind,
+      command,
+      exit_code: result.status,
+      signal: result.signal,
+      stdout: readCapturedFile(stdoutPath),
+      stderr: readCapturedFile(stderrPath),
+      passed: result.status === 0 && !result.error,
+      timed_out: timedOut,
+      duration_ms: Date.now() - startedAt,
+      ...(result.error ? { error: result.error.message } : {}),
+    }
+  } finally {
+    if (!closed) {
+      closeSync(stdoutFd)
+      closeSync(stderrFd)
+    }
+
+    rmSync(captureDirectory, { recursive: true, force: true })
   }
 }
 
@@ -976,12 +1134,29 @@ function executeStreaming(
   const startedAt = Date.now()
 
   return new Promise((resolve) => {
+    // The child leads its own process group, so a timeout can end the whole
+    // tree (`npm -> run-built -> run-tests -> node`) at once. Killing the
+    // shell alone orphaned the suite, which kept the pipes open and delayed
+    // `close` until the tests finished on their own.
     const child = spawn(command, {
       cwd: workspaceRoot,
       shell: true,
       stdio: ['ignore', 'pipe', 'pipe'],
       env: profileCommandEnv(options.env ?? {}),
+      detached: process.platform !== 'win32',
     })
+    const killTree = (signal: NodeJS.Signals): void => {
+      if (child.pid !== undefined && process.platform !== 'win32') {
+        try {
+          process.kill(-child.pid, signal)
+          return
+        } catch {
+          // The group is already gone; fall through to the direct kill.
+        }
+      }
+
+      child.kill(signal)
+    }
     let stdout = ''
     let stderr = ''
     let timedOut = false
@@ -1042,8 +1217,8 @@ function executeStreaming(
 
     timeoutHandle = setTimeout(() => {
       timedOut = true
-      child.kill('SIGTERM')
-      killHandle = setTimeout(() => child.kill('SIGKILL'), 2_000)
+      killTree('SIGTERM')
+      killHandle = setTimeout(() => killTree('SIGKILL'), 2_000)
       killHandle.unref()
     }, timeoutMs)
     timeoutHandle.unref()

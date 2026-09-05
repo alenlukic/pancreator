@@ -70,12 +70,15 @@ import {
 } from './lib/release-preparation.js'
 import {
   awayDecisionLedgerPath,
+  awayEvaluatorPrompt,
   awayModeTrigger,
   countAwayDecisions,
+  countAwayEvaluatorFailures,
   readAwayDecisionLedger,
   recordAwayApplyResult,
   recordAwayEvaluation,
   recordAwayEvaluationFailure,
+  recordAwayEvaluatorExchange,
   recordDeterministicShipApproval,
   recordHypervisorQuarantine,
   type AwayDecisionRecord,
@@ -153,6 +156,7 @@ import { conflictsByTier, resolveReviewScope } from './lib/review-scope.js'
 import {
   assertRepositoryChecksValid,
   loadRepositoryChecks,
+  recordAgentRepositoryCheck,
   repositoryChecksSourcePath,
   runRepositoryCheckStreaming,
 } from './lib/repository-checks.js'
@@ -285,8 +289,9 @@ export const HELP_BODY = `Usage:
       --cohort names a cohort explicitly; a cohort whose predecessor is unsatisfied is refused with COHORT_PREDECESSOR_UNSATISFIED.
   pan cohort status <cohort-id> [--json]
       Reports the active cohort, each chunk's run status, the free parallelism slots, and the start, supervise (/pan-cohort), and integrate commands that apply.
-  pan cohort integrate <cohort-id> [--json]
-      Merge the committed chunk branches of the finished cohort into its base branch and record the satisfaction entry the next cohort needs.
+  pan cohort integrate <cohort-id> [--into-branch <branch>] [--json]
+      Merge the committed chunk branches of the finished cohort into its integration branch (the base branch by default) and record the satisfaction entry the next cohort needs.
+      --into-branch retargets the session: this and every later cohort merge into that branch, and later cohorts branch from it. Use it when the checkout that holds the base branch carries uncommitted work. A missing branch is created from the current integration head; an existing one must already contain that head.
   pan cohort abandon <cohort-id> --chunk <id> --note <reason> [--json]
   pan cohort clean <cohort-id> [--force] [--json]
   pan briefs build [--force] [--json]
@@ -693,37 +698,6 @@ function hypervisorModelForRun(root: string, state: RunState): string {
   return model
 }
 
-function awayEvaluatorPrompt(
-  root: string,
-  state: RunState,
-  blocker: NonNullable<ReturnType<typeof awayModeTrigger>>,
-): string {
-  const allowedActions = state.away_mode?.guardrails.allowed_actions ?? []
-  const evidenceReferences = [
-    resolveRunLayout(root, state.run_id).state.relative,
-    path.relative(root, hypervisorEventsPath(root)).split(path.sep).join('/'),
-  ]
-
-  return [
-    'Return JSON only.',
-    'Rank the supplied actions from safest to least safe.',
-    'Each option needs rank, action, feasible, rationale, evidence, and rollback_plan.',
-    'Evidence entries must use the supplied repository-relative paths.',
-    'rollback_plan needs non-empty steps and verification.',
-    'revise needs note. set-stage needs stage.',
-    JSON.stringify({
-      run_id: state.run_id,
-      invocation_id: state.current_invocation?.id ?? null,
-      current_stage: state.current_stage,
-      status: state.status,
-      pending_action: state.pending_action,
-      blocker,
-      allowed_actions: allowedActions,
-      evidence_references: evidenceReferences,
-    }),
-  ].join('\n')
-}
-
 function applyAwayDecision(
   root: string,
   state: RunState,
@@ -799,11 +773,28 @@ function evaluateAwayState(
     )
   }
 
+  if (countAwayEvaluatorFailures(root, state.run_id) >= budget) {
+    throw new PanError(
+      'The away evaluator failed as many times as the decision limit allows for this run.',
+      { code: 'AWAY_EVALUATOR_FAILURE_LIMIT' },
+    )
+  }
+
+  const prompt = awayEvaluatorPrompt(root, state, blocker, {
+    hypervisorEventsPath: path
+      .relative(root, hypervisorEventsPath(root))
+      .split(path.sep)
+      .join('/'),
+  })
   const evaluation = runCursorAgentJson({
     cwd: root,
     model: hypervisorModelForRun(root, state),
-    prompt: awayEvaluatorPrompt(root, state, blocker),
+    prompt,
   })
+
+  // The ledger keeps only the parsed verdict. The prompt and the raw response
+  // are what diagnose a rejected ranking, so they land beside the run evidence.
+  recordAwayEvaluatorExchange(root, state, prompt, evaluation)
 
   if (!evaluation.ok || evaluation.value === undefined) {
     return recordAwayEvaluationFailure(
@@ -1499,6 +1490,7 @@ async function main(): Promise<void> {
         )
         const appliedIds = new Set(
           runDecisions
+            .filter((record) => record.result === 'applied')
             .map((record) => record.linked_decision_id)
             .filter((value): value is string => typeof value === 'string'),
         )
@@ -1553,7 +1545,10 @@ async function main(): Promise<void> {
         if (!decision) {
           const applied = new Set(
             ledger
-              .filter((record) => record.run_id === runId)
+              .filter(
+                (record) =>
+                  record.run_id === runId && record.result === 'applied',
+              )
               .map((record) => record.linked_decision_id)
               .filter((value): value is string => typeof value === 'string'),
           )
@@ -1584,11 +1579,16 @@ async function main(): Promise<void> {
           )
         }
 
+        // Only a successful apply consumes the decision. A failed apply leaves
+        // its own ledger record and the decision stays apply-ready, so the
+        // supervisor can retry once the cause is repaired instead of spending
+        // another evaluation on the same gate.
         if (
           ledger.some(
             (record) =>
               record.run_id === runId &&
-              record.linked_decision_id === decisionId,
+              record.linked_decision_id === decisionId &&
+              record.result === 'applied',
           )
         ) {
           throw new PanError(
@@ -1600,8 +1600,21 @@ async function main(): Promise<void> {
         try {
           const next = applyAwayDecision(root, state, decision)
           const record = recordAwayApplyResult(root, decision, 'applied')
+          // Same hook as `pan decide`: it runs after the applied decision is
+          // durable, so a fan-out failure never rolls back the approval.
+          const autostart = maybeAutostartCohort(root, next, {
+            actor: 'away',
+            action: decision.selected_action?.action ?? '',
+          })
 
-          print({ state: next, decision: record }, json)
+          print(
+            {
+              state: next,
+              decision: record,
+              ...(autostart ? { autostart } : {}),
+            },
+            json,
+          )
         } catch (error) {
           recordAwayApplyResult(root, decision, 'failed', errorMessage(error))
           throw error
@@ -1684,6 +1697,7 @@ async function main(): Promise<void> {
         : workspaceOption
           ? resolveWorkspacePathOrWorktree(root, workspaceOption)
           : null
+      const startedAt = new Date().toISOString()
       const result = await runRepositoryCheckStreaming(root, profile, {
         ...(timeoutMs !== undefined ? { timeout_ms: timeoutMs } : {}),
         ...(checkWorkspace ? { workspace: checkWorkspace } : {}),
@@ -1700,7 +1714,23 @@ async function main(): Promise<void> {
         process.stderr.write('PANCREATOR_CHECK_SKIPPED=1\n')
       }
 
-      print(result, hasFlag(args, '--json'))
+      // A worker runs a profile inside its run's worktree, and the run is the
+      // only place a supervisor can audit that execution from harness records.
+      const runEvidence = worktreeWorkspace
+        ? recordAgentRepositoryCheck(
+            root,
+            worktreeWorkspace.name,
+            result,
+            startedAt,
+          )
+        : []
+
+      print(
+        runEvidence.length > 0
+          ? { ...result, run_evidence_paths: runEvidence }
+          : result,
+        hasFlag(args, '--json'),
+      )
 
       if (result.status === 'failed') {
         process.exitCode = 1
@@ -2498,7 +2528,9 @@ async function main(): Promise<void> {
         print(
           {
             status: 'integrated',
-            ...integrateCohort(root, requiredArgument(rest[0], 'cohort-id')),
+            ...integrateCohort(root, requiredArgument(rest[0], 'cohort-id'), {
+              intoBranch: option(rest, '--into-branch'),
+            }),
           },
           asJson,
         )

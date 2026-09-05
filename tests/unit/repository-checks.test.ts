@@ -1,11 +1,20 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import {
+  AGENT_REPOSITORY_CHECK_RUNS_FILE,
   compareRepositoryCheckToBaseline,
   loadRepositoryChecks,
+  recordAgentRepositoryCheck,
   repositoryChecksSourcePath,
   runRepositorySetup,
   runRepositoryCheck,
@@ -578,6 +587,61 @@ test('streaming repository checks emit subprocess output before returning the re
   assert.match(stdout.join(''), /first\nsecond/u)
 })
 
+test('a streaming timeout ends the whole process tree, not only the shell', async () => {
+  // `npm test` fans out into run-built, run-tests, and node. Killing the
+  // shell alone left that tree running and holding the pipes, so the gate
+  // returned only when the suite finished on its own, 130 s late in the field.
+  const { root } = makeInstallation()
+
+  writeChecks(root, {
+    fast: {
+      timeout_ms: 1_000,
+      probes: [],
+      // A grandchild that inherits stdout and would live far past the bound.
+      commands: ['sh -c "sleep 30; echo late" & wait'],
+    },
+  })
+
+  const startedAt = Date.now()
+  const result = await runRepositoryCheckStreaming(root, 'fast', {})
+  const elapsed = Date.now() - startedAt
+
+  assert.equal(result.status, 'failed')
+  assert.equal(result.results[0]?.timed_out, true)
+  assert.ok(
+    elapsed < 10_000,
+    `the gate returned after ${elapsed}ms; the orphaned tree kept it waiting`,
+  )
+})
+
+test('a synchronous timeout ends the whole process tree, not only the shell', () => {
+  // The gate path runs commands synchronously. With piped output the call
+  // returned only when the orphaned grandchildren closed the pipes: 916 s
+  // against a 600 s bound in the field. Output now goes to files and the
+  // child's process group is killed, so the bound is the bound.
+  const { root } = makeInstallation()
+
+  writeChecks(root, {
+    fast: {
+      timeout_ms: 1_000,
+      probes: [],
+      commands: ['echo early; sh -c "sleep 30; echo late" & wait'],
+    },
+  })
+
+  const startedAt = Date.now()
+  const result = runRepositoryCheck(root, 'fast')
+  const elapsed = Date.now() - startedAt
+
+  assert.equal(result.status, 'failed')
+  assert.equal(result.results[0]?.timed_out, true)
+  assert.match(result.results[0]?.stdout ?? '', /early/u)
+  assert.ok(
+    elapsed < 10_000,
+    `the gate returned after ${elapsed}ms; the orphaned tree kept it waiting`,
+  )
+})
+
 test('stage-requested timeout replaces the profile default', () => {
   const { root } = makeInstallation()
 
@@ -706,6 +770,15 @@ test('a current-path harness-managed worktree resolves the owning installation r
 
   mkdirSync(worktree, { recursive: true })
   mkdirSync(runtimeWorktree, { recursive: true })
+  // A linked worktree carries a `.git` file that names its gitdir.
+  writeFileSync(
+    path.join(worktree, '.git'),
+    'gitdir: ../../../.git/worktrees/wt\n',
+  )
+  writeFileSync(
+    path.join(runtimeWorktree, '.git'),
+    'gitdir: ../../../../.git/worktrees/wt\n',
+  )
 
   assert.equal(
     repositoryChecksSourcePath(worktree),
@@ -717,6 +790,45 @@ test('a current-path harness-managed worktree resolves the owning installation r
   assert.equal(
     repositoryChecksSourcePath(runtimeWorktree),
     path.join(root, 'runtime', 'repository-checks.json'),
+  )
+})
+
+test('a directory under a worktree that is not itself a worktree keeps its own resolution', () => {
+  // Test fixtures live under <checkout>/runtime/tmp/tests/. When the checkout
+  // is a cohort worktree, every fixture path contains a `worktrees` segment.
+  // The path alone must not send the fixture to the installation's file.
+  const { root } = makeInstallation()
+
+  writeChecks(root, { fast: { probes: [], commands: ['echo ok'] } })
+
+  const worktree = path.join(root, 'worktrees', 'operator', 'wt')
+  const fixture = path.join(
+    worktree,
+    'runtime',
+    'tmp',
+    'tests',
+    'run-1',
+    'checks-1',
+  )
+
+  mkdirSync(fixture, { recursive: true })
+  writeFileSync(
+    path.join(worktree, '.git'),
+    'gitdir: ../../../.git/worktrees/wt\n',
+  )
+  writeFileSync(
+    path.join(fixture, 'config.json'),
+    `${JSON.stringify({ schema_version: 1, workspace_root: '.', state_root: 'runtime', installation_mode: 'self_development' })}\n`,
+  )
+
+  assert.equal(
+    repositoryChecksSourcePath(fixture),
+    path.join(
+      fixture,
+      'library',
+      'templates',
+      'repository-checks.self-development.json',
+    ),
   )
 })
 
@@ -746,4 +858,105 @@ test('workspace setup commands load, run in order, and stop at the first failure
   assert.equal(result.results.length, 2)
   assert.equal(result.results[0].passed, true)
   assert.equal(result.results[1].passed, false)
+})
+
+test('an agent-run profile is recorded against the live run bound to its worktree', () => {
+  const { root, workspace } = makeInstallation()
+  const writeRun = (runId: string, status: string, worktree?: string) => {
+    const directory = path.join(root, 'runtime/logs/workflows', runId, 'agent')
+
+    mkdirSync(directory, { recursive: true })
+    writeFileSync(
+      path.join(directory, 'state.json'),
+      `${JSON.stringify({
+        run_id: runId,
+        status,
+        ...(worktree
+          ? {
+              managed_worktree: {
+                name: worktree,
+                path: `worktrees/operator/${worktree}`,
+                branch: worktree,
+              },
+            }
+          : {}),
+      })}\n`,
+    )
+  }
+
+  writeRun('live-bound', 'running', 'cohort-greeting')
+  writeRun('paused-bound', 'paused', 'cohort-greeting')
+  writeRun('finished-bound', 'succeeded', 'cohort-greeting')
+  writeRun('live-other', 'running', 'cohort-farewell')
+  writeRun('live-unbound', 'running')
+
+  const result: RepositoryCheckResult = {
+    profile: 'fast',
+    status: 'passed',
+    config_path: 'runtime/repository-checks.json',
+    workspace_root: workspace,
+    timeout_ms: 1000,
+    results: [],
+    total_duration_ms: 1234,
+    advisories: [],
+  }
+  const recorded = recordAgentRepositoryCheck(
+    root,
+    'cohort-greeting',
+    result,
+    '2026-09-05T02:00:00.000Z',
+  )
+
+  // Only the live runs bound to the worktree receive the record: a finished
+  // run has nothing left to audit, and other runs never saw this execution.
+  assert.deepEqual(recorded.sort(), [
+    `runtime/logs/workflows/live-bound/agent/evidence/${AGENT_REPOSITORY_CHECK_RUNS_FILE}`,
+    `runtime/logs/workflows/paused-bound/agent/evidence/${AGENT_REPOSITORY_CHECK_RUNS_FILE}`,
+  ])
+
+  const lines = readFileSync(path.join(root, recorded[0]), 'utf8')
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line) as Record<string, unknown>)
+
+  assert.equal(lines.length, 1)
+  assert.deepEqual(lines[0], {
+    profile: 'fast',
+    workspace_fingerprint: lines[0].workspace_fingerprint,
+    status: 'passed',
+    duration_ms: 1234,
+    started_at: '2026-09-05T02:00:00.000Z',
+    invoked_by: 'agent',
+  })
+  assert.match(String(lines[0].workspace_fingerprint), /^[0-9a-f]{64}$/u)
+
+  // A second execution appends, so the "fast at most once" rule is countable.
+  recordAgentRepositoryCheck(
+    root,
+    'cohort-greeting',
+    { ...result, status: 'failed' },
+    '2026-09-05T02:10:00.000Z',
+  )
+
+  assert.equal(
+    readFileSync(path.join(root, recorded[0]), 'utf8').trim().split('\n')
+      .length,
+    2,
+  )
+
+  // No bound live run means nothing is written anywhere.
+  assert.deepEqual(
+    recordAgentRepositoryCheck(root, 'unknown-worktree', result, 'now'),
+    [],
+  )
+  assert.equal(
+    existsSync(
+      path.join(
+        root,
+        'runtime/logs/workflows/live-other/agent/evidence',
+        AGENT_REPOSITORY_CHECK_RUNS_FILE,
+      ),
+    ),
+    false,
+  )
 })

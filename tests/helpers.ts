@@ -225,14 +225,20 @@ export function createFixture(): string {
   // The checked-in config.json intentionally blanks its model values; the
   // real specs live in the untracked config_overrides.json. Fixtures need a
   // complete standalone config, so they receive this checkout's effective
-  // merged configuration.
+  // merged configuration. Operator toggles that an operator flips on a live
+  // checkout are pinned to their defaults, so a checkout with away mode
+  // enabled does not flip every fixture that asserts the disabled baseline;
+  // a test that wants away mode calls enableAwayMode on its own fixture.
+  const fixtureConfig = readHarnessConfig(
+    REPO_ROOT,
+    path.join(REPO_ROOT, 'config.json'),
+  ) as Record<string, unknown>
+
+  fixtureConfig.away_mode = { enabled: false }
+
   writeFileSync(
     path.join(root, 'config.json'),
-    `${JSON.stringify(
-      readHarnessConfig(REPO_ROOT, path.join(REPO_ROOT, 'config.json')),
-      null,
-      2,
-    )}\n`,
+    `${JSON.stringify(fixtureConfig, null, 2)}\n`,
   )
 
   pinFixtureInvolvement(root)

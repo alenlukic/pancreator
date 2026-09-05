@@ -503,6 +503,21 @@ export function renderEvidenceWorkerBrief(
     `**Run** \`${invocation.run_id}\` · **Invocation** ` +
       `\`${invocation.invocation_id}\` · **Persona** \`${worker.persona}\``,
     '',
+    // The brief is the worker's whole contract, so it must name the workspace
+    // it inspects: a run bound to a managed worktree lives outside the main
+    // checkout, and a worker that reads the main checkout reports the change
+    // as missing.
+    `**Workspace** \`${invocation.workspace_root}\` — inspect and run ` +
+      'commands against this directory.',
+    ...(invocation.managed_worktree
+      ? [
+          '',
+          `**Managed worktree** \`${invocation.managed_worktree.name}\` · ` +
+            `**Branch** \`${invocation.managed_worktree.branch}\` · ` +
+            `**Path** \`${invocation.managed_worktree.path}\``,
+        ]
+      : []),
+    '',
     'You are one of several parallel evidence workers for this stage. A ' +
       'separate consolidating worker joins every report into the stage ' +
       'verdict; you own one evidence dimension and no verdict.',

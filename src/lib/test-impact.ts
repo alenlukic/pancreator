@@ -729,6 +729,24 @@ export function selectImpactedTests(
     }
   }
 
+  // The multi-source walk enters every seed at depth 0, so a seed that imports
+  // another seed is never credited to it. A changed test that imports a
+  // changed source is the common case: the test is selected because it
+  // changed, and the source would otherwise be reported as unreached. Walk
+  // each uncredited module alone and credit it when a selected test reaches it.
+  for (const seed of moduleSeeds) {
+    if (reachedBy.has(seed)) {
+      continue
+    }
+
+    for (const file of reverseClosure(graph, [seed], maxDepth).keys()) {
+      if (reasons.has(file)) {
+        reachedBy.add(seed)
+        break
+      }
+    }
+  }
+
   for (const file of normalizedChanged) {
     if (file.startsWith('bin/')) {
       for (const test of graph.binReferences.get(file) ?? []) {
