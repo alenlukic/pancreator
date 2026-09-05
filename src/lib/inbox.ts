@@ -133,12 +133,54 @@ function assertInboxMoveTargetFree(
   )
 }
 
+const TERMINAL_INBOX_STATUSES: ReadonlySet<InboxWorkStatus | 'archive'> =
+  new Set(['complete', 'canceled', 'archive'])
+
+const INBOX_NAME_SUFFIX_LIMIT = 1_000
+
+/**
+ * A terminal directory is history, and one intake file can legitimately be
+ * run more than once (a drill, a retry from `canceled`), so a name already
+ * present there gets a numeric suffix instead of failing the move. `queue`
+ * and `active` keep the collision: two live runs on one intake is a real
+ * conflict.
+ */
+function uniqueTerminalInboxName(
+  root: string,
+  targetStatus: InboxWorkStatus | 'archive',
+  fileName: string,
+): string {
+  const directory = statusDirectoryRelative(targetStatus)
+
+  if (!fileExists(resolveInside(root, path.join(directory, fileName)))) {
+    return fileName
+  }
+
+  const extension = path.extname(fileName)
+  const stem = fileName.slice(0, fileName.length - extension.length)
+
+  for (let index = 2; index <= INBOX_NAME_SUFFIX_LIMIT; index += 1) {
+    const candidate = `${stem}-${index}${extension}`
+
+    if (!fileExists(resolveInside(root, path.join(directory, candidate)))) {
+      return candidate
+    }
+  }
+
+  throw new PanError(
+    `Inbox move collision: no free name for ${fileName} under ${directory}`,
+    { code: 'INBOX_MOVE_COLLISION' },
+  )
+}
+
 function moveInboxFile(
   root: string,
   sourceRelative: string,
   targetStatus: InboxWorkStatus | 'archive',
 ): string {
-  const fileName = path.basename(sourceRelative)
+  const fileName = TERMINAL_INBOX_STATUSES.has(targetStatus)
+    ? uniqueTerminalInboxName(root, targetStatus, path.basename(sourceRelative))
+    : path.basename(sourceRelative)
   const targetRelative = path.join(
     statusDirectoryRelative(targetStatus),
     fileName,
@@ -263,7 +305,7 @@ export function finishInboxRequest(
 
   const targetRelative = path.join(
     statusDirectoryRelative(destination),
-    path.basename(normalized),
+    uniqueTerminalInboxName(root, destination, path.basename(normalized)),
   )
 
   assertInboxMoveTargetFree(root, normalized, targetRelative)

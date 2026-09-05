@@ -9,6 +9,7 @@ import {
   readJson,
   readText,
   withOperationMutex,
+  writeJsonAtomic,
 } from './io.js'
 import { AWAY_MODE_ACTIONS } from './project-config.js'
 import { resolveRunLayout } from './run-layout.js'
@@ -533,6 +534,30 @@ export function awayGateContext(
             }
           }
         }
+
+        // A planning output carries its specifications inside the cohort
+        // plan rather than in `artifacts`. Those are the documents the plan
+        // gate is about, so the evaluator gets them as citable artifacts.
+        const cohortPlan = isRecord(output.data)
+          ? output.data.cohort_plan
+          : null
+
+        if (isRecord(cohortPlan)) {
+          if (typeof cohortPlan.parent_spec_path === 'string') {
+            artifacts.push(cohortPlan.parent_spec_path)
+          }
+
+          if (Array.isArray(cohortPlan.chunks)) {
+            for (const chunk of cohortPlan.chunks) {
+              if (
+                isRecord(chunk) &&
+                typeof chunk.child_spec_path === 'string'
+              ) {
+                artifacts.push(chunk.child_spec_path)
+              }
+            }
+          }
+        }
       }
     } catch {
       // A malformed output is itself a defect the evaluator can weigh from
@@ -544,9 +569,75 @@ export function awayGateContext(
     operator_request: operatorRequest,
     stage_outcome: last?.outcome ?? null,
     stage_summary: summary,
-    stage_artifacts: artifacts,
+    stage_artifacts: [...new Set(artifacts)],
     stage_output_path: last?.output_path ?? null,
   }
+}
+
+// The literal option shape the prompt shows the evaluator. Prose alone left the
+// model free to invent its own rollback_plan layout, which parseOption rejects.
+const AWAY_OPTION_SHAPE = {
+  rank: 1,
+  action: 'approve',
+  feasible: true,
+  rationale: 'one sentence',
+  evidence: ['repository/relative/path'],
+  rollback_plan: {
+    steps: ['one step per string'],
+    verification: 'how to confirm the rollback took effect',
+  },
+  note: 'only for revise',
+  stage: 'only for set-stage',
+}
+
+/** Bounded copy of one evaluator exchange, written beside the run evidence. */
+export interface AwayEvaluatorExchange {
+  ok: boolean
+  exit_code: number | null
+  timed_out: boolean
+  duration_ms: number
+  stdout: string
+  stderr: string
+  value?: unknown
+  error?: string
+}
+
+const EXCHANGE_STREAM_MAX = 20_000
+
+/**
+ * Persist the evaluator prompt and its raw response at
+ * agent/evidence/away-evaluator-<timestamp>.json. The ledger holds only the
+ * parsed verdict, so this record is what explains a rejected ranking.
+ */
+export function recordAwayEvaluatorExchange(
+  root: string,
+  state: RunState,
+  prompt: string,
+  exchange: AwayEvaluatorExchange,
+  recordedAt = new Date().toISOString(),
+): string {
+  const layout = resolveRunLayout(root, state.run_id)
+  const target = layout.evidence(
+    `away-evaluator-${recordedAt.replace(/[:.]/gu, '-')}.json`,
+  )
+
+  writeJsonAtomic(target.absolute, {
+    schema_version: 1,
+    run_id: state.run_id,
+    invocation_id: state.current_invocation?.id ?? null,
+    recorded_at: recordedAt,
+    prompt,
+    ok: exchange.ok,
+    exit_code: exchange.exit_code,
+    timed_out: exchange.timed_out,
+    duration_ms: exchange.duration_ms,
+    stdout: exchange.stdout.slice(-EXCHANGE_STREAM_MAX),
+    stderr: exchange.stderr.slice(-EXCHANGE_STREAM_MAX),
+    ...(exchange.value !== undefined ? { value: exchange.value } : {}),
+    ...(exchange.error !== undefined ? { error: exchange.error } : {}),
+  })
+
+  return target.relative
 }
 
 export function awayEvaluatorPrompt(
@@ -571,11 +662,10 @@ export function awayEvaluatorPrompt(
     'Not advancing is not safer by default. A gate with stage_outcome "success" and a stage_summary that satisfies operator_request ranks approve first.',
     'Rank revise or reject first only for a concrete defect you can name in the artifact against the request, and put that defect in the note. Do not ask for material the summary already reports.',
     'Read the stage_artifacts when the summary alone cannot settle the decision.',
-    'Return exactly one object of the shape {"ranked_options": [...]} with no other top-level key and no prose.',
-    'Each option needs rank, action, feasible, rationale, evidence, and rollback_plan.',
-    'Evidence entries must use the supplied repository-relative paths.',
-    'rollback_plan needs non-empty steps and verification.',
-    'revise needs note. set-stage needs stage.',
+    'Return exactly one object with the single top-level key ranked_options and no prose. Every option has exactly this shape and these value types:',
+    JSON.stringify(AWAY_OPTION_SHAPE),
+    'rank starts at 1 with no gaps. action is one of allowed_actions. evidence entries are paths taken from evidence_references or stage_artifacts. rollback_plan.steps is a non-empty array of strings and rollback_plan.verification is one string.',
+    'revise needs note. set-stage needs stage. Otherwise omit note and stage.',
     JSON.stringify({
       run_id: state.run_id,
       invocation_id: state.current_invocation?.id ?? null,

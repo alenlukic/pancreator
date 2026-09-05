@@ -611,12 +611,16 @@ test('the autostart hook fires only for an operator approval of a flagged planni
     null,
   )
   assert.equal(
-    maybeAutostartCohort(root, base, { actor: 'away', action: 'approve' }),
-    null,
-  )
-  assert.equal(
     maybeAutostartCohort(root, base, { actor: 'operator', action: 'reject' }),
     null,
+  )
+  // --autostart is the operator's directive at init. An away approval on the
+  // operator's behalf honours it the same way; this fixture has no ratified
+  // plan, so the hook runs and reports the failure rather than staying silent.
+  assert.equal(
+    maybeAutostartCohort(root, base, { actor: 'away', action: 'approve' })
+      ?.status,
+    'failed',
   )
 })
 

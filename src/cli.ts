@@ -78,6 +78,7 @@ import {
   recordAwayApplyResult,
   recordAwayEvaluation,
   recordAwayEvaluationFailure,
+  recordAwayEvaluatorExchange,
   recordDeterministicShipApproval,
   recordHypervisorQuarantine,
   type AwayDecisionRecord,
@@ -287,8 +288,9 @@ export const HELP_BODY = `Usage:
       --cohort names a cohort explicitly; a cohort whose predecessor is unsatisfied is refused with COHORT_PREDECESSOR_UNSATISFIED.
   pan cohort status <cohort-id> [--json]
       Reports the active cohort, each chunk's run status, the free parallelism slots, and the start, supervise (/pan-cohort), and integrate commands that apply.
-  pan cohort integrate <cohort-id> [--json]
-      Merge the committed chunk branches of the finished cohort into its base branch and record the satisfaction entry the next cohort needs.
+  pan cohort integrate <cohort-id> [--into-branch <branch>] [--json]
+      Merge the committed chunk branches of the finished cohort into its integration branch (the base branch by default) and record the satisfaction entry the next cohort needs.
+      --into-branch retargets the session: this and every later cohort merge into that branch, and later cohorts branch from it. Use it when the checkout that holds the base branch carries uncommitted work. A missing branch is created from the current integration head; an existing one must already contain that head.
   pan cohort abandon <cohort-id> --chunk <id> --note <reason> [--json]
   pan cohort clean <cohort-id> [--force] [--json]
   pan briefs build [--force] [--json]
@@ -777,16 +779,21 @@ function evaluateAwayState(
     )
   }
 
+  const prompt = awayEvaluatorPrompt(root, state, blocker, {
+    hypervisorEventsPath: path
+      .relative(root, hypervisorEventsPath(root))
+      .split(path.sep)
+      .join('/'),
+  })
   const evaluation = runCursorAgentJson({
     cwd: root,
     model: hypervisorModelForRun(root, state),
-    prompt: awayEvaluatorPrompt(root, state, blocker, {
-      hypervisorEventsPath: path
-        .relative(root, hypervisorEventsPath(root))
-        .split(path.sep)
-        .join('/'),
-    }),
+    prompt,
   })
+
+  // The ledger keeps only the parsed verdict. The prompt and the raw response
+  // are what diagnose a rejected ranking, so they land beside the run evidence.
+  recordAwayEvaluatorExchange(root, state, prompt, evaluation)
 
   if (!evaluation.ok || evaluation.value === undefined) {
     return recordAwayEvaluationFailure(
@@ -1482,6 +1489,7 @@ async function main(): Promise<void> {
         )
         const appliedIds = new Set(
           runDecisions
+            .filter((record) => record.result === 'applied')
             .map((record) => record.linked_decision_id)
             .filter((value): value is string => typeof value === 'string'),
         )
@@ -1536,7 +1544,10 @@ async function main(): Promise<void> {
         if (!decision) {
           const applied = new Set(
             ledger
-              .filter((record) => record.run_id === runId)
+              .filter(
+                (record) =>
+                  record.run_id === runId && record.result === 'applied',
+              )
               .map((record) => record.linked_decision_id)
               .filter((value): value is string => typeof value === 'string'),
           )
@@ -1567,11 +1578,16 @@ async function main(): Promise<void> {
           )
         }
 
+        // Only a successful apply consumes the decision. A failed apply leaves
+        // its own ledger record and the decision stays apply-ready, so the
+        // supervisor can retry once the cause is repaired instead of spending
+        // another evaluation on the same gate.
         if (
           ledger.some(
             (record) =>
               record.run_id === runId &&
-              record.linked_decision_id === decisionId,
+              record.linked_decision_id === decisionId &&
+              record.result === 'applied',
           )
         ) {
           throw new PanError(
@@ -1583,8 +1599,21 @@ async function main(): Promise<void> {
         try {
           const next = applyAwayDecision(root, state, decision)
           const record = recordAwayApplyResult(root, decision, 'applied')
+          // Same hook as `pan decide`: it runs after the applied decision is
+          // durable, so a fan-out failure never rolls back the approval.
+          const autostart = maybeAutostartCohort(root, next, {
+            actor: 'away',
+            action: decision.selected_action?.action ?? '',
+          })
 
-          print({ state: next, decision: record }, json)
+          print(
+            {
+              state: next,
+              decision: record,
+              ...(autostart ? { autostart } : {}),
+            },
+            json,
+          )
         } catch (error) {
           recordAwayApplyResult(root, decision, 'failed', errorMessage(error))
           throw error
@@ -2481,7 +2510,9 @@ async function main(): Promise<void> {
         print(
           {
             status: 'integrated',
-            ...integrateCohort(root, requiredArgument(rest[0], 'cohort-id')),
+            ...integrateCohort(root, requiredArgument(rest[0], 'cohort-id'), {
+              intoBranch: option(rest, '--into-branch'),
+            }),
           },
           asJson,
         )

@@ -223,8 +223,6 @@ function runCursorAgent(
     argv.push('--resume', request.sessionId)
   }
 
-  argv.push(request.prompt)
-
   const startedAt = Date.now()
   const spawned = spawnSync(binary, argv, {
     cwd: request.cwd,
@@ -234,7 +232,13 @@ function runCursorAgent(
     // or an external-executor stage never fails auth that the probe passed.
     env: probeEnvironment(request.cwd),
     encoding: 'utf8',
-    input: '',
+    // The prompt travels over stdin, never as an argv element. Endpoint
+    // security on an operator machine was observed to SIGKILL the cursor-agent
+    // wrapper at exec time whenever one argument reached 1000 bytes, which
+    // every real evaluator or delegation prompt does. `-p` reads the prompt
+    // from stdin when no positional prompt is given, as claude-code.ts relies
+    // on for the same reason.
+    input: request.prompt,
     timeout: request.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     maxBuffer: MAX_OUTPUT_BYTES,
   })

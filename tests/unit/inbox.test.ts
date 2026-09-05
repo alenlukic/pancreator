@@ -300,6 +300,41 @@ test('inbox moves fail before overwrite when the target already exists', () => {
   )
 })
 
+test('a finished request takes a suffixed name when history holds its name', () => {
+  // One intake file can be run more than once. The second run must still
+  // finish, and history keeps both copies untouched.
+  const root = createFixture()
+  const activeDirectory = path.join(root, 'runtime/inbox/active')
+  const completeDirectory = path.join(root, 'runtime/inbox/complete')
+
+  mkdirSync(activeDirectory, { recursive: true })
+  mkdirSync(completeDirectory, { recursive: true })
+  writeFileSync(path.join(completeDirectory, 'drill.md'), '# First\n', 'utf8')
+  writeFileSync(
+    path.join(completeDirectory, 'drill-2.md'),
+    '# Second\n',
+    'utf8',
+  )
+  writeFileSync(path.join(activeDirectory, 'drill.md'), '# Third\n', 'utf8')
+
+  const completed = finishInboxRequest(
+    root,
+    'runtime/inbox/active/drill.md',
+    'complete',
+  )
+
+  assert.equal(completed, 'runtime/inbox/complete/drill-3.md')
+  assert.equal(
+    readFileSync(path.join(completeDirectory, 'drill.md'), 'utf8'),
+    '# First\n',
+  )
+  assert.equal(
+    readFileSync(path.join(completeDirectory, 'drill-3.md'), 'utf8'),
+    '# Third\n',
+  )
+  assert.equal(existsSync(path.join(activeDirectory, 'drill.md')), false)
+})
+
 test('migrates legacy inbox layout into status directories', () => {
   const root = createFixture()
   const legacyPath = path.join(root, 'runtime/inbox/legacy-unlinked.md')

@@ -1,5 +1,13 @@
-import { spawn, spawnSync } from 'node:child_process'
-import { statSync } from 'node:fs'
+import { spawn, spawnSync, type SpawnSyncOptions } from 'node:child_process'
+import {
+  closeSync,
+  mkdtempSync,
+  openSync,
+  readFileSync,
+  rmSync,
+  statSync,
+} from 'node:fs'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 import { PanError, invariant } from './errors.js'
@@ -948,6 +956,15 @@ function appendCaptured(current: string, chunk: string): string {
   return `${current}${truncated}\n[output truncated by Pancreator]\n`
 }
 
+/** Read a captured stream file, bounded the same way the streaming path is. */
+function readCapturedFile(filePath: string): string {
+  try {
+    return appendCaptured('', readFileSync(filePath, 'utf8'))
+  } catch {
+    return ''
+  }
+}
+
 function execute(
   kind: RepositoryCheckCommandResult['kind'],
   command: string,
@@ -956,29 +973,70 @@ function execute(
   env: Record<string, string> = {},
 ): RepositoryCheckCommandResult {
   const startedAt = Date.now()
-  const result = spawnSync(command, {
-    cwd: workspaceRoot,
-    encoding: 'utf8',
-    shell: true,
-    maxBuffer: MAX_CAPTURE_BYTES,
-    timeout: timeoutMs,
-    env: profileCommandEnv(env),
-  })
+  // Output goes to files, not pipes. `spawnSync` with pipes returns only when
+  // every holder of the pipe has closed it, so a timed-out `npm test` whose
+  // shell was killed still blocked the gate until the orphaned node processes
+  // finished on their own: 916 s against a 600 s bound in the field. With
+  // files the call returns when the shell exits, and the process group the
+  // child leads is then killed as a whole.
+  const captureDirectory = mkdtempSync(
+    path.join(tmpdir(), 'pan-repository-check-'),
+  )
+  const stdoutPath = path.join(captureDirectory, 'stdout')
+  const stderrPath = path.join(captureDirectory, 'stderr')
+  const stdoutFd = openSync(stdoutPath, 'w')
+  const stderrFd = openSync(stderrPath, 'w')
+  const detached = process.platform !== 'win32'
+  let closed = false
 
-  return {
-    kind,
-    command,
-    exit_code: result.status,
-    signal: result.signal,
-    stdout: result.stdout ?? '',
-    stderr: result.stderr ?? '',
-    passed: result.status === 0 && !result.error,
-    timed_out:
+  try {
+    // `detached` is honoured by spawnSync at runtime (the child leads its own
+    // process group) but is absent from its typings.
+    const spawnOptions: SpawnSyncOptions & { detached: boolean } = {
+      cwd: workspaceRoot,
+      shell: true,
+      stdio: ['ignore', stdoutFd, stderrFd],
+      timeout: timeoutMs,
+      env: profileCommandEnv(env),
+      detached,
+    }
+    const result = spawnSync(command, [], spawnOptions)
+    const timedOut =
       result.error instanceof Error &&
       'code' in result.error &&
-      result.error.code === 'ETIMEDOUT',
-    duration_ms: Date.now() - startedAt,
-    ...(result.error ? { error: result.error.message } : {}),
+      result.error.code === 'ETIMEDOUT'
+
+    if (timedOut && detached && typeof result.pid === 'number') {
+      try {
+        process.kill(-result.pid, 'SIGKILL')
+      } catch {
+        // The group already ended with the shell.
+      }
+    }
+
+    closeSync(stdoutFd)
+    closeSync(stderrFd)
+    closed = true
+
+    return {
+      kind,
+      command,
+      exit_code: result.status,
+      signal: result.signal,
+      stdout: readCapturedFile(stdoutPath),
+      stderr: readCapturedFile(stderrPath),
+      passed: result.status === 0 && !result.error,
+      timed_out: timedOut,
+      duration_ms: Date.now() - startedAt,
+      ...(result.error ? { error: result.error.message } : {}),
+    }
+  } finally {
+    if (!closed) {
+      closeSync(stdoutFd)
+      closeSync(stderrFd)
+    }
+
+    rmSync(captureDirectory, { recursive: true, force: true })
   }
 }
 

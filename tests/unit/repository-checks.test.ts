@@ -605,6 +605,34 @@ test('a streaming timeout ends the whole process tree, not only the shell', asyn
   )
 })
 
+test('a synchronous timeout ends the whole process tree, not only the shell', () => {
+  // The gate path runs commands synchronously. With piped output the call
+  // returned only when the orphaned grandchildren closed the pipes: 916 s
+  // against a 600 s bound in the field. Output now goes to files and the
+  // child's process group is killed, so the bound is the bound.
+  const { root } = makeInstallation()
+
+  writeChecks(root, {
+    fast: {
+      timeout_ms: 1_000,
+      probes: [],
+      commands: ['echo early; sh -c "sleep 30; echo late" & wait'],
+    },
+  })
+
+  const startedAt = Date.now()
+  const result = runRepositoryCheck(root, 'fast')
+  const elapsed = Date.now() - startedAt
+
+  assert.equal(result.status, 'failed')
+  assert.equal(result.results[0]?.timed_out, true)
+  assert.match(result.results[0]?.stdout ?? '', /early/u)
+  assert.ok(
+    elapsed < 10_000,
+    `the gate returned after ${elapsed}ms; the orphaned tree kept it waiting`,
+  )
+})
+
 test('stage-requested timeout replaces the profile default', () => {
   const { root } = makeInstallation()
 

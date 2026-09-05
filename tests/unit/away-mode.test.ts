@@ -16,6 +16,7 @@ import {
   recordAwayApplyResult,
   recordAwayEvaluation,
   recordAwayEvaluationFailure,
+  recordAwayEvaluatorExchange,
   recordDeterministicShipApproval,
   recordHypervisorQuarantine,
   selectAwayOption,
@@ -377,8 +378,21 @@ test('the evaluator prompt carries the request, the outcome, and the artifact', 
       summary: 'Three chunks in two cohorts, as the request fixed the shape.',
       artifacts: [
         { path: 'runtime/logs/workflows/run/operator/specs/parent.md' },
-        { path: 'runtime/logs/workflows/run/operator/specs/greeting.md' },
       ],
+      // A planning output names its specifications in the cohort plan, not in
+      // `artifacts`; the gate context surfaces those as well.
+      data: {
+        cohort_plan: {
+          parent_spec_path:
+            'runtime/logs/workflows/run/operator/specs/parent.md',
+          chunks: [
+            {
+              child_spec_path:
+                'runtime/logs/workflows/run/operator/specs/greeting.md',
+            },
+          ],
+        },
+      },
     }),
   )
   state.status = 'awaiting_operator'
@@ -438,6 +452,51 @@ test('the evaluator prompt carries the request, the outcome, and the artifact', 
     ),
     'each artifact is citable evidence',
   )
+
+  // The option shape is shown literally, so the parser's rollback_plan layout
+  // is not left to the model's imagination.
+  const shapeLine = prompt
+    .split('\n')
+    .find((line) => line.startsWith('{"rank":1,'))
+  const shape = JSON.parse(shapeLine ?? '') as {
+    rollback_plan: { steps: string[]; verification: string }
+  }
+
+  assert.ok(Array.isArray(shape.rollback_plan.steps))
+  assert.equal(typeof shape.rollback_plan.verification, 'string')
+
+  // The raw exchange is evidence beside the run, bounded, with the prompt.
+  const exchangePath = recordAwayEvaluatorExchange(
+    root,
+    state,
+    prompt,
+    {
+      ok: false,
+      exit_code: 0,
+      timed_out: false,
+      duration_ms: 12,
+      stdout: `${'x'.repeat(30_000)}{"options":[]}`,
+      stderr: '',
+      value: { options: [] },
+      error: 'Away evaluation MUST contain ranked_options.',
+    },
+    '2026-09-04T17:49:40.807Z',
+  )
+
+  assert.equal(
+    exchangePath,
+    `runtime/logs/workflows/${state.run_id}/agent/evidence/away-evaluator-2026-09-04T17-49-40-807Z.json`,
+  )
+
+  const exchange = JSON.parse(
+    readFileSync(path.join(root, exchangePath), 'utf8'),
+  ) as Record<string, unknown>
+
+  assert.equal(exchange.prompt, prompt)
+  assert.deepEqual(exchange.value, { options: [] })
+  assert.equal(exchange.error, 'Away evaluation MUST contain ranked_options.')
+  assert.ok((exchange.stdout as string).endsWith('{"options":[]}'))
+  assert.equal((exchange.stdout as string).length, 20_000)
 })
 
 test('a stale blocked outcome does not trigger on a progressing run', () => {

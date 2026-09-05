@@ -982,6 +982,31 @@ function resolveReconcileTarget(
 }
 
 /**
+ * Absolute path of a working tree that holds one existing local branch,
+ * creating a recorded worktree for it when no checkout holds it yet.
+ *
+ * This is the single-source counterpart of `reconcileWorktrees`: a merge of one
+ * branch needs a working tree exactly as a merge of two does, and the target is
+ * resolved by the same rules, so the held checkout, a recorded worktree on the
+ * branch, or a newly recorded worktree come back in that order.
+ */
+export function materializeBranchCheckout(
+  root: string,
+  branch: string,
+  repositoryRootOverride?: string | null,
+): string {
+  const repositoryRoot = repositoryRootOverride ?? workspaceRepositoryRoot(root)
+
+  return withOperationMutex(
+    worktreeMutexPath(root),
+    () =>
+      resolveReconcileTarget(root, repositoryRoot, readWorktreeIndex(root), {
+        into_branch: branch,
+      }).absolutePath,
+  )
+}
+
+/**
  * Merge two or more recorded source worktrees into a target worktree or an
  * existing local branch.
  *

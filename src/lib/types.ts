@@ -1542,6 +1542,8 @@ export interface CohortSatisfactionRecord {
   cohort_index: number
   recorded_at: string
   base_branch: string
+  /** Branch the cohort merged into when it differs from `base_branch`. */
+  integration_branch?: string
   merge_commit: string
   evidence_path: string
 }
@@ -1552,6 +1554,13 @@ export interface CohortSessionState {
   plan_run_id: string
   parent_spec_path: string
   base_branch: string
+  /**
+   * Branch the cohorts merge into and later cohorts branch from, when the
+   * operator retargeted integration away from `base_branch` with
+   * `pan cohort integrate --into-branch`. Absent records integrate into
+   * `base_branch`.
+   */
+  integration_branch?: string
   /**
    * Absolute path of the Git repository the chunks fan out from: the plan
    * run's workspace repository. Records older than the field use the
