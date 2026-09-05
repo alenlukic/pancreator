@@ -1062,6 +1062,64 @@ interface MergeOutcome {
   evidence_path: string
 }
 
+function integrationRecordPath(cohortId: string, cohortIndex: number): string {
+  return `runtime/logs/cohorts/${cohortId}/integration-${cohortIndex}.json`
+}
+
+/**
+ * Write the durable integration record of one cohort and return its path.
+ *
+ * `COHORT-001` makes this record the merge proof of the cohort, so every
+ * integration path writes the same shape: the branches and chunk runs that
+ * landed, the integration head before and after, and the ledger entry a
+ * reconcile appended, when one did. A caller that returned the shared
+ * reconcile ledger instead left the per-cohort proof unwritten.
+ */
+function writeIntegrationRecord(
+  root: string,
+  state: CohortSessionState,
+  cohortIndex: number,
+  record: {
+    merged: CohortChunkRecord[]
+    abandoned?: Array<{ chunk: string; note: string; recorded_at: string }>
+    base_commit_before_merge: string
+    merge_commit: string
+    reconcile_evidence_path?: string
+  },
+): string {
+  const repositoryRoot = cohortRepositoryRoot(root, state)
+  const evidencePath = integrationRecordPath(state.cohort_id, cohortIndex)
+
+  writeJsonAtomic(resolveInside(root, evidencePath), {
+    schema_version: 1,
+    cohort_id: state.cohort_id,
+    cohort_index: cohortIndex,
+    base_branch: state.base_branch,
+    integration_branch: integrationBranch(state),
+    merged_branches: record.merged.flatMap((chunk) =>
+      chunk.branch ? [chunk.branch] : [],
+    ),
+    merged_chunks: record.merged.map((chunk) => ({
+      chunk: chunk.id,
+      run_id: chunk.run_id ?? null,
+      branch: chunk.branch ?? null,
+      worktree: chunk.worktree ?? null,
+      branch_head: chunk.branch
+        ? gitRevParse(repositoryRoot, chunk.branch)
+        : null,
+    })),
+    abandoned_chunks: record.abandoned ?? [],
+    base_commit_before_merge: record.base_commit_before_merge,
+    merge_commit: record.merge_commit,
+    ...(record.reconcile_evidence_path
+      ? { reconcile_evidence_path: record.reconcile_evidence_path }
+      : {}),
+    recorded_at: now(),
+  })
+
+  return evidencePath
+}
+
 /**
  * Record a new integration branch on the session. The caller holds the session
  * mutex.
@@ -1130,19 +1188,13 @@ function recordAbandonedCohort(
   }))
   const target = integrationBranch(state)
   const baseHead = gitRevParse(cohortRepositoryRoot(root, state), target)
-  const evidencePath = `runtime/logs/cohorts/${state.cohort_id}/integration-${cohortIndex}.json`
-
-  writeJsonAtomic(resolveInside(root, evidencePath), {
-    schema_version: 1,
-    cohort_id: state.cohort_id,
-    cohort_index: cohortIndex,
-    base_branch: state.base_branch,
-    integration_branch: target,
-    merged_chunks: [],
-    abandoned_chunks: abandoned,
+  const evidencePath = writeIntegrationRecord(root, state, cohortIndex, {
+    merged: [],
+    abandoned,
+    base_commit_before_merge: baseHead,
     merge_commit: baseHead,
-    recorded_at: now(),
   })
+
   persistCohortState(root, {
     ...state,
     satisfaction: [
@@ -1243,9 +1295,16 @@ function mergeThroughReconcile(
     )
   }
 
+  const mergeCommit = gitRevParse(repositoryRoot, target)
+
   return {
-    merge_commit: gitRevParse(repositoryRoot, target),
-    evidence_path: result.evidence_path,
+    merge_commit: mergeCommit,
+    evidence_path: writeIntegrationRecord(root, state, cohortIndex, {
+      merged: chunks,
+      base_commit_before_merge: baseBefore,
+      merge_commit: mergeCommit,
+      reconcile_evidence_path: result.evidence_path,
+    }),
   }
 }
 
@@ -1281,11 +1340,8 @@ function mergeSingleChunkBranch(
     { code: 'COHORT_INTEGRATION_INCOMPLETE', details: { chunk: chunk.id } },
   )
 
-  const checkout = materializeBranchCheckout(
-    root,
-    target,
-    cohortRepositoryRoot(root, state),
-  )
+  const repositoryRoot = cohortRepositoryRoot(root, state)
+  const checkout = materializeBranchCheckout(root, target, repositoryRoot)
 
   invariant(
     !gitWorktreeIsDirty(checkout),
@@ -1295,6 +1351,7 @@ function mergeSingleChunkBranch(
     { code: 'COHORT_INTEGRATION_INCOMPLETE' },
   )
 
+  const baseBefore = gitRevParse(repositoryRoot, target)
   const merge = gitMergeBranch(checkout, branch)
 
   if (!merge.succeeded) {
@@ -1320,20 +1377,14 @@ function mergeSingleChunkBranch(
     code: 'COHORT_INTEGRATION_INCOMPLETE',
   })
 
-  const evidencePath = `runtime/logs/cohorts/${state.cohort_id}/integration-${cohortIndex}.json`
-
-  writeJsonAtomic(resolveInside(root, evidencePath), {
-    schema_version: 1,
-    cohort_id: state.cohort_id,
-    cohort_index: cohortIndex,
-    base_branch: state.base_branch,
-    integration_branch: target,
-    merged_branch: branch,
+  return {
     merge_commit: mergeCommit,
-    recorded_at: now(),
-  })
-
-  return { merge_commit: mergeCommit, evidence_path: evidencePath }
+    evidence_path: writeIntegrationRecord(root, state, cohortIndex, {
+      merged: [chunk],
+      base_commit_before_merge: baseBefore,
+      merge_commit: mergeCommit,
+    }),
+  }
 }
 
 /**

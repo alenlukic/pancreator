@@ -162,6 +162,17 @@ export function sha256(value: unknown): string {
   return createHash('sha256').update(input).digest('hex')
 }
 
+/**
+ * Digest of a referenced document on the one basis every audited reference
+ * states: SHA-256 of the text after leading and trailing whitespace is
+ * trimmed. The card's context reference, a child specification's parent
+ * reference, and the validator that compares them must share this rule, or
+ * identical content reports as drift because of a trailing newline.
+ */
+export function referenceContentSha256(text: string): string {
+  return sha256(text.trim())
+}
+
 export function stableStringify(value: unknown): string {
   if (Array.isArray(value)) {
     return `[${value.map((item) => stableStringify(item)).join(',')}]`

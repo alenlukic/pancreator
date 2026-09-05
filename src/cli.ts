@@ -156,6 +156,7 @@ import { conflictsByTier, resolveReviewScope } from './lib/review-scope.js'
 import {
   assertRepositoryChecksValid,
   loadRepositoryChecks,
+  recordAgentRepositoryCheck,
   repositoryChecksSourcePath,
   runRepositoryCheckStreaming,
 } from './lib/repository-checks.js'
@@ -1696,6 +1697,7 @@ async function main(): Promise<void> {
         : workspaceOption
           ? resolveWorkspacePathOrWorktree(root, workspaceOption)
           : null
+      const startedAt = new Date().toISOString()
       const result = await runRepositoryCheckStreaming(root, profile, {
         ...(timeoutMs !== undefined ? { timeout_ms: timeoutMs } : {}),
         ...(checkWorkspace ? { workspace: checkWorkspace } : {}),
@@ -1712,7 +1714,23 @@ async function main(): Promise<void> {
         process.stderr.write('PANCREATOR_CHECK_SKIPPED=1\n')
       }
 
-      print(result, hasFlag(args, '--json'))
+      // A worker runs a profile inside its run's worktree, and the run is the
+      // only place a supervisor can audit that execution from harness records.
+      const runEvidence = worktreeWorkspace
+        ? recordAgentRepositoryCheck(
+            root,
+            worktreeWorkspace.name,
+            result,
+            startedAt,
+          )
+        : []
+
+      print(
+        runEvidence.length > 0
+          ? { ...result, run_evidence_paths: runEvidence }
+          : result,
+        hasFlag(args, '--json'),
+      )
 
       if (result.status === 'failed') {
         process.exitCode = 1

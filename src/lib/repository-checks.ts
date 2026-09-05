@@ -3,6 +3,7 @@ import {
   closeSync,
   mkdtempSync,
   openSync,
+  readdirSync,
   readFileSync,
   rmSync,
   statSync,
@@ -11,14 +12,17 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 import { PanError, invariant } from './errors.js'
-import { fileExists, isRecord, readJson } from './io.js'
+import { gitWorkspaceSnapshot } from './git.js'
+import { appendJsonLine, fileExists, isRecord, readJson } from './io.js'
 import {
   configuredWorkspaceRoot,
   isSelfDevelopmentInstallation,
 } from './project-config.js'
+import { resolveRunLayout } from './run-layout.js'
 import type {
   RepositoryCheckDelta,
   RepositoryCheckDiagnostic,
+  RunStatus,
 } from './types.js'
 import { TEST_PROFILE_ENV } from './suite-profile.js'
 
@@ -865,6 +869,85 @@ export interface RepositorySetupResult {
   workspace_root: string
   results: RepositoryCheckCommandResult[]
   total_duration_ms: number
+}
+
+/** Evidence file, relative to a run's `agent/evidence/`, of agent-run profiles. */
+export const AGENT_REPOSITORY_CHECK_RUNS_FILE = 'repository-check-runs.jsonl'
+
+const LIVE_RUN_STATUSES = new Set<RunStatus>([
+  'running',
+  'awaiting_supervisor',
+  'awaiting_operator',
+  'paused',
+])
+
+/**
+ * Append an agent-run profile execution to every live run bound to a worktree.
+ *
+ * `DEV-001` lets an agent run `fast` at most once, and the supervisor can audit
+ * that rule only from harness records. A worker runs
+ * `pan repository-check <profile> --worktree <name>` inside its run's
+ * worktree, so the run's managed-worktree binding is what resolves it. No
+ * bound live run means nothing to record. The record is bounded on purpose:
+ * the command output stays on the worker's terminal, and the fingerprint is
+ * what lets a later gate compare the execution with the workspace it judges.
+ */
+export function recordAgentRepositoryCheck(
+  root: string,
+  worktreeName: string,
+  result: RepositoryCheckResult,
+  startedAt: string,
+): string[] {
+  const base = path.join(root, 'runtime', 'logs', 'workflows')
+
+  if (!fileExists(base)) {
+    return []
+  }
+
+  const recorded: string[] = []
+  let fingerprint: string | null = null
+
+  for (const entry of readdirSync(base, { withFileTypes: true })) {
+    if (!entry.isDirectory()) {
+      continue
+    }
+
+    const layout = resolveRunLayout(root, entry.name)
+    let state: unknown
+
+    try {
+      state = fileExists(layout.state.absolute)
+        ? readJson(layout.state.absolute)
+        : null
+    } catch {
+      continue
+    }
+
+    if (
+      !isRecord(state) ||
+      !isRecord(state.managed_worktree) ||
+      state.managed_worktree.name !== worktreeName ||
+      !LIVE_RUN_STATUSES.has(state.status as RunStatus)
+    ) {
+      continue
+    }
+
+    fingerprint ??= gitWorkspaceSnapshot(result.workspace_root).fingerprint
+
+    const evidence = layout.evidence(AGENT_REPOSITORY_CHECK_RUNS_FILE)
+
+    appendJsonLine(evidence.absolute, {
+      profile: result.profile,
+      workspace_fingerprint: fingerprint,
+      status: result.status,
+      duration_ms: result.total_duration_ms,
+      started_at: startedAt,
+      invoked_by: 'agent',
+    })
+    recorded.push(evidence.relative)
+  }
+
+  return recorded
 }
 
 /**

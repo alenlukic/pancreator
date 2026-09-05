@@ -1,6 +1,12 @@
 import path from 'node:path'
 
-import { fileExists, isRecord, readJson, readText } from '../io.js'
+import {
+  fileExists,
+  isRecord,
+  readJson,
+  readText,
+  referenceContentSha256,
+} from '../io.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
 
 type Issues = HandlerResult['issues']
@@ -605,10 +611,17 @@ export function validateChildSpecifications(
   }
 
   const parentAbsolute = path.join(input.root, plan.parent_spec_path)
-  const parentWords =
+  const parentText =
     plan.parent_spec_path.length > 0 && fileExists(parentAbsolute)
-      ? normalizedWords(readText(parentAbsolute))
-      : []
+      ? readText(parentAbsolute)
+      : null
+  const parentWords = parentText === null ? [] : normalizedWords(parentText)
+  // The chunk card recomputes the parent digest on the trimmed basis, so a
+  // child that recorded the raw-file digest reports drift against every card
+  // even though nobody edited the parent. Checking the value here catches the
+  // wrong basis at the plan gate, before any chunk run reads it.
+  const parentDigest =
+    parentText === null ? null : referenceContentSha256(parentText)
   const ownership = new Map<string, string[]>()
 
   for (const chunk of plan.chunks) {
@@ -656,11 +669,20 @@ export function validateChildSpecifications(
         )
       }
 
-      if (!/sha256:[0-9a-f]{64}/u.test(reference)) {
+      const recordedDigest = /sha256:([0-9a-f]{64})/u.exec(reference)?.[1]
+
+      if (recordedDigest === undefined) {
         issues.push(
           issue(
             'child.parent_reference_digest',
             `${chunk.child_spec_path} parent reference MUST carry the parent's sha256 content digest`,
+          ),
+        )
+      } else if (parentDigest !== null && recordedDigest !== parentDigest) {
+        issues.push(
+          issue(
+            'child.parent_reference_digest_mismatch',
+            `${chunk.child_spec_path} parent reference records sha256:${recordedDigest}, but ${plan.parent_spec_path} digests to sha256:${parentDigest} on the reference basis (SHA-256 of the file after leading and trailing whitespace is trimmed). Record that value.`,
           ),
         )
       }

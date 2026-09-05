@@ -1,11 +1,20 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import {
+  AGENT_REPOSITORY_CHECK_RUNS_FILE,
   compareRepositoryCheckToBaseline,
   loadRepositoryChecks,
+  recordAgentRepositoryCheck,
   repositoryChecksSourcePath,
   runRepositorySetup,
   runRepositoryCheck,
@@ -849,4 +858,105 @@ test('workspace setup commands load, run in order, and stop at the first failure
   assert.equal(result.results.length, 2)
   assert.equal(result.results[0].passed, true)
   assert.equal(result.results[1].passed, false)
+})
+
+test('an agent-run profile is recorded against the live run bound to its worktree', () => {
+  const { root, workspace } = makeInstallation()
+  const writeRun = (runId: string, status: string, worktree?: string) => {
+    const directory = path.join(root, 'runtime/logs/workflows', runId, 'agent')
+
+    mkdirSync(directory, { recursive: true })
+    writeFileSync(
+      path.join(directory, 'state.json'),
+      `${JSON.stringify({
+        run_id: runId,
+        status,
+        ...(worktree
+          ? {
+              managed_worktree: {
+                name: worktree,
+                path: `worktrees/operator/${worktree}`,
+                branch: worktree,
+              },
+            }
+          : {}),
+      })}\n`,
+    )
+  }
+
+  writeRun('live-bound', 'running', 'cohort-greeting')
+  writeRun('paused-bound', 'paused', 'cohort-greeting')
+  writeRun('finished-bound', 'succeeded', 'cohort-greeting')
+  writeRun('live-other', 'running', 'cohort-farewell')
+  writeRun('live-unbound', 'running')
+
+  const result: RepositoryCheckResult = {
+    profile: 'fast',
+    status: 'passed',
+    config_path: 'runtime/repository-checks.json',
+    workspace_root: workspace,
+    timeout_ms: 1000,
+    results: [],
+    total_duration_ms: 1234,
+    advisories: [],
+  }
+  const recorded = recordAgentRepositoryCheck(
+    root,
+    'cohort-greeting',
+    result,
+    '2026-09-05T02:00:00.000Z',
+  )
+
+  // Only the live runs bound to the worktree receive the record: a finished
+  // run has nothing left to audit, and other runs never saw this execution.
+  assert.deepEqual(recorded.sort(), [
+    `runtime/logs/workflows/live-bound/agent/evidence/${AGENT_REPOSITORY_CHECK_RUNS_FILE}`,
+    `runtime/logs/workflows/paused-bound/agent/evidence/${AGENT_REPOSITORY_CHECK_RUNS_FILE}`,
+  ])
+
+  const lines = readFileSync(path.join(root, recorded[0]), 'utf8')
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line) as Record<string, unknown>)
+
+  assert.equal(lines.length, 1)
+  assert.deepEqual(lines[0], {
+    profile: 'fast',
+    workspace_fingerprint: lines[0].workspace_fingerprint,
+    status: 'passed',
+    duration_ms: 1234,
+    started_at: '2026-09-05T02:00:00.000Z',
+    invoked_by: 'agent',
+  })
+  assert.match(String(lines[0].workspace_fingerprint), /^[0-9a-f]{64}$/u)
+
+  // A second execution appends, so the "fast at most once" rule is countable.
+  recordAgentRepositoryCheck(
+    root,
+    'cohort-greeting',
+    { ...result, status: 'failed' },
+    '2026-09-05T02:10:00.000Z',
+  )
+
+  assert.equal(
+    readFileSync(path.join(root, recorded[0]), 'utf8').trim().split('\n')
+      .length,
+    2,
+  )
+
+  // No bound live run means nothing is written anywhere.
+  assert.deepEqual(
+    recordAgentRepositoryCheck(root, 'unknown-worktree', result, 'now'),
+    [],
+  )
+  assert.equal(
+    existsSync(
+      path.join(
+        root,
+        'runtime/logs/workflows/live-other/agent/evidence',
+        AGENT_REPOSITORY_CHECK_RUNS_FILE,
+      ),
+    ),
+    false,
+  )
 })

@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
+import { referenceContentSha256, sha256 } from '../../src/lib/io.js'
 import {
   validateChildSpecifications,
   validateCohortPlan,
@@ -11,6 +12,16 @@ import type { HandlerInput } from '../../src/lib/requirements/types.js'
 import { createFixture, writeJson } from '../helpers.js'
 
 const PARENT_PATH = 'runtime/specs/parent-specification.md'
+const DEFAULT_PARENT_BODY = 'Parent record of the request.\n'
+
+function parentText(body: string): string {
+  return `# Parent specification\n\n${body}`
+}
+
+/** Digest a child reference must record for a parent with `body`: the trimmed basis. */
+function parentDigest(body = DEFAULT_PARENT_BODY): string {
+  return `sha256:${referenceContentSha256(parentText(body))}`
+}
 
 interface PlanChunkFixture {
   id: string
@@ -33,12 +44,9 @@ function handlerInput(root: string, targetPath: string): HandlerInput {
   }
 }
 
-function writeParent(root: string, body = 'Parent record of the request.\n') {
+function writeParent(root: string, body = DEFAULT_PARENT_BODY) {
   mkdirSync(path.join(root, path.dirname(PARENT_PATH)), { recursive: true })
-  writeFileSync(
-    path.join(root, PARENT_PATH),
-    `# Parent specification\n\n${body}`,
-  )
+  writeFileSync(path.join(root, PARENT_PATH), parentText(body))
 }
 
 function childSpec(options: {
@@ -57,7 +65,7 @@ function childSpec(options: {
     ['Validation', 'Run the configured fast profile.'],
     ['Handoff contract', 'The branch merges cleanly into the base branch.'],
   ]
-  const digest = options.digest ?? `sha256:${'a'.repeat(64)}`
+  const digest = options.digest ?? parentDigest()
   const lines = [
     '# Child specification',
     '',
@@ -444,6 +452,52 @@ test('child-spec-validate rejects a missing section and a malformed parent refer
 
   assert.ok(codes.has('child.section_missing'))
   assert.ok(codes.has('child.parent_reference_digest'))
+})
+
+test('child-spec-validate rejects a parent digest computed on the untrimmed file', () => {
+  const root = createFixture()
+
+  writeParent(root)
+  mkdirSync(path.join(root, 'runtime', 'specs'), { recursive: true })
+
+  // `shasum` over the file hashes the trailing newline; the card and the
+  // validator hash the trimmed text. The two differ for identical content.
+  const rawDigest = `sha256:${sha256(parentText(DEFAULT_PARENT_BODY))}`
+
+  assert.notEqual(rawDigest, parentDigest())
+
+  writeFileSync(
+    path.join(root, 'runtime/specs/c1.md'),
+    childSpec({ inScope: '- US-1', digest: rawDigest }),
+  )
+
+  const targetPath = writePlanOutput(
+    root,
+    [{ id: 'c1', cohort_index: 1, child_spec_path: 'runtime/specs/c1.md' }],
+    { userStoryIds: ['US-1'], serialJustification: 'One outcome.' },
+  )
+  const result = validateChildSpecifications(handlerInput(root, targetPath))
+  const mismatch = result.issues.find(
+    (entry) => entry.code === 'child.parent_reference_digest_mismatch',
+  )
+
+  assert.equal(result.status, 'failed')
+  assert.ok(mismatch)
+  assert.ok(mismatch.message.includes(rawDigest))
+  assert.ok(mismatch.message.includes(parentDigest()))
+  assert.ok(!issueCodes(result).has('child.parent_reference_digest'))
+
+  // The trimmed digest is accepted, and it is the digest the chunk card
+  // records for the same file.
+  writeFileSync(
+    path.join(root, 'runtime/specs/c1.md'),
+    childSpec({ inScope: '- US-1' }),
+  )
+
+  assert.deepEqual(
+    validateChildSpecifications(handlerInput(root, targetPath)).issues,
+    [],
+  )
 })
 
 test('child-spec-validate rejects a pasted parent body', () => {
