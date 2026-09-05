@@ -145,10 +145,14 @@ mapping before resuming the run.
 
 - `delivery` - production-ready delivery of one ratified specification:
   implement, joint verify with parallel review and QA evidence workers and a
-  graded verdict, verdict-routed remediate, and ship. The run starts at
-  `implement` and reads its request, normally a child specification the
-  `planning` workflow ratified, as the plan. `delivery-candidate` is the
-  autonomous best-of-N variant; it keeps its own `plan` stage and omits ship.
+  graded verdict, verdict-routed remediate, and ship. The run reads its
+  request, normally a child specification the `planning` workflow ratified,
+  as the plan. The harness starts it in two places: from an approved
+  single-chunk plan, at `implement`; and as the release run of an integrated
+  cohort, at `verify`, because the chunk runs already implemented the work. An
+  operator who brings a ratified specification starts it directly with
+  `pan init --workflow delivery`. `delivery-candidate` is the autonomous
+  best-of-N variant; it keeps its own `plan` stage and omits ship.
 - `prototype` - a fast spike that answers a technical question: intake,
   approach, build, evaluate. It applies `PROTO-001`, keeps the approach stage
   deliberately thin and ungated, gates only the `static` repository-check
@@ -156,24 +160,27 @@ mapping before resuming the run.
   validation rejects any other hard shell gate in this workflow, because a hard
   full-suite gate would reintroduce the cost the workflow exists to avoid.
 - `design` - UI/UX predecessor that hands off to a separately started `delivery` run.
-- `planning` - planning on its own: one `plan` stage owned by the `planner`
-  persona, behind one operator gate that records the `technical_plan`
-  checkpoint. It keeps the `runtime_only` workspace policy, hard criteria
-  ids, and required data contract of the plan stage that `delivery` held
-  before the split, so a contract that attaches by criterion id keeps
-  attaching. It adds the `cohort_plan` data
-  contract and resolves `PLAN-002` and `COHORT-001` through the policy lookup
-  table rather than through prompt text. Ratifying its artifact produces a
-  parent specification, one child specification per chunk, and the cohort plan
-  the `pan cohort` lifecycle fans out: `cohort init` opens the session,
-  `cohort start` creates one `delivery-chunk` run per chunk of the active cohort,
-  and `cohort integrate` merges the finished chunk branches and records the
-  satisfaction entry that unblocks the next cohort. `pan init --autostart`
-  on a planning run makes the approval of its plan gate open the session and
-  start cohort 1. A run created before this workflow existed keeps its own
-  snapshotted graph and needs no migration; a new `planning` run from the
-  same request is how in-flight planning work reaches the cohort lifecycle.
-  See the operator guide for the full lifecycle.
+- `planning` - the entry point for delivery work and the default of
+  `pan init`: one `plan` stage owned by the `planner` persona, behind one
+  operator gate that records the `technical_plan` checkpoint. It keeps the
+  `runtime_only` workspace policy, hard criteria ids, and required data
+  contract of the plan stage that `delivery` held before the split, so a
+  contract that attaches by criterion id keeps attaching. It adds the
+  `cohort_plan` data contract and resolves `PLAN-002` and `COHORT-001` through
+  the policy lookup table rather than through prompt text. Ratifying its
+  artifact produces a parent specification, one child specification per
+  chunk, and the cohort plan. Approving the gate routes the work by harness
+  rule, and `pan init --no-autostart` is the only way to stop there:
+
+  | Ratified plan      | The harness starts                                                                          | Exit                                                                                                                                                                                               |
+  | ------------------ | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | one chunk          | one `delivery` run at `implement` in a fresh worktree                                       | `ship`                                                                                                                                                                                             |
+  | two or more chunks | a cohort session and cohort 1: one `delivery-chunk` run per chunk, each in its own worktree | `pan cohort integrate` merges each finished cohort and starts the next; the last integration starts the release run, a `delivery` run at `verify` on the integration branch, which exits at `ship` |
+
+  A run created before this workflow existed keeps its own snapshotted graph
+  and needs no migration; a new `planning` run from the same request is how
+  in-flight planning work reaches this lifecycle. See the operator guide for
+  the full lifecycle.
 
 ## Operator involvement profiles
 

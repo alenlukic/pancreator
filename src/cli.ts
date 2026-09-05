@@ -7,6 +7,7 @@ import {
   abortRun,
   assessStage,
   createRun,
+  DEFAULT_WORKFLOW_SLUG,
   decideRun,
   decideRunAsAway,
   delegateInvocation,
@@ -42,7 +43,7 @@ import {
   cohortStatus,
   initCohortSession,
   integrateCohort,
-  maybeAutostartCohort,
+  maybeStartDelivery,
   startCohort,
 } from './lib/cohorts.js'
 import { GATE_CACHE_ENV, gateCacheStatus } from './lib/gate-cache.js'
@@ -208,9 +209,10 @@ import {
 const STANDALONE_MODE_NAMES = Object.keys(STANDALONE_MODES).sort().join('|')
 
 export const HELP_BODY = `Usage:
-  pan init --request <repo-relative-file> [--workflow planning|delivery|prototype|design] [--title <title>] [--workspace <dir> | --worktree <name>] [--gates <file>] [--involvement <profile>] [--verification <level>] [--operator-artifacts] [--context-reference <repo-relative-file>] [--autostart [--max-parallel <n>]]
+  pan init --request <repo-relative-file> [--workflow planning|delivery|prototype|design] [--title <title>] [--workspace <dir> | --worktree <name>] [--gates <file>] [--involvement <profile>] [--verification <level>] [--operator-artifacts] [--context-reference <repo-relative-file>] [--no-autostart | --autostart [--max-parallel <n>]]
+      The default workflow is planning, the entry point for delivery work. Approving its ratified plan routes the work: a plan of one chunk starts one delivery run (implement, verify, remediate, ship) in its own worktree; a plan of two or more chunks opens a cohort session and starts cohort 1. --workflow delivery skips planning for an operator who brings a ratified specification as the request.
+      --no-autostart applies only to the planning workflow and stops the run at the ratified plan, so delivery is started by hand. --autostart names the default and is accepted for compatibility. --max-parallel caps the concurrent chunk runs of an autostarted cohort session (default 4).
       --context-reference records an audited pointer to wider context every stage reads and never copies, for example the parent specification of one cohort chunk.
-      --autostart applies only to the planning workflow: approving the ratified planning gate starts cohort 1. --max-parallel caps the concurrent chunk runs of that session (default 4).
   pan prepare <run-id> [--worktree <name>] [--operator-artifacts]
   pan delegate <run-id> [--timeout-ms <milliseconds>]
   pan watch <run-id> [--invocation <invocation-id>] [--cadence-seconds <n>] [--stall-wakes <n>] [--timeout-seconds <n>] [--mark-background] [--agent-state running|completed] [--json]
@@ -290,7 +292,7 @@ export const HELP_BODY = `Usage:
   pan cohort status <cohort-id> [--json]
       Reports the active cohort, each chunk's run status, the free parallelism slots, and the start, supervise (/pan-cohort), and integrate commands that apply.
   pan cohort integrate <cohort-id> [--into-branch <branch>] [--json]
-      Merge the committed chunk branches of the finished cohort into its integration branch (the base branch by default) and record the satisfaction entry the next cohort needs.
+      Merge the committed chunk branches of the finished cohort into its integration branch (the base branch by default) and record the satisfaction entry the next cohort needs. Once that entry lands the harness continues the plan: a non-final cohort starts the next cohort, and the final cohort starts the release run, a delivery run that begins at verify on the integration branch. The response reports that continuation as autostart.
       --into-branch retargets the session: this and every later cohort merge into that branch, and later cohorts branch from it. Use it when the checkout that holds the base branch carries uncommitted work. A missing branch is created from the current integration head; an existing one must already contain that head.
   pan cohort abandon <cohort-id> --chunk <id> --note <reason> [--json]
   pan cohort clean <cohort-id> [--force] [--json]
@@ -1073,10 +1075,27 @@ async function main(): Promise<void> {
         )
       }
 
+      if (hasFlag(args, '--autostart') && hasFlag(args, '--no-autostart')) {
+        throw new PanError(
+          '--autostart and --no-autostart cannot be used together.',
+          { code: 'INVALID_ARGUMENT' },
+        )
+      }
+
       const title = option(args, '--title')
       const worktreeWorkspace = sharedWorktreeWorkspace(root, args, title)
+      // Routing on ratification is the planning default. `--autostart` is
+      // kept as an explicit spelling of that default; `--no-autostart` is the
+      // opt-out that stops the run at the ratified plan.
+      const autostartDelivery = hasFlag(args, '--no-autostart')
+        ? false
+        : hasFlag(args, '--autostart')
+          ? true
+          : undefined
       const state = createRun(root, {
-        workflowSlug: option(args, '--workflow', 'delivery') ?? 'delivery',
+        workflowSlug:
+          option(args, '--workflow', DEFAULT_WORKFLOW_SLUG) ??
+          DEFAULT_WORKFLOW_SLUG,
         requestPath: option(args, '--request'),
         title,
         workspace: worktreeWorkspace ? worktreeWorkspace.path : workspace,
@@ -1086,7 +1105,7 @@ async function main(): Promise<void> {
         verification: option(args, '--verification'),
         operatorArtifacts: hasFlag(args, '--operator-artifacts'),
         contextReferencePath: option(args, '--context-reference'),
-        autostartCohort: hasFlag(args, '--autostart'),
+        autostartDelivery,
         autostartMaxParallel: integerOption(args, '--max-parallel'),
       })
 
@@ -1103,7 +1122,7 @@ async function main(): Promise<void> {
         verification_level: state.verification?.level,
         operator_artifacts: state.operator_artifacts,
         context_reference: state.request.context_reference ?? null,
-        autostart_cohort: state.autostart_cohort ?? false,
+        autostart_delivery: state.autostart_delivery ?? false,
         next_command: `${pan} prepare ${state.run_id}`,
         state_path: resolveRunLayout(root, state.run_id).state.relative,
       })
@@ -1250,9 +1269,9 @@ async function main(): Promise<void> {
         option(args, '--stage'),
       )
       // The hook runs after the decision is durable and outside the run mutex,
-      // so cohort run creation takes its own mutexes and a fan-out failure
+      // so delivery run creation takes its own mutexes and a routing failure
       // cannot roll back the recorded approval.
-      const autostart = maybeAutostartCohort(root, state, {
+      const autostart = maybeStartDelivery(root, state, {
         actor: 'operator',
         action: decision,
       })
@@ -1601,8 +1620,8 @@ async function main(): Promise<void> {
           const next = applyAwayDecision(root, state, decision)
           const record = recordAwayApplyResult(root, decision, 'applied')
           // Same hook as `pan decide`: it runs after the applied decision is
-          // durable, so a fan-out failure never rolls back the approval.
-          const autostart = maybeAutostartCohort(root, next, {
+          // durable, so a routing failure never rolls back the approval.
+          const autostart = maybeStartDelivery(root, next, {
             actor: 'away',
             action: decision.selected_action?.action ?? '',
           })

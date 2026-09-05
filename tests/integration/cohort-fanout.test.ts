@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from 'node:fs'
@@ -13,16 +14,17 @@ import test from 'node:test'
 import {
   abandonChunk,
   cleanCohortSession,
+  cohortSessionIds,
   cohortStatus,
   initCohortSession,
   integrateCohort,
   loadCohortState,
-  maybeAutostartCohort,
+  maybeStartDelivery,
   startCohort,
 } from '../../src/lib/cohorts.js'
 import { PanError } from '../../src/lib/errors.js'
 import { prepareInvocation } from '../../src/lib/engine.js'
-import { loadState, statePath } from '../../src/lib/state.js'
+import { eventPath, loadState, statePath } from '../../src/lib/state.js'
 import { readWorktreeIndex } from '../../src/lib/worktrees.js'
 import {
   attestRunCard,
@@ -112,6 +114,10 @@ function ratifiedPlanRun(root: string, chunks: ChunkSpec[]): string {
         invocation_id: 'plan-1',
         output_path: outputPath,
         recorded_at: '2026-09-02T00:00:00.000Z',
+        // The harness always writes these on a real submission, and the
+        // handoff the approval records persists through the same path.
+        validation_errors: [],
+        deterministic: [],
       },
     ],
   })
@@ -297,17 +303,18 @@ test('the parallelism limit starts a wide cohort in batches', () => {
   assert.deepEqual(second.deferred_chunks, ['d', 'e'])
 
   // Re-approving the plan run must not start beyond the limit either: the
-  // autostart reports the batch that already exists.
-  const planState = loadState(root, planRunId)
-  const autostart = maybeAutostartCohort(
-    root,
-    { ...planState, autostart_cohort: true },
-    { actor: 'operator', action: 'approve' },
-  )
+  // route reports the batch that already exists.
+  const autostart = maybeStartDelivery(root, loadState(root, planRunId), {
+    actor: 'operator',
+    action: 'approve',
+  })
 
   assert.equal(autostart?.status, 'already_started')
+  assert.equal(autostart?.kind, 'cohort')
   assert.deepEqual(
-    autostart?.status === 'already_started' ? autostart.deferred_chunks : [],
+    autostart?.status === 'already_started' && autostart.kind === 'cohort'
+      ? autostart.deferred_chunks
+      : [],
     ['d', 'e'],
   )
 })
@@ -437,18 +444,36 @@ test('integration merges a finished cohort and unblocks the next one', () => {
   assert.deepEqual(status.satisfied_cohort_indexes, [1])
   assert.equal(status.active_cohort_index, 2)
   assert.equal(status.blocked_cohort_index, null)
-  assert.equal(
-    status.start_command,
-    `./bin/pan cohort start ${session.cohort_id}`,
-  )
 
-  const next = startCohort(root, session.cohort_id)
+  // The merge proof of a non-final cohort starts the next cohort itself, so
+  // the operator no longer types `cohort start` between cohorts and status
+  // has nothing left to offer.
+  const next = integration.autostart
+
+  assert.equal(next.status, 'started')
+  assert.equal(next.kind, 'cohort')
+
+  if (next.status !== 'started' || next.kind !== 'cohort') {
+    return
+  }
 
   assert.deepEqual(
     next.chunks.map((chunk) => chunk.chunk),
     ['gamma'],
   )
   assert.equal(next.cohort_index, 2)
+  assert.equal(status.start_command, null)
+  assert.equal(status.release_run_id, null, 'a cohort is still open')
+  assert.throws(
+    () => startCohort(root, session.cohort_id),
+    (error: unknown) =>
+      error instanceof PanError && error.code === 'COHORT_ALREADY_STARTED',
+  )
+
+  // Gamma branches from the merged result.
+  const gammaWorkspace = loadState(root, next.chunks[0].run_id).workspace_root
+
+  assert.ok(existsSync(path.join(root, gammaWorkspace, 'alpha.txt')))
   attestRunCard(root, next.chunks[0].run_id)
   assert.doesNotThrow(() => prepareInvocation(root, next.chunks[0].run_id))
 })
@@ -484,27 +509,26 @@ test('a dirty chunk worktree leaves the cohort unsatisfied', () => {
   )
 })
 
-test('approving an autostart planning run starts cohort 1', () => {
+test('approving a multi-chunk plan starts cohort 1', () => {
   const root = createFixture()
   const planRunId = ratifiedPlanRun(root, [
     { id: 'alpha', cohort_index: 1 },
     { id: 'gamma', cohort_index: 2, depends_on: ['alpha'] },
   ])
 
-  writeJson(statePath(root, planRunId), {
-    ...loadState(root, planRunId),
-    autostart_cohort: true,
-  })
+  // The fixture's planning run carries the routing default `pan init` records.
+  assert.equal(loadState(root, planRunId).autostart_delivery, true)
 
-  const started = maybeAutostartCohort(root, loadState(root, planRunId), {
+  const started = maybeStartDelivery(root, loadState(root, planRunId), {
     actor: 'operator',
     action: 'approve',
   })
 
   assert.ok(started)
   assert.equal(started.status, 'started')
+  assert.equal(started.kind, 'cohort')
 
-  if (started.status !== 'started') {
+  if (started.status !== 'started' || started.kind !== 'cohort') {
     return
   }
 
@@ -520,17 +544,25 @@ test('approving an autostart planning run starts cohort 1', () => {
   assert.equal(status.active_cohort_index, 1)
   assert.equal(status.blocked_cohort_index, 2)
 
+  // The plan run records where its plan went, so status on it names the
+  // session.
+  assert.deepEqual(
+    { ...loadState(root, planRunId).delivery_handoff, recorded_at: 'x' },
+    { kind: 'cohort', cohort_id: started.cohort_id, recorded_at: 'x' },
+  )
+
   // Approving again is idempotent: the hook reuses the session this run opened
   // rather than fanning the same plan out twice, and it reports the existing
   // chunk runs instead of a failure, because nothing failed.
-  const again = maybeAutostartCohort(root, loadState(root, planRunId), {
+  const again = maybeStartDelivery(root, loadState(root, planRunId), {
     actor: 'operator',
     action: 'approve',
   })
 
   assert.equal(again?.status, 'already_started')
+  assert.equal(again?.kind, 'cohort')
 
-  if (again?.status === 'already_started') {
+  if (again?.status === 'already_started' && again.kind === 'cohort') {
     assert.equal(again.cohort_id, started.cohort_id)
     assert.deepEqual(again.chunks, started.chunks)
   }
@@ -657,6 +689,8 @@ test('a single-chunk cohort integrates through a direct merge', () => {
     cohortStatus(root, session.cohort_id).satisfied_cohort_indexes,
     [1],
   )
+  assert.equal(integration.autostart.status, 'started')
+  assert.equal(integration.autostart.kind, 'cohort')
 })
 
 test('--into-branch integrates past a dirty base checkout and retargets later cohorts', () => {
@@ -728,9 +762,18 @@ test('--into-branch integrates past a dirty base checkout and retargets later co
   assert.deepEqual(status.satisfied_cohort_indexes, [1])
   assert.equal(status.active_cohort_index, 2)
 
-  // The next cohort branches from the integration branch, so it sees the work
-  // cohort 1 landed even though the base branch does not carry it.
-  const next = startCohort(root, session.cohort_id)
+  // The next cohort, started by the integration itself, branches from the
+  // integration branch, so it sees the work cohort 1 landed even though the
+  // base branch does not carry it.
+  const next = first.autostart
+
+  assert.equal(next.status, 'started')
+  assert.equal(next.kind, 'cohort')
+
+  if (next.status !== 'started' || next.kind !== 'cohort') {
+    return
+  }
+
   const gammaWorkspace = loadState(root, next.chunks[0].run_id).workspace_root
 
   assert.ok(existsSync(path.join(root, gammaWorkspace, 'alpha.txt')))
@@ -757,6 +800,48 @@ test('--into-branch integrates past a dirty base checkout and retargets later co
   assert.deepEqual(
     cohortStatus(root, session.cohort_id).satisfied_cohort_indexes,
     [1, 2],
+  )
+
+  // The last integration starts the release run: one `delivery` run at
+  // `verify`, bound to the worktree that holds the integration branch, so
+  // release preparation happens once on the integrated result and the
+  // operator's dirty checkout is never its workspace.
+  const release = second.autostart
+
+  assert.equal(release.status, 'started')
+  assert.equal(release.kind, 'release')
+
+  if (release.status !== 'started' || release.kind !== 'release') {
+    return
+  }
+
+  const releaseState = loadState(root, release.run_id)
+
+  assert.equal(releaseState.workflow_slug, 'delivery')
+  assert.equal(releaseState.current_stage, 'verify')
+  assert.equal(releaseState.pending_action.type, 'prepare_invocation')
+  assert.equal(releaseState.managed_worktree?.branch, 'cohort-integration')
+  assert.equal(releaseState.workspace_root, release.worktree)
+  assert.ok(
+    existsSync(path.join(root, releaseState.workspace_root, 'gamma.txt')),
+  )
+  assert.equal(
+    releaseState.request.context_reference?.source_path,
+    'runtime/specs/parent-specification.md',
+  )
+  assert.equal(
+    releaseState.request.source_path,
+    loadState(root, planRunId).request.stored_path,
+  )
+  assert.equal(release.resume_command, `/pan-resume ${release.run_id}`)
+
+  const finished = cohortStatus(root, session.cohort_id)
+
+  assert.equal(finished.release_run_id, release.run_id)
+  assert.equal(finished.release_resume_command, release.resume_command)
+  assert.equal(
+    loadCohortState(root, session.cohort_id).release_run_id,
+    release.run_id,
   )
 
   // Retargeting onto a branch that lacks the integration head is refused.
@@ -957,13 +1042,218 @@ test('a cohort whose every chunk is abandoned integrates as a no-op and unblocks
 
   assert.deepEqual(status.satisfied_cohort_indexes, [1])
   assert.equal(status.active_cohort_index, 2)
-  assert.equal(readWorktreeIndex(root).worktrees.length, 0)
 
-  const next = startCohort(root, session.cohort_id)
+  const next = integration.autostart
+
+  assert.equal(next.status, 'started')
+  assert.equal(next.kind, 'cohort')
+
+  if (next.status !== 'started' || next.kind !== 'cohort') {
+    return
+  }
 
   assert.equal(next.cohort_index, 2)
   assert.deepEqual(
     next.chunks.map((chunk) => chunk.chunk),
     ['gamma'],
   )
+  assert.equal(readWorktreeIndex(root).worktrees.length, 1)
+})
+
+test('approving a single-chunk plan starts one delivery run and no fan-out', () => {
+  const root = createFixture()
+  const planRunId = ratifiedPlanRun(root, [{ id: 'alpha', cohort_index: 1 }])
+
+  // Away mode approves on the operator's behalf through the same hook, so the
+  // first approval here is the away-mode one.
+  const started = maybeStartDelivery(root, loadState(root, planRunId), {
+    actor: 'away',
+    action: 'approve',
+  })
+
+  assert.ok(started)
+  assert.equal(started.status, 'started')
+  assert.equal(started.kind, 'delivery')
+
+  if (started.status !== 'started' || started.kind !== 'delivery') {
+    return
+  }
+
+  const state = loadState(root, started.run_id)
+
+  assert.equal(state.workflow_slug, 'delivery')
+  assert.equal(state.current_stage, 'implement')
+  assert.equal(state.pending_action.type, 'prepare_invocation')
+  assert.equal(state.workspace_root, started.worktree)
+  assert.ok(state.managed_worktree, 'the run is bound to a fresh worktree')
+  assert.equal(state.managed_worktree?.path, started.worktree)
+  assert.equal(
+    state.request.context_reference?.source_path,
+    'runtime/specs/parent-specification.md',
+  )
+  assert.equal(state.request.source_path, 'runtime/specs/alpha.md')
+  assert.equal(started.resume_command, `/pan-resume ${started.run_id}`)
+  assert.equal(state.autostart_delivery, undefined)
+
+  // The worktree is a real checkout of the base branch, recorded like a chunk's.
+  const index = readWorktreeIndex(root)
+
+  assert.equal(index.worktrees.length, 1)
+  assert.equal(index.worktrees[0].path, started.worktree)
+  assert.ok(existsSync(path.join(root, started.worktree, '.git')))
+
+  // No cohort session exists: a single chunk is not a fan-out.
+  assert.deepEqual(cohortSessionIds(root), [])
+
+  // The plan run stays succeeded and names the handoff.
+  const plan = loadState(root, planRunId)
+
+  assert.equal(plan.status, 'succeeded')
+  assert.equal(plan.delivery_handoff?.kind, 'delivery')
+  assert.deepEqual(
+    { ...plan.delivery_handoff, recorded_at: 'x' },
+    {
+      kind: 'delivery',
+      run_id: started.run_id,
+      worktree: started.worktree,
+      recorded_at: 'x',
+    },
+  )
+
+  // The run prepares like any delivery run and its card carries the reference.
+  attestRunCard(root, started.run_id)
+
+  const prepared = prepareInvocation(root, started.run_id)
+
+  assert.equal(prepared.invocation?.stage.slug, 'implement')
+
+  // Approving again (now by the operator) is idempotent and starts nothing new.
+  const again = maybeStartDelivery(root, loadState(root, planRunId), {
+    actor: 'operator',
+    action: 'approve',
+  })
+
+  assert.equal(again?.status, 'already_started')
+  assert.equal(again?.kind, 'delivery')
+
+  if (again?.status === 'already_started' && again.kind === 'delivery') {
+    assert.equal(again.run_id, started.run_id)
+    assert.equal(again.worktree, started.worktree)
+  }
+
+  assert.equal(readWorktreeIndex(root).worktrees.length, 1)
+  assert.deepEqual(cohortSessionIds(root), [])
+})
+
+test('a single-chunk routing failure leaves the approval and the plan intact', () => {
+  const root = createFixture()
+  const planRunId = ratifiedPlanRun(root, [{ id: 'alpha', cohort_index: 1 }])
+
+  // The child specification the plan names is gone, so the route cannot start.
+  rmSync(path.join(root, 'runtime', 'specs', 'alpha.md'))
+
+  const before = loadState(root, planRunId)
+  const result = maybeStartDelivery(root, before, {
+    actor: 'operator',
+    action: 'approve',
+  })
+
+  assert.ok(result)
+  assert.equal(result.status, 'failed')
+
+  if (result.status !== 'failed') {
+    return
+  }
+
+  assert.equal(result.kind, 'delivery')
+  assert.match(result.error, /alpha/u)
+  assert.equal(result.manual_commands.length, 1)
+  assert.match(
+    result.manual_commands[0],
+    /^\.\/bin\/pan init --workflow delivery --request runtime\/specs\/alpha\.md --context-reference runtime\/specs\/parent-specification\.md --worktree delivery-/u,
+  )
+
+  // Nothing about the plan run changed, and nothing was created.
+  const after = loadState(root, planRunId)
+
+  assert.equal(after.status, 'succeeded')
+  assert.equal(after.delivery_handoff, undefined)
+  assert.equal(after.revision, before.revision)
+  assert.equal(readWorktreeIndex(root).worktrees.length, 0)
+  assert.deepEqual(cohortSessionIds(root), [])
+})
+
+test('the last integration starts the release run at verify in the base checkout', () => {
+  const root = createFixture()
+  const planRunId = ratifiedPlanRun(root, [
+    { id: 'alpha', cohort_index: 1 },
+    { id: 'beta', cohort_index: 1 },
+  ])
+  const session = initCohortSession(root, { planRunId })
+  const started = startCohort(root, session.cohort_id)
+
+  for (const chunk of started.chunks) {
+    commitInChunk(
+      root,
+      loadState(root, chunk.run_id).workspace_root,
+      chunk.chunk,
+    )
+    markSucceeded(root, chunk.run_id)
+  }
+
+  git(root, ['add', '-A'])
+  git(root, ['commit', '-m', 'chore: cohort fixture baseline'])
+
+  const integration = integrateCohort(root, session.cohort_id)
+  const release = integration.autostart
+
+  assert.equal(release.status, 'started')
+  assert.equal(release.kind, 'release')
+
+  if (release.status !== 'started' || release.kind !== 'release') {
+    return
+  }
+
+  // Without `--into-branch` the operator's checkout holds the integration
+  // branch, and Git will not check a branch out twice, so the release run
+  // targets that checkout and carries no managed worktree.
+  const state = loadState(root, release.run_id)
+
+  assert.equal(state.workflow_slug, 'delivery')
+  assert.equal(state.current_stage, 'verify')
+  assert.equal(state.pending_action.type, 'prepare_invocation')
+  assert.equal(state.managed_worktree, undefined)
+  assert.equal(
+    realpathSync(path.resolve(root, state.workspace_root)),
+    realpathSync(root),
+  )
+  assert.equal(
+    state.request.context_reference?.source_path,
+    'runtime/specs/parent-specification.md',
+  )
+  assert.equal(state.attempts.implement ?? 0, 0)
+  assert.deepEqual(state.stage_history, [])
+
+  // The run record shows the start-stage override, so an auditor can tell
+  // this run began at verify by design rather than by a skipped stage.
+  const events = readFileSync(eventPath(root, release.run_id), 'utf8')
+
+  assert.match(events, /"start_stage":"verify"/u)
+
+  // The session records the release run, and status offers its resume.
+  const status = cohortStatus(root, session.cohort_id)
+
+  assert.equal(status.release_run_id, release.run_id)
+  assert.equal(status.release_resume_command, `/pan-resume ${release.run_id}`)
+  assert.deepEqual(status.satisfied_cohort_indexes, [1])
+  assert.equal(status.start_command, null)
+  assert.equal(status.integrate_command, null)
+
+  // The release run prepares at verify: the card is for the verify stage and
+  // the missing implement output is a declared gap, not a crash.
+  attestRunCard(root, release.run_id)
+
+  const prepared = prepareInvocation(root, release.run_id)
+
+  assert.equal(prepared.invocation?.stage.slug, 'verify')
 })

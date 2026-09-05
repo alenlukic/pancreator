@@ -1128,8 +1128,19 @@ export function renderStatus(
           `Managed branch: ${state.managed_worktree.branch}`,
         ]
       : []),
+    ...(state.request.context_reference
+      ? [`Context reference: ${state.request.context_reference.source_path}`]
+      : []),
     `Current stage: ${state.current_stage ?? 'none'}`,
     `Pending action: ${state.pending_action.type}`,
+    ...(state.delivery_handoff
+      ? [
+          state.delivery_handoff.kind === 'delivery'
+            ? `Delivery handoff: run ${state.delivery_handoff.run_id} ` +
+              `in ${state.delivery_handoff.worktree}`
+            : `Delivery handoff: cohort ${state.delivery_handoff.cohort_id}`,
+        ]
+      : []),
     `Revision: ${state.revision}`,
     `Transitions: ${state.transition_count}/` +
       state.limits.max_total_transitions,

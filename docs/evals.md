@@ -37,7 +37,7 @@ Evals run outside `npm test`, outside every repository-check profile, and outsid
 
 - `prepare_invocation` runs `prepareInvocation`, which for a source-allowed stage also runs the workspace setup commands and captures the baselines in the toy workspace.
 - `invoke_agent` for a persona whose mapping carries the `claude-code:` executor prefix runs the same path as `pan delegate`, then submits the output the executor wrote.
-- An operator stop at a stage the scenario scripts applies that decision through the same path as `pan decide`, including the cohort autostart hook: a `planning` scenario with `cohort.autostart` creates the run with `--autostart` (and `--max-parallel` when `cohort.max_parallel` is set), so the scripted approval opens the cohort session and starts the first batch of chunk runs.
+- An operator stop at a stage the scenario scripts applies that decision through the same path as `pan decide`, including the delivery routing hook: a `planning` scenario routes on approval by default, exactly like `pan init`, so the scripted approval starts one `delivery` run for a single-chunk plan or opens the cohort session and starts the first batch of chunk runs for a wider one. `cohort.autostart: false` records the `--no-autostart` opt-out, and `cohort.max_parallel` records the session's parallelism limit.
 
 Every run renders a supervisor card that a supervisor must read and attest before the first `prepare`. The eval driver is not a supervisor, so by default it hands off at that point and prints the exact `pan governance attest-supervisor` command. Pass `--attest-supervisor-card` to let the driver attest on your behalf; `eval.json` then records `supervisor_card_attested_by: "eval-driver"` so the report never hides who attested.
 
@@ -75,7 +75,7 @@ The prototype scenario expects the run to stop at the `evaluate` operator gate (
 1. Copy an existing file under `evals/scenarios/` to `<name>.json`. The `name` field must equal the file name.
 2. Name every policy instruction the scenario exercises in `policy_instructions[]` as `{policy_id, instruction, summary}`; the number is the 1-based position in the policy's `instructions[]`.
 3. Choose a fixture, or add one under `evals/fixtures/<fixture>/`. A fixture must answer every command in `runtime/repository-checks.json` (`setup` and every profile) quickly and offline, and must not be this checkout.
-4. Write the request Markdown, the workflow, the verification level, and any scripted `operator_decisions[]`. A `planning` scenario may add `cohort: {autostart, max_parallel}` to fan out on approval.
+4. Write the request Markdown, the workflow, the verification level, and any scripted `operator_decisions[]`. A `planning` scenario may add `cohort: {autostart, max_parallel}` to opt out of the route or to set the parallelism limit of the session the route opens.
 5. State the `expected` end state and list the `graders[]` with their policy references and configuration.
 6. Run `./bin/pan validate` and `./bin/pan eval list`.
 

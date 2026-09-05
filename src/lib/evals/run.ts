@@ -11,7 +11,7 @@ import {
   prepareInvocation,
   submitOutput,
 } from '../engine.js'
-import { maybeAutostartCohort } from '../cohorts.js'
+import { maybeStartDelivery } from '../cohorts.js'
 import { PanError } from '../errors.js'
 import { personaExecutorOf } from '../executors/mapping.js'
 import { writeRedlineRecord } from '../watch.js'
@@ -225,7 +225,9 @@ export function runEval(
     involvement: scenario.involvement ?? null,
     pipelineConfigName:
       options.pipelineConfigName ?? scenario.pipeline_config ?? null,
-    autostartCohort: scenario.cohort?.autostart ?? false,
+    // A scenario without a cohort block keeps the workflow default: a planning
+    // run routes on ratification, every other workflow records nothing.
+    autostartDelivery: scenario.cohort?.autostart,
     autostartMaxParallel: scenario.cohort?.autostart
       ? (scenario.cohort.max_parallel ?? null)
       : null,
@@ -293,9 +295,9 @@ export function runEval(
       )
       decisionsApplied.push({ stage, decision: decision.decision })
 
-      // Same hook `pan decide` runs: an approved --autostart planning run
-      // fans out cohort 1 here, outside the run mutex the decision took.
-      const autostart = maybeAutostartCohort(root, decided, {
+      // Same hook `pan decide` runs: an approved planning run routes into
+      // delivery here, outside the run mutex the decision took.
+      const autostart = maybeStartDelivery(root, decided, {
         actor: 'operator',
         action: decision.decision,
       })
@@ -303,8 +305,10 @@ export function runEval(
       if (autostart) {
         onProgress?.(
           autostart.status === 'failed'
-            ? `cohort autostart failed: ${autostart.error}`
-            : `cohort ${autostart.cohort_id} ${autostart.status}: ${autostart.chunks.length} chunk run(s), ${autostart.deferred_chunks.length} deferred`,
+            ? `delivery autostart failed: ${autostart.error}`
+            : autostart.kind === 'cohort'
+              ? `cohort ${autostart.cohort_id} ${autostart.status}: ${autostart.chunks.length} chunk run(s), ${autostart.deferred_chunks.length} deferred`
+              : `delivery run ${autostart.run_id} ${autostart.status} in ${autostart.worktree}`,
         )
       }
       continue

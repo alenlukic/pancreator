@@ -1573,6 +1573,12 @@ export interface CohortSessionState {
    * to four.
    */
   max_parallel?: number
+  /**
+   * Release run the harness started when the last cohort integrated: a
+   * `delivery` run that begins at `verify` on the integration branch. Absent
+   * until that integration lands.
+   */
+  release_run_id?: string
   created_at: string
   updated_at: string
   chunks: CohortChunkRecord[]
@@ -1580,6 +1586,24 @@ export interface CohortSessionState {
   cohorts: CohortGroupRecord[]
   satisfaction: CohortSatisfactionRecord[]
 }
+
+/**
+ * Where the ratified plan of a planning run went when its gate was approved.
+ * A single-chunk plan hands off to one `delivery` run; a wider plan opens a
+ * cohort session. The record lets `pan status <plan-run>` name the handoff.
+ */
+export type DeliveryHandoff =
+  | {
+      kind: 'delivery'
+      run_id: string
+      worktree: string
+      recorded_at: string
+    }
+  | {
+      kind: 'cohort'
+      cohort_id: string
+      recorded_at: string
+    }
 
 export interface RunState {
   schema_version: 1 | 2
@@ -1638,8 +1662,15 @@ export interface RunState {
   /** Membership of a cohort fan-out. Absent on an ordinary run. */
   cohort?: CohortRunBinding
   /**
-   * Start cohort 1 when the operator approves the ratified planning artifact.
-   * Accepted only for the `planning` workflow.
+   * Route the ratified plan into delivery when its gate is approved: one
+   * `delivery` run for a single chunk, cohort 1 for a wider plan. Recorded on
+   * every `planning` run; `pan init --no-autostart` records `false`.
+   */
+  autostart_delivery?: boolean
+  /**
+   * Predecessor of `autostart_delivery`, written by runs created while the
+   * routing covered only the cohort fan-out. Read as a fallback and never
+   * written.
    */
   autostart_cohort?: boolean
   /**
@@ -1647,6 +1678,8 @@ export interface RunState {
    * the session default.
    */
   autostart_max_parallel?: number
+  /** Delivery the approval of this planning run started. */
+  delivery_handoff?: DeliveryHandoff
   title: string
   status: RunStatus
   current_stage: string | null

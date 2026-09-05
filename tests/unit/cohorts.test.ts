@@ -10,7 +10,7 @@ import {
   cohortStatus,
   assertCohortRunUnblocked,
   integrateCohort,
-  maybeAutostartCohort,
+  maybeStartDelivery,
   parseCohortPlan,
   startCohort,
 } from '../../src/lib/cohorts.js'
@@ -581,62 +581,75 @@ test('abandoning a chunk is an operator decision that needs a note', () => {
   )
 })
 
-test('the autostart hook fires only for an operator approval of a flagged planning run', () => {
+test('the routing hook fires only for an approval of a routed planning run', () => {
   const root = createFixture()
   const base: RunState = {
     ...boundRun(1, 'c1'),
     workflow_slug: 'planning',
     status: 'succeeded',
-    autostart_cohort: true,
+    autostart_delivery: true,
   }
 
   delete base.cohort
 
   const decision = { actor: 'operator' as const, action: 'approve' }
 
+  // `--no-autostart` is the only opt-out, recorded as `false` at init.
   assert.equal(
-    maybeAutostartCohort(root, { ...base, autostart_cohort: false }, decision),
+    maybeStartDelivery(root, { ...base, autostart_delivery: false }, decision),
     null,
   )
   assert.equal(
-    maybeAutostartCohort(
-      root,
-      { ...base, workflow_slug: 'delivery' },
-      decision,
-    ),
+    maybeStartDelivery(root, { ...base, workflow_slug: 'delivery' }, decision),
     null,
   )
   assert.equal(
-    maybeAutostartCohort(root, { ...base, status: 'running' }, decision),
+    maybeStartDelivery(root, { ...base, status: 'running' }, decision),
     null,
   )
   assert.equal(
-    maybeAutostartCohort(root, base, { actor: 'operator', action: 'reject' }),
+    maybeStartDelivery(root, base, { actor: 'operator', action: 'reject' }),
     null,
   )
-  // --autostart is the operator's directive at init. An away approval on the
-  // operator's behalf honours it the same way; this fixture has no ratified
-  // plan, so the hook runs and reports the failure rather than staying silent.
+  // Routing is a recorded property of the run, not a judgment made at
+  // approval time, so an away approval on the operator's behalf takes the
+  // same path. This fixture has no ratified plan, so the hook runs and reports
+  // the failure rather than staying silent.
   assert.equal(
-    maybeAutostartCohort(root, base, { actor: 'away', action: 'approve' })
+    maybeStartDelivery(root, base, { actor: 'away', action: 'approve' })
       ?.status,
     'failed',
   )
+
+  // A run created while the flag covered only the cohort fan-out still routes.
+  const legacy: RunState = { ...base, autostart_cohort: true }
+
+  delete legacy.autostart_delivery
+  assert.equal(maybeStartDelivery(root, legacy, decision)?.status, 'failed')
+
+  // A planning run that predates routing altogether never recorded a choice
+  // and stays at its ratified plan.
+  const unrecorded: RunState = { ...base }
+
+  delete unrecorded.autostart_delivery
+  assert.equal(maybeStartDelivery(root, unrecorded, decision), null)
 })
 
-test('an autostart failure reports the error and the manual commands', () => {
+test('a routing failure reports the error and the manual commands', () => {
   const root = createFixture()
   const state: RunState = {
     ...boundRun(1, 'c1'),
     run_id: 'plan-run-missing',
     workflow_slug: 'planning',
     status: 'succeeded',
-    autostart_cohort: true,
+    autostart_delivery: true,
   }
 
   delete state.cohort
 
-  const result = maybeAutostartCohort(root, state, {
+  // The plan cannot be read, so the route's shape is unknown and the manual
+  // commands fall back to the cohort lifecycle, which handles every shape.
+  const result = maybeStartDelivery(root, state, {
     actor: 'operator',
     action: 'approve',
   })
@@ -656,7 +669,7 @@ test('an autostart failure reports the error and the manual commands', () => {
   // harness must name its own entrypoint.
   setInstallationMode(root, 'embedded')
 
-  const embedded = maybeAutostartCohort(root, state, {
+  const embedded = maybeStartDelivery(root, state, {
     actor: 'operator',
     action: 'approve',
   })

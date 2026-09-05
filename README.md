@@ -55,7 +55,7 @@ Pancreator adds a set of Cursor commands, supporting agents, and repository-awar
 
 4. Choose the workflow that matches the job:
 
-   - Use `/pan-start <request>` for normal delivery work.
+   - Use `/pan-start <request>` for normal delivery work. It starts the `planning` workflow; approving the ratified plan starts the delivery itself, as one `delivery` run or as a cohort of parallel chunk runs followed by one release run.
    - Use `/pan-debug <problem>` when you need root-cause analysis first.
    - Use `/pan-repair <problem-or-artifact>` when Pancreator itself may have failed or missed governance.
    - Use `/pan-summarize-context` before continuing the work in a fresh agent conversation.
@@ -91,7 +91,7 @@ For indexed release updates:
 
 ## Common Entry Points
 
-- `/pan-start`: start a governed delivery run for a new request
+- `/pan-start`: start a governed planning run for a new request; its ratified plan routes into delivery
 - `/pan-debug`: investigate a problem and recommend the right work mode
 - `/pan-repair`: audit a harness problem or workflow run and write a transcript-aware self-development intake
 - `/pan-build-docs`: generate or refresh repository orientation for future agent work

@@ -143,36 +143,90 @@ test('the planning stage binds the plan and cohort validators at pre-submit', ()
   }
 })
 
-test('--autostart is recorded for a planning run and refused elsewhere', () => {
+test('a planning run routes on approval by default and --no-autostart opts out', () => {
   const root = createFixture()
   const requestPath = writeRequest(root)
-  const state = createRun(root, {
-    workflowSlug: 'planning',
-    requestPath,
-    autostartCohort: true,
-  })
+
+  // The route is the default: a planning run created without any flag records
+  // the choice explicitly, so the approval hook never has to guess.
+  const routed = createRun(root, { workflowSlug: 'planning', requestPath })
+
+  assert.equal(routed.workflow_slug, 'planning')
+  assert.equal(routed.autostart_delivery, true)
+  assert.equal(routed.autostart_cohort, undefined)
+
+  // `--autostart` stays accepted as the explicit spelling of the default.
+  assert.equal(
+    createRun(root, {
+      workflowSlug: 'planning',
+      requestPath,
+      autostartDelivery: true,
+    }).autostart_delivery,
+    true,
+  )
+
+  // `--no-autostart` stops the run at the ratified plan.
+  assert.equal(
+    createRun(root, {
+      workflowSlug: 'planning',
+      requestPath,
+      autostartDelivery: false,
+    }).autostart_delivery,
+    false,
+  )
+
+  // Neither flag means anything to a workflow without a plan gate.
+  for (const autostartDelivery of [true, false]) {
+    assert.throws(
+      () =>
+        createEngineRun(root, {
+          workflowSlug: 'delivery',
+          requestPath,
+          autostartDelivery,
+        }),
+      (error: unknown) =>
+        error instanceof PanError && error.code === 'INVALID_ARGUMENT',
+    )
+  }
+
+  // A delivery run records no routing field at all.
+  assert.equal(
+    createRun(root, { workflowSlug: 'delivery', requestPath })
+      .autostart_delivery,
+    undefined,
+  )
+})
+
+test('planning is the default workflow of a new run', () => {
+  const root = createFixture()
+  const state = createRun(root, { requestPath: writeRequest(root) })
 
   assert.equal(state.workflow_slug, 'planning')
-  assert.equal(state.autostart_cohort, true)
+  assert.equal(state.current_stage, 'plan')
+  assert.equal(state.autostart_delivery, true)
+})
 
+test('--max-parallel requires a routed planning run', () => {
+  const root = createFixture()
+  const requestPath = writeRequest(root)
+
+  assert.equal(
+    createRun(root, {
+      workflowSlug: 'planning',
+      requestPath,
+      autostartMaxParallel: 2,
+    }).autostart_max_parallel,
+    2,
+  )
   assert.throws(
     () =>
       createEngineRun(root, {
-        workflowSlug: 'delivery',
+        workflowSlug: 'planning',
         requestPath,
-        autostartCohort: true,
+        autostartDelivery: false,
+        autostartMaxParallel: 2,
       }),
     (error: unknown) =>
       error instanceof PanError && error.code === 'INVALID_ARGUMENT',
   )
-})
-
-test('a planning run without the flag records no autostart', () => {
-  const root = createFixture()
-  const state = createRun(root, {
-    workflowSlug: 'planning',
-    requestPath: writeRequest(root),
-  })
-
-  assert.equal(state.autostart_cohort, undefined)
 })

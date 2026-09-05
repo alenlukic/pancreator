@@ -721,3 +721,44 @@ test('CLI artifact options persist run-wide and stage selections', () => {
     requested_stages: ['inspect'],
   })
 })
+
+test('pan init defaults to the planning workflow and routes on approval', () => {
+  const root = createFixture()
+  const init = (...args: string[]): Record<string, unknown> =>
+    JSON.parse(
+      execFileSync(
+        process.execPath,
+        [CLI, 'init', '--request', 'request.md', ...args, '--json'],
+        { cwd: root, encoding: 'utf8' },
+      ),
+    ) as Record<string, unknown>
+
+  // An operator who names no workflow starts a planning run whose approval
+  // routes into delivery; nothing about the request text is inspected.
+  const routed = init()
+
+  assert.equal(routed.workflow, 'planning')
+  assert.equal(routed.autostart_delivery, true)
+
+  // `--autostart` is the explicit spelling of that default.
+  assert.equal(init('--autostart').autostart_delivery, true)
+
+  // `--no-autostart` stops the run at the ratified plan.
+  const stopped = init('--no-autostart')
+
+  assert.equal(stopped.workflow, 'planning')
+  assert.equal(stopped.autostart_delivery, false)
+
+  // The explicit escape hatch still creates a delivery run.
+  const delivery = init('--workflow', 'delivery')
+
+  assert.equal(delivery.workflow, 'delivery')
+  assert.equal(delivery.autostart_delivery, false)
+
+  // The two spellings cannot be combined.
+  assert.throws(
+    () => init('--autostart', '--no-autostart'),
+    (error: unknown) =>
+      /INVALID_ARGUMENT/u.test(String((error as { stderr?: unknown }).stderr)),
+  )
+})

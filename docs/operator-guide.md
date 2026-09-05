@@ -337,10 +337,14 @@ The decomposer also compares reduced implementation, review, and remediation ris
 
 ## Choose a work mode
 
-Use `systematic` by default. `/pan-start` executes the governed `delivery`
-workflow: consolidated planning, implementation, joint verification with
-parallel review and QA evidence workers, verdict-routed remediation, and
-release preparation.
+Use `systematic` by default. `/pan-start` executes the governed `planning`
+workflow, the entry point for delivery work: one ratified plan stage that
+writes the specification hierarchy and the cohort plan. Approving that plan
+routes the work by harness rule, into one `delivery` run (implementation, joint
+verification with parallel review and QA evidence workers, verdict-routed
+remediation, and release preparation) when the plan holds one chunk, or into a
+cohort of parallel `delivery-chunk` runs followed by one release run when it
+holds more. See **Plan once, then deliver** for the state machine.
 
 Use `/pan-debug <problem>` when the cause or remediation scope is unclear. The
 investigator does not modify source; it returns root cause, proposed remediation,
@@ -742,12 +746,12 @@ Configure defaults in `config.json` when the built-in ones do not suit the repos
 
 `setup` commands run inside a new worktree, in order, immediately after creation. A failing setup command fails `create`, and the half-prepared worktree stays recorded so you can inspect or remove it.
 
-## Plan once, then deliver in cohorts
+## Plan once, then deliver
 
-The `planning` workflow holds the planning work on its own. It runs one `plan` stage behind one operator gate, and it ends when you ratify the artifact.
+The `planning` workflow is the entry point for delivery work and the default of `pan init`. It runs one `plan` stage behind one operator gate, and approving that gate is the routing point: the harness reads the ratified cohort plan and starts the delivery itself. You never choose between a single run and a fan-out; the plan does.
 
 ```sh
-./bin/pan init --request runtime/inbox/queue/request.md --workflow planning
+./bin/pan init --request runtime/inbox/queue/request.md
 ```
 
 The ratified artifact is a specification hierarchy rather than a single document. The **parent specification** carries the complete record of the request. One **child specification** per chunk carries the work a single delivery run owns, and reaches the parent through an audited reference — the parent path, the content digest, and the read trigger — instead of a copy of the parent body. A child specification governs its own chunk; the parent governs anything that spans chunks.
@@ -756,7 +760,32 @@ The artifact also records a **cohort plan**: the chunks, the dependency edges be
 
 Two pre-submit validators check the artifact before you ever see it. One rejects a cohort plan whose graph contains a cycle, an edge inside one cohort, or a dependency on the same or a later cohort. The other rejects child specifications that pasted the parent body, that reference the parent without an audited reference, or that do not trace each originating requirement, constraint, exclusion, and open question exactly once. An item several chunks legitimately carry is traced once as shared: the cohort plan lists it in `shared_items`, and every chunk that carries it names it. It also rejects a constraint, exclusion, or open question that opens with no identifier, because nothing could trace it.
 
-### Running the fan-out
+### The state machine
+
+| From                                      | Condition                                  | The harness starts                                                                                                                                                                                                    | Then                                                        |
+| ----------------------------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `planning` / `plan` approved              | the plan holds exactly one chunk           | one `delivery` run (`implement → verify → remediate → ship`) in a fresh worktree; request = the child specification, context reference = the parent specification                                                     | `/pan-resume <run-id>` supervises it to `succeeded`         |
+| `planning` / `plan` approved              | the plan holds two or more chunks          | a cohort session and cohort 1: one `delivery-chunk` run (`implement → verify → remediate`) per chunk, each in its own worktree                                                                                        | `/pan-cohort <cohort-id>` supervises the chunk runs         |
+| every chunk run of cohort _n_ `succeeded` | you run `pan cohort integrate <cohort-id>` | the merge of the chunk branches into the integration branch and the merge proof; then cohort _n + 1_ when one remains                                                                                                 | `/pan-cohort <cohort-id>` continues with the new chunk runs |
+| the last cohort integrated                | the merge proof landed                     | the release run: one `delivery` run that begins at `verify` (`verify → remediate → ship`) on the integration branch; request = the operator request the plan run stored, context reference = the parent specification | `/pan-resume <run-id>` supervises it to `succeeded`         |
+
+Every transition the harness takes adds only worktrees, branches, and run records. The one merge is the one you ask for with `cohort integrate`. Committing, pushing, merging the integration branch onward, and deleting branches stay yours.
+
+The `decide` response, and an `away apply` response that approves the gate, carries an `autostart` object with a `status` of `started`, `already_started`, or `failed` and a `kind`. For `kind: delivery` the object carries `run_id`, `worktree`, and `resume_command` (`/pan-resume <run-id>`). For `kind: cohort` it carries `cohort_id`, `cohort_index`, `max_parallel`, `deferred_chunks` (the chunks the parallelism limit left unstarted), `supervise_command` (the `/pan-cohort <cohort-id>` session for the whole cohort), and `chunks`, one entry per started chunk run with `chunk`, `run_id`, `worktree`, and `resume_command`. `already_started` means an earlier approval already started that delivery, so nothing failed. For `failed` the object carries `error` and `manual_commands`, the commands that perform the same work by hand; the approval and the ratified plan stand. `pan status <plan-run-id>` names the handoff (`delivery_handoff`), and `pan cohort integrate` reports its own continuation under the same `autostart` key with `kind: cohort` or `kind: release`; `pan cohort status` names the release run as `release_run_id`.
+
+The route runs after your decision is already recorded and never rewrites it. It fires for your own `pan decide approve` and for an away-mode approval applied on your behalf, because the route is a recorded property of the run rather than a judgment made at approval time.
+
+### Opting out of the route
+
+```sh
+./bin/pan init --request runtime/inbox/queue/request.md --no-autostart
+```
+
+`--no-autostart` applies only to the `planning` workflow and records that ratification stops at the plan. You then start the delivery by hand: `pan cohort init --plan-run <plan-run-id>` and `pan cohort start <cohort-id>` for a fan-out, or `pan init --workflow delivery --request <child-spec> --context-reference <parent-spec> --worktree <name>` for a single chunk. `--autostart` names the default and is still accepted. Add `--max-parallel <n>` to record the parallelism limit an autostarted cohort session uses (default 4).
+
+`--workflow delivery` remains available as an explicit escape hatch when you bring your own ratified specification: it skips planning and starts at `implement` with your request as the plan. No command or brief chooses it for you.
+
+### Running the fan-out by hand
 
 ```sh
 ./bin/pan cohort init --plan-run <plan-run-id>
@@ -765,24 +794,16 @@ Two pre-submit validators check the artifact before you ever see it. One rejects
 ./bin/pan cohort integrate <cohort-id>
 ```
 
-- `cohort init` reads the ratified cohort plan from the planning run and opens a durable cohort session under `runtime/logs/cohorts/<cohort-id>/`. The session is the authority on the fan-out, so it survives the session that created it and `status` reads it back with no in-memory state.
-- `cohort start` starts the earliest unsatisfied cohort. It creates one worktree and one `delivery-chunk` run per chunk of that cohort, so no two concurrent chunk runs share a workspace root. Each chunk run receives its child specification as the request and the parent specification as a context reference. Supervise the cohort with `/pan-cohort <cohort-id>`, which holds the chunk runs together and advances each one independently; `/pan-resume <run-id>` still continues a single chunk on its own. Chunk runs get their models from the ordinary top-level launch. Pass `--cohort <index>` to name a cohort explicitly; naming one whose predecessor is unsatisfied is refused with `COHORT_PREDECESSOR_UNSATISFIED`, and the message names the cohort that blocks it.
-- `cohort status` reports each chunk with its run status, current stage, and resume command, which cohorts are satisfied, which cohort is active, and which cohort is blocked behind it.
-- `cohort integrate` merges the committed chunk branches of the active cohort into the cohort base branch and writes the satisfaction entry. That entry is the only signal that unblocks the next cohort. The merge proof is `runtime/logs/cohorts/<cohort-id>/integration-<index>.json`, written for every cohort whatever its chunk count: the merged branches, each merged chunk with its run id and branch head, the integration head before and after the merge, and, for a cohort of two or more chunks, the path of the shared reconcile ledger `runtime/logs/worktrees/reconcile.jsonl`. The satisfaction entry and the command response name that record as `evidence_path`. A chunk run that has not succeeded, a dirty chunk worktree, or a merge conflict leaves the entry unwritten and the next cohort blocked, rather than letting later work branch from changes that never landed. A merge commit is an irreversible source-control action under `ACTION-001`, so an agent must hold a recorded operator directive before it runs this command.
-- The merge runs inside the checkout that holds the base branch, so that checkout has to be clean. When it carries unrelated uncommitted work you will not commit or stash, pass `--into-branch <branch>` once: the session records that branch as its integration branch, this cohort and every later one merge into it, later cohorts branch from it, and the merge runs in a recorded worktree instead of your checkout. A branch that does not exist is created from the current integration head; an existing branch must already contain that head, or the command refuses with `COHORT_INTEGRATION_TARGET_DIVERGED`. Merging the integration branch into the base branch afterwards is your decision.
+- `cohort init` reads the ratified cohort plan from the planning run and opens a durable cohort session under `runtime/logs/cohorts/<cohort-id>/`. The session is the authority on the fan-out, so it survives the session that created it and `status` reads it back with no in-memory state. The route runs it for you on approval; you run it yourself only after `--no-autostart` or a failed route.
+- `cohort start` starts the earliest unsatisfied cohort. It creates one worktree and one `delivery-chunk` run per chunk of that cohort, so no two concurrent chunk runs share a workspace root. Each chunk run receives its child specification as the request and the parent specification as a context reference. Supervise the cohort with `/pan-cohort <cohort-id>`, which holds the chunk runs together and advances each one independently; `/pan-resume <run-id>` still continues a single chunk on its own. Chunk runs get their models from the ordinary top-level launch. Pass `--cohort <index>` to name a cohort explicitly; naming one whose predecessor is unsatisfied is refused with `COHORT_PREDECESSOR_UNSATISFIED`, and the message names the cohort that blocks it. A cohort wider than the parallelism limit starts in batches; run the command again as chunk runs finish.
+- `cohort status` reports each chunk with its run status, current stage, and resume command, which cohorts are satisfied, which cohort is active, which cohort is blocked behind it, and the release run once the last integration started it.
+- `cohort integrate` merges the committed chunk branches of the active cohort into the cohort base branch and writes the satisfaction entry. That entry is the only signal that unblocks the next cohort. The merge proof is `runtime/logs/cohorts/<cohort-id>/integration-<index>.json`, written for every cohort whatever its chunk count: the merged branches, each merged chunk with its run id and branch head, the integration head before and after the merge, and, for a cohort of two or more chunks, the path of the shared reconcile ledger `runtime/logs/worktrees/reconcile.jsonl`. The satisfaction entry and the command response name that record as `evidence_path`. A chunk run that has not succeeded, a dirty chunk worktree, or a merge conflict leaves the entry unwritten and the next cohort blocked, rather than letting later work branch from changes that never landed. A merge commit is an irreversible source-control action under `ACTION-001`, so an agent must hold a recorded operator directive before it runs this command. Once the entry lands the harness continues: it starts the next cohort, or, after the last one, the release run. The response reports that continuation as `autostart`; a failed continuation leaves the merge proof in place and names the manual commands.
+- The merge runs inside the checkout that holds the base branch, so that checkout has to be clean. When it carries unrelated uncommitted work you will not commit or stash, pass `--into-branch <branch>` once: the session records that branch as its integration branch, this cohort and every later one merge into it, later cohorts branch from it, and the merge runs in a recorded worktree instead of your checkout. A branch that does not exist is created from the current integration head; an existing branch must already contain that head, or the command refuses with `COHORT_INTEGRATION_TARGET_DIVERGED`. Merging the integration branch into the base branch afterwards is your decision. The release run is bound to that recorded worktree; without `--into-branch` it targets the checkout that holds the base branch, because Git will not check a held branch out a second time.
 - The chunk branches merge one after another, so a conflict on a later chunk leaves the earlier merges on the base branch. The harness does not undo them, because rewriting your branch is your decision. The error names the chunk that conflicted, the chunks that already landed, and the base commit before integration began, and it writes the same facts to `runtime/logs/cohorts/<cohort-id>/integration-<index>-incomplete.json`. The conflicted merge itself is aborted, so the checkout that holds the base branch is left clean. Resolve the divergence on the chunk branch, then integrate again; the chunks that already landed merge as no-ops.
 - `cohort abandon <cohort-id> --chunk <id> --note "<why>"` excludes one chunk from its cohort. The note is required, because dropping a chunk is your decision and the record has to say why. An abandoned chunk is never started by a later `cohort start`. When every chunk of a cohort is abandoned, `cohort integrate` has nothing to merge, so it records the satisfaction entry against the current base head and lists the abandoned chunks in the integration record, and the next cohort can start.
 - `cohort clean <cohort-id>` removes the chunk worktrees and keeps every branch. Every chunk is checked first, so a live run or uncommitted work in any chunk refuses the whole command and removes nothing unless you pass `--force`. The response lists the worktrees it removed.
 
 Satisfaction is never a field an agent fills in. It is computed from two independent durable facts: each chunk run's own state reports `succeeded`, and `cohort integrate` recorded the merge. Starting or preparing a run whose predecessor cohort is unsatisfied fails with `COHORT_PREDECESSOR_UNSATISFIED`, and the same refusal is recomputed on every call, so advancing a chunk run directly does not get around it.
-
-### Starting cohort 1 automatically
-
-```sh
-./bin/pan init --request runtime/inbox/queue/request.md --workflow planning --autostart
-```
-
-`--autostart` is recorded on the run and applies only to the `planning` workflow; any other workflow rejects it. Add `--max-parallel <n>` to record the parallelism limit the autostarted session uses (default 4); the flag requires `--autostart`. When the ratified planning gate is then approved, by you or by an away-mode decision applied on your behalf, the harness opens the cohort session and starts cohort 1 for you. Approving without the flag starts nothing. The hook runs after your decision is already recorded and never rewrites it, so a failed fan-out leaves the approval and the ratified plan intact and reports the two commands to run by hand. The `decide` response, and an `away apply` response that approves the gate, carries an `autostart` object whose `status` is `started`, `already_started`, or `failed`. For `started` and `already_started` the object also carries `cohort_id`, `cohort_index`, `max_parallel`, `deferred_chunks` (the chunks the parallelism limit left unstarted), `supervise_command` (the `/pan-cohort <cohort-id>` session for the whole cohort), and `chunks`, one entry per started chunk run with `chunk`, `run_id`, `worktree`, and `resume_command` (`/pan-resume <run-id>`). `already_started` means the session this run opened already has those chunk runs, so nothing failed. For `failed` the object carries `error` and `manual_commands`, the two commands to run by hand.
 
 ### Migrating a run already in flight
 
