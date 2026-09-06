@@ -19,8 +19,8 @@ the verdict, the remediation boundary, and routing.
 
 ## Lineup
 
-The dimension name in each table is also its slug. An operator names a
-dimension by that slug.
+The dimension name in the two tables below is also its slug. An operator names
+a dimension by that slug.
 
 Core dimensions run on every default squad review:
 

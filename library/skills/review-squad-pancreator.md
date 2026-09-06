@@ -225,6 +225,6 @@ The coordinator ranks the joined set with these tie-breaks:
 
 Record the swap and the core dimensions it removed. Then record the three
 dimensions and any core charter the operator named. Record each one with its
-findings or with an explicit empty result. An operator selection replaces the swap. Record
-the selected dimensions with their findings. Record every other dimension of
-this lineup as not run.
+findings or with an explicit empty result. An operator selection replaces
+the swap. Record the selected dimensions with their findings. Record every
+other dimension of this lineup as not run.

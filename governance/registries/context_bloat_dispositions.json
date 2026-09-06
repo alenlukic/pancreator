@@ -148,6 +148,22 @@
       "evidence": [
         "library/workflows/delivery/stages/remediate.json: persona_by_verdict maps fail_severe to remediator-severe"
       ]
+    },
+    {
+      "id": "planning-route-rule",
+      "category": "duplicate",
+      "sources": [
+        "governance/policies/COHORT-001.json",
+        "library/personas/orchestrator.md",
+        "library/cursor/commands/pan-start.md",
+        "docs/target-repo-primer.md"
+      ],
+      "disposition": "retain",
+      "rationale": "The routing rule appears on four surfaces by design. The policy is the normative statement of the planning default, the single-unit versus multi-unit route, the `--no-autostart` opt-out, and the `--workflow delivery` escape hatch. The orchestrator brief is the supervisor procedure that applies it at init. The `/pan-start` command is the entry checklist a session reads before the brief. The primer is the target-facing summary. The command and the brief MUST stay in sync, because a session reads each without the other.",
+      "evidence": [
+        "tests/integration/planning-workflow.test.ts: a planning run routes on approval by default and --no-autostart opts out",
+        "tests/unit/cohorts.test.ts: the routing hook fires only for an approval of a routed planning run"
+      ]
     }
   ]
 }
