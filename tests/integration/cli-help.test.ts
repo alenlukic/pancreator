@@ -762,3 +762,54 @@ test('pan init defaults to the planning workflow and routes on approval', () => 
       /INVALID_ARGUMENT/u.test(String((error as { stderr?: unknown }).stderr)),
   )
 })
+
+test('governance card --dimensions reaches the review selection and refuses a bad one', () => {
+  const root = createFixture()
+  const card = (dimensions: string) =>
+    spawnSync(
+      process.execPath,
+      [
+        CLI,
+        'governance',
+        'card',
+        '--mode',
+        'review',
+        '--request',
+        'request.md',
+        '--dimensions',
+        dimensions,
+        '--json',
+      ],
+      { cwd: root, encoding: 'utf8' },
+    )
+
+  // The flag travels from argv to the resolved selection the card reports.
+  const selected = card('security')
+
+  assert.equal(selected.status, 0, selected.stderr)
+  assert.deepEqual(
+    (
+      JSON.parse(selected.stdout) as {
+        review_dimensions: { selected: string[] }
+      }
+    ).review_dimensions.selected,
+    ['security'],
+  )
+
+  const unknown = card('security,maintainability')
+
+  assert.notEqual(unknown.status, 0)
+  assert.match(unknown.stderr, /UNKNOWN_REVIEW_DIMENSION/u)
+
+  // A present flag that names nothing is refused, not read as "no selection"
+  // and so as the full default lineup.
+  const empty = card(',')
+
+  assert.notEqual(empty.status, 0)
+  assert.match(empty.stderr, /INVALID_ARGUMENT/u)
+  assert.match(
+    empty.stderr,
+    /security/u,
+    'the refusal lists the accepted slugs',
+  )
+})

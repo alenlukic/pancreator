@@ -1,10 +1,10 @@
 import { spawn, spawnSync, type SpawnSyncOptions } from 'node:child_process'
 import {
   closeSync,
+  fstatSync,
   mkdtempSync,
   openSync,
-  readdirSync,
-  readFileSync,
+  readSync,
   rmSync,
   statSync,
 } from 'node:fs'
@@ -19,10 +19,10 @@ import {
   isSelfDevelopmentInstallation,
 } from './project-config.js'
 import { resolveRunLayout } from './run-layout.js'
+import { liveRunsBoundToWorktree } from './state.js'
 import type {
   RepositoryCheckDelta,
   RepositoryCheckDiagnostic,
-  RunStatus,
 } from './types.js'
 import { TEST_PROFILE_ENV } from './suite-profile.js'
 
@@ -48,7 +48,8 @@ function profileCommandEnv(
 }
 
 const DEFAULT_TIMEOUT_MS = 600_000
-const MAX_CAPTURE_BYTES = 10 * 1024 * 1024
+/** Bytes of one captured stream kept in a command result before truncation. */
+export const MAX_CAPTURE_BYTES = 10 * 1024 * 1024
 const SLOW_PASS_ADVISORY_MS = 60_000
 const EMBEDDED_DELTA_LIMIT = 100
 
@@ -874,13 +875,6 @@ export interface RepositorySetupResult {
 /** Evidence file, relative to a run's `agent/evidence/`, of agent-run profiles. */
 export const AGENT_REPOSITORY_CHECK_RUNS_FILE = 'repository-check-runs.jsonl'
 
-const LIVE_RUN_STATUSES = new Set<RunStatus>([
-  'running',
-  'awaiting_supervisor',
-  'awaiting_operator',
-  'paused',
-])
-
 /**
  * Append an agent-run profile execution to every live run bound to a worktree.
  *
@@ -898,43 +892,34 @@ export function recordAgentRepositoryCheck(
   result: RepositoryCheckResult,
   startedAt: string,
 ): string[] {
-  const base = path.join(root, 'runtime', 'logs', 'workflows')
+  return recordAgentRepositoryCheckForRuns(
+    root,
+    liveRunsBoundToWorktree(root, worktreeName).map((state) => state.run_id),
+    result,
+    startedAt,
+  )
+}
 
-  if (!fileExists(base)) {
-    return []
-  }
-
+/**
+ * Append an agent-run profile execution to the named runs. A worker that names
+ * its run with `--run` bypasses the worktree scan, which is the path for a run
+ * whose workspace is not a managed worktree.
+ */
+export function recordAgentRepositoryCheckForRuns(
+  root: string,
+  runIds: string[],
+  result: RepositoryCheckResult,
+  startedAt: string,
+): string[] {
   const recorded: string[] = []
   let fingerprint: string | null = null
 
-  for (const entry of readdirSync(base, { withFileTypes: true })) {
-    if (!entry.isDirectory()) {
-      continue
-    }
-
-    const layout = resolveRunLayout(root, entry.name)
-    let state: unknown
-
-    try {
-      state = fileExists(layout.state.absolute)
-        ? readJson(layout.state.absolute)
-        : null
-    } catch {
-      continue
-    }
-
-    if (
-      !isRecord(state) ||
-      !isRecord(state.managed_worktree) ||
-      state.managed_worktree.name !== worktreeName ||
-      !LIVE_RUN_STATUSES.has(state.status as RunStatus)
-    ) {
-      continue
-    }
-
+  for (const runId of runIds) {
     fingerprint ??= gitWorkspaceSnapshot(result.workspace_root).fingerprint
 
-    const evidence = layout.evidence(AGENT_REPOSITORY_CHECK_RUNS_FILE)
+    const evidence = resolveRunLayout(root, runId).evidence(
+      AGENT_REPOSITORY_CHECK_RUNS_FILE,
+    )
 
     appendJsonLine(evidence.absolute, {
       profile: result.profile,
@@ -1039,10 +1024,34 @@ function appendCaptured(current: string, chunk: string): string {
   return `${current}${truncated}\n[output truncated by Pancreator]\n`
 }
 
-/** Read a captured stream file, bounded the same way the streaming path is. */
-function readCapturedFile(filePath: string): string {
+/**
+ * Read a captured stream through its open descriptor, bounded the same way the
+ * streaming path is. The file is never read whole: a runaway command can write
+ * far more than the cap, and buffering that before truncating it would cost
+ * the memory the cap exists to bound.
+ */
+function readCapturedDescriptor(fd: number): string {
   try {
-    return appendCaptured('', readFileSync(filePath, 'utf8'))
+    const size = fstatSync(fd).size
+    const length = Math.min(size, MAX_CAPTURE_BYTES)
+    const buffer = Buffer.alloc(length)
+    let offset = 0
+
+    while (offset < length) {
+      const read = readSync(fd, buffer, offset, length - offset, offset)
+
+      if (read === 0) {
+        break
+      }
+
+      offset += read
+    }
+
+    const text = buffer.subarray(0, offset).toString('utf8')
+
+    return size > MAX_CAPTURE_BYTES
+      ? `${text}\n[output truncated by Pancreator]\n`
+      : text
   } catch {
     return ''
   }
@@ -1067,8 +1076,10 @@ function execute(
   )
   const stdoutPath = path.join(captureDirectory, 'stdout')
   const stderrPath = path.join(captureDirectory, 'stderr')
-  const stdoutFd = openSync(stdoutPath, 'w')
-  const stderrFd = openSync(stderrPath, 'w')
+  // Read-write, because the same descriptors read the capture back once the
+  // shell exits.
+  const stdoutFd = openSync(stdoutPath, 'w+')
+  const stderrFd = openSync(stderrPath, 'w+')
   const detached = process.platform !== 'win32'
   let closed = false
 
@@ -1088,26 +1099,35 @@ function execute(
       result.error instanceof Error &&
       'code' in result.error &&
       result.error.code === 'ETIMEDOUT'
-
-    if (timedOut && detached && typeof result.pid === 'number') {
-      try {
-        process.kill(-result.pid, 'SIGKILL')
-      } catch {
-        // The group already ended with the shell.
-      }
-    }
+    const stdout = readCapturedDescriptor(stdoutFd)
+    const stderr = readCapturedDescriptor(stderrFd)
 
     closeSync(stdoutFd)
     closeSync(stderrFd)
     closed = true
+
+    if (timedOut) {
+      // The orphaned tree holds its own descriptors to the capture files, so
+      // the directory goes first: whatever outlives the signal writes to
+      // unlinked files and leaves nothing behind on disk.
+      rmSync(captureDirectory, { recursive: true, force: true })
+
+      if (detached && typeof result.pid === 'number') {
+        try {
+          process.kill(-result.pid, 'SIGKILL')
+        } catch {
+          // The group already ended with the shell.
+        }
+      }
+    }
 
     return {
       kind,
       command,
       exit_code: result.status,
       signal: result.signal,
-      stdout: readCapturedFile(stdoutPath),
-      stderr: readCapturedFile(stderrPath),
+      stdout,
+      stderr,
       passed: result.status === 0 && !result.error,
       timed_out: timedOut,
       duration_ms: Date.now() - startedAt,

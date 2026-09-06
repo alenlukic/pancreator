@@ -437,8 +437,14 @@ test('the evaluator prompt carries the request, the outcome, and the artifact', 
     unknown
   >
 
-  assert.doesNotMatch(prompt, /safest to least safe/u)
-  assert.match(prompt, /ranks approve first/u)
+  // The evaluator ranks the actions the guardrails allow, and the prompt names
+  // them by identifier rather than describing them: the identifiers are what
+  // the parser accepts back.
+  assert.deepEqual(payload.allowed_actions, [...AWAY_MODE_ACTIONS])
+  assert.ok(
+    (payload.allowed_actions as string[]).includes('approve'),
+    'approve is an option the evaluator can rank',
+  )
   assert.equal(payload.stage_outcome, 'success')
   assert.equal(payload.stage_summary, context.stage_summary)
   assert.deepEqual(payload.stage_artifacts, context.stage_artifacts)

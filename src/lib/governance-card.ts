@@ -558,6 +558,9 @@ function renderBaseConduct(block: BaseConductBlock): string[] {
  */
 function renderReviewDimensions(selection: ReviewDimensionSelection): string[] {
   const lines = ['## 🎯 Review dimensions', '']
+  const slugList = (slugs: string[]): string =>
+    slugs.length > 0 ? slugs.map((slug) => `\`${slug}\``).join(', ') : 'none'
+  const conditionalLine = `- Conditional, resolved by the coordinator: ${slugList(selection.conditional)}`
 
   if (selection.default) {
     lines.push(
@@ -565,7 +568,8 @@ function renderReviewDimensions(selection: ReviewDimensionSelection): string[] {
         'default lineup the squad procedure resolves, including its ' +
         'activation rules.',
       '',
-      `- Default lineup: ${selection.selected.map((slug) => `\`${slug}\``).join(', ')}`,
+      `- Default lineup: ${slugList(selection.selected)}`,
+      conditionalLine,
       '',
     )
 
@@ -575,16 +579,13 @@ function renderReviewDimensions(selection: ReviewDimensionSelection): string[] {
   lines.push(
     'The operator selected a dimension set with `--dimensions`. The squad ' +
       'runs exactly these dimensions, each with the charter that defines it. ' +
-      'Activation rules and the harness lineup swap do not apply to a ' +
-      'selected set. This review is partial: the report MUST name the ' +
-      'dimensions below that it did not cover.',
+      'The harness lineup swap does not apply to a selected set. This review ' +
+      'is partial: the report MUST name the dimensions below that it did not ' +
+      'cover.',
     '',
-    `- Selected: ${selection.selected.map((slug) => `\`${slug}\``).join(', ')}`,
-    `- Default lineup not run: ${
-      selection.not_run.length > 0
-        ? selection.not_run.map((slug) => `\`${slug}\``).join(', ')
-        : 'none'
-    }`,
+    `- Selected: ${slugList(selection.selected)}`,
+    `- Default lineup not run: ${slugList(selection.not_run)}`,
+    conditionalLine,
     '',
   )
 

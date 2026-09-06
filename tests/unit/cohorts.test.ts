@@ -15,12 +15,13 @@ import {
   startCohort,
 } from '../../src/lib/cohorts.js'
 import { PanError } from '../../src/lib/errors.js'
+import { listRunStates, loadState, statePath } from '../../src/lib/state.js'
 import type {
   CohortSessionState,
   RunState,
   RunStatus,
 } from '../../src/lib/types.js'
-import { createFixture, writeJson } from '../helpers.js'
+import { createFixture, createRun, writeJson } from '../helpers.js'
 
 const COHORT_ID = '10000_Sep-02-0000_cohort-fix'
 
@@ -683,4 +684,100 @@ test('a routing failure reports the error and the manual commands', () => {
       `${EMBEDDED_PAN} cohort start <cohort-id>`,
     ])
   }
+})
+
+/**
+ * A succeeded planning run whose ratified plan holds the single chunk `c1`,
+ * written through the run's own durable records as the routing hook reads them.
+ */
+function ratifiedSingleChunkPlanRun(root: string): string {
+  const plan = planFixture()
+  const run = createRun(root, {
+    workflowSlug: 'planning',
+    requestPath: 'request.md',
+  })
+  const outputPath = `runtime/logs/workflows/${run.run_id}/agent/outputs/plan-1.json`
+
+  writeJson(path.join(root, outputPath), {
+    schema_version: 1,
+    result: 'success',
+    data: {
+      cohort_plan: {
+        ...plan,
+        chunks: (plan.chunks as unknown[]).slice(0, 1),
+        edges: [],
+        cohorts: [{ index: 1, chunks: ['c1'] }],
+      },
+    },
+  })
+  writeJson(statePath(root, run.run_id), {
+    ...loadState(root, run.run_id),
+    status: 'succeeded',
+    current_stage: null,
+    stage_history: [
+      {
+        stage: 'plan',
+        attempt: 1,
+        outcome: 'success',
+        invocation_id: 'plan-1',
+        output_path: outputPath,
+        recorded_at: '2026-09-02T00:00:00.000Z',
+        validation_errors: [],
+        deterministic: [],
+      },
+    ],
+  })
+
+  return run.run_id
+}
+
+test('a retry after a lost handoff record adopts the delivery run it already created', () => {
+  const root = createFixture()
+
+  writeSpecs(root)
+
+  const planRunId = ratifiedSingleChunkPlanRun(root)
+  const approve = { actor: 'operator' as const, action: 'approve' }
+  const first = maybeStartDelivery(root, loadState(root, planRunId), approve)
+
+  assert.equal(first?.status, 'started')
+  assert.equal(first?.kind, 'delivery')
+
+  if (first?.status !== 'started' || first.kind !== 'delivery') {
+    return
+  }
+
+  // Run creation and the handoff record are two writes. Drop the second one to
+  // stand in for a process that died between them.
+  const plan = loadState(root, planRunId)
+
+  delete plan.delivery_handoff
+  writeJson(statePath(root, planRunId), plan)
+
+  const second = maybeStartDelivery(root, loadState(root, planRunId), approve)
+
+  assert.equal(second?.status, 'already_started')
+  assert.equal(second?.kind, 'delivery')
+
+  if (second?.status !== 'already_started' || second.kind !== 'delivery') {
+    return
+  }
+
+  // The retry adopts the run bound to the derived worktree, records the
+  // handoff it lost, and binds no second run to the same checkout.
+  assert.equal(second.run_id, first.run_id)
+  assert.equal(second.worktree, first.worktree)
+  assert.deepEqual(
+    listRunStates(root)
+      .filter((run) => run.workflow_slug === 'delivery')
+      .map((run) => run.run_id),
+    [first.run_id],
+  )
+  const handoff = loadState(root, planRunId).delivery_handoff
+
+  assert.equal(handoff?.kind, 'delivery')
+  assert.equal(
+    handoff?.kind === 'delivery' ? handoff.run_id : null,
+    first.run_id,
+  )
 })

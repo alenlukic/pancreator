@@ -805,6 +805,7 @@ export function createAgentRecoveryRunner(root: string): AgentRecoveryRunner {
     return cursorRecoveryResult(
       runCursorAgentSession({
         cwd: root,
+        installationRoot: root,
         model: agent.model ?? undefined,
         sessionId: agent.session_id,
         prompt:
@@ -857,6 +858,7 @@ export function createAgentRecoveryRunner(root: string): AgentRecoveryRunner {
       return cursorRecoveryResult(
         runCursorAgentSession({
           cwd: root,
+          installationRoot: root,
           model: agent.model ?? undefined,
           prompt: readText(promptPath),
         }),

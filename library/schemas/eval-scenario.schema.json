@@ -59,12 +59,19 @@
     "pipeline_config": { "type": "string", "minLength": 1 },
     "cohort": {
       "type": "object",
-      "description": "Cohort fan-out options for a planning scenario: create the plan run with --autostart and record the session's parallelism limit.",
+      "description": "Delivery autostart options for a planning scenario: whether approving the ratified plan routes it into delivery, and the parallelism limit a cohort session records.",
       "required": ["autostart"],
       "additionalProperties": false,
       "properties": {
-        "autostart": { "type": "boolean" },
-        "max_parallel": { "type": "integer", "minimum": 1 }
+        "autostart": {
+          "type": "boolean",
+          "description": "Delivery autostart: single-chunk plans start one delivery run, multi-chunk plans start cohort 1. False records --no-autostart on the plan run."
+        },
+        "max_parallel": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Concurrent chunk runs a cohort session allows; ignored when the plan starts a single delivery run."
+        }
       }
     },
     "operator_decisions": {

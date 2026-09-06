@@ -9,6 +9,7 @@ import {
   HARNESS_SQUAD_SKILL_PATH,
   REVIEW_DIMENSIONS,
   availableReviewDimensions,
+  conditionalReviewDimensions,
   defaultReviewLineup,
   resolveReviewDimensionSelection,
   reviewDimensionSlug,
@@ -75,12 +76,14 @@ test('an empty selection runs the full default lineup', () => {
     defaultReviewLineup(root).map((dimension) => dimension.slug),
   )
   // A self-development checkout ships the harness lineup, which the skill
-  // swaps in for a Pancreator target.
+  // swaps in for a Pancreator target. That lineup carries no conditional
+  // dimension.
   assert.deepEqual(selection.selected, [
     'correctness-consistency',
     'agentic-practice',
     'performance',
   ])
+  assert.deepEqual(selection.conditional, [])
   assert.deepEqual(
     selection.available,
     REVIEW_DIMENSIONS.map((dimension) => dimension.slug),
@@ -156,21 +159,37 @@ test('a target installation accepts only the core lineup', () => {
       'frontend',
     ],
   )
+  // The conditional dimension is selectable, and the coordinator resolves it
+  // for a default run, but it is not part of the lineup that always runs.
   assert.deepEqual(
     defaultReviewLineup(root).map((dimension) => dimension.slug),
-    availableReviewDimensions(root).map((dimension) => dimension.slug),
+    ['correctness', 'security', 'architecture', 'simplification', 'operations'],
   )
+  assert.deepEqual(
+    conditionalReviewDimensions(root).map((dimension) => dimension.slug),
+    ['frontend'],
+  )
+  assert.deepEqual(resolveReviewDimensionSelection(root, []).conditional, [
+    'frontend',
+  ])
 
   const selection = resolveReviewDimensionSelection(root, ['operations'])
 
   assert.deepEqual(selection.selected, ['operations'])
+  // The operator left out the core lineup, not the conditional dimension:
+  // that one was never the operator's to leave out.
   assert.deepEqual(selection.not_run, [
     'correctness',
     'security',
     'architecture',
     'simplification',
-    'frontend',
   ])
+  assert.deepEqual(selection.conditional, ['frontend'])
+  assert.deepEqual(
+    resolveReviewDimensionSelection(root, ['frontend']).conditional,
+    [],
+    'a conditional dimension selected outright is no longer conditional',
+  )
   assert.throws(
     () => resolveReviewDimensionSelection(root, ['performance']),
     (error: unknown) =>

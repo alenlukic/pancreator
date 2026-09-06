@@ -14,7 +14,9 @@ import {
   AGENT_REPOSITORY_CHECK_RUNS_FILE,
   compareRepositoryCheckToBaseline,
   loadRepositoryChecks,
+  MAX_CAPTURE_BYTES,
   recordAgentRepositoryCheck,
+  recordAgentRepositoryCheckForRuns,
   repositoryChecksSourcePath,
   runRepositorySetup,
   runRepositoryCheck,
@@ -595,7 +597,6 @@ test('a streaming timeout ends the whole process tree, not only the shell', asyn
 
   writeChecks(root, {
     fast: {
-      timeout_ms: 1_000,
       probes: [],
       // A grandchild that inherits stdout and would live far past the bound.
       commands: ['sh -c "sleep 30; echo late" & wait'],
@@ -603,7 +604,11 @@ test('a streaming timeout ends the whole process tree, not only the shell', asyn
   })
 
   const startedAt = Date.now()
-  const result = await runRepositoryCheckStreaming(root, 'fast', {})
+  // The profile floor is 1 s; the stage-requested bound has no floor, and the
+  // contract is the kill, not the wait.
+  const result = await runRepositoryCheckStreaming(root, 'fast', {
+    timeout_ms: 250,
+  })
   const elapsed = Date.now() - startedAt
 
   assert.equal(result.status, 'failed')
@@ -623,14 +628,13 @@ test('a synchronous timeout ends the whole process tree, not only the shell', ()
 
   writeChecks(root, {
     fast: {
-      timeout_ms: 1_000,
       probes: [],
       commands: ['echo early; sh -c "sleep 30; echo late" & wait'],
     },
   })
 
   const startedAt = Date.now()
-  const result = runRepositoryCheck(root, 'fast')
+  const result = runRepositoryCheck(root, 'fast', { timeout_ms: 250 })
   const elapsed = Date.now() - startedAt
 
   assert.equal(result.status, 'failed')
@@ -640,6 +644,30 @@ test('a synchronous timeout ends the whole process tree, not only the shell', ()
     elapsed < 10_000,
     `the gate returned after ${elapsed}ms; the orphaned tree kept it waiting`,
   )
+})
+
+test('a synchronous capture past the byte cap is truncated at the cap with the marker', () => {
+  const { root } = makeInstallation()
+  const marker = '\n[output truncated by Pancreator]\n'
+  const excess = MAX_CAPTURE_BYTES + 1024 * 1024
+
+  writeChecks(root, {
+    fast: {
+      probes: [],
+      commands: [`node -e "process.stdout.write(Buffer.alloc(${excess}, 97))"`],
+    },
+  })
+
+  const result = runRepositoryCheck(root, 'fast')
+  const stdout = result.results[0]?.stdout ?? ''
+
+  assert.equal(result.status, 'passed')
+  assert.ok(stdout.endsWith(marker))
+  assert.equal(
+    Buffer.byteLength(stdout),
+    MAX_CAPTURE_BYTES + Buffer.byteLength(marker),
+  )
+  assert.equal(result.results[0]?.stderr, '')
 })
 
 test('stage-requested timeout replaces the profile default', () => {
@@ -869,8 +897,18 @@ test('an agent-run profile is recorded against the live run bound to its worktre
     writeFileSync(
       path.join(directory, 'state.json'),
       `${JSON.stringify({
+        schema_version: 2,
         run_id: runId,
+        workflow_slug: 'delivery',
+        title: runId,
         status,
+        current_stage: 'implement',
+        pending_action: { type: 'prepare_invocation' },
+        current_invocation: null,
+        stage_history: [],
+        attempts: {},
+        revision: 1,
+        workspace_root: '../workspace',
         ...(worktree
           ? {
               managed_worktree: {
@@ -958,5 +996,14 @@ test('an agent-run profile is recorded against the live run bound to its worktre
       ),
     ),
     false,
+  )
+
+  // `--run` names the run directly, so a run without a worktree binding (a
+  // release run in the base checkout) still receives its evidence.
+  assert.deepEqual(
+    recordAgentRepositoryCheckForRuns(root, ['live-unbound'], result, 'now'),
+    [
+      `runtime/logs/workflows/live-unbound/agent/evidence/${AGENT_REPOSITORY_CHECK_RUNS_FILE}`,
+    ],
   )
 })

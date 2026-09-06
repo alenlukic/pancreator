@@ -149,6 +149,7 @@ import {
   writeEvalReport,
 } from './lib/evals/index.js'
 import { STANDALONE_MODES, buildGovernanceCard } from './lib/governance-card.js'
+import { availableReviewDimensions } from './lib/review-dimensions.js'
 import {
   attestSupervisorCard,
   buildSupervisorCard,
@@ -158,6 +159,7 @@ import {
   assertRepositoryChecksValid,
   loadRepositoryChecks,
   recordAgentRepositoryCheck,
+  recordAgentRepositoryCheckForRuns,
   repositoryChecksSourcePath,
   runRepositoryCheckStreaming,
 } from './lib/repository-checks.js'
@@ -230,8 +232,9 @@ export const HELP_BODY = `Usage:
   pan hypervisor start|run|tick|status|stop [--json]
   pan away status|evaluate|apply <run-id> [--decision <id>] [--json]
   pan technologies detect [--worktree <name>] --json
-  pan repository-check <profile> [--timeout-ms <milliseconds>] [--workspace <dir|worktree> | --worktree <name>] [--json]
+  pan repository-check <profile> [--timeout-ms <milliseconds>] [--workspace <dir|worktree> | --worktree <name>] [--run <run-id>] [--json]
       --timeout-ms raises the effective bound only: resolution keeps the maximum of the request, the profile's own bound, and subset-profile timeouts.
+      --run records the execution against that run and, without --workspace or --worktree, checks its workspace. Otherwise --worktree records against every live run bound to the worktree.
   pan repository-check validate [--json]
   pan tests impacted [--changed <ref> | --staged | --worktree-dirty] [--file <path>]... [--include <glob>]... [--depth <n>] [--list] [--json] [--advisory-ratio <0..1>]
       Self-development only. Select and run the lane tests whose import closure reaches the changed files. The default change set is the dirty working tree. An iteration aid, never a gate.
@@ -538,15 +541,37 @@ function assertRunWorktreeBinding(
   }
 }
 
-function commaSeparatedOption(args: string[], name: string): string[] {
+/**
+ * Comma-separated list option: null when the flag is absent, at least one item
+ * when it is present. A present flag that names nothing (`--criteria ,`) is
+ * refused rather than read as "no selection", because every caller treats the
+ * absent flag as a wider default that the operator did not ask for.
+ */
+function commaSeparatedOption(
+  args: string[],
+  name: string,
+  accepted?: readonly string[],
+): string[] | null {
   const value = option(args, name)
 
-  return value
-    ? value
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean)
-    : []
+  if (value === null) {
+    return null
+  }
+
+  const items = value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+
+  if (items.length === 0) {
+    throw new PanError(
+      `${name} needs at least one value, comma-separated with no spaces.` +
+        (accepted ? ` Accepted values: ${accepted.join(', ')}.` : ''),
+      { code: 'INVALID_ARGUMENT' },
+    )
+  }
+
+  return items
 }
 
 function repeatedOption(args: string[], name: string): string[] {
@@ -791,6 +816,7 @@ function evaluateAwayState(
   })
   const evaluation = runCursorAgentJson({
     cwd: root,
+    installationRoot: root,
     model: hypervisorModelForRun(root, state),
     prompt,
   })
@@ -1422,7 +1448,7 @@ async function main(): Promise<void> {
     }
     case 'waive-gate': {
       const runId = requiredArgument(args[0], 'run-id')
-      const criteria = commaSeparatedOption(args, '--criteria')
+      const criteria = commaSeparatedOption(args, '--criteria') ?? []
       const note = option(args, '--note')
 
       if (!note || note.trim().length === 0) {
@@ -1436,7 +1462,7 @@ async function main(): Promise<void> {
         targetStage: option(args, '--to'),
         criterionIds: criteria,
         note,
-        deferredAcceptanceCriteria: commaSeparatedOption(args, '--defer'),
+        deferredAcceptanceCriteria: commaSeparatedOption(args, '--defer') ?? [],
         createSpotfixCase: hasFlag(args, '--spotfix'),
       })
 
@@ -1617,28 +1643,33 @@ async function main(): Promise<void> {
           )
         }
 
-        try {
-          const next = applyAwayDecision(root, state, decision)
-          const record = recordAwayApplyResult(root, decision, 'applied')
-          // Same hook as `pan decide`: it runs after the applied decision is
-          // durable, so a routing failure never rolls back the approval.
-          const autostart = maybeStartDelivery(root, next, {
-            actor: 'away',
-            action: decision.selected_action?.action ?? '',
-          })
+        let next: RunState
+        let record: AwayDecisionRecord
 
-          print(
-            {
-              state: next,
-              decision: record,
-              ...(autostart ? { autostart } : {}),
-            },
-            json,
-          )
+        try {
+          next = applyAwayDecision(root, state, decision)
+          record = recordAwayApplyResult(root, decision, 'applied')
         } catch (error) {
           recordAwayApplyResult(root, decision, 'failed', errorMessage(error))
           throw error
         }
+
+        // Same hook as `pan decide`: it runs after the applied decision is
+        // durable and outside the try above, so a routing failure neither rolls
+        // back the approval nor records a `failed` beside the `applied`.
+        const autostart = maybeStartDelivery(root, next, {
+          actor: 'away',
+          action: decision.selected_action?.action ?? '',
+        })
+
+        print(
+          {
+            state: next,
+            decision: record,
+            ...(autostart ? { autostart } : {}),
+          },
+          json,
+        )
         return
       }
 
@@ -1711,12 +1742,21 @@ async function main(): Promise<void> {
         )
       }
 
+      // `--run` names the run the execution is evidence for, which a run
+      // whose workspace is not a managed worktree (a release run in the base
+      // checkout) cannot express through `--worktree`.
+      const evidenceRunId = option(args, '--run')
+      const evidenceRun = evidenceRunId
+        ? getRunState(root, evidenceRunId)
+        : null
       const worktreeWorkspace = sharedWorktreeWorkspace(root, args)
       const checkWorkspace = worktreeWorkspace
         ? worktreeWorkspace.path
         : workspaceOption
           ? resolveWorkspacePathOrWorktree(root, workspaceOption)
-          : null
+          : evidenceRun
+            ? path.resolve(root, evidenceRun.workspace_root)
+            : null
       const startedAt = new Date().toISOString()
       const result = await runRepositoryCheckStreaming(root, profile, {
         ...(timeoutMs !== undefined ? { timeout_ms: timeoutMs } : {}),
@@ -1736,14 +1776,22 @@ async function main(): Promise<void> {
 
       // A worker runs a profile inside its run's worktree, and the run is the
       // only place a supervisor can audit that execution from harness records.
-      const runEvidence = worktreeWorkspace
-        ? recordAgentRepositoryCheck(
+      // An explicit run wins over the worktree scan.
+      const runEvidence = evidenceRun
+        ? recordAgentRepositoryCheckForRuns(
             root,
-            worktreeWorkspace.name,
+            [evidenceRun.run_id],
             result,
             startedAt,
           )
-        : []
+        : worktreeWorkspace
+          ? recordAgentRepositoryCheck(
+              root,
+              worktreeWorkspace.name,
+              result,
+              startedAt,
+            )
+          : []
 
       print(
         runEvidence.length > 0
@@ -2322,7 +2370,11 @@ async function main(): Promise<void> {
           baseRef: option(args, '--base'),
           targetRef: option(args, '--target'),
           closureRevision: option(args, '--closure-revision'),
-          dimensions: commaSeparatedOption(args, '--dimensions'),
+          dimensions: commaSeparatedOption(
+            args,
+            '--dimensions',
+            availableReviewDimensions(root).map((dimension) => dimension.slug),
+          ),
         })
 
         print({

@@ -306,6 +306,49 @@ export const BRIEFS: CheckpointVariant = {
   run: { operatorArtifacts: true },
 }
 
+/**
+ * Away mode enabled with approval as its only action. Away mode is snapshotted
+ * into the run at creation, so the event log holds no operator decision.
+ */
+export const AWAY: CheckpointVariant = {
+  key: 'away',
+  fixture: (root) => {
+    const configPath = path.join(root, 'config.json')
+    const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
+      string,
+      unknown
+    >
+
+    writeFileSync(
+      configPath,
+      `${JSON.stringify(
+        {
+          ...config,
+          away_mode: {
+            enabled: true,
+            guardrails: {
+              allowed_actions: ['approve'],
+              max_decisions_per_run: 1,
+            },
+          },
+        },
+        null,
+        2,
+      )}\n`,
+    )
+    // Delivery starts at implement, whose target-instruction coverage check
+    // reads the cumulative workspace diff. Fold the fixture edit into the
+    // baseline commit so the run starts from a clean tree; amend rather than
+    // commit because the ship release validator needs the baseline commit to
+    // be the one that introduced VERSION.
+    execFileSync('git', ['add', 'config.json'], { cwd: root })
+    execFileSync('git', ['commit', '-q', '--amend', '-m', 'fixture'], {
+      cwd: root,
+    })
+  },
+  run: { title: 'Away continuation fixture' },
+}
+
 /** A variant whose fixture writes the given repository-check profiles. */
 export function checksVariant(
   key: string,
