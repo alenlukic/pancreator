@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import {
   existsSync,
   mkdirSync,
@@ -41,6 +41,8 @@ import {
   createRun,
   writeJson,
 } from '../helpers.js'
+
+const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
 
 function git(root: string, args: string[]): string {
   return execFileSync('git', args, { cwd: root, encoding: 'utf8' })
@@ -1131,12 +1133,8 @@ test('approving a single-chunk plan starts one delivery run and no fan-out', () 
     },
   )
 
-  // The run prepares like any delivery run and its card carries the reference.
-  attestRunCard(root, started.run_id)
-
-  const prepared = prepareInvocation(root, started.run_id)
-
-  assert.equal(prepared.invocation?.stage.slug, 'implement')
+  // The context reference reaches the implement card as a required input; the
+  // context-reference unit tests prove that, so no card is prepared here.
 
   // Approving again (now by the operator) is idempotent and starts nothing new.
   const again = maybeStartDelivery(root, loadState(root, planRunId), {
@@ -1178,11 +1176,12 @@ test('a single-chunk routing failure leaves the approval and the plan intact', (
 
   assert.equal(result.kind, 'delivery')
   assert.match(result.error, /alpha/u)
-  assert.equal(result.manual_commands.length, 1)
-  assert.match(
-    result.manual_commands[0],
-    /^\.\/bin\/pan init --workflow delivery --request runtime\/specs\/alpha\.md --context-reference runtime\/specs\/parent-specification\.md --worktree delivery-/u,
-  )
+  // The one manual command is the idempotent retry. A hand-built `pan init`
+  // would bind a second run to the derived worktree when the failure struck
+  // after run creation, because init has no live-run check.
+  assert.deepEqual(result.manual_commands, [
+    `./bin/pan cohort route --plan-run ${planRunId}`,
+  ])
 
   // The approval and the plan stand, nothing was created, and the plan run
   // records the failed route so status names it after this output is gone.
@@ -1208,7 +1207,7 @@ test('a single-chunk routing failure leaves the approval and the plan intact', (
   const status = renderStatus(after)
 
   assert.match(status, /^Delivery route failed: .*alpha/mu)
-  assert.match(status, /^  Manual: \.\/bin\/pan init --workflow delivery /mu)
+  assert.match(status, /^  Manual: \.\/bin\/pan cohort route --plan-run /mu)
 
   // The same failure is recorded once: a repeated approval appends nothing.
   maybeStartDelivery(root, loadState(root, planRunId), {
@@ -1230,6 +1229,82 @@ test('a single-chunk routing failure leaves the approval and the plan intact', (
 
   assert.equal(retried?.status, 'started')
   assert.equal(loadState(root, planRunId).delivery_handoff?.kind, 'delivery')
+})
+
+test('pan cohort route retries a failed plan route from the command line', () => {
+  const root = createFixture()
+  const planRunId = ratifiedPlanRun(root, [{ id: 'alpha', cohort_index: 1 }])
+  const route = (...args: string[]) =>
+    spawnSync(
+      process.execPath,
+      [CLI, 'cohort', 'route', '--plan-run', planRunId, ...args],
+      { cwd: root, encoding: 'utf8' },
+    )
+
+  // The approval's route failed: the child specification is missing.
+  rmSync(path.join(root, 'runtime', 'specs', 'alpha.md'))
+
+  const failed = maybeStartDelivery(root, loadState(root, planRunId), {
+    actor: 'operator',
+    action: 'approve',
+  })
+
+  assert.equal(failed?.status, 'failed')
+
+  // The retry reports the same failure with a non-zero exit while the cause
+  // stands.
+  const stillFailed = route('--json')
+
+  assert.notEqual(stillFailed.status, 0)
+  assert.equal(JSON.parse(stillFailed.stdout).status, 'failed')
+
+  // Once repaired, the command routes the plan and reports the handoff.
+  writeFileSync(
+    path.join(root, 'runtime', 'specs', 'alpha.md'),
+    '# Chunk alpha\n\nRestored.\n',
+  )
+
+  const routed = route('--json')
+
+  assert.equal(routed.status, 0, routed.stderr)
+
+  const result = JSON.parse(routed.stdout) as Record<string, unknown>
+
+  assert.equal(result.status, 'started')
+  assert.equal(result.kind, 'delivery')
+  assert.equal(typeof result.run_id, 'string')
+  assert.equal(result.resume_command, `/pan-resume ${String(result.run_id)}`)
+  assert.equal(
+    loadState(root, planRunId).delivery_handoff?.kind,
+    'delivery',
+    'a successful retry replaces the failed handoff record',
+  )
+
+  // The command is idempotent and the plain form prints the same record.
+  const again = route()
+
+  assert.equal(again.status, 0, again.stderr)
+  assert.match(again.stdout, /already_started/u)
+  assert.match(again.stdout, new RegExp(String(result.run_id), 'u'))
+
+  // A run that is not a planning run is refused by name.
+  const refused = spawnSync(
+    process.execPath,
+    [CLI, 'cohort', 'route', '--plan-run', String(result.run_id)],
+    { cwd: root, encoding: 'utf8' },
+  )
+
+  assert.notEqual(refused.status, 0)
+  assert.match(refused.stderr, /COHORT_PLAN_RUN_INVALID/u)
+
+  // The option is required.
+  const missing = spawnSync(process.execPath, [CLI, 'cohort', 'route'], {
+    cwd: root,
+    encoding: 'utf8',
+  })
+
+  assert.notEqual(missing.status, 0)
+  assert.match(missing.stderr, /INVALID_ARGUMENT/u)
 })
 
 /** A session whose only cohort is committed, succeeded, and ready to integrate. */
@@ -1449,6 +1524,22 @@ test('the last integration starts the release run at verify in its own worktree,
         entry.includes(chunkRunId),
       ),
       `the missing verify output of ${chunkRunId} is named`,
+    )
+  }
+
+  // The release run has no plan output of its own: each chunk's child
+  // specification, which holds the acceptance criteria and validation cases,
+  // is a required input so the verifier grades against them.
+  for (const chunk of ['alpha', 'beta']) {
+    const childSpec = required.find(
+      (item) => item.path === `runtime/specs/${chunk}.md`,
+    )
+
+    assert.ok(childSpec, `the child specification of '${chunk}' is required`)
+    assert.equal(
+      childSpec.description,
+      `Child specification of chunk '${chunk}': the acceptance criteria ` +
+        'and validation cases this release verify grades',
     )
   }
 

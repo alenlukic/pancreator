@@ -13,13 +13,19 @@ import path from 'node:path'
 
 import { PanError, invariant } from './errors.js'
 import { gitWorkspaceSnapshot } from './git.js'
-import { appendJsonLine, fileExists, isRecord, readJson } from './io.js'
+import {
+  appendJsonLine,
+  fileExists,
+  isRecord,
+  readJson,
+  readText,
+} from './io.js'
 import {
   configuredWorkspaceRoot,
   isSelfDevelopmentInstallation,
 } from './project-config.js'
 import { resolveRunLayout } from './run-layout.js'
-import { liveRunsBoundToWorktree, liveRunsInWorkspace } from './state.js'
+import { liveRunsBoundToWorktree, loadState } from './state.js'
 import type {
   RepositoryCheckDelta,
   RepositoryCheckDiagnostic,
@@ -901,30 +907,11 @@ export function recordAgentRepositoryCheck(
 }
 
 /**
- * Append an agent-run profile execution to every live run whose workspace is
- * `workspacePath`. A worker that runs a bare `pan repository-check <profile>`
- * from its run's directory names neither `--run` nor `--worktree`, and the
- * execution would otherwise leave no harness record for the supervisor to
- * audit. The workspace it checked is the one its run is bound to.
- */
-export function recordAgentRepositoryCheckForWorkspace(
-  root: string,
-  workspacePath: string,
-  result: RepositoryCheckResult,
-  startedAt: string,
-): string[] {
-  return recordAgentRepositoryCheckForRuns(
-    root,
-    liveRunsInWorkspace(root, workspacePath).map((state) => state.run_id),
-    result,
-    startedAt,
-  )
-}
-
-/**
  * Append an agent-run profile execution to the named runs. A worker that names
  * its run with `--run` bypasses the worktree scan, which is the path for a run
- * whose workspace is not a managed worktree.
+ * whose workspace is not a managed worktree. The record names the run's
+ * current invocation, so the per-invocation "fast at most once" rule can be
+ * counted from the file.
  */
 export function recordAgentRepositoryCheckForRuns(
   root: string,
@@ -944,6 +931,7 @@ export function recordAgentRepositoryCheckForRuns(
 
     appendJsonLine(evidence.absolute, {
       profile: result.profile,
+      invocation_id: loadState(root, runId).current_invocation?.id ?? null,
       workspace_fingerprint: fingerprint,
       status: result.status,
       duration_ms: result.total_duration_ms,
@@ -954,6 +942,72 @@ export function recordAgentRepositoryCheckForRuns(
   }
 
   return recorded
+}
+
+/** Diagnostic id for a `fast` profile an invocation's agents ran more than once. */
+export const REPOSITORY_CHECK_FAST_REPEATED = 'repository_check_fast_repeated'
+
+/** A non-blocking observation about the agent-run profiles of one invocation. */
+export interface RepositoryCheckAdvisory {
+  id: typeof REPOSITORY_CHECK_FAST_REPEATED
+  message: string
+}
+
+/**
+ * Advisory diagnostics read from a run's agent-run profile records for one
+ * invocation. `DEV-001` and `VERIFY-001` let each agent run `fast` at most
+ * once, so more than one `fast` record for the submitting invocation is
+ * reported by name. It never fails a gate: the records are evidence for the
+ * supervisor's audit, not a submission requirement.
+ */
+export function agentRepositoryCheckAdvisories(
+  root: string,
+  runId: string,
+  invocationId: string,
+): RepositoryCheckAdvisory[] {
+  const evidence = resolveRunLayout(root, runId).evidence(
+    AGENT_REPOSITORY_CHECK_RUNS_FILE,
+  )
+
+  if (!fileExists(evidence.absolute)) {
+    return []
+  }
+
+  let fastRuns = 0
+
+  for (const line of readText(evidence.absolute).split('\n')) {
+    if (line.trim().length === 0) {
+      continue
+    }
+
+    let record: unknown
+
+    try {
+      record = JSON.parse(line)
+    } catch {
+      continue
+    }
+
+    if (
+      isRecord(record) &&
+      record.profile === 'fast' &&
+      record.invocation_id === invocationId
+    ) {
+      fastRuns += 1
+    }
+  }
+
+  return fastRuns > 1
+    ? [
+        {
+          id: REPOSITORY_CHECK_FAST_REPEATED,
+          message:
+            `Agents ran the fast profile ${fastRuns} times during invocation ` +
+            `${invocationId}; the policy allows one run per agent. See ` +
+            `${evidence.relative}.`,
+        },
+      ]
+    : []
 }
 
 /**

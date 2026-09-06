@@ -12,12 +12,13 @@ import test from 'node:test'
 
 import {
   AGENT_REPOSITORY_CHECK_RUNS_FILE,
+  agentRepositoryCheckAdvisories,
   compareRepositoryCheckToBaseline,
   loadRepositoryChecks,
   MAX_CAPTURE_BYTES,
   recordAgentRepositoryCheck,
   recordAgentRepositoryCheckForRuns,
-  recordAgentRepositoryCheckForWorkspace,
+  REPOSITORY_CHECK_FAST_REPEATED,
   repositoryChecksSourcePath,
   runRepositorySetup,
   runRepositoryCheck,
@@ -891,7 +892,12 @@ test('workspace setup commands load, run in order, and stop at the first failure
 
 test('an agent-run profile is recorded against the live run bound to its worktree', () => {
   const { root, workspace } = makeInstallation()
-  const writeRun = (runId: string, status: string, worktree?: string) => {
+  const writeRun = (
+    runId: string,
+    status: string,
+    worktree?: string,
+    invocationId?: string,
+  ) => {
     const directory = path.join(root, 'runtime/logs/workflows', runId, 'agent')
 
     mkdirSync(directory, { recursive: true })
@@ -905,7 +911,14 @@ test('an agent-run profile is recorded against the live run bound to its worktre
         status,
         current_stage: 'implement',
         pending_action: { type: 'prepare_invocation' },
-        current_invocation: null,
+        current_invocation: invocationId
+          ? {
+              id: invocationId,
+              json_path: `agent/invocations/${invocationId}.json`,
+              markdown_path: `agent/invocations/${invocationId}.md`,
+              output_path: `agent/outputs/${invocationId}.json`,
+            }
+          : null,
         stage_history: [],
         attempts: {},
         revision: 1,
@@ -923,7 +936,7 @@ test('an agent-run profile is recorded against the live run bound to its worktre
     )
   }
 
-  writeRun('live-bound', 'running', 'cohort-greeting')
+  writeRun('live-bound', 'running', 'cohort-greeting', 'implement-1')
   writeRun('paused-bound', 'paused', 'cohort-greeting')
   writeRun('finished-bound', 'succeeded', 'cohort-greeting')
   writeRun('live-other', 'running', 'cohort-farewell')
@@ -958,9 +971,13 @@ test('an agent-run profile is recorded against the live run bound to its worktre
     .split('\n')
     .map((line) => JSON.parse(line) as Record<string, unknown>)
 
+  // The record names the run's current invocation, so the per-invocation
+  // "fast at most once" rule is countable; a run between invocations records
+  // null.
   assert.equal(lines.length, 1)
   assert.deepEqual(lines[0], {
     profile: 'fast',
+    invocation_id: 'implement-1',
     workspace_fingerprint: lines[0].workspace_fingerprint,
     status: 'passed',
     duration_ms: 1234,
@@ -968,6 +985,20 @@ test('an agent-run profile is recorded against the live run bound to its worktre
     invoked_by: 'agent',
   })
   assert.match(String(lines[0].workspace_fingerprint), /^[0-9a-f]{64}$/u)
+  assert.equal(
+    (
+      JSON.parse(
+        readFileSync(path.join(root, recorded[1]), 'utf8').trim(),
+      ) as Record<string, unknown>
+    ).invocation_id,
+    null,
+  )
+
+  // One fast run for the invocation is within policy: no advisory.
+  assert.deepEqual(
+    agentRepositoryCheckAdvisories(root, 'live-bound', 'implement-1'),
+    [],
+  )
 
   // A second execution appends, so the "fast at most once" rule is countable.
   recordAgentRepositoryCheck(
@@ -981,6 +1012,29 @@ test('an agent-run profile is recorded against the live run bound to its worktre
     readFileSync(path.join(root, recorded[0]), 'utf8').trim().split('\n')
       .length,
     2,
+  )
+
+  // Two fast runs for one invocation are reported by name, as an advisory
+  // rather than a gate failure; another invocation's count is its own.
+  const advisories = agentRepositoryCheckAdvisories(
+    root,
+    'live-bound',
+    'implement-1',
+  )
+
+  assert.equal(advisories.length, 1)
+  assert.equal(advisories[0].id, REPOSITORY_CHECK_FAST_REPEATED)
+  assert.equal(advisories[0].id, 'repository_check_fast_repeated')
+  assert.match(advisories[0].message, /fast profile 2 times/u)
+  assert.match(advisories[0].message, /implement-1/u)
+  assert.deepEqual(
+    agentRepositoryCheckAdvisories(root, 'live-bound', 'implement-2'),
+    [],
+  )
+  // A run with no record file has nothing to report.
+  assert.deepEqual(
+    agentRepositoryCheckAdvisories(root, 'live-other', 'implement-1'),
+    [],
   )
 
   // No bound live run means nothing is written anywhere.
@@ -1006,94 +1060,5 @@ test('an agent-run profile is recorded against the live run bound to its worktre
     [
       `runtime/logs/workflows/live-unbound/agent/evidence/${AGENT_REPOSITORY_CHECK_RUNS_FILE}`,
     ],
-  )
-})
-
-test('a bare agent-run profile is recorded against the live runs of its workspace', () => {
-  const { root, workspace } = makeInstallation()
-  const writeRun = (runId: string, status: string, workspaceRoot: string) => {
-    const directory = path.join(root, 'runtime/logs/workflows', runId, 'agent')
-
-    mkdirSync(directory, { recursive: true })
-    writeFileSync(
-      path.join(directory, 'state.json'),
-      `${JSON.stringify({
-        schema_version: 2,
-        run_id: runId,
-        workflow_slug: 'delivery',
-        title: runId,
-        status,
-        current_stage: 'implement',
-        pending_action: { type: 'prepare_invocation' },
-        current_invocation: null,
-        stage_history: [],
-        attempts: {},
-        revision: 1,
-        workspace_root: workspaceRoot,
-      })}\n`,
-    )
-  }
-
-  mkdirSync(path.join(root, 'elsewhere'), { recursive: true })
-  writeRun('live-here', 'running', '../workspace')
-  writeRun('paused-here', 'paused', '../workspace')
-  writeRun('finished-here', 'succeeded', '../workspace')
-  writeRun('live-elsewhere', 'running', 'elsewhere')
-
-  const result: RepositoryCheckResult = {
-    profile: 'fast',
-    status: 'passed',
-    config_path: 'runtime/repository-checks.json',
-    workspace_root: workspace,
-    timeout_ms: 1000,
-    results: [],
-    total_duration_ms: 1234,
-    advisories: [],
-  }
-
-  // A worker that passes neither `--run` nor `--worktree` still ran the
-  // profile in some workspace, and every live run bound there saw it.
-  const recorded = recordAgentRepositoryCheckForWorkspace(
-    root,
-    workspace,
-    result,
-    '2026-09-05T02:00:00.000Z',
-  )
-
-  assert.deepEqual(recorded.sort(), [
-    `runtime/logs/workflows/live-here/agent/evidence/${AGENT_REPOSITORY_CHECK_RUNS_FILE}`,
-    `runtime/logs/workflows/paused-here/agent/evidence/${AGENT_REPOSITORY_CHECK_RUNS_FILE}`,
-  ])
-
-  const [line] = readFileSync(path.join(root, recorded[0]), 'utf8')
-    .trim()
-    .split('\n')
-    .map((entry) => JSON.parse(entry) as Record<string, unknown>)
-
-  assert.equal(line.invoked_by, 'agent')
-  assert.equal(line.started_at, '2026-09-05T02:00:00.000Z')
-
-  // A relative workspace path resolves the same way as the absolute one.
-  assert.deepEqual(
-    recordAgentRepositoryCheckForWorkspace(
-      root,
-      path.join(root, 'elsewhere'),
-      result,
-      'now',
-    ),
-    [
-      `runtime/logs/workflows/live-elsewhere/agent/evidence/${AGENT_REPOSITORY_CHECK_RUNS_FILE}`,
-    ],
-  )
-
-  // A workspace no live run is bound to records nothing anywhere.
-  assert.deepEqual(
-    recordAgentRepositoryCheckForWorkspace(
-      root,
-      path.join(root, 'nowhere'),
-      result,
-      'now',
-    ),
-    [],
   )
 })

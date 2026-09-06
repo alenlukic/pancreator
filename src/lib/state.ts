@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { readdirSync, realpathSync } from 'node:fs'
+import { readdirSync } from 'node:fs'
 import path from 'node:path'
 
 import { invariant } from './errors.js'
@@ -256,69 +256,6 @@ export function liveRunsBoundToWorktree(
   return listRunStatesWhere(root, bound).filter(
     (state) => runIsLive(state) && bound(state),
   )
-}
-
-/**
- * Live runs whose workspace resolves to `workspacePath`, whether or not that
- * workspace is a managed worktree. A release run in the base checkout and a
- * worker that runs a check from its run's directory both resolve here.
- */
-export function liveRunsInWorkspace(
-  root: string,
-  workspacePath: string,
-): RunState[] {
-  const expected = canonicalPath(path.resolve(workspacePath))
-  const inWorkspace = (state: RunState): boolean =>
-    canonicalPath(path.resolve(root, state.workspace_root)) === expected
-
-  return listRunStatesWhere(root, inWorkspace).filter(
-    (state) => runIsLive(state) && inWorkspace(state),
-  )
-}
-
-/** Resolve symlinks when the path exists, so `/tmp` and its target compare equal. */
-function canonicalPath(absolute: string): string {
-  try {
-    return realpathSync(absolute)
-  } catch {
-    return absolute
-  }
-}
-
-/**
- * Stage a run was created at, read from its `run_created` event. The event
- * records `start_stage` only when the run began somewhere other than the
- * workflow's own start stage, so null means the workflow default.
- */
-export function runStartStageOverride(
-  root: string,
-  runId: string,
-): string | null {
-  const eventsFile = eventPath(root, runId)
-
-  if (!fileExists(eventsFile)) {
-    return null
-  }
-
-  const firstLine = readText(eventsFile).split('\n')[0] ?? ''
-
-  if (firstLine.trim().length === 0) {
-    return null
-  }
-
-  let event: unknown
-
-  try {
-    event = JSON.parse(firstLine)
-  } catch {
-    return null
-  }
-
-  return isRecord(event) &&
-    event.type === 'run_created' &&
-    typeof event.start_stage === 'string'
-    ? event.start_stage
-    : null
 }
 
 export function operationMutexPath(root: string, runId: string): string {
