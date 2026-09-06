@@ -17,6 +17,7 @@ import {
   MAX_CAPTURE_BYTES,
   recordAgentRepositoryCheck,
   recordAgentRepositoryCheckForRuns,
+  recordAgentRepositoryCheckForWorkspace,
   repositoryChecksSourcePath,
   runRepositorySetup,
   runRepositoryCheck,
@@ -1005,5 +1006,94 @@ test('an agent-run profile is recorded against the live run bound to its worktre
     [
       `runtime/logs/workflows/live-unbound/agent/evidence/${AGENT_REPOSITORY_CHECK_RUNS_FILE}`,
     ],
+  )
+})
+
+test('a bare agent-run profile is recorded against the live runs of its workspace', () => {
+  const { root, workspace } = makeInstallation()
+  const writeRun = (runId: string, status: string, workspaceRoot: string) => {
+    const directory = path.join(root, 'runtime/logs/workflows', runId, 'agent')
+
+    mkdirSync(directory, { recursive: true })
+    writeFileSync(
+      path.join(directory, 'state.json'),
+      `${JSON.stringify({
+        schema_version: 2,
+        run_id: runId,
+        workflow_slug: 'delivery',
+        title: runId,
+        status,
+        current_stage: 'implement',
+        pending_action: { type: 'prepare_invocation' },
+        current_invocation: null,
+        stage_history: [],
+        attempts: {},
+        revision: 1,
+        workspace_root: workspaceRoot,
+      })}\n`,
+    )
+  }
+
+  mkdirSync(path.join(root, 'elsewhere'), { recursive: true })
+  writeRun('live-here', 'running', '../workspace')
+  writeRun('paused-here', 'paused', '../workspace')
+  writeRun('finished-here', 'succeeded', '../workspace')
+  writeRun('live-elsewhere', 'running', 'elsewhere')
+
+  const result: RepositoryCheckResult = {
+    profile: 'fast',
+    status: 'passed',
+    config_path: 'runtime/repository-checks.json',
+    workspace_root: workspace,
+    timeout_ms: 1000,
+    results: [],
+    total_duration_ms: 1234,
+    advisories: [],
+  }
+
+  // A worker that passes neither `--run` nor `--worktree` still ran the
+  // profile in some workspace, and every live run bound there saw it.
+  const recorded = recordAgentRepositoryCheckForWorkspace(
+    root,
+    workspace,
+    result,
+    '2026-09-05T02:00:00.000Z',
+  )
+
+  assert.deepEqual(recorded.sort(), [
+    `runtime/logs/workflows/live-here/agent/evidence/${AGENT_REPOSITORY_CHECK_RUNS_FILE}`,
+    `runtime/logs/workflows/paused-here/agent/evidence/${AGENT_REPOSITORY_CHECK_RUNS_FILE}`,
+  ])
+
+  const [line] = readFileSync(path.join(root, recorded[0]), 'utf8')
+    .trim()
+    .split('\n')
+    .map((entry) => JSON.parse(entry) as Record<string, unknown>)
+
+  assert.equal(line.invoked_by, 'agent')
+  assert.equal(line.started_at, '2026-09-05T02:00:00.000Z')
+
+  // A relative workspace path resolves the same way as the absolute one.
+  assert.deepEqual(
+    recordAgentRepositoryCheckForWorkspace(
+      root,
+      path.join(root, 'elsewhere'),
+      result,
+      'now',
+    ),
+    [
+      `runtime/logs/workflows/live-elsewhere/agent/evidence/${AGENT_REPOSITORY_CHECK_RUNS_FILE}`,
+    ],
+  )
+
+  // A workspace no live run is bound to records nothing anywhere.
+  assert.deepEqual(
+    recordAgentRepositoryCheckForWorkspace(
+      root,
+      path.join(root, 'nowhere'),
+      result,
+      'now',
+    ),
+    [],
   )
 })

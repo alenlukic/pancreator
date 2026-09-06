@@ -17,6 +17,7 @@ import path from 'node:path'
 import test from 'node:test'
 import { setTimeout as delay } from 'node:timers/promises'
 
+import { referenceContentSha256 } from '../../src/lib/io.js'
 import { attestRunCard, createFixture } from '../helpers.js'
 import { createTestTempDirectory } from '../temp.js'
 
@@ -812,4 +813,53 @@ test('governance card --dimensions reaches the review selection and refuses a ba
     /security/u,
     'the refusal lists the accepted slugs',
   )
+
+  // `--dimensions security, performance` shell-splits to `security,`; the
+  // dangling comma is refused rather than read as the single slug it names.
+  for (const dangling of ['security,', 'security,,performance']) {
+    const refused = card(dangling)
+
+    assert.notEqual(refused.status, 0, dangling)
+    assert.match(refused.stderr, /INVALID_ARGUMENT/u)
+    assert.match(refused.stderr, /security/u)
+  }
+})
+
+test('context digest prints the audited content digest of a file inside the root', () => {
+  const root = createFixture()
+  const digest = (...args: string[]) =>
+    spawnSync(process.execPath, [CLI, 'context', 'digest', ...args], {
+      cwd: root,
+      encoding: 'utf8',
+    })
+  const expected = referenceContentSha256(
+    readFileSync(path.join(root, 'request.md'), 'utf8'),
+  )
+
+  // The plain form prints only the digest, the JSON form names its basis.
+  const plain = digest('request.md')
+
+  assert.equal(plain.status, 0, plain.stderr)
+  assert.equal(plain.stdout.trim(), expected)
+
+  const json = digest('request.md', '--json')
+
+  assert.equal(json.status, 0, json.stderr)
+  assert.deepEqual(JSON.parse(json.stdout), {
+    source_path: 'request.md',
+    content_sha256: expected,
+    basis:
+      'sha256 of the text after leading and trailing whitespace is trimmed',
+  })
+
+  // A path outside the root is refused, and so is a file that does not exist.
+  const outside = digest('../outside.md')
+
+  assert.notEqual(outside.status, 0)
+  assert.match(outside.stderr, /PATH_ESCAPE/u)
+
+  const missing = digest('missing.md')
+
+  assert.notEqual(missing.status, 0)
+  assert.match(missing.stderr, /CONTEXT_REFERENCE_NOT_FOUND/u)
 })

@@ -112,6 +112,7 @@ import {
   isRecord,
   readJson,
   readText,
+  referenceContentSha256,
   resolveInside,
   sha256,
   writeJsonAtomic,
@@ -160,6 +161,7 @@ import {
   loadRepositoryChecks,
   recordAgentRepositoryCheck,
   recordAgentRepositoryCheckForRuns,
+  recordAgentRepositoryCheckForWorkspace,
   repositoryChecksSourcePath,
   runRepositoryCheckStreaming,
 } from './lib/repository-checks.js'
@@ -300,6 +302,8 @@ export const HELP_BODY = `Usage:
       --into-branch retargets the session: this and every later cohort merge into that branch, and later cohorts branch from it. Use it when the checkout that holds the base branch carries uncommitted work. A missing branch is created from the current integration head; an existing one must already contain that head.
   pan cohort abandon <cohort-id> --chunk <id> --note <reason> [--json]
   pan cohort clean <cohort-id> [--force] [--json]
+  pan context digest <repo-relative-file> [--json]
+      Read-only. Print the content digest of a file on the basis every audited context reference states: sha256 of the text after leading and trailing whitespace is trimmed. A planner takes a child specification's parent digest from this command rather than computing it by hand.
   pan briefs build [--force] [--json]
   pan briefs validate [--json]
   pan briefs render --input <brief-json> --output <brief-html> [--json]
@@ -415,6 +419,7 @@ const SUBCOMMAND_STYLE_COMMANDS = new Set([
   'away',
   'best-of-n',
   'briefs',
+  'context',
   'governance',
   'hypervisor',
   'output',
@@ -545,7 +550,9 @@ function assertRunWorktreeBinding(
  * Comma-separated list option: null when the flag is absent, at least one item
  * when it is present. A present flag that names nothing (`--criteria ,`) is
  * refused rather than read as "no selection", because every caller treats the
- * absent flag as a wider default that the operator did not ask for.
+ * absent flag as a wider default that the operator did not ask for. An empty
+ * segment (`security,` after the shell split `security, performance`) is
+ * refused the same way, because dropping it would silently narrow the list.
  */
 function commaSeparatedOption(
   args: string[],
@@ -558,14 +565,12 @@ function commaSeparatedOption(
     return null
   }
 
-  const items = value
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean)
+  const items = value.split(',').map((item) => item.trim())
 
-  if (items.length === 0) {
+  if (items.some((item) => item.length === 0)) {
     throw new PanError(
-      `${name} needs at least one value, comma-separated with no spaces.` +
+      `${name} needs at least one value, comma-separated with no spaces ` +
+        `and no empty segment; got '${value}'.` +
         (accepted ? ` Accepted values: ${accepted.join(', ')}.` : ''),
       { code: 'INVALID_ARGUMENT' },
     )
@@ -1776,7 +1781,8 @@ async function main(): Promise<void> {
 
       // A worker runs a profile inside its run's worktree, and the run is the
       // only place a supervisor can audit that execution from harness records.
-      // An explicit run wins over the worktree scan.
+      // An explicit run wins over the worktree scan, and a bare invocation
+      // records against every live run bound to the workspace it checked.
       const runEvidence = evidenceRun
         ? recordAgentRepositoryCheckForRuns(
             root,
@@ -1791,7 +1797,12 @@ async function main(): Promise<void> {
               result,
               startedAt,
             )
-          : []
+          : recordAgentRepositoryCheckForWorkspace(
+              root,
+              checkWorkspace ?? process.cwd(),
+              result,
+              startedAt,
+            )
 
       print(
         runEvidence.length > 0
@@ -2636,6 +2647,40 @@ async function main(): Promise<void> {
       }
 
       throw new PanError(`Unknown cohort subcommand: ${sub ?? '(missing)'}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
+    }
+    case 'context': {
+      const sub = args[0]
+
+      if (sub === 'digest') {
+        const relativePath = requiredArgument(args[1], 'repo-relative-file')
+        const absolute = resolveInside(root, relativePath)
+
+        if (!fileExists(absolute)) {
+          throw new PanError(`File does not exist: ${relativePath}`, {
+            code: 'CONTEXT_REFERENCE_NOT_FOUND',
+            details: { path: relativePath },
+          })
+        }
+
+        const digest = referenceContentSha256(readText(absolute))
+
+        print(
+          hasFlag(args, '--json')
+            ? {
+                source_path: relativePath,
+                content_sha256: digest,
+                basis:
+                  'sha256 of the text after leading and trailing whitespace is trimmed',
+              }
+            : digest,
+          hasFlag(args, '--json'),
+        )
+        return
+      }
+
+      throw new PanError(`Unknown context subcommand: ${sub ?? '(missing)'}`, {
         code: 'UNKNOWN_COMMAND',
       })
     }

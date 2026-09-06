@@ -7,6 +7,7 @@ import { createRun as createEngineRun } from '../../src/lib/engine.js'
 import { PanError } from '../../src/lib/errors.js'
 import { resolvePolicies } from '../../src/lib/policies.js'
 import { resolveRequirements } from '../../src/lib/requirements/resolve.js'
+import { listRunIds } from '../../src/lib/state.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { createFixture, createRun, sharedFixture } from '../helpers.js'
 
@@ -229,4 +230,26 @@ test('--max-parallel requires a routed planning run', () => {
     (error: unknown) =>
       error instanceof PanError && error.code === 'INVALID_ARGUMENT',
   )
+})
+
+test('a start stage the workflow does not own is refused before any run exists', () => {
+  const root = createFixture()
+  const requestPath = writeRequest(root)
+  const before = listRunIds(root)
+
+  assert.throws(
+    () =>
+      createEngineRun(root, {
+        workflowSlug: 'planning',
+        requestPath,
+        startStage: 'verify',
+      }),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'STAGE_NOT_FOUND' &&
+      error.message.includes("no stage 'verify'"),
+  )
+  // The check runs before the run directory is created, so a typo leaves no
+  // half-built run behind.
+  assert.deepEqual(listRunIds(root), before)
 })

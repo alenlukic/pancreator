@@ -19,7 +19,7 @@ import {
   isSelfDevelopmentInstallation,
 } from './project-config.js'
 import { resolveRunLayout } from './run-layout.js'
-import { liveRunsBoundToWorktree } from './state.js'
+import { liveRunsBoundToWorktree, liveRunsInWorkspace } from './state.js'
 import type {
   RepositoryCheckDelta,
   RepositoryCheckDiagnostic,
@@ -895,6 +895,27 @@ export function recordAgentRepositoryCheck(
   return recordAgentRepositoryCheckForRuns(
     root,
     liveRunsBoundToWorktree(root, worktreeName).map((state) => state.run_id),
+    result,
+    startedAt,
+  )
+}
+
+/**
+ * Append an agent-run profile execution to every live run whose workspace is
+ * `workspacePath`. A worker that runs a bare `pan repository-check <profile>`
+ * from its run's directory names neither `--run` nor `--worktree`, and the
+ * execution would otherwise leave no harness record for the supervisor to
+ * audit. The workspace it checked is the one its run is bound to.
+ */
+export function recordAgentRepositoryCheckForWorkspace(
+  root: string,
+  workspacePath: string,
+  result: RepositoryCheckResult,
+  startedAt: string,
+): string[] {
+  return recordAgentRepositoryCheckForRuns(
+    root,
+    liveRunsInWorkspace(root, workspacePath).map((state) => state.run_id),
     result,
     startedAt,
   )
