@@ -728,6 +728,24 @@ function baselineWorkspaceProvenance(
 }
 
 /**
+ * Whether any stage of the workflow works in a provisioned tree: one that
+ * edits source or release metadata, runs a shell gate, or launches evidence
+ * workers that test the workspace. A planning or design run does none of
+ * these, so its worktree needs no dependencies or compiled output.
+ */
+function workflowNeedsProvisionedWorkspace(
+  workflow: WorkflowDefinition,
+): boolean {
+  return workflow.stages.some(
+    (stage) =>
+      stage.workspace_policy === 'source_allowed' ||
+      stage.workspace_policy === 'release_metadata_only' ||
+      stage.criteria.some((criterion) => criterion.type === 'shell') ||
+      (stage.evidence_workers?.length ?? 0) > 0,
+  )
+}
+
+/**
  * Provision a run's workspace once, before any stage works in it.
  *
  * A workspace other than the configured default is a fresh worktree without
@@ -740,14 +758,23 @@ function baselineWorkspaceProvenance(
  * and the record it leaves is not a pass, so the next prepare runs setup
  * again once the operator repaired the cause.
  *
+ * A run whose workflow never works in the tree, or whose target declares no
+ * setup command, records `not_configured` so later prepares skip the check.
+ * A run that already captured its repository-check baselines proved its tree
+ * was provisioned before this record existed, so it records `passed` instead
+ * of running setup again on a tree the baselines already passed.
+ *
  * Returns true when the run was paused.
  */
 function ensureWorkspaceProvisioned(
   root: string,
   state: RunState,
+  workflow: WorkflowDefinition,
   onProgress?: (message: string) => void,
 ): boolean {
-  if (state.workspace_setup?.status === 'passed') {
+  const recorded = state.workspace_setup?.status
+
+  if (recorded === 'passed' || recorded === 'not_configured') {
     return false
   }
 
@@ -761,9 +788,27 @@ function ensureWorkspaceProvisioned(
     return false
   }
 
+  if (recorded === undefined && repositoryCheckBaselinesCaptured(state)) {
+    state.workspace_setup = {
+      status: 'passed',
+      recorded_at: now(),
+      inferred_from: 'repository_check_baselines',
+    }
+
+    return false
+  }
+
+  if (!workflowNeedsProvisionedWorkspace(workflow)) {
+    state.workspace_setup = { status: 'not_configured', recorded_at: now() }
+
+    return false
+  }
+
   const setupCommands = loadRepositoryChecks(root).setup ?? []
 
   if (setupCommands.length === 0) {
+    state.workspace_setup = { status: 'not_configured', recorded_at: now() }
+
     return false
   }
 
@@ -2649,7 +2694,7 @@ export function prepareInvocation(
 
     ensureMutatingWorkflowInitialized(root, state, stage)
     const environmentBlocked =
-      ensureWorkspaceProvisioned(root, state, options.onProgress) ||
+      ensureWorkspaceProvisioned(root, state, workflow, options.onProgress) ||
       ensureWorkflowRepositoryCheckBaselines(
         root,
         state,

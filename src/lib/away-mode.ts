@@ -11,7 +11,7 @@ import {
   withOperationMutex,
   writeJsonAtomic,
 } from './io.js'
-import { AWAY_MODE_ACTIONS } from './project-config.js'
+import { AWAY_MODE_ACTIONS, panCommand } from './project-config.js'
 import { resolveRunLayout } from './run-layout.js'
 import type {
   AgentHealth,
@@ -700,7 +700,9 @@ export function awayEvaluatorFailureLimitError(
     resolveRunLayout(root, state.run_id).evidence('away-evaluator.json')
       .relative,
   )
-  const recoveryCommand = `pan decide ${state.run_id} <approve|reject|revise> [--note <text>]`
+  // The recovery is a manual command, so it names the harness entry point the
+  // way every other harness-emitted command does.
+  const recoveryCommand = `${panCommand(root)} decide ${state.run_id} <approve|reject|revise> [--note <text>]`
 
   return new PanError(
     'The away evaluator failed as many times as the decision limit allows ' +

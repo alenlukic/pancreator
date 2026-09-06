@@ -1782,19 +1782,32 @@ export interface RunState {
     RepositoryCheckBaselinePointer | undefined
   >
   /**
-   * Outcome of the target-declared workspace setup commands the harness ran
-   * in this run's workspace before its first prepared stage. Present only for
-   * a run whose workspace is not the configured default. A `passed` record
-   * means setup does not run again for this run; a `failed` one is retried
-   * on the next prepare.
+   * Outcome of the workspace setup check the harness ran before this run's
+   * first prepared stage. Present only for a run whose workspace is not the
+   * configured default. A `passed` or `not_configured` record means setup
+   * does not run again for this run; a `failed` one is retried on the next
+   * prepare.
    */
   workspace_setup?: WorkspaceSetupRecord
 }
 
-/** Run-state record of one workspace setup execution. */
+/**
+ * Run-state record of the workspace setup decision for one run.
+ *
+ * - `passed`: the target-declared setup commands ran in the run's workspace
+ *   and succeeded, or the run captured its repository-check baselines before
+ *   this record existed, which proves the tree was provisioned
+ *   (`inferred_from` names that evidence).
+ * - `failed`: a setup command failed and the run paused; the next prepare
+ *   runs setup again.
+ * - `not_configured`: nothing to run, because no stage of the workflow works
+ *   in a provisioned tree or the target declares no setup command.
+ */
 export interface WorkspaceSetupRecord {
   status: 'passed' | 'failed' | 'not_configured'
   recorded_at: string
+  /** Present when the pass was inferred from evidence rather than run. */
+  inferred_from?: 'repository_check_baselines'
 }
 
 /** Run-state record of the supervisor governance card and its attestation. */

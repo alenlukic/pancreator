@@ -881,3 +881,35 @@ test('context digest prints the audited content digest of a file inside the root
   assert.doesNotMatch(directory.stderr, /EISDIR|READ_FAILED/u)
   assert.ok(!directory.stderr.includes(root), directory.stderr)
 })
+
+test('a cohort subcommand refuses a flag in its cohort-id slot as a missing positional', () => {
+  const root = createFixture()
+
+  // `pan cohort release --json` names no cohort: the flag is not a cohort id
+  // to validate, it is the absence of one.
+  for (const sub of ['status', 'start', 'integrate', 'release', 'clean']) {
+    const flagOnly = spawnSync(
+      process.execPath,
+      [CLI, 'cohort', sub, '--json'],
+      {
+        cwd: root,
+        encoding: 'utf8',
+      },
+    )
+
+    assert.notEqual(flagOnly.status, 0, sub)
+    assert.match(flagOnly.stderr, /INVALID_ARGUMENT/u, sub)
+    assert.match(flagOnly.stderr, /cohort-id is required\./u, sub)
+    assert.doesNotMatch(flagOnly.stderr, /INVALID_COHORT_ID/u, sub)
+  }
+
+  const abandon = spawnSync(
+    process.execPath,
+    [CLI, 'cohort', 'abandon', '--chunk', 'alpha', '--note', 'why', '--json'],
+    { cwd: root, encoding: 'utf8' },
+  )
+
+  assert.notEqual(abandon.status, 0)
+  assert.match(abandon.stderr, /INVALID_ARGUMENT/u)
+  assert.match(abandon.stderr, /cohort-id is required\./u)
+})

@@ -373,6 +373,22 @@ function requiredArgument(
   return value
 }
 
+/**
+ * A required positional argument. A flag in the positional slot, for example
+ * `pan cohort release --json`, is a missing positional, not a value, so it is
+ * refused as such instead of reaching the command's own validation.
+ */
+function requiredPositional(
+  value: string | null | undefined,
+  name: string,
+): string {
+  if (!value || value.startsWith('--')) {
+    throw new PanError(`${name} is required.`, { code: 'INVALID_ARGUMENT' })
+  }
+
+  return value
+}
+
 function hasFlag(args: string[], name: string): boolean {
   return args.includes(name)
 }
@@ -2597,7 +2613,7 @@ async function main(): Promise<void> {
         print(
           {
             status: 'started',
-            ...startCohort(root, requiredArgument(rest[0], 'cohort-id'), {
+            ...startCohort(root, requiredPositional(rest[0], 'cohort-id'), {
               cohortIndex,
             }),
           },
@@ -2608,7 +2624,7 @@ async function main(): Promise<void> {
 
       if (sub === 'status') {
         print(
-          cohortStatus(root, requiredArgument(rest[0], 'cohort-id')),
+          cohortStatus(root, requiredPositional(rest[0], 'cohort-id')),
           asJson,
         )
         return
@@ -2618,7 +2634,7 @@ async function main(): Promise<void> {
         print(
           {
             status: 'integrated',
-            ...integrateCohort(root, requiredArgument(rest[0], 'cohort-id'), {
+            ...integrateCohort(root, requiredPositional(rest[0], 'cohort-id'), {
               intoBranch: option(rest, '--into-branch'),
             }),
           },
@@ -2630,7 +2646,7 @@ async function main(): Promise<void> {
       if (sub === 'release') {
         const result = releaseCohort(
           root,
-          requiredArgument(rest[0], 'cohort-id'),
+          requiredPositional(rest[0], 'cohort-id'),
         )
 
         print(result, asJson)
@@ -2644,7 +2660,7 @@ async function main(): Promise<void> {
       if (sub === 'abandon') {
         const state = abandonChunk(
           root,
-          requiredArgument(rest[0], 'cohort-id'),
+          requiredPositional(rest[0], 'cohort-id'),
           requiredArgument(option(args, '--chunk'), '--chunk'),
           requiredArgument(option(args, '--note'), '--note'),
         )
@@ -2655,7 +2671,7 @@ async function main(): Promise<void> {
 
       if (sub === 'clean') {
         print(
-          cleanCohortSession(root, requiredArgument(rest[0], 'cohort-id'), {
+          cleanCohortSession(root, requiredPositional(rest[0], 'cohort-id'), {
             force: hasFlag(args, '--force'),
           }),
           asJson,
@@ -2685,14 +2701,7 @@ async function main(): Promise<void> {
       const sub = args[0]
 
       if (sub === 'digest') {
-        // A flag in the positional slot is a missing path, not a file name.
-        if (args[1]?.startsWith('--')) {
-          throw new PanError('repo-relative-file is required.', {
-            code: 'INVALID_ARGUMENT',
-          })
-        }
-
-        const relativePath = requiredArgument(args[1], 'repo-relative-file')
+        const relativePath = requiredPositional(args[1], 'repo-relative-file')
         const absolute = resolveInside(root, relativePath)
 
         // A directory exists but has no content to digest; naming the

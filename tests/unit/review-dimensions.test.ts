@@ -176,20 +176,36 @@ test('a target installation accepts only the core lineup', () => {
   const selection = resolveReviewDimensionSelection(root, ['operations'])
 
   assert.deepEqual(selection.selected, ['operations'])
-  // The operator left out the core lineup, not the conditional dimension:
-  // that one was never the operator's to leave out.
+  // A selection is exact: the activation rules do not apply to it, so the
+  // conditional dimension the operator did not name is not run like the rest
+  // of the lineup, in table order, and nothing is left to the coordinator.
   assert.deepEqual(selection.not_run, [
     'correctness',
     'security',
     'architecture',
     'simplification',
+    'frontend',
   ])
-  assert.deepEqual(selection.conditional, ['frontend'])
-  assert.deepEqual(
-    resolveReviewDimensionSelection(root, ['frontend']).conditional,
-    [],
-    'a conditional dimension selected outright is no longer conditional',
-  )
+  assert.deepEqual(selection.conditional, [])
+
+  const correctnessOnly = resolveReviewDimensionSelection(root, ['correctness'])
+
+  assert.deepEqual(correctnessOnly.selected, ['correctness'])
+  assert.ok(correctnessOnly.not_run.includes('frontend'))
+  assert.deepEqual(correctnessOnly.conditional, [])
+
+  // The conditional dimension stays selectable outright.
+  const frontendOnly = resolveReviewDimensionSelection(root, ['frontend'])
+
+  assert.deepEqual(frontendOnly.selected, ['frontend'])
+  assert.deepEqual(frontendOnly.conditional, [])
+  assert.deepEqual(frontendOnly.not_run, [
+    'correctness',
+    'security',
+    'architecture',
+    'simplification',
+    'operations',
+  ])
   assert.throws(
     () => resolveReviewDimensionSelection(root, ['performance']),
     (error: unknown) =>
