@@ -407,6 +407,23 @@ base, a PR, or a path set, defaulting to the current branch — captures it once
 and delegates the same `pan-shepherd-reviewer` coordinator `/pan-shepherd` uses.
 When the target is Pancreator itself, the squad swaps to the harness lineup.
 
+By default the squad runs every dimension of that lineup. Add
+`--dimensions <a,b,c>` to run a subset — for example
+`/pan-review main...my-branch --dimensions security,correctness`. The value is
+a comma-separated list of dimension slugs: `correctness`, `security`,
+`architecture`, `simplification`, `operations`, and `frontend` from the core
+lineup, plus `correctness-consistency`, `agentic-practice`, and `performance`
+from the harness lineup in a Pancreator checkout. The session passes the
+selection to `pan governance card --mode review --dimensions <a,b,c>`, which
+refuses an unknown slug with the accepted list before any agent launches,
+collapses duplicates, and records the selection in the review card beside the
+default-lineup dimensions it leaves out. A selected set is the whole lineup:
+activation rules and the harness swap do not apply to it, and each selected
+dimension runs with the charter that defines it. A partial review stays
+visibly partial — the report names the dimensions it did not cover and states
+that the verdict covers the selected dimensions only. The shepherd's per-batch
+review gate takes no selection and always runs the full lineup.
+
 Two things the session settles before it delegates. It binds the workspace to
 the target's head, resolving a worktree when your checkout sits elsewhere, so
 the agents verify findings against the tree the diff applies to rather than

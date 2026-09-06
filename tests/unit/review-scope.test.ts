@@ -26,6 +26,18 @@ test('a change to the lineup or a charter is a self-review conflict', () => {
   ])
 })
 
+test('the dimension table is lineup machinery', () => {
+  // The table decides which charters a selection can name, so a change to it
+  // cannot be graded by the squad it shapes.
+  assert.deepEqual(
+    reviewMachineryConflicts(['src/lib/review-dimensions.ts', 'src/lib/io.ts']),
+    ['src/lib/review-dimensions.ts'],
+  )
+  assert.ok(
+    MACHINERY_TEST_PATTERNS.includes('tests/*/review-dimensions*.test.ts'),
+  )
+})
+
 test('the coordinator, its policy, and both entry points are machinery', () => {
   const conflicts = reviewMachineryConflicts([
     'governance/policies/REVIEW-001.json',
@@ -218,6 +230,7 @@ test('the check wrappers lint and install are verification substrate', () => {
 
 test('the tests of each machinery module are derived substrate', () => {
   assert.deepEqual(MACHINERY_TEST_PATTERNS, [
+    'tests/*/review-dimensions*.test.ts',
     'tests/*/review-scope*.test.ts',
     'tests/*/governance-card*.test.ts',
     'tests/*/policies*.test.ts',

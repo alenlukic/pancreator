@@ -43,14 +43,20 @@ reads the diff for a failure mode no core charter names.
 - State the swap in the review artifact and name the core dimensions it
   removed, so a reader knows which lenses produced the finding set and which
   were never applied.
+- An operator selection from `--dimensions` replaces the swap. The lineup is
+  then exactly the selected set, under the rule in `review-squad.md`. A selected
+  harness dimension runs with its charter below. A selected core dimension runs
+  with its charter in `review-squad.md`.
 
 ## Lineup
 
-| Dimension                 | Expected yield                       |
-| ------------------------- | ------------------------------------ |
-| correctness & consistency | few findings, mostly hard            |
-| agentic practice          | many findings, mostly medium         |
-| performance               | few findings, each carrying a number |
+An operator names a dimension by its slug.
+
+| Dimension                 | Slug                      | Expected yield                       |
+| ------------------------- | ------------------------- | ------------------------------------ |
+| correctness & consistency | `correctness-consistency` | few findings, mostly hard            |
+| agentic practice          | `agentic-practice`        | many findings, mostly medium         |
+| performance               | `performance`             | few findings, each carrying a number |
 
 ## Charters
 
@@ -218,4 +224,6 @@ The coordinator ranks the joined set with these tie-breaks:
 
 Record the swap and the core dimensions it removed. Then record the three
 dimensions and any core charter the operator named, each with its findings or
-with an explicit empty result.
+with an explicit empty result. When an operator selection replaced the swap,
+record the selected dimensions with their findings and record every other
+dimension of this lineup as not run.

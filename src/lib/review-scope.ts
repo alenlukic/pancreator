@@ -34,6 +34,7 @@ export const REVIEW_MACHINERY_PATTERNS = [
   'library/personas/shepherd-reviewer.md',
   'library/skills/review-squad*',
   'library/skills/shepherd-pr.md',
+  'src/lib/review-dimensions.ts',
   'src/lib/review-scope.ts',
   'src/lib/governance-card.ts',
   'src/lib/policies.ts',

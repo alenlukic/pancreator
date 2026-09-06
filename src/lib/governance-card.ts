@@ -14,6 +14,10 @@ import { PROTECTED_PATH_RULE } from './workspace/protected-paths.js'
 import { resolveOrCreateWorktree } from './worktrees.js'
 import { gitShowFile } from './git.js'
 import {
+  resolveReviewDimensionSelection,
+  type ReviewDimensionSelection,
+} from './review-dimensions.js'
+import {
   REVIEW_MODE_CONTEXT,
   conflictsByTier,
   resolveReviewScope,
@@ -176,7 +180,8 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST run the review-scope check and act by tier: instrument conflicts leave the squad verdict for an independent reviewer, conduct conflicts are reviewed under the base text this card renders with --base, and substrate conflicts taint any verification that leans on them.',
       'You MUST NOT reject a change for differing from the standard it replaces. Report the standards delta and leave the merits of a rule change to the operator.',
       PROTECTED_PATH_RULE,
-      'You MUST name the dimensions that ran, the ones the target did not activate, and any charter the coordinator had to apply itself.',
+      'You MUST run every dimension of the resolved lineup unless the operator selected a dimension set with --dimensions, in which case you MUST run exactly that set.',
+      'You MUST name the dimensions that ran, the ones the target did not activate, the ones the operator selection left out, and any charter the coordinator had to apply itself.',
       'You MUST leave remediation to the operator, who decides separately what to act on.',
     ],
   },
@@ -370,6 +375,8 @@ export interface GovernanceCard {
   requirements: RequirementManifest
   /** Worktree the shared `--worktree` option resolved or created, when given. */
   worktree?: WorktreeRecord
+  /** Review mode only. The dimension selection the card records. */
+  review_dimensions?: ReviewDimensionSelection
 }
 
 export interface GovernanceCardOptions {
@@ -388,6 +395,11 @@ export interface GovernanceCardOptions {
    * read when the scoping checkout sits away from the target head.
    */
   closureRevision?: string | null
+  /**
+   * Review mode only. Dimension slugs the operator selected. Empty or absent
+   * runs the default lineup.
+   */
+  dimensions?: readonly string[] | null
 }
 
 interface BaseConductPolicy {
@@ -539,6 +551,46 @@ function renderBaseConduct(block: BaseConductBlock): string[] {
   return lines
 }
 
+/**
+ * The card is the durable session record of a standalone review, so the
+ * dimension selection lands here. A later reader then sees that a partial
+ * review was partial, and which lenses it never applied.
+ */
+function renderReviewDimensions(selection: ReviewDimensionSelection): string[] {
+  const lines = ['## 🎯 Review dimensions', '']
+
+  if (selection.default) {
+    lines.push(
+      'The operator selected no dimension set. The squad runs the full ' +
+        'default lineup the squad procedure resolves, including its ' +
+        'activation rules.',
+      '',
+      `- Default lineup: ${selection.selected.map((slug) => `\`${slug}\``).join(', ')}`,
+      '',
+    )
+
+    return lines
+  }
+
+  lines.push(
+    'The operator selected a dimension set with `--dimensions`. The squad ' +
+      'runs exactly these dimensions, each with the charter that defines it. ' +
+      'Activation rules and the harness lineup swap do not apply to a ' +
+      'selected set. This review is partial: the report MUST name the ' +
+      'dimensions below that it did not cover.',
+    '',
+    `- Selected: ${selection.selected.map((slug) => `\`${slug}\``).join(', ')}`,
+    `- Default lineup not run: ${
+      selection.not_run.length > 0
+        ? selection.not_run.map((slug) => `\`${slug}\``).join(', ')
+        : 'none'
+    }`,
+    '',
+  )
+
+  return lines
+}
+
 export interface GovernanceCardRunBinding {
   run_id: string
   workflow_slug: string
@@ -554,6 +606,8 @@ export function renderGovernanceCardMarkdown(options: {
   harnessPrefixNote: string | null
   worktree: WorktreeRecord | null
   baseConduct: BaseConductBlock | null
+  /** Present only on the review card. */
+  reviewDimensions?: ReviewDimensionSelection | null
   /** Present only on the supervisor card, which binds to one run. */
   run?: GovernanceCardRunBinding | null
 }): string {
@@ -633,6 +687,9 @@ export function renderGovernanceCardMarkdown(options: {
     ...policyBlocks,
     '',
     ...(options.baseConduct ? renderBaseConduct(options.baseConduct) : []),
+    ...(options.reviewDimensions
+      ? renderReviewDimensions(options.reviewDimensions)
+      : []),
     ...(agentRequirements.length > 0
       ? [
           '## ✅ Agent validation requirements',
@@ -736,6 +793,18 @@ export function buildGovernanceCard(
       code: 'INVALID_GOVERNANCE_CARD_OPTION',
     },
   )
+  invariant(
+    !options.dimensions?.length || options.mode === 'review',
+    '--dimensions applies to the review mode only.',
+    { code: 'INVALID_GOVERNANCE_CARD_OPTION' },
+  )
+
+  // Resolve the selection before any side effect, so an unknown dimension
+  // fails the session at the card step and before any worker launches.
+  const reviewDimensions =
+    options.mode === 'review'
+      ? resolveReviewDimensionSelection(root, options.dimensions ?? [])
+      : null
 
   if (options.requestPath) {
     invariant(
@@ -796,6 +865,7 @@ export function buildGovernanceCard(
     policies,
     requirements,
     baseConduct,
+    reviewDimensions,
     requestPath: options.requestPath ?? null,
     harnessPrefixNote: isTargetInstallation(root)
       ? `Harness-relative paths beginning \`runtime/\`, \`library/\`, or ` +
@@ -816,5 +886,6 @@ export function buildGovernanceCard(
     policies,
     requirements,
     ...(worktree ? { worktree } : {}),
+    ...(reviewDimensions ? { review_dimensions: reviewDimensions } : {}),
   }
 }

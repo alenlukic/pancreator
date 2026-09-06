@@ -272,8 +272,9 @@ export const HELP_BODY = `Usage:
   pan output validate <run-id> --file <path> --invocation <path> [--json]
   pan assessment scaffold <run-id> --invocation <path> --output <path> [--force]
   pan governance audit-directives [--json]
-  pan governance card --mode <${STANDALONE_MODE_NAMES}> [--extension <id>] [--request <path>] [--worktree <name>] [--out <path>] [--base <ref> --target <ref> [--closure-revision <ref>]] [--json]
+  pan governance card --mode <${STANDALONE_MODE_NAMES}> [--extension <id>] [--request <path>] [--worktree <name>] [--out <path>] [--base <ref> --target <ref> [--closure-revision <ref>]] [--dimensions <a,b,c>] [--json]
       --base (review mode) renders the base-revision text of every conduct policy the target changes, so the session reviews under the rule in force before the change.
+      --dimensions (review mode) selects the review dimensions the squad runs, comma-separated. The default is the full lineup. An unknown name is refused with the accepted list, and the card records the selection and the default dimensions it leaves out.
   pan governance card --mode supervisor --run <run-id> [--json]
   pan governance attest-supervisor <run-id> --sha256 <digest> [--json]
   pan governance review-scope --target <ref> [--base <ref>] [--default-branch <branch>] [--closure-revision <ref>] [--json]
@@ -2321,12 +2322,16 @@ async function main(): Promise<void> {
           baseRef: option(args, '--base'),
           targetRef: option(args, '--target'),
           closureRevision: option(args, '--closure-revision'),
+          dimensions: commaSeparatedOption(args, '--dimensions'),
         })
 
         print({
           status: 'ready',
           mode: card.mode,
           card_path: card.path,
+          ...(card.review_dimensions
+            ? { review_dimensions: card.review_dimensions }
+            : {}),
           ...(card.worktree
             ? {
                 worktree: card.worktree.name,

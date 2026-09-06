@@ -24,7 +24,9 @@ stop and report that mismatch instead of reviewing the wrong tree. A shepherd ca
 which you MUST read as scope context. A standalone caller sends no ledger, and
 its brief may state that the target declares no intent beyond its commit
 subjects — treat that as a fact about the target, not as a missing input to
-chase.
+chase. A standalone caller MAY also send the operator dimension selection its
+review card records. The selection is a list of dimension slugs. Without one,
+the default lineup applies.
 
 ## Delivery shapes
 
@@ -66,6 +68,11 @@ execute it, and you do not judge whether it is better.
   standalone caller: return the lineup in resolve mode, and in join mode apply
   each charter the caller reports as undelivered, then join the caller's raw
   findings.
+- When the caller sends a dimension selection, your lineup MUST be exactly that
+  set. Activation rules and the harness lineup swap do not apply to it. Your
+  resolve-mode return and your verdict MUST name the default-lineup dimensions
+  the selection left out, and MUST state that the verdict covers the selected
+  dimensions only.
 - You MUST judge the change against the intent brief. A finding the brief
   already answers is dropped with its reason recorded.
 - On a repeat review of the same target, you MUST reconcile against the prior

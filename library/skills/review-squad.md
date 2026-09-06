@@ -19,7 +19,10 @@ the verdict, the remediation boundary, and routing.
 
 ## Lineup
 
-Core dimensions run on every squad review:
+The dimension name in each table is also its slug. An operator names a
+dimension by that slug.
+
+Core dimensions run on every default squad review:
 
 | Dimension      | Expected yield                      |
 | -------------- | ----------------------------------- |
@@ -36,6 +39,23 @@ whether or not its rule matches.
 | Dimension | Runs when                                                |
 | --------- | -------------------------------------------------------- |
 | frontend  | the diff touches UI source or generated API client types |
+
+### Operator-selected dimensions
+
+Without a selection, the lineup is the set the rules above or the harness
+lineup resolve. That set is the default lineup. A standalone `/pan-review`
+session MAY carry an operator selection from `--dimensions <a,b,c>`. The selection reaches the coordinator through the
+review card, which records it and refuses an unknown slug before any agent
+launches.
+
+- When a selection is present, the lineup MUST be exactly the selected set.
+- Activation rules and the harness lineup swap MUST NOT change a selected set.
+- Each selected dimension MUST run with the charter that defines it, from
+  whichever skill file holds that charter.
+- The review artifact MUST name the selected dimensions and MUST name the
+  default-lineup dimensions the selection left out. A partial review MUST be
+  visibly partial.
+- The verdict covers the selected dimensions only. It MUST say so.
 
 ### Harness lineup
 
@@ -59,7 +79,8 @@ apply.
    change does, why, and which follow-ups it defers. When the target states no
    intent, say so in the brief; nothing can then be dropped as already answered.
 3. Resolve the lineup. State which conditional dimensions activated and which
-   ones the diff skipped.
+   ones the diff skipped. When the operator selected dimensions, the lineup is
+   that set. State the default-lineup dimensions it leaves out.
 4. Delegate one subagent per dimension in the lineup, in one message, so they run
    at the same time. Each prompt MUST carry the captured diff path, the review
    workspace path, the intent brief, the dimension charter text, and the
@@ -313,5 +334,7 @@ the exact API for a "the library already does it" finding.
   counted maintenance cost.
 - A dimension that returns nothing MUST appear in the review artifact as empty
   rather than absent.
+- A dimension the operator selection left out MUST appear in the review
+  artifact as not run, never as empty.
 - Raise anything that touches credentials, data loss, or an authorization bypass
   to the top of the ranking.

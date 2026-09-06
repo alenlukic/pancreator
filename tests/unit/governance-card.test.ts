@@ -420,6 +420,114 @@ test('a guidance-only conduct conflict names the base text command', () => {
   assert.ok(written.includes(guidancePath))
 })
 
+test('the review card records an operator dimension selection and what it leaves out', () => {
+  const root = createFixture()
+  const card = buildGovernanceCard(root, {
+    mode: 'review',
+    outputPath: 'runtime/inbox/review-subset-card.md',
+    dimensions: ['performance', 'security', 'performance'],
+  })
+
+  assert.deepEqual(card.review_dimensions, {
+    default: false,
+    selected: ['security', 'performance'],
+    not_run: ['correctness-consistency', 'agentic-practice'],
+    available: [
+      'correctness',
+      'security',
+      'architecture',
+      'simplification',
+      'operations',
+      'frontend',
+      'correctness-consistency',
+      'agentic-practice',
+      'performance',
+    ],
+  })
+
+  const written = readFileSync(path.join(root, card.path), 'utf8')
+
+  // The card is the session record, so a later reader must see that the
+  // review was partial and which lenses it never applied.
+  assert.match(written, /## 🎯 Review dimensions/u)
+  assert.match(written, /- Selected: `security`, `performance`/u)
+  assert.match(
+    written,
+    /- Default lineup not run: `correctness-consistency`, `agentic-practice`/u,
+  )
+  assert.match(written, /MUST name the dimensions below that it did not cover/u)
+})
+
+test('a review card without a selection records the full default lineup', () => {
+  const root = createFixture()
+  const card = buildGovernanceCard(root, {
+    mode: 'review',
+    outputPath: 'runtime/inbox/review-default-card.md',
+  })
+
+  assert.equal(card.review_dimensions?.default, true)
+  assert.deepEqual(card.review_dimensions?.not_run, [])
+
+  const written = readFileSync(path.join(root, card.path), 'utf8')
+
+  assert.match(written, /The operator selected no dimension set/u)
+  assert.match(
+    written,
+    /- Default lineup: `correctness-consistency`, `agentic-practice`, `performance`/u,
+  )
+  assert.doesNotMatch(written, /Default lineup not run/u)
+})
+
+test('an unknown dimension fails the review card before any side effect', () => {
+  const root = createFixture()
+
+  assert.throws(
+    () =>
+      buildGovernanceCard(root, {
+        mode: 'review',
+        outputPath: 'runtime/inbox/review-unknown-card.md',
+        dimensions: ['security', 'maintainability'],
+        worktreeName: 'never-created',
+      }),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'UNKNOWN_REVIEW_DIMENSION' &&
+      /maintainability/u.test(error.message) &&
+      /Accepted dimensions:/u.test(error.message),
+  )
+  assert.equal(
+    existsSync(path.join(root, 'runtime/inbox/review-unknown-card.md')),
+    false,
+  )
+  assert.equal(existsSync(path.join(root, 'worktrees')), false)
+})
+
+test('--dimensions is refused outside the review mode', () => {
+  const root = sharedFixture()
+
+  assert.throws(
+    () =>
+      buildGovernanceCard(root, {
+        mode: 'pair',
+        outputPath: 'runtime/inbox/pair-dimensions-card.md',
+        dimensions: ['security'],
+      }),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'INVALID_GOVERNANCE_CARD_OPTION' &&
+      /--dimensions applies to the review mode only/u.test(error.message),
+  )
+
+  // An empty selection is the default and binds nothing, so it passes through.
+  const card = buildGovernanceCard(root, {
+    mode: 'pair',
+    outputPath: 'runtime/inbox/pair-no-dimensions-card.md',
+    dimensions: [],
+  })
+
+  assert.equal(card.review_dimensions, undefined)
+})
+
 test('--base is refused outside the review mode', () => {
   const root = sharedFixture()
 
