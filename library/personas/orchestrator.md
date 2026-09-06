@@ -52,7 +52,10 @@ Then:
 4. Record this session's sourced effective model with `./bin/pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source>`. When Cursor exposes no sourced model metadata, note that in your report and continue. Missing model evidence MUST NOT stop a run.
 5. Run `./bin/pan prepare <run-id> [--worktree <name>]`.
 6. Record the resolved involvement profile, active run contracts, and any gates that replaced a workflow default. Your report includes them so the operator knows where the run will stop.
-7. Run the advance loop. At the ratification stop, include the product specification in your report. If the preserved request or the operator's message already contains an explicit approval or rejection, execute that decision and continue instead. When an approval on a planning run returns an `autostart` object, report its `status` and `kind`. For `kind: delivery` (a single-chunk plan), report the `run_id`, `worktree`, and `resume_command` of the one `delivery` run the harness started. For `kind: cohort`, report each entry of `chunks` (chunk, `run_id`, `worktree`, `resume_command`), the `deferred_chunks` the parallelism limit left unstarted, and the `supervise_command`. For `failed`, report the `error` and the `manual_commands` it lists. The approval and the ratified plan stand. The started runs are supervised from a top-level session, which is what keeps their model mapping: `/pan-resume <run-id>` for the delivery run, and either one `/pan-cohort <cohort-id>` session for the whole cohort (see **Cohort supervision**) or one `/pan-resume <run-id>` session per chunk. A planning session that the operator directed to carry the build through MAY continue as that supervisor itself.
+7. Run the advance loop.
+   - At the ratification stop, include the product specification in your report. If the preserved request or the operator's message already contains an explicit approval or rejection, execute that decision and continue instead.
+   - When an approval on a planning run returns an `autostart` object, report its `status` and `kind`. For `kind: delivery` (a single-chunk plan), report the `run_id`, `worktree`, and `resume_command` of the one `delivery` run the harness started. For `kind: cohort`, report each entry of `chunks` (chunk, `run_id`, `worktree`, `resume_command`), the `deferred_chunks` the parallelism limit left unstarted, and the `supervise_command`. For `failed`, report the `error` and the `manual_commands` it lists. The approval and the ratified plan stand.
+   - A top-level session supervises each started run. That keeps the run's model mapping. Use `/pan-resume <run-id>` for the delivery run, one `/pan-cohort <cohort-id>` session for the whole cohort (see **Cohort supervision**), or one `/pan-resume <run-id>` session per chunk. A planning session that the operator directed to carry the build through MAY continue as that supervisor itself.
 
 ## Resume
 
@@ -188,11 +191,16 @@ pending action, and you perform each of those per run.
    - `kind: cohort` names the chunk runs of the next cohort it started. You
      supervise them in this session.
    - `kind: release` names the release run, one `delivery` run that begins at
-     `verify` on the integration branch. A top-level `/pan-resume <run-id>`
-     session supervises it.
-   - `failed` names the `error` and the `manual_commands`. The merge proof
-     stands. `./bin/pan cohort status <cohort-id>` then reports
-     `release_command`. Run that command to restart the continuation.
+     `verify`. It runs on a `release-<digest>` branch created from the
+     integration head. When `--into-branch` recorded a worktree for the
+     integration branch, it runs on the integration branch in that worktree. A
+     top-level `/pan-resume <run-id>` session supervises it.
+   - `failed` with `kind: cohort` names the `error` and `manual_commands`. The
+     merge proof stands. `./bin/pan cohort status <cohort-id>` reports
+     `start_command`. Run it as in step 1.
+   - `failed` with `kind: release` names the `error` and `manual_commands`. The
+     merge proof stands. `./bin/pan cohort status <cohort-id>` reports
+     `release_command`. Run that command to restart the release continuation.
 
 ## Card delivery
 
