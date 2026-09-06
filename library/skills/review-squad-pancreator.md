@@ -34,8 +34,9 @@ reads the diff for a failure mode no core charter names.
 - Everything else in `review-squad.md` holds unchanged: capture the diff once,
   hold the same calibration bar, return the same finding shape, respect the same
   boundaries. Read that file first, then this one.
-- The operator MAY name a core charter as well. A named charter runs beside
-  these three rather than replacing one of them.
+- Without a `--dimensions` selection, the operator MAY name a core charter as
+  well. A named charter runs beside these three rather than replacing one of
+  them.
 - The lineup carries no security charter by operator decision on 2026-08-28,
   while the harness is not in broader use. Name the core security charter for a
   review that needs it, and revisit the decision when the harness ships beyond
@@ -224,6 +225,6 @@ The coordinator ranks the joined set with these tie-breaks:
 
 Record the swap and the core dimensions it removed. Then record the three
 dimensions and any core charter the operator named, each with its findings or
-with an explicit empty result. When an operator selection replaced the swap,
-record the selected dimensions with their findings and record every other
-dimension of this lineup as not run.
+with an explicit empty result. An operator selection replaces the swap. Record
+the selected dimensions with their findings. Record every other dimension of
+this lineup as not run.
