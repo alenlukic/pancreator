@@ -10,9 +10,19 @@
 - Name `planning` as the default systematic workflow in the embedded and detached operating cards. Drop `--workflow delivery` from the installer's post-install next step ([embedded card](library/templates/embedded-AGENTS.md), [detached card](library/templates/detached-AGENTS.md), [install](bin/install)).
 - Render the `cohort integrate` autostart kinds as a list and remove the semicolons from the supervisor procedures ([pan-cohort](library/cursor/commands/pan-cohort.md), [pan-start](library/cursor/commands/pan-start.md), [orchestrator](library/personas/orchestrator.md)).
 - Split the over-length review-squad instructions and rewrap the selection paragraph ([pan-review](library/cursor/commands/pan-review.md), [shepherd-reviewer](library/personas/shepherd-reviewer.md), [shepherd-reviewer agent](library/cursor/agents/shepherd-reviewer.md), [review-squad](library/skills/review-squad.md)).
+- Share one live-run definition between agent-run check evidence and release preparation, and add `pan repository-check --run <run-id>` to record evidence against one named run ([state](src/lib/state.ts), [repository-checks](src/lib/repository-checks.ts), [release-preparation](src/lib/release-preparation.ts)).
+- Read repository-check capture files bounded from the open descriptors, and remove the capture directory before a timeout kill ([repository-checks](src/lib/repository-checks.ts)).
+- Drop `timeout_ms` from the self-development `fast` profile so stage gate bounds are the only timeout authority ([template](library/templates/repository-checks.self-development.json)).
+- Report the delivery autostart the eval run performed, with its kind, status, and commands, instead of always describing cohort autostart ([evals](src/lib/evals/run.ts), [schema](library/schemas/eval-scenario.schema.json)).
+- Report conditional review dimensions on the review card as resolved by the coordinator instead of as not run ([review-dimensions](src/lib/review-dimensions.ts), [governance-card](src/lib/governance-card.ts)).
+- Refuse an empty list on `--dimensions`, `--criteria`, and `--defer` instead of reading it as none ([cli](src/cli.ts)).
+- Pass the installation root to every `cursor-agent` spawn as `installationRoot`, separate from the child working directory ([cursor-agent](src/lib/executors/cursor-agent.ts)).
 
 ### Fixed
 
+- Complete a half-recorded release continuation on a repeated `pan cohort integrate`, and adopt an existing release run instead of failing with `COHORT_COMPLETE` ([cohorts](src/lib/cohorts.ts)).
+- Adopt the delivery run a single-chunk autostart already created when the handoff record was lost, so a retry creates no second run ([cohorts](src/lib/cohorts.ts)).
+- Record no `failed` away decision beside an `applied` one when the routing hook fails after `pan away apply` ([cli](src/cli.ts)).
 - Keep `--dimensions` on the conduct-conflict card rebuild in `/pan-review`, and state that the selection list carries no spaces ([pan-review](library/cursor/commands/pan-review.md)).
 - Record the `5.14.0` release-index mapping and the 1200 s `full` gate bound in the primer ([primer](docs/target-repo-primer.md)).
 - State that the 1200 s gate bound of 5.14.0 covers both `delivery-chunk` and `delivery` ([changelog](CHANGELOG.md)).
