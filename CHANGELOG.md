@@ -30,6 +30,14 @@
 
 ### Fixed
 
+- Add `pan cohort release <cohort-id>`, the merge-free release continuation. It refuses with `COHORT_NOT_SATISFIED` while a cohort lacks its merge proof, and it starts or adopts the release run otherwise ([cohorts](src/lib/cohorts.ts), [cli](src/cli.ts)).
+- Accept `evaluator_failure` records in the away decision ledger validator, so one failed evaluator spawn no longer fails every later ledger check ([autonomy-state](src/lib/validators/autonomy-state.ts)).
+- Run the repository-check `setup` commands once per run in a worktree workspace, for any start stage, before baseline capture. Record the outcome on the run as `workspace_setup`, so a release run starting at `verify` is provisioned ([engine](src/lib/engine.ts), [types](src/lib/types.ts)).
+- Set the `repository_check_fast_repeated` allowance from the stage's declared evidence worker count instead of one, so two compliant verify workers no longer trip it ([repository-checks](src/lib/repository-checks.ts)).
+- Adopt an indexed chunk worktree and its live run inside `pan cohort start`, so a retry after a crash between worktree and run creation no longer fails with `WORKTREE_EXISTS` ([cohorts](src/lib/cohorts.ts)).
+- Name the evaluator evidence files and the `pan decide` recovery command in the `AWAY_EVALUATOR_FAILURE_LIMIT` refusal ([away-mode](src/lib/away-mode.ts)).
+- Write the planner's digest command bare as `pan context digest`, run from the harness root, so an embedded planner can run it ([plan prompt](library/workflows/planning/prompts/plan.md)).
+- Prove through the CLI that a bare `pan repository-check` records no run evidence and `--run` records one line ([worktree-cli tests](tests/integration/worktree-cli.test.ts)). Scope the `--worktree` recording help line to the no-`--run` case ([cli](src/cli.ts)).
 - Name `pan cohort release <cohort-id>` as the merge-free retry of a failed release continuation and as the value of `release_command`. Describe `pan cohort integrate` only as the operator-owned merge ([orchestrator](library/personas/orchestrator.md), [pan-cohort](library/cursor/commands/pan-cohort.md), [operator guide](docs/operator-guide.md), [primer](docs/target-repo-primer.md)).
 - Describe the release run in the workflow-authoring routing table as the other surfaces do. It runs in a managed worktree on a `release-<digest>` branch, or in the recorded `--into-branch` worktree ([workflow authoring](docs/workflow-authoring.md)).
 - State in the orchestrator **Start** rule that a `/pan-qa-workflow` session passes the workflow its command names. Render the workflow choices as nested bullets ([orchestrator](library/personas/orchestrator.md)).
