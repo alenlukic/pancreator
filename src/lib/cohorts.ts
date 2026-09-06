@@ -123,7 +123,7 @@ export interface CohortStatusView {
   release_resume_command: string | null
   /**
    * Command that starts the release run once every cohort is satisfied and no
-   * release run is recorded: the idempotent integrate retry. Null otherwise.
+   * release run is recorded: the merge-free `cohort release`. Null otherwise.
    */
   release_command: string | null
 }
@@ -920,11 +920,21 @@ export function startCohort(
 
       state = updateChunk(root, state, chunk.id, { worktree: worktreeName })
 
-      const record = createWorktree(root, worktreeName, {
-        from: integrationBranch(state),
-        description: `Cohort ${cohortIndex} chunk '${chunk.id}'`,
-        repositoryRoot: cohortRepositoryRoot(root, state),
-      })
+      // The worktree name derives from the session and the chunk, so a retry
+      // after a crash between worktree creation and the run record finds the
+      // worktree it already made instead of refusing a second one, and a
+      // retry after a crash between run creation and the run_id write adopts
+      // the live run bound to that worktree instead of binding a second run
+      // to the same checkout.
+      const record =
+        readWorktreeIndex(root).worktrees.find(
+          (entry) => entry.name === worktreeName,
+        ) ??
+        createWorktree(root, worktreeName, {
+          from: integrationBranch(state),
+          description: `Cohort ${cohortIndex} chunk '${chunk.id}'`,
+          repositoryRoot: cohortRepositoryRoot(root, state),
+        })
 
       state = updateChunk(root, state, chunk.id, {
         worktree: worktreeName,
@@ -934,23 +944,25 @@ export function startCohort(
       // The run is bound to its worktree exactly as `pan init --worktree`
       // binds one, so `--worktree <name>` is accepted on every lifecycle
       // command and the identity check guards against a swapped checkout.
-      const run = createRun(root, {
-        workflowSlug: COHORT_CHUNK_WORKFLOW_SLUG,
-        requestPath: chunk.child_spec_path,
-        title: `${chunk.id} · ${chunk.title}`,
-        workspace: record.path,
-        worktree: {
-          name: record.name,
-          path: record.path,
-          branch: record.branch,
-        },
-        contextReferencePath: state.parent_spec_path,
-        cohort: {
-          cohort_id: cohortId,
-          cohort_index: cohortIndex,
-          chunk: chunk.id,
-        },
-      })
+      const run =
+        existingChunkRun(root, cohortId, chunk.id, record.path) ??
+        createRun(root, {
+          workflowSlug: COHORT_CHUNK_WORKFLOW_SLUG,
+          requestPath: chunk.child_spec_path,
+          title: `${chunk.id} · ${chunk.title}`,
+          workspace: record.path,
+          worktree: {
+            name: record.name,
+            path: record.path,
+            branch: record.branch,
+          },
+          contextReferencePath: state.parent_spec_path,
+          cohort: {
+            cohort_id: cohortId,
+            cohort_index: cohortIndex,
+            chunk: chunk.id,
+          },
+        })
 
       state = updateChunk(root, state, chunk.id, { run_id: run.run_id })
       started.push({
@@ -970,6 +982,37 @@ export function startCohort(
       chunks: started,
     }
   })
+}
+
+/**
+ * The live chunk run an earlier fan-out attempt created for one chunk: a
+ * chunk-workflow run whose cohort binding names the session and the chunk and
+ * that works in the chunk's worktree. Two live runs on one worktree would edit
+ * the same checkout, so a matching live run is adopted rather than duplicated.
+ * A finished run is not: it no longer occupies the worktree.
+ */
+function existingChunkRun(
+  root: string,
+  cohortId: string,
+  chunkId: string,
+  worktreePath: string,
+): RunState | null {
+  const workspace = path.resolve(root, worktreePath)
+  const matches = (run: RunState): boolean =>
+    run.workflow_slug === COHORT_CHUNK_WORKFLOW_SLUG &&
+    run.cohort !== undefined &&
+    run.cohort.role !== 'release' &&
+    run.cohort.cohort_id === cohortId &&
+    run.cohort.chunk === chunkId &&
+    path.resolve(root, run.workspace_root) === workspace
+
+  return (
+    newestRun(
+      listRunStatesWhere(root, matches).filter(
+        (run) => runIsLive(run) && matches(run),
+      ),
+    ) ?? null
+  )
 }
 
 /** The caller holds the session mutex. */
@@ -1050,9 +1093,42 @@ export function cohortStatus(root: string, cohortId: string): CohortStatusView {
       : null,
     release_command:
       activeIndex === null && !state.release_run_id
-        ? `${pan} cohort integrate ${cohortId}`
+        ? `${pan} cohort release ${cohortId}`
         : null,
   }
+}
+
+/**
+ * Start or adopt the release run of a session whose every cohort is
+ * integrated, without merging anything.
+ *
+ * `cohort integrate` is the merge verb, and the merge is the operator's own
+ * action, so the retry of a release start that failed after the final merge
+ * proof landed must not be spelled as another integrate. This command runs
+ * only the continuation: it refuses while any cohort lacks its merge proof,
+ * and it adopts a release run that already exists exactly as the integrate
+ * path does, so a repeated call is idempotent.
+ */
+export function releaseCohort(
+  root: string,
+  cohortId: string,
+): CohortContinuationResult {
+  const state = loadCohortState(root, cohortId)
+  const unsatisfied = firstUnsatisfiedIndex(root, state)
+
+  invariant(
+    unsatisfied === null,
+    `Cohort ${unsatisfied} of session ${cohortId} holds no merge proof, so ` +
+      'the release run cannot start. Finish every chunk run of cohort ' +
+      `${unsatisfied}, then run '${panCommand(root)} cohort integrate ` +
+      `${cohortId}'.`,
+    {
+      code: 'COHORT_NOT_SATISFIED',
+      details: { cohort_id: cohortId, unsatisfied_cohort_index: unsatisfied },
+    },
+  )
+
+  return continueAfterIntegration(root, cohortId)
 }
 
 /**
@@ -2143,15 +2219,15 @@ function continueAfterIntegration(
   try {
     return startReleaseRun(root, cohortId)
   } catch (error) {
-    // A repeated integrate after every cohort landed reports the merge proof
-    // again and runs this continuation, so it is the one retry command. A
-    // hand-built `pan init` would carry no start-stage record or cohort
-    // binding, and the next integrate would not adopt it.
+    // Every merge proof landed, so the retry is the merge-free `cohort
+    // release`, which runs only this continuation. A hand-built `pan init`
+    // would carry no start-stage record or cohort binding, and neither
+    // release nor integrate would adopt it.
     return {
       status: 'failed',
       kind: 'release',
       error: errorMessage(error),
-      manual_commands: [`${pan} cohort integrate ${cohortId}`],
+      manual_commands: [`${pan} cohort release ${cohortId}`],
     }
   }
 }

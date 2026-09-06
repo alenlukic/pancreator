@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import {
+  appendFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -27,9 +28,15 @@ import {
   SUMMARY_STREAM_TAIL_BYTES,
 } from '../../src/lib/repository-checks.js'
 import type { RepositoryCheckResult } from '../../src/lib/repository-checks.js'
+import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadRepositoryCheckBaseline } from '../../src/lib/validation.js'
 import type { RunState } from '../../src/lib/types.js'
-import { createFixture, createTestTempDirectory } from '../helpers.js'
+import {
+  createFixture,
+  createRun,
+  createTestTempDirectory,
+  writeJson,
+} from '../helpers.js'
 
 function makeInstallation(): { root: string; workspace: string } {
   const parent = createTestTempDirectory('checks-')
@@ -1014,8 +1021,10 @@ test('an agent-run profile is recorded against the live run bound to its worktre
     2,
   )
 
-  // Two fast runs for one invocation are reported by name, as an advisory
-  // rather than a gate failure; another invocation's count is its own.
+  // Two fast runs for one invocation of a single-worker stage are reported by
+  // name, as an advisory rather than a gate failure; another invocation's
+  // count is its own. This run carries no workflow snapshot, so the stage
+  // keeps the one-agent allowance.
   const advisories = agentRepositoryCheckAdvisories(
     root,
     'live-bound',
@@ -1027,6 +1036,10 @@ test('an agent-run profile is recorded against the live run bound to its worktre
   assert.equal(advisories[0].id, 'repository_check_fast_repeated')
   assert.match(advisories[0].message, /fast profile 2 times/u)
   assert.match(advisories[0].message, /implement-1/u)
+  assert.match(
+    advisories[0].message,
+    /allows one run per agent, 1 for this stage \(one stage worker\)/u,
+  )
   assert.deepEqual(
     agentRepositoryCheckAdvisories(root, 'live-bound', 'implement-2'),
     [],
@@ -1060,5 +1073,80 @@ test('an agent-run profile is recorded against the live run bound to its worktre
     [
       `runtime/logs/workflows/live-unbound/agent/evidence/${AGENT_REPOSITORY_CHECK_RUNS_FILE}`,
     ],
+  )
+})
+
+test('the fast-profile allowance follows the evidence workers of the invocation stage', () => {
+  const root = createFixture()
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+  const layout = resolveRunLayout(root, run.run_id)
+  const evidence = layout.evidence(AGENT_REPOSITORY_CHECK_RUNS_FILE).absolute
+  const record = (invocationId: string): string =>
+    `${JSON.stringify({
+      profile: 'fast',
+      invocation_id: invocationId,
+      workspace_fingerprint: 'f'.repeat(64),
+      status: 'passed',
+      duration_ms: 1,
+      started_at: '2026-09-05T02:00:00.000Z',
+      invoked_by: 'agent',
+    })}\n`
+
+  // The invocation record names the stage; the run's own workflow snapshot
+  // says how many agents that stage dispatches.
+  writeJson(layout.invocation('verify-1', '.json').absolute, {
+    stage: { slug: 'verify' },
+  })
+  writeJson(layout.invocation('implement-1', '.json').absolute, {
+    stage: { slug: 'implement' },
+  })
+  mkdirSync(path.dirname(evidence), { recursive: true })
+  writeFileSync(
+    evidence,
+    [
+      record('verify-1'),
+      record('verify-1'),
+      record('implement-1'),
+      record('implement-1'),
+    ].join(''),
+  )
+
+  // Verify dispatches two evidence workers, each permitted one fast run, so
+  // two records are compliant.
+  assert.deepEqual(
+    agentRepositoryCheckAdvisories(root, run.run_id, 'verify-1'),
+    [],
+  )
+
+  // Implement declares no evidence worker, so its second record is one too
+  // many.
+  const implement = agentRepositoryCheckAdvisories(
+    root,
+    run.run_id,
+    'implement-1',
+  )
+
+  assert.equal(implement.length, 1)
+  assert.equal(implement[0].id, REPOSITORY_CHECK_FAST_REPEATED)
+  assert.match(implement[0].message, /fast profile 2 times/u)
+  assert.match(
+    implement[0].message,
+    /allows one run per agent, 1 for this stage \(one stage worker\)/u,
+  )
+
+  // A third verify record exceeds the two-worker allowance, and the message
+  // states both the allowance and the count.
+  appendFileSync(evidence, record('verify-1'))
+
+  const verify = agentRepositoryCheckAdvisories(root, run.run_id, 'verify-1')
+
+  assert.equal(verify.length, 1)
+  assert.match(verify[0].message, /fast profile 3 times/u)
+  assert.match(
+    verify[0].message,
+    /allows one run per agent, 2 for this stage \(2 evidence worker\(s\)\)/u,
   )
 })

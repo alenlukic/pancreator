@@ -44,6 +44,7 @@ import {
   initCohortSession,
   integrateCohort,
   maybeStartDelivery,
+  releaseCohort,
   retryDeliveryRoute,
   startCohort,
 } from './lib/cohorts.js'
@@ -72,6 +73,7 @@ import {
 } from './lib/release-preparation.js'
 import {
   awayDecisionLedgerPath,
+  awayEvaluatorFailureLimitError,
   awayEvaluatorPrompt,
   awayModeTrigger,
   countAwayDecisions,
@@ -238,7 +240,7 @@ export const HELP_BODY = `Usage:
   pan technologies detect [--worktree <name>] --json
   pan repository-check <profile> [--timeout-ms <milliseconds>] [--workspace <dir|worktree> | --worktree <name>] [--run <run-id>] [--json]
       --timeout-ms raises the effective bound only: resolution keeps the maximum of the request, the profile's own bound, and subset-profile timeouts.
-      --run records the execution against that run and, without --workspace or --worktree, checks its workspace. Otherwise --worktree records against every live run bound to the worktree. A bare invocation records against no run.
+      --run records the execution against that run and, without --workspace or --worktree, checks its workspace. Without --run, --worktree records against every live run bound to the worktree. A bare invocation records against no run.
   pan repository-check validate [--json]
   pan tests impacted [--changed <ref> | --staged | --worktree-dirty] [--file <path>]... [--include <glob>]... [--depth <n>] [--list] [--json] [--advisory-ratio <0..1>]
       Self-development only. Select and run the lane tests whose import closure reaches the changed files. The default change set is the dirty working tree. An iteration aid, never a gate.
@@ -298,10 +300,12 @@ export const HELP_BODY = `Usage:
       Create one worktree and one delivery-chunk run per unstarted chunk of the next unsatisfied cohort, up to the free parallelism slots. Run it again as chunk runs finish to start the deferred chunks. It performs no source-control action beyond adding worktrees.
       --cohort names a cohort explicitly; a cohort whose predecessor is unsatisfied is refused with COHORT_PREDECESSOR_UNSATISFIED.
   pan cohort status <cohort-id> [--json]
-      Reports the active cohort, each chunk's run status, the free parallelism slots, and the start, supervise (/pan-cohort), and integrate commands that apply.
+      Reports the active cohort, each chunk's run status, the free parallelism slots, and the start, supervise (/pan-cohort), integrate, and release commands that apply.
   pan cohort integrate <cohort-id> [--into-branch <branch>] [--json]
       Merge the committed chunk branches of the finished cohort into its integration branch (the base branch by default) and record the satisfaction entry the next cohort needs. Once that entry lands the harness continues the plan: a non-final cohort starts the next cohort, and the final cohort starts the release run, a delivery run that begins at verify on the integration branch. The response reports that continuation as autostart.
       --into-branch retargets the session: this and every later cohort merge into that branch, and later cohorts branch from it. Use it when the checkout that holds the base branch carries uncommitted work. A missing branch is created from the current integration head; an existing one must already contain that head.
+  pan cohort release <cohort-id> [--json]
+      Start or adopt the release run once every cohort is integrated (merge-free). It is the retry for a release start that failed after the final integrate: it merges nothing, adopts a release run that already exists, and is refused with COHORT_NOT_SATISFIED while any cohort lacks its merge proof.
   pan cohort abandon <cohort-id> --chunk <id> --note <reason> [--json]
   pan cohort clean <cohort-id> [--force] [--json]
   pan cohort route --plan-run <run-id> [--json]
@@ -810,11 +814,10 @@ function evaluateAwayState(
     )
   }
 
-  if (countAwayEvaluatorFailures(root, state.run_id) >= budget) {
-    throw new PanError(
-      'The away evaluator failed as many times as the decision limit allows for this run.',
-      { code: 'AWAY_EVALUATOR_FAILURE_LIMIT' },
-    )
+  const evaluatorFailures = countAwayEvaluatorFailures(root, state.run_id)
+
+  if (evaluatorFailures >= budget) {
+    throw awayEvaluatorFailureLimitError(root, state, evaluatorFailures, budget)
   }
 
   const prompt = awayEvaluatorPrompt(root, state, blocker, {
@@ -2621,6 +2624,20 @@ async function main(): Promise<void> {
           },
           asJson,
         )
+        return
+      }
+
+      if (sub === 'release') {
+        const result = releaseCohort(
+          root,
+          requiredArgument(rest[0], 'cohort-id'),
+        )
+
+        print(result, asJson)
+
+        if (result.status === 'failed') {
+          process.exitCode = 1
+        }
         return
       }
 

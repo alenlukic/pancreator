@@ -683,6 +683,43 @@ export function awayEvaluatorPrompt(
   ].join('\n')
 }
 
+/**
+ * The refusal for a run whose evaluator failures reached the decision limit.
+ *
+ * The ceiling ends unattended continuation for the run, so the refusal names
+ * what the operator does next: the evaluator exchanges under the run evidence
+ * explain the failures, and `pan decide` takes the gate by hand.
+ */
+export function awayEvaluatorFailureLimitError(
+  root: string,
+  state: RunState,
+  failures: number,
+  limit: number,
+): PanError {
+  const evidenceDirectory = path.posix.dirname(
+    resolveRunLayout(root, state.run_id).evidence('away-evaluator.json')
+      .relative,
+  )
+  const recoveryCommand = `pan decide ${state.run_id} <approve|reject|revise> [--note <text>]`
+
+  return new PanError(
+    'The away evaluator failed as many times as the decision limit allows ' +
+      `for this run (${failures} of ${limit}). Read the evaluator exchanges ` +
+      `under ${evidenceDirectory}/away-evaluator-*.json, then decide the ` +
+      `gate yourself with '${recoveryCommand}'.`,
+    {
+      code: 'AWAY_EVALUATOR_FAILURE_LIMIT',
+      details: {
+        run_id: state.run_id,
+        evaluator_failures: failures,
+        max_decisions_per_run: limit,
+        evidence_directory: evidenceDirectory,
+        recovery_command: recoveryCommand,
+      },
+    },
+  )
+}
+
 /** Append one rejected record when the evaluator cannot return ranked options. */
 export function recordAwayEvaluationFailure(
   root: string,
@@ -720,12 +757,12 @@ export function recordAwayEvaluationFailure(
   return withOperationMutex(
     awayPath(root, LEDGER_LOCK),
     (): AwayDecisionRecord => {
-      invariant(
-        countAwayEvaluatorFailures(root, state.run_id) <
-          awayMode.guardrails.max_decisions_per_run,
-        'The away evaluator failed as many times as the decision limit allows for this run.',
-        { code: 'AWAY_EVALUATOR_FAILURE_LIMIT' },
-      )
+      const failures = countAwayEvaluatorFailures(root, state.run_id)
+      const limit = awayMode.guardrails.max_decisions_per_run
+
+      if (failures >= limit) {
+        throw awayEvaluatorFailureLimitError(root, state, failures, limit)
+      }
 
       appendJsonLine(awayDecisionLedgerPath(root), record)
 

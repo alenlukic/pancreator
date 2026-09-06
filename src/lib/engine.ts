@@ -727,6 +727,78 @@ function baselineWorkspaceProvenance(
   return provenance
 }
 
+/**
+ * Provision a run's workspace once, before any stage works in it.
+ *
+ * A workspace other than the configured default is a fresh worktree without
+ * ignored build state (dependencies, compiled output), so every worker and
+ * gate command would fail against it. The target-declared setup commands run
+ * once per run and are recorded on the run state, whatever stage the run
+ * starts at: a release run begins at `verify`, and its verifiers and gates
+ * need the same provisioned tree an implementer does. A failure pauses the run
+ * visibly instead of spending a stage attempt on an unprovisioned worktree,
+ * and the record it leaves is not a pass, so the next prepare runs setup
+ * again once the operator repaired the cause.
+ *
+ * Returns true when the run was paused.
+ */
+function ensureWorkspaceProvisioned(
+  root: string,
+  state: RunState,
+  onProgress?: (message: string) => void,
+): boolean {
+  if (state.workspace_setup?.status === 'passed') {
+    return false
+  }
+
+  const workspaceAbsolute = path.resolve(root, state.workspace_root || '.')
+  const defaultWorkspaceAbsolute = path.resolve(
+    root,
+    configuredWorkspaceRoot(root),
+  )
+
+  if (workspaceAbsolute === defaultWorkspaceAbsolute) {
+    return false
+  }
+
+  const setupCommands = loadRepositoryChecks(root).setup ?? []
+
+  if (setupCommands.length === 0) {
+    return false
+  }
+
+  onProgress?.(
+    `running workspace setup in '${state.workspace_root}' (${setupCommands.length} command(s))`,
+  )
+
+  const setup = runRepositorySetup(root, {
+    workspace: state.workspace_root || '.',
+  })
+
+  onProgress?.(
+    `workspace setup ${setup.status} in ${(setup.total_duration_ms / 1000).toFixed(1)}s`,
+  )
+  state.workspace_setup = { status: setup.status, recorded_at: now() }
+
+  if (setup.status === 'failed') {
+    const failedCommand = setup.results.find((result) => !result.passed)
+    const reason =
+      `Workspace setup command failed before stage '${state.current_stage}' ` +
+      `could prepare: ${failedCommand?.command ?? 'unknown'}.`
+
+    state.status = 'paused'
+    state.pause_reason = reason
+    state.pending_action = { type: 'operator_decision' }
+    writeDecision(root, state, 'Worktree environment needs repair', reason, [
+      'Repair the declared setup commands or the workspace, then resume the run.',
+    ])
+
+    return true
+  }
+
+  return false
+}
+
 function ensureWorkflowRepositoryCheckBaselines(
   root: string,
   state: RunState,
@@ -744,52 +816,6 @@ function ensureWorkflowRepositoryCheckBaselines(
 
   const profiles = collectStageRepositoryCheckProfiles(workflow.stages, state)
   const repositoryChecks = loadRepositoryChecks(root)
-
-  // A workspace other than the configured default is a fresh worktree without
-  // ignored build state (dependencies, compiled output), so every profile
-  // command would fail against it. Run the target-declared setup commands
-  // first and pause visibly when they fail, instead of capturing a doomed
-  // baseline or hanging the prepare.
-  const setupCommands = repositoryChecks.setup ?? []
-  const workspaceAbsolute = path.resolve(root, state.workspace_root || '.')
-  const defaultWorkspaceAbsolute = path.resolve(
-    root,
-    configuredWorkspaceRoot(root),
-  )
-
-  if (
-    setupCommands.length > 0 &&
-    workspaceAbsolute !== defaultWorkspaceAbsolute
-  ) {
-    onProgress?.(
-      `running workspace setup in '${state.workspace_root}' (${setupCommands.length} command(s))`,
-    )
-
-    const setup = runRepositorySetup(root, {
-      workspace: state.workspace_root || '.',
-    })
-
-    onProgress?.(
-      `workspace setup ${setup.status} in ${(setup.total_duration_ms / 1000).toFixed(1)}s`,
-    )
-
-    if (setup.status === 'failed') {
-      const failedCommand = setup.results.find((result) => !result.passed)
-      const reason =
-        `Workspace setup command failed before baseline capture: ` +
-        `${failedCommand?.command ?? 'unknown'}.`
-
-      state.status = 'paused'
-      state.pause_reason = reason
-      state.pending_action = { type: 'operator_decision' }
-      writeDecision(root, state, 'Worktree environment needs repair', reason, [
-        'Repair the declared setup commands or the workspace, then resume from the first source stage.',
-      ])
-
-      return true
-    }
-  }
-
   const preCaptureWorkspace = workspaceSnapshotForRun(root, state)
   const provenance = baselineWorkspaceProvenance(
     root,
@@ -2622,13 +2648,15 @@ export function prepareInvocation(
     }
 
     ensureMutatingWorkflowInitialized(root, state, stage)
-    const environmentBlocked = ensureWorkflowRepositoryCheckBaselines(
-      root,
-      state,
-      workflow,
-      stage,
-      options.onProgress,
-    )
+    const environmentBlocked =
+      ensureWorkspaceProvisioned(root, state, options.onProgress) ||
+      ensureWorkflowRepositoryCheckBaselines(
+        root,
+        state,
+        workflow,
+        stage,
+        options.onProgress,
+      )
 
     if (environmentBlocked) {
       persistRun(root, state, 'run_paused', { reason: state.pause_reason })

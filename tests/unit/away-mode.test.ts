@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 import { Worker } from 'node:worker_threads'
@@ -21,10 +21,13 @@ import {
   recordHypervisorQuarantine,
   selectAwayOption,
 } from '../../src/lib/away-mode.js'
+import { PanError } from '../../src/lib/errors.js'
 import {
   AWAY_MODE_ACTIONS,
   resolveAwayModeConfig,
 } from '../../src/lib/project-config.js'
+import type { HandlerInput } from '../../src/lib/requirements/types.js'
+import { validateAwayDecisionLedger } from '../../src/lib/validators/autonomy-state.js'
 import type {
   AwayModeAction,
   AwayModeGuardrails,
@@ -73,6 +76,20 @@ function option(rank: number, action: AwayModeAction): Record<string, unknown> {
 
 function scratchRoot(): string {
   return createTestTempDirectory('pancreator-away-mode-')
+}
+
+/** The input the authoritative ledger check receives from the harness. */
+function handlerInput(root: string): HandlerInput {
+  return {
+    root,
+    targetPath: '.',
+    requirement: {
+      policy_id: 'AWAY-001',
+      requirement_id: 'away-decision-ledger-validate',
+      registry_id: 'away-decision-ledger-validate',
+      arguments: {},
+    },
+  }
 }
 
 function awayConfig(
@@ -570,10 +587,42 @@ test('evaluator failures have their own ceiling and leave the decision budget al
   assert.equal(countAwayDecisions(root, state.run_id), 0)
   assert.equal(countAwayEvaluatorFailures(root, state.run_id), 1)
 
-  // The failure ceiling is the same number, so the ledger stays bounded.
+  // The ledger check that gates every away decision accepts the failure
+  // record: it is a documented kind, so one failed evaluator does not turn the
+  // ledger permanently invalid.
+  assert.deepEqual(validateAwayDecisionLedger(handlerInput(root)), {
+    status: 'passed',
+    issues: [],
+  })
+
+  // The failure ceiling is the same number, so the ledger stays bounded. The
+  // refusal ends unattended continuation, so it names the evidence that
+  // explains the failures and the command that takes the gate by hand.
+  const evidenceDirectory = `runtime/logs/workflows/${state.run_id}/agent/evidence`
+  const recoveryCommand = `pan decide ${state.run_id} <approve|reject|revise> [--note <text>]`
+
   assert.throws(
     () => recordAwayEvaluationFailure(root, state, blocker, 'It failed again.'),
-    /failed as many times as the decision limit allows/u,
+    (error: unknown) => {
+      assert.ok(error instanceof PanError)
+      assert.equal(error.code, 'AWAY_EVALUATOR_FAILURE_LIMIT')
+      assert.equal(
+        error.message,
+        'The away evaluator failed as many times as the decision limit ' +
+          'allows for this run (1 of 1). Read the evaluator exchanges under ' +
+          `${evidenceDirectory}/away-evaluator-*.json, then decide the gate ` +
+          `yourself with '${recoveryCommand}'.`,
+      )
+      assert.deepEqual(error.details, {
+        run_id: state.run_id,
+        evaluator_failures: 1,
+        max_decisions_per_run: 1,
+        evidence_directory: evidenceDirectory,
+        recovery_command: recoveryCommand,
+      })
+
+      return true
+    },
   )
 
   // A ranking the parser rejects is an evaluator defect, not a decision, so
@@ -597,6 +646,23 @@ test('evaluator failures have their own ceiling and leave the decision budget al
     /decision limit for this run is exhausted/u,
   )
   assert.equal(readAwayDecisionLedger(root).length, 2)
+  assert.equal(validateAwayDecisionLedger(handlerInput(root)).status, 'passed')
+
+  // A failure record that claims a selection or an acceptance is not a
+  // failure record, and the ledger check says so by name.
+  appendFileSync(
+    awayDecisionLedgerPath(root),
+    `${JSON.stringify({ ...failure, decision_id: 'forged', result: 'accepted' })}\n`,
+  )
+
+  const forged = validateAwayDecisionLedger(handlerInput(root))
+
+  assert.equal(forged.status, 'failed')
+  assert.ok(
+    forged.issues.some(
+      (issue) => issue.code === 'away.decision.evaluator_failure',
+    ),
+  )
 })
 
 interface ConcurrentEvaluationResult {

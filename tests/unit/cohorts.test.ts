@@ -19,12 +19,15 @@ import {
   assertCohortRunUnblocked,
   initCohortSession,
   integrateCohort,
+  loadCohortState,
   maybeStartDelivery,
   parseCohortPlan,
   retryDeliveryRoute,
   startCohort,
 } from '../../src/lib/cohorts.js'
 import { PanError } from '../../src/lib/errors.js'
+import { sha256 } from '../../src/lib/io.js'
+import { createWorktree, readWorktreeIndex } from '../../src/lib/worktrees.js'
 import {
   eventPath,
   listRunStates,
@@ -1010,6 +1013,67 @@ test('a plan run opens one cohort session, and a second init names the first', (
       error.message.includes(`./bin/pan cohort start ${session.cohort_id}`),
   )
   assert.deepEqual(cohortSessionIds(root), [session.cohort_id])
+})
+
+test('a cohort start adopts a chunk worktree left behind without its run', () => {
+  const root = createFixture()
+
+  writeSpecs(root)
+
+  const planRunId = ratifiedSingleChunkPlanRun(root, 2)
+  const session = initCohortSession(root, { planRunId })
+  const worktreeName = `cohort-${sha256(session.cohort_id).slice(0, 6)}-c1`
+
+  // A fan-out that died between worktree creation and the run record leaves
+  // exactly this: an indexed chunk worktree and no run.
+  const orphan = createWorktree(root, worktreeName, {
+    from: session.base_branch,
+  })
+
+  const started = startCohort(root, session.cohort_id)
+
+  assert.equal(started.chunks.length, 1)
+  assert.equal(started.chunks[0].chunk, 'c1')
+  assert.equal(started.chunks[0].worktree, orphan.path)
+  assert.equal(
+    readWorktreeIndex(root).worktrees.length,
+    1,
+    'the retry reuses the worktree instead of refusing a second one',
+  )
+
+  const run = loadState(root, started.chunks[0].run_id)
+  const chunk = loadCohortState(root, session.cohort_id).chunks.find(
+    (entry) => entry.id === 'c1',
+  )
+
+  assert.equal(run.workspace_root, orphan.path)
+  assert.equal(run.managed_worktree?.name, worktreeName)
+  assert.equal(chunk?.run_id, run.run_id)
+  assert.equal(chunk?.worktree, worktreeName)
+  assert.equal(chunk?.branch, orphan.branch)
+
+  // A fan-out that died between run creation and the run_id write leaves a
+  // live run bound to the worktree: the retry adopts it rather than binding a
+  // second run to the same checkout.
+  writeJson(path.join(cohortDir(root, session.cohort_id), 'state.json'), {
+    ...loadCohortState(root, session.cohort_id),
+    chunks: loadCohortState(root, session.cohort_id).chunks.map((entry) =>
+      entry.id === 'c1' ? { ...entry, run_id: undefined } : entry,
+    ),
+  })
+
+  const retried = startCohort(root, session.cohort_id)
+
+  assert.deepEqual(
+    retried.chunks.map((entry) => entry.run_id),
+    [run.run_id],
+  )
+  assert.equal(
+    listRunStates(root).filter(
+      (entry) => entry.workflow_slug === 'delivery-chunk',
+    ).length,
+    1,
+  )
 })
 
 test('a cohort route that fails after init names the session that exists', () => {

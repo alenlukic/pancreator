@@ -5,13 +5,14 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { PanError } from '../../src/lib/errors.js'
+import { AGENT_REPOSITORY_CHECK_RUNS_FILE } from '../../src/lib/repository-checks.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import {
   createWorktree as createWorktreeRecord,
   listWorktrees,
   removeWorktree,
 } from '../../src/lib/worktrees.js'
-import { createFixture, writeJson } from '../helpers.js'
+import { createFixture, createRun, writeJson } from '../helpers.js'
 
 import {
   CLI,
@@ -350,6 +351,59 @@ test('repository-check --worktree creates the worktree and runs inside it', () =
 
   assert.notEqual(conflicting.status, 0)
   assert.match(conflicting.stderr, /cannot be used together/u)
+})
+
+test('repository-check records run evidence only when a run is named', () => {
+  const root = createFixture()
+
+  writeJson(path.join(root, 'runtime/repository-checks.json'), {
+    schema_version: 1,
+    profiles: {
+      fast: {
+        probes: [],
+        commands: ['node -e "process.exit(0)"'],
+      },
+    },
+  })
+
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+  const evidence = resolveRunLayout(root, run.run_id).evidence(
+    AGENT_REPOSITORY_CHECK_RUNS_FILE,
+  )
+
+  // A bare invocation is an operator's own check from the base checkout. It
+  // is evidence of no run, although this run happens to share the workspace.
+  const bare = runCli<{
+    status: string
+    run_evidence_paths?: string[]
+  }>(root, ['repository-check', 'fast'])
+
+  assert.equal(bare.status, 'passed')
+  assert.equal('run_evidence_paths' in bare, false)
+  assert.equal(existsSync(evidence.absolute), false)
+
+  // `--run` names the run the execution is evidence for, so the record lands
+  // in that run's evidence and the response names the file.
+  const recorded = runCli<{
+    status: string
+    run_evidence_paths?: string[]
+  }>(root, ['repository-check', 'fast', '--run', run.run_id])
+
+  assert.equal(recorded.status, 'passed')
+  assert.deepEqual(recorded.run_evidence_paths, [evidence.relative])
+
+  const lines = readFileSync(evidence.absolute, 'utf8')
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line) as Record<string, unknown>)
+
+  assert.equal(lines.length, 1)
+  assert.equal(lines[0].profile, 'fast')
+  assert.equal(lines[0].status, 'passed')
+  assert.equal(lines[0].invoked_by, 'agent')
 })
 
 test('commands without a selectable workspace reject the shared option', () => {
