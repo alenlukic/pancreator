@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { readdirSync } from 'node:fs'
 import path from 'node:path'
 
 import { invariant } from './errors.js'
@@ -20,7 +21,7 @@ import {
 } from './io.js'
 import { resolveRunLayout } from './run-layout.js'
 import { loadProjectConfig } from './project-config.js'
-import type { RunState } from './types.js'
+import type { RunState, RunStatus } from './types.js'
 
 const DEFAULT_STATE_SIZE_BUDGET_BYTES = 1024 * 1024
 const MAX_EVENT_LINE_BYTES = 64 * 1024
@@ -144,6 +145,116 @@ export function nextStageSequence(root: string, runId: string): number {
   }
 
   return sequence
+}
+
+/** Statuses of a run that has finished, whatever the outcome. */
+export const TERMINAL_RUN_STATUSES: ReadonlySet<RunStatus> = new Set<RunStatus>(
+  ['succeeded', 'failed', 'canceled'],
+)
+
+/**
+ * Whether a run can still act on its workspace. Every non-terminal status
+ * counts, including a pause or an operator wait: the run resumes into the same
+ * workspace, so anything that judges or shares that workspace must treat the
+ * run as present.
+ */
+export function runIsLive(state: Pick<RunState, 'status'>): boolean {
+  return !TERMINAL_RUN_STATUSES.has(state.status)
+}
+
+/** Ids of the runs that own a materialized state file, in directory order. */
+export function listRunIds(root: string): string[] {
+  const base = path.join(root, 'runtime', 'logs', 'workflows')
+
+  if (!fileExists(base)) {
+    return []
+  }
+
+  return readdirSync(base, { withFileTypes: true })
+    .filter(
+      (entry) => entry.isDirectory() && fileExists(statePath(root, entry.name)),
+    )
+    .map((entry) => entry.name)
+}
+
+/**
+ * State of every recorded run whose record loads. An unreadable record is
+ * skipped rather than failing the scan, because one corrupt run must not hide
+ * every other run from a caller that only needs the healthy ones.
+ */
+export function listRunStates(root: string): RunState[] {
+  const states: RunState[] = []
+
+  for (const runId of listRunIds(root)) {
+    try {
+      states.push(loadState(root, runId))
+    } catch {
+      continue
+    }
+  }
+
+  return states
+}
+
+/**
+ * Live runs bound to one managed worktree, by its name or, when the caller
+ * knows the worktree record, by a workspace root that resolves to its path.
+ *
+ * This is the single definition of "a run occupies this worktree". Agent-run
+ * check evidence and release-preparation refusals both depend on it, and two
+ * scans with different liveness sets would let one of them miss a run the
+ * other counts.
+ */
+export function liveRunsBoundToWorktree(
+  root: string,
+  worktreeName: string,
+  record?: { path: string } | null,
+): RunState[] {
+  const recordPath = record ? path.resolve(root, record.path) : null
+
+  return listRunStates(root).filter(
+    (state) =>
+      runIsLive(state) &&
+      (state.managed_worktree?.name === worktreeName ||
+        (recordPath !== null &&
+          path.resolve(root, state.workspace_root) === recordPath)),
+  )
+}
+
+/**
+ * Stage a run was created at, read from its `run_created` event. The event
+ * records `start_stage` only when the run began somewhere other than the
+ * workflow's own start stage, so null means the workflow default.
+ */
+export function runStartStageOverride(
+  root: string,
+  runId: string,
+): string | null {
+  const eventsFile = eventPath(root, runId)
+
+  if (!fileExists(eventsFile)) {
+    return null
+  }
+
+  const firstLine = readText(eventsFile).split('\n')[0] ?? ''
+
+  if (firstLine.trim().length === 0) {
+    return null
+  }
+
+  let event: unknown
+
+  try {
+    event = JSON.parse(firstLine)
+  } catch {
+    return null
+  }
+
+  return isRecord(event) &&
+    event.type === 'run_created' &&
+    typeof event.start_stage === 'string'
+    ? event.start_stage
+    : null
 }
 
 export function operationMutexPath(root: string, runId: string): string {

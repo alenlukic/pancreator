@@ -119,17 +119,32 @@ export function availableReviewDimensions(root: string): ReviewDimension[] {
 }
 
 /**
- * The lineup the squad runs when the operator selects nothing. Where the
- * harness lineup ships, the review target is the harness and the skill swaps
- * to those three dimensions. Elsewhere the core lineup plus its conditional
- * dimension applies.
+ * The lineup the squad always runs when the operator selects nothing. Where
+ * the harness lineup ships, the review target is the harness and the skill
+ * swaps to those three dimensions. Elsewhere the core lineup applies. The
+ * conditional dimensions are not part of it: the coordinator resolves them
+ * against the diff, so listing them here would report them as run, or as left
+ * out, when neither was decided yet.
  */
 export function defaultReviewLineup(root: string): ReviewDimension[] {
   const harness = harnessLineupPresent(root)
 
   return REVIEW_DIMENSIONS.filter((dimension) =>
-    harness ? dimension.lineup === 'harness' : dimension.lineup !== 'harness',
+    harness ? dimension.lineup === 'harness' : dimension.lineup === 'core',
   )
+}
+
+/**
+ * Dimensions the coordinator activates only when the diff touches their
+ * surface. They accompany the core lineup; the harness lineup, which reviews
+ * the harness itself, carries none.
+ */
+export function conditionalReviewDimensions(root: string): ReviewDimension[] {
+  return harnessLineupPresent(root)
+    ? []
+    : REVIEW_DIMENSIONS.filter(
+        (dimension) => dimension.lineup === 'conditional',
+      )
 }
 
 export interface ReviewDimensionSelection {
@@ -137,8 +152,17 @@ export interface ReviewDimensionSelection {
   default: boolean
   /** Slugs the squad runs, in canonical order. */
   selected: string[]
-  /** Default-lineup slugs the selection leaves out. Empty for a default run. */
+  /**
+   * Default-lineup slugs the selection leaves out. Empty for a default run.
+   * Conditional dimensions never appear here: the operator did not leave them
+   * out, the coordinator decides them.
+   */
   not_run: string[]
+  /**
+   * Conditional slugs the coordinator resolves against the diff, in canonical
+   * order, less any the operator selected outright.
+   */
+  conditional: string[]
   /** Every slug this installation accepts, in canonical order. */
   available: string[]
 }
@@ -160,12 +184,16 @@ export function resolveReviewDimensionSelection(
   const cleaned = [
     ...new Set(requested.map((item) => item.trim()).filter(Boolean)),
   ]
+  const conditional = conditionalReviewDimensions(root).map(
+    (dimension) => dimension.slug,
+  )
 
   if (cleaned.length === 0) {
     return {
       default: true,
       selected: defaultReviewLineup(root).map((dimension) => dimension.slug),
       not_run: [],
+      conditional,
       available: availableSlugs,
     }
   }
@@ -190,6 +218,7 @@ export function resolveReviewDimensionSelection(
     default: false,
     selected,
     not_run: notRun,
+    conditional: conditional.filter((slug) => !selected.includes(slug)),
     available: availableSlugs,
   }
 }

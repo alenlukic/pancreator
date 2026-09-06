@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict'
-import { execFileSync } from 'node:child_process'
 import {
   existsSync,
   mkdirSync,
@@ -44,8 +43,7 @@ import {
   writeJson,
   submitAsSupervisor,
 } from '../helpers.js'
-import { BRIEFS, checkpoint } from './delivery-helpers.js'
-import type { CheckpointVariant } from './delivery-helpers.js'
+import { AWAY, BRIEFS, checkpoint } from './delivery-helpers.js'
 
 test('moves succeeded inbox request to complete through the full delivery workflow', () => {
   const root = createFixture()
@@ -221,44 +219,6 @@ test('moves succeeded inbox request to complete through the full delivery workfl
     /do not invalidate the reviewed implementation fingerprint/u,
   )
 })
-
-// Away mode is snapshotted into the run at creation, so the event log holds no
-// operator decision.
-const AWAY: CheckpointVariant = {
-  key: 'away',
-  fixture: (root) => {
-    const configPath = path.join(root, 'config.json')
-    const config = read(configPath) as Record<string, unknown>
-
-    writeFileSync(
-      configPath,
-      `${JSON.stringify(
-        {
-          ...config,
-          away_mode: {
-            enabled: true,
-            guardrails: {
-              allowed_actions: ['approve'],
-              max_decisions_per_run: 1,
-            },
-          },
-        },
-        null,
-        2,
-      )}\n`,
-    )
-    // Delivery starts at implement, whose target-instruction coverage check
-    // reads the cumulative workspace diff. Fold the fixture edit into the
-    // baseline commit so the run starts from a clean tree; amend rather than
-    // commit because the ship release validator needs the baseline commit to
-    // be the one that introduced VERSION.
-    execFileSync('git', ['add', 'config.json'], { cwd: root })
-    execFileSync('git', ['commit', '-q', '--amend', '-m', 'fixture'], {
-      cwd: root,
-    })
-  },
-  run: { title: 'Away continuation fixture' },
-}
 
 test('enabled away mode approves a ratified planning gate', () => {
   const { root, runId, state } = checkpoint(

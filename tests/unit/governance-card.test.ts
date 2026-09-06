@@ -10,6 +10,11 @@ import {
   buildGovernanceCard,
 } from '../../src/lib/governance-card.js'
 import {
+  REVIEW_DIMENSIONS,
+  conditionalReviewDimensions,
+  defaultReviewLineup,
+} from '../../src/lib/review-dimensions.js'
+import {
   buildReviewClosure,
   reviewMachineryConflicts,
 } from '../../src/lib/review-scope.js'
@@ -420,62 +425,102 @@ test('a guidance-only conduct conflict names the base text command', () => {
   assert.ok(written.includes(guidancePath))
 })
 
+/** Slugs a card line lists after its label, in order. */
+function cardSlugs(written: string, label: string): string[] | null {
+  const line = written
+    .split('\n')
+    .find((candidate) => candidate.startsWith(`- ${label}: `))
+
+  if (line === undefined) {
+    return null
+  }
+
+  return [...line.matchAll(/`([^`]+)`/gu)].map((match) => match[1])
+}
+
 test('the review card records an operator dimension selection and what it leaves out', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const card = buildGovernanceCard(root, {
     mode: 'review',
     outputPath: 'runtime/inbox/review-subset-card.md',
     dimensions: ['performance', 'security', 'performance'],
   })
+  const defaults = defaultReviewLineup(root).map((dimension) => dimension.slug)
 
   assert.deepEqual(card.review_dimensions, {
     default: false,
     selected: ['security', 'performance'],
-    not_run: ['correctness-consistency', 'agentic-practice'],
-    available: [
-      'correctness',
-      'security',
-      'architecture',
-      'simplification',
-      'operations',
-      'frontend',
-      'correctness-consistency',
-      'agentic-practice',
-      'performance',
-    ],
+    not_run: defaults.filter((slug) => slug !== 'performance'),
+    conditional: conditionalReviewDimensions(root).map(
+      (dimension) => dimension.slug,
+    ),
+    available: REVIEW_DIMENSIONS.map((dimension) => dimension.slug),
   })
 
   const written = readFileSync(path.join(root, card.path), 'utf8')
 
   // The card is the session record, so a later reader must see that the
   // review was partial and which lenses it never applied.
-  assert.match(written, /## 🎯 Review dimensions/u)
-  assert.match(written, /- Selected: `security`, `performance`/u)
-  assert.match(
-    written,
-    /- Default lineup not run: `correctness-consistency`, `agentic-practice`/u,
+  assert.match(written, /^## 🎯 Review dimensions$/mu)
+  assert.deepEqual(cardSlugs(written, 'Selected'), ['security', 'performance'])
+  assert.deepEqual(
+    cardSlugs(written, 'Default lineup not run'),
+    card.review_dimensions?.not_run,
   )
-  assert.match(written, /MUST name the dimensions below that it did not cover/u)
+  assert.deepEqual(
+    cardSlugs(written, 'Conditional, resolved by the coordinator'),
+    card.review_dimensions?.conditional,
+  )
 })
 
 test('a review card without a selection records the full default lineup', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const card = buildGovernanceCard(root, {
     mode: 'review',
     outputPath: 'runtime/inbox/review-default-card.md',
   })
+  const defaults = defaultReviewLineup(root).map((dimension) => dimension.slug)
 
   assert.equal(card.review_dimensions?.default, true)
+  assert.deepEqual(card.review_dimensions?.selected, defaults)
   assert.deepEqual(card.review_dimensions?.not_run, [])
 
   const written = readFileSync(path.join(root, card.path), 'utf8')
 
-  assert.match(written, /The operator selected no dimension set/u)
-  assert.match(
-    written,
-    /- Default lineup: `correctness-consistency`, `agentic-practice`, `performance`/u,
+  assert.match(written, /^## 🎯 Review dimensions$/mu)
+  assert.deepEqual(cardSlugs(written, 'Default lineup'), defaults)
+  assert.deepEqual(
+    cardSlugs(written, 'Conditional, resolved by the coordinator'),
+    card.review_dimensions?.conditional,
   )
-  assert.doesNotMatch(written, /Default lineup not run/u)
+  assert.equal(cardSlugs(written, 'Selected'), null)
+  assert.equal(cardSlugs(written, 'Default lineup not run'), null)
+})
+
+test('a conduct-conflict rebuild keeps the dimension selection on the card', () => {
+  const root = createFixture()
+  const git = (args: string[]) =>
+    execFileSync('git', args, { cwd: root, encoding: 'utf8' })
+
+  writeFileSync(path.join(root, 'src', 'feature.ts'), 'export const f = 1\n')
+  git(['add', 'src/feature.ts'])
+  git(['-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-qm', 'change'])
+
+  // The rebuild path resolves the review scope against --base/--target and
+  // must still carry the selection it was given, or the second card would
+  // silently report a full review.
+  const card = buildGovernanceCard(root, {
+    mode: 'review',
+    outputPath: 'runtime/inbox/review-rebuild-card.md',
+    baseRef: 'HEAD~1',
+    targetRef: 'HEAD',
+    dimensions: ['security'],
+  })
+  const written = readFileSync(path.join(root, card.path), 'utf8')
+
+  assert.deepEqual(card.review_dimensions?.selected, ['security'])
+  assert.deepEqual(cardSlugs(written, 'Selected'), ['security'])
+  assert.match(written, /^## 🎯 Review dimensions$/mu)
 })
 
 test('an unknown dimension fails the review card before any side effect', () => {

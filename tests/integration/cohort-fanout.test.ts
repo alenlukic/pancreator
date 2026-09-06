@@ -14,6 +14,7 @@ import test from 'node:test'
 import {
   abandonChunk,
   cleanCohortSession,
+  cohortDir,
   cohortSessionIds,
   cohortStatus,
   initCohortSession,
@@ -24,7 +25,12 @@ import {
 } from '../../src/lib/cohorts.js'
 import { PanError } from '../../src/lib/errors.js'
 import { prepareInvocation } from '../../src/lib/engine.js'
-import { eventPath, loadState, statePath } from '../../src/lib/state.js'
+import {
+  eventPath,
+  listRunStates,
+  loadState,
+  statePath,
+} from '../../src/lib/state.js'
 import { readWorktreeIndex } from '../../src/lib/worktrees.js'
 import {
   attestRunCard,
@@ -1256,4 +1262,137 @@ test('the last integration starts the release run at verify in the base checkout
   const prepared = prepareInvocation(root, release.run_id)
 
   assert.equal(prepared.invocation?.stage.slug, 'verify')
+})
+
+/** A session whose only cohort is committed, succeeded, and ready to integrate. */
+function finalCohortReadyToIntegrate(root: string): string {
+  const planRunId = ratifiedPlanRun(root, [
+    { id: 'alpha', cohort_index: 1 },
+    { id: 'beta', cohort_index: 1 },
+  ])
+  const session = initCohortSession(root, { planRunId })
+  const started = startCohort(root, session.cohort_id)
+
+  for (const chunk of started.chunks) {
+    commitInChunk(
+      root,
+      loadState(root, chunk.run_id).workspace_root,
+      chunk.chunk,
+    )
+    markSucceeded(root, chunk.run_id)
+  }
+
+  git(root, ['add', '-A'])
+  git(root, ['commit', '-m', 'chore: cohort fixture baseline'])
+
+  return session.cohort_id
+}
+
+function releaseRuns(root: string): string[] {
+  return listRunStates(root)
+    .filter((run) => run.workflow_slug === 'delivery')
+    .map((run) => run.run_id)
+}
+
+test('a failed release start keeps the merge proof and a repeated integrate completes it', () => {
+  const root = createFixture()
+  const cohortId = finalCohortReadyToIntegrate(root)
+  const parentSpec = path.join(
+    root,
+    'runtime',
+    'specs',
+    'parent-specification.md',
+  )
+  const parentSpecText = readFileSync(parentSpec, 'utf8')
+
+  // The release run reaches the parent specification by reference, so its
+  // absence makes run creation fail after the merge already landed.
+  rmSync(parentSpec)
+
+  const failed = integrateCohort(root, cohortId)
+
+  assert.equal(failed.autostart.status, 'failed')
+  assert.equal(failed.autostart.kind, 'release')
+
+  if (failed.autostart.status !== 'failed') {
+    return
+  }
+
+  assert.ok(failed.autostart.manual_commands.length > 0)
+  assert.equal(failed.merge_commit, git(root, ['rev-parse', 'HEAD']).trim())
+  assert.ok(existsSync(path.join(root, failed.evidence_path)))
+
+  const afterFailure = cohortStatus(root, cohortId)
+
+  assert.deepEqual(afterFailure.satisfied_cohort_indexes, [1])
+  assert.equal(afterFailure.release_run_id, null)
+  assert.deepEqual(releaseRuns(root), [])
+
+  // The merge proof is durable, so a second integrate does not merge again:
+  // it reports the same proof and runs the continuation that is missing.
+  writeFileSync(parentSpec, parentSpecText)
+
+  const completed = integrateCohort(root, cohortId)
+
+  assert.equal(completed.cohort_index, failed.cohort_index)
+  assert.equal(completed.merge_commit, failed.merge_commit)
+  assert.equal(completed.evidence_path, failed.evidence_path)
+  assert.deepEqual(completed.merged_chunks, failed.merged_chunks)
+  assert.equal(completed.autostart.status, 'started')
+  assert.equal(completed.autostart.kind, 'release')
+
+  if (completed.autostart.status !== 'started') {
+    return
+  }
+
+  assert.equal(
+    loadCohortState(root, cohortId).release_run_id,
+    completed.autostart.run_id,
+  )
+  assert.deepEqual(releaseRuns(root), [completed.autostart.run_id])
+
+  // With the release run recorded there is nothing left to integrate.
+  assert.throws(
+    () => integrateCohort(root, cohortId),
+    (error: unknown) =>
+      error instanceof PanError && error.code === 'COHORT_COMPLETE',
+  )
+})
+
+test('a repeated integrate adopts a release run the session failed to record', () => {
+  const root = createFixture()
+  const cohortId = finalCohortReadyToIntegrate(root)
+  const first = integrateCohort(root, cohortId)
+
+  assert.equal(first.autostart.status, 'started')
+  assert.equal(first.autostart.kind, 'release')
+
+  if (first.autostart.status !== 'started') {
+    return
+  }
+
+  // Run creation and the session record are two writes. Drop the second one
+  // to stand in for a process that died between them.
+  const unrecorded = loadCohortState(root, cohortId)
+
+  delete unrecorded.release_run_id
+  writeJson(path.join(cohortDir(root, cohortId), 'state.json'), unrecorded)
+
+  const second = integrateCohort(root, cohortId)
+
+  assert.equal(second.merge_commit, first.merge_commit)
+  assert.equal(second.autostart.status, 'already_started')
+  assert.equal(second.autostart.kind, 'release')
+
+  if (second.autostart.status !== 'already_started') {
+    return
+  }
+
+  assert.equal(second.autostart.run_id, first.autostart.run_id)
+  assert.equal(second.autostart.worktree, first.autostart.worktree)
+  assert.equal(
+    loadCohortState(root, cohortId).release_run_id,
+    first.autostart.run_id,
+  )
+  assert.deepEqual(releaseRuns(root), [first.autostart.run_id])
 })

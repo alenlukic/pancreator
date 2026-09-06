@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { chmodSync, readFileSync, writeFileSync } from 'node:fs'
+import { chmodSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -18,9 +18,42 @@ import {
   agentRegistryPath,
   readAgentRegistry,
 } from '../../src/lib/hypervisor.js'
-import { createFixture, createRun } from '../helpers.js'
+import { createFixture, createRun, PLANNING_FIXTURE_SPECS } from '../helpers.js'
+import { AWAY, checkpoint } from './delivery-helpers.js'
 
 const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
+
+/** Point the away evaluator at a script that answers with `response`. */
+function withFakeEvaluator(
+  root: string,
+  response: unknown,
+  body: () => void,
+): void {
+  const binary = path.join(root, 'fake-cursor-agent')
+
+  writeFileSync(
+    binary,
+    `#!/bin/sh\nprintf '%s\\n' '${JSON.stringify({
+      session_id: 'evaluator-session',
+      result: JSON.stringify(response),
+    })}'\n`,
+  )
+  chmodSync(binary, 0o755)
+
+  const previousBinary = process.env.PANCREATOR_CURSOR_AGENT_BIN
+
+  process.env.PANCREATOR_CURSOR_AGENT_BIN = binary
+
+  try {
+    body()
+  } finally {
+    if (previousBinary === undefined) {
+      delete process.env.PANCREATOR_CURSOR_AGENT_BIN
+    } else {
+      process.env.PANCREATOR_CURSOR_AGENT_BIN = previousBinary
+    }
+  }
+}
 
 function run(root: string, ...args: string[]): Record<string, unknown> {
   return JSON.parse(
@@ -395,4 +428,66 @@ test('away evaluate and apply resume a paused run exactly once', () => {
       process.env.PANCREATOR_CURSOR_AGENT_BIN = previousBinary
     }
   }
+})
+
+test('a routing failure after an away approval leaves one applied record and no failed one', () => {
+  const { root, runId, state } = checkpoint(
+    'planning@plan-awaiting-operator',
+    AWAY,
+  )
+  const planOutputPath = state.stage_history.at(-1)?.output_path ?? ''
+
+  withFakeEvaluator(
+    root,
+    {
+      ranked_options: [
+        {
+          rank: 1,
+          action: 'approve',
+          feasible: true,
+          rationale: 'Approve the ratified plan.',
+          evidence: [planOutputPath],
+          rollback_plan: {
+            steps: ['Start a later planning run from the same request.'],
+            verification: 'Confirm the later run starts at plan.',
+          },
+        },
+      ],
+    },
+    () => {
+      const evaluated = run(root, 'away', 'evaluate', runId) as {
+        decision_id: string
+        selected_action: { action: string } | null
+      }
+
+      assert.equal(evaluated.selected_action?.action, 'approve')
+
+      // The child specification the plan names is gone, so the routing hook
+      // that follows the approval fails. The approval is durable before the
+      // hook runs, so the failure is reported beside it and never recorded as
+      // a failed apply.
+      rmSync(path.join(root, PLANNING_FIXTURE_SPECS.child))
+
+      const applied = run(
+        root,
+        'away',
+        'apply',
+        runId,
+        '--decision',
+        evaluated.decision_id,
+      ) as {
+        state: { status: string }
+        decision: { result: string }
+        autostart?: { status: string }
+      }
+
+      assert.equal(applied.state.status, 'succeeded')
+      assert.equal(applied.decision.result, 'applied')
+      assert.equal(applied.autostart?.status, 'failed')
+      assert.deepEqual(
+        readAwayDecisionLedger(root).map((record) => record.result),
+        ['accepted', 'applied'],
+      )
+    },
+  )
 })
