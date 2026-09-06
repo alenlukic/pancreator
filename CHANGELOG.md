@@ -29,7 +29,18 @@
 - Keep `--dimensions` on the conduct-conflict card rebuild in `/pan-review`, and state that the selection list carries no spaces ([pan-review](library/cursor/commands/pan-review.md)).
 - Record the `5.14.0` release-index mapping and the 1200 s `full` gate bound in the primer ([primer](docs/target-repo-primer.md)).
 - Correct the 5.14.0 entry: its 1200 s bound covered `delivery-chunk` only ([changelog](CHANGELOG.md)).
-- Describe the release run as always running in its own managed worktree `release-<cohort-id>` created from the integration head, and name `--worktree release-<cohort-id>` on its release commands ([operator guide](docs/operator-guide.md), [COHORT-001](governance/policies/COHORT-001.json)).
+- Describe the release run as always running in a managed worktree, the recorded `--into-branch` worktree or a new `release-<digest>` worktree created from the integration head, and name `--worktree` on its release commands ([operator guide](docs/operator-guide.md), [COHORT-001](governance/policies/COHORT-001.json)).
+- Print one idempotent `pan cohort integrate <cohort-id>` as the manual command of a failed release continuation instead of an `init` and `set-stage` pair the harness could never adopt ([cohorts](src/lib/cohorts.ts)).
+- Compute the manual commands of a failed cohort route from the session that exists at failure time, and refuse a second cohort session for one plan run with `COHORT_SESSION_EXISTS` ([cohorts](src/lib/cohorts.ts)).
+- Bind the release run to the cohort session with `role: release` and its integration record, list the integration record and the chunk runs' verify outputs as its required references, and stop reporting the `implement` output as missing on it ([cohorts](src/lib/cohorts.ts), [context](src/lib/context.ts), [render](src/lib/render.ts), [verify prompt](library/workflows/delivery/prompts/verify.md)).
+- Create a managed worktree for the release run when no recorded worktree holds the integration branch, so its `pan release` commands have a `--worktree` to name ([cohorts](src/lib/cohorts.ts)).
+- Report `release_command` from `pan cohort status` when every cohort is satisfied and no release run is recorded ([cohorts](src/lib/cohorts.ts), [render](src/lib/render.ts)).
+- Persist a failed plan route on the plan run as a `failed` delivery handoff and render it in `pan status` with its manual commands ([cohorts](src/lib/cohorts.ts), [types](src/lib/types.ts), [render](src/lib/render.ts)).
+- Record a bare agent-run `pan repository-check <profile>` against every live run of its workspace, and print the exact check command on the evidence worker brief ([repository-checks](src/lib/repository-checks.ts), [state](src/lib/state.ts), [render](src/lib/render.ts)).
+- Add `pan context digest <path> [--json]` and have the planner take the child-specification digest from it instead of computing it by hand ([cli](src/cli.ts), [plan prompt](library/workflows/planning/prompts/plan.md)).
+- Pre-filter live-run scans on the materialized `state.json` before reading event logs ([state](src/lib/state.ts), [cohorts](src/lib/cohorts.ts)).
+- Cover the `commaSeparatedOption` helper and the `governance card` help lines in the review-scope entry-point check ([review-scope](src/lib/review-scope.ts)).
+- Refuse a `--dimensions` value with an empty segment, such as `security,`, with `INVALID_ARGUMENT` ([cli](src/cli.ts)).
 - State that `pan status <plan-run-id>` shows `Delivery route failed` with the manual commands after a failed plan route ([operator guide](docs/operator-guide.md)).
 - Qualify the named core charter of the harness review lineup to the no-selection case, so a `--dimensions` selection is the only rule for the lineup ([review-squad-pancreator](library/skills/review-squad-pancreator.md)).
 - Report the conditional dimensions the target did not activate and any charter the coordinator applied itself in the `/pan-review` report ([pan-review](library/cursor/commands/pan-review.md)).
