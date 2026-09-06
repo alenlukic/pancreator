@@ -1,5 +1,22 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Raise the `delivery` fast and full gate bounds to 1200 s to match `delivery-chunk` ([implement](library/workflows/delivery/stages/implement.json), [verify](library/workflows/delivery/stages/verify.json), [remediate](library/workflows/delivery/stages/remediate.json)).
+- List commit, push, merge, publication, deployment, branch deletion, and gate waivers as the actions away mode never runs. Permit the `COHORT-001` plan route to create branches and worktrees under an away-mode approval ([AWAY-001](governance/policies/AWAY-001.json), [COHORT-001](governance/policies/COHORT-001.json)).
+- Split every over-length `COHORT-001` sentence, including the routing and release rules, into one-obligation sentences ([COHORT-001](governance/policies/COHORT-001.json)).
+- Name `planning` as the default systematic workflow in the embedded and detached operating cards. Drop `--workflow delivery` from the installer's post-install next step ([embedded card](library/templates/embedded-AGENTS.md), [detached card](library/templates/detached-AGENTS.md), [install](bin/install)).
+- Render the `cohort integrate` autostart kinds as a list and remove the semicolons from the supervisor procedures ([pan-cohort](library/cursor/commands/pan-cohort.md), [pan-start](library/cursor/commands/pan-start.md), [orchestrator](library/personas/orchestrator.md)).
+- Split the over-length review-squad instructions and rewrap the selection paragraph ([pan-review](library/cursor/commands/pan-review.md), [shepherd-reviewer](library/personas/shepherd-reviewer.md), [shepherd-reviewer agent](library/cursor/agents/shepherd-reviewer.md), [review-squad](library/skills/review-squad.md)).
+
+### Fixed
+
+- Keep `--dimensions` on the conduct-conflict card rebuild in `/pan-review`, and state that the selection list carries no spaces ([pan-review](library/cursor/commands/pan-review.md)).
+- Record the `5.14.0` release-index mapping and the 1200 s `full` gate bound in the primer ([primer](docs/target-repo-primer.md)).
+- State that the 1200 s gate bound of 5.14.0 covers both `delivery-chunk` and `delivery` ([changelog](CHANGELOG.md)).
+
 ## [5.14.0] - 2026-09-05
 
 ### Changed
@@ -9,7 +26,7 @@
 - Send the `cursor-agent` prompt over stdin so a large argv element is not killed at exec ([cursor-agent](src/lib/executors/cursor-agent.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
 - Show the literal away-mode option shape in the evaluator prompt, persist every evaluator exchange as run evidence, and rank options by fitness for the gate ([away-mode](src/lib/away-mode.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
 - Consume an away-mode decision only after a successful apply, and start the cohort with `--autostart` when away mode approves a planning gate ([COHORT-001](governance/policies/COHORT-001.json), [operator guide](docs/operator-guide.md), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
-- Capture repository-check output to files, lead a process group, and kill the group on timeout. Raise fast and full gate bounds to 1200 s ([repository-checks](src/lib/repository-checks.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
+- Capture repository-check output to files, lead a process group, and kill the group on timeout. Raise the fast and full gate bounds of `delivery-chunk` and `delivery` to 1200 s ([repository-checks](src/lib/repository-checks.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
 - Name the workspace and worktree in evidence-worker briefs ([render](src/lib/render.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
 - Validate a child-specification parent digest on the trimmed file and name the expected digest ([cohort-plan](src/lib/validators/cohort-plan.ts), [c64b0d60](https://github.com/alenlukic/pancreator/commit/c64b0d60)).
 - Authenticate away-mode `cursor-agent` spawns through the same `probeEnvironment` path as the model probe ([cursor-auth](src/lib/executors/cursor-auth.ts), [4566eff9](https://github.com/alenlukic/pancreator/commit/4566eff9)).
