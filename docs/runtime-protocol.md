@@ -406,13 +406,19 @@ gate's recorded `full` pass at the unchanged fingerprint from the gate cache
 Agents never run `full`: the coder, remediator, reviewer, and QA worker iterate
 on blast-radius tests and run `fast` at most once each as validation, and the
 consolidating verifier runs neither. A worker that runs
-`pan repository-check <profile> --worktree <name>` inside a bound run's
-worktree leaves one line per execution in that run's
-`agent/evidence/repository-check-runs.jsonl` (`profile`,
-`workspace_fingerprint`, `status`, `duration_ms`, `started_at`, and
-`invoked_by: "agent"`), which is how the supervisor audits the once-only rule
-from harness records rather than from the worker's narrative. An execution
-without a live bound run records nothing. `minimal` disables both `full`
+`pan repository-check <profile> --run <run-id>` or
+`pan repository-check <profile> --worktree <name>` leaves one line per
+execution in that run's `agent/evidence/repository-check-runs.jsonl`
+(`profile`, `workspace_fingerprint`, `status`, `duration_ms`, `started_at`,
+`invoked_by: "agent"`, and the `invocation_id` of the stage invocation that
+ran it). The record is written only when the command names the run through
+`--run` or `--worktree`; a bare `pan repository-check <profile>` records
+nothing on any run. `pan output validate` reads those records and reports an
+advisory diagnostic when one invocation ran `fast` more than once, so the
+once-only rule is judged from harness records rather than from the worker's
+narrative. The evidence-worker brief names the harness root and asks for a
+`fast` run only when no gate has already passed `fast` at the current
+workspace fingerprint. `minimal` disables both `full`
 gates; `thorough` is an alias of `light`.
 
 Intake and plan workers MAY set `data.verification_recommendation`
