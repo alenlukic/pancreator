@@ -40,8 +40,8 @@ Player-coach also means you own the run's total. You are the only agent that see
 - If the preserved request or the operator's message names a worktree for the run, pass `--worktree <name>`. The option creates or resolves that worktree and binds the run's workspace to it. Do not combine it with `--workspace`.
 - If the preserved request is JSON containing `workspace_root` (for example a prior run state payload), use it as `--workspace`.
 - If the preserved request is JSON containing `gate_overrides`, write that object to a uniquely named JSON file under `runtime/inbox/queue/`. Pass its harness-relative path as `--gates`.
-- Omit `--workflow` for delivery work. The default is `planning`, the entry point for every request that delivers a change: its `plan` stage ratifies the specification and the cohort plan, and approving that gate routes the work by harness rule. You do not decide whether the work fans out; the ratified plan does. Use `--workflow prototype` only when the operator asked for a prototype, spike, or proof of concept, or asked to test an approach rather than deliver it. Use `--workflow design` only when the operator asked for UI/UX design work preceding implementation. Use `--workflow delivery` only when the operator explicitly brings a ratified specification and asks to skip planning. When the request and the operator's message leave delivering versus spiking ambiguous, STOP and report the question instead of initializing.
-- Routing on ratification is the planning default. Pass `--no-autostart` only when the operator explicitly asked to stop at the ratified plan; the operator then starts delivery by hand. Pass `--max-parallel <n>` when the operator names a parallelism limit for the cohort session.
+- Omit `--workflow` for delivery work. The default is `planning`, the entry point for every request that delivers a change. Its `plan` stage ratifies the specification and the cohort plan. Approval of that gate routes the work by harness rule. You do not decide whether the work fans out. The ratified plan does. Use `--workflow prototype` only when the operator asked for a prototype, spike, or proof of concept. Use it also when the operator asked to test an approach rather than deliver it. Use `--workflow design` only when the operator asked for UI/UX design work before implementation. Use `--workflow delivery` only when the operator explicitly brings a ratified specification and asks to skip planning. When the request and the operator's message leave delivering versus spiking ambiguous, STOP and report the question instead of initializing.
+- Routing on ratification is the planning default. Pass `--no-autostart` only when the operator explicitly asked to stop at the ratified plan. The operator then starts delivery by hand. Pass `--max-parallel <n>` when the operator names a parallelism limit for the cohort session.
 - Omit `--involvement` unless the request names a profile or asks for a specific level of involvement; the configured `active` profile applies otherwise. Run `./bin/pan involvement` to list profiles when the request asks what is available.
 
 Then:
@@ -52,7 +52,7 @@ Then:
 4. Record this session's sourced effective model with `./bin/pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source>`. When Cursor exposes no sourced model metadata, note that in your report and continue. Missing model evidence MUST NOT stop a run.
 5. Run `./bin/pan prepare <run-id> [--worktree <name>]`.
 6. Record the resolved involvement profile, active run contracts, and any gates that replaced a workflow default. Your report includes them so the operator knows where the run will stop.
-7. Run the advance loop. At the ratification stop, include the product specification in your report. If the preserved request or the operator's message already contains an explicit approval or rejection, execute that decision and continue instead. When an approval on a planning run returns an `autostart` object, report its `status` and `kind`. For `kind: delivery` (a single-chunk plan), report the `run_id`, `worktree`, and `resume_command` of the one `delivery` run the harness started. For `kind: cohort`, report each entry of `chunks` (chunk, `run_id`, `worktree`, `resume_command`), the `deferred_chunks` the parallelism limit left unstarted, and the `supervise_command`. For `failed`, report the `error` and the `manual_commands` it lists; the approval and the ratified plan stand. The started runs are supervised from a top-level session, which is what keeps their model mapping: `/pan-resume <run-id>` for the delivery run, and either one `/pan-cohort <cohort-id>` session for the whole cohort (see **Cohort supervision**) or one `/pan-resume <run-id>` session per chunk. A planning session that the operator directed to carry the build through MAY continue as that supervisor itself.
+7. Run the advance loop. At the ratification stop, include the product specification in your report. If the preserved request or the operator's message already contains an explicit approval or rejection, execute that decision and continue instead. When an approval on a planning run returns an `autostart` object, report its `status` and `kind`. For `kind: delivery` (a single-chunk plan), report the `run_id`, `worktree`, and `resume_command` of the one `delivery` run the harness started. For `kind: cohort`, report each entry of `chunks` (chunk, `run_id`, `worktree`, `resume_command`), the `deferred_chunks` the parallelism limit left unstarted, and the `supervise_command`. For `failed`, report the `error` and the `manual_commands` it lists. The approval and the ratified plan stand. The started runs are supervised from a top-level session, which is what keeps their model mapping: `/pan-resume <run-id>` for the delivery run, and either one `/pan-cohort <cohort-id>` session for the whole cohort (see **Cohort supervision**) or one `/pan-resume <run-id>` session per chunk. A planning session that the operator directed to carry the build through MAY continue as that supervisor itself.
 
 ## Resume
 
@@ -184,12 +184,14 @@ pending action, and you perform each of those per run.
    when it is present. Committing a chunk branch and integrating the cohort are
    operator-owned unless the operator's directive already covers them.
 8. When `cohort integrate` runs, read its `autostart` object. The harness
-   continues the plan itself: `kind: cohort` names the chunk runs of the next
-   cohort it started, which you supervise in this session; `kind: release`
-   names the release run, one `delivery` run that begins at `verify` on the
-   integration branch, which a top-level `/pan-resume <run-id>` session
-   supervises. For `failed`, report the `error` and the `manual_commands`; the
-   merge proof stands.
+   continues the plan itself:
+   - `kind: cohort` names the chunk runs of the next cohort it started. You
+     supervise them in this session.
+   - `kind: release` names the release run, one `delivery` run that begins at
+     `verify` on the integration branch. A top-level `/pan-resume <run-id>`
+     session supervises it.
+   - `failed` names the `error` and the `manual_commands`. The merge proof
+     stands.
 
 ## Card delivery
 

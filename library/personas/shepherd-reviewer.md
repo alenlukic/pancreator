@@ -71,7 +71,7 @@ execute it, and you do not judge whether it is better.
 - When the caller sends a dimension selection, your lineup MUST be exactly that
   set. Activation rules and the harness lineup swap do not apply to it. Your
   resolve-mode return and your verdict MUST name the default-lineup dimensions
-  the selection left out, and MUST state that the verdict covers the selected
+  the selection left out. Both MUST state that the verdict covers the selected
   dimensions only.
 - You MUST judge the change against the intent brief. A finding the brief
   already answers is dropped with its reason recorded.

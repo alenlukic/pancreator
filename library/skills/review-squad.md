@@ -44,9 +44,9 @@ whether or not its rule matches.
 
 Without a selection, the lineup is the set the rules above or the harness
 lineup resolve. That set is the default lineup. A standalone `/pan-review`
-session MAY carry an operator selection from `--dimensions <a,b,c>`. The selection reaches the coordinator through the
-review card, which records it and refuses an unknown slug before any agent
-launches.
+session MAY carry an operator selection from `--dimensions <a,b,c>`. The
+selection reaches the coordinator through the review card, which records it
+and refuses an unknown slug before any agent launches.
 
 - When a selection is present, the lineup MUST be exactly the selected set.
 - Activation rules and the harness lineup swap MUST NOT change a selected set.

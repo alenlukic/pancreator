@@ -14,7 +14,7 @@
     "Pan code MUST select the first allowed option with a complete manual rollback plan.",
     "A successful ship packet MAY receive deterministic away approval when `approve` is allowed.",
     "Deterministic ship approval MUST NOT consume the evaluated decision budget.",
-    "Away mode MUST NOT run source-control, publication, deployment, branch-deletion, or gate-waiver actions.",
+    "Away mode MUST NOT run commit, push, merge, publication, deployment, branch-deletion, or gate-waiver actions. The cohort plan route MAY create branches and worktrees under an away-mode approval, as the cohort policy permits.",
     "Each evaluation and apply result MUST append one immutable ledger record.",
     "The ledger MUST identify evaluated decisions, deterministic ship approvals, and hypervisor quarantine records.",
     "Applied away actions MUST record away authorship and MUST NOT record operator authorship.",
