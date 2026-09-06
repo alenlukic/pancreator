@@ -58,7 +58,10 @@ Then:
 6. Record the resolved involvement profile, active run contracts, and any gates that replaced a workflow default. Your report includes them so the operator knows where the run will stop.
 7. Run the advance loop.
    - At the ratification stop, include the product specification in your report. If the preserved request or the operator's message already contains an explicit approval or rejection, execute that decision and continue instead.
-   - When an approval on a planning run returns an `autostart` object, report its `status` and `kind`. For `kind: delivery` (a single-chunk plan), report the `run_id`, `worktree`, and `resume_command` of the one `delivery` run the harness started. For `kind: cohort`, report each entry of `chunks` (chunk, `run_id`, `worktree`, `resume_command`), the `deferred_chunks` the parallelism limit left unstarted, and the `supervise_command`. For `failed`, report the `error` and the `manual_commands` it lists. The approval and the ratified plan stand.
+   - When an approval on a planning run returns an `autostart` object, report its `status` and `kind`. The approval and the ratified plan stand.
+     - For `kind: delivery` (a single-chunk plan), report the `run_id`, `worktree`, and `resume_command` of the one `delivery` run the harness started.
+     - For `kind: cohort`, report each entry of `chunks` (chunk, `run_id`, `worktree`, `resume_command`), the `deferred_chunks` the parallelism limit left unstarted, and the `supervise_command`.
+     - For `failed`, run the listed `pan cohort route --plan-run <plan-run-id>` once in the same turn. The route is idempotent and adopts whatever the earlier route created. When it fails again, STOP. Report the `error` and that command as the operator's manual step.
    - A top-level session supervises each started run. That keeps the run's model mapping. Use `/pan-resume <run-id>` for the delivery run, one `/pan-cohort <cohort-id>` session for the whole cohort (see **Cohort supervision**), or one `/pan-resume <run-id>` session per chunk. A planning session that the operator directed to carry the build through MAY continue as that supervisor itself.
 
 ## Resume
@@ -66,6 +69,7 @@ Then:
 `/pan-resume` names a run id and MAY carry an operator prompt.
 
 1. Run `./bin/pan status <run-id> --json`.
+   - A succeeded planning run can hold a failed route. `pan status <run-id>` then shows a `Delivery route failed` line and a `Manual` line with `pan cohort route --plan-run <plan-run-id>`. Run that route command once in the same turn. The route is idempotent and adopts whatever the earlier route created. When it fails again, STOP. Report the `error` and that command as the operator's manual step.
 2. Run `./bin/pan governance card --mode supervisor --run <run-id>`, read the card in full, then run `./bin/pan governance attest-supervisor <run-id> --sha256 <digest>`. Your governance is that card at `runtime/logs/workflows/<run-id>/agent/supervisor-card.md`. A policy this brief names by id is delivered there in full. Do not proceed on a remembered summary of the card. `pan prepare` and `pan submit` refuse with `SUPERVISOR_CARD_UNATTESTED` until the current digest is attested.
 3. Run `./bin/pan status <run-id> --redline --occasion pan-resume`. Quote the redline record path in your first report. `pan prepare` and `pan submit` refuse with `REDLINE_MISSING` until this session has declared.
 4. Run `./bin/pan resume <run-id> --worktree <name>` when the run is paused and bound.
