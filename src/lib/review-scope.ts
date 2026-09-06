@@ -79,8 +79,8 @@ export const VERIFICATION_SUBSTRATE_PATTERNS: readonly string[] = [
 /**
  * Return the review-mode entry points of `src/cli.ts`: the `governance` case,
  * the `commaSeparatedOption` helper that parses `--dimensions`, and the help
- * lines that state the `governance card` contract. The rest of the file is not
- * review machinery.
+ * stanzas that state the `governance card` and `governance review-scope`
+ * contracts. The rest of the file is not review machinery.
  */
 export function cliGovernanceBlock(text: string | null): string | null {
   if (text === null) {
@@ -90,7 +90,10 @@ export function cliGovernanceBlock(text: string | null): string | null {
   const parts = [
     cliCaseBlock(text, 'governance'),
     cliFunctionBlock(text, 'commaSeparatedOption'),
-    cliHelpLines(text, ['pan governance card', '--dimensions']),
+    cliHelpStanzas(text, [
+      'pan governance card',
+      'pan governance review-scope',
+    ]),
   ].filter((part): part is string => part !== null)
 
   return parts.length === 0 ? null : parts.join('\n')
@@ -122,13 +125,36 @@ function cliFunctionBlock(text: string, name: string): string | null {
   return end === -1 ? text.slice(start) : text.slice(start, end + 3)
 }
 
-/** Help lines that mention any of `needles`, in file order. */
-function cliHelpLines(text: string, needles: readonly string[]): string | null {
-  const lines = text
-    .split('\n')
-    .filter((line) => needles.some((needle) => line.includes(needle)))
+/**
+ * Help stanzas whose usage line starts with one of `usages`, in file order.
+ * A stanza is the two-space-indented `pan ...` usage line plus every more
+ * deeply indented continuation line that follows it, up to the next usage
+ * line. Matching on the usage prefix rather than on option names keeps an
+ * explanation line that never repeats the option name inside the block.
+ */
+function cliHelpStanzas(
+  text: string,
+  usages: readonly string[],
+): string | null {
+  const lines = text.split('\n')
+  const selected: string[] = []
+  let inStanza = false
 
-  return lines.length === 0 ? null : lines.join('\n')
+  for (const line of lines) {
+    const isUsageLine = /^ {2}pan /u.test(line)
+
+    if (isUsageLine) {
+      inStanza = usages.some((usage) => line.startsWith(`  ${usage} `))
+    } else if (inStanza && !/^ {3,}\S/u.test(line)) {
+      inStanza = false
+    }
+
+    if (inStanza) {
+      selected.push(line)
+    }
+  }
+
+  return selected.length === 0 ? null : selected.join('\n')
 }
 
 /** True when the change edits the governance entry points of `src/cli.ts`. */

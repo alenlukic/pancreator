@@ -44,6 +44,7 @@ import {
   initCohortSession,
   integrateCohort,
   maybeStartDelivery,
+  retryDeliveryRoute,
   startCohort,
 } from './lib/cohorts.js'
 import { GATE_CACHE_ENV, gateCacheStatus } from './lib/gate-cache.js'
@@ -109,6 +110,7 @@ import { syncCursorProjection } from './lib/projection.js'
 import {
   fileExists,
   findProjectRoot,
+  isFile,
   isRecord,
   readJson,
   readText,
@@ -157,11 +159,11 @@ import {
 } from './lib/governance/supervisor-card.js'
 import { conflictsByTier, resolveReviewScope } from './lib/review-scope.js'
 import {
+  agentRepositoryCheckAdvisories,
   assertRepositoryChecksValid,
   loadRepositoryChecks,
   recordAgentRepositoryCheck,
   recordAgentRepositoryCheckForRuns,
-  recordAgentRepositoryCheckForWorkspace,
   repositoryChecksSourcePath,
   runRepositoryCheckStreaming,
 } from './lib/repository-checks.js'
@@ -236,7 +238,7 @@ export const HELP_BODY = `Usage:
   pan technologies detect [--worktree <name>] --json
   pan repository-check <profile> [--timeout-ms <milliseconds>] [--workspace <dir|worktree> | --worktree <name>] [--run <run-id>] [--json]
       --timeout-ms raises the effective bound only: resolution keeps the maximum of the request, the profile's own bound, and subset-profile timeouts.
-      --run records the execution against that run and, without --workspace or --worktree, checks its workspace. Otherwise --worktree records against every live run bound to the worktree.
+      --run records the execution against that run and, without --workspace or --worktree, checks its workspace. Otherwise --worktree records against every live run bound to the worktree. A bare invocation records against no run.
   pan repository-check validate [--json]
   pan tests impacted [--changed <ref> | --staged | --worktree-dirty] [--file <path>]... [--include <glob>]... [--depth <n>] [--list] [--json] [--advisory-ratio <0..1>]
       Self-development only. Select and run the lane tests whose import closure reaches the changed files. The default change set is the dirty working tree. An iteration aid, never a gate.
@@ -302,6 +304,8 @@ export const HELP_BODY = `Usage:
       --into-branch retargets the session: this and every later cohort merge into that branch, and later cohorts branch from it. Use it when the checkout that holds the base branch carries uncommitted work. A missing branch is created from the current integration head; an existing one must already contain that head.
   pan cohort abandon <cohort-id> --chunk <id> --note <reason> [--json]
   pan cohort clean <cohort-id> [--force] [--json]
+  pan cohort route --plan-run <run-id> [--json]
+      Route the approved plan of a succeeded planning run into delivery again: one delivery run for a single chunk, cohort 1 of a cohort session for a wider plan. This is the retry for a route that failed at approval and the opt-in for a planning run that predates routing. It adopts the run or session an earlier attempt created and refuses a run that is not planning, not succeeded, or whose plan gate recorded a decision other than approve.
   pan context digest <repo-relative-file> [--json]
       Read-only. Print the content digest of a file on the basis every audited context reference states: sha256 of the text after leading and trailing whitespace is trimmed. A planner takes a child specification's parent digest from this command rather than computing it by hand.
   pan briefs build [--force] [--json]
@@ -1781,8 +1785,9 @@ async function main(): Promise<void> {
 
       // A worker runs a profile inside its run's worktree, and the run is the
       // only place a supervisor can audit that execution from harness records.
-      // An explicit run wins over the worktree scan, and a bare invocation
-      // records against every live run bound to the workspace it checked.
+      // An explicit run wins over the worktree scan. A bare invocation names
+      // no run and records nothing: an operator's own check from the base
+      // checkout is not evidence of any run that happens to share it.
       const runEvidence = evidenceRun
         ? recordAgentRepositoryCheckForRuns(
             root,
@@ -1797,12 +1802,7 @@ async function main(): Promise<void> {
               result,
               startedAt,
             )
-          : recordAgentRepositoryCheckForWorkspace(
-              root,
-              checkWorkspace ?? process.cwd(),
-              result,
-              startedAt,
-            )
+          : []
 
       print(
         runEvidence.length > 0
@@ -2646,6 +2646,20 @@ async function main(): Promise<void> {
         return
       }
 
+      if (sub === 'route') {
+        const result = retryDeliveryRoute(
+          root,
+          requiredArgument(option(args, '--plan-run'), '--plan-run'),
+        )
+
+        print(result, asJson)
+
+        if (result.status === 'failed') {
+          process.exitCode = 1
+        }
+        return
+      }
+
       throw new PanError(`Unknown cohort subcommand: ${sub ?? '(missing)'}`, {
         code: 'UNKNOWN_COMMAND',
       })
@@ -2654,10 +2668,19 @@ async function main(): Promise<void> {
       const sub = args[0]
 
       if (sub === 'digest') {
+        // A flag in the positional slot is a missing path, not a file name.
+        if (args[1]?.startsWith('--')) {
+          throw new PanError('repo-relative-file is required.', {
+            code: 'INVALID_ARGUMENT',
+          })
+        }
+
         const relativePath = requiredArgument(args[1], 'repo-relative-file')
         const absolute = resolveInside(root, relativePath)
 
-        if (!fileExists(absolute)) {
+        // A directory exists but has no content to digest; naming the
+        // repo-relative path keeps the absolute root out of the message.
+        if (!isFile(absolute)) {
           throw new PanError(`File does not exist: ${relativePath}`, {
             code: 'CONTEXT_REFERENCE_NOT_FOUND',
             details: { path: relativePath },
@@ -3002,10 +3025,22 @@ async function main(): Promise<void> {
         const passed =
           submission.passed &&
           results.every((item) => isPassingResult(item.result))
+        // Advisory only: a repeated agent-run `fast` profile is reported by
+        // name for the supervisor's audit and never fails the validation.
+        const advisories = agentRepositoryCheckAdvisories(
+          root,
+          runId,
+          invocation.invocation_id,
+        )
 
         print(
           hasFlag(args, '--json')
-            ? { passed, submission_checks: submission.checks, results }
+            ? {
+                passed,
+                submission_checks: submission.checks,
+                results,
+                advisories,
+              }
             : [
                 ...submission.checks
                   .filter((check) => !check.passed)
@@ -3018,6 +3053,9 @@ async function main(): Promise<void> {
                 ...results.map(
                   (item) =>
                     `${item.requirement.registry_id}: ${item.result.status}`,
+                ),
+                ...advisories.map(
+                  (item) => `advisory ${item.id}: ${item.message}`,
                 ),
               ].join('\n'),
           hasFlag(args, '--json'),

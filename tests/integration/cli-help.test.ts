@@ -862,4 +862,22 @@ test('context digest prints the audited content digest of a file inside the root
 
   assert.notEqual(missing.status, 0)
   assert.match(missing.stderr, /CONTEXT_REFERENCE_NOT_FOUND/u)
+
+  // A flag in the positional slot is a missing path, not a file named `--json`.
+  const flagOnly = digest('--json')
+
+  assert.notEqual(flagOnly.status, 0)
+  assert.match(flagOnly.stderr, /INVALID_ARGUMENT/u)
+  assert.match(flagOnly.stderr, /repo-relative-file is required/u)
+  assert.doesNotMatch(flagOnly.stderr, /CONTEXT_REFERENCE_NOT_FOUND/u)
+
+  // A directory is not a file to digest; the refusal names the repo-relative
+  // path and never the absolute root.
+  const directory = digest('runtime')
+
+  assert.notEqual(directory.status, 0)
+  assert.match(directory.stderr, /CONTEXT_REFERENCE_NOT_FOUND/u)
+  assert.match(directory.stderr, /File does not exist: runtime/u)
+  assert.doesNotMatch(directory.stderr, /EISDIR|READ_FAILED/u)
+  assert.ok(!directory.stderr.includes(root), directory.stderr)
 })

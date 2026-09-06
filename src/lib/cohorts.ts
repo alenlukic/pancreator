@@ -31,6 +31,7 @@ import {
 import { keywordRunSuffixFrom } from './naming.js'
 import { panCommand } from './project-config.js'
 import {
+  eventPath,
   listRunStatesWhere,
   loadState,
   makeUniqueRunId,
@@ -38,7 +39,6 @@ import {
   operationMutexPath,
   persist,
   runIsLive,
-  runStartStageOverride,
   statePath,
 } from './state.js'
 import type {
@@ -801,7 +801,7 @@ export function initCohortSession(
 
   ensureDir(cohortDir(root, cohortId))
 
-  return persistCohortState(root, {
+  const session = persistCohortState(root, {
     schema_version: 1,
     cohort_id: cohortId,
     plan_run_id: options.planRunId,
@@ -816,6 +816,17 @@ export function initCohortSession(
     cohorts: plan.cohorts,
     satisfaction: [],
   })
+
+  // The plan run names where its plan went, whether the approval hook or the
+  // operator opened the session. This replaces a `failed` route record, so a
+  // manual init after a failed route also clears the failure.
+  recordDeliveryHandoff(root, planState, {
+    kind: 'cohort',
+    cohort_id: session.cohort_id,
+    recorded_at: now(),
+  })
+
+  return session
 }
 
 export interface StartCohortOptions {
@@ -1668,18 +1679,6 @@ export function cohortSessionForPlanRun(
 }
 
 /**
- * Whether a planning run asked the harness to route its ratified plan into
- * delivery on approval. `autostart_delivery` is recorded on every planning run
- * since routing became the default; `autostart_cohort` is the flag older runs
- * recorded when only the cohort fan-out was automatic. A run that recorded
- * neither predates both and keeps the behavior it was created with: nothing
- * starts.
- */
-function autostartRequested(state: RunState): boolean {
-  return state.autostart_delivery ?? state.autostart_cohort ?? false
-}
-
-/**
  * Route a ratified plan into delivery when its gate is approved.
  *
  * The plan gate is the routing point and the harness owns the route: exactly
@@ -1689,10 +1688,18 @@ function autostartRequested(state: RunState): boolean {
  * operator's behalf, because the routing is a recorded property of the run,
  * not a judgment made at approval time.
  *
+ * `autostart_delivery` is recorded on every planning run since routing became
+ * the default; `autostart_cohort` is the flag older runs recorded when only
+ * the cohort fan-out was automatic. `false` on either is the operator's
+ * opt-out and starts nothing. A run that recorded neither predates routing:
+ * silence there would leave the operator believing something started, so the
+ * hook reports a failed route whose one manual command is the retry, which
+ * reads the operator's invocation as the opt-in.
+ *
  * The hook runs after the decision is durable and never rewrites it. A second
  * approval finds the handoff already recorded and reports `already_started`,
  * because nothing failed. A failure reports the concrete error with the
- * manual commands, because the approval and the ratified plan remain valid
+ * manual command, because the approval and the ratified plan remain valid
  * whatever happened to the route. Every path here adds only worktrees,
  * branches, and run records, the actions `AWAY-001` and `COHORT-001` permit
  * for an autostart.
@@ -1705,29 +1712,132 @@ export function maybeStartDelivery(
   if (
     decision.action !== 'approve' ||
     state.workflow_slug !== COHORT_PLAN_WORKFLOW_SLUG ||
-    state.status !== 'succeeded' ||
-    !autostartRequested(state)
+    state.status !== 'succeeded'
   ) {
     return null
   }
 
-  const pan = panCommand(root)
+  const requested = state.autostart_delivery ?? state.autostart_cohort
+
+  if (requested === false) {
+    return null
+  }
+
+  if (requested === undefined) {
+    const failed = {
+      status: 'failed' as const,
+      error:
+        'This planning run predates routing and recorded no opt-in or opt-out.',
+      manual_commands: [routeRetryCommand(root, state.run_id)],
+    }
+
+    recordFailedDeliveryRoute(root, state, failed)
+
+    return failed
+  }
+
+  return routeDelivery(root, state)
+}
+
+/**
+ * Route the approved plan of a succeeded planning run again, by operator
+ * command.
+ *
+ * The approval hook fires once, from the gate decision, so a route that
+ * failed there has no second trigger: the decision is durable and cannot be
+ * repeated. This is that trigger. It takes the same path the hook takes, so a
+ * run or session an earlier attempt already created is adopted rather than
+ * duplicated, and a successful route replaces the `failed` handoff record.
+ * The operator's invocation stands in for the opt-in a run created before
+ * routing never recorded.
+ */
+export function retryDeliveryRoute(
+  root: string,
+  planRunId: string,
+): DeliveryAutostartResult {
+  const state = loadState(root, planRunId)
+
+  invariant(
+    state.workflow_slug === COHORT_PLAN_WORKFLOW_SLUG,
+    `Run ${planRunId} runs workflow '${state.workflow_slug}', not ` +
+      `'${COHORT_PLAN_WORKFLOW_SLUG}', so it holds no plan to route.`,
+    { code: 'COHORT_PLAN_RUN_INVALID' },
+  )
+  invariant(
+    state.status === 'succeeded',
+    `Run ${planRunId} is '${state.status}', not 'succeeded', so its plan ` +
+      'gate has not approved a plan to route.',
+    { code: 'COHORT_PLAN_RUN_NOT_SUCCEEDED' },
+  )
+
+  const decision = planGateDecision(root, planRunId)
+
+  // A succeeded planning run whose plan gate recorded a decision reached that
+  // status through an approval. A run with no decision event closed through a
+  // waived or disabled gate, and its ratified plan stage is the record then.
+  invariant(
+    decision === null || decision === 'approve',
+    `The recorded decision on the plan gate of run ${planRunId} is ` +
+      `'${decision}', not 'approve', so its plan is not routed.`,
+    { code: 'COHORT_PLAN_REJECTED' },
+  )
+
+  return routeDelivery(root, state)
+}
+
+/**
+ * The last gate decision recorded on the `plan` stage of a run, read from the
+ * decision events its log carries. Null when the log holds none.
+ */
+function planGateDecision(root: string, runId: string): string | null {
+  const eventsFile = eventPath(root, runId)
+
+  if (!fileExists(eventsFile)) {
+    return null
+  }
+
+  let decision: string | null = null
+
+  for (const line of readText(eventsFile).split('\n')) {
+    if (line.trim().length === 0) {
+      continue
+    }
+
+    let event: unknown
+
+    try {
+      event = JSON.parse(line)
+    } catch {
+      continue
+    }
+
+    if (
+      isRecord(event) &&
+      (event.type === 'operator_decision_recorded' ||
+        event.type === 'away_decision_applied') &&
+      event.stage === 'plan' &&
+      typeof event.decision === 'string'
+    ) {
+      decision = event.decision
+    }
+  }
+
+  return decision
+}
+
+/**
+ * The route itself: one `delivery` run for a single chunk, cohort 1 of a
+ * cohort session for a wider plan. Shared by the approval hook and the
+ * operator retry, so both adopt what an earlier attempt created.
+ */
+function routeDelivery(root: string, state: RunState): DeliveryAutostartResult {
   let kind: 'cohort' | 'delivery' | undefined
-  let manualCommands: string[] | null = null
 
   try {
     const plan = readRatifiedCohortPlan(root, state.run_id)
 
     if (plan.chunks.length === 1) {
-      const [chunk] = plan.chunks
-
       kind = 'delivery'
-      manualCommands = [
-        `${pan} init --workflow ${DELIVERY_WORKFLOW_SLUG} --request ` +
-          `${chunk.child_spec_path} --context-reference ` +
-          `${plan.parent_spec_path} --worktree ` +
-          deliveryWorktreeName(state.run_id, chunk.id),
-      ]
 
       return startSingleDeliveryRun(root, state, plan)
     }
@@ -1750,6 +1860,7 @@ export function maybeStartDelivery(
       }
     }
 
+    // Init records the cohort handoff on the plan run itself.
     const session =
       existing ??
       initCohortSession(root, {
@@ -1757,24 +1868,15 @@ export function maybeStartDelivery(
         maxParallel: state.autostart_max_parallel ?? null,
       })
 
-    if (!existing) {
-      recordDeliveryHandoff(root, state, {
-        kind: 'cohort',
-        cohort_id: session.cohort_id,
-        recorded_at: now(),
-      })
-    }
-
     return { status: 'started', kind, ...startCohort(root, session.cohort_id) }
   } catch (error) {
     const failed = {
       status: 'failed' as const,
       ...(kind ? { kind } : {}),
       error: errorMessage(error),
-      // The commands are read from what exists at failure time: a session
-      // that init already opened is continued, never opened a second time.
-      manual_commands:
-        manualCommands ?? cohortRouteManualCommands(root, state.run_id),
+      // The retry adopts whatever exists at failure time: a session init
+      // already opened is continued, a run already created is adopted.
+      manual_commands: [routeRetryCommand(root, state.run_id)],
     }
 
     recordFailedDeliveryRoute(root, state, failed)
@@ -1783,20 +1885,9 @@ export function maybeStartDelivery(
   }
 }
 
-/**
- * Commands that complete the cohort route by hand. Once a session exists for
- * the plan run only `cohort start` is left; before that, init opens it.
- */
-function cohortRouteManualCommands(root: string, planRunId: string): string[] {
-  const pan = panCommand(root)
-  const session = cohortSessionForPlanRun(root, planRunId)
-
-  return session
-    ? [`${pan} cohort start ${session.cohort_id}`]
-    : [
-        `${pan} cohort init --plan-run ${planRunId}`,
-        `${pan} cohort start <cohort-id>`,
-      ]
+/** The one command that completes a failed route by hand. */
+function routeRetryCommand(root: string, planRunId: string): string {
+  return `${panCommand(root)} cohort route --plan-run ${planRunId}`
 }
 
 function deliveryWorktreeName(planRunId: string, chunkId: string): string {
@@ -2125,7 +2216,7 @@ function startReleaseRun(
         description: `Release of cohort session ${cohortId}`,
         repositoryRoot,
       })
-    const adopted = existingReleaseRun(root, record.path)
+    const adopted = existingReleaseRun(root, cohortId, record.path)
 
     if (adopted) {
       persistCohortState(root, { ...state, release_run_id: adopted.run_id })
@@ -2174,25 +2265,29 @@ function releaseRunHandoff(
 }
 
 /**
- * A live release run bound to the integration checkout: a `delivery` run that
- * started at the release start stage and works in that checkout. The start
- * stage is what separates it from a chunk-shaped delivery run that happens to
- * share the workspace, and liveness is what separates it from the release run
- * of an earlier, finished session on the same branch.
+ * A live release run of this session bound to the integration checkout: a
+ * `delivery` run whose cohort binding names the session in the release role
+ * and that works in that checkout. The binding is what separates it from a
+ * chunk-shaped delivery run that happens to share the workspace, and liveness
+ * is what separates it from the release run of an earlier, finished session
+ * on the same branch.
  */
-function existingReleaseRun(root: string, workspace: string): RunState | null {
+function existingReleaseRun(
+  root: string,
+  cohortId: string,
+  workspace: string,
+): RunState | null {
   const expected = path.resolve(root, workspace)
   const matches = (run: RunState): boolean =>
     run.workflow_slug === DELIVERY_WORKFLOW_SLUG &&
+    run.cohort?.role === 'release' &&
+    run.cohort.cohort_id === cohortId &&
     path.resolve(root, run.workspace_root) === expected
 
   return (
     newestRun(
       listRunStatesWhere(root, matches).filter(
-        (run) =>
-          runIsLive(run) &&
-          matches(run) &&
-          runStartStageOverride(root, run.run_id) === RELEASE_RUN_START_STAGE,
+        (run) => runIsLive(run) && matches(run),
       ),
     ) ?? null
   )

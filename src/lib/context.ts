@@ -393,14 +393,33 @@ function selectReleaseEvidence(
     missingRequired.push(binding.integration_record)
   }
 
-  for (const chunk of cohortChunkRuns(root, binding.cohort_id)) {
+  for (const chunk of cohortChunks(root, binding.cohort_id)) {
+    // The child specification holds the acceptance criteria and validation
+    // cases of the chunk. The release run has no plan output of its own, so
+    // these are what its verify grades against.
+    if (fileExists(resolveInside(root, chunk.child_spec_path))) {
+      addReference(references, {
+        path: chunk.child_spec_path,
+        description:
+          `Child specification of chunk '${chunk.id}': the acceptance ` +
+          'criteria and validation cases this release verify grades',
+        retrieval: 'required',
+      })
+    } else {
+      missingRequired.push(chunk.child_spec_path)
+    }
+
+    if (!chunk.state) {
+      continue
+    }
+
     const verify = [...chunk.state.stage_history]
       .reverse()
       .find((item) => item.stage === 'verify')
 
     if (!verify) {
       missingRequired.push(
-        `verify output of chunk '${chunk.chunk}' run ${chunk.state.run_id}`,
+        `verify output of chunk '${chunk.id}' run ${chunk.state.run_id}`,
       )
       continue
     }
@@ -408,21 +427,22 @@ function selectReleaseEvidence(
     addStageHistoryReference(
       references,
       verify,
-      `Chunk '${chunk.chunk}' verify stage output (${verify.outcome}), run ${chunk.state.run_id}`,
+      `Chunk '${chunk.id}' verify stage output (${verify.outcome}), run ${chunk.state.run_id}`,
       'required',
     )
   }
 }
 
 /**
- * Chunk runs a cohort session records, read from the session file. The file
- * is read directly rather than through the cohort module, which imports the
- * engine that imports this module.
+ * Non-abandoned chunks a cohort session records, with the run each one
+ * started when that run's record exists. The session file is read directly
+ * rather than through the cohort module, which imports the engine that
+ * imports this module.
  */
-function cohortChunkRuns(
+function cohortChunks(
   root: string,
   cohortId: string,
-): Array<{ chunk: string; state: RunState }> {
+): Array<{ id: string; child_spec_path: string; state: RunState | null }> {
   const sessionPath = path.join(
     root,
     'runtime',
@@ -442,23 +462,34 @@ function cohortChunkRuns(
     return []
   }
 
-  const runs: Array<{ chunk: string; state: RunState }> = []
+  const chunks: Array<{
+    id: string
+    child_spec_path: string
+    state: RunState | null
+  }> = []
 
   for (const chunk of session.chunks) {
     if (
       !isRecord(chunk) ||
       typeof chunk.id !== 'string' ||
-      typeof chunk.run_id !== 'string' ||
-      chunk.abandoned !== undefined ||
-      !fileExists(statePath(root, chunk.run_id))
+      typeof chunk.child_spec_path !== 'string' ||
+      chunk.abandoned !== undefined
     ) {
       continue
     }
 
-    runs.push({ chunk: chunk.id, state: loadState(root, chunk.run_id) })
+    chunks.push({
+      id: chunk.id,
+      child_spec_path: chunk.child_spec_path,
+      state:
+        typeof chunk.run_id === 'string' &&
+        fileExists(statePath(root, chunk.run_id))
+          ? loadState(root, chunk.run_id)
+          : null,
+    })
   }
 
-  return runs
+  return chunks
 }
 
 function selectPriorAttempts(
