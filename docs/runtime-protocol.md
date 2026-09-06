@@ -413,8 +413,8 @@ execution in that run's `agent/evidence/repository-check-runs.jsonl`
 `invoked_by: "agent"`, and the `invocation_id` of the stage invocation that
 ran it). The record is written only when the command names the run through
 `--run` or `--worktree`; a bare `pan repository-check <profile>` records
-nothing on any run. `pan output validate` reads those records and reports an
-advisory diagnostic when one invocation ran `fast` more than once, so the
+nothing on any run. `pan output validate` reads those records and reports the
+`repository_check_fast_repeated` advisory when one invocation ran `fast` more than once, so the
 once-only rule is judged from harness records rather than from the worker's
 narrative. The evidence-worker brief names the harness root and asks for a
 `fast` run only when no gate has already passed `fast` at the current
