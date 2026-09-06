@@ -1781,6 +1781,20 @@ export interface RunState {
     string,
     RepositoryCheckBaselinePointer | undefined
   >
+  /**
+   * Outcome of the target-declared workspace setup commands the harness ran
+   * in this run's workspace before its first prepared stage. Present only for
+   * a run whose workspace is not the configured default. A `passed` record
+   * means setup does not run again for this run; a `failed` one is retried
+   * on the next prepare.
+   */
+  workspace_setup?: WorkspaceSetupRecord
+}
+
+/** Run-state record of one workspace setup execution. */
+export interface WorkspaceSetupRecord {
+  status: 'passed' | 'failed' | 'not_configured'
+  recorded_at: string
 }
 
 /** Run-state record of the supervisor governance card and its attestation. */

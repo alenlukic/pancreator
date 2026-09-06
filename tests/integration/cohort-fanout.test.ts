@@ -21,6 +21,7 @@ import {
   integrateCohort,
   loadCohortState,
   maybeStartDelivery,
+  releaseCohort,
   startCohort,
 } from '../../src/lib/cohorts.js'
 import { PanError } from '../../src/lib/errors.js'
@@ -33,6 +34,7 @@ import {
 } from '../../src/lib/state.js'
 import { buildInvocationInputs } from '../../src/lib/context.js'
 import { renderStatus } from '../../src/lib/render.js'
+import { loadRepositoryChecks } from '../../src/lib/repository-checks.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { readWorktreeIndex } from '../../src/lib/worktrees.js'
 import {
@@ -1361,6 +1363,29 @@ test('the last integration starts the release run at verify in its own worktree,
   )
   const parentSpecText = readFileSync(parentSpec, 'utf8')
 
+  // Before the final cohort is integrated, the merge-free release command is
+  // refused by name: it never stands in for the operator's merge.
+  assert.throws(
+    () => releaseCohort(root, cohortId),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'COHORT_NOT_SATISFIED' &&
+      error.message.includes(`Cohort 1 of session ${cohortId}`) &&
+      error.message.includes(`./bin/pan cohort integrate ${cohortId}`) &&
+      (error.details as { unsatisfied_cohort_index: number })
+        .unsatisfied_cohort_index === 1,
+  )
+  assert.deepEqual(releaseRuns(root), [])
+
+  const refused = spawnSync(
+    process.execPath,
+    [CLI, 'cohort', 'release', cohortId, '--json'],
+    { cwd: root, encoding: 'utf8' },
+  )
+
+  assert.notEqual(refused.status, 0)
+  assert.match(refused.stderr, /COHORT_NOT_SATISFIED/u)
+
   // (a) The release run reaches the parent specification by reference, so its
   // absence makes run creation fail after the merge already landed.
   rmSync(parentSpec)
@@ -1374,11 +1399,12 @@ test('the last integration starts the release run at verify in its own worktree,
     return
   }
 
-  // The retry is the idempotent integrate itself. A hand-built `pan init`
-  // would carry no start-stage record, so a later integrate could not adopt
-  // it and would start a second release run on the same checkout.
+  // The retry is the merge-free release command, not another integrate: the
+  // merge is the operator's own action and it already landed. A hand-built
+  // `pan init` would carry no start-stage record, so neither command could
+  // adopt it and it would start a second release run on the same checkout.
   assert.deepEqual(failed.autostart.manual_commands, [
-    `./bin/pan cohort integrate ${cohortId}`,
+    `./bin/pan cohort release ${cohortId}`,
   ])
   assert.equal(failed.merge_commit, git(root, ['rev-parse', 'HEAD']).trim())
   assert.ok(existsSync(path.join(root, failed.evidence_path)))
@@ -1393,23 +1419,34 @@ test('the last integration starts the release run at verify in its own worktree,
   // one command that completes the plan.
   assert.equal(
     afterFailure.release_command,
-    `./bin/pan cohort integrate ${cohortId}`,
+    `./bin/pan cohort release ${cohortId}`,
   )
   assert.deepEqual(releaseRuns(root), [])
 
-  // (b) The merge proof is durable, so a second integrate does not merge
-  // again: it reports the same proof and runs the continuation that is
-  // missing.
+  // The release command reports the same failure while the cause stands, and
+  // merges nothing while doing so.
+  const releaseFailed = releaseCohort(root, cohortId)
+
+  assert.equal(releaseFailed.status, 'failed')
+  assert.equal(releaseFailed.kind, 'release')
+  assert.equal(git(root, ['rev-parse', 'HEAD']).trim(), failed.merge_commit)
+  assert.deepEqual(releaseRuns(root), [])
+
+  // (b) The merge proof is durable, so the release command starts the release
+  // run through the CLI without touching the integration branch.
   writeFileSync(parentSpec, parentSpecText)
 
-  const completed = integrateCohort(root, cohortId)
+  const releasedViaCli = spawnSync(
+    process.execPath,
+    [CLI, 'cohort', 'release', cohortId, '--json'],
+    { cwd: root, encoding: 'utf8' },
+  )
 
-  assert.equal(completed.cohort_index, failed.cohort_index)
-  assert.equal(completed.merge_commit, failed.merge_commit)
-  assert.equal(completed.evidence_path, failed.evidence_path)
-  assert.deepEqual(completed.merged_chunks, failed.merged_chunks)
+  assert.equal(releasedViaCli.status, 0, releasedViaCli.stderr)
 
-  const release = completed.autostart
+  const release = JSON.parse(releasedViaCli.stdout) as ReturnType<
+    typeof releaseCohort
+  >
 
   assert.equal(release.status, 'started')
   assert.equal(release.kind, 'release')
@@ -1417,6 +1454,23 @@ test('the last integration starts the release run at verify in its own worktree,
   if (release.status !== 'started' || release.kind !== 'release') {
     return
   }
+
+  assert.equal(git(root, ['rev-parse', 'HEAD']).trim(), failed.merge_commit)
+
+  // A second release call adopts the run it started instead of starting
+  // another.
+  const releasedAgain = releaseCohort(root, cohortId)
+
+  assert.equal(releasedAgain.status, 'already_started')
+  assert.equal(releasedAgain.kind, 'release')
+
+  if (releasedAgain.status === 'already_started') {
+    assert.equal(releasedAgain.run_id, release.run_id)
+  }
+
+  // The merge proof the release run stands on is the one the failed integrate
+  // recorded: nothing merged again.
+  const completed = failed
 
   // Without `--into-branch` the operator's checkout holds the integration
   // branch, and Git will not check a branch out twice, so the release run
@@ -1543,12 +1597,55 @@ test('the last integration starts the release run at verify in its own worktree,
     )
   }
 
-  // The release run prepares at verify.
+  // The release run prepares at verify. Its worktree is fresh, so the
+  // target-declared setup commands provision it once before the first stage,
+  // although that stage is read-only, and the run records that they ran.
+  writeJson(path.join(root, 'runtime', 'repository-checks.json'), {
+    ...loadRepositoryChecks(root),
+    setup: [
+      `node -e "require('node:fs').writeFileSync('workspace-setup-marker.txt', 'provisioned')"`,
+    ],
+  })
   attestRunCard(root, release.run_id)
 
   const prepared = prepareInvocation(root, release.run_id)
 
   assert.equal(prepared.invocation?.stage.slug, 'verify')
+
+  const marker = path.join(
+    root,
+    state.workspace_root,
+    'workspace-setup-marker.txt',
+  )
+
+  assert.equal(readFileSync(marker, 'utf8'), 'provisioned')
+  assert.equal(
+    loadState(root, release.run_id).workspace_setup?.status,
+    'passed',
+  )
+  assert.equal(
+    existsSync(path.join(root, 'workspace-setup-marker.txt')),
+    false,
+    'setup runs in the release worktree, not in the base checkout',
+  )
+
+  // The record makes setup a once-per-run action: a later prepare of the same
+  // run does not run the commands again.
+  rmSync(marker)
+  writeJson(statePath(root, release.run_id), {
+    ...loadState(root, release.run_id),
+    pending_action: { type: 'prepare_invocation' },
+    current_invocation: null,
+  })
+
+  const reprepared = prepareInvocation(root, release.run_id)
+
+  assert.equal(reprepared.invocation?.stage.slug, 'verify')
+  assert.equal(existsSync(marker), false)
+  assert.equal(
+    loadState(root, release.run_id).workspace_setup?.recorded_at,
+    prepared.state.workspace_setup?.recorded_at,
+  )
 
   // With the release run recorded there is nothing left to integrate.
   assert.throws(
@@ -1566,7 +1663,7 @@ test('the last integration starts the release run at verify in its own worktree,
   writeJson(path.join(cohortDir(root, cohortId), 'state.json'), unrecorded)
   assert.equal(
     cohortStatus(root, cohortId).release_command,
-    `./bin/pan cohort integrate ${cohortId}`,
+    `./bin/pan cohort release ${cohortId}`,
   )
 
   const adopted = integrateCohort(root, cohortId)

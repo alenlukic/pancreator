@@ -19,6 +19,7 @@ import {
   isRecord,
   readJson,
   readText,
+  resolveInside,
 } from './io.js'
 import {
   configuredWorkspaceRoot,
@@ -31,6 +32,7 @@ import type {
   RepositoryCheckDiagnostic,
 } from './types.js'
 import { TEST_PROFILE_ENV } from './suite-profile.js'
+import { loadWorkflowFile } from './workflow.js'
 
 /**
  * The environment a profile command runs in. The harness process environment
@@ -954,11 +956,60 @@ export interface RepositoryCheckAdvisory {
 }
 
 /**
+ * How many `fast` runs one invocation's agents may record together.
+ *
+ * Each agent may run `fast` once, and a stage that dispatches parallel
+ * evidence workers puts several agents under one invocation: the `verify`
+ * stage sends a reviewer and a QA tester, each permitted one run, while the
+ * consolidating verifier runs none. The allowance is therefore the number of
+ * evidence workers the invocation's stage declares, and one for a stage that
+ * declares none. The stage comes from the invocation record, else from the
+ * run's current stage, and its definition from the run's own workflow
+ * snapshot. A run whose records cannot be read keeps the one-agent allowance.
+ */
+function agentFastRunAllowance(
+  root: string,
+  runId: string,
+  invocationId: string,
+): { allowance: number; evidence_workers: number } {
+  const single = { allowance: 1, evidence_workers: 0 }
+
+  try {
+    const layout = resolveRunLayout(root, runId)
+    const invocationPath = layout.invocation(invocationId, '.json').absolute
+    const record = fileExists(invocationPath) ? readJson(invocationPath) : null
+    const state = loadState(root, runId)
+    const stageSlug =
+      isRecord(record) &&
+      isRecord(record.stage) &&
+      typeof record.stage.slug === 'string'
+        ? record.stage.slug
+        : state.current_stage
+
+    if (!stageSlug || !state.workflow_snapshot?.path) {
+      return single
+    }
+
+    const workflow = loadWorkflowFile(
+      root,
+      resolveInside(root, state.workflow_snapshot.path),
+    )
+    const workers =
+      workflow.stages.find((stage) => stage.slug === stageSlug)
+        ?.evidence_workers?.length ?? 0
+
+    return { allowance: Math.max(1, workers), evidence_workers: workers }
+  } catch {
+    return single
+  }
+}
+
+/**
  * Advisory diagnostics read from a run's agent-run profile records for one
  * invocation. `DEV-001` and `VERIFY-001` let each agent run `fast` at most
- * once, so more than one `fast` record for the submitting invocation is
- * reported by name. It never fails a gate: the records are evidence for the
- * supervisor's audit, not a submission requirement.
+ * once, so more `fast` records for the submitting invocation than its stage
+ * has agents are reported by name. It never fails a gate: the records are
+ * evidence for the supervisor's audit, not a submission requirement.
  */
 export function agentRepositoryCheckAdvisories(
   root: string,
@@ -997,14 +1048,28 @@ export function agentRepositoryCheckAdvisories(
     }
   }
 
-  return fastRuns > 1
+  if (fastRuns <= 1) {
+    return []
+  }
+
+  const { allowance, evidence_workers: workers } = agentFastRunAllowance(
+    root,
+    runId,
+    invocationId,
+  )
+
+  return fastRuns > allowance
     ? [
         {
           id: REPOSITORY_CHECK_FAST_REPEATED,
           message:
             `Agents ran the fast profile ${fastRuns} times during invocation ` +
-            `${invocationId}; the policy allows one run per agent. See ` +
-            `${evidence.relative}.`,
+            `${invocationId}; the policy allows one run per agent, ` +
+            `${allowance} for this stage ` +
+            (workers > 0
+              ? `(${workers} evidence worker(s))`
+              : '(one stage worker)') +
+            `. See ${evidence.relative}.`,
         },
       ]
     : []
