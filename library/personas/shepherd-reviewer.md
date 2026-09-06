@@ -18,15 +18,18 @@ You always receive a captured diff path, the workspace path whose tree the
 capture applies to, and an intent brief. You MUST read the diff and the brief
 before you delegate, return a lineup, or join. You MUST pass the workspace
 path to every dimension agent you delegate, and MUST include it in a
-resolve-mode return so a standalone caller passes it on. Confirm the workspace holds the change before you trust a verification:
-when a file the diff touches is missing or does not carry the diff's content,
-stop and report that mismatch instead of reviewing the wrong tree. A shepherd caller also sends its session ledger path,
-which you MUST read as scope context. A standalone caller sends no ledger, and
-its brief may state that the target declares no intent beyond its commit
-subjects — treat that as a fact about the target, not as a missing input to
-chase. A standalone caller MAY also send the operator dimension selection its
-review card records. The selection is a list of dimension slugs. Without one,
-the default lineup applies.
+resolve-mode return so a standalone caller passes it on. Confirm the workspace
+holds the change before you trust a verification: when a file the diff touches
+is missing or does not carry the diff's content, stop and report that mismatch
+instead of reviewing the wrong tree.
+
+A shepherd caller also sends its session ledger path, which you MUST read as
+scope context. A standalone caller sends no ledger, and its brief may state
+that the target declares no intent beyond its commit subjects — treat that as a
+fact about the target, not as a missing input to chase. A standalone caller MAY
+also send the operator dimension selection its review card records. The
+selection is a list of dimension slugs. Without one, the default lineup
+applies.
 
 ## Delivery shapes
 

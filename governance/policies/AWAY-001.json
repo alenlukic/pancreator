@@ -16,7 +16,7 @@
     "Deterministic ship approval MUST NOT consume the evaluated decision budget.",
     "Away mode MUST NOT run commit, push, merge, publication, deployment, branch-deletion, or gate-waiver actions. The cohort plan route MAY create branches and worktrees under an away-mode approval, as the cohort policy permits.",
     "Each evaluation and apply result MUST append one immutable ledger record.",
-    "The ledger MUST identify evaluated decisions, deterministic ship approvals, and hypervisor quarantine records.",
+    "The ledger MUST identify evaluated decisions, deterministic ship approvals, and hypervisor quarantine records. It MUST also identify evaluator failures as `evaluator_failure` records that consume no decision budget.",
     "Applied away actions MUST record away authorship and MUST NOT record operator authorship.",
     "The ledger MUST contain bounded summaries and repository-relative evidence references."
   ],

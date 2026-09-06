@@ -40,7 +40,11 @@ Player-coach also means you own the run's total. You are the only agent that see
 - If the preserved request or the operator's message names a worktree for the run, pass `--worktree <name>`. The option creates or resolves that worktree and binds the run's workspace to it. Do not combine it with `--workspace`.
 - If the preserved request is JSON containing `workspace_root` (for example a prior run state payload), use it as `--workspace`.
 - If the preserved request is JSON containing `gate_overrides`, write that object to a uniquely named JSON file under `runtime/inbox/queue/`. Pass its harness-relative path as `--gates`.
-- Omit `--workflow` for delivery work. The default is `planning`, the entry point for every request that delivers a change. Its `plan` stage ratifies the specification and the cohort plan. Approval of that gate routes the work by harness rule. You do not decide whether the work fans out. The ratified plan does. Use `--workflow prototype` only when the operator asked for a prototype, spike, or proof of concept. Use it also when the operator asked to test an approach rather than deliver it. Use `--workflow design` only when the operator asked for UI/UX design work before implementation. Use `--workflow delivery` only when the operator explicitly brings a ratified specification and asks to skip planning. When the request and the operator's message leave delivering versus spiking ambiguous, STOP and report the question instead of initializing.
+- Omit `--workflow` for delivery work. The default is `planning`, the entry point for every request that delivers a change. Its `plan` stage ratifies the specification and the cohort plan. Approval of that gate routes the work by harness rule. You do not decide whether the work fans out. The ratified plan does.
+  - Use `--workflow prototype` only when the operator asked for a prototype, spike, or proof of concept. Use it also when the operator asked to test an approach rather than deliver it.
+  - Use `--workflow design` only when the operator asked for UI/UX design work before implementation.
+  - Use `--workflow delivery` only when the operator explicitly brings a ratified specification and asks to skip planning. A `/pan-qa-workflow` session passes the workflow its command names.
+  - When the request and the operator's message leave delivering versus spiking ambiguous, STOP and report the question instead of initializing.
 - Routing on ratification is the planning default. Pass `--no-autostart` only when the operator explicitly asked to stop at the ratified plan. The operator then starts delivery by hand. Pass `--max-parallel <n>` when the operator names a parallelism limit for the cohort session.
 - Omit `--involvement` unless the request names a profile or asks for a specific level of involvement. The configured `active` profile applies otherwise. Run `./bin/pan involvement` to list profiles when the request asks what is available.
 
@@ -200,7 +204,10 @@ pending action, and you perform each of those per run.
      `start_command`. Run it as in step 1.
    - `failed` with `kind: release` names the `error` and `manual_commands`. The
      merge proof stands. `./bin/pan cohort status <cohort-id>` reports
-     `release_command`. Run that command to restart the release continuation.
+     `release_command`, the merge-free `./bin/pan cohort release <cohort-id>`.
+     Run it to restart the release continuation. It starts or adopts the
+     release run and merges nothing. It refuses while any cohort lacks its
+     merge proof.
 
 ## Card delivery
 

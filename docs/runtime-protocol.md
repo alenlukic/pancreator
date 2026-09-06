@@ -331,7 +331,12 @@ not consume that budget. An `evaluator_failure` record, written when the
 evaluator process could not run, was killed, or returned no parsable ranking,
 does not consume it either: it is not a decision. Those records have their own
 ceiling of the same size per run, refused with `AWAY_EVALUATOR_FAILURE_LIMIT`,
-so a failing evaluator still cannot grow the ledger without bound.
+so a failing evaluator still cannot grow the ledger without bound. That refusal
+names the run's evaluator exchange records
+(`agent/evidence/away-evaluator-<timestamp>.json`, one per attempt, holding the
+prompt and the raw response) and the `pan decide <run-id>
+approve|revise|reject --note <note>` recovery, so the operator's next action is
+a hand decision rather than another evaluate.
 
 A successful ship packet can receive deterministic away approval only when the
 snapshot enables away mode and `allowed_actions` includes `approve`. The
@@ -413,13 +418,16 @@ execution in that run's `agent/evidence/repository-check-runs.jsonl`
 `invoked_by: "agent"`, and the `invocation_id` of the stage invocation that
 ran it). The record is written only when the command names the run through
 `--run` or `--worktree`; a bare `pan repository-check <profile>` records
-nothing on any run. `pan output validate` reads those records and reports the
-`repository_check_fast_repeated` advisory when one invocation ran `fast` more than once, so the
-once-only rule is judged from harness records rather than from the worker's
-narrative. The evidence-worker brief names the harness root and asks for a
-`fast` run only when no gate has already passed `fast` at the current
-workspace fingerprint. `minimal` disables both `full`
-gates; `thorough` is an alias of `light`.
+nothing on any run. The command's JSON response carries `run_evidence_paths`,
+the repository-relative evidence path of each run it recorded against, and
+omits the key when it recorded against none. `pan output validate` reads those
+records and reports the `repository_check_fast_repeated` advisory when one
+invocation ran `fast` more often than the stage's declared `evidence_workers`
+count allows, so the once-per-worker rule is judged from harness records rather
+than from the worker's narrative. The evidence-worker brief names the harness
+root and asks for a `fast` run only when no gate has already passed `fast` at
+the current workspace fingerprint. `minimal` disables both `full` gates;
+`thorough` is an alias of `light`.
 
 Intake and plan workers MAY set `data.verification_recommendation`
 (`{ "level": ..., "reason": ... }`) when the change warrants a different
