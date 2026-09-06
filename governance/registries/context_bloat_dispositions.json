@@ -156,10 +156,12 @@
         "governance/policies/COHORT-001.json",
         "library/personas/orchestrator.md",
         "library/cursor/commands/pan-start.md",
-        "docs/target-repo-primer.md"
+        "docs/target-repo-primer.md",
+        "library/templates/embedded-AGENTS.md",
+        "library/templates/detached-AGENTS.md"
       ],
       "disposition": "retain",
-      "rationale": "The routing rule appears on four surfaces by design. The policy is the normative statement of the planning default, the single-unit versus multi-unit route, the `--no-autostart` opt-out, and the `--workflow delivery` escape hatch. The orchestrator brief is the supervisor procedure that applies it at init. The `/pan-start` command is the entry checklist a session reads before the brief. The primer is the target-facing summary. The command and the brief MUST stay in sync, because a session reads each without the other.",
+      "rationale": "The routing rule appears on six surfaces by design. The policy is the normative statement of the planning entry point, the single-unit versus multi-unit route, the `--no-autostart` opt-out, and the recorded route. The `--workflow delivery` escape hatch comes from the orchestrator brief, the `/pan-start` command, the primer, and the two operating cards, not from the policy. The brief is the supervisor procedure that applies the rule at init, and the command is the entry checklist a session reads before the brief. The primer is the repository summary, and the two template cards carry the target-facing copy. The command and the brief MUST stay in sync, because a session reads each without the other.",
       "evidence": [
         "tests/integration/planning-workflow.test.ts: a planning run routes on approval by default and --no-autostart opts out",
         "tests/unit/cohorts.test.ts: the routing hook fires only for an approval of a routed planning run"
