@@ -8,7 +8,10 @@
 - List commit, push, merge, publication, deployment, branch deletion, and gate waivers as the actions away mode never runs. Permit the `COHORT-001` plan route to create branches and worktrees under an away-mode approval ([AWAY-001](governance/policies/AWAY-001.json), [COHORT-001](governance/policies/COHORT-001.json)).
 - Split every over-length `COHORT-001` sentence, including the routing and release rules, into one-obligation sentences ([COHORT-001](governance/policies/COHORT-001.json)).
 - Name `planning` as the default systematic workflow in the embedded and detached operating cards. Drop `--workflow delivery` from the installer's post-install next step ([embedded card](library/templates/embedded-AGENTS.md), [detached card](library/templates/detached-AGENTS.md), [install](bin/install)).
-- Render the `cohort integrate` autostart kinds as a list and remove the semicolons from the supervisor procedures ([pan-cohort](library/cursor/commands/pan-cohort.md), [pan-start](library/cursor/commands/pan-start.md), [orchestrator](library/personas/orchestrator.md)).
+- Render the `cohort integrate` autostart kinds as a list in the orchestrator brief and remove every semicolon from the supervisor procedures ([pan-cohort](library/cursor/commands/pan-cohort.md), [pan-start](library/cursor/commands/pan-start.md), [orchestrator](library/personas/orchestrator.md)).
+- Replace the duplicated autostart bullets of `pan-cohort` with a reference to **Cohort supervision** step 8 of the orchestrator brief ([pan-cohort](library/cursor/commands/pan-cohort.md)).
+- State that `pan cohort status <cohort-id>` reports `release_command` after a failed release continuation, and that running it restarts the continuation ([pan-cohort](library/cursor/commands/pan-cohort.md), [orchestrator](library/personas/orchestrator.md), [operator guide](docs/operator-guide.md)).
+- Raise the `delivery-candidate` fast and full gate bounds to 1200 s to match the other concurrent worktree workflows, and name it in the primer's gate-budget note ([implement](library/workflows/delivery-candidate/stages/implement.json), [verify](library/workflows/delivery-candidate/stages/verify.json), [remediate](library/workflows/delivery-candidate/stages/remediate.json), [primer](docs/target-repo-primer.md)).
 - Split the over-length review-squad instructions and rewrap the selection paragraph ([pan-review](library/cursor/commands/pan-review.md), [shepherd-reviewer](library/personas/shepherd-reviewer.md), [shepherd-reviewer agent](library/cursor/agents/shepherd-reviewer.md), [review-squad](library/skills/review-squad.md)).
 - Share one live-run definition between agent-run check evidence and release preparation, and add `pan repository-check --run <run-id>` to record evidence against one named run ([state](src/lib/state.ts), [repository-checks](src/lib/repository-checks.ts), [release-preparation](src/lib/release-preparation.ts)).
 - Read repository-check capture files bounded from the open descriptors, and remove the capture directory before a timeout kill ([repository-checks](src/lib/repository-checks.ts)).
@@ -25,7 +28,12 @@
 - Record no `failed` away decision beside an `applied` one when the routing hook fails after `pan away apply` ([cli](src/cli.ts)).
 - Keep `--dimensions` on the conduct-conflict card rebuild in `/pan-review`, and state that the selection list carries no spaces ([pan-review](library/cursor/commands/pan-review.md)).
 - Record the `5.14.0` release-index mapping and the 1200 s `full` gate bound in the primer ([primer](docs/target-repo-primer.md)).
-- State that the 1200 s gate bound of 5.14.0 covers both `delivery-chunk` and `delivery` ([changelog](CHANGELOG.md)).
+- Correct the 5.14.0 entry: its 1200 s bound covered `delivery-chunk` only ([changelog](CHANGELOG.md)).
+- Describe the release run as always running in its own managed worktree `release-<cohort-id>` created from the integration head, and name `--worktree release-<cohort-id>` on its release commands ([operator guide](docs/operator-guide.md), [COHORT-001](governance/policies/COHORT-001.json)).
+- State that `pan status <plan-run-id>` shows `Delivery route failed` with the manual commands after a failed plan route ([operator guide](docs/operator-guide.md)).
+- Qualify the named core charter of the harness review lineup to the no-selection case, so a `--dimensions` selection is the only rule for the lineup ([review-squad-pancreator](library/skills/review-squad-pancreator.md)).
+- Report the conditional dimensions the target did not activate and any charter the coordinator applied itself in the `/pan-review` report ([pan-review](library/cursor/commands/pan-review.md)).
+- Split the over-length selection-recording instruction of the harness review lineup into one-obligation sentences ([review-squad-pancreator](library/skills/review-squad-pancreator.md)).
 
 ## [5.14.0] - 2026-09-05
 
@@ -36,7 +44,7 @@
 - Send the `cursor-agent` prompt over stdin so a large argv element is not killed at exec ([cursor-agent](src/lib/executors/cursor-agent.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
 - Show the literal away-mode option shape in the evaluator prompt, persist every evaluator exchange as run evidence, and rank options by fitness for the gate ([away-mode](src/lib/away-mode.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
 - Consume an away-mode decision only after a successful apply, and start the cohort with `--autostart` when away mode approves a planning gate ([COHORT-001](governance/policies/COHORT-001.json), [operator guide](docs/operator-guide.md), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
-- Capture repository-check output to files, lead a process group, and kill the group on timeout. Raise the fast and full gate bounds of `delivery-chunk` and `delivery` to 1200 s ([repository-checks](src/lib/repository-checks.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
+- Capture repository-check output to files, lead a process group, and kill the group on timeout. Raise the fast and full gate bounds of `delivery-chunk` to 1200 s ([repository-checks](src/lib/repository-checks.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
 - Name the workspace and worktree in evidence-worker briefs ([render](src/lib/render.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
 - Validate a child-specification parent digest on the trimmed file and name the expected digest ([cohort-plan](src/lib/validators/cohort-plan.ts), [c64b0d60](https://github.com/alenlukic/pancreator/commit/c64b0d60)).
 - Authenticate away-mode `cursor-agent` spawns through the same `probeEnvironment` path as the model probe ([cursor-auth](src/lib/executors/cursor-auth.ts), [4566eff9](https://github.com/alenlukic/pancreator/commit/4566eff9)).
