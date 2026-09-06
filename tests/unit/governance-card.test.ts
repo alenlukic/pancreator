@@ -452,9 +452,8 @@ test('the review card records an operator dimension selection and what it leaves
     default: false,
     selected: ['security', 'performance'],
     not_run: defaults.filter((slug) => slug !== 'performance'),
-    conditional: conditionalReviewDimensions(root).map(
-      (dimension) => dimension.slug,
-    ),
+    // A selected set leaves nothing to the coordinator.
+    conditional: [],
     available: REVIEW_DIMENSIONS.map((dimension) => dimension.slug),
   })
 
@@ -465,12 +464,12 @@ test('the review card records an operator dimension selection and what it leaves
   assert.match(written, /^## 🎯 Review dimensions$/mu)
   assert.deepEqual(cardSlugs(written, 'Selected'), ['security', 'performance'])
   assert.deepEqual(
-    cardSlugs(written, 'Default lineup not run'),
+    cardSlugs(written, 'Not run'),
     card.review_dimensions?.not_run,
   )
-  assert.deepEqual(
+  assert.equal(
     cardSlugs(written, 'Conditional, resolved by the coordinator'),
-    card.review_dimensions?.conditional,
+    null,
   )
 })
 
@@ -495,37 +494,62 @@ test('a review card without a selection records the full default lineup', () => 
     card.review_dimensions?.conditional,
   )
   assert.equal(cardSlugs(written, 'Selected'), null)
-  assert.equal(cardSlugs(written, 'Default lineup not run'), null)
+  assert.equal(cardSlugs(written, 'Not run'), null)
 })
 
-test('a target-installation review card lists the conditional dimension apart from the lineup', () => {
+test('a target-installation review card lists an unselected conditional dimension as not run', () => {
   const root = createFixture()
 
   // bin/install drops the harness lineup from the staged payload, which
   // leaves `frontend` as the one dimension the coordinator resolves per run.
   rmSync(path.join(root, HARNESS_SQUAD_SKILL_PATH))
+  assert.deepEqual(
+    conditionalReviewDimensions(root).map((dimension) => dimension.slug),
+    ['frontend'],
+  )
+
+  // Without a selection the coordinator still resolves it against the diff.
+  const defaultCard = buildGovernanceCard(root, {
+    mode: 'review',
+    outputPath: 'runtime/inbox/review-target-default-card.md',
+  })
+  const defaultWritten = readFileSync(path.join(root, defaultCard.path), 'utf8')
+
+  assert.deepEqual(defaultCard.review_dimensions?.conditional, ['frontend'])
+  assert.deepEqual(
+    cardSlugs(defaultWritten, 'Conditional, resolved by the coordinator'),
+    ['frontend'],
+  )
 
   const card = buildGovernanceCard(root, {
     mode: 'review',
     outputPath: 'runtime/inbox/review-target-card.md',
-    dimensions: ['security'],
+    dimensions: ['correctness'],
   })
   const written = readFileSync(path.join(root, card.path), 'utf8')
 
-  assert.deepEqual(card.review_dimensions?.conditional, ['frontend'])
-  assert.deepEqual(
-    cardSlugs(written, 'Conditional, resolved by the coordinator'),
-    ['frontend'],
-  )
-  assert.deepEqual(cardSlugs(written, 'Selected'), ['security'])
-  // The conditional dimension is neither run by default nor "not run": the
-  // coordinator decides it, so the card must not list it as left out.
-  assert.deepEqual(cardSlugs(written, 'Default lineup not run'), [
-    'correctness',
+  // A selected set is exact: the activation rules do not apply, so the
+  // conditional dimension the operator did not name is not run, and the card
+  // leaves nothing to the coordinator.
+  assert.deepEqual(card.review_dimensions?.selected, ['correctness'])
+  assert.deepEqual(card.review_dimensions?.conditional, [])
+  assert.deepEqual(card.review_dimensions?.not_run, [
+    'security',
     'architecture',
     'simplification',
     'operations',
+    'frontend',
   ])
+  assert.deepEqual(cardSlugs(written, 'Selected'), ['correctness'])
+  assert.deepEqual(
+    cardSlugs(written, 'Not run'),
+    card.review_dimensions?.not_run,
+  )
+  assert.equal(
+    cardSlugs(written, 'Conditional, resolved by the coordinator'),
+    null,
+  )
+  assert.doesNotMatch(written, /^- Conditional/mu)
 })
 
 test('a conduct-conflict rebuild keeps the dimension selection on the card', () => {

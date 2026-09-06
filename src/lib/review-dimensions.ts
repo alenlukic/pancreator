@@ -153,14 +153,16 @@ export interface ReviewDimensionSelection {
   /** Slugs the squad runs, in canonical order. */
   selected: string[]
   /**
-   * Default-lineup slugs the selection leaves out. Empty for a default run.
-   * Conditional dimensions never appear here: the operator did not leave them
-   * out, the coordinator decides them.
+   * Slugs the selection leaves out, in canonical order. Empty for a default
+   * run. A selection is exact, so a conditional dimension the operator did not
+   * name is left out like any other: the activation rules do not apply to a
+   * selected set.
    */
   not_run: string[]
   /**
    * Conditional slugs the coordinator resolves against the diff, in canonical
-   * order, less any the operator selected outright.
+   * order. Only a default run has any: a selected set names every dimension
+   * that runs, so nothing is left for the coordinator to decide.
    */
   conditional: string[]
   /** Every slug this installation accepts, in canonical order. */
@@ -210,15 +212,22 @@ export function resolveReviewDimensionSelection(
   }
 
   const selected = availableSlugs.filter((slug) => cleaned.includes(slug))
-  const notRun = defaultReviewLineup(root)
-    .map((dimension) => dimension.slug)
-    .filter((slug) => !selected.includes(slug))
+  // The default lineup and the conditional dimensions are what would have
+  // run without a selection. Every one the operator did not name is not run,
+  // in table order, so the card and the report agree on what was left out.
+  const wouldRun = new Set([
+    ...defaultReviewLineup(root).map((dimension) => dimension.slug),
+    ...conditional,
+  ])
+  const notRun = availableSlugs.filter(
+    (slug) => wouldRun.has(slug) && !selected.includes(slug),
+  )
 
   return {
     default: false,
     selected,
     not_run: notRun,
-    conditional: conditional.filter((slug) => !selected.includes(slug)),
+    conditional: [],
     available: availableSlugs,
   }
 }

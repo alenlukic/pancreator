@@ -560,8 +560,6 @@ function renderReviewDimensions(selection: ReviewDimensionSelection): string[] {
   const lines = ['## 🎯 Review dimensions', '']
   const slugList = (slugs: string[]): string =>
     slugs.length > 0 ? slugs.map((slug) => `\`${slug}\``).join(', ') : 'none'
-  const conditionalLine = `- Conditional, resolved by the coordinator: ${slugList(selection.conditional)}`
-
   if (selection.default) {
     lines.push(
       'The operator selected no dimension set. The squad runs the full ' +
@@ -569,23 +567,25 @@ function renderReviewDimensions(selection: ReviewDimensionSelection): string[] {
         'activation rules.',
       '',
       `- Default lineup: ${slugList(selection.selected)}`,
-      conditionalLine,
+      `- Conditional, resolved by the coordinator: ${slugList(selection.conditional)}`,
       '',
     )
 
     return lines
   }
 
+  // A selected set is exact: the activation rules do not apply, so no
+  // dimension is left for the coordinator to resolve and a conditional one
+  // the operator did not name is listed as not run.
   lines.push(
     'The operator selected a dimension set with `--dimensions`. The squad ' +
       'runs exactly these dimensions, each with the charter that defines it. ' +
-      'The harness lineup swap does not apply to a selected set. This review ' +
-      'is partial: the report MUST name the dimensions below that it did not ' +
-      'cover.',
+      'Neither the harness lineup swap nor the activation rules apply to a ' +
+      'selected set. This review is partial: the report MUST name the ' +
+      'dimensions below that it did not cover.',
     '',
     `- Selected: ${slugList(selection.selected)}`,
-    `- Default lineup not run: ${slugList(selection.not_run)}`,
-    conditionalLine,
+    `- Not run: ${slugList(selection.not_run)}`,
     '',
   )
 

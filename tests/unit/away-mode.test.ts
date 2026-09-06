@@ -24,6 +24,7 @@ import {
 import { PanError } from '../../src/lib/errors.js'
 import {
   AWAY_MODE_ACTIONS,
+  panCommand,
   resolveAwayModeConfig,
 } from '../../src/lib/project-config.js'
 import type { HandlerInput } from '../../src/lib/requirements/types.js'
@@ -599,26 +600,42 @@ test('evaluator failures have their own ceiling and leave the decision budget al
   // refusal ends unattended continuation, so it names the evidence that
   // explains the failures and the command that takes the gate by hand.
   const evidenceDirectory = `runtime/logs/workflows/${state.run_id}/agent/evidence`
-  const recoveryCommand = `pan decide ${state.run_id} <approve|reject|revise> [--note <text>]`
 
   assert.throws(
     () => recordAwayEvaluationFailure(root, state, blocker, 'It failed again.'),
     (error: unknown) => {
       assert.ok(error instanceof PanError)
       assert.equal(error.code, 'AWAY_EVALUATOR_FAILURE_LIMIT')
+
+      const details = error.details as { recovery_command: string }
+
+      // The recovery command resolves the harness entry point the way every
+      // other harness-emitted manual command does, and names this run.
+      assert.ok(
+        details.recovery_command.startsWith(`${panCommand(root)} decide `),
+        details.recovery_command,
+      )
+      assert.ok(
+        details.recovery_command.includes(`decide ${state.run_id} `),
+        details.recovery_command,
+      )
+      assert.match(
+        details.recovery_command,
+        /<approve\|reject\|revise> \[--note <text>\]$/u,
+      )
       assert.equal(
         error.message,
         'The away evaluator failed as many times as the decision limit ' +
           'allows for this run (1 of 1). Read the evaluator exchanges under ' +
           `${evidenceDirectory}/away-evaluator-*.json, then decide the gate ` +
-          `yourself with '${recoveryCommand}'.`,
+          `yourself with '${details.recovery_command}'.`,
       )
       assert.deepEqual(error.details, {
         run_id: state.run_id,
         evaluator_failures: 1,
         max_decisions_per_run: 1,
         evidence_directory: evidenceDirectory,
-        recovery_command: recoveryCommand,
+        recovery_command: details.recovery_command,
       })
 
       return true

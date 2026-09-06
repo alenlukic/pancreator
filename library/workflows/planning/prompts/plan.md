@@ -53,9 +53,10 @@ gate ratifies the whole artifact before any source changes.
     `Handoff contract`. Each child opens with a `Parent specification`
     reference block that names the parent path, the selected range, the
     content digest, and the read trigger. Take the content digest from
-    `pan context digest <parent-path>`, run from the harness root the card
-    names. Do not compute it by hand. The validator rejects a digest on
-    another basis and names the expected value.
+    `pan context digest <parent-path>`. Run it from the harness root. The
+    card's **Harness root** line names it when present. Otherwise the card's
+    **Workspace** is the harness root. Do not compute it by hand. The
+    validator rejects a digest on another basis and names the expected value.
     Do not paste the parent body into a child.
 12. State the authority relationship in every child specification: the child
     governs the chunk's own scope, the parent governs system-wide context, the
