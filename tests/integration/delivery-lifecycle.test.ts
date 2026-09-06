@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
 import {
   existsSync,
   mkdirSync,
@@ -38,12 +39,20 @@ import {
   createFixture,
   createRun,
   makeOutput,
+  PLANNING_FIXTURE_SPECS,
   read,
   writeCanonicalDelegation,
   writeJson,
   submitAsSupervisor,
 } from '../helpers.js'
-import { AWAY, BRIEFS, checkpoint } from './delivery-helpers.js'
+import {
+  AWAY,
+  BRIEFS,
+  checkpoint,
+  withFakeEvaluator,
+} from './delivery-helpers.js'
+
+const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
 
 test('moves succeeded inbox request to complete through the full delivery workflow', () => {
   const root = createFixture()
@@ -259,6 +268,74 @@ test('enabled away mode approves a ratified planning gate', () => {
   assert.deepEqual(
     readAwayDecisionLedger(root).map((record) => record.decision_kind),
     ['evaluated', 'evaluated'],
+  )
+})
+
+test('a routing failure after an away approval leaves one applied record and no failed one', () => {
+  const { root, runId, state } = checkpoint(
+    'planning@plan-awaiting-operator',
+    AWAY,
+  )
+  const planOutputPath = state.stage_history.at(-1)?.output_path ?? ''
+  const cli = (...args: string[]): Record<string, unknown> =>
+    JSON.parse(
+      execFileSync(process.execPath, [CLI, ...args, '--json'], {
+        cwd: root,
+        encoding: 'utf8',
+      }),
+    ) as Record<string, unknown>
+
+  withFakeEvaluator(
+    root,
+    {
+      ranked_options: [
+        {
+          rank: 1,
+          action: 'approve',
+          feasible: true,
+          rationale: 'Approve the ratified plan.',
+          evidence: [planOutputPath],
+          rollback_plan: {
+            steps: ['Start a later planning run from the same request.'],
+            verification: 'Confirm the later run starts at plan.',
+          },
+        },
+      ],
+    },
+    () => {
+      const evaluated = cli('away', 'evaluate', runId) as {
+        decision_id: string
+        selected_action: { action: string } | null
+      }
+
+      assert.equal(evaluated.selected_action?.action, 'approve')
+
+      // The child specification the plan names is gone, so the routing hook
+      // that follows the approval fails. The approval is durable before the
+      // hook runs, so the failure is reported beside it and never recorded as
+      // a failed apply.
+      rmSync(path.join(root, PLANNING_FIXTURE_SPECS.child))
+
+      const applied = cli(
+        'away',
+        'apply',
+        runId,
+        '--decision',
+        evaluated.decision_id,
+      ) as {
+        state: { status: string }
+        decision: { result: string }
+        autostart?: { status: string }
+      }
+
+      assert.equal(applied.state.status, 'succeeded')
+      assert.equal(applied.decision.result, 'applied')
+      assert.equal(applied.autostart?.status, 'failed')
+      assert.deepEqual(
+        readAwayDecisionLedger(root).map((record) => record.result),
+        ['accepted', 'applied'],
+      )
+    },
   )
 })
 

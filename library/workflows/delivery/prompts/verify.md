@@ -15,8 +15,10 @@ find.
    otherwise the request the card delivers. A request that is the plan is the
    child specification with its acceptance criteria and validation plan, and
    the parent specification through its audited context reference when the
-   read trigger applies. A missing or empty evidence report is a blocked
-   stage, not a judgment call: report `blocked` and name the missing path.
+   read trigger applies. On a release run the implementation record is the
+   integration record and the chunk verify outputs the card lists. A missing
+   or empty evidence report is a blocked stage, not a judgment call: report
+   `blocked` and name the missing path.
 2. Reconcile the two reports. Where they disagree about the same behavior,
    reproduce the disputed observation yourself before grading it.
 3. Spot-check, do not redo. Verify the reports' critical claims: rerun one

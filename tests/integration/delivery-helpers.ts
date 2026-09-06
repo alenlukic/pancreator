@@ -247,6 +247,38 @@ export function installClaudeCodeFixture(
   return stubPath
 }
 
+/** Point the away evaluator at a script that answers with `response`. */
+export function withFakeEvaluator(
+  root: string,
+  response: unknown,
+  body: () => void,
+): void {
+  const binary = path.join(root, 'fake-cursor-agent')
+
+  writeFileSync(
+    binary,
+    `#!/bin/sh\nprintf '%s\\n' '${JSON.stringify({
+      session_id: 'evaluator-session',
+      result: JSON.stringify(response),
+    })}'\n`,
+  )
+  chmodSync(binary, 0o755)
+
+  const previousBinary = process.env.PANCREATOR_CURSOR_AGENT_BIN
+
+  process.env.PANCREATOR_CURSOR_AGENT_BIN = binary
+
+  try {
+    body()
+  } finally {
+    if (previousBinary === undefined) {
+      delete process.env.PANCREATOR_CURSOR_AGENT_BIN
+    } else {
+      process.env.PANCREATOR_CURSOR_AGENT_BIN = previousBinary
+    }
+  }
+}
+
 export function withStub<T>(
   stubPath: string,
   mode: string | null,

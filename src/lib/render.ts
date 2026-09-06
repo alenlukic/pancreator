@@ -518,6 +518,12 @@ export function renderEvidenceWorkerBrief(
         ]
       : []),
     '',
+    // The run is where the supervisor audits an agent-run profile, so the
+    // brief names the exact command that records the execution against it.
+    'When your scope allows one validation run of the fast profile, run ' +
+      `exactly \`./bin/pan repository-check fast --run ${invocation.run_id}\` ` +
+      'from the harness root so the run records the execution.',
+    '',
     'You are one of several parallel evidence workers for this stage. A ' +
       'separate consolidating worker joins every report into the stage ' +
       'verdict; you own one evidence dimension and no verdict.',
@@ -1110,6 +1116,26 @@ function formatValidationArtifactStatus(
   return lines
 }
 
+function renderDeliveryHandoff(
+  handoff: RunState['delivery_handoff'],
+): string[] {
+  if (!handoff) {
+    return []
+  }
+
+  switch (handoff.kind) {
+    case 'delivery':
+      return [`Delivery handoff: run ${handoff.run_id} in ${handoff.worktree}`]
+    case 'cohort':
+      return [`Delivery handoff: cohort ${handoff.cohort_id}`]
+    case 'failed':
+      return [
+        `Delivery route failed: ${handoff.error}`,
+        ...handoff.manual_commands.map((command) => `  Manual: ${command}`),
+      ]
+  }
+}
+
 /** Render a one-screen status summary for `pan status`. */
 export function renderStatus(
   state: RunState,
@@ -1131,16 +1157,12 @@ export function renderStatus(
     ...(state.request.context_reference
       ? [`Context reference: ${state.request.context_reference.source_path}`]
       : []),
+    ...(state.cohort?.role === 'release'
+      ? [`Release of cohort: ${state.cohort.cohort_id}`]
+      : []),
     `Current stage: ${state.current_stage ?? 'none'}`,
     `Pending action: ${state.pending_action.type}`,
-    ...(state.delivery_handoff
-      ? [
-          state.delivery_handoff.kind === 'delivery'
-            ? `Delivery handoff: run ${state.delivery_handoff.run_id} ` +
-              `in ${state.delivery_handoff.worktree}`
-            : `Delivery handoff: cohort ${state.delivery_handoff.cohort_id}`,
-        ]
-      : []),
+    ...renderDeliveryHandoff(state.delivery_handoff),
     `Revision: ${state.revision}`,
     `Transitions: ${state.transition_count}/` +
       state.limits.max_total_transitions,

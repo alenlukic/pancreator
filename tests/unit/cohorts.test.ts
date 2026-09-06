@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -7,8 +7,11 @@ import {
   abandonChunk,
   cohortDir,
   cohortIsSatisfied,
+  cohortSessionForPlanRun,
+  cohortSessionIds,
   cohortStatus,
   assertCohortRunUnblocked,
+  initCohortSession,
   integrateCohort,
   maybeStartDelivery,
   parseCohortPlan,
@@ -688,9 +691,13 @@ test('a routing failure reports the error and the manual commands', () => {
 
 /**
  * A succeeded planning run whose ratified plan holds the single chunk `c1`,
- * written through the run's own durable records as the routing hook reads them.
+ * or both fixture chunks when `chunkCount` is 2, written through the run's own
+ * durable records as the routing hook reads them.
  */
-function ratifiedSingleChunkPlanRun(root: string): string {
+function ratifiedSingleChunkPlanRun(
+  root: string,
+  chunkCount: 1 | 2 = 1,
+): string {
   const plan = planFixture()
   const run = createRun(root, {
     workflowSlug: 'planning',
@@ -702,12 +709,15 @@ function ratifiedSingleChunkPlanRun(root: string): string {
     schema_version: 1,
     result: 'success',
     data: {
-      cohort_plan: {
-        ...plan,
-        chunks: (plan.chunks as unknown[]).slice(0, 1),
-        edges: [],
-        cohorts: [{ index: 1, chunks: ['c1'] }],
-      },
+      cohort_plan:
+        chunkCount === 2
+          ? plan
+          : {
+              ...plan,
+              chunks: (plan.chunks as unknown[]).slice(0, 1),
+              edges: [],
+              cohorts: [{ index: 1, chunks: ['c1'] }],
+            },
     },
   })
   writeJson(statePath(root, run.run_id), {
@@ -780,4 +790,86 @@ test('a retry after a lost handoff record adopts the delivery run it already cre
     handoff?.kind === 'delivery' ? handoff.run_id : null,
     first.run_id,
   )
+})
+
+test('a plan run opens one cohort session, and a second init names the first', () => {
+  const root = createFixture()
+
+  writeSpecs(root)
+
+  const planRunId = ratifiedSingleChunkPlanRun(root, 2)
+  const session = initCohortSession(root, { planRunId })
+
+  assert.throws(
+    () => initCohortSession(root, { planRunId }),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'COHORT_SESSION_EXISTS' &&
+      error.message.includes(session.cohort_id) &&
+      error.message.includes(`./bin/pan cohort start ${session.cohort_id}`),
+  )
+  assert.deepEqual(cohortSessionIds(root), [session.cohort_id])
+})
+
+test('a cohort route that fails after init names the session that exists', () => {
+  const root = createFixture()
+
+  writeSpecs(root)
+
+  const planRunId = ratifiedSingleChunkPlanRun(root, 2)
+  const approve = { actor: 'operator' as const, action: 'approve' }
+
+  // The operator worktree store is unusable, so init opens the session and
+  // the fan-out that follows cannot create a chunk worktree.
+  mkdirSync(path.join(root, 'worktrees'), { recursive: true })
+  writeFileSync(path.join(root, 'worktrees', 'operator'), 'not a directory\n')
+
+  const before = loadState(root, planRunId)
+  const failed = maybeStartDelivery(root, before, approve)
+
+  assert.equal(failed?.status, 'failed')
+  assert.equal(failed?.kind, 'cohort')
+
+  const session = cohortSessionForPlanRun(root, planRunId)
+
+  assert.ok(session, 'init opened the session before the fan-out failed')
+
+  if (failed?.status !== 'failed') {
+    return
+  }
+
+  // The recovery continues the session that exists. An init would be refused
+  // with COHORT_SESSION_EXISTS, so it is not offered.
+  assert.deepEqual(failed.manual_commands, [
+    `./bin/pan cohort start ${session.cohort_id}`,
+  ])
+
+  // The failure is durable on the plan run, beside the approval it followed.
+  const plan = loadState(root, planRunId)
+
+  assert.equal(plan.status, 'succeeded')
+  assert.deepEqual(plan.delivery_handoff, {
+    kind: 'failed',
+    route: 'cohort',
+    error: failed.error,
+    manual_commands: failed.manual_commands,
+    recorded_at: plan.delivery_handoff?.recorded_at,
+  })
+  assert.ok(plan.revision > before.revision)
+
+  // Once the store is usable again, a repeated approval continues the same
+  // session rather than opening a second one, and replaces the failed record.
+  rmSync(path.join(root, 'worktrees', 'operator'))
+
+  const retried = maybeStartDelivery(root, loadState(root, planRunId), approve)
+
+  assert.equal(retried?.status, 'started')
+  assert.equal(retried?.kind, 'cohort')
+
+  if (retried?.status === 'started' && retried.kind === 'cohort') {
+    assert.equal(retried.cohort_id, session.cohort_id)
+  }
+
+  assert.deepEqual(cohortSessionIds(root), [session.cohort_id])
+  assert.equal(loadState(root, planRunId).delivery_handoff?.kind, 'cohort')
 })

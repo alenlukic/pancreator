@@ -1500,12 +1500,28 @@ export interface BestOfNRunRole {
 }
 
 /** Membership of one cohort fan-out, recorded on the chunk's delivery run. */
-export interface CohortRunBinding {
+export interface CohortChunkRunBinding {
   cohort_id: string
+  /** Absent on records written before the release run carried a binding. */
+  role?: 'chunk'
   /** 1-based index of the cohort this chunk belongs to. */
   cohort_index: number
   chunk: string
 }
+
+/**
+ * Binding of the release run the last integration of a cohort session
+ * started. The chunk runs are its implementation record, so the run names the
+ * session and the final integration record rather than a chunk.
+ */
+export interface CohortReleaseRunBinding {
+  cohort_id: string
+  role: 'release'
+  /** Harness-relative path of the final cohort's integration record. */
+  integration_record: string
+}
+
+export type CohortRunBinding = CohortChunkRunBinding | CohortReleaseRunBinding
 
 /** One unit of ratified work a single delivery run owns. */
 export interface CohortChunkRecord {
@@ -1602,6 +1618,19 @@ export type DeliveryHandoff =
   | {
       kind: 'cohort'
       cohort_id: string
+      recorded_at: string
+    }
+  | {
+      /**
+       * The route failed after the approval was durable. The approval and the
+       * ratified plan stand; the manual commands complete the route by hand,
+       * and a later successful retry replaces this record.
+       */
+      kind: 'failed'
+      /** Shape of the route that failed, when the plan could be read. */
+      route?: 'cohort' | 'delivery'
+      error: string
+      manual_commands: string[]
       recorded_at: string
     }
 

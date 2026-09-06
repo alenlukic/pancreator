@@ -14,6 +14,7 @@ import {
 import { isSelfDevelopmentInstallation } from './project-config.js'
 import { repositoryCheckProfileName } from './repository-checks.js'
 import { resolveRunLayout } from './run-layout.js'
+import { loadState, statePath } from './state.js'
 import { resolveTargetInstructionPaths } from './target-instructions.js'
 import { activeOperatorGateWaivers } from './waivers.js'
 import type {
@@ -333,7 +334,13 @@ function selectStageOutputs(
     const item = latestStageHistory(state, selector)
 
     if (!item) {
-      if (retrieval === 'required') {
+      // A release run starts at verify and never ran implement: its
+      // implementation record is the chunk runs `selectReleaseEvidence` lists,
+      // so the absent output is not missing context.
+      if (
+        retrieval === 'required' &&
+        !(state.cohort?.role === 'release' && selector.stage === 'implement')
+      ) {
         missingRequired.push(
           `${selector.selection.replace('_', ' ')} output for stage '${selector.stage}'`,
         )
@@ -351,6 +358,107 @@ function selectStageOutputs(
         : undefined,
     )
   }
+}
+
+/**
+ * The implementation record of a release run: the final integration record of
+ * its cohort session and the latest verify output of every chunk run the
+ * session fanned out. The release run itself has no implement stage, so
+ * without these the verifier would grade an integrated tree with no account of
+ * how it was built or checked.
+ */
+function selectReleaseEvidence(
+  references: Map<string, InvocationReference>,
+  missingRequired: string[],
+  root: string,
+  state: RunState,
+): void {
+  const binding = state.cohort
+
+  if (binding?.role !== 'release') {
+    return
+  }
+
+  if (fileExists(resolveInside(root, binding.integration_record))) {
+    addReference(references, {
+      path: binding.integration_record,
+      description:
+        `Final integration record of cohort session ${binding.cohort_id}. ` +
+        "On a release run this record and the chunk runs' verify outputs " +
+        'listed here are the implementation record; no implement stage ' +
+        'output exists.',
+      retrieval: 'required',
+    })
+  } else {
+    missingRequired.push(binding.integration_record)
+  }
+
+  for (const chunk of cohortChunkRuns(root, binding.cohort_id)) {
+    const verify = [...chunk.state.stage_history]
+      .reverse()
+      .find((item) => item.stage === 'verify')
+
+    if (!verify) {
+      missingRequired.push(
+        `verify output of chunk '${chunk.chunk}' run ${chunk.state.run_id}`,
+      )
+      continue
+    }
+
+    addStageHistoryReference(
+      references,
+      verify,
+      `Chunk '${chunk.chunk}' verify stage output (${verify.outcome}), run ${chunk.state.run_id}`,
+      'required',
+    )
+  }
+}
+
+/**
+ * Chunk runs a cohort session records, read from the session file. The file
+ * is read directly rather than through the cohort module, which imports the
+ * engine that imports this module.
+ */
+function cohortChunkRuns(
+  root: string,
+  cohortId: string,
+): Array<{ chunk: string; state: RunState }> {
+  const sessionPath = path.join(
+    root,
+    'runtime',
+    'logs',
+    'cohorts',
+    cohortId,
+    'state.json',
+  )
+
+  if (!fileExists(sessionPath)) {
+    return []
+  }
+
+  const session = readJson(sessionPath)
+
+  if (!isRecord(session) || !Array.isArray(session.chunks)) {
+    return []
+  }
+
+  const runs: Array<{ chunk: string; state: RunState }> = []
+
+  for (const chunk of session.chunks) {
+    if (
+      !isRecord(chunk) ||
+      typeof chunk.id !== 'string' ||
+      typeof chunk.run_id !== 'string' ||
+      chunk.abandoned !== undefined ||
+      !fileExists(statePath(root, chunk.run_id))
+    ) {
+      continue
+    }
+
+    runs.push({ chunk: chunk.id, state: loadState(root, chunk.run_id) })
+  }
+
+  return runs
 }
 
 function selectPriorAttempts(
@@ -951,6 +1059,7 @@ export function buildInvocationInputs(
     stage.context.conditional_stage_outputs,
     'conditional',
   )
+  selectReleaseEvidence(references, missingRequired, options.root, state)
   selectPriorAttempts(references, options.root, state, stage, options.attempt)
   selectOperatorFeedback(references, state, stage)
   selectExceptions(references, state, stage, options.workspaceFingerprint)
