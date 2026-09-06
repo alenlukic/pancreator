@@ -31,7 +31,7 @@ import {
 import { keywordRunSuffixFrom } from './naming.js'
 import { panCommand } from './project-config.js'
 import {
-  listRunStates,
+  listRunStatesWhere,
   loadState,
   makeUniqueRunId,
   now,
@@ -121,6 +121,11 @@ export interface CohortStatusView {
   /** Release run the last integration started, or null until then. */
   release_run_id: string | null
   release_resume_command: string | null
+  /**
+   * Command that starts the release run once every cohort is satisfied and no
+   * release run is recorded: the idempotent integrate retry. Null otherwise.
+   */
+  release_command: string | null
 }
 
 export interface CohortStartResult {
@@ -466,7 +471,8 @@ function assertPredecessorsSatisfied(
 
 /** Refuse a chunk run whose predecessor cohort is unsatisfied. */
 export function assertCohortRunUnblocked(root: string, state: RunState): void {
-  if (!state.cohort) {
+  // The release run follows every cohort, so it has no predecessor to wait on.
+  if (!state.cohort || state.cohort.role === 'release') {
     return
   }
 
@@ -722,7 +728,22 @@ export function initCohortSession(
   // --workspace) fans out into that repository.
   const planState = loadState(root, options.planRunId)
   const planWorkspace = path.resolve(root, planState.workspace_root || '.')
+  const existing = cohortSessionForPlanRun(root, options.planRunId)
+  const pan = panCommand(root)
 
+  // One plan fans out once. A second session would create a second set of
+  // worktrees and runs for the same chunks, so the existing session is named
+  // together with the command that continues it.
+  invariant(
+    !existing,
+    `Plan run ${options.planRunId} already opened cohort session ` +
+      `${existing?.cohort_id}. Continue it with '${pan} cohort start ` +
+      `${existing?.cohort_id}'.`,
+    {
+      code: 'COHORT_SESSION_EXISTS',
+      details: { cohort_id: existing?.cohort_id },
+    },
+  )
   invariant(
     isGitRepository(planWorkspace),
     `Cohort fan-out requires a Git repository workspace; the plan run's ` +
@@ -1016,6 +1037,10 @@ export function cohortStatus(root: string, cohortId: string): CohortStatusView {
     release_resume_command: state.release_run_id
       ? `/pan-resume ${state.release_run_id}`
       : null,
+    release_command:
+      activeIndex === null && !state.release_run_id
+        ? `${pan} cohort integrate ${cohortId}`
+        : null,
   }
 }
 
@@ -1688,10 +1713,7 @@ export function maybeStartDelivery(
 
   const pan = panCommand(root)
   let kind: 'cohort' | 'delivery' | undefined
-  let manualCommands = [
-    `${pan} cohort init --plan-run ${state.run_id}`,
-    `${pan} cohort start <cohort-id>`,
-  ]
+  let manualCommands: string[] | null = null
 
   try {
     const plan = readRatifiedCohortPlan(root, state.run_id)
@@ -1745,13 +1767,36 @@ export function maybeStartDelivery(
 
     return { status: 'started', kind, ...startCohort(root, session.cohort_id) }
   } catch (error) {
-    return {
-      status: 'failed',
+    const failed = {
+      status: 'failed' as const,
       ...(kind ? { kind } : {}),
       error: errorMessage(error),
-      manual_commands: manualCommands,
+      // The commands are read from what exists at failure time: a session
+      // that init already opened is continued, never opened a second time.
+      manual_commands:
+        manualCommands ?? cohortRouteManualCommands(root, state.run_id),
     }
+
+    recordFailedDeliveryRoute(root, state, failed)
+
+    return failed
   }
+}
+
+/**
+ * Commands that complete the cohort route by hand. Once a session exists for
+ * the plan run only `cohort start` is left; before that, init opens it.
+ */
+function cohortRouteManualCommands(root: string, planRunId: string): string[] {
+  const pan = panCommand(root)
+  const session = cohortSessionForPlanRun(root, planRunId)
+
+  return session
+    ? [`${pan} cohort start ${session.cohort_id}`]
+    : [
+        `${pan} cohort init --plan-run ${planRunId}`,
+        `${pan} cohort start <cohort-id>`,
+      ]
 }
 
 function deliveryWorktreeName(planRunId: string, chunkId: string): string {
@@ -1768,6 +1813,7 @@ function recordDeliveryHandoff(
   root: string,
   planState: RunState,
   handoff: DeliveryHandoff,
+  eventType = 'delivery_handoff_recorded',
 ): void {
   withOperationMutex(operationMutexPath(root, planState.run_id), () => {
     const current = loadState(root, planState.run_id)
@@ -1780,15 +1826,58 @@ function recordDeliveryHandoff(
     }
 
     current.delivery_handoff = handoff
-    persist(root, current, 'delivery_handoff_recorded', { handoff })
+    persist(root, current, eventType, { handoff })
     planState.delivery_handoff = handoff
   })
 }
 
+/**
+ * Persist a failed route on the plan run so `pan status` on it names the
+ * failure and the manual commands after the approval's own output is gone.
+ * The failure is reported whatever happens here: a plan run whose record
+ * does not exist (the route failed reading it) has nowhere to write, and a
+ * write failure must not hide the routing error it would annotate.
+ */
+function recordFailedDeliveryRoute(
+  root: string,
+  planState: RunState,
+  failed: {
+    kind?: 'cohort' | 'delivery'
+    error: string
+    manual_commands: string[]
+  },
+): void {
+  if (!fileExists(statePath(root, planState.run_id))) {
+    return
+  }
+
+  try {
+    recordDeliveryHandoff(
+      root,
+      planState,
+      {
+        kind: 'failed',
+        ...(failed.kind ? { route: failed.kind } : {}),
+        error: failed.error,
+        manual_commands: failed.manual_commands,
+        recorded_at: now(),
+      },
+      'delivery_route_failed',
+    )
+  } catch {
+    // The routing failure is the report; the missing annotation is not.
+  }
+}
+
 function handoffKey(handoff: DeliveryHandoff): string {
-  return handoff.kind === 'delivery'
-    ? `delivery:${handoff.run_id}`
-    : `cohort:${handoff.cohort_id}`
+  switch (handoff.kind) {
+    case 'delivery':
+      return `delivery:${handoff.run_id}`
+    case 'cohort':
+      return `cohort:${handoff.cohort_id}`
+    case 'failed':
+      return `failed:${handoff.route ?? ''}:${handoff.error}`
+  }
 }
 
 /**
@@ -1908,15 +1997,15 @@ function existingDeliveryRun(
   worktreePath: string,
 ): RunState | null {
   const workspace = path.resolve(root, worktreePath)
+  const matches = (run: RunState): boolean =>
+    run.workflow_slug === DELIVERY_WORKFLOW_SLUG &&
+    run.request.source_path === childSpecPath &&
+    path.resolve(root, run.workspace_root) === workspace
 
   return (
     newestRun(
-      listRunStates(root).filter(
-        (run) =>
-          runIsLive(run) &&
-          run.workflow_slug === DELIVERY_WORKFLOW_SLUG &&
-          run.request.source_path === childSpecPath &&
-          path.resolve(root, run.workspace_root) === workspace,
+      listRunStatesWhere(root, matches).filter(
+        (run) => runIsLive(run) && matches(run),
       ),
     ) ?? null
   )
@@ -1963,32 +2052,17 @@ function continueAfterIntegration(
   try {
     return startReleaseRun(root, cohortId)
   } catch (error) {
+    // A repeated integrate after every cohort landed reports the merge proof
+    // again and runs this continuation, so it is the one retry command. A
+    // hand-built `pan init` would carry no start-stage record or cohort
+    // binding, and the next integrate would not adopt it.
     return {
       status: 'failed',
       kind: 'release',
       error: errorMessage(error),
-      manual_commands: releaseRunManualCommands(root, state),
+      manual_commands: [`${pan} cohort integrate ${cohortId}`],
     }
   }
-}
-
-function releaseRunManualCommands(
-  root: string,
-  state: CohortSessionState,
-): string[] {
-  const pan = panCommand(root)
-  const request = releaseRunRequestPath(root, state)
-  const bound = readWorktreeIndex(root).worktrees.find(
-    (entry) => entry.branch === integrationBranch(state),
-  )
-
-  return [
-    `${pan} init --workflow ${DELIVERY_WORKFLOW_SLUG} --request ${request} ` +
-      `--context-reference ${state.parent_spec_path}` +
-      (bound ? ` --worktree ${bound.name}` : ''),
-    `${pan} set-stage <run-id> --stage ${RELEASE_RUN_START_STAGE} --note ` +
-      `"Release run of cohort session ${state.cohort_id}"`,
-  ]
 }
 
 /**
@@ -2009,19 +2083,20 @@ function releaseRunRequestPath(
 
 /**
  * Start the release run of a fully integrated cohort session: one `delivery`
- * run that begins at `verify` on the integration branch, so release
+ * run that begins at `verify` on the integrated result, so release
  * preparation happens once, on the integrated result, never per unit.
  *
  * The run is bound to the worktree that holds the integration branch when the
  * harness recorded one, which is the case after `--into-branch`. Otherwise the
  * branch is held by the operator's own checkout, which Git will not check out a
- * second time, so the run targets that checkout as its workspace and carries no
- * managed worktree.
+ * second time, so the run gets a managed worktree of its own, branched from
+ * the integration head. Every `pan release` subcommand needs `--worktree`, so a
+ * run without one could only prepare release metadata.
  *
  * Run creation and the session record are two writes, so a crash between them
  * leaves a release run the session does not name. The next attempt adopts a
- * release run already bound to the integration checkout, exactly as the
- * worktree lookup adopts a recorded worktree, instead of starting a second one.
+ * release run already bound to the release worktree, exactly as the worktree
+ * lookup adopts a recorded worktree, instead of starting a second one.
  */
 function startReleaseRun(
   root: string,
@@ -2040,12 +2115,17 @@ function startReleaseRun(
 
     const target = integrationBranch(state)
     const repositoryRoot = cohortRepositoryRoot(root, state)
-    const checkout = materializeBranchCheckout(root, target, repositoryRoot)
-    const record = readWorktreeIndex(root).worktrees.find(
-      (entry) => entry.branch === target,
-    )
-    const workspace = record ? record.path : checkout
-    const adopted = existingReleaseRun(root, workspace)
+    const index = readWorktreeIndex(root)
+    const releaseWorktree = releaseWorktreeName(cohortId)
+    const record =
+      index.worktrees.find((entry) => entry.branch === target) ??
+      index.worktrees.find((entry) => entry.name === releaseWorktree) ??
+      createWorktree(root, releaseWorktree, {
+        from: target,
+        description: `Release of cohort session ${cohortId}`,
+        repositoryRoot,
+      })
+    const adopted = existingReleaseRun(root, record.path)
 
     if (adopted) {
       persistCohortState(root, { ...state, release_run_id: adopted.run_id })
@@ -2058,17 +2138,26 @@ function startReleaseRun(
       startStage: RELEASE_RUN_START_STAGE,
       requestPath: releaseRunRequestPath(root, state),
       title: `Release · cohort ${cohortId}`,
-      workspace,
-      worktree: record
-        ? { name: record.name, path: record.path, branch: record.branch }
-        : null,
+      workspace: record.path,
+      worktree: { name: record.name, path: record.path, branch: record.branch },
       contextReferencePath: state.parent_spec_path,
+      // The chunk runs are the implementation record of this run, so the
+      // binding names the session and the final merge proof that lists them.
+      cohort: {
+        cohort_id: cohortId,
+        role: 'release',
+        integration_record: lastIntegratedCohort(state).evidence_path,
+      },
     })
 
     persistCohortState(root, { ...state, release_run_id: run.run_id })
 
     return releaseRunHandoff('started', run)
   })
+}
+
+function releaseWorktreeName(cohortId: string): string {
+  return `release-${sha256(cohortId).slice(0, 6)}`
 }
 
 function releaseRunHandoff(
@@ -2093,14 +2182,16 @@ function releaseRunHandoff(
  */
 function existingReleaseRun(root: string, workspace: string): RunState | null {
   const expected = path.resolve(root, workspace)
+  const matches = (run: RunState): boolean =>
+    run.workflow_slug === DELIVERY_WORKFLOW_SLUG &&
+    path.resolve(root, run.workspace_root) === expected
 
   return (
     newestRun(
-      listRunStates(root).filter(
+      listRunStatesWhere(root, matches).filter(
         (run) =>
           runIsLive(run) &&
-          run.workflow_slug === DELIVERY_WORKFLOW_SLUG &&
-          path.resolve(root, run.workspace_root) === expected &&
+          matches(run) &&
           runStartStageOverride(root, run.run_id) === RELEASE_RUN_START_STAGE,
       ),
     ) ?? null

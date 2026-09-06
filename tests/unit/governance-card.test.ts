@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -10,6 +10,7 @@ import {
   buildGovernanceCard,
 } from '../../src/lib/governance-card.js'
 import {
+  HARNESS_SQUAD_SKILL_PATH,
   REVIEW_DIMENSIONS,
   conditionalReviewDimensions,
   defaultReviewLineup,
@@ -495,6 +496,36 @@ test('a review card without a selection records the full default lineup', () => 
   )
   assert.equal(cardSlugs(written, 'Selected'), null)
   assert.equal(cardSlugs(written, 'Default lineup not run'), null)
+})
+
+test('a target-installation review card lists the conditional dimension apart from the lineup', () => {
+  const root = createFixture()
+
+  // bin/install drops the harness lineup from the staged payload, which
+  // leaves `frontend` as the one dimension the coordinator resolves per run.
+  rmSync(path.join(root, HARNESS_SQUAD_SKILL_PATH))
+
+  const card = buildGovernanceCard(root, {
+    mode: 'review',
+    outputPath: 'runtime/inbox/review-target-card.md',
+    dimensions: ['security'],
+  })
+  const written = readFileSync(path.join(root, card.path), 'utf8')
+
+  assert.deepEqual(card.review_dimensions?.conditional, ['frontend'])
+  assert.deepEqual(
+    cardSlugs(written, 'Conditional, resolved by the coordinator'),
+    ['frontend'],
+  )
+  assert.deepEqual(cardSlugs(written, 'Selected'), ['security'])
+  // The conditional dimension is neither run by default nor "not run": the
+  // coordinator decides it, so the card must not list it as left out.
+  assert.deepEqual(cardSlugs(written, 'Default lineup not run'), [
+    'correctness',
+    'architecture',
+    'simplification',
+    'operations',
+  ])
 })
 
 test('a conduct-conflict rebuild keeps the dimension selection on the card', () => {

@@ -261,6 +261,21 @@ test('the tests of each machinery module are derived substrate', () => {
 
 test('only a change inside the governance case of cli.ts is an entry-point change', () => {
   const before = [
+    'const HELP_BODY = `',
+    '  pan validate [--json]',
+    '  pan governance card --mode <mode> [--dimensions <a,b>] [--json]',
+    '      --dimensions (review mode) selects the review dimensions.',
+    '  pan best-of-n status <bon-id> [--json]',
+    '`',
+    '',
+    'function commaSeparatedOption(args, flag) {',
+    "  return args.split(',')",
+    '}',
+    '',
+    'function otherHelper(value) {',
+    '  return value',
+    '}',
+    '',
     "    case 'validate': {",
     '      return 1',
     '    }',
@@ -281,6 +296,28 @@ test('only a change inside the governance case of cli.ts is an entry-point chang
   assert.equal(cliGovernanceBlocksChanged(before, before), false)
   // A null side means the file gained the case, which changes the entry point.
   assert.equal(cliGovernanceBlocksChanged(null, before), true)
+
+  // The `--dimensions` contract lives partly outside the case: the option
+  // parser and the help lines that state the accepted values are part of the
+  // entry point, while an unrelated helper or help line is not.
+  const parserChanged = before.replace(
+    "return args.split(',')",
+    "return args.split(',').filter(Boolean)",
+  )
+  const helpChanged = before.replace(
+    'selects the review dimensions.',
+    'selects the review dimensions to run.',
+  )
+  const otherHelperChanged = before.replace('return value', 'return value + 1')
+  const otherHelpChanged = before.replace(
+    'pan best-of-n status <bon-id> [--json]',
+    'pan best-of-n status <bon-id> [--verbose] [--json]',
+  )
+
+  assert.equal(cliGovernanceBlocksChanged(before, parserChanged), true)
+  assert.equal(cliGovernanceBlocksChanged(before, helpChanged), true)
+  assert.equal(cliGovernanceBlocksChanged(before, otherHelperChanged), false)
+  assert.equal(cliGovernanceBlocksChanged(before, otherHelpChanged), false)
 })
 
 test('a policy row with no instruction or summary change is not a standards delta', () => {

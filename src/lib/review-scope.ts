@@ -77,15 +77,28 @@ export const VERIFICATION_SUBSTRATE_PATTERNS: readonly string[] = [
 ]
 
 /**
- * Return the `governance` case of `src/cli.ts`, which wires the review-mode
- * entry points. The rest of the file is not review machinery.
+ * Return the review-mode entry points of `src/cli.ts`: the `governance` case,
+ * the `commaSeparatedOption` helper that parses `--dimensions`, and the help
+ * lines that state the `governance card` contract. The rest of the file is not
+ * review machinery.
  */
 export function cliGovernanceBlock(text: string | null): string | null {
   if (text === null) {
     return null
   }
 
-  const start = text.indexOf("case 'governance': {")
+  const parts = [
+    cliCaseBlock(text, 'governance'),
+    cliFunctionBlock(text, 'commaSeparatedOption'),
+    cliHelpLines(text, ['pan governance card', '--dimensions']),
+  ].filter((part): part is string => part !== null)
+
+  return parts.length === 0 ? null : parts.join('\n')
+}
+
+/** One `case '<name>': {` block of the CLI dispatcher, up to the next case. */
+function cliCaseBlock(text: string, name: string): string | null {
+  const start = text.indexOf(`case '${name}': {`)
 
   if (start === -1) {
     return null
@@ -94,6 +107,28 @@ export function cliGovernanceBlock(text: string | null): string | null {
   const next = text.indexOf("\n    case '", start)
 
   return next === -1 ? text.slice(start) : text.slice(start, next)
+}
+
+/** One top-level `function <name>(` body, up to its closing brace. */
+function cliFunctionBlock(text: string, name: string): string | null {
+  const start = text.indexOf(`\nfunction ${name}(`)
+
+  if (start === -1) {
+    return null
+  }
+
+  const end = text.indexOf('\n}\n', start)
+
+  return end === -1 ? text.slice(start) : text.slice(start, end + 3)
+}
+
+/** Help lines that mention any of `needles`, in file order. */
+function cliHelpLines(text: string, needles: readonly string[]): string | null {
+  const lines = text
+    .split('\n')
+    .filter((line) => needles.some((needle) => line.includes(needle)))
+
+  return lines.length === 0 ? null : lines.join('\n')
 }
 
 /** True when the change edits the governance entry points of `src/cli.ts`. */

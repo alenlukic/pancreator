@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { readdirSync } from 'node:fs'
+import { readdirSync, realpathSync } from 'node:fs'
 import path from 'node:path'
 
 import { invariant } from './errors.js'
@@ -197,6 +197,43 @@ export function listRunStates(root: string): RunState[] {
 }
 
 /**
+ * State of every recorded run whose materialized `state.json` passes
+ * `prefilter`, loaded through `loadState` so the write-ahead log still wins.
+ *
+ * `loadState` reads the whole event log tail of every run, which a scan over
+ * a large runtime pays once per run. The prefilter reads only the materialized
+ * file, so a caller that keys on a field the write-ahead path never changes
+ * (workflow, workspace, worktree binding, request) skips the log of every
+ * run it would drop anyway. Liveness is not such a field: status can be ahead
+ * in the log, so the caller judges it on the loaded state.
+ */
+export function listRunStatesWhere(
+  root: string,
+  prefilter: (materialized: RunState) => boolean,
+): RunState[] {
+  const states: RunState[] = []
+
+  for (const runId of listRunIds(root)) {
+    try {
+      const materialized = parseRunState(
+        readJson(statePath(root, runId)),
+        statePath(root, runId),
+      )
+
+      if (!prefilter(materialized)) {
+        continue
+      }
+
+      states.push(loadState(root, runId))
+    } catch {
+      continue
+    }
+  }
+
+  return states
+}
+
+/**
  * Live runs bound to one managed worktree, by its name or, when the caller
  * knows the worktree record, by a workspace root that resolves to its path.
  *
@@ -211,14 +248,41 @@ export function liveRunsBoundToWorktree(
   record?: { path: string } | null,
 ): RunState[] {
   const recordPath = record ? path.resolve(root, record.path) : null
+  const bound = (state: RunState): boolean =>
+    state.managed_worktree?.name === worktreeName ||
+    (recordPath !== null &&
+      path.resolve(root, state.workspace_root) === recordPath)
 
-  return listRunStates(root).filter(
-    (state) =>
-      runIsLive(state) &&
-      (state.managed_worktree?.name === worktreeName ||
-        (recordPath !== null &&
-          path.resolve(root, state.workspace_root) === recordPath)),
+  return listRunStatesWhere(root, bound).filter(
+    (state) => runIsLive(state) && bound(state),
   )
+}
+
+/**
+ * Live runs whose workspace resolves to `workspacePath`, whether or not that
+ * workspace is a managed worktree. A release run in the base checkout and a
+ * worker that runs a check from its run's directory both resolve here.
+ */
+export function liveRunsInWorkspace(
+  root: string,
+  workspacePath: string,
+): RunState[] {
+  const expected = canonicalPath(path.resolve(workspacePath))
+  const inWorkspace = (state: RunState): boolean =>
+    canonicalPath(path.resolve(root, state.workspace_root)) === expected
+
+  return listRunStatesWhere(root, inWorkspace).filter(
+    (state) => runIsLive(state) && inWorkspace(state),
+  )
+}
+
+/** Resolve symlinks when the path exists, so `/tmp` and its target compare equal. */
+function canonicalPath(absolute: string): string {
+  try {
+    return realpathSync(absolute)
+  } catch {
+    return absolute
+  }
 }
 
 /**
