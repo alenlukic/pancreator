@@ -8,7 +8,7 @@ This handbook records conventions verified in this repository. It is not a gener
 
 ## Detection evidence
 
-The technology detector reported `javascript` from `package.json`, `prettier.config.js`, and the eval fixture modules `evals/fixtures/toy-node/src/greet.mjs` and `evals/fixtures/toy-node/tests/greet.test.mjs`.
+`./bin/pan technologies detect --json` reported `javascript` from `package.json`, `prettier.config.js`, and the eval fixture modules `evals/fixtures/toy-node/src/greet.mjs` and `evals/fixtures/toy-node/tests/greet.test.mjs`.
 
 ## Where JavaScript lives
 
@@ -33,11 +33,11 @@ Agents SHOULD keep new logic in TypeScript under `src/`. JavaScript is appropria
 
 - Small top-level `function` declarations rather than classes or nested factories.
 - `fail(message)` writes to `process.stderr` and calls `process.exit(1)`; `option(name)` and `requiredOption(name)` read `--flag value` pairs from `process.argv`.
-- `readJson(filePath)` parses UTF-8 JSON; `writeJson(filePath, value)` creates the parent directory and writes `JSON.stringify(value, null, 2)` plus a trailing newline. Generated JSON in this repository MUST keep that two-space, newline-terminated shape.
-- Module-level constants are UPPER_SNAKE, as in `EMBEDDED_HARNESS_PREFIX` and `LANGUAGE_BUNDLE_MARKER`.
+- `readJson(filePath)` parses UTF-8 JSON; `writeJson(filePath, value)` creates the parent directory and writes `JSON.stringify(value, null, 2)` plus a trailing newline; `writeJsonAtomic(filePath, value)` writes through a temporary file and renames. Generated JSON in this repository MUST keep that two-space, newline-terminated shape.
+- Module-level constants are UPPER_SNAKE, as in `EMBEDDED_HARNESS_PREFIX`, `LANGUAGE_BUNDLE_MARKER`, and `UNRESOLVED_PROJECTION_TOKEN`.
 - The file ends with an `if` / `else if` dispatch on `process.argv[2]` that calls one named subcommand function and fails on an unknown command. A new installer step is added as one named function plus one dispatch branch, as `strip-harness-test-scripts` is.
 
-Some installer functions deliberately mirror compiled TypeScript, because the installer runs before the staged payload is built. Those mirrors carry a comment naming the compiled module and the tests that pin both sides. An agent changing one side MUST change the other and MUST keep that comment accurate.
+Some installer functions deliberately mirror compiled TypeScript, because the installer runs before the staged payload is built. Those mirrors carry a comment naming the compiled module and the tests that pin both sides. An agent changing one side MUST change the other and MUST keep that comment accurate. `governance/registries/context_bloat_dispositions.json` records that mirroring as reviewed, intentional duplication.
 
 ## Formatting
 
