@@ -497,6 +497,14 @@ export function renderEvidenceWorkerBrief(
       `- \`${item.path}\` — ${item.description}`,
       ...(item.condition ? [`  - Read when: ${item.condition}`] : []),
     ])
+  // A passed `fast` gate at the current workspace fingerprint is the evidence
+  // the worker's scope tells it to cite. Naming the command then would turn a
+  // permission into an order to rerun a profile the gate already ran.
+  const fastEvidenceCurrent = invocation.inputs.references.some(
+    (item) =>
+      item.gate_evidence?.profile === 'fast' && item.gate_evidence.current,
+  )
+  const harnessRoot = invocation.harness_root
   const lines = [
     `# Evidence brief: ${worker.role} for stage \`${invocation.stage.slug}\``,
     '',
@@ -517,6 +525,27 @@ export function renderEvidenceWorkerBrief(
             `**Path** \`${invocation.managed_worktree.path}\``,
         ]
       : []),
+    ...(harnessRoot
+      ? [
+          '',
+          `**Harness root** \`${harnessRoot}\` — every \`./bin/pan\` command ` +
+            'in this brief runs from this directory, not the workspace.',
+        ]
+      : []),
+    '',
+    // The run is where the supervisor audits an agent-run profile, so the
+    // brief names the exact command that records the execution against it,
+    // or the gate evidence that makes running it unnecessary.
+    fastEvidenceCurrent
+      ? 'The implement gate already ran `fast` at this workspace ' +
+        'fingerprint. Cite that gate evidence reference from your card ' +
+        'instead of running the profile.'
+      : 'When your scope allows one validation run of the fast profile, run ' +
+        `exactly \`./bin/pan repository-check fast --run ${invocation.run_id}\` ` +
+        (harnessRoot
+          ? `from the harness root \`${harnessRoot}\` `
+          : 'from this checkout ') +
+        'so the run records the execution.',
     '',
     'You are one of several parallel evidence workers for this stage. A ' +
       'separate consolidating worker joins every report into the stage ' +
@@ -1110,6 +1139,26 @@ function formatValidationArtifactStatus(
   return lines
 }
 
+function renderDeliveryHandoff(
+  handoff: RunState['delivery_handoff'],
+): string[] {
+  if (!handoff) {
+    return []
+  }
+
+  switch (handoff.kind) {
+    case 'delivery':
+      return [`Delivery handoff: run ${handoff.run_id} in ${handoff.worktree}`]
+    case 'cohort':
+      return [`Delivery handoff: cohort ${handoff.cohort_id}`]
+    case 'failed':
+      return [
+        `Delivery route failed: ${handoff.error}`,
+        ...handoff.manual_commands.map((command) => `  Manual: ${command}`),
+      ]
+  }
+}
+
 /** Render a one-screen status summary for `pan status`. */
 export function renderStatus(
   state: RunState,
@@ -1128,8 +1177,15 @@ export function renderStatus(
           `Managed branch: ${state.managed_worktree.branch}`,
         ]
       : []),
+    ...(state.request.context_reference
+      ? [`Context reference: ${state.request.context_reference.source_path}`]
+      : []),
+    ...(state.cohort?.role === 'release'
+      ? [`Release of cohort: ${state.cohort.cohort_id}`]
+      : []),
     `Current stage: ${state.current_stage ?? 'none'}`,
     `Pending action: ${state.pending_action.type}`,
+    ...renderDeliveryHandoff(state.delivery_handoff),
     `Revision: ${state.revision}`,
     `Transitions: ${state.transition_count}/` +
       state.limits.max_total_transitions,

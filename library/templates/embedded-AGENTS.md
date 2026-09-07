@@ -50,7 +50,7 @@ This directory contains the Pancreator harness installed for the parent reposito
 
 ## Work modes and operator involvement
 
-- `systematic` is the default and MUST execute a governed workflow: `delivery` for production-ready delivery, `prototype` for a fast spike that answers a technical question, or `design` for UI/UX work preceding implementation.
+- `systematic` is the default and MUST execute a governed workflow. `planning` is the default workflow for production-ready delivery. Approval of its ratified plan routes the work into `delivery` by harness rule. A single-chunk plan starts one `delivery` run, and a wider plan opens a cohort session. Select `prototype` for a fast spike that answers a technical question, or `design` for UI/UX work before implementation. Pass `--workflow delivery` only when the operator brings a ratified specification and skips `planning`.
 - A `prototype` run applies `PROTO-001`: thinner up-front design, deprioritized QA breadth, declared shortcuts, and an operator-ratified evaluation of what the spike proved. Its output MUST NOT be represented as production-ready, and productionizing an adopted approach MUST route to a systematic run.
 - `lightweight` MAY be selected only by an explicit `/pan-spotfix` invocation under `WORK-001` and `SPOT-001`.
 - `interactive` MAY be selected only by an explicit `/pan-pair` invocation under `PAIR-001`. The agent applies its persona's governance and is bound to no workflow, stage contract, gate, or run contract; the operator owns scope, sequencing, and completion. It MUST NOT create or advance a workflow run.

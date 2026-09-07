@@ -9,13 +9,18 @@ import { renderStatus } from '../../src/lib/render.js'
 import {
   eventPath,
   invocationLiveness,
+  liveRunsBoundToWorktree,
   loadState,
   loadStateRevision,
   persist,
   statePath,
 } from '../../src/lib/state.js'
-import type { RunState, StageHistoryItem } from '../../src/lib/types.js'
-import { createFixture, createRun } from '../helpers.js'
+import type {
+  RunState,
+  RunStatus,
+  StageHistoryItem,
+} from '../../src/lib/types.js'
+import { createFixture, createRun, writeJson } from '../helpers.js'
 
 test('state events use recoverable content-addressed references', () => {
   const root = createFixture()
@@ -397,5 +402,83 @@ test('persist rejects payloads that shadow reserved event envelope keys', () => 
   assert.throws(
     () => persist(root, state, 'fixture_event', { revision: 1 }),
     /reserved envelope key 'revision'/u,
+  )
+})
+
+test('a run occupies a worktree while it is not terminal, by binding or workspace', () => {
+  const root = createFixture()
+  const statuses: RunStatus[] = [
+    'running',
+    'awaiting_supervisor',
+    'awaiting_operator',
+    'paused',
+    'succeeded',
+    'failed',
+    'canceled',
+  ]
+  const worktree = {
+    name: 'shared',
+    path: 'worktrees/operator/shared',
+    branch: 'shared',
+  }
+  let sequence = 0
+  const writeRun = (
+    status: RunStatus,
+    binding: Partial<Pick<RunState, 'managed_worktree' | 'workspace_root'>>,
+  ): string => {
+    sequence += 1
+
+    const runId = `run-${sequence}-${status}`
+
+    // The narrowest record `loadState` accepts: the helper judges status and
+    // binding, so nothing else about the run matters here.
+    writeJson(statePath(root, runId), {
+      schema_version: 2,
+      run_id: runId,
+      workflow_slug: 'delivery',
+      title: runId,
+      status,
+      current_stage: 'implement',
+      pending_action: { type: 'prepare_invocation' },
+      current_invocation: null,
+      stage_history: [],
+      attempts: {},
+      revision: 1,
+      workspace_root: '.',
+      ...binding,
+    })
+
+    return runId
+  }
+  const bound = statuses.map((status) =>
+    writeRun(status, { managed_worktree: worktree }),
+  )
+  const byWorkspace = writeRun('running', { workspace_root: worktree.path })
+  const elsewhere = writeRun('running', {
+    managed_worktree: { ...worktree, name: 'other' },
+  })
+
+  // One liveness set serves every caller: a paused run or one waiting on the
+  // operator resumes into the same worktree, so it still occupies it.
+  assert.deepEqual(
+    liveRunsBoundToWorktree(root, worktree.name)
+      .map((state) => state.run_id)
+      .sort(),
+    bound.slice(0, 4).sort(),
+  )
+
+  // A run bound by workspace root counts only when the caller can name the
+  // worktree record that the root resolves to.
+  assert.deepEqual(
+    liveRunsBoundToWorktree(root, worktree.name, worktree)
+      .map((state) => state.run_id)
+      .sort(),
+    [...bound.slice(0, 4), byWorkspace].sort(),
+  )
+  assert.equal(
+    liveRunsBoundToWorktree(root, worktree.name, worktree).some(
+      (state) => state.run_id === elsewhere,
+    ),
+    false,
   )
 })

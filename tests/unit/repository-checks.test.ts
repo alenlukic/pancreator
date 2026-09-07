@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import {
+  appendFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -12,9 +13,13 @@ import test from 'node:test'
 
 import {
   AGENT_REPOSITORY_CHECK_RUNS_FILE,
+  agentRepositoryCheckAdvisories,
   compareRepositoryCheckToBaseline,
   loadRepositoryChecks,
+  MAX_CAPTURE_BYTES,
   recordAgentRepositoryCheck,
+  recordAgentRepositoryCheckForRuns,
+  REPOSITORY_CHECK_FAST_REPEATED,
   repositoryChecksSourcePath,
   runRepositorySetup,
   runRepositoryCheck,
@@ -23,9 +28,15 @@ import {
   SUMMARY_STREAM_TAIL_BYTES,
 } from '../../src/lib/repository-checks.js'
 import type { RepositoryCheckResult } from '../../src/lib/repository-checks.js'
+import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadRepositoryCheckBaseline } from '../../src/lib/validation.js'
 import type { RunState } from '../../src/lib/types.js'
-import { createFixture, createTestTempDirectory } from '../helpers.js'
+import {
+  createFixture,
+  createRun,
+  createTestTempDirectory,
+  writeJson,
+} from '../helpers.js'
 
 function makeInstallation(): { root: string; workspace: string } {
   const parent = createTestTempDirectory('checks-')
@@ -595,7 +606,6 @@ test('a streaming timeout ends the whole process tree, not only the shell', asyn
 
   writeChecks(root, {
     fast: {
-      timeout_ms: 1_000,
       probes: [],
       // A grandchild that inherits stdout and would live far past the bound.
       commands: ['sh -c "sleep 30; echo late" & wait'],
@@ -603,7 +613,11 @@ test('a streaming timeout ends the whole process tree, not only the shell', asyn
   })
 
   const startedAt = Date.now()
-  const result = await runRepositoryCheckStreaming(root, 'fast', {})
+  // The profile floor is 1 s; the stage-requested bound has no floor, and the
+  // contract is the kill, not the wait.
+  const result = await runRepositoryCheckStreaming(root, 'fast', {
+    timeout_ms: 250,
+  })
   const elapsed = Date.now() - startedAt
 
   assert.equal(result.status, 'failed')
@@ -623,14 +637,13 @@ test('a synchronous timeout ends the whole process tree, not only the shell', ()
 
   writeChecks(root, {
     fast: {
-      timeout_ms: 1_000,
       probes: [],
       commands: ['echo early; sh -c "sleep 30; echo late" & wait'],
     },
   })
 
   const startedAt = Date.now()
-  const result = runRepositoryCheck(root, 'fast')
+  const result = runRepositoryCheck(root, 'fast', { timeout_ms: 250 })
   const elapsed = Date.now() - startedAt
 
   assert.equal(result.status, 'failed')
@@ -640,6 +653,30 @@ test('a synchronous timeout ends the whole process tree, not only the shell', ()
     elapsed < 10_000,
     `the gate returned after ${elapsed}ms; the orphaned tree kept it waiting`,
   )
+})
+
+test('a synchronous capture past the byte cap is truncated at the cap with the marker', () => {
+  const { root } = makeInstallation()
+  const marker = '\n[output truncated by Pancreator]\n'
+  const excess = MAX_CAPTURE_BYTES + 1024 * 1024
+
+  writeChecks(root, {
+    fast: {
+      probes: [],
+      commands: [`node -e "process.stdout.write(Buffer.alloc(${excess}, 97))"`],
+    },
+  })
+
+  const result = runRepositoryCheck(root, 'fast')
+  const stdout = result.results[0]?.stdout ?? ''
+
+  assert.equal(result.status, 'passed')
+  assert.ok(stdout.endsWith(marker))
+  assert.equal(
+    Buffer.byteLength(stdout),
+    MAX_CAPTURE_BYTES + Buffer.byteLength(marker),
+  )
+  assert.equal(result.results[0]?.stderr, '')
 })
 
 test('stage-requested timeout replaces the profile default', () => {
@@ -862,15 +899,37 @@ test('workspace setup commands load, run in order, and stop at the first failure
 
 test('an agent-run profile is recorded against the live run bound to its worktree', () => {
   const { root, workspace } = makeInstallation()
-  const writeRun = (runId: string, status: string, worktree?: string) => {
+  const writeRun = (
+    runId: string,
+    status: string,
+    worktree?: string,
+    invocationId?: string,
+  ) => {
     const directory = path.join(root, 'runtime/logs/workflows', runId, 'agent')
 
     mkdirSync(directory, { recursive: true })
     writeFileSync(
       path.join(directory, 'state.json'),
       `${JSON.stringify({
+        schema_version: 2,
         run_id: runId,
+        workflow_slug: 'delivery',
+        title: runId,
         status,
+        current_stage: 'implement',
+        pending_action: { type: 'prepare_invocation' },
+        current_invocation: invocationId
+          ? {
+              id: invocationId,
+              json_path: `agent/invocations/${invocationId}.json`,
+              markdown_path: `agent/invocations/${invocationId}.md`,
+              output_path: `agent/outputs/${invocationId}.json`,
+            }
+          : null,
+        stage_history: [],
+        attempts: {},
+        revision: 1,
+        workspace_root: '../workspace',
         ...(worktree
           ? {
               managed_worktree: {
@@ -884,7 +943,7 @@ test('an agent-run profile is recorded against the live run bound to its worktre
     )
   }
 
-  writeRun('live-bound', 'running', 'cohort-greeting')
+  writeRun('live-bound', 'running', 'cohort-greeting', 'implement-1')
   writeRun('paused-bound', 'paused', 'cohort-greeting')
   writeRun('finished-bound', 'succeeded', 'cohort-greeting')
   writeRun('live-other', 'running', 'cohort-farewell')
@@ -919,9 +978,13 @@ test('an agent-run profile is recorded against the live run bound to its worktre
     .split('\n')
     .map((line) => JSON.parse(line) as Record<string, unknown>)
 
+  // The record names the run's current invocation, so the per-invocation
+  // "fast at most once" rule is countable; a run between invocations records
+  // null.
   assert.equal(lines.length, 1)
   assert.deepEqual(lines[0], {
     profile: 'fast',
+    invocation_id: 'implement-1',
     workspace_fingerprint: lines[0].workspace_fingerprint,
     status: 'passed',
     duration_ms: 1234,
@@ -929,6 +992,20 @@ test('an agent-run profile is recorded against the live run bound to its worktre
     invoked_by: 'agent',
   })
   assert.match(String(lines[0].workspace_fingerprint), /^[0-9a-f]{64}$/u)
+  assert.equal(
+    (
+      JSON.parse(
+        readFileSync(path.join(root, recorded[1]), 'utf8').trim(),
+      ) as Record<string, unknown>
+    ).invocation_id,
+    null,
+  )
+
+  // One fast run for the invocation is within policy: no advisory.
+  assert.deepEqual(
+    agentRepositoryCheckAdvisories(root, 'live-bound', 'implement-1'),
+    [],
+  )
 
   // A second execution appends, so the "fast at most once" rule is countable.
   recordAgentRepositoryCheck(
@@ -942,6 +1019,35 @@ test('an agent-run profile is recorded against the live run bound to its worktre
     readFileSync(path.join(root, recorded[0]), 'utf8').trim().split('\n')
       .length,
     2,
+  )
+
+  // Two fast runs for one invocation of a single-worker stage are reported by
+  // name, as an advisory rather than a gate failure; another invocation's
+  // count is its own. This run carries no workflow snapshot, so the stage
+  // keeps the one-agent allowance.
+  const advisories = agentRepositoryCheckAdvisories(
+    root,
+    'live-bound',
+    'implement-1',
+  )
+
+  assert.equal(advisories.length, 1)
+  assert.equal(advisories[0].id, REPOSITORY_CHECK_FAST_REPEATED)
+  assert.equal(advisories[0].id, 'repository_check_fast_repeated')
+  assert.match(advisories[0].message, /fast profile 2 times/u)
+  assert.match(advisories[0].message, /implement-1/u)
+  assert.match(
+    advisories[0].message,
+    /allows one run per agent, 1 for this stage \(one stage worker\)/u,
+  )
+  assert.deepEqual(
+    agentRepositoryCheckAdvisories(root, 'live-bound', 'implement-2'),
+    [],
+  )
+  // A run with no record file has nothing to report.
+  assert.deepEqual(
+    agentRepositoryCheckAdvisories(root, 'live-other', 'implement-1'),
+    [],
   )
 
   // No bound live run means nothing is written anywhere.
@@ -958,5 +1064,89 @@ test('an agent-run profile is recorded against the live run bound to its worktre
       ),
     ),
     false,
+  )
+
+  // `--run` names the run directly, so a run without a worktree binding (a
+  // release run in the base checkout) still receives its evidence.
+  assert.deepEqual(
+    recordAgentRepositoryCheckForRuns(root, ['live-unbound'], result, 'now'),
+    [
+      `runtime/logs/workflows/live-unbound/agent/evidence/${AGENT_REPOSITORY_CHECK_RUNS_FILE}`,
+    ],
+  )
+})
+
+test('the fast-profile allowance follows the evidence workers of the invocation stage', () => {
+  const root = createFixture()
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+  const layout = resolveRunLayout(root, run.run_id)
+  const evidence = layout.evidence(AGENT_REPOSITORY_CHECK_RUNS_FILE).absolute
+  const record = (invocationId: string): string =>
+    `${JSON.stringify({
+      profile: 'fast',
+      invocation_id: invocationId,
+      workspace_fingerprint: 'f'.repeat(64),
+      status: 'passed',
+      duration_ms: 1,
+      started_at: '2026-09-05T02:00:00.000Z',
+      invoked_by: 'agent',
+    })}\n`
+
+  // The invocation record names the stage; the run's own workflow snapshot
+  // says how many agents that stage dispatches.
+  writeJson(layout.invocation('verify-1', '.json').absolute, {
+    stage: { slug: 'verify' },
+  })
+  writeJson(layout.invocation('implement-1', '.json').absolute, {
+    stage: { slug: 'implement' },
+  })
+  mkdirSync(path.dirname(evidence), { recursive: true })
+  writeFileSync(
+    evidence,
+    [
+      record('verify-1'),
+      record('verify-1'),
+      record('implement-1'),
+      record('implement-1'),
+    ].join(''),
+  )
+
+  // Verify dispatches two evidence workers, each permitted one fast run, so
+  // two records are compliant.
+  assert.deepEqual(
+    agentRepositoryCheckAdvisories(root, run.run_id, 'verify-1'),
+    [],
+  )
+
+  // Implement declares no evidence worker, so its second record is one too
+  // many.
+  const implement = agentRepositoryCheckAdvisories(
+    root,
+    run.run_id,
+    'implement-1',
+  )
+
+  assert.equal(implement.length, 1)
+  assert.equal(implement[0].id, REPOSITORY_CHECK_FAST_REPEATED)
+  assert.match(implement[0].message, /fast profile 2 times/u)
+  assert.match(
+    implement[0].message,
+    /allows one run per agent, 1 for this stage \(one stage worker\)/u,
+  )
+
+  // A third verify record exceeds the two-worker allowance, and the message
+  // states both the allowance and the count.
+  appendFileSync(evidence, record('verify-1'))
+
+  const verify = agentRepositoryCheckAdvisories(root, run.run_id, 'verify-1')
+
+  assert.equal(verify.length, 1)
+  assert.match(verify[0].message, /fast profile 3 times/u)
+  assert.match(
+    verify[0].message,
+    /allows one run per agent, 2 for this stage \(2 evidence worker\(s\)\)/u,
   )
 })

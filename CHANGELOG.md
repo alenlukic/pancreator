@@ -1,15 +1,43 @@
 # Changelog
 
-## [5.14.0] - 2026-09-05
+## [5.15.0] - 2026-09-07
 
 ### Changed
+
+- Raise the `delivery` fast and full gate bounds to 1200 s to match `delivery-chunk` ([implement](library/workflows/delivery/stages/implement.json), [verify](library/workflows/delivery/stages/verify.json), [remediate](library/workflows/delivery/stages/remediate.json)).
+- List commit, push, merge, publication, deployment, branch deletion, and gate waivers as the actions away mode never runs. Permit the `COHORT-001` plan route to create branches and worktrees under an away-mode approval ([AWAY-001](governance/policies/AWAY-001.json), [COHORT-001](governance/policies/COHORT-001.json)).
+- Split every over-length `COHORT-001` sentence, including the routing and release rules, into one-obligation sentences ([COHORT-001](governance/policies/COHORT-001.json)).
+- Name `planning` as the default systematic workflow in the embedded and detached operating cards. Drop `--workflow delivery` from the installer's post-install next step ([embedded card](library/templates/embedded-AGENTS.md), [detached card](library/templates/detached-AGENTS.md), [install](bin/install)).
+- Render the `cohort integrate` autostart kinds as a list in the orchestrator brief and remove every semicolon from the supervisor procedures ([pan-cohort](library/cursor/commands/pan-cohort.md), [pan-start](library/cursor/commands/pan-start.md), [orchestrator](library/personas/orchestrator.md)).
+- Replace the duplicated autostart bullets of `pan-cohort` with a reference to **Cohort supervision** step 8 of the orchestrator brief ([pan-cohort](library/cursor/commands/pan-cohort.md)).
+- State that `pan cohort status <cohort-id>` reports `release_command` after a failed release continuation. The command is the merge-free `pan cohort release <cohort-id>`, and running it restarts the continuation ([pan-cohort](library/cursor/commands/pan-cohort.md), [orchestrator](library/personas/orchestrator.md), [operator guide](docs/operator-guide.md)).
+- Raise the `delivery-candidate` fast and full gate bounds to 1200 s to match the other concurrent worktree workflows. Name it in the primer's gate-budget note ([implement](library/workflows/delivery-candidate/stages/implement.json), [verify](library/workflows/delivery-candidate/stages/verify.json), [remediate](library/workflows/delivery-candidate/stages/remediate.json), [primer](docs/target-repo-primer.md)).
+- Split the over-length review-squad instructions and rewrap the selection paragraph ([pan-review](library/cursor/commands/pan-review.md), [shepherd-reviewer](library/personas/shepherd-reviewer.md), [shepherd-reviewer agent](library/cursor/agents/shepherd-reviewer.md), [review-squad](library/skills/review-squad.md)).
+- Share one live-run definition between agent-run check evidence and release preparation, and add `pan repository-check --run <run-id>` to record evidence against one named run ([state](src/lib/state.ts), [repository-checks](src/lib/repository-checks.ts), [release-preparation](src/lib/release-preparation.ts)).
+- Read repository-check capture files bounded from the open descriptors, and remove the capture directory before a timeout kill ([repository-checks](src/lib/repository-checks.ts)).
+- Drop the `timeout_ms` that 5.14.0 added to the self-development `fast` profile template. Stage gate bounds are the only timeout authority once `runtime/repository-checks.json` is regenerated ([template](library/templates/repository-checks.self-development.json)).
+- Report the delivery autostart the eval run performed, with its kind, status, and commands. Stop describing every autostart as a cohort autostart ([evals](src/lib/evals/run.ts), [schema](library/schemas/eval-scenario.schema.json)).
+- Report conditional review dimensions on the default-lineup review card as resolved by the coordinator instead of as not run. Under a `--dimensions` selection, list every unselected conditional dimension as not run and drop the coordinator-resolved line, so a selection is never widened ([review-dimensions](src/lib/review-dimensions.ts), [governance-card](src/lib/governance-card.ts)).
+- Refuse an empty list on `--dimensions`, `--criteria`, and `--defer` instead of reading it as none ([cli](src/cli.ts)).
+- Pass the installation root to every `cursor-agent` spawn as `installationRoot`, separate from the child working directory ([cursor-agent](src/lib/executors/cursor-agent.ts)).
+- Convert the four long `/pan-review` steps and the `/pan-start` init-options step into lead sentences with nested bullets ([pan-review](library/cursor/commands/pan-review.md), [pan-start](library/cursor/commands/pan-start.md)).
+- Split the selection-recording sentence of the harness review lineup that still exceeded the instruction length ([review-squad-pancreator](library/skills/review-squad-pancreator.md)).
+- Name `evaluator_failure` records among the ledger kinds `AWAY-001` requires ([AWAY-001](governance/policies/AWAY-001.json)).
+- Record the routing rule's surfaces as a retained duplication in the context-bloat dispositions: the policy, the orchestrator brief, the `/pan-start` command, the primer, and the two operating cards. Credit `COHORT-001` only with the rules it states and attribute the `--workflow delivery` escape hatch to the agent-facing surfaces that carry it ([dispositions](governance/registries/context_bloat_dispositions.json)).
+- Convert the `/pan-review` governance-card step into a lead sentence with nested bullets ([pan-review](library/cursor/commands/pan-review.md)).
+- Split the shepherd-reviewer **Inputs** paragraph and the shepherd-reviewer agent body into paragraphs of at most six sentences ([shepherd-reviewer](library/personas/shepherd-reviewer.md), [shepherd-reviewer agent](library/cursor/agents/shepherd-reviewer.md)).
+- Rewrap the selection paragraph of the harness review lineup, and scope the slug sentence of the squad procedure to its two lineup tables ([review-squad-pancreator](library/skills/review-squad-pancreator.md), [review-squad](library/skills/review-squad.md)).
+- Tell the supervisor to run the listed `pan cohort route --plan-run <id>` once after a failed plan route, and to stop and report it when it fails again ([orchestrator](library/personas/orchestrator.md), [pan-resume](library/cursor/commands/pan-resume.md)).
+- Write the derived target into the `/pan-review` request file whenever `$ARGUMENTS` names no target, not only when it is empty ([pan-review](library/cursor/commands/pan-review.md)).
+- State that `pan cohort release` creates the `release-<digest>` worktree and branch when no worktree holds the integration branch, and merges nothing ([operator guide](docs/operator-guide.md)).
+- Split the `/pan-build-docs` setup sentence into short sentences and state which runs skip setup ([pan-build-docs](library/cursor/commands/pan-build-docs.md), [evals](docs/evals.md)).
 
 - Bind each cohort chunk run to its worktree so later lifecycle commands accept `--worktree` on that run ([cohorts](src/lib/cohorts.ts), [4566eff9](https://github.com/alenlukic/pancreator/commit/4566eff9)).
 - Seed cohort ids from the plan-run suffix instead of the parent-specification basename ([4566eff9](https://github.com/alenlukic/pancreator/commit/4566eff9)).
 - Send the `cursor-agent` prompt over stdin so a large argv element is not killed at exec ([cursor-agent](src/lib/executors/cursor-agent.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
 - Show the literal away-mode option shape in the evaluator prompt, persist every evaluator exchange as run evidence, and rank options by fitness for the gate ([away-mode](src/lib/away-mode.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
 - Consume an away-mode decision only after a successful apply, and start the cohort with `--autostart` when away mode approves a planning gate ([COHORT-001](governance/policies/COHORT-001.json), [operator guide](docs/operator-guide.md), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
-- Capture repository-check output to files, lead a process group, and kill the group on timeout. Raise fast and full gate bounds to 1200 s ([repository-checks](src/lib/repository-checks.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
+- Capture repository-check output to files, lead a process group, and kill the group on timeout. Raise the fast and full gate bounds of `delivery-chunk` to 1200 s, and the `delivery` fast gate bound from 300 s to 600 s ([repository-checks](src/lib/repository-checks.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
 - Name the workspace and worktree in evidence-worker briefs ([render](src/lib/render.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
 - Validate a child-specification parent digest on the trimmed file and name the expected digest ([cohort-plan](src/lib/validators/cohort-plan.ts), [c64b0d60](https://github.com/alenlukic/pancreator/commit/c64b0d60)).
 - Authenticate away-mode `cursor-agent` spawns through the same `probeEnvironment` path as the model probe ([cursor-auth](src/lib/executors/cursor-auth.ts), [4566eff9](https://github.com/alenlukic/pancreator/commit/4566eff9)).
@@ -24,9 +52,71 @@
 
 ### Fixed
 
+- Replace the retired `gpt-5.4` in the test fixtures with `gpt-5.6-terra`, and align every fixture model spec with the variants the current Cursor catalog declares, so the suite passes against a refreshed account-local catalog ([best-of-n helpers](tests/integration/best-of-n-helpers.ts), [pipeline-config tests](tests/unit/pipeline-config.test.ts), [projection tests](tests/unit/projection.test.ts), [run-friction tests](tests/regression/run-friction.test.ts)).
+- Add `pan cohort release <cohort-id>`, the merge-free release continuation. It refuses with `COHORT_NOT_SATISFIED` while a cohort lacks its merge proof, and it starts or adopts the release run otherwise ([cohorts](src/lib/cohorts.ts), [cli](src/cli.ts)).
+- Accept `evaluator_failure` records in the away decision ledger validator, so one failed evaluator spawn no longer fails every later ledger check ([autonomy-state](src/lib/validators/autonomy-state.ts)).
+- Run the repository-check `setup` commands once per run in a worktree workspace, for any start stage, before baseline capture, when a stage of the workflow needs a provisioned tree. Record the outcome on the run as `workspace_setup` with status `passed`, `failed`, or `not_configured`, so a release run starting at `verify` is provisioned and a `planning` run runs no setup ([engine](src/lib/engine.ts), [types](src/lib/types.ts)).
+- Treat a worktree run that captured repository-check baselines before `workspace_setup` existed as provisioned, so an upgrade does not reinstall its dependencies ([engine](src/lib/engine.ts)).
+- Set the `repository_check_fast_repeated` allowance from the stage's declared evidence worker count instead of one, so two compliant verify workers no longer trip it ([repository-checks](src/lib/repository-checks.ts)).
+- Adopt an indexed chunk worktree and its live run inside `pan cohort start`, so a retry after a crash between worktree and run creation no longer fails with `WORKTREE_EXISTS` ([cohorts](src/lib/cohorts.ts)).
+- Name the evaluator evidence files and the `pan decide` recovery command in the `AWAY_EVALUATOR_FAILURE_LIMIT` refusal. Build that command from the installation's resolved `pan` command, so it runs in embedded and detached installations ([away-mode](src/lib/away-mode.ts)).
+- Write the planner's digest command bare as `pan context digest`, run from the harness root, so an embedded planner can run it. Name the card's **Harness root** line when present and the **Workspace** otherwise, so a default-workspace planner finds the root ([plan prompt](library/workflows/planning/prompts/plan.md)).
+- Refuse a missing or flag-shaped positional on the `cohort` subcommands and `context digest` with `INVALID_ARGUMENT`, so `pan cohort release --json` reports the missing cohort id instead of `INVALID_COHORT_ID` ([cli](src/cli.ts)).
+- Prove through the CLI that a bare `pan repository-check` records no run evidence and `--run` records one line ([worktree-cli tests](tests/integration/worktree-cli.test.ts)). Scope the `--worktree` recording help line to the no-`--run` case ([cli](src/cli.ts)).
+- Name `pan cohort release <cohort-id>` as the merge-free retry of a failed release continuation and as the value of `release_command`. Describe `pan cohort integrate` only as the operator-owned merge ([orchestrator](library/personas/orchestrator.md), [pan-cohort](library/cursor/commands/pan-cohort.md), [operator guide](docs/operator-guide.md), [primer](docs/target-repo-primer.md)).
+- Describe the release run in the workflow-authoring routing table as the other surfaces do. It runs in a managed worktree on a `release-<digest>` branch, or in the recorded `--into-branch` worktree ([workflow authoring](docs/workflow-authoring.md)).
+- State in the orchestrator **Start** rule that a `/pan-qa-workflow` session passes the workflow its command names. Render the workflow choices as nested bullets ([orchestrator](library/personas/orchestrator.md)).
+- Document that the `AWAY_EVALUATOR_FAILURE_LIMIT` refusal names the evaluator exchange records and the `pan decide` recovery, so the next action is a hand decision ([runtime protocol](docs/runtime-protocol.md)).
+- Qualify the `delivery-chunk` rule of `COHORT-001` to plans of two or more units, and state that a single-unit `delivery` run carries its own `ship` stage ([COHORT-001](governance/policies/COHORT-001.json)).
+- Document `run_evidence_paths` on the `pan repository-check` JSON response, and describe the `repository_check_fast_repeated` allowance as the stage's `evidence_workers` count ([runtime protocol](docs/runtime-protocol.md)).
+- State that workspace setup runs once per run at the start stage and is recorded on the run as `workspace_setup` ([evals](docs/evals.md)).
+
+- Complete a half-recorded release continuation on a repeated `pan cohort integrate`, and adopt an existing release run instead of failing with `COHORT_COMPLETE` ([cohorts](src/lib/cohorts.ts)).
+- Adopt the delivery run a single-chunk autostart already created when the handoff record was lost, so a retry creates no second run ([cohorts](src/lib/cohorts.ts)).
+- Record no `failed` away decision beside an `applied` one when the routing hook fails after `pan away apply` ([cli](src/cli.ts)).
+- Keep `--dimensions` on the conduct-conflict card rebuild in `/pan-review`, and state that the selection list carries no spaces ([pan-review](library/cursor/commands/pan-review.md)).
+- Record the `5.14.0` release-index mapping and the 1200 s `full` gate bound in the primer ([primer](docs/target-repo-primer.md)).
+- Correct the 5.14.0 entry: its 1200 s bound covered `delivery-chunk` only. The same release raised the `delivery` fast gate bound from 300 s to 600 s ([changelog](CHANGELOG.md)).
+- Describe the release run so it always runs in a managed worktree. That worktree is the recorded `--into-branch` worktree or a new `release-<digest>` worktree created from the integration head. Name `--worktree` on its release commands ([operator guide](docs/operator-guide.md), [COHORT-001](governance/policies/COHORT-001.json)).
+- Print one idempotent `pan cohort release <cohort-id>` as the manual command of a failed release continuation. Replace the `init` and `set-stage` pair the harness could never adopt ([cohorts](src/lib/cohorts.ts)).
+- Compute the manual commands of a failed cohort route from the session that exists at failure time. Refuse a second cohort session for one plan run with `COHORT_SESSION_EXISTS` ([cohorts](src/lib/cohorts.ts)).
+- Bind the release run to the cohort session with `role: release` and its integration record, list the integration record and the chunk runs' verify outputs as its required references, and stop reporting the `implement` output as missing on it ([cohorts](src/lib/cohorts.ts), [context](src/lib/context.ts), [render](src/lib/render.ts), [verify prompt](library/workflows/delivery/prompts/verify.md)).
+- Create a managed worktree for the release run when no recorded worktree holds the integration branch. Its `pan release` commands then have a `--worktree` to name ([cohorts](src/lib/cohorts.ts)).
+- Report `release_command` from `pan cohort status` when every cohort is satisfied and no release run is recorded. It names the merge-free `pan cohort release <cohort-id>` ([cohorts](src/lib/cohorts.ts), [render](src/lib/render.ts)).
+- Persist a failed plan route on the plan run as a `failed` delivery handoff and render it in `pan status` with its manual commands ([cohorts](src/lib/cohorts.ts), [types](src/lib/types.ts), [render](src/lib/render.ts)).
+- Record an agent-run `pan repository-check <profile>` as run evidence only when the command names `--run <run-id>` or `--worktree <name>`. A bare invocation records nothing, so a standalone review can run checks without writing run state ([repository-checks](src/lib/repository-checks.ts), [cli](src/cli.ts)).
+- Add `invocation_id` to each agent check evidence record. Report the `repository_check_fast_repeated` advisory from `pan output validate` when one invocation ran `fast` more than once ([repository-checks](src/lib/repository-checks.ts), [cli](src/cli.ts)).
+- Print the exact `pan repository-check fast --run <run-id>` command on the evidence worker brief only when no gate passed `fast` at the current fingerprint. Otherwise tell the worker to cite the gate evidence. Name the harness root the command runs from ([render](src/lib/render.ts)).
+- Add `pan cohort route --plan-run <run-id>` as the one idempotent retry of a failed plan route. It adopts the run or session the failed attempt created, and every failed route prints it as the only manual command ([cohorts](src/lib/cohorts.ts), [cli](src/cli.ts)).
+- Record the cohort handoff on the plan run from `cohort init`, so a hand-run init replaces a `failed` route record ([cohorts](src/lib/cohorts.ts)).
+- Return a `failed` route with the `pan cohort route` command for a `planning` run that predates routing and recorded no opt-in or opt-out, instead of starting nothing silently ([cohorts](src/lib/cohorts.ts)).
+- List each chunk's child specification as a required reference of the release run, so its verify stage grades the acceptance criteria and validation cases the card names ([context](src/lib/context.ts), [verify prompt](library/workflows/delivery/prompts/verify.md)).
+- Adopt an existing release run by its recorded `role: release` binding instead of by parsing the first event line ([cohorts](src/lib/cohorts.ts), [state](src/lib/state.ts)).
+- Slice the whole `governance card` and `governance review-scope` help stanzas into the review-scope entry-point check, and prove the check against the real `src/cli.ts` ([review-scope](src/lib/review-scope.ts), [review-scope tests](tests/unit/review-scope.test.ts)).
+- Refuse a `pan context digest` positional that starts with `--`, and report a directory as `CONTEXT_REFERENCE_NOT_FOUND` with its repository-relative path ([cli](src/cli.ts)).
+- Add `pan context digest <path> [--json]` and have the planner take the child-specification digest from it instead of computing it by hand ([cli](src/cli.ts), [plan prompt](library/workflows/planning/prompts/plan.md)).
+- Pre-filter live-run scans on the materialized `state.json` before reading event logs ([state](src/lib/state.ts), [cohorts](src/lib/cohorts.ts)).
+- Cover the `commaSeparatedOption` helper and the `governance card` help lines in the review-scope entry-point check ([review-scope](src/lib/review-scope.ts)).
+- Refuse a `--dimensions` value with an empty segment, such as `security,`, with `INVALID_ARGUMENT` ([cli](src/cli.ts)).
+- State that `pan status <plan-run-id>` shows `Delivery route failed` with the manual commands after a failed plan route ([operator guide](docs/operator-guide.md)).
+- Qualify the named core charter of the harness review lineup to the no-selection case. A `--dimensions` selection is then the only rule for the lineup ([review-squad-pancreator](library/skills/review-squad-pancreator.md)).
+- Report the conditional dimensions the target did not activate in the `/pan-review` report. Also report any charter the coordinator applied itself ([pan-review](library/cursor/commands/pan-review.md)).
+- Split the over-length selection-recording instruction of the harness review lineup into one-obligation sentences ([review-squad-pancreator](library/skills/review-squad-pancreator.md)).
+- Name the release run's branch as the code creates it. It is a `release-<digest>` branch from the integration head, or the integration branch when `--into-branch` recorded a worktree for it. Tell the operator to merge that branch into the integration branch after ship ([COHORT-001](governance/policies/COHORT-001.json), [orchestrator](library/personas/orchestrator.md), [operator guide](docs/operator-guide.md), [primer](docs/target-repo-primer.md)).
+- Split the failed continuation of **Cohort supervision** step 8 by kind. A failed cohort continuation reports `start_command`, and a failed release continuation reports `release_command` ([orchestrator](library/personas/orchestrator.md)).
+- Replace the passive sentence on top-level supervision of started runs with active one-obligation sentences ([orchestrator](library/personas/orchestrator.md)).
+- Name `--workflow delivery` in the `/pan-start` workflow step as the escape hatch the brief already allows ([pan-start](library/cursor/commands/pan-start.md)).
+- Qualify the `timeout_ms` entry: stage gate bounds become the only timeout authority once `runtime/repository-checks.json` is regenerated ([changelog](CHANGELOG.md)).
+- Document `pan cohort route --plan-run <plan-run-id>` as the one idempotent retry of a failed plan route, for a single chunk and a cohort alike. Replace the `pan init --workflow delivery` and `pan cohort init` recovery text with it ([operator guide](docs/operator-guide.md)).
+- Document the failed route a pre-routing `planning` run returns on approval and the `pan cohort route` command that routes it ([operator guide](docs/operator-guide.md)).
+- State that repository-check evidence is recorded only with `--run` or `--worktree` and carries the `invocation_id`. Name the `pan output validate` advisory diagnostic for an invocation that ran `fast` twice ([runtime protocol](docs/runtime-protocol.md), [operator guide](docs/operator-guide.md)).
+- Describe the evidence-worker brief: it names the harness root and asks for `fast` only when no gate already passed it ([runtime protocol](docs/runtime-protocol.md), [operator guide](docs/operator-guide.md)).
+
 - Deduplicate colliding inbox terminal names with a numeric suffix ([inbox](src/lib/inbox.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
 - Keep fixtures whose path contains `worktrees` sandboxed from the installation root ([repository-checks](src/lib/repository-checks.ts), [4566eff9](https://github.com/alenlukic/pancreator/commit/4566eff9)).
 - Document the autostart response as `{status, chunks, …}` and name `pan init --request` in the supervisor procedure ([operator guide](docs/operator-guide.md), [pan-start](library/cursor/commands/pan-start.md), [c64b0d60](https://github.com/alenlukic/pancreator/commit/c64b0d60)).
+
+## [5.14.0] - 2026-09-05
 
 ## [5.13.1] - 2026-09-04
 

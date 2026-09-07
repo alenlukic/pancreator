@@ -17,6 +17,7 @@ import path from 'node:path'
 import test from 'node:test'
 import { setTimeout as delay } from 'node:timers/promises'
 
+import { referenceContentSha256 } from '../../src/lib/io.js'
 import { attestRunCard, createFixture } from '../helpers.js'
 import { createTestTempDirectory } from '../temp.js'
 
@@ -720,4 +721,195 @@ test('CLI artifact options persist run-wide and stage selections', () => {
     mode: 'suppressed',
     requested_stages: ['inspect'],
   })
+})
+
+test('pan init defaults to the planning workflow and routes on approval', () => {
+  const root = createFixture()
+  const init = (...args: string[]): Record<string, unknown> =>
+    JSON.parse(
+      execFileSync(
+        process.execPath,
+        [CLI, 'init', '--request', 'request.md', ...args, '--json'],
+        { cwd: root, encoding: 'utf8' },
+      ),
+    ) as Record<string, unknown>
+
+  // An operator who names no workflow starts a planning run whose approval
+  // routes into delivery; nothing about the request text is inspected.
+  const routed = init()
+
+  assert.equal(routed.workflow, 'planning')
+  assert.equal(routed.autostart_delivery, true)
+
+  // `--autostart` is the explicit spelling of that default.
+  assert.equal(init('--autostart').autostart_delivery, true)
+
+  // `--no-autostart` stops the run at the ratified plan.
+  const stopped = init('--no-autostart')
+
+  assert.equal(stopped.workflow, 'planning')
+  assert.equal(stopped.autostart_delivery, false)
+
+  // The explicit escape hatch still creates a delivery run.
+  const delivery = init('--workflow', 'delivery')
+
+  assert.equal(delivery.workflow, 'delivery')
+  assert.equal(delivery.autostart_delivery, false)
+
+  // The two spellings cannot be combined.
+  assert.throws(
+    () => init('--autostart', '--no-autostart'),
+    (error: unknown) =>
+      /INVALID_ARGUMENT/u.test(String((error as { stderr?: unknown }).stderr)),
+  )
+})
+
+test('governance card --dimensions reaches the review selection and refuses a bad one', () => {
+  const root = createFixture()
+  const card = (dimensions: string) =>
+    spawnSync(
+      process.execPath,
+      [
+        CLI,
+        'governance',
+        'card',
+        '--mode',
+        'review',
+        '--request',
+        'request.md',
+        '--dimensions',
+        dimensions,
+        '--json',
+      ],
+      { cwd: root, encoding: 'utf8' },
+    )
+
+  // The flag travels from argv to the resolved selection the card reports.
+  const selected = card('security')
+
+  assert.equal(selected.status, 0, selected.stderr)
+  assert.deepEqual(
+    (
+      JSON.parse(selected.stdout) as {
+        review_dimensions: { selected: string[] }
+      }
+    ).review_dimensions.selected,
+    ['security'],
+  )
+
+  const unknown = card('security,maintainability')
+
+  assert.notEqual(unknown.status, 0)
+  assert.match(unknown.stderr, /UNKNOWN_REVIEW_DIMENSION/u)
+
+  // A present flag that names nothing is refused, not read as "no selection"
+  // and so as the full default lineup.
+  const empty = card(',')
+
+  assert.notEqual(empty.status, 0)
+  assert.match(empty.stderr, /INVALID_ARGUMENT/u)
+  assert.match(
+    empty.stderr,
+    /security/u,
+    'the refusal lists the accepted slugs',
+  )
+
+  // `--dimensions security, performance` shell-splits to `security,`; the
+  // dangling comma is refused rather than read as the single slug it names.
+  for (const dangling of ['security,', 'security,,performance']) {
+    const refused = card(dangling)
+
+    assert.notEqual(refused.status, 0, dangling)
+    assert.match(refused.stderr, /INVALID_ARGUMENT/u)
+    assert.match(refused.stderr, /security/u)
+  }
+})
+
+test('context digest prints the audited content digest of a file inside the root', () => {
+  const root = createFixture()
+  const digest = (...args: string[]) =>
+    spawnSync(process.execPath, [CLI, 'context', 'digest', ...args], {
+      cwd: root,
+      encoding: 'utf8',
+    })
+  const expected = referenceContentSha256(
+    readFileSync(path.join(root, 'request.md'), 'utf8'),
+  )
+
+  // The plain form prints only the digest, the JSON form names its basis.
+  const plain = digest('request.md')
+
+  assert.equal(plain.status, 0, plain.stderr)
+  assert.equal(plain.stdout.trim(), expected)
+
+  const json = digest('request.md', '--json')
+
+  assert.equal(json.status, 0, json.stderr)
+  assert.deepEqual(JSON.parse(json.stdout), {
+    source_path: 'request.md',
+    content_sha256: expected,
+    basis:
+      'sha256 of the text after leading and trailing whitespace is trimmed',
+  })
+
+  // A path outside the root is refused, and so is a file that does not exist.
+  const outside = digest('../outside.md')
+
+  assert.notEqual(outside.status, 0)
+  assert.match(outside.stderr, /PATH_ESCAPE/u)
+
+  const missing = digest('missing.md')
+
+  assert.notEqual(missing.status, 0)
+  assert.match(missing.stderr, /CONTEXT_REFERENCE_NOT_FOUND/u)
+
+  // A flag in the positional slot is a missing path, not a file named `--json`.
+  const flagOnly = digest('--json')
+
+  assert.notEqual(flagOnly.status, 0)
+  assert.match(flagOnly.stderr, /INVALID_ARGUMENT/u)
+  assert.match(flagOnly.stderr, /repo-relative-file is required/u)
+  assert.doesNotMatch(flagOnly.stderr, /CONTEXT_REFERENCE_NOT_FOUND/u)
+
+  // A directory is not a file to digest; the refusal names the repo-relative
+  // path and never the absolute root.
+  const directory = digest('runtime')
+
+  assert.notEqual(directory.status, 0)
+  assert.match(directory.stderr, /CONTEXT_REFERENCE_NOT_FOUND/u)
+  assert.match(directory.stderr, /File does not exist: runtime/u)
+  assert.doesNotMatch(directory.stderr, /EISDIR|READ_FAILED/u)
+  assert.ok(!directory.stderr.includes(root), directory.stderr)
+})
+
+test('a cohort subcommand refuses a flag in its cohort-id slot as a missing positional', () => {
+  const root = createFixture()
+
+  // `pan cohort release --json` names no cohort: the flag is not a cohort id
+  // to validate, it is the absence of one.
+  for (const sub of ['status', 'start', 'integrate', 'release', 'clean']) {
+    const flagOnly = spawnSync(
+      process.execPath,
+      [CLI, 'cohort', sub, '--json'],
+      {
+        cwd: root,
+        encoding: 'utf8',
+      },
+    )
+
+    assert.notEqual(flagOnly.status, 0, sub)
+    assert.match(flagOnly.stderr, /INVALID_ARGUMENT/u, sub)
+    assert.match(flagOnly.stderr, /cohort-id is required\./u, sub)
+    assert.doesNotMatch(flagOnly.stderr, /INVALID_COHORT_ID/u, sub)
+  }
+
+  const abandon = spawnSync(
+    process.execPath,
+    [CLI, 'cohort', 'abandon', '--chunk', 'alpha', '--note', 'why', '--json'],
+    { cwd: root, encoding: 'utf8' },
+  )
+
+  assert.notEqual(abandon.status, 0)
+  assert.match(abandon.stderr, /INVALID_ARGUMENT/u)
+  assert.match(abandon.stderr, /cohort-id is required\./u)
 })

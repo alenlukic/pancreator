@@ -29,7 +29,10 @@ export const EVAL_WORKFLOWS = [
 
 /** Cohort fan-out options a planning scenario passes to the run it creates. */
 export interface EvalCohortOptions {
-  /** Create the plan run with `--autostart` so approval fans out cohort 1. */
+  /**
+   * Whether approval of the ratified plan routes into delivery. `true` is the
+   * planning default; `false` stops the run at the ratified plan.
+   */
   autostart: boolean
   /** Parallelism limit the autostarted session records; default 4. */
   max_parallel?: number

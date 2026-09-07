@@ -290,7 +290,7 @@ test('init validates the consolidation config before any candidate runs', () => 
   writeJson(path.join(root, 'best-of-n.json'), {
     ...CONFIGS,
     candidates: [
-      { name: 'alpha', personas: { codeer: 'gpt-5.4' } },
+      { name: 'alpha', personas: { codeer: 'gpt-5.6-terra' } },
       CONFIGS.candidates[1],
     ],
   })
@@ -306,7 +306,7 @@ test('init validates the consolidation config before any candidate runs', () => 
 
   writeJson(path.join(root, 'best-of-n.json'), {
     ...CONFIGS,
-    consolidation: { personas: { metacritick: 'gpt-5.4' } },
+    consolidation: { personas: { metacritick: 'gpt-5.6-terra' } },
   })
 
   assert.throws(
@@ -327,7 +327,7 @@ test('init validates the consolidation config before any candidate runs', () => 
   writeJson(configPath, config)
   writeJson(path.join(root, 'best-of-n.json'), {
     ...CONFIGS,
-    consolidation: { personas: { reviewer: 'gpt-5.4' } },
+    consolidation: { personas: { reviewer: 'gpt-5.6-terra' } },
   })
 
   assert.throws(

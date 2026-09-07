@@ -861,12 +861,12 @@ test('attestation model matching accepts executor-selected models under auto', (
   assert.equal(attestationModelMatches(undefined, 'auto'), false)
   assert.equal(
     attestationModelMatches(
-      'gpt-5.4[context=272k,effort=high,fast=false]',
-      'gpt-5.4[context=272k,effort=high,fast=false]',
+      'gpt-5.6-terra[context=272k,reasoning=high,fast=false]',
+      'gpt-5.6-terra[context=272k,reasoning=high,fast=false]',
     ),
     true,
   )
-  assert.equal(attestationModelMatches('another-model', 'gpt-5.4'), false)
+  assert.equal(attestationModelMatches('another-model', 'gpt-5.6-terra'), false)
 })
 
 test('guidance final-line evidence skips a trailing Markdown divider', () => {

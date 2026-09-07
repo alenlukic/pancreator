@@ -34,6 +34,7 @@ export const REVIEW_MACHINERY_PATTERNS = [
   'library/personas/shepherd-reviewer.md',
   'library/skills/review-squad*',
   'library/skills/shepherd-pr.md',
+  'src/lib/review-dimensions.ts',
   'src/lib/review-scope.ts',
   'src/lib/governance-card.ts',
   'src/lib/policies.ts',
@@ -76,15 +77,31 @@ export const VERIFICATION_SUBSTRATE_PATTERNS: readonly string[] = [
 ]
 
 /**
- * Return the `governance` case of `src/cli.ts`, which wires the review-mode
- * entry points. The rest of the file is not review machinery.
+ * Return the review-mode entry points of `src/cli.ts`: the `governance` case,
+ * the `commaSeparatedOption` helper that parses `--dimensions`, and the help
+ * stanzas that state the `governance card` and `governance review-scope`
+ * contracts. The rest of the file is not review machinery.
  */
 export function cliGovernanceBlock(text: string | null): string | null {
   if (text === null) {
     return null
   }
 
-  const start = text.indexOf("case 'governance': {")
+  const parts = [
+    cliCaseBlock(text, 'governance'),
+    cliFunctionBlock(text, 'commaSeparatedOption'),
+    cliHelpStanzas(text, [
+      'pan governance card',
+      'pan governance review-scope',
+    ]),
+  ].filter((part): part is string => part !== null)
+
+  return parts.length === 0 ? null : parts.join('\n')
+}
+
+/** One `case '<name>': {` block of the CLI dispatcher, up to the next case. */
+function cliCaseBlock(text: string, name: string): string | null {
+  const start = text.indexOf(`case '${name}': {`)
 
   if (start === -1) {
     return null
@@ -93,6 +110,51 @@ export function cliGovernanceBlock(text: string | null): string | null {
   const next = text.indexOf("\n    case '", start)
 
   return next === -1 ? text.slice(start) : text.slice(start, next)
+}
+
+/** One top-level `function <name>(` body, up to its closing brace. */
+function cliFunctionBlock(text: string, name: string): string | null {
+  const start = text.indexOf(`\nfunction ${name}(`)
+
+  if (start === -1) {
+    return null
+  }
+
+  const end = text.indexOf('\n}\n', start)
+
+  return end === -1 ? text.slice(start) : text.slice(start, end + 3)
+}
+
+/**
+ * Help stanzas whose usage line starts with one of `usages`, in file order.
+ * A stanza is the two-space-indented `pan ...` usage line plus every more
+ * deeply indented continuation line that follows it, up to the next usage
+ * line. Matching on the usage prefix rather than on option names keeps an
+ * explanation line that never repeats the option name inside the block.
+ */
+function cliHelpStanzas(
+  text: string,
+  usages: readonly string[],
+): string | null {
+  const lines = text.split('\n')
+  const selected: string[] = []
+  let inStanza = false
+
+  for (const line of lines) {
+    const isUsageLine = /^ {2}pan /u.test(line)
+
+    if (isUsageLine) {
+      inStanza = usages.some((usage) => line.startsWith(`  ${usage} `))
+    } else if (inStanza && !/^ {3,}\S/u.test(line)) {
+      inStanza = false
+    }
+
+    if (inStanza) {
+      selected.push(line)
+    }
+  }
+
+  return selected.length === 0 ? null : selected.join('\n')
 }
 
 /** True when the change edits the governance entry points of `src/cli.ts`. */

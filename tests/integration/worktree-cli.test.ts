@@ -4,14 +4,21 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
+import { prepareInvocation } from '../../src/lib/engine.js'
 import { PanError } from '../../src/lib/errors.js'
+import {
+  AGENT_REPOSITORY_CHECK_RUNS_FILE,
+  loadRepositoryChecks,
+} from '../../src/lib/repository-checks.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
+import { loadState, statePath } from '../../src/lib/state.js'
+import type { RunState } from '../../src/lib/types.js'
 import {
   createWorktree as createWorktreeRecord,
   listWorktrees,
   removeWorktree,
 } from '../../src/lib/worktrees.js'
-import { createFixture, writeJson } from '../helpers.js'
+import { createFixture, createRun, writeJson } from '../helpers.js'
 
 import {
   CLI,
@@ -274,6 +281,122 @@ test('worktree remove refuses dirty files unless force is explicit and keeps the
     false,
   )
 })
+
+test('workspace setup runs only for a worktree run whose workflow works in the tree', () => {
+  const root = createFixture()
+  const markerName = 'workspace-setup-marker.txt'
+
+  writeJson(path.join(root, 'runtime', 'repository-checks.json'), {
+    ...loadRepositoryChecks(root),
+    setup: [
+      `node -e "require('node:fs').writeFileSync('${markerName}', 'provisioned')"`,
+    ],
+  })
+
+  const marker = (record: { path: string }) =>
+    path.join(root, record.path, markerName)
+  const reprepare = (runId: string, patch: Partial<RunState>) => {
+    writeJson(statePath(root, runId), {
+      ...loadState(root, runId),
+      pending_action: { type: 'prepare_invocation' },
+      current_invocation: null,
+      ...patch,
+    })
+
+    return prepareInvocation(root, runId)
+  }
+
+  // A planning run edits nothing, runs no shell gate, and launches no
+  // evidence worker, so its worktree needs no dependencies or build output.
+  // The run records that nothing was configured to run and does not read the
+  // declared setup again.
+  const planningWorktree = createWorktreeRecord(root, 'plan-tree')
+  const planning = createRun(root, {
+    workflowSlug: 'planning',
+    requestPath: 'request.md',
+    workspace: planningWorktree.path,
+    worktree: planningWorktree,
+  })
+  const plannedPrepare = prepareInvocation(root, planning.run_id)
+
+  assert.equal(plannedPrepare.invocation?.stage.slug, 'plan')
+  assert.equal(existsSync(marker(planningWorktree)), false)
+  assert.equal(
+    loadState(root, planning.run_id).workspace_setup?.status,
+    'not_configured',
+  )
+
+  // A delivery run that starts at verify never edits source, but its shell
+  // gate and evidence workers test the tree, so setup runs before the stage.
+  const releaseWorktree = createWorktreeRecord(root, 'release-tree')
+  const release = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    workspace: releaseWorktree.path,
+    worktree: releaseWorktree,
+    startStage: 'verify',
+  })
+  const verifyPrepare = prepareInvocation(root, release.run_id)
+
+  assert.equal(verifyPrepare.invocation?.stage.slug, 'verify')
+  assert.equal(readFileSync(marker(releaseWorktree), 'utf8'), 'provisioned')
+  assert.equal(
+    loadState(root, release.run_id).workspace_setup?.status,
+    'passed',
+  )
+  assert.equal(existsSync(path.join(root, markerName)), false)
+
+  // A run that captured its repository-check baselines before the record
+  // existed proved its tree was provisioned: the upgrade infers the pass
+  // instead of running setup again on that tree.
+  rmSync(marker(releaseWorktree))
+
+  const upgraded = loadState(root, release.run_id)
+
+  delete upgraded.workspace_setup
+  writeJson(statePath(root, release.run_id), upgraded)
+
+  const inferredPrepare = reprepare(release.run_id, {
+    repository_check_baselines: {},
+  })
+
+  assert.equal(inferredPrepare.invocation?.stage.slug, 'verify')
+  assert.equal(existsSync(marker(releaseWorktree)), false)
+  assert.deepEqual(
+    {
+      status: loadState(root, release.run_id).workspace_setup?.status,
+      inferred_from: loadState(root, release.run_id).workspace_setup
+        ?.inferred_from,
+    },
+    { status: 'passed', inferred_from: 'repository_check_baselines' },
+  )
+
+  // With no setup command declared, a run that needs the tree records that
+  // nothing was configured, so later prepares do not read the declaration.
+  writeJson(path.join(root, 'runtime', 'repository-checks.json'), {
+    ...loadRepositoryChecks(root),
+    setup: [],
+  })
+
+  const unconfiguredWorktree = createWorktreeRecord(root, 'bare-tree')
+  const unconfigured = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    workspace: unconfiguredWorktree.path,
+    worktree: unconfiguredWorktree,
+    startStage: 'verify',
+  })
+
+  assert.equal(
+    prepareInvocation(root, unconfigured.run_id).invocation?.stage.slug,
+    'verify',
+  )
+  assert.equal(
+    loadState(root, unconfigured.run_id).workspace_setup?.status,
+    'not_configured',
+  )
+})
+
 test('repository-check --worktree creates the worktree and runs inside it', () => {
   const root = createFixture()
 
@@ -350,6 +473,59 @@ test('repository-check --worktree creates the worktree and runs inside it', () =
 
   assert.notEqual(conflicting.status, 0)
   assert.match(conflicting.stderr, /cannot be used together/u)
+})
+
+test('repository-check records run evidence only when a run is named', () => {
+  const root = createFixture()
+
+  writeJson(path.join(root, 'runtime/repository-checks.json'), {
+    schema_version: 1,
+    profiles: {
+      fast: {
+        probes: [],
+        commands: ['node -e "process.exit(0)"'],
+      },
+    },
+  })
+
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+  const evidence = resolveRunLayout(root, run.run_id).evidence(
+    AGENT_REPOSITORY_CHECK_RUNS_FILE,
+  )
+
+  // A bare invocation is an operator's own check from the base checkout. It
+  // is evidence of no run, although this run happens to share the workspace.
+  const bare = runCli<{
+    status: string
+    run_evidence_paths?: string[]
+  }>(root, ['repository-check', 'fast'])
+
+  assert.equal(bare.status, 'passed')
+  assert.equal('run_evidence_paths' in bare, false)
+  assert.equal(existsSync(evidence.absolute), false)
+
+  // `--run` names the run the execution is evidence for, so the record lands
+  // in that run's evidence and the response names the file.
+  const recorded = runCli<{
+    status: string
+    run_evidence_paths?: string[]
+  }>(root, ['repository-check', 'fast', '--run', run.run_id])
+
+  assert.equal(recorded.status, 'passed')
+  assert.deepEqual(recorded.run_evidence_paths, [evidence.relative])
+
+  const lines = readFileSync(evidence.absolute, 'utf8')
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line) as Record<string, unknown>)
+
+  assert.equal(lines.length, 1)
+  assert.equal(lines[0].profile, 'fast')
+  assert.equal(lines[0].status, 'passed')
+  assert.equal(lines[0].invoked_by, 'agent')
 })
 
 test('commands without a selectable workspace reject the shared option', () => {

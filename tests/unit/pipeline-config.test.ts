@@ -29,7 +29,7 @@ test('config_overrides.json preferences override the checked-in pipeline config'
     JSON.stringify({
       active_config: 'advanced',
       defaults: {
-        orchestrator: 'gpt-5.4[context=272k,reasoning=low,fast=false]',
+        orchestrator: 'gpt-5.6-terra[context=272k,reasoning=high,fast=false]',
       },
     }),
   )
@@ -40,7 +40,7 @@ test('config_overrides.json preferences override the checked-in pipeline config'
   assert.equal(loaded.name, 'advanced')
   assert.equal(
     loaded.config.personas.orchestrator,
-    'gpt-5.4[context=272k,reasoning=low,fast=false]',
+    'gpt-5.6-terra[context=272k,reasoning=high,fast=false]',
   )
   // A preference the local file does not name still comes from config.json.
   assert.equal(loaded.config.personas.reviewer, expectedReviewer)
@@ -91,7 +91,7 @@ test('pipeline config merges defaults with config-specific persona overrides', (
     active_config: 'default',
     defaults: {
       orchestrator: 'auto',
-      coder: 'gpt-5.4',
+      coder: 'gpt-5.6-terra',
     },
     configs: {
       default: {
@@ -132,7 +132,7 @@ test('a run snapshot preserves its exact persona model strings', () => {
     source_path: 'config.json',
     source_sha256: 'a'.repeat(64),
     personas: {
-      coder: 'gpt-5.6-sol[context=272k,reasoning=high,fast=false]',
+      coder: 'gpt-5.6-sol[context=272k,reasoning=xhigh,fast=false]',
       reviewer: 'claude-opus-5[thinking=true,context=300k,effort=high]',
     },
   }

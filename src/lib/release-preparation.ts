@@ -1,4 +1,3 @@
-import { readdirSync } from 'node:fs'
 import path from 'node:path'
 
 import { invariant } from './errors.js'
@@ -22,14 +21,13 @@ import {
   gitWorktreeIsDirty,
 } from './git.js'
 import {
-  fileExists,
   isRecord,
   readJson,
   readText,
   resolveInside,
   writeJsonAtomic,
 } from './io.js'
-import { loadState, statePath } from './state.js'
+import { liveRunsBoundToWorktree } from './state.js'
 import type {
   LocalReleaseContinueResult,
   LocalReleaseFinalizeResult,
@@ -81,42 +79,7 @@ function assertReleaseWorkspaceAvailable(
     (entry) => entry.name === name,
   ),
 ): void {
-  const workflowsRoot = path.join(root, 'runtime', 'logs', 'workflows')
-
-  if (!fileExists(workflowsRoot)) {
-    return
-  }
-
-  for (const entry of readdirSync(workflowsRoot, { withFileTypes: true })) {
-    if (!entry.isDirectory()) {
-      continue
-    }
-
-    if (!fileExists(statePath(root, entry.name))) {
-      continue
-    }
-
-    const state = loadState(root, entry.name)
-
-    if (['succeeded', 'failed', 'canceled'].includes(state.status)) {
-      continue
-    }
-
-    const runWorkspace = path.resolve(root, state.workspace_root)
-    const absolute = record ? resolveInside(root, record.path) : null
-    const sameManagedWorktree =
-      state.managed_worktree?.name === name &&
-      (!record ||
-        (state.managed_worktree.path === record.path &&
-          state.managed_worktree.branch === record.branch))
-
-    if (
-      !sameManagedWorktree &&
-      (!absolute || runWorkspace !== path.resolve(absolute))
-    ) {
-      continue
-    }
-
+  for (const state of liveRunsBoundToWorktree(root, name, record)) {
     if (state.run_id === ownerRunId) {
       invariant(
         state.current_stage === 'ship' &&

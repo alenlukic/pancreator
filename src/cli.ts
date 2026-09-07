@@ -7,6 +7,7 @@ import {
   abortRun,
   assessStage,
   createRun,
+  DEFAULT_WORKFLOW_SLUG,
   decideRun,
   decideRunAsAway,
   delegateInvocation,
@@ -42,7 +43,9 @@ import {
   cohortStatus,
   initCohortSession,
   integrateCohort,
-  maybeAutostartCohort,
+  maybeStartDelivery,
+  releaseCohort,
+  retryDeliveryRoute,
   startCohort,
 } from './lib/cohorts.js'
 import { GATE_CACHE_ENV, gateCacheStatus } from './lib/gate-cache.js'
@@ -70,6 +73,7 @@ import {
 } from './lib/release-preparation.js'
 import {
   awayDecisionLedgerPath,
+  awayEvaluatorFailureLimitError,
   awayEvaluatorPrompt,
   awayModeTrigger,
   countAwayDecisions,
@@ -108,9 +112,11 @@ import { syncCursorProjection } from './lib/projection.js'
 import {
   fileExists,
   findProjectRoot,
+  isFile,
   isRecord,
   readJson,
   readText,
+  referenceContentSha256,
   resolveInside,
   sha256,
   writeJsonAtomic,
@@ -148,15 +154,18 @@ import {
   writeEvalReport,
 } from './lib/evals/index.js'
 import { STANDALONE_MODES, buildGovernanceCard } from './lib/governance-card.js'
+import { availableReviewDimensions } from './lib/review-dimensions.js'
 import {
   attestSupervisorCard,
   buildSupervisorCard,
 } from './lib/governance/supervisor-card.js'
 import { conflictsByTier, resolveReviewScope } from './lib/review-scope.js'
 import {
+  agentRepositoryCheckAdvisories,
   assertRepositoryChecksValid,
   loadRepositoryChecks,
   recordAgentRepositoryCheck,
+  recordAgentRepositoryCheckForRuns,
   repositoryChecksSourcePath,
   runRepositoryCheckStreaming,
 } from './lib/repository-checks.js'
@@ -208,9 +217,10 @@ import {
 const STANDALONE_MODE_NAMES = Object.keys(STANDALONE_MODES).sort().join('|')
 
 export const HELP_BODY = `Usage:
-  pan init --request <repo-relative-file> [--workflow planning|delivery|prototype|design] [--title <title>] [--workspace <dir> | --worktree <name>] [--gates <file>] [--involvement <profile>] [--verification <level>] [--operator-artifacts] [--context-reference <repo-relative-file>] [--autostart [--max-parallel <n>]]
+  pan init --request <repo-relative-file> [--workflow planning|delivery|prototype|design] [--title <title>] [--workspace <dir> | --worktree <name>] [--gates <file>] [--involvement <profile>] [--verification <level>] [--operator-artifacts] [--context-reference <repo-relative-file>] [--no-autostart | --autostart [--max-parallel <n>]]
+      The default workflow is planning, the entry point for delivery work. Approving its ratified plan routes the work: a plan of one chunk starts one delivery run (implement, verify, remediate, ship) in its own worktree; a plan of two or more chunks opens a cohort session and starts cohort 1. --workflow delivery skips planning for an operator who brings a ratified specification as the request.
+      --no-autostart applies only to the planning workflow and stops the run at the ratified plan, so delivery is started by hand. --autostart names the default and is accepted for compatibility. --max-parallel caps the concurrent chunk runs of an autostarted cohort session (default 4).
       --context-reference records an audited pointer to wider context every stage reads and never copies, for example the parent specification of one cohort chunk.
-      --autostart applies only to the planning workflow: approving the ratified planning gate starts cohort 1. --max-parallel caps the concurrent chunk runs of that session (default 4).
   pan prepare <run-id> [--worktree <name>] [--operator-artifacts]
   pan delegate <run-id> [--timeout-ms <milliseconds>]
   pan watch <run-id> [--invocation <invocation-id>] [--cadence-seconds <n>] [--stall-wakes <n>] [--timeout-seconds <n>] [--mark-background] [--agent-state running|completed] [--json]
@@ -228,8 +238,9 @@ export const HELP_BODY = `Usage:
   pan hypervisor start|run|tick|status|stop [--json]
   pan away status|evaluate|apply <run-id> [--decision <id>] [--json]
   pan technologies detect [--worktree <name>] --json
-  pan repository-check <profile> [--timeout-ms <milliseconds>] [--workspace <dir|worktree> | --worktree <name>] [--json]
+  pan repository-check <profile> [--timeout-ms <milliseconds>] [--workspace <dir|worktree> | --worktree <name>] [--run <run-id>] [--json]
       --timeout-ms raises the effective bound only: resolution keeps the maximum of the request, the profile's own bound, and subset-profile timeouts.
+      --run records the execution against that run and, without --workspace or --worktree, checks its workspace. Without --run, --worktree records against every live run bound to the worktree. A bare invocation records against no run.
   pan repository-check validate [--json]
   pan tests impacted [--changed <ref> | --staged | --worktree-dirty] [--file <path>]... [--include <glob>]... [--depth <n>] [--list] [--json] [--advisory-ratio <0..1>]
       Self-development only. Select and run the lane tests whose import closure reaches the changed files. The default change set is the dirty working tree. An iteration aid, never a gate.
@@ -270,8 +281,9 @@ export const HELP_BODY = `Usage:
   pan output validate <run-id> --file <path> --invocation <path> [--json]
   pan assessment scaffold <run-id> --invocation <path> --output <path> [--force]
   pan governance audit-directives [--json]
-  pan governance card --mode <${STANDALONE_MODE_NAMES}> [--extension <id>] [--request <path>] [--worktree <name>] [--out <path>] [--base <ref> --target <ref> [--closure-revision <ref>]] [--json]
+  pan governance card --mode <${STANDALONE_MODE_NAMES}> [--extension <id>] [--request <path>] [--worktree <name>] [--out <path>] [--base <ref> --target <ref> [--closure-revision <ref>]] [--dimensions <a,b,c>] [--json]
       --base (review mode) renders the base-revision text of every conduct policy the target changes, so the session reviews under the rule in force before the change.
+      --dimensions (review mode) selects the review dimensions the squad runs, comma-separated. The default is the full lineup. An unknown name is refused with the accepted list, and the card records the selection and the default dimensions it leaves out.
   pan governance card --mode supervisor --run <run-id> [--json]
   pan governance attest-supervisor <run-id> --sha256 <digest> [--json]
   pan governance review-scope --target <ref> [--base <ref>] [--default-branch <branch>] [--closure-revision <ref>] [--json]
@@ -288,12 +300,18 @@ export const HELP_BODY = `Usage:
       Create one worktree and one delivery-chunk run per unstarted chunk of the next unsatisfied cohort, up to the free parallelism slots. Run it again as chunk runs finish to start the deferred chunks. It performs no source-control action beyond adding worktrees.
       --cohort names a cohort explicitly; a cohort whose predecessor is unsatisfied is refused with COHORT_PREDECESSOR_UNSATISFIED.
   pan cohort status <cohort-id> [--json]
-      Reports the active cohort, each chunk's run status, the free parallelism slots, and the start, supervise (/pan-cohort), and integrate commands that apply.
+      Reports the active cohort, each chunk's run status, the free parallelism slots, and the start, supervise (/pan-cohort), integrate, and release commands that apply.
   pan cohort integrate <cohort-id> [--into-branch <branch>] [--json]
-      Merge the committed chunk branches of the finished cohort into its integration branch (the base branch by default) and record the satisfaction entry the next cohort needs.
+      Merge the committed chunk branches of the finished cohort into its integration branch (the base branch by default) and record the satisfaction entry the next cohort needs. Once that entry lands the harness continues the plan: a non-final cohort starts the next cohort, and the final cohort starts the release run, a delivery run that begins at verify on the integration branch. The response reports that continuation as autostart.
       --into-branch retargets the session: this and every later cohort merge into that branch, and later cohorts branch from it. Use it when the checkout that holds the base branch carries uncommitted work. A missing branch is created from the current integration head; an existing one must already contain that head.
+  pan cohort release <cohort-id> [--json]
+      Start or adopt the release run once every cohort is integrated (merge-free). It is the retry for a release start that failed after the final integrate: it merges nothing, adopts a release run that already exists, and is refused with COHORT_NOT_SATISFIED while any cohort lacks its merge proof.
   pan cohort abandon <cohort-id> --chunk <id> --note <reason> [--json]
   pan cohort clean <cohort-id> [--force] [--json]
+  pan cohort route --plan-run <run-id> [--json]
+      Route the approved plan of a succeeded planning run into delivery again: one delivery run for a single chunk, cohort 1 of a cohort session for a wider plan. This is the retry for a route that failed at approval and the opt-in for a planning run that predates routing. It adopts the run or session an earlier attempt created and refuses a run that is not planning, not succeeded, or whose plan gate recorded a decision other than approve.
+  pan context digest <repo-relative-file> [--json]
+      Read-only. Print the content digest of a file on the basis every audited context reference states: sha256 of the text after leading and trailing whitespace is trimmed. A planner takes a child specification's parent digest from this command rather than computing it by hand.
   pan briefs build [--force] [--json]
   pan briefs validate [--json]
   pan briefs render --input <brief-json> --output <brief-html> [--json]
@@ -355,6 +373,22 @@ function requiredArgument(
   return value
 }
 
+/**
+ * A required positional argument. A flag in the positional slot, for example
+ * `pan cohort release --json`, is a missing positional, not a value, so it is
+ * refused as such instead of reaching the command's own validation.
+ */
+function requiredPositional(
+  value: string | null | undefined,
+  name: string,
+): string {
+  if (!value || value.startsWith('--')) {
+    throw new PanError(`${name} is required.`, { code: 'INVALID_ARGUMENT' })
+  }
+
+  return value
+}
+
 function hasFlag(args: string[], name: string): boolean {
   return args.includes(name)
 }
@@ -409,6 +443,7 @@ const SUBCOMMAND_STYLE_COMMANDS = new Set([
   'away',
   'best-of-n',
   'briefs',
+  'context',
   'governance',
   'hypervisor',
   'output',
@@ -535,15 +570,37 @@ function assertRunWorktreeBinding(
   }
 }
 
-function commaSeparatedOption(args: string[], name: string): string[] {
+/**
+ * Comma-separated list option: null when the flag is absent, at least one item
+ * when it is present. A present flag that names nothing (`--criteria ,`) is
+ * refused rather than read as "no selection", because every caller treats the
+ * absent flag as a wider default that the operator did not ask for. An empty
+ * segment (`security,` after the shell split `security, performance`) is
+ * refused the same way, because dropping it would silently narrow the list.
+ */
+function commaSeparatedOption(
+  args: string[],
+  name: string,
+  accepted?: readonly string[],
+): string[] | null {
   const value = option(args, name)
 
-  return value
-    ? value
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean)
-    : []
+  if (value === null) {
+    return null
+  }
+
+  const items = value.split(',').map((item) => item.trim())
+
+  if (items.some((item) => item.length === 0)) {
+    throw new PanError(
+      `${name} needs at least one value, comma-separated with no spaces ` +
+        `and no empty segment; got '${value}'.` +
+        (accepted ? ` Accepted values: ${accepted.join(', ')}.` : ''),
+      { code: 'INVALID_ARGUMENT' },
+    )
+  }
+
+  return items
 }
 
 function repeatedOption(args: string[], name: string): string[] {
@@ -773,11 +830,10 @@ function evaluateAwayState(
     )
   }
 
-  if (countAwayEvaluatorFailures(root, state.run_id) >= budget) {
-    throw new PanError(
-      'The away evaluator failed as many times as the decision limit allows for this run.',
-      { code: 'AWAY_EVALUATOR_FAILURE_LIMIT' },
-    )
+  const evaluatorFailures = countAwayEvaluatorFailures(root, state.run_id)
+
+  if (evaluatorFailures >= budget) {
+    throw awayEvaluatorFailureLimitError(root, state, evaluatorFailures, budget)
   }
 
   const prompt = awayEvaluatorPrompt(root, state, blocker, {
@@ -788,6 +844,7 @@ function evaluateAwayState(
   })
   const evaluation = runCursorAgentJson({
     cwd: root,
+    installationRoot: root,
     model: hypervisorModelForRun(root, state),
     prompt,
   })
@@ -1073,10 +1130,27 @@ async function main(): Promise<void> {
         )
       }
 
+      if (hasFlag(args, '--autostart') && hasFlag(args, '--no-autostart')) {
+        throw new PanError(
+          '--autostart and --no-autostart cannot be used together.',
+          { code: 'INVALID_ARGUMENT' },
+        )
+      }
+
       const title = option(args, '--title')
       const worktreeWorkspace = sharedWorktreeWorkspace(root, args, title)
+      // Routing on ratification is the planning default. `--autostart` is
+      // kept as an explicit spelling of that default; `--no-autostart` is the
+      // opt-out that stops the run at the ratified plan.
+      const autostartDelivery = hasFlag(args, '--no-autostart')
+        ? false
+        : hasFlag(args, '--autostart')
+          ? true
+          : undefined
       const state = createRun(root, {
-        workflowSlug: option(args, '--workflow', 'delivery') ?? 'delivery',
+        workflowSlug:
+          option(args, '--workflow', DEFAULT_WORKFLOW_SLUG) ??
+          DEFAULT_WORKFLOW_SLUG,
         requestPath: option(args, '--request'),
         title,
         workspace: worktreeWorkspace ? worktreeWorkspace.path : workspace,
@@ -1086,7 +1160,7 @@ async function main(): Promise<void> {
         verification: option(args, '--verification'),
         operatorArtifacts: hasFlag(args, '--operator-artifacts'),
         contextReferencePath: option(args, '--context-reference'),
-        autostartCohort: hasFlag(args, '--autostart'),
+        autostartDelivery,
         autostartMaxParallel: integerOption(args, '--max-parallel'),
       })
 
@@ -1103,7 +1177,7 @@ async function main(): Promise<void> {
         verification_level: state.verification?.level,
         operator_artifacts: state.operator_artifacts,
         context_reference: state.request.context_reference ?? null,
-        autostart_cohort: state.autostart_cohort ?? false,
+        autostart_delivery: state.autostart_delivery ?? false,
         next_command: `${pan} prepare ${state.run_id}`,
         state_path: resolveRunLayout(root, state.run_id).state.relative,
       })
@@ -1250,9 +1324,9 @@ async function main(): Promise<void> {
         option(args, '--stage'),
       )
       // The hook runs after the decision is durable and outside the run mutex,
-      // so cohort run creation takes its own mutexes and a fan-out failure
+      // so delivery run creation takes its own mutexes and a routing failure
       // cannot roll back the recorded approval.
-      const autostart = maybeAutostartCohort(root, state, {
+      const autostart = maybeStartDelivery(root, state, {
         actor: 'operator',
         action: decision,
       })
@@ -1402,7 +1476,7 @@ async function main(): Promise<void> {
     }
     case 'waive-gate': {
       const runId = requiredArgument(args[0], 'run-id')
-      const criteria = commaSeparatedOption(args, '--criteria')
+      const criteria = commaSeparatedOption(args, '--criteria') ?? []
       const note = option(args, '--note')
 
       if (!note || note.trim().length === 0) {
@@ -1416,7 +1490,7 @@ async function main(): Promise<void> {
         targetStage: option(args, '--to'),
         criterionIds: criteria,
         note,
-        deferredAcceptanceCriteria: commaSeparatedOption(args, '--defer'),
+        deferredAcceptanceCriteria: commaSeparatedOption(args, '--defer') ?? [],
         createSpotfixCase: hasFlag(args, '--spotfix'),
       })
 
@@ -1597,28 +1671,33 @@ async function main(): Promise<void> {
           )
         }
 
-        try {
-          const next = applyAwayDecision(root, state, decision)
-          const record = recordAwayApplyResult(root, decision, 'applied')
-          // Same hook as `pan decide`: it runs after the applied decision is
-          // durable, so a fan-out failure never rolls back the approval.
-          const autostart = maybeAutostartCohort(root, next, {
-            actor: 'away',
-            action: decision.selected_action?.action ?? '',
-          })
+        let next: RunState
+        let record: AwayDecisionRecord
 
-          print(
-            {
-              state: next,
-              decision: record,
-              ...(autostart ? { autostart } : {}),
-            },
-            json,
-          )
+        try {
+          next = applyAwayDecision(root, state, decision)
+          record = recordAwayApplyResult(root, decision, 'applied')
         } catch (error) {
           recordAwayApplyResult(root, decision, 'failed', errorMessage(error))
           throw error
         }
+
+        // Same hook as `pan decide`: it runs after the applied decision is
+        // durable and outside the try above, so a routing failure neither rolls
+        // back the approval nor records a `failed` beside the `applied`.
+        const autostart = maybeStartDelivery(root, next, {
+          actor: 'away',
+          action: decision.selected_action?.action ?? '',
+        })
+
+        print(
+          {
+            state: next,
+            decision: record,
+            ...(autostart ? { autostart } : {}),
+          },
+          json,
+        )
         return
       }
 
@@ -1691,12 +1770,21 @@ async function main(): Promise<void> {
         )
       }
 
+      // `--run` names the run the execution is evidence for, which a run
+      // whose workspace is not a managed worktree (a release run in the base
+      // checkout) cannot express through `--worktree`.
+      const evidenceRunId = option(args, '--run')
+      const evidenceRun = evidenceRunId
+        ? getRunState(root, evidenceRunId)
+        : null
       const worktreeWorkspace = sharedWorktreeWorkspace(root, args)
       const checkWorkspace = worktreeWorkspace
         ? worktreeWorkspace.path
         : workspaceOption
           ? resolveWorkspacePathOrWorktree(root, workspaceOption)
-          : null
+          : evidenceRun
+            ? path.resolve(root, evidenceRun.workspace_root)
+            : null
       const startedAt = new Date().toISOString()
       const result = await runRepositoryCheckStreaming(root, profile, {
         ...(timeoutMs !== undefined ? { timeout_ms: timeoutMs } : {}),
@@ -1716,14 +1804,24 @@ async function main(): Promise<void> {
 
       // A worker runs a profile inside its run's worktree, and the run is the
       // only place a supervisor can audit that execution from harness records.
-      const runEvidence = worktreeWorkspace
-        ? recordAgentRepositoryCheck(
+      // An explicit run wins over the worktree scan. A bare invocation names
+      // no run and records nothing: an operator's own check from the base
+      // checkout is not evidence of any run that happens to share it.
+      const runEvidence = evidenceRun
+        ? recordAgentRepositoryCheckForRuns(
             root,
-            worktreeWorkspace.name,
+            [evidenceRun.run_id],
             result,
             startedAt,
           )
-        : []
+        : worktreeWorkspace
+          ? recordAgentRepositoryCheck(
+              root,
+              worktreeWorkspace.name,
+              result,
+              startedAt,
+            )
+          : []
 
       print(
         runEvidence.length > 0
@@ -2302,12 +2400,20 @@ async function main(): Promise<void> {
           baseRef: option(args, '--base'),
           targetRef: option(args, '--target'),
           closureRevision: option(args, '--closure-revision'),
+          dimensions: commaSeparatedOption(
+            args,
+            '--dimensions',
+            availableReviewDimensions(root).map((dimension) => dimension.slug),
+          ),
         })
 
         print({
           status: 'ready',
           mode: card.mode,
           card_path: card.path,
+          ...(card.review_dimensions
+            ? { review_dimensions: card.review_dimensions }
+            : {}),
           ...(card.worktree
             ? {
                 worktree: card.worktree.name,
@@ -2507,7 +2613,7 @@ async function main(): Promise<void> {
         print(
           {
             status: 'started',
-            ...startCohort(root, requiredArgument(rest[0], 'cohort-id'), {
+            ...startCohort(root, requiredPositional(rest[0], 'cohort-id'), {
               cohortIndex,
             }),
           },
@@ -2518,7 +2624,7 @@ async function main(): Promise<void> {
 
       if (sub === 'status') {
         print(
-          cohortStatus(root, requiredArgument(rest[0], 'cohort-id')),
+          cohortStatus(root, requiredPositional(rest[0], 'cohort-id')),
           asJson,
         )
         return
@@ -2528,7 +2634,7 @@ async function main(): Promise<void> {
         print(
           {
             status: 'integrated',
-            ...integrateCohort(root, requiredArgument(rest[0], 'cohort-id'), {
+            ...integrateCohort(root, requiredPositional(rest[0], 'cohort-id'), {
               intoBranch: option(rest, '--into-branch'),
             }),
           },
@@ -2537,10 +2643,24 @@ async function main(): Promise<void> {
         return
       }
 
+      if (sub === 'release') {
+        const result = releaseCohort(
+          root,
+          requiredPositional(rest[0], 'cohort-id'),
+        )
+
+        print(result, asJson)
+
+        if (result.status === 'failed') {
+          process.exitCode = 1
+        }
+        return
+      }
+
       if (sub === 'abandon') {
         const state = abandonChunk(
           root,
-          requiredArgument(rest[0], 'cohort-id'),
+          requiredPositional(rest[0], 'cohort-id'),
           requiredArgument(option(args, '--chunk'), '--chunk'),
           requiredArgument(option(args, '--note'), '--note'),
         )
@@ -2551,7 +2671,7 @@ async function main(): Promise<void> {
 
       if (sub === 'clean') {
         print(
-          cleanCohortSession(root, requiredArgument(rest[0], 'cohort-id'), {
+          cleanCohortSession(root, requiredPositional(rest[0], 'cohort-id'), {
             force: hasFlag(args, '--force'),
           }),
           asJson,
@@ -2559,7 +2679,57 @@ async function main(): Promise<void> {
         return
       }
 
+      if (sub === 'route') {
+        const result = retryDeliveryRoute(
+          root,
+          requiredArgument(option(args, '--plan-run'), '--plan-run'),
+        )
+
+        print(result, asJson)
+
+        if (result.status === 'failed') {
+          process.exitCode = 1
+        }
+        return
+      }
+
       throw new PanError(`Unknown cohort subcommand: ${sub ?? '(missing)'}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
+    }
+    case 'context': {
+      const sub = args[0]
+
+      if (sub === 'digest') {
+        const relativePath = requiredPositional(args[1], 'repo-relative-file')
+        const absolute = resolveInside(root, relativePath)
+
+        // A directory exists but has no content to digest; naming the
+        // repo-relative path keeps the absolute root out of the message.
+        if (!isFile(absolute)) {
+          throw new PanError(`File does not exist: ${relativePath}`, {
+            code: 'CONTEXT_REFERENCE_NOT_FOUND',
+            details: { path: relativePath },
+          })
+        }
+
+        const digest = referenceContentSha256(readText(absolute))
+
+        print(
+          hasFlag(args, '--json')
+            ? {
+                source_path: relativePath,
+                content_sha256: digest,
+                basis:
+                  'sha256 of the text after leading and trailing whitespace is trimmed',
+              }
+            : digest,
+          hasFlag(args, '--json'),
+        )
+        return
+      }
+
+      throw new PanError(`Unknown context subcommand: ${sub ?? '(missing)'}`, {
         code: 'UNKNOWN_COMMAND',
       })
     }
@@ -2881,10 +3051,22 @@ async function main(): Promise<void> {
         const passed =
           submission.passed &&
           results.every((item) => isPassingResult(item.result))
+        // Advisory only: a repeated agent-run `fast` profile is reported by
+        // name for the supervisor's audit and never fails the validation.
+        const advisories = agentRepositoryCheckAdvisories(
+          root,
+          runId,
+          invocation.invocation_id,
+        )
 
         print(
           hasFlag(args, '--json')
-            ? { passed, submission_checks: submission.checks, results }
+            ? {
+                passed,
+                submission_checks: submission.checks,
+                results,
+                advisories,
+              }
             : [
                 ...submission.checks
                   .filter((check) => !check.passed)
@@ -2897,6 +3079,9 @@ async function main(): Promise<void> {
                 ...results.map(
                   (item) =>
                     `${item.requirement.registry_id}: ${item.result.status}`,
+                ),
+                ...advisories.map(
+                  (item) => `advisory ${item.id}: ${item.message}`,
                 ),
               ].join('\n'),
           hasFlag(args, '--json'),

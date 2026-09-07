@@ -518,7 +518,12 @@ test('the executor sends only the flags the installed cursor-agent declares', ()
   resetCursorAgentCapabilities()
 
   try {
-    runCursorAgentJson({ prompt: 'probe', cwd: root, timeoutMs: 20_000 })
+    runCursorAgentJson({
+      prompt: 'probe',
+      cwd: root,
+      installationRoot: root,
+      timeoutMs: 20_000,
+    })
 
     const argv = readFileSync(argvLog, 'utf8')
 

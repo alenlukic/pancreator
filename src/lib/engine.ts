@@ -262,10 +262,20 @@ interface CreateRunOptions {
    * points at the parent specification, which it must never copy.
    */
   contextReferencePath?: string | null
-  /** Start cohort 1 when the operator approves the ratified planning artifact. */
-  autostartCohort?: boolean
+  /**
+   * Route the ratified plan into delivery when its gate is approved. Absent
+   * means the workflow default: on for `planning`, which is the only workflow
+   * that produces a plan to route. `false` records the operator's opt-out.
+   */
+  autostartDelivery?: boolean
   /** Parallelism limit the autostarted cohort session records. */
   autostartMaxParallel?: number | null
+  /**
+   * Stage the run starts at instead of the workflow's `start_stage`. The
+   * release run of an integrated cohort starts `delivery` at `verify`, because
+   * the chunk runs already implemented the work.
+   */
+  startStage?: string | null
   /**
    * Named pipeline config to snapshot instead of the active one. An eval run
    * uses it to route every worker persona to an external executor.
@@ -717,6 +727,123 @@ function baselineWorkspaceProvenance(
   return provenance
 }
 
+/**
+ * Whether any stage of the workflow works in a provisioned tree: one that
+ * edits source or release metadata, runs a shell gate, or launches evidence
+ * workers that test the workspace. A planning or design run does none of
+ * these, so its worktree needs no dependencies or compiled output.
+ */
+function workflowNeedsProvisionedWorkspace(
+  workflow: WorkflowDefinition,
+): boolean {
+  return workflow.stages.some(
+    (stage) =>
+      stage.workspace_policy === 'source_allowed' ||
+      stage.workspace_policy === 'release_metadata_only' ||
+      stage.criteria.some((criterion) => criterion.type === 'shell') ||
+      (stage.evidence_workers?.length ?? 0) > 0,
+  )
+}
+
+/**
+ * Provision a run's workspace once, before any stage works in it.
+ *
+ * A workspace other than the configured default is a fresh worktree without
+ * ignored build state (dependencies, compiled output), so every worker and
+ * gate command would fail against it. The target-declared setup commands run
+ * once per run and are recorded on the run state, whatever stage the run
+ * starts at: a release run begins at `verify`, and its verifiers and gates
+ * need the same provisioned tree an implementer does. A failure pauses the run
+ * visibly instead of spending a stage attempt on an unprovisioned worktree,
+ * and the record it leaves is not a pass, so the next prepare runs setup
+ * again once the operator repaired the cause.
+ *
+ * A run whose workflow never works in the tree, or whose target declares no
+ * setup command, records `not_configured` so later prepares skip the check.
+ * A run that already captured its repository-check baselines proved its tree
+ * was provisioned before this record existed, so it records `passed` instead
+ * of running setup again on a tree the baselines already passed.
+ *
+ * Returns true when the run was paused.
+ */
+function ensureWorkspaceProvisioned(
+  root: string,
+  state: RunState,
+  workflow: WorkflowDefinition,
+  onProgress?: (message: string) => void,
+): boolean {
+  const recorded = state.workspace_setup?.status
+
+  if (recorded === 'passed' || recorded === 'not_configured') {
+    return false
+  }
+
+  const workspaceAbsolute = path.resolve(root, state.workspace_root || '.')
+  const defaultWorkspaceAbsolute = path.resolve(
+    root,
+    configuredWorkspaceRoot(root),
+  )
+
+  if (workspaceAbsolute === defaultWorkspaceAbsolute) {
+    return false
+  }
+
+  if (recorded === undefined && repositoryCheckBaselinesCaptured(state)) {
+    state.workspace_setup = {
+      status: 'passed',
+      recorded_at: now(),
+      inferred_from: 'repository_check_baselines',
+    }
+
+    return false
+  }
+
+  if (!workflowNeedsProvisionedWorkspace(workflow)) {
+    state.workspace_setup = { status: 'not_configured', recorded_at: now() }
+
+    return false
+  }
+
+  const setupCommands = loadRepositoryChecks(root).setup ?? []
+
+  if (setupCommands.length === 0) {
+    state.workspace_setup = { status: 'not_configured', recorded_at: now() }
+
+    return false
+  }
+
+  onProgress?.(
+    `running workspace setup in '${state.workspace_root}' (${setupCommands.length} command(s))`,
+  )
+
+  const setup = runRepositorySetup(root, {
+    workspace: state.workspace_root || '.',
+  })
+
+  onProgress?.(
+    `workspace setup ${setup.status} in ${(setup.total_duration_ms / 1000).toFixed(1)}s`,
+  )
+  state.workspace_setup = { status: setup.status, recorded_at: now() }
+
+  if (setup.status === 'failed') {
+    const failedCommand = setup.results.find((result) => !result.passed)
+    const reason =
+      `Workspace setup command failed before stage '${state.current_stage}' ` +
+      `could prepare: ${failedCommand?.command ?? 'unknown'}.`
+
+    state.status = 'paused'
+    state.pause_reason = reason
+    state.pending_action = { type: 'operator_decision' }
+    writeDecision(root, state, 'Worktree environment needs repair', reason, [
+      'Repair the declared setup commands or the workspace, then resume the run.',
+    ])
+
+    return true
+  }
+
+  return false
+}
+
 function ensureWorkflowRepositoryCheckBaselines(
   root: string,
   state: RunState,
@@ -734,52 +861,6 @@ function ensureWorkflowRepositoryCheckBaselines(
 
   const profiles = collectStageRepositoryCheckProfiles(workflow.stages, state)
   const repositoryChecks = loadRepositoryChecks(root)
-
-  // A workspace other than the configured default is a fresh worktree without
-  // ignored build state (dependencies, compiled output), so every profile
-  // command would fail against it. Run the target-declared setup commands
-  // first and pause visibly when they fail, instead of capturing a doomed
-  // baseline or hanging the prepare.
-  const setupCommands = repositoryChecks.setup ?? []
-  const workspaceAbsolute = path.resolve(root, state.workspace_root || '.')
-  const defaultWorkspaceAbsolute = path.resolve(
-    root,
-    configuredWorkspaceRoot(root),
-  )
-
-  if (
-    setupCommands.length > 0 &&
-    workspaceAbsolute !== defaultWorkspaceAbsolute
-  ) {
-    onProgress?.(
-      `running workspace setup in '${state.workspace_root}' (${setupCommands.length} command(s))`,
-    )
-
-    const setup = runRepositorySetup(root, {
-      workspace: state.workspace_root || '.',
-    })
-
-    onProgress?.(
-      `workspace setup ${setup.status} in ${(setup.total_duration_ms / 1000).toFixed(1)}s`,
-    )
-
-    if (setup.status === 'failed') {
-      const failedCommand = setup.results.find((result) => !result.passed)
-      const reason =
-        `Workspace setup command failed before baseline capture: ` +
-        `${failedCommand?.command ?? 'unknown'}.`
-
-      state.status = 'paused'
-      state.pause_reason = reason
-      state.pending_action = { type: 'operator_decision' }
-      writeDecision(root, state, 'Worktree environment needs repair', reason, [
-        'Repair the declared setup commands or the workspace, then resume from the first source stage.',
-      ])
-
-      return true
-    }
-  }
-
   const preCaptureWorkspace = workspaceSnapshotForRun(root, state)
   const provenance = baselineWorkspaceProvenance(
     root,
@@ -1763,8 +1844,18 @@ function personaSubset(
   return subset
 }
 
+/**
+ * Workflow `pan init` runs when the operator names none. Planning is the
+ * entry point for delivery work: its ratified gate routes the plan into one
+ * delivery run or a cohort fan-out, so the supervisor never guesses the
+ * workflow from prose. The literal repeats `COHORT_PLAN_WORKFLOW_SLUG` because
+ * `cohorts.js` imports this module, and a top-level read of its export would
+ * hit the temporal dead zone when that module loads first.
+ */
+export const DEFAULT_WORKFLOW_SLUG = 'planning'
+
 export function createRun(root: string, options: CreateRunOptions): RunState {
-  const workflowSlug = options.workflowSlug ?? 'delivery'
+  const workflowSlug = options.workflowSlug ?? DEFAULT_WORKFLOW_SLUG
   const requestPath = options.requestPath
 
   invariant(requestPath, '--request is required.', {
@@ -1775,16 +1866,22 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
   // ratified cohort plan, and no other workflow produces one. Rejecting the
   // flag at creation keeps a silently inert flag off the run state.
   invariant(
-    !options.autostartCohort || workflowSlug === COHORT_PLAN_WORKFLOW_SLUG,
-    `--autostart is accepted only for the '${COHORT_PLAN_WORKFLOW_SLUG}' workflow.`,
+    options.autostartDelivery === undefined ||
+      workflowSlug === COHORT_PLAN_WORKFLOW_SLUG,
+    `--autostart and --no-autostart are accepted only for the ` +
+      `'${COHORT_PLAN_WORKFLOW_SLUG}' workflow.`,
     { code: 'INVALID_ARGUMENT', details: { workflow: workflowSlug } },
   )
 
+  const autostartDelivery =
+    workflowSlug === COHORT_PLAN_WORKFLOW_SLUG
+      ? (options.autostartDelivery ?? true)
+      : null
   const autostartMaxParallel = options.autostartMaxParallel ?? null
 
   invariant(
-    autostartMaxParallel === null || options.autostartCohort,
-    '--max-parallel requires --autostart.',
+    autostartMaxParallel === null || autostartDelivery === true,
+    '--max-parallel requires an autostarted planning run.',
     { code: 'INVALID_ARGUMENT' },
   )
   invariant(
@@ -1795,6 +1892,11 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
   )
 
   const workflow = loadWorkflow(root, workflowSlug)
+  // A start-stage override must name a stage of this workflow, checked before
+  // any run state exists so a typo cannot create a run that no stage owns.
+  const startStage = options.startStage
+    ? stageBySlug(workflow, options.startStage).slug
+    : workflow.start_stage
   const pipelineOverride = options.pipelineOverride ?? null
   const agentSuffix = options.cursorAgentSuffix ?? null
 
@@ -2055,13 +2157,15 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
       ...(agentSuffix ? { cursor_agent_suffix: agentSuffix } : {}),
       ...(options.bestOfN ? { best_of_n: options.bestOfN } : {}),
       ...(options.cohort ? { cohort: options.cohort } : {}),
-      ...(options.autostartCohort ? { autostart_cohort: true } : {}),
+      ...(autostartDelivery !== null
+        ? { autostart_delivery: autostartDelivery }
+        : {}),
       ...(autostartMaxParallel !== null
         ? { autostart_max_parallel: autostartMaxParallel }
         : {}),
       title: options.title ?? path.basename(requestPath),
       status: 'running',
-      current_stage: workflow.start_stage,
+      current_stage: startStage,
       pending_action: { type: 'prepare_invocation' },
       current_invocation: null,
       request: {
@@ -2098,6 +2202,9 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
         policies: supervisorCard.policies.map((policy) => policy.id),
       },
       workflow: workflow.slug,
+      ...(startStage !== workflow.start_stage
+        ? { start_stage: startStage }
+        : {}),
       pipeline_config: pipelineConfig.name,
       workspace_root: workspaceRoot,
       ...(managedWorktree ? { managed_worktree: managedWorktree } : {}),
@@ -2586,13 +2693,15 @@ export function prepareInvocation(
     }
 
     ensureMutatingWorkflowInitialized(root, state, stage)
-    const environmentBlocked = ensureWorkflowRepositoryCheckBaselines(
-      root,
-      state,
-      workflow,
-      stage,
-      options.onProgress,
-    )
+    const environmentBlocked =
+      ensureWorkspaceProvisioned(root, state, workflow, options.onProgress) ||
+      ensureWorkflowRepositoryCheckBaselines(
+        root,
+        state,
+        workflow,
+        stage,
+        options.onProgress,
+      )
 
     if (environmentBlocked) {
       persistRun(root, state, 'run_paused', { reason: state.pause_reason })

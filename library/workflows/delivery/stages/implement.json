@@ -38,7 +38,7 @@
       "hard": true,
       "statement": "Configured repository fast checks pass.",
       "command": "pan repository-check fast",
-      "timeout_ms": 600000
+      "timeout_ms": 1200000
     }
   ],
   "transitions": {

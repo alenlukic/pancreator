@@ -30,12 +30,23 @@ import {
 } from './io.js'
 import { keywordRunSuffixFrom } from './naming.js'
 import { panCommand } from './project-config.js'
-import { loadState, makeUniqueRunId, now, statePath } from './state.js'
+import {
+  eventPath,
+  listRunStatesWhere,
+  loadState,
+  makeUniqueRunId,
+  now,
+  operationMutexPath,
+  persist,
+  runIsLive,
+  statePath,
+} from './state.js'
 import type {
   CohortChunkRecord,
   CohortDependencyEdge,
   CohortGroupRecord,
   CohortSessionState,
+  DeliveryHandoff,
   RunState,
   RunStatus,
 } from './types.js'
@@ -57,6 +68,18 @@ export const COHORT_PLAN_WORKFLOW_SLUG = 'planning'
  * every chunk, so the chunk workflow carries no ship stage.
  */
 export const COHORT_CHUNK_WORKFLOW_SLUG = 'delivery-chunk'
+/**
+ * Workflow a single-chunk plan hands off to, and the workflow of the release
+ * run that follows the last cohort. It carries the ship stage the chunk
+ * workflow omits.
+ */
+export const DELIVERY_WORKFLOW_SLUG = 'delivery'
+/**
+ * Stage the release run starts at. The chunk runs already implemented the
+ * work, so the integrated result owes only verification, remediation, and
+ * release preparation.
+ */
+export const RELEASE_RUN_START_STAGE = 'verify'
 /** Concurrent chunk runs one cohort session allows unless the operator sets another limit. */
 export const DEFAULT_COHORT_MAX_PARALLEL = 4
 const COHORT_ID_PATTERN =
@@ -95,6 +118,14 @@ export interface CohortStatusView {
   live_chunk_runs: number
   /** Operator command that supervises every live chunk run at once, or null when none is live. */
   supervise_command: string | null
+  /** Release run the last integration started, or null until then. */
+  release_run_id: string | null
+  release_resume_command: string | null
+  /**
+   * Command that starts the release run once every cohort is satisfied and no
+   * release run is recorded: the merge-free `cohort release`. Null otherwise.
+   */
+  release_command: string | null
 }
 
 export interface CohortStartResult {
@@ -122,12 +153,55 @@ export interface CohortIntegrationResult {
   merge_commit: string
   merged_chunks: string[]
   evidence_path: string
+  /**
+   * Transition the harness took once the merge proof landed: the next cohort
+   * for a non-final cohort, the release run for the final one.
+   */
+  autostart: CohortContinuationResult
 }
 
-export type CohortAutostartResult =
-  | ({ status: 'started' } & CohortStartResult)
-  | ({ status: 'already_started' } & CohortStartResult)
-  | { status: 'failed'; error: string; manual_commands: string[] }
+/** One run the harness started on the operator's behalf. */
+export interface StartedRunHandoff {
+  run_id: string
+  /** Harness-relative workspace the run is bound to. */
+  worktree: string
+  resume_command: string
+}
+
+/**
+ * What approving a ratified plan started. A single-chunk plan starts one
+ * `delivery` run; a wider plan starts cohort 1 of a cohort session. `failed`
+ * keeps the approval and the plan intact and names the manual commands.
+ */
+export type DeliveryAutostartResult =
+  | ({
+      status: 'started' | 'already_started'
+      kind: 'cohort'
+    } & CohortStartResult)
+  | ({
+      status: 'started' | 'already_started'
+      kind: 'delivery'
+    } & StartedRunHandoff)
+  | {
+      status: 'failed'
+      kind?: 'cohort' | 'delivery'
+      error: string
+      manual_commands: string[]
+    }
+
+/** What integrating one cohort started next. */
+export type CohortContinuationResult =
+  | ({ status: 'started'; kind: 'cohort' } & CohortStartResult)
+  | ({
+      status: 'started' | 'already_started'
+      kind: 'release'
+    } & StartedRunHandoff)
+  | {
+      status: 'failed'
+      kind: 'cohort' | 'release'
+      error: string
+      manual_commands: string[]
+    }
 
 export function cohortDir(root: string, cohortId: string): string {
   invariant(
@@ -397,7 +471,8 @@ function assertPredecessorsSatisfied(
 
 /** Refuse a chunk run whose predecessor cohort is unsatisfied. */
 export function assertCohortRunUnblocked(root: string, state: RunState): void {
-  if (!state.cohort) {
+  // The release run follows every cohort, so it has no predecessor to wait on.
+  if (!state.cohort || state.cohort.role === 'release') {
     return
   }
 
@@ -653,7 +728,22 @@ export function initCohortSession(
   // --workspace) fans out into that repository.
   const planState = loadState(root, options.planRunId)
   const planWorkspace = path.resolve(root, planState.workspace_root || '.')
+  const existing = cohortSessionForPlanRun(root, options.planRunId)
+  const pan = panCommand(root)
 
+  // One plan fans out once. A second session would create a second set of
+  // worktrees and runs for the same chunks, so the existing session is named
+  // together with the command that continues it.
+  invariant(
+    !existing,
+    `Plan run ${options.planRunId} already opened cohort session ` +
+      `${existing?.cohort_id}. Continue it with '${pan} cohort start ` +
+      `${existing?.cohort_id}'.`,
+    {
+      code: 'COHORT_SESSION_EXISTS',
+      details: { cohort_id: existing?.cohort_id },
+    },
+  )
   invariant(
     isGitRepository(planWorkspace),
     `Cohort fan-out requires a Git repository workspace; the plan run's ` +
@@ -711,7 +801,7 @@ export function initCohortSession(
 
   ensureDir(cohortDir(root, cohortId))
 
-  return persistCohortState(root, {
+  const session = persistCohortState(root, {
     schema_version: 1,
     cohort_id: cohortId,
     plan_run_id: options.planRunId,
@@ -726,6 +816,17 @@ export function initCohortSession(
     cohorts: plan.cohorts,
     satisfaction: [],
   })
+
+  // The plan run names where its plan went, whether the approval hook or the
+  // operator opened the session. This replaces a `failed` route record, so a
+  // manual init after a failed route also clears the failure.
+  recordDeliveryHandoff(root, planState, {
+    kind: 'cohort',
+    cohort_id: session.cohort_id,
+    recorded_at: now(),
+  })
+
+  return session
 }
 
 export interface StartCohortOptions {
@@ -819,11 +920,21 @@ export function startCohort(
 
       state = updateChunk(root, state, chunk.id, { worktree: worktreeName })
 
-      const record = createWorktree(root, worktreeName, {
-        from: integrationBranch(state),
-        description: `Cohort ${cohortIndex} chunk '${chunk.id}'`,
-        repositoryRoot: cohortRepositoryRoot(root, state),
-      })
+      // The worktree name derives from the session and the chunk, so a retry
+      // after a crash between worktree creation and the run record finds the
+      // worktree it already made instead of refusing a second one, and a
+      // retry after a crash between run creation and the run_id write adopts
+      // the live run bound to that worktree instead of binding a second run
+      // to the same checkout.
+      const record =
+        readWorktreeIndex(root).worktrees.find(
+          (entry) => entry.name === worktreeName,
+        ) ??
+        createWorktree(root, worktreeName, {
+          from: integrationBranch(state),
+          description: `Cohort ${cohortIndex} chunk '${chunk.id}'`,
+          repositoryRoot: cohortRepositoryRoot(root, state),
+        })
 
       state = updateChunk(root, state, chunk.id, {
         worktree: worktreeName,
@@ -833,23 +944,25 @@ export function startCohort(
       // The run is bound to its worktree exactly as `pan init --worktree`
       // binds one, so `--worktree <name>` is accepted on every lifecycle
       // command and the identity check guards against a swapped checkout.
-      const run = createRun(root, {
-        workflowSlug: COHORT_CHUNK_WORKFLOW_SLUG,
-        requestPath: chunk.child_spec_path,
-        title: `${chunk.id} · ${chunk.title}`,
-        workspace: record.path,
-        worktree: {
-          name: record.name,
-          path: record.path,
-          branch: record.branch,
-        },
-        contextReferencePath: state.parent_spec_path,
-        cohort: {
-          cohort_id: cohortId,
-          cohort_index: cohortIndex,
-          chunk: chunk.id,
-        },
-      })
+      const run =
+        existingChunkRun(root, cohortId, chunk.id, record.path) ??
+        createRun(root, {
+          workflowSlug: COHORT_CHUNK_WORKFLOW_SLUG,
+          requestPath: chunk.child_spec_path,
+          title: `${chunk.id} · ${chunk.title}`,
+          workspace: record.path,
+          worktree: {
+            name: record.name,
+            path: record.path,
+            branch: record.branch,
+          },
+          contextReferencePath: state.parent_spec_path,
+          cohort: {
+            cohort_id: cohortId,
+            cohort_index: cohortIndex,
+            chunk: chunk.id,
+          },
+        })
 
       state = updateChunk(root, state, chunk.id, { run_id: run.run_id })
       started.push({
@@ -869,6 +982,37 @@ export function startCohort(
       chunks: started,
     }
   })
+}
+
+/**
+ * The live chunk run an earlier fan-out attempt created for one chunk: a
+ * chunk-workflow run whose cohort binding names the session and the chunk and
+ * that works in the chunk's worktree. Two live runs on one worktree would edit
+ * the same checkout, so a matching live run is adopted rather than duplicated.
+ * A finished run is not: it no longer occupies the worktree.
+ */
+function existingChunkRun(
+  root: string,
+  cohortId: string,
+  chunkId: string,
+  worktreePath: string,
+): RunState | null {
+  const workspace = path.resolve(root, worktreePath)
+  const matches = (run: RunState): boolean =>
+    run.workflow_slug === COHORT_CHUNK_WORKFLOW_SLUG &&
+    run.cohort !== undefined &&
+    run.cohort.role !== 'release' &&
+    run.cohort.cohort_id === cohortId &&
+    run.cohort.chunk === chunkId &&
+    path.resolve(root, run.workspace_root) === workspace
+
+  return (
+    newestRun(
+      listRunStatesWhere(root, matches).filter(
+        (run) => runIsLive(run) && matches(run),
+      ),
+    ) ?? null
+  )
 }
 
 /** The caller holds the session mutex. */
@@ -943,7 +1087,48 @@ export function cohortStatus(root: string, cohortId: string): CohortStatusView {
     max_parallel: maxParallel,
     live_chunk_runs: live,
     supervise_command: live > 0 ? `/pan-cohort ${cohortId}` : null,
+    release_run_id: state.release_run_id ?? null,
+    release_resume_command: state.release_run_id
+      ? `/pan-resume ${state.release_run_id}`
+      : null,
+    release_command:
+      activeIndex === null && !state.release_run_id
+        ? `${pan} cohort release ${cohortId}`
+        : null,
   }
+}
+
+/**
+ * Start or adopt the release run of a session whose every cohort is
+ * integrated, without merging anything.
+ *
+ * `cohort integrate` is the merge verb, and the merge is the operator's own
+ * action, so the retry of a release start that failed after the final merge
+ * proof landed must not be spelled as another integrate. This command runs
+ * only the continuation: it refuses while any cohort lacks its merge proof,
+ * and it adopts a release run that already exists exactly as the integrate
+ * path does, so a repeated call is idempotent.
+ */
+export function releaseCohort(
+  root: string,
+  cohortId: string,
+): CohortContinuationResult {
+  const state = loadCohortState(root, cohortId)
+  const unsatisfied = firstUnsatisfiedIndex(root, state)
+
+  invariant(
+    unsatisfied === null,
+    `Cohort ${unsatisfied} of session ${cohortId} holds no merge proof, so ` +
+      'the release run cannot start. Finish every chunk run of cohort ' +
+      `${unsatisfied}, then run '${panCommand(root)} cohort integrate ` +
+      `${cohortId}'.`,
+    {
+      code: 'COHORT_NOT_SATISFIED',
+      details: { cohort_id: cohortId, unsatisfied_cohort_index: unsatisfied },
+    },
+  )
+
+  return continueAfterIntegration(root, cohortId)
 }
 
 /**
@@ -962,23 +1147,53 @@ export function cohortStatus(root: string, cohortId: string): CohortStatusView {
  * which a merge must not touch. The branch is created from the current
  * integration head when it does not exist, and an existing branch is accepted
  * only when it already contains that head, so no earlier cohort merge is lost.
+ *
+ * Once the merge proof is durable, the harness continues the plan itself: a
+ * non-final cohort starts the next cohort, the final cohort starts the release
+ * run. The continuation runs outside the session mutex the merge held, and its
+ * failure is reported next to the integration instead of undoing it, because
+ * the merge proof is true whatever happened afterwards. A repeated integrate
+ * after every cohort landed reports the final merge proof again and completes
+ * the continuation the earlier call left undone.
  */
 export function integrateCohort(
   root: string,
   cohortId: string,
   options: { intoBranch?: string | null } = {},
 ): CohortIntegrationResult {
+  const integrated = integrateActiveCohort(root, cohortId, options)
+
+  return {
+    ...integrated,
+    autostart: continueAfterIntegration(root, cohortId),
+  }
+}
+
+type IntegratedCohort = Omit<CohortIntegrationResult, 'autostart'>
+
+function integrateActiveCohort(
+  root: string,
+  cohortId: string,
+  options: { intoBranch?: string | null },
+): IntegratedCohort {
   return withCohortSession(root, cohortId, (initial) => {
     const loaded = options.intoBranch
       ? retargetIntegration(root, initial, options.intoBranch)
       : initial
     const cohortIndex = firstUnsatisfiedIndex(root, loaded)
 
-    invariant(
-      cohortIndex !== null,
-      `Every cohort of session ${cohortId} is already integrated.`,
-      { code: 'COHORT_COMPLETE' },
-    )
+    if (cohortIndex === null) {
+      invariant(
+        !loaded.release_run_id,
+        `Every cohort of session ${cohortId} is already integrated.`,
+        { code: 'COHORT_COMPLETE' },
+      )
+
+      // Every merge proof landed but no release run is recorded: an earlier
+      // integrate died between the merge and its continuation. Reporting the
+      // final proof lets the caller run the continuation that is missing.
+      return lastIntegratedCohort(loaded)
+    }
 
     assertPredecessorsSatisfied(root, loaded, cohortIndex)
 
@@ -1055,6 +1270,33 @@ export function integrateCohort(
       evidence_path: merged.evidence_path,
     }
   })
+}
+
+/**
+ * The recorded merge proof of the last cohort that landed. The satisfaction
+ * entry is the proof itself, so the report is rebuilt from it rather than from
+ * a second merge.
+ */
+function lastIntegratedCohort(state: CohortSessionState): IntegratedCohort {
+  const last = [...state.satisfaction].sort(
+    (left, right) => right.cohort_index - left.cohort_index,
+  )[0]
+
+  invariant(last, `Session ${state.cohort_id} records no integrated cohort.`, {
+    code: 'INVALID_COHORT_STATE',
+  })
+
+  return {
+    cohort_id: state.cohort_id,
+    cohort_index: last.cohort_index,
+    base_branch: last.base_branch,
+    integration_branch: last.integration_branch ?? integrationBranch(state),
+    merge_commit: last.merge_commit,
+    merged_chunks: chunksOfCohort(state, last.cohort_index)
+      .filter((chunk) => !chunk.abandoned)
+      .map((chunk) => chunk.id),
+    evidence_path: last.evidence_path,
+  }
 }
 
 interface MergeOutcome {
@@ -1180,7 +1422,7 @@ function recordAbandonedCohort(
   root: string,
   state: CohortSessionState,
   cohortIndex: number,
-): CohortIntegrationResult {
+): IntegratedCohort {
   const abandoned = chunksOfCohort(state, cohortIndex).map((chunk) => ({
     chunk: chunk.id,
     note: chunk.abandoned?.note ?? '',
@@ -1513,55 +1755,188 @@ export function cohortSessionForPlanRun(
 }
 
 /**
- * Start cohort 1 when the operator approves a ratified planning artifact on a
- * run created with `--autostart`.
+ * Route a ratified plan into delivery when its gate is approved.
  *
- * The hook is a convenience over the two commands the operator would otherwise
- * type, so it runs after the decision is already recorded and it never rewrites
- * that decision. A second approval of the same run finds the session already
- * open and reports its chunks as `already_started`, because nothing failed. A
- * failure is reported with the manual commands, because the approval and the
- * ratified plan remain valid whatever happened to the fan-out.
+ * The plan gate is the routing point and the harness owns the route: exactly
+ * one chunk starts one `delivery` run bound to a fresh worktree, and two or
+ * more chunks open a cohort session and start cohort 1. The approval that
+ * triggers it may come from the operator or from away mode acting on the
+ * operator's behalf, because the routing is a recorded property of the run,
+ * not a judgment made at approval time.
+ *
+ * `autostart_delivery` is recorded on every planning run since routing became
+ * the default; `autostart_cohort` is the flag older runs recorded when only
+ * the cohort fan-out was automatic. `false` on either is the operator's
+ * opt-out and starts nothing. A run that recorded neither predates routing:
+ * silence there would leave the operator believing something started, so the
+ * hook reports a failed route whose one manual command is the retry, which
+ * reads the operator's invocation as the opt-in.
+ *
+ * The hook runs after the decision is durable and never rewrites it. A second
+ * approval finds the handoff already recorded and reports `already_started`,
+ * because nothing failed. A failure reports the concrete error with the
+ * manual command, because the approval and the ratified plan remain valid
+ * whatever happened to the route. Every path here adds only worktrees,
+ * branches, and run records, the actions `AWAY-001` and `COHORT-001` permit
+ * for an autostart.
  */
-/**
- * Start cohort 1 after the ratified planning gate is approved on a run the
- * operator flagged with `--autostart`. The flag is the operator's directive,
- * recorded on the run at `pan init`, so the approval that triggers it may come
- * from the operator or from away mode acting on the operator's behalf. Cohort
- * start only adds worktrees and branches, which stays inside the away-mode
- * bounds (no commit, push, deletion, publication, or waiver).
- */
-export function maybeAutostartCohort(
+export function maybeStartDelivery(
   root: string,
   state: RunState,
   decision: { actor: 'operator' | 'away'; action: string },
-): CohortAutostartResult | null {
+): DeliveryAutostartResult | null {
   if (
     decision.action !== 'approve' ||
     state.workflow_slug !== COHORT_PLAN_WORKFLOW_SLUG ||
-    state.status !== 'succeeded' ||
-    state.autostart_cohort !== true
+    state.status !== 'succeeded'
   ) {
     return null
   }
 
-  const pan = panCommand(root)
-  const manualCommands = [
-    `${pan} cohort init --plan-run ${state.run_id}`,
-    `${pan} cohort start <cohort-id>`,
-  ]
+  const requested = state.autostart_delivery ?? state.autostart_cohort
+
+  if (requested === false) {
+    return null
+  }
+
+  if (requested === undefined) {
+    const failed = {
+      status: 'failed' as const,
+      error:
+        'This planning run predates routing and recorded no opt-in or opt-out.',
+      manual_commands: [routeRetryCommand(root, state.run_id)],
+    }
+
+    recordFailedDeliveryRoute(root, state, failed)
+
+    return failed
+  }
+
+  return routeDelivery(root, state)
+}
+
+/**
+ * Route the approved plan of a succeeded planning run again, by operator
+ * command.
+ *
+ * The approval hook fires once, from the gate decision, so a route that
+ * failed there has no second trigger: the decision is durable and cannot be
+ * repeated. This is that trigger. It takes the same path the hook takes, so a
+ * run or session an earlier attempt already created is adopted rather than
+ * duplicated, and a successful route replaces the `failed` handoff record.
+ * The operator's invocation stands in for the opt-in a run created before
+ * routing never recorded.
+ */
+export function retryDeliveryRoute(
+  root: string,
+  planRunId: string,
+): DeliveryAutostartResult {
+  const state = loadState(root, planRunId)
+
+  invariant(
+    state.workflow_slug === COHORT_PLAN_WORKFLOW_SLUG,
+    `Run ${planRunId} runs workflow '${state.workflow_slug}', not ` +
+      `'${COHORT_PLAN_WORKFLOW_SLUG}', so it holds no plan to route.`,
+    { code: 'COHORT_PLAN_RUN_INVALID' },
+  )
+  invariant(
+    state.status === 'succeeded',
+    `Run ${planRunId} is '${state.status}', not 'succeeded', so its plan ` +
+      'gate has not approved a plan to route.',
+    { code: 'COHORT_PLAN_RUN_NOT_SUCCEEDED' },
+  )
+
+  const decision = planGateDecision(root, planRunId)
+
+  // A succeeded planning run whose plan gate recorded a decision reached that
+  // status through an approval. A run with no decision event closed through a
+  // waived or disabled gate, and its ratified plan stage is the record then.
+  invariant(
+    decision === null || decision === 'approve',
+    `The recorded decision on the plan gate of run ${planRunId} is ` +
+      `'${decision}', not 'approve', so its plan is not routed.`,
+    { code: 'COHORT_PLAN_REJECTED' },
+  )
+
+  return routeDelivery(root, state)
+}
+
+/**
+ * The last gate decision recorded on the `plan` stage of a run, read from the
+ * decision events its log carries. Null when the log holds none.
+ */
+function planGateDecision(root: string, runId: string): string | null {
+  const eventsFile = eventPath(root, runId)
+
+  if (!fileExists(eventsFile)) {
+    return null
+  }
+
+  let decision: string | null = null
+
+  for (const line of readText(eventsFile).split('\n')) {
+    if (line.trim().length === 0) {
+      continue
+    }
+
+    let event: unknown
+
+    try {
+      event = JSON.parse(line)
+    } catch {
+      continue
+    }
+
+    if (
+      isRecord(event) &&
+      (event.type === 'operator_decision_recorded' ||
+        event.type === 'away_decision_applied') &&
+      event.stage === 'plan' &&
+      typeof event.decision === 'string'
+    ) {
+      decision = event.decision
+    }
+  }
+
+  return decision
+}
+
+/**
+ * The route itself: one `delivery` run for a single chunk, cohort 1 of a
+ * cohort session for a wider plan. Shared by the approval hook and the
+ * operator retry, so both adopt what an earlier attempt created.
+ */
+function routeDelivery(root: string, state: RunState): DeliveryAutostartResult {
+  let kind: 'cohort' | 'delivery' | undefined
 
   try {
+    const plan = readRatifiedCohortPlan(root, state.run_id)
+
+    if (plan.chunks.length === 1) {
+      kind = 'delivery'
+
+      return startSingleDeliveryRun(root, state, plan)
+    }
+
+    kind = 'cohort'
+
     const existing = cohortSessionForPlanRun(root, state.run_id)
 
     if (existing) {
+      recordDeliveryHandoff(root, state, {
+        kind: 'cohort',
+        cohort_id: existing.cohort_id,
+        recorded_at: now(),
+      })
+
       const started = startedChunksOfFirstCohort(root, existing)
 
       if (started) {
-        return { status: 'already_started', ...started }
+        return { status: 'already_started', kind, ...started }
       }
     }
 
+    // Init records the cohort handoff on the plan run itself.
     const session =
       existing ??
       initCohortSession(root, {
@@ -1569,14 +1944,429 @@ export function maybeAutostartCohort(
         maxParallel: state.autostart_max_parallel ?? null,
       })
 
-    return { status: 'started', ...startCohort(root, session.cohort_id) }
+    return { status: 'started', kind, ...startCohort(root, session.cohort_id) }
   } catch (error) {
-    return {
-      status: 'failed',
+    const failed = {
+      status: 'failed' as const,
+      ...(kind ? { kind } : {}),
       error: errorMessage(error),
-      manual_commands: manualCommands,
+      // The retry adopts whatever exists at failure time: a session init
+      // already opened is continued, a run already created is adopted.
+      manual_commands: [routeRetryCommand(root, state.run_id)],
+    }
+
+    recordFailedDeliveryRoute(root, state, failed)
+
+    return failed
+  }
+}
+
+/** The one command that completes a failed route by hand. */
+function routeRetryCommand(root: string, planRunId: string): string {
+  return `${panCommand(root)} cohort route --plan-run ${planRunId}`
+}
+
+function deliveryWorktreeName(planRunId: string, chunkId: string): string {
+  return `delivery-${sha256(planRunId).slice(0, 6)}-${chunkIdSlug(chunkId)}`
+}
+
+/**
+ * Record on the planning run where its ratified plan went, so `pan status`
+ * on the plan run names the handoff. The plan run is closed, so this is a
+ * bookkeeping event on a finished run rather than a workflow transition, and
+ * it is skipped when the same handoff is already recorded.
+ */
+function recordDeliveryHandoff(
+  root: string,
+  planState: RunState,
+  handoff: DeliveryHandoff,
+  eventType = 'delivery_handoff_recorded',
+): void {
+  withOperationMutex(operationMutexPath(root, planState.run_id), () => {
+    const current = loadState(root, planState.run_id)
+    const recorded = current.delivery_handoff
+
+    if (recorded && handoffKey(recorded) === handoffKey(handoff)) {
+      planState.delivery_handoff = recorded
+
+      return
+    }
+
+    current.delivery_handoff = handoff
+    persist(root, current, eventType, { handoff })
+    planState.delivery_handoff = handoff
+  })
+}
+
+/**
+ * Persist a failed route on the plan run so `pan status` on it names the
+ * failure and the manual commands after the approval's own output is gone.
+ * The failure is reported whatever happens here: a plan run whose record
+ * does not exist (the route failed reading it) has nowhere to write, and a
+ * write failure must not hide the routing error it would annotate.
+ */
+function recordFailedDeliveryRoute(
+  root: string,
+  planState: RunState,
+  failed: {
+    kind?: 'cohort' | 'delivery'
+    error: string
+    manual_commands: string[]
+  },
+): void {
+  if (!fileExists(statePath(root, planState.run_id))) {
+    return
+  }
+
+  try {
+    recordDeliveryHandoff(
+      root,
+      planState,
+      {
+        kind: 'failed',
+        ...(failed.kind ? { route: failed.kind } : {}),
+        error: failed.error,
+        manual_commands: failed.manual_commands,
+        recorded_at: now(),
+      },
+      'delivery_route_failed',
+    )
+  } catch {
+    // The routing failure is the report; the missing annotation is not.
+  }
+}
+
+function handoffKey(handoff: DeliveryHandoff): string {
+  switch (handoff.kind) {
+    case 'delivery':
+      return `delivery:${handoff.run_id}`
+    case 'cohort':
+      return `cohort:${handoff.cohort_id}`
+    case 'failed':
+      return `failed:${handoff.route ?? ''}:${handoff.error}`
+  }
+}
+
+/**
+ * Start the one `delivery` run a single-chunk plan hands off to.
+ *
+ * The run is bound to a fresh worktree exactly as a cohort chunk is, reads the
+ * child specification as its request, and reaches the parent specification by
+ * reference. The worktree name derives from the plan run and the chunk, so a
+ * retry after a failure between worktree creation and run creation finds the
+ * worktree it already made instead of refusing a second one, and a retry after
+ * a failure between run creation and the handoff record adopts the run it
+ * already made instead of binding a second run to the same worktree.
+ */
+function startSingleDeliveryRun(
+  root: string,
+  planState: RunState,
+  plan: ParsedCohortPlan,
+): DeliveryAutostartResult {
+  const recorded = planState.delivery_handoff
+
+  if (recorded?.kind === 'delivery') {
+    return {
+      status: 'already_started',
+      kind: 'delivery',
+      run_id: recorded.run_id,
+      worktree: recorded.worktree,
+      resume_command: `/pan-resume ${recorded.run_id}`,
     }
   }
+
+  const planWorkspace = path.resolve(root, planState.workspace_root || '.')
+
+  invariant(
+    isGitRepository(planWorkspace),
+    `Delivery handoff requires a Git repository workspace; the plan run's ` +
+      `workspace ${planWorkspace} is not one, because the delivery run works ` +
+      'in a worktree.',
+    { code: 'COHORT_REQUIRES_GIT' },
+  )
+
+  const repositoryRoot = resolveRepositoryRoot(planWorkspace)
+  const baseBranch = gitCurrentBranch(repositoryRoot)
+
+  invariant(
+    baseBranch,
+    'Delivery handoff requires a named base branch. The workspace is on a ' +
+      'detached HEAD.',
+    { code: 'COHORT_BASE_BRANCH_REQUIRED' },
+  )
+
+  const [chunk] = plan.chunks
+
+  invariant(
+    fileExists(resolveInside(root, plan.parent_spec_path)),
+    `Parent specification does not exist: ${plan.parent_spec_path}`,
+    { code: 'COHORT_PARENT_SPEC_NOT_FOUND' },
+  )
+  invariant(
+    fileExists(resolveInside(root, chunk.child_spec_path)),
+    `Child specification for chunk '${chunk.id}' does not exist: ` +
+      chunk.child_spec_path,
+    { code: 'COHORT_CHILD_SPEC_NOT_FOUND' },
+  )
+
+  const worktreeName = deliveryWorktreeName(planState.run_id, chunk.id)
+  const record =
+    readWorktreeIndex(root).worktrees.find(
+      (entry) => entry.name === worktreeName,
+    ) ??
+    createWorktree(root, worktreeName, {
+      from: baseBranch,
+      description: `Delivery of plan ${planState.run_id} chunk '${chunk.id}'`,
+      repositoryRoot,
+    })
+  const adopted = existingDeliveryRun(root, chunk.child_spec_path, record.path)
+  const run =
+    adopted ??
+    createRun(root, {
+      workflowSlug: DELIVERY_WORKFLOW_SLUG,
+      requestPath: chunk.child_spec_path,
+      title: `${chunk.id} · ${chunk.title}`,
+      workspace: record.path,
+      worktree: {
+        name: record.name,
+        path: record.path,
+        branch: record.branch,
+      },
+      contextReferencePath: plan.parent_spec_path,
+    })
+
+  recordDeliveryHandoff(root, planState, {
+    kind: 'delivery',
+    run_id: run.run_id,
+    worktree: record.path,
+    recorded_at: now(),
+  })
+
+  return {
+    status: adopted ? 'already_started' : 'started',
+    kind: 'delivery',
+    run_id: run.run_id,
+    worktree: record.path,
+    resume_command: `/pan-resume ${run.run_id}`,
+  }
+}
+
+/**
+ * The `delivery` run an earlier handoff attempt created for one chunk: it
+ * reads the chunk's child specification as its request and works in the
+ * chunk's derived worktree. Two live runs on one worktree would edit the same
+ * checkout, so a matching live run is adopted rather than duplicated. A
+ * finished run is not: it no longer occupies the worktree.
+ */
+function existingDeliveryRun(
+  root: string,
+  childSpecPath: string,
+  worktreePath: string,
+): RunState | null {
+  const workspace = path.resolve(root, worktreePath)
+  const matches = (run: RunState): boolean =>
+    run.workflow_slug === DELIVERY_WORKFLOW_SLUG &&
+    run.request.source_path === childSpecPath &&
+    path.resolve(root, run.workspace_root) === workspace
+
+  return (
+    newestRun(
+      listRunStatesWhere(root, matches).filter(
+        (run) => runIsLive(run) && matches(run),
+      ),
+    ) ?? null
+  )
+}
+
+function newestRun(runs: RunState[]): RunState | undefined {
+  return [...runs].sort((left, right) =>
+    right.created_at.localeCompare(left.created_at),
+  )[0]
+}
+
+/**
+ * Continue the plan after one cohort's merge proof landed: start the next
+ * cohort, or the release run when no cohort is left.
+ *
+ * Both branches add only worktrees, branches, and run records. The merge that
+ * preceded them was the operator's explicit `cohort integrate`, so the
+ * continuation stays inside the no-commit bound every autostart keeps.
+ */
+function continueAfterIntegration(
+  root: string,
+  cohortId: string,
+): CohortContinuationResult {
+  const pan = panCommand(root)
+  const state = loadCohortState(root, cohortId)
+
+  if (firstUnsatisfiedIndex(root, state) !== null) {
+    try {
+      return {
+        status: 'started',
+        kind: 'cohort',
+        ...startCohort(root, cohortId),
+      }
+    } catch (error) {
+      return {
+        status: 'failed',
+        kind: 'cohort',
+        error: errorMessage(error),
+        manual_commands: [`${pan} cohort start ${cohortId}`],
+      }
+    }
+  }
+
+  try {
+    return startReleaseRun(root, cohortId)
+  } catch (error) {
+    // Every merge proof landed, so the retry is the merge-free `cohort
+    // release`, which runs only this continuation. A hand-built `pan init`
+    // would carry no start-stage record or cohort binding, and neither
+    // release nor integrate would adopt it.
+    return {
+      status: 'failed',
+      kind: 'release',
+      error: errorMessage(error),
+      manual_commands: [`${pan} cohort release ${cohortId}`],
+    }
+  }
+}
+
+/**
+ * The release run reads the operator's original request, which the plan run
+ * stored, and reaches the parent specification by reference. When the plan
+ * run's record is gone, the parent specification itself stands in.
+ */
+function releaseRunRequestPath(
+  root: string,
+  state: CohortSessionState,
+): string {
+  if (fileExists(statePath(root, state.plan_run_id))) {
+    return loadState(root, state.plan_run_id).request.stored_path
+  }
+
+  return state.parent_spec_path
+}
+
+/**
+ * Start the release run of a fully integrated cohort session: one `delivery`
+ * run that begins at `verify` on the integrated result, so release
+ * preparation happens once, on the integrated result, never per unit.
+ *
+ * The run is bound to the worktree that holds the integration branch when the
+ * harness recorded one, which is the case after `--into-branch`. Otherwise the
+ * branch is held by the operator's own checkout, which Git will not check out a
+ * second time, so the run gets a managed worktree of its own, branched from
+ * the integration head. Every `pan release` subcommand needs `--worktree`, so a
+ * run without one could only prepare release metadata.
+ *
+ * Run creation and the session record are two writes, so a crash between them
+ * leaves a release run the session does not name. The next attempt adopts a
+ * release run already bound to the release worktree, exactly as the worktree
+ * lookup adopts a recorded worktree, instead of starting a second one.
+ */
+function startReleaseRun(
+  root: string,
+  cohortId: string,
+): CohortContinuationResult {
+  return withCohortSession(root, cohortId, (state) => {
+    if (
+      state.release_run_id &&
+      fileExists(statePath(root, state.release_run_id))
+    ) {
+      return releaseRunHandoff(
+        'already_started',
+        loadState(root, state.release_run_id),
+      )
+    }
+
+    const target = integrationBranch(state)
+    const repositoryRoot = cohortRepositoryRoot(root, state)
+    const index = readWorktreeIndex(root)
+    const releaseWorktree = releaseWorktreeName(cohortId)
+    const record =
+      index.worktrees.find((entry) => entry.branch === target) ??
+      index.worktrees.find((entry) => entry.name === releaseWorktree) ??
+      createWorktree(root, releaseWorktree, {
+        from: target,
+        description: `Release of cohort session ${cohortId}`,
+        repositoryRoot,
+      })
+    const adopted = existingReleaseRun(root, cohortId, record.path)
+
+    if (adopted) {
+      persistCohortState(root, { ...state, release_run_id: adopted.run_id })
+
+      return releaseRunHandoff('already_started', adopted)
+    }
+
+    const run = createRun(root, {
+      workflowSlug: DELIVERY_WORKFLOW_SLUG,
+      startStage: RELEASE_RUN_START_STAGE,
+      requestPath: releaseRunRequestPath(root, state),
+      title: `Release · cohort ${cohortId}`,
+      workspace: record.path,
+      worktree: { name: record.name, path: record.path, branch: record.branch },
+      contextReferencePath: state.parent_spec_path,
+      // The chunk runs are the implementation record of this run, so the
+      // binding names the session and the final merge proof that lists them.
+      cohort: {
+        cohort_id: cohortId,
+        role: 'release',
+        integration_record: lastIntegratedCohort(state).evidence_path,
+      },
+    })
+
+    persistCohortState(root, { ...state, release_run_id: run.run_id })
+
+    return releaseRunHandoff('started', run)
+  })
+}
+
+function releaseWorktreeName(cohortId: string): string {
+  return `release-${sha256(cohortId).slice(0, 6)}`
+}
+
+function releaseRunHandoff(
+  status: 'started' | 'already_started',
+  run: RunState,
+): CohortContinuationResult {
+  return {
+    status,
+    kind: 'release',
+    run_id: run.run_id,
+    worktree: run.workspace_root,
+    resume_command: `/pan-resume ${run.run_id}`,
+  }
+}
+
+/**
+ * A live release run of this session bound to the integration checkout: a
+ * `delivery` run whose cohort binding names the session in the release role
+ * and that works in that checkout. The binding is what separates it from a
+ * chunk-shaped delivery run that happens to share the workspace, and liveness
+ * is what separates it from the release run of an earlier, finished session
+ * on the same branch.
+ */
+function existingReleaseRun(
+  root: string,
+  cohortId: string,
+  workspace: string,
+): RunState | null {
+  const expected = path.resolve(root, workspace)
+  const matches = (run: RunState): boolean =>
+    run.workflow_slug === DELIVERY_WORKFLOW_SLUG &&
+    run.cohort?.role === 'release' &&
+    run.cohort.cohort_id === cohortId &&
+    path.resolve(root, run.workspace_root) === expected
+
+  return (
+    newestRun(
+      listRunStatesWhere(root, matches).filter(
+        (run) => runIsLive(run) && matches(run),
+      ),
+    ) ?? null
+  )
 }
 
 /**

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -9,6 +9,12 @@ import {
   STANDALONE_MODES,
   buildGovernanceCard,
 } from '../../src/lib/governance-card.js'
+import {
+  HARNESS_SQUAD_SKILL_PATH,
+  REVIEW_DIMENSIONS,
+  conditionalReviewDimensions,
+  defaultReviewLineup,
+} from '../../src/lib/review-dimensions.js'
 import {
   buildReviewClosure,
   reviewMachineryConflicts,
@@ -418,6 +424,208 @@ test('a guidance-only conduct conflict names the base text command', () => {
   assert.match(written, /base text not inlined/u)
   assert.match(written, /git show [0-9a-f]{12}:/u)
   assert.ok(written.includes(guidancePath))
+})
+
+/** Slugs a card line lists after its label, in order. */
+function cardSlugs(written: string, label: string): string[] | null {
+  const line = written
+    .split('\n')
+    .find((candidate) => candidate.startsWith(`- ${label}: `))
+
+  if (line === undefined) {
+    return null
+  }
+
+  return [...line.matchAll(/`([^`]+)`/gu)].map((match) => match[1])
+}
+
+test('the review card records an operator dimension selection and what it leaves out', () => {
+  const root = sharedFixture()
+  const card = buildGovernanceCard(root, {
+    mode: 'review',
+    outputPath: 'runtime/inbox/review-subset-card.md',
+    dimensions: ['performance', 'security', 'performance'],
+  })
+  const defaults = defaultReviewLineup(root).map((dimension) => dimension.slug)
+
+  assert.deepEqual(card.review_dimensions, {
+    default: false,
+    selected: ['security', 'performance'],
+    not_run: defaults.filter((slug) => slug !== 'performance'),
+    // A selected set leaves nothing to the coordinator.
+    conditional: [],
+    available: REVIEW_DIMENSIONS.map((dimension) => dimension.slug),
+  })
+
+  const written = readFileSync(path.join(root, card.path), 'utf8')
+
+  // The card is the session record, so a later reader must see that the
+  // review was partial and which lenses it never applied.
+  assert.match(written, /^## 🎯 Review dimensions$/mu)
+  assert.deepEqual(cardSlugs(written, 'Selected'), ['security', 'performance'])
+  assert.deepEqual(
+    cardSlugs(written, 'Not run'),
+    card.review_dimensions?.not_run,
+  )
+  assert.equal(
+    cardSlugs(written, 'Conditional, resolved by the coordinator'),
+    null,
+  )
+})
+
+test('a review card without a selection records the full default lineup', () => {
+  const root = sharedFixture()
+  const card = buildGovernanceCard(root, {
+    mode: 'review',
+    outputPath: 'runtime/inbox/review-default-card.md',
+  })
+  const defaults = defaultReviewLineup(root).map((dimension) => dimension.slug)
+
+  assert.equal(card.review_dimensions?.default, true)
+  assert.deepEqual(card.review_dimensions?.selected, defaults)
+  assert.deepEqual(card.review_dimensions?.not_run, [])
+
+  const written = readFileSync(path.join(root, card.path), 'utf8')
+
+  assert.match(written, /^## 🎯 Review dimensions$/mu)
+  assert.deepEqual(cardSlugs(written, 'Default lineup'), defaults)
+  assert.deepEqual(
+    cardSlugs(written, 'Conditional, resolved by the coordinator'),
+    card.review_dimensions?.conditional,
+  )
+  assert.equal(cardSlugs(written, 'Selected'), null)
+  assert.equal(cardSlugs(written, 'Not run'), null)
+})
+
+test('a target-installation review card lists an unselected conditional dimension as not run', () => {
+  const root = createFixture()
+
+  // bin/install drops the harness lineup from the staged payload, which
+  // leaves `frontend` as the one dimension the coordinator resolves per run.
+  rmSync(path.join(root, HARNESS_SQUAD_SKILL_PATH))
+  assert.deepEqual(
+    conditionalReviewDimensions(root).map((dimension) => dimension.slug),
+    ['frontend'],
+  )
+
+  // Without a selection the coordinator still resolves it against the diff.
+  const defaultCard = buildGovernanceCard(root, {
+    mode: 'review',
+    outputPath: 'runtime/inbox/review-target-default-card.md',
+  })
+  const defaultWritten = readFileSync(path.join(root, defaultCard.path), 'utf8')
+
+  assert.deepEqual(defaultCard.review_dimensions?.conditional, ['frontend'])
+  assert.deepEqual(
+    cardSlugs(defaultWritten, 'Conditional, resolved by the coordinator'),
+    ['frontend'],
+  )
+
+  const card = buildGovernanceCard(root, {
+    mode: 'review',
+    outputPath: 'runtime/inbox/review-target-card.md',
+    dimensions: ['correctness'],
+  })
+  const written = readFileSync(path.join(root, card.path), 'utf8')
+
+  // A selected set is exact: the activation rules do not apply, so the
+  // conditional dimension the operator did not name is not run, and the card
+  // leaves nothing to the coordinator.
+  assert.deepEqual(card.review_dimensions?.selected, ['correctness'])
+  assert.deepEqual(card.review_dimensions?.conditional, [])
+  assert.deepEqual(card.review_dimensions?.not_run, [
+    'security',
+    'architecture',
+    'simplification',
+    'operations',
+    'frontend',
+  ])
+  assert.deepEqual(cardSlugs(written, 'Selected'), ['correctness'])
+  assert.deepEqual(
+    cardSlugs(written, 'Not run'),
+    card.review_dimensions?.not_run,
+  )
+  assert.equal(
+    cardSlugs(written, 'Conditional, resolved by the coordinator'),
+    null,
+  )
+  assert.doesNotMatch(written, /^- Conditional/mu)
+})
+
+test('a conduct-conflict rebuild keeps the dimension selection on the card', () => {
+  const root = createFixture()
+  const git = (args: string[]) =>
+    execFileSync('git', args, { cwd: root, encoding: 'utf8' })
+
+  writeFileSync(path.join(root, 'src', 'feature.ts'), 'export const f = 1\n')
+  git(['add', 'src/feature.ts'])
+  git(['-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-qm', 'change'])
+
+  // The rebuild path resolves the review scope against --base/--target and
+  // must still carry the selection it was given, or the second card would
+  // silently report a full review.
+  const card = buildGovernanceCard(root, {
+    mode: 'review',
+    outputPath: 'runtime/inbox/review-rebuild-card.md',
+    baseRef: 'HEAD~1',
+    targetRef: 'HEAD',
+    dimensions: ['security'],
+  })
+  const written = readFileSync(path.join(root, card.path), 'utf8')
+
+  assert.deepEqual(card.review_dimensions?.selected, ['security'])
+  assert.deepEqual(cardSlugs(written, 'Selected'), ['security'])
+  assert.match(written, /^## 🎯 Review dimensions$/mu)
+})
+
+test('an unknown dimension fails the review card before any side effect', () => {
+  const root = createFixture()
+
+  assert.throws(
+    () =>
+      buildGovernanceCard(root, {
+        mode: 'review',
+        outputPath: 'runtime/inbox/review-unknown-card.md',
+        dimensions: ['security', 'maintainability'],
+        worktreeName: 'never-created',
+      }),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'UNKNOWN_REVIEW_DIMENSION' &&
+      /maintainability/u.test(error.message) &&
+      /Accepted dimensions:/u.test(error.message),
+  )
+  assert.equal(
+    existsSync(path.join(root, 'runtime/inbox/review-unknown-card.md')),
+    false,
+  )
+  assert.equal(existsSync(path.join(root, 'worktrees')), false)
+})
+
+test('--dimensions is refused outside the review mode', () => {
+  const root = sharedFixture()
+
+  assert.throws(
+    () =>
+      buildGovernanceCard(root, {
+        mode: 'pair',
+        outputPath: 'runtime/inbox/pair-dimensions-card.md',
+        dimensions: ['security'],
+      }),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'INVALID_GOVERNANCE_CARD_OPTION' &&
+      /--dimensions applies to the review mode only/u.test(error.message),
+  )
+
+  // An empty selection is the default and binds nothing, so it passes through.
+  const card = buildGovernanceCard(root, {
+    mode: 'pair',
+    outputPath: 'runtime/inbox/pair-no-dimensions-card.md',
+    dimensions: [],
+  })
+
+  assert.equal(card.review_dimensions, undefined)
 })
 
 test('--base is refused outside the review mode', () => {

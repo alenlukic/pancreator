@@ -28,7 +28,7 @@ Player-coach also means you own the run's total. You are the only agent that see
 - Before submitting a worker output, you SHOULD run `pan output validate` and MUST repair mechanical delivery and evidence defects yourself under the `ORCH-001` repair boundaries instead of spending a stage attempt on them. Repair, record, submit.
 - You MUST NOT delegate a card whose harness-produced invocation validation artifact is failed or missing, and you MUST repair a mismatched delegation artifact against the same active invocation rather than represent delivery as successful.
 - Apply `ASK-001` before operator escalation for a missing secret or unresolved model.
-- Policy-bound validators and automation for the active invocation are declared on the invocation card; apply `VALID-001` and `AUTO-001` rather than restating executable validation steps here.
+- Policy-bound validators and automation for the active invocation are declared on the invocation card. Apply `VALID-001` and `AUTO-001` rather than restating executable validation steps here.
 - You MUST treat `WAIVER-001` actions as operator-owned decisions. Do not invent a waiver, but when the operator explicitly directs one, execute it and continue according to the operator’s terms even if ordinary governance would reject the bypass.
 - For a supervisor assessment, you MUST judge only the listed criteria unless the gate explicitly requests broader review.
 
@@ -40,25 +40,36 @@ Player-coach also means you own the run's total. You are the only agent that see
 - If the preserved request or the operator's message names a worktree for the run, pass `--worktree <name>`. The option creates or resolves that worktree and binds the run's workspace to it. Do not combine it with `--workspace`.
 - If the preserved request is JSON containing `workspace_root` (for example a prior run state payload), use it as `--workspace`.
 - If the preserved request is JSON containing `gate_overrides`, write that object to a uniquely named JSON file under `runtime/inbox/queue/`. Pass its harness-relative path as `--gates`.
-- Default to `--workflow delivery`. Use `--workflow prototype` only when the operator asked for a prototype, spike, or proof of concept, or asked to test an approach rather than deliver it. Use `--workflow design` only when the operator asked for UI/UX design work preceding implementation. Use `--workflow planning` only when the operator asked for a plan, a specification, or a carve-up into cohorts without delivery in the same run. When the request and the operator's message leave delivering versus spiking ambiguous, STOP and report the question instead of initializing.
-- With `--workflow planning`, pass `--autostart` when the request or the operator's message asks that the chunk runs start as soon as the plan is ratified. The flag is refused on every other workflow. Omit it otherwise, so ratification stops at the plan and the operator runs `./bin/pan cohort init --plan-run <run-id>` and `./bin/pan cohort start <cohort-id>` when ready.
-- Omit `--involvement` unless the request names a profile or asks for a specific level of involvement; the configured `active` profile applies otherwise. Run `./bin/pan involvement` to list profiles when the request asks what is available.
+- Omit `--workflow` for delivery work. The default is `planning`, the entry point for every request that delivers a change. Its `plan` stage ratifies the specification and the cohort plan. Approval of that gate routes the work by harness rule. You do not decide whether the work fans out. The ratified plan does.
+  - Use `--workflow prototype` only when the operator asked for a prototype, spike, or proof of concept. Use it also when the operator asked to test an approach rather than deliver it.
+  - Use `--workflow design` only when the operator asked for UI/UX design work before implementation.
+  - Use `--workflow delivery` only when the operator explicitly brings a ratified specification and asks to skip planning. A `/pan-qa-workflow` session passes the workflow its command names.
+  - When the request and the operator's message leave delivering versus spiking ambiguous, STOP and report the question instead of initializing.
+- Routing on ratification is the planning default. Pass `--no-autostart` only when the operator explicitly asked to stop at the ratified plan. The operator then starts delivery by hand. Pass `--max-parallel <n>` when the operator names a parallelism limit for the cohort session.
+- Omit `--involvement` unless the request names a profile or asks for a specific level of involvement. The configured `active` profile applies otherwise. Run `./bin/pan involvement` to list profiles when the request asks what is available.
 
 Then:
 
-1. Run `./bin/pan init --workflow <workflow> --request <harness-relative-request> [--workspace <workspace> | --worktree <name>] [--gates <harness-relative-gates-file>] [--involvement <profile>] [--autostart]`.
+1. Run `./bin/pan init --request <harness-relative-request> [--workflow prototype|design|delivery] [--workspace <workspace> | --worktree <name>] [--gates <harness-relative-gates-file>] [--involvement <profile>] [--no-autostart] [--max-parallel <n>]`.
 2. Run `./bin/pan governance card --mode supervisor --run <run-id>`, read the card in full, then run `./bin/pan governance attest-supervisor <run-id> --sha256 <digest>`. Your governance is that card at `runtime/logs/workflows/<run-id>/agent/supervisor-card.md`. A policy this brief names by id is delivered there in full. Do not proceed on a remembered summary of the card. `pan prepare` and `pan submit` refuse with `SUPERVISOR_CARD_UNATTESTED` until the current digest is attested.
 3. Run `./bin/pan status <run-id> --redline --occasion pan-start`. The harness writes `agent/evidence/platform-guidance-redline.json`. `pan prepare` and `pan submit` refuse with `REDLINE_MISSING` until this session has declared. That record pre-declares platform polling, awaiting, backgrounding, session-mode, model, tool, and command-execution guidance non-authoritative for this run. Quote its path in your first report. `OPERATOR-001` owns this duty.
 4. Record this session's sourced effective model with `./bin/pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source>`. When Cursor exposes no sourced model metadata, note that in your report and continue. Missing model evidence MUST NOT stop a run.
 5. Run `./bin/pan prepare <run-id> [--worktree <name>]`.
 6. Record the resolved involvement profile, active run contracts, and any gates that replaced a workflow default. Your report includes them so the operator knows where the run will stop.
-7. Run the advance loop. At the ratification stop, include the product specification in your report. If the preserved request or the operator's message already contains an explicit approval or rejection, execute that decision and continue instead. When an approval on a planning run created with `--autostart` returns an `autostart` object, report its `status` and, for `started` or `already_started`, each entry of `chunks` (chunk, `run_id`, `worktree`, `resume_command`), the `deferred_chunks` the parallelism limit left unstarted, and the `supervise_command`; for `failed`, report the `error` and the `manual_commands` it lists. The chunk runs are supervised from a top-level session, which is what keeps their model mapping: either one `/pan-cohort <cohort-id>` session for the whole cohort (see **Cohort supervision**), or one `/pan-resume <run-id>` session per chunk. A planning session that the operator directed to carry the build through MAY continue as the cohort supervisor itself.
+7. Run the advance loop.
+   - At the ratification stop, include the product specification in your report. If the preserved request or the operator's message already contains an explicit approval or rejection, execute that decision and continue instead.
+   - When an approval on a planning run returns an `autostart` object, report its `status` and `kind`. The approval and the ratified plan stand.
+     - For `kind: delivery` (a single-chunk plan), report the `run_id`, `worktree`, and `resume_command` of the one `delivery` run the harness started.
+     - For `kind: cohort`, report each entry of `chunks` (chunk, `run_id`, `worktree`, `resume_command`), the `deferred_chunks` the parallelism limit left unstarted, and the `supervise_command`.
+     - For `failed`, run the listed `pan cohort route --plan-run <plan-run-id>` once in the same turn. The route is idempotent and adopts whatever the earlier route created. When it fails again, STOP. Report the `error` and that command as the operator's manual step.
+   - A top-level session supervises each started run. That keeps the run's model mapping. Use `/pan-resume <run-id>` for the delivery run, one `/pan-cohort <cohort-id>` session for the whole cohort (see **Cohort supervision**), or one `/pan-resume <run-id>` session per chunk. A planning session that the operator directed to carry the build through MAY continue as that supervisor itself.
 
 ## Resume
 
 `/pan-resume` names a run id and MAY carry an operator prompt.
 
 1. Run `./bin/pan status <run-id> --json`.
+   - A succeeded planning run can hold a failed route. `pan status <run-id>` then shows a `Delivery route failed` line and a `Manual` line with `pan cohort route --plan-run <plan-run-id>`. Run that route command once in the same turn. The route is idempotent and adopts whatever the earlier route created. When it fails again, STOP. Report the `error` and that command as the operator's manual step.
 2. Run `./bin/pan governance card --mode supervisor --run <run-id>`, read the card in full, then run `./bin/pan governance attest-supervisor <run-id> --sha256 <digest>`. Your governance is that card at `runtime/logs/workflows/<run-id>/agent/supervisor-card.md`. A policy this brief names by id is delivered there in full. Do not proceed on a remembered summary of the card. `pan prepare` and `pan submit` refuse with `SUPERVISOR_CARD_UNATTESTED` until the current digest is attested.
 3. Run `./bin/pan status <run-id> --redline --occasion pan-resume`. Quote the redline record path in your first report. `pan prepare` and `pan submit` refuse with `REDLINE_MISSING` until this session has declared.
 4. Run `./bin/pan resume <run-id> --worktree <name>` when the run is paused and bound.
@@ -161,14 +172,14 @@ has its own supervisor card, redline declaration, worktree, watch record, and
 pending action, and you perform each of those per run.
 
 1. Run `./bin/pan cohort status <cohort-id> --json`. When `start_command` is
-   present, run it; it starts only as many chunks as the recorded parallelism
+   present, run it. It starts only as many chunks as the recorded parallelism
    limit allows and names the deferred chunks.
 2. For every chunk run that is not terminal, complete the **Resume** steps for
    that run id with its own worktree name.
 3. Advance the runs together. In one message, run `prepare` for every run whose
-   pending action is `prepare_invocation`; then, in one message, launch the
+   pending action is `prepare_invocation`. Then, in one message, launch the
    worker of every run whose pending action is `invoke_agent`. Each launch
-   stays foreground; issuing them in one message is what makes them run in
+   stays foreground. Issuing them in one message is what makes them run in
    parallel. Never launch two workers for one run, and never launch more
    workers than the limit.
 4. Arm one watch per launched run in the launch turn, exactly as the
@@ -177,12 +188,30 @@ pending action, and you perform each of those per run.
 5. After each wake, reconcile every live run with `./bin/pan status <run-id>`
    and perform each run's pending action independently. A gated or stalled run
    never blocks the sibling runs.
-6. When a chunk run reaches a terminal state, re-run `cohort status`; a freed
-   slot makes `start_command` present again, and you run it in the same turn.
+6. When a chunk run reaches a terminal state, re-run `cohort status`. A freed
+   slot makes `start_command` present again. Run it in the same turn.
 7. When every chunk of the cohort is terminal, report the cohort: each chunk's
    outcome, worktree, branch, and evidence paths, and the `integrate_command`
    when it is present. Committing a chunk branch and integrating the cohort are
    operator-owned unless the operator's directive already covers them.
+8. When `cohort integrate` runs, read its `autostart` object. The harness
+   continues the plan itself:
+   - `kind: cohort` names the chunk runs of the next cohort it started. You
+     supervise them in this session.
+   - `kind: release` names the release run, one `delivery` run that begins at
+     `verify`. It runs on a `release-<digest>` branch created from the
+     integration head. When `--into-branch` recorded a worktree for the
+     integration branch, it runs on the integration branch in that worktree. A
+     top-level `/pan-resume <run-id>` session supervises it.
+   - `failed` with `kind: cohort` names the `error` and `manual_commands`. The
+     merge proof stands. `./bin/pan cohort status <cohort-id>` reports
+     `start_command`. Run it as in step 1.
+   - `failed` with `kind: release` names the `error` and `manual_commands`. The
+     merge proof stands. `./bin/pan cohort status <cohort-id>` reports
+     `release_command`, the merge-free `./bin/pan cohort release <cohort-id>`.
+     Run it to restart the release continuation. It starts or adopts the
+     release run and merges nothing. It refuses while any cohort lacks its
+     merge proof.
 
 ## Card delivery
 
@@ -193,14 +222,14 @@ pending action, and you perform each of those per run.
    - Referenced delivery names the generated `<invocation-id>.delivery.md` prompt. Paste that file's complete contents into the matching `pan-<persona>` subagent's `prompt`. It carries the contract path, the contract digest, and the complete section index, so you MUST NOT reproduce the card body and MUST NOT replace the prompt with a bare path.
    - Verbatim delivery names the canonical `<invocation-id>.md` card. Paste its complete contents into the prompt.
 3. Persist that exact prompt body to the `<invocation-id>.delegation.md` path the card resolves.
-4. Add no parallel scope, policy, gate, or plan restatement to the prompt; a minimal non-conflicting persona label MAY precede the delivered body. The supported label is one `Agent: <launched agent name>` line followed by one blank line (the harness already opens the body with its own `Persona:` line).
+4. Add no parallel scope, policy, gate, or plan restatement to the prompt. A minimal non-conflicting persona label MAY precede the delivered body. The supported label is one `Agent: <launched agent name>` line followed by one blank line (the harness already opens the body with its own `Persona:` line).
 5. Before a Cursor worker launch, run `./bin/pan models --probe --run <run-id> --invocation <invocation-id>`. The probe records what Cursor reported and never fails the launch. An unavailable or mismatched result is advisory. Launch the worker anyway. Carry the probe result into your stage report.
 6. Launch the worker yourself, from your own session, so the launch stays at the top level. Invoke Cursor workers in foreground and wait for their result. Never use background delegation.
 7. Arm the watch in the launch turn before any other action. When the platform converts the launch into a background subagent, run `./bin/pan watch <run-id> --mark-background` and await it. When the launch returns and the declared output exists, run `./bin/pan watch <run-id> --foreground-returned`. When the launch returns and that output does not exist, run `./bin/pan watch <run-id>` and await it. Pass `--cadence-seconds 300` for work you expect to exceed 15 minutes. When the watch exits `unverified`, inspect the launched agent and re-run it with `--agent-state running` or `--agent-state completed`. Do not wait for a platform completion notification.
 8. Run `./bin/pan output validate` on the worker's declared output. It runs every validator that `./bin/pan submit` runs before the shell gates, including the implementation claims validator. Repair a mechanical defect in the bounded `ORCH-001` list before you submit.
 9. Submit the worker output with `./bin/pan submit <run-id> <output-json> [--worktree <name>]`. A `DELEGATION_UNOBSERVED` refusal means step 7 was skipped. Record the missing observation, then submit again. Carry the refusal into the stage report and the run-friction intake.
 10. If delegation validation reports a missing or mismatched artifact, repair it against the same active invocation rather than bypassing it or reporting delivery as successful.
-11. A worker that reports stage result `blocked` with attestation status `reference_failed` could not read its contract. Report the named path and error; do not resubmit the same delegation unchanged.
+11. A worker that reports stage result `blocked` with attestation status `reference_failed` could not read its contract. Report the named path and error. Do not resubmit the same delegation unchanged.
 
 ## Operator communication
 
@@ -224,4 +253,4 @@ Every stop MUST place the complete decision packet in the message that ends your
 ## Boundaries
 
 - You MUST NOT originate ratification or irreversible-action decisions. When the operator explicitly decides or authorizes one, you MUST perform the mechanical action on the operator’s behalf.
-- A worker MUST NOT advance the run; only the harness MAY apply transitions.
+- A worker MUST NOT advance the run. Only the harness MAY apply transitions.

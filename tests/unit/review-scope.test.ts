@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import test from 'node:test'
 
 import {
   MACHINERY_TEST_PATTERNS,
   classifyReviewPaths,
+  cliGovernanceBlock,
   cliGovernanceBlocksChanged,
   conflictsByTier,
   diffPolicyTexts,
@@ -24,6 +27,18 @@ test('a change to the lineup or a charter is a self-review conflict', () => {
     'library/skills/review-squad-pancreator.md',
     'library/skills/review-squad.md',
   ])
+})
+
+test('the dimension table is lineup machinery', () => {
+  // The table decides which charters a selection can name, so a change to it
+  // cannot be graded by the squad it shapes.
+  assert.deepEqual(
+    reviewMachineryConflicts(['src/lib/review-dimensions.ts', 'src/lib/io.ts']),
+    ['src/lib/review-dimensions.ts'],
+  )
+  assert.ok(
+    MACHINERY_TEST_PATTERNS.includes('tests/*/review-dimensions*.test.ts'),
+  )
 })
 
 test('the coordinator, its policy, and both entry points are machinery', () => {
@@ -218,6 +233,7 @@ test('the check wrappers lint and install are verification substrate', () => {
 
 test('the tests of each machinery module are derived substrate', () => {
   assert.deepEqual(MACHINERY_TEST_PATTERNS, [
+    'tests/*/review-dimensions*.test.ts',
     'tests/*/review-scope*.test.ts',
     'tests/*/governance-card*.test.ts',
     'tests/*/policies*.test.ts',
@@ -246,8 +262,42 @@ test('the tests of each machinery module are derived substrate', () => {
   )
 })
 
+test('the governance block of the real cli.ts holds the case, the parser, and the card help', () => {
+  // The synthetic fixture below proves the slicing rules; this proves they
+  // still find the entry points in the file they are written for.
+  const block = cliGovernanceBlock(
+    readFileSync(path.join(process.cwd(), 'src', 'cli.ts'), 'utf8'),
+  )
+
+  assert.ok(block)
+  assert.ok(block.includes("case 'governance': {"))
+  assert.ok(block.includes('function commaSeparatedOption('))
+  assert.ok(block.includes('pan governance card --mode <'))
+  assert.ok(block.includes('pan governance review-scope --target <ref>'))
+  assert.ok(block.includes('--base (review mode) renders'))
+  assert.ok(!block.includes("case 'best-of-n': {"))
+})
+
 test('only a change inside the governance case of cli.ts is an entry-point change', () => {
   const before = [
+    'const HELP_BODY = `',
+    '  pan validate [--json]',
+    '  pan governance card --mode <mode> [--base <ref>] [--dimensions <a,b>] [--json]',
+    '      --base (review mode) renders the base text of each policy.',
+    '      --dimensions (review mode) selects the review dimensions.',
+    '  pan governance attest-supervisor <run-id> --sha256 <digest> [--json]',
+    '  pan governance review-scope --target <ref> [--base <ref>] [--json]',
+    '  pan best-of-n status <bon-id> [--json]',
+    '`',
+    '',
+    'function commaSeparatedOption(args, flag) {',
+    "  return args.split(',')",
+    '}',
+    '',
+    'function otherHelper(value) {',
+    '  return value',
+    '}',
+    '',
     "    case 'validate': {",
     '      return 1',
     '    }',
@@ -268,6 +318,49 @@ test('only a change inside the governance case of cli.ts is an entry-point chang
   assert.equal(cliGovernanceBlocksChanged(before, before), false)
   // A null side means the file gained the case, which changes the entry point.
   assert.equal(cliGovernanceBlocksChanged(null, before), true)
+
+  // The `--dimensions` contract lives partly outside the case: the option
+  // parser and the help lines that state the accepted values are part of the
+  // entry point, while an unrelated helper or help line is not.
+  const parserChanged = before.replace(
+    "return args.split(',')",
+    "return args.split(',').filter(Boolean)",
+  )
+  const helpChanged = before.replace(
+    'selects the review dimensions.',
+    'selects the review dimensions to run.',
+  )
+  const otherHelperChanged = before.replace('return value', 'return value + 1')
+  const otherHelpChanged = before.replace(
+    'pan best-of-n status <bon-id> [--json]',
+    'pan best-of-n status <bon-id> [--verbose] [--json]',
+  )
+  // The stanza is sliced by its usage line, so a continuation line that never
+  // names the option and the review-scope usage line are both inside it,
+  // while the attest-supervisor line between them is not.
+  const baseHelpChanged = before.replace(
+    'renders the base text of each policy.',
+    'renders the base text of each conduct policy.',
+  )
+  const reviewScopeUsageChanged = before.replace(
+    'pan governance review-scope --target <ref> [--base <ref>] [--json]',
+    'pan governance review-scope --target <ref> [--json]',
+  )
+  const attestHelpChanged = before.replace(
+    '--sha256 <digest> [--json]',
+    '--sha256 <digest> [--force] [--json]',
+  )
+
+  assert.equal(cliGovernanceBlocksChanged(before, parserChanged), true)
+  assert.equal(cliGovernanceBlocksChanged(before, helpChanged), true)
+  assert.equal(cliGovernanceBlocksChanged(before, otherHelperChanged), false)
+  assert.equal(cliGovernanceBlocksChanged(before, otherHelpChanged), false)
+  assert.equal(cliGovernanceBlocksChanged(before, baseHelpChanged), true)
+  assert.equal(
+    cliGovernanceBlocksChanged(before, reviewScopeUsageChanged),
+    true,
+  )
+  assert.equal(cliGovernanceBlocksChanged(before, attestHelpChanged), false)
 })
 
 test('a policy row with no instruction or summary change is not a standards delta', () => {

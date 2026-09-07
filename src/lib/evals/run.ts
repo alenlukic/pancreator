@@ -11,7 +11,7 @@ import {
   prepareInvocation,
   submitOutput,
 } from '../engine.js'
-import { maybeAutostartCohort } from '../cohorts.js'
+import { maybeStartDelivery, type DeliveryAutostartResult } from '../cohorts.js'
 import { PanError } from '../errors.js'
 import { personaExecutorOf } from '../executors/mapping.js'
 import { writeRedlineRecord } from '../watch.js'
@@ -144,6 +144,7 @@ function operatorSteps(
   workspace: string,
   evalDir: string,
   reason: string,
+  autostart: DeliveryAutostartResult | null,
 ): string[] {
   const pan = panCommand(root)
   const runId = state.run_id
@@ -151,6 +152,7 @@ function operatorSteps(
   const card = state.supervisor_card
   const cardUnattested =
     card !== undefined && card.attested_sha256 !== card.sha256
+  const grade = `${pan} eval grade ${runId} --scenario ${loaded.scenario.name} --out ${evalDir}`
 
   return [
     `The eval stopped: ${reason}`,
@@ -165,14 +167,49 @@ function operatorSteps(
           .map((item) => `${item.stage} -> ${item.decision}`)
           .join(', ')} (\`${pan} decide ${runId} <decision>\`).`
       : 'The scenario scripts no operator decisions.',
-    ...(loaded.scenario.cohort?.autostart
+    ...deliveryAutostartSteps(pan, grade, autostart),
+    ...(autostart === null
       ? [
-          `Approving the ratified plan autostarts cohort 1 with a parallelism limit of ${loaded.scenario.cohort.max_parallel ?? 'the session default'}. Supervise the chunk runs with the \`/pan-cohort <cohort-id>\` command the decide response names, start deferred chunks with \`${pan} cohort start <cohort-id>\` as slots free, and integrate each finished cohort with \`${pan} cohort integrate <cohort-id>\`.`,
-          `When every cohort is satisfied (\`${pan} cohort status <cohort-id>\`), run \`${pan} eval grade ${runId} --scenario ${loaded.scenario.name} --out ${evalDir}\`.`,
+          `When the run reaches status '${loaded.scenario.expected.status}', run \`${grade}\`.`,
         ]
-      : [
-          `When the run reaches status '${loaded.scenario.expected.status}', run \`${pan} eval grade ${runId} --scenario ${loaded.scenario.name} --out ${evalDir}\`.`,
-        ]),
+      : []),
+  ]
+}
+
+/**
+ * Guidance for what the plan approval actually started. The drive loop is the
+ * only witness of the route, so the steps describe its result rather than the
+ * scenario's request: a single-chunk plan starts one delivery run, a wider
+ * plan starts cohort 1, and a failed route names the manual commands.
+ */
+function deliveryAutostartSteps(
+  pan: string,
+  grade: string,
+  autostart: DeliveryAutostartResult | null,
+): string[] {
+  if (autostart === null) {
+    return []
+  }
+
+  if (autostart.status === 'failed') {
+    return [
+      `Delivery autostart failed${autostart.kind ? ` (${autostart.kind})` : ''}: ${autostart.error}`,
+      `Start the route by hand: ${autostart.manual_commands
+        .map((command) => `\`${command}\``)
+        .join(', then ')}.`,
+    ]
+  }
+
+  if (autostart.kind === 'delivery') {
+    return [
+      `Delivery autostart ${autostart.status} (delivery): run ${autostart.run_id} works in ${autostart.worktree}. Supervise it with \`${autostart.resume_command}\`.`,
+      `When that run reaches a terminal status, run \`${grade}\`.`,
+    ]
+  }
+
+  return [
+    `Delivery autostart ${autostart.status} (cohort): session ${autostart.cohort_id} started ${autostart.chunks.length} chunk run(s) of cohort ${autostart.cohort_index} with ${autostart.deferred_chunks.length} deferred under a parallelism limit of ${autostart.max_parallel}. Supervise them with \`${autostart.supervise_command}\`, start deferred chunks with \`${pan} cohort start ${autostart.cohort_id}\` as slots free, and integrate each finished cohort with \`${pan} cohort integrate ${autostart.cohort_id}\`.`,
+    `When every cohort is satisfied (\`${pan} cohort status ${autostart.cohort_id}\`), run \`${grade}\`.`,
   ]
 }
 
@@ -225,7 +262,9 @@ export function runEval(
     involvement: scenario.involvement ?? null,
     pipelineConfigName:
       options.pipelineConfigName ?? scenario.pipeline_config ?? null,
-    autostartCohort: scenario.cohort?.autostart ?? false,
+    // A scenario without a cohort block keeps the workflow default: a planning
+    // run routes on ratification, every other workflow records nothing.
+    autostartDelivery: scenario.cohort?.autostart,
     autostartMaxParallel: scenario.cohort?.autostart
       ? (scenario.cohort.max_parallel ?? null)
       : null,
@@ -252,6 +291,7 @@ export function runEval(
   onProgress?.(`run ${runId} created for workflow ${scenario.workflow}`)
 
   let handoffReason: string | null = null
+  let lastAutostart: DeliveryAutostartResult | null = null
 
   for (let step = 0; step < MAX_DRIVE_STEPS; step += 1) {
     const state = getRunState(root, runId)
@@ -293,18 +333,21 @@ export function runEval(
       )
       decisionsApplied.push({ stage, decision: decision.decision })
 
-      // Same hook `pan decide` runs: an approved --autostart planning run
-      // fans out cohort 1 here, outside the run mutex the decision took.
-      const autostart = maybeAutostartCohort(root, decided, {
+      // Same hook `pan decide` runs: an approved planning run routes into
+      // delivery here, outside the run mutex the decision took.
+      const autostart = maybeStartDelivery(root, decided, {
         actor: 'operator',
         action: decision.decision,
       })
 
       if (autostart) {
+        lastAutostart = autostart
         onProgress?.(
           autostart.status === 'failed'
-            ? `cohort autostart failed: ${autostart.error}`
-            : `cohort ${autostart.cohort_id} ${autostart.status}: ${autostart.chunks.length} chunk run(s), ${autostart.deferred_chunks.length} deferred`,
+            ? `delivery autostart failed: ${autostart.error}`
+            : autostart.kind === 'cohort'
+              ? `cohort ${autostart.cohort_id} ${autostart.status}: ${autostart.chunks.length} chunk run(s), ${autostart.deferred_chunks.length} deferred`
+              : `delivery run ${autostart.run_id} ${autostart.status} in ${autostart.worktree}`,
         )
       }
       continue
@@ -445,6 +488,7 @@ export function runEval(
             toPosix(root, workspace),
             evalDirRelative,
             handoffReason,
+            lastAutostart,
           ),
     report,
     report_paths: reportPaths,

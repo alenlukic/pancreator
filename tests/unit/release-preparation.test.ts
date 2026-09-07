@@ -386,6 +386,7 @@ test('local release sync checkpoints changes and finalizes two commits', () => {
     )
 
     const state = createRun(root, {
+      workflowSlug: 'delivery',
       requestPath: 'request.md',
       workspace: record.path,
       worktree: record,
@@ -631,6 +632,7 @@ test('standalone release refuses an active workflow in the same worktree', () =>
   const record = createWorktree(root, 'release-busy')
   const worktreePath = path.join(root, record.path)
   const state = createRun(root, {
+    workflowSlug: 'delivery',
     requestPath: 'request.md',
     workspace: record.path,
     worktree: record,

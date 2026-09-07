@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 import { Worker } from 'node:worker_threads'
@@ -21,10 +21,14 @@ import {
   recordHypervisorQuarantine,
   selectAwayOption,
 } from '../../src/lib/away-mode.js'
+import { PanError } from '../../src/lib/errors.js'
 import {
   AWAY_MODE_ACTIONS,
+  panCommand,
   resolveAwayModeConfig,
 } from '../../src/lib/project-config.js'
+import type { HandlerInput } from '../../src/lib/requirements/types.js'
+import { validateAwayDecisionLedger } from '../../src/lib/validators/autonomy-state.js'
 import type {
   AwayModeAction,
   AwayModeGuardrails,
@@ -73,6 +77,20 @@ function option(rank: number, action: AwayModeAction): Record<string, unknown> {
 
 function scratchRoot(): string {
   return createTestTempDirectory('pancreator-away-mode-')
+}
+
+/** The input the authoritative ledger check receives from the harness. */
+function handlerInput(root: string): HandlerInput {
+  return {
+    root,
+    targetPath: '.',
+    requirement: {
+      policy_id: 'AWAY-001',
+      requirement_id: 'away-decision-ledger-validate',
+      registry_id: 'away-decision-ledger-validate',
+      arguments: {},
+    },
+  }
 }
 
 function awayConfig(
@@ -437,8 +455,14 @@ test('the evaluator prompt carries the request, the outcome, and the artifact', 
     unknown
   >
 
-  assert.doesNotMatch(prompt, /safest to least safe/u)
-  assert.match(prompt, /ranks approve first/u)
+  // The evaluator ranks the actions the guardrails allow, and the prompt names
+  // them by identifier rather than describing them: the identifiers are what
+  // the parser accepts back.
+  assert.deepEqual(payload.allowed_actions, [...AWAY_MODE_ACTIONS])
+  assert.ok(
+    (payload.allowed_actions as string[]).includes('approve'),
+    'approve is an option the evaluator can rank',
+  )
   assert.equal(payload.stage_outcome, 'success')
   assert.equal(payload.stage_summary, context.stage_summary)
   assert.deepEqual(payload.stage_artifacts, context.stage_artifacts)
@@ -564,10 +588,58 @@ test('evaluator failures have their own ceiling and leave the decision budget al
   assert.equal(countAwayDecisions(root, state.run_id), 0)
   assert.equal(countAwayEvaluatorFailures(root, state.run_id), 1)
 
-  // The failure ceiling is the same number, so the ledger stays bounded.
+  // The ledger check that gates every away decision accepts the failure
+  // record: it is a documented kind, so one failed evaluator does not turn the
+  // ledger permanently invalid.
+  assert.deepEqual(validateAwayDecisionLedger(handlerInput(root)), {
+    status: 'passed',
+    issues: [],
+  })
+
+  // The failure ceiling is the same number, so the ledger stays bounded. The
+  // refusal ends unattended continuation, so it names the evidence that
+  // explains the failures and the command that takes the gate by hand.
+  const evidenceDirectory = `runtime/logs/workflows/${state.run_id}/agent/evidence`
+
   assert.throws(
     () => recordAwayEvaluationFailure(root, state, blocker, 'It failed again.'),
-    /failed as many times as the decision limit allows/u,
+    (error: unknown) => {
+      assert.ok(error instanceof PanError)
+      assert.equal(error.code, 'AWAY_EVALUATOR_FAILURE_LIMIT')
+
+      const details = error.details as { recovery_command: string }
+
+      // The recovery command resolves the harness entry point the way every
+      // other harness-emitted manual command does, and names this run.
+      assert.ok(
+        details.recovery_command.startsWith(`${panCommand(root)} decide `),
+        details.recovery_command,
+      )
+      assert.ok(
+        details.recovery_command.includes(`decide ${state.run_id} `),
+        details.recovery_command,
+      )
+      assert.match(
+        details.recovery_command,
+        /<approve\|reject\|revise> \[--note <text>\]$/u,
+      )
+      assert.equal(
+        error.message,
+        'The away evaluator failed as many times as the decision limit ' +
+          'allows for this run (1 of 1). Read the evaluator exchanges under ' +
+          `${evidenceDirectory}/away-evaluator-*.json, then decide the gate ` +
+          `yourself with '${details.recovery_command}'.`,
+      )
+      assert.deepEqual(error.details, {
+        run_id: state.run_id,
+        evaluator_failures: 1,
+        max_decisions_per_run: 1,
+        evidence_directory: evidenceDirectory,
+        recovery_command: details.recovery_command,
+      })
+
+      return true
+    },
   )
 
   // A ranking the parser rejects is an evaluator defect, not a decision, so
@@ -591,6 +663,23 @@ test('evaluator failures have their own ceiling and leave the decision budget al
     /decision limit for this run is exhausted/u,
   )
   assert.equal(readAwayDecisionLedger(root).length, 2)
+  assert.equal(validateAwayDecisionLedger(handlerInput(root)).status, 'passed')
+
+  // A failure record that claims a selection or an acceptance is not a
+  // failure record, and the ledger check says so by name.
+  appendFileSync(
+    awayDecisionLedgerPath(root),
+    `${JSON.stringify({ ...failure, decision_id: 'forged', result: 'accepted' })}\n`,
+  )
+
+  const forged = validateAwayDecisionLedger(handlerInput(root))
+
+  assert.equal(forged.status, 'failed')
+  assert.ok(
+    forged.issues.some(
+      (issue) => issue.code === 'away.decision.evaluator_failure',
+    ),
+  )
 })
 
 interface ConcurrentEvaluationResult {

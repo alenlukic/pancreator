@@ -1500,12 +1500,28 @@ export interface BestOfNRunRole {
 }
 
 /** Membership of one cohort fan-out, recorded on the chunk's delivery run. */
-export interface CohortRunBinding {
+export interface CohortChunkRunBinding {
   cohort_id: string
+  /** Absent on records written before the release run carried a binding. */
+  role?: 'chunk'
   /** 1-based index of the cohort this chunk belongs to. */
   cohort_index: number
   chunk: string
 }
+
+/**
+ * Binding of the release run the last integration of a cohort session
+ * started. The chunk runs are its implementation record, so the run names the
+ * session and the final integration record rather than a chunk.
+ */
+export interface CohortReleaseRunBinding {
+  cohort_id: string
+  role: 'release'
+  /** Harness-relative path of the final cohort's integration record. */
+  integration_record: string
+}
+
+export type CohortRunBinding = CohortChunkRunBinding | CohortReleaseRunBinding
 
 /** One unit of ratified work a single delivery run owns. */
 export interface CohortChunkRecord {
@@ -1573,6 +1589,12 @@ export interface CohortSessionState {
    * to four.
    */
   max_parallel?: number
+  /**
+   * Release run the harness started when the last cohort integrated: a
+   * `delivery` run that begins at `verify` on the integration branch. Absent
+   * until that integration lands.
+   */
+  release_run_id?: string
   created_at: string
   updated_at: string
   chunks: CohortChunkRecord[]
@@ -1580,6 +1602,37 @@ export interface CohortSessionState {
   cohorts: CohortGroupRecord[]
   satisfaction: CohortSatisfactionRecord[]
 }
+
+/**
+ * Where the ratified plan of a planning run went when its gate was approved.
+ * A single-chunk plan hands off to one `delivery` run; a wider plan opens a
+ * cohort session. The record lets `pan status <plan-run>` name the handoff.
+ */
+export type DeliveryHandoff =
+  | {
+      kind: 'delivery'
+      run_id: string
+      worktree: string
+      recorded_at: string
+    }
+  | {
+      kind: 'cohort'
+      cohort_id: string
+      recorded_at: string
+    }
+  | {
+      /**
+       * The route failed after the approval was durable. The approval and the
+       * ratified plan stand; the manual commands complete the route by hand,
+       * and a later successful retry replaces this record.
+       */
+      kind: 'failed'
+      /** Shape of the route that failed, when the plan could be read. */
+      route?: 'cohort' | 'delivery'
+      error: string
+      manual_commands: string[]
+      recorded_at: string
+    }
 
 export interface RunState {
   schema_version: 1 | 2
@@ -1638,8 +1691,15 @@ export interface RunState {
   /** Membership of a cohort fan-out. Absent on an ordinary run. */
   cohort?: CohortRunBinding
   /**
-   * Start cohort 1 when the operator approves the ratified planning artifact.
-   * Accepted only for the `planning` workflow.
+   * Route the ratified plan into delivery when its gate is approved: one
+   * `delivery` run for a single chunk, cohort 1 for a wider plan. Recorded on
+   * every `planning` run; `pan init --no-autostart` records `false`.
+   */
+  autostart_delivery?: boolean
+  /**
+   * Predecessor of `autostart_delivery`, written by runs created while the
+   * routing covered only the cohort fan-out. Read as a fallback and never
+   * written.
    */
   autostart_cohort?: boolean
   /**
@@ -1647,6 +1707,8 @@ export interface RunState {
    * the session default.
    */
   autostart_max_parallel?: number
+  /** Delivery the approval of this planning run started. */
+  delivery_handoff?: DeliveryHandoff
   title: string
   status: RunStatus
   current_stage: string | null
@@ -1719,6 +1781,33 @@ export interface RunState {
     string,
     RepositoryCheckBaselinePointer | undefined
   >
+  /**
+   * Outcome of the workspace setup check the harness ran before this run's
+   * first prepared stage. Present only for a run whose workspace is not the
+   * configured default. A `passed` or `not_configured` record means setup
+   * does not run again for this run; a `failed` one is retried on the next
+   * prepare.
+   */
+  workspace_setup?: WorkspaceSetupRecord
+}
+
+/**
+ * Run-state record of the workspace setup decision for one run.
+ *
+ * - `passed`: the target-declared setup commands ran in the run's workspace
+ *   and succeeded, or the run captured its repository-check baselines before
+ *   this record existed, which proves the tree was provisioned
+ *   (`inferred_from` names that evidence).
+ * - `failed`: a setup command failed and the run paused; the next prepare
+ *   runs setup again.
+ * - `not_configured`: nothing to run, because no stage of the workflow works
+ *   in a provisioned tree or the target declares no setup command.
+ */
+export interface WorkspaceSetupRecord {
+  status: 'passed' | 'failed' | 'not_configured'
+  recorded_at: string
+  /** Present when the pass was inferred from evidence rather than run. */
+  inferred_from?: 'repository_check_baselines'
 }
 
 /** Run-state record of the supervisor governance card and its attestation. */

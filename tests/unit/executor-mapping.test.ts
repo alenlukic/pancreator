@@ -113,8 +113,8 @@ test('cursor bracket options accept keys the harness has not recorded', () => {
 test('canonical mapping compares specs order-insensitively without renaming keys', () => {
   // Option order must not register as drift.
   assert.equal(
-    canonicalPersonaMapping('gpt-5.4[reasoning=high,context=272k]'),
-    canonicalPersonaMapping('gpt-5.4[context=272k,reasoning=high]'),
+    canonicalPersonaMapping('gpt-5.6-terra[reasoning=high,context=272k]'),
+    canonicalPersonaMapping('gpt-5.6-terra[context=272k,reasoning=high]'),
   )
   // reasoning and effort are DISTINCT real parameters on distinct models.
   // The v3.5.0 aliasing of one onto the other made a spec Cursor accepts
@@ -137,7 +137,7 @@ test('canonical mapping compares specs order-insensitively without renaming keys
     canonicalPersonaMapping('gpt-5.6-sol[reasoning=medium]'),
   )
   assert.notEqual(
-    canonicalPersonaMapping('gpt-5.4[reasoning=high]'),
+    canonicalPersonaMapping('gpt-5.6-terra[reasoning=high]'),
     canonicalPersonaMapping('gpt-5.6-sol[reasoning=high]'),
   )
   // Executor prefixes and bare models normalize without throwing.

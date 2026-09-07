@@ -52,12 +52,12 @@ gate ratifies the whole artifact before any source changes.
     `Acceptance criteria`, `Dependencies`, `Validation`, and
     `Handoff contract`. Each child opens with a `Parent specification`
     reference block that names the parent path, the selected range, the
-    content digest, and the read trigger. Compute the digest as the sha256 of
-    the parent file after leading and trailing whitespace is trimmed; that is
-    the basis every chunk card recomputes, and a digest of the raw file
-    differs by the trailing newline. The validator rejects a digest on
-    another basis and names the expected value. Do not paste the parent body
-    into a child.
+    content digest, and the read trigger. Take the content digest from
+    `pan context digest <parent-path>`. Run it from the harness root. The
+    card's **Harness root** line names it when present. Otherwise the card's
+    **Workspace** is the harness root. Do not compute it by hand. The
+    validator rejects a digest on another basis and names the expected value.
+    Do not paste the parent body into a child.
 12. State the authority relationship in every child specification: the child
     governs the chunk's own scope, the parent governs system-wide context, the
     child wins for its own scope, and the parent wins for cross-chunk context.

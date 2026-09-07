@@ -119,7 +119,28 @@ test('every cursor-agent spawn receives the .env credential, not only the probe'
 
   try {
     withCursorApiKey(undefined, () => {
-      const result = runCursorAgentJson({ cwd: root, prompt: 'rank' })
+      const result = runCursorAgentJson({
+        cwd: root,
+        installationRoot: root,
+        prompt: 'rank',
+      })
+
+      assert.equal(result.ok, true, result.error ?? 'spawn failed')
+      assert.deepEqual(result.value, { seen: 'key-from-dotenv' })
+    })
+
+    // The child's working directory is not the credential search root. A
+    // worker spawned in a worktree that carries no .env still authenticates
+    // from the installation's .env.
+    const worktree = path.join(root, 'worktrees', 'operator', 'chunk-a')
+
+    mkdirSync(worktree, { recursive: true })
+    withCursorApiKey(undefined, () => {
+      const result = runCursorAgentJson({
+        cwd: worktree,
+        installationRoot: root,
+        prompt: 'rank',
+      })
 
       assert.equal(result.ok, true, result.error ?? 'spawn failed')
       assert.deepEqual(result.value, { seen: 'key-from-dotenv' })
@@ -160,7 +181,11 @@ test('the prompt reaches cursor-agent over stdin and never as an argument', () =
 
   try {
     withCursorApiKey('key', () => {
-      const result = runCursorAgentJson({ cwd: root, prompt })
+      const result = runCursorAgentJson({
+        cwd: root,
+        installationRoot: root,
+        prompt,
+      })
 
       assert.equal(result.ok, true, result.error ?? 'spawn failed')
       assert.deepEqual(result.value, {
@@ -194,7 +219,11 @@ test('a failed cursor-agent spawn names the cause from its stderr', () => {
 
   try {
     withCursorApiKey(undefined, () => {
-      const result = runCursorAgentJson({ cwd: root, prompt: 'rank' })
+      const result = runCursorAgentJson({
+        cwd: root,
+        installationRoot: root,
+        prompt: 'rank',
+      })
 
       assert.equal(result.ok, false)
       assert.equal(

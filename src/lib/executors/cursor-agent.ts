@@ -93,7 +93,14 @@ export function withSupportedFlags(
 
 export interface CursorAgentRequest {
   prompt: string
+  /** Working directory of the spawned agent. */
   cwd: string
+  /**
+   * Harness installation root the credential search starts from. ASK-001
+   * resolves `CURSOR_API_KEY` from the installation or its workspace `.env`,
+   * which a worktree `cwd` does not carry, so the two roots stay separate.
+   */
+  installationRoot: string
   model?: string
   sessionId?: string
   timeoutMs?: number
@@ -230,7 +237,7 @@ function runCursorAgent(
     // installation or workspace .env supplies it. Every cursor-agent spawn
     // authenticates the same way the model probe does, so an away evaluator
     // or an external-executor stage never fails auth that the probe passed.
-    env: probeEnvironment(request.cwd),
+    env: probeEnvironment(request.installationRoot),
     encoding: 'utf8',
     // The prompt travels over stdin, never as an argv element. Endpoint
     // security on an operator machine was observed to SIGKILL the cursor-agent

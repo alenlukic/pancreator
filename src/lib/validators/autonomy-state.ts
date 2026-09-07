@@ -16,6 +16,7 @@ const AWAY_DECISION_KINDS = new Set([
   'evaluated',
   'deterministic_ship_approval',
   'hypervisor_quarantine',
+  'evaluator_failure',
 ])
 const RECOVERY_STEPS = new Set([
   'nudge',
@@ -172,6 +173,23 @@ export function validateAwayDecisionLedger(input: HandlerInput): HandlerResult {
         issues.push({
           code: 'away.decision.quarantine',
           message: `Ledger record ${index} is not a valid quarantine record.`,
+        })
+      }
+
+      // An evaluator failure is not a decision: it ranks nothing, selects
+      // nothing, and is always rejected with the error that stopped it.
+      if (
+        decisionKind === 'evaluator_failure' &&
+        (record.result !== 'rejected' ||
+          record.selected_action !== null ||
+          !Array.isArray(record.ranked_options) ||
+          record.ranked_options.length !== 0 ||
+          typeof record.error !== 'string' ||
+          record.error.length === 0)
+      ) {
+        issues.push({
+          code: 'away.decision.evaluator_failure',
+          message: `Ledger record ${index} is not a valid evaluator failure.`,
         })
       }
 

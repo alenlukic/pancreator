@@ -9,6 +9,7 @@ import {
 } from '../../src/lib/policy-guidance.js'
 import {
   buildInvocationContractManifest,
+  renderEvidenceWorkerBrief,
   renderInvocationDeliveryPrompt,
   renderInvocationMarkdown,
   renderStatus,
@@ -23,7 +24,10 @@ import {
 } from '../../src/lib/validation.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { createFixture } from '../helpers.js'
-import type { Invocation } from '../../src/lib/types.js'
+import type {
+  Invocation,
+  InvocationEvidenceWorker,
+} from '../../src/lib/types.js'
 
 const RUN_LIMITS = {
   max_total_transitions: 18,
@@ -885,4 +889,107 @@ test('status summary lists recorded advisories with their stage context', () => 
     status,
     /- plan \(submit\): Worker model evidence is unverified\./,
   )
+})
+
+function evidenceWorkerFixture(): InvocationEvidenceWorker {
+  return {
+    persona: 'qa-tester',
+    role: 'qa',
+    scope: 'Execute the ratified test plan.',
+    agent: 'pan-qa-tester',
+    model: 'fixture-model',
+    brief_path: 'runtime/logs/workflows/run-fixture/agent/briefs/qa.md',
+    evidence_path: 'runtime/logs/workflows/run-fixture/agent/evidence/qa.md',
+  }
+}
+
+test('the evidence brief names the fast command only when no passed fast gate is current', () => {
+  const root = createFixture()
+  const invocation = baseInvocation(root, 'delivery', 'verify')
+  const command = '`./bin/pan repository-check fast --run run-fixture`'
+
+  // No gate evidence at all, as on a release run that never ran implement:
+  // the brief names the command, and the harness checkout is the place to
+  // run it from.
+  const withoutEvidence = renderEvidenceWorkerBrief(
+    invocation,
+    evidenceWorkerFixture(),
+  )
+
+  assert.ok(withoutEvidence.includes(command))
+  assert.match(withoutEvidence, /from this checkout so the run records/u)
+  assert.doesNotMatch(withoutEvidence, /Harness root/u)
+  assert.doesNotMatch(withoutEvidence, /already ran `fast`/u)
+
+  // A passed fast gate at the current fingerprint is what the scope tells the
+  // worker to cite, so the brief says so instead of ordering a rerun.
+  invocation.inputs.references = [
+    {
+      path: 'runtime/logs/workflows/run-fixture/agent/evidence/fast.json',
+      description: 'Gate evidence',
+      retrieval: 'conditional',
+      condition: 'Cite this evidence.',
+      gate_evidence: {
+        profile: 'fast',
+        fingerprint: 'fixture-fingerprint',
+        current: true,
+      },
+    },
+  ]
+
+  const withEvidence = renderEvidenceWorkerBrief(
+    invocation,
+    evidenceWorkerFixture(),
+  )
+
+  assert.ok(!withEvidence.includes(command))
+  assert.match(
+    withEvidence,
+    /The implement gate already ran `fast` at this workspace fingerprint\. Cite that gate evidence reference from your card/u,
+  )
+
+  // Superseded fast evidence, or a passed profile other than fast, does not
+  // stand in: the command returns.
+  invocation.inputs.references[0].gate_evidence = {
+    profile: 'fast',
+    fingerprint: 'older-fingerprint',
+    current: false,
+  }
+  assert.ok(
+    renderEvidenceWorkerBrief(invocation, evidenceWorkerFixture()).includes(
+      command,
+    ),
+  )
+  invocation.inputs.references[0].gate_evidence = {
+    profile: 'static',
+    fingerprint: 'fixture-fingerprint',
+    current: true,
+  }
+  assert.ok(
+    renderEvidenceWorkerBrief(invocation, evidenceWorkerFixture()).includes(
+      command,
+    ),
+  )
+})
+
+test('the evidence brief names the harness root the fast command runs from', () => {
+  const root = createFixture()
+  const invocation = baseInvocation(root, 'delivery', 'verify')
+
+  // A run bound to a worktree carries the harness root, as the card does, so
+  // "from the harness root" names a directory rather than assuming one.
+  invocation.workspace_root = 'worktrees/operator/delivery-abc123-alpha'
+  invocation.harness_root = '/srv/harness'
+
+  const brief = renderEvidenceWorkerBrief(invocation, evidenceWorkerFixture())
+
+  assert.match(
+    brief,
+    /^\*\*Harness root\*\* `\/srv\/harness` — every `\.\/bin\/pan` command in this brief runs from this directory, not the workspace\.$/mu,
+  )
+  assert.match(
+    brief,
+    /run exactly `\.\/bin\/pan repository-check fast --run run-fixture` from the harness root `\/srv\/harness` so the run records the execution\./u,
+  )
+  assert.doesNotMatch(brief, /from this checkout/u)
 })
