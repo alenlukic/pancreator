@@ -177,7 +177,8 @@ test('best-of-N init isolates every candidate in its own worktree and model set'
     const snapshot = JSON.parse(
       readFileSync(path.join(root, run.pipeline_config?.path ?? ''), 'utf8'),
     ) as { personas: Record<string, string> }
-    const expected = candidate.slot === 'alpha' ? 'gpt-5.4' : 'claude-opus-5'
+    const expected =
+      candidate.slot === 'alpha' ? 'gpt-5.6-terra' : 'claude-opus-5'
 
     // The candidate map overrides config.json defaults; everything else falls
     // through to them.

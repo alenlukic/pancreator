@@ -348,7 +348,8 @@ function resolveAgainstCatalog(
     // (claude-fable-5[], claude-opus-5[context=300k,effort=high]) fail with
     // "Cannot use this model" while fully-specified forms resolve exactly. A
     // bare id (no brackets) is valid and delegates the variant choice to
-    // Cursor (bare gpt-5.4 resolved to "GPT-5.4 272K High").
+    // Cursor, which picks the model's default variant (observed on the
+    // since-retired gpt-5.4: the bare id resolved to its 272K High variant).
     if (mapping.model_spec.includes('[')) {
       for (const name of model.parameters.keys()) {
         invariant(
@@ -362,9 +363,9 @@ function resolveAgainstCatalog(
       }
 
       // Per-value validity is not enough: the catalog's variant grid is not
-      // the full product of parameter values (gpt-5.6-sol offers fast=true
-      // only at context=272k), and Cursor silently falls back to the model's
-      // default variant on a non-existent combination.
+      // the full product of parameter values (a model may declare a value
+      // that only some contexts offer), and Cursor silently falls back to the
+      // model's default variant on a non-existent combination.
       if (model.variants && model.variants.length > 0) {
         const specifiedKeys = Object.keys(mapping.options).sort()
         const declared = [

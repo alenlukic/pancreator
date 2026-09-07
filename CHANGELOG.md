@@ -34,6 +34,7 @@
 
 ### Fixed
 
+- Replace the retired `gpt-5.4` in the test fixtures with `gpt-5.6-terra`, and align every fixture model spec with the variants the current Cursor catalog declares, so the suite passes against a refreshed account-local catalog ([best-of-n helpers](tests/integration/best-of-n-helpers.ts), [pipeline-config tests](tests/unit/pipeline-config.test.ts), [projection tests](tests/unit/projection.test.ts), [run-friction tests](tests/regression/run-friction.test.ts)).
 - Add `pan cohort release <cohort-id>`, the merge-free release continuation. It refuses with `COHORT_NOT_SATISFIED` while a cohort lacks its merge proof, and it starts or adopts the release run otherwise ([cohorts](src/lib/cohorts.ts), [cli](src/cli.ts)).
 - Accept `evaluator_failure` records in the away decision ledger validator, so one failed evaluator spawn no longer fails every later ledger check ([autonomy-state](src/lib/validators/autonomy-state.ts)).
 - Run the repository-check `setup` commands once per run in a worktree workspace, for any start stage, before baseline capture, when a stage of the workflow needs a provisioned tree. Record the outcome on the run as `workspace_setup` with status `passed`, `failed`, or `not_configured`, so a release run starting at `verify` is provisioned and a `planning` run runs no setup ([engine](src/lib/engine.ts), [types](src/lib/types.ts)).

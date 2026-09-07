@@ -115,7 +115,7 @@ test('run-scoped agent variants carry pinned models without touching the base ag
   const baseCoder = readFileSync(baseCoderPath, 'utf8')
 
   // The variant spec must reach the frontmatter byte-identical.
-  const coderSpec = 'gpt-5.6-sol[context=272k,reasoning=xhigh,fast=true]'
+  const coderSpec = 'gpt-5.6-sol[context=272k,reasoning=xhigh,fast=false]'
   const changes = projectPersonaVariants(
     root,
     'bondeadbeef-alpha',

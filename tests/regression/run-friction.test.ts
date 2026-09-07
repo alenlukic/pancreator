@@ -472,7 +472,7 @@ test('a persona mapping the run never resolves is not pipeline config drift', ()
   // while it is still in flight. The mapping is absent from its own snapshot,
   // so the run never resolves it and must keep advancing.
   editPersonaMappings(root, (defaults) => {
-    defaults['fixture-only-persona'] = 'auto'
+    defaults['fixture-only-persona'] = 'auto-smart'
   })
 
   const prepared = prepareInvocation(root, additive.run_id).invocation
@@ -481,7 +481,7 @@ test('a persona mapping the run never resolves is not pipeline config drift', ()
   assert.equal(prepared.stage.slug, 'implement')
 
   editPersonaMappings(root, (defaults) => {
-    defaults.coder = 'gpt-5.4'
+    defaults.coder = 'gpt-5.6-terra'
   })
 
   const drifted = prepareInvocation(root, changed.run_id)

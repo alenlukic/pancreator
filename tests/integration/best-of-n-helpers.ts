@@ -29,7 +29,7 @@ export const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
 export const CONFIGS = {
   schema_version: 1,
   candidates: [
-    { name: 'alpha', personas: { coder: 'gpt-5.4' } },
+    { name: 'alpha', personas: { coder: 'gpt-5.6-terra' } },
     { name: 'beta', personas: { coder: 'claude-opus-5' } },
   ],
   consolidation: { personas: { metacritic: 'gpt-5.6-sol' } },
