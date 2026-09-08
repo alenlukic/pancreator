@@ -317,7 +317,8 @@ test('self-development repository validation enforces harness instruction covera
 
   writeFileSync(
     path.join(root, 'tests', 'unit', 'mapped.test.ts'),
-    "test('a mapped case', () => {})\n",
+    "import { execFileSync } from 'node:child_process'\n\n" +
+      "test('a mapped case', () => {})\n",
   )
 
   assert.match(
@@ -326,6 +327,13 @@ test('self-development repository validation enforces harness instruction covera
     ).join('\n'),
     /cites test 'an absent case', which tests\/unit\/mapped\.test\.ts does not declare/u,
     'an existing file does not vouch for a test it never declares',
+  )
+  assert.match(
+    coverageErrors(
+      'The harness MUST cover `tests/unit/mapped.test.ts::node:child_process`.',
+    ).join('\n'),
+    /cites test 'node:child_process', which tests\/unit\/mapped\.test\.ts does not declare/u,
+    'an import specifier is a quoted string, not a declared enforcer',
   )
   assert.deepEqual(
     coverageErrors(
