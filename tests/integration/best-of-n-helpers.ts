@@ -60,11 +60,11 @@ export function initSession(
   root: string,
   operatorArtifacts = false,
 ): ReturnType<typeof initBestOfN> {
-  writeJson(path.join(root, 'best-of-n.json'), CONFIGS)
+  writeJson(path.join(root, 'best-of-n-config.json'), CONFIGS)
 
   return initBestOfN(root, {
     requestPath: 'request.md',
-    configsPath: 'best-of-n.json',
+    configsPath: 'best-of-n-config.json',
     operatorArtifacts,
   })
 }

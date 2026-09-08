@@ -36,7 +36,7 @@ import {
 test('a failed init leaves a session the lifecycle commands can recover', () => {
   const root = createFixture()
 
-  writeJson(path.join(root, 'best-of-n.json'), {
+  writeJson(path.join(root, 'best-of-n-config.json'), {
     ...CONFIGS,
     setup: ['node -e "process.exit(7)"'],
   })
@@ -46,7 +46,7 @@ test('a failed init leaves a session the lifecycle commands can recover', () => 
   try {
     initBestOfN(root, {
       requestPath: 'request.md',
-      configsPath: 'best-of-n.json',
+      configsPath: 'best-of-n-config.json',
     })
   } catch (error) {
     failure = error
