@@ -364,12 +364,19 @@ export interface PolicyArtifactAuthority {
   pr_description?: PrDescriptionAuthority
 }
 
+export type PolicyAudience = 'agent' | 'supervisor' | 'harness' | 'operator'
+
+export interface PolicyInstruction {
+  text: string
+  audience: PolicyAudience[]
+}
+
 export interface Policy {
   id: string
   title: string
   severity: 'hard' | 'soft'
   summary: string
-  instructions: string[]
+  instructions: PolicyInstruction[]
   extension_id?: string
   /** Names the target that authored this policy. Absent on harness policies. */
   target_extension?: string

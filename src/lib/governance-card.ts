@@ -6,6 +6,7 @@ import { keywordRunSuffix } from './naming.js'
 import { makeUniqueRunId } from './state.js'
 import { resolvePolicies } from './policies.js'
 import { renderPolicyBlocks } from './policy-guidance.js'
+import type { PolicyCardAudience } from './policy-instructions.js'
 import { harnessPathPrefix, isTargetInstallation } from './project-config.js'
 import { resolveRequirements } from './requirements/resolve.js'
 import type { InvocationKind } from './requirements/types.js'
@@ -457,9 +458,44 @@ function baseConductBlock(root: string, scope: ReviewScope): BaseConductBlock {
       path: conflict.path,
       summary: typeof record.summary === 'string' ? record.summary : null,
       instructions: Array.isArray(record.instructions)
-        ? record.instructions.filter(
-            (item): item is string => typeof item === 'string',
-          )
+        ? record.instructions.flatMap((item): string[] => {
+            if (typeof item === 'string') {
+              return [item]
+            }
+
+            if (!isRecordValue(item)) {
+              return []
+            }
+
+            const audiences = item.audience
+
+            if (!Array.isArray(audiences)) {
+              return []
+            }
+
+            const audienceSet = new Set(
+              audiences.filter(
+                (audience): audience is string => typeof audience === 'string',
+              ),
+            )
+
+            if (audienceSet.has('harness') || audienceSet.has('operator')) {
+              return []
+            }
+
+            if (!audienceSet.has('agent')) {
+              return []
+            }
+
+            if (
+              typeof item.text !== 'string' ||
+              item.text.trim().length === 0
+            ) {
+              return []
+            }
+
+            return [item.text]
+          })
         : [],
     })
   }
@@ -614,6 +650,8 @@ export function renderGovernanceCardMarkdown(options: {
 }): string {
   const { mode, policies, requirements, requestPath } = options
   const run = options.run ?? null
+  const policyAudience: PolicyCardAudience =
+    mode.kind === 'supervisor' ? 'supervisor' : 'agent'
   const agentRequirements = [
     ...requirements.automation_requirements,
     ...requirements.validation_requirements,
@@ -624,6 +662,7 @@ export function renderGovernanceCardMarkdown(options: {
   const policyBlocks = renderPolicyBlocks(
     policies,
     3,
+    policyAudience,
     new Set((options.baseConduct?.policies ?? []).map((policy) => policy.id)),
     new Set(
       (options.baseConduct?.excluded ?? [])

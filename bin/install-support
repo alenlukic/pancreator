@@ -129,6 +129,22 @@ function guidanceSelectedRange(guidance) {
 // Kept in sync with renderPolicyCursorRule in src/lib/cursor-content.ts. This
 // script runs before the harness is built, so it cannot import that module.
 function renderPolicyCursorRule(policy) {
+  const instructionText = (instruction) =>
+    typeof instruction === 'string' ? instruction : instruction?.text
+  const instructionAudiences = (instruction) =>
+    typeof instruction === 'string' ? ['agent'] : instruction?.audience
+  const appliesToAgent = (instruction) => {
+    const audiences = instructionAudiences(instruction)
+    if (!Array.isArray(audiences)) return false
+    if (audiences.includes('harness')) return false
+    if (audiences.includes('operator')) return false
+    return audiences.includes('agent')
+  }
+  const instructions = (policy.instructions ?? [])
+    .filter(appliesToAgent)
+    .map((instruction) => instructionText(instruction))
+    .filter((instruction) => typeof instruction === 'string')
+
   return [
     '---',
     `description: ${policy.id} — ${policy.title}`,
@@ -143,7 +159,7 @@ function renderPolicyCursorRule(policy) {
     '',
     policy.summary,
     '',
-    ...policy.instructions.map((instruction) => `- ${instruction}`),
+    ...instructions.map((instruction) => `- ${instruction}`),
     ...(policy.guidance_sources ?? []).flatMap((guidance) => [
       '',
       `## Guidance reference · \`${guidance.path}\``,

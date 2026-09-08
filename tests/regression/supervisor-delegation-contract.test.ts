@@ -5,6 +5,7 @@ import test from 'node:test'
 
 import { prepareInvocation, setRunStage } from '../../src/lib/engine.js'
 import { loadPolicyCatalog } from '../../src/lib/policies.js'
+import { policyInstructionAppliesToCard } from '../../src/lib/policy-instructions.js'
 import {
   buildInvocationContractManifest,
   renderInvocationDeliveryPrompt,
@@ -124,7 +125,13 @@ test('worker invocation cards point at the supervisor delivery procedure', () =>
   assert.ok(procedure.includes(DELEGATION_HEADING))
 
   // The whole policy, not a pointer to it.
-  for (const instruction of invocationPolicy.instructions) {
+  const renderedInstructions = invocationPolicy.instructions
+    .filter((instruction) =>
+      policyInstructionAppliesToCard(instruction, 'supervisor'),
+    )
+    .map((instruction) => instruction.text)
+
+  for (const instruction of renderedInstructions) {
     assert.ok(
       procedure.includes(instruction),
       `procedure MUST inline INVOCATION-001 instruction: ${instruction}`,

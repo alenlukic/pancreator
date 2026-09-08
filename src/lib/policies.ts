@@ -19,6 +19,7 @@ import type {
   PolicyRequirement,
   RunContract,
 } from './types.js'
+import { normalizePolicyInstructions } from './policy-instructions.js'
 import { isSelfDevelopmentInstallation } from './project-config.js'
 import { isValidPolicyRequirement } from './requirements/types.js'
 import {
@@ -234,11 +235,9 @@ function parsePolicy(root: string, value: unknown, source: string): Policy {
     `${source}: policy summary MUST be a non-empty string.`,
     { code: 'INVALID_POLICY' },
   )
-  invariant(
-    Array.isArray(value.instructions) &&
-      value.instructions.every((item) => typeof item === 'string'),
-    `${source}: policy instructions MUST be a string array.`,
-    { code: 'INVALID_POLICY' },
+  const instructions = normalizePolicyInstructions(
+    value.instructions,
+    `${source}: policy instructions`,
   )
   invariant(
     value.extension_id === undefined ||
@@ -309,7 +308,7 @@ function parsePolicy(root: string, value: unknown, source: string): Policy {
     title: value.title,
     severity: value.severity,
     summary: value.summary,
-    instructions: value.instructions,
+    instructions,
     ...(typeof value.extension_id === 'string'
       ? { extension_id: value.extension_id }
       : {}),
