@@ -20,7 +20,8 @@ This standard does not apply to:
 
 - Machine records, invocation cards, delegation cards, and JSON state.
 - Source code, code comments, and commit messages.
-- Repository documentation under `docs/`, `README.md`, and `governance/`.
+- `README.md` and `governance/`.
+- Repository documentation under `docs/`, except `docs/issues/`, which this standard governs.
 - Quoted material, captured command output, and preserved evidence.
 
 An agent MUST NOT rewrite quoted text to satisfy this standard (STE 8.6). Preserve evidence verbatim and write the surrounding explanation in Simplified Technical English.

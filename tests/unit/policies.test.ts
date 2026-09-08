@@ -985,33 +985,68 @@ test('no conform policy forbids an edit the conform boundary requires', () => {
     ),
   )
   const boundary = mode.boundaries.join('\n')
+  const editable = mode.boundaries.find((line) =>
+    line.includes('MUST edit only'),
+  )
+  // One sentence carries the exclusion, and the exception that follows
+  // `except` is the governed set rather than part of the exclusion.
+  const exclusions = rendered
+    .flatMap((instruction) => instruction.split(/(?<=\.)\s+/u))
+    .filter((sentence) =>
+      /outside (?:the|those|these) (?:writing )?rules|MUST NOT restyle/u.test(
+        sentence,
+      ),
+    )
+
+  assert.ok(editable, boundary)
+
+  // Fail closed. The replaced guard skipped its own body when the exclusion
+  // was reworded, and discarded every word after the first `except`, so it
+  // passed against the base text it was written to reject.
+  assert.ok(
+    exclusions.length > 0,
+    `no rendered conform instruction states an exclusion:\n${rendered.join('\n')}`,
+  )
 
   // The boundary requires the librarian to repair these paths, so no rendered
   // instruction may place them outside the writing rules of this card.
   for (const required of ['docs/issues/', 'runtime/pr-descriptions/']) {
-    assert.ok(boundary.includes(required), `the boundary omits ${required}`)
+    assert.ok(editable.includes(required), `the boundary omits ${required}`)
 
-    for (const instruction of rendered) {
-      if (!/outside the writing rules|MUST NOT restyle/u.test(instruction)) {
-        continue
-      }
-
-      const exclusions = instruction
-        .split(/\bexcept\b/u)[0]
-        ?.split(/,| and /u)
-        .map((clause) => clause.trim())
+    for (const sentence of exclusions) {
+      const exceptAt = sentence.search(/\bexcept\b/u)
+      const excluded = exceptAt === -1 ? sentence : sentence.slice(0, exceptAt)
 
       assert.ok(
-        !exclusions?.some((clause) => clause.includes(required)),
-        `${instruction} forbids restyling ${required}, which the conform boundary requires`,
+        !excluded.includes(required),
+        `${sentence} forbids restyling ${required}, which the conform boundary requires`,
       )
     }
   }
 
+  // Absence is not the contract. The carve-out MUST be stated, so a revert to
+  // an exclusion covering all of `docs/` fails here rather than passing.
+  assert.ok(
+    exclusions.some((sentence) => {
+      const exceptAt = sentence.search(/\bexcept\b/u)
+
+      return (
+        exceptAt !== -1 && sentence.slice(exceptAt).includes('docs/issues/')
+      )
+    }),
+    `no rendered conform instruction carves docs/issues/ out of its exclusion:\n${rendered.join('\n')}`,
+  )
+
   // The boundary reserves release metadata, so nothing on the card may hand it
-  // to this persona.
-  assert.match(boundary, /MUST NOT edit either/u)
-  assert.ok(!boundary.includes('You MUST edit only `CHANGELOG.md`'))
+  // to this persona. The replaced pin named the removed wording, so any other
+  // wording that grants the same edit passed it.
+  assert.ok(!editable.includes('CHANGELOG.md'), editable)
+  assert.ok(
+    mode.boundaries.some(
+      (line) => line.includes('CHANGELOG.md') && line.includes('MUST NOT edit'),
+    ),
+    boundary,
+  )
 })
 
 test('build-docs owns primer validators on LIBRARIAN-001', () => {
