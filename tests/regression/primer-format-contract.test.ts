@@ -22,7 +22,9 @@ test('PRIMER-001 states every bold label the primer validator enforces', () => {
 
   assert.ok(policy)
 
-  const text = policy.instructions.join('\n')
+  const text = policy.instructions
+    .map((instruction) => instruction.text)
+    .join('\n')
 
   for (const label of [...PRIMER_FRONTEND_LABELS, ...PRIMER_FLOW_STEP_LABELS]) {
     assert.ok(

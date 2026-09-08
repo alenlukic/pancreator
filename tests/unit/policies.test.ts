@@ -569,7 +569,10 @@ test('the best-of-N candidate planner receives no specification hierarchy or coh
   ]
 
   for (const policy of candidate) {
-    for (const text of [policy.summary, ...policy.instructions]) {
+    for (const text of [
+      policy.summary,
+      ...policy.instructions.map((instruction) => instruction.text),
+    ]) {
       for (const term of hierarchyTerms) {
         assert.equal(
           text.toLowerCase().includes(term),
@@ -603,7 +606,9 @@ test('the specification hierarchy rules live in exactly one policy', () => {
   const catalog = loadPolicyCatalog(sharedFixture())
   const owners = [...catalog.values()].filter((policy) =>
     policy.instructions.some((instruction) =>
-      instruction.includes('one child specification for each unit of work'),
+      instruction.text.includes(
+        'one child specification for each unit of work',
+      ),
     ),
   )
 
@@ -617,7 +622,7 @@ test('the specification hierarchy rules live in exactly one policy', () => {
   assert.ok(shared)
   assert.equal(
     shared.instructions.some((instruction) =>
-      /child specification|cohort|unit of work/iu.test(instruction),
+      /child specification|cohort|unit of work/iu.test(instruction.text),
     ),
     false,
     'PLAN-002 MUST keep only the consolidated-planning rules both planners share',

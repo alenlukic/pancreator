@@ -9,6 +9,7 @@ import {
   STANDALONE_MODES,
   buildGovernanceCard,
 } from '../../src/lib/governance-card.js'
+import { policyInstructionAppliesToCard } from '../../src/lib/policy-instructions.js'
 import {
   HARNESS_SQUAD_SKILL_PATH,
   REVIEW_DIMENSIONS,
@@ -92,10 +93,19 @@ test('every standalone mode renders a card with its policies inlined', () => {
       )
 
       for (const instruction of policy.instructions) {
-        assert.ok(
-          written.includes(instruction),
-          `${name} card omits an instruction of ${policy.id}`,
-        )
+        const bullet = `- ${instruction.text}`
+        if (policyInstructionAppliesToCard(instruction, 'agent')) {
+          assert.ok(
+            written.includes(bullet),
+            `${name} card omits an instruction of ${policy.id}`,
+          )
+        } else {
+          assert.equal(
+            written.includes(bullet),
+            false,
+            `${name} card must not render hidden instructions of ${policy.id}`,
+          )
+        }
       }
 
       for (const guidance of policy.guidance ?? []) {
@@ -146,6 +156,42 @@ test('every standalone mode renders a card with its policies inlined', () => {
       ),
     )
   }
+})
+
+test('a standalone card omits non-agent instructions from a mixed fixture', () => {
+  const root = createFixture()
+  const policyPath = path.join(root, 'governance/policies/ACTION-001.json')
+  const policy = JSON.parse(readFileSync(policyPath, 'utf8')) as {
+    instructions: unknown[]
+  }
+
+  policy.instructions.push(
+    { text: 'Agents MUST see fixture agent content.', audience: ['agent'] },
+    {
+      text: 'Supervisors MUST see fixture supervisor content.',
+      audience: ['supervisor'],
+    },
+    {
+      text: 'The harness MUST retain fixture harness content.',
+      audience: ['harness'],
+    },
+    {
+      text: 'Operators MUST see fixture operator content.',
+      audience: ['operator'],
+    },
+  )
+  writeFileSync(policyPath, `${JSON.stringify(policy, null, 2)}\n`)
+
+  const card = buildGovernanceCard(root, {
+    mode: 'pair',
+    outputPath: 'runtime/inbox/mixed-audience-card.md',
+  })
+  const written = readFileSync(path.join(root, card.path), 'utf8')
+
+  assert.match(written, /- Agents MUST see fixture agent content\./u)
+  assert.doesNotMatch(written, /fixture supervisor content/u)
+  assert.doesNotMatch(written, /fixture harness content/u)
+  assert.doesNotMatch(written, /fixture operator content/u)
 })
 
 test('the shared worktree option resolves or creates the card workspace', () => {

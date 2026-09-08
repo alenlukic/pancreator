@@ -382,7 +382,7 @@ function renderSupervisorProcedureBody(
         'remove it: delegation evidence is compared against the delivered ' +
         'prompt byte for byte.',
     '',
-    ...renderPolicyBlocks(delegation.policies, 3),
+    ...renderPolicyBlocks(delegation.policies, 3, 'supervisor'),
     ...(externalDelegation
       ? [
           `This stage executes under the '${externalDelegation}' ` +
@@ -610,7 +610,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
         contextReference.actual_content_sha256,
       ).slice(1)
     : []
-  const policies = renderPolicyBlocks(invocation.policies, 3)
+  const policies = renderPolicyBlocks(invocation.policies, 3, 'agent')
   const requirements = invocation.requirements
     ? [
         ...invocation.requirements.automation_requirements,
