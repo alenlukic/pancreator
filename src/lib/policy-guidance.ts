@@ -6,7 +6,10 @@ import type {
   PolicyGuidanceReference,
 } from './types.js'
 import type { PolicyCardAudience } from './policy-instructions.js'
-import { policyInstructionAppliesToCard } from './policy-instructions.js'
+import {
+  policyInstructionAppliesToCard,
+  policyInstructionText,
+} from './policy-instructions.js'
 
 /** Heading depth a card or rule uses for one guidance block. */
 export type GuidanceHeadingLevel = 2 | 3
@@ -197,7 +200,9 @@ export function renderPolicyBlocks(
         return false
       }
 
-      const normalized = normalizedPolicyStatement(instruction.text)
+      const normalized = normalizedPolicyStatement(
+        policyInstructionText(instruction),
+      )
 
       if (seen.has(normalized)) {
         return false
@@ -229,7 +234,9 @@ export function renderPolicyBlocks(
             ]
           : []),
       ...(seen.has(summary) ? [] : [policy.summary, '']),
-      ...instructions.map((instruction) => `- ${instruction.text}`),
+      ...instructions.map(
+        (instruction) => `- ${policyInstructionText(instruction)}`,
+      ),
     ]
 
     for (const guidance of policy.guidance ?? []) {

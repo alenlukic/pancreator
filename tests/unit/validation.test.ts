@@ -424,7 +424,6 @@ test('invocation validator passes for canonical rendered markdown', () => {
 test('invocation validation preserves legacy plain-string instruction checks', () => {
   const root = createFixture()
   const invocation = fixtureInvocation(root, 'implement')
-  const markdown = renderInvocationMarkdown(invocation)
   const legacy = structuredClone(invocation)
 
   for (const policy of legacy.policies) {
@@ -434,6 +433,7 @@ test('invocation validation preserves legacy plain-string instruction checks', (
     ) as unknown as typeof policy.instructions
   }
 
+  const markdown = renderInvocationMarkdown(legacy)
   const result = validateInvocationMarkdown(legacy, markdown)
   const firstPolicy = legacy.policies[0]
 

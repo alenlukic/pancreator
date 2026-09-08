@@ -75,10 +75,7 @@ into `qa_cases` — each states `id`, `steps`, `expected`, `actual`, and
 Each acceptance result states the criterion `id`, a `result`, and evidence.
 Set the output `result` to `success` for `pass` and `pass_with_warnings`, and
 to `failure` for `fail_remedial` and `fail_severe`. Do not launch subagents;
-the parallel evidence workers already ran. When `output.operator_brief`
-exists, edit its declared source and reference the rendered HTML. Do not run
-the renderer. When the contract omits `output.operator_brief`, do not create
-either brief file.
+the parallel evidence workers already ran. Follow the card's `output.operator_brief` contract.
 
 ## Done when
 

@@ -367,20 +367,15 @@ test('policy resolution unions global and stage-specific policies', () => {
     'ACTION-001',
     'ASK-001',
     'AUTO-001',
-    'BIN-001',
     'BRIEF-001',
     'CONTRACT-001',
     'DEV-001',
     'ENG-001',
     'GLOBAL-001',
     'GLOBAL-002',
-    'LANG-001',
     'OPERATOR-001',
-    'OUTPUT-001',
     'PRIMER-001',
     'REPO-001',
-    'RUNTIME-001',
-    'STE-001',
     'TEST-001',
     'TS-001',
     'VALID-001',
@@ -408,7 +403,6 @@ test('representative contexts exclude policies outside their remit', () => {
     'OPERATOR-001',
     'PLAN-002',
     'PRIMER-001',
-    'STE-001',
     'VALID-001',
   ])
 
@@ -439,7 +433,12 @@ test('representative contexts exclude policies outside their remit', () => {
     ],
     ['orchestrator', 'design', 'intake', ['INTAKE-001', 'ORCH-001']],
     ['release-steward', 'standalone', 'release', ['VERSION-001']],
-    ['librarian', 'standalone', 'build-docs', ['PRIMER-001', 'VALID-001']],
+    [
+      'librarian',
+      'standalone',
+      'build-docs',
+      ['LIBRARIAN-001', 'PRIMER-001', 'REPO-001', 'VALID-001'],
+    ],
     ['decomposer', 'standalone', 'decompose', ['DECOMP-001']],
     ['harness-technician', 'standalone', 'repair', ['REPAIR-001']],
     ['investigator', 'standalone', 'debug', ['DIAG-001', 'WORK-001']],
@@ -450,12 +449,7 @@ test('representative contexts exclude policies outside their remit', () => {
       'best-of-n',
       ['BESTOFN-001', 'WORK-001'],
     ],
-    [
-      'reviewer',
-      'delivery',
-      'verify',
-      ['ENG-001', 'CONTRACT-001', 'LANG-001', 'TS-001'],
-    ],
+    ['reviewer', 'delivery', 'verify', ['ENG-001', 'CONTRACT-001', 'TS-001']],
     [
       'reviewer',
       'standalone',
@@ -676,7 +670,7 @@ test('Python policy loads only for detected Python workspaces', () => {
     stage: 'plan',
   }).map((policy) => policy.id)
 
-  for (const policyId of ['CONTRACT-001', 'ENG-001', 'PLAN-002']) {
+  for (const policyId of ['ENG-001', 'PLAN-002']) {
     assert.ok(plannerIds.includes(policyId), `plan MUST include ${policyId}`)
   }
   for (const policyId of ['LANG-001', 'PY-001', 'TS-001']) {
@@ -924,4 +918,217 @@ test('every repair instruction surface agrees that several intakes are allowed',
 
   assert.match(command, /once for each intake path/u)
   assert.match(command, /default to one intake/u)
+})
+
+test('ship, write-pr, and conform keep required STE checks', () => {
+  const root = sharedFixture()
+  const requiredSte = (
+    persona: string,
+    workflow: string,
+    stage: string,
+    invocationKind: 'workflow' | 'standalone',
+  ): string[] =>
+    resolveRequirements(root, {
+      persona,
+      workflow,
+      stage,
+      invocation_kind: invocationKind,
+    })
+      .validation_requirements.filter(
+        (requirement) =>
+          requirement.registry_id === 'SIMPLIFIED-ENGLISH-VALIDATE-001' &&
+          requirement.enforcement === 'required',
+      )
+      .map((requirement) => requirement.requirement_id)
+      .sort()
+
+  assert.deepEqual(
+    requiredSte('release-steward', 'delivery', 'ship', 'workflow'),
+    ['workflow-pr-simplified-english-validate'],
+  )
+  assert.deepEqual(
+    requiredSte('release-steward', 'standalone', 'write-pr', 'standalone'),
+    ['standalone-pr-simplified-english-validate'],
+  )
+  assert.deepEqual(
+    requiredSte('librarian', 'standalone', 'conform', 'standalone'),
+    ['standalone-conform-simplified-english-validate'],
+  )
+
+  const planner = resolvePolicies(root, {
+    persona: 'planner',
+    workflow: 'planning',
+    stage: 'plan',
+  }).map((policy) => policy.id)
+
+  assert.equal(planner.includes('STE-001'), false)
+})
+
+test('build-docs owns primer validators on LIBRARIAN-001', () => {
+  const root = sharedFixture()
+  const catalog = loadPolicyCatalog(root)
+  const librarian = catalog.get('LIBRARIAN-001')
+  const primer = catalog.get('PRIMER-001')
+
+  assert.ok(librarian)
+  assert.ok(primer)
+  assert.equal(primer.requirements?.length ?? 0, 0)
+
+  const ids = resolveRequirements(root, {
+    persona: 'librarian',
+    workflow: 'standalone',
+    stage: 'build-docs',
+    invocation_kind: 'documentation',
+  })
+    .validation_requirements.filter((requirement) =>
+      [
+        'TARGET-REPO-PRIMER-VALIDATE-001',
+        'TARGET-LANGUAGE-HANDBOOK-VALIDATE-001',
+      ].includes(requirement.registry_id),
+    )
+    .map((requirement) => requirement.requirement_id)
+    .sort()
+
+  assert.deepEqual(ids, [
+    'target-language-handbook-validate',
+    'target-repo-primer-validate',
+  ])
+  assert.equal(
+    resolveRequirements(root, {
+      persona: 'librarian',
+      workflow: 'standalone',
+      stage: 'build-docs',
+      invocation_kind: 'documentation',
+    }).validation_requirements.some(
+      (requirement) => requirement.policy_id === 'LIBRARIAN-001',
+    ),
+    true,
+  )
+})
+
+test('self-development skips generated language rows that target installs keep', () => {
+  const selfDev = resolvePolicies(sharedFixture(), {
+    persona: 'coder',
+    workflow: 'delivery',
+    stage: 'implement',
+  }).map((policy) => policy.id)
+
+  assert.equal(selfDev.includes('LANG-001'), false)
+
+  const root = createFixture()
+  const configPath = path.join(root, 'config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  config.installation_mode = 'embedded'
+  config.workspace_root = 'target'
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+  mkdirSync(path.join(root, 'target'), { recursive: true })
+  writeFileSync(path.join(root, 'target', 'package.json'), '{}\n')
+  writeFileSync(path.join(root, 'target', 'tsconfig.json'), '{}\n')
+
+  const embedded = resolvePolicies(root, {
+    persona: 'coder',
+    workflow: 'delivery',
+    stage: 'implement',
+  }).map((policy) => policy.id)
+
+  assert.ok(embedded.includes('LANG-001'))
+})
+
+test('mixed policies tag supervisor, harness, and operator audiences', () => {
+  const catalog = loadPolicyCatalog(sharedFixture())
+  const audiences = (policyId: string): string[][] =>
+    (catalog.get(policyId)?.instructions ?? []).map(
+      (instruction) => instruction.audience,
+    )
+  const audienceFor = (policyId: string, excerpt: string): string[] => {
+    const instruction = (catalog.get(policyId)?.instructions ?? []).find(
+      (item) => item.text.includes(excerpt),
+    )
+
+    assert.ok(
+      instruction,
+      `${policyId} MUST contain the named instruction ${excerpt}`,
+    )
+
+    return instruction.audience
+  }
+
+  assert.deepEqual(audienceFor('STE-001', 'durable-instruction-text'), [
+    'operator',
+  ])
+  assert.deepEqual(
+    audienceFor('STE-001', 'Operator chat reports MUST state the outcome'),
+    ['supervisor'],
+  )
+  assert.deepEqual(audienceFor('OPERATOR-001', '--redline --occasion'), [
+    'supervisor',
+  ])
+  assert.deepEqual(audienceFor('OPERATOR-001', 'A non-empty `--note`'), [
+    'supervisor',
+  ])
+  assert.deepEqual(audienceFor('CONTRACT-001', 'registry-validate'), [
+    'harness',
+  ])
+  assert.deepEqual(audienceFor('CONTRACT-001', 'projection_manifest.json'), [
+    'harness',
+  ])
+  assert.deepEqual(audienceFor('CONTRACT-001', 'directive-audit'), ['harness'])
+  assert.deepEqual(audienceFor('CONTRACT-001', '.git/info/exclude'), [
+    'harness',
+  ])
+  assert.deepEqual(
+    audienceFor('BRIEF-001', 'MUST render requested HTML during submission'),
+    ['harness'],
+  )
+  assert.deepEqual(audienceFor('BRIEF-001', 'retained brief system'), [
+    'harness',
+  ])
+  assert.deepEqual(
+    audienceFor('BRIEF-001', 'MUST delete transient source JSON'),
+    ['harness'],
+  )
+  assert.deepEqual(
+    audienceFor('BRIEF-001', 'MUST NOT loop the workflow to implementation'),
+    ['harness'],
+  )
+  assert.deepEqual(
+    audienceFor('VALID-001', 'treat an agent-run result as early feedback'),
+    ['harness'],
+  )
+  assert.deepEqual(
+    audienceFor('VALID-001', 'MUST NOT inline the full validator catalog'),
+    ['harness'],
+  )
+  assert.deepEqual(
+    audienceFor('VALID-001', 'MUST NOT invent a separate validator set'),
+    ['harness'],
+  )
+  assert.ok(
+    audiences('OUTPUT-001').every((audience) => audience.includes('harness')),
+  )
+  assert.ok(
+    audiences('RUNTIME-001').some((audience) => audience.includes('harness')),
+  )
+  assert.ok(
+    audiences('RUNTIME-001').some((audience) => audience.includes('agent')),
+  )
+  assert.ok(
+    catalog
+      .get('LIBRARIAN-001')
+      ?.instructions.some((instruction) =>
+        instruction.text.includes('Repository-check commands MUST be copied'),
+      ),
+  )
+  assert.equal(
+    catalog
+      .get('REPO-001')
+      ?.instructions.some((instruction) =>
+        instruction.text.includes('Repository-check commands MUST be copied'),
+      ),
+    false,
+  )
 })

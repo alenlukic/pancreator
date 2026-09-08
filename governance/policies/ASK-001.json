@@ -7,15 +7,30 @@
     "Before an agent reports a needed secret as missing, it MUST check the repository-local `.env` file when that file exists.",
     "An agent MUST use a secret only for its authorized operation.",
     "An agent MUST NOT print, quote, persist, or expose a secret value.",
-    "When `config.json` names an unavailable Cursor model, an agent MUST check `.env` for `CURSOR_API_KEY` before operator escalation.",
-    "When `CURSOR_API_KEY` exists, the agent MUST use `Cursor.models.list()` to refresh `governance/registries/cursor_model_catalog.json`.",
-    "After the catalog refresh, the agent MUST rerun model validation.",
-    "The agent MUST ask the operator only when the recovery flow remains blocked.",
+    {
+      "text": "When `config.json` names an unavailable Cursor model, an agent MUST check `.env` for `CURSOR_API_KEY` before operator escalation.",
+      "audience": ["supervisor"]
+    },
+    {
+      "text": "When `CURSOR_API_KEY` exists, the agent MUST use `Cursor.models.list()` to refresh `governance/registries/cursor_model_catalog.json`.",
+      "audience": ["supervisor"]
+    },
+    {
+      "text": "After the catalog refresh, the agent MUST rerun model validation.",
+      "audience": ["supervisor"]
+    },
+    {
+      "text": "The agent MUST ask the operator only when the recovery flow remains blocked.",
+      "audience": ["supervisor"]
+    },
     "A Cursor-executor agent MUST use `cursor/ask_question` when it needs operator clarification or an operator decision.",
     "When `cursor/ask_question` is unavailable, the agent MUST ask the question in its normal response channel.",
     "The agent MUST state in that message that `cursor/ask_question` was unavailable.",
     "A worker inside a run MUST write the question and the unavailability into its stage output.",
-    "The supervisor MUST surface that question to the operator.",
+    {
+      "text": "The supervisor MUST surface that question to the operator.",
+      "audience": ["supervisor"]
+    },
     "An agent MUST NOT proceed on an assumed answer, and MUST NOT fail silently.",
     "An agent MUST NOT report `blocked` only because it could not use `cursor/ask_question`.",
     "An agent MUST report `blocked` only when its contract requires that result for work that cannot continue.",

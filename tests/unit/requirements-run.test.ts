@@ -30,16 +30,21 @@ test('artifact validators resolve only when workflow artifacts are requested', (
     ...base,
     operator_artifacts: 'suppressed',
   })
-  const artifactValidators = new Set([
-    'OPERATOR-ARTIFACT-VALIDATE-001',
-    'SIMPLIFIED-ENGLISH-VALIDATE-001',
-  ])
+  const artifactValidators = new Set(['OPERATOR-ARTIFACT-VALIDATE-001'])
 
   assert.equal(
     requested.validation_requirements.filter((requirement) =>
       artifactValidators.has(requirement.registry_id),
     ).length,
-    2,
+    1,
+  )
+  assert.equal(
+    requested.validation_requirements.some(
+      (requirement) =>
+        requirement.registry_id === 'SIMPLIFIED-ENGLISH-VALIDATE-001',
+    ),
+    false,
+    'implement no longer carries STE-001',
   )
   assert.equal(
     suppressed.validation_requirements.some((requirement) =>

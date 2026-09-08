@@ -349,6 +349,13 @@ function parseLookupRow(value: unknown, source: string): PolicyLookupRow {
     { code: 'INVALID_POLICY_LOOKUP' },
   )
   invariant(
+    value.generated_by === undefined ||
+      (typeof value.generated_by === 'string' &&
+        /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(value.generated_by)),
+    `${source}: generated_by MUST use lowercase hyphenated words when present.`,
+    { code: 'INVALID_POLICY_LOOKUP' },
+  )
+  invariant(
     value.contract === undefined ||
       (typeof value.contract === 'string' &&
         RUN_CONTRACT_IDS.has(value.contract as RunContract)),
@@ -665,6 +672,10 @@ export function resolvePolicies(
       matches(row.stage, context.stage)
 
     if (!applies) {
+      continue
+    }
+
+    if (selfDevelopment && row.generated_by) {
       continue
     }
 
