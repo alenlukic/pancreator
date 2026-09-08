@@ -39,7 +39,12 @@ import {
   suiteProfileEvidencePath,
 } from './suite-profile.js'
 import { auditTestScratchDirectories } from './test-scratch-audit.js'
-import { filterPolicyInstructionsForCard } from './policy-instructions.js'
+import {
+  filterPolicyInstructionsForCard,
+  policyInstructionAppliesToCard,
+  type PolicyCardAudience,
+} from './policy-instructions.js'
+import { STANDALONE_MODES } from './governance-card.js'
 import { loadRegistry, validateRegistry } from './requirements/registry.js'
 import {
   resolveRequirements,
@@ -3362,13 +3367,33 @@ function validateGovernance(
   return handbookPolicies
 }
 
-const HARNESS_INSTRUCTION_TEST_PATH_PATTERN = /\btests\/[A-Za-z0-9._/-]+\b/gu
+/**
+ * A harness coverage citation names the enforcing test, not only its file:
+ * `` `tests/<path>::<test name>` ``. The bare-path form is matched separately so
+ * the diagnostic can say which half is missing.
+ */
+const HARNESS_INSTRUCTION_TEST_CITATION_PATTERN =
+  /`(tests\/[A-Za-z0-9._/-]+)::([^`]+)`/gu
+const HARNESS_INSTRUCTION_TEST_PATH_PATTERN = /\btests\/[A-Za-z0-9._/:-]+/gu
 
 function tokenBoundaryPattern(token: string): RegExp {
   const escaped = token.replaceAll(/[.*+?^${}()|[\]\\]/gu, '\\$&')
   return new RegExp(`(^|[^A-Za-z0-9_-])${escaped}($|[^A-Za-z0-9_-])`, 'u')
 }
 
+/** True when `content` declares a test whose quoted name is exactly `name`. */
+function declaresQuotedTestName(content: string, name: string): boolean {
+  return ["'", '"', '`'].some((quote) =>
+    content.includes(`${quote}${name}${quote}`),
+  )
+}
+
+/**
+ * The `harness` audience removes an instruction from every card, so the
+ * citation beside it is the only surface a reviewer can follow. This check
+ * makes that citation resolve to one declared test rather than to a file that
+ * merely exists, and refuses one citation standing in for several rules.
+ */
 function validateHarnessInstructionCoverage(
   root: string,
   catalog: Map<string, Policy>,
@@ -3380,41 +3405,219 @@ function validateHarnessInstructionCoverage(
       (requirement) => requirement.id,
     )
     const requirementPatterns = requirementIds.map(tokenBoundaryPattern)
+    const citedBy = new Map<string, number>()
 
     for (const [index, instruction] of policy.instructions.entries()) {
       if (!instruction.audience.includes('harness')) {
         continue
       }
 
+      const label = `${policy.id} harness instruction ${index + 1}`
       const text = instruction.text
-      const referencesRequirement = requirementPatterns.some((pattern) =>
-        pattern.test(text),
-      )
 
-      if (referencesRequirement) {
+      if (requirementPatterns.some((pattern) => pattern.test(text))) {
         continue
       }
 
-      const matches = [...text.matchAll(HARNESS_INSTRUCTION_TEST_PATH_PATTERN)]
-      const referencesTest = matches.some((match) => {
-        const token = match[0]
-        const fileToken = token.split('::')[0] ?? token
+      const citations = [
+        ...text.matchAll(HARNESS_INSTRUCTION_TEST_CITATION_PATTERN),
+      ]
+
+      if (citations.length === 0) {
+        const bare = [...text.matchAll(HARNESS_INSTRUCTION_TEST_PATH_PATTERN)]
+
+        errors.push(
+          bare.length > 0
+            ? `${label} cites ${bare[0]?.[0] ?? 'a tests/ path'} without naming ` +
+                'the test that enforces it; use the `tests/<path>::<test name>` form'
+            : `${label} MUST reference a same-policy requirement id or a ` +
+                '`tests/<path>::<test name>` citation',
+        )
+        continue
+      }
+
+      for (const citation of citations) {
+        const testPath = citation[1] as string
+        const testName = (citation[2] as string).trim()
+        const token = `${testPath}::${testName}`
+        const duplicate = citedBy.get(token)
+
+        if (duplicate !== undefined) {
+          errors.push(
+            `${label} repeats the coverage citation ${token}, which instruction ` +
+              `${duplicate} already claims; one test MUST NOT stand in for two rules`,
+          )
+          continue
+        }
+
+        citedBy.set(token, index + 1)
+
+        let content: string | null = null
 
         try {
-          return isFile(resolveInside(root, fileToken))
+          const absolute = resolveInside(root, testPath)
+          content = isFile(absolute) ? readText(absolute) : null
         } catch {
-          return false
+          content = null
         }
-      })
 
-      if (referencesTest) {
+        if (content === null) {
+          errors.push(`${label} cites ${testPath}, which is not a test file`)
+          continue
+        }
+
+        if (!declaresQuotedTestName(content, testName)) {
+          errors.push(
+            `${label} cites test '${testName}', which ${testPath} does not declare`,
+          )
+        }
+      }
+    }
+  }
+
+  return errors
+}
+
+/**
+ * Personas whose governance card is a supervisor card. Resolved on demand
+ * because the mode table and this module import each other.
+ */
+function supervisorCardPersonas(): Set<string> {
+  return new Set(
+    Object.values(STANDALONE_MODES)
+      .filter((mode) => mode.kind === 'supervisor')
+      .map((mode) => mode.persona),
+  )
+}
+
+const CARD_AUDIENCES: readonly PolicyCardAudience[] = ['agent', 'supervisor']
+
+/**
+ * The card audiences one lookup row can render. A wildcard persona row reaches
+ * every card, a supervisor persona reaches only the supervisor card, and every
+ * other persona reaches a worker card.
+ */
+function rowCardAudiences(row: PolicyLookupRow): PolicyCardAudience[] {
+  if (row.persona === '*') {
+    return [...CARD_AUDIENCES]
+  }
+
+  return supervisorCardPersonas().has(row.persona) ? ['supervisor'] : ['agent']
+}
+
+/** Registry integrity: a policy no lookup row names reaches no agent at all. */
+function validatePolicyLookupCoverage(
+  catalog: Map<string, Policy>,
+  lookup: PolicyLookupTable,
+): string[] {
+  const named = new Set(lookup.rows.flatMap((row) => row.policies))
+
+  return [...catalog.keys()]
+    .filter((id) => !named.has(id))
+    .sort()
+    .map(
+      (id) =>
+        `${id} is in the policy catalog and no policy lookup row names it, so ` +
+        'no card delivers it',
+    )
+}
+
+/**
+ * A row that resolves a policy whose filtered instruction list is empty renders
+ * a policy heading with no rules under it. The audience assignment, not the
+ * row, is wrong in that case.
+ */
+function validateLookupRowDelivery(
+  catalog: Map<string, Policy>,
+  lookup: PolicyLookupTable,
+): string[] {
+  const errors: string[] = []
+
+  for (const [index, row] of lookup.rows.entries()) {
+    for (const policyId of row.policies) {
+      const policy = catalog.get(policyId)
+
+      if (!policy) {
         continue
       }
 
-      errors.push(
-        `${policy.id} harness instruction ${index + 1} MUST reference a same-policy ` +
-          'requirement id or an existing tests/ path',
+      for (const audience of rowCardAudiences(row)) {
+        if (
+          filterPolicyInstructionsForCard(policy.instructions, audience)
+            .length > 0
+        ) {
+          continue
+        }
+
+        errors.push(
+          `policy lookup row ${index} (${row.persona}/${row.workflow}/${row.stage}) ` +
+            `loads ${policyId}, whose instruction list is empty at card audience ` +
+            `${audience}`,
+        )
+      }
+    }
+  }
+
+  return errors
+}
+
+/**
+ * Every audience a policy carries must reach a card. `harness` is the one
+ * deliberately card-less audience, and `validateHarnessInstructionCoverage`
+ * judges it instead. Any other audience with no producer is a write-only tag
+ * whose rules are delivered nowhere.
+ */
+function validatePolicyAudienceDelivery(
+  catalog: Map<string, Policy>,
+  lookup: PolicyLookupTable,
+): string[] {
+  const errors: string[] = []
+  const delivered = new Map<string, Set<PolicyCardAudience>>()
+
+  for (const row of lookup.rows) {
+    for (const policyId of row.policies) {
+      const audiences = delivered.get(policyId) ?? new Set()
+
+      for (const audience of rowCardAudiences(row)) {
+        audiences.add(audience)
+      }
+
+      delivered.set(policyId, audiences)
+    }
+  }
+
+  for (const policy of catalog.values()) {
+    const carried = new Set(
+      policy.instructions.flatMap((instruction) => instruction.audience),
+    )
+    const rendered = delivered.get(policy.id) ?? new Set()
+
+    for (const audience of [...carried].sort()) {
+      if (audience === 'harness') {
+        continue
+      }
+
+      const producers = CARD_AUDIENCES.filter((card) =>
+        policyInstructionAppliesToCard(
+          { text: 'probe', audience: [audience] },
+          card,
+        ),
       )
+
+      if (producers.length === 0) {
+        errors.push(
+          `${policy.id} carries audience '${audience}', which no card producer ` +
+            'renders, so those instructions reach no agent',
+        )
+        continue
+      }
+
+      if (!producers.some((card) => rendered.has(card))) {
+        errors.push(
+          `${policy.id} carries audience '${audience}' and no policy lookup row ` +
+            `renders a card at audience ${producers.join(' or ')}`,
+        )
+      }
     }
   }
 
@@ -3678,6 +3881,9 @@ export function validateRepository(root: string): RepositoryValidationResult {
     }
 
     validatePolicyLookupDependencies(catalog, lookup, errors)
+    errors.push(...validatePolicyLookupCoverage(catalog, lookup))
+    errors.push(...validateLookupRowDelivery(catalog, lookup))
+    errors.push(...validatePolicyAudienceDelivery(catalog, lookup))
 
     if (
       fileExists(

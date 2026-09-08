@@ -297,26 +297,40 @@ test('self-development repository validation enforces harness instruction covera
 
   assert.match(
     coverageErrors('The harness MUST do the thing.').join('\n'),
-    /HARNESS-COVERAGE-001 harness instruction 1 MUST reference a same-policy requirement id or an existing tests\/ path/u,
+    /HARNESS-COVERAGE-001 harness instruction 1 MUST reference a same-policy requirement id or a `tests\/<path>::<test name>` citation/u,
   )
 
   mkdirSync(path.join(root, 'tests', 'unit'), { recursive: true })
-  assert.equal(
-    coverageErrors('The harness MUST cover tests/unit.').length,
-    1,
-    'a directory is not a test file',
+  assert.match(
+    coverageErrors('The harness MUST cover `tests/unit/mapped.test.ts`.').join(
+      '\n',
+    ),
+    /cites tests\/unit\/mapped\.test\.ts without naming the test that enforces it/u,
+    'a bare path names no enforcing test',
   )
-  assert.equal(
-    coverageErrors('The harness MUST cover tests/unit/does-not-exist.test.ts.')
-      .length,
-    1,
-    'a missing test path is not coverage',
+  assert.match(
+    coverageErrors(
+      'The harness MUST cover `tests/unit/missing.test.ts::a mapped case`.',
+    ).join('\n'),
+    /cites tests\/unit\/missing\.test\.ts, which is not a test file/u,
   )
 
-  writeFileSync(path.join(root, 'tests', 'unit', 'mapped.test.ts'), '')
+  writeFileSync(
+    path.join(root, 'tests', 'unit', 'mapped.test.ts'),
+    "test('a mapped case', () => {})\n",
+  )
 
+  assert.match(
+    coverageErrors(
+      'The harness MUST cover `tests/unit/mapped.test.ts::an absent case`.',
+    ).join('\n'),
+    /cites test 'an absent case', which tests\/unit\/mapped\.test\.ts does not declare/u,
+    'an existing file does not vouch for a test it never declares',
+  )
   assert.deepEqual(
-    coverageErrors('The harness MUST cover tests/unit/mapped.test.ts.'),
+    coverageErrors(
+      'The harness MUST cover `tests/unit/mapped.test.ts::a mapped case`.',
+    ),
     [],
   )
   assert.equal(
@@ -325,6 +339,147 @@ test('self-development repository validation enforces harness instruction covera
     'a near-miss requirement token is not a mapping',
   )
   assert.deepEqual(coverageErrors('The harness MUST run stage-scaffold.'), [])
+})
+
+test('one coverage citation MUST NOT stand in for two harness rules', () => {
+  const root = createFixture()
+  prepareValidationFixture(root)
+  mkdirSync(path.join(root, 'tests', 'unit'), { recursive: true })
+  writeFileSync(
+    path.join(root, 'tests', 'unit', 'shared.test.ts'),
+    "test('the shared case', () => {})\n",
+  )
+  writeJsonFile(
+    path.join(root, 'governance', 'policies', 'HARNESS-SHARE-001.json'),
+    {
+      id: 'HARNESS-SHARE-001',
+      title: 'Shared harness citation',
+      severity: 'hard',
+      summary: 'Agents MUST map one rule to one enforcing test.',
+      instructions: [
+        {
+          text: 'The harness MUST do the first thing (`tests/unit/shared.test.ts::the shared case`).',
+          audience: ['harness'],
+        },
+        {
+          text: 'The harness MUST do the second thing (`tests/unit/shared.test.ts::the shared case`).',
+          audience: ['harness'],
+        },
+      ],
+    },
+  )
+
+  assert.match(
+    validateRepository(root).errors.join('\n'),
+    /HARNESS-SHARE-001 harness instruction 2 repeats the coverage citation tests\/unit\/shared\.test\.ts::the shared case, which instruction 1 already claims/u,
+  )
+})
+
+test('repository validation rejects a policy no lookup row delivers', () => {
+  const root = createFixture()
+  prepareValidationFixture(root)
+  const lookupPath = path.join(
+    root,
+    'governance',
+    'registries',
+    'policy_lookup_table.json',
+  )
+  const lookup = readJson<{
+    rows: Array<{ persona: string; policies: string[] }>
+  }>(lookupPath)
+
+  // BIN-001 lost every lookup row once, and repository validation stayed green.
+  assert.ok(
+    lookup.rows.some((row) => row.policies.includes('BIN-001')),
+    'the fixture starts with a BIN-001 row',
+  )
+
+  lookup.rows = lookup.rows
+    .map((row) => ({
+      ...row,
+      policies: row.policies.filter((policy) => policy !== 'BIN-001'),
+    }))
+    .filter((row) => row.policies.length > 0)
+  writeJsonFile(lookupPath, lookup)
+
+  assertEachDiagnostic(validateRepository(root).errors, [
+    [
+      'orphan policy',
+      /BIN-001 is in the policy catalog and no policy lookup row names it/u,
+    ],
+    [
+      'undelivered audience',
+      /BIN-001 carries audience 'agent' and no policy lookup row renders a card at audience agent or supervisor/u,
+    ],
+  ])
+})
+
+test('repository validation rejects an audience that reaches no card', () => {
+  const root = createFixture()
+  prepareValidationFixture(root)
+  const policyPath = path.join(root, 'governance', 'policies', 'ORCH-001.json')
+  const policy = readJson<{ instructions: unknown[] }>(policyPath)
+  const supervisorOnly = [...policy.instructions]
+
+  // `operator` is a write-only tag: no code path renders a card at that
+  // audience, so an instruction carrying it reaches nobody.
+  policy.instructions = [
+    ...supervisorOnly,
+    {
+      text: 'Agents MUST apply the operator-only fixture rule.',
+      audience: ['operator'],
+    },
+  ]
+  writeJsonFile(policyPath, policy)
+
+  assert.match(
+    validateRepository(root).errors.join('\n'),
+    /ORCH-001 carries audience 'operator', which no card producer renders/u,
+  )
+
+  // A `supervisor` audience has a producer, but only a supervisor row delivers
+  // it. ENG-001 resolves on worker rows alone.
+  const engPath = path.join(root, 'governance', 'policies', 'ENG-001.json')
+  const eng = readJson<{ instructions: unknown[] }>(engPath)
+
+  policy.instructions = supervisorOnly
+  writeJsonFile(policyPath, policy)
+  eng.instructions = [
+    ...eng.instructions,
+    {
+      text: 'Supervisors MUST apply the supervisor-only fixture rule.',
+      audience: ['supervisor'],
+    },
+  ]
+  writeJsonFile(engPath, eng)
+
+  assert.match(
+    validateRepository(root).errors.join('\n'),
+    /ENG-001 carries audience 'supervisor' and no policy lookup row renders a card at audience supervisor/u,
+  )
+})
+
+test('repository validation rejects a lookup row that renders no instruction', () => {
+  const root = createFixture()
+  prepareValidationFixture(root)
+  const policyPath = path.join(root, 'governance', 'policies', 'PAIR-001.json')
+  const policy = readJson<{ instructions: Array<{ text: string }> }>(policyPath)
+
+  // Every instruction tagged `harness` empties the card the row promises.
+  policy.instructions = policy.instructions.map((instruction) => ({
+    text:
+      typeof instruction === 'string'
+        ? instruction
+        : (instruction as { text: string }).text,
+    audience: ['harness'],
+  })) as never
+
+  writeJsonFile(policyPath, policy)
+
+  assert.match(
+    validateRepository(root).errors.join('\n'),
+    /loads PAIR-001, whose instruction list is empty at card audience agent/u,
+  )
 })
 
 function fixtureInvocation(root: string, stageSlug: string): Invocation {

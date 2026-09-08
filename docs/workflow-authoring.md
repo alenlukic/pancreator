@@ -293,15 +293,23 @@ command file. Run `./bin/pan models --sync` afterwards.
 A policy instruction MAY be a string or an object with `text` and `audience`.
 
 A plain string means audience `agent`. A structured instruction MUST list one
-or more of `agent`, `supervisor`, `harness`, and `operator`.
+of `agent`, `supervisor`, and `harness`. An audience array MUST NOT combine
+`harness` or `operator` with another audience, because each of those suppresses
+the instruction at every other audience.
 
 Worker and standalone cards render `agent` instructions. Supervisor cards
 render `agent` and `supervisor` instructions. `harness` instructions never
-render on a card. `operator` instructions render only for an operator audience.
+render on a card.
 
-Every `harness` instruction MUST name a same-policy requirement id or an
-existing `tests/` path. Repository validation enforces that mapping in
-self-development.
+No card producer renders audience `operator`, so a policy instruction MUST NOT
+carry it. Repository validation rejects any audience that reaches no card, and
+rejects a `supervisor` audience that no lookup row delivers to a supervisor
+card.
+
+Every `harness` instruction MUST name a same-policy requirement id or a
+`` `tests/<path>::<test name>` `` citation whose file declares that test. One
+citation MUST NOT serve two instructions of one policy. Repository validation
+enforces that mapping in self-development.
 
 ## Governance and projections
 
