@@ -124,6 +124,12 @@ test('Cursor sync expands aliases before writing agent frontmatter', () => {
 
   for (const namedConfig of Object.values(config.configs)) {
     namedConfig.coder = ''
+
+    const nested = namedConfig.personas
+
+    if (typeof nested === 'object' && nested !== null) {
+      delete (nested as Record<string, unknown>).coder
+    }
   }
 
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)

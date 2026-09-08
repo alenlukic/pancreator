@@ -52,6 +52,8 @@ const MINIMUM_CANDIDATES = 2
 const BEST_OF_N_ID_PATTERN =
   /^\d+_[A-Z][a-z]{2}-\d{2}-\d{4}_[a-z0-9](?:[a-z0-9-]{0,10}[a-z0-9])?$/u
 const SLOT_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u
+const TIER_ALIAS_PATTERN =
+  /^(anthropic|oai|open|cursor):(balanced|advanced|ultra)$/u
 const TERMINAL_STATUSES = new Set<RunStatus>([
   'succeeded',
   'failed',
@@ -160,6 +162,12 @@ function parsePersonaSet(value: unknown, source: string): BestOfNPersonaSet {
     invariant(
       typeof model === 'string' && model.length > 0,
       `${source}.personas.${persona} MUST be a non-empty model string.`,
+      { code: 'INVALID_BEST_OF_N_CONFIGS' },
+    )
+
+    invariant(
+      !TIER_ALIAS_PATTERN.test(model),
+      `${source}.personas.${persona} names tier alias '${model}'. best-of-n.json supports no tier alias; name an explicit model spec.`,
       { code: 'INVALID_BEST_OF_N_CONFIGS' },
     )
 

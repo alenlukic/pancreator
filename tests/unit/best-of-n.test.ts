@@ -103,3 +103,23 @@ test('configs parsing requires at least two candidates', () => {
     )
   }
 })
+
+test('configs parsing rejects a tier alias in a candidate persona map', () => {
+  // `cursor:advanced` parses as executor `cursor` with model `advanced`, so the
+  // alias rejection must fire before executor routing accepts it.
+  for (const alias of ['anthropic:advanced', 'cursor:advanced']) {
+    assert.throws(
+      () =>
+        parseBestOfNConfigs(
+          configs({
+            candidates: [
+              { name: 'alpha', personas: { coder: alias } },
+              { name: 'beta', personas: { coder: 'model-b' } },
+            ],
+          }),
+          'configs.json',
+        ),
+      /names tier alias/u,
+    )
+  }
+})

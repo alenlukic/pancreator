@@ -298,6 +298,19 @@ test('pipeline config rejects recursive aliases and unsupported tier keys', () =
       }),
     /anthropic key 'expert' is not supported.*balanced, advanced, ultra/u,
   )
+
+  // The persona names an explicit spec so the alias definition is the only
+  // failure path that can satisfy this assertion.
+  assert.throws(
+    () =>
+      parsePipelineConfig({
+        schema_version: 1,
+        active_config: 'default',
+        anthropic: { balanced: 'claude-code:claude-opus-5' },
+        configs: { default: { coder: 'claude-sonnet-5' } },
+      }),
+    /anthropic\.balanced MUST use the cursor executor/u,
+  )
 })
 
 test('cursor tier aliases stay distinct from explicit executor mappings', () => {

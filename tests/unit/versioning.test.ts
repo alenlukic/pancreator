@@ -64,4 +64,33 @@ test('release metadata validation requires synchronized version files', () => {
     errors,
     /docs\/embedded-installation\.md current release version MUST match VERSION/u,
   )
+
+  writeFileSync(
+    changelogPath,
+    [
+      '# Changelog',
+      '',
+      '## [999.0.0] - 2099-01-01',
+      '',
+      '### Changed',
+      '',
+      '## [1.0.0] - 2020-01-01',
+      '',
+      '### Changed',
+      '',
+      '- Seed the only populated release section.',
+      '',
+    ].join('\n'),
+  )
+
+  const emptyReleaseErrors = validateReleaseMetadata(root).errors.join('\n')
+
+  assert.match(
+    emptyReleaseErrors,
+    /CHANGELOG\.md release '999\.0\.0' MUST contain at least one entry/u,
+  )
+  assert.doesNotMatch(
+    emptyReleaseErrors,
+    /CHANGELOG\.md release '1\.0\.0' MUST contain at least one entry/u,
+  )
 })

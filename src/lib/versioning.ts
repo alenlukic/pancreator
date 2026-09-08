@@ -231,6 +231,12 @@ function validateChangelog(content: string, currentVersion: string): string[] {
 
       priorGroupIndex = groupIndex
     }
+
+    if (!/^- /mu.test(body)) {
+      errors.push(
+        `CHANGELOG.md release '${release.version}' MUST contain at least one entry`,
+      )
+    }
   }
 
   return errors
