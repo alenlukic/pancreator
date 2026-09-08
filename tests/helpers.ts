@@ -20,6 +20,7 @@ import {
 import { sha256 } from '../src/lib/io.js'
 import type { OperationProgressOptions } from '../src/lib/engine.js'
 import { parsePersonaMapping } from '../src/lib/executors/mapping.js'
+import { parsePipelineConfig } from '../src/lib/pipeline-config.js'
 import { delegationExecutionPath } from '../src/lib/validation.js'
 import { writeRedlineRecord } from '../src/lib/watch.js'
 import {
@@ -107,14 +108,20 @@ export function pinFixturePersonaModel(
   const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
     defaults?: Record<string, string>
-    configs?: Record<string, { personas?: Record<string, string> }>
+    configs?: Record<string, Record<string, unknown>>
   }
 
   config.defaults = { ...config.defaults, [persona]: model }
 
   for (const entry of Object.values(config.configs ?? {})) {
-    if (entry.personas) {
-      delete entry.personas[persona]
+    if (!entry || typeof entry !== 'object') {
+      continue
+    }
+
+    delete entry[persona]
+
+    if (typeof entry.personas === 'object' && entry.personas !== null) {
+      delete (entry.personas as Record<string, unknown>)[persona]
     }
   }
 
@@ -1466,13 +1473,15 @@ export function makeOutput(
  * runs in.
  */
 export function writeFixtureCursorCatalog(root: string): void {
-  const config = readHarnessConfig(root, path.join(root, 'config.json')) as {
-    defaults?: Record<string, string>
-    configs?: Record<string, { personas?: Record<string, string> }>
-  }
+  const config = readHarnessConfig(root, path.join(root, 'config.json'))
+  const pipeline = parsePipelineConfig(config, 'config.json')
   const specs = [
-    ...Object.values(config.defaults ?? {}),
-    ...Object.values(config.configs ?? {}).flatMap((entry) =>
+    ...Object.values(pipeline.anthropic ?? {}),
+    ...Object.values(pipeline.oai ?? {}),
+    ...Object.values(pipeline.open ?? {}),
+    ...Object.values(pipeline.cursor ?? {}),
+    ...Object.values(pipeline.defaults ?? {}),
+    ...Object.values(pipeline.configs ?? {}).flatMap((entry) =>
       Object.values(entry.personas ?? {}),
     ),
   ]

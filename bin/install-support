@@ -308,29 +308,145 @@ function cursorSourceFiles(sourceRoot) {
  * ...personas}` spread below resolves the same way `parsePipelineConfig` does.
  * `defaults` keeps its entries; the parser rejects an empty default.
  */
+const MODEL_ALIAS_FAMILIES = ['anthropic', 'oai', 'open', 'cursor']
+const MODEL_ALIAS_TIERS = ['balanced', 'advanced', 'ultra']
+
+function isAliasTier(value) {
+  return MODEL_ALIAS_TIERS.includes(value)
+}
+
+function parseAliasReference(value) {
+  const match = /^(anthropic|oai|open|cursor):([^:]+)$/u.exec(value)
+
+  if (!match) {
+    return null
+  }
+
+  const family = match[1]
+  const tier = match[2]
+
+  if (!isAliasTier(tier)) {
+    return null
+  }
+
+  return { family, tier }
+}
+
+function aliasCatalogFromConfig(config) {
+  const catalog = {}
+
+  for (const family of MODEL_ALIAS_FAMILIES) {
+    const raw = config?.[family]
+    catalog[family] =
+      typeof raw === 'object' && raw !== null && !Array.isArray(raw) ? raw : {}
+  }
+
+  return catalog
+}
+
+function resolveModelAlias(spec, source, aliases) {
+  if (typeof spec !== 'string') {
+    return spec
+  }
+
+  const parsed = parseAliasReference(spec)
+
+  if (parsed) {
+    const resolved = aliases?.[parsed.family]?.[parsed.tier]
+
+    if (typeof resolved !== 'string' || resolved.length === 0) {
+      fail(
+        `${source} references alias '${spec}', but ${parsed.family}.${parsed.tier} is not defined. Define the alias or use an explicit model spec.`,
+      )
+    }
+
+    return resolved
+  }
+
+  // Actionable errors for malformed alias-like forms. Do not intercept
+  // `cursor:<model>` executor strings; those are handled when projecting.
+  for (const family of ['anthropic', 'oai', 'open']) {
+    if (!spec.startsWith(`${family}:`)) {
+      continue
+    }
+
+    const suffix = spec.slice(family.length + 1)
+
+    if (!isAliasTier(suffix)) {
+      fail(
+        `${source} names model alias '${spec}', which is not supported. Supported tiers: ${MODEL_ALIAS_TIERS.join(
+          ', ',
+        )}.`,
+      )
+    }
+  }
+
+  return spec
+}
+
+function personaMapFromNamedConfig(namedConfig) {
+  if (typeof namedConfig !== 'object' || namedConfig === null) {
+    return {}
+  }
+
+  const direct = Object.fromEntries(
+    Object.entries(namedConfig).filter(
+      ([key, value]) =>
+        key !== 'summary' &&
+        key !== 'personas' &&
+        typeof value === 'string' &&
+        value !== '',
+    ),
+  )
+  const legacy =
+    typeof namedConfig.personas === 'object' && namedConfig.personas !== null
+      ? Object.fromEntries(
+          Object.entries(namedConfig.personas).filter(
+            ([, value]) => value !== '',
+          ),
+        )
+      : {}
+
+  return { ...direct, ...legacy }
+}
+
+function stripNamedConfigPlaceholders(namedConfig) {
+  if (typeof namedConfig !== 'object' || namedConfig === null) {
+    return namedConfig
+  }
+
+  const updated = { ...namedConfig }
+
+  for (const [key, value] of Object.entries(updated)) {
+    if (key === 'summary' || key === 'personas') {
+      continue
+    }
+
+    if (value === '') {
+      delete updated[key]
+    }
+  }
+
+  if (typeof updated.personas === 'object' && updated.personas !== null) {
+    updated.personas = Object.fromEntries(
+      Object.entries(updated.personas).filter(([, model]) => model !== ''),
+    )
+  }
+
+  return updated
+}
+
 function stripInheritedPlaceholders(config) {
   if (typeof config !== 'object' || config === null) {
     return config
   }
 
   for (const [name, namedConfig] of Object.entries(config.configs ?? {})) {
-    if (
-      typeof namedConfig !== 'object' ||
-      namedConfig === null ||
-      typeof namedConfig.personas !== 'object' ||
-      namedConfig.personas === null
-    ) {
+    if (typeof namedConfig !== 'object' || namedConfig === null) {
       continue
     }
 
-    config.configs[name] = {
-      ...namedConfig,
-      personas: Object.fromEntries(
-        Object.entries(namedConfig.personas).filter(
-          ([, model]) => model !== '',
-        ),
-      ),
-    }
+    config.configs[name] = stripNamedConfigPlaceholders(namedConfig)
   }
 
   return config
@@ -359,11 +475,19 @@ function personaModelsFromConfig(configPath) {
       ? config.defaults
       : {}
 
-  if (!active || typeof active.personas !== 'object') {
-    fail('config.json active config does not define personas')
+  if (!active || typeof active !== 'object' || active === null) {
+    fail('config.json active config does not define a named config')
   }
 
-  return { ...defaults, ...active.personas }
+  const aliases = aliasCatalogFromConfig(config)
+  const models = { ...defaults, ...personaMapFromNamedConfig(active) }
+
+  return Object.fromEntries(
+    Object.entries(models).map(([persona, spec]) => [
+      persona,
+      resolveModelAlias(spec, `config.json.${persona}`, aliases),
+    ]),
+  )
 }
 
 function personaModelsForProjection(personaConfigPath, sourceRoot) {
@@ -383,26 +507,49 @@ function personaModelsForProjection(personaConfigPath, sourceRoot) {
     typeof targetConfig.active_config === 'string'
       ? targetConfig.active_config
       : sourceConfig.active_config
-  const sourcePersonas =
-    sourceConfig.configs?.[activeConfigName]?.personas ??
-    sourceConfig.configs?.[sourceConfig.active_config]?.personas
+  const sourceActive =
+    sourceConfig.configs?.[activeConfigName] ??
+    sourceConfig.configs?.[sourceConfig.active_config]
   const targetDefaults =
     typeof targetConfig.defaults === 'object' && targetConfig.defaults !== null
       ? targetConfig.defaults
       : {}
-  const targetPersonas = targetConfig.configs?.[activeConfigName]?.personas
+  const targetActive = targetConfig.configs?.[activeConfigName]
 
-  if (!sourcePersonas || typeof sourcePersonas !== 'object') {
-    fail('config.json active config does not define personas')
+  if (!sourceActive || typeof sourceActive !== 'object') {
+    fail('config.json active config does not define a named config')
   }
 
-  const mergedSource = { ...sourceDefaults, ...sourcePersonas }
-
-  if (!targetPersonas || typeof targetPersonas !== 'object') {
-    return mergedSource
+  const mergedAliases = mergeConfigObjects(
+    aliasCatalogFromConfig(sourceConfig),
+    aliasCatalogFromConfig(targetConfig),
+  )
+  const mergedSource = {
+    ...sourceDefaults,
+    ...personaMapFromNamedConfig(sourceActive),
   }
 
-  return { ...mergedSource, ...targetDefaults, ...targetPersonas }
+  if (!targetActive || typeof targetActive !== 'object') {
+    return Object.fromEntries(
+      Object.entries(mergedSource).map(([persona, spec]) => [
+        persona,
+        resolveModelAlias(spec, `config.json.${persona}`, mergedAliases),
+      ]),
+    )
+  }
+
+  const merged = {
+    ...mergedSource,
+    ...targetDefaults,
+    ...personaMapFromNamedConfig(targetActive),
+  }
+
+  return Object.fromEntries(
+    Object.entries(merged).map(([persona, spec]) => [
+      persona,
+      resolveModelAlias(spec, `config.json.${persona}`, mergedAliases),
+    ]),
+  )
 }
 
 /** Objects merge recursively; any other override value replaces the base. */
@@ -450,6 +597,13 @@ function mergeEmbeddedProjectConfig(source, existing) {
   )
   const merged = {
     ...source,
+    anthropic: mergeConfigObjects(
+      source.anthropic ?? {},
+      existing.anthropic ?? {},
+    ),
+    oai: mergeConfigObjects(source.oai ?? {}, existing.oai ?? {}),
+    open: mergeConfigObjects(source.open ?? {}, existing.open ?? {}),
+    cursor: mergeConfigObjects(source.cursor ?? {}, existing.cursor ?? {}),
     defaults: {
       ...(typeof source.defaults === 'object' && source.defaults !== null
         ? source.defaults
@@ -476,21 +630,23 @@ function mergeEmbeddedProjectConfig(source, existing) {
     const existingConfig = merged.configs[name]
 
     if (!existingConfig || typeof existingConfig !== 'object') {
-      merged.configs[name] = sourceConfig
+      merged.configs[name] = stripNamedConfigPlaceholders(sourceConfig)
       continue
     }
 
+    const mergedPersonas = {
+      ...personaMapFromNamedConfig(sourceConfig),
+      ...personaMapFromNamedConfig(existingConfig),
+    }
+
     merged.configs[name] = {
-      ...sourceConfig,
-      ...existingConfig,
-      personas: {
-        ...(typeof sourceConfig.personas === 'object'
-          ? sourceConfig.personas
-          : {}),
-        ...(typeof existingConfig.personas === 'object'
-          ? existingConfig.personas
-          : {}),
-      },
+      ...(typeof sourceConfig.summary === 'string'
+        ? { summary: sourceConfig.summary }
+        : {}),
+      ...(typeof existingConfig.summary === 'string'
+        ? { summary: existingConfig.summary }
+        : {}),
+      ...mergedPersonas,
     }
   }
 
@@ -501,9 +657,16 @@ function mergeEmbeddedProjectConfig(source, existing) {
       continue
     }
 
+    const retained = retainShippedPersonas(
+      personaMapFromNamedConfig(config),
+      shipped,
+    )
+
     merged.configs[name] = {
-      ...config,
-      personas: retainShippedPersonas(config.personas, shipped),
+      ...(typeof config.summary === 'string'
+        ? { summary: config.summary }
+        : {}),
+      ...(typeof retained === 'object' && retained !== null ? retained : {}),
     }
   }
 
@@ -1253,18 +1416,15 @@ function writeProject() {
       continue
     }
 
-    const personas =
-      typeof namedConfig.personas === 'object' && namedConfig.personas !== null
-        ? Object.fromEntries(
-            Object.entries(namedConfig.personas).filter(
-              ([persona, model]) => defaults[persona] !== model,
-            ),
-          )
-        : {}
-
     config.configs[name] = {
-      ...namedConfig,
-      personas,
+      ...(typeof namedConfig.summary === 'string'
+        ? { summary: namedConfig.summary }
+        : {}),
+      ...Object.fromEntries(
+        Object.entries(personaMapFromNamedConfig(namedConfig)).filter(
+          ([persona, model]) => defaults[persona] !== model,
+        ),
+      ),
     }
   }
 

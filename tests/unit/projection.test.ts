@@ -109,6 +109,46 @@ test('repository validation does not require a local Cursor projection', () => {
   assert.deepEqual(result.errors, [])
 })
 
+test('Cursor sync expands aliases before writing agent frontmatter', () => {
+  const root = createFixture()
+  const configPath = path.join(root, 'config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
+    oai?: Record<string, string>
+    defaults: Record<string, string>
+    configs: Record<string, Record<string, unknown>>
+  }
+  const expanded = 'gpt-5.6-sol[context=272k,reasoning=high,fast=false]'
+
+  config.oai = { ...config.oai, advanced: expanded }
+  config.defaults.coder = 'oai:advanced'
+
+  for (const namedConfig of Object.values(config.configs)) {
+    namedConfig.coder = ''
+  }
+
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+  rmSync(
+    path.join(root, 'governance', 'registries', 'cursor_model_catalog.json'),
+    { force: true },
+  )
+
+  syncCursorProjection(root, { write: true })
+
+  const coder = readFileSync(
+    path.join(root, '.cursor', 'agents', 'pan-coder.md'),
+    'utf8',
+  )
+
+  assert.match(
+    coder,
+    new RegExp(
+      `^model: ${expanded.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}$`,
+      'mu',
+    ),
+  )
+  assert.doesNotMatch(coder, /^model: oai:advanced$/mu)
+})
+
 test('run-scoped agent variants carry pinned models without touching the base agents', () => {
   const root = createFixture()
   const baseCoderPath = path.join(root, '.cursor', 'agents', 'pan-coder.md')

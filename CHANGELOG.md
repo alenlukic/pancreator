@@ -1,5 +1,23 @@
 # Changelog
 
+## [5.16.0] - 2026-09-08
+
+### Changed
+
+- Place named-configuration persona keys beside `summary`. Keep the nested `personas` object as compatibility input only ([config](config.json), [1fac9772](https://github.com/alenlukic/pancreator/commit/1fac9772)).
+- Store expanded model specifications in snapshots, projections, and installer output ([pipeline-config](src/lib/pipeline-config.ts), [1fac9772](https://github.com/alenlukic/pancreator/commit/1fac9772)).
+- Preserve operator mappings across override migration and embedded install refresh ([migration](src/lib/pipeline-config-migration.ts), [install-support](bin/install-support), [1fac9772](https://github.com/alenlukic/pancreator/commit/1fac9772)).
+- Document reserved `cursor` tier names, undefined-tier errors, and legacy nested precedence ([operator guide](docs/operator-guide.md), [1fac9772](https://github.com/alenlukic/pancreator/commit/1fac9772)).
+- Refresh the target-repository primer and the generated JavaScript and TypeScript language handbooks ([97936ad0](https://github.com/alenlukic/pancreator/commit/97936ad0)).
+
+### Added
+
+- Add four model alias maps and resolve `<family>:<tier>` persona mappings to exact configured specifications ([config](config.json), [schema](library/schemas/config.schema.json), [1fac9772](https://github.com/alenlukic/pancreator/commit/1fac9772)).
+
+### Fixed
+
+- Remove the undeclared `TEST-001` reference from the generated TypeScript target handbook ([c30d2a15](https://github.com/alenlukic/pancreator/commit/c30d2a15)).
+
 ## [5.15.0] - 2026-09-07
 
 ### Changed

@@ -16,11 +16,9 @@ const previous = {
   defaults: { orchestrator: 'model-orchestrator' },
   configs: {
     simple: {
-      personas: {
-        coder: 'model-coder',
-        decomposer: 'model-decomposer',
-        'design-reviewer': 'model-design-reviewer',
-      },
+      coder: 'model-coder',
+      decomposer: 'model-decomposer',
+      'design-reviewer': 'model-design-reviewer',
     },
   },
 }
@@ -33,11 +31,9 @@ test('migration preserves the pre-change effective map into the overrides', () =
     defaults: { orchestrator: '' },
     configs: {
       simple: {
-        personas: {
-          coder: 'model-coder-next',
-          decomposer: '',
-          'design-reviewer': '',
-        },
+        coder: 'model-coder-next',
+        decomposer: '',
+        'design-reviewer': '',
       },
     },
   }
@@ -58,7 +54,7 @@ test('migration preserves the pre-change effective map into the overrides', () =
       model: 'model-orchestrator',
     },
     {
-      location: 'configs.simple.personas',
+      location: 'configs.simple',
       persona: 'decomposer',
       model: 'model-decomposer',
     },
@@ -69,10 +65,8 @@ test('migration preserves the pre-change effective map into the overrides', () =
     defaults: { orchestrator: 'model-orchestrator' },
     configs: {
       simple: {
-        personas: {
-          'design-reviewer': 'local-choice',
-          decomposer: 'model-decomposer',
-        },
+        'design-reviewer': 'local-choice',
+        decomposer: 'model-decomposer',
       },
     },
   })
@@ -86,10 +80,8 @@ test('migration fails before mutation when a required mapping stays empty', () =
     defaults: {},
     configs: {
       simple: {
-        personas: {
-          coder: 'model-coder-next',
-          'brand-new-persona': '',
-        },
+        coder: 'model-coder-next',
+        'brand-new-persona': '',
       },
     },
   }
@@ -99,25 +91,23 @@ test('migration fails before mutation when a required mapping stays empty', () =
     overrides: null,
   })
 
-  assert.deepEqual(result.missing, [
-    'configs.simple.personas.brand-new-persona',
-  ])
+  assert.deepEqual(result.missing, ['configs.simple.brand-new-persona'])
   // Nothing else moved, so the caller has nothing to write.
   assert.equal(result.changed, false)
 
   const handWritten = migratePipelineOverrides({
     previous,
     next: structuredClone(previous),
-    overrides: { configs: { simple: { personas: { coder: '' } } } },
+    overrides: { configs: { simple: { coder: '' } } },
   })
-  assert.deepEqual(handWritten.missing, ['configs.simple.personas.coder'])
+  assert.deepEqual(handWritten.missing, ['configs.simple.coder'])
 })
 
 test('migration keeps complete local overrides unchanged', () => {
   const next = structuredClone(previous)
   const overrides = {
     active_config: 'simple',
-    configs: { simple: { personas: { coder: 'operator-preference' } } },
+    configs: { simple: { coder: 'operator-preference' } },
   }
   const result = migratePipelineOverrides({ previous, next, overrides })
 
@@ -136,7 +126,8 @@ test('migration does not report a named-config hole that defaults fill', () => {
     defaults: { orchestrator: 'model-orchestrator', coder: 'default-coder' },
     configs: {
       simple: {
-        personas: { coder: '', 'brand-new-persona': '' },
+        coder: '',
+        'brand-new-persona': '',
       },
     },
   }
@@ -145,15 +136,70 @@ test('migration does not report a named-config hole that defaults fill', () => {
       schema_version: 1,
       active_config: 'simple',
       defaults: {},
-      configs: { simple: { personas: {} } },
+      configs: { simple: {} },
     },
     next,
     overrides: null,
   })
 
   // `coder` inherits `defaults.coder`; only the persona defaults omit is a hole.
-  assert.deepEqual(result.missing, [
-    'configs.simple.personas.brand-new-persona',
-  ])
+  assert.deepEqual(result.missing, ['configs.simple.brand-new-persona'])
   assert.equal(result.changed, false)
+})
+
+test('migration checks named inheritance against override-filled defaults', () => {
+  const result = migratePipelineOverrides({
+    previous: {
+      schema_version: 1,
+      active_config: 'simple',
+      defaults: {},
+      configs: { simple: {} },
+    },
+    next: {
+      schema_version: 1,
+      active_config: 'simple',
+      defaults: { coder: '' },
+      configs: { simple: { coder: '' } },
+    },
+    overrides: {
+      defaults: { coder: 'operator-default' },
+    },
+  })
+
+  assert.deepEqual(result.missing, [])
+  assert.equal(result.changed, false)
+})
+
+test('migration reads nested previous mappings and preserves them flat', () => {
+  const result = migratePipelineOverrides({
+    previous: {
+      schema_version: 1,
+      active_config: 'simple',
+      defaults: {},
+      configs: {
+        simple: {
+          personas: { coder: 'legacy-custom-coder' },
+        },
+      },
+    },
+    next: {
+      schema_version: 1,
+      active_config: 'simple',
+      defaults: {},
+      configs: { simple: { coder: '' } },
+    },
+    overrides: null,
+  })
+
+  assert.deepEqual(result.missing, [])
+  assert.deepEqual(result.preserved, [
+    {
+      location: 'configs.simple',
+      persona: 'coder',
+      model: 'legacy-custom-coder',
+    },
+  ])
+  assert.deepEqual(result.overrides, {
+    configs: { simple: { coder: 'legacy-custom-coder' } },
+  })
 })

@@ -8,7 +8,7 @@ This handbook records conventions verified in this repository. It is not a gener
 
 ## Detection evidence
 
-The technology detector reported `typescript` from `tsconfig.json` and the tracked TypeScript sources under `src/` and `tests/`, including `src/cli.ts`, `src/lib/away-mode.ts`, and `tests/helpers.ts`.
+`./bin/pan technologies detect --json` reported `typescript` from `tsconfig.json` and the tracked TypeScript sources under `src/` and `tests/`, including `src/cli.ts`, `src/lib/engine.ts`, `src/lib/repository-checks.ts`, and `tests/helpers.ts`.
 
 ## Compiler contract
 

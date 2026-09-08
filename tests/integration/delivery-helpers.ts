@@ -222,7 +222,7 @@ export function installClaudeCodeFixture(
   const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
     defaults: Record<string, string>
-    configs?: Record<string, { personas?: Record<string, string> }>
+    configs?: Record<string, Record<string, unknown>>
   }
 
   // A named entry under `configs` overrides `defaults`, so clear the routing
@@ -231,7 +231,11 @@ export function installClaudeCodeFixture(
     config.defaults[persona] = CLAUDE_CODE_SPEC
 
     for (const named of Object.values(config.configs ?? {})) {
-      delete named.personas?.[persona]
+      delete named[persona]
+
+      if (typeof named.personas === 'object' && named.personas !== null) {
+        delete (named.personas as Record<string, unknown>)[persona]
+      }
     }
   }
 

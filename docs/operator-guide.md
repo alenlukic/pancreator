@@ -689,7 +689,31 @@ documents the hardening above but does not install or overwrite target
 
 Run `./bin/pan models` without `--sync` to preview the active mapping and any drift without changing files.
 
-Per-checkout preferences belong in `config_overrides.json` next to `config.json` (the legacy name `config.local.json` still reads until you rename it). The file is untracked (keep it out of version control, e.g. via `.gitignore` or `.git/info/exclude`) and merges over `config.json`: objects merge recursively, any other value replaces the checked-in one. Use it for `active_config`, persona model overrides, or an `operator_involvement.active` selection, so `config.json` stays at the recommended defaults releases update. A local preference behaves exactly as if it were edited into `config.json`, including drift detection against in-flight runs. An empty string in a named config's `personas` inherits the `defaults` entry for that persona, so `config_overrides.json` needs to name only the personas a config changes. An empty string in `defaults` is rejected.
+Per-checkout preferences belong in `config_overrides.json` next to `config.json` (the legacy name `config.local.json` still reads until you rename it). The file is untracked (keep it out of version control, e.g. via `.gitignore` or `.git/info/exclude`) and merges over `config.json`: objects merge recursively, any other value replaces the checked-in one. Use it for `active_config`, persona model overrides, or an `operator_involvement.active` selection, so `config.json` stays at the recommended defaults releases update. A local preference behaves exactly as if it were edited into `config.json`, including drift detection against in-flight runs. An empty string in a named config inherits the `defaults` entry for that persona, so `config_overrides.json` needs to name only the personas a config changes. An empty string in `defaults` is rejected.
+
+Define aliases in the four top-level family maps. Each map accepts the optional keys `balanced`, `advanced`, and `ultra`:
+
+```json
+{
+  "anthropic": {
+    "balanced": "claude-sonnet-5",
+    "advanced": "claude-opus-5[thinking=true,context=300k,effort=high,fast=false]"
+  },
+  "oai": {
+    "balanced": "gpt-5.6-terra[context=272k,reasoning=high,fast=false]"
+  },
+  "open": {
+    "balanced": "glm-5.2"
+  },
+  "cursor": {
+    "balanced": "composer-2.5"
+  }
+}
+```
+
+Persona mappings can reference tier aliases such as `anthropic:balanced`, `oai:advanced`, `open:balanced`, and `cursor:advanced`. Pancreator expands those aliases into explicit model specs before it snapshots runs, projects Cursor agents, or delegates to executors.
+
+Pancreator always reserves exact `cursor:balanced`, `cursor:advanced`, and `cursor:ultra` values for alias resolution. A reference to an undefined tier is a configuration error. Every other `cursor:<model>` value keeps its existing executor-routing behavior.
 
 Each new run snapshots the active configuration in `runtime/logs/workflows/<run-id>/agent/pipeline-config.snapshot.json`. Invocation cards resolve their model from that snapshot. Because Cursor executes the model declared in `.cursor/agents/pan-<persona>.md`, preparing an older run after switching configurations is blocked until the projected agent models again match that run's snapshot. This prevents the card from claiming one model while Cursor launches another.
 
@@ -698,12 +722,18 @@ Each new run snapshots the active configuration in `runtime/logs/workflows/<run-
 A persona mapping may name its executor with a prefix from a closed set — `cursor` (the default) or `claude-code`:
 
 ```json
-"personas": {
-  "planner": "claude-code:claude-opus-5[permission-mode=default,session-resume=true]",
-  "reviewer": "claude-code:claude-opus-5[permission-mode=default,session-resume=true]",
-  "coder": "claude-opus-5[context=300k,effort=high]"
+{
+  "configs": {
+    "balanced": {
+      "planner": "claude-code:claude-opus-5[permission-mode=default,session-resume=true]",
+      "reviewer": "claude-code:claude-opus-5[permission-mode=default,session-resume=true]",
+      "coder": "claude-opus-5[context=300k,effort=high]"
+    }
+  }
 }
 ```
+
+For compatibility, Pancreator still reads a legacy nested `personas` object in a named configuration. A nested entry wins over a flat key for the same persona. Pancreator emits only the flat shape.
 
 A `claude-code` persona is executed by the operator-installed Claude Code CLI instead of a Cursor subagent, so the same model can author a stage under the Claude Code harness while Pancreator's run state, gates, and operator contracts stay authoritative. Any stage may be routed this way, including mutating ones; non-mutating stages run with file-write tools restricted to the harness runtime tree, and `scope.no_unapproved_changes` remains the gate of record either way. The `orchestrator` persona is the exception — it is the supervisor itself and must stay on `cursor`.
 

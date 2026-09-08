@@ -10,6 +10,10 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
+  parsePipelineConfig,
+  resolveConfigPersonas,
+} from '../../src/lib/pipeline-config.js'
+import {
   cloneInstalledProject,
   createReleaseFixture,
   readJson,
@@ -27,11 +31,12 @@ test('embedded installer migrates a legacy project.json to config.json', () => {
   try {
     const config = readJson<{
       active_config: string
-      configs: Record<string, { personas: Record<string, string> }>
+      configs: Record<string, Record<string, unknown>>
     }>(configPath)
 
     config.active_config = 'simple'
-    config.configs.simple.personas.coder = customCoderModel
+    const simple = config.configs.simple as Record<string, unknown>
+    simple.coder = customCoderModel
     writeFileSync(legacyPath, `${JSON.stringify(config, null, 2)}\n`)
     rmSync(configPath)
 
@@ -46,12 +51,12 @@ test('embedded installer migrates a legacy project.json to config.json', () => {
     const migrated = readJson<{
       active_config: string
       installation_mode: string
-      configs: Record<string, { personas: Record<string, string> }>
+      configs: Record<string, Record<string, unknown>>
     }>(configPath)
 
     assert.equal(migrated.active_config, 'simple')
     assert.equal(migrated.installation_mode, 'embedded')
-    assert.equal(migrated.configs.simple.personas.coder, customCoderModel)
+    assert.equal(migrated.configs.simple.coder, customCoderModel)
 
     // The projected agent carries the migrated mapping, which proves the
     // migration runs before persona projection.
@@ -97,15 +102,18 @@ test('embedded installer refresh clears superseded legacy state in one pass', ()
   try {
     const sourceConfig = readJson<{
       defaults: Record<string, string>
-      configs: Record<string, { personas: Record<string, string> }>
+      configs: Record<string, Record<string, unknown>>
     }>(sourceConfigPath)
 
     for (const persona of Object.keys(sourceConfig.defaults)) {
       sourceConfig.defaults[persona] = fixtureDefaultModel
     }
 
-    sourceConfig.configs[activeConfigName].personas[restoredPersona] =
-      restoredModel
+    const sourceActive = sourceConfig.configs[activeConfigName] as Record<
+      string,
+      unknown
+    >
+    sourceActive[restoredPersona] = restoredModel
     writeFileSync(
       sourceConfigPath,
       `${JSON.stringify(sourceConfig, null, 2)}\n`,
@@ -152,21 +160,34 @@ test('embedded installer refresh clears superseded legacy state in one pass', ()
     const config = readJson<{
       active_config: string
       defaults: Record<string, string>
-      configs: Record<string, { personas: Record<string, string> }>
+      configs: Record<string, Record<string, unknown>>
     }>(configJsonPath)
-    const activePersonas = config.configs[activeConfigName].personas
+    const activeConfig = config.configs[activeConfigName] as Record<
+      string,
+      unknown
+    >
 
-    const inheritedModel = config.defaults[inheritedPersona]
+    const inheritedMapping = config.defaults[inheritedPersona]
 
-    assert.ok(inheritedModel)
+    assert.ok(inheritedMapping)
 
     const customReviewerModel = 'operator-custom-reviewer[fast=false]'
 
     config.active_config = activeConfigName
-    activePersonas.reviewer = customReviewerModel
-    activePersonas[inheritedPersona] = inheritedModel
-    activePersonas[restoredPersona] = restoredModel
-    delete activePersonas[restoredPersona]
+    activeConfig.reviewer = customReviewerModel
+    activeConfig[inheritedPersona] = inheritedMapping
+    activeConfig[restoredPersona] = restoredModel
+    delete activeConfig[restoredPersona]
+    config.configs[activeConfigName] = {
+      ...(typeof activeConfig.summary === 'string'
+        ? { summary: activeConfig.summary }
+        : {}),
+      personas: Object.fromEntries(
+        Object.entries(activeConfig).filter(
+          ([key]) => key !== 'summary' && key !== 'personas',
+        ),
+      ),
+    }
     writeFileSync(configJsonPath, `${JSON.stringify(config, null, 2)}\n`)
 
     const result = run(path.join(source, 'bin', 'install'), [
@@ -229,14 +250,25 @@ test('embedded installer refresh clears superseded legacy state in one pass', ()
 
     const refreshed = readJson<{
       active_config: string
-      configs: Record<string, { personas: Record<string, string> }>
+      configs: Record<string, Record<string, unknown>>
     }>(configJsonPath)
     const active = refreshed.configs[activeConfigName]
 
     assert.equal(refreshed.active_config, activeConfigName)
-    assert.equal(active.personas.reviewer, customReviewerModel)
-    assert.equal(active.personas[inheritedPersona], undefined)
-    assert.equal(active.personas[restoredPersona], restoredModel)
+    assert.equal(active.personas, undefined)
+    assert.equal(active.reviewer, customReviewerModel)
+    assert.equal(active[inheritedPersona], undefined)
+    assert.equal(active[restoredPersona], restoredModel)
+
+    const parsedRefreshed = parsePipelineConfig(
+      refreshed,
+      'refreshed embedded config.json',
+    )
+    const inheritedModel = resolveConfigPersonas(
+      parsedRefreshed,
+      activeConfigName,
+    )[inheritedPersona]
+
     assert.ok(
       readFileSync(
         path.join(project, '.cursor', 'agents', `pan-${inheritedPersona}.md`),

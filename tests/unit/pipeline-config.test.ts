@@ -1,16 +1,18 @@
 import assert from 'node:assert/strict'
-import { writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import {
   loadPipelineConfig,
+  makePipelineConfigSnapshot,
   parsePipelineConfig,
   resolveConfigPersonas,
   resolvePersonaModel,
   type PipelineConfigSnapshot,
 } from '../../src/lib/pipeline-config.js'
 import { createFixture, pinFixturePersonaModel } from '../helpers.js'
+import { createTestTempDirectory } from '../temp.js'
 
 test('config_overrides.json preferences override the checked-in pipeline config', () => {
   const root = createFixture()
@@ -63,7 +65,7 @@ test('pipeline config rejects an undefined active config', () => {
         schema_version: 1,
         active_config: 'missing',
         configs: {
-          default: { personas: { coder: 'auto' } },
+          default: { coder: 'auto' },
         },
       }),
     /active_config 'missing' is not defined/u,
@@ -79,7 +81,7 @@ test('pipeline config accepts a Cursor model the catalog has not recorded', () =
       schema_version: 1,
       active_config: 'default',
       configs: {
-        default: { personas: { coder: 'unknown-cursor-model' } },
+        default: { coder: 'unknown-cursor-model' },
       },
     }),
   )
@@ -95,9 +97,7 @@ test('pipeline config merges defaults with config-specific persona overrides', (
     },
     configs: {
       default: {
-        personas: {
-          coder: 'claude-opus-5',
-        },
+        coder: 'claude-opus-5',
       },
     },
   })
@@ -114,9 +114,7 @@ test('pipeline config merges defaults with config-specific persona overrides', (
       investigator: 'kimi-k3',
     },
     configs: {
-      default: {
-        personas: {},
-      },
+      default: {},
     },
   })
 
@@ -154,10 +152,8 @@ test('an empty named-config mapping inherits the default and an empty default is
     },
     configs: {
       advanced: {
-        personas: {
-          coder: 'advanced-coder',
-          remediator: '',
-        },
+        coder: 'advanced-coder',
+        remediator: '',
       },
     },
   })
@@ -174,8 +170,218 @@ test('an empty named-config mapping inherits the default and an empty default is
         schema_version: 1,
         active_config: 'advanced',
         defaults: { coder: '' },
-        configs: { advanced: { personas: {} } },
+        configs: { advanced: {} },
       }),
     /config\.json\.defaults\.coder MUST be a non-empty model string/u,
   )
+})
+
+test('pipeline config expands every alias exactly in defaults and named configs', () => {
+  const aliases = [
+    ['anthropic', 'balanced', 'claude-sonnet-5'],
+    [
+      'anthropic',
+      'advanced',
+      'claude-opus-5[thinking=true,context=300k,effort=high,fast=false]',
+    ],
+    [
+      'anthropic',
+      'ultra',
+      'claude-fable-5-1[thinking=true,context=300k,effort=high]',
+    ],
+    [
+      'oai',
+      'balanced',
+      'gpt-5.6-terra[context=272k,reasoning=high,fast=false]',
+    ],
+    ['oai', 'advanced', 'gpt-5.6-sol[context=272k,reasoning=high,fast=false]'],
+    ['open', 'balanced', 'glm-5.2'],
+    ['open', 'advanced', 'kimi-k3[reasoning=max]'],
+    ['cursor', 'balanced', 'composer-2.5'],
+    ['cursor', 'advanced', 'grok-4.6[effort=high,fast=false]'],
+  ] as const
+  const file = parsePipelineConfig({
+    schema_version: 1,
+    active_config: 'default',
+    anthropic: {
+      balanced: 'claude-sonnet-5',
+      advanced:
+        'claude-opus-5[thinking=true,context=300k,effort=high,fast=false]',
+      ultra: 'claude-fable-5-1[thinking=true,context=300k,effort=high]',
+    },
+    oai: {
+      balanced: 'gpt-5.6-terra[context=272k,reasoning=high,fast=false]',
+      advanced: 'gpt-5.6-sol[context=272k,reasoning=high,fast=false]',
+    },
+    open: {
+      balanced: 'glm-5.2',
+      advanced: 'kimi-k3[reasoning=max]',
+    },
+    cursor: {
+      balanced: 'composer-2.5',
+      advanced: 'grok-4.6[effort=high,fast=false]',
+    },
+    defaults: {
+      inherited: 'oai:advanced',
+    },
+    configs: {
+      default: Object.fromEntries(
+        aliases.map(([family, tier], index) => [
+          `alias-${index}`,
+          `${family}:${tier}`,
+        ]),
+      ),
+    },
+  })
+
+  const resolved = resolveConfigPersonas(file, 'default')
+
+  assert.equal(
+    resolved.inherited,
+    'gpt-5.6-sol[context=272k,reasoning=high,fast=false]',
+  )
+
+  for (const [index, [, , specification]] of aliases.entries()) {
+    assert.equal(resolved[`alias-${index}`], specification)
+  }
+})
+
+test('pipeline config rejects alias references to missing tiers', () => {
+  assert.throws(
+    () =>
+      parsePipelineConfig({
+        schema_version: 1,
+        active_config: 'default',
+        anthropic: {},
+        configs: {
+          default: { coder: 'anthropic:balanced' },
+        },
+      }),
+    /references alias 'anthropic:balanced'.*is not defined/u,
+  )
+})
+
+test('pipeline config rejects malformed alias-like mappings', () => {
+  assert.throws(
+    () =>
+      parsePipelineConfig({
+        schema_version: 1,
+        active_config: 'default',
+        configs: {
+          default: { coder: 'oai:fast' },
+        },
+      }),
+    /names model alias 'oai:fast'.*Supported tiers/u,
+  )
+})
+
+test('pipeline config rejects recursive aliases and unsupported tier keys', () => {
+  assert.throws(
+    () =>
+      parsePipelineConfig({
+        schema_version: 1,
+        active_config: 'default',
+        anthropic: { balanced: 'oai:balanced' },
+        oai: { balanced: 'gpt-5.6-sol' },
+        configs: { default: { coder: 'anthropic:balanced' } },
+      }),
+    /anthropic\.balanced MUST be an explicit model spec; recursive aliases are not supported/u,
+  )
+
+  assert.throws(
+    () =>
+      parsePipelineConfig({
+        schema_version: 1,
+        active_config: 'default',
+        anthropic: { expert: 'claude-opus-5' },
+        configs: { default: { coder: 'claude-sonnet-5' } },
+      }),
+    /anthropic key 'expert' is not supported.*balanced, advanced, ultra/u,
+  )
+})
+
+test('cursor tier aliases stay distinct from explicit executor mappings', () => {
+  const file = parsePipelineConfig({
+    schema_version: 1,
+    active_config: 'default',
+    cursor: { balanced: 'composer-2.5' },
+    configs: {
+      default: {
+        alias: 'cursor:balanced',
+        explicitCursor: 'cursor:gpt-5.2',
+        explicitOptions: 'gpt-5.6-sol[reasoning=xhigh,fast=false]',
+        external: 'claude-code:claude-opus-5[session-resume=true]',
+      },
+    },
+  })
+
+  assert.deepEqual(file.configs.default.personas, {
+    alias: 'composer-2.5',
+    explicitCursor: 'cursor:gpt-5.2',
+    explicitOptions: 'gpt-5.6-sol[reasoning=xhigh,fast=false]',
+    external: 'claude-code:claude-opus-5[session-resume=true]',
+  })
+})
+
+test('pipeline config accepts legacy nested named-config mappings', () => {
+  const file = parsePipelineConfig({
+    schema_version: 1,
+    active_config: 'default',
+    configs: {
+      default: {
+        summary: 'Legacy-compatible config.',
+        coder: 'direct-coder',
+        personas: {
+          coder: 'legacy-coder',
+          reviewer: 'legacy-reviewer',
+        },
+      },
+    },
+  })
+
+  assert.equal(file.configs.default.summary, 'Legacy-compatible config.')
+  assert.deepEqual(file.configs.default.personas, {
+    coder: 'legacy-coder',
+    reviewer: 'legacy-reviewer',
+  })
+})
+
+test('unused aliases do not require account-catalog availability', () => {
+  const root = createTestTempDirectory('unused-model-alias-')
+  const catalogPath = path.join(
+    root,
+    'governance',
+    'registries',
+    'cursor_model_catalog.json',
+  )
+
+  mkdirSync(path.dirname(catalogPath), { recursive: true })
+  writeFileSync(
+    catalogPath,
+    JSON.stringify({
+      models: [
+        {
+          id: 'claude-sonnet-5',
+          displayName: 'Claude Sonnet 5',
+          aliases: [],
+        },
+      ],
+    }),
+  )
+  writeFileSync(
+    path.join(root, 'config.json'),
+    JSON.stringify({
+      schema_version: 1,
+      active_config: 'default',
+      anthropic: { balanced: 'claude-sonnet-5' },
+      open: { balanced: 'glm-5.2' },
+      configs: { default: { coder: 'anthropic:balanced' } },
+    }),
+  )
+
+  const loaded = loadPipelineConfig(root)
+  const snapshot = makePipelineConfigSnapshot(loaded)
+
+  assert.equal(loaded.config.personas.coder, 'claude-sonnet-5')
+  assert.equal(snapshot.personas.coder, 'claude-sonnet-5')
 })

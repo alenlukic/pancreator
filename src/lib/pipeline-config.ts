@@ -13,6 +13,80 @@ import { fileExists, isRecord, readJson, resolveInside, sha256 } from './io.js'
 import { harnessConfigName, readHarnessConfig } from './project-config.js'
 import type { PersonaExecutorKind } from './types.js'
 
+const MODEL_ALIAS_FAMILIES = ['anthropic', 'oai', 'open', 'cursor'] as const
+type ModelAliasFamily = (typeof MODEL_ALIAS_FAMILIES)[number]
+
+const MODEL_ALIAS_TIERS = ['balanced', 'advanced', 'ultra'] as const
+type ModelAliasTier = (typeof MODEL_ALIAS_TIERS)[number]
+
+type ModelAliasMap = Partial<Record<ModelAliasTier, string>>
+
+function isAliasTier(value: string): value is ModelAliasTier {
+  return (MODEL_ALIAS_TIERS as readonly string[]).includes(value)
+}
+
+function parseAliasReference(
+  value: string,
+): { family: ModelAliasFamily; tier: ModelAliasTier } | null {
+  const match = /^(anthropic|oai|open|cursor):([^:]+)$/u.exec(value)
+
+  if (!match) {
+    return null
+  }
+
+  const family = match[1] as ModelAliasFamily
+  const tier = match[2]
+
+  // `cursor:<model>` is also a valid executor-prefixed spec. Only treat the
+  // three tier names as aliases; every other `cursor:` value is executor
+  // routing and must remain unchanged.
+  if (!isAliasTier(tier)) {
+    return null
+  }
+
+  return { family, tier }
+}
+
+function resolveModelAlias(
+  spec: string,
+  source: string,
+  aliases: Record<ModelAliasFamily, ModelAliasMap>,
+): string {
+  const parsed = parseAliasReference(spec)
+
+  if (parsed) {
+    const resolved = aliases[parsed.family]?.[parsed.tier]
+
+    invariant(
+      typeof resolved === 'string' && resolved.length > 0,
+      `${source} references alias '${spec}', but ${parsed.family}.${parsed.tier} is not defined. Define the alias or use an explicit model spec.`,
+      { code: 'INVALID_PIPELINE_CONFIG' },
+    )
+
+    return resolved
+  }
+
+  // Actionable errors for malformed alias-like forms. Do not intercept
+  // `cursor:<model>` executor strings; those are handled by parsePersonaMapping.
+  for (const family of ['anthropic', 'oai', 'open'] as const) {
+    if (!spec.startsWith(`${family}:`)) {
+      continue
+    }
+
+    const suffix = spec.slice(family.length + 1)
+
+    invariant(
+      isAliasTier(suffix),
+      `${source} names model alias '${spec}', which is not supported. Supported tiers: ${MODEL_ALIAS_TIERS.join(
+        ', ',
+      )}.`,
+      { code: 'INVALID_PIPELINE_CONFIG' },
+    )
+  }
+
+  return spec
+}
+
 export interface NamedPipelineConfig {
   summary?: string
   personas: Record<string, string>
@@ -21,6 +95,10 @@ export interface NamedPipelineConfig {
 export interface PipelineConfigFile {
   schema_version: 1
   active_config: string
+  anthropic: ModelAliasMap
+  oai: ModelAliasMap
+  open: ModelAliasMap
+  cursor: ModelAliasMap
   defaults: Record<string, string>
   $operator?: {
     summary?: string
@@ -57,6 +135,7 @@ const CONFIG_PATH = 'config.json'
 function parsePersonaMap(
   value: unknown,
   source: string,
+  aliases: Record<ModelAliasFamily, ModelAliasMap>,
   {
     allowEmpty = false,
     inheritEmpty = false,
@@ -83,15 +162,17 @@ function parsePersonaMap(
       { code: 'INVALID_PIPELINE_CONFIG' },
     )
 
+    const expanded = resolveModelAlias(model, `${source}.${persona}`, aliases)
+
     // Validates the optional executor prefix against the closed set and, for
     // harness-consumed executors, the bracket options.
-    const mapping = parsePersonaMapping(model, `${source}.${persona}`)
+    const mapping = parsePersonaMapping(expanded, `${source}.${persona}`)
 
     if (mapping.executor === 'cursor') {
       resolveCursorModelSlug(mapping, `${source}.${persona}`)
     }
 
-    personas[persona] = model
+    personas[persona] = expanded
   }
 
   invariant(
@@ -103,15 +184,41 @@ function parsePersonaMap(
   return personas
 }
 
-function parseNamedConfig(value: unknown, source: string): NamedPipelineConfig {
+function parseNamedConfig(
+  value: unknown,
+  source: string,
+  aliases: Record<ModelAliasFamily, ModelAliasMap>,
+): NamedPipelineConfig {
   invariant(isRecord(value), `${source} MUST be an object.`, {
     code: 'INVALID_PIPELINE_CONFIG',
   })
 
-  const personas = parsePersonaMap(value.personas, `${source}.personas`, {
+  const directValues: Record<string, unknown> = {}
+
+  for (const [key, entry] of Object.entries(value)) {
+    if (key === 'summary' || key === 'personas') {
+      continue
+    }
+
+    directValues[key] = entry
+  }
+
+  const direct = parsePersonaMap(directValues, source, aliases, {
     allowEmpty: true,
     inheritEmpty: true,
   })
+
+  const legacy = value.personas
+  const legacyPersonas = legacy
+    ? parsePersonaMap(legacy, `${source}.personas`, aliases, {
+        allowEmpty: true,
+        inheritEmpty: true,
+      })
+    : {}
+
+  // Compatibility: when an older overrides file still writes `personas`, those
+  // entries must override the new flat keys that can coexist after merge.
+  const personas = { ...direct, ...legacyPersonas }
 
   return {
     ...(typeof value.summary === 'string' ? { summary: value.summary } : {}),
@@ -156,8 +263,63 @@ export function parsePipelineConfig(
     code: 'INVALID_PIPELINE_CONFIG',
   })
 
+  function parseAliasMap(
+    family: ModelAliasFamily,
+    raw: unknown,
+  ): ModelAliasMap {
+    if (raw === undefined) {
+      return {}
+    }
+
+    invariant(isRecord(raw), `${source}.${family} MUST be an object.`, {
+      code: 'INVALID_PIPELINE_CONFIG',
+    })
+
+    const parsed: ModelAliasMap = {}
+
+    for (const [tier, spec] of Object.entries(raw)) {
+      invariant(
+        isAliasTier(tier),
+        `${source}.${family} key '${tier}' is not supported. Supported tiers: ${MODEL_ALIAS_TIERS.join(
+          ', ',
+        )}.`,
+        { code: 'INVALID_PIPELINE_CONFIG' },
+      )
+      invariant(
+        typeof spec === 'string' && spec.length > 0,
+        `${source}.${family}.${tier} MUST be a non-empty model string.`,
+        { code: 'INVALID_PIPELINE_CONFIG' },
+      )
+
+      invariant(
+        parseAliasReference(spec) === null,
+        `${source}.${family}.${tier} MUST be an explicit model spec; recursive aliases are not supported.`,
+        { code: 'INVALID_PIPELINE_CONFIG' },
+      )
+
+      const mapping = parsePersonaMapping(spec, `${source}.${family}.${tier}`)
+      invariant(
+        mapping.executor === 'cursor',
+        `${source}.${family}.${tier} MUST use the cursor executor.`,
+        { code: 'INVALID_PIPELINE_CONFIG' },
+      )
+
+      resolveCursorModelSlug(mapping, `${source}.${family}.${tier}`)
+      parsed[tier] = spec
+    }
+
+    return parsed
+  }
+
+  const aliases: Record<ModelAliasFamily, ModelAliasMap> = {
+    anthropic: parseAliasMap('anthropic', value.anthropic),
+    oai: parseAliasMap('oai', value.oai),
+    open: parseAliasMap('open', value.open),
+    cursor: parseAliasMap('cursor', value.cursor),
+  }
+
   const defaults = isRecord(value.defaults)
-    ? parsePersonaMap(value.defaults, `${source}.defaults`, {
+    ? parsePersonaMap(value.defaults, `${source}.defaults`, aliases, {
         allowEmpty: true,
       })
     : {}
@@ -165,7 +327,11 @@ export function parsePipelineConfig(
   const configs: Record<string, NamedPipelineConfig> = {}
 
   for (const [name, config] of Object.entries(value.configs)) {
-    configs[name] = parseNamedConfig(config, `${source}.configs.${name}`)
+    configs[name] = parseNamedConfig(
+      config,
+      `${source}.configs.${name}`,
+      aliases,
+    )
   }
 
   invariant(
@@ -193,6 +359,10 @@ export function parsePipelineConfig(
   return {
     schema_version: 1,
     active_config: value.active_config,
+    anthropic: aliases.anthropic,
+    oai: aliases.oai,
+    open: aliases.open,
+    cursor: aliases.cursor,
     defaults,
     ...(operator ? { $operator: operator } : {}),
     configs,
