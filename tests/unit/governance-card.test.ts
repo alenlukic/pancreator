@@ -243,7 +243,7 @@ test('a missing operator input is reported rather than silently omitted', () => 
 
   assert.throws(
     () => buildGovernanceCard(root, { mode: 'nonsense' }),
-    /Available: author, best-of-n, build-briefs, build-docs, decomposition, investigation, pair, qa-workflow, release, repair, review, shepherd, spotfix, supervisor, target, tune-harness, unbound, write-pr/u,
+    /Available: author, best-of-n, build-briefs, build-docs, conform, decomposition, investigation, pair, qa-workflow, release, repair, review, shepherd, spotfix, supervisor, target, tune-harness, unbound, write-pr/u,
   )
 })
 
@@ -269,6 +269,25 @@ test('the review mode is bound to no run and edits nothing', () => {
       /MUST NOT join, rank, or grade findings yourself/u.test(boundary),
     ),
     'the coordinator alone owns the verdict',
+  )
+})
+
+test('the conform mode binds librarian and fences edits', () => {
+  const mode = STANDALONE_MODES.conform
+
+  assert.ok(mode)
+  assert.equal(mode.workflow, 'standalone')
+  assert.equal(mode.stage, 'conform')
+  assert.equal(mode.kind, 'standalone')
+  assert.equal(mode.persona, 'librarian')
+
+  assert.ok(
+    mode.boundaries.some((boundary) => boundary.includes('CHANGELOG.md')),
+    'conform must restrict which files can be edited',
+  )
+  assert.ok(
+    mode.boundaries.some((boundary) => /MUST NOT edit/u.test(boundary)),
+    'conform must forbid editing non-editable artifacts',
   )
 })
 

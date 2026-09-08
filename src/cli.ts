@@ -204,6 +204,10 @@ import {
 } from './lib/worktrees.js'
 import { runTestsImpacted } from './lib/test-impact.js'
 import {
+  checkpointConformArtifacts,
+  scanConformArtifacts,
+} from './lib/conform.js'
+import {
   applyTargetAuthoringDraft,
   readTargetExtensionManifest,
   validateTargetAuthoring,
@@ -242,6 +246,7 @@ export const HELP_BODY = `Usage:
       --timeout-ms raises the effective bound only: resolution keeps the maximum of the request, the profile's own bound, and subset-profile timeouts.
       --run records the execution against that run and, without --workspace or --worktree, checks its workspace. Without --run, --worktree records against every live run bound to the worktree. A bare invocation records against no run.
   pan repository-check validate [--json]
+  pan conform scan|checkpoint [--since <ref> | --all] [--worktree <name>] [--json]
   pan tests impacted [--changed <ref> | --staged | --worktree-dirty] [--file <path>]... [--include <glob>]... [--depth <n>] [--list] [--json] [--advisory-ratio <0..1>]
       Self-development only. Select and run the lane tests whose import closure reaches the changed files. The default change set is the dirty working tree. An iteration aid, never a gate.
   pan release sync --worktree <name> --message <message> [--run <run-id>] [--json]
@@ -431,6 +436,7 @@ const WORKTREE_CAPABLE_SURFACES = [
   'submit',
   'author apply|validate',
   'release sync|continue|finalize',
+  'conform scan|checkpoint',
   'repository-check <profile>',
   'technologies detect',
   'doctor',
@@ -443,6 +449,7 @@ const SUBCOMMAND_STYLE_COMMANDS = new Set([
   'away',
   'best-of-n',
   'briefs',
+  'conform',
   'context',
   'governance',
   'hypervisor',
@@ -459,6 +466,7 @@ const SUBCOMMAND_STYLE_COMMANDS = new Set([
 function acceptsWorktreeOption(command: string, args: string[]): boolean {
   switch (command) {
     case 'init':
+    case 'conform':
     case 'doctor':
     case 'prepare':
     case 'resume':
@@ -1724,6 +1732,102 @@ async function main(): Promise<void> {
         true,
       )
       return
+    }
+    case 'conform': {
+      const subcommand = requiredArgument(args[0], 'conform subcommand')
+      const asJson = hasFlag(args, '--json')
+      const sinceRef = option(args, '--since')
+      const all = hasFlag(args, '--all')
+      const worktreeWorkspace = sharedWorktreeWorkspace(root, args)
+      const workspaceRoot = path.resolve(
+        root,
+        worktreeWorkspace?.path ?? configuredWorkspaceRoot(root),
+      )
+
+      function formatResultFiles(
+        files: Array<{
+          editable: boolean
+          exists: boolean
+          relative_path: string
+          issues: Array<{ code: string }>
+        }>,
+      ): string {
+        if (files.length === 0) {
+          return 'No eligible conform artifacts were selected.'
+        }
+
+        const lines = files.map((file) => {
+          const scope = file.editable ? 'editable' : 'report-only'
+          const existence = file.exists ? '' : ' (deleted)'
+          const issueCount = file.issues.length
+          const issueLabel =
+            issueCount === 1 ? '1 issue' : `${issueCount} issues`
+
+          return `- ${scope}: ${file.relative_path}${existence} — ${issueLabel}`
+        })
+
+        return lines.join('\n')
+      }
+
+      if (subcommand === 'scan') {
+        const result = scanConformArtifacts(root, {
+          workspace_root: workspaceRoot,
+          since_ref: sinceRef,
+          all,
+        })
+
+        print(
+          asJson
+            ? result
+            : [
+                `Conform scan: ${result.status}`,
+                `Base: ${result.base}`,
+                `Head: ${result.head}`,
+                `Files: ${result.summary.files}`,
+                '',
+                formatResultFiles(result.files),
+              ].join('\n'),
+          asJson,
+        )
+
+        if (result.status !== 'passed') {
+          process.exitCode = 1
+        }
+
+        return
+      }
+
+      if (subcommand === 'checkpoint') {
+        const result = checkpointConformArtifacts(root, {
+          workspace_root: workspaceRoot,
+          since_ref: sinceRef,
+          all,
+        })
+
+        print(
+          asJson
+            ? result
+            : [
+                `Conform checkpoint: ${result.status}`,
+                `Head: ${result.head}`,
+                `Checkpoint: ${result.checkpoint_path}`,
+                `Wrote checkpoint: ${result.wrote_checkpoint ? 'yes' : 'no'}`,
+                '',
+                formatResultFiles(result.files),
+              ].join('\n'),
+          asJson,
+        )
+
+        if (result.status !== 'passed') {
+          process.exitCode = 1
+        }
+
+        return
+      }
+
+      throw new PanError(`Unknown conform subcommand: ${subcommand}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
     }
     case 'repository-check': {
       const profile = requiredArgument(args[0], 'profile')

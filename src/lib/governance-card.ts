@@ -301,6 +301,23 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST NOT modify source, workflow state, release metadata, commits, branches, remotes, or pull requests, and MUST NOT run `gh pr create`, commit, push, merge, publish, or deploy.',
     ],
   },
+  conform: {
+    kind: 'standalone',
+    persona: 'librarian',
+    workflow: 'standalone',
+    stage: 'conform',
+    title: 'Artifact conformance',
+    summary:
+      'Scan operator artifacts for Simplified Technical English issues, ' +
+      'repair eligible prose, and record a clean checkpoint.',
+    boundaries: [
+      'You MUST edit only `CHANGELOG.md`, `docs/issues/**/*.md`, and `runtime/pr-descriptions/*.md`.',
+      'You MUST report rendered workflow HTML but MUST NOT edit it.',
+      'You MUST validate each edited file with `pan requirements run --registry SIMPLIFIED-ENGLISH-VALIDATE-001` before you checkpoint.',
+      PROTECTED_PATH_RULE,
+      'You MUST NOT commit, push, merge, publish, deploy, or change Git history.',
+    ],
+  },
   'build-docs': {
     kind: 'documentation',
     persona: 'librarian',

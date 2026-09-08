@@ -74,6 +74,20 @@
         "invocation_kind": "standalone",
         "stage": "write-pr"
       }
+    },
+    {
+      "id": "standalone-conform-simplified-english-validate",
+      "registry_id": "SIMPLIFIED-ENGLISH-VALIDATE-001",
+      "phase": "before_operation",
+      "executor": "agent",
+      "target": "artifact:0",
+      "enforcement": "required",
+      "failure_route": "retry",
+      "evidence_class": "validation-result",
+      "applicability": {
+        "invocation_kind": "standalone",
+        "stage": "conform"
+      }
     }
   ]
 }
