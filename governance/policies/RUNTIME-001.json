@@ -5,31 +5,31 @@
   "summary": "Pancreator workflow runtime directories MUST use sortable UTC names and harness-owned archival after seven days; agents MUST NOT rename or relocate generated run state manually.",
   "instructions": [
     {
-      "text": "Workflow directories under runtime/logs/workflows/ and the legacy mirrored runtime/workflows/ location MUST use <days-to-anchor>_<MMM-DD>-<minutes-to-end-of-UTC-day>_<eight-character-UUID>, with the minute field zero-padded to four digits (`tests/unit/naming.test.ts`).",
+      "text": "Workflow directories under runtime/logs/workflows/ and the legacy mirrored runtime/workflows/ location MUST use <days-to-anchor>_<MMM-DD>-<minutes-to-end-of-UTC-day>_<eight-character-UUID>, with the minute field zero-padded to four digits (`tests/unit/naming.test.ts::workflow run IDs pad the minute field to four digits`).",
       "audience": ["harness"]
     },
     {
-      "text": "New runs MUST store machine records under agent/ and operator-readable artifacts under operator/ (`tests/unit/naming.test.ts`).",
+      "text": "New runs MUST store machine records under agent/ and operator-readable artifacts under operator/ (`tests/unit/run-layout.test.ts::new runs resolve to the split agent and operator layout`).",
       "audience": ["harness"]
     },
     {
-      "text": "Existing runs without agent/state.json MUST retain the legacy layout. The harness MUST detect one layout per run (`tests/unit/naming.test.ts`).",
+      "text": "Existing runs without agent/state.json MUST retain the legacy layout. The harness MUST detect one layout per run (`tests/unit/run-layout.test.ts::legacy runs keep root-level machine and artifacts paths`).",
       "audience": ["harness"]
     },
     {
-      "text": "DATETIME_ANCHOR MUST remain 2200-01-01T00:00:00.000Z. days-to-anchor MUST be the floor of the UTC duration from run creation to the anchor divided by one day, and minutes-to-end-of-UTC-day MUST be the ceiling of the remaining UTC-day duration in minutes (`tests/unit/naming.test.ts`).",
+      "text": "DATETIME_ANCHOR MUST remain 2200-01-01T00:00:00.000Z. days-to-anchor MUST be the floor of the UTC duration from run creation to the anchor divided by one day, and minutes-to-end-of-UTC-day MUST be the ceiling of the remaining UTC-day duration in minutes (`tests/unit/naming.test.ts::workflow run IDs use UTC days to the 2200 anchor`).",
       "audience": ["harness"]
     },
     {
-      "text": "The harness-owned pan archive command MUST migrate recognized legacy workflow directory names, update persisted path references, and move active-root workflow directories older than seven days into an archive/ child of the same parent directory (`tests/unit/naming.test.ts`).",
+      "text": "The harness-owned pan archive command MUST migrate recognized legacy workflow directory names, update persisted path references, and move active-root workflow directories older than seven days into an archive/ child of the same parent directory (`tests/integration/runtime-archive-cli.test.ts::pan archive migrates and archives old workflow directories`).",
       "audience": ["harness"]
     },
     {
-      "text": "Archived workflow directories MUST be excluded from active run discovery and repeated archival MUST be idempotent. Existing archive targets MUST never be overwritten silently (`tests/unit/naming.test.ts`).",
+      "text": "Archived workflow directories MUST be excluded from active run discovery and repeated archival MUST be idempotent. Existing archive targets MUST never be overwritten silently (`tests/unit/workflow-artifacts.test.ts::workflow archive moves runs older than retention into archive directories`).",
       "audience": ["harness"]
     },
     {
-      "text": "Embedded installation refresh with install --yes MUST run the same naming migration and seven-day archival before replacing the owned harness payload, while preserving workflow contents (`tests/secondary/embedded-installation.test.ts`).",
+      "text": "Embedded installation refresh with install --yes MUST run the same naming migration and seven-day archival before replacing the owned harness payload, while preserving workflow contents (`tests/secondary/embedded-installation-refresh.test.ts::embedded installer refresh reconciles persona mappings and agent ownership while preserving target state`).",
       "audience": ["harness"]
     },
     "Agents MUST NOT hand-rename, hand-move, or manually rewrite generated workflow directories or records. They MUST use pan archive or the installer-owned migration path for these deterministic operations."

@@ -367,6 +367,7 @@ test('policy resolution unions global and stage-specific policies', () => {
     'ACTION-001',
     'ASK-001',
     'AUTO-001',
+    'BIN-001',
     'BRIEF-001',
     'CONTRACT-001',
     'DEV-001',
@@ -396,6 +397,7 @@ test('representative contexts exclude policies outside their remit', () => {
     'ACTION-001',
     'ASK-001',
     'AUTO-001',
+    'BIN-001',
     'CONTRACT-001',
     'ENG-001',
     'GLOBAL-001',
@@ -1057,8 +1059,11 @@ test('mixed policies tag supervisor, harness, and operator audiences', () => {
     return instruction.audience
   }
 
+  // The durable-instruction-text rules govern how agents author policies,
+  // personas, skills, and commands, so they render on an agent card. No code
+  // path renders a card at audience `operator`.
   assert.deepEqual(audienceFor('STE-001', 'durable-instruction-text'), [
-    'operator',
+    'agent',
   ])
   assert.deepEqual(
     audienceFor('STE-001', 'Operator chat reports MUST state the outcome'),
@@ -1107,8 +1112,13 @@ test('mixed policies tag supervisor, harness, and operator audiences', () => {
     audienceFor('VALID-001', 'MUST NOT invent a separate validator set'),
     ['harness'],
   )
+  // A policy whose every instruction is harness-tagged renders an empty block
+  // on the one card that loads it. Both of these keep a rendered instruction.
   assert.ok(
-    audiences('OUTPUT-001').every((audience) => audience.includes('harness')),
+    audiences('OUTPUT-001').some((audience) => audience.includes('harness')),
+  )
+  assert.ok(
+    audiences('OUTPUT-001').some((audience) => audience.includes('agent')),
   )
   assert.ok(
     audiences('RUNTIME-001').some((audience) => audience.includes('harness')),

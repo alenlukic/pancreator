@@ -29,7 +29,7 @@
       "audience": ["harness"]
     },
     {
-      "text": "Embedded installation and refresh MUST place Pancreator-owned ignore patterns in the target clone's `.git/info/exclude` through the managed installer block, MUST NOT create, rewrite, or remove target `.gitignore` content, MUST preserve unrelated clone-local exclude content, and MUST keep the managed block idempotent across refreshes (`tests/secondary/embedded-installation.test.ts`).",
+      "text": "Embedded installation and refresh MUST place Pancreator-owned ignore patterns in the target clone's `.git/info/exclude` through the managed installer block, MUST NOT create, rewrite, or remove target `.gitignore` content, MUST preserve unrelated clone-local exclude content, and MUST keep the managed block idempotent across refreshes (`tests/secondary/embedded-installation.test.ts::embedded installer stays out of target git state`).",
       "audience": ["harness"]
     },
     "Generated invocation manifests MAY persist resolved requirement ids, versions, paths, arguments, targets, and failure routes for auditability, but agents MUST receive only the entries relevant to the active invocation.",

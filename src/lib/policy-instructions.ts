@@ -72,6 +72,17 @@ export function normalizePolicyInstruction(
     audiences.push(item)
   }
 
+  // `harness` and `operator` suppress an instruction at every other audience,
+  // so pairing either with a second audience renders the instruction nowhere.
+  for (const exclusive of ['harness', 'operator'] as const) {
+    invariant(
+      !seen.has(exclusive) || seen.size === 1,
+      `${source}.audience MUST NOT combine '${exclusive}' with another audience, ` +
+        'because the card filter then renders the instruction nowhere.',
+      { code: 'INVALID_POLICY' },
+    )
+  }
+
   return {
     text: value.text,
     audience: audiences,

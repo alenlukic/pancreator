@@ -8,19 +8,19 @@
     "Machine records, invocation and delegation cards, JSON state, source code, code comments, commit messages, and repository documentation under docs/, README.md, and governance/ are outside the writing rules of this policy, and agents MUST NOT restyle them to satisfy those rules.",
     {
       "text": "Agents MUST apply the durable-instruction-text rules in the referenced guidance to every instruction surface, including AGENTS.md, policies, criteria, skills, personas, and commands. Instruction text MUST state the rule a reader needs and MUST NOT record the request that produced it, the rejected alternative, or the reasoning that produced the wording.",
-      "audience": ["operator"]
+      "audience": ["agent"]
     },
     {
       "text": "Agents MUST hold instructions to a maximum of 20 words per sentence and explanation to a maximum of 25 words per sentence, counted by the referenced counting rules rather than by raw whitespace tokens. Identifiers, file paths, commands, inline code spans, quoted text, headings, numbers with units, abbreviations, and hyphenated words each count as one word.",
-      "audience": ["operator"]
+      "audience": ["agent"]
     },
     {
       "text": "Agents MUST write instructions in the imperative form and active voice, MUST limit a paragraph to one topic and six sentences, and MUST NOT use a semicolon, a contraction, a Latin abbreviation, a progressive or perfect tense, or an -ing form outside a domain term.",
-      "audience": ["operator"]
+      "audience": ["agent"]
     },
     {
       "text": "Agents MUST use one term for one concept and MUST prefer the term the repository already established in AGENTS.md, the target-repo primer, or the brief semantic registry over a new synonym.",
-      "audience": ["operator"]
+      "audience": ["agent"]
     },
     "Agents MUST preserve quoted text, captured command output, and preserved evidence verbatim. Rewriting evidence to satisfy a writing rule is an evidence defect and MUST NOT occur.",
     {

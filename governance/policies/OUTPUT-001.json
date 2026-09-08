@@ -5,31 +5,31 @@
   "summary": "Routine execution output MUST remain quiet on success while agent invocations MUST surface concise, Cursor-like progress and actionable failures.",
   "instructions": [
     {
-      "text": "Pancreator-owned verification scripts MUST suppress routine success output by default. The progress ticks the next instruction authorizes are the one exception. The scripts MUST replay captured stdout and stderr when the underlying command fails. In self-development the shared wrapper is bin/run-quiet. Embedded target commands remain governed by the target repository (`tests/unit/output-validate-parity.test.ts`).",
+      "text": "Pancreator-owned verification scripts MUST suppress routine success output by default. The progress ticks the next instruction authorizes are the one exception. The scripts MUST replay captured stdout and stderr when the underlying command fails. In self-development the shared wrapper is bin/run-quiet. Embedded target commands remain governed by the target repository.",
+      "audience": ["agent"]
+    },
+    {
+      "text": "The shared wrapper MAY emit minimal progress ticks to stderr while a wrapped command runs. A tick MUST reflect new output from the wrapped command, so a stopped tick stream exposes a silent hang. Ticks MUST stay off whenever stderr is not an interactive terminal. Default captured output then stays byte-identical. An explicit opt-in overrides that default. A caller that compares captured bytes MUST clear the opt-in (`tests/unit/quiet-command.test.ts::progress ticks mark intervals in which the command produced output`).",
       "audience": ["harness"]
     },
     {
-      "text": "The shared wrapper MAY emit minimal progress ticks to stderr while a wrapped command runs. A tick MUST reflect new output from the wrapped command, so a stopped tick stream exposes a silent hang. Ticks MUST stay off whenever stderr is not an interactive terminal. Default captured output then stays byte-identical. An explicit opt-in overrides that default. A caller that compares captured bytes MUST clear the opt-in (`tests/unit/output-validate-parity.test.ts`).",
+      "text": "Operator commands whose stdout is the requested result MUST preserve that result; incidental Pancreator lifecycle banners and successful harness build, lint, format, and test chatter MUST remain suppressed.",
+      "audience": ["agent"]
+    },
+    {
+      "text": "Cursor SDK invocations MUST route normalized stream events through the shared invocation logger rather than printing raw event objects directly (`tests/unit/cursor-sdk-logging.test.ts::Cursor SDK logger renders concise narrative and grouped tool calls`).",
       "audience": ["harness"]
     },
     {
-      "text": "Operator commands whose stdout is the requested result MUST preserve that result; incidental Pancreator lifecycle banners and successful harness build, lint, format, and test chatter MUST remain suppressed (`tests/unit/output-validate-parity.test.ts`).",
+      "text": "The Cursor SDK invocation logger MUST emit concise plan or progress summaries, grouped tool-call logs, significant findings or issues, and a brief current-task update when two minutes pass without another operator-facing emission (`tests/unit/cursor-sdk-logging.test.ts::Cursor SDK logger emits an idle progress update after the configured interval`).",
       "audience": ["harness"]
     },
     {
-      "text": "Cursor SDK invocations MUST route normalized stream events through the shared invocation logger rather than printing raw event objects directly (`tests/unit/output-validate-parity.test.ts`).",
+      "text": "Human-readable summaries MUST NOT replace full-fidelity SDK events used as durable evidence, and tool arguments or results MUST be treated as unstable unknown input (`tests/unit/cursor-sdk-logging.test.ts::invocation wrapper streams events, records raw evidence, and returns the SDK result`).",
       "audience": ["harness"]
     },
     {
-      "text": "The Cursor SDK invocation logger MUST emit concise plan or progress summaries, grouped tool-call logs, significant findings or issues, and a brief current-task update when two minutes pass without another operator-facing emission (`tests/unit/output-validate-parity.test.ts`).",
-      "audience": ["harness"]
-    },
-    {
-      "text": "Human-readable summaries MUST NOT replace full-fidelity SDK events used as durable evidence, and tool arguments or results MUST be treated as unstable unknown input (`tests/unit/output-validate-parity.test.ts`).",
-      "audience": ["harness"]
-    },
-    {
-      "text": "Verbose command output MAY be enabled explicitly for diagnosis and MUST NOT be the default operator experience (`tests/unit/output-validate-parity.test.ts`).",
+      "text": "Verbose command output MAY be enabled explicitly for diagnosis and MUST NOT be the default operator experience (`tests/unit/quiet-command.test.ts::quiet command streams successful output in verbose mode`).",
       "audience": ["harness"]
     }
   ]

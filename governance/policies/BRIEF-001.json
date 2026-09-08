@@ -8,21 +8,21 @@
     "A requested workflow-stage narrative MUST use schema-valid brief data at the exact source path that the harness creates.",
     "A worker MUST edit the declared source in place and MUST NOT run the renderer.",
     {
-      "text": "The harness MUST render requested HTML during submission (`tests/unit/briefs.test.ts`).",
+      "text": "The harness MUST render requested HTML during submission (`tests/integration/operator-brief-stage-output.test.ts::submission rerenders the invocation-declared HTML brief from JSON`).",
       "audience": ["harness"]
     },
     {
-      "text": "A generated workflow-stage narrative MUST use the retained brief system and the latest submitted stage records (`tests/unit/briefs.test.ts`).",
+      "text": "A generated workflow-stage narrative MUST use the retained brief system and the latest submitted stage records (`tests/unit/operator-artifact-generation.test.ts::post-stage generation creates validated HTML from canonical records`).",
       "audience": ["harness"]
     },
     "The rendered HTML MUST be artifact 0 when an invocation requests a brief.",
     "The transient source JSON MUST NOT be a final stage artifact.",
     {
-      "text": "The harness MUST delete transient source JSON after successful rendering and validation. It MUST retain the source after a failure (`tests/unit/briefs.test.ts`).",
+      "text": "The harness MUST delete transient source JSON after successful rendering and validation. It MUST retain the source after a failure (`tests/unit/operator-artifact-generation.test.ts::forced generation preserves existing HTML and source after render failure`).",
       "audience": ["harness"]
     },
     {
-      "text": "Path drift, invalid brief data, or rendering defects are governance diagnostics for ship review. They MUST NOT loop the workflow to implementation (`tests/unit/briefs.test.ts`).",
+      "text": "Path drift, invalid brief data, or rendering defects are governance diagnostics for ship review. They MUST NOT loop the workflow to implementation (`tests/integration/delivery-verify-routing.test.ts::governance and artifact defects are advisory before ship and never loop to implementation`).",
       "audience": ["harness"]
     },
     "A brief MUST begin with an executive-summary section that states the bottom line first: what changed or matters, why it matters, and outcomes or required actions when applicable.",

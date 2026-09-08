@@ -56,6 +56,38 @@ test('normalizePolicyInstruction rejects invalid audience shapes', () => {
   )
 })
 
+test('normalizePolicyInstruction rejects a suppressing audience combination', () => {
+  // The card filter returns false at every other audience once an instruction
+  // carries `harness` or `operator`, so pairing either with a second audience
+  // renders the instruction nowhere. Reject the pairing instead.
+  for (const audience of [
+    ['agent', 'operator'],
+    ['operator', 'supervisor'],
+    ['agent', 'harness'],
+    ['harness', 'operator'],
+  ]) {
+    assert.throws(
+      () =>
+        normalizePolicyInstruction(
+          { text: 'Agents MUST do the thing.', audience },
+          'policy.instructions[0]',
+        ),
+      /MUST NOT combine '(?:harness|operator)' with another audience/u,
+      `audience ${audience.join('+')} is accepted`,
+    )
+  }
+
+  for (const audience of [['harness'], ['operator'], ['agent', 'supervisor']]) {
+    assert.deepEqual(
+      normalizePolicyInstruction(
+        { text: 'Agents MUST do the thing.', audience },
+        'policy.instructions[0]',
+      ),
+      { text: 'Agents MUST do the thing.', audience },
+    )
+  }
+})
+
 test('normalizePolicyInstructions rejects non-arrays', () => {
   assert.throws(
     () => normalizePolicyInstructions('not-an-array', 'policy.instructions'),

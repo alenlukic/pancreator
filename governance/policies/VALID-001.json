@@ -17,7 +17,7 @@
       "audience": ["harness"]
     },
     {
-      "text": "Out-of-workflow execution MUST resolve policy-bound validator requirements through the same repository resolver and MUST NOT invent a separate validator set (`tests/unit/validation.test.ts`).",
+      "text": "Out-of-workflow execution MUST resolve policy-bound validator requirements through the same repository resolver and MUST NOT invent a separate validator set (`tests/unit/output-validate-parity.test.ts::pan output validate and pan submit resolve the same validator set for one invocation`).",
       "audience": ["harness"]
     }
   ],

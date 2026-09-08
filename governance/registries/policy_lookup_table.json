@@ -20,6 +20,13 @@
       "persona": "*",
       "workflow": "*",
       "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["BIN-001"]
+    },
+    {
+      "persona": "*",
+      "workflow": "*",
+      "stage": "*",
       "operator_artifacts": "requested",
       "policies": ["BRIEF-001"]
     },
@@ -179,6 +186,12 @@
         "WAIVER-001",
         "WORK-001"
       ]
+    },
+    {
+      "persona": "orchestrator",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["STE-001"]
     },
     {
       "persona": "coder",
