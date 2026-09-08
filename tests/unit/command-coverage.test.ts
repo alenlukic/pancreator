@@ -3,11 +3,31 @@ import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
+import { assertWorktreeOptionSupported } from '../../src/cli.js'
 import {
   COMMAND_GOVERNANCE_REGISTRY_PATH,
   validateCommandGovernance,
 } from '../../src/lib/governance/command-coverage.js'
 import { createFixture, writeJson } from '../helpers.js'
+
+/**
+ * Every `pan` command line a projected command file prescribes, as argv. An
+ * optional `[...]` group is kept, because the session may pass it, and the
+ * first alternative of a `|` choice stands for the group.
+ */
+function panInvocations(command: string): string[][] {
+  return [
+    ...command.matchAll(/`\{\{PANCREATOR_PAN_COMMAND\}\} ([^`]+)`/gu),
+  ].map((match) =>
+    (match[1] as string)
+      .replaceAll(
+        /\[([^\]]+)\]/gu,
+        (_all, group: string) => group.split('|')[0] as string,
+      )
+      .trim()
+      .split(/\s+/u),
+  )
+}
 
 function run(root: string) {
   const errors: string[] = []
@@ -98,22 +118,23 @@ test('pan-conform is explicitly registered with its conform card', () => {
 
   assert.match(validationStep ?? '', /requirements run/u)
 
-  // A worktree session repairs the worktree copy and must validate that same
-  // copy, so every step that runs a workspace-bound command forwards the
-  // worktree. A step that validates the installation-root copy instead either
-  // fails on bytes it never touched or writes a checkpoint it never checked.
-  const worktreeSteps = command
-    .split('\n')
-    .filter((line) =>
-      /^\d+\. .*\{\{PANCREATOR_PAN_COMMAND\}\} (?:conform|requirements run)/u.test(
-        line,
-      ),
+  // Conform is installation-scoped, so no step may prescribe a command line
+  // the CLI refuses. Reading the steps back through the CLI's own option gate
+  // observes that; counting steps and matching `--worktree` observed prose and
+  // stayed green while `requirements run --worktree` exited non-zero.
+  const invocations = panInvocations(command)
+
+  assert.ok(invocations.length >= 4, command)
+
+  for (const invocation of invocations) {
+    assert.doesNotThrow(
+      () =>
+        assertWorktreeOptionSupported(
+          invocation[0] as string,
+          invocation.slice(1),
+        ),
+      invocation.join(' '),
     )
-
-  assert.equal(worktreeSteps.length, 3, command)
-
-  for (const step of worktreeSteps) {
-    assert.match(step, /--worktree <name>/u, step)
   }
 
   const registryPath = path.join(root, COMMAND_GOVERNANCE_REGISTRY_PATH)

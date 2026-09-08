@@ -38,14 +38,6 @@
       ]
     },
     {
-      "command": "pan-conform",
-      "worktree_forwarding": [
-        "conform scan [--since <ref> | --all] [--worktree <name>] --json",
-        "requirements run --persona librarian --workflow standalone --stage conform --kind standalone --registry SIMPLIFIED-ENGLISH-VALIDATE-001 --target <path> [--worktree <name>] --json",
-        "conform checkpoint [--worktree <name>] --json"
-      ]
-    },
-    {
       "command": "pan-release",
       "worktree_forwarding": [
         "release sync --worktree <name>",

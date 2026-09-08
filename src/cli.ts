@@ -486,7 +486,15 @@ function acceptsWorktreeOption(command: string, args: string[]): boolean {
   }
 }
 
-function assertWorktreeOptionSupported(command: string, args: string[]): void {
+/**
+ * Reject `--worktree` on a command surface that does not run against a
+ * selected workspace. Exported so a test can hold a projected command file to
+ * the command lines this CLI actually accepts, rather than to its own prose.
+ */
+export function assertWorktreeOptionSupported(
+  command: string,
+  args: string[],
+): void {
   if (!hasFlag(args, '--worktree') || acceptsWorktreeOption(command, args)) {
     return
   }
