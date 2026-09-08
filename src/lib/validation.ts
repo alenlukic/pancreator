@@ -6,6 +6,7 @@ import { errorMessage, isNodeError } from './errors.js'
 import {
   ensureDir,
   fileExists,
+  isFile,
   isRecord,
   lastEvidenceLine,
   readJson,
@@ -38,6 +39,7 @@ import {
   suiteProfileEvidencePath,
 } from './suite-profile.js'
 import { auditTestScratchDirectories } from './test-scratch-audit.js'
+import { filterPolicyInstructionsForCard } from './policy-instructions.js'
 import { loadRegistry, validateRegistry } from './requirements/registry.js'
 import {
   resolveRequirements,
@@ -589,11 +591,17 @@ export function validateInvocationMarkdown(
         : `Markdown MUST include policy ${policy.id} summary text`,
     })
 
-    for (const [index, instruction] of policy.instructions.entries()) {
+    const renderedInstructions = filterPolicyInstructionsForCard(
+      policy.instructions,
+      'agent',
+    )
+
+    for (const [index, instruction] of renderedInstructions.entries()) {
+      const text = instruction.text
       checks.push({
         id: `policy.${policy.id}.instruction.${index + 1}`,
-        passed: normalized.includes(instruction),
-        message: normalized.includes(instruction)
+        passed: normalized.includes(text),
+        message: normalized.includes(text)
           ? `Policy ${policy.id} instruction ${index + 1} is present`
           : `Markdown MUST include policy ${policy.id} instruction ${index + 1}`,
       })
@@ -699,19 +707,49 @@ export function validateInvocationMarkdown(
       passed: delegation.policies.length > 0,
       message:
         delegation.policies.length > 0
-          ? `${delegation.policies.length} supervisor delivery policies are inline`
-          : 'Delegated stages MUST inline INVOCATION-001 for the supervisor',
+          ? `${delegation.policies.length} supervisor delivery policies are declared`
+          : 'Delegated stages MUST declare at least one delivery policy',
     })
 
-    for (const policy of delegation.policies) {
-      for (const [index, instruction] of policy.instructions.entries()) {
+    const supervisorSections =
+      delegation.supervisor_card?.policy_sections ?? null
+    const sectionDigestFor = (policyId: string): string | null =>
+      supervisorSections?.find((section) => section.policy_id === policyId)
+        ?.sha256 ?? null
+
+    if (split && supervisorSections && supervisorSections.length > 0) {
+      for (const policy of delegation.policies) {
+        const digest = sectionDigestFor(policy.id)
+
         checks.push({
-          id: `delegation.${policy.id}.instruction.${index + 1}`,
-          passed: procedure.includes(instruction),
-          message: procedure.includes(instruction)
-            ? `Delivery policy ${policy.id} instruction ${index + 1} is present`
-            : `${procedureLabel} MUST inline ${policy.id} instruction ${index + 1} for the supervisor`,
+          id: `delegation.${policy.id}.section_digest_present`,
+          passed:
+            digest !== null &&
+            procedure.includes(`\`${policy.id}\`: \`sha256:${digest}\``),
+          message:
+            digest !== null &&
+            procedure.includes(`\`${policy.id}\`: \`sha256:${digest}\``)
+              ? `Delivery policy ${policy.id} section digest pointer is present`
+              : `${procedureLabel} MUST include a section digest pointer for ${policy.id}`,
         })
+      }
+    } else {
+      for (const policy of delegation.policies) {
+        const rendered = filterPolicyInstructionsForCard(
+          policy.instructions,
+          'supervisor',
+        )
+
+        for (const [index, instruction] of rendered.entries()) {
+          const text = instruction.text
+          checks.push({
+            id: `delegation.${policy.id}.instruction.${index + 1}`,
+            passed: procedure.includes(text),
+            message: procedure.includes(text)
+              ? `Delivery policy ${policy.id} instruction ${index + 1} is present`
+              : `${procedureLabel} MUST inline ${policy.id} instruction ${index + 1} for the supervisor`,
+          })
+        }
       }
     }
 
@@ -3288,7 +3326,7 @@ function validateGovernance(
     }
 
     for (const [index, instruction] of policy.instructions.entries()) {
-      if (!directivePattern.test(instruction)) {
+      if (!directivePattern.test(instruction.text)) {
         errors.push(
           `${policy.id} instruction ${index + 1} MUST use an RFC 2119 directive`,
         )
@@ -3298,9 +3336,10 @@ function validateGovernance(
     const declaredGuidance = new Set(
       (policy.guidance ?? []).map((guidance) => guidance.source_path),
     )
-    const staticReferences = [policy.summary, ...policy.instructions].flatMap(
-      (text) => text.match(STATIC_GUIDANCE_PATH_PATTERN) ?? [],
-    )
+    const staticReferences = [
+      policy.summary,
+      ...policy.instructions.map((instruction) => instruction.text),
+    ].flatMap((text) => text.match(STATIC_GUIDANCE_PATH_PATTERN) ?? [])
 
     for (const guidancePath of new Set(staticReferences)) {
       if (!declaredGuidance.has(guidancePath)) {
@@ -3321,6 +3360,65 @@ function validateGovernance(
   }
 
   return handbookPolicies
+}
+
+const HARNESS_INSTRUCTION_TEST_PATH_PATTERN = /\btests\/[A-Za-z0-9._/-]+\b/gu
+
+function tokenBoundaryPattern(token: string): RegExp {
+  const escaped = token.replaceAll(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+  return new RegExp(`(^|[^A-Za-z0-9_-])${escaped}($|[^A-Za-z0-9_-])`, 'u')
+}
+
+function validateHarnessInstructionCoverage(
+  root: string,
+  catalog: Map<string, Policy>,
+): string[] {
+  const errors: string[] = []
+
+  for (const policy of catalog.values()) {
+    const requirementIds = (policy.requirements ?? []).map(
+      (requirement) => requirement.id,
+    )
+    const requirementPatterns = requirementIds.map(tokenBoundaryPattern)
+
+    for (const [index, instruction] of policy.instructions.entries()) {
+      if (!instruction.audience.includes('harness')) {
+        continue
+      }
+
+      const text = instruction.text
+      const referencesRequirement = requirementPatterns.some((pattern) =>
+        pattern.test(text),
+      )
+
+      if (referencesRequirement) {
+        continue
+      }
+
+      const matches = [...text.matchAll(HARNESS_INSTRUCTION_TEST_PATH_PATTERN)]
+      const referencesTest = matches.some((match) => {
+        const token = match[0]
+        const fileToken = token.split('::')[0] ?? token
+
+        try {
+          return isFile(resolveInside(root, fileToken))
+        } catch {
+          return false
+        }
+      })
+
+      if (referencesTest) {
+        continue
+      }
+
+      errors.push(
+        `${policy.id} harness instruction ${index + 1} MUST reference a same-policy ` +
+          'requirement id or an existing tests/ path',
+      )
+    }
+  }
+
+  return errors
 }
 
 function lookupPatternCovers(provider: string, consumer: string): boolean {
@@ -3351,7 +3449,7 @@ function lookupRowCovers(
 function referencedPolicyIds(policy: Policy): Set<string> {
   const text = [
     policy.summary,
-    ...policy.instructions,
+    ...policy.instructions.map((instruction) => instruction.text),
     ...(policy.guidance ?? []).map((guidance) => guidance.content),
   ].join('\n')
   return new Set(text.match(POLICY_REFERENCE_PATTERN) ?? [])
@@ -3588,7 +3686,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
     ) {
       const registry = loadRegistry(root)
       errors.push(...validateRegistry(registry, HANDLER_IDS))
-      errors.push(...validatePolicyRequirements(root, registry))
+      errors.push(...validatePolicyRequirements(catalog.values(), registry))
 
       for (const row of lookup.rows) {
         try {
@@ -3623,6 +3721,10 @@ export function validateRepository(root: string): RepositoryValidationResult {
     errors.push(...projection.errors)
 
     handbookPolicies = validateGovernance(root, catalog, errors)
+
+    if (selfDevelopment) {
+      errors.push(...validateHarnessInstructionCoverage(root, catalog))
+    }
   } catch (error) {
     errors.push(errorMessage(error))
   }

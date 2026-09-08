@@ -368,6 +368,11 @@ function renderSupervisorProcedureBody(
             'nothing else ahead of the body.',
         ]
 
+  const policySections = delegation.supervisor_card?.policy_sections ?? null
+  const sectionDigestFor = (policyId: string): string | null =>
+    policySections?.find((section) => section.policy_id === policyId)?.sha256 ??
+    null
+
   return [
     DELEGATION_HEADING,
     '',
@@ -382,7 +387,22 @@ function renderSupervisorProcedureBody(
         'remove it: delegation evidence is compared against the delivered ' +
         'prompt byte for byte.',
     '',
-    ...renderPolicyBlocks(delegation.policies, 3),
+    ...(policySections
+      ? [
+          '**Delivery policy sections**',
+          '',
+          ...delegation.policies.map((policy) => {
+            const digest = sectionDigestFor(policy.id)
+
+            return digest
+              ? `- \`${policy.id}\`: \`sha256:${digest}\``
+              : `- \`${policy.id}\`: digest unavailable`
+          }),
+          '',
+          'Read the full policy text from the supervisor governance card. Do not copy policy bodies into this procedure.',
+          '',
+        ]
+      : renderPolicyBlocks(delegation.policies, 3, 'supervisor')),
     ...(externalDelegation
       ? [
           `This stage executes under the '${externalDelegation}' ` +
@@ -610,7 +630,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
         contextReference.actual_content_sha256,
       ).slice(1)
     : []
-  const policies = renderPolicyBlocks(invocation.policies, 3)
+  const policies = renderPolicyBlocks(invocation.policies, 3, 'agent')
   const requirements = invocation.requirements
     ? [
         ...invocation.requirements.automation_requirements,

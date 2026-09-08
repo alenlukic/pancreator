@@ -127,7 +127,7 @@ test('target authoring publishes every artifact kind with resolved governance', 
 
     const manifest = readTargetExtensionManifest(root, 'acme-tool')
 
-    for (const policyId of ['CONTRACT-001', 'ENG-001', 'REPO-001', 'TS-001']) {
+    for (const policyId of ['ENG-001', 'REPO-001', 'TS-001']) {
       assert.ok(manifest.policies.includes(policyId), policyId)
     }
 

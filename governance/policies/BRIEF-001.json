@@ -7,12 +7,24 @@
     "A workflow invocation MUST include a brief contract only when the operator requests workflow artifacts.",
     "A requested workflow-stage narrative MUST use schema-valid brief data at the exact source path that the harness creates.",
     "A worker MUST edit the declared source in place and MUST NOT run the renderer.",
-    "The harness MUST render requested HTML during submission.",
-    "A generated workflow-stage narrative MUST use the retained brief system and the latest submitted stage records.",
+    {
+      "text": "The harness MUST render requested HTML during submission (`tests/unit/briefs.test.ts`).",
+      "audience": ["harness"]
+    },
+    {
+      "text": "A generated workflow-stage narrative MUST use the retained brief system and the latest submitted stage records (`tests/unit/briefs.test.ts`).",
+      "audience": ["harness"]
+    },
     "The rendered HTML MUST be artifact 0 when an invocation requests a brief.",
     "The transient source JSON MUST NOT be a final stage artifact.",
-    "The harness MUST delete transient source JSON after successful rendering and validation. It MUST retain the source after a failure.",
-    "Path drift, invalid brief data, or rendering defects are governance diagnostics for ship review. They MUST NOT loop the workflow to implementation.",
+    {
+      "text": "The harness MUST delete transient source JSON after successful rendering and validation. It MUST retain the source after a failure (`tests/unit/briefs.test.ts`).",
+      "audience": ["harness"]
+    },
+    {
+      "text": "Path drift, invalid brief data, or rendering defects are governance diagnostics for ship review. They MUST NOT loop the workflow to implementation (`tests/unit/briefs.test.ts`).",
+      "audience": ["harness"]
+    },
     "A brief MUST begin with an executive-summary section that states the bottom line first: what changed or matters, why it matters, and outcomes or required actions when applicable.",
     "Brief data MUST describe content and semantic intent; layout, typography, color, spacing, and responsive behavior MUST remain in the shared or project design system.",
     "Section headings MUST use concise titles and a registered semantic key. Renderers MUST resolve the heading emoji from that registry rather than accepting ad hoc emoji choices.",

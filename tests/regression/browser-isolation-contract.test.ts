@@ -5,6 +5,7 @@ import test from 'node:test'
 
 import { renderPolicyCursorRule } from '../../src/lib/cursor-content.js'
 import { loadPolicyCatalog, resolvePolicies } from '../../src/lib/policies.js'
+import { policyInstructionAppliesToCard } from '../../src/lib/policy-instructions.js'
 
 const REPO_ROOT = process.cwd()
 
@@ -98,7 +99,13 @@ test('the generated rule reproduces the policy text and references its procedure
   assert.match(content, /alwaysApply:\s*true/u)
   assert.ok(content.includes(policy.summary))
 
-  for (const instruction of policy.instructions) {
+  const expectedInstructions = policy.instructions
+    .filter((instruction) =>
+      policyInstructionAppliesToCard(instruction, 'agent'),
+    )
+    .map((instruction) => instruction.text)
+
+  for (const instruction of expectedInstructions) {
     assert.ok(
       content.includes(instruction),
       `generated rule MUST include: ${instruction}`,

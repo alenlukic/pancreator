@@ -13,8 +13,7 @@
         "ASK-001",
         "AUTO-001",
         "VALID-001",
-        "PRIMER-001",
-        "STE-001"
+        "PRIMER-001"
       ]
     },
     {
@@ -47,144 +46,6 @@
       "workflow": "*",
       "stage": "*",
       "policies": ["DELEGATE-001"]
-    },
-    {
-      "persona": "coder",
-      "workflow": "*",
-      "stage": "*",
-      "installation_scope": "self_development",
-      "policies": ["BIN-001"]
-    },
-    {
-      "persona": "metacritic",
-      "workflow": "*",
-      "stage": "*",
-      "installation_scope": "self_development",
-      "policies": ["BIN-001"]
-    },
-    {
-      "persona": "qa-tester",
-      "workflow": "*",
-      "stage": "*",
-      "installation_scope": "self_development",
-      "policies": ["BIN-001"]
-    },
-    {
-      "persona": "repo-technician",
-      "workflow": "*",
-      "stage": "*",
-      "installation_scope": "self_development",
-      "policies": ["BIN-001"]
-    },
-    {
-      "persona": "reviewer",
-      "workflow": "*",
-      "stage": "*",
-      "installation_scope": "self_development",
-      "policies": ["BIN-001"]
-    },
-    {
-      "persona": "spotfixer",
-      "workflow": "*",
-      "stage": "*",
-      "installation_scope": "self_development",
-      "policies": ["BIN-001"]
-    },
-    {
-      "persona": "coder",
-      "workflow": "*",
-      "stage": "*",
-      "policies": ["OUTPUT-001"]
-    },
-    {
-      "persona": "metacritic",
-      "workflow": "*",
-      "stage": "*",
-      "policies": ["OUTPUT-001"]
-    },
-    {
-      "persona": "qa-tester",
-      "workflow": "*",
-      "stage": "*",
-      "policies": ["OUTPUT-001"]
-    },
-    {
-      "persona": "repo-technician",
-      "workflow": "*",
-      "stage": "*",
-      "policies": ["OUTPUT-001"]
-    },
-    {
-      "persona": "reviewer",
-      "workflow": "*",
-      "stage": "*",
-      "policies": ["OUTPUT-001"]
-    },
-    {
-      "persona": "spotfixer",
-      "workflow": "*",
-      "stage": "*",
-      "policies": ["OUTPUT-001"]
-    },
-    {
-      "persona": "orchestrator",
-      "workflow": "*",
-      "stage": "*",
-      "policies": ["OUTPUT-001"]
-    },
-    {
-      "persona": "coder",
-      "workflow": "*",
-      "stage": "*",
-      "policies": ["RUNTIME-001"]
-    },
-    {
-      "persona": "metacritic",
-      "workflow": "*",
-      "stage": "*",
-      "policies": ["RUNTIME-001"]
-    },
-    {
-      "persona": "qa-tester",
-      "workflow": "*",
-      "stage": "*",
-      "policies": ["RUNTIME-001"]
-    },
-    {
-      "persona": "repo-technician",
-      "workflow": "*",
-      "stage": "*",
-      "policies": ["RUNTIME-001"]
-    },
-    {
-      "persona": "reviewer",
-      "workflow": "*",
-      "stage": "*",
-      "policies": ["RUNTIME-001"]
-    },
-    {
-      "persona": "spotfixer",
-      "workflow": "*",
-      "stage": "*",
-      "policies": ["RUNTIME-001"]
-    },
-    {
-      "persona": "harness-workflow-qa",
-      "workflow": "*",
-      "stage": "*",
-      "policies": ["RUNTIME-001"]
-    },
-    {
-      "persona": "meta-orchestrator",
-      "workflow": "*",
-      "stage": "*",
-      "policies": ["RUNTIME-001"]
-    },
-    {
-      "persona": "orchestrator",
-      "workflow": "*",
-      "stage": "*",
-      "policies": ["RUNTIME-001"]
     },
     {
       "persona": "coder",
@@ -312,6 +173,8 @@
         "AWAY-001",
         "INVOCATION-001",
         "EXECUTOR-001",
+        "OUTPUT-001",
+        "RUNTIME-001",
         "PAUSE-001",
         "WAIVER-001",
         "WORK-001"
@@ -321,7 +184,14 @@
       "persona": "coder",
       "workflow": "*",
       "stage": "*",
-      "policies": ["ENG-001", "CONTRACT-001"]
+      "policies": ["ENG-001"]
+    },
+    {
+      "persona": "coder",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["CONTRACT-001"]
     },
     {
       "persona": "coder",
@@ -334,7 +204,14 @@
       "persona": "metacritic",
       "workflow": "*",
       "stage": "*",
-      "policies": ["ENG-001", "CONTRACT-001"]
+      "policies": ["ENG-001"]
+    },
+    {
+      "persona": "metacritic",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["CONTRACT-001"]
     },
     {
       "persona": "metacritic",
@@ -354,7 +231,14 @@
       "persona": "reviewer",
       "workflow": "*",
       "stage": "*",
-      "policies": ["ENG-001", "CONTRACT-001"]
+      "policies": ["ENG-001"]
+    },
+    {
+      "persona": "reviewer",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["CONTRACT-001"]
     },
     {
       "persona": "reviewer",
@@ -404,13 +288,27 @@
       "persona": "planner",
       "workflow": "*",
       "stage": "*",
-      "policies": ["CONTRACT-001", "ENG-001"]
+      "policies": ["ENG-001"]
+    },
+    {
+      "persona": "planner",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["CONTRACT-001"]
     },
     {
       "persona": "verifier",
       "workflow": "*",
       "stage": "*",
-      "policies": ["ENG-001", "CONTRACT-001", "BROWSER-001"]
+      "policies": ["ENG-001", "BROWSER-001"]
+    },
+    {
+      "persona": "verifier",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["CONTRACT-001"]
     },
     {
       "persona": "verifier",
@@ -437,7 +335,14 @@
       "persona": "remediator",
       "workflow": "*",
       "stage": "*",
-      "policies": ["ENG-001", "CONTRACT-001"]
+      "policies": ["ENG-001"]
+    },
+    {
+      "persona": "remediator",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["CONTRACT-001"]
     },
     {
       "persona": "remediator",
@@ -464,7 +369,14 @@
       "persona": "remediator-severe",
       "workflow": "*",
       "stage": "*",
-      "policies": ["ENG-001", "CONTRACT-001"]
+      "policies": ["ENG-001"]
+    },
+    {
+      "persona": "remediator-severe",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["CONTRACT-001"]
     },
     {
       "persona": "remediator-severe",
@@ -521,7 +433,14 @@
       "persona": "planner",
       "workflow": "planning",
       "stage": "plan",
-      "policies": ["PLAN-002", "CONTRACT-001", "ENG-001", "COHORT-001"]
+      "policies": ["PLAN-002", "ENG-001", "COHORT-001"]
+    },
+    {
+      "persona": "planner",
+      "workflow": "planning",
+      "stage": "plan",
+      "installation_scope": "self_development",
+      "policies": ["CONTRACT-001"]
     },
     {
       "persona": "coder",
@@ -551,7 +470,7 @@
       "persona": "release-steward",
       "workflow": "delivery",
       "stage": "ship",
-      "policies": ["SHIP-001", "WAIVER-001", "WORK-001"]
+      "policies": ["SHIP-001", "STE-001", "WAIVER-001", "WORK-001"]
     },
     {
       "persona": "release-steward",
@@ -707,7 +626,7 @@
       "persona": "release-steward",
       "workflow": "standalone",
       "stage": "write-pr",
-      "policies": ["PR-001"]
+      "policies": ["PR-001", "STE-001"]
     },
     {
       "persona": "librarian",
@@ -718,14 +637,20 @@
     {
       "persona": "librarian",
       "workflow": "standalone",
+      "stage": "conform",
+      "policies": ["STE-001"]
+    },
+    {
+      "persona": "librarian",
+      "workflow": "standalone",
       "stage": "build-docs",
-      "policies": ["PRIMER-001", "REPO-001"]
+      "policies": ["LIBRARIAN-001", "REPO-001"]
     },
     {
       "persona": "harness-workflow-qa",
       "workflow": "standalone",
       "stage": "qa-workflow",
-      "policies": ["DELEGATE-001", "RUNTIME-001"]
+      "policies": ["DELEGATE-001"]
     },
     {
       "persona": "decomposer",
@@ -755,13 +680,33 @@
       "persona": "spotfixer",
       "workflow": "*",
       "stage": "*",
-      "policies": ["ENG-001", "WORK-001", "SPOT-001", "CONTRACT-001"]
+      "policies": ["ENG-001", "WORK-001", "SPOT-001"]
+    },
+    {
+      "persona": "spotfixer",
+      "workflow": "*",
+      "stage": "*",
+      "installation_scope": "self_development",
+      "policies": ["CONTRACT-001"]
+    },
+    {
+      "persona": "spotfixer",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["TEST-001"]
     },
     {
       "persona": "coder",
       "workflow": "standalone",
       "stage": "author",
-      "policies": ["CONTRACT-001", "ENG-001"]
+      "policies": ["ENG-001"]
+    },
+    {
+      "persona": "coder",
+      "workflow": "standalone",
+      "stage": "author",
+      "installation_scope": "self_development",
+      "policies": ["CONTRACT-001"]
     },
     {
       "persona": "coder",

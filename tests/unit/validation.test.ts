@@ -232,6 +232,19 @@ test('embedded repository validation excludes self-development authoring audits'
   mkdirSync(path.join(root, 'tests', 'unit'), { recursive: true })
   writeFileSync(path.join(root, 'tests', 'unit', 'placeholder.test.ts'), '')
 
+  writeJsonFile(
+    path.join(root, 'governance', 'policies', 'HARNESS-COVERAGE-001.json'),
+    {
+      id: 'HARNESS-COVERAGE-001',
+      title: 'Harness instruction coverage',
+      severity: 'hard',
+      summary: 'Agents MUST preserve embedded installation cleanliness.',
+      instructions: [
+        { text: 'The harness MUST do the thing.', audience: ['harness'] },
+      ],
+    },
+  )
+
   const result = validateRepository(root)
 
   assert.doesNotMatch(
@@ -240,6 +253,78 @@ test('embedded repository validation excludes self-development authoring audits'
   )
   assert.doesNotMatch(result.errors.join('\n'), /stale disposition evidence/u)
   assert.doesNotMatch(result.warnings.join('\n'), /unowned advisory directive/u)
+  assert.doesNotMatch(
+    result.errors.join('\n'),
+    /HARNESS-COVERAGE-001 harness instruction 1 MUST reference/u,
+  )
+})
+
+test('self-development repository validation enforces harness instruction coverage mappings', () => {
+  const root = createFixture()
+  prepareValidationFixture(root)
+
+  const policyPath = path.join(
+    root,
+    'governance',
+    'policies',
+    'HARNESS-COVERAGE-001.json',
+  )
+  const coverageErrors = (instruction: string): string[] => {
+    writeJsonFile(policyPath, {
+      id: 'HARNESS-COVERAGE-001',
+      title: 'Harness instruction coverage',
+      severity: 'hard',
+      summary: 'Agents MUST preserve deterministic coverage mappings.',
+      instructions: [{ text: instruction, audience: ['harness'] }],
+      requirements: [
+        {
+          id: 'stage-scaffold',
+          registry_id: 'STAGE-SCAFFOLD-001',
+          phase: 'before_operation',
+          executor: 'agent',
+          target: 'invocation.output.path',
+          enforcement: 'advisory',
+          failure_route: 'retry',
+          evidence_class: 'validation-result',
+        },
+      ],
+    })
+
+    return validateRepository(root).errors.filter((error) =>
+      error.includes('HARNESS-COVERAGE-001 harness instruction'),
+    )
+  }
+
+  assert.match(
+    coverageErrors('The harness MUST do the thing.').join('\n'),
+    /HARNESS-COVERAGE-001 harness instruction 1 MUST reference a same-policy requirement id or an existing tests\/ path/u,
+  )
+
+  mkdirSync(path.join(root, 'tests', 'unit'), { recursive: true })
+  assert.equal(
+    coverageErrors('The harness MUST cover tests/unit.').length,
+    1,
+    'a directory is not a test file',
+  )
+  assert.equal(
+    coverageErrors('The harness MUST cover tests/unit/does-not-exist.test.ts.')
+      .length,
+    1,
+    'a missing test path is not coverage',
+  )
+
+  writeFileSync(path.join(root, 'tests', 'unit', 'mapped.test.ts'), '')
+
+  assert.deepEqual(
+    coverageErrors('The harness MUST cover tests/unit/mapped.test.ts.'),
+    [],
+  )
+  assert.equal(
+    coverageErrors('The harness MUST run stage-scaffolding.').length,
+    1,
+    'a near-miss requirement token is not a mapping',
+  )
+  assert.deepEqual(coverageErrors('The harness MUST run stage-scaffold.'), [])
 })
 
 function fixtureInvocation(root: string, stageSlug: string): Invocation {
@@ -340,6 +425,32 @@ test('invocation validator passes for canonical rendered markdown', () => {
       (check) => check.id === `policy.${policy.id}.summary`,
     )?.passed,
     false,
+  )
+})
+
+test('invocation validation preserves legacy plain-string instruction checks', () => {
+  const root = createFixture()
+  const invocation = fixtureInvocation(root, 'implement')
+  const legacy = structuredClone(invocation)
+
+  for (const policy of legacy.policies) {
+    // Persisted invocations from older releases used this plain-string shape.
+    policy.instructions = policy.instructions.map(
+      (instruction) => instruction.text,
+    ) as unknown as typeof policy.instructions
+  }
+
+  const markdown = renderInvocationMarkdown(legacy)
+  const result = validateInvocationMarkdown(legacy, markdown)
+  const firstPolicy = legacy.policies[0]
+
+  assert.ok(firstPolicy)
+  assert.equal(result.passed, true)
+  assert.ok(
+    result.checks.some(
+      (check) =>
+        check.id === `policy.${firstPolicy.id}.instruction.1` && check.passed,
+    ),
   )
 })
 

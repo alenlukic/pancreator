@@ -190,6 +190,27 @@ test('the standards delta names removed and added instructions', () => {
   assert.deepEqual(delta.added_instructions, ['Agents MUST do C.'])
 })
 
+test('the standards delta preserves audience-only instruction changes', () => {
+  const instruction = 'Agents MUST keep the audience contract.'
+  const legacy = JSON.stringify({ instructions: [instruction] })
+  const explicitAgent = JSON.stringify({
+    instructions: [{ text: instruction, audience: ['agent'] }],
+  })
+  const supervisor = JSON.stringify({
+    instructions: [{ text: instruction, audience: ['supervisor'] }],
+  })
+
+  assert.equal(diffPolicyTexts('p', legacy, explicitAgent), null)
+
+  const delta = diffPolicyTexts('p', explicitAgent, supervisor)
+
+  assert.ok(delta)
+  assert.deepEqual(delta.removed_instructions, [instruction])
+  assert.deepEqual(delta.added_instructions, [
+    `${instruction} (audience: supervisor)`,
+  ])
+})
+
 test('an added or removed policy is reported as such, and no change is null', () => {
   const text = JSON.stringify({ id: 'Y-001', instructions: ['Agents MUST y.'] })
 
@@ -253,6 +274,7 @@ test('the tests of each machinery module are derived substrate', () => {
     'tests/*/governance-card*.test.ts',
     'tests/*/policies*.test.ts',
     'tests/*/policy-guidance*.test.ts',
+    'tests/*/policy-instructions*.test.ts',
   ])
 
   const tiers = conflictsByTier(

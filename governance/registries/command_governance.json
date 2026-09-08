@@ -14,6 +14,10 @@
     {
       "command": "pan-author",
       "card_mode": "author"
+    },
+    {
+      "command": "pan-conform",
+      "card_mode": "conform"
     }
   ],
   "supervisor_commands": ["pan-cohort", "pan-resume", "pan-start"],
@@ -31,6 +35,13 @@
         "--worktree <name>",
         "prepare <run-id> --worktree <name>",
         "submit <run-id> <output-json> --worktree <name>"
+      ]
+    },
+    {
+      "command": "pan-conform",
+      "worktree_forwarding": [
+        "conform scan [--since <ref> | --all] [--worktree <name>] --json",
+        "conform checkpoint [--worktree <name>] --json"
       ]
     },
     {

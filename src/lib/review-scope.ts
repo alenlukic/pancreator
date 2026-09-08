@@ -39,6 +39,7 @@ export const REVIEW_MACHINERY_PATTERNS = [
   'src/lib/governance-card.ts',
   'src/lib/policies.ts',
   'src/lib/policy-guidance.ts',
+  'src/lib/policy-instructions.ts',
 ] as const
 
 export const MACHINERY_TEST_PATTERNS: readonly string[] =
@@ -343,7 +344,7 @@ export interface StandardsDelta {
 function policyFields(text: string | null): {
   id: string | null
   summary: string | null
-  instructions: string[]
+  instructions: Array<{ key: string; display: string }>
   parsed: boolean
 } {
   if (text === null) {
@@ -362,15 +363,80 @@ function policyFields(text: string | null): {
     return { id: null, summary: null, instructions: [], parsed: false }
   }
 
+  const policyAudiences = new Set([
+    'agent',
+    'supervisor',
+    'harness',
+    'operator',
+  ])
+  const instructions: Array<{ key: string; display: string }> = []
+
+  if (Array.isArray(value.instructions)) {
+    for (const item of value.instructions) {
+      if (typeof item === 'string') {
+        const text = item.trim()
+
+        if (text.length === 0) {
+          return { id: null, summary: null, instructions: [], parsed: false }
+        }
+
+        const audiences = ['agent']
+        instructions.push({
+          key: `${text}::audience=${audiences.join(',')}`,
+          display: text,
+        })
+        continue
+      }
+
+      if (!isRecord(item)) {
+        return { id: null, summary: null, instructions: [], parsed: false }
+      }
+
+      if (typeof item.text !== 'string' || item.text.trim().length === 0) {
+        return { id: null, summary: null, instructions: [], parsed: false }
+      }
+
+      if (!Array.isArray(item.audience) || item.audience.length === 0) {
+        return { id: null, summary: null, instructions: [], parsed: false }
+      }
+
+      const audiences = item.audience
+        .filter((audience): audience is string => typeof audience === 'string')
+        .map((audience) => audience.trim())
+
+      if (audiences.length !== item.audience.length) {
+        return { id: null, summary: null, instructions: [], parsed: false }
+      }
+
+      const unique = new Set(audiences)
+
+      if (unique.size !== audiences.length) {
+        return { id: null, summary: null, instructions: [], parsed: false }
+      }
+
+      if ([...unique].some((audience) => !policyAudiences.has(audience))) {
+        return { id: null, summary: null, instructions: [], parsed: false }
+      }
+
+      const sortedAudiences = [...unique].sort()
+      const text = item.text.trim()
+      const display =
+        sortedAudiences.length === 1 && sortedAudiences[0] === 'agent'
+          ? text
+          : `${text} (audience: ${sortedAudiences.join(', ')})`
+
+      instructions.push({
+        key: `${text}::audience=${sortedAudiences.join(',')}`,
+        display,
+      })
+    }
+  }
+
   return {
     parsed: true,
     id: typeof value.id === 'string' ? value.id : null,
     summary: typeof value.summary === 'string' ? value.summary : null,
-    instructions: Array.isArray(value.instructions)
-      ? value.instructions.filter(
-          (item): item is string => typeof item === 'string',
-        )
-      : [],
+    instructions,
   }
 }
 
@@ -386,8 +452,12 @@ export function diffPolicyTexts(
 
   const base = policyFields(baseText)
   const head = policyFields(headText)
-  const baseSet = new Set(base.instructions)
-  const headSet = new Set(head.instructions)
+  const baseSet = new Set(
+    base.instructions.map((instruction) => instruction.key),
+  )
+  const headSet = new Set(
+    head.instructions.map((instruction) => instruction.key),
+  )
   const malformed =
     !base.parsed && !head.parsed
       ? 'both'
@@ -414,8 +484,12 @@ export function diffPolicyTexts(
   }
 
   const summaryChanged = base.summary !== head.summary
-  const removed = base.instructions.filter((item) => !headSet.has(item))
-  const added = head.instructions.filter((item) => !baseSet.has(item))
+  const removed = base.instructions
+    .filter((item) => !headSet.has(item.key))
+    .map((item) => item.display)
+  const added = head.instructions
+    .filter((item) => !baseSet.has(item.key))
+    .map((item) => item.display)
 
   // A reformat or a metadata edit is not a standards delta.
   if (

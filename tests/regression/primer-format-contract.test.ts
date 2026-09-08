@@ -17,29 +17,31 @@ const REPO_ROOT = process.cwd()
  * or the deterministic contract is unfollowable and the rebuild fails on
  * formatting the persona never named.
  */
-test('PRIMER-001 states every bold label the primer validator enforces', () => {
-  const policy = loadPolicyCatalog(REPO_ROOT).get('PRIMER-001')
+test('LIBRARIAN-001 states every bold label the primer validator enforces', () => {
+  const policy = loadPolicyCatalog(REPO_ROOT).get('LIBRARIAN-001')
 
   assert.ok(policy)
 
-  const text = policy.instructions.join('\n')
+  const text = policy.instructions
+    .map((instruction) => instruction.text)
+    .join('\n')
 
   for (const label of [...PRIMER_FRONTEND_LABELS, ...PRIMER_FLOW_STEP_LABELS]) {
     assert.ok(
       text.includes(`\`**${label}:**\``),
-      `PRIMER-001 MUST state the required label **${label}:**`,
+      `LIBRARIAN-001 MUST state the required label **${label}:**`,
     )
   }
 
   assert.match(
     text,
     /same line as its label/u,
-    'PRIMER-001 MUST state that a label carries its value on the same line',
+    'LIBRARIAN-001 MUST state that a label carries its value on the same line',
   )
   assert.match(
     text,
     /#### Step <n>/u,
-    'PRIMER-001 MUST state the ordered flow-step heading shape',
+    'LIBRARIAN-001 MUST state the ordered flow-step heading shape',
   )
 
   const persona = readFileSync(
@@ -47,7 +49,7 @@ test('PRIMER-001 states every bold label the primer validator enforces', () => {
     'utf8',
   )
 
-  assert.match(persona, /PRIMER-001/u)
+  assert.match(persona, /LIBRARIAN-001/u)
 
   for (const label of [...PRIMER_FRONTEND_LABELS, ...PRIMER_FLOW_STEP_LABELS]) {
     assert.equal(persona.includes(`**${label}:**`), false)

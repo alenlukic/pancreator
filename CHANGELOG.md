@@ -1,5 +1,24 @@
 # Changelog
 
+## [5.17.0] - 2026-09-08
+
+### Changed
+
+- Tag mixed-policy instructions by audience so a delivery card omits operator, librarian, and standalone text ([policy-instructions](src/lib/policy-instructions.ts), [24734b5d](https://github.com/alenlukic/pancreator/commit/24734b5d)).
+- Split primer-only librarian rules onto `LIBRARIAN-001`. Restrict generated `LANG-001` rows to target installs ([8f3de05f](https://github.com/alenlukic/pancreator/commit/8f3de05f)).
+- Keep unique supervisor rules in the orchestrator brief. Stop `/pan-start` and `/pan-resume` from a second read of `orchestrator.md` ([orchestrator](library/personas/orchestrator.md), [8f3de05f](https://github.com/alenlukic/pancreator/commit/8f3de05f)).
+- Move AGENTS.md author text to `docs/workflow-authoring.md` ([workflow-authoring](docs/workflow-authoring.md), [8f3de05f](https://github.com/alenlukic/pancreator/commit/8f3de05f)).
+- Record that the operator waived the second verify, review, and QA after the remediator. The remediator full suite also did not run ([8f3de05f](https://github.com/alenlukic/pancreator/commit/8f3de05f)).
+
+### Added
+
+- Add `pan conform` scan and checkpoint with `/pan-conform` ([conform](src/lib/conform.ts), [c024aa31](https://github.com/alenlukic/pancreator/commit/c024aa31)).
+
+### Fixed
+
+- Restore unique orchestrator rules for cohort status, `models --probe`, `--no-autostart`, and the decision packet ([orchestrator](library/personas/orchestrator.md), [8f3de05f](https://github.com/alenlukic/pancreator/commit/8f3de05f)).
+- Add `OUTPUT-001` to the orchestrator `EXECUTOR-001` row. Add an unscoped `TEST-001` row for spotfixer so a target install loads it with `LANG-001` ([8f3de05f](https://github.com/alenlukic/pancreator/commit/8f3de05f)).
+
 ## [5.16.0] - 2026-09-08
 
 ### Changed

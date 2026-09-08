@@ -5,6 +5,11 @@ import type {
   PolicyGuidance,
   PolicyGuidanceReference,
 } from './types.js'
+import type { PolicyCardAudience } from './policy-instructions.js'
+import {
+  policyInstructionAppliesToCard,
+  policyInstructionText,
+} from './policy-instructions.js'
 
 /** Heading depth a card or rule uses for one guidance block. */
 export type GuidanceHeadingLevel = 2 | 3
@@ -180,6 +185,7 @@ function renderContextReferenceFailure(
 export function renderPolicyBlocks(
   policies: Policy[],
   guidanceLevel: GuidanceHeadingLevel,
+  audience: PolicyCardAudience = 'agent',
   supersededIds: ReadonlySet<string> = new Set(),
   instrumentIds: ReadonlySet<string> = new Set(),
 ): string[] {
@@ -190,7 +196,13 @@ export function renderPolicyBlocks(
   return policies.flatMap((policy) => {
     const seen = new Set<string>()
     const instructions = policy.instructions.filter((instruction) => {
-      const normalized = normalizedPolicyStatement(instruction)
+      if (!policyInstructionAppliesToCard(instruction, audience)) {
+        return false
+      }
+
+      const normalized = normalizedPolicyStatement(
+        policyInstructionText(instruction),
+      )
 
       if (seen.has(normalized)) {
         return false
@@ -222,7 +234,9 @@ export function renderPolicyBlocks(
             ]
           : []),
       ...(seen.has(summary) ? [] : [policy.summary, '']),
-      ...instructions.map((instruction) => `- ${instruction}`),
+      ...instructions.map(
+        (instruction) => `- ${policyInstructionText(instruction)}`,
+      ),
     ]
 
     for (const guidance of policy.guidance ?? []) {

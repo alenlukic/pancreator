@@ -4,7 +4,6 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { prepareInvocation, setRunStage } from '../../src/lib/engine.js'
-import { loadPolicyCatalog } from '../../src/lib/policies.js'
 import {
   buildInvocationContractManifest,
   renderInvocationDeliveryPrompt,
@@ -72,9 +71,6 @@ function cardText(root: string, markdownPath: string): string {
  */
 test('worker invocation cards point at the supervisor delivery procedure', () => {
   const root = createFixture()
-  const invocationPolicy = loadPolicyCatalog(root).get('INVOCATION-001')
-
-  assert.ok(invocationPolicy)
 
   const runId = createRun(root, {
     workflowSlug: 'delivery',
@@ -123,13 +119,16 @@ test('worker invocation cards point at the supervisor delivery procedure', () =>
 
   assert.ok(procedure.includes(DELEGATION_HEADING))
 
-  // The whole policy, not a pointer to it.
-  for (const instruction of invocationPolicy.instructions) {
-    assert.ok(
-      procedure.includes(instruction),
-      `procedure MUST inline INVOCATION-001 instruction: ${instruction}`,
-    )
-  }
+  const sections = delegation.supervisor_card?.policy_sections ?? []
+  const invocationDigest =
+    sections.find((section) => section.policy_id === 'INVOCATION-001')
+      ?.sha256 ?? null
+
+  assert.ok(invocationDigest, 'INVOCATION-001 section digest is present')
+  assert.ok(
+    procedure.includes(`\`INVOCATION-001\`: \`sha256:${invocationDigest}\``),
+    'procedure MUST point at the INVOCATION-001 digest',
+  )
 
   // Resolved for this invocation, so no path has to be derived.
   for (const resolved of [
@@ -224,9 +223,15 @@ test('the launch step carries the platform text it has to survive', () => {
 
   // The policy that governs the launch and its watch travels with the steps
   // that perform them, not only on the card.
+  const sections = delegation.supervisor_card?.policy_sections ?? []
+  const delegateDigest =
+    sections.find((section) => section.policy_id === 'DELEGATE-001')?.sha256 ??
+    null
+
+  assert.ok(delegateDigest, 'DELEGATE-001 section digest is present')
   assert.ok(
-    procedure.includes('**DELEGATE-001'),
-    'the procedure document MUST carry DELEGATE-001 inline',
+    procedure.includes(`\`DELEGATE-001\`: \`sha256:${delegateDigest}\``),
+    'the procedure document MUST point at DELEGATE-001',
   )
 
   // The platform's own words, at the step where they arrive.

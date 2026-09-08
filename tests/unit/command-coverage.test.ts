@@ -86,6 +86,46 @@ test('pan-author is explicitly registered with its author card', () => {
   )
 })
 
+test('pan-conform is explicitly registered with its conform card', () => {
+  const root = createFixture()
+  const command = readFileSync(
+    path.join(root, 'library/cursor/commands/pan-conform.md'),
+    'utf8',
+  )
+  const validationStep = command
+    .split('\n')
+    .find((line) => line.startsWith('8. '))
+
+  assert.match(validationStep ?? '', /requirements run/u)
+  assert.doesNotMatch(validationStep ?? '', /--worktree/u)
+
+  const registryPath = path.join(root, COMMAND_GOVERNANCE_REGISTRY_PATH)
+  const registry = JSON.parse(readFileSync(registryPath, 'utf8')) as {
+    card_commands: Array<{ command: string; card_mode: string }>
+  }
+  const conform = registry.card_commands.find(
+    (entry) => entry.command === 'pan-conform',
+  )
+
+  assert.deepEqual(conform, {
+    command: 'pan-conform',
+    card_mode: 'conform',
+  })
+  assert.deepEqual(run(root).errors, [])
+
+  assert.ok(conform)
+  conform.card_mode = 'review'
+  writeJson(registryPath, registry)
+
+  assert.ok(
+    run(root).errors.some((error) =>
+      error.includes(
+        'pan-conform.md MUST run `pan governance card --mode review`',
+      ),
+    ),
+  )
+})
+
 test('a new command without a card fails validation with the fix named', () => {
   const root = createFixture()
 

@@ -288,4 +288,39 @@ A new mode therefore needs three edits together: the `STANDALONE_MODES` entry in
 `governance/registries/policy_lookup_table.json`, and the card step in the
 command file. Run `./bin/pan models --sync` afterwards.
 
+## Policy instruction audiences
+
+A policy instruction MAY be a string or an object with `text` and `audience`.
+
+A plain string means audience `agent`. A structured instruction MUST list one
+or more of `agent`, `supervisor`, `harness`, and `operator`.
+
+Worker and standalone cards render `agent` instructions. Supervisor cards
+render `agent` and `supervisor` instructions. `harness` instructions never
+render on a card. `operator` instructions render only for an operator audience.
+
+Every `harness` instruction MUST name a same-policy requirement id or an
+existing `tests/` path. Repository validation enforces that mapping in
+self-development.
+
+## Governance and projections
+
+Normative behavior belongs in policy JSON. Role judgment belongs in personas.
+Task procedure belongs in stage prompts or referenced skills.
+
+Policy applicability belongs only in
+`governance/registries/policy_lookup_table.json`. Requirements derive from the
+resolved policy set.
+
+Canonical Cursor sources live under `library/cursor/`. The projection manifest
+declares every Pancreator-owned target under `.cursor/`.
+
+Treat the local `.cursor/` tree as ignored and disposable. Run
+`./bin/pan models --sync` after a canonical projection or mapped-model change.
+
+TypeScript and TSX changes MUST apply the normative sections referenced by
+`TS-001`. Do not inspect formatter-owned appendices during ordinary work.
+
+Use `/pan-conform` for operator-timed Simplified Technical English repair.
+
 Run `./bin/pan validate` after editing any workflow file.
