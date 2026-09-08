@@ -477,7 +477,7 @@ test('moving a persona cursor→claude-code→cursor leaves .cursor clean', () =
   const original = readFileSync(configPath, 'utf8')
   const config = JSON.parse(original) as {
     defaults: Record<string, string>
-    configs?: Record<string, { personas?: Record<string, string> }>
+    configs?: Record<string, Record<string, unknown>>
   }
 
   // A named entry under `configs` overrides `defaults`, so the persona is
@@ -485,7 +485,11 @@ test('moving a persona cursor→claude-code→cursor leaves .cursor clean', () =
   config.defaults.planner = CLAUDE_CODE_SPEC
 
   for (const named of Object.values(config.configs ?? {})) {
-    delete named.personas?.planner
+    delete named.planner
+
+    if (typeof named.personas === 'object' && named.personas !== null) {
+      delete (named.personas as Record<string, unknown>).planner
+    }
   }
 
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)

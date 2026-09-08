@@ -150,10 +150,17 @@ test('repository validation requires a policy to deliver each engineering handbo
 
   const config = readJson<{
     defaults: Record<string, string>
-    configs: Record<string, { personas: Record<string, string> }>
+    configs: Record<string, Record<string, unknown>>
   }>(configPath)
 
-  delete config.configs.auto?.personas.planner
+  delete config.configs.auto?.planner
+
+  if (
+    typeof config.configs.auto?.personas === 'object' &&
+    config.configs.auto.personas !== null
+  ) {
+    delete (config.configs.auto.personas as Record<string, unknown>).planner
+  }
   delete config.defaults.planner
   writeJsonFile(configPath, config)
 

@@ -568,7 +568,10 @@ Pause before operator-authored tracked changes. Resume records the pause-only de
 At run creation, the harness resolves `config.json` `active_config`, verifies
 that projected Cursor agent models are synchronized, and writes
 `pipeline-config.snapshot.json` into the run directory. The snapshot records
-each persona's executor alongside its mapping string. Each invocation resolves
+each persona's executor alongside its expanded mapping string. When a config
+mapping references a tier alias (for example `anthropic:balanced`), the
+snapshot stores the explicit expanded model spec, so later alias edits do not
+change a run in flight. Each invocation resolves
 its persona from that snapshot and records `stage.model`,
 `stage.model_config`, and — for external personas — `stage.persona_executor`;
 `stage_history` records the executor per attempt. Preparing a snapshotted run

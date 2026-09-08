@@ -5,6 +5,37 @@
   "description": "Workspace identity, state root, tracking patterns, and named persona-to-model mappings for a Pancreator workspace.",
   "type": "object",
   "required": ["schema_version"],
+  "$defs": {
+    "modelSpec": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^((cursor|claude-code):)?[^:]+$"
+    },
+    "modelAlias": {
+      "type": "string",
+      "pattern": "^(anthropic|oai|open|cursor):(balanced|advanced|ultra)$"
+    },
+    "modelSpecOrAlias": {
+      "anyOf": [
+        { "$ref": "#/$defs/modelSpec" },
+        { "$ref": "#/$defs/modelAlias" }
+      ]
+    },
+    "inheritableMapping": {
+      "anyOf": [{ "const": "" }, { "$ref": "#/$defs/modelSpecOrAlias" }]
+    },
+    "aliasValue": {
+      "allOf": [
+        { "$ref": "#/$defs/modelSpec" },
+        { "not": { "pattern": "^claude-code:" } },
+        {
+          "not": {
+            "pattern": "^(anthropic|oai|open|cursor):(balanced|advanced|ultra)$"
+          }
+        }
+      ]
+    }
+  },
   "properties": {
     "schema_version": {
       "const": 1
@@ -45,14 +76,50 @@
       "type": "string",
       "minLength": 1
     },
+    "anthropic": {
+      "type": "object",
+      "description": "Model alias definitions for the Anthropic family. Keys are optional.",
+      "additionalProperties": false,
+      "properties": {
+        "balanced": { "$ref": "#/$defs/aliasValue" },
+        "advanced": { "$ref": "#/$defs/aliasValue" },
+        "ultra": { "$ref": "#/$defs/aliasValue" }
+      }
+    },
+    "oai": {
+      "type": "object",
+      "description": "Model alias definitions for the OpenAI family. Keys are optional.",
+      "additionalProperties": false,
+      "properties": {
+        "balanced": { "$ref": "#/$defs/aliasValue" },
+        "advanced": { "$ref": "#/$defs/aliasValue" },
+        "ultra": { "$ref": "#/$defs/aliasValue" }
+      }
+    },
+    "open": {
+      "type": "object",
+      "description": "Model alias definitions for open-source model providers. Keys are optional.",
+      "additionalProperties": false,
+      "properties": {
+        "balanced": { "$ref": "#/$defs/aliasValue" },
+        "advanced": { "$ref": "#/$defs/aliasValue" },
+        "ultra": { "$ref": "#/$defs/aliasValue" }
+      }
+    },
+    "cursor": {
+      "type": "object",
+      "description": "Model alias definitions for Cursor-managed providers. Keys are optional.",
+      "additionalProperties": false,
+      "properties": {
+        "balanced": { "$ref": "#/$defs/aliasValue" },
+        "advanced": { "$ref": "#/$defs/aliasValue" },
+        "ultra": { "$ref": "#/$defs/aliasValue" }
+      }
+    },
     "defaults": {
       "type": "object",
-      "description": "Persona-to-model mappings every named config inherits. A mapping MAY carry an executor prefix from the closed set (cursor, claude-code); no prefix means cursor.",
-      "additionalProperties": {
-        "type": "string",
-        "minLength": 1,
-        "pattern": "^((cursor|claude-code):)?[^:]+$"
-      }
+      "description": "Persona-to-model mappings every named config inherits. A mapping MAY carry an executor prefix from the closed set (cursor, claude-code); no prefix means cursor. A mapping MAY also reference a tier alias (for example anthropic:balanced).",
+      "additionalProperties": { "$ref": "#/$defs/modelSpecOrAlias" }
     },
     "$operator": {
       "type": "object",
@@ -71,23 +138,17 @@
       "minProperties": 1,
       "additionalProperties": {
         "type": "object",
-        "required": ["personas"],
-        "additionalProperties": false,
         "properties": {
           "summary": {
             "type": "string"
           },
           "personas": {
             "type": "object",
-            "minProperties": 1,
-            "description": "Persona-to-model mappings. A mapping MAY carry an executor prefix from the closed set (cursor, claude-code); no prefix means cursor.",
-            "additionalProperties": {
-              "type": "string",
-              "minLength": 1,
-              "pattern": "^((cursor|claude-code):)?[^:]+$"
-            }
+            "description": "Legacy compatibility input: nested persona-to-model mappings. Installations and overrides MAY still supply this shape. The canonical shape flattens these mappings directly under the named config object.",
+            "additionalProperties": { "$ref": "#/$defs/inheritableMapping" }
           }
-        }
+        },
+        "additionalProperties": { "$ref": "#/$defs/inheritableMapping" }
       }
     },
     "operator_involvement": {

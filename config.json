@@ -16,6 +16,23 @@
     ]
   },
   "active_config": "balanced",
+  "anthropic": {
+    "balanced": "claude-sonnet-5",
+    "advanced": "claude-opus-5[thinking=true,context=300k,effort=high,fast=false]",
+    "ultra": "claude-fable-5-1[thinking=true,context=300k,effort=high]"
+  },
+  "oai": {
+    "balanced": "gpt-5.6-terra[context=272k,reasoning=high,fast=false]",
+    "advanced": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]"
+  },
+  "open": {
+    "balanced": "glm-5.2",
+    "advanced": "kimi-k3[reasoning=max]"
+  },
+  "cursor": {
+    "balanced": "composer-2.5",
+    "advanced": "grok-4.6[effort=high,fast=false]"
+  },
   "defaults": {
     "orchestrator": "",
     "meta-orchestrator": "",
@@ -48,51 +65,47 @@
   "configs": {
     "simple": {
       "summary": "Simple and fast configuration for quick tasks.",
-      "personas": {
-        "planner": "",
-        "decomposer": "",
-        "reviewer": "",
-        "verifier": "",
-        "qa-tester": "",
-        "shepherd-reviewer": ""
-      }
+      "planner": "",
+      "decomposer": "",
+      "reviewer": "",
+      "verifier": "",
+      "qa-tester": "",
+      "shepherd-reviewer": ""
     },
     "balanced": {
       "summary": "Balance of focused coding, strong review, and frontier planning.",
-      "personas": {}
+      "coder": "",
+      "remediator": "",
+      "reviewer": "",
+      "verifier": "",
+      "qa-tester": ""
     },
     "advanced": {
       "summary": "Higher-reasoning coding and QA for complex or high-risk work.",
-      "personas": {
-        "coder": "",
-        "remediator": "",
-        "reviewer": "",
-        "verifier": "",
-        "qa-tester": ""
-      }
+      "coder": "",
+      "remediator": "",
+      "reviewer": "",
+      "verifier": "",
+      "qa-tester": ""
     },
     "extreme": {
       "summary": "Extreme configuration for the most demanding tasks.",
-      "personas": {
-        "planner": "",
-        "coder": "",
-        "remediator": "",
-        "remediator-severe": "",
-        "reviewer": "",
-        "verifier": "",
-        "shepherd-reviewer": "",
-        "qa-tester": ""
-      }
+      "planner": "",
+      "coder": "",
+      "remediator": "",
+      "remediator-severe": "",
+      "reviewer": "",
+      "verifier": "",
+      "shepherd-reviewer": "",
+      "qa-tester": ""
     },
     "auto": {
       "summary": "Cursor-managed routing except for the bounded coding workhorse.",
-      "personas": {
-        "planner": "",
-        "decomposer": "",
-        "reviewer": "",
-        "verifier": "",
-        "qa-tester": ""
-      }
+      "planner": "",
+      "decomposer": "",
+      "reviewer": "",
+      "verifier": "",
+      "qa-tester": ""
     }
   },
   "operator_involvement": {

@@ -439,6 +439,8 @@ export function diffPolicyTexts(
 }
 
 const REVIEW_MAPPING_KEYS = ['reviewer', 'shepherd-reviewer'] as const
+const REVIEW_ALIAS_FAMILIES = ['anthropic', 'oai', 'open', 'cursor'] as const
+const REVIEW_ALIAS_TIERS = ['balanced', 'advanced', 'ultra'] as const
 
 function reviewMappings(text: string | null): string {
   if (text === null) {
@@ -458,6 +460,13 @@ function reviewMappings(text: string | null): string {
   }
 
   const picked: Record<string, unknown> = {}
+  for (const family of REVIEW_ALIAS_FAMILIES) {
+    const map = isRecord(value[family]) ? value[family] : {}
+
+    for (const tier of REVIEW_ALIAS_TIERS) {
+      picked[`${family}.${tier}`] = map[tier]
+    }
+  }
   const defaults = isRecord(value.defaults) ? value.defaults : {}
 
   for (const key of REVIEW_MAPPING_KEYS) {
@@ -469,11 +478,13 @@ function reviewMappings(text: string | null): string {
     for (const [name, config] of Object.entries(value.configs).sort(
       ([left], [right]) => left.localeCompare(right),
     )) {
-      const personas =
-        isRecord(config) && isRecord(config.personas) ? config.personas : {}
+      const record = isRecord(config) ? config : {}
+      const legacyPersonas = isRecord(record.personas) ? record.personas : {}
 
       for (const key of REVIEW_MAPPING_KEYS) {
-        picked[`configs.${name}.personas.${key}`] = personas[key]
+        const legacy = legacyPersonas[key]
+        picked[`configs.${name}.${key}`] =
+          legacy !== undefined ? legacy : record[key]
       }
     }
   }

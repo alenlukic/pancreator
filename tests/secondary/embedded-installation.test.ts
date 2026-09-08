@@ -12,6 +12,10 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
+  parsePipelineConfig,
+  resolveConfigPersonas,
+} from '../../src/lib/pipeline-config.js'
+import {
   RELEASE_FIXTURE_VERSION,
   type InstallMarker,
   git,
@@ -53,7 +57,7 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
     installation_mode: string
     active_config: string
     defaults: Record<string, string>
-    configs: Record<string, { personas: Record<string, string> }>
+    configs: Record<string, Record<string, unknown>>
   }>(path.join(project, '.pancreator', 'config.json'))
 
   assert.equal(config.schema_version, 1)
@@ -64,19 +68,32 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
 
   // Named configurations never duplicate a default mapping.
   for (const namedConfig of Object.values(config.configs)) {
+    assert.equal(
+      typeof (namedConfig as Record<string, unknown>).personas,
+      'undefined',
+      'embedded config.json MUST use the flat mapping shape',
+    )
+
     for (const [persona, defaultModel] of Object.entries(config.defaults)) {
-      assert.notEqual(namedConfig.personas[persona], defaultModel)
+      const value = (namedConfig as Record<string, unknown>)[persona]
+
+      if (value !== undefined) {
+        assert.notEqual(value, defaultModel)
+      }
     }
   }
 
-  const harnessTechnicianModel = config.defaults['harness-technician']
+  const parsedConfig = parsePipelineConfig(config, 'installed config.json')
+  const projectedHarnessTechnicianModel = resolveConfigPersonas(
+    parsedConfig,
+    parsedConfig.active_config,
+  )['harness-technician']
 
-  assert.equal(typeof harnessTechnicianModel, 'string')
   assert.ok(
     readFileSync(
       path.join(project, '.cursor', 'agents', 'pan-harness-technician.md'),
       'utf8',
-    ).includes(`model: ${harnessTechnicianModel}`),
+    ).includes(`model: ${projectedHarnessTechnicianModel}`),
   )
 
   // A relative symlink keeps the installed tree portable.

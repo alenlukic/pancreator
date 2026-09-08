@@ -53,7 +53,7 @@ function editPersonaMappings(
   const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
     defaults: Record<string, string>
-    configs?: Record<string, { personas?: Record<string, string> }>
+    configs?: Record<string, Record<string, unknown>>
   }
   const before = { ...config.defaults }
 
@@ -65,7 +65,11 @@ function editPersonaMappings(
 
   for (const named of Object.values(config.configs ?? {})) {
     for (const persona of touched) {
-      delete named.personas?.[persona]
+      delete named[persona]
+
+      if (typeof named.personas === 'object' && named.personas !== null) {
+        delete (named.personas as Record<string, unknown>)[persona]
+      }
     }
   }
 

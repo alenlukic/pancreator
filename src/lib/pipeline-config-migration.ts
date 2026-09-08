@@ -4,7 +4,7 @@ import { mergeConfigValues } from './project-config.js'
 
 /** One persona mapping the migration carried forward into the overrides. */
 export interface PreservedPersonaMapping {
-  /** Overrides location, `defaults` or `configs.<name>.personas`. */
+  /** Overrides location, `defaults` or `configs.<name>`. */
   location: string
   persona: string
   model: string
@@ -20,7 +20,7 @@ export interface PipelineOverridesMigration {
 }
 
 interface PersonaLocation {
-  /** Dotted location, `defaults` or `configs.<name>.personas`. */
+  /** Dotted location, `defaults` or `configs.<name>`. */
   location: string
   /** Path segments from the file root to the persona map. */
   segments: string[]
@@ -34,12 +34,32 @@ function personaLocations(file: Record<string, unknown>): PersonaLocation[] {
 
   for (const name of Object.keys(configs).sort()) {
     locations.push({
-      location: `configs.${name}.personas`,
-      segments: ['configs', name, 'personas'],
+      location: `configs.${name}`,
+      segments: ['configs', name],
     })
   }
 
   return locations
+}
+
+function personaMapFromNamedConfig(value: unknown): Record<string, unknown> {
+  if (!isRecord(value)) {
+    return {}
+  }
+
+  const direct: Record<string, unknown> = {}
+
+  for (const [key, entry] of Object.entries(value)) {
+    if (key === 'summary' || key === 'personas') {
+      continue
+    }
+
+    direct[key] = entry
+  }
+
+  const legacy = isRecord(value.personas) ? value.personas : {}
+
+  return { ...direct, ...legacy }
 }
 
 function personaMapAt(
@@ -56,7 +76,11 @@ function personaMapAt(
     current = current[segment]
   }
 
-  return isRecord(current) ? current : {}
+  if (segments.length === 1 && segments[0] === 'defaults') {
+    return isRecord(current) ? current : {}
+  }
+
+  return personaMapFromNamedConfig(current)
 }
 
 function ensurePersonaMapAt(
@@ -74,6 +98,35 @@ function ensurePersonaMapAt(
   }
 
   return current
+}
+
+function normalizeLegacyOverrides(overrides: Record<string, unknown>): void {
+  const configs = overrides.configs
+
+  if (!isRecord(configs)) {
+    return
+  }
+
+  for (const [name, config] of Object.entries(configs)) {
+    if (!isRecord(config)) {
+      continue
+    }
+
+    const legacy = config.personas
+
+    if (!isRecord(legacy)) {
+      continue
+    }
+
+    for (const [persona, model] of Object.entries(legacy)) {
+      config[persona] = model
+    }
+
+    delete config.personas
+    configs[name] = config
+  }
+
+  overrides.configs = configs
 }
 
 function isEmptyMapping(value: unknown): boolean {
@@ -136,6 +189,7 @@ export function migratePipelineOverrides(options: {
   const overrides = structuredClone(
     isRecord(options.overrides) ? options.overrides : {},
   )
+  normalizeLegacyOverrides(overrides)
   const previousMerged = mergeConfigValues(options.previous, overrides)
   const preserved: PreservedPersonaMapping[] = []
   const missing: string[] = []
@@ -159,7 +213,15 @@ export function migratePipelineOverrides(options: {
       const candidate = previousMap[persona]
 
       if (isEmptyMapping(candidate)) {
-        if (!inheritsDefault(options.next, location, persona)) {
+        const nextMerged = mergeConfigValues(options.next, overrides)
+
+        invariant(
+          isRecord(nextMerged),
+          'The new effective configuration MUST be an object.',
+          { code: 'INVALID_PIPELINE_CONFIG' },
+        )
+
+        if (!inheritsDefault(nextMerged, location, persona)) {
           missing.push(`${location}.${persona}`)
         }
         continue
