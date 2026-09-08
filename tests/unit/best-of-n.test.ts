@@ -123,3 +123,19 @@ test('configs parsing rejects a tier alias in a candidate persona map', () => {
     )
   }
 })
+
+test('configs parsing accepts a cursor executor specification', () => {
+  // `cursor:composer-2.5` routes to the `cursor` executor rather than naming a
+  // tier, so the alias rejection must not widen to every `cursor:` prefix.
+  assert.doesNotThrow(() =>
+    parseBestOfNConfigs(
+      configs({
+        candidates: [
+          { name: 'alpha', personas: { coder: 'cursor:composer-2.5' } },
+          { name: 'beta', personas: { coder: 'model-b' } },
+        ],
+      }),
+      'configs.json',
+    ),
+  )
+})

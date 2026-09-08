@@ -167,7 +167,7 @@ function parsePersonaSet(value: unknown, source: string): BestOfNPersonaSet {
 
     invariant(
       !TIER_ALIAS_PATTERN.test(model),
-      `${source}.personas.${persona} names tier alias '${model}'. best-of-n.json supports no tier alias; name an explicit model spec.`,
+      `${source}.personas.${persona} names tier alias '${model}'. A best-of-N configs file supports no tier alias. Name an explicit model spec.`,
       { code: 'INVALID_BEST_OF_N_CONFIGS' },
     )
 
