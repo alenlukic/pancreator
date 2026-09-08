@@ -718,6 +718,12 @@
     {
       "persona": "librarian",
       "workflow": "standalone",
+      "stage": "conform",
+      "policies": ["STE-001"]
+    },
+    {
+      "persona": "librarian",
+      "workflow": "standalone",
       "stage": "build-docs",
       "policies": ["PRIMER-001", "REPO-001"]
     },
