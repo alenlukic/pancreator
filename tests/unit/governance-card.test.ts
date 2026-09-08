@@ -717,10 +717,10 @@ test('the card-less command modes resolve their persona governance', () => {
   const root = createFixture()
   const expectations: Record<string, string[]> = {
     release: ['REPO-001', 'OPERATOR-001'],
-    'write-pr': ['PR-001', 'REPO-001'],
-    'build-docs': ['PRIMER-001', 'REPO-001'],
+    'write-pr': ['PR-001', 'REPO-001', 'STE-001'],
+    'build-docs': ['LIBRARIAN-001', 'PRIMER-001', 'REPO-001'],
     'build-briefs': ['BRIEF-001', 'REPO-001'],
-    'qa-workflow': ['DELEGATE-001', 'RUNTIME-001'],
+    'qa-workflow': ['DELEGATE-001'],
     'tune-harness': ['TUNE-001'],
   }
 

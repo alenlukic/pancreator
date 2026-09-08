@@ -44,7 +44,7 @@
   "guidance_sources": [
     {
       "path": "library/personas/orchestrator.md",
-      "start_heading": "## Hierarchy position",
+      "start_heading": "## Core responsibilities",
       "read_trigger": "Read this guidance before you advance, pause, or report a workflow run."
     },
     {

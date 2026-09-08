@@ -94,10 +94,7 @@ resolved question. Each test-plan entry states `id`, the acceptance criterion
 it verifies (`criterion`), `setup`, `action`, and `expected`. A test-plan case
 must not run a configured repository-check profile command or `pan
 repository-check <profile>`. The gates run those profiles, and the validator
-rejects such a case with `plan.case_reruns_profile`. When
-`output.operator_brief` exists, edit its declared source and reference the
-rendered HTML. Do not run the renderer. When the contract omits
-`output.operator_brief`, do not create a brief source or rendered stage HTML.
+rejects such a case with `plan.case_reruns_profile`. Follow the card's `output.operator_brief` contract.
 
 If the change warrants a different verification level than the card shows, set
 `data.verification_recommendation` to

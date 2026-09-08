@@ -6,6 +6,8 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 
 - `GLOBAL-001` — operator-first records
 - `GLOBAL-002` — bounded context retrieval
+- `PRIMER-001` — target repository primer as bounded orientation
+- `LIBRARIAN-001` — librarian documentation and repository-check authoring
 - `BRIEF-001` — semantic HTML operator brief structure and presentation
 - `OUTPUT-001` — quiet command output and Cursor-like SDK progress
 - `STE-001` — Simplified Technical English for operator-consumed artifacts

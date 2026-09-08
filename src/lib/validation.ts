@@ -707,25 +707,49 @@ export function validateInvocationMarkdown(
       passed: delegation.policies.length > 0,
       message:
         delegation.policies.length > 0
-          ? `${delegation.policies.length} supervisor delivery policies are inline`
-          : 'Delegated stages MUST inline INVOCATION-001 for the supervisor',
+          ? `${delegation.policies.length} supervisor delivery policies are declared`
+          : 'Delegated stages MUST declare at least one delivery policy',
     })
 
-    for (const policy of delegation.policies) {
-      const rendered = filterPolicyInstructionsForCard(
-        policy.instructions,
-        'supervisor',
-      )
+    const supervisorSections =
+      delegation.supervisor_card?.policy_sections ?? null
+    const sectionDigestFor = (policyId: string): string | null =>
+      supervisorSections?.find((section) => section.policy_id === policyId)
+        ?.sha256 ?? null
 
-      for (const [index, instruction] of rendered.entries()) {
-        const text = instruction.text
+    if (split && supervisorSections && supervisorSections.length > 0) {
+      for (const policy of delegation.policies) {
+        const digest = sectionDigestFor(policy.id)
+
         checks.push({
-          id: `delegation.${policy.id}.instruction.${index + 1}`,
-          passed: procedure.includes(text),
-          message: procedure.includes(text)
-            ? `Delivery policy ${policy.id} instruction ${index + 1} is present`
-            : `${procedureLabel} MUST inline ${policy.id} instruction ${index + 1} for the supervisor`,
+          id: `delegation.${policy.id}.section_digest_present`,
+          passed:
+            digest !== null &&
+            procedure.includes(`\`${policy.id}\`: \`sha256:${digest}\``),
+          message:
+            digest !== null &&
+            procedure.includes(`\`${policy.id}\`: \`sha256:${digest}\``)
+              ? `Delivery policy ${policy.id} section digest pointer is present`
+              : `${procedureLabel} MUST include a section digest pointer for ${policy.id}`,
         })
+      }
+    } else {
+      for (const policy of delegation.policies) {
+        const rendered = filterPolicyInstructionsForCard(
+          policy.instructions,
+          'supervisor',
+        )
+
+        for (const [index, instruction] of rendered.entries()) {
+          const text = instruction.text
+          checks.push({
+            id: `delegation.${policy.id}.instruction.${index + 1}`,
+            passed: procedure.includes(text),
+            message: procedure.includes(text)
+              ? `Delivery policy ${policy.id} instruction ${index + 1} is present`
+              : `${procedureLabel} MUST inline ${policy.id} instruction ${index + 1} for the supervisor`,
+          })
+        }
       }
     }
 

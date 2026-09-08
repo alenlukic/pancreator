@@ -57,6 +57,11 @@ This handbook defines the repository-wide engineering baseline. An agent MUST re
 - Agents MUST NOT commit, push, merge, publish, deploy, rewrite history, delete branches, or destructively reset without explicit operator authorization recorded for that action.
 - Changes SHOULD remain reversible and MUST preserve enough evidence to diagnose a failed run.
 
+## Durable shell automation
+
+- The repository `scripts/` directory MUST NOT contain durable automation. Throwaway run-local scripts remain under `runtime/logs/workflows/<run-id>/scripts/` per `AUTO-001`.
+- Agents MUST NOT add durable automation under `scripts/` or introduce new `bin/` file-type suffixes without an explicit governance change.
+
 ## Agent execution discipline
 
 - An implementation stage MUST deliver working code and tests rather than sketches or placeholders.
