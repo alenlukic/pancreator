@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -9,6 +9,8 @@ import {
   parseBestOfNConfigs,
 } from '../../src/lib/best-of-n.js'
 import { createTestTempDirectory } from '../temp.js'
+
+const EXAMPLE_CONFIGS = 'library/templates/best-of-n-config.example.json'
 
 const VALID = {
   schema_version: 1,
@@ -122,6 +124,35 @@ test('configs parsing rejects a tier alias in a candidate persona map', () => {
       /names tier alias/u,
     )
   }
+})
+
+test('the committed configs example parses through the real parser', () => {
+  // Well-formed JSON is not the contract: the example is the only scaffolding
+  // an operator gets for the untracked `best-of-n-config.json`, so it must
+  // survive every rule the parser enforces at `best-of-n init`.
+  const parsed = parseBestOfNConfigs(
+    JSON.parse(readFileSync(path.join(process.cwd(), EXAMPLE_CONFIGS), 'utf8')),
+    EXAMPLE_CONFIGS,
+  )
+
+  assert.deepEqual(
+    parsed.candidates.map((candidate) => candidate.name),
+    ['balanced', 'advanced'],
+  )
+  assert.equal(parsed.consolidation.name, 'consolidation')
+  assert.ok(parsed.setup.length > 0)
+
+  const models = [
+    ...parsed.candidates.flatMap((candidate) =>
+      Object.values(candidate.personas),
+    ),
+    ...Object.values(parsed.consolidation.personas),
+  ]
+
+  assert.ok(
+    models.some((model) => model.startsWith('cursor:')),
+    'the example demonstrates a cursor executor specification',
+  )
 })
 
 test('configs parsing accepts a cursor executor specification', () => {

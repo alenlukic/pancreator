@@ -37,6 +37,18 @@ The configs file names one persona-to-model map per candidate, plus one for the
 consolidation run. Each map merges over `config.json` defaults, and each model
 string uses the same syntax as `config.json`.
 
+Start from the committed example at
+[`library/templates/best-of-n-config.example.json`](../library/templates/best-of-n-config.example.json)
+and copy it to `best-of-n-config.json` in the repository root, beside
+`config.json`. That is the conventional filename this documentation and
+[`docs/operator-guide.md`](operator-guide.md) use; `pan best-of-n init --configs
+<path>` has no default and accepts any path.
+
+The file is operator-local rather than repository content. It stays untracked —
+this checkout lists it in `.git/info/exclude` next to `config_overrides.json` —
+and no command generates or refreshes it, so copying the template is the whole
+scaffolding step.
+
 ```json
 {
   "schema_version": 1,
@@ -61,6 +73,13 @@ string uses the same syntax as `config.json`.
 - At least two candidates are required.
 - `name` is optional; candidates default to `candidate-1`, `candidate-2`, and so
   on. Names must be lowercase, alphanumeric, and hyphen-separated.
+- A tier alias such as `anthropic:advanced` or `cursor:ultra` is rejected here.
+  Write the explicit spec the alias resolves to in `config.json`. A
+  `cursor:<model>` value that names no tier still routes to the Cursor executor,
+  so `cursor:composer-2.5` is accepted while `cursor:balanced` is not. The
+  committed example names its candidate slots `balanced` and `advanced` after
+  the `config.json` tier keys and inlines the specs those tiers resolve to;
+  those are slot labels, not aliases.
 - `setup` commands run once in every fresh worktree. A worktree starts without
   installed dependencies, so declare whatever the repository checks need. A
   failed setup command fails `init`.

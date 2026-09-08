@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "candidates": [
+    {
+      "name": "balanced",
+      "personas": {
+        "coder": "cursor:composer-2.5",
+        "reviewer": "claude-sonnet-5",
+        "qa-tester": "gpt-5.6-terra[context=272k,reasoning=high,fast=false]"
+      }
+    },
+    {
+      "name": "advanced",
+      "personas": {
+        "coder": "claude-opus-5[thinking=true,context=300k,effort=high,fast=false]",
+        "reviewer": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]",
+        "qa-tester": "gpt-5.6-sol[context=272k,reasoning=high,fast=false]"
+      }
+    }
+  ],
+  "consolidation": {
+    "name": "consolidation",
+    "personas": {
+      "metacritic": "claude-fable-5-1[thinking=true,context=300k,effort=high]"
+    }
+  },
+  "setup": ["npm ci --no-audit --no-fund --loglevel=error"]
+}
