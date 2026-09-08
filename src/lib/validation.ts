@@ -3384,17 +3384,19 @@ function tokenBoundaryPattern(token: string): RegExp {
 /**
  * True when `content` declares a test whose quoted name is exactly `name`.
  *
- * The name MUST open a `test(...)` or `it(...)` call. A bare quoted-substring
- * search accepted any string in the file, so an import specifier or a fixture
- * literal satisfied a citation that names no enforcer.
+ * The name MUST open a `test(...)` or `it(...)` call that begins a line. A bare
+ * quoted-substring search accepted any string in the file, so an import
+ * specifier satisfied a citation that names no enforcer. Matching anywhere in
+ * the line accepted a fixture literal, because a test that writes
+ * `test('...')` into a temporary file carries that call inside a string.
  */
 function declaresQuotedTestName(content: string, name: string): boolean {
   const escaped = name.replaceAll(/[.*+?^${}()|[\]\\]/gu, '\\$&')
   // A raw string cannot carry the backtick alternative, because `\`` is an
   // invalid identity escape under the `u` flag.
-  const declaration = `\\b(?:test|it)\\(\\s*(['"\`])${escaped}\\1`
+  const declaration = `^\\s*(?:await\\s+)?(?:test|it)\\(\\s*(['"\`])${escaped}\\1`
 
-  return new RegExp(declaration, 'u').test(content)
+  return new RegExp(declaration, 'mu').test(content)
 }
 
 /**
