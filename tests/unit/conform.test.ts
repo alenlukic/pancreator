@@ -48,10 +48,87 @@ test('scan includes runtime artifacts on first run', () => {
     [
       'runtime/logs/workflows/scan-fixture/operator/brief.html',
       'runtime/pr-descriptions/example.md',
+      'CHANGELOG.md',
     ],
   )
   assert.equal(result.summary.editable_files, 1)
-  assert.equal(result.summary.report_only_files, 1)
+  assert.equal(result.summary.report_only_files, 2)
+})
+
+test('the first scan selects the committed eligible set, not only the dirty tree', () => {
+  const root = createFixture()
+
+  // A repository with no checkpoint has no baseline to diff against. The bare
+  // scan must still see this committed file, because `conform checkpoint`
+  // inspects it and blocks on what a hidden scan never reported.
+  write(root, 'CHANGELOG.md', "# Changelog\n\nDon't do this.\n")
+  write(root, 'docs/issues/committed.md', "# Issue\n\nDon't do this.\n")
+  git(root, ['add', 'CHANGELOG.md', 'docs/issues/committed.md'])
+  git(root, ['commit', '-qm', 'pin operator prose'])
+
+  const bare = scanConformArtifacts(root, { workspace_root: root })
+  const all = scanConformArtifacts(root, { workspace_root: root, all: true })
+
+  assert.equal(bare.checkpoint_head, null)
+  assert.equal(bare.base, bare.head)
+  assert.deepEqual(
+    bare.files.map((file) => file.relative_path).sort(),
+    all.files.map((file) => file.relative_path).sort(),
+    'the first scan and --all agree on their input set',
+  )
+
+  const changelog = bare.files.find(
+    (file) => file.relative_path === 'CHANGELOG.md',
+  )
+  const issue = bare.files.find(
+    (file) => file.relative_path === 'docs/issues/committed.md',
+  )
+
+  assert.ok(changelog, 'the bare scan selects the committed CHANGELOG.md')
+  assert.ok(changelog.issues.length > 0)
+  assert.ok(issue)
+  assert.ok(issue.issues.length > 0)
+
+  // Release history is reported, never repaired, so its issues do not fail the
+  // scan and do not block the checkpoint.
+  assert.equal(changelog.editable, false)
+  assert.equal(issue.editable, true)
+  assert.equal(bare.status, 'failed')
+  assert.equal(bare.summary.editable_issue_files, 1)
+})
+
+test('an embedded install scans harness intake and never target-tracked prose', () => {
+  const harness = createFixture()
+  const target = createFixture()
+  const configPath = path.join(harness, 'config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  config.installation_mode = 'embedded'
+  config.workspace_root = target
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+
+  write(harness, 'docs/issues/harness-owned.md', "# Issue\n\nDon't do this.\n")
+  write(target, 'docs/issues/target-owned.md', "# Issue\n\nDon't do this.\n")
+  write(target, 'CHANGELOG.md', "# Changelog\n\nDon't do this.\n")
+  git(target, ['add', '.'])
+  git(target, ['commit', '-qm', 'target prose'])
+
+  const result = scanConformArtifacts(harness, { workspace_root: target })
+
+  assert.deepEqual(
+    result.files.map((file) => file.relative_path),
+    ['docs/issues/harness-owned.md'],
+  )
+  assert.equal(result.files[0]?.root, 'runtime')
+  assert.equal(
+    result.files[0]?.absolute_path,
+    path.join(harness, 'docs/issues/harness-owned.md'),
+  )
+  assert.equal(result.summary.editable_files, 1)
+  assert.equal(result.summary.report_only_files, 0)
 })
 
 test('checkpoint writes a clean baseline and scan reports no changes', () => {
@@ -226,12 +303,14 @@ test('scan selects dirty, untracked, and deleted files and --all adds unchanged 
     all: true,
   })
 
+  // Harness-owned intake sorts ahead of the governed workspace, because the
+  // checkpoint key carries the root.
   assert.deepEqual(
     all.files.map((file) => [file.relative_path, file.status]),
     [
-      ['CHANGELOG.md', 'unchanged'],
       ['docs/issues/dirty.md', 'changed'],
       ['docs/issues/untracked.md', 'changed'],
+      ['CHANGELOG.md', 'unchanged'],
     ],
   )
 })

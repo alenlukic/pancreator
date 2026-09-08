@@ -5,7 +5,7 @@
   "summary": "Every durable artifact an operator reads MUST be written in the Simplified Technical English baseline adapted from ASD-STE100 Issue 9 and referenced by this policy.",
   "instructions": [
     "Agents writing an artifact an operator reads MUST read the complete Simplified Technical English guidance this policy references, and MUST apply it before completion. Governed artifacts are operator briefs, workflow-stage narratives, intake, plan, review, QA, investigation, repair, and ship records, pull-request descriptions, release notes, changelog entries, and the operator-facing summary in a stage output.",
-    "Machine records, invocation and delegation cards, JSON state, source code, code comments, commit messages, and repository documentation under docs/, README.md, and governance/ are outside the writing rules of this policy, and agents MUST NOT restyle them to satisfy those rules.",
+    "Machine records, invocation and delegation cards, JSON state, source code, code comments, commit messages, and repository documentation under docs/ except docs/issues/, README.md, and governance/ are outside the writing rules of this policy, and agents MUST NOT restyle them to satisfy those rules.",
     {
       "text": "Agents MUST apply the durable-instruction-text rules in the referenced guidance to every instruction surface, including AGENTS.md, policies, criteria, skills, personas, and commands. Instruction text MUST state the rule a reader needs and MUST NOT record the request that produced it, the rejected alternative, or the reasoning that produced the wording.",
       "audience": ["agent"]

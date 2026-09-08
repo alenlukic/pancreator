@@ -5,6 +5,8 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { createFixture, sharedFixture } from '../helpers.js'
 import { loadPolicyCatalog, resolvePolicies } from '../../src/lib/policies.js'
+import { STANDALONE_MODES } from '../../src/lib/governance-card.js'
+import { filterPolicyInstructionsForCard } from '../../src/lib/policy-instructions.js'
 import { resolveRequirements } from '../../src/lib/requirements/resolve.js'
 
 function writePolicyExtension(
@@ -964,6 +966,52 @@ test('ship, write-pr, and conform keep required STE checks', () => {
   }).map((policy) => policy.id)
 
   assert.equal(planner.includes('STE-001'), false)
+})
+
+test('no conform policy forbids an edit the conform boundary requires', () => {
+  const root = sharedFixture()
+  const mode = STANDALONE_MODES.conform
+
+  assert.ok(mode)
+
+  const policies = resolvePolicies(root, {
+    persona: mode.persona,
+    workflow: mode.workflow,
+    stage: mode.stage,
+  })
+  const rendered = policies.flatMap((policy) =>
+    filterPolicyInstructionsForCard(policy.instructions, 'agent').map(
+      (instruction) => `${policy.id}: ${instruction.text}`,
+    ),
+  )
+  const boundary = mode.boundaries.join('\n')
+
+  // The boundary requires the librarian to repair these paths, so no rendered
+  // instruction may place them outside the writing rules of this card.
+  for (const required of ['docs/issues/', 'runtime/pr-descriptions/']) {
+    assert.ok(boundary.includes(required), `the boundary omits ${required}`)
+
+    for (const instruction of rendered) {
+      if (!/outside the writing rules|MUST NOT restyle/u.test(instruction)) {
+        continue
+      }
+
+      const exclusions = instruction
+        .split(/\bexcept\b/u)[0]
+        ?.split(/,| and /u)
+        .map((clause) => clause.trim())
+
+      assert.ok(
+        !exclusions?.some((clause) => clause.includes(required)),
+        `${instruction} forbids restyling ${required}, which the conform boundary requires`,
+      )
+    }
+  }
+
+  // The boundary reserves release metadata, so nothing on the card may hand it
+  // to this persona.
+  assert.match(boundary, /MUST NOT edit either/u)
+  assert.ok(!boundary.includes('You MUST edit only `CHANGELOG.md`'))
 })
 
 test('build-docs owns primer validators on LIBRARIAN-001', () => {

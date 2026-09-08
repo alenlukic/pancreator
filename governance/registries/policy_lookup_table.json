@@ -633,7 +633,7 @@
       "workflow": "standalone",
       "stage": "release",
       "installation_scope": "self_development",
-      "policies": ["VERSION-001"]
+      "policies": ["VERSION-001", "STE-001"]
     },
     {
       "persona": "release-steward",

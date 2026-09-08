@@ -16,11 +16,18 @@ import {
   gitRevParse,
   gitStatusPaths,
 } from './git.js'
+import { isSelfDevelopmentInstallation } from './project-config.js'
 import { validateSimplifiedEnglish } from './validators/simplified-english.js'
 import type { HandlerInput, HandlerResult } from './requirements/types.js'
 
 export const CONFORM_CACHE_RELATIVE_PATH = 'runtime/cache/conform.json'
 
+/**
+ * Which root a candidate is resolved against. `runtime` is the harness root,
+ * which owns every editable conform artifact. `workspace` is the repository the
+ * harness governs, and in a target installation that repository owns its own
+ * tracked files, so no `workspace` candidate is ever editable.
+ */
 type ConformRoot = 'workspace' | 'runtime'
 
 export interface ConformCheckpointFileEntry {
@@ -94,17 +101,33 @@ function toPosix(relativePath: string): string {
   return relativePath.split(path.sep).join('/')
 }
 
-function isEligibleWorkspacePath(relativePath: string): boolean {
+/**
+ * The workspace root is the governed repository, so only the one artifact
+ * Pancreator itself owns is eligible, and only when Pancreator is that
+ * repository. A target installation contributes no workspace candidate: the
+ * target owns its tracked files, and `LIBRARIAN-001` forbids imposing
+ * Pancreator writing rules on them.
+ */
+function isEligibleWorkspacePath(
+  relativePath: string,
+  selfDevelopment: boolean,
+): boolean {
+  return selfDevelopment && toPosix(relativePath) === 'CHANGELOG.md'
+}
+
+/** Harness-owned intake records, which live beside the harness, not the target. */
+function isEligibleHarnessIssuesPath(relativePath: string): boolean {
   const rel = toPosix(relativePath)
 
-  return (
-    rel === 'CHANGELOG.md' ||
-    (rel.startsWith('docs/issues/') && rel.endsWith('.md'))
-  )
+  return rel.startsWith('docs/issues/') && rel.endsWith('.md')
 }
 
 function isEligibleRuntimeMarkdownPath(relativePath: string): boolean {
   const rel = toPosix(relativePath)
+
+  if (isEligibleHarnessIssuesPath(rel)) {
+    return true
+  }
 
   return (
     rel.startsWith('runtime/pr-descriptions/') &&
@@ -204,8 +227,8 @@ function loadCheckpoint(harnessRoot: string): ConformCheckpointFile | null {
   }
 }
 
-function listWorkspaceMarkdownIssuesFiles(workspaceRoot: string): string[] {
-  const base = path.join(workspaceRoot, 'docs', 'issues')
+function listHarnessMarkdownIssuesFiles(harnessRoot: string): string[] {
+  const base = path.join(harnessRoot, 'docs', 'issues')
 
   if (!fileExists(base)) {
     return []
@@ -326,12 +349,13 @@ function validateFile(root: string, relativePath: string): HandlerResult {
   return validateSimplifiedEnglish(input)
 }
 
+/**
+ * `CHANGELOG.md` is release metadata. `AGENTS.md` and the release-steward
+ * persona reserve it for a ship stage and `/pan-release`, so conform reports
+ * its issues and never edits it. Every editable artifact is harness-owned.
+ */
 function isEditable(root: ConformRoot, relativePath: string): boolean {
-  if (root === 'workspace') {
-    return isEligibleWorkspacePath(relativePath)
-  }
-
-  return isEligibleRuntimeMarkdownPath(relativePath)
+  return root === 'runtime' && isEligibleRuntimeMarkdownPath(relativePath)
 }
 
 function absolutePathOf(
@@ -418,23 +442,27 @@ function scanSummary(files: ConformScanFile[]): ConformScanResult['summary'] {
   }
 }
 
-function listEligibleWorkspacePaths(workspaceRoot: string): string[] {
+function listEligibleWorkspacePaths(
+  workspaceRoot: string,
+  selfDevelopment: boolean,
+): string[] {
   const paths: string[] = []
 
   if (fileExists(path.join(workspaceRoot, 'CHANGELOG.md'))) {
     paths.push('CHANGELOG.md')
   }
 
-  paths.push(...listWorkspaceMarkdownIssuesFiles(workspaceRoot))
-
   return paths
-    .filter((relativePath) => isEligibleWorkspacePath(relativePath))
+    .filter((relativePath) =>
+      isEligibleWorkspacePath(relativePath, selfDevelopment),
+    )
     .sort()
 }
 
 function listEligibleRuntimePaths(harnessRoot: string): string[] {
   const paths: string[] = []
 
+  paths.push(...listHarnessMarkdownIssuesFiles(harnessRoot))
   paths.push(...listRuntimePrDescriptions(harnessRoot))
   paths.push(...listRuntimeWorkflowOperatorHtml(harnessRoot))
 
@@ -450,6 +478,7 @@ export function scanConformArtifacts(
   const checkedAt = new Date().toISOString()
   const workspaceRoot = path.resolve(options.workspace_root)
   const checkpoint = loadCheckpoint(harnessRoot)
+  const selfDevelopment = isSelfDevelopmentInstallation(harnessRoot)
 
   const head = gitHead(workspaceRoot)
 
@@ -471,14 +500,21 @@ export function scanConformArtifacts(
       ? resolveSinceBase(workspaceRoot, options.since_ref)
       : (checkpoint?.head ?? head)
 
-  const workspaceCandidates = options.all
-    ? new Set(listEligibleWorkspacePaths(workspaceRoot))
-    : new Set(
-        [
-          ...gitChangedPathsBetween(workspaceRoot, base, head),
-          ...gitStatusPaths(workspaceRoot),
-        ].filter((relativePath) => isEligibleWorkspacePath(relativePath)),
-      )
+  // Without a checkpoint there is no committed baseline to diff against, so a
+  // git-range selection would collapse to the dirty working tree and hide every
+  // committed artifact. The first scan therefore inspects the complete eligible
+  // set, exactly as `--all` and `conform checkpoint` already do.
+  const workspaceCandidates =
+    options.all || (!options.since_ref && !checkpoint)
+      ? new Set(listEligibleWorkspacePaths(workspaceRoot, selfDevelopment))
+      : new Set(
+          [
+            ...gitChangedPathsBetween(workspaceRoot, base, head),
+            ...gitStatusPaths(workspaceRoot),
+          ].filter((relativePath) =>
+            isEligibleWorkspacePath(relativePath, selfDevelopment),
+          ),
+        )
 
   const runtimeCandidates = new Set(listEligibleRuntimePaths(harnessRoot))
 
@@ -524,7 +560,7 @@ export function scanConformArtifacts(
 
       if (
         parsed.root === 'workspace' &&
-        !isEligibleWorkspacePath(parsed.relative_path)
+        !isEligibleWorkspacePath(parsed.relative_path, selfDevelopment)
       ) {
         continue
       }

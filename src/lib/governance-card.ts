@@ -311,8 +311,9 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'Scan operator artifacts for Simplified Technical English issues, ' +
       'repair eligible prose, and record a clean checkpoint.',
     boundaries: [
-      'You MUST edit only `CHANGELOG.md`, `docs/issues/**/*.md`, and `runtime/pr-descriptions/*.md`.',
-      'You MUST report rendered workflow HTML but MUST NOT edit it.',
+      'You MUST edit only the harness-owned `docs/issues/**/*.md` and `runtime/pr-descriptions/*.md`, whatever the installation mode.',
+      'You MUST report rendered workflow HTML and `CHANGELOG.md` but MUST NOT edit either. `CHANGELOG.md` is release metadata a ship stage and `/pan-release` own, and it is scanned only in self-development.',
+      'You MUST NOT edit a target-tracked file. No target-repository path is in the conform editable set.',
       'You MUST validate each edited file with `pan requirements run --registry SIMPLIFIED-ENGLISH-VALIDATE-001` before you checkpoint.',
       PROTECTED_PATH_RULE,
       'You MUST NOT commit, push, merge, publish, deploy, or change Git history.',

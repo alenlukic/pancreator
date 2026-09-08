@@ -97,7 +97,24 @@ test('pan-conform is explicitly registered with its conform card', () => {
     .find((line) => line.startsWith('8. '))
 
   assert.match(validationStep ?? '', /requirements run/u)
-  assert.doesNotMatch(validationStep ?? '', /--worktree/u)
+
+  // A worktree session repairs the worktree copy and must validate that same
+  // copy, so every step that runs a workspace-bound command forwards the
+  // worktree. A step that validates the installation-root copy instead either
+  // fails on bytes it never touched or writes a checkpoint it never checked.
+  const worktreeSteps = command
+    .split('\n')
+    .filter((line) =>
+      /^\d+\. .*\{\{PANCREATOR_PAN_COMMAND\}\} (?:conform|requirements run)/u.test(
+        line,
+      ),
+    )
+
+  assert.equal(worktreeSteps.length, 3, command)
+
+  for (const step of worktreeSteps) {
+    assert.match(step, /--worktree <name>/u, step)
+  }
 
   const registryPath = path.join(root, COMMAND_GOVERNANCE_REGISTRY_PATH)
   const registry = JSON.parse(readFileSync(registryPath, 'utf8')) as {
