@@ -35,11 +35,11 @@ test('embedded installer refresh reconciles persona mappings and agent ownership
       configs: Record<string, Record<string, unknown>>
     }>(configJsonPath)
 
-    config.active_config = 'simple'
-    const simple = config.configs.simple as Record<string, unknown>
-    simple.coder = customCoderModel
+    config.active_config = 'balanced'
+    const balanced = config.configs.balanced as Record<string, unknown>
+    balanced.coder = customCoderModel
     config.defaults[retiredPersona] = retiredModel
-    simple[retiredPersona] = retiredModel
+    balanced[retiredPersona] = retiredModel
     writeFileSync(configJsonPath, `${JSON.stringify(config, null, 2)}\n`)
 
     // Reproduce an install made before agents were namespaced, where the
@@ -229,8 +229,8 @@ test('embedded installer refresh reconciles persona mappings and agent ownership
       configs: Record<string, Record<string, unknown>>
     }>(configJsonPath)
 
-    assert.equal(refreshed.active_config, 'simple')
-    assert.equal(refreshed.configs.simple.coder, customCoderModel)
+    assert.equal(refreshed.active_config, 'balanced')
+    assert.equal(refreshed.configs.balanced.coder, customCoderModel)
     assert.ok(
       readFileSync(
         path.join(project, '.cursor', 'agents', 'pan-coder.md'),
@@ -240,7 +240,7 @@ test('embedded installer refresh reconciles persona mappings and agent ownership
 
     assert.equal(refreshed.defaults[retiredPersona], undefined)
     assert.equal(
-      refreshed.configs.simple[retiredPersona],
+      refreshed.configs.balanced[retiredPersona],
       undefined,
       'a retired persona MUST NOT survive a refresh',
     )

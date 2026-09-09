@@ -25,11 +25,11 @@
       "text": "Path drift, invalid brief data, or rendering defects are governance diagnostics for ship review. They MUST NOT loop the workflow to implementation (`tests/integration/delivery-verify-routing.test.ts::governance and artifact defects are advisory before ship and never loop to implementation`).",
       "audience": ["harness"]
     },
-    "A brief MUST begin with an executive-summary section that states the bottom line first: what changed or matters, why it matters, and outcomes or required actions when applicable.",
+    "A brief MUST begin with an executive-summary section. COMMS-001 governs how that summary reads.",
     "Brief data MUST describe content and semantic intent; layout, typography, color, spacing, and responsive behavior MUST remain in the shared or project design system.",
-    "Section headings MUST use concise titles and a registered semantic key. Renderers MUST resolve the heading emoji from that registry rather than accepting ad hoc emoji choices.",
+    "Section headings MUST use a registered semantic key. Renderers MUST resolve the heading emoji from that registry rather than accepting ad hoc emoji choices.",
     "Within one repository, each registered section emoji MUST retain one meaning. Project definitions MUST extend rather than override Pancreator-owned semantic keys.",
-    "Cards SHOULD separate metadata from substantive detail through field placement, SHOULD expose clear actions when action is possible, and MUST avoid unnecessary nesting, decorative clutter, and raw-log substitution.",
+    "Cards SHOULD separate metadata from substantive detail through field placement, and SHOULD expose clear actions when action is possible.",
     "Standalone modes MUST retain their declared artifact behavior.",
     "Canonical control records, source documentation, direct-use PR copy, machine records, and historical artifacts MAY remain Markdown or JSON."
   ]

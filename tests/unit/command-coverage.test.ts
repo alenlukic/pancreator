@@ -173,6 +173,61 @@ test('pan-conform is explicitly registered with its conform card', () => {
   )
 })
 
+test('pan-style is registered with its style card and forwards its worktree', () => {
+  const root = createFixture()
+  const command = readFileSync(
+    path.join(root, 'library/cursor/commands/pan-style.md'),
+    'utf8',
+  )
+
+  // The mode edits workspace source, so every style invocation must accept the
+  // shared worktree option the command forwards.
+  for (const invocation of panInvocations(command)) {
+    assert.doesNotThrow(
+      () =>
+        assertWorktreeOptionSupported(
+          invocation[0] as string,
+          invocation.slice(1),
+        ),
+      invocation.join(' '),
+    )
+  }
+
+  const registryPath = path.join(root, COMMAND_GOVERNANCE_REGISTRY_PATH)
+  const registry = JSON.parse(readFileSync(registryPath, 'utf8')) as {
+    card_commands: Array<{ command: string; card_mode: string }>
+    target_mutating_commands: Array<{
+      command: string
+      worktree_forwarding: string[]
+    }>
+  }
+
+  assert.deepEqual(
+    registry.card_commands.find((entry) => entry.command === 'pan-style'),
+    { command: 'pan-style', card_mode: 'style' },
+  )
+
+  const mutating = registry.target_mutating_commands.find(
+    (entry) => entry.command === 'pan-style',
+  )
+
+  assert.ok(mutating)
+  assert.deepEqual(mutating.worktree_forwarding, [
+    'style scan --worktree <name> --json',
+    'style checkpoint --worktree <name> --json',
+  ])
+  assert.deepEqual(run(root).errors, [])
+
+  mutating.worktree_forwarding = ['style scan --json']
+  writeJson(registryPath, registry)
+
+  assert.ok(
+    run(root).errors.some((error) =>
+      error.includes('pan-style.md is target-mutating and MUST forward'),
+    ),
+  )
+})
+
 test('a new command without a card fails validation with the fix named', () => {
   const root = createFixture()
 

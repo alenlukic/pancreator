@@ -2,7 +2,7 @@
   "id": "OUTPUT-001",
   "title": "Operator-facing execution output",
   "severity": "hard",
-  "summary": "Routine execution output MUST remain quiet on success while agent invocations MUST surface concise, Cursor-like progress and actionable failures.",
+  "summary": "Routine execution output MUST remain quiet on success, and the Cursor SDK invocation logger MUST render normalized stream events as an operator transcript.",
   "instructions": [
     {
       "text": "Pancreator-owned verification scripts MUST suppress routine success output by default. The progress ticks the next instruction authorizes are the one exception. The scripts MUST replay captured stdout and stderr when the underlying command fails. In self-development the shared wrapper is bin/run-quiet. Embedded target commands remain governed by the target repository.",

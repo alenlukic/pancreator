@@ -1,0 +1,29 @@
+{
+  "id": "COMMS-001",
+  "title": "Operator-facing chat output",
+  "severity": "hard",
+  "summary": "Every report an agent writes to the operator in chat MUST state the outcome first, stay concise, and name the next action.",
+  "instructions": [
+    "COMMS-001 governs operator-facing chat output, and GLOBAL-001 governs the durable record. An agent MUST apply each policy to its own surface.",
+    "Operator chat reports MUST state the outcome, consequence, and next action. They MUST use plain language and avoid unnecessary workflow mechanics.",
+    "Operator chat reports MUST use 20 words or fewer in an instruction sentence and 25 words or fewer in an explanation sentence. A paragraph MUST use six sentences or fewer.",
+    "Operator chat reports SHOULD use simple, concise, action-oriented language.",
+    "Agents MUST NOT write dense chat paragraphs that include all context. The operator can request more detail.",
+    "Operator chat reports MUST NOT use LLM-native jargon.",
+    "Operator chat reports MUST NOT use journalistic hooks or delay a conclusion.",
+    "Operator-facing output MUST state the bottom line first: what changed or matters, and why it matters. The output MUST state the outcomes or the required actions when either applies. A chat report and an operator brief MUST both obey this rule.",
+    "A section heading in operator-facing output MUST use a concise title.",
+    "Operator-facing output MUST avoid unnecessary nesting, decorative clutter, and raw-log substitution.",
+    "An operator-facing report MUST keep an evidence link close to the statement it supports.",
+    "When an agent reports an issue, the report MUST state the issue concisely, existing consequences, anticipated consequences, and applied remediations. The report MUST give mitigation options, tradeoffs, and a recommendation.",
+    "An outcome summary MUST list key outcomes and outstanding items. Each outstanding item MUST list action options and identify whether an agent, the operator, or either can act.",
+    "When one operator-owned path resolves an outstanding item, the report MUST provide numbered steps. Each command MUST use a fenced code block and include exact parameters.",
+    "An agent MUST report concise progress while it works, and MUST surface a significant finding when that finding appears.",
+    "An agent MUST report a failure with its cause and one named next action.",
+    "An operator-facing agent MUST rewrite the summary of a subagent that COMMS-001 does not bind. The rewrite MUST happen before that summary reaches the operator.",
+    "The operator-facing agent owns the shape of the rewritten summary. That agent MUST NOT pass raw subagent prose through to the operator.",
+    "Chat-report issue and outcome shapes MUST remain judgment-only. The deterministic check does not test these shapes.",
+    "This policy adopts Part 1 writing rules of ASD-STE100 and does not adopt the Part 2 controlled dictionary as a gate. Agents MUST NOT describe an artifact as conformant to ASD-STE100, because full conformance requires the dictionary.",
+    "Agents MAY use RFC 2119 requirement keywords in governance-bearing prose, because those keywords are terms of art in this repository rather than ordinary wording."
+  ]
+}

@@ -426,8 +426,12 @@ test('model configurations receive the same normative invocation contract', () =
 })
 
 test('Python guidance selection stops short of the formatter appendix', () => {
-  const guidance = loadPolicyCatalog(process.cwd()).get('PY-001')?.guidance?.[0]
+  const catalog = loadPolicyCatalog(process.cwd())
+  const guidance = catalog.get('PYSTYLE-001')?.guidance?.[0]
 
+  // The style handbook moved to the batch-pass policy, so the toolchain policy
+  // no longer carries a guidance reference at all.
+  assert.deepEqual(catalog.get('PY-001')?.guidance ?? [], [])
   assert.ok(guidance)
   assert.equal(
     guidance.source_path,

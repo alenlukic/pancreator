@@ -689,17 +689,18 @@ function mergeEmbeddedProjectConfig(source, existing) {
   return merged
 }
 
+// The bundle contract below mirrors src/lib/validators/target-language-handbooks.ts
+// and the /pan-build-docs generator instructions. This script runs before the
+// harness is built, so it cannot import that validator. Keep the two in step.
 const LANGUAGE_BUNDLE_MARKER = 'pancreator-target-language-handbooks'
-const LANGUAGE_CODE_PERSONAS = new Set([
-  'coder',
-  'planner',
-  'qa-tester',
-  'remediator',
-  'remediator-severe',
-  'reviewer',
-  'spotfixer',
-  'verifier',
-])
+const LANGUAGE_POLICY_ID = 'LANG-001'
+const LANGUAGE_STYLE_POLICY_ID = 'LANGSTYLE-001'
+const LANGUAGE_CODE_PERSONAS = ['coder', 'qa-tester', 'reviewer', 'spotfixer']
+const LANGUAGE_STYLE_ROW = {
+  persona: 'librarian',
+  workflow: 'standalone',
+  stage: 'style',
+}
 
 function isGeneratedLanguageRow(row) {
   return (
@@ -709,58 +710,59 @@ function isGeneratedLanguageRow(row) {
   )
 }
 
-function validLanguageBundle(existingRoot) {
-  const policyPath = path.join(
-    existingRoot,
-    'governance',
-    'policies',
-    'LANG-001.json',
-  )
+function languagePolicyPath(root, policyId) {
+  return path.join(root, 'governance', 'policies', `${policyId}.json`)
+}
+
+function readGeneratedLanguagePolicy(root, policyId) {
+  const policyPath = languagePolicyPath(root, policyId)
+
+  if (!existsSync(policyPath)) {
+    return null
+  }
+
+  let policy
+
+  try {
+    policy = readJson(policyPath)
+  } catch {
+    return null
+  }
+
+  if (
+    policy?.id !== policyId ||
+    policy?.generated_by !== LANGUAGE_BUNDLE_MARKER
+  ) {
+    return null
+  }
+
+  return policy
+}
+
+function policyGuidancePaths(policy) {
+  if (!Array.isArray(policy.guidance_sources)) {
+    return []
+  }
+
+  return policy.guidance_sources
+    .map((source) => (typeof source?.path === 'string' ? source.path : null))
+    .filter(Boolean)
+    .sort()
+}
+
+function markedLanguageHandbooks(existingRoot) {
   const handbookRoot = path.join(
     existingRoot,
     'governance',
     'handbooks',
     'target',
   )
-  const lookupPath = path.join(
-    existingRoot,
-    'governance',
-    'registries',
-    'policy_lookup_table.json',
-  )
 
-  if (
-    !existsSync(policyPath) ||
-    !existsSync(handbookRoot) ||
-    !existsSync(lookupPath)
-  ) {
-    return false
+  if (!existsSync(handbookRoot)) {
+    return []
   }
 
-  let policy
-  let lookup
-
-  try {
-    policy = readJson(policyPath)
-    lookup = readJson(lookupPath)
-  } catch {
-    return false
-  }
-
-  if (
-    policy?.id !== 'LANG-001' ||
-    policy?.generated_by !== LANGUAGE_BUNDLE_MARKER ||
-    !Array.isArray(policy.guidance_sources) ||
-    !Array.isArray(lookup?.rows)
-  ) {
-    return false
-  }
-
-  const sources = policy.guidance_sources
-    .map((source) => (typeof source?.path === 'string' ? source.path : null))
-    .filter(Boolean)
-    .sort()
-  const handbooks = readdirSync(handbookRoot, { withFileTypes: true })
+  return readdirSync(handbookRoot, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => {
       const relative = `governance/handbooks/target/${entry.name}/style-guide.md`
@@ -775,17 +777,94 @@ function validLanguageBundle(existingRoot) {
     })
     .filter(Boolean)
     .sort()
+}
 
-  if (
-    sources.length === 0 ||
-    sources.length !== handbooks.length ||
-    sources.some((source, index) => source !== handbooks[index])
-  ) {
+function sameStringList(left, right) {
+  return left.join('\n') === right.join('\n')
+}
+
+function rowPolicyIds(row) {
+  return Array.isArray(row.policies)
+    ? row.policies.filter((policy) => typeof policy === 'string').sort()
+    : []
+}
+
+function isLanguageStyleRow(row) {
+  return (
+    row.persona === LANGUAGE_STYLE_ROW.persona &&
+    row.workflow === LANGUAGE_STYLE_ROW.workflow &&
+    row.stage === LANGUAGE_STYLE_ROW.stage
+  )
+}
+
+// A complete bundle takes one of two shapes. The split shape carries the
+// handbooks on LANGSTYLE-001 with one librarian style row, and LANG-001
+// declares no guidance source. The pre-split shape carries the handbooks on
+// LANG-001 alone. Both keep exactly one code row per code persona. Anything
+// else is malformed and is rebuilt by /pan-build-docs.
+function validLanguageBundle(existingRoot) {
+  const lookupPath = path.join(
+    existingRoot,
+    'governance',
+    'registries',
+    'policy_lookup_table.json',
+  )
+  const languagePolicy = readGeneratedLanguagePolicy(
+    existingRoot,
+    LANGUAGE_POLICY_ID,
+  )
+
+  if (languagePolicy === null || !existsSync(lookupPath)) {
+    return false
+  }
+
+  let lookup
+
+  try {
+    lookup = readJson(lookupPath)
+  } catch {
+    return false
+  }
+
+  if (!Array.isArray(lookup?.rows)) {
+    return false
+  }
+
+  const handbooks = markedLanguageHandbooks(existingRoot)
+
+  if (handbooks.length === 0) {
+    return false
+  }
+
+  const stylePolicyPath = languagePolicyPath(
+    existingRoot,
+    LANGUAGE_STYLE_POLICY_ID,
+  )
+  const split = existsSync(stylePolicyPath)
+
+  if (split) {
+    const stylePolicy = readGeneratedLanguagePolicy(
+      existingRoot,
+      LANGUAGE_STYLE_POLICY_ID,
+    )
+
+    if (
+      stylePolicy === null ||
+      policyGuidancePaths(languagePolicy).length !== 0 ||
+      !sameStringList(policyGuidancePaths(stylePolicy), handbooks)
+    ) {
+      return false
+    }
+  } else if (!sameStringList(policyGuidancePaths(languagePolicy), handbooks)) {
     return false
   }
 
   const rows = lookup.rows.filter(isGeneratedLanguageRow)
-  const expectedPolicies = ['LANG-001']
+  const codeRows = rows.filter(
+    (row) => row.workflow === '*' && row.stage === '*',
+  )
+  const styleRows = rows.filter(isLanguageStyleRow)
+  const expectedPolicies = [LANGUAGE_POLICY_ID]
 
   if (handbooks.includes('governance/handbooks/target/python/style-guide.md')) {
     expectedPolicies.push('PY-001')
@@ -793,22 +872,34 @@ function validLanguageBundle(existingRoot) {
 
   expectedPolicies.sort()
 
-  const personas = rows
+  const personas = codeRows
     .filter(
       (row) =>
-        Array.isArray(row.policies) &&
-        row.policies.length === expectedPolicies.length &&
-        [...row.policies].sort().join('\n') === expectedPolicies.join('\n') &&
-        typeof row.persona === 'string',
+        typeof row.persona === 'string' &&
+        sameStringList(rowPolicyIds(row), expectedPolicies),
     )
     .map((row) => row.persona)
+    .sort()
 
-  return (
-    rows.length === LANGUAGE_CODE_PERSONAS.size &&
-    personas.length === LANGUAGE_CODE_PERSONAS.size &&
-    personas.every((persona) => LANGUAGE_CODE_PERSONAS.has(persona)) &&
-    new Set(personas).size === LANGUAGE_CODE_PERSONAS.size
-  )
+  if (
+    !sameStringList(personas, LANGUAGE_CODE_PERSONAS) ||
+    codeRows.length !== LANGUAGE_CODE_PERSONAS.length
+  ) {
+    return false
+  }
+
+  if (split) {
+    if (
+      styleRows.length !== 1 ||
+      !sameStringList(rowPolicyIds(styleRows[0]), [LANGUAGE_STYLE_POLICY_ID])
+    ) {
+      return false
+    }
+  } else if (styleRows.length !== 0) {
+    return false
+  }
+
+  return rows.length === codeRows.length + styleRows.length
 }
 
 function preserveLanguageGovernance() {
@@ -833,9 +924,27 @@ function preserveLanguageGovernance() {
   )
   cpSync(existingHandbooks, stagedHandbooks, { recursive: true, force: true })
   copyFileSync(
-    path.join(existingRoot, 'governance', 'policies', 'LANG-001.json'),
-    path.join(stagingRoot, 'governance', 'policies', 'LANG-001.json'),
+    languagePolicyPath(existingRoot, LANGUAGE_POLICY_ID),
+    languagePolicyPath(stagingRoot, LANGUAGE_POLICY_ID),
   )
+
+  // The staged bundle must equal the existing bundle exactly, so the style
+  // policy follows the existing shape: copied for a split bundle, and absent
+  // for a pre-split bundle even when the source payload ships one.
+  const existingStylePolicy = languagePolicyPath(
+    existingRoot,
+    LANGUAGE_STYLE_POLICY_ID,
+  )
+  const stagedStylePolicy = languagePolicyPath(
+    stagingRoot,
+    LANGUAGE_STYLE_POLICY_ID,
+  )
+
+  if (existsSync(existingStylePolicy)) {
+    copyFileSync(existingStylePolicy, stagedStylePolicy)
+  } else {
+    rmSync(stagedStylePolicy, { force: true })
+  }
 
   const existingLookup = readJson(
     path.join(

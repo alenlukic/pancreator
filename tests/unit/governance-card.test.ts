@@ -243,7 +243,7 @@ test('a missing operator input is reported rather than silently omitted', () => 
 
   assert.throws(
     () => buildGovernanceCard(root, { mode: 'nonsense' }),
-    /Available: author, best-of-n, build-briefs, build-docs, conform, decomposition, investigation, pair, qa-workflow, release, repair, review, shepherd, spotfix, supervisor, target, tune-harness, unbound, write-pr/u,
+    /Available: author, best-of-n, build-briefs, build-docs, conform, decomposition, investigation, pair, qa-workflow, release, repair, review, shepherd, spotfix, style, supervisor, target, tune-harness, unbound, write-pr/u,
   )
 })
 

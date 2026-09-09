@@ -11,6 +11,7 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 - `BRIEF-001` — semantic HTML operator brief structure and presentation
 - `OUTPUT-001` — quiet command output and Cursor-like SDK progress
 - `STE-001` — Simplified Technical English for operator-consumed artifacts
+- `COMMS-001` — operator-facing chat output
 - `RUNTIME-001` — sortable workflow runtime names and seven-day archival
 - `BIN-001` — self-development-only durable Pancreator shell automation under `bin/`
 - `REPO-001` — target-owned, technology-agnostic verification commands
@@ -33,6 +34,8 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 - `REMED-001` — verdict-routed remediation with verdict-scoped authority
 - `TS-001` — self-development-only TypeScript conformance
 - `PY-001` — Python conformance for detected Python workspaces
+- `TSTYLE-001` — TypeScript style guidance for the code style batch pass
+- `PYSTYLE-001` — Python style guidance for the code style batch pass
 - `BROWSER-001` — isolated browser inspection and Visual QA host safety
 - `SHIP-001` — operator-owned release boundary
 - `PR-001` — grounded pull-request description generation

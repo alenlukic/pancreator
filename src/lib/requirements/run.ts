@@ -8,6 +8,7 @@ import {
   writeJsonAtomic,
 } from '../io.js'
 import { resolveRunLayout } from '../run-layout.js'
+import { codeStyleLanguage } from '../validators/code-style.js'
 import type {
   RequirementValidationResult,
   ResolvedRequirement,
@@ -111,6 +112,10 @@ export function inferTargetKind(targetPath: string): string {
 
   if (targetPath.endsWith('.md')) {
     return 'markdown-artifact'
+  }
+
+  if (codeStyleLanguage(targetPath)) {
+    return 'source-file'
   }
 
   return 'unknown'

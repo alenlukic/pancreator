@@ -50,11 +50,22 @@ function writeLanguageBundle(
     path.join(handbookRoot, 'style-guide.md'),
     `<!-- pancreator-target-language-handbook: ${language} -->\n\n# ${language}\n`,
   )
+  // The generated bundle splits the same way the durable policies do:
+  // LANG-001 keeps the toolchain instructions and references no handbook, and
+  // LANGSTYLE-001 carries every style handbook for the batch pass alone.
   writeJson(path.join(root, 'governance', 'policies', 'LANG-001.json'), {
     id: 'LANG-001',
     title: 'Target language guidance',
     severity: 'hard',
     summary: 'Agents MUST apply target-derived language guidance.',
+    instructions: ['Agents MUST apply this guidance when it is resolved.'],
+    generated_by: GENERATED_BY,
+  })
+  writeJson(path.join(root, 'governance', 'policies', 'LANGSTYLE-001.json'), {
+    id: 'LANGSTYLE-001',
+    title: 'Target language style guidance',
+    severity: 'hard',
+    summary: 'Agents MUST apply target-derived language style guidance.',
     instructions: ['Agents MUST apply this guidance when it is resolved.'],
     generated_by: GENERATED_BY,
     guidance_sources: [
@@ -83,6 +94,14 @@ function writeLanguageBundle(
       generated_by: GENERATED_BY,
     })
   }
+
+  lookup.rows.push({
+    persona: 'librarian',
+    workflow: 'standalone',
+    stage: 'style',
+    policies: ['LANGSTYLE-001'],
+    generated_by: GENERATED_BY,
+  })
 
   writeJson(lookupPath, lookup)
 }
@@ -144,6 +163,72 @@ test('rejects a generated Python row that omits PY-001', () => {
     assert.equal(result.status, 'failed')
     assert.ok(
       result.issues.some((item) => item.code === 'language.lookup_rows'),
+    )
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('rejects a bundle that keeps the handbooks on LANG-001', () => {
+  const root = createLanguageFixture()
+
+  try {
+    writeFileSync(path.join(root, 'target', 'tsconfig.json'), '{}\n')
+    writeLanguageBundle(root)
+
+    const policiesDirectory = path.join(root, 'governance', 'policies')
+    const style = JSON.parse(
+      readFileSync(path.join(policiesDirectory, 'LANGSTYLE-001.json'), 'utf8'),
+    ) as { guidance_sources: unknown }
+    const language = JSON.parse(
+      readFileSync(path.join(policiesDirectory, 'LANG-001.json'), 'utf8'),
+    ) as Record<string, unknown>
+
+    language.guidance_sources = style.guidance_sources
+    writeJson(path.join(policiesDirectory, 'LANG-001.json'), language)
+    rmSync(path.join(policiesDirectory, 'LANGSTYLE-001.json'))
+
+    const result = validateTargetLanguageHandbooks(fixtureInput(root))
+
+    assert.equal(result.status, 'failed')
+    assert.deepEqual(result.issues.map((item) => item.code).sort(), [
+      'language.policy_missing',
+      'language.policy_sources',
+    ])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('rejects a bundle whose style policy reaches a delivery persona', () => {
+  const root = createLanguageFixture()
+
+  try {
+    writeFileSync(path.join(root, 'target', 'tsconfig.json'), '{}\n')
+    writeLanguageBundle(root)
+
+    const lookupPath = path.join(
+      root,
+      'governance',
+      'registries',
+      'policy_lookup_table.json',
+    )
+    const lookup = JSON.parse(readFileSync(lookupPath, 'utf8')) as {
+      rows: Array<Record<string, unknown>>
+    }
+
+    lookup.rows = lookup.rows.map((row) =>
+      row.stage === 'style'
+        ? { ...row, persona: 'coder', workflow: '*', stage: '*' }
+        : row,
+    )
+    writeJson(lookupPath, lookup)
+
+    const result = validateTargetLanguageHandbooks(fixtureInput(root))
+
+    assert.equal(result.status, 'failed')
+    assert.ok(
+      result.issues.some((item) => item.code === 'language.style_lookup_row'),
     )
   } finally {
     rmSync(root, { recursive: true, force: true })

@@ -208,6 +208,10 @@ import {
   scanConformArtifacts,
 } from './lib/conform.js'
 import {
+  checkpointStyleArtifacts,
+  scanStyleArtifacts,
+} from './lib/code-style.js'
+import {
   applyTargetAuthoringDraft,
   readTargetExtensionManifest,
   validateTargetAuthoring,
@@ -247,6 +251,8 @@ export const HELP_BODY = `Usage:
       --run records the execution against that run and, without --workspace or --worktree, checks its workspace. Without --run, --worktree records against every live run bound to the worktree. A bare invocation records against no run.
   pan repository-check validate [--json]
   pan conform scan|checkpoint [--since <ref> | --all] [--worktree <name>] [--json]
+  pan style scan|checkpoint [--since <ref> | --all] [--worktree <name>] [--json]
+      Report the countable code style issues of the workspace source a detected language owns. checkpoint inspects the complete eligible set, returns blocked without writing while an editable file still has issues, and writes runtime/cache/style.json once the set is clean. Both subcommands exit 1 on a non-passing status. npm run lint stays authoritative for mechanical style.
   pan tests impacted [--changed <ref> | --staged | --worktree-dirty] [--file <path>]... [--include <glob>]... [--depth <n>] [--list] [--json] [--advisory-ratio <0..1>]
       Self-development only. Select and run the lane tests whose import closure reaches the changed files. The default change set is the dirty working tree. An iteration aid, never a gate.
   pan release sync --worktree <name> --message <message> [--run <run-id>] [--json]
@@ -438,6 +444,7 @@ const WORKTREE_CAPABLE_SURFACES = [
   'author apply|validate',
   'release sync|continue|finalize',
   'conform scan|checkpoint',
+  'style scan|checkpoint',
   'repository-check <profile>',
   'technologies detect',
   'doctor',
@@ -459,6 +466,7 @@ const SUBCOMMAND_STYLE_COMMANDS = new Set([
   'repository-check',
   'requirements',
   'spotfix',
+  'style',
   'technologies',
   'tune',
   'worktree',
@@ -473,6 +481,7 @@ function acceptsWorktreeOption(command: string, args: string[]): boolean {
     case 'resume':
     case 'submit':
     case 'release':
+    case 'style':
       return true
     case 'author':
       return args[0] === 'apply' || args[0] === 'validate'
@@ -1005,6 +1014,26 @@ function runHypervisorCycle(root: string): Record<string, unknown> {
   }
 
   return { tick, away_decisions: [] }
+}
+
+/**
+ * Identify requirements that execute identically, whatever policy declares
+ * them. Exported so a test can hold sibling declarations to the shape this
+ * command collapses, rather than to the ambiguity message.
+ */
+export function requirementShapeKey(requirement: ResolvedRequirement): string {
+  return [
+    requirement.registry_id,
+    requirement.registry_version,
+    requirement.phase,
+    requirement.executor,
+    requirement.resolved_target ?? requirement.target,
+    requirement.enforcement,
+    requirement.failure_route,
+    requirement.evidence_class,
+    requirement.success_condition,
+    JSON.stringify(requirement.arguments),
+  ].join('|')
 }
 
 function runAgentPreSubmitValidators(
@@ -1835,6 +1864,103 @@ async function main(): Promise<void> {
       }
 
       throw new PanError(`Unknown conform subcommand: ${subcommand}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
+    }
+    case 'style': {
+      const subcommand = requiredArgument(args[0], 'style subcommand')
+      const asJson = hasFlag(args, '--json')
+      const sinceRef = option(args, '--since')
+      const all = hasFlag(args, '--all')
+      const worktreeWorkspace = sharedWorktreeWorkspace(root, args)
+      const workspaceRoot = path.resolve(
+        root,
+        worktreeWorkspace?.path ?? configuredWorkspaceRoot(root),
+      )
+
+      function formatStyleFiles(
+        files: Array<{
+          editable: boolean
+          exists: boolean
+          relative_path: string
+          issues: Array<{ code: string }>
+        }>,
+      ): string {
+        if (files.length === 0) {
+          return 'No eligible style artifacts were selected.'
+        }
+
+        return files
+          .map((file) => {
+            const scope = file.editable ? 'editable' : 'report-only'
+            const existence = file.exists ? '' : ' (deleted)'
+            const issueCount = file.issues.length
+            const issueLabel =
+              issueCount === 1 ? '1 issue' : `${issueCount} issues`
+
+            return `- ${scope}: ${file.relative_path}${existence} — ${issueLabel}`
+          })
+          .join('\n')
+      }
+
+      if (subcommand === 'scan') {
+        const result = scanStyleArtifacts(root, {
+          workspace_root: workspaceRoot,
+          since_ref: sinceRef,
+          all,
+        })
+
+        print(
+          asJson
+            ? result
+            : [
+                `Style scan: ${result.status}`,
+                `Languages: ${result.languages.join(', ') || 'none detected'}`,
+                `Base: ${result.base}`,
+                `Head: ${result.head}`,
+                `Files: ${result.summary.files}`,
+                '',
+                formatStyleFiles(result.files),
+              ].join('\n'),
+          asJson,
+        )
+
+        if (result.status !== 'passed') {
+          process.exitCode = 1
+        }
+
+        return
+      }
+
+      if (subcommand === 'checkpoint') {
+        const result = checkpointStyleArtifacts(root, {
+          workspace_root: workspaceRoot,
+          since_ref: sinceRef,
+          all,
+        })
+
+        print(
+          asJson
+            ? result
+            : [
+                `Style checkpoint: ${result.status}`,
+                `Head: ${result.head}`,
+                `Checkpoint: ${result.checkpoint_path}`,
+                `Wrote checkpoint: ${result.wrote_checkpoint ? 'yes' : 'no'}`,
+                '',
+                formatStyleFiles(result.files),
+              ].join('\n'),
+          asJson,
+        )
+
+        if (result.status !== 'passed') {
+          process.exitCode = 1
+        }
+
+        return
+      }
+
+      throw new PanError(`Unknown style subcommand: ${subcommand}`, {
         code: 'UNKNOWN_COMMAND',
       })
     }
@@ -3011,12 +3137,25 @@ async function main(): Promise<void> {
         let selected = requirements
 
         if (requirements.length > 1) {
-          const required = requirements.filter(
-            (item) => item.enforcement === 'required',
+          // Sibling policies may each declare the same check on one shared
+          // context: the style mode binds one code-style check through both
+          // its language policies. Identical execution shapes describe one
+          // run, so collapsing them keeps the ambiguity error for the
+          // configurations that really are ambiguous.
+          const shapes = new Set(
+            requirements.map((item) => requirementShapeKey(item)),
           )
 
-          if (required.length === 1) {
-            selected = required
+          if (shapes.size === 1) {
+            selected = [requirements[0] as ResolvedRequirement]
+          } else {
+            const required = requirements.filter(
+              (item) => item.enforcement === 'required',
+            )
+
+            if (required.length === 1) {
+              selected = required
+            }
           }
         }
 

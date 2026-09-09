@@ -20,6 +20,12 @@
       "persona": "*",
       "workflow": "*",
       "stage": "*",
+      "policies": ["COMMS-001"]
+    },
+    {
+      "persona": "*",
+      "workflow": "*",
+      "stage": "*",
       "installation_scope": "self_development",
       "policies": ["BIN-001"]
     },
@@ -652,6 +658,12 @@
       "workflow": "standalone",
       "stage": "conform",
       "policies": ["STE-001"]
+    },
+    {
+      "persona": "librarian",
+      "workflow": "standalone",
+      "stage": "style",
+      "policies": ["TSTYLE-001", "PYSTYLE-001"]
     },
     {
       "persona": "librarian",

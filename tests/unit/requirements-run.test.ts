@@ -4,11 +4,13 @@ import path from 'node:path'
 import test from 'node:test'
 
 import {
+  inferTargetKind,
   runRequirement,
   isPassingResult,
   resolveRequirementTargetPath,
 } from '../../src/lib/requirements/run.js'
 import { resolveRequirements } from '../../src/lib/requirements/resolve.js'
+import { requirementShapeKey } from '../../src/cli.js'
 import { createFixture } from '../helpers.js'
 
 test('artifact validators resolve only when workflow artifacts are requested', () => {
@@ -150,6 +152,52 @@ test('named artifact targets resolve when precomputation is absent', () => {
     ),
     'runtime/pr-descriptions/final.md',
   )
+})
+
+test('the style mode carries one code style check for both language policies', () => {
+  const root = createFixture()
+  const style = resolveRequirements(root, {
+    persona: 'librarian',
+    workflow: 'standalone',
+    stage: 'style',
+    invocation_kind: 'standalone',
+    contracts: [],
+    operator_artifacts: 'suppressed',
+  }).validation_requirements.filter(
+    (item) => item.registry_id === 'CODE-STYLE-VALIDATE-001',
+  )
+
+  // Each language policy declares the check, and the declarations execute
+  // identically, so `pan requirements run --registry` collapses them.
+  assert.deepEqual(style.map((item) => item.policy_id).sort(), [
+    'PYSTYLE-001',
+    'TSTYLE-001',
+  ])
+  assert.equal(new Set(style.map(requirementShapeKey)).size, 1)
+
+  const implement = resolveRequirements(root, {
+    persona: 'coder',
+    workflow: 'delivery',
+    stage: 'implement',
+    invocation_kind: 'workflow',
+  })
+
+  assert.equal(
+    [
+      ...implement.validation_requirements,
+      ...implement.automation_requirements,
+    ].some((item) => item.registry_id === 'CODE-STYLE-VALIDATE-001'),
+    false,
+    'the code style check MUST NOT reach a workflow stage',
+  )
+})
+
+test('a source file resolves the source-file target kind', () => {
+  assert.equal(inferTargetKind('src/cli.ts'), 'source-file')
+  assert.equal(inferTargetKind('src/App.tsx'), 'source-file')
+  assert.equal(inferTargetKind('tools/report.py'), 'source-file')
+  assert.equal(inferTargetKind('docs/guide.md'), 'markdown-artifact')
+  assert.equal(inferTargetKind('Makefile'), 'unknown')
 })
 
 test('runRequirement fails closed on missing target', () => {

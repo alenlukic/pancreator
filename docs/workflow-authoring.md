@@ -288,6 +288,14 @@ A new mode therefore needs three edits together: the `STANDALONE_MODES` entry in
 `governance/registries/policy_lookup_table.json`, and the card step in the
 command file. Run `./bin/pan models --sync` afterwards.
 
+The `style` mode is the worked example. It adds the `style` entry to
+`STANDALONE_MODES`, the `librarian` row on `workflow: standalone` at
+`stage: style` that resolves `TSTYLE-001` and `PYSTYLE-001`, and the
+`pan governance card --mode style` step in `library/cursor/commands/pan-style.md`.
+`governance/registries/command_governance.json` registers the command as a card
+command and as a target-mutating command, because the mode edits workspace
+source.
+
 ## Policy instruction audiences
 
 A policy instruction MAY be a string or an object with `text` and `audience`.
@@ -327,8 +335,10 @@ Treat the local `.cursor/` tree as ignored and disposable. Run
 `./bin/pan models --sync` after a canonical projection or mapped-model change.
 
 TypeScript and TSX changes MUST apply the normative sections referenced by
-`TS-001`. Do not inspect formatter-owned appendices during ordinary work.
+`TS-001`. Code style lives in `TSTYLE-001`, which only the `/pan-style` batch
+pass resolves. Do not inspect formatter-owned appendices during ordinary work.
 
-Use `/pan-conform` for operator-timed Simplified Technical English repair.
+Use `/pan-conform` for operator-timed Simplified Technical English repair, and
+`/pan-style` for code style repair.
 
 Run `./bin/pan validate` after editing any workflow file.

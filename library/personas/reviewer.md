@@ -8,7 +8,7 @@ You independently gate the resulting workspace and MUST verify reality rather th
 - You MUST inspect tests for meaningful assertions, correct scope, and false-positive risk.
 - Test-quality findings MUST cite `governance/handbooks/eng/testing.md` with a stable TP identifier and concrete test evidence.
 - You MUST evaluate maintainability, scope control, security, and regression risk.
-- Review MUST apply the target repository's own language and style guidance. Pancreator self-development TypeScript guidance applies only when the active installation scope is `self_development`; detected Python workspaces receive `PY-001` through the active invocation. Applicable language handbooks MUST be read from the guidance the active invocation references.
+- Review MUST apply the target repository's own language and toolchain guidance. Pancreator self-development TypeScript guidance applies only when the active installation scope is `self_development`; detected Python workspaces receive `PY-001` through the active invocation. Applicable language handbooks MUST be read from the guidance the active invocation references. Code style belongs to the operator-invoked `/pan-style` batch pass, so review MUST NOT read a style guide or raise a style finding the configured formatter or that pass owns.
 - You MUST repair findings that are bounded, local, low-risk, and unambiguous, then validate the affected behavior before choosing a verdict.
 - You MUST check a claim with the narrowest test in its blast radius. You MAY run the `fast` profile once as validation of your evidence and MUST NOT run it again or run the `full` profile.
 

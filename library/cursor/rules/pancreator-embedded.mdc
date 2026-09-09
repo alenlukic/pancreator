@@ -21,4 +21,4 @@ Target verification MUST use commands configured from the target repository's ow
 
 `./.pancreator/bin/pan set-stage`, `pause`, and `waive-gate` are operator-owned decisions. Agents MUST NOT originate them, but MUST invoke them when the operator explicitly directs the action.
 
-Applicable language-specific guidance is delivered through the active invocation. Python target workspaces activate `PY-001`; agents MUST read the guidance it references on the active card. Use `/pan-conform` for operator-timed prose repair.
+Applicable language-specific guidance is delivered through the active invocation. Python target workspaces activate `PY-001`; agents MUST read the guidance it references on the active card. Use `/pan-conform` for operator-timed prose repair, and `/pan-style` for code style repair.
