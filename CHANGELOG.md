@@ -1,5 +1,28 @@
 # Changelog
 
+## [5.19.0] - 2026-09-09
+
+### Changed
+
+- Give `COMMS-001` ownership of operator chat output. Move those rules out of `STE-001`, `BRIEF-001`, and `OUTPUT-001` ([COMMS-001](governance/policies/COMMS-001.json), [db2cf7a4](https://github.com/alenlukic/pancreator/commit/db2cf7a47a8bec9252239b2dcb5fc0efce7e1e6a)).
+- Bind TypeScript and Python style handbooks to `TSTYLE-001` and `PYSTYLE-001` on the librarian style mode only ([TSTYLE-001](governance/policies/TSTYLE-001.json), [PYSTYLE-001](governance/policies/PYSTYLE-001.json), [65ed3a5a](https://github.com/alenlukic/pancreator/commit/65ed3a5af3066aae29a00f8944917a31ae013d95)).
+- Remove the `## Chat reports` section from the Simplified Technical English handbook ([handbook](governance/handbooks/writing/simplified-technical-english.md), [db2cf7a4](https://github.com/alenlukic/pancreator/commit/db2cf7a47a8bec9252239b2dcb5fc0efce7e1e6a)).
+- Direct `/pan-build-docs` to emit a split `LANGSTYLE-001` bundle. Preserve a conforming split bundle on install ([pan-build-docs](library/cursor/commands/pan-build-docs.md), [install-support](bin/install-support), [65ed3a5a](https://github.com/alenlukic/pancreator/commit/65ed3a5af3066aae29a00f8944917a31ae013d95), [7c21d05a](https://github.com/alenlukic/pancreator/commit/7c21d05a8f71215b5e3e1356669c577666646231)).
+
+### Added
+
+- Add `./bin/pan style scan|checkpoint` and `/pan-style` for judgment-level code style repair ([code-style](src/lib/code-style.ts), [pan-style](library/cursor/commands/pan-style.md), [65ed3a5a](https://github.com/alenlukic/pancreator/commit/65ed3a5af3066aae29a00f8944917a31ae013d95)).
+- Add `CODE-STYLE-VALIDATE-001` for the style mode ([registry](governance/registries/validation_registry.json), [65ed3a5a](https://github.com/alenlukic/pancreator/commit/65ed3a5af3066aae29a00f8944917a31ae013d95)).
+
+### Removed
+
+- Stop delivery personas from resolving style-guide guidance ([lookup table](governance/registries/policy_lookup_table.json), [65ed3a5a](https://github.com/alenlukic/pancreator/commit/65ed3a5af3066aae29a00f8944917a31ae013d95)).
+
+### Fixed
+
+- Preserve a split language bundle across embedded install refresh ([install-support](bin/install-support), [7c21d05a](https://github.com/alenlukic/pancreator/commit/7c21d05a8f71215b5e3e1356669c577666646231)).
+- Drop stale `guidance_sources` wording from `PY-001` ([PY-001](governance/policies/PY-001.json), [7c21d05a](https://github.com/alenlukic/pancreator/commit/7c21d05a8f71215b5e3e1356669c577666646231)).
+
 ## [5.18.0] - 2026-09-09
 
 ### Changed
