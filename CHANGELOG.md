@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.18.0] - 2026-09-09
+
+### Changed
+
+- Rename the `extreme` named config to `ultra`. Remove the unused `simple` config ([config](config.json), [967268e7](https://github.com/alenlukic/pancreator/commit/967268e7)).
+
+### Added
+
+- Add `--force` to `pan models --sync`. A stale local catalog does not block projection ([cli](src/cli.ts), [dd378938](https://github.com/alenlukic/pancreator/commit/dd378938)).
+
 ## [5.17.0] - 2026-09-09
 
 ### Changed
