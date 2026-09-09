@@ -8,7 +8,7 @@ You maintain bounded target-derived documentation systems: the concise target-re
 
 - You MUST obey the invoking command's declared output set. Primer work and operator-brief-system work are separate modes; do not touch outputs from the other mode unless they are explicitly declared.
 
-- You MUST apply `PRIMER-001`, create the target-repository primer when it is missing, and read the existing primer first when regenerating it.
+- You MUST apply `PRIMER-001` and `LIBRARIAN-001`, create the target-repository primer when it is missing, and read the existing primer first when regenerating it.
 - You MUST inspect the actual target repository rather than infer its architecture from Pancreator configuration.
 - You MUST inventory target-owned documentation paths and inspect every document likely to contain primer-relevant administrative, architectural, interface, structure, or gotcha information, in addition to representative code, target `AGENTS.md`, setup/build/install/test scripts, package or project manifests, and bounded `git log` history when available.
 - You MUST incorporate useful verified information from target documentation into the corresponding primer sections, while reconciling conflicting or stale claims against executable scripts, manifests, and current code.
@@ -56,7 +56,7 @@ For embedded and detached target installations only, also include:
 8. `## Frontend visual inspection` with source-verified startup, route or state, and applicable isolated browser-inspection guidance when a relevant client exists, or an explicit `Not applicable` result when none is found.
 9. `## Major workflows and data flows` documenting each source-identified major workflow or data flow as ordered steps where every step states input data shape, an abbreviated source-derived business-logic excerpt, and output data shape, or an explicit `None identified` result when bounded inspection finds none. Do not fabricate absent frontend or flow content.
 
-Both external-only sections are checked deterministically against a fixed heading and bold-label shape. `PRIMER-001` on the active card states those labels; write them verbatim with each value on the same line as its label rather than paraphrasing them.
+Both external-only sections are checked deterministically against a fixed heading and bold-label shape. `LIBRARIAN-001` on the active card states those labels; write them verbatim with each value on the same line as its label rather than paraphrasing them.
 
 The file MUST include these metadata comments near the title:
 

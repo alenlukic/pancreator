@@ -14,6 +14,7 @@ import {
   withOperationMutex,
   writeTextAtomic,
 } from '../io.js'
+import { renderPolicyBlocks } from '../policy-guidance.js'
 import { loadPolicySources, resolvePolicies } from '../policies.js'
 import { readRedlineRecord, redlineRecordPath } from '../watch.js'
 import { readWorktreeIndex } from '../worktrees.js'
@@ -151,6 +152,15 @@ export function renderSupervisorCard(
     },
   })
   const digest = sha256(markdown)
+  const policySections = policies
+    .map((policy) => {
+      const section = `${renderPolicyBlocks([policy], 3, 'supervisor')
+        .join('\n')
+        .trimEnd()}\n`
+
+      return { policy_id: policy.id, sha256: sha256(section) }
+    })
+    .sort((a, b) => a.policy_id.localeCompare(b.policy_id))
   const previous = state.supervisor_card
   const absolute = resolveInside(root, relativePath)
   const changed = previous?.sha256 !== digest
@@ -165,6 +175,7 @@ export function renderSupervisorCard(
         path: relativePath,
         sha256: digest,
         rendered_at: now(),
+        policy_sections: policySections,
         // A stale attestation stays on record as evidence, but it no longer
         // matches the current digest, so the run is unattested again.
         ...(previous?.attested_sha256
@@ -176,7 +187,13 @@ export function renderSupervisorCard(
             }
           : {}),
       }
-    : { ...(previous as SupervisorCardState), path: relativePath }
+    : {
+        ...(previous as SupervisorCardState),
+        path: relativePath,
+        ...(previous?.policy_sections
+          ? {}
+          : { policy_sections: policySections }),
+      }
 
   state.supervisor_card = next
 

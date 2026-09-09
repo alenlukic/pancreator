@@ -12,12 +12,10 @@ references both while carrying the structured fields the harness checks.
 
 1. Start from `library/templates/stage-output.example.json` and keep the
    invocation ID exactly as the card states.
-2. Read `output.operator_brief` from the invocation card. Author schema-valid
-   brief JSON at its `source_path`, then render it to its exact `rendered_path`
-   with `pan briefs render`.
-3. Put the rendered HTML at `artifacts[0]` and its source brief JSON at
-   `artifacts[1]`. Create any additional evidence artifacts before referencing
-   them. Markdown is permitted only for execution-contract exceptions such as
+2. Follow the card's `output.operator_brief` contract. When it exists, author
+   schema-valid brief JSON at its `source_path` and do not run the renderer.
+3. Create any additional evidence artifacts before referencing them. Markdown
+   is permitted only for execution-contract exceptions such as
    invocation/delegation records, PR copy, or legacy artifacts.
 4. Fill every rubric criterion with a result, concrete evidence, and an
    explanation of why the evidence is sufficient.

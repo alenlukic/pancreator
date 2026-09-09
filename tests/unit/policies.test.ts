@@ -5,6 +5,8 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { createFixture, sharedFixture } from '../helpers.js'
 import { loadPolicyCatalog, resolvePolicies } from '../../src/lib/policies.js'
+import { STANDALONE_MODES } from '../../src/lib/governance-card.js'
+import { filterPolicyInstructionsForCard } from '../../src/lib/policy-instructions.js'
 import { resolveRequirements } from '../../src/lib/requirements/resolve.js'
 
 function writePolicyExtension(
@@ -374,13 +376,9 @@ test('policy resolution unions global and stage-specific policies', () => {
     'ENG-001',
     'GLOBAL-001',
     'GLOBAL-002',
-    'LANG-001',
     'OPERATOR-001',
-    'OUTPUT-001',
     'PRIMER-001',
     'REPO-001',
-    'RUNTIME-001',
-    'STE-001',
     'TEST-001',
     'TS-001',
     'VALID-001',
@@ -401,6 +399,7 @@ test('representative contexts exclude policies outside their remit', () => {
     'ACTION-001',
     'ASK-001',
     'AUTO-001',
+    'BIN-001',
     'CONTRACT-001',
     'ENG-001',
     'GLOBAL-001',
@@ -408,7 +407,6 @@ test('representative contexts exclude policies outside their remit', () => {
     'OPERATOR-001',
     'PLAN-002',
     'PRIMER-001',
-    'STE-001',
     'VALID-001',
   ])
 
@@ -439,7 +437,12 @@ test('representative contexts exclude policies outside their remit', () => {
     ],
     ['orchestrator', 'design', 'intake', ['INTAKE-001', 'ORCH-001']],
     ['release-steward', 'standalone', 'release', ['VERSION-001']],
-    ['librarian', 'standalone', 'build-docs', ['PRIMER-001', 'VALID-001']],
+    [
+      'librarian',
+      'standalone',
+      'build-docs',
+      ['LIBRARIAN-001', 'PRIMER-001', 'REPO-001', 'VALID-001'],
+    ],
     ['decomposer', 'standalone', 'decompose', ['DECOMP-001']],
     ['harness-technician', 'standalone', 'repair', ['REPAIR-001']],
     ['investigator', 'standalone', 'debug', ['DIAG-001', 'WORK-001']],
@@ -450,12 +453,7 @@ test('representative contexts exclude policies outside their remit', () => {
       'best-of-n',
       ['BESTOFN-001', 'WORK-001'],
     ],
-    [
-      'reviewer',
-      'delivery',
-      'verify',
-      ['ENG-001', 'CONTRACT-001', 'LANG-001', 'TS-001'],
-    ],
+    ['reviewer', 'delivery', 'verify', ['ENG-001', 'CONTRACT-001', 'TS-001']],
     [
       'reviewer',
       'standalone',
@@ -569,7 +567,10 @@ test('the best-of-N candidate planner receives no specification hierarchy or coh
   ]
 
   for (const policy of candidate) {
-    for (const text of [policy.summary, ...policy.instructions]) {
+    for (const text of [
+      policy.summary,
+      ...policy.instructions.map((instruction) => instruction.text),
+    ]) {
       for (const term of hierarchyTerms) {
         assert.equal(
           text.toLowerCase().includes(term),
@@ -603,7 +604,9 @@ test('the specification hierarchy rules live in exactly one policy', () => {
   const catalog = loadPolicyCatalog(sharedFixture())
   const owners = [...catalog.values()].filter((policy) =>
     policy.instructions.some((instruction) =>
-      instruction.includes('one child specification for each unit of work'),
+      instruction.text.includes(
+        'one child specification for each unit of work',
+      ),
     ),
   )
 
@@ -617,7 +620,7 @@ test('the specification hierarchy rules live in exactly one policy', () => {
   assert.ok(shared)
   assert.equal(
     shared.instructions.some((instruction) =>
-      /child specification|cohort|unit of work/iu.test(instruction),
+      /child specification|cohort|unit of work/iu.test(instruction.text),
     ),
     false,
     'PLAN-002 MUST keep only the consolidated-planning rules both planners share',
@@ -671,7 +674,7 @@ test('Python policy loads only for detected Python workspaces', () => {
     stage: 'plan',
   }).map((policy) => policy.id)
 
-  for (const policyId of ['CONTRACT-001', 'ENG-001', 'PLAN-002']) {
+  for (const policyId of ['ENG-001', 'PLAN-002']) {
     assert.ok(plannerIds.includes(policyId), `plan MUST include ${policyId}`)
   }
   for (const policyId of ['LANG-001', 'PY-001', 'TS-001']) {
@@ -919,4 +922,306 @@ test('every repair instruction surface agrees that several intakes are allowed',
 
   assert.match(command, /once for each intake path/u)
   assert.match(command, /default to one intake/u)
+})
+
+test('ship, write-pr, and conform keep required STE checks', () => {
+  const root = sharedFixture()
+  const requiredSte = (
+    persona: string,
+    workflow: string,
+    stage: string,
+    invocationKind: 'workflow' | 'standalone',
+  ): string[] =>
+    resolveRequirements(root, {
+      persona,
+      workflow,
+      stage,
+      invocation_kind: invocationKind,
+    })
+      .validation_requirements.filter(
+        (requirement) =>
+          requirement.registry_id === 'SIMPLIFIED-ENGLISH-VALIDATE-001' &&
+          requirement.enforcement === 'required',
+      )
+      .map((requirement) => requirement.requirement_id)
+      .sort()
+
+  assert.deepEqual(
+    requiredSte('release-steward', 'delivery', 'ship', 'workflow'),
+    ['workflow-pr-simplified-english-validate'],
+  )
+  assert.deepEqual(
+    requiredSte('release-steward', 'standalone', 'write-pr', 'standalone'),
+    ['standalone-pr-simplified-english-validate'],
+  )
+  assert.deepEqual(
+    requiredSte('librarian', 'standalone', 'conform', 'standalone'),
+    ['standalone-conform-simplified-english-validate'],
+  )
+
+  const planner = resolvePolicies(root, {
+    persona: 'planner',
+    workflow: 'planning',
+    stage: 'plan',
+  }).map((policy) => policy.id)
+
+  assert.equal(planner.includes('STE-001'), false)
+})
+
+test('no conform policy forbids an edit the conform boundary requires', () => {
+  const root = sharedFixture()
+  const mode = STANDALONE_MODES.conform
+
+  assert.ok(mode)
+
+  const policies = resolvePolicies(root, {
+    persona: mode.persona,
+    workflow: mode.workflow,
+    stage: mode.stage,
+  })
+  const rendered = policies.flatMap((policy) =>
+    filterPolicyInstructionsForCard(policy.instructions, 'agent').map(
+      (instruction) => `${policy.id}: ${instruction.text}`,
+    ),
+  )
+  const boundary = mode.boundaries.join('\n')
+  const editable = mode.boundaries.find((line) =>
+    line.includes('MUST edit only'),
+  )
+  // One sentence carries the exclusion, and the exception that follows
+  // `except` is the governed set rather than part of the exclusion.
+  const exclusions = rendered
+    .flatMap((instruction) => instruction.split(/(?<=\.)\s+/u))
+    .filter((sentence) =>
+      /outside (?:the|those|these) (?:writing )?rules|MUST NOT restyle/u.test(
+        sentence,
+      ),
+    )
+
+  assert.ok(editable, boundary)
+
+  // Fail closed. The replaced guard skipped its own body when the exclusion
+  // was reworded, and discarded every word after the first `except`, so it
+  // passed against the base text it was written to reject.
+  assert.ok(
+    exclusions.length > 0,
+    `no rendered conform instruction states an exclusion:\n${rendered.join('\n')}`,
+  )
+
+  // The boundary requires the librarian to repair these paths, so no rendered
+  // instruction may place them outside the writing rules of this card.
+  for (const required of ['docs/issues/', 'runtime/pr-descriptions/']) {
+    assert.ok(editable.includes(required), `the boundary omits ${required}`)
+
+    for (const sentence of exclusions) {
+      const exceptAt = sentence.search(/\bexcept\b/u)
+      const excluded = exceptAt === -1 ? sentence : sentence.slice(0, exceptAt)
+
+      assert.ok(
+        !excluded.includes(required),
+        `${sentence} forbids restyling ${required}, which the conform boundary requires`,
+      )
+    }
+  }
+
+  // Absence is not the contract. The carve-out MUST be stated, so a revert to
+  // an exclusion covering all of `docs/` fails here rather than passing.
+  assert.ok(
+    exclusions.some((sentence) => {
+      const exceptAt = sentence.search(/\bexcept\b/u)
+
+      return (
+        exceptAt !== -1 && sentence.slice(exceptAt).includes('docs/issues/')
+      )
+    }),
+    `no rendered conform instruction carves docs/issues/ out of its exclusion:\n${rendered.join('\n')}`,
+  )
+
+  // The boundary reserves release metadata, so nothing on the card may hand it
+  // to this persona. The replaced pin named the removed wording, so any other
+  // wording that grants the same edit passed it.
+  assert.ok(!editable.includes('CHANGELOG.md'), editable)
+  assert.ok(
+    mode.boundaries.some(
+      (line) => line.includes('CHANGELOG.md') && line.includes('MUST NOT edit'),
+    ),
+    boundary,
+  )
+})
+
+test('build-docs owns primer validators on LIBRARIAN-001', () => {
+  const root = sharedFixture()
+  const catalog = loadPolicyCatalog(root)
+  const librarian = catalog.get('LIBRARIAN-001')
+  const primer = catalog.get('PRIMER-001')
+
+  assert.ok(librarian)
+  assert.ok(primer)
+  assert.equal(primer.requirements?.length ?? 0, 0)
+
+  const ids = resolveRequirements(root, {
+    persona: 'librarian',
+    workflow: 'standalone',
+    stage: 'build-docs',
+    invocation_kind: 'documentation',
+  })
+    .validation_requirements.filter((requirement) =>
+      [
+        'TARGET-REPO-PRIMER-VALIDATE-001',
+        'TARGET-LANGUAGE-HANDBOOK-VALIDATE-001',
+      ].includes(requirement.registry_id),
+    )
+    .map((requirement) => requirement.requirement_id)
+    .sort()
+
+  assert.deepEqual(ids, [
+    'target-language-handbook-validate',
+    'target-repo-primer-validate',
+  ])
+  assert.equal(
+    resolveRequirements(root, {
+      persona: 'librarian',
+      workflow: 'standalone',
+      stage: 'build-docs',
+      invocation_kind: 'documentation',
+    }).validation_requirements.some(
+      (requirement) => requirement.policy_id === 'LIBRARIAN-001',
+    ),
+    true,
+  )
+})
+
+test('self-development skips generated language rows that target installs keep', () => {
+  const selfDev = resolvePolicies(sharedFixture(), {
+    persona: 'coder',
+    workflow: 'delivery',
+    stage: 'implement',
+  }).map((policy) => policy.id)
+
+  assert.equal(selfDev.includes('LANG-001'), false)
+
+  const root = createFixture()
+  const configPath = path.join(root, 'config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  config.installation_mode = 'embedded'
+  config.workspace_root = 'target'
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+  mkdirSync(path.join(root, 'target'), { recursive: true })
+  writeFileSync(path.join(root, 'target', 'package.json'), '{}\n')
+  writeFileSync(path.join(root, 'target', 'tsconfig.json'), '{}\n')
+
+  const embedded = resolvePolicies(root, {
+    persona: 'coder',
+    workflow: 'delivery',
+    stage: 'implement',
+  }).map((policy) => policy.id)
+
+  assert.ok(embedded.includes('LANG-001'))
+})
+
+test('mixed policies tag supervisor, harness, and operator audiences', () => {
+  const catalog = loadPolicyCatalog(sharedFixture())
+  const audiences = (policyId: string): string[][] =>
+    (catalog.get(policyId)?.instructions ?? []).map(
+      (instruction) => instruction.audience,
+    )
+  const audienceFor = (policyId: string, excerpt: string): string[] => {
+    const instruction = (catalog.get(policyId)?.instructions ?? []).find(
+      (item) => item.text.includes(excerpt),
+    )
+
+    assert.ok(
+      instruction,
+      `${policyId} MUST contain the named instruction ${excerpt}`,
+    )
+
+    return instruction.audience
+  }
+
+  // The durable-instruction-text rules govern how agents author policies,
+  // personas, skills, and commands, so they render on an agent card. No code
+  // path renders a card at audience `operator`.
+  assert.deepEqual(audienceFor('STE-001', 'durable-instruction-text'), [
+    'agent',
+  ])
+  assert.deepEqual(
+    audienceFor('STE-001', 'Operator chat reports MUST state the outcome'),
+    ['supervisor'],
+  )
+  assert.deepEqual(audienceFor('OPERATOR-001', '--redline --occasion'), [
+    'supervisor',
+  ])
+  assert.deepEqual(audienceFor('OPERATOR-001', 'A non-empty `--note`'), [
+    'supervisor',
+  ])
+  assert.deepEqual(audienceFor('CONTRACT-001', 'registry-validate'), [
+    'harness',
+  ])
+  assert.deepEqual(audienceFor('CONTRACT-001', 'projection_manifest.json'), [
+    'harness',
+  ])
+  assert.deepEqual(audienceFor('CONTRACT-001', 'directive-audit'), ['harness'])
+  assert.deepEqual(audienceFor('CONTRACT-001', '.git/info/exclude'), [
+    'harness',
+  ])
+  assert.deepEqual(
+    audienceFor('BRIEF-001', 'MUST render requested HTML during submission'),
+    ['harness'],
+  )
+  assert.deepEqual(audienceFor('BRIEF-001', 'retained brief system'), [
+    'harness',
+  ])
+  assert.deepEqual(
+    audienceFor('BRIEF-001', 'MUST delete transient source JSON'),
+    ['harness'],
+  )
+  assert.deepEqual(
+    audienceFor('BRIEF-001', 'MUST NOT loop the workflow to implementation'),
+    ['harness'],
+  )
+  assert.deepEqual(
+    audienceFor('VALID-001', 'treat an agent-run result as early feedback'),
+    ['harness'],
+  )
+  assert.deepEqual(
+    audienceFor('VALID-001', 'MUST NOT inline the full validator catalog'),
+    ['harness'],
+  )
+  assert.deepEqual(
+    audienceFor('VALID-001', 'MUST NOT invent a separate validator set'),
+    ['harness'],
+  )
+  // A policy whose every instruction is harness-tagged renders an empty block
+  // on the one card that loads it. Both of these keep a rendered instruction.
+  assert.ok(
+    audiences('OUTPUT-001').some((audience) => audience.includes('harness')),
+  )
+  assert.ok(
+    audiences('OUTPUT-001').some((audience) => audience.includes('agent')),
+  )
+  assert.ok(
+    audiences('RUNTIME-001').some((audience) => audience.includes('harness')),
+  )
+  assert.ok(
+    audiences('RUNTIME-001').some((audience) => audience.includes('agent')),
+  )
+  assert.ok(
+    catalog
+      .get('LIBRARIAN-001')
+      ?.instructions.some((instruction) =>
+        instruction.text.includes('Repository-check commands MUST be copied'),
+      ),
+  )
+  assert.equal(
+    catalog
+      .get('REPO-001')
+      ?.instructions.some((instruction) =>
+        instruction.text.includes('Repository-check commands MUST be copied'),
+      ),
+    false,
+  )
 })

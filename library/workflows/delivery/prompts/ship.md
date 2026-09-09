@@ -39,7 +39,7 @@ otherwise the request the card delivers, which is the ratified specification.
    Write the declared PR artifact.
    The harness runs both PR validators against the named PR artifact. Do not
    open or create a pull request.
-9. When `output.operator_brief` exists, edit its declared source.
+9. Follow the card's `output.operator_brief` contract.
 
 ## Output
 
@@ -48,8 +48,7 @@ Populate `data.release` (`summary`, `change_list`, `validation`, `rollback`,
 For Pancreator self-development, also populate `data.release.versioning`
 (`current_version`, `recommendation`, `proposed_version`, `baseline_commit`,
 `rationale`, `compatibility`, `updated_files`, `release_index_action`).
-When `output.operator_brief` exists, edit its declared source and reference the
-rendered HTML. Do not run the renderer. Reference `pr-description.md` as a
+Follow the card's `output.operator_brief` contract. Reference `pr-description.md` as a
 separate Markdown source artifact. Always create the PR artifact after local
 finalization in self-development.
 

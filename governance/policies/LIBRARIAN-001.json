@@ -1,0 +1,50 @@
+{
+  "id": "LIBRARIAN-001",
+  "title": "Librarian documentation duties",
+  "severity": "hard",
+  "summary": "The librarian MUST produce target-derived documentation and repository-check configuration without fabrication, and MUST validate outputs before reporting completion.",
+  "instructions": [
+    "When the primer exists, the librarian MUST read the previous primer before regenerating it.",
+    "The librarian MUST inspect representative target code, target `AGENTS.md`, `README.md`, setup/build/installation/test scripts, package or project manifests, and bounded Git history when Git metadata is available.",
+    "The librarian MUST inventory target-owned documentation paths, inspect every document likely to contain primer-relevant administrative, architectural, interface, structure, or gotcha information, and incorporate useful verified details into the corresponding primer sections. Documentation that conflicts with executable scripts, manifests, or current code MUST be identified as stale or omitted rather than repeated as fact.",
+    "The librarian MUST write runtime/repository-checks.json from verified target-repository commands, MUST preserve documented distinctions among fast/default, secondary slow/integration, and complete suites, MUST use explicit repository-declared toolchain entrypoints when available, and MUST leave uncertain profiles empty rather than infer a language or package manager.",
+    "The librarian MUST produce a concise primer containing a prose summary, administrative commands, a Mermaid architecture diagram, high-level project structure with key paths, public interfaces, and gotchas or explicit `None identified` statements.",
+    "For embedded and detached target installations only, the librarian MUST add a `Frontend visual inspection` section with source-verified startup, route or state, and applicable isolated browser-inspection guidance when a relevant client exists, or an explicit `Not applicable` result when none is found. The self-development primer MUST NOT gain this external-only subsection. The section MUST carry the bold labels `**Startup:**`, `**Route/state:**`, and `**Browser inspection:**` written verbatim, each with its value on the same line as its label; a label alone on its own line validates as empty. When no relevant client exists, `Not applicable` MUST be the first content in the section body.",
+    "For embedded and detached target installations only, the librarian MUST add a `Major workflows and data flows` section documenting every source-identified major workflow or data flow as ordered steps where each step states input data shape, an abbreviated source-derived business-logic excerpt, and output data shape, or an explicit `None identified` result when bounded inspection finds none. Relevance and completeness of identified flows remain judgment-only; deterministic validation checks documented shape only. Each flow MUST use a `### <flow name>` heading and MUST number its steps with contiguous `#### Step <n>: <step name>` headings beginning at `Step 1`. Each step MUST carry the bold labels `**Input shape:**`, `**Logic excerpt:**`, and `**Output shape:**` written verbatim, each with its value on the same line as its label; a label alone on its own line validates as empty. When bounded inspection finds no qualifying flow, `None identified` MUST be the first content in the section body.",
+    "The librarian MUST NOT fabricate frontend inspection or data-flow content when the target lacks a relevant client or qualifying flow.",
+    "The librarian MUST write only the declared primer path and runtime/repository-checks.json, MUST NOT alter target source or workflow state, MUST validate the repository-check configuration, and MUST run the primer's resolved policy-bound validator under VALID-001 before presenting the documentation bundle as complete.",
+    "Repository-check commands MUST be copied from or directly derived from authoritative target documentation, manifests, executable scripts, or operator instructions; uncertainty MUST leave a profile unconfigured rather than inventing a command. The `fast` profile MUST use the shortest documented default or primary suite and MUST NOT duplicate `full` when the repository defines separate fast and complete suites. A separately documented slow or integration subset SHOULD use `secondary`; `full` MUST cover all documented suites.",
+    "Each profile SHOULD include probes that record the executable identity and version whenever different toolchain selections could make results incomparable across implementation, review, and QA. A profile SHOULD set `timeout_ms` when target documentation states an expected duration or bounded runtime.",
+    "Embedded installations MUST remain language- and technology-agnostic. Pancreator self-development policies, handbooks, scripts, and package-manager conventions MUST NOT be imposed on a target repository unless the target independently adopts them."
+  ],
+  "requirements": [
+    {
+      "id": "target-repo-primer-validate",
+      "registry_id": "TARGET-REPO-PRIMER-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "both",
+      "target": "artifact:0",
+      "enforcement": "required",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result",
+      "applicability": {
+        "invocation_kind": "documentation",
+        "stage": "build-docs"
+      }
+    },
+    {
+      "id": "target-language-handbook-validate",
+      "registry_id": "TARGET-LANGUAGE-HANDBOOK-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "both",
+      "target": "artifact:0",
+      "enforcement": "required",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result",
+      "applicability": {
+        "invocation_kind": "documentation",
+        "stage": "build-docs"
+      }
+    }
+  ]
+}

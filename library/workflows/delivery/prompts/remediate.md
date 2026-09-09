@@ -54,10 +54,7 @@ delta needs an entry. Each remediation entry states
 the `cause` from the verify evidence, the `action` taken, and non-empty
 `evidence`. A disputed finding gets a remediation entry whose action states
 the dispute and whose evidence proves it. Under `fail_severe`, record any plan
-amendments in `data.plan_amendments`. When `output.operator_brief` exists,
-edit its declared source and reference the rendered HTML. Do not run the
-renderer. When the contract omits `output.operator_brief`, do not create a
-brief source or rendered stage HTML.
+amendments in `data.plan_amendments`. Follow the card's `output.operator_brief` contract.
 
 ## Done when
 

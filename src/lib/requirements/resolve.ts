@@ -1,8 +1,5 @@
-import { readdirSync } from 'node:fs'
-import path from 'node:path'
-
 import { invariant } from '../errors.js'
-import { isRecord, readJson, sha256 } from '../io.js'
+import { isRecord, sha256 } from '../io.js'
 import { resolvePolicies } from '../policies.js'
 import type {
   Policy,
@@ -164,7 +161,7 @@ function validateRequirement(
   }
 
   for (const instruction of policy.instructions) {
-    if (INLINE_PATH_PATTERN.test(instruction)) {
+    if (INLINE_PATH_PATTERN.test(instruction.text)) {
       errors.push(
         `${policy.id} MUST NOT duplicate executable paths in instructions; use registry id references`,
       )
@@ -298,18 +295,13 @@ export function resolveRequirements(
 }
 
 export function validatePolicyRequirements(
-  root: string,
+  policies: Iterable<Policy>,
   catalog: RegistryCatalog,
 ): string[] {
   const errors: string[] = []
-  const policiesDir = path.join(root, 'governance', 'policies')
   const seenIds = new Set<string>()
 
-  for (const name of readdirSync(policiesDir)
-    .filter((entry) => entry.endsWith('.json'))
-    .sort()) {
-    const policy = readJson(path.join(policiesDir, name)) as Policy
-
+  for (const policy of policies) {
     for (const requirement of policy.requirements ?? []) {
       validateRequirement(requirement, policy, catalog, seenIds, errors)
     }

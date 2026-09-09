@@ -58,17 +58,7 @@ Cohort fan-out satisfies that rule through worktree isolation. `pan cohort start
 
 ## Governance and projections
 
-Normative behavior belongs in policy JSON. Role judgment belongs in personas. Task procedure belongs in stage prompts or referenced skills.
-
-Policy applicability belongs only in `governance/registries/policy_lookup_table.json`. Requirements derive from the resolved policy set.
-
-Canonical Cursor sources live under `library/cursor/`. The projection manifest declares every Pancreator-owned target under `.cursor/`.
-
-Treat the local `.cursor/` tree as ignored and disposable. Run `./bin/pan models --sync` after a canonical projection or mapped-model change.
-
-TypeScript and TSX changes MUST apply the normative sections referenced by `TS-001`. Do not inspect formatter-owned appendices during ordinary work.
-
-Durable operator artifacts MUST apply `STE-001`. Repository documentation and source code remain outside that writing policy.
+See `docs/workflow-authoring.md` for policy authoring, projection, and instruction-audience rules.
 
 ## Target installations
 
@@ -96,9 +86,7 @@ Do not edit `release/index.json` before the release commit exists. Commit, push,
 
 ## Shell and chat output
 
-The `rtk` wrapper can summarize or truncate Cursor shell output. Rerun a command with explicit bounded capture when exact bytes matter.
-
-Validate multi-line fenced chat Markdown with `npm run validate:chat-markdown` before you send it. Correct every reported issue before you send the text.
+Use `/pan-conform` for operator-timed prose and chat Markdown repair.
 
 ## Validation
 

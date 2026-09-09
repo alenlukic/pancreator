@@ -48,10 +48,7 @@ Every new test file and every net-positive test delta needs an entry. A change
 with no new tests leaves `tests_added` empty. Each acceptance result states the criterion `id`,
 a `result`, and non-empty `evidence`. On a retry attempt, also populate
 `data.implementation.remediation` with one entry per prior failure cause:
-`cause`, `action`, and non-empty `evidence`. When `output.operator_brief`
-exists, edit its declared source and reference the rendered HTML. Do not run
-the renderer. When the contract omits `output.operator_brief`, do not create a
-brief source or rendered stage HTML.
+`cause`, `action`, and non-empty `evidence`. Follow the card's `output.operator_brief` contract.
 
 ## Done when
 

@@ -1,5 +1,30 @@
 # Changelog
 
+## [5.17.0] - 2026-09-09
+
+### Changed
+
+- Tag mixed-policy instructions by audience so a delivery card omits operator, librarian, and standalone text ([policy-instructions](src/lib/policy-instructions.ts), [24734b5d](https://github.com/alenlukic/pancreator/commit/24734b5d), [10e043a2](https://github.com/alenlukic/pancreator/commit/10e043a2)).
+- Split primer-only librarian rules onto `LIBRARIAN-001`. Restrict generated `LANG-001` rows to target installs ([8f3de05f](https://github.com/alenlukic/pancreator/commit/8f3de05f)).
+- Keep unique supervisor rules in the orchestrator brief. Stop `/pan-start` and `/pan-resume` from a second read of `orchestrator.md` ([orchestrator](library/personas/orchestrator.md), [8f3de05f](https://github.com/alenlukic/pancreator/commit/8f3de05f)).
+- Move AGENTS.md author text to `docs/workflow-authoring.md` ([workflow-authoring](docs/workflow-authoring.md), [8f3de05f](https://github.com/alenlukic/pancreator/commit/8f3de05f)).
+- Record that the operator waived the second verify, review, and QA after the remediator. The remediator full suite also did not run ([8f3de05f](https://github.com/alenlukic/pancreator/commit/8f3de05f)).
+- Keep `docs/issues/` inside the `STE-001` writing rules, in the policy and in the handbook ([STE-001](governance/policies/STE-001.json), [handbook](governance/handbooks/writing/simplified-technical-english.md), [3cc4ba41](https://github.com/alenlukic/pancreator/commit/3cc4ba41), [30526852](https://github.com/alenlukic/pancreator/commit/30526852)).
+- Refresh the target repository primer at the post-merge head ([primer](docs/target-repo-primer.md), [f50b1538](https://github.com/alenlukic/pancreator/commit/f50b1538)).
+- Record that five review rounds ran before this release. Twenty-three non-blocking findings stay open ([297019c7](https://github.com/alenlukic/pancreator/commit/297019c7)).
+
+### Added
+
+- Add `pan conform` scan and checkpoint with `/pan-conform`. The command runs at the installation root, and it reports `CHANGELOG.md` without an edit. No target-tracked path is editable ([conform](src/lib/conform.ts), [c024aa31](https://github.com/alenlukic/pancreator/commit/c024aa31), [3cc4ba41](https://github.com/alenlukic/pancreator/commit/3cc4ba41), [8816e8ad](https://github.com/alenlukic/pancreator/commit/8816e8ad)).
+- Add three registry-integrity checks so `pan validate` fails when a policy reaches no card. A harness citation must name a declared test ([validation](src/lib/validation.ts), [0d98b291](https://github.com/alenlukic/pancreator/commit/0d98b291), [81bdbf2f](https://github.com/alenlukic/pancreator/commit/81bdbf2f)).
+- Add a committed best-of-N configs example and name it in the best-of-N documentation ([template](library/templates/best-of-n-config.example.json), [best-of-n](docs/best-of-n.md), [d869b910](https://github.com/alenlukic/pancreator/commit/d869b910)).
+
+### Fixed
+
+- Restore unique orchestrator rules for cohort status, `models --probe`, `--no-autostart`, and the decision packet ([orchestrator](library/personas/orchestrator.md), [8f3de05f](https://github.com/alenlukic/pancreator/commit/8f3de05f)).
+- Add `OUTPUT-001` to the orchestrator `EXECUTOR-001` row. Add an unscoped `TEST-001` row for spotfixer so a target install loads it with `LANG-001` ([8f3de05f](https://github.com/alenlukic/pancreator/commit/8f3de05f)).
+- Point the 4.0.0 configs link at the committed template, because the earlier link named an untracked file ([42bae507](https://github.com/alenlukic/pancreator/commit/42bae507)).
+
 ## [5.16.0] - 2026-09-08
 
 ### Changed
@@ -49,24 +74,6 @@
 - Write the derived target into the `/pan-review` request file whenever `$ARGUMENTS` names no target, not only when it is empty ([pan-review](library/cursor/commands/pan-review.md)).
 - State that `pan cohort release` creates the `release-<digest>` worktree and branch when no worktree holds the integration branch, and merges nothing ([operator guide](docs/operator-guide.md)).
 - Split the `/pan-build-docs` setup sentence into short sentences and state which runs skip setup ([pan-build-docs](library/cursor/commands/pan-build-docs.md), [evals](docs/evals.md)).
-
-- Bind each cohort chunk run to its worktree so later lifecycle commands accept `--worktree` on that run ([cohorts](src/lib/cohorts.ts), [4566eff9](https://github.com/alenlukic/pancreator/commit/4566eff9)).
-- Seed cohort ids from the plan-run suffix instead of the parent-specification basename ([4566eff9](https://github.com/alenlukic/pancreator/commit/4566eff9)).
-- Send the `cursor-agent` prompt over stdin so a large argv element is not killed at exec ([cursor-agent](src/lib/executors/cursor-agent.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
-- Show the literal away-mode option shape in the evaluator prompt, persist every evaluator exchange as run evidence, and rank options by fitness for the gate ([away-mode](src/lib/away-mode.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
-- Consume an away-mode decision only after a successful apply, and start the cohort with `--autostart` when away mode approves a planning gate ([COHORT-001](governance/policies/COHORT-001.json), [operator guide](docs/operator-guide.md), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
-- Capture repository-check output to files, lead a process group, and kill the group on timeout. Raise the fast and full gate bounds of `delivery-chunk` to 1200 s, and the `delivery` fast gate bound from 300 s to 600 s ([repository-checks](src/lib/repository-checks.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
-- Name the workspace and worktree in evidence-worker briefs ([render](src/lib/render.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
-- Validate a child-specification parent digest on the trimmed file and name the expected digest ([cohort-plan](src/lib/validators/cohort-plan.ts), [c64b0d60](https://github.com/alenlukic/pancreator/commit/c64b0d60)).
-- Authenticate away-mode `cursor-agent` spawns through the same `probeEnvironment` path as the model probe ([cursor-auth](src/lib/executors/cursor-auth.ts), [4566eff9](https://github.com/alenlukic/pancreator/commit/4566eff9)).
-
-### Added
-
-- Add `cohort integrate --into-branch` so integration can target a dedicated branch when a dirty checkout holds the base ([cohorts](src/lib/cohorts.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
-- Credit a changed source that a changed test imports in `pan tests impacted` ([test-impact](src/lib/test-impact.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
-- Write `integration-<n>.json` for every cohort integration path, including the multi-chunk reconcile merge ([COHORT-001](governance/policies/COHORT-001.json), [c64b0d60](https://github.com/alenlukic/pancreator/commit/c64b0d60)).
-- Record `pan repository-check --worktree` runs in the bound run's `agent/evidence/repository-check-runs.jsonl` ([repository-checks](src/lib/repository-checks.ts), [c64b0d60](https://github.com/alenlukic/pancreator/commit/c64b0d60)).
-- Record evaluator failures as `evaluator_failure` with their own ceiling instead of consuming `max_decisions_per_run` ([away-mode](src/lib/away-mode.ts), [4566eff9](https://github.com/alenlukic/pancreator/commit/4566eff9)).
 
 ### Fixed
 
@@ -130,11 +137,33 @@
 - State that repository-check evidence is recorded only with `--run` or `--worktree` and carries the `invocation_id`. Name the `pan output validate` advisory diagnostic for an invocation that ran `fast` twice ([runtime protocol](docs/runtime-protocol.md), [operator guide](docs/operator-guide.md)).
 - Describe the evidence-worker brief: it names the harness root and asks for `fast` only when no gate already passed it ([runtime protocol](docs/runtime-protocol.md), [operator guide](docs/operator-guide.md)).
 
+## [5.14.0] - 2026-09-05
+
+### Changed
+
+- Bind each cohort chunk run to its worktree so later lifecycle commands accept `--worktree` on that run ([cohorts](src/lib/cohorts.ts), [4566eff9](https://github.com/alenlukic/pancreator/commit/4566eff9)).
+- Seed cohort ids from the plan-run suffix instead of the parent-specification basename ([4566eff9](https://github.com/alenlukic/pancreator/commit/4566eff9)).
+- Send the `cursor-agent` prompt over stdin so a large argv element is not killed at exec ([cursor-agent](src/lib/executors/cursor-agent.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
+- Show the literal away-mode option shape in the evaluator prompt, persist every evaluator exchange as run evidence, and rank options by fitness for the gate ([away-mode](src/lib/away-mode.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
+- Consume an away-mode decision only after a successful apply, and start the cohort with `--autostart` when away mode approves a planning gate ([COHORT-001](governance/policies/COHORT-001.json), [operator guide](docs/operator-guide.md), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
+- Capture repository-check output to files, lead a process group, and kill the group on timeout. Raise the fast and full gate bounds of `delivery-chunk` to 1200 s, and the `delivery` fast gate bound from 300 s to 600 s ([repository-checks](src/lib/repository-checks.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
+- Name the workspace and worktree in evidence-worker briefs ([render](src/lib/render.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
+- Validate a child-specification parent digest on the trimmed file and name the expected digest ([cohort-plan](src/lib/validators/cohort-plan.ts), [c64b0d60](https://github.com/alenlukic/pancreator/commit/c64b0d60)).
+- Authenticate away-mode `cursor-agent` spawns through the same `probeEnvironment` path as the model probe ([cursor-auth](src/lib/executors/cursor-auth.ts), [4566eff9](https://github.com/alenlukic/pancreator/commit/4566eff9)).
+
+### Added
+
+- Add `cohort integrate --into-branch` so integration can target a dedicated branch when a dirty checkout holds the base ([cohorts](src/lib/cohorts.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
+- Credit a changed source that a changed test imports in `pan tests impacted` ([test-impact](src/lib/test-impact.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
+- Write `integration-<n>.json` for every cohort integration path, including the multi-chunk reconcile merge ([COHORT-001](governance/policies/COHORT-001.json), [c64b0d60](https://github.com/alenlukic/pancreator/commit/c64b0d60)).
+- Record `pan repository-check --worktree` runs in the bound run's `agent/evidence/repository-check-runs.jsonl` ([repository-checks](src/lib/repository-checks.ts), [c64b0d60](https://github.com/alenlukic/pancreator/commit/c64b0d60)).
+- Record evaluator failures as `evaluator_failure` with their own ceiling instead of consuming `max_decisions_per_run` ([away-mode](src/lib/away-mode.ts), [4566eff9](https://github.com/alenlukic/pancreator/commit/4566eff9)).
+
+### Fixed
+
 - Deduplicate colliding inbox terminal names with a numeric suffix ([inbox](src/lib/inbox.ts), [44ca8f1e](https://github.com/alenlukic/pancreator/commit/44ca8f1e)).
 - Keep fixtures whose path contains `worktrees` sandboxed from the installation root ([repository-checks](src/lib/repository-checks.ts), [4566eff9](https://github.com/alenlukic/pancreator/commit/4566eff9)).
 - Document the autostart response as `{status, chunks, …}` and name `pan init --request` in the supervisor procedure ([operator guide](docs/operator-guide.md), [pan-start](library/cursor/commands/pan-start.md), [c64b0d60](https://github.com/alenlukic/pancreator/commit/c64b0d60)).
-
-## [5.14.0] - 2026-09-05
 
 ## [5.13.1] - 2026-09-04
 
@@ -775,7 +804,7 @@ This release absorbs the unreleased 4.10.0 candidate. It is a major release: sta
 
 ### Fixed
 
-- Stop rejecting and rewriting valid Cursor model specs. Cursor parameters are per-model — GPT families take `reasoning`, Claude/Grok/Gemini families take `effort`, and values differ per model — so the v3.5.0 grammar (rejecting `reasoning=`/`thinking=`, hardcoded model and effort enums, a `context` pattern predating the 1m window, and rewriting specs into a flat `<model>-<effort>` slug that is not a model id) refused or mangled strings Cursor itself accepts and projected specs Cursor silently degraded to default variants. Projection now emits the configured spec verbatim in Cursor's documented bracket grammar, canonical drift comparison no longer renames keys or collapses `model[]` into `model`, and the GPT rows in `config.json` are corrected from `effort=` to `reasoning=`. A bracketed spec must also specify every declared parameter of its model — the cursor-agent CLI rejects partial bracket specs such as `claude-fable-5[]` outright, verified by runtime probes that resolved every configured spec to exactly the requested variant — so the underspecified Claude rows are expanded to full specs ([cursor-catalog](src/lib/executors/cursor-catalog.ts), [mapping](src/lib/executors/mapping.ts), [projection](src/lib/projection.ts), [config](config.json), [best-of-n-config](best-of-n-config.json)).
+- Stop rejecting and rewriting valid Cursor model specs. Cursor parameters are per-model — GPT families take `reasoning`, Claude/Grok/Gemini families take `effort`, and values differ per model — so the v3.5.0 grammar (rejecting `reasoning=`/`thinking=`, hardcoded model and effort enums, a `context` pattern predating the 1m window, and rewriting specs into a flat `<model>-<effort>` slug that is not a model id) refused or mangled strings Cursor itself accepts and projected specs Cursor silently degraded to default variants. Projection now emits the configured spec verbatim in Cursor's documented bracket grammar, canonical drift comparison no longer renames keys or collapses `model[]` into `model`, and the GPT rows in `config.json` are corrected from `effort=` to `reasoning=`. A bracketed spec must also specify every declared parameter of its model — the cursor-agent CLI rejects partial bracket specs such as `claude-fable-5[]` outright, verified by runtime probes that resolved every configured spec to exactly the requested variant — so the underspecified Claude rows are expanded to full specs ([cursor-catalog](src/lib/executors/cursor-catalog.ts), [mapping](src/lib/executors/mapping.ts), [projection](src/lib/projection.ts), [config](config.json), [best-of-n-config example](library/templates/best-of-n-config.example.json)).
 - Stop REVIEW-VALIDATE-001 from flagging a pass verdict as inconsistent when the only unresolved findings are routed to the operator, matching the review contract's promise that defects outside the run's workspace do not fail the verdict or loop the workflow ([stage-validators](src/lib/validators/stage-validators.ts)).
 - Support an optional account-local `governance/registries/cursor_model_catalog.json` file for strict model and parameter validation. The catalog is ignored by Git and excluded from installation payloads, so shared configurations remain grammar-only unless the current operator supplies their own catalog ([cursor-catalog](src/lib/executors/cursor-catalog.ts), [codec](src/lib/executors/cursor-catalog-codec.ts)).
 

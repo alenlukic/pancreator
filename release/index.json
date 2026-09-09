@@ -80,6 +80,10 @@
     {
       "version": "5.16.0",
       "commit": "f37721b7ed4a29f794c4e9695f98dda093e4158b"
+    },
+    {
+      "version": "5.17.0",
+      "commit": "77e7c5f7cd446ad85ee085c312c0886ef517d6fa"
     }
   ]
 }

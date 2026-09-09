@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -9,6 +9,8 @@ import {
   parseBestOfNConfigs,
 } from '../../src/lib/best-of-n.js'
 import { createTestTempDirectory } from '../temp.js'
+
+const EXAMPLE_CONFIGS = 'library/templates/best-of-n-config.example.json'
 
 const VALID = {
   schema_version: 1,
@@ -102,4 +104,69 @@ test('configs parsing requires at least two candidates', () => {
       message,
     )
   }
+})
+
+test('configs parsing rejects a tier alias in a candidate persona map', () => {
+  // `cursor:advanced` parses as executor `cursor` with model `advanced`, so the
+  // alias rejection must fire before executor routing accepts it.
+  for (const alias of ['anthropic:advanced', 'cursor:advanced']) {
+    assert.throws(
+      () =>
+        parseBestOfNConfigs(
+          configs({
+            candidates: [
+              { name: 'alpha', personas: { coder: alias } },
+              { name: 'beta', personas: { coder: 'model-b' } },
+            ],
+          }),
+          'configs.json',
+        ),
+      /names tier alias/u,
+    )
+  }
+})
+
+test('the committed configs example parses through the real parser', () => {
+  // Well-formed JSON is not the contract: the example is the only scaffolding
+  // an operator gets for the untracked `best-of-n-config.json`, so it must
+  // survive every rule the parser enforces at `best-of-n init`.
+  const parsed = parseBestOfNConfigs(
+    JSON.parse(readFileSync(path.join(process.cwd(), EXAMPLE_CONFIGS), 'utf8')),
+    EXAMPLE_CONFIGS,
+  )
+
+  assert.deepEqual(
+    parsed.candidates.map((candidate) => candidate.name),
+    ['balanced', 'advanced'],
+  )
+  assert.equal(parsed.consolidation.name, 'consolidation')
+  assert.ok(parsed.setup.length > 0)
+
+  const models = [
+    ...parsed.candidates.flatMap((candidate) =>
+      Object.values(candidate.personas),
+    ),
+    ...Object.values(parsed.consolidation.personas),
+  ]
+
+  assert.ok(
+    models.some((model) => model.startsWith('cursor:')),
+    'the example demonstrates a cursor executor specification',
+  )
+})
+
+test('configs parsing accepts a cursor executor specification', () => {
+  // `cursor:composer-2.5` routes to the `cursor` executor rather than naming a
+  // tier, so the alias rejection must not widen to every `cursor:` prefix.
+  assert.doesNotThrow(() =>
+    parseBestOfNConfigs(
+      configs({
+        candidates: [
+          { name: 'alpha', personas: { coder: 'cursor:composer-2.5' } },
+          { name: 'beta', personas: { coder: 'model-b' } },
+        ],
+      }),
+      'configs.json',
+    ),
+  )
 })

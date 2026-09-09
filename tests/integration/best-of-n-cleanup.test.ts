@@ -287,7 +287,7 @@ test('an interrupted consolidation handoff cannot start a second consolidation r
 test('init validates the consolidation config before any candidate runs', () => {
   const root = createFixture()
 
-  writeJson(path.join(root, 'best-of-n.json'), {
+  writeJson(path.join(root, 'best-of-n-config.json'), {
     ...CONFIGS,
     candidates: [
       { name: 'alpha', personas: { codeer: 'gpt-5.6-terra' } },
@@ -299,12 +299,12 @@ test('init validates the consolidation config before any candidate runs', () => 
     () =>
       initBestOfN(root, {
         requestPath: 'request.md',
-        configsPath: 'best-of-n.json',
+        configsPath: 'best-of-n-config.json',
       }),
     /Candidate 'alpha' maps unknown persona 'codeer'/u,
   )
 
-  writeJson(path.join(root, 'best-of-n.json'), {
+  writeJson(path.join(root, 'best-of-n-config.json'), {
     ...CONFIGS,
     consolidation: { personas: { metacritick: 'gpt-5.6-terra' } },
   })
@@ -313,7 +313,7 @@ test('init validates the consolidation config before any candidate runs', () => 
     () =>
       initBestOfN(root, {
         requestPath: 'request.md',
-        configsPath: 'best-of-n.json',
+        configsPath: 'best-of-n-config.json',
       }),
     /Consolidation config 'consolidation' maps unknown persona 'metacritick'/u,
   )
@@ -325,7 +325,7 @@ test('init validates the consolidation config before any candidate runs', () => 
 
   delete config.defaults.metacritic
   writeJson(configPath, config)
-  writeJson(path.join(root, 'best-of-n.json'), {
+  writeJson(path.join(root, 'best-of-n-config.json'), {
     ...CONFIGS,
     consolidation: { personas: { reviewer: 'gpt-5.6-terra' } },
   })
@@ -334,7 +334,7 @@ test('init validates the consolidation config before any candidate runs', () => 
     () =>
       initBestOfN(root, {
         requestPath: 'request.md',
-        configsPath: 'best-of-n.json',
+        configsPath: 'best-of-n-config.json',
       }),
     /maps no model for persona 'metacritic'/u,
   )

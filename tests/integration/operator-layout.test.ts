@@ -175,7 +175,6 @@ test('submit reports the sole operator brief and removes its source', () => {
     'agent/validations/DEV-001-implementation-claims-validate-harness.json',
     'agent/validations/DEV-001-target-instruction-coverage-validate-harness.json',
     'agent/validations/GLOBAL-001-operator-artifact-validate-harness.json',
-    'agent/validations/STE-001-simplified-english-validate-harness.json',
   ])
   assert.ok(filesAfter.includes(`operator/${invocation.invocation_id}.html`))
   assert.equal(

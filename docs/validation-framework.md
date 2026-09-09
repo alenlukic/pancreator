@@ -17,6 +17,17 @@ Governance registries are indexed in [`governance/registries/index.md`](../gover
 5. **Execution** — in-process typed handlers behind `./bin/pan` produce versioned validation-result artifacts under `runtime/logs/workflows/<run>/agent/validations/` (`validations/` in layout v1 runs).
 6. **Generated map** — `./bin/pan validation-map` joins policy lookup, requirement metadata, and registry for operator audits.
 
+## Policy instruction audiences and harness coverage
+
+Each `governance/policies/*.json` policy defines `instructions[]`. Each entry is either:
+
+- A plain string (default audience `agent`).
+- An object `{ "text": "<non-empty>", "audience": ["agent" | "supervisor" | "harness" | "operator", ...] }`.
+
+Invocation cards render only the instructions that apply to the card audience (workers see `agent`, supervisors see `agent` and `supervisor`). Harness-only instructions never render on a card, but they remain in the invocation JSON snapshot for audit.
+
+In a self-development checkout, repository validation enforces deterministic coverage mapping for `harness` instructions: each such instruction must reference either a requirement id from the same policy, or an existing `tests/...` file path.
+
 ## Authoring a new validator
 
 1. Implement a handler in `src/lib/requirements/handlers.ts` (or `src/lib/validators/`).

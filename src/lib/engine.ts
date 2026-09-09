@@ -2849,6 +2849,9 @@ export function prepareInvocation(
             runId,
             state.supervisor_card.sha256,
           ),
+          ...(state.supervisor_card.policy_sections
+            ? { policy_sections: state.supervisor_card.policy_sections }
+            : {}),
         }
       : null
     const delegation =

@@ -121,6 +121,28 @@ test('requirement resolution is deterministic', () => {
   )
 })
 
+test('conform mode resolves the standalone Simplified English validator requirement', () => {
+  const root = createFixture()
+  const manifest = resolveRequirements(root, {
+    persona: 'librarian',
+    workflow: 'standalone',
+    stage: 'conform',
+    invocation_kind: 'standalone',
+    invocation: { artifact_paths: ['CHANGELOG.md'] },
+  })
+  const requirement = manifest.validation_requirements.find(
+    (item) =>
+      item.requirement_id === 'standalone-conform-simplified-english-validate',
+  )
+
+  assert.ok(requirement)
+  assert.equal(requirement?.registry_id, 'SIMPLIFIED-ENGLISH-VALIDATE-001')
+  assert.equal(requirement?.executor, 'agent')
+  assert.equal(requirement?.phase, 'before_operation')
+  assert.equal(requirement?.enforcement, 'required')
+  assert.equal(requirement?.resolved_target, 'CHANGELOG.md')
+})
+
 test('requirement resolution fails on unknown registry id', () => {
   const root = createFixture()
   const policyPath = path.join(root, 'governance', 'policies', 'DEV-001.json')

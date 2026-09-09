@@ -28,7 +28,9 @@ function targetPolicy(
     title: 'Target policy',
     severity: 'hard',
     summary: 'Agents MUST obey target PR authority.',
-    instructions: ['Agents MUST obey target PR authority.'],
+    instructions: [
+      { text: 'Agents MUST obey target PR authority.', audience: ['agent'] },
+    ],
     artifact_authority: {
       pr_description: {
         template_path: templatePath,
@@ -201,7 +203,9 @@ test('instruction-only target authority passes bodies without a template contrac
       title: 'Target policy',
       severity: 'hard',
       summary: 'Agents MUST obey target PR authority.',
-      instructions: ['Agents MUST obey target PR authority.'],
+      instructions: [
+        { text: 'Agents MUST obey target PR authority.', audience: ['agent'] },
+      ],
       artifact_authority: {
         pr_description: { instruction_paths: ['docs/pr-rules.md'] },
       },

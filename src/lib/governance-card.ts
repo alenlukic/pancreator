@@ -6,6 +6,7 @@ import { keywordRunSuffix } from './naming.js'
 import { makeUniqueRunId } from './state.js'
 import { resolvePolicies } from './policies.js'
 import { renderPolicyBlocks } from './policy-guidance.js'
+import type { PolicyCardAudience } from './policy-instructions.js'
 import { harnessPathPrefix, isTargetInstallation } from './project-config.js'
 import { resolveRequirements } from './requirements/resolve.js'
 import type { InvocationKind } from './requirements/types.js'
@@ -300,6 +301,24 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST NOT modify source, workflow state, release metadata, commits, branches, remotes, or pull requests, and MUST NOT run `gh pr create`, commit, push, merge, publish, or deploy.',
     ],
   },
+  conform: {
+    kind: 'standalone',
+    persona: 'librarian',
+    workflow: 'standalone',
+    stage: 'conform',
+    title: 'Artifact conformance',
+    summary:
+      'Scan operator artifacts for Simplified Technical English issues, ' +
+      'repair eligible prose, and record a clean checkpoint.',
+    boundaries: [
+      'You MUST edit only the harness-owned `docs/issues/**/*.md` and `runtime/pr-descriptions/*.md`, whatever the installation mode.',
+      'You MUST report rendered workflow HTML and `CHANGELOG.md` but MUST NOT edit either. `CHANGELOG.md` is release metadata a ship stage and `/pan-release` own, and it is scanned only in self-development.',
+      'You MUST NOT edit a target-tracked file. No target-repository path is in the conform editable set.',
+      'You MUST validate each edited file with `pan requirements run --registry SIMPLIFIED-ENGLISH-VALIDATE-001` before you checkpoint.',
+      PROTECTED_PATH_RULE,
+      'You MUST NOT commit, push, merge, publish, deploy, or change Git history.',
+    ],
+  },
   'build-docs': {
     kind: 'documentation',
     persona: 'librarian',
@@ -457,9 +476,44 @@ function baseConductBlock(root: string, scope: ReviewScope): BaseConductBlock {
       path: conflict.path,
       summary: typeof record.summary === 'string' ? record.summary : null,
       instructions: Array.isArray(record.instructions)
-        ? record.instructions.filter(
-            (item): item is string => typeof item === 'string',
-          )
+        ? record.instructions.flatMap((item): string[] => {
+            if (typeof item === 'string') {
+              return [item]
+            }
+
+            if (!isRecordValue(item)) {
+              return []
+            }
+
+            const audiences = item.audience
+
+            if (!Array.isArray(audiences)) {
+              return []
+            }
+
+            const audienceSet = new Set(
+              audiences.filter(
+                (audience): audience is string => typeof audience === 'string',
+              ),
+            )
+
+            if (audienceSet.has('harness') || audienceSet.has('operator')) {
+              return []
+            }
+
+            if (!audienceSet.has('agent')) {
+              return []
+            }
+
+            if (
+              typeof item.text !== 'string' ||
+              item.text.trim().length === 0
+            ) {
+              return []
+            }
+
+            return [item.text]
+          })
         : [],
     })
   }
@@ -614,6 +668,8 @@ export function renderGovernanceCardMarkdown(options: {
 }): string {
   const { mode, policies, requirements, requestPath } = options
   const run = options.run ?? null
+  const policyAudience: PolicyCardAudience =
+    mode.kind === 'supervisor' ? 'supervisor' : 'agent'
   const agentRequirements = [
     ...requirements.automation_requirements,
     ...requirements.validation_requirements,
@@ -624,6 +680,7 @@ export function renderGovernanceCardMarkdown(options: {
   const policyBlocks = renderPolicyBlocks(
     policies,
     3,
+    policyAudience,
     new Set((options.baseConduct?.policies ?? []).map((policy) => policy.id)),
     new Set(
       (options.baseConduct?.excluded ?? [])

@@ -24,9 +24,11 @@ import {
 } from '../../src/lib/validation.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { createFixture } from '../helpers.js'
+import { policyInstructionAppliesToCard } from '../../src/lib/policy-instructions.js'
 import type {
   Invocation,
   InvocationEvidenceWorker,
+  Policy,
 } from '../../src/lib/types.js'
 
 const RUN_LIMITS = {
@@ -183,6 +185,69 @@ function delegatedInvocation(root: string): Invocation {
   return invocation
 }
 
+function mixedAudiencePolicy(): Policy {
+  return {
+    id: 'FIXTURE-001',
+    title: 'Mixed audience fixture',
+    severity: 'hard',
+    summary: 'Agents MUST preserve audience boundaries.',
+    instructions: [
+      { text: 'Agents MUST see agent content.', audience: ['agent'] },
+      {
+        text: 'Supervisors MUST see supervisor content.',
+        audience: ['supervisor'],
+      },
+      {
+        text: 'The harness MUST retain harness content.',
+        audience: ['harness'],
+      },
+      {
+        text: 'Operators MUST see operator content.',
+        audience: ['operator'],
+      },
+    ],
+  }
+}
+
+test('worker and supervisor cards filter mixed audiences while snapshots retain all', () => {
+  const root = createFixture()
+  const invocation = delegatedInvocation(root)
+  const policy = mixedAudiencePolicy()
+
+  invocation.policies = [policy]
+  assert.ok(invocation.delegation)
+  invocation.delegation.policies = [policy]
+
+  const card = renderInvocationMarkdown(invocation)
+  const procedure = renderSupervisorProcedureMarkdown(invocation)
+
+  assert.match(card, /- Agents MUST see agent content\./u)
+  assert.doesNotMatch(card, /Supervisors MUST see supervisor content\./u)
+  assert.doesNotMatch(card, /The harness MUST retain harness content\./u)
+  assert.doesNotMatch(card, /Operators MUST see operator content\./u)
+
+  assert.match(procedure, /- Agents MUST see agent content\./u)
+  assert.match(procedure, /- Supervisors MUST see supervisor content\./u)
+  assert.doesNotMatch(procedure, /The harness MUST retain harness content\./u)
+  assert.doesNotMatch(procedure, /Operators MUST see operator content\./u)
+
+  const result = validateInvocationMarkdown(invocation, card, procedure)
+
+  assert.equal(result.passed, true)
+
+  const snapshot = JSON.parse(JSON.stringify(invocation)) as Invocation
+
+  assert.deepEqual(
+    snapshot.policies[0]?.instructions.map((instruction) => instruction.text),
+    policy.instructions.map((instruction) => instruction.text),
+  )
+  assert.ok(
+    snapshot.policies[0]?.instructions.some((instruction) =>
+      instruction.audience.includes('harness'),
+    ),
+  )
+})
+
 test('the worker card names the supervisor procedure and prints no lifecycle command', () => {
   const root = createFixture()
   const invocation = delegatedInvocation(root)
@@ -282,10 +347,31 @@ test('invocation cards inline policy text and reference guidance for every stage
         new RegExp(policy.summary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
       )
 
-      for (const instruction of policy.instructions) {
+      const cardAudience = 'agent'
+      const renderedInstructions = policy.instructions
+        .filter((instruction) =>
+          policyInstructionAppliesToCard(instruction, cardAudience),
+        )
+        .map((instruction) => instruction.text)
+      const hiddenInstructions = policy.instructions
+        .filter(
+          (instruction) =>
+            !policyInstructionAppliesToCard(instruction, cardAudience),
+        )
+        .map((instruction) => instruction.text)
+
+      for (const instruction of renderedInstructions) {
         assert.match(
           markdown,
-          new RegExp(instruction.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+          new RegExp(`- ${instruction.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
+        )
+      }
+
+      for (const instruction of hiddenInstructions) {
+        assert.doesNotMatch(
+          markdown,
+          new RegExp(`- ${instruction.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
+          `${policy.id} MUST NOT render hidden instruction for ${cardAudience}`,
         )
       }
 
@@ -381,7 +467,10 @@ test('shared policy blocks remove exact statement duplication', () => {
         title: 'Fixture policy',
         severity: 'hard',
         summary: statement,
-        instructions: [statement, statement],
+        instructions: [
+          { text: statement, audience: ['agent'] },
+          { text: statement, audience: ['agent'] },
+        ],
       },
     ],
     3,

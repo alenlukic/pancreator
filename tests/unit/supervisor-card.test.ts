@@ -103,6 +103,24 @@ test('pan init renders the supervisor card and records its digest in run state',
   }
 })
 
+test('the supervisor card carries the STE-001 operator-report rules', () => {
+  const root = createFixture()
+  const state = unattestedRun(root)
+  const card = state.supervisor_card
+
+  assert.ok(card)
+
+  const written = readFileSync(path.join(root, card.path), 'utf8')
+
+  // Every operator-facing chat report is written by the supervisor, so the
+  // writing standard for those reports must reach this card.
+  assert.ok(written.includes('**STE-001 · '), 'card omits STE-001')
+  assert.match(written, /Operator chat reports MUST state the outcome/u)
+  assert.match(written, /Operator chat reports MUST NOT use LLM-native jargon/u)
+  // The durable-instruction-text rules render for the agent audience too.
+  assert.match(written, /durable-instruction-text rules/u)
+})
+
 test('pan prepare and pan submit refuse an unattested supervisor card', () => {
   const root = createFixture()
   const state = unattestedRun(root)

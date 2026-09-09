@@ -9,6 +9,7 @@ import {
   STANDALONE_MODES,
   buildGovernanceCard,
 } from '../../src/lib/governance-card.js'
+import { policyInstructionAppliesToCard } from '../../src/lib/policy-instructions.js'
 import {
   HARNESS_SQUAD_SKILL_PATH,
   REVIEW_DIMENSIONS,
@@ -92,10 +93,19 @@ test('every standalone mode renders a card with its policies inlined', () => {
       )
 
       for (const instruction of policy.instructions) {
-        assert.ok(
-          written.includes(instruction),
-          `${name} card omits an instruction of ${policy.id}`,
-        )
+        const bullet = `- ${instruction.text}`
+        if (policyInstructionAppliesToCard(instruction, 'agent')) {
+          assert.ok(
+            written.includes(bullet),
+            `${name} card omits an instruction of ${policy.id}`,
+          )
+        } else {
+          assert.equal(
+            written.includes(bullet),
+            false,
+            `${name} card must not render hidden instructions of ${policy.id}`,
+          )
+        }
       }
 
       for (const guidance of policy.guidance ?? []) {
@@ -148,6 +158,42 @@ test('every standalone mode renders a card with its policies inlined', () => {
   }
 })
 
+test('a standalone card omits non-agent instructions from a mixed fixture', () => {
+  const root = createFixture()
+  const policyPath = path.join(root, 'governance/policies/ACTION-001.json')
+  const policy = JSON.parse(readFileSync(policyPath, 'utf8')) as {
+    instructions: unknown[]
+  }
+
+  policy.instructions.push(
+    { text: 'Agents MUST see fixture agent content.', audience: ['agent'] },
+    {
+      text: 'Supervisors MUST see fixture supervisor content.',
+      audience: ['supervisor'],
+    },
+    {
+      text: 'The harness MUST retain fixture harness content.',
+      audience: ['harness'],
+    },
+    {
+      text: 'Operators MUST see fixture operator content.',
+      audience: ['operator'],
+    },
+  )
+  writeFileSync(policyPath, `${JSON.stringify(policy, null, 2)}\n`)
+
+  const card = buildGovernanceCard(root, {
+    mode: 'pair',
+    outputPath: 'runtime/inbox/mixed-audience-card.md',
+  })
+  const written = readFileSync(path.join(root, card.path), 'utf8')
+
+  assert.match(written, /- Agents MUST see fixture agent content\./u)
+  assert.doesNotMatch(written, /fixture supervisor content/u)
+  assert.doesNotMatch(written, /fixture harness content/u)
+  assert.doesNotMatch(written, /fixture operator content/u)
+})
+
 test('the shared worktree option resolves or creates the card workspace', () => {
   const root = createFixture()
   const card = buildGovernanceCard(root, {
@@ -197,7 +243,7 @@ test('a missing operator input is reported rather than silently omitted', () => 
 
   assert.throws(
     () => buildGovernanceCard(root, { mode: 'nonsense' }),
-    /Available: author, best-of-n, build-briefs, build-docs, decomposition, investigation, pair, qa-workflow, release, repair, review, shepherd, spotfix, supervisor, target, tune-harness, unbound, write-pr/u,
+    /Available: author, best-of-n, build-briefs, build-docs, conform, decomposition, investigation, pair, qa-workflow, release, repair, review, shepherd, spotfix, supervisor, target, tune-harness, unbound, write-pr/u,
   )
 })
 
@@ -223,6 +269,25 @@ test('the review mode is bound to no run and edits nothing', () => {
       /MUST NOT join, rank, or grade findings yourself/u.test(boundary),
     ),
     'the coordinator alone owns the verdict',
+  )
+})
+
+test('the conform mode binds librarian and fences edits', () => {
+  const mode = STANDALONE_MODES.conform
+
+  assert.ok(mode)
+  assert.equal(mode.workflow, 'standalone')
+  assert.equal(mode.stage, 'conform')
+  assert.equal(mode.kind, 'standalone')
+  assert.equal(mode.persona, 'librarian')
+
+  assert.ok(
+    mode.boundaries.some((boundary) => boundary.includes('CHANGELOG.md')),
+    'conform must restrict which files can be edited',
+  )
+  assert.ok(
+    mode.boundaries.some((boundary) => /MUST NOT edit/u.test(boundary)),
+    'conform must forbid editing non-editable artifacts',
   )
 })
 
@@ -652,10 +717,10 @@ test('the card-less command modes resolve their persona governance', () => {
   const root = createFixture()
   const expectations: Record<string, string[]> = {
     release: ['REPO-001', 'OPERATOR-001'],
-    'write-pr': ['PR-001', 'REPO-001'],
-    'build-docs': ['PRIMER-001', 'REPO-001'],
+    'write-pr': ['PR-001', 'REPO-001', 'STE-001'],
+    'build-docs': ['LIBRARIAN-001', 'PRIMER-001', 'REPO-001'],
     'build-briefs': ['BRIEF-001', 'REPO-001'],
-    'qa-workflow': ['DELEGATE-001', 'RUNTIME-001'],
+    'qa-workflow': ['DELEGATE-001'],
     'tune-harness': ['TUNE-001'],
   }
 

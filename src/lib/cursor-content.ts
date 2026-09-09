@@ -1,6 +1,7 @@
 import { invariant } from './errors.js'
 import { renderGuidanceBlock } from './policy-guidance.js'
-import type { PolicyGuidance } from './types.js'
+import { policyInstructionAppliesToCard } from './policy-instructions.js'
+import type { PolicyGuidance, PolicyInstruction } from './types.js'
 
 export type CursorInstallationMode =
   | 'self_development'
@@ -11,7 +12,7 @@ interface PolicyRuleSource {
   id: string
   title: string
   summary: string
-  instructions: string[]
+  instructions: PolicyInstruction[]
   guidance?: PolicyGuidance[]
 }
 
@@ -27,6 +28,12 @@ interface PolicyRuleSource {
  * cannot import this module during an embedded install.
  */
 export function renderPolicyCursorRule(policy: PolicyRuleSource): string {
+  const instructions = policy.instructions
+    .filter((instruction) =>
+      policyInstructionAppliesToCard(instruction, 'agent'),
+    )
+    .map((instruction) => instruction.text)
+
   return [
     '---',
     `description: ${policy.id} — ${policy.title}`,
@@ -41,7 +48,7 @@ export function renderPolicyCursorRule(policy: PolicyRuleSource): string {
     '',
     policy.summary,
     '',
-    ...policy.instructions.map((instruction) => `- ${instruction}`),
+    ...instructions.map((instruction) => `- ${instruction}`),
     ...(policy.guidance ?? []).flatMap((guidance) =>
       renderGuidanceBlock(2, guidance),
     ),

@@ -6,7 +6,7 @@ You are the supervisor for this run. Adopt `{{PANCREATOR_HARNESS_PATH}}library/p
 
 You MUST NOT launch the `pan-orchestrator` subagent, and MUST NOT relay the run to any child agent. Cursor honors a projected agent's model mapping only for a top-level launch. A nested supervisor silently downgrades every stage worker it launches, so the supervisor MUST stay in this session.
 
-1. Read `{{PANCREATOR_HARNESS_PATH}}AGENTS.md`. Then read `{{PANCREATOR_HARNESS_PATH}}library/personas/orchestrator.md`.
+1. Read `{{PANCREATOR_HARNESS_PATH}}AGENTS.md`.
 2. Run `{{PANCREATOR_PAN_COMMAND}} status <run-id> --json` and reconcile run state before further action. Keep its managed worktree name.
    - A succeeded planning run can hold a failed route. `{{PANCREATOR_PAN_COMMAND}} status <run-id>` then shows a `Delivery route failed` line and a `Manual` line with `pan cohort route --plan-run <plan-run-id>`. Run `{{PANCREATOR_PAN_COMMAND}} cohort route --plan-run <plan-run-id>` once in the same turn. The route is idempotent and adopts whatever the earlier route created. When it fails again, STOP. Report the `error` and that command as the operator's manual step.
 3. Run `{{PANCREATOR_PAN_COMMAND}} governance card --mode supervisor --run <run-id>`, read the card it writes in full, then run `{{PANCREATOR_PAN_COMMAND}} governance attest-supervisor <run-id> --sha256 <digest>` with the digest it reported. `{{PANCREATOR_PAN_COMMAND}} prepare` and `{{PANCREATOR_PAN_COMMAND}} submit` refuse with `SUPERVISOR_CARD_UNATTESTED` until the current digest is attested. When a later `{{PANCREATOR_PAN_COMMAND}} prepare` refuses with a new digest, re-read the card and re-attest before you continue.

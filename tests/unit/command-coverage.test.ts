@@ -3,11 +3,31 @@ import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
+import { assertWorktreeOptionSupported } from '../../src/cli.js'
 import {
   COMMAND_GOVERNANCE_REGISTRY_PATH,
   validateCommandGovernance,
 } from '../../src/lib/governance/command-coverage.js'
 import { createFixture, writeJson } from '../helpers.js'
+
+/**
+ * Every `pan` command line a projected command file prescribes, as argv. An
+ * optional `[...]` group is kept, because the session may pass it, and the
+ * first alternative of a `|` choice stands for the group.
+ */
+function panInvocations(command: string): string[][] {
+  return [
+    ...command.matchAll(/`\{\{PANCREATOR_PAN_COMMAND\}\} ([^`]+)`/gu),
+  ].map((match) =>
+    (match[1] as string)
+      .replaceAll(
+        /\[([^\]]+)\]/gu,
+        (_all, group: string) => group.split('|')[0] as string,
+      )
+      .trim()
+      .split(/\s+/u),
+  )
+}
 
 function run(root: string) {
   const errors: string[] = []
@@ -81,6 +101,73 @@ test('pan-author is explicitly registered with its author card', () => {
     run(root).errors.some((error) =>
       error.includes(
         'pan-author.md MUST run `pan governance card --mode review`',
+      ),
+    ),
+  )
+})
+
+test('pan-conform is explicitly registered with its conform card', () => {
+  const root = createFixture()
+  const command = readFileSync(
+    path.join(root, 'library/cursor/commands/pan-conform.md'),
+    'utf8',
+  )
+  const validationStep = command
+    .split('\n')
+    .find((line) => line.startsWith('8. '))
+
+  assert.match(validationStep ?? '', /requirements run/u)
+
+  // Conform is installation-scoped, so no step may prescribe a command line
+  // the CLI refuses. Reading the steps back through the CLI's own option gate
+  // observes that; counting steps and matching `--worktree` observed prose and
+  // stayed green while `requirements run --worktree` exited non-zero.
+  const invocations = panInvocations(command)
+
+  assert.ok(invocations.length >= 4, command)
+
+  for (const invocation of invocations) {
+    assert.doesNotThrow(
+      () =>
+        assertWorktreeOptionSupported(
+          invocation[0] as string,
+          invocation.slice(1),
+        ),
+      invocation.join(' '),
+    )
+  }
+
+  // The gate accepts `--worktree` for the whole `conform` family, so it
+  // refuses only the `requirements run` step. Installation scope is the
+  // decision, so no step may carry the option and no `|` alternative may hide
+  // one from `panInvocations`. This negative asserts a forbidden option is
+  // absent, unlike the pin it replaced, which asserted a required option was
+  // absent and so held a defect in place.
+  assert.doesNotMatch(command, /--worktree/u)
+  assert.match(command, /installation-root harness artifacts/u)
+
+  const registryPath = path.join(root, COMMAND_GOVERNANCE_REGISTRY_PATH)
+  const registry = JSON.parse(readFileSync(registryPath, 'utf8')) as {
+    card_commands: Array<{ command: string; card_mode: string }>
+  }
+  const conform = registry.card_commands.find(
+    (entry) => entry.command === 'pan-conform',
+  )
+
+  assert.deepEqual(conform, {
+    command: 'pan-conform',
+    card_mode: 'conform',
+  })
+  assert.deepEqual(run(root).errors, [])
+
+  assert.ok(conform)
+  conform.card_mode = 'review'
+  writeJson(registryPath, registry)
+
+  assert.ok(
+    run(root).errors.some((error) =>
+      error.includes(
+        'pan-conform.md MUST run `pan governance card --mode review`',
       ),
     ),
   )

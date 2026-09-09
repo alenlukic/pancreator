@@ -8,6 +8,7 @@ import { HELP_BODY } from '../../src/cli.js'
 test('pan output validate help names the required --invocation argument', () => {
   for (const usage of [
     'pan output validate <run-id> --file <path> --invocation <path> [--json]',
+    'pan conform scan|checkpoint [--since <ref> | --all] [--worktree <name>] [--json]',
     'pan tune prepare [--baseline <ref>] [--json]',
     'pan tune finalize --session <id> [--json]',
   ]) {
