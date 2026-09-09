@@ -11,6 +11,7 @@ test('pan output validate help names the required --invocation argument', () => 
     'pan conform scan|checkpoint [--since <ref> | --all] [--worktree <name>] [--json]',
     'pan tune prepare [--baseline <ref>] [--json]',
     'pan tune finalize --session <id> [--json]',
+    'pan models [--sync] [--force] [--probe] [--migrate-from <previous-config.json>] [--json]',
   ]) {
     assert.ok(
       HELP_BODY.split('\n').some((line) => line.trim() === usage),
@@ -26,6 +27,7 @@ test('pan output validate help names the required --invocation argument', () => 
     '--run <run-id>',
     '--stage <stage-slug>',
     '--force',
+    '--force requires --sync',
   ]) {
     assert.ok(HELP_BODY.includes(option), option)
   }

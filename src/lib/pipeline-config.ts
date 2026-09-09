@@ -372,6 +372,7 @@ export function parsePipelineConfig(
 export function loadPipelineConfig(
   root: string,
   name?: string,
+  options: { skipCatalog?: boolean } = {},
 ): LoadedPipelineConfig {
   const configName = harnessConfigName(root) ?? CONFIG_PATH
   const filePath = path.join(root, configName)
@@ -396,16 +397,20 @@ export function loadPipelineConfig(
   // Every named config receives strict validation here when the operator has
   // supplied an account-local Cursor model catalog. Without one, model specs
   // remain grammar-only because model availability is account-specific.
-  const resolveModel = createCursorModelResolver(root)
+  // `skipCatalog` is the models --sync --force path: project a stale or
+  // incomplete catalog instead of refusing the configured specs.
+  if (!options.skipCatalog) {
+    const resolveModel = createCursorModelResolver(root)
 
-  for (const candidate of Object.keys(file.configs)) {
-    for (const [persona, model] of Object.entries(
-      resolveConfigPersonas(file, candidate),
-    )) {
-      const mapping = parsePersonaMapping(model, `${candidate}.${persona}`)
+    for (const candidate of Object.keys(file.configs)) {
+      for (const [persona, model] of Object.entries(
+        resolveConfigPersonas(file, candidate),
+      )) {
+        const mapping = parsePersonaMapping(model, `${candidate}.${persona}`)
 
-      if (mapping.executor === 'cursor') {
-        resolveModel(mapping, `${candidate}.${persona}`)
+        if (mapping.executor === 'cursor') {
+          resolveModel(mapping, `${candidate}.${persona}`)
+        }
       }
     }
   }

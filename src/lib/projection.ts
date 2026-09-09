@@ -308,6 +308,8 @@ export interface RenderProjectionsOptions {
   only?: readonly string[]
   /** A pipeline config the caller already loaded, to skip a second load. */
   pipeline?: LoadedPipelineConfig
+  /** Project configured specs without the local Cursor model catalog. */
+  skipCatalog?: boolean
 }
 
 function renderProjections(
@@ -321,8 +323,12 @@ function renderProjections(
   const mode = installationMode(root)
   const manifestMode = projectionMode(mode)
   const harnessPrefix = harnessPathPrefix(root)
-  const pipeline = options.pipeline ?? loadPipelineConfig(root)
-  const resolveModel = createCursorModelResolver(root)
+  const pipeline =
+    options.pipeline ??
+    loadPipelineConfig(root, undefined, { skipCatalog: options.skipCatalog })
+  const resolveModel = createCursorModelResolver(root, {
+    skipCatalog: options.skipCatalog,
+  })
   const only = options.only === undefined ? null : new Set(options.only)
   const rendered: RenderedProjection[] = []
   const removals: ProjectionRemoval[] = []
