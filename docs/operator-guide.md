@@ -687,6 +687,8 @@ documents the hardening above but does not install or overwrite target
 ./bin/pan validate
 ```
 
+When the local Cursor model catalog is stale or incomplete, `./bin/pan models --sync --force` still projects the configured specs. Grammar still applies. `pan validate` and run start still enforce the catalog.
+
 Run `./bin/pan models` without `--sync` to preview the active mapping and any drift without changing files.
 
 Per-checkout preferences belong in `config_overrides.json` next to `config.json` (the legacy name `config.local.json` still reads until you rename it). The file is untracked (keep it out of version control, e.g. via `.gitignore` or `.git/info/exclude`) and merges over `config.json`: objects merge recursively, any other value replaces the checked-in one. Use it for `active_config`, persona model overrides, or an `operator_involvement.active` selection, so `config.json` stays at the recommended defaults releases update. A local preference behaves exactly as if it were edited into `config.json`, including drift detection against in-flight runs. An empty string in a named config inherits the `defaults` entry for that persona, so `config_overrides.json` needs to name only the personas a config changes. An empty string in `defaults` is rejected.

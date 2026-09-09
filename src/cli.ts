@@ -270,11 +270,12 @@ export const HELP_BODY = `Usage:
   pan list [--json]
   pan inbox [--json]
   pan archive [--days <positive-integer>] [--complete] [--canceled] [--json]
-  pan models [--sync] [--probe] [--migrate-from <previous-config.json>] [--json]
+  pan models [--sync] [--force] [--probe] [--migrate-from <previous-config.json>] [--json]
   pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source> [--json]
   pan models --probe --run <run-id> --invocation <invocation-id> [--json]
       --probe launches one minimal cursor-agent call per distinct active model spec and records what Cursor resolved and reports match, recorded, mismatch, or unavailable per spec. It never fails the command, so read the result and error fields. Needs the cursor-agent CLI and CURSOR_API_KEY (process environment, installation .env, or workspace-root .env) or a login. Run pan doctor to see which source resolves.
       --migrate-from preserves the previous effective model map across a tracked config.json replacement: every mapping the new file leaves empty is carried into config_overrides.json, and the replacement stops before mutation when a mapping stays empty that defaults does not fill.
+      --force requires --sync. It projects the configured specs when the local Cursor model catalog is stale or incomplete. Grammar still applies. Live --probe still reports what Cursor resolves.
   pan validate [--json]
   pan eval list [--json] | pan eval grade <run-id> --scenario <name> [--out <dir>] [--json] | pan eval run <scenario> [--attest-supervisor-card] [--pipeline-config <name>] [--json]
   pan doctor [--worktree <name>] [--json]
@@ -2299,9 +2300,22 @@ async function main(): Promise<void> {
         }
       }
 
-      const loaded = loadPipelineConfig(root)
+      const syncRequested = hasFlag(args, '--sync')
+      const force = hasFlag(args, '--force')
+
+      if (force && !syncRequested) {
+        throw new PanError('models --force requires --sync.', {
+          code: 'INVALID_ARGUMENT',
+        })
+      }
+
+      const loaded = loadPipelineConfig(root, undefined, {
+        skipCatalog: force,
+      })
       const changes = syncCursorProjection(root, {
-        write: hasFlag(args, '--sync'),
+        write: syncRequested,
+        skipCatalog: force,
+        pipeline: loaded,
       })
       // Static validation proves each spec is well-formed for the catalog
       // snapshot; --probe proves what it launches today by spending one
@@ -2322,7 +2336,9 @@ async function main(): Promise<void> {
               personaExecutorOf(model),
             ]),
           ),
-          sync_requested: hasFlag(args, '--sync'),
+          sync_requested: syncRequested,
+          force,
+          catalog_skipped: force,
           changed_projections: changes.filter((entry) => entry.changed),
           ...(migration ? { migration } : {}),
           ...(probes ? { probes } : {}),

@@ -63,15 +63,6 @@
     "note": "This file carries the recommended defaults a release can update. Put per-checkout preferences (active_config, model overrides) in the untracked config_overrides.json, which merges over this file. After changing either, run ./.pancreator/bin/pan models --sync. New runs snapshot the active mapping so later config edits do not change an in-flight run."
   },
   "configs": {
-    "simple": {
-      "summary": "Simple and fast configuration for quick tasks.",
-      "planner": "",
-      "decomposer": "",
-      "reviewer": "",
-      "verifier": "",
-      "qa-tester": "",
-      "shepherd-reviewer": ""
-    },
     "balanced": {
       "summary": "Balance of focused coding, strong review, and frontier planning.",
       "coder": "",
@@ -88,7 +79,7 @@
       "verifier": "",
       "qa-tester": ""
     },
-    "extreme": {
+    "ultra": {
       "summary": "Extreme configuration for the most demanding tasks.",
       "planner": "",
       "coder": "",

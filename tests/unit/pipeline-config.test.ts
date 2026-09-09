@@ -398,3 +398,44 @@ test('unused aliases do not require account-catalog availability', () => {
   assert.equal(loaded.config.personas.coder, 'claude-sonnet-5')
   assert.equal(snapshot.personas.coder, 'claude-sonnet-5')
 })
+
+test('loadPipelineConfig skipCatalog projects a spec the catalog rejects', () => {
+  const root = createTestTempDirectory('forced-model-catalog-')
+  const catalogPath = path.join(
+    root,
+    'governance',
+    'registries',
+    'cursor_model_catalog.json',
+  )
+
+  mkdirSync(path.dirname(catalogPath), { recursive: true })
+  writeFileSync(
+    catalogPath,
+    JSON.stringify({
+      models: [
+        {
+          id: 'kept-model',
+          displayName: 'Kept',
+          aliases: [],
+        },
+      ],
+    }),
+  )
+  writeFileSync(
+    path.join(root, 'config.json'),
+    JSON.stringify({
+      schema_version: 1,
+      active_config: 'default',
+      configs: { default: { coder: 'retired-model' } },
+    }),
+  )
+
+  assert.throws(
+    () => loadPipelineConfig(root),
+    /not in the Cursor model catalog/u,
+  )
+
+  const loaded = loadPipelineConfig(root, undefined, { skipCatalog: true })
+
+  assert.equal(loaded.config.personas.coder, 'retired-model')
+})

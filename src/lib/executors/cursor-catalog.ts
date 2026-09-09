@@ -291,8 +291,11 @@ export type CursorModelResolver = (
  * cannot change inside one synchronous unit of work, so one load serves the
  * whole loop.
  */
-export function createCursorModelResolver(root: string): CursorModelResolver {
-  const catalog = loadCursorCatalog(root)
+export function createCursorModelResolver(
+  root: string,
+  options: { skipCatalog?: boolean } = {},
+): CursorModelResolver {
+  const catalog = options.skipCatalog ? null : loadCursorCatalog(root)
 
   return (mapping, source = 'persona mapping') =>
     resolveAgainstCatalog(catalog, mapping, source)
