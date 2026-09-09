@@ -6,6 +6,6 @@
   "instructions": [
     "Agents MUST preserve the target repository's declared Python version, formatter, linter, type checker, test runner, packaging conventions, and more specific compatible instructions.",
     "Agents MUST use runtime/repository-checks.json as the verification command authority and MUST NOT invent Python environment or tool commands.",
-    "Workflow-local automation under runtime/logs/workflows/<run-id>/scripts/ MAY be throwaway and need not conform to the repository Python guidance unless it is promoted into durable repository code."
+    "Workflow-local automation under runtime/logs/workflows/<run-id>/scripts/ MAY be throwaway. It need not follow the target repository's declared Python conventions unless it is promoted into durable repository code."
   ]
 }

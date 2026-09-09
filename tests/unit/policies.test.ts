@@ -636,13 +636,23 @@ test('the specification hierarchy rules live in exactly one policy', () => {
  */
 const MOVED_CHAT_RULES = [
   'Operator chat reports MUST state the outcome',
+  'MUST use 20 words or fewer in an instruction sentence',
+  'simple, concise, action-oriented language',
+  'MUST NOT write dense chat paragraphs',
   'Operator chat reports MUST NOT use LLM-native jargon',
-  'When an agent reports an issue, the report MUST state the issue concisely',
-  'An outcome summary MUST list key outcomes and outstanding items',
-  'Chat-report issue and outcome shapes MUST remain judgment-only',
+  'MUST NOT use journalistic hooks',
   'MUST state the bottom line first',
+  'A section heading in operator-facing output MUST use a concise title',
   'decorative clutter, and raw-log substitution',
   'MUST keep an evidence link close to the statement',
+  'When an agent reports an issue, the report MUST state the issue concisely',
+  'An outcome summary MUST list key outcomes and outstanding items',
+  'the report MUST provide numbered steps',
+  'MUST report concise progress while it works',
+  'MUST report a failure with its cause and one named next action',
+  'Chat-report issue and outcome shapes MUST remain judgment-only',
+  'does not adopt the Part 2 controlled dictionary',
+  'MAY use RFC 2119 requirement keywords in governance-bearing prose',
 ]
 
 test('the operator chat rules live in exactly one policy', () => {
@@ -887,6 +897,10 @@ test('the style handbooks reach the batch pass and no delivery persona', () => {
     { persona: 'qa-tester', workflow: 'delivery', stage: 'test' },
     { persona: 'metacritic', workflow: 'metacritic', stage: 'consolidate' },
     { persona: 'spotfixer', workflow: 'standalone', stage: 'spotfix' },
+    { persona: 'verifier', workflow: 'delivery', stage: 'verify' },
+    { persona: 'remediator', workflow: 'delivery', stage: 'remediate' },
+    { persona: 'remediator-severe', workflow: 'delivery', stage: 'remediate' },
+    { persona: 'hypervisor', workflow: 'standalone', stage: 'hypervisor' },
   ]
 
   for (const context of deliveryContexts) {
