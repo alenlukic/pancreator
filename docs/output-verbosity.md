@@ -1,6 +1,9 @@
 # Execution output and Cursor SDK logging
 
-`OUTPUT-001` owns the operator-facing verbosity contract.
+`OUTPUT-001` owns the deterministic execution-output contract: what `bin/run-quiet`
+suppresses or replays, and what the Cursor SDK invocation logger emits. `COMMS-001`
+owns the operator-facing rules an agent obeys when it reports progress, a finding,
+or a failure in chat.
 
 ## npm scripts
 
@@ -80,7 +83,9 @@ const result = await withCursorSdkInvocationLogging({
 
 The repository currently delegates workflow stages through Cursor project
 subagents rather than invoking the SDK itself. Under `OUTPUT-001`, new SDK
-execution paths use this wrapper at their invocation boundary.
+execution paths use this wrapper at their invocation boundary. The wrapper
+renders what the SDK emits; `COMMS-001` governs what an agent writes for the
+operator to read.
 
 Deterministic coverage:
 

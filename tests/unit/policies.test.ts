@@ -371,6 +371,7 @@ test('policy resolution unions global and stage-specific policies', () => {
     'AUTO-001',
     'BIN-001',
     'BRIEF-001',
+    'COMMS-001',
     'CONTRACT-001',
     'DEV-001',
     'ENG-001',
@@ -400,6 +401,7 @@ test('representative contexts exclude policies outside their remit', () => {
     'ASK-001',
     'AUTO-001',
     'BIN-001',
+    'COMMS-001',
     'CONTRACT-001',
     'ENG-001',
     'GLOBAL-001',
@@ -624,6 +626,136 @@ test('the specification hierarchy rules live in exactly one policy', () => {
     ),
     false,
     'PLAN-002 MUST keep only the consolidated-planning rules both planners share',
+  )
+})
+
+/**
+ * Excerpts of the rules the consolidation moved into `COMMS-001`. Each one is
+ * distinctive enough to find its owner and short enough to survive an ordinary
+ * rewording of the rule around it.
+ */
+const MOVED_CHAT_RULES = [
+  'Operator chat reports MUST state the outcome',
+  'Operator chat reports MUST NOT use LLM-native jargon',
+  'When an agent reports an issue, the report MUST state the issue concisely',
+  'An outcome summary MUST list key outcomes and outstanding items',
+  'Chat-report issue and outcome shapes MUST remain judgment-only',
+  'MUST state the bottom line first',
+  'decorative clutter, and raw-log substitution',
+  'MUST keep an evidence link close to the statement',
+]
+
+test('the operator chat rules live in exactly one policy', () => {
+  const catalog = loadPolicyCatalog(sharedFixture())
+  const comms = catalog.get('COMMS-001')
+
+  assert.ok(comms)
+  // The chat shapes stay judgment-only, so no validator and no handbook
+  // selection may bind to this policy.
+  assert.equal(comms.requirements, undefined)
+  assert.equal(comms.guidance, undefined)
+
+  for (const rule of MOVED_CHAT_RULES) {
+    const owners = [...catalog.values()]
+      .filter((policy) =>
+        policy.instructions.some((instruction) =>
+          instruction.text.includes(rule),
+        ),
+      )
+      .map((policy) => policy.id)
+
+    assert.deepEqual(owners, ['COMMS-001'], `'${rule}' MUST have one owner`)
+  }
+
+  for (const added of [
+    'MUST rewrite the summary of a subagent that COMMS-001 does not bind',
+    'MUST NOT pass raw subagent prose through',
+  ]) {
+    assert.ok(
+      comms.instructions.some((instruction) =>
+        instruction.text.includes(added),
+      ),
+      `COMMS-001 MUST carry '${added}'`,
+    )
+  }
+})
+
+test('each chat-surface policy keeps its own surface after the split', () => {
+  const catalog = loadPolicyCatalog(sharedFixture())
+  const instructionText = (id: string): string => {
+    const policy = catalog.get(id)
+
+    assert.ok(policy, `catalog MUST hold ${id}`)
+
+    return policy.instructions.map((instruction) => instruction.text).join('\n')
+  }
+
+  assert.match(
+    instructionText('GLOBAL-001'),
+    /COMMS-001 governs operator-facing chat output/u,
+  )
+  assert.match(
+    instructionText('COMMS-001'),
+    /GLOBAL-001 governs the durable record/u,
+  )
+
+  // BRIEF-001 gave up the prose shape and kept the brief mechanics.
+  const brief = instructionText('BRIEF-001')
+
+  for (const mechanic of [
+    'schema-valid brief data',
+    'MUST render requested HTML during submission',
+    'MUST be artifact 0',
+    'MUST delete transient source JSON',
+    'registered semantic key',
+  ]) {
+    assert.ok(brief.includes(mechanic), `BRIEF-001 MUST keep '${mechanic}'`)
+  }
+
+  // The OUTPUT-001 summary gave up the operator-facing claim, while both
+  // Cursor SDK logger rules and their declared citations stayed.
+  const output = catalog.get('OUTPUT-001')
+
+  assert.ok(output)
+
+  for (const moved of [
+    'surface concise',
+    'Cursor-like progress',
+    'actionable failures',
+  ]) {
+    assert.equal(
+      output.summary.includes(moved),
+      false,
+      `the OUTPUT-001 summary MUST give up '${moved}'`,
+    )
+  }
+
+  assert.equal(
+    output.instructions.filter((instruction) =>
+      instruction.text.includes('tests/unit/cursor-sdk-logging.test.ts'),
+    ).length,
+    3,
+  )
+
+  // STE-001 keeps the durable-artifact standard, so each required Simplified
+  // Technical English check stays bound to the stage that declares it. A bare
+  // count would still pass when one applicability replaced another.
+  const ste = catalog.get('STE-001')
+
+  assert.ok(ste)
+  assert.deepEqual(
+    (ste.requirements ?? [])
+      .filter((requirement) => requirement.enforcement === 'required')
+      .map((requirement) => [
+        requirement.registry_id,
+        requirement.applicability?.invocation_kind,
+        requirement.applicability?.stage,
+      ]),
+    [
+      ['SIMPLIFIED-ENGLISH-VALIDATE-001', 'workflow', 'ship'],
+      ['SIMPLIFIED-ENGLISH-VALIDATE-001', 'standalone', 'write-pr'],
+      ['SIMPLIFIED-ENGLISH-VALIDATE-001', 'standalone', 'conform'],
+    ],
   )
 })
 
@@ -1148,9 +1280,24 @@ test('mixed policies tag supervisor, harness, and operator audiences', () => {
   assert.deepEqual(audienceFor('STE-001', 'durable-instruction-text'), [
     'agent',
   ])
+  // The chat rules moved to COMMS-001 at audience `agent`, so one universal
+  // row delivers them to a worker card, a standalone card, and a supervisor
+  // card alike.
+  assert.equal(
+    audiences('STE-001').some((audience) => audience.includes('supervisor')),
+    false,
+    'STE-001 gave up its supervisor-audience chat rules',
+  )
   assert.deepEqual(
-    audienceFor('STE-001', 'Operator chat reports MUST state the outcome'),
-    ['supervisor'],
+    audienceFor('COMMS-001', 'Operator chat reports MUST state the outcome'),
+    ['agent'],
+  )
+  assert.deepEqual(
+    audiences('COMMS-001').filter(
+      (audience) => audience.length !== 1 || audience[0] !== 'agent',
+    ),
+    [],
+    'every COMMS-001 instruction carries audience agent',
   )
   assert.deepEqual(audienceFor('OPERATOR-001', '--redline --occasion'), [
     'supervisor',

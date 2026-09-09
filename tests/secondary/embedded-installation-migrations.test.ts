@@ -34,9 +34,9 @@ test('embedded installer migrates a legacy project.json to config.json', () => {
       configs: Record<string, Record<string, unknown>>
     }>(configPath)
 
-    config.active_config = 'simple'
-    const simple = config.configs.simple as Record<string, unknown>
-    simple.coder = customCoderModel
+    config.active_config = 'balanced'
+    const balanced = config.configs.balanced as Record<string, unknown>
+    balanced.coder = customCoderModel
     writeFileSync(legacyPath, `${JSON.stringify(config, null, 2)}\n`)
     rmSync(configPath)
 
@@ -54,9 +54,9 @@ test('embedded installer migrates a legacy project.json to config.json', () => {
       configs: Record<string, Record<string, unknown>>
     }>(configPath)
 
-    assert.equal(migrated.active_config, 'simple')
+    assert.equal(migrated.active_config, 'balanced')
     assert.equal(migrated.installation_mode, 'embedded')
-    assert.equal(migrated.configs.simple.coder, customCoderModel)
+    assert.equal(migrated.configs.balanced.coder, customCoderModel)
 
     // The projected agent carries the migrated mapping, which proves the
     // migration runs before persona projection.
@@ -93,7 +93,7 @@ test('embedded installer refresh clears superseded legacy state in one pass', ()
     'repository-checks.json',
   )
   const sourceConfigPath = path.join(source, 'config.json')
-  const activeConfigName = 'extreme'
+  const activeConfigName = 'ultra'
   const restoredPersona = 'planner'
   const inheritedPersona = 'meta-orchestrator'
   const fixtureDefaultModel = 'fixture-default-model[fast=false]'

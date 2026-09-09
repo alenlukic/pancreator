@@ -49,6 +49,18 @@ function unattestedRun(root: string) {
   })
 }
 
+/** The rendered card text between the STE-001 heading and the next policy. */
+function steInstructionBlock(card: string): string {
+  const start = card.indexOf('**STE-001 · ')
+
+  assert.ok(start >= 0, 'card omits STE-001')
+
+  const rest = card.slice(start + 1)
+  const next = /^\*\*[A-Z][A-Z0-9]*-\d{3} · /mu.exec(rest)
+
+  return next ? rest.slice(0, next.index) : rest
+}
+
 test('pan init renders the supervisor card and records its digest in run state', () => {
   const root = createFixture()
   const state = unattestedRun(root)
@@ -103,7 +115,7 @@ test('pan init renders the supervisor card and records its digest in run state',
   }
 })
 
-test('the supervisor card carries the STE-001 operator-report rules', () => {
+test('the supervisor card carries the COMMS-001 operator-report rules once', () => {
   const root = createFixture()
   const state = unattestedRun(root)
   const card = state.supervisor_card
@@ -113,12 +125,29 @@ test('the supervisor card carries the STE-001 operator-report rules', () => {
   const written = readFileSync(path.join(root, card.path), 'utf8')
 
   // Every operator-facing chat report is written by the supervisor, so the
-  // writing standard for those reports must reach this card.
+  // chat standard must reach this card, and COMMS-001 is its only owner.
+  assert.ok(written.includes('**COMMS-001 · '), 'card omits COMMS-001')
+
+  for (const rule of [
+    /Operator chat reports MUST state the outcome/gu,
+    /Operator chat reports MUST NOT use LLM-native jargon/gu,
+    /MUST rewrite the summary of a subagent/gu,
+  ]) {
+    assert.equal(
+      [...written.matchAll(rule)].length,
+      1,
+      `card MUST carry ${rule.source} exactly once`,
+    )
+  }
+
+  // STE-001 keeps the durable-artifact standard and gave up the chat rules.
   assert.ok(written.includes('**STE-001 · '), 'card omits STE-001')
-  assert.match(written, /Operator chat reports MUST state the outcome/u)
-  assert.match(written, /Operator chat reports MUST NOT use LLM-native jargon/u)
-  // The durable-instruction-text rules render for the agent audience too.
   assert.match(written, /durable-instruction-text rules/u)
+  assert.equal(
+    steInstructionBlock(written).includes('Operator chat reports'),
+    false,
+    'STE-001 MUST NOT carry a chat rule',
+  )
 })
 
 test('pan prepare and pan submit refuse an unattested supervisor card', () => {
