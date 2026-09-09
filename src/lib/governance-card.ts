@@ -319,6 +319,26 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST NOT commit, push, merge, publish, deploy, or change Git history.',
     ],
   },
+  style: {
+    kind: 'standalone',
+    persona: 'librarian',
+    workflow: 'standalone',
+    stage: 'style',
+    title: 'Code style batch pass',
+    summary:
+      'Scan the workspace source a detected language owns for code style ' +
+      'issues, repair them, and record a clean checkpoint.',
+    boundaries: [
+      'You MUST edit only source files of the resolved workspace, and MUST NOT edit a harness file.',
+      'In a self-development checkout the workspace is this repository. In an embedded installation the workspace is the target repository and the harness at `<target>/.pancreator` stays outside the editable set. In a detached installation the workspace is the target repository at its own root and the harness at its recorded absolute path stays outside the editable set.',
+      '`npm run lint`, or the target formatter `runtime/repository-checks.json` declares, stays authoritative for mechanical style. You MUST NOT repair a rule the formatter owns.',
+      'You MUST apply the judgment-level style rules beyond the countable set `CODE-STYLE-VALIDATE-001` reports.',
+      'You MUST validate each edited file with `pan requirements run --registry CODE-STYLE-VALIDATE-001` before you checkpoint.',
+      'This mode gates nothing. You MUST NOT add it to a workflow stage, a stage criterion, or a repository-check profile.',
+      PROTECTED_PATH_RULE,
+      'You MUST NOT commit, push, merge, publish, deploy, or change Git history.',
+    ],
+  },
   'build-docs': {
     kind: 'documentation',
     persona: 'librarian',

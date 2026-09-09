@@ -662,6 +662,12 @@
     {
       "persona": "librarian",
       "workflow": "standalone",
+      "stage": "style",
+      "policies": ["TSTYLE-001", "PYSTYLE-001"]
+    },
+    {
+      "persona": "librarian",
+      "workflow": "standalone",
       "stage": "build-docs",
       "policies": ["LIBRARIAN-001", "REPO-001"]
     },

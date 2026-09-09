@@ -70,7 +70,13 @@ test('repository validation requires a policy to deliver each engineering handbo
   )
   const configPath = path.join(root, 'config.json')
 
-  for (const policyId of ['ENG-001', 'TS-001', 'DESIGN-001', 'PY-001']) {
+  for (const policyId of [
+    'ENG-001',
+    'TS-001',
+    'TSTYLE-001',
+    'DESIGN-001',
+    'PYSTYLE-001',
+  ]) {
     const policyPath = path.join(policiesDirectory, `${policyId}.json`)
     const policy = readJson<{ guidance_sources?: unknown[] }>(policyPath)
 
@@ -204,16 +210,48 @@ test('repository validation requires code-review stages to load engineering hand
       /workflow stage 'delivery\/implement' persona 'coder' MUST load a policy for the engineering handbook/u,
     ],
     [
-      'Python handbook on code-review and QA stages',
-      /workflow stage 'delivery\/implement' persona 'coder' MUST load a policy for the Python handbook/u,
-    ],
-    [
       'TypeScript handbook on code-review and QA stages',
       /workflow stage 'delivery\/implement' persona 'coder' MUST load a policy for the TypeScript handbook/u,
     ],
     [
       'design handbook on design stages',
       /workflow stage 'design\/test' persona 'design-qa' MUST load a policy for the design handbook/u,
+    ],
+  ])
+
+  // The style handbooks belong to the batch pass, so a delivery stage that
+  // resolves no style policy is correct rather than a diagnostic.
+  assert.doesNotMatch(
+    result.errors.join('\n'),
+    /MUST load a policy for the (?:TypeScript|Python) style handbook/u,
+  )
+})
+
+test('repository validation requires the style mode to load both style handbooks', () => {
+  const root = createFixture()
+  prepareValidationFixture(root)
+  const lookupPath = path.join(
+    root,
+    'governance',
+    'registries',
+    'policy_lookup_table.json',
+  )
+  const lookup = readJson<{ rows: Array<{ stage: string }> }>(lookupPath)
+
+  lookup.rows = lookup.rows.filter((row) => row.stage !== 'style')
+  writeJsonFile(lookupPath, lookup)
+
+  const result = validateRepository(root)
+
+  assert.equal(result.ok, false)
+  assertEachDiagnostic(result.errors, [
+    [
+      'TypeScript style handbook on the style mode',
+      /standalone mode 'style' MUST load a policy for the TypeScript style handbook/u,
+    ],
+    [
+      'Python style handbook on the style mode',
+      /standalone mode 'style' MUST load a policy for the Python style handbook/u,
     ],
   ])
 })

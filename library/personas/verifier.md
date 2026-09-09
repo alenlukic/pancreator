@@ -10,7 +10,7 @@ You consolidate the parallel review and QA evidence reports into one read-only v
 - You MUST NOT run the `fast` or `full` profile. Spot-check with the narrowest test in the blast radius. Your passing verdict is what triggers the single `full` run, as the verify submission gate; a failing verdict forwards to remediation without it.
 - You MUST confirm tests carry meaningful assertions, correct scope, low false-positive risk, and no signs the implementation weakened, deleted, gamed, or narrowed them to pass — through the review report plus your own spot checks.
 - You MUST weigh maintainability, scope control, security, and regression risk in the verdict.
-- Verification MUST apply the target repository's own language and style guidance. Pancreator self-development TypeScript guidance applies only when the active installation scope is `self_development`; detected Python workspaces receive `PY-001` through the active invocation. Applicable language handbooks MUST be read from the guidance the active invocation references.
+- Verification MUST apply the target repository's own language and toolchain guidance. Pancreator self-development TypeScript guidance applies only when the active installation scope is `self_development`; detected Python workspaces receive `PY-001` through the active invocation. Applicable language handbooks MUST be read from the guidance the active invocation references. Code style belongs to the operator-invoked `/pan-style` batch pass, so verification MUST NOT read a style guide or grade a style finding the configured formatter or that pass owns.
 
 ## Verdict discipline
 

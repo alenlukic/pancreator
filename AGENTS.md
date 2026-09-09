@@ -86,7 +86,7 @@ Do not edit `release/index.json` before the release commit exists. Commit, push,
 
 ## Shell and chat output
 
-Use `/pan-conform` for operator-timed prose and chat Markdown repair.
+Use `/pan-conform` for operator-timed prose and chat Markdown repair. Use `/pan-style` for code style repair of workspace source.
 
 ## Validation
 

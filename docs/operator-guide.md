@@ -1061,6 +1061,35 @@ The `impacted` profile in `runtime/repository-checks.json` runs the same
 command. An embedded target may declare its own `impacted` command in its
 `repository-checks.json`; the harness never treats that profile as a gate.
 
+## Run a batch repair pass
+
+Two operator-invoked batch passes repair work no workflow stage owns. Each one
+has its own standalone mode, its own scan-and-checkpoint command, and its own
+checkpoint cache. Neither gates a stage, joins a repository-check profile, or
+becomes a stage criterion.
+
+`/pan-conform` repairs operator-timed prose. It scans the harness-owned
+`docs/issues/**/*.md` and `runtime/pr-descriptions/*.md`, which it may edit, and
+reports rendered workflow HTML and `CHANGELOG.md` without editing them. Its
+issues come from `SIMPLIFIED-ENGLISH-VALIDATE-001`, and its checkpoint lives at
+`runtime/cache/conform.json`.
+
+`/pan-style` repairs code style. It scans the workspace source whose extension a
+detected language owns: TypeScript, JavaScript, and Python. In a self-development
+checkout the workspace is this repository. In an embedded installation the
+workspace is the target repository, and the harness at `<target>/.pancreator` is
+report-only. Its countable issues come from `CODE-STYLE-VALIDATE-001`, and its
+checkpoint lives at `runtime/cache/style.json`. `npm run lint`, or the formatter
+the target declares, stays authoritative for mechanical style, so the pass
+repairs only the judgment-level rules the style handbooks state.
+
+Both commands accept `--since <ref>` or `--all`, and `/pan-style` also accepts
+`--worktree <name>`. Without a checkpoint the bare scan inspects the complete
+eligible set. `checkpoint` always inspects the complete set, returns `blocked`
+without writing while an editable file still has issues, and writes the
+checkpoint once the set is clean. Both subcommands exit `1` on a non-passing
+status.
+
 ## Write a standalone PR description
 
 Use `/pan-write-pr` after the current branch and worktree are ready for review but a full ship-stage rerun is unnecessary. The command defaults to `main`; pass one alternative base ref such as `/pan-write-pr v2` when needed. It resolves the merge base, includes committed branch changes plus staged, unstaged, and relevant untracked worktree changes, and writes the result under `runtime/pr-descriptions/` (`.pancreator/runtime/pr-descriptions/` when embedded).

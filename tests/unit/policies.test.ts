@@ -864,6 +864,55 @@ test('self-development version policy is excluded from embedded installations', 
   assert.ok(coderIds.includes('REPO-001'))
 })
 
+test('the style handbooks reach the batch pass and no delivery persona', () => {
+  const root = sharedFixture()
+  const mode = STANDALONE_MODES.style
+
+  assert.ok(mode)
+
+  const styleIds = resolvePolicies(root, {
+    persona: mode.persona,
+    workflow: mode.workflow,
+    stage: mode.stage,
+    contracts: [],
+    operator_artifacts: 'suppressed',
+  }).map((policy) => policy.id)
+
+  assert.ok(styleIds.includes('TSTYLE-001'))
+  assert.ok(styleIds.includes('PYSTYLE-001'))
+
+  const deliveryContexts = [
+    { persona: 'coder', workflow: 'delivery', stage: 'implement' },
+    { persona: 'reviewer', workflow: 'delivery', stage: 'review' },
+    { persona: 'qa-tester', workflow: 'delivery', stage: 'test' },
+    { persona: 'metacritic', workflow: 'metacritic', stage: 'consolidate' },
+    { persona: 'spotfixer', workflow: 'standalone', stage: 'spotfix' },
+  ]
+
+  for (const context of deliveryContexts) {
+    const ids = resolvePolicies(root, {
+      ...context,
+      technologies: ['python', 'typescript'],
+    }).map((policy) => policy.id)
+    const label = `${context.persona}/${context.workflow}/${context.stage}`
+
+    for (const style of ['TSTYLE-001', 'PYSTYLE-001']) {
+      assert.equal(ids.includes(style), false, `${label} resolves ${style}`)
+    }
+  }
+
+  // The toolchain policies keep their existing bindings.
+  const coderIds = resolvePolicies(root, {
+    persona: 'coder',
+    workflow: 'delivery',
+    stage: 'implement',
+    technologies: ['python', 'typescript'],
+  }).map((policy) => policy.id)
+
+  assert.ok(coderIds.includes('TS-001'))
+  assert.ok(coderIds.includes('PY-001'))
+})
+
 /**
  * Trigger `parseGuidanceSource` generates when a policy declares none. It exists
  * for generated target-repository policies, which have no author to phrase one,

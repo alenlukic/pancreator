@@ -18,6 +18,10 @@
     {
       "command": "pan-conform",
       "card_mode": "conform"
+    },
+    {
+      "command": "pan-style",
+      "card_mode": "style"
     }
   ],
   "supervisor_commands": ["pan-cohort", "pan-resume", "pan-start"],
@@ -27,6 +31,13 @@
       "worktree_forwarding": [
         "author apply --input runtime/inbox/target-authoring/<id>.json --worktree <name> --json",
         "author validate --extension <id> --worktree <name> --json"
+      ]
+    },
+    {
+      "command": "pan-style",
+      "worktree_forwarding": [
+        "style scan --worktree <name> --json",
+        "style checkpoint --worktree <name> --json"
       ]
     },
     {

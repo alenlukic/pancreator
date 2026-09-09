@@ -1,0 +1,35 @@
+{
+  "id": "PYSTYLE-001",
+  "title": "Python style conformance",
+  "severity": "hard",
+  "summary": "The code style batch pass MUST apply the Python style guidance this policy references to durable repository Python.",
+  "instructions": [
+    "Agents repairing Python style MUST read the complete Python style guidance this policy references, and MUST apply it before completion.",
+    "Agents MUST NOT reconstruct or separately load the formatter-owned appendix of the Python style guidance unless they are changing formatter configuration or integration.",
+    "Agents MUST repair only the judgment-level Python rules the style guidance states; the configured Python formatter stays authoritative for mechanical style."
+  ],
+  "guidance_sources": [
+    {
+      "path": "governance/handbooks/python/style-guide.md",
+      "start_heading": "## Core principles",
+      "end_heading": "# Appendix A: Formatter-owned rules",
+      "read_trigger": "Read this guidance before you repair Python style."
+    }
+  ],
+  "requirements": [
+    {
+      "id": "standalone-style-code-style-validate",
+      "registry_id": "CODE-STYLE-VALIDATE-001",
+      "phase": "before_operation",
+      "executor": "agent",
+      "target": "artifact:0",
+      "enforcement": "required",
+      "failure_route": "retry",
+      "evidence_class": "validation-result",
+      "applicability": {
+        "invocation_kind": "standalone",
+        "stage": "style"
+      }
+    }
+  ]
+}

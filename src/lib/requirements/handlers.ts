@@ -24,6 +24,7 @@ import {
   validateOperatorArtifact,
   validateStageOutputStrict,
 } from '../validators/operator-artifact.js'
+import { validateCodeStyle } from '../validators/code-style.js'
 import { validateSimplifiedEnglish } from '../validators/simplified-english.js'
 import {
   validateChildSpecifications,
@@ -236,6 +237,7 @@ export const HANDLERS: Record<string, ValidatorHandler> = {
   'assessment-validate': validateAssessment,
   'operator-artifact-validate': operatorArtifactHandler,
   'simplified-english-validate': validateSimplifiedEnglish,
+  'code-style-validate': validateCodeStyle,
   'intake-validate': validateIntakeOutput,
   'plan-trace-validate': validatePlanTrace,
   'cohort-plan-validate': validateCohortPlan,

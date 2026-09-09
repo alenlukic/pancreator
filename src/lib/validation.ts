@@ -3227,7 +3227,6 @@ const CODE_REVIEW_PERSONAS = new Set([
   'qa-tester',
 ])
 const DESIGN_PERSONAS = new Set(['designer', 'design-reviewer', 'design-qa'])
-const PYTHON_GUIDANCE_PERSONAS = new Set([...CODE_REVIEW_PERSONAS, 'spotfixer'])
 const POLICY_REFERENCE_PATTERN = /\b[A-Z][A-Z0-9]*-\d{3}\b/gu
 const STATIC_GUIDANCE_PATH_PATTERN =
   /\b(?:governance\/handbooks|library\/skills)\/[A-Za-z0-9._/-]+\.md\b/gu
@@ -3235,9 +3234,16 @@ const STATIC_GUIDANCE_PATH_PATTERN =
 interface HandbookPolicyRequirement {
   handbook_path: string
   label: string
+  /** Workflow-stage personas that MUST resolve the handbook. May be empty. */
   personas: Set<string>
   installation_scope?: 'all' | 'self_development'
   technology?: string
+  /**
+   * Standalone mode that owns the handbook instead of any workflow stage. A
+   * batch-pass handbook stays out of ordinary stage context by design, so the
+   * coverage check follows the mode context rather than the stage personas.
+   */
+  standalone_mode?: string
 }
 
 const HANDBOOK_POLICY_REQUIREMENTS: HandbookPolicyRequirement[] = [
@@ -3247,16 +3253,22 @@ const HANDBOOK_POLICY_REQUIREMENTS: HandbookPolicyRequirement[] = [
     personas: CODE_REVIEW_PERSONAS,
   },
   {
-    handbook_path: 'governance/handbooks/typescript/style-guide.md',
+    handbook_path: 'governance/handbooks/typescript/node.md',
     label: 'TypeScript handbook',
     personas: CODE_REVIEW_PERSONAS,
     installation_scope: 'self_development',
   },
   {
+    handbook_path: 'governance/handbooks/typescript/style-guide.md',
+    label: 'TypeScript style handbook',
+    personas: new Set<string>(),
+    standalone_mode: 'style',
+  },
+  {
     handbook_path: 'governance/handbooks/python/style-guide.md',
-    label: 'Python handbook',
-    personas: PYTHON_GUIDANCE_PERSONAS,
-    technology: 'python',
+    label: 'Python style handbook',
+    personas: new Set<string>(),
+    standalone_mode: 'style',
   },
   {
     handbook_path: 'governance/handbooks/design/ux-guide.md',
@@ -3358,13 +3370,61 @@ function validateGovernance(
   const handbookPolicies = new Map<string, Set<string>>()
 
   for (const requirement of HANDBOOK_POLICY_REQUIREMENTS) {
-    handbookPolicies.set(
-      requirement.handbook_path,
-      validateHandbookPolicyCoverage(root, catalog, requirement, errors),
+    const policyIds = validateHandbookPolicyCoverage(
+      root,
+      catalog,
+      requirement,
+      errors,
     )
+
+    handbookPolicies.set(requirement.handbook_path, policyIds)
+    validateStandaloneHandbookCoverage(root, requirement, policyIds, errors)
   }
 
   return handbookPolicies
+}
+
+/**
+ * A handbook owned by a standalone mode reaches agents only through that mode,
+ * so the mode context — not a workflow stage — carries the coverage duty.
+ */
+function validateStandaloneHandbookCoverage(
+  root: string,
+  requirement: HandbookPolicyRequirement,
+  handbookPolicyIds: Set<string>,
+  errors: string[],
+): void {
+  if (!requirement.standalone_mode) {
+    return
+  }
+
+  const mode = STANDALONE_MODES[requirement.standalone_mode]
+
+  if (!mode) {
+    errors.push(
+      `${requirement.handbook_path} names unknown standalone mode ` +
+        `'${requirement.standalone_mode}'`,
+    )
+    return
+  }
+
+  const resolved = resolvePolicies(root, {
+    persona: mode.persona,
+    workflow: mode.workflow,
+    stage: mode.stage,
+    ...(requirement.technology
+      ? { technologies: [requirement.technology] }
+      : {}),
+  })
+
+  if (resolved.some((policy) => handbookPolicyIds.has(policy.id))) {
+    return
+  }
+
+  errors.push(
+    `standalone mode '${requirement.standalone_mode}' MUST load a policy for ` +
+      `the ${requirement.label}`,
+  )
 }
 
 /**
