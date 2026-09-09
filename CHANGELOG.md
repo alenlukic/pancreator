@@ -1,23 +1,29 @@
 # Changelog
 
-## [5.17.0] - 2026-09-08
+## [5.17.0] - 2026-09-09
 
 ### Changed
 
-- Tag mixed-policy instructions by audience so a delivery card omits operator, librarian, and standalone text ([policy-instructions](src/lib/policy-instructions.ts), [24734b5d](https://github.com/alenlukic/pancreator/commit/24734b5d)).
+- Tag mixed-policy instructions by audience so a delivery card omits operator, librarian, and standalone text ([policy-instructions](src/lib/policy-instructions.ts), [24734b5d](https://github.com/alenlukic/pancreator/commit/24734b5d), [10e043a2](https://github.com/alenlukic/pancreator/commit/10e043a2)).
 - Split primer-only librarian rules onto `LIBRARIAN-001`. Restrict generated `LANG-001` rows to target installs ([8f3de05f](https://github.com/alenlukic/pancreator/commit/8f3de05f)).
 - Keep unique supervisor rules in the orchestrator brief. Stop `/pan-start` and `/pan-resume` from a second read of `orchestrator.md` ([orchestrator](library/personas/orchestrator.md), [8f3de05f](https://github.com/alenlukic/pancreator/commit/8f3de05f)).
 - Move AGENTS.md author text to `docs/workflow-authoring.md` ([workflow-authoring](docs/workflow-authoring.md), [8f3de05f](https://github.com/alenlukic/pancreator/commit/8f3de05f)).
 - Record that the operator waived the second verify, review, and QA after the remediator. The remediator full suite also did not run ([8f3de05f](https://github.com/alenlukic/pancreator/commit/8f3de05f)).
+- Keep `docs/issues/` inside the `STE-001` writing rules, in the policy and in the handbook ([STE-001](governance/policies/STE-001.json), [handbook](governance/handbooks/writing/simplified-technical-english.md), [3cc4ba41](https://github.com/alenlukic/pancreator/commit/3cc4ba41), [30526852](https://github.com/alenlukic/pancreator/commit/30526852)).
+- Refresh the target repository primer at the post-merge head ([primer](docs/target-repo-primer.md), [f50b1538](https://github.com/alenlukic/pancreator/commit/f50b1538)).
+- Record that five review rounds ran before this release. Twenty-three non-blocking findings stay open ([297019c7](https://github.com/alenlukic/pancreator/commit/297019c7)).
 
 ### Added
 
-- Add `pan conform` scan and checkpoint with `/pan-conform` ([conform](src/lib/conform.ts), [c024aa31](https://github.com/alenlukic/pancreator/commit/c024aa31)).
+- Add `pan conform` scan and checkpoint with `/pan-conform`. The command runs at the installation root, and it reports `CHANGELOG.md` without an edit. No target-tracked path is editable ([conform](src/lib/conform.ts), [c024aa31](https://github.com/alenlukic/pancreator/commit/c024aa31), [3cc4ba41](https://github.com/alenlukic/pancreator/commit/3cc4ba41), [8816e8ad](https://github.com/alenlukic/pancreator/commit/8816e8ad)).
+- Add three registry-integrity checks so `pan validate` fails when a policy reaches no card. A harness citation must name a declared test ([validation](src/lib/validation.ts), [0d98b291](https://github.com/alenlukic/pancreator/commit/0d98b291), [81bdbf2f](https://github.com/alenlukic/pancreator/commit/81bdbf2f)).
+- Add a committed best-of-N configs example and name it in the best-of-N documentation ([template](library/templates/best-of-n-config.example.json), [best-of-n](docs/best-of-n.md), [d869b910](https://github.com/alenlukic/pancreator/commit/d869b910)).
 
 ### Fixed
 
 - Restore unique orchestrator rules for cohort status, `models --probe`, `--no-autostart`, and the decision packet ([orchestrator](library/personas/orchestrator.md), [8f3de05f](https://github.com/alenlukic/pancreator/commit/8f3de05f)).
 - Add `OUTPUT-001` to the orchestrator `EXECUTOR-001` row. Add an unscoped `TEST-001` row for spotfixer so a target install loads it with `LANG-001` ([8f3de05f](https://github.com/alenlukic/pancreator/commit/8f3de05f)).
+- Point the 4.0.0 configs link at the committed template, because the earlier link named an untracked file ([42bae507](https://github.com/alenlukic/pancreator/commit/42bae507)).
 
 ## [5.16.0] - 2026-09-08
 
