@@ -241,6 +241,28 @@
           "description": "Target when the worker reports a blocker; usually 'paused'."
         }
       }
+    },
+    "entry_gate": {
+      "type": "object",
+      "description": "A shell criterion of this stage the harness runs when the run enters the stage, before it delegates the worker. A failure routes to `failure`, whose success transition returns here while that route is open. After `max_loops` consecutive failures the next failure pauses the run for an operator decision that away mode cannot take. The ship stage declares the full profile here as its release gate.",
+      "required": ["criterion", "failure", "max_loops"],
+      "additionalProperties": false,
+      "properties": {
+        "criterion": {
+          "type": "string",
+          "description": "Id of a shell criterion declared in this stage's criteria."
+        },
+        "failure": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Stage a gate failure routes to; must be another stage of the workflow."
+        },
+        "max_loops": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Consecutive gate failures that route to `failure` before the next failure pauses for the operator."
+        }
+      }
     }
   },
   "$defs": {

@@ -28,11 +28,9 @@ acceptance criterion.
    declared, pick the tests in the immediate blast radius yourself from the
    target's documented entry points. Static checks are cheap; run them freely.
 6. When you believe the change is complete, run the configured `fast` profile
-   once as validation. Fix each failure, then re-run only the impacted
-   selection and the failing tests. You may run `fast` earlier when the
-   `impacted` selection exceeds its advisory threshold or a failure reproduces
-   only under the fast lane. Repeat `fast` after validation only when the
-   blast radius is exceptionally large; the verify and remediate stages catch
+   once, as the final validation. Fix each failure, then re-run only the
+   impacted selection, the failing tests, and the tests you added. Do not run
+   `fast` earlier and do not run it a second time; the verify stage catches
    what slips.
 7. On a retry attempt that changed only output claims or evidence, do not run
    any suite. Cite the prior run's evidence instead.

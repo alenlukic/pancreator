@@ -527,10 +527,16 @@ test('verify context carries passed gate evidence with profile, path, and finger
   assert.match(staticBaseline.description, /`fp-before`/u)
   assert.match(staticBaseline.description, /clean pass/u)
   assert.match(staticBaseline.description, /superseded workspace/u)
-  // No supervisor command re-runs the verify submission gate, so the condition
-  // must not send QA there.
-  assert.match(staticBaseline.condition ?? '', /verify submission gate/u)
+  // The harness owns every profile execution: interior gates at submission,
+  // full only at the ship release gate. The condition must not send QA to a
+  // supervisor command or to a verify gate that runs full.
+  assert.match(
+    staticBaseline.condition ?? '',
+    /Do not run the `static` profile/u,
+  )
+  assert.match(staticBaseline.condition ?? '', /ship release gate/u)
   assert.doesNotMatch(staticBaseline.condition ?? '', /supervisor/u)
+  assert.doesNotMatch(staticBaseline.condition ?? '', /verify submission gate/u)
   assert.deepEqual(staticBaseline.gate_evidence, {
     profile: 'static',
     fingerprint: 'fp-before',

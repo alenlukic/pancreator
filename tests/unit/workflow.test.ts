@@ -175,6 +175,111 @@ test('consolidation routes verify failure back to consolidate and keeps the ship
   }
 })
 
+test('the release gate is a ship entry gate that routes to remediate for two loops', () => {
+  const root = createFixture()
+
+  for (const [slug, failure] of [
+    ['delivery', 'remediate'],
+    ['metacritic', 'consolidate'],
+  ] as const) {
+    const workflow = loadWorkflow(root, slug)
+    const ship = stageBySlug(workflow, 'ship')
+    const fullSuite = ship.criteria.find(
+      (item) => item.id === 'ship.full_suite',
+    )
+
+    assert.deepEqual(ship.entry_gate, {
+      criterion: 'ship.full_suite',
+      failure,
+      max_loops: 2,
+    })
+    assert.equal(fullSuite?.type, 'shell')
+    assert.equal(fullSuite?.command, 'pan repository-check full')
+
+    // No interior stage carries a full-profile gate.
+    for (const stage of workflow.stages) {
+      if (stage.slug === 'ship') {
+        continue
+      }
+
+      assert.equal(stage.entry_gate, undefined)
+      assert.deepEqual(
+        stage.criteria
+          .filter((item) => item.command === 'pan repository-check full')
+          .map((item) => item.id),
+        [],
+        `${slug}/${stage.slug} must not gate on the full profile`,
+      )
+    }
+  }
+
+  for (const slug of ['delivery-chunk', 'delivery-candidate']) {
+    for (const stage of loadWorkflow(root, slug).stages) {
+      assert.deepEqual(
+        stage.criteria
+          .filter((item) => item.command === 'pan repository-check full')
+          .map((item) => item.id),
+        [],
+        `${slug}/${stage.slug} must not gate on the full profile`,
+      )
+    }
+  }
+})
+
+test('an entry gate must name a shell criterion of its stage and another stage', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'delivery')
+  const ship = stageBySlug(workflow, 'ship')
+  const original = ship.entry_gate
+
+  assert.ok(original)
+
+  ship.entry_gate = { ...original, criterion: 'ship.release_packet' }
+  assert.throws(
+    () => validateWorkflow(root, workflow, 'fixture'),
+    /entry_gate on 'ship' MUST name a shell criterion/u,
+  )
+
+  ship.entry_gate = { ...original, failure: 'ship' }
+  assert.throws(
+    () => validateWorkflow(root, workflow, 'fixture'),
+    /entry_gate on 'ship' MUST route failure to another stage/u,
+  )
+
+  ship.entry_gate = { ...original, failure: 'nowhere' }
+  assert.throws(
+    () => validateWorkflow(root, workflow, 'fixture'),
+    /entry_gate on 'ship' MUST route failure to another stage/u,
+  )
+
+  ship.entry_gate = original
+  assert.doesNotThrow(() => validateWorkflow(root, workflow, 'fixture'))
+
+  // The loader rejects a malformed declaration before validation.
+  const stagePath = path.join(
+    root,
+    'library/workflows/delivery/stages/ship.json',
+  )
+  const stage = JSON.parse(readFileSync(stagePath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  stage.entry_gate = { criterion: 'ship.full_suite', failure: 'remediate' }
+  writeFileSync(stagePath, `${JSON.stringify(stage)}\n`)
+  assert.throws(
+    () => loadWorkflow(root, 'delivery'),
+    /entry_gate\.max_loops MUST be a non-negative integer/u,
+  )
+
+  stage.entry_gate = { criterion: '', failure: 'remediate', max_loops: 2 }
+  writeFileSync(stagePath, `${JSON.stringify(stage)}\n`)
+  assert.throws(
+    () => loadWorkflow(root, 'delivery'),
+    /entry_gate\.criterion MUST be a non-empty string/u,
+  )
+})
+
 test('loader fails when an indexed stage file is missing', () => {
   const root = createFixture()
   rmSync(

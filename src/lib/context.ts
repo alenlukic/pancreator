@@ -367,6 +367,51 @@ function selectStageOutputs(
  * without these the verifier would grade an integrated tree with no account of
  * how it was built or checked.
  */
+/**
+ * When another stage's entry gate failed and routed the run here, the failed
+ * gate's evidence is the input this stage repairs from (REMED-001). The stage
+ * returns to that gate on success, so the evidence is required reading.
+ */
+function selectEntryGateFailureEvidence(
+  references: Map<string, InvocationReference>,
+  missingRequired: string[],
+  options: InvocationContextOptions,
+  stage: StageDefinition,
+): void {
+  for (const [gateStage, record] of Object.entries(
+    options.state.entry_gates ?? {},
+  )) {
+    if (
+      record.routed_to !== stage.slug ||
+      record.last_result.passed ||
+      record.last_result.disabled
+    ) {
+      continue
+    }
+
+    const result = record.last_result
+    const description =
+      `Failed release gate \`${result.id}\` of stage '${gateStage}' ` +
+      `(failure ${record.failures}). This stage repairs the recorded ` +
+      `failure and returns directly to '${gateStage}', which runs the ` +
+      'gate again.'
+
+    if (!result.evidence_path) {
+      continue
+    }
+
+    if (fileExists(resolveInside(options.root, result.evidence_path))) {
+      addReference(references, {
+        path: result.evidence_path,
+        description,
+        retrieval: 'required',
+      })
+    } else {
+      missingRequired.push(result.evidence_path)
+    }
+  }
+}
+
 function selectReleaseEvidence(
   references: Map<string, InvocationReference>,
   missingRequired: string[],
@@ -781,14 +826,15 @@ function selectGateEvidence(
           `profile \`${evidence.profile}\`, fingerprint \`${evidence.fingerprint}\`, ` +
           'and this path. Read the evidence to confirm what the gate ' +
           'covered. The verifier does not run this profile. An evidence ' +
-          'worker may run the fast profile once, as validation of its own ' +
-          'evidence, and never the full profile. After a remediation, no ' +
-          'agent runs any profile.'
+          'worker iterates on the impacted profile plus the tests the ' +
+          'change added, may run the fast profile once as the final ' +
+          'validation of its own evidence, and never runs the full profile.'
         : `This evidence predates the current workspace fingerprint ` +
           `\`${workspaceFingerprint}\`. Do not cite it as current. Do not ` +
-          `run the \`${evidence.profile}\` profile yourself. The verify ` +
-          'submission gate is the single path that runs the profile the ' +
-          'level assigns to it. Record the gap in your verify output.',
+          `run the \`${evidence.profile}\` profile yourself. The harness ` +
+          'runs the interior gate profiles at submission and the full ' +
+          'profile only as the ship release gate. Record the gap in your ' +
+          'verify output.',
       gate_evidence: {
         profile: evidence.profile,
         fingerprint: evidence.fingerprint,
@@ -1091,6 +1137,7 @@ export function buildInvocationInputs(
     'conditional',
   )
   selectReleaseEvidence(references, missingRequired, options.root, state)
+  selectEntryGateFailureEvidence(references, missingRequired, options, stage)
   selectPriorAttempts(references, options.root, state, stage, options.attempt)
   selectOperatorFeedback(references, state, stage)
   selectExceptions(references, state, stage, options.workspaceFingerprint)

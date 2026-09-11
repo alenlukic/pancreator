@@ -98,6 +98,19 @@ mapping before resuming the run.
   stored configuration profile must not be able to remove that pause silently.
   Escalation is always allowed.
 
+- `entry_gate` - optional `{ criterion, failure, max_loops }`. `criterion`
+  names a shell criterion of this stage that the harness runs when the run
+  enters the stage, before it delegates the worker; `failure` names another
+  stage a failure routes to; `max_loops` bounds the consecutive failures that
+  route there. A pass is recorded on `state.entry_gates.<stage>`, covers the
+  current visit of the stage, and is carried into the stage's submission
+  instead of running the command again. The routed stage returns to this stage
+  on success instead of following its own success transition. Once
+  `max_loops` failures have routed, the next failure pauses the run with an
+  `operator_decision` marked `operator_only`, which away mode cannot resume or
+  redirect. `delivery/ship` declares `ship.full_suite` this way: the `full`
+  profile runs only there (`SHIP-001`), routes to `remediate`, and allows two
+  repair loops.
 - `checkpoint` - optional role this stage plays for run contracts, one of
   `technical_plan` or `independent_review`. Contracts attach by role rather than
   by stage slug, so the same contract applies unchanged to `planning/plan`,

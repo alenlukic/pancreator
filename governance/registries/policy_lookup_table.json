@@ -474,6 +474,18 @@
       "policies": ["VERIFY-001", "WAIVER-001"]
     },
     {
+      "persona": "reviewer",
+      "workflow": "delivery",
+      "stage": "verify",
+      "policies": ["VERIFY-001"]
+    },
+    {
+      "persona": "qa-tester",
+      "workflow": "delivery",
+      "stage": "verify",
+      "policies": ["VERIFY-001"]
+    },
+    {
       "persona": "remediator",
       "workflow": "delivery",
       "stage": "remediate",
@@ -511,6 +523,18 @@
       "policies": ["VERIFY-001", "WAIVER-001"]
     },
     {
+      "persona": "reviewer",
+      "workflow": "delivery-chunk",
+      "stage": "verify",
+      "policies": ["VERIFY-001"]
+    },
+    {
+      "persona": "qa-tester",
+      "workflow": "delivery-chunk",
+      "stage": "verify",
+      "policies": ["VERIFY-001"]
+    },
+    {
       "persona": "remediator",
       "workflow": "delivery-chunk",
       "stage": "remediate",
@@ -545,6 +569,18 @@
       "workflow": "delivery-candidate",
       "stage": "verify",
       "policies": ["VERIFY-001", "WAIVER-001"]
+    },
+    {
+      "persona": "reviewer",
+      "workflow": "delivery-candidate",
+      "stage": "verify",
+      "policies": ["VERIFY-001"]
+    },
+    {
+      "persona": "qa-tester",
+      "workflow": "delivery-candidate",
+      "stage": "verify",
+      "policies": ["VERIFY-001"]
     },
     {
       "persona": "remediator",
@@ -606,6 +642,18 @@
       "workflow": "metacritic",
       "stage": "verify",
       "policies": ["VERIFY-001", "WAIVER-001"]
+    },
+    {
+      "persona": "reviewer",
+      "workflow": "metacritic",
+      "stage": "verify",
+      "policies": ["VERIFY-001"]
+    },
+    {
+      "persona": "qa-tester",
+      "workflow": "metacritic",
+      "stage": "verify",
+      "policies": ["VERIFY-001"]
     },
     {
       "persona": "release-steward",

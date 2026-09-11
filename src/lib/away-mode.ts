@@ -285,7 +285,13 @@ export function awayModeTrigger(
     }
   }
 
-  if (state.pending_action.type === 'operator_decision') {
+  // An operator-only decision is not a permitted blocker class. The release
+  // gate raises one after its repair loops run out, and the run stays paused
+  // until the human operator decides.
+  if (
+    state.pending_action.type === 'operator_decision' &&
+    state.pending_action.operator_only !== true
+  ) {
     return {
       type: 'operator_decision',
       summary: state.pause_reason ?? 'The run waits for an operator decision.',

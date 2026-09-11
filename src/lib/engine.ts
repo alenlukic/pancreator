@@ -4,7 +4,11 @@ import path from 'node:path'
 
 import {
   assertCohortRunUnblocked,
+  claimCohortBaselineCapture,
   COHORT_PLAN_WORKFLOW_SLUG,
+  cohortBaselineDirectory,
+  recordCohortBaselines,
+  releaseCohortBaselineClaim,
 } from './cohorts.js'
 import {
   buildContextReference,
@@ -169,6 +173,7 @@ import type {
   OperatorGateWaiver,
   OperatorPauseContext,
   OperatorWorkspaceRatification,
+  RepositoryCheckBaselinePointer,
   RunActionActor,
   RunAdvisory,
   RunModelEvidence,
@@ -199,6 +204,7 @@ import {
   loadRepositoryCheckBaseline,
   relocateMisplacedDelegationArtifact,
   repositoryCheckBaselinesCaptured,
+  runEntryGateCriterion,
   sessionRecordPath,
   validateDelegationMarkdown,
   validateInvocationAttestation,
@@ -612,9 +618,9 @@ function collectStageRepositoryCheckProfiles(
         criterion,
       )
 
-      // DEV-001: the full profile is a submission gate judged on its own
+      // DEV-001: the full profile is the ship release gate, judged on its own
       // result, never an interior gate, so it is never baselined even when a
-      // source-allowed stage (remediate) gates on it.
+      // workflow gates a source-allowed stage on it.
       if (profile === FULL_PROFILE) {
         continue
       }
@@ -630,16 +636,6 @@ function collectStageRepositoryCheckProfiles(
     .sort((left, right) => left.name.localeCompare(right.name))
 }
 
-/**
- * Capture a baseline for the repository-check profiles the run's verification
- * level gates its source-mutating stages on, before the first mutating stage
- * edits anything.
- *
- * The expensive profiles (integration suites, end-to-end browsers) are never
- * captured here: a run's own regressions are visible in the fast profiles, the
- * team and CI own the rest, and a level that gates on a heavier profile judges
- * it on its own result instead of a delta.
- */
 /** Cap on the dirty paths a baseline artifact lists verbatim. */
 const BASELINE_DIRTY_PATH_LIMIT = 200
 
@@ -844,6 +840,17 @@ function ensureWorkspaceProvisioned(
   return false
 }
 
+/**
+ * Establish the run's pre-implementation baselines before the first
+ * source-allowed stage edits anything: one baseline per interior gate profile
+ * of the run's verification level (DEV-001). A run outside a cohort captures
+ * its own; a cohort run shares the session's one baseline.
+ *
+ * The full profile is never captured here. It runs only as the ship release
+ * gate, judged on its own result instead of a delta.
+ *
+ * Returns true when a failed environment probe paused the run instead.
+ */
 function ensureWorkflowRepositoryCheckBaselines(
   root: string,
   state: RunState,
@@ -859,6 +866,86 @@ function ensureWorkflowRepositoryCheckBaselines(
     return false
   }
 
+  // DEV-001: a cohort session holds exactly one shared baseline per interior
+  // gate profile. The first run of the session to reach this point captures
+  // it into the cohort record; every other chunk run and the release run
+  // adopts it instead of capturing its own.
+  const cohortId = state.cohort?.cohort_id ?? null
+
+  if (cohortId) {
+    const claim = claimCohortBaselineCapture(root, cohortId, state.run_id)
+
+    if (claim.status === 'adopted') {
+      state.repository_check_baselines = claim.baselines
+      onProgress?.(
+        `adopted the shared pre-implementation baseline of cohort ${cohortId} ` +
+          `(${Object.keys(claim.baselines).sort().join(', ') || 'no profiles'})`,
+      )
+
+      return false
+    }
+  }
+
+  const layout = resolveRunLayout(root, state.run_id)
+  const artifactPath = (name: string): string =>
+    cohortId
+      ? `${cohortBaselineDirectory(root, cohortId)}/${name}`
+      : layout.evidence(name).relative
+
+  let blocked: boolean
+
+  try {
+    blocked = captureRepositoryCheckBaselines(
+      root,
+      state,
+      workflow,
+      stage,
+      artifactPath,
+      onProgress,
+    )
+  } catch (error) {
+    if (cohortId) {
+      releaseCohortBaselineClaim(root, cohortId, state.run_id)
+    }
+
+    throw error
+  }
+
+  if (cohortId) {
+    if (blocked || !state.repository_check_baselines) {
+      releaseCohortBaselineClaim(root, cohortId, state.run_id)
+    } else {
+      recordCohortBaselines(
+        root,
+        cohortId,
+        state.run_id,
+        state.repository_check_baselines as Record<
+          string,
+          RepositoryCheckBaselinePointer
+        >,
+      )
+      onProgress?.(
+        `recorded the shared pre-implementation baseline on cohort ${cohortId}`,
+      )
+    }
+  }
+
+  return blocked
+}
+
+/**
+ * Run and persist one baseline per interior gate profile of the workflow's
+ * source-allowed stages, writing each artifact where `artifactPath` places it.
+ * Returns true when a failed environment probe paused the run instead.
+ */
+function captureRepositoryCheckBaselines(
+  root: string,
+  state: RunState,
+  workflow: WorkflowDefinition,
+  stage: StageDefinition,
+  artifactPath: (name: string) => string,
+  onProgress?: (message: string) => void,
+): boolean {
   const profiles = collectStageRepositoryCheckProfiles(workflow.stages, state)
   const repositoryChecks = loadRepositoryChecks(root)
   const preCaptureWorkspace = workspaceSnapshotForRun(root, state)
@@ -898,13 +985,10 @@ function ensureWorkflowRepositoryCheckBaselines(
       `pre-implementation '${profile.name}' baseline ${result.status} in ${(result.total_duration_ms / 1000).toFixed(1)}s`,
     )
     const workspace = workspaceSnapshotForRun(root, state)
-    const layout = resolveRunLayout(root, state.run_id)
-    const artifactPath = layout.evidence(
-      `pre-implementation-${profile.name}.json`,
-    ).relative
-    const fullPath = layout.evidence(
+    const summaryPath = artifactPath(`pre-implementation-${profile.name}.json`)
+    const fullPath = artifactPath(
       `pre-implementation-${profile.name}.full.json`,
-    ).relative
+    )
     const recordedAt = now()
     const { summary, elided } = summarizeRepositoryCheckResult(result)
     const environmentProbes =
@@ -936,7 +1020,7 @@ function ensureWorkflowRepositoryCheckBaselines(
       })
     }
 
-    writeJsonAtomic(resolveInside(root, artifactPath), {
+    writeJsonAtomic(resolveInside(root, summaryPath), {
       schema_version: 1,
       run_id: state.run_id,
       stage: stage.slug,
@@ -951,7 +1035,7 @@ function ensureWorkflowRepositoryCheckBaselines(
     baselines[profile.name] = {
       profile: profile.name,
       status: result.status,
-      artifact_path: artifactPath,
+      artifact_path: summaryPath,
       workspace_fingerprint: workspace.fingerprint,
       recorded_at: recordedAt,
     }
@@ -1154,6 +1238,223 @@ function pauseForRepositoryCheckBaselineGaps(
   )
 }
 
+/**
+ * A gate result that lets the stage proceed: a pass, or a gate the run
+ * configuration, verification level, or an unconfigured profile disabled. The
+ * same reading `effectiveOutcome` applies to a submitted gate.
+ */
+function entryGateSatisfied(result: DeterministicResult): boolean {
+  return result.passed || result.disabled === true
+}
+
+/**
+ * The recorded entry-gate pass that still covers the current visit of a stage,
+ * or null. A pass covers the visit while no other stage has submitted since it
+ * was recorded: the ship worker's own attempts and operator pauses do not
+ * close the visit, leaving the stage does.
+ */
+function currentEntryGatePass(
+  state: RunState,
+  stage: StageDefinition,
+): DeterministicResult | null {
+  const record = state.entry_gates?.[stage.slug]
+
+  if (
+    !record ||
+    !entryGateSatisfied(record.last_result) ||
+    record.passed_at_history_length === undefined ||
+    record.passed_at_history_length > state.stage_history.length
+  ) {
+    return null
+  }
+
+  const sinceThen = state.stage_history.slice(record.passed_at_history_length)
+
+  return sinceThen.every((item) => item.stage === stage.slug)
+    ? record.last_result
+    : null
+}
+
+/**
+ * The stage a successful outcome of `stage` returns to when the stage was
+ * entered from another stage's failed entry gate, or undefined when the stage
+ * follows its own success transition. Answering the route closes it.
+ */
+function takeEntryGateReturn(
+  state: RunState,
+  stage: StageDefinition,
+): string | undefined {
+  for (const [gateStage, record] of Object.entries(state.entry_gates ?? {})) {
+    if (record.routed_to === stage.slug) {
+      delete record.routed_to
+
+      return gateStage
+    }
+  }
+
+  return undefined
+}
+
+/**
+ * Forget open entry-gate routes, visit passes, and loop counts. An operator
+ * who redirects or resumes the run decides its next step explicitly, so a
+ * route or pass recorded for the prior path must not reroute a later success
+ * or stand in for a gate the run has not run on its new path, and the repair
+ * loops start over from the operator's decision.
+ */
+function clearEntryGateRoutes(state: RunState): void {
+  for (const record of Object.values(state.entry_gates ?? {})) {
+    delete record.routed_to
+    delete record.passed_at_history_length
+    record.failures = 0
+  }
+}
+
+/**
+ * Run the stage's entry gate, when it declares one, before the worker is
+ * delegated.
+ *
+ * Returns `'pass'` when the stage may proceed (the gate passed now, passed
+ * earlier on this visit, or is disabled), `'routed'` when the failure moved
+ * the run to the declared repair stage, and `'paused'` when the failure count
+ * exceeded `max_loops` and the run now waits for an operator decision that
+ * away mode cannot take.
+ */
+function runStageEntryGate(
+  root: string,
+  state: RunState,
+  stage: StageDefinition,
+  onProgress?: (message: string) => void,
+): 'pass' | 'routed' | 'paused' {
+  const gate = stage.entry_gate
+
+  if (!gate) {
+    return 'pass'
+  }
+
+  if (currentEntryGatePass(state, stage)) {
+    return 'pass'
+  }
+
+  const criterion = stage.criteria.find((item) => item.id === gate.criterion)
+
+  invariant(
+    criterion !== undefined,
+    `Stage '${stage.slug}' entry gate names unknown criterion '${gate.criterion}'.`,
+    { code: 'INVALID_WORKFLOW' },
+  )
+
+  const records = (state.entry_gates ??= {})
+  const previous = records[stage.slug]
+  const executions = (previous?.executions ?? 0) + 1
+  const artifactId = `${stage.slug}-entry-${executions}`
+
+  onProgress?.(
+    `running entry gate ${criterion.id} for stage '${stage.slug}' before delegation`,
+  )
+
+  const result = runEntryGateCriterion(
+    root,
+    runDir(root, state.run_id),
+    state,
+    stage,
+    criterion,
+    workspaceDirectory(root, state),
+    artifactId,
+    onProgress,
+  )
+
+  if (entryGateSatisfied(result)) {
+    records[stage.slug] = {
+      criterion_id: criterion.id,
+      executions,
+      failures: 0,
+      last_result: result,
+      passed_at_history_length: state.stage_history.length,
+    }
+    persistRun(root, state, 'entry_gate_passed', {
+      stage: stage.slug,
+      criterion: criterion.id,
+      ...(result.evidence_path ? { evidence_path: result.evidence_path } : {}),
+    })
+
+    return 'pass'
+  }
+
+  const failures = (previous?.failures ?? 0) + 1
+  const record: NonNullable<RunState['entry_gates']>[string] = {
+    criterion_id: criterion.id,
+    executions,
+    failures,
+    last_result: result,
+  }
+
+  records[stage.slug] = record
+
+  const evidence = result.evidence_path
+    ? ` Evidence: ${result.evidence_path}.`
+    : ''
+
+  if (failures > gate.max_loops) {
+    const reason =
+      `Entry gate '${criterion.id}' of stage '${stage.slug}' failed ` +
+      `${failures} times; the workflow allows ${gate.max_loops} repair ` +
+      `loop${gate.max_loops === 1 ? '' : 's'} through '${gate.failure}'. ` +
+      `${result.explanation}${evidence}`
+
+    state.status = 'paused'
+    state.pause_reason = reason
+    state.pending_action = { type: 'operator_decision', operator_only: true }
+    writeDecision(
+      root,
+      state,
+      `Release gate failed ${failures} times`,
+      reason,
+      [
+        `Inspect the gate evidence${result.evidence_path ? ` at ${result.evidence_path}` : ''}.`,
+        `Send the run back for repair with: ${panCommand(root)} resume ${state.run_id} --stage ${gate.failure}`,
+        `Or abort with: ${panCommand(root)} abort ${state.run_id}`,
+        'Away mode cannot take this decision.',
+      ],
+    )
+    persistRun(root, state, 'run_paused', {
+      reason,
+      stage: stage.slug,
+      criterion: criterion.id,
+      failures,
+    })
+
+    return 'paused'
+  }
+
+  onProgress?.(
+    `entry gate ${criterion.id} failed (${failures}/${gate.max_loops} loops); routing to '${gate.failure}'`,
+  )
+  record.routed_to = gate.failure
+  applyTransition(root, state, stage, 'failure', {
+    overrideTarget: gate.failure,
+  })
+
+  if (state.status !== 'running') {
+    // A workflow limit intercepted the route. The route is closed because
+    // the operator now chooses where the run continues.
+    delete record.routed_to
+    persistRun(root, state, 'run_paused', { reason: state.pause_reason })
+
+    return 'paused'
+  }
+
+  persistRun(root, state, 'entry_gate_failed', {
+    stage: stage.slug,
+    criterion: criterion.id,
+    failures,
+    routed_to: gate.failure,
+    ...(result.evidence_path ? { evidence_path: result.evidence_path } : {}),
+  })
+
+  return 'routed'
+}
+
 function failAutonomousCandidate(
   root: string,
   state: RunState,
@@ -1340,7 +1641,15 @@ function applyTransition(
       ? state.consecutive_failures + 1
       : 0
 
-  const target = options.overrideTarget ?? stage.transitions[outcome]
+  // A stage entered from another stage's failed entry gate returns there on
+  // success instead of following its own success transition, so a repair the
+  // release gate requested comes straight back to the release gate.
+  const entryGateReturn =
+    outcome === 'success' && options.overrideTarget === undefined
+      ? takeEntryGateReturn(state, stage)
+      : undefined
+  const target =
+    options.overrideTarget ?? entryGateReturn ?? stage.transitions[outcome]
 
   invariant(target, `Stage '${stage.slug}' has no '${outcome}' transition.`, {
     code: 'INVALID_TRANSITION',
@@ -2715,6 +3024,14 @@ export function prepareInvocation(
       pauseForRepositoryCheckBaselineGaps(root, state, stage, baselineGaps)
       persistRun(root, state, 'run_paused', { reason: state.pause_reason })
 
+      return { state, invocation: null, advisories }
+    }
+
+    // The release gate runs here, on the workspace verify approved and before
+    // the release steward commits anything, so a failure routes to repair
+    // without a release commit to unwind. The gate records its result once
+    // per visit; the ship submission reuses it.
+    if (runStageEntryGate(root, state, stage, options.onProgress) !== 'pass') {
       return { state, invocation: null, advisories }
     }
 
@@ -4356,6 +4673,7 @@ export function submitOutput(
             : failedHardSelfCriterion
               ? `hard criterion '${failedHardSelfCriterion.id}' was self-evaluated as failed`
               : null
+    const entryGatePass = currentEntryGatePass(state, stage)
     const evaluated = evaluateDeterministicCriteria(
       root,
       runDir(root, runId),
@@ -4369,6 +4687,7 @@ export function submitOutput(
       options.onProgress,
       gateSkipReason,
       workspaceAfter,
+      entryGatePass ? { [entryGatePass.id]: entryGatePass } : {},
     )
     governanceArtifactWarnings.push(
       ...attestationErrors,
@@ -5008,6 +5327,13 @@ function setRunStageWithActor(
     invariant(note.trim().length > 0, 'Stage repair note MUST be non-empty.', {
       code: 'REPAIR_NOTE_REQUIRED',
     })
+    invariant(
+      actor === 'operator' ||
+        state.pending_action.type !== 'operator_decision' ||
+        state.pending_action.operator_only !== true,
+      'Away mode cannot redirect a run paused for an operator-only decision.',
+      { code: 'AWAY_ACTION_FORBIDDEN' },
+    )
 
     const workflow = loadRunWorkflow(root, state)
     stageBySlug(workflow, stageSlug)
@@ -5054,6 +5380,7 @@ function setRunStageWithActor(
 
     resetAttemptsFrom(workflow, state, stageSlug)
     clearAllSameReasonTrackers(state)
+    clearEntryGateRoutes(state)
     state.status = 'running'
     state.current_stage = stageSlug
     state.pending_action = { type: 'prepare_invocation' }
@@ -5353,6 +5680,15 @@ function resumeRunWithActor(
     invariant(state.status === 'paused', 'Only paused runs can be resumed.', {
       code: 'INVALID_RUN_ACTION',
     })
+    // A pause marked operator-only records a decision only the human operator
+    // may take; the release gate raises one after its repair loops run out.
+    invariant(
+      actor === 'operator' ||
+        state.pending_action.type !== 'operator_decision' ||
+        state.pending_action.operator_only !== true,
+      'Away mode cannot resume a run paused for an operator-only decision.',
+      { code: 'AWAY_ACTION_FORBIDDEN' },
+    )
 
     const workflow = loadRunWorkflow(root, state)
     const savedPause = state.operator_pause
@@ -5436,6 +5772,10 @@ function resumeRunWithActor(
 
     if (note.trim().length > 0) {
       recordOperatorFeedback(root, state, source, target, 'resume', note, actor)
+    }
+
+    if (actor === 'operator' || stageSlug) {
+      clearEntryGateRoutes(state)
     }
 
     state.status = 'running'
