@@ -8,7 +8,7 @@ This handbook records conventions verified in this repository. It is not a gener
 
 ## Detection evidence
 
-`./bin/pan technologies detect --json` reported `typescript` from `tsconfig.json` and the tracked TypeScript sources under `src/` and `tests/`, including `src/cli.ts`, `src/lib/engine.ts`, `src/lib/repository-checks.ts`, and `tests/helpers.ts`.
+`./bin/pan technologies detect --json` reported `typescript` from `tsconfig.json` and the tracked TypeScript sources under `src/` and `tests/`, including `src/cli.ts`, `src/runtime-maintenance-cli.ts`, the whole `src/lib/**` tree, and the suites under `tests/**`. TypeScript is the implementation language of the harness.
 
 ## Compiler contract
 
@@ -17,7 +17,7 @@ This handbook records conventions verified in this repository. It is not a gener
 - `target` and `lib` are `ES2022`; `module` and `moduleResolution` are `NodeNext`; `types` is `["node"]` only.
 - `strict` is on, together with `noFallthroughCasesInSwitch`, `noImplicitOverride`, `noUnusedLocals`, `noUnusedParameters`, `forceConsistentCasingInFileNames`, and `verbatimModuleSyntax`. Unused locals and parameters are compile errors, not warnings.
 - `rootDir` is `.` and `outDir` is `dist`, so `src/cli.ts` compiles to `dist/src/cli.js` and tests compile to `dist/tests/`.
-- `include` covers only `src/**/*.ts` and `tests/**/*.ts`.
+- `include` covers only `src/**/*.ts` and `tests/**/*.ts`; `exclude` covers `dist` and `node_modules`.
 
 ## Modules
 
@@ -56,11 +56,18 @@ Comments explain intent, a constraint, or a non-obvious trade-off. Exported and 
 - Tests use the Node built-in runner: `import test from 'node:test'` with `import assert from 'node:assert/strict'`.
 - Mainline suites live in `tests/unit/`, `tests/integration/`, and `tests/regression/`, and import the implementation through its compiled specifier, as in `'../../src/lib/repository-checks.js'`. The slow installer suites live in `tests/secondary/`, which `npm test` excludes.
 - Filesystem fixtures use `createTestTempDirectory('pancreator-<area>-')` from `tests/temp.ts`, which places them under `runtime/tmp/tests/` where `bin/run-tests` removes them after every run. Tests never call `tmpdir()`; `pan validate` rejects it under `tests/`. Removing a fixture with `rmSync(dir, { recursive: true, force: true })` inside `finally` is still good manners but no longer load-bearing. Shared helpers live in `tests/helpers.ts`.
-- Verify with `npm test` for the default suite, `npm run test:secondary` for the installer lane, or the profiles in `runtime/repository-checks.json`, which is the command authority.
+- Verify with `npm test` for the default suite, `npm run test:secondary` for the installer lane, `./bin/pan tests impacted` while iterating, or the profiles in `runtime/repository-checks.json`, which is the command authority.
 
 ## Relationship to durable guidance
 
-Durable Pancreator self-development TypeScript guidance lives in `governance/handbooks/typescript/style-guide.md` and `governance/handbooks/typescript/node.md`, delivered by `TS-001`. This handbook records what the workspace itself demonstrates. Where the two overlap, the durable handbooks remain authoritative and this file MUST NOT be read as loosening them.
+Durable Pancreator self-development guidance is now split by audience.
+
+- `governance/handbooks/typescript/node.md` reaches the delivery personas through their own policy row. A workflow agent writing TypeScript reads that Node.js guidance.
+- `governance/handbooks/typescript/style-guide.md` reaches only the librarian on the `standalone`/`style` row, which the `/pan-style` batch pass uses. A delivery persona no longer resolves the durable style guide.
+
+This handbook records what the workspace itself demonstrates. Where it overlaps those durable handbooks, the durable handbooks remain authoritative and this file MUST NOT be read as loosening them.
+
+`./bin/pan style scan|checkpoint` reports the countable judgment-level style issues of `.ts` and `.tsx` files and writes `runtime/cache/style.json`. It is a batch pass, not a gate, and `npm run lint` stays authoritative for mechanical style.
 
 ## No target-specific convention found
 
@@ -69,3 +76,4 @@ Bounded inspection found no target-specific convention for these areas, so agent
 - No ESLint or other lint-rule configuration exists. `bin/lint` is formatting, type checking, and Bash syntax only.
 - No import-ordering tool is configured; Prettier does not sort imports, and ordering follows the surrounding file.
 - No naming, file-size, or directory-depth rule is enforced by tooling.
+- No `.tsx` file exists in this repository, so no JSX or component convention is verifiable here.

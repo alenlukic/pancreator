@@ -1,0 +1,23 @@
+{
+  "id": "LANGSTYLE-001",
+  "title": "Target language style conformance",
+  "severity": "hard",
+  "summary": "The code style batch pass MUST apply the target-derived language guidance this policy references to durable target-repository source.",
+  "instructions": [
+    "Agents writing, reviewing, or testing code in a detected target language MUST read the complete target guidance this policy references for that language before completion, and MUST apply it.",
+    "This guidance records conventions verified in the target repository. Where a referenced handbook states that no target-specific convention was found, agents MUST NOT invent one.",
+    "A run-local script under runtime/logs/workflows/<run-id>/scripts/ MAY ignore the referenced handbooks until an agent promotes that script into durable repository code.",
+    "/pan-build-docs owns this policy and every handbook it references. An agent MUST regenerate the bundle rather than hand-edit a generated file."
+  ],
+  "generated_by": "pancreator-target-language-handbooks",
+  "guidance_sources": [
+    {
+      "path": "governance/handbooks/target/javascript/style-guide.md",
+      "read_trigger": "Read this guidance before you write, review, or test JavaScript in this repository."
+    },
+    {
+      "path": "governance/handbooks/target/typescript/style-guide.md",
+      "read_trigger": "Read this guidance before you write, review, or test TypeScript in this repository."
+    }
+  ]
+}
