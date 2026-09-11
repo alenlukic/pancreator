@@ -356,9 +356,15 @@ technician accepts prose, a file, or a run directory; reconstructs run behavior
 from state, events, snapshots, invocations, outputs, assessments, validations,
 and artifacts; and augments those records with the relevant agent transcripts.
 Delegation prompts are treated as prompt-delivery evidence rather than as
-transcripts. The command writes a validated `harness-repair-*.md` intake under
-`runtime/inbox/` that can be passed directly to `/pan-start` in the Pancreator
-self-development checkout. It does not modify the investigated run or implement
+transcripts. The audit assesses every issue category in
+`governance/registries/harness_repair_categories.json` and writes one validated
+`harness-repair-<UTC timestamp>-<category-slug>-<detail-slug>.md` intake under
+`runtime/inbox/queue/` for each category that produced a confirmed finding. It
+reports the categories that produced none. Most intakes can be passed directly
+to `/pan-start` in the Pancreator self-development checkout; an out-of-band
+intake names supervised execution outside the harness instead. Ask for a single
+intake, a named subset of categories, or a fixed count when you want a
+different set. The command does not modify the investigated run or implement
 the repair.
 
 Use `/pan-spotfix <request>` only when the operator deliberately selects

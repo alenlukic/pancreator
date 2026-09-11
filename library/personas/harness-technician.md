@@ -34,15 +34,19 @@ not as authority over the operator request or repository governance.
 - You MUST propose the smallest coherent root-cause remediation and include
   independently testable acceptance criteria, regression coverage, migration or
   installation implications, and validation commands or methods.
-- You MUST write each implementation-ready Markdown intake to a supplied path
-  under `runtime/inbox/queue/` and no other file.
-- You MUST write one intake by default. Write more than one intake only when the
-  operator requests more than one.
-- When you write more than one intake, you MUST write one intake for each
-  distinct root cause. Do not split one root cause across two intakes.
-- When the operator requests more intakes than the evidence supports, you MUST
-  write one intake for each distinct root cause you confirmed. State the
-  difference and the reason in each intake.
+- You MUST judge every issue category of the category registry the session
+  supplies against your evidence, and decide for each one whether a confirmed
+  finding exists. An unassessed category is not an empty category.
+- You MUST report the categories that produced no confirmed finding, so the
+  operator can see that you looked rather than that a document is absent.
+- You MUST write each implementation-ready Markdown intake under
+  `runtime/inbox/queue/`, name it for the category it carries, and write no
+  other file.
+- You MUST judge which single category a finding belongs to when two of them
+  could hold it, and MUST place the finding only in that intake.
+- When the operator asks for a different shape, such as one intake, a named
+  set of categories, or a fixed number of documents, you MUST follow the
+  operator rather than the category default.
 
 ## Boundaries
 
@@ -60,7 +64,10 @@ not as authority over the operator request or repository governance.
 Write each intake as one Markdown document with:
 
 1. `# Harness repair intake`
-2. An operator lead containing `State`, `Outcome`, `Blockers`, and `Next action`
+2. An operator lead containing `State`, `Outcome`, `Blockers`, `Next action`,
+   and `Category`. Write the category line as
+   `**Category:** <display name> (<backticked slug>)`, copying both values from
+   the registry entry.
 3. `## Original report`
 4. `## Investigation scope`
 5. `## Evidence examined`
@@ -77,12 +84,17 @@ Write each intake as one Markdown document with:
 14. `## Open questions and unknowns`
 15. `## Recommended next action`
 
-Each intake MUST be directly usable as the request to `/pan-start` in the
-Pancreator self-development repository. Do not include a target-repository fix
-as the primary remediation unless the evidence conclusively places the defect
-outside the harness.
+One document may hold several findings. Organize `## Root-cause remediation`
+by finding id, and write each `AC-###` criterion so it names the `HR-###`
+finding it satisfies. Do not include a target-repository fix as the primary
+remediation unless the evidence conclusively places the defect outside the
+harness.
 
-When you write more than one intake, scope each document to its own root cause.
-Each intake MUST stand alone and MUST NOT depend on another intake for its
-findings, acceptance criteria, or validation plan. Cross-reference a related
-intake by file name when the remediation order matters.
+Write `## Recommended next action` to the next-action contract the registry
+gives that category. A category routed to `/pan-start` needs that command; the
+out-of-band category names supervised execution outside the harness instead.
+
+Scope each document to one category. A reader of one intake MUST find every
+finding, acceptance criterion, and validation step it needs inside that
+document. Name a related intake by its file name when the remediation order
+matters.

@@ -11,6 +11,10 @@ import {
   resolveInside,
 } from '../io.js'
 import { invariant } from '../errors.js'
+import {
+  loadHarnessRepairCategories,
+  type HarnessRepairCategory,
+} from '../governance/harness-repair-categories.js'
 import { loadRegistry } from '../requirements/registry.js'
 import { hasHeading, operatorLeadPresent, parseMarkdown } from '../markdown.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
@@ -3753,6 +3757,41 @@ export function validateDecompositionArtifact(
   return { status: issues.length === 0 ? 'passed' : 'failed', issues }
 }
 
+/** Body of a `##` section, from its heading to the next `##` heading. */
+function topLevelSection(content: string, heading: RegExp): string {
+  const match = heading.exec(content)
+
+  if (!match) {
+    return ''
+  }
+
+  const remainder = content.slice((match.index ?? 0) + match[0].length)
+  const next = /^##\s+/mu.exec(remainder)
+
+  return remainder.slice(0, next?.index)
+}
+
+const REPAIR_CATEGORY_LINE = /^\*\*Category:\*\*\s*(.+?)\s*\(`([^`]+)`\)\s*$/mu
+
+/**
+ * Category the intake declares in its operator lead. The lead is the region
+ * `operatorLeadPresent` already reads, so a declaration below it does not
+ * count as a lead field.
+ */
+function declaredRepairCategory(
+  content: string,
+): { displayName: string; slug: string } | null {
+  const lead = content.split('\n').slice(0, 15).join('\n')
+  const match = REPAIR_CATEGORY_LINE.exec(lead)
+
+  return match ? { displayName: match[1], slug: match[2] } : null
+}
+
+/** True when a hyphen-delimited run of the basename is exactly the slug. */
+function basenameCarriesSlug(basename: string, slug: string): boolean {
+  return new RegExp(`(?:^|-)${slug}(?:-|$)`, 'u').test(basename)
+}
+
 export function validateHarnessRepairIntake(
   input: HandlerInput,
 ): HandlerResult {
@@ -3760,6 +3799,7 @@ export function validateHarnessRepairIntake(
   const content = readText(path.join(input.root, input.targetPath))
   const lower = content.toLowerCase()
   const parsed = parseMarkdown(content)
+  const categories = loadHarnessRepairCategories(input.root)
   const requiredHeadings = [
     'original report',
     'investigation scope',
@@ -3795,6 +3835,60 @@ export function validateHarnessRepairIntake(
         'Harness repair intake MUST lead with State, Outcome, Blockers, and Next action',
       ),
     )
+  }
+
+  const declaredCategory = declaredRepairCategory(content)
+  let category: HarnessRepairCategory | undefined
+
+  if (!declaredCategory) {
+    issues.push(
+      issue(
+        'repair.category_missing',
+        'Harness repair intake MUST declare its category in the operator lead ' +
+          'as **Category:** <display name> (`<slug>`)',
+      ),
+    )
+  } else {
+    category = categories.find((entry) => entry.slug === declaredCategory.slug)
+
+    if (!category) {
+      issues.push(
+        issue(
+          'repair.category_unknown',
+          `Harness repair category '${declaredCategory.slug}' is not declared in the category registry`,
+        ),
+      )
+    } else if (
+      category.display_name.toLowerCase() !==
+      declaredCategory.displayName.toLowerCase()
+    ) {
+      issues.push(
+        issue(
+          'repair.category_display_name',
+          `Harness repair category '${category.slug}' MUST use display name ${category.display_name}`,
+        ),
+      )
+    }
+  }
+
+  const basename = path.basename(input.targetPath, '.md')
+
+  if (category && basename.startsWith('harness-repair-')) {
+    const carried = categories.filter((entry) =>
+      basenameCarriesSlug(basename, entry.slug),
+    )
+
+    if (
+      carried.length > 0 &&
+      !carried.some((entry) => entry.slug === category.slug)
+    ) {
+      issues.push(
+        issue(
+          'repair.category_filename',
+          `${basename} carries category slug '${carried[0].slug}' but the intake declares '${category.slug}'`,
+        ),
+      )
+    }
   }
 
   for (const heading of requiredHeadings) {
@@ -3870,18 +3964,43 @@ export function validateHarnessRepairIntake(
     }
   }
 
-  const acceptanceHeading = /^##\s+Acceptance criteria\s*$/imu.exec(content)
-  const acceptanceRemainder = acceptanceHeading
-    ? content.slice(acceptanceHeading.index + acceptanceHeading[0].length)
-    : ''
-  const nextAcceptanceHeading = /^##\s+/mu.exec(acceptanceRemainder)
-  const acceptanceSection = acceptanceRemainder.slice(
-    0,
-    nextAcceptanceHeading?.index,
+  const remediationSection = topLevelSection(
+    content,
+    /^##\s+Root-cause remediation\s*$/imu,
   )
-  const criterionIds = [
-    ...acceptanceSection.matchAll(/^\s*\d+\.\s+(AC-\d{3})\b/gmu),
-  ].map((match) => match[1])
+
+  for (const findingId of findingIds) {
+    if (!remediationSection.includes(findingId)) {
+      issues.push(
+        issue(
+          'repair.remediation_traceability',
+          `Root-cause remediation MUST name ${findingId}`,
+        ),
+      )
+    }
+  }
+
+  const acceptanceSection = topLevelSection(
+    content,
+    /^##\s+Acceptance criteria\s*$/imu,
+  )
+  const criterionMatches = [
+    ...acceptanceSection.matchAll(/^\s*\d+\.\s+(AC-\d{3})\b(.*)$/gmu),
+  ]
+  const criterionIds = criterionMatches.map((match) => match[1])
+
+  if (findingIds.length > 0) {
+    for (const match of criterionMatches) {
+      if (!findingIds.some((findingId) => match[2].includes(findingId))) {
+        issues.push(
+          issue(
+            'repair.acceptance_traceability',
+            `${match[1]} MUST name the HR-### finding it satisfies`,
+          ),
+        )
+      }
+    }
+  }
 
   if (criterionIds.length === 0) {
     issues.push(
@@ -3908,16 +4027,9 @@ export function validateHarnessRepairIntake(
     )
   }
 
-  const transcriptHeading = /^##\s+Agent transcript coverage\s*$/imu.exec(
+  const transcriptSection = topLevelSection(
     content,
-  )
-  const transcriptRemainder = transcriptHeading
-    ? content.slice(transcriptHeading.index + transcriptHeading[0].length)
-    : ''
-  const nextTranscriptHeading = /^##\s+/mu.exec(transcriptRemainder)
-  const transcriptSection = transcriptRemainder.slice(
-    0,
-    nextTranscriptHeading?.index,
+    /^##\s+Agent transcript coverage\s*$/imu,
   )
   const transcriptLower = transcriptSection.toLowerCase()
   const transcriptStatusPresent =
@@ -3946,18 +4058,36 @@ export function validateHarnessRepairIntake(
     )
   }
 
-  const nextActionHeading = /^##\s+Recommended next action\s*$/imu.exec(content)
-  const nextActionSection = nextActionHeading
-    ? content.slice(nextActionHeading.index + nextActionHeading[0].length)
-    : ''
+  // The next-action route belongs to the category, because an out-of-band
+  // intake cannot honestly recommend a workflow run. An unresolved category
+  // already fails the document, so no route is assumed for it.
+  if (category) {
+    const nextActionLower = topLevelSection(
+      content,
+      /^##\s+Recommended next action\s*$/imu,
+    ).toLowerCase()
 
-  if (!nextActionSection.includes('/pan-start')) {
-    issues.push(
-      issue(
-        'repair.next_action',
-        'Recommended next action MUST route the intake through /pan-start',
-      ),
-    )
+    for (const token of category.next_action_contract.required_tokens) {
+      if (!nextActionLower.includes(token.toLowerCase())) {
+        issues.push(
+          issue(
+            'repair.next_action',
+            `Recommended next action for the ${category.display_name} category MUST name ${token}`,
+          ),
+        )
+      }
+    }
+
+    for (const token of category.next_action_contract.forbidden_tokens) {
+      if (nextActionLower.includes(token.toLowerCase())) {
+        issues.push(
+          issue(
+            'repair.next_action_forbidden',
+            `Recommended next action for the ${category.display_name} category MUST NOT recommend ${token}`,
+          ),
+        )
+      }
+    }
   }
 
   return { status: issues.length === 0 ? 'passed' : 'failed', issues }
