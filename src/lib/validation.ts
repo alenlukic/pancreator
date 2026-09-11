@@ -2947,6 +2947,76 @@ function boundedWorkspaceDelta(delta: { added: string[]; removed: string[] }): {
   return { added: bound(delta.added), removed: bound(delta.removed) }
 }
 
+/**
+ * Run one shell criterion as a stage entry gate: before the stage worker is
+ * delegated, on the workspace as the run enters the stage. The same disabling
+ * rules apply as at submission, so a verification level or run override that
+ * skips the gate records a disabled result instead of running the command.
+ */
+export function runEntryGateCriterion(
+  root: string,
+  runDirectory: string,
+  state: RunState,
+  stage: StageDefinition,
+  criterion: Criterion,
+  workspaceDir: string,
+  artifactId: string,
+  onProgress?: (message: string) => void,
+): DeterministicResult {
+  const workspace = gitWorkspaceSnapshot(workspaceDir)
+  const override = Object.prototype.hasOwnProperty.call(
+    state.gate_overrides ?? {},
+    criterion.id,
+  )
+    ? state.gate_overrides?.[criterion.id]
+    : undefined
+
+  if (override === false) {
+    return {
+      id: criterion.id,
+      type: 'shell',
+      hard: Boolean(criterion.hard),
+      passed: true,
+      disabled: true,
+      explanation: 'Gate disabled by run configuration.',
+      command: criterion.command,
+      workspace_fingerprint: workspace.fingerprint,
+    }
+  }
+
+  if (
+    override === undefined &&
+    state.verification !== undefined &&
+    state.verification.gates[criterion.id] === false &&
+    repositoryCheckProfileName(criterion.command ?? '') !== null
+  ) {
+    return {
+      id: criterion.id,
+      type: 'shell',
+      hard: Boolean(criterion.hard),
+      passed: true,
+      disabled: true,
+      verification_level: state.verification.level,
+      explanation: `Gate skipped by verification level '${state.verification.level}'.`,
+      command: criterion.command,
+      workspace_fingerprint: workspace.fingerprint,
+    }
+  }
+
+  return runShellCheck(
+    root,
+    runDirectory,
+    state,
+    stage,
+    criterion,
+    workspace,
+    workspaceDir,
+    typeof override === 'string' ? override : undefined,
+    artifactId,
+    onProgress,
+  )
+}
+
 export function evaluateDeterministicCriteria(
   root: string,
   runDirectory: string,
@@ -2960,6 +3030,7 @@ export function evaluateDeterministicCriteria(
   onProgress?: (message: string) => void,
   gateSkipReason: string | null = null,
   afterSnapshot: WorkspaceSnapshot = gitWorkspaceSnapshot(workspaceDir),
+  entryGateResults: Record<string, DeterministicResult> = {},
 ): { results: DeterministicResult[]; workspace: WorkspaceSnapshot } {
   const results: DeterministicResult[] = []
   let scopePassed = true
@@ -3058,6 +3129,20 @@ export function evaluateDeterministicCriteria(
             'ran. A shell gate runs only when its result can decide the stage.',
           command: criterion.command,
           workspace_fingerprint: afterSnapshot.fingerprint,
+        })
+      } else if (entryGateResults[criterion.id]) {
+        // The harness ran this gate when the run entered the stage, before the
+        // worker started. The recorded result decides the submission: running
+        // the command again here would execute the profile a second time on
+        // the same visit.
+        const recorded = entryGateResults[criterion.id]
+
+        results.push({
+          ...recorded,
+          entry_gate: true,
+          explanation:
+            `Recorded at stage entry, before the worker was delegated. ` +
+            recorded.explanation,
         })
       } else if (override === false) {
         results.push({

@@ -476,6 +476,50 @@ test('representative contexts exclude policies outside their remit', () => {
   }
 })
 
+test('VERIFY-001 binds the blast-radius rule to every verify evidence worker', () => {
+  const root = sharedFixture()
+  const ids = (persona: string, workflow: string): string[] =>
+    resolvePolicies(root, { persona, workflow, stage: 'verify' }).map(
+      (policy) => policy.id,
+    )
+
+  for (const workflow of [
+    'delivery',
+    'delivery-chunk',
+    'delivery-candidate',
+    'metacritic',
+  ]) {
+    for (const persona of ['reviewer', 'qa-tester', 'verifier']) {
+      assert.ok(
+        ids(persona, workflow).includes('VERIFY-001'),
+        `${persona}/${workflow}/verify MUST load VERIFY-001`,
+      )
+    }
+  }
+
+  // The rule itself lives on VERIFY-001, not on a persona or prompt.
+  const verify = loadPolicyCatalog(root).get('VERIFY-001')
+
+  assert.ok(verify)
+
+  const texts = verify.instructions.map((instruction) => instruction.text)
+
+  assert.ok(
+    texts.some(
+      (text) =>
+        /impacted profile is the blast radius/u.test(text) &&
+        /MUST NOT run it a second time/u.test(text),
+    ),
+  )
+  assert.ok(
+    texts.some((text) =>
+      /full profile runs only as the release gate of the ship stage/u.test(
+        text,
+      ),
+    ),
+  )
+})
+
 test('self-development ship keeps PR policy when briefs are suppressed', () => {
   const root = sharedFixture()
   const ids = (operatorArtifacts: 'requested' | 'suppressed'): string[] =>

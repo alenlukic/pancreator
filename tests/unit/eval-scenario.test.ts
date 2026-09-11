@@ -34,7 +34,11 @@ function validScenario(): Record<string, unknown> {
       ],
     },
     graders: [
-      { id: 'profile-executions', policy: 'DEV-001#7', config: { limits: [] } },
+      {
+        id: 'profile-executions',
+        policy: 'DEV-001#10',
+        config: { limits: [] },
+      },
       { id: 'stage-order-and-terminal-state' },
     ],
   }

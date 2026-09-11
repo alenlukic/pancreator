@@ -254,7 +254,7 @@ export function canonicalize(filePath: string): string {
   }
 }
 
-function processIsAlive(pid: number): boolean {
+export function processIsAlive(pid: number): boolean {
   if (!Number.isInteger(pid) || pid <= 0) {
     return false
   }

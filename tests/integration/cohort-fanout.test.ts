@@ -3,6 +3,7 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import {
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   realpathSync,
   rmSync,
@@ -13,7 +14,9 @@ import test from 'node:test'
 
 import {
   abandonChunk,
+  claimCohortBaselineCapture,
   cleanCohortSession,
+  cohortBaselineDirectory,
   cohortDir,
   cohortSessionIds,
   cohortStatus,
@@ -21,7 +24,9 @@ import {
   integrateCohort,
   loadCohortState,
   maybeStartDelivery,
+  recordCohortBaselines,
   releaseCohort,
+  releaseCohortBaselineClaim,
   startCohort,
 } from '../../src/lib/cohorts.js'
 import { PanError } from '../../src/lib/errors.js'
@@ -258,6 +263,174 @@ test('starting a cohort fans out one worktree and one run per chunk', () => {
     () => startCohort(root, session.cohort_id),
     (error: unknown) =>
       error instanceof PanError && error.code === 'COHORT_ALREADY_STARTED',
+  )
+})
+
+test('a cohort captures one shared pre-implementation baseline that every chunk run adopts', () => {
+  const root = createFixture()
+  const planRunId = ratifiedPlanRun(root, [
+    { id: 'alpha', cohort_index: 1 },
+    { id: 'beta', cohort_index: 1 },
+  ])
+  const session = initCohortSession(root, { planRunId })
+  const started = startCohort(root, session.cohort_id)
+  const [alpha, beta] = started.chunks.map((chunk) => chunk.run_id)
+
+  assert.ok(alpha && beta)
+  assert.equal(
+    loadCohortState(root, session.cohort_id).repository_check_baselines,
+    undefined,
+  )
+
+  // The first chunk run to prepare captures the baseline into the session.
+  attestRunCard(root, alpha)
+  const alphaPrepared = prepareInvocation(root, alpha)
+
+  assert.equal(alphaPrepared.invocation?.stage.slug, 'implement')
+
+  const alphaBaselines = alphaPrepared.state.repository_check_baselines
+  const baselineDirectory = cohortBaselineDirectory(root, session.cohort_id)
+
+  assert.ok(alphaBaselines?.fast)
+  assert.ok(alphaBaselines.static)
+  assert.equal(alphaBaselines.full, undefined)
+  assert.equal(
+    baselineDirectory,
+    `runtime/logs/cohorts/${session.cohort_id}/baselines`,
+  )
+
+  for (const pointer of Object.values(alphaBaselines)) {
+    assert.ok(pointer)
+    assert.ok(
+      pointer.artifact_path.startsWith(`${baselineDirectory}/`),
+      pointer.artifact_path,
+    )
+    assert.ok(existsSync(path.join(root, pointer.artifact_path)))
+    assert.equal(pointer.shared_from_cohort, undefined)
+  }
+
+  const recorded = loadCohortState(
+    root,
+    session.cohort_id,
+  ).repository_check_baselines
+
+  assert.ok(recorded)
+  assert.deepEqual(Object.keys(recorded).sort(), ['fast', 'static'])
+  assert.equal(recorded.fast?.captured_by_run_id, alpha)
+  assert.equal(recorded.fast?.artifact_path, alphaBaselines.fast.artifact_path)
+  assert.equal(
+    loadCohortState(root, session.cohort_id).repository_check_baseline_capture,
+    undefined,
+  )
+
+  // The second chunk run adopts the recorded baseline instead of capturing.
+  attestRunCard(root, beta)
+  const betaPrepared = prepareInvocation(root, beta)
+
+  assert.equal(betaPrepared.invocation?.stage.slug, 'implement')
+
+  const betaBaselines = betaPrepared.state.repository_check_baselines
+
+  assert.ok(betaBaselines?.fast)
+  assert.equal(betaBaselines.fast.shared_from_cohort, session.cohort_id)
+  assert.equal(betaBaselines.fast.captured_by_run_id, alpha)
+  assert.equal(
+    betaBaselines.fast.artifact_path,
+    alphaBaselines.fast.artifact_path,
+  )
+  assert.equal(
+    betaBaselines.static?.artifact_path,
+    alphaBaselines.static.artifact_path,
+  )
+  // Beta wrote no baseline artifact of its own.
+  assert.equal(
+    existsSync(
+      path.join(root, 'runtime/logs/workflows', beta, 'agent', 'evidence'),
+    ) &&
+      readdirSync(
+        path.join(root, 'runtime/logs/workflows', beta, 'agent', 'evidence'),
+      ).some((name) => name.startsWith('pre-implementation-')),
+    false,
+  )
+})
+
+test('the shared baseline claim admits one live capturer at a time', () => {
+  const root = createFixture()
+  const planRunId = ratifiedPlanRun(root, [{ id: 'alpha', cohort_index: 1 }])
+  const session = initCohortSession(root, { planRunId })
+  const cohortId = session.cohort_id
+
+  assert.deepEqual(claimCohortBaselineCapture(root, cohortId, 'run-a'), {
+    status: 'capture',
+  })
+  assert.equal(
+    loadCohortState(root, cohortId).repository_check_baseline_capture?.run_id,
+    'run-a',
+  )
+
+  // Another run cannot capture while the claimant's process is alive.
+  assert.throws(
+    () => claimCohortBaselineCapture(root, cohortId, 'run-b'),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'COHORT_BASELINE_CAPTURE_IN_PROGRESS' &&
+      error.message.includes('run-a'),
+  )
+
+  // The claimant may re-enter its own claim; a stranger's release is a no-op.
+  assert.deepEqual(claimCohortBaselineCapture(root, cohortId, 'run-a'), {
+    status: 'capture',
+  })
+  releaseCohortBaselineClaim(root, cohortId, 'run-b')
+  assert.equal(
+    loadCohortState(root, cohortId).repository_check_baseline_capture?.run_id,
+    'run-a',
+  )
+
+  // A released claim lets another run capture.
+  releaseCohortBaselineClaim(root, cohortId, 'run-a')
+  assert.equal(
+    loadCohortState(root, cohortId).repository_check_baseline_capture,
+    undefined,
+  )
+  assert.deepEqual(claimCohortBaselineCapture(root, cohortId, 'run-b'), {
+    status: 'capture',
+  })
+
+  const pointer = {
+    profile: 'fast',
+    status: 'passed' as const,
+    artifact_path: `${cohortBaselineDirectory(root, cohortId)}/pre-implementation-fast.json`,
+    workspace_fingerprint: 'f'.repeat(64),
+    recorded_at: '2026-09-02T00:00:00.000Z',
+  }
+
+  recordCohortBaselines(root, cohortId, 'run-b', { fast: pointer })
+
+  const recorded = loadCohortState(root, cohortId)
+
+  assert.equal(recorded.repository_check_baseline_capture, undefined)
+  assert.equal(
+    recorded.repository_check_baselines?.fast?.captured_by_run_id,
+    'run-b',
+  )
+
+  // Once recorded, every later claim adopts and a second record is refused.
+  assert.deepEqual(claimCohortBaselineCapture(root, cohortId, 'run-c'), {
+    status: 'adopted',
+    baselines: {
+      fast: {
+        ...pointer,
+        captured_by_run_id: 'run-b',
+        shared_from_cohort: cohortId,
+      },
+    },
+  })
+  assert.throws(
+    () => recordCohortBaselines(root, cohortId, 'run-c', { fast: pointer }),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'COHORT_BASELINE_ALREADY_RECORDED',
   )
 })
 

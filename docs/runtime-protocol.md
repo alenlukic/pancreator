@@ -401,15 +401,23 @@ of `config.json` (built-ins: `minimal`, `light`, `thorough`; default `light`)
 or from `pan init --verification <level>`. The level maps shell-criterion ids
 to the repository-check profile each gate actually runs (or `false` to skip a
 gate), and the run snapshots the resolved mapping so later config edits cannot
-change it. Under the default `light` level the implement loop gates on
-`static` and `fast`; the verify submission gate runs `full` once on a passing
-verdict (a failing verdict routes to remediate with the gate skipped); and the
-remediate submission gate runs `full` once when the stage reports success.
-When remediation returns to verify, the verify gate accepts the remediate
-gate's recorded `full` pass at the unchanged fingerprint from the gate cache
-(`DEV-001`), so `full` executes exactly once per remediate→verify cycle.
-Agents never run `full`: the coder, remediator, reviewer, and QA worker iterate
-on blast-radius tests and run `fast` at most once each as validation, and the
+change it. Under the default `light` level the implement and remediate loops
+gate on `static` and `fast`; no verify or remediate gate runs `full`. The
+`full` profile runs only as the ship stage's release gate (`SHIP-001`): the
+stage declares it as an `entry_gate`, and the harness runs it when the run
+enters ship, before it delegates the release steward. A pass is recorded on
+`state.entry_gates.ship`, covers that visit of ship, and is carried into the
+ship submission instead of running again. A failure routes the run to
+`remediate` with the evidence log as required input; that remediation returns
+directly to ship on success, and the gate runs again. After two such loops a
+third failure pauses the run with an `operator_decision` marked
+`operator_only`, which away mode cannot resume or redirect. A cohort session
+shares exactly one `static` and `fast` baseline under
+`runtime/logs/cohorts/<cohort-id>/baselines/`: the first run of the session
+that prepares a source-allowed stage captures it, every other chunk run and
+the release run adopts it (`DEV-001`). Agents never run `full`: the coder,
+remediator, reviewer, and QA worker iterate on the `impacted` profile plus the
+tests they added and run `fast` once each as final validation, and the
 consolidating verifier runs neither. A worker that runs
 `pan repository-check <profile> --run <run-id>` or
 `pan repository-check <profile> --worktree <name>` leaves one line per

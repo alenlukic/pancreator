@@ -42,7 +42,7 @@
       "id": "remediate.addresses_verdict",
       "type": "judgment",
       "hard": true,
-      "statement": "The remediation addresses every blocking verify finding, failed acceptance criterion, and failed QA case, or records why one stands."
+      "statement": "The remediation addresses every recorded failure that routed the run here: each blocking verify finding, failed acceptance criterion, and failed QA case, or the failed release-gate result, or records why one stands."
     },
     {
       "id": "implement.acceptance_claimed",
@@ -57,14 +57,6 @@
       "statement": "Configured repository static checks pass.",
       "command": "pan repository-check static",
       "timeout_ms": 240000
-    },
-    {
-      "id": "remediate.full_suite",
-      "type": "shell",
-      "hard": true,
-      "statement": "The verification suite selected by the run's verification level passes once the remediation is ready to ship.",
-      "command": "pan repository-check full",
-      "timeout_ms": 1200000
     }
   ],
   "transitions": {

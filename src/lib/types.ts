@@ -137,6 +137,20 @@ export interface StageTransitions {
   blocked: string
 }
 
+/**
+ * A shell criterion the harness runs when the run enters the stage, before it
+ * delegates the stage worker. The ship stage declares one for the `full`
+ * profile: the release gate. A failure routes to `failure`, whose success
+ * transition returns to this stage while that route is open. After
+ * `max_loops` consecutive failures the next failure pauses the run for an
+ * operator decision that away mode cannot take.
+ */
+export interface StageEntryGate {
+  criterion: string
+  failure: string
+  max_loops: number
+}
+
 export type StageContextRequest = 'required' | 'conditional' | 'omit'
 
 export type StageContextSelection = 'latest' | 'latest_success'
@@ -218,6 +232,7 @@ export interface StageDefinition {
   required_data?: Record<string, JsonTypeName>
   criteria: Criterion[]
   transitions: StageTransitions
+  entry_gate?: StageEntryGate
 }
 
 /**
@@ -1272,6 +1287,34 @@ export interface DeterministicResult {
   repository_check_delta?: RepositoryCheckDelta
   workspace_fingerprint: string
   delta?: WorkspaceDelta
+  /**
+   * Set when the harness ran this gate at stage entry, before delegation, and
+   * carried the recorded result into the submission instead of running the
+   * command again.
+   */
+  entry_gate?: boolean
+}
+
+/** Run-state record of one stage's entry gate. */
+export interface StageEntryGateRecord {
+  criterion_id: string
+  /** Total executions over the run; names each execution's evidence. */
+  executions: number
+  /** Consecutive failures since the last pass or operator decision. */
+  failures: number
+  /**
+   * Stage the last failure routed to. Present while that repair loop is open:
+   * the routed stage returns here on success instead of following its own
+   * success transition.
+   */
+  routed_to?: string
+  /** Latest execution, pass or fail. */
+  last_result: DeterministicResult
+  /**
+   * Length of `stage_history` when the current visit passed. The pass stands
+   * while no other stage submits after it; leaving the stage closes the visit.
+   */
+  passed_at_history_length?: number
 }
 
 export interface GovernanceArtifactIssue {
@@ -1401,7 +1444,14 @@ export type PendingAction =
        */
       checkpoint?: StageCheckpoint
     }
-  | { type: 'operator_decision' }
+  | {
+      type: 'operator_decision'
+      /**
+       * Set when only the human operator may resolve this pause. Away mode
+       * treats the run as having no permitted blocker and leaves it stopped.
+       */
+      operator_only?: true
+    }
 
 export interface CurrentInvocationPointer {
   id: string
@@ -1505,6 +1555,13 @@ export interface RepositoryCheckBaselinePointer {
   artifact_path: string
   workspace_fingerprint: string
   recorded_at: string
+  /**
+   * Cohort session whose shared baseline this pointer adopts. Absent on a
+   * baseline the run captured itself.
+   */
+  shared_from_cohort?: string
+  /** Run that captured the shared baseline this pointer adopts. */
+  captured_by_run_id?: string
 }
 
 export interface BestOfNRunRole {
@@ -1537,6 +1594,13 @@ export interface CohortReleaseRunBinding {
 }
 
 export type CohortRunBinding = CohortChunkRunBinding | CohortReleaseRunBinding
+
+/** Which run is capturing the cohort session's shared baseline right now. */
+export interface CohortBaselineCaptureClaim {
+  run_id: string
+  pid: number
+  started_at: string
+}
 
 /** One unit of ratified work a single delivery run owns. */
 export interface CohortChunkRecord {
@@ -1610,6 +1674,18 @@ export interface CohortSessionState {
    * until that integration lands.
    */
   release_run_id?: string
+  /**
+   * The one shared pre-implementation baseline per interior gate profile for
+   * the whole session. The first run that prepares a source-allowed stage
+   * captures it; every other chunk run and the release run adopts it.
+   */
+  repository_check_baselines?: Record<string, RepositoryCheckBaselinePointer>
+  /**
+   * Claim the run that is capturing the shared baseline holds while the
+   * capture runs, so a second run of the session waits instead of capturing
+   * its own. Cleared when the capture is recorded or abandoned.
+   */
+  repository_check_baseline_capture?: CohortBaselineCaptureClaim
   created_at: string
   updated_at: string
   chunks: CohortChunkRecord[]
@@ -1796,6 +1872,8 @@ export interface RunState {
     string,
     RepositoryCheckBaselinePointer | undefined
   >
+  /** Entry-gate records keyed by stage slug. Absent until a gate first runs. */
+  entry_gates?: Record<string, StageEntryGateRecord>
   /**
    * Outcome of the workspace setup check the harness ran before this run's
    * first prepared stage. Present only for a run whose workspace is not the

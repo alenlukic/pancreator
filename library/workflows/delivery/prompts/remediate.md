@@ -1,13 +1,18 @@
 ## Objective
 
-Repair the failures the verify stage recorded, in one focused pass, and hand
-the workspace back to verification. The verify verdict selected your persona
-and model; the verdict's evidence is your primary input.
+Repair the recorded failures in one focused pass and hand the workspace back
+to the stage that routed you here. A verify verdict routes to this stage with
+its findings and returns to verify; the ship release gate routes here with its
+failed `full` run and returns directly to ship. The routing stage's evidence is
+your primary input.
 
 ## Steps
 
-1. Read the verify output first: the verdict, every blocking finding, every
-   failed acceptance criterion or QA case, and the remediation guidance.
+1. Read the failure evidence first. After a verify verdict: the verdict, every
+   blocking finding, every failed acceptance criterion or QA case, and the
+   remediation guidance. After a release-gate failure: the failed gate's
+   evidence log the card lists as required input, which carries the `full`
+   profile output.
 2. Read the ratified plan. The plan is the `plan` stage output when the card
    lists one under its required inputs, otherwise the request the card
    delivers. A request that is the plan is the child specification, with the
@@ -34,13 +39,10 @@ and model; the verdict's evidence is your primary input.
    command from `runtime/repository-checks.json` or the target's documented
    entry points. Static checks are cheap; run them freely.
 7. When you believe the repairs are complete, run the configured `fast`
-   profile once as validation. Fix each failure, then re-run only the impacted
-   selection and the failing tests. You are not hard-capped on `fast`: run it
-   earlier when the `impacted` selection exceeds its advisory threshold or a
-   failure reproduces only under the fast lane. Repeat `fast` after validation
-   only when the blast radius is exceptionally large. Never run the `full`
-   profile yourself: the remediate submission gate runs it once when you
-   report success, and the returning verify gate accepts that recorded pass.
+   profile once, as the final validation. Fix each failure, then re-run only
+   the impacted selection, the failing tests, and the tests you added. Do not
+   run `fast` earlier and do not run it a second time. Never run the `full`
+   profile yourself: the ship release gate runs it when the run enters ship.
 8. Map evidence to every acceptance criterion honestly, including the ones
    verify marked as failed.
 

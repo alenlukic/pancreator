@@ -50,8 +50,9 @@ class SyntheticRun {
     type: 'prepare_invocation',
   }
   private verificationGates: Record<string, string | false> = {
-    'verify.full_suite': 'full',
+    'ship.full_suite': 'full',
   }
+  private entryGates: Record<string, unknown> = {}
   private advisories: Record<string, unknown>[] = []
   private readonly events: Record<string, unknown>[] = []
 
@@ -163,6 +164,44 @@ class SyntheticRun {
     return this
   }
 
+  /**
+   * Record a stage entry gate the harness ran before delegation. Its result
+   * lives on `state.entry_gates`, not in stage_history, until the stage
+   * submission carries it.
+   */
+  entryGate(options: {
+    stage: string
+    id: string
+    profile: string
+    passed?: boolean
+    evidence?: string
+  }): this {
+    this.entryGates[options.stage] = {
+      criterion_id: options.id,
+      executions: 1,
+      failures: options.passed === false ? 1 : 0,
+      last_result: {
+        id: options.id,
+        type: 'shell',
+        hard: true,
+        passed: options.passed ?? true,
+        command: `pan repository-check ${options.profile}`,
+        evidence_path:
+          options.evidence ??
+          this.relative(
+            'evidence',
+            `${options.stage}-entry-1-${options.id}.log`,
+          ),
+        workspace_fingerprint: 'fp',
+      },
+      ...(options.passed === false
+        ? {}
+        : { passed_at_history_length: this.history.length }),
+    }
+
+    return this
+  }
+
   output(
     invocationId: string,
     result: 'success' | 'failure' | 'blocked',
@@ -244,6 +283,9 @@ class SyntheticRun {
         transition_count: this.history.length,
         consecutive_failures: 0,
         stage_history: this.history,
+        ...(Object.keys(this.entryGates).length > 0
+          ? { entry_gates: this.entryGates }
+          : {}),
         advisories: this.advisories,
         verification: {
           level: 'light',
@@ -399,10 +441,11 @@ test('profile-executions fails a configured limit and reports the evidence', () 
   }
 })
 
-test('profile-executions default limits demand the full gate once on a succeeded run', () => {
+test('profile-executions default limits demand the full release gate once on a succeeded run that shipped', () => {
   const run = new SyntheticRun()
     .setState({ status: 'succeeded', currentStage: null })
     .addHistory({ stage: 'verify', attempt: 1, invocationId: 'v1' })
+    .addHistory({ stage: 'ship', attempt: 1, invocationId: 's1' })
     .write()
 
   try {
@@ -414,6 +457,87 @@ test('profile-executions default limits demand the full gate once on a succeeded
       String((verdict.details.violations as string[])[0]),
       /full\/harness\/run: 0 execution\(s\), min 1/u,
     )
+  } finally {
+    run.dispose()
+  }
+})
+
+test('profile-executions default limits owe no full execution to a succeeded run without a ship stage', () => {
+  // A chunk run ends at verify; the release run owns the full profile.
+  const run = new SyntheticRun()
+    .setState({ status: 'succeeded', currentStage: null })
+    .addHistory({ stage: 'verify', attempt: 1, invocationId: 'v1' })
+    .write()
+
+  try {
+    const verdict = grade(run, { id: 'profile-executions' })
+
+    assert.equal(verdict.passed, true, verdict.summary)
+  } finally {
+    run.dispose()
+  }
+})
+
+test('profile-executions counts the ship entry gate once when its result is carried into the ship submission', () => {
+  const evidence =
+    'runtime/logs/workflows/run/agent/evidence/ship-entry-1-ship.full_suite.log'
+  const run = new SyntheticRun()
+    .setState({ status: 'succeeded', currentStage: null })
+    .addHistory({ stage: 'verify', attempt: 1, invocationId: 'v1' })
+    .entryGate({
+      stage: 'ship',
+      id: 'ship.full_suite',
+      profile: 'full',
+      evidence,
+    })
+    .addHistory({
+      stage: 'ship',
+      attempt: 1,
+      invocationId: 's1',
+      gates: [{ id: 'ship.full_suite', profile: 'full', evidence }],
+    })
+    .write()
+
+  try {
+    const { executions } = collectProfileExecutions(
+      loadRunRecords(run.root, RUN_ID),
+    )
+    const full = executions.filter((execution) => execution.profile === 'full')
+
+    assert.equal(full.length, 1)
+    assert.equal(full[0].source, 'harness')
+    assert.equal(full[0].stage, 'ship')
+    assert.equal(full[0].evidence, evidence)
+
+    const verdict = grade(run, { id: 'profile-executions' })
+
+    assert.equal(verdict.passed, true, verdict.summary)
+  } finally {
+    run.dispose()
+  }
+})
+
+test('profile-executions counts a failed ship entry gate that never reached a submission', () => {
+  const run = new SyntheticRun()
+    .setState({ status: 'running', currentStage: 'remediate' })
+    .addHistory({ stage: 'verify', attempt: 1, invocationId: 'v1' })
+    .entryGate({
+      stage: 'ship',
+      id: 'ship.full_suite',
+      profile: 'full',
+      passed: false,
+    })
+    .write()
+
+  try {
+    const { executions } = collectProfileExecutions(
+      loadRunRecords(run.root, RUN_ID),
+    )
+    const full = executions.filter((execution) => execution.profile === 'full')
+
+    assert.equal(full.length, 1)
+    assert.equal(full[0].stage, 'ship')
+    assert.equal(full[0].attempt, null)
   } finally {
     run.dispose()
   }

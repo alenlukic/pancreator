@@ -12,8 +12,8 @@ import type {
 
 // The advisory suite profile. The failures-only reporter writes one document
 // when `PAN_TEST_PROFILE` names an absolute path; the harness sets that
-// variable for exactly one execution, the `full` gate that is the last suite
-// run before ship. Nothing here gates on a count or a duration.
+// variable for exactly one execution, the `full` release gate that runs when
+// the run enters ship. Nothing here gates on a count or a duration.
 
 /** Environment variable the reporter reads for its profile target. */
 export const TEST_PROFILE_ENV = 'PAN_TEST_PROFILE'
@@ -158,13 +158,28 @@ export interface RecordedSuiteProfile {
 }
 
 /**
- * The newest passed gate result that carries a suite profile. Verify and
- * remediate both gate on `full`, so the last one in history is the last suite
- * execution before ship.
+ * The newest passed gate result that carries a suite profile. The ship
+ * release gate is the only `full` execution, and it runs at stage entry
+ * before any ship submission exists, so an entry-gate record that passed
+ * later than every submitted gate is the current profile.
  */
 export function latestRecordedSuiteProfile(
   state: RunState,
 ): RecordedSuiteProfile | null {
+  for (const [stage, record] of Object.entries(state.entry_gates ?? {})) {
+    const result = record.last_result
+
+    if (
+      result.suite_profile_path &&
+      result.passed &&
+      !result.skipped &&
+      record.passed_at_history_length !== undefined &&
+      record.passed_at_history_length >= state.stage_history.length
+    ) {
+      return { stage, result }
+    }
+  }
+
   for (const item of [...state.stage_history].reverse()) {
     for (const result of [...item.deterministic].reverse()) {
       if (result.suite_profile_path && result.passed && !result.skipped) {
@@ -360,8 +375,8 @@ export function renderSuiteProfileSection(
   const lines = [
     '## 📈 Suite profile',
     '',
-    'This section is advisory. It records the one profiled `full` run before ' +
-      'ship. No count and no duration gates the release.',
+    'This section is advisory. It records the one profiled `full` run, the ' +
+      'release gate at ship entry. No count and no duration gates the release.',
     '',
     `- Source: \`${summary.profile_path}\` from the ${summary.stage} gate ` +
       `\`${summary.gate_id}\`` +

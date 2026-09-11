@@ -6,6 +6,11 @@
   "workspace_policy": "release_metadata_only",
   "gate": "operator",
   "gate_relaxable": false,
+  "entry_gate": {
+    "criterion": "ship.full_suite",
+    "failure": "consolidate",
+    "max_loops": 2
+  },
   "context": {
     "request": "conditional",
     "required_stage_outputs": [
@@ -37,6 +42,14 @@
     "release.governance_artifact_review.escalations": "array"
   },
   "criteria": [
+    {
+      "id": "ship.full_suite",
+      "type": "shell",
+      "hard": true,
+      "statement": "The full repository-check profile passes on the consolidated implementation before release preparation begins.",
+      "command": "pan repository-check full",
+      "timeout_ms": 1200000
+    },
     {
       "id": "ship.prior_gates_current",
       "type": "state",

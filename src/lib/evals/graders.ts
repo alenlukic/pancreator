@@ -154,34 +154,70 @@ export function collectProfileExecutions(records: RunRecords): {
   }
 
   // Harness gates: a shell criterion that actually ran its profile command.
+  // An entry gate runs once when the run enters the stage and its recorded
+  // result is carried into the stage's submission, so the same execution can
+  // appear both on the entry-gate record and in stage_history; the evidence
+  // path identifies the execution.
+  const harnessEvidence = new Set<string>()
+  const pushHarnessGate = (
+    gate: DeterministicResult,
+    stage: string,
+    attempt: number | null,
+    fallbackEvidence: string,
+  ): void => {
+    if (gate.type !== 'shell' || typeof gate.command !== 'string') {
+      return
+    }
+
+    const match = /pan repository-check ([a-z][a-z0-9_-]*)/u.exec(gate.command)
+
+    if (!match) {
+      return
+    }
+
+    if (gate.cached || gate.skipped || gate.disabled || gate.overridden) {
+      return
+    }
+
+    const evidence = gate.evidence_path ?? fallbackEvidence
+
+    if (gate.evidence_path && harnessEvidence.has(gate.evidence_path)) {
+      return
+    }
+
+    if (gate.evidence_path) {
+      harnessEvidence.add(gate.evidence_path)
+    }
+
+    executions.push({
+      profile: match[1] ?? 'unknown',
+      stage,
+      attempt,
+      source: 'harness',
+      evidence,
+    })
+  }
+
   for (const item of records.state.stage_history) {
     for (const result of item.deterministic ?? []) {
-      const gate = result as DeterministicResult
-
-      if (gate.type !== 'shell' || typeof gate.command !== 'string') {
-        continue
-      }
-
-      const match = /pan repository-check ([a-z][a-z0-9_-]*)/u.exec(
-        gate.command,
+      pushHarnessGate(
+        result as DeterministicResult,
+        item.stage,
+        item.attempt,
+        item.record_path ?? item.output_path,
       )
-
-      if (!match) {
-        continue
-      }
-
-      if (gate.cached || gate.skipped || gate.disabled || gate.overridden) {
-        continue
-      }
-
-      executions.push({
-        profile: match[1] ?? 'unknown',
-        stage: item.stage,
-        attempt: item.attempt,
-        source: 'harness',
-        evidence: gate.evidence_path ?? item.record_path ?? item.output_path,
-      })
     }
+  }
+
+  for (const [stage, record] of Object.entries(
+    records.state.entry_gates ?? {},
+  )) {
+    pushHarnessGate(
+      record.last_result,
+      stage,
+      null,
+      records.layout.state.relative,
+    )
   }
 
   // Agent-side: the worker wrote the profile command into its output.
@@ -226,9 +262,15 @@ export function collectProfileExecutions(records: RunRecords): {
 }
 
 function defaultProfileLimits(records: RunRecords): ProfileExecutionLimit[] {
-  const fullGates = Object.values(
-    records.state.verification?.gates ?? {},
-  ).filter((profile) => profile === 'full').length
+  // The full profile runs only as the ship release gate, once per visit of
+  // ship, so a run that reached ship under a level that does not disable the
+  // gate owes exactly one harness execution; every other run owes none.
+  const reachedShip = records.state.stage_history.some(
+    (item) => item.stage === 'ship',
+  )
+  const releaseGateDisabled =
+    records.state.verification?.gates['ship.full_suite'] === false
+  const fullGates = reachedShip && !releaseGateDisabled ? 1 : 0
 
   return [
     { profile: 'fast', source: 'agent', scope: 'attempt', max: 1 },
@@ -333,7 +375,7 @@ const profileExecutions: Grader = (context) => {
     },
     observability:
       'Baselines are the agent/evidence/pre-implementation-<profile>.json files. ' +
-      'Harness gates are shell criteria in stage_history whose command is `pan repository-check <profile>` and that were not cached, skipped, disabled, or overridden. ' +
+      'Harness gates are shell criteria in stage_history or on state.entry_gates whose command is `pan repository-check <profile>` and that were not cached, skipped, disabled, or overridden; one evidence path is one execution. ' +
       'Agent-side executions are mentions of `pan repository-check <profile>` or a configured profile command in the strings of a submitted output (summary, criteria, risks, unknowns, data). ' +
       'A profile a worker ran but did not write into its output is not observable; worker transcripts are not run records.',
   }

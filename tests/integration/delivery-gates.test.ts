@@ -3,10 +3,14 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
+import { awayModeTrigger } from '../../src/lib/away-mode.js'
 import {
   getRunState,
   prepareInvocation,
+  resumeRun,
+  resumeRunAsAway,
   setRunStage,
+  setRunStageAsAway,
 } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
@@ -36,9 +40,22 @@ const GREEN_CHECKS = checksVariant('checks=green', {
   configuration: { probes: [], commands: [PASS] },
 })
 
-test('a failing verify verdict routes without executing the full suite', () => {
+/** Verify carries no repository-check gate: full runs only at ship entry. */
+function assertNoShellGate(deterministic: { type: string; id: string }[]) {
+  assert.deepEqual(
+    deterministic.filter((item) => item.type === 'shell').map((i) => i.id),
+    [],
+  )
+}
+
+test('a failing verify verdict routes without executing any repository-check profile', () => {
   const { root, runId, workflow } = checkpoint('delivery@verify-prepared')
   const verifyStage = stageBySlug(workflow, 'verify')
+
+  assert.equal(
+    verifyStage.criteria.some((item) => item.type === 'shell'),
+    false,
+  )
 
   const failed = submitStageOutput(
     root,
@@ -53,19 +70,9 @@ test('a failing verify verdict routes without executing the full suite', () => {
 
   assert.equal(failed.record.outcome, 'failure')
   assert.equal(failed.state.current_stage, 'remediate')
+  assertNoShellGate(failed.record.evaluation.deterministic)
 
-  const suite = failed.record.evaluation.deterministic.find(
-    (item) => item.id === 'verify.full_suite',
-  )
-
-  assert.ok(suite)
-  assert.equal(suite.skipped, true)
-  assert.equal(suite.passed, true)
-  assert.equal(suite.exit_code, undefined)
-  assert.equal(suite.evidence_path, undefined)
-  assert.match(suite.explanation ?? '', /the stage reported result 'failure'/u)
-
-  // The scope state criterion still evaluates when every shell gate is skipped.
+  // The scope state criterion still evaluates when no shell gate exists.
   const scope = failed.record.evaluation.deterministic.find(
     (item) => item.id === 'scope.no_unapproved_changes',
   )
@@ -74,7 +81,7 @@ test('a failing verify verdict routes without executing the full suite', () => {
   assert.equal(scope.skipped, undefined)
 })
 
-test('an unevaluated verify criterion blocks success before the full suite', () => {
+test('an unevaluated verify criterion blocks success', () => {
   const { root, runId, workflow } = checkpoint('delivery@verify-prepared')
   const verifyStage = stageBySlug(workflow, 'verify')
 
@@ -93,15 +100,9 @@ test('an unevaluated verify criterion blocks success before the full suite', () 
       criterion.result = 'unevaluated'
     },
   )
-  const suite = submitted.record.evaluation.deterministic.find(
-    (item) => item.id === 'verify.full_suite',
-  )
-
   assert.equal(submitted.record.outcome, 'failure')
   assert.equal(submitted.state.current_stage, 'remediate')
-  assert.ok(suite)
-  assert.equal(suite.skipped, true)
-  assert.equal(suite.exit_code, undefined)
+  assertNoShellGate(submitted.record.evaluation.deterministic)
   assert.match(
     submitted.record.evaluation.validation_errors.join('\n'),
     /Criterion 'verify\.tests_correct' remains unevaluated/u,
@@ -134,17 +135,11 @@ test('a blocked verify submission pauses without product-field errors', () => {
       }
     },
   )
-  const suite = submitted.record.evaluation.deterministic.find(
-    (item) => item.id === 'verify.full_suite',
-  )
-
   assert.equal(submitted.record.outcome, 'blocked')
   assert.equal(submitted.state.status, 'paused')
   assert.equal(submitted.state.current_stage, 'verify')
   assert.deepEqual(submitted.record.evaluation.validation_errors, [])
-  assert.ok(suite)
-  assert.equal(suite.skipped, true)
-  assert.equal(suite.exit_code, undefined)
+  assertNoShellGate(submitted.record.evaluation.deterministic)
 })
 
 test('a failed hard self-criterion skips shell gates on a declared success', () => {
@@ -387,7 +382,7 @@ function fullRuns(root: string): number {
   return existsSync(marker) ? readFileSync(marker, 'utf8').length : 0
 }
 
-test('the default light level runs full once as the verify gate on a passing verdict and never baselines it', () => {
+test('the default light level runs full once as the ship release gate and never baselines it', () => {
   const root = createFixture()
   const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
@@ -427,21 +422,58 @@ test('the default light level runs full once as the verify gate on a passing ver
     stageBySlug(workflow, 'verify'),
     'success',
   )
-  const fullSuite = submitted.record.evaluation.deterministic.find(
-    (item) => item.id === 'verify.full_suite',
+
+  // The verify submission gate never runs full.
+  assert.equal(submitted.record.outcome, 'success')
+  assert.equal(submitted.state.current_stage, 'ship')
+  assertNoShellGate(submitted.record.evaluation.deterministic)
+  assert.equal(fullRuns(root), 0)
+
+  // Ship runs full once at entry, before the release steward is delegated.
+  const prepared = prepareInvocation(root, runId)
+
+  assert.ok(prepared.invocation)
+  assert.equal(fullRuns(root), 1)
+
+  const gate = prepared.state.entry_gates?.ship
+
+  assert.ok(gate)
+  assert.equal(gate.criterion_id, 'ship.full_suite')
+  assert.equal(gate.failures, 0)
+  assert.equal(gate.last_result.passed, true)
+  assert.equal(gate.last_result.command, 'pan repository-check full')
+  assert.equal(gate.last_result.verification_level, 'light')
+  assert.equal(gate.last_result.cached, undefined)
+  assert.ok(gate.last_result.evidence_path)
+
+  // A second prepare of the same visit reuses the recorded pass.
+  assert.ok(prepareInvocation(root, runId).invocation)
+  assert.equal(fullRuns(root), 1)
+
+  // The ship submission carries the entry-gate result instead of rerunning.
+  const shipped = submitStageOutput(
+    root,
+    runId,
+    stageBySlug(workflow, 'ship'),
+    'success',
+  )
+  const fullSuite = shipped.record.evaluation.deterministic.find(
+    (item) => item.id === 'ship.full_suite',
   )
 
   assert.ok(fullSuite)
-  assert.equal(fullSuite.command, 'pan repository-check full')
-  assert.equal(fullSuite.verification_level, 'light')
+  assert.equal(fullSuite.entry_gate, true)
   assert.equal(fullSuite.passed, true)
-  assert.equal(fullSuite.cached, undefined)
-  assert.equal(fullSuite.preexisting_failure, undefined)
-  assert.equal(submitted.record.outcome, 'success')
+  assert.equal(fullSuite.evidence_path, gate.last_result.evidence_path)
+  assert.equal(shipped.record.outcome, 'success')
   assert.equal(fullRuns(root), 1)
+  assert.equal(
+    getRunState(root, runId).repository_check_baselines?.full,
+    undefined,
+  )
 })
 
-test('a remediate to verify return executes the full profile exactly once', () => {
+test('a remediate to verify return never runs full; the ship release gate runs it exactly once', () => {
   const { root, runId, workflow, state } = checkpoint(
     'delivery@verify-prepared',
     checksVariant('checks=full-marker', {
@@ -474,69 +506,72 @@ test('a remediate to verify return executes the full profile exactly once', () =
   assert.equal(failed.state.current_stage, 'remediate')
   assert.equal(fullRuns(root), 0)
 
-  // Remediation success runs full once, as the remediate submission gate.
+  // A remediation that a verify verdict routed returns to verify. Its
+  // submission gate runs static only, never full.
   const remediated = submitStageOutput(root, runId, remediateStage, 'success')
-  const remediateGate = remediated.record.evaluation.deterministic.find(
-    (item) => item.id === 'remediate.full_suite',
-  )
 
   assert.equal(remediated.record.outcome, 'success')
   assert.equal(remediated.state.current_stage, 'verify')
-  assert.ok(remediateGate)
-  assert.equal(remediateGate.command, 'pan repository-check full')
-  assert.equal(remediateGate.passed, true)
-  assert.equal(remediateGate.cached, undefined)
-  const profilePath = remediateGate.suite_profile_path
-
-  assert.ok(profilePath)
-  assert.ok(existsSync(path.join(root, profilePath)))
-  assert.equal(existsSync(path.join(root, 'runtime/profile-leak.txt')), false)
-  assert.equal(
-    remediated.record.evaluation.deterministic.some(
-      (item) => item.id === 'implement.unit_tests',
-    ),
-    false,
+  assert.deepEqual(
+    remediated.record.evaluation.deterministic
+      .filter((item) => item.type === 'shell')
+      .map((item) => item.command),
+    ['pan repository-check static'],
   )
-  assert.equal(fullRuns(root), 1)
-  // The source-allowed remediate stage still never baselines full.
+  assert.equal(fullRuns(root), 0)
   assert.equal(
     getRunState(root, runId).repository_check_baselines?.full,
     undefined,
   )
 
-  // Verify is read-only, so the fingerprint is unchanged and the verify gate
-  // accepts the recorded remediate pass instead of running full again.
+  // Verify carries no repository-check gate at all.
   const verified = submitStageOutput(root, runId, verifyStage, 'success')
-  const verifyGate = verified.record.evaluation.deterministic.find(
-    (item) => item.id === 'verify.full_suite',
-  )
 
-  assert.ok(verifyGate)
-  assert.equal(verifyGate.command, 'pan repository-check full')
-  assert.equal(verifyGate.passed, true)
-  assert.equal(verifyGate.cached, true)
-  assert.equal(verifyGate.suite_profile_path, profilePath)
-  assert.match(verifyGate.explanation ?? '', /cached clean pass/u)
   assert.equal(verified.record.outcome, 'success')
   assert.equal(verified.state.current_stage, 'ship')
+  assertNoShellGate(verified.record.evaluation.deterministic)
+  assert.equal(fullRuns(root), 0)
 
+  // Ship entry runs full once and hands its suite profile to the card.
   const ship = prepareInvocation(root, runId).invocation
 
   assert.ok(ship)
-  assert.equal(ship.suite_profile?.profile_path, profilePath)
-  assert.equal(ship.suite_profile?.cached, true)
   assert.equal(fullRuns(root), 1)
+  assert.equal(existsSync(path.join(root, 'runtime/profile-leak.txt')), false)
+
+  const gate = getRunState(root, runId).entry_gates?.ship
+  const profilePath = gate?.last_result.suite_profile_path
+
+  assert.ok(gate)
+  assert.equal(gate.last_result.passed, true)
+  assert.ok(profilePath)
+  assert.ok(existsSync(path.join(root, profilePath)))
+  assert.equal(ship.suite_profile?.profile_path, profilePath)
+  assert.equal(ship.suite_profile?.cached, false)
+  assert.equal(
+    getRunState(root, runId).repository_check_baselines?.full,
+    undefined,
+  )
 })
 
-test('thorough verification runs full at verify on its own result', () => {
+// Full fails until the marker file holds `passAfter` runs, then passes.
+function fullFailsUntil(passAfter: number): string {
+  return (
+    `node -e "const fs=require('node:fs');const p='runtime/full-ran.txt';` +
+    `const n=(fs.existsSync(p)?fs.readFileSync(p,'utf8').length:0)+1;` +
+    `fs.appendFileSync(p,'x');process.exit(n>${passAfter}?0:1)"`
+  )
+}
+
+test('thorough verification runs full at the ship release gate on its own result and routes a failure to remediate, which returns to ship directly', () => {
   const { root, runId, state, workflow } = checkpoint(
     'delivery@verify-prepared',
     checksVariant(
-      'verification=thorough,checks=full-fails',
+      'verification=thorough,checks=full-fails-once',
       {
         static: { probes: [], commands: [PASS] },
         fast: { probes: [], commands: [PASS] },
-        full: { probes: [], commands: [`node -e "process.exit(1)"`] },
+        full: { probes: [], commands: [fullFailsUntil(1)] },
         configuration: { probes: [], commands: [PASS] },
       },
       { verification: 'thorough' },
@@ -546,21 +581,183 @@ test('thorough verification runs full at verify on its own result', () => {
   // Thorough opts into absolute judgment, so the run never baselines full.
   assert.equal(state.repository_check_baselines?.full, undefined)
 
-  const submitted = submitStageOutput(
+  const verified = submitStageOutput(
     root,
     runId,
     stageBySlug(workflow, 'verify'),
     'success',
   )
-  const fullSuite = submitted.record.evaluation.deterministic.find(
-    (item) => item.id === 'verify.full_suite',
+
+  assert.equal(verified.record.outcome, 'success')
+  assert.equal(verified.state.current_stage, 'ship')
+  assert.equal(fullRuns(root), 0)
+
+  // The release gate fails on its own result and routes to remediate.
+  const routed = prepareInvocation(root, runId)
+
+  assert.equal(routed.invocation, null)
+  assert.equal(fullRuns(root), 1)
+  assert.equal(routed.state.status, 'running')
+  assert.equal(routed.state.current_stage, 'remediate')
+
+  const gate = routed.state.entry_gates?.ship
+
+  assert.ok(gate)
+  assert.equal(gate.failures, 1)
+  assert.equal(gate.routed_to, 'remediate')
+  assert.equal(gate.last_result.passed, false)
+  assert.equal(gate.last_result.preexisting_failure, undefined)
+  assert.equal(gate.last_result.command, 'pan repository-check full')
+  assert.equal(routed.state.verification?.level, 'thorough')
+  assert.ok(gate.last_result.evidence_path)
+
+  // The remediate card carries the failed gate evidence as a required input.
+  const remediate = prepareInvocation(root, runId).invocation
+
+  assert.ok(remediate)
+  assert.equal(remediate.stage.slug, 'remediate')
+  assert.ok(
+    remediate.inputs.references.some(
+      (reference) =>
+        reference.path === gate.last_result.evidence_path &&
+        reference.retrieval === 'required',
+    ),
+    JSON.stringify(remediate.inputs.references),
   )
 
-  assert.ok(fullSuite)
-  assert.equal(fullSuite.command, 'pan repository-check full')
-  assert.equal(fullSuite.passed, false)
-  assert.equal(fullSuite.preexisting_failure, undefined)
-  assert.equal(submitted.record.outcome, 'failure')
+  // A remediation that the release gate routed returns to ship directly,
+  // where full runs again and now passes.
+  const remediated = submitStageOutput(
+    root,
+    runId,
+    stageBySlug(workflow, 'remediate'),
+    'success',
+  )
+
+  assert.equal(remediated.record.outcome, 'success')
+  assert.equal(remediated.state.current_stage, 'ship')
+  assert.equal(fullRuns(root), 1)
+
+  const ship = prepareInvocation(root, runId)
+
+  assert.ok(ship.invocation)
+  assert.equal(fullRuns(root), 2)
+  assert.equal(ship.state.entry_gates?.ship?.failures, 0)
+  assert.equal(ship.state.entry_gates?.ship?.routed_to, undefined)
+  assert.equal(ship.state.entry_gates?.ship?.last_result.passed, true)
+})
+
+test('the minimal level records the ship release gate as disabled and delegates without running full', () => {
+  const { root, runId, workflow } = checkpoint(
+    'delivery@verify-prepared',
+    checksVariant(
+      'verification=minimal,checks=full-always-fails',
+      {
+        static: { probes: [], commands: [PASS] },
+        fast: { probes: [], commands: [PASS] },
+        full: {
+          probes: [],
+          commands: [fullFailsUntil(Number.MAX_SAFE_INTEGER)],
+        },
+        configuration: { probes: [], commands: [PASS] },
+      },
+      { verification: 'minimal' },
+    ),
+  )
+
+  submitStageOutput(root, runId, stageBySlug(workflow, 'verify'), 'success')
+
+  const ship = prepareInvocation(root, runId)
+
+  assert.ok(ship.invocation)
+  assert.equal(fullRuns(root), 0)
+
+  const gate = ship.state.entry_gates?.ship
+
+  assert.ok(gate)
+  assert.equal(gate.failures, 0)
+  assert.equal(gate.last_result.disabled, true)
+  assert.equal(gate.last_result.verification_level, 'minimal')
+})
+
+test('a third release-gate failure pauses for an operator-only decision that away mode cannot take', () => {
+  const { root, runId, workflow } = checkpoint(
+    'delivery@verify-prepared',
+    checksVariant('checks=full-always-fails', {
+      static: { probes: [], commands: [PASS] },
+      fast: { probes: [], commands: [PASS] },
+      full: { probes: [], commands: [fullFailsUntil(Number.MAX_SAFE_INTEGER)] },
+      configuration: { probes: [], commands: [PASS] },
+    }),
+  )
+  const remediateStage = stageBySlug(workflow, 'remediate')
+
+  submitStageOutput(root, runId, stageBySlug(workflow, 'verify'), 'success')
+
+  // Two repair loops through remediate, then the third failure pauses.
+  for (const loop of [1, 2]) {
+    const routed = prepareInvocation(root, runId)
+
+    assert.equal(routed.invocation, null)
+    assert.equal(routed.state.current_stage, 'remediate')
+    assert.equal(routed.state.entry_gates?.ship?.failures, loop)
+    assert.equal(fullRuns(root), loop)
+
+    const remediated = submitStageOutput(root, runId, remediateStage, 'success')
+
+    assert.equal(remediated.state.current_stage, 'ship')
+  }
+
+  const paused = prepareInvocation(root, runId)
+
+  assert.equal(paused.invocation, null)
+  assert.equal(fullRuns(root), 3)
+  assert.equal(paused.state.status, 'paused')
+  assert.equal(paused.state.current_stage, 'ship')
+  assert.equal(paused.state.entry_gates?.ship?.failures, 3)
+  assert.deepEqual(paused.state.pending_action, {
+    type: 'operator_decision',
+    operator_only: true,
+  })
+  assert.match(paused.state.pause_reason ?? '', /failed 3 times/u)
+  assert.match(
+    paused.state.pause_reason ?? '',
+    /ship-entry-3-ship\.full_suite/u,
+  )
+
+  // Away mode neither sees a trigger nor may continue the run.
+  assert.equal(
+    awayModeTrigger({
+      ...paused.state,
+      away_mode: {
+        enabled: true,
+        guardrails: {
+          allowed_actions: ['approve'],
+          max_decisions_per_run: 1,
+          max_remediation_attempts_per_agent: 1,
+        },
+        source_sha256: 'fixture',
+      },
+    }),
+    null,
+  )
+  assert.throws(
+    () => resumeRunAsAway(root, runId, 'remediate', 'away continues'),
+    { code: 'AWAY_ACTION_FORBIDDEN' },
+  )
+  assert.throws(
+    () => setRunStageAsAway(root, runId, 'remediate', 'away redirects'),
+    { code: 'AWAY_ACTION_FORBIDDEN' },
+  )
+  assert.equal(getRunState(root, runId).status, 'paused')
+
+  // The operator decides; the loop counter starts over.
+  const resumed = resumeRun(root, runId, 'remediate', 'Operator sends back.')
+
+  assert.equal(resumed.status, 'running')
+  assert.equal(resumed.current_stage, 'remediate')
+  assert.equal(resumed.entry_gates?.ship?.failures, 0)
+  assert.equal(resumed.entry_gates?.ship?.routed_to, undefined)
 })
 
 test('new repository-check diagnostics still block implementation', () => {

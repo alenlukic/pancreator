@@ -36,25 +36,27 @@ import {
 test('an infrastructure failure preserves the environment-blocked route', () => {
   const root = createFixture()
 
-  // The environment-blocked route needs a failed baseline of the same
-  // profile, and only interior profiles are baselined. An operator level
-  // keeps the verify gate on fast so both scenarios route through it.
-  const configPath = path.join(root, 'config.json')
-  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
-    string,
-    unknown
-  >
-
-  config.verification = {
-    active: 'infra-fast',
-    levels: {
-      'infra-fast': {
-        summary: 'Verify gate re-runs fast against the baseline.',
-        gates: { 'verify.full_suite': 'fast' },
-      },
-    },
+  // The environment-blocked route classifies a QA-persona shell gate against
+  // a failed baseline of the same profile, and only interior profiles are
+  // baselined. The library verify stage carries no repository-check gate, so
+  // this fixture's verify stage declares a fast gate of its own.
+  const verifyPath = path.join(
+    root,
+    'library/workflows/delivery/stages/verify.json',
+  )
+  const verifyDefinition = JSON.parse(readFileSync(verifyPath, 'utf8')) as {
+    criteria: Record<string, unknown>[]
   }
-  writeJson(configPath, config)
+
+  verifyDefinition.criteria.push({
+    id: 'verify.qa_infrastructure',
+    type: 'shell',
+    hard: true,
+    statement: 'The QA infrastructure answers the fast profile.',
+    command: 'pan repository-check fast',
+    timeout_ms: 240000,
+  })
+  writeJson(verifyPath, verifyDefinition)
 
   const workflow = loadWorkflow(root, 'delivery')
   const state = createRun(root, {
@@ -111,13 +113,13 @@ test('an infrastructure failure preserves the environment-blocked route', () => 
     stageBySlug(workflow, 'verify'),
     'success',
   )
-  const fullSuite = submitted.record.evaluation.deterministic.find(
-    (item) => item.id === 'verify.full_suite',
+  const gate = submitted.record.evaluation.deterministic.find(
+    (item) => item.id === 'verify.qa_infrastructure',
   )
 
-  assert.equal(fullSuite?.timed_out, false)
-  assert.equal(fullSuite?.command, 'pan repository-check fast')
-  assert.equal(fullSuite?.environment_blocked, true)
+  assert.equal(gate?.timed_out, false)
+  assert.equal(gate?.command, 'pan repository-check fast')
+  assert.equal(gate?.environment_blocked, true)
   assert.equal(submitted.record.outcome, 'failure')
   assert.equal(submitted.state.status, 'paused')
   assert.equal(submitted.state.pending_action.type, 'operator_decision')

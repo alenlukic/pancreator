@@ -2,8 +2,12 @@
   "id": "SHIP-001",
   "title": "Operator-owned release boundary",
   "severity": "hard",
-  "summary": "The ship stage MUST complete local release preparation and leave remote release actions to the operator.",
+  "summary": "The ship stage MUST pass the full profile as its release gate before release preparation begins, MUST complete local release preparation, and MUST leave remote release actions to the operator.",
   "instructions": [
+    "The ship stage owns the only execution of the full profile in a run. The harness MUST run the full profile as the release gate when the run enters the ship stage, before it delegates the release steward, and MUST record the result as gate evidence. The release steward MUST NOT run the full profile.",
+    "A release-gate pass covers the current visit of the ship stage. The ship submission gate MUST reuse the recorded pass and MUST NOT run the full profile again on that visit.",
+    "A release-gate failure MUST route the run to the remediate stage with the recorded result and its evidence log. A remediation the release gate routed MUST return directly to the ship stage on success, and the harness MUST run the full profile again as the release gate.",
+    "The harness MUST count consecutive release-gate failures at the ship stage. After two failures that routed to remediate, a third failure MUST pause the run with an operator decision that carries the failure evidence. Away mode MUST NOT resume, redirect, or otherwise continue a run past that pause; only the operator decides.",
     "The release packet MUST confirm that prior gates are satisfied by current evidence or explicit operator acceptance and waiver directives.",
     "The release packet MUST enumerate active operator gate waivers, deferred acceptance criteria, reviewer criterion amendments, and linked spotfix cases rather than describing waived gates or amended criteria as ordinary passes.",
     "The release packet MUST include rollback guidance, unresolved non-blocking risks, and a concise change summary.",

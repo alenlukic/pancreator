@@ -1,32 +1,37 @@
 {
   "schema_version": 1,
   "name": "delivery-basic-test-discipline",
-  "description": "A toy delivery run adds one function and one test. Grades repository-check profile discipline (baseline once per interior profile, one live gate per attempt, at most one agent-side fast run per attempt, the full profile only as the verify submission gate), stage order, and that no stage attempt is consumed by a pre-submit validator.",
+  "description": "A toy delivery run adds one function and one test. Grades repository-check profile discipline (baseline once per interior profile, one live gate per attempt, at most one agent-side fast run per attempt, the full profile only as the ship release gate), stage order, and that no stage attempt is consumed by a pre-submit validator.",
   "policy_instructions": [
     {
       "policy_id": "DEV-001",
       "instruction": 3,
-      "summary": "The harness runs and persists one baseline per interior gate profile before the first coder invocation."
+      "summary": "The harness runs and persists exactly one baseline per interior gate profile before the first coder invocation of a unit of work."
     },
     {
       "policy_id": "DEV-001",
-      "instruction": 7,
-      "summary": "The coder runs the fast profile once as validation when it believes the change is complete."
+      "instruction": 10,
+      "summary": "The coder runs the fast profile once, as the final validation, and iterates on the impacted profile plus its added tests."
     },
     {
       "policy_id": "DEV-001",
-      "instruction": 8,
+      "instruction": 11,
       "summary": "A retry that changed only output claims or evidence runs no test profile."
     },
     {
       "policy_id": "VERIFY-001",
       "instruction": 6,
-      "summary": "Each evidence worker may run the fast profile once and never runs full."
+      "summary": "Each evidence worker may run the fast profile once as final validation and never runs full."
     },
     {
       "policy_id": "VERIFY-001",
       "instruction": 7,
-      "summary": "The verifier runs no profile; the level assigns one profile to the verify submission gate, which runs it once."
+      "summary": "The verifier runs no profile; no verify or remediate gate runs full."
+    },
+    {
+      "policy_id": "SHIP-001",
+      "instruction": 1,
+      "summary": "The harness runs the full profile once as the release gate when the run enters ship."
     },
     {
       "policy_id": "ORCH-001",
@@ -65,7 +70,7 @@
   "graders": [
     {
       "id": "profile-executions",
-      "policy": "DEV-001#7",
+      "policy": "DEV-001#10",
       "config": {
         "limits": [
           {

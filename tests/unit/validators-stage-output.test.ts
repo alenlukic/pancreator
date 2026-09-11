@@ -212,16 +212,16 @@ test('stage output rejects an unevaluated criterion on every result', () => {
 })
 
 test('stage output rejects a skipped criterion on success', () => {
+  // The remediate stage carries a shell gate (`implement.lint`); verify no
+  // longer declares one, because no verify gate runs a repository profile.
   const root = createFixture()
   const { invocation, stage } = fixtureInvocation(
     root,
-    'verify',
-    'verify-1-skipped-success',
+    'remediate',
+    'remediate-1-skipped-success',
   )
   const output = baseOutput(invocation, stage)
-  const criterion = output.criteria.find(
-    (item) => item.id === 'verify.full_suite',
-  )
+  const criterion = output.criteria.find((item) => item.id === 'implement.lint')
 
   assert.ok(criterion)
   criterion.result = 'skipped'
@@ -232,7 +232,7 @@ test('stage output rejects a skipped criterion on success', () => {
     validation.issues
       .filter((issue) => issue.code === 'criterion.skipped_on_success')
       .map((issue) => issue.message),
-    ["A success result cannot skip criterion 'verify.full_suite'"],
+    ["A success result cannot skip criterion 'implement.lint'"],
   )
 })
 
@@ -240,12 +240,12 @@ test('stage output rejects a skipped judgment criterion on failure', () => {
   const root = createFixture()
   const { invocation, stage } = fixtureInvocation(
     root,
-    'verify',
-    'verify-1-skipped-judgment',
+    'remediate',
+    'remediate-1-skipped-judgment',
   )
   const output = baseOutput(invocation, stage)
   const criterion = output.criteria.find(
-    (item) => item.id === 'verify.tests_correct',
+    (item) => item.id === 'remediate.addresses_verdict',
   )
 
   assert.ok(criterion)
@@ -256,12 +256,12 @@ test('stage output rejects a skipped judgment criterion on failure', () => {
 
   assert.match(
     validation.errors.join('\n'),
-    /verify\.tests_correct' MUST NOT be skipped on a failure result unless it is a shell criterion/u,
+    /remediate\.addresses_verdict' MUST NOT be skipped on a failure result unless it is a shell criterion/u,
   )
 
   criterion.result = 'pass'
   const shellCriterion = output.criteria.find(
-    (item) => item.id === 'verify.full_suite',
+    (item) => item.id === 'implement.lint',
   )
 
   assert.ok(shellCriterion)
@@ -271,7 +271,7 @@ test('stage output rejects a skipped judgment criterion on failure', () => {
 
   assert.doesNotMatch(
     shellValidation.errors.join('\n'),
-    /verify\.full_suite' MUST NOT be skipped on a failure result/u,
+    /implement\.lint' MUST NOT be skipped on a failure result/u,
   )
 })
 

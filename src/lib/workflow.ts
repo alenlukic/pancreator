@@ -20,6 +20,7 @@ import type {
   StageContextStageSelector,
   StageExecutor,
   StageDefinition,
+  StageEntryGate,
   StageGate,
   StageEvidenceWorkerDefinition,
   StagePersonaByVerdict,
@@ -348,6 +349,41 @@ function parseEvidenceWorkers(
   return workers
 }
 
+function parseEntryGate(
+  value: unknown,
+  source: string,
+): StageEntryGate | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+
+  invariant(isRecord(value), `${source} MUST be an object when present.`, {
+    code: 'INVALID_WORKFLOW',
+  })
+
+  for (const key of ['criterion', 'failure'] as const) {
+    invariant(
+      typeof value[key] === 'string' && value[key].length > 0,
+      `${source}.${key} MUST be a non-empty string.`,
+      { code: 'INVALID_WORKFLOW' },
+    )
+  }
+
+  invariant(
+    typeof value.max_loops === 'number' &&
+      Number.isInteger(value.max_loops) &&
+      value.max_loops >= 0,
+    `${source}.max_loops MUST be a non-negative integer.`,
+    { code: 'INVALID_WORKFLOW' },
+  )
+
+  return {
+    criterion: value.criterion as string,
+    failure: value.failure as string,
+    max_loops: value.max_loops,
+  }
+}
+
 function parseRequiredData(
   value: unknown,
   source: string,
@@ -506,6 +542,12 @@ function parseStage(
 
   if (evidenceWorkers) {
     stage.evidence_workers = evidenceWorkers
+  }
+
+  const entryGate = parseEntryGate(value.entry_gate, `${source}.entry_gate`)
+
+  if (entryGate) {
+    stage.entry_gate = entryGate
   }
 
   return stage
@@ -787,6 +829,26 @@ export function validateWorkflow(
   }
 
   for (const stage of workflow.stages) {
+    if (stage.entry_gate) {
+      const gated = stage.criteria.find(
+        (criterion) => criterion.id === stage.entry_gate?.criterion,
+      )
+
+      invariant(
+        gated !== undefined && gated.type === 'shell',
+        `${source}: entry_gate on '${stage.slug}' MUST name a shell ` +
+          `criterion of the stage; '${stage.entry_gate.criterion}' is not one.`,
+        { code: 'INVALID_WORKFLOW' },
+      )
+      invariant(
+        slugs.has(stage.entry_gate.failure) &&
+          stage.entry_gate.failure !== stage.slug,
+        `${source}: entry_gate on '${stage.slug}' MUST route failure to ` +
+          `another stage; '${stage.entry_gate.failure}' is not one.`,
+        { code: 'INVALID_WORKFLOW' },
+      )
+    }
+
     const selectors = [
       ...(stage.context.required_stage_outputs ?? []),
       ...(stage.context.conditional_stage_outputs ?? []),
