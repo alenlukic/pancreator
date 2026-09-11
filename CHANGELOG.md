@@ -1,5 +1,19 @@
 # Changelog
 
+## [5.20.0] - 2026-09-11
+
+### Changed
+
+- Capture one shared deterministic pre-edit baseline per unit of work. A cohort session shares one baseline per interior gate profile: the first run captures it, and later runs adopt it ([DEV-001](governance/policies/DEV-001.json), [ec77e424](https://github.com/alenlukic/pancreator/commit/ec77e42483701e7a0497bb817821c511cd647a30)).
+- Iterate implement and remediate agents on the impacted profile plus their added tests. Each agent runs the fast profile once as final validation and never runs the full profile ([DEV-001](governance/policies/DEV-001.json), [REMED-001](governance/policies/REMED-001.json), [VERIFY-001](governance/policies/VERIFY-001.json), [ec77e424](https://github.com/alenlukic/pancreator/commit/ec77e42483701e7a0497bb817821c511cd647a30)).
+- Run the full profile only as the release gate of the ship stage. A failure routes to remediate and returns to ship, at most twice, and a third failure pauses the run for the operator ([SHIP-001](governance/policies/SHIP-001.json), [config](config.json), [ec77e424](https://github.com/alenlukic/pancreator/commit/ec77e42483701e7a0497bb817821c511cd647a30)).
+- Remove the full profile from the verify and remediate submission gates ([VERIFY-001](governance/policies/VERIFY-001.json), [ec77e424](https://github.com/alenlukic/pancreator/commit/ec77e42483701e7a0497bb817821c511cd647a30)).
+- Bind VERIFY-001 to the reviewer and qa-tester personas on every verify stage ([lookup table](governance/registries/policy_lookup_table.json), [ec77e424](https://github.com/alenlukic/pancreator/commit/ec77e42483701e7a0497bb817821c511cd647a30)).
+
+### Added
+
+- Add the optional `entry_gate` stage field: a shell criterion the harness runs when a run enters the stage, before it delegates the worker. The ship stage declares the full profile here as its release gate ([stage schema](library/schemas/stage.schema.json), [ec77e424](https://github.com/alenlukic/pancreator/commit/ec77e42483701e7a0497bb817821c511cd647a30)).
+
 ## [5.19.0] - 2026-09-09
 
 ### Changed
