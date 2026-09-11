@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "summary": "Issue categories that partition the intakes of one harness technician audit. REPAIR-001 is the normative owner; this registry is the one place that names the categories, their filename slugs, their scope, and their next-action contract.",
+  "categories": [
+    {
+      "id": "out-of-band",
+      "slug": "oob",
+      "display_name": "Out-of-band",
+      "scope": "Work a powerful model executes outside harness bounds under close operator supervision, such as a governance or policy bug fix.",
+      "next_action_contract": {
+        "name": "out-of-band",
+        "required_tokens": ["out-of-band", "operator"],
+        "forbidden_tokens": ["/pan-start"]
+      }
+    },
+    {
+      "id": "performance",
+      "slug": "perf",
+      "display_name": "Performance",
+      "scope": "Speed and memory improvements, removal of duplicate agent work or tool calls, bottleneck relief, and concurrency or race-condition repair.",
+      "next_action_contract": {
+        "name": "pan-start",
+        "required_tokens": ["/pan-start"],
+        "forbidden_tokens": []
+      }
+    },
+    {
+      "id": "internal-consistency",
+      "slug": "int-con",
+      "display_name": "Internal consistency",
+      "scope": "Conflicting governance resolution, and agent behavior that undoes or contradicts another agent action or governance.",
+      "next_action_contract": {
+        "name": "pan-start",
+        "required_tokens": ["/pan-start"],
+        "forbidden_tokens": []
+      }
+    },
+    {
+      "id": "test-issues",
+      "slug": "test",
+      "display_name": "Test issues",
+      "scope": "Failed tests and test timeouts.",
+      "next_action_contract": {
+        "name": "pan-start",
+        "required_tokens": ["/pan-start"],
+        "forbidden_tokens": []
+      }
+    },
+    {
+      "id": "compliance",
+      "slug": "comp",
+      "display_name": "Compliance",
+      "scope": "Agents that apply governance inconsistently or ignore it, and gaming or cheating behavior.",
+      "next_action_contract": {
+        "name": "pan-start",
+        "required_tokens": ["/pan-start"],
+        "forbidden_tokens": []
+      }
+    },
+    {
+      "id": "mechanical-friction",
+      "slug": "fric",
+      "display_name": "Mechanical friction",
+      "scope": "Harness mechanics that are technically correct but repeatedly cause internal or operator friction.",
+      "next_action_contract": {
+        "name": "pan-start",
+        "required_tokens": ["/pan-start"],
+        "forbidden_tokens": []
+      }
+    },
+    {
+      "id": "runtime-build-bugs",
+      "slug": "build",
+      "display_name": "Runtime/build bugs",
+      "scope": "Command invocation failures, uncovered edge cases, build breakage, and embedded install defects.",
+      "next_action_contract": {
+        "name": "pan-start",
+        "required_tokens": ["/pan-start"],
+        "forbidden_tokens": []
+      }
+    },
+    {
+      "id": "agentic-antipatterns",
+      "slug": "anti",
+      "display_name": "Agentic antipatterns",
+      "scope": "Governance or mechanics that violate broadly accepted agentic best practice.",
+      "next_action_contract": {
+        "name": "pan-start",
+        "required_tokens": ["/pan-start"],
+        "forbidden_tokens": []
+      }
+    }
+  ]
+}
