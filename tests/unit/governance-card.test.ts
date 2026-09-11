@@ -291,7 +291,7 @@ test('the conform mode binds librarian and fences edits', () => {
   )
 })
 
-test('the repair mode bounds intakes without forbidding a second one', () => {
+test('the repair mode partitions intakes by category and keeps the operator override', () => {
   const mode = STANDALONE_MODES.repair
 
   assert.ok(mode)
@@ -300,7 +300,7 @@ test('the repair mode bounds intakes without forbidding a second one', () => {
 
   // The boundary must still fence writes to the declared intakes. A singular
   // "the declared intake artifact" silently re-forbids the second intake the
-  // operator asked for, so the plural form is the contract.
+  // partition produces, so the plural form is the contract.
   const writeFence = mode.boundaries.find((boundary) =>
     /outside the declared intake/u.test(boundary),
   )
@@ -308,13 +308,20 @@ test('the repair mode bounds intakes without forbidding a second one', () => {
   assert.ok(writeFence, 'the repair card must fence writes to the intakes')
   assert.match(writeFence, /intake artifacts\./u)
 
+  const partition = mode.boundaries.find((boundary) =>
+    /at most one intake for each category/u.test(boundary),
+  )
+
+  assert.ok(partition, 'the category partition is the repair default')
+  assert.match(partition, /unless the operator directs a different set/u)
+
   assert.ok(
-    mode.boundaries.some((boundary) =>
-      /MUST write one intake unless the operator requests more than one/u.test(
+    !mode.boundaries.some((boundary) =>
+      /write one intake unless the operator requests more than one/u.test(
         boundary,
       ),
     ),
-    'one intake stays the default and more than one needs an operator request',
+    'the one-intake default MUST be gone from the repair card',
   )
 })
 

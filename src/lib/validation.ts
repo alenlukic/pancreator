@@ -31,6 +31,7 @@ import type {
 } from './repository-checks.js'
 import type { LoadedPipelineConfig } from './pipeline-config.js'
 import { auditDirectives } from './governance/audit-directives.js'
+import { harnessRepairCategoryErrors } from './governance/harness-repair-categories.js'
 import { HANDLER_IDS } from './requirements/handlers.js'
 import { resolveRunLayout } from './run-layout.js'
 import {
@@ -3924,6 +3925,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'governance/handbooks/typescript/style-guide.md',
     'governance/registries/validation_registry.json',
     'governance/registries/directive_exemptions.json',
+    'governance/registries/harness_repair_categories.json',
     'governance/registries/projection_manifest.json',
     'docs/validation-framework.md',
     'config.json',
@@ -4002,6 +4004,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
 
   errors.push(...validateQuestionToolAccess(root))
   errors.push(...validateEvalScenarios(root))
+  errors.push(...harnessRepairCategoryErrors(root))
   errors.push(...validateReleaseMetadata(root).errors)
 
   try {

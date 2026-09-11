@@ -10,6 +10,7 @@ lives in this directory:
 - `directive_exemptions.json` records reviewed directive-audit exemptions.
 - `command_governance.json` declares how each canonical Cursor command receives governance: a `pan governance card --mode <mode>` step, the supervisor card, or an explicit read-only allowlist entry. `pan validate` fails a command that does neither.
 - `projection_manifest.json` declares generated projections from canonical `library/` or `src/` files into disposable local surfaces such as `.cursor/`.
+- `harness_repair_categories.json` is the `REPAIR-001`-owned authoritative list of harness repair audit categories.
 - `cursor_model_catalog.json` is an optional operator-local catalog. It validates only the current Cursor account's models and is never tracked or installed.
 
 Policy modules remain under `governance/policies/`; handbooks remain under

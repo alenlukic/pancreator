@@ -1097,7 +1097,7 @@ test('TUNE-001 resolves its record validator for tune-harness sessions', () => {
   )
 })
 
-test('REPAIR-001 allows several intakes and keeps one as the default', () => {
+test('REPAIR-001 partitions intakes by category and keeps the operator override', () => {
   const root = sharedFixture()
   const policy = JSON.parse(
     readFileSync(
@@ -1107,25 +1107,53 @@ test('REPAIR-001 allows several intakes and keeps one as the default', () => {
   ) as { instructions: string[] }
   const instructions = policy.instructions.join('\n')
 
-  assert.match(instructions, /MUST write one intake by default/u)
   assert.match(
     instructions,
-    /more than one intake only when the operator requests more than one/u,
+    /governance\/registries\/harness_repair_categories\.json/u,
   )
   assert.match(
+    instructions,
+    /MUST assess every category the registry declares and MUST write at most one intake for each/u,
+  )
+  assert.match(
+    instructions,
+    /explicit operator directive .* MUST take precedence over the category partition/u,
+  )
+  assert.match(instructions, /MUST stay two independent axes/u)
+  assert.match(
+    instructions,
+    /MAY carry several findings and several root causes/u,
+  )
+  assert.match(instructions, /MUST take one primary category/u)
+  assert.match(instructions, /Every completed intake MUST pass/u)
+
+  // The replaced default and its one-root-cause rule must not return.
+  assert.doesNotMatch(instructions, /MUST write one intake by default/u)
+  assert.doesNotMatch(
     instructions,
     /one intake for each distinct root cause and MUST NOT split one root cause/u,
   )
-  assert.match(instructions, /Every completed intake MUST pass/u)
 })
 
-test('every repair instruction surface agrees that several intakes are allowed', () => {
+test('every repair instruction surface agrees on the category partition', () => {
   const root = sharedFixture()
 
-  // The multi-intake contract is spread across a policy, a persona, a projected
+  // The partition contract is spread across a policy, a persona, a projected
   // agent, and a command. A reverted singular phrase on any one of them makes
-  // the harness technician refuse the second intake the operator asked for, so
-  // each surface is pinned to the plural contract here.
+  // the harness technician collapse the partition back into one document, so
+  // each surface is pinned here. Only the registry names the categories, so
+  // no surface may carry a second copy of the list.
+  const categories = (
+    JSON.parse(
+      readFileSync(
+        path.join(root, 'governance/registries/harness_repair_categories.json'),
+        'utf8',
+      ),
+    ) as { categories: Array<{ slug: string }> }
+  ).categories
+
+  assert.ok(categories.length > 0)
+
   const surfaces = [
     'library/personas/harness-technician.md',
     'library/cursor/agents/harness-technician.md',
@@ -1138,29 +1166,47 @@ test('every repair instruction surface agrees that several intakes are allowed',
   for (const surface of surfaces) {
     assert.match(
       surface.text,
-      /more than one/u,
-      `${surface.relative} must admit more than one intake`,
+      /categor/iu,
+      `${surface.relative} must state the category partition`,
     )
     assert.doesNotMatch(
       surface.text,
       /write only the declared intake under/u,
       `${surface.relative} must not fence writes to a single intake`,
     )
+    assert.doesNotMatch(
+      surface.text,
+      /one intake by default/u,
+      `${surface.relative} must not restore the one-intake default`,
+    )
+
+    // A copied list spells each slug out; a surface that reads the registry
+    // names the pattern instead.
+    const copied = categories
+      .filter((category) => surface.text.includes(`\`${category.slug}\``))
+      .map((category) => category.slug)
+
+    assert.deepEqual(
+      copied,
+      [],
+      `${surface.relative} must read the category list rather than copy it`,
+    )
   }
 
   const persona = surfaces[0]?.text ?? ''
 
-  assert.match(persona, /one intake for each\s+distinct root cause/u)
-  assert.doesNotMatch(
-    persona,
-    /write one implementation-ready Markdown intake/u,
-    'the persona must not mandate exactly one intake',
-  )
+  assert.match(persona, /MUST follow the\s+operator rather than the category/u)
+  assert.match(persona, /\*\*Category:\*\* <display name>/u)
+
+  const agent = surfaces[1]?.text ?? ''
+
+  assert.match(agent, /harness_repair_categories\.json/u)
 
   const command = surfaces[2]?.text ?? ''
 
   assert.match(command, /once for each intake path/u)
-  assert.match(command, /default to one intake/u)
+  assert.match(command, /harness-repair-<UTC timestamp>-<category-slug>-/u)
+  assert.doesNotMatch(command, /requested intake count/u)
 })
 
 test('ship, write-pr, and conform keep required STE checks', () => {

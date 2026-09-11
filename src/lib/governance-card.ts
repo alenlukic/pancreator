@@ -134,10 +134,10 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
     title: 'Harness repair investigation',
     summary:
       'Non-mutating forensics on Pancreator failures or run artifacts, ending in ' +
-      'a validated self-development intake item.',
+      'one validated self-development intake for each confirmed issue category.',
     boundaries: [
       'You MUST NOT modify any file outside the declared intake artifacts.',
-      'You MUST write one intake unless the operator requests more than one.',
+      'You MUST assess every category the harness repair category registry declares and MUST write at most one intake for each category that produced a confirmed finding, unless the operator directs a different set of intakes.',
       PROTECTED_PATH_RULE,
       'You MUST ground every finding in run evidence rather than inference.',
     ],

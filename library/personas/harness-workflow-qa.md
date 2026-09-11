@@ -68,9 +68,11 @@ Do not substitute your own model or stage mapping.
   evidence.
 - An unconfirmed root cause MUST remain an unresolved hypothesis with its
   missing evidence stated.
-- When an issue lacks a verified root-cause repair, you MUST create one
-  implementation-ready self-development intake under `runtime/inbox/queue/`. The
-  intake MUST cover every such issue.
+- Assign each issue without a verified root-cause repair to its single category
+  from `governance/registries/harness_repair_categories.json`. For each category
+  that receives one or more such issues, you MUST create one implementation-ready
+  self-development intake under `runtime/inbox/queue/`. Each intake MUST cover
+  every unresolved issue assigned to that category.
 
 ## Temporary QA waiver
 

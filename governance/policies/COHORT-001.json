@@ -4,38 +4,98 @@
   "severity": "hard",
   "summary": "A ratified cohort plan MUST hold one parent specification and one child specification per unit of work. It MUST execute as ordered groups of parallel delivery runs, each in its own worktree. Each group merges before the next one starts, and every ordering decision rests on durable records rather than agent judgment.",
   "instructions": [
-    "The ratified artifact MUST hold one parent specification. The parent specification carries the complete record of the request. The artifact MUST hold one child specification for each unit of work a single delivery run owns.",
-    "A child specification MUST reach its parent through an audited reference. The reference MUST state the parent path, the selected range, the content digest, and the read trigger. A child specification MUST NOT reproduce the parent body.",
-    "For its own unit of work, the child specification governs. For context that spans units, the parent governs. Each child MUST state that relationship.",
-    "Every requirement, constraint, out-of-scope statement, and open question of the request MUST appear across the child specifications exactly once. Each MUST appear as owned, shared, or deferred. The parent MUST keep the complete record.",
-    "A unit of work MUST own one coherent operator outcome. It MUST carry independently testable acceptance criteria. It MUST reach a valid standalone completion state.",
-    "A split of the ratified scope MUST reduce implementation and review risk by more than its coordination cost. The coordination cost is the cost of the extra delivery runs the split creates. When the split does not pay for itself, the plan MUST stay whole and MUST state why.",
-    "Units of work MUST form ordered groups numbered from 1. A unit MUST NOT depend on another unit of its own group. Every dependency MUST name a unit of an earlier group.",
-    "When the ratified scope stays one unit, the artifact MUST record the reason the work remains serial.",
+    {
+      "text": "The ratified artifact MUST hold one parent specification. The parent specification carries the complete record of the request. The artifact MUST hold one child specification for each unit of work a single delivery run owns.",
+      "audience": ["supervisor"]
+    },
+    {
+      "text": "A child specification MUST reach its parent through an audited reference. The reference MUST state the parent path, the selected range, the content digest, and the read trigger. A child specification MUST NOT reproduce the parent body.",
+      "audience": ["supervisor"]
+    },
+    {
+      "text": "For its own unit of work, the child specification governs. For context that spans units, the parent governs. Each child MUST state that relationship.",
+      "audience": ["supervisor"]
+    },
+    {
+      "text": "Every requirement, constraint, out-of-scope statement, and open question of the request MUST appear across the child specifications exactly once. Each MUST appear as owned, shared, or deferred. The parent MUST keep the complete record.",
+      "audience": ["supervisor"]
+    },
+    {
+      "text": "A unit of work MUST own one coherent operator outcome. It MUST carry independently testable acceptance criteria. It MUST reach a valid standalone completion state.",
+      "audience": ["supervisor"]
+    },
+    {
+      "text": "A split of the ratified scope MUST reduce implementation and review risk by more than its coordination cost. The coordination cost is the cost of the extra delivery runs the split creates. When the split does not pay for itself, the plan MUST stay whole and MUST state why.",
+      "audience": ["supervisor"]
+    },
+    {
+      "text": "Units of work MUST form ordered groups numbered from 1. A unit MUST NOT depend on another unit of its own group. Every dependency MUST name a unit of an earlier group.",
+      "audience": ["supervisor"]
+    },
+    {
+      "text": "When the ratified scope stays one unit, the artifact MUST record the reason the work remains serial.",
+      "audience": ["supervisor"]
+    },
     "Each unit of work MUST execute in its own Git worktree on its own branch. Two concurrent runs never mutate one workspace.",
-    "The harness MUST hold the execution graph, the group assignment, each unit's run id, and each group's completion proof. That record MUST be one durable record under `runtime/logs/cohorts/`.",
+    {
+      "text": "The harness MUST hold the execution graph, the group assignment, each unit's run id, and each group's completion proof. That record MUST be one durable record under `runtime/logs/cohorts/` (`tests/integration/cohort-fanout.test.ts::starting a cohort fans out one worktree and one run per chunk`).",
+      "audience": ["harness"]
+    },
     "Treat a group as complete only when every one of its runs reports success in that run's own state. The durable record MUST also hold the merge proof for that group.",
-    "The harness MUST refuse to start a group while an earlier group is incomplete. The refusal MUST name the session, the refused group, and the earlier group that blocks it.",
+    {
+      "text": "The harness MUST refuse to start a group while an earlier group is incomplete. The refusal MUST name the session, the refused group, and the earlier group that blocks it (`tests/unit/cohorts.test.ts::starting a later cohort is refused while an earlier one is unsatisfied`).",
+      "audience": ["harness"]
+    },
     "A direct advance of one bound run MUST meet the same refusal. The ordering blocker therefore holds outside the group command.",
     "The merge of a completed group into its base branch MUST be an explicit operator command. The command MUST write the merge proof only after the merge lands cleanly.",
     "An unsuccessful run, a workspace with uncommitted work, or a conflicting merge MUST leave the merge proof unwritten. The next group then stays blocked.",
     "The exclusion of one unit from a group MUST be an operator decision. The record MUST carry the operator's stated reason.",
-    "The harness MUST refuse to remove a unit's workspace while its run is live or its workspace holds uncommitted work. Only an explicit operator force overrides that refusal.",
-    "Run creation MUST perform no source-control action beyond adding worktrees and branches. This rule covers the runs of a group, a single-unit delivery run, and the release run. Committing, merging, pushing, and branch deletion stay operator-owned. The only merge the harness performs is the one `pan cohort integrate` runs as the operator's explicit command.",
+    {
+      "text": "The harness MUST refuse to remove a unit's workspace while its run is live or its workspace holds uncommitted work. Only an explicit operator force overrides that refusal (`tests/integration/cohort-fanout.test.ts::cleaning a session removes its chunk worktrees and keeps the branches`).",
+      "audience": ["harness"]
+    },
+    {
+      "text": "Run creation MUST perform no source-control action beyond adding worktrees and branches. This rule covers the runs of a group, a single-unit delivery run, and the release run. Committing, merging, pushing, and branch deletion stay operator-owned. The only merge the harness performs is the one `pan cohort integrate` runs as the operator's explicit command (`tests/integration/worktree-cli.test.ts::worktree create, list, source selection, and targeted init preserve the main checkout`).",
+      "audience": ["harness"]
+    },
     "Every unit run, single-unit delivery run, and release run MUST reach the shared plan context through an audited reference. The reference MUST state the source path, the content digest, and the read trigger. A run MUST NOT receive a copy of that context.",
     "The `planning` workflow is the entry point for delivery work. Its ratified plan gate is the routing point. Approval of the plan MUST route the work by harness rule, never by supervisor judgment.",
     "A plan of exactly one unit MUST start one `delivery` run. That run MUST read the child specification as its request. It MUST be bound to its own worktree. It MUST reach the parent specification by reference. A plan of two or more units MUST open the cohort session and start the first group.",
-    "The route is the default of every planning run. It MUST fire for an approval by the operator. It MUST also fire for an away-mode decision applied on the operator's behalf under the away-mode policy. `pan init --no-autostart` is the only opt-out. The harness MUST record the opt-out when it creates the run.",
-    "The harness MUST record the started run or session on the planning run. A route that fails MUST leave the recorded approval and the ratified plan unchanged.",
-    "An automatic start that fails MUST report the concrete error together with the manual commands that perform the same work.",
+    {
+      "text": "The route is the default of every planning run. It MUST fire for an approval by the operator. It MUST also fire for an away-mode decision applied on the operator's behalf under the away-mode policy. `pan init --no-autostart` is the only opt-out. The harness MUST record the opt-out when it creates the run (`tests/unit/cohorts.test.ts::the routing hook fires only for an approval of a routed planning run`).",
+      "audience": ["harness"]
+    },
+    {
+      "text": "The harness MUST record the started run or session on the planning run. A route that fails MUST leave the recorded approval and the ratified plan unchanged (`tests/integration/cohort-fanout.test.ts::a single-chunk routing failure leaves the approval and the plan intact`).",
+      "audience": ["harness"]
+    },
+    {
+      "text": "An automatic start that fails MUST report the concrete error together with the manual commands that perform the same work (`tests/unit/cohorts.test.ts::a routing failure reports the error and the manual commands`).",
+      "audience": ["harness"]
+    },
     "Each unit of a group of two or more MUST run the `delivery-chunk` workflow. It MUST end at a verified implementation on its own branch. Release preparation for such a plan MUST happen once, on the integrated result, in the release run. It MUST NOT happen per unit. A single-unit plan's `delivery` run carries its own `ship` stage.",
-    "When the merge proof of the final group lands, the harness MUST start the release run. The release run is one `delivery` run that begins at `verify`. It runs on a `release-<digest>` branch created from the integration head. When `--into-branch` recorded a worktree for the integration branch, it runs on the integration branch in that worktree. The release run MUST run in its own managed worktree.",
+    {
+      "text": "When the merge proof of the final group lands, the harness MUST start the release run. The release run is one `delivery` run that begins at `verify`. It runs on a `release-<digest>` branch created from the integration head. When `--into-branch` recorded a worktree for the integration branch, it runs on the integration branch in that worktree. The release run MUST run in its own managed worktree (`tests/integration/cohort-fanout.test.ts::the last integration starts the release run at verify in its own worktree, and every retry completes or adopts it`).",
+      "audience": ["harness"]
+    },
     "The release run MUST read the operator request the planning run stored. It MUST reach the parent specification by reference. The harness MUST record it on the session as `release_run_id`.",
-    "When the merge proof of a non-final group lands, the harness MUST start the next group. A continuation that fails MUST leave the merge proof in place. It MUST report the concrete error with the manual commands that perform the same work.",
+    {
+      "text": "When the merge proof of a non-final group lands, the harness MUST start the next group. A continuation that fails MUST leave the merge proof in place. It MUST report the concrete error with the manual commands that perform the same work (`tests/integration/cohort-fanout.test.ts::integration merges a finished cohort and unblocks the next one`).",
+      "audience": ["harness"]
+    },
     "The number of concurrent unit runs MUST NOT exceed the parallelism limit recorded on the session (`pan cohort init --max-parallel`, default 4). `pan cohort start` MUST create runs only for the free slots and MUST name the deferred units. Run it again to start the deferred units once a unit run reaches a terminal state.",
-    "One operator session MAY supervise every live unit run of the active group at once. It MUST launch the ready worker of each distinct run in the same message, so the launches execute in parallel. It MUST keep every launch foreground. It MUST observe each launched run with its own `pan watch <run-id>`. It MUST perform each run's pending action independently, so one gated or stalled run never blocks its siblings.",
-    "A cohort supervisor MUST NOT launch two workers for one run. It MUST NOT launch a nested supervisor for a unit run.",
-    "The commit of a finished unit branch stays operator-owned. A supervisor commits a unit worktree only under an explicit operator directive that covers that commit. It MUST commit only that worktree's changes. It MUST name the unit id and run id in the commit message."
+    {
+      "text": "One operator session MAY supervise every live unit run of the active group at once. It MUST launch the ready worker of each distinct run in the same message, so the launches execute in parallel. It MUST keep every launch foreground. It MUST observe each launched run with its own `pan watch <run-id>`. It MUST perform each run's pending action independently, so one gated or stalled run never blocks its siblings.",
+      "audience": ["supervisor"]
+    },
+    {
+      "text": "A cohort supervisor MUST NOT launch two workers for one run. It MUST NOT launch a nested supervisor for a unit run.",
+      "audience": ["supervisor"]
+    },
+    {
+      "text": "The commit of a finished unit branch stays operator-owned. A supervisor commits a unit worktree only under an explicit operator directive that covers that commit. It MUST commit only that worktree's changes. It MUST name the unit id and run id in the commit message.",
+      "audience": ["supervisor"]
+    }
   ],
   "requirements": [
     {

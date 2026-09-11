@@ -838,6 +838,13 @@
       "stage": "*",
       "policies": ["LANG-001"],
       "generated_by": "pancreator-target-language-handbooks"
+    },
+    {
+      "persona": "librarian",
+      "workflow": "standalone",
+      "stage": "style",
+      "policies": ["LANGSTYLE-001"],
+      "generated_by": "pancreator-target-language-handbooks"
     }
   ]
 }
