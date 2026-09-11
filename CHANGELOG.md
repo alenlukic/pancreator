@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.21.1] - 2026-09-11
+
+### Fixed
+
+- List the authoritative harness repair category registry in the governance registry index ([registry index](governance/registries/index.md), [20da5408](https://github.com/alenlukic/pancreator/commit/20da540868309ed327d37aea9b1fb362f6f4d967)).
+- Partition unresolved harness workflow QA findings into one intake per repair category ([workflow QA persona](library/personas/harness-workflow-qa.md), [20da5408](https://github.com/alenlukic/pancreator/commit/20da540868309ed327d37aea9b1fb362f6f4d967)).
+- Keep planner, supervisor, and harness-only cohort rules off delivery-chunk worker cards through instruction audiences ([COHORT-001](governance/policies/COHORT-001.json), [20da5408](https://github.com/alenlukic/pancreator/commit/20da540868309ed327d37aea9b1fb362f6f4d967)).
+
 ## [5.21.0] - 2026-09-11
 
 ### Changed
