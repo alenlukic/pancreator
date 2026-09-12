@@ -504,4 +504,3 @@ test('a prefetch answer that never lands leaves the ship entry gate to run the p
   assert.equal(gate.last_result.command, 'pan repository-check full')
   assert.ok(existsSync(path.join(root, gate.last_result.evidence_path ?? '')))
 })
-
