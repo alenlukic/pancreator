@@ -216,6 +216,18 @@ test('away mode rejects duplicate ranks and missing action details', () => {
       }),
     /ranks MUST be unique/u,
   )
+  assert.throws(
+    () =>
+      parseAwayOptions({
+        ranked_options: [
+          {
+            ...option(1, 'resume'),
+            evidence: ['The run waits for an operator decision.'],
+          },
+        ],
+      }),
+    /repository-relative path references/u,
+  )
 
   const selection = selectAwayOption(
     parseAwayOptions({
@@ -252,21 +264,6 @@ test('away mode skips infeasible options before selecting a rollback', () => {
       reason: 'The evaluator marked this option infeasible.',
     },
   ])
-})
-
-test('away mode rejects evidence that is not a repository path', () => {
-  assert.throws(
-    () =>
-      parseAwayOptions({
-        ranked_options: [
-          {
-            ...option(1, 'resume'),
-            evidence: ['The run waits for an operator decision.'],
-          },
-        ],
-      }),
-    /repository-relative path references/u,
-  )
 })
 
 test('hypervisor quarantine appends a decision when away mode is disabled', () => {

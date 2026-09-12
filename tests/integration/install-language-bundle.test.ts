@@ -213,9 +213,13 @@ test('a pre-split language bundle survives and drops the staged style policy', (
 })
 
 test('a split bundle whose LANG-001 still carries the handbooks is rebuilt', () => {
-  withRoots(
+  // Each shape below makes the existing split bundle invalid for a different
+  // reason, and every one leaves preserveLanguageGovernance a no-op.
+  for (const malformed of [
     { split: true, languageSources: true },
-    (_existingRoot, stagingRoot) => {
+    { split: true, codePersonas: [...CODE_PERSONAS, 'verifier'] },
+  ]) {
+    withRoots(malformed, (_existingRoot, stagingRoot) => {
       assert.equal(existsSync(path.join(stagingRoot, HANDBOOK)), false)
       assert.equal(
         existsSync(
@@ -224,16 +228,6 @@ test('a split bundle whose LANG-001 still carries the handbooks is rebuilt', () 
         false,
       )
       assert.deepEqual(generatedPersonas(stagingRoot), ['librarian'])
-    },
-  )
-})
-
-test('a bundle with code rows outside the generator persona set is rebuilt', () => {
-  withRoots(
-    { split: true, codePersonas: [...CODE_PERSONAS, 'verifier'] },
-    (_existingRoot, stagingRoot) => {
-      assert.equal(existsSync(path.join(stagingRoot, HANDBOOK)), false)
-      assert.deepEqual(generatedPersonas(stagingRoot), ['librarian'])
-    },
-  )
+    })
+  }
 })

@@ -4,7 +4,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { tickHypervisor } from '../../src/lib/hypervisor.js'
-import { createFixture } from '../helpers.js'
+import { createFixture } from '../fixture-template.js'
 
 test('unknown liveness never starts recovery', () => {
   const root = createFixture()

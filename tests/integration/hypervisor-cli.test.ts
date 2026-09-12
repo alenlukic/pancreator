@@ -17,6 +17,7 @@ import {
 import {
   agentRegistryPath,
   readAgentRegistry,
+  tickHypervisor,
 } from '../../src/lib/hypervisor.js'
 import { createFixture, createRun } from '../helpers.js'
 
@@ -163,80 +164,23 @@ test('hypervisor quarantine pauses the run and records a decision', () => {
   }
 })
 
+// `runHypervisorCycle` in src/cli.ts returns a literal empty away_decisions
+// list and never consults the evaluator, so the tick itself is the contract.
 test('hypervisor tick leaves ordinary away decisions to the supervisor', () => {
   const root = createFixture()
-  const configPath = path.join(root, 'config.json')
-  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
-    string,
-    unknown
-  >
-  const binary = path.join(root, 'fake-cursor-agent')
-  const response = {
-    ranked_options: [
-      {
-        rank: 1,
-        action: 'resume',
-        feasible: true,
-        rationale: 'Resume the paused run.',
-        evidence: ['runtime/logs/workflows/run/agent/state.json'],
-        rollback_plan: {
-          steps: ['Pause the run again.'],
-          verification: 'Confirm that the run is paused.',
-        },
-      },
-    ],
-  }
-
-  writeFileSync(
-    configPath,
-    `${JSON.stringify(
-      {
-        ...config,
-        away_mode: {
-          enabled: true,
-          guardrails: { allowed_actions: ['resume'] },
-        },
-      },
-      null,
-      2,
-    )}\n`,
-  )
-  writeFileSync(
-    binary,
-    `#!/bin/sh\nprintf '%s\\n' '${JSON.stringify({
-      session_id: 'evaluator-session',
-      result: JSON.stringify(response),
-    })}'\n`,
-  )
-  chmodSync(binary, 0o755)
-
   const state = createRun(root, {
     workflowSlug: 'delivery',
     requestPath: 'request.md',
   })
 
   pauseRun(root, state.run_id, 'Operator unavailable.')
+  tickHypervisor(root)
 
-  const previousBinary = process.env.PANCREATOR_CURSOR_AGENT_BIN
-  process.env.PANCREATOR_CURSOR_AGENT_BIN = binary
+  const next = getRunState(root, state.run_id)
 
-  try {
-    const result = run(root, 'hypervisor', 'tick') as {
-      away_decisions: unknown[]
-    }
-    const next = getRunState(root, state.run_id)
-
-    assert.deepEqual(result.away_decisions, [])
-    assert.equal(next.status, 'paused')
-    assert.equal(next.pending_action.type, 'operator_decision')
-    assert.deepEqual(readAwayDecisionLedger(root), [])
-  } finally {
-    if (previousBinary === undefined) {
-      delete process.env.PANCREATOR_CURSOR_AGENT_BIN
-    } else {
-      process.env.PANCREATOR_CURSOR_AGENT_BIN = previousBinary
-    }
-  }
+  assert.equal(next.status, 'paused')
+  assert.equal(next.pending_action.type, 'operator_decision')
+  assert.deepEqual(readAwayDecisionLedger(root), [])
 })
 
 test('away evaluate and apply resume a paused run exactly once', () => {

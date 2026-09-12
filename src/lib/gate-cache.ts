@@ -56,7 +56,12 @@ export function gateCacheEnabled(): boolean {
   return process.env[GATE_CACHE_ENV] !== '0'
 }
 
-function checksConfigHash(root: string): string {
+/**
+ * Content digest of the verification configuration, which defines what a
+ * profile command means. The cache key and the baseline reuse index share this
+ * one definition so a result accepted by one cannot be rejected by the other.
+ */
+export function repositoryChecksConfigDigest(root: string): string {
   const configPath = path.join(root, 'runtime/repository-checks.json')
 
   try {
@@ -64,6 +69,14 @@ function checksConfigHash(root: string): string {
   } catch {
     return 'no-repository-checks'
   }
+}
+
+/**
+ * Resolved command text a repository-check profile gate records. The gate and
+ * the command-line runner both key the cache on it, so it has one definition.
+ */
+export function repositoryCheckGateCommand(profileName: string): string {
+  return `pan repository-check ${profileName}`
 }
 
 export function gateCacheableSnapshot(snapshot: WorkspaceSnapshot): boolean {
@@ -78,7 +91,7 @@ export function gateCacheKey(
   return sha256({
     fingerprint: workspaceFingerprint,
     command,
-    checks_config: checksConfigHash(root),
+    checks_config: repositoryChecksConfigDigest(root),
   })
 }
 

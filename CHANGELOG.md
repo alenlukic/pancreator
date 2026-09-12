@@ -1,5 +1,32 @@
 # Changelog
 
+## [5.22.0] - 2026-09-12
+
+### Changed
+
+- Adopt a recorded passed baseline at the same workspace fingerprint and verification-configuration digest ([engine](src/lib/engine.ts), [b167a42f](https://github.com/alenlukic/pancreator/commit/b167a42f5df16e5b9f0f9e4c0391170802ed9583)).
+- Store a clean agent profile pass where the submit gate already looks for it ([repository-checks](src/lib/repository-checks.ts), [b167a42f](https://github.com/alenlukic/pancreator/commit/b167a42f5df16e5b9f0f9e4c0391170802ed9583)).
+- Start a detached prefetch of the full profile when a source stage moves to verify ([engine](src/lib/engine.ts), [b167a42f](https://github.com/alenlukic/pancreator/commit/b167a42f5df16e5b9f0f9e4c0391170802ed9583)).
+- Honor an optional `concurrent` profile flag in the asynchronous runner only ([repository-checks](src/lib/repository-checks.ts), [b167a42f](https://github.com/alenlukic/pancreator/commit/b167a42f5df16e5b9f0f9e4c0391170802ed9583)).
+- Point Prettier at explicit top-level paths and turn on its content cache ([package.json](package.json), [b167a42f](https://github.com/alenlukic/pancreator/commit/b167a42f5df16e5b9f0f9e4c0391170802ed9583)).
+- Return from a run-scoped model probe before the model answers ([cursor-probe](src/lib/executors/cursor-probe.ts), [b167a42f](https://github.com/alenlukic/pancreator/commit/b167a42f5df16e5b9f0f9e4c0391170802ed9583)).
+- Parse the policy catalog and each guidance selection once per process for one root ([policies](src/lib/policies.ts), [b167a42f](https://github.com/alenlukic/pancreator/commit/b167a42f5df16e5b9f0f9e4c0391170802ed9583)).
+- Move prepare and submit agent-registry writes outside the run mutex ([engine](src/lib/engine.ts), [b167a42f](https://github.com/alenlukic/pancreator/commit/b167a42f5df16e5b9f0f9e4c0391170802ed9583)).
+- Apply the ratified tune verdicts to the decomposed test suite ([0a243077](https://github.com/alenlukic/pancreator/commit/0a2430770126979ba4b3d0a5aebfe67ea1988095)).
+- Discard the test scratch tree in the background after each suite run ([bin/run-tests](bin/run-tests), [0a243077](https://github.com/alenlukic/pancreator/commit/0a2430770126979ba4b3d0a5aebfe67ea1988095)).
+
+### Added
+
+- Add an optional `concurrent` boolean on a repository-check profile. The gate runner still runs commands one after another ([repository-checks](src/lib/repository-checks.ts), [b167a42f](https://github.com/alenlukic/pancreator/commit/b167a42f5df16e5b9f0f9e4c0391170802ed9583)).
+- Probe every distinct model spec together on a bare `pan models --probe` ([cursor-probe](src/lib/executors/cursor-probe.ts), [b167a42f](https://github.com/alenlukic/pancreator/commit/b167a42f5df16e5b9f0f9e4c0391170802ed9583)).
+- Infer a tune-record target kind so `pan requirements run` reaches the registry validator ([requirements runner](src/lib/requirements/run.ts), [0a243077](https://github.com/alenlukic/pancreator/commit/0a2430770126979ba4b3d0a5aebfe67ea1988095)).
+
+### Fixed
+
+- Repair the two installer language-bundle cases that failed on an embedded refresh ([language-bundle tests](tests/secondary/embedded-installation-language-bundle.test.ts), [0a243077](https://github.com/alenlukic/pancreator/commit/0a2430770126979ba4b3d0a5aebfe67ea1988095)).
+- Add an authority section to the watch fixture and a stale stamp to the build-stamp reuse case ([0a243077](https://github.com/alenlukic/pancreator/commit/0a2430770126979ba4b3d0a5aebfe67ea1988095)).
+- Derive the target-language bundle fixture from the installed template so the installer suites accept the split shape ([embedded-installation-language-bundle](tests/secondary/embedded-installation-language-bundle.test.ts), [b167a42f](https://github.com/alenlukic/pancreator/commit/b167a42f5df16e5b9f0f9e4c0391170802ed9583)).
+
 ## [5.21.1] - 2026-09-11
 
 ### Fixed

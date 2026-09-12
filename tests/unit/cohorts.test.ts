@@ -11,6 +11,8 @@ import test from 'node:test'
 
 import {
   abandonChunk,
+  claimCohortBaselineCapture,
+  cohortBaselineDirectory,
   cohortDir,
   cohortIsSatisfied,
   cohortSessionForPlanRun,
@@ -22,6 +24,8 @@ import {
   loadCohortState,
   maybeStartDelivery,
   parseCohortPlan,
+  recordCohortBaselines,
+  releaseCohortBaselineClaim,
   retryDeliveryRoute,
   startCohort,
 } from '../../src/lib/cohorts.js'
@@ -135,14 +139,18 @@ function writeChunkRun(root: string, runId: string, status: RunStatus): void {
   )
 }
 
-function boundRun(cohortIndex: number, chunk: string): RunState {
+function boundRun(
+  cohortIndex: number,
+  chunk: string,
+  cohortId = COHORT_ID,
+): RunState {
   return {
     schema_version: 2,
     run_id: `chunk-${chunk}`,
     workflow_slug: 'delivery',
     workflow_snapshot: { path: 'snapshot.json', sha256: 'sha' },
     workspace_root: '.',
-    cohort: { cohort_id: COHORT_ID, cohort_index: cohortIndex, chunk },
+    cohort: { cohort_id: cohortId, cohort_index: cohortIndex, chunk },
     title: chunk,
     status: 'running',
     current_stage: 'implement',
@@ -332,15 +340,19 @@ test('a cohort-bound run cannot be advanced past an unsatisfied predecessor', ()
 
   // Cohort 1 has no predecessor, so it is never blocked.
   assert.doesNotThrow(() => assertCohortRunUnblocked(root, boundRun(1, 'c1')))
-})
 
-test('an unbound run and an unknown session leave prepare untouched', () => {
-  const root = createFixture()
+  // A run outside every cohort, and a run naming a session that was never
+  // written, both leave prepare untouched rather than refusing it.
   const unbound = boundRun(2, 'c2')
 
   delete unbound.cohort
   assert.doesNotThrow(() => assertCohortRunUnblocked(root, unbound))
-  assert.doesNotThrow(() => assertCohortRunUnblocked(root, boundRun(2, 'c2')))
+  assert.doesNotThrow(() =>
+    assertCohortRunUnblocked(
+      root,
+      boundRun(2, 'c2', '10000_Sep-02-0000_cohort-gone'),
+    ),
+  )
 })
 
 test('starting a later cohort is refused while an earlier one is unsatisfied', () => {
@@ -394,6 +406,21 @@ test('starting a later cohort is refused while an earlier one is unsatisfied', (
       error.code === 'COHORT_NOT_FOUND' &&
       error.message.includes('declares no cohort 7'),
   )
+
+  // The refusal names the pan entrypoint of the installation, which for an
+  // embedded harness is the nested path, never './bin/pan'.
+  setInstallationMode(root, 'embedded')
+
+  assert.throws(
+    () => startCohort(root, COHORT_ID, { cohortIndex: 2 }),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'COHORT_PREDECESSOR_UNSATISFIED' &&
+      error.message.includes(
+        `'${EMBEDDED_PAN} cohort integrate ${COHORT_ID}'`,
+      ) &&
+      !error.message.includes("'./bin/pan"),
+  )
 })
 
 test('cohort status names the pan entrypoint of the installation', () => {
@@ -445,90 +472,6 @@ test('cohort status names the pan entrypoint of the installation', () => {
   assert.equal(
     cohortStatus(root, COHORT_ID).integrate_command,
     `${path.join(root, 'bin', 'pan')} cohort integrate ${COHORT_ID}`,
-  )
-})
-
-test('cohort refusals name the pan entrypoint of the installation', () => {
-  const root = createFixture()
-
-  writeSpecs(root)
-  writeCohortState(root, {
-    max_parallel: 1,
-    chunks: [
-      {
-        id: 'c1',
-        title: 'First outcome',
-        cohort_index: 1,
-        child_spec_path: 'runtime/specs/c1.md',
-        depends_on: [],
-        run_id: 'chunk-c1',
-      },
-      {
-        id: 'c3',
-        title: 'Sibling outcome',
-        cohort_index: 1,
-        child_spec_path: 'runtime/specs/c1.md',
-        depends_on: [],
-      },
-      {
-        id: 'c2',
-        title: 'Second outcome',
-        cohort_index: 2,
-        child_spec_path: 'runtime/specs/c2.md',
-        depends_on: ['c1'],
-      },
-    ],
-    cohorts: [
-      { index: 1, chunks: ['c1', 'c3'] },
-      { index: 2, chunks: ['c2'] },
-    ],
-  })
-  writeChunkRun(root, 'chunk-c1', 'running')
-  setInstallationMode(root, 'embedded')
-
-  const namesEmbeddedPan =
-    (code: string, command: string) => (error: unknown) =>
-      error instanceof PanError &&
-      error.code === code &&
-      error.message.includes(
-        `'${EMBEDDED_PAN} cohort ${command} ${COHORT_ID}'`,
-      ) &&
-      !error.message.includes("'./bin/pan")
-
-  assert.throws(
-    () => startCohort(root, COHORT_ID),
-    namesEmbeddedPan('COHORT_PARALLELISM_LIMIT', 'start'),
-  )
-  assert.throws(
-    () => startCohort(root, COHORT_ID, { cohortIndex: 2 }),
-    namesEmbeddedPan('COHORT_PREDECESSOR_UNSATISFIED', 'integrate'),
-  )
-
-  // Every chunk of cohort 1 has a run, so there is nothing left to start.
-  writeCohortState(root, {
-    chunks: [
-      {
-        id: 'c1',
-        title: 'First outcome',
-        cohort_index: 1,
-        child_spec_path: 'runtime/specs/c1.md',
-        depends_on: [],
-        run_id: 'chunk-c1',
-      },
-      {
-        id: 'c2',
-        title: 'Second outcome',
-        cohort_index: 2,
-        child_spec_path: 'runtime/specs/c2.md',
-        depends_on: ['c1'],
-      },
-    ],
-  })
-  writeChunkRun(root, 'chunk-c1', 'succeeded')
-
-  assert.throws(
-    () => startCohort(root, COHORT_ID),
-    namesEmbeddedPan('COHORT_ALREADY_STARTED', 'integrate'),
   )
 })
 
@@ -1179,4 +1122,82 @@ test('a manual cohort init records the handoff on the plan run and clears a fail
     cohort_id: session.cohort_id,
     recorded_at: handoff?.recorded_at,
   })
+})
+
+test('the shared baseline claim admits one live capturer at a time', () => {
+  const root = createFixture()
+  const cohortId = writeCohortState(root).cohort_id
+
+  assert.deepEqual(claimCohortBaselineCapture(root, cohortId, 'run-a'), {
+    status: 'capture',
+  })
+  assert.equal(
+    loadCohortState(root, cohortId).repository_check_baseline_capture?.run_id,
+    'run-a',
+  )
+
+  // Another run cannot capture while the claimant's process is alive.
+  assert.throws(
+    () => claimCohortBaselineCapture(root, cohortId, 'run-b'),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'COHORT_BASELINE_CAPTURE_IN_PROGRESS' &&
+      error.message.includes('run-a'),
+  )
+
+  // The claimant may re-enter its own claim; a stranger's release is a no-op.
+  assert.deepEqual(claimCohortBaselineCapture(root, cohortId, 'run-a'), {
+    status: 'capture',
+  })
+  releaseCohortBaselineClaim(root, cohortId, 'run-b')
+  assert.equal(
+    loadCohortState(root, cohortId).repository_check_baseline_capture?.run_id,
+    'run-a',
+  )
+
+  // A released claim lets another run capture.
+  releaseCohortBaselineClaim(root, cohortId, 'run-a')
+  assert.equal(
+    loadCohortState(root, cohortId).repository_check_baseline_capture,
+    undefined,
+  )
+  assert.deepEqual(claimCohortBaselineCapture(root, cohortId, 'run-b'), {
+    status: 'capture',
+  })
+
+  const pointer = {
+    profile: 'fast',
+    status: 'passed' as const,
+    artifact_path: `${cohortBaselineDirectory(root, cohortId)}/pre-implementation-fast.json`,
+    workspace_fingerprint: 'f'.repeat(64),
+    recorded_at: '2026-09-02T00:00:00.000Z',
+  }
+
+  recordCohortBaselines(root, cohortId, 'run-b', { fast: pointer })
+
+  const recorded = loadCohortState(root, cohortId)
+
+  assert.equal(recorded.repository_check_baseline_capture, undefined)
+  assert.equal(
+    recorded.repository_check_baselines?.fast?.captured_by_run_id,
+    'run-b',
+  )
+
+  // Once recorded, every later claim adopts and a second record is refused.
+  assert.deepEqual(claimCohortBaselineCapture(root, cohortId, 'run-c'), {
+    status: 'adopted',
+    baselines: {
+      fast: {
+        ...pointer,
+        captured_by_run_id: 'run-b',
+        shared_from_cohort: cohortId,
+      },
+    },
+  })
+  assert.throws(
+    () => recordCohortBaselines(root, cohortId, 'run-c', { fast: pointer }),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'COHORT_BASELINE_ALREADY_RECORDED',
+  )
 })

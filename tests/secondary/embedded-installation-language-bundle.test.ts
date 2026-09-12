@@ -59,12 +59,32 @@ function generatedPersonas(lookupPath: string): string[] {
     .sort()
 }
 
-// Rewrite the installed pre-split bundle into the shape /pan-build-docs now
-// generates: LANG-001 without handbooks, LANGSTYLE-001 carrying them, and one
-// librarian style row beside the code rows.
+// The installer accepts both bundle shapes, and the shape the payload ships
+// follows whatever /pan-build-docs last generated for this repository. Each
+// test therefore converts the installed bundle into the shape it exercises
+// instead of assuming the shipped one, so neither case stops proving its
+// contract when the repository's own bundle is regenerated.
+
+// The split shape: LANG-001 without handbooks, LANGSTYLE-001 carrying them,
+// and one librarian style row beside the code rows.
 function splitInstalledBundle(pancreatorDir: string): Array<{ path: string }> {
   const paths = bundlePaths(pancreatorDir)
   const language = readJson<GeneratedPolicy>(paths.language)
+
+  if (existsSync(paths.style)) {
+    const sources =
+      readJson<GeneratedPolicy>(paths.style).guidance_sources ?? []
+
+    assert.ok(sources.length > 0, 'the split bundle carries handbooks')
+    assert.equal(
+      language.guidance_sources,
+      undefined,
+      'the split bundle leaves LANG-001 without handbooks',
+    )
+
+    return sources
+  }
+
   const sources = language.guidance_sources ?? []
 
   assert.ok(sources.length > 0, 'the installed bundle carries handbooks')
@@ -86,6 +106,41 @@ function splitInstalledBundle(pancreatorDir: string): Array<{ path: string }> {
     policies: ['LANGSTYLE-001'],
     generated_by: GENERATED_BY,
   })
+  writeJson(paths.lookup, lookup)
+
+  return sources
+}
+
+// The pre-split shape an installation made before the split still carries:
+// LANG-001 holds the handbooks, no LANGSTYLE-001 exists, and no librarian
+// style row sits beside the code rows.
+function mergeInstalledBundle(pancreatorDir: string): Array<{ path: string }> {
+  const paths = bundlePaths(pancreatorDir)
+  const language = readJson<GeneratedPolicy>(paths.language)
+
+  if (!existsSync(paths.style)) {
+    const sources = language.guidance_sources ?? []
+
+    assert.ok(sources.length > 0, 'the installed bundle carries handbooks')
+
+    return sources
+  }
+
+  const sources = readJson<GeneratedPolicy>(paths.style).guidance_sources ?? []
+
+  assert.ok(sources.length > 0, 'the split bundle carries handbooks')
+
+  writeJson(paths.language, { ...language, guidance_sources: sources })
+  rmSync(paths.style)
+
+  const lookup = readJson<LookupTable>(paths.lookup)
+
+  lookup.rows = lookup.rows.filter(
+    (row) =>
+      row.generated_by !== GENERATED_BY ||
+      row.persona !== 'librarian' ||
+      row.stage !== 'style',
+  )
   writeJson(paths.lookup, lookup)
 
   return sources
@@ -135,13 +190,9 @@ test('embedded refresh preserves a pre-split target language bundle', () => {
   const paths = bundlePaths(pancreatorDir)
 
   try {
-    const language = readJson<GeneratedPolicy>(paths.language)
+    const sources = mergeInstalledBundle(pancreatorDir)
     const handbook = readFileSync(paths.handbook, 'utf8')
 
-    assert.ok(
-      language.guidance_sources?.length,
-      'the installed bundle is pre-split',
-    )
     assert.equal(existsSync(paths.style), false)
     writeFileSync(paths.handbook, `${handbook}${TARGET_NOTE}`)
 
@@ -150,7 +201,8 @@ test('embedded refresh preserves a pre-split target language bundle', () => {
     assert.equal(result.status, 0, result.stderr)
     assert.deepEqual(
       readJson<GeneratedPolicy>(paths.language).guidance_sources,
-      language.guidance_sources,
+      sources,
+      'LANG-001 MUST keep carrying the handbook sources',
     )
     assert.equal(existsSync(paths.style), false)
     assert.equal(

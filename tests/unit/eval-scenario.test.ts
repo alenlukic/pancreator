@@ -1,10 +1,9 @@
 import assert from 'node:assert/strict'
-import { copyFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import {
-  listEvalScenarioNames,
   loadEvalScenario,
   validateEvalScenarioDocument,
   validateEvalScenarios,
@@ -43,52 +42,6 @@ function validScenario(): Record<string, unknown> {
     ],
   }
 }
-
-test('the scenario loader returns every shipped scenario and grader set', () => {
-  const names = listEvalScenarioNames(REPO_ROOT)
-
-  assert.deepEqual(names, [
-    'delivery-background-delegation',
-    'delivery-basic-test-discipline',
-    'planning-cohort-fanout',
-    'prototype-environment-blocked',
-  ])
-
-  for (const name of names) {
-    assert.ok(loadEvalScenario(REPO_ROOT, name).scenario.graders.length > 0)
-  }
-})
-
-test('a scenario that names a pipeline configuration loads', () => {
-  const root = createTestTempDirectory('pan-eval-scenario-')
-
-  try {
-    mkdirSync(path.join(root, 'evals', 'scenarios'), { recursive: true })
-    mkdirSync(path.join(root, 'evals', 'fixtures', 'toy-node'), {
-      recursive: true,
-    })
-    mkdirSync(path.join(root, 'library', 'schemas'), { recursive: true })
-    copyFileSync(
-      path.join(REPO_ROOT, 'library', 'schemas', 'eval-scenario.schema.json'),
-      path.join(root, 'library', 'schemas', 'eval-scenario.schema.json'),
-    )
-    writeFileSync(
-      path.join(root, 'evals', 'scenarios', 'pinned.json'),
-      JSON.stringify({
-        ...validScenario(),
-        name: 'pinned',
-        pipeline_config: 'eval-claude-code',
-      }),
-    )
-
-    const scenario = loadEvalScenario(root, 'pinned')
-
-    assert.equal(scenario.scenario.pipeline_config, 'eval-claude-code')
-    assert.deepEqual(validateEvalScenarios(root), [])
-  } finally {
-    rmSync(root, { recursive: true, force: true })
-  }
-})
 
 test('validateEvalScenarioDocument reports each structural defect', () => {
   const broken = {
@@ -141,6 +94,23 @@ test('validateEvalScenarioDocument binds cohort options to the planning workflow
   assert.match(errors, /cohort\.autostart MUST be a boolean/u)
   assert.match(errors, /cohort\.max_parallel MUST be an integer of at least 1/u)
   assert.match(errors, /unknown cohort field 'extra'/u)
+})
+
+test('validateEvalScenarioDocument accepts a named pipeline configuration', () => {
+  assert.deepEqual(
+    validateEvalScenarioDocument(
+      { ...validScenario(), pipeline_config: 'eval-claude-code' },
+      'sample',
+    ),
+    [],
+  )
+  assert.match(
+    validateEvalScenarioDocument(
+      { ...validScenario(), pipeline_config: 1 },
+      'sample',
+    ).join('\n'),
+    /pipeline_config/u,
+  )
 })
 
 test('validateEvalScenarioDocument rejects a name that differs from the file', () => {

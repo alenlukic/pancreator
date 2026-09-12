@@ -9,7 +9,7 @@ import {
   buildReviewClosure,
   resolveReviewScope,
 } from '../../src/lib/review-scope.js'
-import { createFixture } from '../helpers.js'
+import { createFixture } from '../fixture-template.js'
 
 function git(root: string, args: string[]): string {
   return execFileSync(

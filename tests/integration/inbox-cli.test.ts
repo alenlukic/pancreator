@@ -1,11 +1,10 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
+import { mkdirSync, utimesSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import { createFixture } from '../helpers.js'
-import { makeWorkflowRunId } from '../../src/lib/naming.js'
+import { createFixture } from '../fixture-template.js'
 
 const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
 
@@ -22,39 +21,12 @@ function writeInboxFile(
   utimesSync(filePath, modifiedAt, modifiedAt)
 }
 
-test('pan inbox lists queued items with stable output', () => {
+// The command reads through listInbox and prints renderInbox, both covered in
+// tests/unit/inbox.test.ts. What only the process boundary proves is the JSON
+// item shape an operator tool parses.
+test('pan inbox --json reports the queued item shape', () => {
   const root = createFixture()
-  const modifiedAt = new Date('2024-02-01T10:00:00.000Z')
-  const runId = makeWorkflowRunId(modifiedAt, 'inbox-cli')
 
-  mkdirSync(path.join(root, 'runtime', 'logs', 'workflows', runId), {
-    recursive: true,
-  })
-  writeInboxFile(
-    root,
-    `${runId}-verify-warnings.md`,
-    ['```markdown', '# Ignored', '```', '', '# Warning summary', ''].join('\n'),
-    modifiedAt,
-  )
-  writeInboxFile(
-    root,
-    'heading-free.md',
-    'No heading.\n',
-    new Date('2024-02-02T10:00:00.000Z'),
-  )
-
-  writeInboxFile(
-    root,
-    'oldest.md',
-    '# Oldest\n',
-    new Date('2024-01-01T12:00:00.000Z'),
-  )
-  writeInboxFile(
-    root,
-    'middle.md',
-    '# Middle\n',
-    new Date('2024-01-02T12:00:00.000Z'),
-  )
   writeInboxFile(
     root,
     'newest.md',
@@ -63,70 +35,17 @@ test('pan inbox lists queued items with stable output', () => {
   )
   writeInboxFile(
     root,
-    'ignore.txt',
-    'skip\n',
-    new Date('2024-03-03T12:00:00.000Z'),
-  )
-  writeInboxFile(
-    root,
-    'nested/ignored.md',
-    '# Nested\n',
-    new Date('2024-03-03T12:00:00.000Z'),
-  )
-
-  for (const status of ['active', 'canceled', 'complete', 'archive']) {
-    const controlPath = path.join(
-      root,
-      'runtime',
-      'inbox',
-      status,
-      `${status}-ignored.md`,
-    )
-
-    mkdirSync(path.dirname(controlPath), { recursive: true })
-    writeFileSync(controlPath, `# ${status}\n`, 'utf8')
-  }
-
-  writeFileSync(
-    path.join(root, 'runtime', 'inbox', 'legacy-ignored.md'),
-    '# Legacy\n',
-    'utf8',
-  )
-
-  const expectedOrder = [
-    'newest.md',
-    'heading-free.md',
-    `${runId}-verify-warnings.md`,
-    'middle.md',
     'oldest.md',
-  ]
-  const populated = execFileSync(process.execPath, [CLI, 'inbox'], {
-    cwd: root,
-    encoding: 'utf8',
-  })
-
-  assert.match(
-    populated,
-    new RegExp(
-      `${runId}-verify-warnings\\.md\\tWarning summary\\t${modifiedAt.toISOString()}\\t${runId}`,
-      'u',
-    ),
-  )
-  assert.match(populated, /heading-free\.md\theading-free\.md\t[^\t]+\t-\n/u)
-
-  const lines = populated.trim().split('\n')
-
-  assert.equal(lines[0], 'FILE\tTITLE\tMODIFIED\tRUN')
-  assert.deepEqual(
-    lines.slice(1).map((line) => line.split('\t')[0]),
-    expectedOrder,
+    '# Oldest\n',
+    new Date('2024-01-01T12:00:00.000Z'),
   )
 
-  const jsonOutput = execFileSync(process.execPath, [CLI, 'inbox', '--json'], {
-    cwd: root,
-    encoding: 'utf8',
-  })
-  const items = JSON.parse(jsonOutput) as Array<{
+  const items = JSON.parse(
+    execFileSync(process.execPath, [CLI, 'inbox', '--json'], {
+      cwd: root,
+      encoding: 'utf8',
+    }),
+  ) as Array<{
     file_name: string
     title: string
     modified_at: string
@@ -135,7 +54,7 @@ test('pan inbox lists queued items with stable output', () => {
 
   assert.deepEqual(
     items.map((item) => item.file_name),
-    expectedOrder,
+    ['newest.md', 'oldest.md'],
   )
   assert.deepEqual(Object.keys(items[0] ?? {}), [
     'file_name',
@@ -143,20 +62,4 @@ test('pan inbox lists queued items with stable output', () => {
     'modified_at',
     'run_id',
   ])
-
-  rmSync(path.join(root, 'runtime', 'inbox'), { recursive: true, force: true })
-
-  const emptyDirectory = execFileSync(process.execPath, [CLI, 'inbox'], {
-    cwd: root,
-    encoding: 'utf8',
-  })
-
-  assert.equal(emptyDirectory, 'Inbox is empty.\n')
-
-  const emptyJson = execFileSync(process.execPath, [CLI, 'inbox', '--json'], {
-    cwd: root,
-    encoding: 'utf8',
-  })
-
-  assert.equal(emptyJson.trim(), '[]')
 })

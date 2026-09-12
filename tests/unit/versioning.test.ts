@@ -8,7 +8,7 @@ import {
   nextSemanticVersion,
   validateReleaseMetadata,
 } from '../../src/lib/versioning.js'
-import { createFixture } from '../helpers.js'
+import { createFixture } from '../fixture-template.js'
 
 test('Semantic Versioning bump calculation returns exact next stable versions', () => {
   assert.equal(isSemanticVersion('2.0.0'), true)

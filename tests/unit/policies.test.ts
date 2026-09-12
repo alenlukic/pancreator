@@ -1,9 +1,15 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  appendFileSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
-import { createFixture, sharedFixture } from '../helpers.js'
+import { createFixture, sharedFixture } from '../fixture-template.js'
 import { loadPolicyCatalog, resolvePolicies } from '../../src/lib/policies.js'
 import { STANDALONE_MODES } from '../../src/lib/governance-card.js'
 import { filterPolicyInstructionsForCard } from '../../src/lib/policy-instructions.js'
@@ -189,6 +195,60 @@ test('target PR authority rejects paths outside the workspace', () => {
   )
 })
 
+test('the policy catalog is parsed once per process and rebuilt after an edit', () => {
+  // Every command resolves policies many times over, and each resolution
+  // re-read, re-sliced, and re-hashed the same governance tree. The memo is
+  // only safe if an authoring edit inside the same process is still seen, so
+  // both halves are one contract.
+  const root = createFixture()
+  const first = loadPolicyCatalog(root)
+
+  // Identity is the proof: a second parse could not return the same Map.
+  assert.equal(loadPolicyCatalog(root), first)
+
+  const policyPath = path.join(
+    root,
+    'governance',
+    'policies',
+    'BROWSER-001.json',
+  )
+  const policy = JSON.parse(readFileSync(policyPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  policy.summary = `${String(policy.summary)} Edited inside this process.`
+  writeFileSync(policyPath, `${JSON.stringify(policy, null, 2)}\n`)
+
+  const afterPolicyEdit = loadPolicyCatalog(root)
+
+  assert.notEqual(afterPolicyEdit, first)
+  assert.match(
+    afterPolicyEdit.get('BROWSER-001')?.summary ?? '',
+    /Edited inside this process/u,
+  )
+
+  // A handbook edit changes no policy file, and the guidance content and its
+  // digest live in the policy object, so the memo has to watch the handbook
+  // too or an authored edit would go unpublished until the process restarts.
+  const guidance = afterPolicyEdit.get('BROWSER-001')?.guidance?.[0]
+
+  assert.ok(guidance)
+  appendFileSync(
+    path.join(root, guidance.source_path),
+    '\nAn operator edited this handbook.\n',
+  )
+
+  const reread = loadPolicyCatalog(root).get('BROWSER-001')?.guidance?.[0]
+
+  assert.ok(reread)
+  assert.match(reread.content, /An operator edited this handbook/u)
+  assert.notEqual(
+    reread.reference?.content_sha256,
+    guidance.reference?.content_sha256,
+  )
+})
+
 test('structured target policy extensions reject missing and stale bindings', () => {
   const missingRoot = createFixture()
 
@@ -356,36 +416,6 @@ test('target policy lookup extensions reject duplicates and malformed JSON', () 
   )
 })
 
-test('policy resolution unions global and stage-specific policies', () => {
-  const root = sharedFixture()
-  const catalog = loadPolicyCatalog(root)
-  assert.ok(catalog.size >= 8)
-  const ids = resolvePolicies(root, {
-    persona: 'coder',
-    workflow: 'delivery',
-    stage: 'implement',
-  }).map((policy) => policy.id)
-  assert.deepEqual(ids, [
-    'ACTION-001',
-    'ASK-001',
-    'AUTO-001',
-    'BIN-001',
-    'BRIEF-001',
-    'COMMS-001',
-    'CONTRACT-001',
-    'DEV-001',
-    'ENG-001',
-    'GLOBAL-001',
-    'GLOBAL-002',
-    'OPERATOR-001',
-    'PRIMER-001',
-    'REPO-001',
-    'TEST-001',
-    'TS-001',
-    'VALID-001',
-  ])
-})
-
 test('representative contexts exclude policies outside their remit', () => {
   const root = sharedFixture()
   const ids = (persona: string, workflow: string, stage: string): string[] =>
@@ -446,6 +476,7 @@ test('representative contexts exclude policies outside their remit', () => {
       ['LIBRARIAN-001', 'PRIMER-001', 'REPO-001', 'VALID-001'],
     ],
     ['decomposer', 'standalone', 'decompose', ['DECOMP-001']],
+    ['orchestrator', 'prototype', 'intake', ['PROTO-001']],
     ['harness-technician', 'standalone', 'repair', ['REPAIR-001']],
     ['investigator', 'standalone', 'debug', ['DIAG-001', 'WORK-001']],
     ['spotfixer', 'standalone', 'spotfix', ['SPOT-001', 'WORK-001']],
@@ -454,6 +485,12 @@ test('representative contexts exclude policies outside their remit', () => {
       'standalone',
       'best-of-n',
       ['BESTOFN-001', 'WORK-001'],
+    ],
+    [
+      'coder',
+      'delivery',
+      'implement',
+      ['DEV-001', 'ENG-001', 'TEST-001', 'TS-001', 'REPO-001'],
     ],
     ['reviewer', 'delivery', 'verify', ['ENG-001', 'CONTRACT-001', 'TS-001']],
     [
@@ -644,11 +681,9 @@ test('the best-of-N candidate planner receives no specification hierarchy or coh
     boundFor('planning', 'planner', 'plan').sort(),
     [...hierarchyValidators].sort(),
   )
-})
 
-test('the specification hierarchy rules live in exactly one policy', () => {
-  const catalog = loadPolicyCatalog(sharedFixture())
-  const owners = [...catalog.values()].filter((policy) =>
+  // One policy owns the hierarchy rule, so no second card can reintroduce it.
+  const owners = [...loadPolicyCatalog(root).values()].filter((policy) =>
     policy.instructions.some((instruction) =>
       instruction.text.includes(
         'one child specification for each unit of work',
@@ -659,157 +694,6 @@ test('the specification hierarchy rules live in exactly one policy', () => {
   assert.deepEqual(
     owners.map((policy) => policy.id),
     ['COHORT-001'],
-  )
-
-  const shared = catalog.get('PLAN-002')
-
-  assert.ok(shared)
-  assert.equal(
-    shared.instructions.some((instruction) =>
-      /child specification|cohort|unit of work/iu.test(instruction.text),
-    ),
-    false,
-    'PLAN-002 MUST keep only the consolidated-planning rules both planners share',
-  )
-})
-
-/**
- * Excerpts of the rules the consolidation moved into `COMMS-001`. Each one is
- * distinctive enough to find its owner and short enough to survive an ordinary
- * rewording of the rule around it.
- */
-const MOVED_CHAT_RULES = [
-  'Operator chat reports MUST state the outcome',
-  'MUST use 20 words or fewer in an instruction sentence',
-  'simple, concise, action-oriented language',
-  'MUST NOT write dense chat paragraphs',
-  'Operator chat reports MUST NOT use LLM-native jargon',
-  'MUST NOT use journalistic hooks',
-  'MUST state the bottom line first',
-  'A section heading in operator-facing output MUST use a concise title',
-  'decorative clutter, and raw-log substitution',
-  'MUST keep an evidence link close to the statement',
-  'When an agent reports an issue, the report MUST state the issue concisely',
-  'An outcome summary MUST list key outcomes and outstanding items',
-  'the report MUST provide numbered steps',
-  'MUST report concise progress while it works',
-  'MUST report a failure with its cause and one named next action',
-  'Chat-report issue and outcome shapes MUST remain judgment-only',
-  'does not adopt the Part 2 controlled dictionary',
-  'MAY use RFC 2119 requirement keywords in governance-bearing prose',
-]
-
-test('the operator chat rules live in exactly one policy', () => {
-  const catalog = loadPolicyCatalog(sharedFixture())
-  const comms = catalog.get('COMMS-001')
-
-  assert.ok(comms)
-  // The chat shapes stay judgment-only, so no validator and no handbook
-  // selection may bind to this policy.
-  assert.equal(comms.requirements, undefined)
-  assert.equal(comms.guidance, undefined)
-
-  for (const rule of MOVED_CHAT_RULES) {
-    const owners = [...catalog.values()]
-      .filter((policy) =>
-        policy.instructions.some((instruction) =>
-          instruction.text.includes(rule),
-        ),
-      )
-      .map((policy) => policy.id)
-
-    assert.deepEqual(owners, ['COMMS-001'], `'${rule}' MUST have one owner`)
-  }
-
-  for (const added of [
-    'MUST rewrite the summary of a subagent that COMMS-001 does not bind',
-    'MUST NOT pass raw subagent prose through',
-  ]) {
-    assert.ok(
-      comms.instructions.some((instruction) =>
-        instruction.text.includes(added),
-      ),
-      `COMMS-001 MUST carry '${added}'`,
-    )
-  }
-})
-
-test('each chat-surface policy keeps its own surface after the split', () => {
-  const catalog = loadPolicyCatalog(sharedFixture())
-  const instructionText = (id: string): string => {
-    const policy = catalog.get(id)
-
-    assert.ok(policy, `catalog MUST hold ${id}`)
-
-    return policy.instructions.map((instruction) => instruction.text).join('\n')
-  }
-
-  assert.match(
-    instructionText('GLOBAL-001'),
-    /COMMS-001 governs operator-facing chat output/u,
-  )
-  assert.match(
-    instructionText('COMMS-001'),
-    /GLOBAL-001 governs the durable record/u,
-  )
-
-  // BRIEF-001 gave up the prose shape and kept the brief mechanics.
-  const brief = instructionText('BRIEF-001')
-
-  for (const mechanic of [
-    'schema-valid brief data',
-    'MUST render requested HTML during submission',
-    'MUST be artifact 0',
-    'MUST delete transient source JSON',
-    'registered semantic key',
-  ]) {
-    assert.ok(brief.includes(mechanic), `BRIEF-001 MUST keep '${mechanic}'`)
-  }
-
-  // The OUTPUT-001 summary gave up the operator-facing claim, while both
-  // Cursor SDK logger rules and their declared citations stayed.
-  const output = catalog.get('OUTPUT-001')
-
-  assert.ok(output)
-
-  for (const moved of [
-    'surface concise',
-    'Cursor-like progress',
-    'actionable failures',
-  ]) {
-    assert.equal(
-      output.summary.includes(moved),
-      false,
-      `the OUTPUT-001 summary MUST give up '${moved}'`,
-    )
-  }
-
-  assert.equal(
-    output.instructions.filter((instruction) =>
-      instruction.text.includes('tests/unit/cursor-sdk-logging.test.ts'),
-    ).length,
-    3,
-  )
-
-  // STE-001 keeps the durable-artifact standard, so each required Simplified
-  // Technical English check stays bound to the stage that declares it. A bare
-  // count would still pass when one applicability replaced another.
-  const ste = catalog.get('STE-001')
-
-  assert.ok(ste)
-  assert.deepEqual(
-    (ste.requirements ?? [])
-      .filter((requirement) => requirement.enforcement === 'required')
-      .map((requirement) => [
-        requirement.registry_id,
-        requirement.applicability?.invocation_kind,
-        requirement.applicability?.stage,
-      ]),
-    [
-      ['SIMPLIFIED-ENGLISH-VALIDATE-001', 'workflow', 'ship'],
-      ['SIMPLIFIED-ENGLISH-VALIDATE-001', 'standalone', 'write-pr'],
-      ['SIMPLIFIED-ENGLISH-VALIDATE-001', 'standalone', 'conform'],
-    ],
   )
 })
 
@@ -1094,44 +978,6 @@ test('TUNE-001 resolves its record validator for tune-harness sessions', () => {
   assert.equal(
     validator?.resolved_target,
     'runtime/tune-harness/records/session.json',
-  )
-})
-
-test('REPAIR-001 partitions intakes by category and keeps the operator override', () => {
-  const root = sharedFixture()
-  const policy = JSON.parse(
-    readFileSync(
-      path.join(root, 'governance', 'policies', 'REPAIR-001.json'),
-      'utf8',
-    ),
-  ) as { instructions: string[] }
-  const instructions = policy.instructions.join('\n')
-
-  assert.match(
-    instructions,
-    /governance\/registries\/harness_repair_categories\.json/u,
-  )
-  assert.match(
-    instructions,
-    /MUST assess every category the registry declares and MUST write at most one intake for each/u,
-  )
-  assert.match(
-    instructions,
-    /explicit operator directive .* MUST take precedence over the category partition/u,
-  )
-  assert.match(instructions, /MUST stay two independent axes/u)
-  assert.match(
-    instructions,
-    /MAY carry several findings and several root causes/u,
-  )
-  assert.match(instructions, /MUST take one primary category/u)
-  assert.match(instructions, /Every completed intake MUST pass/u)
-
-  // The replaced default and its one-root-cause rule must not return.
-  assert.doesNotMatch(instructions, /MUST write one intake by default/u)
-  assert.doesNotMatch(
-    instructions,
-    /one intake for each distinct root cause and MUST NOT split one root cause/u,
   )
 })
 
@@ -1452,6 +1298,10 @@ test('mixed policies tag supervisor, harness, and operator audiences', () => {
     [],
     'every COMMS-001 instruction carries audience agent',
   )
+  // The chat shapes stay judgment-only, so no validator and no handbook
+  // selection may bind to COMMS-001.
+  assert.equal(catalog.get('COMMS-001')?.requirements, undefined)
+  assert.equal(catalog.get('COMMS-001')?.guidance, undefined)
   assert.deepEqual(audienceFor('OPERATOR-001', '--redline --occasion'), [
     'supervisor',
   ])

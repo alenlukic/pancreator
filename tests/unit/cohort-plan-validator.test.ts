@@ -9,10 +9,31 @@ import {
   validateCohortPlan,
 } from '../../src/lib/validators/cohort-plan.js'
 import type { HandlerInput } from '../../src/lib/requirements/types.js'
-import { createFixture, writeJson } from '../helpers.js'
+import { writeJson } from '../helpers.js'
+import { createTestTempDirectory } from '../temp.js'
 
 const PARENT_PATH = 'runtime/specs/parent-specification.md'
 const DEFAULT_PARENT_BODY = 'Parent record of the request.\n'
+
+// Both validators read only the plan JSON, the parent specification, and the
+// child specifications under `input.root`. A repository fixture clone carries
+// governance, library, docs, and Git history that neither one opens, so the
+// file shares one bare scratch root and gives each case its own directory in
+// it: no clone, and no file one case wrote deciding another.
+let scratchRoot: string | null = null
+let caseCount = 0
+
+function validatorRoot(): string {
+  scratchRoot ??= createTestTempDirectory('cohort-plan-validator-')
+
+  caseCount += 1
+
+  const root = path.join(scratchRoot, `case-${caseCount}`)
+
+  mkdirSync(root, { recursive: true })
+
+  return root
+}
 
 function parentText(body: string): string {
   return `# Parent specification\n\n${body}`
@@ -173,7 +194,7 @@ function issueCodes(
 }
 
 test('cohort-plan-validate accepts an acyclic two-cohort plan', () => {
-  const root = createFixture()
+  const root = validatorRoot()
 
   writeParent(root)
   mkdirSync(path.join(root, 'runtime', 'specs'), { recursive: true })
@@ -202,7 +223,7 @@ test('cohort-plan-validate accepts an acyclic two-cohort plan', () => {
 })
 
 test('cohort-plan-validate rejects a dependency inside one cohort', () => {
-  const root = createFixture()
+  const root = validatorRoot()
 
   writeParent(root)
   mkdirSync(path.join(root, 'runtime', 'specs'), { recursive: true })
@@ -235,7 +256,7 @@ test('cohort-plan-validate rejects a dependency inside one cohort', () => {
 })
 
 test('cohort-plan-validate rejects a forward dependency and a cycle', () => {
-  const root = createFixture()
+  const root = validatorRoot()
 
   writeParent(root)
   mkdirSync(path.join(root, 'runtime', 'specs'), { recursive: true })
@@ -285,7 +306,7 @@ test('cohort-plan-validate rejects a forward dependency and a cycle', () => {
 })
 
 test('cohort-plan-validate rejects a chunk without a child specification', () => {
-  const root = createFixture()
+  const root = validatorRoot()
 
   writeParent(root)
 
@@ -303,7 +324,7 @@ test('cohort-plan-validate rejects a chunk without a child specification', () =>
 })
 
 test('cohort-plan-validate requires depends_on on every chunk and refuses an empty cohort', () => {
-  const root = createFixture()
+  const root = validatorRoot()
 
   writeParent(root)
   mkdirSync(path.join(root, 'runtime', 'specs'), { recursive: true })
@@ -367,7 +388,7 @@ test('cohort-plan-validate requires depends_on on every chunk and refuses an emp
 })
 
 test('cohort-plan-validate requires a serial justification for a single chunk', () => {
-  const root = createFixture()
+  const root = validatorRoot()
 
   writeParent(root)
   mkdirSync(path.join(root, 'runtime', 'specs'), { recursive: true })
@@ -399,7 +420,7 @@ test('cohort-plan-validate requires a serial justification for a single chunk', 
 })
 
 test('child-spec-validate accepts complete child specifications', () => {
-  const root = createFixture()
+  const root = validatorRoot()
 
   writeParent(root)
   mkdirSync(path.join(root, 'runtime', 'specs'), { recursive: true })
@@ -428,7 +449,7 @@ test('child-spec-validate accepts complete child specifications', () => {
 })
 
 test('child-spec-validate rejects a missing section and a malformed parent reference', () => {
-  const root = createFixture()
+  const root = validatorRoot()
 
   writeParent(root)
   mkdirSync(path.join(root, 'runtime', 'specs'), { recursive: true })
@@ -455,7 +476,7 @@ test('child-spec-validate rejects a missing section and a malformed parent refer
 })
 
 test('child-spec-validate rejects a parent digest computed on the untrimmed file', () => {
-  const root = createFixture()
+  const root = validatorRoot()
 
   writeParent(root)
   mkdirSync(path.join(root, 'runtime', 'specs'), { recursive: true })
@@ -501,7 +522,7 @@ test('child-spec-validate rejects a parent digest computed on the untrimmed file
 })
 
 test('child-spec-validate rejects a pasted parent body', () => {
-  const root = createFixture()
+  const root = validatorRoot()
 
   const parentBody = Array.from(
     { length: 60 },
@@ -529,7 +550,7 @@ test('child-spec-validate rejects a pasted parent body', () => {
 })
 
 test('child-spec-validate rejects an item traced zero times or twice', () => {
-  const root = createFixture()
+  const root = validatorRoot()
 
   writeParent(root)
   mkdirSync(path.join(root, 'runtime', 'specs'), { recursive: true })
@@ -559,7 +580,7 @@ test('child-spec-validate rejects an item traced zero times or twice', () => {
 })
 
 test('child-spec-validate accepts a shared item two chunks name and still refuses an undeclared double trace', () => {
-  const root = createFixture()
+  const root = validatorRoot()
 
   writeParent(root)
   mkdirSync(path.join(root, 'runtime', 'specs'), { recursive: true })
@@ -597,7 +618,7 @@ test('child-spec-validate accepts a shared item two chunks name and still refuse
 })
 
 test('child-spec-validate refuses a shared item no child names and a shared id the specification does not declare', () => {
-  const root = createFixture()
+  const root = validatorRoot()
 
   writeParent(root)
   mkdirSync(path.join(root, 'runtime', 'specs'), { recursive: true })
@@ -640,7 +661,7 @@ test('child-spec-validate refuses a shared item no child names and a shared id t
 })
 
 test('child-spec-validate traces string constraints, exclusions, and questions by their leading identifier', () => {
-  const root = createFixture()
+  const root = validatorRoot()
 
   writeParent(root)
   mkdirSync(path.join(root, 'runtime', 'specs'), { recursive: true })
@@ -680,7 +701,7 @@ test('child-spec-validate traces string constraints, exclusions, and questions b
 })
 
 test('child-spec-validate reports an originating item that carries no identifier', () => {
-  const root = createFixture()
+  const root = validatorRoot()
 
   writeParent(root)
   mkdirSync(path.join(root, 'runtime', 'specs'), { recursive: true })
@@ -730,7 +751,7 @@ test('child-spec-validate reports an originating item that carries no identifier
 })
 
 test('child-spec-validate accepts a deferred question that no chunk owns', () => {
-  const root = createFixture()
+  const root = validatorRoot()
 
   writeParent(root)
   mkdirSync(path.join(root, 'runtime', 'specs'), { recursive: true })

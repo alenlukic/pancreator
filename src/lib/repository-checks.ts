@@ -12,6 +12,12 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 import { PanError, invariant } from './errors.js'
+import {
+  gateCacheKey,
+  gateCacheStore,
+  gateCacheableSnapshot,
+  repositoryCheckGateCommand,
+} from './gate-cache.js'
 import { gitWorkspaceSnapshot } from './git.js'
 import {
   appendJsonLine,
@@ -20,6 +26,7 @@ import {
   readJson,
   readText,
   resolveInside,
+  writeTextAtomic,
 } from './io.js'
 import {
   configuredWorkspaceRoot,
@@ -67,6 +74,13 @@ export interface RepositoryCheckProfile {
   environment_probes?: string[]
   probes: string[]
   commands: string[]
+  /**
+   * The profile declares its commands independent of one another, so the
+   * asynchronous runner MAY execute them together. Probes stay serial because
+   * they are preconditions, and the synchronous runner ignores the flag: the
+   * gate path it serves is a synchronous call path by design.
+   */
+  concurrent?: boolean
 }
 
 export interface RepositoryChecksConfig {
@@ -130,6 +144,8 @@ export interface RepositoryCheckStreamingOptions extends RepositoryCheckRunOptio
   ) => void
   on_stdout?: (chunk: string) => void
   on_stderr?: (chunk: string) => void
+  /** Called once the entry settles, whether it passed, failed, or timed out. */
+  on_close?: () => void
 }
 
 export interface RepositoryCheckBaselineArtifact {
@@ -139,6 +155,12 @@ export interface RepositoryCheckBaselineArtifact {
   profile: string
   workspace_fingerprint: string
   recorded_at: string
+  /**
+   * Content digest of the verification configuration the capture ran under.
+   * Another unit of work reuses an artifact only when this matches its own,
+   * so an artifact written before reuse existed is never adopted.
+   */
+  checks_config_sha256?: string
   /**
    * Uncommitted workspace paths at capture time, so an inherited failure is
    * attributable instead of reading as pre-existing repository state. Capped;
@@ -836,11 +858,19 @@ export function loadRepositoryChecks(root: string): RepositoryChecksConfig {
       `${filePath}.profiles.${name}.timeout_ms`,
     )
 
+    invariant(
+      rawProfile.concurrent === undefined ||
+        typeof rawProfile.concurrent === 'boolean',
+      `${filePath}.profiles.${name}.concurrent MUST be a boolean when present.`,
+      { code: 'INVALID_REPOSITORY_CHECKS' },
+    )
+
     profiles[name] = {
       ...(typeof rawProfile.description === 'string'
         ? { description: rawProfile.description }
         : {}),
       ...(timeoutMs !== undefined ? { timeout_ms: timeoutMs } : {}),
+      ...(rawProfile.concurrent === true ? { concurrent: true } : {}),
       environment_probes: stringArray(
         rawProfile.environment_probes ?? [],
         `${filePath}.profiles.${name}.environment_probes`,
@@ -899,14 +929,19 @@ export function recordAgentRepositoryCheck(
   worktreeName: string,
   result: RepositoryCheckResult,
   startedAt: string,
+  initiator: RepositoryCheckInitiator = 'agent',
 ): string[] {
   return recordAgentRepositoryCheckForRuns(
     root,
     liveRunsBoundToWorktree(root, worktreeName).map((state) => state.run_id),
     result,
     startedAt,
+    initiator,
   )
 }
+
+/** Who started a recorded profile execution. */
+export type RepositoryCheckInitiator = 'agent' | 'harness'
 
 /**
  * Append an agent-run profile execution to the named runs. A worker that names
@@ -914,12 +949,17 @@ export function recordAgentRepositoryCheck(
  * whose workspace is not a managed worktree. The record names the run's
  * current invocation, so the per-invocation "fast at most once" rule can be
  * counted from the file.
+ *
+ * `initiator` separates work the harness started for itself, such as the
+ * speculative release-profile prefetch, from work an agent ran. Only agent
+ * runs count against the per-invocation allowance.
  */
 export function recordAgentRepositoryCheckForRuns(
   root: string,
   runIds: string[],
   result: RepositoryCheckResult,
   startedAt: string,
+  initiator: RepositoryCheckInitiator = 'agent',
 ): string[] {
   const recorded: string[] = []
   let fingerprint: string | null = null
@@ -938,12 +978,103 @@ export function recordAgentRepositoryCheckForRuns(
       status: result.status,
       duration_ms: result.total_duration_ms,
       started_at: startedAt,
-      invoked_by: 'agent',
+      invoked_by: initiator,
     })
     recorded.push(evidence.relative)
   }
 
   return recorded
+}
+
+/** What a stored clean pass left behind, for the caller's own reporting. */
+export interface RecordedProfileGatePass {
+  cache_key: string
+  evidence_path: string
+}
+
+export interface RecordProfileGatePassOptions {
+  /** Runs the execution is evidence for. The first one holds the log. */
+  run_ids: string[]
+  /** Git workspace fingerprint observed immediately before the run started. */
+  fingerprint_before: string | null
+  started_at: string
+}
+
+/**
+ * Store a clean command-line profile execution where the submission gate looks
+ * for a recorded pass (`DEV-001`).
+ *
+ * The gate and this runner execute the identical resolved command through the
+ * same code, so a pass here answers the gate's question — provided the
+ * workspace never moved. The fingerprint bracket is what proves that: an
+ * identical Git-visible snapshot before and after the run. Anything weaker
+ * stores nothing and the gate executes the profile as it does today. A
+ * non-Git workspace fingerprints as one constant and is never stored, and an
+ * invocation that named no run has no evidence path inside a run to cite.
+ */
+export function recordProfileGatePass(
+  root: string,
+  profileName: string,
+  result: RepositoryCheckResult,
+  options: RecordProfileGatePassOptions,
+): RecordedProfileGatePass | null {
+  const runId = options.run_ids[0]
+
+  if (
+    runId === undefined ||
+    result.status !== 'passed' ||
+    options.fingerprint_before === null ||
+    result.results.some((entry) => entry.timed_out)
+  ) {
+    return null
+  }
+
+  const snapshot = gitWorkspaceSnapshot(result.workspace_root)
+
+  if (
+    !gateCacheableSnapshot(snapshot) ||
+    snapshot.fingerprint !== options.fingerprint_before
+  ) {
+    return null
+  }
+
+  const command = repositoryCheckGateCommand(profileName)
+  const cacheKey = gateCacheKey(root, snapshot.fingerprint, command)
+  const evidence = resolveRunLayout(root, runId).evidence(
+    `agent-repository-check-${profileName}-${snapshot.fingerprint.slice(0, 12)}.log`,
+  )
+
+  // The gate copies these bytes forward as its own evidence, so the log
+  // carries the same header and body a gate execution would have written.
+  writeTextAtomic(
+    evidence.absolute,
+    [
+      `$ ${command}`,
+      `started_at=${options.started_at}`,
+      `finished_at=${new Date().toISOString()}`,
+      `workspace_fingerprint=${snapshot.fingerprint}`,
+      'exit_code=0',
+      'invoked_by=command-line',
+      '',
+      '--- stdout ---',
+      `${JSON.stringify(summarizeRepositoryCheckResult(result).summary, null, 2)}\n`,
+      '--- stderr ---',
+      '',
+    ].join('\n'),
+  )
+
+  gateCacheStore(root, {
+    key: cacheKey,
+    criterion_id: `agent:${profileName}`,
+    command,
+    workspace_fingerprint: snapshot.fingerprint,
+    run_id: runId,
+    cached_at: new Date().toISOString(),
+    evidence_path: evidence.relative,
+    repository_result: result,
+  })
+
+  return { cache_key: cacheKey, evidence_path: evidence.relative }
 }
 
 /** Diagnostic id for a `fast` profile an invocation's agents ran more than once. */
@@ -1042,7 +1173,8 @@ export function agentRepositoryCheckAdvisories(
     if (
       isRecord(record) &&
       record.profile === 'fast' &&
-      record.invocation_id === invocationId
+      record.invocation_id === invocationId &&
+      record.invoked_by !== 'harness'
     ) {
       fastRuns += 1
     }
@@ -1348,6 +1480,7 @@ function executeStreaming(
         : undefined
       const errorText = error?.message ?? timeoutError
 
+      options.on_close?.()
       resolve({
         kind,
         command,
@@ -1383,6 +1516,50 @@ function executeStreaming(
     }, timeoutMs)
     timeoutHandle.unref()
   })
+}
+
+/**
+ * Hold one concurrent command's output until it finishes, then emit it whole.
+ * Live interleaving of several suites is unreadable, and the caller's stream
+ * is an operator's terminal.
+ */
+function bufferedStreamingOptions(
+  options: RepositoryCheckStreamingOptions,
+): RepositoryCheckStreamingOptions {
+  if (!options.on_stdout && !options.on_stderr) {
+    return options
+  }
+
+  let stdout = ''
+  let stderr = ''
+  let flushed = false
+  const flush = (): void => {
+    if (flushed) {
+      return
+    }
+
+    flushed = true
+
+    if (stdout.length > 0) {
+      options.on_stdout?.(stdout)
+    }
+
+    if (stderr.length > 0) {
+      options.on_stderr?.(stderr)
+    }
+  }
+
+  return {
+    ...options,
+    on_start: (kind, command) => options.on_start?.(kind, command),
+    on_stdout: (chunk) => {
+      stdout = appendCaptured(stdout, chunk)
+    },
+    on_stderr: (chunk) => {
+      stderr = appendCaptured(stderr, chunk)
+    },
+    on_close: flush,
+  }
 }
 
 function profileTimeoutResult(
@@ -1433,6 +1610,8 @@ async function executeStreamingWithinProfileBudget(
 
   if (remainingMs <= 0) {
     options.on_start?.(kind, command)
+    options.on_close?.()
+
     return profileTimeoutResult(kind, command, timeoutMs)
   }
 
@@ -1473,6 +1652,18 @@ function baseResult(
   }
 }
 
+/**
+ * Directory a profile runs in. A caller that must observe the same workspace
+ * the runner will use — to bracket a run with a fingerprint, for instance —
+ * resolves it through this one definition.
+ */
+export function repositoryCheckWorkspaceRoot(
+  root: string,
+  workspace?: string,
+): string {
+  return path.resolve(root, workspace ?? configuredWorkspaceRoot(root))
+}
+
 export function runRepositoryCheck(
   root: string,
   profileName: string,
@@ -1481,10 +1672,7 @@ export function runRepositoryCheck(
   const config = loadRepositoryChecks(root)
   const configPath = repositoryChecksSourcePath(root)
   const profile = config.profiles[profileName]
-  const workspaceRoot = path.resolve(
-    root,
-    options.workspace ?? configuredWorkspaceRoot(root),
-  )
+  const workspaceRoot = repositoryCheckWorkspaceRoot(root, options.workspace)
   const timeoutMs = effectiveTimeout(
     config,
     profileName,
@@ -1582,10 +1770,7 @@ export async function runRepositoryCheckStreaming(
   const config = loadRepositoryChecks(root)
   const configPath = repositoryChecksSourcePath(root)
   const profile = config.profiles[profileName]
-  const workspaceRoot = path.resolve(
-    root,
-    options.workspace ?? configuredWorkspaceRoot(root),
-  )
+  const workspaceRoot = repositoryCheckWorkspaceRoot(root, options.workspace)
   const timeoutMs = effectiveTimeout(
     config,
     profileName,
@@ -1641,23 +1826,48 @@ export async function runRepositoryCheckStreaming(
   // command records its result even after an earlier command fails.
   let commandsPassed = true
 
-  for (const command of profile.commands) {
-    const result = await executeStreamingWithinProfileBudget(
-      'command',
-      command,
-      workspaceRoot,
-      deadlineMs,
-      timeoutMs,
-      options,
+  if (profile.concurrent) {
+    // Independent commands share the one profile deadline, so each child gets
+    // the remaining budget and ends its own process group when that budget
+    // passes. Declared order is preserved because `Promise.all` resolves
+    // positionally, and the whole partition is recorded: a concurrent profile
+    // has no "stop at the first timeout" shortcut to take.
+    results.push(
+      ...(await Promise.all(
+        profile.commands.map((command) =>
+          executeStreamingWithinProfileBudget(
+            'command',
+            command,
+            workspaceRoot,
+            deadlineMs,
+            timeoutMs,
+            bufferedStreamingOptions(options),
+          ),
+        ),
+      )),
     )
-    results.push(result)
+    commandsPassed = results.every(
+      (result) => result.kind !== 'command' || result.passed,
+    )
+  } else {
+    for (const command of profile.commands) {
+      const result = await executeStreamingWithinProfileBudget(
+        'command',
+        command,
+        workspaceRoot,
+        deadlineMs,
+        timeoutMs,
+        options,
+      )
+      results.push(result)
 
-    if (!result.passed) {
-      commandsPassed = false
-    }
+      if (!result.passed) {
+        commandsPassed = false
+      }
 
-    if (result.timed_out) {
-      break
+      if (result.timed_out) {
+        break
+      }
     }
   }
 

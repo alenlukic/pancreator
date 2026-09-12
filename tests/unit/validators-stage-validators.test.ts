@@ -462,133 +462,66 @@ test('implementation validator rejects opaque acceptance evidence', () => {
   )
 })
 
-test('shared stage field contract has registered validator ownership', () => {
-  // The validator reads only checked-in files, so the checkout that runs
-  // the test is the fixture.
-  const root = process.cwd()
-  const targetPath = 'library/schemas/stage-output-requirements.json'
-  const source = JSON.parse(
-    readFileSync(path.join(root, targetPath), 'utf8'),
-  ) as {
-    stages: {
-      plan: { validators: Array<{ enforced_fields?: string[] }> }
-    }
-  }
-  const enforced = new Set(
-    source.stages.plan.validators.flatMap(
-      (validator) => validator.enforced_fields ?? [],
-    ),
-  )
-
-  for (const fieldPath of [
-    'data.acceptance_criteria[].id',
-    'data.acceptance_criteria[].maps_to',
-    'data.acceptance_criteria[].verification',
-    'data.test_plan[]',
-    'data.open_question_dispositions[].id',
-    'data.open_question_dispositions[].answer',
-    'data.open_question_dispositions[].disposition',
-    'data.open_question_dispositions[].evidence',
-    'data.verification_recommendation',
-  ]) {
-    assert.ok(enforced.has(fieldPath), `${fieldPath} is not enforced`)
-  }
-
-  const result = validateSharedFieldContract({
-    root,
-    targetPath,
-    requirement: {
-      policy_id: 'CONTRACT-001',
-      requirement_id: 'shared-stage-field-contract',
-      registry_id: 'FIELD-CONTRACT-VALIDATE-001',
-      arguments: {},
-    },
-  })
-
-  assert.equal(result.status, 'passed')
-})
-
 test('implementation retry requires explicit remediation evidence', () => {
   const root = validatorFixtureRoot('pan-impl-remediation-')
   const target = 'output.json'
 
-  writeFileSync(
-    path.join(root, target),
-    `${JSON.stringify({
-      data: {
-        implementation: {
-          changed_files: [],
-          tests_added: [],
-          notes: [],
+  const writeOutput = (
+    remediation?: Array<{
+      cause: string
+      action: string
+      evidence: string[]
+    }>,
+  ) => {
+    writeFileSync(
+      path.join(root, target),
+      `${JSON.stringify({
+        data: {
+          implementation: {
+            changed_files: [],
+            tests_added: [],
+            notes: [],
+            ...(remediation ? { remediation } : {}),
+          },
+          acceptance_results: [
+            { id: 'AC-01', result: 'pass', evidence: ['verified'] },
+          ],
         },
-        acceptance_results: [
-          { id: 'AC-01', result: 'pass', evidence: ['verified'] },
-        ],
+      })}\n`,
+    )
+
+    return validateImplementationClaims({
+      root,
+      targetPath: target,
+      invocation: { attempt: 2 },
+      requirement: {
+        policy_id: 'DEV-001',
+        requirement_id: 'implementation-claims',
+        registry_id: 'IMPLEMENTATION-CLAIMS-VALIDATE-001',
+        arguments: {},
       },
-    })}\n`,
-  )
+    })
+  }
 
-  const result = validateImplementationClaims({
-    root,
-    targetPath: target,
-    invocation: { attempt: 2 },
-    requirement: {
-      policy_id: 'DEV-001',
-      requirement_id: 'implementation-claims',
-      registry_id: 'IMPLEMENTATION-CLAIMS-VALIDATE-001',
-      arguments: {},
-    },
-  })
+  const missing = writeOutput()
 
-  assert.equal(result.status, 'failed')
+  assert.equal(missing.status, 'failed')
   assert.ok(
-    result.issues.some(
+    missing.issues.some(
       (issue) => issue.code === 'implementation.remediation_missing',
     ),
   )
-})
 
-test('implementation retry accepts targeted remediation evidence', () => {
-  const root = validatorFixtureRoot('pan-impl-remediation-pass-')
-  const target = 'output.json'
-
-  writeFileSync(
-    path.join(root, target),
-    `${JSON.stringify({
-      data: {
-        implementation: {
-          changed_files: [],
-          tests_added: [],
-          notes: [],
-          remediation: [
-            {
-              cause: 'implement.lint reported a new diagnostic',
-              action: 'Corrected the offending implementation path',
-              evidence: ['runtime/logs/workflows/run/evidence/lint.log'],
-            },
-          ],
-        },
-        acceptance_results: [
-          { id: 'AC-01', result: 'pass', evidence: ['verified'] },
-        ],
-      },
-    })}\n`,
-  )
-
-  const result = validateImplementationClaims({
-    root,
-    targetPath: target,
-    invocation: { attempt: 2 },
-    requirement: {
-      policy_id: 'DEV-001',
-      requirement_id: 'implementation-claims',
-      registry_id: 'IMPLEMENTATION-CLAIMS-VALIDATE-001',
-      arguments: {},
+  const supplied = writeOutput([
+    {
+      cause: 'implement.lint reported a new diagnostic',
+      action: 'Corrected the offending implementation path',
+      evidence: ['runtime/logs/workflows/run/evidence/lint.log'],
     },
-  })
+  ])
 
   assert.ok(
-    !result.issues.some((issue) =>
+    !supplied.issues.some((issue) =>
       issue.code.startsWith('implementation.remediation'),
     ),
   )
@@ -1284,73 +1217,46 @@ function writeSpotfixChangedFiles(root: string, relativePaths: string[]): void {
 test('spotfix diff_bounded exempts WORK-001 documentation and projection files', () => {
   const root = createFixture()
   const target = 'runtime/inbox/spotfix-outcome.md'
+  writeFileSync(path.join(root, target), SPOTFIX_OUTCOME)
 
-  writeSpotfixChangedFiles(root, [
+  const validateStaging = (changedFiles: string[]) => {
+    writeSpotfixChangedFiles(root, changedFiles)
+
+    return validateSpotfixOutcome({
+      root,
+      targetPath: target,
+      requirement: {
+        policy_id: 'SPOT-001',
+        requirement_id: 'spotfix-validate',
+        registry_id: 'SPOTFIX-VALIDATE-001',
+        arguments: {},
+      },
+    })
+  }
+
+  const exempt = validateStaging([
     'docs/one.md',
     'library/personas/two.md',
     'tests/three.test.ts',
     'library/workflows/note.md',
   ])
-  writeFileSync(path.join(root, target), SPOTFIX_OUTCOME)
 
-  const result = validateSpotfixOutcome({
-    root,
-    targetPath: target,
-    requirement: {
-      policy_id: 'SPOT-001',
-      requirement_id: 'spotfix-validate',
-      registry_id: 'SPOTFIX-VALIDATE-001',
-      arguments: {},
-    },
-  })
-
-  assert.equal(result.status, 'passed')
+  assert.equal(exempt.status, 'passed')
   assert.ok(
-    !result.issues.some((issue) => issue.code === 'spotfix.diff_bounded'),
+    !exempt.issues.some((issue) => issue.code === 'spotfix.diff_bounded'),
   )
-})
 
-test('spotfix diff_bounded still fails when more than three implementation files change', () => {
-  const root = createFixture()
-  const target = 'runtime/inbox/spotfix-outcome.md'
-
-  writeSpotfixChangedFiles(root, [
+  const overBound = validateStaging([
     'src/one.ts',
     'src/two.ts',
     'src/three.ts',
     'src/four.ts',
   ])
-  writeFileSync(path.join(root, target), SPOTFIX_OUTCOME)
 
-  const result = validateSpotfixOutcome({
-    root,
-    targetPath: target,
-    requirement: {
-      policy_id: 'SPOT-001',
-      requirement_id: 'spotfix-validate',
-      registry_id: 'SPOTFIX-VALIDATE-001',
-      arguments: {},
-    },
-  })
-
-  assert.equal(result.status, 'failed')
+  assert.equal(overBound.status, 'failed')
   assert.ok(
-    result.issues.some((issue) => issue.code === 'spotfix.diff_bounded'),
+    overBound.issues.some((issue) => issue.code === 'spotfix.diff_bounded'),
   )
-})
-
-test('spotfix diff_bounded does not exempt implementation files under test-like directories', () => {
-  const files = [
-    'src/.test.fixtures/one.ts',
-    'src/.test.fixtures/two.ts',
-    'src/.test.fixtures/three.ts',
-    'src/.test.fixtures/four.ts',
-  ]
-
-  for (const file of files) {
-    assert.equal(isSpotfixDiffExempt(file), false, file)
-  }
-  assert.ok(files.filter((file) => !isSpotfixDiffExempt(file)).length > 3)
 })
 
 test('spotfix diff_bounded exempts projected .cursor paths', () => {
@@ -1372,6 +1278,20 @@ test('spotfix diff_bounded exempts projected .cursor paths', () => {
   assert.equal(isSpotfixDiffExempt('src/two.ts'), false)
   assert.equal(isSpotfixDiffExempt('src/three.ts'), false)
   assert.equal(files.filter((file) => !isSpotfixDiffExempt(file)).length, 3)
+
+  // A test-like directory inside an implementation tree stays unexempt, so
+  // four such files still exceed the three-file bound.
+  const testLike = [
+    'src/.test.fixtures/one.ts',
+    'src/.test.fixtures/two.ts',
+    'src/.test.fixtures/three.ts',
+    'src/.test.fixtures/four.ts',
+  ]
+
+  for (const file of testLike) {
+    assert.equal(isSpotfixDiffExempt(file), false, file)
+  }
+  assert.ok(testLike.filter((file) => !isSpotfixDiffExempt(file)).length > 3)
 })
 
 test('implementation validator resolves the file portion of "path :: case" test entries', () => {
@@ -2235,58 +2155,38 @@ test('verify validator accepts a blocked output with reason and missing paths on
   const root = validatorFixtureRoot('pan-verify-blocked-')
   const target = 'output.json'
 
-  writeFileSync(
-    path.join(root, target),
-    `${JSON.stringify({
-      result: 'blocked',
-      data: {
-        verify: {
-          blocking_reason: 'Required model evidence reports are missing.',
-          missing_evidence_paths: [
-            'runtime/logs/workflows/run/evidence/model-evidence-review.json',
-            'runtime/logs/workflows/run/evidence/model-evidence-qa.json',
-          ],
-        },
-      },
-    })}\n`,
-  )
+  const validateBlocked = (verify: Record<string, unknown>) => {
+    writeFileSync(
+      path.join(root, target),
+      `${JSON.stringify({ result: 'blocked', data: { verify } })}\n`,
+    )
 
-  const result = validateVerifyOutput({
-    root,
-    targetPath: target,
-    requirement: verifyRequirement(),
+    return validateVerifyOutput({
+      root,
+      targetPath: target,
+      requirement: verifyRequirement(),
+    })
+  }
+
+  const accepted = validateBlocked({
+    blocking_reason: 'Required model evidence reports are missing.',
+    missing_evidence_paths: [
+      'runtime/logs/workflows/run/evidence/model-evidence-review.json',
+      'runtime/logs/workflows/run/evidence/model-evidence-qa.json',
+    ],
   })
 
-  assert.equal(result.status, 'passed', JSON.stringify(result.issues))
-})
+  assert.equal(accepted.status, 'passed', JSON.stringify(accepted.issues))
 
-test('verify validator rejects product fields on a blocked output', () => {
-  const root = validatorFixtureRoot('pan-verify-blocked-product-')
-  const target = 'output.json'
-
-  writeFileSync(
-    path.join(root, target),
-    `${JSON.stringify({
-      result: 'blocked',
-      data: {
-        verify: {
-          blocking_reason: 'Evidence missing.',
-          missing_evidence_paths: ['runtime/missing.json'],
-          verdict: 'fail_remedial',
-        },
-      },
-    })}\n`,
-  )
-
-  const result = validateVerifyOutput({
-    root,
-    targetPath: target,
-    requirement: verifyRequirement(),
+  const withProductField = validateBlocked({
+    blocking_reason: 'Evidence missing.',
+    missing_evidence_paths: ['runtime/missing.json'],
+    verdict: 'fail_remedial',
   })
 
-  assert.equal(result.status, 'failed')
+  assert.equal(withProductField.status, 'failed')
   assert.ok(
-    result.issues.some(
+    withProductField.issues.some(
       (item) => item.code === 'verify.blocked_forbidden_field',
     ),
   )

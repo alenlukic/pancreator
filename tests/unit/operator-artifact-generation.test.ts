@@ -5,6 +5,10 @@ import test from 'node:test'
 
 import { prepareInvocation } from '../../src/lib/engine.js'
 import { generateOperatorArtifacts } from '../../src/lib/operator-artifact-generation.js'
+import {
+  OPERATOR_ARTIFACT_PROFILE_HEADINGS,
+  operatorArtifactProfileForStage,
+} from '../../src/lib/operator-artifact-profiles.js'
 import { operatorArtifactsRequested } from '../../src/lib/operator-artifacts.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import type { RunState } from '../../src/lib/types.js'
@@ -155,3 +159,16 @@ function isCodedError(error: unknown, code: string): boolean {
     (error as Error & { code: string }).code === code
   )
 }
+
+// design/intake and prototype/intake share a slug but need different briefs.
+test('prototype stages resolve their own operator brief profiles', () => {
+  const profile = operatorArtifactProfileForStage('intake', 'prototype')
+
+  assert.equal(profile, 'prototype-brief')
+  assert.deepEqual(OPERATOR_ARTIFACT_PROFILE_HEADINGS[profile], [
+    'objective',
+    'technical questions',
+    'success signals',
+  ])
+  assert.equal(operatorArtifactProfileForStage('intake', 'design'), 'intake')
+})

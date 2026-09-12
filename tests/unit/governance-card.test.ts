@@ -21,7 +21,7 @@ import {
   reviewMachineryConflicts,
 } from '../../src/lib/review-scope.js'
 import { createWorktree } from '../../src/lib/worktrees.js'
-import { createFixture, sharedFixture } from '../helpers.js'
+import { createFixture, sharedFixture } from '../fixture-template.js'
 
 test('the pair card resolves coder governance without workflow structure', () => {
   const root = createFixture()
@@ -247,50 +247,6 @@ test('a missing operator input is reported rather than silently omitted', () => 
   )
 })
 
-test('the review mode is bound to no run and edits nothing', () => {
-  const mode = STANDALONE_MODES.review
-
-  assert.ok(mode)
-  assert.equal(mode.workflow, 'standalone')
-  assert.equal(mode.stage, 'review')
-  assert.equal(mode.kind, 'review')
-  assert.ok(
-    mode.boundaries.some((boundary) => /MUST NOT edit/u.test(boundary)),
-    'a review session must be barred from editing',
-  )
-  assert.ok(
-    mode.boundaries.some((boundary) =>
-      /MUST issue the dimension fan-out yourself/u.test(boundary),
-    ),
-    'the session keeps dimension agents on the mapped model by spawning them',
-  )
-  assert.ok(
-    mode.boundaries.some((boundary) =>
-      /MUST NOT join, rank, or grade findings yourself/u.test(boundary),
-    ),
-    'the coordinator alone owns the verdict',
-  )
-})
-
-test('the conform mode binds librarian and fences edits', () => {
-  const mode = STANDALONE_MODES.conform
-
-  assert.ok(mode)
-  assert.equal(mode.workflow, 'standalone')
-  assert.equal(mode.stage, 'conform')
-  assert.equal(mode.kind, 'standalone')
-  assert.equal(mode.persona, 'librarian')
-
-  assert.ok(
-    mode.boundaries.some((boundary) => boundary.includes('CHANGELOG.md')),
-    'conform must restrict which files can be edited',
-  )
-  assert.ok(
-    mode.boundaries.some((boundary) => /MUST NOT edit/u.test(boundary)),
-    'conform must forbid editing non-editable artifacts',
-  )
-})
-
 test('the repair mode partitions intakes by category and keeps the operator override', () => {
   const mode = STANDALONE_MODES.repair
 
@@ -302,26 +258,28 @@ test('the repair mode partitions intakes by category and keeps the operator over
   // "the declared intake artifact" silently re-forbids the second intake the
   // partition produces, so the plural form is the contract.
   const writeFence = mode.boundaries.find((boundary) =>
-    /outside the declared intake/u.test(boundary),
+    /intake artifacts/u.test(boundary),
   )
 
   assert.ok(writeFence, 'the repair card must fence writes to the intakes')
-  assert.match(writeFence, /intake artifacts\./u)
 
-  const partition = mode.boundaries.find((boundary) =>
-    /at most one intake for each category/u.test(boundary),
+  // Located by shape rather than by sentence: the partition boundary is the one
+  // that caps intakes per category and names the operator escape hatch.
+  const partition = mode.boundaries.find(
+    (boundary) => /category/u.test(boundary) && /operator/u.test(boundary),
   )
 
   assert.ok(partition, 'the category partition is the repair default')
-  assert.match(partition, /unless the operator directs a different set/u)
+  assert.match(partition, /at most one intake/u)
+  assert.match(partition, /unless the operator/u)
 
-  assert.ok(
-    !mode.boundaries.some((boundary) =>
-      /write one intake unless the operator requests more than one/u.test(
-        boundary,
-      ),
-    ),
-    'the one-intake default MUST be gone from the repair card',
+  // The superseded default capped the whole card at one intake. Counting the
+  // boundaries that cap an intake count keeps that default out without pinning
+  // the wording it used.
+  assert.deepEqual(
+    mode.boundaries.filter((boundary) => /\bone intake\b/u.test(boundary)),
+    [partition],
+    'the per-category cap MUST be the only intake-count boundary',
   )
 })
 
@@ -412,6 +370,16 @@ test('--base without --target is refused with the option error code', () => {
       error instanceof PanError &&
       error.code === 'INVALID_GOVERNANCE_CARD_OPTION' &&
       /--target requires --base/u.test(error.message),
+  )
+
+  // The option belongs to the review mode, and that check sits one invariant
+  // above the pair rule.
+  assert.throws(
+    () => buildGovernanceCard(root, { mode: 'pair', baseRef: 'HEAD' }),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'INVALID_GOVERNANCE_CARD_OPTION' &&
+      /--base applies to the review mode only/u.test(error.message),
   )
   assert.equal(existsSync(path.join(root, 'worktrees')), false)
 })
@@ -698,15 +666,6 @@ test('--dimensions is refused outside the review mode', () => {
   })
 
   assert.equal(card.review_dimensions, undefined)
-})
-
-test('--base is refused outside the review mode', () => {
-  const root = sharedFixture()
-
-  assert.throws(
-    () => buildGovernanceCard(root, { mode: 'pair', baseRef: 'HEAD' }),
-    /--base applies to the review mode only/u,
-  )
 })
 
 test('the supervisor mode refuses a run-less card', () => {

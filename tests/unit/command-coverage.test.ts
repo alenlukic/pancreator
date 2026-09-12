@@ -77,35 +77,6 @@ test('target-mutating commands must preserve every worktree forwarding step', ()
   )
 })
 
-test('pan-author is explicitly registered with its author card', () => {
-  const root = createFixture()
-  const registryPath = path.join(root, COMMAND_GOVERNANCE_REGISTRY_PATH)
-  const registry = JSON.parse(readFileSync(registryPath, 'utf8')) as {
-    card_commands: Array<{ command: string; card_mode: string }>
-  }
-  const author = registry.card_commands.find(
-    (entry) => entry.command === 'pan-author',
-  )
-
-  assert.deepEqual(author, {
-    command: 'pan-author',
-    card_mode: 'author',
-  })
-  assert.deepEqual(run(root).errors, [])
-
-  assert.ok(author)
-  author.card_mode = 'review'
-  writeJson(registryPath, registry)
-
-  assert.ok(
-    run(root).errors.some((error) =>
-      error.includes(
-        'pan-author.md MUST run `pan governance card --mode review`',
-      ),
-    ),
-  )
-})
-
 test('pan-conform is explicitly registered with its conform card', () => {
   const root = createFixture()
   const command = readFileSync(
@@ -158,6 +129,10 @@ test('pan-conform is explicitly registered with its conform card', () => {
     command: 'pan-conform',
     card_mode: 'conform',
   })
+  assert.deepEqual(
+    registry.card_commands.find((entry) => entry.command === 'pan-author'),
+    { command: 'pan-author', card_mode: 'author' },
+  )
   assert.deepEqual(run(root).errors, [])
 
   assert.ok(conform)
@@ -403,6 +378,13 @@ test('a read-only command that runs a card and a registry naming a missing comma
       /names command 'pan-vanished', which does not exist/u.test(item),
     ),
   )
+
+  // A registry that is gone entirely is the one error worth reporting.
+  unlinkSync(registryPath)
+
+  assert.deepEqual(run(root).errors, [
+    `missing required file: ${COMMAND_GOVERNANCE_REGISTRY_PATH}`,
+  ])
 })
 
 test('a standalone lookup row without a mode and a mode without a row are errors', () => {
@@ -452,16 +434,4 @@ test('a standalone lookup row without a mode and a mode without a row are errors
     false,
     errors.join('\n'),
   )
-})
-
-test('a missing registry is itself an error', () => {
-  const root = createFixture()
-
-  unlinkSync(path.join(root, COMMAND_GOVERNANCE_REGISTRY_PATH))
-
-  const { errors } = run(root)
-
-  assert.deepEqual(errors, [
-    `missing required file: ${COMMAND_GOVERNANCE_REGISTRY_PATH}`,
-  ])
 })

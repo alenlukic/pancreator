@@ -4,7 +4,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { validateTargetRepoPrimer } from '../../src/lib/validators/target-repo-primer.js'
-import { createFixture } from '../helpers.js'
+import { createFixture } from '../fixture-template.js'
 
 interface ValidateOptions {
   installationMode?: 'embedded' | 'detached'
@@ -48,10 +48,6 @@ function validateIn(root: string, content: string) {
       arguments: {},
     },
   })
-}
-
-function validate(content: string, options?: ValidateOptions) {
-  return validateIn(fixtureRoot(options), content)
 }
 
 const VALID_PRIMER = `# Target repository primer
@@ -124,15 +120,13 @@ const EXTERNAL_SECTIONS = `
 
 const VALID_EXTERNAL_PRIMER = `${VALID_PRIMER}${EXTERNAL_SECTIONS}`
 
-test('target repository primer validator accepts a complete primer', () => {
-  const result = validate(VALID_PRIMER)
-
-  assert.equal(result.status, 'passed')
-  assert.deepEqual(result.issues, [])
-})
-
 test('target repository primer validator requires commands and Mermaid architecture', () => {
   const root = fixtureRoot()
+  const complete = validateIn(root, VALID_PRIMER)
+
+  assert.equal(complete.status, 'passed')
+  assert.deepEqual(complete.issues, [])
+
   const result = validateIn(
     root,
     VALID_PRIMER.replace('### Test\n\nRun `npm test`.\n\n', '').replace(

@@ -14,6 +14,7 @@ import {
   getRunStatus,
   prepareInvocation,
   probeRunInvocationModel,
+  recordPendingWorkerModelProbe,
   recordSupervisorModelEvidence,
 } from '../../src/lib/engine.js'
 import { runCursorAgentJson } from '../../src/lib/executors/cursor-agent.js'
@@ -363,6 +364,112 @@ test('worker probes persist matches, mismatches, and missing metadata alike', ()
 
   const submitted = submitAsSupervisor(root, run.run_id, invocation.output.path)
 
+  assert.ok(
+    submitted.state.stage_history.some(
+      (item) => item.invocation_id === invocation.invocation_id,
+    ),
+  )
+})
+
+test('the run-scoped probe returns a pending marker and a detached child records the answer', () => {
+  // Every worker launch paid for a live model round trip before the worker
+  // started, and only submission reads the answer. The command now records
+  // that a probe is in flight and returns; the child lands the evidence.
+  const root = createFixture()
+
+  writeFixtureCursorCatalog(root)
+
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title: 'Detached probe run',
+  })
+
+  recordSupervisorModelEvidence(root, run.run_id, 'GPT 5.6 Sol', 'metadata')
+
+  const invocation = prepareInvocation(root, run.run_id).invocation
+
+  assert.ok(invocation)
+
+  const expected = expectedCursorModelForSpec(root, invocation.stage.model)
+
+  assert.ok(expected)
+
+  const pending = recordPendingWorkerModelProbe(
+    root,
+    run.run_id,
+    invocation.invocation_id,
+  )
+
+  // A marker is a claim that an answer is coming, never an answer.
+  assert.equal(pending.result, 'pending')
+  assert.equal(pending.effective_model, null)
+  assert.equal(
+    getRunState(root, run.run_id).model_evidence?.find(
+      (item) => item.role === 'worker',
+    )?.result,
+    'pending',
+  )
+
+  // The detached child performs the live call and replaces the marker.
+  withFakeCursorAgent(root, expected, () =>
+    probeRunInvocationModel(root, run.run_id, invocation.invocation_id),
+  )
+
+  const landed = getRunState(root, run.run_id).model_evidence?.find(
+    (item) => item.role === 'worker',
+  )
+
+  assert.equal(landed?.result, 'match')
+  assert.equal(landed?.effective_model, expected)
+})
+
+test('a probe that never lands leaves the marker and the existing advisory', () => {
+  // The deferral must not invent a new failure mode. A marker with no answer
+  // behind it is exactly as usable as a probe that failed, and submission
+  // already knows what to say about that.
+  const root = createFixture()
+
+  writeFixtureCursorCatalog(root)
+
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title: 'Abandoned probe run',
+  })
+
+  recordSupervisorModelEvidence(root, run.run_id, 'GPT 5.6 Sol', 'metadata')
+
+  const invocation = prepareInvocation(root, run.run_id).invocation
+
+  assert.ok(invocation)
+  recordPendingWorkerModelProbe(root, run.run_id, invocation.invocation_id)
+
+  const stage = stageBySlug(
+    loadWorkflow(root, 'delivery'),
+    invocation.stage.slug,
+  )
+
+  writeJson(
+    path.join(root, invocation.output.path),
+    makeOutput(root, invocation, stage),
+  )
+  writeCanonicalDelegation(root, invocation)
+
+  const submitted = submitAsSupervisor(root, run.run_id, invocation.output.path)
+  const workerGap = submitted.advisories.find((advisory) =>
+    advisory.message.includes('no usable worker model evidence'),
+  )
+
+  // The stage still advances: this was always an advisory, not a gate.
+  assert.ok(workerGap)
+  assert.equal(workerGap.kind, 'model_evidence')
+  assert.equal(
+    getRunState(root, run.run_id).model_evidence?.find(
+      (item) => item.role === 'worker',
+    )?.result,
+    'pending',
+  )
   assert.ok(
     submitted.state.stage_history.some(
       (item) => item.invocation_id === invocation.invocation_id,

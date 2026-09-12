@@ -8,7 +8,7 @@ import {
 } from 'node:fs'
 import path from 'node:path'
 
-import { cloneTree } from '../helpers.js'
+import { cloneTree } from '../fixture-template.js'
 import { recordFixtureEvent } from '../reporters/fixture-profile.js'
 import { createTestTempDirectory } from '../temp.js'
 

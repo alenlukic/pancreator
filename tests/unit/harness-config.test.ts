@@ -3,7 +3,7 @@ import { readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import { createFixture } from '../helpers.js'
+import { createFixture } from '../fixture-template.js'
 import {
   harnessConfigName,
   harnessPathPrefix,
@@ -18,20 +18,6 @@ import { loadPipelineConfig } from '../../src/lib/pipeline-config.js'
 import { loadOperatorInvolvementFile } from '../../src/lib/operator-involvement.js'
 import { findProjectRoot } from '../../src/lib/io.js'
 import { createTestTempDirectory } from '../temp.js'
-
-/** Rewrite the fixture's harness configuration with the supplied overrides. */
-function configure(root: string, overrides: Record<string, unknown>): void {
-  const configPath = path.join(root, 'config.json')
-  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
-    string,
-    unknown
-  >
-
-  writeFileSync(
-    configPath,
-    `${JSON.stringify({ ...config, ...overrides }, null, 2)}\n`,
-  )
-}
 
 function useLegacyConfigName(root: string): void {
   renameSync(path.join(root, 'config.json'), path.join(root, 'project.json'))
@@ -78,6 +64,20 @@ test('config_overrides.json overrides project preferences without touching confi
     'an involvement preference the local file does not name is unchanged',
   )
 
+  // The local file can also select the active involvement profile.
+  writeFileSync(
+    path.join(root, 'config_overrides.json'),
+    JSON.stringify({
+      stage_liveness_ms: 123_456,
+      operator_involvement: { active: 'hands-off' },
+    }),
+  )
+
+  const involvement = loadOperatorInvolvementFile(root)
+
+  assert.equal(involvement.active, 'hands-off')
+  assert.equal(involvement.profiles['hands-off']?.gates?.plan, 'supervisor')
+
   const checkedInAfter = JSON.parse(
     readFileSync(path.join(root, 'config.json'), 'utf8'),
   ) as { stage_liveness_ms?: number }
@@ -86,20 +86,6 @@ test('config_overrides.json overrides project preferences without touching confi
     checkedInAfter.stage_liveness_ms,
     checkedInBefore.stage_liveness_ms,
   )
-})
-
-test('config_overrides.json can select the active involvement profile', () => {
-  const root = createFixture()
-
-  writeFileSync(
-    path.join(root, 'config_overrides.json'),
-    JSON.stringify({ operator_involvement: { active: 'hands-off' } }),
-  )
-
-  const involvement = loadOperatorInvolvementFile(root)
-
-  assert.equal(involvement.active, 'hands-off')
-  assert.equal(involvement.profiles['hands-off']?.gates?.plan, 'supervisor')
 })
 
 test('loadProjectConfig reads an unmigrated installation', () => {
@@ -133,11 +119,13 @@ test('config.json wins when both names are present', () => {
 })
 
 test('detached installation addresses the harness by absolute path', () => {
-  const root = createFixture()
+  // Every assertion reads config.json alone, as the embedded sibling below
+  // already does, so the case writes a minimal config instead of cloning the
+  // fixture template and rewriting its configuration.
   const workspace = createTestTempDirectory('pancreator-target-')
 
   try {
-    configure(root, {
+    const root = minimalConfigRoot({
       installation_mode: 'detached',
       workspace_root: workspace,
     })

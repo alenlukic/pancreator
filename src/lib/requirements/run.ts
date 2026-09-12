@@ -98,6 +98,13 @@ export function inferTargetKind(targetPath: string): string {
     return 'assessment-json'
   }
 
+  if (
+    targetPath.includes('runtime/tune-harness/records/') &&
+    targetPath.endsWith('.json')
+  ) {
+    return 'tune-record-json'
+  }
+
   if (targetPath.includes('.delegation.md')) {
     return 'delegation-markdown'
   }

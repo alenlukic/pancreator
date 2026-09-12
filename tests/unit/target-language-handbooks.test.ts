@@ -85,6 +85,10 @@ function writeLanguageBundle(
     rows: Array<Record<string, unknown>>
   }
 
+  // The real generator rewrites its rows, so a rewritten bundle replaces the
+  // previous one rather than stacking a second set of generated rows.
+  lookup.rows = lookup.rows.filter((row) => row.generated_by !== GENERATED_BY)
+
   for (const persona of ['coder', 'qa-tester', 'reviewer', 'spotfixer']) {
     lookup.rows.push({
       persona,
@@ -135,22 +139,6 @@ test('validates exact embedded target language handbook coverage', () => {
   }
 })
 
-test('accepts required supplemental policies in generated Python rows', () => {
-  const root = createLanguageFixture()
-
-  try {
-    writeFileSync(path.join(root, 'target', 'pyproject.toml'), '[project]\n')
-    writeLanguageBundle(root, 'python', ['LANG-001', 'PY-001'])
-
-    const result = validateTargetLanguageHandbooks(fixtureInput(root))
-
-    assert.equal(result.status, 'passed')
-    assert.deepEqual(result.issues, [])
-  } finally {
-    rmSync(root, { recursive: true, force: true })
-  }
-})
-
 test('rejects a generated Python row that omits PY-001', () => {
   const root = createLanguageFixture()
 
@@ -164,6 +152,15 @@ test('rejects a generated Python row that omits PY-001', () => {
     assert.ok(
       result.issues.some((item) => item.code === 'language.lookup_rows'),
     )
+
+    // The same row passes once PY-001 joins it, so the policy is required
+    // rather than merely unexpected.
+    writeLanguageBundle(root, 'python', ['LANG-001', 'PY-001'])
+
+    const accepted = validateTargetLanguageHandbooks(fixtureInput(root))
+
+    assert.equal(accepted.status, 'passed')
+    assert.deepEqual(accepted.issues, [])
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

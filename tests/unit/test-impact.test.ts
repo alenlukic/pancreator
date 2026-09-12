@@ -19,6 +19,7 @@ import {
   selectImpactedTests,
   testCommandArgs,
 } from '../../src/lib/test-impact.js'
+import type { ModuleGraph } from '../../src/lib/test-impact.js'
 import { createTestTempDirectory } from '../temp.js'
 
 const REPO_ROOT = process.cwd()
@@ -568,6 +569,79 @@ test('self-test: a change to src/lib/naming.ts selects the naming test and not t
   assert.ok(
     !selected.selected.some((file) => file.startsWith('tests/secondary/')),
   )
+
+  // A governance policy is data rather than an import, and its seed reaches
+  // the governance tests alone.
+  const policy = selectImpactedTests(graph, [
+    'governance/policies/SPOT-001.json',
+  ])
+
+  assert.ok(
+    policy.selected.includes('tests/unit/policies.test.ts'),
+    `selected ${policy.selected.join(', ')}`,
+  )
+  assert.deepEqual(policy.unreached, [])
+  assert.ok(
+    policy.selected.length <= policy.lane_count * 0.25,
+    `selected ${policy.selected.length} of ${policy.lane_count}`,
+  )
+})
+
+// tests/helpers.ts imports the engine, so every test that wanted only a
+// fixture was selected by any engine change and paid for the whole graph.
+// The fixture builder was split out; this pins the property that made the
+// split worth doing, which prose in the module cannot enforce.
+function closureOf(graph: ModuleGraph, entry: string): Set<string> {
+  const seen = new Set<string>()
+  const queue = [entry]
+
+  while (queue.length > 0) {
+    const file = queue.pop() as string
+
+    if (seen.has(file)) {
+      continue
+    }
+
+    seen.add(file)
+    queue.push(...(graph.imports.get(file) ?? []))
+  }
+
+  return seen
+}
+
+test('self-test: the fixture helper reaches no engine module', async () => {
+  const graph = await buildModuleGraph(REPO_ROOT)
+  const seen = closureOf(graph, 'tests/fixture-template.ts')
+
+  // The run-execution stack. A fixture builder writes files and drives git;
+  // it never needs to know how a run is laid out or advanced.
+  const engineModules = [
+    'src/cli.ts',
+    'src/lib/engine.ts',
+    'src/lib/inbox.ts',
+    'src/lib/run-layout.ts',
+    'src/lib/state.ts',
+    'src/lib/suite-profile.ts',
+    'src/lib/verification.ts',
+    'src/lib/workflow.ts',
+  ]
+  const engine = [...seen]
+    .filter(
+      (file) =>
+        engineModules.includes(file) || file.startsWith('src/lib/validators/'),
+    )
+    .sort()
+
+  assert.deepEqual(engine, [], `fixture helper reaches ${engine.join(', ')}`)
+  assert.ok(seen.has('tests/shared-template.ts'))
+
+  // tests/helpers.ts keeps the engine, because the tests that drive runs need
+  // it. The point of the split is that the fixture side no longer carries it:
+  // a fixture-only test now sits on a closure a fraction of the size.
+  assert.ok(
+    seen.size * 3 < closureOf(graph, 'tests/helpers.ts').size,
+    `fixture ${seen.size}, helpers ${closureOf(graph, 'tests/helpers.ts').size}`,
+  )
 })
 
 test('extractSpecialReferences finds every known bin, fixture, and CLI reference in one pass', () => {
@@ -803,21 +877,4 @@ test('a changed source is reached when the changed test that imports it is selec
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
-})
-
-test('self-test: a governance policy change selects its governance tests, not the lane', async () => {
-  const graph = await buildModuleGraph(REPO_ROOT)
-  const selected = selectImpactedTests(graph, [
-    'governance/policies/SPOT-001.json',
-  ])
-
-  assert.ok(
-    selected.selected.includes('tests/unit/policies.test.ts'),
-    `selected ${selected.selected.join(', ')}`,
-  )
-  assert.deepEqual(selected.unreached, [])
-  assert.ok(
-    selected.selected.length <= selected.lane_count * 0.25,
-    `selected ${selected.selected.length} of ${selected.lane_count}`,
-  )
 })

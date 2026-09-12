@@ -5,9 +5,11 @@ import test from 'node:test'
 
 import {
   bestOfNDir,
+  bestOfNStatus,
   loadBestOfNState,
   parseBestOfNConfigs,
 } from '../../src/lib/best-of-n.js'
+import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { createTestTempDirectory } from '../temp.js'
 
 const EXAMPLE_CONFIGS = 'library/templates/best-of-n-config.example.json'
@@ -124,6 +126,20 @@ test('configs parsing rejects a tier alias in a candidate persona map', () => {
       /names tier alias/u,
     )
   }
+
+  // `cursor:composer-2.5` routes to the `cursor` executor rather than naming
+  // a tier, so the rejection must not widen to every `cursor:` prefix.
+  assert.doesNotThrow(() =>
+    parseBestOfNConfigs(
+      configs({
+        candidates: [
+          { name: 'alpha', personas: { coder: 'cursor:composer-2.5' } },
+          { name: 'beta', personas: { coder: 'model-b' } },
+        ],
+      }),
+      'configs.json',
+    ),
+  )
 })
 
 test('the committed configs example parses through the real parser', () => {
@@ -155,18 +171,73 @@ test('the committed configs example parses through the real parser', () => {
   )
 })
 
-test('configs parsing accepts a cursor executor specification', () => {
-  // `cursor:composer-2.5` routes to the `cursor` executor rather than naming a
-  // tier, so the alias rejection must not widen to every `cursor:` prefix.
-  assert.doesNotThrow(() =>
-    parseBestOfNConfigs(
-      configs({
-        candidates: [
-          { name: 'alpha', personas: { coder: 'cursor:composer-2.5' } },
-          { name: 'beta', personas: { coder: 'model-b' } },
-        ],
-      }),
-      'configs.json',
-    ),
+test('a candidate circuit breaker ends that candidate without operator input', () => {
+  // bestOfNStatus reads the session record and each candidate's run state and
+  // nothing else, so the terminal classification is provable against written
+  // state. Driving it through a worktree-backed 'ready' checkpoint proved one
+  // status per clone; a written state proves every terminal status at once.
+  const root = createTestTempDirectory('bon-terminal-status-')
+  const bonId = '63297_Sep-12-0001_terminal'
+  const terminal = ['succeeded', 'failed', 'canceled'] as const
+  const candidates = terminal.map((status, index) => ({
+    slot: `slot-${index + 1}`,
+    run_id: `63297_Sep-12-000${index + 1}_bon-${status}`,
+    agent_suffix: `${bonId}-slot-${index + 1}`,
+    request_path: `runtime/logs/best-of-n/${bonId}/request.md`,
+  }))
+  const sessionDirectory = bestOfNDir(root, bonId)
+
+  mkdirSync(sessionDirectory, { recursive: true })
+  writeFileSync(
+    path.join(sessionDirectory, 'state.json'),
+    `${JSON.stringify(
+      {
+        schema_version: 1,
+        bon_id: bonId,
+        status: 'ready',
+        candidates,
+        pending: [],
+      },
+      null,
+      2,
+    )}\n`,
   )
+
+  for (const [index, candidate] of candidates.entries()) {
+    const statePath = resolveRunLayout(root, candidate.run_id).state.absolute
+
+    mkdirSync(path.dirname(statePath), { recursive: true })
+    writeFileSync(
+      statePath,
+      `${JSON.stringify(
+        {
+          schema_version: 1,
+          run_id: candidate.run_id,
+          workflow_slug: 'delivery',
+          title: 'Candidate run',
+          // A circuit breaker ends the candidate where it stands: no stage is
+          // current and no action waits on the operator.
+          status: terminal[index],
+          current_stage: null,
+          pending_action: { type: 'none' },
+          stage_history: [],
+          attempts: {},
+          best_of_n: { bon_id: bonId, role: 'candidate', slot: candidate.slot },
+        },
+        null,
+        2,
+      )}\n`,
+    )
+  }
+
+  const status = bestOfNStatus(root, bonId)
+
+  assert.deepEqual(
+    status.candidates.map((candidate) => [
+      candidate.status,
+      candidate.terminal,
+    ]),
+    terminal.map((value) => [value, true]),
+  )
+  assert.deepEqual(status.unresolved, [], 'no terminal candidate is unresolved')
 })

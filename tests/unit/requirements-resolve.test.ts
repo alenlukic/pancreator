@@ -5,7 +5,7 @@ import test from 'node:test'
 
 import { sha256 } from '../../src/lib/io.js'
 import { resolveRequirements } from '../../src/lib/requirements/resolve.js'
-import { createFixture } from '../helpers.js'
+import { createFixture } from '../fixture-template.js'
 
 test('requirement resolution is deterministic', () => {
   const root = createFixture()
@@ -60,6 +60,13 @@ test('requirement resolution is deterministic', () => {
       invocation_kind: 'repair' as const,
       target: 'runtime/inbox/harness-repair.md',
       registry_id: 'HARNESS-REPAIR-VALIDATE-001',
+    },
+    {
+      persona: 'librarian',
+      stage: 'conform',
+      invocation_kind: 'standalone' as const,
+      target: 'CHANGELOG.md',
+      registry_id: 'SIMPLIFIED-ENGLISH-VALIDATE-001',
     },
   ]) {
     const manifest = resolveRequirements(root, {
@@ -119,28 +126,6 @@ test('requirement resolution is deterministic', () => {
         requirement.resolved_target === prPath,
     ),
   )
-})
-
-test('conform mode resolves the standalone Simplified English validator requirement', () => {
-  const root = createFixture()
-  const manifest = resolveRequirements(root, {
-    persona: 'librarian',
-    workflow: 'standalone',
-    stage: 'conform',
-    invocation_kind: 'standalone',
-    invocation: { artifact_paths: ['CHANGELOG.md'] },
-  })
-  const requirement = manifest.validation_requirements.find(
-    (item) =>
-      item.requirement_id === 'standalone-conform-simplified-english-validate',
-  )
-
-  assert.ok(requirement)
-  assert.equal(requirement?.registry_id, 'SIMPLIFIED-ENGLISH-VALIDATE-001')
-  assert.equal(requirement?.executor, 'agent')
-  assert.equal(requirement?.phase, 'before_operation')
-  assert.equal(requirement?.enforcement, 'required')
-  assert.equal(requirement?.resolved_target, 'CHANGELOG.md')
 })
 
 test('requirement resolution fails on unknown registry id', () => {

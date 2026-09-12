@@ -967,6 +967,17 @@ An empty profile is reported as `not_configured`; it is never silently replaced
 with an npm, Python, or other technology-specific command. Direct runs stream
 live subprocess output to stderr and print the final structured result to stdout.
 
+A profile may declare `"concurrent": true`, which runs its commands together
+under the profile's shared deadline instead of one after another. The recorded
+result is unchanged: every command keeps its own exit code, duration, and
+captured output, reported in the declared order. Only declare it for commands
+that are genuinely independent — two commands that write the same build output,
+database, or port are not — and the profile is only as fast as its slowest
+command. Enabling it in an installation's own
+`runtime/repository-checks.json` is an operator decision; the self-development
+template ships it on the `full` profile, whose three commands serialize their
+own compiles through the build lock.
+
 For a systematic implementation run, Pancreator executes the configured
 implementation profiles immediately before the first coder invocation and stores
 the results as run-scoped baseline evidence. Existing lint or unit-test failures
@@ -986,6 +997,20 @@ Failures, timeouts, skips, overrides, and baseline-relative passes are never
 cached, and a non-Git workspace is never cached. `./bin/pan doctor` reports the
 cache state. Set `PAN_GATE_CACHE=0` to force every gate to execute, or delete
 the cache file to forget every recorded pass.
+
+Three behaviours feed that cache so a gate finds its answer already recorded.
+A run whose baseline capture finds an earlier passing baseline artifact for the
+same profile, workspace fingerprint, and repository-check configuration adopts
+that artifact instead of executing the profile, and says which artifact it
+adopted. A `pan repository-check <profile> --run <run-id>` that passes cleanly,
+times out on no command, and leaves the Git fingerprint unchanged records its
+own pass, so a later gate on the same command and fingerprint accepts it. And
+when a source-allowed stage submits successfully into the read-only evidence
+stage, the harness starts one detached low-priority run of the ship entry
+gate's profile at the submitted fingerprint, recording the child's process id
+in the run's evidence directory. A prefetch that is killed or fails leaves
+nothing behind and the gate simply executes as before. Set `PAN_PREFETCH_FULL=0`
+to stop starting it.
 
 The review stage is source-allowed specifically for bounded remediation. The
 reviewer fixes local, low-risk issues when intended behavior is unambiguous and

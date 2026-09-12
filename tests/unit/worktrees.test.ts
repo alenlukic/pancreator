@@ -46,7 +46,7 @@ test('worktree names use lowercase words with single hyphens', () => {
 })
 
 test('worktree config uses defaults and local overrides', () => {
-  const root = createFixture()
+  const root = scratchRoot()
 
   assert.deepEqual(worktreesConfig(root), {
     root: 'worktrees/operator',
@@ -206,7 +206,7 @@ test('workspace specifiers pass paths through and resolve recorded names', () =>
 })
 
 test('legacy operator index remains active when the current index is absent', () => {
-  const root = createFixture()
+  const root = scratchRoot()
   const legacyIndexPath = path.join(
     root,
     'runtime',
@@ -410,7 +410,10 @@ test('worktree handoff preserves local config precedence', () => {
     path.join(root, 'config.local.json'),
     `${JSON.stringify({ marker: 'legacy-name' }, null, 2)}\n`,
   )
+  writeFileSync(path.join(root, '.env'), 'SECRET=1\n')
+  writeFileSync(path.join(root, 'operator.local'), 'ignore me\n')
 
+  const statusBeforeHandoff = gitStatus(root)
   const record = createWorktree(root, 'precedence')
   const worktreePath = path.join(root, record.path)
 
@@ -421,23 +424,9 @@ test('worktree handoff preserves local config precedence', () => {
     'current-name',
   )
   assert.equal(existsSync(path.join(worktreePath, 'config.local.json')), false)
-})
 
-test('worktree handoff excludes secret and unrelated files', () => {
-  const root = createFixture()
-
-  writeJson(path.join(root, 'config_overrides.json'), { marker: 'handoff' })
-  writeFileSync(path.join(root, '.env'), 'SECRET=1\n')
-  writeFileSync(path.join(root, 'operator.local'), 'ignore me\n')
-  const statusBeforeHandoff = gitStatus(root)
-
-  const record = createWorktree(root, 'secrets')
-  const worktreePath = path.join(root, record.path)
-
-  assert.equal(
-    existsSync(path.join(worktreePath, 'config_overrides.json')),
-    true,
-  )
+  // The handoff carries harness configuration, not secrets or unrelated
+  // operator files, and it leaves the source checkout untouched.
   assert.equal(existsSync(path.join(worktreePath, '.env')), false)
   assert.equal(existsSync(path.join(worktreePath, 'operator.local')), false)
   assert.equal(gitStatus(root), statusBeforeHandoff)

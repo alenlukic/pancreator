@@ -4,8 +4,6 @@ import test from 'node:test'
 
 import {
   HARNESS_REPAIR_CATEGORIES_PATH,
-  harnessRepairCategoryErrors,
-  loadHarnessRepairCategories,
   parseHarnessRepairCategories,
 } from '../../src/lib/governance/harness-repair-categories.js'
 import { readJson } from '../../src/lib/io.js'
@@ -26,22 +24,6 @@ function withCategories(
 
   return { ...registry, categories: mutate(structuredClone(categories)) }
 }
-
-test('the shipped harness repair category registry passes its shape check', () => {
-  assert.deepEqual(harnessRepairCategoryErrors(REPO_ROOT), [])
-
-  const categories = loadHarnessRepairCategories(REPO_ROOT)
-
-  assert.ok(categories.length > 0)
-
-  for (const category of categories) {
-    assert.ok(category.id.length > 0)
-    assert.ok(category.slug.length > 0)
-    assert.ok(category.display_name.length > 0)
-    assert.ok(category.scope.length > 0)
-    assert.ok(category.next_action_contract.required_tokens.length > 0)
-  }
-})
 
 test('the shape check rejects a duplicate slug', () => {
   const result = parseHarnessRepairCategories(

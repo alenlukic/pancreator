@@ -3,6 +3,7 @@ import path from 'node:path'
 
 import { fileExists, isRecord, readJson } from './io.js'
 import { resolveRunLayout } from './run-layout.js'
+import { TEST_PROFILE_ENV } from './suite-profile-env.js'
 import type {
   DeterministicResult,
   RunState,
@@ -15,8 +16,7 @@ import type {
 // variable for exactly one execution, the `full` release gate that runs when
 // the run enters ship. Nothing here gates on a count or a duration.
 
-/** Environment variable the reporter reads for its profile target. */
-export const TEST_PROFILE_ENV = 'PAN_TEST_PROFILE'
+export { TEST_PROFILE_ENV }
 
 /** The only repository-check profile the harness profiles. */
 export const SUITE_PROFILE_GATE_PROFILE = 'full'

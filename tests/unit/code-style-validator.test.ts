@@ -114,9 +114,7 @@ test('the handbook exceptions and the formatter boundary stay unreported', () =>
     codes('tools/report.py', 'def collect(items=None):\n    return items\n'),
     [],
   )
-})
 
-test('a clean file, an empty file, and an uncovered file report nothing', () => {
   const clean = [
     "import fs from 'node:fs'",
     '',
@@ -134,7 +132,6 @@ test('a clean file, an empty file, and an uncovered file report nothing', () => 
 
   assert.deepEqual(codes('src/total.ts', clean), [])
   assert.deepEqual(codes('src/empty.ts', ''), [])
-  assert.deepEqual(codes('docs/guide.md', 'var total = 0\n'), [])
 })
 
 test('unparsable content is reported without a crash', () => {

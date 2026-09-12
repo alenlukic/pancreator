@@ -4,7 +4,7 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
-import { createFixture } from '../helpers.js'
+import { createFixture } from '../fixture-template.js'
 
 function git(root: string, args: string[]): string {
   return execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim()
@@ -43,35 +43,25 @@ test('CLI prints --json scan output and exits non-zero on issues', () => {
   assert.equal(parsed.schema_version, 1)
   assert.equal(parsed.status, 'failed')
   assert.ok(parsed.summary.editable_issue_files > 0)
-})
 
-test('CLI prints --json checkpoint output and exits non-zero when blocked', () => {
-  const root = createFixture()
-
-  write(root, 'CHANGELOG.md', '# Changelog\n\nRun this command.\n')
-  git(root, ['add', 'CHANGELOG.md'])
-  git(root, ['commit', '-qm', 'pin changelog'])
-
-  write(root, 'runtime/pr-descriptions/example.md', "# PR\n\nDon't do this.\n")
-
-  const cli = path.join(process.cwd(), 'dist', 'src', 'cli.js')
-  const result = spawnSync(
+  // Scan writes nothing, so the checkpoint branch runs on the same clone.
+  const checkpoint = spawnSync(
     process.execPath,
     ['--no-warnings', cli, 'conform', 'checkpoint', '--json'],
     { cwd: root, encoding: 'utf8' },
   )
 
-  assert.equal(result.status, 1)
+  assert.equal(checkpoint.status, 1)
 
-  const parsed = JSON.parse(result.stdout) as {
+  const blocked = JSON.parse(checkpoint.stdout) as {
     schema_version: number
     status: string
     wrote_checkpoint: boolean
   }
 
-  assert.equal(parsed.schema_version, 1)
-  assert.equal(parsed.status, 'blocked')
-  assert.equal(parsed.wrote_checkpoint, false)
+  assert.equal(blocked.schema_version, 1)
+  assert.equal(blocked.status, 'blocked')
+  assert.equal(blocked.wrote_checkpoint, false)
 })
 
 test('CLI text output labels the selected file count', () => {

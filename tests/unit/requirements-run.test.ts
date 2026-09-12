@@ -9,9 +9,12 @@ import {
   isPassingResult,
   resolveRequirementTargetPath,
 } from '../../src/lib/requirements/run.js'
+import { loadRegistry } from '../../src/lib/requirements/registry.js'
 import { resolveRequirements } from '../../src/lib/requirements/resolve.js'
 import { requirementShapeKey } from '../../src/cli.js'
-import { createFixture } from '../helpers.js'
+import { createFixture } from '../fixture-template.js'
+
+const REPO_ROOT = process.cwd()
 
 test('artifact validators resolve only when workflow artifacts are requested', () => {
   const root = createFixture()
@@ -198,6 +201,28 @@ test('a source file resolves the source-file target kind', () => {
   assert.equal(inferTargetKind('tools/report.py'), 'source-file')
   assert.equal(inferTargetKind('docs/guide.md'), 'markdown-artifact')
   assert.equal(inferTargetKind('Makefile'), 'unknown')
+})
+
+test('a tune record resolves the target kind its registry entry accepts', () => {
+  assert.equal(
+    inferTargetKind('runtime/tune-harness/records/tune-1789154168355.json'),
+    'tune-record-json',
+  )
+  assert.equal(
+    inferTargetKind('runtime/tune-harness/reports/tune-1789154168355.md'),
+    'markdown-artifact',
+    'only the immutable record under records/ carries the tune-record kind',
+  )
+
+  const entry = loadRegistry(REPO_ROOT).entries.get('TUNE-RECORD-VALIDATE-001')
+
+  assert.ok(entry, 'TUNE-RECORD-VALIDATE-001 MUST be registered')
+  assert.ok(
+    entry.target_types.includes(
+      inferTargetKind('runtime/tune-harness/records/tune-1789154168355.json'),
+    ),
+    'pan requirements run MUST reach the tune record validator by target kind',
+  )
 })
 
 test('runRequirement fails closed on missing target', () => {
