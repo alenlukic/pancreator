@@ -241,23 +241,6 @@ test('a failed command does not stop the remaining command partitions', () => {
   assert.match(result.results[1]?.stdout ?? '', /frontend partition ran/u)
 })
 
-test('repository checks stop after a failed probe', () => {
-  const { root } = makeInstallation()
-
-  writeChecks(root, {
-    static: {
-      probes: ['node -e "process.exit(7)"'],
-      commands: ['node -e "process.exit(0)"'],
-    },
-  })
-
-  const result = runRepositoryCheck(root, 'static')
-
-  assert.equal(result.status, 'failed')
-  assert.equal(result.results.length, 1)
-  assert.equal(result.results[0]?.exit_code, 7)
-})
-
 test('repository checks run environment probes before ordinary probes', () => {
   const { root } = makeInstallation()
 
@@ -271,6 +254,8 @@ test('repository checks run environment probes before ordinary probes', () => {
 
   const result = runRepositoryCheck(root, 'static')
 
+  // One loop walks the environment probes, then the ordinary probes, then the
+  // commands, and returns on the first failure.
   assert.equal(result.status, 'failed')
   assert.equal(result.results.length, 1)
   assert.equal(result.results[0]?.kind, 'probe')

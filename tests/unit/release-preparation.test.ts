@@ -500,38 +500,37 @@ test('release continuation preserves unresolved conflicts and completes staged r
   }
 })
 
-test('release finalization rejects an invalid fetched-main hash before Git inspection', () => {
-  const root = createFixture()
-  const record = createWorktree(root, 'release-invalid')
-
-  assert.equal(
-    errorCode(() => finalizeLocalRelease(root, record.name, '-bad-ref')),
-    'RELEASE_FETCHED_MAIN_INVALID',
-  )
-})
-
 test('release sync rejects every unsafe path class without repository mutation', () => {
   const cases = [
     ['credentials.txt', 'secret-like path'],
     ['runtime/generated.json', 'generated state'],
     ['dist/output.js', 'dependency or generated output'],
     ['node_modules/package/index.js', 'dependency or generated output'],
+    // release/index.json is already tracked, so it needs no baseline.
     ['release/index.json', 'release index'],
   ] as const
 
-  for (const [index, [relativePath, expectedClass]] of cases.entries()) {
-    const root = createFixture()
-    const absolute = path.join(root, relativePath)
+  // assertCommittablePaths fires before any commit or fetch, so one fixture
+  // and one worktree prove every class: dirty one path, assert, restore.
+  const root = createFixture()
 
-    if (relativePath !== 'release/index.json') {
-      mkdirSync(path.dirname(absolute), { recursive: true })
-      writeFileSync(absolute, 'baseline\n')
-      git(root, ['add', '-f', relativePath])
-      git(root, ['commit', '-m', `test: track ${expectedClass}`])
+  for (const [relativePath, expectedClass] of cases) {
+    if (relativePath === 'release/index.json') {
+      continue
     }
 
-    const record = createWorktree(root, `unsafe-${index}`)
-    const worktreePath = path.join(root, record.path)
+    const absolute = path.join(root, relativePath)
+
+    mkdirSync(path.dirname(absolute), { recursive: true })
+    writeFileSync(absolute, 'baseline\n')
+    git(root, ['add', '-f', relativePath])
+    git(root, ['commit', '-m', `test: track ${expectedClass}`])
+  }
+
+  const record = createWorktree(root, 'unsafe-paths')
+  const worktreePath = path.join(root, record.path)
+
+  for (const [relativePath, expectedClass] of cases) {
     const worktreeFile = path.join(worktreePath, relativePath)
 
     writeFileSync(
@@ -565,6 +564,8 @@ test('release sync rejects every unsafe path class without repository mutation',
         error.details.class === expectedClass,
     )
     assert.deepEqual(snapshot(), before)
+
+    git(worktreePath, ['checkout', '--', relativePath])
   }
 })
 
@@ -654,6 +655,14 @@ test('standalone release refuses an active workflow in the same worktree', () =>
     git(worktreePath, ['branch', '--show-current']),
     'blocked-branch',
   )
+
+  // The commit-hash invariant is the first statement of finalizeLocalRelease,
+  // so it refuses before any Git inspection reaches the worktree.
+  assert.equal(
+    errorCode(() => finalizeLocalRelease(root, record.name, '-bad-ref')),
+    'RELEASE_FETCHED_MAIN_INVALID',
+  )
+
   assert.throws(
     () => syncLocalRelease(root, record.name, 'feat: checkpoint', state.run_id),
     (error: unknown) =>

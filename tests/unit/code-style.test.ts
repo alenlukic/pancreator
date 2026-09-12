@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
-import { createFixture } from '../helpers.js'
+import { createFixture } from '../fixture-template.js'
 import { PanError } from '../../src/lib/errors.js'
 import {
   checkpointStyleArtifacts,
@@ -165,10 +165,22 @@ test('checkpoint blocks on an editable issue and writes once the set is clean', 
 
   const saved = JSON.parse(
     readFileSync(path.join(root, STYLE_CACHE_RELATIVE_PATH), 'utf8'),
-  ) as { schema_version: number; files: Record<string, unknown> }
+  ) as {
+    schema_version: number
+    files: Record<string, { editable: boolean; sha256: string }>
+  }
+  const entry = saved.files['src/module.ts']
 
   assert.equal(saved.schema_version, 1)
-  assert.ok('src/module.ts' in saved.files)
+  assert.ok(entry)
+
+  // The entry keeps the editability and digest the scan resolved.
+  assert.equal(entry.editable, true)
+  assert.equal(
+    entry.sha256,
+    written.files.find((file) => file.relative_path === 'src/module.ts')
+      ?.sha256,
+  )
 
   const after = scanStyleArtifacts(root, { workspace_root: root })
 
@@ -277,26 +289,4 @@ test('checkpoint accepts lone --since and both verbs reject combined overrides',
         error.message === '--since and --all cannot be used together.',
     )
   }
-})
-
-test('a checkpoint entry keeps the editability the scan resolved', () => {
-  const root = createFixture()
-
-  write(root, 'src/module.ts', CLEAN_SOURCE)
-  git(root, ['add', 'src/module.ts'])
-  git(root, ['commit', '-qm', 'initial source'])
-
-  const result = checkpointStyleArtifacts(root, { workspace_root: root })
-  const saved = JSON.parse(
-    readFileSync(path.join(root, STYLE_CACHE_RELATIVE_PATH), 'utf8'),
-  ) as { files: Record<string, { editable: boolean; sha256: string }> }
-  const entry = saved.files['src/module.ts']
-
-  assert.equal(result.status, 'passed')
-  assert.ok(entry)
-  assert.equal(entry.editable, true)
-  assert.equal(
-    entry.sha256,
-    result.files.find((file) => file.relative_path === 'src/module.ts')?.sha256,
-  )
 })

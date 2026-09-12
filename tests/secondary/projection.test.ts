@@ -9,7 +9,7 @@ import {
   renderPolicyCursorRule,
 } from '../../src/lib/cursor-content.js'
 import { loadPolicyCatalog } from '../../src/lib/policies.js'
-import { createFixture } from '../helpers.js'
+import { createFixture } from '../fixture-template.js'
 import { createTestTempDirectory } from '../temp.js'
 
 test('installer and compiled projection renderers stay byte-identical', () => {

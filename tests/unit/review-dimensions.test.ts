@@ -14,7 +14,7 @@ import {
   resolveReviewDimensionSelection,
   reviewDimensionSlug,
 } from '../../src/lib/review-dimensions.js'
-import { createFixture, sharedFixture } from '../helpers.js'
+import { createFixture, sharedFixture } from '../fixture-template.js'
 
 /** Level-three headings under `## Charters` in a squad skill file. */
 function charterHeadings(root: string, relative: string): string[] {

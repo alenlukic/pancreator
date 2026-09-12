@@ -23,7 +23,7 @@ import {
   validateInvocationMarkdown,
 } from '../../src/lib/validation.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
-import { createFixture } from '../helpers.js'
+import { createFixture } from '../fixture-template.js'
 import { policyInstructionAppliesToCard } from '../../src/lib/policy-instructions.js'
 import type {
   Invocation,
@@ -319,13 +319,16 @@ test('the worker card names the supervisor procedure and prints no lifecycle com
   )
 })
 
-test('invocation cards inline policy text and reference guidance for every stage', () => {
+// The renderer branch does not vary by stage, so one stage that carries a
+// bounded guidance reference proves it. Render and validate agreement is
+// proven by validation.test.ts.
+test('an invocation card inlines policy text and references guidance', () => {
   const root = createFixture()
-  const stages = ['implement', 'verify', 'remediate', 'ship']
+  const stageSlug = 'implement'
 
   let boundedReferences = 0
 
-  for (const stageSlug of stages) {
+  {
     const markdown = renderInvocationMarkdown(
       baseInvocation(root, 'delivery', stageSlug),
     )
@@ -1063,26 +1066,58 @@ test('the evidence brief names the fast command only when no passed fast gate is
       command,
     ),
   )
-})
-
-test('the evidence brief names the harness root the fast command runs from', () => {
-  const root = createFixture()
-  const invocation = baseInvocation(root, 'delivery', 'verify')
 
   // A run bound to a worktree carries the harness root, as the card does, so
-  // "from the harness root" names a directory rather than assuming one.
+  // the brief names that directory instead of assuming this checkout.
   invocation.workspace_root = 'worktrees/operator/delivery-abc123-alpha'
   invocation.harness_root = '/srv/harness'
 
-  const brief = renderEvidenceWorkerBrief(invocation, evidenceWorkerFixture())
+  const fromHarnessRoot = renderEvidenceWorkerBrief(
+    invocation,
+    evidenceWorkerFixture(),
+  )
 
-  assert.match(
-    brief,
-    /^\*\*Harness root\*\* `\/srv\/harness` — every `\.\/bin\/pan` command in this brief runs from this directory, not the workspace\.$/mu,
+  assert.ok(fromHarnessRoot.includes('/srv/harness'))
+  assert.doesNotMatch(fromHarnessRoot, /from this checkout/u)
+})
+
+// Run 63310 genre-label: two supervisors let a backgrounded launch continue
+// unwatched. The rule was on the attested card, 300 lines from the launch
+// step. The launch step itself has to carry the digest pointer, the exact
+// command, and the ordering that makes the watch precede its verdict.
+test('the launch step carries the watch pointer, command, and ordering', () => {
+  const root = createFixture()
+  const invocation = delegatedInvocation(root)
+  const delegateDigest = 'd'.repeat(64)
+  const redlineRecordPath =
+    'runtime/logs/workflows/run-fixture/agent/delegation-redlines.md'
+  const watchCommand = './bin/pan delegate watch run-fixture'
+
+  assert.ok(invocation.delegation)
+  invocation.delegation.policies = resolvePolicies(root, {
+    persona: 'orchestrator',
+    workflow: 'delivery',
+    stage: 'implement',
+  }).filter((policy) => policy.id === 'DELEGATE-001')
+  invocation.delegation.watch_command = watchCommand
+  invocation.delegation.redline_record_path = redlineRecordPath
+  assert.ok(invocation.delegation.supervisor_card)
+  invocation.delegation.supervisor_card.policy_sections = [
+    { policy_id: 'DELEGATE-001', sha256: delegateDigest },
+  ]
+
+  const procedure = renderSupervisorProcedureMarkdown(invocation)
+
+  assert.ok(
+    procedure.includes(`\`DELEGATE-001\`: \`sha256:${delegateDigest}\``),
+    procedure,
   )
-  assert.match(
-    brief,
-    /run exactly `\.\/bin\/pan repository-check fast --run run-fixture` from the harness root `\/srv\/harness` so the run records the execution\./u,
-  )
-  assert.doesNotMatch(brief, /from this checkout/u)
+  assert.ok(procedure.includes(redlineRecordPath))
+  assert.ok(procedure.includes(`${watchCommand} --mark-background`))
+
+  const launchIndex = procedure.indexOf('2a. Arm the watch')
+  const verdictIndex = procedure.indexOf('3a. Read the verdict')
+
+  assert.ok(launchIndex > 0)
+  assert.ok(launchIndex < verdictIndex)
 })

@@ -4,7 +4,6 @@ import test from 'node:test'
 import path from 'node:path'
 
 import {
-  createCursorModelResolver,
   expectedVariantDisplayName,
   loadCursorCatalog,
   resolveCursorModelSlug,
@@ -204,15 +203,6 @@ test('parameters are validated per model, not per family', () => {
       spec,
     )
   }
-})
-
-test('createCursorModelResolver skipCatalog keeps a spec the catalog rejects', () => {
-  const resolver = createCursorModelResolver(root, { skipCatalog: true })
-
-  assert.equal(
-    resolver(parsePersonaMapping('unknown-model[foo=bar]'), 'persona mapping'),
-    'unknown-model[foo=bar]',
-  )
 })
 
 test('without a local catalog the resolution is grammar-only', () => {

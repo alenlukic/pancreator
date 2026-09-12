@@ -17,7 +17,7 @@ import {
 import { loadPipelineConfig } from '../../src/lib/pipeline-config.js'
 import { resolveCursorModelSlug } from '../../src/lib/executors/cursor-catalog.js'
 import { parsePersonaMapping } from '../../src/lib/executors/mapping.js'
-import { createFixture } from '../helpers.js'
+import { createFixture } from '../fixture-template.js'
 
 test('embedded Cursor projection prefixes durable harness docs paths', () => {
   const { cliPath, harnessPath, panCommand } = CURSOR_PROJECTION_TOKENS

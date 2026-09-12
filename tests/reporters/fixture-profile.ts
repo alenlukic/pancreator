@@ -7,7 +7,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
-import { TEST_PROFILE_ENV } from '../../src/lib/suite-profile.js'
+import { TEST_PROFILE_ENV } from '../../src/lib/suite-profile-env.js'
 
 export const FIXTURE_SIDECAR_SUFFIX = '.fixture-profile'
 

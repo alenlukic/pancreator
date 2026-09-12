@@ -3,7 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import { createFixture } from '../helpers.js'
+import { createFixture } from '../fixture-template.js'
 import {
   evaluateDeterministicCriteria,
   resolveShellCheck,
@@ -145,7 +145,7 @@ function preflightTestResult(root: string) {
   return evaluated.results.find((item) => item.id === 'preflight.tests')
 }
 
-test('embedded preflight test gates run the target fast profile', () => {
+test('embedded preflight test gates resolve the target fast profile', () => {
   const root = createFixture()
 
   configureEmbeddedFixture(root, {
@@ -155,12 +155,17 @@ test('embedded preflight test gates run the target fast profile', () => {
     },
   })
 
-  const result = preflightTestResult(root)
+  // The local decision is the criterion-to-profile mapping; running the
+  // profile is the runner's contract, proven in repository-checks.test.ts.
+  const resolution = resolveShellCheck(
+    root,
+    preflightStage().criteria[0] as Criterion,
+    HARNESS_TEST_COMMAND,
+    false,
+  )
 
-  assert.ok(result)
-  assert.equal(result.command, 'pan repository-check fast')
-  assert.equal(result.passed, true)
-  assert.equal(result.disabled, undefined)
+  assert.equal(resolution.command, 'pan repository-check fast')
+  assert.equal(resolution.profile_name, 'fast')
 })
 
 test('embedded preflight test gates no-op when no fast profile is configured', () => {

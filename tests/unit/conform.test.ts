@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
-import { createFixture } from '../helpers.js'
+import { createFixture } from '../fixture-template.js'
 import { PanError } from '../../src/lib/errors.js'
 import {
   checkpointConformArtifacts,
@@ -131,36 +131,6 @@ test('an embedded install scans harness intake and never target-tracked prose', 
   assert.equal(result.summary.report_only_files, 0)
 })
 
-test('checkpoint writes a clean baseline and scan reports no changes', () => {
-  const root = createFixture()
-
-  write(root, 'CHANGELOG.md', '# Changelog\n\nRun this command.\n')
-  write(root, 'docs/issues/one.md', '# Issue\n\nRun this command.\n')
-  git(root, ['add', 'CHANGELOG.md', 'docs/issues/one.md'])
-  git(root, ['commit', '-qm', 'pin editable prose'])
-
-  write(
-    root,
-    'runtime/pr-descriptions/example.md',
-    '# PR\n\nRun this command.\n',
-  )
-
-  const checkpoint = checkpointConformArtifacts(root, { workspace_root: root })
-
-  assert.equal(checkpoint.status, 'passed')
-  assert.equal(checkpoint.wrote_checkpoint, true)
-  assert.ok(
-    readFileSync(path.join(root, CONFORM_CACHE_RELATIVE_PATH), 'utf8').includes(
-      '"schema_version": 1',
-    ),
-  )
-
-  const scan = scanConformArtifacts(root, { workspace_root: root })
-
-  assert.equal(scan.status, 'passed')
-  assert.deepEqual(scan.files, [])
-})
-
 test('checkpoint blocks editable issues but permits report-only HTML issues', () => {
   const root = createFixture()
 
@@ -281,7 +251,20 @@ test('scan selects dirty, untracked, and deleted files and --all adds unchanged 
   git(root, ['add', 'CHANGELOG.md', 'docs/issues'])
   git(root, ['commit', '-qm', 'initial prose'])
 
-  checkpointConformArtifacts(root, { workspace_root: root })
+  const checkpoint = checkpointConformArtifacts(root, { workspace_root: root })
+
+  assert.ok(
+    readFileSync(path.join(root, CONFORM_CACHE_RELATIVE_PATH), 'utf8').includes(
+      '"schema_version": 1',
+    ),
+  )
+
+  // Nothing changed since the checkpoint, so the bare scan selects nothing.
+  const clean = scanConformArtifacts(root, { workspace_root: root })
+
+  assert.equal(checkpoint.wrote_checkpoint, true)
+  assert.equal(clean.status, 'passed')
+  assert.deepEqual(clean.files, [])
 
   write(root, 'docs/issues/dirty.md', '# Dirty\n\nRun this command again.\n')
   write(root, 'docs/issues/untracked.md', '# Untracked\n\nRun this command.\n')

@@ -12,13 +12,22 @@ import { referenceContentSha256, sha256 } from '../../src/lib/io.js'
 import { renderContextReferenceBlock } from '../../src/lib/policy-guidance.js'
 import type { ContextReference, RunState } from '../../src/lib/types.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
-import { createFixture } from '../helpers.js'
+import { createFixture } from '../fixture-template.js'
+import { createTestTempDirectory } from '../temp.js'
 
 const PARENT_PATH = 'runtime/specs/parent-specification.md'
 
 function writeParent(root: string, body: string): void {
   mkdirSync(path.join(root, path.dirname(PARENT_PATH)), { recursive: true })
   writeFileSync(path.join(root, PARENT_PATH), body)
+}
+
+// buildContextReference, contextReferenceStatus, and
+// renderContextReferenceBlock read the referenced file and nothing else. Only
+// the buildInvocationInputs cases below need a workflow, so the rest take a
+// scratch root that holds the parent alone instead of a fixture clone.
+function referenceRoot(): string {
+  return createTestTempDirectory('context-reference-')
 }
 
 function runState(contextReference?: ContextReference): RunState {
@@ -58,7 +67,7 @@ function runState(contextReference?: ContextReference): RunState {
 }
 
 test('a context reference digests the trimmed source', () => {
-  const root = createFixture()
+  const root = referenceRoot()
 
   writeParent(root, '\n# Parent\n\nOne requirement.\n\n')
 
@@ -84,7 +93,7 @@ test('a context reference digests the trimmed source', () => {
 })
 
 test('a missing context reference source is reported, not invented', () => {
-  const root = createFixture()
+  const root = referenceRoot()
 
   assert.throws(
     () => buildContextReference(root, 'runtime/specs/absent.md'),
@@ -93,7 +102,7 @@ test('a missing context reference source is reported, not invented', () => {
 })
 
 test('context reference status separates current, drifted, and missing', () => {
-  const root = createFixture()
+  const root = referenceRoot()
 
   writeParent(root, '# Parent\n\nOne requirement.\n')
 
@@ -172,7 +181,7 @@ test('a drifted parent is stated on the reference instead of silently refreshed'
 })
 
 test('a drifted context reference renders a reference-failure block naming both digests', () => {
-  const root = createFixture()
+  const root = referenceRoot()
 
   writeParent(root, '# Parent\n\nOne requirement.\n')
 
@@ -221,7 +230,7 @@ test('a missing parent is reported as missing required context', () => {
 })
 
 test('the context reference block carries path, digest, basis, and trigger', () => {
-  const root = createFixture()
+  const root = referenceRoot()
 
   writeParent(root, '# Parent\n\nOne requirement.\n')
 

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { copyFileSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs'
+import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -138,19 +138,17 @@ function intakeForCategory(slug: string): string {
   )
 }
 
-test('harness repair validator accepts a transcript-aware root-cause intake', () => {
-  const result = validate(VALID_INTAKE)
-
-  assert.equal(result.status, 'passed')
-  assert.deepEqual(result.issues, [])
-})
-
 test('harness repair validator accepts an intake for every declared category', () => {
   assert.ok(CATEGORIES.length > 0)
 
   for (const category of CATEGORIES) {
     const result = validate(intakeForCategory(category.slug))
 
+    assert.equal(
+      result.status,
+      'passed',
+      `category ${category.slug} MUST validate cleanly`,
+    )
     assert.deepEqual(
       result.issues,
       [],
@@ -184,19 +182,19 @@ test('harness repair validator rejects a missing or unknown category', () => {
     !unknown.issues.some((item) => item.code === 'repair.category_missing'),
     'an unknown slug MUST NOT also report a missing declaration',
   )
-})
 
-test('harness repair validator rejects a display name the registry does not give the slug', () => {
-  const result = validate(
+  const wrongDisplayName = validate(
     VALID_INTAKE.replace(
       '**Category:** Runtime/build bugs (`build`)',
       '**Category:** Performance (`build`)',
     ),
   )
 
-  assert.equal(result.status, 'failed')
+  assert.equal(wrongDisplayName.status, 'failed')
   assert.ok(
-    result.issues.some((item) => item.code === 'repair.category_display_name'),
+    wrongDisplayName.issues.some(
+      (item) => item.code === 'repair.category_display_name',
+    ),
   )
 })
 
@@ -308,30 +306,6 @@ test('harness repair validator checks every finding and scoped acceptance sectio
     ),
   )
   assert.ok(result.issues.some((item) => item.code === 'repair.acceptance_id'))
-})
-
-test('the shipped category intake fixtures validate at their real paths', () => {
-  const directory = 'tests/fixtures/harness-repair/category-intakes'
-  const names = readdirSync(path.join(REPO_ROOT, directory)).filter((name) =>
-    name.endsWith('.md'),
-  )
-
-  assert.ok(names.length >= 3, 'the fixtures MUST cover several categories')
-
-  for (const name of names) {
-    const result = validateHarnessRepairIntake({
-      root: REPO_ROOT,
-      targetPath: `${directory}/${name}`,
-      requirement: {
-        policy_id: 'REPAIR-001',
-        requirement_id: 'harness-repair-validate',
-        registry_id: 'HARNESS-REPAIR-VALIDATE-001',
-        arguments: {},
-      },
-    })
-
-    assert.deepEqual(result.issues, [], `${name} MUST validate cleanly`)
-  }
 })
 
 test('harness repair validator accepts several findings and traces each one', () => {

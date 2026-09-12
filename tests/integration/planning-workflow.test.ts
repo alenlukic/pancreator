@@ -91,29 +91,22 @@ test('the planning stage resolves its governance from policy, not prompt text', 
     false,
     'the stage prompt MUST NOT restate a policy identifier',
   )
-})
 
-test('the standalone decomposition mode keeps its own chunking policy', () => {
-  const root = sharedFixture()
-  const planning = resolvePolicies(root, {
-    persona: 'planner',
-    workflow: 'planning',
-    stage: 'plan',
-  }).map((policy) => policy.id)
-
+  // Chunking policy stays with the standalone decomposition mode.
   assert.equal(
-    planning.includes('DECOMP-001'),
+    resolved.includes('DECOMP-001'),
     false,
     'DECOMP-001 stays bound to the standalone decomposition mode',
   )
-
-  const decomposition = resolvePolicies(root, {
-    persona: 'decomposer',
-    workflow: 'standalone',
-    stage: 'decompose',
-  }).map((policy) => policy.id)
-
-  assert.ok(decomposition.includes('DECOMP-001'))
+  assert.ok(
+    resolvePolicies(root, {
+      persona: 'decomposer',
+      workflow: 'standalone',
+      stage: 'decompose',
+    })
+      .map((policy) => policy.id)
+      .includes('DECOMP-001'),
+  )
 })
 
 test('the planning stage binds the plan and cohort validators at pre-submit', () => {
@@ -196,21 +189,16 @@ test('a planning run routes on approval by default and --no-autostart opts out',
       .autostart_delivery,
     undefined,
   )
-})
 
-test('planning is the default workflow of a new run', () => {
-  const root = createFixture()
-  const state = createRun(root, { requestPath: writeRequest(root) })
+  // Planning is the workflow a run without an explicit slug starts in, and it
+  // carries the same routing default.
+  const defaulted = createRun(root, { requestPath })
 
-  assert.equal(state.workflow_slug, 'planning')
-  assert.equal(state.current_stage, 'plan')
-  assert.equal(state.autostart_delivery, true)
-})
+  assert.equal(defaulted.workflow_slug, 'planning')
+  assert.equal(defaulted.current_stage, 'plan')
+  assert.equal(defaulted.autostart_delivery, true)
 
-test('--max-parallel requires a routed planning run', () => {
-  const root = createFixture()
-  const requestPath = writeRequest(root)
-
+  // `--max-parallel` is a routing argument, so it needs a routed run.
   assert.equal(
     createRun(root, {
       workflowSlug: 'planning',

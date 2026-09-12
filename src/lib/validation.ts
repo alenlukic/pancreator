@@ -3551,7 +3551,7 @@ function declaresQuotedTestName(content: string, name: string): boolean {
  * makes that citation resolve to one declared test rather than to a file that
  * merely exists, and refuses one citation standing in for several rules.
  */
-function validateHarnessInstructionCoverage(
+export function validateHarnessInstructionCoverage(
   root: string,
   catalog: Map<string, Policy>,
 ): string[] {

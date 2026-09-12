@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
-import { readFileSync, realpathSync } from 'node:fs'
+import { readFileSync, realpathSync, renameSync } from 'node:fs'
 import path from 'node:path'
+
+import { sharedTemplate } from '../shared-template.js'
 
 import {
   abandonBestOfNCandidate,
@@ -35,8 +37,6 @@ export const CONFIGS = {
   consolidation: { personas: { metacritic: 'gpt-5.6-sol' } },
 }
 
-/** Above every supported pid range, so no process owns this pid. */
-export const DEAD_PID = 2 ** 31 - 1
 export const EXCLUSION_NOTE = 'Operator stopped this candidate.'
 
 export function git(root: string, args: string[]): string {
@@ -286,7 +286,20 @@ export function bestOfNCheckpoint(
   let template = bestOfNCheckpointTemplates.get(key)
 
   if (!template) {
-    template = buildBestOfNTemplate(key)
+    const shared = sharedTemplate(
+      `best-of-n-checkpoint:${key}`,
+      (destination) => {
+        const built = buildBestOfNTemplate(key)
+
+        renameSync(built.root, destination)
+
+        return { bonId: built.bonId }
+      },
+    )
+
+    template = shared
+      ? { root: shared.path, bonId: shared.metadata.bonId }
+      : buildBestOfNTemplate(key)
     bestOfNCheckpointTemplates.set(key, template)
   }
 

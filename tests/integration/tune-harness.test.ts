@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict'
-import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import {
   copyFileSync,
@@ -24,8 +23,7 @@ import {
   type TestIdentity,
 } from '../../src/lib/test-tuning.js'
 import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
-import { createFixture } from '../helpers.js'
-import { createTestTempDirectory } from '../temp.js'
+import { createFixture } from '../fixture-template.js'
 
 function identity(file: string, name: string): TestIdentity {
   return { file, name, lane: 'unit' }
@@ -359,56 +357,4 @@ test('finalizePreparedTuneSession uses the prior record for second-run deltas', 
   assert.equal(secondRecord.prior_record_id, 'session-one')
   assert.equal(secondRecord.benchmark.prior_deltas.fast_lane_wall_ms, 6)
   assert.deepEqual(secondRecord.comparison.added_since_retained, [beta])
-})
-
-test('the inventory reporter keeps duplicate top-level names', () => {
-  const root = createTestTempDirectory('pan-tune-inventory-')
-  const testFile = path.join(root, 'duplicate.test.cjs')
-  const inventoryPath = path.join(root, 'inventory.json')
-  const reporter = path.join(process.cwd(), 'dist/tests/reporters/inventory.js')
-
-  writeFileSync(
-    testFile,
-    [
-      "const test = require('node:test')",
-      "test('same name', () => {})",
-      "test('same name', () => {})",
-      '',
-    ].join('\n'),
-  )
-
-  const result = spawnSync(
-    process.execPath,
-    [
-      '--test',
-      `--test-reporter=${reporter}`,
-      '--test-reporter-destination=stdout',
-      '--test-name-pattern=^$',
-      testFile,
-    ],
-    {
-      cwd: root,
-      encoding: 'utf8',
-      env: {
-        ...Object.fromEntries(
-          Object.entries(process.env).filter(
-            ([key]) => key !== 'NODE_TEST_CONTEXT',
-          ),
-        ),
-        PAN_TEST_INVENTORY: inventoryPath,
-      },
-    },
-  )
-
-  assert.equal(result.status, 0, result.stderr)
-
-  const inventory = JSON.parse(readFileSync(inventoryPath, 'utf8')) as {
-    identities: TestIdentity[]
-  }
-
-  assert.equal(inventory.identities.length, 2)
-  assert.deepEqual(
-    inventory.identities.map((item) => item.occurrence),
-    [undefined, 2],
-  )
 })

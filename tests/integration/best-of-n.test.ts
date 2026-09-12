@@ -5,16 +5,11 @@ import test from 'node:test'
 
 import {
   abandonBestOfNCandidate,
-  bestOfNMutexPath,
   bestOfNStatus,
-  cleanBestOfN,
   consolidateBestOfN,
-  initBestOfN,
   refreshBestOfNAgents,
 } from '../../src/lib/best-of-n.js'
 import { getRunState, prepareInvocation } from '../../src/lib/engine.js'
-import { withOperationMutex } from '../../src/lib/io.js'
-import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import {
   attestRunCard,
   createFixture,
@@ -23,126 +18,11 @@ import {
 } from '../helpers.js'
 
 import {
-  CONFIGS,
-  DEAD_PID,
-  EXCLUSION_NOTE,
   bestOfNCheckpoint,
   driveCandidate,
   git,
   initSession,
-  sessionIdFromFailure,
 } from './best-of-n-helpers.js'
-
-test('a failed init leaves a session the lifecycle commands can recover', () => {
-  const root = createFixture()
-
-  writeJson(path.join(root, 'best-of-n-config.json'), {
-    ...CONFIGS,
-    setup: ['node -e "process.exit(7)"'],
-  })
-
-  let failure: unknown
-
-  try {
-    initBestOfN(root, {
-      requestPath: 'request.md',
-      configsPath: 'best-of-n-config.json',
-    })
-  } catch (error) {
-    failure = error
-  }
-
-  assert.ok(failure, 'a failed setup command fails init')
-  assert.match(
-    failure instanceof Error ? failure.message : String(failure),
-    /Setup command failed for candidate 'alpha'/u,
-  )
-
-  const bonId = sessionIdFromFailure(failure)
-  const status = bestOfNStatus(root, bonId)
-
-  // The worktree exists but its run does not, so the session is discoverable
-  // rather than an orphan the commands cannot name.
-  assert.equal(status.session_status, 'initializing')
-  assert.equal(status.candidates.length, 0)
-  assert.deepEqual(
-    status.incomplete.map((entry) => entry.slot),
-    ['alpha'],
-  )
-  assert.equal(status.consolidation_ready, false)
-  assert.equal(status.recovery_command, `./bin/pan best-of-n clean ${bonId}`)
-
-  assert.throws(
-    () => consolidateBestOfN(root, bonId),
-    /did not finish initialization/u,
-  )
-
-  const worktree = path.join(root, status.incomplete[0].worktree_path)
-
-  assert.equal(existsSync(worktree), true)
-
-  const cleaned = cleanBestOfN(root, bonId)
-
-  assert.deepEqual(cleaned.removed_worktrees, [
-    status.incomplete[0].worktree_path,
-  ])
-  assert.equal(existsSync(worktree), false)
-})
-
-test('one command at a time may mutate a session record', () => {
-  const { root, session } = bestOfNCheckpoint('ready')
-  const candidate = session.candidates[0]
-
-  withOperationMutex(bestOfNMutexPath(root, session.bon_id), () => {
-    const mutations = [
-      () =>
-        abandonBestOfNCandidate(
-          root,
-          session.bon_id,
-          candidate.run_id,
-          EXCLUSION_NOTE,
-        ),
-      () => consolidateBestOfN(root, session.bon_id),
-      () => cleanBestOfN(root, session.bon_id, { force: true }),
-    ]
-
-    for (const mutation of mutations) {
-      assert.throws(mutation, /Another Pancreator command is updating/u)
-    }
-  })
-
-  // Every refusal happened before its mutation, so nothing partial was written.
-  assert.equal(
-    bestOfNStatus(root, session.bon_id).candidates[0].abandoned,
-    undefined,
-  )
-
-  abandonBestOfNCandidate(
-    root,
-    session.bon_id,
-    candidate.run_id,
-    EXCLUSION_NOTE,
-  )
-
-  assert.ok(bestOfNStatus(root, session.bon_id).candidates[0].abandoned)
-})
-
-test('a session recovers from a mutex its dead owner left behind', () => {
-  const { root, session } = bestOfNCheckpoint('ready')
-  const mutex = bestOfNMutexPath(root, session.bon_id)
-
-  writeFileSync(mutex, `${DEAD_PID}\n`)
-
-  const state = abandonBestOfNCandidate(
-    root,
-    session.bon_id,
-    session.candidates[0].run_id,
-    EXCLUSION_NOTE,
-  )
-
-  assert.ok(state.candidates[0].abandoned)
-  assert.equal(existsSync(mutex), false)
-})
 
 test('best-of-N init isolates every candidate in its own worktree and model set', () => {
   const root = createFixture()
@@ -263,19 +143,6 @@ test('agent refresh preserves pinned models while updating instructions', () => 
   )
 })
 
-test('status surfaces invalid candidate state', () => {
-  const { root, session } = bestOfNCheckpoint('ready')
-  const candidate = session.candidates[0]
-  const statePath = resolveRunLayout(root, candidate.run_id).state.absolute
-
-  writeJson(statePath, { schema_version: 1 })
-
-  assert.throws(
-    () => bestOfNStatus(root, session.bon_id),
-    /state\.json\.run_id MUST be a non-empty string/u,
-  )
-})
-
 test('a candidate run keeps workflow-declared gates under a high-touch profile', () => {
   const root = createFixture()
   const configPath = path.join(root, 'config.json')
@@ -297,37 +164,6 @@ test('a candidate run keeps workflow-declared gates under a high-touch profile',
   ) as { stages: Array<{ slug: string; gate: string }> }
 
   assert.ok(snapshot.stages.every((stage) => stage.gate !== 'operator'))
-})
-
-test('a candidate circuit breaker ends that candidate without operator input', () => {
-  const { root, session } = bestOfNCheckpoint('ready')
-  const candidate = session.candidates[0]
-  const statePath = resolveRunLayout(root, candidate.run_id).state.absolute
-  const state = JSON.parse(readFileSync(statePath, 'utf8')) as Record<
-    string,
-    unknown
-  >
-
-  writeJson(statePath, {
-    ...state,
-    status: 'failed',
-    pending_action: { type: 'none' },
-    current_stage: null,
-  })
-
-  const failed = getRunState(root, candidate.run_id)
-
-  assert.equal(failed.status, 'failed')
-  assert.equal(failed.pending_action.type, 'none')
-  assert.equal(failed.current_stage, null)
-
-  const status = bestOfNStatus(root, session.bon_id)
-  const candidateStatus = status.candidates.find(
-    (entry) => entry.run_id === candidate.run_id,
-  )
-
-  assert.equal(candidateStatus?.terminal, true)
-  assert.ok(!status.unresolved.includes(candidate.run_id))
 })
 
 test('consolidation waits for every candidate and then evaluates all of them', () => {

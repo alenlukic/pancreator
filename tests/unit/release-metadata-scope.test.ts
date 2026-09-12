@@ -3,7 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import { createFixture } from '../helpers.js'
+import { createFixture } from '../fixture-template.js'
 import { evaluateDeterministicCriteria } from '../../src/lib/validation.js'
 import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
 import { resolveRoots } from '../../src/lib/workspace/roots.js'

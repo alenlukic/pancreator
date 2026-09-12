@@ -38,7 +38,7 @@
     },
     "Each unit of work MUST execute in its own Git worktree on its own branch. Two concurrent runs never mutate one workspace.",
     {
-      "text": "The harness MUST hold the execution graph, the group assignment, each unit's run id, and each group's completion proof. That record MUST be one durable record under `runtime/logs/cohorts/` (`tests/integration/cohort-fanout.test.ts::starting a cohort fans out one worktree and one run per chunk`).",
+      "text": "The harness MUST hold the execution graph, the group assignment, each unit's run id, and each group's completion proof. That record MUST be one durable record under `runtime/logs/cohorts/` (`tests/integration/cohort-fanout-start.test.ts::starting a cohort fans out one worktree and one run per chunk`).",
       "audience": ["harness"]
     },
     "Treat a group as complete only when every one of its runs reports success in that run's own state. The durable record MUST also hold the merge proof for that group.",
@@ -51,7 +51,7 @@
     "An unsuccessful run, a workspace with uncommitted work, or a conflicting merge MUST leave the merge proof unwritten. The next group then stays blocked.",
     "The exclusion of one unit from a group MUST be an operator decision. The record MUST carry the operator's stated reason.",
     {
-      "text": "The harness MUST refuse to remove a unit's workspace while its run is live or its workspace holds uncommitted work. Only an explicit operator force overrides that refusal (`tests/integration/cohort-fanout.test.ts::cleaning a session removes its chunk worktrees and keeps the branches`).",
+      "text": "The harness MUST refuse to remove a unit's workspace while its run is live or its workspace holds uncommitted work. Only an explicit operator force overrides that refusal (`tests/integration/cohort-fanout-start.test.ts::cleaning a session removes its chunk worktrees and keeps the branches`).",
       "audience": ["harness"]
     },
     {
@@ -66,7 +66,7 @@
       "audience": ["harness"]
     },
     {
-      "text": "The harness MUST record the started run or session on the planning run. A route that fails MUST leave the recorded approval and the ratified plan unchanged (`tests/integration/cohort-fanout.test.ts::a single-chunk routing failure leaves the approval and the plan intact`).",
+      "text": "The harness MUST record the started run or session on the planning run. A route that fails MUST leave the recorded approval and the ratified plan unchanged (`tests/integration/cohort-plan-routing.test.ts::a single-chunk routing failure leaves the approval and the plan intact`).",
       "audience": ["harness"]
     },
     {
@@ -75,12 +75,12 @@
     },
     "Each unit of a group of two or more MUST run the `delivery-chunk` workflow. It MUST end at a verified implementation on its own branch. Release preparation for such a plan MUST happen once, on the integrated result, in the release run. It MUST NOT happen per unit. A single-unit plan's `delivery` run carries its own `ship` stage.",
     {
-      "text": "When the merge proof of the final group lands, the harness MUST start the release run. The release run is one `delivery` run that begins at `verify`. It runs on a `release-<digest>` branch created from the integration head. When `--into-branch` recorded a worktree for the integration branch, it runs on the integration branch in that worktree. The release run MUST run in its own managed worktree (`tests/integration/cohort-fanout.test.ts::the last integration starts the release run at verify in its own worktree, and every retry completes or adopts it`).",
+      "text": "When the merge proof of the final group lands, the harness MUST start the release run. The release run is one `delivery` run that begins at `verify`. It runs on a `release-<digest>` branch created from the integration head. When `--into-branch` recorded a worktree for the integration branch, it runs on the integration branch in that worktree. The release run MUST run in its own managed worktree (`tests/integration/cohort-integration-conflicts.test.ts::the last integration starts the release run at verify in its own worktree, and every retry completes or adopts it`).",
       "audience": ["harness"]
     },
     "The release run MUST read the operator request the planning run stored. It MUST reach the parent specification by reference. The harness MUST record it on the session as `release_run_id`.",
     {
-      "text": "When the merge proof of a non-final group lands, the harness MUST start the next group. A continuation that fails MUST leave the merge proof in place. It MUST report the concrete error with the manual commands that perform the same work (`tests/integration/cohort-fanout.test.ts::integration merges a finished cohort and unblocks the next one`).",
+      "text": "When the merge proof of a non-final group lands, the harness MUST start the next group. A continuation that fails MUST leave the merge proof in place. It MUST report the concrete error with the manual commands that perform the same work (`tests/integration/cohort-integration.test.ts::integration merges a finished cohort and unblocks the next one`).",
       "audience": ["harness"]
     },
     "The number of concurrent unit runs MUST NOT exceed the parallelism limit recorded on the session (`pan cohort init --max-parallel`, default 4). `pan cohort start` MUST create runs only for the free slots and MUST name the deferred units. Run it again to start the deferred units once a unit run reaches a terminal state.",

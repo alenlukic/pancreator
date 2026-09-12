@@ -145,10 +145,9 @@ test('migration does not report a named-config hole that defaults fill', () => {
   // `coder` inherits `defaults.coder`; only the persona defaults omit is a hole.
   assert.deepEqual(result.missing, ['configs.simple.brand-new-persona'])
   assert.equal(result.changed, false)
-})
 
-test('migration checks named inheritance against override-filled defaults', () => {
-  const result = migratePipelineOverrides({
+  // The default that fills the hole may also arrive from the overrides file.
+  const fromOverrides = migratePipelineOverrides({
     previous: {
       schema_version: 1,
       active_config: 'simple',
@@ -166,8 +165,8 @@ test('migration checks named inheritance against override-filled defaults', () =
     },
   })
 
-  assert.deepEqual(result.missing, [])
-  assert.equal(result.changed, false)
+  assert.deepEqual(fromOverrides.missing, [])
+  assert.equal(fromOverrides.changed, false)
 })
 
 test('migration reads nested previous mappings and preserves them flat', () => {

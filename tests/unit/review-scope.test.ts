@@ -29,20 +29,11 @@ test('a change to the lineup or a charter is a self-review conflict', () => {
   ])
 })
 
-test('the dimension table is lineup machinery', () => {
-  // The table decides which charters a selection can name, so a change to it
-  // cannot be graded by the squad it shapes.
-  assert.deepEqual(
-    reviewMachineryConflicts(['src/lib/review-dimensions.ts', 'src/lib/io.ts']),
-    ['src/lib/review-dimensions.ts'],
-  )
-  assert.ok(
-    MACHINERY_TEST_PATTERNS.includes('tests/*/review-dimensions*.test.ts'),
-  )
-})
-
 test('the coordinator, its policy, and both entry points are machinery', () => {
+  // The dimension table decides which charters a selection can name, so a
+  // change to it cannot be graded by the squad it shapes.
   const conflicts = reviewMachineryConflicts([
+    'src/lib/review-dimensions.ts',
     'governance/policies/REVIEW-001.json',
     'governance/policies/SHEPHERD-001.json',
     'library/cursor/agents/shepherd-reviewer.md',
@@ -50,9 +41,11 @@ test('the coordinator, its policy, and both entry points are machinery', () => {
     'library/cursor/commands/pan-shepherd.md',
     'library/personas/shepherd-reviewer.md',
     'library/skills/shepherd-pr.md',
+    'src/lib/io.ts',
   ])
 
-  assert.equal(conflicts.length, 7)
+  assert.equal(conflicts.length, 8)
+  assert.equal(conflicts.includes('src/lib/io.ts'), false)
 })
 
 test('a near-miss path is not treated as machinery', () => {
@@ -158,14 +151,24 @@ test('verification substrate is its own tier and helpers match one lane deep', (
         'tests/secondary/install-helpers.ts',
         'governance/registries/directive_exemptions.json',
         'CHANGELOG.md',
+        'bin/lint',
+        'bin/install',
         'src/lib/engine.ts',
+        'bin/pan',
         'docs/operator-guide.md',
       ],
       CLOSURE,
     ),
   )
 
-  assert.equal(tiers.substrate.length, 7)
+  // The check wrappers are substrate; the CLI entrypoint they wrap is not.
+  assert.equal(tiers.substrate.length, 9)
+  assert.ok(tiers.substrate.some((item) => item.path === 'bin/lint'))
+  assert.ok(tiers.substrate.some((item) => item.path === 'bin/install'))
+  assert.equal(
+    tiers.substrate.some((item) => item.path === 'bin/pan'),
+    false,
+  )
   assert.equal(tiers.instrument.length, 0)
   assert.equal(tiers.conduct.length, 0)
 })
@@ -254,17 +257,6 @@ test('an alias redefinition counts as reviewer model routing change', () => {
   })
 
   assert.equal(reviewerMappingChanged(base, head), true)
-})
-
-test('the check wrappers lint and install are verification substrate', () => {
-  const tiers = conflictsByTier(
-    classifyReviewPaths(['bin/lint', 'bin/install', 'bin/pan'], CLOSURE),
-  )
-
-  assert.deepEqual(
-    tiers.substrate.map((item) => item.path),
-    ['bin/install', 'bin/lint'],
-  )
 })
 
 test('the tests of each machinery module are derived substrate', () => {

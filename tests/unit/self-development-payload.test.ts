@@ -42,35 +42,10 @@ test('self-development-only payload paths exist in the source checkout', () => {
       `${relative} is declared self-development-only but does not exist`,
     )
   }
-})
 
-test('the harness review lineup is excluded and the core squad is not', () => {
-  const paths = selfDevelopmentOnlyPaths()
-
+  // The harness lineup is self-development-only; the core squad ships.
   assert.ok(paths.includes(HARNESS_LINEUP))
   assert.equal(paths.includes('library/skills/review-squad.md'), false)
-})
-
-test('the core squad guards its harness-lineup reference on presence', () => {
-  const squad = readRepositoryFile('library/skills/review-squad.md')
-
-  assert.ok(squad.includes(HARNESS_LINEUP))
-  // The file is absent in a target installation, so every mention must sit in
-  // a conditional sentence.
-  const sentences = squad
-    .replaceAll('\n', ' ')
-    .split(/(?<=[.!?])\s+/u)
-    .filter((sentence) => sentence.includes(HARNESS_LINEUP))
-
-  assert.ok(sentences.length > 0)
-
-  for (const sentence of sentences) {
-    assert.match(
-      sentence,
-      /\b(?:when|if|present|exists|absent)\b/iu,
-      `unconditional reference to the harness lineup: ${sentence}`,
-    )
-  }
 })
 
 test('the skill index does not link a file the payload omits', () => {

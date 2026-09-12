@@ -16,10 +16,12 @@ import {
   migrateLegacyInboxLayout,
   rollbackInboxClaim,
   listInbox,
+  renderInbox,
 } from '../../src/lib/inbox.js'
 import { PanError } from '../../src/lib/errors.js'
 import { makeWorkflowRunId } from '../../src/lib/naming.js'
-import { createFixture } from '../helpers.js'
+import { maintainWorkflowRuntime } from '../../src/lib/workflow-artifacts.js'
+import { createFixture } from '../fixture-template.js'
 import { createTestTempDirectory } from '../temp.js'
 
 function writeInboxFile(
@@ -35,6 +37,13 @@ function writeInboxFile(
   utimesSync(filePath, modifiedAt, modifiedAt)
 }
 
+// claimInboxRequest, finishInboxRequest, and rollbackInboxClaim move files
+// inside runtime/inbox/ and read nothing else, so these cases take a bare
+// scratch root rather than a clone of the harness fixture template.
+function inboxRoot(): string {
+  return createTestTempDirectory('pancreator-inbox-unit-')
+}
+
 test('listInbox ignores nested directories and non-Markdown files', () => {
   const root = createTestTempDirectory('pancreator-inbox-unit-')
   const oldest = new Date('2024-01-01T12:00:00.000Z')
@@ -42,6 +51,12 @@ test('listInbox ignores nested directories and non-Markdown files', () => {
   const newest = new Date('2024-01-03T12:00:00.000Z')
 
   try {
+    assert.deepEqual(
+      listInbox(root),
+      [],
+      'a root without a queue directory lists nothing',
+    )
+
     writeInboxFile(root, 'oldest.md', '# Oldest\n', oldest)
     writeInboxFile(root, 'middle.md', '# Middle\n', middle)
     writeInboxFile(root, 'newest.md', '# Newest\n', newest)
@@ -182,33 +197,8 @@ test('listInbox falls back to a unique date-sequence base match', () => {
   }
 })
 
-test('listInbox returns an empty list when the inbox directory is missing', () => {
-  const root = createTestTempDirectory('pancreator-inbox-unit-')
-
-  try {
-    assert.deepEqual(listInbox(root), [])
-  } finally {
-    rmSync(root, { recursive: true, force: true })
-  }
-})
-
-test('claimInboxRequest moves queue items to active without changing bytes', () => {
-  const root = createFixture()
-  const content = '# Claim me\n'
-  const queuePath = path.join(root, 'runtime/inbox/queue/queued.md')
-
-  mkdirSync(path.dirname(queuePath), { recursive: true })
-  writeFileSync(queuePath, content, 'utf8')
-
-  const activePath = claimInboxRequest(root, 'runtime/inbox/queue/queued.md')
-
-  assert.equal(activePath, 'runtime/inbox/active/queued.md')
-  assert.equal(existsSync(queuePath), false)
-  assert.equal(readFileSync(path.join(root, activePath), 'utf8'), content)
-})
-
 test('finishInboxRequest moves active items to complete or canceled', () => {
-  const root = createFixture()
+  const root = inboxRoot()
   const content = '# Finish me\n'
   const activePath = path.join(root, 'runtime/inbox/active/finish.md')
 
@@ -235,7 +225,7 @@ test('finishInboxRequest moves active items to complete or canceled', () => {
 })
 
 test('rollbackInboxClaim restores queue canceled and legacy paths', () => {
-  const root = createFixture()
+  const root = inboxRoot()
   const originalPaths = [
     'runtime/inbox/queue/queued-rollback.md',
     'runtime/inbox/canceled/canceled-rollback.md',
@@ -244,11 +234,22 @@ test('rollbackInboxClaim restores queue canceled and legacy paths', () => {
 
   for (const originalPath of originalPaths) {
     const absolute = path.join(root, originalPath)
+    const content = `# ${path.basename(originalPath)}\n`
 
     mkdirSync(path.dirname(absolute), { recursive: true })
-    writeFileSync(absolute, `# ${path.basename(originalPath)}\n`, 'utf8')
+    writeFileSync(absolute, content, 'utf8')
 
     const activePath = claimInboxRequest(root, originalPath)
+
+    // A claim lands under active/ under the source file's own name and copies
+    // the bytes through untouched, whichever directory it came from.
+    assert.equal(
+      activePath,
+      `runtime/inbox/active/${path.basename(originalPath)}`,
+    )
+    assert.equal(existsSync(absolute), false)
+    assert.equal(readFileSync(path.join(root, activePath), 'utf8'), content)
+
     const restored = rollbackInboxClaim(root, activePath, originalPath)
 
     assert.equal(restored, originalPath)
@@ -258,7 +259,7 @@ test('rollbackInboxClaim restores queue canceled and legacy paths', () => {
 })
 
 test('finishInboxRequest recovers a missing active item from stored evidence', () => {
-  const root = createFixture()
+  const root = inboxRoot()
   const storedPath = 'runtime/logs/workflows/run/operator/request.md'
   const storedAbsolute = path.join(root, storedPath)
 
@@ -280,7 +281,7 @@ test('finishInboxRequest recovers a missing active item from stored evidence', (
 })
 
 test('inbox moves fail before overwrite when the target already exists', () => {
-  const root = createFixture()
+  const root = inboxRoot()
   const queueDirectory = path.join(root, 'runtime/inbox/queue')
   const activeDirectory = path.join(root, 'runtime/inbox/active')
 
@@ -303,7 +304,7 @@ test('inbox moves fail before overwrite when the target already exists', () => {
 test('a finished request takes a suffixed name when history holds its name', () => {
   // One intake file can be run more than once. The second run must still
   // finish, and history keeps both copies untouched.
-  const root = createFixture()
+  const root = inboxRoot()
   const activeDirectory = path.join(root, 'runtime/inbox/active')
   const completeDirectory = path.join(root, 'runtime/inbox/complete')
 
@@ -474,4 +475,101 @@ test('migrates legacy inbox layout into status directories', () => {
   for (const status of ['queue', 'active', 'canceled', 'complete', 'archive']) {
     assert.equal(existsSync(path.join(root, 'runtime/inbox', status)), true)
   }
+})
+
+test('renderInbox writes a stable table and names an empty inbox', () => {
+  assert.equal(renderInbox([]), 'Inbox is empty.\n')
+  assert.equal(
+    renderInbox([
+      {
+        file_name: 'newest.md',
+        title: 'Newest',
+        modified_at: '2024-03-03T12:00:00.000Z',
+        run_id: '10000_Mar-03-1200_inbox',
+      },
+      {
+        file_name: 'heading-free.md',
+        title: 'heading-free.md',
+        modified_at: '2024-02-02T10:00:00.000Z',
+        run_id: null,
+      },
+    ]),
+    [
+      'FILE\tTITLE\tMODIFIED\tRUN',
+      'newest.md\tNewest\t2024-03-03T12:00:00.000Z\t10000_Mar-03-1200_inbox',
+      'heading-free.md\theading-free.md\t2024-02-02T10:00:00.000Z\t-',
+      '',
+    ].join('\n'),
+  )
+})
+
+// The ordering inside maintainWorkflowRuntime is the contract: the legacy
+// layout migrates before the archive pass, so one call moves the file into
+// its status directory and then archives it.
+test('runtime maintenance migrates a legacy complete item before archiving it', () => {
+  const root = createFixture()
+  const runId = '63309_Aug-31-0403_complete-item'
+  const runDirectory = path.join(root, 'runtime/logs/workflows', runId)
+  const legacyAbsolute = path.join(root, 'runtime/inbox/legacy-complete.md')
+  const stale = new Date('2026-06-22T21:22:54.051Z')
+
+  mkdirSync(path.join(runDirectory, 'agent'), { recursive: true })
+  writeFileSync(
+    path.join(runDirectory, 'workflow.snapshot.json'),
+    '{"stages":[{"slug":"plan"}]}\n',
+    'utf8',
+  )
+  writeFileSync(
+    path.join(runDirectory, 'agent', 'state.json'),
+    `${JSON.stringify({
+      schema_version: 2,
+      run_id: runId,
+      workflow_slug: 'delivery',
+      title: 'Legacy inbox fixture',
+      status: 'succeeded',
+      pending_action: { type: 'none' },
+      current_stage: null,
+      current_invocation: null,
+      request: {
+        source_path: 'runtime/inbox/legacy-complete.md',
+        stored_path: `runtime/logs/workflows/${runId}/operator/request.md`,
+        sha256: 'abc',
+      },
+      workflow_snapshot: {
+        path: `runtime/logs/workflows/${runId}/workflow.snapshot.json`,
+        sha256: 'def',
+      },
+      pipeline_config: null,
+      limits: {
+        max_stage_attempts: 3,
+        max_total_transitions: 30,
+        max_consecutive_failures: 3,
+      },
+      attempts: {},
+      transition_count: 0,
+      consecutive_failures: 0,
+      stage_history: [],
+      revision: 0,
+      created_at: '2026-06-22T21:22:54.051Z',
+      updated_at: '2026-06-22T21:22:54.051Z',
+    })}\n`,
+    'utf8',
+  )
+  writeFileSync(legacyAbsolute, '# Legacy complete\n', 'utf8')
+  utimesSync(legacyAbsolute, stale, stale)
+
+  const summary = maintainWorkflowRuntime(root, { retentionDays: 7 })
+  const archivedName = summary.archive.inbox_files[0]
+
+  assert.equal(summary.inbox_layout.migrated_files, 1)
+  assert.equal(summary.archive.inbox_files.length, 1)
+  assert.ok(archivedName)
+  assert.equal(existsSync(legacyAbsolute), false)
+  assert.equal(
+    readFileSync(
+      path.join(root, 'runtime/inbox/archive', archivedName),
+      'utf8',
+    ),
+    '# Legacy complete\n',
+  )
 })

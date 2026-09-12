@@ -4,7 +4,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { validateOperatorArtifact } from '../../src/lib/validators/operator-artifact.js'
-import { createFixture } from '../helpers.js'
+import { createTestTempDirectory } from '../temp.js'
 
 function input(root: string, targetPath: string) {
   return {
@@ -20,7 +20,9 @@ function input(root: string, targetPath: string) {
 }
 
 test('operator artifact validator accepts semantic HTML briefs', () => {
-  const root = createFixture()
+  // The validator parses the HTML at targetPath and reads nothing else under
+  // the root, so a scratch directory holding the two documents is enough.
+  const root = createTestTempDirectory('operator-artifact-')
   const targetPath = 'runtime/implementation.html'
 
   mkdirSync(path.dirname(path.join(root, targetPath)), { recursive: true })

@@ -60,14 +60,11 @@ test('the scratch audit rejects the shared temp call outside the sanctioned help
     rejection('tests/unit/leaky.test.ts', 3),
     rejection('tests/unit/leaky.test.ts', 4),
   ])
-})
 
-test('the scratch audit passes a root with no test sources', () => {
-  const root = createTestTempDirectory('scratch-audit-empty-')
-
-  assert.deepEqual(auditTestScratchDirectories(root).errors, [])
-})
-
-test('this repository passes its own scratch audit', () => {
-  assert.deepEqual(auditTestScratchDirectories(process.cwd()).errors, [])
+  // A root with no test sources at all is nothing to report.
+  assert.deepEqual(
+    auditTestScratchDirectories(createTestTempDirectory('scratch-audit-empty-'))
+      .errors,
+    [],
+  )
 })

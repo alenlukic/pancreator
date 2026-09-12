@@ -11,16 +11,32 @@ import {
   resolvePersonaModel,
   type PipelineConfigSnapshot,
 } from '../../src/lib/pipeline-config.js'
-import { createFixture, pinFixturePersonaModel } from '../helpers.js'
 import { createTestTempDirectory } from '../temp.js'
 
 test('config_overrides.json preferences override the checked-in pipeline config', () => {
-  const root = createFixture()
+  // The merge depends on config.json and config_overrides.json alone, so the
+  // case writes the two named configs it needs into a scratch root rather than
+  // cloning the fixture template and re-running the Cursor projection over it.
+  const root = createTestTempDirectory('pipeline-config-overrides-')
 
-  // A named-config mapping shadows a defaults override, so the orchestrator
-  // must resolve from defaults whatever this checkout's config_overrides.json
-  // maps for it.
-  pinFixturePersonaModel(root, 'orchestrator', 'gpt-5.6-sol')
+  writeFileSync(
+    path.join(root, 'config.json'),
+    `${JSON.stringify(
+      {
+        schema_version: 1,
+        active_config: 'default',
+        configs: {
+          default: {
+            orchestrator: 'gpt-5.6-sol',
+            reviewer: 'default-reviewer',
+          },
+          advanced: { reviewer: 'advanced-reviewer' },
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  )
 
   const base = loadPipelineConfig(root)
 
@@ -69,21 +85,6 @@ test('pipeline config rejects an undefined active config', () => {
         },
       }),
     /active_config 'missing' is not defined/u,
-  )
-})
-
-test('pipeline config accepts a Cursor model the catalog has not recorded', () => {
-  // Pancreator cannot enumerate a model catalog it does not own. Rejecting an
-  // unrecorded id bricked config on models Cursor supports, so an unknown id is
-  // unverified rather than invalid.
-  assert.doesNotThrow(() =>
-    parsePipelineConfig({
-      schema_version: 1,
-      active_config: 'default',
-      configs: {
-        default: { coder: 'unknown-cursor-model' },
-      },
-    }),
   )
 })
 
@@ -142,6 +143,9 @@ test('a run snapshot preserves its exact persona model strings', () => {
   )
 })
 
+// Pancreator cannot enumerate a model catalog it does not own, so
+// `parsePipelineConfig` without a root accepts an unrecorded id such as
+// 'default-coder' as unverified rather than invalid.
 test('an empty named-config mapping inherits the default and an empty default is rejected', () => {
   const file = parsePipelineConfig({
     schema_version: 1,
@@ -426,7 +430,7 @@ test('loadPipelineConfig skipCatalog projects a spec the catalog rejects', () =>
     JSON.stringify({
       schema_version: 1,
       active_config: 'default',
-      configs: { default: { coder: 'retired-model' } },
+      configs: { default: { coder: 'retired-model[thinking=true]' } },
     }),
   )
 
@@ -435,7 +439,8 @@ test('loadPipelineConfig skipCatalog projects a spec the catalog rejects', () =>
     /not in the Cursor model catalog/u,
   )
 
+  // The skipped catalog echoes the spec verbatim, options included.
   const loaded = loadPipelineConfig(root, undefined, { skipCatalog: true })
 
-  assert.equal(loaded.config.personas.coder, 'retired-model')
+  assert.equal(loaded.config.personas.coder, 'retired-model[thinking=true]')
 })

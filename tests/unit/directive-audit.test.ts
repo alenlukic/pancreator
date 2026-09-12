@@ -4,7 +4,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { auditDirectives } from '../../src/lib/governance/audit-directives.js'
-import { createFixture } from '../helpers.js'
+import { createFixture } from '../fixture-template.js'
 
 function dispositionRecord(root: string): {
   entries: Array<Record<string, unknown>>

@@ -1,7 +1,16 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { chmodSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
+
+import { sharedTemplate } from '../shared-template.js'
 
 import {
   decideRun,
@@ -29,6 +38,48 @@ import {
   writeJson,
   submitAsSupervisor,
 } from '../helpers.js'
+
+export const PASS = `node -e "process.exit(0)"`
+
+/** Verify carries no repository-check gate: full runs only at ship entry. */
+export function assertNoShellGate(
+  deterministic: { type: string; id: string }[],
+) {
+  assert.deepEqual(
+    deterministic.filter((item) => item.type === 'shell').map((i) => i.id),
+    [],
+  )
+}
+
+export function fullRuns(root: string): number {
+  const marker = path.join(root, 'runtime', 'full-ran.txt')
+
+  return existsSync(marker) ? readFileSync(marker, 'utf8').length : 0
+}
+
+// Full fails until the marker file holds `passAfter` runs, then passes.
+export function fullFailsUntil(passAfter: number): string {
+  return (
+    `node -e "const fs=require('node:fs');const p='runtime/full-ran.txt';` +
+    `const n=(fs.existsSync(p)?fs.readFileSync(p,'utf8').length:0)+1;` +
+    `fs.appendFileSync(p,'x');process.exit(n>${passAfter}?0:1)"`
+  )
+}
+
+export function writeInboxRequest(
+  root: string,
+  status: 'queue' | 'active' | 'canceled' | 'complete' | 'archive',
+  fileName: string,
+  content: string,
+): string {
+  const relative = path.join('runtime', 'inbox', status, fileName)
+  const absolute = path.join(root, relative)
+
+  mkdirSync(path.dirname(absolute), { recursive: true })
+  writeFileSync(absolute, content, 'utf8')
+
+  return relative
+}
 
 /** A verify payload whose verdict matches a failed stage. */
 export function failingVerify(findingId: string): Record<string, unknown> {
@@ -677,6 +728,30 @@ function familyOf(name: string): Family {
   return family
 }
 
+function buildTemplate(
+  name: string,
+  step: StepDefinition,
+  variant: CheckpointVariant | undefined,
+  parent: Template | null,
+): Template {
+  const family = familyOf(name)
+  const wrap = family.wrap ?? ((_root, body) => body())
+
+  if (parent === null) {
+    const root = createFixture()
+
+    variant?.fixture?.(root)
+
+    return { root, runId: family.createRun(root, variant?.run ?? {}).run_id }
+  }
+
+  const root = cloneTree(parent.root)
+
+  wrap(root, () => step.drive(root, parent.runId, variant))
+
+  return { root, runId: parent.runId }
+}
+
 function template(
   name: string,
   variant: CheckpointVariant | undefined,
@@ -692,25 +767,21 @@ function template(
 
   assert.ok(step, `unknown checkpoint ${name}`)
 
-  const family = familyOf(name)
-  const wrap = family.wrap ?? ((_root, body) => body())
-  let built: Template
+  // The parent resolves before this link takes its own lock, so a chain never
+  // holds two locks at once and a waiter never blocks on an ancestor's build.
+  const parent = step.parent === null ? null : template(step.parent, variant)
+  const shared = sharedTemplate(`checkpoint:${key}`, (destination) => {
+    const drivenRoot = buildTemplate(name, step, variant, parent)
 
-  if (step.parent === null) {
-    const root = createFixture()
+    // Both paths sit under the run's scratch directory, so publishing the
+    // driven tree is a rename rather than a second copy of the fixture.
+    renameSync(drivenRoot.root, destination)
 
-    variant?.fixture?.(root)
-
-    const runId = family.createRun(root, variant?.run ?? {}).run_id
-
-    built = { root, runId }
-  } else {
-    const parent = template(step.parent, variant)
-    const root = cloneTree(parent.root)
-
-    wrap(root, () => step.drive(root, parent.runId, variant))
-    built = { root, runId: parent.runId }
-  }
+    return { runId: drivenRoot.runId }
+  })
+  const built = shared
+    ? { root: shared.path, runId: shared.metadata.runId }
+    : buildTemplate(name, step, variant, parent)
 
   templates.set(key, built)
 

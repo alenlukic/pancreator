@@ -1,14 +1,17 @@
 import { execFileSync } from 'node:child_process'
-import { writeFileSync } from 'node:fs'
+import { renameSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { createWorktree as createWorktreeRecord } from '../../src/lib/worktrees.js'
 import type { WorktreeRecord } from '../../src/lib/worktrees.js'
-import { createFixture } from '../helpers.js'
+import { createFixture } from '../fixture-template.js'
+import { sharedTemplate } from '../shared-template.js'
 
 import { cloneTree, repairClonedWorktrees } from './best-of-n-helpers.js'
 
 export const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
+
+export const TWO_SOURCES = ['source-one', 'source-two']
 
 export interface CreatedWorktree {
   status: 'created'
@@ -159,7 +162,24 @@ export function worktreeCheckpoint(
   let template = worktreeCheckpointTemplates.get(key)
 
   if (!template) {
-    template = buildWorktreeTemplate(key)
+    const shared = sharedTemplate(
+      `worktree-checkpoint:${key}`,
+      (destination) => {
+        const built = buildWorktreeTemplate(key)
+
+        renameSync(built.root, destination)
+
+        return {
+          worktrees: built.worktrees,
+          mainHead: built.mainHead,
+          mainBranch: built.mainBranch,
+        }
+      },
+    )
+
+    template = shared
+      ? { root: shared.path, ...shared.metadata }
+      : buildWorktreeTemplate(key)
     worktreeCheckpointTemplates.set(key, template)
   }
 

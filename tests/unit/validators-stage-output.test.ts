@@ -3,7 +3,7 @@ import test from 'node:test'
 
 import { validateStageOutput } from '../../src/lib/validation.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
-import { createFixture } from '../helpers.js'
+import { createFixture } from '../fixture-template.js'
 import type { Invocation, StageOutput } from '../../src/lib/types.js'
 
 function fixtureInvocation(

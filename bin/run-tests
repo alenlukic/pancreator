@@ -8,15 +8,21 @@ usage() {
 }
 
 # Every suite run gets one scratch directory under the root, and the run
-# removes it when it ends. Fixtures never touch the shared OS temp directory:
+# discards it when it ends. Fixtures never touch the shared OS temp directory:
 # that directory is written by every program on the host, nothing bounds it,
 # and once it accumulated 166,000 leaked fixtures every create and unlink in
 # it stalled for seconds. A directory the runner owns is per-root, so cohort
 # worktrees never share one, and it cannot outlive the run that made it.
 #
-# A run that dies by signal skips its own cleanup. The next run sweeps any
-# directory whose owner is gone, so a leak lasts one run at most and never
-# accumulates. runtime/ is gitignored.
+# Discarding is a rename followed by a detached removal. Deleting the tree in
+# the foreground charged the command 115 seconds of its 287-second wall time,
+# after its last assertion had already passed. A rename inside one directory
+# is a metadata operation, so the command now ends when its tests end.
+#
+# A run that dies by signal skips its own cleanup, and so can a detached
+# removal. The next run sweeps any run directory whose owner is gone and any
+# discarded tree whose remover is gone, so a leak lasts one run at most and
+# never accumulates. runtime/ is gitignored.
 TESTS_TMP_ROOT="$ROOT/runtime/tmp/tests"
 
 # A pid alone cannot identify a run: a directory orphaned by SIGKILL names a
@@ -60,6 +66,47 @@ sweep_dead_runs() {
   done
 }
 
+# A discarded tree belongs to the detached removal that was started for it,
+# named in a marker beside the tree. A removal still working is left alone, so
+# two processes never delete one tree; a removal that died leaves its tree to
+# this sweep, which is the only cost a killed run passes on.
+sweep_discarded_runs() {
+  local discarded id marker owner token live
+
+  for discarded in "$TESTS_TMP_ROOT"/discarded-*; do
+    [[ -d "$discarded" ]] || continue
+
+    id="${discarded##*/discarded-}"
+    marker="$TESTS_TMP_ROOT/.removing-$id"
+    owner=''
+    token=''
+    { IFS= read -r owner; IFS= read -r token; } <"$marker" 2>/dev/null || true
+
+    live=''
+
+    if [[ "$owner" =~ ^[0-9]+$ ]]; then
+      live="$(owner_token "$owner" || true)"
+    fi
+
+    if [[ -n "$live" && "$live" == "$token" ]]; then
+      continue
+    fi
+
+    rm -rf "$discarded"
+    rm -f "$marker"
+  done
+
+  # A removal that finished leaves its marker behind, because the tree it was
+  # told to delete is the only thing it touches.
+  for marker in "$TESTS_TMP_ROOT"/.removing-*; do
+    [[ -f "$marker" ]] || continue
+
+    id="${marker##*/.removing-}"
+
+    [[ -d "$TESTS_TMP_ROOT/discarded-$id" ]] || rm -f "$marker"
+  done
+}
+
 if [[ "${1:-}" != '--' ]]; then
   usage
   exit 1
@@ -87,17 +134,42 @@ if [[ ! -f "$TESTS_TMP_ROOT/package.json" ]]; then
 fi
 
 sweep_dead_runs
+sweep_discarded_runs
 
 RUN_DIRECTORY="$(mktemp -d "$TESTS_TMP_ROOT/run-XXXXXXXX")"
 SELF_TOKEN="$(owner_token "$$" || printf 'unidentified-%s' "$$")"
 
 printf '%s\n%s\n' "$$" "$SELF_TOKEN" >"$RUN_DIRECTORY/.owner"
 
-remove_run_directory() {
-  rm -rf "$RUN_DIRECTORY"
+discard_run_directory() {
+  local id discarded marker remover
+
+  id="${RUN_DIRECTORY##*/run-}"
+  discarded="$TESTS_TMP_ROOT/discarded-$id"
+  marker="$TESTS_TMP_ROOT/.removing-$id"
+
+  # Both paths sit in one directory, so the rename never crosses a filesystem
+  # and never copies. A rename that fails leaves nothing renamed, so the
+  # foreground removal is still correct.
+  if ! mv "$RUN_DIRECTORY" "$discarded" 2>/dev/null; then
+    rm -rf "$RUN_DIRECTORY"
+    return
+  fi
+
+  nohup rm -rf "$discarded" >/dev/null 2>&1 &
+  remover=$!
+  disown "$remover" 2>/dev/null || true
+
+  # The marker tells the next run's sweep whether this removal is still
+  # working. A removal that finishes first leaves a marker naming a dead pid,
+  # which the sweep reads as "nothing to wait for".
+  printf '%s\n%s\n' \
+    "$remover" \
+    "$(owner_token "$remover" || printf 'unidentified-%s' "$remover")" \
+    >"$marker" 2>/dev/null || true
 }
 
-trap remove_run_directory EXIT HUP INT TERM
+trap discard_run_directory EXIT HUP INT TERM
 
 export PANCREATOR_TEST_TMP="$RUN_DIRECTORY"
 
@@ -114,7 +186,7 @@ export GIT_CEILING_DIRECTORIES="$RUN_DIRECTORY${GIT_CEILING_DIRECTORIES:+:$GIT_C
 # fires when it ends and the exit status passes through unchanged. A terminal
 # interrupt reaches the suite directly, since it shares this process group.
 # A signal sent to this wrapper alone is acted on once the suite exits, so
-# cleanup is deferred in that case rather than skipped. A wrapper killed
+# the discard happens then rather than being skipped. A wrapper killed
 # outright leaves one directory, which the next run's sweep removes.
 status=0
 "$@" || status=$?

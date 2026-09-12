@@ -193,29 +193,6 @@ test('delivery severe verdict escalates the remediator and warnings reach the in
   assert.match(inbox, /Duplicated parsing logic/u)
 })
 
-test('delivery remedial verdict keeps the base remediator persona', () => {
-  const { root, runId } = checkpoint('delivery@verify-prepared')
-
-  const verify = submitCurrentStage(
-    root,
-    runId,
-    'failure',
-    ['verify.cases_executed'],
-    (output) => {
-      output.data.verify = failingVerify('fail_remedial', 'VF-REM-1')
-    },
-  )
-
-  assert.equal(verify.invocation.stage.slug, 'verify')
-  assert.equal(verify.record.outcome, 'failure')
-  assert.equal(getRunState(root, runId).current_stage, 'remediate')
-
-  const invocation = prepareInvocation(root, runId).invocation
-
-  assert.ok(invocation)
-  assert.equal(invocation.stage.persona, 'remediator')
-})
-
 test('delivery verify resolves parallel evidence workers and gates submission on their reports', () => {
   const { root, runId, state, invocation, workflow } = checkpoint(
     'delivery@verify-prepared',

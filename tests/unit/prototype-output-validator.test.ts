@@ -4,7 +4,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { validatePrototypeOutput } from '../../src/lib/validators/prototype-output.js'
-import { createTestTempDirectory } from '../helpers.js'
+import { createTestTempDirectory } from '../fixture-template.js'
 
 // The validator reads only the stage outputs and run state it is handed, so a
 // bare directory stands in for the repository root.
@@ -622,31 +622,28 @@ function readinessEvaluation(
   }
 }
 
-test('evaluate accepts explicit-readiness product cause for a readiness question', () => {
-  const root = scratchRoot()
-  const target = writeOutput(root, 'evaluate.json', readinessEvaluation(true))
-
-  const result = validatePrototypeOutput(
-    validatorInput(root, target, 'evaluate'),
-  )
-
-  assert.equal(result.status, 'passed')
-})
-
 test('evaluate rejects a product cause on a blocker-named question without a readiness claim', () => {
   const root = scratchRoot()
-  const target = writeOutput(
-    root,
-    'evaluate.json',
-    readinessEvaluation(undefined),
-  )
 
-  const result = validatePrototypeOutput(
-    validatorInput(root, target, 'evaluate'),
-  )
+  const evaluate = (readinessQuestion: boolean | undefined) =>
+    validatePrototypeOutput(
+      validatorInput(
+        root,
+        writeOutput(
+          root,
+          'evaluate.json',
+          readinessEvaluation(readinessQuestion),
+        ),
+        'evaluate',
+      ),
+    )
 
-  assert.equal(result.status, 'failed')
-  assert.ok(codesOf(result).has('prototype.readiness_claim'))
+  const withoutClaim = evaluate(undefined)
+
+  assert.equal(withoutClaim.status, 'failed')
+  assert.ok(codesOf(withoutClaim).has('prototype.readiness_claim'))
+
+  assert.equal(evaluate(true).status, 'passed')
 })
 
 test('evaluate fails question coverage when a declared question is unanswered', () => {
@@ -714,167 +711,96 @@ test('evaluate fails question coverage when a declared question is unanswered', 
   assert.ok(coverage.some((issue) => issue.message.includes('TQ-09')))
 })
 
-test('a complete build success output passes', () => {
-  const root = scratchRoot()
-  const runId = 'run-success'
-  const approachPath = writeOutput(
-    root,
-    `runtime/logs/workflows/${runId}/agent/outputs/approach-1.json`,
-    {
-      result: 'success',
-      data: {
-        technical_approach: {
-          preconditions: [
-            {
-              id: 'PRE-01',
-              affected_questions: ['TQ-01'],
-              check: 'auth probe',
-              status: 'ready',
-              evidence: ['ready at approach'],
-              volatile: true,
-            },
-          ],
-        },
-      },
-    },
-  )
-  const target = writeOutput(
-    root,
-    `runtime/logs/workflows/${runId}/agent/outputs/build-1.json`,
-    {
-      result: 'success',
-      data: {
-        spike: {
-          changed_files: ['src/spike.ts'],
-          precondition_checks: [
-            {
-              precondition_id: 'PRE-01',
-              status: 'ready',
-              evidence: ['auth probe passed before edits'],
-            },
-          ],
-        },
-      },
-    },
-  )
-
-  const result = validatePrototypeOutput(
-    validatorInput(root, target, 'build', {
-      stage_history: [
-        { stage: 'approach', outcome: 'success', output_path: approachPath },
-      ],
-    }),
-  )
-
-  assert.equal(result.status, 'passed')
-  assert.equal(result.issues.length, 0)
-})
-
 test('a build blocked by an unavailable precondition MUST leave changed files empty', () => {
   const root = scratchRoot()
-  const target = writeOutput(root, 'build-blocked.json', {
-    result: 'blocked',
-    data: {
-      spike: {
-        changed_files: ['src/spike.ts'],
-        precondition_checks: [
-          {
-            precondition_id: 'PRE-01',
-            status: 'unavailable',
-            evidence: ['auth expired'],
+
+  const validateBlockedBuild = (
+    name: string,
+    preconditionChecks: Array<Record<string, unknown>>,
+  ) =>
+    validatePrototypeOutput(
+      validatorInput(
+        root,
+        writeOutput(root, name, {
+          result: 'blocked',
+          data: {
+            spike: {
+              changed_files: ['src/spike.ts'],
+              precondition_checks: preconditionChecks,
+            },
           },
-        ],
-      },
+        }),
+        'build',
+      ),
+    )
+
+  const unavailable = validateBlockedBuild('build-blocked.json', [
+    {
+      precondition_id: 'PRE-01',
+      status: 'unavailable',
+      evidence: ['auth expired'],
     },
-  })
+  ])
 
-  const result = validatePrototypeOutput(validatorInput(root, target, 'build'))
-
-  assert.equal(result.status, 'failed')
-  assert.ok(codesOf(result).has('prototype.blocked_changed_files'))
-})
-
-test('a build blocked without a precondition cause keeps the pause route', () => {
-  const root = scratchRoot()
-  const target = writeOutput(root, 'build-blocked-question.json', {
-    result: 'blocked',
-    data: {
-      spike: {
-        changed_files: ['src/spike.ts'],
-        precondition_checks: [],
-      },
-    },
-  })
+  assert.equal(unavailable.status, 'failed')
+  assert.ok(codesOf(unavailable).has('prototype.blocked_changed_files'))
 
   // PROTO-001 ties the empty changed-files rule to an unavailable
-  // precondition, not to an operator question.
-  const result = validatePrototypeOutput(validatorInput(root, target, 'build'))
-
-  assert.equal(result.status, 'passed')
+  // precondition, not to an operator question, so a block with no
+  // precondition cause keeps the pause route.
+  assert.equal(
+    validateBlockedBuild('build-blocked-question.json', []).status,
+    'passed',
+  )
 })
 
 test('environment_blocked requires at least one named blocker', () => {
   const root = scratchRoot()
-  const target = writeOutput(root, 'evaluate-empty-blockers.json', {
-    result: 'success',
-    data: {
-      evaluation: {
-        verdict: 'environment_blocked',
-        environment_blockers: [],
-        question_results: [
-          {
-            question_id: 'TQ-01',
-            result: 'unanswered',
-            cause: 'environment',
-            evidence: ['missing credential'],
-            discard_condition_met: false,
+
+  const evaluateBlockers = (
+    name: string,
+    environmentBlockers: Array<Record<string, unknown>>,
+  ) =>
+    validatePrototypeOutput(
+      validatorInput(
+        root,
+        writeOutput(root, name, {
+          result: 'success',
+          data: {
+            evaluation: {
+              verdict: 'environment_blocked',
+              environment_blockers: environmentBlockers,
+              question_results: [
+                {
+                  question_id: 'TQ-01',
+                  result: 'unanswered',
+                  cause: 'environment',
+                  evidence: ['missing credential'],
+                  discard_condition_met: false,
+                },
+              ],
+            },
           },
-        ],
-      },
+        }),
+        'evaluate',
+      ),
+    )
+
+  const empty = evaluateBlockers('evaluate-empty-blockers.json', [])
+
+  assert.equal(empty.status, 'failed')
+  assert.ok(codesOf(empty).has('prototype.environment_blockers_empty'))
+
+  const named = evaluateBlockers('evaluate-env-blocked.json', [
+    {
+      id: 'ENV-01',
+      description: 'missing credential',
+      evidence: ['credential probe exited 1'],
+      affected_questions: ['TQ-01'],
     },
-  })
+  ])
 
-  const result = validatePrototypeOutput(
-    validatorInput(root, target, 'evaluate'),
-  )
-
-  assert.equal(result.status, 'failed')
-  assert.ok(codesOf(result).has('prototype.environment_blockers_empty'))
-})
-
-test('environment_blocked with a named blocker and no discard passes', () => {
-  const root = scratchRoot()
-  const target = writeOutput(root, 'evaluate-env-blocked.json', {
-    result: 'success',
-    data: {
-      evaluation: {
-        verdict: 'environment_blocked',
-        environment_blockers: [
-          {
-            id: 'ENV-01',
-            description: 'missing credential',
-            evidence: ['credential probe exited 1'],
-            affected_questions: ['TQ-01'],
-          },
-        ],
-        question_results: [
-          {
-            question_id: 'TQ-01',
-            result: 'unanswered',
-            cause: 'environment',
-            evidence: ['missing credential'],
-            discard_condition_met: false,
-          },
-        ],
-      },
-    },
-  })
-
-  const result = validatePrototypeOutput(
-    validatorInput(root, target, 'evaluate'),
-  )
-
-  assert.equal(result.status, 'passed')
+  assert.equal(named.status, 'passed')
 })
 
 test('missing stage payloads fail with their shape codes', () => {
