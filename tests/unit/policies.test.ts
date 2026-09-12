@@ -1,7 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  appendFileSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import { createFixture, sharedFixture } from '../fixture-template.js'
 import { loadPolicyCatalog, resolvePolicies } from '../../src/lib/policies.js'
@@ -186,6 +192,60 @@ test('target PR authority rejects paths outside the workspace', () => {
   assert.throws(
     () => loadPolicyCatalog(root),
     /template_path MUST be a safe workspace-relative path/u,
+  )
+})
+
+test('the policy catalog is parsed once per process and rebuilt after an edit', () => {
+  // Every command resolves policies many times over, and each resolution
+  // re-read, re-sliced, and re-hashed the same governance tree. The memo is
+  // only safe if an authoring edit inside the same process is still seen, so
+  // both halves are one contract.
+  const root = createFixture()
+  const first = loadPolicyCatalog(root)
+
+  // Identity is the proof: a second parse could not return the same Map.
+  assert.equal(loadPolicyCatalog(root), first)
+
+  const policyPath = path.join(
+    root,
+    'governance',
+    'policies',
+    'BROWSER-001.json',
+  )
+  const policy = JSON.parse(readFileSync(policyPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  policy.summary = `${String(policy.summary)} Edited inside this process.`
+  writeFileSync(policyPath, `${JSON.stringify(policy, null, 2)}\n`)
+
+  const afterPolicyEdit = loadPolicyCatalog(root)
+
+  assert.notEqual(afterPolicyEdit, first)
+  assert.match(
+    afterPolicyEdit.get('BROWSER-001')?.summary ?? '',
+    /Edited inside this process/u,
+  )
+
+  // A handbook edit changes no policy file, and the guidance content and its
+  // digest live in the policy object, so the memo has to watch the handbook
+  // too or an authored edit would go unpublished until the process restarts.
+  const guidance = afterPolicyEdit.get('BROWSER-001')?.guidance?.[0]
+
+  assert.ok(guidance)
+  appendFileSync(
+    path.join(root, guidance.source_path),
+    '\nAn operator edited this handbook.\n',
+  )
+
+  const reread = loadPolicyCatalog(root).get('BROWSER-001')?.guidance?.[0]
+
+  assert.ok(reread)
+  assert.match(reread.content, /An operator edited this handbook/u)
+  assert.notEqual(
+    reread.reference?.content_sha256,
+    guidance.reference?.content_sha256,
   )
 })
 

@@ -1497,7 +1497,12 @@ export interface RunModelEvidence {
   declared_spec: string | null
   effective_model: string | null
   source: string
-  result: 'recorded' | 'match' | 'mismatch' | 'unavailable'
+  /**
+   * `pending` marks a detached probe in flight. It never becomes a usable
+   * record on its own: a probe that never lands reads exactly like one that
+   * failed.
+   */
+  result: 'recorded' | 'match' | 'mismatch' | 'unavailable' | 'pending'
   error?: string
   evidence_path: string
   timestamp: string

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { spawn } from 'node:child_process'
 import { readdirSync, realpathSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -17,6 +18,7 @@ import {
   pauseRun,
   prepareInvocation,
   probeRunInvocationModel,
+  recordPendingWorkerModelProbe,
   quarantineRunForAgent,
   recordSupervisorModelEvidence,
   resumeRun,
@@ -99,6 +101,7 @@ import {
 } from './lib/hypervisor.js'
 import { runCursorAgentJson } from './lib/executors/cursor-agent.js'
 import { gitWorkspaceSnapshot, isGitRepository } from './lib/git.js'
+import { liveRunsBoundToWorktree } from './lib/state.js'
 import { listInbox, renderInbox } from './lib/inbox.js'
 import {
   loadPipelineConfig,
@@ -166,6 +169,8 @@ import {
   loadRepositoryChecks,
   recordAgentRepositoryCheck,
   recordAgentRepositoryCheckForRuns,
+  recordProfileGatePass,
+  repositoryCheckWorkspaceRoot,
   repositoryChecksSourcePath,
   runRepositoryCheckStreaming,
 } from './lib/repository-checks.js'
@@ -249,6 +254,8 @@ export const HELP_BODY = `Usage:
   pan repository-check <profile> [--timeout-ms <milliseconds>] [--workspace <dir|worktree> | --worktree <name>] [--run <run-id>] [--json]
       --timeout-ms raises the effective bound only: resolution keeps the maximum of the request, the profile's own bound, and subset-profile timeouts.
       --run records the execution against that run and, without --workspace or --worktree, checks its workspace. Without --run, --worktree records against every live run bound to the worktree. A bare invocation records against no run.
+      A clean pass recorded against a run, at a workspace fingerprint identical before and after, satisfies a later gate on the same command instead of running it again.
+      --harness-initiated marks the execution as harness-started rather than agent-started and suppresses streaming; the release-profile prefetch passes it.
   pan repository-check validate [--json]
   pan conform scan|checkpoint [--since <ref> | --all] [--worktree <name>] [--json]
   pan style scan|checkpoint [--since <ref> | --all] [--worktree <name>] [--json]
@@ -278,7 +285,8 @@ export const HELP_BODY = `Usage:
   pan archive [--days <positive-integer>] [--complete] [--canceled] [--json]
   pan models [--sync] [--force] [--probe] [--migrate-from <previous-config.json>] [--json]
   pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source> [--json]
-  pan models --probe --run <run-id> --invocation <invocation-id> [--json]
+  pan models --probe --run <run-id> --invocation <invocation-id> [--await-probe] [--json]
+      Records an in-flight marker, starts a detached probe, and returns. --await-probe performs the live call in the foreground; the detached child passes it.
       --probe launches one minimal cursor-agent call per distinct active model spec and records what Cursor resolved and reports match, recorded, mismatch, or unavailable per spec. It never fails the command, so read the result and error fields. Needs the cursor-agent CLI and CURSOR_API_KEY (process environment, installation .env, or workspace-root .env) or a login. Run pan doctor to see which source resolves.
       --migrate-from preserves the previous effective model map across a tracked config.json replacement: every mapping the new file leaves empty is carried into config_overrides.json, and the replacement stops before mutation when a mapping stays empty that defaults does not fill.
       --force requires --sync. It projects the configured specs when the local Cursor model catalog is stale or incomplete. Grammar still applies. Live --probe still reports what Cursor resolves.
@@ -2024,17 +2032,31 @@ async function main(): Promise<void> {
           : evidenceRun
             ? path.resolve(root, evidenceRun.workspace_root)
             : null
+      // The harness starts this command for itself when it prefetches the
+      // release profile, and that execution is not an agent spending its
+      // allowance. It also has no terminal to stream to.
+      const harnessInitiated = hasFlag(args, '--harness-initiated')
       const startedAt = new Date().toISOString()
+      // DEV-001: a clean pass reaches a later gate only when the workspace
+      // never moved, so the run is bracketed by the fingerprint the gate
+      // itself would compare.
+      const fingerprintBefore = gitWorkspaceSnapshot(
+        repositoryCheckWorkspaceRoot(root, checkWorkspace ?? undefined),
+      ).fingerprint
       const result = await runRepositoryCheckStreaming(root, profile, {
         ...(timeoutMs !== undefined ? { timeout_ms: timeoutMs } : {}),
         ...(checkWorkspace ? { workspace: checkWorkspace } : {}),
-        on_start: (kind, commandText) => {
-          process.stderr.write(
-            `[repository-check:${profile}] ${kind}: ${commandText}\n`,
-          )
-        },
-        on_stdout: (chunk) => process.stderr.write(chunk),
-        on_stderr: (chunk) => process.stderr.write(chunk),
+        ...(harnessInitiated
+          ? {}
+          : {
+              on_start: (kind, commandText) => {
+                process.stderr.write(
+                  `[repository-check:${profile}] ${kind}: ${commandText}\n`,
+                )
+              },
+              on_stdout: (chunk) => process.stderr.write(chunk),
+              on_stderr: (chunk) => process.stderr.write(chunk),
+            }),
       })
 
       if (result.status === 'not_configured') {
@@ -2046,12 +2068,14 @@ async function main(): Promise<void> {
       // An explicit run wins over the worktree scan. A bare invocation names
       // no run and records nothing: an operator's own check from the base
       // checkout is not evidence of any run that happens to share it.
+      const initiator = harnessInitiated ? 'harness' : 'agent'
       const runEvidence = evidenceRun
         ? recordAgentRepositoryCheckForRuns(
             root,
             [evidenceRun.run_id],
             result,
             startedAt,
+            initiator,
           )
         : worktreeWorkspace
           ? recordAgentRepositoryCheck(
@@ -2059,13 +2083,37 @@ async function main(): Promise<void> {
               worktreeWorkspace.name,
               result,
               startedAt,
+              initiator,
             )
           : []
+      // Only a clean pass can reach a gate, so the run lookup a store needs
+      // is spent only when one is possible.
+      const gatePassRunIds =
+        result.status === 'passed'
+          ? evidenceRun
+            ? [evidenceRun.run_id]
+            : worktreeWorkspace
+              ? liveRunsBoundToWorktree(root, worktreeWorkspace.name).map(
+                  (bound) => bound.run_id,
+                )
+              : []
+          : []
+      const gatePass = recordProfileGatePass(root, profile, result, {
+        run_ids: gatePassRunIds,
+        fingerprint_before: fingerprintBefore,
+        started_at: startedAt,
+      })
 
       print(
-        runEvidence.length > 0
-          ? { ...result, run_evidence_paths: runEvidence }
-          : result,
+        {
+          ...result,
+          ...(runEvidence.length > 0
+            ? { run_evidence_paths: runEvidence }
+            : {}),
+          ...(gatePass
+            ? { gate_pass_evidence_path: gatePass.evidence_path }
+            : {}),
+        },
         hasFlag(args, '--json'),
       )
 
@@ -2358,14 +2406,43 @@ async function main(): Promise<void> {
       }
 
       if (hasFlag(args, '--probe') && (runId || invocationId)) {
-        print(
-          probeRunInvocationModel(
-            root,
-            requiredArgument(runId, '--run'),
-            requiredArgument(invocationId, '--invocation'),
-          ),
-          true,
+        const probeRunId = requiredArgument(runId, '--run')
+        const probeInvocationId = requiredArgument(invocationId, '--invocation')
+
+        // The detached child carries `--await-probe` and performs the live
+        // call. Without it the command records the in-flight marker, starts
+        // the child, and returns: only submission reads the answer, so no
+        // worker launch waits for Cursor.
+        if (hasFlag(args, '--await-probe')) {
+          print(
+            probeRunInvocationModel(root, probeRunId, probeInvocationId),
+            true,
+          )
+          return
+        }
+
+        const pending = recordPendingWorkerModelProbe(
+          root,
+          probeRunId,
+          probeInvocationId,
         )
+        const child = spawn(
+          process.execPath,
+          [
+            fileURLToPath(import.meta.url),
+            'models',
+            '--probe',
+            '--await-probe',
+            '--run',
+            probeRunId,
+            '--invocation',
+            probeInvocationId,
+          ],
+          { cwd: root, detached: true, stdio: 'ignore' },
+        )
+
+        child.unref()
+        print({ ...pending, probe_pid: child.pid ?? null }, true)
         return
       }
 
@@ -2448,7 +2525,7 @@ async function main(): Promise<void> {
       // minimal cursor-agent call per distinct spec and comparing the echoed
       // variant against the catalog's prediction.
       const probes = hasFlag(args, '--probe')
-        ? probeCursorModels(root, loaded.config.personas)
+        ? await probeCursorModels(root, loaded.config.personas)
         : null
 
       print(

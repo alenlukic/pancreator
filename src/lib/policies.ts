@@ -1,4 +1,4 @@
-import { readdirSync } from 'node:fs'
+import { readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 
 import { invariant } from './errors.js'
@@ -70,11 +70,102 @@ function defaultReadTrigger(policyId: string): string {
   return `Read this guidance before work that ${policyId} governs.`
 }
 
+/**
+ * Identity of one file for memo invalidation: inode, size, and modification
+ * time in nanoseconds. An atomic rename replaces the inode, and a rewrite in
+ * place changes the size or the timestamp, so an edit inside one process is
+ * always observed on the next load without a reset hook to remember.
+ */
+function fileIdentity(absolutePath: string): string {
+  try {
+    const stats = statSync(absolutePath, { bigint: true })
+
+    return `${stats.ino}:${stats.size}:${stats.mtimeNs}`
+  } catch {
+    return 'absent'
+  }
+}
+
+/** One guidance selection, memoized by the identity of the file it read. */
+interface GuidanceSelection {
+  content: string
+  content_sha256: string
+  line_count: number
+  byte_length: number
+}
+
+const guidanceSelections = new Map<string, GuidanceSelection>()
+
+/**
+ * Read, slice, and hash one guidance selection at most once per process for a
+ * given file state. Several policies select from one handbook and a single
+ * command resolves many contexts, so the same immutable bytes were read and
+ * hashed repeatedly.
+ */
+function guidanceSelection(
+  absolutePath: string,
+  definition: PolicyGuidanceSource,
+  source: string,
+): GuidanceSelection {
+  const key = JSON.stringify([
+    absolutePath,
+    fileIdentity(absolutePath),
+    definition.start_heading ?? null,
+    definition.end_heading ?? null,
+  ])
+  const memoized = guidanceSelections.get(key)
+
+  if (memoized) {
+    return memoized
+  }
+
+  const fullContent = readText(absolutePath).trim()
+  let startIndex = 0
+  let endIndex = fullContent.length
+
+  if (definition.start_heading) {
+    startIndex = fullContent.indexOf(definition.start_heading)
+    invariant(
+      startIndex >= 0,
+      `${source}.start_heading was not found in ${definition.path}.`,
+      { code: 'INVALID_POLICY' },
+    )
+  }
+
+  if (definition.end_heading) {
+    endIndex = fullContent.indexOf(definition.end_heading, startIndex)
+    invariant(
+      endIndex >= 0,
+      `${source}.end_heading was not found in ${definition.path}.`,
+      { code: 'INVALID_POLICY' },
+    )
+  }
+
+  invariant(
+    endIndex > startIndex,
+    `${source} MUST select non-empty guidance from ${definition.path}.`,
+    { code: 'INVALID_POLICY' },
+  )
+
+  const content = fullContent.slice(startIndex, endIndex).trim()
+  const selection: GuidanceSelection = {
+    content,
+    content_sha256: sha256(content),
+    line_count: content.split('\n').length,
+    byte_length: Buffer.byteLength(content, 'utf8'),
+  }
+
+  guidanceSelections.set(key, selection)
+
+  return selection
+}
+
 function parseGuidanceSource(
   root: string,
   policyId: string,
   value: unknown,
   source: string,
+  readPaths?: string[],
 ): PolicyGuidance {
   invariant(isRecord(value), `${source} MUST be an object.`, {
     code: 'INVALID_POLICY',
@@ -106,39 +197,14 @@ function parseGuidanceSource(
   )
 
   const definition = value as unknown as PolicyGuidanceSource
-  const fullContent = readText(resolveInside(root, definition.path)).trim()
-  let startIndex = 0
-  let endIndex = fullContent.length
+  const absolutePath = resolveInside(root, definition.path)
+  const selection = guidanceSelection(absolutePath, definition, source)
 
-  if (definition.start_heading) {
-    startIndex = fullContent.indexOf(definition.start_heading)
-    invariant(
-      startIndex >= 0,
-      `${source}.start_heading was not found in ${definition.path}.`,
-      { code: 'INVALID_POLICY' },
-    )
-  }
-
-  if (definition.end_heading) {
-    endIndex = fullContent.indexOf(definition.end_heading, startIndex)
-    invariant(
-      endIndex >= 0,
-      `${source}.end_heading was not found in ${definition.path}.`,
-      { code: 'INVALID_POLICY' },
-    )
-  }
-
-  invariant(
-    endIndex > startIndex,
-    `${source} MUST select non-empty guidance from ${definition.path}.`,
-    { code: 'INVALID_POLICY' },
-  )
-
-  const content = fullContent.slice(startIndex, endIndex).trim()
+  readPaths?.push(absolutePath)
 
   return {
     source_path: definition.path,
-    content,
+    content: selection.content,
     reference: {
       ...(definition.start_heading
         ? { start_heading: definition.start_heading }
@@ -146,9 +212,9 @@ function parseGuidanceSource(
       ...(definition.end_heading
         ? { end_heading: definition.end_heading }
         : {}),
-      content_sha256: sha256(content),
-      line_count: content.split('\n').length,
-      byte_length: Buffer.byteLength(content, 'utf8'),
+      content_sha256: selection.content_sha256,
+      line_count: selection.line_count,
+      byte_length: selection.byte_length,
       read_trigger: definition.read_trigger ?? defaultReadTrigger(policyId),
     },
   }
@@ -211,7 +277,12 @@ function parseArtifactAuthority(
   }
 }
 
-function parsePolicy(root: string, value: unknown, source: string): Policy {
+function parsePolicy(
+  root: string,
+  value: unknown,
+  source: string,
+  readPaths?: string[],
+): Policy {
   invariant(isRecord(value), `${source}: policy MUST be an object.`, {
     code: 'INVALID_POLICY',
   })
@@ -280,6 +351,7 @@ function parsePolicy(root: string, value: unknown, source: string): Policy {
         policyId,
         item,
         `${source}:guidance_sources[${index}]`,
+        readPaths,
       ),
     )
   }
@@ -608,16 +680,62 @@ function loadLookupTable(root: string): PolicyLookupTable {
   }
 }
 
-/** Load every policy JSON under governance/policies, keyed by unique id. */
+interface PolicyCatalogMemo {
+  token: string
+  catalog: Map<string, Policy>
+  guidancePaths: string[]
+}
+
+const policyCatalogs = new Map<string, PolicyCatalogMemo>()
+
+/**
+ * The state of every file the catalog was built from. Guidance handbooks
+ * count: a policy file untouched beside an edited handbook still yields a
+ * different catalog, because the guidance content and its digest live in the
+ * policy object.
+ */
+function policyCatalogToken(
+  policyPaths: string[],
+  guidancePaths: string[],
+): string {
+  return [...policyPaths, ...guidancePaths]
+    .map((filePath) => `${filePath}=${fileIdentity(filePath)}`)
+    .join('\n')
+}
+
+/**
+ * Load every policy JSON under governance/policies, keyed by unique id.
+ *
+ * The result is memoized per workspace root against the state of the files it
+ * was built from. A single command resolves policies many times over, and the
+ * catalog does not change underneath it; an authoring edit does change a file
+ * identity, so the next load rebuilds.
+ */
 export function loadPolicyCatalog(root: string): Map<string, Policy> {
   const dir = path.join(root, 'governance', 'policies')
-  const catalog = new Map<string, Policy>()
-  const names = readdirSync(dir)
+  const policyPaths = readdirSync(dir)
     .filter((entry) => entry.endsWith('.json'))
     .sort()
+    .map((name) => path.join(dir, name))
+  const memoized = policyCatalogs.get(root)
 
-  for (const name of names) {
-    const policy = parsePolicy(root, readJson(path.join(dir, name)), name)
+  if (
+    memoized &&
+    memoized.token === policyCatalogToken(policyPaths, memoized.guidancePaths)
+  ) {
+    return memoized.catalog
+  }
+
+  const catalog = new Map<string, Policy>()
+  const guidancePaths: string[] = []
+
+  for (const filePath of policyPaths) {
+    const policy = parsePolicy(
+      root,
+      readJson(filePath),
+      path.basename(filePath),
+      guidancePaths,
+    )
 
     invariant(!catalog.has(policy.id), `Duplicate policy id: ${policy.id}`, {
       code: 'DUPLICATE_POLICY',
@@ -625,6 +743,14 @@ export function loadPolicyCatalog(root: string): Map<string, Policy> {
 
     catalog.set(policy.id, policy)
   }
+
+  const uniqueGuidancePaths = [...new Set(guidancePaths)].sort()
+
+  policyCatalogs.set(root, {
+    token: policyCatalogToken(policyPaths, uniqueGuidancePaths),
+    catalog,
+    guidancePaths: uniqueGuidancePaths,
+  })
 
   return catalog
 }

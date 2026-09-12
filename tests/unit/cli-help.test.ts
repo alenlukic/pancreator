@@ -13,3 +13,11 @@ test('pan output validate help names the required --invocation argument', () => 
   assert.ok(usage, HELP_BODY)
   assert.ok(usage.includes('--invocation'), usage)
 })
+
+// Both flags exist so a caller can opt out of a deferral the harness
+// otherwise performs for it. An undocumented opt-out is not an opt-out.
+test('help documents the critical-path deferral opt-out flags', () => {
+  for (const option of ['--harness-initiated', '--await-probe']) {
+    assert.ok(HELP_BODY.includes(option), option)
+  }
+})

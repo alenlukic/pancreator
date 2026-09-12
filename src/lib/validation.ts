@@ -73,6 +73,7 @@ import {
   gateCacheLookup,
   gateCacheStore,
   gateCacheableSnapshot,
+  repositoryCheckGateCommand,
 } from './gate-cache.js'
 import {
   gitHead,
@@ -2066,7 +2067,7 @@ export function resolveShellCheck(
 
   if (legacyProfile) {
     return {
-      command: `pan repository-check ${legacyProfile}`,
+      command: repositoryCheckGateCommand(legacyProfile),
       profile_name: legacyProfile,
     }
   }
@@ -2098,7 +2099,7 @@ export function resolveShellCheck(
   // configured rather than executing a guessed command.
   if (criterion.id === 'preflight.tests') {
     return {
-      command: 'pan repository-check fast',
+      command: repositoryCheckGateCommand('fast'),
       profile_name: 'fast',
     }
   }
@@ -2365,7 +2366,7 @@ function runShellCheck(
       : undefined
   const remappedProfile = typeof levelRemap === 'string' ? levelRemap : null
   const command = remappedProfile
-    ? `pan repository-check ${remappedProfile}`
+    ? repositoryCheckGateCommand(remappedProfile)
     : resolution.command
   const startedAt = new Date().toISOString()
   const profileName = remappedProfile ?? resolution.profile_name

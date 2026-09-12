@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import {
   cursorAuthenticationReadiness,
+  probeCursorModels,
+  probeCursorModelSpecAsync,
   probeEnvironment,
 } from '../../src/lib/executors/cursor-probe.js'
 import { createTestTempDirectory } from '../fixture-template.js'
@@ -89,6 +91,93 @@ test('the repository .env supplies the probe credential when the process lacks i
     // The loader must not mutate the parent process environment.
     assert.equal(process.env.CURSOR_API_KEY, undefined)
   })
+})
+
+/**
+ * Put a fake `cursor-agent` on PATH for the duration of `run`. The probe
+ * spawns the command by name, so PATH is the whole seam.
+ */
+async function withFakeCursorAgent<T>(
+  delaySeconds: string,
+  run: (root: string) => Promise<T>,
+): Promise<T> {
+  const root = makeRoot()
+  const binary = path.join(root, 'cursor-agent')
+  const previousPath = process.env.PATH
+
+  writeFileSync(
+    binary,
+    '#!/bin/sh\n' +
+      'cat >/dev/null\n' +
+      `sleep ${delaySeconds}\n` +
+      'model=""\n' +
+      'while [ $# -gt 0 ]; do\n' +
+      '  [ "$1" = "--model" ] && model="$2"\n' +
+      '  shift\n' +
+      'done\n' +
+      'printf \'{"type":"system","subtype":"init","model":"%s"}\\n\' "$model"\n',
+  )
+  chmodSync(binary, 0o755)
+  process.env.PATH = `${root}:${previousPath ?? ''}`
+
+  try {
+    return await run(root)
+  } finally {
+    if (previousPath === undefined) {
+      delete process.env.PATH
+    } else {
+      process.env.PATH = previousPath
+    }
+  }
+}
+
+test('the asynchronous probe reads the variant the init event echoes', async () => {
+  // The synchronous probe blocks its thread for a full model round trip. The
+  // asynchronous one has to read the same event from the same command.
+  await withFakeCursorAgent('0', async () => {
+    assert.deepEqual(await probeCursorModelSpecAsync('gpt-5.4-high', 5_000), {
+      resolved: 'gpt-5.4-high',
+    })
+  })
+})
+
+test('every distinct model spec is probed together and reported in sorted order', async () => {
+  // One round trip per spec, paid one after another, is the operator waiting
+  // on `pan models --probe`. The report is read by a human, so the order it
+  // prints in must not become whichever spec answered first.
+  const delaySeconds = 1
+  const probes = await withFakeCursorAgent(
+    String(delaySeconds),
+    async (root) => {
+      const startedAt = Date.now()
+      const result = await probeCursorModels(root, {
+        reviewer: 'model-c',
+        coder: 'model-a',
+        planner: 'model-b',
+        // Two personas share one spec, which stays one probe naming both.
+        verifier: 'model-a',
+        // A non-cursor executor is not Cursor's to resolve.
+        qa: 'claude-code:some-claude-model',
+      })
+
+      assert.ok(
+        Date.now() - startedAt < delaySeconds * 2_000,
+        'the specs were probed one after another',
+      )
+
+      return result
+    },
+  )
+
+  assert.deepEqual(
+    probes.map((probe) => probe.spec),
+    ['model-a', 'model-b', 'model-c'],
+  )
+  assert.deepEqual(probes[0]?.personas, ['coder', 'verifier'])
+  assert.deepEqual(
+    probes.map((probe) => probe.resolved),
+    ['model-a', 'model-b', 'model-c'],
+  )
 })
 
 test('an existing process credential outranks the repository .env', () => {

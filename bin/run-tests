@@ -173,6 +173,13 @@ trap discard_run_directory EXIT HUP INT TERM
 
 export PANCREATOR_TEST_TMP="$RUN_DIRECTORY"
 
+# Several suites assert exactly how many times a verification profile
+# executed. The release-profile prefetch deliberately runs one of them in a
+# detached child, which would make those counts depend on process scheduling.
+# It is therefore off by default for the suite; the tests that cover the
+# prefetch turn it on for their own fixture, and an operator can too.
+export PAN_PREFETCH_FULL="${PAN_PREFETCH_FULL:-0}"
+
 # The run directory sits inside this checkout, which is itself a Git
 # repository. Without a ceiling, git discovery from a fixture that has no
 # .git of its own would walk up and find this checkout, and a test that

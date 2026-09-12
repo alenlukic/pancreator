@@ -1,6 +1,9 @@
+import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { copyFileSync, readdirSync, rmSync } from 'node:fs'
+import { setPriority } from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import {
   assertCohortRunUnblocked,
@@ -138,6 +141,13 @@ import {
   summarizeRepositoryCheckResult,
 } from './repository-checks.js'
 import {
+  gateCacheEnabled,
+  gateCacheKey,
+  gateCacheLookup,
+  repositoryCheckGateCommand,
+  repositoryChecksConfigDigest,
+} from './gate-cache.js'
+import {
   cursorAgentTarget,
   projectPersonaVariants,
   syncCursorProjection,
@@ -173,6 +183,7 @@ import type {
   OperatorGateWaiver,
   OperatorPauseContext,
   OperatorWorkspaceRatification,
+  PersonaExecutorKind,
   RepositoryCheckBaselinePointer,
   RunActionActor,
   RunAdvisory,
@@ -723,6 +734,234 @@ function baselineWorkspaceProvenance(
   return provenance
 }
 
+/** Set to `0` to stop the speculative release-profile prefetch. */
+export const PREFETCH_RELEASE_PROFILE_ENV = 'PAN_PREFETCH_FULL'
+
+/** Lower scheduling priority for the prefetch child, on a nice-like scale. */
+const PREFETCH_PROCESS_PRIORITY = 10
+
+/** What the harness recorded about one speculative release-profile child. */
+export interface ReleaseProfilePrefetchRecord {
+  profile: string
+  pid: number
+  workspace_fingerprint: string
+  started_at: string
+  evidence_path: string
+}
+
+/**
+ * The repository-check profile an entry gate of this workflow will run, under
+ * the run's own verification level. A level that disables the gate maps it to
+ * nothing, and a prefetch for that run would compute a result nobody reads.
+ */
+function entryGateRepositoryCheckProfile(
+  workflow: WorkflowDefinition,
+  state: RunState,
+): string | null {
+  for (const stage of workflow.stages) {
+    const criterionId = stage.entry_gate?.criterion
+
+    if (!criterionId) {
+      continue
+    }
+
+    const criterion = stage.criteria.find((item) => item.id === criterionId)
+
+    if (!criterion || criterion.type !== 'shell') {
+      continue
+    }
+
+    const { profile } = effectiveRepositoryCheckProfile(
+      state.verification,
+      criterion,
+    )
+
+    if (profile) {
+      return profile
+    }
+  }
+
+  return null
+}
+
+/**
+ * Start computing the release profile while the read-only evidence stage runs.
+ *
+ * The inputs of the entry gate stopped changing when the source stage passed,
+ * so the answer can be computed during the stage that reads the work rather
+ * than at the gate that waits for it. The child is detached and unreferenced
+ * because nothing joins it: a clean result reaches the gate through the
+ * recorded-pass store, and a killed, failed, or unfinished child simply
+ * leaves no entry, which is today's behaviour.
+ */
+function startReleaseProfilePrefetch(
+  root: string,
+  state: RunState,
+  profile: string,
+  workspaceFingerprint: string,
+): ReleaseProfilePrefetchRecord | null {
+  const cliPath = fileURLToPath(new URL('../cli.js', import.meta.url))
+  const startedAt = now()
+  const child = spawn(
+    process.execPath,
+    [
+      cliPath,
+      'repository-check',
+      profile,
+      '--run',
+      state.run_id,
+      '--harness-initiated',
+    ],
+    { cwd: root, detached: true, stdio: 'ignore' },
+  )
+
+  if (child.pid === undefined) {
+    return null
+  }
+
+  try {
+    setPriority(child.pid, PREFETCH_PROCESS_PRIORITY)
+  } catch {
+    // Priority is an optimization; a platform that refuses it still prefetches.
+  }
+
+  child.unref()
+
+  const evidence = resolveRunLayout(root, state.run_id).evidence(
+    `prefetch-${profile}.json`,
+  )
+
+  writeJsonAtomic(evidence.absolute, {
+    schema_version: 1,
+    run_id: state.run_id,
+    profile,
+    pid: child.pid,
+    workspace_fingerprint: workspaceFingerprint,
+    started_at: startedAt,
+  })
+
+  return {
+    profile,
+    pid: child.pid,
+    workspace_fingerprint: workspaceFingerprint,
+    started_at: startedAt,
+    evidence_path: evidence.relative,
+  }
+}
+
+/** A recorded baseline artifact another unit of work may adopt as its own. */
+export interface AdoptableRepositoryCheckBaseline {
+  /** Installation-relative path of the summary artifact. */
+  artifact_path: string
+  recorded_at: string
+}
+
+/**
+ * Every recorded location of a profile's pre-implementation baseline artifact:
+ * the per-cohort shared baselines and each run's own evidence directory.
+ */
+function recordedBaselineArtifactPaths(
+  root: string,
+  profileName: string,
+): string[] {
+  const filename = `pre-implementation-${profileName}.json`
+  const paths: string[] = []
+  const cohorts = path.join(root, 'runtime', 'logs', 'cohorts')
+
+  if (isDirectory(cohorts)) {
+    for (const entry of readdirSync(cohorts, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        paths.push(path.join(cohorts, entry.name, 'baselines', filename))
+      }
+    }
+  }
+
+  const workflows = path.join(root, 'runtime', 'logs', 'workflows')
+
+  if (isDirectory(workflows)) {
+    for (const entry of readdirSync(workflows, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        // Layout v1 keeps a flat tree and v2 splits `agent/`, so the run's own
+        // layout resolves the path rather than a fixed literal.
+        paths.push(
+          resolveRunLayout(root, entry.name).evidence(filename).absolute,
+        )
+      }
+    }
+  }
+
+  return paths
+}
+
+/**
+ * Find a recorded passing baseline another unit of work may adopt for this
+ * profile.
+ *
+ * A recorded result answers the same question a fresh capture would when it
+ * observed the identical workspace fingerprint under the identical
+ * verification configuration. Anything else — a differing fingerprint, a
+ * differing or absent configuration digest, a non-passing status, an
+ * unreadable or malformed artifact, a dangling full-result companion — is a
+ * miss, and a miss captures exactly as before. The most recent candidate wins
+ * because archival is likeliest to have moved the oldest.
+ */
+export function findAdoptableRepositoryCheckBaseline(
+  root: string,
+  profileName: string,
+  workspaceFingerprint: string,
+  checksConfigDigest: string,
+): AdoptableRepositoryCheckBaseline | null {
+  let best: AdoptableRepositoryCheckBaseline | null = null
+
+  for (const absolute of recordedBaselineArtifactPaths(root, profileName)) {
+    if (!fileExists(absolute)) {
+      continue
+    }
+
+    let artifact: unknown
+
+    try {
+      artifact = readJson(absolute)
+    } catch {
+      continue
+    }
+
+    if (
+      !isRecord(artifact) ||
+      artifact.schema_version !== 1 ||
+      artifact.profile !== profileName ||
+      artifact.workspace_fingerprint !== workspaceFingerprint ||
+      artifact.checks_config_sha256 !== checksConfigDigest ||
+      typeof artifact.recorded_at !== 'string' ||
+      !isRecord(artifact.result) ||
+      artifact.result.status !== 'passed' ||
+      !Array.isArray(artifact.result.results)
+    ) {
+      continue
+    }
+
+    // The gate reads the untruncated companion when the summary elides output,
+    // so a summary whose companion is gone cannot support a later gate.
+    if (
+      typeof artifact.full_result_path === 'string' &&
+      !fileExists(path.join(root, artifact.full_result_path))
+    ) {
+      continue
+    }
+
+    const candidate: AdoptableRepositoryCheckBaseline = {
+      artifact_path: toRepoRelative(root, absolute),
+      recorded_at: artifact.recorded_at,
+    }
+
+    if (!best || candidate.recorded_at > best.recorded_at) {
+      best = candidate
+    }
+  }
+
+  return best
+}
+
 /**
  * Whether any stage of the workflow works in a provisioned tree: one that
  * edits source or release metadata, runs a shell gate, or launches evidence
@@ -967,10 +1206,38 @@ function captureRepositoryCheckBaselines(
   }
 
   const baselines: NonNullable<RunState['repository_check_baselines']> = {}
+  const checksConfigDigest = repositoryChecksConfigDigest(root)
 
   state.repository_check_baselines = baselines
 
   for (const profile of profiles) {
+    // DEV-001 asks for one baseline per interior gate profile per unit of
+    // work, not one execution. A recorded passing artifact taken at this
+    // fingerprint under this configuration already answers the question, so
+    // adopt its pointer and spend no time recomputing it.
+    const adopted = findAdoptableRepositoryCheckBaseline(
+      root,
+      profile.name,
+      preCaptureWorkspace.fingerprint,
+      checksConfigDigest,
+    )
+
+    if (adopted) {
+      baselines[profile.name] = {
+        profile: profile.name,
+        status: 'passed',
+        artifact_path: adopted.artifact_path,
+        workspace_fingerprint: preCaptureWorkspace.fingerprint,
+        recorded_at: adopted.recorded_at,
+      }
+      onProgress?.(
+        `adopted the recorded pre-implementation '${profile.name}' baseline ` +
+          `at ${adopted.artifact_path} (recorded ${adopted.recorded_at})`,
+      )
+
+      continue
+    }
+
     onProgress?.(
       `capturing pre-implementation '${profile.name}' baseline (timeout ${profile.timeout_ms ?? 'default'}ms)`,
     )
@@ -1015,6 +1282,7 @@ function captureRepositoryCheckBaselines(
         profile: profile.name,
         workspace_fingerprint: workspace.fingerprint,
         recorded_at: recordedAt,
+        checks_config_sha256: checksConfigDigest,
         ...provenanceFields,
         result,
       })
@@ -1027,6 +1295,7 @@ function captureRepositoryCheckBaselines(
       profile: profile.name,
       workspace_fingerprint: workspace.fingerprint,
       recorded_at: recordedAt,
+      checks_config_sha256: checksConfigDigest,
       ...provenanceFields,
       result: summary,
       ...(elided ? { full_result_path: fullPath } : {}),
@@ -1882,6 +2151,59 @@ function normalizedModelName(value: string): string {
   return value.toLowerCase().replaceAll(/[^a-z0-9]+/gu, '')
 }
 
+/** The active Cursor invocation a model probe may speak for. */
+function probeableInvocation(
+  root: string,
+  state: RunState,
+  invocationId: string,
+): Invocation {
+  invariant(
+    state.current_invocation?.id === invocationId,
+    `Invocation '${invocationId}' is not active for run '${state.run_id}'.`,
+    { code: 'CURSOR_MODEL_EVIDENCE_UNAVAILABLE' },
+  )
+
+  const invocation = readInvocation(root, state.current_invocation.json_path)
+
+  invariant(
+    (invocation.stage.persona_executor ?? 'cursor') === 'cursor',
+    `Invocation '${invocationId}' does not use the Cursor executor.`,
+    { code: 'CURSOR_MODEL_EVIDENCE_UNAVAILABLE' },
+  )
+
+  return invocation
+}
+
+/**
+ * Mark a detached worker model probe as in flight.
+ *
+ * Only submission reads this evidence, so the launch that needs it does not
+ * wait for Cursor to answer. The marker makes the in-flight probe visible to
+ * `pan status`, and the detached child overwrites it when the answer lands.
+ * A probe that never lands leaves the marker, which submission treats exactly
+ * as it treats an unavailable probe.
+ */
+export function recordPendingWorkerModelProbe(
+  root: string,
+  runId: string,
+  invocationId: string,
+): RunModelEvidence {
+  return withOperationMutex(operationMutexPath(root, runId), () => {
+    const state = loadState(root, runId)
+    const invocation = probeableInvocation(root, state, invocationId)
+
+    return persistModelEvidence(root, state, {
+      role: 'worker',
+      invocation_id: invocationId,
+      persona: invocation.stage.persona,
+      declared_spec: invocation.stage.model,
+      effective_model: null,
+      source: 'detached cursor-agent probe in flight',
+      result: 'pending',
+    })
+  })
+}
+
 /** Probe one active Cursor worker invocation and persist its effective model. */
 export function probeRunInvocationModel(
   root: string,
@@ -1890,21 +2212,7 @@ export function probeRunInvocationModel(
 ): RunModelEvidence & { advisories: string[] } {
   return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
-
-    invariant(
-      state.current_invocation?.id === invocationId,
-      `Invocation '${invocationId}' is not active for run '${runId}'.`,
-      { code: 'CURSOR_MODEL_EVIDENCE_UNAVAILABLE' },
-    )
-
-    const invocation = readInvocation(root, state.current_invocation.json_path)
-
-    invariant(
-      (invocation.stage.persona_executor ?? 'cursor') === 'cursor',
-      `Invocation '${invocationId}' does not use the Cursor executor.`,
-      { code: 'CURSOR_MODEL_EVIDENCE_UNAVAILABLE' },
-    )
-
+    const invocation = probeableInvocation(root, state, invocationId)
     const declaredSpec = invocation.stage.model
     // A bare (bracket-less) spec delegates the variant choice to Cursor, so
     // any successfully resolved variant is the declared behavior — the same
@@ -2012,7 +2320,13 @@ function requiredModelEvidenceAdvisories(
       item.role === 'worker' && item.invocation_id === invocation.invocation_id,
   )
 
-  if (!worker || worker.result === 'unavailable') {
+  // A detached probe still in flight has produced no answer, so it is no more
+  // usable at submission than a probe that failed.
+  if (
+    !worker ||
+    worker.result === 'unavailable' ||
+    worker.result === 'pending'
+  ) {
     advisories.push(
       `Invocation '${invocation.invocation_id}' records no usable worker ` +
         `model evidence, so the model that produced this output is unverified.`,
@@ -2838,12 +3152,28 @@ function resolveStageForAttempt(
   return persona ? { ...stage, persona } : stage
 }
 
+/** Agent-registry bookkeeping a lifecycle call owes once its state is durable. */
+interface PreparedInvocationRegistration {
+  run_id: string
+  invocation_id: string
+  persona: string
+  executor: PersonaExecutorKind
+  model: string | null
+}
+
 export function prepareInvocation(
   root: string,
   runId: string,
   options: PrepareInvocationOptions = {},
 ): PrepareInvocationResult {
-  return withOperationMutex(operationMutexPath(root, runId), () => {
+  // The agent registry is bookkeeping, not run state, and the hypervisor
+  // reconcile already tolerates a registry one event behind. Collect the write
+  // here and perform it once the mutex is released, so the command returns as
+  // soon as the run state is durable.
+  const deferred: { registration: PreparedInvocationRegistration | null } = {
+    registration: null,
+  }
+  const result = withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
 
     invariant(
@@ -3581,16 +3911,22 @@ export function prepareInvocation(
       stage: stage.slug,
       attempt,
     })
-    registerPreparedInvocation(root, {
+    deferred.registration = {
       run_id: runId,
       invocation_id: invocationId,
       persona: stage.persona,
       executor: invocation.stage.persona_executor ?? 'cursor',
       model: invocation.stage.model,
-    })
+    }
 
     return { state, invocation, advisories }
   })
+
+  if (deferred.registration) {
+    registerPreparedInvocation(root, deferred.registration)
+  }
+
+  return result
 }
 
 /**
@@ -4258,7 +4594,14 @@ export function submitOutput(
   submittedPath: string,
   options: OperationProgressOptions = {},
 ): SubmitOutputResult {
-  return withOperationMutex(operationMutexPath(root, runId), () => {
+  // Both of these run after the mutex is released: the registry write is
+  // bookkeeping the run state does not depend on, and the prefetch child is
+  // work nothing joins.
+  const deferred: {
+    completedInvocationId: string | null
+    prefetch: { profile: string; workspace_fingerprint: string } | null
+  } = { completedInvocationId: null, prefetch: null }
+  const result = withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
     const submittedRaw = readJson(resolveInside(root, submittedPath))
     const submittedInvocation =
@@ -4957,10 +5300,93 @@ export function submitOutput(
         ? { verify_warnings_inbox: verifyWarningsPath }
         : {}),
     })
-    completeInvocationAgent(root, runId, invocation.invocation_id)
+    deferred.completedInvocationId = invocation.invocation_id
+    deferred.prefetch = pendingReleaseProfilePrefetch(
+      root,
+      state,
+      workflow,
+      stage,
+      outcome,
+      evaluated.workspace.fingerprint,
+    )
 
     return { state, record, advisories }
   })
+
+  if (deferred.completedInvocationId) {
+    completeInvocationAgent(root, runId, deferred.completedInvocationId)
+  }
+
+  if (deferred.prefetch) {
+    startReleaseProfilePrefetch(
+      root,
+      result.state,
+      deferred.prefetch.profile,
+      deferred.prefetch.workspace_fingerprint,
+    )
+  }
+
+  return result
+}
+
+/**
+ * The release profile this submission should start computing now, or null.
+ *
+ * Only a passing source stage that hands the run to a read-only evidence
+ * stage qualifies: its workspace stops changing at that moment, and the
+ * evidence stage is long enough to absorb the work. A level that disables the
+ * entry gate, a disabled gate cache, or the operator's own switch each leave
+ * the gate to run the profile itself.
+ */
+function pendingReleaseProfilePrefetch(
+  root: string,
+  state: RunState,
+  workflow: WorkflowDefinition,
+  stage: StageDefinition,
+  outcome: StageOutcome,
+  workspaceFingerprint: string,
+): { profile: string; workspace_fingerprint: string } | null {
+  if (
+    outcome !== 'success' ||
+    stage.workspace_policy !== 'source_allowed' ||
+    state.status !== 'running' ||
+    state.current_stage === null ||
+    process.env[PREFETCH_RELEASE_PROFILE_ENV] === '0' ||
+    !gateCacheEnabled()
+  ) {
+    return null
+  }
+
+  const nextStage = workflow.stages.find(
+    (candidate) => candidate.slug === state.current_stage,
+  )
+
+  if (nextStage?.workspace_policy !== 'read_only') {
+    return null
+  }
+
+  const profile = entryGateRepositoryCheckProfile(workflow, state)
+
+  if (!profile) {
+    return null
+  }
+
+  // A recorded pass at this fingerprint already satisfies the gate, so a
+  // second computation of the same answer would be the waste this removes.
+  if (
+    gateCacheLookup(
+      root,
+      gateCacheKey(
+        root,
+        workspaceFingerprint,
+        repositoryCheckGateCommand(profile),
+      ),
+    )
+  ) {
+    return null
+  }
+
+  return { profile, workspace_fingerprint: workspaceFingerprint }
 }
 
 export function assessStage(

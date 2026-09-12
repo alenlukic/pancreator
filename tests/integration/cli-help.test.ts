@@ -1,11 +1,25 @@
 import assert from 'node:assert/strict'
 import { execFileSync, spawnSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
+import { setTimeout as delay } from 'node:timers/promises'
 
+import { getRunState, prepareInvocation } from '../../src/lib/engine.js'
 import { referenceContentSha256 } from '../../src/lib/io.js'
-import { attestRunCard, createFixture } from '../helpers.js'
+import type { RunModelEvidence } from '../../src/lib/types.js'
+import {
+  attestRunCard,
+  createFixture,
+  createRun,
+  writeFixtureCursorCatalog,
+} from '../helpers.js'
 
 const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
 
@@ -250,6 +264,97 @@ test('context digest prints the audited content digest of a file inside the root
   assert.match(directory.stderr, /File does not exist: runtime/u)
   assert.doesNotMatch(directory.stderr, /EISDIR|READ_FAILED/u)
   assert.ok(!directory.stderr.includes(root), directory.stderr)
+})
+
+test('the run-scoped model probe returns without waiting for the model', async () => {
+  // Every Cursor worker launch ran this command first and blocked on a live
+  // model round trip. Only submission reads the answer, so the command
+  // records the in-flight marker, detaches the call, and returns.
+  const root = createFixture()
+  const agentDirectory = path.join(root, 'slow-bin')
+  const agentDelaySeconds = 5
+
+  writeFixtureCursorCatalog(root)
+  mkdirSync(agentDirectory, { recursive: true })
+  writeFileSync(
+    path.join(agentDirectory, 'cursor-agent'),
+    [
+      '#!/bin/sh',
+      'cat >/dev/null',
+      `sleep ${agentDelaySeconds}`,
+      `printf '%s\\n' '${JSON.stringify({
+        type: 'system',
+        subtype: 'init',
+        model: 'Detached Variant',
+      })}'`,
+      '',
+    ].join('\n'),
+  )
+  chmodSync(path.join(agentDirectory, 'cursor-agent'), 0o755)
+
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title: 'Detached probe CLI run',
+  })
+  const invocation = prepareInvocation(root, run.run_id).invocation
+
+  assert.ok(invocation)
+
+  const startedAt = Date.now()
+  const probe = spawnSync(
+    process.execPath,
+    [
+      CLI,
+      'models',
+      '--probe',
+      '--run',
+      run.run_id,
+      '--invocation',
+      invocation.invocation_id,
+      '--json',
+    ],
+    {
+      cwd: root,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        PATH: `${agentDirectory}${path.delimiter}${process.env.PATH ?? ''}`,
+      },
+    },
+  )
+  const elapsed = Date.now() - startedAt
+
+  assert.equal(probe.status, 0, probe.stderr)
+
+  const printed = JSON.parse(probe.stdout) as Record<string, unknown>
+
+  assert.equal(printed.result, 'pending')
+  assert.equal(printed.effective_model, null)
+  assert.equal(typeof printed.probe_pid, 'number')
+  assert.ok(
+    elapsed < agentDelaySeconds * 1_000,
+    `the command waited ${elapsed}ms for the model`,
+  )
+
+  // The detached child lands the answer on the run, replacing the marker.
+  const deadline = Date.now() + 30_000
+  let landed: RunModelEvidence | undefined
+
+  while (Date.now() < deadline) {
+    landed = getRunState(root, run.run_id).model_evidence?.find(
+      (item) => item.role === 'worker',
+    )
+
+    if (landed && landed.result !== 'pending') {
+      break
+    }
+
+    await delay(100)
+  }
+
+  assert.equal(landed?.effective_model, 'Detached Variant')
+  assert.notEqual(landed?.result, 'pending')
 })
 
 test('a cohort subcommand refuses a flag in its cohort-id slot as a missing positional', () => {

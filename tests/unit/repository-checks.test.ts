@@ -10,6 +10,7 @@ import {
 } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
+import { setTimeout as delay } from 'node:timers/promises'
 
 import {
   AGENT_REPOSITORY_CHECK_RUNS_FILE,
@@ -19,6 +20,7 @@ import {
   MAX_CAPTURE_BYTES,
   recordAgentRepositoryCheck,
   recordAgentRepositoryCheckForRuns,
+  recordProfileGatePass,
   REPOSITORY_CHECK_FAST_REPEATED,
   repositoryChecksSourcePath,
   runRepositorySetup,
@@ -28,6 +30,12 @@ import {
   SUMMARY_STREAM_TAIL_BYTES,
 } from '../../src/lib/repository-checks.js'
 import type { RepositoryCheckResult } from '../../src/lib/repository-checks.js'
+import {
+  gateCacheKey,
+  gateCacheLookup,
+  repositoryCheckGateCommand,
+} from '../../src/lib/gate-cache.js'
+import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadRepositoryCheckBaseline } from '../../src/lib/validation.js'
 import type { RunState } from '../../src/lib/types.js'
@@ -37,6 +45,26 @@ import {
   createTestTempDirectory,
   writeJson,
 } from '../helpers.js'
+
+/** The checkout under test, which `bin/run-tests` runs the suite from. */
+const REPO_ROOT = process.cwd()
+
+/**
+ * A profile command that backgrounds a grandchild ticking `file` until it is
+ * killed. The `& wait` shape puts the ticker outside the shell the runner
+ * spawns, so only a process-group kill reaches it.
+ */
+function heartbeatCommand(file: string): string {
+  return (
+    `sh -c "node -e \\"setInterval(() => require('node:fs')` +
+    `.appendFileSync('${file}', 'x'), 25); setTimeout(() => {}, 30000)\\"" & wait`
+  )
+}
+
+/** Ticks the heartbeat grandchild has written so far. */
+function heartbeatCount(file: string): number {
+  return existsSync(file) ? readFileSync(file, 'utf8').length : 0
+}
 
 function makeInstallation(): { root: string; workspace: string } {
   const parent = createTestTempDirectory('checks-')
@@ -613,6 +641,144 @@ test('a streaming timeout ends the whole process tree, not only the shell', asyn
   )
 })
 
+test('a concurrent profile runs its commands together and records each one', async () => {
+  // The heaviest profile's commands are independent, so running them one
+  // after another charges the operator the sum of their durations. Each must
+  // still keep its own exit code and captured output, in declared order.
+  const { root } = makeInstallation()
+  const delayMs = 900
+  const stdout: string[] = []
+
+  writeChecks(root, {
+    full: {
+      timeout_ms: 20_000,
+      concurrent: true,
+      probes: [],
+      commands: [
+        `node -e "setTimeout(() => process.stdout.write('alpha\\n'), ${delayMs})"`,
+        `node -e "setTimeout(() => { process.stderr.write('beta\\n'); process.exit(2) }, ${delayMs})"`,
+        `node -e "setTimeout(() => process.stdout.write('gamma\\n'), ${delayMs})"`,
+      ],
+    },
+  })
+
+  const startedAt = Date.now()
+  const result = await runRepositoryCheckStreaming(root, 'full', {
+    on_stdout: (chunk) => stdout.push(chunk),
+  })
+  const elapsed = Date.now() - startedAt
+
+  // One command failed, so the profile failed, but every command ran.
+  assert.equal(result.status, 'failed')
+  assert.deepEqual(
+    result.results.map((item) => item.passed),
+    [true, false, true],
+  )
+  assert.match(result.results[0]?.stdout ?? '', /alpha/u)
+  assert.equal(result.results[1]?.exit_code, 2)
+  assert.match(result.results[1]?.stderr ?? '', /beta/u)
+  assert.match(result.results[2]?.stdout ?? '', /gamma/u)
+  assert.match(stdout.join(''), /alpha/u)
+  assert.ok(
+    elapsed < delayMs * 2,
+    `the three commands took ${elapsed}ms; they ran one after another`,
+  )
+})
+
+test('a concurrent profile ends every unfinished command at the shared deadline', async () => {
+  // A shared deadline is the whole budget, not a budget per command. Without
+  // the group kill the runner returns while orphans keep running.
+  const { root } = makeInstallation()
+  // Each slow command backgrounds a grandchild that ticks a heartbeat file.
+  // A returning runner is not proof the tree died: only a heartbeat that
+  // stops ticking distinguishes a killed process group from an orphan the
+  // runner merely stopped waiting for.
+  const firstBeat = path.join(root, 'runtime', 'beat-1.txt')
+  const secondBeat = path.join(root, 'runtime', 'beat-2.txt')
+  const heartbeats = [firstBeat, secondBeat]
+
+  writeChecks(root, {
+    full: {
+      concurrent: true,
+      probes: [],
+      commands: [
+        'echo quick',
+        heartbeatCommand(firstBeat),
+        heartbeatCommand(secondBeat),
+      ],
+    },
+  })
+
+  const startedAt = Date.now()
+  const result = await runRepositoryCheckStreaming(root, 'full', {
+    timeout_ms: 400,
+  })
+  const elapsed = Date.now() - startedAt
+
+  assert.equal(result.status, 'failed')
+  assert.equal(result.results[0]?.passed, true)
+  assert.equal(result.results[1]?.timed_out, true)
+  assert.equal(result.results[2]?.timed_out, true)
+  assert.ok(
+    elapsed < 10_000,
+    `the profile returned after ${elapsed}ms; an orphan kept it waiting`,
+  )
+
+  const ticks = heartbeats.map(heartbeatCount)
+
+  await delay(500)
+
+  for (const [index, file] of heartbeats.entries()) {
+    const before = ticks[index] ?? 0
+
+    assert.ok(
+      before > 0,
+      `command ${index + 1} never started, so its heartbeat proves nothing`,
+    )
+    assert.equal(
+      heartbeatCount(file),
+      before,
+      `a descendant of command ${index + 1} outlived the shared deadline`,
+    )
+  }
+})
+
+test('the concurrent field must be a boolean and the gate runner ignores it', () => {
+  const { root } = makeInstallation()
+
+  writeChecks(root, {
+    full: { probes: [], commands: ['echo ok'], concurrent: 'yes' },
+  })
+
+  assert.throws(
+    () => loadRepositoryChecks(root),
+    /profiles\.full\.concurrent MUST be a boolean when present/u,
+  )
+
+  // The gate path is synchronous and stays serial, so a configuration written
+  // for the asynchronous runner cannot change what a gate verifies.
+  writeChecks(root, {
+    full: {
+      timeout_ms: 20_000,
+      concurrent: true,
+      probes: [],
+      commands: [
+        'node -e "setTimeout(() => process.exit(0), 600)"',
+        'node -e "setTimeout(() => process.exit(0), 600)"',
+      ],
+    },
+  })
+
+  const startedAt = Date.now()
+  const result = runRepositoryCheck(root, 'full')
+
+  assert.equal(result.status, 'passed')
+  assert.ok(
+    Date.now() - startedAt >= 1_200,
+    'the synchronous runner honoured the concurrent field',
+  )
+})
+
 test('a synchronous timeout ends the whole process tree, not only the shell', () => {
   // The gate path runs commands synchronously. With piped output the call
   // returned only when the orphaned grandchildren closed the pipes: 916 s
@@ -852,6 +1018,40 @@ test('a directory under a worktree that is not itself a worktree keeps its own r
       'repository-checks.self-development.json',
     ),
   )
+})
+
+test('the shipped self-development profiles declare no concurrent commands', () => {
+  // The template is the fallback source above, so a fresh clone or a CI
+  // checkout with no runtime/repository-checks.json adopts whatever it says
+  // without an operator deciding anything. `concurrent` is safe only for
+  // commands that share no mutable state, and the full profile's do:
+  // `./bin/install --smoke` copies the live dist/ tree without taking the
+  // bin/run-built lock that `npm run check` holds while bin/build swaps that
+  // same tree. Turning the flag on for an installation stays an operator
+  // action against the untracked runtime file.
+  const template = JSON.parse(
+    readFileSync(
+      path.join(
+        REPO_ROOT,
+        'library',
+        'templates',
+        'repository-checks.self-development.json',
+      ),
+      'utf8',
+    ),
+  ) as {
+    profiles: Record<string, { commands: string[]; concurrent?: unknown }>
+  }
+
+  for (const [name, profile] of Object.entries(template.profiles)) {
+    assert.equal(
+      profile.concurrent,
+      undefined,
+      `profiles.${name} declares concurrent commands. Prove the commands ` +
+        `share no mutable state before shipping that default, or leave the ` +
+        `flag to the operator's own runtime/repository-checks.json.`,
+    )
+  }
 })
 
 test('workspace setup commands load, run in order, and stop at the first failure', () => {
@@ -1133,5 +1333,151 @@ test('the fast-profile allowance follows the evidence workers of the invocation 
   assert.match(
     verify[0].message,
     /allows one run per agent, 2 for this stage \(2 evidence worker\(s\)\)/u,
+  )
+})
+
+/** A passing profile result an agent's command-line run would produce. */
+function commandLineResult(
+  workspaceRoot: string,
+  overrides: Partial<RepositoryCheckResult> = {},
+): RepositoryCheckResult {
+  return {
+    profile: 'fast',
+    status: 'passed',
+    config_path: 'runtime/repository-checks.json',
+    workspace_root: workspaceRoot,
+    timeout_ms: 60_000,
+    results: [
+      {
+        kind: 'command',
+        command: 'npm test',
+        exit_code: 0,
+        signal: null,
+        stdout: 'suite ok\n',
+        stderr: '',
+        passed: true,
+        timed_out: false,
+        duration_ms: 90_000,
+      },
+    ],
+    total_duration_ms: 90_000,
+    advisories: [],
+    ...overrides,
+  }
+}
+
+test('an agent clean profile pass is recorded where the gate looks for it', () => {
+  // The agent already paid for this suite at this fingerprint. Recording the
+  // pass as a gate result is what stops the submission gate from paying for
+  // the identical run minutes later.
+  const root = createFixture()
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+  const fingerprint = gitWorkspaceSnapshot(root).fingerprint
+  const result = commandLineResult(root)
+  const recorded = recordProfileGatePass(root, 'fast', result, {
+    run_ids: [run.run_id],
+    fingerprint_before: fingerprint,
+    started_at: '2026-09-12T09:00:00.000Z',
+  })
+
+  assert.ok(recorded)
+
+  // The gate resolves the same command text for the same profile, so a
+  // lookup at this fingerprint finds the entry.
+  const entry = gateCacheLookup(
+    root,
+    gateCacheKey(root, fingerprint, repositoryCheckGateCommand('fast')),
+  )
+
+  assert.ok(entry)
+  assert.equal(entry.evidence_path, recorded.evidence_path)
+  // The gate compares this against the run's baseline, so the whole result
+  // has to survive, not a summary of it.
+  assert.deepEqual(entry.repository_result, result)
+
+  // The gate copies the evidence bytes forward, so the log must exist.
+  const evidence = readFileSync(path.join(root, entry.evidence_path), 'utf8')
+
+  assert.match(evidence, /^\$ pan repository-check fast$/mu)
+  assert.match(evidence, /exit_code=0/u)
+  assert.match(evidence, /invoked_by=command-line/u)
+})
+
+test('an agent profile run that proves nothing is not recorded as a pass', () => {
+  const root = createFixture()
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+  const fingerprint = gitWorkspaceSnapshot(root).fingerprint
+  const options = {
+    run_ids: [run.run_id],
+    fingerprint_before: fingerprint,
+    started_at: '2026-09-12T09:00:00.000Z',
+  }
+  const timedOut = commandLineResult(root)
+
+  timedOut.results = [{ ...timedOut.results[0], timed_out: true }]
+
+  // A failure must re-run to show its repair; a timeout proves nothing at
+  // all; a run naming no run has nowhere inside a run to put its evidence.
+  assert.equal(
+    recordProfileGatePass(
+      root,
+      'fast',
+      commandLineResult(root, { status: 'failed' }),
+      options,
+    ),
+    null,
+  )
+  assert.equal(recordProfileGatePass(root, 'fast', timedOut, options), null)
+  assert.equal(
+    recordProfileGatePass(root, 'fast', commandLineResult(root), {
+      ...options,
+      run_ids: [],
+    }),
+    null,
+  )
+
+  // The workspace moved under the run, so the result describes a tree that
+  // no longer exists.
+  writeFileSync(path.join(root, 'recorder-buster.txt'), 'changed\n')
+
+  assert.equal(
+    recordProfileGatePass(root, 'fast', commandLineResult(root), options),
+    null,
+  )
+
+  // A workspace outside Git has no fingerprint to key a pass on. Every such
+  // workspace fingerprints as the same constant, so one shared cache key
+  // would serve results across unrelated trees. The caller in src/cli.ts
+  // passes a non-nullable fingerprint, so the guard that has to hold is the
+  // snapshot check rather than the null bracket: this case brackets the run
+  // exactly as production does and still stores nothing.
+  const bare = createTestTempDirectory('unversioned-')
+  const bareSnapshot = gitWorkspaceSnapshot(bare)
+
+  assert.notEqual(bareSnapshot.kind, 'git')
+  assert.equal(
+    recordProfileGatePass(
+      root,
+      'fast',
+      commandLineResult(bare, { workspace_root: bare }),
+      { ...options, fingerprint_before: bareSnapshot.fingerprint },
+    ),
+    null,
+  )
+  // A caller that brackets nothing at all is refused before that check.
+  assert.equal(
+    recordProfileGatePass(
+      root,
+      'fast',
+      commandLineResult(bare, { workspace_root: bare }),
+      { ...options, fingerprint_before: null },
+    ),
+    null,
   )
 })
