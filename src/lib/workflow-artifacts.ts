@@ -11,7 +11,7 @@ import {
 } from 'node:fs'
 import path from 'node:path'
 
-import { invariant } from './errors.js'
+import { errorMessage, invariant } from './errors.js'
 import {
   type InboxLegacyMigrationSummary,
   inboxTemporalScanDirectories,
@@ -1141,9 +1141,16 @@ export interface WorkflowReferenceAmbiguity {
   candidates: string[]
 }
 
+export interface WorkflowReferenceSkip {
+  run_id: string
+  reason: string
+}
+
 export interface WorkflowReferenceRepairSummary {
   changed_paths: string[]
   ambiguities: WorkflowReferenceAmbiguity[]
+  /** Runs whose state file could not be read, so the pass passed them by. */
+  skipped_runs: WorkflowReferenceSkip[]
 }
 
 interface RunMigration {
@@ -1403,17 +1410,45 @@ function moveDirectory(parent: string, oldName: string, newName: string): void {
   renameSync(source, target)
 }
 
+/**
+ * The run status, or the reason the state file could not supply one.
+ *
+ * A pass over many run directories meets state files a live run never has:
+ * missing, truncated, or unparseable. Returning the reason lets that pass
+ * skip the one bad record and finish the rest, while a caller that is
+ * operating on one known-good run still raises.
+ */
+function tryReadRunStatus(runDirectory: string): {
+  status: RunStatus | null
+  reason: string | null
+} {
+  const statePath = path.join(agentDirectory(runDirectory), 'state.json')
+  let value: unknown
+
+  try {
+    value = JSON.parse(readFileSync(statePath, 'utf8'))
+  } catch (error) {
+    return { status: null, reason: errorMessage(error) }
+  }
+
+  if (!isRecord(value) || typeof value.status !== 'string') {
+    return { status: null, reason: `${statePath} carries no run status.` }
+  }
+
+  return { status: value.status as RunStatus, reason: null }
+}
+
 function readRunStatus(runDirectory: string): RunStatus {
   const statePath = path.join(agentDirectory(runDirectory), 'state.json')
-  const value: unknown = JSON.parse(readFileSync(statePath, 'utf8'))
+  const read = tryReadRunStatus(runDirectory)
 
   invariant(
-    isRecord(value) && typeof value.status === 'string',
-    `${statePath} MUST contain a run status.`,
+    read.status !== null,
+    `${statePath} MUST contain a run status: ${read.reason}`,
     { code: 'INVALID_WORKFLOW_MIGRATION' },
   )
 
-  return value.status as RunStatus
+  return read.status
 }
 
 function removeEmptyHelpDirectory(logRoot: string): number {
@@ -2034,11 +2069,20 @@ export function repairWorkflowInboxReferences(
   const logRoot = path.join(root, 'runtime', 'logs', 'workflows')
   const changedPaths: string[] = []
   const ambiguities: WorkflowReferenceAmbiguity[] = []
+  const skippedRuns: WorkflowReferenceSkip[] = []
 
   for (const runId of activeWorkflowDirectoryNames(logRoot)) {
     const runDirectory = path.join(logRoot, runId)
+    const { status, reason } = tryReadRunStatus(runDirectory)
 
-    if (!isClosedRunStatus(readRunStatus(runDirectory))) {
+    // One closed run with an unreadable state file used to abort the whole
+    // pass. It is recorded and passed by instead.
+    if (status === null) {
+      skippedRuns.push({ run_id: runId, reason: reason ?? 'unknown' })
+      continue
+    }
+
+    if (!isClosedRunStatus(status)) {
       continue
     }
 
@@ -2100,6 +2144,9 @@ export function repairWorkflowInboxReferences(
     changed_paths: changedPaths.sort(),
     ambiguities: ambiguities.sort((left, right) =>
       left.path.localeCompare(right.path),
+    ),
+    skipped_runs: skippedRuns.sort((left, right) =>
+      left.run_id.localeCompare(right.run_id),
     ),
   }
 }

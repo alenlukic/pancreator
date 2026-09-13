@@ -112,6 +112,86 @@ test('starting a cohort fans out one worktree and one run per chunk', () => {
   )
 })
 
+test('one cohort status read carries the bootstrap command set of every live chunk run', () => {
+  const root = createFixture()
+  const planRunId = ratifiedPlanRun(root, [
+    { id: 'alpha', cohort_index: 1 },
+    { id: 'beta', cohort_index: 1 },
+    { id: 'gamma', cohort_index: 1 },
+  ])
+  const session = initCohortSession(root, { planRunId })
+  const started = startCohort(root, session.cohort_id)
+
+  assert.equal(started.chunks.length, 3)
+
+  // Twelve hand-built commands across three runs, read from one record.
+  const bootstrap = cohortStatus(root, session.cohort_id).bootstrap
+
+  assert.deepEqual(bootstrap.map((entry) => entry.chunk).sort(), [
+    'alpha',
+    'beta',
+    'gamma',
+  ])
+
+  for (const entry of bootstrap) {
+    const chunk = started.chunks.find((item) => item.chunk === entry.chunk)
+
+    assert.ok(chunk)
+    assert.equal(entry.run_id, chunk.run_id)
+    assert.equal(entry.worktree, path.basename(chunk.worktree))
+    assert.ok(
+      entry.governance_card_command.endsWith(
+        `governance card --mode supervisor --run ${entry.run_id}`,
+      ),
+      entry.governance_card_command,
+    )
+    assert.ok(
+      entry.attest_command.includes(
+        `governance attest-supervisor ${entry.run_id} --sha256 `,
+      ),
+      entry.attest_command,
+    )
+    assert.ok(
+      entry.redline_command.endsWith(
+        `status ${entry.run_id} --redline --occasion pan-cohort`,
+      ),
+      entry.redline_command,
+    )
+    assert.ok(
+      entry.model_evidence_command.includes(
+        `models evidence --run ${entry.run_id} --role supervisor`,
+      ),
+      entry.model_evidence_command,
+    )
+    assert.equal(entry.attested, false)
+  }
+
+  // The facts move with the run: an attested card is reported attested, and
+  // its attest command carries the digest the operator would have to look up.
+  const first = bootstrap[0]
+
+  attestRunCard(root, first.run_id)
+
+  const attested = cohortStatus(root, session.cohort_id).bootstrap.find(
+    (entry) => entry.run_id === first.run_id,
+  )
+
+  assert.ok(attested)
+  assert.ok(attested.card_sha256)
+  assert.equal(attested.attested, true)
+  assert.equal(attested.redline_current, true)
+  assert.ok(attested.attest_command.endsWith(attested.card_sha256))
+
+  // A run the session no longer supervises owes no bootstrap.
+  markSucceeded(root, first.run_id)
+  abandonChunk(root, session.cohort_id, 'beta', 'superseded by alpha')
+
+  assert.deepEqual(
+    cohortStatus(root, session.cohort_id).bootstrap.map((entry) => entry.chunk),
+    ['gamma'],
+  )
+})
+
 test('a cohort captures one shared pre-implementation baseline that every chunk run adopts', () => {
   const root = createFixture()
   const planRunId = ratifiedPlanRun(root, [

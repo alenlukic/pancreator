@@ -90,6 +90,25 @@ export function renderEvalReportMarkdown(report: EvalReport): string {
     lines.push(`Observability: ${verdict.observability}`, '')
   }
 
+  if (report.driver_checks && report.driver_checks.length > 0) {
+    lines.push('## Driver checks', '')
+
+    for (const check of report.driver_checks) {
+      lines.push(
+        `### ${check.passed ? 'PASS' : 'FAIL'}: ${check.id}`,
+        '',
+        check.summary,
+        '',
+      )
+
+      for (const item of check.evidence) {
+        lines.push(`- \`${item}\``)
+      }
+
+      lines.push('')
+    }
+  }
+
   return `${lines.join('\n').trimEnd()}\n`
 }
 

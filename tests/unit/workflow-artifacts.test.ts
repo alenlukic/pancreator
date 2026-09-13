@@ -261,10 +261,52 @@ test('historical repair reports unique changes and preserves ambiguities', () =>
     },
   ])
 
+  assert.deepEqual(summary.skipped_runs, [])
   assert.deepEqual(repairWorkflowInboxReferences(root), {
     changed_paths: [],
     ambiguities: summary.ambiguities,
+    skipped_runs: [],
   })
+})
+
+test('an unreadable run state skips that run and records the skip', () => {
+  const root = createTestTempDirectory('pancreator-repair-skip-')
+  const healthyRunId = '63308_Sep-01-0091_healthy'
+  const brokenRunId = '63308_Sep-01-0092_broken'
+  const healthyDirectory = path.join(
+    root,
+    'runtime/logs/workflows',
+    healthyRunId,
+  )
+  const brokenDirectory = path.join(root, 'runtime/logs/workflows', brokenRunId)
+  const invocationIds = ['00_verify-1_bbbbbbbb']
+
+  writeWorkflowSnapshot(healthyDirectory)
+  writeEvents(healthyDirectory, invocationIds)
+  writeState(healthyDirectory, healthyRunId, 'succeeded', invocationIds)
+
+  writeWorkflowSnapshot(brokenDirectory)
+  writeEvents(brokenDirectory, invocationIds)
+  write(path.join(brokenDirectory, 'state.json'), '{ not json\n')
+
+  const repairPath = path.join(
+    root,
+    'runtime/inbox',
+    `${healthyRunId}-friction.md`,
+  )
+
+  write(repairPath, 'Reference verify-1-bbbbbbbb needs repair.\n')
+
+  // One malformed run used to abort the whole pass, which left every other
+  // run's references unrepaired and named no cause.
+  const summary = repairWorkflowInboxReferences(root)
+
+  assert.deepEqual(summary.changed_paths, [
+    `runtime/inbox/${healthyRunId}-friction.md`,
+  ])
+  assert.equal(summary.skipped_runs.length, 1)
+  assert.equal(summary.skipped_runs[0]?.run_id, brokenRunId)
+  assert.ok((summary.skipped_runs[0]?.reason ?? '').length > 0)
 })
 
 test('workflow migration finalizes closed runs and consolidates artifacts', () => {

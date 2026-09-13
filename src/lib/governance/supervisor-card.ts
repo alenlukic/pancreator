@@ -62,6 +62,22 @@ export function supervisorAttestCommand(
   return `${panCommand(root)} governance attest-supervisor ${runId} --sha256 ${digest}`
 }
 
+/** The command that renders or refreshes one run's supervisor card. */
+export function supervisorCardCommand(root: string, runId: string): string {
+  return `${panCommand(root)} governance card --mode supervisor --run ${runId}`
+}
+
+/** The command that records this supervisor session's own effective model. */
+export function supervisorModelEvidenceCommand(
+  root: string,
+  runId: string,
+): string {
+  return (
+    `${panCommand(root)} models evidence --run ${runId} --role supervisor ` +
+    '--effective-model <model> --source <source>'
+  )
+}
+
 /**
  * Every policy the lookup table resolves for the orchestrator persona over the
  * whole run: the wildcard stage plus each stage the workflow declares, so a
@@ -214,8 +230,60 @@ export function supervisorCardAttested(state: RunState): boolean {
 }
 
 /** The redline command for one occasion. */
-export function redlineCommand(root: string, runId: string): string {
-  return `${panCommand(root)} status ${runId} --redline --occasion <pan-start|pan-resume>`
+export function redlineCommand(
+  root: string,
+  runId: string,
+  occasion = '<pan-start|pan-resume>',
+): string {
+  return `${panCommand(root)} status ${runId} --redline --occasion ${occasion}`
+}
+
+/**
+ * Every command one supervisor session owes one run before it may prepare or
+ * submit, with the run's current attestation facts.
+ *
+ * A session that supervises several runs pays this set once per run, and the
+ * commands differ only in the run id and the card digest. Emitting them from
+ * the harness removes the reconstruction a supervisor performs by hand.
+ */
+export interface SupervisorBootstrap {
+  run_id: string
+  card_path: string | null
+  card_sha256: string | null
+  attested: boolean
+  /** Whether the current session generation already wrote its redline. */
+  redline_current: boolean
+  governance_card_command: string
+  attest_command: string
+  redline_command: string
+  model_evidence_command: string
+}
+
+/** The bootstrap command set and attestation facts of one run. */
+export function supervisorBootstrap(
+  root: string,
+  state: RunState,
+  occasion?: string,
+): SupervisorBootstrap {
+  const card = state.supervisor_card ?? null
+
+  return {
+    run_id: state.run_id,
+    card_path: card?.path ?? null,
+    card_sha256: card?.sha256 ?? null,
+    attested: supervisorCardAttested(state),
+    redline_current: redlineCurrent(root, state).current,
+    governance_card_command: supervisorCardCommand(root, state.run_id),
+    // A run whose card is not rendered yet has no digest to attest, so the
+    // command carries the placeholder the card command's output replaces.
+    attest_command: supervisorAttestCommand(
+      root,
+      state.run_id,
+      card?.sha256 ?? '<sha256>',
+    ),
+    redline_command: redlineCommand(root, state.run_id, occasion),
+    model_evidence_command: supervisorModelEvidenceCommand(root, state.run_id),
+  }
 }
 
 /**

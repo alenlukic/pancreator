@@ -62,7 +62,10 @@ import {
 import { applyJsonMergePatch } from './json-merge-patch.js'
 import { keywordRunSuffixFrom, makeStageArtifactId } from './naming.js'
 import { resolveRunLayout } from './run-layout.js'
-import { buildSuiteProfileSummary } from './suite-profile.js'
+import {
+  buildSuiteProfileSummary,
+  recordSuiteProfileIndexEntry,
+} from './suite-profile.js'
 import {
   DELEGATION_UNOBSERVED,
   DELEGATION_WATCH_LATE,
@@ -200,6 +203,9 @@ import type {
   SupervisorAssessment,
   TaskRecord,
   WorkflowDefinition,
+  WorkspaceDirectiveRecord,
+  WorkspaceSnapshot,
+  WorktreeClaimTransfer,
 } from './types.js'
 import {
   attestationValidationPath,
@@ -209,6 +215,7 @@ import {
   delegationValidationPath,
   deliveryPromptPath,
   evaluateDeterministicCriteria,
+  FINGERPRINT_BOUND_STATE_CRITERIA,
   expectedDelegationSource,
   invocationValidationPath,
   loadInvocationValidationStatus,
@@ -233,12 +240,17 @@ import {
   workflowPersonaNames,
 } from './workflow.js'
 import {
+  gitStatusPaths,
   gitWorkspaceSnapshot,
   snapshotEntryPath,
   workspaceChangedPathsFromSnapshots,
 } from './git.js'
 import { resolveRoots } from './workspace/roots.js'
-import { PROTECTED_PATH_RULE } from './workspace/protected-paths.js'
+import {
+  isProtectedWorkspacePath,
+  PROTECTED_PATH_RULE,
+} from './workspace/protected-paths.js'
+import { worktreeReadiness } from './worktrees.js'
 
 /**
  * Persona-to-model map that replaces the active pipeline config for one run.
@@ -351,6 +363,19 @@ export interface PrepareInvocationResult {
   invocation: Invocation | null
   /** Non-blocking observations about the run. None of them stops the run. */
   advisories: string[]
+  /** What `--agent` had the harness write and start, when it was passed. */
+  prepared_delegation?: PreparedDelegation
+}
+
+/** Delivery artifacts `pan prepare --agent <name>` owns for one invocation. */
+export interface PreparedDelegation {
+  /** The labeled delegation artifact, or null when none was written. */
+  artifact_path: string | null
+  /** Why no artifact was written, when none was. */
+  skipped: string | null
+  /** In-flight worker model evidence, or null when no probe started. */
+  model_evidence: RunModelEvidence | null
+  probe_pid: number | null
 }
 
 export interface OperationProgressOptions {
@@ -359,6 +384,12 @@ export interface OperationProgressOptions {
 
 interface PrepareInvocationOptions extends OperationProgressOptions {
   operatorArtifacts?: boolean
+  /**
+   * Named agent this invocation is delegated to. The harness then writes the
+   * labeled delegation artifact and starts the worker model probe, which the
+   * supervisor otherwise assembles and runs by hand.
+   */
+  agent?: string
 }
 
 export interface SubmitOutputResult {
@@ -514,6 +545,21 @@ function ensureMutatingWorkflowInitialized(
   if (stage.workspace_policy === 'source_allowed') {
     initializeRunWorkspaceTracking(root, state)
   }
+}
+
+/**
+ * The harness root baseline an invocation carries when the run works
+ * somewhere else. A worktree run and an eval run both leave the harness
+ * checkout outside every workspace snapshot, so without this baseline no gate
+ * can see a write into the one tree the run must not touch.
+ */
+function harnessBaseline(
+  root: string,
+  state: RunState,
+): { harness_before?: WorkspaceSnapshot } {
+  return path.resolve(workspaceDirectory(root, state)) === path.resolve(root)
+    ? {}
+    : { harness_before: gitWorkspaceSnapshot(root) }
 }
 
 function workspaceSnapshotForRun(root: string, state: RunState) {
@@ -1037,6 +1083,29 @@ function ensureWorkspaceProvisioned(
     state.workspace_setup = { status: 'not_configured', recorded_at: now() }
 
     return false
+  }
+
+  // Worktree creation provisions the tree from the configured setup commands,
+  // so a ready worktree would otherwise install its dependencies a second
+  // time here. Readiness is asserted rather than assumed, so a worktree the
+  // harness did not provision still runs setup before the first stage.
+  const readiness = worktreeReadiness(root, workspaceAbsolute)
+
+  if (readiness.ready && readiness.declared_setup_paths.length > 0) {
+    state.workspace_setup = {
+      status: 'passed',
+      recorded_at: now(),
+      inferred_from: 'worktree_readiness',
+    }
+
+    return false
+  }
+
+  if (readiness.gaps.length > 0) {
+    onProgress?.(
+      `workspace '${state.workspace_root}' is missing ` +
+        `${readiness.gaps.map((gap) => gap.path).join(', ')}`,
+    )
   }
 
   const setupCommands = loadRepositoryChecks(root).setup ?? []
@@ -1574,9 +1643,90 @@ function takeEntryGateReturn(
 function clearEntryGateRoutes(state: RunState): void {
   for (const record of Object.values(state.entry_gates ?? {})) {
     delete record.routed_to
+    delete record.repair_stage
     delete record.passed_at_history_length
     record.failures = 0
   }
+}
+
+/** How a failed entry gate's declared repair route must be taken. */
+type EntryGateRepairRoute =
+  | { kind: 'direct_return' }
+  | { kind: 'through_success_path' }
+  | { kind: 'unsatisfiable'; blocking: string[] }
+
+/** Longest success chain the route check walks before giving up. */
+const ROUTE_REACHABILITY_LIMIT = 16
+
+/**
+ * Decide how an entry-gate repair returns to the stage that ordered it.
+ *
+ * A repair that cannot change the workspace leaves every criterion of the
+ * gate stage as it found them, so the run returns directly. A repair that can
+ * change the workspace invalidates any fingerprint-bound criterion the gate
+ * stage declares, and the direct return would then fail the very criterion
+ * the repair was ordered to get past. That route runs through the repair
+ * stage's own success path, which retakes the evidence. When that path cannot
+ * reach the gate stage at all, the route is reported instead of taken.
+ */
+function entryGateRepairRoute(
+  workflow: WorkflowDefinition,
+  gateStage: StageDefinition,
+  repairSlug: string,
+): EntryGateRepairRoute {
+  const repairStage = workflow.stages.find((item) => item.slug === repairSlug)
+
+  if (!repairStage || repairStage.workspace_policy !== 'source_allowed') {
+    return { kind: 'direct_return' }
+  }
+
+  const blocking = gateStage.criteria
+    .filter(
+      (criterion) =>
+        criterion.hard === true &&
+        FINGERPRINT_BOUND_STATE_CRITERIA.has(criterion.id),
+    )
+    .map((criterion) => criterion.id)
+
+  if (blocking.length === 0) {
+    return { kind: 'direct_return' }
+  }
+
+  return successPathReaches(workflow, repairStage, gateStage.slug)
+    ? { kind: 'through_success_path' }
+    : { kind: 'unsatisfiable', blocking }
+}
+
+function successPathReaches(
+  workflow: WorkflowDefinition,
+  from: StageDefinition,
+  targetSlug: string,
+): boolean {
+  let current: StageDefinition | undefined = from
+
+  for (let step = 0; step < ROUTE_REACHABILITY_LIMIT; step += 1) {
+    const next: string | undefined = current?.transitions.success
+
+    if (next === undefined) {
+      return false
+    }
+
+    if (next === targetSlug) {
+      return true
+    }
+
+    current = workflow.stages.find((item) => item.slug === next)
+
+    if (!current) {
+      return false
+    }
+  }
+
+  return false
+}
+
+function boundedCriterionList(criterionIds: string[]): string {
+  return criterionIds.map((id) => `'${id}'`).join(', ')
 }
 
 /**
@@ -1696,10 +1846,54 @@ function runStageEntryGate(
     return 'paused'
   }
 
+  const workflow = loadRunWorkflow(root, state)
+  const route = entryGateRepairRoute(workflow, stage, gate.failure)
+
+  if (route.kind === 'unsatisfiable') {
+    const reason =
+      `Entry gate '${criterion.id}' of stage '${stage.slug}' failed, and the ` +
+      `declared repair route through '${gate.failure}' cannot return the run ` +
+      `to a stage that satisfies ${boundedCriterionList(route.blocking)}. ` +
+      `${result.explanation}${evidence}`
+
+    state.status = 'paused'
+    state.pause_reason = reason
+    state.pending_action = { type: 'operator_decision', operator_only: true }
+    writeDecision(
+      root,
+      state,
+      `Entry gate repair route is unsatisfiable`,
+      reason,
+      [
+        `Inspect the gate evidence${result.evidence_path ? ` at ${result.evidence_path}` : ''}.`,
+        `Send the run to a stage that can restore the evidence with: ${panCommand(root)} resume ${state.run_id} --stage <stage>`,
+        `Or abort with: ${panCommand(root)} abort ${state.run_id}`,
+      ],
+    )
+    persistRun(root, state, 'run_paused', {
+      reason,
+      stage: stage.slug,
+      criterion: criterion.id,
+      failures,
+    })
+
+    return 'paused'
+  }
+
   onProgress?.(
     `entry gate ${criterion.id} failed (${failures}/${gate.max_loops} loops); routing to '${gate.failure}'`,
   )
-  record.routed_to = gate.failure
+
+  // A direct return skips the stages whose evidence the repair invalidates.
+  // When the gate stage declares such a criterion, the repair stage follows
+  // its own success transition instead, which retakes that evidence at the
+  // post-repair workspace before the gate runs again.
+  record.repair_stage = gate.failure
+
+  if (route.kind === 'direct_return') {
+    record.routed_to = gate.failure
+  }
+
   applyTransition(root, state, stage, 'failure', {
     overrideTarget: gate.failure,
   })
@@ -1708,6 +1902,7 @@ function runStageEntryGate(
     // A workflow limit intercepted the route. The route is closed because
     // the operator now chooses where the run continues.
     delete record.routed_to
+    delete record.repair_stage
     persistRun(root, state, 'run_paused', { reason: state.pause_reason })
 
     return 'paused'
@@ -1958,6 +2153,14 @@ function applyTransition(
     state.status = target
     state.current_stage = null
     state.pending_action = { type: 'none' }
+
+    // The next run in this workspace compares its own profile against this
+    // one. Recording the pointer here is what keeps that comparison from
+    // rereading every retained run state.
+    if (target === 'succeeded') {
+      recordSuiteProfileIndexEntry(root, state)
+    }
+
     return
   }
 
@@ -2204,94 +2407,176 @@ export function recordPendingWorkerModelProbe(
   })
 }
 
-/** Probe one active Cursor worker invocation and persist its effective model. */
+/**
+ * How long a probe waits for another command to release the run mutex.
+ *
+ * Every hold on that mutex is a state read and a state write, so a queue of
+ * ordinary commands drains far inside this bound. It exists to refuse a
+ * genuinely wedged holder rather than to pace normal contention.
+ */
+const PROBE_MUTEX_WAIT_MS = 10_000
+
+/** What starting one detached worker model probe left behind. */
+export interface StartedWorkerModelProbe {
+  evidence: RunModelEvidence
+  /** Process id of the detached child, or null when the spawn gave none. */
+  probe_pid: number | null
+}
+
+/**
+ * Record the in-flight marker and start the detached child that answers it.
+ *
+ * The live call belongs to a child because only submission reads the answer,
+ * so neither the command that prepares a worker nor the one that probes it
+ * waits for Cursor. A child that never lands leaves the marker, which
+ * submission treats exactly as it treats an unavailable probe.
+ */
+export function startDetachedWorkerModelProbe(
+  root: string,
+  runId: string,
+  invocationId: string,
+): StartedWorkerModelProbe {
+  const evidence = recordPendingWorkerModelProbe(root, runId, invocationId)
+  const child = spawn(
+    process.execPath,
+    [
+      fileURLToPath(new URL('../cli.js', import.meta.url)),
+      'models',
+      '--probe',
+      '--await-probe',
+      '--run',
+      runId,
+      '--invocation',
+      invocationId,
+    ],
+    { cwd: root, detached: true, stdio: 'ignore' },
+  )
+
+  child.unref()
+
+  return { evidence, probe_pid: child.pid ?? null }
+}
+
+/**
+ * Probe one active Cursor worker invocation and persist its effective model.
+ *
+ * The run mutex covers the state read and the state write, never the live
+ * call. A probe takes roughly two minutes, and the detached child that runs
+ * it is not one the supervisor waits for, so holding the lock across the call
+ * would fail every other command against the run with
+ * `RUN_OPERATION_IN_PROGRESS` for that whole window. The second hold re-reads
+ * the state so a concurrent probe's write is not lost.
+ *
+ * Both holds wait for a live holder instead of refusing. A probe runs
+ * detached and nobody retries it, so a refused hold loses the answer the
+ * live call already paid for; the holds themselves are a state read and a
+ * state write, so the queue drains in milliseconds.
+ */
 export function probeRunInvocationModel(
   root: string,
   runId: string,
   invocationId: string,
 ): RunModelEvidence & { advisories: string[] } {
-  return withOperationMutex(operationMutexPath(root, runId), () => {
-    const state = loadState(root, runId)
-    const invocation = probeableInvocation(root, state, invocationId)
-    const declaredSpec = invocation.stage.model
-    // A bare (bracket-less) spec delegates the variant choice to Cursor, so
-    // any successfully resolved variant is the declared behavior — the same
-    // contract `probeCursorModels` applies. Only a bracketed spec carries a
-    // catalog-predicted display name to compare against; a spec id is never
-    // compared literally with a display name.
-    const bareSpec = !declaredSpec.includes('[')
-    const expected = expectedCursorModelForSpec(root, declaredSpec)
-    const probe = probeCursorModelSpec(
-      declaredSpec,
-      undefined,
-      probeEnvironment(root),
-    )
-    // Only a failed probe is unavailable. A bracketed spec with no catalog
-    // prediction is `recorded`, because a target installation carries no
-    // catalog.
-    const result = ((): RunModelEvidence['result'] => {
-      if (probe.resolved === null || probe.error !== undefined) {
-        return 'unavailable'
+  const contended = { waitForHolderMs: PROBE_MUTEX_WAIT_MS }
+  const plan = withOperationMutex(
+    operationMutexPath(root, runId),
+    () => {
+      const state = loadState(root, runId)
+      const invocation = probeableInvocation(root, state, invocationId)
+
+      return {
+        declaredSpec: invocation.stage.model,
+        persona: invocation.stage.persona,
+        stageSlug: invocation.stage.slug,
       }
+    },
+    contended,
+  )
+  const { declaredSpec, persona, stageSlug } = plan
+  // A bare (bracket-less) spec delegates the variant choice to Cursor, so
+  // any successfully resolved variant is the declared behavior — the same
+  // contract `probeCursorModels` applies. Only a bracketed spec carries a
+  // catalog-predicted display name to compare against; a spec id is never
+  // compared literally with a display name.
+  const bareSpec = !declaredSpec.includes('[')
+  const expected = expectedCursorModelForSpec(root, declaredSpec)
+  const probe = probeCursorModelSpec(
+    declaredSpec,
+    undefined,
+    probeEnvironment(root),
+  )
+  // Only a failed probe is unavailable. A bracketed spec with no catalog
+  // prediction is `recorded`, because a target installation carries no
+  // catalog.
+  const result = ((): RunModelEvidence['result'] => {
+    if (probe.resolved === null || probe.error !== undefined) {
+      return 'unavailable'
+    }
 
-      if (bareSpec) {
-        return 'match'
-      }
+    if (bareSpec) {
+      return 'match'
+    }
 
-      if (expected === null) {
-        return 'recorded'
-      }
+    if (expected === null) {
+      return 'recorded'
+    }
 
-      return normalizedModelName(probe.resolved) ===
-        normalizedModelName(expected)
-        ? 'match'
-        : 'mismatch'
-    })()
-    const error =
-      result === 'unavailable'
-        ? (probe.error ?? 'Cursor reported no resolvable model.')
-        : result === 'mismatch'
-          ? `Cursor resolved '${probe.resolved}', but the run snapshot expects '${expected}'.`
-          : undefined
-    const evidence = persistModelEvidence(root, state, {
-      role: 'worker',
-      invocation_id: invocationId,
-      persona: invocation.stage.persona,
-      declared_spec: declaredSpec,
-      effective_model: probe.resolved,
-      source: 'cursor-agent system/init event',
-      result,
-      ...(error ? { error } : {}),
-    })
+    return normalizedModelName(probe.resolved) === normalizedModelName(expected)
+      ? 'match'
+      : 'mismatch'
+  })()
+  const error =
+    result === 'unavailable'
+      ? (probe.error ?? 'Cursor reported no resolvable model.')
+      : result === 'mismatch'
+        ? `Cursor resolved '${probe.resolved}', but the run snapshot expects '${expected}'.`
+        : undefined
 
-    // A probe result never fails the run. Record it as an advisory so
-    // `pan status` recovers it after an interruption.
-    const advisories = error
-      ? recordRunAdvisories(
-          state,
-          {
-            kind: 'model_evidence',
-            source: 'probe',
-            stage: invocation.stage.slug,
-            invocation_id: invocationId,
-          },
-          [error],
-        )
-      : []
-
-    if (advisories.length > 0) {
-      persistRun(root, state, 'model_evidence_advisory', {
+  return withOperationMutex(
+    operationMutexPath(root, runId),
+    () => {
+      const state = loadState(root, runId)
+      const evidence = persistModelEvidence(root, state, {
+        role: 'worker',
         invocation_id: invocationId,
-        stage: invocation.stage.slug,
-        advisories: advisories.map((advisory) => advisory.message),
+        persona,
+        declared_spec: declaredSpec,
+        effective_model: probe.resolved,
+        source: 'cursor-agent system/init event',
+        result,
+        ...(error ? { error } : {}),
       })
-    }
 
-    return {
-      ...evidence,
-      advisories: advisories.map((advisory) => advisory.message),
-    }
-  })
+      // A probe result never fails the run. Record it as an advisory so
+      // `pan status` recovers it after an interruption.
+      const advisories = error
+        ? recordRunAdvisories(
+            state,
+            {
+              kind: 'model_evidence',
+              source: 'probe',
+              stage: stageSlug,
+              invocation_id: invocationId,
+            },
+            [error],
+          )
+        : []
+
+      if (advisories.length > 0) {
+        persistRun(root, state, 'model_evidence_advisory', {
+          invocation_id: invocationId,
+          stage: stageSlug,
+          advisories: advisories.map((advisory) => advisory.message),
+        })
+      }
+
+      return {
+        ...evidence,
+        advisories: advisories.map((advisory) => advisory.message),
+      }
+    },
+    contended,
+  )
 }
 
 /** Model evidence is an audit trail, not an admission criterion. */
@@ -2877,6 +3162,32 @@ function outcomeFromFailureRoutes(
 export interface ResolvedSubmitValidator {
   requirement: ResolvedRequirement
   target_path: string
+  /**
+   * The selector a named `artifact:` target names when nothing supplied it.
+   * The resolution once fell back to the stage output JSON, so a validator
+   * written for the pull-request copy passed by judging a file it was never
+   * pointed at. An unresolved selector now says so.
+   */
+  unresolved_target?: string
+  /**
+   * Whether the invocation owed a named artifact at all. An invocation that
+   * declares named artifacts and omits this one is a defect. An invocation
+   * that declares none never owed the artifact: PR-001 scopes the workflow
+   * pull-request copy to a ship that produces operator artifacts.
+   */
+  named_artifacts_declared?: boolean
+}
+
+/**
+ * Whether a target names an artifact by name rather than by index. An indexed
+ * selector describes a position that may legitimately be empty; a named one
+ * describes an artifact the invocation declared.
+ */
+function isNamedArtifactSelector(target: string): boolean {
+  return (
+    target.startsWith('artifact:') &&
+    !/^\d+$/u.test(target.slice('artifact:'.length))
+  )
 }
 
 /**
@@ -2937,13 +3248,32 @@ export function resolveSubmitValidators(
       continue
     }
 
-    const targetPath =
-      resolveRequirementTargetPath(requirement, invocation.output.path, {
+    const resolvedTarget = resolveRequirementTargetPath(
+      requirement,
+      invocation.output.path,
+      {
         ...submittedValue,
         ...(invocation.output.artifact_targets
           ? { artifact_targets: invocation.output.artifact_targets }
           : {}),
-      }) ?? invocation.output.path
+      },
+    )
+
+    if (
+      resolvedTarget === null &&
+      isNamedArtifactSelector(requirement.target)
+    ) {
+      resolved.push({
+        requirement,
+        target_path: requirement.target,
+        unresolved_target: requirement.target,
+        named_artifacts_declared:
+          Object.keys(invocation.output.artifact_targets ?? {}).length > 0,
+      })
+      continue
+    }
+
+    const targetPath = resolvedTarget ?? invocation.output.path
     const targetKind = inferTargetKind(targetPath)
 
     if (!entry.target_types.includes(targetKind)) {
@@ -2954,6 +3284,36 @@ export function resolveSubmitValidators(
   }
 
   return resolved
+}
+
+/**
+ * Validators whose target a blocked result of the named stage never produces.
+ */
+const BLOCKED_OUTPUT_EXEMPT_VALIDATORS: Record<string, readonly string[]> = {
+  ship: ['RELEASE-VALIDATE-001', 'PR-DESCRIPTION-VALIDATE-001'],
+}
+
+/**
+ * Why this validator judges nothing on this submission, or null.
+ *
+ * A blocked stage reports a precondition it lacked, so the release packet and
+ * the pull-request copy were never written. Failing every field of an
+ * artifact the stage could not produce buries the one thing the operator
+ * needs: the missing precondition and the command that supplies it.
+ */
+function blockedOutputExemption(
+  stageSlug: string,
+  submittedValue: Record<string, unknown>,
+  registryId: string,
+): string | null {
+  if (submittedValue.result !== 'blocked') {
+    return null
+  }
+
+  return BLOCKED_OUTPUT_EXEMPT_VALIDATORS[stageSlug]?.includes(registryId)
+    ? `Stage '${stageSlug}' reported blocked, so it produced no target for ` +
+        `${registryId} to judge.`
+    : null
 }
 
 function runHarnessAuthoritativeValidators(
@@ -2976,7 +3336,33 @@ function runHarnessAuthoritativeValidators(
   for (const {
     requirement,
     target_path: targetPath,
+    unresolved_target: unresolvedTarget,
+    named_artifacts_declared: namedArtifactsDeclared,
   } of resolveSubmitValidators(root, invocation, submittedValue, catalog)) {
+    if (unresolvedTarget) {
+      const message = namedArtifactsDeclared
+        ? `harness validator ${requirement.registry_id} could not resolve ` +
+          `target ${unresolvedTarget}: the invocation declares named ` +
+          `artifacts and none carries that name.`
+        : `harness validator ${requirement.registry_id} judged nothing: ` +
+          `the invocation declares no named artifact, so ${unresolvedTarget} ` +
+          `names no target this stage owed.`
+
+      errors.push(message)
+
+      if (namedArtifactsDeclared && requirement.enforcement !== 'advisory') {
+        blockingErrors.push(message)
+        failedRoutes.push(requirement.failure_route)
+      }
+
+      continue
+    }
+
+    const notApplicable = blockedOutputExemption(
+      invocation.stage.slug,
+      submittedValue,
+      requirement.registry_id,
+    )
     const result = runRequirement({
       root,
       runId,
@@ -2988,6 +3374,7 @@ function runHarnessAuthoritativeValidators(
       runState,
       catalog,
       persist: true,
+      ...(notApplicable ? { notApplicable } : {}),
     })
 
     if (!isPassingResult(result)) {
@@ -3098,6 +3485,101 @@ function stageFieldContract(
     fields: stage.fields as NonNullable<
       Invocation['output']['field_contract']
     >['fields'],
+  }
+}
+
+/** Command that owns one output-validate scratch copy. */
+export type OutputValidateCaller = 'output-validate' | 'submission-mirror'
+
+/**
+ * Scratch copy an output-targeted validator reads when the bytes under
+ * validation are not at the declared output path.
+ *
+ * Validator handlers resolve a relative target against the harness root, so
+ * the value needs a real file at a resolvable path. Each caller owns its own
+ * subdirectory: two commands against one run would otherwise derive the same
+ * name and then remove the directory the other one is still reading.
+ */
+export function outputValidateScratchPath(
+  runId: string,
+  outputBasename: string,
+  caller: OutputValidateCaller,
+): string {
+  return path.posix.join(
+    'runtime',
+    'cache',
+    'output-validate',
+    runId,
+    caller,
+    path.basename(outputBasename),
+  )
+}
+
+/** Longest agent label the delegation contract accepts ahead of the body. */
+const DELEGATION_AGENT_NAME_MAX_LENGTH = 60
+
+/**
+ * Refuse an agent name the delegation contract would reject as a label.
+ *
+ * The artifact is compared against the delivered body after one permitted
+ * leading label line, so a multi-line or Markdown-structured name would turn
+ * a convenience into a submission failure the supervisor debugs later.
+ */
+export function assertDelegationAgentName(agent: string): void {
+  invariant(
+    agent.trim().length > 0 &&
+      agent.length <= DELEGATION_AGENT_NAME_MAX_LENGTH &&
+      !/[\n\r]/u.test(agent) &&
+      !/^\s*(?:[#>*\-+]|\d+[.)]|```|\|)/u.test(agent),
+    `--agent MUST be one short plain-text agent name of at most ` +
+      `${DELEGATION_AGENT_NAME_MAX_LENGTH} characters that starts no ` +
+      `Markdown structure; got '${agent}'.`,
+    { code: 'INVALID_ARGUMENT' },
+  )
+}
+
+/**
+ * Write the delegation evidence the supervisor would otherwise assemble by
+ * hand: the delivered prompt body under one `Agent:` label.
+ *
+ * Only referenced delivery is written here. An external-executor stage has
+ * the harness author the artifact at `pan delegate`, and an orchestrator
+ * stage delegates to nobody, so both keep today's behavior.
+ */
+function writeLabeledDelegationArtifact(
+  root: string,
+  invocation: Invocation,
+  agent: string,
+): { artifact_path: string | null; skipped: string | null } {
+  const delegation = invocation.delegation
+
+  if (!delegation) {
+    return {
+      artifact_path: null,
+      skipped: `Stage '${invocation.stage.slug}' delegates to no worker.`,
+    }
+  }
+
+  if (delegation.mode !== 'referenced' || !delegation.delivery_prompt_path) {
+    return {
+      artifact_path: null,
+      skipped:
+        `Stage '${invocation.stage.slug}' delivers its card through the ` +
+        `'${delegation.executor ?? 'external'}' executor, which authors its ` +
+        'own delegation evidence at `pan delegate`.',
+    }
+  }
+
+  const body = readText(resolveInside(root, delegation.delivery_prompt_path))
+
+  writeTextAtomic(
+    resolveInside(root, delegation.delegation_artifact_path),
+    `Agent: ${agent.trim()}\n\n${body}`,
+  )
+
+  return {
+    artifact_path: delegation.delegation_artifact_path,
+    skipped: null,
   }
 }
 
@@ -3794,7 +4276,11 @@ export function prepareInvocation(
       runUsesModelEvidenceContract(state)
         ? { model_evidence_required: true }
         : {}),
+      ...((state.workspace_directives ?? []).length > 0
+        ? { attributed_changes: state.workspace_directives }
+        : {}),
       workspace_before: workspace,
+      ...harnessBaseline(root, state),
     }
 
     if (artifactsRequested) {
@@ -3924,6 +4410,34 @@ export function prepareInvocation(
 
   if (deferred.registration) {
     registerPreparedInvocation(root, deferred.registration)
+  }
+
+  // The delegation artifact and the probe belong to the delivery the
+  // supervisor is about to perform, and both need the mutex this block no
+  // longer holds: the probe records its marker through its own transaction.
+  if (options.agent !== undefined && result.invocation) {
+    const written = writeLabeledDelegationArtifact(
+      root,
+      result.invocation,
+      options.agent,
+    )
+    const probe =
+      written.artifact_path === null
+        ? null
+        : startDetachedWorkerModelProbe(
+            root,
+            runId,
+            result.invocation.invocation_id,
+          )
+
+    return {
+      ...result,
+      prepared_delegation: {
+        ...written,
+        model_evidence: probe?.evidence ?? null,
+        probe_pid: probe?.probe_pid ?? null,
+      },
+    }
   }
 
   return result
@@ -4468,17 +4982,28 @@ export interface MaterializedSubmission {
 
 /**
  * Materialize a full output document from either accepted submission form.
+ *
+ * The caller supplies `expectedInvocationId` from the run's active card, and
+ * `null` when the run has none. The expectation is never derived from the
+ * submitted document, because a check whose expected value comes from the
+ * value it is checking proves nothing.
  */
 export function materializeOutputSubmission(
   root: string,
   state: RunState,
   submittedValue: unknown,
-  expectedInvocationId?: string,
+  expectedInvocationId: string | null,
 ): MaterializedSubmission {
   if (!isRecord(submittedValue) || !('revises' in submittedValue)) {
     return { value: submittedValue }
   }
 
+  invariant(
+    expectedInvocationId !== null,
+    'A revision submission MUST be made against an active invocation, and ' +
+      'this run has none.',
+    { code: 'INVALID_REVISION' },
+  )
   invariant(
     typeof submittedValue.revises === 'string' &&
       submittedValue.revises.length > 0,
@@ -4494,8 +5019,7 @@ export function materializeOutputSubmission(
     typeof submittedValue.patch.invocation_id === 'string' &&
       submittedValue.patch.invocation_id.length > 0 &&
       submittedValue.patch.invocation_id !== submittedValue.revises &&
-      (expectedInvocationId === undefined ||
-        submittedValue.patch.invocation_id === expectedInvocationId),
+      submittedValue.patch.invocation_id === expectedInvocationId,
     `A revision patch MUST set invocation_id to the current card's ` +
       `invocation id, not the revised attempt's.`,
     { code: 'INVALID_REVISION' },
@@ -4604,22 +5128,11 @@ export function submitOutput(
   const result = withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
     const submittedRaw = readJson(resolveInside(root, submittedPath))
-    const submittedInvocation =
-      isRecord(submittedRaw) && isRecord(submittedRaw.patch)
-        ? submittedRaw.patch.invocation_id
-        : isRecord(submittedRaw)
-          ? submittedRaw.invocation_id
-          : undefined
-    const expectedInvocationId =
-      state.current_invocation?.id ??
-      (typeof submittedInvocation === 'string'
-        ? submittedInvocation
-        : undefined)
     const materialized = materializeOutputSubmission(
       root,
       state,
       submittedRaw,
-      expectedInvocationId,
+      state.current_invocation?.id ?? null,
     )
     const submittedValue = materialized.value
     const priorForRevision = materialized.revisedFrom
@@ -4665,20 +5178,29 @@ export function submitOutput(
       state,
       invocation,
     )
-    const advisories = [
-      ...recordRunAdvisories(
-        state,
-        {
-          kind: 'model_evidence',
-          source: 'submit',
-          stage: stage.slug,
-          invocation_id: invocation.invocation_id,
-        },
-        modelEvidenceAdvisories,
-      ),
-    ]
+    // One path records an advisory and collects it for the submit result.
+    // Each advisory kind arrived in its own change, and the third author
+    // recorded to run state only, so `pan status` listed a conflict the
+    // submit result that recorded it did not.
+    const advisories: RunAdvisory[] = []
+    const advise = (kind: RunAdvisory['kind'], messages: string[]): void => {
+      advisories.push(
+        ...recordRunAdvisories(
+          state,
+          {
+            kind,
+            source: 'submit',
+            stage: stage.slug,
+            invocation_id: invocation.invocation_id,
+          },
+          messages,
+        ),
+      )
+    }
 
-    if (advisories.length > 0) {
+    advise('model_evidence', modelEvidenceAdvisories)
+
+    if (modelEvidenceAdvisories.length > 0) {
       persistRun(root, state, 'model_evidence_advisory', {
         invocation_id: invocation.invocation_id,
         stage: stage.slug,
@@ -4743,24 +5265,13 @@ export function submitOutput(
       // records how late, so a supervisor that armed at once and one that
       // armed after an operator reprimand stop looking identical.
       if (delegationObservation.watch.background_watch_late) {
-        advisories.push(
-          ...recordRunAdvisories(
-            state,
-            {
-              kind: 'delegation_supervision',
-              source: 'submit',
-              stage: stage.slug,
-              invocation_id: invocation.invocation_id,
-            },
-            [
-              `${DELEGATION_WATCH_LATE}: the background watch for ` +
-                `${invocation.invocation_id} was armed ` +
-                `${delegationObservation.watch.background_mark_delay_seconds?.toFixed(0)}s ` +
-                `after the launch, past the ${DELEGATION_WATCH_LATE_SECONDS}s ` +
-                `DELEGATE-001 allows. Supervision was late, not absent.`,
-            ],
-          ),
-        )
+        advise('delegation_supervision', [
+          `${DELEGATION_WATCH_LATE}: the background watch for ` +
+            `${invocation.invocation_id} was armed ` +
+            `${delegationObservation.watch.background_mark_delay_seconds?.toFixed(0)}s ` +
+            `after the launch, past the ${DELEGATION_WATCH_LATE_SECONDS}s ` +
+            `DELEGATE-001 allows. Supervision was late, not absent.`,
+        ])
       }
     }
 
@@ -4918,16 +5429,7 @@ export function submitOutput(
           `${conflict.authority_followed}.`,
       )
 
-      recordRunAdvisories(
-        state,
-        {
-          kind: 'platform_guidance',
-          source: 'submit',
-          stage: stage.slug,
-          invocation_id: invocation.invocation_id,
-        },
-        messages,
-      )
+      advise('platform_guidance', messages)
       persistRun(root, state, 'platform_guidance_conflict', {
         invocation_id: invocation.invocation_id,
         stage: stage.slug,
@@ -4943,7 +5445,12 @@ export function submitOutput(
     // already decided the outcome, running the gate commands (QA's full suite
     // above all) spends minutes proving nothing, so they are recorded as
     // skipped with the deciding reason instead of executed.
-    const workspaceAfter = gitWorkspaceSnapshot(workspaceDirectory(root, state))
+    // The commit base lets the scope criterion tell a commit of content the
+    // stage already held from a change to the workspace.
+    const workspaceAfter = gitWorkspaceSnapshot(
+      workspaceDirectory(root, state),
+      { commitBase: invocation.workspace_before.head },
+    )
     const harnessValidation = runHarnessAuthoritativeValidators(
       root,
       runId,
@@ -5031,7 +5538,10 @@ export function submitOutput(
       gateSkipReason,
       workspaceAfter,
       entryGatePass ? { [entryGatePass.id]: entryGatePass } : {},
+      invocation.harness_before,
     )
+
+    advise('gate_bypass', evaluated.advisories)
     governanceArtifactWarnings.push(
       ...attestationErrors,
       ...briefErrors.map((message) => `Operator brief: ${message}`),
@@ -5994,6 +6504,107 @@ export function setRunVerification(
   })
 }
 
+/**
+ * Record an operator directive executed against the workspace outside a
+ * stage, so the next worker attributes the delta by reading rather than by
+ * audit.
+ *
+ * The supervisor executes such a directive as the operator's mechanical
+ * delegate, between stages, with no invocation of its own. Nothing else in
+ * the run claims the resulting change.
+ */
+export function recordWorkspaceDirective(
+  root: string,
+  runId: string,
+  options: {
+    directive: string
+    actingRole?: WorkspaceDirectiveRecord['acting_role']
+    paths?: string[]
+  },
+): WorkspaceDirectiveRecord {
+  return withOperationMutex(operationMutexPath(root, runId), () => {
+    const state = loadState(root, runId)
+    const directive = options.directive.trim()
+
+    invariant(directive.length > 0, 'A directive text is required.', {
+      code: 'INVALID_ARGUMENT',
+    })
+
+    const workspace = workspaceSnapshotForRun(root, state)
+    const declared = (options.paths ?? [])
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0)
+    const changedPaths = [
+      ...new Set(
+        declared.length > 0
+          ? declared
+          : gitStatusPaths(workspaceDirectory(root, state)).filter(
+              (relativePath) =>
+                !relativePath.startsWith('runtime/') &&
+                !isProtectedWorkspacePath(relativePath),
+            ),
+      ),
+    ].sort()
+
+    invariant(
+      changedPaths.length > 0,
+      'The workspace holds no tracked change to attribute. Name the paths ' +
+        'with --paths when the change is already committed.',
+      { code: 'INVALID_RUN_ACTION' },
+    )
+
+    const records = state.workspace_directives ?? []
+    const relativePath = resolveRunLayout(root, runId).evidence(
+      `workspace-directive-${records.length + 1}.md`,
+    ).relative
+    const actingRole = options.actingRole ?? 'supervisor'
+    const timestamp = now()
+    const record: WorkspaceDirectiveRecord = {
+      directive_id: `directive-${randomUUID()}`,
+      acting_role: actingRole,
+      directive,
+      stage: state.current_stage ?? 'none',
+      changed_paths: changedPaths,
+      workspace_fingerprint: workspace.fingerprint,
+      artifact_path: relativePath,
+      timestamp,
+    }
+
+    writeTextAtomic(
+      resolveInside(root, relativePath),
+      [
+        '# Operator-directed workspace change',
+        '',
+        `**Run** \`${runId}\` · **Stage** \`${record.stage}\``,
+        `**Acting role:** ${actingRole}`,
+        `**Recorded at:** ${timestamp}`,
+        `**Workspace fingerprint:** \`${workspace.fingerprint}\``,
+        '',
+        '## Directive',
+        '',
+        directive,
+        '',
+        '## Changed paths',
+        '',
+        ...changedPaths.map((item) => `- \`${item}\``),
+        '',
+      ].join('\n') + '\n',
+    )
+
+    records.push(record)
+    state.workspace_directives = records
+    persistRun(root, state, 'workspace_directive_recorded', {
+      directive_id: record.directive_id,
+      acting_role: actingRole,
+      stage: record.stage,
+      changed_paths: changedPaths,
+      artifact_path: relativePath,
+    })
+
+    return record
+  })
+}
+
 export function pauseRun(root: string, runId: string, note = ''): RunState {
   return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
@@ -6253,6 +6864,73 @@ export interface WaiveGateOptions {
   note: string
   deferredAcceptanceCriteria?: string[]
   createSpotfixCase?: boolean
+  /**
+   * Run whose ratified plan this waiver adopts. The subsumed run keeps
+   * running, so its worktree claim moves to the adopting run and both states
+   * record the move.
+   */
+  adoptPlanFromRunId?: string | null
+}
+
+/**
+ * Move the subsumed run's worktree claim to the run that adopted its plan.
+ *
+ * The subsumed run stays live because nothing closed it, so liveness alone
+ * would keep it occupying the worktree and release preparation for the
+ * adopting run would refuse. Both states record the move, and the subsumed
+ * run's write takes its own mutex.
+ */
+function transferWorktreeClaim(
+  root: string,
+  adoptingState: RunState,
+  subsumedRunId: string,
+  waiverId: string,
+): WorktreeClaimTransfer {
+  invariant(
+    subsumedRunId !== adoptingState.run_id,
+    'A run cannot adopt its own plan.',
+    { code: 'INVALID_PLAN_ADOPTION' },
+  )
+
+  const worktree = adoptingState.managed_worktree?.name
+
+  invariant(
+    worktree,
+    `Run '${adoptingState.run_id}' is not bound to a managed worktree, so ` +
+      'there is no worktree claim to transfer.',
+    { code: 'INVALID_PLAN_ADOPTION' },
+  )
+
+  const transfer: WorktreeClaimTransfer = {
+    role: 'adopted',
+    worktree,
+    from_run_id: subsumedRunId,
+    to_run_id: adoptingState.run_id,
+    waiver_id: waiverId,
+    timestamp: now(),
+  }
+
+  withOperationMutex(operationMutexPath(root, subsumedRunId), () => {
+    const subsumed = loadState(root, subsumedRunId)
+
+    invariant(
+      subsumed.managed_worktree?.name === worktree,
+      `Run '${subsumedRunId}' is not bound to worktree '${worktree}', so it ` +
+        'holds no claim the adopting run can take.',
+      { code: 'INVALID_PLAN_ADOPTION' },
+    )
+
+    subsumed.worktree_claim_transfer = { ...transfer, role: 'released' }
+    persistRun(root, subsumed, 'worktree_claim_released', {
+      worktree,
+      to_run_id: adoptingState.run_id,
+      waiver_id: waiverId,
+    })
+  })
+
+  adoptingState.worktree_claim_transfer = transfer
+
+  return transfer
 }
 
 function normalizeIdentifiers(values: string[]): string[] {
@@ -6274,7 +6952,7 @@ function failedHardCriteria(
     record.evaluation.deterministic.map((item) => [item.id, item]),
   )
 
-  return stage.criteria
+  const declared = stage.criteria
     .filter((criterion) => {
       if (!criterion.hard) {
         return false
@@ -6289,7 +6967,23 @@ function failedHardCriteria(
       return result?.passed === false && !result.disabled
     })
     .map((criterion) => criterion.id)
-    .sort()
+
+  // A criterion the harness synthesizes, such as the scope criterion, never
+  // appears in the stage file. Inferring blockers from the declared list alone
+  // therefore returned nothing when one of those was the only failure, and the
+  // caller widened the waiver to the whole stage.
+  const declaredIds = new Set(stage.criteria.map((criterion) => criterion.id))
+  const synthesized = record.evaluation.deterministic
+    .filter(
+      (result) =>
+        !declaredIds.has(result.id) &&
+        result.hard &&
+        result.passed === false &&
+        !result.disabled,
+    )
+    .map((result) => result.id)
+
+  return [...declared, ...synthesized].sort()
 }
 
 function writeSpotfixCase(
@@ -6358,7 +7052,11 @@ export function waiveGate(
   root: string,
   runId: string,
   options: WaiveGateOptions,
-): { state: RunState; waiver: OperatorGateWaiver } {
+): {
+  state: RunState
+  waiver: OperatorGateWaiver
+  claimTransfer?: WorktreeClaimTransfer
+} {
   return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
 
@@ -6557,6 +7255,11 @@ export function waiveGate(
 
     waivers.push(waiver)
     state.operator_gate_waivers = waivers
+
+    const claimTransfer = options.adoptPlanFromRunId
+      ? transferWorktreeClaim(root, state, options.adoptPlanFromRunId, waiverId)
+      : null
+
     clearSameReasonTracker(state, stage.slug)
     state.status = 'running'
     state.pause_reason = null
@@ -6582,9 +7285,15 @@ export function waiveGate(
       source_workspace_fingerprint: waiver.source_workspace_fingerprint ?? null,
       directive_target: target,
       spotfix_case_path: spotfixCasePath ?? null,
+      ...(claimTransfer
+        ? {
+            worktree_claim_adopted_from: claimTransfer.from_run_id,
+            worktree: claimTransfer.worktree,
+          }
+        : {}),
     })
 
-    return { state, waiver }
+    return { state, waiver, ...(claimTransfer ? { claimTransfer } : {}) }
   })
 }
 
@@ -6769,12 +7478,10 @@ export function validateOutputForSubmission(
     // Handlers resolve a relative target against the harness root, so the
     // scratch copy lives under runtime/cache and is removed afterwards.
     if (scratchOutput === null) {
-      scratchOutput = path.posix.join(
-        'runtime',
-        'cache',
-        'output-validate',
+      scratchOutput = outputValidateScratchPath(
         runId,
-        path.basename(invocation.output.path),
+        invocation.output.path,
+        'submission-mirror',
       )
       writeJsonAtomic(resolveInside(root, scratchOutput), submittedRecord)
     }

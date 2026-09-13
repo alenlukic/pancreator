@@ -185,6 +185,8 @@ function assertWorktreesBlock(value: unknown): void {
     { code: 'INVALID_PROJECT_CONFIG' },
   )
 
+  assertWorktreeReadinessPaths(value.readiness_paths)
+
   if (value.setup === undefined) {
     return
   }
@@ -199,6 +201,31 @@ function assertWorktreesBlock(value: unknown): void {
     invariant(
       typeof command === 'string' && command.trim().length > 0,
       `${PROJECT_CONFIG_PATH}.worktrees.setup[${index}] MUST be a non-empty command string.`,
+      { code: 'INVALID_PROJECT_CONFIG' },
+    )
+  }
+}
+
+function assertWorktreeReadinessPaths(value: unknown): void {
+  if (value === undefined) {
+    return
+  }
+
+  invariant(
+    Array.isArray(value),
+    `${PROJECT_CONFIG_PATH}.worktrees.readiness_paths MUST be an array when present.`,
+    { code: 'INVALID_PROJECT_CONFIG' },
+  )
+
+  for (const [index, entry] of value.entries()) {
+    const source = `${PROJECT_CONFIG_PATH}.worktrees.readiness_paths[${index}]`
+
+    invariant(
+      typeof entry === 'string' &&
+        entry.trim().length > 0 &&
+        !path.isAbsolute(entry) &&
+        !path.normalize(entry).startsWith('..'),
+      `${source} MUST be a non-empty worktree-relative path.`,
       { code: 'INVALID_PROJECT_CONFIG' },
     )
   }
@@ -356,6 +383,7 @@ export function worktreesConfig(root: string): ResolvedWorktreesConfig {
     root: configured?.root ?? DEFAULT_WORKTREE_ROOT,
     branch_prefix: configured?.branch_prefix ?? DEFAULT_WORKTREE_BRANCH_PREFIX,
     setup: configured?.setup ?? [],
+    readiness_paths: configured?.readiness_paths ?? [],
   }
 }
 

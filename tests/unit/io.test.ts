@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import {
   clearStaleOperationMutex,
@@ -46,4 +46,39 @@ test('repository path resolution rejects escapes and run operations serialize ac
   writeFileSync(mutex, '99999999\n')
   assert.equal(clearStaleOperationMutex(mutex), true)
   assert.equal(clearStaleOperationMutex(mutex), false)
+})
+
+test('a caller that asks to wait still refuses a mutex a live process holds', () => {
+  const root = scratchRoot()
+  const mutex = path.join(root, 'runtime', '.waiting-mutex')
+
+  mkdirSync(path.dirname(mutex), { recursive: true })
+  // This process is the live holder, so the wait can only expire. A refusal
+  // that never arrives is the failure mode a bounded wait has to avoid.
+  writeFileSync(mutex, `${process.pid}\n`)
+
+  const started = Date.now()
+
+  assert.throws(
+    () =>
+      withOperationMutex(mutex, () => 'unreachable', {
+        waitForHolderMs: 200,
+      }),
+    (error: unknown) =>
+      error instanceof Error &&
+      'code' in error &&
+      error.code === 'RUN_OPERATION_IN_PROGRESS',
+  )
+  assert.ok(
+    Date.now() - started >= 200,
+    'the caller refused before its wait expired',
+  )
+
+  // Nothing was left behind for the next caller, whose hold succeeds once
+  // the holder releases.
+  rmSync(mutex, { force: true })
+  assert.equal(
+    withOperationMutex(mutex, () => 'ok', { waitForHolderMs: 200 }),
+    'ok',
+  )
 })

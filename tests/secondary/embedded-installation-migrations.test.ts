@@ -176,7 +176,9 @@ test('embedded installer refresh clears superseded legacy state in one pass', ()
     config.active_config = activeConfigName
     activeConfig.reviewer = customReviewerModel
     activeConfig[inheritedPersona] = inheritedMapping
-    activeConfig[restoredPersona] = restoredModel
+    // The release ships `restoredModel` for this persona, so deleting it here
+    // is what the installation has to restore. Assigning the same value first
+    // read as setup and proved nothing the delete did not erase.
     delete activeConfig[restoredPersona]
     config.configs[activeConfigName] = {
       ...(typeof activeConfig.summary === 'string'

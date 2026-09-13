@@ -169,6 +169,13 @@
         "enum": ["object", "array", "string", "number", "boolean"]
       }
     },
+    "blocked_required_data": {
+      "type": "object",
+      "description": "Shape contract for a blocked result's data object, replacing required_data on that result. A blocked stage reports the precondition it lacked and the command that supplies it, and owes none of the product fields it never produced. Every declared string field must be non-empty.",
+      "additionalProperties": {
+        "enum": ["object", "array", "string", "number", "boolean"]
+      }
+    },
     "criteria": {
       "type": "array",
       "minItems": 1,

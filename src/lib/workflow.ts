@@ -526,6 +526,15 @@ function parseStage(
     stage.required_data = requiredData
   }
 
+  const blockedRequiredData = parseRequiredData(
+    value.blocked_required_data,
+    `${source}.blocked_required_data`,
+  )
+
+  if (blockedRequiredData) {
+    stage.blocked_required_data = blockedRequiredData
+  }
+
   const personaByVerdict = parsePersonaByVerdict(
     value.persona_by_verdict,
     `${source}.persona_by_verdict`,

@@ -10,6 +10,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { createFixture } from '../fixture-template.js'
+import { createRun } from '../helpers.js'
 import { evaluateDeterministicCriteria } from '../../src/lib/validation.js'
 import {
   gateCacheKey,
@@ -17,6 +18,12 @@ import {
   gateCacheStore,
 } from '../../src/lib/gate-cache.js'
 import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
+import {
+  agentGatePassSuiteProfile,
+  recordProfileGatePass,
+  runRepositoryCheck,
+} from '../../src/lib/repository-checks.js'
+import { TEST_PROFILE_ENV } from '../../src/lib/suite-profile.js'
 import type { RunState, StageDefinition } from '../../src/lib/types.js'
 import { createTestTempDirectory } from '../temp.js'
 
@@ -337,6 +344,117 @@ test('cached evidence carries the original output, and a gone source is a miss',
   assert.ok(rerun)
   assert.equal(rerun.cached, undefined)
   assert.equal(markerCount(root), 2)
+})
+
+/** A `full` profile whose one command writes the suite profile it is handed. */
+function profiledFullProfileCommand(): string {
+  const body =
+    "const fs=require('fs');const target=process.env.PAN_TEST_PROFILE;" +
+    "if(target){fs.mkdirSync(require('path').dirname(target),{recursive:true});" +
+    'fs.writeFileSync(target,JSON.stringify({schema_version:1,lane:' +
+    "'unit',recorded_at:'2026-09-12T00:00:00.000Z',test_count:1,pass_count:1," +
+    'fail_count:0,wall_clock_ms:10,files:[],slowest_tests:[]}));}'
+
+  return `node -e "${body}"`
+}
+
+test('both gate-cache writers build one entry shape, and a recorded agent pass carries its profile', () => {
+  const root = createFixture()
+
+  writeFileSync(
+    path.join(root, 'runtime', 'repository-checks.json'),
+    `${JSON.stringify(
+      {
+        schema_version: 1,
+        profiles: {
+          full: { probes: [], commands: [profiledFullProfileCommand()] },
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  )
+
+  // The gate writer: a profiled `full` gate that passes cleanly.
+  const stage = markerStage(true)
+
+  stage.criteria[0].command = 'pan repository-check full'
+
+  const gateRun = fixtureState(root, 'run-gate')
+
+  gateRun.state.repository_check_baselines = {}
+  gateRun.state.verification = {
+    level: 'standard',
+    gates: {},
+  } as unknown as RunState['verification']
+
+  const gateResult = evaluateDeterministicCriteria(
+    root,
+    gateRun.runDirectory,
+    gateRun.state,
+    stage,
+    gateRun.workspaceBefore,
+    root,
+  ).results.find((item) => item.id === 'implement.marker')
+
+  assert.ok(gateResult)
+  assert.equal(gateResult.passed, true)
+  assert.ok(gateResult.suite_profile_path)
+
+  const gateEntry = gateCacheLookup(
+    root,
+    gateCacheKey(
+      root,
+      gateRun.workspaceBefore.fingerprint,
+      stage.criteria[0].command as string,
+    ),
+  )
+
+  assert.ok(gateEntry)
+  assert.equal(gateEntry.suite_profile_path, gateResult.suite_profile_path)
+
+  // The command-line writer: the same profile run by an agent, profiled the
+  // way `pan repository-check full --run <id>` profiles it.
+  const agentRun = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+  const fingerprint = gitWorkspaceSnapshot(root).fingerprint
+  const target = agentGatePassSuiteProfile(
+    root,
+    agentRun.run_id,
+    'full',
+    fingerprint,
+  )
+
+  assert.ok(target)
+
+  const commandLine = runRepositoryCheck(root, 'full', {
+    env: { [TEST_PROFILE_ENV]: target.absolute },
+  })
+
+  assert.equal(commandLine.status, 'passed')
+
+  const recorded = recordProfileGatePass(root, 'full', commandLine, {
+    run_ids: [agentRun.run_id],
+    fingerprint_before: fingerprint,
+    started_at: '2026-09-12T09:00:00.000Z',
+  })
+
+  assert.ok(recorded)
+
+  const agentEntry = gateCacheLookup(root, recorded.cache_key)
+
+  assert.ok(agentEntry)
+
+  // A gate that accepts the recorded pass reports the same fields the gate
+  // store would have written, including the profile the ship card compares.
+  assert.deepEqual(
+    Object.keys(agentEntry).sort(),
+    Object.keys(gateEntry).sort(),
+  )
+  assert.equal(agentEntry.suite_profile_path, target.relative)
+  assert.equal(existsSync(path.join(root, target.relative)), true)
 })
 
 test('a profile gate whose baseline cannot resolve is never served from the cache', () => {

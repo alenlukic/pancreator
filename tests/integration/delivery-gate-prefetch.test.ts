@@ -362,10 +362,10 @@ test('a failed submission starts no prefetch', () => {
   assert.equal(fullRuns(root), 0)
 })
 
-test('a remediation returning to ship starts no prefetch', () => {
-  // Ship is not a read-only evidence stage. Its entry gate runs the profile
-  // the moment the run arrives, so a background child would race the gate it
-  // exists to spare rather than answer it.
+test('a routed remediation prefetches for the verify it returns through', () => {
+  // A direct return to ship left no window to compute the profile in: the
+  // entry gate runs it the moment the run arrives. The repair now returns
+  // through verify, and that window answers the gate for the repaired tree.
   const { root, runId, workflow } = checkpoint(
     'delivery@verify-prepared',
     checksVariant('checks=full-fails-once', {
@@ -384,7 +384,6 @@ test('a remediation returning to ship starts no prefetch', () => {
   assert.equal(routed.invocation, null)
   assert.equal(routed.state.current_stage, 'remediate')
 
-  const executions = fullRuns(root)
   const remediated = withEnv({ PAN_PREFETCH_FULL: null }, () =>
     submitStageOutput(
       root,
@@ -393,10 +392,21 @@ test('a remediation returning to ship starts no prefetch', () => {
       'success',
     ),
   )
+  const record = prefetchRecord(root, runId)
 
-  assert.equal(remediated.state.current_stage, 'ship')
-  assert.equal(prefetchRecord(root, runId), null)
-  assert.equal(fullRuns(root), executions)
+  try {
+    assert.equal(remediated.state.current_stage, 'verify')
+    assert.ok(record)
+    assert.equal(record.profile, 'full')
+    // The answer has to be for the repaired tree; the pre-repair one is the
+    // tree the gate already rejected.
+    assert.equal(
+      record.workspace_fingerprint,
+      remediated.record.workspace_fingerprint,
+    )
+  } finally {
+    endPrefetchChild(record)
+  }
 })
 
 test('a level with no release gate starts no prefetch', () => {

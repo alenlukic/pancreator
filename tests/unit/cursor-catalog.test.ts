@@ -4,8 +4,10 @@ import test from 'node:test'
 import path from 'node:path'
 
 import {
+  cursorCatalogStatus,
   expectedVariantDisplayName,
   loadCursorCatalog,
+  LOCAL_CATALOG_RELATIVE_PATH,
   resolveCursorModelSlug,
 } from '../../src/lib/executors/cursor-catalog.js'
 import { parsePersonaMapping } from '../../src/lib/executors/mapping.js'
@@ -247,4 +249,84 @@ test('the catalog composes the display name a resolved variant echoes', () => {
     }),
     'Example GPT 272K High',
   )
+})
+
+test('catalog status reports staleness and never throws on a broken catalog', () => {
+  const mappings = [
+    { source: 'balanced.coder', mapping: parsePersonaMapping('example-gpt') },
+    {
+      source: 'balanced.planner',
+      mapping: parsePersonaMapping('missing-model'),
+    },
+  ]
+  const absent = cursorCatalogStatus(
+    createTestTempDirectory('pancreator-catalog-status-absent-'),
+    [],
+  )
+
+  assert.equal(absent.present, false)
+  assert.equal(absent.freshness, 'absent')
+  assert.equal(absent.stale, false)
+  assert.equal(absent.refresh_command, './bin/pan models --sync --force')
+
+  // A catalog with no recorded capture is unknown, not fresh.
+  const unrecorded = cursorCatalogStatus(root, [mappings[0]])
+
+  assert.equal(unrecorded.freshness, 'unrecorded_capture')
+  assert.equal(unrecorded.captured_at, null)
+
+  // A model the catalog does not hold makes the catalog incomplete, and the
+  // report names the mapping rather than raising.
+  const incomplete = cursorCatalogStatus(root, mappings)
+
+  assert.equal(incomplete.freshness, 'incomplete')
+  assert.equal(incomplete.stale, true)
+  assert.deepEqual(
+    incomplete.unresolved.map((entry) => entry.source),
+    ['balanced.planner'],
+  )
+  assert.match(incomplete.unresolved[0]?.reason ?? '', /--sync --force/u)
+
+  const datedRoot = createTestTempDirectory('pancreator-catalog-status-aged-')
+  const catalogPath = path.join(datedRoot, LOCAL_CATALOG_RELATIVE_PATH)
+
+  mkdirSync(path.dirname(catalogPath), { recursive: true })
+  writeFileSync(
+    catalogPath,
+    `${JSON.stringify({
+      captured_at: '2026-01-01T00:00:00.000Z',
+      models: [{ id: 'example-gpt', variants: [{ params: [] }] }],
+    })}\n`,
+  )
+
+  const aged = cursorCatalogStatus(
+    datedRoot,
+    [],
+    new Date('2026-09-13T00:00:00.000Z'),
+  )
+
+  assert.equal(aged.freshness, 'aged')
+  assert.equal(aged.stale, true)
+  assert.ok((aged.age_days ?? 0) > 30)
+
+  const fresh = cursorCatalogStatus(
+    datedRoot,
+    [],
+    new Date('2026-01-10T00:00:00.000Z'),
+  )
+
+  assert.equal(fresh.freshness, 'fresh')
+  assert.equal(fresh.stale, false)
+
+  // A malformed catalog is the case the report exists for: it survives.
+  const brokenRoot = createTestTempDirectory('pancreator-catalog-status-bad-')
+  const brokenPath = path.join(brokenRoot, LOCAL_CATALOG_RELATIVE_PATH)
+
+  mkdirSync(path.dirname(brokenPath), { recursive: true })
+  writeFileSync(brokenPath, '{ not json\n')
+
+  const broken = cursorCatalogStatus(brokenRoot, mappings)
+
+  assert.equal(broken.freshness, 'incomplete')
+  assert.equal(broken.stale, true)
 })

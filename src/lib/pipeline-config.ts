@@ -427,6 +427,31 @@ export function loadPipelineConfig(
   }
 }
 
+/**
+ * Every persona mapping the file declares, across every named config.
+ *
+ * The diagnostic commands read this to report which mappings a stale catalog
+ * cannot resolve, instead of failing at config load the way a lifecycle
+ * command still does.
+ */
+export function pipelineConfigPersonaMappings(
+  file: PipelineConfigFile,
+): Array<{ source: string; mapping: ParsedPersonaMapping }> {
+  const mappings: Array<{ source: string; mapping: ParsedPersonaMapping }> = []
+
+  for (const candidate of Object.keys(file.configs)) {
+    for (const [persona, model] of Object.entries(
+      resolveConfigPersonas(file, candidate),
+    )) {
+      const source = `${candidate}.${persona}`
+
+      mappings.push({ source, mapping: parsePersonaMapping(model, source) })
+    }
+  }
+
+  return mappings
+}
+
 export function makePipelineConfigSnapshot(
   loaded: LoadedPipelineConfig,
 ): PipelineConfigSnapshot {

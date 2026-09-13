@@ -92,6 +92,25 @@ function baseOutput(
   }
 }
 
+/** The operator-brief artifacts every ship output must declare. */
+function briefArtifacts(invocation: Invocation) {
+  const brief = invocation.output.operator_brief
+
+  assert.ok(brief)
+
+  return [
+    { path: brief.rendered_path, description: 'Rendered brief' },
+    { path: brief.source_path, description: 'Brief source' },
+  ]
+}
+
+/** Brief paths the harness renders after submission, not before it. */
+function pendingBriefPaths(invocation: Invocation) {
+  return {
+    pendingArtifactPaths: briefArtifacts(invocation).map((item) => item.path),
+  }
+}
+
 test('strict stage output rejects pass claims without evidence', () => {
   const root = createFixture()
   const { invocation, stage } = fixtureInvocation(
@@ -160,6 +179,69 @@ test('strict stage output rejects pass claims without evidence', () => {
   assert.match(
     withSource.errors.join('\n'),
     /MUST NOT list transient operator brief source/u,
+  )
+})
+
+// Run 63308 finding F-03: a stage-output issue took its code from a lookup
+// keyed by the message text, so a reword degraded the identifier to the
+// generic `stage_output.invalid` with nothing reporting the loss. Every issue
+// now carries the code its raising site assigned.
+test('every stage output issue carries the code its raising site assigned', () => {
+  const root = createFixture()
+  const { invocation, stage } = fixtureInvocation(
+    root,
+    'implement',
+    'implement-1-codes',
+  )
+  const output = baseOutput(invocation, stage) as unknown as Record<
+    string,
+    unknown
+  >
+
+  output.schema_version = 2
+  output.invocation_id = 'another-invocation'
+  output.result = 'partial'
+  output.summary = '   '
+  output.risks = 'not an array'
+  output.data = 'not an object'
+  output.platform_guidance_conflicts = [{ guidance: 'Plan mode' }]
+  output.artifacts = [{ path: 'runtime/absent.html', description: '' }]
+
+  const validation = validateStageOutput(
+    root,
+    stage,
+    invocation,
+    output,
+    pendingBriefPaths(invocation),
+  )
+  const codes = new Set(validation.issues.map((issue) => issue.code))
+
+  assert.ok(validation.issues.length > 0)
+  assert.deepEqual(
+    validation.issues.filter((issue) => issue.code === 'stage_output.invalid'),
+    [],
+    'no issue may degrade to the generic code',
+  )
+  assert.ok(validation.issues.every((issue) => issue.code.includes('.')))
+
+  for (const code of [
+    'stage_output.schema_version',
+    'stage_output.invocation_id',
+    'stage_output.result',
+    'stage_output.summary',
+    'stage_output.risks',
+    'stage_output.data',
+    'stage_output.platform_guidance_conflict_shape',
+    'artifact.description',
+  ]) {
+    assert.ok(codes.has(code), `${code} MUST be reported: ${[...codes]}`)
+  }
+
+  // Every issue's code and message stay paired, so rewording one message
+  // cannot move a code onto another issue.
+  assert.equal(
+    validation.errors.join('\n'),
+    validation.issues.map((issue) => issue.message).join('\n'),
   )
 })
 
@@ -315,4 +397,94 @@ test('stage output accepts a platform guidance conflict list and rejects a bare 
       ),
     ),
   )
+})
+
+/**
+ * A ship stage that cannot reach release preparation has to report the
+ * precondition it lacks. Requiring the release packet on that result left the
+ * honest report unsubmittable, so the stage failed on ten absent fields
+ * instead of naming the one thing the operator had to supply.
+ */
+test('a blocked ship output declares its precondition instead of a release packet', () => {
+  const root = createFixture()
+  const { invocation, stage } = fixtureInvocation(root, 'ship', 'ship-1-test')
+  const undeclared = validateStageOutput(
+    root,
+    stage,
+    invocation,
+    {
+      ...baseOutput(invocation, stage),
+      result: 'blocked',
+      artifacts: briefArtifacts(invocation),
+    },
+    pendingBriefPaths(invocation),
+  )
+
+  assert.deepEqual(
+    undeclared.errors.filter((message) => message.includes('data.release.')),
+    [],
+    'a blocked result owes no release field',
+  )
+  assert.deepEqual(
+    undeclared.errors.filter((message) => message.includes('data.blocked.')),
+    [
+      'data.blocked.missing_precondition MUST be a non-empty string when ' +
+        'the ship result is blocked',
+      'data.blocked.supplying_command MUST be a non-empty string when the ' +
+        'ship result is blocked',
+    ],
+  )
+
+  const declared = validateStageOutput(
+    root,
+    stage,
+    invocation,
+    {
+      ...baseOutput(invocation, stage),
+      result: 'blocked',
+      artifacts: briefArtifacts(invocation),
+      data: {
+        blocked: {
+          missing_precondition: 'The managed worktree has no fetched main.',
+          supplying_command: 'pan release sync --worktree w --run run-test',
+        },
+      },
+    },
+    pendingBriefPaths(invocation),
+  )
+
+  assert.deepEqual(declared.errors, [], declared.errors.join('\n'))
+})
+
+test('a successful ship output still owes every release field', () => {
+  const root = createFixture()
+  const { invocation, stage } = fixtureInvocation(root, 'ship', 'ship-2-test')
+  const output = baseOutput(invocation, stage)
+
+  output.artifacts = briefArtifacts(invocation)
+  output.data = {
+    release: {
+      summary: 'Fixture release',
+      change_list: [],
+      validation: [],
+      waivers: [],
+      follow_up_cases: [],
+      governance_artifact_review: {
+        summary: 'No issues',
+        issues_reviewed: [],
+        repairs: [],
+        escalations: [],
+      },
+    },
+  }
+
+  const validation = validateStageOutput(
+    root,
+    stage,
+    invocation,
+    output,
+    pendingBriefPaths(invocation),
+  )
+
+  assert.deepEqual(validation.errors, ['data.release.rollback MUST be string'])
 })

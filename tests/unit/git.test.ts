@@ -1,13 +1,15 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { createFixture } from '../fixture-template.js'
 import {
   gitStatusPaths,
   gitWorkspaceSnapshot,
+  parsePorcelainStatus,
   snapshotChanged,
+  snapshotEntryPath,
   workspaceChangedPathsFromSnapshots,
 } from '../../src/lib/git.js'
 
@@ -108,4 +110,36 @@ test('workspace snapshots exclude protected environments, dependencies, caches, 
   assert.deepEqual(after.entries, [])
   assert.equal(snapshotChanged(before, after), false)
   assert.deepEqual(workspaceChangedPathsFromSnapshots(before, after), [])
+})
+
+test('a staged rename reaches the snapshot with both paths unmangled', () => {
+  const root = createFixture()
+
+  execFileSync('git', ['mv', 'src/base.ts', 'src/renamed.ts'], { cwd: root })
+
+  const snapshot = gitWorkspaceSnapshot(root)
+  const paths = snapshot.entries.map((entry) => snapshotEntryPath(entry))
+
+  // The source used to arrive with its first three characters removed, which
+  // named no file. Both paths must survive whole.
+  assert.ok(paths.includes('src/renamed.ts'))
+  assert.ok(paths.includes('src/base.ts'))
+  assert.ok(existsSync(path.join(root, 'src/renamed.ts')))
+
+  // One reader serves both call sites, so the two agree on the rename shape.
+  assert.deepEqual(
+    paths.filter((entry) => entry.startsWith('src/')).sort(),
+    gitStatusPaths(root).filter((entry) => entry.startsWith('src/')),
+  )
+})
+
+test('the porcelain reader keeps a rename source whole', () => {
+  const entries = parsePorcelainStatus(
+    'R  dest/file.ts\0src/file.ts\0?? new.ts\0',
+  )
+
+  assert.deepEqual(entries, [
+    { status: 'R ', path: 'dest/file.ts', source: 'src/file.ts' },
+    { status: '??', path: 'new.ts', source: null },
+  ])
 })

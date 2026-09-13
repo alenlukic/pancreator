@@ -6,6 +6,7 @@ import test from 'node:test'
 import {
   analyzeCodeStyle,
   codeStyleLanguage,
+  codeStylePolicyId,
   MAX_REPORTED_ISSUES,
   validateCodeStyle,
 } from '../../src/lib/validators/code-style.js'
@@ -47,6 +48,23 @@ test('a style handbook owns every scanned extension and nothing else', () => {
   assert.equal(codeStyleLanguage('tools/report.py'), 'python')
   assert.equal(codeStyleLanguage('docs/guide.md'), null)
   assert.equal(codeStyleLanguage('Makefile'), null)
+})
+
+// Run 63300 finding V-2: a scan of a TypeScript file reported under
+// PYSTYLE-001, because one site hardcoded an identifier and another collapsed
+// the field that distinguishes the two. VALID-001 requires the evidence to
+// name the policy that governs what was scanned.
+test('the governing style policy follows the scanned language', () => {
+  assert.equal(codeStylePolicyId('src/cli.ts'), 'TSTYLE-001')
+  assert.equal(codeStylePolicyId('src/App.tsx'), 'TSTYLE-001')
+  assert.equal(codeStylePolicyId('tools/report.py'), 'PYSTYLE-001')
+  assert.equal(codeStylePolicyId('docs/guide.md'), null)
+
+  // No policy claims the JavaScript extensions, and the checker applies the
+  // TypeScript handbook's script rules to them. The catalog entry and the
+  // style command card state that ownership where an operator reads them.
+  assert.equal(codeStylePolicyId('prettier.config.js'), 'TSTYLE-001')
+  assert.equal(codeStylePolicyId('scripts/build.mjs'), 'TSTYLE-001')
 })
 
 test('each TypeScript rule reports the construct its handbook section forbids', () => {

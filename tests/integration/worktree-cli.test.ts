@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { spawnSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
@@ -265,4 +265,54 @@ test('commands without a selectable workspace reject the shared option', () => {
   const listed = runCli<{ worktrees: unknown[] }>(root, ['worktree', 'list'])
 
   assert.deepEqual(listed.worktrees, [])
+})
+
+test('impacted selection and requirements resolution accept the shared option', () => {
+  const root = createFixture()
+
+  // Both surfaces resolve a workspace, so both must pass the option gate.
+  // `requirements run` already resolved a worktree and advertised the option
+  // in its usage line while the gate refused it.
+  for (const invocation of [
+    ['tests', 'impacted'],
+    ['requirements', 'run'],
+  ]) {
+    assert.doesNotThrow(
+      () =>
+        assertWorktreeOptionSupported(invocation[0] as string, [
+          ...invocation.slice(1),
+          '--worktree',
+          'alpha',
+        ]),
+      invocation.join(' '),
+    )
+  }
+
+  // A sibling subcommand of each family that selects no workspace still
+  // refuses, so the gate widened by exactly the two surfaces.
+  for (const invocation of [
+    ['tests', 'tune'],
+    ['requirements', 'scaffold'],
+  ]) {
+    assert.throws(
+      () =>
+        assertWorktreeOptionSupported(invocation[0] as string, [
+          ...invocation.slice(1),
+          '--worktree',
+          'alpha',
+        ]),
+      (error: unknown) =>
+        error instanceof PanError &&
+        error.code === 'WORKTREE_OPTION_UNSUPPORTED',
+      invocation.join(' '),
+    )
+  }
+
+  assert.match(
+    execFileSync(process.execPath, [CLI, 'help'], {
+      cwd: root,
+      encoding: 'utf8',
+    }),
+    /pan tests impacted \[--worktree <name>\]/u,
+  )
 })

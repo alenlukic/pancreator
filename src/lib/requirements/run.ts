@@ -28,6 +28,12 @@ export interface RunRequirementOptions {
   runState?: Record<string, unknown>
   catalog?: ReturnType<typeof loadRegistry>
   persist?: boolean
+  /**
+   * Why this target carries nothing this validator judges. Set by a caller
+   * that already knows the artifact was never owed, so the run records a
+   * stated not-applicable result instead of a failure per absent field.
+   */
+  notApplicable?: string
 }
 
 /** Resolve the on-disk path for a policy-bound requirement target. */
@@ -204,6 +210,23 @@ export function runRequirement(
     })
   }
 
+  if (options.notApplicable) {
+    const result = buildResult(options, startedAt, command, {
+      status: 'not_applicable',
+      exit_code: 0,
+      handler: entry.handler,
+      registry_version: entry.version,
+      issues: [
+        {
+          code: 'target.not_applicable',
+          message: options.notApplicable,
+        },
+      ],
+    })
+
+    return persistResult(options, result)
+  }
+
   if (!fileExists(absoluteTarget) && options.targetPath !== '.') {
     return buildResult(options, startedAt, command, {
       status: 'failed',
@@ -276,7 +299,7 @@ export function runRequirement(
 
   const result = buildResult(options, startedAt, command, {
     status: handlerResult.status,
-    exit_code: handlerResult.status === 'passed' ? 0 : 1,
+    exit_code: satisfiedStatus(handlerResult.status) ? 0 : 1,
     handler: entry.handler,
     registry_version: entry.version,
     target_checksum: targetChecksum,
@@ -284,18 +307,28 @@ export function runRequirement(
     evidence_paths: handlerResult.evidence_paths ?? [],
   })
 
-  if (options.persist !== false && options.runId) {
-    const evidencePath = validationResultPath(
-      options.root,
-      options.runId,
-      options.requirement.policy_id,
-      options.requirement.requirement_id,
-      options.executor,
-    )
+  return persistResult(options, result)
+}
 
-    writeJsonAtomic(path.join(options.root, evidencePath), result)
-    result.evidence_paths = [evidencePath, ...result.evidence_paths]
+/** Write the result as run evidence and name that evidence in the result. */
+function persistResult(
+  options: RunRequirementOptions,
+  result: RequirementValidationResult,
+): RequirementValidationResult {
+  if (options.persist === false || !options.runId) {
+    return result
   }
+
+  const evidencePath = validationResultPath(
+    options.root,
+    options.runId,
+    options.requirement.policy_id,
+    options.requirement.requirement_id,
+    options.executor,
+  )
+
+  writeJsonAtomic(path.join(options.root, evidencePath), result)
+  result.evidence_paths = [evidencePath, ...result.evidence_paths]
 
   return result
 }
@@ -346,6 +379,16 @@ export function isStaleTarget(
   return Boolean(beforeChecksum && beforeChecksum !== afterChecksum)
 }
 
+/**
+ * A validator that judged nothing satisfies its requirement as much as one
+ * that judged everything and passed.
+ */
+function satisfiedStatus(
+  status: RequirementValidationResult['status'],
+): boolean {
+  return status === 'passed' || status === 'not_applicable'
+}
+
 export function isPassingResult(result: RequirementValidationResult): boolean {
-  return result.status === 'passed' && result.exit_code === 0
+  return satisfiedStatus(result.status) && result.exit_code === 0
 }

@@ -5,8 +5,18 @@ import { fileExists, isRecord, readJson } from '../io.js'
 import { expandCursorModels } from './cursor-catalog-codec.js'
 import type { ParsedPersonaMapping } from './mapping.js'
 
-const LOCAL_CATALOG_RELATIVE_PATH =
+export const LOCAL_CATALOG_RELATIVE_PATH =
   'governance/registries/cursor_model_catalog.json'
+
+/**
+ * The one command an operator runs when the catalog no longer resolves the
+ * configured specs. Hand-editing the account-local catalog is not a remedy,
+ * so every catalog diagnostic names this command instead of the file.
+ */
+export const CURSOR_CATALOG_REFRESH_COMMAND = './bin/pan models --sync --force'
+
+/** Age past which a recorded catalog capture is reported as stale. */
+export const CURSOR_CATALOG_MAX_AGE_DAYS = 30
 
 export interface CursorCatalogModel {
   id: string
@@ -55,6 +65,12 @@ export interface CursorCatalog {
   models: Map<string, CursorCatalogModel>
   /** Alias → canonical model ids carrying it (aliases are not unique). */
   aliases: Map<string, string[]>
+  /**
+   * ISO-8601 capture time the catalog records, or null when it records none.
+   * A catalog written before the field existed stays readable and reports an
+   * unrecorded capture, which is judged unknown rather than fresh.
+   */
+  capturedAt: string | null
 }
 
 function parseModel(value: Record<string, unknown>): CursorCatalogModel | null {
@@ -222,7 +238,140 @@ export function loadCursorCatalog(root: string): CursorCatalog | null {
     }
   }
 
-  return { models, aliases }
+  return {
+    models,
+    aliases,
+    capturedAt:
+      typeof source.captured_at === 'string' && source.captured_at.length > 0
+        ? source.captured_at
+        : null,
+  }
+}
+
+/** Whether a recorded capture time is older than the staleness bound. */
+export function catalogCaptureAgeDays(
+  capturedAt: string | null,
+  now: Date = new Date(),
+): number | null {
+  if (capturedAt === null) {
+    return null
+  }
+
+  const captured = Date.parse(capturedAt)
+
+  if (Number.isNaN(captured)) {
+    return null
+  }
+
+  return Math.max(
+    0,
+    Math.floor((now.getTime() - captured) / (24 * 60 * 60 * 1000)),
+  )
+}
+
+export type CursorCatalogFreshness =
+  | 'absent'
+  | 'fresh'
+  | 'unrecorded_capture'
+  | 'aged'
+  | 'incomplete'
+
+export interface CursorCatalogStatus {
+  present: boolean
+  path: string
+  captured_at: string | null
+  age_days: number | null
+  freshness: CursorCatalogFreshness
+  stale: boolean
+  /** Persona mappings the catalog cannot resolve, with the reason each gave. */
+  unresolved: Array<{ source: string; spec: string; reason: string }>
+  refresh_command: string
+}
+
+/**
+ * Report the catalog's freshness without throwing.
+ *
+ * Config load validates every mapped model against the catalog, so a catalog
+ * that predates a configuration change fails every command at load, including
+ * the diagnostic command an operator reaches for when a command fails. The
+ * diagnostic commands read this report instead.
+ */
+export function cursorCatalogStatus(
+  root: string,
+  personaMappings: Iterable<{ source: string; mapping: ParsedPersonaMapping }>,
+  now: Date = new Date(),
+): CursorCatalogStatus {
+  const base = {
+    path: LOCAL_CATALOG_RELATIVE_PATH,
+    refresh_command: CURSOR_CATALOG_REFRESH_COMMAND,
+  }
+  let catalog: CursorCatalog | null = null
+
+  try {
+    catalog = loadCursorCatalog(root)
+  } catch {
+    // An unreadable catalog is reported as absent-and-stale rather than
+    // raised, because this report exists to survive a broken catalog.
+    return {
+      ...base,
+      present: true,
+      captured_at: null,
+      age_days: null,
+      freshness: 'incomplete',
+      stale: true,
+      unresolved: [],
+    }
+  }
+
+  if (catalog === null) {
+    return {
+      ...base,
+      present: false,
+      captured_at: null,
+      age_days: null,
+      freshness: 'absent',
+      stale: false,
+      unresolved: [],
+    }
+  }
+
+  const unresolved: CursorCatalogStatus['unresolved'] = []
+
+  for (const { source, mapping } of personaMappings) {
+    if (mapping.executor !== 'cursor') {
+      continue
+    }
+
+    try {
+      resolveAgainstCatalog(catalog, mapping, source)
+    } catch (error) {
+      unresolved.push({
+        source,
+        spec: mapping.model_spec,
+        reason: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }
+
+  const ageDays = catalogCaptureAgeDays(catalog.capturedAt, now)
+  const freshness: CursorCatalogFreshness =
+    unresolved.length > 0
+      ? 'incomplete'
+      : catalog.capturedAt === null || ageDays === null
+        ? 'unrecorded_capture'
+        : ageDays > CURSOR_CATALOG_MAX_AGE_DAYS
+          ? 'aged'
+          : 'fresh'
+
+  return {
+    ...base,
+    present: true,
+    captured_at: catalog.capturedAt,
+    age_days: ageDays,
+    freshness,
+    stale: freshness === 'incomplete' || freshness === 'aged',
+    unresolved,
+  }
 }
 
 function catalogModel(
@@ -242,9 +391,10 @@ function catalogModel(
     holders.length > 0,
     `${source} names Cursor model '${requested}', which is not in the ` +
       `Cursor model catalog. Known models: ` +
-      `${[...catalog.models.keys()].sort().join(', ')}. If Cursor has ` +
-      `shipped a new model, refresh ` +
-      `${LOCAL_CATALOG_RELATIVE_PATH} from Cursor.models.list().`,
+      `${[...catalog.models.keys()].sort().join(', ')}. The catalog at ` +
+      `${LOCAL_CATALOG_RELATIVE_PATH} is stale; refresh it with ` +
+      `\`${CURSOR_CATALOG_REFRESH_COMMAND}\`. \`./bin/pan doctor --json\` ` +
+      `reports the catalog state and keeps working while it is stale.`,
     { code: 'UNRESOLVED_CURSOR_MODEL' },
   )
 
@@ -393,8 +543,8 @@ function resolveAgainstCatalog(
             `Declared combinations: ` +
             `${declared.slice(0, 24).join('; ')}` +
             `${declared.length > 24 ? '; …' : ''}. If Cursor has shipped ` +
-            `new variants, refresh ` +
-            `${LOCAL_CATALOG_RELATIVE_PATH} from Cursor.models.list().`,
+            `new variants, the catalog at ${LOCAL_CATALOG_RELATIVE_PATH} is ` +
+            `stale; refresh it with \`${CURSOR_CATALOG_REFRESH_COMMAND}\`.`,
           { code: 'UNRESOLVED_CURSOR_MODEL' },
         )
       }

@@ -1,6 +1,6 @@
 import path from 'node:path'
 
-import { PanError } from './errors.js'
+import { invariant, PanError } from './errors.js'
 import {
   fileExists,
   isRecord,
@@ -20,6 +20,7 @@ import { detectWorkspaceTechnologies } from './technologies.js'
 import { isProtectedWorkspacePath } from './workspace/protected-paths.js'
 import {
   codeStyleLanguage,
+  codeStylePolicyId,
   validateCodeStyle,
   type CodeStyleLanguage,
 } from './validators/code-style.js'
@@ -235,11 +236,17 @@ function styleIssues(
   workspaceRoot: string,
   relativePath: string,
 ): HandlerResult['issues'] {
+  const policyId = codeStylePolicyId(relativePath)
+
+  invariant(policyId !== null, `No style handbook covers ${relativePath}.`, {
+    code: 'INVALID_ARGUMENT',
+  })
+
   const input: HandlerInput = {
     root: workspaceRoot,
     targetPath: relativePath,
     requirement: {
-      policy_id: 'TSTYLE-001',
+      policy_id: policyId,
       requirement_id: 'standalone-style-code-style-validate',
       registry_id: 'CODE-STYLE-VALIDATE-001',
       arguments: {},

@@ -112,6 +112,17 @@ export interface EvalGraderVerdict {
   observability: string
 }
 
+/**
+ * A check the eval driver makes on the machine rather than on run records. A
+ * grader reads what the run wrote; a driver check reads what the run touched.
+ */
+export interface EvalDriverCheck {
+  id: string
+  passed: boolean
+  summary: string
+  evidence: string[]
+}
+
 export interface EvalReport {
   schema_version: 1
   scenario: string
@@ -123,4 +134,9 @@ export interface EvalReport {
   passed: boolean
   policy_instructions: EvalPolicyInstruction[]
   graders: EvalGraderVerdict[]
+  /**
+   * Driver observations of the harness itself. `runEval` sets it on every
+   * report it grades; a report `gradeRunRecords` produces alone omits it.
+   */
+  driver_checks?: EvalDriverCheck[]
 }

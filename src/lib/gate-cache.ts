@@ -34,6 +34,50 @@ export interface GateCacheEntry {
   suite_profile_path?: string
 }
 
+/** Everything a caller knows about one clean pass it wants cached. */
+export interface GateCacheEntryInput extends Omit<
+  GateCacheEntry,
+  'cached_at' | 'repository_result' | 'suite_profile_path'
+> {
+  /** Absent means now, which is what both recorders want. */
+  cached_at?: string
+  repository_result?: RepositoryCheckResult
+  /**
+   * Profile the reporter wrote, root-relative. A caller that resolved no
+   * artifact passes `null` rather than deciding how the absence is stored.
+   */
+  suite_profile_path?: string | null
+}
+
+/**
+ * The one place a gate-cache entry is built.
+ *
+ * Two recorders store passes: the submission gate and the command-line profile
+ * runner. An entry the accepting gate later reuses carries the original
+ * execution's suite profile, so a recorder that forgets the optional field
+ * silently drops the ship card's profile comparison. Naming every field here
+ * makes that omission impossible to write.
+ */
+export function buildGateCacheEntry(
+  input: GateCacheEntryInput,
+): GateCacheEntry {
+  return {
+    key: input.key,
+    criterion_id: input.criterion_id,
+    command: input.command,
+    workspace_fingerprint: input.workspace_fingerprint,
+    run_id: input.run_id,
+    cached_at: input.cached_at ?? new Date().toISOString(),
+    evidence_path: input.evidence_path,
+    ...(input.repository_result
+      ? { repository_result: input.repository_result }
+      : {}),
+    ...(input.suite_profile_path
+      ? { suite_profile_path: input.suite_profile_path }
+      : {}),
+  }
+}
+
 export interface GateCacheStatus {
   enabled: boolean
   path: string

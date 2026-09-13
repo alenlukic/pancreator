@@ -1,5 +1,43 @@
 # Changelog
 
+## [5.23.0] - 2026-09-13
+
+This release integrates the three chunks of cohort `63296_Sep-13-1313_phase-harnes`. Two acceptance criteria carry an operator disposition: AC-025, the harness-root-untouched live eval, was met by explicit operator waiver on the unit proof [eval-graders test](tests/unit/eval-graders.test.ts); AC-019 was met against an authorized plan amendment under a `fail_severe` remediation.
+
+### Changed
+
+- Route a failed ship release gate through remediate and verify before ship runs the gate again, instead of returning remediate directly to ship ([ship stage](library/workflows/delivery/stages/ship.json), [engine](src/lib/engine.ts), [30b088b8](https://github.com/alenlukic/pancreator/commit/30b088b83433fe3f250fb12711010fd996afac86)).
+- Enforce the release-commit scope so the mandated release commit passes the ship scope criterion and a real external edit still fails it ([ship-gate](src/lib/validators/stage-validators.ts), [30b088b8](https://github.com/alenlukic/pancreator/commit/30b088b83433fe3f250fb12711010fd996afac86)).
+- Return every advisory that `pan submit` records, and give a blocked ship result a satisfiable output shape ([engine](src/lib/engine.ts), [ship prompt](library/workflows/delivery/prompts/ship.md), [30b088b8](https://github.com/alenlukic/pancreator/commit/30b088b83433fe3f250fb12711010fd996afac86)).
+- Hold the run mutex of a worker model probe only across the state read and the state write, never across the live model call ([engine](src/lib/engine.ts), [93a209b1](https://github.com/alenlukic/pancreator/commit/93a209b1cd68904c2173db02c0cd2f9e362f6d39)).
+- Accept the shared `--worktree` option on `pan tests impacted` ([cli](src/cli.ts), [93a209b1](https://github.com/alenlukic/pancreator/commit/93a209b1cd68904c2173db02c0cd2f9e362f6d39)).
+- Record a `captured_at` freshness timestamp on the Cursor model catalog and keep `pan models` and `pan doctor` working on a stale catalog ([cursor-catalog](src/lib/executors/cursor-catalog.ts), [93a209b1](https://github.com/alenlukic/pancreator/commit/93a209b1cd68904c2173db02c0cd2f9e362f6d39)).
+- Move test fixture sidecars out of run evidence directories ([fixture-template](tests/fixture-template.ts), [93a209b1](https://github.com/alenlukic/pancreator/commit/93a209b1cd68904c2173db02c0cd2f9e362f6d39)).
+- Keep the worktree record when `pan worktree remove` did not remove the directory, and refuse before any index change ([worktrees](src/lib/worktrees.ts), [93a209b1](https://github.com/alenlukic/pancreator/commit/93a209b1cd68904c2173db02c0cd2f9e362f6d39)).
+- Parse the null-separated `git status --porcelain -z` format through one exported reader ([git](src/lib/git.ts), [93a209b1](https://github.com/alenlukic/pancreator/commit/93a209b1cd68904c2173db02c0cd2f9e362f6d39)).
+- Build every gate-cache entry through one shared constructor, and carry the recorded suite profile on an accepted `full` pass ([gate-cache](src/lib/gate-cache.ts), [c15e74a4](https://github.com/alenlukic/pancreator/commit/c15e74a45ffcc99bf1f96f9f47060aeab131dc86)).
+- Bound the suite-profile lookup by an index instead of reading every run state ([suite-profile](src/lib/suite-profile.ts), [c15e74a4](https://github.com/alenlukic/pancreator/commit/c15e74a45ffcc99bf1f96f9f47060aeab131dc86)).
+- Give `pan output validate` a per-caller scratch path ([cli](src/cli.ts), [c15e74a4](https://github.com/alenlukic/pancreator/commit/c15e74a45ffcc99bf1f96f9f47060aeab131dc86)).
+- State the ratified gate-cache acceptance rule in the operator guide ([operator guide](docs/operator-guide.md), [c15e74a4](https://github.com/alenlukic/pancreator/commit/c15e74a45ffcc99bf1f96f9f47060aeab131dc86)).
+
+### Added
+
+- Add `pan attribute <run-id>` to record an operator directive executed against the workspace outside a stage ([cli](src/cli.ts), [30b088b8](https://github.com/alenlukic/pancreator/commit/30b088b83433fe3f250fb12711010fd996afac86)).
+- Assert the run-workspace write scope at the gate, so a write outside the run workspace fails ([workspace-write-scope test](tests/unit/workspace-write-scope.test.ts), [30b088b8](https://github.com/alenlukic/pancreator/commit/30b088b83433fe3f250fb12711010fd996afac86)).
+- Refuse any CLI argument at or above 900 bytes with `ARGV_ELEMENT_TOO_LARGE`, and accept `--note-file <path>` on `decide`, `pause`, `resume`, `set-stage`, and `waive-gate` ([argv-limits](src/lib/argv-limits.ts), [93a209b1](https://github.com/alenlukic/pancreator/commit/93a209b1cd68904c2173db02c0cd2f9e362f6d39)).
+- Add `--adopt-plan-from <run-id>` to `pan waive-gate`, so waiver-based plan reuse moves the worktree claim to the adopting run ([engine](src/lib/engine.ts), [93a209b1](https://github.com/alenlukic/pancreator/commit/93a209b1cd68904c2173db02c0cd2f9e362f6d39)).
+- Declare worktree readiness through `config.json` `worktrees.readiness_paths`, assert it before a run's first stage, and adopt a hand-made worktree through `pan worktree resolve` ([worktrees](src/lib/worktrees.ts), [config.json](config.json), [93a209b1](https://github.com/alenlukic/pancreator/commit/93a209b1cd68904c2173db02c0cd2f9e362f6d39)).
+- Add `--delete-branch` to `pan worktree remove`, which deletes the branch only when it is an ancestor of the default branch ([worktrees](src/lib/worktrees.ts), [93a209b1](https://github.com/alenlukic/pancreator/commit/93a209b1cd68904c2173db02c0cd2f9e362f6d39)).
+- Print one bootstrap command set per live chunk run from `pan cohort status` ([cohorts](src/lib/cohorts.ts), [c15e74a4](https://github.com/alenlukic/pancreator/commit/c15e74a45ffcc99bf1f96f9f47060aeab131dc86)).
+- Add `pan prepare --agent <name>`, which writes the labeled delegation card and starts the detached worker model probe ([engine](src/lib/engine.ts), [c15e74a4](https://github.com/alenlukic/pancreator/commit/c15e74a45ffcc99bf1f96f9f47060aeab131dc86)).
+
+### Fixed
+
+- Use the strict technology clause in the lookup coverage predicate and resolve every gap it surfaces ([command-coverage](src/lib/governance/command-coverage.ts), [30b088b8](https://github.com/alenlukic/pancreator/commit/30b088b83433fe3f250fb12711010fd996afac86)).
+- Name the language's own policy in style evidence, state the delivered scope of the field-contract guard, and keep stage-output issue codes stable across a reword ([code-style validator](src/lib/validators/code-style.ts), [stage-validators](src/lib/validators/stage-validators.ts), [30b088b8](https://github.com/alenlukic/pancreator/commit/30b088b83433fe3f250fb12711010fd996afac86)).
+- Close eight declaration-to-enforcement gaps across SHIP-001, REMED-001, and OPERATOR-001, and record the supervisor-executed operator directive ([SHIP-001](governance/policies/SHIP-001.json), [REMED-001](governance/policies/REMED-001.json), [OPERATOR-001](governance/policies/OPERATOR-001.json), [30b088b8](https://github.com/alenlukic/pancreator/commit/30b088b83433fe3f250fb12711010fd996afac86)).
+- Repair three healthy-run assumptions in run state and workflow-artifact handling ([state](src/lib/state.ts), [workflow-artifacts](src/lib/workflow-artifacts.ts), [93a209b1](https://github.com/alenlukic/pancreator/commit/93a209b1cd68904c2173db02c0cd2f9e362f6d39)).
+
 ## [5.22.2] - 2026-09-13
 
 ### Changed

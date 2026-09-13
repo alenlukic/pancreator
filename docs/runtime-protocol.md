@@ -409,7 +409,8 @@ enters ship, before it delegates the release steward. A pass is recorded on
 `state.entry_gates.ship`, covers that visit of ship, and is carried into the
 ship submission instead of running again. A failure routes the run to
 `remediate` with the evidence log as required input; that remediation returns
-directly to ship on success, and the gate runs again. After two such loops a
+along its own success transition to verify, which retakes its evidence at the
+repaired workspace before ship runs the gate again. After two such loops a
 third failure pauses the run with an `operator_decision` marked
 `operator_only`, which away mode cannot resume or redirect. A cohort session
 shares exactly one `static` and `fast` baseline under

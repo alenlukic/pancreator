@@ -230,6 +230,12 @@ export interface StageDefinition {
   checkpoint?: StageCheckpoint
   context: StageContextDefinition
   required_data?: Record<string, JsonTypeName>
+  /**
+   * Shape a `blocked` result owes instead of `required_data`. A stage that
+   * reports the precondition it lacked never produced the product fields, so
+   * requiring them makes the honest report unsubmittable.
+   */
+  blocked_required_data?: Record<string, JsonTypeName>
   criteria: Criterion[]
   transitions: StageTransitions
   entry_gate?: StageEntryGate
@@ -434,6 +440,12 @@ export type RequirementResultStatus =
   | 'failed'
   | 'blocked'
   | 'invalid'
+  /**
+   * The target exists but carries nothing this validator judges, so the
+   * validator states that rather than failing every field the target never
+   * owed. A not-applicable result satisfies its requirement.
+   */
+  | 'not_applicable'
 
 export interface RequirementIssue {
   code: string
@@ -505,6 +517,17 @@ export interface WorkspaceSnapshot {
    * to see an edit that leaves the status code untouched.
    */
   dirty_content?: Record<string, string>
+  /**
+   * Content hash per path that a commit absorbed since the snapshot's declared
+   * commit base. A commit removes a path from `git status` without changing
+   * the working tree, so `entries` alone reads the release commit a ship stage
+   * is required to make as though the workspace had changed. These hashes let
+   * the comparison see that the content stayed identical.
+   *
+   * Absent on a snapshot recorded without a commit base, and on every snapshot
+   * a run already in flight recorded before this field existed.
+   */
+  commit_content?: Record<string, string>
 }
 
 export interface TrackingConfig {
@@ -516,12 +539,20 @@ export interface WorktreesConfig {
   root?: string
   branch_prefix?: string
   setup?: string[]
+  /**
+   * Worktree-relative paths the setup commands produce, such as a dependency
+   * tree or a build directory. Readiness is asserted against these rather
+   * than inferred from a language, so a worktree the harness did not
+   * provision reports what it is missing by name.
+   */
+  readiness_paths?: string[]
 }
 
 export interface ResolvedWorktreesConfig {
   root: string
   branch_prefix: string
   setup: string[]
+  readiness_paths: string[]
 }
 
 /** Stable identity of one managed operator worktree. */
@@ -1098,7 +1129,19 @@ export interface Invocation {
    * Its absence preserves the contract of cards prepared before this feature.
    */
   model_evidence_required?: boolean
+  /**
+   * Workspace changes an operator directive already attributed. A worker
+   * reads these instead of auditing a delta no stage claims.
+   */
+  attributed_changes?: WorkspaceDirectiveRecord[]
   workspace_before: WorkspaceSnapshot
+  /**
+   * The harness root as it stood when this invocation was prepared, recorded
+   * only when the run's workspace is a different directory. The one place a
+   * run may not write is the only place the workspace snapshot cannot see, so
+   * the scope gate compares this baseline against the harness root at submit.
+   */
+  harness_before?: WorkspaceSnapshot
 }
 
 /** Which side of the delivery a contract section binds. */
@@ -1308,6 +1351,12 @@ export interface StageEntryGateRecord {
    * success transition.
    */
   routed_to?: string
+  /**
+   * Stage the last failure sent the run to for repair, whichever way that
+   * repair returns. A repair that returns through its own success path
+   * carries no `routed_to`, but still repairs from this gate's evidence.
+   */
+  repair_stage?: string
   /** Latest execution, pass or fail. */
   last_result: DeterministicResult
   /**
@@ -1483,6 +1532,8 @@ export interface RunAdvisory {
     | 'pipeline_config'
     | 'platform_guidance'
     | 'delegation_supervision'
+    /** A hard criterion a compatibility path passed without satisfying. */
+    | 'gate_bypass'
   source: 'prepare' | 'probe' | 'submit' | 'supervisor_evidence'
   stage?: string
   invocation_id?: string
@@ -1521,6 +1572,27 @@ export interface OperatorWorkspaceRatification {
   changed_paths: string[]
   deleted_paths: string[]
   note: string
+  artifact_path: string
+  timestamp: string
+}
+
+/**
+ * One operator directive executed against the workspace outside a stage.
+ *
+ * `OPERATOR-001` lets a supervisor execute an operator directive as a
+ * mechanical delegate. Without this record the resulting delta belongs to no
+ * stage, and every later worker audits a legitimate edit as contamination.
+ */
+export interface WorkspaceDirectiveRecord {
+  directive_id: string
+  /** Who performed the edit the operator directed. */
+  acting_role: 'supervisor' | 'operator'
+  /** The operator directive, in the operator's own terms. */
+  directive: string
+  /** Stage the run held when the directive was executed. */
+  stage: string
+  changed_paths: string[]
+  workspace_fingerprint: string
   artifact_path: string
   timestamp: string
 }
@@ -1730,6 +1802,17 @@ export type DeliveryHandoff =
       recorded_at: string
     }
 
+/** One worktree claim moved between two runs by waiver-based plan reuse. */
+export interface WorktreeClaimTransfer {
+  /** `released` on the subsumed run, `adopted` on the run that reused its plan. */
+  role: 'released' | 'adopted'
+  worktree: string
+  from_run_id: string
+  to_run_id: string
+  waiver_id: string
+  timestamp: string
+}
+
 export interface RunState {
   schema_version: 1 | 2
   run_id: string
@@ -1746,6 +1829,15 @@ export interface RunState {
   workspace_root: string
   /** Managed worktree identity selected when this run started. */
   managed_worktree?: ManagedWorktreeReference
+  /**
+   * Waiver-based plan reuse moved this run's worktree claim, or gave it one.
+   *
+   * Occupancy is otherwise derived from liveness alone, so a run whose plan
+   * another run adopted under an operator waiver would hold its worktree
+   * until someone aborted it, and release preparation for the adopting run
+   * would refuse correctly for the wrong reason.
+   */
+  worktree_claim_transfer?: WorktreeClaimTransfer
   workspace_id?: string
   installation_root?: string
   state_root?: string
@@ -1844,6 +1936,8 @@ export interface RunState {
   pause_reason?: string | null
   operator_pause?: OperatorPauseContext | null
   operator_workspace_ratifications?: OperatorWorkspaceRatification[]
+  /** Operator directives executed against the workspace outside a stage. */
+  workspace_directives?: WorkspaceDirectiveRecord[]
   operator_gate_waivers?: OperatorGateWaiver[]
   last_decision_path?: string
   accepted_workspace_fingerprint?: string | null
@@ -1905,7 +1999,7 @@ export interface WorkspaceSetupRecord {
   status: 'passed' | 'failed' | 'not_configured'
   recorded_at: string
   /** Present when the pass was inferred from evidence rather than run. */
-  inferred_from?: 'repository_check_baselines'
+  inferred_from?: 'repository_check_baselines' | 'worktree_readiness'
 }
 
 /** Run-state record of the supervisor governance card and its attestation. */

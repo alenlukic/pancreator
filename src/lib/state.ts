@@ -249,12 +249,28 @@ export function liveRunsBoundToWorktree(
 ): RunState[] {
   const recordPath = record ? path.resolve(root, record.path) : null
   const bound = (state: RunState): boolean =>
-    state.managed_worktree?.name === worktreeName ||
-    (recordPath !== null &&
-      path.resolve(root, state.workspace_root) === recordPath)
+    (state.managed_worktree?.name === worktreeName ||
+      (recordPath !== null &&
+        path.resolve(root, state.workspace_root) === recordPath)) &&
+    !claimTransferredAway(state, worktreeName)
 
   return listRunStatesWhere(root, bound).filter(
     (state) => runIsLive(state) && bound(state),
+  )
+}
+
+/**
+ * Whether waiver-based plan reuse moved this run's claim on the worktree to
+ * another run. Occupancy is judged here rather than in a second scan, so
+ * `liveRunsBoundToWorktree` stays the single definition.
+ */
+function claimTransferredAway(state: RunState, worktreeName: string): boolean {
+  const transfer = state.worktree_claim_transfer
+
+  return (
+    transfer?.role === 'released' &&
+    transfer.worktree === worktreeName &&
+    transfer.from_run_id === state.run_id
   )
 }
 

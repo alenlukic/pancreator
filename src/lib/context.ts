@@ -369,8 +369,9 @@ function selectStageOutputs(
  */
 /**
  * When another stage's entry gate failed and routed the run here, the failed
- * gate's evidence is the input this stage repairs from (REMED-001). The stage
- * returns to that gate on success, so the evidence is required reading.
+ * gate's evidence is the input this stage repairs from (REMED-001). The run
+ * returns to that gate on success, directly or along this stage's own success
+ * path, so the evidence is required reading either way.
  */
 function selectEntryGateFailureEvidence(
   references: Map<string, InvocationReference>,
@@ -382,7 +383,7 @@ function selectEntryGateFailureEvidence(
     options.state.entry_gates ?? {},
   )) {
     if (
-      record.routed_to !== stage.slug ||
+      record.repair_stage !== stage.slug ||
       record.last_result.passed ||
       record.last_result.disabled
     ) {
@@ -390,11 +391,14 @@ function selectEntryGateFailureEvidence(
     }
 
     const result = record.last_result
+    const route =
+      record.routed_to === stage.slug
+        ? `returns directly to '${gateStage}'`
+        : `returns to '${gateStage}' along its own success path`
     const description =
       `Failed release gate \`${result.id}\` of stage '${gateStage}' ` +
       `(failure ${record.failures}). This stage repairs the recorded ` +
-      `failure and returns directly to '${gateStage}', which runs the ` +
-      'gate again.'
+      `failure and ${route}, which runs the gate again.`
 
     if (!result.evidence_path) {
       continue

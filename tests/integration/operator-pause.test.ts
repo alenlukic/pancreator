@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
-import { writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -193,4 +194,198 @@ test('harness pause resume still restarts at prepare_invocation', () => {
   assert.equal(resumed.status, 'running')
   assert.equal(resumed.current_stage, 'implement')
   assert.equal(resumed.pending_action.type, 'prepare_invocation')
+})
+
+test('a note too large for argv is refused, and --note-file carries it', () => {
+  const { root, runId } = checkpoint(
+    'delivery-candidate@plan-awaiting-supervisor',
+  )
+  const cli = path.join(process.cwd(), 'dist', 'src', 'cli.js')
+  const run = (args: string[]) =>
+    spawnSync(process.execPath, [cli, ...args], {
+      cwd: root,
+      encoding: 'utf8',
+      timeout: 120_000,
+    })
+
+  // The kill this refusal replaces lands at exec, before anything prints, so
+  // the operator saw a silent failure and an unchanged run. The note sits
+  // just over the harness bound: the byte count the endpoint kill fires at
+  // varies with the spawning environment, and a value chosen closer to it
+  // was killed under the test runner while surviving a plain shell.
+  const oversized = run(['pause', runId, '--note', 'x'.repeat(901)])
+  const oversizedOutput = `${oversized.stdout}${oversized.stderr}`
+
+  assert.notEqual(oversized.status, 0)
+  assert.match(oversizedOutput, /ARGV_ELEMENT_TOO_LARGE|argv limit/u)
+  assert.match(oversizedOutput, /--note-file/u)
+  assert.equal(getRunState(root, runId).status, 'awaiting_supervisor')
+
+  const packet = `Full decision packet.\n${'detail '.repeat(300)}`
+  const notePath = path.join('runtime', 'tmp', 'operator-note.md')
+
+  mkdirSync(path.dirname(path.join(root, notePath)), { recursive: true })
+  writeFileSync(path.join(root, notePath), packet)
+
+  const paused = run(['pause', runId, '--note-file', notePath, '--json'])
+
+  assert.equal(paused.status, 0, paused.stderr)
+  assert.equal(getRunState(root, runId).pause_reason, packet.trim())
+
+  // The two options name one note, so supplying both is a caller error.
+  const both = run([
+    'pause',
+    runId,
+    '--note',
+    'inline',
+    '--note-file',
+    notePath,
+  ])
+
+  assert.notEqual(both.status, 0)
+  assert.match(`${both.stdout}${both.stderr}`, /--note and --note-file/u)
+
+  const missing = run([
+    'resume',
+    runId,
+    '--note-file',
+    'runtime/tmp/absent-note.md',
+  ])
+
+  assert.notEqual(missing.status, 0)
+  assert.match(
+    `${missing.stdout}${missing.stderr}`,
+    /NOTE_FILE_NOT_FOUND|absent-note\.md/u,
+  )
+
+  // The refusal is a byte check on argv, so it lands before the run lookup.
+  // An unknown run must not turn the silent kill into a silent not-found.
+  const unknownRun = run(['pause', 'no-such-run', '--note', 'x'.repeat(901)])
+  const unknownRunOutput = `${unknownRun.stdout}${unknownRun.stderr}`
+
+  assert.equal(unknownRun.status, 1)
+  assert.equal(unknownRun.signal, null)
+  assert.match(unknownRunOutput, /ARGV_ELEMENT_TOO_LARGE/u)
+  assert.doesNotMatch(unknownRunOutput, /RUN_NOT_FOUND/u)
+
+  const shortUnknown = run(['pause', 'no-such-run', '--note', 'short'])
+
+  assert.match(`${shortUnknown.stdout}${shortUnknown.stderr}`, /RUN_NOT_FOUND/u)
+})
+
+/** Every durable record of one run, concatenated. */
+function recordedText(runDirectory: string): string {
+  return readdirSync(runDirectory, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) =>
+      readFileSync(path.join(entry.parentPath, entry.name), 'utf8'),
+    )
+    .join('\n')
+}
+
+test('every note-taking lifecycle command reads its note from a file', () => {
+  const cli = path.join(process.cwd(), 'dist', 'src', 'cli.js')
+  const run = (root: string, args: string[]) =>
+    spawnSync(process.execPath, [cli, ...args], {
+      cwd: root,
+      encoding: 'utf8',
+      timeout: 120_000,
+    })
+  const noteFile = (root: string, name: string, body: string): string => {
+    const relative = path.join('runtime', 'tmp', name)
+
+    mkdirSync(path.dirname(path.join(root, relative)), { recursive: true })
+    writeFileSync(path.join(root, relative), body)
+
+    return relative
+  }
+  // `pan pause` is proven above. These are the four call sites that share
+  // the same option helper and that no case exercised.
+  const decision = checkpoint('planning@plan-awaiting-operator')
+  const decideNote = `Ratified with conditions.\n${'clause '.repeat(200)}`
+  const decided = run(decision.root, [
+    'decide',
+    decision.runId,
+    'approve',
+    '--note-file',
+    noteFile(decision.root, 'decide-note.md', decideNote),
+    '--json',
+  ])
+
+  assert.equal(decided.status, 0, decided.stderr)
+  assert.match(
+    readFileSync(
+      path.join(
+        decision.root,
+        'runtime/logs/workflows',
+        decision.runId,
+        'agent/events.jsonl',
+      ),
+      'utf8',
+    ),
+    /Ratified with conditions/u,
+  )
+
+  const lifecycle = checkpoint('delivery@implement-prepared')
+  const paused = run(lifecycle.root, [
+    'pause',
+    lifecycle.runId,
+    '--note',
+    'Hold for the operator.',
+    '--json',
+  ])
+
+  assert.equal(paused.status, 0, paused.stderr)
+
+  const resumeNote = `Resume after the dependency landed.\n${'why '.repeat(200)}`
+  const resumed = run(lifecycle.root, [
+    'resume',
+    lifecycle.runId,
+    '--note-file',
+    noteFile(lifecycle.root, 'resume-note.md', resumeNote),
+    '--json',
+  ])
+
+  assert.equal(resumed.status, 0, resumed.stderr)
+
+  const stageNote = `Reopen implementation.\n${'reason '.repeat(200)}`
+  const staged = run(lifecycle.root, [
+    'set-stage',
+    lifecycle.runId,
+    '--stage',
+    'implement',
+    '--note-file',
+    noteFile(lifecycle.root, 'stage-note.md', stageNote),
+    '--json',
+  ])
+
+  assert.equal(staged.status, 0, staged.stderr)
+
+  const waiverNote = `Operator directive for the bounded miss.\n${'term '.repeat(200)}`
+  const waived = run(lifecycle.root, [
+    'waive-gate',
+    lifecycle.runId,
+    '--note-file',
+    noteFile(lifecycle.root, 'waiver-note.md', waiverNote),
+    '--json',
+  ])
+
+  assert.equal(waived.status, 0, waived.stderr)
+
+  const records = recordedText(
+    path.join(lifecycle.root, 'runtime/logs/workflows', lifecycle.runId),
+  )
+
+  for (const marker of [
+    'Resume after the dependency landed',
+    'Reopen implementation',
+    'Operator directive for the bounded miss',
+  ]) {
+    assert.ok(records.includes(marker), `no record carries '${marker}'`)
+  }
+
+  const state = getRunState(lifecycle.root, lifecycle.runId)
+  const waiver = state.operator_gate_waivers?.at(-1)
+
+  assert.equal(waiver?.note, waiverNote.trim())
 })

@@ -288,11 +288,36 @@ export function clearStaleOperationMutex(mutexPath: string): boolean {
   return true
 }
 
-export function withOperationMutex<T>(mutexPath: string, callback: () => T): T {
+/** The mutex is synchronous, so a waiting caller has no event loop to yield to. */
+const MUTEX_SLEEP_SIGNAL = new Int32Array(new SharedArrayBuffer(4))
+
+const MUTEX_POLL_MS = 20
+
+export interface OperationMutexOptions {
+  /**
+   * How long to keep retrying a mutex a live process still holds.
+   *
+   * The default refuses immediately, because an operator command that waits
+   * on another command reads as a hang. A caller whose work would otherwise
+   * be lost — a detached probe that already paid for its live call — asks for
+   * a bounded wait so the contended write queues instead of failing.
+   */
+  readonly waitForHolderMs?: number
+}
+
+export function withOperationMutex<T>(
+  mutexPath: string,
+  callback: () => T,
+  options: OperationMutexOptions = {},
+): T {
   ensureDir(path.dirname(mutexPath))
 
   const candidatePath = `${mutexPath}.${process.pid}.${randomUUID()}.candidate`
+  const deadline = Date.now() + Math.max(options.waitForHolderMs ?? 0, 0)
   let acquired = false
+  // One clear per acquisition keeps two processes from clearing each other in
+  // a loop. A holder that dies later is recovered by the next caller.
+  let clearedStale = false
 
   writeFileSync(candidatePath, `${process.pid}\n`, {
     encoding: 'utf8',
@@ -300,15 +325,20 @@ export function withOperationMutex<T>(mutexPath: string, callback: () => T): T {
   })
 
   try {
-    for (let attempt = 0; attempt < 2; attempt += 1) {
+    while (!acquired) {
       try {
         // A hard link publishes the complete owner record atomically. Another
         // thread can never observe the empty file window from open-then-write.
         linkSync(candidatePath, mutexPath)
         acquired = true
-        break
       } catch (error) {
-        if (attempt === 0 && clearStaleOperationMutex(mutexPath)) {
+        if (!clearedStale && clearStaleOperationMutex(mutexPath)) {
+          clearedStale = true
+          continue
+        }
+
+        if (Date.now() < deadline) {
+          Atomics.wait(MUTEX_SLEEP_SIGNAL, 0, 0, MUTEX_POLL_MS)
           continue
         }
 

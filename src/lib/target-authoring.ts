@@ -152,6 +152,20 @@ function assertString(value: unknown, source: string): asserts value is string {
   )
 }
 
+/** Every key `library/schemas/target-authoring.schema.json` declares. */
+const DRAFT_KEYS = new Set([
+  'schema_version',
+  'extension_id',
+  'kind',
+  'title',
+  'summary',
+  'content',
+  'policy_persona',
+  'policies',
+  'model',
+  'expected_manifest_sha256',
+])
+
 function parseDraft(value: unknown, source: string): TargetAuthoringDraft {
   invariant(
     isRecord(value) && value.schema_version === 1,
@@ -215,6 +229,19 @@ function parseDraft(value: unknown, source: string): TargetAuthoringDraft {
       { code: 'INVALID_TARGET_AUTHORING_DRAFT' },
     )
   }
+
+  // The schema sets `additionalProperties: false`, and the parser accepted
+  // anything. A misspelled key then reached the extension as silence rather
+  // than as the rejection the author's schema promised.
+  const unknownKeys = Object.keys(value)
+    .filter((key) => !DRAFT_KEYS.has(key))
+    .sort()
+
+  invariant(
+    unknownKeys.length === 0,
+    `${source} contains unknown key(s): ${unknownKeys.join(', ')}.`,
+    { code: 'INVALID_TARGET_AUTHORING_DRAFT' },
+  )
 
   validateMarkdown(value.kind, value.extension_id, value.content)
 
@@ -656,12 +683,20 @@ function renderExcludeBlock(
   ].join('\n')
 }
 
-function updateTargetExclusions(root: string, workspace?: string): void {
-  const workspaceRoot = targetRoot(root, workspace)
-  const excludePath = gitExcludePath(workspaceRoot)
+interface TargetExclusionState {
+  path: string
+  previous: string
+  desired: string
+}
+
+function targetExclusionState(
+  root: string,
+  workspace?: string,
+): TargetExclusionState | null {
+  const excludePath = gitExcludePath(targetRoot(root, workspace))
 
   if (!excludePath) {
-    return
+    return null
   }
 
   const projections = listManifests(root)
@@ -670,9 +705,28 @@ function updateTargetExclusions(root: string, workspace?: string): void {
     )
     .sort()
   const previous = fileExists(excludePath) ? readText(excludePath) : ''
+  // A target that owns no projection and carries no block owns no
+  // exclusions. Rendering an empty block anyway reported a valid
+  // installation as stale over exclusions it had never written. A target
+  // whose last extension went away still carries a block, and that block
+  // is stale until the empty render removes it.
+  const desired =
+    projections.length === 0 && !previous.includes(EXCLUDE_BEGIN)
+      ? previous
+      : renderExcludeBlock(previous, projections)
 
-  ensureDir(path.dirname(excludePath))
-  writeTextAtomic(excludePath, renderExcludeBlock(previous, projections))
+  return { path: excludePath, previous, desired }
+}
+
+function updateTargetExclusions(root: string, workspace?: string): void {
+  const state = targetExclusionState(root, workspace)
+
+  if (!state || state.desired === state.previous) {
+    return
+  }
+
+  ensureDir(path.dirname(state.path))
+  writeTextAtomic(state.path, state.desired)
 }
 
 function samePublishedState(
@@ -705,6 +759,24 @@ function samePublishedState(
     ) {
       return false
     }
+  }
+
+  // The policy binding is part of the published state. Comparing only the
+  // manifest and the content reported `unchanged` for an extension whose
+  // binding was absent, so `pan author apply` declined to write it back.
+  const lookupPath = path.join(
+    root,
+    'governance',
+    'registries',
+    'policy_lookup.d',
+    `${manifest.extension_id}.json`,
+  )
+
+  if (
+    !fileExists(lookupPath) ||
+    sha256(readJson(lookupPath)) !== sha256(bindingFor(manifest))
+  ) {
+    return false
   }
 
   if (manifest.projection_path && projection) {
@@ -753,7 +825,11 @@ export function applyTargetAuthoringDraft(
     return resultFor(manifest, manifestDigest, 'unchanged')
   }
 
-  if (previous) {
+  // The staleness guard protects an author from overwriting an extension
+  // someone else changed. An identical manifest whose derived files went
+  // missing is a repair of the author's own published state, not a
+  // concurrent change, so it republishes without a fresh expectation.
+  if (previous && manifestDigest !== sha256(previous)) {
     invariant(
       draft.expected_manifest_sha256 === sha256(previous),
       `Target extension ${draft.extension_id} changed since the draft was prepared.`,
@@ -1001,20 +1077,9 @@ function validateTargetExclusions(
   errors: string[],
   workspace?: string,
 ): void {
-  const excludePath = gitExcludePath(targetRoot(root, workspace))
+  const state = targetExclusionState(root, workspace)
 
-  if (!excludePath) {
-    return
-  }
-
-  const projections = listManifests(root)
-    .flatMap((manifest) =>
-      manifest.projection_path ? [manifest.projection_path] : [],
-    )
-    .sort()
-  const previous = fileExists(excludePath) ? readText(excludePath) : ''
-
-  if (renderExcludeBlock(previous, projections) !== previous) {
+  if (state && state.desired !== state.previous) {
     errors.push('target extension clone-local exclusions are missing or stale')
   }
 }

@@ -1,11 +1,20 @@
 import assert from 'node:assert/strict'
+import path from 'node:path'
 import test from 'node:test'
 
-import { evaluateStateCriterion } from '../../src/lib/validation.js'
+import {
+  evaluateDeterministicCriteria,
+  evaluateStateCriterion,
+} from '../../src/lib/validation.js'
+import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
+import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
+import { createFixture } from '../fixture-template.js'
 import type {
   Criterion,
   RunState,
+  StageDefinition,
   StageHistoryItem,
+  StageOutput,
 } from '../../src/lib/types.js'
 
 const CRITERION: Criterion = {
@@ -177,4 +186,50 @@ test('ship gate does not infer a waiver from an operator resume note', () => {
   const result = evaluateStateCriterion(state, CRITERION, 'fp-current')
 
   assert.equal(result.passed, false)
+})
+
+// int-con HR-005: a self-development run without a managed worktree passes
+// the hard local-release criterion that a worktree-bound run must satisfy.
+// The operator kept the compatibility path, because removing it changes an
+// installation that predates managed worktrees, and asked for the bypass to
+// become visible in the record instead.
+test('a worktree-less self-development run records the criterion it bypassed', () => {
+  const root = createFixture()
+  const shipStage = stageBySlug(loadWorkflow(root, 'delivery'), 'ship')
+  const localReleaseStage: StageDefinition = {
+    ...shipStage,
+    criteria: shipStage.criteria.filter(
+      (criterion) => criterion.id === 'ship.local_release_complete',
+    ),
+  }
+  const snapshot = gitWorkspaceSnapshot(root)
+  const evaluated = evaluateDeterministicCriteria(
+    root,
+    path.join(root, 'runtime', 'gate-evidence'),
+    {
+      run_id: 'legacy',
+      workspace_root: root,
+      state_root: 'runtime',
+      stage_history: [],
+      gate_overrides: {},
+    } as unknown as RunState,
+    localReleaseStage,
+    snapshot,
+    root,
+    {},
+    'ship',
+    { data: { release: {} } } as unknown as StageOutput,
+    undefined,
+    null,
+    snapshot,
+  )
+  const result = evaluated.results.find(
+    (item) => item.id === 'ship.local_release_complete',
+  )
+
+  assert.ok(result)
+  assert.equal(result.passed, true, 'the compatibility path still passes')
+  assert.equal(evaluated.advisories.length, 1)
+  assert.match(evaluated.advisories[0] ?? '', /ship\.local_release_complete/u)
+  assert.match(evaluated.advisories[0] ?? '', /no\s+managed worktree/u)
 })

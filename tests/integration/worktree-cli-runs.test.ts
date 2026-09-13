@@ -181,6 +181,94 @@ test('workspace setup runs only for a worktree run whose workflow works in the t
   )
 })
 
+// The fixture template deletes the `worktrees` block so no fixture installs
+// real dependencies, so a case that wants the readiness branch has to
+// declare its own cheap setup and readiness paths.
+test('a worktree creation already provisioned is not provisioned twice', () => {
+  const root = createFixture()
+  const readinessPath = 'creation-provisioned'
+  const repositorySetupMarker = 'repository-setup-marker.txt'
+
+  writeJson(path.join(root, 'config_overrides.json'), {
+    marker: 'readiness',
+    worktrees: {
+      setup: [`node -e "require('node:fs').mkdirSync('${readinessPath}')"`],
+      readiness_paths: [readinessPath],
+    },
+  })
+  writeJson(path.join(root, 'runtime', 'repository-checks.json'), {
+    ...loadRepositoryChecks(root),
+    setup: [
+      `node -e "require('node:fs').writeFileSync('${repositorySetupMarker}', 'again')"`,
+    ],
+  })
+
+  const ready = createWorktreeRecord(root, 'ready-tree')
+
+  assert.equal(existsSync(path.join(root, ready.path, readinessPath)), true)
+
+  const readyRun = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    workspace: ready.path,
+    worktree: ready,
+    startStage: 'verify',
+  })
+
+  assert.equal(
+    prepareInvocation(root, readyRun.run_id).invocation?.stage.slug,
+    'verify',
+  )
+  assert.deepEqual(
+    {
+      status: loadState(root, readyRun.run_id).workspace_setup?.status,
+      inferred_from: loadState(root, readyRun.run_id).workspace_setup
+        ?.inferred_from,
+    },
+    { status: 'passed', inferred_from: 'worktree_readiness' },
+  )
+  // Creation already installed the tree, so the first prepare must not run
+  // the repository-check setup array over it again.
+  assert.equal(
+    existsSync(path.join(root, ready.path, repositorySetupMarker)),
+    false,
+  )
+
+  // Readiness is asserted, not assumed. A tree missing a declared path falls
+  // through and the first prepare provisions it.
+  const stripped = createWorktreeRecord(root, 'stripped-tree')
+
+  rmSync(path.join(root, stripped.path, readinessPath), {
+    recursive: true,
+    force: true,
+  })
+
+  const strippedRun = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    workspace: stripped.path,
+    worktree: stripped,
+    startStage: 'verify',
+  })
+
+  assert.equal(
+    prepareInvocation(root, strippedRun.run_id).invocation?.stage.slug,
+    'verify',
+  )
+  assert.deepEqual(
+    {
+      status: loadState(root, strippedRun.run_id).workspace_setup?.status,
+      inferred_from: loadState(root, strippedRun.run_id).workspace_setup
+        ?.inferred_from,
+    },
+    { status: 'passed', inferred_from: undefined },
+  )
+  assert.equal(
+    existsSync(path.join(root, stripped.path, repositorySetupMarker)),
+    true,
+  )
+})
+
 test('repository-check --worktree creates the worktree and runs inside it', () => {
   const root = createFixture()
 

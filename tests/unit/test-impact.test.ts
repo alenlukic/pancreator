@@ -447,8 +447,10 @@ test('runTestsImpacted --list --json reports the selection on a synthetic tree a
     const result = await runTestsImpacted(
       root,
       ['--list', '--json', '--file', 'src/lib/feature.ts'],
-      (text) => {
-        output += text
+      {
+        write: (text) => {
+          output += text
+        },
       },
     )
 
@@ -468,8 +470,10 @@ test('runTestsImpacted --list --json reports the selection on a synthetic tree a
 
     // A synthetic tree is not a Git repository, so the default change set is empty.
     let plain = ''
-    const nothing = await runTestsImpacted(root, [], (text) => {
-      plain += text
+    const nothing = await runTestsImpacted(root, [], {
+      write: (text) => {
+        plain += text
+      },
     })
     assert.equal(nothing.status, 'nothing_changed')
     assert.equal(nothing.exit_code, 0)
@@ -479,8 +483,10 @@ test('runTestsImpacted --list --json reports the selection on a synthetic tree a
     const none = await runTestsImpacted(
       root,
       ['--file', 'src/lib/lonely.ts', '--file', 'src/lib/types.ts'],
-      (text) => {
-        unreached += text
+      {
+        write: (text) => {
+          unreached += text
+        },
       },
     )
     assert.equal(none.status, 'no_tests_reached')
@@ -876,5 +882,91 @@ test('a changed source is reached when the changed test that imports it is selec
     assert.deepEqual(unrelated.unreached, ['src/lib/salutations/farewell.ts'])
   } finally {
     rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('a selected workspace is where the impact runs, and the default is unchanged', async () => {
+  const root = createSyntheticTree()
+  const workspace = createSyntheticTree()
+  // The two trees must differ, or a selection built from the installation
+  // root and one built from the workspace cannot be told apart.
+  const workspaceOnlyTest = 'tests/unit/workspace-only.test.ts'
+
+  writeFileSync(
+    path.join(workspace, workspaceOnlyTest),
+    `import { feature } from '../../src/lib/feature.js'\ntest(feature)\n`,
+  )
+
+  try {
+    // The option is consumed by the parser; the CLI resolves the name to a
+    // path and hands the resolved workspace in.
+    assert.deepEqual(
+      parseImpactArgs(['--worktree', 'chunk-one', '--list']).files,
+      [],
+    )
+
+    let selected = ''
+    const scoped = await runTestsImpacted(
+      workspace,
+      ['--list', '--json', '--file', 'src/lib/feature.ts'],
+      {
+        workspace,
+        write: (text) => {
+          selected += text
+        },
+      },
+    )
+
+    // The selected workspace is the installation root here, so its label is
+    // the root marker rather than a relative path.
+    assert.equal(scoped.workspace, '.')
+    assert.equal(scoped.status, 'listed')
+    assert.deepEqual(JSON.parse(selected).selected, [
+      'tests/integration/cli.test.ts',
+      'tests/integration/via-helper.test.ts',
+      'tests/unit/feature.test.ts',
+      workspaceOnlyTest,
+    ])
+
+    let text = ''
+    const labelled = await runTestsImpacted(
+      root,
+      ['--list', '--file', 'src/lib/feature.ts'],
+      {
+        workspace,
+        write: (chunk) => {
+          text += chunk
+        },
+      },
+    )
+
+    assert.match(text, /^Workspace: /mu)
+    // The selection, not the report label, is what proves where the graph
+    // was built: this test exists only in the selected workspace.
+    assert.ok(labelled.selected.includes(workspaceOnlyTest))
+
+    // Without the option the installation root stays the workspace and the
+    // text report says nothing about one.
+    let plain = ''
+    const defaulted = await runTestsImpacted(
+      root,
+      ['--list', '--file', 'src/lib/feature.ts'],
+      {
+        write: (chunk) => {
+          plain += chunk
+        },
+      },
+    )
+
+    assert.equal(defaulted.workspace, '.')
+    assert.doesNotMatch(plain, /^Workspace: /mu)
+    assert.deepEqual(defaulted.selected, [
+      'tests/integration/cli.test.ts',
+      'tests/integration/via-helper.test.ts',
+      'tests/unit/feature.test.ts',
+    ])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+    rmSync(workspace, { recursive: true, force: true })
   }
 })

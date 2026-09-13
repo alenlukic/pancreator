@@ -293,3 +293,39 @@ test('gate waivers can bypass an unattempted stage', () => {
   assert.equal(reopened.state.status, 'running')
   assert.equal(reopened.state.current_stage, 'ship')
 })
+
+test('an inferred waiver names the synthesized scope criterion', () => {
+  // A criterion the harness synthesizes is absent from the stage file, so
+  // blocker inference over the declared criteria alone returned nothing and
+  // the waiver silently widened to the whole stage.
+  const { root, workflow, runId, invocation } = checkpoint(
+    'delivery@verify-prepared',
+  )
+
+  assert.ok(invocation)
+
+  const output = makeOutput(root, invocation, stageBySlug(workflow, 'verify'))
+
+  writeJson(path.join(root, invocation.output.path), output)
+  writeCanonicalDelegation(root, invocation)
+  // The read-only verify stage sees an edit it cannot attribute.
+  writeFileSync(path.join(root, 'src', 'outside.ts'), 'export const x = 1\n')
+
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
+  const scope = submitted.record.evaluation.deterministic.find(
+    (result) => result.id === 'scope.no_unapproved_changes',
+  )
+
+  assert.equal(scope?.passed, false)
+  assert.equal(submitted.record.outcome, 'failure')
+
+  setRunStage(root, runId, 'verify', 'Return to the failed verify gate.')
+
+  const waived = waiveGate(root, runId, {
+    stageSlug: 'verify',
+    note: 'The operator inspected the stray file and accepts the workspace exactly as it stands.',
+  })
+
+  assert.deepEqual(waived.waiver.criterion_ids, ['scope.no_unapproved_changes'])
+  assert.notEqual(waived.waiver.whole_stage_bypass, true)
+})

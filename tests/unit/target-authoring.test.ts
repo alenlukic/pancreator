@@ -378,3 +378,46 @@ test('target authoring rejects manifest path escape attempts', () => {
     cleanupTargetFixture(fixture)
   }
 })
+
+// int-con HR-005: four declarations promised behavior the code beside them
+// did not give. Each case here is one of them.
+test('target authoring enforces the declarations its schema and callers state', () => {
+  const fixture = createTargetFixture()
+  const { root } = fixture
+
+  try {
+    // `library/schemas/target-authoring.schema.json` sets
+    // `additionalProperties: false`, and the parser accepted anything.
+    assert.throws(
+      () =>
+        applyDraft(root, {
+          ...commandDraft('acme-tool'),
+          notes: 'a key the schema does not declare',
+        }),
+      (error: unknown) =>
+        error instanceof PanError &&
+        error.code === 'INVALID_TARGET_AUTHORING_DRAFT' &&
+        /unknown key\(s\): notes/u.test(error.message),
+    )
+
+    // A valid target that declares no extension owns no exclusion block, and
+    // the comparison reported the absent block as stale.
+    assert.deepEqual(validateTargetAuthoring(root).errors, [])
+
+    const applied = applyDraft(root, commandDraft('acme-tool'))
+    const lookupPath = path.join(root, applied.lookup_path)
+
+    assert.equal(existsSync(lookupPath), true)
+
+    // The publish comparison read the manifest and the content only, so an
+    // absent policy binding still reported `unchanged`.
+    rmSync(lookupPath)
+
+    const republished = applyDraft(root, commandDraft('acme-tool'))
+
+    assert.equal(republished.status, 'applied')
+    assert.equal(existsSync(lookupPath), true)
+  } finally {
+    cleanupTargetFixture(fixture)
+  }
+})
