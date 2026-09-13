@@ -43,7 +43,8 @@ import type {
   RunState,
   RunStatus,
 } from '../../src/lib/types.js'
-import { createFixture, createRun, writeJson } from '../helpers.js'
+import { createFixture, writeJson } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 
 const COHORT_ID = '10000_Sep-02-0000_cohort-fix'
 

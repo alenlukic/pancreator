@@ -9,7 +9,8 @@ import {
   readEvidenceReportState,
   renderEvidenceWorkerBrief,
 } from '../../src/lib/render.js'
-import { createFixture, createRun } from '../helpers.js'
+import { createFixture } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 
 /** One case block, as the brief's contract tells a worker to append it. */
 function caseBlock(id: string, result: string): string {

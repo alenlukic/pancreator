@@ -975,6 +975,12 @@ export function recordAgentRepositoryCheckForRuns(
    * that does not name its own log sends a reader to the wrong bytes.
    */
   evidenceLog: string | null = null,
+  /**
+   * The worker asked for this repeat by name over a reusable recorded pass.
+   * Deduplication makes an ordinary repeat invisible in the ledger, so a
+   * repeat that did execute has to say that someone chose it.
+   */
+  forcedRepeat = false,
 ): string[] {
   const recorded: string[] = []
   let fingerprint: string | null = null
@@ -995,11 +1001,92 @@ export function recordAgentRepositoryCheckForRuns(
       started_at: startedAt,
       invoked_by: initiator,
       ...(evidenceLog ? { evidence_log: evidenceLog } : {}),
+      ...(forcedRepeat ? { forced_repeat: true } : {}),
     })
     recorded.push(evidence.relative)
   }
 
   return recorded
+}
+
+/** A recorded passing execution that answers a repeated request for a profile. */
+export interface ReusableProfileExecution {
+  profile: string
+  invocation_id: string | null
+  workspace_fingerprint: string
+  started_at: string
+  invoked_by: RepositoryCheckInitiator
+  /** Captured output of that execution, when it stored a clean pass. */
+  evidence_log: string | null
+  /** Ledger the entry was read from, so the caller can cite its source. */
+  ledger_path: string
+}
+
+/**
+ * The recorded pass a repeated run-bound profile request reuses, or `null`
+ * when the request has to execute (`DEV-001`).
+ *
+ * A ledger entry answers a later request only when nothing it describes has
+ * moved: the same profile, under the same invocation, at the same Git
+ * workspace fingerprint, and passing. A failure has to re-run to show its
+ * repair, and any other fingerprint describes a different tree.
+ */
+export function reusableProfileExecution(
+  root: string,
+  runId: string,
+  invocationId: string | null,
+  profileName: string,
+  fingerprint: string,
+): ReusableProfileExecution | null {
+  const evidence = resolveRunLayout(root, runId).evidence(
+    AGENT_REPOSITORY_CHECK_RUNS_FILE,
+  )
+
+  if (!fileExists(evidence.absolute)) {
+    return null
+  }
+
+  let reusable: ReusableProfileExecution | null = null
+
+  for (const line of readText(evidence.absolute).split('\n')) {
+    if (line.trim().length === 0) {
+      continue
+    }
+
+    let record: unknown
+
+    try {
+      record = JSON.parse(line)
+    } catch {
+      continue
+    }
+
+    if (
+      !isRecord(record) ||
+      record.profile !== profileName ||
+      record.status !== 'passed' ||
+      record.workspace_fingerprint !== fingerprint ||
+      (record.invocation_id ?? null) !== invocationId
+    ) {
+      continue
+    }
+
+    // The newest matching entry wins: its evidence log is the one a reader
+    // sent to these bytes should land on.
+    reusable = {
+      profile: profileName,
+      invocation_id: invocationId,
+      workspace_fingerprint: fingerprint,
+      started_at:
+        typeof record.started_at === 'string' ? record.started_at : '',
+      invoked_by: record.invoked_by === 'harness' ? 'harness' : 'agent',
+      evidence_log:
+        typeof record.evidence_log === 'string' ? record.evidence_log : null,
+      ledger_path: evidence.relative,
+    }
+  }
+
+  return reusable
 }
 
 /**

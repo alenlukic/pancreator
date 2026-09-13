@@ -19,7 +19,8 @@ import {
   readAgentRegistry,
   tickHypervisor,
 } from '../../src/lib/hypervisor.js'
-import { createFixture, createRun } from '../helpers.js'
+import { createFixture } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 
 const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
 

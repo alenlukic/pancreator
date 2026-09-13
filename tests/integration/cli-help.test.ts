@@ -21,9 +21,9 @@ import type { RunModelEvidence } from '../../src/lib/types.js'
 import {
   attestRunCard,
   createFixture,
-  createRun,
   writeFixtureCursorCatalog,
 } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 
 const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
 

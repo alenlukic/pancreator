@@ -1,5 +1,10 @@
 import path from 'node:path'
 
+import {
+  AGENT_PROFILE_EXECUTION_ALLOWANCE,
+  agentRecordedProfilePasses,
+} from './agent-ledger-evidence.js'
+import type { AgentRecordedProfilePass } from './agent-ledger-evidence.js'
 import { invariant } from './errors.js'
 import { snapshotEntryPath } from './git.js'
 import {
@@ -18,11 +23,13 @@ import { loadState, statePath } from './state.js'
 import { resolveTargetInstructionPaths } from './target-instructions.js'
 import { activeOperatorGateWaivers } from './waivers.js'
 import type {
+  CarriedCaseScope,
   ContextReference,
   ContextReferenceStatus,
   Invocation,
   InvocationReference,
   InvocationReferenceRetrieval,
+  OperatorStageRepairContext,
   PrDescriptionContext,
   PriorAttemptFailure,
   RunState,
@@ -755,10 +762,19 @@ function gateEvidenceDescription(
 
 /**
  * The latest passed run of each repository-check profile, from stage-history
- * gates first and pre-implementation baselines second. A skipped, disabled, or
- * failed gate is not evidence.
+ * gates first, pre-implementation baselines second, and the agent-run ledger
+ * third. A skipped, disabled, or failed gate is not evidence.
+ *
+ * A ledger pass is read last but outranks evidence taken at another
+ * fingerprint (`HR3-008`): a worker of this run already paid for that profile
+ * against the workspace the card is judging, so reporting a gap there would
+ * send the next worker to buy the same execution again.
  */
-export function passedGateEvidence(state: RunState): PassedGateEvidence[] {
+export function passedGateEvidence(
+  state: RunState,
+  agentPasses: AgentRecordedProfilePass[] = [],
+  workspaceFingerprint: string | null = null,
+): PassedGateEvidence[] {
   const byProfile = new Map<string, PassedGateEvidence>()
 
   for (const item of state.stage_history) {
@@ -804,11 +820,37 @@ export function passedGateEvidence(state: RunState): PassedGateEvidence[] {
     }
   }
 
+  for (const pass of agentPasses) {
+    const held = byProfile.get(pass.profile)
+
+    if (
+      held &&
+      (workspaceFingerprint === null ||
+        held.fingerprint === workspaceFingerprint ||
+        pass.fingerprint !== workspaceFingerprint)
+    ) {
+      continue
+    }
+
+    byProfile.set(pass.profile, {
+      profile: pass.profile,
+      evidencePath: pass.evidencePath,
+      fingerprint: pass.fingerprint,
+      origin:
+        `agent-recorded pass${pass.invocationId ? ` for invocation \`${pass.invocationId}\`` : ''} ` +
+        `(${pass.ledgerPath})`,
+      acceptanceMode: 'clean_pass',
+      rawExitCode: 0,
+      preexistingFailure: false,
+    })
+  }
+
   return [...byProfile.values()]
 }
 
 function selectGateEvidence(
   references: Map<string, InvocationReference>,
+  root: string,
   state: RunState,
   stage: StageDefinition,
   workspaceFingerprint: string,
@@ -817,7 +859,13 @@ function selectGateEvidence(
     return
   }
 
-  for (const evidence of passedGateEvidence(state)) {
+  const agentPasses = agentRecordedProfilePasses(root, state.run_id)
+
+  for (const evidence of passedGateEvidence(
+    state,
+    agentPasses,
+    workspaceFingerprint,
+  )) {
     const current = evidence.fingerprint === workspaceFingerprint
 
     // A superseded artifact stays listed, but its condition denies citation.
@@ -825,20 +873,18 @@ function selectGateEvidence(
       path: evidence.evidencePath,
       description: gateEvidenceDescription(evidence, current),
       retrieval: 'conditional',
+      // Both branches close with the same allowance sentence, so the card
+      // states one rule about agent-side execution however the evidence fell.
       condition: current
         ? `Cite this evidence in \`data.verify.gate_evidence_citations\` with ` +
           `profile \`${evidence.profile}\`, fingerprint \`${evidence.fingerprint}\`, ` +
           'and this path. Read the evidence to confirm what the gate ' +
-          'covered. The verifier does not run this profile. An evidence ' +
-          'worker iterates on the impacted profile plus the tests the ' +
-          'change added, may run the fast profile once as the final ' +
-          'validation of its own evidence, and never runs the full profile.'
+          'covered. The verifier does not run this profile. ' +
+          AGENT_PROFILE_EXECUTION_ALLOWANCE
         : `This evidence predates the current workspace fingerprint ` +
-          `\`${workspaceFingerprint}\`. Do not cite it as current. Do not ` +
-          `run the \`${evidence.profile}\` profile yourself. The harness ` +
-          'runs the interior gate profiles at submission and the full ' +
-          'profile only as the ship release gate. Record the gap in your ' +
-          'verify output.',
+          `\`${workspaceFingerprint}\`. Do not cite it as current. Record ` +
+          'the gap in your verify output. ' +
+          AGENT_PROFILE_EXECUTION_ALLOWANCE,
       gate_evidence: {
         profile: evidence.profile,
         fingerprint: evidence.fingerprint,
@@ -849,6 +895,52 @@ function selectGateEvidence(
       },
     })
   }
+}
+
+/**
+ * What a returning verification must execute again, and what it may carry
+ * (`VERIFY-001`).
+ *
+ * A second visit to a stage that reads gate evidence follows a remediation
+ * that changed a bounded set of paths. Every case outside that set observed
+ * the same behavior against the same code, so re-executing it buys nothing.
+ * The scope is absent on the first visit, and absent when the remediation
+ * declared no changed path, because then nothing bounds the radius.
+ */
+function carriedCaseScope(
+  root: string,
+  state: RunState,
+  stage: StageDefinition,
+): CarriedCaseScope | undefined {
+  if (!stage.context.gate_evidence) {
+    return undefined
+  }
+
+  const priorVisit = state.stage_history.findIndex(
+    (item) => item.stage === stage.slug && item.outcome !== 'blocked',
+  )
+
+  if (priorVisit === -1) {
+    return undefined
+  }
+
+  const remediation = [...state.stage_history]
+    .slice(priorVisit + 1)
+    .reverse()
+    .find((item) => item.stage === 'remediate' && item.outcome === 'success')
+
+  if (!remediation) {
+    return undefined
+  }
+
+  const blastRadius = outputChangedPaths(root, state, 'remediate')
+
+  return blastRadius.length > 0
+    ? {
+        remediation_invocation_id: remediation.invocation_id,
+        blast_radius: blastRadius,
+      }
+    : undefined
 }
 
 function outputChangedPaths(
@@ -967,6 +1059,51 @@ function writeContextManifest(
  * Summarize the most recent failed attempt of `stage` for inline rendering on the
  * retry card. Returns null when the previous attempt succeeded or none exists.
  */
+/**
+ * The operator stage-repair note that explains why this attempt exists, when
+ * it is newer than every recorded attempt of the stage.
+ *
+ * `HR3-014`: `summarizePriorFailure` reads the stage's own history, so an
+ * operator return to an earlier stage resolved no reason at all. The card
+ * then left the superseded output of the stage the run came from as the only
+ * failure-shaped context, and a worker read a verdict about work the operator
+ * had already moved past. The repair note is the operator's own statement of
+ * the reason, so it is the truthful one.
+ */
+export function operatorStageRepairContext(
+  state: RunState,
+  stage: StageDefinition,
+): OperatorStageRepairContext | null {
+  const repair = [...(state.operator_feedback ?? [])]
+    .reverse()
+    .find(
+      (item) => item.decision === 'set-stage' && item.to_stage === stage.slug,
+    )
+
+  if (!repair) {
+    return null
+  }
+
+  const recorded = [...state.stage_history]
+    .reverse()
+    .find((item) => item.stage === stage.slug)
+
+  // An attempt of this stage recorded after the repair is the newer reason,
+  // and the retry contract already carries it.
+  if (recorded && recorded.submitted_at > repair.timestamp) {
+    return null
+  }
+
+  return {
+    from_stage: repair.from_stage,
+    to_stage: repair.to_stage,
+    actor: repair.source ?? 'operator',
+    note: repair.note,
+    path: repair.path,
+    recorded_at: repair.timestamp,
+  }
+}
+
 export function summarizePriorFailure(
   state: RunState,
   stage: StageDefinition,
@@ -1159,7 +1296,13 @@ export function buildInvocationInputs(
   selectPriorAttempts(references, options.root, state, stage, options.attempt)
   selectOperatorFeedback(references, state, stage)
   selectExceptions(references, state, stage, options.workspaceFingerprint)
-  selectGateEvidence(references, state, stage, options.workspaceFingerprint)
+  selectGateEvidence(
+    references,
+    options.root,
+    state,
+    stage,
+    options.workspaceFingerprint,
+  )
   const targetInstructions = targetInstructionInput(options)
 
   for (const instructionPath of targetInstructions?.read_paths ?? []) {
@@ -1239,11 +1382,14 @@ export function buildInvocationInputs(
     addReference(references, manifestReference)
   }
 
+  const caseScope = carriedCaseScope(options.root, state, stage)
+
   return {
     references: [...references.values()],
     ...(missingRequired.length > 0
       ? { missing_required: missingRequired }
       : {}),
+    ...(caseScope ? { carried_case_scope: caseScope } : {}),
     ...(targetInstructions ? { target_instructions: targetInstructions } : {}),
     ...(options.prDescription ? { pr_description: options.prDescription } : {}),
     ...(contextReference && contextReferenceInspection

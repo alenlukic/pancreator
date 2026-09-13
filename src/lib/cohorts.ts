@@ -125,7 +125,14 @@ export interface CohortStatusView {
   blocking_predecessor_index: number | null
   chunks: CohortChunkView[]
   satisfied_cohort_indexes: number[]
+  /** Merge command for the active cohort, or null when it has nothing to merge. */
   integrate_command: string | null
+  /**
+   * Command that records the satisfaction of an active cohort whose every
+   * chunk the operator abandoned. Nothing merges, so the session offers this
+   * instead of an integration it cannot perform.
+   */
+  record_abandoned_cohort_command: string | null
   start_command: string | null
   /** Concurrent chunk runs the session allows. */
   max_parallel: number
@@ -1215,10 +1222,17 @@ export function cohortStatus(root: string, cohortId: string): CohortStatusView {
       resume_command: chunk.run_id ? `/pan-resume ${chunk.run_id}` : null,
     }
   })
-  const readyToIntegrate =
+  const readyToAdvance =
     activeIndex !== null &&
     cohortRunsSucceeded(root, state, activeIndex) &&
     !state.satisfaction.some((entry) => entry.cohort_index === activeIndex)
+  // HR3-010: a cohort the operator abandoned whole has no branch to merge, so
+  // offering an integration describes work that cannot happen. The command
+  // that does apply records the abandonment and unblocks the next cohort.
+  const nothingToMerge =
+    activeIndex !== null &&
+    chunksOfCohort(state, activeIndex).every((chunk) => chunk.abandoned)
+  const readyToIntegrate = readyToAdvance && !nothingToMerge
   const maxParallel = cohortMaxParallel(state)
   const live =
     activeIndex === null ? 0 : liveChunkRuns(root, state, activeIndex)
@@ -1241,6 +1255,10 @@ export function cohortStatus(root: string, cohortId: string): CohortStatusView {
     integrate_command: readyToIntegrate
       ? `${pan} cohort integrate ${cohortId}`
       : null,
+    record_abandoned_cohort_command:
+      readyToAdvance && nothingToMerge
+        ? `${pan} cohort integrate ${cohortId}`
+        : null,
     start_command:
       activeIndex !== null &&
       unstartedChunksOfCohort(state, activeIndex).length > 0 &&
@@ -1823,9 +1841,23 @@ export function abandonChunk(
   })
 }
 
+/** A worktree discarded with uncommitted work on a recorded abandonment. */
+export interface AbandonedChunkDiscard {
+  chunk: string
+  worktree: string
+  /** The note the operator gave when abandoning the chunk. */
+  note: string
+}
+
 export interface CleanCohortResult {
   cohort_id: string
   removed_worktrees: string[]
+  /**
+   * Chunks whose uncommitted work was discarded because the operator had
+   * already recorded the chunk as abandoned. Present so the result says why
+   * a dirty worktree went without `--force`.
+   */
+  discarded_abandoned_chunks: AbandonedChunkDiscard[]
 }
 
 /**
@@ -1836,6 +1868,12 @@ export interface CleanCohortResult {
  * refused unless the operator forces it. Every chunk is checked before any
  * worktree is removed, so a refusal on one chunk leaves the session intact
  * rather than half-cleaned.
+ *
+ * `HR3-011`: a recorded abandonment stands in for `--force` on the dirty
+ * refusal alone. Abandoning a chunk is already the operator saying its work
+ * is dropped, so demanding the flag again asks the same question twice. The
+ * run-active refusal is untouched: abandoning a chunk does not stop the
+ * agent still writing into its workspace.
  */
 export function cleanCohortSession(
   root: string,
@@ -1845,6 +1883,8 @@ export function cleanCohortSession(
   return withCohortSession(root, cohortId, (state) => {
     const index = readWorktreeIndex(root)
     const removable: string[] = []
+    const forced = new Set<string>()
+    const discardedAbandoned: AbandonedChunkDiscard[] = []
 
     for (const chunk of state.chunks) {
       const record = index.worktrees.find(
@@ -1864,22 +1904,45 @@ export function cleanCohortSession(
           'Finish or abort the run first, or pass --force to discard it.',
         { code: 'COHORT_RUN_ACTIVE' },
       )
+
+      const dirty = gitWorktreeIsDirty(resolveInside(root, record.path))
+
       invariant(
-        options.force || !gitWorktreeIsDirty(resolveInside(root, record.path)),
+        options.force || chunk.abandoned || !dirty,
         `WARNING: chunk '${chunk.id}' has uncommitted work in ` +
           `${record.path}. Removing it discards that work. Pass --force to ` +
           'remove it anyway.',
         { code: 'COHORT_WORKTREE_DIRTY' },
       )
 
+      if (dirty) {
+        forced.add(record.name)
+      }
+
+      if (dirty && chunk.abandoned && !options.force) {
+        discardedAbandoned.push({
+          chunk: chunk.id,
+          worktree: record.name,
+          note: chunk.abandoned.note,
+        })
+      }
+
       removable.push(record.name)
     }
 
     for (const name of removable) {
-      removeWorktree(root, name, { force: options.force ?? false })
+      // Git refuses to remove a worktree that still holds changes, so an
+      // exempted discard has to carry the force the exemption granted.
+      removeWorktree(root, name, {
+        force: options.force === true || forced.has(name),
+      })
     }
 
-    return { cohort_id: cohortId, removed_worktrees: removable.sort() }
+    return {
+      cohort_id: cohortId,
+      removed_worktrees: removable.sort(),
+      discarded_abandoned_chunks: discardedAbandoned,
+    }
   })
 }
 

@@ -113,18 +113,28 @@ export function resolveSupervisorPolicies(
 }
 
 /**
- * The policy blocks one re-render changed, added, or removed.
+ * The policy blocks changed, added, or removed since the supervisor last read
+ * the card.
  *
  * A mid-run policy edit changes the card digest and so invalidates the
  * attestation. Re-reading the whole card to find the delta cost the
  * supervisor more than the edit did, so the harness states the delta and the
  * supervisor confirms it.
+ *
+ * `HR3-016`: the delta is measured from the last attested render, not from
+ * the last render. Measuring from the previous render made a second edit
+ * before any re-attestation report only that second edit, and the first one
+ * silently left the supervisor's reading list. A render with no attestation
+ * behind it falls back to the previous render, which is all there is.
  */
 function policySectionDiff(
   previous: SupervisorCardState | undefined,
   sections: Array<{ policy_id: string; sha256: string }>,
 ): SupervisorCardPolicyDiff | null {
-  const before = previous?.policy_sections
+  const attested = previous?.attested_sha256
+    ? previous.attested_policy_sections
+    : undefined
+  const before = attested ?? previous?.policy_sections
 
   // A first render has no delta, and a card recorded before per-policy
   // digests existed has nothing to compare against.
@@ -140,7 +150,12 @@ function policySectionDiff(
   )
 
   return {
-    previous_sha256: previous.sha256,
+    // The digest the delta is measured from, which is the attested one
+    // whenever the supervisor has attested at all.
+    previous_sha256:
+      attested && previous.attested_sha256
+        ? previous.attested_sha256
+        : previous.sha256,
     changed: sections
       .filter(
         (section) =>
@@ -267,6 +282,13 @@ export function renderSupervisorCard(
         ...(previous?.attested_sha256
           ? {
               attested_sha256: previous.attested_sha256,
+              // The sections the supervisor last read stay on record, so the
+              // next delta is still measured from that reading.
+              ...(previous.attested_policy_sections
+                ? {
+                    attested_policy_sections: previous.attested_policy_sections,
+                  }
+                : {}),
               ...(previous.attested_at
                 ? { attested_at: previous.attested_at }
                 : {}),
@@ -316,6 +338,20 @@ export function redlineCommand(
  * commands differ only in the run id and the card digest. Emitting them from
  * the harness removes the reconstruction a supervisor performs by hand.
  */
+/**
+ * `HR3-013`: why the attest command precedes the redline command.
+ *
+ * Attesting the card opens the supervisor session generation the redline
+ * declaration must name, so a redline written first declares the previous
+ * generation and the next prepare or submit is refused. The refusal already
+ * named the order; a supervisor reading the bootstrap set had to discover it
+ * by being refused.
+ */
+export const REDLINE_FOLLOWS_ATTESTATION =
+  'Run redline_command after attest_command: the attestation opens the ' +
+  'supervisor session generation the redline declaration must name, so a ' +
+  'redline written first is not current for this session.'
+
 export interface SupervisorBootstrap {
   run_id: string
   card_path: string | null
@@ -326,6 +362,8 @@ export interface SupervisorBootstrap {
   governance_card_command: string
   attest_command: string
   redline_command: string
+  /** The ordering dependency between the two commands above, in words. */
+  redline_order: string
   model_evidence_command: string
 }
 
@@ -352,6 +390,7 @@ export function supervisorBootstrap(
       card?.sha256 ?? '<sha256>',
     ),
     redline_command: redlineCommand(root, state.run_id, occasion),
+    redline_order: REDLINE_FOLLOWS_ATTESTATION,
     model_evidence_command: supervisorModelEvidenceCommand(root, state.run_id),
   }
 }
@@ -550,6 +589,11 @@ export function attestSupervisorCard(
     // re-attestation of an unchanged digest on resume. The redline record must
     // then carry a declaration for that generation.
     card.attested_sha256 = card.sha256
+
+    if (card.policy_sections) {
+      card.attested_policy_sections = card.policy_sections
+    }
+
     card.attested_at = now()
     card.session_generation = (card.session_generation ?? 0) + 1
     persist(root, state, 'supervisor_card_attested', {

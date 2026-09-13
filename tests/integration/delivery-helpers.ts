@@ -31,13 +31,12 @@ import { loadWorkflowFile, stageBySlug } from '../../src/lib/workflow.js'
 import {
   cloneTree as cloneSharedTree,
   createFixture,
-  createRun,
   createTestTempDirectory,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
-  submitAsSupervisor,
 } from '../helpers.js'
+import { createRun, submitAsSupervisor } from '../run-helpers.js'
 
 export const PASS = `node -e "process.exit(0)"`
 

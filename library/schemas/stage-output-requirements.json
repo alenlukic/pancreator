@@ -195,6 +195,9 @@
             "data.verify.qa_cases[].expected",
             "data.verify.qa_cases[].actual",
             "data.verify.qa_cases[].result",
+            "data.verify.qa_cases[].carried_from",
+            "data.verify.qa_cases[].carried_from.invocation_id",
+            "data.verify.qa_cases[].carried_from.workspace_fingerprint",
             "data.verify.gate_evidence_citations[]",
             "data.verify.gate_evidence_citations[].profile",
             "data.verify.gate_evidence_citations[].fingerprint",
@@ -239,6 +242,22 @@
           "path": "data.verify.qa_cases[].steps",
           "type": "string",
           "format": "focused scenario steps; MUST NOT contain a configured repository-check profile command or 'pan repository-check <profile>', because the gate already ran that profile"
+        },
+        {
+          "path": "data.verify.qa_cases[].carried_from",
+          "type": "object",
+          "required": ["invocation_id", "workspace_fingerprint"],
+          "format": "optional; present only when the case result is carried from an earlier verification instead of executed again. A returning verification executes the cases in the remediation's blast radius and carries the rest with this citation"
+        },
+        {
+          "path": "data.verify.qa_cases[].carried_from.invocation_id",
+          "type": "string",
+          "format": "invocation id of the verification the carried result was recorded by"
+        },
+        {
+          "path": "data.verify.qa_cases[].carried_from.workspace_fingerprint",
+          "type": "string",
+          "format": "workspace fingerprint the carried result was observed at"
         },
         {
           "path": "data.verify.gate_evidence_citations[]",

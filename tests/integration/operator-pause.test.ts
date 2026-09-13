@@ -18,12 +18,11 @@ import { PanError } from '../../src/lib/errors.js'
 import { stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
-  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
-  submitAsSupervisor,
 } from '../helpers.js'
+import { createRun, submitAsSupervisor } from '../run-helpers.js'
 import { checkpoint } from './delivery-helpers.js'
 
 test('operator pause preserves supervisor gate and resume restores it', () => {

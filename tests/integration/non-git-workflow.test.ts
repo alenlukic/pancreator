@@ -12,12 +12,11 @@ import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { syncCursorProjection } from '../../src/lib/projection.js'
 import {
   createFixture,
-  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
-  submitAsSupervisor,
 } from '../helpers.js'
+import { createRun, submitAsSupervisor } from '../run-helpers.js'
 
 test('delivery workflow runs to completion without a Git repository', () => {
   const root = createFixture()

@@ -37,13 +37,12 @@ import { operationMutexPath, statePath } from '../../src/lib/state.js'
 import { stageBySlug, loadWorkflow } from '../../src/lib/workflow.js'
 import {
   createFixture,
-  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
-  submitAsSupervisor,
   writeFixtureCursorCatalog,
 } from '../helpers.js'
+import { createRun, submitAsSupervisor } from '../run-helpers.js'
 import { installClaudeCodeFixture, withStub } from './delivery-helpers.js'
 
 function withFakeCursorAgent<T>(

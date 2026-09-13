@@ -194,6 +194,7 @@ import {
   recordProfileGatePass,
   repositoryCheckWorkspaceRoot,
   repositoryChecksSourcePath,
+  reusableProfileExecution,
   runRepositoryCheckStreaming,
 } from './lib/repository-checks.js'
 import { TEST_PROFILE_ENV } from './lib/suite-profile.js'
@@ -292,10 +293,11 @@ export const HELP_BODY = `Usage:
   pan away status|evaluate|apply <run-id> [--decision <id>] [--action <action>] [--json]
       --action names the action the apply must take. It is honored when it matches the recorded recommendation and refused with AWAY_ACTION_REFUSED when it does not, so an apply never substitutes a different action. An option the subcommand does not accept is refused with UNKNOWN_OPTION rather than ignored.
   pan technologies detect [--worktree <name>] --json
-  pan repository-check <profile> [--timeout-ms <milliseconds>] [--workspace <dir|worktree> | --worktree <name>] [--run <run-id>] [--json]
+  pan repository-check <profile> [--timeout-ms <milliseconds>] [--workspace <dir|worktree> | --worktree <name>] [--run <run-id>] [--force-repeat] [--json]
       --timeout-ms raises the effective bound only: resolution keeps the maximum of the request, the profile's own bound, and subset-profile timeouts.
       --run records the execution against that run and, without --workspace or --worktree, checks its workspace. Without --run, --worktree records against every live run bound to the worktree. A bare invocation records against no run.
       A clean pass recorded against a run, at a workspace fingerprint identical before and after, satisfies a later gate on the same command instead of running it again.
+      A --run request that matches a recorded pass for the same invocation, profile, and fingerprint returns that pass instead of executing. --force-repeat executes anyway and records the repeat as deliberate.
       --harness-initiated marks the execution as harness-started rather than agent-started and suppresses streaming; the release-profile prefetch passes it.
   pan repository-check validate [--json]
   pan conform scan|checkpoint [--since <ref> | --all] [--worktree <name>] [--json]
@@ -326,6 +328,7 @@ export const HELP_BODY = `Usage:
       --redline writes agent/evidence/platform-guidance-redline.json, the run's pre-declaration that platform guidance is non-authoritative.
   pan list [--json]
   pan inbox [--json]
+      List every intake item under runtime/inbox/ with its lifecycle status, in lifecycle order (queue, active, canceled, complete) and newest-first inside one status.
   pan inbox restore <inbox-file>
       Return a canceled or active item to runtime/inbox/queue/. An active item's run is detached onto its own stored request copy first. A completed or already-queued item is refused.
   pan archive [--days <positive-integer>] [--complete] [--canceled] [--json]
@@ -375,6 +378,7 @@ export const HELP_BODY = `Usage:
       Start or adopt the release run once every cohort is integrated (merge-free). It is the retry for a release start that failed after the final integrate: it merges nothing, adopts a release run that already exists, and is refused with COHORT_NOT_SATISFIED while any cohort lacks its merge proof.
   pan cohort abandon <cohort-id> --chunk <id> --note <reason> [--json]
   pan cohort clean <cohort-id> [--force] [--json]
+      Remove the chunk worktrees and keep every branch. A live run or uncommitted work is refused unless --force. A chunk already recorded as abandoned is exempt from the uncommitted-work refusal alone, and the result names each worktree discarded that way; the run-active refusal still holds, because abandoning a chunk does not stop its agent.
   pan cohort route --plan-run <run-id> [--worktree <name>] [--json]
       Route the approved plan of a succeeded planning run into delivery again: one delivery run for a single chunk, cohort 1 of a cohort session for a wider plan. This is the retry for a route that failed at approval and the opt-in for a planning run that predates routing. It adopts the run or session an earlier attempt created and refuses a run that is not planning, not succeeded, or whose plan gate recorded a decision other than approve.
   pan context digest <repo-relative-file> [--json]
@@ -2381,6 +2385,40 @@ async function main(): Promise<void> {
       const fingerprintBefore = gitWorkspaceSnapshot(
         repositoryCheckWorkspaceRoot(root, checkWorkspace ?? undefined),
       ).fingerprint
+      // HR3-006: the run already paid for this profile at this fingerprint
+      // under this invocation, and the ledger says so. Executing again buys
+      // nothing, so the recorded pass answers the request. The harness
+      // prefetch keeps executing: it exists to fill an empty cache.
+      const forceRepeat = hasFlag(args, '--force-repeat')
+      const reusable =
+        evidenceRun && !forceRepeat && !harnessInitiated
+          ? reusableProfileExecution(
+              root,
+              evidenceRun.run_id,
+              evidenceRun.current_invocation?.id ?? null,
+              profile,
+              fingerprintBefore,
+            )
+          : null
+
+      if (reusable) {
+        process.stderr.write(
+          `[repository-check:${profile}] reusing the pass recorded at ` +
+            `${reusable.started_at} for invocation ` +
+            `${reusable.invocation_id ?? '(none)'}; pass --force-repeat to ` +
+            'execute the profile again.\n',
+        )
+        print(
+          {
+            profile,
+            status: 'passed',
+            reused_execution: reusable,
+          },
+          hasFlag(args, '--json'),
+        )
+        return
+      }
+
       // A pass this command stores is reused by a later gate instead of
       // re-running the suite, so the execution writes the same profile that
       // gate would have written. Only a named run has a place to put it.
@@ -2461,6 +2499,7 @@ async function main(): Promise<void> {
             startedAt,
             initiator,
             gatePass?.evidence_path ?? null,
+            forceRepeat,
           )
         : worktreeWorkspace
           ? recordAgentRepositoryCheck(

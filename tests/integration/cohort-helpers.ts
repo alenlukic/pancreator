@@ -4,7 +4,8 @@ import path from 'node:path'
 
 import { initCohortSession, startCohort } from '../../src/lib/cohorts.js'
 import { listRunStates, loadState, statePath } from '../../src/lib/state.js'
-import { createRun, writeJson } from '../helpers.js'
+import { writeJson } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 
 export const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
 

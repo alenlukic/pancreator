@@ -38,7 +38,8 @@ import type {
   RunState,
   StageHistoryItem,
 } from '../../src/lib/types.js'
-import { createFixture, createRun } from '../helpers.js'
+import { createFixture } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 import { createTestTempDirectory } from '../temp.js'
 
 function enableAwayMode(

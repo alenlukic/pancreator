@@ -795,6 +795,18 @@ export interface TargetInstructionInput {
   read_paths: string[]
 }
 
+/**
+ * The bound on a returning verification's re-execution (`VERIFY-001`).
+ *
+ * A case whose subject sits outside the remediation's changed paths observed
+ * the same behavior against the same code, so the worker carries its result
+ * with a `carried_from` citation instead of executing it again.
+ */
+export interface CarriedCaseScope {
+  remediation_invocation_id: string
+  blast_radius: string[]
+}
+
 export interface PrDescriptionContext {
   mode: 'target' | 'fallback'
   template_path: string | null
@@ -1068,9 +1080,21 @@ export interface Invocation {
   }
   prompt: string
   prior_failure?: PriorAttemptFailure
+  /**
+   * Why this attempt exists when the operator moved the run here. Present
+   * instead of `prior_failure` whenever the repair note is newer than any
+   * recorded attempt of this stage.
+   */
+  operator_stage_repair?: OperatorStageRepairContext
   inputs: {
     references: InvocationReference[]
     missing_required?: string[]
+    /**
+     * Cases a returning verification must execute again, expressed as the
+     * remediation's changed paths. Absent on a first visit and whenever the
+     * remediation declared no changed path.
+     */
+    carried_case_scope?: CarriedCaseScope
     target_instructions?: TargetInstructionInput
     pr_description?: PrDescriptionContext
     /**
@@ -1514,6 +1538,26 @@ export interface StageHistoryItem {
  * is spread across validation errors, deterministic results, and self-evaluated
  * criteria, so a worker handed only a pointer tends to resubmit the same defect.
  */
+/**
+ * The operator's stage-repair note, when that note and not a recorded attempt
+ * is why the current attempt exists.
+ *
+ * An operator return to an earlier stage leaves no record of that stage for
+ * the current attempt, so the retry contract resolved no reason and the card
+ * left the newest superseded output of another stage as the only
+ * failure-shaped context a worker could read.
+ */
+export interface OperatorStageRepairContext {
+  from_stage: string
+  to_stage: string
+  /** Who directed the repair: the operator, or away mode on their behalf. */
+  actor: string
+  note: string
+  /** The recorded repair note, which is required reading for this stage. */
+  path: string
+  recorded_at: string
+}
+
 export interface PriorAttemptFailure {
   stage: string
   attempt: number
@@ -2199,6 +2243,12 @@ export interface SupervisorCardState {
   policy_section_diff?: SupervisorCardPolicyDiff
   /** Digest the supervisor attested to have read, when any. */
   attested_sha256?: string
+  /**
+   * Per-policy digests as they stood at that attestation. The delta a
+   * supervisor owes is measured from what it last read, so a second edit
+   * before any re-attestation does not erase the first.
+   */
+  attested_policy_sections?: Array<{ policy_id: string; sha256: string }>
   attested_at?: string
   /**
    * Counts attestations. Each `/pan-start` and `/pan-resume` attests, so each

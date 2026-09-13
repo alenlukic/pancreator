@@ -13,7 +13,8 @@ import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadState, statePath } from '../../src/lib/state.js'
 import type { RunState } from '../../src/lib/types.js'
 import { createWorktree as createWorktreeRecord } from '../../src/lib/worktrees.js'
-import { createFixture, createRun, writeJson } from '../helpers.js'
+import { createFixture, writeJson } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 
 import { CLI, runCli } from './worktree-helpers.js'
 

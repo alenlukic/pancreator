@@ -14,12 +14,11 @@ import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   attachTargetInstructionEvidence,
   createFixture,
-  createRun,
   makeOutput,
-  submitAsSupervisor,
   writeCanonicalDelegation,
   writeJson,
 } from '../helpers.js'
+import { createRun, submitAsSupervisor } from '../run-helpers.js'
 import { checkpoint } from './delivery-helpers.js'
 
 const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')

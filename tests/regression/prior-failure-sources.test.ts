@@ -8,12 +8,11 @@ import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
-  createRun,
   makeOutput,
-  submitAsSupervisor,
   writeCanonicalDelegation,
   writeJson,
 } from '../helpers.js'
+import { createRun, submitAsSupervisor } from '../run-helpers.js'
 import type { Invocation, StageOutput } from '../../src/lib/types.js'
 
 /**
@@ -142,4 +141,110 @@ test('a failing hard criterion still renders what it renders today', () => {
   assert.match(card, /AC-02 has no supporting evidence\./u)
   assert.match(card, /This is the complete recorded reason/u)
   assert.doesNotMatch(card, /### Criteria the attempt reported failing/u)
+})
+
+// HR3-014: an operator return to an earlier stage leaves that stage no record
+// of its own, so the retry contract resolved no reason at all and the card
+// left the superseded verify output as the only failure-shaped context.
+test('a card after an operator stage change carries the repair note, not a superseded output', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'delivery')
+  const runId = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title: 'Operator stage change run',
+  }).run_id
+
+  // A recorded verify failure, which is the superseded output of another
+  // stage the operator is about to move past.
+  setRunStage(root, runId, 'verify', 'Seed a verify record.')
+
+  const verify = prepareInvocation(root, runId).invocation
+
+  assert.ok(verify)
+  writeJson(
+    path.join(root, verify.output.path),
+    makeOutput(root, verify, stageBySlug(workflow, 'verify'), 'failure'),
+  )
+  writeCanonicalDelegation(root, verify)
+  submitAsSupervisor(root, runId, verify.output.path)
+
+  const note =
+    'The verify verdict is stale: the workspace changed under it.\n' +
+    'Repair the migration guard only.'
+
+  setRunStage(root, runId, 'implement', note)
+
+  const implement = prepareInvocation(root, runId).invocation
+
+  assert.ok(implement)
+
+  const repair = implement.operator_stage_repair
+
+  assert.ok(repair, 'the repair note is the resolved failure context')
+  assert.equal(repair.to_stage, 'implement')
+  assert.equal(repair.actor, 'operator')
+  assert.equal(repair.note, note)
+  assert.equal(repair.path, repair.path.trim())
+  assert.equal(implement.prior_failure, undefined)
+
+  const card = readFileSync(
+    resolveRunLayout(root, runId).invocation(implement.invocation_id, '.md')
+      .absolute,
+    'utf8',
+  )
+
+  assert.match(card, /## ⛔ Why this attempt exists/u)
+  assert.match(card, /> The verify verdict is stale/u)
+  assert.match(card, /> Repair the migration guard only\./u)
+  assert.match(card, /supersedes every earlier verdict/u)
+  assert.doesNotMatch(card, /## ⛔ Why the previous attempt failed/u)
+})
+
+// The note is the newest reason only until the stage records an attempt of
+// its own. After that the retry contract carries the real failure again.
+test('an attempt recorded after the repair note is the reason again', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'delivery')
+  const runId = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title: 'Repair then fail run',
+  }).run_id
+
+  setRunStage(root, runId, 'implement', 'Start at implementation.')
+
+  const first = prepareInvocation(root, runId).invocation
+
+  assert.ok(first)
+  assert.ok(first.operator_stage_repair)
+
+  const output = makeOutput(
+    root,
+    first,
+    stageBySlug(workflow, 'implement'),
+    'failure',
+  )
+
+  for (const criterion of output.criteria) {
+    criterion.result =
+      criterion.id === 'implement.acceptance_claimed' ? 'fail' : 'pass'
+    criterion.explanation =
+      criterion.id === 'implement.acceptance_claimed'
+        ? 'AC-02 has no supporting evidence.'
+        : 'Fixture evidence'
+  }
+
+  writeJson(path.join(root, first.output.path), output)
+  writeCanonicalDelegation(root, first)
+  submitAsSupervisor(root, runId, first.output.path)
+
+  const retry = prepareInvocation(root, runId).invocation
+
+  assert.ok(retry)
+  assert.equal(retry.operator_stage_repair, undefined)
+  assert.deepEqual(
+    retry.prior_failure?.failed_hard_criteria.map((criterion) => criterion.id),
+    ['implement.acceptance_claimed'],
+  )
 })

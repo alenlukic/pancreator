@@ -24,8 +24,8 @@ import {
   writeCanonicalDelegation,
   writeJson,
   cloneTree as cloneSharedTree,
-  submitAsSupervisor,
 } from '../helpers.js'
+import { submitAsSupervisor } from '../run-helpers.js'
 
 export const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
 export const CONFIGS = {

@@ -9,7 +9,8 @@ import {
   pauseRun,
   resumeRun,
 } from '../../src/lib/engine.js'
-import { createFixture, createRun } from '../helpers.js'
+import { createFixture } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 
 // A supervisor whose launch failed did the implementation itself and paused
 // the run to do it. The pause and the resulting ratification both read as the

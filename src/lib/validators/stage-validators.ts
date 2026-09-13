@@ -133,6 +133,13 @@ function sharedEnum(
   return new Set(field?.enum ?? [])
 }
 
+/**
+ * Direct string-valued children of one declared field.
+ *
+ * The callers use these as the fields every item MUST carry as non-empty
+ * text, so a child of another type is not one of them: an optional object
+ * child would otherwise be demanded of every item as a string.
+ */
 function sharedChildFields(
   root: string,
   stageSlug: string,
@@ -140,7 +147,7 @@ function sharedChildFields(
 ): string[] {
   return sharedFieldRequirements(root, stageSlug)
     .map((field) =>
-      field.path.startsWith(fieldPrefix)
+      field.path.startsWith(fieldPrefix) && field.type === 'string'
         ? field.path.slice(fieldPrefix.length)
         : null,
     )
@@ -2665,6 +2672,28 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
           issue(
             'verify.case_field',
             `QA case ${qaCase.id} MUST include ${field}`,
+          ),
+        )
+      }
+    }
+
+    // VERIFY-001: a returning verification executes the cases the
+    // remediation can reach and carries the rest. A carried result has to
+    // name where it came from, or the reader cannot tell a case observed
+    // against another workspace from one observed against this one.
+    if (qaCase.carried_from !== undefined) {
+      const carried = qaCase.carried_from
+      const named = (field: string): boolean =>
+        isRecord(carried) &&
+        typeof carried[field] === 'string' &&
+        (carried[field] as string).trim().length > 0
+
+      if (!named('invocation_id') || !named('workspace_fingerprint')) {
+        issues.push(
+          issue(
+            'verify.case_carried_from_shape',
+            `QA case ${qaCase.id} MUST name carried_from.invocation_id and ` +
+              'carried_from.workspace_fingerprint',
           ),
         )
       }
