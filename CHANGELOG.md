@@ -1,5 +1,18 @@
 # Changelog
 
+## [5.26.1] - 2026-09-13
+
+This release reconciles authoring layers with the authority order and corrects two tests.
+
+### Changed
+
+- Reconcile authoring layers with the authority order in PRINCIPLES-001, the workflow-authoring guide, `FALLBACK_AUTHORITY_ORDER`, and the installed templates ([PRINCIPLES-001](governance/policies/PRINCIPLES-001.json), [workflow-authoring](docs/workflow-authoring.md), [watch](src/lib/watch.ts), [embedded-AGENTS](library/templates/embedded-AGENTS.md), [detached-AGENTS](library/templates/detached-AGENTS.md), [52d154fe](https://github.com/alenlukic/pancreator/commit/52d154fee50e288b1fef8766ea9d0b7c389fc13c)).
+
+### Fixed
+
+- Correct the AC-050 comment so it credits the record-count pins ([run-mutex-bookkeeping](tests/regression/run-mutex-bookkeeping.test.ts), [f976678b](https://github.com/alenlukic/pancreator/commit/f976678b34192187addc753b7fd537207fb3d13c)).
+- Assert the `agent_reported_running` hold reason in the sibling watch case ([watch](tests/unit/watch.test.ts), [f976678b](https://github.com/alenlukic/pancreator/commit/f976678b34192187addc753b7fd537207fb3d13c)).
+
 ## [5.26.0] - 2026-09-13
 
 This release repairs Phase 3 mechanical defects in four chunks.

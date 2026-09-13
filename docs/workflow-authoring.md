@@ -335,8 +335,13 @@ enforces that mapping in self-development.
 
 ## Instruction hierarchy
 
-Agent behavior is specified in five layers. Lower layers execute under higher
-ones and do not restate them.
+Agent behavior is authored in five layers. This list is the authoring view: it
+names what each layer is for, from the north star down to task state, and a
+lower layer executes under the higher ones without restating them. It is not
+the precedence order, which only the authority order under
+`## Authority and context` in [`AGENTS.md`](../AGENTS.md) states, ranking an
+explicit operator directive first, the invariants second, and the mission and
+operating principles third, so an invariant is never traded for the mission.
 
 1. **Mission** - what the agent optimizes for. `PRINCIPLES-001` and the top of
    `AGENTS.md` state it once.

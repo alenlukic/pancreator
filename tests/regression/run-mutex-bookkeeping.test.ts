@@ -122,10 +122,10 @@ test('deferring the registry write still records every prepared and completed in
 
   assert.ok(invocationId)
 
-  // Reading the registry from inside the run mutex proves the operation
-  // released it. Asserting that the mutex file is absent afterwards could
-  // not fail: the release runs in a `finally`, so the path is gone whether
-  // or not the bookkeeping write ever left the critical section.
+  // The real improvement is the record-count pins below. Reading the
+  // registry from inside the run mutex does not prove the write left the
+  // critical section: the mutex release runs in a `finally`, so a nested
+  // acquire succeeds whether or not the bookkeeping write ever moved out.
   const recordsFor = (id: string) =>
     withOperationMutex(operationMutexPath(root, runId), () =>
       readAgentRegistry(root).agents.filter(

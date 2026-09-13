@@ -1467,10 +1467,12 @@ export const REDLINE_CATEGORIES: RedlineCategory[] = [
 
 const FALLBACK_AUTHORITY_ORDER = [
   'An explicit operator directive.',
+  'The invariants above and every other MUST or MUST NOT in force.',
+  'The mission and operating principles, for every tradeoff an invariant leaves open.',
   'The active invocation or standalone governance card.',
   'This operating card.',
   'The run snapshots.',
-  'The policies resolved for the active context.',
+  'The remaining preferences of the policies and skills resolved for the active context.',
 ]
 
 /** The numbered authority order under `## Authority and context` in AGENTS.md. */

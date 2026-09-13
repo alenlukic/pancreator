@@ -16,6 +16,7 @@ import {
   foregroundReturnRecordPath,
   markDelegationBackground,
   readForegroundReturn,
+  readAuthorityOrder,
   recordForegroundReturn,
   redlineRecordPath,
   summarizeDelegationObservation,
@@ -217,6 +218,21 @@ test('submit carries a completed watch record into the stage record without an a
     persisted.delegation_observation?.watch?.terminal_state,
     'completed',
   )
+})
+
+test('the built-in authority order matches the one AGENTS.md publishes', () => {
+  const { root } = preparedRun()
+
+  // An installed target carries an operating card with no `## Authority and
+  // context` section, so its redline record is written from the built-in
+  // order. That copy drifted once already: it predated the rewrite that put
+  // the invariants above the operating principles.
+  const fallback = readAuthorityOrder(root)
+  const published = readAuthorityOrder(process.cwd())
+
+  assert.ok(published.length > 0)
+  assert.match(published[0], /operator directive/u)
+  assert.deepEqual(fallback, published)
 })
 
 test('the redline record names the non-authoritative categories and the AGENTS.md authority order', () => {
