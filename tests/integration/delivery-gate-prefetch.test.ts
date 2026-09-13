@@ -2,10 +2,13 @@ import assert from 'node:assert/strict'
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
+import { setTimeout as delay } from 'node:timers/promises'
 
 import {
+  abortRun,
   getRunState,
   prepareInvocation,
+  releaseProfilePrefetches,
   setRunStage,
 } from '../../src/lib/engine.js'
 import { gateCacheKey, gateCacheLookup } from '../../src/lib/gate-cache.js'
@@ -14,9 +17,17 @@ import {
   recordProfileGatePass,
   runRepositoryCheck,
 } from '../../src/lib/repository-checks.js'
-import { resolveRunLayout } from '../../src/lib/run-layout.js'
+import {
+  prefetchRecordPath,
+  resolveRunLayout,
+} from '../../src/lib/run-layout.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
-import { createFixture, createRun, writeJson } from '../helpers.js'
+import {
+  attachTargetInstructionEvidence,
+  createFixture,
+  createRun,
+  writeJson,
+} from '../helpers.js'
 import {
   checkpoint,
   checksVariant,
@@ -195,6 +206,15 @@ const PREFETCH_PROFILES = {
 }
 
 /**
+ * Profiles whose release run outlives the case that starts it, so a child is
+ * observably alive and records no pass while the case runs.
+ */
+const SLOW_PREFETCH_PROFILES = {
+  ...PREFETCH_PROFILES,
+  full: { probes: [], commands: ['node -e "setTimeout(() => {}, 60000)"'] },
+}
+
+/**
  * Run `body` with the named variables set, restoring the previous values
  * afterwards. A null value unsets the variable. `bin/run-tests` switches the
  * prefetch off for the whole suite so profile-execution counts stay
@@ -249,7 +269,7 @@ function prefetchRecord(
  * `bin/run-tests` removes when the run ends, so a child left running keeps a
  * profile executing against a tree that is being deleted underneath it.
  */
-function endPrefetchChild(record: Record<string, unknown> | null): void {
+function endPrefetchChild(record: { pid?: unknown } | null): void {
   const pid = record?.pid
 
   if (typeof pid !== 'number') {
@@ -263,6 +283,28 @@ function endPrefetchChild(record: Record<string, unknown> | null): void {
   } catch {
     // Already gone: the profile finished before this test did.
   }
+}
+
+/** Prefetch pids still alive, once every signalled child has exited. */
+async function settledPrefetchPids(
+  root: string,
+  runId: string,
+): Promise<number[]> {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const alive = releaseProfilePrefetches(root, runId)
+      .filter((record) => record.running)
+      .map((record) => record.pid)
+
+    if (alive.length === 0) {
+      return alive
+    }
+
+    await delay(20)
+  }
+
+  return releaseProfilePrefetches(root, runId)
+    .filter((record) => record.running)
+    .map((record) => record.pid)
 }
 
 test('a passing source stage starts one release-profile prefetch for the evidence stage', () => {
@@ -314,6 +356,127 @@ test('a passing source stage starts one release-profile prefetch for the evidenc
     )
   } finally {
     endPrefetchChild(record)
+  }
+})
+
+// The marker was keyed to the run and the profile alone, so a second
+// qualifying submission overwrote the first record. The pid of a child that
+// was still running was then lost, and nothing could stop or account for it.
+test('two qualifying submissions for one run and profile write two records', () => {
+  // The profile runs long enough that neither child records its pass while
+  // the case runs. A recorded pass would legitimately suppress the second
+  // launch, which is a different behavior from the one under test.
+  const { root, runId, workflow } = checkpoint(
+    'delivery@implement-prepared',
+    checksVariant('checks=prefetch-slow', SLOW_PREFETCH_PROFILES),
+  )
+  const submit = () =>
+    withEnv({ PAN_PREFETCH_FULL: null }, () =>
+      submitStageOutput(
+        root,
+        runId,
+        stageBySlug(workflow, 'implement'),
+        'success',
+        [],
+        (output) => {
+          attachTargetInstructionEvidence(root, output, ['AGENTS.md'])
+        },
+      ),
+    )
+
+  assert.equal(submit().state.current_stage, 'verify')
+  setRunStage(root, runId, 'implement', 'Return for a second attempt.', {
+    abandonWorkers: true,
+  })
+  // The repaired tree is a different workspace, so the second submission
+  // asks a question the first answer does not cover.
+  writeFileSync(
+    path.join(root, 'src', 'second-attempt.ts'),
+    'export const x = 1\n',
+  )
+  assert.equal(submit().state.current_stage, 'verify')
+
+  const records = releaseProfilePrefetches(root, runId)
+
+  try {
+    assert.equal(records.length, 2, 'each launch owns a record')
+    assert.equal(
+      new Set(records.map((record) => record.evidence_path)).size,
+      2,
+      'the two records have distinct names',
+    )
+    assert.equal(
+      new Set(records.map((record) => record.pid)).size,
+      2,
+      'each record names its own child',
+    )
+
+    // A pid that no longer names a process is a child that finished, failed,
+    // or was killed. All three are finished as far as the run is concerned.
+    writeJson(prefetchRecordPath(root, runId, 'full', 3).absolute, {
+      schema_version: 1,
+      run_id: runId,
+      profile: 'full',
+      pid: 999_999,
+      workspace_fingerprint: gitWorkspaceSnapshot(root).fingerprint,
+      started_at: new Date().toISOString(),
+    })
+
+    const dead = releaseProfilePrefetches(root, runId).find(
+      (record) => record.pid === 999_999,
+    )
+
+    assert.ok(dead)
+    assert.equal(dead.running, false)
+  } finally {
+    for (const record of records) {
+      endPrefetchChild({ pid: record.pid })
+    }
+  }
+})
+
+// Nothing joins a prefetch, so a run that ended while one was alive left a
+// profile executing against a tree nobody was watching, for a gate that would
+// never run.
+test('a run reaching its terminal state leaves no prefetch child running', async () => {
+  // A child that already exited proves nothing about the stop, so the
+  // profile this case prefetches outlives the case itself.
+  const { root, runId, workflow } = checkpoint(
+    'delivery@implement-prepared',
+    checksVariant('checks=prefetch-slow', SLOW_PREFETCH_PROFILES),
+  )
+
+  withEnv({ PAN_PREFETCH_FULL: null }, () =>
+    submitStageOutput(
+      root,
+      runId,
+      stageBySlug(workflow, 'implement'),
+      'success',
+    ),
+  )
+
+  const started = releaseProfilePrefetches(root, runId)
+
+  try {
+    assert.deepEqual(
+      started.map((record) => record.running),
+      [true],
+      'the child is alive before the run ends',
+    )
+
+    abortRun(root, runId, 'Abandoned mid-verify.')
+
+    // The signal is delivered synchronously; the exit that follows it is not,
+    // so the assertion waits for the process table rather than for a tick.
+    assert.deepEqual(
+      await settledPrefetchPids(root, runId),
+      [],
+      'no prefetch child of the run survives the terminal transition',
+    )
+  } finally {
+    for (const record of started) {
+      endPrefetchChild(record)
+    }
   }
 })
 

@@ -10,6 +10,11 @@ import {
   prepareInvocation,
   resumeRun,
 } from '../../src/lib/engine.js'
+import {
+  assertArgvElementsWithinLimit,
+  findOversizedArgvElement,
+} from '../../src/lib/argv-limits.js'
+import { PanError } from '../../src/lib/errors.js'
 import { stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
@@ -209,16 +214,54 @@ test('a note too large for argv is refused, and --note-file carries it', () => {
     })
 
   // The kill this refusal replaces lands at exec, before anything prints, so
-  // the operator saw a silent failure and an unchanged run. The note sits
-  // just over the harness bound: the byte count the endpoint kill fires at
-  // varies with the spawning environment, and a value chosen closer to it
-  // was killed under the test runner while surviving a plain shell.
-  const oversized = run(['pause', runId, '--note', 'x'.repeat(901)])
-  const oversizedOutput = `${oversized.stdout}${oversized.stderr}`
+  // the operator saw a silent failure and an unchanged run. Proving the
+  // refusal by spawning a real oversized element cannot work: the harness
+  // bound is 900 bytes and the endpoint kill fires on the assembled command
+  // line at a byte count that varies with the spawning environment, so the
+  // same 901-byte note survives from a short working directory and is
+  // SIGKILLed from a fixture path a few bytes longer. The refusal is a byte
+  // check on the assembled argument list, so it is proven in process against
+  // the checker `main` calls before it reads a single argument.
+  const oversizedNote = 'x'.repeat(901)
 
-  assert.notEqual(oversized.status, 0)
-  assert.match(oversizedOutput, /ARGV_ELEMENT_TOO_LARGE|argv limit/u)
-  assert.match(oversizedOutput, /--note-file/u)
+  assert.throws(
+    () =>
+      assertArgvElementsWithinLimit(['pause', runId, '--note', oversizedNote]),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'ARGV_ELEMENT_TOO_LARGE' &&
+      // The operator needs the option, the size that refused it, and the way
+      // through: a message that names none of those is a silent kill with a
+      // stack trace attached.
+      error.message.includes('--note') &&
+      error.message.includes('901 bytes') &&
+      error.message.includes('--note-file') &&
+      error.message.includes('The run is unchanged.'),
+  )
+  assert.deepEqual(
+    findOversizedArgvElement(['pause', runId, '--note', oversizedNote]),
+    { option: '--note', index: 3, byteLength: 901 },
+  )
+
+  // The check is a property of the argument list alone, so it cannot depend
+  // on the run resolving. An unknown run must not turn the silent kill into
+  // a silent not-found, and the `shortUnknown` spawn below proves the same
+  // command reaches RUN_NOT_FOUND once the note fits.
+  assert.throws(
+    () =>
+      assertArgvElementsWithinLimit([
+        'pause',
+        'no-such-run',
+        '--note',
+        oversizedNote,
+      ]),
+    (error: unknown) =>
+      error instanceof PanError && error.code === 'ARGV_ELEMENT_TOO_LARGE',
+  )
+
+  // A note one byte under the bound is not refused, so the bound itself is
+  // pinned rather than the direction of the comparison.
+  assertArgvElementsWithinLimit(['pause', runId, '--note', 'x'.repeat(899)])
   assert.equal(getRunState(root, runId).status, 'awaiting_supervisor')
 
   const packet = `Full decision packet.\n${'detail '.repeat(300)}`
@@ -257,16 +300,6 @@ test('a note too large for argv is refused, and --note-file carries it', () => {
     `${missing.stdout}${missing.stderr}`,
     /NOTE_FILE_NOT_FOUND|absent-note\.md/u,
   )
-
-  // The refusal is a byte check on argv, so it lands before the run lookup.
-  // An unknown run must not turn the silent kill into a silent not-found.
-  const unknownRun = run(['pause', 'no-such-run', '--note', 'x'.repeat(901)])
-  const unknownRunOutput = `${unknownRun.stdout}${unknownRun.stderr}`
-
-  assert.equal(unknownRun.status, 1)
-  assert.equal(unknownRun.signal, null)
-  assert.match(unknownRunOutput, /ARGV_ELEMENT_TOO_LARGE/u)
-  assert.doesNotMatch(unknownRunOutput, /RUN_NOT_FOUND/u)
 
   const shortUnknown = run(['pause', 'no-such-run', '--note', 'short'])
 

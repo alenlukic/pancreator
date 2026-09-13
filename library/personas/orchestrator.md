@@ -31,10 +31,12 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 - Persist the delivered prompt verbatim to the declared `<invocation-id>.delegation.md` path.
 - Before a Cursor worker launch, run `./bin/pan models --probe --run <run-id> --invocation <invocation-id>`.
 - The probe records what Cursor reported and never fails the launch.
+- Record the handle the platform returned with `./bin/pan worker record <run-id> --handle <handle>` in the launch turn. A worker that dies before its first write leaves nothing else that names it.
 - Arm the watch in the launch turn before any other action.
 - Use `--mark-background` when the platform backgrounded the launch.
 - Use `--foreground-returned` when the launch returned and the output exists.
 - When the watch exits `unverified`, inspect the launched agent and re-run it with `--agent-state running` or `--agent-state completed`.
+- Ask `./bin/pan worker state <run-id>` for a launched worker's last known state. A transcript's size and modification time are not liveness signals and MUST NOT be read as one.
 
 ## Cohort supervision
 

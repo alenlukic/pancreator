@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { copyFileSync, readdirSync, rmSync } from 'node:fs'
+import { copyFileSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { setPriority } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -62,7 +62,14 @@ import {
 import { applyJsonMergePatch } from './json-merge-patch.js'
 import { parseKnownFailingTests } from './known-failing.js'
 import { keywordRunSuffixFrom, makeStageArtifactId } from './naming.js'
-import { resolveRunLayout } from './run-layout.js'
+import {
+  evidenceWorkerAttemptPaths,
+  nextAttemptOrdinal,
+  nextPrefetchAttempt,
+  prefetchRecordPath,
+  prefetchRecordPaths,
+  resolveRunLayout,
+} from './run-layout.js'
 import {
   buildSuiteProfileSummary,
   recordSuiteProfileIndexEntry,
@@ -74,6 +81,7 @@ import {
   delegationUnobservedMessage,
   redlineRecordPath,
   summarizeDelegationObservation,
+  summarizeDelegationWatch,
   type DelegationObservation,
 } from './watch.js'
 import {
@@ -160,6 +168,8 @@ import {
 } from './projection.js'
 import {
   buildInvocationContractManifest,
+  evidenceWorkerAttempts,
+  readEvidenceReportState,
   renderEvidenceWorkerBrief,
   renderInvocationDeliveryPrompt,
   renderInvocationMarkdown,
@@ -180,8 +190,12 @@ import type {
   BestOfNRunRole,
   CohortRunBinding,
   CriterionEvaluation,
+  DelegatedWorkerRecord,
+  DirtyWorkspaceExit,
+  PauseActor,
   DeterministicResult,
   EntryGateReach,
+  EvidenceWorkerAttempt,
   ExternalDelegationRecord,
   GovernanceArtifactIssue,
   Invocation,
@@ -579,6 +593,33 @@ function workspaceSnapshotForRun(root: string, state: RunState) {
 }
 
 /**
+ * What a run is leaving uncommitted in its bound workspace, or `null`.
+ *
+ * A terminal run stops watching its workspace. Anything still dirty then
+ * belongs to nobody, and the next run in the same worktree inherits it
+ * silently, so the terminal transition says what it is leaving and where.
+ */
+function dirtyWorkspaceExit(
+  root: string,
+  state: RunState,
+): DirtyWorkspaceExit | null {
+  const snapshot = workspaceSnapshotForRun(root, state)
+  const changedPaths = snapshot.entries
+    .map((entry) => entry.slice(3))
+    .filter((relative) => relative.length > 0)
+    .sort()
+
+  return changedPaths.length === 0
+    ? null
+    : {
+        worktree: state.managed_worktree?.name ?? null,
+        workspace_root: state.workspace_root || '.',
+        changed_paths: changedPaths,
+        recorded_at: now(),
+      }
+}
+
+/**
  * Resolve an operator-supplied workspace relative to the Pancreator installation.
  * Embedded installations intentionally target a parent directory, so the stored
  * path MAY contain `..` while every file operation remains bounded by resolveRoots.
@@ -878,8 +919,14 @@ function startReleaseProfilePrefetch(
 
   child.unref()
 
-  const evidence = resolveRunLayout(root, state.run_id).evidence(
-    `prefetch-${profile}.json`,
+  // Keyed to the launch: a second qualifying submission for the same run and
+  // profile writes its own marker rather than erasing the record of a child
+  // that may still be running.
+  const evidence = prefetchRecordPath(
+    root,
+    state.run_id,
+    profile,
+    nextPrefetchAttempt(root, state.run_id, profile),
   )
 
   writeJsonAtomic(evidence.absolute, {
@@ -897,6 +944,110 @@ function startReleaseProfilePrefetch(
     workspace_fingerprint: workspaceFingerprint,
     started_at: startedAt,
     evidence_path: evidence.relative,
+  }
+}
+
+/** One recorded prefetch launch, reconciled against the process table. */
+export interface ReleaseProfilePrefetchState extends ReleaseProfilePrefetchRecord {
+  /** The recorded pid still names a live process. */
+  running: boolean
+}
+
+/** Whether a pid names a process this user can still signal. */
+function processIsAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0)
+
+    return true
+  } catch (error) {
+    // A live process owned by another user answers EPERM, which is still a
+    // process. Only ESRCH means the pid names nothing.
+    return (error as NodeJS.ErrnoException).code === 'EPERM'
+  }
+}
+
+/**
+ * Every prefetch launch a run recorded, with its current process state.
+ *
+ * A marker whose pid no longer names a process is a child that finished,
+ * crashed, or was killed. All three are finished as far as the run is
+ * concerned: a clean result already reached the recorded-pass store, and
+ * anything else leaves the gate free to execute the profile itself.
+ */
+export function releaseProfilePrefetches(
+  root: string,
+  runId: string,
+): ReleaseProfilePrefetchState[] {
+  const states: ReleaseProfilePrefetchState[] = []
+
+  for (const relative of prefetchRecordPaths(root, runId)) {
+    const absolute = resolveInside(root, relative)
+
+    if (!fileExists(absolute)) {
+      continue
+    }
+
+    const record = readJson(absolute)
+
+    if (!isRecord(record) || typeof record.pid !== 'number') {
+      continue
+    }
+
+    states.push({
+      profile: String(record.profile ?? ''),
+      pid: record.pid,
+      workspace_fingerprint: String(record.workspace_fingerprint ?? ''),
+      started_at: String(record.started_at ?? ''),
+      evidence_path: relative,
+      running: processIsAlive(record.pid),
+    })
+  }
+
+  return states
+}
+
+/**
+ * Stop every prefetch child this run started and is still running.
+ *
+ * Nothing joins a prefetch, so a run that ends while one is alive leaves a
+ * process consuming a machine nobody is watching. The gate it was computing
+ * for will never run.
+ */
+function stopReleaseProfilePrefetches(
+  root: string,
+  runId: string,
+): ReleaseProfilePrefetchState[] {
+  const stopped: ReleaseProfilePrefetchState[] = []
+
+  for (const prefetch of releaseProfilePrefetches(root, runId)) {
+    if (!prefetch.running) {
+      continue
+    }
+
+    try {
+      process.kill(prefetch.pid, 'SIGTERM')
+      stopped.push(prefetch)
+    } catch {
+      // The child exited between the liveness read and the signal, which is
+      // the state this call was trying to reach.
+    }
+  }
+
+  return stopped
+}
+
+/** Stop the run's surviving prefetch children and record what was stopped. */
+function recordStoppedPrefetches(root: string, state: RunState): void {
+  const stopped = stopReleaseProfilePrefetches(root, state.run_id)
+
+  if (stopped.length > 0) {
+    persistRun(root, state, 'release_profile_prefetch_stopped', {
+      stopped: stopped.map((prefetch) => ({
+        profile: prefetch.profile,
+        pid: prefetch.pid,
+        evidence_path: prefetch.evidence_path,
+      })),
+    })
   }
 }
 
@@ -2195,6 +2346,15 @@ function applyTransition(
     state.status = target
     state.current_stage = null
     state.pending_action = { type: 'none' }
+
+    const leftBehind = dirtyWorkspaceExit(root, state)
+
+    if (leftBehind) {
+      state.dirty_exit = leftBehind
+      persistRun(root, state, 'run_ended_dirty', { ...leftBehind })
+    }
+
+    recordStoppedPrefetches(root, state)
 
     // The next run in this workspace compares its own profile against this
     // one. Recording the pointer here is what keeps that comparison from
@@ -4093,6 +4253,13 @@ export function prepareInvocation(
               state.cursor_agent_suffix,
             )
 
+            const paths = evidenceWorkerAttemptPaths(
+              root,
+              runId,
+              invocationId,
+              worker.role,
+            )
+
             return {
               persona: worker.persona,
               role: worker.role,
@@ -4102,13 +4269,8 @@ export function prepareInvocation(
                 '',
               ),
               model: workerMapping.model_spec,
-              brief_path: layout.invocation(
-                invocationId,
-                `.${worker.role}-brief.md`,
-              ).relative,
-              evidence_path: layout.evidence(
-                `${invocationId}.${worker.role}-evidence.md`,
-              ).relative,
+              ...paths,
+              attempts: [{ attempt: 1, ...paths, recorded_at: now() }],
             }
           })
         : undefined
@@ -5445,21 +5607,54 @@ export function submitOutput(
       })
     }
 
+    const incompleteReports: string[] = []
+
     // Parallel evidence reports are supervisor-owned preconditions, so their
     // absence rejects the submission outright instead of consuming an attempt.
     for (const worker of invocation.evidence_workers ?? []) {
-      const evidenceAbsolute = resolveInside(root, worker.evidence_path)
+      // A relaunched worker wrote its own report beside the first one, so any
+      // attempt of the role satisfies the precondition.
+      const attempts = evidenceWorkerAttempts(worker)
 
       invariant(
-        fileExists(evidenceAbsolute) &&
-          readText(evidenceAbsolute).trim().length > 0,
+        attempts.some((attempt) => {
+          const absolute = resolveInside(root, attempt.evidence_path)
+
+          return fileExists(absolute) && readText(absolute).trim().length > 0
+        }),
         `Evidence report for role '${worker.role}' is missing or empty at ` +
-          `${worker.evidence_path}. Launch the parallel evidence workers ` +
+          attempts.map((attempt) => attempt.evidence_path).join(', ') +
+          `. Launch the parallel evidence workers ` +
           `from the supervisor procedure and persist their reports before ` +
           `submitting.`,
         { code: 'EVIDENCE_REPORT_MISSING' },
       )
+
+      // A report that stops before its completion marker is the record of an
+      // interrupted worker. Its cases are still evidence, so the submission
+      // proceeds and says what it is consolidating.
+      for (const attempt of attempts) {
+        const absolute = resolveInside(root, attempt.evidence_path)
+
+        if (!fileExists(absolute)) {
+          continue
+        }
+
+        const report = readEvidenceReportState(readText(absolute))
+
+        if (!report.complete) {
+          incompleteReports.push(
+            `Evidence report ${attempt.evidence_path} for role ` +
+              `'${worker.role}' is incomplete: it records ` +
+              `${report.cases.length} case` +
+              `${report.cases.length === 1 ? '' : 's'} and no completion ` +
+              `marker, so its worker stopped before finishing.`,
+          )
+        }
+      }
     }
+
+    advise('evidence_report', incompleteReports)
 
     // DELEGATE-001: the harness must have seen the worker reach a terminal
     // state. A completed `pan watch` record or a foreground-return attestation
@@ -6521,6 +6716,84 @@ export function decideRunAsAway(
   return decideRunWithActor(root, runId, decision, note, null, 'away')
 }
 
+/** One launched evidence worker whose declared report does not exist yet. */
+export interface InFlightEvidenceWorker {
+  role: string
+  attempt: number
+  evidence_path: string
+  /** The platform handle, when the launch recorded one. */
+  handle: string | null
+}
+
+/**
+ * Evidence workers of the current invocation that were launched and have
+ * written no report.
+ *
+ * A stage return abandons them: the invocation they write into stops being
+ * current, so their reports land where nothing reads them. Durable state
+ * cannot see a process, so a launch is read from the delegation artifact the
+ * supervisor persists before launching and from any recorded handle.
+ */
+export function inFlightEvidenceWorkers(
+  root: string,
+  state: RunState,
+): InFlightEvidenceWorker[] {
+  const current = state.current_invocation
+
+  if (!current) {
+    return []
+  }
+
+  const invocation = readInvocation(root, current.json_path)
+  const launched = (state.delegated_workers ?? []).filter(
+    (record) => record.invocation_id === invocation.invocation_id,
+  )
+  const delegated =
+    launched.length > 0 ||
+    fileExists(
+      resolveInside(
+        root,
+        delegationPath(state.run_id, invocation.invocation_id, root),
+      ),
+    )
+
+  if (!delegated) {
+    return []
+  }
+
+  const inFlight: InFlightEvidenceWorker[] = []
+
+  for (const worker of invocation.evidence_workers ?? []) {
+    for (const attempt of evidenceWorkerAttempts(worker)) {
+      if (fileExists(resolveInside(root, attempt.evidence_path))) {
+        continue
+      }
+
+      inFlight.push({
+        role: worker.role,
+        attempt: attempt.attempt,
+        evidence_path: attempt.evidence_path,
+        handle:
+          launched.find(
+            (record) =>
+              record.role === worker.role && record.attempt === attempt.attempt,
+          )?.handle ?? null,
+      })
+    }
+  }
+
+  return inFlight
+}
+
+export interface SetRunStageOptions {
+  /**
+   * Return the stage even though launched evidence workers have written no
+   * report. The operator owns that call; the harness only refuses to make it
+   * silently.
+   */
+  abandonWorkers?: boolean
+}
+
 /**
  * Move a run to an operator-selected stage outside normal workflow transitions.
  * An obsolete worker may continue writing because durable state cannot observe
@@ -6533,6 +6806,7 @@ function setRunStageWithActor(
   stageSlug: string,
   note: string,
   actor: RunActionActor,
+  options: SetRunStageOptions = {},
 ): RunState {
   return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
@@ -6546,6 +6820,30 @@ function setRunStageWithActor(
         state.pending_action.operator_only !== true,
       'Away mode cannot redirect a run paused for an operator-only decision.',
       { code: 'AWAY_ACTION_FORBIDDEN' },
+    )
+
+    const abandoned = options.abandonWorkers
+      ? []
+      : inFlightEvidenceWorkers(root, state)
+
+    invariant(
+      abandoned.length === 0,
+      `Returning to '${stageSlug}' abandons ${abandoned.length} launched ` +
+        `evidence worker${abandoned.length === 1 ? '' : 's'} that have ` +
+        `written no report: ` +
+        abandoned
+          .map(
+            (worker) =>
+              `${worker.role} (attempt ${worker.attempt}` +
+              `${worker.handle ? `, handle ${worker.handle}` : ''})`,
+          )
+          .join(', ') +
+        `. Their reports would land against an invocation nothing reads. ` +
+        `Stop them, or repeat the command with --abandon-workers.`,
+      {
+        code: 'EVIDENCE_WORKERS_IN_FLIGHT',
+        details: { in_flight: abandoned },
+      },
     )
 
     const workflow = loadRunWorkflow(root, state)
@@ -6625,8 +6923,9 @@ export function setRunStage(
   runId: string,
   stageSlug: string,
   note: string,
+  options: SetRunStageOptions = {},
 ): RunState {
-  return setRunStageWithActor(root, runId, stageSlug, note, 'operator')
+  return setRunStageWithActor(root, runId, stageSlug, note, 'operator', options)
 }
 
 /** Apply an away-mode stage repair without recording operator authorship. */
@@ -6635,8 +6934,9 @@ export function setRunStageAsAway(
   runId: string,
   stageSlug: string,
   note: string,
+  options: SetRunStageOptions = {},
 ): RunState {
-  return setRunStageWithActor(root, runId, stageSlug, note, 'away')
+  return setRunStageWithActor(root, runId, stageSlug, note, 'away', options)
 }
 
 function ratifyPausedWorkspaceChanges(
@@ -6668,12 +6968,18 @@ function ratifyPausedWorkspaceChanges(
   const relativePath = resolveRunLayout(root, state.run_id).decision(
     `operator-pause-ratification-${ratifications.length + 1}.md`,
   ).relative
+  const actor = pause.actor ?? 'operator'
   const body = [
-    '# Operator-paused workspace ratification',
+    actor === 'supervisor'
+      ? '# Supervisor-paused workspace ratification'
+      : '# Operator-paused workspace ratification',
     '',
-    `**Run** \`${state.run_id}\` · **Stage** \`${state.current_stage ?? 'none'}\``,
+    `**Run** \`${state.run_id}\` · **Stage** \`${state.current_stage ?? 'none'}\` · ` +
+      `**Acting agent** \`${actor}\``,
     '',
-    'The operator explicitly paused the workflow before making these Git-visible source changes. Pancreator recorded the resulting delta without scanning dependency, virtual-environment, cache, compiled, or generated directories.',
+    actor === 'supervisor'
+      ? 'The supervisor paused the workflow and made these Git-visible source changes itself, because the work could not be delegated. Pancreator recorded the resulting delta without scanning dependency, virtual-environment, cache, compiled, or generated directories.'
+      : 'The operator explicitly paused the workflow before making these Git-visible source changes. Pancreator recorded the resulting delta without scanning dependency, virtual-environment, cache, compiled, or generated directories.',
     '',
     `**Accepted fingerprint:** \`${current.fingerprint}\``,
     '',
@@ -6689,7 +6995,7 @@ function ratifyPausedWorkspaceChanges(
       ? deletedPaths.map((item) => `- \`${item}\``)
       : ['- None']),
     '',
-    '## Operator note',
+    actor === 'supervisor' ? '## Supervisor note' : '## Operator note',
     '',
     note.trim().length > 0 ? note.trim() : 'No additional note supplied.',
     '',
@@ -6699,6 +7005,7 @@ function ratifyPausedWorkspaceChanges(
 
   const ratification: OperatorWorkspaceRatification = {
     ratification_id: ratificationId,
+    actor,
     stage: state.current_stage ?? 'unknown',
     workspace_fingerprint: current.fingerprint,
     changed_paths: changedPaths,
@@ -6874,6 +7181,341 @@ export function setRunVerification(
   })
 }
 
+/** The stage worker's own role name in the delegated-worker record. */
+export const STAGE_WORKER_ROLE = 'worker'
+
+export interface RecordDelegatedWorkerOptions {
+  /** Identity the platform returned for the launch. */
+  handle: string
+  /** Evidence-worker role, or `worker` for the stage worker itself. */
+  role?: string
+  invocationId?: string
+  agent?: string
+  model?: string
+  launchMode?: DelegatedWorkerRecord['launch_mode']
+}
+
+export interface DelegatedWorkerLaunch {
+  record: DelegatedWorkerRecord
+  /** Paths this launch owns, when the role is an evidence worker. */
+  evidence_attempt?: EvidenceWorkerAttempt
+}
+
+function readInvocationRecord(
+  root: string,
+  state: RunState,
+  invocationId: string,
+): {
+  invocation: Invocation
+  json_path: string
+} {
+  const jsonPath = resolveRunLayout(root, state.run_id).invocation(
+    invocationId,
+    '.json',
+  ).relative
+
+  invariant(
+    fileExists(resolveInside(root, jsonPath)),
+    `Invocation record not found: ${jsonPath}`,
+    { code: 'INVOCATION_NOT_FOUND' },
+  )
+
+  return { invocation: readInvocation(root, jsonPath), json_path: jsonPath }
+}
+
+/**
+ * Re-render the artifacts that quote an invocation's declared paths.
+ *
+ * A relaunch changes the evidence paths the consuming card names, and the
+ * contract digest describes those rendered bytes, so both are rebuilt from
+ * the amended record rather than left to disagree with it.
+ */
+function rerenderInvocationArtifacts(
+  root: string,
+  invocation: Invocation,
+  jsonPath: string,
+): void {
+  const markdownPath = resolveRunLayout(root, invocation.run_id).invocation(
+    invocation.invocation_id,
+    '.md',
+  ).relative
+  const renderedMarkdown = renderInvocationMarkdown(invocation)
+
+  writeTextAtomic(resolveInside(root, markdownPath), renderedMarkdown)
+
+  const delegation = invocation.delegation
+
+  if (delegation?.mode === 'referenced' && delegation.delivery_prompt_path) {
+    invocation.contract_manifest = buildInvocationContractManifest(
+      markdownPath,
+      renderedMarkdown,
+      invocation.policies,
+    )
+    writeTextAtomic(
+      resolveInside(root, delegation.delivery_prompt_path),
+      renderInvocationDeliveryPrompt(invocation, invocation.contract_manifest),
+    )
+  }
+
+  writeJsonAtomic(resolveInside(root, jsonPath), invocation)
+}
+
+/** The run already recorded a stage-worker launch for this invocation. */
+function recordedStageWorker(state: RunState, invocationId: string): boolean {
+  return (state.delegated_workers ?? []).some(
+    (item) =>
+      item.invocation_id === invocationId && item.role === STAGE_WORKER_ROLE,
+  )
+}
+
+/**
+ * Record the handle the platform returned for one delegated worker.
+ *
+ * The harness watches a worker through files, so a worker that crashed before
+ * its first write is indistinguishable from one that was never launched. The
+ * handle is what makes that launch visible. For an evidence role the same
+ * call allocates the launch's own declared paths, which is what stops a
+ * relaunched worker from being handed the path the first one already wrote.
+ */
+export function recordDelegatedWorker(
+  root: string,
+  runId: string,
+  options: RecordDelegatedWorkerOptions,
+): DelegatedWorkerLaunch {
+  return withOperationMutex(operationMutexPath(root, runId), () => {
+    const state = loadState(root, runId)
+    const handle = options.handle.trim()
+
+    invariant(handle.length > 0, 'A worker handle is required.', {
+      code: 'INVALID_ARGUMENT',
+    })
+
+    const invocationId = options.invocationId ?? state.current_invocation?.id
+
+    invariant(
+      invocationId,
+      `Run ${runId} has no pending invocation. Name one with --invocation.`,
+      { code: 'NO_ACTIVE_INVOCATION' },
+    )
+
+    const { invocation, json_path: jsonPath } = readInvocationRecord(
+      root,
+      state,
+      invocationId,
+    )
+    const role = (options.role ?? STAGE_WORKER_ROLE).trim() || STAGE_WORKER_ROLE
+    const recordedForRole = (state.delegated_workers ?? []).filter(
+      (item) => item.invocation_id === invocationId && item.role === role,
+    )
+    let attempt = recordedForRole.length + 1
+    let declaredPaths = [invocation.output.path]
+    let harnessPaths: string[] = []
+    let evidenceAttempt: EvidenceWorkerAttempt | undefined
+
+    if (role !== STAGE_WORKER_ROLE) {
+      const worker = (invocation.evidence_workers ?? []).find(
+        (item) => item.role === role,
+      )
+
+      invariant(
+        worker,
+        `Invocation ${invocationId} declares no evidence worker for role ` +
+          `'${role}'. Declared roles: ` +
+          ((invocation.evidence_workers ?? [])
+            .map((item) => item.role)
+            .join(', ') || 'none') +
+          `. Use role '${STAGE_WORKER_ROLE}' for the stage worker itself.`,
+        { code: 'EVIDENCE_ROLE_UNKNOWN' },
+      )
+
+      // A report already on disk holds its name even when no launch was
+      // recorded for it, so the ordinal is the later of the two answers.
+      attempt = Math.max(
+        attempt,
+        nextAttemptOrdinal(
+          resolveRunLayout(root, runId).evidence('.').absolute,
+          `${invocationId}.${role}-evidence`,
+          '.md',
+        ),
+      )
+
+      const existing = (worker.attempts ?? []).find(
+        (item) => item.attempt === attempt,
+      )
+
+      evidenceAttempt = existing ?? {
+        attempt,
+        ...evidenceWorkerAttemptPaths(root, runId, invocationId, role, attempt),
+        recorded_at: now(),
+      }
+      declaredPaths = [
+        evidenceAttempt.brief_path,
+        evidenceAttempt.evidence_path,
+      ]
+      harnessPaths = [evidenceAttempt.brief_path]
+
+      if (!existing) {
+        worker.attempts = [...(worker.attempts ?? []), evidenceAttempt]
+        writeTextAtomic(
+          resolveInside(root, evidenceAttempt.brief_path),
+          renderEvidenceWorkerBrief(invocation, {
+            ...worker,
+            brief_path: evidenceAttempt.brief_path,
+            evidence_path: evidenceAttempt.evidence_path,
+          }),
+        )
+
+        // A stage worker that was already launched is holding the card whose
+        // digest it attested, and re-rendering moves that digest under it.
+        // The new attempt still reaches the invocation record, so the watch
+        // and the worker-state view see it; only the card the running worker
+        // holds stays as it read it.
+        if (recordedStageWorker(state, invocationId)) {
+          writeJsonAtomic(resolveInside(root, jsonPath), invocation)
+        } else {
+          rerenderInvocationArtifacts(root, invocation, jsonPath)
+        }
+      }
+    }
+
+    const record: DelegatedWorkerRecord = {
+      invocation_id: invocationId,
+      role,
+      attempt,
+      handle,
+      ...(options.agent ? { agent: options.agent } : {}),
+      ...(options.model ? { model: options.model } : {}),
+      launch_mode: options.launchMode ?? 'unknown',
+      launched_at: now(),
+      declared_paths: declaredPaths,
+      ...(harnessPaths.length > 0 ? { harness_paths: harnessPaths } : {}),
+    }
+
+    state.delegated_workers = [...(state.delegated_workers ?? []), record]
+    state.updated_at = now()
+    persistRun(root, state, 'delegated_worker_recorded', {
+      invocation_id: invocationId,
+      role,
+      attempt,
+      handle,
+    })
+
+    return {
+      record,
+      ...(evidenceAttempt ? { evidence_attempt: evidenceAttempt } : {}),
+    }
+  })
+}
+
+/** One declared path of a delegated worker, as it stands on disk. */
+export interface DelegatedWorkerPathState {
+  path: string
+  /**
+   * Who writes this path. An evidence worker's brief is `harness`: it exists
+   * from the moment of the launch record and says nothing about the worker.
+   */
+  producer: 'worker' | 'harness'
+  exists: boolean
+  size: number | null
+  modified_at: string | null
+}
+
+export interface DelegatedWorkerStateView {
+  run_id: string
+  invocation_id: string
+  role: string
+  attempt: number
+  handle: string
+  agent: string | null
+  model: string | null
+  launch_mode: DelegatedWorkerRecord['launch_mode']
+  launched_at: string
+  seconds_since_launch: number
+  declared_paths: DelegatedWorkerPathState[]
+  /**
+   * Not one path the worker itself owns exists. The worker died before its
+   * first write, and the handle is the only evidence the launch happened at
+   * all. The harness-written brief of an evidence worker is excluded, because
+   * counting it would report every such worker as having written.
+   */
+  wrote_nothing: boolean
+  /** Terminal state of the watch over the worker's invocation, when armed. */
+  watch_terminal_state: string | null
+}
+
+/**
+ * Report the last known state of every delegated worker the run recorded.
+ *
+ * `ORCH-001` used to leave the supervisor reading a transcript's size and
+ * modification time, which are not liveness signals. This is the answer that
+ * is: the recorded handle, when it was launched, and whether the worker has
+ * written anything since.
+ */
+export function describeDelegatedWorkers(
+  root: string,
+  runId: string,
+  options: { invocationId?: string; role?: string } = {},
+): DelegatedWorkerStateView[] {
+  const state = loadState(root, runId)
+  const nowMs = Date.now()
+
+  return (state.delegated_workers ?? [])
+    .filter(
+      (record) =>
+        (options.invocationId === undefined ||
+          record.invocation_id === options.invocationId) &&
+        (options.role === undefined || record.role === options.role),
+    )
+    .map((record) => {
+      const harnessPaths = new Set(record.harness_paths ?? [])
+      const declared = record.declared_paths.map(
+        (relative): DelegatedWorkerPathState => {
+          const producer = harnessPaths.has(relative) ? 'harness' : 'worker'
+
+          try {
+            const stats = statSync(resolveInside(root, relative))
+
+            return {
+              path: relative,
+              producer,
+              exists: true,
+              size: stats.size,
+              modified_at: new Date(stats.mtimeMs).toISOString(),
+            }
+          } catch {
+            return {
+              path: relative,
+              producer,
+              exists: false,
+              size: null,
+              modified_at: null,
+            }
+          }
+        },
+      )
+
+      return {
+        run_id: runId,
+        invocation_id: record.invocation_id,
+        role: record.role,
+        attempt: record.attempt,
+        handle: record.handle,
+        agent: record.agent ?? null,
+        model: record.model ?? null,
+        launch_mode: record.launch_mode,
+        launched_at: record.launched_at,
+        seconds_since_launch: (nowMs - Date.parse(record.launched_at)) / 1000,
+        declared_paths: declared,
+        wrote_nothing: declared
+          .filter((item) => item.producer === 'worker')
+          .every((item) => !item.exists),
+        watch_terminal_state:
+          summarizeDelegationWatch(root, runId, record.invocation_id)
+            .terminal_state ?? null,
+      }
+    })
+}
+
 /**
  * The newest workspace fingerprint some record in this run is accountable for.
  *
@@ -7004,9 +7646,24 @@ export function recordWorkspaceDirective(
   })
 }
 
-export function pauseRun(root: string, runId: string, note = ''): RunState {
+export interface PauseRunOptions {
+  /**
+   * Who is acting under the pause. A supervisor that could not delegate and
+   * is about to do the stage work itself names itself here, so the change it
+   * makes is not recorded as the operator's.
+   */
+  actor?: PauseActor
+}
+
+export function pauseRun(
+  root: string,
+  runId: string,
+  note = '',
+  options: PauseRunOptions = {},
+): RunState {
   return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
+    const actor = options.actor ?? 'operator'
 
     invariant(
       state.status !== 'succeeded' &&
@@ -7017,7 +7674,11 @@ export function pauseRun(root: string, runId: string, note = ''): RunState {
     )
 
     const reason =
-      note.trim().length > 0 ? note.trim() : 'Operator paused the workflow.'
+      note.trim().length > 0
+        ? note.trim()
+        : actor === 'supervisor'
+          ? 'The supervisor paused the workflow.'
+          : 'Operator paused the workflow.'
 
     if (state.status !== 'paused') {
       invariant(
@@ -7036,6 +7697,7 @@ export function pauseRun(root: string, runId: string, note = ''): RunState {
           JSON.stringify(state.pending_action),
         ) as OperatorPauseContext['prior_pending_action'],
         workspace_before: workspace,
+        actor,
       }
     }
 
@@ -7043,13 +7705,21 @@ export function pauseRun(root: string, runId: string, note = ''): RunState {
     state.pause_reason = reason
     state.pending_action = { type: 'operator_decision' }
 
-    writeDecision(root, state, 'Operator paused the workflow', reason, [
-      `Resume with: ${panCommand(root)} resume ${state.run_id}`,
-      `Or abort with: ${panCommand(root)} abort ${state.run_id}`,
-      'While paused, you may modify tracked files in the workspace as needed.',
-    ])
+    writeDecision(
+      root,
+      state,
+      actor === 'supervisor'
+        ? 'The supervisor paused the workflow'
+        : 'Operator paused the workflow',
+      reason,
+      [
+        `Resume with: ${panCommand(root)} resume ${state.run_id}`,
+        `Or abort with: ${panCommand(root)} abort ${state.run_id}`,
+        'While paused, you may modify tracked files in the workspace as needed.',
+      ],
+    )
 
-    persistRun(root, state, 'operator_pause', { note: reason })
+    persistRun(root, state, 'operator_pause', { note: reason, actor })
 
     return state
   })
@@ -7826,7 +8496,17 @@ export function abortRun(root: string, runId: string, note = ''): RunState {
     state.current_invocation = null
     state.operator_pause = null
 
-    persistRun(root, state, 'run_canceled', { note })
+    const leftBehind = dirtyWorkspaceExit(root, state)
+
+    if (leftBehind) {
+      state.dirty_exit = leftBehind
+    }
+
+    persistRun(root, state, 'run_canceled', {
+      note,
+      ...(leftBehind ? { dirty_exit: leftBehind } : {}),
+    })
+    recordStoppedPrefetches(root, state)
 
     return state
   })
@@ -7888,22 +8568,26 @@ export function validateOutputForSubmission(
   const effectiveValue = materialized.value
 
   for (const worker of invocation.evidence_workers ?? []) {
-    let present = false
+    const attempts = evidenceWorkerAttempts(worker)
+    const written = attempts.filter((attempt) => {
+      try {
+        const absolute = resolveInside(root, attempt.evidence_path)
 
-    try {
-      const absolute = resolveInside(root, worker.evidence_path)
-
-      present = fileExists(absolute) && readText(absolute).trim().length > 0
-    } catch {
-      present = false
-    }
+        return fileExists(absolute) && readText(absolute).trim().length > 0
+      } catch {
+        return false
+      }
+    })
+    const declared = attempts.map((attempt) => attempt.evidence_path).join(', ')
 
     checks.push({
       id: `evidence.${worker.role}`,
-      passed: present,
-      message: present
-        ? `Evidence report for role '${worker.role}' is present at ${worker.evidence_path}`
-        : `Evidence report for role '${worker.role}' is missing or empty at ${worker.evidence_path}`,
+      passed: written.length > 0,
+      message:
+        written.length > 0
+          ? `Evidence report for role '${worker.role}' is present at ` +
+            written.map((attempt) => attempt.evidence_path).join(', ')
+          : `Evidence report for role '${worker.role}' is missing or empty at ${declared}`,
     })
   }
 

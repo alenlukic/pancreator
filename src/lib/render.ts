@@ -16,6 +16,7 @@ import type {
   InvocationContractGuidance,
   InvocationContractManifest,
   InvocationContractSectionOwner,
+  EvidenceWorkerAttempt,
   InvocationEvidenceWorker,
   Policy,
   RunState,
@@ -184,6 +185,65 @@ export interface InvocationWorkerAction {
  * first and paid for a `blocked` report. A stage with no evidence worker owes
  * one launch and gets an empty list rather than a list of one.
  */
+/**
+ * Heading that opens one case or finding in an evidence report.
+ *
+ * An evidence report is appended case by case, so the heading is what a
+ * reader counts to see how far an interrupted worker got.
+ */
+export const EVIDENCE_REPORT_CASE_PREFIX = '### '
+
+/**
+ * Line an evidence worker writes last, once every case is recorded.
+ *
+ * A report is a file the harness watches while it is being written, so
+ * presence cannot mean completeness. This marker is the difference, and a
+ * report truncated before it reads as the partial record it is.
+ */
+export const EVIDENCE_REPORT_COMPLETE_MARKER =
+  '<!-- evidence-report: complete -->'
+
+/** What an evidence report on disk records so far. */
+export interface EvidenceReportState {
+  complete: boolean
+  /** Heading text of each case the report already holds, in order. */
+  cases: string[]
+}
+
+export function readEvidenceReportState(body: string): EvidenceReportState {
+  const lines = body.split('\n')
+
+  return {
+    complete: lines.some(
+      (line) => line.trim() === EVIDENCE_REPORT_COMPLETE_MARKER,
+    ),
+    cases: lines
+      .filter((line) => line.startsWith(EVIDENCE_REPORT_CASE_PREFIX))
+      .map((line) => line.slice(EVIDENCE_REPORT_CASE_PREFIX.length).trim()),
+  }
+}
+
+/**
+ * Every launch of one evidence role, oldest first.
+ *
+ * Invocations prepared before attempts were recorded carry only the two
+ * declared paths, which read as the single attempt they are.
+ */
+export function evidenceWorkerAttempts(
+  worker: InvocationEvidenceWorker,
+): EvidenceWorkerAttempt[] {
+  return worker.attempts?.length
+    ? [...worker.attempts].sort((left, right) => left.attempt - right.attempt)
+    : [
+        {
+          attempt: 1,
+          brief_path: worker.brief_path,
+          evidence_path: worker.evidence_path,
+          recorded_at: '',
+        },
+      ]
+}
+
 export function orderedWorkerActions(
   invocation: Invocation,
 ): InvocationWorkerAction[] {
@@ -687,7 +747,14 @@ export function renderEvidenceWorkerBrief(
     '',
     '## Report contract',
     '',
-    `Write your complete report as Markdown to \`${worker.evidence_path}\`.`,
+    `Write your report as Markdown to \`${worker.evidence_path}\`.`,
+    'Append each case or finding to that file as you finish it, under its ' +
+      `own \`${EVIDENCE_REPORT_CASE_PREFIX}\` heading, rather than holding ` +
+      'the whole report for one write at the end. A run that is interrupted ' +
+      'part way then keeps every case you had already recorded.',
+    `Write the line \`${EVIDENCE_REPORT_COMPLETE_MARKER}\` last, and only ` +
+      'once every case is recorded. A report without it is read as ' +
+      'incomplete.',
     'It MUST contain:',
     '',
     '- Every finding or executed case with a severity or result, the exact ' +
@@ -808,6 +875,13 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
       : `- 🛠️ **${id}** — overridden: \`${command}\``,
   )
   const priorFailure = invocation.prior_failure
+  const priorFailureReasons =
+    (priorFailure?.failed_hard_criteria.length ?? 0) +
+    (priorFailure?.declared_criteria_failures?.length ?? 0) +
+    (priorFailure?.failed_deterministic.length ?? 0) +
+    (priorFailure?.validation_errors.length ?? 0) +
+    (priorFailure?.governance_artifact_warnings.length ?? 0) +
+    (priorFailure?.supervisor_assessment ? 1 : 0)
   const priorFailureLines = priorFailure
     ? [
         '## ⛔ Why the previous attempt failed',
@@ -818,9 +892,11 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
             'submitted cleanly but was rejected by the supervisor. '
           : `Attempt ${priorFailure.attempt} of \`${priorFailure.stage}\` ` +
             `ended in \`${priorFailure.outcome}\`. `) +
-          'This is the complete recorded reason. ' +
-          'Address every item below; resubmitting unchanged work will fail the ' +
-          'same way.',
+          (priorFailureReasons === 0
+            ? 'No reason of any kind was recorded for it.'
+            : 'This is the complete recorded reason. ' +
+              'Address every item below; resubmitting unchanged work will fail the ' +
+              'same way.'),
         '',
         ...(priorFailure.failed_hard_criteria.length > 0
           ? [
@@ -832,6 +908,18 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
                   ? [`  - Recorded explanation: ${criterion.explanation}`]
                   : []),
               ]),
+              '',
+            ]
+          : []),
+        ...((priorFailure.declared_criteria_failures?.length ?? 0) > 0
+          ? [
+              '### Criteria the attempt reported failing',
+              '',
+              ...(priorFailure.declared_criteria_failures ?? []).map(
+                (criterion) =>
+                  `- **${criterion.id}** (${criterion.result})` +
+                  (criterion.explanation ? ` — ${criterion.explanation}` : ''),
+              ),
               '',
             ]
           : []),
@@ -893,11 +981,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
               '',
             ]
           : []),
-        ...(priorFailure.failed_hard_criteria.length === 0 &&
-        priorFailure.failed_deterministic.length === 0 &&
-        priorFailure.validation_errors.length === 0 &&
-        priorFailure.governance_artifact_warnings.length === 0 &&
-        !priorFailure.supervisor_assessment
+        ...(priorFailureReasons === 0
           ? [
               'No specific failing criterion, check, or validation error was ' +
                 `recorded. Read \`${priorFailure.output_path}\` and treat the ` +
@@ -1103,11 +1187,20 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
             'card. Read each in full and cite it where your output ' +
             'consolidates its findings.',
           '',
-          ...(invocation.evidence_workers ?? []).map(
-            (worker) =>
-              `- \`${worker.evidence_path}\` — ${worker.role} evidence ` +
-              `report from the parallel \`${worker.persona}\` worker.`,
-          ),
+          ...(invocation.evidence_workers ?? []).flatMap((worker) => {
+            const attempts = evidenceWorkerAttempts(worker)
+
+            // A relaunched worker wrote beside the first report rather than
+            // over it, so the card names every attempt instead of sending
+            // the reader to one path that holds only part of the evidence.
+            return attempts.map(
+              (attempt) =>
+                `- \`${attempt.evidence_path}\` — ${worker.role} evidence ` +
+                `report from the parallel \`${worker.persona}\` worker` +
+                (attempts.length > 1 ? ` (attempt ${attempt.attempt})` : '') +
+                '.',
+            )
+          }),
           '',
         ]
       : []),

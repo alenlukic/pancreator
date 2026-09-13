@@ -85,7 +85,14 @@ Inspect and evaluate one named blocker:
 ./bin/pan away apply <run-id> --decision <decision-id>
 ```
 
-The evaluator ranks bounded options without tools. Pan validates the selected
+The evaluator ranks bounded options without tools. The ranking it grades
+carries what the stage output itself declares unsettled, and an output whose
+declared next action names an operator decision cannot be approved. Add
+`--action <action>` to `apply` to name the action the apply must take: it is
+honored when it matches the recorded recommendation and refused with
+`AWAY_ACTION_REFUSED` when it does not, so the apply never substitutes a
+different action. An option an away subcommand does not accept is refused with
+`UNKNOWN_OPTION`. Pan validates the selected
 action and its rollback plan before apply. Each evaluation and apply result
 appends to `runtime/logs/away-mode/decisions.jsonl`; no command rewrites prior
 records. Use the selected record's `rollback_plan` for manual reversal, then

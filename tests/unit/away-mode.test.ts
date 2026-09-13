@@ -19,7 +19,9 @@ import {
   recordAwayEvaluatorExchange,
   recordDeterministicShipApproval,
   recordHypervisorQuarantine,
+  resolveAwayApplyAction,
   selectAwayOption,
+  unknownAwayOption,
 } from '../../src/lib/away-mode.js'
 import { PanError } from '../../src/lib/errors.js'
 import {
@@ -518,6 +520,241 @@ test('the evaluator prompt carries the request, the outcome, and the artifact', 
   assert.equal(exchange.error, 'Away evaluation MUST contain ranked_options.')
   assert.ok((exchange.stdout as string).endsWith('{"options":[]}'))
   assert.equal((exchange.stdout as string).length, 20_000)
+})
+
+/** Write `output` as the run's last graded stage output. */
+function gradeLastStage(
+  root: string,
+  state: RunState,
+  output: Record<string, unknown>,
+): void {
+  const relative = `runtime/logs/workflows/${state.run_id}/agent/outputs/graded.json`
+
+  mkdirSync(path.dirname(path.join(root, relative)), { recursive: true })
+  writeFileSync(path.join(root, relative), JSON.stringify(output))
+  state.stage_history = [
+    {
+      ...blockedHistoryItem('plan'),
+      outcome: 'success',
+      output_path: relative,
+    },
+  ]
+}
+
+// The evaluator ranked approval on outputs that said, in the same file, that
+// the operator still had to decide. The prompt carried the summary and the
+// artifacts and nothing the worker declared unsettled.
+test('the gate context carries what the graded output declares unsettled', () => {
+  const root = createFixture()
+
+  enableAwayMode(root)
+  const state = createRun(root, {
+    workflowSlug: 'planning',
+    requestPath: 'request.md',
+  })
+
+  gradeLastStage(root, state, {
+    summary: 'Two chunks, with the storage choice still open.',
+    $operator: {
+      headline: 'Plan ready except for one choice',
+      status: 'success',
+      next_action: 'Operator must choose between the queue and the ledger.',
+    },
+    unknowns: ['Whether the ledger tolerates a second writer.'],
+    data: {
+      product_spec: {
+        open_questions: ['Q-004: which store owns the retry record?'],
+      },
+    },
+  })
+
+  const context = awayGateContext(root, state)
+
+  assert.equal(
+    context.stage_next_action,
+    'Operator must choose between the queue and the ledger.',
+  )
+  assert.deepEqual(context.stage_unknowns, [
+    'Whether the ledger tolerates a second writer.',
+  ])
+  assert.deepEqual(context.stage_open_questions, [
+    'Q-004: which store owns the retry record?',
+  ])
+  assert.equal(context.declares_operator_decision, true)
+
+  const blocker = awayModeTrigger(
+    runStateLiteral({
+      away_mode: awayConfig(),
+      pending_action: {
+        type: 'operator_approval',
+        stage: 'plan',
+        proposed_transition: 'succeeded',
+      },
+    }),
+  )
+
+  assert.ok(blocker)
+
+  const payload = JSON.parse(
+    awayEvaluatorPrompt(root, state, blocker, {
+      hypervisorEventsPath: 'runtime/logs/hypervisor/events.jsonl',
+    })
+      .split('\n')
+      .at(-1) ?? '',
+  ) as Record<string, unknown>
+
+  assert.equal(payload.stage_next_action, context.stage_next_action)
+  assert.deepEqual(payload.stage_unknowns, context.stage_unknowns)
+  assert.deepEqual(payload.stage_open_questions, context.stage_open_questions)
+
+  // The ranking the evaluator returns cannot approve that record, whatever it
+  // ranked first, and the refusal names the reason.
+  const record = recordAwayEvaluation(
+    root,
+    state,
+    blocker,
+    { ranked_options: [option(1, 'approve'), option(2, 'revise')] },
+    '2026-08-21T12:00:00.000Z',
+  )
+
+  assert.equal(record.selected_action?.action, 'revise')
+  assert.deepEqual(record.rejected_options, [
+    {
+      rank: 1,
+      reason:
+        'The graded output declares an operator decision as its next action.',
+    },
+  ])
+})
+
+test('an output declaring no blocker ranks approval as it does today', () => {
+  const root = createFixture()
+
+  enableAwayMode(root)
+  const state = createRun(root, {
+    workflowSlug: 'planning',
+    requestPath: 'request.md',
+  })
+
+  gradeLastStage(root, state, {
+    summary: 'Two chunks, both settled.',
+    $operator: {
+      headline: 'Plan ready',
+      status: 'success',
+      next_action: 'Approve the plan and start delivery.',
+    },
+    unknowns: [],
+    data: {},
+  })
+
+  const context = awayGateContext(root, state)
+
+  assert.equal(context.declares_operator_decision, false)
+  assert.deepEqual(context.stage_unknowns, [])
+
+  const blocker = awayModeTrigger(
+    runStateLiteral({
+      away_mode: awayConfig(),
+      pending_action: {
+        type: 'operator_approval',
+        stage: 'plan',
+        proposed_transition: 'succeeded',
+      },
+    }),
+  )
+
+  assert.ok(blocker)
+
+  const record = recordAwayEvaluation(
+    root,
+    state,
+    blocker,
+    { ranked_options: [option(1, 'approve'), option(2, 'revise')] },
+    '2026-08-21T12:00:00.000Z',
+  )
+
+  assert.equal(record.selected_action?.action, 'approve')
+  assert.deepEqual(record.rejected_options, [])
+})
+
+// `pan away apply --action` was accepted and ignored: the apply took the
+// recorded recommendation whatever the operator named, and every other
+// mistyped option was silently dropped in the same way.
+test('an apply takes the operator-named action or refuses by name', () => {
+  const root = createFixture()
+
+  enableAwayMode(root)
+  const state = blockedRun(root)
+  const blocker = awayModeTrigger(state)
+
+  assert.ok(blocker)
+
+  const decision = recordAwayEvaluation(
+    root,
+    state,
+    blocker,
+    { ranked_options: [option(1, 'resume')] },
+    '2026-08-21T12:00:00.000Z',
+  )
+
+  assert.equal(resolveAwayApplyAction(decision, 'resume'), 'resume')
+  assert.equal(resolveAwayApplyAction(decision, null), 'resume')
+
+  // A named action the decision does not recommend is refused rather than
+  // quietly replaced by the recommendation.
+  assert.throws(
+    () => resolveAwayApplyAction(decision, 'approve'),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'AWAY_ACTION_REFUSED' &&
+      /recommends 'resume', not the requested 'approve'/u.test(error.message),
+  )
+  assert.throws(
+    () => resolveAwayApplyAction(decision, 'merge'),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'AWAY_ACTION_UNKNOWN' &&
+      /Known actions:/u.test(error.message),
+  )
+
+  // The honored apply records the recommendation and the action it took.
+  const applied = recordAwayApplyResult(
+    root,
+    decision,
+    'applied',
+    undefined,
+    resolveAwayApplyAction(decision, 'resume'),
+  )
+
+  assert.equal(applied.selected_action?.action, 'resume')
+  assert.equal(applied.applied_action, 'resume')
+  assert.equal(
+    readAwayDecisionLedger(root).at(-1)?.applied_action,
+    'resume',
+    'the ledger carries the applied action, not only the advice',
+  )
+})
+
+test('an option an away subcommand does not accept is named, not ignored', () => {
+  assert.equal(
+    unknownAwayOption('apply', ['apply', 'run-1', '--decision', 'd-1']),
+    null,
+  )
+  assert.equal(
+    unknownAwayOption('apply', ['apply', 'run-1', '--action', 'resume']),
+    null,
+  )
+  assert.equal(
+    unknownAwayOption('apply', ['apply', 'run-1', '--dceision', 'd-1']),
+    '--dceision',
+  )
+  assert.equal(
+    unknownAwayOption('status', ['status', 'run-1', '--decision', 'd-1']),
+    '--decision',
+  )
+  // An unrecognized subcommand is the subcommand handler's refusal, not this
+  // guard's, so it claims nothing about the options.
+  assert.equal(unknownAwayOption('sttaus', ['sttaus', '--json']), null)
 })
 
 test('a stale blocked outcome does not trigger on a progressing run', () => {

@@ -568,6 +568,21 @@ export interface ResolvedWorktreesConfig {
   readiness_paths: string[]
 }
 
+/**
+ * What a run left uncommitted in its bound workspace when it ended.
+ *
+ * A terminal run stops watching its workspace, so anything still dirty is
+ * work nobody is accountable for. Naming the paths and the worktree is what
+ * lets the operator find it before the next run inherits the tree.
+ */
+export interface DirtyWorkspaceExit {
+  /** Managed worktree the run was bound to, or `null` for a plain workspace. */
+  worktree: string | null
+  workspace_root: string
+  changed_paths: string[]
+  recorded_at: string
+}
+
 /** Stable identity of one managed operator worktree. */
 export interface ManagedWorktreeReference {
   name: string
@@ -932,6 +947,15 @@ export type InvocationReferenceRetrieval =
   | 'index_only'
 
 /** One resolved parallel evidence worker on a prepared invocation. */
+/** Declared paths one launch of an evidence role owns. */
+export interface EvidenceWorkerAttempt {
+  /** Ordinal of the launch, counting from 1. */
+  attempt: number
+  brief_path: string
+  evidence_path: string
+  recorded_at: string
+}
+
 export interface InvocationEvidenceWorker {
   persona: string
   role: string
@@ -943,6 +967,13 @@ export interface InvocationEvidenceWorker {
   brief_path: string
   /** Report the worker writes; a required input of the stage worker. */
   evidence_path: string
+  /**
+   * Every launch of this role, oldest first. A relaunched worker gets its own
+   * pair of paths so it writes beside the first report instead of over it.
+   * Absent on invocations prepared before attempts were recorded, which read
+   * as the single attempt the two fields above declare.
+   */
+  attempts?: EvidenceWorkerAttempt[]
 }
 
 export interface InvocationReference {
@@ -1514,6 +1545,17 @@ export interface PriorAttemptFailure {
     summary: string
     action_items: string[]
   }
+  /**
+   * Criteria the attempt itself reported failing that the stage does not hold
+   * as hard, such as an acceptance criterion carried by the plan. Without this
+   * a retry after a worker-declared failure saw no reason at all. Absent on a
+   * record written before this source existed.
+   */
+  declared_criteria_failures?: Array<{
+    id: string
+    result: string
+    explanation: string
+  }>
 }
 
 export type PendingAction =
@@ -1578,6 +1620,8 @@ export interface RunAdvisory {
     | 'pipeline_config'
     | 'platform_guidance'
     | 'delegation_supervision'
+    /** An evidence report whose worker stopped before its completion marker. */
+    | 'evidence_report'
     /** A hard criterion a compatibility path passed without satisfying. */
     | 'gate_bypass'
   source: 'prepare' | 'probe' | 'submit' | 'supervisor_evidence'
@@ -1614,14 +1658,27 @@ export interface RunModelEvidence {
   timestamp: string
 }
 
+/**
+ * Who is doing the work a pause makes room for.
+ *
+ * A supervisor that cannot delegate and does the stage work itself is not the
+ * operator, and a record that says otherwise attributes the change to someone
+ * who never made it.
+ */
+export type PauseActor = 'operator' | 'supervisor'
+
 export interface OperatorPauseContext {
   prior_status: 'running' | 'awaiting_supervisor' | 'awaiting_operator'
   prior_pending_action: PendingAction
   workspace_before?: WorkspaceSnapshot
+  /** Absent on pauses recorded before the actor was tracked: read as operator. */
+  actor?: PauseActor
 }
 
 export interface OperatorWorkspaceRatification {
   ratification_id: string
+  /** Who held the pause the changes were made under. */
+  actor?: PauseActor
   stage: string
   workspace_fingerprint: string
   changed_paths: string[]
@@ -1657,6 +1714,39 @@ export interface WorkspaceDirectiveRecord {
   workspace_fingerprint: string
   artifact_path: string
   timestamp: string
+}
+
+/**
+ * The identity the platform returned for one delegated worker, recorded at
+ * launch.
+ *
+ * The harness observes a worker through files alone, so a worker that dies
+ * before its first write leaves nothing at all. This record is what names it
+ * afterwards, and its attempt ordinal is what keeps a relaunch from being
+ * handed the path the first worker already wrote.
+ */
+export interface DelegatedWorkerRecord {
+  invocation_id: string
+  /** `worker` for the stage worker itself, else the evidence-worker role. */
+  role: string
+  /** Ordinal of this launch for the invocation and role, counting from 1. */
+  attempt: number
+  /** The identity the platform returned, such as a Cursor subagent id. */
+  handle: string
+  /** Named agent definition launched, when the supervisor reported it. */
+  agent?: string
+  model?: string
+  launch_mode: 'background' | 'foreground' | 'unknown'
+  launched_at: string
+  /** Paths this attempt owns, so a later attempt never reuses them. */
+  declared_paths: string[]
+  /**
+   * The declared paths the harness itself wrote at launch, such as an
+   * evidence worker's brief. They stay in `declared_paths` as diagnostics,
+   * and they are not evidence that the worker wrote anything. Absent means
+   * the worker produces every declared path.
+   */
+  harness_paths?: string[]
 }
 
 /** One stage entry gate an operator waiver's declared scope covers. */
@@ -2012,6 +2102,10 @@ export interface RunState {
   operator_workspace_ratifications?: OperatorWorkspaceRatification[]
   /** Operator directives executed against the workspace outside a stage. */
   workspace_directives?: WorkspaceDirectiveRecord[]
+  /** Platform handles recorded for delegated workers, oldest first. */
+  delegated_workers?: DelegatedWorkerRecord[]
+  /** Uncommitted work the run left behind when it reached a terminal state. */
+  dirty_exit?: DirtyWorkspaceExit
   operator_gate_waivers?: OperatorGateWaiver[]
   last_decision_path?: string
   accepted_workspace_fingerprint?: string | null
