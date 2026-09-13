@@ -677,6 +677,231 @@ test('release finalization recovers release-only and index-only partial states',
   }
 })
 
+/**
+ * A release worktree branched from a local default branch that the remote has
+ * not seen: the shape every self-development release takes, because this
+ * harness releases itself without pushing.
+ */
+function prepareUnpushedIntegration(name: string): {
+  root: string
+  remote: string
+  record: ReturnType<typeof createWorktree>
+  worktreePath: string
+  localMain: string
+  fetchedMain: string
+} {
+  const root = createFixture()
+  const remote = createTestTempDirectory('pan-release-behind-')
+
+  execFileSync('git', ['init', '--bare', '-q'], { cwd: remote })
+  git(root, ['branch', '-M', 'main'])
+  git(root, ['remote', 'add', 'origin', remote])
+  git(root, ['push', '-u', 'origin', 'main'])
+
+  const fetchedMain = git(root, ['rev-parse', 'HEAD'])
+
+  git(root, ['switch', '-q', '-c', 'chunk-one'])
+  writeFileSync(path.join(root, 'src', 'chunk.ts'), 'export const chunk = 1\n')
+  git(root, ['add', 'src/chunk.ts'])
+  git(root, ['commit', '-qm', 'feat: chunk one'])
+  git(root, ['switch', '-q', 'main'])
+  git(root, ['merge', '-q', '--no-ff', 'chunk-one', '-m', 'merge: chunk one'])
+
+  const localMain = git(root, ['rev-parse', 'HEAD'])
+  const record = createWorktree(root, name)
+
+  return {
+    root,
+    remote,
+    record,
+    worktreePath: path.join(root, record.path),
+    localMain,
+    fetchedMain,
+  }
+}
+
+test('release sync refuses a rebase that would rewrite local main, and records the override that proceeds', () => {
+  const behind = prepareUnpushedIntegration('release-behind')
+
+  try {
+    const headBeforeSync = git(behind.worktreePath, ['rev-parse', 'HEAD'])
+
+    assert.notEqual(behind.localMain, behind.fetchedMain)
+
+    let refusal: unknown = null
+
+    try {
+      syncLocalRelease(behind.root, behind.record.name, 'feat: checkpoint')
+    } catch (error) {
+      refusal = error
+    }
+
+    assert.ok(refusal instanceof Error)
+    assert.equal(
+      'code' in refusal ? refusal.code : null,
+      'RELEASE_REMOTE_BEHIND_LOCAL',
+    )
+    assert.ok(refusal.message.includes(behind.localMain))
+    assert.ok(refusal.message.includes(behind.fetchedMain))
+    // The refusal must leave the steward a recorded way through, so the
+    // message names both overrides alongside the push that removes the need
+    // for either.
+    assert.match(refusal.message, /--onto main/u)
+    assert.match(refusal.message, /--no-rebase/u)
+    assert.equal(
+      git(behind.worktreePath, ['rev-parse', 'HEAD']),
+      headBeforeSync,
+    )
+
+    writeFileSync(
+      path.join(behind.worktreePath, 'src', 'base.ts'),
+      "export const base = 'release candidate'\n",
+    )
+
+    const overridden = syncLocalRelease(
+      behind.root,
+      behind.record.name,
+      'feat: checkpoint release candidate',
+      undefined,
+      { onto: 'main' },
+    )
+
+    assert.equal(overridden.status, 'synchronized')
+    assert.equal(overridden.fetched_main, behind.fetchedMain)
+    assert.equal(overridden.rebase_target, behind.localMain)
+    assert.deepEqual(overridden.rebase_override, {
+      kind: 'onto',
+      requested_ref: 'main',
+      resolved_commit: behind.localMain,
+    })
+    // The merge commit local main already carries survives the override.
+    assert.equal(
+      git(behind.worktreePath, [
+        'merge-base',
+        '--is-ancestor',
+        behind.localMain,
+        'HEAD',
+      ]),
+      '',
+    )
+  } finally {
+    rmSync(behind.root, { recursive: true, force: true })
+    rmSync(behind.remote, { recursive: true, force: true })
+  }
+})
+
+test('release sync accepts --no-rebase and refuses both overrides together', () => {
+  const behind = prepareUnpushedIntegration('release-declined')
+
+  try {
+    writeFileSync(
+      path.join(behind.worktreePath, 'src', 'base.ts'),
+      "export const base = 'release candidate'\n",
+    )
+
+    const declined = syncLocalRelease(
+      behind.root,
+      behind.record.name,
+      'feat: checkpoint release candidate',
+      undefined,
+      { noRebase: true },
+    )
+
+    assert.equal(declined.status, 'synchronized')
+    assert.equal(declined.fetched_main, behind.fetchedMain)
+    assert.equal(declined.rebase_target, null)
+    assert.deepEqual(declined.rebase_override, {
+      kind: 'no_rebase',
+      requested_ref: null,
+      resolved_commit: null,
+    })
+    assert.ok(declined.checkpoint_commit)
+    assert.equal(
+      git(behind.worktreePath, ['rev-parse', 'HEAD^']),
+      behind.localMain,
+    )
+    assert.equal(
+      errorCode(() =>
+        syncLocalRelease(
+          behind.root,
+          behind.record.name,
+          'feat: checkpoint',
+          undefined,
+          { onto: 'main', noRebase: true },
+        ),
+      ),
+      'RELEASE_REBASE_OVERRIDE_CONFLICT',
+    )
+  } finally {
+    rmSync(behind.root, { recursive: true, force: true })
+    rmSync(behind.remote, { recursive: true, force: true })
+  }
+})
+
+test('release sync rebases unchanged when the fetched head is equal to or ahead of local main', () => {
+  const root = createFixture()
+  const remote = createTestTempDirectory('pan-release-ahead-')
+
+  try {
+    execFileSync('git', ['init', '--bare', '-q'], { cwd: remote })
+    git(root, ['branch', '-M', 'main'])
+    git(root, ['remote', 'add', 'origin', remote])
+    git(root, ['push', '-u', 'origin', 'main'])
+
+    const equalRecord = createWorktree(root, 'release-equal')
+    const equalWorktree = path.join(root, equalRecord.path)
+
+    writeFileSync(
+      path.join(equalWorktree, 'src', 'base.ts'),
+      "export const base = 'equal heads'\n",
+    )
+
+    const equal = syncLocalRelease(
+      root,
+      equalRecord.name,
+      'feat: checkpoint against an equal head',
+    )
+
+    assert.equal(equal.status, 'synchronized')
+    assert.equal(equal.rebase_target, equal.fetched_main)
+    assert.equal(equal.rebase_override, null)
+    assert.equal(git(equalWorktree, ['rev-parse', 'HEAD^']), equal.fetched_main)
+
+    const aheadRecord = createWorktree(root, 'release-ahead')
+    const aheadWorktree = path.join(root, aheadRecord.path)
+
+    writeFileSync(path.join(root, 'remote-main.txt'), 'remote main change\n')
+    git(root, ['add', 'remote-main.txt'])
+    git(root, ['commit', '-qm', 'feat: advance remote main'])
+    git(root, ['push', '-q', 'origin', 'main'])
+
+    const aheadHead = git(root, ['rev-parse', 'HEAD'])
+
+    // Leave local main behind the remote, which is the direction the guard
+    // must ignore.
+    git(root, ['reset', '-q', '--hard', 'HEAD~1'])
+
+    writeFileSync(
+      path.join(aheadWorktree, 'src', 'base.ts'),
+      "export const base = 'ahead head'\n",
+    )
+
+    const ahead = syncLocalRelease(
+      root,
+      aheadRecord.name,
+      'feat: checkpoint against an advanced head',
+    )
+
+    assert.equal(ahead.status, 'synchronized')
+    assert.equal(ahead.fetched_main, aheadHead)
+    assert.equal(ahead.rebase_target, aheadHead)
+    assert.equal(ahead.rebase_override, null)
+    assert.equal(git(aheadWorktree, ['rev-parse', 'HEAD^']), aheadHead)
+  } finally {
+    rmSync(remote, { recursive: true, force: true })
+  }
+})
+
 test('standalone release refuses an active workflow in the same worktree', () => {
   const root = createFixture()
   const record = createWorktree(root, 'release-busy')

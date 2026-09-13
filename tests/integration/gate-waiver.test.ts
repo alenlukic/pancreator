@@ -22,7 +22,16 @@ import {
   writeJson,
   submitAsSupervisor,
 } from '../helpers.js'
-import { BRIEFS, checkpoint, failingVerify } from './delivery-helpers.js'
+import {
+  BRIEFS,
+  checkpoint,
+  checksVariant,
+  failingVerify,
+  fullFailsUntil,
+  fullRuns,
+  PASS,
+  submitStageOutput,
+} from './delivery-helpers.js'
 
 test('explicit gate waiver advances a bounded miss and tracks its spotfix case', () => {
   const {
@@ -352,6 +361,90 @@ test('a waiver on a stage holding a prepared invocation stays on that stage', ()
   })
 
   assert.equal(waived.state.current_stage, 'verify')
+})
+
+// AC-003, AC-004. The entry gate runs before delegation and read no waiver,
+// so an operator directive aimed at the release gate was silently ignored and
+// the run stalled at the same refusal on every prepare.
+test('an operator waiver reaches the ship entry gate, and a directive that cannot reach it is refused by name', () => {
+  const { root, runId, workflow } = checkpoint(
+    'delivery@verify-prepared',
+    checksVariant('checks=full-always-fails', {
+      static: { probes: [], commands: [PASS] },
+      fast: { probes: [], commands: [PASS] },
+      full: { probes: [], commands: [fullFailsUntil(Number.MAX_SAFE_INTEGER)] },
+      configuration: { probes: [], commands: [PASS] },
+    }),
+  )
+
+  const verified = submitStageOutput(
+    root,
+    runId,
+    stageBySlug(workflow, 'verify'),
+    'success',
+  )
+
+  assert.equal(verified.state.current_stage, 'ship')
+
+  // The release gate fails on entry and routes the run away from ship.
+  const routed = prepareInvocation(root, runId)
+
+  assert.equal(routed.invocation, null)
+  assert.equal(routed.state.current_stage, 'remediate')
+  assert.equal(fullRuns(root), 1)
+  assert.equal(routed.state.entry_gates?.ship?.last_result.passed, false)
+
+  // A directive on another stage cannot reach the failing release gate, so it
+  // is refused by that gate's name rather than accepted and then ignored.
+  assert.throws(
+    () =>
+      waiveGate(root, runId, {
+        stageSlug: 'remediate',
+        targetStage: 'ship',
+        note: 'The release suite failure is environment-bound; continue to ship.',
+      }),
+    (error: unknown) => {
+      assert.ok(error instanceof Error)
+      assert.equal(
+        'code' in error ? error.code : null,
+        'WAIVER_ENTRY_GATE_UNREACHED',
+      )
+      assert.match(error.message, /ship\.full_suite/u)
+      assert.match(error.message, /--stage ship --criteria ship\.full_suite/u)
+
+      return true
+    },
+  )
+
+  setRunStage(root, runId, 'ship', 'Return to the failed release gate.')
+
+  const waived = waiveGate(root, runId, {
+    stageSlug: 'ship',
+    criterionIds: ['ship.full_suite'],
+    targetStage: 'ship',
+    note: 'The release suite failure is environment-bound and reproduced outside the harness; waive the release gate and prepare the release.',
+  })
+
+  assert.deepEqual(waived.entry_gates_reached, [
+    { stage: 'ship', criterion: 'ship.full_suite' },
+  ])
+  assert.equal(waived.state.current_stage, 'ship')
+
+  const ship = prepareInvocation(root, runId)
+  const gate = ship.state.entry_gates?.ship
+
+  assert.ok(ship.invocation)
+  assert.equal(ship.invocation.stage.slug, 'ship')
+  // The criterion never ran a second time: the waiver decided the gate.
+  assert.equal(fullRuns(root), 1)
+  assert.ok(gate)
+  assert.equal(gate.last_result.waived, true)
+  assert.equal(gate.last_result.waiver_id, waived.waiver.waiver_id)
+  assert.equal(gate.last_result.evidence_path, undefined)
+  assert.match(
+    gate.last_result.explanation ?? '',
+    /waived by operator directive/u,
+  )
 })
 
 test('a waiver that would skip an unnamed gate requires an explicit destination', () => {

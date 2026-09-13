@@ -266,6 +266,7 @@ export const HELP_BODY = `Usage:
   pan resume <run-id> [--worktree <name>] [--stage <stage-slug>] [--note <text> | --note-file <path>]
   pan set-stage <run-id> --stage <stage-slug> (--note <reason> | --note-file <path>)
   pan waive-gate <run-id> (--note <directive> | --note-file <path>) [--stage <stage-slug>] [--to <stage-slug>] [--criteria <id[,id...]>] [--defer <AC-id[,AC-id...]> --spotfix] [--adopt-plan-from <run-id>]
+      The result lists entry_gates_reached: the stage entry gates this directive now covers, so an honored waiver is distinguishable from one the entry gate never sees. A waiver that routes the run into a stage whose entry gate last failed and which the directive does not name is refused with WAIVER_ENTRY_GATE_UNREACHED.
       --adopt-plan-from records that this run adopts the named run's ratified plan. The named run's worktree claim moves to this run and both run states record the move, so release preparation proceeds with the subsumed run still live and no manual abort.
       Every argument the CLI passes through argv is refused at or above 900 bytes with ARGV_ELEMENT_TOO_LARGE, naming the option and the byte count, because endpoint security SIGKILLs a process whose argv element reaches 1000 bytes before Node starts. --note-file reads the note from a file, so a full decision packet reaches the record. decide, pause, resume, set-stage, and waive-gate all accept it.
   pan abort <run-id> [--note <text>]
@@ -284,7 +285,8 @@ export const HELP_BODY = `Usage:
   pan tests impacted [--worktree <name>] [--changed <ref> | --staged | --worktree-dirty] [--file <path>]... [--include <glob>]... [--depth <n>] [--list] [--json] [--advisory-ratio <0..1>]
       Self-development only. Select and run the lane tests whose import closure reaches the changed files. The default change set is the dirty working tree. An iteration aid, never a gate.
       --worktree runs the command from the installation root and selects against that worktree's tree, the same workspace selection pan repository-check accepts. Without it the installation root is the workspace, as before. The run record stays at the installation root either way.
-  pan release sync --worktree <name> --message <message> [--run <run-id>] [--json]
+  pan release sync --worktree <name> --message <message> [--run <run-id>] [--onto <ref> | --no-rebase] [--json]
+      Sync refuses with RELEASE_REMOTE_BEHIND_LOCAL when the fetched remote head is behind the point this branch shares with the local default branch, because the rebase would rewrite commits that branch already carries. It never retargets on its own. --onto <ref> rebases onto a ref the operator names, normally the local integration head; --no-rebase keeps the local history as it stands. Either choice is recorded in rebase_override on the result.
   pan release continue --worktree <name> [--run <run-id>] [--json]
   pan release finalize --worktree <name> --fetched-main <commit> [--run <run-id>] [--json]
   pan author apply --input <draft-json> [--json]
@@ -1796,6 +1798,7 @@ async function main(): Promise<void> {
         waiver_artifact: result.waiver.artifact_path,
         directive_target: result.waiver.directive_target ?? null,
         spotfix_case: result.waiver.spotfix_case_path ?? null,
+        entry_gates_reached: result.entry_gates_reached,
         worktree_claim_transfer: result.claimTransfer ?? null,
       })
       return
@@ -2402,11 +2405,16 @@ async function main(): Promise<void> {
       )
 
       if (sub === 'sync') {
+        const onto = option(args, '--onto')
         const result = syncLocalRelease(
           root,
           worktreeName,
           requiredArgument(option(args, '--message'), '--message'),
           option(args, '--run') ?? undefined,
+          {
+            ...(onto === null ? {} : { onto }),
+            ...(hasFlag(args, '--no-rebase') ? { noRebase: true } : {}),
+          },
         )
 
         print(result, hasFlag(args, '--json'))
