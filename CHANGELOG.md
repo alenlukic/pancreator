@@ -1,5 +1,17 @@
 # Changelog
 
+## [6.2.2] - 2026-09-13
+
+This release applies the five governance-text refinements the Phase 3 evaluation proposed.
+
+### Changed
+
+- Require a carried verify warning to name its finding id, its graded severity, the evidence file path rather than an in-flight invocation prefix, and the receiving chunk's verifier, and to stay out of the next release run when it leaves tracked operator-facing text false ([orchestrator](library/personas/orchestrator.md), [7d44e351](https://github.com/alenlukic/pancreator/commit/7d44e351bb85704dbdcf8c8e8502184d235c5ebb)).
+- Tell the release lane that every `./bin/pan` command on a self-development release runs the harness root's build, and require the run to confirm a release-lane behavior against the root `VERSION` and to state which release-lane repairs are inactive ([ship](library/workflows/delivery/prompts/ship.md), [orchestrator](library/personas/orchestrator.md), [7d44e351](https://github.com/alenlukic/pancreator/commit/7d44e351bb85704dbdcf8c8e8502184d235c5ebb)).
+- Ask the verifier to record the shape and trial count of the reproduction that settles a disagreement between evidence reports, and to grade on the evidence that exists when it can reproduce neither claim ([VERIFY-001](governance/policies/VERIFY-001.json), [7d44e351](https://github.com/alenlukic/pancreator/commit/7d44e351bb85704dbdcf8c8e8502184d235c5ebb)).
+- Ask a non-blocking finding routed to the warning inbox to name the condition that makes it urgent separately from the chunk or owner that will close it ([VERIFY-001](governance/policies/VERIFY-001.json), [7d44e351](https://github.com/alenlukic/pancreator/commit/7d44e351bb85704dbdcf8c8e8502184d235c5ebb)).
+- Require a named harness-contract conflict to land in a durable artifact the run retains, and in the succeeding attempt's `risks` or `unknowns` when a later attempt overwrites the agent's output ([PRINCIPLES-001](governance/policies/PRINCIPLES-001.json), [coder](library/personas/coder.md), [AGENTS](AGENTS.md), [7d44e351](https://github.com/alenlukic/pancreator/commit/7d44e351bb85704dbdcf8c8e8502184d235c5ebb)).
+
 ## [6.2.1] - 2026-09-13
 
 This release reconciles authoring layers with the authority order and corrects two tests.
