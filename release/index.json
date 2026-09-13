@@ -112,6 +112,10 @@
     {
       "version": "5.22.1",
       "commit": "8a733bb8b8098efd40dbd7466b48975db5d9aa78"
+    },
+    {
+      "version": "5.22.2",
+      "commit": "fe523fbe7fef92b953f71a4bcdecd994d30e29c3"
     }
   ]
 }

@@ -54,10 +54,12 @@ export type WatchTerminalState =
  */
 export type WatchAgentState = 'running' | 'completed'
 
-/** Cadence `DELEGATE-001` names for a background subagent under 15 minutes. */
-export const DEFAULT_WATCH_CADENCE_SECONDS = 120
-/** Cadence `DELEGATE-001` names for work expected to exceed 15 minutes. */
-export const LONG_WORK_WATCH_CADENCE_SECONDS = 300
+/**
+ * The one cadence `DELEGATE-001` names, whatever the expected run time.
+ *
+ * `--cadence-seconds` still overrides it for an operator-directed exception.
+ */
+export const DEFAULT_WATCH_CADENCE_SECONDS = 60
 /** Consecutive unchanged wakes that `DELEGATE-001` calls a stall. */
 export const DEFAULT_STALL_WAKES = 2
 /** Bound so a watch never outlives an abandoned session silently. */

@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.22.2] - 2026-09-13
+
+### Changed
+
+- Watch every background worker at one universal 60-second cadence. `pan watch` no longer defaults to 120 seconds or expects `--cadence-seconds 300` for long work ([watch](src/lib/watch.ts), [bfc64e14](https://github.com/alenlukic/pancreator/commit/bfc64e14d7a40c521b92d179c1603b37e1d07258)).
+- State the fixed 60-second cadence in DELEGATE-001 and remove the separate long-work cadence rule ([DELEGATE-001](governance/policies/DELEGATE-001.json), [bfc64e14](https://github.com/alenlukic/pancreator/commit/bfc64e14d7a40c521b92d179c1603b37e1d07258)).
+- Document the universal cadence and the operator-directed `--cadence-seconds` override in the operator guide ([operator guide](docs/operator-guide.md), [bfc64e14](https://github.com/alenlukic/pancreator/commit/bfc64e14d7a40c521b92d179c1603b37e1d07258)).
+
 ## [5.22.1] - 2026-09-13
 
 ### Changed
