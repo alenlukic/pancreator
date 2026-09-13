@@ -38,6 +38,38 @@ export function codeStyleLanguage(
 }
 
 /**
+ * The policy that governs each scanned language. Resolved where the language
+ * is already detected, so validation evidence names the handbook a repair must
+ * read instead of one identifier chosen for every file.
+ *
+ * JavaScript reports under `TSTYLE-001`. No policy claims the four JavaScript
+ * extensions, and the checker applies the script rules of the TypeScript
+ * handbook to them, so naming that handbook states what the scan did. The
+ * style command card says so where an operator reads it.
+ */
+const POLICY_BY_LANGUAGE: Record<CodeStyleLanguage, string> = {
+  javascript: 'TSTYLE-001',
+  python: 'PYSTYLE-001',
+  typescript: 'TSTYLE-001',
+}
+
+/** Every policy this validator can name, for a caller selecting among them. */
+export const CODE_STYLE_POLICY_IDS: readonly string[] = [
+  ...new Set(Object.values(POLICY_BY_LANGUAGE)),
+]
+
+/**
+ * The policy governing a path, or `null` when no handbook covers it. The
+ * governing policy follows the file, so a Python target cannot report under
+ * the TypeScript handbook.
+ */
+export function codeStylePolicyId(relativePath: string): string | null {
+  const language = codeStyleLanguage(relativePath)
+
+  return language ? POLICY_BY_LANGUAGE[language] : null
+}
+
+/**
  * Characters that leave the parser in expression position, so a following
  * slash opens a regular expression rather than a division.
  */

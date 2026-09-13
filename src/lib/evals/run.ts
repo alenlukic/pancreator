@@ -14,6 +14,10 @@ import {
 import { maybeStartDelivery, type DeliveryAutostartResult } from '../cohorts.js'
 import { PanError } from '../errors.js'
 import { personaExecutorOf } from '../executors/mapping.js'
+import {
+  gitWorkspaceSnapshot,
+  workspaceChangedPathsFromSnapshots,
+} from '../git.js'
 import { writeRedlineRecord } from '../watch.js'
 import {
   attestSupervisorCard,
@@ -23,14 +27,18 @@ import {
 import { ensureDir, readJson, writeJsonAtomic, writeTextAtomic } from '../io.js'
 import { keywordRunSuffix, makeWorkflowRunId } from '../naming.js'
 import { panCommand } from '../project-config.js'
-import type { Invocation, RunState } from '../types.js'
+import type { Invocation, RunState, WorkspaceSnapshot } from '../types.js'
 import {
   gradeRunRecords,
   writeEvalReport,
   type WrittenEvalReport,
 } from './grade.js'
 import { fixturePath, loadEvalScenario } from './scenario.js'
-import type { EvalReport, LoadedEvalScenario } from './types.js'
+import type {
+  EvalDriverCheck,
+  EvalReport,
+  LoadedEvalScenario,
+} from './types.js'
 
 export const EVAL_RUNS_DIR = 'runtime/logs/evals'
 
@@ -224,6 +232,35 @@ function readInvocation(root: string, state: RunState): Invocation | null {
 }
 
 /**
+ * What the run did to the harness checkout that graded it. An eval works in
+ * its own workspace, so any tracked harness-root change outside `runtime/` is
+ * a write the run had no authority to make. Eval run 63310_Aug-30-1404 edited
+ * `VERSION`, `CHANGELOG.md`, and four more files in the real working tree and
+ * graded as a pass, because no check looked here.
+ */
+export function harnessRootUntouched(
+  root: string,
+  before: WorkspaceSnapshot,
+): EvalDriverCheck {
+  const changed = workspaceChangedPathsFromSnapshots(
+    before,
+    gitWorkspaceSnapshot(root, { commitBase: before.head }),
+  )
+    .filter((relativePath) => !relativePath.startsWith('runtime/'))
+    .sort()
+
+  return {
+    id: 'harness-root-untouched',
+    passed: changed.length === 0,
+    summary:
+      changed.length === 0
+        ? 'The run changed no tracked harness-root file outside runtime/.'
+        : `The run changed ${changed.length} tracked harness-root file(s) outside runtime/. An eval run MUST NOT write the checkout it is graded from.`,
+    evidence: changed,
+  }
+}
+
+/**
  * Drive one bounded toy run. The harness advances every harness-owned step
  * itself, delegates external-executor stages through the same path as
  * `pan delegate`, applies scripted operator decisions, and stops the moment a
@@ -242,6 +279,10 @@ export function runEval(
   const evalDir = path.join(root, evalDirRelative)
   const workspace = path.join(evalDir, 'workspace')
   const requestRelative = `${evalDirRelative}/request.md`
+
+  // Captured before the run creates anything outside its own directory, so
+  // the comparison at the end sees every write the drive loop caused.
+  const harnessBefore = gitWorkspaceSnapshot(root)
 
   ensureDir(evalDir)
   materializeWorkspace(root, loaded, workspace, onProgress)
@@ -463,6 +504,11 @@ export function runEval(
   }
 
   const report = gradeRunRecords(root, runId, loaded)
+  const harnessCheck = harnessRootUntouched(root, harnessBefore)
+
+  report.driver_checks = [harnessCheck]
+  report.passed = report.passed && harnessCheck.passed
+
   const reportPaths = writeEvalReport(root, evalDirRelative, report)
   const status: EvalRunMetadata['status'] =
     handoffReason === null ? 'graded' : 'handoff'

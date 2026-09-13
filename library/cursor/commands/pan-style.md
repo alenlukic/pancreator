@@ -8,6 +8,6 @@ Accept one optional `--worktree <name>` selection and forward it to every style 
 5. When the scan reports more than five editable files with issues, delegate the repairs to `pan-librarian` with the scan JSON included. Do not edit the files inline in this session.
 6. When the scan reports one to five editable files with issues, open each editable file and repair the reported code style issues, plus the judgment-level rules the style guidance states.
 7. Do not edit a report-only file. A harness file inside an embedded target workspace is report-only, and the configured formatter stays authoritative for mechanical style.
-8. After each repaired file, run `{{PANCREATOR_PAN_COMMAND}} requirements run --persona librarian --workflow standalone --stage style --kind standalone --registry CODE-STYLE-VALIDATE-001 --target <path> --json`. Stop when validation fails.
+8. After each repaired file, run `{{PANCREATOR_PAN_COMMAND}} requirements run --persona librarian --workflow standalone --stage style --kind standalone --registry CODE-STYLE-VALIDATE-001 --target <path> --json`. Stop when validation fails. The result names the policy that governs the scanned file: `PYSTYLE-001` for Python, and `TSTYLE-001` for TypeScript and for JavaScript, which the TypeScript handbook governs.
 9. After every editable file passes validation, run the configured static profile with `{{PANCREATOR_PAN_COMMAND}} repository-check static`, then run `{{PANCREATOR_PAN_COMMAND}} style checkpoint --worktree <name> --json`.
 10. Do not commit, push, merge, publish, deploy, or change Git history.

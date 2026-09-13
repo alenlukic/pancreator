@@ -2,9 +2,10 @@
 
 Repair the recorded failures in one focused pass and hand the workspace back
 to the stage that routed you here. A verify verdict routes to this stage with
-its findings and returns to verify; the ship release gate routes here with its
-failed `full` run and returns directly to ship. The routing stage's evidence is
-your primary input.
+its findings; the ship release gate routes here with its failed `full` run.
+Either way the run returns through verify, which retakes its evidence at the
+repaired workspace before the release gate runs again. The routing stage's
+evidence is your primary input.
 
 ## Steps
 

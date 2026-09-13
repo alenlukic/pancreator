@@ -435,3 +435,85 @@ test('a standalone lookup row without a mode and a mode without a row are errors
     errors.join('\n'),
   )
 })
+
+// int-con HR-005: the `target-` prefix exempted a standalone row by name, so
+// a row that named a stage no installed extension supplied passed the check
+// it was written to run.
+test('a target- standalone row is exempt only when an extension supplies it', () => {
+  const root = createFixture()
+  const lookupPath = path.join(
+    root,
+    'governance/registries/policy_lookup_table.json',
+  )
+  const lookup = JSON.parse(readFileSync(lookupPath, 'utf8')) as {
+    rows: Array<Record<string, unknown>>
+  }
+
+  lookup.rows.push({
+    persona: 'coder',
+    workflow: 'standalone',
+    stage: 'target-acme',
+    policies: ['PAIR-001'],
+  })
+  writeJson(lookupPath, lookup)
+
+  const uninstalled = run(root).errors
+
+  assert.ok(
+    uninstalled.some((item) =>
+      /stage target-acme\) names a stage no STANDALONE_MODES entry declares and no policy_lookup\.d extension supplies/u.test(
+        item,
+      ),
+    ),
+    uninstalled.join('\n'),
+  )
+
+  writeJson(
+    path.join(root, 'governance/registries/policy_lookup.d/acme.json'),
+    {
+      schema_version: 1,
+      extension_id: 'acme',
+      rows: [
+        {
+          persona: 'coder',
+          workflow: 'standalone',
+          stage: 'target-acme',
+          policies: ['PAIR-001'],
+        },
+      ],
+    },
+  )
+
+  const installed = run(root).errors
+
+  assert.equal(
+    installed.some((item) => /target-acme/u.test(item)),
+    false,
+    installed.join('\n'),
+  )
+})
+
+// int-con HR-005: the supervisor form closed its code span after the mode,
+// so the option the message names fell outside the span and a stray
+// backtick trailed it.
+test('the supervisor card requirement is one balanced code span', () => {
+  const root = createFixture()
+  const startPath = path.join(root, 'library/cursor/commands/pan-start.md')
+  const start = readFileSync(startPath, 'utf8').replaceAll(
+    'governance card --mode supervisor',
+    'governance card --mode review',
+  )
+
+  writeFileSync(startPath, start)
+
+  const message = run(root).errors.find((item) =>
+    item.startsWith('library/cursor/commands/pan-start.md MUST run'),
+  )
+
+  assert.equal(
+    message,
+    'library/cursor/commands/pan-start.md MUST run ' +
+      '`pan governance card --mode supervisor --run <run-id>`',
+  )
+  assert.equal((message?.match(/`/gu) ?? []).length % 2, 0)
+})

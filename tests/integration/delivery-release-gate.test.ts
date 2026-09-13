@@ -146,7 +146,7 @@ test('a remediate to verify return never runs full; the ship release gate runs i
   assert.equal(fullRuns(root), 1)
 })
 
-test('thorough verification runs full at the ship release gate on its own result and routes a failure to remediate, which returns to ship directly', () => {
+test('thorough verification runs full at the ship release gate on its own result and routes a failure to remediate, which returns through verify', () => {
   const { root, runId, state, workflow } = checkpoint(
     'delivery@verify-prepared',
     checksVariant(
@@ -187,7 +187,10 @@ test('thorough verification runs full at the ship release gate on its own result
 
   assert.ok(gate)
   assert.equal(gate.failures, 1)
-  assert.equal(gate.routed_to, 'remediate')
+  // The gate stage reads verify evidence, so the repair returns through its
+  // own success path rather than directly to the gate.
+  assert.equal(gate.routed_to, undefined)
+  assert.equal(gate.repair_stage, 'remediate')
   assert.equal(gate.last_result.passed, false)
   assert.equal(gate.last_result.preexisting_failure, undefined)
   assert.equal(gate.last_result.command, 'pan repository-check full')
@@ -208,8 +211,9 @@ test('thorough verification runs full at the ship release gate on its own result
     JSON.stringify(remediate.inputs.references),
   )
 
-  // A remediation that the release gate routed returns to ship directly,
-  // where full runs again and now passes.
+  // A remediation that the release gate routed returns through verify, which
+  // retakes its evidence at the repaired workspace before ship runs full
+  // again.
   const remediated = submitStageOutput(
     root,
     runId,
@@ -218,7 +222,17 @@ test('thorough verification runs full at the ship release gate on its own result
   )
 
   assert.equal(remediated.record.outcome, 'success')
-  assert.equal(remediated.state.current_stage, 'ship')
+  assert.equal(remediated.state.current_stage, 'verify')
+  assert.equal(fullRuns(root), 1)
+
+  const reverified = submitStageOutput(
+    root,
+    runId,
+    stageBySlug(workflow, 'verify'),
+    'success',
+  )
+
+  assert.equal(reverified.state.current_stage, 'ship')
   assert.equal(fullRuns(root), 1)
 
   const ship = prepareInvocation(root, runId)

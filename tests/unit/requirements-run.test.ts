@@ -12,7 +12,9 @@ import {
 import { loadRegistry } from '../../src/lib/requirements/registry.js'
 import { resolveRequirements } from '../../src/lib/requirements/resolve.js'
 import { requirementShapeKey } from '../../src/cli.js'
+import { resolveSubmitValidators } from '../../src/lib/engine.js'
 import { createFixture } from '../fixture-template.js'
+import type { Invocation } from '../../src/lib/types.js'
 
 const REPO_ROOT = process.cwd()
 
@@ -157,7 +159,7 @@ test('named artifact targets resolve when precomputation is absent', () => {
   )
 })
 
-test('the style mode carries one code style check for both language policies', () => {
+test('the style mode carries one code style check per language policy', () => {
   const root = createFixture()
   const style = resolveRequirements(root, {
     persona: 'librarian',
@@ -170,13 +172,23 @@ test('the style mode carries one code style check for both language policies', (
     (item) => item.registry_id === 'CODE-STYLE-VALIDATE-001',
   )
 
-  // Each language policy declares the check, and the declarations execute
-  // identically, so `pan requirements run --registry` collapses them.
+  // Each language policy declares the check on one shared handler. The two
+  // declarations differ only in the policy that governs the scanned file, so
+  // they MUST NOT collapse: a collapse names one handbook for both languages.
   assert.deepEqual(style.map((item) => item.policy_id).sort(), [
     'PYSTYLE-001',
     'TSTYLE-001',
   ])
-  assert.equal(new Set(style.map(requirementShapeKey)).size, 1)
+  assert.equal(new Set(style.map(requirementShapeKey)).size, 2)
+  assert.deepEqual(
+    new Set(
+      style.map((item) =>
+        requirementShapeKey({ ...item, policy_id: 'TSTYLE-001' }),
+      ),
+    ).size,
+    1,
+    'the two declarations differ in nothing but the governing policy',
+  )
 
   const implement = resolveRequirements(root, {
     persona: 'coder',
@@ -294,4 +306,67 @@ test('runRequirement validates a repository target without reading it as a file'
 
   assert.equal(result.status, 'passed')
   assert.equal(result.target_checksum, undefined)
+})
+
+// int-con HR-005: an unresolvable `artifact:<name>` selector fell back to the
+// stage output JSON, so a validator written for the pull-request copy passed
+// by judging a file it was never pointed at.
+test('an unresolvable named artifact target is reported, not replaced', () => {
+  const root = createFixture()
+  const requirement = resolveRequirements(root, {
+    persona: 'release-steward',
+    workflow: 'delivery',
+    stage: 'ship',
+    invocation_kind: 'workflow',
+    operator_artifacts: 'requested',
+    invocation: {
+      output_path: 'runtime/logs/workflows/x/outputs/ship.json',
+      artifact_paths: ['runtime/logs/workflows/x/operator/pr-description.md'],
+      artifact_targets: {
+        pr_description: 'runtime/logs/workflows/x/operator/pr-description.md',
+      },
+    },
+  }).validation_requirements.find(
+    (item) => item.registry_id === 'PR-DESCRIPTION-VALIDATE-001',
+  )
+
+  assert.ok(requirement)
+
+  const invocationFor = (
+    artifactTargets?: Record<string, string>,
+  ): Invocation =>
+    ({
+      stage: { slug: 'ship' },
+      output: {
+        path: 'runtime/logs/workflows/x/outputs/ship.json',
+        ...(artifactTargets ? { artifact_targets: artifactTargets } : {}),
+      },
+      requirements: {
+        validation_requirements: [
+          { ...requirement, resolved_target: undefined },
+        ],
+      },
+    }) as unknown as Invocation
+
+  // A ship that owes no named artifact never owed the pull-request copy:
+  // PR-001 scopes that copy to a ship that produces operator artifacts.
+  const unowed = resolveSubmitValidators(root, invocationFor(), {})
+
+  assert.equal(unowed.length, 1)
+  assert.equal(unowed[0]?.unresolved_target, 'artifact:pr_description')
+  assert.equal(unowed[0]?.named_artifacts_declared, false)
+  assert.notEqual(
+    unowed[0]?.target_path,
+    'runtime/logs/workflows/x/outputs/ship.json',
+  )
+
+  // A ship that declares named artifacts and omits this one is a defect.
+  const owed = resolveSubmitValidators(
+    root,
+    invocationFor({ ship_brief: 'runtime/logs/workflows/x/operator/s.html' }),
+    {},
+  )
+
+  assert.equal(owed[0]?.unresolved_target, 'artifact:pr_description')
+  assert.equal(owed[0]?.named_artifacts_declared, true)
 })

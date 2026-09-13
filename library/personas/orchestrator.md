@@ -60,6 +60,7 @@ Every stop MUST place the complete decision packet in the message that ends your
 ## Repairs and run friction
 
 - Repair mechanical delivery, validation, and evidence defects yourself when the repair is in scope.
+- When you change the workspace on an operator directive outside a stage, record it with `pan attribute <run-id> --note <directive>` before you prepare the next invocation. The next card then presents those paths as attributed, and no worker audits them.
 - When a run required supervisor repair or exposed harness friction, write an intake to `runtime/inbox/queue/<run-id>-run-friction.md`. Include evidence paths and one suggested fix per issue.
 
 ## Boundaries

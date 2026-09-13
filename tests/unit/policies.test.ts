@@ -14,6 +14,12 @@ import { loadPolicyCatalog, resolvePolicies } from '../../src/lib/policies.js'
 import { STANDALONE_MODES } from '../../src/lib/governance-card.js'
 import { filterPolicyInstructionsForCard } from '../../src/lib/policy-instructions.js'
 import { resolveRequirements } from '../../src/lib/requirements/resolve.js'
+import { validateRepository } from '../../src/lib/validation.js'
+import {
+  prepareValidationFixture,
+  readJson,
+  writeJsonFile,
+} from './validation-helpers.js'
 
 function writePolicyExtension(
   root: string,
@@ -1373,5 +1379,65 @@ test('mixed policies tag supervisor, harness, and operator audiences', () => {
         instruction.text.includes('Repository-check commands MUST be copied'),
       ),
     false,
+  )
+})
+
+test('a technology-scoped provider row does not cover an unscoped consumer', () => {
+  // The technology clause of the coverage predicate once accepted any provider
+  // when the consumer declared no technology, which silenced every dependency
+  // gap a language-scoped row left behind.
+  const root = createFixture()
+  prepareValidationFixture(root)
+  const lookupPath = path.join(
+    root,
+    'governance',
+    'registries',
+    'policy_lookup_table.json',
+  )
+  const lookup = readJson<{
+    rows: Array<{
+      persona: string
+      workflow: string
+      stage: string
+      technology?: string
+      policies: string[]
+    }>
+  }>(lookupPath)
+
+  // WAIVER-001 references OPERATOR-001, and the universal row is the only
+  // provider of OPERATOR-001, so scoping that provider isolates the clause.
+  lookup.rows = lookup.rows.map((row) =>
+    row.persona === '*' && row.workflow === '*' && row.stage === '*'
+      ? {
+          ...row,
+          policies: row.policies.filter((policy) => policy !== 'OPERATOR-001'),
+        }
+      : row,
+  )
+
+  const scopedProvider = {
+    persona: '*',
+    workflow: '*',
+    stage: '*',
+    technology: 'typescript',
+    policies: ['OPERATOR-001'],
+  }
+
+  lookup.rows.push(scopedProvider)
+  writeJsonFile(lookupPath, lookup)
+
+  assert.match(
+    validateRepository(root).errors.join('\n'),
+    /loads WAIVER-001 without referenced policy OPERATOR-001/u,
+    'a technology-scoped provider must leave the unscoped consumer uncovered',
+  )
+
+  delete (scopedProvider as { technology?: string }).technology
+  writeJsonFile(lookupPath, lookup)
+
+  assert.doesNotMatch(
+    validateRepository(root).errors.join('\n'),
+    /loads WAIVER-001 without referenced policy OPERATOR-001/u,
+    'the same provider without a technology scope must cover the consumer',
   )
 })
