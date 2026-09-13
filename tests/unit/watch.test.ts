@@ -407,6 +407,7 @@ test('a plausible output under a running agent report ends no wake of its own', 
     'no wake completes while the worker keeps writing under a running report',
   )
   assert.equal(watched.state, 'unverified')
+  assert.equal(wakes[0]?.completion_hold, 'agent_reported_running')
 })
 
 // A stage output that parses and is not a scaffold can still be a document
