@@ -32,7 +32,7 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 - `DEV-001` — implementation discipline
 - `VERIFY-001` — joint read-only verification with a graded verdict
 - `REMED-001` — verdict-routed remediation with verdict-scoped authority
-- `TS-001` — self-development-only TypeScript conformance
+- `TS-001` — TypeScript conformance for detected TypeScript workspaces
 - `PY-001` — Python conformance for detected Python workspaces
 - `TSTYLE-001` — TypeScript style guidance for the code style batch pass
 - `PYSTYLE-001` — Python style guidance for the code style batch pass

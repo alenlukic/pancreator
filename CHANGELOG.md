@@ -1,5 +1,21 @@
 # Changelog
 
+## [5.22.1] - 2026-09-13
+
+### Changed
+
+- Rebuild the target repository primer after the 5.22.0 release ([primer](docs/target-repo-primer.md), [7ad2f7a1](https://github.com/alenlukic/pancreator/commit/7ad2f7a1fd9d0e3cbd65456712539cf65c4c1dad)).
+- Split seven SHIP-001 instruction sentences so each uses 20 words or fewer ([SHIP-001](governance/policies/SHIP-001.json), [0b4803e8](https://github.com/alenlukic/pancreator/commit/0b4803e87c138726a44e349e01db5c79ff6efba2)).
+
+### Fixed
+
+- Replace `load-bearing claims` with `critical claims` in VERIFY-001 ([VERIFY-001](governance/policies/VERIFY-001.json), [0b4803e8](https://github.com/alenlukic/pancreator/commit/0b4803e87c138726a44e349e01db5c79ff6efba2)).
+- Correct the TS-001 index line to TypeScript conformance for detected TypeScript workspaces ([policy index](governance/policies/index.md), [0b4803e8](https://github.com/alenlukic/pancreator/commit/0b4803e87c138726a44e349e01db5c79ff6efba2)).
+- Point four `--request` examples at `runtime/inbox/queue/` ([operator guide](docs/operator-guide.md), [0b4803e8](https://github.com/alenlukic/pancreator/commit/0b4803e87c138726a44e349e01db5c79ff6efba2)).
+- State that no shipped template enables the `concurrent` profile flag ([operator guide](docs/operator-guide.md), [0b4803e8](https://github.com/alenlukic/pancreator/commit/0b4803e87c138726a44e349e01db5c79ff6efba2)).
+- Record that no worker in the run owns code style and that `/pan-style` repairs it ([verify stages](library/workflows/delivery/stages/verify.json), [0b4803e8](https://github.com/alenlukic/pancreator/commit/0b4803e87c138726a44e349e01db5c79ff6efba2)).
+- Remove the retired `finalize:workflow-artifacts` script from the runtime protocol ([runtime protocol](docs/runtime-protocol.md), [0b4803e8](https://github.com/alenlukic/pancreator/commit/0b4803e87c138726a44e349e01db5c79ff6efba2)).
+
 ## [5.22.0] - 2026-09-12
 
 ### Changed
@@ -17,7 +33,7 @@
 
 ### Added
 
-- Add an optional `concurrent` boolean on a repository-check profile. The gate runner still runs commands one after another ([repository-checks](src/lib/repository-checks.ts), [b167a42f](https://github.com/alenlukic/pancreator/commit/b167a42f5df16e5b9f0f9e4c0391170802ed9583)).
+- Add an optional `concurrent` boolean on a repository-check profile. The gate runner still runs commands one after another, and no shipped profile enables the flag ([repository-checks](src/lib/repository-checks.ts), [b167a42f](https://github.com/alenlukic/pancreator/commit/b167a42f5df16e5b9f0f9e4c0391170802ed9583)).
 - Probe every distinct model spec together on a bare `pan models --probe` ([cursor-probe](src/lib/executors/cursor-probe.ts), [b167a42f](https://github.com/alenlukic/pancreator/commit/b167a42f5df16e5b9f0f9e4c0391170802ed9583)).
 - Infer a tune-record target kind so `pan requirements run` reaches the registry validator ([requirements runner](src/lib/requirements/run.ts), [0a243077](https://github.com/alenlukic/pancreator/commit/0a2430770126979ba4b3d0a5aebfe67ea1988095)).
 
