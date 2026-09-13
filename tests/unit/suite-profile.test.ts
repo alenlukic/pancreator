@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict'
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import {
+  SUITE_PROFILE_INDEX_PATH,
   buildSuiteProfileSummary,
+  lookupPreviousSucceededRunProfile,
+  previousSucceededRunProfileByScan,
+  recordSuiteProfileIndexEntry,
   renderSuiteProfileSection,
   renderSuiteProfileStatusLine,
 } from '../../src/lib/suite-profile.js'
@@ -255,6 +259,121 @@ test('the ship card section renders the profile with and without a prior succeed
 
   assert.ok(status.includes(line))
   assert.ok(!renderStatus(current, null, null).includes('Suite profile:'))
+})
+
+function evidenceProfilePath(runId: string): string {
+  return `runtime/logs/workflows/${runId}/agent/evidence/verify-1-${runId}-suite-profile.json`
+}
+
+function succeededRun(
+  root: string,
+  runId: string,
+  updatedAt: string,
+  testCount = 10,
+  wallClockMs = 3000,
+): RunState {
+  const profilePath = evidenceProfilePath(runId)
+
+  writeProfile(root, profilePath, testCount, wallClockMs)
+
+  const state = {
+    ...runState(runId, profilePath, 'succeeded'),
+    updated_at: updatedAt,
+  }
+
+  writeRunState(root, state)
+
+  return state
+}
+
+test('the ship-card profile lookup costs the same however many runs are retained', () => {
+  const root = createTestTempDirectory('pancreator-suite-index-')
+  const currentPath = evidenceProfilePath('run-now')
+
+  writeProfile(root, currentPath, 12, 4200)
+
+  const current = {
+    ...runState('run-now', currentPath),
+    updated_at: '2026-08-30T00:00:00.000Z',
+  }
+
+  recordSuiteProfileIndexEntry(
+    root,
+    succeededRun(root, 'run-prior', '2026-08-29T00:00:00.000Z'),
+  )
+
+  const small = lookupPreviousSucceededRunProfile(root, current)
+
+  assert.equal(small.source, 'index')
+  assert.equal(small.file_reads, 2)
+  assert.equal(small.value?.run_id, 'run-prior')
+
+  for (let index = 0; index < 20; index += 1) {
+    succeededRun(
+      root,
+      `run-old-${index}`,
+      `2026-08-28T00:00:${String(index).padStart(2, '0')}.000Z`,
+      5,
+      1000,
+    )
+  }
+
+  const large = lookupPreviousSucceededRunProfile(root, current)
+
+  assert.equal(large.source, 'index')
+  assert.equal(large.file_reads, small.file_reads)
+  assert.equal(large.value?.run_id, 'run-prior')
+
+  // The bound is worth having only because the scan it replaces is not
+  // bounded: the same lookup by scan pays for every retained run.
+  assert.ok(
+    previousSucceededRunProfileByScan(root, current).file_reads >
+      large.file_reads,
+  )
+
+  // The card the operator reads must not depend on which path answered.
+  const indexed = buildSuiteProfileSummary(root, current)
+
+  rmSync(path.join(root, SUITE_PROFILE_INDEX_PATH))
+
+  const scanned = buildSuiteProfileSummary(root, current)
+
+  assert.ok(indexed)
+  assert.ok(scanned)
+  assert.deepEqual(indexed.previous, scanned.previous)
+  assert.equal(
+    renderSuiteProfileSection(indexed).join('\n'),
+    renderSuiteProfileSection(scanned).join('\n'),
+  )
+})
+
+test('a missing suite-profile index falls back to the scan and rebuilds itself', () => {
+  const root = createTestTempDirectory('pancreator-suite-index-rebuild-')
+  const currentPath = evidenceProfilePath('run-now')
+
+  writeProfile(root, currentPath, 12, 4200)
+
+  const current = {
+    ...runState('run-now', currentPath),
+    updated_at: '2026-08-30T00:00:00.000Z',
+  }
+
+  succeededRun(root, 'run-prior', '2026-08-29T00:00:00.000Z')
+
+  const indexPath = path.join(root, SUITE_PROFILE_INDEX_PATH)
+
+  assert.equal(existsSync(indexPath), false)
+
+  const first = lookupPreviousSucceededRunProfile(root, current)
+
+  assert.equal(first.source, 'scan')
+  assert.equal(first.value?.run_id, 'run-prior')
+  assert.equal(existsSync(indexPath), true)
+
+  const second = lookupPreviousSucceededRunProfile(root, current)
+
+  assert.equal(second.source, 'index')
+  assert.deepEqual(second.value, first.value)
 })
 
 test('a cached gate summary names the cached pass', () => {

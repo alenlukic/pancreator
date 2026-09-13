@@ -1,7 +1,7 @@
 import { readdirSync } from 'node:fs'
 import path from 'node:path'
 
-import { fileExists, isRecord, readJson } from './io.js'
+import { fileExists, isRecord, readJson, writeJsonAtomic } from './io.js'
 import { resolveRunLayout } from './run-layout.js'
 import { TEST_PROFILE_ENV } from './suite-profile-env.js'
 import type {
@@ -201,21 +201,138 @@ interface PreviousRunProfile {
   profile: SuiteProfile
 }
 
-/**
- * The profile recorded by the most recent succeeded run in the same
- * workspace, or null when no such run exists.
- */
-export function previousSucceededRunProfile(
-  root: string,
-  state: RunState,
-): PreviousRunProfile | null {
-  const workflows = path.join(root, 'runtime', 'logs', 'workflows')
+/** Where a previous-profile lookup came from, and what it cost. */
+export interface PreviousRunProfileLookup {
+  value: PreviousRunProfile | null
+  source: 'index' | 'scan'
+  /** JSON files the lookup opened, which the index path bounds at two. */
+  file_reads: number
+}
 
-  if (!fileExists(workflows)) {
+/** One workspace's most recent succeeded profiled run. */
+export interface SuiteProfileIndexEntry {
+  run_id: string
+  profile_path: string
+  recorded_at: string
+}
+
+interface SuiteProfileIndex {
+  schema_version: 1
+  /** Keyed by the run's workspace root, relative to the harness root. */
+  workspaces: Record<string, SuiteProfileIndexEntry>
+}
+
+/**
+ * Pointer to the newest profiled run of each workspace.
+ *
+ * The fact is written once, when a run succeeds, instead of derived at read
+ * time from every retained run state. The file is a cache: a lost or corrupt
+ * index costs one scan, which rebuilds it.
+ */
+export const SUITE_PROFILE_INDEX_PATH = 'runtime/cache/suite-profile-index.json'
+
+function workspaceKey(state: Pick<RunState, 'workspace_root'>): string {
+  return state.workspace_root || '.'
+}
+
+function loadSuiteProfileIndex(root: string): SuiteProfileIndex | null {
+  const absolute = path.join(root, SUITE_PROFILE_INDEX_PATH)
+
+  if (!fileExists(absolute)) {
     return null
   }
 
+  let value: unknown
+
+  try {
+    value = readJson(absolute)
+  } catch {
+    // A corrupt index is a miss, never a status failure: the scan rebuilds it.
+    return null
+  }
+
+  if (!isRecord(value) || !isRecord(value.workspaces)) {
+    return null
+  }
+
+  const workspaces: Record<string, SuiteProfileIndexEntry> = {}
+
+  for (const [workspace, entry] of Object.entries(value.workspaces)) {
+    if (
+      isRecord(entry) &&
+      typeof entry.run_id === 'string' &&
+      typeof entry.profile_path === 'string' &&
+      typeof entry.recorded_at === 'string'
+    ) {
+      workspaces[workspace] = {
+        run_id: entry.run_id,
+        profile_path: entry.profile_path,
+        recorded_at: entry.recorded_at,
+      }
+    }
+  }
+
+  return { schema_version: 1, workspaces }
+}
+
+function writeSuiteProfileIndexEntry(
+  root: string,
+  workspace: string,
+  entry: SuiteProfileIndexEntry,
+): void {
+  const existing = loadSuiteProfileIndex(root)
+
+  writeJsonAtomic(path.join(root, SUITE_PROFILE_INDEX_PATH), {
+    schema_version: 1,
+    workspaces: { ...(existing?.workspaces ?? {}), [workspace]: entry },
+  } satisfies SuiteProfileIndex)
+}
+
+/**
+ * Record the profile of a run that just succeeded, so a later status read
+ * finds it without scanning. A run that recorded no profile writes nothing.
+ */
+export function recordSuiteProfileIndexEntry(
+  root: string,
+  state: RunState,
+): SuiteProfileIndexEntry | null {
+  const recorded = latestRecordedSuiteProfile(state)
+
+  if (!recorded?.result.suite_profile_path) {
+    return null
+  }
+
+  const entry: SuiteProfileIndexEntry = {
+    run_id: state.run_id,
+    profile_path: recorded.result.suite_profile_path,
+    recorded_at:
+      typeof state.updated_at === 'string'
+        ? state.updated_at
+        : new Date().toISOString(),
+  }
+
+  writeSuiteProfileIndexEntry(root, workspaceKey(state), entry)
+
+  return entry
+}
+
+/**
+ * The profile of the most recent succeeded run in the same workspace, found
+ * by reading every retained run state. This is the rebuild path: it costs one
+ * read per retained run, which is what the index exists to avoid.
+ */
+export function previousSucceededRunProfileByScan(
+  root: string,
+  state: RunState,
+): PreviousRunProfileLookup {
+  const workflows = path.join(root, 'runtime', 'logs', 'workflows')
+
+  if (!fileExists(workflows)) {
+    return { value: null, source: 'scan', file_reads: 0 }
+  }
+
   let best: { updated_at: string; value: PreviousRunProfile } | null = null
+  let reads = 0
 
   for (const entry of readdirSync(workflows, { withFileTypes: true })) {
     if (!entry.isDirectory() || entry.name === state.run_id) {
@@ -231,6 +348,7 @@ export function previousSucceededRunProfile(
     let value: unknown
 
     try {
+      reads += 1
       value = readJson(stateFile)
     } catch {
       continue
@@ -243,7 +361,7 @@ export function previousSucceededRunProfile(
     const other = value as unknown as RunState
 
     if (
-      (other.workspace_root || '.') !== (state.workspace_root || '.') ||
+      workspaceKey(other) !== workspaceKey(state) ||
       !Array.isArray(other.stage_history)
     ) {
       continue
@@ -254,6 +372,8 @@ export function previousSucceededRunProfile(
     if (!recorded?.result.suite_profile_path) {
       continue
     }
+
+    reads += 1
 
     const profile = loadSuiteProfile(root, recorded.result.suite_profile_path)
 
@@ -276,7 +396,63 @@ export function previousSucceededRunProfile(
     }
   }
 
-  return best?.value ?? null
+  return { value: best?.value ?? null, source: 'scan', file_reads: reads }
+}
+
+/**
+ * The profile recorded by the most recent succeeded run in the same
+ * workspace, read from the index when it holds the answer.
+ *
+ * A missing index entry, an unreadable profile, or an entry that names this
+ * run falls back to the scan, and a scan that finds a profile rebuilds the
+ * entry it was missing.
+ */
+export function lookupPreviousSucceededRunProfile(
+  root: string,
+  state: RunState,
+): PreviousRunProfileLookup {
+  const workspace = workspaceKey(state)
+  const indexed = loadSuiteProfileIndex(root)?.workspaces[workspace]
+
+  if (indexed && indexed.run_id !== state.run_id) {
+    const profile = loadSuiteProfile(root, indexed.profile_path)
+
+    if (profile) {
+      return {
+        value: {
+          run_id: indexed.run_id,
+          profile_path: indexed.profile_path,
+          profile,
+        },
+        source: 'index',
+        // The index and the profile it names are the whole cost.
+        file_reads: 2,
+      }
+    }
+  }
+
+  const scanned = previousSucceededRunProfileByScan(root, state)
+
+  if (scanned.value) {
+    writeSuiteProfileIndexEntry(root, workspace, {
+      run_id: scanned.value.run_id,
+      profile_path: scanned.value.profile_path,
+      recorded_at: scanned.value.profile.recorded_at,
+    })
+  }
+
+  return scanned
+}
+
+/**
+ * The profile recorded by the most recent succeeded run in the same
+ * workspace, or null when no such run exists.
+ */
+export function previousSucceededRunProfile(
+  root: string,
+  state: RunState,
+): PreviousRunProfile | null {
+  return lookupPreviousSucceededRunProfile(root, state).value
 }
 
 /**

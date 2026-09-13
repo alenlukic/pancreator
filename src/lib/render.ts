@@ -350,7 +350,9 @@ function renderSupervisorProcedureBody(
           `3. Persist that exact prompt body to \`${delegation.delegation_artifact_path}\` ` +
             'before submission. The only permitted label is a leading ' +
             `\`Agent: ${namedAgent}\` line followed by one blank line; add ` +
-            'nothing else ahead of the body.',
+            'nothing else ahead of the body. A prepare that ran ' +
+            `\`--agent ${namedAgent}\` already wrote that file for you; ` +
+            'read it and leave it alone.',
         ]
       : [
           `2. Launch the named \`${namedAgent}\` agent — the definition at ` +

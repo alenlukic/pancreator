@@ -13,6 +13,7 @@ import path from 'node:path'
 
 import { PanError, invariant } from './errors.js'
 import {
+  buildGateCacheEntry,
   gateCacheKey,
   gateCacheStore,
   gateCacheableSnapshot,
@@ -38,7 +39,11 @@ import type {
   RepositoryCheckDelta,
   RepositoryCheckDiagnostic,
 } from './types.js'
-import { TEST_PROFILE_ENV } from './suite-profile.js'
+import {
+  SUITE_PROFILE_GATE_PROFILE,
+  TEST_PROFILE_ENV,
+  suiteProfileEvidencePath,
+} from './suite-profile.js'
 import { loadWorkflowFile } from './workflow.js'
 
 /**
@@ -986,6 +991,48 @@ export function recordAgentRepositoryCheckForRuns(
   return recorded
 }
 
+/**
+ * Evidence name of one command-line profile execution recorded for a run.
+ *
+ * The runner writes the artifacts and the recorder looks for them after the
+ * execution, so both derive the name from the profile and the fingerprint the
+ * store already requires to be unchanged.
+ */
+export function agentGatePassArtifactId(
+  profileName: string,
+  fingerprint: string,
+): string {
+  return `agent-repository-check-${profileName}-${fingerprint.slice(0, 12)}`
+}
+
+/**
+ * Suite-profile artifact a command-line execution of the profiled profile
+ * writes for one run, or `null` for a profile the harness does not profile.
+ *
+ * The gate names this target through `PAN_TEST_PROFILE` before it runs; the
+ * command-line runner does the same so a pass it stores carries the profile
+ * a later accepting gate reuses instead of re-running the suite.
+ */
+export function agentGatePassSuiteProfile(
+  root: string,
+  runId: string,
+  profileName: string,
+  fingerprint: string,
+): { absolute: string; relative: string } | null {
+  if (profileName !== SUITE_PROFILE_GATE_PROFILE) {
+    return null
+  }
+
+  return resolveRunLayout(root, runId).evidence(
+    path.basename(
+      suiteProfileEvidencePath(
+        '.',
+        agentGatePassArtifactId(profileName, fingerprint),
+      ),
+    ),
+  )
+}
+
 /** What a stored clean pass left behind, for the caller's own reporting. */
 export interface RecordedProfileGatePass {
   cache_key: string
@@ -1041,7 +1088,15 @@ export function recordProfileGatePass(
   const command = repositoryCheckGateCommand(profileName)
   const cacheKey = gateCacheKey(root, snapshot.fingerprint, command)
   const evidence = resolveRunLayout(root, runId).evidence(
-    `agent-repository-check-${profileName}-${snapshot.fingerprint.slice(0, 12)}.log`,
+    `${agentGatePassArtifactId(profileName, snapshot.fingerprint)}.log`,
+  )
+  // The execution wrote its profile only when this command told the reporter
+  // where to put it, which it does for the profiled profile and a named run.
+  const suiteProfile = agentGatePassSuiteProfile(
+    root,
+    runId,
+    profileName,
+    snapshot.fingerprint,
   )
 
   // The gate copies these bytes forward as its own evidence, so the log
@@ -1063,16 +1118,22 @@ export function recordProfileGatePass(
     ].join('\n'),
   )
 
-  gateCacheStore(root, {
-    key: cacheKey,
-    criterion_id: `agent:${profileName}`,
-    command,
-    workspace_fingerprint: snapshot.fingerprint,
-    run_id: runId,
-    cached_at: new Date().toISOString(),
-    evidence_path: evidence.relative,
-    repository_result: result,
-  })
+  gateCacheStore(
+    root,
+    buildGateCacheEntry({
+      key: cacheKey,
+      criterion_id: `agent:${profileName}`,
+      command,
+      workspace_fingerprint: snapshot.fingerprint,
+      run_id: runId,
+      evidence_path: evidence.relative,
+      repository_result: result,
+      suite_profile_path:
+        suiteProfile && fileExists(suiteProfile.absolute)
+          ? suiteProfile.relative
+          : null,
+    }),
+  )
 
   return { cache_key: cacheKey, evidence_path: evidence.relative }
 }
