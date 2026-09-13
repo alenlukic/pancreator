@@ -332,6 +332,7 @@ test('the review card renders base conduct for a card policy the target changes'
     .filter(
       (line) =>
         line.startsWith('- Agents MUST') ||
+        line.startsWith('- Agents SHOULD') ||
         line.startsWith('- Source-changing'),
     )
 

@@ -11,7 +11,7 @@
       "audience": ["agent"]
     },
     {
-      "text": "Agents MUST hold instructions to a maximum of 20 words per sentence and explanation to a maximum of 25 words per sentence, counted by the referenced counting rules rather than by raw whitespace tokens. Identifiers, file paths, commands, inline code spans, quoted text, headings, numbers with units, abbreviations, and hyphenated words each count as one word.",
+      "text": "Agents SHOULD hold instructions to a maximum of 20 words per sentence and explanation to a maximum of 25 words per sentence, counted by the referenced counting rules rather than by raw whitespace tokens. Identifiers, file paths, commands, inline code spans, quoted text, headings, numbers with units, abbreviations, and hyphenated words each count as one word.",
       "audience": ["agent"]
     },
     {

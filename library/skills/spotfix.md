@@ -84,14 +84,8 @@ The final successful cycle MUST establish all of the following:
   judgment cohort you ran for it;
 - existing behavior outside the requested change remains intact.
 
-Do not set or clear `PAN_GATE_CACHE`. The gate cache belongs to the harness, an
-agent-run `repository-check` never consults it, and the variable leaks into any
-test run started from the same shell.
-
-Use `runtime/repository-checks.json` as the command authority. Preserve its
-explicit toolchain entrypoints, probes, suite boundaries, and runtime bounds;
-do not substitute `full` for a distinct documented `fast` suite or infer
-ecosystem commands.
+`REPO-001` on the active card owns command authority and the gate cache; this
+skill does not restate it.
 A missing profile, unavailable dependency, timeout, or check that cannot run is
 not a pass. Record it as incomplete validation and determine whether systematic
 routing is required.
@@ -112,8 +106,8 @@ Create a uniquely named Markdown item at
 - unresolved blockers and risks;
 - the recommended systematic workflow entry point and next action.
 
-Do not claim success after escalation. Do not commit, push, merge, publish,
-deploy, or invoke `pan set-stage`.
+Do not claim success after escalation. `SPOT-001` and `ACTION-001` on the
+active card carry the source-control and lifecycle prohibitions.
 
 ## Operator-facing output
 

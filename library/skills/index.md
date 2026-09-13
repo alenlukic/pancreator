@@ -4,6 +4,18 @@ Focused, reusable techniques a worker applies inside a stage. A skill is
 narrower than a persona and broader than a single prompt: it is the "how" for a
 recurring job. Read the skill relevant to your current step.
 
+## Convention
+
+Every skill executes under the global operating policy, `PRINCIPLES-001`, and
+the policies on the active card. A skill supplies procedure where deviation is
+costly and does not restate the mission, the ranked principles, or the
+universal invariants. A skill exists when a class of work benefits from
+accumulated domain knowledge, a repeatable workflow, fragile sequencing,
+non-obvious edge cases, deterministic commands, or explicit safety
+requirements. Each skill states when it applies, its preferred workflow, its
+important edge cases, and its hard constraints, and it names deterministic
+commands where they exist.
+
 ## Cross-cutting
 
 - [`write-stage-output.md`](write-stage-output.md) - produce the declared JSON

@@ -445,6 +445,7 @@ test('representative contexts exclude policies outside their remit', () => {
     'OPERATOR-001',
     'PLAN-002',
     'PRIMER-001',
+    'PRINCIPLES-001',
     'VALID-001',
   ])
 

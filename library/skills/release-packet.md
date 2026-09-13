@@ -32,5 +32,6 @@ the irreversible action; it makes the decision easy and safe.
 
 ## Boundaries
 
-Use only the local release command to edit `release/index.json` and commit. Do
-not push, open or merge a PR, publish, or deploy. Stop for operator approval.
+Use only the local release command to edit `release/index.json` and commit.
+`SHIP-001` owns the release boundary: stop for operator approval before any
+remote action.
