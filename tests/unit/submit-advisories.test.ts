@@ -10,12 +10,13 @@ import {
   recordSupervisorModelEvidence,
   submitOutput,
 } from '../../src/lib/engine.js'
+import { statePath } from '../../src/lib/state.js'
 import { delegationPath } from '../../src/lib/validation.js'
 import {
   markDelegationBackground,
   watchInvocation,
 } from '../../src/lib/watch.js'
-import { createFixture, createRun, read } from '../helpers.js'
+import { createFixture, createRun, read, writeJson } from '../helpers.js'
 import { CADENCE_SECONDS, fillPreparedOutput } from './watch-helpers.js'
 
 // Run 63296 int-con HR-004: a submission recorded a platform-guidance conflict
@@ -30,7 +31,7 @@ test('a submission returns every advisory it records', async () => {
   })
 
   // Recorded supervisor evidence makes the invocation carry the model-evidence
-  // obligation, and no worker probe answers it, which is the third kind.
+  // obligation, which is the third kind.
   recordSupervisorModelEvidence(
     root,
     created.run_id,
@@ -45,6 +46,15 @@ test('a submission returns every advisory it records', async () => {
   const { state } = prepared
   const invocationId = prepared.invocation.invocation_id
   const outputPath = prepared.invocation.output.path
+
+  // Prepare records a labeled default for the declared worker, so the only
+  // remaining model-evidence gap is a worker with no record at all.
+  writeJson(statePath(root, state.run_id), {
+    ...getRunState(root, state.run_id),
+    model_evidence: (
+      getRunState(root, state.run_id).model_evidence ?? []
+    ).filter((item) => item.role !== 'worker'),
+  })
 
   fillPreparedOutput(root, state)
 

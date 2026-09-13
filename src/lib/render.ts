@@ -525,6 +525,12 @@ function renderSupervisorProcedureBody(
             'until the current digest is attested. Re-read and re-attest ' +
             'when `pan prepare` reports a new digest.',
           '',
+          'A mid-run policy edit changes that digest. The refusal and the ' +
+            'refreshed card then carry a digest-diff summary naming the ' +
+            'policy blocks that moved. Reading those blocks satisfies the ' +
+            're-read; the whole card does not have to be read again. The ' +
+            're-attestation itself is still owed.',
+          '',
         ]
       : []),
     'Resolved paths for this invocation:',

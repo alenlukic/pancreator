@@ -71,6 +71,7 @@ import {
   panCommand,
 } from './lib/project-config.js'
 import { resolvePolicies } from './lib/policies.js'
+import { renderRunInvocationCard } from './lib/context-card.js'
 import { orderedWorkerActions } from './lib/render.js'
 import { resolvePrDescriptionContext } from './lib/pr-description.js'
 import {
@@ -357,6 +358,8 @@ export const HELP_BODY = `Usage:
       Route the approved plan of a succeeded planning run into delivery again: one delivery run for a single chunk, cohort 1 of a cohort session for a wider plan. This is the retry for a route that failed at approval and the opt-in for a planning run that predates routing. It adopts the run or session an earlier attempt created and refuses a run that is not planning, not succeeded, or whose plan gate recorded a decision other than approve.
   pan context digest <repo-relative-file> [--json]
       Read-only. Print the content digest of a file on the basis every audited context reference states: sha256 of the text after leading and trailing whitespace is trimmed. A planner takes a child specification's parent digest from this command rather than computing it by hand.
+  pan context card <run-id> [--invocation <id>] [--json]
+      Read-only. Render one invocation card from its recorded snapshot, defaulting to the run's active invocation. It changes no run state, delegates nothing, and needs no supervisor attestation, so an evidence worker or a verifier may produce a card-shaped acceptance evidence artifact without a lifecycle command.
   pan briefs build [--force] [--json]
   pan briefs validate [--json]
   pan briefs render --input <brief-json> --output <brief-html> [--json]
@@ -3324,6 +3327,21 @@ async function main(): Promise<void> {
                   'sha256 of the text after leading and trailing whitespace is trimmed',
               }
             : digest,
+          hasFlag(args, '--json'),
+        )
+        return
+      }
+
+      if (sub === 'card') {
+        const runId = requiredPositional(args[1], 'run-id')
+        const card = renderRunInvocationCard(
+          root,
+          runId,
+          option(args, '--invocation') ?? undefined,
+        )
+
+        print(
+          hasFlag(args, '--json') ? card : card.markdown,
           hasFlag(args, '--json'),
         )
         return

@@ -163,6 +163,73 @@ function writePlanWithQuestions(
   )
 }
 
+test('plan trace refuses a criterion no assigned worker may produce', () => {
+  const root = validatorFixtureRoot('pan-plan-producer-')
+  const target = 'output.json'
+
+  writePlanWithQuestions(
+    root,
+    target,
+    [],
+    [],
+    [
+      {
+        id: 'AC-01',
+        maps_to: ['US-1'],
+        verification: {
+          method: 'Render the implement invocation card with `pan prepare`.',
+          expected: 'The card names the resolved gate bound.',
+        },
+      },
+    ],
+  )
+
+  const result = validatePlanTrace({
+    root,
+    targetPath: target,
+    requirement: planTraceRequirement,
+  })
+
+  assert.equal(result.status, 'failed')
+
+  const unproducible = result.issues.filter(
+    (issue) => issue.code === 'plan.criterion_unproducible',
+  )
+
+  assert.equal(unproducible.length, 1)
+  assert.match(unproducible[0].message, /AC-01/u)
+  assert.match(unproducible[0].message, /pan context card/u)
+
+  // The read-only render is a producer the assigned workers may run.
+  const producible = 'producible.json'
+
+  writePlanWithQuestions(
+    root,
+    producible,
+    [],
+    [],
+    [
+      {
+        id: 'AC-01',
+        maps_to: ['US-1'],
+        verification: {
+          method: 'Render the implement card with `pan context card <run-id>`.',
+          expected: 'The card names the resolved gate bound.',
+        },
+      },
+    ],
+  )
+
+  assert.deepEqual(
+    validatePlanTrace({
+      root,
+      targetPath: producible,
+      requirement: planTraceRequirement,
+    }).issues,
+    [],
+  )
+})
+
 test('plan trace accepts dispositions that cite evidence', () => {
   const root = validatorFixtureRoot('pan-plan-disposition-')
   const target = 'output.json'

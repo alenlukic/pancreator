@@ -45,12 +45,24 @@ function validate(
   })
 }
 
+/** Next-action body of the shared fixture's `Recommended next action`. */
+const WORKFLOW_ROUTE =
+  'Run /pan-start with this intake in the Pancreator self-development repository.'
+const OUT_OF_BAND_ROUTE =
+  'Hand this intake to a powerful model for out-of-band execution under close operator supervision.'
+/**
+ * The shared fixture's lead names no route token, so a fixture derived for
+ * another category cannot inherit a lead that contradicts it.
+ */
+const NEUTRAL_LEAD_NEXT_ACTION =
+  '**Next action:** Route this intake by the contract its category declares.'
+
 const VALID_INTAKE = `# Harness repair intake
 
 **State:** Ready for self-development intake 
 **Outcome:** Confirmed one harness bug.
 **Blockers:** None.
-**Next action:** Run /pan-start with this file.
+${NEUTRAL_LEAD_NEXT_ACTION}
 **Category:** Runtime/build bugs (\`build\`)
 
 ## Original report
@@ -115,27 +127,30 @@ None.
 
 ## Recommended next action
 
-Run /pan-start with this intake in the Pancreator self-development repository.
+${WORKFLOW_ROUTE}
 `
 
-/** The valid intake, re-declared for one registry category. */
+/**
+ * The valid intake, re-declared for one registry category. The lead and the
+ * next-action section both carry that category's route, because the forbidden
+ * tokens apply to every region a reader acts on.
+ */
 function intakeForCategory(slug: string): string {
   const category = CATEGORIES.find((entry) => entry.slug === slug)
 
   assert.ok(category, `registry MUST declare category ${slug}`)
 
-  const nextAction =
+  const route =
     category.next_action_contract.name === 'out-of-band'
-      ? 'Hand this intake to a powerful model for out-of-band execution under close operator supervision.'
-      : 'Run /pan-start with this intake in the Pancreator self-development repository.'
+      ? OUT_OF_BAND_ROUTE
+      : WORKFLOW_ROUTE
 
   return VALID_INTAKE.replace(
     '**Category:** Runtime/build bugs (`build`)',
     `**Category:** ${category.display_name} (\`${category.slug}\`)`,
-  ).replace(
-    'Run /pan-start with this intake in the Pancreator self-development repository.\n',
-    `${nextAction}\n`,
   )
+    .replace(`${WORKFLOW_ROUTE}\n`, `${route}\n`)
+    .replace(NEUTRAL_LEAD_NEXT_ACTION, `**Next action:** ${route}`)
 }
 
 test('harness repair validator accepts an intake for every declared category', () => {
@@ -205,7 +220,7 @@ test('harness repair validator applies the category next-action contract', () =>
 
   const panStartInOutOfBand = validate(
     intakeForCategory('oob').replace(
-      '## Recommended next action\n\nHand this intake to a powerful model for out-of-band execution under close operator supervision.',
+      `## Recommended next action\n\n${OUT_OF_BAND_ROUTE}`,
       '## Recommended next action\n\nRun /pan-start with this intake under close operator supervision as out-of-band work.',
     ),
   )
@@ -218,16 +233,76 @@ test('harness repair validator applies the category next-action contract', () =>
   )
 
   const missingPanStart = validate(
-    VALID_INTAKE.replace(
-      'Run /pan-start with this intake in the Pancreator self-development repository.\n',
-      'Schedule the work.\n',
-    ),
+    VALID_INTAKE.replace(`${WORKFLOW_ROUTE}\n`, 'Schedule the work.\n'),
   )
 
   assert.equal(missingPanStart.status, 'failed')
   assert.ok(
     missingPanStart.issues.some((item) => item.code === 'repair.next_action'),
   )
+})
+
+test('harness repair validator refuses a forbidden token in the operator lead', () => {
+  const leadRecommendsPanStart = validate(
+    intakeForCategory('oob').replace(
+      `**Next action:** ${OUT_OF_BAND_ROUTE}`,
+      '**Next action:** Run /pan-start with this file.',
+    ),
+  )
+
+  assert.equal(leadRecommendsPanStart.status, 'failed')
+
+  const forbidden = leadRecommendsPanStart.issues.filter(
+    (item) => item.code === 'repair.next_action_forbidden',
+  )
+
+  assert.equal(forbidden.length, 1, 'only the lead names the forbidden token')
+  assert.match(forbidden[0].message, /operator lead/u)
+})
+
+test('harness repair validator passes a lead and section that both honor the contract', () => {
+  const outOfBand = intakeForCategory('oob')
+
+  assert.ok(
+    outOfBand.includes(`**Next action:** ${OUT_OF_BAND_ROUTE}`),
+    'the derived lead MUST carry the category route',
+  )
+  assert.deepEqual(validate(outOfBand).issues, [])
+
+  // The required tokens stay scoped to the next-action section: a lead that
+  // names the token does not satisfy the section contract.
+  // The section route stands on its own line; the lead route follows the
+  // `**Next action:**` label, so this strips the section alone.
+  const tokenOnlyInLead = validate(
+    intakeForCategory('build').replace(
+      `\n${WORKFLOW_ROUTE}\n`,
+      '\nSchedule it.\n',
+    ),
+  )
+
+  assert.ok(
+    tokenOnlyInLead.issues.some((item) => item.code === 'repair.next_action'),
+  )
+})
+
+test('the shared valid-intake fixture carries a category-neutral lead', () => {
+  const lead = VALID_INTAKE.split('\n').slice(0, 15).join('\n').toLowerCase()
+
+  for (const category of CATEGORIES) {
+    for (const token of category.next_action_contract.forbidden_tokens) {
+      assert.ok(
+        !lead.includes(token.toLowerCase()),
+        `the shared lead MUST NOT name '${token}', forbidden by ${category.slug}`,
+      )
+    }
+  }
+
+  // A category whose contract requires the workflow token still passes when
+  // the derived lead names it.
+  const workflowCategory = intakeForCategory('build')
+
+  assert.ok(workflowCategory.includes(`**Next action:** ${WORKFLOW_ROUTE}`))
+  assert.deepEqual(validate(workflowCategory).issues, [])
 })
 
 test('harness repair validator fails a filename slug that contradicts the declared category', () => {
