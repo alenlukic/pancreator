@@ -1,6 +1,6 @@
 # Changelog
 
-## [5.26.1] - 2026-09-13
+## [6.2.1] - 2026-09-13
 
 This release reconciles authoring layers with the authority order and corrects two tests.
 
@@ -13,7 +13,7 @@ This release reconciles authoring layers with the authority order and corrects t
 - Correct the AC-050 comment so it credits the record-count pins ([run-mutex-bookkeeping](tests/regression/run-mutex-bookkeeping.test.ts), [f976678b](https://github.com/alenlukic/pancreator/commit/f976678b34192187addc753b7fd537207fb3d13c)).
 - Assert the `agent_reported_running` hold reason in the sibling watch case ([watch](tests/unit/watch.test.ts), [f976678b](https://github.com/alenlukic/pancreator/commit/f976678b34192187addc753b7fd537207fb3d13c)).
 
-## [5.26.0] - 2026-09-13
+## [6.2.0] - 2026-09-13
 
 This release repairs Phase 3 mechanical defects in four chunks.
 
@@ -39,7 +39,7 @@ This release repairs Phase 3 mechanical defects in four chunks.
 - Repair harness tests that could not fail, and restore TP-10 honesty in the suite ([6c323365](https://github.com/alenlukic/pancreator/commit/6c3233652cb1cfaf9e76d8a3864ec6474729c779)).
 - Pin the still-writing watch fixture to the launch artifact so the case does not depend on host load ([watch-helpers](tests/unit/watch-helpers.ts), [5df51c31](https://github.com/alenlukic/pancreator/commit/5df51c31fd2f7f842b1f08055dc77834accb907c)).
 
-## [5.25.1] - 2026-09-13
+## [6.1.1] - 2026-09-13
 
 This release adds two PRINCIPLES-001 instructions and aligns worker procedures with those rules.
 
@@ -57,7 +57,7 @@ This release adds two PRINCIPLES-001 instructions and aligns worker procedures w
 - Add a PRINCIPLES-001 instruction that names a harness contract that blocks the objective ([PRINCIPLES-001](governance/policies/PRINCIPLES-001.json), [2676a32a](https://github.com/alenlukic/pancreator/commit/2676a32ab9412335e95f760e5e4ea6e0d6f4378e)).
 - Add a PRINCIPLES-001 instruction that states the cost behind a cost-backed rule ([PRINCIPLES-001](governance/policies/PRINCIPLES-001.json), [2676a32a](https://github.com/alenlukic/pancreator/commit/2676a32ab9412335e95f760e5e4ea6e0d6f4378e)).
 
-## [5.25.0] - 2026-09-13
+## [6.1.0] - 2026-09-13
 
 This release integrates the two Phase 2 chunks of the harness-repair program. Chunk 2a repairs CLI and scaffold friction, error identity, and the inbox producer regression. Chunk 2b tightens the next-action contract, labeled model evidence, the secret-path detector, plan producibility, and supervisor-card digest diffs.
 
@@ -87,9 +87,11 @@ This release integrates the two Phase 2 chunks of the harness-repair program. Ch
 - Raise a coded harness error when a worktree override copy fails ([worktrees](src/lib/worktrees.ts), [0e95eee6](https://github.com/alenlukic/pancreator/commit/0e95eee69f5210df961a2091d04c5264554a9c6d)).
 - Reach a run-owned inbox item under the queue directory during the finalization rewrite ([workflow-artifacts](src/lib/workflow-artifacts.ts), [0e95eee6](https://github.com/alenlukic/pancreator/commit/0e95eee69f5210df961a2091d04c5264554a9c6d)).
 
-## [5.24.0] - 2026-09-13
+## [6.0.0] - 2026-09-13
 
 This release adds the always-applied `PRINCIPLES-001` policy and aligns tradeoff rules under that hierarchy.
+
+This release was first published as 5.24.0. The old numbers map as follows: 5.24.0 to 6.0.0, 5.25.0 to 6.1.0, 5.25.1 to 6.1.1, 5.26.0 to 6.2.0, and 5.26.1 to 6.2.1.
 
 ### Changed
 

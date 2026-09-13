@@ -122,23 +122,23 @@
       "commit": "4cfd4f630520c55d1c15c095d8caf81d3667985d"
     },
     {
-      "version": "5.24.0",
+      "version": "6.0.0",
       "commit": "1f6ab12fc284d39c4efac635475120b5cc734d83"
     },
     {
-      "version": "5.25.0",
+      "version": "6.1.0",
       "commit": "84ec5e7e8eb7eb3c2f3483a6280b63e06d016048"
     },
     {
-      "version": "5.25.1",
+      "version": "6.1.1",
       "commit": "77a1ac1b785ddcf4edc15c4625ef427228236cea"
     },
     {
-      "version": "5.26.0",
+      "version": "6.2.0",
       "commit": "e4ee755bf6ca589214d1e057b680b3fed7fb3036"
     },
     {
-      "version": "5.26.1",
+      "version": "6.2.1",
       "commit": "bb290f37ece35d4837ff810b0436cdd0e2e35b89"
     }
   ]
