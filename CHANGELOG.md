@@ -17,7 +17,7 @@
 
 ### Added
 
-- Add an optional `concurrent` boolean on a repository-check profile. The gate runner still runs commands one after another ([repository-checks](src/lib/repository-checks.ts), [b167a42f](https://github.com/alenlukic/pancreator/commit/b167a42f5df16e5b9f0f9e4c0391170802ed9583)).
+- Add an optional `concurrent` boolean on a repository-check profile. The gate runner still runs commands one after another, and no shipped profile enables the flag ([repository-checks](src/lib/repository-checks.ts), [b167a42f](https://github.com/alenlukic/pancreator/commit/b167a42f5df16e5b9f0f9e4c0391170802ed9583)).
 - Probe every distinct model spec together on a bare `pan models --probe` ([cursor-probe](src/lib/executors/cursor-probe.ts), [b167a42f](https://github.com/alenlukic/pancreator/commit/b167a42f5df16e5b9f0f9e4c0391170802ed9583)).
 - Infer a tune-record target kind so `pan requirements run` reaches the registry validator ([requirements runner](src/lib/requirements/run.ts), [0a243077](https://github.com/alenlukic/pancreator/commit/0a2430770126979ba4b3d0a5aebfe67ea1988095)).
 

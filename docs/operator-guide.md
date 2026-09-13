@@ -480,7 +480,7 @@ Use the `prototype` workflow when the question is whether an approach works, not
 whether it ships:
 
 ```sh
-./bin/pan init --workflow prototype --request runtime/inbox/<spike-request>.md
+./bin/pan init --workflow prototype --request runtime/inbox/queue/<spike-request>.md
 ```
 
 It runs intake → approach → build → evaluate. Compared with `delivery` it:
@@ -521,7 +521,7 @@ them with:
 Select one per run:
 
 ```sh
-./bin/pan init --request runtime/inbox/<request>.md --involvement technical-director
+./bin/pan init --request runtime/inbox/queue/<request>.md --involvement technical-director
 ```
 
 Shipped profiles:
@@ -622,7 +622,7 @@ standalone `design` workflow first, ratify its handoff package, then start a
 separate corresponding `delivery` run whose request references that package.
 
 ```sh
-./bin/pan init --workflow design --request runtime/inbox/<design-request>.md
+./bin/pan init --workflow design --request runtime/inbox/queue/<design-request>.md
 ```
 
 After intake → design → design review → design QA → handoff succeed and you
@@ -631,7 +631,7 @@ mocks index, and acceptance criteria. Start `delivery` with a request that cites
 those paths so planning preserves the design acceptance criteria:
 
 ```sh
-./bin/pan init --request runtime/inbox/<request-referencing-design-package>.md
+./bin/pan init --request runtime/inbox/queue/<request-referencing-design-package>.md
 ```
 
 Composition is deliberately separate runs (not an automatic gate inside
@@ -973,10 +973,10 @@ result is unchanged: every command keeps its own exit code, duration, and
 captured output, reported in the declared order. Only declare it for commands
 that are genuinely independent — two commands that write the same build output,
 database, or port are not — and the profile is only as fast as its slowest
-command. Enabling it in an installation's own
-`runtime/repository-checks.json` is an operator decision; the self-development
-template ships it on the `full` profile, whose three commands serialize their
-own compiles through the build lock.
+command. No shipped template enables it. Turning it on is an operator edit to
+that installation's own `runtime/repository-checks.json`. The self-development
+`full` profile is a reasonable candidate, because its three commands serialize
+their own compiles through the build lock.
 
 For a systematic implementation run, Pancreator executes the configured
 implementation profiles immediately before the first coder invocation and stores

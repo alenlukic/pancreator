@@ -55,8 +55,8 @@ When a run becomes terminal (`succeeded`, `failed`, or `canceled`), the harness
 automatically invokes the artifact finalizer. It renumbers all stage occurrences
 against the actual count so the final occurrence is `00`; a seven-stage run is
 renumbered from `99` through `93` to `06` through `00`. A workflow run supports
-at most 100 stage occurrences. The finalizer is idempotent and can be invoked
-manually with `npm run finalize:workflow-artifacts -- <run-id> [root]`.
+at most 100 stage occurrences. The finalizer is idempotent and harness-owned:
+the engine invokes it when a run becomes terminal, and no script exposes it.
 
 New runs use layout v2. Machine state and evidence live under `agent/`.
 Operator-readable files live under `operator/`. The request and rendered stage
