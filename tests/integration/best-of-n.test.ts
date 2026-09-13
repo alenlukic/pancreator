@@ -18,18 +18,42 @@ import {
 } from '../helpers.js'
 
 import {
+  CONFIGS,
   bestOfNCheckpoint,
   driveCandidate,
   git,
   initSession,
 } from './best-of-n-helpers.js'
 
+function agentModel(root: string, relative: string): string {
+  const declared = /^model: (.+)$/mu.exec(
+    readFileSync(path.join(root, relative), 'utf8'),
+  )
+
+  assert.ok(declared, `${relative} declares a model`)
+
+  return declared[1]
+}
+
 test('best-of-N init isolates every candidate in its own worktree and model set', () => {
   const root = createFixture()
 
-  // The base coder mapping must differ from both candidate models whatever
-  // this checkout's config_overrides.json maps for it.
-  pinFixturePersonaModel(root, 'coder', 'gpt-5.6-sol')
+  // The contract is the difference between the base mapping and each
+  // candidate's own model, so both sides are read from configuration. A
+  // literal model name in the assertion failed whenever an operator's
+  // config_overrides.json mapped a persona to that same name.
+  const baseCoderModel = 'gpt-5.6-sol'
+  const candidateCoderModels = new Map(
+    CONFIGS.candidates.map((entry) => [entry.name, entry.personas.coder]),
+  )
+
+  assert.equal(
+    [...candidateCoderModels.values()].includes(baseCoderModel),
+    false,
+    'the base mapping must differ from every candidate model',
+  )
+
+  pinFixturePersonaModel(root, 'coder', baseCoderModel)
 
   const session = initSession(root, true)
 
@@ -57,34 +81,23 @@ test('best-of-N init isolates every candidate in its own worktree and model set'
     const snapshot = JSON.parse(
       readFileSync(path.join(root, run.pipeline_config?.path ?? ''), 'utf8'),
     ) as { personas: Record<string, string> }
-    const expected =
-      candidate.slot === 'alpha' ? 'gpt-5.6-terra' : 'claude-opus-5'
+    const expected = candidateCoderModels.get(candidate.slot)
+
+    assert.ok(expected, `${candidate.slot} declares a candidate coder model`)
 
     // The candidate map overrides config.json defaults; everything else falls
     // through to them.
     assert.equal(snapshot.personas.coder, expected)
     assert.ok(snapshot.personas.reviewer)
 
-    const variant = path.join(
-      root,
-      `.cursor/agents/pan-coder--${candidate.agent_suffix}.md`,
-    )
+    const variant = `.cursor/agents/pan-coder--${candidate.agent_suffix}.md`
 
-    assert.ok(existsSync(variant))
-    assert.match(
-      readFileSync(variant, 'utf8'),
-      new RegExp(`^model: ${expected}$`, 'mu'),
-    )
+    assert.ok(existsSync(path.join(root, variant)))
+    assert.equal(agentModel(root, variant), expected)
   }
 
   // Base agents keep the active mapping, so an ordinary run is unaffected.
-  const baseAgent = readFileSync(
-    path.join(root, '.cursor/agents/pan-coder.md'),
-    'utf8',
-  )
-
-  assert.match(baseAgent, /^model: gpt-5\.6-sol$/mu)
-  assert.doesNotMatch(baseAgent, /gpt-5\.4|claude-opus-5/u)
+  assert.equal(agentModel(root, '.cursor/agents/pan-coder.md'), baseCoderModel)
 
   const candidate = session.candidates[0]
 

@@ -964,6 +964,87 @@ test('self-development release validator requires a real next-version bump', () 
   }
 })
 
+test('each local-release topology branch reports its own coded issue', () => {
+  // Every branch below guarded release correctness with no failing case, so
+  // deleting any one of them left the suite green.
+  const root = createFixture()
+  const target = 'output.json'
+  const validate = (localRelease: unknown) => {
+    writeFileSync(
+      path.join(root, target),
+      `${JSON.stringify({
+        data: {
+          release: {
+            summary: 'ready',
+            ...(localRelease === undefined
+              ? {}
+              : { local_release: localRelease }),
+            change_list: [],
+            validation: [],
+            rollback: 'revert commit',
+            waivers: [],
+            follow_up_cases: [],
+          },
+        },
+      })}\n`,
+    )
+
+    return validateReleaseOutput({
+      root,
+      targetPath: target,
+      requirement: {
+        policy_id: 'SHIP-001',
+        requirement_id: 'release-validate',
+        registry_id: 'RELEASE-VALIDATE-001',
+        arguments: {},
+      },
+      invocation: {
+        managed_worktree: {
+          name: 'release',
+          path: 'worktrees/operator/release',
+          branch: 'main',
+        },
+      },
+      runState: { stage_history: [] },
+    }).issues.map((entry) => entry.code)
+  }
+
+  assert.ok(validate(undefined).includes('release.local_release_missing'))
+  assert.ok(
+    validate({
+      release_commit: 'not-a-commit',
+      index_commit: 'b'.repeat(40),
+      fetched_main: 'c'.repeat(40),
+      branch: 'main',
+      pr_description_path: 'runtime/pr-descriptions/release.md',
+    }).includes('release.local_release_missing'),
+  )
+
+  // Well-formed hashes that describe nothing in this workspace reach the
+  // topology checks, and an untracked file makes the worktree dirty.
+  writeFileSync(path.join(root, 'stray.txt'), 'left behind\n')
+
+  const codes = validate({
+    release_commit: 'a'.repeat(40),
+    index_commit: 'b'.repeat(40),
+    fetched_main: 'c'.repeat(40),
+    branch: 'a-branch-this-workspace-is-not-on',
+    pr_description_path: 'runtime/pr-descriptions/release.md',
+  })
+
+  for (const code of [
+    'release.commit_order',
+    'release.fetched_main_not_ancestor',
+    'release.worktree_dirty',
+    'release.branch_mismatch',
+    'release.index_commit_scope',
+  ]) {
+    assert.ok(codes.includes(code), code)
+  }
+
+  assert.equal(codes.includes('release.local_release_missing'), false)
+})
+
 // int-con HR-005: `resolveInside` threw on an agent-supplied traversal, so a
 // malformed release.local_release.pr_description_path ended the validator
 // with a stack trace instead of an issue the retry could read.

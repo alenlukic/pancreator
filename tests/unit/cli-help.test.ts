@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import test from 'node:test'
 
@@ -17,11 +19,27 @@ test('pan output validate help names the required --invocation argument', () => 
 })
 
 // Both flags exist so a caller can opt out of a deferral the harness
-// otherwise performs for it. An undocumented opt-out is not an opt-out.
-test('help documents the critical-path deferral opt-out flags', () => {
-  for (const option of ['--harness-initiated', '--await-probe']) {
-    assert.ok(HELP_BODY.includes(option), option)
+// otherwise performs for it. An undocumented opt-out is not an opt-out, and
+// a documented one the dispatcher never reads is not one either. Searching
+// the help body for two substrings proved only the first half, and stayed
+// green when the flag it named stopped reaching a parser.
+test('every option the help documents is one an argv parser reads', () => {
+  const documented = new Set(HELP_BODY.match(/--[a-z][a-z0-9-]*/gu))
+
+  for (const optOut of ['--harness-initiated', '--await-probe']) {
+    assert.ok(documented.has(optOut), optOut)
   }
+
+  // The help body never quotes a flag, so a quoted occurrence in a parser
+  // source is a literal the dispatcher compares against, never help prose.
+  const parsers = ['src/cli.ts', 'src/lib/test-impact.ts']
+    .map((relative) => readFileSync(path.join(process.cwd(), relative), 'utf8'))
+    .join('\n')
+
+  assert.deepEqual(
+    [...documented].filter((flag) => !parsers.includes(`'${flag}'`)),
+    [],
+  )
 })
 
 // AC-004. The positional run-id slot and the `--run` alias are both in the

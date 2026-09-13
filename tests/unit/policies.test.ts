@@ -1007,21 +1007,47 @@ test('every repair instruction surface agrees on the category partition', () => 
 
   assert.ok(categories.length > 0)
 
+  // Each surface states the partition in its own words, so each carries its
+  // own pattern. One shared pattern loose enough to fit all three degenerated
+  // into /categor/i, which any incidental mention of the word satisfied.
   const surfaces = [
-    'library/personas/harness-technician.md',
-    'library/cursor/agents/harness-technician.md',
-    'library/cursor/commands/pan-repair.md',
-  ].map((relative) => ({
-    relative,
-    text: readFileSync(path.join(root, relative), 'utf8'),
+    {
+      relative: 'library/personas/harness-technician.md',
+      partition:
+        /MUST judge every issue category of the category registry the session\s+supplies against your evidence/u,
+    },
+    {
+      relative: 'library/cursor/agents/harness-technician.md',
+      partition:
+        /Assess every registry category, write at most one\s+intake for each category that produced a confirmed finding/u,
+    },
+    {
+      relative: 'library/cursor/commands/pan-repair.md',
+      partition: /Report every category the registry declares\./u,
+    },
+  ].map((surface) => ({
+    ...surface,
+    text: readFileSync(path.join(root, surface.relative), 'utf8'),
   }))
 
   for (const surface of surfaces) {
     assert.match(
       surface.text,
-      /categor/iu,
+      surface.partition,
       `${surface.relative} must state the category partition`,
     )
+
+    // The word survives elsewhere in every surface, so a pattern that only
+    // looked for it would still pass here. This one must not.
+    const withoutPartition = surface.text.replace(surface.partition, '')
+
+    assert.match(withoutPartition, /categor/iu)
+    assert.doesNotMatch(
+      withoutPartition,
+      surface.partition,
+      `${surface.relative} partition pin must fail when the statement is dropped`,
+    )
+
     assert.doesNotMatch(
       surface.text,
       /write only the declared intake under/u,

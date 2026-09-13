@@ -652,6 +652,14 @@ test('a concurrent profile runs its commands together and records each one', asy
   const { root } = makeInstallation()
   const delayMs = 900
   const stdout: string[] = []
+  // TP-10: each command brackets its own delay in a shared log. An elapsed
+  // ceiling would measure the scheduling of a suite that runs its own tests
+  // concurrently; the recorded order measures these three commands.
+  const bracketLog = path.join(root, 'brackets.txt')
+  const bracketed = (body: string) =>
+    `node -e "const fs=require('fs');const log='${bracketLog}';` +
+    `fs.appendFileSync(log,'start\\n');` +
+    `setTimeout(() => { ${body}; fs.appendFileSync(log,'end\\n') }, ${delayMs})"`
 
   writeChecks(root, {
     full: {
@@ -659,18 +667,17 @@ test('a concurrent profile runs its commands together and records each one', asy
       concurrent: true,
       probes: [],
       commands: [
-        `node -e "setTimeout(() => process.stdout.write('alpha\\n'), ${delayMs})"`,
-        `node -e "setTimeout(() => { process.stderr.write('beta\\n'); process.exit(2) }, ${delayMs})"`,
-        `node -e "setTimeout(() => process.stdout.write('gamma\\n'), ${delayMs})"`,
+        bracketed("process.stdout.write('alpha\\n')"),
+        bracketed("process.stderr.write('beta\\n'); process.exitCode = 2"),
+        bracketed("process.stdout.write('gamma\\n')"),
       ],
     },
   })
 
-  const startedAt = Date.now()
   const result = await runRepositoryCheckStreaming(root, 'full', {
     on_stdout: (chunk) => stdout.push(chunk),
   })
-  const elapsed = Date.now() - startedAt
+  const brackets = readFileSync(bracketLog, 'utf8').split('\n').filter(Boolean)
 
   // One command failed, so the profile failed, but every command ran.
   assert.equal(result.status, 'failed')
@@ -683,10 +690,14 @@ test('a concurrent profile runs its commands together and records each one', asy
   assert.match(result.results[1]?.stderr ?? '', /beta/u)
   assert.match(result.results[2]?.stdout ?? '', /gamma/u)
   assert.match(stdout.join(''), /alpha/u)
-  assert.ok(
-    elapsed < delayMs * 2,
-    `the three commands took ${elapsed}ms; they ran one after another`,
+
+  // Every command started before the first one finished.
+  assert.deepEqual(
+    brackets.slice(0, 3),
+    ['start', 'start', 'start'],
+    brackets.join(','),
   )
+  assert.equal(brackets.length, 6)
 })
 
 test('a concurrent profile ends every unfinished command at the shared deadline', async () => {

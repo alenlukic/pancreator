@@ -359,11 +359,14 @@ function initTargetRepository(targetRoot: string): void {
 test('self-development worktree receives local config before setup', () => {
   const root = createFixture()
 
+  // The setup command records that it ran. Asserting only the copied file
+  // left the case green when setup was bypassed entirely, which is the
+  // ordering the case name promises.
   writeJson(path.join(root, 'config_overrides.json'), {
     marker: 'handoff-ok',
     worktrees: {
       setup: [
-        String.raw`node -e "const fs=require('fs'); const c=JSON.parse(fs.readFileSync('config_overrides.json','utf8')); if(c.marker!=='handoff-ok') process.exit(1)"`,
+        String.raw`node -e "const fs=require('fs'); const c=JSON.parse(fs.readFileSync('config_overrides.json','utf8')); if(c.marker!=='handoff-ok') process.exit(1); fs.writeFileSync('setup-observed.txt', c.marker)"`,
       ],
     },
   })
@@ -377,9 +380,33 @@ test('self-development worktree receives local config before setup', () => {
     ).marker,
     'handoff-ok',
   )
+  assert.equal(
+    readFileSync(path.join(worktreePath, 'setup-observed.txt'), 'utf8'),
+    'handoff-ok',
+    'the declared setup command ran, after the config landed',
+  )
   assert.deepEqual(
     readProjectConfig(worktreePath)?.worktrees?.setup,
     readProjectConfig(root)?.worktrees?.setup,
+  )
+
+  rmSync(path.join(worktreePath, 'setup-observed.txt'))
+
+  // The copy is operator-local configuration, so it must not turn the new
+  // worktree dirty; a gate reads that status as uncommitted work.
+  assert.equal(
+    execFileSync('git', ['status', '--porcelain=v1', '--untracked-files=all'], {
+      cwd: worktreePath,
+      encoding: 'utf8',
+    }),
+    '',
+  )
+  assert.equal(
+    execFileSync('git', ['check-ignore', 'config_overrides.json'], {
+      cwd: worktreePath,
+      encoding: 'utf8',
+    }).trim(),
+    'config_overrides.json',
   )
 })
 

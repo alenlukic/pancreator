@@ -487,6 +487,31 @@ test('release continuation preserves unresolved conflicts and completes staged r
     assert.equal(unresolved.status, 'conflict')
     assert.deepEqual(unresolved.conflicted_paths, [sourcePath])
 
+    // The reported status is only half the contract. A continuation that
+    // aborted the rebase, or that resolved the file on the operator's behalf,
+    // would report the same conflict while destroying the work in progress.
+    assert.equal(
+      fileExists(
+        path.resolve(
+          worktreePath,
+          git(worktreePath, ['rev-parse', '--git-path', 'rebase-merge']),
+        ),
+      ),
+      true,
+      'the rebase is still in progress for the operator to finish',
+    )
+    assert.deepEqual(
+      git(worktreePath, ['diff', '--name-only', '--diff-filter=U'])
+        .split('\n')
+        .filter(Boolean),
+      [sourcePath],
+    )
+    assert.match(
+      readFileSync(path.join(worktreePath, sourcePath), 'utf8'),
+      /^<{7} /mu,
+      'the conflict markers stay in the working tree',
+    )
+
     writeFileSync(
       path.join(worktreePath, sourcePath),
       `${initial.trimEnd()}\nexport const conflict = 'resolved'\n`,

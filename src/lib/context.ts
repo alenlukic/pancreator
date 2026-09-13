@@ -1054,11 +1054,6 @@ function writeContextManifest(
   }
 }
 
-/** Build a stage-scoped context projection and a discoverable full-history index. */
-/**
- * Summarize the most recent failed attempt of `stage` for inline rendering on the
- * retry card. Returns null when the previous attempt succeeded or none exists.
- */
 /**
  * The operator stage-repair note that explains why this attempt exists, when
  * it is newer than every recorded attempt of the stage.
@@ -1104,6 +1099,10 @@ export function operatorStageRepairContext(
   }
 }
 
+/**
+ * Summarize the most recent failed attempt of `stage` for inline rendering on the
+ * retry card. Returns null when the previous attempt succeeded or none exists.
+ */
 export function summarizePriorFailure(
   state: RunState,
   stage: StageDefinition,
@@ -1226,6 +1225,7 @@ function failedSupervisorAssessment(
   }
 }
 
+/** Build a stage-scoped context projection and a discoverable full-history index. */
 export function buildInvocationInputs(
   options: InvocationContextOptions,
 ): Invocation['inputs'] {

@@ -1,6 +1,7 @@
 import { readdirSync } from 'node:fs'
 import path from 'node:path'
 
+import { recordedProfileRuns } from '../agent-ledger-evidence.js'
 import { fileExists, isRecord, readJson, readText } from '../io.js'
 import { loadRepositoryChecks } from '../repository-checks.js'
 import type { DeterministicResult, StageHistoryItem } from '../types.js'
@@ -67,11 +68,19 @@ function historyForInvocation(
 
 export type ProfileExecutionSource = 'baseline' | 'harness' | 'agent'
 
+/** The record an execution was counted from, named in the eval report. */
+export type ProfileExecutionBasis =
+  | 'baseline_artifact'
+  | 'gate_record'
+  | 'agent_ledger'
+  | 'output_text'
+
 export interface ProfileExecution {
   profile: string
   stage: string
   attempt: number | null
   source: ProfileExecutionSource
+  basis: ProfileExecutionBasis
   evidence: string
 }
 
@@ -149,6 +158,7 @@ export function collectProfileExecutions(records: RunRecords): {
       stage,
       attempt: null,
       source: 'baseline',
+      basis: 'baseline_artifact',
       evidence: relative,
     })
   }
@@ -194,6 +204,7 @@ export function collectProfileExecutions(records: RunRecords): {
       stage,
       attempt,
       source: 'harness',
+      basis: 'gate_record',
       evidence,
     })
   }
@@ -220,15 +231,57 @@ export function collectProfileExecutions(records: RunRecords): {
     )
   }
 
-  // Agent-side: the worker wrote the profile command into its output.
-  for (const record of records.outputs) {
-    const history = historyForInvocation(records, record.invocation_id)
-    const stage =
-      history?.stage ??
-      (records.state.current_invocation?.id === record.invocation_id
+  const stageOfInvocation = (
+    invocationId: string | null,
+  ): { stage: string; attempt: number | null } => {
+    const history = invocationId
+      ? historyForInvocation(records, invocationId)
+      : undefined
+
+    if (history) {
+      return { stage: history.stage, attempt: history.attempt }
+    }
+
+    const current =
+      invocationId !== null &&
+      records.state.current_invocation?.id === invocationId
         ? (records.state.current_stage ?? 'unknown')
-        : 'unknown')
-    const attempt = history?.attempt ?? null
+        : 'unknown'
+
+    return { stage: current, attempt: null }
+  }
+
+  // Agent-side: `pan repository-check --run` appends one ledger line per
+  // execution, so the ledger counts what happened. The output-text scan below
+  // is a declared fallback for a target whose profile commands bypass `pan`,
+  // and it applies only when the run holds no ledger at all. A worker that
+  // cites a command has not run it, and a run whose ledger exists needs no
+  // inference from prose.
+  const ledger = recordedProfileRuns(records.root, records.run_id)
+
+  if (ledger) {
+    for (const entry of ledger) {
+      if (entry.invokedBy !== 'agent') {
+        continue
+      }
+
+      const { stage, attempt } = stageOfInvocation(entry.invocationId)
+
+      executions.push({
+        profile: entry.profile,
+        stage,
+        attempt,
+        source: 'agent',
+        basis: 'agent_ledger',
+        evidence: entry.evidencePath ?? entry.ledgerPath,
+      })
+    }
+
+    return { executions, profile_commands: profileCommands }
+  }
+
+  for (const record of records.outputs) {
+    const { stage, attempt } = stageOfInvocation(record.invocation_id)
 
     // One output is one execution claim per profile. A worker that names the
     // same run in its notes, criteria, and evidence still ran it once; the
@@ -253,6 +306,7 @@ export function collectProfileExecutions(records: RunRecords): {
         stage,
         attempt,
         source: 'agent',
+        basis: 'output_text',
         evidence: record.path,
       })
     }
@@ -352,11 +406,13 @@ const profileExecutions: Grader = (context) => {
   }
 
   const counts: Record<string, number> = {}
+  const countsByBasis: Record<string, number> = {}
 
   for (const execution of executions) {
     const key = `${execution.stage}/${execution.profile}/${execution.source}`
 
     counts[key] = (counts[key] ?? 0) + 1
+    countsByBasis[execution.basis] = (countsByBasis[execution.basis] ?? 0) + 1
   }
 
   return {
@@ -368,16 +424,18 @@ const profileExecutions: Grader = (context) => {
     evidence: [...new Set(executions.map((execution) => execution.evidence))],
     details: {
       counts_by_stage_profile_source: counts,
+      counts_by_basis: countsByBasis,
       executions,
       limits,
       violations,
       profile_commands,
     },
     observability:
+      'Every execution names the record it was counted from in its `basis`. ' +
       'Baselines are the agent/evidence/pre-implementation-<profile>.json files. ' +
       'Harness gates are shell criteria in stage_history or on state.entry_gates whose command is `pan repository-check <profile>` and that were not cached, skipped, disabled, or overridden; one evidence path is one execution. ' +
-      'Agent-side executions are mentions of `pan repository-check <profile>` or a configured profile command in the strings of a submitted output (summary, criteria, risks, unknowns, data). ' +
-      'A profile a worker ran but did not write into its output is not observable; worker transcripts are not run records.',
+      'Agent-side executions come from the run ledger agent/evidence/repository-check-runs.jsonl, where one agent-initiated line is one execution. ' +
+      'Only a run with no ledger falls back to scanning the strings of a submitted output for `pan repository-check <profile>` or a configured profile command; that fallback covers a target whose profile commands bypass `pan`, and it counts a citation as an execution.',
   }
 }
 
