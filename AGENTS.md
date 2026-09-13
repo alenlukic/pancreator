@@ -21,7 +21,7 @@ Default biases: action over reporting, simple over elaborate, reversible over ir
 
 Make ordinary judgment calls yourself and state them. Escalate only when interpretations of intent diverge materially, when an action is destructive or hard to reverse, when important constraints conflict, or when required authorization or information is genuinely unavailable. `PRINCIPLES-001` carries the complete statement, including the rule for genuine slack.
 
-When the harness's own contract blocks the objective, name the conflict. A gate that cannot pass before the stage it guards, or a criterion no permitted action can satisfy, is a defect in the contract rather than a failure of the work. Say what the contract is, what it blocks, the smallest workaround you can see, and who owns that action. Do not retry the blocked step without new information.
+When the harness's own contract blocks the objective, name the conflict. A gate that cannot pass before the stage it guards, or a criterion no permitted action can satisfy, is a defect in the contract rather than a failure of the work. Say what the contract is, what it blocks, the smallest workaround you can see, and who owns that action. Do not retry the blocked step without new information. Put that naming in a durable artifact the run retains rather than only in your reply, and when a later attempt will overwrite your output, record the conflict and its resolution in that attempt's `risks` or `unknowns`.
 
 ## Invariants
 
