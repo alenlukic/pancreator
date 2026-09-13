@@ -17,6 +17,7 @@ import {
   writeTextAtomic,
 } from './io.js'
 import { validateEvalScenarios } from './evals/scenario.js'
+import { creditKnownFailures } from './known-failing.js'
 import { loadPipelineConfig, resolveConfigPersonas } from './pipeline-config.js'
 import {
   assertRepositoryChecksValid,
@@ -1112,16 +1113,27 @@ function guidanceAttestationChecks(
         })
         break
       }
-      case 'skipped':
+      case 'skipped': {
+        // Naming the field is the whole repair: the two prose slots are
+        // mutually exclusive, and a worker that wrote the skip reason into
+        // `final_line` needs to be told which slot the validator reads.
+        const misplaced =
+          typeof claim.final_line === 'string' &&
+          claim.final_line.trim().length > 0
+
         checks.push({
           id,
           passed: reason.length > 0,
           message:
             reason.length > 0
               ? `Guidance ${entry.source_path} (${entry.policy_id}) is skipped: ${reason}`
-              : `A skipped guidance read MUST carry the concrete reason the trigger did not apply for ${entry.source_path}`,
+              : `A skipped guidance read MUST carry the concrete reason the trigger did not apply in \`reason\` for ${entry.source_path}` +
+                (misplaced
+                  ? '; `final_line` is read evidence for a completed read and does not satisfy `reason`'
+                  : ''),
         })
         break
+      }
       case 'reference_failed':
         checks.push({
           id,
@@ -2198,6 +2210,26 @@ function isRepositoryCheckBaselineArtifact(
 }
 
 /**
+ * State that a failing repository-check gate was judged on its own result, and
+ * name the profiles the run did baseline so the reader can tell an unbaselined
+ * profile from a missing artifact.
+ */
+export function absoluteJudgingDisclosure(
+  state: RunState,
+  profileName: string,
+): string {
+  const baselined = Object.keys(state.repository_check_baselines ?? {}).sort()
+
+  return (
+    `No pre-implementation baseline covers repository-check profile ` +
+    `'${profileName}', so this gate judged the profile absolutely rather ` +
+    `than against inherited diagnostics: every failure it reports may ` +
+    `predate this run. Profiles this run baselined: ` +
+    `${baselined.length > 0 ? baselined.join(', ') : 'none'}.`
+  )
+}
+
+/**
  * Load the pre-implementation baseline a repository-check gate compares against.
  *
  * Once a run captures baselines, a gated profile without a readable, matching
@@ -2399,6 +2431,7 @@ function runShellCheck(
   commandOverride?: string,
   artifactId = stage.slug,
   onProgress?: (message: string) => void,
+  options: { entryGate?: boolean } = {},
 ): DeterministicResult {
   const workspaceFingerprint = workspace.fingerprint
   const requestedCommand = commandOverride ?? criterion.command ?? ''
@@ -2636,6 +2669,34 @@ function runShellCheck(
     }
   }
 
+  // A gate with no baseline is judged on its own exit code. That is correct —
+  // a verification level baselines only the source-mutating profiles — but the
+  // failure it produces looks identical to a regression the run introduced,
+  // and a reader who assumes baseline parity spends the next stage hunting for
+  // a change that never happened. The failure says which judgment it made and
+  // which profiles the run actually baselined, so inherited debt is
+  // recognizable as inherited.
+  const judgedAbsolutely = Boolean(
+    profileName && repositoryResult && !skipped && !baselineComparison,
+  )
+  // An entry gate runs before the run owns a baseline for its profile, so a
+  // test the operator already knew was broken would stop the run at the door
+  // with no way to say so short of disabling the gate. A declaration is that
+  // way to say so, and it is narrow: it credits the exact cases it names and
+  // nothing else, so the gate still catches everything the run broke.
+  const knownFailing =
+    options.entryGate === true && repositoryResult && !skipped
+      ? creditKnownFailures(
+          repositoryResult,
+          state.request.known_failing_tests ?? [],
+        )
+      : null
+  const creditedAsBaseline = Boolean(
+    knownFailing &&
+    knownFailing.credited.length > 0 &&
+    knownFailing.undeclared.length === 0,
+  )
+
   const safeCriterionId = criterion.id.replaceAll(/[^a-zA-Z0-9_.-]/g, '-')
   const evidencePath = path.join(
     runDirectory,
@@ -2690,9 +2751,11 @@ function runShellCheck(
   const passed = baselineGap
     ? false
     : !skipped &&
-      (baselineComparison ? baselineComparison.passed : commandSucceeded)
+      (baselineComparison
+        ? baselineComparison.passed
+        : commandSucceeded || creditedAsBaseline)
   const inheritedFailureOnly = Boolean(
-    baselineComparison?.passed && !commandSucceeded,
+    (baselineComparison?.passed && !commandSucceeded) || creditedAsBaseline,
   )
 
   const suiteProfilePath =
@@ -2747,9 +2810,33 @@ function runShellCheck(
               ...(inheritedFailureOnly ? { preexisting_failure: true } : {}),
               ...(environmentBlocked ? { environment_blocked: true } : {}),
             }
-          : repositoryResult?.advisories.length
-            ? { explanation: repositoryResult.advisories.join(' ') }
-            : {}),
+          : creditedAsBaseline
+            ? {
+                preexisting_failure: true,
+                explanation:
+                  `Every failure this gate observed was declared known-failing ` +
+                  `by the run request, so it is reported as baseline: ` +
+                  `${knownFailing?.credited.join('; ')}.`,
+              }
+            : judgedAbsolutely && !passed
+              ? {
+                  explanation: [
+                    ...(repositoryResult?.advisories ?? []),
+                    ...(knownFailing && knownFailing.credited.length > 0
+                      ? [
+                          `${knownFailing.credited.length} declared ` +
+                            `known-failing case(s) were credited, but ` +
+                            `${knownFailing.undeclared.length} undeclared ` +
+                            `diagnostic(s) remain: ` +
+                            `${knownFailing.undeclared.join('; ')}.`,
+                        ]
+                      : []),
+                    absoluteJudgingDisclosure(state, profileName as string),
+                  ].join(' '),
+                }
+              : repositoryResult?.advisories.length
+                ? { explanation: repositoryResult.advisories.join(' ') }
+                : {}),
     ...(commandOverride === undefined
       ? {}
       : {
@@ -3212,6 +3299,7 @@ export function runEntryGateCriterion(
     typeof override === 'string' ? override : undefined,
     artifactId,
     onProgress,
+    { entryGate: true },
   )
 }
 

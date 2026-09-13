@@ -1,7 +1,7 @@
 import { copyFileSync } from 'node:fs'
 import path from 'node:path'
 
-import { invariant } from './errors.js'
+import { errorMessage, invariant, PanError } from './errors.js'
 import { queueInboxRelativePath } from './inbox.js'
 import {
   gitBranchExists,
@@ -207,8 +207,12 @@ function newWorktreeRoot(root: string): string {
  * Copy the recognized local harness override into a new self-development
  * worktree before setup runs. Target installations keep harness configuration
  * at the installation root and receive no override copy.
+ *
+ * Exported so a test can drive the copy failure directly; a worktree creation
+ * that reaches this point has already added a Git worktree, which is too much
+ * setup to stand behind one filesystem error.
  */
-function handoffSelfDevelopmentLocalConfig(
+export function handoffSelfDevelopmentLocalConfig(
   installationRoot: string,
   worktreePath: string,
 ): void {
@@ -223,7 +227,27 @@ function handoffSelfDevelopmentLocalConfig(
     return
   }
 
-  copyFileSync(sourcePath, path.join(worktreePath, configName))
+  const targetPath = path.join(worktreePath, configName)
+
+  try {
+    copyFileSync(sourcePath, targetPath)
+  } catch (error) {
+    // Without the wrapper this escaped as a bare Node.js filesystem error,
+    // so an agent facing it had no code to act on and no named operation.
+    throw new PanError(
+      `Failed to copy the local harness override '${configName}' into the ` +
+        `new worktree: ${errorMessage(error)}`,
+      {
+        code: 'WORKTREE_OVERRIDE_COPY_FAILED',
+        details: {
+          operation: 'configuration_handoff',
+          file: configName,
+          source: sourcePath,
+          target: targetPath,
+        },
+      },
+    )
+  }
 }
 
 /** One thing a worktree needs before a run can work in it. */

@@ -13,6 +13,7 @@ import { createFixture } from '../fixture-template.js'
 import { createRun } from '../helpers.js'
 import { evaluateDeterministicCriteria } from '../../src/lib/validation.js'
 import {
+  GATE_CACHE_ACCEPTANCE_RULE,
   gateCacheKey,
   gateCacheLookup,
   gateCacheStore,
@@ -540,4 +541,58 @@ test('a profile gate whose baseline cannot resolve is never served from the cach
   assert.ok(cachedResult)
   assert.equal(cachedResult.cached, true)
   assert.equal(markerCount(root), 2)
+})
+
+/** The verify and remediate prompt sources `AC-018` names. */
+const GATE_CACHE_PROMPTS = [
+  'library/workflows/delivery/prompts/verify.md',
+  'library/workflows/delivery/prompts/remediate.md',
+]
+
+/**
+ * Markdown wraps the rule and the operator guide quotes it, so compare the
+ * words rather than the line breaks and blockquote markers around them.
+ */
+function proseWords(markdown: string): string {
+  return markdown.replaceAll(/^[ \t]*>[ \t]?/gmu, '').replaceAll(/\s+/gu, ' ')
+}
+
+// AC-018. The rule has one source and three prose surfaces restate it. Nothing
+// held the copies to that source, so a reworded constant would have left the
+// operator guide and the two prompts disagreeing in the exact term the rule
+// exists to settle.
+test('the operator guide and both delivery prompts state the one gate-cache rule', () => {
+  const expected = proseWords(GATE_CACHE_ACCEPTANCE_RULE)
+
+  for (const surface of ['docs/operator-guide.md', ...GATE_CACHE_PROMPTS]) {
+    const prose = proseWords(
+      readFileSync(path.join(process.cwd(), surface), 'utf8'),
+    )
+
+    assert.ok(prose.includes(expected), `${surface} MUST state the rule`)
+  }
+})
+
+// The chunk workflow reuses the delivery prompt files rather than holding its
+// own, which is why two files satisfy four stages. A split would take the rule
+// with it silently, so the reuse is pinned rather than assumed.
+test('the delivery-chunk verify and remediate stages reuse the same prompt sources', () => {
+  for (const stage of ['verify', 'remediate']) {
+    const definition = JSON.parse(
+      readFileSync(
+        path.join(
+          process.cwd(),
+          'library/workflows/delivery-chunk/stages',
+          `${stage}.json`,
+        ),
+        'utf8',
+      ),
+    ) as { prompt_path?: string }
+
+    assert.ok(
+      definition.prompt_path &&
+        GATE_CACHE_PROMPTS.includes(definition.prompt_path),
+      `delivery-chunk/${stage} MUST reuse a prompt the rule covers`,
+    )
+  }
 })

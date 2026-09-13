@@ -22,7 +22,7 @@ import {
   writeJson,
   submitAsSupervisor,
 } from '../helpers.js'
-import { checkpoint, failingVerify } from './delivery-helpers.js'
+import { BRIEFS, checkpoint, failingVerify } from './delivery-helpers.js'
 
 test('explicit gate waiver advances a bounded miss and tracks its spotfix case', () => {
   const {
@@ -63,7 +63,9 @@ test('explicit gate waiver advances a bounded miss and tracks its spotfix case',
   const waived = waiveGate(root, runId, {
     stageSlug: 'verify',
     criterionIds: ['verify.acceptance_met'],
-    note: 'Eight of nine acceptance criteria are independently complete; AC-9 is isolated to one bounded follow-up and does not invalidate the delivered behavior.',
+    // AC-012: the note states the destination, so the jump past verify's
+    // own verdict is the operator's stated intent rather than a default.
+    note: 'Eight of nine acceptance criteria are independently complete; AC-9 is isolated to one bounded follow-up and does not invalidate the delivered behavior, so continue to ship.',
     deferredAcceptanceCriteria: ['AC-9'],
     createSpotfixCase: true,
   })
@@ -166,7 +168,10 @@ test('gate waivers can override a failed supervisor assessment', () => {
 
   const waived = waiveGate(root, runId, {
     criterionIds: ['plan.complete_mapping'],
-    note: 'The missing mapping is isolated and does not block implementation.',
+    // The note states the destination as a word of its own. "implementation"
+    // no longer confirms a route to `implement`, because a noun that happens
+    // to contain a stage slug is not the operator stating the jump.
+    note: 'The missing mapping is isolated, so continue to implement.',
   })
 
   assert.equal(waived.state.current_stage, 'implement')
@@ -323,9 +328,90 @@ test('an inferred waiver names the synthesized scope criterion', () => {
 
   const waived = waiveGate(root, runId, {
     stageSlug: 'verify',
+    targetStage: 'ship',
     note: 'The operator inspected the stray file and accepts the workspace exactly as it stands.',
   })
 
   assert.deepEqual(waived.waiver.criterion_ids, ['scope.no_unapproved_changes'])
   assert.notEqual(waived.waiver.whole_stage_bypass, true)
+})
+
+// AC-012. The recorded case waived one evidence gap on verify while the run
+// held a prepared verify card; the default route jumped to ship, discarding
+// the prepared work and skipping verify's own gate the note never mentioned.
+test('a waiver on a stage holding a prepared invocation stays on that stage', () => {
+  const { root, runId } = checkpoint('delivery@verify-prepared', BRIEFS)
+  const before = getRunState(root, runId)
+
+  assert.equal(before.current_stage, 'verify')
+  assert.equal(before.pending_action.type, 'invoke_agent')
+
+  const waived = waiveGate(root, runId, {
+    stageSlug: 'verify',
+    note: 'The browser evidence is environment-blocked; waive that criterion only.',
+  })
+
+  assert.equal(waived.state.current_stage, 'verify')
+})
+
+test('a waiver that would skip an unnamed gate requires an explicit destination', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title: 'Unnamed destination fixture',
+  })
+  const runId = state.run_id
+
+  setRunStage(root, runId, 'verify', 'Operator routes straight to verify.')
+
+  assert.throws(
+    () =>
+      waiveGate(root, runId, {
+        stageSlug: 'verify',
+        note: 'The browser evidence is environment-blocked.',
+      }),
+    (error: unknown) => {
+      assert.ok(error instanceof Error)
+      assert.match(error.message, /Pass --to <stage-slug>/u)
+
+      return true
+    },
+  )
+
+  // `ship` is a substring of `relationship`, `ownership`, and `shipping`, so a
+  // bare containment test accepted a note that never stated the jump — the
+  // exact failure this confirmation exists to prevent.
+  assert.throws(
+    () =>
+      waiveGate(root, runId, {
+        stageSlug: 'verify',
+        note: 'Environment-blocked, and this does not affect our relationship with the downstream owner.',
+      }),
+    (error: unknown) => {
+      assert.ok(error instanceof Error)
+      assert.match(error.message, /Pass --to <stage-slug>/u)
+
+      return true
+    },
+  )
+
+  // Either half of the confirmation is enough: the flag, or a note that says
+  // where the run is going.
+  const byNote = waiveGate(root, runId, {
+    stageSlug: 'verify',
+    note: 'Environment-blocked; route the run to ship as it stands.',
+  })
+
+  assert.equal(byNote.state.current_stage, 'ship')
+
+  setRunStage(root, runId, 'verify', 'Return to verify for the flag half.')
+
+  const byFlag = waiveGate(root, runId, {
+    stageSlug: 'verify',
+    targetStage: 'ship',
+    note: 'The browser evidence is environment-blocked.',
+  })
+
+  assert.equal(byFlag.state.current_stage, 'ship')
 })

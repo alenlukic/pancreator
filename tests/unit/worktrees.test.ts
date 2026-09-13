@@ -10,12 +10,15 @@ import {
 import path from 'node:path'
 import test from 'node:test'
 
+import { PanError } from '../../src/lib/errors.js'
 import {
+  localConfigName,
   readProjectConfig,
   worktreesConfig,
 } from '../../src/lib/project-config.js'
 import {
   createWorktree,
+  handoffSelfDevelopmentLocalConfig,
   isWorktreeName,
   listWorktrees,
   readWorktreeIndex,
@@ -890,5 +893,37 @@ test('branch deletion removes a merged branch and refuses an unmerged one', () =
       encoding: 'utf8',
     }).trim(),
     '',
+  )
+})
+
+// AC-024. The copy escaped as a bare Node.js filesystem error, so an agent
+// facing a half-prepared worktree had no harness code to route on and no
+// statement of which file or operation had failed.
+test('a failed override copy raises a coded error naming the file and operation', () => {
+  const root = createFixture()
+  const worktreePath = path.join(root, 'runtime/worktrees/operator/blocked')
+  const configName = localConfigName(root)
+
+  writeFileSync(path.join(root, configName), '{}\n', 'utf8')
+  // A directory at the target path fails the copy the way a permission or a
+  // full disk would, without depending on either.
+  mkdirSync(path.join(worktreePath, configName), { recursive: true })
+
+  assert.throws(
+    () => handoffSelfDevelopmentLocalConfig(root, worktreePath),
+    (error: unknown) => {
+      assert.ok(error instanceof PanError)
+      assert.equal(error.code, 'WORKTREE_OVERRIDE_COPY_FAILED')
+      assert.match(error.message, new RegExp(configName, 'u'))
+      assert.deepEqual(
+        {
+          operation: (error.details as { operation?: string }).operation,
+          file: (error.details as { file?: string }).file,
+        },
+        { operation: 'configuration_handoff', file: configName },
+      )
+
+      return true
+    },
   )
 })

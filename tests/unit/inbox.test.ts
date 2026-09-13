@@ -14,12 +14,14 @@ import {
   claimInboxRequest,
   finishInboxRequest,
   migrateLegacyInboxLayout,
+  restoreInboxRequest,
   rollbackInboxClaim,
   listInbox,
   renderInbox,
 } from '../../src/lib/inbox.js'
 import { PanError } from '../../src/lib/errors.js'
 import { makeWorkflowRunId } from '../../src/lib/naming.js'
+import { eventPath } from '../../src/lib/state.js'
 import { maintainWorkflowRuntime } from '../../src/lib/workflow-artifacts.js'
 import { createFixture } from '../fixture-template.js'
 import { createTestTempDirectory } from '../temp.js'
@@ -572,4 +574,177 @@ test('runtime maintenance migrates a legacy complete item before archiving it', 
     ),
     '# Legacy complete\n',
   )
+})
+
+function writeRunWithInboxSource(
+  root: string,
+  runId: string,
+  sourcePath: string,
+): void {
+  const runDirectory = path.join(root, 'runtime/logs/workflows', runId)
+
+  mkdirSync(path.join(runDirectory, 'agent'), { recursive: true })
+  writeFileSync(
+    path.join(runDirectory, 'workflow.snapshot.json'),
+    '{"stages":[{"slug":"plan"}]}\n',
+    'utf8',
+  )
+  writeFileSync(
+    path.join(runDirectory, 'agent', 'state.json'),
+    `${JSON.stringify({
+      schema_version: 2,
+      run_id: runId,
+      workflow_slug: 'delivery',
+      title: runId,
+      status: 'running',
+      pending_action: { type: 'prepare_invocation' },
+      current_stage: 'implement',
+      current_invocation: null,
+      request: {
+        source_path: sourcePath,
+        stored_path: `runtime/logs/workflows/${runId}/operator/request.md`,
+        sha256: 'abc',
+      },
+      workflow_snapshot: {
+        path: `runtime/logs/workflows/${runId}/workflow.snapshot.json`,
+        sha256: 'def',
+      },
+      pipeline_config: null,
+      limits: {
+        max_stage_attempts: 3,
+        max_total_transitions: 30,
+        max_consecutive_failures: 3,
+      },
+      attempts: {},
+      transition_count: 0,
+      consecutive_failures: 0,
+      stage_history: [],
+      revision: 0,
+      created_at: '2026-09-01T00:00:00.000Z',
+      updated_at: '2026-09-01T01:00:00.000Z',
+    })}\n`,
+    'utf8',
+  )
+}
+
+// AC-007. `claimInboxRequest` already accepts a canceled item, so the reverse
+// edge was a supported state with no command: the only route was a manual
+// file move that left the operator's decision unrecorded.
+test('restoreInboxRequest returns a canceled item to the queue', () => {
+  const root = createFixture()
+  const canceled = path.join(root, 'runtime/inbox/canceled/reopen.md')
+
+  mkdirSync(path.dirname(canceled), { recursive: true })
+  writeFileSync(canceled, '# Reopen\n', 'utf8')
+
+  const result = restoreInboxRequest(root, 'runtime/inbox/canceled/reopen.md')
+
+  assert.equal(result.to, 'runtime/inbox/queue/reopen.md')
+  assert.equal(result.detached_run_id, null)
+  assert.equal(existsSync(canceled), false)
+  assert.equal(readFileSync(path.join(root, result.to), 'utf8'), '# Reopen\n')
+})
+
+// AC-007. The criterion asks for the move to be recorded as an inbox event,
+// and a run's event stream is the only audit surface an inbox move has. Only
+// the active path wrote one, so the canceled restore — the common case, since
+// an aborted run is what puts an item in `canceled/` — left the operator's
+// decision unrecorded exactly as the manual file move did.
+test('restoreInboxRequest records a canceled restore on the run that held it', () => {
+  const root = createFixture()
+  const runId = '63400_Sep-01-0200_canceled-item'
+  const canceled = 'runtime/inbox/canceled/reopen.md'
+  const absolute = path.join(root, canceled)
+
+  mkdirSync(path.dirname(absolute), { recursive: true })
+  writeFileSync(absolute, '# Reopen\n', 'utf8')
+  writeRunWithInboxSource(root, runId, canceled)
+
+  const result = restoreInboxRequest(root, canceled)
+
+  // A canceled item's run released it before the restore, so nothing detaches.
+  assert.equal(result.detached_run_id, null)
+
+  const events = readFileSync(eventPath(root, runId), 'utf8')
+    .split('\n')
+    .filter((line) => line.length > 0)
+    .map(
+      (line) =>
+        JSON.parse(line) as { type: string; from?: string; to?: string },
+    )
+  const restored = events.filter(
+    (event) => event.type === 'inbox_request_restored',
+  )
+
+  assert.equal(restored.length, 1)
+  assert.equal(restored[0]?.from, canceled)
+  assert.equal(restored[0]?.to, result.to)
+
+  // The run is repointed at its own stored copy, so the quoted request path
+  // still resolves once the file has moved back to the queue.
+  const state = JSON.parse(
+    readFileSync(
+      path.join(root, 'runtime/logs/workflows', runId, 'agent/state.json'),
+      'utf8',
+    ),
+  ) as { request: { source_path: string; stored_path: string } }
+
+  assert.equal(state.request.source_path, state.request.stored_path)
+})
+
+// AC-008. The run keeps its own stored copy of the request, so repointing it
+// there costs the run nothing and leaves the queued item free to be claimed
+// again.
+test('restoreInboxRequest detaches the run that holds an active item', () => {
+  const root = createFixture()
+  const runId = '63400_Sep-01-0100_active-item'
+  const active = 'runtime/inbox/active/held.md'
+  const absolute = path.join(root, active)
+
+  mkdirSync(path.dirname(absolute), { recursive: true })
+  writeFileSync(absolute, '# Held\n', 'utf8')
+  writeRunWithInboxSource(root, runId, active)
+
+  const result = restoreInboxRequest(root, active)
+
+  assert.equal(result.to, 'runtime/inbox/queue/held.md')
+  assert.equal(result.detached_run_id, runId)
+
+  const state = JSON.parse(
+    readFileSync(
+      path.join(root, 'runtime/logs/workflows', runId, 'agent/state.json'),
+      'utf8',
+    ),
+  ) as { request: { source_path: string; stored_path: string } }
+
+  assert.equal(state.request.source_path, state.request.stored_path)
+})
+
+test('restoreInboxRequest refuses a completed and an already-queued item', () => {
+  const root = createFixture()
+
+  for (const [status, code] of [
+    ['complete', 'INVALID_INBOX_TRANSITION'],
+    ['queue', 'INVALID_INBOX_TRANSITION'],
+  ] as const) {
+    const relative = `runtime/inbox/${status}/settled.md`
+    const absolute = path.join(root, relative)
+
+    mkdirSync(path.dirname(absolute), { recursive: true })
+    writeFileSync(absolute, '# Settled\n', 'utf8')
+
+    assert.throws(
+      () => restoreInboxRequest(root, relative),
+      (error: unknown) =>
+        error instanceof PanError &&
+        error.code === code &&
+        // The refusal says which status blocked it, so the operator does not
+        // have to look the item up to learn why.
+        error.message.includes(
+          status === 'queue' ? 'already in the queue' : status,
+        ),
+      status,
+    )
+    assert.equal(existsSync(absolute), true)
+  }
 })

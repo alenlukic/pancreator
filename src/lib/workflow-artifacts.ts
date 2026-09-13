@@ -685,16 +685,35 @@ function updateFiles(
   }
 }
 
+/**
+ * Every run-owned inbox item, wherever the lifecycle currently holds it.
+ *
+ * This scanner feeds the finalization rewrite that repairs invocation ids
+ * quoted inside a run's own inbox item after terminal renumbering. It once
+ * read the inbox root alone, which was correct until the lifecycle partition
+ * moved every new item into `queue/`; it then matched nothing and the rewrite
+ * became silent dead code. The directory list comes from the inbox module so
+ * a future lifecycle directory reaches both surfaces at once, and the root
+ * stays in the list because legacy loose items still resolve there.
+ */
 function exactRunInboxFiles(root: string, runId: string): string[] {
-  const inboxDirectory = path.join(root, 'runtime', 'inbox')
+  const directories = [
+    path.join('runtime', 'inbox'),
+    ...inboxTemporalScanDirectories(),
+  ]
 
-  if (!existsSync(inboxDirectory)) {
-    return []
-  }
+  return directories
+    .flatMap((relative) => {
+      const directory = path.join(root, relative)
 
-  return readdirSync(inboxDirectory, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.startsWith(runId))
-    .map((entry) => path.join(inboxDirectory, entry.name))
+      if (!existsSync(directory)) {
+        return []
+      }
+
+      return readdirSync(directory, { withFileTypes: true })
+        .filter((entry) => entry.isFile() && entry.name.startsWith(runId))
+        .map((entry) => path.join(directory, entry.name))
+    })
     .sort()
 }
 
@@ -1672,6 +1691,59 @@ function isCompliantTemporalFileName(name: string): boolean {
 }
 
 /**
+ * Rename the non-compliant loose files of one directory into the temporal
+ * scheme, recording each move as a harness-relative mapping.
+ *
+ * The inbox directories and the pull-request directories once ran two
+ * near-identical copies of this loop, so a traversal fix reached only one of
+ * them.
+ */
+function standardizeTemporalFileNamesIn(
+  root: string,
+  parentRelative: string,
+  mappings: Map<string, string>,
+): void {
+  const parent = path.join(root, parentRelative)
+
+  if (!existsSync(parent)) {
+    return
+  }
+
+  const entries = readdirSync(parent, { withFileTypes: true })
+  const taken = new Set(entries.map((entry) => entry.name))
+
+  for (const entry of entries) {
+    if (
+      !entry.isFile() ||
+      entry.name.startsWith('.') ||
+      isCompliantTemporalFileName(entry.name)
+    ) {
+      continue
+    }
+
+    const absolute = path.join(parent, entry.name)
+    const { date, slugSeed } = temporalFileSource(absolute)
+    const extension = path.extname(entry.name)
+    const slug = standardizedFileSlug(absolute, slugSeed)
+    const prefix = temporalNamePrefix(date)
+    let target = `${prefix}_${slug}${extension}`
+    let ordinal = 2
+
+    while (taken.has(target)) {
+      target = `${prefix}_${slug}-${ordinal}${extension}`
+      ordinal += 1
+    }
+
+    taken.add(target)
+    renameSync(absolute, path.join(parent, target))
+    mappings.set(
+      `${parentRelative}/${entry.name}`,
+      `${parentRelative}/${target}`,
+    )
+  }
+}
+
+/**
  * Rename every non-durable file under the temporal runtime directories to the
  * `<days-to-anchor>_<MMM-DD>-<minutes-to-end-of-UTC-day>_<slug>` scheme used by
  * `runtime/logs/workflows`, then rewrite persisted references to the old names.
@@ -1680,90 +1752,16 @@ export function standardizeRuntimeFileNames(
   root = findProjectRoot(),
 ): RuntimeNameStandardizationSummary {
   const mappings = new Map<string, string>()
-
-  for (const parentRelative of INBOX_TEMPORAL_SCAN_DIRECTORIES) {
-    const parent = path.join(root, parentRelative)
-
-    if (!existsSync(parent)) {
-      continue
-    }
-
-    const taken = new Set(readdirSync(parent))
-
-    for (const entry of readdirSync(parent, { withFileTypes: true })) {
-      if (
-        !entry.isFile() ||
-        entry.name.startsWith('.') ||
-        isCompliantTemporalFileName(entry.name)
-      ) {
-        continue
-      }
-
-      const absolute = path.join(parent, entry.name)
-      const { date, slugSeed } = temporalFileSource(absolute)
-      const extension = path.extname(entry.name)
-      const slug = standardizedFileSlug(absolute, slugSeed)
-      const prefix = temporalNamePrefix(date)
-      let target = `${prefix}_${slug}${extension}`
-      let ordinal = 2
-
-      while (taken.has(target)) {
-        target = `${prefix}_${slug}-${ordinal}${extension}`
-        ordinal += 1
-      }
-
-      taken.add(target)
-      renameSync(absolute, path.join(parent, target))
-      mappings.set(
-        `${parentRelative}/${entry.name}`,
-        `${parentRelative}/${target}`,
-      )
-    }
-  }
-
-  for (const directoryRelative of TEMPORAL_FILE_DIRECTORIES) {
-    for (const parentRelative of [
+  const directories = [
+    ...INBOX_TEMPORAL_SCAN_DIRECTORIES,
+    ...TEMPORAL_FILE_DIRECTORIES.flatMap((directoryRelative) => [
       directoryRelative,
       `${directoryRelative}/archive`,
-    ]) {
-      const parent = path.join(root, parentRelative)
+    ]),
+  ]
 
-      if (!existsSync(parent)) {
-        continue
-      }
-
-      const taken = new Set(readdirSync(parent))
-
-      for (const entry of readdirSync(parent, { withFileTypes: true })) {
-        if (
-          !entry.isFile() ||
-          entry.name.startsWith('.') ||
-          isCompliantTemporalFileName(entry.name)
-        ) {
-          continue
-        }
-
-        const absolute = path.join(parent, entry.name)
-        const { date, slugSeed } = temporalFileSource(absolute)
-        const extension = path.extname(entry.name)
-        const slug = standardizedFileSlug(absolute, slugSeed)
-        const prefix = temporalNamePrefix(date)
-        let target = `${prefix}_${slug}${extension}`
-        let ordinal = 2
-
-        while (taken.has(target)) {
-          target = `${prefix}_${slug}-${ordinal}${extension}`
-          ordinal += 1
-        }
-
-        taken.add(target)
-        renameSync(absolute, path.join(parent, target))
-        mappings.set(
-          `${parentRelative}/${entry.name}`,
-          `${parentRelative}/${target}`,
-        )
-      }
-    }
+  for (const parentRelative of directories) {
+    standardizeTemporalFileNamesIn(root, parentRelative, mappings)
   }
 
   const updatedFiles =

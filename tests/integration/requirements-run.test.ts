@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
@@ -147,8 +147,9 @@ test('output validate mirrors the deterministic submission checks', () => {
 
   writeJson(path.join(root, invocation.output.path), output)
 
-  // The stage resolves no agent-owned validator requirement, so results is
-  // empty.
+  // AC-015: selection is by determinism and side-effect freedom, not by
+  // executor, so the deterministic harness validators of the phase run here
+  // too. Each one reports a result the operator can read before submitting.
   const stdout = execFileSync(
     process.execPath,
     [
@@ -172,7 +173,13 @@ test('output validate mirrors the deterministic submission checks', () => {
 
   assert.equal(result.passed, true)
   assert.ok(result.submission_checks.length > 0)
-  assert.equal(result.results.length, 0)
+  assert.ok(result.results.length > 0)
+
+  for (const item of result.results as Array<{
+    result: { status: string }
+  }>) {
+    assert.equal(item.result.status, 'passed', JSON.stringify(item))
+  }
 
   const corrupted = structuredClone(output) as unknown as Record<
     string,
@@ -407,4 +414,86 @@ test('full and revision outputs validate the same effective document', () => {
   const submitted = submitAsSupervisor(root, runId, invocation.output.path)
 
   assert.equal(submitted.record.outcome, 'success')
+})
+
+/** stderr of a `pan output validate` invocation expected to refuse. */
+function refusal(root: string, args: string[]): string {
+  const result = spawnSync(
+    process.execPath,
+    [CLI, 'output', 'validate', ...args],
+    { cwd: root, encoding: 'utf8' },
+  )
+
+  assert.notEqual(result.status, 0, result.stdout)
+
+  return `${result.stderr}${result.stdout}`
+}
+
+// AC-003. Reporting one missing argument at a time cost a round trip per
+// argument; the operator supplies the first, reruns, and learns about the
+// second only then.
+test('output validate names every missing required argument at once', () => {
+  const root = createFixture()
+  const message = refusal(root, [])
+
+  for (const name of ['run-id', '--file', '--invocation']) {
+    assert.ok(message.includes(name), `${name}: ${message}`)
+  }
+
+  // One refusal, not three: the names arrive together.
+  assert.match(message, /are required/u)
+})
+
+// AC-004. `--run <id>` in place of the positional slot is the natural spelling
+// beside `--file` and `--invocation`, and a flag landing in the positional
+// slot used to be read as a run id and reported as an unknown run.
+test('output validate accepts --run and names the argument a flag displaced', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'planning',
+    requestPath: 'request.md',
+    title: 'Output validate argument fixture',
+  })
+  const invocation = prepareInvocation(root, state.run_id).invocation
+
+  assert.ok(invocation)
+
+  const workflow = loadWorkflow(root, 'planning')
+  const output = makeOutput(root, invocation, stageBySlug(workflow, 'plan'))
+  const invocationRelative = resolveRunLayout(root, state.run_id).invocation(
+    invocation.invocation_id,
+    '.json',
+  ).relative
+
+  writeJson(path.join(root, invocation.output.path), output)
+
+  const stdout = execFileSync(
+    process.execPath,
+    [
+      CLI,
+      'output',
+      'validate',
+      '--run',
+      state.run_id,
+      '--file',
+      invocation.output.path,
+      '--invocation',
+      invocationRelative,
+      '--json',
+    ],
+    { cwd: root, encoding: 'utf8' },
+  )
+
+  assert.equal((JSON.parse(stdout) as { passed: boolean }).passed, true)
+
+  // A flag in the positional slot is a missing run id, not an unknown run.
+  const message = refusal(root, [
+    '--file',
+    invocation.output.path,
+    '--invocation',
+    invocationRelative,
+  ])
+
+  assert.match(message, /run-id/u)
+  assert.doesNotMatch(message, /Unknown run/u)
 })

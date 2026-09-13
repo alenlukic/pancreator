@@ -1399,6 +1399,31 @@ export function validateImplementationClaims(
     }
   }
 
+  // The output states the same fact twice: `changed_files` claims the work,
+  // and `workspace_changes.paths` attributes what the workspace holds. A
+  // contradiction between them is decidable from the output alone, so it does
+  // not wait on a Git read that a non-Git workspace or a failed diff can take
+  // away.
+  const attribution = isRecord(value.workspace_changes)
+    ? value.workspace_changes
+    : null
+  const attributedPaths = Array.isArray(attribution?.paths)
+    ? attribution.paths.filter(
+        (entry): entry is string => typeof entry === 'string',
+      )
+    : []
+
+  for (const file of attributedPaths) {
+    if (!changedFiles.includes(file)) {
+      issues.push(
+        issue(
+          'claim.attribution_not_disclosed',
+          `Path attributed in workspace_changes but not listed in changed_files: ${file}`,
+        ),
+      )
+    }
+  }
+
   const acceptanceResultsList = Array.isArray(data.acceptance_results)
     ? data.acceptance_results
     : []

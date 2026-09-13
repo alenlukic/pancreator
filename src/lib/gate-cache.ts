@@ -92,6 +92,27 @@ const CACHE_MAX_ENTRIES = 100
 export const GATE_CACHE_ENV = 'PAN_GATE_CACHE'
 export const GATE_CACHE_PATH = CACHE_RELATIVE_PATH
 
+/**
+ * The `DEV-001` gate-cache acceptance rule, in the one term the evidence log
+ * uses.
+ *
+ * A verifier and a remediator each read a `cached` gate from a card that never
+ * said what the word meant, and each reached the opposite conclusion: one
+ * discounted the pass as stale, the other ordered a rerun the harness had
+ * already satisfied. The rule now has one statement, rendered onto every card
+ * whose stage owns a repository-check gate and quoted verbatim by the operator
+ * guide, so no surface can drift into a second wording or a second term.
+ */
+export const GATE_CACHE_ACCEPTANCE_RULE =
+  'A gate marked `cached` is a real pass, not a skipped one: the identical ' +
+  'gate command passed cleanly at this same Git workspace fingerprint and ' +
+  'repository-check configuration within the last 24 hours, against a ' +
+  'resolved run baseline, and its evidence log carries that original ' +
+  'captured output. Treat it as evidence of the same strength as a pass the ' +
+  'harness executed just now, and do not order a rerun to replace it. A ' +
+  'failure, timeout, skip, override, or baseline-relative credit is never ' +
+  'accepted this way.'
+
 function cachePath(root: string): string {
   return path.join(root, CACHE_RELATIVE_PATH)
 }

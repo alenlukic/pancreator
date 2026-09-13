@@ -52,6 +52,7 @@ import {
   retryDeliveryRoute,
   startCohort,
 } from './lib/cohorts.js'
+import type { DeliveryRouteOptions } from './lib/cohorts.js'
 import { GATE_CACHE_ENV, gateCacheStatus } from './lib/gate-cache.js'
 import { personaExecutorOf } from './lib/executors/mapping.js'
 import {
@@ -70,6 +71,7 @@ import {
   panCommand,
 } from './lib/project-config.js'
 import { resolvePolicies } from './lib/policies.js'
+import { orderedWorkerActions } from './lib/render.js'
 import { resolvePrDescriptionContext } from './lib/pr-description.js'
 import {
   continueLocalRelease,
@@ -105,7 +107,7 @@ import {
 import { runCursorAgentJson } from './lib/executors/cursor-agent.js'
 import { gitWorkspaceSnapshot, isGitRepository } from './lib/git.js'
 import { liveRunsBoundToWorktree } from './lib/state.js'
-import { listInbox, renderInbox } from './lib/inbox.js'
+import { listInbox, renderInbox, restoreInboxRequest } from './lib/inbox.js'
 import {
   loadPipelineConfig,
   loadPipelineConfigSnapshot,
@@ -131,7 +133,7 @@ import {
   writeJsonAtomic,
   writeTextAtomic,
 } from './lib/io.js'
-import type { AgentRecord, RunState } from './lib/types.js'
+import type { AgentRecord, Invocation, RunState } from './lib/types.js'
 import type { InvocationKind } from './lib/requirements/types.js'
 import {
   delegationExecutionPath,
@@ -255,7 +257,8 @@ export const HELP_BODY = `Usage:
       Record that a foreground launch returned, with the launch and return wall-clock times, at agent/evidence/<invocation-id>-foreground-return.json. The launch time defaults to the delegation artifact's modification time. pan submit requires this record or a completed watch record for every Cursor worker invocation and fails with DELEGATION_UNOBSERVED otherwise.
   pan submit <run-id> <output-json> [--worktree <name>]
   pan assess <run-id> <assessment-json>
-  pan decide <run-id> <approve|reject|revise> [--note <text> | --note-file <path>] [--stage <stage-slug>]
+  pan decide <run-id> <approve|reject|revise> [--note <text> | --note-file <path>] [--stage <stage-slug>] [--worktree <name>]
+      --worktree names an existing worktree the routed single-chunk delivery run occupies instead of the one the route would derive and create. The response reports the bound worktree path.
   pan pause <run-id> [--note <text> | --note-file <path>]
   pan attribute <run-id> --note <directive> [--role supervisor|operator] [--paths <path[,path...]>]
       Record an operator directive executed against the workspace outside a stage. The record names the acting role, the directive, the changed paths, and the time, and the next invocation card lists those paths as already attributed. Without --paths the harness attributes every dirty tracked path of the workspace.
@@ -301,6 +304,8 @@ export const HELP_BODY = `Usage:
       --redline writes agent/evidence/platform-guidance-redline.json, the run's pre-declaration that platform guidance is non-authoritative.
   pan list [--json]
   pan inbox [--json]
+  pan inbox restore <inbox-file>
+      Return a canceled or active item to runtime/inbox/queue/. An active item's run is detached onto its own stored request copy first. A completed or already-queued item is refused.
   pan archive [--days <positive-integer>] [--complete] [--canceled] [--json]
   pan models [--sync] [--force] [--probe] [--migrate-from <previous-config.json>] [--json]
   pan models evidence --run <run-id> --role supervisor --effective-model <model> --source <source> [--json]
@@ -318,7 +323,7 @@ export const HELP_BODY = `Usage:
       --run or --worktree binds the check to that run's or worktree's workspace instead of the installation root.
   pan pr-description context [--worktree <name>] [--json]
   pan output scaffold <run-id> --invocation <path> --output <path> [--force]
-  pan output validate <run-id> --file <path> --invocation <path> [--json]
+  pan output validate (<run-id> | --run <run-id>) --file <path> --invocation <path> [--json]
   pan assessment scaffold <run-id> --invocation <path> --output <path> [--force]
   pan governance audit-directives [--json]
   pan governance card --mode <${STANDALONE_MODE_NAMES}> [--extension <id>] [--request <path>] [--worktree <name>] [--out <path>] [--base <ref> --target <ref> [--closure-revision <ref>]] [--dimensions <a,b,c>] [--json]
@@ -348,7 +353,7 @@ export const HELP_BODY = `Usage:
       Start or adopt the release run once every cohort is integrated (merge-free). It is the retry for a release start that failed after the final integrate: it merges nothing, adopts a release run that already exists, and is refused with COHORT_NOT_SATISFIED while any cohort lacks its merge proof.
   pan cohort abandon <cohort-id> --chunk <id> --note <reason> [--json]
   pan cohort clean <cohort-id> [--force] [--json]
-  pan cohort route --plan-run <run-id> [--json]
+  pan cohort route --plan-run <run-id> [--worktree <name>] [--json]
       Route the approved plan of a succeeded planning run into delivery again: one delivery run for a single chunk, cohort 1 of a cohort session for a wider plan. This is the retry for a route that failed at approval and the opt-in for a planning run that predates routing. It adopts the run or session an earlier attempt created and refuses a run that is not planning, not succeeded, or whose plan gate recorded a decision other than approve.
   pan context digest <repo-relative-file> [--json]
       Read-only. Print the content digest of a file on the basis every audited context reference states: sha256 of the text after leading and trailing whitespace is trimmed. A planner takes a child specification's parent digest from this command rather than computing it by hand.
@@ -359,7 +364,8 @@ export const HELP_BODY = `Usage:
   pan validation-map [--json]
   pan involvement [--json]
   pan verification [<run-id>] [--json]
-  pan verification <run-id> set <level> [--note <text>]
+  pan verification <run-id> set <level> [--note <text>] [--confirm]
+      --confirm is required when the new level disables the evidence producer of a ratified acceptance criterion; the refusal lists every affected criterion.
   pan spotfix scaffold-escalation --input <path> --output <path>
 
 Cursor's supervisor reads invocation cards, delegates cursor-executor stages to
@@ -411,6 +417,50 @@ function requiredArgument(
   }
 
   return value
+}
+
+/** One required argument of a multi-argument command surface. */
+interface RequiredArgument<Name extends string> {
+  name: Name
+  value: string | null | undefined
+  /** A flag in a positional slot is a missing positional, never a value. */
+  positional?: boolean
+}
+
+/**
+ * Resolve every required argument of one command surface together.
+ *
+ * Validating each argument where it is read makes the first missing one throw
+ * before the second is examined, so an operator discovers a three-argument
+ * shape one failed call at a time. Collecting them reports the whole defect
+ * on the first call.
+ */
+function requiredArguments<Name extends string>(
+  entries: ReadonlyArray<RequiredArgument<Name>>,
+): Record<Name, string> {
+  const resolved = {} as Record<Name, string>
+  const missing: string[] = []
+
+  for (const entry of entries) {
+    const usable =
+      entry.value && !(entry.positional && entry.value.startsWith('--'))
+
+    if (!usable) {
+      missing.push(entry.name)
+      continue
+    }
+
+    resolved[entry.name] = entry.value as string
+  }
+
+  if (missing.length > 0) {
+    throw new PanError(
+      `${missing.join(', ')} ${missing.length === 1 ? 'is' : 'are'} required.`,
+      { code: 'INVALID_ARGUMENT', details: { missing } },
+    )
+  }
+
+  return resolved
 }
 
 /**
@@ -505,6 +555,8 @@ function integerOption(args: string[], name: string): number | null {
  */
 const WORKTREE_CAPABLE_SURFACES = [
   'init',
+  'decide',
+  'cohort route',
   'prepare',
   'resume',
   'submit',
@@ -524,12 +576,14 @@ const SUBCOMMAND_STYLE_COMMANDS = new Set([
   'assessment',
   'author',
   'away',
+  'cohort',
   'best-of-n',
   'briefs',
   'conform',
   'context',
   'governance',
   'hypervisor',
+  'inbox',
   'output',
   'release',
   'repository-check',
@@ -543,7 +597,11 @@ const SUBCOMMAND_STYLE_COMMANDS = new Set([
 
 function acceptsWorktreeOption(command: string, args: string[]): boolean {
   switch (command) {
+    // `init` and `decide` do not run in the named worktree; they bind the run
+    // they create to it. That is the same operator choice, so it keeps the
+    // same option name.
     case 'init':
+    case 'decide':
     case 'conform':
     case 'doctor':
     case 'prepare':
@@ -554,6 +612,8 @@ function acceptsWorktreeOption(command: string, args: string[]): boolean {
       return true
     case 'author':
       return args[0] === 'apply' || args[0] === 'validate'
+    case 'cohort':
+      return args[0] === 'route'
     case 'repository-check':
       return args[0] !== 'validate'
     // The usage line advertises the option and the handler already resolves
@@ -1115,6 +1175,52 @@ export function requirementShapeKey(requirement: ResolvedRequirement): string {
   ].join('|')
 }
 
+/** Operator worktree choice shared by the two commands that route a plan. */
+function deliveryRouteOptions(args: string[]): DeliveryRouteOptions {
+  const worktreeName = option(args, '--worktree')
+
+  return worktreeName ? { worktreeName } : {}
+}
+
+/**
+ * The requirements `pan output validate` runs before submission.
+ *
+ * Selection is by side-effect freedom, not by executor. The executor field
+ * keeps a state-mutating validator out of an agent's hands, which is right
+ * for a validator that costs a gate; it is wrong for a deterministic
+ * read-only one. Filtering by executor made the claims validator — the check
+ * this command exists to catch, and a harness-executor entry that declares
+ * both `deterministic` and `side_effect_free` — unreachable by construction,
+ * so a mechanical claim defect consumed a stage attempt behind a passing
+ * suite. A requirement whose registry entry declares either property false
+ * still stays out, whatever its executor.
+ *
+ * Exported so a test can hold the selection to the registry rather than to
+ * the command's own prose.
+ */
+export function preSubmitRequirements(
+  root: string,
+  invocation: Invocation,
+): ResolvedRequirement[] {
+  const catalog = loadRegistry(root)
+
+  return [
+    ...(invocation.requirements?.validation_requirements ?? []),
+    ...(invocation.requirements?.automation_requirements ?? []),
+  ].filter((item) => {
+    if (
+      (item.phase !== 'pre_submit' && item.phase !== 'before_operation') ||
+      item.enforcement === 'advisory'
+    ) {
+      return false
+    }
+
+    const entry = catalog.entries.get(item.registry_id)
+
+    return entry?.deterministic === true && entry.side_effect_free === true
+  })
+}
+
 function runAgentPreSubmitValidators(
   root: string,
   runId: string,
@@ -1343,6 +1449,10 @@ async function main(): Promise<void> {
         return
       }
 
+      // The ordered launches this stage owes. A verify stage owes its
+      // evidence workers before the consolidating worker that reads them.
+      const workerActions = orderedWorkerActions(result.invocation)
+
       print({
         status: 'ready',
         run_id: runId,
@@ -1353,6 +1463,7 @@ async function main(): Promise<void> {
         invocation_json: result.state.current_invocation?.json_path,
         invocation_markdown: result.state.current_invocation?.markdown_path,
         expected_output: result.state.current_invocation?.output_path,
+        ...(workerActions.length > 0 ? { worker_actions: workerActions } : {}),
         ...(result.prepared_delegation
           ? { prepared_delegation: result.prepared_delegation }
           : {}),
@@ -1468,10 +1579,12 @@ async function main(): Promise<void> {
       // The hook runs after the decision is durable and outside the run mutex,
       // so delivery run creation takes its own mutexes and a routing failure
       // cannot roll back the recorded approval.
-      const autostart = maybeStartDelivery(root, state, {
-        actor: 'operator',
-        action: decision,
-      })
+      const autostart = maybeStartDelivery(
+        root,
+        state,
+        { actor: 'operator', action: decision },
+        deliveryRouteOptions(args),
+      )
 
       print({
         status: state.status,
@@ -1532,6 +1645,7 @@ async function main(): Promise<void> {
           runId,
           level,
           option(args, '--note', '') ?? '',
+          { confirmed: hasFlag(args, '--confirm') },
         )
 
         print({
@@ -2488,6 +2602,23 @@ async function main(): Promise<void> {
       print(listRuns(root), true)
       return
     case 'inbox': {
+      if (args[0] === 'restore') {
+        const result = restoreInboxRequest(
+          root,
+          requiredPositional(args[1], 'inbox-file'),
+        )
+
+        print(
+          {
+            status: 'restored',
+            ...result,
+            next_command: `${pan} init --request ${result.to}`,
+          },
+          true,
+        )
+        return
+      }
+
       const items = listInbox(root)
 
       if (json) {
@@ -3151,6 +3282,7 @@ async function main(): Promise<void> {
         const result = retryDeliveryRoute(
           root,
           requiredArgument(option(args, '--plan-run'), '--plan-run'),
+          deliveryRouteOptions(args),
         )
 
         print(result, asJson)
@@ -3466,12 +3598,24 @@ async function main(): Promise<void> {
       }
 
       if (sub === 'validate') {
-        const runId = requiredArgument(args[1], 'run-id')
-        const filePath = requiredArgument(option(args, '--file'), '--file')
-        const invocationPath = requiredArgument(
-          option(args, '--invocation'),
-          '--invocation',
-        )
+        // Three arguments, each knowable on the first call. `--run` exists so
+        // a flag in the positional slot cannot be read as a run id.
+        const {
+          'run-id': runId,
+          '--file': filePath,
+          '--invocation': invocationPath,
+        } = requiredArguments([
+          {
+            name: 'run-id' as const,
+            value: option(args, '--run') ?? args[1],
+            positional: true,
+          },
+          { name: '--file' as const, value: option(args, '--file') },
+          {
+            name: '--invocation' as const,
+            value: option(args, '--invocation'),
+          },
+        ])
         const invocation = readInvocationFromPath(root, invocationPath)
         const submittedValue = readJson(resolveInside(root, filePath))
         const materialized = materializeOutputSubmission(
@@ -3496,16 +3640,7 @@ async function main(): Promise<void> {
           writeJsonAtomic(resolveInside(root, scratchPath), effectiveValue)
         }
 
-        const agentRequirements = [
-          ...(invocation.requirements?.validation_requirements ?? []),
-          ...(invocation.requirements?.automation_requirements ?? []),
-        ].filter(
-          (item) =>
-            (item.phase === 'pre_submit' ||
-              item.phase === 'before_operation') &&
-            (item.executor === 'agent' || item.executor === 'both') &&
-            item.enforcement !== 'advisory',
-        )
+        const agentRequirements = preSubmitRequirements(root, invocation)
 
         let submission: ReturnType<typeof validateOutputForSubmission>
         let results: ReturnType<typeof runAgentPreSubmitValidators>
