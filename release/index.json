@@ -128,6 +128,10 @@
     {
       "version": "5.25.0",
       "commit": "84ec5e7e8eb7eb3c2f3483a6280b63e06d016048"
+    },
+    {
+      "version": "5.25.1",
+      "commit": "77a1ac1b785ddcf4edc15c4625ef427228236cea"
     }
   ]
 }
