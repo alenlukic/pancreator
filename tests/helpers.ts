@@ -4,12 +4,7 @@ import path from 'node:path'
 import { fixtureGit } from './fixture-template.js'
 
 import { renderBrief } from '../src/lib/briefs.js'
-import {
-  createRun as createEngineRun,
-  submitOutput,
-} from '../src/lib/engine.js'
 import { sha256 } from '../src/lib/io.js'
-import type { OperationProgressOptions } from '../src/lib/engine.js'
 import { parsePersonaMapping } from '../src/lib/executors/mapping.js'
 import { parsePipelineConfig } from '../src/lib/pipeline-config.js'
 import { delegationExecutionPath } from '../src/lib/validation.js'
@@ -35,9 +30,14 @@ import type {
 
 const UNRELEASED_HEADING = '## [Unreleased]'
 
+// `perf HR-005`: this helper reaches no engine module, so a change to the
+// engine or to one of its dependencies no longer selects every test that
+// builds a fixture or an output. The two functions that drive a run live in
+// tests/run-helpers.ts, and a test that needs them imports that surface.
+
 // The fixture template and its clones live in tests/fixture-template.ts,
-// which reaches no engine module. They are re-exported here so a test that
-// also drives runs keeps one import.
+// which reaches no engine module either. They are re-exported here so a test
+// that also drives runs keeps one import.
 export {
   cloneTree,
   createFixture,
@@ -909,24 +909,6 @@ export function attestRunCard(root: string, runId: string): void {
 }
 
 /**
- * Create a run and attest its supervisor card. Tests drive runs as the
- * supervisor, so they carry the supervisor's attestation duty; the engine
- * function itself renders the card and leaves it unattested.
- */
-export function createRun(
-  root: string,
-  options: Parameters<typeof createEngineRun>[1],
-): RunState {
-  const state = createEngineRun(root, options)
-
-  attestRunCard(root, state.run_id)
-
-  // The attestation advanced the persisted revision, so hand back the state
-  // the disk holds rather than the pre-attestation object.
-  return loadState(root, state.run_id)
-}
-
-/**
  * Record the foreground-return attestation a compliant supervisor writes after
  * a Cursor worker launch returns. DELEGATE-001 requires it, or a completed
  * `pan watch` record, for every Cursor worker invocation, and `pan submit`
@@ -998,23 +980,6 @@ export function attestForegroundReturn(root: string, runId: string): void {
   }
 
   recordForegroundReturn(root, runId, { invocationId: current.id })
-}
-
-/**
- * Submit a stage output the way a supervisor does: attest the foreground
- * return of the current worker launch, then run the submission. Tests that
- * drive a run through submit MUST use this helper; a test of the
- * `DELEGATION_UNOBSERVED` refusal itself calls `submitOutput` directly.
- */
-export function submitAsSupervisor(
-  root: string,
-  runId: string,
-  outputPath: string,
-  options: OperationProgressOptions = {},
-): ReturnType<typeof submitOutput> {
-  attestForegroundReturn(root, runId)
-
-  return submitOutput(root, runId, outputPath, options)
 }
 
 /** The read attestation a worker owes for a referenced invocation contract. */

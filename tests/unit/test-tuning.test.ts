@@ -244,6 +244,11 @@ test('identityKey includes occurrence suffix for duplicate names', () => {
   const second = { ...sample('dup.test.ts', 'same'), occurrence: 2 }
 
   assert.notEqual(identityKey(first), identityKey(second))
+
+  // A retained set records the first occurrence implicitly and an inventory
+  // pass records it explicitly. Both must name the same test, or the
+  // comparison reports the whole duplicate-named family as removed and added.
+  assert.equal(identityKey(sample('dup.test.ts', 'same')), identityKey(first))
 })
 
 test('buildBenchmarkFromProfiles preserves every timing and fixture cost', () => {

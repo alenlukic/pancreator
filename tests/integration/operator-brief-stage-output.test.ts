@@ -7,12 +7,11 @@ import { prepareInvocation } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
-  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
-  submitAsSupervisor,
 } from '../helpers.js'
+import { createRun, submitAsSupervisor } from '../run-helpers.js'
 import { BRIEFS, checkpoint } from './delivery-helpers.js'
 
 test('new runs suppress briefs while explicit run and stage requests enable them', () => {

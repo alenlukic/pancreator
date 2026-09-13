@@ -55,6 +55,25 @@ export type WatchTerminalState =
 export type WatchAgentState = 'running' | 'completed'
 
 /**
+ * Why the evidence that a finished-looking output is finished is weak.
+ *
+ * `Q-006`: a running report must not outrank output plausibility forever, or
+ * no such watch could ever complete. These three conditions therefore buy one
+ * confirming wake rather than a verdict, and the watch completes when the
+ * output did not move across it.
+ */
+export type WeakCompletionReason =
+  | 'agent_reported_running'
+  | 'output_younger_than_cadence'
+  | 'elapsed_time_unreadable'
+
+/** What the terminal verdict for one observation rests on. */
+export type CompletionEvidence =
+  | { strength: 'none' }
+  | { strength: 'strong'; basis: 'agent_state' | 'output_plausible' }
+  | { strength: 'weak'; reason: WeakCompletionReason }
+
+/**
  * The one cadence `DELEGATE-001` names, whatever the expected run time.
  *
  * `--cadence-seconds` still overrides it for an operator-directed exception.
@@ -94,6 +113,13 @@ export interface WatchObservation {
    * never one that finished.
    */
   output_is_scaffold: boolean
+  /**
+   * Declared fields of the invocation's output contract the observed document
+   * does not carry yet, as dotted paths. A document that parses and is not a
+   * scaffold can still be a half-written one, and `write-stage-output` tells
+   * the worker to write `result` last so this list empties only at the end.
+   */
+  output_missing_required_fields: string[]
   watched_paths: WatchedPathObservation[]
   /**
    * Digest of every file under the run's `agent/` tree, by path, size, and
@@ -135,7 +161,13 @@ export interface WatchRecordEntry {
    * record says which of the two it was rather than presenting both as the
    * same fact.
    */
-  terminal_basis?: 'agent_state' | 'output_plausible'
+  terminal_basis?: 'agent_state' | 'output_plausible' | 'confirming_wake'
+  /**
+   * The observation looked finished but its evidence was weak, so the watch
+   * held it for one more observation instead of completing. Present on the
+   * held wake, never on the wake that settles it.
+   */
+  completion_hold?: WeakCompletionReason
   changed?: boolean
   unchanged_wakes?: number
   terminal_state?: WatchTerminalState
@@ -188,7 +220,7 @@ export interface DelegationWatchSummary {
   last_wake_at: string | null
   terminal_state: WatchTerminalState | null
   /** What the terminal verdict rested on, when it was `completed`. */
-  terminal_basis: 'agent_state' | 'output_plausible' | null
+  terminal_basis: 'agent_state' | 'output_plausible' | 'confirming_wake' | null
   cadence_seconds: number | null
 }
 
@@ -347,35 +379,91 @@ function observePath(
   }
 }
 
-/** Evidence files the invocation owns, by the `<invocation-id>` name prefix. */
-function invocationEvidencePaths(
+/**
+ * Evidence paths the invocation owns: the files already on disk under the
+ * `<invocation-id>` name prefix, plus every evidence-worker report the
+ * invocation declares.
+ *
+ * The listing alone cannot see a report nobody has written, so a watch armed
+ * before an evidence worker produced anything read its absence as no change
+ * at all. Declaring the path makes that report pending rather than invisible.
+ */
+export function invocationEvidencePaths(
   root: string,
   runId: string,
-  invocationId: string,
+  invocation: Pick<Invocation, 'invocation_id' | 'evidence_workers'>,
 ): string[] {
+  const invocationId = invocation.invocation_id
   const evidenceDir = resolveRunLayout(root, runId).evidence('.')
-  const ownRecord = path.basename(watchRecordPath(root, runId, invocationId))
-  const ownMarker = path.basename(
-    backgroundMarkerPath(root, runId, invocationId),
-  )
-  const ownReturn = path.basename(
-    foregroundReturnRecordPath(root, runId, invocationId),
-  )
+  const own = new Set([
+    path.basename(watchRecordPath(root, runId, invocationId)),
+    path.basename(backgroundMarkerPath(root, runId, invocationId)),
+    path.basename(foregroundReturnRecordPath(root, runId, invocationId)),
+  ])
+  const paths = new Set<string>()
 
   try {
-    return readdirSync(evidenceDir.absolute)
-      .filter(
-        (name) =>
-          name.startsWith(invocationId) &&
-          name !== ownRecord &&
-          name !== ownMarker &&
-          name !== ownReturn,
-      )
-      .sort()
-      .map((name) => path.posix.join(evidenceDir.relative, name))
+    for (const name of readdirSync(evidenceDir.absolute)) {
+      if (name.startsWith(invocationId) && !own.has(name)) {
+        paths.add(path.posix.join(evidenceDir.relative, name))
+      }
+    }
   } catch {
+    // A run whose evidence directory does not exist yet still declares paths.
+  }
+
+  // Every attempt of a role, not the role's first path alone: a relaunched
+  // worker writes its own report, and the watch is what says that report is
+  // still pending.
+  for (const worker of invocation.evidence_workers ?? []) {
+    for (const declared of [
+      worker.evidence_path,
+      ...(worker.attempts ?? []).map((attempt) => attempt.evidence_path),
+    ]) {
+      if (typeof declared === 'string') {
+        paths.add(declared)
+      }
+    }
+  }
+
+  return [...paths].sort()
+}
+
+/**
+ * Declared required fields the observed output document does not carry.
+ *
+ * `required_data` keys are dotted paths under `data`. `result` is checked
+ * alongside them because `write-stage-output` tells the worker to write it
+ * last, which makes its absence the cheapest signal of a document still
+ * being assembled.
+ */
+export function missingRequiredOutputFields(
+  parsed: unknown,
+  requiredData: Record<string, string> | undefined,
+): string[] {
+  if (!isRecord(parsed)) {
     return []
   }
+
+  const missing: string[] = []
+
+  if (typeof parsed.result !== 'string' || parsed.result.trim().length === 0) {
+    missing.push('result')
+  }
+
+  for (const dotted of Object.keys(requiredData ?? {})) {
+    let current: unknown = parsed.data
+
+    for (const key of dotted.split('.')) {
+      current = isRecord(current) ? current[key] : undefined
+    }
+
+    if (current === undefined || current === null) {
+      missing.push(`data.${dotted}`)
+    }
+  }
+
+  return missing
 }
 
 /**
@@ -465,6 +553,7 @@ export function observeInvocation(
   let outputParses = false
   let outputMatches = false
   let outputIsScaffold = false
+  let missingRequired: string[] = []
 
   if (fileExists(outputAbsolute)) {
     outputPresent = true
@@ -480,6 +569,15 @@ export function observeInvocation(
           (isRecord(parsed.patch) &&
             parsed.patch.invocation_id === invocation.invocation_id))
       outputIsScaffold = isUntouchedScaffold(parsed)
+      // A revision patch declares only the fields it changes, so the whole
+      // contract cannot be required of it.
+      missingRequired =
+        isRecord(parsed) && isRecord(parsed.patch)
+          ? []
+          : missingRequiredOutputFields(
+              parsed,
+              invocation.output?.required_data,
+            )
     } catch {
       outputParses = false
     }
@@ -488,11 +586,7 @@ export function observeInvocation(
   const watched = [
     outputPath,
     delegationPath(invocation.run_id, invocation.invocation_id, root),
-    ...invocationEvidencePaths(
-      root,
-      invocation.run_id,
-      invocation.invocation_id,
-    ),
+    ...invocationEvidencePaths(root, invocation.run_id, invocation),
   ].map((relative) => observePath(root, relative))
   // The watch's own records, the background marker, and the event log change
   // on every wake by construction, so they are excluded from the progress
@@ -524,6 +618,7 @@ export function observeInvocation(
     output_present: outputPresent,
     output_parses: outputParses,
     output_is_scaffold: outputIsScaffold,
+    output_missing_required_fields: missingRequired,
     output_matches_invocation: outputMatches,
     watched_paths: watched,
     run_tree_fingerprint: runTree,
@@ -657,13 +752,20 @@ function parseIsoTime(value: string, name: string): number {
   return parsed
 }
 
-/** The three conditions that make an observation terminal. */
+/**
+ * The conditions that make an observation terminal.
+ *
+ * Parsing as a non-scaffold document is not enough: a plausible draft reads
+ * exactly like a finished stage until the declared required fields are all
+ * there, so the invocation's own output contract decides.
+ */
 export function isTerminalObservation(observation: WatchObservation): boolean {
   return (
     observation.output_present &&
     observation.output_parses &&
     observation.output_matches_invocation &&
-    !observation.output_is_scaffold
+    !observation.output_is_scaffold &&
+    (observation.output_missing_required_fields ?? []).length === 0
   )
 }
 
@@ -692,36 +794,58 @@ export function launchToOutputSeconds(
 }
 
 /**
- * The terminal verdict for one observation, or null when the worker has not
- * produced a finished output yet.
+ * How strong the evidence is that one observation shows a finished worker.
  *
  * Both the pre-loop check and every wake run this. Run 63310 genre-label
  * showed why: the early-output guard sat only before the timer, so a draft
  * that appeared after the loop started still terminated the watch.
+ *
+ * Three separate conditions used to end a watch on an answer it did not
+ * have — a supervisor's running report, an output younger than one cadence,
+ * and an unreadable elapsed time. All three mean the same thing, so all three
+ * now produce `weak`, which buys one confirming wake rather than a verdict.
  */
-export function terminalStateForObservation(
+export function completionEvidenceForObservation(
   observation: WatchObservation,
   sinceLaunchSeconds: number | null,
   cadenceSeconds: number,
   agentState?: WatchAgentState,
-): 'completed' | 'unverified' | null {
+): CompletionEvidence {
   if (!isTerminalObservation(observation)) {
-    return null
+    return { strength: 'none' }
   }
 
   if (agentState === 'completed') {
-    return 'completed'
+    return { strength: 'strong', basis: 'agent_state' }
   }
 
   if (agentState === 'running') {
-    return 'unverified'
+    return { strength: 'weak', reason: 'agent_reported_running' }
+  }
+
+  if (sinceLaunchSeconds === null) {
+    return { strength: 'weak', reason: 'elapsed_time_unreadable' }
   }
 
   // An output written within one cadence of the launch is a draft far more
   // often than a finished stage, and files cannot tell the two apart.
-  return sinceLaunchSeconds !== null && sinceLaunchSeconds < cadenceSeconds
-    ? 'unverified'
-    : 'completed'
+  return sinceLaunchSeconds < cadenceSeconds
+    ? { strength: 'weak', reason: 'output_younger_than_cadence' }
+    : { strength: 'strong', basis: 'output_plausible' }
+}
+
+/**
+ * The observed state of the output file itself, used to decide whether the
+ * output moved across a confirming wake. The whole-observation fingerprint
+ * cannot answer that: it also covers the run tree and the workspace, which
+ * the watch's own records change on every wake.
+ */
+function outputSignature(observation: WatchObservation): string {
+  const output = observation.watched_paths.find(
+    (item) => item.path === observation.output_path,
+  )
+
+  return `${output?.exists ?? false}:${output?.size ?? null}:${output?.mtime_ms ?? null}`
 }
 
 function foregroundReturnNotTerminalMessage(
@@ -918,57 +1042,53 @@ export async function watchInvocation(
   // An already-present output needs no timer. The wake record still proves
   // the terminal inspection happened.
   const initial = observeInvocation(root, invocation)
-
-  const initialState = terminalStateForObservation(
+  const initialEvidence = completionEvidenceForObservation(
     initial,
     launchToOutputSeconds(root, runId, invocationId),
     cadenceSeconds,
     options.agentState,
   )
+  // The output signature the confirming wake compares against. Non-null means
+  // a finished-looking output is being held for one more observation.
+  let heldOutput: string | null = null
 
-  if (initialState !== null) {
-    const state = initialState
+  if (initialEvidence.strength === 'strong') {
+    append({
+      schema_version: 1,
+      event: 'wake',
+      run_id: runId,
+      invocation_id: invocationId,
+      recorded_at: initial.observed_at,
+      cadence_seconds: cadenceSeconds,
+      wake: 0,
+      observation: initial,
+      ...(options.agentState ? { agent_state: options.agentState } : {}),
+      terminal_basis: initialEvidence.basis,
+      changed: true,
+      unchanged_wakes: 0,
+      terminal_state: 'completed',
+    })
 
-    if (state === 'completed') {
-      append({
-        schema_version: 1,
-        event: 'wake',
-        run_id: runId,
-        invocation_id: invocationId,
-        recorded_at: initial.observed_at,
-        cadence_seconds: cadenceSeconds,
-        wake: 0,
-        observation: initial,
-        ...(options.agentState ? { agent_state: options.agentState } : {}),
-        terminal_basis:
-          options.agentState === 'completed'
-            ? 'agent_state'
-            : 'output_plausible',
-        changed: true,
-        unchanged_wakes: 0,
-        terminal_state: 'completed',
-      })
+    return finish('completed', 0, 0)
+  }
 
-      return finish('completed', 0, 0)
-    }
+  if (initialEvidence.strength === 'weak') {
+    heldOutput = outputSignature(initial)
 
-    if (options.agentState === undefined) {
-      append({
-        schema_version: 1,
-        event: 'wake',
-        run_id: runId,
-        invocation_id: invocationId,
-        recorded_at: initial.observed_at,
-        cadence_seconds: cadenceSeconds,
-        wake: 0,
-        observation: initial,
-        changed: true,
-        unchanged_wakes: 0,
-        terminal_state: 'unverified',
-      })
-
-      return finish('unverified', 0, 0)
-    }
+    append({
+      schema_version: 1,
+      event: 'wake',
+      run_id: runId,
+      invocation_id: invocationId,
+      recorded_at: initial.observed_at,
+      cadence_seconds: cadenceSeconds,
+      wake: 0,
+      observation: initial,
+      ...(options.agentState ? { agent_state: options.agentState } : {}),
+      completion_hold: initialEvidence.reason,
+      changed: true,
+      unchanged_wakes: 0,
+    })
   }
 
   let previousFingerprint = initial.fingerprint
@@ -1014,35 +1134,55 @@ export async function watchInvocation(
     unchangedWakes = changed ? 0 : unchangedWakes + 1
 
     let terminal: WatchTerminalState | undefined
-
-    // `running` describes what the supervisor saw when it started the watch,
-    // not a standing verdict: it suppresses the pre-loop short-circuit, and a
-    // later wake that finds a finished output still completes normally.
-    const decided = terminalStateForObservation(
+    let terminalBasis: WatchRecordEntry['terminal_basis']
+    let hold: WeakCompletionReason | undefined
+    const evidence = completionEvidenceForObservation(
       observation,
       launchToOutputSeconds(root, runId, invocationId),
       cadenceSeconds,
-      options.agentState === 'completed' ? 'completed' : undefined,
+      options.agentState,
     )
 
-    if (decided !== null) {
-      terminal = decided
-    } else if (unchangedWakes >= stallWakes) {
-      // A worker that scaffolded its output and then died leaves the same
-      // still files as one that is thinking. The harness cannot tell those
-      // apart, so it reports what it knows and sends the supervisor to the
-      // agent rather than calling a working worker stalled — unless the
-      // supervisor already looked and said the agent is running, which is the
-      // answer the stall check was asking for.
-      if (observation.output_is_scaffold) {
-        if (options.agentState !== 'running') {
-          terminal = 'unverified'
-        }
+    if (evidence.strength === 'strong') {
+      terminal = 'completed'
+      terminalBasis = evidence.basis
+    } else if (evidence.strength === 'weak') {
+      const signature = outputSignature(observation)
+
+      if (heldOutput === signature) {
+        // This is the confirming wake the held observation bought, and the
+        // output did not move across it.
+        terminal = 'completed'
+        terminalBasis = 'confirming_wake'
       } else {
-        terminal = 'stalled'
+        heldOutput = signature
+        hold = evidence.reason
       }
-    } else if (now() - startedMs >= timeoutMs) {
-      terminal = 'timed_out'
+    } else {
+      heldOutput = null
+
+      if (unchangedWakes >= stallWakes) {
+        // A worker that scaffolded its output and then died leaves the same
+        // still files as one that is thinking. The harness cannot tell those
+        // apart, so it reports what it knows and sends the supervisor to the
+        // agent rather than calling a working worker stalled — unless the
+        // supervisor already looked and said the agent is running, which is
+        // the answer the stall check was asking for.
+        if (observation.output_is_scaffold) {
+          if (options.agentState !== 'running') {
+            terminal = 'unverified'
+          }
+        } else {
+          terminal = 'stalled'
+        }
+      }
+    }
+
+    if (terminal === undefined && now() - startedMs >= timeoutMs) {
+      // A watch that ran out of time while still holding a finished-looking
+      // output could not settle the question it was asking. That is what an
+      // unverified verdict now means.
+      terminal = hold === undefined ? 'timed_out' : 'unverified'
     }
 
     const entry: WatchRecordEntry = {
@@ -1055,13 +1195,8 @@ export async function watchInvocation(
       wake: wakes,
       observation,
       ...(options.agentState ? { agent_state: options.agentState } : {}),
-      ...(terminal === 'completed'
-        ? {
-            terminal_basis: (options.agentState === 'completed'
-              ? 'agent_state'
-              : 'output_plausible') as 'agent_state' | 'output_plausible',
-          }
-        : {}),
+      ...(terminalBasis ? { terminal_basis: terminalBasis } : {}),
+      ...(hold ? { completion_hold: hold } : {}),
       changed,
       unchanged_wakes: unchangedWakes,
       ...(terminal ? { terminal_state: terminal } : {}),
@@ -1088,7 +1223,11 @@ export function formatWakeLine(entry: WatchRecordEntry): string {
         ? 'output present'
         : 'output present (other invocation)'
     : 'no output'
-  const suffix = entry.terminal_state ? ` -> ${entry.terminal_state}` : ''
+  const suffix = entry.terminal_state
+    ? ` -> ${entry.terminal_state}`
+    : entry.completion_hold
+      ? ` -> holding for one confirming wake (${entry.completion_hold})`
+      : ''
 
   return (
     `[pan watch:${entry.invocation_id}] wake ${entry.wake} at ` +
@@ -1239,10 +1378,11 @@ export function delegationUnobservedMessage(
   const watchDetail =
     observation.watch.terminal_state === 'unverified'
       ? `the watch record ${observation.watch.record_path} ends unverified: ` +
-        `the output was already present when the watch began, and it landed ` +
-        `too soon after the launch to be a finished worker's output. The ` +
-        `harness reads files, not agents, so it cannot tell that output from ` +
-        `a draft the worker is still rewriting`
+        `the confirming wake could not settle the observation. The evidence ` +
+        `for completion was weak — the agent was reported running, the ` +
+        `output landed within one cadence of the launch, or the elapsed ` +
+        `time was unreadable — and the output kept moving, so the harness ` +
+        `never saw it hold still`
       : observation.watch.record_present
         ? `the watch record ${observation.watch.record_path} ends without a ` +
           `completed wake (${observation.watch.wakes} wakes, last state ` +
@@ -1279,8 +1419,8 @@ export function delegationUnobservedMessage(
       ? ` Inspect the launched agent itself and re-run the watch with what ` +
         `you saw: \`--agent-state running\` to keep watching, or ` +
         `\`--agent-state completed\` once the agent has stopped or reported ` +
-        `it finished. The window is measured from the launch to the output, ` +
-        `not from now, so an unchanged re-run returns unverified again.`
+        `it finished. A re-run against an output that has stopped moving ` +
+        `settles on its own confirming wake.`
       : '')
   )
 }

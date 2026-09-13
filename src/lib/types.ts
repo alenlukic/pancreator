@@ -568,11 +568,39 @@ export interface ResolvedWorktreesConfig {
   readiness_paths: string[]
 }
 
+/**
+ * What a run left uncommitted in its bound workspace when it ended.
+ *
+ * A terminal run stops watching its workspace, so anything still dirty is
+ * work nobody is accountable for. Naming the paths and the worktree is what
+ * lets the operator find it before the next run inherits the tree.
+ */
+export interface DirtyWorkspaceExit {
+  /** Managed worktree the run was bound to, or `null` for a plain workspace. */
+  worktree: string | null
+  workspace_root: string
+  changed_paths: string[]
+  recorded_at: string
+}
+
 /** Stable identity of one managed operator worktree. */
 export interface ManagedWorktreeReference {
   name: string
   path: string
   branch: string
+}
+
+/**
+ * Operator decision that moved release synchronization off its default rebase
+ * target. Recorded on the sync result so the release output carries the
+ * reason the pre-rebase refusal did not apply.
+ */
+export interface LocalReleaseRebaseOverride {
+  kind: 'onto' | 'no_rebase'
+  /** Ref the operator named, verbatim. Null for `--no-rebase`. */
+  requested_ref: string | null
+  /** Commit the named ref resolved to. Null when no rebase ran. */
+  resolved_commit: string | null
 }
 
 export interface LocalReleaseSyncResult {
@@ -581,6 +609,10 @@ export interface LocalReleaseSyncResult {
   branch: string
   remote: string
   fetched_main: string
+  /** Commit the rebase replayed onto, or null when an override skipped it. */
+  rebase_target: string | null
+  /** Operator override of the default rebase target, when one was used. */
+  rebase_override: LocalReleaseRebaseOverride | null
   checkpoint_commit: string | null
   conflicted_paths: string[]
 }
@@ -763,6 +795,18 @@ export interface TargetInstructionInput {
   read_paths: string[]
 }
 
+/**
+ * The bound on a returning verification's re-execution (`VERIFY-001`).
+ *
+ * A case whose subject sits outside the remediation's changed paths observed
+ * the same behavior against the same code, so the worker carries its result
+ * with a `carried_from` citation instead of executing it again.
+ */
+export interface CarriedCaseScope {
+  remediation_invocation_id: string
+  blast_radius: string[]
+}
+
 export interface PrDescriptionContext {
   mode: 'target' | 'fallback'
   template_path: string | null
@@ -915,6 +959,15 @@ export type InvocationReferenceRetrieval =
   | 'index_only'
 
 /** One resolved parallel evidence worker on a prepared invocation. */
+/** Declared paths one launch of an evidence role owns. */
+export interface EvidenceWorkerAttempt {
+  /** Ordinal of the launch, counting from 1. */
+  attempt: number
+  brief_path: string
+  evidence_path: string
+  recorded_at: string
+}
+
 export interface InvocationEvidenceWorker {
   persona: string
   role: string
@@ -926,6 +979,13 @@ export interface InvocationEvidenceWorker {
   brief_path: string
   /** Report the worker writes; a required input of the stage worker. */
   evidence_path: string
+  /**
+   * Every launch of this role, oldest first. A relaunched worker gets its own
+   * pair of paths so it writes beside the first report instead of over it.
+   * Absent on invocations prepared before attempts were recorded, which read
+   * as the single attempt the two fields above declare.
+   */
+  attempts?: EvidenceWorkerAttempt[]
 }
 
 export interface InvocationReference {
@@ -1020,9 +1080,21 @@ export interface Invocation {
   }
   prompt: string
   prior_failure?: PriorAttemptFailure
+  /**
+   * Why this attempt exists when the operator moved the run here. Present
+   * instead of `prior_failure` whenever the repair note is newer than any
+   * recorded attempt of this stage.
+   */
+  operator_stage_repair?: OperatorStageRepairContext
   inputs: {
     references: InvocationReference[]
     missing_required?: string[]
+    /**
+     * Cases a returning verification must execute again, expressed as the
+     * remediation's changed paths. Absent on a first visit and whenever the
+     * remediation declared no changed path.
+     */
+    carried_case_scope?: CarriedCaseScope
     target_instructions?: TargetInstructionInput
     pr_description?: PrDescriptionContext
     /**
@@ -1333,6 +1405,16 @@ export interface DeterministicResult {
    */
   cached?: boolean
   /**
+   * Set when an active operator gate waiver covered this criterion, so the
+   * command never ran. `passed` stays true because the operator decided the
+   * gate does not block, and `waiver_id` names the directive that decided it;
+   * the absence of `exit_code` and `evidence_path` keeps it distinguishable
+   * from a clean pass.
+   */
+  waived?: boolean
+  /** Waiver that covered this criterion. Present only with `waived`. */
+  waiver_id?: string
+  /**
    * Harness-relative path of the suite profile the test reporter wrote while
    * this gate ran the `full` profile. A cached pass carries the path the
    * original execution recorded. Absent when the profile ran no reporter.
@@ -1451,6 +1533,26 @@ export interface StageHistoryItem {
 }
 
 /**
+ * The operator's stage-repair note, when that note and not a recorded attempt
+ * is why the current attempt exists.
+ *
+ * An operator return to an earlier stage leaves no record of that stage for
+ * the current attempt, so the retry contract resolved no reason and the card
+ * left the newest superseded output of another stage as the only
+ * failure-shaped context a worker could read.
+ */
+export interface OperatorStageRepairContext {
+  from_stage: string
+  to_stage: string
+  /** Who directed the repair: the operator, or away mode on their behalf. */
+  actor: string
+  note: string
+  /** The recorded repair note, which is required reading for this stage. */
+  path: string
+  recorded_at: string
+}
+
+/**
  * Why the immediately preceding attempt of this stage failed, rendered inline on
  * the retry card. A path reference to the prior output is not enough: the reason
  * is spread across validation errors, deterministic results, and self-evaluated
@@ -1487,6 +1589,17 @@ export interface PriorAttemptFailure {
     summary: string
     action_items: string[]
   }
+  /**
+   * Criteria the attempt itself reported failing that the stage does not hold
+   * as hard, such as an acceptance criterion carried by the plan. Without this
+   * a retry after a worker-declared failure saw no reason at all. Absent on a
+   * record written before this source existed.
+   */
+  declared_criteria_failures?: Array<{
+    id: string
+    result: string
+    explanation: string
+  }>
 }
 
 export type PendingAction =
@@ -1551,6 +1664,8 @@ export interface RunAdvisory {
     | 'pipeline_config'
     | 'platform_guidance'
     | 'delegation_supervision'
+    /** An evidence report whose worker stopped before its completion marker. */
+    | 'evidence_report'
     /** A hard criterion a compatibility path passed without satisfying. */
     | 'gate_bypass'
   source: 'prepare' | 'probe' | 'submit' | 'supervisor_evidence'
@@ -1587,14 +1702,27 @@ export interface RunModelEvidence {
   timestamp: string
 }
 
+/**
+ * Who is doing the work a pause makes room for.
+ *
+ * A supervisor that cannot delegate and does the stage work itself is not the
+ * operator, and a record that says otherwise attributes the change to someone
+ * who never made it.
+ */
+export type PauseActor = 'operator' | 'supervisor'
+
 export interface OperatorPauseContext {
   prior_status: 'running' | 'awaiting_supervisor' | 'awaiting_operator'
   prior_pending_action: PendingAction
   workspace_before?: WorkspaceSnapshot
+  /** Absent on pauses recorded before the actor was tracked: read as operator. */
+  actor?: PauseActor
 }
 
 export interface OperatorWorkspaceRatification {
   ratification_id: string
+  /** Who held the pause the changes were made under. */
+  actor?: PauseActor
   stage: string
   workspace_fingerprint: string
   changed_paths: string[]
@@ -1620,9 +1748,55 @@ export interface WorkspaceDirectiveRecord {
   /** Stage the run held when the directive was executed. */
   stage: string
   changed_paths: string[]
+  /**
+   * The workspace as the last accountable record left it, so this record
+   * bounds its own window the way a stage attempt does. Absent on records
+   * written before the field existed, which therefore cannot carry a
+   * currency chain.
+   */
+  workspace_before_fingerprint?: string
   workspace_fingerprint: string
   artifact_path: string
   timestamp: string
+}
+
+/**
+ * The identity the platform returned for one delegated worker, recorded at
+ * launch.
+ *
+ * The harness observes a worker through files alone, so a worker that dies
+ * before its first write leaves nothing at all. This record is what names it
+ * afterwards, and its attempt ordinal is what keeps a relaunch from being
+ * handed the path the first worker already wrote.
+ */
+export interface DelegatedWorkerRecord {
+  invocation_id: string
+  /** `worker` for the stage worker itself, else the evidence-worker role. */
+  role: string
+  /** Ordinal of this launch for the invocation and role, counting from 1. */
+  attempt: number
+  /** The identity the platform returned, such as a Cursor subagent id. */
+  handle: string
+  /** Named agent definition launched, when the supervisor reported it. */
+  agent?: string
+  model?: string
+  launch_mode: 'background' | 'foreground' | 'unknown'
+  launched_at: string
+  /** Paths this attempt owns, so a later attempt never reuses them. */
+  declared_paths: string[]
+  /**
+   * The declared paths the harness itself wrote at launch, such as an
+   * evidence worker's brief. They stay in `declared_paths` as diagnostics,
+   * and they are not evidence that the worker wrote anything. Absent means
+   * the worker produces every declared path.
+   */
+  harness_paths?: string[]
+}
+
+/** One stage entry gate an operator waiver's declared scope covers. */
+export interface EntryGateReach {
+  stage: string
+  criterion: string
 }
 
 export interface OperatorGateWaiver {
@@ -1972,6 +2146,10 @@ export interface RunState {
   operator_workspace_ratifications?: OperatorWorkspaceRatification[]
   /** Operator directives executed against the workspace outside a stage. */
   workspace_directives?: WorkspaceDirectiveRecord[]
+  /** Platform handles recorded for delegated workers, oldest first. */
+  delegated_workers?: DelegatedWorkerRecord[]
+  /** Uncommitted work the run left behind when it reached a terminal state. */
+  dirty_exit?: DirtyWorkspaceExit
   operator_gate_waivers?: OperatorGateWaiver[]
   last_decision_path?: string
   accepted_workspace_fingerprint?: string | null
@@ -2065,6 +2243,12 @@ export interface SupervisorCardState {
   policy_section_diff?: SupervisorCardPolicyDiff
   /** Digest the supervisor attested to have read, when any. */
   attested_sha256?: string
+  /**
+   * Per-policy digests as they stood at that attestation. The delta a
+   * supervisor owes is measured from what it last read, so a second edit
+   * before any re-attestation does not erase the first.
+   */
+  attested_policy_sections?: Array<{ policy_id: string; sha256: string }>
   attested_at?: string
   /**
    * Counts attestations. Each `/pan-start` and `/pan-resume` attests, so each

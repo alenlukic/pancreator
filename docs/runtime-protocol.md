@@ -405,7 +405,9 @@ change it. Under the default `light` level the implement and remediate loops
 gate on `static` and `fast`; no verify or remediate gate runs `full`. The
 `full` profile runs only as the ship stage's release gate (`SHIP-001`): the
 stage declares it as an `entry_gate`, and the harness runs it when the run
-enters ship, before it delegates the release steward. A pass is recorded on
+enters ship, before it delegates the release steward, unless an active
+operator gate waiver covers `ship.full_suite`, in which case the gate is
+recorded as waived and the profile does not run. A pass is recorded on
 `state.entry_gates.ship`, covers that visit of ship, and is carried into the
 ship submission instead of running again. A failure routes the run to
 `remediate` with the evidence log as required input; that remediation returns

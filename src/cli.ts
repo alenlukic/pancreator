@@ -17,6 +17,8 @@ import {
   materializeOutputSubmission,
   outputValidateScratchPath,
   pauseRun,
+  describeDelegatedWorkers,
+  recordDelegatedWorker,
   recordWorkspaceDirective,
   prepareInvocation,
   probeRunInvocationModel,
@@ -32,6 +34,7 @@ import {
   validateOutputForSubmission,
   waiveGate,
 } from './lib/engine.js'
+import type { DelegatedWorkerPathState } from './lib/engine.js'
 import {
   abandonBestOfNCandidate,
   bestOfNStatus,
@@ -80,6 +83,7 @@ import {
   syncLocalRelease,
 } from './lib/release-preparation.js'
 import {
+  AWAY_SUBCOMMAND_OPTIONS,
   awayDecisionLedgerPath,
   awayEvaluatorFailureLimitError,
   awayEvaluatorPrompt,
@@ -93,6 +97,8 @@ import {
   recordAwayEvaluatorExchange,
   recordDeterministicShipApproval,
   recordHypervisorQuarantine,
+  resolveAwayApplyAction,
+  unknownAwayOption,
   type AwayDecisionRecord,
 } from './lib/away-mode.js'
 import {
@@ -134,7 +140,12 @@ import {
   writeJsonAtomic,
   writeTextAtomic,
 } from './lib/io.js'
-import type { AgentRecord, Invocation, RunState } from './lib/types.js'
+import type {
+  AgentRecord,
+  DelegatedWorkerRecord,
+  Invocation,
+  RunState,
+} from './lib/types.js'
 import type { InvocationKind } from './lib/requirements/types.js'
 import {
   delegationExecutionPath,
@@ -174,6 +185,7 @@ import {
 import { conflictsByTier, resolveReviewScope } from './lib/review-scope.js'
 import {
   agentGatePassSuiteProfile,
+  nextAgentGatePassAttempt,
   agentRepositoryCheckAdvisories,
   assertRepositoryChecksValid,
   loadRepositoryChecks,
@@ -182,6 +194,7 @@ import {
   recordProfileGatePass,
   repositoryCheckWorkspaceRoot,
   repositoryChecksSourcePath,
+  reusableProfileExecution,
   runRepositoryCheckStreaming,
 } from './lib/repository-checks.js'
 import { TEST_PROFILE_ENV } from './lib/suite-profile.js'
@@ -253,29 +266,38 @@ export const HELP_BODY = `Usage:
       --agent names the Cursor agent this invocation is delegated to. The harness then writes the labeled delegation artifact beside the delivery prompt and starts the detached worker model probe, so the supervisor assembles neither by hand. An external-executor or orchestrator stage keeps its current behavior and reports why it wrote nothing.
   pan delegate <run-id> [--timeout-ms <milliseconds>]
   pan watch <run-id> [--invocation <invocation-id>] [--cadence-seconds <n>] [--stall-wakes <n>] [--timeout-seconds <n>] [--mark-background] [--agent-state running|completed] [--json]
-      Await a launched worker on a fixed cadence and record every arming and wake to agent/evidence/<invocation-id>-watch.jsonl. Exit 0 when the output is present, 2 on a stall, 3 at the timeout, 4 when the completion is unverified. --mark-background records that the platform turned the launch into a background subagent. --agent-state reports what you saw when you inspected the launched agent itself; the watch reads files and cannot see a worker that is still writing. An output already present at the first observation that landed less than one cadence after the launch records unverified without it.
+      Await a launched worker on a fixed cadence and record every arming and wake to agent/evidence/<invocation-id>-watch.jsonl. Exit 0 when the output is present, 2 on a stall, 3 at the timeout, 4 when the completion is unverified. --mark-background records that the platform turned the launch into a background subagent. --agent-state reports what you saw when you inspected the launched agent itself; the watch reads files and cannot see a worker that is still writing. Weak evidence of completion — an output younger than one cadence, an unreadable elapsed time, or an agent you reported as running — holds the observation and re-observes it on the next wake, and completes only when the output did not move. Exit 4 means that confirming wake could not settle it.
   pan watch <run-id> --foreground-returned [--invocation <invocation-id>] [--launched-at <iso-8601>] [--json]
       Record that a foreground launch returned, with the launch and return wall-clock times, at agent/evidence/<invocation-id>-foreground-return.json. The launch time defaults to the delegation artifact's modification time. pan submit requires this record or a completed watch record for every Cursor worker invocation and fails with DELEGATION_UNOBSERVED otherwise.
+  pan worker record <run-id> --handle <platform-handle> [--invocation <invocation-id>] [--role <evidence-role>] [--agent <name>] [--model <name>] [--launch-mode foreground|background] [--json]
+      Record the identity the platform returned for one launched worker. The harness otherwise watches a worker only through the files it writes, so a worker that died before its first write is indistinguishable from one that was never launched. Naming an evidence role also allocates that launch's own brief and evidence paths, so a relaunched worker never overwrites the report the previous attempt wrote.
+  pan worker state <run-id> [--invocation <invocation-id>] [--role <evidence-role>] [--json]
+      Report the last known state of every recorded worker: the handle, the launch time, how long ago that was, each declared path with its producer and its state on disk, and whether the worker has written anything at all. An evidence worker's brief is harness-written and never counts as the worker's own output, so a worker that wrote nothing reports that state rather than an error, and a path nobody has written is named rather than omitted.
   pan submit <run-id> <output-json> [--worktree <name>]
   pan assess <run-id> <assessment-json>
   pan decide <run-id> <approve|reject|revise> [--note <text> | --note-file <path>] [--stage <stage-slug>] [--worktree <name>]
       --worktree names an existing worktree the routed single-chunk delivery run occupies instead of the one the route would derive and create. The response reports the bound worktree path.
-  pan pause <run-id> [--note <text> | --note-file <path>]
+  pan pause <run-id> [--note <text> | --note-file <path>] [--actor operator|supervisor]
+      --actor supervisor records that the supervisor, not the operator, is acting under the pause. The resume ratification then attributes the workspace delta to the agent that made it.
   pan attribute <run-id> --note <directive> [--role supervisor|operator] [--paths <path[,path...]>]
       Record an operator directive executed against the workspace outside a stage. The record names the acting role, the directive, the changed paths, and the time, and the next invocation card lists those paths as already attributed. Without --paths the harness attributes every dirty tracked path of the workspace.
   pan resume <run-id> [--worktree <name>] [--stage <stage-slug>] [--note <text> | --note-file <path>]
-  pan set-stage <run-id> --stage <stage-slug> (--note <reason> | --note-file <path>)
+  pan set-stage <run-id> --stage <stage-slug> (--note <reason> | --note-file <path>) [--abandon-workers]
+      A return that would abandon a launched evidence worker with no report refuses with EVIDENCE_WORKERS_IN_FLIGHT and names the affected roles, because those reports would land against an invocation nothing reads. --abandon-workers returns anyway.
   pan waive-gate <run-id> (--note <directive> | --note-file <path>) [--stage <stage-slug>] [--to <stage-slug>] [--criteria <id[,id...]>] [--defer <AC-id[,AC-id...]> --spotfix] [--adopt-plan-from <run-id>]
+      The result lists entry_gates_reached: the stage entry gates this directive now covers, so an honored waiver is distinguishable from one the entry gate never sees. A waiver that routes the run into a stage whose entry gate last failed and which the directive does not name is refused with WAIVER_ENTRY_GATE_UNREACHED.
       --adopt-plan-from records that this run adopts the named run's ratified plan. The named run's worktree claim moves to this run and both run states record the move, so release preparation proceeds with the subsumed run still live and no manual abort.
       Every argument the CLI passes through argv is refused at or above 900 bytes with ARGV_ELEMENT_TOO_LARGE, naming the option and the byte count, because endpoint security SIGKILLs a process whose argv element reaches 1000 bytes before Node starts. --note-file reads the note from a file, so a full decision packet reaches the record. decide, pause, resume, set-stage, and waive-gate all accept it.
   pan abort <run-id> [--note <text>]
   pan hypervisor start|run|tick|status|stop [--json]
-  pan away status|evaluate|apply <run-id> [--decision <id>] [--json]
+  pan away status|evaluate|apply <run-id> [--decision <id>] [--action <action>] [--json]
+      --action names the action the apply must take. It is honored when it matches the recorded recommendation and refused with AWAY_ACTION_REFUSED when it does not, so an apply never substitutes a different action. An option the subcommand does not accept is refused with UNKNOWN_OPTION rather than ignored.
   pan technologies detect [--worktree <name>] --json
-  pan repository-check <profile> [--timeout-ms <milliseconds>] [--workspace <dir|worktree> | --worktree <name>] [--run <run-id>] [--json]
+  pan repository-check <profile> [--timeout-ms <milliseconds>] [--workspace <dir|worktree> | --worktree <name>] [--run <run-id>] [--force-repeat] [--json]
       --timeout-ms raises the effective bound only: resolution keeps the maximum of the request, the profile's own bound, and subset-profile timeouts.
       --run records the execution against that run and, without --workspace or --worktree, checks its workspace. Without --run, --worktree records against every live run bound to the worktree. A bare invocation records against no run.
       A clean pass recorded against a run, at a workspace fingerprint identical before and after, satisfies a later gate on the same command instead of running it again.
+      A --run request that matches a recorded pass for the same invocation, profile, and fingerprint returns that pass instead of executing. --force-repeat executes anyway and records the repeat as deliberate.
       --harness-initiated marks the execution as harness-started rather than agent-started and suppresses streaming; the release-profile prefetch passes it.
   pan repository-check validate [--json]
   pan conform scan|checkpoint [--since <ref> | --all] [--worktree <name>] [--json]
@@ -284,7 +306,8 @@ export const HELP_BODY = `Usage:
   pan tests impacted [--worktree <name>] [--changed <ref> | --staged | --worktree-dirty] [--file <path>]... [--include <glob>]... [--depth <n>] [--list] [--json] [--advisory-ratio <0..1>]
       Self-development only. Select and run the lane tests whose import closure reaches the changed files. The default change set is the dirty working tree. An iteration aid, never a gate.
       --worktree runs the command from the installation root and selects against that worktree's tree, the same workspace selection pan repository-check accepts. Without it the installation root is the workspace, as before. The run record stays at the installation root either way.
-  pan release sync --worktree <name> --message <message> [--run <run-id>] [--json]
+  pan release sync --worktree <name> --message <message> [--run <run-id>] [--onto <ref> | --no-rebase] [--json]
+      Sync refuses with RELEASE_REMOTE_BEHIND_LOCAL when the fetched remote head is behind the point this branch shares with the local default branch, because the rebase would rewrite commits that branch already carries. It never retargets on its own. --onto <ref> rebases onto a ref the operator names, normally the local integration head; --no-rebase keeps the local history as it stands. Either choice is recorded in rebase_override on the result.
   pan release continue --worktree <name> [--run <run-id>] [--json]
   pan release finalize --worktree <name> --fetched-main <commit> [--run <run-id>] [--json]
   pan author apply --input <draft-json> [--json]
@@ -305,6 +328,7 @@ export const HELP_BODY = `Usage:
       --redline writes agent/evidence/platform-guidance-redline.json, the run's pre-declaration that platform guidance is non-authoritative.
   pan list [--json]
   pan inbox [--json]
+      List every intake item under runtime/inbox/ with its lifecycle status, in lifecycle order (queue, active, canceled, complete) and newest-first inside one status.
   pan inbox restore <inbox-file>
       Return a canceled or active item to runtime/inbox/queue/. An active item's run is detached onto its own stored request copy first. A completed or already-queued item is refused.
   pan archive [--days <positive-integer>] [--complete] [--canceled] [--json]
@@ -354,6 +378,7 @@ export const HELP_BODY = `Usage:
       Start or adopt the release run once every cohort is integrated (merge-free). It is the retry for a release start that failed after the final integrate: it merges nothing, adopts a release run that already exists, and is refused with COHORT_NOT_SATISFIED while any cohort lacks its merge proof.
   pan cohort abandon <cohort-id> --chunk <id> --note <reason> [--json]
   pan cohort clean <cohort-id> [--force] [--json]
+      Remove the chunk worktrees and keep every branch. A live run or uncommitted work is refused unless --force. A chunk already recorded as abandoned is exempt from the uncommitted-work refusal alone, and the result names each worktree discarded that way; the run-active refusal still holds, because abandoning a chunk does not stop its agent.
   pan cohort route --plan-run <run-id> [--worktree <name>] [--json]
       Route the approved plan of a succeeded planning run into delivery again: one delivery run for a single chunk, cohort 1 of a cohort session for a wider plan. This is the retry for a route that failed at approval and the opt-in for a planning run that predates routing. It adopts the run or session an earlier attempt created and refuses a run that is not planning, not succeeded, or whose plan gate recorded a decision other than approve.
   pan context digest <repo-relative-file> [--json]
@@ -420,6 +445,38 @@ function requiredArgument(
   }
 
   return value
+}
+
+function parseWorkerLaunchMode(
+  value: string | null,
+): DelegatedWorkerRecord['launch_mode'] {
+  if (value === null) {
+    return 'unknown'
+  }
+
+  if (value !== 'foreground' && value !== 'background') {
+    throw new PanError(
+      `--launch-mode MUST be 'foreground' or 'background', not '${value}'.`,
+      { code: 'INVALID_ARGUMENT' },
+    )
+  }
+
+  return value
+}
+
+/**
+ * One declared path of a delegated worker, for the plain-text report.
+ *
+ * Every declared path is named, including one nobody has written, because a
+ * missing report is the fact the supervisor came for. The producer is named
+ * with it so a harness-written brief never reads as the worker's own output.
+ */
+function declaredPathState(item: DelegatedWorkerPathState): string {
+  const producer = item.producer === 'harness' ? ' (harness-written)' : ''
+
+  return item.exists
+    ? `${item.path} ${item.size} bytes at ${item.modified_at}${producer}`
+    : `${item.path} not written${producer}`
 }
 
 /** One required argument of a multi-argument command surface. */
@@ -595,6 +652,7 @@ const SUBCOMMAND_STYLE_COMMANDS = new Set([
   'style',
   'technologies',
   'tune',
+  'worker',
   'worktree',
 ])
 
@@ -1676,13 +1734,25 @@ async function main(): Promise<void> {
     }
     case 'pause': {
       const runId = requiredArgument(args[0], 'run-id')
-      const state = pauseRun(root, runId, noteOption(root, args, '') ?? '')
+      const actor = option(args, '--actor', 'operator')
+
+      if (actor !== 'operator' && actor !== 'supervisor') {
+        throw new PanError(
+          `--actor MUST be 'operator' or 'supervisor', not '${actor}'.`,
+          { code: 'INVALID_ARGUMENT' },
+        )
+      }
+
+      const state = pauseRun(root, runId, noteOption(root, args, '') ?? '', {
+        actor,
+      })
 
       print({
         status: state.status,
         current_stage: state.current_stage,
         pause_reason: state.pause_reason,
         pending_action: state.pending_action,
+        actor: state.operator_pause?.actor ?? actor,
         decision_path: state.last_decision_path,
       })
       return
@@ -1756,7 +1826,9 @@ async function main(): Promise<void> {
         })
       }
 
-      const state = setRunStage(root, runId, stage, note)
+      const state = setRunStage(root, runId, stage, note, {
+        abandonWorkers: hasFlag(args, '--abandon-workers'),
+      })
 
       print({
         status: state.status,
@@ -1796,6 +1868,7 @@ async function main(): Promise<void> {
         waiver_artifact: result.waiver.artifact_path,
         directive_target: result.waiver.directive_target ?? null,
         spotfix_case: result.waiver.spotfix_case_path ?? null,
+        entry_gates_reached: result.entry_gates_reached,
         worktree_claim_transfer: result.claimTransfer ?? null,
       })
       return
@@ -1804,7 +1877,13 @@ async function main(): Promise<void> {
       const runId = requiredArgument(args[0], 'run-id')
       const state = abortRun(root, runId, option(args, '--note', '') ?? '')
 
-      print({ status: state.status, run_id: runId })
+      print({
+        status: state.status,
+        run_id: runId,
+        // Work the run is leaving uncommitted belongs to nobody once the run
+        // is terminal, so the command that ends it says what it left.
+        ...(state.dirty_exit ? { dirty_exit: state.dirty_exit } : {}),
+      })
       return
     }
     case 'hypervisor': {
@@ -1850,6 +1929,16 @@ async function main(): Promise<void> {
     case 'away': {
       const subcommand = requiredArgument(args[0], 'away subcommand')
       const runId = requiredArgument(args[1], 'run-id')
+      const rejected = unknownAwayOption(subcommand, args)
+
+      if (rejected) {
+        throw new PanError(
+          `Unknown option for 'pan away ${subcommand}': ${rejected}. ` +
+            `Accepted: ${(AWAY_SUBCOMMAND_OPTIONS[subcommand] ?? []).join(', ')}.`,
+          { code: 'UNKNOWN_OPTION' },
+        )
+      }
+
       const state = getRunState(root, runId)
       const blocker = awayModeTrigger(state)
 
@@ -1966,12 +2055,24 @@ async function main(): Promise<void> {
           )
         }
 
+        // The refusal comes before the apply, so a mismatched --action leaves
+        // the decision apply-ready rather than spending it on a failure.
+        const action = resolveAwayApplyAction(
+          decision,
+          option(args, '--action'),
+        )
         let next: RunState
         let record: AwayDecisionRecord
 
         try {
           next = applyAwayDecision(root, state, decision)
-          record = recordAwayApplyResult(root, decision, 'applied')
+          record = recordAwayApplyResult(
+            root,
+            decision,
+            'applied',
+            undefined,
+            action,
+          )
         } catch (error) {
           recordAwayApplyResult(root, decision, 'failed', errorMessage(error))
           throw error
@@ -2284,15 +2385,61 @@ async function main(): Promise<void> {
       const fingerprintBefore = gitWorkspaceSnapshot(
         repositoryCheckWorkspaceRoot(root, checkWorkspace ?? undefined),
       ).fingerprint
+      // HR3-006: the run already paid for this profile at this fingerprint
+      // under this invocation, and the ledger says so. Executing again buys
+      // nothing, so the recorded pass answers the request. The harness
+      // prefetch keeps executing: it exists to fill an empty cache.
+      const forceRepeat = hasFlag(args, '--force-repeat')
+      const reusable =
+        evidenceRun && !forceRepeat && !harnessInitiated
+          ? reusableProfileExecution(
+              root,
+              evidenceRun.run_id,
+              evidenceRun.current_invocation?.id ?? null,
+              profile,
+              fingerprintBefore,
+            )
+          : null
+
+      if (reusable) {
+        process.stderr.write(
+          `[repository-check:${profile}] reusing the pass recorded at ` +
+            `${reusable.started_at} for invocation ` +
+            `${reusable.invocation_id ?? '(none)'}; pass --force-repeat to ` +
+            'execute the profile again.\n',
+        )
+        print(
+          {
+            profile,
+            status: 'passed',
+            reused_execution: reusable,
+          },
+          hasFlag(args, '--json'),
+        )
+        return
+      }
+
       // A pass this command stores is reused by a later gate instead of
       // re-running the suite, so the execution writes the same profile that
       // gate would have written. Only a named run has a place to put it.
+      // One ordinal for both artifacts this execution owns, resolved before
+      // the run so a second permitted execution at the same fingerprint
+      // cannot be handed the first one's log name.
+      const gatePassAttempt = evidenceRun
+        ? nextAgentGatePassAttempt(
+            root,
+            evidenceRun.run_id,
+            profile,
+            fingerprintBefore,
+          )
+        : 1
       const gatePassSuiteProfile = evidenceRun
         ? agentGatePassSuiteProfile(
             root,
             evidenceRun.run_id,
             profile,
             fingerprintBefore,
+            gatePassAttempt,
           )
         : null
       const result = await runRepositoryCheckStreaming(root, profile, {
@@ -2324,23 +2471,6 @@ async function main(): Promise<void> {
       // no run and records nothing: an operator's own check from the base
       // checkout is not evidence of any run that happens to share it.
       const initiator = harnessInitiated ? 'harness' : 'agent'
-      const runEvidence = evidenceRun
-        ? recordAgentRepositoryCheckForRuns(
-            root,
-            [evidenceRun.run_id],
-            result,
-            startedAt,
-            initiator,
-          )
-        : worktreeWorkspace
-          ? recordAgentRepositoryCheck(
-              root,
-              worktreeWorkspace.name,
-              result,
-              startedAt,
-              initiator,
-            )
-          : []
       // Only a clean pass can reach a gate, so the run lookup a store needs
       // is spent only when one is possible.
       const gatePassRunIds =
@@ -2353,11 +2483,33 @@ async function main(): Promise<void> {
                 )
               : []
           : []
+      // The store resolves the log this execution owns, so it runs before the
+      // ledger entry that must name that log.
       const gatePass = recordProfileGatePass(root, profile, result, {
         run_ids: gatePassRunIds,
         fingerprint_before: fingerprintBefore,
         started_at: startedAt,
+        attempt: gatePassAttempt,
       })
+      const runEvidence = evidenceRun
+        ? recordAgentRepositoryCheckForRuns(
+            root,
+            [evidenceRun.run_id],
+            result,
+            startedAt,
+            initiator,
+            gatePass?.evidence_path ?? null,
+            forceRepeat,
+          )
+        : worktreeWorkspace
+          ? recordAgentRepositoryCheck(
+              root,
+              worktreeWorkspace.name,
+              result,
+              startedAt,
+              initiator,
+            )
+          : []
 
       print(
         {
@@ -2402,11 +2554,16 @@ async function main(): Promise<void> {
       )
 
       if (sub === 'sync') {
+        const onto = option(args, '--onto')
         const result = syncLocalRelease(
           root,
           worktreeName,
           requiredArgument(option(args, '--message'), '--message'),
           option(args, '--run') ?? undefined,
+          {
+            ...(onto === null ? {} : { onto }),
+            ...(hasFlag(args, '--no-rebase') ? { noRebase: true } : {}),
+          },
         )
 
         print(result, hasFlag(args, '--json'))
@@ -3798,6 +3955,73 @@ async function main(): Promise<void> {
         code: 'UNKNOWN_COMMAND',
       })
     }
+    case 'worker': {
+      const subcommand = requiredArgument(args[0], 'worker subcommand')
+      const runId = requiredArgument(args[1], 'run-id')
+      const invocationId = option(args, '--invocation')
+      const role = option(args, '--role')
+
+      if (subcommand === 'record') {
+        const agent = option(args, '--agent')
+        const model = option(args, '--model')
+        const launch = recordDelegatedWorker(root, runId, {
+          handle: requiredArgument(option(args, '--handle'), '--handle'),
+          ...(invocationId ? { invocationId } : {}),
+          ...(role ? { role } : {}),
+          ...(agent ? { agent } : {}),
+          ...(model ? { model } : {}),
+          launchMode: parseWorkerLaunchMode(option(args, '--launch-mode')),
+        })
+
+        print(
+          json
+            ? launch
+            : `worker recorded: ${launch.record.role} attempt ` +
+                `${launch.record.attempt} of invocation ` +
+                `${launch.record.invocation_id}, handle ${launch.record.handle}` +
+                (launch.evidence_attempt
+                  ? `, brief ${launch.evidence_attempt.brief_path}, evidence ` +
+                    `${launch.evidence_attempt.evidence_path}`
+                  : ''),
+          json,
+        )
+        return
+      }
+
+      if (subcommand === 'state') {
+        const workers = describeDelegatedWorkers(root, runId, {
+          ...(invocationId ? { invocationId } : {}),
+          ...(role ? { role } : {}),
+        })
+
+        print(
+          json
+            ? { run_id: runId, workers }
+            : workers.length === 0
+              ? `No delegated worker is recorded for run ${runId}. A launch ` +
+                `records one with 'pan worker record'.`
+              : workers
+                  .map(
+                    (worker) =>
+                      `${worker.role} attempt ${worker.attempt} of ` +
+                      `${worker.invocation_id}: handle ${worker.handle}, ` +
+                      `launched ${worker.launched_at} ` +
+                      `(${worker.seconds_since_launch.toFixed(0)}s ago), ` +
+                      (worker.wrote_nothing
+                        ? 'wrote nothing yet'
+                        : 'has written') +
+                      `: ${worker.declared_paths.map(declaredPathState).join('; ')}`,
+                  )
+                  .join('\n'),
+          json,
+        )
+        return
+      }
+
+      throw new PanError(`Unknown worker subcommand: ${subcommand}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
+    }
     case 'watch': {
       const runId = requiredArgument(args[0], 'run-id')
       const invocationId = option(args, '--invocation')
@@ -4098,10 +4322,33 @@ async function main(): Promise<void> {
   }
 }
 
-if (
-  process.argv[1] !== undefined &&
-  realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)
-) {
+/**
+ * Whether `argvPath` names this module, so a direct run executes `main` and an
+ * import does not.
+ *
+ * A read the guard cannot perform is not an answer. Swallowing the failure
+ * returned "not the entrypoint", which exits 0 having run no command: the
+ * operator sees a silent success where the CLI never started.
+ */
+export function cliEntrypointMatches(argvPath: string): boolean {
+  let resolved: string
+
+  try {
+    resolved = realpathSync(argvPath)
+  } catch (error) {
+    throw new PanError(
+      `Failed to resolve the invoked entrypoint path: ${argvPath}`,
+      {
+        code: 'ENTRYPOINT_PATH_UNREADABLE',
+        details: { cause: errorMessage(error) },
+      },
+    )
+  }
+
+  return resolved === fileURLToPath(import.meta.url)
+}
+
+if (process.argv[1] !== undefined && cliEntrypointMatches(process.argv[1])) {
   main().catch((error: unknown) => {
     const known = error instanceof PanError
     const message = error instanceof Error ? error.message : String(error)

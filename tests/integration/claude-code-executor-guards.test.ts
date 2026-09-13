@@ -11,7 +11,8 @@ import {
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import type { ExternalDelegationRecord } from '../../src/lib/types.js'
 import { syncCursorProjection } from '../../src/lib/projection.js'
-import { createFixture, createRun } from '../helpers.js'
+import { createFixture } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 import {
   CLAUDE_CODE_SPEC,
   checkpoint,

@@ -19,7 +19,8 @@ import {
   recordAwayEvaluation,
 } from '../../src/lib/away-mode.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
-import { createFixture, createRun, PLANNING_FIXTURE_SPECS } from '../helpers.js'
+import { createFixture, PLANNING_FIXTURE_SPECS } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 import { AWAY, checkpoint, withFakeEvaluator } from './delivery-helpers.js'
 
 const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')

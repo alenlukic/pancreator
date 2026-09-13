@@ -12,12 +12,8 @@ import {
   DELEGATION_HEADING,
   validateDelegationMarkdown,
 } from '../../src/lib/validation.js'
-import {
-  createFixture,
-  createRun,
-  read,
-  writeCanonicalDelegation,
-} from '../helpers.js'
+import { createFixture, read, writeCanonicalDelegation } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 
 interface ValidationArtifact {
   status: string

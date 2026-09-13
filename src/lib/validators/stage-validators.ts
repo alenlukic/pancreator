@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { readFileSync, readdirSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 
 import {
@@ -133,6 +133,13 @@ function sharedEnum(
   return new Set(field?.enum ?? [])
 }
 
+/**
+ * Direct string-valued children of one declared field.
+ *
+ * The callers use these as the fields every item MUST carry as non-empty
+ * text, so a child of another type is not one of them: an optional object
+ * child would otherwise be demanded of every item as a string.
+ */
 function sharedChildFields(
   root: string,
   stageSlug: string,
@@ -140,7 +147,7 @@ function sharedChildFields(
 ): string[] {
   return sharedFieldRequirements(root, stageSlug)
     .map((field) =>
-      field.path.startsWith(fieldPrefix)
+      field.path.startsWith(fieldPrefix) && field.type === 'string'
         ? field.path.slice(fieldPrefix.length)
         : null,
     )
@@ -544,6 +551,15 @@ function evidencePathCandidate(entry: string): string | null {
   }
 
   return null
+}
+
+/** Modification time of `absolute` in milliseconds, or null when unreadable. */
+function modifiedMs(absolute: string): number | null {
+  try {
+    return statSync(absolute).mtimeMs
+  } catch {
+    return null
+  }
 }
 
 function workspaceRootFromInput(input: HandlerInput): string {
@@ -1488,6 +1504,28 @@ export function validateImplementationClaims(
             ),
           )
         }
+      }
+    }
+  }
+
+  // The output is the claim, so every path it claims must already hold the
+  // work when it is written. A path modified after the output was written was
+  // edited after the claim was made, and the claim describes a tree that no
+  // longer exists.
+  const outputModifiedMs = modifiedMs(path.join(input.root, input.targetPath))
+
+  if (outputModifiedMs !== null) {
+    for (const file of changedFiles) {
+      const fileModifiedMs = modifiedMs(path.join(workspaceRoot, file))
+
+      if (fileModifiedMs !== null && fileModifiedMs > outputModifiedMs) {
+        issues.push(
+          issue(
+            'claim.modified_after_output',
+            `Claimed changed file was modified after the output that claims it: ${file}. ` +
+              'Rewrite the output after the last edit it describes.',
+          ),
+        )
       }
     }
   }
@@ -2634,6 +2672,28 @@ export function validateVerifyOutput(input: HandlerInput): HandlerResult {
           issue(
             'verify.case_field',
             `QA case ${qaCase.id} MUST include ${field}`,
+          ),
+        )
+      }
+    }
+
+    // VERIFY-001: a returning verification executes the cases the
+    // remediation can reach and carries the rest. A carried result has to
+    // name where it came from, or the reader cannot tell a case observed
+    // against another workspace from one observed against this one.
+    if (qaCase.carried_from !== undefined) {
+      const carried = qaCase.carried_from
+      const named = (field: string): boolean =>
+        isRecord(carried) &&
+        typeof carried[field] === 'string' &&
+        (carried[field] as string).trim().length > 0
+
+      if (!named('invocation_id') || !named('workspace_fingerprint')) {
+        issues.push(
+          issue(
+            'verify.case_carried_from_shape',
+            `QA case ${qaCase.id} MUST name carried_from.invocation_id and ` +
+              'carried_from.workspace_fingerprint',
           ),
         )
       }

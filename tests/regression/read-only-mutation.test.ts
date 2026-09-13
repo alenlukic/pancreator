@@ -8,12 +8,11 @@ import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
-  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
-  submitAsSupervisor,
 } from '../helpers.js'
+import { createRun, submitAsSupervisor } from '../run-helpers.js'
 
 test('read-only stage fails when a source workspace change is unattributed', () => {
   const root = createFixture()

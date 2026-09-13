@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -957,6 +964,87 @@ test('self-development release validator requires a real next-version bump', () 
   }
 })
 
+test('each local-release topology branch reports its own coded issue', () => {
+  // Every branch below guarded release correctness with no failing case, so
+  // deleting any one of them left the suite green.
+  const root = createFixture()
+  const target = 'output.json'
+  const validate = (localRelease: unknown) => {
+    writeFileSync(
+      path.join(root, target),
+      `${JSON.stringify({
+        data: {
+          release: {
+            summary: 'ready',
+            ...(localRelease === undefined
+              ? {}
+              : { local_release: localRelease }),
+            change_list: [],
+            validation: [],
+            rollback: 'revert commit',
+            waivers: [],
+            follow_up_cases: [],
+          },
+        },
+      })}\n`,
+    )
+
+    return validateReleaseOutput({
+      root,
+      targetPath: target,
+      requirement: {
+        policy_id: 'SHIP-001',
+        requirement_id: 'release-validate',
+        registry_id: 'RELEASE-VALIDATE-001',
+        arguments: {},
+      },
+      invocation: {
+        managed_worktree: {
+          name: 'release',
+          path: 'worktrees/operator/release',
+          branch: 'main',
+        },
+      },
+      runState: { stage_history: [] },
+    }).issues.map((entry) => entry.code)
+  }
+
+  assert.ok(validate(undefined).includes('release.local_release_missing'))
+  assert.ok(
+    validate({
+      release_commit: 'not-a-commit',
+      index_commit: 'b'.repeat(40),
+      fetched_main: 'c'.repeat(40),
+      branch: 'main',
+      pr_description_path: 'runtime/pr-descriptions/release.md',
+    }).includes('release.local_release_missing'),
+  )
+
+  // Well-formed hashes that describe nothing in this workspace reach the
+  // topology checks, and an untracked file makes the worktree dirty.
+  writeFileSync(path.join(root, 'stray.txt'), 'left behind\n')
+
+  const codes = validate({
+    release_commit: 'a'.repeat(40),
+    index_commit: 'b'.repeat(40),
+    fetched_main: 'c'.repeat(40),
+    branch: 'a-branch-this-workspace-is-not-on',
+    pr_description_path: 'runtime/pr-descriptions/release.md',
+  })
+
+  for (const code of [
+    'release.commit_order',
+    'release.fetched_main_not_ancestor',
+    'release.worktree_dirty',
+    'release.branch_mismatch',
+    'release.index_commit_scope',
+  ]) {
+    assert.ok(codes.includes(code), code)
+  }
+
+  assert.equal(codes.includes('release.local_release_missing'), false)
+})
+
 // int-con HR-005: `resolveInside` threw on an agent-supplied traversal, so a
 // malformed release.local_release.pr_description_path ended the validator
 // with a stack trace instead of an issue the retry could read.
@@ -1808,6 +1896,70 @@ test('verify validator binds acceptance coverage to the accepted plan', () => {
   )
 })
 
+// HR3-009: a returning verification had nowhere to say that a case result
+// came from the earlier visit, so the only compliant option was to execute
+// every case again over code the remediation never touched.
+test('verify validator accepts a carried case citation and rejects a malformed one', () => {
+  const root = validatorFixtureRoot('pan-verify-carried-case-')
+  const carried = {
+    ...passingQaCase,
+    id: 'TP-02',
+    carried_from: {
+      invocation_id: 'verify-1',
+      workspace_fingerprint: 'fp-prior',
+    },
+  }
+
+  writeVerifyOutput(root, 'carried.json', {
+    verdict: 'pass',
+    findings: [],
+    qa_cases: [passingQaCase, carried],
+    acceptance_results: [{ id: 'AC-01', result: 'pass' }],
+  })
+
+  const wellFormed = validateVerifyOutput({
+    root,
+    targetPath: 'carried.json',
+    requirement: verifyRequirement(),
+  })
+
+  assert.equal(wellFormed.status, 'passed', JSON.stringify(wellFormed.issues))
+
+  // A citation that names no fingerprint cannot say which workspace the
+  // carried result was observed against, which is the whole point of it.
+  writeVerifyOutput(root, 'malformed.json', {
+    verdict: 'pass',
+    findings: [],
+    qa_cases: [
+      { ...carried, carried_from: { invocation_id: 'verify-1' } },
+      { ...passingQaCase, id: 'TP-03', carried_from: {} },
+      {
+        ...passingQaCase,
+        id: 'TP-04',
+        carried_from: {
+          invocation_id: '   ',
+          workspace_fingerprint: 'fp-prior',
+        },
+      },
+    ],
+    acceptance_results: [{ id: 'AC-01', result: 'pass' }],
+  })
+
+  const malformed = validateVerifyOutput({
+    root,
+    targetPath: 'malformed.json',
+    requirement: verifyRequirement(),
+  })
+
+  assert.equal(malformed.status, 'failed')
+  assert.deepEqual(
+    malformed.issues
+      .filter((item) => item.code === 'verify.case_carried_from_shape')
+      .map((item) => item.message.split(' ')[2]),
+    ['TP-02', 'TP-03', 'TP-04'],
+  )
+})
+
 test('verify validator requires a citation for each current gate evidence reference', () => {
   const root = validatorFixtureRoot('pan-verify-gate-citation-')
   const target = 'output.json'
@@ -2295,6 +2447,55 @@ test('a file the attempt deleted is disclosed in changed_files, not rejected', (
         issue.message.includes('src/never-existed.ts'),
     ),
     JSON.stringify(fabricated.issues),
+  )
+})
+
+// The output is a claim about a tree. An attempt that kept editing after it
+// wrote the output described a tree that no longer existed, and every
+// disclosure check passed because the edit was still in the diff.
+test('a claimed path modified after the output fails, and an ordered one passes', () => {
+  const root = createFixture()
+  const target =
+    'runtime/logs/workflows/run-ordering/outputs/implement-1-test.json'
+  const before = gitWorkspaceSnapshot(root)
+  const source = path.join(root, 'src/ordered.ts')
+
+  writeFileSync(source, 'export const ordered = true\n')
+  writeJson(path.join(root, target), {
+    data: {
+      implementation: {
+        changed_files: ['src/ordered.ts'],
+        tests_added: [],
+        notes: [],
+      },
+      acceptance_results: [
+        { id: 'AC-01', result: 'pass', evidence: ['fixture evidence'] },
+      ],
+    },
+  })
+
+  const ordered = validateImplementationClaims(
+    claimsValidatorInput(root, target, { workspace_before: before }),
+  )
+
+  assert.equal(ordered.status, 'passed', JSON.stringify(ordered.issues))
+
+  // The edit that follows the output is the one the output cannot describe.
+  const outputModified = statSync(path.join(root, target)).mtime
+
+  utimesSync(source, outputModified, new Date(outputModified.getTime() + 5_000))
+
+  const late = validateImplementationClaims(
+    claimsValidatorInput(root, target, { workspace_before: before }),
+  )
+
+  assert.ok(
+    late.issues.some(
+      (issue) =>
+        issue.code === 'claim.modified_after_output' &&
+        issue.message.includes('src/ordered.ts'),
+    ),
+    JSON.stringify(late.issues),
   )
 })
 

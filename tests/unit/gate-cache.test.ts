@@ -10,7 +10,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { createFixture } from '../fixture-template.js'
-import { createRun } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 import { evaluateDeterministicCriteria } from '../../src/lib/validation.js'
 import {
   GATE_CACHE_ACCEPTANCE_RULE,

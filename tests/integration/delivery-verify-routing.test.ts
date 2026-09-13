@@ -15,13 +15,12 @@ import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import {
   attachTargetInstructionEvidence,
   createFixture,
-  createRun,
   makeAttestation,
   makeOutput,
   writeEvidenceReports,
   writeJson,
-  submitAsSupervisor,
 } from '../helpers.js'
+import { createRun, submitAsSupervisor } from '../run-helpers.js'
 import { submitStageOutput } from './delivery-helpers.js'
 
 test('an infrastructure failure preserves the environment-blocked route', () => {

@@ -9,12 +9,11 @@ import type { EvalReport } from '../../src/lib/evals/index.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
-  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
-  submitAsSupervisor,
 } from '../helpers.js'
+import { createRun, submitAsSupervisor } from '../run-helpers.js'
 
 const REPO_ROOT = process.cwd()
 const CLI = path.join(REPO_ROOT, 'dist', 'src', 'cli.js')

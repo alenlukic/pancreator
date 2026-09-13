@@ -154,6 +154,54 @@ test('clean checkout rejects harness drift under an indexed version', () => {
   }
 })
 
+// AC-001. Between releases this checkout is always a clean payload that
+// differs from the indexed release, so the drift guard failed every scratch
+// install the smoke harness makes of itself and the installer lane could not
+// run at all. The scratch install is the unit the harness repeats; the full
+// `--smoke` sequence stays with the profile that owns it.
+test('the smoke scratch install succeeds on a clean source that differs from its indexed release', () => {
+  const source = createReleaseFixture()
+  const project = makeSkeletonProject()
+
+  try {
+    writeFileSync(path.join(source, 'README.md'), '# unversioned drift\n')
+    git(source, ['add', 'README.md'])
+    git(source, ['commit', '-qm', 'unversioned install input drift'])
+
+    const head = git(source, ['rev-parse', 'HEAD'])
+    const install = run(
+      path.join(source, 'bin', 'install'),
+      [
+        '--target',
+        project,
+        '--pancreator-root',
+        source,
+        '--source-commit',
+        head,
+        '--source-indexed',
+        'false',
+        '--skip-dependencies',
+        '--skip-shell-alias',
+      ],
+      source,
+    )
+
+    assert.equal(install.status, 0, install.stderr)
+
+    const marker = readJson<InstallMarker>(
+      path.join(project, '.pancreator', 'install.json'),
+    )
+
+    assert.equal(marker.source_indexed, false)
+    assert.equal(marker.source_commit, head)
+    // A scratch install of an unindexed payload must not claim updatability.
+    assert.match(install.stdout, /Unindexed release candidate/u)
+  } finally {
+    rmSync(source, { recursive: true, force: true })
+    rmSync(project, { recursive: true, force: true })
+  }
+})
+
 test('indexed update fast-forwards the embedded harness and preserves target state', () => {
   const source = createReleaseFixture()
   const project = makeSkeletonProject()

@@ -188,6 +188,79 @@ test('ship gate does not infer a waiver from an operator resume note', () => {
   assert.equal(result.passed, false)
 })
 
+function localReleaseStageOf(root: string): StageDefinition {
+  const shipStage = stageBySlug(loadWorkflow(root, 'delivery'), 'ship')
+
+  return {
+    ...shipStage,
+    criteria: shipStage.criteria.filter(
+      (criterion) => criterion.id === 'ship.local_release_complete',
+    ),
+  }
+}
+
+test('a worktree-bound run fails the local-release criterion it has not satisfied', () => {
+  // The criterion carried only a positive assertion, so a change that always
+  // returned `true` left the suite green.
+  const root = createFixture()
+  const snapshot = gitWorkspaceSnapshot(root)
+  const state = {
+    run_id: 'bound',
+    workspace_root: root,
+    state_root: 'runtime',
+    stage_history: [],
+    gate_overrides: {},
+    managed_worktree: {
+      name: 'release',
+      path: 'worktrees/operator/release',
+      branch: 'main',
+    },
+  } as unknown as RunState
+
+  const evaluate = (release: Record<string, unknown>) =>
+    evaluateDeterministicCriteria(
+      root,
+      path.join(root, 'runtime', 'gate-evidence'),
+      state,
+      localReleaseStageOf(root),
+      snapshot,
+      root,
+      {},
+      'ship',
+      { data: { release } } as unknown as StageOutput,
+      undefined,
+      null,
+      snapshot,
+    )
+
+  const absent = evaluate({})
+  const absentResult = absent.results.find(
+    (item) => item.id === 'ship.local_release_complete',
+  )
+
+  assert.ok(absentResult)
+  assert.equal(absentResult.passed, false)
+  assert.match(absentResult.explanation ?? '', /incomplete/u)
+  assert.deepEqual(absent.advisories, [], 'the legacy bypass does not apply')
+
+  // Well-formed hashes that describe no commit in this workspace still fail:
+  // the criterion resolves topology rather than the shape of a string.
+  const unreachable = evaluate({
+    local_release: {
+      release_commit: 'a'.repeat(40),
+      index_commit: 'b'.repeat(40),
+      fetched_main: 'c'.repeat(40),
+    },
+  })
+
+  assert.equal(
+    unreachable.results.find(
+      (item) => item.id === 'ship.local_release_complete',
+    )?.passed,
+    false,
+  )
+})
+
 // int-con HR-005: a self-development run without a managed worktree passes
 // the hard local-release criterion that a worktree-bound run must satisfy.
 // The operator kept the compatibility path, because removing it changes an
@@ -195,13 +268,7 @@ test('ship gate does not infer a waiver from an operator resume note', () => {
 // become visible in the record instead.
 test('a worktree-less self-development run records the criterion it bypassed', () => {
   const root = createFixture()
-  const shipStage = stageBySlug(loadWorkflow(root, 'delivery'), 'ship')
-  const localReleaseStage: StageDefinition = {
-    ...shipStage,
-    criteria: shipStage.criteria.filter(
-      (criterion) => criterion.id === 'ship.local_release_complete',
-    ),
-  }
+  const localReleaseStage = localReleaseStageOf(root)
   const snapshot = gitWorkspaceSnapshot(root)
   const evaluated = evaluateDeterministicCriteria(
     root,

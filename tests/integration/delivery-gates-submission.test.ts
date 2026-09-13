@@ -10,8 +10,8 @@ import {
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
-  submitAsSupervisor,
 } from '../helpers.js'
+import { submitAsSupervisor } from '../run-helpers.js'
 import {
   checkpoint,
   checksVariant,

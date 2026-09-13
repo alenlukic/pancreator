@@ -2,19 +2,23 @@ import path from 'node:path'
 
 import { invariant } from './errors.js'
 import {
+  gitBranchExists,
   gitCommit,
   gitCommitChangedPaths,
   gitCommitParent,
   gitCommitSubject,
   gitConflictedPaths,
   gitCurrentBranch,
+  gitDefaultBranch,
   gitFetchBranch,
   gitHead,
   gitIsAncestor,
+  gitMergeBase,
   gitRebaseContinue,
   gitRebaseInProgress,
   gitRebaseOnto,
   gitRemotes,
+  gitRevParse,
   gitStagePaths,
   gitStatusPaths,
   gitUpstreamRemote,
@@ -31,6 +35,7 @@ import { liveRunsBoundToWorktree } from './state.js'
 import type {
   LocalReleaseContinueResult,
   LocalReleaseFinalizeResult,
+  LocalReleaseRebaseOverride,
   LocalReleaseSyncResult,
   ManagedWorktreeReference,
 } from './types.js'
@@ -220,16 +225,87 @@ function releaseRemote(worktreePath: string): string {
   return remotes[0] ?? ''
 }
 
+/** Operator decisions that move the rebase off the fetched remote head. */
+export interface LocalReleaseSyncOptions {
+  /** Rebase onto this ref instead of the fetched remote head. */
+  onto?: string
+  /** Keep the local history as it stands and run no rebase. */
+  noRebase?: boolean
+}
+
+/**
+ * Refuse a rebase that would replay commits the local default branch already
+ * carries.
+ *
+ * A rebase onto the fetched head rewrites everything in `fetched..HEAD`. When
+ * the fetched head is strictly behind the point this branch shares with the
+ * local default branch, part of that range is already on that branch under
+ * its original hashes, and replaying it costs the fast-forward merge the
+ * release depends on. Pancreator releases itself without pushing, so this is
+ * the ordinary state of a self-development release rather than a rare one.
+ *
+ * The refusal names both heads and never retargets on its own; the operator
+ * states a different target with `--onto` or declines the rebase with
+ * `--no-rebase`, and the result records that choice.
+ */
+function assertRebaseKeepsLocalHistory(
+  worktreePath: string,
+  remote: string,
+  fetchedMain: string,
+): void {
+  const defaultBranch = gitDefaultBranch(worktreePath)
+
+  if (!defaultBranch || !gitBranchExists(worktreePath, defaultBranch)) {
+    return
+  }
+
+  const localHead = gitRevParse(worktreePath, `refs/heads/${defaultBranch}`)
+  const shared = gitMergeBase(worktreePath, 'HEAD', localHead)
+
+  if (
+    !shared ||
+    shared === fetchedMain ||
+    !gitIsAncestor(worktreePath, fetchedMain, shared)
+  ) {
+    return
+  }
+
+  invariant(
+    false,
+    `Release sync refused a rebase that would rewrite commits already on ` +
+      `local '${defaultBranch}'. Fetched ${remote}/main is ${fetchedMain}; ` +
+      `local '${defaultBranch}' is ${localHead}. Options: push ` +
+      `'${defaultBranch}' to '${remote}' and sync again, rebase onto the ` +
+      `local integration head with --onto ${defaultBranch}, or keep the ` +
+      `local history as it stands with --no-rebase.`,
+    {
+      code: 'RELEASE_REMOTE_BEHIND_LOCAL',
+      details: {
+        remote,
+        default_branch: defaultBranch,
+        fetched_head: fetchedMain,
+        local_head: localHead,
+      },
+    },
+  )
+}
+
 /** Commit eligible existing changes, fetch remote main, then rebase. */
 export function syncLocalRelease(
   root: string,
   worktreeName: string,
   message: string,
   ownerRunId?: string,
+  options: LocalReleaseSyncOptions = {},
 ): LocalReleaseSyncResult {
   invariant(message.trim().length > 0, 'Release sync requires --message.', {
     code: 'RELEASE_MESSAGE_REQUIRED',
   })
+  invariant(
+    !(options.noRebase === true && options.onto !== undefined),
+    'Release sync accepts --onto or --no-rebase, not both.',
+    { code: 'RELEASE_REBASE_OVERRIDE_CONFLICT' },
+  )
 
   const resolved = worktree(root, worktreeName, ownerRunId)
   const branch = gitCurrentBranch(resolved.absolute)
@@ -253,7 +329,46 @@ export function syncLocalRelease(
 
   const remote = releaseRemote(resolved.absolute)
   const fetchedMain = gitFetchBranch(resolved.absolute, remote, 'main')
-  const rebase = gitRebaseOnto(resolved.absolute, fetchedMain)
+
+  if (options.noRebase === true) {
+    return {
+      status: 'synchronized',
+      worktree: resolved.record,
+      branch,
+      remote,
+      fetched_main: fetchedMain,
+      rebase_target: null,
+      rebase_override: {
+        kind: 'no_rebase',
+        requested_ref: null,
+        resolved_commit: null,
+      },
+      checkpoint_commit: checkpointCommit,
+      conflicted_paths: [],
+    }
+  }
+
+  let override: LocalReleaseRebaseOverride | null = null
+  let rebaseTarget = fetchedMain
+
+  if (options.onto !== undefined) {
+    const requested = options.onto.trim()
+
+    invariant(requested.length > 0, 'Release sync requires a ref for --onto.', {
+      code: 'RELEASE_REBASE_ONTO_INVALID',
+    })
+
+    rebaseTarget = gitRevParse(resolved.absolute, requested)
+    override = {
+      kind: 'onto',
+      requested_ref: requested,
+      resolved_commit: rebaseTarget,
+    }
+  } else {
+    assertRebaseKeepsLocalHistory(resolved.absolute, remote, fetchedMain)
+  }
+
+  const rebase = gitRebaseOnto(resolved.absolute, rebaseTarget)
 
   if (!rebase.succeeded && rebase.conflicted_paths.length === 0) {
     invariant(
@@ -271,6 +386,8 @@ export function syncLocalRelease(
     branch,
     remote,
     fetched_main: fetchedMain,
+    rebase_target: rebaseTarget,
+    rebase_override: override,
     checkpoint_commit: checkpointCommit,
     conflicted_paths: rebase.conflicted_paths,
   }

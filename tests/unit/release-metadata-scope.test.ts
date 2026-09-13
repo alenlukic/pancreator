@@ -128,8 +128,27 @@ function priorGatesState(options: {
     after: string
     scopePassed?: boolean
   }>
+  directives?: Array<{
+    before: string
+    after: string
+    changedPaths: string[]
+    timestamp: string
+  }>
 }): RunState {
   return {
+    workspace_directives: (options.directives ?? []).map(
+      (directive, index) => ({
+        directive_id: `directive-${index + 1}`,
+        acting_role: 'operator',
+        directive: 'Version-sync the release metadata before ship re-entry.',
+        stage: 'ship',
+        changed_paths: directive.changedPaths,
+        workspace_before_fingerprint: directive.before,
+        workspace_fingerprint: directive.after,
+        artifact_path: `evidence/workspace-directive-${index + 1}.md`,
+        timestamp: directive.timestamp,
+      }),
+    ),
     run_id: options.runId,
     workspace_root: options.root,
     state_root: options.stateRoot,
@@ -350,6 +369,136 @@ test('ship prior-gates fails when an earlier ship attempt failed its scope windo
     state,
     shipStageWithPriorGates(),
     afterAttemptOne,
+    root,
+  ).results.find((result) => result.id === 'ship.prior_gates_current')
+
+  assert.ok(priorGates)
+  assert.equal(priorGates.passed, false)
+})
+
+/** The release-metadata surface VERSION-001 version-syncs, in one window. */
+const RELEASE_METADATA_SYNC = [
+  ['CHANGELOG.md', '# Changelog\n\n## [9.9.9]\n'],
+  ['README.md', '# Pancreator\n\nVersion 9.9.9\n'],
+  ['VERSION', '9.9.9\n'],
+  ['package.json', '{\n  "name": "pancreator",\n  "version": "9.9.9"\n}\n'],
+  ['package-lock.json', '{\n  "version": "9.9.9"\n}\n'],
+  ['docs/embedded-installation.md', '# Installation\n\nVersion 9.9.9\n'],
+] as const
+
+// AC-007. `pan release sync` runs between the verification evidence and ship
+// re-entry, so the workspace it leaves is attributed to an out-of-stage record
+// rather than to a ship attempt. The chain read only ship attempts, so a run
+// that had never submitted ship could not prove currency and the gate refused
+// the entry it was meant to allow.
+test('ship prior-gates accepts an out-of-stage release-metadata attribution as a chain link', () => {
+  const root = createFixture()
+  const roots = resolveRoots({
+    installation_root: root,
+    workspace_root: root,
+    state_root: 'runtime',
+  })
+  const runDirectory = path.join(root, 'runtime', 'logs', 'workflows', 'attrib')
+
+  mkdirSync(runDirectory, { recursive: true })
+  writeFileSync(
+    path.join(root, 'src', 'base.ts'),
+    "export const base = 'reviewed'\n",
+  )
+
+  const qa = gitWorkspaceSnapshot(roots.workspace_root)
+
+  for (const [relativePath, contents] of RELEASE_METADATA_SYNC) {
+    writeFileSync(path.join(root, relativePath), contents)
+  }
+
+  const afterDirective = gitWorkspaceSnapshot(roots.workspace_root)
+  const state = priorGatesState({
+    runId: 'attrib',
+    root,
+    stateRoot: roots.state_root,
+    qaFingerprint: qa.fingerprint,
+    shipAttempts: [],
+    directives: [
+      {
+        before: qa.fingerprint,
+        after: afterDirective.fingerprint,
+        changedPaths: RELEASE_METADATA_SYNC.map(
+          ([relativePath]) => relativePath,
+        ),
+        timestamp: '2026-07-20T00:05:00.000Z',
+      },
+    ],
+  })
+
+  const priorGates = evaluateDeterministicCriteria(
+    root,
+    runDirectory,
+    state,
+    shipStageWithPriorGates(),
+    afterDirective,
+    root,
+  ).results.find((result) => result.id === 'ship.prior_gates_current')
+
+  assert.ok(priorGates)
+  assert.equal(priorGates.passed, true)
+  assert.match(
+    priorGates.explanation ?? '',
+    /1 same-run release-metadata attribution record since QA chains back to the QA fingerprint/u,
+  )
+})
+
+// AC-008. The attribution record is only as good as the window it adjudicates,
+// so a record that reaches outside the release-metadata surface must not stand
+// in for the review the product change never received.
+test('ship prior-gates rejects an attribution that names a path outside release metadata', () => {
+  const root = createFixture()
+  const roots = resolveRoots({
+    installation_root: root,
+    workspace_root: root,
+    state_root: 'runtime',
+  })
+  const runDirectory = path.join(
+    root,
+    'runtime',
+    'logs',
+    'workflows',
+    'outside',
+  )
+
+  mkdirSync(runDirectory, { recursive: true })
+
+  const qa = gitWorkspaceSnapshot(roots.workspace_root)
+
+  writeFileSync(path.join(root, 'VERSION'), '9.9.9\n')
+  writeFileSync(
+    path.join(root, 'src', 'base.ts'),
+    "export const base = 'directed'\n",
+  )
+
+  const afterDirective = gitWorkspaceSnapshot(roots.workspace_root)
+  const state = priorGatesState({
+    runId: 'outside',
+    root,
+    stateRoot: roots.state_root,
+    qaFingerprint: qa.fingerprint,
+    shipAttempts: [],
+    directives: [
+      {
+        before: qa.fingerprint,
+        after: afterDirective.fingerprint,
+        changedPaths: ['VERSION', 'src/base.ts'],
+        timestamp: '2026-07-20T00:05:00.000Z',
+      },
+    ],
+  })
+
+  const priorGates = evaluateDeterministicCriteria(
+    root,
+    runDirectory,
+    state,
+    shipStageWithPriorGates(),
+    afterDirective,
     root,
   ).results.find((result) => result.id === 'ship.prior_gates_current')
 

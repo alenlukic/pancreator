@@ -2,7 +2,8 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { stageBySlug } from '../../src/lib/workflow.js'
-import { createFixture, createRun } from '../helpers.js'
+import { createFixture } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 import { checkpoint } from './delivery-helpers.js'
 import { checks, submitStage } from './prototype-helpers.js'
 

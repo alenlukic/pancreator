@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -517,6 +517,71 @@ test('runTestsImpacted --list --json reports the selection on a synthetic tree a
     assert.equal(records[0]?.selected_count, 3)
     assert.equal(records[0]?.result, 'none')
     assert.equal(typeof records[0]?.fingerprint, 'string')
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('the graph build duration is a finite, non-negative number at every reporting site', async () => {
+  // The flaky-gate repair removed the only assertions on this field, so a
+  // regression that reported zero, NaN, or nothing passed everywhere.
+  const assertDuration = (value: unknown, site: string): void => {
+    assert.equal(typeof value, 'number', `${site} reports a number`)
+    assert.equal(
+      Number.isFinite(value as number),
+      true,
+      `${site} reports a finite duration`,
+    )
+    assert.equal((value as number) >= 0, true, `${site} is not negative`)
+  }
+
+  const root = createSyntheticTree()
+
+  try {
+    assertDuration((await buildModuleGraph(root)).build_ms, 'the module graph')
+
+    let json = ''
+    const listed = await runTestsImpacted(
+      root,
+      ['--list', '--json', '--file', 'src/lib/feature.ts'],
+      {
+        write: (text) => {
+          json += text
+        },
+      },
+    )
+
+    assertDuration(listed.graph_build_ms, 'the returned result')
+    assertDuration(
+      (JSON.parse(json) as Record<string, unknown>).graph_build_ms,
+      'the JSON report',
+    )
+
+    let rendered = ''
+    await runTestsImpacted(root, ['--list', '--file', 'src/lib/feature.ts'], {
+      write: (text) => {
+        rendered += text
+      },
+    })
+
+    const reported = /^Graph: \w+ parser, (\d+) ms\./mu.exec(rendered)
+
+    assert.ok(reported, `the text report states the duration: ${rendered}`)
+    assertDuration(Number(reported[1]), 'the text report')
+
+    const records = readFileSync(
+      path.join(root, 'runtime/cache/test-impact.jsonl'),
+      'utf8',
+    )
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line) as Record<string, unknown>)
+
+    assert.equal(records.length, 2)
+
+    for (const record of records) {
+      assertDuration(record.graph_build_ms, 'the impact ledger')
+    }
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

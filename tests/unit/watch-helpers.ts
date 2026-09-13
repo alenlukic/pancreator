@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict'
-import { writeFileSync } from 'node:fs'
+import { statSync, utimesSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
-import { prepareInvocation } from '../../src/lib/engine.js'
-import type { RunState } from '../../src/lib/types.js'
+import { prepareInvocation, setRunStage } from '../../src/lib/engine.js'
+import { resolveRunLayout } from '../../src/lib/run-layout.js'
+import type { Invocation, RunState } from '../../src/lib/types.js'
 import {
   delegationUnobservedMessage,
   summarizeDelegationObservation,
@@ -11,11 +12,11 @@ import {
 import { loadWorkflowFile, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
-  createRun,
   makeOutput,
   read,
   writeCanonicalDelegation,
 } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 
 // Cadence short enough for a unit test yet above the module floor.
 // Each wake observes the run tree and the workspace Git state, which costs a
@@ -40,6 +41,65 @@ export function fakeClock(): {
   }
 }
 
+/**
+ * A fake clock whose sleep rewrites the stage output, so every observation
+ * sees an output that moved since the last one. That is a worker still
+ * writing, which is exactly what a confirming wake exists to detect.
+ *
+ * Each rewrite pins the output one millisecond further past the launch
+ * artifact. Left at wall-clock now, the output ages past one cadence while
+ * the launch artifact keeps its original time, so `launchToOutputSeconds`
+ * grows with however long the host took rather than with anything the worker
+ * did, and the watch completes on `output_plausible`. Pinning holds both
+ * conditions this fixture owes at once: the evidence stays weak because the
+ * output is younger than one cadence, and the signature still moves because
+ * the time still advances.
+ */
+export function stillWritingClock(
+  root: string,
+  state: RunState,
+): { now: () => number; sleep: (milliseconds: number) => Promise<void> } {
+  const clock = fakeClock()
+  let sinceLaunchMs = 0
+
+  return {
+    now: clock.now,
+    sleep: async (milliseconds) => {
+      await clock.sleep(milliseconds)
+      writeStageOutput(root, state)
+      sinceLaunchMs += 1
+      pinOutputPastLaunch(root, state, sinceLaunchMs)
+    },
+  }
+}
+
+/**
+ * Set the stage output's modification time to the launch artifact's plus
+ * `sinceLaunchMs`, which MUST stay under one cadence and MUST grow on every
+ * call.
+ */
+function pinOutputPastLaunch(
+  root: string,
+  state: RunState,
+  sinceLaunchMs: number,
+): void {
+  assert.ok(
+    sinceLaunchMs < CADENCE_SECONDS * 1000,
+    'a still-writing output must stay younger than one cadence',
+  )
+
+  const invocation = state.current_invocation!
+  const launch = statSync(
+    resolveRunLayout(root, state.run_id).invocation(
+      invocation.id,
+      '.delegation.md',
+    ).absolute,
+  )
+  const pinned = new Date(launch.mtimeMs + sinceLaunchMs)
+
+  utimesSync(path.join(root, invocation.output_path), pinned, pinned)
+}
+
 export function preparedRun(): {
   root: string
   state: RunState
@@ -61,6 +121,32 @@ export function preparedRun(): {
     invocationId: prepared.invocation.invocation_id,
     outputPath: prepared.invocation.output.path,
   }
+}
+
+/**
+ * A prepared run standing at verify, the stage that declares evidence
+ * workers. The stage worker's own role cannot express an evidence worker's
+ * declared paths, so a contract about those paths needs this run.
+ */
+export function preparedVerifyRun(): {
+  root: string
+  state: RunState
+  invocation: Invocation
+} {
+  const root = createFixture()
+  const created = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+
+  setRunStage(root, created.run_id, 'verify', 'Verify the current workspace.')
+
+  const prepared = prepareInvocation(root, created.run_id)
+
+  assert.ok(prepared.invocation)
+  assert.ok((prepared.invocation.evidence_workers ?? []).length > 0)
+
+  return { root, state: prepared.state, invocation: prepared.invocation }
 }
 
 export function writeStageOutput(root: string, state: RunState): void {

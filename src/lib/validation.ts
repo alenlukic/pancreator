@@ -2948,17 +2948,77 @@ export function evaluateStateCriterion(
   }
 }
 
+/** One accountable window between two workspace fingerprints. */
+interface AccountableWindow {
+  /** Epoch milliseconds the window closed, used only for ordering. */
+  closed_at: number
+  before: string | undefined
+  after: string
+  /** Whether the window's own adjudication permits it to carry the chain. */
+  accountable: boolean
+  source: 'ship_attempt' | 'attribution'
+}
+
 /**
- * Whether every ship attempt since the passing QA evidence forms an unbroken
- * accountability chain starting at the QA fingerprint.
+ * Windows recorded after the QA evidence that can account for a workspace
+ * delta, newest last.
  *
- * Each attempt is accountable for exactly the window between its own before and
+ * A ship attempt is accountable for the window between its own before and
  * after snapshots, and `scope.no_unapproved_changes` already adjudicates that
- * window against the stage's workspace policy. So currency across ship retries
- * needs only two things: the first attempt started from the QA fingerprint, and
- * no attempt's before-snapshot disagrees with the previous attempt's
- * after-snapshot. A gap between two attempts is an edit no stage is accountable
- * for, which breaks the chain.
+ * window against the stage's workspace policy. An out-of-stage attribution
+ * record covers the same shape for work the operator directed between stages,
+ * and carries the chain only when every path it names is a release-metadata
+ * path — the same set the `release_metadata_only` policy permits a ship
+ * attempt to touch.
+ */
+function accountableWindowsSinceQa(
+  state: RunState,
+  qaEvidence: StageHistoryItem,
+): AccountableWindow[] {
+  const qaClosedAt = Date.parse(qaEvidence.submitted_at)
+  const shipAttempts = state.stage_history
+    .slice(state.stage_history.indexOf(qaEvidence) + 1)
+    .filter((item) => item.stage === 'ship')
+    .map((attempt): AccountableWindow => {
+      const scope = attempt.deterministic.find(
+        (result) => result.id === 'scope.no_unapproved_changes',
+      )
+
+      return {
+        closed_at: Date.parse(attempt.submitted_at),
+        before: attempt.workspace_before_fingerprint,
+        after: attempt.workspace_fingerprint,
+        accountable: !scope || scope.passed,
+        source: 'ship_attempt',
+      }
+    })
+  const attributions = (state.workspace_directives ?? [])
+    .filter((record) => Date.parse(record.timestamp) > qaClosedAt)
+    .map(
+      (record): AccountableWindow => ({
+        closed_at: Date.parse(record.timestamp),
+        before: record.workspace_before_fingerprint,
+        after: record.workspace_fingerprint,
+        accountable:
+          record.changed_paths.length > 0 &&
+          record.changed_paths.every(isReleaseMetadataPath),
+        source: 'attribution',
+      }),
+    )
+
+  return [...shipAttempts, ...attributions].sort(
+    (left, right) => left.closed_at - right.closed_at,
+  )
+}
+
+/**
+ * Whether the recorded windows since the passing QA evidence form an unbroken
+ * accountability chain from the QA fingerprint to the current entry.
+ *
+ * The chain needs only two things: the first window started at the QA
+ * fingerprint, and no window's before-snapshot disagrees with the previous
+ * window's after-snapshot. A gap between two windows is an edit nothing is
+ * accountable for, which breaks the chain.
  *
  * This deliberately avoids reconstructing the QA fingerprint by subtracting a
  * predicted set of "release metadata" paths from the live tree. That covering
@@ -2966,40 +3026,38 @@ export function evaluateStateCriterion(
  * docs and README surfaces dirty that the release procedure later version-syncs
  * — and subtracting them removed feature bytes the QA fingerprint included.
  */
-function shipAttemptChainProvesCurrency(
+function shipCurrencyChain(
   state: RunState,
   qaEvidence: StageHistoryItem,
   currentBeforeFingerprint: string,
-): boolean {
-  const priorShipAttempts = state.stage_history
-    .slice(state.stage_history.indexOf(qaEvidence) + 1)
-    .filter((item) => item.stage === 'ship')
+): { proved: boolean; attribution_links: number } {
+  const windows = accountableWindowsSinceQa(state, qaEvidence)
+  const broken = { proved: false, attribution_links: 0 }
 
-  if (priorShipAttempts.length === 0) {
-    return false
+  if (windows.length === 0) {
+    return broken
   }
 
   let expectedBefore = qaEvidence.workspace_fingerprint
+  let attributionLinks = 0
 
-  for (const attempt of priorShipAttempts) {
-    // An attempt recorded before before-fingerprints were tracked cannot be
+  for (const window of windows) {
+    // A record written before before-fingerprints were tracked cannot be
     // bounded, so it cannot carry the chain.
-    if (attempt.workspace_before_fingerprint !== expectedBefore) {
-      return false
+    if (window.before !== expectedBefore || !window.accountable) {
+      return broken
     }
 
-    const scope = attempt.deterministic.find(
-      (result) => result.id === 'scope.no_unapproved_changes',
-    )
-
-    if (scope && !scope.passed) {
-      return false
+    if (window.source === 'attribution') {
+      attributionLinks += 1
     }
 
-    expectedBefore = attempt.workspace_fingerprint
+    expectedBefore = window.after
   }
 
   return expectedBefore === currentBeforeFingerprint
+    ? { proved: true, attribution_links: attributionLinks }
+    : broken
 }
 
 function resolveShipPriorGatesEvidenceFingerprint(options: {
@@ -3008,9 +3066,12 @@ function resolveShipPriorGatesEvidenceFingerprint(options: {
   beforeSnapshot: WorkspaceSnapshot
   afterSnapshot: WorkspaceSnapshot
   scopePassed: boolean
-}): string {
+}): { fingerprint: string; attribution_links: number } {
   if (options.stage.workspace_policy !== 'release_metadata_only') {
-    return options.afterSnapshot.fingerprint
+    return {
+      fingerprint: options.afterSnapshot.fingerprint,
+      attribution_links: 0,
+    }
   }
 
   const test = [...options.state.stage_history]
@@ -3023,33 +3084,42 @@ function resolveShipPriorGatesEvidenceFingerprint(options: {
   const testFingerprint = test?.workspace_fingerprint
 
   if (!testFingerprint) {
-    return options.beforeSnapshot.fingerprint
+    return {
+      fingerprint: options.beforeSnapshot.fingerprint,
+      attribution_links: 0,
+    }
   }
 
   if (options.afterSnapshot.fingerprint === testFingerprint) {
-    return testFingerprint
+    return { fingerprint: testFingerprint, attribution_links: 0 }
   }
 
   // First ship attempt: before snapshot still matches QA.
   if (options.beforeSnapshot.fingerprint === testFingerprint) {
-    return testFingerprint
+    return { fingerprint: testFingerprint, attribution_links: 0 }
   }
 
-  // Later ship attempts: the before snapshot already includes earlier ship
-  // edits. Currency holds when this attempt's own window is clean and every
-  // earlier ship attempt chains back to the QA fingerprint.
-  if (
-    options.scopePassed &&
-    shipAttemptChainProvesCurrency(
-      options.state,
-      test,
-      options.beforeSnapshot.fingerprint,
-    )
-  ) {
-    return testFingerprint
+  // Later entries: the before snapshot already includes earlier ship edits and
+  // any release-metadata work the operator directed between stages. Currency
+  // holds when this attempt's own window is clean and every earlier recorded
+  // window chains back to the QA fingerprint.
+  const chain = shipCurrencyChain(
+    options.state,
+    test,
+    options.beforeSnapshot.fingerprint,
+  )
+
+  if (options.scopePassed && chain.proved) {
+    return {
+      fingerprint: testFingerprint,
+      attribution_links: chain.attribution_links,
+    }
   }
 
-  return options.beforeSnapshot.fingerprint
+  return {
+    fingerprint: options.beforeSnapshot.fingerprint,
+    attribution_links: 0,
+  }
 }
 
 function workspaceDelta(
@@ -3613,7 +3683,7 @@ export function evaluateDeterministicCriteria(
         continue
       }
 
-      const evidenceFingerprint = resolveShipPriorGatesEvidenceFingerprint({
+      const evidence = resolveShipPriorGatesEvidenceFingerprint({
         state,
         stage,
         beforeSnapshot,
@@ -3623,19 +3693,22 @@ export function evaluateDeterministicCriteria(
       const result = evaluateStateCriterion(
         state,
         criterion,
-        evidenceFingerprint,
+        evidence.fingerprint,
       )
       const releaseMetadataNormalized =
         stage.workspace_policy === 'release_metadata_only' &&
         criterion.id === 'ship.prior_gates_current' &&
-        evidenceFingerprint !== afterSnapshot.fingerprint
+        evidence.fingerprint !== afterSnapshot.fingerprint
+      const chainBasis =
+        evidence.attribution_links > 0
+          ? `Every ship attempt and ${evidence.attribution_links} same-run release-metadata attribution record${evidence.attribution_links === 1 ? '' : 's'} since QA chains back to the QA fingerprint with an adjudicated window, so release-metadata edits do not invalidate the reviewed implementation fingerprint.`
+          : 'Every ship attempt since QA chains back to the QA fingerprint with an adjudicated scope window, so ship-stage edits do not invalidate the reviewed implementation fingerprint.'
 
       results.push(
         releaseMetadataNormalized
           ? {
               ...result,
-              explanation:
-                `${result.explanation ?? ''} Every ship attempt since QA chains back to the QA fingerprint with an adjudicated scope window, so ship-stage edits do not invalidate the reviewed implementation fingerprint.`.trim(),
+              explanation: `${result.explanation ?? ''} ${chainBasis}`.trim(),
               workspace_fingerprint: afterSnapshot.fingerprint,
             }
           : result,

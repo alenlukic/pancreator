@@ -10,12 +10,8 @@ import {
   delegationValidationPath,
 } from '../../src/lib/validation.js'
 import { stageBySlug } from '../../src/lib/workflow.js'
-import {
-  makeOutput,
-  writeCanonicalDelegation,
-  writeJson,
-  submitAsSupervisor,
-} from '../helpers.js'
+import { makeOutput, writeCanonicalDelegation, writeJson } from '../helpers.js'
+import { submitAsSupervisor } from '../run-helpers.js'
 import { checkpoint } from './delivery-helpers.js'
 
 test('submit records missing delegation as an advisory governance warning', () => {

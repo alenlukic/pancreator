@@ -1,7 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { appendFileSync } from 'node:fs'
-import { createFixture, createRun } from '../helpers.js'
+import { createFixture } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 import { getRunState } from '../../src/lib/engine.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 

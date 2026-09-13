@@ -258,10 +258,14 @@ test('a cohort whose every chunk is abandoned integrates as a no-op and unblocks
   abandonChunk(root, session.cohort_id, 'alpha', 'Dropped by the operator.')
 
   // The abandonment is a recorded operator decision, so the session must not
-  // deadlock: status offers integration, and integration records satisfaction
-  // without a merge because there is nothing to merge.
+  // deadlock: it still offers the command that records satisfaction without a
+  // merge. HR3-010: that command is no longer advertised as an integration,
+  // because an abandoned-only cohort has no branch to merge.
+  const offered = cohortStatus(root, session.cohort_id)
+
+  assert.equal(offered.integrate_command, null)
   assert.equal(
-    cohortStatus(root, session.cohort_id).integrate_command,
+    offered.record_abandoned_cohort_command,
     `./bin/pan cohort integrate ${session.cohort_id}`,
   )
 

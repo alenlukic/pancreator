@@ -1,12 +1,16 @@
 import assert from 'node:assert/strict'
+import { mkdirSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import {
   HARNESS_REPAIR_CATEGORIES_PATH,
+  harnessRepairCategoryErrors,
+  loadHarnessRepairCategories,
   parseHarnessRepairCategories,
 } from '../../src/lib/governance/harness-repair-categories.js'
-import { readJson } from '../../src/lib/io.js'
+import { readJson, writeJsonAtomic } from '../../src/lib/io.js'
+import { createTestTempDirectory } from '../temp.js'
 
 const REPO_ROOT = process.cwd()
 
@@ -36,6 +40,92 @@ test('the shape check rejects a duplicate slug', () => {
   assert.ok(
     result.errors.some((error) => error.includes('duplicates category slug')),
   )
+})
+
+test('the shape check rejects a slug the pattern does not admit', () => {
+  const result = parseHarnessRepairCategories(
+    withCategories((categories) => {
+      categories[0].slug = 'Out-Of-Band'
+      return categories
+    }),
+  )
+
+  assert.ok(
+    result.errors.some((error) =>
+      error.includes('.slug MUST use lowercase hyphenated words'),
+    ),
+  )
+})
+
+test('the shape check rejects a duplicate category id', () => {
+  const result = parseHarnessRepairCategories(
+    withCategories((categories) => [
+      ...categories,
+      { ...categories[0], slug: `${categories[0].slug as string}-copy` },
+    ]),
+  )
+
+  assert.ok(
+    result.errors.some((error) => error.includes('duplicates category id')),
+  )
+})
+
+test('the shape check rejects a registry that does not declare schema_version 1', () => {
+  for (const schemaVersion of [undefined, 2]) {
+    const registry = shippedRegistry()
+
+    if (schemaVersion === undefined) {
+      delete registry.schema_version
+    } else {
+      registry.schema_version = schemaVersion
+    }
+
+    const result = parseHarnessRepairCategories(registry)
+
+    assert.deepEqual(result.categories, [])
+    assert.deepEqual(result.errors, [
+      `${HARNESS_REPAIR_CATEGORIES_PATH} MUST declare schema_version 1.`,
+    ])
+  }
+})
+
+test('the loader reads the shipped registry and reports no error for it', () => {
+  const categories = loadHarnessRepairCategories(REPO_ROOT)
+
+  assert.ok(categories.length > 0)
+
+  for (const category of categories) {
+    assert.match(category.slug, /^[a-z0-9]+(?:-[a-z0-9]+)*$/u)
+    assert.ok(category.id.length > 0)
+    assert.ok(category.display_name.length > 0)
+    assert.ok(category.scope.length > 0)
+    assert.ok(category.next_action_contract.required_tokens.length > 0)
+  }
+
+  assert.deepEqual(harnessRepairCategoryErrors(REPO_ROOT), [])
+})
+
+test('the loader refuses a registry the shape check rejects', () => {
+  const root = createTestTempDirectory('harness-repair-categories-loader')
+  const registryPath = path.join(root, HARNESS_REPAIR_CATEGORIES_PATH)
+
+  mkdirSync(path.dirname(registryPath), { recursive: true })
+  writeJsonAtomic(
+    registryPath,
+    withCategories((categories) => {
+      categories[0].slug = 'Out-Of-Band'
+      return categories
+    }),
+  )
+
+  assert.ok(
+    harnessRepairCategoryErrors(root).some((error) =>
+      error.includes('.slug MUST use lowercase hyphenated words'),
+    ),
+  )
+  assert.throws(() => loadHarnessRepairCategories(root), {
+    code: 'INVALID_HARNESS_REPAIR_CATEGORIES',
+  })
 })
 
 test('the shape check rejects a missing field', () => {

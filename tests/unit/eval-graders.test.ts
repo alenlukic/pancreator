@@ -230,6 +230,37 @@ class SyntheticRun {
     return this
   }
 
+  /** Append executions to the run's agent profile ledger. */
+  ledger(
+    entries: {
+      profile: string
+      invocationId?: string
+      status?: string
+      invokedBy?: 'agent' | 'harness'
+      evidenceLog?: string
+    }[],
+  ): this {
+    writeFileSync(
+      path.join(this.agent, 'evidence', 'repository-check-runs.jsonl'),
+      `${entries
+        .map((entry) =>
+          JSON.stringify({
+            profile: entry.profile,
+            invocation_id: entry.invocationId ?? null,
+            workspace_fingerprint: 'fp',
+            status: entry.status ?? 'passed',
+            duration_ms: 1,
+            started_at: '2026-08-29T00:00:00.000Z',
+            invoked_by: entry.invokedBy ?? 'agent',
+            ...(entry.evidenceLog ? { evidence_log: entry.evidenceLog } : {}),
+          }),
+        )
+        .join('\n')}\n`,
+    )
+
+    return this
+  }
+
   evidenceFile(name: string, content: string): this {
     writeFileSync(path.join(this.agent, 'evidence', name), content)
 
@@ -345,7 +376,134 @@ function grade(
   })
 }
 
-test('profile-executions counts baselines, live gates, and agent mentions', () => {
+test('profile-executions counts one agent execution per ledger entry', () => {
+  // The ledger is the record of what an agent executed, so two runs of one
+  // profile count as two even when no output names a command at all.
+  const run = new SyntheticRun()
+    .addHistory({ stage: 'implement', attempt: 1, invocationId: 'i1' })
+    .output('i1', 'success', {
+      implementation: { notes: ['The change is complete.'] },
+    })
+    .ledger([
+      { profile: 'fast', invocationId: 'i1', evidenceLog: 'log-1' },
+      { profile: 'fast', invocationId: 'i1' },
+    ])
+    .write()
+
+  try {
+    const { executions } = collectProfileExecutions(
+      loadRunRecords(run.root, RUN_ID),
+    )
+
+    assert.deepEqual(
+      executions.map(
+        (execution) =>
+          `${execution.stage}/${execution.attempt}/${execution.profile}/${execution.source}/${execution.basis}/${execution.evidence}`,
+      ),
+      [
+        'implement/1/fast/agent/agent_ledger/log-1',
+        `implement/1/fast/agent/agent_ledger/${run.relative('evidence', 'repository-check-runs.jsonl')}`,
+      ],
+    )
+
+    const verdict = grade(run, { id: 'profile-executions' })
+
+    assert.equal(verdict.passed, false)
+    assert.match(
+      String((verdict.details.violations as string[])[0]),
+      /fast\/agent\/attempt:implement#1: 2 execution\(s\), max 1/u,
+    )
+    assert.deepEqual(verdict.details.counts_by_basis, { agent_ledger: 2 })
+  } finally {
+    run.dispose()
+  }
+})
+
+test('profile-executions grades one ledger the same however the worker worded its summary', () => {
+  // The defect this replaces graded a release steward's citation of the full
+  // profile as an execution of it, so two runs of identical harness behavior
+  // reached opposite verdicts on wording alone.
+  const wordings = [
+    'Final validation passed.',
+    'Final validation passed. The harness ran the full profile ' +
+      '(`pan repository-check full`) as the ship release gate, and ' +
+      '`npm run check` and `npm run test:coverage` are its commands.',
+  ]
+
+  const verdicts = wordings.map((notes) => {
+    const run = new SyntheticRun()
+      .addHistory({ stage: 'implement', attempt: 1, invocationId: 'i1' })
+      .output('i1', 'success', { implementation: { notes: [notes] } })
+      .ledger([{ profile: 'fast', invocationId: 'i1' }])
+      .write()
+
+    try {
+      const { executions } = collectProfileExecutions(
+        loadRunRecords(run.root, RUN_ID),
+      )
+
+      assert.deepEqual(
+        executions.filter((execution) => execution.profile === 'full'),
+        [],
+        'a cited command is not an execution of it',
+      )
+
+      return grade(run, { id: 'profile-executions' })
+    } finally {
+      run.dispose()
+    }
+  })
+
+  assert.equal(verdicts[0].passed, true, verdicts[0].summary)
+  assert.equal(verdicts[1].passed, true, verdicts[1].summary)
+  assert.deepEqual(verdicts[0].details.counts_by_basis, { agent_ledger: 1 })
+  assert.deepEqual(verdicts[1].details.counts_by_basis, { agent_ledger: 1 })
+
+  // The graded outcome still decides: a second recorded fast run fails.
+  const repeated = new SyntheticRun()
+    .addHistory({ stage: 'implement', attempt: 1, invocationId: 'i1' })
+    .output('i1', 'success', { implementation: { notes: [wordings[0]] } })
+    .ledger([
+      { profile: 'fast', invocationId: 'i1' },
+      { profile: 'fast', invocationId: 'i1' },
+    ])
+    .write()
+
+  try {
+    assert.equal(grade(repeated, { id: 'profile-executions' }).passed, false)
+  } finally {
+    repeated.dispose()
+  }
+})
+
+test('profile-executions ignores a harness-initiated ledger entry', () => {
+  // The release-profile prefetch is harness work recorded in the same file.
+  // Counting it as agent-side would fail every run that reached ship.
+  const run = new SyntheticRun()
+    .addHistory({ stage: 'implement', attempt: 1, invocationId: 'i1' })
+    .output('i1', 'success', { implementation: { notes: ['done'] } })
+    .ledger([
+      { profile: 'full', invocationId: 'i1', invokedBy: 'harness' },
+      { profile: 'fast', invocationId: 'i1', invokedBy: 'agent' },
+    ])
+    .write()
+
+  try {
+    const { executions } = collectProfileExecutions(
+      loadRunRecords(run.root, RUN_ID),
+    )
+
+    assert.deepEqual(
+      executions.map((execution) => execution.profile),
+      ['fast'],
+    )
+    assert.equal(grade(run, { id: 'profile-executions' }).passed, true)
+  } finally {
+    run.dispose()
+  }
+})
+
+test('profile-executions counts baselines, live gates, and agent mentions when the run holds no ledger', () => {
   const run = new SyntheticRun()
     .baseline('static')
     .baseline('fast')
@@ -393,6 +551,18 @@ test('profile-executions counts baselines, live gates, and agent mentions', () =
       'implement/b/fast/baseline',
       'implement/b/static/baseline',
     ])
+
+    assert.deepEqual(
+      [
+        ...new Set(
+          executions
+            .filter((execution) => execution.source === 'agent')
+            .map((execution) => execution.basis),
+        ),
+      ],
+      ['output_text'],
+      'a run with no ledger falls back to the declared output-text scan',
+    )
 
     // A string that names the command twice is one mention: the grader counts
     // strings, not substrings, so prose cannot inflate the count.

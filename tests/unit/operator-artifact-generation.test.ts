@@ -15,12 +15,11 @@ import type { RunState } from '../../src/lib/types.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
-  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
-  submitAsSupervisor,
 } from '../helpers.js'
+import { createRun, submitAsSupervisor } from '../run-helpers.js'
 
 function submitSuppressedPlan(root: string): {
   runId: string

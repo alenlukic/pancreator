@@ -23,13 +23,17 @@ import {
   recordProfileGatePass,
   REPOSITORY_CHECK_FAST_REPEATED,
   repositoryChecksSourcePath,
+  reusableProfileExecution,
   runRepositorySetup,
   runRepositoryCheck,
   runRepositoryCheckStreaming,
   SUMMARY_STREAM_HEAD_BYTES,
   SUMMARY_STREAM_TAIL_BYTES,
 } from '../../src/lib/repository-checks.js'
-import type { RepositoryCheckResult } from '../../src/lib/repository-checks.js'
+import type {
+  RepositoryCheckResult,
+  ReusableProfileExecution,
+} from '../../src/lib/repository-checks.js'
 import {
   gateCacheKey,
   gateCacheLookup,
@@ -41,10 +45,10 @@ import { loadRepositoryCheckBaseline } from '../../src/lib/validation.js'
 import type { RunState } from '../../src/lib/types.js'
 import {
   createFixture,
-  createRun,
   createTestTempDirectory,
   writeJson,
 } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 
 /** The checkout under test, which `bin/run-tests` runs the suite from. */
 const REPO_ROOT = process.cwd()
@@ -648,6 +652,14 @@ test('a concurrent profile runs its commands together and records each one', asy
   const { root } = makeInstallation()
   const delayMs = 900
   const stdout: string[] = []
+  // TP-10: each command brackets its own delay in a shared log. An elapsed
+  // ceiling would measure the scheduling of a suite that runs its own tests
+  // concurrently; the recorded order measures these three commands.
+  const bracketLog = path.join(root, 'brackets.txt')
+  const bracketed = (body: string) =>
+    `node -e "const fs=require('fs');const log='${bracketLog}';` +
+    `fs.appendFileSync(log,'start\\n');` +
+    `setTimeout(() => { ${body}; fs.appendFileSync(log,'end\\n') }, ${delayMs})"`
 
   writeChecks(root, {
     full: {
@@ -655,18 +667,17 @@ test('a concurrent profile runs its commands together and records each one', asy
       concurrent: true,
       probes: [],
       commands: [
-        `node -e "setTimeout(() => process.stdout.write('alpha\\n'), ${delayMs})"`,
-        `node -e "setTimeout(() => { process.stderr.write('beta\\n'); process.exit(2) }, ${delayMs})"`,
-        `node -e "setTimeout(() => process.stdout.write('gamma\\n'), ${delayMs})"`,
+        bracketed("process.stdout.write('alpha\\n')"),
+        bracketed("process.stderr.write('beta\\n'); process.exitCode = 2"),
+        bracketed("process.stdout.write('gamma\\n')"),
       ],
     },
   })
 
-  const startedAt = Date.now()
   const result = await runRepositoryCheckStreaming(root, 'full', {
     on_stdout: (chunk) => stdout.push(chunk),
   })
-  const elapsed = Date.now() - startedAt
+  const brackets = readFileSync(bracketLog, 'utf8').split('\n').filter(Boolean)
 
   // One command failed, so the profile failed, but every command ran.
   assert.equal(result.status, 'failed')
@@ -679,10 +690,14 @@ test('a concurrent profile runs its commands together and records each one', asy
   assert.match(result.results[1]?.stderr ?? '', /beta/u)
   assert.match(result.results[2]?.stdout ?? '', /gamma/u)
   assert.match(stdout.join(''), /alpha/u)
-  assert.ok(
-    elapsed < delayMs * 2,
-    `the three commands took ${elapsed}ms; they ran one after another`,
+
+  // Every command started before the first one finished.
+  assert.deepEqual(
+    brackets.slice(0, 3),
+    ['start', 'start', 'start'],
+    brackets.join(','),
   )
+  assert.equal(brackets.length, 6)
 })
 
 test('a concurrent profile ends every unfinished command at the shared deadline', async () => {
@@ -1406,6 +1421,69 @@ test('an agent clean profile pass is recorded where the gate looks for it', () =
   assert.match(evidence, /invoked_by=command-line/u)
 })
 
+// The verify stage permits each of its evidence workers one profile run, and
+// two of them land at one workspace fingerprint often. Both passes used to
+// derive the same log name, so the second execution overwrote the first one's
+// bytes and the ledger carried two entries pointing at one body.
+test('two permitted executions at one fingerprint keep their own evidence logs', () => {
+  const root = createFixture()
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+  const fingerprint = gitWorkspaceSnapshot(root).fingerprint
+  const options = {
+    run_ids: [run.run_id],
+    fingerprint_before: fingerprint,
+    started_at: '2026-09-12T09:00:00.000Z',
+  }
+  const passes = ['review', 'qa'].map((role) => {
+    const result = commandLineResult(root)
+    const recorded = recordProfileGatePass(root, 'fast', result, options)
+
+    assert.ok(recorded, `${role} stored its pass`)
+    recordAgentRepositoryCheckForRuns(
+      root,
+      [run.run_id],
+      result,
+      options.started_at,
+      'agent',
+      recorded.evidence_path,
+    )
+
+    return recorded
+  })
+
+  assert.equal(
+    new Set(passes.map((pass) => pass.evidence_path)).size,
+    2,
+    'each execution owns a distinct log path',
+  )
+
+  // Both bodies survive, and each ledger entry resolves to its own.
+  const ledger = readFileSync(
+    resolveRunLayout(root, run.run_id).evidence(
+      AGENT_REPOSITORY_CHECK_RUNS_FILE,
+    ).absolute,
+    'utf8',
+  )
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line) as { evidence_log: string | null })
+
+  assert.deepEqual(
+    ledger.map((entry) => entry.evidence_log),
+    passes.map((pass) => pass.evidence_path),
+  )
+
+  for (const entry of ledger) {
+    assert.match(
+      readFileSync(path.join(root, entry.evidence_log ?? ''), 'utf8'),
+      /^\$ pan repository-check fast$/mu,
+    )
+  }
+})
+
 test('an agent profile run that proves nothing is not recorded as a pass', () => {
   const root = createFixture()
   const run = createRun(root, {
@@ -1480,4 +1558,180 @@ test('an agent profile run that proves nothing is not recorded as a pass', () =>
     ),
     null,
   )
+})
+
+/** The ledger a run holds of the profile executions recorded against it. */
+function ledgerEntries(root: string, runId: string): Record<string, unknown>[] {
+  const ledger = resolveRunLayout(root, runId).evidence(
+    AGENT_REPOSITORY_CHECK_RUNS_FILE,
+  ).absolute
+
+  return existsSync(ledger)
+    ? readFileSync(ledger, 'utf8')
+        .trim()
+        .split('\n')
+        .map((line) => JSON.parse(line) as Record<string, unknown>)
+    : []
+}
+
+// HR3-006: the ledger already held the pass, and the next request for the
+// same profile executed the suite again anyway. Nothing about the workspace
+// had moved, so the second execution bought the run nothing.
+test('a recorded pass answers a repeated request for the same profile', () => {
+  const root = createFixture()
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+  const layout = resolveRunLayout(root, run.run_id)
+  const ledger = layout.evidence(AGENT_REPOSITORY_CHECK_RUNS_FILE)
+  const fingerprint = gitWorkspaceSnapshot(root).fingerprint
+  // The pass an agent's own command-line run stores, and the ledger entry
+  // that points a later reader at its bytes.
+  const pass = recordProfileGatePass(root, 'fast', commandLineResult(root), {
+    run_ids: [run.run_id],
+    fingerprint_before: fingerprint,
+    started_at: '2026-09-13T09:00:00.000Z',
+  })
+
+  assert.ok(pass)
+  mkdirSync(path.dirname(ledger.absolute), { recursive: true })
+  writeFileSync(
+    ledger.absolute,
+    `${JSON.stringify({
+      profile: 'fast',
+      invocation_id: 'implement-1',
+      workspace_fingerprint: fingerprint,
+      status: 'passed',
+      duration_ms: 90_000,
+      started_at: '2026-09-13T09:00:00.000Z',
+      invoked_by: 'agent',
+      evidence_log: pass.evidence_path,
+    })}\n`,
+  )
+
+  // The reuse names the execution it stands in for, so the worker cites that
+  // run rather than describing an execution it did not perform.
+  assert.deepEqual(
+    reusableProfileExecution(
+      root,
+      run.run_id,
+      'implement-1',
+      'fast',
+      fingerprint,
+    ),
+    {
+      profile: 'fast',
+      invocation_id: 'implement-1',
+      workspace_fingerprint: fingerprint,
+      started_at: '2026-09-13T09:00:00.000Z',
+      invoked_by: 'agent',
+      evidence_log: pass.evidence_path,
+      ledger_path: ledger.relative,
+    },
+  )
+
+  // Reuse reads the ledger and writes nothing, so no second entry claims a
+  // fresh execution.
+  assert.equal(ledgerEntries(root, run.run_id).length, 1)
+})
+
+test('a reusable pass needs the same invocation, fingerprint, profile, and clean result', () => {
+  const root = createFixture()
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+  const ledger = resolveRunLayout(root, run.run_id).evidence(
+    AGENT_REPOSITORY_CHECK_RUNS_FILE,
+  ).absolute
+  const fingerprint = gitWorkspaceSnapshot(root).fingerprint
+  const entry = (overrides: Record<string, unknown> = {}): string =>
+    `${JSON.stringify({
+      profile: 'fast',
+      invocation_id: 'implement-1',
+      workspace_fingerprint: fingerprint,
+      status: 'passed',
+      duration_ms: 1,
+      started_at: '2026-09-13T09:00:00.000Z',
+      invoked_by: 'agent',
+      ...overrides,
+    })}\n`
+  const reuse = (
+    invocationId: string | null,
+    profileName: string,
+    observed: string,
+  ): ReusableProfileExecution | null =>
+    reusableProfileExecution(
+      root,
+      run.run_id,
+      invocationId,
+      profileName,
+      observed,
+    )
+
+  // A run that has recorded nothing has nothing to reuse.
+  assert.equal(reuse('implement-1', 'fast', fingerprint), null)
+
+  mkdirSync(path.dirname(ledger), { recursive: true })
+  writeFileSync(ledger, entry())
+
+  assert.ok(reuse('implement-1', 'fast', fingerprint))
+
+  // A different tree, another invocation's allowance, and another profile
+  // each describe work this record does not cover.
+  assert.equal(reuse('implement-1', 'fast', 'a'.repeat(64)), null)
+  assert.equal(reuse('verify-1', 'fast', fingerprint), null)
+  assert.equal(reuse('implement-1', 'static', fingerprint), null)
+
+  // A failure has to re-run to show its repair.
+  writeFileSync(ledger, entry({ status: 'failed' }))
+  assert.equal(reuse('implement-1', 'fast', fingerprint), null)
+
+  // The newest matching entry wins, so a reader follows the bytes that
+  // execution actually left behind.
+  writeFileSync(
+    ledger,
+    [
+      entry({ evidence_log: 'agent/evidence/first.log' }),
+      entry({ evidence_log: 'agent/evidence/second.log' }),
+    ].join(''),
+  )
+  assert.equal(
+    reuse('implement-1', 'fast', fingerprint)?.evidence_log,
+    'agent/evidence/second.log',
+  )
+})
+
+// Deduplication makes an ordinary repeat invisible, so the forced repeat has
+// to leave a mark: otherwise a worker that chose to spend the suite again
+// looks identical to one that never asked.
+test('a forced repeat is recorded as a deliberate rerun', () => {
+  const root = createFixture()
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+
+  recordAgentRepositoryCheckForRuns(
+    root,
+    [run.run_id],
+    commandLineResult(root),
+    '2026-09-13T09:00:00.000Z',
+  )
+  recordAgentRepositoryCheckForRuns(
+    root,
+    [run.run_id],
+    commandLineResult(root),
+    '2026-09-13T09:30:00.000Z',
+    'agent',
+    null,
+    true,
+  )
+
+  const entries = ledgerEntries(root, run.run_id)
+
+  assert.equal(entries.length, 2)
+  assert.equal(entries[0].forced_repeat, undefined)
+  assert.equal(entries[1].forced_repeat, true)
 })

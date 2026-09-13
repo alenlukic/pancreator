@@ -8,7 +8,8 @@ import {
   prepareInvocation,
   setRunStage,
 } from '../../src/lib/engine.js'
-import { createFixture, createRun, writeJson } from '../helpers.js'
+import { createFixture, writeJson } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 import type { RunState } from '../../src/lib/types.js'
 
 /**

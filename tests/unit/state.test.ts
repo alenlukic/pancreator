@@ -21,7 +21,8 @@ import type {
   StageHistoryItem,
   WorktreeClaimTransfer,
 } from '../../src/lib/types.js'
-import { createFixture, createRun, writeJson } from '../helpers.js'
+import { createFixture, writeJson } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 
 test('state events use recoverable content-addressed references', () => {
   const root = createFixture()

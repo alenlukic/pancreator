@@ -72,3 +72,42 @@ export function activeOperatorGateWaivers(
     })
   })
 }
+
+/**
+ * Whether one waiver's declared scope covers one criterion of one stage.
+ *
+ * `*` is the whole-stage scope the waiver command writes when the operator
+ * names no criterion.
+ */
+export function waiverCoversCriterion(
+  waiver: Pick<OperatorGateWaiver, 'stage' | 'criterion_ids'>,
+  stageSlug: string,
+  criterionId: string,
+): boolean {
+  return (
+    waiver.stage === stageSlug &&
+    (waiver.criterion_ids.includes('*') ||
+      waiver.criterion_ids.includes(criterionId))
+  )
+}
+
+/**
+ * Newest active waiver covering a stage's entry-gate criterion, or null.
+ *
+ * The entry gate reads the same waiver set the submission gate reads, so an
+ * operator directive reaches the gate that runs before delegation instead of
+ * being silently confined to the gate that runs after it.
+ */
+export function entryGateWaiver(
+  state: WaiverStateLike,
+  stageSlug: string,
+  criterionId: string,
+): OperatorGateWaiver | null {
+  return (
+    [...activeOperatorGateWaivers(state)]
+      .reverse()
+      .find((waiver) =>
+        waiverCoversCriterion(waiver, stageSlug, criterionId),
+      ) ?? null
+  )
+}

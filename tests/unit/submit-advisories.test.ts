@@ -16,7 +16,8 @@ import {
   markDelegationBackground,
   watchInvocation,
 } from '../../src/lib/watch.js'
-import { createFixture, createRun, read, writeJson } from '../helpers.js'
+import { createFixture, read, writeJson } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 import { CADENCE_SECONDS, fillPreparedOutput } from './watch-helpers.js'
 
 // Run 63296 int-con HR-004: a submission recorded a platform-guidance conflict

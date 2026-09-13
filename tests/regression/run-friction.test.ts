@@ -20,12 +20,11 @@ import { scaffoldStageOutput } from '../../src/lib/requirements/scaffold.js'
 import { validatePlanTrace } from '../../src/lib/validators/stage-validators.js'
 import {
   createFixture,
-  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
-  submitAsSupervisor,
 } from '../helpers.js'
+import { createRun, submitAsSupervisor } from '../run-helpers.js'
 import type { Invocation } from '../../src/lib/types.js'
 import { createTestTempDirectory } from '../temp.js'
 

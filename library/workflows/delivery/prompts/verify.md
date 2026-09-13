@@ -20,7 +20,9 @@ find.
    release run, the acceptance criteria and validation cases are the child
    specifications the card lists. A missing or empty evidence report is a
    blocked stage, not a judgment call: report `blocked` and name the missing
-   path.
+   path. A report that carries cases but no `<!-- evidence-report: complete -->`
+   line is the partial record of an interrupted worker: consolidate the cases
+   it does hold, and state in your output which dimensions it left uncovered.
 2. Reconcile the two reports. Where they disagree about the same behavior,
    reproduce the disputed observation yourself before grading it.
 3. Spot-check, do not redo. Verify the reports' critical claims: rerun one
@@ -85,6 +87,10 @@ Populate `data.verify` (`verdict`, `findings`, `qa_cases`,
 `severity_rationale` on `fail_severe`). Carry the QA report's executed cases
 into `qa_cases` — each states `id`, `steps`, `expected`, `actual`, and
 `result` — and cite the evidence report path for cases you did not rerun.
+On a return visit after a remediation, a case carried from the earlier
+verification instead of executed again also states `carried_from` with the
+prior `invocation_id` and its `workspace_fingerprint`. That bound applies to
+case coverage only; it changes no profile allowance.
 Each acceptance result states the criterion `id`, a `result`, and evidence.
 Set the output `result` to `success` for `pass` and `pass_with_warnings`, and
 to `failure` for `fail_remedial` and `fail_severe`. Do not launch subagents;

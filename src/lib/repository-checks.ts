@@ -33,7 +33,11 @@ import {
   configuredWorkspaceRoot,
   isSelfDevelopmentInstallation,
 } from './project-config.js'
-import { resolveRunLayout } from './run-layout.js'
+import {
+  attemptStampedName,
+  nextAttemptOrdinal,
+  resolveRunLayout,
+} from './run-layout.js'
 import { liveRunsBoundToWorktree, loadState } from './state.js'
 import type {
   RepositoryCheckDelta,
@@ -965,6 +969,18 @@ export function recordAgentRepositoryCheckForRuns(
   result: RepositoryCheckResult,
   startedAt: string,
   initiator: RepositoryCheckInitiator = 'agent',
+  /**
+   * Log this execution left behind, when it stored a clean pass. Two
+   * permitted executions at one fingerprint keep separate logs, so an entry
+   * that does not name its own log sends a reader to the wrong bytes.
+   */
+  evidenceLog: string | null = null,
+  /**
+   * The worker asked for this repeat by name over a reusable recorded pass.
+   * Deduplication makes an ordinary repeat invisible in the ledger, so a
+   * repeat that did execute has to say that someone chose it.
+   */
+  forcedRepeat = false,
 ): string[] {
   const recorded: string[] = []
   let fingerprint: string | null = null
@@ -984,11 +1000,93 @@ export function recordAgentRepositoryCheckForRuns(
       duration_ms: result.total_duration_ms,
       started_at: startedAt,
       invoked_by: initiator,
+      ...(evidenceLog ? { evidence_log: evidenceLog } : {}),
+      ...(forcedRepeat ? { forced_repeat: true } : {}),
     })
     recorded.push(evidence.relative)
   }
 
   return recorded
+}
+
+/** A recorded passing execution that answers a repeated request for a profile. */
+export interface ReusableProfileExecution {
+  profile: string
+  invocation_id: string | null
+  workspace_fingerprint: string
+  started_at: string
+  invoked_by: RepositoryCheckInitiator
+  /** Captured output of that execution, when it stored a clean pass. */
+  evidence_log: string | null
+  /** Ledger the entry was read from, so the caller can cite its source. */
+  ledger_path: string
+}
+
+/**
+ * The recorded pass a repeated run-bound profile request reuses, or `null`
+ * when the request has to execute (`DEV-001`).
+ *
+ * A ledger entry answers a later request only when nothing it describes has
+ * moved: the same profile, under the same invocation, at the same Git
+ * workspace fingerprint, and passing. A failure has to re-run to show its
+ * repair, and any other fingerprint describes a different tree.
+ */
+export function reusableProfileExecution(
+  root: string,
+  runId: string,
+  invocationId: string | null,
+  profileName: string,
+  fingerprint: string,
+): ReusableProfileExecution | null {
+  const evidence = resolveRunLayout(root, runId).evidence(
+    AGENT_REPOSITORY_CHECK_RUNS_FILE,
+  )
+
+  if (!fileExists(evidence.absolute)) {
+    return null
+  }
+
+  let reusable: ReusableProfileExecution | null = null
+
+  for (const line of readText(evidence.absolute).split('\n')) {
+    if (line.trim().length === 0) {
+      continue
+    }
+
+    let record: unknown
+
+    try {
+      record = JSON.parse(line)
+    } catch {
+      continue
+    }
+
+    if (
+      !isRecord(record) ||
+      record.profile !== profileName ||
+      record.status !== 'passed' ||
+      record.workspace_fingerprint !== fingerprint ||
+      (record.invocation_id ?? null) !== invocationId
+    ) {
+      continue
+    }
+
+    // The newest matching entry wins: its evidence log is the one a reader
+    // sent to these bytes should land on.
+    reusable = {
+      profile: profileName,
+      invocation_id: invocationId,
+      workspace_fingerprint: fingerprint,
+      started_at:
+        typeof record.started_at === 'string' ? record.started_at : '',
+      invoked_by: record.invoked_by === 'harness' ? 'harness' : 'agent',
+      evidence_log:
+        typeof record.evidence_log === 'string' ? record.evidence_log : null,
+      ledger_path: evidence.relative,
+    }
+  }
+
+  return reusable
 }
 
 /**
@@ -998,11 +1096,44 @@ export function recordAgentRepositoryCheckForRuns(
  * execution, so both derive the name from the profile and the fingerprint the
  * store already requires to be unchanged.
  */
-export function agentGatePassArtifactId(
+export function agentGatePassArtifactStem(
   profileName: string,
   fingerprint: string,
 ): string {
   return `agent-repository-check-${profileName}-${fingerprint.slice(0, 12)}`
+}
+
+export function agentGatePassArtifactId(
+  profileName: string,
+  fingerprint: string,
+  attempt = 1,
+): string {
+  return attemptStampedName(
+    agentGatePassArtifactStem(profileName, fingerprint),
+    attempt,
+    '',
+  )
+}
+
+/**
+ * The ordinal the next permitted execution of one profile owns in a run.
+ *
+ * A stage with parallel evidence workers permits several agents one run
+ * each, and they can land at one workspace fingerprint. Without an ordinal
+ * the second execution overwrites the first one's log, and the ledger then
+ * carries two entries pointing at one body.
+ */
+export function nextAgentGatePassAttempt(
+  root: string,
+  runId: string,
+  profileName: string,
+  fingerprint: string,
+): number {
+  return nextAttemptOrdinal(
+    resolveRunLayout(root, runId).evidence('.').absolute,
+    agentGatePassArtifactStem(profileName, fingerprint),
+    '.log',
+  )
 }
 
 /**
@@ -1018,6 +1149,7 @@ export function agentGatePassSuiteProfile(
   runId: string,
   profileName: string,
   fingerprint: string,
+  attempt = 1,
 ): { absolute: string; relative: string } | null {
   if (profileName !== SUITE_PROFILE_GATE_PROFILE) {
     return null
@@ -1027,7 +1159,7 @@ export function agentGatePassSuiteProfile(
     path.basename(
       suiteProfileEvidencePath(
         '.',
-        agentGatePassArtifactId(profileName, fingerprint),
+        agentGatePassArtifactId(profileName, fingerprint, attempt),
       ),
     ),
   )
@@ -1045,6 +1177,12 @@ export interface RecordProfileGatePassOptions {
   /** Git workspace fingerprint observed immediately before the run started. */
   fingerprint_before: string | null
   started_at: string
+  /**
+   * Ordinal this execution owns among permitted runs at the same fingerprint.
+   * The caller resolves it before the run so the suite-profile target and the
+   * log agree; omitted, it is resolved here.
+   */
+  attempt?: number
 }
 
 /**
@@ -1087,8 +1225,11 @@ export function recordProfileGatePass(
 
   const command = repositoryCheckGateCommand(profileName)
   const cacheKey = gateCacheKey(root, snapshot.fingerprint, command)
+  const attempt =
+    options.attempt ??
+    nextAgentGatePassAttempt(root, runId, profileName, snapshot.fingerprint)
   const evidence = resolveRunLayout(root, runId).evidence(
-    `${agentGatePassArtifactId(profileName, snapshot.fingerprint)}.log`,
+    `${agentGatePassArtifactId(profileName, snapshot.fingerprint, attempt)}.log`,
   )
   // The execution wrote its profile only when this command told the reporter
   // where to put it, which it does for the profiled profile and a named run.
@@ -1097,6 +1238,7 @@ export function recordProfileGatePass(
     runId,
     profileName,
     snapshot.fingerprint,
+    attempt,
   )
 
   // The gate copies these bytes forward as its own evidence, so the log

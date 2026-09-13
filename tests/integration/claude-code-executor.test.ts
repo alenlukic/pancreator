@@ -17,12 +17,11 @@ import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import type { Invocation, StageOutput } from '../../src/lib/types.js'
 import {
   createFixture,
-  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
-  submitAsSupervisor,
 } from '../helpers.js'
+import { createRun, submitAsSupervisor } from '../run-helpers.js'
 import {
   CLAUDE_CODE_SPEC,
   installClaudeCodeFixture,
