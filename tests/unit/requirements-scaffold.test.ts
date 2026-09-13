@@ -122,11 +122,14 @@ test('scaffold copies the contract manifest into a pending attestation', () => {
   // Per-section digest echoes were transcription theater and are no longer
   // scaffolded. Guidance entries return as read evidence: identity fields are
   // prefilled mechanically so the worker owes only the status flip and the
-  // final-line quote its read produces.
+  // evidence its decision produces.
   assert.equal(
     attestation.status === 'pending' ? attestation.sections : null,
     undefined,
   )
+  // AC-001. Both prose slots are prefilled empty. With only `final_line`
+  // present, a worker deciding to skip wrote its reason into the one slot it
+  // could see and failed validation for a judgment that was correct.
   assert.deepEqual(
     attestation.status === 'pending' ? attestation.guidance : null,
     [
@@ -135,6 +138,8 @@ test('scaffold copies the contract manifest into a pending attestation', () => {
         source_path: 'governance/handbooks/eng/engineering.md',
         content_sha256: 'd'.repeat(64),
         status: 'pending',
+        final_line: '',
+        reason: '',
       },
     ],
   )

@@ -213,11 +213,15 @@
               },
               "status": {
                 "enum": ["pending", "read", "skipped", "reference_failed"],
-                "description": "pending is the scaffold value and is rejected at submission. read means the selection was read from the source file or, when the file drifted, from the invocation JSON snapshot. skipped requires reason. reference_failed requires error and fails the attestation."
+                "description": "pending is the scaffold value and is rejected at submission. read means the selection was read from the source file or, when the file drifted, from the invocation JSON snapshot, and requires final_line. skipped requires reason. reference_failed requires error and fails the attestation."
+              },
+              "final_line": {
+                "type": "string",
+                "description": "Verbatim last content line of the selected guidance, skipping empty and divider lines. Required when status is read. It is read evidence and never carries a skip reason."
               },
               "reason": {
                 "type": "string",
-                "description": "Why the read trigger did not apply. Required when status is skipped."
+                "description": "Why the read trigger did not apply. Required when status is skipped, and the only field that satisfies a skip."
               },
               "error": {
                 "type": "string",

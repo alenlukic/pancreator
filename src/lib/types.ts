@@ -360,6 +360,19 @@ export interface PolicyGuidance {
 }
 
 /**
+ * One test a run request declares as already failing.
+ *
+ * Identity is a file plus exactly one case, never a file alone: a file-wide
+ * declaration would credit the regression the gate exists to catch. The reason
+ * is required so a later reader can retire the declaration.
+ */
+export interface KnownFailingTest {
+  file: string
+  case: string
+  reason: string
+}
+
+/**
  * An audited pointer to a document a run must read but never copies. It shares
  * the guidance-reference shape and digest basis, so a card can print it in the
  * same block and a stage output can attest it the same way. Cohort fan-out uses
@@ -1214,6 +1227,12 @@ export interface InvocationDelegationContract {
   supervisor_procedure_path?: string
   submit_command: string
   /**
+   * The resolved `pan output validate` command, with the run id, the output
+   * file, and the invocation snapshot. The supervisor otherwise rebuilds a
+   * three-argument shape from memory and discovers it by trial.
+   */
+  output_validate_command?: string
+  /**
    * `pan watch <run-id> --invocation <id>` for a `cursor`-executor
    * delegation. With `--foreground-returned` it records the attestation
    * `pan submit` requires; awaited, it is the DELEGATE-001 timer. Absent on
@@ -1915,6 +1934,12 @@ export interface RunState {
     source_path: string
     stored_path: string
     sha256: string
+    /**
+     * Tests the request declares as already failing, parsed at run creation.
+     * The entry gate reports each as baseline instead of blaming the stage it
+     * gates. Absent when the request declares none.
+     */
+    known_failing_tests?: KnownFailingTest[]
     /**
      * Wider context the request depends on, delivered by reference. A cohort
      * chunk run points at the parent specification here.

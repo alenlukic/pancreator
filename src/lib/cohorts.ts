@@ -180,6 +180,15 @@ export interface CohortIntegrationResult {
   autostart: CohortContinuationResult
 }
 
+/** Operator choices that shape a plan route. */
+export interface DeliveryRouteOptions {
+  /**
+   * Existing worktree the single-chunk delivery run occupies, instead of the
+   * one the route would derive and create.
+   */
+  worktreeName?: string
+}
+
 /** One run the harness started on the operator's behalf. */
 export interface StartedRunHandoff {
   run_id: string
@@ -1939,6 +1948,7 @@ export function maybeStartDelivery(
   root: string,
   state: RunState,
   decision: { actor: 'operator' | 'away'; action: string },
+  options: DeliveryRouteOptions = {},
 ): DeliveryAutostartResult | null {
   if (
     decision.action !== 'approve' ||
@@ -1967,7 +1977,7 @@ export function maybeStartDelivery(
     return failed
   }
 
-  return routeDelivery(root, state)
+  return routeDelivery(root, state, options)
 }
 
 /**
@@ -1985,6 +1995,7 @@ export function maybeStartDelivery(
 export function retryDeliveryRoute(
   root: string,
   planRunId: string,
+  options: DeliveryRouteOptions = {},
 ): DeliveryAutostartResult {
   const state = loadState(root, planRunId)
 
@@ -2013,7 +2024,7 @@ export function retryDeliveryRoute(
     { code: 'COHORT_PLAN_REJECTED' },
   )
 
-  return routeDelivery(root, state)
+  return routeDelivery(root, state, options)
 }
 
 /**
@@ -2061,7 +2072,11 @@ function planGateDecision(root: string, runId: string): string | null {
  * cohort session for a wider plan. Shared by the approval hook and the
  * operator retry, so both adopt what an earlier attempt created.
  */
-function routeDelivery(root: string, state: RunState): DeliveryAutostartResult {
+function routeDelivery(
+  root: string,
+  state: RunState,
+  options: DeliveryRouteOptions = {},
+): DeliveryAutostartResult {
   let kind: 'cohort' | 'delivery' | undefined
 
   try {
@@ -2070,10 +2085,20 @@ function routeDelivery(root: string, state: RunState): DeliveryAutostartResult {
     if (plan.chunks.length === 1) {
       kind = 'delivery'
 
-      return startSingleDeliveryRun(root, state, plan)
+      return startSingleDeliveryRun(root, state, plan, options)
     }
 
     kind = 'cohort'
+
+    // A cohort session derives one worktree per chunk, so there is no single
+    // worktree an operator could name for it.
+    invariant(
+      options.worktreeName === undefined,
+      `--worktree applies only to a single-chunk plan route. This plan has ` +
+        `${plan.chunks.length} chunks, and a cohort session derives one ` +
+        'worktree per chunk.',
+      { code: 'COHORT_WORKTREE_NOT_APPLICABLE' },
+    )
 
     const existing = cohortSessionForPlanRun(root, state.run_id)
 
@@ -2217,6 +2242,7 @@ function startSingleDeliveryRun(
   root: string,
   planState: RunState,
   plan: ParsedCohortPlan,
+  options: DeliveryRouteOptions = {},
 ): DeliveryAutostartResult {
   const recorded = planState.delivery_handoff
 
@@ -2264,11 +2290,25 @@ function startSingleDeliveryRun(
     { code: 'COHORT_CHILD_SPEC_NOT_FOUND' },
   )
 
-  const worktreeName = deliveryWorktreeName(planState.run_id, chunk.id)
+  // The derived name keeps an unattended route reproducible. An operator who
+  // already prepared a worktree — a rebased branch, a warmed install — had no
+  // way to say so and got a second checkout beside the one they meant to use.
+  const worktreeName =
+    options.worktreeName ?? deliveryWorktreeName(planState.run_id, chunk.id)
+  const existingWorktree = readWorktreeIndex(root).worktrees.find(
+    (entry) => entry.name === worktreeName,
+  )
+
+  invariant(
+    options.worktreeName === undefined || existingWorktree !== undefined,
+    `Worktree '${worktreeName}' does not exist. Create it with ` +
+      `${panCommand(root)} worktree create ${worktreeName}, or omit ` +
+      '--worktree to let the route derive and create one.',
+    { code: 'WORKTREE_NOT_FOUND', details: { worktree: worktreeName } },
+  )
+
   const record =
-    readWorktreeIndex(root).worktrees.find(
-      (entry) => entry.name === worktreeName,
-    ) ??
+    existingWorktree ??
     createWorktree(root, worktreeName, {
       from: baseBranch,
       description: `Delivery of plan ${planState.run_id} chunk '${chunk.id}'`,

@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
+import { PanError } from '../../src/lib/errors.js'
 import {
   decideRun,
   getRunState,
+  pauseRun,
   prepareInvocation,
   resumeRun,
   setRunStage,
@@ -279,5 +282,104 @@ test('operator set-stage bypasses transitions and injects repair context', () =>
     (events.match(/operator_stage_set/gu) ?? []).length,
     operatorStageSetCount,
     'an away stage repair MUST NOT be recorded as an operator stage set',
+  )
+})
+
+// AC-013. Nothing executable reached the guard: the unit case called the pure
+// selector and the CLI case only read help text, so neither the refusal, the
+// untouched level behind it, nor the confirmed application was proven. Driving
+// the real command also proves `--confirm` reaches the engine.
+test('an unconfirmed verification level change is refused and a confirmed one applies', () => {
+  const { root, runId } = checkpoint('planning@plan-awaiting-operator')
+  const planOutput = getRunState(root, runId).stage_history.find(
+    (item) => item.stage === 'plan' && item.outcome === 'success',
+  )?.output_path
+
+  assert.ok(planOutput)
+
+  const plan = JSON.parse(
+    readFileSync(path.join(root, planOutput), 'utf8'),
+  ) as Record<string, unknown>
+  const data = plan.data as Record<string, unknown>
+
+  // The ratified criterion names the profile whose only remaining gate
+  // `minimal` turns off, which is the consequence the operator must see.
+  data.acceptance_criteria = [
+    {
+      id: 'AC-01',
+      criterion: 'The release suite passes on the branch',
+      maps_to: ['US-01'],
+      verification: {
+        method: 'the full profile passes at the ship release gate',
+        expected: 'zero failures',
+      },
+    },
+  ]
+  writeJson(path.join(root, planOutput), plan)
+
+  const before = getRunState(root, runId).verification?.level
+
+  assert.notEqual(before, 'minimal')
+
+  const cli = path.join(process.cwd(), 'dist', 'src', 'cli.js')
+  const refused = spawnSync(
+    process.execPath,
+    [cli, 'verification', runId, 'set', 'minimal'],
+    { cwd: root, encoding: 'utf8' },
+  )
+
+  assert.notEqual(refused.status, 0, refused.stdout)
+
+  const failure = JSON.parse(refused.stderr) as {
+    error: string
+    message: string
+  }
+
+  assert.equal(failure.error, 'VERIFICATION_CONSEQUENCE_UNCONFIRMED')
+  assert.match(failure.message, /AC-01 \(full, test\.full_suite\)/u)
+  assert.match(failure.message, /--confirm/u)
+  // The refusal is the whole point only if it changed nothing.
+  assert.equal(getRunState(root, runId).verification?.level, before)
+
+  const applied = spawnSync(
+    process.execPath,
+    [cli, 'verification', runId, 'set', 'minimal', '--confirm'],
+    { cwd: root, encoding: 'utf8' },
+  )
+
+  assert.equal(applied.status, 0, applied.stderr)
+  assert.equal(getRunState(root, runId).verification?.level, 'minimal')
+})
+
+// AC-011. Both refusals used to name only the precondition they failed, so
+// the operator had to infer the run's actual status and then guess which
+// command performed the intent they had already stated.
+test('a misrouted resume and decide each name the run status and the routing command', () => {
+  const { root, runId } = checkpoint('planning@plan-awaiting-operator')
+
+  assert.throws(
+    () => resumeRun(root, runId),
+    (error: unknown) => {
+      assert.ok(error instanceof PanError)
+      assert.equal(error.code, 'INVALID_RUN_ACTION')
+      assert.match(error.message, /status is 'awaiting_operator'/u)
+      assert.match(error.message, /decide .*<approve\|reject\|revise>/u)
+
+      return true
+    },
+  )
+
+  pauseRun(root, runId, 'Inspect the workspace before deciding.')
+
+  assert.throws(
+    () => decideRun(root, runId, 'revise', 'Tighten the retention window.'),
+    (error: unknown) => {
+      assert.ok(error instanceof PanError)
+      assert.equal(error.code, 'INVALID_RUN_ACTION')
+      assert.match(error.message, /status is 'paused'/u)
+      assert.match(error.message, new RegExp(`resume ${runId}`, 'u'))
+
+      return true
+    },
   )
 })

@@ -729,7 +729,7 @@ test('waiver-based plan adoption moves the claim and releases the workspace', ()
     )
 
     const waived = waiveGate(root, adopting.run_id, {
-      note: 'This run adopts the ratified plan of the subsumed run.',
+      note: 'This run adopts the ratified plan of the subsumed run, and ship is waived through to succeeded.',
       adoptPlanFromRunId: subsumed.run_id,
     })
 

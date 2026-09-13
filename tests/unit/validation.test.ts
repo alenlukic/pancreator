@@ -564,6 +564,27 @@ test('attestation validator passes a complete in-order declaration', () => {
     /MUST carry the concrete reason/u,
   )
 
+  // AC-002. The scaffold prefills both prose slots, and a worker that wrote
+  // its skip reason into the read-evidence slot must be told which slot the
+  // validator reads rather than left to guess from a generic refusal.
+  const skippedIntoFinalLine = validate(
+    attestedOutput({
+      ...attestation,
+      guidance: withFirstGuidance({
+        status: 'skipped',
+        final_line: 'The task changes no file the trigger governs.',
+        reason: '',
+      }),
+    }),
+  )
+
+  assert.equal(skippedIntoFinalLine.passed, false)
+  assert.match(firstFailureMessage(skippedIntoFinalLine), /in `reason`/u)
+  assert.match(
+    firstFailureMessage(skippedIntoFinalLine),
+    /`final_line` is read evidence/u,
+  )
+
   const skippedReasoned = validate(
     attestedOutput({
       ...attestation,

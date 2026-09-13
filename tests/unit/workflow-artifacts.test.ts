@@ -13,6 +13,7 @@ import {
   repairWorkflowInboxReferences,
   standardizeRuntimeFileNames,
 } from '../../src/lib/workflow-artifacts.js'
+import { inboxTemporalScanDirectories } from '../../src/lib/inbox.js'
 import { createTestTempDirectory } from '../temp.js'
 function write(filePath: string, content: string): void {
   mkdirSync(path.dirname(filePath), { recursive: true })
@@ -931,5 +932,108 @@ test('runtime name standardization never scans or rewrites worktree checkouts', 
       'utf8',
     ),
     'see runtime/inbox/queue/2026-08-14-scoped-rename.md\n',
+  )
+})
+
+// AC-009 and AC-010. The rewrite repairs invocation ids quoted inside a run's
+// own inbox item after terminal renumbering. Its scanner read the inbox root
+// alone, which was right until the lifecycle partition moved every new item
+// into `queue/`; from then on it matched nothing and the rewrite was silent
+// dead code. Every lifecycle directory is covered, so an item that moves
+// during a run stays reachable.
+test('the finalization rewrite reaches a run-owned inbox item in every lifecycle directory', () => {
+  for (const lifecycle of inboxTemporalScanDirectories()) {
+    const root = createTestTempDirectory('pancreator-finalize-lifecycle-')
+    const runId = '63308_Sep-01-0091_lifecycle'
+    const runDirectory = path.join(root, 'runtime/logs/workflows', runId)
+    const invocationIds = ['plan-1-aaaaaaaa', 'verify-1-bbbbbbbb']
+
+    writeWorkflowSnapshot(runDirectory)
+    writeEvents(runDirectory, invocationIds)
+    writeState(runDirectory, runId, 'succeeded', invocationIds)
+
+    for (const [index, invocationId] of invocationIds.entries()) {
+      writeInvocation(runDirectory, runId, invocationId, index)
+    }
+
+    const item = path.join(root, lifecycle, `${runId}-friction.md`)
+    const quoted = `runtime/logs/workflows/${runId}/invocations/${invocationIds[0]}.json`
+
+    write(item, `- \`${quoted}\`\n`)
+    finalizeWorkflowArtifacts(root, runId)
+
+    const updated = readFileSync(item, 'utf8')
+
+    assert.ok(
+      updated.includes('01_plan-1_aaaaaaaa'),
+      `${lifecycle}: ${updated}`,
+    )
+    assert.ok(!updated.includes(invocationIds[0]), `${lifecycle}: ${updated}`)
+
+    // The rewritten path must resolve, which is the whole point of repairing
+    // it: a quoted path that no longer exists is worse than an unrepaired one.
+    for (const match of updated.matchAll(/`([^`]+)`/gu)) {
+      assert.equal(existsSync(path.join(root, match[1])), true, match[1])
+    }
+  }
+})
+
+// The lifecycle list has one owner. A second hand-written copy is how the
+// scanner fell behind the partition in the first place.
+test('the rewrite scanner takes its lifecycle directories from the inbox module', () => {
+  const source = readFileSync('src/lib/workflow-artifacts.ts', 'utf8')
+  const scanner = source.slice(
+    source.indexOf('function exactRunInboxFiles'),
+    source.indexOf('function migratedArtifactName'),
+  )
+
+  assert.ok(scanner.includes('inboxTemporalScanDirectories()'), scanner)
+
+  for (const status of ['queue', 'active', 'canceled', 'complete']) {
+    assert.ok(!scanner.includes(`'${status}'`), `${status}: ${scanner}`)
+  }
+})
+
+// AC-025. The standardizer scanned two directory sets through two copies of
+// the same loop, and a fix applied to one copy silently skipped the other.
+test('the runtime name standardizer holds one traversal helper', () => {
+  const source = readFileSync('src/lib/workflow-artifacts.ts', 'utf8')
+  const standardizer = source.slice(
+    source.indexOf('function standardizeTemporalFileNamesIn'),
+    source.indexOf('export interface RunSuffixMigrationSummary'),
+  )
+
+  // One traversal, in the helper. The two copies this replaced differed only
+  // in the directory they walked, so a repair applied to one left the other
+  // behind.
+  assert.equal(standardizer.match(/readdirSync\(/gu)?.length, 1, standardizer)
+  assert.ok(
+    standardizer.includes(
+      'standardizeTemporalFileNamesIn(root, parentRelative, mappings)',
+    ),
+    standardizer,
+  )
+})
+
+test('name standardization is unchanged across the directories it already scanned', () => {
+  const root = createTestTempDirectory('pan-names-one-helper-')
+
+  write(
+    path.join(root, 'runtime/inbox/queue/2026-08-14-first.md'),
+    'First fixture.\n',
+  )
+  write(
+    path.join(root, 'runtime/logs/sessions/2026-08-12-second/notes.md'),
+    'Second fixture.\n',
+  )
+
+  const summary = standardizeRuntimeFileNames(root)
+
+  assert.equal(summary.renamed_files, 1)
+  assert.equal(
+    existsSync(
+      path.join(root, 'runtime/inbox/queue/63326_Aug-14-0720_first.md'),
+    ),
+    true,
   )
 })

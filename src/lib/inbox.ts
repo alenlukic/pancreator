@@ -9,9 +9,14 @@ import {
 import path from 'node:path'
 
 import { invariant, PanError } from './errors.js'
-import { ensureDir, fileExists, resolveInside } from './io.js'
+import {
+  ensureDir,
+  fileExists,
+  resolveInside,
+  withOperationMutex,
+} from './io.js'
 import { parseMarkdown } from './markdown.js'
-import { loadState, persist } from './state.js'
+import { loadState, operationMutexPath, persist } from './state.js'
 import { resolveRunLayout } from './run-layout.js'
 import type { RunState } from './types.js'
 
@@ -269,6 +274,89 @@ export function rollbackInboxClaim(
   )
 
   return moveInboxFileToPath(root, activePath, originalPath)
+}
+
+/** What `restoreInboxRequest` moved, and which run it detached doing it. */
+export interface InboxRestoreResult {
+  from: string
+  to: string
+  /** The run that held an active item, which no longer owns it. */
+  detached_run_id: string | null
+}
+
+/**
+ * Return a canceled or active inbox item to the queue.
+ *
+ * `claimInboxRequest` already accepts a canceled item, so the reverse edge is
+ * a supported state rather than a new one; it simply had no command, and the
+ * only route was a manual file move that left no record. An active item
+ * belongs to a live run, so the restore detaches that run onto its own stored
+ * copy of the request before the file moves. A completed item is history and
+ * is refused: no recorded need for reopening one exists.
+ */
+export function restoreInboxRequest(
+  root: string,
+  relativePath: string,
+): InboxRestoreResult {
+  const normalized = normalizeRepoPath(relativePath)
+  const status = inboxStatusOf(normalized)
+
+  invariant(status !== null, `Not an inbox request path: ${normalized}`, {
+    code: 'INVALID_INBOX_REQUEST',
+  })
+  invariant(
+    status === 'canceled' || status === 'active',
+    status === 'queue'
+      ? `Inbox request '${normalized}' is already in the queue.`
+      : `Inbox request '${normalized}' is in status '${status}' and cannot be restored to the queue. Only a canceled or active item can.`,
+    { code: 'INVALID_INBOX_TRANSITION', details: { status, to: 'queue' } },
+  )
+
+  const owner = findLatestMatchingRun(listRunsWithInboxSource(root), normalized)
+  const target = moveInboxFileToPath(
+    root,
+    normalized,
+    queueInboxRelativePath(path.basename(normalized)),
+  )
+
+  if (owner) {
+    recordInboxRestore(root, owner.run_id, normalized, target)
+  }
+
+  return {
+    from: normalized,
+    to: target,
+    // Only an active item's run is detached. A canceled item's run already
+    // released it, so the restore records the move without claiming a detach.
+    detached_run_id: status === 'active' ? (owner?.run_id ?? null) : null,
+  }
+}
+
+/**
+ * Repoint the run that claimed the item at its own stored copy of the request
+ * and append the move to that run's event stream.
+ *
+ * A run's event stream is the only audit surface an inbox move has, so a
+ * canceled item's owner records the move exactly as a live run's does. An item
+ * no run claims moves without an event, because there is no stream to hold it.
+ *
+ * The load-mutate-persist sequence takes the run operation mutex every other
+ * live-run mutation takes. `persist` bumps the revision blindly with no
+ * compare-and-swap, and an active item belongs to a run that may be writing
+ * concurrently, so an unguarded write here would silently lose one side.
+ */
+function recordInboxRestore(
+  root: string,
+  runId: string,
+  from: string,
+  to: string,
+): void {
+  withOperationMutex(operationMutexPath(root, runId), () => {
+    const state = loadState(root, runId)
+
+    state.request.source_path = state.request.stored_path
+    persist(root, state, 'inbox_request_restored', { from, to })
+  })
 }
 
 /** Move an active inbox item to complete or canceled. */

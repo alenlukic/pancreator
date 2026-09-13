@@ -60,6 +60,7 @@ import {
   rollbackInboxClaim,
 } from './inbox.js'
 import { applyJsonMergePatch } from './json-merge-patch.js'
+import { parseKnownFailingTests } from './known-failing.js'
 import { keywordRunSuffixFrom, makeStageArtifactId } from './naming.js'
 import { resolveRunLayout } from './run-layout.js'
 import {
@@ -133,10 +134,12 @@ import {
   selectInvolvementProfile,
 } from './operator-involvement.js'
 import {
+  disabledEvidenceProducers,
   effectiveRepositoryCheckProfile,
   loadVerificationFile,
   resolveVerification,
 } from './verification.js'
+import type { RatifiedAcceptanceCriterion } from './verification.js'
 import {
   loadRepositoryChecks,
   runRepositoryCheck,
@@ -3034,6 +3037,10 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
           branch: options.worktree.branch,
         }
       : null
+    // Parsed once, at creation, from the stored request. A declaration read
+    // fresh at each gate would let an edit to the request retroactively excuse
+    // a regression the run introduced.
+    const knownFailingTests = parseKnownFailingTests(readText(source))
 
     const state: RunState = {
       schema_version: 2,
@@ -3080,6 +3087,9 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
         source_path: sourceRelative,
         stored_path: storedRequest,
         sha256: sha256(readText(source)),
+        ...(knownFailingTests.length > 0
+          ? { known_failing_tests: knownFailingTests }
+          : {}),
         ...(options.contextReferencePath
           ? {
               context_reference: buildContextReference(
@@ -3969,6 +3979,11 @@ export function prepareInvocation(
     // on the artifact it must already read to perform the delegation. For an
     // external executor the harness moves the bytes itself, so delivery is
     // `verbatim` by construction and no compact delivery prompt is generated.
+    // Resolved here rather than in the procedure renderer, so the recorded
+    // invocation carries the exact command the supervisor ran.
+    const outputValidateCommand =
+      `${panCommand(root)} output validate --run ${runId} ` +
+      `--file ${outputPath} --invocation ${jsonPath}`
     const supervisorCardReference = state.supervisor_card
       ? {
           path: state.supervisor_card.path,
@@ -4000,6 +4015,7 @@ export function prepareInvocation(
               delegation_artifact_path: delegationArtifactPath,
               supervisor_procedure_path: supervisorProcedurePath,
               submit_command: `${panCommand(root)} submit ${runId} ${outputPath}`,
+              output_validate_command: outputValidateCommand,
               mode: 'verbatim' as const,
               ...(supervisorCardReference
                 ? { supervisor_card: supervisorCardReference }
@@ -4030,6 +4046,7 @@ export function prepareInvocation(
               delegation_artifact_path: delegationArtifactPath,
               supervisor_procedure_path: supervisorProcedurePath,
               submit_command: `${panCommand(root)} submit ${runId} ${outputPath}`,
+              output_validate_command: outputValidateCommand,
               watch_command: `${panCommand(root)} watch ${runId} --invocation ${invocationId}`,
               redline_record_path: redlineRecordPath(root, runId),
               mode: 'referenced' as const,
@@ -6088,6 +6105,43 @@ function recordOperatorFeedback(
   state.operator_feedback = feedback
 }
 
+/**
+ * The command that performs the operator's intent on a run whose status
+ * refused the one they ran.
+ *
+ * `resume` and `decide` are one intent — continue this run — split across two
+ * commands by a status the operator has to infer from an error. Naming the
+ * working route in the refusal turns a second failed call into a first
+ * successful one.
+ */
+function recoveryRouteFor(
+  root: string,
+  state: RunState,
+  attempted: 'resume' | 'decide',
+): string {
+  const pan = panCommand(root)
+
+  if (attempted === 'resume' && state.status === 'awaiting_operator') {
+    return (
+      `A run awaiting an operator continues with ` +
+      `\`${pan} decide ${state.run_id} <approve|reject|revise> --note "<directive>"\`; ` +
+      `route it to another stage with \`${pan} set-stage ${state.run_id} <stage> --note "<directive>"\`.`
+    )
+  }
+
+  if (attempted === 'decide' && state.status === 'paused') {
+    return (
+      `A paused run continues with ` +
+      `\`${pan} resume ${state.run_id} [--stage <stage>] --note "<directive>"\`.`
+    )
+  }
+
+  return (
+    `Read the run with \`${pan} status ${state.run_id}\` and act on the ` +
+    'pending action it reports.'
+  )
+}
+
 function decideRunWithActor(
   root: string,
   runId: string,
@@ -6099,11 +6153,14 @@ function decideRunWithActor(
   return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
 
+    // A refusal that names only the precondition leaves the operator to infer
+    // the route from a status it cannot see, so it names both.
     invariant(
       state.status === 'awaiting_operator' &&
         state.pending_action.type === 'operator_approval',
-      'Run is not awaiting operator approval.',
-      { code: 'INVALID_RUN_ACTION' },
+      `Run is not awaiting operator approval: its status is '${state.status}'. ` +
+        recoveryRouteFor(root, state, 'decide'),
+      { code: 'INVALID_RUN_ACTION', details: { status: state.status } },
     )
     invariant(
       decision === 'approve' || decision === 'reject' || decision === 'revise',
@@ -6459,6 +6516,72 @@ function invalidatePausedInvocation(state: RunState): void {
 }
 
 /**
+ * The ratified acceptance criteria of a run, read from its own accepted plan
+ * output. A run that carries no plan stage reports none.
+ */
+function ratifiedAcceptanceCriteria(
+  root: string,
+  state: RunState,
+): RatifiedAcceptanceCriterion[] {
+  const planOutput = [...state.stage_history]
+    .reverse()
+    .find(
+      (item) => item.stage === 'plan' && item.outcome === 'success',
+    )?.output_path
+
+  if (!planOutput || !fileExists(resolveInside(root, planOutput))) {
+    return []
+  }
+
+  let value: unknown = null
+
+  try {
+    value = readJson(resolveInside(root, planOutput))
+  } catch {
+    return []
+  }
+
+  const data = isRecord(value) && isRecord(value.data) ? value.data : {}
+  const criteria = Array.isArray(data.acceptance_criteria)
+    ? data.acceptance_criteria
+    : []
+
+  return criteria.flatMap((item) => {
+    if (!isRecord(item) || typeof item.id !== 'string') {
+      return []
+    }
+
+    const verification = verificationProse(item.verification)
+
+    return verification ? [{ id: item.id, verification }] : []
+  })
+}
+
+/**
+ * The verification prose of one ratified criterion.
+ *
+ * The plan contract records `verification` as `{ method, expected }`, so the
+ * consequence report matched nothing while it accepted only a bare string:
+ * every real plan output produced an empty stranded list. Both shapes resolve,
+ * because a criterion names its profile in either half.
+ */
+function verificationProse(value: unknown): string | null {
+  if (typeof value === 'string') {
+    return value.trim().length > 0 ? value : null
+  }
+
+  if (!isRecord(value)) {
+    return null
+  }
+
+  const prose = [value.method, value.expected]
+    .filter((part): part is string => typeof part === 'string')
+    .join(' — ')
+
+  return prose.trim().length > 0 ? prose : null
+}
+
+/**
  * Change a run's verification level. The new level is resolved fresh from
  * config plus built-ins and replaces the run's snapshot, so later gates run
  * under the new mapping. Baselines are not recaptured: a gate whose new
@@ -6469,6 +6592,7 @@ export function setRunVerification(
   runId: string,
   levelName: string,
   note = '',
+  options: { confirmed?: boolean } = {},
 ): RunState {
   return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
@@ -6482,6 +6606,31 @@ export function setRunVerification(
     )
 
     const resolved = resolveVerification(root, levelName)
+    // A level change that strands a ratified criterion is discovered today at
+    // the gate that demands the evidence, which is far past the point where
+    // the operator could have chosen differently.
+    const stranded = disabledEvidenceProducers(
+      ratifiedAcceptanceCriteria(root, state),
+      state.verification,
+      resolved,
+    )
+
+    invariant(
+      stranded.length === 0 || options.confirmed === true,
+      `Verification level '${resolved.level}' disables the evidence ` +
+        `producer of ${stranded.length} ratified acceptance ` +
+        `criterion/criteria: ` +
+        stranded
+          .map((item) => `${item.criterion_id} (${item.profile}, ${item.gate})`)
+          .join('; ') +
+        '. Re-run with --confirm to apply the level and accept that those ' +
+        'criteria lose their evidence producer.',
+      {
+        code: 'VERIFICATION_CONSEQUENCE_UNCONFIRMED',
+        details: { level: resolved.level, disabled_evidence: stranded },
+      },
+    )
+
     const previous = state.verification?.level ?? 'workflow-declared'
     const reason =
       `Operator set verification level '${resolved.level}' ` +
@@ -6497,6 +6646,7 @@ export function setRunVerification(
     persistRun(root, state, 'verification_level_changed', {
       from: previous,
       to: resolved.level,
+      ...(stranded.length > 0 ? { disabled_evidence: stranded } : {}),
       ...(note.trim().length > 0 ? { note: note.trim() } : {}),
     })
 
@@ -6714,9 +6864,12 @@ function resumeRunWithActor(
   return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
 
-    invariant(state.status === 'paused', 'Only paused runs can be resumed.', {
-      code: 'INVALID_RUN_ACTION',
-    })
+    invariant(
+      state.status === 'paused',
+      `Only paused runs can be resumed: this run's status is '${state.status}'. ` +
+        recoveryRouteFor(root, state, 'resume'),
+      { code: 'INVALID_RUN_ACTION', details: { status: state.status } },
+    )
     // A pause marked operator-only records a decision only the human operator
     // may take; the release gate raises one after its repair loops run out.
     invariant(
@@ -7044,6 +7197,19 @@ function writeSpotfixCase(
 }
 
 /**
+ * True when a lowercased waiver note names `token` as a word of its own.
+ *
+ * A bare substring test accepted `ship` inside `relationship`, `ownership`,
+ * and `shipping`, so a note that never mentioned the jump satisfied the
+ * confirmation the guard exists to demand.
+ */
+function noteNamesToken(noteBody: string, token: string): boolean {
+  const escaped = token.replaceAll(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+
+  return new RegExp(`(?<![\\w-])${escaped}(?![\\w-])`, 'u').test(noteBody)
+}
+
+/**
  * Record an explicit operator directive that bypasses a stage or gate and route
  * the run according to the operator's stated terms. The directive is audited,
  * but governance does not narrow the operator's authority.
@@ -7126,11 +7292,48 @@ export function waiveGate(
       (blocker) => !waivedCriteria.includes(blocker),
     )
     const wholeStageBypass = bypassedBeyondRequest.length > 0
-    const target = options.targetStage ?? stage.transitions.success
+    // A waiver on a stage whose card is prepared or whose worker is running
+    // names a blocker in that attempt, not a decision to discard it. Routing
+    // forward by default threw away the prepared invocation.
+    const holdsInvocation =
+      state.current_stage === stage.slug &&
+      state.pending_action.type === 'invoke_agent'
+    const target =
+      options.targetStage ??
+      (holdsInvocation ? stage.slug : stage.transitions.success)
 
     invariant(target, `Stage '${stage.slug}' has no success transition.`, {
       code: 'INVALID_TRANSITION',
     })
+
+    // A default route off a gated stage bypasses that stage's own gate. The
+    // recorded case waived one evidence gap on verify and jumped to ship,
+    // which the note never asked for. Naming the destination is the cheap
+    // confirmation that the operator meant the jump.
+    // `next_stage` advances on its own and gates nothing, so waiving it skips
+    // no decision. The other three each withhold an advance until someone
+    // judges the stage, and that is the judgment a forward route discards.
+    const stageGate = stage.gate === 'next_stage' ? null : stage.gate
+    const noteBody = options.note.trim().toLowerCase()
+
+    // Naming the waived stage is not evidence: a note about waiving verify
+    // says "verify" whether or not its author knew the run would leave for
+    // ship. Only the destination, or the gate being given up, states the jump.
+    invariant(
+      options.targetStage !== undefined ||
+        target === stage.slug ||
+        stageGate === null ||
+        noteNamesToken(noteBody, stageGate) ||
+        noteNamesToken(noteBody, target.toLowerCase()),
+      `Waiving '${stage.slug}' would route the run to '${target}' and bypass ` +
+        `that stage's ${stageGate} gate, which the waiver note does not ` +
+        `name. Pass --to <stage-slug> to state the destination, or name the ` +
+        `gate or the destination stage in the note.`,
+      {
+        code: 'WAIVER_DESTINATION_REQUIRED',
+        details: { stage: stage.slug, gate: stageGate, default_target: target },
+      },
+    )
     if (!['succeeded', 'failed', 'canceled', 'paused'].includes(target)) {
       stageBySlug(workflow, target)
     }

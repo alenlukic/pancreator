@@ -11,6 +11,7 @@ import {
 import type {
   Invocation,
   InvocationAttestation,
+  InvocationContractGuidance,
   JsonTypeName,
   StageOutput,
 } from '../types.js'
@@ -178,7 +179,17 @@ export function scaffoldStageOutput(
   // and submission rejects the prefilled value. Guidance entries return as
   // read evidence, not digest transcription: the scaffold prefills every
   // identity field mechanically, and the worker owes only the status flip and
-  // the `final_line` quote its read produces.
+  // the evidence its decision produces. Both prose slots are prefilled empty,
+  // because a worker that sees one slot writes into it whatever it decided:
+  // `final_line` alone drew the skip reason into the read-evidence field.
+  const guidanceEntry = (entry: InvocationContractGuidance) => ({
+    policy_id: entry.policy_id,
+    source_path: entry.source_path,
+    content_sha256: entry.content_sha256,
+    status: 'pending' as const,
+    final_line: '',
+    reason: '',
+  })
   const attestation: InvocationAttestation | undefined = manifest
     ? {
         invocation_id: invocation.invocation_id,
@@ -187,14 +198,7 @@ export function scaffoldStageOutput(
         contract_sha256: manifest.contract_sha256,
         status: 'pending',
         ...(manifest.guidance?.length
-          ? {
-              guidance: manifest.guidance.map((entry) => ({
-                policy_id: entry.policy_id,
-                source_path: entry.source_path,
-                content_sha256: entry.content_sha256,
-                status: 'pending' as const,
-              })),
-            }
+          ? { guidance: manifest.guidance.map(guidanceEntry) }
           : {}),
         ...(invocation.inputs?.context_reference
           ? {

@@ -11,7 +11,7 @@ import {
 } from '../../src/lib/cohorts.js'
 import { eventPath, loadState } from '../../src/lib/state.js'
 import { renderStatus } from '../../src/lib/render.js'
-import { readWorktreeIndex } from '../../src/lib/worktrees.js'
+import { createWorktree, readWorktreeIndex } from '../../src/lib/worktrees.js'
 import { createFixture } from '../fixture-template.js'
 import { CLI, ratifiedPlanRun } from './cohort-helpers.js'
 
@@ -309,4 +309,67 @@ test('pan cohort route retries a failed plan route from the command line', () =>
 
   assert.notEqual(missing.status, 0)
   assert.match(missing.stderr, /INVALID_ARGUMENT/u)
+})
+
+// AC-022. The routed run works somewhere the operator did not choose, so the
+// response has to say where. A pinned field keeps it from being dropped as
+// incidental detail in a later refactor of the handoff shape.
+test('the single-chunk autostart response names the worktree it bound', () => {
+  const root = createFixture()
+  const planRunId = ratifiedPlanRun(root, [{ id: 'alpha', cohort_index: 1 }])
+  const started = maybeStartDelivery(root, loadState(root, planRunId), {
+    actor: 'operator',
+    action: 'approve',
+  })
+
+  assert.equal(started?.status, 'started')
+  assert.ok(started?.status === 'started' && started.kind === 'delivery')
+  assert.equal(typeof started.worktree, 'string')
+  assert.match(started.worktree, /worktrees\/operator\/delivery-/u)
+  assert.equal(
+    loadState(root, started.run_id).managed_worktree?.path,
+    started.worktree,
+  )
+})
+
+// AC-023. An operator who already prepared a worktree — a rebased branch, a
+// warmed install — had no way to say so and got a second checkout beside the
+// one they meant the run to use.
+test('an explicit worktree is accepted for a single-chunk route and the run occupies it', () => {
+  const root = createFixture()
+  const planRunId = ratifiedPlanRun(root, [{ id: 'alpha', cohort_index: 1 }])
+  const prepared = createWorktree(root, 'operator-prepared', {
+    description: 'Prepared by the operator before the plan was approved.',
+  })
+  const started = maybeStartDelivery(
+    root,
+    loadState(root, planRunId),
+    { actor: 'operator', action: 'approve' },
+    { worktreeName: prepared.name },
+  )
+
+  assert.ok(started?.status === 'started' && started.kind === 'delivery')
+  assert.equal(started.worktree, prepared.path)
+
+  const state = loadState(root, started.run_id)
+
+  assert.equal(state.workspace_root, prepared.path)
+  assert.equal(state.managed_worktree?.name, prepared.name)
+  // No second checkout was created beside the one the operator named.
+  assert.equal(readWorktreeIndex(root).worktrees.length, 1)
+})
+
+test('an explicit worktree that does not exist is refused by name', () => {
+  const root = createFixture()
+  const planRunId = ratifiedPlanRun(root, [{ id: 'alpha', cohort_index: 1 }])
+  const result = maybeStartDelivery(
+    root,
+    loadState(root, planRunId),
+    { actor: 'operator', action: 'approve' },
+    { worktreeName: 'never-created' },
+  )
+
+  assert.equal(result?.status, 'failed')
+  assert.match(result?.error ?? '', /Worktree 'never-created' does not exist/u)
+  assert.equal(readWorktreeIndex(root).worktrees.length, 0)
 })

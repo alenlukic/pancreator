@@ -1,4 +1,5 @@
 import { gateEvidenceLabel, passedGateEvidence } from './context.js'
+import { GATE_CACHE_ACCEPTANCE_RULE } from './gate-cache.js'
 import {
   renderSuiteProfileSection,
   renderSuiteProfileStatusLine,
@@ -8,7 +9,9 @@ import {
   renderContextReferenceBlock,
   renderPolicyBlocks,
 } from './policy-guidance.js'
+import { effectiveRepositoryCheckProfile } from './verification.js'
 import type {
+  Criterion,
   Invocation,
   InvocationContractGuidance,
   InvocationContractManifest,
@@ -156,6 +159,81 @@ export function buildInvocationContractManifest(
   }
 }
 
+/** One launch a prepared stage owes, in the order the supervisor performs it. */
+export interface InvocationWorkerAction {
+  order: number
+  /** `evidence` produces one report the stage worker consumes. */
+  role: 'evidence' | 'stage'
+  persona: string
+  /** Named projected agent the launch must bind to. */
+  agent: string
+  model: string
+  /** Prompt body the supervisor pastes for this launch. */
+  prompt_path: string
+  /** Artifact this launch must produce before the next action runs. */
+  produces: string
+  action: string
+}
+
+/**
+ * The ordered launches of a prepared stage: one per declared evidence worker,
+ * then the stage worker that consumes their reports.
+ *
+ * The dependency is a consequence of the consolidating worker's contract, so
+ * no procedure ever stated it, and three recorded runs launched the verifier
+ * first and paid for a `blocked` report. A stage with no evidence worker owes
+ * one launch and gets an empty list rather than a list of one.
+ */
+export function orderedWorkerActions(
+  invocation: Invocation,
+): InvocationWorkerAction[] {
+  const evidenceWorkers = invocation.evidence_workers ?? []
+
+  if (evidenceWorkers.length === 0) {
+    return []
+  }
+
+  const { delegation } = invocation
+  const stageAgent =
+    typeof delegation?.cursor_agent_path === 'string'
+      ? (delegation.cursor_agent_path.split('/').pop() ?? '').replace(
+          /\.md$/u,
+          '',
+        )
+      : (delegation?.persona ?? invocation.stage.persona)
+
+  return [
+    ...evidenceWorkers.map((worker, index) => ({
+      order: index + 1,
+      role: 'evidence' as const,
+      persona: worker.persona,
+      agent: worker.agent,
+      model: worker.model,
+      prompt_path: worker.brief_path,
+      produces: worker.evidence_path,
+      action:
+        `Launch \`${worker.agent}\` (role \`${worker.role}\`) with ` +
+        `\`${worker.brief_path}\` and confirm it writes ` +
+        `\`${worker.evidence_path}\`.`,
+    })),
+    {
+      order: evidenceWorkers.length + 1,
+      role: 'stage' as const,
+      persona: delegation?.persona ?? invocation.stage.persona,
+      agent: stageAgent,
+      model: invocation.stage.model,
+      prompt_path:
+        delegation?.delivery_prompt_path ??
+        delegation?.canonical_markdown_path ??
+        '',
+      produces: invocation.output.path,
+      action:
+        `Launch \`${stageAgent}\` only after every report above exists and ` +
+        `is non-empty; it reports \`blocked\` without them.`,
+    },
+  ]
+}
+
 /**
  * Render the exact prompt body a supervisor delivers under referenced mode.
  *
@@ -232,12 +310,19 @@ export function renderInvocationDeliveryPrompt(
             'Read each selection from its source file; when the file no ' +
             'longer matches its digest, read the exact selected bytes from ' +
             'the invocation JSON snapshot. The scaffold prefills one ' +
-            '`invocation_attestation.guidance` entry per selection: for each ' +
-            'one, set `status` to `read` and set `final_line` to the ' +
-            "selection's verbatim last content line — skip empty lines and " +
-            'Markdown divider lines such as `---` (or `skipped` with the ' +
-            'reason the read trigger does not apply). The final line is not ' +
-            'printed here — quoting it is your read evidence.',
+            '`invocation_attestation.guidance` entry per selection, with ' +
+            'both prose fields empty. Each entry takes exactly one of two ' +
+            'shapes, and the field differs between them:',
+          '',
+          '- A completed read: set `status` to `read` and put the ' +
+            "selection's verbatim last content line in `final_line` — skip " +
+            'empty lines and Markdown divider lines such as `---`. Leave ' +
+            '`reason` empty. The final line is not printed here, so quoting ' +
+            'it is your read evidence.',
+          '- A skipped read: set `status` to `skipped` and put the reason ' +
+            'the read trigger does not apply in `reason`. Leave ' +
+            '`final_line` empty. A reason written into `final_line` fails ' +
+            'validation.',
           '',
           '| Policy | Guidance source | Digest |',
           '| --- | --- | --- |',
@@ -370,6 +455,7 @@ function renderSupervisorProcedureBody(
             'nothing else ahead of the body.',
         ]
 
+  const workerActions = orderedWorkerActions(invocation)
   const policySections = delegation.supervisor_card?.policy_sections ?? null
   const sectionDigestFor = (policyId: string): string | null =>
     policySections?.find((section) => section.policy_id === policyId)?.sha256 ??
@@ -445,18 +531,21 @@ function renderSupervisorProcedureBody(
     '',
     `1. Confirm \`${delegation.invocation_validation_path}\` reports \`pass\`. ` +
       'A failed or missing validation artifact MUST NOT be delegated.',
-    ...((invocation.evidence_workers ?? []).length > 0
+    ...(workerActions.length > 0
       ? [
-          '1a. Launch every parallel evidence worker below from this ' +
-            'top-level chat in a single message so they run concurrently — ' +
-            'never nested and never ad-hoc, because only the named ' +
-            'definition carries the mapped model. Paste the complete ' +
-            "contents of each worker's brief as its prompt.",
-          ...(invocation.evidence_workers ?? []).map(
-            (worker) =>
-              `   - \`${worker.agent}\` (model \`${worker.model}\`, role ` +
-              `\`${worker.role}\`): brief \`${worker.brief_path}\` → report ` +
-              `\`${worker.evidence_path}\``,
+          '1a. This stage owes ' +
+            `${workerActions.length} launches in this order. Launch every ` +
+            'parallel evidence worker below from this top-level chat in a ' +
+            'single message so they run concurrently — never nested and ' +
+            'never ad-hoc, because only the named definition carries the ' +
+            "mapped model. Paste the complete contents of each worker's " +
+            'brief as its prompt. The stage worker is the last action, not ' +
+            'the first.',
+          ...workerActions.map(
+            (item) =>
+              `   ${item.order}. \`${item.agent}\` (model \`${item.model}\`, ` +
+              `${item.role === 'evidence' ? 'evidence' : 'stage'} worker) — ` +
+              `${item.action}`,
           ),
           '1b. Await all evidence workers. Confirm each report exists and ' +
             'is non-empty at its declared path; when a worker returned its ' +
@@ -480,6 +569,15 @@ function renderSupervisorProcedureBody(
             'the watch with `--agent-state running` or `--agent-state ' +
             'completed`. Submission refuses anything short of a completed ' +
             'wake with `DELEGATION_UNOBSERVED`.',
+        ]
+      : []),
+    ...(delegation.output_validate_command
+      ? [
+          `3b. Check the output before you spend a stage attempt on it: ` +
+            `\`${delegation.output_validate_command}\`. It runs every ` +
+            'deterministic side-effect-free validator that submission runs, ' +
+            'and it takes all three arguments; a missing one is reported ' +
+            'with the others on the first call.',
         ]
       : []),
     `4. Submit with \`${delegation.submit_command}\`.`,
@@ -604,6 +702,39 @@ export function renderEvidenceWorkerBrief(
   ]
 
   return `${lines.join('\n')}\n`
+}
+
+/**
+ * The resolved repository-check gate bound for one rubric criterion.
+ *
+ * A worker asked to cite the bound it runs under had only
+ * `runtime/repository-checks.json` to read, and quoted a value the gate did
+ * not enforce: the run snapshots its own criterion timeout at creation, and a
+ * verification level can remap the profile underneath it. Both resolved facts
+ * come from the invocation, so the card states what actually binds.
+ */
+function renderResolvedGateBound(
+  invocation: Invocation,
+  criterion: Criterion,
+): string {
+  const { profile, skipped } = effectiveRepositoryCheckProfile(
+    invocation.verification,
+    criterion,
+  )
+
+  if (skipped) {
+    return ` Gate: skipped at verification level \`${invocation.verification?.level}\`.`
+  }
+
+  if (!profile) {
+    return ''
+  }
+
+  const command = `pan repository-check ${profile}`
+
+  return criterion.timeout_ms === undefined
+    ? ` Gate: \`${command}\`, no snapshotted bound; the profile's own configured budget applies.`
+    : ` Gate: \`${command}\`, resolved timeout ${criterion.timeout_ms} ms from the run snapshot.`
 }
 
 /** Render an invocation card for both the operator and the assigned worker. */
@@ -1004,9 +1135,18 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
     ...invocation.rubric.map(
       (criterion) =>
         `- ${criterion.hard ? '🔴 hard' : '⚪ soft'} ` +
-        `**${criterion.id}** (${criterion.type}) — ${criterion.statement}`,
+        `**${criterion.id}** (${criterion.type}) — ${criterion.statement}` +
+        renderResolvedGateBound(invocation, criterion),
     ),
     '',
+    // Whoever owns a repository-check gate runs one, and whoever is handed
+    // gate evidence judges one. Both meet the `cached` mark, so both get the
+    // rule.
+    ...(invocation.rubric.some((criterion) =>
+      criterion.command?.includes('repository-check'),
+    ) || invocation.inputs.references.some((item) => item.gate_evidence)
+      ? [GATE_CACHE_ACCEPTANCE_RULE, '']
+      : []),
     ...(gateOverrideLines.length > 0
       ? ['## 🧪 Gate overrides', '', ...gateOverrideLines, '']
       : []),

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
@@ -8,6 +9,10 @@ import {
   prepareInvocation,
   setRunStage,
 } from '../../src/lib/engine.js'
+import {
+  orderedWorkerActions,
+  renderSupervisorProcedureMarkdown,
+} from '../../src/lib/render.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import type { StageOutput } from '../../src/lib/types.js'
 import {
@@ -309,4 +314,103 @@ test('plan and verify cards render the complete shared field contract', () => {
   const stepsPath = '`data.verify.qa_cases[].steps`'
 
   assert.equal(verifyCard.split(stepsPath).length - 1, 1)
+})
+
+// AC-006. The verify stage owes three launches and a supervisor that started
+// with the verifier wasted the stage: the evidence reports it consumes did
+// not exist yet. The order is the instruction, so it is numbered, and the
+// prepare response carries the same list the card does.
+test('a prepared verify stage reports its evidence workers before the verifier', () => {
+  const { invocation } = checkpoint('delivery@verify-prepared')
+
+  assert.ok(invocation)
+
+  const actions = orderedWorkerActions(invocation)
+  const declared = invocation.evidence_workers ?? []
+
+  assert.equal(declared.length, 2)
+  assert.equal(actions.length, declared.length + 1)
+  assert.deepEqual(
+    actions.map((item) => item.order),
+    [1, 2, 3],
+  )
+  assert.deepEqual(
+    actions.map((item) => item.role),
+    ['evidence', 'evidence', 'stage'],
+  )
+  assert.deepEqual(
+    actions.slice(0, declared.length).map((item) => item.persona),
+    declared.map((worker) => worker.persona),
+  )
+
+  // The rendered procedure numbers the same three actions in the same order.
+  const procedure = renderSupervisorProcedureMarkdown(invocation)
+  const positions = actions.map((item) =>
+    procedure.indexOf(`${item.order}. \`${item.agent}\``),
+  )
+
+  for (const position of positions) {
+    assert.notEqual(position, -1, procedure)
+  }
+
+  assert.deepEqual(
+    [...positions].sort((a, b) => a - b),
+    positions,
+  )
+})
+
+// AC-005. The render case assigns the command itself and then finds it, so a
+// harness that dropped `--invocation` would still pass it. The resolution is
+// the contract, and only a real prepared invocation proves it.
+test('a prepared invocation resolves the output validate command with all three arguments', () => {
+  const { invocation } = checkpoint('delivery@verify-prepared')
+
+  assert.ok(invocation)
+
+  const command = invocation.delegation?.output_validate_command
+
+  assert.ok(command, 'the prepared delegation carries the resolved command')
+  assert.ok(command.includes(`--run ${invocation.run_id}`), command)
+  assert.ok(command.includes(`--file ${invocation.output.path}`), command)
+
+  const snapshot = command.split('--invocation ')[1]?.trim()
+
+  assert.ok(snapshot?.endsWith('.json'), command)
+  assert.ok(snapshot?.includes(invocation.invocation_id), command)
+
+  // The supervisor reads it from the procedure, so the resolution must survive
+  // the render it actually acts on.
+  assert.ok(
+    renderSupervisorProcedureMarkdown(invocation).includes(command),
+    command,
+  )
+})
+
+// The same list reaches the supervisor through the prepare response, which is
+// what a supervisor reading JSON acts on.
+test('the prepare response carries the ordered worker actions', () => {
+  const { root, runId } = checkpoint('delivery@implement-baselined')
+
+  setRunStage(root, runId, 'verify', 'Enter verify to prepare it.')
+
+  const stdout = execFileSync(
+    process.execPath,
+    [
+      path.join(process.cwd(), 'dist', 'src', 'cli.js'),
+      'prepare',
+      runId,
+      '--json',
+    ],
+    { cwd: root, encoding: 'utf8' },
+  )
+  const response = JSON.parse(stdout) as {
+    worker_actions?: Array<{ order: number; role: string; agent: string }>
+  }
+
+  assert.ok(response.worker_actions, stdout)
+  assert.deepEqual(
+    response.worker_actions.map((item) => item.order),
+    [1, 2, 3],
+  )
+  assert.equal(response.worker_actions.at(-1)?.role, 'stage')
 })
