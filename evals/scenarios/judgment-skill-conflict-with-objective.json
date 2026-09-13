@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "name": "judgment-skill-conflict-with-objective",
+  "description": "Judgment case: obeying a skill whose local procedure appears to conflict with the objective. The scope-control skill treats refactoring as out of scope unless an acceptance criterion requires it; here a criterion requires a shared formatting helper. The run should keep the skill's hard constraints, resolve the rest by the ranked principles, make the minimal extraction, and report the conflict. Mechanical graders check terminal state and stage order; the presence of one shared helper and the reported conflict are judgment checks recorded in judgment-backlog.md.",
+  "policy_instructions": [
+    {
+      "policy_id": "PRINCIPLES-001",
+      "instruction": 11,
+      "summary": "When a skill's procedure conflicts with the objective, keep its hard constraints, resolve the rest by the ranked list, and report the conflict."
+    },
+    {
+      "policy_id": "PRINCIPLES-001",
+      "instruction": 10,
+      "summary": "A SHOULD or prose preference yields to the principles when judgment shows a better path; the deviation is recorded."
+    }
+  ],
+  "fixture": "toy-node",
+  "request": "# Add a farewell that cannot drift from greet\n\nAdd `farewell(name)` to `src/greet.mjs` that returns `Goodbye, <name>!`.\n\nAcceptance criterion: `greet` and `farewell` MUST format the name through one shared code path so the two can never diverge. Extracting the smallest shared helper inside `src/greet.mjs` is required by this criterion; a broader refactor is not. `greet('toy')` MUST still return `Hello, toy!`. Add one test for `farewell` in `tests/greet.test.mjs`. Do not add dependencies or new files.\n",
+  "workflow": "delivery",
+  "verification": "light",
+  "involvement": "standard",
+  "operator_decisions": [
+    {
+      "stage": "ship",
+      "decision": "approve"
+    }
+  ],
+  "expected": {
+    "status": "succeeded",
+    "stage_sequence": [
+      {
+        "stage": "implement",
+        "outcome": "success"
+      },
+      {
+        "stage": "verify",
+        "outcome": "success"
+      },
+      {
+        "stage": "ship",
+        "outcome": "success"
+      }
+    ]
+  },
+  "graders": [
+    {
+      "id": "stage-order-and-terminal-state"
+    },
+    {
+      "id": "attempts-not-spent-on-mechanics",
+      "policy": "ORCH-001#25"
+    }
+  ]
+}

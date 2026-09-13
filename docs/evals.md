@@ -70,6 +70,10 @@ The planning scenario asks for four helpers that touch no shared file, so the pl
 
 The prototype scenario expects the run to stop at the `evaluate` operator gate (`awaiting_operator`, `pending_action: operator_approval`) with `data.evaluation.verdict` equal to `environment_blocked`. `PROTO-001#12` allows that verdict only when environment gaps prevent a decision, so the request names a service that does not exist and says there is no network.
 
+### Judgment scenarios
+
+Seven `judgment-*` scenarios exercise the decision cases `PRINCIPLES-001` governs: critical-path fix versus cleanup, reversible implementation versus abstraction, autonomy versus asking, a bounded adjacent defect, slack while blocked, adequate validation versus polish, and a skill whose procedure conflicts with the objective. Each is a real toy run in the shipped scenario format, so `eval run` executes it and the shipped graders score terminal state, stage order, attempt discipline, and, where the case has a mechanical trace (over-validation, a blocked implement attempt, an environment verdict), the trace itself. The judgment each case is really about is not yet mechanically graded; `evals/scenarios/judgment-backlog.md` records the per-scenario check a reviewer applies to the diff and stage output, and the grader that would make it automatic.
+
 ## Add a scenario
 
 1. Copy an existing file under `evals/scenarios/` to `<name>.json`. The `name` field must equal the file name.

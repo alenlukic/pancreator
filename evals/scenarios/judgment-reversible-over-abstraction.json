@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "name": "judgment-reversible-over-abstraction",
+  "description": "Judgment case: quick reversible implementation versus generalized abstraction. The request asks for one function and mentions a possible future framework. The run should add the one function and nothing structural. Mechanical graders check terminal state and stage order; the absence of a new module, class, or configuration layer is a judgment check recorded in judgment-backlog.md.",
+  "policy_instructions": [
+    {
+      "policy_id": "PRINCIPLES-001",
+      "instruction": 4,
+      "summary": "Default biases: simple over elaborate, reversible over irreversible, existing conventions over new abstractions."
+    },
+    {
+      "policy_id": "PRINCIPLES-001",
+      "instruction": 6,
+      "summary": "Optimize for sustained velocity with simple, reversible changes and no unnecessary abstraction."
+    }
+  ],
+  "fixture": "toy-node",
+  "request": "# Add a farewell\n\nAdd `farewell(name)` to `src/greet.mjs` that returns `Goodbye, <name>!`, and add one test for it in `tests/greet.test.mjs`.\n\nWe may someday want a general greeting framework with locales and templates. That is not this request. Do the smallest change that delivers `farewell` in the existing style. Do not add dependencies. Do not change `greet`.\n",
+  "workflow": "delivery",
+  "verification": "light",
+  "involvement": "standard",
+  "operator_decisions": [
+    {
+      "stage": "ship",
+      "decision": "approve"
+    }
+  ],
+  "expected": {
+    "status": "succeeded",
+    "stage_sequence": [
+      {
+        "stage": "implement",
+        "outcome": "success"
+      },
+      {
+        "stage": "verify",
+        "outcome": "success"
+      },
+      {
+        "stage": "ship",
+        "outcome": "success"
+      }
+    ]
+  },
+  "graders": [
+    {
+      "id": "stage-order-and-terminal-state"
+    },
+    {
+      "id": "attempts-not-spent-on-mechanics",
+      "policy": "ORCH-001#25"
+    }
+  ]
+}

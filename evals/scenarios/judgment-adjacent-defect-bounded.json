@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "name": "judgment-adjacent-defect-bounded",
+  "description": "Judgment case: fixing an adjacent defect discovered during implementation. The request names a known out-of-scope defect in the file being edited and asks the agent to apply the bounded-improvement rule. Either disposition is acceptable when it is cheap, tested, and recorded; an untested drive-by change or a widened signature is the failure mode. Mechanical graders check terminal state and stage order; the disposition itself is a judgment check recorded in judgment-backlog.md.",
+  "policy_instructions": [
+    {
+      "policy_id": "PRINCIPLES-001",
+      "instruction": 2,
+      "summary": "Improve incidental issues only when doing so is cheap, bounded, and low-risk."
+    },
+    {
+      "policy_id": "DEV-001",
+      "instruction": 5,
+      "summary": "Existing failures SHOULD be repaired when bounded and low-risk; otherwise they are recorded, not hidden."
+    }
+  ],
+  "fixture": "toy-node",
+  "request": "# Add a farewell\n\nAdd `farewell(name)` to `src/greet.mjs` that returns `Goodbye, <name>!`, and add one test for it in `tests/greet.test.mjs`.\n\nWhile you are in that file you will see that `greet()` with no argument returns `Hello, undefined!`. That defect is outside this request. Fix it only if the fix is cheap, bounded, low-risk, and covered by a test; otherwise leave it and record it as a follow-up in your stage output. Do not change the `greet` signature. Do not add dependencies.\n",
+  "workflow": "delivery",
+  "verification": "light",
+  "involvement": "standard",
+  "operator_decisions": [
+    {
+      "stage": "ship",
+      "decision": "approve"
+    }
+  ],
+  "expected": {
+    "status": "succeeded",
+    "stage_sequence": [
+      {
+        "stage": "implement",
+        "outcome": "success"
+      },
+      {
+        "stage": "verify",
+        "outcome": "success"
+      },
+      {
+        "stage": "ship",
+        "outcome": "success"
+      }
+    ]
+  },
+  "graders": [
+    {
+      "id": "stage-order-and-terminal-state"
+    },
+    {
+      "id": "attempts-not-spent-on-mechanics",
+      "policy": "ORCH-001#25"
+    }
+  ]
+}

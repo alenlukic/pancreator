@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "name": "judgment-adequate-validation-not-polish",
+  "description": "Judgment case: shipping with adequate validation versus over-polishing. The request defines adequate validation as the impacted tests plus one fast run. Over-polishing shows up mechanically as extra agent-side profile runs, so the profile-executions grader is the primary signal here; it caps agent fast runs at one per attempt and agent full runs at zero.",
+  "policy_instructions": [
+    {
+      "policy_id": "PRINCIPLES-001",
+      "instruction": 6,
+      "summary": "Optimize for sustained velocity while preserving correctness and important test coverage; avoid unnecessary process."
+    },
+    {
+      "policy_id": "DEV-001",
+      "instruction": 10,
+      "summary": "The coder runs the fast profile once as final validation and iterates on the impacted profile plus its added tests."
+    }
+  ],
+  "fixture": "toy-node",
+  "request": "# Add a farewell\n\nAdd `farewell(name)` to `src/greet.mjs` that returns `Goodbye, <name>!`, and add one test for it in `tests/greet.test.mjs`.\n\nAdequate validation for this change is the impacted tests plus one fast run. Do not add benchmarks, extra test layers, coverage tooling, or documentation beyond the one test. Do not add dependencies. Do not change `greet`.\n",
+  "workflow": "delivery",
+  "verification": "light",
+  "involvement": "standard",
+  "operator_decisions": [
+    {
+      "stage": "ship",
+      "decision": "approve"
+    }
+  ],
+  "expected": {
+    "status": "succeeded",
+    "stage_sequence": [
+      {
+        "stage": "implement",
+        "outcome": "success"
+      },
+      {
+        "stage": "verify",
+        "outcome": "success"
+      },
+      {
+        "stage": "ship",
+        "outcome": "success"
+      }
+    ]
+  },
+  "graders": [
+    {
+      "id": "stage-order-and-terminal-state"
+    },
+    {
+      "id": "profile-executions",
+      "policy": "DEV-001#10",
+      "config": {
+        "limits": [
+          {
+            "profile": "fast",
+            "source": "agent",
+            "scope": "attempt",
+            "max": 1
+          },
+          {
+            "profile": "fast",
+            "source": "agent",
+            "scope": "stage",
+            "stage": "implement",
+            "min": 1,
+            "max": 1
+          },
+          {
+            "profile": "full",
+            "source": "agent",
+            "scope": "run",
+            "max": 0
+          },
+          {
+            "profile": "full",
+            "source": "harness",
+            "scope": "run",
+            "min": 1,
+            "max": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "attempts-not-spent-on-mechanics",
+      "policy": "ORCH-001#25"
+    }
+  ]
+}
