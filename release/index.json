@@ -140,6 +140,10 @@
     {
       "version": "6.2.1",
       "commit": "bb290f37ece35d4837ff810b0436cdd0e2e35b89"
+    },
+    {
+      "version": "6.2.2",
+      "commit": "02a708e9903f3dc7888fc4ae45ae4d01170c8b13"
     }
   ]
 }
