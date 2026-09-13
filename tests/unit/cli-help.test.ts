@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict'
+import { fileURLToPath } from 'node:url'
 import test from 'node:test'
 
-import { HELP_BODY } from '../../src/cli.js'
+import { cliEntrypointMatches, HELP_BODY } from '../../src/cli.js'
+import { PanError } from '../../src/lib/errors.js'
 
 // Run 63311 F-5: the displayed form omitted --invocation, and the command
 // failed until the supervisor supplied it. The help line is the contract.
@@ -48,4 +50,18 @@ test('help documents the verification confirmation and the route worktree', () =
   assert.match(lineFor('pan decide') ?? '', /--worktree <name>/u)
   assert.match(lineFor('pan cohort route') ?? '', /--worktree <name>/u)
   assert.match(lineFor('pan inbox restore') ?? '', /<inbox-file>/u)
+})
+
+// AC-012. A guard that cannot read the filesystem answered "not the
+// entrypoint", so the CLI exited 0 having run no command at all.
+test('the entrypoint guard reports a read it could not perform', () => {
+  // A readable path that is not the CLI answers the question it was asked.
+  assert.equal(cliEntrypointMatches(fileURLToPath(import.meta.url)), false)
+  assert.throws(
+    () => cliEntrypointMatches('/nonexistent/pan-entrypoint-probe.js'),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'ENTRYPOINT_PATH_UNREADABLE' &&
+      error.message.includes('/nonexistent/pan-entrypoint-probe.js'),
+  )
 })

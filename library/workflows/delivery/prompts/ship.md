@@ -13,8 +13,12 @@ otherwise the request the card delivers, which is the ratified specification.
    evidence, not to the validity of an operator directive.
 3. When self-development has a managed worktree, run
    `pan release sync --worktree <name> --message <message> --run <run-id>`.
-   Use the managed worktree and run id from the invocation. Continue only after
-   the rebase completes.
+   Use the managed worktree and run id from the invocation. Sync refuses with
+   `RELEASE_REMOTE_BEHIND_LOCAL` when the rebase would rewrite a commit
+   already on the local default branch. Its message names the two recorded
+   overrides: `--onto <ref>` rebases onto the ref you name, and `--no-rebase`
+   keeps the local history as it stands. Continue only after sync reports
+   `synchronized`, whether it rebased or recorded an override.
    A legacy run without a managed worktree keeps metadata-only preparation.
 4. Apply the release-metadata procedure `VERSION-001` references. For a
    managed run, synchronize metadata after the rebase. Then run

@@ -2,8 +2,8 @@ import assert from 'node:assert/strict'
 import { writeFileSync } from 'node:fs'
 import path from 'node:path'
 
-import { prepareInvocation } from '../../src/lib/engine.js'
-import type { RunState } from '../../src/lib/types.js'
+import { prepareInvocation, setRunStage } from '../../src/lib/engine.js'
+import type { Invocation, RunState } from '../../src/lib/types.js'
 import {
   delegationUnobservedMessage,
   summarizeDelegationObservation,
@@ -40,6 +40,26 @@ export function fakeClock(): {
   }
 }
 
+/**
+ * A fake clock whose sleep rewrites the stage output, so every observation
+ * sees an output that moved since the last one. That is a worker still
+ * writing, which is exactly what a confirming wake exists to detect.
+ */
+export function stillWritingClock(
+  root: string,
+  state: RunState,
+): { now: () => number; sleep: (milliseconds: number) => Promise<void> } {
+  const clock = fakeClock()
+
+  return {
+    now: clock.now,
+    sleep: async (milliseconds) => {
+      await clock.sleep(milliseconds)
+      writeStageOutput(root, state)
+    },
+  }
+}
+
 export function preparedRun(): {
   root: string
   state: RunState
@@ -61,6 +81,32 @@ export function preparedRun(): {
     invocationId: prepared.invocation.invocation_id,
     outputPath: prepared.invocation.output.path,
   }
+}
+
+/**
+ * A prepared run standing at verify, the stage that declares evidence
+ * workers. The stage worker's own role cannot express an evidence worker's
+ * declared paths, so a contract about those paths needs this run.
+ */
+export function preparedVerifyRun(): {
+  root: string
+  state: RunState
+  invocation: Invocation
+} {
+  const root = createFixture()
+  const created = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+
+  setRunStage(root, created.run_id, 'verify', 'Verify the current workspace.')
+
+  const prepared = prepareInvocation(root, created.run_id)
+
+  assert.ok(prepared.invocation)
+  assert.ok((prepared.invocation.evidence_workers ?? []).length > 0)
+
+  return { root, state: prepared.state, invocation: prepared.invocation }
 }
 
 export function writeStageOutput(root: string, state: RunState): void {

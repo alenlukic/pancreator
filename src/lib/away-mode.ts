@@ -68,6 +68,12 @@ export interface AwayDecisionRecord {
   result: 'accepted' | 'rejected' | 'applied' | 'failed'
   evidence_references: string[]
   recorded_at: string
+  /**
+   * The action the apply actually took. It equals the recommendation in
+   * `selected_action`, and is recorded separately so an operator who named an
+   * action on the command line can read back what ran, not what was advised.
+   */
+  applied_action?: AwayModeAction
   error?: string
 }
 
@@ -209,6 +215,7 @@ function hardDenialReason(option: AwayOption): string | null {
 export function selectAwayOption(
   options: AwayOption[],
   config: ResolvedAwayModeConfig,
+  declared?: { operator_decision: boolean },
 ): {
   selected: AwayOption | null
   rejected: Array<{ rank: number; reason: string }>
@@ -216,6 +223,17 @@ export function selectAwayOption(
   const rejected: Array<{ rank: number; reason: string }> = []
 
   for (const option of options) {
+    // Approving a record that declares the decision as the operator's is the
+    // one ranking the evaluator may not take, whatever it ranked first.
+    if (option.action === 'approve' && declared?.operator_decision) {
+      rejected.push({
+        rank: option.rank,
+        reason:
+          'The graded output declares an operator decision as its next action.',
+      })
+      continue
+    }
+
     if (!option.feasible) {
       rejected.push({
         rank: option.rank,
@@ -505,16 +523,52 @@ function boundedText(text: string, max = AWAY_PROMPT_TEXT_MAX): string {
   return text.length <= max ? text : `${text.slice(0, max)}\n[truncated]`
 }
 
-export function awayGateContext(
-  root: string,
-  state: RunState,
-): {
+/**
+ * Phrases a worker uses in its declared next action when the decision is the
+ * operator's to take. The field is free prose, so this is the only signal the
+ * graded output carries, and the list stays small and literal rather than
+ * guessing at intent.
+ */
+const OPERATOR_DECISION_PHRASES = [
+  'operator decision',
+  'operator must decide',
+  'operator must choose',
+  'operator chooses',
+  'operator to decide',
+  'awaiting operator',
+  'needs an operator',
+  'requires an operator',
+  'ask the operator',
+]
+
+/** Whether a declared next action hands the decision back to the operator. */
+export function declaresOperatorDecision(nextAction: string | null): boolean {
+  if (!nextAction) {
+    return false
+  }
+
+  const text = nextAction.toLowerCase()
+
+  return OPERATOR_DECISION_PHRASES.some((phrase) => text.includes(phrase))
+}
+
+export interface AwayGateContext {
   operator_request: string | null
   stage_outcome: string | null
   stage_summary: string | null
   stage_artifacts: string[]
   stage_output_path: string | null
-} {
+  stage_open_questions: string[]
+  stage_unknowns: string[]
+  stage_next_action: string | null
+  /** The graded output declares the decision as the operator's to take. */
+  declares_operator_decision: boolean
+}
+
+export function awayGateContext(
+  root: string,
+  state: RunState,
+): AwayGateContext {
   const layout = resolveRunLayout(root, state.run_id)
   const requestPath = layout.request().absolute
   const operatorRequest = fileExists(requestPath)
@@ -522,7 +576,10 @@ export function awayGateContext(
     : null
   const last = state.stage_history.at(-1)
   let summary: string | null = null
+  let nextAction: string | null = null
   const artifacts: string[] = []
+  const openQuestions: string[] = []
+  const unknowns: string[] = []
 
   if (last?.output_path && fileExists(path.join(root, last.output_path))) {
     try {
@@ -538,6 +595,36 @@ export function awayGateContext(
             if (isRecord(artifact) && typeof artifact.path === 'string') {
               artifacts.push(artifact.path)
             }
+          }
+        }
+
+        // The blockers the worker declared on the record being graded. The
+        // evaluator was ranking approval against an output that says the
+        // question is still open, because the prompt never carried them.
+        const operatorBlock = isRecord(output.$operator)
+          ? output.$operator
+          : null
+
+        if (typeof operatorBlock?.next_action === 'string') {
+          nextAction = boundedText(operatorBlock.next_action)
+        }
+
+        for (const unknown of Array.isArray(output.unknowns)
+          ? output.unknowns
+          : []) {
+          if (typeof unknown === 'string') {
+            unknowns.push(boundedText(unknown))
+          }
+        }
+
+        const spec = isRecord(output.data) ? output.data.product_spec : null
+
+        for (const question of isRecord(spec) &&
+        Array.isArray(spec.open_questions)
+          ? spec.open_questions
+          : []) {
+          if (typeof question === 'string') {
+            openQuestions.push(boundedText(question))
           }
         }
 
@@ -577,6 +664,10 @@ export function awayGateContext(
     stage_summary: summary,
     stage_artifacts: [...new Set(artifacts)],
     stage_output_path: last?.output_path ?? null,
+    stage_open_questions: openQuestions,
+    stage_unknowns: unknowns,
+    stage_next_action: nextAction,
+    declares_operator_decision: declaresOperatorDecision(nextAction),
   }
 }
 
@@ -667,6 +758,7 @@ export function awayEvaluatorPrompt(
     'Rank the supplied actions from most to least fit for this gate. Fitness means: the action the operator would take given the request, the stage outcome, and the artifact.',
     'Not advancing is not safer by default. A gate with stage_outcome "success" and a stage_summary that satisfies operator_request ranks approve first.',
     'Rank revise or reject first only for a concrete defect you can name in the artifact against the request, and put that defect in the note. Do not ask for material the summary already reports.',
+    'stage_open_questions, stage_unknowns, and stage_next_action are what the graded output itself declares unsettled. Do not rank approve against a next action that names an operator decision; that approval is refused.',
     'Read the stage_artifacts when the summary alone cannot settle the decision.',
     'Return exactly one object with the single top-level key ranked_options and no prose. Every option has exactly this shape and these value types:',
     JSON.stringify(AWAY_OPTION_SHAPE),
@@ -683,6 +775,9 @@ export function awayEvaluatorPrompt(
       operator_request: gate.operator_request,
       stage_summary: gate.stage_summary,
       stage_artifacts: gate.stage_artifacts,
+      stage_open_questions: gate.stage_open_questions,
+      stage_unknowns: gate.stage_unknowns,
+      stage_next_action: gate.stage_next_action,
       allowed_actions: allowedActions,
       evidence_references: evidenceReferences,
     }),
@@ -821,7 +916,10 @@ export function recordAwayEvaluation(
         { code: 'AWAY_DECISION_LIMIT' },
       )
 
-      const selection = selectAwayOption(options, awayMode)
+      const selection = selectAwayOption(options, awayMode, {
+        operator_decision: awayGateContext(root, state)
+          .declares_operator_decision,
+      })
       const record: AwayDecisionRecord = {
         schema_version: 1,
         decision_id: randomUUID(),
@@ -845,12 +943,87 @@ export function recordAwayEvaluation(
   )
 }
 
+/** The options each away subcommand accepts, including the global `--json`. */
+export const AWAY_SUBCOMMAND_OPTIONS: Record<string, string[]> = {
+  status: ['--json'],
+  evaluate: ['--json'],
+  apply: ['--decision', '--action', '--json'],
+}
+
+/**
+ * Name the first option the subcommand does not accept. An ignored option is
+ * a silent difference between what the operator asked for and what ran, which
+ * is the failure `--action` itself exists to close.
+ */
+export function unknownAwayOption(
+  subcommand: string,
+  args: string[],
+): string | null {
+  const accepted = AWAY_SUBCOMMAND_OPTIONS[subcommand]
+
+  if (!accepted) {
+    return null
+  }
+
+  for (const argument of args) {
+    if (!argument.startsWith('--')) {
+      continue
+    }
+
+    const name = argument.split('=')[0] ?? argument
+
+    if (!accepted.includes(name)) {
+      return name
+    }
+  }
+
+  return null
+}
+
+/**
+ * Resolve the action an apply may take. An operator who names an action gets
+ * that action or a refusal naming both; the apply never substitutes the
+ * recommendation for what the operator asked for.
+ */
+export function resolveAwayApplyAction(
+  decision: AwayDecisionRecord,
+  requested?: string | null,
+): AwayModeAction {
+  const recommended = decision.selected_action?.action
+
+  invariant(recommended, 'The away decision selected no action.', {
+    code: 'AWAY_DECISION_EMPTY',
+  })
+
+  if (requested === undefined || requested === null) {
+    return recommended
+  }
+
+  if (!isAwayAction(requested)) {
+    throw new PanError(
+      `Unknown away action: ${requested}. Known actions: ${AWAY_MODE_ACTIONS.join(', ')}.`,
+      { code: 'AWAY_ACTION_UNKNOWN' },
+    )
+  }
+
+  if (requested !== recommended) {
+    throw new PanError(
+      `The away decision recommends '${recommended}', not the requested '${requested}'. ` +
+        `Apply without --action to take the recommendation, or evaluate again for a decision that recommends '${requested}'.`,
+      { code: 'AWAY_ACTION_REFUSED' },
+    )
+  }
+
+  return requested
+}
+
 /** Append the apply result without rewriting the original decision. */
 export function recordAwayApplyResult(
   root: string,
   decision: AwayDecisionRecord,
   result: 'applied' | 'failed',
   error?: string,
+  appliedAction?: AwayModeAction,
 ): AwayDecisionRecord {
   const record: AwayDecisionRecord = {
     ...decision,
@@ -858,6 +1031,7 @@ export function recordAwayApplyResult(
     linked_decision_id: decision.decision_id,
     result,
     recorded_at: new Date().toISOString(),
+    ...(appliedAction ? { applied_action: appliedAction } : {}),
     ...(error ? { error } : {}),
   }
 

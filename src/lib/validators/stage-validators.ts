@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { readFileSync, readdirSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 
 import {
@@ -544,6 +544,15 @@ function evidencePathCandidate(entry: string): string | null {
   }
 
   return null
+}
+
+/** Modification time of `absolute` in milliseconds, or null when unreadable. */
+function modifiedMs(absolute: string): number | null {
+  try {
+    return statSync(absolute).mtimeMs
+  } catch {
+    return null
+  }
 }
 
 function workspaceRootFromInput(input: HandlerInput): string {
@@ -1488,6 +1497,28 @@ export function validateImplementationClaims(
             ),
           )
         }
+      }
+    }
+  }
+
+  // The output is the claim, so every path it claims must already hold the
+  // work when it is written. A path modified after the output was written was
+  // edited after the claim was made, and the claim describes a tree that no
+  // longer exists.
+  const outputModifiedMs = modifiedMs(path.join(input.root, input.targetPath))
+
+  if (outputModifiedMs !== null) {
+    for (const file of changedFiles) {
+      const fileModifiedMs = modifiedMs(path.join(workspaceRoot, file))
+
+      if (fileModifiedMs !== null && fileModifiedMs > outputModifiedMs) {
+        issues.push(
+          issue(
+            'claim.modified_after_output',
+            `Claimed changed file was modified after the output that claims it: ${file}. ` +
+              'Rewrite the output after the last edit it describes.',
+          ),
+        )
       }
     }
   }

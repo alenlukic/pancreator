@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -2295,6 +2302,55 @@ test('a file the attempt deleted is disclosed in changed_files, not rejected', (
         issue.message.includes('src/never-existed.ts'),
     ),
     JSON.stringify(fabricated.issues),
+  )
+})
+
+// The output is a claim about a tree. An attempt that kept editing after it
+// wrote the output described a tree that no longer existed, and every
+// disclosure check passed because the edit was still in the diff.
+test('a claimed path modified after the output fails, and an ordered one passes', () => {
+  const root = createFixture()
+  const target =
+    'runtime/logs/workflows/run-ordering/outputs/implement-1-test.json'
+  const before = gitWorkspaceSnapshot(root)
+  const source = path.join(root, 'src/ordered.ts')
+
+  writeFileSync(source, 'export const ordered = true\n')
+  writeJson(path.join(root, target), {
+    data: {
+      implementation: {
+        changed_files: ['src/ordered.ts'],
+        tests_added: [],
+        notes: [],
+      },
+      acceptance_results: [
+        { id: 'AC-01', result: 'pass', evidence: ['fixture evidence'] },
+      ],
+    },
+  })
+
+  const ordered = validateImplementationClaims(
+    claimsValidatorInput(root, target, { workspace_before: before }),
+  )
+
+  assert.equal(ordered.status, 'passed', JSON.stringify(ordered.issues))
+
+  // The edit that follows the output is the one the output cannot describe.
+  const outputModified = statSync(path.join(root, target)).mtime
+
+  utimesSync(source, outputModified, new Date(outputModified.getTime() + 5_000))
+
+  const late = validateImplementationClaims(
+    claimsValidatorInput(root, target, { workspace_before: before }),
+  )
+
+  assert.ok(
+    late.issues.some(
+      (issue) =>
+        issue.code === 'claim.modified_after_output' &&
+        issue.message.includes('src/ordered.ts'),
+    ),
+    JSON.stringify(late.issues),
   )
 })
 

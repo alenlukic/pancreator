@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 
 export type RunLayoutVersion = 'v1' | 'v2'
@@ -48,6 +48,107 @@ export function runRootRelative(runId: string): string {
 }
 
 /**
+ * Declared filename of one attempt at a worker-owned artifact.
+ *
+ * A relaunched worker used to be handed the name the first worker already
+ * wrote, so the second launch destroyed the first report. Every declared path
+ * — an evidence report, its brief, and the recorded agent profile-run log —
+ * resolves through this one function so the two naming schemes a partial
+ * migration would leave cannot appear. Attempt 1 keeps the unstamped name,
+ * which is what every existing reader and every recorded reference resolves.
+ */
+export function attemptStampedName(
+  stem: string,
+  attempt: number,
+  extension: string,
+): string {
+  return attempt <= 1
+    ? `${stem}${extension}`
+    : `${stem}.attempt-${attempt}${extension}`
+}
+
+/**
+ * The first attempt ordinal whose stamped name is free in `directory`.
+ *
+ * An unreadable directory answers 1: the caller is about to create it.
+ */
+export function nextAttemptOrdinal(
+  directory: string,
+  stem: string,
+  extension: string,
+): number {
+  let names: string[]
+
+  try {
+    names = readdirSync(directory)
+  } catch {
+    return 1
+  }
+
+  const taken = new Set(names)
+  let attempt = 1
+
+  while (taken.has(attemptStampedName(stem, attempt, extension))) {
+    attempt += 1
+  }
+
+  return attempt
+}
+
+/** Stem of the marker one speculative profile prefetch writes. */
+function prefetchRecordStem(profile: string): string {
+  return `prefetch-${profile}`
+}
+
+/**
+ * Marker path of one speculative prefetch launch.
+ *
+ * The marker was keyed to the run and the profile alone, so a second
+ * qualifying submission overwrote the first record and the pid of a child
+ * still running was lost. Keying it to the launch is what keeps every child
+ * reconcilable against the process table.
+ */
+export function prefetchRecordPath(
+  root: string,
+  runId: string,
+  profile: string,
+  attempt = 1,
+): RunPath {
+  return resolveRunLayout(root, runId).evidence(
+    attemptStampedName(prefetchRecordStem(profile), attempt, '.json'),
+  )
+}
+
+export function nextPrefetchAttempt(
+  root: string,
+  runId: string,
+  profile: string,
+): number {
+  return nextAttemptOrdinal(
+    resolveRunLayout(root, runId).evidence('.').absolute,
+    prefetchRecordStem(profile),
+    '.json',
+  )
+}
+
+/** Every prefetch marker a run has written, oldest launch first. */
+export function prefetchRecordPaths(root: string, runId: string): string[] {
+  const evidence = resolveRunLayout(root, runId).evidence('.')
+  let names: string[]
+
+  try {
+    names = readdirSync(evidence.absolute)
+  } catch {
+    return []
+  }
+
+  return names
+    .filter((name) => name.startsWith('prefetch-') && name.endsWith('.json'))
+    .sort()
+    .map((name) => path.posix.join(evidence.relative, name))
+}
+
+/**
  * Detect one run from its own state location.
  *
  * A missing run defaults to the current layout so creation can build the new
@@ -84,6 +185,38 @@ export function detectRunLayout(root: string, runId: string): RunLayoutVersion {
   }
 
   return CURRENT_RUN_LAYOUT_VERSION
+}
+
+/** Declared brief and report paths of one evidence-worker launch. */
+export interface EvidenceWorkerAttemptPaths {
+  brief_path: string
+  evidence_path: string
+}
+
+/**
+ * The two declared paths one attempt at an evidence role owns.
+ *
+ * Every producer and every reader resolves them here, so a relaunch cannot
+ * end up with one naming scheme for the brief and another for the report.
+ */
+export function evidenceWorkerAttemptPaths(
+  root: string,
+  runId: string,
+  invocationId: string,
+  role: string,
+  attempt = 1,
+): EvidenceWorkerAttemptPaths {
+  const layout = resolveRunLayout(root, runId)
+
+  return {
+    brief_path: layout.invocation(
+      invocationId,
+      `.${attemptStampedName(`${role}-brief`, attempt, '.md')}`,
+    ).relative,
+    evidence_path: layout.evidence(
+      attemptStampedName(`${invocationId}.${role}-evidence`, attempt, '.md'),
+    ).relative,
+  }
 }
 
 export function resolveRunLayout(

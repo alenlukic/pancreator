@@ -1406,6 +1406,69 @@ test('an agent clean profile pass is recorded where the gate looks for it', () =
   assert.match(evidence, /invoked_by=command-line/u)
 })
 
+// The verify stage permits each of its evidence workers one profile run, and
+// two of them land at one workspace fingerprint often. Both passes used to
+// derive the same log name, so the second execution overwrote the first one's
+// bytes and the ledger carried two entries pointing at one body.
+test('two permitted executions at one fingerprint keep their own evidence logs', () => {
+  const root = createFixture()
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+  const fingerprint = gitWorkspaceSnapshot(root).fingerprint
+  const options = {
+    run_ids: [run.run_id],
+    fingerprint_before: fingerprint,
+    started_at: '2026-09-12T09:00:00.000Z',
+  }
+  const passes = ['review', 'qa'].map((role) => {
+    const result = commandLineResult(root)
+    const recorded = recordProfileGatePass(root, 'fast', result, options)
+
+    assert.ok(recorded, `${role} stored its pass`)
+    recordAgentRepositoryCheckForRuns(
+      root,
+      [run.run_id],
+      result,
+      options.started_at,
+      'agent',
+      recorded.evidence_path,
+    )
+
+    return recorded
+  })
+
+  assert.equal(
+    new Set(passes.map((pass) => pass.evidence_path)).size,
+    2,
+    'each execution owns a distinct log path',
+  )
+
+  // Both bodies survive, and each ledger entry resolves to its own.
+  const ledger = readFileSync(
+    resolveRunLayout(root, run.run_id).evidence(
+      AGENT_REPOSITORY_CHECK_RUNS_FILE,
+    ).absolute,
+    'utf8',
+  )
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line) as { evidence_log: string | null })
+
+  assert.deepEqual(
+    ledger.map((entry) => entry.evidence_log),
+    passes.map((pass) => pass.evidence_path),
+  )
+
+  for (const entry of ledger) {
+    assert.match(
+      readFileSync(path.join(root, entry.evidence_log ?? ''), 'utf8'),
+      /^\$ pan repository-check fast$/mu,
+    )
+  }
+})
+
 test('an agent profile run that proves nothing is not recorded as a pass', () => {
   const root = createFixture()
   const run = createRun(root, {

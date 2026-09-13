@@ -9,6 +9,7 @@ import {
   DEFAULT_WATCH_CADENCE_SECONDS,
   DELEGATION_UNOBSERVED,
   backgroundMarkerPath,
+  completionEvidenceForObservation,
   isTerminalObservation,
   markDelegationBackground,
   observeInvocation,
@@ -26,6 +27,7 @@ import {
   fakeClock,
   fillPreparedOutput,
   preparedRun,
+  stillWritingClock,
   writeStageOutput,
 } from './watch-helpers.js'
 
@@ -204,10 +206,14 @@ test('watch reports timed_out at the timeout when the paths keep changing', asyn
   assert.ok(result.elapsed_seconds >= 0.3)
 })
 
-test('watch returns completed at once for an output already present and stays idempotent', async () => {
+// An output present before the watch even arms is the weakest evidence there
+// is: it landed inside one cadence of the launch, so it is a draft as often as
+// a finished stage. The watch spends one confirming wake on it rather than
+// either trusting it or spending the whole timeout.
+test('watch completes an already-present output after one confirming wake and stays idempotent', async () => {
   const { root, state, invocationId } = preparedRun()
 
-  writeStageOutput(root, state)
+  fillPreparedOutput(root, state)
 
   const first = await watchInvocation(root, state.run_id, {
     cadenceSeconds: CADENCE_SECONDS,
@@ -218,13 +224,22 @@ test('watch returns completed at once for an output already present and stays id
   })
 
   assert.equal(first.state, 'completed')
-  assert.equal(first.wakes, 0)
+  assert.equal(first.wakes, 1, 'exactly one confirming wake, never more')
   assert.equal(second.state, 'completed')
 
   const entries = readWatchRecord(root, state.run_id, invocationId)
+  const terminal = entries.filter((entry) => entry.terminal_state !== undefined)
 
-  assert.equal(entries.length, 2)
-  assert.ok(entries.every((entry) => entry.terminal_state === 'completed'))
+  assert.equal(terminal.length, 2, 'each watch records one terminal verdict')
+  assert.ok(terminal.every((entry) => entry.terminal_state === 'completed'))
+  assert.ok(
+    terminal.every((entry) => entry.terminal_basis === 'confirming_wake'),
+  )
+  assert.equal(
+    entries[0]?.completion_hold,
+    'output_younger_than_cadence',
+    'the held observation names why it was held',
+  )
 })
 
 test('watch --mark-background writes the background marker beside the record', async () => {
@@ -285,8 +300,10 @@ test('an unspecified cadence watches at the one universal 60-second cadence', as
 // launch and kept rewriting it for another seven minutes. `pan watch` read the
 // file, called it terminal, and returned with no armings, so the supervisor
 // submitted a stage whose worker was still running. Presence is not
-// completion, and only the supervisor can see the agent behind the file.
-test('a background launch whose output lands too soon after it records unverified', async () => {
+// completion. The watch now holds that observation for one confirming wake:
+// a worker still writing moves the output across it, and a finished one does
+// not, which is an answer the harness can get without the supervisor.
+test('a background launch whose output lands too soon is held for one confirming wake', async () => {
   const { root, state, invocationId, outputPath } = preparedRun()
 
   fillPreparedOutput(root, state)
@@ -296,8 +313,35 @@ test('a background launch whose output lands too soon after it records unverifie
     cadenceSeconds: CADENCE_SECONDS,
   })
 
+  assert.equal(watched.state, 'completed')
+  assert.equal(watched.armings, 1, 'the held observation armed a real timer')
+
+  const entries = readWatchRecord(root, state.run_id, invocationId)
+
+  assert.equal(entries[0]?.terminal_state, undefined)
+  assert.equal(entries[0]?.completion_hold, 'output_younger_than_cadence')
+  assert.equal(entries.at(-1)?.terminal_state, 'completed')
+  assert.equal(entries.at(-1)?.terminal_basis, 'confirming_wake')
+  // The confirming wake is an observation, so the submission it permits is
+  // the same one a plain completed watch permits.
+  assert.doesNotThrow(() => submitOutput(root, state.run_id, outputPath))
+})
+
+// The held observation is a question, not a verdict. A watch that runs out of
+// time before the confirming wake answers it reports that it could not tell,
+// and the submission still routes the supervisor to the agent itself.
+test('a hold the watch never confirms ends unverified rather than timed out', async () => {
+  const { root, state, invocationId, outputPath } = preparedRun()
+
+  fillPreparedOutput(root, state)
+
+  const watched = await watchInvocation(root, state.run_id, {
+    cadenceSeconds: CADENCE_SECONDS,
+    timeoutSeconds: CADENCE_SECONDS,
+    ...stillWritingClock(root, state),
+  })
+
   assert.equal(watched.state, 'unverified')
-  assert.equal(watched.armings, 0)
 
   const entries = readWatchRecord(root, state.run_id, invocationId)
 
@@ -336,6 +380,122 @@ test('an agent the supervisor saw still running keeps the watch on its cadence',
 
   assert.ok(entries.some((entry) => entry.event === 'armed'))
   assert.notEqual(entries[0]?.terminal_state, 'completed')
+  assert.equal(entries[0]?.completion_hold, 'agent_reported_running')
+})
+
+// A supervisor's `running` report and a complete-looking output disagree.
+// The watch used to end on whichever it read first; now the disagreement
+// itself is the weak evidence that buys one more observation.
+test('a plausible output under a running agent report ends no wake of its own', async () => {
+  const { root, state, invocationId } = preparedRun()
+
+  fillPreparedOutput(root, state)
+
+  const watched = await watchInvocation(root, state.run_id, {
+    cadenceSeconds: CADENCE_SECONDS,
+    timeoutSeconds: CADENCE_SECONDS,
+    agentState: 'running',
+    ...stillWritingClock(root, state),
+  })
+
+  const wakes = readWatchRecord(root, state.run_id, invocationId).filter(
+    (entry) => entry.event === 'wake',
+  )
+
+  assert.ok(
+    wakes.every((entry) => entry.terminal_state !== 'completed'),
+    'no wake completes while the worker keeps writing under a running report',
+  )
+  assert.equal(watched.state, 'unverified')
+})
+
+// A stage output that parses and is not a scaffold can still be a document
+// mid-assembly. The fields its own invocation declares required are the
+// cheapest test of that, and `result` is written last by contract.
+test('an output missing a field its invocation declares required is not terminal', async () => {
+  const { root, state } = preparedRun()
+  const invocation = read(
+    path.join(root, state.current_invocation!.json_path),
+  ) as Parameters<typeof observeInvocation>[1]
+
+  writeStageOutput(root, state)
+
+  const complete = read(path.join(root, invocation.output.path)) as Record<
+    string,
+    unknown
+  >
+
+  assert.equal(isTerminalObservation(observeInvocation(root, invocation)), true)
+
+  const { result: _result, ...withoutResult } = complete
+
+  writeFileSync(
+    path.join(root, invocation.output.path),
+    `${JSON.stringify(withoutResult, null, 2)}\n`,
+  )
+
+  const observed = observeInvocation(root, invocation)
+
+  assert.equal(observed.output_parses, true)
+  assert.equal(observed.output_is_scaffold, false)
+  assert.deepEqual(observed.output_missing_required_fields, ['result'])
+  assert.equal(isTerminalObservation(observed), false)
+
+  const declared = Object.keys(invocation.output.required_data ?? {})
+
+  assert.ok(declared.length > 0, 'the fixture stage declares required data')
+
+  const [firstDeclared] = declared
+  const withoutDeclared = {
+    ...complete,
+    data: Object.fromEntries(
+      Object.entries((complete.data ?? {}) as Record<string, unknown>).filter(
+        ([key]) => key !== firstDeclared?.split('.')[0],
+      ),
+    ),
+  }
+
+  writeFileSync(
+    path.join(root, invocation.output.path),
+    `${JSON.stringify(withoutDeclared, null, 2)}\n`,
+  )
+
+  const missingDeclared = observeInvocation(root, invocation)
+
+  assert.ok(
+    missingDeclared.output_missing_required_fields.includes(
+      `data.${firstDeclared}`,
+    ),
+    'the observation names the declared field that is missing',
+  )
+  assert.equal(isTerminalObservation(missingDeclared), false)
+})
+
+// A guard that cannot read its filesystem answer knows less than one that
+// can, so it must not report the confident verdict. An unreadable elapsed
+// time is the same weak evidence as an output that landed too soon.
+test('an unreadable elapsed time holds the observation instead of completing it', () => {
+  const { root, state } = preparedRun()
+  const invocation = read(
+    path.join(root, state.current_invocation!.json_path),
+  ) as Parameters<typeof observeInvocation>[1]
+
+  writeStageOutput(root, state)
+
+  const observed = observeInvocation(root, invocation)
+
+  assert.deepEqual(
+    completionEvidenceForObservation(observed, null, CADENCE_SECONDS),
+    { strength: 'weak', reason: 'elapsed_time_unreadable' },
+  )
+  assert.deepEqual(
+    completionEvidenceForObservation(
+      observed,
+      CADENCE_SECONDS * 10,
+      CADENCE_SECONDS,
+    ),
+    { strength: 'strong', basis: 'output_plausible' },
+  )
 })
 
 // Run 63310 genre-label, post-fix: the supervisor found a `completed` wake,

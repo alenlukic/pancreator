@@ -20,7 +20,9 @@ find.
    release run, the acceptance criteria and validation cases are the child
    specifications the card lists. A missing or empty evidence report is a
    blocked stage, not a judgment call: report `blocked` and name the missing
-   path.
+   path. A report that carries cases but no `<!-- evidence-report: complete -->`
+   line is the partial record of an interrupted worker: consolidate the cases
+   it does hold, and state in your output which dimensions it left uncovered.
 2. Reconcile the two reports. Where they disagree about the same behavior,
    reproduce the disputed observation yourself before grading it.
 3. Spot-check, do not redo. Verify the reports' critical claims: rerun one

@@ -99,7 +99,9 @@ mapping before resuming the run.
 
 - `entry_gate` - optional `{ criterion, failure, max_loops }`. `criterion`
   names a shell criterion of this stage that the harness runs when the run
-  enters the stage, before it delegates the worker; `failure` names another
+  enters the stage, before it delegates the worker, unless an active operator
+  gate waiver covers that criterion, in which case the harness records the
+  gate as waived and runs no command; `failure` names another
   stage a failure routes to; `max_loops` bounds the consecutive failures that
   route there. A pass is recorded on `state.entry_gates.<stage>`, covers the
   current visit of the stage, and is carried into the stage's submission

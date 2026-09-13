@@ -1013,6 +1013,19 @@ export function summarizePriorFailure(
         explanation: evaluation.explanation,
       }
     })
+  // An acceptance criterion is not a hard stage criterion, so a worker that
+  // reported one failing left the retry card with no reason of any kind. The
+  // declared failure is a recorded reason in its own right.
+  const declaredCriteriaFailures = (previous.self_criteria ?? [])
+    .filter(
+      (evaluation) =>
+        evaluation.result !== 'pass' && !hardCriteria.has(evaluation.id),
+    )
+    .map((evaluation) => ({
+      id: evaluation.id,
+      result: evaluation.result,
+      explanation: evaluation.explanation,
+    }))
   const failedDeterministic = previous.deterministic
     .filter((item) => !item.passed && !item.disabled)
     .map((item) => ({
@@ -1030,6 +1043,7 @@ export function summarizePriorFailure(
     outcome: previous.outcome,
     output_path: previous.output_path,
     failed_hard_criteria: failedHardCriteria,
+    declared_criteria_failures: declaredCriteriaFailures,
     failed_deterministic: failedDeterministic,
     validation_errors: previous.validation_errors,
     governance_artifact_warnings: previous.governance_artifact_warnings ?? [],
