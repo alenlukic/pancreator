@@ -488,18 +488,20 @@ test('renderInbox writes a stable table and names an empty inbox', () => {
         title: 'Newest',
         modified_at: '2024-03-03T12:00:00.000Z',
         run_id: '10000_Mar-03-1200_inbox',
+        status: 'queue',
       },
       {
         file_name: 'heading-free.md',
         title: 'heading-free.md',
         modified_at: '2024-02-02T10:00:00.000Z',
         run_id: null,
+        status: 'complete',
       },
     ]),
     [
-      'FILE\tTITLE\tMODIFIED\tRUN',
-      'newest.md\tNewest\t2024-03-03T12:00:00.000Z\t10000_Mar-03-1200_inbox',
-      'heading-free.md\theading-free.md\t2024-02-02T10:00:00.000Z\t-',
+      'STATUS\tFILE\tTITLE\tMODIFIED\tRUN',
+      'queue\tnewest.md\tNewest\t2024-03-03T12:00:00.000Z\t10000_Mar-03-1200_inbox',
+      'complete\theading-free.md\theading-free.md\t2024-02-02T10:00:00.000Z\t-',
       '',
     ].join('\n'),
   )

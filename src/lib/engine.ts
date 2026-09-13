@@ -16,6 +16,7 @@ import {
 import {
   buildContextReference,
   buildInvocationInputs,
+  operatorStageRepairContext,
   summarizePriorFailure,
 } from './context.js'
 import {
@@ -4438,7 +4439,12 @@ export function prepareInvocation(
       stage.slug,
       workflow.slug,
     )
-    const priorFailure = summarizePriorFailure(state, stage, root)
+    // An operator return to this stage supersedes the last recorded attempt
+    // of it, so the note is the reason and the older record is not.
+    const stageRepair = operatorStageRepairContext(state, stage)
+    const priorFailure = stageRepair
+      ? null
+      : summarizePriorFailure(state, stage, root)
     const briefVocabulary = artifactsRequested
       ? resolveBriefVocabulary(root)
       : undefined
@@ -4534,6 +4540,7 @@ export function prepareInvocation(
       },
       prompt: loadStagePrompt(root, stage),
       ...(priorFailure ? { prior_failure: priorFailure } : {}),
+      ...(stageRepair ? { operator_stage_repair: stageRepair } : {}),
       inputs: buildInvocationInputs({
         root,
         state,

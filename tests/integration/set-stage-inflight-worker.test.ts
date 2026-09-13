@@ -11,11 +11,8 @@ import {
   setRunStage,
 } from '../../src/lib/engine.js'
 import type { Invocation } from '../../src/lib/types.js'
-import {
-  createFixture,
-  createRun,
-  writeCanonicalDelegation,
-} from '../helpers.js'
+import { createFixture, writeCanonicalDelegation } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 
 /** A delegated verify invocation, whose stage declares two evidence workers. */
 function delegatedVerifyRun(): {

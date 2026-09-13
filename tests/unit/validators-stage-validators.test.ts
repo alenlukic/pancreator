@@ -1815,6 +1815,70 @@ test('verify validator binds acceptance coverage to the accepted plan', () => {
   )
 })
 
+// HR3-009: a returning verification had nowhere to say that a case result
+// came from the earlier visit, so the only compliant option was to execute
+// every case again over code the remediation never touched.
+test('verify validator accepts a carried case citation and rejects a malformed one', () => {
+  const root = validatorFixtureRoot('pan-verify-carried-case-')
+  const carried = {
+    ...passingQaCase,
+    id: 'TP-02',
+    carried_from: {
+      invocation_id: 'verify-1',
+      workspace_fingerprint: 'fp-prior',
+    },
+  }
+
+  writeVerifyOutput(root, 'carried.json', {
+    verdict: 'pass',
+    findings: [],
+    qa_cases: [passingQaCase, carried],
+    acceptance_results: [{ id: 'AC-01', result: 'pass' }],
+  })
+
+  const wellFormed = validateVerifyOutput({
+    root,
+    targetPath: 'carried.json',
+    requirement: verifyRequirement(),
+  })
+
+  assert.equal(wellFormed.status, 'passed', JSON.stringify(wellFormed.issues))
+
+  // A citation that names no fingerprint cannot say which workspace the
+  // carried result was observed against, which is the whole point of it.
+  writeVerifyOutput(root, 'malformed.json', {
+    verdict: 'pass',
+    findings: [],
+    qa_cases: [
+      { ...carried, carried_from: { invocation_id: 'verify-1' } },
+      { ...passingQaCase, id: 'TP-03', carried_from: {} },
+      {
+        ...passingQaCase,
+        id: 'TP-04',
+        carried_from: {
+          invocation_id: '   ',
+          workspace_fingerprint: 'fp-prior',
+        },
+      },
+    ],
+    acceptance_results: [{ id: 'AC-01', result: 'pass' }],
+  })
+
+  const malformed = validateVerifyOutput({
+    root,
+    targetPath: 'malformed.json',
+    requirement: verifyRequirement(),
+  })
+
+  assert.equal(malformed.status, 'failed')
+  assert.deepEqual(
+    malformed.issues
+      .filter((item) => item.code === 'verify.case_carried_from_shape')
+      .map((item) => item.message.split(' ')[2]),
+    ['TP-02', 'TP-03', 'TP-04'],
+  )
+})
+
 test('verify validator requires a citation for each current gate evidence reference', () => {
   const root = validatorFixtureRoot('pan-verify-gate-citation-')
   const target = 'output.json'

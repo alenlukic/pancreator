@@ -23,10 +23,10 @@ import {
   attachTargetInstructionEvidence,
   makeOutput,
   read,
-  submitAsSupervisor,
   writeCanonicalDelegation,
   writeJson,
 } from '../helpers.js'
+import { submitAsSupervisor } from '../run-helpers.js'
 
 /** Registry ids of the harness validation records a run persisted. */
 function persistedHarnessValidatorIds(root: string, runId: string): string[] {

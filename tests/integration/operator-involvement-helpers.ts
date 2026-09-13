@@ -8,8 +8,8 @@ import {
   read,
   writeCanonicalDelegation,
   writeJson,
-  submitAsSupervisor,
 } from '../helpers.js'
+import { submitAsSupervisor } from '../run-helpers.js'
 import type {
   StageDefinition,
   StageOutcome,

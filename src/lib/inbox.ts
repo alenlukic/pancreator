@@ -34,6 +34,8 @@ export interface InboxItem {
   title: string
   modified_at: string
   run_id: string | null
+  /** Lifecycle directory the item sits in. */
+  status: InboxWorkStatus
 }
 
 interface InboxEntry {
@@ -579,45 +581,67 @@ export function migrateLegacyInboxLayout(
   return { migrated_files: migratedFiles, updated_runs: updatedRuns }
 }
 
-/** List queued Markdown inbox items in newest-first modification-time order. */
-export function listInbox(root: string): InboxItem[] {
-  const queueDir = resolveInside(root, statusDirectoryRelative('queue'))
+function listInboxStatus(
+  root: string,
+  status: InboxWorkStatus,
+  knownRunIds: string[],
+): InboxEntry[] {
+  const directory = resolveInside(root, statusDirectoryRelative(status))
 
-  if (!fileExists(queueDir)) {
+  if (!fileExists(directory)) {
     return []
   }
 
+  return readdirSync(directory, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.md'))
+    .map((entry) => {
+      const filePath = path.join(directory, entry.name)
+      const stat = statSync(filePath)
+      const content = readFileSync(filePath, 'utf8')
+
+      return {
+        mtimeMs: stat.mtimeMs,
+        item: {
+          file_name: entry.name,
+          title: extractTitle(content, entry.name),
+          modified_at: new Date(stat.mtimeMs).toISOString(),
+          run_id: resolveRunId(entry.name, knownRunIds),
+          status,
+        },
+      }
+    })
+}
+
+/**
+ * List the Markdown inbox items of every lifecycle status.
+ *
+ * `HR3-012`: the listing read `queue` alone, so an operator who wanted to see
+ * an active, canceled, or completed item had to read the directories
+ * themselves. Statuses are listed in lifecycle order and newest-first inside
+ * one status, which keeps the queued items at the head of the table in the
+ * order they already had.
+ */
+export function listInbox(root: string): InboxItem[] {
   const knownRunIds = loadKnownRunIds(root)
-  const entries = readdirSync(queueDir, { withFileTypes: true }).filter(
-    (entry) => entry.isFile() && entry.name.endsWith('.md'),
-  )
-  const items: InboxEntry[] = entries.map((entry) => {
-    const filePath = path.join(queueDir, entry.name)
-    const stat = statSync(filePath)
-    const content = readFileSync(filePath, 'utf8')
+  const items: InboxItem[] = []
 
-    return {
-      mtimeMs: stat.mtimeMs,
-      item: {
-        file_name: entry.name,
-        title: extractTitle(content, entry.name),
-        modified_at: new Date(stat.mtimeMs).toISOString(),
-        run_id: resolveRunId(entry.name, knownRunIds),
-      },
-    }
-  })
+  for (const status of INBOX_WORK_STATUSES) {
+    const entries = listInboxStatus(root, status, knownRunIds)
 
-  items.sort((left, right) => {
-    const timeDifference = right.mtimeMs - left.mtimeMs
+    entries.sort((left, right) => {
+      const timeDifference = right.mtimeMs - left.mtimeMs
 
-    if (timeDifference !== 0) {
-      return timeDifference
-    }
+      if (timeDifference !== 0) {
+        return timeDifference
+      }
 
-    return left.item.file_name.localeCompare(right.item.file_name)
-  })
+      return left.item.file_name.localeCompare(right.item.file_name)
+    })
 
-  return items.map((entry) => entry.item)
+    items.push(...entries.map((entry) => entry.item))
+  }
+
+  return items
 }
 
 /** Render a tab-separated inbox listing or the empty-list message. */
@@ -626,11 +650,11 @@ export function renderInbox(items: InboxItem[]): string {
     return 'Inbox is empty.\n'
   }
 
-  const lines = ['FILE\tTITLE\tMODIFIED\tRUN']
+  const lines = ['STATUS\tFILE\tTITLE\tMODIFIED\tRUN']
 
   for (const item of items) {
     lines.push(
-      `${item.file_name}\t${item.title}\t${item.modified_at}\t${item.run_id ?? '-'}`,
+      `${item.status}\t${item.file_name}\t${item.title}\t${item.modified_at}\t${item.run_id ?? '-'}`,
     )
   }
 

@@ -14,7 +14,8 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { pauseRun } from '../../src/lib/engine.js'
-import { createFixture, createRun } from '../helpers.js'
+import { createFixture } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 import { makeWorkflowRunId } from '../../src/lib/naming.js'
 
 const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')

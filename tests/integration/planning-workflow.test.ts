@@ -9,7 +9,8 @@ import { resolvePolicies } from '../../src/lib/policies.js'
 import { resolveRequirements } from '../../src/lib/requirements/resolve.js'
 import { listRunIds } from '../../src/lib/state.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
-import { createFixture, createRun, sharedFixture } from '../helpers.js'
+import { createFixture, sharedFixture } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 
 function writeRequest(root: string): string {
   const relative = 'planning-request.md'

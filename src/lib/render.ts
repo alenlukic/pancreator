@@ -673,6 +673,36 @@ export function renderSupervisorProcedureMarkdown(
  * evidence report. It carries no lifecycle command and no stage output
  * contract — the consolidating worker owns both.
  */
+/**
+ * What a returning evidence worker executes again and what it carries
+ * (`VERIFY-001`).
+ *
+ * A first visit renders nothing: every case is new work. On a return after a
+ * remediation the brief bounds the re-execution by the paths that changed,
+ * so the worker spends its cases on the code that moved.
+ */
+function renderCarriedCaseScope(invocation: Invocation): string[] {
+  const scope = invocation.inputs.carried_case_scope
+
+  if (!scope) {
+    return []
+  }
+
+  return [
+    '',
+    'This is a return visit after remediation ' +
+      `\`${scope.remediation_invocation_id}\`. Execute the cases your scope ` +
+      "reaches that touch the remediation's blast radius:",
+    '',
+    ...scope.blast_radius.map((changedPath) => `- \`${changedPath}\``),
+    '',
+    'Carry every other case forward with its earlier result rather than ' +
+      'executing it again, and record `carried_from` on that case with the ' +
+      'prior invocation id and the workspace fingerprint it was observed ' +
+      'at. This caps case coverage only; it changes no profile allowance.',
+  ]
+}
+
 export function renderEvidenceWorkerBrief(
   invocation: Invocation,
   worker: InvocationEvidenceWorker,
@@ -736,6 +766,7 @@ export function renderEvidenceWorkerBrief(
     'You are one of several parallel evidence workers for this stage. A ' +
       'separate consolidating worker joins every report into the stage ' +
       'verdict; you own one evidence dimension and no verdict.',
+    ...renderCarriedCaseScope(invocation),
     '',
     '## Scope',
     '',
@@ -991,6 +1022,25 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
           : []),
       ]
     : []
+  const stageRepair = invocation.operator_stage_repair
+  const stageRepairLines = stageRepair
+    ? [
+        '## ⛔ Why this attempt exists',
+        '',
+        `The ${stageRepair.actor} moved this run from \`${stageRepair.from_stage}\` ` +
+          `to \`${stageRepair.to_stage}\` and gave this reason. It supersedes ` +
+          'every earlier verdict, including any output of the stage the run ' +
+          'came from. Treat it as required input.',
+        '',
+        ...stageRepair.note
+          .trim()
+          .split('\n')
+          .map((line) => `> ${line}`.trimEnd()),
+        '',
+        `Recorded at \`${stageRepair.path}\`.`,
+        '',
+      ]
+    : []
   const involvement = invocation.operator_involvement
   const appliedGateEntries = Object.entries(involvement?.applied_gates ?? {})
   const involvementLines = involvement
@@ -1171,6 +1221,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
     invocation.prompt,
     '',
     ...priorFailureLines,
+    ...stageRepairLines,
     '## 📥 Inputs',
     '',
     '### Required inputs',

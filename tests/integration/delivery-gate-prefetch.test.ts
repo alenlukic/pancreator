@@ -25,9 +25,9 @@ import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   attachTargetInstructionEvidence,
   createFixture,
-  createRun,
   writeJson,
 } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 import {
   checkpoint,
   checksVariant,

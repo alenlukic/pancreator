@@ -13,6 +13,8 @@ import {
   attestSupervisorCard,
   buildSupervisorCard,
   redlineCurrent,
+  REDLINE_FOLLOWS_ATTESTATION,
+  supervisorBootstrap,
   supervisorCardAttested,
 } from '../../src/lib/governance/supervisor-card.js'
 import { sha256 } from '../../src/lib/io.js'
@@ -20,13 +22,8 @@ import { writeRedlineRecord } from '../../src/lib/watch.js'
 import { readPolicyLookupTable } from '../../src/lib/policies.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { createWorktree } from '../../src/lib/worktrees.js'
-import {
-  createFixture,
-  makeOutput,
-  read,
-  submitAsSupervisor,
-  writeJson,
-} from '../helpers.js'
+import { createFixture, makeOutput, read, writeJson } from '../helpers.js'
+import { submitAsSupervisor } from '../run-helpers.js'
 
 function unattestedRun(root: string) {
   return createEngineRun(root, {
@@ -441,4 +438,89 @@ test('a worktree-bound run names its worktree on the supervisor card', () => {
   )
 
   assert.ok(!plainCard.includes('## 🌳 Workspace worktree'))
+})
+
+// HR3-013: the refusal named the order, so a supervisor reading the
+// bootstrap set discovered it by being refused.
+test('the bootstrap command set orders the attestation before the redline and says why', () => {
+  const root = createFixture()
+  const state = unattestedRun(root)
+  const bootstrap = supervisorBootstrap(root, state, 'pan-start')
+  const keys = Object.keys(bootstrap)
+
+  assert.ok(
+    keys.indexOf('attest_command') < keys.indexOf('redline_command'),
+    'the attestation is emitted before the redline',
+  )
+  assert.equal(bootstrap.redline_order, REDLINE_FOLLOWS_ATTESTATION)
+  assert.match(bootstrap.redline_order, /after attest_command/u)
+  assert.match(bootstrap.redline_order, /session generation/u)
+
+  // The stated dependency is the one the refusal enforces.
+  attestSupervisorCard(root, state.run_id, bootstrap.card_sha256 ?? '')
+
+  const owed = supervisorBootstrap(root, getRunState(root, state.run_id))
+
+  assert.equal(owed.attested, true)
+  assert.equal(owed.redline_current, false)
+
+  writeRedlineRecord(root, state.run_id, 'pan-start')
+  assert.equal(
+    supervisorBootstrap(root, getRunState(root, state.run_id)).redline_current,
+    true,
+  )
+})
+
+// HR3-016: the diff was measured from the previous render, so a second edit
+// before any re-attestation reported only itself and the first edit left the
+// supervisor's reading list unread.
+test('two policy edits without an intervening attestation both appear in the diff', () => {
+  const root = createFixture()
+  const state = unattestedRun(root)
+  const card = state.supervisor_card
+
+  assert.ok(card)
+  attestSupervisorCard(root, state.run_id, card.sha256)
+  writeRedlineRecord(root, state.run_id, 'pan-start')
+
+  const editPolicy = (id: string, instruction: string): void => {
+    const policyPath = path.join(root, `governance/policies/${id}.json`)
+    const policy = read(policyPath) as { instructions: string[] }
+
+    policy.instructions = [...policy.instructions, instruction]
+    writeJson(policyPath, policy)
+  }
+
+  editPolicy('ORCH-001', 'The supervisor MUST confirm the first edit.')
+
+  const first = buildSupervisorCard(root, state.run_id)
+
+  assert.deepEqual(first.policy_section_diff?.changed, ['ORCH-001'])
+
+  // No attestation happens here. The supervisor has still read only the card
+  // it attested, so the next delta owes it both edits.
+  editPolicy('PRINCIPLES-001', 'The supervisor MUST confirm the second edit.')
+
+  const second = buildSupervisorCard(root, state.run_id)
+
+  assert.equal(second.changed, true)
+  assert.deepEqual(second.policy_section_diff?.changed, [
+    'ORCH-001',
+    'PRINCIPLES-001',
+  ])
+  assert.equal(second.policy_section_diff?.previous_sha256, card.sha256)
+  assert.match(second.policy_diff_summary ?? '', /ORCH-001/u)
+  assert.match(second.policy_diff_summary ?? '', /PRINCIPLES-001/u)
+
+  // Attesting again moves the measurement point to what was just read.
+  const current = getRunState(root, state.run_id).supervisor_card
+
+  assert.ok(current)
+  attestSupervisorCard(root, state.run_id, current.sha256)
+  editPolicy('ORCH-001', 'The supervisor MUST confirm the third edit.')
+
+  const third = buildSupervisorCard(root, state.run_id)
+
+  assert.deepEqual(third.policy_section_diff?.changed, ['ORCH-001'])
+  assert.equal(third.policy_section_diff?.previous_sha256, current.sha256)
 })

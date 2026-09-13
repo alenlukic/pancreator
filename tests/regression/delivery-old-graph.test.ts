@@ -19,12 +19,11 @@ import {
 } from '../../src/lib/workflow.js'
 import {
   createFixture,
-  createRun,
   makeOutput,
-  submitAsSupervisor,
   writeCanonicalDelegation,
   writeJson,
 } from '../helpers.js'
+import { createRun, submitAsSupervisor } from '../run-helpers.js'
 
 /**
  * The delivery workflow now starts at implement and holds no plan stage. A run

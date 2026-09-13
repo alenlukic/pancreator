@@ -12,12 +12,11 @@ import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import {
   attachTargetInstructionEvidence,
   createFixture,
-  createRun,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
-  submitAsSupervisor,
 } from '../helpers.js'
+import { createRun, submitAsSupervisor } from '../run-helpers.js'
 import { checkpoint, checksVariant, PASS } from './delivery-helpers.js'
 
 test('a failed environment probe pauses before source-stage delegation', () => {

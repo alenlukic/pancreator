@@ -11,7 +11,8 @@ import {
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import type { Invocation } from '../../src/lib/types.js'
 import { invocationEvidencePaths } from '../../src/lib/watch.js'
-import { createFixture, createRun, read } from '../helpers.js'
+import { createFixture, read } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 
 /** A run standing at the verify stage, which declares two evidence workers. */
 function verifyInvocation(): {

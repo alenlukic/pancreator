@@ -11,11 +11,11 @@ import {
 import { loadWorkflowFile, stageBySlug } from '../../src/lib/workflow.js'
 import {
   createFixture,
-  createRun,
   makeOutput,
   read,
   writeCanonicalDelegation,
 } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 
 // Cadence short enough for a unit test yet above the module floor.
 // Each wake observes the run tree and the workspace Git state, which costs a

@@ -19,7 +19,8 @@ import {
 } from '../../src/lib/hypervisor.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import type { AgentRecord, RunState } from '../../src/lib/types.js'
-import { createFixture, createRun } from '../helpers.js'
+import { createFixture } from '../helpers.js'
+import { createRun } from '../run-helpers.js'
 import { checkpoint } from '../integration/delivery-helpers.js'
 
 const stalledObservation = {
