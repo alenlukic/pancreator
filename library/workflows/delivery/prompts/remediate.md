@@ -47,6 +47,20 @@ evidence is your primary input.
 8. Map evidence to every acceptance criterion honestly, including the ones
    verify marked as failed.
 
+## Gate-cache acceptance
+
+This statement is `GATE_CACHE_ACCEPTANCE_RULE` in `src/lib/gate-cache.ts`, the
+one source the operator guide, the verify prompt, and every worker card that
+meets the mark also carry:
+
+A gate marked `cached` is a real pass, not a skipped one: the identical gate
+command passed cleanly at this same Git workspace fingerprint and
+repository-check configuration within the last 24 hours, against a resolved
+run baseline, and its evidence log carries that original captured output.
+Treat it as evidence of the same strength as a pass the harness executed just
+now, and do not order a rerun to replace it. A failure, timeout, skip,
+override, or baseline-relative credit is never accepted this way.
+
 ## Output
 
 Populate `data.implementation` (`changed_files`, `tests_added`, `notes`,

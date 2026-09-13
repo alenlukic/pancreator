@@ -7,8 +7,10 @@ import {
   renderGuidanceBlock,
   renderPolicyBlocks,
 } from '../../src/lib/policy-guidance.js'
+import { GATE_CACHE_ACCEPTANCE_RULE } from '../../src/lib/gate-cache.js'
 import {
   buildInvocationContractManifest,
+  orderedWorkerActions,
   renderEvidenceWorkerBrief,
   renderInvocationDeliveryPrompt,
   renderInvocationMarkdown,
@@ -947,6 +949,22 @@ test('the delivery prompt references the contract without reproducing it', () =>
     assert.ok(prompt.includes(`sha256:${entry.content_sha256}`))
   }
 
+  // AC-001, second half. The two attestation prose fields are split because
+  // the shapes are different, and a worker that wrote its skip reason into
+  // `final_line` fails validation. The block names each field in the shape
+  // that owns it, so a merged or swapped instruction is caught here.
+  const completed = prompt.slice(
+    prompt.indexOf('- A completed read:'),
+    prompt.indexOf('- A skipped read:'),
+  )
+  const skipped = prompt.slice(prompt.indexOf('- A skipped read:'))
+
+  assert.ok(completed.length > 0 && skipped.length > 0, prompt)
+  assert.match(completed, /in `final_line`/u)
+  assert.match(completed, /Leave\s+`reason` empty/u)
+  assert.match(skipped, /in `reason`/u)
+  assert.match(skipped, /Leave\s+`final_line` empty/u)
+
   const markdown = renderInvocationMarkdown(invocation)
 
   assert.ok(invocation.delegation?.delivery_prompt_path)
@@ -1146,4 +1164,164 @@ test('the launch step carries the watch pointer, command, and ordering', () => {
 
   assert.ok(launchIndex > 0)
   assert.ok(launchIndex < verdictIndex)
+})
+
+// AC-006. A supervisor that read "launch the evidence workers, then the stage
+// worker" as one instruction launched the verifier first and got a stage that
+// reported `blocked` on reports nobody had produced. The ordering is numbered
+// so there is one place to count.
+test('a prepared verify stage orders every evidence worker before the stage worker', () => {
+  const root = createFixture()
+  const invocation = baseInvocation(root, 'delivery', 'verify')
+
+  invocation.delegation = delegatedInvocation(root).delegation
+  assert.ok(invocation.delegation)
+  invocation.delegation.cursor_agent_path = '.cursor/agents/pan-verifier.md'
+  invocation.evidence_workers = [
+    {
+      persona: 'reviewer',
+      role: 'review',
+      scope: 'Implementation correctness',
+      agent: 'pan-reviewer',
+      model: 'review-model',
+      brief_path: 'runtime/logs/workflows/run-fixture/briefs/review.md',
+      evidence_path: 'runtime/logs/workflows/run-fixture/evidence/review.md',
+    },
+    {
+      persona: 'qa-tester',
+      role: 'qa',
+      scope: 'Acceptance evidence',
+      agent: 'pan-qa-tester',
+      model: 'qa-model',
+      brief_path: 'runtime/logs/workflows/run-fixture/briefs/qa.md',
+      evidence_path: 'runtime/logs/workflows/run-fixture/evidence/qa.md',
+    },
+  ]
+
+  const actions = orderedWorkerActions(invocation)
+
+  assert.deepEqual(
+    actions.map((action) => [action.order, action.role, action.agent]),
+    [
+      [1, 'evidence', 'pan-reviewer'],
+      [2, 'evidence', 'pan-qa-tester'],
+      [3, 'stage', 'pan-verifier'],
+    ],
+  )
+
+  const procedure = renderSupervisorProcedureMarkdown(invocation)
+
+  for (const action of actions) {
+    assert.ok(
+      procedure.includes(`${action.order}. \`${action.agent}\``),
+      procedure,
+    )
+  }
+
+  assert.ok(
+    procedure.indexOf('1. `pan-reviewer`') <
+      procedure.indexOf('3. `pan-verifier`'),
+    procedure,
+  )
+})
+
+// A stage with no evidence worker has nothing to order, so its procedure is
+// unchanged.
+test('a stage with no evidence worker reports no worker actions', () => {
+  const root = createFixture()
+
+  assert.deepEqual(orderedWorkerActions(delegatedInvocation(root)), [])
+})
+
+// AC-005. The supervisor used to assemble this command from three fields on
+// three different lines of the card and reliably dropped one.
+test('the supervisor procedure carries the resolved output validate command', () => {
+  const root = createFixture()
+  const invocation = delegatedInvocation(root)
+
+  assert.ok(invocation.delegation)
+  invocation.delegation.output_validate_command =
+    './bin/pan output validate --run run-fixture ' +
+    `--file ${invocation.output.path} ` +
+    '--invocation runtime/logs/workflows/run-fixture/invocations/implement-1.json'
+
+  const procedure = renderSupervisorProcedureMarkdown(invocation)
+
+  assert.ok(
+    procedure.includes(invocation.delegation.output_validate_command),
+    procedure,
+  )
+})
+
+// AC-017. The tracked configuration file states the profile's own budget; the
+// run snapshot states the bound this gate enforces, and only the second one
+// tells the worker when its command will be killed.
+test('a worker card names the resolved gate timeout beside its profile command', () => {
+  const root = createFixture()
+  const invocation = baseInvocation(root, 'delivery', 'implement')
+  const card = renderInvocationMarkdown(invocation)
+  const gate = invocation.rubric.find(
+    (criterion) => criterion.command === 'pan repository-check fast',
+  )
+
+  assert.ok(gate?.timeout_ms)
+  assert.match(
+    card,
+    new RegExp(
+      `Gate: \`pan repository-check fast\`, resolved timeout ${gate.timeout_ms} ms from the run snapshot`,
+      'u',
+    ),
+  )
+})
+
+test('a verification level remap moves the gate command the card names', () => {
+  const root = createFixture()
+  const invocation = baseInvocation(root, 'delivery', 'implement')
+
+  invocation.verification = {
+    level: 'light',
+    summary: 'Fixture level',
+    gates: { 'implement.unit_tests': 'static', 'implement.lint': false },
+  }
+
+  const card = renderInvocationMarkdown(invocation)
+
+  assert.match(card, /Gate: `pan repository-check static`, resolved timeout/u)
+  assert.match(card, /Gate: skipped at verification level `light`/u)
+})
+
+// AC-018. One statement, in one term, wherever a worker meets the mark.
+test('a card that owns a repository-check gate carries the gate-cache rule', () => {
+  const root = createFixture()
+  const card = renderInvocationMarkdown(
+    baseInvocation(root, 'delivery', 'implement'),
+  )
+
+  assert.ok(card.includes(GATE_CACHE_ACCEPTANCE_RULE), card)
+})
+
+test('a card handed gate evidence carries the same gate-cache rule', () => {
+  const root = createFixture()
+  const invocation = baseInvocation(root, 'delivery', 'verify')
+
+  assert.ok(
+    !renderInvocationMarkdown(invocation).includes(GATE_CACHE_ACCEPTANCE_RULE),
+  )
+
+  invocation.inputs.references = [
+    {
+      path: 'runtime/logs/workflows/run-fixture/evidence/implement-fast.log',
+      description: 'Implement gate evidence',
+      gate_evidence: {
+        profile: 'fast',
+        current: true,
+        fingerprint: 'fixture-fingerprint',
+      },
+      // The reference exists so the card is handed gate evidence.
+    },
+  ]
+
+  assert.ok(
+    renderInvocationMarkdown(invocation).includes(GATE_CACHE_ACCEPTANCE_RULE),
+  )
 })

@@ -243,3 +243,88 @@ export function effectiveRepositoryCheckProfile(
     skipped: false,
   }
 }
+
+/** One ratified criterion that loses its evidence producer at a new level. */
+export interface DisabledEvidenceProducer {
+  criterion_id: string
+  /** Repository-check profile the criterion's verification method names. */
+  profile: string
+  /** Gate the new level disables, which produced that profile's evidence. */
+  gate: string
+  verification: string
+}
+
+/** A ratified acceptance criterion, as the plan output records it. */
+export interface RatifiedAcceptanceCriterion {
+  id: string
+  verification: string
+}
+
+/**
+ * The ratified acceptance criteria whose evidence producer a new verification
+ * level disables.
+ *
+ * A level change is cheap to run and expensive to discover: an operator who
+ * set `minimal` during remediate learned only at the next gate that two
+ * ratified criteria demanded fast-profile evidence no agent and no gate could
+ * then produce, and the run needed a waiver. Matching the criterion's own
+ * verification prose against the profiles the level turns off names that
+ * consequence while the decision is still open.
+ */
+export function disabledEvidenceProducers(
+  criteria: readonly RatifiedAcceptanceCriterion[],
+  current: ResolvedVerification | null | undefined,
+  next: ResolvedVerification,
+): DisabledEvidenceProducer[] {
+  const lost = new Map<string, string>()
+
+  for (const [gate, remap] of Object.entries(next.gates)) {
+    if (remap !== false) {
+      continue
+    }
+
+    const before = current?.gates[gate]
+
+    if (before === false) {
+      continue
+    }
+
+    // A gate the current level does not remap runs its workflow-declared
+    // profile, whose name the gate id carries as its suffix: `ship.full_suite`
+    // runs `full`.
+    const profile =
+      typeof before === 'string'
+        ? before
+        : (gate.split('.').pop() ?? gate).replace(/_suite$/u, '')
+
+    if (!lost.has(profile)) {
+      lost.set(profile, gate)
+    }
+  }
+
+  if (lost.size === 0) {
+    return []
+  }
+
+  const producers: DisabledEvidenceProducer[] = []
+
+  for (const criterion of criteria) {
+    const method = criterion.verification.toLowerCase()
+
+    for (const [profile, gate] of lost) {
+      if (!method.includes(profile.toLowerCase())) {
+        continue
+      }
+
+      producers.push({
+        criterion_id: criterion.id,
+        profile,
+        gate,
+        verification: criterion.verification,
+      })
+      break
+    }
+  }
+
+  return producers
+}

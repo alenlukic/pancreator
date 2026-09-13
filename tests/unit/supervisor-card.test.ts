@@ -235,6 +235,79 @@ test('the card render is idempotent and a policy change re-binds the supervisor'
   assert.ok(prepareInvocation(root, state.run_id).invocation)
 })
 
+test('a mid-run policy edit reports a digest diff and still owes re-attestation', () => {
+  const root = createFixture()
+  const state = unattestedRun(root)
+  const card = state.supervisor_card
+
+  assert.ok(card)
+  assert.equal(
+    card.policy_section_diff,
+    undefined,
+    'a first render has no delta',
+  )
+  attestSupervisorCard(root, state.run_id, card.sha256)
+  writeRedlineRecord(root, state.run_id, 'pan-start')
+
+  const policyPath = path.join(root, 'governance/policies/ORCH-001.json')
+  const policy = read(policyPath) as { instructions: string[] }
+
+  policy.instructions = [
+    ...policy.instructions,
+    'The supervisor MUST confirm the digest diff after a policy change.',
+  ]
+  writeJson(policyPath, policy)
+
+  const refreshed = buildSupervisorCard(root, state.run_id)
+
+  assert.equal(refreshed.changed, true)
+  assert.deepEqual(refreshed.policy_section_diff?.changed, ['ORCH-001'])
+  assert.deepEqual(refreshed.policy_section_diff?.added, [])
+  assert.deepEqual(refreshed.policy_section_diff?.removed, [])
+  assert.equal(refreshed.policy_section_diff?.previous_sha256, card.sha256)
+  assert.match(refreshed.policy_diff_summary ?? '', /changed ORCH-001/u)
+
+  // The summary names the delta; it does not excuse the re-attestation.
+  let refusal: PanError | null = null
+
+  try {
+    prepareInvocation(root, state.run_id)
+  } catch (error) {
+    refusal = error as PanError
+  }
+
+  assert.ok(refusal instanceof PanError)
+  assert.equal(refusal.code, 'SUPERVISOR_CARD_UNATTESTED')
+  assert.match(refusal.message, /changed ORCH-001/u)
+  assert.deepEqual(
+    (refusal.details as { policy_section_diff?: { changed: string[] } })
+      .policy_section_diff?.changed,
+    ['ORCH-001'],
+  )
+
+  const current = getRunState(root, state.run_id).supervisor_card
+
+  assert.ok(current)
+  attestSupervisorCard(root, state.run_id, current.sha256)
+  writeRedlineRecord(root, state.run_id, 'pan-start')
+
+  const prepared = prepareInvocation(root, state.run_id)
+
+  assert.ok(prepared.invocation)
+
+  // The delegated procedure states what the summary buys the supervisor.
+  const procedure = readFileSync(
+    path.join(
+      root,
+      prepared.invocation.delegation?.supervisor_procedure_path ?? '',
+    ),
+    'utf8',
+  )
+
+  assert.match(procedure, /digest-diff summary/u)
+  assert.match(procedure, /Reading those blocks satisfies the re-read/u)
+})
+
 test('a resume re-attests the card, opens a new session generation, and owes a new redline', () => {
   const root = createFixture()
   const state = unattestedRun(root)

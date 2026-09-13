@@ -197,7 +197,7 @@ test('verify same-reason failure twice pauses for operator_decision and the trac
     const waived = waiveGate(root, runId, {
       stageSlug: 'verify',
       criterionIds: ['verify.acceptance_met'],
-      note: 'Bounded verify miss is isolated and does not block downstream validation.',
+      note: 'Bounded verify miss is isolated and does not block downstream validation, so the run continues to ship.',
     })
 
     assert.equal(waived.state.status, 'running')

@@ -1,5 +1,35 @@
 # Changelog
 
+## [5.25.0] - 2026-09-13
+
+This release integrates the two Phase 2 chunks of the harness-repair program. Chunk 2a repairs CLI and scaffold friction, error identity, and the inbox producer regression. Chunk 2b tightens the next-action contract, labeled model evidence, the secret-path detector, plan producibility, and supervisor-card digest diffs.
+
+### Changed
+
+- Report every missing `pan output validate` argument in one refusal, and treat a flag in the positional slot as a named-argument error ([cli](src/cli.ts), [0e95eee6](https://github.com/alenlukic/pancreator/commit/0e95eee69f5210df961a2091d04c5264554a9c6d)).
+- Prefill skipped-guidance attestation fields as empty `reason` and `final_line`, and fail a skip whose reason was written into `final_line` ([scaffold](src/lib/requirements/scaffold.ts), [0e95eee6](https://github.com/alenlukic/pancreator/commit/0e95eee69f5210df961a2091d04c5264554a9c6d)).
+- Order evidence workers before the verifier in prepare and the supervisor procedure ([engine](src/lib/engine.ts), [0e95eee6](https://github.com/alenlukic/pancreator/commit/0e95eee69f5210df961a2091d04c5264554a9c6d)).
+- Name the recovery command that performs the intended action when `resume` or `decide` is refused, require a waiver destination when a silent forward route would skip a gate, and list every ratified criterion a verification-level change disables ([engine](src/lib/engine.ts), [0e95eee6](https://github.com/alenlukic/pancreator/commit/0e95eee69f5210df961a2091d04c5264554a9c6d)).
+- Select pre-submit validators by determinism and side-effect freedom, so a claim defect fails before a repository-check gate ([validation](src/cli.ts), [0e95eee6](https://github.com/alenlukic/pancreator/commit/0e95eee69f5210df961a2091d04c5264554a9c6d)).
+- Print the resolved gate timeout and the sourced gate-cache rule on worker cards that own a repository-check gate ([render](src/lib/render.ts), [0e95eee6](https://github.com/alenlukic/pancreator/commit/0e95eee69f5210df961a2091d04c5264554a9c6d)).
+- Disclose absolute judging and credit only a declared known-failing case on an unbaselined entry gate ([known-failing](src/lib/known-failing.ts), [0e95eee6](https://github.com/alenlukic/pancreator/commit/0e95eee69f5210df961a2091d04c5264554a9c6d)).
+- Honor `--worktree` on `decide` and `cohort route` so an approved single-chunk plan occupies a named checkout ([cohorts](src/lib/cohorts.ts), [0e95eee6](https://github.com/alenlukic/pancreator/commit/0e95eee69f5210df961a2091d04c5264554a9c6d)).
+- Apply the harness-repair next-action forbidden-token contract to the operator lead as well as the recommended-next-action section ([validator](src/lib/validators/stage-validators.ts), [771a2974](https://github.com/alenlukic/pancreator/commit/771a297454c685687d0173dbf2faa66a6ac36e22)).
+- Record labeled default model evidence for every declared worker, then replace it with the probed variant. Submission advises only a missing record and refuses a snapshot contradiction with `MODEL_EVIDENCE_MISMATCH` ([engine](src/lib/engine.ts), [771a2974](https://github.com/alenlukic/pancreator/commit/771a297454c685687d0173dbf2faa66a6ac36e22)).
+- Widen the exported secret-path detector to dot-env directory members, PEM and keystore files, and extensionless private keys ([release-preparation](src/lib/release-preparation.ts), [771a2974](https://github.com/alenlukic/pancreator/commit/771a297454c685687d0173dbf2faa66a6ac36e22)).
+- Refuse a plan criterion whose verification names no worker-producible evidence ([plan validation](src/lib/validators/stage-validators.ts), [771a2974](https://github.com/alenlukic/pancreator/commit/771a297454c685687d0173dbf2faa66a6ac36e22)).
+- Report a digest-diff summary of a mid-run policy edit and still require supervisor re-attestation ([supervisor-card](src/lib/governance/supervisor-card.ts), [771a2974](https://github.com/alenlukic/pancreator/commit/771a297454c685687d0173dbf2faa66a6ac36e22)).
+
+### Added
+
+- Add `pan inbox restore` to return a canceled or active inbox item to the queue, and refuse a completed or already-queued item ([inbox](src/lib/inbox.ts), [0e95eee6](https://github.com/alenlukic/pancreator/commit/0e95eee69f5210df961a2091d04c5264554a9c6d)).
+- Add `pan context card` to render an invocation read-only without writing run state ([context-card](src/lib/context-card.ts), [771a2974](https://github.com/alenlukic/pancreator/commit/771a297454c685687d0173dbf2faa66a6ac36e22)).
+
+### Fixed
+
+- Raise a coded harness error when a worktree override copy fails ([worktrees](src/lib/worktrees.ts), [0e95eee6](https://github.com/alenlukic/pancreator/commit/0e95eee69f5210df961a2091d04c5264554a9c6d)).
+- Reach a run-owned inbox item under the queue directory during the finalization rewrite ([workflow-artifacts](src/lib/workflow-artifacts.ts), [0e95eee6](https://github.com/alenlukic/pancreator/commit/0e95eee69f5210df961a2091d04c5264554a9c6d)).
+
 ## [5.24.0] - 2026-09-13
 
 This release adds the always-applied `PRINCIPLES-001` policy and aligns tradeoff rules under that hierarchy.

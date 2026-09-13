@@ -45,8 +45,19 @@ import {
   resolveWorktreeWorkspace,
 } from './worktrees.js'
 
-const SECRET_PATH_PATTERN =
-  /(?:^|\/)(?:\.env(?:\.|$)|[^/]*(?:credential|secret|token|private[-_.]?key)[^/]*)/iu
+/**
+ * Paths a release must never carry. The rule is one exported constant so the
+ * corpus that pins it lives beside it: each branch here answers a shape the
+ * detector missed, and a new shape is added with its positive and negative
+ * cases in `tests/unit/release-preparation.test.ts`.
+ *
+ * The branches, in order: a dot-env file or anything inside a dot-env
+ * directory; an OpenSSH private key, which carries no extension and whose
+ * `.pub` sibling is deliberately excluded; a segment naming a credential; and
+ * a key or certificate container extension.
+ */
+export const SECRET_PATH_PATTERN =
+  /(?:^|\/)(?:\.env(?:[./]|$)|id_(?:rsa|dsa|ecdsa|ed25519)$|[^/]*(?:credential|secret|token|private[-_.]?key)[^/]*|[^/]*\.(?:pem|key|p12|pfx|jks|keystore)$)/iu
 const COMMIT_HASH_PATTERN = /^[0-9a-f]{40}$/u
 
 function worktree(

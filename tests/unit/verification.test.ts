@@ -6,6 +6,7 @@ import test from 'node:test'
 import {
   BUILT_IN_VERIFICATION_LEVELS,
   DEFAULT_VERIFICATION_LEVEL,
+  disabledEvidenceProducers,
   effectiveRepositoryCheckProfile,
   parseVerification,
   resolveVerification,
@@ -222,4 +223,35 @@ test('effectiveRepositoryCheckProfile applies the level remap only to repository
     }),
     { profile: 'full', skipped: false },
   )
+})
+
+// AC-013. A level that turns a gate off strands every ratified criterion whose
+// verification method that gate produced. Without the report, the loss surfaces
+// only at the later gate that asks for the evidence, long past the point where
+// the operator could have chosen a different level.
+test('a level change reports the ratified criteria whose evidence producer it disables', () => {
+  const root = createTestTempDirectory('pan-verification-consequence-')
+
+  writeFileSync(path.join(root, 'config.json'), JSON.stringify({}))
+
+  const light = resolveVerification(root, 'light')
+  const minimal = resolveVerification(root, 'minimal')
+  const criteria = [
+    { id: 'AC-001', verification: 'The full profile passes on the branch.' },
+    { id: 'AC-002', verification: 'A reviewer reads the diff.' },
+  ]
+
+  assert.deepEqual(disabledEvidenceProducers(criteria, light, minimal), [
+    {
+      criterion_id: 'AC-001',
+      profile: 'full',
+      gate: 'test.full_suite',
+      verification: 'The full profile passes on the branch.',
+    },
+  ])
+
+  // Raising the level strands nothing, and a gate the current level already
+  // disabled was never producing that evidence to begin with.
+  assert.deepEqual(disabledEvidenceProducers(criteria, minimal, light), [])
+  assert.deepEqual(disabledEvidenceProducers(criteria, minimal, minimal), [])
 })

@@ -11,6 +11,7 @@ import {
   submitOutput,
   validateOutputForSubmission,
 } from '../../src/lib/engine.js'
+import { preSubmitRequirements } from '../../src/cli.js'
 import { PanError } from '../../src/lib/errors.js'
 import { HANDLERS } from '../../src/lib/requirements/handlers.js'
 import { loadRegistry } from '../../src/lib/requirements/registry.js'
@@ -337,5 +338,135 @@ test('invalid revision envelopes fail before structural validation', () => {
         item.name,
       )
     }
+  }
+})
+
+// AC-015. Selection by executor kept the claims validator — a harness-executor
+// entry that is both deterministic and side-effect free — out of the pre-submit
+// set by construction, so the one command that exists to catch a claim defect
+// before it costs an attempt could never run the check that catches it.
+test('the pre-submit set is chosen by side-effect freedom, not by executor', () => {
+  const { root, invocation } = checkpoint('delivery@implement-prepared')
+
+  assert.ok(invocation)
+
+  const catalog = loadRegistry(root)
+  const selected = preSubmitRequirements(root, invocation)
+
+  assert.ok(
+    selected.some(
+      (item) => item.registry_id === 'IMPLEMENTATION-CLAIMS-VALIDATE-001',
+    ),
+    selected.map((item) => item.registry_id).join(', '),
+  )
+
+  for (const item of selected) {
+    const entry = catalog.entries.get(item.registry_id)
+
+    assert.equal(entry?.deterministic, true, item.registry_id)
+    assert.equal(entry?.side_effect_free, true, item.registry_id)
+  }
+
+  // Nothing in the phase was dropped for its executor alone: every eligible
+  // requirement the registry declares safe is present.
+  const eligible = [
+    ...(invocation.requirements?.validation_requirements ?? []),
+    ...(invocation.requirements?.automation_requirements ?? []),
+  ].filter((item) => {
+    const entry = catalog.entries.get(item.registry_id)
+
+    return (
+      (item.phase === 'pre_submit' || item.phase === 'before_operation') &&
+      item.enforcement !== 'advisory' &&
+      entry?.deterministic === true &&
+      entry.side_effect_free === true
+    )
+  })
+
+  assert.deepEqual(
+    selected.map((item) => item.requirement_id).sort(),
+    eligible.map((item) => item.requirement_id).sort(),
+  )
+})
+
+// AC-014. The defect this command exists to catch: a changed path the output's
+// own workspace-changes block names but its declared changed files omit.
+test('pan output validate fails an output whose declared changed files omit its own changed path', () => {
+  const { root, runId, invocation, workflow } = checkpoint(
+    'delivery@implement-prepared',
+  )
+
+  assert.ok(invocation)
+
+  const output = makeOutput(
+    root,
+    invocation,
+    stageBySlug(workflow, 'implement'),
+  )
+
+  attachTargetInstructionEvidence(root, output, ['AGENTS.md'])
+
+  const clean = validateOutputForSubmission(root, runId, invocation, output)
+
+  assert.equal(clean.passed, true, JSON.stringify(clean.checks))
+
+  // The output's own attribution block names a path its claim omits.
+  output.workspace_changes = {
+    attribution: 'internal',
+    paths: ['src/lib/engine.ts'],
+    explanation: 'The stage edited the engine.',
+  }
+
+  const defective = validateOutputForSubmission(root, runId, invocation, output)
+
+  assert.equal(defective.passed, false)
+  assert.ok(
+    defective.checks.some(
+      (check) =>
+        check.id === 'validator.IMPLEMENTATION-CLAIMS-VALIDATE-001' &&
+        !check.passed,
+    ),
+    JSON.stringify(defective.checks),
+  )
+})
+
+// AC-016. A claim defect costs seconds to report and a suite costs minutes, so
+// the order is the whole value: the gates must not run first.
+test('claim validation decides the submission before any repository-check gate runs', () => {
+  const { root, runId, invocation, workflow } = checkpoint(
+    'delivery@implement-prepared',
+  )
+
+  assert.ok(invocation)
+
+  const output = makeOutput(
+    root,
+    invocation,
+    stageBySlug(workflow, 'implement'),
+  )
+
+  attachTargetInstructionEvidence(root, output, ['AGENTS.md'])
+  output.workspace_changes = {
+    attribution: 'internal',
+    paths: ['src/lib/engine.ts'],
+    explanation: 'The stage edited the engine.',
+  }
+  writeJson(path.join(root, invocation.output.path), output)
+  writeCanonicalDelegation(root, invocation)
+
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
+  const gates = submitted.record.evaluation.deterministic.filter((result) =>
+    result.command?.includes('repository-check'),
+  )
+
+  assert.notEqual(submitted.record.outcome, 'success')
+  assert.ok(gates.length > 0, 'the implement stage declares repository gates')
+
+  for (const gate of gates) {
+    assert.match(
+      gate.explanation ?? '',
+      /harness validator IMPLEMENTATION-CLAIMS-VALIDATE-001 rejected the output/u,
+      gate.id,
+    )
   }
 })

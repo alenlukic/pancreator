@@ -931,7 +931,9 @@ A waiver is an operator directive, not a permission request. Use it whenever you
   [--adopt-plan-from <run-id>]
 ```
 
-The command may target current or historical workflow stages, including harness-owned stages, and may redirect a terminal run when the operator explicitly names the source and destination. Destinations may be workflow stages or terminal states such as `succeeded`. It does not require a pause, exact criterion matching, valid stage output, or an unchanged workspace. The note defines the directive; criteria and follow-up tracking are optional metadata. The harness records what was bypassed and where the run was routed without narrowing the directive.
+The command may target current or historical workflow stages, including harness-owned stages, and may redirect a terminal run when the operator explicitly names the source and destination. Destinations may be workflow stages or terminal states such as `succeeded`. It does not require a pause, exact criterion matching, valid stage output, or an unchanged workspace. The note defines the directive; criteria and follow-up tracking are optional metadata. The harness records what was bypassed and where the run was routed.
+
+One confirmation narrows the default route, and only the default route. When the waived stage holds no prepared or in-flight invocation, the run leaves for that stage's success transition, which also bypasses the waived stage's own gate. The harness refuses that jump with `WAIVER_DESTINATION_REQUIRED` unless you state it: pass `--to <stage-slug>`, or name the destination stage or the gate in the note. The `next_stage` gate is exempt because it advances on its own and withholds no judgment; the `operator`, `supervisor`, and `stage_verdict` gates each withhold an advance, and that is the judgment a silent forward route discards. Naming the waived stage is not enough, because a note about waiving verify says "verify" whether or not its author knew the run would leave for ship.
 
 “Operator-owned” means only the operator may decide to waive. An agent may execute the command when the operator explicitly directs it and must not answer that the operator is “not allowed” or that a waiver is impossible because of harness governance.
 
@@ -1004,16 +1006,24 @@ be broad, structural, or unrelated to the approved change. New or changed diagno
 do block. This prevents unrelated repository debt from consuming repeated stage
 attempts without allowing the implementation to introduce additional failures.
 
-A deterministic shell gate whose exact command already passed cleanly at the
-same Git workspace fingerprint and repository-check configuration within the
-last 24 hours is accepted from `runtime/cache/gate-results.json` instead of
-re-executing (`DEV-001`). The result is marked `cached`, its evidence log carries
-the original captured output, and the acceptance never bypasses baseline
-resolution: a run whose baseline is missing still fails that gate closed.
-Failures, timeouts, skips, overrides, and baseline-relative passes are never
-cached, and a non-Git workspace is never cached. `./bin/pan doctor` reports the
-cache state. Set `PAN_GATE_CACHE=0` to force every gate to execute, or delete
-the cache file to forget every recorded pass.
+A deterministic shell gate may be accepted from `runtime/cache/gate-results.json`
+instead of re-executing (`DEV-001`). Every worker card that owns such a gate, or
+that is handed gate evidence, carries this same acceptance rule verbatim from
+`GATE_CACHE_ACCEPTANCE_RULE` in `src/lib/gate-cache.ts`, as do the verify and
+remediate prompts, so the operator and the worker read one statement in one
+term:
+
+> A gate marked `cached` is a real pass, not a skipped one: the identical gate
+> command passed cleanly at this same Git workspace fingerprint and
+> repository-check configuration within the last 24 hours, against a resolved
+> run baseline, and its evidence log carries that original captured output.
+> Treat it as evidence of the same strength as a pass the harness executed just
+> now, and do not order a rerun to replace it. A failure, timeout, skip,
+> override, or baseline-relative credit is never accepted this way.
+
+A non-Git workspace is never `cached`. `./bin/pan doctor` reports the cache
+state. Set `PAN_GATE_CACHE=0` to force every gate to execute, or delete the
+cache file to forget every recorded pass.
 
 Three behaviours feed that cache so a gate finds its answer already recorded.
 A run whose baseline capture finds an earlier passing baseline artifact for the

@@ -32,6 +32,7 @@ import type {
   Policy,
   RunContract,
   RunState,
+  SupervisorCardPolicyDiff,
   SupervisorCardState,
   WorkflowDefinition,
 } from '../types.js'
@@ -111,6 +112,71 @@ export function resolveSupervisorPolicies(
   return [...byId.keys()].sort().map((id) => byId.get(id) as Policy)
 }
 
+/**
+ * The policy blocks one re-render changed, added, or removed.
+ *
+ * A mid-run policy edit changes the card digest and so invalidates the
+ * attestation. Re-reading the whole card to find the delta cost the
+ * supervisor more than the edit did, so the harness states the delta and the
+ * supervisor confirms it.
+ */
+function policySectionDiff(
+  previous: SupervisorCardState | undefined,
+  sections: Array<{ policy_id: string; sha256: string }>,
+): SupervisorCardPolicyDiff | null {
+  const before = previous?.policy_sections
+
+  // A first render has no delta, and a card recorded before per-policy
+  // digests existed has nothing to compare against.
+  if (!previous || !before) {
+    return null
+  }
+
+  const beforeById = new Map(
+    before.map((section) => [section.policy_id, section.sha256]),
+  )
+  const afterById = new Map(
+    sections.map((section) => [section.policy_id, section.sha256]),
+  )
+
+  return {
+    previous_sha256: previous.sha256,
+    changed: sections
+      .filter(
+        (section) =>
+          beforeById.has(section.policy_id) &&
+          beforeById.get(section.policy_id) !== section.sha256,
+      )
+      .map((section) => section.policy_id),
+    added: sections
+      .filter((section) => !beforeById.has(section.policy_id))
+      .map((section) => section.policy_id),
+    removed: before
+      .filter((section) => !afterById.has(section.policy_id))
+      .map((section) => section.policy_id),
+  }
+}
+
+/** One line naming what a re-render changed, or null when nothing is known. */
+export function policyDiffSummary(card: SupervisorCardState): string | null {
+  const diff = card.policy_section_diff
+
+  if (!diff) {
+    return null
+  }
+
+  const parts = [
+    diff.changed.length > 0 ? `changed ${diff.changed.join(', ')}` : null,
+    diff.added.length > 0 ? `added ${diff.added.join(', ')}` : null,
+    diff.removed.length > 0 ? `removed ${diff.removed.join(', ')}` : null,
+  ].filter((part): part is string => part !== null)
+
+  return parts.length > 0
+    ? `Since \`sha256:${diff.previous_sha256}\` this card ${parts.join('; ')}.`
+    : `Since \`sha256:${diff.previous_sha256}\` no policy block changed; the ` +
+        'card body changed outside the policy sections.'
+}
+
 /** The operator worktree whose path is this run's workspace root, if any. */
 function runWorktree(root: string, state: RunState): WorktreeRecord | null {
   const workspaceRoot = path.resolve(root, state.workspace_root)
@@ -180,6 +246,9 @@ export function renderSupervisorCard(
   const previous = state.supervisor_card
   const absolute = resolveInside(root, relativePath)
   const changed = previous?.sha256 !== digest
+  const policyDiff = changed
+    ? policySectionDiff(previous, policySections)
+    : null
 
   if (changed || !fileExists(absolute) || readText(absolute) !== markdown) {
     ensureDir(path.dirname(absolute))
@@ -192,6 +261,7 @@ export function renderSupervisorCard(
         sha256: digest,
         rendered_at: now(),
         policy_sections: policySections,
+        ...(policyDiff ? { policy_section_diff: policyDiff } : {}),
         // A stale attestation stays on record as evidence, but it no longer
         // matches the current digest, so the run is unattested again.
         ...(previous?.attested_sha256
@@ -356,11 +426,17 @@ function assertCardDigestAttested(
   action: 'prepare' | 'submit',
   card: NonNullable<RunState['supervisor_card']>,
 ): void {
+  // A card the supervisor already attested once, then a policy edit moved:
+  // the delta is what it owes a re-read, not the whole card again.
+  const diff = card.attested_sha256 ? policyDiffSummary(card) : null
+
   invariant(
     card.attested_sha256 === card.sha256,
     `pan ${action} refused: the supervisor card for run ` +
-      `${state.run_id} is not attested at its current digest. Read ` +
-      `${card.path} in full, then run ` +
+      `${state.run_id} is not attested at its current digest. ` +
+      (diff
+        ? `${diff} Read those policy blocks in ${card.path}, then run `
+        : `Read ${card.path} in full, then run `) +
       `${supervisorAttestCommand(root, state.run_id, card.sha256)}.`,
     {
       code: 'SUPERVISOR_CARD_UNATTESTED',
@@ -369,6 +445,9 @@ function assertCardDigestAttested(
         card_path: card.path,
         sha256: card.sha256,
         attested_sha256: card.attested_sha256 ?? null,
+        ...(card.policy_section_diff
+          ? { policy_section_diff: card.policy_section_diff }
+          : {}),
       },
     },
   )
@@ -382,6 +461,10 @@ export interface SupervisorCardBuild {
   attest_command: string
   policies: string[]
   changed: boolean
+  /** What this render changed, by policy block. Null on a first render. */
+  policy_section_diff: SupervisorCardPolicyDiff | null
+  /** One-line form of that delta, for the operator report. */
+  policy_diff_summary: string | null
 }
 
 /** `pan governance card --mode supervisor --run <run-id>`: render or refresh. */
@@ -403,6 +486,9 @@ export function buildSupervisorCard(
         sha256: render.state.sha256,
         first: render.first,
         policies: render.policies.map((policy) => policy.id),
+        ...(render.state.policy_section_diff
+          ? { policy_section_diff: render.state.policy_section_diff }
+          : {}),
       })
     }
 
@@ -414,6 +500,8 @@ export function buildSupervisorCard(
       attest_command: supervisorAttestCommand(root, runId, render.state.sha256),
       policies: render.policies.map((policy) => policy.id),
       changed: render.changed,
+      policy_section_diff: render.state.policy_section_diff ?? null,
+      policy_diff_summary: policyDiffSummary(render.state),
     }
   })
 }

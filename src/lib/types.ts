@@ -360,6 +360,19 @@ export interface PolicyGuidance {
 }
 
 /**
+ * One test a run request declares as already failing.
+ *
+ * Identity is a file plus exactly one case, never a file alone: a file-wide
+ * declaration would credit the regression the gate exists to catch. The reason
+ * is required so a later reader can retire the declaration.
+ */
+export interface KnownFailingTest {
+  file: string
+  case: string
+  reason: string
+}
+
+/**
  * An audited pointer to a document a run must read but never copies. It shares
  * the guidance-reference shape and digest basis, so a card can print it in the
  * same block and a stage output can attest it the same way. Cohort fan-out uses
@@ -1214,6 +1227,12 @@ export interface InvocationDelegationContract {
   supervisor_procedure_path?: string
   submit_command: string
   /**
+   * The resolved `pan output validate` command, with the run id, the output
+   * file, and the invocation snapshot. The supervisor otherwise rebuilds a
+   * three-argument shape from memory and discovers it by trial.
+   */
+  output_validate_command?: string
+  /**
    * `pan watch <run-id> --invocation <id>` for a `cursor`-executor
    * delegation. With `--foreground-returned` it records the attestation
    * `pan submit` requires; awaited, it is the DELEGATE-001 timer. Absent on
@@ -1542,18 +1561,27 @@ export interface RunAdvisory {
 }
 
 export interface RunModelEvidence {
-  role: 'supervisor' | 'worker'
+  role: 'supervisor' | 'worker' | 'evidence_worker'
   invocation_id?: string
+  /** Declared role of a parallel evidence worker, for example `review`. */
+  worker_role?: string
   persona: string
   declared_spec: string | null
   effective_model: string | null
   source: string
   /**
-   * `pending` marks a detached probe in flight. It never becomes a usable
-   * record on its own: a probe that never lands reads exactly like one that
-   * failed.
+   * `pending` marks a detached probe in flight and `unavailable` a probe that
+   * produced no answer. Neither is usable evidence on its own, so submission
+   * replaces either with `default`: the spec the run snapshot projected for
+   * that worker, labeled as a default rather than as a probe result.
    */
-  result: 'recorded' | 'match' | 'mismatch' | 'unavailable' | 'pending'
+  result:
+    | 'recorded'
+    | 'match'
+    | 'mismatch'
+    | 'unavailable'
+    | 'pending'
+    | 'default'
   error?: string
   evidence_path: string
   timestamp: string
@@ -1916,6 +1944,12 @@ export interface RunState {
     stored_path: string
     sha256: string
     /**
+     * Tests the request declares as already failing, parsed at run creation.
+     * The entry gate reports each as baseline instead of blaming the stage it
+     * gates. Absent when the request declares none.
+     */
+    known_failing_tests?: KnownFailingTest[]
+    /**
      * Wider context the request depends on, delivered by reference. A cohort
      * chunk run points at the parent specification here.
      */
@@ -2002,6 +2036,15 @@ export interface WorkspaceSetupRecord {
   inferred_from?: 'repository_check_baselines' | 'worktree_readiness'
 }
 
+/** The policy blocks one supervisor-card re-render changed. */
+export interface SupervisorCardPolicyDiff {
+  /** Card digest this delta is measured from. */
+  previous_sha256: string
+  changed: string[]
+  added: string[]
+  removed: string[]
+}
+
 /** Run-state record of the supervisor governance card and its attestation. */
 export interface SupervisorCardState {
   path: string
@@ -2013,6 +2056,13 @@ export interface SupervisorCardState {
    * supervisor procedure document without repeating policy bodies.
    */
   policy_sections?: Array<{ policy_id: string; sha256: string }>
+  /**
+   * What the last re-render changed, by policy block. A mid-run policy edit
+   * invalidates the attestation, and this summary is what the supervisor
+   * re-reads instead of the whole card. Absent on a first render and on a
+   * render whose digest did not change.
+   */
+  policy_section_diff?: SupervisorCardPolicyDiff
   /** Digest the supervisor attested to have read, when any. */
   attested_sha256?: string
   attested_at?: string
