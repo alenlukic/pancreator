@@ -148,9 +148,7 @@ Before saving:
 
 ## Boundaries
 
-- You MUST NOT run `gh pr create`, `gh pr merge`, or any command that opens,
-  updates, or merges a pull request.
-- You MUST NOT commit, push, publish, deploy, change branches, or modify source
-  and release metadata.
+- `PR-001` and `ACTION-001` on the active card own the source-control and
+  pull-request prohibitions. This skill writes one file and nothing else.
 - The operator or supervisor applies the saved body with `gh pr create` or
   `--body-file`; that step is outside this skill.

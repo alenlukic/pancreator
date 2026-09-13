@@ -1,5 +1,21 @@
 # Changelog
 
+## [5.24.0] - 2026-09-13
+
+This release adds the always-applied `PRINCIPLES-001` policy and aligns tradeoff rules under that hierarchy.
+
+### Changed
+
+- Rewrite the `AGENTS.md` authority order so invariants sit above operating principles and the card ([AGENTS.md](AGENTS.md), [128c6236](https://github.com/alenlukic/pancreator/commit/128c623667cfc2332fd6f947cc95e424f68dc2ee)).
+- Render `PRINCIPLES-001` first on every governance card ([policy-guidance](src/lib/policy-guidance.ts), [128c6236](https://github.com/alenlukic/pancreator/commit/128c623667cfc2332fd6f947cc95e424f68dc2ee)).
+- Downgrade 22 tradeoff preferences from MUST to SHOULD so `PRINCIPLES-001` can decide ordinary judgment calls ([68275aee](https://github.com/alenlukic/pancreator/commit/68275aee1eabf3a87d188de680f532b0d12e5b8b)).
+- Make the reviewer persona read-only. The reviewer records findings and does not edit tracked files ([reviewer](library/personas/reviewer.md), [68275aee](https://github.com/alenlukic/pancreator/commit/68275aee1eabf3a87d188de680f532b0d12e5b8b)).
+
+### Added
+
+- Add policy `PRINCIPLES-001` as the always-applied operating principles and invariants hierarchy ([PRINCIPLES-001](governance/policies/PRINCIPLES-001.json), [128c6236](https://github.com/alenlukic/pancreator/commit/128c623667cfc2332fd6f947cc95e424f68dc2ee)).
+- Add seven judgment eval scenarios and a grader backlog for `PRINCIPLES-001` ([evals](evals/scenarios/), [d7cdb077](https://github.com/alenlukic/pancreator/commit/d7cdb077955b6b5bfe4063cf29e5b9cf6b6ba908)).
+
 ## [5.23.0] - 2026-09-13
 
 This release integrates the three chunks of cohort `63296_Sep-13-1313_phase-harnes`. Two acceptance criteria carry an operator disposition: AC-025, the harness-root-untouched live eval, was met by explicit operator waiver on the unit proof [eval-graders test](tests/unit/eval-graders.test.ts); AC-019 was met against an authorized plan amendment under a `fail_severe` remediation.

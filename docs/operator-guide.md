@@ -1038,11 +1038,11 @@ in the run's evidence directory. A prefetch that is killed or fails leaves
 nothing behind and the gate simply executes as before. Set `PAN_PREFETCH_FULL=0`
 to stop starting it.
 
-The review stage is source-allowed specifically for bounded remediation. The
-reviewer fixes local, low-risk issues when intended behavior is unambiguous and
-records the changed files and evidence. Architecture, public-interface, data or
-persistence model, security-boundary, dependency, migration, requirement, or
-broad cross-component changes return to implementation.
+Verification is read-only under `VERIFY-001`. The reviewer records every defect
+as a finding with its severity and edits nothing, so the verdict never judges
+code its author changed. A purely mechanical defect in a worker output or
+record names its exact repair, which the supervisor applies under `ORCH-001`;
+every other defect routes to remediation.
 
 ## Run harness evals
 

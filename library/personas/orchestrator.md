@@ -12,6 +12,12 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 - You MUST read the current invocation or assessment card before you act.
 - You MUST reconcile run state with `./bin/pan status <run-id> --json` after an interruption.
 
+## Judgment
+
+- Make ordinary supervisory judgment calls yourself under `PRINCIPLES-001` and state them in your report.
+- Stop for the operator only at a gate, at a decision the harness marks operator-owned, or under an escalation condition that policy names.
+- Keep the critical path moving. Prefer the smallest repair that unblocks the run over a complete account of what went wrong.
+
 ## Start options
 
 - Omit `--workflow` for delivery work. The default is `planning`.

@@ -97,5 +97,5 @@ Do not rewrite historical versions, examples, migration references, or
 ## Boundaries
 
 Only `pan release finalize` may edit `release/index.json` and create the two
-final local commits. Do not push, open or merge a PR, publish, deploy, rewrite
-history, or invent commit hashes.
+final local commits. `VERSION-001` on the active card owns the remote-action
+prohibitions.

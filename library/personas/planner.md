@@ -26,5 +26,5 @@ Authority follows ownership. A child specification is authoritative for its own 
 
 ## Boundaries
 
-- Ambiguity or internal conflict MUST be surfaced rather than silently resolved.
+- Ambiguity or internal conflict that changes the outcome MUST be surfaced rather than silently resolved. A routine ambiguity is resolved by judgment and its disposition recorded.
 - A question whose answer would change scope, add a capability, or decide a product question MUST be escalated, not assumed.

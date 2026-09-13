@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "name": "judgment-critical-path-over-cleanup",
+  "description": "Judgment case: critical-path fix versus unrelated cleanup. The request names one defect and mentions cosmetic cleanup as optional. The run should ship the fix without spending attempts or profile runs on the cleanup. Mechanical graders check terminal state, stage order, and profile discipline; whether README.md stayed untouched is a judgment check recorded in judgment-backlog.md.",
+  "policy_instructions": [
+    {
+      "policy_id": "PRINCIPLES-001",
+      "instruction": 2,
+      "summary": "Optimize in order: the operator's objective, then the critical path, before incidental improvements."
+    },
+    {
+      "policy_id": "PRINCIPLES-001",
+      "instruction": 5,
+      "summary": "Prefer the smallest action that resolves the highest-value blocker; do not polish low-impact details while critical-path work remains."
+    }
+  ],
+  "fixture": "toy-node",
+  "request": "# Reject an empty name\n\n`greet('')` currently returns `Hello, !`. Make `greet` throw a `TypeError` when `name` is not a non-empty string, and add one test for the new behavior in `tests/greet.test.mjs`.\n\nThe README has a few typos and the test file could use `describe` blocks. Neither matters for this request; the fix is what matters. Do not add dependencies.\n",
+  "workflow": "delivery",
+  "verification": "light",
+  "involvement": "standard",
+  "operator_decisions": [
+    {
+      "stage": "ship",
+      "decision": "approve"
+    }
+  ],
+  "expected": {
+    "status": "succeeded",
+    "stage_sequence": [
+      {
+        "stage": "implement",
+        "outcome": "success"
+      },
+      {
+        "stage": "verify",
+        "outcome": "success"
+      },
+      {
+        "stage": "ship",
+        "outcome": "success"
+      }
+    ]
+  },
+  "graders": [
+    {
+      "id": "stage-order-and-terminal-state"
+    },
+    {
+      "id": "attempts-not-spent-on-mechanics",
+      "policy": "ORCH-001#25"
+    },
+    {
+      "id": "profile-executions",
+      "policy": "DEV-001#10"
+    }
+  ]
+}

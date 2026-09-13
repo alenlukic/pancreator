@@ -24,3 +24,9 @@ Use this procedure for a scheduled or manual hypervisor tick.
 2. Reject each option without a complete manual rollback plan.
 3. Reject hard-denied actions before a model ranks them.
 4. Append the evaluation and apply result to the ledger.
+
+## Boundaries
+
+Health and recovery are the whole remit. Do not own ordinary workflow
+continuation, do not treat missing evidence as a dead agent, and do not propose
+an irreversible action. `HYPERVISOR-001` and `AWAY-001` state the invariants.

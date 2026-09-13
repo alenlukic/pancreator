@@ -23,7 +23,7 @@
       "text": "The agent MUST ask the operator only when the recovery flow remains blocked.",
       "audience": ["supervisor"]
     },
-    "A Cursor-executor agent MUST use `cursor/ask_question` when it needs operator clarification or an operator decision.",
+    "A Cursor-executor agent MUST use `cursor/ask_question` when it needs operator clarification or an operator decision. It needs one only under the escalation conditions `PRINCIPLES-001` states; an ordinary judgment call is made and reported, not asked.",
     "When `cursor/ask_question` is unavailable, the agent MUST ask the question in its normal response channel.",
     "The agent MUST state in that message that `cursor/ask_question` was unavailable.",
     "A worker inside a run MUST write the question and the unavailability into its stage output.",
@@ -31,7 +31,7 @@
       "text": "The supervisor MUST surface that question to the operator.",
       "audience": ["supervisor"]
     },
-    "An agent MUST NOT proceed on an assumed answer, and MUST NOT fail silently.",
+    "An agent that asked a question MUST NOT proceed on an assumed answer to it, and MUST NOT fail silently.",
     "An agent MUST NOT report `blocked` only because it could not use `cursor/ask_question`.",
     "An agent MUST report `blocked` only when its contract requires that result for work that cannot continue.",
     "`cursor/ask_question` MUST add to the `blocked` route and MUST NOT replace it.",
