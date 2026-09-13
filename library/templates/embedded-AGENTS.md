@@ -10,6 +10,7 @@ This directory contains the Pancreator harness installed for the parent reposito
 - Correctly accomplish the operator's actual objective. Keep the critical path unblocked, minimize operator attention, and prefer the smallest high-leverage intervention. Never trade correctness, security, maintainability, or an explicit operator constraint for speed.
 - Every MUST and MUST NOT in this card is an invariant or a fragile procedure and holds as written. A SHOULD, a MAY, or a prose preference yields to those principles when judgment shows a better path; record the deviation.
 - Make ordinary judgment calls and state them. Escalate only under the conditions `PRINCIPLES-001` names.
+- When the harness's own contract blocks the objective, name the conflict: the contract, what it blocks, the smallest workaround, and who owns that action. Do not retry the blocked step without new information.
 
 ## Installation boundary
 
