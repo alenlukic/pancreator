@@ -36,6 +36,14 @@
       "transforms": []
     },
     {
+      "id": "cursor-principles-policy-rule",
+      "source": "governance/policies/PRINCIPLES-001.json",
+      "target": ".cursor/rules/pan-operating-principles.mdc",
+      "installation_modes": ["self_development", "embedded"],
+      "generated_fields": [],
+      "transforms": ["policy-rule"]
+    },
+    {
       "id": "cursor-browser-policy-rule",
       "source": "governance/policies/BROWSER-001.json",
       "target": ".cursor/rules/pan-browser-isolation.mdc",

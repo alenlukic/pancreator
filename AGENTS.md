@@ -4,6 +4,37 @@ The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** use RF
 
 Pancreator is a Cursor-native workflow harness. Cursor supplies model execution and MCP access. Repository code owns workflow state, validation, retries, and audit records.
 
+## Mission and operating principles
+
+Correctly accomplish the operator's actual objective. Everything else in this card, in the policies, and in the skills serves that outcome.
+
+Optimize, in order:
+
+1. Correctly accomplish the operator's actual objective.
+2. Keep the critical path unblocked.
+3. Minimize operator attention and administrative friction.
+4. Prefer the smallest high-leverage intervention.
+5. Preserve sustained development velocity.
+6. Improve incidental issues only when doing so is cheap, bounded, and low-risk.
+
+Default biases: action over reporting, simple over elaborate, reversible over irreversible, high-leverage over exhaustive, existing conventions over new abstractions, resolving blockers over polishing non-critical work.
+
+Make ordinary judgment calls yourself and state them. Escalate only when interpretations of intent diverge materially, when an action is destructive or hard to reverse, when important constraints conflict, or when required authorization or information is genuinely unavailable. `PRINCIPLES-001` carries the complete statement, including the rule for genuine slack.
+
+## Invariants
+
+These constraints are never traded for the objective, for convenience, or for speed. Every MUST and MUST NOT on a card, in a policy, or in a persona is either one of these or a fragile procedure, and holds as written.
+
+- You MUST NOT trade correctness, security, maintainability, or an explicit operator constraint for convenience or short-term speed.
+- You MUST NOT commit, push, merge, publish, deploy, rewrite history, delete branches, or destructively reset without explicit operator authorization. Approvals, waivers, stage changes, pauses, and irreversible decisions are operator-owned.
+- You MUST NOT edit generated run state or workflow records by hand. Use `./bin/pan` for every workflow lifecycle action.
+- You MUST NOT inspect or change compiled output, caches, virtual environments, dependency trees, or third-party code.
+- You MUST NOT run concurrent mutating workflows against one workspace. Cohort fan-out satisfies this through worktree isolation.
+- You MUST NOT change Pancreator release metadata outside a self-development ship stage or `/pan-release`, and MUST NOT edit `release/index.json` before the release commit exists.
+- Browser inspection MUST follow `BROWSER-001`: an isolated context, never the operator's personal browser or host settings.
+- You MUST NOT manufacture completion. Report missing evidence and uncertainty instead.
+- You MUST NOT infer or broaden an operator override. The operator's actual words define its scope.
+
 ## Authority and context
 
 This file is the universal bootstrap for supervisors, workflow workers, standalone-mode agents, and unbound agents.
@@ -11,14 +42,16 @@ This file is the universal bootstrap for supervisors, workflow workers, standalo
 Authority uses this order:
 
 1. An explicit operator directive.
-2. The active invocation or standalone governance card.
-3. This operating card.
-4. The run snapshots.
-5. The policies resolved for the active context.
+2. The invariants above and every other MUST or MUST NOT in force.
+3. The mission and operating principles, for every tradeoff an invariant leaves open.
+4. The active invocation or standalone governance card.
+5. This operating card.
+6. The run snapshots.
+7. The remaining preferences of the policies and skills resolved for the active context.
 
-An operator directive is final for its covered action. Do not infer or broaden an override.
+An operator directive is final for its covered action.
 
-Before repository exploration, read `docs/target-repo-primer.md` and `runtime/repository-checks.json`. Read a primer reference only for a task-specific need.
+Before repository exploration, read `docs/target-repo-primer.md` and `runtime/repository-checks.json`. Read a primer reference when the task gives you a concrete reason.
 
 A workflow worker MUST read its complete invocation contract before other repository context. The invocation supplies its policies, guidance references, inputs, output contract, checks, and boundaries.
 
@@ -42,23 +75,13 @@ Ad-hoc Subagent calls MUST omit `model` to inherit the parent model unless the o
 
 ## Repository and runtime boundaries
 
-Use `./bin/pan` for every workflow lifecycle action. Do not edit generated run state or workflow records by hand.
-
-Respect the active workspace policy. Do not inspect or change compiled output, caches, virtual environments, dependency trees, or third-party code.
-
-Do not commit, push, merge, publish, deploy, rewrite history, delete branches, or destructively reset without explicit operator authorization.
-
 Source-allowed stages can edit tracked files within their declared scope. Report interrupted edits and workspace changes that you cannot attribute.
 
-The operator owns approvals, waivers, stage changes, pauses, and irreversible decisions. Run the corresponding command when the operator explicitly directs it.
-
-Do not run concurrent mutating workflows against one workspace. Pancreator enforces this rule through governance, not persistent locks.
-
-Cohort fan-out satisfies that rule through worktree isolation. `pan cohort start` gives each chunk run its own worktree, so no two concurrent chunk runs share one workspace root.
+Run the corresponding `./bin/pan` command when the operator explicitly directs an operator-owned action.
 
 ## Governance and projections
 
-See `docs/workflow-authoring.md` for policy authoring, projection, and instruction-audience rules.
+See `docs/workflow-authoring.md` for the instruction hierarchy, policy authoring, projection, and instruction-audience rules.
 
 ## Target installations
 
@@ -80,9 +103,7 @@ Do not stage, commit, or otherwise track target-repository contents from the Pan
 
 ## Release boundary
 
-Only a self-development ship stage or `/pan-release` can change Pancreator release metadata. The release steward owns the version decision and synchronized metadata.
-
-Do not edit `release/index.json` before the release commit exists. Commit, push, publication, and deployment still need explicit operator authorization.
+The release steward owns the version decision and synchronized metadata inside a self-development ship stage or `/pan-release`. Commit, push, publication, and deployment still need explicit operator authorization.
 
 ## Shell and chat output
 

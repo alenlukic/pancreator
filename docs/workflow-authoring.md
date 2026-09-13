@@ -71,15 +71,14 @@ mapping before resuming the run.
   section.
 - `workspace_policy` - the mutation boundary the harness enforces with workspace
   fingerprints:
-  - `source_allowed` - may modify product source (implement, and review when
-    the reviewer is explicitly responsible for bounded non-structural remediation).
+  - `source_allowed` - may modify product source (implement, remediate).
   - `release_metadata_only` - in Pancreator self-development, may modify only
     `CHANGELOG.md`, `VERSION`, npm version metadata, `README.md`, and
     version-bearing Markdown under `docs/`; in embedded installations it
     behaves as `read_only` (ship).
   - `runtime_only` - may write only under `runtime/` (intake, plan).
-  - `read_only` - may not change any tracked content (test and any review
-    stage that is not explicitly source-allowed).
+  - `read_only` - may not change any tracked content (verify and every review
+    stage; `VERIFY-001` keeps verification read-only).
     Any policy other than `source_allowed` adds the deterministic criterion `scope.no_unapproved_changes`. This criterion detects external or unattributed contamination: a stage may report top-level `workspace_changes` with `attribution: internal` and every changed path to preserve attribution without blocking.
 - `gate` - what decides advancement after a valid, successful output:
   - `operator` - pause for explicit operator approval (intake, ship).
@@ -331,6 +330,36 @@ Every `harness` instruction MUST name a same-policy requirement id or a
 `` `tests/<path>::<test name>` `` citation whose file declares that test. One
 citation MUST NOT serve two instructions of one policy. Repository validation
 enforces that mapping in self-development.
+
+## Instruction hierarchy
+
+Agent behavior is specified in five layers. Lower layers execute under higher
+ones and do not restate them.
+
+1. **Mission** - what the agent optimizes for. `PRINCIPLES-001` and the top of
+   `AGENTS.md` state it once.
+2. **Operating principles** - the ranked list, default biases, slack rule, and
+   autonomy and escalation defaults that resolve an ambiguous tradeoff.
+   `PRINCIPLES-001` owns them; it reaches every card and projects to the
+   always-applied `pan-operating-principles.mdc` rule.
+3. **Invariants** - constraints never traded for the objective: every MUST and
+   MUST NOT in `AGENTS.md`, a policy, a card, or a persona. `AGENTS.md`
+   gathers the universal ones under `## Invariants`.
+4. **Skills and playbooks** - procedure for a class of work where deviation is
+   costly. `library/skills/index.md` states the skill convention.
+5. **Task state** - the invocation card, run snapshots, repository state, and
+   tools.
+
+The authoring test for a new instruction is: **specify outcomes when judgment
+is valuable; specify procedures when deviation is costly.** Before adding a
+MUST, ask what breaks when an agent deviates. A validator, a gate, a harness
+record, a release contract, or a host-safety rule breaks: write the MUST and
+keep the exact procedure. A preference, a cost, or a style breaks: write a
+SHOULD or fold it into an existing principle, and let `PRINCIPLES-001` decide
+the tradeoff. Do not add a one-off exception rule when a priority, an
+invariant, or a skill boundary can be corrected instead. Every policy
+instruction still needs an RFC 2119 keyword; principles use SHOULD and MAY,
+invariants use MUST and MUST NOT.
 
 ## Governance and projections
 

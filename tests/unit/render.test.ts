@@ -488,6 +488,32 @@ test('shared policy blocks remove exact statement duplication', () => {
   assert.match(rendered, /\*\*FIXTURE-001 · Fixture policy\*\*/u)
 })
 
+test('policy blocks render PRINCIPLES-001 first and keep the rest in order', () => {
+  const policy = (id: string): Policy => ({
+    id,
+    title: `${id} title`,
+    severity: 'hard',
+    summary: `${id} summary.`,
+    instructions: [{ text: `${id} instruction.`, audience: ['agent'] }],
+  })
+  const rendered = renderPolicyBlocks(
+    ['GLOBAL-001', 'ORCH-001', 'PRINCIPLES-001', 'VERIFY-001'].map(policy),
+    3,
+  ).join('\n')
+  const positions = [
+    'PRINCIPLES-001',
+    'GLOBAL-001',
+    'ORCH-001',
+    'VERIFY-001',
+  ].map((id) => rendered.indexOf(`**${id} · ${id} title**`))
+
+  assert.ok(positions.every((position) => position >= 0))
+  assert.deepEqual(
+    positions,
+    [...positions].sort((left, right) => left - right),
+  )
+})
+
 function engineeringGuidance(invocation: Invocation) {
   const policy = invocation.policies.find((entry) => entry.id === 'ENG-001')
   const guidance = policy?.guidance?.[0]

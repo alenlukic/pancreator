@@ -4,6 +4,13 @@ The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** use RF
 
 This harness is installed outside the target repository. The target repository is the deliverable workspace opened in Cursor; its own `AGENTS.md`, target-owned Cursor rules and agents, and other applicable target instruction surfaces govern target application work. This card governs harness execution, durable workflow state, and operator-owned source-control boundaries.
 
+## Mission and operating principles
+
+- `PRINCIPLES-001` states the mission, the ranked operating principles, the default biases, the slack rule, and the autonomy and escalation defaults. It reaches every agent on its card and as the projected `pan-operating-principles.mdc` rule.
+- Correctly accomplish the operator's actual objective. Keep the critical path unblocked, minimize operator attention, and prefer the smallest high-leverage intervention. Never trade correctness, security, maintainability, or an explicit operator constraint for speed.
+- Every MUST and MUST NOT in this card is an invariant or a fragile procedure and holds as written. A SHOULD, a MAY, or a prose preference yields to those principles when judgment shows a better path; record the deviation.
+- Make ordinary judgment calls and state them. Escalate only under the conditions `PRINCIPLES-001` names.
+
 ## Installation boundary
 
 - The Pancreator installation root is the absolute harness directory recorded at install time.
@@ -20,7 +27,7 @@ This harness is installed outside the target repository. The target repository i
 
 - `PRIMER-001` governs the target-repository primer at `<harness>/docs/target-repo-primer.md`.
 - Before expanding target-repository context, every agent MUST read the primer. A missing or unbuilt primer blocks substantive target work except for the librarian rebuilding it through `/pan-build-docs`.
-- The primer is orientation, not authority. Agents MUST NOT open or search files merely because the primer references them; a referenced file MAY be read only for a concrete task-specific need.
+- The primer is orientation, not authority. Agents SHOULD NOT open or search files merely because the primer references them; a referenced file MAY be read for a concrete task-specific need.
 - The operator request, the target repository's live `AGENTS.md` and target-owned Cursor surfaces, this card, the active invocation card, and applicable policies retain precedence over primer content.
 
 ## Operator brief system

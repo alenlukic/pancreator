@@ -14,6 +14,20 @@ import {
 /** Heading depth a card or rule uses for one guidance block. */
 export type GuidanceHeadingLevel = 2 | 3
 
+/** The operating-principles policy leads every card; the rest keep their order. */
+const LEADING_POLICY_ID = 'PRINCIPLES-001'
+
+function policiesInCardOrder(policies: Policy[]): Policy[] {
+  const leading = policies.filter((policy) => policy.id === LEADING_POLICY_ID)
+
+  return leading.length === 0
+    ? policies
+    : [
+        ...leading,
+        ...policies.filter((policy) => policy.id !== LEADING_POLICY_ID),
+      ]
+}
+
 function normalizedPolicyStatement(value: string): string {
   return value
     .toLowerCase()
@@ -193,7 +207,7 @@ export function renderPolicyBlocks(
     return ['- Only global boundaries apply.']
   }
 
-  return policies.flatMap((policy) => {
+  return policiesInCardOrder(policies).flatMap((policy) => {
     const seen = new Set<string>()
     const instructions = policy.instructions.filter((instruction) => {
       if (!policyInstructionAppliesToCard(instruction, audience)) {
