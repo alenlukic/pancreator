@@ -153,12 +153,33 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+smoke_source_commit() {
+  local head
+
+  if head="$(git -C "$PANCREATOR_ROOT" rev-parse HEAD 2>/dev/null)"; then
+    printf '%s' "$head"
+    return
+  fi
+
+  # A release payload carries no Git metadata, and the marker still needs a
+  # commit. The all-zero object name is the conventional "no commit" value.
+  printf '%040d' 0
+}
+
 run_smoke() {
   local smoke_root failures fresh_project existing_cursor_project partial_project no_gitignore_project git_project
   local detached_project detached_harness reconcile_project
+  local -a smoke_source_args
 
   smoke_root="$(mktemp -d "${TMPDIR:-/tmp}/pancreator-smoke.XXXXXX")"
   failures=0
+  # A smoke child installs this working checkout into a scratch directory to
+  # exercise the installer; it is not an installation of a release. Declaring
+  # the source keeps every child off the indexed-release drift guard, which
+  # would otherwise fail the whole harness on any clean checkout carrying an
+  # unreleased change — the normal state of the repository between releases.
+  # `false` is the honest value: the payload is not the indexed release.
+  smoke_source_args=(--source-commit "$(smoke_source_commit)" --source-indexed false)
 
   smoke_step() {
     local step="$1"
@@ -186,6 +207,8 @@ run_smoke() {
     test -x "$project/.pancreator/bin/pan" \
       && test -f "$project/.pancreator/config.json" \
       && test -f "$project/.pancreator/install.json" \
+      && node -e 'const m=require(process.argv[1]); process.exit(m.source_indexed===false&&m.source_commit===process.argv[2]?0:1)' \
+        "$project/.pancreator/install.json" "$(smoke_source_commit)" \
       && test -d "$project/.pancreator/runtime/inbox" \
       && test -f "$project/.pancreator/docs/target-repo-primer.md" \
       && test -f "$project/.pancreator/library/operator-briefs/primitives.json" \
@@ -234,7 +257,8 @@ run_smoke() {
 
   fresh_project="$(smoke_project)"
   smoke_step "fresh install" bash "$0" --target "$fresh_project" \
-    --pancreator-root "$PANCREATOR_ROOT" --skip-dependencies --skip-shell-alias
+    --pancreator-root "$PANCREATOR_ROOT" \
+    "${smoke_source_args[@]}" --skip-dependencies --skip-shell-alias
   smoke_step "verify fresh install" smoke_verify "$fresh_project"
   # Stand in for an installation from a release that still shipped the harness
   # suite; the refresh below must remove that retired payload entry.
@@ -259,7 +283,8 @@ run_smoke() {
   ' "$fresh_project/.pancreator/install.json" \
     "$fresh_project/.pancreator/tests/unit/legacy.test.ts"
   smoke_step "idempotent refresh" bash "$0" --target "$fresh_project" \
-    --pancreator-root "$PANCREATOR_ROOT" --yes --skip-dependencies --skip-shell-alias
+    --pancreator-root "$PANCREATOR_ROOT" "${smoke_source_args[@]}" \
+    --yes --skip-dependencies --skip-shell-alias
   smoke_step "verify idempotent refresh" smoke_verify "$fresh_project"
 
   existing_cursor_project="$(smoke_project)"
@@ -267,14 +292,15 @@ run_smoke() {
   printf 'custom\n' >"$existing_cursor_project/.cursor/rules/custom.mdc"
   smoke_step "existing cursor merge" bash "$0" \
     --target "$existing_cursor_project" --pancreator-root "$PANCREATOR_ROOT" \
-    --skip-dependencies --skip-shell-alias
+    "${smoke_source_args[@]}" --skip-dependencies --skip-shell-alias
   smoke_step "preserve custom cursor file" test -f \
     "$existing_cursor_project/.cursor/rules/custom.mdc"
 
   partial_project="$(smoke_project)"
   mkdir -p "$partial_project/.pancreator"
   smoke_step "partial install repair" bash "$0" --target "$partial_project" \
-    --pancreator-root "$PANCREATOR_ROOT" --choice r --skip-dependencies --skip-shell-alias
+    --pancreator-root "$PANCREATOR_ROOT" "${smoke_source_args[@]}" \
+    --choice r --skip-dependencies --skip-shell-alias
   smoke_step "verify repair" smoke_verify "$partial_project"
 
   # The target's tracked .gitignore MUST come through byte-identical.
@@ -284,7 +310,8 @@ run_smoke() {
   git_project="$(mktemp -d "${smoke_root}/project.XXXXXX")"
   git -C "$git_project" init -q
   smoke_step "install into a git target" bash "$0" --target "$git_project" \
-    --pancreator-root "$PANCREATOR_ROOT" --skip-dependencies --skip-shell-alias
+    --pancreator-root "$PANCREATOR_ROOT" "${smoke_source_args[@]}" \
+    --skip-dependencies --skip-shell-alias
   smoke_step "ignore harness via local git exclude" grep -Eq \
     '^[[:space:]]*/?\.pancreator/?[[:space:]]*$' \
     "$git_project/.git/info/exclude"
@@ -300,7 +327,7 @@ run_smoke() {
   git -C "$detached_project" init -q
   smoke_step "detached install" bash "$0" --target "$detached_project" \
     --harness-dir "$detached_harness" --pancreator-root "$PANCREATOR_ROOT" \
-    --skip-dependencies --skip-shell-alias
+    "${smoke_source_args[@]}" --skip-dependencies --skip-shell-alias
   smoke_step "detached harness lives outside the target" test -x \
     "$detached_harness/bin/pan"
   smoke_step "detached target has no .pancreator" test ! -e \
@@ -324,19 +351,20 @@ run_smoke() {
   smoke_step "detached harness rejects a nested harness dir" bash -c \
     "! bash '$0' --target '$detached_project' \
       --harness-dir '$detached_project/nested' \
-      --pancreator-root '$PANCREATOR_ROOT' --skip-dependencies --skip-shell-alias"
+      --pancreator-root '$PANCREATOR_ROOT' ${smoke_source_args[*]} \
+      --skip-dependencies --skip-shell-alias"
 
   # Payload reconciliation: local fixes to harness-owned files are superseded
   # with an operator flag and a backup; target-specific extensions survive.
   reconcile_project="$(smoke_project)"
   smoke_step "install for payload reconciliation" bash "$0" \
     --target "$reconcile_project" --pancreator-root "$PANCREATOR_ROOT" \
-    --skip-dependencies --skip-shell-alias
+    "${smoke_source_args[@]}" --skip-dependencies --skip-shell-alias
   printf 'local fix\n' >>"$reconcile_project/.pancreator/docs/runtime-protocol.md"
   printf 'target extension\n' >"$reconcile_project/.pancreator/docs/target-notes.md"
   smoke_step "refresh over local payload changes" bash -c \
     "bash '$0' --target '$reconcile_project' --pancreator-root '$PANCREATOR_ROOT' \
-      --yes --skip-dependencies --skip-shell-alias \
+      ${smoke_source_args[*]} --yes --skip-dependencies --skip-shell-alias \
       >'$smoke_root/reconcile-refresh.log'"
   smoke_step "flag the superseded local fix" grep -q \
     'superseded  docs/runtime-protocol.md' "$smoke_root/reconcile-refresh.log"
@@ -351,7 +379,7 @@ run_smoke() {
   no_gitignore_project="$(mktemp -d "${smoke_root}/project.XXXXXX")"
   smoke_step "install without target gitignore" bash "$0" \
     --target "$no_gitignore_project" --pancreator-root "$PANCREATOR_ROOT" \
-    --skip-dependencies --skip-shell-alias
+    "${smoke_source_args[@]}" --skip-dependencies --skip-shell-alias
   smoke_step "do not create target gitignore" test ! -e \
     "$no_gitignore_project/.gitignore"
 

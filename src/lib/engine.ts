@@ -181,6 +181,7 @@ import type {
   CohortRunBinding,
   CriterionEvaluation,
   DeterministicResult,
+  EntryGateReach,
   ExternalDelegationRecord,
   GovernanceArtifactIssue,
   Invocation,
@@ -248,6 +249,7 @@ import {
   snapshotEntryPath,
   workspaceChangedPathsFromSnapshots,
 } from './git.js'
+import { entryGateWaiver, waiverCoversCriterion } from './waivers.js'
 import { resolveRoots } from './workspace/roots.js'
 import {
   isProtectedWorkspacePath,
@@ -1768,6 +1770,43 @@ function runStageEntryGate(
 
   const records = (state.entry_gates ??= {})
   const previous = records[stage.slug]
+  const waiver = entryGateWaiver(state, stage.slug, criterion.id)
+
+  if (waiver) {
+    const waived: DeterministicResult = {
+      id: criterion.id,
+      type: 'shell',
+      hard: Boolean(criterion.hard),
+      passed: true,
+      waived: true,
+      waiver_id: waiver.waiver_id,
+      explanation:
+        `Entry gate waived by operator directive '${waiver.waiver_id}'; ` +
+        `the criterion did not run. Directive: ${waiver.artifact_path}.`,
+      ...(criterion.command ? { command: criterion.command } : {}),
+      workspace_fingerprint: workspaceSnapshotForRun(root, state).fingerprint,
+    }
+
+    records[stage.slug] = {
+      criterion_id: criterion.id,
+      executions: previous?.executions ?? 0,
+      failures: 0,
+      last_result: waived,
+      passed_at_history_length: state.stage_history.length,
+    }
+    onProgress?.(
+      `entry gate ${criterion.id} for stage '${stage.slug}' is waived by ${waiver.waiver_id}`,
+    )
+    persistRun(root, state, 'entry_gate_waived', {
+      stage: stage.slug,
+      criterion: criterion.id,
+      waiver_id: waiver.waiver_id,
+      artifact_path: waiver.artifact_path,
+    })
+
+    return 'pass'
+  }
+
   const executions = (previous?.executions ?? 0) + 1
   const artifactId = `${stage.slug}-entry-${executions}`
 
@@ -6836,6 +6875,31 @@ export function setRunVerification(
 }
 
 /**
+ * The newest workspace fingerprint some record in this run is accountable for.
+ *
+ * A stage attempt closes its window at its own after-fingerprint, and an
+ * out-of-stage attribution record closes its window the same way. Whichever
+ * closed last opens the next window, so consecutive records bound the
+ * workspace without a gap.
+ */
+function lastAccountableFingerprint(state: RunState): string | undefined {
+  const stage = state.stage_history.at(-1)
+  const directive = state.workspace_directives?.at(-1)
+
+  if (!directive) {
+    return stage?.workspace_fingerprint
+  }
+
+  if (!stage) {
+    return directive.workspace_fingerprint
+  }
+
+  return Date.parse(directive.timestamp) >= Date.parse(stage.submitted_at)
+    ? directive.workspace_fingerprint
+    : stage.workspace_fingerprint
+}
+
+/**
  * Record an operator directive executed against the workspace outside a
  * stage, so the next worker attributes the delta by reading rather than by
  * audit.
@@ -6890,12 +6954,16 @@ export function recordWorkspaceDirective(
     ).relative
     const actingRole = options.actingRole ?? 'supervisor'
     const timestamp = now()
+    const beforeFingerprint = lastAccountableFingerprint(state)
     const record: WorkspaceDirectiveRecord = {
       directive_id: `directive-${randomUUID()}`,
       acting_role: actingRole,
       directive,
       stage: state.current_stage ?? 'none',
       changed_paths: changedPaths,
+      ...(beforeFingerprint
+        ? { workspace_before_fingerprint: beforeFingerprint }
+        : {}),
       workspace_fingerprint: workspace.fingerprint,
       artifact_path: relativePath,
       timestamp,
@@ -6909,7 +6977,7 @@ export function recordWorkspaceDirective(
         `**Run** \`${runId}\` · **Stage** \`${record.stage}\``,
         `**Acting role:** ${actingRole}`,
         `**Recorded at:** ${timestamp}`,
-        `**Workspace fingerprint:** \`${workspace.fingerprint}\``,
+        `**Workspace fingerprint:** \`${beforeFingerprint ?? 'unrecorded'}\` → \`${workspace.fingerprint}\``,
         '',
         '## Directive',
         '',
@@ -7402,6 +7470,8 @@ export function waiveGate(
 ): {
   state: RunState
   waiver: OperatorGateWaiver
+  /** Stage entry gates this directive now reaches, in workflow order. */
+  entry_gates_reached: EntryGateReach[]
   claimTransfer?: WorktreeClaimTransfer
 } {
   return withOperationMutex(operationMutexPath(root, runId), () => {
@@ -7518,6 +7588,46 @@ export function waiveGate(
     if (!['succeeded', 'failed', 'canceled', 'paused'].includes(target)) {
       stageBySlug(workflow, target)
     }
+
+    // A directive is honored or refused by name, never silently ignored. The
+    // entry gate runs before delegation, so a waiver that does not name it
+    // leaves the destination stage refusing exactly as before.
+    const entryGatesReached: EntryGateReach[] = workflow.stages.flatMap(
+      (item) =>
+        item.entry_gate &&
+        waiverCoversCriterion(
+          { stage: stage.slug, criterion_ids: waivedCriteria },
+          item.slug,
+          item.entry_gate.criterion,
+        )
+          ? [{ stage: item.slug, criterion: item.entry_gate.criterion }]
+          : [],
+    )
+    const targetEntryGate = workflow.stages.find(
+      (item) => item.slug === target,
+    )?.entry_gate
+    const targetGateRecord = targetEntryGate
+      ? state.entry_gates?.[target]
+      : undefined
+
+    invariant(
+      !targetEntryGate ||
+        !targetGateRecord ||
+        entryGateSatisfied(targetGateRecord.last_result) ||
+        entryGatesReached.some((item) => item.stage === target),
+      `Waiving '${stage.slug}' routes the run to '${target}', whose entry ` +
+        `gate '${targetEntryGate?.criterion}' last failed and this directive ` +
+        `does not reach. Waive that gate directly with: --stage ${target} ` +
+        `--criteria ${targetEntryGate?.criterion} --to ${target}.`,
+      {
+        code: 'WAIVER_ENTRY_GATE_UNREACHED',
+        details: {
+          stage: stage.slug,
+          target,
+          entry_gate: targetEntryGate?.criterion,
+        },
+      },
+    )
 
     const deferred = normalizeIdentifiers(
       options.deferredAcceptanceCriteria ?? [],
@@ -7669,6 +7779,7 @@ export function waiveGate(
       source_workspace_fingerprint: waiver.source_workspace_fingerprint ?? null,
       directive_target: target,
       spotfix_case_path: spotfixCasePath ?? null,
+      entry_gates_reached: entryGatesReached,
       ...(claimTransfer
         ? {
             worktree_claim_adopted_from: claimTransfer.from_run_id,
@@ -7677,7 +7788,12 @@ export function waiveGate(
         : {}),
     })
 
-    return { state, waiver, ...(claimTransfer ? { claimTransfer } : {}) }
+    return {
+      state,
+      waiver,
+      entry_gates_reached: entryGatesReached,
+      ...(claimTransfer ? { claimTransfer } : {}),
+    }
   })
 }
 

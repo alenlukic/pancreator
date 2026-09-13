@@ -575,12 +575,29 @@ export interface ManagedWorktreeReference {
   branch: string
 }
 
+/**
+ * Operator decision that moved release synchronization off its default rebase
+ * target. Recorded on the sync result so the release output carries the
+ * reason the pre-rebase refusal did not apply.
+ */
+export interface LocalReleaseRebaseOverride {
+  kind: 'onto' | 'no_rebase'
+  /** Ref the operator named, verbatim. Null for `--no-rebase`. */
+  requested_ref: string | null
+  /** Commit the named ref resolved to. Null when no rebase ran. */
+  resolved_commit: string | null
+}
+
 export interface LocalReleaseSyncResult {
   status: 'synchronized' | 'conflict'
   worktree: ManagedWorktreeReference
   branch: string
   remote: string
   fetched_main: string
+  /** Commit the rebase replayed onto, or null when an override skipped it. */
+  rebase_target: string | null
+  /** Operator override of the default rebase target, when one was used. */
+  rebase_override: LocalReleaseRebaseOverride | null
   checkpoint_commit: string | null
   conflicted_paths: string[]
 }
@@ -1333,6 +1350,16 @@ export interface DeterministicResult {
    */
   cached?: boolean
   /**
+   * Set when an active operator gate waiver covered this criterion, so the
+   * command never ran. `passed` stays true because the operator decided the
+   * gate does not block, and `waiver_id` names the directive that decided it;
+   * the absence of `exit_code` and `evidence_path` keeps it distinguishable
+   * from a clean pass.
+   */
+  waived?: boolean
+  /** Waiver that covered this criterion. Present only with `waived`. */
+  waiver_id?: string
+  /**
    * Harness-relative path of the suite profile the test reporter wrote while
    * this gate ran the `full` profile. A cached pass carries the path the
    * original execution recorded. Absent when the profile ran no reporter.
@@ -1620,9 +1647,22 @@ export interface WorkspaceDirectiveRecord {
   /** Stage the run held when the directive was executed. */
   stage: string
   changed_paths: string[]
+  /**
+   * The workspace as the last accountable record left it, so this record
+   * bounds its own window the way a stage attempt does. Absent on records
+   * written before the field existed, which therefore cannot carry a
+   * currency chain.
+   */
+  workspace_before_fingerprint?: string
   workspace_fingerprint: string
   artifact_path: string
   timestamp: string
+}
+
+/** One stage entry gate an operator waiver's declared scope covers. */
+export interface EntryGateReach {
+  stage: string
+  criterion: string
 }
 
 export interface OperatorGateWaiver {
