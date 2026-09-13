@@ -10,6 +10,16 @@ Browser inspection is an experiment run on a throwaway browser. The operator's o
 browser, profile, and host settings are not part of the apparatus and must be
 indistinguishable before and after.
 
+## When this skill does not apply
+
+The read trigger is opening a browser page or recording a browser verdict. A change
+with no operator-facing web surface — a CLI, a validator, a renderer, run-state
+recording, a library module — owes no browser verdict, so no stage of it needs this
+procedure. Record the skip with that reason and do not read further. The skip is an
+ordinary judgment call; it needs no supervisor prompt, and a stage that owes a
+browser verdict and cannot reach a browser is environment-blocked rather than
+skipped.
+
 ## Procedure
 
 1. Start the documented development or prototype server and confirm its local URL

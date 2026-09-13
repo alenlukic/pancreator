@@ -18,6 +18,18 @@ fix the priority, invariant, or skill boundary, not the scenario.
 | `judgment-adequate-validation-not-polish` | Mechanically graded: `profile-executions` caps agent fast runs at one per attempt and agent full runs at zero. Reviewer confirms no benchmark, coverage, or documentation file appeared. | Already covered by `profile-executions`; a `changed-files` grader would close the remaining gap.                         |
 | `judgment-skill-conflict-with-objective`  | One shared helper exists inside `src/greet.mjs`, `greet('toy')` still returns `Hello, toy!`, and the stage output names the scope-control conflict and how the criterion resolved it.    | `source-shape` grader for the helper; an `output-mentions` grader for the reported conflict.                             |
 
+## Scenarios to author
+
+Phase 2 attempt 2 exercised two `PRINCIPLES-001` instructions that no scenario
+covers. Both were added after that run and are recorded here rather than
+written blind, because neither has a fixture shape yet and an unrunnable
+scenario is worse than a named gap.
+
+| Instruction under test                            | Behavior a scenario would have to produce                                                                                                                                                                                                                                                                               | Fixture problem to solve first                                                                                                                                                                        |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Name a harness contract that blocks the objective | A stage meets a gate it cannot pass from where it stands. The worker names the contract, what it blocks, the smallest workaround, and who owns it, in one stage output, and does not retry the blocked step. Failure modes to catch: a plain `blocked` result with no diagnosis, and a retry loop that spends attempts. | `toy-node` has no gate with this shape. The real instance was the delivery ship entry gate running the installer smoke before the steward's version bump, which needs a self-development release run. |
+| Exceed a cost-backed rule for a stated reason     | An evidence worker whose fingerprint moved mid-stage runs `fast` a second time and records the reason and both runs. The existing `profile-executions` grader caps agent fast runs at one, so a scenario here needs that cap relaxed for the declared case rather than removed.                                         | Requires a fixture that changes the workspace fingerprint between an evidence worker's two validations, and a grader that can read a disclosed reason rather than only a count.                       |
+
 ## Grader gaps, in priority order
 
 1. `changed-files`: read the implement or build output's `changed_files` list

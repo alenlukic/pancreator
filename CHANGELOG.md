@@ -1,5 +1,23 @@
 # Changelog
 
+## [5.25.1] - 2026-09-13
+
+This release adds two PRINCIPLES-001 instructions and aligns worker procedures with those rules.
+
+### Changed
+
+- Align AGENTS.md and the installed AGENTS templates with the contract-conflict rule ([AGENTS.md](AGENTS.md), [2676a32a](https://github.com/alenlukic/pancreator/commit/2676a32ab9412335e95f760e5e4ea6e0d6f4378e)).
+- Read the agent-run ledger before you record a repository-check profile gap ([evaluate-evidence](library/skills/evaluate-evidence.md), [2676a32a](https://github.com/alenlukic/pancreator/commit/2676a32ab9412335e95f760e5e4ea6e0d6f4378e)).
+- Write `result` last in a stage output so the watch does not end supervision early ([write-stage-output](library/skills/write-stage-output.md), [2676a32a](https://github.com/alenlukic/pancreator/commit/2676a32ab9412335e95f760e5e4ea6e0d6f4378e)).
+- Skip BROWSER-001 without a supervisor prompt when no surface owes a browser verdict ([verifier](library/personas/verifier.md), [browser-inspection](library/skills/browser-inspection.md), [2676a32a](https://github.com/alenlukic/pancreator/commit/2676a32ab9412335e95f760e5e4ea6e0d6f4378e)).
+- Record the two new judgment scenarios as named gaps ([judgment-backlog](evals/scenarios/judgment-backlog.md), [2676a32a](https://github.com/alenlukic/pancreator/commit/2676a32ab9412335e95f760e5e4ea6e0d6f4378e)).
+- State that a cost-backed rule must name that cost in the workflow-authoring guide ([workflow-authoring](docs/workflow-authoring.md), [2676a32a](https://github.com/alenlukic/pancreator/commit/2676a32ab9412335e95f760e5e4ea6e0d6f4378e)).
+
+### Added
+
+- Add a PRINCIPLES-001 instruction that names a harness contract that blocks the objective ([PRINCIPLES-001](governance/policies/PRINCIPLES-001.json), [2676a32a](https://github.com/alenlukic/pancreator/commit/2676a32ab9412335e95f760e5e4ea6e0d6f4378e)).
+- Add a PRINCIPLES-001 instruction that states the cost behind a cost-backed rule ([PRINCIPLES-001](governance/policies/PRINCIPLES-001.json), [2676a32a](https://github.com/alenlukic/pancreator/commit/2676a32ab9412335e95f760e5e4ea6e0d6f4378e)).
+
 ## [5.25.0] - 2026-09-13
 
 This release integrates the two Phase 2 chunks of the harness-repair program. Chunk 2a repairs CLI and scaffold friction, error identity, and the inbox producer regression. Chunk 2b tightens the next-action contract, labeled model evidence, the secret-path detector, plan producibility, and supervisor-card digest diffs.

@@ -356,8 +356,10 @@ MUST, ask what breaks when an agent deviates. A validator, a gate, a harness
 record, a release contract, or a host-safety rule breaks: write the MUST and
 keep the exact procedure. A preference, a cost, or a style breaks: write a
 SHOULD or fold it into an existing principle, and let `PRINCIPLES-001` decide
-the tradeoff. Do not add a one-off exception rule when a priority, an
-invariant, or a skill boundary can be corrected instead. Every policy
+the tradeoff. A rule backed only by cost MUST say so where it is written; a
+bare prohibition with no stated reason reads as ritual, and an agent who cannot
+see the cost cannot weigh it. Do not add a one-off exception rule when a
+priority, an invariant, or a skill boundary can be corrected instead. Every policy
 instruction still needs an RFC 2119 keyword; principles use SHOULD and MAY,
 invariants use MUST and MUST NOT.
 
