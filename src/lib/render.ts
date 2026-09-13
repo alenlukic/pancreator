@@ -667,13 +667,6 @@ export function renderSupervisorProcedureMarkdown(
 }
 
 /**
- * Render the prompt brief for one parallel evidence worker. The brief is the
- * worker's complete contract: it launches as a top-level named agent, reads
- * the same stage inputs as the consolidating worker, and writes exactly one
- * evidence report. It carries no lifecycle command and no stage output
- * contract — the consolidating worker owns both.
- */
-/**
  * What a returning evidence worker executes again and what it carries
  * (`VERIFY-001`).
  *
@@ -703,6 +696,13 @@ function renderCarriedCaseScope(invocation: Invocation): string[] {
   ]
 }
 
+/**
+ * Render the prompt brief for one parallel evidence worker. The brief is the
+ * worker's complete contract: it launches as a top-level named agent, reads
+ * the same stage inputs as the consolidating worker, and writes exactly one
+ * evidence report. It carries no lifecycle command and no stage output
+ * contract — the consolidating worker owns both.
+ */
 export function renderEvidenceWorkerBrief(
   invocation: Invocation,
   worker: InvocationEvidenceWorker,

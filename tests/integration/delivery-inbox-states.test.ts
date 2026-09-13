@@ -219,6 +219,8 @@ test('restricts inbox request statuses', () => {
     '# Archived\n',
   )
 
+  const workflowLogs = path.join(root, 'runtime/logs/workflows')
+
   for (const requestPath of [active, complete, archived]) {
     assert.throws(
       () =>
@@ -228,6 +230,16 @@ test('restricts inbox request statuses', () => {
           title: 'Forbidden fixture',
         }),
       /cannot start a run/u,
+    )
+
+    // The refusal is only half of the contract. A refusal that had already
+    // claimed the request, or already written the run directory, leaves the
+    // operator to clean up state for a run that never started.
+    assert.equal(existsSync(path.join(root, requestPath)), true, requestPath)
+    assert.deepEqual(
+      existsSync(workflowLogs) ? readdirSync(workflowLogs) : [],
+      [],
+      requestPath,
     )
   }
 

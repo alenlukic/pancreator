@@ -400,3 +400,69 @@ test('repository-check records run evidence only when a run is named', () => {
   assert.equal(lines[0].status, 'passed')
   assert.equal(lines[0].invoked_by, 'agent')
 })
+
+// The short-circuit is what makes a second agent request free, and no case
+// drove it, so deleting it from the CLI left the suite green.
+test('repository-check reuses a recorded pass until --force-repeat asks again', () => {
+  const root = createFixture()
+  // The marker lives under the ignored runtime tree, so counting executions
+  // never moves the workspace fingerprint the reuse lookup compares.
+  const marker = path.join(root, 'runtime', 'fast-ran.txt')
+  const executions = () =>
+    existsSync(marker) ? readFileSync(marker, 'utf8').length : 0
+
+  writeJson(path.join(root, 'runtime/repository-checks.json'), {
+    schema_version: 1,
+    profiles: {
+      fast: {
+        probes: [],
+        commands: [
+          `node -e "require('node:fs').appendFileSync('runtime/fast-ran.txt','x')"`,
+        ],
+      },
+    },
+  })
+
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+  })
+  const check = (extra: string[] = []) =>
+    runCli<{
+      status: string
+      reused_execution?: { profile: string; workspace_fingerprint: string }
+    }>(root, ['repository-check', 'fast', '--run', run.run_id, ...extra])
+
+  const executed = check()
+
+  assert.equal(executed.status, 'passed')
+  assert.equal('reused_execution' in executed, false)
+  assert.equal(executions(), 1)
+
+  const reused = check()
+
+  assert.equal(reused.status, 'passed')
+  assert.equal(reused.reused_execution?.profile, 'fast')
+  assert.equal(executions(), 1)
+
+  const forced = check(['--force-repeat'])
+
+  assert.equal(forced.status, 'passed')
+  assert.equal('reused_execution' in forced, false)
+  assert.equal(executions(), 2)
+
+  // A reuse records nothing, and the forced repeat says why it ran.
+  const ledger = readFileSync(
+    resolveRunLayout(root, run.run_id).evidence(
+      AGENT_REPOSITORY_CHECK_RUNS_FILE,
+    ).absolute,
+    'utf8',
+  )
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line) as Record<string, unknown>)
+
+  assert.equal(ledger.length, 2)
+  assert.equal(ledger[0].forced_repeat, undefined)
+  assert.equal(ledger[1].forced_repeat, true)
+})

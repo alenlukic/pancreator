@@ -28,6 +28,36 @@ import {
   waitForPath,
 } from './cli-build-helpers.js'
 
+test('importing the compiled CLI emits nothing while executing it reaches the command', () => {
+  // The entrypoint guard keeps `main()` from running when another module
+  // imports the CLI for its exports. No test held it, so removing the guard
+  // would have let every importer run the CLI and print its usage.
+  const cli = path.join(ROOT, 'dist', 'src', 'cli.js')
+  const imported = spawnSync(
+    process.execPath,
+    [
+      '--no-warnings',
+      '--input-type=module',
+      '--eval',
+      `await import(${JSON.stringify(cli)})`,
+    ],
+    { cwd: ROOT, encoding: 'utf8', timeout: 60_000 },
+  )
+
+  assert.equal(imported.status, 0, imported.stderr)
+  assert.equal(imported.stdout, '')
+  assert.equal(imported.stderr, '')
+
+  const executed = spawnSync(process.execPath, ['--no-warnings', cli, 'help'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    timeout: 60_000,
+  })
+
+  assert.equal(executed.status, 0, executed.stderr)
+  assert.match(executed.stdout, /^Usage:$/mu)
+})
+
 test('pan reuses the prepared build during a repository test run', () => {
   const toolDirectory = createTestTempDirectory('pancreator-tools-')
   // The repository root always carries a fresh stamp, so a spawn there cannot

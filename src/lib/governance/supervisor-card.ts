@@ -331,14 +331,6 @@ export function redlineCommand(
 }
 
 /**
- * Every command one supervisor session owes one run before it may prepare or
- * submit, with the run's current attestation facts.
- *
- * A session that supervises several runs pays this set once per run, and the
- * commands differ only in the run id and the card digest. Emitting them from
- * the harness removes the reconstruction a supervisor performs by hand.
- */
-/**
  * `HR3-013`: why the attest command precedes the redline command.
  *
  * Attesting the card opens the supervisor session generation the redline
@@ -352,6 +344,14 @@ export const REDLINE_FOLLOWS_ATTESTATION =
   'supervisor session generation the redline declaration must name, so a ' +
   'redline written first is not current for this session.'
 
+/**
+ * Every command one supervisor session owes one run before it may prepare or
+ * submit, with the run's current attestation facts.
+ *
+ * A session that supervises several runs pays this set once per run, and the
+ * commands differ only in the run id and the card digest. Emitting them from
+ * the harness removes the reconstruction a supervisor performs by hand.
+ */
 export interface SupervisorBootstrap {
   run_id: string
   card_path: string | null

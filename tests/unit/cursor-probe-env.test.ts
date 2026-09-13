@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { chmodSync, mkdirSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -109,7 +109,12 @@ async function withFakeCursorAgent<T>(
     binary,
     '#!/bin/sh\n' +
       'cat >/dev/null\n' +
+      // Each invocation brackets its own delay in a shared log, so a caller
+      // can read the interleaving instead of timing the wall clock.
+      'log="$(dirname "$0")/probe-log.txt"\n' +
+      'printf \'start\\n\' >>"$log"\n' +
       `sleep ${delaySeconds}\n` +
+      'printf \'end\\n\' >>"$log"\n' +
       'model=""\n' +
       'while [ $# -gt 0 ]; do\n' +
       '  [ "$1" = "--model" ] && model="$2"\n' +
@@ -145,29 +150,29 @@ test('every distinct model spec is probed together and reported in sorted order'
   // One round trip per spec, paid one after another, is the operator waiting
   // on `pan models --probe`. The report is read by a human, so the order it
   // prints in must not become whichever spec answered first.
-  const delaySeconds = 1
-  const probes = await withFakeCursorAgent(
-    String(delaySeconds),
-    async (root) => {
-      const startedAt = Date.now()
-      const result = await probeCursorModels(root, {
-        reviewer: 'model-c',
-        coder: 'model-a',
-        planner: 'model-b',
-        // Two personas share one spec, which stays one probe naming both.
-        verifier: 'model-a',
-        // A non-cursor executor is not Cursor's to resolve.
-        qa: 'claude-code:some-claude-model',
-      })
+  const probes = await withFakeCursorAgent('1', async (root) => {
+    const result = await probeCursorModels(root, {
+      reviewer: 'model-c',
+      coder: 'model-a',
+      planner: 'model-b',
+      // Two personas share one spec, which stays one probe naming both.
+      verifier: 'model-a',
+      // A non-cursor executor is not Cursor's to resolve.
+      qa: 'claude-code:some-claude-model',
+    })
 
-      assert.ok(
-        Date.now() - startedAt < delaySeconds * 2_000,
-        'the specs were probed one after another',
-      )
+    // TP-10: the suite runs concurrently, so an elapsed-time ceiling
+    // measures the machine. Three probes overlap when every one of them
+    // started before the first one finished.
+    const brackets = readFileSync(path.join(root, 'probe-log.txt'), 'utf8')
+      .split('\n')
+      .filter(Boolean)
 
-      return result
-    },
-  )
+    assert.deepEqual(brackets.slice(0, 3), ['start', 'start', 'start'])
+    assert.equal(brackets.length, 6)
+
+    return result
+  })
 
   assert.deepEqual(
     probes.map((probe) => probe.spec),

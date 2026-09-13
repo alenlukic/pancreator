@@ -23,6 +23,7 @@ import {
   fileExists,
   isRecord,
   readJson,
+  readText,
   writeJsonAtomic,
   writeTextAtomic,
 } from './io.js'
@@ -658,9 +659,20 @@ export function buildBenchmarkFromProfiles(
   }
 }
 
+/** Handbook that defines the principle identifiers a verdict may cite. */
+const TESTING_HANDBOOK_PATH = 'governance/handbooks/eng/testing.md'
+
+const HANDBOOK_PRINCIPLE_HEADING = /^#{2,6}\s+(TP-[0-9]{2})\b/gmu
+
 interface TuneRecordSchemaConstraints {
   deleteReasons: Set<string>
   principlePattern: RegExp
+  /**
+   * Principle identifiers the testing handbook defines. The schema pattern is
+   * a shape rule and cannot read a Markdown handbook, so it admits identifiers
+   * from TP-10 up that no principle backs; membership lives here.
+   */
+  principleIds: Set<string>
 }
 
 function tuneRecordSchemaConstraints(
@@ -688,9 +700,25 @@ function tuneRecordSchemaConstraints(
     })
   }
 
+  const principleIds = new Set(
+    [
+      ...readText(path.join(root, TESTING_HANDBOOK_PATH)).matchAll(
+        HANDBOOK_PRINCIPLE_HEADING,
+      ),
+    ].map((match) => match[1]),
+  )
+
+  if (principleIds.size === 0) {
+    throw new PanError(
+      `${TESTING_HANDBOOK_PATH} declares no principle identifier`,
+      { code: 'TUNE_HANDBOOK_INVALID' },
+    )
+  }
+
   return {
     deleteReasons: new Set(deleteReasons),
     principlePattern: new RegExp(principlePattern, 'u'),
+    principleIds,
   }
 }
 
@@ -781,6 +809,93 @@ function validateJudgmentProvenance(
         `${sessionRoot}similarity-index.json`)
   ) {
     errors.push('judgment provenance has an unpermitted similarity input')
+  }
+}
+
+/** Operator-readable form of a test identity, for a message a human reads. */
+function identityLabel(identity: TestIdentity): string {
+  const occurrence = identity.occurrence ?? 1
+
+  return `${identity.file}::${identity.name}${occurrence === 1 ? '' : `#${occurrence}`}`
+}
+
+/** Verdicts that take a test out of the suite. DEMOTE and KEEP leave it in. */
+const REMOVAL_VERDICTS = new Set(['MERGE', 'DELETE'])
+
+/**
+ * Reject a verdict set that would leave a rule with no test.
+ *
+ * A verdict is authored one test at a time, which is the right granularity for
+ * judging one test's value. Coverage, though, is a property of the set: "the
+ * contract lives in the other test" is locally defensible on both sides of a
+ * pair, and ratifying both removals loses the rule with no verdict saying so.
+ * A removal that names a home therefore binds that home to survive.
+ */
+function validateSurvivingProof(
+  verdicts: TuneRecord['verdicts'],
+  errors: string[],
+): void {
+  const removed = new Map<string, { verdict: string; identity: TestIdentity }>()
+
+  for (const entry of verdicts) {
+    if (
+      isRecord(entry) &&
+      isTestIdentity(entry.identity) &&
+      REMOVAL_VERDICTS.has(String(entry.verdict))
+    ) {
+      removed.set(identityKey(entry.identity), {
+        verdict: String(entry.verdict),
+        identity: entry.identity,
+      })
+    }
+  }
+
+  for (const entry of verdicts) {
+    if (!isRecord(entry) || !isTestIdentity(entry.identity)) {
+      continue
+    }
+
+    const key = identityKey(entry.identity)
+
+    if (!removed.has(key)) {
+      continue
+    }
+
+    // A survivor is the declared home; a rationale that quotes another test's
+    // name is the same claim written in prose.
+    const quoted = new Set(
+      [...String(entry.rationale ?? '').matchAll(/`([^`]+)`/gu)].map(
+        (match) => match[1],
+      ),
+    )
+    const named = new Set<string>()
+
+    if (isTestIdentity(entry.survivor)) {
+      named.add(identityKey(entry.survivor))
+    }
+
+    for (const [candidateKey, candidate] of removed) {
+      if (
+        quoted.has(candidate.identity.name) ||
+        quoted.has(identityLabel(candidate.identity))
+      ) {
+        named.add(candidateKey)
+      }
+    }
+
+    for (const home of named) {
+      const remover = removed.get(home)
+
+      if (!remover || home === key) {
+        continue
+      }
+
+      errors.push(
+        `${String(entry.verdict)} for ${identityLabel(entry.identity)} names ` +
+          `${identityLabel(remover.identity)} as the surviving proof, but ` +
+          `${remover.verdict} removes it in the same set`,
+      )
+    }
   }
 }
 
@@ -879,6 +994,13 @@ export function validateTuneRecordShape(
 
     const key = identityKey(entry.identity)
 
+    if (!constraints.principleIds.has(entry.principle)) {
+      errors.push(
+        `verdict for ${identityLabel(entry.identity)} cites ${entry.principle}, ` +
+          `which ${TESTING_HANDBOOK_PATH} does not define`,
+      )
+    }
+
     if (!inventoryKeys.has(key)) {
       errors.push(`verdict references unknown identity ${key}`)
     }
@@ -911,6 +1033,8 @@ export function validateTuneRecordShape(
       errors.push(`DEMOTE for ${key} MUST name an actionable destination`)
     }
   }
+
+  validateSurvivingProof(typed.verdicts, errors)
 
   for (const identity of typed.current_inventory) {
     if (!verdictKeys.has(identityKey(identity))) {

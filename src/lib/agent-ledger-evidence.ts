@@ -18,6 +18,82 @@ export const AGENT_PROFILE_EXECUTION_ALLOWANCE =
   'interior gate profiles at submission and the full profile only as the ' +
   'ship release gate.'
 
+/** One profile execution recorded against a run, whoever started it. */
+export interface RecordedProfileRun {
+  profile: string
+  status: string
+  /** `agent` for a worker-started execution, `harness` for harness-started. */
+  invokedBy: string
+  invocationId: string | null
+  fingerprint: string
+  startedAt: string
+  /** Captured output of that execution, when it stored one. */
+  evidencePath: string | null
+  ledgerPath: string
+}
+
+/**
+ * Every execution the run's agent profile ledger holds, in recorded order,
+ * or `null` when the run has no ledger.
+ *
+ * `null` and `[]` say different things. An absent ledger means nothing was
+ * recorded, which a reader may resolve from another source; an empty ledger
+ * means the record exists and holds no execution.
+ */
+export function recordedProfileRuns(
+  root: string,
+  runId: string,
+): RecordedProfileRun[] | null {
+  const ledger = resolveRunLayout(root, runId).evidence(
+    AGENT_REPOSITORY_CHECK_RUNS_FILE,
+  )
+
+  if (!fileExists(ledger.absolute)) {
+    return null
+  }
+
+  const runs: RecordedProfileRun[] = []
+
+  for (const line of readText(ledger.absolute).split('\n')) {
+    if (line.trim().length === 0) {
+      continue
+    }
+
+    let record: unknown
+
+    try {
+      record = JSON.parse(line)
+    } catch {
+      continue
+    }
+
+    if (
+      !isRecord(record) ||
+      typeof record.profile !== 'string' ||
+      typeof record.status !== 'string' ||
+      typeof record.workspace_fingerprint !== 'string'
+    ) {
+      continue
+    }
+
+    runs.push({
+      profile: record.profile,
+      status: record.status,
+      invokedBy:
+        typeof record.invoked_by === 'string' ? record.invoked_by : 'agent',
+      invocationId:
+        typeof record.invocation_id === 'string' ? record.invocation_id : null,
+      fingerprint: record.workspace_fingerprint,
+      startedAt: typeof record.started_at === 'string' ? record.started_at : '',
+      evidencePath:
+        typeof record.evidence_log === 'string' ? record.evidence_log : null,
+      ledgerPath: ledger.relative,
+    })
+  }
+
+  return runs
+}
+
 /** A passing profile execution an agent recorded against a run. */
 export interface AgentRecordedProfilePass {
   profile: string
@@ -44,47 +120,20 @@ export function agentRecordedProfilePasses(
   root: string,
   runId: string,
 ): AgentRecordedProfilePass[] {
-  const ledger = resolveRunLayout(root, runId).evidence(
-    AGENT_REPOSITORY_CHECK_RUNS_FILE,
-  )
-
-  if (!fileExists(ledger.absolute)) {
-    return []
-  }
-
   const byProfile = new Map<string, AgentRecordedProfilePass>()
 
-  for (const line of readText(ledger.absolute).split('\n')) {
-    if (line.trim().length === 0) {
+  for (const run of recordedProfileRuns(root, runId) ?? []) {
+    if (run.status !== 'passed' || run.evidencePath === null) {
       continue
     }
 
-    let record: unknown
-
-    try {
-      record = JSON.parse(line)
-    } catch {
-      continue
-    }
-
-    if (
-      !isRecord(record) ||
-      record.status !== 'passed' ||
-      typeof record.profile !== 'string' ||
-      typeof record.workspace_fingerprint !== 'string' ||
-      typeof record.evidence_log !== 'string'
-    ) {
-      continue
-    }
-
-    byProfile.set(record.profile, {
-      profile: record.profile,
-      evidencePath: record.evidence_log,
-      fingerprint: record.workspace_fingerprint,
-      invocationId:
-        typeof record.invocation_id === 'string' ? record.invocation_id : null,
-      startedAt: typeof record.started_at === 'string' ? record.started_at : '',
-      ledgerPath: ledger.relative,
+    byProfile.set(run.profile, {
+      profile: run.profile,
+      evidencePath: run.evidencePath,
+      fingerprint: run.fingerprint,
+      invocationId: run.invocationId,
+      startedAt: run.startedAt,
+      ledgerPath: run.ledgerPath,
     })
   }
 

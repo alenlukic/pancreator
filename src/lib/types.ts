@@ -1533,12 +1533,6 @@ export interface StageHistoryItem {
 }
 
 /**
- * Why the immediately preceding attempt of this stage failed, rendered inline on
- * the retry card. A path reference to the prior output is not enough: the reason
- * is spread across validation errors, deterministic results, and self-evaluated
- * criteria, so a worker handed only a pointer tends to resubmit the same defect.
- */
-/**
  * The operator's stage-repair note, when that note and not a recorded attempt
  * is why the current attempt exists.
  *
@@ -1558,6 +1552,12 @@ export interface OperatorStageRepairContext {
   recorded_at: string
 }
 
+/**
+ * Why the immediately preceding attempt of this stage failed, rendered inline on
+ * the retry card. A path reference to the prior output is not enough: the reason
+ * is spread across validation errors, deterministic results, and self-evaluated
+ * criteria, so a worker handed only a pointer tends to resubmit the same defect.
+ */
 export interface PriorAttemptFailure {
   stage: string
   attempt: number

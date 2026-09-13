@@ -367,6 +367,9 @@ test('the run-scoped model probe returns without waiting for the model', async (
       '#!/bin/sh',
       'cat >/dev/null',
       `sleep ${agentDelaySeconds}`,
+      // The stub records the moment it answers, so the caller can prove it
+      // returned first without timing the wall clock.
+      ': >"$(dirname "$0")/answered.txt"',
       `printf '%s\\n' '${JSON.stringify({
         type: 'system',
         subtype: 'init',
@@ -386,7 +389,6 @@ test('the run-scoped model probe returns without waiting for the model', async (
 
   assert.ok(invocation)
 
-  const startedAt = Date.now()
   const probe = spawnSync(
     process.execPath,
     [
@@ -408,19 +410,18 @@ test('the run-scoped model probe returns without waiting for the model', async (
       },
     },
   )
-  const elapsed = Date.now() - startedAt
+  // TP-10: the command returned before the stub answered. An elapsed-time
+  // ceiling would have measured the machine under a concurrent suite.
+  const answeredOnReturn = existsSync(path.join(agentDirectory, 'answered.txt'))
 
   assert.equal(probe.status, 0, probe.stderr)
+  assert.equal(answeredOnReturn, false)
 
   const printed = JSON.parse(probe.stdout) as Record<string, unknown>
 
   assert.equal(printed.result, 'pending')
   assert.equal(printed.effective_model, null)
   assert.equal(typeof printed.probe_pid, 'number')
-  assert.ok(
-    elapsed < agentDelaySeconds * 1_000,
-    `the command waited ${elapsed}ms for the model`,
-  )
 
   // The detached child lands the answer on the run, replacing the marker.
   const deadline = Date.now() + 30_000

@@ -42,6 +42,10 @@ Keep fixture setup proportional to the contract. Share templates across tests in
 
 Allocate fixture scratch space with `createTestTempDirectory` from `tests/temp.ts`. It lives under `runtime/tmp/tests/`, per root and so per worktree, and `bin/run-tests` removes it when the run ends. A test MUST NOT call `tmpdir()`: the shared OS temp directory is unbounded, every program on the host pays for what accumulates there, and a fixture placed in it outlives the run that made it.
 
+### TP-10 · Timing-independent proofs
+
+Do not assert a ceiling on total elapsed time as the proof that work ran concurrently or that a call did not block. The suite runs under `--test-concurrency`, so a measured interval includes scheduling the test does not control, and the assertion becomes a statement about the machine. Prove concurrency from recorded intervals that overlap, and prove a non-blocking return by observing that the stub had not yet answered when the call returned. Keep a generous absolute timeout as a hang guard, never as the proof.
+
 ## Lanes
 
 Place each test in the documented lane that matches its cost and boundary:
@@ -64,4 +68,6 @@ Review and tune workflows use these verdicts against current tests:
 | DEMOTE  | The contract belongs in a slower lane or cheaper form.   |
 | DELETE  | No unique contract remains; name a permitted sub-reason. |
 
-Every verdict MUST cite at least one TP identifier and concrete test evidence. Cost alone MUST NOT decide a verdict.
+Every verdict MUST cite at least one TP identifier this handbook defines, and concrete test evidence. Cost alone MUST NOT decide a verdict.
+
+A verdict is authored one test at a time, but coverage is a property of the set. Naming another test as the home of an assertion, through `survivor` or in the rationale, binds that test to survive the same set. `pan tune finalize` refuses a set that removes a named home and names both verdicts. The tune-record validator resolves the identifier and the named home; it does not judge whether a verdict applies its principle correctly, which stays judgment-only.

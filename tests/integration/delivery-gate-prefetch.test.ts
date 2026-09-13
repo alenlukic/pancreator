@@ -21,7 +21,7 @@ import {
   prefetchRecordPath,
   resolveRunLayout,
 } from '../../src/lib/run-layout.js'
-import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
+import { stageBySlug } from '../../src/lib/workflow.js'
 import {
   attachTargetInstructionEvidence,
   createFixture,
@@ -82,7 +82,6 @@ test('a second run adopts the recorded baseline for an unchanged workspace', () 
   // identical question, and the second one waited minutes for an answer the
   // first had already written down.
   const root = createFixture()
-  const workflow = loadWorkflow(root, 'delivery')
 
   baselineCheckProfiles(root)
 
@@ -139,15 +138,22 @@ test('a second run adopts the recorded baseline for an unchanged workspace', () 
   writeFileSync(path.join(root, 'src/base.ts'), 'export const base = 2\n')
 
   const thirdRun = startedRun(root, 'Baseline after an edit')
+  const rebaselined = getRunState(root, thirdRun).repository_check_baselines
 
   assert.equal(staticRuns(root), 2)
   assert.notEqual(
-    getRunState(root, thirdRun).repository_check_baselines?.static
-      ?.artifact_path,
+    rebaselined?.static?.artifact_path,
     firstBaseline.artifact_path,
   )
-
-  assert.ok(workflow)
+  // Paying again buys the same set of interior gate profiles. A closing
+  // `assert.ok` on the workflow this test loaded and never used could not
+  // fail, so nothing held the re-baseline to the shape of the first one.
+  assert.deepEqual(
+    Object.keys(rebaselined ?? {}).sort(),
+    Object.keys(
+      getRunState(root, firstRun).repository_check_baselines ?? {},
+    ).sort(),
+  )
 })
 
 test('the ship entry gate accepts a clean profile pass an agent already paid for', () => {

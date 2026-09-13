@@ -355,6 +355,11 @@ test('an unconfirmed verification level change is refused and a confirmed one ap
 // command performed the intent they had already stated.
 test('a misrouted resume and decide each name the run status and the routing command', () => {
   const { root, runId } = checkpoint('planning@plan-awaiting-operator')
+  // A refused lifecycle action must leave the run exactly where it was. A
+  // refusal that had already moved the stage, or appended an event, would
+  // report the same message while the operator's next command sees a
+  // different run.
+  const awaiting = JSON.stringify(getRunState(root, runId))
 
   assert.throws(
     () => resumeRun(root, runId),
@@ -368,7 +373,11 @@ test('a misrouted resume and decide each name the run status and the routing com
     },
   )
 
+  assert.equal(JSON.stringify(getRunState(root, runId)), awaiting)
+
   pauseRun(root, runId, 'Inspect the workspace before deciding.')
+
+  const paused = JSON.stringify(getRunState(root, runId))
 
   assert.throws(
     () => decideRun(root, runId, 'revise', 'Tighten the retention window.'),
@@ -381,4 +390,6 @@ test('a misrouted resume and decide each name the run status and the routing com
       return true
     },
   )
+
+  assert.equal(JSON.stringify(getRunState(root, runId)), paused)
 })

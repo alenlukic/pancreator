@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import { readAgentRegistry } from '../../src/lib/hypervisor.js'
+import { withOperationMutex } from '../../src/lib/io.js'
 import { operationMutexPath } from '../../src/lib/state.js'
 import { stageBySlug } from '../../src/lib/workflow.js'
 import {
@@ -121,14 +122,27 @@ test('deferring the registry write still records every prepared and completed in
 
   assert.ok(invocationId)
 
-  const prepared = readAgentRegistry(root).agents.find(
-    (agent) => agent.invocation_id === invocationId,
-  )
+  // Reading the registry from inside the run mutex proves the operation
+  // released it. Asserting that the mutex file is absent afterwards could
+  // not fail: the release runs in a `finally`, so the path is gone whether
+  // or not the bookkeeping write ever left the critical section.
+  const recordsFor = (id: string) =>
+    withOperationMutex(operationMutexPath(root, runId), () =>
+      readAgentRegistry(root).agents.filter(
+        (agent) => agent.invocation_id === id,
+      ),
+    )
+  const preparedRecords = recordsFor(invocationId)
+  const prepared = preparedRecords[0]
 
-  assert.ok(prepared, 'prepare registered no agent for the invocation it made')
+  assert.equal(
+    preparedRecords.length,
+    1,
+    'prepare registered no agent for the invocation it made, or registered it twice',
+  )
+  assert.ok(prepared)
   assert.equal(prepared.run_id, runId)
   assert.notEqual(prepared.health, 'completed')
-  assert.equal(existsSync(operationMutexPath(root, runId)), false)
 
   const submitted = submitStageOutput(
     root,
@@ -143,11 +157,14 @@ test('deferring the registry write still records every prepared and completed in
     JSON.stringify(submitted.record.evaluation),
   )
 
-  const completed = readAgentRegistry(root).agents.find(
-    (agent) => agent.invocation_id === invocationId,
-  )
+  const completedRecords = recordsFor(invocationId)
+  const completed = completedRecords[0]
 
-  assert.ok(completed, 'submit dropped the agent record prepare had written')
+  assert.equal(
+    completedRecords.length,
+    1,
+    'submit dropped the agent record prepare had written, or appended a second',
+  )
+  assert.ok(completed)
   assert.equal(completed.health, 'completed')
-  assert.equal(existsSync(operationMutexPath(root, runId)), false)
 })
