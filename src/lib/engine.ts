@@ -200,6 +200,8 @@ import type {
   SupervisorAssessment,
   TaskRecord,
   WorkflowDefinition,
+  WorkspaceDirectiveRecord,
+  WorkspaceSnapshot,
 } from './types.js'
 import {
   attestationValidationPath,
@@ -209,6 +211,7 @@ import {
   delegationValidationPath,
   deliveryPromptPath,
   evaluateDeterministicCriteria,
+  FINGERPRINT_BOUND_STATE_CRITERIA,
   expectedDelegationSource,
   invocationValidationPath,
   loadInvocationValidationStatus,
@@ -233,12 +236,16 @@ import {
   workflowPersonaNames,
 } from './workflow.js'
 import {
+  gitStatusPaths,
   gitWorkspaceSnapshot,
   snapshotEntryPath,
   workspaceChangedPathsFromSnapshots,
 } from './git.js'
 import { resolveRoots } from './workspace/roots.js'
-import { PROTECTED_PATH_RULE } from './workspace/protected-paths.js'
+import {
+  isProtectedWorkspacePath,
+  PROTECTED_PATH_RULE,
+} from './workspace/protected-paths.js'
 
 /**
  * Persona-to-model map that replaces the active pipeline config for one run.
@@ -514,6 +521,21 @@ function ensureMutatingWorkflowInitialized(
   if (stage.workspace_policy === 'source_allowed') {
     initializeRunWorkspaceTracking(root, state)
   }
+}
+
+/**
+ * The harness root baseline an invocation carries when the run works
+ * somewhere else. A worktree run and an eval run both leave the harness
+ * checkout outside every workspace snapshot, so without this baseline no gate
+ * can see a write into the one tree the run must not touch.
+ */
+function harnessBaseline(
+  root: string,
+  state: RunState,
+): { harness_before?: WorkspaceSnapshot } {
+  return path.resolve(workspaceDirectory(root, state)) === path.resolve(root)
+    ? {}
+    : { harness_before: gitWorkspaceSnapshot(root) }
 }
 
 function workspaceSnapshotForRun(root: string, state: RunState) {
@@ -1574,9 +1596,90 @@ function takeEntryGateReturn(
 function clearEntryGateRoutes(state: RunState): void {
   for (const record of Object.values(state.entry_gates ?? {})) {
     delete record.routed_to
+    delete record.repair_stage
     delete record.passed_at_history_length
     record.failures = 0
   }
+}
+
+/** How a failed entry gate's declared repair route must be taken. */
+type EntryGateRepairRoute =
+  | { kind: 'direct_return' }
+  | { kind: 'through_success_path' }
+  | { kind: 'unsatisfiable'; blocking: string[] }
+
+/** Longest success chain the route check walks before giving up. */
+const ROUTE_REACHABILITY_LIMIT = 16
+
+/**
+ * Decide how an entry-gate repair returns to the stage that ordered it.
+ *
+ * A repair that cannot change the workspace leaves every criterion of the
+ * gate stage as it found them, so the run returns directly. A repair that can
+ * change the workspace invalidates any fingerprint-bound criterion the gate
+ * stage declares, and the direct return would then fail the very criterion
+ * the repair was ordered to get past. That route runs through the repair
+ * stage's own success path, which retakes the evidence. When that path cannot
+ * reach the gate stage at all, the route is reported instead of taken.
+ */
+function entryGateRepairRoute(
+  workflow: WorkflowDefinition,
+  gateStage: StageDefinition,
+  repairSlug: string,
+): EntryGateRepairRoute {
+  const repairStage = workflow.stages.find((item) => item.slug === repairSlug)
+
+  if (!repairStage || repairStage.workspace_policy !== 'source_allowed') {
+    return { kind: 'direct_return' }
+  }
+
+  const blocking = gateStage.criteria
+    .filter(
+      (criterion) =>
+        criterion.hard === true &&
+        FINGERPRINT_BOUND_STATE_CRITERIA.has(criterion.id),
+    )
+    .map((criterion) => criterion.id)
+
+  if (blocking.length === 0) {
+    return { kind: 'direct_return' }
+  }
+
+  return successPathReaches(workflow, repairStage, gateStage.slug)
+    ? { kind: 'through_success_path' }
+    : { kind: 'unsatisfiable', blocking }
+}
+
+function successPathReaches(
+  workflow: WorkflowDefinition,
+  from: StageDefinition,
+  targetSlug: string,
+): boolean {
+  let current: StageDefinition | undefined = from
+
+  for (let step = 0; step < ROUTE_REACHABILITY_LIMIT; step += 1) {
+    const next: string | undefined = current?.transitions.success
+
+    if (next === undefined) {
+      return false
+    }
+
+    if (next === targetSlug) {
+      return true
+    }
+
+    current = workflow.stages.find((item) => item.slug === next)
+
+    if (!current) {
+      return false
+    }
+  }
+
+  return false
+}
+
+function boundedCriterionList(criterionIds: string[]): string {
+  return criterionIds.map((id) => `'${id}'`).join(', ')
 }
 
 /**
@@ -1696,10 +1799,54 @@ function runStageEntryGate(
     return 'paused'
   }
 
+  const workflow = loadRunWorkflow(root, state)
+  const route = entryGateRepairRoute(workflow, stage, gate.failure)
+
+  if (route.kind === 'unsatisfiable') {
+    const reason =
+      `Entry gate '${criterion.id}' of stage '${stage.slug}' failed, and the ` +
+      `declared repair route through '${gate.failure}' cannot return the run ` +
+      `to a stage that satisfies ${boundedCriterionList(route.blocking)}. ` +
+      `${result.explanation}${evidence}`
+
+    state.status = 'paused'
+    state.pause_reason = reason
+    state.pending_action = { type: 'operator_decision', operator_only: true }
+    writeDecision(
+      root,
+      state,
+      `Entry gate repair route is unsatisfiable`,
+      reason,
+      [
+        `Inspect the gate evidence${result.evidence_path ? ` at ${result.evidence_path}` : ''}.`,
+        `Send the run to a stage that can restore the evidence with: ${panCommand(root)} resume ${state.run_id} --stage <stage>`,
+        `Or abort with: ${panCommand(root)} abort ${state.run_id}`,
+      ],
+    )
+    persistRun(root, state, 'run_paused', {
+      reason,
+      stage: stage.slug,
+      criterion: criterion.id,
+      failures,
+    })
+
+    return 'paused'
+  }
+
   onProgress?.(
     `entry gate ${criterion.id} failed (${failures}/${gate.max_loops} loops); routing to '${gate.failure}'`,
   )
-  record.routed_to = gate.failure
+
+  // A direct return skips the stages whose evidence the repair invalidates.
+  // When the gate stage declares such a criterion, the repair stage follows
+  // its own success transition instead, which retakes that evidence at the
+  // post-repair workspace before the gate runs again.
+  record.repair_stage = gate.failure
+
+  if (route.kind === 'direct_return') {
+    record.routed_to = gate.failure
+  }
+
   applyTransition(root, state, stage, 'failure', {
     overrideTarget: gate.failure,
   })
@@ -1708,6 +1855,7 @@ function runStageEntryGate(
     // A workflow limit intercepted the route. The route is closed because
     // the operator now chooses where the run continues.
     delete record.routed_to
+    delete record.repair_stage
     persistRun(root, state, 'run_paused', { reason: state.pause_reason })
 
     return 'paused'
@@ -2877,6 +3025,32 @@ function outcomeFromFailureRoutes(
 export interface ResolvedSubmitValidator {
   requirement: ResolvedRequirement
   target_path: string
+  /**
+   * The selector a named `artifact:` target names when nothing supplied it.
+   * The resolution once fell back to the stage output JSON, so a validator
+   * written for the pull-request copy passed by judging a file it was never
+   * pointed at. An unresolved selector now says so.
+   */
+  unresolved_target?: string
+  /**
+   * Whether the invocation owed a named artifact at all. An invocation that
+   * declares named artifacts and omits this one is a defect. An invocation
+   * that declares none never owed the artifact: PR-001 scopes the workflow
+   * pull-request copy to a ship that produces operator artifacts.
+   */
+  named_artifacts_declared?: boolean
+}
+
+/**
+ * Whether a target names an artifact by name rather than by index. An indexed
+ * selector describes a position that may legitimately be empty; a named one
+ * describes an artifact the invocation declared.
+ */
+function isNamedArtifactSelector(target: string): boolean {
+  return (
+    target.startsWith('artifact:') &&
+    !/^\d+$/u.test(target.slice('artifact:'.length))
+  )
 }
 
 /**
@@ -2937,13 +3111,32 @@ export function resolveSubmitValidators(
       continue
     }
 
-    const targetPath =
-      resolveRequirementTargetPath(requirement, invocation.output.path, {
+    const resolvedTarget = resolveRequirementTargetPath(
+      requirement,
+      invocation.output.path,
+      {
         ...submittedValue,
         ...(invocation.output.artifact_targets
           ? { artifact_targets: invocation.output.artifact_targets }
           : {}),
-      }) ?? invocation.output.path
+      },
+    )
+
+    if (
+      resolvedTarget === null &&
+      isNamedArtifactSelector(requirement.target)
+    ) {
+      resolved.push({
+        requirement,
+        target_path: requirement.target,
+        unresolved_target: requirement.target,
+        named_artifacts_declared:
+          Object.keys(invocation.output.artifact_targets ?? {}).length > 0,
+      })
+      continue
+    }
+
+    const targetPath = resolvedTarget ?? invocation.output.path
     const targetKind = inferTargetKind(targetPath)
 
     if (!entry.target_types.includes(targetKind)) {
@@ -2954,6 +3147,36 @@ export function resolveSubmitValidators(
   }
 
   return resolved
+}
+
+/**
+ * Validators whose target a blocked result of the named stage never produces.
+ */
+const BLOCKED_OUTPUT_EXEMPT_VALIDATORS: Record<string, readonly string[]> = {
+  ship: ['RELEASE-VALIDATE-001', 'PR-DESCRIPTION-VALIDATE-001'],
+}
+
+/**
+ * Why this validator judges nothing on this submission, or null.
+ *
+ * A blocked stage reports a precondition it lacked, so the release packet and
+ * the pull-request copy were never written. Failing every field of an
+ * artifact the stage could not produce buries the one thing the operator
+ * needs: the missing precondition and the command that supplies it.
+ */
+function blockedOutputExemption(
+  stageSlug: string,
+  submittedValue: Record<string, unknown>,
+  registryId: string,
+): string | null {
+  if (submittedValue.result !== 'blocked') {
+    return null
+  }
+
+  return BLOCKED_OUTPUT_EXEMPT_VALIDATORS[stageSlug]?.includes(registryId)
+    ? `Stage '${stageSlug}' reported blocked, so it produced no target for ` +
+        `${registryId} to judge.`
+    : null
 }
 
 function runHarnessAuthoritativeValidators(
@@ -2976,7 +3199,33 @@ function runHarnessAuthoritativeValidators(
   for (const {
     requirement,
     target_path: targetPath,
+    unresolved_target: unresolvedTarget,
+    named_artifacts_declared: namedArtifactsDeclared,
   } of resolveSubmitValidators(root, invocation, submittedValue, catalog)) {
+    if (unresolvedTarget) {
+      const message = namedArtifactsDeclared
+        ? `harness validator ${requirement.registry_id} could not resolve ` +
+          `target ${unresolvedTarget}: the invocation declares named ` +
+          `artifacts and none carries that name.`
+        : `harness validator ${requirement.registry_id} judged nothing: ` +
+          `the invocation declares no named artifact, so ${unresolvedTarget} ` +
+          `names no target this stage owed.`
+
+      errors.push(message)
+
+      if (namedArtifactsDeclared && requirement.enforcement !== 'advisory') {
+        blockingErrors.push(message)
+        failedRoutes.push(requirement.failure_route)
+      }
+
+      continue
+    }
+
+    const notApplicable = blockedOutputExemption(
+      invocation.stage.slug,
+      submittedValue,
+      requirement.registry_id,
+    )
     const result = runRequirement({
       root,
       runId,
@@ -2988,6 +3237,7 @@ function runHarnessAuthoritativeValidators(
       runState,
       catalog,
       persist: true,
+      ...(notApplicable ? { notApplicable } : {}),
     })
 
     if (!isPassingResult(result)) {
@@ -3794,7 +4044,11 @@ export function prepareInvocation(
       runUsesModelEvidenceContract(state)
         ? { model_evidence_required: true }
         : {}),
+      ...((state.workspace_directives ?? []).length > 0
+        ? { attributed_changes: state.workspace_directives }
+        : {}),
       workspace_before: workspace,
+      ...harnessBaseline(root, state),
     }
 
     if (artifactsRequested) {
@@ -4665,20 +4919,29 @@ export function submitOutput(
       state,
       invocation,
     )
-    const advisories = [
-      ...recordRunAdvisories(
-        state,
-        {
-          kind: 'model_evidence',
-          source: 'submit',
-          stage: stage.slug,
-          invocation_id: invocation.invocation_id,
-        },
-        modelEvidenceAdvisories,
-      ),
-    ]
+    // One path records an advisory and collects it for the submit result.
+    // Each advisory kind arrived in its own change, and the third author
+    // recorded to run state only, so `pan status` listed a conflict the
+    // submit result that recorded it did not.
+    const advisories: RunAdvisory[] = []
+    const advise = (kind: RunAdvisory['kind'], messages: string[]): void => {
+      advisories.push(
+        ...recordRunAdvisories(
+          state,
+          {
+            kind,
+            source: 'submit',
+            stage: stage.slug,
+            invocation_id: invocation.invocation_id,
+          },
+          messages,
+        ),
+      )
+    }
 
-    if (advisories.length > 0) {
+    advise('model_evidence', modelEvidenceAdvisories)
+
+    if (modelEvidenceAdvisories.length > 0) {
       persistRun(root, state, 'model_evidence_advisory', {
         invocation_id: invocation.invocation_id,
         stage: stage.slug,
@@ -4743,24 +5006,13 @@ export function submitOutput(
       // records how late, so a supervisor that armed at once and one that
       // armed after an operator reprimand stop looking identical.
       if (delegationObservation.watch.background_watch_late) {
-        advisories.push(
-          ...recordRunAdvisories(
-            state,
-            {
-              kind: 'delegation_supervision',
-              source: 'submit',
-              stage: stage.slug,
-              invocation_id: invocation.invocation_id,
-            },
-            [
-              `${DELEGATION_WATCH_LATE}: the background watch for ` +
-                `${invocation.invocation_id} was armed ` +
-                `${delegationObservation.watch.background_mark_delay_seconds?.toFixed(0)}s ` +
-                `after the launch, past the ${DELEGATION_WATCH_LATE_SECONDS}s ` +
-                `DELEGATE-001 allows. Supervision was late, not absent.`,
-            ],
-          ),
-        )
+        advise('delegation_supervision', [
+          `${DELEGATION_WATCH_LATE}: the background watch for ` +
+            `${invocation.invocation_id} was armed ` +
+            `${delegationObservation.watch.background_mark_delay_seconds?.toFixed(0)}s ` +
+            `after the launch, past the ${DELEGATION_WATCH_LATE_SECONDS}s ` +
+            `DELEGATE-001 allows. Supervision was late, not absent.`,
+        ])
       }
     }
 
@@ -4918,16 +5170,7 @@ export function submitOutput(
           `${conflict.authority_followed}.`,
       )
 
-      recordRunAdvisories(
-        state,
-        {
-          kind: 'platform_guidance',
-          source: 'submit',
-          stage: stage.slug,
-          invocation_id: invocation.invocation_id,
-        },
-        messages,
-      )
+      advise('platform_guidance', messages)
       persistRun(root, state, 'platform_guidance_conflict', {
         invocation_id: invocation.invocation_id,
         stage: stage.slug,
@@ -4943,7 +5186,12 @@ export function submitOutput(
     // already decided the outcome, running the gate commands (QA's full suite
     // above all) spends minutes proving nothing, so they are recorded as
     // skipped with the deciding reason instead of executed.
-    const workspaceAfter = gitWorkspaceSnapshot(workspaceDirectory(root, state))
+    // The commit base lets the scope criterion tell a commit of content the
+    // stage already held from a change to the workspace.
+    const workspaceAfter = gitWorkspaceSnapshot(
+      workspaceDirectory(root, state),
+      { commitBase: invocation.workspace_before.head },
+    )
     const harnessValidation = runHarnessAuthoritativeValidators(
       root,
       runId,
@@ -5031,7 +5279,10 @@ export function submitOutput(
       gateSkipReason,
       workspaceAfter,
       entryGatePass ? { [entryGatePass.id]: entryGatePass } : {},
+      invocation.harness_before,
     )
+
+    advise('gate_bypass', evaluated.advisories)
     governanceArtifactWarnings.push(
       ...attestationErrors,
       ...briefErrors.map((message) => `Operator brief: ${message}`),
@@ -5994,6 +6245,107 @@ export function setRunVerification(
   })
 }
 
+/**
+ * Record an operator directive executed against the workspace outside a
+ * stage, so the next worker attributes the delta by reading rather than by
+ * audit.
+ *
+ * The supervisor executes such a directive as the operator's mechanical
+ * delegate, between stages, with no invocation of its own. Nothing else in
+ * the run claims the resulting change.
+ */
+export function recordWorkspaceDirective(
+  root: string,
+  runId: string,
+  options: {
+    directive: string
+    actingRole?: WorkspaceDirectiveRecord['acting_role']
+    paths?: string[]
+  },
+): WorkspaceDirectiveRecord {
+  return withOperationMutex(operationMutexPath(root, runId), () => {
+    const state = loadState(root, runId)
+    const directive = options.directive.trim()
+
+    invariant(directive.length > 0, 'A directive text is required.', {
+      code: 'INVALID_ARGUMENT',
+    })
+
+    const workspace = workspaceSnapshotForRun(root, state)
+    const declared = (options.paths ?? [])
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0)
+    const changedPaths = [
+      ...new Set(
+        declared.length > 0
+          ? declared
+          : gitStatusPaths(workspaceDirectory(root, state)).filter(
+              (relativePath) =>
+                !relativePath.startsWith('runtime/') &&
+                !isProtectedWorkspacePath(relativePath),
+            ),
+      ),
+    ].sort()
+
+    invariant(
+      changedPaths.length > 0,
+      'The workspace holds no tracked change to attribute. Name the paths ' +
+        'with --paths when the change is already committed.',
+      { code: 'INVALID_RUN_ACTION' },
+    )
+
+    const records = state.workspace_directives ?? []
+    const relativePath = resolveRunLayout(root, runId).evidence(
+      `workspace-directive-${records.length + 1}.md`,
+    ).relative
+    const actingRole = options.actingRole ?? 'supervisor'
+    const timestamp = now()
+    const record: WorkspaceDirectiveRecord = {
+      directive_id: `directive-${randomUUID()}`,
+      acting_role: actingRole,
+      directive,
+      stage: state.current_stage ?? 'none',
+      changed_paths: changedPaths,
+      workspace_fingerprint: workspace.fingerprint,
+      artifact_path: relativePath,
+      timestamp,
+    }
+
+    writeTextAtomic(
+      resolveInside(root, relativePath),
+      [
+        '# Operator-directed workspace change',
+        '',
+        `**Run** \`${runId}\` · **Stage** \`${record.stage}\``,
+        `**Acting role:** ${actingRole}`,
+        `**Recorded at:** ${timestamp}`,
+        `**Workspace fingerprint:** \`${workspace.fingerprint}\``,
+        '',
+        '## Directive',
+        '',
+        directive,
+        '',
+        '## Changed paths',
+        '',
+        ...changedPaths.map((item) => `- \`${item}\``),
+        '',
+      ].join('\n') + '\n',
+    )
+
+    records.push(record)
+    state.workspace_directives = records
+    persistRun(root, state, 'workspace_directive_recorded', {
+      directive_id: record.directive_id,
+      acting_role: actingRole,
+      stage: record.stage,
+      changed_paths: changedPaths,
+      artifact_path: relativePath,
+    })
+
+    return record
+  })
+}
+
 export function pauseRun(root: string, runId: string, note = ''): RunState {
   return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
@@ -6274,7 +6626,7 @@ function failedHardCriteria(
     record.evaluation.deterministic.map((item) => [item.id, item]),
   )
 
-  return stage.criteria
+  const declared = stage.criteria
     .filter((criterion) => {
       if (!criterion.hard) {
         return false
@@ -6289,7 +6641,23 @@ function failedHardCriteria(
       return result?.passed === false && !result.disabled
     })
     .map((criterion) => criterion.id)
-    .sort()
+
+  // A criterion the harness synthesizes, such as the scope criterion, never
+  // appears in the stage file. Inferring blockers from the declared list alone
+  // therefore returned nothing when one of those was the only failure, and the
+  // caller widened the waiver to the whole stage.
+  const declaredIds = new Set(stage.criteria.map((criterion) => criterion.id))
+  const synthesized = record.evaluation.deterministic
+    .filter(
+      (result) =>
+        !declaredIds.has(result.id) &&
+        result.hard &&
+        result.passed === false &&
+        !result.disabled,
+    )
+    .map((result) => result.id)
+
+  return [...declared, ...synthesized].sort()
 }
 
 function writeSpotfixCase(

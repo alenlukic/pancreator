@@ -1097,6 +1097,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
     '',
     'When tracked workspace files change during the stage, include top-level `workspace_changes` with `attribution`, every changed path in `paths`, and a concise `explanation`. Use `attribution: internal` only when the active worker can trace every listed change to its own actions; the cleanliness gate blocks only external or unattributed contamination.',
     '',
+    ...attributedChangeLines(invocation),
     '## 🚧 Boundaries',
     '',
     ...invocation.boundaries.map((item) => `- ${item}`),
@@ -1123,6 +1124,35 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
   ]
 
   return `${lines.join('\n')}\n`
+}
+
+/**
+ * Workspace changes an operator directive already accounted for.
+ *
+ * Without this section the delta belongs to no stage on the card, and each
+ * worker audits it again before reporting it as unattributed.
+ */
+function attributedChangeLines(invocation: Invocation): string[] {
+  const records = invocation.attributed_changes ?? []
+
+  if (records.length === 0) {
+    return []
+  }
+
+  return [
+    '## 📌 Attributed workspace changes',
+    '',
+    'An operator directive accounts for the paths below. Do not report them ' +
+      'as unattributed, and do not audit them to find their author.',
+    '',
+    ...records.flatMap((record) => [
+      `- **${record.acting_role}** executed an operator directive at ` +
+        `${record.timestamp} (\`${record.artifact_path}\`): ` +
+        record.directive,
+      ...record.changed_paths.map((item) => `  - \`${item}\``),
+    ]),
+    '',
+  ]
 }
 
 function formatValidationArtifactStatus(

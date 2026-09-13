@@ -10,7 +10,7 @@ import {
   readText,
   resolveInside,
 } from '../io.js'
-import { invariant } from '../errors.js'
+import { errorMessage, invariant } from '../errors.js'
 import {
   loadHarnessRepairCategories,
   type HarnessRepairCategory,
@@ -293,12 +293,13 @@ export function validateSharedFieldContract(
       }
     }
 
+    // Every declared field that requires children, in every stage. The guard
+    // once read the plan file contract alone, so a later stage that declared a
+    // required child gained no coverage and no signal that it had none.
     for (const field of stage.fields) {
       if (
-        stageSlug !== 'plan' ||
         !isRecord(field) ||
         typeof field.path !== 'string' ||
-        field.path !== 'data.engineering_plan.files[]' ||
         !Array.isArray(field.required)
       ) {
         continue
@@ -310,8 +311,12 @@ export function validateSharedFieldContract(
         }
 
         const childPath = `${field.path}.${child}`
+        // An array-valued child declares its item shape under the `[]` suffix,
+        // which is the same declaration by another name.
+        const declared = (paths: Set<string>): boolean =>
+          paths.has(childPath) || paths.has(`${childPath}[]`)
 
-        if (!declaredPaths.has(childPath)) {
+        if (!declared(declaredPaths)) {
           issues.push(
             issue(
               'field_contract.required_child_shape',
@@ -320,7 +325,7 @@ export function validateSharedFieldContract(
           )
         }
 
-        if (!enforcedPaths.has(childPath)) {
+        if (!declared(enforcedPaths)) {
           issues.push(
             issue(
               'field_contract.required_child_enforcement',
@@ -2891,9 +2896,28 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
         )
       }
 
-      const prPath = resolveInside(input.root, prDescriptionPath)
+      // An agent supplies this path, so a traversal or an absolute path is a
+      // reportable mistake in the output rather than a harness fault.
+      // `resolveInside` throws on one, which ended the validator with a stack
+      // trace instead of an issue the retry could read.
+      let prPath: string | null = null
 
-      if (!fileExists(prPath)) {
+      try {
+        prPath = resolveInside(input.root, prDescriptionPath)
+      } catch (error) {
+        issues.push(
+          issue(
+            'release.pr_description_path_invalid',
+            `release.local_release.pr_description_path MUST resolve inside ` +
+              `the installation: ${prDescriptionPath} (${errorMessage(error)})`,
+          ),
+        )
+      }
+
+      if (prPath === null) {
+        // The path named nothing this validator can read, and the issue above
+        // says so. The content checks below have no file to judge.
+      } else if (!fileExists(prPath)) {
         issues.push(
           issue(
             'release.pr_description_missing',

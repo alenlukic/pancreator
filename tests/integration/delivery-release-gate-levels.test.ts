@@ -63,10 +63,12 @@ test('a third release-gate failure pauses for an operator-only decision that awa
     }),
   )
   const remediateStage = stageBySlug(workflow, 'remediate')
+  const verifyStage = stageBySlug(workflow, 'verify')
 
-  submitStageOutput(root, runId, stageBySlug(workflow, 'verify'), 'success')
+  submitStageOutput(root, runId, verifyStage, 'success')
 
-  // Two repair loops through remediate, then the third failure pauses.
+  // Two repair loops through remediate, then the third failure pauses. Each
+  // repair returns through verify, which retakes its evidence for the gate.
   for (const loop of [1, 2]) {
     const routed = prepareInvocation(root, runId)
 
@@ -77,7 +79,12 @@ test('a third release-gate failure pauses for an operator-only decision that awa
 
     const remediated = submitStageOutput(root, runId, remediateStage, 'success')
 
-    assert.equal(remediated.state.current_stage, 'ship')
+    assert.equal(remediated.state.current_stage, 'verify')
+    assert.equal(
+      submitStageOutput(root, runId, verifyStage, 'success').state
+        .current_stage,
+      'ship',
+    )
   }
 
   const paused = prepareInvocation(root, runId)
@@ -130,4 +137,5 @@ test('a third release-gate failure pauses for an operator-only decision that awa
   assert.equal(resumed.current_stage, 'remediate')
   assert.equal(resumed.entry_gates?.ship?.failures, 0)
   assert.equal(resumed.entry_gates?.ship?.routed_to, undefined)
+  assert.equal(resumed.entry_gates?.ship?.repair_stage, undefined)
 })

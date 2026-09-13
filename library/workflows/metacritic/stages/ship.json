@@ -41,6 +41,11 @@
     "release.governance_artifact_review.repairs": "array",
     "release.governance_artifact_review.escalations": "array"
   },
+  "blocked_required_data": {
+    "blocked": "object",
+    "blocked.missing_precondition": "string",
+    "blocked.supplying_command": "string"
+  },
   "criteria": [
     {
       "id": "ship.full_suite",

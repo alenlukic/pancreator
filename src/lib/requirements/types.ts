@@ -73,6 +73,7 @@ const VALID_HANDLER_STATUSES = new Set([
   'failed',
   'blocked',
   'invalid',
+  'not_applicable',
 ])
 
 export function isValidHandlerStatus(
@@ -82,7 +83,7 @@ export function isValidHandlerStatus(
 }
 
 export interface HandlerResult {
-  status: 'passed' | 'failed' | 'blocked' | 'invalid'
+  status: 'passed' | 'failed' | 'blocked' | 'invalid' | 'not_applicable'
   issues: Array<{
     code: string
     message: string

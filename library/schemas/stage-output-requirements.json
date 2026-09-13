@@ -120,7 +120,16 @@
       "validators": [
         {
           "registry_id": "IMPLEMENTATION-CLAIMS-VALIDATE-001",
-          "enforcement": "blocks"
+          "enforcement": "blocks",
+          "enforced_fields": [
+            "data.implementation.tests_added[]",
+            "data.implementation.tests_added[].path",
+            "data.implementation.tests_added[].contract",
+            "data.implementation.remediation[]",
+            "data.implementation.remediation[].cause",
+            "data.implementation.remediation[].action",
+            "data.implementation.remediation[].evidence[]"
+          ]
         }
       ],
       "fields": [
@@ -141,10 +150,30 @@
           "format": "{ path, contract }: path is '<test file path>' optionally followed by '::<test case>' (pytest node ids and the spaced ' :: ' display form both resolve) and the file portion must exist, e.g. 'tests/unit/example.test.ts::adds provenance rows'; contract is one non-empty sentence naming the behavior the test proves. Every new test file and every changed test file with a net-positive test(/it( count MUST have an entry with a contract. A bare string still parses as { path } and fails only when that delta requires a contract. A change that adds no tests needs no entry."
         },
         {
+          "path": "data.implementation.tests_added[].path",
+          "type": "string",
+          "format": "'<test file path>' optionally followed by '::<test case>'; the file portion MUST exist"
+        },
+        {
+          "path": "data.implementation.tests_added[].contract",
+          "type": "string",
+          "format": "one non-empty sentence naming the behavior the test proves"
+        },
+        {
           "path": "data.implementation.remediation[]",
           "type": "object",
           "required": ["cause", "action", "evidence"],
           "format": "required on attempt 2+; cause and action are non-empty strings, evidence is a non-empty string array"
+        },
+        {
+          "path": "data.implementation.remediation[].cause",
+          "type": "string",
+          "format": "non-empty; the cause of the prior failure or loop"
+        },
+        {
+          "path": "data.implementation.remediation[].action",
+          "type": "string",
+          "format": "non-empty; the action taken against that cause"
         },
         {
           "path": "data.implementation.remediation[].evidence[]",
@@ -167,6 +196,9 @@
             "data.verify.qa_cases[].actual",
             "data.verify.qa_cases[].result",
             "data.verify.gate_evidence_citations[]",
+            "data.verify.gate_evidence_citations[].profile",
+            "data.verify.gate_evidence_citations[].fingerprint",
+            "data.verify.gate_evidence_citations[].evidence_path",
             "data.verify.remediation_guidance",
             "data.verify.severity_rationale",
             "data.verify.blocking_reason",
@@ -255,7 +287,16 @@
       "validators": [
         {
           "registry_id": "IMPLEMENTATION-CLAIMS-VALIDATE-001",
-          "enforcement": "blocks"
+          "enforcement": "blocks",
+          "enforced_fields": [
+            "data.implementation.tests_added[]",
+            "data.implementation.tests_added[].path",
+            "data.implementation.tests_added[].contract",
+            "data.implementation.remediation[]",
+            "data.implementation.remediation[].cause",
+            "data.implementation.remediation[].action",
+            "data.implementation.remediation[].evidence[]"
+          ]
         }
       ],
       "fields": [
@@ -276,10 +317,30 @@
           "format": "{ path, contract }: path is '<test file path>' optionally followed by '::<test case>' (pytest node ids and the spaced ' :: ' display form both resolve) and the file portion must exist, e.g. 'tests/unit/example.test.ts::adds provenance rows'; contract is one non-empty sentence naming the behavior the test proves. Every new test file and every changed test file with a net-positive test(/it( count MUST have an entry with a contract. A bare string still parses as { path } and fails only when that delta requires a contract. A change that adds no tests needs no entry."
         },
         {
+          "path": "data.implementation.tests_added[].path",
+          "type": "string",
+          "format": "'<test file path>' optionally followed by '::<test case>'; the file portion MUST exist"
+        },
+        {
+          "path": "data.implementation.tests_added[].contract",
+          "type": "string",
+          "format": "one non-empty sentence naming the behavior the test proves"
+        },
+        {
           "path": "data.implementation.remediation[]",
           "type": "object",
           "required": ["cause", "action", "evidence"],
           "format": "required on every remediation attempt; cause and action are non-empty strings, evidence is a non-empty string array"
+        },
+        {
+          "path": "data.implementation.remediation[].cause",
+          "type": "string",
+          "format": "non-empty; the cause of the prior failure or loop"
+        },
+        {
+          "path": "data.implementation.remediation[].action",
+          "type": "string",
+          "format": "non-empty; the action taken against that cause"
         },
         {
           "path": "data.implementation.remediation[].evidence[]",
@@ -292,7 +353,13 @@
       "validators": [
         {
           "registry_id": "RELEASE-VALIDATE-001",
-          "enforcement": "blocks"
+          "enforcement": "blocks",
+          "enforced_fields": [
+            "data.release.change_list[]",
+            "data.release.change_list[].path",
+            "data.release.change_list[].kind",
+            "data.release.change_list[].description"
+          ]
         },
         {
           "registry_id": "PR-DESCRIPTION-VALIDATE-001",
@@ -306,6 +373,21 @@
           "required": ["path", "kind", "description"]
         },
         {
+          "path": "data.release.change_list[].path",
+          "type": "string",
+          "format": "workspace-relative path of the changed file"
+        },
+        {
+          "path": "data.release.change_list[].kind",
+          "type": "string",
+          "format": "the kind of change the entry records"
+        },
+        {
+          "path": "data.release.change_list[].description",
+          "type": "string",
+          "format": "non-empty description of what changed and why"
+        },
+        {
           "path": "data.release.validation[].workspace_fingerprint",
           "type": "string"
         }
@@ -315,7 +397,12 @@
       "validators": [
         {
           "registry_id": "PROTOTYPE-OUTPUT-VALIDATE-001",
-          "enforcement": "blocks"
+          "enforcement": "blocks",
+          "enforced_fields": [
+            "data.technical_approach.preconditions[].exclusions[]",
+            "data.technical_approach.preconditions[].exclusions[].excluded_questions[]",
+            "data.technical_approach.preconditions[].exclusions[].operator_decision_path"
+          ]
         }
       ],
       "fields": [

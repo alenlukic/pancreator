@@ -43,6 +43,9 @@
     "verify.qa_cases": "array",
     "verify.acceptance_results": "array"
   },
+  "blocked_required_data": {
+    "verify": "object"
+  },
   "criteria": [
     {
       "id": "verify.acceptance_met",

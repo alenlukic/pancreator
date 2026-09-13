@@ -53,7 +53,11 @@ export interface SuiteProfile {
   wall_clock_ms: number
   files: SuiteProfileFile[]
   slowest_tests: SuiteProfileTest[]
-  /** Every test timing when tune profiling requests complete metrics. */
+  /**
+   * Every test timing. The reporter writes this field on every profile it
+   * produces, which is whenever `PAN_TEST_PROFILE` names an absolute path.
+   * Optional because a profile recorded before the field existed has none.
+   */
   all_tests?: SuiteProfileTest[]
   fixture_cost?: SuiteProfileFixtureCost
 }

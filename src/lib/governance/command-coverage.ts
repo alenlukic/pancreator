@@ -6,6 +6,57 @@ import { fileExists, readJson, readText } from '../io.js'
 import { readPolicyLookupTable } from '../policies.js'
 
 /**
+ * Stages that an installed `policy_lookup.d` extension declares. A target
+ * extension owns its own standalone stage, which no `STANDALONE_MODES` entry
+ * can declare, so the row's provenance is what exempts it.
+ */
+function extensionSuppliedStages(root: string): Set<string> {
+  const directory = path.join(
+    root,
+    'governance',
+    'registries',
+    'policy_lookup.d',
+  )
+  const stages = new Set<string>()
+
+  let names: string[]
+
+  try {
+    names = readdirSync(directory).filter((entry) => entry.endsWith('.json'))
+  } catch {
+    return stages
+  }
+
+  for (const name of names) {
+    let extension: unknown
+
+    try {
+      extension = readJson(path.join(directory, name))
+    } catch {
+      // A malformed extension is reported by the policy validator.
+      continue
+    }
+
+    const rows =
+      typeof extension === 'object' &&
+      extension !== null &&
+      Array.isArray((extension as { rows?: unknown }).rows)
+        ? ((extension as { rows: unknown[] }).rows ?? [])
+        : []
+
+    for (const row of rows) {
+      const stage = (row as { stage?: unknown })?.stage
+
+      if (typeof stage === 'string') {
+        stages.add(stage)
+      }
+    }
+  }
+
+  return stages
+}
+
+/**
  * Registry of canonical Cursor commands and how each one receives governance.
  *
  * Every command under `library/cursor/commands/` either runs a governance card
@@ -353,10 +404,13 @@ export function validateCommandGovernance(
     }
 
     if (expectedMode && !modes.includes(expectedMode)) {
-      errors.push(
-        `${relative} MUST run \`pan governance card --mode ${expectedMode}\`` +
-          (expectedMode === SUPERVISOR_MODE ? ' --run <run-id>`' : '`'),
-      )
+      // One command, one code span. Closing the span after the mode left the
+      // option it names outside the span and a stray backtick behind it.
+      const required =
+        `pan governance card --mode ${expectedMode}` +
+        (expectedMode === SUPERVISOR_MODE ? ' --run <run-id>' : '')
+
+      errors.push(`${relative} MUST run \`${required}\``)
     }
 
     if (
@@ -390,6 +444,7 @@ export function validateCommandGovernance(
     return
   }
 
+  const extensionStages = extensionSuppliedStages(root)
   const modeStages = new Map<string, string>()
 
   for (const [name, mode] of Object.entries(STANDALONE_MODES)) {
@@ -423,10 +478,16 @@ export function validateCommandGovernance(
       continue
     }
 
-    if (!modeStages.has(row.stage) && !row.stage.startsWith('target-')) {
+    // The `target-` prefix states an intent. Only an installed extension
+    // makes the stage real, so the exemption follows the row's provenance
+    // rather than its name.
+    if (!modeStages.has(row.stage) && !extensionStages.has(row.stage)) {
       errors.push(
         `policy_lookup_table.json row (persona ${row.persona}, workflow standalone, ` +
-          `stage ${row.stage}) names a stage no STANDALONE_MODES entry declares`,
+          `stage ${row.stage}) names a stage no STANDALONE_MODES entry declares` +
+          (row.stage.startsWith('target-')
+            ? ' and no policy_lookup.d extension supplies'
+            : ''),
       )
     }
   }

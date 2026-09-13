@@ -17,4 +17,4 @@ export {
   renderEvalReportMarkdown,
   writeEvalReport,
 } from './grade.js'
-export { EVAL_RUNS_DIR, runEval } from './run.js'
+export { EVAL_RUNS_DIR, harnessRootUntouched, runEval } from './run.js'

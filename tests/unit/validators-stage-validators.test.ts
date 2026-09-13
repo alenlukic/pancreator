@@ -890,6 +890,86 @@ test('self-development release validator requires a real next-version bump', () 
   }
 })
 
+// int-con HR-005: `resolveInside` threw on an agent-supplied traversal, so a
+// malformed release.local_release.pr_description_path ended the validator
+// with a stack trace instead of an issue the retry could read.
+test('a malformed pull-request description path is a coded issue, not a thrown error', () => {
+  const root = createFixture()
+  const target = 'output.json'
+  const commit = execFileSync('git', ['rev-parse', 'HEAD'], {
+    cwd: root,
+    encoding: 'utf8',
+  }).trim()
+
+  const validateWithPath = (prDescriptionPath: string) => {
+    writeFileSync(
+      path.join(root, target),
+      `${JSON.stringify({
+        data: {
+          release: {
+            summary: 'ready',
+            local_release: {
+              release_commit: commit,
+              index_commit: commit,
+              fetched_main: commit,
+              branch: 'main',
+              pr_description_path: prDescriptionPath,
+            },
+            change_list: [],
+            validation: [],
+            rollback: 'revert commit',
+            waivers: [],
+            follow_up_cases: [],
+          },
+        },
+      })}\n`,
+    )
+
+    return validateReleaseOutput({
+      root,
+      targetPath: target,
+      requirement: {
+        policy_id: 'SHIP-001',
+        requirement_id: 'release-validate',
+        registry_id: 'RELEASE-VALIDATE-001',
+        arguments: {},
+      },
+      invocation: {
+        managed_worktree: {
+          name: 'release',
+          path: 'worktrees/operator/release',
+          branch: 'main',
+        },
+      },
+      runState: { stage_history: [] },
+    })
+  }
+
+  for (const malformed of [
+    '../escape.md',
+    path.resolve(root, '..', 'escape.md'),
+  ]) {
+    const result = validateWithPath(malformed)
+    const codes = result.issues.map((entry) => entry.code)
+
+    assert.equal(result.status, 'failed', malformed)
+    assert.ok(codes.includes('release.pr_description_path_invalid'), malformed)
+    // The content checks have no file to judge, so neither fires.
+    assert.equal(codes.includes('release.pr_description_missing'), false)
+    assert.equal(codes.includes('release.pr_commit_range_missing'), false)
+  }
+
+  // A well-formed path that names no file still reaches the content check.
+  const wellFormed = validateWithPath('runtime/pr-descriptions/absent.md')
+  const wellFormedCodes = wellFormed.issues.map((entry) => entry.code)
+
+  assert.equal(
+    wellFormedCodes.includes('release.pr_description_path_invalid'),
+    false,
+  )
+  assert.ok(wellFormedCodes.includes('release.pr_description_missing'))
+})
+
 test('release validator reads metadata from selected workspace', () => {
   const root = createFixture()
   const target = 'output.json'
@@ -2241,6 +2321,58 @@ test('field contract validator rejects enforced_fields that lack a declared shap
         item.code === 'field_contract.required_child_enforcement' &&
         item.message.includes('data.engineering_plan.files[].purpose'),
     ),
+  )
+})
+
+// Run 63308 finding F-02: the guard read the plan file contract alone, so a
+// stage that declared a required child gained no coverage, and the guard
+// passing looked the same as the guard not running. The stage here is not
+// `plan`, and the removed declaration is a shape rather than an enforcement.
+test('the field contract guard reaches a required child of any stage', () => {
+  const root = createFixture()
+  const contractPath = 'library/schemas/stage-output-requirements.json'
+  const source = JSON.parse(
+    readFileSync(path.join(root, contractPath), 'utf8'),
+  ) as Record<string, unknown>
+  const stages = source.stages as Record<string, Record<string, unknown>>
+  const requirement = {
+    policy_id: 'CONTRACT-001',
+    requirement_id: 'shared-stage-field-contract',
+    registry_id: 'FIELD-CONTRACT-VALIDATE-001',
+    arguments: {},
+  }
+
+  const intact = validateSharedFieldContract({
+    root,
+    targetPath: contractPath,
+    requirement,
+  })
+
+  assert.equal(intact.status, 'passed', JSON.stringify(intact.issues))
+
+  const implement = stages.implement as {
+    fields: Array<Record<string, unknown>>
+  }
+
+  implement.fields = implement.fields.filter(
+    (field) => field.path !== 'data.implementation.tests_added[].contract',
+  )
+  writeJson(path.join(root, contractPath), source)
+
+  const result = validateSharedFieldContract({
+    root,
+    targetPath: contractPath,
+    requirement,
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.ok(
+    result.issues.some(
+      (item) =>
+        item.code === 'field_contract.required_child_shape' &&
+        item.message.includes('data.implementation.tests_added[].contract'),
+    ),
+    JSON.stringify(result.issues),
   )
 })
 

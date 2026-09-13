@@ -624,15 +624,20 @@ export function gitTrackedWorkspacePaths(workspaceDir: string): string[] {
   return paths
 }
 
-function contentFingerprint(
+function entryContentFingerprint(
   root: string,
   entries: string[],
 ): Array<[string, string]> {
+  return contentFingerprint(root, entries.map(snapshotEntryPath))
+}
+
+function contentFingerprint(
+  root: string,
+  paths: string[],
+): Array<[string, string]> {
   const files: Array<[string, string]> = []
 
-  for (const entry of entries) {
-    const relative = snapshotEntryPath(entry)
-
+  for (const relative of paths) {
     if (
       !relative ||
       relative.startsWith('runtime/') ||
@@ -795,8 +800,17 @@ function statusV2EntryPath(entry: string): string | null {
  * the deliverable are observed even when the surrounding repository ignores it.
  * Paths from Git are relative to that repository's top level, so file contents
  * are read from the resolved top level rather than from `workspaceDir`.
+ *
+ * `options.commitBase` names the commit the caller is comparing against,
+ * normally the head of the earlier snapshot. When it is supplied and HEAD has
+ * moved past it, the snapshot also records the content of every path those
+ * commits touched, so a later comparison can tell a commit of already-present
+ * content from a change to the workspace.
  */
-export function gitWorkspaceSnapshot(workspaceDir: string): WorkspaceSnapshot {
+export function gitWorkspaceSnapshot(
+  workspaceDir: string,
+  options: { commitBase?: string | null } = {},
+): WorkspaceSnapshot {
   if (!isGitRepository(workspaceDir)) {
     return {
       kind: 'filesystem',
@@ -858,11 +872,20 @@ export function gitWorkspaceSnapshot(workspaceDir: string): WorkspaceSnapshot {
     .filter((entry) => !isProtectedWorkspacePath(indexEntryPath(entry)))
     .sort()
   const head = gitHead(workspaceDir)
-  const content = contentFingerprint(toplevel, entries)
+  const content = entryContentFingerprint(toplevel, entries)
+  const committed = commitAbsorbedContent(
+    workspaceDir,
+    toplevel,
+    options.commitBase ?? null,
+    head,
+  )
 
   return {
     kind: 'git',
     head,
+    // The commit-absorbed content stays out of the fingerprint. The
+    // fingerprint identifies a workspace state, and two callers of the same
+    // state must agree on it whether or not either passed a commit base.
     fingerprint: sha256({
       entries,
       index: sha256(indexEntries.join('\0')),
@@ -870,44 +893,202 @@ export function gitWorkspaceSnapshot(workspaceDir: string): WorkspaceSnapshot {
     }),
     entries,
     dirty_content: Object.fromEntries(content),
+    ...(committed === null
+      ? {}
+      : { commit_content: Object.fromEntries(committed) }),
   }
 }
 
 /**
- * Paths that differ between two snapshots.
+ * Newest ancestor of `head` that a ref other than the current branch already
+ * holds, or null when this branch carries its history alone.
  *
- * A path counts as changed when its Git status entry differs *or* when its
- * content hash differs. Comparing status entries alone misses an edit to a
- * path that was already dirty in `before`, because the status code stays
- * identical — the case that let ship-stage edits to feature-dirty
- * documentation pass unattributed.
+ * Null is also the answer when the branch rejoins shared history at more than
+ * one commit, because no single commit bounds the window there.
+ */
+function sharedHistoryTip(workspaceDir: string, head: string): string | null {
+  const branch = gitCurrentBranch(workspaceDir)
+  const result = runGit(
+    workspaceDir,
+    [
+      'rev-list',
+      '--boundary',
+      head,
+      '--not',
+      ...(branch === null ? [] : [`--exclude=${branch}`]),
+      '--branches',
+      '--remotes',
+    ],
+    { allowFailure: true },
+  )
+
+  if (result.status !== 0) {
+    return null
+  }
+
+  const boundaries = result.stdout
+    .split('\n')
+    .filter((line) => line.startsWith('-'))
+    .map((line) => line.slice(1).trim())
+    .filter((line) => line.length > 0)
+
+  return boundaries.length === 1 ? (boundaries[0] ?? null) : null
+}
+
+/**
+ * Commit the change window starts from.
+ *
+ * The caller's base normally bounds it. The release sync a ship stage must
+ * run rebases the branch onto a fetched main, which puts commits the working
+ * tree never produced above that base; a window opened at the base would
+ * report every path the upstream advance carried as a workspace change. When
+ * the shared history this branch now sits on is ahead of the base, it is the
+ * truthful start instead. Shared history at or behind the base leaves the
+ * base as the tighter bound.
+ */
+function commitWindowStart(
+  workspaceDir: string,
+  base: string,
+  head: string,
+): string {
+  const shared = sharedHistoryTip(workspaceDir, head)
+
+  if (shared === null || shared === base) {
+    return base
+  }
+
+  return gitIsAncestor(workspaceDir, shared, base) ? base : shared
+}
+
+/**
+ * Content of every path the commits between the window start and `head`
+ * touched, read from the working tree. Null when the caller named no base,
+ * when HEAD has not moved, or when the range does not resolve, which leaves
+ * the snapshot in its pre-commit-aware shape.
+ */
+function commitAbsorbedContent(
+  workspaceDir: string,
+  toplevel: string,
+  base: string | null,
+  head: string | null,
+): Array<[string, string]> | null {
+  if (base === null || head === null || base === head) {
+    return null
+  }
+
+  let changed: string[]
+
+  try {
+    changed = gitChangedPathsBetween(
+      workspaceDir,
+      commitWindowStart(workspaceDir, base, head),
+      head,
+      { detectRenames: false },
+    )
+  } catch {
+    // A base the workspace no longer holds, for example after a rebase, is a
+    // missing comparison rather than a failure of the snapshot.
+    return null
+  }
+
+  return contentFingerprint(toplevel, changed)
+}
+
+function snapshotEntryMap(snapshot: WorkspaceSnapshot): Map<string, string> {
+  return new Map(
+    snapshot.entries.map((entry) => [snapshotEntryPath(entry), entry]),
+  )
+}
+
+function comparedPaths(
+  before: WorkspaceSnapshot,
+  after: WorkspaceSnapshot,
+): string[] {
+  return [
+    ...new Set([
+      ...snapshotEntryMap(before).keys(),
+      ...snapshotEntryMap(after).keys(),
+      ...Object.keys(after.commit_content ?? {}),
+    ]),
+  ]
+    .filter((relativePath) => !isProtectedWorkspacePath(relativePath))
+    .sort()
+}
+
+/**
+ * Whether a commit between the two snapshots carried this path at exactly the
+ * content the working tree already held: dirty before, clean after, and
+ * byte-identical across the two.
+ */
+function commitAbsorbedPath(
+  before: WorkspaceSnapshot,
+  after: WorkspaceSnapshot,
+  relativePath: string,
+): boolean {
+  const held = before.dirty_content?.[relativePath]
+  const committed = after.commit_content?.[relativePath]
+
+  return (
+    held !== undefined &&
+    committed !== undefined &&
+    held === committed &&
+    !snapshotEntryMap(after).has(relativePath)
+  )
+}
+
+/**
+ * Paths whose content differs between two snapshots.
+ *
+ * Three rules apply in order. A commit that carried content the working tree
+ * already held is not a change, which is what lets a ship stage make the
+ * release commit its own contract mandates. Any other path a commit touched
+ * is a change, because the working tree must have moved for the commit to
+ * record anything. Otherwise content decides when both snapshots state a hash
+ * — that catches an edit to an already-dirty file, whose status code never
+ * changes — and the Git status entry decides when either does not, which is
+ * also the behavior for a snapshot recorded before content hashing existed.
  */
 export function workspaceChangedPathsFromSnapshots(
   before: WorkspaceSnapshot,
   after: WorkspaceSnapshot,
 ): string[] {
-  const beforeByPath = new Map(
-    before.entries.map((entry) => [snapshotEntryPath(entry), entry]),
-  )
-  const afterByPath = new Map(
-    after.entries.map((entry) => [snapshotEntryPath(entry), entry]),
-  )
-  // Absent maps mean a snapshot predates content hashing; fall back to entry
-  // comparison rather than reporting every dirty path as changed.
-  const comparableContent =
-    before.dirty_content !== undefined && after.dirty_content !== undefined
-  const paths = new Set([...beforeByPath.keys(), ...afterByPath.keys()])
+  const beforeEntries = snapshotEntryMap(before)
+  const afterEntries = snapshotEntryMap(after)
 
-  return [...paths]
-    .filter(
-      (relativePath) =>
-        beforeByPath.get(relativePath) !== afterByPath.get(relativePath) ||
-        (comparableContent &&
-          before.dirty_content?.[relativePath] !==
-            after.dirty_content?.[relativePath]),
-    )
-    .filter((relativePath) => !isProtectedWorkspacePath(relativePath))
-    .sort()
+  return comparedPaths(before, after).filter((relativePath) => {
+    if (commitAbsorbedPath(before, after, relativePath)) {
+      return false
+    }
+
+    if (after.commit_content?.[relativePath] !== undefined) {
+      return true
+    }
+
+    const beforeContent = before.dirty_content?.[relativePath]
+    const afterContent = after.dirty_content?.[relativePath]
+
+    if (beforeContent !== undefined && afterContent !== undefined) {
+      return beforeContent !== afterContent
+    }
+
+    return beforeEntries.get(relativePath) !== afterEntries.get(relativePath)
+  })
+}
+
+/**
+ * Paths a commit absorbed at unchanged content between the two snapshots.
+ *
+ * These are not workspace changes, but committing them is still an action of
+ * the stage that made the commit. The scope adjudication asks who authored
+ * each one rather than accepting the commit on its own.
+ */
+export function workspaceAbsorbedPathsFromSnapshots(
+  before: WorkspaceSnapshot,
+  after: WorkspaceSnapshot,
+): string[] {
+  return comparedPaths(before, after).filter((relativePath) =>
+    commitAbsorbedPath(before, after, relativePath),
+  )
 }
 
 export function snapshotChanged(

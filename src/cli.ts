@@ -16,6 +16,7 @@ import {
   getRunState,
   materializeOutputSubmission,
   pauseRun,
+  recordWorkspaceDirective,
   prepareInvocation,
   probeRunInvocationModel,
   recordPendingWorkerModelProbe,
@@ -217,6 +218,10 @@ import {
   scanStyleArtifacts,
 } from './lib/code-style.js'
 import {
+  CODE_STYLE_POLICY_IDS,
+  codeStylePolicyId,
+} from './lib/validators/code-style.js'
+import {
   applyTargetAuthoringDraft,
   readTargetExtensionManifest,
   validateTargetAuthoring,
@@ -244,6 +249,8 @@ export const HELP_BODY = `Usage:
   pan assess <run-id> <assessment-json>
   pan decide <run-id> <approve|reject|revise> [--note <text>] [--stage <stage-slug>]
   pan pause <run-id> [--note <text>]
+  pan attribute <run-id> --note <directive> [--role supervisor|operator] [--paths <path[,path...]>]
+      Record an operator directive executed against the workspace outside a stage. The record names the acting role, the directive, the changed paths, and the time, and the next invocation card lists those paths as already attributed. Without --paths the harness attributes every dirty tracked path of the workspace.
   pan resume <run-id> [--worktree <name>] [--stage <stage-slug>] [--note <text>]
   pan set-stage <run-id> --stage <stage-slug> --note <reason>
   pan waive-gate <run-id> --note <directive> [--stage <stage-slug>] [--to <stage-slug>] [--criteria <id[,id...]>] [--defer <AC-id[,AC-id...]> --spotfix]
@@ -1031,6 +1038,10 @@ function runHypervisorCycle(root: string): Record<string, unknown> {
  */
 export function requirementShapeKey(requirement: ResolvedRequirement): string {
   return [
+    // The declaring policy is part of the shape. Two language policies bind
+    // one code-style handler, and collapsing them discarded the one field
+    // that says which handbook the evidence is judged against.
+    requirement.policy_id,
     requirement.registry_id,
     requirement.registry_version,
     requirement.phase,
@@ -1479,6 +1490,39 @@ async function main(): Promise<void> {
         pause_reason: state.pause_reason,
         pending_action: state.pending_action,
         decision_path: state.last_decision_path,
+      })
+      return
+    }
+    case 'attribute': {
+      const runId = requiredArgument(args[0], 'run-id')
+      const directive = option(args, '--note')
+
+      if (!directive) {
+        throw new PanError('--note is required for attribute.', {
+          code: 'INVALID_ARGUMENT',
+        })
+      }
+
+      const role = option(args, '--role', 'supervisor')
+
+      if (role !== 'supervisor' && role !== 'operator') {
+        throw new PanError('--role MUST be supervisor or operator.', {
+          code: 'INVALID_ARGUMENT',
+        })
+      }
+
+      const paths = option(args, '--paths')
+      const record = recordWorkspaceDirective(root, runId, {
+        directive,
+        actingRole: role,
+        ...(paths ? { paths: paths.split(',') } : {}),
+      })
+
+      print({
+        directive_id: record.directive_id,
+        acting_role: record.acting_role,
+        changed_paths: record.changed_paths,
+        artifact_path: record.artifact_path,
       })
       return
     }
@@ -3207,10 +3251,22 @@ async function main(): Promise<void> {
             artifact_paths: [targetPath],
           },
         })
+        const governingPolicy =
+          registryId === 'CODE-STYLE-VALIDATE-001'
+            ? codeStylePolicyId(targetPath)
+            : null
         const requirements = [
           ...manifest.automation_requirements,
           ...manifest.validation_requirements,
-        ].filter((item) => item.registry_id === registryId)
+        ].filter(
+          (item) =>
+            item.registry_id === registryId &&
+            // Each language policy declares the same code-style check, and
+            // only the one that governs the scanned file may judge it.
+            (governingPolicy === null ||
+              !CODE_STYLE_POLICY_IDS.includes(item.policy_id) ||
+              item.policy_id === governingPolicy),
+        )
         let selected = requirements
 
         if (requirements.length > 1) {

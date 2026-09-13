@@ -34,7 +34,7 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 - `REMED-001` — verdict-routed remediation with verdict-scoped authority
 - `TS-001` — TypeScript conformance for detected TypeScript workspaces
 - `PY-001` — Python conformance for detected Python workspaces
-- `TSTYLE-001` — TypeScript style guidance for the code style batch pass
+- `TSTYLE-001` — TypeScript style guidance for the code style batch pass, which also governs the scanned JavaScript extensions `.js`, `.jsx`, `.cjs`, and `.mjs`
 - `PYSTYLE-001` — Python style guidance for the code style batch pass
 - `BROWSER-001` — isolated browser inspection and Visual QA host safety
 - `SHIP-001` — operator-owned release boundary
