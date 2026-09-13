@@ -6,6 +6,7 @@ import test from 'node:test'
 import { submitOutput } from '../../src/lib/engine.js'
 import { scaffoldStageOutput } from '../../src/lib/requirements/scaffold.js'
 import {
+  DEFAULT_WATCH_CADENCE_SECONDS,
   DELEGATION_UNOBSERVED,
   backgroundMarkerPath,
   isTerminalObservation,
@@ -252,10 +253,33 @@ test('watch --mark-background writes the background marker beside the record', a
 
 test('cadence accepts fractional seconds and rejects a busy loop', () => {
   assert.equal(parseCadenceSeconds('0.1'), 0.1)
-  assert.equal(parseCadenceSeconds('300'), 300)
-  assert.equal(parseCadenceSeconds(null), 120)
+  assert.equal(parseCadenceSeconds('90'), 90)
+  assert.equal(parseCadenceSeconds(null), DEFAULT_WATCH_CADENCE_SECONDS)
   assert.throws(() => parseCadenceSeconds('0'), /at least/u)
   assert.throws(() => parseCadenceSeconds('abc'), /at least/u)
+})
+
+// DELEGATE-001 now names one cadence for every worker, so an unspecified
+// cadence must resolve to 60 seconds rather than to a length chosen from the
+// expected run time. An already-present output plus an attested agent state
+// reaches the record without spending a cadence on a sleep.
+test('an unspecified cadence watches at the one universal 60-second cadence', async () => {
+  assert.equal(DEFAULT_WATCH_CADENCE_SECONDS, 60)
+
+  const { root, state, invocationId } = preparedRun()
+
+  fillPreparedOutput(root, state)
+
+  const result = await watchInvocation(root, state.run_id, {
+    agentState: 'completed',
+  })
+
+  assert.equal(result.state, 'completed')
+  assert.equal(result.cadence_seconds, 60)
+  assert.equal(
+    readWatchRecord(root, state.run_id, invocationId).at(-1)?.cadence_seconds,
+    60,
+  )
 })
 
 // launch and kept rewriting it for another seven minutes. `pan watch` read the

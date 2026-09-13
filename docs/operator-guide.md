@@ -158,9 +158,10 @@ inspects the invocation's output path, delegation artifact, and evidence
 files. It appends one JSONL line per arming and per wake to
 `agent/evidence/<invocation-id>-watch.jsonl`, with the wall-clock time, the
 invocation watched, and the observed state. That file is the `DELEGATE-001`
-arming and wake record, written by the harness. The default cadence is 120
-seconds. Pass `--cadence-seconds 300` for work expected to exceed 15 minutes.
-Fractional seconds are accepted.
+arming and wake record, written by the harness. The default cadence is 60
+seconds, and it is the same for every worker however long the work is expected
+to run. `--cadence-seconds` overrides it only when the operator directs a
+different cadence. Fractional seconds are accepted.
 
 Exit codes: `0` and `{"state":"completed"}` when the output is present and
 names the invocation. `2` and `stalled` after `--stall-wakes` (default 2)
