@@ -55,6 +55,18 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 - When the watch exits `unverified`, inspect the launched agent and re-run it with `--agent-state running` or `--agent-state completed`.
 - Submit with `./bin/pan submit <run-id> <output-json>`.
 
+## Warnings and carry-forwards
+
+- When you close a stage with warnings and carry a finding forward to a later chunk instead of routing to remediate, the directive MUST name the finding id, the severity its verifier graded, and the receiving chunk's verifier as the grader of record.
+- The directive MUST cite the evidence file path and MUST NOT cite an in-flight invocation prefix. The harness renumbers invocation prefixes when the run closes, so a prefix copied mid-run goes stale.
+- You MUST NOT carry a finding that leaves tracked operator-facing text false past the next release run. Repair that finding in the current run instead.
+
+## Release lane
+
+- On a self-development release, every `./bin/pan` command in the run executes the harness root's build, not the workspace under release. A release-lane repair this release introduces is inactive until its release commit reaches that root.
+- Before you rely on a release-lane behavior this release introduces, such as an entry-gate waiver, a `release sync` guard, or a currency check, read the harness root's `VERSION` and confirm the behavior exists there.
+- State in your report which release-lane repairs in this release are inactive on this run.
+
 ## Decision packet
 
 Every stop MUST place the complete decision packet in the message that ends your turn:
