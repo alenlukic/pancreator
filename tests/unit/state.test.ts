@@ -19,6 +19,7 @@ import type {
   RunState,
   RunStatus,
   StageHistoryItem,
+  WorktreeClaimTransfer,
 } from '../../src/lib/types.js'
 import { createFixture, createRun, writeJson } from '../helpers.js'
 
@@ -480,5 +481,76 @@ test('a run occupies a worktree while it is not terminal, by binding or workspac
       (state) => state.run_id === elsewhere,
     ),
     false,
+  )
+})
+
+test('a transferred-away claim unbinds the subsumed run without touching liveness', () => {
+  const root = createFixture()
+  const worktree = {
+    name: 'transferred',
+    path: 'worktrees/operator/transferred',
+    branch: 'transferred',
+  }
+  const writeRun = (
+    runId: string,
+    transfer?: WorktreeClaimTransfer,
+  ): string => {
+    writeJson(statePath(root, runId), {
+      schema_version: 2,
+      run_id: runId,
+      workflow_slug: 'delivery',
+      title: runId,
+      status: 'running',
+      current_stage: 'implement',
+      pending_action: { type: 'prepare_invocation' },
+      current_invocation: null,
+      stage_history: [],
+      attempts: {},
+      revision: 1,
+      workspace_root: worktree.path,
+      managed_worktree: worktree,
+      ...(transfer ? { worktree_claim_transfer: transfer } : {}),
+    })
+
+    return runId
+  }
+  const transfer: WorktreeClaimTransfer = {
+    role: 'released',
+    worktree: worktree.name,
+    from_run_id: 'subsumed-run',
+    to_run_id: 'adopting-run',
+    waiver_id: 'waiver-1',
+    timestamp: '2026-09-13T00:00:00.000Z',
+  }
+
+  writeRun('subsumed-run', transfer)
+  writeRun('adopting-run', { ...transfer, role: 'adopted' })
+
+  // Both runs stay live. Only the released claim leaves the occupancy set,
+  // so the one helper remains the single definition.
+  assert.deepEqual(
+    liveRunsBoundToWorktree(root, worktree.name).map((state) => state.run_id),
+    ['adopting-run'],
+  )
+  assert.deepEqual(
+    liveRunsBoundToWorktree(root, worktree.name, worktree).map(
+      (state) => state.run_id,
+    ),
+    ['adopting-run'],
+  )
+  assert.equal(loadState(root, 'subsumed-run').status, 'running')
+
+  // A release recorded against another worktree does not unbind this one.
+  writeRun('other-worktree-release', {
+    ...transfer,
+    worktree: 'somewhere-else',
+    from_run_id: 'other-worktree-release',
+  })
+
+  assert.deepEqual(
+    liveRunsBoundToWorktree(root, worktree.name)
+      .map((state) => state.run_id)
+      .sort(),
+    ['adopting-run', 'other-worktree-release'],
   )
 })

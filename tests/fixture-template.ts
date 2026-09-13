@@ -193,6 +193,10 @@ function buildFixtureTemplate(root: string): void {
   ) as Record<string, unknown>
 
   fixtureConfig.away_mode = { enabled: false }
+  // Worktree provisioning on this checkout is a real dependency install and
+  // build. A fixture's stub package scripts need neither, so the block is
+  // dropped; a test that wants setup commands declares its own.
+  delete fixtureConfig.worktrees
 
   writeFileSync(
     path.join(root, 'config.json'),

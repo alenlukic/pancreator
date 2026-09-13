@@ -17,10 +17,14 @@ import {
 import {
   createWorktree,
   isWorktreeName,
+  listWorktrees,
   readWorktreeIndex,
   reconcileWorktrees,
+  removeWorktree,
+  resolveOrCreateWorktree,
   resolveWorktreeWorkspace,
   resolveWorkspacePathOrWorktree,
+  worktreeReadiness,
   writeWorktreeIndex,
   type WorktreeIndex,
 } from '../../src/lib/worktrees.js'
@@ -52,6 +56,7 @@ test('worktree config uses defaults and local overrides', () => {
     root: 'worktrees/operator',
     branch_prefix: 'worktree/',
     setup: [],
+    readiness_paths: [],
   })
 
   writeJson(path.join(root, 'config_overrides.json'), {
@@ -59,6 +64,7 @@ test('worktree config uses defaults and local overrides', () => {
       root: 'runtime/operator-worktrees',
       branch_prefix: 'task/',
       setup: ['node -e "process.exit(0)"'],
+      readiness_paths: ['build'],
     },
   })
 
@@ -66,6 +72,7 @@ test('worktree config uses defaults and local overrides', () => {
     root: 'runtime/operator-worktrees',
     branch_prefix: 'task/',
     setup: ['node -e "process.exit(0)"'],
+    readiness_paths: ['build'],
   })
 })
 
@@ -98,6 +105,18 @@ test('project config rejects malformed worktree settings', () => {
     [
       { setup: ['npm ci', ''] },
       /worktrees\.setup\[1\] MUST be a non-empty command string/u,
+    ],
+    [
+      { readiness_paths: 'node_modules' },
+      /worktrees\.readiness_paths MUST be an array/u,
+    ],
+    [
+      { readiness_paths: ['dist', '/etc'] },
+      /worktrees\.readiness_paths\[1\] MUST be a non-empty worktree-relative path/u,
+    ],
+    [
+      { readiness_paths: ['../escape'] },
+      /worktrees\.readiness_paths\[0\] MUST be a non-empty worktree-relative path/u,
     ],
   ]
 
@@ -630,5 +649,246 @@ test('worktree resolution preserves legacy branches and rejects unavailable reco
       error instanceof Error &&
       'code' in error &&
       error.code === 'WORKTREE_BRANCH_HELD',
+  )
+})
+
+test('readiness names each missing item and passes a provisioned worktree', () => {
+  const root = createFixture()
+
+  writeJson(path.join(root, 'config_overrides.json'), {
+    marker: 'handoff',
+    worktrees: { readiness_paths: ['deps', 'build'] },
+  })
+
+  const record = createWorktree(root, 'readiness-one')
+  const worktreePath = path.join(root, record.path)
+  const missing = worktreeReadiness(root, worktreePath)
+
+  assert.equal(missing.ready, false)
+  assert.deepEqual(
+    missing.gaps.map((gap) => gap.path),
+    ['deps', 'build'],
+  )
+  assert.deepEqual(missing.declared_setup_paths, ['deps', 'build'])
+
+  mkdirSync(path.join(worktreePath, 'deps'), { recursive: true })
+
+  assert.deepEqual(
+    worktreeReadiness(root, worktreePath).gaps.map((gap) => gap.path),
+    ['build'],
+  )
+
+  mkdirSync(path.join(worktreePath, 'build'), { recursive: true })
+
+  const ready = worktreeReadiness(root, worktreePath)
+
+  assert.equal(ready.ready, true)
+  assert.deepEqual(ready.gaps, [])
+
+  rmSync(path.join(worktreePath, 'config_overrides.json'))
+
+  const handoffGap = worktreeReadiness(root, worktreePath)
+
+  assert.equal(handoffGap.ready, false)
+  assert.deepEqual(
+    handoffGap.gaps.map((gap) => [gap.kind, gap.path]),
+    [['configuration_handoff', 'config_overrides.json']],
+  )
+  assert.match(handoffGap.gaps[0]?.reason ?? '', /config_overrides\.json/u)
+})
+
+test('resolve adopts a Git-registered worktree at the expected path', () => {
+  const root = createFixture()
+
+  writeJson(path.join(root, 'config_overrides.json'), {
+    marker: 'adopted',
+    worktrees: {
+      setup: [
+        String.raw`node -e "require('fs').writeFileSync('setup-ran','1')"`,
+      ],
+    },
+  })
+
+  const worktreePath = path.join(root, 'worktrees', 'operator', 'adopt-one')
+
+  mkdirSync(path.dirname(worktreePath), { recursive: true })
+  execFileSync('git', ['worktree', 'add', '-b', 'adopt-one', worktreePath], {
+    cwd: root,
+    encoding: 'utf8',
+  })
+
+  const record = resolveOrCreateWorktree(root, 'adopt-one', 'Adopted')
+
+  assert.equal(record.path, 'worktrees/operator/adopt-one')
+  assert.equal(record.branch, 'adopt-one')
+  assert.ok(record.adopted_at)
+  assert.equal(readWorktreeIndex(root).worktrees[0]?.name, 'adopt-one')
+  assert.equal(
+    JSON.parse(
+      readFileSync(path.join(worktreePath, 'config_overrides.json'), 'utf8'),
+    ).marker,
+    'adopted',
+  )
+  assert.equal(existsSync(path.join(worktreePath, 'setup-ran')), true)
+})
+
+test('adoption refuses a path that is not that worktree', () => {
+  const plainRoot = createFixture()
+  const plainPath = path.join(plainRoot, 'worktrees', 'operator', 'plain-dir')
+
+  mkdirSync(plainPath, { recursive: true })
+
+  assert.throws(
+    () => createWorktree(plainRoot, 'plain-dir'),
+    (error: unknown) =>
+      error instanceof Error &&
+      'code' in error &&
+      error.code === 'WORKTREE_PATH_EXISTS',
+  )
+
+  const branchRoot = createFixture()
+  const branchPath = path.join(
+    branchRoot,
+    'worktrees',
+    'operator',
+    'other-branch',
+  )
+
+  mkdirSync(path.dirname(branchPath), { recursive: true })
+  execFileSync('git', ['worktree', 'add', '-b', 'not-the-name', branchPath], {
+    cwd: branchRoot,
+    encoding: 'utf8',
+  })
+
+  assert.throws(
+    () => createWorktree(branchRoot, 'other-branch'),
+    (error: unknown) =>
+      error instanceof Error &&
+      'code' in error &&
+      error.code === 'WORKTREE_PATH_EXISTS',
+  )
+})
+
+test('a dirty removal refuses before any index mutation', () => {
+  const root = createFixture()
+  const record = createWorktree(root, 'dirty-one')
+
+  writeFileSync(path.join(root, record.path, 'scratch.txt'), 'work\n')
+
+  assert.throws(
+    () => removeWorktree(root, 'dirty-one'),
+    (error: unknown) =>
+      error instanceof Error &&
+      'code' in error &&
+      error.code === 'WORKTREE_DIRTY',
+  )
+
+  assert.equal(readWorktreeIndex(root).worktrees.length, 1)
+
+  const removed = removeWorktree(root, 'dirty-one', { force: true })
+
+  assert.equal(removed.removed_worktree, true)
+  assert.equal(readWorktreeIndex(root).worktrees.length, 0)
+})
+
+test('a removal that removes nothing keeps the record for the retry', () => {
+  const root = createFixture()
+  const record = createWorktree(root, 'unresolved-one')
+
+  execFileSync('git', ['worktree', 'remove', '--force', record.path], {
+    cwd: root,
+    encoding: 'utf8',
+  })
+  mkdirSync(path.join(root, record.path), { recursive: true })
+
+  assert.throws(
+    () => removeWorktree(root, 'unresolved-one'),
+    (error: unknown) =>
+      error instanceof Error &&
+      'code' in error &&
+      error.code === 'WORKTREE_UNRESOLVED',
+  )
+
+  assert.equal(readWorktreeIndex(root).worktrees.length, 1)
+
+  rmSync(path.join(root, record.path), { recursive: true })
+
+  const pruned = removeWorktree(root, 'unresolved-one')
+
+  assert.equal(pruned.removed_worktree, false)
+  assert.equal(pruned.pruned_index_entry, true)
+  assert.equal(readWorktreeIndex(root).worktrees.length, 0)
+})
+
+test('an unresolvable repository root falls back to the workspace repository', () => {
+  const root = createFixture()
+  const record = createWorktree(root, 'fallback-one')
+  const index = readWorktreeIndex(root)
+
+  writeWorktreeIndex(root, {
+    schema_version: 1,
+    worktrees: index.worktrees.map((entry) => ({
+      ...entry,
+      repository_root: path.join(root, 'worktrees', 'operator', 'gone'),
+    })),
+  })
+
+  const listed = listWorktrees(root)
+
+  assert.equal(listed[0]?.registered, true)
+  assert.equal(listed[0]?.orphaned, false)
+
+  execFileSync('git', ['worktree', 'remove', '--force', record.path], {
+    cwd: root,
+    encoding: 'utf8',
+  })
+
+  const orphaned = listWorktrees(root)
+
+  assert.equal(orphaned[0]?.registered, false)
+  assert.equal(orphaned[0]?.orphaned, true)
+})
+
+test('branch deletion removes a merged branch and refuses an unmerged one', () => {
+  const merged = createFixture()
+  const mergedRecord = createWorktree(merged, 'merged-one')
+  const mergedResult = removeWorktree(merged, 'merged-one', {
+    deleteBranch: true,
+  })
+
+  assert.equal(mergedResult.deleted_branch, mergedRecord.branch)
+  assert.equal(mergedResult.kept_branch, undefined)
+  assert.equal(
+    execFileSync('git', ['branch', '--list', mergedRecord.branch], {
+      cwd: merged,
+      encoding: 'utf8',
+    }).trim(),
+    '',
+  )
+
+  const ahead = createFixture()
+  const aheadRecord = createWorktree(ahead, 'ahead-one')
+  const aheadPath = path.join(ahead, aheadRecord.path)
+
+  writeFileSync(path.join(aheadPath, 'ahead.txt'), 'ahead\n')
+  execFileSync('git', ['add', 'ahead.txt'], { cwd: aheadPath })
+  execFileSync('git', ['commit', '-qm', 'ahead'], { cwd: aheadPath })
+
+  const aheadResult = removeWorktree(ahead, 'ahead-one', {
+    force: true,
+    deleteBranch: true,
+  })
+
+  assert.equal(aheadResult.kept_branch, aheadRecord.branch)
+  assert.match(
+    aheadResult.branch_deletion_refused ?? '',
+    /is not an ancestor of/u,
+  )
+  assert.notEqual(
+    execFileSync('git', ['branch', '--list', aheadRecord.branch], {
+      cwd: ahead,
+      encoding: 'utf8',
+    }).trim(),
+    '',
   )
 })

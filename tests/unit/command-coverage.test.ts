@@ -108,12 +108,11 @@ test('pan-conform is explicitly registered with its conform card', () => {
     )
   }
 
-  // The gate accepts `--worktree` for the whole `conform` family, so it
-  // refuses only the `requirements run` step. Installation scope is the
-  // decision, so no step may carry the option and no `|` alternative may hide
-  // one from `panInvocations`. This negative asserts a forbidden option is
-  // absent, unlike the pin it replaced, which asserted a required option was
-  // absent and so held a defect in place.
+  // The gate accepts `--worktree` for every step this command prints.
+  // Installation scope is the decision, so no step may carry the option and
+  // no `|` alternative may hide one from `panInvocations`. This negative
+  // asserts a forbidden option is absent, unlike the pin it replaced, which
+  // asserted a required option was absent and so held a defect in place.
   assert.doesNotMatch(command, /--worktree/u)
   assert.match(command, /installation-root harness artifacts/u)
 

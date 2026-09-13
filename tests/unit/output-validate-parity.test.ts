@@ -175,6 +175,16 @@ test('invalid revision envelopes fail before structural validation', () => {
         patch: { invocation_id: 'implement-2-wrong' },
       }),
     },
+    {
+      // The expectation used to be derived from the submitted value when the
+      // caller supplied none, so a patch naming the superseded attempt
+      // satisfied a parity check against itself.
+      name: 'patch names the superseded invocation',
+      revision: (prior: string) => ({
+        revises: prior,
+        patch: { invocation_id: prior },
+      }),
+    },
   ]
 
   for (const item of cases) {

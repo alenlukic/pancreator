@@ -10,6 +10,10 @@ import {
 } from '../../src/lib/suite-profile.js'
 import { renderStatus } from '../../src/lib/render.js'
 import type { RunState, SuiteProfileSummary } from '../../src/lib/types.js'
+import {
+  fixtureSidecarDirectory,
+  TEST_SCRATCH_ENV,
+} from '../../src/lib/suite-profile-env.js'
 import { readFixtureCost } from '../reporters/failures-only.js'
 import { fixtureSidecarPath } from '../reporters/fixture-profile.js'
 import { createTestTempDirectory } from '../temp.js'
@@ -273,4 +277,45 @@ test('a cached gate summary names the cached pass', () => {
   assert.match(section, /cached pass; profile of the original execution/u)
   assert.match(section, /The profile lists no files\./u)
   assert.match(renderSuiteProfileStatusLine(summary), /, cached \(no previous/u)
+})
+
+test('fixture sidecars live in the runner scratch tree, not the profile target', () => {
+  const scratch = createTestTempDirectory('pancreator-sidecar-scratch-')
+  const target = path.join(
+    scratch,
+    'runtime',
+    'logs',
+    'workflows',
+    'run-one',
+    'agent',
+    'evidence',
+    'suite-profile.json',
+  )
+  const sidecar = fixtureSidecarPath(target, 4242, {
+    [TEST_SCRATCH_ENV]: scratch,
+  })
+
+  // A gate sets the profile target inside a run's evidence directory. The
+  // transient sidecars must not land there beside the durable records.
+  assert.equal(path.dirname(sidecar), path.join(scratch, 'fixture-profile'))
+  assert.ok(!sidecar.startsWith(path.dirname(target)))
+  assert.equal(path.basename(sidecar).endsWith('.4242.json'), true)
+
+  // Two targets never share a sidecar, and one target is stable across calls.
+  const other = fixtureSidecarPath(path.join(scratch, 'other.json'), 4242, {
+    [TEST_SCRATCH_ENV]: scratch,
+  })
+
+  assert.notEqual(sidecar, other)
+  assert.equal(
+    sidecar,
+    fixtureSidecarPath(target, 4242, { [TEST_SCRATCH_ENV]: scratch }),
+  )
+
+  // Without the runner's scratch variable the sidecars stay under the
+  // repository scratch tree rather than falling back to the target.
+  assert.equal(
+    fixtureSidecarDirectory({}),
+    path.join(process.cwd(), 'runtime', 'tmp', 'tests', 'fixture-profile'),
+  )
 })

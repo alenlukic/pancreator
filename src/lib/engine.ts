@@ -202,6 +202,7 @@ import type {
   WorkflowDefinition,
   WorkspaceDirectiveRecord,
   WorkspaceSnapshot,
+  WorktreeClaimTransfer,
 } from './types.js'
 import {
   attestationValidationPath,
@@ -246,6 +247,7 @@ import {
   isProtectedWorkspacePath,
   PROTECTED_PATH_RULE,
 } from './workspace/protected-paths.js'
+import { worktreeReadiness } from './worktrees.js'
 
 /**
  * Persona-to-model map that replaces the active pipeline config for one run.
@@ -1059,6 +1061,29 @@ function ensureWorkspaceProvisioned(
     state.workspace_setup = { status: 'not_configured', recorded_at: now() }
 
     return false
+  }
+
+  // Worktree creation provisions the tree from the configured setup commands,
+  // so a ready worktree would otherwise install its dependencies a second
+  // time here. Readiness is asserted rather than assumed, so a worktree the
+  // harness did not provision still runs setup before the first stage.
+  const readiness = worktreeReadiness(root, workspaceAbsolute)
+
+  if (readiness.ready && readiness.declared_setup_paths.length > 0) {
+    state.workspace_setup = {
+      status: 'passed',
+      recorded_at: now(),
+      inferred_from: 'worktree_readiness',
+    }
+
+    return false
+  }
+
+  if (readiness.gaps.length > 0) {
+    onProgress?.(
+      `workspace '${state.workspace_root}' is missing ` +
+        `${readiness.gaps.map((gap) => gap.path).join(', ')}`,
+    )
   }
 
   const setupCommands = loadRepositoryChecks(root).setup ?? []
@@ -2352,94 +2377,135 @@ export function recordPendingWorkerModelProbe(
   })
 }
 
-/** Probe one active Cursor worker invocation and persist its effective model. */
+/**
+ * How long a probe waits for another command to release the run mutex.
+ *
+ * Every hold on that mutex is a state read and a state write, so a queue of
+ * ordinary commands drains far inside this bound. It exists to refuse a
+ * genuinely wedged holder rather than to pace normal contention.
+ */
+const PROBE_MUTEX_WAIT_MS = 10_000
+
+/**
+ * Probe one active Cursor worker invocation and persist its effective model.
+ *
+ * The run mutex covers the state read and the state write, never the live
+ * call. A probe takes roughly two minutes, and the detached child that runs
+ * it is not one the supervisor waits for, so holding the lock across the call
+ * would fail every other command against the run with
+ * `RUN_OPERATION_IN_PROGRESS` for that whole window. The second hold re-reads
+ * the state so a concurrent probe's write is not lost.
+ *
+ * Both holds wait for a live holder instead of refusing. A probe runs
+ * detached and nobody retries it, so a refused hold loses the answer the
+ * live call already paid for; the holds themselves are a state read and a
+ * state write, so the queue drains in milliseconds.
+ */
 export function probeRunInvocationModel(
   root: string,
   runId: string,
   invocationId: string,
 ): RunModelEvidence & { advisories: string[] } {
-  return withOperationMutex(operationMutexPath(root, runId), () => {
-    const state = loadState(root, runId)
-    const invocation = probeableInvocation(root, state, invocationId)
-    const declaredSpec = invocation.stage.model
-    // A bare (bracket-less) spec delegates the variant choice to Cursor, so
-    // any successfully resolved variant is the declared behavior — the same
-    // contract `probeCursorModels` applies. Only a bracketed spec carries a
-    // catalog-predicted display name to compare against; a spec id is never
-    // compared literally with a display name.
-    const bareSpec = !declaredSpec.includes('[')
-    const expected = expectedCursorModelForSpec(root, declaredSpec)
-    const probe = probeCursorModelSpec(
-      declaredSpec,
-      undefined,
-      probeEnvironment(root),
-    )
-    // Only a failed probe is unavailable. A bracketed spec with no catalog
-    // prediction is `recorded`, because a target installation carries no
-    // catalog.
-    const result = ((): RunModelEvidence['result'] => {
-      if (probe.resolved === null || probe.error !== undefined) {
-        return 'unavailable'
+  const contended = { waitForHolderMs: PROBE_MUTEX_WAIT_MS }
+  const plan = withOperationMutex(
+    operationMutexPath(root, runId),
+    () => {
+      const state = loadState(root, runId)
+      const invocation = probeableInvocation(root, state, invocationId)
+
+      return {
+        declaredSpec: invocation.stage.model,
+        persona: invocation.stage.persona,
+        stageSlug: invocation.stage.slug,
       }
+    },
+    contended,
+  )
+  const { declaredSpec, persona, stageSlug } = plan
+  // A bare (bracket-less) spec delegates the variant choice to Cursor, so
+  // any successfully resolved variant is the declared behavior — the same
+  // contract `probeCursorModels` applies. Only a bracketed spec carries a
+  // catalog-predicted display name to compare against; a spec id is never
+  // compared literally with a display name.
+  const bareSpec = !declaredSpec.includes('[')
+  const expected = expectedCursorModelForSpec(root, declaredSpec)
+  const probe = probeCursorModelSpec(
+    declaredSpec,
+    undefined,
+    probeEnvironment(root),
+  )
+  // Only a failed probe is unavailable. A bracketed spec with no catalog
+  // prediction is `recorded`, because a target installation carries no
+  // catalog.
+  const result = ((): RunModelEvidence['result'] => {
+    if (probe.resolved === null || probe.error !== undefined) {
+      return 'unavailable'
+    }
 
-      if (bareSpec) {
-        return 'match'
-      }
+    if (bareSpec) {
+      return 'match'
+    }
 
-      if (expected === null) {
-        return 'recorded'
-      }
+    if (expected === null) {
+      return 'recorded'
+    }
 
-      return normalizedModelName(probe.resolved) ===
-        normalizedModelName(expected)
-        ? 'match'
-        : 'mismatch'
-    })()
-    const error =
-      result === 'unavailable'
-        ? (probe.error ?? 'Cursor reported no resolvable model.')
-        : result === 'mismatch'
-          ? `Cursor resolved '${probe.resolved}', but the run snapshot expects '${expected}'.`
-          : undefined
-    const evidence = persistModelEvidence(root, state, {
-      role: 'worker',
-      invocation_id: invocationId,
-      persona: invocation.stage.persona,
-      declared_spec: declaredSpec,
-      effective_model: probe.resolved,
-      source: 'cursor-agent system/init event',
-      result,
-      ...(error ? { error } : {}),
-    })
+    return normalizedModelName(probe.resolved) === normalizedModelName(expected)
+      ? 'match'
+      : 'mismatch'
+  })()
+  const error =
+    result === 'unavailable'
+      ? (probe.error ?? 'Cursor reported no resolvable model.')
+      : result === 'mismatch'
+        ? `Cursor resolved '${probe.resolved}', but the run snapshot expects '${expected}'.`
+        : undefined
 
-    // A probe result never fails the run. Record it as an advisory so
-    // `pan status` recovers it after an interruption.
-    const advisories = error
-      ? recordRunAdvisories(
-          state,
-          {
-            kind: 'model_evidence',
-            source: 'probe',
-            stage: invocation.stage.slug,
-            invocation_id: invocationId,
-          },
-          [error],
-        )
-      : []
-
-    if (advisories.length > 0) {
-      persistRun(root, state, 'model_evidence_advisory', {
+  return withOperationMutex(
+    operationMutexPath(root, runId),
+    () => {
+      const state = loadState(root, runId)
+      const evidence = persistModelEvidence(root, state, {
+        role: 'worker',
         invocation_id: invocationId,
-        stage: invocation.stage.slug,
-        advisories: advisories.map((advisory) => advisory.message),
+        persona,
+        declared_spec: declaredSpec,
+        effective_model: probe.resolved,
+        source: 'cursor-agent system/init event',
+        result,
+        ...(error ? { error } : {}),
       })
-    }
 
-    return {
-      ...evidence,
-      advisories: advisories.map((advisory) => advisory.message),
-    }
-  })
+      // A probe result never fails the run. Record it as an advisory so
+      // `pan status` recovers it after an interruption.
+      const advisories = error
+        ? recordRunAdvisories(
+            state,
+            {
+              kind: 'model_evidence',
+              source: 'probe',
+              stage: stageSlug,
+              invocation_id: invocationId,
+            },
+            [error],
+          )
+        : []
+
+      if (advisories.length > 0) {
+        persistRun(root, state, 'model_evidence_advisory', {
+          invocation_id: invocationId,
+          stage: stageSlug,
+          advisories: advisories.map((advisory) => advisory.message),
+        })
+      }
+
+      return {
+        ...evidence,
+        advisories: advisories.map((advisory) => advisory.message),
+      }
+    },
+    contended,
+  )
 }
 
 /** Model evidence is an audit trail, not an admission criterion. */
@@ -4722,17 +4788,28 @@ export interface MaterializedSubmission {
 
 /**
  * Materialize a full output document from either accepted submission form.
+ *
+ * The caller supplies `expectedInvocationId` from the run's active card, and
+ * `null` when the run has none. The expectation is never derived from the
+ * submitted document, because a check whose expected value comes from the
+ * value it is checking proves nothing.
  */
 export function materializeOutputSubmission(
   root: string,
   state: RunState,
   submittedValue: unknown,
-  expectedInvocationId?: string,
+  expectedInvocationId: string | null,
 ): MaterializedSubmission {
   if (!isRecord(submittedValue) || !('revises' in submittedValue)) {
     return { value: submittedValue }
   }
 
+  invariant(
+    expectedInvocationId !== null,
+    'A revision submission MUST be made against an active invocation, and ' +
+      'this run has none.',
+    { code: 'INVALID_REVISION' },
+  )
   invariant(
     typeof submittedValue.revises === 'string' &&
       submittedValue.revises.length > 0,
@@ -4748,8 +4825,7 @@ export function materializeOutputSubmission(
     typeof submittedValue.patch.invocation_id === 'string' &&
       submittedValue.patch.invocation_id.length > 0 &&
       submittedValue.patch.invocation_id !== submittedValue.revises &&
-      (expectedInvocationId === undefined ||
-        submittedValue.patch.invocation_id === expectedInvocationId),
+      submittedValue.patch.invocation_id === expectedInvocationId,
     `A revision patch MUST set invocation_id to the current card's ` +
       `invocation id, not the revised attempt's.`,
     { code: 'INVALID_REVISION' },
@@ -4858,22 +4934,11 @@ export function submitOutput(
   const result = withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
     const submittedRaw = readJson(resolveInside(root, submittedPath))
-    const submittedInvocation =
-      isRecord(submittedRaw) && isRecord(submittedRaw.patch)
-        ? submittedRaw.patch.invocation_id
-        : isRecord(submittedRaw)
-          ? submittedRaw.invocation_id
-          : undefined
-    const expectedInvocationId =
-      state.current_invocation?.id ??
-      (typeof submittedInvocation === 'string'
-        ? submittedInvocation
-        : undefined)
     const materialized = materializeOutputSubmission(
       root,
       state,
       submittedRaw,
-      expectedInvocationId,
+      state.current_invocation?.id ?? null,
     )
     const submittedValue = materialized.value
     const priorForRevision = materialized.revisedFrom
@@ -6605,6 +6670,73 @@ export interface WaiveGateOptions {
   note: string
   deferredAcceptanceCriteria?: string[]
   createSpotfixCase?: boolean
+  /**
+   * Run whose ratified plan this waiver adopts. The subsumed run keeps
+   * running, so its worktree claim moves to the adopting run and both states
+   * record the move.
+   */
+  adoptPlanFromRunId?: string | null
+}
+
+/**
+ * Move the subsumed run's worktree claim to the run that adopted its plan.
+ *
+ * The subsumed run stays live because nothing closed it, so liveness alone
+ * would keep it occupying the worktree and release preparation for the
+ * adopting run would refuse. Both states record the move, and the subsumed
+ * run's write takes its own mutex.
+ */
+function transferWorktreeClaim(
+  root: string,
+  adoptingState: RunState,
+  subsumedRunId: string,
+  waiverId: string,
+): WorktreeClaimTransfer {
+  invariant(
+    subsumedRunId !== adoptingState.run_id,
+    'A run cannot adopt its own plan.',
+    { code: 'INVALID_PLAN_ADOPTION' },
+  )
+
+  const worktree = adoptingState.managed_worktree?.name
+
+  invariant(
+    worktree,
+    `Run '${adoptingState.run_id}' is not bound to a managed worktree, so ` +
+      'there is no worktree claim to transfer.',
+    { code: 'INVALID_PLAN_ADOPTION' },
+  )
+
+  const transfer: WorktreeClaimTransfer = {
+    role: 'adopted',
+    worktree,
+    from_run_id: subsumedRunId,
+    to_run_id: adoptingState.run_id,
+    waiver_id: waiverId,
+    timestamp: now(),
+  }
+
+  withOperationMutex(operationMutexPath(root, subsumedRunId), () => {
+    const subsumed = loadState(root, subsumedRunId)
+
+    invariant(
+      subsumed.managed_worktree?.name === worktree,
+      `Run '${subsumedRunId}' is not bound to worktree '${worktree}', so it ` +
+        'holds no claim the adopting run can take.',
+      { code: 'INVALID_PLAN_ADOPTION' },
+    )
+
+    subsumed.worktree_claim_transfer = { ...transfer, role: 'released' }
+    persistRun(root, subsumed, 'worktree_claim_released', {
+      worktree,
+      to_run_id: adoptingState.run_id,
+      waiver_id: waiverId,
+    })
+  })
+
+  adoptingState.worktree_claim_transfer = transfer
+
+  return transfer
 }
 
 function normalizeIdentifiers(values: string[]): string[] {
@@ -6726,7 +6858,11 @@ export function waiveGate(
   root: string,
   runId: string,
   options: WaiveGateOptions,
-): { state: RunState; waiver: OperatorGateWaiver } {
+): {
+  state: RunState
+  waiver: OperatorGateWaiver
+  claimTransfer?: WorktreeClaimTransfer
+} {
   return withOperationMutex(operationMutexPath(root, runId), () => {
     const state = loadState(root, runId)
 
@@ -6925,6 +7061,11 @@ export function waiveGate(
 
     waivers.push(waiver)
     state.operator_gate_waivers = waivers
+
+    const claimTransfer = options.adoptPlanFromRunId
+      ? transferWorktreeClaim(root, state, options.adoptPlanFromRunId, waiverId)
+      : null
+
     clearSameReasonTracker(state, stage.slug)
     state.status = 'running'
     state.pause_reason = null
@@ -6950,9 +7091,15 @@ export function waiveGate(
       source_workspace_fingerprint: waiver.source_workspace_fingerprint ?? null,
       directive_target: target,
       spotfix_case_path: spotfixCasePath ?? null,
+      ...(claimTransfer
+        ? {
+            worktree_claim_adopted_from: claimTransfer.from_run_id,
+            worktree: claimTransfer.worktree,
+          }
+        : {}),
     })
 
-    return { state, waiver }
+    return { state, waiver, ...(claimTransfer ? { claimTransfer } : {}) }
   })
 }
 

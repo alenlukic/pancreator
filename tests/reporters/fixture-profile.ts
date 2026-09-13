@@ -3,13 +3,18 @@
  *
  * When `PAN_TEST_PROFILE` names an absolute path, template-build and clone
  * events accumulate in memory and flush to one sidecar file at process exit.
+ * The sidecar lands in the runner's scratch tree rather than beside the
+ * profile target, which a gate places inside a run's evidence directory.
  */
 import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
-import { TEST_PROFILE_ENV } from '../../src/lib/suite-profile-env.js'
+import {
+  fixtureSidecarPath,
+  TEST_PROFILE_ENV,
+} from '../../src/lib/suite-profile-env.js'
 
-export const FIXTURE_SIDECAR_SUFFIX = '.fixture-profile'
+export { fixtureSidecarPath }
 
 export interface FixtureEvent {
   kind: 'template_build' | 'template_clone'
@@ -41,13 +46,6 @@ export function recordFixtureEvent(
     duration_ms: Math.round(durationMs * 1000) / 1000,
     recorded_at: new Date().toISOString(),
   })
-}
-
-export function fixtureSidecarPath(
-  profileTarget: string,
-  processId = process.pid,
-): string {
-  return `${profileTarget}${FIXTURE_SIDECAR_SUFFIX}.${processId}.json`
 }
 
 export function flushFixtureSidecar(profileTarget: string): void {

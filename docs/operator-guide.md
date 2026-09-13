@@ -775,11 +775,20 @@ A worktree is a second working directory of the same repository. Every worktree 
 - `create` makes the exact branch `<name>` from `--from` (a branch, a revision, or another recorded worktree) and defaults to the commit the main checkout currently holds. Names use lowercase letters, digits, and single hyphens, because the name becomes both a directory and a branch.
 - Worktrees live under `worktrees/operator/<name>` and are recorded in `worktrees/operator/index.json` with branch, commit, description, and creation date. That index is harness-owned generated state; change it only through these commands. Installations that still hold only `runtime/worktrees/operator/index.json` continue to use that legacy index in place, and new worktrees are created under `worktrees/operator/`. A `worktrees.root` you declare in `config.json` overrides both locations and is never relocated.
 - `list` adds live state to the recorded fields: whether Git still registers the directory, the current head commit, and whether the worktree is dirty. `--json` returns the same records for scripting.
-- `--worktree <name>` is one shared option with one contract: every workspace-aware command accepts it, resolves the name the same way, and creates the worktree when the index does not hold it. The workspace-aware commands are `init`, `prepare`, `resume`, `submit`, `author apply`, `author validate`, `release sync`, `release continue`, `release finalize`, `repository-check <profile>`, `technologies detect`, `doctor`, and `governance card --mode <mode>`. Every other command rejects `--worktree` with an explicit error naming this list. The branch of the main checkout never changes.
+- `--worktree <name>` is one shared option with one contract: every workspace-aware command accepts it, resolves the name the same way, and creates the worktree when the index does not hold it. The workspace-aware commands are `init`, `prepare`, `resume`, `submit`, `author apply`, `author validate`, `release sync`, `release continue`, `release finalize`, `conform scan`, `conform checkpoint`, `style scan`, `style checkpoint`, `repository-check <profile>`, `requirements run`, `tests impacted`, `technologies detect`, `doctor`, and `governance card --mode <mode>`. Every other command rejects `--worktree` with an explicit error naming this list. The branch of the main checkout never changes.
 - `worktree resolve <name>` applies the same create-or-resolve behavior directly and reports the worktree record with a `created` flag. Projected commands that delegate a named persona bind their workspace through it. `/pan-start` passes the selected worktree to `init` and every later lifecycle call. `/pan-resume` reads the stored binding and passes the same name to `resume`, `prepare`, and `submit`.
+- `resolve` also adopts a worktree you made yourself. A directory at `worktrees/operator/<name>` that Git registers as a worktree on the branch `<name>` is indexed in place, receives the local configuration handoff, and runs the setup commands, which is what creation would have produced. Every other existing path still refuses with `WORKTREE_PATH_EXISTS`: a plain directory, a checkout on another branch, or a worktree of another repository.
 - `init --worktree <name>` records the worktree directory as the run's `workspace_root`. Each lifecycle call restores the registered branch before mutation. The run's repository-check baselines and deterministic gates then run inside the worktree. `--worktree` and `--workspace` name two different workspaces, so pass only one.
 - `pan repository-check <profile> --workspace <name>` also accepts a recorded worktree name or a directory path; unlike `--worktree`, it never creates anything.
-- `remove <name>` refuses a worktree with uncommitted work unless you pass `--force`, and always keeps the branch, because deleting a branch stays your decision. When you already deleted the directory yourself, `remove` prunes the stale Git registration and the index entry.
+- `remove <name>` refuses a worktree with uncommitted work unless you pass `--force`, and keeps the branch unless you pass `--delete-branch`. The refusal comes before any change to the index, so the record is still there for the retry. When you already deleted the directory yourself, `remove` prunes the stale Git registration and the index entry. A directory that is still on disk while no repository registers it is refused instead, because dropping the record there would leave the directory unaddressable; remove the directory yourself, or repair the record with `worktree resolve <name>`.
+- `--delete-branch` deletes the worktree branch only when it is an ancestor of the default branch, so merged work is cleaned up in one command and unmerged work is never discarded. A refusal reports why and keeps the branch.
+- Worktree provisioning is declared, not inferred. `config.json` sets `worktrees.setup` to the commands that prepare a new worktree and `worktrees.readiness_paths` to what those commands produce. A run whose workspace is a worktree checks those paths before its first stage: a ready worktree skips the workspace setup step rather than installing its dependencies a second time, and one that is missing an item names that item and provisions the tree.
+
+### Worktree readiness
+
+A worktree that the harness did not fully provision used to fail at the first gate, with a missing build reported as a product failure. Readiness is now a property the harness asserts before a run works in the tree. It covers the declared setup outputs — the dependency tree and the build output in this repository — and the local configuration handoff a self-development worktree needs. A gap is reported by name, before the first prepare.
+
+An installation that declares no `worktrees.readiness_paths` cannot have its provisioning judged, so its runs keep running the workspace setup step exactly as before.
 
 Best-of-N candidate worktrees are separate. They live under `worktrees/<bon-id>/` and remain owned by `./bin/pan best-of-n`, so `pan worktree` neither lists nor removes them. Existing sessions may still reference legacy paths under `runtime/worktrees/<bon-id>/`; those paths remain authoritative until the operator removes the session.
 
@@ -918,12 +927,19 @@ A waiver is an operator directive, not a permission request. Use it whenever you
   [--stage <source-stage>] \
   [--to <destination-stage>] \
   [--criteria <id[,id...]>] \
-  [--defer <acceptance-id[,acceptance-id...]> --spotfix]
+  [--defer <acceptance-id[,acceptance-id...]> --spotfix] \
+  [--adopt-plan-from <run-id>]
 ```
 
 The command may target current or historical workflow stages, including harness-owned stages, and may redirect a terminal run when the operator explicitly names the source and destination. Destinations may be workflow stages or terminal states such as `succeeded`. It does not require a pause, exact criterion matching, valid stage output, or an unchanged workspace. The note defines the directive; criteria and follow-up tracking are optional metadata. The harness records what was bypassed and where the run was routed without narrowing the directive.
 
 “Operator-owned” means only the operator may decide to waive. An agent may execute the command when the operator explicitly directs it and must not answer that the operator is “not allowed” or that a waiver is impossible because of harness governance.
+
+#### Adopting another run's plan
+
+`--adopt-plan-from <run-id>` records that this waiver reuses another run's ratified plan. A worktree is occupied by every live run bound to it, and a subsumed run stays live because nothing closed it, so its claim would otherwise block the adopting run's release preparation until you aborted it. The option moves the claim: both run states record the transfer, the subsumed run is no longer bound to the worktree, and its status is untouched.
+
+Both runs must be bound to the same worktree. When `RELEASE_WORKFLOW_ACTIVE` still fires, it names the run holding the claim and the command that releases it, which is this option for a run whose plan you are adopting and an abort for a run that never exchanged a plan with yours.
 
 ### Operator stage repair
 
@@ -1161,3 +1177,15 @@ Rejection routes remediation to the stage that owns the fix and carries your fee
 - `--stage <slug>` may target any stage in the workflow. The chosen stage and every stage after it restart with fresh attempt budgets, since you are deliberately reworking that segment.
 
 Always include a `--note`. The feedback is written to `agent/decisions/operator-feedback-<n>.md` (`decisions/` in a legacy-layout run) and attached to the remediation invocation; without it the worker only knows the prior output was unacceptable.
+
+### The note size bound and `--note-file`
+
+Endpoint security on an operator machine kills a process at exec time once one argv element reaches 1000 bytes. The kill lands before Node starts, so the command prints nothing and the run is unchanged, which reads as success.
+
+The CLI therefore refuses any argument at or above 900 bytes with `ARGV_ELEMENT_TOO_LARGE`, naming the option and the byte count, before it dispatches the command.
+
+Use `--note-file <path>` for a note above that bound. `decide`, `pause`, `resume`, `set-stage`, and `waive-gate` all accept it, the path is repository-relative, and the file's contents become the note. `--note` and `--note-file` cannot be used together.
+
+```sh
+./bin/pan decide <run-id> revise --note-file runtime/inbox/queue/revision-directive.md
+```

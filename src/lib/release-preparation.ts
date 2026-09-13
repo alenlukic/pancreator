@@ -93,13 +93,26 @@ function assertReleaseWorkspaceAvailable(
       continue
     }
 
+    // Naming only the blocking run left the operator to infer the abort.
+    // Waiver-based plan reuse is the route that moves the claim; an abort is
+    // the route for a run that never exchanged a plan with this one.
+    const releaseCommand = ownerRunId
+      ? `./bin/pan waive-gate ${ownerRunId} --adopt-plan-from ${state.run_id} --note "<why this run adopts that plan>"`
+      : `./bin/pan abort ${state.run_id} --note "<why>"`
+
     invariant(
       false,
       `Release preparation is blocked by active workflow '${state.run_id}' ` +
-        `against worktree '${name}'.`,
+        `against worktree '${name}'. Run '${state.run_id}' holds the ` +
+        `worktree claim. Release it with: ${releaseCommand}`,
       {
         code: 'RELEASE_WORKFLOW_ACTIVE',
-        details: { run_id: state.run_id, worktree: name },
+        details: {
+          run_id: state.run_id,
+          worktree: name,
+          claim_holder_run_id: state.run_id,
+          release_command: releaseCommand,
+        },
       },
     )
   }

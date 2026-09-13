@@ -15,6 +15,10 @@
       "worktrees/**"
     ]
   },
+  "worktrees": {
+    "setup": ["npm ci --no-audit --no-fund --loglevel=error", "npm run build"],
+    "readiness_paths": ["node_modules", "dist"]
+  },
   "active_config": "balanced",
   "anthropic": {
     "balanced": "claude-sonnet-5",

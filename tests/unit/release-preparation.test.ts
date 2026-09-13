@@ -15,7 +15,7 @@ import {
   finalizeLocalRelease,
   syncLocalRelease,
 } from '../../src/lib/release-preparation.js'
-import { createRun } from '../../src/lib/engine.js'
+import { createRun, setRunStage, waiveGate } from '../../src/lib/engine.js'
 import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
 import { loadState, statePath } from '../../src/lib/state.js'
 import { fileExists } from '../../src/lib/io.js'
@@ -647,12 +647,18 @@ test('standalone release refuses an active workflow in the same worktree', () =>
   assert.equal(fileExists(statePath(root, state.run_id)), true)
   assert.equal(loadState(root, state.run_id).workspace_root, record.path)
   git(worktreePath, ['switch', '-c', 'blocked-branch'])
+  // The refusal names the run holding the claim and the command that
+  // releases it, so an operator is not left to infer an abort.
   assert.throws(
     () => syncLocalRelease(root, record.name, 'feat: checkpoint'),
     (error: unknown) =>
       error instanceof Error &&
       'code' in error &&
-      error.code === 'RELEASE_WORKFLOW_ACTIVE',
+      error.code === 'RELEASE_WORKFLOW_ACTIVE' &&
+      error.message.includes(
+        `Run '${state.run_id}' holds the worktree claim`,
+      ) &&
+      error.message.includes(`./bin/pan abort ${state.run_id}`),
   )
   assert.equal(
     git(worktreePath, ['branch', '--show-current']),
@@ -677,4 +683,82 @@ test('standalone release refuses an active workflow in the same worktree', () =>
     git(worktreePath, ['branch', '--show-current']),
     'blocked-branch',
   )
+})
+
+test('waiver-based plan adoption moves the claim and releases the workspace', () => {
+  const root = createFixture()
+  const remote = createTestTempDirectory('pan-release-adoption-')
+
+  try {
+    execFileSync('git', ['init', '--bare', '-q'], { cwd: remote })
+    git(root, ['branch', '-M', 'main'])
+    git(root, ['remote', 'add', 'origin', remote])
+    git(root, ['push', '-u', 'origin', 'main'])
+
+    const record = createWorktree(root, 'release-adopted')
+    const subsumed = createRun(root, {
+      workflowSlug: 'delivery',
+      requestPath: 'request.md',
+      workspace: record.path,
+      worktree: record,
+    })
+    const adopting = createRun(root, {
+      workflowSlug: 'delivery',
+      requestPath: 'request.md',
+      workspace: record.path,
+      worktree: record,
+    })
+
+    setRunStage(root, adopting.run_id, 'ship', 'Release preparation')
+
+    // The subsumed run exchanged its plan rather than its worktree, so it is
+    // still live and still occupying the workspace the release needs.
+    assert.throws(
+      () =>
+        syncLocalRelease(
+          root,
+          record.name,
+          'feat: checkpoint',
+          adopting.run_id,
+        ),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'RELEASE_WORKFLOW_ACTIVE' &&
+        error.message.includes(`--adopt-plan-from ${subsumed.run_id}`),
+    )
+
+    const waived = waiveGate(root, adopting.run_id, {
+      note: 'This run adopts the ratified plan of the subsumed run.',
+      adoptPlanFromRunId: subsumed.run_id,
+    })
+
+    assert.equal(waived.claimTransfer?.role, 'adopted')
+    assert.equal(waived.claimTransfer?.worktree, record.name)
+    assert.equal(waived.claimTransfer?.from_run_id, subsumed.run_id)
+    assert.equal(waived.claimTransfer?.to_run_id, adopting.run_id)
+    assert.equal(waived.claimTransfer?.waiver_id, waived.waiver.waiver_id)
+    assert.deepEqual(loadState(root, subsumed.run_id).worktree_claim_transfer, {
+      ...waived.claimTransfer,
+      role: 'released',
+    })
+
+    // Adoption is not abortion: the subsumed run keeps running, it just
+    // stops occupying the worktree.
+    assert.equal(loadState(root, subsumed.run_id).status, 'running')
+    // The waiver advanced the adopting run off ship, so put it back where a
+    // release owner sits before the workspace assertion runs again.
+    setRunStage(root, adopting.run_id, 'ship', 'Release preparation')
+
+    const synchronized = syncLocalRelease(
+      root,
+      record.name,
+      'feat: checkpoint',
+      adopting.run_id,
+    )
+
+    assert.equal(synchronized.status, 'synchronized')
+  } finally {
+    rmSync(remote, { recursive: true, force: true })
+  }
 })
