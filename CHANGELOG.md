@@ -1,5 +1,31 @@
 # Changelog
 
+## [5.26.0] - 2026-09-13
+
+This release repairs Phase 3 mechanical defects in four chunks.
+
+### Changed
+
+- Give installer smoke children explicit source metadata so the clean-checkout guard does not block a self-development release ([install](bin/install), [a7541881](https://github.com/alenlukic/pancreator/commit/a75418814a46641752971a58fceff08ac92bbdf0)).
+- Honor a gate waiver on the named entry-gate criterion, or refuse the waiver by name ([engine](src/lib/engine.ts), [a7541881](https://github.com/alenlukic/pancreator/commit/a75418814a46641752971a58fceff08ac92bbdf0)).
+- Refuse release sync when a rebase would rewrite a commit that is already on local main ([release-preparation](src/lib/release-preparation.ts), [a7541881](https://github.com/alenlukic/pancreator/commit/a75418814a46641752971a58fceff08ac92bbdf0)).
+- Carry a same-run release-metadata fingerprint chain for the ship currency check ([validation](src/lib/validation.ts), [a7541881](https://github.com/alenlukic/pancreator/commit/a75418814a46641752971a58fceff08ac92bbdf0)).
+- Hold the watch for one confirming wake when completion evidence is weak ([watch](src/lib/watch.ts), [af65209e](https://github.com/alenlukic/pancreator/commit/af65209e424a0dacfd02b3868aba7b73845ac805)).
+- Record a handle for each delegated worker, and give each role a unique evidence path ([engine](src/lib/engine.ts), [af65209e](https://github.com/alenlukic/pancreator/commit/af65209e424a0dacfd02b3868aba7b73845ac805)).
+- Return a recorded profile pass at the same fingerprint instead of a second run ([repository-checks](src/lib/repository-checks.ts), [83fc9524](https://github.com/alenlukic/pancreator/commit/83fc9524b0ab29a7d326e0b98028ca83bb35d249)).
+- List every inbox lifecycle status, and drop the integrate command for an abandoned-only cohort ([inbox](src/lib/inbox.ts), [cohorts](src/lib/cohorts.ts), [83fc9524](https://github.com/alenlukic/pancreator/commit/83fc9524b0ab29a7d326e0b98028ca83bb35d249)).
+- Measure the supervisor-card digest diff from the last attested card ([supervisor-card](src/lib/governance/supervisor-card.ts), [83fc9524](https://github.com/alenlukic/pancreator/commit/83fc9524b0ab29a7d326e0b98028ca83bb35d249)).
+
+### Added
+
+- Add `pan worker state` and `pan worker record` for a delegated worker handle ([cli](src/cli.ts), [af65209e](https://github.com/alenlukic/pancreator/commit/af65209e424a0dacfd02b3868aba7b73845ac805)).
+- Add a per-case citation field for a carried QA result ([stage-validators](src/lib/validators/stage-validators.ts), [83fc9524](https://github.com/alenlukic/pancreator/commit/83fc9524b0ab29a7d326e0b98028ca83bb35d249)).
+
+### Fixed
+
+- Repair harness tests that could not fail, and restore TP-10 honesty in the suite ([6c323365](https://github.com/alenlukic/pancreator/commit/6c3233652cb1cfaf9e76d8a3864ec6474729c779)).
+- Pin the still-writing watch fixture to the launch artifact so the case does not depend on host load ([watch-helpers](tests/unit/watch-helpers.ts), [5df51c31](https://github.com/alenlukic/pancreator/commit/5df51c31fd2f7f842b1f08055dc77834accb907c)).
+
 ## [5.25.1] - 2026-09-13
 
 This release adds two PRINCIPLES-001 instructions and aligns worker procedures with those rules.
