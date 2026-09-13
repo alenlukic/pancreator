@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-import { spawn } from 'node:child_process'
 import { readdirSync, realpathSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import {
   abortRun,
+  assertDelegationAgentName,
   assessStage,
   createRun,
   DEFAULT_WORKFLOW_SLUG,
@@ -15,11 +15,12 @@ import {
   getRunStatus,
   getRunState,
   materializeOutputSubmission,
+  outputValidateScratchPath,
   pauseRun,
   recordWorkspaceDirective,
   prepareInvocation,
   probeRunInvocationModel,
-  recordPendingWorkerModelProbe,
+  startDetachedWorkerModelProbe,
   quarantineRunForAgent,
   recordSupervisorModelEvidence,
   resumeRun,
@@ -169,6 +170,7 @@ import {
 } from './lib/governance/supervisor-card.js'
 import { conflictsByTier, resolveReviewScope } from './lib/review-scope.js'
 import {
+  agentGatePassSuiteProfile,
   agentRepositoryCheckAdvisories,
   assertRepositoryChecksValid,
   loadRepositoryChecks,
@@ -179,6 +181,7 @@ import {
   repositoryChecksSourcePath,
   runRepositoryCheckStreaming,
 } from './lib/repository-checks.js'
+import { TEST_PROFILE_ENV } from './lib/suite-profile.js'
 import { detectWorkspaceTechnologies } from './lib/technologies.js'
 import { resolveRunLayout } from './lib/run-layout.js'
 import {
@@ -243,7 +246,8 @@ export const HELP_BODY = `Usage:
       The default workflow is planning, the entry point for delivery work. Approving its ratified plan routes the work: a plan of one chunk starts one delivery run (implement, verify, remediate, ship) in its own worktree; a plan of two or more chunks opens a cohort session and starts cohort 1. --workflow delivery skips planning for an operator who brings a ratified specification as the request.
       --no-autostart applies only to the planning workflow and stops the run at the ratified plan, so delivery is started by hand. --autostart names the default and is accepted for compatibility. --max-parallel caps the concurrent chunk runs of an autostarted cohort session (default 4).
       --context-reference records an audited pointer to wider context every stage reads and never copies, for example the parent specification of one cohort chunk.
-  pan prepare <run-id> [--worktree <name>] [--operator-artifacts]
+  pan prepare <run-id> [--worktree <name>] [--operator-artifacts] [--agent <name>]
+      --agent names the Cursor agent this invocation is delegated to. The harness then writes the labeled delegation artifact beside the delivery prompt and starts the detached worker model probe, so the supervisor assembles neither by hand. An external-executor or orchestrator stage keeps its current behavior and reports why it wrote nothing.
   pan delegate <run-id> [--timeout-ms <milliseconds>]
   pan watch <run-id> [--invocation <invocation-id>] [--cadence-seconds <n>] [--stall-wakes <n>] [--timeout-seconds <n>] [--mark-background] [--agent-state running|completed] [--json]
       Await a launched worker on a fixed cadence and record every arming and wake to agent/evidence/<invocation-id>-watch.jsonl. Exit 0 when the output is present, 2 on a stall, 3 at the timeout, 4 when the completion is unverified. --mark-background records that the platform turned the launch into a background subagent. --agent-state reports what you saw when you inspected the launched agent itself; the watch reads files and cannot see a worker that is still writing. An output already present at the first observation that landed less than one cadence after the launch records unverified without it.
@@ -1312,11 +1316,19 @@ async function main(): Promise<void> {
     }
     case 'prepare': {
       const runId = requiredArgument(args[0], 'run-id')
+      const agent = option(args, '--agent')
 
       assertRunWorktreeBinding(root, runId, args)
 
+      // Refuse an unusable label before the run advances, so a prepare either
+      // writes delivery-ready evidence or changes nothing.
+      if (agent !== null) {
+        assertDelegationAgentName(agent)
+      }
+
       const result = prepareInvocation(root, runId, {
         operatorArtifacts: hasFlag(args, '--operator-artifacts'),
+        ...(agent !== null ? { agent } : {}),
         onProgress: (message) =>
           process.stderr.write(`[pan next:${runId}] ${message}\n`),
       })
@@ -1341,6 +1353,9 @@ async function main(): Promise<void> {
         invocation_json: result.state.current_invocation?.json_path,
         invocation_markdown: result.state.current_invocation?.markdown_path,
         expected_output: result.state.current_invocation?.output_path,
+        ...(result.prepared_delegation
+          ? { prepared_delegation: result.prepared_delegation }
+          : {}),
         advisories: result.advisories,
       })
       return
@@ -2152,9 +2167,23 @@ async function main(): Promise<void> {
       const fingerprintBefore = gitWorkspaceSnapshot(
         repositoryCheckWorkspaceRoot(root, checkWorkspace ?? undefined),
       ).fingerprint
+      // A pass this command stores is reused by a later gate instead of
+      // re-running the suite, so the execution writes the same profile that
+      // gate would have written. Only a named run has a place to put it.
+      const gatePassSuiteProfile = evidenceRun
+        ? agentGatePassSuiteProfile(
+            root,
+            evidenceRun.run_id,
+            profile,
+            fingerprintBefore,
+          )
+        : null
       const result = await runRepositoryCheckStreaming(root, profile, {
         ...(timeoutMs !== undefined ? { timeout_ms: timeoutMs } : {}),
         ...(checkWorkspace ? { workspace: checkWorkspace } : {}),
+        ...(gatePassSuiteProfile
+          ? { env: { [TEST_PROFILE_ENV]: gatePassSuiteProfile.absolute } }
+          : {}),
         ...(harnessInitiated
           ? {}
           : {
@@ -2537,28 +2566,13 @@ async function main(): Promise<void> {
           return
         }
 
-        const pending = recordPendingWorkerModelProbe(
+        const started = startDetachedWorkerModelProbe(
           root,
           probeRunId,
           probeInvocationId,
         )
-        const child = spawn(
-          process.execPath,
-          [
-            fileURLToPath(import.meta.url),
-            'models',
-            '--probe',
-            '--await-probe',
-            '--run',
-            probeRunId,
-            '--invocation',
-            probeInvocationId,
-          ],
-          { cwd: root, detached: true, stdio: 'ignore' },
-        )
 
-        child.unref()
-        print({ ...pending, probe_pid: child.pid ?? null }, true)
+        print({ ...started.evidence, probe_pid: started.probe_pid }, true)
         return
       }
 
@@ -3471,12 +3485,10 @@ async function main(): Promise<void> {
         const scratchPath =
           materialized.revisedFrom === undefined
             ? null
-            : path.posix.join(
-                'runtime',
-                'cache',
-                'output-validate',
+            : outputValidateScratchPath(
                 runId,
-                path.basename(invocation.output.path),
+                invocation.output.path,
+                'output-validate',
               )
         const effectivePath = scratchPath ?? filePath
 

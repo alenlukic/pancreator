@@ -1,15 +1,19 @@
 import assert from 'node:assert/strict'
-import { readdirSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import {
+  materializeOutputSubmission,
+  outputValidateScratchPath,
   prepareInvocation,
   resolveSubmitValidators,
   submitOutput,
   validateOutputForSubmission,
 } from '../../src/lib/engine.js'
 import { PanError } from '../../src/lib/errors.js'
+import { HANDLERS } from '../../src/lib/requirements/handlers.js'
+import { loadRegistry } from '../../src/lib/requirements/registry.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadState } from '../../src/lib/state.js'
 import { stageBySlug } from '../../src/lib/workflow.js'
@@ -149,6 +153,118 @@ test('pan output validate --file judges the named file, not a stale copy at the 
   assert.equal(mirror.passed, false)
   assert.ok(claims)
   assert.match(claims.message, /not listed in changed_files: src\/extra\.ts/u)
+})
+
+test('the two output-validate callers work in separate scratch directories', () => {
+  const {
+    root,
+    runId,
+    state: failedState,
+  } = checkpoint('delivery@implement-failed-once')
+  const prior = failedState.stage_history[0]
+  const invocation = prepareInvocation(root, runId).invocation
+
+  assert.ok(invocation)
+
+  const revision = {
+    revises: prior.invocation_id,
+    patch: { invocation_id: invocation.invocation_id },
+  }
+  const callerScratch = outputValidateScratchPath(
+    runId,
+    invocation.output.path,
+    'output-validate',
+  )
+  const mirrorScratch = outputValidateScratchPath(
+    runId,
+    invocation.output.path,
+    'submission-mirror',
+  )
+
+  // Both callers derive their path from one helper, and the helper is what
+  // keeps them apart: each removes its own directory when it is done.
+  assert.notEqual(path.dirname(callerScratch), path.dirname(mirrorScratch))
+
+  // `pan output validate --file` on a revision resolves the envelope into its
+  // own copy and hands that path to the submission mirror.
+  const materialized = materializeOutputSubmission(
+    root,
+    loadState(root, runId),
+    revision,
+    invocation.invocation_id,
+  )
+  const callerAbsolute = path.join(root, callerScratch)
+
+  writeJson(callerAbsolute, materialized.value)
+
+  const callerBytes = readFileSync(callerAbsolute, 'utf8')
+  const mirror = validateOutputForSubmission(
+    root,
+    runId,
+    invocation,
+    revision,
+    {
+      submittedPath: callerScratch,
+    },
+  )
+
+  assert.ok(mirror.checks.some((check) => check.id.startsWith('validator.')))
+  assert.equal(existsSync(path.join(root, mirrorScratch)), false)
+  assert.equal(existsSync(callerAbsolute), true)
+  assert.equal(readFileSync(callerAbsolute, 'utf8'), callerBytes)
+})
+
+test('a validator handler that throws leaves no scratch copy behind', () => {
+  const { root, runId, invocation, workflow } = checkpoint(
+    'delivery@implement-prepared',
+  )
+
+  assert.ok(invocation)
+
+  // No file at the declared path and no submitted path: the mirror judges the
+  // in-memory value through a scratch copy.
+  const output = makeOutput(
+    root,
+    invocation,
+    stageBySlug(workflow, 'implement'),
+  )
+  const scratch = path.join(
+    root,
+    outputValidateScratchPath(
+      runId,
+      invocation.output.path,
+      'submission-mirror',
+    ),
+  )
+  const entry = loadRegistry(root).entries.get(
+    'IMPLEMENTATION-CLAIMS-VALIDATE-001',
+  )
+
+  assert.ok(entry)
+
+  const original = HANDLERS[entry.handler]
+
+  assert.ok(original)
+
+  let scratchSeenByHandler = false
+
+  HANDLERS[entry.handler] = () => {
+    scratchSeenByHandler = existsSync(scratch)
+    throw new Error('handler exploded')
+  }
+
+  try {
+    assert.throws(
+      () => validateOutputForSubmission(root, runId, invocation, output),
+      /handler exploded/u,
+    )
+  } finally {
+    HANDLERS[entry.handler] = original
+  }
+
+  assert.equal(scratchSeenByHandler, true)
+  assert.equal(existsSync(scratch), false)
+  assert.equal(existsSync(path.dirname(scratch)), false)
 })
 
 test('invalid revision envelopes fail before structural validation', () => {

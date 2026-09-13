@@ -4,6 +4,10 @@ import path from 'node:path'
 import { createRun } from './engine.js'
 import { errorMessage, invariant, PanError } from './errors.js'
 import {
+  supervisorBootstrap,
+  type SupervisorBootstrap,
+} from './governance/supervisor-card.js'
+import {
   gitBranchExists,
   gitBranchNameIsValid,
   gitCreateBranch,
@@ -84,6 +88,8 @@ export const DELIVERY_WORKFLOW_SLUG = 'delivery'
 export const RELEASE_RUN_START_STAGE = 'verify'
 /** Concurrent chunk runs one cohort session allows unless the operator sets another limit. */
 export const DEFAULT_COHORT_MAX_PARALLEL = 4
+/** Occasion a cohort supervisor declares in each run's redline record. */
+export const COHORT_REDLINE_OCCASION = 'pan-cohort'
 const COHORT_ID_PATTERN =
   /^\d+_[A-Z][a-z]{2}-\d{2}-\d{4}_[a-z0-9](?:[a-z0-9-]{0,10}[a-z0-9])?$/u
 const TERMINAL_STATUSES = new Set<RunStatus>([
@@ -96,6 +102,13 @@ export interface CohortChunkView extends CohortChunkRecord {
   status: RunStatus | 'not_started'
   current_stage: string | null
   resume_command: string | null
+}
+
+/** The bootstrap command set of one live chunk run of a session. */
+export interface CohortChunkBootstrap extends SupervisorBootstrap {
+  chunk: string
+  /** Worktree name every lifecycle command of this run carries. */
+  worktree: string | null
 }
 
 export interface CohortStatusView {
@@ -120,6 +133,11 @@ export interface CohortStatusView {
   live_chunk_runs: number
   /** Operator command that supervises every live chunk run at once, or null when none is live. */
   supervise_command: string | null
+  /**
+   * Per-run bootstrap command set of every live chunk run of the session, so
+   * one read replaces the four commands a supervisor rebuilds for each run.
+   */
+  bootstrap: CohortChunkBootstrap[]
   /** Release run the last integration started, or null until then. */
   release_run_id: string | null
   release_resume_command: string | null
@@ -1165,8 +1183,19 @@ export function cohortStatus(root: string, cohortId: string): CohortStatusView {
           (index) =>
             index > activeIndex && chunksOfCohort(state, index).length > 0,
         ) ?? null)
+  const bootstrap: CohortChunkBootstrap[] = []
   const chunks = state.chunks.map((chunk) => {
     const run = chunkRunState(root, chunk.run_id)
+
+    // One session supervises every live chunk run, so it owes each one the
+    // same card, attestation, redline, and model-evidence commands.
+    if (run && !chunk.abandoned && !TERMINAL_STATUSES.has(run.status)) {
+      bootstrap.push({
+        chunk: chunk.id,
+        worktree: run.managed_worktree?.name ?? null,
+        ...supervisorBootstrap(root, run, COHORT_REDLINE_OCCASION),
+      })
+    }
 
     return {
       ...chunk,
@@ -1212,6 +1241,7 @@ export function cohortStatus(root: string, cohortId: string): CohortStatusView {
     max_parallel: maxParallel,
     live_chunk_runs: live,
     supervise_command: live > 0 ? `/pan-cohort ${cohortId}` : null,
+    bootstrap,
     release_run_id: state.release_run_id ?? null,
     release_resume_command: state.release_run_id
       ? `/pan-resume ${state.release_run_id}`

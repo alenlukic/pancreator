@@ -27,6 +27,10 @@ import {
   probeCursorModelSpec,
   resetCursorAgentCapabilities,
 } from '../../src/lib/executors/cursor-probe.js'
+import {
+  loadPipelineConfig,
+  resolvePersonaModel,
+} from '../../src/lib/pipeline-config.js'
 import { operationMutexPath, statePath } from '../../src/lib/state.js'
 import { stageBySlug, loadWorkflow } from '../../src/lib/workflow.js'
 import {
@@ -38,6 +42,7 @@ import {
   submitAsSupervisor,
   writeFixtureCursorCatalog,
 } from '../helpers.js'
+import { installClaudeCodeFixture, withStub } from './delivery-helpers.js'
 
 function withFakeCursorAgent<T>(
   root: string,
@@ -427,6 +432,167 @@ test('the run-scoped probe returns a pending marker and a detached child records
 
   assert.equal(landed?.result, 'match')
   assert.equal(landed?.effective_model, expected)
+})
+
+test('preparing with an agent writes the labeled card and lands the probe', async () => {
+  // One prepare replaces the three commands a supervisor ran by hand before
+  // every Cursor worker launch: prepare, write the delegation file, probe.
+  const root = createFixture()
+
+  writeFixtureCursorCatalog(root)
+
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title: 'Agent prepare run',
+  })
+
+  recordSupervisorModelEvidence(root, run.run_id, 'GPT 5.6 Sol', 'metadata')
+
+  const stage = stageBySlug(
+    loadWorkflow(root, 'delivery'),
+    getRunState(root, run.run_id).current_stage ?? '',
+  )
+  const expected = expectedCursorModelForSpec(
+    root,
+    resolvePersonaModel(loadPipelineConfig(root).config, stage.persona),
+  )
+
+  assert.ok(expected)
+
+  const prepared = withFakeCursorAgent(root, expected, () =>
+    prepareInvocation(root, run.run_id, { agent: 'pan-coder' }),
+  )
+  const invocation = prepared.invocation
+  const delegation = prepared.prepared_delegation
+
+  assert.ok(invocation)
+  assert.ok(delegation)
+  assert.equal(delegation.skipped, null)
+  assert.equal(
+    delegation.artifact_path,
+    invocation.delegation?.delegation_artifact_path,
+  )
+
+  const artifact = readFileSync(
+    path.join(root, delegation.artifact_path ?? ''),
+    'utf8',
+  )
+  const body = readFileSync(
+    path.join(root, invocation.delegation?.delivery_prompt_path ?? ''),
+    'utf8',
+  )
+
+  // The label the operator reads, above the card the harness rendered.
+  assert.equal(artifact, `Agent: pan-coder\n\n${body}`)
+
+  // The probe is in flight, not waited on.
+  assert.equal(delegation.model_evidence?.result, 'pending')
+  assert.equal(typeof delegation.probe_pid, 'number')
+
+  const deadline = Date.now() + 30_000
+  let landed = delegation.model_evidence
+
+  while (Date.now() < deadline) {
+    landed =
+      getRunState(root, run.run_id).model_evidence?.find(
+        (item) => item.role === 'worker',
+      ) ?? landed
+
+    if (landed && landed.result !== 'pending') {
+      break
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 100))
+  }
+
+  assert.equal(landed?.effective_model, expected)
+  assert.notEqual(landed?.result, 'pending')
+
+  // The landed record is what clears the submit advisory for this invocation.
+  writeJson(
+    path.join(root, invocation.output.path),
+    makeOutput(root, invocation, stage),
+  )
+
+  const submitted = submitAsSupervisor(root, run.run_id, invocation.output.path)
+
+  assert.equal(
+    submitted.advisories.find((advisory) =>
+      advisory.message.includes('no usable worker model evidence'),
+    ),
+    undefined,
+  )
+  assert.ok(
+    submitted.state.stage_history.some(
+      (item) => item.invocation_id === invocation.invocation_id,
+    ),
+  )
+})
+
+test('preparing without an agent, and an external-executor stage, are unchanged', () => {
+  const root = createFixture()
+
+  writeFixtureCursorCatalog(root)
+
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title: 'Plain prepare run',
+  })
+  const prepared = prepareInvocation(root, run.run_id)
+  const invocation = prepared.invocation
+
+  assert.ok(invocation)
+  assert.equal(prepared.prepared_delegation, undefined)
+  assert.equal(
+    existsSync(
+      path.join(root, invocation.delegation?.delegation_artifact_path ?? ''),
+    ),
+    false,
+    'the supervisor still writes the delegation artifact itself',
+  )
+  assert.equal(
+    getRunState(root, run.run_id).model_evidence?.some(
+      (item) => item.role === 'worker',
+    ),
+    undefined,
+  )
+
+  // An external-executor stage authors its own evidence at `pan delegate`,
+  // so the option writes nothing and starts nothing there.
+  const externalRoot = createFixture()
+  const stubPath = installClaudeCodeFixture(externalRoot, ['planner'])
+  const external = withStub(stubPath, null, () =>
+    createRun(externalRoot, {
+      workflowSlug: 'planning',
+      requestPath: 'request.md',
+      title: 'External executor run',
+    }),
+  )
+  const externalPrepared = withStub(stubPath, null, () =>
+    prepareInvocation(externalRoot, external.run_id, { agent: 'pan-planner' }),
+  )
+
+  assert.ok(externalPrepared.invocation)
+  assert.equal(
+    externalPrepared.invocation.stage.persona_executor,
+    'claude-code',
+  )
+
+  const externalDelegation = externalPrepared.prepared_delegation
+
+  assert.ok(externalDelegation)
+  assert.equal(externalDelegation.artifact_path, null)
+  assert.match(externalDelegation.skipped ?? '', /claude-code/u)
+  assert.equal(externalDelegation.model_evidence, null)
+  assert.equal(externalDelegation.probe_pid, null)
+  assert.equal(
+    getRunState(externalRoot, external.run_id).model_evidence?.some(
+      (item) => item.role === 'worker',
+    ),
+    undefined,
+  )
 })
 
 test('a probe that never lands leaves the marker and the existing advisory', () => {

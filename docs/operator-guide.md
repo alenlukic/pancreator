@@ -1021,7 +1021,16 @@ same profile, workspace fingerprint, and repository-check configuration adopts
 that artifact instead of executing the profile, and says which artifact it
 adopted. A `pan repository-check <profile> --run <run-id>` that passes cleanly,
 times out on no command, and leaves the Git fingerprint unchanged records its
-own pass, so a later gate on the same command and fingerprint accepts it. And
+own pass, so a later gate on the same command and fingerprint accepts it. A
+verify-stage gate that accepts such a pass — a `fast` pass an agent ran from
+the command line during implementation, for instance — is behaving as ratified
+rather than skipping its own work. What makes the acceptance trustworthy is the
+harness's own observation, not the agent's report: the harness resolved and ran
+the identical command itself, saw a clean result with no timed-out command, and
+saw an identical Git workspace fingerprint immediately before and immediately
+after that run. A pass recorded for the profiled `full` profile also carries the
+suite profile that execution wrote, so the ship card compares real timings from
+the accepted execution. And
 when a source-allowed stage submits successfully into the read-only evidence
 stage, the harness starts one detached low-priority run of the ship entry
 gate's profile at the submitted fingerprint, recording the child's process id

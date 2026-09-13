@@ -69,6 +69,7 @@ import {
   isSelfDevelopmentInstallation,
 } from './project-config.js'
 import {
+  buildGateCacheEntry,
   gateCacheKey,
   gateCacheLookup,
   gateCacheStore,
@@ -2702,20 +2703,22 @@ function runShellCheck(
   // Cache only a clean pass. A baseline-relative pass credits this run's own
   // baseline.
   if (cacheKey && passed && commandSucceeded && !skipped && !timedOut) {
-    gateCacheStore(root, {
-      key: cacheKey,
-      criterion_id: criterion.id,
-      command,
-      workspace_fingerprint: workspaceFingerprint,
-      run_id: state.run_id,
-      cached_at: new Date().toISOString(),
-      evidence_path: path
-        .relative(root, evidencePath)
-        .split(path.sep)
-        .join('/'),
-      ...(repositoryResult ? { repository_result: repositoryResult } : {}),
-      ...(suiteProfilePath ? { suite_profile_path: suiteProfilePath } : {}),
-    })
+    gateCacheStore(
+      root,
+      buildGateCacheEntry({
+        key: cacheKey,
+        criterion_id: criterion.id,
+        command,
+        workspace_fingerprint: workspaceFingerprint,
+        run_id: state.run_id,
+        evidence_path: path
+          .relative(root, evidencePath)
+          .split(path.sep)
+          .join('/'),
+        ...(repositoryResult ? { repository_result: repositoryResult } : {}),
+        suite_profile_path: suiteProfilePath ?? null,
+      }),
+    )
   }
   const environmentBlocked = isEnvironmentBlockedDelta(
     stage,

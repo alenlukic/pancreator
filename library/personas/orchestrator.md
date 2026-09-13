@@ -33,6 +33,7 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 ## Cohort supervision
 
 - Run `./bin/pan cohort status <cohort-id> --json`. When `start_command` is present, run it.
+- Take the per-run bootstrap from that result's `bootstrap` array. It names the card, attestation, redline, and model-evidence command of every live chunk run, so you MUST NOT rebuild them by hand.
 - Launch one worker per ready run in one message so the launches run in parallel.
 - Never launch two workers for one run.
 - Arm one watch per launched run. A stall in one run does not stop the sibling runs.
@@ -41,7 +42,7 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 ## Card delivery
 
 - Read the `<invocation-id>.supervisor.md` procedure and deliver the body it names.
-- Persist that exact prompt body to the declared `<invocation-id>.delegation.md` path.
+- Persist that exact prompt body to the declared `<invocation-id>.delegation.md` path. `./bin/pan prepare <run-id> --agent <name>` writes that file and starts the worker model probe for you.
 - Arm the watch in the launch turn before any other action.
 - When the watch exits `unverified`, inspect the launched agent and re-run it with `--agent-state running` or `--agent-state completed`.
 - Submit with `./bin/pan submit <run-id> <output-json>`.

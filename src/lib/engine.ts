@@ -62,7 +62,10 @@ import {
 import { applyJsonMergePatch } from './json-merge-patch.js'
 import { keywordRunSuffixFrom, makeStageArtifactId } from './naming.js'
 import { resolveRunLayout } from './run-layout.js'
-import { buildSuiteProfileSummary } from './suite-profile.js'
+import {
+  buildSuiteProfileSummary,
+  recordSuiteProfileIndexEntry,
+} from './suite-profile.js'
 import {
   DELEGATION_UNOBSERVED,
   DELEGATION_WATCH_LATE,
@@ -360,6 +363,19 @@ export interface PrepareInvocationResult {
   invocation: Invocation | null
   /** Non-blocking observations about the run. None of them stops the run. */
   advisories: string[]
+  /** What `--agent` had the harness write and start, when it was passed. */
+  prepared_delegation?: PreparedDelegation
+}
+
+/** Delivery artifacts `pan prepare --agent <name>` owns for one invocation. */
+export interface PreparedDelegation {
+  /** The labeled delegation artifact, or null when none was written. */
+  artifact_path: string | null
+  /** Why no artifact was written, when none was. */
+  skipped: string | null
+  /** In-flight worker model evidence, or null when no probe started. */
+  model_evidence: RunModelEvidence | null
+  probe_pid: number | null
 }
 
 export interface OperationProgressOptions {
@@ -368,6 +384,12 @@ export interface OperationProgressOptions {
 
 interface PrepareInvocationOptions extends OperationProgressOptions {
   operatorArtifacts?: boolean
+  /**
+   * Named agent this invocation is delegated to. The harness then writes the
+   * labeled delegation artifact and starts the worker model probe, which the
+   * supervisor otherwise assembles and runs by hand.
+   */
+  agent?: string
 }
 
 export interface SubmitOutputResult {
@@ -2131,6 +2153,14 @@ function applyTransition(
     state.status = target
     state.current_stage = null
     state.pending_action = { type: 'none' }
+
+    // The next run in this workspace compares its own profile against this
+    // one. Recording the pointer here is what keeps that comparison from
+    // rereading every retained run state.
+    if (target === 'succeeded') {
+      recordSuiteProfileIndexEntry(root, state)
+    }
+
     return
   }
 
@@ -2385,6 +2415,47 @@ export function recordPendingWorkerModelProbe(
  * genuinely wedged holder rather than to pace normal contention.
  */
 const PROBE_MUTEX_WAIT_MS = 10_000
+
+/** What starting one detached worker model probe left behind. */
+export interface StartedWorkerModelProbe {
+  evidence: RunModelEvidence
+  /** Process id of the detached child, or null when the spawn gave none. */
+  probe_pid: number | null
+}
+
+/**
+ * Record the in-flight marker and start the detached child that answers it.
+ *
+ * The live call belongs to a child because only submission reads the answer,
+ * so neither the command that prepares a worker nor the one that probes it
+ * waits for Cursor. A child that never lands leaves the marker, which
+ * submission treats exactly as it treats an unavailable probe.
+ */
+export function startDetachedWorkerModelProbe(
+  root: string,
+  runId: string,
+  invocationId: string,
+): StartedWorkerModelProbe {
+  const evidence = recordPendingWorkerModelProbe(root, runId, invocationId)
+  const child = spawn(
+    process.execPath,
+    [
+      fileURLToPath(new URL('../cli.js', import.meta.url)),
+      'models',
+      '--probe',
+      '--await-probe',
+      '--run',
+      runId,
+      '--invocation',
+      invocationId,
+    ],
+    { cwd: root, detached: true, stdio: 'ignore' },
+  )
+
+  child.unref()
+
+  return { evidence, probe_pid: child.pid ?? null }
+}
 
 /**
  * Probe one active Cursor worker invocation and persist its effective model.
@@ -3417,6 +3488,101 @@ function stageFieldContract(
   }
 }
 
+/** Command that owns one output-validate scratch copy. */
+export type OutputValidateCaller = 'output-validate' | 'submission-mirror'
+
+/**
+ * Scratch copy an output-targeted validator reads when the bytes under
+ * validation are not at the declared output path.
+ *
+ * Validator handlers resolve a relative target against the harness root, so
+ * the value needs a real file at a resolvable path. Each caller owns its own
+ * subdirectory: two commands against one run would otherwise derive the same
+ * name and then remove the directory the other one is still reading.
+ */
+export function outputValidateScratchPath(
+  runId: string,
+  outputBasename: string,
+  caller: OutputValidateCaller,
+): string {
+  return path.posix.join(
+    'runtime',
+    'cache',
+    'output-validate',
+    runId,
+    caller,
+    path.basename(outputBasename),
+  )
+}
+
+/** Longest agent label the delegation contract accepts ahead of the body. */
+const DELEGATION_AGENT_NAME_MAX_LENGTH = 60
+
+/**
+ * Refuse an agent name the delegation contract would reject as a label.
+ *
+ * The artifact is compared against the delivered body after one permitted
+ * leading label line, so a multi-line or Markdown-structured name would turn
+ * a convenience into a submission failure the supervisor debugs later.
+ */
+export function assertDelegationAgentName(agent: string): void {
+  invariant(
+    agent.trim().length > 0 &&
+      agent.length <= DELEGATION_AGENT_NAME_MAX_LENGTH &&
+      !/[\n\r]/u.test(agent) &&
+      !/^\s*(?:[#>*\-+]|\d+[.)]|```|\|)/u.test(agent),
+    `--agent MUST be one short plain-text agent name of at most ` +
+      `${DELEGATION_AGENT_NAME_MAX_LENGTH} characters that starts no ` +
+      `Markdown structure; got '${agent}'.`,
+    { code: 'INVALID_ARGUMENT' },
+  )
+}
+
+/**
+ * Write the delegation evidence the supervisor would otherwise assemble by
+ * hand: the delivered prompt body under one `Agent:` label.
+ *
+ * Only referenced delivery is written here. An external-executor stage has
+ * the harness author the artifact at `pan delegate`, and an orchestrator
+ * stage delegates to nobody, so both keep today's behavior.
+ */
+function writeLabeledDelegationArtifact(
+  root: string,
+  invocation: Invocation,
+  agent: string,
+): { artifact_path: string | null; skipped: string | null } {
+  const delegation = invocation.delegation
+
+  if (!delegation) {
+    return {
+      artifact_path: null,
+      skipped: `Stage '${invocation.stage.slug}' delegates to no worker.`,
+    }
+  }
+
+  if (delegation.mode !== 'referenced' || !delegation.delivery_prompt_path) {
+    return {
+      artifact_path: null,
+      skipped:
+        `Stage '${invocation.stage.slug}' delivers its card through the ` +
+        `'${delegation.executor ?? 'external'}' executor, which authors its ` +
+        'own delegation evidence at `pan delegate`.',
+    }
+  }
+
+  const body = readText(resolveInside(root, delegation.delivery_prompt_path))
+
+  writeTextAtomic(
+    resolveInside(root, delegation.delegation_artifact_path),
+    `Agent: ${agent.trim()}\n\n${body}`,
+  )
+
+  return {
+    artifact_path: delegation.delegation_artifact_path,
+    skipped: null,
+  }
+}
+
 /**
  * The stage definition for the current attempt, with verdict-conditional
  * persona routing applied. A stage with `persona_by_verdict` reads the latest
@@ -4244,6 +4410,34 @@ export function prepareInvocation(
 
   if (deferred.registration) {
     registerPreparedInvocation(root, deferred.registration)
+  }
+
+  // The delegation artifact and the probe belong to the delivery the
+  // supervisor is about to perform, and both need the mutex this block no
+  // longer holds: the probe records its marker through its own transaction.
+  if (options.agent !== undefined && result.invocation) {
+    const written = writeLabeledDelegationArtifact(
+      root,
+      result.invocation,
+      options.agent,
+    )
+    const probe =
+      written.artifact_path === null
+        ? null
+        : startDetachedWorkerModelProbe(
+            root,
+            runId,
+            result.invocation.invocation_id,
+          )
+
+    return {
+      ...result,
+      prepared_delegation: {
+        ...written,
+        model_evidence: probe?.evidence ?? null,
+        probe_pid: probe?.probe_pid ?? null,
+      },
+    }
   }
 
   return result
@@ -7284,12 +7478,10 @@ export function validateOutputForSubmission(
     // Handlers resolve a relative target against the harness root, so the
     // scratch copy lives under runtime/cache and is removed afterwards.
     if (scratchOutput === null) {
-      scratchOutput = path.posix.join(
-        'runtime',
-        'cache',
-        'output-validate',
+      scratchOutput = outputValidateScratchPath(
         runId,
-        path.basename(invocation.output.path),
+        invocation.output.path,
+        'submission-mirror',
       )
       writeJsonAtomic(resolveInside(root, scratchOutput), submittedRecord)
     }
