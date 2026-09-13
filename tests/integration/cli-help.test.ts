@@ -11,7 +11,11 @@ import path from 'node:path'
 import test from 'node:test'
 import { setTimeout as delay } from 'node:timers/promises'
 
-import { getRunState, prepareInvocation } from '../../src/lib/engine.js'
+import {
+  createRun as createUnattestedRun,
+  getRunState,
+  prepareInvocation,
+} from '../../src/lib/engine.js'
 import { referenceContentSha256 } from '../../src/lib/io.js'
 import type { RunModelEvidence } from '../../src/lib/types.js'
 import {
@@ -264,6 +268,87 @@ test('context digest prints the audited content digest of a file inside the root
   assert.match(directory.stderr, /File does not exist: runtime/u)
   assert.doesNotMatch(directory.stderr, /EISDIR|READ_FAILED/u)
   assert.ok(!directory.stderr.includes(root), directory.stderr)
+})
+
+// An evidence worker owns no lifecycle command, so the only card render it
+// could reach was `pan prepare`, which delegates, mutates the run, and
+// refuses without a supervisor attestation.
+test('context card renders an invocation read-only while prepare stays gated', () => {
+  const root = createFixture()
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title: 'Read-only card run',
+  })
+  const invocation = prepareInvocation(root, run.run_id).invocation
+
+  assert.ok(invocation)
+
+  const before = readFileSync(
+    path.join(root, `runtime/logs/workflows/${run.run_id}/agent/state.json`),
+    'utf8',
+  )
+  const card = (...args: string[]) =>
+    spawnSync(process.execPath, [CLI, 'context', 'card', ...args], {
+      cwd: root,
+      encoding: 'utf8',
+    })
+  const rendered = card(run.run_id)
+
+  assert.equal(rendered.status, 0, rendered.stderr)
+  assert.ok(rendered.stdout.includes(invocation.invocation_id))
+  assert.match(rendered.stdout, /## 📥 Inputs/u)
+
+  const json = card(run.run_id, '--json')
+
+  assert.equal(json.status, 0, json.stderr)
+  assert.deepEqual(
+    (
+      JSON.parse(json.stdout) as {
+        run_id: string
+        invocation_id: string
+        source_path: string
+      }
+    ).invocation_id,
+    invocation.invocation_id,
+  )
+
+  // Read-only means read-only: no state write, and no delegation artifact.
+  assert.equal(
+    readFileSync(
+      path.join(root, `runtime/logs/workflows/${run.run_id}/agent/state.json`),
+      'utf8',
+    ),
+    before,
+  )
+  assert.equal(
+    existsSync(
+      path.join(root, invocation.delegation?.delegation_artifact_path ?? ''),
+    ),
+    false,
+  )
+
+  // The attestation duty belongs to the command that delegates. An
+  // unattested run still renders its card read-only and still refuses to
+  // prepare one.
+  const unattested = createUnattestedRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title: 'Unattested card run',
+  })
+  const gated = spawnSync(
+    process.execPath,
+    [CLI, 'prepare', unattested.run_id],
+    { cwd: root, encoding: 'utf8' },
+  )
+
+  assert.notEqual(gated.status, 0)
+  assert.match(gated.stderr, /SUPERVISOR_CARD_UNATTESTED/u)
+
+  const missing = card(run.run_id, '--invocation', 'no-such-id')
+
+  assert.notEqual(missing.status, 0)
+  assert.match(missing.stderr, /INVOCATION_NOT_FOUND/u)
 })
 
 test('the run-scoped model probe returns without waiting for the model', async () => {

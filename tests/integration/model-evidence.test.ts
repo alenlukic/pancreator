@@ -20,7 +20,9 @@ import {
   probeRunInvocationModel,
   recordPendingWorkerModelProbe,
   recordSupervisorModelEvidence,
+  setRunStage,
 } from '../../src/lib/engine.js'
+import { PanError } from '../../src/lib/errors.js'
 import { runCursorAgentJson } from '../../src/lib/executors/cursor-agent.js'
 import {
   expectedCursorModelForSpec,
@@ -256,26 +258,17 @@ test('supervisor evidence activates future worker-card enforcement', () => {
     /"type":"model_evidence_advisory"/u,
   )
 
-  const workerGap = submitted.advisories.find((advisory) =>
-    advisory.message.includes('no usable worker model evidence'),
-  )
-
-  assert.ok(workerGap)
-  assert.equal(workerGap.kind, 'model_evidence')
-  assert.equal(workerGap.source, 'submit')
-  assert.equal(workerGap.stage, 'plan')
-  assert.equal(workerGap.invocation_id, invocation.invocation_id)
-
+  // A marked invocation carries the labeled default its prepare recorded, so
+  // the missing probe is no longer a gap the operator has to read past.
   const submittedState = getRunState(root, run.run_id)
-
-  assert.deepEqual(submittedState.advisories, [
-    ...superseded.advisories,
-    ...submitted.advisories,
-  ])
-  assert.match(
-    getRunStatus(root, run.run_id) as string,
-    /- plan \(submit\): Invocation '.*' records no usable worker/u,
+  const workerRecord = submittedState.model_evidence?.find(
+    (item) => item.invocation_id === invocation.invocation_id,
   )
+
+  assert.equal(workerRecord?.result, 'default')
+  assert.equal(workerRecord?.effective_model, invocation.stage.model)
+  assert.deepEqual(submitted.advisories, [])
+  assert.deepEqual(submittedState.advisories, superseded.advisories)
 })
 
 test('a bare model spec accepts any resolved Cursor variant', () => {
@@ -595,10 +588,11 @@ test('preparing without an agent, and an external-executor stage, are unchanged'
   )
 })
 
-test('a probe that never lands leaves the marker and the existing advisory', () => {
+test('a probe that never lands settles into a labeled default at submit', () => {
   // The deferral must not invent a new failure mode. A marker with no answer
-  // behind it is exactly as usable as a probe that failed, and submission
-  // already knows what to say about that.
+  // behind it says nothing the run snapshot does not already say, so
+  // submission records the projected spec as a default instead of an
+  // advisory the supervisor can only ignore.
   const root = createFixture()
 
   writeFixtureCursorCatalog(root)
@@ -628,19 +622,189 @@ test('a probe that never lands leaves the marker and the existing advisory', () 
   writeCanonicalDelegation(root, invocation)
 
   const submitted = submitAsSupervisor(root, run.run_id, invocation.output.path)
-  const workerGap = submitted.advisories.find((advisory) =>
-    advisory.message.includes('no usable worker model evidence'),
+  const settled = getRunState(root, run.run_id).model_evidence?.find(
+    (item) => item.role === 'worker',
   )
 
-  // The stage still advances: this was always an advisory, not a gate.
-  assert.ok(workerGap)
-  assert.equal(workerGap.kind, 'model_evidence')
-  assert.equal(
-    getRunState(root, run.run_id).model_evidence?.find(
-      (item) => item.role === 'worker',
-    )?.result,
-    'pending',
+  assert.equal(settled?.result, 'default')
+  assert.equal(settled?.effective_model, invocation.stage.model)
+  assert.match(settled?.source ?? '', /the detached probe did not land/u)
+  assert.deepEqual(submitted.advisories, [])
+  assert.ok(
+    submitted.state.stage_history.some(
+      (item) => item.invocation_id === invocation.invocation_id,
+    ),
   )
+})
+
+/** A marked run standing at the verify stage, which declares two workers. */
+function verifyRun(root: string, title: string) {
+  writeFixtureCursorCatalog(root)
+
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title,
+  })
+
+  recordSupervisorModelEvidence(root, run.run_id, 'GPT 5.6 Sol', 'metadata')
+  setRunStage(root, run.run_id, 'verify', 'Verify the current workspace.')
+
+  const invocation = prepareInvocation(root, run.run_id).invocation
+
+  assert.ok(invocation)
+  assert.equal(invocation.stage.slug, 'verify')
+  assert.deepEqual(
+    (invocation.evidence_workers ?? []).map((worker) => worker.role),
+    ['review', 'qa'],
+  )
+
+  return { runId: run.run_id, invocation }
+}
+
+// A verify stage runs three models and recorded one. The stage verdict then
+// named a model that produced a third of the work behind it.
+test('every declared worker carries its own evidence, defaulted then probed', () => {
+  const root = createFixture()
+  const { runId, invocation } = verifyRun(root, 'Declared worker run')
+  const recordsFor = (state = getRunState(root, runId)) =>
+    (state.model_evidence ?? []).filter(
+      (item) => item.invocation_id === invocation.invocation_id,
+    )
+  const prepared = recordsFor()
+
+  // Prepare records what the run snapshot projects, for every declared spec.
+  assert.deepEqual(
+    prepared.map((item) => [item.role, item.worker_role ?? null, item.result]),
+    [
+      ['worker', null, 'default'],
+      ['evidence_worker', 'review', 'default'],
+      ['evidence_worker', 'qa', 'default'],
+    ],
+  )
+  assert.deepEqual(
+    prepared.map((item) => item.effective_model),
+    prepared.map((item) => item.declared_spec),
+  )
+  assert.equal(
+    new Set(prepared.map((item) => item.evidence_path)).size,
+    3,
+    'each role owns its own evidence file',
+  )
+
+  // A probe answers each declared role, not the stage persona alone.
+  const probed = withFakeCursorAgent(root, 'Probed Variant', () =>
+    probeRunInvocationModel(root, runId, invocation.invocation_id),
+  )
+
+  assert.deepEqual(
+    probed.evidence_workers.map((item) => item.worker_role),
+    ['review', 'qa'],
+  )
+  assert.deepEqual(
+    recordsFor().map((item) => [
+      item.worker_role ?? null,
+      item.effective_model,
+      item.source,
+    ]),
+    [
+      [null, 'Probed Variant', 'cursor-agent system/init event'],
+      ['review', 'Probed Variant', 'cursor-agent system/init event'],
+      ['qa', 'Probed Variant', 'cursor-agent system/init event'],
+    ],
+  )
+})
+
+test('a worker with no evidence earns a named advisory; a defaulted one earns none', () => {
+  const root = createFixture()
+  const { runId, invocation } = verifyRun(root, 'Unrecorded worker run')
+  const state = getRunState(root, runId)
+  const runStatePath = statePath(root, runId)
+
+  // The gap this criterion names: a declared worker whose evidence never
+  // reached run state at all.
+  writeJson(runStatePath, {
+    ...state,
+    model_evidence: (state.model_evidence ?? []).filter(
+      (item) => item.worker_role !== 'review',
+    ),
+  })
+
+  const stage = stageBySlug(loadWorkflow(root, 'delivery'), 'verify')
+
+  writeJson(
+    path.join(root, invocation.output.path),
+    makeOutput(root, invocation, stage, 'success', getRunState(root, runId)),
+  )
+  writeCanonicalDelegation(root, invocation)
+
+  const submitted = submitAsSupervisor(root, runId, invocation.output.path)
+  const gap = submitted.advisories.filter(
+    (advisory) => advisory.kind === 'model_evidence',
+  )
+
+  assert.equal(gap.length, 1, 'only the unrecorded role is a gap')
+  assert.match(gap[0]?.message ?? '', /evidence worker role 'review'/u)
+  assert.ok(
+    submitted.state.stage_history.some(
+      (item) => item.invocation_id === invocation.invocation_id,
+    ),
+    'a missing probe never stops a submission',
+  )
+})
+
+test('submission refuses evidence that contradicts the run snapshot', () => {
+  const root = createFixture()
+
+  writeFixtureCursorCatalog(root)
+
+  const run = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title: 'Contradicted model run',
+  })
+
+  recordSupervisorModelEvidence(root, run.run_id, 'GPT 5.6 Sol', 'metadata')
+
+  const invocation = prepareInvocation(root, run.run_id).invocation
+
+  assert.ok(invocation)
+
+  const probed = withFakeCursorAgent(root, 'Unexpected Model', () =>
+    probeRunInvocationModel(root, run.run_id, invocation.invocation_id),
+  )
+
+  assert.equal(probed.result, 'mismatch')
+
+  const stage = stageBySlug(
+    loadWorkflow(root, 'delivery'),
+    invocation.stage.slug,
+  )
+
+  writeJson(
+    path.join(root, invocation.output.path),
+    makeOutput(root, invocation, stage),
+  )
+  writeCanonicalDelegation(root, invocation)
+
+  // The stage ran on a model this run did not declare, so its verdict is not
+  // the verdict the run asked for.
+  assert.throws(
+    () => submitAsSupervisor(root, run.run_id, invocation.output.path),
+    (error: unknown) =>
+      error instanceof PanError && error.code === 'MODEL_EVIDENCE_MISMATCH',
+  )
+
+  // A repaired probe clears the refusal without an operator override.
+  const expected = expectedCursorModelForSpec(root, invocation.stage.model)
+
+  assert.ok(expected)
+  withFakeCursorAgent(root, expected, () =>
+    probeRunInvocationModel(root, run.run_id, invocation.invocation_id),
+  )
+
+  const submitted = submitAsSupervisor(root, run.run_id, invocation.output.path)
+
   assert.ok(
     submitted.state.stage_history.some(
       (item) => item.invocation_id === invocation.invocation_id,

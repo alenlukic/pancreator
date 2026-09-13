@@ -16,7 +16,12 @@ import {
   type HarnessRepairCategory,
 } from '../governance/harness-repair-categories.js'
 import { loadRegistry } from '../requirements/registry.js'
-import { hasHeading, operatorLeadPresent, parseMarkdown } from '../markdown.js'
+import {
+  hasHeading,
+  operatorLead,
+  operatorLeadPresent,
+  parseMarkdown,
+} from '../markdown.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
 import { activeOperatorGateWaivers } from '../waivers.js'
 import { readProjectConfig } from '../project-config.js'
@@ -2042,12 +2047,104 @@ export function validatePlanTrace(input: HandlerInput): HandlerResult {
     }
   }
 
+  issues.push(...criterionProducerIssues(criteria))
   issues.push(
     ...openQuestionDispositionIssues(input, data, criteria, productSpec),
   )
   issues.push(...verificationRecommendationIssues(data, 'plan'))
 
   return { status: issues.length === 0 ? 'passed' : 'failed', issues }
+}
+
+/**
+ * Workflow lifecycle commands. Only the supervisor runs one, so a criterion
+ * whose evidence comes out of one of these names an artifact its own graders
+ * are forbidden to create.
+ */
+const LIFECYCLE_COMMANDS = [
+  'pan init',
+  'pan prepare',
+  'pan delegate',
+  'pan submit',
+  'pan assess',
+  'pan decide',
+  'pan pause',
+  'pan resume',
+  'pan set-stage',
+  'pan waive-gate',
+  'pan abort',
+  'pan cohort',
+  'pan governance attest-supervisor',
+]
+
+/**
+ * Evidence an assigned worker may produce for itself: a test, or a read-only
+ * command that changes no run state. A criterion that names one of these has
+ * a legitimate producer even when it also describes a lifecycle command.
+ */
+const WORKER_PRODUCIBLE_EVIDENCE = [
+  'tests/',
+  'pan context card',
+  'pan context digest',
+  'pan repository-check',
+  'pan requirements run',
+  'pan tests',
+  'pan validate',
+  'pan status',
+  'npm test',
+]
+
+/**
+ * Refuse an acceptance criterion whose verification names a lifecycle command
+ * and no producer the assigned workers may run.
+ *
+ * Evidence workers and the verifier are barred from lifecycle commands, and
+ * `pan prepare` additionally refuses an unattested supervisor, so a criterion
+ * proved only that way is unmeetable as written. `pan context card` is the
+ * read-only render that gives a card-shaped criterion a legitimate producer.
+ */
+function criterionProducerIssues(criteria: unknown[]): HandlerResult['issues'] {
+  const issues: HandlerResult['issues'] = []
+
+  for (const item of criteria) {
+    if (!isRecord(item) || typeof item.id !== 'string') {
+      continue
+    }
+
+    const verification = isRecord(item.verification) ? item.verification : null
+
+    if (!verification) {
+      continue
+    }
+
+    const text = ['method', 'expected']
+      .map((field) => verification[field])
+      .filter((entry): entry is string => typeof entry === 'string')
+      .join('\n')
+      .toLowerCase()
+
+    if (WORKER_PRODUCIBLE_EVIDENCE.some((token) => text.includes(token))) {
+      continue
+    }
+
+    const lifecycle = LIFECYCLE_COMMANDS.find((command) =>
+      text.includes(command),
+    )
+
+    if (lifecycle) {
+      issues.push(
+        issue(
+          'plan.criterion_unproducible',
+          `Criterion ${item.id} is verified by \`${lifecycle}\`, a lifecycle ` +
+            'command no assigned evidence worker or verifier may run; name ' +
+            'a producer those workers may run, such as `pan context card` ' +
+            'for a rendered card or a test path',
+        ),
+      )
+    }
+  }
+
+  return issues
 }
 
 /** Leading identifier of an inherited open question, e.g. `Q2` in `Q2: ...`. */
@@ -3830,8 +3927,7 @@ const REPAIR_CATEGORY_LINE = /^\*\*Category:\*\*\s*(.+?)\s*\(`([^`]+)`\)\s*$/mu
 function declaredRepairCategory(
   content: string,
 ): { displayName: string; slug: string } | null {
-  const lead = content.split('\n').slice(0, 15).join('\n')
-  const match = REPAIR_CATEGORY_LINE.exec(lead)
+  const match = REPAIR_CATEGORY_LINE.exec(operatorLead(content))
 
   return match ? { displayName: match[1], slug: match[2] } : null
 }
@@ -4111,13 +4207,21 @@ export function validateHarnessRepairIntake(
   // intake cannot honestly recommend a workflow run. An unresolved category
   // already fails the document, so no route is assumed for it.
   if (category) {
-    const nextActionLower = topLevelSection(
+    const nextActionSection = topLevelSection(
       content,
       /^##\s+Recommended next action\s*$/imu,
     ).toLowerCase()
+    // The required tokens stay scoped to the section that owns the full
+    // contract: the lead is a summary, so requiring them there is over-strict.
+    // A forbidden token is refused wherever a reader can act on it, and the
+    // lead's next-action field is the first one a reader acts on.
+    const forbiddenRegions: Array<{ label: string; text: string }> = [
+      { label: 'Recommended next action', text: nextActionSection },
+      { label: 'operator lead', text: operatorLead(content).toLowerCase() },
+    ]
 
     for (const token of category.next_action_contract.required_tokens) {
-      if (!nextActionLower.includes(token.toLowerCase())) {
+      if (!nextActionSection.includes(token.toLowerCase())) {
         issues.push(
           issue(
             'repair.next_action',
@@ -4128,13 +4232,15 @@ export function validateHarnessRepairIntake(
     }
 
     for (const token of category.next_action_contract.forbidden_tokens) {
-      if (nextActionLower.includes(token.toLowerCase())) {
-        issues.push(
-          issue(
-            'repair.next_action_forbidden',
-            `Recommended next action for the ${category.display_name} category MUST NOT recommend ${token}`,
-          ),
-        )
+      for (const region of forbiddenRegions) {
+        if (region.text.includes(token.toLowerCase())) {
+          issues.push(
+            issue(
+              'repair.next_action_forbidden',
+              `The ${region.label} of a ${category.display_name} intake MUST NOT recommend ${token}`,
+            ),
+          )
+        }
       }
     }
   }

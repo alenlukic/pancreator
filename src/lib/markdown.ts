@@ -74,8 +74,16 @@ export function hasHeading(
   )
 }
 
+/**
+ * The operator lead of a document: the opening region that carries the state,
+ * outcome, blocker, and next-action fields a reader acts on first.
+ */
+export function operatorLead(content: string): string {
+  return content.split('\n').slice(0, 15).join('\n')
+}
+
 export function operatorLeadPresent(content: string): boolean {
-  const firstLines = content.split('\n').slice(0, 15).join('\n').toLowerCase()
+  const firstLines = operatorLead(content).toLowerCase()
 
   return (
     (firstLines.includes('**state:**') || firstLines.includes('state:')) &&
