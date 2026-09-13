@@ -120,6 +120,10 @@
     {
       "version": "5.23.0",
       "commit": "4cfd4f630520c55d1c15c095d8caf81d3667985d"
+    },
+    {
+      "version": "5.24.0",
+      "commit": "1f6ab12fc284d39c4efac635475120b5cc734d83"
     }
   ]
 }
