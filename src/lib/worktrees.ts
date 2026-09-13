@@ -8,7 +8,10 @@ import {
   gitBranchNameIsValid,
   gitConflictedPaths,
   gitCurrentBranch,
+  gitDefaultBranch,
+  gitDeleteBranch,
   gitHead,
+  gitIsAncestor,
   gitMergeAbort,
   gitMergeBranch,
   gitRevParse,
@@ -54,6 +57,8 @@ export interface WorktreeRecord extends ManagedWorktreeReference {
   created_from: string
   description: string
   created_at: string
+  /** Present when the harness took over a worktree it did not create. */
+  adopted_at?: string
   /**
    * Absolute path of the Git repository this worktree belongs to, when it is
    * not the configured workspace repository. A cohort fanned out from a plan
@@ -71,6 +76,8 @@ export interface WorktreeIndex {
 
 export interface ListedWorktree extends WorktreeRecord {
   registered: boolean
+  /** The record names a repository that no longer resolves anywhere. */
+  orphaned: boolean
   current_commit: string | null
   dirty: boolean | null
 }
@@ -89,8 +96,12 @@ export interface CreateWorktreeOptions {
 export interface RemoveWorktreeResult {
   name: string
   path: string
-  /** Branch deletion stays operator-owned, so removal always keeps it. */
-  kept_branch: string
+  /** Present unless `--delete-branch` deleted the branch. */
+  kept_branch?: string
+  /** Present when `--delete-branch` deleted a merged branch. */
+  deleted_branch?: string
+  /** Why a requested branch deletion did not happen. */
+  branch_deletion_refused?: string
   removed_worktree: boolean
   pruned_index_entry: boolean
 }
@@ -213,6 +224,93 @@ function handoffSelfDevelopmentLocalConfig(
   }
 
   copyFileSync(sourcePath, path.join(worktreePath, configName))
+}
+
+/** One thing a worktree needs before a run can work in it. */
+export interface WorktreeReadinessGap {
+  /** `setup_output` names a path the setup commands produce. */
+  kind: 'setup_output' | 'configuration_handoff'
+  /** Worktree-relative path of the missing item. */
+  path: string
+  reason: string
+}
+
+export interface WorktreeReadinessReport {
+  workspace: string
+  ready: boolean
+  /** Every item readiness looked for, in the order it looked. */
+  checked: string[]
+  /**
+   * The declared setup outputs alone. An installation that declares none
+   * cannot have its provisioning judged, so a caller that would skip work on
+   * a ready worktree tests this rather than `ready`.
+   */
+  declared_setup_paths: string[]
+  gaps: WorktreeReadinessGap[]
+}
+
+/**
+ * Whether a worktree holds what a run needs before its first prepare.
+ *
+ * Provisioning used to be a side effect of one creation path, so a worktree
+ * created with no configured setup commands, or created by hand outside the
+ * harness, only revealed the gap at the first gate as a failing build. The
+ * declared readiness paths and the local configuration handoff are the two
+ * things creation produces, so they are the two things readiness asserts.
+ */
+export function worktreeReadiness(
+  root: string,
+  worktreePath: string,
+): WorktreeReadinessReport {
+  const absolute = path.resolve(worktreePath)
+  const gaps: WorktreeReadinessGap[] = []
+  const checked: string[] = []
+  const declaredSetupPaths = worktreesConfig(root).readiness_paths
+
+  for (const relative of declaredSetupPaths) {
+    checked.push(relative)
+
+    if (!fileExists(path.join(absolute, relative))) {
+      gaps.push({
+        kind: 'setup_output',
+        path: relative,
+        reason: `The worktree setup commands produce '${relative}', and it is absent.`,
+      })
+    }
+  }
+
+  const handoff = requiredConfigurationHandoff(root)
+
+  if (handoff) {
+    checked.push(handoff)
+
+    if (!fileExists(path.join(absolute, handoff))) {
+      gaps.push({
+        kind: 'configuration_handoff',
+        path: handoff,
+        reason: `The self-development local configuration '${handoff}' was not handed off to the worktree.`,
+      })
+    }
+  }
+
+  return {
+    workspace: toRepoRelative(root, absolute),
+    ready: gaps.length === 0,
+    checked,
+    declared_setup_paths: declaredSetupPaths,
+    gaps,
+  }
+}
+
+/** Local configuration file a worktree must receive, when one exists. */
+function requiredConfigurationHandoff(root: string): string | null {
+  if (!isSelfDevelopmentInstallation(root)) {
+    return null
+  }
+
+  const configName = localConfigName(root)
+
+  return fileExists(path.join(root, configName)) ? configName : null
 }
 
 function parseWorktreeRecord(value: unknown, source: string): WorktreeRecord {
@@ -348,9 +446,43 @@ export function resolveRepositoryRoot(directory: string): string {
   return gitToplevel(absolute)
 }
 
-/** Repository one recorded worktree belongs to. */
+/**
+ * Repository one recorded worktree belongs to.
+ *
+ * `repository_root` points at a directory with its own lifecycle, and a
+ * cleanup that removes the pointed-at worktree invalidates every record that
+ * names it. An unresolvable pointer is not proof that this worktree is gone,
+ * so the workspace repository is tried before anything concludes absence.
+ * `kind` names which answer the caller got.
+ */
+function resolveRecordRepository(
+  root: string,
+  record: WorktreeRecord,
+): {
+  repositoryRoot: string | null
+  kind: 'recorded' | 'fallback' | 'orphaned'
+} {
+  if (!record.repository_root) {
+    return { repositoryRoot: workspaceRepositoryRoot(root), kind: 'recorded' }
+  }
+
+  if (isGitRepository(record.repository_root)) {
+    return { repositoryRoot: record.repository_root, kind: 'recorded' }
+  }
+
+  const workspace = workspaceRepositoryRoot(root)
+  const worktreePath = absoluteWorktreePath(root, record)
+
+  return isPresent(registeredWorktreePaths(workspace), worktreePath)
+    ? { repositoryRoot: workspace, kind: 'fallback' }
+    : { repositoryRoot: null, kind: 'orphaned' }
+}
+
+/** Repository one recorded worktree belongs to, falling back to the workspace. */
 function recordRepositoryRoot(root: string, record: WorktreeRecord): string {
-  return record.repository_root ?? workspaceRepositoryRoot(root)
+  const resolved = resolveRecordRepository(root, record)
+
+  return resolved.repositoryRoot ?? workspaceRepositoryRoot(root)
 }
 
 /**
@@ -502,22 +634,10 @@ function addWorktree(
     path.join(newWorktreeRoot(root), name),
   )
 
-  invariant(
-    !fileExists(worktreePath),
-    `Worktree path already exists: ${toRepoRelative(root, worktreePath)}`,
-    { code: 'WORKTREE_PATH_EXISTS' },
-  )
-
   const configuredRepositoryRoot = workspaceRepositoryRoot(root)
   const repositoryRoot = options.repositoryRoot
     ? resolveRepositoryRoot(options.repositoryRoot)
     : configuredRepositoryRoot
-
-  invariant(
-    !registeredWorktreePaths(repositoryRoot).has(path.resolve(worktreePath)),
-    `Git already registers worktree path: ${worktreePath}`,
-    { code: 'WORKTREE_PATH_EXISTS' },
-  )
 
   const branch = name
 
@@ -526,17 +646,42 @@ function addWorktree(
     `Configured worktree branch is invalid: ${branch}`,
     { code: 'INVALID_WORKTREE_BRANCH' },
   )
+
+  const adoptable = adoptableWorktree(repositoryRoot, worktreePath, branch)
+
   invariant(
-    !gitBranchExists(repositoryRoot, branch),
+    adoptable || !fileExists(worktreePath),
+    `Worktree path already exists: ${toRepoRelative(root, worktreePath)}`,
+    { code: 'WORKTREE_PATH_EXISTS' },
+  )
+  invariant(
+    adoptable ||
+      !registeredWorktreePaths(repositoryRoot).has(path.resolve(worktreePath)),
+    `Git already registers worktree path: ${worktreePath}`,
+    { code: 'WORKTREE_PATH_EXISTS' },
+  )
+  invariant(
+    adoptable || !gitBranchExists(repositoryRoot, branch),
     `Worktree branch already exists: ${branch}. Choose another worktree ` +
       'name, or delete that branch yourself first.',
     { code: 'WORKTREE_BRANCH_EXISTS' },
   )
 
-  const commit = sourceCommit(root, repositoryRoot, index, options.from)
+  const adoptedHead = adoptable ? gitHead(worktreePath) : null
 
-  ensureDir(path.dirname(worktreePath))
-  gitWorktreeAddOnBranch(repositoryRoot, worktreePath, branch, commit)
+  invariant(
+    !adoptable || adoptedHead,
+    `Worktree '${name}' is registered with Git but has no commit to adopt.`,
+    { code: 'WORKTREE_BRANCH_NOT_FOUND' },
+  )
+
+  const commit =
+    adoptedHead ?? sourceCommit(root, repositoryRoot, index, options.from)
+
+  if (!adoptable) {
+    ensureDir(path.dirname(worktreePath))
+    gitWorktreeAddOnBranch(repositoryRoot, worktreePath, branch, commit)
+  }
 
   const description = options.description?.trim() || name
   const record: WorktreeRecord = {
@@ -546,6 +691,7 @@ function addWorktree(
     created_from: commit,
     description,
     created_at: now(),
+    ...(adoptable ? { adopted_at: now() } : {}),
     ...(path.resolve(repositoryRoot) !== path.resolve(configuredRepositoryRoot)
       ? { repository_root: repositoryRoot }
       : {}),
@@ -567,6 +713,34 @@ function addWorktree(
   return record
 }
 
+/**
+ * Whether an existing path is a worktree the harness can take over.
+ *
+ * An operator who made a worktree with plain `git worktree add` met the
+ * refusal that protects an unrelated path, with no route to the repair. A
+ * path Git already registers, on the branch this name maps to, is that
+ * operator's worktree and nothing else: indexing it, handing off the local
+ * configuration, and running the setup commands is exactly what creation
+ * would have produced. Every other existing path still refuses.
+ */
+function adoptableWorktree(
+  repositoryRoot: string,
+  worktreePath: string,
+  branch: string,
+): boolean {
+  if (!fileExists(worktreePath)) {
+    return false
+  }
+
+  if (
+    !registeredWorktreePaths(repositoryRoot).has(path.resolve(worktreePath))
+  ) {
+    return false
+  }
+
+  return gitCurrentBranch(worktreePath) === branch
+}
+
 export function listWorktrees(root: string): ListedWorktree[] {
   const registrations = new Map<string, Set<string>>()
   const registeredFor = (repositoryRoot: string): Set<string> => {
@@ -584,14 +758,17 @@ export function listWorktrees(root: string): ListedWorktree[] {
 
   return readWorktreeIndex(root).worktrees.map((record) => {
     const worktreePath = absoluteWorktreePath(root, record)
-    const present = isPresent(
-      registeredFor(recordRepositoryRoot(root, record)),
-      worktreePath,
-    )
+    const resolved = resolveRecordRepository(root, record)
+    const present =
+      resolved.repositoryRoot !== null &&
+      isPresent(registeredFor(resolved.repositoryRoot), worktreePath)
 
     return {
       ...record,
       registered: present,
+      // A record that resolves against no repository is orphaned, which is a
+      // different state from a worktree Git no longer registers.
+      orphaned: resolved.kind === 'orphaned',
       current_commit: present ? gitHead(worktreePath) : null,
       dirty: present ? gitWorktreeIsDirty(worktreePath) : null,
     }
@@ -699,29 +876,46 @@ export function resolveWorkspacePathOrWorktree(
 export function removeWorktree(
   root: string,
   name: string,
-  options: { force?: boolean } = {},
+  options: { force?: boolean; deleteBranch?: boolean } = {},
 ): RemoveWorktreeResult {
   return withOperationMutex(worktreeMutexPath(root), () => {
     const index = readWorktreeIndex(root)
     const record = recordByName(index, name)
     const worktreePath = absoluteWorktreePath(root, record)
-    const repositoryRoot = recordRepositoryRoot(root, record)
-    const present = fileExists(repositoryRoot)
-      ? isPresent(registeredWorktreePaths(repositoryRoot), worktreePath)
-      : false
+    const resolved = resolveRecordRepository(root, record)
+    const repositoryRoot = resolved.repositoryRoot
+    const present =
+      repositoryRoot !== null &&
+      isPresent(registeredWorktreePaths(repositoryRoot), worktreePath)
 
+    // Presence is resolved and the dirty refusal fires before any mutation,
+    // so a removal that removes nothing leaves the record for the retry.
     invariant(
       !present || options.force || !gitWorktreeIsDirty(worktreePath),
       `WARNING: worktree '${name}' has uncommitted work in ${record.path}. ` +
         'Removing it discards that work. Pass --force to remove it anyway.',
       { code: 'WORKTREE_DIRTY' },
     )
+    invariant(
+      present || !fileExists(worktreePath),
+      `Worktree '${name}' exists at ${record.path} but no repository ` +
+        'registers it, so removal would drop the record for a directory ' +
+        'that stays on disk. Remove the directory yourself, or repair the ' +
+        'record with `./bin/pan worktree resolve ' +
+        `${name}\`.`,
+      { code: 'WORKTREE_UNRESOLVED' },
+    )
 
-    if (present) {
+    if (present && repositoryRoot) {
       gitWorktreeRemove(repositoryRoot, worktreePath, options.force ?? false)
-    } else if (fileExists(repositoryRoot)) {
+    } else if (repositoryRoot) {
       gitWorktreePrune(repositoryRoot)
     }
+
+    const branchDeletion =
+      options.deleteBranch && repositoryRoot
+        ? deleteMergedBranch(repositoryRoot, record.branch)
+        : null
 
     persistWorktreeIndex(root, {
       schema_version: 1,
@@ -731,11 +925,57 @@ export function removeWorktree(
     return {
       name,
       path: record.path,
-      kept_branch: record.branch,
+      ...(branchDeletion?.deleted
+        ? { deleted_branch: record.branch }
+        : { kept_branch: record.branch }),
+      ...(branchDeletion && !branchDeletion.deleted
+        ? { branch_deletion_refused: branchDeletion.reason }
+        : {}),
       removed_worktree: present,
       pruned_index_entry: !present,
     }
   })
+}
+
+/**
+ * Delete a worktree branch once the default branch already holds its history.
+ *
+ * Every removal in the recorded cleanup returned `kept_branch` and cost a
+ * separate `git branch -d`. Deletion stays bounded to a branch that is an
+ * ancestor of the default branch, so unmerged work is never discarded here.
+ */
+function deleteMergedBranch(
+  repositoryRoot: string,
+  branch: string,
+): { deleted: boolean; reason: string } {
+  if (!gitBranchExists(repositoryRoot, branch)) {
+    return { deleted: false, reason: `Branch '${branch}' does not exist.` }
+  }
+
+  const defaultBranch = gitDefaultBranch(repositoryRoot)
+
+  if (!defaultBranch) {
+    return {
+      deleted: false,
+      reason: 'The repository has no resolvable default branch.',
+    }
+  }
+
+  if (!gitIsAncestor(repositoryRoot, branch, defaultBranch)) {
+    return {
+      deleted: false,
+      reason:
+        `Branch '${branch}' is not an ancestor of '${defaultBranch}', so it ` +
+        'carries work the default branch does not hold.',
+    }
+  }
+
+  const result = gitDeleteBranch(repositoryRoot, branch)
+
+  return {
+    deleted: result.deleted,
+    reason: result.reason ?? `Branch '${branch}' was deleted.`,
+  }
 }
 
 function reconcileEvidencePath(root: string): {

@@ -24,9 +24,12 @@ import type {
   SuiteProfileFixtureCost,
   SuiteProfileTest,
 } from '../../src/lib/suite-profile.js'
+import {
+  fixtureSidecarDirectory,
+  fixtureSidecarPrefix,
+} from '../../src/lib/suite-profile-env.js'
 
 const SLOWEST_TEST_LIMIT = 15
-const FIXTURE_SIDECAR_SUFFIX = '.fixture-profile.'
 
 interface FailureData {
   name: string
@@ -93,8 +96,10 @@ function laneOf(files: string[]): string {
 export function readFixtureCost(
   profileTarget: string,
 ): SuiteProfileFixtureCost | null {
-  const directory = path.dirname(profileTarget)
-  const prefix = `${path.basename(profileTarget)}${FIXTURE_SIDECAR_SUFFIX}`
+  // The sidecars are merged out of the runner's scratch tree, so the durable
+  // profile target receives only the merged document.
+  const directory = fixtureSidecarDirectory()
+  const prefix = `${fixtureSidecarPrefix(profileTarget)}.`
   let sidecars: string[]
 
   try {

@@ -60,6 +60,7 @@ import {
 import { claudeCodeVersionPreflight } from './lib/executors/claude-code.js'
 import { browserReadiness } from './lib/browser-readiness.js'
 import { errorMessage, PanError } from './lib/errors.js'
+import { assertArgvElementsWithinLimit } from './lib/argv-limits.js'
 import {
   configuredWorkspaceRoot,
   harnessConfigName,
@@ -108,7 +109,9 @@ import {
   loadPipelineConfig,
   loadPipelineConfigSnapshot,
   parsePipelineConfig,
+  pipelineConfigPersonaMappings,
 } from './lib/pipeline-config.js'
+import { cursorCatalogStatus } from './lib/executors/cursor-catalog.js'
 import { migratePipelineOverrides } from './lib/pipeline-config-migration.js'
 import { loadOperatorInvolvementFile } from './lib/operator-involvement.js'
 import { loadVerificationFile } from './lib/verification.js'
@@ -123,6 +126,7 @@ import {
   referenceContentSha256,
   resolveInside,
   sha256,
+  toRepoRelative,
   writeJsonAtomic,
   writeTextAtomic,
 } from './lib/io.js'
@@ -247,13 +251,15 @@ export const HELP_BODY = `Usage:
       Record that a foreground launch returned, with the launch and return wall-clock times, at agent/evidence/<invocation-id>-foreground-return.json. The launch time defaults to the delegation artifact's modification time. pan submit requires this record or a completed watch record for every Cursor worker invocation and fails with DELEGATION_UNOBSERVED otherwise.
   pan submit <run-id> <output-json> [--worktree <name>]
   pan assess <run-id> <assessment-json>
-  pan decide <run-id> <approve|reject|revise> [--note <text>] [--stage <stage-slug>]
-  pan pause <run-id> [--note <text>]
+  pan decide <run-id> <approve|reject|revise> [--note <text> | --note-file <path>] [--stage <stage-slug>]
+  pan pause <run-id> [--note <text> | --note-file <path>]
   pan attribute <run-id> --note <directive> [--role supervisor|operator] [--paths <path[,path...]>]
       Record an operator directive executed against the workspace outside a stage. The record names the acting role, the directive, the changed paths, and the time, and the next invocation card lists those paths as already attributed. Without --paths the harness attributes every dirty tracked path of the workspace.
-  pan resume <run-id> [--worktree <name>] [--stage <stage-slug>] [--note <text>]
-  pan set-stage <run-id> --stage <stage-slug> --note <reason>
-  pan waive-gate <run-id> --note <directive> [--stage <stage-slug>] [--to <stage-slug>] [--criteria <id[,id...]>] [--defer <AC-id[,AC-id...]> --spotfix]
+  pan resume <run-id> [--worktree <name>] [--stage <stage-slug>] [--note <text> | --note-file <path>]
+  pan set-stage <run-id> --stage <stage-slug> (--note <reason> | --note-file <path>)
+  pan waive-gate <run-id> (--note <directive> | --note-file <path>) [--stage <stage-slug>] [--to <stage-slug>] [--criteria <id[,id...]>] [--defer <AC-id[,AC-id...]> --spotfix] [--adopt-plan-from <run-id>]
+      --adopt-plan-from records that this run adopts the named run's ratified plan. The named run's worktree claim moves to this run and both run states record the move, so release preparation proceeds with the subsumed run still live and no manual abort.
+      Every argument the CLI passes through argv is refused at or above 900 bytes with ARGV_ELEMENT_TOO_LARGE, naming the option and the byte count, because endpoint security SIGKILLs a process whose argv element reaches 1000 bytes before Node starts. --note-file reads the note from a file, so a full decision packet reaches the record. decide, pause, resume, set-stage, and waive-gate all accept it.
   pan abort <run-id> [--note <text>]
   pan hypervisor start|run|tick|status|stop [--json]
   pan away status|evaluate|apply <run-id> [--decision <id>] [--json]
@@ -267,8 +273,9 @@ export const HELP_BODY = `Usage:
   pan conform scan|checkpoint [--since <ref> | --all] [--worktree <name>] [--json]
   pan style scan|checkpoint [--since <ref> | --all] [--worktree <name>] [--json]
       Report the countable code style issues of the workspace source a detected language owns. checkpoint inspects the complete eligible set, returns blocked without writing while an editable file still has issues, and writes runtime/cache/style.json once the set is clean. Both subcommands exit 1 on a non-passing status. npm run lint stays authoritative for mechanical style.
-  pan tests impacted [--changed <ref> | --staged | --worktree-dirty] [--file <path>]... [--include <glob>]... [--depth <n>] [--list] [--json] [--advisory-ratio <0..1>]
+  pan tests impacted [--worktree <name>] [--changed <ref> | --staged | --worktree-dirty] [--file <path>]... [--include <glob>]... [--depth <n>] [--list] [--json] [--advisory-ratio <0..1>]
       Self-development only. Select and run the lane tests whose import closure reaches the changed files. The default change set is the dirty working tree. An iteration aid, never a gate.
+      --worktree runs the command from the installation root and selects against that worktree's tree, the same workspace selection pan repository-check accepts. Without it the installation root is the workspace, as before. The run record stays at the installation root either way.
   pan release sync --worktree <name> --message <message> [--run <run-id>] [--json]
   pan release continue --worktree <name> [--run <run-id>] [--json]
   pan release finalize --worktree <name> --fetched-main <commit> [--run <run-id>] [--json]
@@ -283,7 +290,8 @@ export const HELP_BODY = `Usage:
   pan worktree create <name> [--from <branch|commit|worktree>] [--description <text>] [--json]
   pan worktree resolve <name> [--description <text>] [--json]
   pan worktree list [--json]
-  pan worktree remove <name> [--force] [--json]
+  pan worktree remove <name> [--force] [--delete-branch] [--json]
+      --delete-branch deletes the worktree branch when it is an ancestor of the default branch, and reports a refusal when it is not.
   pan worktree reconcile (--into <worktree> | --into-branch <branch>) --source <worktree> --source <worktree> [--json]
   pan status <run-id> [--redline] [--occasion pan-start|pan-resume] [--json]
       --redline writes agent/evidence/platform-guidance-redline.json, the run's pre-declaration that platform guidance is non-authoritative.
@@ -297,6 +305,7 @@ export const HELP_BODY = `Usage:
       --probe launches one minimal cursor-agent call per distinct active model spec and records what Cursor resolved and reports match, recorded, mismatch, or unavailable per spec. It never fails the command, so read the result and error fields. Needs the cursor-agent CLI and CURSOR_API_KEY (process environment, installation .env, or workspace-root .env) or a login. Run pan doctor to see which source resolves.
       --migrate-from preserves the previous effective model map across a tracked config.json replacement: every mapping the new file leaves empty is carried into config_overrides.json, and the replacement stops before mutation when a mapping stays empty that defaults does not fill.
       --force requires --sync. It projects the configured specs when the local Cursor model catalog is stale or incomplete. Grammar still applies. Live --probe still reports what Cursor resolves.
+      A bare pan models and pan doctor are diagnostic, so they report cursor_model_catalog (presence, recorded captured_at, age, freshness, and every persona mapping the catalog cannot resolve) instead of failing at config load. Every lifecycle command still validates against the catalog.
   pan validate [--json]
   pan eval list [--json] | pan eval grade <run-id> --scenario <name> [--out <dir>] [--json] | pan eval run <scenario> [--attest-supervisor-card] [--pipeline-config <name>] [--json]
   pan doctor [--worktree <name>] [--json]
@@ -420,6 +429,45 @@ function hasFlag(args: string[], name: string): boolean {
   return args.includes(name)
 }
 
+/**
+ * Operator note taken from `--note` or from `--note-file <path>`.
+ *
+ * A full decision packet exceeds what argv carries safely, so the file option
+ * is the route the argv refusal names. The two spellings are exclusive so a
+ * command never has to choose between two notes.
+ */
+function noteOption(
+  root: string,
+  args: string[],
+  fallback: string | null = null,
+): string | null {
+  const inline = option(args, '--note')
+  const notePath = option(args, '--note-file')
+
+  if (inline !== null && notePath !== null) {
+    throw new PanError('--note and --note-file cannot be used together.', {
+      code: 'INVALID_ARGUMENT',
+    })
+  }
+
+  if (notePath === null) {
+    return inline ?? fallback
+  }
+
+  const absolute = resolveInside(
+    root,
+    path.isAbsolute(notePath) ? toRepoRelative(root, notePath) : notePath,
+  )
+
+  if (!isFile(absolute)) {
+    throw new PanError(`--note-file does not name a file: ${notePath}`, {
+      code: 'NOTE_FILE_NOT_FOUND',
+    })
+  }
+
+  return readText(absolute)
+}
+
 /** Integer-valued option, or null when absent. A non-integer value is refused. */
 function integerOption(args: string[], name: string): number | null {
   const raw = option(args, name)
@@ -461,6 +509,8 @@ const WORKTREE_CAPABLE_SURFACES = [
   'conform scan|checkpoint',
   'style scan|checkpoint',
   'repository-check <profile>',
+  'requirements run',
+  'tests impacted',
   'technologies detect',
   'doctor',
   'governance card',
@@ -502,6 +552,12 @@ function acceptsWorktreeOption(command: string, args: string[]): boolean {
       return args[0] === 'apply' || args[0] === 'validate'
     case 'repository-check':
       return args[0] !== 'validate'
+    // The usage line advertises the option and the handler already resolves
+    // the named worktree; only `run` inspects a workspace.
+    case 'requirements':
+      return args[0] === 'run'
+    case 'tests':
+      return args[0] === 'impacted'
     case 'technologies':
       return args[0] === 'detect'
     case 'governance':
@@ -1169,7 +1225,13 @@ async function main(): Promise<void> {
   const root = findProjectRoot()
   const help = helpText(root)
   const pan = panCommand(root)
-  const [command = 'help', ...args] = process.argv.slice(2)
+  const rawArgs = process.argv.slice(2)
+
+  // The refusal runs on the assembled argument list, before dispatch, so an
+  // oversized value fails with a named error rather than after run resolution.
+  assertArgvElementsWithinLimit(rawArgs)
+
+  const [command = 'help', ...args] = rawArgs
   const json = hasFlag(args, '--json')
 
   if (hasFlag(args, '--help') || hasFlag(args, '-h')) {
@@ -1385,7 +1447,7 @@ async function main(): Promise<void> {
         root,
         runId,
         decision,
-        option(args, '--note', '') ?? '',
+        noteOption(root, args, '') ?? '',
         option(args, '--stage'),
       )
       // The hook runs after the decision is durable and outside the run mutex,
@@ -1482,7 +1544,7 @@ async function main(): Promise<void> {
     }
     case 'pause': {
       const runId = requiredArgument(args[0], 'run-id')
-      const state = pauseRun(root, runId, option(args, '--note', '') ?? '')
+      const state = pauseRun(root, runId, noteOption(root, args, '') ?? '')
 
       print({
         status: state.status,
@@ -1535,7 +1597,7 @@ async function main(): Promise<void> {
         root,
         runId,
         option(args, '--stage'),
-        option(args, '--note', '') ?? '',
+        noteOption(root, args, '') ?? '',
       )
 
       print({
@@ -1548,7 +1610,7 @@ async function main(): Promise<void> {
     case 'set-stage': {
       const runId = requiredArgument(args[0], 'run-id')
       const stage = option(args, '--stage')
-      const note = option(args, '--note')
+      const note = noteOption(root, args)
 
       if (!stage) {
         throw new PanError('--stage is required for set-stage.', {
@@ -1557,7 +1619,7 @@ async function main(): Promise<void> {
       }
 
       if (!note || note.trim().length === 0) {
-        throw new PanError('--note is required for set-stage.', {
+        throw new PanError('--note or --note-file is required for set-stage.', {
           code: 'INVALID_ARGUMENT',
         })
       }
@@ -1575,12 +1637,13 @@ async function main(): Promise<void> {
     case 'waive-gate': {
       const runId = requiredArgument(args[0], 'run-id')
       const criteria = commaSeparatedOption(args, '--criteria') ?? []
-      const note = option(args, '--note')
+      const note = noteOption(root, args)
 
       if (!note || note.trim().length === 0) {
-        throw new PanError('--note is required for waive-gate.', {
-          code: 'INVALID_ARGUMENT',
-        })
+        throw new PanError(
+          '--note or --note-file is required for waive-gate.',
+          { code: 'INVALID_ARGUMENT' },
+        )
       }
 
       const result = waiveGate(root, runId, {
@@ -1590,6 +1653,7 @@ async function main(): Promise<void> {
         note,
         deferredAcceptanceCriteria: commaSeparatedOption(args, '--defer') ?? [],
         createSpotfixCase: hasFlag(args, '--spotfix'),
+        adoptPlanFromRunId: option(args, '--adopt-plan-from'),
       })
 
       print({
@@ -1600,6 +1664,7 @@ async function main(): Promise<void> {
         waiver_artifact: result.waiver.artifact_path,
         directive_target: result.waiver.directive_target ?? null,
         spotfix_case: result.waiver.spotfix_case_path ?? null,
+        worktree_claim_transfer: result.claimTransfer ?? null,
       })
       return
     }
@@ -2175,7 +2240,11 @@ async function main(): Promise<void> {
         })
       }
 
-      const impact = await runTestsImpacted(root, args.slice(1))
+      const worktree = sharedWorktreeWorkspace(root, args)
+      const impact = await runTestsImpacted(root, args.slice(1), {
+        ...(worktree ? { workspace: path.resolve(root, worktree.path) } : {}),
+      })
+
       process.exitCode = impact.exit_code
       return
     }
@@ -2332,7 +2401,10 @@ async function main(): Promise<void> {
         const removed = removeWorktree(
           root,
           requiredArgument(rest[0], 'worktree-name'),
-          { force: hasFlag(args, '--force') },
+          {
+            force: hasFlag(args, '--force'),
+            deleteBranch: hasFlag(args, '--delete-branch'),
+          },
         )
 
         print({ status: 'removed', worktree: removed }, asJson)
@@ -2556,12 +2628,18 @@ async function main(): Promise<void> {
         })
       }
 
-      const loaded = loadPipelineConfig(root, undefined, {
-        skipCatalog: force,
-      })
+      // A bare `pan models` is diagnosis, so it reports a stale catalog
+      // instead of failing at config load. `--sync` writes projections, so it
+      // keeps catalog validation unless `--force` waives it.
+      const skipCatalog = force || !syncRequested
+      const loaded = loadPipelineConfig(root, undefined, { skipCatalog })
+      const modelCatalog = cursorCatalogStatus(
+        root,
+        pipelineConfigPersonaMappings(loaded.file),
+      )
       const changes = syncCursorProjection(root, {
         write: syncRequested,
-        skipCatalog: force,
+        skipCatalog,
         pipeline: loaded,
       })
       // Static validation proves each spec is well-formed for the catalog
@@ -2585,7 +2663,8 @@ async function main(): Promise<void> {
           ),
           sync_requested: syncRequested,
           force,
-          catalog_skipped: force,
+          catalog_skipped: skipCatalog,
+          cursor_model_catalog: modelCatalog,
           changed_projections: changes.filter((entry) => entry.changed),
           ...(migration ? { migration } : {}),
           ...(probes ? { probes } : {}),
@@ -3740,7 +3819,16 @@ async function main(): Promise<void> {
     case 'doctor': {
       const worktreeWorkspace = sharedWorktreeWorkspace(root, args)
       const validation = validateRepository(root)
-      const pipelineConfig = loadPipelineConfig(root)
+      // Doctor is the command an operator reaches for when a command fails,
+      // so it is exempt from the catalog validation that runs at config load.
+      // It reports the catalog state instead of dying with the rest.
+      const pipelineConfig = loadPipelineConfig(root, undefined, {
+        skipCatalog: true,
+      })
+      const modelCatalog = cursorCatalogStatus(
+        root,
+        pipelineConfigPersonaMappings(pipelineConfig.file),
+      )
       // Doctor's report must survive a malformed repository-checks file:
       // validateRepository already records the same defect, and aborting here
       // would replace the full diagnostic report with one error.
@@ -3789,6 +3877,10 @@ async function main(): Promise<void> {
           active: pipelineConfig.name,
           personas: pipelineConfig.config.personas,
         },
+        // Advisory: the catalog is account-local and optional, so a stale one
+        // MUST NOT fail doctor. It fails the lifecycle commands, which is
+        // exactly why this report has to survive it.
+        cursor_model_catalog: modelCatalog,
         gate_cache: {
           ...gateCacheStatus(root),
           disable_with: `${GATE_CACHE_ENV}=0`,

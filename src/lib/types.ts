@@ -539,12 +539,20 @@ export interface WorktreesConfig {
   root?: string
   branch_prefix?: string
   setup?: string[]
+  /**
+   * Worktree-relative paths the setup commands produce, such as a dependency
+   * tree or a build directory. Readiness is asserted against these rather
+   * than inferred from a language, so a worktree the harness did not
+   * provision reports what it is missing by name.
+   */
+  readiness_paths?: string[]
 }
 
 export interface ResolvedWorktreesConfig {
   root: string
   branch_prefix: string
   setup: string[]
+  readiness_paths: string[]
 }
 
 /** Stable identity of one managed operator worktree. */
@@ -1794,6 +1802,17 @@ export type DeliveryHandoff =
       recorded_at: string
     }
 
+/** One worktree claim moved between two runs by waiver-based plan reuse. */
+export interface WorktreeClaimTransfer {
+  /** `released` on the subsumed run, `adopted` on the run that reused its plan. */
+  role: 'released' | 'adopted'
+  worktree: string
+  from_run_id: string
+  to_run_id: string
+  waiver_id: string
+  timestamp: string
+}
+
 export interface RunState {
   schema_version: 1 | 2
   run_id: string
@@ -1810,6 +1829,15 @@ export interface RunState {
   workspace_root: string
   /** Managed worktree identity selected when this run started. */
   managed_worktree?: ManagedWorktreeReference
+  /**
+   * Waiver-based plan reuse moved this run's worktree claim, or gave it one.
+   *
+   * Occupancy is otherwise derived from liveness alone, so a run whose plan
+   * another run adopted under an operator waiver would hold its worktree
+   * until someone aborted it, and release preparation for the adopting run
+   * would refuse correctly for the wrong reason.
+   */
+  worktree_claim_transfer?: WorktreeClaimTransfer
   workspace_id?: string
   installation_root?: string
   state_root?: string
@@ -1971,7 +1999,7 @@ export interface WorkspaceSetupRecord {
   status: 'passed' | 'failed' | 'not_configured'
   recorded_at: string
   /** Present when the pass was inferred from evidence rather than run. */
-  inferred_from?: 'repository_check_baselines'
+  inferred_from?: 'repository_check_baselines' | 'worktree_readiness'
 }
 
 /** Run-state record of the supervisor governance card and its attestation. */

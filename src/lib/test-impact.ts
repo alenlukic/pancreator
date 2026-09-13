@@ -124,6 +124,18 @@ export interface ImpactResult extends Selection {
   exit_code: number
   duration_ms: number
   record_path: string
+  /** Workspace the selection ran against, relative to the installation root. */
+  workspace: string
+}
+
+export interface RunTestsImpactedOptions {
+  /**
+   * Workspace the selection runs against. The command still runs from the
+   * installation root, so a worktree-bound run selects against its own tree
+   * instead of the base checkout.
+   */
+  workspace?: string
+  write?: (text: string) => void
 }
 
 // --- Graph ------------------------------------------------------------------
@@ -1021,6 +1033,11 @@ export function parseImpactArgs(args: string[]): ImpactOptions {
         options.advisoryRatio =
           readNumberOption(valueOf(), '--advisory-ratio') ?? undefined
         break
+      case '--worktree':
+        // The CLI resolves the named worktree to a workspace path through the
+        // shared option, so the selection only has to accept the spelling.
+        valueOf()
+        break
       default:
         throw new PanError(`Unknown option for tests impacted: ${arg}`, {
           code: 'INVALID_ARGUMENT',
@@ -1045,6 +1062,10 @@ function describeUnreached(result: Selection, file: string): string {
 
 function renderText(result: ImpactResult): string {
   const lines: string[] = []
+
+  if (result.workspace !== '.') {
+    lines.push(`Workspace: ${result.workspace}`)
+  }
 
   if (result.status === 'nothing_changed') {
     lines.push('No changed files. No test selected.')
@@ -1098,8 +1119,10 @@ function renderText(result: ImpactResult): string {
 export async function runTestsImpacted(
   root: string,
   args: string[],
-  write: (text: string) => void = (text) => process.stdout.write(text),
+  options: RunTestsImpactedOptions = {},
 ): Promise<ImpactResult> {
+  const write = options.write ?? ((text: string) => process.stdout.write(text))
+  const workspace = options.workspace ?? root
   const mode = readProjectConfig(root)?.installation_mode
 
   if (mode === 'embedded' || mode === 'detached') {
@@ -1109,15 +1132,18 @@ export async function runTestsImpacted(
   }
 
   const started = performance.now()
-  const options = parseImpactArgs(args)
-  const graph = await buildModuleGraph(root)
-  const changed = resolveChangeSet(root, options)
+  const impactOptions = parseImpactArgs(args)
+  const graph = await buildModuleGraph(workspace)
+  const changed = resolveChangeSet(workspace, impactOptions)
   const selection = selectImpactedTests(graph, changed, {
-    include: options.include,
-    advisoryRatio: options.advisoryRatio,
-    depth: options.depth,
+    include: impactOptions.include,
+    advisoryRatio: impactOptions.advisoryRatio,
+    depth: impactOptions.depth,
   })
+  // The record stays at the installation root so one history covers every
+  // workspace the operator selected from it.
   const recordPath = path.join(root, RECORD_RELATIVE_PATH)
+  const workspaceLabel = workspaceRelativeLabel(root, workspace)
 
   let status: ImpactResult['status']
   let exitCode = 0
@@ -1126,11 +1152,11 @@ export async function runTestsImpacted(
     status = 'nothing_changed'
   } else if (selection.selected_count === 0) {
     status = 'no_tests_reached'
-  } else if (options.list) {
+  } else if (impactOptions.list) {
     status = 'listed'
   } else {
     status = 'ran'
-    exitCode = runSelected(root, selection.selected)
+    exitCode = runSelected(workspace, selection.selected)
   }
 
   const result: ImpactResult = {
@@ -1141,11 +1167,16 @@ export async function runTestsImpacted(
     exit_code: exitCode,
     duration_ms: Math.round(performance.now() - started),
     record_path: RECORD_RELATIVE_PATH,
+    workspace: workspaceLabel,
   }
 
   appendJsonLine(recordPath, {
     timestamp: new Date().toISOString(),
-    fingerprint: sha256({ head: gitHead(root), changed: selection.changed }),
+    fingerprint: sha256({
+      head: gitHead(workspace),
+      changed: selection.changed,
+    }),
+    workspace: workspaceLabel,
     status,
     changed_count: selection.changed.length,
     selected_count: selection.selected_count,
@@ -1158,10 +1189,17 @@ export async function runTestsImpacted(
   })
 
   write(
-    options.json
+    impactOptions.json
       ? `${JSON.stringify(result, null, 2)}\n`
       : `${renderText(result)}\n`,
   )
 
   return result
+}
+
+/** `.` for the installation root, otherwise the workspace's relative path. */
+function workspaceRelativeLabel(root: string, workspace: string): string {
+  const relative = path.relative(root, workspace)
+
+  return relative === '' ? '.' : relative.split(path.sep).join('/')
 }

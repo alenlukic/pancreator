@@ -143,6 +143,47 @@ export function gitBranchExists(root: string, branch: string): boolean {
   return result.status === 0
 }
 
+/**
+ * Default branch of the repository.
+ *
+ * The remote head is authoritative where it exists. A repository without one,
+ * which includes every test fixture, falls back to the local `main` and then
+ * to `master`.
+ */
+export function gitDefaultBranch(root: string): string | null {
+  const remote = runGit(
+    root,
+    ['symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD'],
+    { allowFailure: true },
+  )
+
+  if (remote.status === 0) {
+    return remote.stdout.trim().replace(/^origin\//u, '')
+  }
+
+  for (const candidate of ['main', 'master']) {
+    if (gitBranchExists(root, candidate)) {
+      return candidate
+    }
+  }
+
+  return null
+}
+
+/** Delete a local branch. Returns the command's stderr on failure. */
+export function gitDeleteBranch(
+  root: string,
+  branch: string,
+): { deleted: boolean; reason: string | null } {
+  const result = runGit(root, ['branch', '-d', '--end-of-options', branch], {
+    allowFailure: true,
+  })
+
+  return result.status === 0
+    ? { deleted: true, reason: null }
+    : { deleted: false, reason: result.stderr.trim() || 'git branch -d failed' }
+}
+
 export function gitBranchNameIsValid(root: string, branch: string): boolean {
   const result = runGit(root, ['check-ref-format', '--branch', branch], {
     allowFailure: true,
@@ -174,6 +215,46 @@ export function gitSwitchBranch(root: string, branch: string): void {
   runGit(root, ['switch', branch])
 }
 
+/** One entry of the null-separated porcelain status format. */
+export interface PorcelainStatusEntry {
+  /** Two-character status code. */
+  status: string
+  /** Destination path, or the only path when the entry is not a rename. */
+  path: string
+  /** Source path of a rename or a copy, absent otherwise. */
+  source: string | null
+}
+
+/**
+ * Read `git status --porcelain=v1 -z` output.
+ *
+ * In `-z` mode a rename emits two fields: the status-prefixed destination and
+ * then the bare source path with no status prefix. A reader that treats every
+ * field as status-prefixed removes the first three characters of the source
+ * and produces a path that names no file. This is the one reader for the
+ * format, so both the workspace snapshot and the status-path helper agree on
+ * the rename shape.
+ */
+export function parsePorcelainStatus(stdout: string): PorcelainStatusEntry[] {
+  const fields = stdout.split('\0').filter(Boolean)
+  const entries: PorcelainStatusEntry[] = []
+
+  for (let index = 0; index < fields.length; index += 1) {
+    const field = fields[index] ?? ''
+    const status = field.slice(0, 2)
+    const destination = field.length >= 4 ? field.slice(3) : field
+    const source = /[RC]/u.test(status) ? (fields[index + 1] ?? null) : null
+
+    if (source !== null) {
+      index += 1
+    }
+
+    entries.push({ status, path: destination, source })
+  }
+
+  return entries
+}
+
 /** Sorted worktree paths reported by porcelain status. */
 export function gitStatusPaths(root: string): string[] {
   const result = runGit(root, [
@@ -183,22 +264,13 @@ export function gitStatusPaths(root: string): string[] {
     '-z',
   ])
 
-  const entries = result.stdout.split('\0').filter(Boolean)
   const paths = new Set<string>()
 
-  for (let index = 0; index < entries.length; index += 1) {
-    const entry = entries[index] ?? ''
-    const status = entry.slice(0, 2)
+  for (const entry of parsePorcelainStatus(result.stdout)) {
+    paths.add(entry.path)
 
-    paths.add(snapshotEntryPath(entry))
-
-    if (/[RC]/u.test(status)) {
-      const source = entries[index + 1]
-
-      if (source) {
-        paths.add(source)
-        index += 1
-      }
+    if (entry.source) {
+      paths.add(entry.source)
     }
   }
 
@@ -660,7 +732,14 @@ function contentFingerprint(
   return files.sort(([left], [right]) => left.localeCompare(right))
 }
 
-/** Path component of one `git status --porcelain=v1` snapshot entry. */
+/**
+ * Path component of one snapshot entry.
+ *
+ * Snapshot entries are always status-prefixed, because `parsePorcelainStatus`
+ * normalizes a rename into one prefixed entry per path. The ` -> ` form this
+ * also handles belongs to the non-`-z` porcelain output, which no caller here
+ * requests; it stays for a caller that reads that form directly.
+ */
 export function snapshotEntryPath(entry: string): string {
   const statusPath = entry.length >= 4 ? entry.slice(3) : entry
   const renameArrow = statusPath.lastIndexOf(' -> ')
@@ -846,9 +925,14 @@ export function gitWorkspaceSnapshot(
     '.',
     ...protectedGitPathspecs(),
   ])
-  const entries = status.stdout
-    .split('\0')
-    .filter(Boolean)
+  // A rename becomes one status-prefixed entry per path, so both its
+  // destination and its source survive into the snapshot as real paths.
+  const entries = parsePorcelainStatus(status.stdout)
+    .flatMap((entry) =>
+      entry.source
+        ? [`${entry.status} ${entry.path}`, `${entry.status} ${entry.source}`]
+        : [`${entry.status} ${entry.path}`],
+    )
     .filter((entry) => {
       const relative = snapshotEntryPath(entry)
 
