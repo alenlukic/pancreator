@@ -28,6 +28,8 @@ commands where they exist.
 - [`prompt-augmentation.md`](prompt-augmentation.md) - augment an operator
   prompt for one-shot execution.
 - [`spotfix.md`](spotfix.md) - execute or escalate one operator-selected lightweight change.
+- [`harden.md`](harden.md) - bring a session's ad-hoc changes to a mergeable
+  state, stopping at the integration boundary.
 - [`shepherd-pr.md`](shepherd-pr.md) - watch one GitHub PR for review feedback,
   judge it, implement what survives, and gate each push through the review
   squad.
@@ -66,3 +68,5 @@ listed without links for that reason.
 - [`design-critique.md`](design-critique.md) - heuristic critique of specs and mocks.
 - [`visual-design-iteration.md`](visual-design-iteration.md) - screenshot-score-fix
   visual iteration loop.
+- [`polish.md`](polish.md) - bring UI and design work into conformance with the
+  design handbook and the owning design system.

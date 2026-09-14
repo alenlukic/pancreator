@@ -96,6 +96,26 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST say so plainly when a request would break something, then follow the operator’s decision.',
     ],
   },
+  harden: {
+    kind: 'standalone',
+    persona: 'coder',
+    workflow: 'standalone',
+    stage: 'harden',
+    title: 'Session hardening',
+    summary:
+      'Bring the ad-hoc changes of the current session to a mergeable ' +
+      'state: resolve the scope, exercise the changed behavior, take one ' +
+      'independent review, inspect a rendered surface when one changed, ' +
+      'and close the gaps. The session holds no run, no stage contract, ' +
+      'and no gate, and it stops at the integration boundary.',
+    boundaries: [
+      PROTECTED_PATH_RULE,
+      'You MUST NOT commit, push, merge, rebase, publish, deploy, or change Git history.',
+      'You MUST prepare the branch and name the operator’s integration command without running it; the session performs no integration itself.',
+      'You MUST NOT create, advance, or write state for a workflow run.',
+      'You MUST delegate exactly one `pan-reviewer` over a single capture of the resolved scope, and MUST NOT delegate the review squad.',
+    ],
+  },
   spotfix: {
     kind: 'spotfix',
     persona: 'spotfixer',
@@ -369,6 +389,23 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST NOT duplicate or override a Pancreator-owned semantic key or shared primitive.',
       PROTECTED_PATH_RULE,
       'You MUST NOT modify target source, workflow state, shared primitives, or governance, and MUST NOT commit, push, merge, publish, or deploy.',
+    ],
+  },
+  polish: {
+    kind: 'standalone',
+    persona: 'designer',
+    workflow: 'standalone',
+    stage: 'polish',
+    title: 'Design polish',
+    summary:
+      'Bring the UI and design changes of the current session — or a ' +
+      'design task the operator types — into conformance with the design ' +
+      'handbook and the design system that owns each touched surface.',
+    boundaries: [
+      PROTECTED_PATH_RULE,
+      'You MUST NOT commit, push, merge, publish, deploy, or change Git history.',
+      'You MUST edit only the UI and design surface of the resolved scope.',
+      'You MUST NOT create a new design system file without a recorded operator approval obtained in the session.',
     ],
   },
   'qa-workflow': {

@@ -20,6 +20,14 @@
       "card_mode": "conform"
     },
     {
+      "command": "pan-harden",
+      "card_mode": "harden"
+    },
+    {
+      "command": "pan-polish",
+      "card_mode": "polish"
+    },
+    {
       "command": "pan-style",
       "card_mode": "style"
     }
@@ -39,6 +47,14 @@
         "style scan --worktree <name> --json",
         "style checkpoint --worktree <name> --json"
       ]
+    },
+    {
+      "command": "pan-harden",
+      "worktree_forwarding": ["governance card --mode harden --worktree <name>"]
+    },
+    {
+      "command": "pan-polish",
+      "worktree_forwarding": ["governance card --mode polish --worktree <name>"]
     },
     {
       "command": "pan-qa-workflow",

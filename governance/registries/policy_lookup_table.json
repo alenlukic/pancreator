@@ -791,6 +791,18 @@
     {
       "persona": "coder",
       "workflow": "standalone",
+      "stage": "harden",
+      "policies": ["DEV-001", "BROWSER-001", "DESIGN-001", "DELEGATE-001"]
+    },
+    {
+      "persona": "designer",
+      "workflow": "standalone",
+      "stage": "polish",
+      "policies": ["BRIEF-001", "REPO-001", "ENG-001"]
+    },
+    {
+      "persona": "coder",
+      "workflow": "standalone",
       "stage": "shepherd",
       "policies": ["SHEPHERD-001", "DELEGATE-001"]
     },
