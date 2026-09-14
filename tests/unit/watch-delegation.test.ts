@@ -140,12 +140,11 @@ test('a foreground-return attestation records launch and return times and satisf
   )
   assert.equal(submitted.record.delegation_observation?.watch, undefined)
 
-  const persisted = read(
-    path.join(
-      root,
-      loadState(root, state.run_id).stage_history[0].record_path!,
-    ),
-  ) as TaskRecord
+  const recordPath = loadState(root, state.run_id).stage_history[0].record_path
+
+  assert.ok(recordPath)
+
+  const persisted = read(path.join(root, recordPath)) as TaskRecord
 
   assert.equal(persisted.delegation_observation?.source, 'foreground_return')
 })
@@ -217,12 +216,11 @@ test('submit carries a completed watch record into the stage record without an a
     undefined,
   )
 
-  const persisted = read(
-    path.join(
-      root,
-      loadState(root, state.run_id).stage_history[0].record_path!,
-    ),
-  ) as TaskRecord
+  const recordPath = loadState(root, state.run_id).stage_history[0].record_path
+
+  assert.ok(recordPath)
+
+  const persisted = read(path.join(root, recordPath)) as TaskRecord
 
   assert.equal(
     persisted.delegation_observation?.watch?.terminal_state,

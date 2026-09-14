@@ -89,7 +89,10 @@ function pinOutputPastLaunch(
     'a still-writing output must stay younger than one cadence',
   )
 
-  const invocation = state.current_invocation!
+  const invocation = state.current_invocation
+
+  assert.ok(invocation, 'the run stands at a prepared invocation')
+
   const launch = readLaunchRecord(root, state.run_id, invocation.id)
 
   assert.ok(launch, 'the watch records the launch when it arms')
@@ -148,10 +151,17 @@ export function preparedVerifyRun(): {
   return { root, state: prepared.state, invocation: prepared.invocation }
 }
 
+/** The invocation record the run currently stands at. */
+export function currentInvocation(root: string, state: RunState): Invocation {
+  const pointer = state.current_invocation
+
+  assert.ok(pointer, 'the run stands at a prepared invocation')
+
+  return read(path.join(root, pointer.json_path)) as Invocation
+}
+
 export function writeStageOutput(root: string, state: RunState): void {
-  const invocation = read(
-    path.join(root, state.current_invocation!.json_path),
-  ) as Parameters<typeof makeOutput>[1]
+  const invocation = currentInvocation(root, state)
   const workflow = loadWorkflowFile(
     root,
     path.join(root, state.workflow_snapshot.path),
@@ -172,9 +182,7 @@ export function writeStageOutput(root: string, state: RunState): void {
 
 /** Fill the prepared invocation's output and delegation artifact, unsubmitted. */
 export function fillPreparedOutput(root: string, state: RunState): string {
-  const invocation = read(
-    path.join(root, state.current_invocation!.json_path),
-  ) as Parameters<typeof makeOutput>[1]
+  const invocation = currentInvocation(root, state)
 
   writeStageOutput(root, state)
   writeCanonicalDelegation(root, invocation)

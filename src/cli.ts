@@ -2626,10 +2626,9 @@ async function main(): Promise<void> {
       const asJson = hasFlag(args, '--json')
 
       if (sub === 'prepare') {
+        const baselineRef = option(args, '--baseline')
         const prepared = prepareTuneSession(root, {
-          ...(option(args, '--baseline')
-            ? { baselineRef: option(args, '--baseline')! }
-            : {}),
+          ...(baselineRef ? { baselineRef } : {}),
         })
 
         print({ status: 'prepared', ...prepared }, asJson)

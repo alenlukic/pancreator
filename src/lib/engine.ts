@@ -8481,19 +8481,20 @@ export function waiveGate(
       assessment?.verdict === 'fail' && assessmentPath
         ? assessmentPath
         : (history?.record_path ?? history?.output_path ?? artifactPath)
-    const spotfixCasePath = options.createSpotfixCase
-      ? writeSpotfixCase(
-          root,
-          state,
-          waiverId,
-          stage,
-          history!,
-          waivedCriteria,
-          deferred,
-          options.note,
-          sourceEvidencePath,
-        )
-      : undefined
+    const spotfixCasePath =
+      options.createSpotfixCase && history
+        ? writeSpotfixCase(
+            root,
+            state,
+            waiverId,
+            stage,
+            history,
+            waivedCriteria,
+            deferred,
+            options.note,
+            sourceEvidencePath,
+          )
+        : undefined
     const body = [
       '# Operator waiver directive',
       '',

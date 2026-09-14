@@ -153,7 +153,7 @@ test('worker state reports a worker that crashed before writing anything', () =>
 // must still read as nothing written.
 test('worker state reports an evidence worker that crashed before its report', () => {
   const { root, state, invocation } = preparedVerifyRun()
-  const role = (invocation.evidence_workers ?? [])[0]!.role
+  const role = (invocation.evidence_workers ?? [])[0].role
   const launch = recordDelegatedWorker(root, state.run_id, {
     handle: 'bc-evidence-dead',
     invocationId: invocation.invocation_id,

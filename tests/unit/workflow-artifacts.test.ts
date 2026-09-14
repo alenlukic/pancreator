@@ -280,11 +280,12 @@ test('finalization leaves an alias from every in-flight invocation prefix to its
     `runtime/logs/workflows/${runId}/invocations/${final[0]}.md`,
   )
   assert.equal(resolved.path, resolved.resolved)
-  assert.equal(existsSync(path.join(root, resolved.path!)), true)
+  assert.ok(resolved.path)
+  assert.equal(existsSync(path.join(root, resolved.path)), true)
 
   // A bare id resolves to the card a reader following the citation wants.
   assert.equal(
-    resolveRunCitation(root, runId, intermediate[1]!).path,
+    resolveRunCitation(root, runId, intermediate[1]).path,
     `runtime/logs/workflows/${runId}/invocations/${final[1]}.md`,
   )
 
@@ -731,7 +732,7 @@ test('retention sweeps run-local worker scripts and finalization keeps them', ()
   writeWorkflowSnapshot(runDirectory)
   writeEvents(runDirectory, invocationIds)
   writeState(runDirectory, runId, 'succeeded', invocationIds)
-  writeInvocation(runDirectory, runId, invocationIds[0]!, 0)
+  writeInvocation(runDirectory, runId, invocationIds[0], 0)
   write(script, "console.log('one-run helper')\n")
 
   finalizeWorkflowArtifacts(root, runId)

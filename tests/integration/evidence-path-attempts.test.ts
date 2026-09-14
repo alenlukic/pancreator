@@ -65,7 +65,7 @@ function readInvocation(
 test('a relaunched evidence worker writes its own report and leaves the first intact', () => {
   const { root, runId, invocation } = verifyInvocation()
   const invocationId = invocation.invocation_id
-  const first = (invocation.evidence_workers ?? [])[0]!
+  const first = (invocation.evidence_workers ?? [])[0]
   const firstReport = path.join(root, first.evidence_path)
   const firstBody = '# Review evidence, first attempt\n'
 
@@ -120,7 +120,7 @@ test('a relaunched evidence worker writes its own report and leaves the first in
 test('a relaunch leaves the card a running stage worker attested unmoved', () => {
   const { root, runId, invocation } = verifyInvocation()
   const invocationId = invocation.invocation_id
-  const first = (invocation.evidence_workers ?? [])[0]!
+  const first = (invocation.evidence_workers ?? [])[0]
 
   recordDelegatedWorker(root, runId, { handle: 'bc-stage', invocationId })
 
@@ -145,6 +145,7 @@ test('a relaunch leaves the card a running stage worker attested unmoved', () =>
     role: first.role,
   })
 
+  assert.ok(relaunch.evidence_attempt)
   assert.equal(relaunch.record.attempt, 2)
 
   const amended = readInvocation(root, runId, invocationId)
@@ -159,7 +160,7 @@ test('a relaunch leaves the card a running stage worker attested unmoved', () =>
       ?.attempts?.map((attempt) => attempt.attempt),
     [1, 2],
   )
-  assert.ok(existsSync(path.join(root, relaunch.evidence_attempt!.brief_path)))
+  assert.ok(existsSync(path.join(root, relaunch.evidence_attempt.brief_path)))
 })
 
 // The watch read the evidence directory alone, so a report nobody had written
@@ -181,19 +182,20 @@ test('a declared evidence report nobody has written appears in the watched set',
     )
   }
 
-  const first = (invocation.evidence_workers ?? [])[0]!
+  const first = (invocation.evidence_workers ?? [])[0]
   const relaunch = recordDelegatedWorker(root, runId, {
     handle: 'bc-relaunch',
     invocationId: invocation.invocation_id,
     role: first.role,
   })
 
+  assert.ok(relaunch.evidence_attempt)
   assert.ok(
     invocationEvidencePaths(
       root,
       runId,
       readInvocation(root, runId, invocation.invocation_id),
-    ).includes(relaunch.evidence_attempt!.evidence_path),
+    ).includes(relaunch.evidence_attempt.evidence_path),
     'a relaunch adds its own pending report to the watched set',
   )
 })
