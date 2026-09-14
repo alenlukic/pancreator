@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 
 import {
   assertCohortRunUnblocked,
+  type CohortBaselineClaim,
   claimCohortBaselineCapture,
   COHORT_PLAN_WORKFLOW_SLUG,
   cohortBaselineDirectory,
@@ -81,9 +82,13 @@ import {
   DELEGATION_WATCH_LATE_SECONDS,
   delegationUnobservedMessage,
   redlineRecordPath,
+  resolveWatchedInvocation,
   summarizeDelegationObservation,
   summarizeDelegationWatch,
+  watchInvocation,
   type DelegationObservation,
+  type WatchOptions,
+  type WatchResult,
 } from './watch.js'
 import {
   OPERATOR_ARTIFACT_PROFILE_HEADINGS,
@@ -150,6 +155,7 @@ import {
 } from './verification.js'
 import type { RatifiedAcceptanceCriterion } from './verification.js'
 import {
+  adoptedBaselineWorkspaceDivergence,
   loadRepositoryChecks,
   runRepositoryCheck,
   runRepositorySetup,
@@ -264,6 +270,7 @@ import {
   snapshotEntryPath,
   workspaceChangedPathsFromSnapshots,
 } from './git.js'
+import { buildCurrency, buildCurrencyAdvisory } from './build-identity.js'
 import { entryGateWaiver, waiverCoversCriterion } from './waivers.js'
 import { resolveRoots } from './workspace/roots.js'
 import {
@@ -1057,6 +1064,11 @@ export interface AdoptableRepositoryCheckBaseline {
   /** Installation-relative path of the summary artifact. */
   artifact_path: string
   recorded_at: string
+  /**
+   * Workspace the recorded capture executed in, when the artifact names one.
+   * Artifacts written before the field existed name nothing.
+   */
+  capture_workspace_path?: string
 }
 
 /**
@@ -1155,6 +1167,9 @@ export function findAdoptableRepositoryCheckBaseline(
     const candidate: AdoptableRepositoryCheckBaseline = {
       artifact_path: toRepoRelative(root, absolute),
       recorded_at: artifact.recorded_at,
+      ...(typeof artifact.capture_workspace_path === 'string'
+        ? { capture_workspace_path: artifact.capture_workspace_path }
+        : {}),
     }
 
     if (!best || candidate.recorded_at > best.recorded_at) {
@@ -1306,6 +1321,58 @@ function ensureWorkspaceProvisioned(
 }
 
 /**
+ * Record, as run advisories, every shared baseline this run adopts from a
+ * workspace other than its own, and return the messages for the caller's
+ * progress stream.
+ *
+ * `DEV-001` gives a cohort session exactly one baseline per interior gate
+ * profile, while `COHORT-001` gives every chunk run its own worktree, so an
+ * adopting run is normally judged against evidence captured somewhere else.
+ * That is sound until a gate reports a diagnostic the baseline does not
+ * carry, at which point the reader needs to know a second workspace is in
+ * play before spending the next stage hunting a regression. Naming it at
+ * adoption puts the fact in the record ahead of the failure it explains.
+ *
+ * A pointer recorded before the capture path existed asserts nothing about
+ * where it ran, so it produces no diagnosis and the run adopts as it did
+ * before.
+ */
+function adoptedBaselinePathDiagnoses(
+  state: RunState,
+  claim: Extract<CohortBaselineClaim, { status: 'adopted' }>,
+): string[] {
+  const workspace = state.workspace_root || '.'
+  const messages = Object.values(claim.baselines)
+    .sort((left, right) => left.profile.localeCompare(right.profile))
+    .flatMap((pointer) => {
+      const divergence = adoptedBaselineWorkspaceDivergence(pointer, workspace)
+
+      return divergence
+        ? [
+            `the shared '${pointer.profile}' baseline was captured in ` +
+              `'${divergence.baseline_workspace}' and this run executes in ` +
+              `'${divergence.current_workspace}', so a diagnostic this ` +
+              `baseline does not carry may belong to either workspace; ` +
+              `reproduce it in the capturing workspace before treating it ` +
+              `as introduced`,
+          ]
+        : []
+    })
+
+  if (messages.length === 0) {
+    return []
+  }
+
+  recordRunAdvisories(
+    state,
+    { kind: 'baseline_adoption', source: 'prepare' },
+    messages,
+  )
+
+  return messages
+}
+
+/**
  * Establish the run's pre-implementation baselines before the first
  * source-allowed stage edits anything: one baseline per interior gate profile
  * of the run's verification level (DEV-001). A run outside a cohort captures
@@ -1346,6 +1413,10 @@ function ensureWorkflowRepositoryCheckBaselines(
         `adopted the shared pre-implementation baseline of cohort ${cohortId} ` +
           `(${Object.keys(claim.baselines).sort().join(', ') || 'no profiles'})`,
       )
+
+      for (const message of adoptedBaselinePathDiagnoses(state, claim)) {
+        onProgress?.(message)
+      }
 
       return false
     }
@@ -1433,6 +1504,10 @@ function captureRepositoryCheckBaselines(
 
   const baselines: NonNullable<RunState['repository_check_baselines']> = {}
   const checksConfigDigest = repositoryChecksConfigDigest(root)
+  // A cohort shares this pointer with runs that own a different worktree, so
+  // the pointer has to say where the evidence was produced. Without it a host
+  // failure of the capturing tree is indistinguishable from a regression.
+  const captureWorkspacePath = state.workspace_root || '.'
 
   state.repository_check_baselines = baselines
 
@@ -1455,6 +1530,14 @@ function captureRepositoryCheckBaselines(
         artifact_path: adopted.artifact_path,
         workspace_fingerprint: preCaptureWorkspace.fingerprint,
         recorded_at: adopted.recorded_at,
+        // An artifact recorded before this field existed names no tree, and
+        // this run is not the tree it ran in. The pointer stays silent rather
+        // than naming the adopting workspace: a cohort shares this pointer,
+        // so a guess here sends every sibling run to reproduce a failure in a
+        // workspace the capture never touched.
+        ...(adopted.capture_workspace_path
+          ? { capture_workspace_path: adopted.capture_workspace_path }
+          : {}),
       }
       onProgress?.(
         `adopted the recorded pre-implementation '${profile.name}' baseline ` +
@@ -1493,6 +1576,7 @@ function captureRepositoryCheckBaselines(
     // The summarized artifact is what a coder is required to read; the complete
     // capture stays on disk for anyone who needs the untruncated transcript.
     const provenanceFields = {
+      capture_workspace_path: captureWorkspacePath,
       workspace_dirty_paths: provenance.dirty_paths,
       workspace_dirty_path_count: provenance.dirty_path_count,
       ...(provenance.predecessor_run_id
@@ -1533,6 +1617,7 @@ function captureRepositoryCheckBaselines(
       artifact_path: summaryPath,
       workspace_fingerprint: workspace.fingerprint,
       recorded_at: recordedAt,
+      capture_workspace_path: captureWorkspacePath,
     }
 
     if (failedEnvironmentProbe) {
@@ -5981,6 +6066,21 @@ export function submitOutput(
     )
 
     advise('gate_bypass', evaluated.advisories)
+
+    // A self-development release lane can execute a build compiled from a
+    // tree other than the one it releases, so the run records which build
+    // actually answered. The disagreement is an advisory rather than a gate:
+    // the redirection that closes it is read from the executing build, so a
+    // gate here would refuse the first release that carries the mechanism.
+    const buildCurrencyRecord =
+      stage.slug === 'ship' && isSelfDevelopmentInstallation(root)
+        ? buildCurrency(workspaceDirectory(root, state))
+        : undefined
+
+    if (buildCurrencyRecord && !buildCurrencyRecord.current) {
+      advise('build_currency', [buildCurrencyAdvisory(buildCurrencyRecord)])
+    }
+
     governanceArtifactWarnings.push(
       ...attestationErrors,
       ...briefErrors.map((message) => `Operator brief: ${message}`),
@@ -6065,6 +6165,7 @@ export function submitOutput(
       ...(briefSourceRecord
         ? { operator_brief_source: briefSourceRecord }
         : {}),
+      ...(buildCurrencyRecord ? { build_currency: buildCurrencyRecord } : {}),
     }
 
     state.stage_history.push(historyItem)
@@ -7414,6 +7515,56 @@ export function recordDelegatedWorker(
   })
 }
 
+export interface ArmWorkerWatchOptions extends WatchOptions {
+  /** Named agent definition the supervisor launched, when it reported one. */
+  workerAgent?: string
+  workerModel?: string
+}
+
+/**
+ * Arm the watch over a delegated worker, recording the platform handle the
+ * supervisor supplies with it.
+ *
+ * `pan worker record` asked the supervisor to remember a separate command,
+ * and no Phase 3 run ever recorded a handle. The arming is an action the
+ * supervisor already owes for every launch, so the handle rides along with
+ * it. A watch armed without one still arms, and the launch record says that
+ * none was supplied rather than leaving the absence unexplained.
+ */
+export async function armWorkerWatch(
+  root: string,
+  runId: string,
+  options: ArmWorkerWatchOptions = {},
+): Promise<WatchResult> {
+  const handle = options.workerHandle?.trim()
+
+  if (handle) {
+    const invocationId = resolveWatchedInvocation(
+      root,
+      runId,
+      options.invocationId,
+    ).invocation_id
+    const recorded = describeDelegatedWorkers(root, runId, {
+      invocationId,
+      role: STAGE_WORKER_ROLE,
+    })
+
+    // Re-arming a watch over the same worker is ordinary supervision, not a
+    // second launch, so the same handle records once.
+    if (!recorded.some((worker) => worker.handle === handle)) {
+      recordDelegatedWorker(root, runId, {
+        handle,
+        invocationId,
+        ...(options.workerAgent ? { agent: options.workerAgent } : {}),
+        ...(options.workerModel ? { model: options.workerModel } : {}),
+        launchMode: options.markBackground ? 'background' : 'unknown',
+      })
+    }
+  }
+
+  return watchInvocation(root, runId, options)
+}
+
 /** One declared path of a delegated worker, as it stands on disk. */
 export interface DelegatedWorkerPathState {
   path: string
@@ -8147,7 +8298,10 @@ export function waiveGate(
 ): {
   state: RunState
   waiver: OperatorGateWaiver
-  /** Stage entry gates this directive now reaches, in workflow order. */
+  /**
+   * The waived stage's own entry gate when this directive covers it. A waiver
+   * names one stage, so this holds at most one element.
+   */
   entry_gates_reached: EntryGateReach[]
   claimTransfer?: WorktreeClaimTransfer
 } {

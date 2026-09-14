@@ -1046,7 +1046,11 @@ function evidenceWorkerFixture(): InvocationEvidenceWorker {
 test('the evidence brief names the fast command only when no passed fast gate is current', () => {
   const root = createFixture()
   const invocation = baseInvocation(root, 'delivery', 'verify')
-  const command = '`./bin/pan repository-check fast --run run-fixture`'
+  // The two evidence workers of a verify stage share this invocation id, so
+  // the role is what separates their recorded passes; the brief hands each
+  // worker the command that records its own.
+  const command =
+    '`./bin/pan repository-check fast --run run-fixture --role qa`'
 
   // No gate evidence at all, as on a release run that never ran implement:
   // the brief names the command, and the harness checkout is the place to
@@ -1057,6 +1061,16 @@ test('the evidence brief names the fast command only when no passed fast gate is
   )
 
   assert.ok(withoutEvidence.includes(command))
+  assert.ok(
+    renderEvidenceWorkerBrief(invocation, {
+      ...evidenceWorkerFixture(),
+      persona: 'reviewer',
+      role: 'review',
+    }).includes(
+      '`./bin/pan repository-check fast --run run-fixture --role review`',
+    ),
+    'the other worker of the same invocation is handed its own command',
+  )
   assert.match(withoutEvidence, /from this checkout so the run records/u)
   assert.doesNotMatch(withoutEvidence, /Harness root/u)
   assert.doesNotMatch(withoutEvidence, /already ran `fast`/u)
@@ -1158,6 +1172,24 @@ test('the launch step carries the watch pointer, command, and ordering', () => {
   )
   assert.ok(procedure.includes(redlineRecordPath))
   assert.ok(procedure.includes(`${watchCommand} --mark-background`))
+  // The handle and the launch time exist only in the supervisor's hands. A
+  // procedure that never asks for them leaves `worker_handle` null on every
+  // run and makes the arming its own launch time, so `DELEGATION_WATCH_LATE`
+  // can never fire.
+  assert.ok(
+    procedure.includes('--launched-at <iso-8601>'),
+    'the procedure asks the supervisor to record the launch time',
+  )
+  assert.ok(
+    procedure.includes('--handle <platform-handle>'),
+    'the procedure asks the supervisor to record the platform handle',
+  )
+  assert.ok(
+    procedure.includes(
+      './bin/pan delegate worker record run-fixture --handle <platform-handle>',
+    ),
+    'the foreground-return form routes the handle to `pan worker record`',
+  )
 
   const launchIndex = procedure.indexOf('2a. Arm the watch')
   const verdictIndex = procedure.indexOf('3a. Read the verdict')

@@ -215,10 +215,14 @@ export function scaffoldStageOutput(
       }
     : undefined
 
+  // `result` is emitted after every other key. A worker fills the scaffold in
+  // place, so wherever the scaffold puts a key is where that worker's output
+  // carries it; emitting `result` third is what the "write `result` last"
+  // guidance existed to undo, and one worker wrote a 44 KB helper script to
+  // obey prose the scaffold was contradicting.
   const scaffold: StageOutput = {
     schema_version: 1,
     invocation_id: invocation.invocation_id,
-    result: 'success',
     summary: '',
     artifacts:
       invocation.output.artifacts ??
@@ -253,6 +257,7 @@ export function scaffoldStageOutput(
       ? { target_instruction_evidence: { read_paths: [], reads: [] } }
       : {}),
     ...(attestation ? { invocation_attestation: attestation } : {}),
+    result: 'success',
   }
 
   writeJsonAtomic(absolute, scaffold)

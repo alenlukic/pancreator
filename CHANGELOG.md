@@ -1,5 +1,29 @@
 # Changelog
 
+## [6.3.0] - 2026-09-14
+
+This release repairs Phase 4 mechanical defects in four chunks.
+
+### Changed
+
+- Give a self-development release an execution-root override, a recorded build identity, and a post-submit landing ([64b1325b](https://github.com/alenlukic/pancreator/commit/64b1325b75b13ed3946ccd80b31e764475bfc72b)).
+- Replace the delegation-artifact clock with one launch record, and accept `--launched-at` and `--handle` on `pan watch` ([d44c9edd](https://github.com/alenlukic/pancreator/commit/d44c9edd88d717484fd07b2961c647f8702d77cb)).
+- Record the capture worktree on a shared baseline, keep invocation aliases, and add `--role` to the reuse key ([8f659244](https://github.com/alenlukic/pancreator/commit/8f659244dedb5bdec120a475dd8647a2fd4ae6e2)).
+- Replace three prose pins with structural checks, and treat an unmeasured secondary lane as null ([0c44aefc](https://github.com/alenlukic/pancreator/commit/0c44aefca761bd35cc88b0acfdb3c71f1da926db)).
+- Correct the launch-clock docs, fail-soft a contended snapshot event, and render `--handle` and `--launched-at` on every watch form ([d44c9edd](https://github.com/alenlukic/pancreator/commit/d44c9edd88d717484fd07b2961c647f8702d77cb)).
+- Leave a pre-path baseline pointer empty, and refuse a `--resolve` citation that leaves the run ([8f659244](https://github.com/alenlukic/pancreator/commit/8f659244dedb5bdec120a475dd8647a2fd4ae6e2)).
+- Fold the VERIFY-001 reproduction rule into the policy, and carry instruction #10 durability into the AGENTS templates ([3371aefb](https://github.com/alenlukic/pancreator/commit/3371aefb2d93a0fea7f8ea6d88104fdfe7518b8a)).
+
+### Added
+
+- Add `PANCREATOR_EXEC_ROOT` so a release can run the workspace build while state stays on the installation ([64b1325b](https://github.com/alenlukic/pancreator/commit/64b1325b75b13ed3946ccd80b31e764475bfc72b)).
+- Add `pan status --resolve` so a live citation still names a file after the run closes ([8f659244](https://github.com/alenlukic/pancreator/commit/8f659244dedb5bdec120a475dd8647a2fd4ae6e2)).
+- Add a launch record when `pan watch` first arms, with `--launched-at` and `--handle` ([d44c9edd](https://github.com/alenlukic/pancreator/commit/d44c9edd88d717484fd07b2961c647f8702d77cb)).
+
+### Fixed
+
+- Repair the inbox-routing case so a producer that writes the inbox root fails, and correct five stale tracked statements ([0c44aefc](https://github.com/alenlukic/pancreator/commit/0c44aefca761bd35cc88b0acfdb3c71f1da926db)).
+
 ## [6.2.2] - 2026-09-13
 
 This release applies the five governance-text refinements the Phase 3 evaluation proposed.

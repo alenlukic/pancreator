@@ -357,19 +357,29 @@ test('the run-scoped model probe returns without waiting for the model', async (
   // records the in-flight marker, detaches the call, and returns.
   const root = createFixture()
   const agentDirectory = path.join(root, 'slow-bin')
-  const agentDelaySeconds = 5
+  const answered = path.join(agentDirectory, 'answered.txt')
+  const release = path.join(agentDirectory, 'release')
 
   writeFixtureCursorCatalog(root)
   mkdirSync(agentDirectory, { recursive: true })
+  // TP-10: the stub used to sleep five seconds, which made the case require
+  // the CLI to return inside a fixed window. That window measured the host
+  // under a concurrent suite, not the command. The stub now cannot answer
+  // until this test releases it, so the caller's return is first by
+  // construction rather than by being quick enough.
   writeFileSync(
     path.join(agentDirectory, 'cursor-agent'),
     [
       '#!/bin/sh',
       'cat >/dev/null',
-      `sleep ${agentDelaySeconds}`,
+      'waited=0',
+      `while [ ! -f ${JSON.stringify(release)} ] && [ "$waited" -lt 600 ]; do`,
+      '  sleep 0.1',
+      '  waited=$((waited + 1))',
+      'done',
       // The stub records the moment it answers, so the caller can prove it
       // returned first without timing the wall clock.
-      ': >"$(dirname "$0")/answered.txt"',
+      `: > ${JSON.stringify(answered)}`,
       `printf '%s\\n' '${JSON.stringify({
         type: 'system',
         subtype: 'init',
@@ -410,9 +420,8 @@ test('the run-scoped model probe returns without waiting for the model', async (
       },
     },
   )
-  // TP-10: the command returned before the stub answered. An elapsed-time
-  // ceiling would have measured the machine under a concurrent suite.
-  const answeredOnReturn = existsSync(path.join(agentDirectory, 'answered.txt'))
+  // The command returned while the child was still held in the live call.
+  const answeredOnReturn = existsSync(answered)
 
   assert.equal(probe.status, 0, probe.stderr)
   assert.equal(answeredOnReturn, false)
@@ -424,6 +433,8 @@ test('the run-scoped model probe returns without waiting for the model', async (
   assert.equal(typeof printed.probe_pid, 'number')
 
   // The detached child lands the answer on the run, replacing the marker.
+  writeFileSync(release, '')
+
   const deadline = Date.now() + 30_000
   let landed: RunModelEvidence | undefined
 

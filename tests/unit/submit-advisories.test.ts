@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { utimesSync, writeFileSync } from 'node:fs'
+import { writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -11,7 +11,6 @@ import {
   submitOutput,
 } from '../../src/lib/engine.js'
 import { statePath } from '../../src/lib/state.js'
-import { delegationPath } from '../../src/lib/validation.js'
 import {
   markDelegationBackground,
   watchInvocation,
@@ -73,24 +72,23 @@ test('a submission returns every advisory it records', async () => {
     `${JSON.stringify(output, null, 2)}\n`,
   )
 
-  // Backdate the launch so the same marker reads as a late arming, which is
-  // the delegation-supervision advisory this submission also carries.
-  const marker = read(
-    path.join(root, markDelegationBackground(root, state.run_id, invocationId)),
-  ) as { launched_at: string | null }
-  const backdated = new Date(Date.parse(marker.launched_at!) - 10 * 60 * 1000)
-
-  utimesSync(
-    path.join(root, delegationPath(state.run_id, invocationId, root)),
-    backdated,
-    backdated,
-  )
-  markDelegationBackground(root, state.run_id, invocationId)
-
+  // A supervisor that names a launch ten minutes back has armed its watch
+  // late, which is the delegation-supervision advisory this submission also
+  // carries. The supervisor is the only source for that time: the harness
+  // never witnessed the launch and no longer reads an artifact's mtime as
+  // if it had.
   await watchInvocation(root, state.run_id, {
     cadenceSeconds: CADENCE_SECONDS,
     agentState: 'completed',
+    markBackground: true,
+    launchedAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
   })
+
+  const marker = read(
+    path.join(root, markDelegationBackground(root, state.run_id, invocationId)),
+  ) as { launched_at: string | null; late: boolean }
+
+  assert.equal(marker.late, true)
 
   const before = getRunState(root, state.run_id).advisories ?? []
   const submitted = submitOutput(root, state.run_id, outputPath)

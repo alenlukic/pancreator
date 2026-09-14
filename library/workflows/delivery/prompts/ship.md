@@ -11,13 +11,24 @@ otherwise the request the card delivers, which is the ratified specification.
 2. Confirm verification is satisfied by successful current evidence or explicit
    operator waiver directives. Fingerprint currency applies to unwaived
    evidence, not to the validity of an operator directive.
-3. On a self-development release, every `./bin/pan` command in this run
-   executes the harness root's build, not the workspace under release. Before
-   you rely on any release-lane behavior this release introduces, such as an
-   entry-gate waiver, a `release sync` guard, or a currency check, read the
-   harness root's `VERSION` and confirm the behavior exists there. State in
-   your output which release-lane repairs in this release are inactive on
-   this run.
+3. On a self-development release, run every release-lane `./bin/pan` command
+   against the build of the workspace under release:
+   `PANCREATOR_EXEC_ROOT=<workspace path> ./bin/pan <command>`. That value is
+   harness-relative, `bin/pan` builds and dispatches that checkout, and run
+   state, the worktree index, the gate cache, and the run mutex stay on the
+   harness root. A value that is not a Pancreator checkout fails with
+   `EXEC_ROOT_INVALID` and names the path.
+   The redirection is read from the harness root's own `bin/pan`, so it is
+   inactive on the release that introduces it. Confirm that the harness
+   root's `bin/pan` accepts `PANCREATOR_EXEC_ROOT`; when it does not, use the
+   harness root's build and record that residual. Read the harness root's
+   `VERSION` before you rely on any other release-lane behavior this release
+   introduces, such as an entry-gate waiver or a `release sync` guard, and
+   state in your output which release-lane repairs in this release are
+   inactive on this run. The harness records the executing build's identity
+   beside the workspace identity on this stage record and raises a run
+   advisory when the two disagree. That advisory is a recorded fact and does
+   not fail the stage.
 4. When self-development has a managed worktree, run
    `pan release sync --worktree <name> --message <message> --run <run-id>`.
    Use the managed worktree and run id from the invocation. Sync refuses with
@@ -31,6 +42,12 @@ otherwise the request the card delivers, which is the ratified specification.
    managed run, synchronize metadata after the rebase. Then run
    `pan release finalize --worktree <name> --fetched-main <hash> --run <run-id>`.
    In embedded mode, do not modify release metadata or create local commits.
+   Stop there. Landing this release on the harness root's local default
+   branch is an operator step after submit, so you MUST NOT fast-forward,
+   merge, switch, or check out a branch in the harness root during this
+   stage. `scope.no_unapproved_changes` reads any harness-root change as
+   contamination, and no `workspace_changes` declaration attributes a
+   checkout the run is not working in.
 6. Attribute every tracked file this stage changed, including the release
    metadata the procedure above mandates. The `scope.no_unapproved_changes`
    criterion reads the output field `workspace_changes`, which carries
@@ -81,5 +98,6 @@ finalization in self-development.
 ## Done when
 
 The packet accurately summarizes scope, validation, risks, rollback, local
-release commits, and the remaining remote actions. Stop for operator approval.
-Do not push, open a PR, merge, publish, or deploy.
+release commits, and the remaining remote actions. The harness root is
+unchanged. Stop for operator approval. Do not push, open a PR, merge,
+publish, or deploy.

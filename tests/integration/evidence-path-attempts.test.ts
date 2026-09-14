@@ -8,6 +8,14 @@ import {
   recordDelegatedWorker,
   setRunStage,
 } from '../../src/lib/engine.js'
+import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
+import {
+  nextAgentGatePassAttempt,
+  recordAgentRepositoryCheckForRuns,
+  recordProfileGatePass,
+  reusableProfileExecution,
+  type RepositoryCheckResult,
+} from '../../src/lib/repository-checks.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import type { Invocation } from '../../src/lib/types.js'
 import { invocationEvidencePaths } from '../../src/lib/watch.js'
@@ -188,4 +196,105 @@ test('a declared evidence report nobody has written appears in the watched set',
     ).includes(relaunch.evidence_attempt!.evidence_path),
     'a relaunch adds its own pending report to the watched set',
   )
+})
+
+function passingFastResult(workspaceRoot: string): RepositoryCheckResult {
+  return {
+    profile: 'fast',
+    status: 'passed',
+    config_path: 'runtime/repository-checks.json',
+    workspace_root: workspaceRoot,
+    timeout_ms: 60_000,
+    results: [
+      {
+        kind: 'command',
+        command: 'npm test',
+        exit_code: 0,
+        signal: null,
+        stdout: 'suite ok\n',
+        stderr: '',
+        passed: true,
+        timed_out: false,
+        duration_ms: 1,
+      },
+    ],
+    total_duration_ms: 1,
+    advisories: [],
+  }
+}
+
+// The reuse key was invocation-scoped while the artifact it protects is
+// worker-scoped: the two evidence workers of a verify stage share one
+// invocation id, so the second worker was handed the first one's recorded
+// pass and the stage held one log for two executions.
+test('the two evidence workers of one verify stage produce two distinct logs', () => {
+  const { root, runId, invocation } = verifyInvocation()
+  const invocationId = invocation.invocation_id
+  const roles = (invocation.evidence_workers ?? []).map((worker) => worker.role)
+
+  assert.deepEqual(roles, ['review', 'qa'])
+
+  const fingerprint = gitWorkspaceSnapshot(root).fingerprint
+  // The sequence each worker's own `pan repository-check fast --run <id>
+  // --role <role>` performs: ask the ledger for a pass to reuse, execute,
+  // store the log, then file the row that names it.
+  const logs = roles.map((role) => {
+    assert.equal(
+      reusableProfileExecution(
+        root,
+        runId,
+        invocationId,
+        'fast',
+        fingerprint,
+        role,
+      ),
+      null,
+      `${role} holds no recorded pass of its own to reuse`,
+    )
+
+    const result = passingFastResult(root)
+    const startedAt = new Date().toISOString()
+    const pass = recordProfileGatePass(root, 'fast', result, {
+      run_ids: [runId],
+      fingerprint_before: fingerprint,
+      started_at: startedAt,
+      attempt: nextAgentGatePassAttempt(root, runId, 'fast', fingerprint),
+      initiator: 'agent',
+    })
+
+    assert.ok(pass, `${role} stored its pass`)
+    recordAgentRepositoryCheckForRuns(
+      root,
+      [runId],
+      result,
+      startedAt,
+      'agent',
+      pass.evidence_path,
+      false,
+      role,
+    )
+
+    return pass.evidence_path
+  })
+
+  assert.equal(new Set(logs).size, 2, 'each worker owns a distinct log path')
+
+  for (const [index, role] of roles.entries()) {
+    assert.equal(
+      reusableProfileExecution(
+        root,
+        runId,
+        invocationId,
+        'fast',
+        fingerprint,
+        role,
+      )?.evidence_log,
+      logs[index],
+      `${role} resolves to its own log and not the other worker's`,
+    )
+    assert.match(
+      readFileSync(path.join(root, logs[index]), 'utf8'),
+      /^\$ pan repository-check fast$/mu,
+    )
+  }
 })

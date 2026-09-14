@@ -17,7 +17,12 @@ import {
   inboxTemporalScanDirectories,
   migrateLegacyInboxLayout,
 } from './inbox.js'
-import { findProjectRoot, isRecord, writeJsonAtomic } from './io.js'
+import {
+  findProjectRoot,
+  isRecord,
+  resolveInside,
+  writeJsonAtomic,
+} from './io.js'
 import {
   RUN_SUFFIX_MAX_LENGTH,
   keywordRunSuffix,
@@ -654,6 +659,212 @@ function rewriteStructuredFiles(
   }
 }
 
+/**
+ * Run-local map from every invocation id a citation may still name to the id
+ * that run carries now.
+ *
+ * Invocation prefixes are resequenced while a run is live and again when it
+ * closes, so a path an operator or a report wrote down stops resolving. The
+ * rewrite repairs every reference inside the run's own files; nothing repairs
+ * a citation that left it. This map is the alias that closes that gap, and it
+ * changes no name.
+ */
+export const INVOCATION_ALIAS_FILE = 'invocation-aliases.json'
+
+interface InvocationAliasRecord {
+  schema_version: 1
+  run_id: string
+  updated_at: string
+  /** Superseded invocation id to the id the run carries now. */
+  aliases: Record<string, string>
+}
+
+function invocationAliasPath(runDirectory: string): string {
+  return path.join(agentDirectory(runDirectory), INVOCATION_ALIAS_FILE)
+}
+
+/**
+ * The alias file records superseded ids, so the rewrite that supersedes them
+ * must not rewrite the record's own keys into their replacements.
+ */
+function isInvocationAliasFile(filePath: string): boolean {
+  return path.basename(filePath) === INVOCATION_ALIAS_FILE
+}
+
+function readInvocationAliases(filePath: string): Record<string, string> {
+  if (!existsSync(filePath)) {
+    return {}
+  }
+
+  let parsed: unknown
+
+  try {
+    parsed = parseJsonFile(filePath)
+  } catch {
+    return {}
+  }
+
+  if (!isRecord(parsed) || !isRecord(parsed.aliases)) {
+    return {}
+  }
+
+  const aliases: Record<string, string> = {}
+
+  for (const [from, to] of Object.entries(parsed.aliases)) {
+    if (typeof to === 'string' && to.length > 0 && from !== to) {
+      aliases[from] = to
+    }
+  }
+
+  return aliases
+}
+
+/**
+ * Extend the run's alias map with one resequencing pass.
+ *
+ * An alias already in the file is repointed through this pass, so a citation
+ * written before the first resequence still lands on the current id after the
+ * last one. Identity entries are dropped: a pass that renamed nothing leaves
+ * the map exactly as it was.
+ */
+function recordInvocationAliases(
+  runDirectory: string,
+  runId: string,
+  occurrences: StageOccurrence[],
+): void {
+  const filePath = invocationAliasPath(runDirectory)
+  const existing = readInvocationAliases(filePath)
+  const renames = new Map(
+    occurrences
+      .filter(
+        (occurrence) =>
+          occurrence.oldInvocationId !== occurrence.newInvocationId,
+      )
+      .map((occurrence) => [
+        occurrence.oldInvocationId,
+        occurrence.newInvocationId,
+      ]),
+  )
+  const aliases: Record<string, string> = {}
+
+  for (const [from, to] of Object.entries(existing)) {
+    const current = renames.get(to) ?? to
+
+    if (from !== current) {
+      aliases[from] = current
+    }
+  }
+
+  for (const [from, to] of renames) {
+    aliases[from] = to
+  }
+
+  if (Object.keys(aliases).length === 0) {
+    return
+  }
+
+  const record: InvocationAliasRecord = {
+    schema_version: 1,
+    run_id: runId,
+    updated_at: new Date().toISOString(),
+    aliases: Object.fromEntries(
+      Object.entries(aliases).sort(([left], [right]) =>
+        left.localeCompare(right),
+      ),
+    ),
+  }
+
+  mkdirSync(path.dirname(filePath), { recursive: true })
+  writeJsonAtomic(filePath, record)
+}
+
+/** What one citation of a run's artifact resolves to today. */
+export interface ResolvedRunCitation {
+  run_id: string
+  citation: string
+  /** The citation with every superseded invocation id replaced. */
+  resolved: string
+  /** True when the alias map changed the citation. */
+  aliased: boolean
+  /** Repository-relative path that exists now, when one could be resolved. */
+  path: string | null
+  /** Alias record consulted, or `null` when the run has none. */
+  alias_path: string | null
+}
+
+/**
+ * Where one citation candidate lands, or `null` when it leaves the run it
+ * claims to cite.
+ *
+ * A citation is caller-supplied text, so each candidate passes the shared
+ * containment helper twice: once against the installation and once against
+ * the run directory. A traversal such as `../../../../etc/hosts` yields no
+ * candidate and the resolver answers as it does for an unknown citation,
+ * rather than reporting a path that has nothing to do with the run.
+ */
+function containedCitationPath(
+  root: string,
+  runDirectory: string,
+  candidate: string,
+): string | null {
+  try {
+    const absolute = resolveInside(root, candidate)
+
+    return resolveInside(runDirectory, path.relative(runDirectory, absolute))
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Resolve a citation of one run's artifact against that run's alias map.
+ *
+ * The citation may be a whole repository-relative path or a bare invocation
+ * id; both carry the prefix that moved. A citation the map does not touch
+ * comes back unchanged, which is the honest answer for a path that was always
+ * current and for one that never existed.
+ */
+export function resolveRunCitation(
+  root: string,
+  runId: string,
+  citation: string,
+): ResolvedRunCitation {
+  const runDirectory = resolveInside(root, `runtime/logs/workflows/${runId}`)
+
+  invariant(existsSync(runDirectory), `Unknown run: ${runId}`, {
+    code: 'RUN_NOT_FOUND',
+  })
+
+  const filePath = invocationAliasPath(runDirectory)
+  const aliases = readInvocationAliases(filePath)
+  const resolved = replaceMappings(citation, new Map(Object.entries(aliases)))
+  const candidates = [
+    resolved,
+    ...(resolved.includes('/')
+      ? []
+      : // A bare invocation id names no file on its own; the card is the
+        // artifact a reader following a stale citation is looking for.
+        [
+          resolveRunLayout(root, runId).invocation(resolved, '.md').relative,
+          resolveRunLayout(root, runId).invocation(resolved, '.json').relative,
+        ]),
+  ]
+
+  return {
+    run_id: runId,
+    citation,
+    resolved,
+    aliased: resolved !== citation,
+    path:
+      candidates.find((candidate) => {
+        const absolute = containedCitationPath(root, runDirectory, candidate)
+
+        return absolute !== null && existsSync(absolute)
+      }) ?? null,
+    alias_path: existsSync(filePath) ? toRepoRelative(root, filePath) : null,
+  }
+}
+
 function isContentAddressedArtifact(filePath: string): boolean {
   return /(?:^|[/\\])(?:state-revision-\d+-[a-f0-9]{64}|event-payload-[a-f0-9]{64}|repository-check-delta-[a-f0-9]{64})\.json$/u.test(
     filePath,
@@ -1022,7 +1233,9 @@ export function rewriteWorkflowArtifacts(
   // make loadState/loadStateRevision fail their checksums after finalization.
   updateFiles(
     listFiles(runDirectory).filter(
-      (filePath) => !isContentAddressedArtifact(filePath),
+      (filePath) =>
+        !isContentAddressedArtifact(filePath) &&
+        !isInvocationAliasFile(filePath),
     ),
     mappings,
     updatedFiles,
@@ -1048,7 +1261,13 @@ export function rewriteWorkflowArtifacts(
     applyFileRenames(listFiles(stateDirectory), mappings)
   const layout = consolidateArtifactLayout(root, runDirectory)
 
-  updateFiles(listFiles(runDirectory), layout.mappings, updatedFiles)
+  updateFiles(
+    listFiles(runDirectory).filter(
+      (filePath) => !isInvocationAliasFile(filePath),
+    ),
+    layout.mappings,
+    updatedFiles,
+  )
   updateFiles(listFiles(stateDirectory), layout.mappings, updatedFiles)
   updateFiles(exactRunInboxFiles(root, runId), layout.mappings, updatedFiles)
 
@@ -1059,6 +1278,8 @@ export function rewriteWorkflowArtifacts(
       state,
     )
   }
+
+  recordInvocationAliases(runDirectory, runId, occurrences)
 
   return {
     artifact_files: artifactFiles,
@@ -1138,6 +1359,8 @@ export interface WorkflowArchiveSummary {
   inbox_files: string[]
   /** Archived PR-description file names. */
   pr_description_files: string[]
+  /** Runs whose worker-authored helper scripts this pass removed. */
+  swept_script_run_ids: string[]
 }
 
 export interface InboxArchiveSelection {
@@ -2178,6 +2401,31 @@ function archiveDirectory(parent: string, runId: string): void {
   renameSync(source, target)
 }
 
+/**
+ * Remove the worker-authored helper scripts of one run (`RUNTIME-001`).
+ *
+ * `AUTO-001` lets a worker write a task-specific script under the run's own
+ * `scripts/` directory for that run alone. Those scripts are run evidence
+ * while the run is still being read, so finalization keeps them: it fires the
+ * moment a run closes, which is exactly when an operator is reading the
+ * record. Retention is the later boundary that can take them, and it is the
+ * one boundary that already decides a run has aged out.
+ *
+ * Returns true when a tree was removed, so the pass can report which runs it
+ * swept rather than leave the deletion silent.
+ */
+function sweepRunLocalScripts(runDirectory: string): boolean {
+  const scripts = path.join(runDirectory, 'scripts')
+
+  if (!existsSync(scripts)) {
+    return false
+  }
+
+  rmSync(scripts, { recursive: true, force: true })
+
+  return true
+}
+
 export function archiveWorkflowDirectories(
   root = findProjectRoot(),
   options: {
@@ -2227,10 +2475,16 @@ export function archiveWorkflowDirectories(
   let updatedFiles = 0
   let runDirectories = 0
   let stateDirectories = 0
+  const sweptScriptRunIds: string[] = []
 
   for (const runId of runIds) {
     const logDirectory = path.join(logRoot, runId)
     const stateDirectory = path.join(stateRoot, runId)
+
+    if (sweepRunLocalScripts(logDirectory)) {
+      sweptScriptRunIds.push(runId)
+    }
+
     const mappings = new Map<string, string>([
       [
         `runtime/logs/workflows/${runId}`,
@@ -2430,6 +2684,7 @@ export function archiveWorkflowDirectories(
     bon_ids: bonIds,
     inbox_files: archivedFiles.get('runtime/inbox') ?? [],
     pr_description_files: archivedFiles.get('runtime/pr-descriptions') ?? [],
+    swept_script_run_ids: sweptScriptRunIds,
   }
 }
 

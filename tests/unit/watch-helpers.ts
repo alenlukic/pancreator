@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict'
-import { statSync, utimesSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, utimesSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { prepareInvocation, setRunStage } from '../../src/lib/engine.js'
-import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import type { Invocation, RunState } from '../../src/lib/types.js'
 import {
   delegationUnobservedMessage,
+  readLaunchRecord,
   summarizeDelegationObservation,
 } from '../../src/lib/watch.js'
 import { loadWorkflowFile, stageBySlug } from '../../src/lib/workflow.js'
@@ -46,11 +46,11 @@ export function fakeClock(): {
  * sees an output that moved since the last one. That is a worker still
  * writing, which is exactly what a confirming wake exists to detect.
  *
- * Each rewrite pins the output one millisecond further past the launch
- * artifact. Left at wall-clock now, the output ages past one cadence while
- * the launch artifact keeps its original time, so `launchToOutputSeconds`
- * grows with however long the host took rather than with anything the worker
- * did, and the watch completes on `output_plausible`. Pinning holds both
+ * Each rewrite pins the output one millisecond further past the recorded
+ * launch. Left at wall-clock now, the output ages past one cadence while the
+ * launch record keeps its original time, so `launchToOutputSeconds` grows
+ * with however long the host took rather than with anything the worker did,
+ * and the watch completes on `output_plausible`. Pinning holds both
  * conditions this fixture owes at once: the evidence stays weak because the
  * output is younger than one cadence, and the signature still moves because
  * the time still advances.
@@ -74,9 +74,10 @@ export function stillWritingClock(
 }
 
 /**
- * Set the stage output's modification time to the launch artifact's plus
+ * Set the stage output's modification time to the recorded launch time plus
  * `sinceLaunchMs`, which MUST stay under one cadence and MUST grow on every
- * call.
+ * call. The watch writes the launch record when it arms, so this runs from
+ * the first sleep onward.
  */
 function pinOutputPastLaunch(
   root: string,
@@ -89,13 +90,11 @@ function pinOutputPastLaunch(
   )
 
   const invocation = state.current_invocation!
-  const launch = statSync(
-    resolveRunLayout(root, state.run_id).invocation(
-      invocation.id,
-      '.delegation.md',
-    ).absolute,
-  )
-  const pinned = new Date(launch.mtimeMs + sinceLaunchMs)
+  const launch = readLaunchRecord(root, state.run_id, invocation.id)
+
+  assert.ok(launch, 'the watch records the launch when it arms')
+
+  const pinned = new Date(Date.parse(launch.launched_at) + sinceLaunchMs)
 
   utimesSync(path.join(root, invocation.output_path), pinned, pinned)
 }
@@ -181,6 +180,25 @@ export function fillPreparedOutput(root: string, state: RunState): string {
   writeCanonicalDelegation(root, invocation)
 
   return invocation.output.path
+}
+
+/** The run's `blocked_output_snapshotted` event lines, in order. */
+export function blockedSnapshotEvents(root: string, runId: string): string[] {
+  const events = path.join(
+    root,
+    'runtime',
+    'logs',
+    'workflows',
+    runId,
+    'agent',
+    'events.jsonl',
+  )
+
+  return existsSync(events)
+    ? readFileSync(events, 'utf8')
+        .split('\n')
+        .filter((line) => line.includes('blocked_output_snapshotted'))
+    : []
 }
 
 export function await_message(

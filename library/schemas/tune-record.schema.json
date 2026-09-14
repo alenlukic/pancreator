@@ -93,7 +93,10 @@
       ],
       "properties": {
         "fast_lane_wall_ms": { "type": "number", "minimum": 0 },
-        "secondary_lane_wall_ms": { "type": "number", "minimum": 0 },
+        "secondary_lane_wall_ms": {
+          "type": ["number", "null"],
+          "minimum": 0
+        },
         "summed_file_ms": { "type": "number", "minimum": 0 },
         "fixture_template_ms": { "type": "number", "minimum": 0 },
         "fixture_clone_ms": { "type": "number", "minimum": 0 },

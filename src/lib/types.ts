@@ -1375,6 +1375,16 @@ export interface RepositoryCheckDelta {
     fixed: RepositoryCheckDiagnostic[]
     carried: RepositoryCheckDiagnostic[]
   }
+  /**
+   * Set when the baseline was captured in a different workspace than the one
+   * this check ran in, which a shared cohort baseline always is. A new
+   * diagnostic under that divergence may belong to either workspace, so the
+   * delta names the two paths instead of attributing the failure.
+   */
+  baseline_workspace_divergence?: {
+    baseline_workspace: string
+    current_workspace: string
+  }
 }
 
 export interface DeterministicResult {
@@ -1530,6 +1540,35 @@ export interface StageHistoryItem {
     rendered_path: string
     status: 'rendered_and_validated'
   }
+  /**
+   * Self-development ship only. Which build executed the release lane, and
+   * which tree it released. Recorded as a fact rather than gated, because the
+   * redirection that makes the two agree cannot be active on the release that
+   * introduces it.
+   */
+  build_currency?: BuildCurrencyRecord
+}
+
+/** Git and version identity of one Pancreator source tree. */
+export interface SourceTreeIdentity {
+  /** Absolute path of the tree. */
+  root: string
+  /** Commit the tree holds, or `null` outside a repository. */
+  head: string | null
+  /** Branch the tree holds, or `null` when HEAD is detached. */
+  branch: string | null
+  /** Contents of the tree's `VERSION` file, or `null` when unreadable. */
+  version: string | null
+}
+
+/** Whether the build that executed a stage came from the tree it acted on. */
+export interface BuildCurrencyRecord {
+  /** Tree the running `dist` was compiled from. */
+  executing_build: SourceTreeIdentity
+  /** Tree the stage acted on. */
+  workspace: SourceTreeIdentity
+  /** True when both identities name the same tree state. */
+  current: boolean
 }
 
 /**
@@ -1666,8 +1705,12 @@ export interface RunAdvisory {
     | 'delegation_supervision'
     /** An evidence report whose worker stopped before its completion marker. */
     | 'evidence_report'
+    /** A shared baseline adopted at a workspace other than its capture path. */
+    | 'baseline_adoption'
     /** A hard criterion a compatibility path passed without satisfying. */
     | 'gate_bypass'
+    /** A ship stage whose executing build is not the workspace it releases. */
+    | 'build_currency'
   source: 'prepare' | 'probe' | 'submit' | 'supervisor_evidence'
   stage?: string
   invocation_id?: string
@@ -1841,6 +1884,15 @@ export interface RepositoryCheckBaselinePointer {
   shared_from_cohort?: string
   /** Run that captured the shared baseline this pointer adopts. */
   captured_by_run_id?: string
+  /**
+   * Workspace the capture executed in, relative to the harness root. A
+   * cohort shares one baseline across chunk runs that each own a different
+   * worktree, so a failure can belong to the capturing path rather than to
+   * the change under test, and the reader needs the path to tell them apart.
+   * Absent on a pointer recorded before the path was carried; an absent path
+   * asserts nothing and the adoption behaves as it did then.
+   */
+  capture_workspace_path?: string
 }
 
 export interface BestOfNRunRole {

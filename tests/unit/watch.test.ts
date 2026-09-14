@@ -1,20 +1,30 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, utimesSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import { submitOutput } from '../../src/lib/engine.js'
 import { scaffoldStageOutput } from '../../src/lib/requirements/scaffold.js'
+import { operationMutexPath } from '../../src/lib/state.js'
 import {
   DEFAULT_WATCH_CADENCE_SECONDS,
   DELEGATION_UNOBSERVED,
   backgroundMarkerPath,
+  blockedOutputSnapshotPath,
   completionEvidenceForObservation,
   isTerminalObservation,
   markDelegationBackground,
   observeInvocation,
   parseCadenceSeconds,
+  readLaunchRecord,
   readWatchRecord,
+  recordInvocationLaunch,
   summarizeDelegationObservation,
   summarizeDelegationWatch,
   watchInvocation,
@@ -24,6 +34,7 @@ import { delegationPath } from '../../src/lib/validation.js'
 import { read, writeCanonicalDelegation } from '../helpers.js'
 import {
   CADENCE_SECONDS,
+  blockedSnapshotEvents,
   fakeClock,
   fillPreparedOutput,
   preparedRun,
@@ -266,6 +277,311 @@ test('watch --mark-background writes the background marker beside the record', a
   assert.equal(marker.watch_record_path, result.record_path)
 })
 
+// HR4-001: `launched_at` came from the delegation artifact's mtime, which
+// `pan prepare` writes. Seven of the eight Phase 3 lateness advisories were
+// verify stages whose supervisor read a long implement output before it
+// launched anything, so the advisory measured reading and called it
+// lateness. The arming is the earliest launch the harness itself witnesses.
+test('the first watch arming records the launch time and never resets it', async () => {
+  const { root, state, invocationId } = preparedRun()
+
+  fillPreparedOutput(root, state)
+
+  const armedAtLeast = Date.now()
+
+  await watchInvocation(root, state.run_id, {
+    cadenceSeconds: CADENCE_SECONDS,
+    agentState: 'completed',
+  })
+
+  const first = readLaunchRecord(root, state.run_id, invocationId)
+
+  assert.ok(first)
+  assert.equal(first.launched_at_source, 'watch_arm')
+  assert.equal(first.launch_mode, 'unknown')
+  assert.equal(first.worker_handle, null, 'an absent handle is recorded')
+  assert.ok(Date.parse(first.launched_at) >= armedAtLeast)
+  assert.ok(
+    Date.parse(first.launched_at) <=
+      Date.parse(
+        readWatchRecord(root, state.run_id, invocationId)[0].recorded_at,
+      ),
+    'the launch is recorded no later than the wake it precedes',
+  )
+
+  // Re-arming is more supervision of the same launch, not a new one.
+  await watchInvocation(root, state.run_id, {
+    invocationId,
+    cadenceSeconds: CADENCE_SECONDS,
+    markBackground: true,
+    agentState: 'completed',
+  })
+
+  const second = readLaunchRecord(root, state.run_id, invocationId)
+
+  assert.equal(second?.launched_at, first.launched_at)
+  assert.equal(second?.launched_at_source, 'watch_arm')
+  assert.equal(
+    second?.launch_mode,
+    'background',
+    'a mode learned later fills a gap without moving the clock',
+  )
+})
+
+// The supervisor is the only party that knows when it made the call, so its
+// own time overrides a default the harness inferred. That is what makes a
+// late arming measurable at all now that no artifact mtime stands in for it.
+test('a supervisor-supplied launch time overrides the arming default on the background path', async () => {
+  const { root, state, invocationId } = preparedRun()
+
+  fillPreparedOutput(root, state)
+
+  const launchedAt = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+
+  await watchInvocation(root, state.run_id, {
+    cadenceSeconds: CADENCE_SECONDS,
+    markBackground: true,
+    launchedAt,
+    agentState: 'completed',
+  })
+
+  const record = readLaunchRecord(root, state.run_id, invocationId)
+
+  assert.equal(record?.launched_at, launchedAt)
+  assert.equal(record?.launched_at_source, 'supervisor')
+  assert.equal(record?.launch_mode, 'background')
+
+  const summary = summarizeDelegationWatch(root, state.run_id, invocationId)
+
+  assert.equal(summary.background_watch_late, true)
+  assert.ok((summary.background_mark_delay_seconds ?? 0) > 60)
+})
+
+// HR4-002: the watch fingerprinted the delegation artifact, which is the
+// worker's input. A supervisor re-rendering the card counted as the worker
+// producing, so the stall count reset and a confirming wake was spent on an
+// idle worker.
+test('touching the delegation artifact is not progress the watch counts', async () => {
+  const { root, state, invocationId } = preparedRun()
+  const delegationAbsolute = path.join(
+    root,
+    delegationPath(state.run_id, invocationId, root),
+  )
+  const invocation = read(
+    path.join(root, state.current_invocation!.json_path),
+  ) as Parameters<typeof observeInvocation>[1]
+
+  writeCanonicalDelegation(root, invocation)
+
+  const before = observeInvocation(root, invocation)
+  const touched = new Date(Date.now() + 60_000)
+
+  utimesSync(delegationAbsolute, touched, touched)
+
+  const after = observeInvocation(root, invocation)
+
+  assert.equal(after.fingerprint, before.fingerprint)
+  assert.ok(
+    after.watched_paths.every((item) => !item.path.endsWith('.delegation.md')),
+    'the delegation artifact is no longer a watched path',
+  )
+
+  // The same artifact touched on every wake must still leave a stall.
+  const clock = fakeClock()
+  const result = await watchInvocation(root, state.run_id, {
+    cadenceSeconds: CADENCE_SECONDS,
+    stallWakes: 2,
+    timeoutSeconds: CADENCE_SECONDS * 10,
+    ...clock,
+    onWake: () => {
+      const stamp = new Date(Date.now() + 120_000)
+
+      utimesSync(delegationAbsolute, stamp, stamp)
+    },
+  })
+
+  assert.equal(
+    result.state,
+    'stalled',
+    'the touches never look like the worker producing',
+  )
+
+  const wakes = readWatchRecord(root, state.run_id, invocationId).filter(
+    (entry) => entry.event === 'wake',
+  )
+
+  assert.deepEqual(
+    wakes.map((entry) => entry.unchanged_wakes),
+    [1, 2],
+    'a touched delegation artifact leaves the unchanged-wake count alone',
+  )
+})
+
+// HR4-010: the 3b coder's contract-conflict diagnosis was the best worker
+// output of its phase and the artifact an operator decision rested on. The
+// supervisor resolved the block without submitting, the relaunched worker
+// rewrote the same path, and the run record kept nothing.
+test('a blocked output is preserved beside its invocation and named in the event log', async () => {
+  const { root, state, invocationId, outputPath } = preparedRun()
+
+  fillPreparedOutput(root, state)
+
+  const blocked = read(path.join(root, outputPath)) as Record<string, unknown>
+
+  writeFileSync(
+    path.join(root, outputPath),
+    `${JSON.stringify({ ...blocked, result: 'blocked', summary: 'The plan names a gate no permitted action can pass.' }, null, 2)}\n`,
+  )
+
+  await watchInvocation(root, state.run_id, {
+    cadenceSeconds: CADENCE_SECONDS,
+    agentState: 'completed',
+  })
+
+  const first = blockedOutputSnapshotPath(root, state.run_id, invocationId, 1)
+  const preserved = read(path.join(root, first)) as Record<string, unknown>
+
+  assert.equal(preserved.result, 'blocked')
+  assert.match(
+    String(preserved.summary),
+    /no permitted action can pass/u,
+    'the preserved copy carries the diagnosis, not a stub',
+  )
+  const events = blockedSnapshotEvents(root, state.run_id)
+
+  assert.equal(events.length, 1)
+  assert.ok(
+    events[0].includes(first),
+    'the event names the snapshot it preserved',
+  )
+
+  // The same blocked output seen again on a later wake is already preserved.
+  await watchInvocation(root, state.run_id, {
+    invocationId,
+    cadenceSeconds: CADENCE_SECONDS,
+    agentState: 'completed',
+  })
+
+  assert.equal(
+    existsSync(
+      path.join(
+        root,
+        blockedOutputSnapshotPath(root, state.run_id, invocationId, 2),
+      ),
+    ),
+    false,
+  )
+
+  // A second, different blocked output takes the next ordinal and leaves
+  // the first snapshot exactly as it was.
+  writeFileSync(
+    path.join(root, outputPath),
+    `${JSON.stringify({ ...blocked, result: 'blocked', summary: 'A second precondition is missing.' }, null, 2)}\n`,
+  )
+
+  await watchInvocation(root, state.run_id, {
+    invocationId,
+    cadenceSeconds: CADENCE_SECONDS,
+    agentState: 'completed',
+  })
+
+  const second = read(
+    path.join(
+      root,
+      blockedOutputSnapshotPath(root, state.run_id, invocationId, 2),
+    ),
+  ) as Record<string, unknown>
+
+  assert.match(String(second.summary), /A second precondition is missing/u)
+  assert.match(
+    String((read(path.join(root, first)) as Record<string, unknown>).summary),
+    /no permitted action can pass/u,
+    'the first snapshot is never overwritten',
+  )
+})
+
+// R-2. The snapshot's event write took the run mutex with no wait budget from
+// inside the watch loop, so a concurrent `pan` command ended supervision with
+// RUN_OPERATION_IN_PROGRESS. The watched worker runs `./bin/pan` by design,
+// which is the contention source. The loss was also not self-healing: the
+// later observation found a snapshot with a matching digest and returned
+// before writing anything.
+test('a contended event write leaves the watch running and lands on a later wake', async () => {
+  const { root, state, invocationId, outputPath } = preparedRun()
+
+  fillPreparedOutput(root, state)
+
+  const blocked = read(path.join(root, outputPath)) as Record<string, unknown>
+
+  writeFileSync(
+    path.join(root, outputPath),
+    `${JSON.stringify({ ...blocked, result: 'blocked', summary: 'The gate cannot pass before the stage it guards.' }, null, 2)}\n`,
+  )
+
+  const mutex = operationMutexPath(root, state.run_id)
+
+  mkdirSync(path.dirname(mutex), { recursive: true })
+  // Our own pid, so the mutex reads as held by a live process rather than as
+  // stale. A stale one is cleared and the contention never happens.
+  writeFileSync(mutex, `${process.pid}\n`)
+
+  const contended = await watchInvocation(root, state.run_id, {
+    invocationId,
+    cadenceSeconds: CADENCE_SECONDS,
+    agentState: 'completed',
+  })
+
+  assert.equal(
+    contended.state,
+    'completed',
+    'contention on the event write does not end supervision',
+  )
+
+  const snapshot = blockedOutputSnapshotPath(
+    root,
+    state.run_id,
+    invocationId,
+    1,
+  )
+
+  assert.equal(
+    existsSync(path.join(root, snapshot)),
+    true,
+    'the preservation is written before the event that can fail',
+  )
+  assert.deepEqual(
+    blockedSnapshotEvents(root, state.run_id),
+    [],
+    'the contended event is the only thing lost',
+  )
+
+  rmSync(mutex, { force: true })
+
+  await watchInvocation(root, state.run_id, {
+    invocationId,
+    cadenceSeconds: CADENCE_SECONDS,
+    agentState: 'completed',
+  })
+
+  const events = blockedSnapshotEvents(root, state.run_id)
+
+  assert.equal(events.length, 1, 'the skipped event lands exactly once')
+  assert.ok(
+    events[0].includes(snapshot),
+    'the recovered event names the snapshot it preserved',
+  )
+  assert.equal(
+    existsSync(
+      path.join(
+        root,
+        blockedOutputSnapshotPath(root, state.run_id, invocationId, 2),
+      ),
+    ),
+    false,
+    'the later wake writes the missing event, not a second snapshot',
+  )
+})
+
 test('cadence accepts fractional seconds and rejects a busy loop', () => {
   assert.equal(parseCadenceSeconds('0.1'), 0.1)
   assert.equal(parseCadenceSeconds('90'), 90)
@@ -386,6 +702,12 @@ test('an agent the supervisor saw still running keeps the watch on its cadence',
 // A supervisor's `running` report and a complete-looking output disagree.
 // The watch used to end on whichever it read first; now the disagreement
 // itself is the weak evidence that buys one more observation.
+//
+// The hold reason is asserted on every wake, not only the first. A fixture
+// repair once cost this case its premise: with only the first wake pinned,
+// the `agent_reported_running` branch could stop firing after wake 1 and the
+// case still passed, so it no longer discriminated the branch it is named
+// for. Nothing here measures elapsed time.
 test('a plausible output under a running agent report ends no wake of its own', async () => {
   const { root, state, invocationId } = preparedRun()
 
@@ -393,7 +715,7 @@ test('a plausible output under a running agent report ends no wake of its own', 
 
   const watched = await watchInvocation(root, state.run_id, {
     cadenceSeconds: CADENCE_SECONDS,
-    timeoutSeconds: CADENCE_SECONDS,
+    timeoutSeconds: CADENCE_SECONDS * 3,
     agentState: 'running',
     ...stillWritingClock(root, state),
   })
@@ -402,12 +724,17 @@ test('a plausible output under a running agent report ends no wake of its own', 
     (entry) => entry.event === 'wake',
   )
 
+  assert.ok(wakes.length >= 3, 'the hold must survive more than one wake')
   assert.ok(
     wakes.every((entry) => entry.terminal_state !== 'completed'),
     'no wake completes while the worker keeps writing under a running report',
   )
+  assert.deepEqual(
+    wakes.map((entry) => entry.completion_hold),
+    wakes.map(() => 'agent_reported_running'),
+    'every wake names the running report as the reason it held',
+  )
   assert.equal(watched.state, 'unverified')
-  assert.equal(wakes[0]?.completion_hold, 'agent_reported_running')
 })
 
 // A stage output that parses and is not a scaffold can still be a document
@@ -588,6 +915,10 @@ test('the background marker records how late supervision was armed', async () =>
   const { root, state, invocationId, outputPath } = preparedRun()
 
   fillPreparedOutput(root, state)
+  recordInvocationLaunch(root, state.run_id, invocationId, {
+    defaultLaunchedAtMs: Date.now(),
+    defaultSource: 'watch_arm',
+  })
 
   const marker = path.join(
     root,
@@ -595,22 +926,25 @@ test('the background marker records how late supervision was armed', async () =>
   )
   const record = read(marker) as {
     launched_at: string | null
+    launched_at_source: string | null
     mark_delay_seconds: number | null
     late: boolean
   }
 
   assert.equal(typeof record.launched_at, 'string')
+  assert.equal(record.launched_at_source, 'watch_arm')
   assert.equal(typeof record.mark_delay_seconds, 'number')
   assert.equal(record.late, false, 'a mark taken at once is not late')
 
-  // Backdate the launch so the same mark reads as a minute-plus late arming.
-  const backdated = new Date(Date.parse(record.launched_at!) - 10 * 60 * 1000)
-
-  utimesSync(
-    path.join(root, delegationPath(state.run_id, invocationId, root)),
-    backdated,
-    backdated,
-  )
+  // The supervisor names a launch ten minutes back, so the same mark reads
+  // as a minute-plus late arming. Only the supervisor can supply that time:
+  // the harness never witnessed the launch, which is exactly why it stopped
+  // reading a prepare-time artifact's mtime and calling that lateness.
+  recordInvocationLaunch(root, state.run_id, invocationId, {
+    launchedAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+    defaultLaunchedAtMs: Date.now(),
+    defaultSource: 'watch_arm',
+  })
   markDelegationBackground(root, state.run_id, invocationId)
 
   const summary = summarizeDelegationObservation(
@@ -654,21 +988,19 @@ test('a completed verdict records whether an agent or a file produced it', async
   )
   writeStageOutput(inferred.root, inferred.state)
 
-  // Backdate the launch so the output reads as landing well after it, which
-  // is the case where files alone are allowed to produce a verdict.
+  // A launch ten seconds back makes the output read as landing well after
+  // it, which is the case where files alone are allowed to produce a verdict.
   const launched = new Date(Date.now() - 10_000)
 
-  utimesSync(
-    path.join(
-      inferred.root,
-      delegationPath(
-        inferred.state.run_id,
-        inferred.invocationId,
-        inferred.root,
-      ),
-    ),
-    launched,
-    launched,
+  recordInvocationLaunch(
+    inferred.root,
+    inferred.state.run_id,
+    inferred.invocationId,
+    {
+      launchedAt: launched.toISOString(),
+      defaultLaunchedAtMs: Date.now(),
+      defaultSource: 'watch_arm',
+    },
   )
 
   const fileVerdict = await watchInvocation(

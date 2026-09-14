@@ -524,7 +524,8 @@ test('runTestsImpacted --list --json reports the selection on a synthetic tree a
 
 test('the graph build duration is a finite, non-negative number at every reporting site', async () => {
   // The flaky-gate repair removed the only assertions on this field, so a
-  // regression that reported zero, NaN, or nothing passed everywhere.
+  // regression that reported NaN or nothing passed everywhere. A measured
+  // zero stays admissible by design, so nothing here rejects it.
   const assertDuration = (value: unknown, site: string): void => {
     assert.equal(typeof value, 'number', `${site} reports a number`)
     assert.equal(

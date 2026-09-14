@@ -3,6 +3,7 @@ import {
   appendFileSync,
   existsSync,
   readFileSync,
+  utimesSync,
   writeFileSync,
 } from 'node:fs'
 import path from 'node:path'
@@ -17,11 +18,13 @@ import {
   markDelegationBackground,
   readForegroundReturn,
   readAuthorityOrder,
+  readLaunchRecord,
   recordForegroundReturn,
   redlineRecordPath,
   summarizeDelegationObservation,
   watchInvocation,
   watchRecordPath,
+  watchWakeSpanSeconds,
   writeRedlineRecord,
 } from '../../src/lib/watch.js'
 import { delegationExecutionPath } from '../../src/lib/validation.js'
@@ -95,7 +98,14 @@ test('a foreground-return attestation records launch and return times and satisf
   })
 
   assert.equal(record.launch_mode, 'foreground')
-  assert.equal(record.launched_at_source, 'delegation_artifact')
+  // No watch armed, so no launch record existed and the invocation record is
+  // the last resort: an upper bound on the launch rather than the launch.
+  assert.equal(record.launched_at_source, 'invocation_record')
+  assert.deepEqual(
+    readLaunchRecord(root, state.run_id, invocationId)?.launched_at,
+    record.launched_at,
+    'the attestation and the launch record agree on one launch time',
+  )
   assert.ok(Date.parse(record.launched_at) <= Date.parse(record.returned_at))
   assert.ok(record.elapsed_seconds >= 0)
   assert.equal(record.observation.output_present, true)
@@ -416,6 +426,171 @@ test('an attestation that recorded no output present does not satisfy submit', (
       return true
     },
   )
+})
+
+// HR4-002, second half: `DELEGATION_UNOBSERVED` refused submit twice in one
+// phase because the platform's completion notice arrived between two wakes
+// and the supervisor stopped awaiting the watch. The documented workaround
+// was an attestation for a return nobody watched, which wrote a false
+// elapsed time every time it was used. A watch that saw the output being
+// submitted already holds the fact the attestation was standing in for.
+test('submit accepts a watch record whose last wake observed the output being submitted', async () => {
+  const { root, state, invocationId, outputPath } = preparedRun()
+
+  fillPreparedOutput(root, state)
+
+  // A supervisor that abandons the watch leaves a record with no verdict.
+  // Everything after the held wake is dropped, which is what a killed
+  // process leaves behind.
+  await watchInvocation(root, state.run_id, {
+    cadenceSeconds: CADENCE_SECONDS,
+    timeoutSeconds: CADENCE_SECONDS,
+  })
+
+  const recordAbsolute = path.join(
+    root,
+    watchRecordPath(root, state.run_id, invocationId),
+  )
+  const held = readFileSync(recordAbsolute, 'utf8')
+    .split('\n')
+    .filter((line) => line.trim().length > 0)
+    .map((line) => JSON.parse(line) as { terminal_state?: string })
+
+  writeFileSync(
+    recordAbsolute,
+    `${held
+      .filter((entry) => entry.terminal_state === undefined)
+      .map((entry) => JSON.stringify(entry))
+      .join('\n')}\n`,
+  )
+
+  const observation = summarizeDelegationObservation(
+    root,
+    state.run_id,
+    invocationId,
+  )
+
+  assert.equal(observation.watch.terminal_state, null)
+  assert.equal(observation.watch.last_wake_observed_final_output, true)
+  assert.equal(observation.observed, true)
+  assert.equal(observation.source, 'watch_observed_final_output')
+  assert.equal(
+    observation.foreground_return.record_present,
+    false,
+    'no attestation is needed, which is the point',
+  )
+
+  const submitted = submitOutput(root, state.run_id, outputPath)
+
+  assert.equal(submitted.record.outcome, 'success')
+  assert.equal(
+    submitted.record.delegation_observation?.source,
+    'watch_observed_final_output',
+  )
+})
+
+// The acceptance above reads a wake, so it must not become a way around a
+// verdict the watch did reach, and it must not accept a wake whose output
+// has moved on since.
+test('an output that moved after the last wake is not one that wake observed', async () => {
+  const { root, state, invocationId, outputPath } = preparedRun()
+
+  fillPreparedOutput(root, state)
+
+  await watchInvocation(root, state.run_id, {
+    cadenceSeconds: CADENCE_SECONDS,
+    timeoutSeconds: CADENCE_SECONDS,
+  })
+
+  const recordAbsolute = path.join(
+    root,
+    watchRecordPath(root, state.run_id, invocationId),
+  )
+  const entries = readFileSync(recordAbsolute, 'utf8')
+    .split('\n')
+    .filter((line) => line.trim().length > 0)
+    .map((line) => JSON.parse(line) as { terminal_state?: string })
+
+  writeFileSync(
+    recordAbsolute,
+    `${entries
+      .filter((entry) => entry.terminal_state === undefined)
+      .map((entry) => JSON.stringify(entry))
+      .join('\n')}\n`,
+  )
+
+  const moved = new Date(Date.now() + 60_000)
+
+  utimesSync(path.join(root, outputPath), moved, moved)
+
+  const observation = summarizeDelegationObservation(
+    root,
+    state.run_id,
+    invocationId,
+  )
+
+  assert.equal(observation.watch.last_wake_observed_final_output, false)
+  assert.equal(observation.observed, false)
+  assert.match(
+    await_message(observation),
+    /the output moved after that last wake/u,
+  )
+  assert.throws(
+    () => submitOutput(root, state.run_id, outputPath),
+    (error: unknown) => {
+      assert.equal((error as { code?: string }).code, DELEGATION_UNOBSERVED)
+
+      return true
+    },
+  )
+})
+
+// HR4-002, first half: an attestation recorded `elapsed_seconds: 13.319` for
+// a worker that ran 33 minutes, so the harness's own durable observation was
+// wrong by a factor of 150. The watch record's first-to-last wake span is an
+// independent lower bound the harness already holds.
+test('an attested elapsed time below the watch wake span is labeled with both numbers', async () => {
+  const { root, state, invocationId } = preparedRun()
+
+  fillPreparedOutput(root, state)
+
+  await watchInvocation(root, state.run_id, {
+    cadenceSeconds: CADENCE_SECONDS,
+    timeoutSeconds: CADENCE_SECONDS * 3,
+    agentState: 'running',
+  })
+
+  const span = watchWakeSpanSeconds(root, state.run_id, invocationId)
+
+  assert.ok(span !== null && span > 0, 'the watch spans two or more wakes')
+
+  // The attestation claims the launch happened a moment ago, which the watch
+  // record contradicts: it was already awake before that.
+  const record = recordForegroundReturn(root, state.run_id, {
+    invocationId,
+    launchedAt: new Date().toISOString(),
+  })
+
+  assert.equal(record.elapsed_lower_bound_seconds, span)
+  assert.equal(record.elapsed_implausible, true)
+  assert.ok(record.elapsed_seconds < span)
+  assert.match(
+    record.elapsed_implausibility ?? '',
+    new RegExp(`${record.elapsed_seconds.toFixed(1)}s`, 'u'),
+  )
+  assert.match(
+    record.elapsed_implausibility ?? '',
+    new RegExp(`${span.toFixed(1)}s`, 'u'),
+  )
+
+  const summary = summarizeDelegationObservation(
+    root,
+    state.run_id,
+    invocationId,
+  ).foreground_return
+
+  assert.equal(summary.elapsed_implausible, true)
+  assert.equal(summary.elapsed_lower_bound_seconds, span)
 })
 
 test('the external-executor exemption requires the delegation-execution record pan delegate writes', () => {

@@ -157,12 +157,15 @@ supervisor not to poll or await it. Run 63311 lost its supervisor to exactly
 that text. The polling therefore no longer depends on model judgment:
 
 ```bash
-./bin/pan watch <run-id> [--invocation <invocation-id>] [--cadence-seconds <n>] [--stall-wakes <n>] [--timeout-seconds <n>] [--mark-background] [--json]
+./bin/pan watch <run-id> [--invocation <invocation-id>] [--cadence-seconds <n>] [--stall-wakes <n>] [--timeout-seconds <n>] [--mark-background] [--launched-at <iso-8601>] [--handle <platform-handle>] [--agent <name>] [--model <name>] [--agent-state running|completed] [--json]
 ```
 
 The command resolves the run's pending invocation, sleeps one cadence, and
-inspects the invocation's output path, delegation artifact, and evidence
-files. It appends one JSONL line per arming and per wake to
+inspects the invocation's output path and evidence files. The delegation
+artifact is not among them. `pan prepare` writes it, and it is the worker's
+input rather than its product, so a change to it is the supervisor
+re-rendering a card and not evidence that the worker is still producing.
+The command appends one JSONL line per arming and per wake to
 `agent/evidence/<invocation-id>-watch.jsonl`, with the wall-clock time, the
 invocation watched, and the observed state. That file is the `DELEGATE-001`
 arming and wake record, written by the harness. The default cadence is 60
@@ -177,6 +180,19 @@ The command is safe to await in the foreground and safe to re-run. It returns
 `completed` at once when the output already exists. Wake lines print to
 stderr only on an interactive terminal.
 
+The first arming writes the launch record
+`agent/evidence/<invocation-id>-launch.json`, and every launch-relative
+number the harness reports reads it. `--launched-at` supplies the time the
+supervisor launched the worker and is recorded with source `supervisor`.
+Without it the arming time is recorded with source `watch_arm`, the earliest
+moment the harness itself can witness — and because an arming is then its own
+launch time, `DELEGATION_WATCH_LATE` cannot fire. `--handle` records the
+platform identity of the launched worker, which `pan worker record` otherwise
+asks for in a separate call, and `--agent` and `--model` name what that handle
+belongs to. An arming with no handle still succeeds and records that none was
+supplied. `--agent-state` reports what the supervisor saw when it inspected
+the launched agent itself.
+
 `--mark-background` records that the platform turned the launch into a
 background subagent. A launch that returns with the worker output already
 present exposes no observation point to watch, so the supervisor records its
@@ -189,15 +205,28 @@ return instead:
 The command writes `agent/evidence/<invocation-id>-foreground-return.json`
 with the launch and return wall-clock times, the elapsed seconds, and a
 terminal-state inspection of the output and evidence paths. The launch time
-defaults to the modification time of the delegation artifact the supervisor
-persisted immediately before the launch; `--launched-at` overrides it with a
-time the supervisor recorded itself. `--foreground-returned` and
-`--mark-background` are exclusive.
+comes from the invocation's launch record: `--launched-at` writes that record
+here when no watch armed earlier, and an attestation with neither a
+supervisor time nor a prior arming falls back to the invocation record's
+modification time, which is an upper bound on the launch rather than the
+launch itself. An elapsed time shorter than the watch record's own
+first-to-last wake span is labeled `elapsed_implausible` and names both
+numbers. `--foreground-returned` and `--mark-background` are exclusive.
 
-`pan submit` requires one of the two records for every Cursor worker
-invocation: a watch record that ends in a completed wake, or the
-foreground-return attestation. A submission with neither fails with the hard
-error `DELEGATION_UNOBSERVED` before any validator or gate runs and consumes
+`pan submit` accepts one of three records for every Cursor worker invocation:
+
+1. `watch_completed` — a watch record that ends in a completed wake.
+2. `watch_observed_final_output` — a watch record that reached no verdict of
+   its own, whose last wake saw a terminal output that has not moved since.
+   The platform's completion notice routinely lands between two wakes and
+   leaves the supervisor with no completed record; this path accepts that
+   watch rather than the attestation the supervisor used to write for a
+   launch nobody watched return. A watch that did reach a verdict, including
+   `unverified` and `stalled`, keeps it.
+3. `foreground_return` — the foreground-return attestation.
+
+A submission with none of the three fails with the hard error
+`DELEGATION_UNOBSERVED` before any validator or gate runs and consumes
 no stage attempt; the supervisor records the missing observation and submits
 again. External-executor stages that `pan delegate` runs are exempt because
 the harness writes their delegation evidence. The stage record carries the

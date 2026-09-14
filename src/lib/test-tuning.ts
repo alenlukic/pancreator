@@ -84,7 +84,8 @@ export interface TuneRecord {
   }
   benchmark: {
     fast_lane_wall_ms: number
-    secondary_lane_wall_ms: number
+    /** Null when the session measured no secondary lane at all. */
+    secondary_lane_wall_ms: number | null
     summed_file_ms?: number
     fixture_template_ms: number
     fixture_clone_ms: number
@@ -625,9 +626,18 @@ export function buildBenchmarkFromProfiles(
     files.reduce((total, entry) => total + entry.duration_ms, 0),
   )
 
+  // A prior record written before the lane was measured, or by a session that
+  // ran no secondary lane, carries no comparable number, so the delta is
+  // reported only when both sides measured the lane.
+  const priorSecondaryWallMs = prior?.benchmark.secondary_lane_wall_ms
+  const secondaryDelta =
+    secondary && typeof priorSecondaryWallMs === 'number'
+      ? roundMs(secondary.wall_clock_ms - priorSecondaryWallMs)
+      : undefined
+
   return {
     fast_lane_wall_ms: fast.wall_clock_ms,
-    secondary_lane_wall_ms: secondary?.wall_clock_ms ?? 0,
+    secondary_lane_wall_ms: secondary?.wall_clock_ms ?? null,
     summed_file_ms,
     fixture_template_ms: roundMs(
       fastFixtures.template_ms + secondaryFixtures.template_ms,
@@ -641,10 +651,9 @@ export function buildBenchmarkFromProfiles(
             fast_lane_wall_ms: roundMs(
               fast.wall_clock_ms - prior.benchmark.fast_lane_wall_ms,
             ),
-            secondary_lane_wall_ms: roundMs(
-              (secondary?.wall_clock_ms ?? 0) -
-                prior.benchmark.secondary_lane_wall_ms,
-            ),
+            ...(secondaryDelta === undefined
+              ? {}
+              : { secondary_lane_wall_ms: secondaryDelta }),
             summed_file_ms: roundMs(
               summed_file_ms - (prior.benchmark.summed_file_ms ?? 0),
             ),
@@ -670,7 +679,7 @@ interface TuneRecordSchemaConstraints {
   /**
    * Principle identifiers the testing handbook defines. The schema pattern is
    * a shape rule and cannot read a Markdown handbook, so it admits identifiers
-   * from TP-10 up that no principle backs; membership lives here.
+   * from TP-11 up that no principle backs; membership lives here.
    */
   principleIds: Set<string>
 }

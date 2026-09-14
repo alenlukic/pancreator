@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict'
-import { existsSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -15,9 +21,11 @@ import {
 } from '../../src/lib/cohorts.js'
 import { PanError } from '../../src/lib/errors.js'
 import { prepareInvocation } from '../../src/lib/engine.js'
+import { repositoryChecksConfigDigest } from '../../src/lib/gate-cache.js'
+import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
 import { loadState } from '../../src/lib/state.js'
 import { readWorktreeIndex } from '../../src/lib/worktrees.js'
-import { attestRunCard, createFixture } from '../helpers.js'
+import { attestRunCard, createFixture, writeJson } from '../helpers.js'
 import { git, markSucceeded, ratifiedPlanRun } from './cohort-helpers.js'
 
 test('starting a cohort fans out one worktree and one run per chunk', () => {
@@ -225,6 +233,10 @@ test('a cohort captures one shared pre-implementation baseline that every chunk 
     `runtime/logs/cohorts/${session.cohort_id}/baselines`,
   )
 
+  const alphaWorkspace = loadState(root, alpha).workspace_root
+
+  assert.notEqual(alphaWorkspace, root, 'the chunk run owns its own worktree')
+
   for (const pointer of Object.values(alphaBaselines)) {
     assert.ok(pointer)
     assert.ok(
@@ -233,6 +245,20 @@ test('a cohort captures one shared pre-implementation baseline that every chunk 
     )
     assert.ok(existsSync(path.join(root, pointer.artifact_path)))
     assert.equal(pointer.shared_from_cohort, undefined)
+    // The capture names the tree it observed. A shared baseline is read by
+    // runs that observed a different tree, and without this the reader
+    // cannot tell a host failure of the capturing tree from a regression.
+    assert.equal(pointer.capture_workspace_path, alphaWorkspace)
+
+    const artifact = JSON.parse(
+      readFileSync(path.join(root, pointer.artifact_path), 'utf8'),
+    ) as { capture_workspace_path?: string }
+
+    assert.equal(
+      artifact.capture_workspace_path,
+      alphaWorkspace,
+      'the durable artifact carries the capture path, not only the pointer',
+    )
   }
 
   const recorded = loadCohortState(
@@ -277,6 +303,142 @@ test('a cohort captures one shared pre-implementation baseline that every chunk 
         path.join(root, 'runtime/logs/workflows', beta, 'agent', 'evidence'),
       ).some((name) => name.startsWith('pre-implementation-')),
     false,
+  )
+
+  // Beta adopts evidence from alpha's worktree, and its record says so before
+  // any gate reports a diagnostic the baseline does not carry. `DEV-001`
+  // forbids a second capture, so naming the divergence is the whole remedy:
+  // the adopting run keeps the shared baseline and knows where to reproduce.
+  const betaWorkspace = loadState(root, beta).workspace_root
+
+  assert.notEqual(betaWorkspace, alphaWorkspace)
+  assert.equal(betaBaselines.fast.capture_workspace_path, alphaWorkspace)
+
+  const adoption = (betaPrepared.state.advisories ?? []).filter(
+    (advisory) => advisory.kind === 'baseline_adoption',
+  )
+
+  assert.deepEqual(
+    adoption.map((advisory) => advisory.source),
+    ['prepare', 'prepare'],
+    'one advisory per adopted interior gate profile',
+  )
+
+  for (const profile of ['fast', 'static']) {
+    const advisory = adoption.find((item) =>
+      item.message.includes(`'${profile}' baseline`),
+    )
+
+    assert.ok(advisory, `the ${profile} adoption is named`)
+    assert.ok(advisory.message.includes(alphaWorkspace), advisory.message)
+    assert.ok(advisory.message.includes(betaWorkspace), advisory.message)
+  }
+
+  // Alpha captured in its own workspace, so it carries no divergence to name.
+  assert.deepEqual(
+    (alphaPrepared.state.advisories ?? []).filter(
+      (advisory) => advisory.kind === 'baseline_adoption',
+    ),
+    [],
+  )
+})
+
+// Every cohort baseline artifact recorded before the capture path existed
+// names no workspace. The run that claims the cohort capture may adopt one,
+// and the pointer it builds is what every sibling run reads.
+test('a baseline artifact that names no capture workspace is adopted without one', () => {
+  const root = createFixture()
+  const planRunId = ratifiedPlanRun(root, [
+    { id: 'alpha', cohort_index: 1 },
+    { id: 'beta', cohort_index: 1 },
+  ])
+  const session = initCohortSession(root, { planRunId })
+  const started = startCohort(root, session.cohort_id)
+  const [alpha, beta] = started.chunks.map((chunk) => chunk.run_id)
+
+  assert.ok(alpha && beta)
+
+  const alphaWorkspace = loadState(root, alpha).workspace_root
+  const legacyDirectory = 'runtime/logs/cohorts/cohort-legacy/baselines'
+
+  for (const profile of ['fast', 'static']) {
+    writeJson(
+      path.join(root, legacyDirectory, `pre-implementation-${profile}.json`),
+      {
+        schema_version: 1,
+        run_id: '63308_Sep-01-0001_legacy',
+        stage: 'implement',
+        profile,
+        workspace_fingerprint: gitWorkspaceSnapshot(
+          path.join(root, alphaWorkspace),
+        ).fingerprint,
+        checks_config_sha256: repositoryChecksConfigDigest(root),
+        recorded_at: '2026-09-01T00:00:00.000Z',
+        result: {
+          profile,
+          status: 'passed',
+          config_path: 'runtime/repository-checks.json',
+          workspace_root: '.',
+          timeout_ms: 60_000,
+          results: [],
+          total_duration_ms: 0,
+          advisories: [],
+        },
+      },
+    )
+  }
+
+  attestRunCard(root, alpha)
+
+  const alphaBaselines = prepareInvocation(root, alpha).state
+    .repository_check_baselines
+
+  assert.ok(alphaBaselines?.fast)
+  assert.equal(
+    alphaBaselines.fast.artifact_path,
+    `${legacyDirectory}/pre-implementation-fast.json`,
+    'the recorded artifact was adopted rather than recaptured',
+  )
+
+  for (const pointer of Object.values(alphaBaselines)) {
+    assert.ok(pointer)
+    // The adopting run is not the tree the capture observed, and the
+    // artifact names none, so the pointer asserts nothing about where the
+    // evidence was produced.
+    assert.equal(
+      Object.keys(pointer).includes('capture_workspace_path'),
+      false,
+      pointer.profile,
+    )
+  }
+
+  const shared = loadCohortState(
+    root,
+    session.cohort_id,
+  ).repository_check_baselines
+
+  assert.ok(shared?.fast)
+  assert.equal(shared.fast.capture_workspace_path, undefined)
+
+  // The sibling reads that shared pointer from its own worktree. A pointer
+  // carrying the adopting run's workspace would name alpha's tree here, and
+  // the divergence would send this run to reproduce a failure in a workspace
+  // the capture never touched.
+  attestRunCard(root, beta)
+
+  const betaPrepared = prepareInvocation(root, beta)
+
+  assert.notEqual(loadState(root, beta).workspace_root, alphaWorkspace)
+  assert.equal(
+    betaPrepared.state.repository_check_baselines?.fast?.shared_from_cohort,
+    session.cohort_id,
+  )
+  assert.deepEqual(
+    (betaPrepared.state.advisories ?? []).filter(
+      (advisory) => advisory.kind === 'baseline_adoption',
+    ),
+    [],
+    'an unknown capture workspace diverges from nothing',
   )
 })
 

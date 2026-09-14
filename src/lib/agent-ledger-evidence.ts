@@ -25,6 +25,8 @@ export interface RecordedProfileRun {
   /** `agent` for a worker-started execution, `harness` for harness-started. */
   invokedBy: string
   invocationId: string | null
+  /** Evidence-worker role that ran it, or `null` for the stage worker. */
+  workerRole: string | null
   fingerprint: string
   startedAt: string
   /** Captured output of that execution, when it stored one. */
@@ -83,6 +85,8 @@ export function recordedProfileRuns(
         typeof record.invoked_by === 'string' ? record.invoked_by : 'agent',
       invocationId:
         typeof record.invocation_id === 'string' ? record.invocation_id : null,
+      workerRole:
+        typeof record.worker_role === 'string' ? record.worker_role : null,
       fingerprint: record.workspace_fingerprint,
       startedAt: typeof record.started_at === 'string' ? record.started_at : '',
       evidencePath:

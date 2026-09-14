@@ -11,6 +11,7 @@ import {
   DEFAULT_WORKFLOW_SLUG,
   decideRun,
   decideRunAsAway,
+  armWorkerWatch,
   delegateInvocation,
   getRunStatus,
   getRunState,
@@ -206,7 +207,10 @@ import {
   validateBriefSystem,
 } from './lib/briefs.js'
 import { generateOperatorArtifacts } from './lib/operator-artifact-generation.js'
-import { maintainWorkflowRuntime } from './lib/workflow-artifacts.js'
+import {
+  maintainWorkflowRuntime,
+  resolveRunCitation,
+} from './lib/workflow-artifacts.js'
 import {
   DEFAULT_STALL_WAKES,
   WATCH_EXIT_CODES,
@@ -215,9 +219,9 @@ import {
   parseCadenceSeconds,
   parsePositiveInteger,
   parseTimeoutSeconds,
-  watchInvocation,
   recordForegroundReturn,
   foregroundReturnRecordPath,
+  launchRecordPath,
   writeRedlineRecord,
 } from './lib/watch.js'
 import {
@@ -265,10 +269,10 @@ export const HELP_BODY = `Usage:
   pan prepare <run-id> [--worktree <name>] [--operator-artifacts] [--agent <name>]
       --agent names the Cursor agent this invocation is delegated to. The harness then writes the labeled delegation artifact beside the delivery prompt and starts the detached worker model probe, so the supervisor assembles neither by hand. An external-executor or orchestrator stage keeps its current behavior and reports why it wrote nothing.
   pan delegate <run-id> [--timeout-ms <milliseconds>]
-  pan watch <run-id> [--invocation <invocation-id>] [--cadence-seconds <n>] [--stall-wakes <n>] [--timeout-seconds <n>] [--mark-background] [--agent-state running|completed] [--json]
-      Await a launched worker on a fixed cadence and record every arming and wake to agent/evidence/<invocation-id>-watch.jsonl. Exit 0 when the output is present, 2 on a stall, 3 at the timeout, 4 when the completion is unverified. --mark-background records that the platform turned the launch into a background subagent. --agent-state reports what you saw when you inspected the launched agent itself; the watch reads files and cannot see a worker that is still writing. Weak evidence of completion — an output younger than one cadence, an unreadable elapsed time, or an agent you reported as running — holds the observation and re-observes it on the next wake, and completes only when the output did not move. Exit 4 means that confirming wake could not settle it.
+  pan watch <run-id> [--invocation <invocation-id>] [--cadence-seconds <n>] [--stall-wakes <n>] [--timeout-seconds <n>] [--mark-background] [--launched-at <iso-8601>] [--handle <platform-handle>] [--agent <name>] [--model <name>] [--agent-state running|completed] [--json]
+      Await a launched worker on a fixed cadence and record every arming and wake to agent/evidence/<invocation-id>-watch.jsonl. Exit 0 when the output is present, 2 on a stall, 3 at the timeout, 4 when the completion is unverified. The first arming writes the launch record agent/evidence/<invocation-id>-launch.json, which every launch-relative number the harness reports reads; --launched-at supplies the launch time you observed, and without it the arming time is recorded as the launch time. --handle records the platform identity of the launched worker, which pan worker record otherwise asks you to record separately; an arming without one still succeeds and the launch record says none was supplied. --mark-background records that the platform turned the launch into a background subagent. --agent-state reports what you saw when you inspected the launched agent itself; the watch reads files and cannot see a worker that is still writing. Weak evidence of completion — an output younger than one cadence, an unreadable elapsed time, or an agent you reported as running — holds the observation and re-observes it on the next wake, and completes only when the output did not move. Exit 4 means that confirming wake could not settle it.
   pan watch <run-id> --foreground-returned [--invocation <invocation-id>] [--launched-at <iso-8601>] [--json]
-      Record that a foreground launch returned, with the launch and return wall-clock times, at agent/evidence/<invocation-id>-foreground-return.json. The launch time defaults to the delegation artifact's modification time. pan submit requires this record or a completed watch record for every Cursor worker invocation and fails with DELEGATION_UNOBSERVED otherwise.
+      Record that a foreground launch returned, with the launch and return wall-clock times, at agent/evidence/<invocation-id>-foreground-return.json. The launch time comes from the launch record; --launched-at writes that record when no watch armed first. pan submit requires this record, a completed watch record, or a watch record whose last wake observed the output being submitted, for every Cursor worker invocation, and fails with DELEGATION_UNOBSERVED otherwise. An attested elapsed time shorter than the watch record's own first-to-last wake span is labeled in the record, which names both numbers.
   pan worker record <run-id> --handle <platform-handle> [--invocation <invocation-id>] [--role <evidence-role>] [--agent <name>] [--model <name>] [--launch-mode foreground|background] [--json]
       Record the identity the platform returned for one launched worker. The harness otherwise watches a worker only through the files it writes, so a worker that died before its first write is indistinguishable from one that was never launched. Naming an evidence role also allocates that launch's own brief and evidence paths, so a relaunched worker never overwrites the report the previous attempt wrote.
   pan worker state <run-id> [--invocation <invocation-id>] [--role <evidence-role>] [--json]
@@ -293,11 +297,12 @@ export const HELP_BODY = `Usage:
   pan away status|evaluate|apply <run-id> [--decision <id>] [--action <action>] [--json]
       --action names the action the apply must take. It is honored when it matches the recorded recommendation and refused with AWAY_ACTION_REFUSED when it does not, so an apply never substitutes a different action. An option the subcommand does not accept is refused with UNKNOWN_OPTION rather than ignored.
   pan technologies detect [--worktree <name>] --json
-  pan repository-check <profile> [--timeout-ms <milliseconds>] [--workspace <dir|worktree> | --worktree <name>] [--run <run-id>] [--force-repeat] [--json]
+  pan repository-check <profile> [--timeout-ms <milliseconds>] [--workspace <dir|worktree> | --worktree <name>] [--run <run-id>] [--role <evidence-worker-role>] [--force-repeat] [--json]
       --timeout-ms raises the effective bound only: resolution keeps the maximum of the request, the profile's own bound, and subset-profile timeouts.
       --run records the execution against that run and, without --workspace or --worktree, checks its workspace. Without --run, --worktree records against every live run bound to the worktree. A bare invocation records against no run.
       A clean pass recorded against a run, at a workspace fingerprint identical before and after, satisfies a later gate on the same command instead of running it again.
-      A --run request that matches a recorded pass for the same invocation, profile, and fingerprint returns that pass instead of executing. --force-repeat executes anyway and records the repeat as deliberate.
+      A --run request that matches a recorded pass for the same invocation, worker role, profile, and fingerprint returns that pass instead of executing. --force-repeat executes anyway and records the repeat as deliberate.
+      --role names the evidence-worker role running the profile, which its evidence brief supplies. Two evidence workers of one stage share an invocation id, so the role is what gives each its own recorded pass and log.
       --harness-initiated marks the execution as harness-started rather than agent-started and suppresses streaming; the release-profile prefetch passes it.
   pan repository-check validate [--json]
   pan conform scan|checkpoint [--since <ref> | --all] [--worktree <name>] [--json]
@@ -324,8 +329,9 @@ export const HELP_BODY = `Usage:
   pan worktree remove <name> [--force] [--delete-branch] [--json]
       --delete-branch deletes the worktree branch when it is an ancestor of the default branch, and reports a refusal when it is not.
   pan worktree reconcile (--into <worktree> | --into-branch <branch>) --source <worktree> --source <worktree> [--json]
-  pan status <run-id> [--redline] [--occasion pan-start|pan-resume] [--json]
+  pan status <run-id> [--redline] [--occasion pan-start|pan-resume] [--resolve <citation>] [--json]
       --redline writes agent/evidence/platform-guidance-redline.json, the run's pre-declaration that platform guidance is non-authoritative.
+      --resolve reads a citation of this run's artifacts — a path or a bare invocation id — through the run's invocation alias map and names the current path. Resequencing at finalization is what leaves a citation stale; the alias map is written then.
   pan list [--json]
   pan inbox [--json]
       List every intake item under runtime/inbox/ with its lifecycle status, in lifecycle order (queue, active, canceled, complete) and newest-first inside one status.
@@ -2378,6 +2384,10 @@ async function main(): Promise<void> {
       // release profile, and that execution is not an agent spending its
       // allowance. It also has no terminal to stream to.
       const harnessInitiated = hasFlag(args, '--harness-initiated')
+      // Two evidence workers of one stage share an invocation id, so without
+      // the role they would share one reuse key and the second worker would
+      // be handed the first one's pass instead of producing its own log.
+      const workerRole = option(args, '--role')
       const startedAt = new Date().toISOString()
       // DEV-001: a clean pass reaches a later gate only when the workspace
       // never moved, so the run is bracketed by the fingerprint the gate
@@ -2398,6 +2408,7 @@ async function main(): Promise<void> {
               evidenceRun.current_invocation?.id ?? null,
               profile,
               fingerprintBefore,
+              workerRole,
             )
           : null
 
@@ -2490,6 +2501,7 @@ async function main(): Promise<void> {
         fingerprint_before: fingerprintBefore,
         started_at: startedAt,
         attempt: gatePassAttempt,
+        initiator,
       })
       const runEvidence = evidenceRun
         ? recordAgentRepositoryCheckForRuns(
@@ -2500,6 +2512,7 @@ async function main(): Promise<void> {
             initiator,
             gatePass?.evidence_path ?? null,
             forceRepeat,
+            workerRole,
           )
         : worktreeWorkspace
           ? recordAgentRepositoryCheck(
@@ -2738,6 +2751,22 @@ async function main(): Promise<void> {
     }
     case 'status': {
       const runId = requiredArgument(args[0], 'run-id')
+      const citation = option(args, '--resolve')
+
+      if (citation !== null) {
+        const resolution = resolveRunCitation(root, runId, citation)
+
+        print(
+          json
+            ? resolution
+            : resolution.path
+              ? `${resolution.citation} resolves to ${resolution.path}.`
+              : `${resolution.citation} resolves to ${resolution.resolved}, ` +
+                'which names no file this run holds.',
+          json,
+        )
+        return
+      }
 
       if (hasFlag(args, '--redline')) {
         const record = writeRedlineRecord(
@@ -4050,14 +4079,21 @@ async function main(): Promise<void> {
                 `returned ${record.returned_at} after ` +
                 `${record.elapsed_seconds.toFixed(1)}s, output ` +
                 `${record.observation.output_present ? 'present' : 'absent'}, ` +
-                `record ${foregroundReturnRecordPath(root, runId, record.invocation_id)}`,
+                `record ${foregroundReturnRecordPath(root, runId, record.invocation_id)}` +
+                (record.elapsed_implausibility
+                  ? `\n${record.elapsed_implausibility}`
+                  : ''),
           json,
         )
         return
       }
 
       const agentState = parseAgentState(option(args, '--agent-state'))
-      const result = await watchInvocation(root, runId, {
+      const armLaunchedAt = option(args, '--launched-at')
+      const workerHandle = option(args, '--handle')
+      const workerAgent = option(args, '--agent')
+      const workerModel = option(args, '--model')
+      const result = await armWorkerWatch(root, runId, {
         ...(invocationId ? { invocationId } : {}),
         cadenceSeconds: parseCadenceSeconds(option(args, '--cadence-seconds')),
         stallWakes: parsePositiveInteger(
@@ -4067,6 +4103,10 @@ async function main(): Promise<void> {
         ),
         timeoutSeconds: parseTimeoutSeconds(option(args, '--timeout-seconds')),
         markBackground: hasFlag(args, '--mark-background'),
+        ...(armLaunchedAt ? { launchedAt: armLaunchedAt } : {}),
+        ...(workerHandle ? { workerHandle } : {}),
+        ...(workerAgent ? { workerAgent } : {}),
+        ...(workerModel ? { workerModel } : {}),
         ...(agentState ? { agentState } : {}),
         // OUTPUT-001: progress lines only on an interactive terminal, so a
         // captured watch stays byte-identical to the JSON result.
@@ -4080,7 +4120,8 @@ async function main(): Promise<void> {
           ? result
           : `watch ${result.state}: invocation ${result.invocation_id}, ` +
               `${result.wakes} wakes over ${result.elapsed_seconds.toFixed(1)}s, ` +
-              `record ${result.record_path}`,
+              `record ${result.record_path}, launch ` +
+              `${launchRecordPath(root, runId, result.invocation_id)}`,
         json,
       )
       process.exitCode = WATCH_EXIT_CODES[result.state]

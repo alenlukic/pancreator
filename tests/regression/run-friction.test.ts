@@ -138,6 +138,60 @@ test('an unrecognized criterion verdict is reported, not silently failed', () =>
   )
 })
 
+/** One inbox path a producer names, with the statement that names it. */
+interface InboxReference {
+  reference: string
+  statement: string
+}
+
+const INBOX_REFERENCE = /runtime\/inbox(?:\/[^\s`'"),;]*)?/gu
+const QUEUE_PARTITION = /^runtime\/inbox\/queue(?:\/|$)/u
+const WRITE_INTENT =
+  /\b(?:writes?|written|creates?|created|preserves?|preserved|saves?|saved|places?|placed|emits?|output path)\b/iu
+
+/**
+ * The statements a producer makes, one per prose block, list item, or shell
+ * pipeline. Line wrapping is incidental to the instruction, so a wrapped
+ * sentence stays one statement and a neighbouring instruction stays separate.
+ */
+function producerStatements(content: string): string[] {
+  return content
+    .split(/\n\s*\n|\n(?=[ \t]*(?:[-*+] |\d+\. |#{1,6} ))/u)
+    .flatMap((block) =>
+      block
+        .replace(/\s+/gu, ' ')
+        .trim()
+        .split(/(?<=[a-z0-9)\]`'"])\.\s+/u),
+    )
+    .filter((statement) => statement.length > 0)
+}
+
+/**
+ * Inbox write targets a producer states that miss the `queue/` segment.
+ *
+ * Matching the queue path alone cannot prove the routing rule, because a
+ * producer that names the queue somewhere and also writes the inbox root
+ * satisfies it. A statement that only inspects the inbox is not a write
+ * target, which is why the installer's existence probe is not a violation.
+ */
+function inboxRootWriteTargets(content: string): InboxReference[] {
+  const findings: InboxReference[] = []
+
+  for (const statement of producerStatements(content)) {
+    if (!WRITE_INTENT.test(statement)) {
+      continue
+    }
+
+    for (const [reference] of statement.matchAll(INBOX_REFERENCE)) {
+      if (!QUEUE_PARTITION.test(reference)) {
+        findings.push({ reference, statement })
+      }
+    }
+  }
+
+  return findings
+}
+
 test('writes new inbox items to queue', () => {
   const producerPaths = [
     'bin/install',
@@ -174,7 +228,44 @@ test('writes new inbox items to queue', () => {
       /runtime\/inbox\/queue\//u,
       `${producerPath} must route new inbox items to queue`,
     )
+    assert.deepEqual(
+      inboxRootWriteTargets(content),
+      [],
+      `${producerPath} must not state an inbox write outside the queue`,
+    )
   }
+})
+
+test('the inbox routing rule fails a producer that writes outside the queue', () => {
+  const root = createTestTempDirectory('pan-inbox-producer-')
+  const producerPath = path.join(root, 'fixture-producer.md')
+
+  writeFileSync(
+    producerPath,
+    [
+      '1. Preserve `$ARGUMENTS` verbatim in a uniquely named file under',
+      '   `{{PANCREATOR_HARNESS_PATH}}runtime/inbox/queue/`.',
+      '',
+      '2. Write the escalation item under',
+      '   `{{PANCREATOR_HARNESS_PATH}}runtime/inbox/` when the request expands',
+      '   beyond a spotfix.',
+      '',
+      '3. The installer checks that `.pancreator/runtime/inbox` exists before',
+      '   it reports readiness.',
+      '',
+    ].join('\n'),
+  )
+
+  const content = readFileSync(producerPath, 'utf8')
+
+  // This producer names the queue, so the match-only assertion the case
+  // started with passes on it. Only the negative catches the root write, and
+  // the installer-shaped probe in step 3 must stay uncaught.
+  assert.match(content, /runtime\/inbox\/queue\//u)
+  assert.deepEqual(
+    inboxRootWriteTargets(content).map((finding) => finding.reference),
+    ['runtime/inbox/'],
+  )
 })
 
 test('a retry card inlines the recorded reason the prior attempt failed', () => {

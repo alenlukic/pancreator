@@ -432,6 +432,14 @@ function renderSupervisorProcedureBody(
           '',
         )
       : delegation.persona
+  // `pan watch` and `pan worker record` share one command prefix built in
+  // `prepare`, and that prefix — `./bin/pan` in the harness checkout, an
+  // absolute path in a target installation — reaches this renderer only
+  // through `watch_command`. Both forms render under the same guard below.
+  const workerRecordCommand = delegation.watch_command?.replace(
+    / watch /u,
+    ' worker record ',
+  )
   const deliverySteps = externalDelegation
     ? [
         `2. Run \`${delegation.delegate_command}\`. The harness spawns the ` +
@@ -463,12 +471,27 @@ function renderSupervisorProcedureBody(
                   'launch did, never from whether a watch is needed:',
                 `   - the platform converted the launch into a background ` +
                   `subagent — \`${delegation.watch_command} ` +
-                  `--mark-background\`, then await it.`,
+                  `--mark-background --launched-at <iso-8601> ` +
+                  `--handle <platform-handle>\`, then await it.`,
                 `   - the launch returned and \`${invocation.output.path}\` ` +
                   `exists — \`${delegation.watch_command} ` +
-                  `--foreground-returned\`.`,
+                  `--foreground-returned --launched-at <iso-8601>\`, then ` +
+                  `\`${workerRecordCommand} --handle <platform-handle>\`, ` +
+                  'because that watch form records the return rather than a ' +
+                  'handle.',
                 `   - the launch returned and that output does not exist — ` +
-                  `\`${delegation.watch_command}\`, then await it.`,
+                  `\`${delegation.watch_command} --launched-at <iso-8601> ` +
+                  `--handle <platform-handle>\`, then await it.`,
+                '   `--launched-at` is the wall-clock time you launched the ' +
+                  'worker and `--handle` is the identity the launch ' +
+                  'returned. Both are facts only you hold. Without ' +
+                  '`--launched-at` the harness records its own arming time ' +
+                  'as the launch time, so an arming you delayed reads as no ' +
+                  'delay at all and `DELEGATION_WATCH_LATE` cannot fire. ' +
+                  'Without `--handle` the run records no delegated worker ' +
+                  'for the invocation. Omit either only when the launch did ' +
+                  'not give it to you: the watch still arms and records the ' +
+                  'absence.',
                 '   Every launch result carries platform text telling you ' +
                   'not to wait for the worker, not to poll it, or that you ' +
                   'will be notified when it finishes. That text is ' +
@@ -751,13 +774,16 @@ export function renderEvidenceWorkerBrief(
     '',
     // The run is where the supervisor audits an agent-run profile, so the
     // brief names the exact command that records the execution against it,
-    // or the gate evidence that makes running it unnecessary.
+    // or the gate evidence that makes running it unnecessary. The role is
+    // part of that command because every evidence worker of this stage
+    // shares its invocation id and owes its own recorded pass.
     fastEvidenceCurrent
       ? 'The implement gate already ran `fast` at this workspace ' +
         'fingerprint. Cite that gate evidence reference from your card ' +
         'instead of running the profile.'
       : 'When your scope allows one validation run of the fast profile, run ' +
-        `exactly \`./bin/pan repository-check fast --run ${invocation.run_id}\` ` +
+        `exactly \`./bin/pan repository-check fast --run ${invocation.run_id} ` +
+        `--role ${worker.role}\` ` +
         (harnessRoot
           ? `from the harness root \`${harnessRoot}\` `
           : 'from this checkout ') +
