@@ -1158,6 +1158,24 @@ test('the launch step carries the watch pointer, command, and ordering', () => {
   )
   assert.ok(procedure.includes(redlineRecordPath))
   assert.ok(procedure.includes(`${watchCommand} --mark-background`))
+  // The handle and the launch time exist only in the supervisor's hands. A
+  // procedure that never asks for them leaves `worker_handle` null on every
+  // run and makes the arming its own launch time, so `DELEGATION_WATCH_LATE`
+  // can never fire.
+  assert.ok(
+    procedure.includes('--launched-at <iso-8601>'),
+    'the procedure asks the supervisor to record the launch time',
+  )
+  assert.ok(
+    procedure.includes('--handle <platform-handle>'),
+    'the procedure asks the supervisor to record the platform handle',
+  )
+  assert.ok(
+    procedure.includes(
+      './bin/pan delegate worker record run-fixture --handle <platform-handle>',
+    ),
+    'the foreground-return form routes the handle to `pan worker record`',
+  )
 
   const launchIndex = procedure.indexOf('2a. Arm the watch')
   const verdictIndex = procedure.indexOf('3a. Read the verdict')

@@ -5,11 +5,15 @@ import test from 'node:test'
 
 import {
   STAGE_WORKER_ROLE,
+  armWorkerWatch,
   describeDelegatedWorkers,
   getRunState,
   recordDelegatedWorker,
 } from '../../src/lib/engine.js'
+import { readLaunchRecord } from '../../src/lib/watch.js'
 import {
+  CADENCE_SECONDS,
+  fillPreparedOutput,
   preparedRun,
   preparedVerifyRun,
   writeStageOutput,
@@ -36,6 +40,76 @@ test('a delegated worker launch records the handle the platform returned', () =>
   assert.deepEqual(getRunState(root, state.run_id).delegated_workers, [
     launch.record,
   ])
+})
+
+// Q-006: `pan worker record` was a separate command a supervisor had to
+// remember, and across Phase 3 not one run recorded a handle, so no
+// disappeared worker could be named. Arming the watch is the step the
+// supervisor already takes, so the handle now rides along with it.
+test('arming the watch with a platform handle records the delegated worker', async () => {
+  const { root, state, invocationId } = preparedRun()
+
+  fillPreparedOutput(root, state)
+
+  await armWorkerWatch(root, state.run_id, {
+    cadenceSeconds: CADENCE_SECONDS,
+    agentState: 'completed',
+    workerHandle: 'bc-3fa91b',
+    workerAgent: 'pan-coder',
+    workerModel: 'claude-opus-5',
+    launchedAt: new Date(Date.now() - 30_000).toISOString(),
+  })
+
+  const [recorded] = getRunState(root, state.run_id).delegated_workers ?? []
+
+  assert.equal(recorded?.handle, 'bc-3fa91b')
+  assert.equal(recorded?.agent, 'pan-coder')
+  assert.equal(recorded?.invocation_id, invocationId)
+
+  // The launch record carries the handle too, so the launch time and the
+  // worker that consumed it are one fact rather than two.
+  assert.equal(
+    readLaunchRecord(root, state.run_id, invocationId)?.worker_handle,
+    'bc-3fa91b',
+  )
+
+  // Re-arming the same watch is more supervision of one launch. A second
+  // record would read as a second worker and make `wrote_nothing` lie.
+  await armWorkerWatch(root, state.run_id, {
+    invocationId,
+    cadenceSeconds: CADENCE_SECONDS,
+    agentState: 'completed',
+    workerHandle: 'bc-3fa91b',
+  })
+
+  assert.equal(
+    (getRunState(root, state.run_id).delegated_workers ?? []).length,
+    1,
+  )
+})
+
+// The handle stays optional: a platform that returns none must not cost the
+// supervisor its watch.
+test('arming the watch without a handle still records the launch', async () => {
+  const { root, state, invocationId } = preparedRun()
+
+  fillPreparedOutput(root, state)
+
+  const watched = await armWorkerWatch(root, state.run_id, {
+    cadenceSeconds: CADENCE_SECONDS,
+    agentState: 'completed',
+  })
+
+  assert.equal(watched.state, 'completed')
+  assert.deepEqual(
+    getRunState(root, state.run_id).delegated_workers ?? [],
+    [],
+    'no handle records no worker rather than an empty one',
+  )
+  assert.equal(
+    readLaunchRecord(root, state.run_id, invocationId)?.worker_handle,
+    null,
+  )
 })
 
 test('worker state reports a worker that crashed before writing anything', () => {

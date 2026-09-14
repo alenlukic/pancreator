@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -158,6 +158,44 @@ test('scaffold copies the contract manifest into a pending attestation', () => {
       .invocation_attestation,
     undefined,
   )
+})
+
+// HR4-009: `write-stage-output.md` told every worker to write `result` last,
+// while the scaffold it fills in put `result` third of eleven. A worker
+// following the instruction against the artifact had to move a key rather
+// than fill a slot, and a worker filling slots in order wrote `result` where
+// the scaffold put it. The artifact now carries the ordering, so no worker
+// has to remember it.
+test('the scaffold emits result after every other top-level key', () => {
+  const root = createTestTempDirectory('pan-scaffold-')
+  const outputPath = 'runtime/logs/workflows/x/outputs/ordered.json'
+  const invocation = {
+    invocation_id: 'implement-1',
+    rubric: [{ id: 'implement.lint', hard: true }],
+    output: {
+      path: outputPath,
+      required_data: { review: 'object', 'review.verdict': 'string' },
+    },
+  } as unknown as Invocation
+
+  const keys = Object.keys(
+    scaffoldStageOutput(root, invocation, outputPath, false).output,
+  )
+
+  assert.ok(keys.includes('result'))
+  assert.equal(
+    keys.at(-1),
+    'result',
+    'a worker filling the scaffold top to bottom writes result last',
+  )
+
+  // Serialization is what the worker actually reads, and it is what a torn
+  // read of a half-written file exposes.
+  const serialized = JSON.parse(
+    readFileSync(path.join(root, outputPath), 'utf8'),
+  ) as Record<string, unknown>
+
+  assert.equal(Object.keys(serialized).at(-1), 'result')
 })
 
 test('the scaffold interface rejects the Markdown contract by artifact type', () => {
