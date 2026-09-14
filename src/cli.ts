@@ -206,7 +206,10 @@ import {
   validateBriefSystem,
 } from './lib/briefs.js'
 import { generateOperatorArtifacts } from './lib/operator-artifact-generation.js'
-import { maintainWorkflowRuntime } from './lib/workflow-artifacts.js'
+import {
+  maintainWorkflowRuntime,
+  resolveRunCitation,
+} from './lib/workflow-artifacts.js'
 import {
   DEFAULT_STALL_WAKES,
   WATCH_EXIT_CODES,
@@ -293,11 +296,12 @@ export const HELP_BODY = `Usage:
   pan away status|evaluate|apply <run-id> [--decision <id>] [--action <action>] [--json]
       --action names the action the apply must take. It is honored when it matches the recorded recommendation and refused with AWAY_ACTION_REFUSED when it does not, so an apply never substitutes a different action. An option the subcommand does not accept is refused with UNKNOWN_OPTION rather than ignored.
   pan technologies detect [--worktree <name>] --json
-  pan repository-check <profile> [--timeout-ms <milliseconds>] [--workspace <dir|worktree> | --worktree <name>] [--run <run-id>] [--force-repeat] [--json]
+  pan repository-check <profile> [--timeout-ms <milliseconds>] [--workspace <dir|worktree> | --worktree <name>] [--run <run-id>] [--role <evidence-worker-role>] [--force-repeat] [--json]
       --timeout-ms raises the effective bound only: resolution keeps the maximum of the request, the profile's own bound, and subset-profile timeouts.
       --run records the execution against that run and, without --workspace or --worktree, checks its workspace. Without --run, --worktree records against every live run bound to the worktree. A bare invocation records against no run.
       A clean pass recorded against a run, at a workspace fingerprint identical before and after, satisfies a later gate on the same command instead of running it again.
-      A --run request that matches a recorded pass for the same invocation, profile, and fingerprint returns that pass instead of executing. --force-repeat executes anyway and records the repeat as deliberate.
+      A --run request that matches a recorded pass for the same invocation, worker role, profile, and fingerprint returns that pass instead of executing. --force-repeat executes anyway and records the repeat as deliberate.
+      --role names the evidence-worker role running the profile, which its evidence brief supplies. Two evidence workers of one stage share an invocation id, so the role is what gives each its own recorded pass and log.
       --harness-initiated marks the execution as harness-started rather than agent-started and suppresses streaming; the release-profile prefetch passes it.
   pan repository-check validate [--json]
   pan conform scan|checkpoint [--since <ref> | --all] [--worktree <name>] [--json]
@@ -324,8 +328,9 @@ export const HELP_BODY = `Usage:
   pan worktree remove <name> [--force] [--delete-branch] [--json]
       --delete-branch deletes the worktree branch when it is an ancestor of the default branch, and reports a refusal when it is not.
   pan worktree reconcile (--into <worktree> | --into-branch <branch>) --source <worktree> --source <worktree> [--json]
-  pan status <run-id> [--redline] [--occasion pan-start|pan-resume] [--json]
+  pan status <run-id> [--redline] [--occasion pan-start|pan-resume] [--resolve <citation>] [--json]
       --redline writes agent/evidence/platform-guidance-redline.json, the run's pre-declaration that platform guidance is non-authoritative.
+      --resolve reads a citation of this run's artifacts — a path or a bare invocation id — through the run's invocation alias map and names the current path. Resequencing at finalization is what leaves a citation stale; the alias map is written then.
   pan list [--json]
   pan inbox [--json]
       List every intake item under runtime/inbox/ with its lifecycle status, in lifecycle order (queue, active, canceled, complete) and newest-first inside one status.
@@ -2378,6 +2383,10 @@ async function main(): Promise<void> {
       // release profile, and that execution is not an agent spending its
       // allowance. It also has no terminal to stream to.
       const harnessInitiated = hasFlag(args, '--harness-initiated')
+      // Two evidence workers of one stage share an invocation id, so without
+      // the role they would share one reuse key and the second worker would
+      // be handed the first one's pass instead of producing its own log.
+      const workerRole = option(args, '--role')
       const startedAt = new Date().toISOString()
       // DEV-001: a clean pass reaches a later gate only when the workspace
       // never moved, so the run is bracketed by the fingerprint the gate
@@ -2398,6 +2407,7 @@ async function main(): Promise<void> {
               evidenceRun.current_invocation?.id ?? null,
               profile,
               fingerprintBefore,
+              workerRole,
             )
           : null
 
@@ -2490,6 +2500,7 @@ async function main(): Promise<void> {
         fingerprint_before: fingerprintBefore,
         started_at: startedAt,
         attempt: gatePassAttempt,
+        initiator,
       })
       const runEvidence = evidenceRun
         ? recordAgentRepositoryCheckForRuns(
@@ -2500,6 +2511,7 @@ async function main(): Promise<void> {
             initiator,
             gatePass?.evidence_path ?? null,
             forceRepeat,
+            workerRole,
           )
         : worktreeWorkspace
           ? recordAgentRepositoryCheck(
@@ -2738,6 +2750,22 @@ async function main(): Promise<void> {
     }
     case 'status': {
       const runId = requiredArgument(args[0], 'run-id')
+      const citation = option(args, '--resolve')
+
+      if (citation !== null) {
+        const resolution = resolveRunCitation(root, runId, citation)
+
+        print(
+          json
+            ? resolution
+            : resolution.path
+              ? `${resolution.citation} resolves to ${resolution.path}.`
+              : `${resolution.citation} resolves to ${resolution.resolved}, ` +
+                'which names no file this run holds.',
+          json,
+        )
+        return
+      }
 
       if (hasFlag(args, '--redline')) {
         const record = writeRedlineRecord(

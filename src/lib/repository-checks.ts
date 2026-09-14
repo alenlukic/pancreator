@@ -40,6 +40,7 @@ import {
 } from './run-layout.js'
 import { liveRunsBoundToWorktree, loadState } from './state.js'
 import type {
+  RepositoryCheckBaselinePointer,
   RepositoryCheckDelta,
   RepositoryCheckDiagnostic,
 } from './types.js'
@@ -536,6 +537,44 @@ function sortDiagnostics(
   )
 }
 
+/** The two workspaces a baseline comparison spans, when they differ. */
+export type BaselineWorkspaceDivergence = NonNullable<
+  RepositoryCheckDelta['baseline_workspace_divergence']
+>
+
+/**
+ * Divergence a run carries when it was graded against a baseline another
+ * workspace produced, or `null` when the two are the same tree.
+ *
+ * Only an adopted baseline can span two trees: a cohort session shares one
+ * baseline across chunk runs that each own a worktree (`DEV-001`), and the
+ * adopting run is graded against evidence it never observed. A run that
+ * captured its own baseline is compared exactly as it was before, whatever
+ * absolute path it happens to sit at now.
+ *
+ * A pointer recorded before the capture path existed asserts nothing about
+ * where it ran, so it reports no divergence.
+ */
+export function adoptedBaselineWorkspaceDivergence(
+  pointer: RepositoryCheckBaselinePointer | undefined,
+  currentWorkspace: string,
+): BaselineWorkspaceDivergence | null {
+  const captured = pointer?.capture_workspace_path
+
+  if (
+    !pointer?.shared_from_cohort ||
+    captured === undefined ||
+    captured === currentWorkspace
+  ) {
+    return null
+  }
+
+  return {
+    baseline_workspace: captured,
+    current_workspace: currentWorkspace,
+  }
+}
+
 /**
  * Compare a repository-check result with its pre-implementation baseline as a
  * multiset of diagnostic identities.
@@ -544,10 +583,17 @@ function sortDiagnostics(
  * surplus in the current run is a regression, and a positive surplus in the
  * baseline is a repair. Duplicate identical diagnostics therefore stay
  * distinguishable from one duplicated diagnostic that is genuinely new.
+ *
+ * A caller that knows the baseline was captured in another workspace passes
+ * that divergence in. A new diagnostic is then reported as a divergence
+ * rather than attributed to the change, because the tree it ran on is as
+ * plausible a cause. The gate still fails, because a new diagnostic is still
+ * unexplained.
  */
 export function compareRepositoryCheckToBaseline(
   baseline: RepositoryCheckResult,
   current: RepositoryCheckResult,
+  divergence: BaselineWorkspaceDivergence | null = null,
 ): RepositoryCheckBaselineComparison {
   if (current.status === 'not_configured') {
     return {
@@ -621,6 +667,7 @@ export function compareRepositoryCheckToBaseline(
     sorted.carried.length > EMBEDDED_DELTA_LIMIT
       ? { full: sorted }
       : {}),
+    ...(divergence ? { baseline_workspace_divergence: divergence } : {}),
   }
   const passed = current.status === 'passed' || sorted.new.length === 0
   const counts =
@@ -631,15 +678,22 @@ export function compareRepositoryCheckToBaseline(
     const first = delta.new.find(
       (diagnostic) => !diagnostic.diagnostic.startsWith('<status>'),
     )
+    const failure =
+      first === undefined
+        ? `a new failure state, but its output exposed no genuine failure ` +
+          `identity (${counts})`
+        : `a new failure in '${first.command}': ${first.diagnostic} (${counts})`
 
     return {
       passed: false,
-      explanation:
-        first === undefined
-          ? `Repository check '${current.profile}' introduced a new failure state, ` +
-            `but its output exposed no genuine failure identity (${counts}).`
-          : `Repository check '${current.profile}' introduced a new failure in ` +
-            `'${first.command}': ${first.diagnostic} (${counts}).`,
+      explanation: divergence
+        ? `Repository check '${current.profile}' reports ${failure}. Its ` +
+          `baseline was captured in '${divergence.baseline_workspace}' and ` +
+          `this run executed in '${divergence.current_workspace}', so the ` +
+          `difference may belong to the capturing workspace rather than to ` +
+          `this change. Reproduce it in the capturing workspace before you ` +
+          `treat it as introduced.`
+        : `Repository check '${current.profile}' introduced ${failure}.`,
       delta,
     }
   }
@@ -981,6 +1035,12 @@ export function recordAgentRepositoryCheckForRuns(
    * repeat that did execute has to say that someone chose it.
    */
   forcedRepeat = false,
+  /**
+   * Declared role of the evidence worker that ran the profile, when one did.
+   * Two evidence workers of a stage share an invocation id, so the role is
+   * what keeps their entries — and the artifacts those entries name — apart.
+   */
+  workerRole: string | null = null,
 ): string[] {
   const recorded: string[] = []
   let fingerprint: string | null = null
@@ -995,6 +1055,7 @@ export function recordAgentRepositoryCheckForRuns(
     appendJsonLine(evidence.absolute, {
       profile: result.profile,
       invocation_id: loadState(root, runId).current_invocation?.id ?? null,
+      ...(workerRole ? { worker_role: workerRole } : {}),
       workspace_fingerprint: fingerprint,
       status: result.status,
       duration_ms: result.total_duration_ms,
@@ -1013,6 +1074,8 @@ export function recordAgentRepositoryCheckForRuns(
 export interface ReusableProfileExecution {
   profile: string
   invocation_id: string | null
+  /** Evidence-worker role the entry belongs to, or `null` for the stage worker. */
+  worker_role: string | null
   workspace_fingerprint: string
   started_at: string
   invoked_by: RepositoryCheckInitiator
@@ -1027,9 +1090,13 @@ export interface ReusableProfileExecution {
  * when the request has to execute (`DEV-001`).
  *
  * A ledger entry answers a later request only when nothing it describes has
- * moved: the same profile, under the same invocation, at the same Git
- * workspace fingerprint, and passing. A failure has to re-run to show its
- * repair, and any other fingerprint describes a different tree.
+ * moved: the same profile, under the same invocation and worker role, at the
+ * same Git workspace fingerprint, and passing. A failure has to re-run to
+ * show its repair, and any other fingerprint describes a different tree.
+ *
+ * The role is part of the key because the artifact the key protects is
+ * worker-scoped: the two evidence workers of one verify stage share an
+ * invocation id, and each owes its own log for the report it writes.
  */
 export function reusableProfileExecution(
   root: string,
@@ -1037,6 +1104,7 @@ export function reusableProfileExecution(
   invocationId: string | null,
   profileName: string,
   fingerprint: string,
+  workerRole: string | null = null,
 ): ReusableProfileExecution | null {
   const evidence = resolveRunLayout(root, runId).evidence(
     AGENT_REPOSITORY_CHECK_RUNS_FILE,
@@ -1066,7 +1134,8 @@ export function reusableProfileExecution(
       record.profile !== profileName ||
       record.status !== 'passed' ||
       record.workspace_fingerprint !== fingerprint ||
-      (record.invocation_id ?? null) !== invocationId
+      (record.invocation_id ?? null) !== invocationId ||
+      (record.worker_role ?? null) !== workerRole
     ) {
       continue
     }
@@ -1076,6 +1145,7 @@ export function reusableProfileExecution(
     reusable = {
       profile: profileName,
       invocation_id: invocationId,
+      worker_role: workerRole,
       workspace_fingerprint: fingerprint,
       started_at:
         typeof record.started_at === 'string' ? record.started_at : '',
@@ -1183,6 +1253,12 @@ export interface RecordProfileGatePassOptions {
    * log agree; omitted, it is resolved here.
    */
   attempt?: number
+  /**
+   * Who started the execution. The ledger row and this log header report the
+   * same provenance because both take this one value from the call site; a
+   * header that names its own transport instead can contradict the row.
+   */
+  initiator?: RepositoryCheckInitiator
 }
 
 /**
@@ -1251,7 +1327,7 @@ export function recordProfileGatePass(
       `finished_at=${new Date().toISOString()}`,
       `workspace_fingerprint=${snapshot.fingerprint}`,
       'exit_code=0',
-      'invoked_by=command-line',
+      `invoked_by=${options.initiator ?? 'agent'}`,
       '',
       '--- stdout ---',
       `${JSON.stringify(summarizeRepositoryCheckResult(result).summary, null, 2)}\n`,

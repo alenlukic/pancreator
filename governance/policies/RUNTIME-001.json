@@ -32,6 +32,15 @@
       "text": "Embedded installation refresh with install --yes MUST run the same naming migration and seven-day archival before replacing the owned harness payload, while preserving workflow contents (`tests/secondary/embedded-installation-refresh.test.ts::embedded installer refresh reconciles persona mappings and agent ownership while preserving target state`).",
       "audience": ["harness"]
     },
+    {
+      "text": "Worker-authored helper scripts under runtime/logs/workflows/<run-id>/scripts/ MUST survive the closing of their run, because a closed run is still being read, and MUST be removed by the pan archive retention pass rather than at finalization (`tests/unit/workflow-artifacts.test.ts::retention sweeps run-local worker scripts and finalization keeps them`).",
+      "audience": ["harness"]
+    },
+    {
+      "text": "Terminal renumbering of a run's invocation prefixes MUST leave a resolvable alias from each superseded invocation id to the current one under the run directory, so a citation written while the run was live still resolves after it closes (`tests/unit/workflow-artifacts.test.ts::finalization leaves an alias from every in-flight invocation prefix to its final one`).",
+      "audience": ["harness"]
+    },
+    "A worker-authored helper script under runtime/logs/workflows/<run-id>/scripts/ belongs to its own run. Agents MUST NOT delete one when a run closes and MUST NOT rely on one outliving the retention window.",
     "Agents MUST NOT hand-rename, hand-move, or manually rewrite generated workflow directories or records. They MUST use pan archive or the installer-owned migration path for these deterministic operations."
   ]
 }

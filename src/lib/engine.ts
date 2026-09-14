@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 
 import {
   assertCohortRunUnblocked,
+  type CohortBaselineClaim,
   claimCohortBaselineCapture,
   COHORT_PLAN_WORKFLOW_SLUG,
   cohortBaselineDirectory,
@@ -150,6 +151,7 @@ import {
 } from './verification.js'
 import type { RatifiedAcceptanceCriterion } from './verification.js'
 import {
+  adoptedBaselineWorkspaceDivergence,
   loadRepositoryChecks,
   runRepositoryCheck,
   runRepositorySetup,
@@ -1057,6 +1059,11 @@ export interface AdoptableRepositoryCheckBaseline {
   /** Installation-relative path of the summary artifact. */
   artifact_path: string
   recorded_at: string
+  /**
+   * Workspace the recorded capture executed in, when the artifact names one.
+   * Artifacts written before the field existed name nothing.
+   */
+  capture_workspace_path?: string
 }
 
 /**
@@ -1155,6 +1162,9 @@ export function findAdoptableRepositoryCheckBaseline(
     const candidate: AdoptableRepositoryCheckBaseline = {
       artifact_path: toRepoRelative(root, absolute),
       recorded_at: artifact.recorded_at,
+      ...(typeof artifact.capture_workspace_path === 'string'
+        ? { capture_workspace_path: artifact.capture_workspace_path }
+        : {}),
     }
 
     if (!best || candidate.recorded_at > best.recorded_at) {
@@ -1306,6 +1316,58 @@ function ensureWorkspaceProvisioned(
 }
 
 /**
+ * Record, as run advisories, every shared baseline this run adopts from a
+ * workspace other than its own, and return the messages for the caller's
+ * progress stream.
+ *
+ * `DEV-001` gives a cohort session exactly one baseline per interior gate
+ * profile, while `COHORT-001` gives every chunk run its own worktree, so an
+ * adopting run is normally judged against evidence captured somewhere else.
+ * That is sound until a gate reports a diagnostic the baseline does not
+ * carry, at which point the reader needs to know a second workspace is in
+ * play before spending the next stage hunting a regression. Naming it at
+ * adoption puts the fact in the record ahead of the failure it explains.
+ *
+ * A pointer recorded before the capture path existed asserts nothing about
+ * where it ran, so it produces no diagnosis and the run adopts as it did
+ * before.
+ */
+function adoptedBaselinePathDiagnoses(
+  state: RunState,
+  claim: Extract<CohortBaselineClaim, { status: 'adopted' }>,
+): string[] {
+  const workspace = state.workspace_root || '.'
+  const messages = Object.values(claim.baselines)
+    .sort((left, right) => left.profile.localeCompare(right.profile))
+    .flatMap((pointer) => {
+      const divergence = adoptedBaselineWorkspaceDivergence(pointer, workspace)
+
+      return divergence
+        ? [
+            `the shared '${pointer.profile}' baseline was captured in ` +
+              `'${divergence.baseline_workspace}' and this run executes in ` +
+              `'${divergence.current_workspace}', so a diagnostic this ` +
+              `baseline does not carry may belong to either workspace; ` +
+              `reproduce it in the capturing workspace before treating it ` +
+              `as introduced`,
+          ]
+        : []
+    })
+
+  if (messages.length === 0) {
+    return []
+  }
+
+  recordRunAdvisories(
+    state,
+    { kind: 'baseline_adoption', source: 'prepare' },
+    messages,
+  )
+
+  return messages
+}
+
+/**
  * Establish the run's pre-implementation baselines before the first
  * source-allowed stage edits anything: one baseline per interior gate profile
  * of the run's verification level (DEV-001). A run outside a cohort captures
@@ -1346,6 +1408,10 @@ function ensureWorkflowRepositoryCheckBaselines(
         `adopted the shared pre-implementation baseline of cohort ${cohortId} ` +
           `(${Object.keys(claim.baselines).sort().join(', ') || 'no profiles'})`,
       )
+
+      for (const message of adoptedBaselinePathDiagnoses(state, claim)) {
+        onProgress?.(message)
+      }
 
       return false
     }
@@ -1433,6 +1499,10 @@ function captureRepositoryCheckBaselines(
 
   const baselines: NonNullable<RunState['repository_check_baselines']> = {}
   const checksConfigDigest = repositoryChecksConfigDigest(root)
+  // A cohort shares this pointer with runs that own a different worktree, so
+  // the pointer has to say where the evidence was produced. Without it a host
+  // failure of the capturing tree is indistinguishable from a regression.
+  const captureWorkspacePath = state.workspace_root || '.'
 
   state.repository_check_baselines = baselines
 
@@ -1455,6 +1525,14 @@ function captureRepositoryCheckBaselines(
         artifact_path: adopted.artifact_path,
         workspace_fingerprint: preCaptureWorkspace.fingerprint,
         recorded_at: adopted.recorded_at,
+        // An artifact recorded before this field existed names no tree, and
+        // this run is not the tree it ran in. The pointer stays silent rather
+        // than naming the adopting workspace: a cohort shares this pointer,
+        // so a guess here sends every sibling run to reproduce a failure in a
+        // workspace the capture never touched.
+        ...(adopted.capture_workspace_path
+          ? { capture_workspace_path: adopted.capture_workspace_path }
+          : {}),
       }
       onProgress?.(
         `adopted the recorded pre-implementation '${profile.name}' baseline ` +
@@ -1493,6 +1571,7 @@ function captureRepositoryCheckBaselines(
     // The summarized artifact is what a coder is required to read; the complete
     // capture stays on disk for anyone who needs the untruncated transcript.
     const provenanceFields = {
+      capture_workspace_path: captureWorkspacePath,
       workspace_dirty_paths: provenance.dirty_paths,
       workspace_dirty_path_count: provenance.dirty_path_count,
       ...(provenance.predecessor_run_id
@@ -1533,6 +1612,7 @@ function captureRepositoryCheckBaselines(
       artifact_path: summaryPath,
       workspace_fingerprint: workspace.fingerprint,
       recorded_at: recordedAt,
+      capture_workspace_path: captureWorkspacePath,
     }
 
     if (failedEnvironmentProbe) {
