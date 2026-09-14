@@ -1,5 +1,22 @@
 # Changelog
 
+## [6.4.0] - 2026-09-14
+
+This release registers `openai` as a persona executor. An operator can map a worker persona to GPT 6 Astra and run a real stage.
+
+### Changed
+
+- Widen former `claude-code`-only dispatch, projection, eval, and validation paths so they accept `openai` ([35b867d1](https://github.com/alenlukic/pancreator/commit/35b867d19fd9faa0e2479531781e7d6e8e450350)).
+
+### Added
+
+- Register `openai` as a third persona executor with a bounded Responses API tool loop, local continuation, and documented mapping options ([35b867d1](https://github.com/alenlukic/pancreator/commit/35b867d19fd9faa0e2479531781e7d6e8e450350)).
+- Add a single-shot OpenAI Responses connector for operator use ([7f24c782](https://github.com/alenlukic/pancreator/commit/7f24c7829b7e9fa56d3a5770920e87817b87e6f6)).
+
+### Fixed
+
+- Harden OpenAI response handling against a malformed or incomplete Responses API payload ([2659e745](https://github.com/alenlukic/pancreator/commit/2659e745aea13b5fb3b6feb530e960e32bac9ffb)).
+
 ## [6.3.2] - 2026-09-14
 
 This release removes TypeScript non-null assertions from CLI, engine, and tests.
