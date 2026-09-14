@@ -1,5 +1,13 @@
 # Changelog
 
+## [6.3.1] - 2026-09-14
+
+This release adds a developer benchmark script for repository-check profiles.
+
+### Added
+
+- Add `bin/benchmark` and `npm run benchmark` with `--fast` and `--full`. The default is `--fast`. Each selected profile runs three times in sequence. Both flags run fast first, then full. An unknown flag exits with a non-zero status and prints usage ([01b629f7](https://github.com/alenlukic/pancreator/commit/01b629f7bf87d51f053ba4e0e5d4f02f8dc22079)).
+
 ## [6.3.0] - 2026-09-14
 
 This release repairs Phase 4 mechanical defects in four chunks.

@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+RUNS_PER_PROFILE=3
+
+usage() {
+  cat <<'EOF'
+Usage: npm run benchmark -- [--fast] [--full]
+       bin/benchmark [--fast] [--full]
+
+Run each selected repository-check profile three times in sequence and report
+the wall-clock duration and result of every run. Both flags run fast first,
+then full. Without a flag the fast profile is benchmarked.
+EOF
+}
+
+run_fast=0
+run_full=0
+
+for argument in "$@"; do
+  case "$argument" in
+    --fast)
+      run_fast=1
+      ;;
+    --full)
+      run_full=1
+      ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "[benchmark] unknown option: $argument" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+
+if [[ "$run_fast" -eq 0 && "$run_full" -eq 0 ]]; then
+  run_fast=1
+fi
+
+profiles=()
+
+if [[ "$run_fast" -eq 1 ]]; then
+  profiles+=("fast")
+fi
+
+if [[ "$run_full" -eq 1 ]]; then
+  profiles+=("full")
+fi
+
+rows=()
+failures=0
+run_number=0
+
+for profile in "${profiles[@]}"; do
+  attempt=1
+
+  while [[ "$attempt" -le "$RUNS_PER_PROFILE" ]]; do
+    run_number=$((run_number + 1))
+    echo "[benchmark] run ${run_number}: ${profile} ${attempt}/${RUNS_PER_PROFILE} starting"
+    started="$SECONDS"
+
+    # The gate measures ./bin/pan repository-check, so the benchmark measures
+    # the same entrypoint rather than the profile's commands directly.
+    if "$ROOT/bin/pan" repository-check "$profile"; then
+      result="pass"
+    else
+      result="fail"
+      failures=$((failures + 1))
+    fi
+
+    duration=$((SECONDS - started))
+    echo "[benchmark] run ${run_number}: ${profile} ${result} in ${duration}s"
+    rows+=("$(printf '%3d  %-7s  %12d  %s' "$run_number" "$profile" "$duration" "$result")")
+    attempt=$((attempt + 1))
+  done
+done
+
+printf '\n[benchmark] summary\n'
+printf '%3s  %-7s  %12s  %s\n' 'Run' 'Profile' 'Duration (s)' 'Result'
+
+for row in "${rows[@]}"; do
+  printf '%s\n' "$row"
+done
+
+if [[ "$failures" -gt 0 ]]; then
+  printf '[benchmark] %d of %d runs failed.\n' "$failures" "$run_number"
+  exit 1
+fi
