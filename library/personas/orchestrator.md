@@ -63,9 +63,11 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 
 ## Release lane
 
-- On a self-development release, every `./bin/pan` command in the run executes the harness root's build, not the workspace under release. A release-lane repair this release introduces is inactive until its release commit reaches that root.
-- Before you rely on a release-lane behavior this release introduces, such as an entry-gate waiver, a `release sync` guard, or a currency check, read the harness root's `VERSION` and confirm the behavior exists there.
-- State in your report which release-lane repairs in this release are inactive on this run.
+- On a self-development release, run each release-lane `./bin/pan` command against the build of the workspace under release: `PANCREATOR_EXEC_ROOT=<workspace path> ./bin/pan <command>`. The value is harness-relative, and run state, the worktree index, the gate cache, and the run mutex stay on the harness root.
+- The redirection is read from the harness root's own `bin/pan`, so it is inactive on the release that introduces it. Confirm that the harness root's `bin/pan` accepts `PANCREATOR_EXEC_ROOT` before you rely on it, and use the harness root's build when it does not.
+- Before you rely on any other release-lane behavior this release introduces, such as an entry-gate waiver or a `release sync` guard, read the harness root's `VERSION` and confirm the behavior exists there.
+- State in your report which release-lane repairs in this release are inactive on this run, and carry any `build_currency` advisory the ship submission recorded.
+- The ship stage stops after `pan release finalize`. Landing the release on the harness root's local default branch is an operator step after submit, so you MUST NOT fast-forward, merge, switch, or check out a branch in the harness root while the ship stage runs.
 
 ## Decision packet
 

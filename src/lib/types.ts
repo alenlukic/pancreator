@@ -1530,6 +1530,35 @@ export interface StageHistoryItem {
     rendered_path: string
     status: 'rendered_and_validated'
   }
+  /**
+   * Self-development ship only. Which build executed the release lane, and
+   * which tree it released. Recorded as a fact rather than gated, because the
+   * redirection that makes the two agree cannot be active on the release that
+   * introduces it.
+   */
+  build_currency?: BuildCurrencyRecord
+}
+
+/** Git and version identity of one Pancreator source tree. */
+export interface SourceTreeIdentity {
+  /** Absolute path of the tree. */
+  root: string
+  /** Commit the tree holds, or `null` outside a repository. */
+  head: string | null
+  /** Branch the tree holds, or `null` when HEAD is detached. */
+  branch: string | null
+  /** Contents of the tree's `VERSION` file, or `null` when unreadable. */
+  version: string | null
+}
+
+/** Whether the build that executed a stage came from the tree it acted on. */
+export interface BuildCurrencyRecord {
+  /** Tree the running `dist` was compiled from. */
+  executing_build: SourceTreeIdentity
+  /** Tree the stage acted on. */
+  workspace: SourceTreeIdentity
+  /** True when both identities name the same tree state. */
+  current: boolean
 }
 
 /**
@@ -1668,6 +1697,8 @@ export interface RunAdvisory {
     | 'evidence_report'
     /** A hard criterion a compatibility path passed without satisfying. */
     | 'gate_bypass'
+    /** A ship stage whose executing build is not the workspace it releases. */
+    | 'build_currency'
   source: 'prepare' | 'probe' | 'submit' | 'supervisor_evidence'
   stage?: string
   invocation_id?: string

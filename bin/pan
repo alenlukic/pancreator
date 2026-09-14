@@ -4,4 +4,43 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-exec "$ROOT/bin/run-built" -- node "$ROOT/dist/src/cli.js" "$@"
+EXEC_ROOT_REQUEST="${PANCREATOR_EXEC_ROOT:-}"
+
+if [[ -z "$EXEC_ROOT_REQUEST" ]]; then
+  exec "$ROOT/bin/run-built" -- node "$ROOT/dist/src/cli.js" "$@"
+fi
+
+# A self-development release must be able to execute the build of the
+# workspace it is releasing rather than the build of the checkout that
+# supplies this script. PANCREATOR_EXEC_ROOT names that checkout. Only the
+# executing build moves: PANCREATOR_ROOT keeps run state, the worktree index,
+# the gate cache, and the run mutex on the installation root, and the working
+# directory stays there so a harness-relative argument resolves as it always
+# has. The override resolves the same way, against the installation root, so
+# a relative value means the same thing from every working directory. An
+# operator who already pinned PANCREATOR_ROOT keeps that choice.
+is_pancreator_checkout() {
+  local candidate="$1"
+
+  [[ -f "$candidate/package.json" ]] || return 1
+  [[ -x "$candidate/bin/run-built" ]] || return 1
+  [[ -f "$candidate/src/cli.ts" || -f "$candidate/dist/src/cli.js" ]] || return 1
+
+  grep -q '"name"[[:space:]]*:[[:space:]]*"pancreator-v2-prototype"' \
+    "$candidate/package.json"
+}
+
+if ! EXEC_ROOT="$(cd "$EXEC_ROOT_REQUEST" 2>/dev/null && pwd)"; then
+  echo "[pan] EXEC_ROOT_INVALID: PANCREATOR_EXEC_ROOT does not resolve to a directory: $EXEC_ROOT_REQUEST" >&2
+  exit 1
+fi
+
+if ! is_pancreator_checkout "$EXEC_ROOT"; then
+  echo "[pan] EXEC_ROOT_INVALID: PANCREATOR_EXEC_ROOT is not a Pancreator checkout: $EXEC_ROOT" >&2
+  echo "[pan] a checkout carries package.json named pancreator-v2-prototype, an executable bin/run-built, and src/cli.ts or dist/src/cli.js." >&2
+  exit 1
+fi
+
+export PANCREATOR_ROOT="${PANCREATOR_ROOT:-$ROOT}"
+
+exec "$EXEC_ROOT/bin/run-built" -- node "$EXEC_ROOT/dist/src/cli.js" "$@"
