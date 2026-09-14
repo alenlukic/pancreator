@@ -1,5 +1,13 @@
 # Changelog
 
+## [6.3.2] - 2026-09-14
+
+This release removes TypeScript non-null assertions from CLI, engine, and tests.
+
+### Changed
+
+- Replace non-null assertions with explicit guards in the CLI tune prepare path, the waiver spotfix-case path, and matching tests ([ce36fa64](https://github.com/alenlukic/pancreator/commit/ce36fa64cde970310014019d522456ae3a17d8ac)).
+
 ## [6.3.1] - 2026-09-14
 
 This release adds a developer benchmark script for repository-check profiles.
