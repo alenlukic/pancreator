@@ -27,7 +27,12 @@ import {
 import { ensureDir, readJson, writeJsonAtomic, writeTextAtomic } from '../io.js'
 import { keywordRunSuffix, makeWorkflowRunId } from '../naming.js'
 import { panCommand } from '../project-config.js'
-import type { Invocation, RunState, WorkspaceSnapshot } from '../types.js'
+import type {
+  Invocation,
+  PersonaExecutorKind,
+  RunState,
+  WorkspaceSnapshot,
+} from '../types.js'
 import {
   gradeRunRecords,
   writeEvalReport,
@@ -238,6 +243,15 @@ function readInvocation(root: string, state: RunState): Invocation | null {
  * `VERSION`, `CHANGELOG.md`, and four more files in the real working tree and
  * graded as a pass, because no check looked here.
  */
+/**
+ * Whether the eval runner delegates a stage itself. Every external executor
+ * runs through the same path as `pan delegate`; only a cursor persona needs
+ * the operator's own supervisor session, so only cursor is handed back.
+ */
+export function evalDrivesExecutor(executor: PersonaExecutorKind): boolean {
+  return executor !== 'cursor'
+}
+
 export function harnessRootUntouched(
   root: string,
   before: WorkspaceSnapshot,
@@ -449,7 +463,7 @@ export function runEval(
         invocation.stage.persona_executor ??
         personaExecutorOf(invocation.stage.model)
 
-      if (executor !== 'claude-code') {
+      if (!evalDrivesExecutor(executor)) {
         handoffReason = `stage '${invocation.stage.slug}' persona '${invocation.stage.persona}' maps to the ${executor} executor, which a Cursor supervisor drives`
         break
       }

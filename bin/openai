@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Preserve the caller's working directory. The CLI uses it to find the
+# repository-local .env, including from a linked Git worktree.
+exec "$ROOT/bin/run-built" -- node "$ROOT/dist/src/openai-cli.js" "$@"

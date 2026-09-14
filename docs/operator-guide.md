@@ -762,16 +762,16 @@ In `config.json` Pancreator always reserves exact `cursor:balanced`, `cursor:adv
 
 Each new run snapshots the active configuration in `runtime/logs/workflows/<run-id>/agent/pipeline-config.snapshot.json`. Invocation cards resolve their model from that snapshot. Because Cursor executes the model declared in `.cursor/agents/pan-<persona>.md`, preparing an older run after switching configurations is blocked until the projected agent models again match that run's snapshot. This prevents the card from claiming one model while Cursor launches another.
 
-## Route a persona to the Claude Code CLI
+## Route a persona to an external executor
 
-A persona mapping may name its executor with a prefix from a closed set — `cursor` (the default) or `claude-code`:
+A persona mapping may name its executor with a prefix from a closed set — `cursor` (the default), `claude-code`, or `openai`:
 
 ```json
 {
   "configs": {
     "balanced": {
       "planner": "claude-code:claude-opus-5[permission-mode=default,session-resume=true]",
-      "reviewer": "claude-code:claude-opus-5[permission-mode=default,session-resume=true]",
+      "reviewer": "openai:gpt-6-astra[effort=high,session-resume=true]",
       "coder": "claude-opus-5[context=300k,effort=high]"
     }
   }
@@ -780,17 +780,45 @@ A persona mapping may name its executor with a prefix from a closed set — `cur
 
 For compatibility, Pancreator still reads a legacy nested `personas` object in a named configuration. A nested entry wins over a flat key for the same persona. Pancreator emits only the flat shape.
 
-A `claude-code` persona is executed by the operator-installed Claude Code CLI instead of a Cursor subagent, so the same model can author a stage under the Claude Code harness while Pancreator's run state, gates, and operator contracts stay authoritative. Any stage may be routed this way, including mutating ones; non-mutating stages run with file-write tools restricted to the harness runtime tree, and `scope.no_unapproved_changes` remains the gate of record either way. The `orchestrator` persona is the exception — it is the supervisor itself and must stay on `cursor`.
+An external-executor persona is executed by that runtime instead of a Cursor subagent, so the same model can author a stage under another harness while Pancreator's run state, gates, and operator contracts stay authoritative. Any stage may be routed this way, including mutating ones; non-mutating stages run with file-write tools restricted to the harness runtime tree, and `scope.no_unapproved_changes` remains the gate of record either way. The `orchestrator` persona is the exception — it is the supervisor itself and must stay on `cursor`.
 
-Supported bracket options for `claude-code` mappings: `permission-mode` (`default`, `acceptEdits`, `plan`, `bypassPermissions`), `session-resume` (`true`/`false`, default `true`), and `timeout-ms`. Cursor mappings keep their existing opaque options.
+Note that `openai:` names a runtime, while `oai:` names a tier alias family of Cursor models. They are unrelated, and an alias family value may never carry an executor prefix.
 
-Requirements and behavior:
+Behavior shared by every external executor:
 
-- The `claude` CLI must be installed and authenticated on each machine that runs delegations (set `PANCREATOR_CLAUDE_BIN` if the binary is not on `PATH`). `./bin/pan doctor` reports availability when the active mapping uses `claude-code`.
-- Run creation verifies the binary; the first delegation of a run verifies credentials. A failed preflight pauses the run with an operator decision — it is an operator-visible stop, not an error to work around, and the harness never silently substitutes Cursor.
+- Run creation verifies the executor is reachable; the first delegation of a run verifies credentials. A failed preflight pauses the run with an operator decision — it is an operator-visible stop, not an error to work around, and the harness never silently substitutes Cursor.
 - When a run reaches an external stage, the supervisor runs `./bin/pan delegate <run-id>` instead of invoking a subagent. The harness delivers the canonical card, writes the delegation evidence itself, and records the executor session.
 - `./bin/pan decide <run-id> revise --note "<directive>"` on an external stage resumes the author's recorded session with your directive, so refinement rounds keep full context. Retries after failures always start fresh.
 - `./bin/pan models --sync` skips projecting external personas into `.cursor/` and removes a stale projected agent when a persona moves to an external executor.
+
+### `claude-code`
+
+Supported bracket options: `permission-mode` (`default`, `acceptEdits`, `plan`, `bypassPermissions`), `session-resume` (`true`/`false`, default `true`), and `timeout-ms`.
+
+The `claude` CLI must be installed and authenticated on each machine that runs delegations (set `PANCREATOR_CLAUDE_BIN` if the binary is not on `PATH`). `./bin/pan doctor` reports availability when the active mapping uses `claude-code`.
+
+### `openai`
+
+An `openai` persona is executed directly against the OpenAI Responses API — `openai:gpt-6-astra` is the primary example. There is no CLI to install: the harness runs the tool loop itself, offering the author a fixed catalog of file and shell tools bounded by the stage's own write policy.
+
+Supported bracket options:
+
+| Option              | Values                                                     | Default                 |
+| ------------------- | ---------------------------------------------------------- | ----------------------- |
+| `effort`            | `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max` | the model's own default |
+| `max-output-tokens` | a positive integer                                         | the model's own default |
+| `max-tool-rounds`   | a positive integer                                         | `60`                    |
+| `session-resume`    | `true`, `false`                                            | `true`                  |
+| `timeout-ms`        | an integer of at least `1000`                              | `3600000`               |
+
+Effort is validated against the enum above rather than against a per-model catalog, so a specific model may still reject a value the harness accepts; the API error names that model's own set. The tool-result cap is a fixed harness bound of `262144` bytes, not a mapping option.
+
+Requirements and behavior:
+
+- `OPENAI_API_KEY` must be readable from the process environment or a `.env` file Pancreator inspects. `./bin/pan doctor` reports readiness when the active mapping uses `openai`, and never prints the key itself. No credential value is written to run state, evidence, or a captured stream; a redaction marker takes its place.
+- The API is called with retention disabled, so no conversation is stored server-side. Continuation for a `revise` decision is local: the harness replays the prior conversation from a transcript under the run's evidence directory. A transcript that outgrows its cap drops its oldest turns and says so; one that is missing or unreadable falls back to a fresh full-card delegation.
+- The author gets no MCP tool, which means no isolated browser inspection. Route a stage that owes a browser verdict to a Cursor persona, which `BROWSER-001` requires. The delegation record states the offered capability set on every run.
+- A delegation that exhausts its round limit, session timeout, or tool-result cap fails with that reason named in the record rather than returning a partial result.
 
 ## Targeting a deliverable outside the repository root
 

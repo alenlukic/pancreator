@@ -127,27 +127,44 @@ together.
 ## External stage executors
 
 A persona mapping may carry an executor prefix from a closed set: `cursor`
-(the default, no prefix required) or `claude-code`, as in
-`"reviewer": "claude-code:claude-opus-5[permission-mode=default,session-resume=true]"`.
-A stage whose persona resolves to `claude-code` is not delegated by the
+(the default, no prefix required), `claude-code`, or `openai`, as in
+`"reviewer": "openai:gpt-6-astra[effort=high,session-resume=true]"`.
+A stage whose persona resolves to an external executor is not delegated by the
 supervisor. Instead, `pending_action: invoke_agent` is fulfilled by running
-`pan delegate <run-id>`: the harness pipes the complete canonical card to the
-operator-installed Claude Code CLI (`claude -p --output-format json`), working
-directory set to the run's workspace root, and awaits the result. Verbatim
-delivery becomes a property of code, so no delivery prompt, contract manifest,
-or read attestation is generated for external invocations.
+`pan delegate <run-id>`: the harness delivers the complete canonical card to
+that executor, working directory set to the run's workspace root, and awaits
+the result. Verbatim delivery becomes a property of code, so no delivery
+prompt, contract manifest, or read attestation is generated for external
+invocations.
+
+`claude-code` pipes the card to the operator-installed CLI
+(`claude -p --output-format json`), which brings its own tools. `openai` calls
+the Responses API directly and runs the tool loop in the harness: the card is
+the first input item, the harness offers a fixed catalog of file and shell
+tools, and each round returns tool results to the model until it stops calling
+tools. Because the harness owns that loop, its bounds are explicit — maximum
+tool rounds, a session wall clock, and a per-result byte cap, each configurable
+per persona and each naming itself in the execution record when it ends a
+session. The `openai` author is offered no MCP tool, so a stage that owes a
+browser verdict under `BROWSER-001` stays on `cursor`.
 
 The harness authors the delegation audit itself: the delivered prompt body byte
 for byte at `agent/invocations/<invocation-id>.delegation.md`, and an execution
 record at `agent/invocations/<invocation-id>.delegation-execution.json` carrying
 executor identity, the resolved argument vector (excluding the prompt body),
-exit status, duration, and the returned `session_id`. Executor stdout and
-stderr are captured under `agent/evidence/` per the OUTPUT-001 pattern.
+exit status, duration, and the returned `session_id`. An `openai` record also
+carries the non-secret request settings, the per-tool call counts, the response
+ids, token usage, the offered MCP capability set, and any bounded-failure
+reason. Executor stdout and stderr are captured under `agent/evidence/` per the
+OUTPUT-001 pattern. No credential value reaches any of these records: the key
+travels to the executor through the environment only, never through an
+argument vector, and a redaction marker replaces it in every captured stream.
 `delegation-validate` passes on these harness-authored records.
 
 Delegation is preflighted fail-closed per `EXECUTOR-001`: run creation verifies
-the binary exists at or above the tested minimum version, and the first
-delegation of a run verifies credentials with a no-op invocation. A failed
+the executor is reachable — for `claude-code`, a binary at or above the tested
+minimum version; for `openai`, a runtime with `fetch` and a resolvable
+`OPENAI_API_KEY` — and the first delegation of a run verifies credentials. A failed
 preflight pauses the run with an `operator_decision`; the harness never
 silently substitutes an executor, because that would falsify the model
 snapshot. The spawned process runs non-interactively under a stage-derived
@@ -158,9 +175,15 @@ remains the gate of record for workspace mutation.
 Sessions persist beside the invocation artifacts
 (`agent/invocations/<invocation-id>.session.json`) and on the run state. When
 `pan decide <run-id> revise` re-runs an external stage, the harness resumes the
-recorded session with the operator directive (`--resume <session_id>`) so the
-author keeps its full context; the delivered directive is persisted as both the
-delivery prompt and the delegation artifact. A failed resume falls back to a
+recorded session with the operator directive so the author keeps its full
+context; the delivered directive is persisted as both the delivery prompt and
+the delegation artifact. `claude-code` resumes server-side (`--resume
+<session_id>`). `openai` resumes locally, because retention is disabled on
+every request: the prior conversation is persisted as a transcript under
+`agent/evidence/` and replayed as input items ahead of the directive. A
+transcript that exceeds its byte cap drops its oldest items, keeping the
+initial card, and records that it was truncated; a truncated transcript still
+resumes. A failed resume falls back to a
 fresh full-card delegation and is audited as `resume_fallback`. A retry after a
 _failed_ attempt never resumes: the retry contract requires confronting the
 recorded failure, and `prior_failure` inlining serves that. Mapping option

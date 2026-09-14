@@ -191,6 +191,8 @@ export function submitCurrentStage(
 export const CLAUDE_CODE_SPEC =
   'claude-code:claude-opus-5[permission-mode=default,session-resume=true]'
 
+export const OPENAI_SPEC = 'openai:gpt-6-astra[effort=high,session-resume=true]'
+
 /**
  * Stand-in for the Claude Code CLI. It answers `--version`, treats a
  * positional `-p` prompt as the credential probe, and reads invocations from
@@ -268,7 +270,24 @@ export function installClaudeCodeFixture(
 
   writeFileSync(stubPath, CLAUDE_STUB)
   chmodSync(stubPath, 0o755)
+  routePersonas(root, personas, CLAUDE_CODE_SPEC)
+  syncCursorProjection(root, { write: true })
+  execFileSync('git', ['add', 'config.json', 'claude-stub.cjs'], { cwd: root })
+  // Amend instead of commit. The ship-stage release validator needs the
+  // baseline commit to be the one that introduced the current VERSION.
+  execFileSync('git', ['commit', '-q', '--amend', '-m', 'fixture'], {
+    cwd: root,
+  })
 
+  return stubPath
+}
+
+/** Route `personas` to the given executor spec in the fixture's config.json. */
+export function routePersonas(
+  root: string,
+  personas: string[],
+  spec: string,
+): void {
   const configPath = path.join(root, 'config.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
     defaults: Record<string, string>
@@ -278,7 +297,7 @@ export function installClaudeCodeFixture(
   // A named entry under `configs` overrides `defaults`, so clear the routing
   // there too. Otherwise the fixture depends on the checked-in `active_config`.
   for (const persona of personas) {
-    config.defaults[persona] = CLAUDE_CODE_SPEC
+    config.defaults[persona] = spec
 
     for (const named of Object.values(config.configs ?? {})) {
       delete named[persona]
@@ -290,15 +309,27 @@ export function installClaudeCodeFixture(
   }
 
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+}
+
+/**
+ * Route the personas to the openai executor and fold the edit into the
+ * baseline commit, so the workspace stays clean for fingerprinting. The
+ * executor needs no installed binary: its Responses endpoint is redirected by
+ * environment variable.
+ */
+export function installOpenAiFixture(
+  root: string,
+  personas: string[],
+  spec: string = OPENAI_SPEC,
+): void {
+  routePersonas(root, personas, spec)
   syncCursorProjection(root, { write: true })
-  execFileSync('git', ['add', 'config.json', 'claude-stub.cjs'], { cwd: root })
+  execFileSync('git', ['add', 'config.json'], { cwd: root })
   // Amend instead of commit. The ship-stage release validator needs the
   // baseline commit to be the one that introduced the current VERSION.
   execFileSync('git', ['commit', '-q', '--amend', '-m', 'fixture'], {
     cwd: root,
   })
-
-  return stubPath
 }
 
 /** Point the away evaluator at a script that answers with `response`. */

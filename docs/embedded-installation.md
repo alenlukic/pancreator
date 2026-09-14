@@ -30,6 +30,11 @@ target repository tracks.
   `claude-code` executor. A missing or unauthenticated CLI is an
   operator-visible preflight pause, not an error to work around; the harness
   never silently substitutes Cursor. See `./bin/pan doctor`.
+- An `OPENAI_API_KEY`, readable from the environment or a `.env` file —
+  required only when the active mapping routes a persona to the `openai`
+  executor. That executor needs no installed binary: the harness calls the
+  Responses API itself. A missing key pauses the same way a missing CLI does.
+  See `./bin/pan doctor`.
 
 ## Install
 
@@ -447,7 +452,7 @@ blanket-deleted.
 
 ## Harness versioning
 
-`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `6.3.2`. `CHANGELOG.md` records curated release history in Common Changelog format.
+`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `6.4.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
 
 `release/index.json` is the internal mapping from harness version to immutable
 Git commit. Because a commit cannot contain its own hash, release publication is

@@ -9,7 +9,8 @@
     "modelSpec": {
       "type": "string",
       "minLength": 1,
-      "pattern": "^((cursor|claude-code):)?[^:]+$"
+      "description": "A model spec, optionally prefixed with one of the closed persona-executor set: cursor, claude-code, openai. An absent prefix means cursor.",
+      "pattern": "^((cursor|claude-code|openai):)?[^:]+$"
     },
     "modelAlias": {
       "type": "string",
@@ -25,9 +26,11 @@
       "anyOf": [{ "const": "" }, { "$ref": "#/$defs/modelSpecOrAlias" }]
     },
     "aliasValue": {
+      "description": "A tier alias resolves to a Cursor model spec. An external executor prefix is refused here so an alias family never changes which runtime executes a persona.",
       "allOf": [
         { "$ref": "#/$defs/modelSpec" },
         { "not": { "pattern": "^claude-code:" } },
+        { "not": { "pattern": "^openai:" } },
         {
           "not": {
             "pattern": "^(anthropic|oai|open|cursor):(balanced|advanced|ultra)$"
@@ -118,7 +121,7 @@
     },
     "defaults": {
       "type": "object",
-      "description": "Persona-to-model mappings every named config inherits. A mapping MAY carry an executor prefix from the closed set (cursor, claude-code); no prefix means cursor. A mapping MAY also reference a tier alias (for example anthropic:balanced).",
+      "description": "Persona-to-model mappings every named config inherits. A mapping MAY carry an executor prefix from the closed set (cursor, claude-code, openai); no prefix means cursor. A mapping MAY also reference a tier alias (for example anthropic:balanced).",
       "additionalProperties": { "$ref": "#/$defs/modelSpecOrAlias" }
     },
     "$operator": {
