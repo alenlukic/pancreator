@@ -51,6 +51,12 @@ import {
 import { runSetupCommands } from './setup-commands.js'
 import { now } from './state.js'
 import type { ManagedWorktreeReference } from './types.js'
+import {
+  cleanTreeRefusal,
+  workspaceAttributionDisposition,
+  workspaceAttributions,
+  workspaceCleanliness,
+} from './workspace-attribution.js'
 
 const WORKTREE_NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u
 const TEST_SCRATCH_RELATIVE_PATH = path.join('runtime', 'tmp', 'tests.noindex')
@@ -76,6 +82,15 @@ export interface WorktreeRecord extends ManagedWorktreeReference {
 export interface WorktreeIndex {
   schema_version: 1
   worktrees: WorktreeRecord[]
+}
+
+export interface CreatedWorktree extends WorktreeRecord {
+  /**
+   * Recorded read-only inputs the harness placed in the new worktree. The
+   * index entry does not carry them, because they describe one creation
+   * rather than the worktree's durable identity.
+   */
+  carried_paths: string[]
 }
 
 export interface ListedWorktree extends WorktreeRecord {
@@ -254,6 +269,62 @@ export function handoffSelfDevelopmentLocalConfig(
       },
     )
   }
+}
+
+/**
+ * Place every recorded read-only input into a new worktree.
+ *
+ * An operator who attributed an input once should not copy it into each new
+ * worktree by hand. Placement reads the attribution records themselves, so
+ * nothing new has to be declared in configuration, and a path already present
+ * in the new worktree is left alone.
+ */
+function carryAttributedInputs(root: string, worktreePath: string): string[] {
+  const carried = new Set<string>()
+
+  for (const record of workspaceAttributions(root, worktreePath)) {
+    if (workspaceAttributionDisposition(record) !== 'read-only-input') {
+      continue
+    }
+
+    if (!fileExists(record.recorded_in)) {
+      continue
+    }
+
+    for (const relative of record.paths) {
+      const source = resolveInside(record.recorded_in, relative)
+      const destination = resolveInside(worktreePath, relative)
+
+      if (!fileExists(source) || fileExists(destination)) {
+        continue
+      }
+
+      try {
+        ensureDir(path.dirname(destination))
+        copyFileSync(source, destination)
+      } catch (error) {
+        // Mirrors WORKTREE_OVERRIDE_COPY_FAILED: a bare filesystem error at
+        // this point names no operation an agent can act on.
+        throw new PanError(
+          `Failed to copy the recorded read-only input '${relative}' into ` +
+            `the new worktree: ${errorMessage(error)}`,
+          {
+            code: 'WORKTREE_CARRY_COPY_FAILED',
+            details: {
+              operation: 'attributed_input_placement',
+              file: relative,
+              source,
+              target: destination,
+            },
+          },
+        )
+      }
+
+      carried.add(relative)
+    }
+  }
+
+  return [...carried].sort()
 }
 
 /** One thing a worktree needs before a run can work in it. */
@@ -632,7 +703,7 @@ export function createWorktree(
   root: string,
   name: string,
   options: CreateWorktreeOptions = {},
-): WorktreeRecord {
+): CreatedWorktree {
   invariant(
     isWorktreeName(name),
     'Worktree names MUST use lowercase words separated by single hyphens.',
@@ -649,7 +720,7 @@ function addWorktree(
   root: string,
   name: string,
   options: CreateWorktreeOptions,
-): WorktreeRecord {
+): CreatedWorktree {
   const index = readWorktreeIndex(root)
 
   invariant(
@@ -735,12 +806,15 @@ function addWorktree(
     worktrees: [...index.worktrees, record],
   })
   handoffSelfDevelopmentLocalConfig(root, worktreePath)
+
+  const carriedPaths = carryAttributedInputs(root, worktreePath)
+
   runSetupCommands(config.setup, worktreePath, {
     label: `worktree '${name}'`,
     code: 'WORKTREE_SETUP_FAILED',
   })
 
-  return record
+  return { ...record, carried_paths: carriedPaths }
 }
 
 /**
@@ -833,13 +907,20 @@ export function resolveWorktreeWorkspace(root: string, name: string): string {
       `Recorded branch '${record.branch}' is checked out at '${heldBy}'.`,
       { code: 'WORKTREE_BRANCH_HELD' },
     )
-    invariant(
-      !gitWorktreeIsDirty(worktreePath),
-      `Worktree '${name}' is on branch '${currentBranch ?? '(detached)'}' ` +
-        `with uncommitted work. Clean it before switching to ` +
-        `'${record.branch}'.`,
-      { code: 'WORKTREE_DIRTY_BRANCH_MISMATCH' },
-    )
+    const cleanliness = workspaceCleanliness(root, worktreePath)
+
+    if (!cleanliness.clean) {
+      invariant(
+        false,
+        cleanTreeRefusal(cleanliness, {
+          action:
+            `Worktree '${name}' is on branch ` +
+            `'${currentBranch ?? '(detached)'}' and cannot switch`,
+          remedy: `Resolve each path before switching to '${record.branch}'.`,
+        }),
+        { code: 'WORKTREE_DIRTY_BRANCH_MISMATCH' },
+      )
+    }
 
     gitSwitchBranch(worktreePath, record.branch)
   }
@@ -995,12 +1076,23 @@ export function removeWorktree(
 
     // Presence is resolved and the dirty refusal fires before any mutation,
     // so a removal that removes nothing leaves the record for the retry.
-    invariant(
-      !present || options.force || !gitWorktreeIsDirty(worktreePath),
-      `WARNING: worktree '${name}' has uncommitted work in ${record.path}. ` +
-        'Removing it discards that work. Pass --force to remove it anyway.',
-      { code: 'WORKTREE_DIRTY' },
-    )
+    const cleanliness = present
+      ? workspaceCleanliness(root, worktreePath)
+      : null
+
+    if (cleanliness && !cleanliness.clean && !options.force) {
+      invariant(
+        false,
+        cleanTreeRefusal(cleanliness, {
+          action: `WARNING: worktree '${name}' cannot be removed`,
+          remedy:
+            'Removing it discards that work. Pass --force to remove it ' +
+            'anyway.',
+        }),
+        { code: 'WORKTREE_DIRTY' },
+      )
+    }
+
     invariant(
       present || !fileExists(worktreePath),
       `Worktree '${name}' exists at ${record.path} but no repository ` +
@@ -1016,7 +1108,13 @@ export function removeWorktree(
     if (present && repositoryRoot) {
       sweepDiscardedWorktreeScratch(path.dirname(worktreePath))
       discardedScratch = sweepWorktreeTestScratch(worktreePath)
-      gitWorktreeRemove(repositoryRoot, worktreePath, options.force ?? false)
+      // Git refuses to remove a worktree that still holds changes, so an
+      // exempt read-only input carries the force its exemption granted.
+      gitWorktreeRemove(
+        repositoryRoot,
+        worktreePath,
+        options.force === true || (cleanliness?.exempt.length ?? 0) > 0,
+      )
     } else if (repositoryRoot) {
       gitWorktreePrune(repositoryRoot)
     }
@@ -1419,11 +1517,19 @@ export function reconcileWorktrees(
         `Indexed worktree '${record.name}' is not registered with Git.`,
         { code: 'WORKTREE_NOT_REGISTERED' },
       )
-      invariant(
-        !gitWorktreeIsDirty(worktreePath),
-        `Worktree '${record.name}' has uncommitted work and cannot be reconciled.`,
-        { code: 'WORKTREE_DIRTY' },
-      )
+      const sourceCleanliness = workspaceCleanliness(root, worktreePath)
+
+      if (!sourceCleanliness.clean) {
+        invariant(
+          false,
+          cleanTreeRefusal(sourceCleanliness, {
+            action: `Worktree '${record.name}' cannot be reconciled`,
+            remedy: 'Resolve each path, then reconcile again.',
+          }),
+          { code: 'WORKTREE_DIRTY' },
+        )
+      }
+
       invariant(
         gitBranchExists(repositoryRoot, record.branch),
         `Indexed branch does not exist: ${record.branch}`,
@@ -1468,15 +1574,29 @@ export function reconcileWorktrees(
       )
     }
 
-    invariant(
-      !gitWorktreeIsDirty(resolved.absolutePath),
-      resolved.kind === 'checkout'
-        ? `The checkout at '${resolved.displayPath}' holds branch ` +
-            `'${resolved.branch}' and has uncommitted work. Commit or stash ` +
-            'that work, or reconcile into a worktree instead.'
-        : `Worktree '${resolved.name}' has uncommitted work and cannot be reconciled.`,
-      { code: 'WORKTREE_DIRTY' },
-    )
+    const targetCleanliness = workspaceCleanliness(root, resolved.absolutePath)
+
+    if (!targetCleanliness.clean) {
+      invariant(
+        false,
+        cleanTreeRefusal(
+          targetCleanliness,
+          resolved.kind === 'checkout'
+            ? {
+                action:
+                  `The checkout at '${resolved.displayPath}' holds branch ` +
+                  `'${resolved.branch}' and cannot receive the merge`,
+                remedy:
+                  'Resolve each path, or reconcile into a worktree instead.',
+              }
+            : {
+                action: `Worktree '${resolved.name}' cannot be reconciled`,
+                remedy: 'Resolve each path, then reconcile again.',
+              },
+        ),
+        { code: 'WORKTREE_DIRTY' },
+      )
+    }
 
     const targetPath = resolved.absolutePath
     const mergedSources: string[] = []

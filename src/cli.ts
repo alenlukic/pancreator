@@ -247,6 +247,11 @@ import {
   resolveWorkspacePathOrWorktree,
   type WorktreeRecord,
 } from './lib/worktrees.js'
+import {
+  DEFAULT_WORKSPACE_ATTRIBUTION_DISPOSITION,
+  isWorkspaceAttributionDisposition,
+  WORKSPACE_ATTRIBUTION_DISPOSITIONS,
+} from './lib/workspace-attribution.js'
 import { runTestsImpacted } from './lib/test-impact.js'
 import {
   checkpointConformArtifacts,
@@ -295,8 +300,8 @@ export const HELP_BODY = `Usage:
       --worktree names an existing worktree the routed single-chunk delivery run occupies instead of the one the route would derive and create. The response reports the bound worktree path.
   pan pause <run-id> [--note <text> | --note-file <path>] [--actor operator|supervisor]
       --actor supervisor records that the supervisor, not the operator, is acting under the pause. The resume ratification then attributes the workspace delta to the agent that made it.
-  pan attribute <run-id> --note <directive> [--role supervisor|operator] [--paths <path[,path...]>]
-      Record an operator directive executed against the workspace outside a stage. The record names the acting role, the directive, the changed paths, and the time, and the next invocation card lists those paths as already attributed. Without --paths the harness attributes every dirty tracked path of the workspace.
+  pan attribute <run-id> --note <directive> [--role supervisor|operator] [--disposition read-only-input|commit-with-unit|operator-owned] [--paths <path[,path...]>]
+      Record an operator directive executed against the workspace outside a stage. The record names the acting role, the directive, the disposition, the changed paths, and the time, and the next invocation card lists those paths as already attributed. Without --paths the harness attributes every dirty tracked path of the workspace. --disposition declares what may be committed: read-only-input is never committed and does not block a clean-tree gate, commit-with-unit belongs in the unit's own commit, and operator-owned is the default and still blocks. The attribution reaches every checkout of the repository.
   pan resume <run-id> [--worktree <name>] [--stage <stage-slug>] [--note <text> | --note-file <path>]
   pan set-stage <run-id> --stage <stage-slug> (--note <reason> | --note-file <path>) [--abandon-workers]
       A return that would abandon a launched evidence worker with no report refuses with EVIDENCE_WORKERS_IN_FLIGHT and names the affected roles, because those reports would land against an invocation nothing reads. --abandon-workers returns anyway.
@@ -1816,16 +1821,31 @@ async function main(): Promise<void> {
         })
       }
 
+      const disposition = option(
+        args,
+        '--disposition',
+        DEFAULT_WORKSPACE_ATTRIBUTION_DISPOSITION,
+      )
+
+      if (!isWorkspaceAttributionDisposition(disposition)) {
+        throw new PanError(
+          `--disposition MUST be one of ${WORKSPACE_ATTRIBUTION_DISPOSITIONS.join(', ')}.`,
+          { code: 'INVALID_ARGUMENT' },
+        )
+      }
+
       const paths = option(args, '--paths')
       const record = recordWorkspaceDirective(root, runId, {
         directive,
         actingRole: role,
+        disposition,
         ...(paths ? { paths: paths.split(',') } : {}),
       })
 
       print({
         directive_id: record.directive_id,
         acting_role: record.acting_role,
+        disposition: record.disposition,
         changed_paths: record.changed_paths,
         artifact_path: record.artifact_path,
       })

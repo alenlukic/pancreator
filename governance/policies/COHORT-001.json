@@ -48,7 +48,7 @@
     },
     "A direct advance of one bound run MUST meet the same refusal. The ordering blocker therefore holds outside the group command.",
     "The merge of a completed group into its base branch is harness-owned. The harness MUST perform it as soon as every unit run of the group is resolved, and MUST write the merge proof only after the merge lands cleanly. `pan cohort integrate` stays available as the retry of a failed automatic advance.",
-    "An unsuccessful unit run, an integration checkout holding uncommitted work, or a conflicting merge MUST leave the merge proof unwritten. The next group then stays blocked.",
+    "An unsuccessful unit run, an integration checkout holding uncommitted work, or a conflicting merge MUST leave the merge proof unwritten. The next group then stays blocked. Uncommitted work means every tracked modification plus every untracked path that no `read-only-input` attribution record covers. An untracked path the operator recorded as a read-only input is clean state by construction: it MUST NOT block the merge, and no harness commit MUST stage it. Every clean-tree gate MUST reach that verdict through the one shared helper rather than through a private definition of dirty.",
     {
       "text": "When every unit run of the active group is resolved and that group holds no merge proof, the harness MUST integrate the group and continue the plan with no operator command (`tests/integration/cohort-auto-advance.test.ts::a finished group integrates and advances with no operator command`).",
       "audience": ["harness"]

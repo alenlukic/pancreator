@@ -21,6 +21,7 @@ import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
 import { loadState, statePath } from '../../src/lib/state.js'
 import { fileExists } from '../../src/lib/io.js'
 import { evaluateDeterministicCriteria } from '../../src/lib/validation.js'
+import { recordWorkspaceAttribution } from '../../src/lib/workspace-attribution.js'
 import { validateReleaseOutput } from '../../src/lib/validators/stage-validators.js'
 import { createWorktree } from '../../src/lib/worktrees.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
@@ -169,6 +170,21 @@ function prepareReleaseCandidate(name: string): {
     fetchedMain: synchronized.fetched_main,
     version,
   }
+}
+
+const DESIGN_SOURCE = 'design-source.svg'
+
+/** Record `DESIGN_SOURCE` as a read-only input of the release worktree. */
+function attributeReadOnlyInput(root: string, worktreePath: string): void {
+  recordWorkspaceAttribution(root, {
+    workspacePath: worktreePath,
+    runId: 'run-fixture',
+    actingRole: 'operator',
+    directive: 'Keep the design source I exported out of the release.',
+    disposition: 'read-only-input',
+    paths: [DESIGN_SOURCE],
+    artifactPath: 'runtime/logs/workflows/run-fixture/evidence/directive-1.md',
+  })
 }
 
 function commitReleaseMetadata(worktreePath: string, version: string): string {
@@ -473,6 +489,11 @@ test('release continuation preserves unresolved conflicts and completes staged r
       `${initial.trimEnd()}\nexport const conflict = 'local'\n`,
     )
 
+    // The operator placed a read-only input in the release worktree. No
+    // release commit may carry it, and no release step may refuse over it.
+    writeFileSync(path.join(worktreePath, DESIGN_SOURCE), '<svg/>\n')
+    attributeReadOnlyInput(root, worktreePath)
+
     const synchronized = syncLocalRelease(
       root,
       record.name,
@@ -481,6 +502,21 @@ test('release continuation preserves unresolved conflicts and completes staged r
 
     assert.equal(synchronized.status, 'conflict')
     assert.deepEqual(synchronized.conflicted_paths, [sourcePath])
+    assert.deepEqual(synchronized.withheld_paths, [DESIGN_SOURCE])
+    assert.ok(synchronized.checkpoint_commit)
+    assert.deepEqual(
+      git(worktreePath, [
+        'diff-tree',
+        '--no-commit-id',
+        '--name-only',
+        '-r',
+        synchronized.checkpoint_commit,
+      ])
+        .split('\n')
+        .filter(Boolean),
+      [sourcePath],
+      'the checkpoint carries the release work and not the operator input',
+    )
 
     const unresolved = continueLocalRelease(root, record.name)
 
@@ -522,7 +558,13 @@ test('release continuation preserves unresolved conflicts and completes staged r
 
     assert.equal(completed.status, 'complete')
     assert.deepEqual(completed.conflicted_paths, [])
+    assert.deepEqual(completed.withheld_paths, [DESIGN_SOURCE])
     assert.equal(git(worktreePath, ['branch', '--show-current']), record.branch)
+    assert.equal(
+      git(worktreePath, ['status', '--porcelain=v1']),
+      `?? ${DESIGN_SOURCE}`,
+      'the continuation left the operator input untracked and unstaged',
+    )
   } finally {
     rmSync(root, { recursive: true, force: true })
     rmSync(remote, { recursive: true, force: true })
@@ -640,6 +682,44 @@ test('release sync rejects every unsafe path class without repository mutation',
     assert.deepEqual(snapshot(), before)
 
     git(worktreePath, ['checkout', '--', relativePath])
+  }
+})
+
+test('release finalization neither commits nor refuses over a recorded read-only input', () => {
+  const candidate = prepareReleaseCandidate('release-withheld')
+
+  try {
+    // The operator input arrives in the release worktree after the sync, so
+    // finalization is the step that meets it.
+    writeFileSync(path.join(candidate.worktreePath, DESIGN_SOURCE), '<svg/>\n')
+    attributeReadOnlyInput(candidate.root, candidate.worktreePath)
+
+    const finalized = finalizeLocalRelease(
+      candidate.root,
+      candidate.record.name,
+      candidate.fetchedMain,
+    )
+
+    assert.equal(finalized.version, candidate.version)
+    assert.equal(finalized.clean, true)
+    assert.doesNotMatch(
+      git(candidate.worktreePath, [
+        'diff-tree',
+        '--no-commit-id',
+        '--name-only',
+        '-r',
+        finalized.release_commit,
+      ]),
+      /design-source\.svg/u,
+    )
+    assert.equal(
+      git(candidate.worktreePath, ['status', '--porcelain=v1']),
+      `?? ${DESIGN_SOURCE}`,
+      'the input is still the untracked file the operator placed',
+    )
+  } finally {
+    rmSync(candidate.root, { recursive: true, force: true })
+    rmSync(candidate.remote, { recursive: true, force: true })
   }
 })
 

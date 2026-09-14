@@ -12,6 +12,7 @@ import {
   listWorktrees,
   removeWorktree,
 } from '../../src/lib/worktrees.js'
+import { recordWorkspaceAttribution } from '../../src/lib/workspace-attribution.js'
 import { createFixture } from '../fixture-template.js'
 
 import {
@@ -227,6 +228,102 @@ test('worktree remove refuses dirty files unless force is explicit and keeps the
   )
 })
 
+/** Record one `read-only-input` attribution against the checkout at `root`. */
+function attributeReadOnlyInput(root: string, relativePath: string): void {
+  recordWorkspaceAttribution(root, {
+    workspacePath: root,
+    runId: 'run-fixture',
+    actingRole: 'operator',
+    directive: 'Keep the design source I exported available to every stage.',
+    disposition: 'read-only-input',
+    paths: [relativePath],
+    artifactPath: 'runtime/logs/workflows/run-fixture/evidence/directive-1.md',
+  })
+}
+
+test('a new worktree receives every recorded read-only input the source holds', () => {
+  const root = createFixture()
+
+  writeFileSync(path.join(root, 'design-source.svg'), '<svg>source</svg>\n')
+  attributeReadOnlyInput(root, 'design-source.svg')
+
+  const carrying = createWorktreeRecord(root, 'carrying')
+  const carriedPath = path.join(root, carrying.path, 'design-source.svg')
+
+  assert.deepEqual(carrying.carried_paths, ['design-source.svg'])
+  assert.equal(readFileSync(carriedPath, 'utf8'), '<svg>source</svg>\n')
+
+  // A path no `read-only-input` record names is never carried.
+  writeFileSync(path.join(root, 'unrecorded.txt'), 'operator scratch\n')
+
+  const second = createWorktreeRecord(root, 'unrecorded-source')
+
+  assert.deepEqual(second.carried_paths, ['design-source.svg'])
+  assert.equal(
+    existsSync(path.join(root, second.path, 'unrecorded.txt')),
+    false,
+  )
+
+  // Placement never overwrites: once the repository tracks the path, the
+  // checkout itself supplies it and the copy is skipped, so the new worktree
+  // holds the committed content rather than the source checkout's edit.
+  commitFile(root, 'design-source.svg', '<svg>committed</svg>\n')
+  writeFileSync(path.join(root, 'design-source.svg'), '<svg>edited</svg>\n')
+
+  const third = createWorktreeRecord(root, 'already-holding')
+
+  assert.deepEqual(third.carried_paths, [])
+  assert.equal(
+    readFileSync(path.join(root, third.path, 'design-source.svg'), 'utf8'),
+    '<svg>committed</svg>\n',
+  )
+})
+
+test('a worktree holding only recorded read-only inputs is removed without --force', () => {
+  const { root, worktrees } = worktreeCheckpoint('single')
+  const worktreePath = path.join(root, worktrees.alpha.path)
+
+  writeFileSync(
+    path.join(worktreePath, 'design-source.svg'),
+    '<svg>source</svg>\n',
+  )
+  attributeReadOnlyInput(root, 'design-source.svg')
+
+  // Git still needs force to discard the file; the harness supplies it from
+  // the exemption rather than asking the operator for it.
+  const removed = removeWorktree(root, 'alpha')
+
+  assert.equal(removed.removed_worktree, true)
+  assert.equal(existsSync(worktreePath), false)
+  assert.deepEqual(listWorktrees(root), [])
+})
+
+test('a blocking path alongside a recorded input refuses and names only the blocker', () => {
+  const { root, worktrees } = worktreeCheckpoint('single')
+  const worktreePath = path.join(root, worktrees.alpha.path)
+
+  writeFileSync(path.join(worktreePath, 'design-source.svg'), '<svg/>\n')
+  writeFileSync(
+    path.join(worktreePath, 'unfinished.ts'),
+    'export const a = 1\n',
+  )
+  attributeReadOnlyInput(root, 'design-source.svg')
+
+  assert.throws(
+    () => removeWorktree(root, 'alpha'),
+    (error: unknown) => {
+      assert.ok(error instanceof PanError)
+      assert.equal(error.code, 'WORKTREE_DIRTY')
+      assert.match(error.message, /- `unfinished\.ts` — no attribution record/u)
+      assert.doesNotMatch(error.message, /design-source\.svg/u)
+
+      return true
+    },
+  )
+
+  assert.equal(existsSync(worktreePath), true)
+  assert.equal(listWorktrees(root).length, 1)
+})
 test('impacted selection and requirements resolution accept the shared option', () => {
   const root = createFixture()
 

@@ -5,6 +5,8 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { createFixture } from '../fixture-template.js'
 import {
+  gitCommonDir,
+  gitDirtyEntries,
   gitStatusPaths,
   gitWorkspaceSnapshot,
   parsePorcelainStatus,
@@ -12,6 +14,8 @@ import {
   snapshotEntryPath,
   workspaceChangedPathsFromSnapshots,
 } from '../../src/lib/git.js'
+import { createWorktree } from '../../src/lib/worktrees.js'
+import { createTestTempDirectory } from '../temp.js'
 
 test('status paths include both sides of a rename', () => {
   const root = createFixture()
@@ -130,6 +134,40 @@ test('a staged rename reaches the snapshot with both paths unmangled', () => {
   assert.deepEqual(
     paths.filter((entry) => entry.startsWith('src/')).sort(),
     gitStatusPaths(root).filter((entry) => entry.startsWith('src/')),
+  )
+})
+
+test('the common directory identifies a repository across its worktrees', () => {
+  const root = createFixture()
+  const linked = createWorktree(root, 'linked-checkout')
+  const other = createTestTempDirectory('pan-git-common-dir-')
+
+  execFileSync('git', ['init', '-q'], { cwd: other })
+
+  // The key is what makes one attribution record reach every checkout of a
+  // repository and no other repository, so the two halves are one assertion.
+  assert.equal(gitCommonDir(path.join(root, linked.path)), gitCommonDir(root))
+  assert.notEqual(gitCommonDir(other), gitCommonDir(root))
+  assert.equal(path.isAbsolute(gitCommonDir(root)), true)
+})
+
+test('dirty entries name every changed path and whether Git tracks it', () => {
+  const root = createFixture()
+
+  execFileSync('git', ['mv', 'src/base.ts', 'src/renamed.ts'], { cwd: root })
+  writeFileSync(path.join(root, 'untracked.txt'), 'placed by the operator\n')
+
+  assert.deepEqual(gitDirtyEntries(root), [
+    { path: 'src/base.ts', tracked: true },
+    { path: 'src/renamed.ts', tracked: true },
+    { path: 'untracked.txt', tracked: false },
+  ])
+
+  // A directory no repository holds yields no entries rather than throwing,
+  // because callers reach the dirty signal separately.
+  assert.deepEqual(
+    gitDirtyEntries(createTestTempDirectory('pan-git-dirty-none-')),
+    [],
   )
 })
 

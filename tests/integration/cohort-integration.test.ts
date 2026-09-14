@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -14,6 +14,7 @@ import {
 import { PanError } from '../../src/lib/errors.js'
 import { prepareInvocation } from '../../src/lib/engine.js'
 import { loadState } from '../../src/lib/state.js'
+import { recordWorkspaceAttribution } from '../../src/lib/workspace-attribution.js'
 import { readWorktreeIndex } from '../../src/lib/worktrees.js'
 import { attestRunCard, createFixture } from '../helpers.js'
 import {
@@ -245,6 +246,97 @@ test('a single-chunk cohort integrates through a direct merge', () => {
   )
   assert.equal(integration.autostart.status, 'started')
   assert.equal(integration.autostart.kind, 'cohort')
+})
+
+test('an attributed read-only input blocks no integration and joins no harness commit, and an unattributed path in the integration checkout still blocks', () => {
+  const root = createFixture()
+  const planRunId = ratifiedPlanRun(root, [
+    { id: 'alpha', cohort_index: 1 },
+    { id: 'gamma', cohort_index: 2, depends_on: ['alpha'] },
+  ])
+  const session = initCohortSession(root, { planRunId })
+  const started = startCohort(root, session.cohort_id)
+  const chunkWorkspace = loadState(
+    root,
+    started.chunks[0].run_id,
+  ).workspace_root
+  const chunkPath = path.join(root, chunkWorkspace)
+
+  commitInChunk(root, chunkWorkspace, 'alpha')
+  markSucceeded(root, started.chunks[0].run_id)
+  git(root, ['add', '-A'])
+  git(root, ['commit', '-m', 'chore: cohort fixture baseline'])
+
+  // The operator exported a design source into the chunk worktree and
+  // recorded it as a read-only input. The unit also left an unattributed
+  // file behind, which is its own deliverable and travels with the unit.
+  const design = 'design-source.svg'
+  const deliverable = 'alpha-notes.txt'
+
+  writeFileSync(path.join(chunkPath, design), '<svg/>\n')
+  writeFileSync(path.join(chunkPath, deliverable), 'notes\n')
+  recordWorkspaceAttribution(root, {
+    workspacePath: root,
+    runId: planRunId,
+    actingRole: 'operator',
+    directive: 'Keep the design source I exported available to every chunk.',
+    disposition: 'read-only-input',
+    paths: [design],
+    artifactPath: `runtime/logs/workflows/${planRunId}/agent/evidence/workspace-directive-1.md`,
+  })
+
+  // The chunk worktree is clean state apart from its deliverable, but the
+  // checkout that receives the merge holds work nothing accounts for, and
+  // that still refuses.
+  writeFileSync(path.join(root, 'unfinished.ts'), 'export const a = 1\n')
+  assert.throws(
+    () => integrateCohort(root, session.cohort_id),
+    (error: unknown) => {
+      assert.ok(error instanceof PanError)
+      assert.equal(error.code, 'COHORT_INTEGRATION_INCOMPLETE')
+      assert.match(error.message, /- `unfinished\.ts` — no attribution record/u)
+      assert.doesNotMatch(error.message, /design-source\.svg/u)
+
+      return true
+    },
+  )
+  rmSync(path.join(root, 'unfinished.ts'))
+
+  // The refused attempt already committed the unit. The deliverable is in
+  // that commit; the read-only input is not, and it is still on disk.
+  const unitCommitFiles = git(chunkPath, [
+    'show',
+    '--name-only',
+    '--pretty=format:',
+    'HEAD',
+  ])
+
+  assert.match(unitCommitFiles, /alpha-notes\.txt/u)
+  assert.doesNotMatch(unitCommitFiles, /design-source\.svg/u)
+  assert.equal(existsSync(path.join(chunkPath, design)), true)
+
+  // One record covers every checkout of the repository, so the same export
+  // placed in the base checkout needs no second attribution.
+  writeFileSync(path.join(root, design), '<svg/>\n')
+
+  const integration = integrateCohort(root, session.cohort_id)
+
+  assert.deepEqual(integration.merged_chunks, ['alpha'])
+  assert.ok(existsSync(path.join(root, integration.evidence_path)))
+  assert.equal(
+    existsSync(path.join(root, design)),
+    true,
+    'the merge never consumed or moved the operator input',
+  )
+  assert.equal(
+    existsSync(path.join(root, deliverable)),
+    true,
+    'the unit deliverable landed through the merge',
+  )
+  assert.doesNotMatch(
+    git(root, ['log', '--name-only', '--pretty=format:']),
+    /design-source\.svg/u,
+  )
 })
 
 test('a cohort whose every chunk is abandoned integrates as a no-op and unblocks the next one', () => {

@@ -24,6 +24,7 @@ import type {
 } from './types.js'
 import { DELEGATION_HEADING, normalizeMarkdownContent } from './validation.js'
 import type { InvocationValidationStatus } from './validation.js'
+import { DEFAULT_WORKSPACE_ATTRIBUTION_DISPOSITION } from './workspace-attribution.js'
 
 function fencedJson(value: unknown): string {
   return ['```json', JSON.stringify(value, null, 2), '```'].join('\n')
@@ -1468,7 +1469,8 @@ function attributedChangeLines(invocation: Invocation): string[] {
     '',
     ...records.flatMap((record) => [
       `- **${record.acting_role}** executed an operator directive at ` +
-        `${record.timestamp} (\`${record.artifact_path}\`): ` +
+        `${record.timestamp} (\`${record.artifact_path}\`, disposition ` +
+        `\`${record.disposition ?? DEFAULT_WORKSPACE_ATTRIBUTION_DISPOSITION}\`): ` +
         record.directive,
       ...record.changed_paths.map((item) => `  - \`${item}\``),
     ]),

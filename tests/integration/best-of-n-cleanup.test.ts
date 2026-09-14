@@ -5,6 +5,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { cleanBestOfN, pruneBestOfN } from '../../src/lib/best-of-n.js'
+import { recordWorkspaceAttribution } from '../../src/lib/workspace-attribution.js'
 import { createFixture, writeJson } from '../helpers.js'
 
 import {
@@ -68,6 +69,46 @@ test('clean refuses to discard uncommitted candidate work without force', () => 
     ),
     false,
   )
+})
+
+test('candidate cleanup reads the attribution records like every other gate', () => {
+  const { root, session } = bestOfNCheckpoint('ready')
+  const candidate = session.candidates.at(-1)
+
+  assert.ok(candidate)
+
+  for (const entry of session.candidates) {
+    terminateRun(root, entry.run_id)
+  }
+
+  writeFileSync(
+    path.join(root, candidate.worktree_path, 'design-source.svg'),
+    '<svg/>\n',
+  )
+
+  assert.throws(
+    () => cleanBestOfN(root, session.bon_id),
+    /- `design-source\.svg` — no attribution record/u,
+  )
+
+  recordWorkspaceAttribution(root, {
+    workspacePath: root,
+    runId: candidate.run_id,
+    actingRole: 'operator',
+    directive: 'Keep the design source I exported available to each candidate.',
+    disposition: 'read-only-input',
+    paths: ['design-source.svg'],
+    artifactPath: `runtime/logs/workflows/${candidate.run_id}/agent/evidence/workspace-directive-1.md`,
+  })
+
+  // Git still needs force to discard the file; the exemption supplies it.
+  const result = cleanBestOfN(root, session.bon_id)
+
+  assert.deepEqual(
+    result.removed_worktrees,
+    session.candidates.map((entry) => entry.worktree_path).sort(),
+  )
+  assert.equal(existsSync(path.join(root, candidate.worktree_path)), false)
 })
 
 test('clean refuses while the consolidation run is in flight', () => {

@@ -10,6 +10,7 @@ import {
   reconcileWorktrees,
 } from '../../src/lib/worktrees.js'
 
+import { recordWorkspaceAttribution } from '../../src/lib/workspace-attribution.js'
 import { TWO_SOURCES, git, worktreeCheckpoint } from './worktree-helpers.js'
 
 test('worktree reconcile merges each source and records the operator invocation', () => {
@@ -140,11 +141,60 @@ test('branch reconcile validates sources before creating its target worktree', (
 
   assert.throws(
     () => reconcileWorktrees(root, { into_branch: 'integration' }, TWO_SOURCES),
-    (error: unknown) =>
-      error instanceof PanError && error.code === 'WORKTREE_DIRTY',
+    (error: unknown) => {
+      assert.ok(error instanceof PanError)
+      assert.equal(error.code, 'WORKTREE_DIRTY')
+      assert.match(error.message, /- `dirty\.txt` — no attribution record/u)
+
+      return true
+    },
   )
   assert.equal(
     listWorktrees(root).some((entry) => entry.branch === 'integration'),
     false,
+  )
+})
+
+test('reconcile judges a source and the holding checkout by the attribution records', () => {
+  const { root, mainBranch, worktrees } = worktreeCheckpoint('two-sources')
+  const design = 'design-source.svg'
+
+  // The operator placed one read-only input in a source worktree and in the
+  // checkout that holds the target branch.
+  writeFileSync(
+    path.join(root, worktrees['source-one'].path, design),
+    '<svg/>\n',
+  )
+  writeFileSync(path.join(root, design), '<svg/>\n')
+
+  assert.throws(
+    () => reconcileWorktrees(root, { into_branch: mainBranch }, TWO_SOURCES),
+    (error: unknown) =>
+      error instanceof PanError && error.code === 'WORKTREE_DIRTY',
+  )
+
+  recordWorkspaceAttribution(root, {
+    workspacePath: root,
+    runId: 'run-fixture',
+    actingRole: 'operator',
+    directive: 'Keep the design source I exported available while I merge.',
+    disposition: 'read-only-input',
+    paths: [design],
+    artifactPath: 'runtime/logs/workflows/run-fixture/evidence/directive-1.md',
+  })
+
+  const result = reconcileWorktrees(
+    root,
+    { into_branch: mainBranch },
+    TWO_SOURCES,
+  )
+
+  assert.equal(result.status, 'merged')
+  assert.deepEqual(result.merged_sources, TWO_SOURCES)
+  assert.equal(existsSync(path.join(root, design)), true)
+  assert.equal(
+    git(root, ['status', '--porcelain=v1']).trim(),
+    `?? ${design}`,
+    'the merge left the recorded input untracked and unstaged',
   )
 })

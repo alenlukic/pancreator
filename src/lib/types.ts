@@ -659,6 +659,8 @@ export interface LocalReleaseSyncResult {
   /** Operator override of the default rebase target, when one was used. */
   rebase_override: LocalReleaseRebaseOverride | null
   checkpoint_commit: string | null
+  /** Paths a `read-only-input` attribution kept out of the checkpoint. */
+  withheld_paths: string[]
   conflicted_paths: string[]
 }
 
@@ -666,6 +668,8 @@ export interface LocalReleaseContinueResult {
   status: 'complete' | 'conflict'
   worktree: ManagedWorktreeReference
   branch: string
+  /** Paths a `read-only-input` attribution kept out of the continuation. */
+  withheld_paths: string[]
   conflicted_paths: string[]
 }
 
@@ -1863,6 +1867,12 @@ export interface WorkspaceDirectiveRecord {
   directive: string
   /** Stage the run held when the directive was executed. */
   stage: string
+  /**
+   * What the operator declared about committing these paths. Absent on a
+   * record written before the field existed, which resolves to
+   * `operator-owned`.
+   */
+  disposition?: WorkspaceAttributionDisposition
   changed_paths: string[]
   /**
    * The workspace as the last accountable record left it, so this record
@@ -1874,6 +1884,73 @@ export interface WorkspaceDirectiveRecord {
   workspace_fingerprint: string
   artifact_path: string
   timestamp: string
+}
+
+/**
+ * What the operator declared about committing the paths one directive covers.
+ *
+ * `read-only-input` is the only value that exempts a path from a clean-tree
+ * gate, and it is the value that keeps a path out of every commit the harness
+ * makes. `commit-with-unit` names work that belongs in the unit's own commit.
+ * `operator-owned` is the default and leaves every existing refusal in place.
+ */
+export type WorkspaceAttributionDisposition =
+  | 'read-only-input'
+  | 'commit-with-unit'
+  | 'operator-owned'
+
+/**
+ * One operator directive, recorded so that every checkout of the repository
+ * can read it.
+ *
+ * `WorkspaceDirectiveRecord` belongs to one run and answers "who changed
+ * this". This record belongs to one repository and answers "may a gate treat
+ * this path as clean state". One `pan attribute` writes both.
+ */
+export interface WorkspaceAttributionRecord {
+  attribution_id: string
+  /**
+   * Common Git directory of the repository, as `gitCommonDir` reports it for
+   * the checkout that recorded the directive. Every linked worktree of that
+   * repository reports the same value, so one record reaches all of them.
+   */
+  repository_key: string
+  /** Absolute path of the checkout the directive was executed in. */
+  recorded_in: string
+  run_id: string
+  acting_role: 'supervisor' | 'operator'
+  /** The operator directive, in the operator's own terms. */
+  directive: string
+  disposition: WorkspaceAttributionDisposition
+  /** Repository-relative paths the directive covers. */
+  paths: string[]
+  /** Harness-relative path of the run evidence artifact. */
+  artifact_path: string
+  recorded_at: string
+}
+
+export interface WorkspaceAttributionStore {
+  schema_version: 1
+  records: WorkspaceAttributionRecord[]
+}
+
+/** One uncommitted path of a workspace, paired with its attribution. */
+export interface DirtyWorkspacePath {
+  path: string
+  /** False only for an untracked path. Only an untracked path may be exempt. */
+  tracked: boolean
+  /** The newest record naming this path, or null when none does. */
+  attribution: WorkspaceAttributionRecord | null
+}
+
+/** The one definition of uncommitted work every clean-tree gate reads. */
+export interface WorkspaceCleanliness {
+  /** The workspace judged, repository-relative when it sits inside the root. */
+  workspace: string
+  /** True when nothing blocks. Exempt paths do not make a workspace dirty. */
+  clean: boolean
+  blocking: DirtyWorkspacePath[]
+  exempt: DirtyWorkspacePath[]
 }
 
 /**

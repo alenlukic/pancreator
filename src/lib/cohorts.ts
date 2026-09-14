@@ -68,6 +68,11 @@ import {
   readWorktreeIndex,
   workspaceRepositoryRoot,
 } from './worktrees.js'
+import {
+  cleanTreeRefusal,
+  committablePaths,
+  workspaceCleanliness,
+} from './workspace-attribution.js'
 
 /** Workflow whose ratified artifact a cohort fan-out reads. */
 export const COHORT_PLAN_WORKFLOW_SLUG = 'planning'
@@ -1535,6 +1540,7 @@ function integrateActiveCohort(
       )
 
       const unitCommit = commitUnitWorktree(
+        root,
         resolveInside(root, record.path),
         loaded,
         cohortIndex,
@@ -1591,10 +1597,16 @@ function integrateActiveCohort(
  * The unit's run already reported success when this runs, so the change set
  * is that unit's deliverable rather than work in progress. Only the paths the
  * worktree's own status reports are staged, so a commit can never carry a
- * sibling unit's changes or the integration checkout's. A clean worktree is a
- * no-op and returns null.
+ * sibling unit's changes or the integration checkout's. A path a
+ * `read-only-input` attribution record covers is withheld: the operator
+ * declared it an input the repository does not track, so no harness commit
+ * carries it. A worktree that is clean, or dirty only through such inputs, is
+ * a no-op and returns null. A tracked modification of a read-only input is
+ * neither committable nor exempt, so it refuses rather than silently dropping
+ * out of the merge.
  */
 function commitUnitWorktree(
+  root: string,
   worktreePath: string,
   state: CohortSessionState,
   cohortIndex: number,
@@ -1604,7 +1616,43 @@ function commitUnitWorktree(
     return null
   }
 
-  gitStagePaths(worktreePath, gitStatusPaths(worktreePath))
+  const { committable, withheld } = committablePaths(
+    root,
+    worktreePath,
+    gitStatusPaths(worktreePath),
+  )
+  const cleanliness = workspaceCleanliness(root, worktreePath)
+  const withheldTracked = cleanliness.blocking.filter(
+    (entry) => entry.tracked && withheld.includes(entry.path),
+  )
+
+  if (withheldTracked.length > 0) {
+    invariant(
+      false,
+      cleanTreeRefusal(
+        { ...cleanliness, blocking: withheldTracked },
+        {
+          action: `Chunk '${chunk.id}' cannot be integrated`,
+          remedy:
+            'Restore each path or re-attribute it, then run ' +
+            `'${panCommand(root)} cohort integrate ${state.cohort_id}' again.`,
+        },
+      ),
+      {
+        code: 'COHORT_INTEGRATION_INCOMPLETE',
+        details: {
+          chunk: chunk.id,
+          blocking_paths: withheldTracked.map((entry) => entry.path),
+        },
+      },
+    )
+  }
+
+  if (committable.length === 0) {
+    return null
+  }
+
+  gitStagePaths(worktreePath, committable)
 
   return gitCommit(
     worktreePath,
@@ -1935,13 +1983,25 @@ function mergeSingleChunkBranch(
   const repositoryRoot = cohortRepositoryRoot(root, state)
   const checkout = materializeBranchCheckout(root, target, repositoryRoot)
 
-  invariant(
-    !gitWorktreeIsDirty(checkout),
-    `The checkout that holds '${target}' has uncommitted work. Commit or ` +
-      'stash it, or integrate again with --into-branch <branch> to merge ' +
-      'into a dedicated integration branch.',
-    { code: 'COHORT_INTEGRATION_INCOMPLETE' },
-  )
+  const cleanliness = workspaceCleanliness(root, checkout)
+
+  if (!cleanliness.clean) {
+    invariant(
+      false,
+      cleanTreeRefusal(cleanliness, {
+        action: `The checkout that holds '${target}' cannot receive the merge`,
+        remedy:
+          'Resolve each path, or integrate again with --into-branch ' +
+          '<branch> to merge into a dedicated integration branch.',
+      }),
+      {
+        code: 'COHORT_INTEGRATION_INCOMPLETE',
+        details: {
+          blocking_paths: cleanliness.blocking.map((entry) => entry.path),
+        },
+      },
+    )
+  }
 
   const baseBefore = gitRevParse(repositoryRoot, target)
   const merge = gitMergeBranch(checkout, branch)
@@ -2074,21 +2134,31 @@ export function cleanCohortSession(
         { code: 'COHORT_RUN_ACTIVE' },
       )
 
-      const dirty = gitWorktreeIsDirty(resolveInside(root, record.path))
-
-      invariant(
-        options.force || chunk.abandoned || !dirty,
-        `WARNING: chunk '${chunk.id}' has uncommitted work in ` +
-          `${record.path}. Removing it discards that work. Pass --force to ` +
-          'remove it anyway.',
-        { code: 'COHORT_WORKTREE_DIRTY' },
+      const cleanliness = workspaceCleanliness(
+        root,
+        resolveInside(root, record.path),
       )
 
-      if (dirty) {
+      if (!cleanliness.clean && !options.force && !chunk.abandoned) {
+        invariant(
+          false,
+          cleanTreeRefusal(cleanliness, {
+            action: `WARNING: chunk '${chunk.id}' cannot be cleaned`,
+            remedy:
+              'Removing it discards that work. Pass --force to remove it ' +
+              'anyway.',
+          }),
+          { code: 'COHORT_WORKTREE_DIRTY' },
+        )
+      }
+
+      // Git refuses to remove a worktree that still holds changes, so both a
+      // discarded blocking path and an exempt read-only input need the flag.
+      if (!cleanliness.clean || cleanliness.exempt.length > 0) {
         forced.add(record.name)
       }
 
-      if (dirty && chunk.abandoned && !options.force) {
+      if (!cleanliness.clean && chunk.abandoned && !options.force) {
         discardedAbandoned.push({
           chunk: chunk.id,
           worktree: record.name,

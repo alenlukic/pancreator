@@ -249,6 +249,7 @@ import type {
   SupervisorAssessment,
   TaskRecord,
   WorkflowDefinition,
+  WorkspaceAttributionDisposition,
   WorkspaceDirectiveRecord,
   WorkspaceSnapshot,
   WorktreeClaimTransfer,
@@ -288,6 +289,7 @@ import {
 import {
   gitStatusPaths,
   gitWorkspaceSnapshot,
+  isGitRepository,
   snapshotEntryPath,
   workspaceChangedPathsFromSnapshots,
 } from './git.js'
@@ -299,6 +301,10 @@ import {
   PROTECTED_PATH_RULE,
 } from './workspace/protected-paths.js'
 import { worktreeReadiness } from './worktrees.js'
+import {
+  DEFAULT_WORKSPACE_ATTRIBUTION_DISPOSITION,
+  recordWorkspaceAttribution,
+} from './workspace-attribution.js'
 
 /**
  * Persona-to-model map that replaces the active pipeline config for one run.
@@ -8189,6 +8195,7 @@ export function recordWorkspaceDirective(
   options: {
     directive: string
     actingRole?: WorkspaceDirectiveRecord['acting_role']
+    disposition?: WorkspaceAttributionDisposition
     paths?: string[]
   },
 ): WorkspaceDirectiveRecord {
@@ -8201,6 +8208,7 @@ export function recordWorkspaceDirective(
     })
 
     const workspace = workspaceSnapshotForRun(root, state)
+    const workspacePath = workspaceDirectory(root, state)
     const declared = (options.paths ?? [])
       .map((item) => item.trim())
       .filter((item) => item.length > 0)
@@ -8208,7 +8216,7 @@ export function recordWorkspaceDirective(
       ...new Set(
         declared.length > 0
           ? declared
-          : gitStatusPaths(workspaceDirectory(root, state)).filter(
+          : gitStatusPaths(workspacePath).filter(
               (relativePath) =>
                 !relativePath.startsWith('runtime/') &&
                 !isProtectedWorkspacePath(relativePath),
@@ -8228,6 +8236,8 @@ export function recordWorkspaceDirective(
       `workspace-directive-${records.length + 1}.md`,
     ).relative
     const actingRole = options.actingRole ?? 'supervisor'
+    const disposition =
+      options.disposition ?? DEFAULT_WORKSPACE_ATTRIBUTION_DISPOSITION
     const timestamp = now()
     const beforeFingerprint = lastAccountableFingerprint(state)
     const record: WorkspaceDirectiveRecord = {
@@ -8235,6 +8245,7 @@ export function recordWorkspaceDirective(
       acting_role: actingRole,
       directive,
       stage: state.current_stage ?? 'none',
+      disposition,
       changed_paths: changedPaths,
       ...(beforeFingerprint
         ? { workspace_before_fingerprint: beforeFingerprint }
@@ -8251,6 +8262,7 @@ export function recordWorkspaceDirective(
         '',
         `**Run** \`${runId}\` · **Stage** \`${record.stage}\``,
         `**Acting role:** ${actingRole}`,
+        `**Disposition:** ${disposition}`,
         `**Recorded at:** ${timestamp}`,
         `**Workspace fingerprint:** \`${beforeFingerprint ?? 'unrecorded'}\` → \`${workspace.fingerprint}\``,
         '',
@@ -8265,12 +8277,30 @@ export function recordWorkspaceDirective(
       ].join('\n') + '\n',
     )
 
+    // One command writes both records: the run-scoped directive that answers
+    // who changed the workspace, and the repository-scoped attribution every
+    // clean-tree gate reads. A workspace Git does not track has no repository
+    // to key the second record on, and no clean-tree gate can refuse it, so
+    // the directive record is written alone rather than lost to a Git error.
+    if (isGitRepository(workspacePath)) {
+      recordWorkspaceAttribution(root, {
+        workspacePath,
+        runId,
+        actingRole,
+        directive,
+        disposition,
+        paths: changedPaths,
+        artifactPath: relativePath,
+      })
+    }
+
     records.push(record)
     state.workspace_directives = records
     persistRun(root, state, 'workspace_directive_recorded', {
       directive_id: record.directive_id,
       acting_role: actingRole,
       stage: record.stage,
+      disposition,
       changed_paths: changedPaths,
       artifact_path: relativePath,
     })
