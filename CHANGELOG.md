@@ -1,5 +1,18 @@
 # Changelog
 
+## [6.5.0] - 2026-09-14
+
+This release adds two standalone command-backed modes. `/pan-harden` prepares ad-hoc session changes for integration. `/pan-polish` brings UI and design changes into handbook and design-system conformance.
+
+### Changed
+
+- Register `harden` and `polish` in the standalone mode table, the policy lookup table, and command governance, and list both in the primer, the operator guide, and the skills index ([64860cc6](https://github.com/alenlukic/pancreator/commit/64860cc6a214cb5237cbf04366556b5ffc6feab4)).
+
+### Added
+
+- Add `/pan-harden` as a standalone coder mode that assesses scope, runs checks, delegates one reviewer, inspects a rendered surface when one changed, closes gaps, and names the operator integration command without running it ([64860cc6](https://github.com/alenlukic/pancreator/commit/64860cc6a214cb5237cbf04366556b5ffc6feab4)).
+- Add `/pan-polish` as a standalone designer mode that resolves the design system for each touched surface and conforms the work, and that creates a new design-system file only after recorded operator approval ([64860cc6](https://github.com/alenlukic/pancreator/commit/64860cc6a214cb5237cbf04366556b5ffc6feab4)).
+
 ## [6.4.0] - 2026-09-14
 
 This release registers `openai` as a persona executor. An operator can map a worker persona to GPT 6 Astra and run a real stage.
