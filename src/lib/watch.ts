@@ -9,9 +9,10 @@
  * output and evidence paths, and appends one JSONL line per arming and wake.
  * A launch that returned in the foreground with its output present exposes no
  * observation point, so `pan watch --foreground-returned` records the launch
- * and return wall-clock times instead. `pan submit` requires one of the two
- * records for every Cursor worker invocation and refuses with
- * `DELEGATION_UNOBSERVED` otherwise.
+ * and return wall-clock times instead. `pan submit` requires one of three
+ * records for every Cursor worker invocation — a completed watch, a watch
+ * whose last wake observed the final output, or the foreground-return
+ * attestation — and refuses with `DELEGATION_UNOBSERVED` otherwise.
  */
 import { readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
@@ -28,6 +29,7 @@ import {
   sha256,
   withOperationMutex,
   writeJsonAtomic,
+  writeTextAtomic,
 } from './io.js'
 import { isUntouchedScaffold } from './requirements/scaffold.js'
 import { resolveRunLayout } from './run-layout.js'
@@ -35,7 +37,6 @@ import { loadState, operationMutexPath, persist } from './state.js'
 import type { Invocation, RunState } from './types.js'
 import {
   delegationExecutionPath,
-  delegationPath,
   loadDelegationExecutionRecord,
 } from './validation.js'
 
@@ -116,8 +117,7 @@ export interface WatchObservation {
   /**
    * Declared fields of the invocation's output contract the observed document
    * does not carry yet, as dotted paths. A document that parses and is not a
-   * scaffold can still be a half-written one, and `write-stage-output` tells
-   * the worker to write `result` last so this list empties only at the end.
+   * scaffold can still be a half-written one.
    */
   output_missing_required_fields: string[]
   watched_paths: WatchedPathObservation[]
@@ -196,6 +196,17 @@ export interface WatchOptions {
   stallWakes?: number
   timeoutSeconds?: number
   markBackground?: boolean
+  /**
+   * ISO-8601 time the supervisor made the launch. Supplying it is the only
+   * way the harness learns a launch time it did not witness itself, and it
+   * is what makes a late arming measurable.
+   */
+  launchedAt?: string
+  /**
+   * The platform identity of the launched worker. Recording it at the arm
+   * makes the handle a byproduct of supervision the supervisor already owes.
+   */
+  workerHandle?: string
   /** The launched agent's state, as the supervisor observed it. */
   agentState?: WatchAgentState
   /** Injected for tests. Defaults to a real timer. */
@@ -218,6 +229,13 @@ export interface DelegationWatchSummary {
   wakes: number
   first_armed_at: string | null
   last_wake_at: string | null
+  /**
+   * The last wake observed a finished output and that output has not moved
+   * since. A watch that never reached a verdict of its own — the supervisor
+   * stopped awaiting it when the platform said the worker was done — still
+   * holds this observation, and it is the same fact a completed wake carries.
+   */
+  last_wake_observed_final_output: boolean
   terminal_state: WatchTerminalState | null
   /** What the terminal verdict rested on, when it was `completed`. */
   terminal_basis: 'agent_state' | 'output_plausible' | 'confirming_wake' | null
@@ -244,20 +262,27 @@ export interface ForegroundReturnRecord {
   run_id: string
   invocation_id: string
   launch_mode: 'foreground'
-  /** Wall-clock time the launch happened. */
+  /** Wall-clock time the launch happened, as the launch record holds it. */
   launched_at: string
-  /**
-   * Where `launched_at` came from: the supervisor's `--launched-at` value, the
-   * delegation artifact the supervisor persisted immediately before the
-   * launch, or the invocation record when no delegation artifact exists yet.
-   */
-  launched_at_source: 'supervisor' | 'delegation_artifact' | 'invocation_record'
+  /** Where the launch record got `launched_at`. */
+  launched_at_source: LaunchTimeSource
   /** Wall-clock time the supervisor observed the launch return. */
   returned_at: string
   elapsed_seconds: number
+  /**
+   * The watch record's own first-to-last wake span, when it holds two wakes.
+   * The watch saw the worker across it, so the elapsed time above cannot
+   * honestly be shorter.
+   */
+  elapsed_lower_bound_seconds: number | null
+  /** `elapsed_seconds` fell below that lower bound. */
+  elapsed_implausible: boolean
+  /** Names both numbers when they disagree, else null. */
+  elapsed_implausibility: string | null
   /** Terminal-state inspection of the output and evidence paths at return. */
   observation: WatchObservation
   watch_record_path: string
+  launch_record_path: string
   recorded_at: string
 }
 
@@ -268,12 +293,17 @@ export interface ForegroundReturnSummary {
   launched_at: string | null
   returned_at: string | null
   elapsed_seconds: number | null
+  /** The watch's first-to-last wake span, when the record named one. */
+  elapsed_lower_bound_seconds: number | null
+  /** The attested elapsed time is shorter than that lower bound. */
+  elapsed_implausible: boolean
   output_present_at_return: boolean | null
 }
 
 /** How `pan submit` saw the delegation reach its terminal state. */
 export type DelegationObservationSource =
   | 'watch_completed'
+  | 'watch_observed_final_output'
   | 'foreground_return'
   | 'external_executor'
 
@@ -433,9 +463,11 @@ export function invocationEvidencePaths(
  * Declared required fields the observed output document does not carry.
  *
  * `required_data` keys are dotted paths under `data`. `result` is checked
- * alongside them because `write-stage-output` tells the worker to write it
- * last, which makes its absence the cheapest signal of a document still
- * being assembled.
+ * alongside them because a submission without it is rejected, so a document
+ * missing it is not one the supervisor could submit. The scaffold emits
+ * `result`, so an untouched scaffold reaches this check with nothing
+ * missing; `output_is_scaffold` is what separates a scaffold from a
+ * finished output.
  */
 export function missingRequiredOutputFields(
   parsed: unknown,
@@ -583,14 +615,17 @@ export function observeInvocation(
     }
   }
 
+  // The delegation artifact is the worker's input, not its product. A change
+  // to it is the supervisor re-rendering a card, so counting it as progress
+  // reset the stall count and the confirming wake on an idle worker.
   const watched = [
     outputPath,
-    delegationPath(invocation.run_id, invocation.invocation_id, root),
     ...invocationEvidencePaths(root, invocation.run_id, invocation),
   ].map((relative) => observePath(root, relative))
-  // The watch's own records, the background marker, and the event log change
-  // on every wake by construction, so they are excluded from the progress
-  // digest; otherwise no watch could ever observe a stall.
+  // The watch's own records, the background marker, the preserved blocked
+  // outputs, and the event log change on every wake by construction, so they
+  // are excluded from the progress digest; otherwise no watch could ever
+  // observe a stall.
   const layout = resolveRunLayout(root, invocation.run_id)
   const runTree = directoryTreeFingerprint(layout.root.absolute, (relative) => {
     const name = path.basename(relative)
@@ -598,6 +633,9 @@ export function observeInvocation(
     return (
       name.endsWith('-watch.jsonl') ||
       name.endsWith('-delegation-background.json') ||
+      name.endsWith('-launch.json') ||
+      name.endsWith('.delegation.md') ||
+      BLOCKED_OUTPUT_SNAPSHOT_PATTERN.test(name) ||
       name === 'events.jsonl' ||
       name === 'state.json' ||
       name.startsWith('.')
@@ -696,6 +734,162 @@ export function parseTimeoutSeconds(value: string | null): number {
   return parsed
 }
 
+/**
+ * Where a launch time came from.
+ *
+ * `supervisor` is the only one the harness did not infer: the supervisor
+ * passed `--launched-at` because it knows when it made the call. `watch_arm`
+ * is the first arming of the watch, which is the earliest moment the harness
+ * itself can witness. `invocation_record` is the last resort for a foreground
+ * return attested without any prior arming.
+ */
+export type LaunchTimeSource = 'supervisor' | 'watch_arm' | 'invocation_record'
+
+/**
+ * When the worker behind one invocation was launched, and how well the
+ * harness knows it.
+ *
+ * Every launch-relative number the harness reports reads this record. The
+ * delegation artifact used to serve that purpose, but `pan prepare` writes it
+ * and the supervisor can spend minutes reading the card before it launches
+ * anything, so its modification time measured reading and called it lateness.
+ */
+export interface LaunchRecord {
+  schema_version: 1
+  run_id: string
+  invocation_id: string
+  launch_mode: 'background' | 'foreground' | 'unknown'
+  launched_at: string
+  launched_at_source: LaunchTimeSource
+  /**
+   * The platform identity the arming supervisor supplied, or null when it
+   * supplied none. Null is a recorded answer, not a missing one.
+   */
+  worker_handle: string | null
+  recorded_at: string
+}
+
+export interface LaunchRecordOptions {
+  /** ISO-8601 launch time the supervisor recorded for the call itself. */
+  launchedAt?: string
+  /** Launch time to record when neither a supervisor time nor a record exists. */
+  defaultLaunchedAtMs: number
+  defaultSource: Exclude<LaunchTimeSource, 'supervisor'>
+  launchMode?: LaunchRecord['launch_mode']
+  workerHandle?: string
+}
+
+export function launchRecordPath(
+  root: string,
+  runId: string,
+  invocationId: string,
+): string {
+  return resolveRunLayout(root, runId).evidence(`${invocationId}-launch.json`)
+    .relative
+}
+
+export function readLaunchRecord(
+  root: string,
+  runId: string,
+  invocationId: string,
+): LaunchRecord | null {
+  const absolute = resolveInside(
+    root,
+    launchRecordPath(root, runId, invocationId),
+  )
+
+  if (!fileExists(absolute)) {
+    return null
+  }
+
+  try {
+    const value = readJson(absolute)
+
+    return isRecord(value) &&
+      value.schema_version === 1 &&
+      value.invocation_id === invocationId &&
+      typeof value.launched_at === 'string'
+      ? (value as unknown as LaunchRecord)
+      : null
+  } catch {
+    return null
+  }
+}
+
+/** Launch time from the record in epoch milliseconds, or null. */
+function launchedMsFromRecord(record: LaunchRecord | null): number | null {
+  if (record === null) {
+    return null
+  }
+
+  const parsed = Date.parse(record.launched_at)
+
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+/**
+ * The launch time `recordInvocationLaunch` would record, without writing it.
+ *
+ * A caller that rejects an impossible time needs the answer before the
+ * record exists, because a rejected value must never reach the file every
+ * later reader trusts.
+ */
+export function resolveLaunchMs(
+  root: string,
+  runId: string,
+  invocationId: string,
+  options: LaunchRecordOptions,
+): number {
+  return options.launchedAt !== undefined
+    ? parseIsoTime(options.launchedAt, '--launched-at')
+    : (launchedMsFromRecord(readLaunchRecord(root, runId, invocationId)) ??
+        Math.floor(options.defaultLaunchedAtMs))
+}
+
+/**
+ * Write or amend the invocation's launch record and return it.
+ *
+ * The recorded time is decided once, at the first arming, so re-arming a
+ * watch does not reset the clock a lateness advisory measures against. The
+ * supervisor's own `--launched-at` is the exception: it is the only source
+ * that knows the launch rather than inferring it, so it corrects a recorded
+ * default. A handle or a launch mode learned later fills a gap the first
+ * arming left and never contradicts a recorded time.
+ */
+export function recordInvocationLaunch(
+  root: string,
+  runId: string,
+  invocationId: string,
+  options: LaunchRecordOptions,
+): LaunchRecord {
+  const existing = readLaunchRecord(root, runId, invocationId)
+  const launchedMs = resolveLaunchMs(root, runId, invocationId, options)
+  const launchMode =
+    options.launchMode && options.launchMode !== 'unknown'
+      ? options.launchMode
+      : (existing?.launch_mode ?? 'unknown')
+  const record: LaunchRecord = {
+    schema_version: 1,
+    run_id: runId,
+    invocation_id: invocationId,
+    launch_mode: launchMode,
+    launched_at: new Date(launchedMs).toISOString(),
+    launched_at_source:
+      options.launchedAt !== undefined
+        ? 'supervisor'
+        : (existing?.launched_at_source ?? options.defaultSource),
+    worker_handle: options.workerHandle ?? existing?.worker_handle ?? null,
+    recorded_at: new Date().toISOString(),
+  }
+
+  writeJsonAtomic(
+    resolveInside(root, launchRecordPath(root, runId, invocationId)),
+    record,
+  )
+
+  return record
+}
+
 /** Record that the platform turned this launch into a background subagent. */
 export function markDelegationBackground(
   root: string,
@@ -710,15 +904,11 @@ export function markDelegationBackground(
     isRecord(existing) && typeof existing.first_marked_at === 'string'
       ? existing.first_marked_at
       : markedAt
-  // The delegation artifact is written immediately before the launch, so its
-  // mtime is when supervision was owed. Without this number a supervisor that
-  // armed the watch at once and one that armed it after an operator
-  // reprimand leave identical evidence.
-  const launch = observePath(root, delegationPath(runId, invocationId, root))
-  const launchedAt =
-    launch.mtime_ms === null
-      ? null
-      : new Date(Math.floor(launch.mtime_ms)).toISOString()
+  // Only the launch record answers when supervision was owed. Without this
+  // number a supervisor that armed the watch at once and one that armed it
+  // after an operator reprimand leave identical evidence.
+  const launch = readLaunchRecord(root, runId, invocationId)
+  const launchedAt = launch?.launched_at ?? null
   const delaySeconds =
     launchedAt === null
       ? null
@@ -730,11 +920,13 @@ export function markDelegationBackground(
     invocation_id: invocationId,
     launch_mode: 'background',
     launched_at: launchedAt,
+    launched_at_source: launch?.launched_at_source ?? null,
     first_marked_at: firstMarkedAt,
     mark_delay_seconds: delaySeconds,
     late: delaySeconds !== null && delaySeconds > DELEGATION_WATCH_LATE_SECONDS,
     marked_at: markedAt,
     watch_record_path: watchRecordPath(root, runId, invocationId),
+    launch_record_path: launchRecordPath(root, runId, invocationId),
   })
 
   return relative
@@ -771,26 +963,240 @@ export function isTerminalObservation(observation: WatchObservation): boolean {
 
 /**
  * Seconds between the launch and the output the watch is about to call
- * terminal, or null when neither time is readable. The delegation artifact is
- * written immediately before the launch, so its mtime is the launch time the
- * foreground-return attestation already uses.
+ * terminal, or null when either time is unreadable. The launch time is the
+ * one the launch record holds, which is also what the foreground-return
+ * attestation reports.
  */
 export function launchToOutputSeconds(
   root: string,
   runId: string,
   invocationId: string,
 ): number | null {
-  const launch = observePath(root, delegationPath(runId, invocationId, root))
+  const launchedMs = launchedMsFromRecord(
+    readLaunchRecord(root, runId, invocationId),
+  )
   const output = observePath(
     root,
     resolveRunLayout(root, runId).output(invocationId).relative,
   )
 
-  if (launch.mtime_ms === null || output.mtime_ms === null) {
+  if (launchedMs === null || output.mtime_ms === null) {
     return null
   }
 
-  return (output.mtime_ms - launch.mtime_ms) / 1000
+  return (output.mtime_ms - launchedMs) / 1000
+}
+
+/**
+ * Seconds between the first and the last wake the invocation's watch record
+ * holds, or null when it holds fewer than two wakes.
+ *
+ * The watch observed the worker across that whole span, so no honest
+ * launch-to-return elapsed time can be shorter than it. It is the
+ * independent lower bound a foreground-return attestation is checked against.
+ */
+export function watchWakeSpanSeconds(
+  root: string,
+  runId: string,
+  invocationId: string,
+): number | null {
+  const wakes = readWatchRecord(root, runId, invocationId).filter(
+    (entry) => entry.event === 'wake',
+  )
+
+  if (wakes.length < 2) {
+    return null
+  }
+
+  const first = Date.parse(wakes[0].recorded_at)
+  const last = Date.parse(wakes[wakes.length - 1].recorded_at)
+
+  return Number.isFinite(first) && Number.isFinite(last)
+    ? (last - first) / 1000
+    : null
+}
+
+/** Snapshots of a `blocked` output, numbered from 1 beside their invocation. */
+const BLOCKED_OUTPUT_SNAPSHOT_PATTERN = /\.blocked-\d+\.json$/u
+
+export function blockedOutputSnapshotPath(
+  root: string,
+  runId: string,
+  invocationId: string,
+  ordinal: number,
+): string {
+  return resolveRunLayout(root, runId).invocation(
+    invocationId,
+    `.blocked-${ordinal}.json`,
+  ).relative
+}
+
+/**
+ * How long the snapshot event waits for a `pan` command holding the run mutex.
+ *
+ * The watched worker runs `./bin/pan` concurrently with the watch by design,
+ * so contention here is an expected operational failure. A short wait clears
+ * the common collision; a longer one would stall the wake that found it.
+ */
+const SNAPSHOT_EVENT_MUTEX_WAIT_MS = 250
+
+/**
+ * Append the `blocked_output_snapshotted` event, and report whether it landed.
+ *
+ * Losing the event must never end supervision: the snapshot file is already
+ * on disk when this runs, so a contended run mutex costs the event-log entry
+ * and nothing else. Every failure is swallowed rather than narrowed to
+ * `RUN_OPERATION_IN_PROGRESS`, because no way of failing to write one audit
+ * line is worth the watch the run depends on. A later observation retries.
+ */
+function recordBlockedSnapshotEvent(
+  root: string,
+  runId: string,
+  invocationId: string,
+  snapshotPath: string,
+  ordinal: number,
+): boolean {
+  try {
+    withOperationMutex(
+      operationMutexPath(root, runId),
+      () => {
+        persist(root, loadState(root, runId), 'blocked_output_snapshotted', {
+          invocation_id: invocationId,
+          snapshot_path: snapshotPath,
+          ordinal,
+        })
+      },
+      { waitForHolderMs: SNAPSHOT_EVENT_MUTEX_WAIT_MS },
+    )
+
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** Whether the run's event log already names this snapshot. */
+function blockedSnapshotEventRecorded(
+  root: string,
+  runId: string,
+  snapshotPath: string,
+): boolean {
+  const absolute = resolveRunLayout(root, runId).events.absolute
+
+  if (!fileExists(absolute)) {
+    return false
+  }
+
+  return readText(absolute)
+    .split('\n')
+    .some((line) => {
+      if (!line.includes('blocked_output_snapshotted')) {
+        return false
+      }
+
+      try {
+        const parsed = JSON.parse(line) as unknown
+
+        return (
+          isRecord(parsed) &&
+          parsed.type === 'blocked_output_snapshotted' &&
+          parsed.snapshot_path === snapshotPath
+        )
+      } catch {
+        return false
+      }
+    })
+}
+
+/**
+ * Preserve an output that reports `blocked` beside its own invocation.
+ *
+ * The output path belongs to the invocation rather than to the attempt, so a
+ * worker relaunched against the same card rewrites it in place. A `blocked`
+ * output is usually the most valuable thing a stage produced — it names the
+ * precondition the run lacks — and it is exactly the one the supervisor
+ * resolves without submitting, so nothing else in the run ever records it.
+ *
+ * Returns the snapshot path, or null when there is nothing new to preserve.
+ * A second, different blocked output takes the next ordinal; the same one
+ * observed again on a later wake is already preserved and writes nothing —
+ * except the event a contended earlier observation could not write, which
+ * this re-observation takes then.
+ */
+export function snapshotBlockedOutput(
+  root: string,
+  runId: string,
+  invocationId: string,
+): string | null {
+  const outputAbsolute = resolveInside(
+    root,
+    resolveRunLayout(root, runId).output(invocationId).relative,
+  )
+
+  if (!fileExists(outputAbsolute)) {
+    return null
+  }
+
+  let text: string
+  let parsed: unknown
+
+  try {
+    text = readText(outputAbsolute)
+    parsed = JSON.parse(text) as unknown
+  } catch {
+    return null
+  }
+
+  if (!isRecord(parsed) || parsed.result !== 'blocked') {
+    return null
+  }
+
+  const digest = sha256(text)
+  let ordinal = 1
+
+  for (;;) {
+    const candidate = blockedOutputSnapshotPath(
+      root,
+      runId,
+      invocationId,
+      ordinal,
+    )
+    const candidateAbsolute = resolveInside(root, candidate)
+
+    if (!fileExists(candidateAbsolute)) {
+      writeTextAtomic(candidateAbsolute, text)
+      recordBlockedSnapshotEvent(root, runId, invocationId, candidate, ordinal)
+
+      return candidate
+    }
+
+    let candidateDigest: string
+
+    try {
+      candidateDigest = sha256(readText(candidateAbsolute))
+    } catch {
+      return null
+    }
+
+    if (candidateDigest === digest) {
+      // Already preserved. The event it owes the run log is not durable the
+      // way the file is, so a contended write on the observation that made
+      // this snapshot lands here instead.
+      if (!blockedSnapshotEventRecorded(root, runId, candidate)) {
+        recordBlockedSnapshotEvent(
+          root,
+          runId,
+          invocationId,
+          candidate,
+          ordinal,
+        )
+      }
+
+      return null
+    }
+
+    ordinal += 1
+  }
 }
 
 /**
@@ -862,9 +1268,13 @@ function foregroundReturnNotTerminalMessage(
 
 /**
  * Record that a foreground launch returned, with the launch and return
- * wall-clock times. The launch time defaults to the delegation artifact's
- * modification time, because the supervisor persists that artifact
- * immediately before the launch, and falls back to the invocation record.
+ * wall-clock times.
+ *
+ * The launch time comes from the invocation's launch record. A supervisor
+ * that supplies `--launched-at` writes that record here; an arming watch
+ * wrote it earlier. Only an attestation with neither falls back to the
+ * invocation record's modification time, which is an upper bound on the
+ * launch rather than the launch itself.
  */
 export function recordForegroundReturn(
   root: string,
@@ -874,41 +1284,39 @@ export function recordForegroundReturn(
   const invocation = resolveWatchedInvocation(root, runId, options.invocationId)
   const invocationId = invocation.invocation_id
   const returnedMs = Date.now()
-  let launchedMs: number
-  let launchedAtSource: ForegroundReturnRecord['launched_at_source']
-
-  if (options.launchedAt !== undefined) {
-    launchedMs = parseIsoTime(options.launchedAt, '--launched-at')
-    launchedAtSource = 'supervisor'
-  } else {
-    const delegationArtifact = observePath(
-      root,
-      delegationPath(runId, invocationId, root),
-    )
-
-    // File times carry sub-millisecond precision; `Date.now()` does not, so a
-    // fractional mtime taken in the same millisecond would read as later.
-    if (delegationArtifact.exists && delegationArtifact.mtime_ms !== null) {
-      launchedMs = Math.floor(delegationArtifact.mtime_ms)
-      launchedAtSource = 'delegation_artifact'
-    } else {
-      const invocationRecord = observePath(
-        root,
-        resolveRunLayout(root, runId).invocation(invocationId, '.json')
-          .relative,
-      )
-
-      launchedMs = Math.floor(invocationRecord.mtime_ms ?? returnedMs)
-      launchedAtSource = 'invocation_record'
-    }
+  // File times carry sub-millisecond precision; `Date.now()` does not, so a
+  // fractional mtime taken in the same millisecond would read as later.
+  const invocationRecord = observePath(
+    root,
+    resolveRunLayout(root, runId).invocation(invocationId, '.json').relative,
+  )
+  const launchOptions: LaunchRecordOptions = {
+    ...(options.launchedAt !== undefined
+      ? { launchedAt: options.launchedAt }
+      : {}),
+    defaultLaunchedAtMs: Math.floor(invocationRecord.mtime_ms ?? returnedMs),
+    defaultSource: 'invocation_record',
+    launchMode: 'foreground',
   }
 
+  const proposedMs = resolveLaunchMs(root, runId, invocationId, launchOptions)
+
+  // A rejected launch time must not reach the record every later reader
+  // trusts, so the impossible case fails before the write.
   invariant(
-    launchedMs <= returnedMs,
-    `The launch time ${new Date(launchedMs).toISOString()} is after the ` +
+    proposedMs <= returnedMs,
+    `The launch time ${new Date(proposedMs).toISOString()} is after the ` +
       `return time ${new Date(returnedMs).toISOString()}.`,
     { code: 'INVALID_ARGUMENT' },
   )
+
+  const launch = recordInvocationLaunch(
+    root,
+    runId,
+    invocationId,
+    launchOptions,
+  )
+  const launchedMs = Date.parse(launch.launched_at)
 
   // The attestation is evidence that the harness saw the worker finish, so it
   // requires the worker's output to exist rather than the supervisor's word.
@@ -931,17 +1339,37 @@ export function recordForegroundReturn(
     },
   )
 
+  const elapsedSeconds = (returnedMs - launchedMs) / 1000
+  const lowerBoundSeconds = watchWakeSpanSeconds(root, runId, invocationId)
+  // The record is labeled rather than refused. A return that happened is
+  // evidence whether or not its clock agrees with the watch, and refusing it
+  // would delete the supervisor's only account of the launch while leaving
+  // the disagreement undiagnosed. Naming both numbers puts the contradiction
+  // in the durable record, where a reader can act on it.
+  const implausible =
+    lowerBoundSeconds !== null && elapsedSeconds < lowerBoundSeconds
   const record: ForegroundReturnRecord = {
     schema_version: 1,
     run_id: runId,
     invocation_id: invocationId,
     launch_mode: 'foreground',
-    launched_at: new Date(launchedMs).toISOString(),
-    launched_at_source: launchedAtSource,
+    launched_at: launch.launched_at,
+    launched_at_source: launch.launched_at_source,
     returned_at: new Date(returnedMs).toISOString(),
-    elapsed_seconds: (returnedMs - launchedMs) / 1000,
+    elapsed_seconds: elapsedSeconds,
+    elapsed_lower_bound_seconds: lowerBoundSeconds,
+    elapsed_implausible: implausible,
+    elapsed_implausibility: implausible
+      ? `The attested elapsed time ${elapsedSeconds.toFixed(1)}s is shorter ` +
+        `than the ${lowerBoundSeconds.toFixed(1)}s the watch record ` +
+        `${watchRecordPath(root, runId, invocationId)} spans between its ` +
+        `first and last wake, so the launch time ` +
+        `${launch.launched_at} (source ${launch.launched_at_source}) is ` +
+        `later than the launch actually was.`
+      : null,
     observation,
     watch_record_path: watchRecordPath(root, runId, invocationId),
+    launch_record_path: launchRecordPath(root, runId, invocationId),
     recorded_at: new Date(returnedMs).toISOString(),
   }
 
@@ -1008,12 +1436,37 @@ export async function watchInvocation(
   const recordAbsolute = resolveInside(root, recordRelative)
   const startedMs = now()
   const startedAt = new Date(startedMs).toISOString()
+
+  // The arming is the first moment the harness itself witnesses the launch,
+  // so it is the default launch time. Every later reader — the lateness
+  // advisory, the elapsed time, the foreground-return attestation — reads
+  // this record rather than an artifact's modification time.
+  recordInvocationLaunch(root, runId, invocationId, {
+    ...(options.launchedAt !== undefined
+      ? { launchedAt: options.launchedAt }
+      : {}),
+    defaultLaunchedAtMs: startedMs,
+    defaultSource: 'watch_arm',
+    ...(options.markBackground ? { launchMode: 'background' as const } : {}),
+    ...(options.workerHandle ? { workerHandle: options.workerHandle } : {}),
+  })
+
   const backgroundMarker = options.markBackground
     ? markDelegationBackground(root, runId, invocationId)
     : null
 
   const append = (entry: WatchRecordEntry): void => {
     appendJsonLine(recordAbsolute, entry)
+  }
+  // A `blocked` output is preserved the moment the watch sees it, because
+  // the supervisor commonly resolves one without submitting and the next
+  // worker rewrites the same path.
+  const observe = (): WatchObservation => {
+    const observation = observeInvocation(root, invocation)
+
+    snapshotBlockedOutput(root, runId, invocationId)
+
+    return observation
   }
   const finish = (
     state: WatchTerminalState,
@@ -1041,7 +1494,7 @@ export async function watchInvocation(
   }
   // An already-present output needs no timer. The wake record still proves
   // the terminal inspection happened.
-  const initial = observeInvocation(root, invocation)
+  const initial = observe()
   const initialEvidence = completionEvidenceForObservation(
     initial,
     launchToOutputSeconds(root, runId, invocationId),
@@ -1127,7 +1580,7 @@ export async function watchInvocation(
     dueMs += cadenceMs
 
     wakes += 1
-    const observation = observeInvocation(root, invocation)
+    const observation = observe()
     const changed = observation.fingerprint !== previousFingerprint
 
     previousFingerprint = observation.fingerprint
@@ -1267,6 +1720,42 @@ export function readWatchRecord(
     })
 }
 
+/**
+ * Whether the given wake saw a finished output that has not moved since.
+ *
+ * This is what a watch the supervisor stopped awaiting still proves. The
+ * platform's completion notice routinely lands between two wakes, and the
+ * supervisor then has no completed record to submit with; the documented
+ * workaround was a foreground-return attestation written for a launch nobody
+ * watched return, which degraded the audit trail every time it was used.
+ *
+ * The caller passes a wake only when the record reached no verdict of its
+ * own. A watch that did reach one has answered the question already, and an
+ * `unverified` or `stalled` verdict is an answer this MUST NOT overturn.
+ */
+function lastWakeObservedFinalOutput(
+  root: string,
+  wake: WatchRecordEntry | undefined,
+): boolean {
+  const observation = wake?.observation
+
+  if (observation === undefined || !isTerminalObservation(observation)) {
+    return false
+  }
+
+  const observed = observation.watched_paths.find(
+    (item) => item.path === observation.output_path,
+  )
+  const current = observePath(root, observation.output_path)
+
+  return (
+    observed !== undefined &&
+    current.exists === observed.exists &&
+    current.size === observed.size &&
+    current.mtime_ms === observed.mtime_ms
+  )
+}
+
 /** Summarize the watch record `pan submit` carries into the stage record. */
 export function summarizeDelegationWatch(
   root: string,
@@ -1301,6 +1790,10 @@ export function summarizeDelegationWatch(
     wakes: wakes.length,
     first_armed_at: armings[0]?.recorded_at ?? null,
     last_wake_at: wakes.at(-1)?.recorded_at ?? null,
+    last_wake_observed_final_output: lastWakeObservedFinalOutput(
+      root,
+      terminal === undefined ? wakes.at(-1) : undefined,
+    ),
     terminal_state: terminal?.terminal_state ?? null,
     terminal_basis: terminal?.terminal_basis ?? null,
     cadence_seconds: entries[0]?.cadence_seconds ?? null,
@@ -1320,15 +1813,17 @@ export function summarizeForegroundReturn(
     launched_at: record?.launched_at ?? null,
     returned_at: record?.returned_at ?? null,
     elapsed_seconds: record?.elapsed_seconds ?? null,
+    elapsed_lower_bound_seconds: record?.elapsed_lower_bound_seconds ?? null,
+    elapsed_implausible: record?.elapsed_implausible === true,
     output_present_at_return: record?.observation.output_present ?? null,
   }
 }
 
 /**
  * Decide whether the harness saw the delegation reach its terminal state.
- * A completed watch or a foreground-return attestation satisfies
- * `DELEGATE-001`; an external-executor stage is exempt because `pan delegate`
- * writes its delegation evidence itself.
+ * A completed watch, a watch whose last wake observed the final output, or a
+ * foreground-return attestation satisfies `DELEGATE-001`; an external-executor
+ * stage is exempt because `pan delegate` writes its delegation evidence itself.
  */
 export function summarizeDelegationObservation(
   root: string,
@@ -1352,9 +1847,11 @@ export function summarizeDelegationObservation(
     ? 'external_executor'
     : watch.terminal_state === 'completed'
       ? 'watch_completed'
-      : foregroundReturn.output_present_at_return === true
-        ? 'foreground_return'
-        : null
+      : watch.last_wake_observed_final_output
+        ? 'watch_observed_final_output'
+        : foregroundReturn.output_present_at_return === true
+          ? 'foreground_return'
+          : null
 
   return {
     observed: source !== null,
@@ -1386,7 +1883,11 @@ export function delegationUnobservedMessage(
       : observation.watch.record_present
         ? `the watch record ${observation.watch.record_path} ends without a ` +
           `completed wake (${observation.watch.wakes} wakes, last state ` +
-          `${observation.watch.terminal_state ?? 'none'})`
+          `${observation.watch.terminal_state ?? 'none'})` +
+          (observation.watch.terminal_state === null
+            ? `, and the output moved after that last wake, so no wake ` +
+              `observed the output being submitted`
+            : '')
         : `no watch record exists at ${observation.watch.record_path}`
   const attestationDetail =
     observation.foreground_return.record_present &&

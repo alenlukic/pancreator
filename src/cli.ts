@@ -11,6 +11,7 @@ import {
   DEFAULT_WORKFLOW_SLUG,
   decideRun,
   decideRunAsAway,
+  armWorkerWatch,
   delegateInvocation,
   getRunStatus,
   getRunState,
@@ -215,9 +216,9 @@ import {
   parseCadenceSeconds,
   parsePositiveInteger,
   parseTimeoutSeconds,
-  watchInvocation,
   recordForegroundReturn,
   foregroundReturnRecordPath,
+  launchRecordPath,
   writeRedlineRecord,
 } from './lib/watch.js'
 import {
@@ -265,10 +266,10 @@ export const HELP_BODY = `Usage:
   pan prepare <run-id> [--worktree <name>] [--operator-artifacts] [--agent <name>]
       --agent names the Cursor agent this invocation is delegated to. The harness then writes the labeled delegation artifact beside the delivery prompt and starts the detached worker model probe, so the supervisor assembles neither by hand. An external-executor or orchestrator stage keeps its current behavior and reports why it wrote nothing.
   pan delegate <run-id> [--timeout-ms <milliseconds>]
-  pan watch <run-id> [--invocation <invocation-id>] [--cadence-seconds <n>] [--stall-wakes <n>] [--timeout-seconds <n>] [--mark-background] [--agent-state running|completed] [--json]
-      Await a launched worker on a fixed cadence and record every arming and wake to agent/evidence/<invocation-id>-watch.jsonl. Exit 0 when the output is present, 2 on a stall, 3 at the timeout, 4 when the completion is unverified. --mark-background records that the platform turned the launch into a background subagent. --agent-state reports what you saw when you inspected the launched agent itself; the watch reads files and cannot see a worker that is still writing. Weak evidence of completion — an output younger than one cadence, an unreadable elapsed time, or an agent you reported as running — holds the observation and re-observes it on the next wake, and completes only when the output did not move. Exit 4 means that confirming wake could not settle it.
+  pan watch <run-id> [--invocation <invocation-id>] [--cadence-seconds <n>] [--stall-wakes <n>] [--timeout-seconds <n>] [--mark-background] [--launched-at <iso-8601>] [--handle <platform-handle>] [--agent <name>] [--model <name>] [--agent-state running|completed] [--json]
+      Await a launched worker on a fixed cadence and record every arming and wake to agent/evidence/<invocation-id>-watch.jsonl. Exit 0 when the output is present, 2 on a stall, 3 at the timeout, 4 when the completion is unverified. The first arming writes the launch record agent/evidence/<invocation-id>-launch.json, which every launch-relative number the harness reports reads; --launched-at supplies the launch time you observed, and without it the arming time is recorded as the launch time. --handle records the platform identity of the launched worker, which pan worker record otherwise asks you to record separately; an arming without one still succeeds and the launch record says none was supplied. --mark-background records that the platform turned the launch into a background subagent. --agent-state reports what you saw when you inspected the launched agent itself; the watch reads files and cannot see a worker that is still writing. Weak evidence of completion — an output younger than one cadence, an unreadable elapsed time, or an agent you reported as running — holds the observation and re-observes it on the next wake, and completes only when the output did not move. Exit 4 means that confirming wake could not settle it.
   pan watch <run-id> --foreground-returned [--invocation <invocation-id>] [--launched-at <iso-8601>] [--json]
-      Record that a foreground launch returned, with the launch and return wall-clock times, at agent/evidence/<invocation-id>-foreground-return.json. The launch time defaults to the delegation artifact's modification time. pan submit requires this record or a completed watch record for every Cursor worker invocation and fails with DELEGATION_UNOBSERVED otherwise.
+      Record that a foreground launch returned, with the launch and return wall-clock times, at agent/evidence/<invocation-id>-foreground-return.json. The launch time comes from the launch record; --launched-at writes that record when no watch armed first. pan submit requires this record, a completed watch record, or a watch record whose last wake observed the output being submitted, for every Cursor worker invocation, and fails with DELEGATION_UNOBSERVED otherwise. An attested elapsed time shorter than the watch record's own first-to-last wake span is labeled in the record, which names both numbers.
   pan worker record <run-id> --handle <platform-handle> [--invocation <invocation-id>] [--role <evidence-role>] [--agent <name>] [--model <name>] [--launch-mode foreground|background] [--json]
       Record the identity the platform returned for one launched worker. The harness otherwise watches a worker only through the files it writes, so a worker that died before its first write is indistinguishable from one that was never launched. Naming an evidence role also allocates that launch's own brief and evidence paths, so a relaunched worker never overwrites the report the previous attempt wrote.
   pan worker state <run-id> [--invocation <invocation-id>] [--role <evidence-role>] [--json]
@@ -4050,14 +4051,21 @@ async function main(): Promise<void> {
                 `returned ${record.returned_at} after ` +
                 `${record.elapsed_seconds.toFixed(1)}s, output ` +
                 `${record.observation.output_present ? 'present' : 'absent'}, ` +
-                `record ${foregroundReturnRecordPath(root, runId, record.invocation_id)}`,
+                `record ${foregroundReturnRecordPath(root, runId, record.invocation_id)}` +
+                (record.elapsed_implausibility
+                  ? `\n${record.elapsed_implausibility}`
+                  : ''),
           json,
         )
         return
       }
 
       const agentState = parseAgentState(option(args, '--agent-state'))
-      const result = await watchInvocation(root, runId, {
+      const armLaunchedAt = option(args, '--launched-at')
+      const workerHandle = option(args, '--handle')
+      const workerAgent = option(args, '--agent')
+      const workerModel = option(args, '--model')
+      const result = await armWorkerWatch(root, runId, {
         ...(invocationId ? { invocationId } : {}),
         cadenceSeconds: parseCadenceSeconds(option(args, '--cadence-seconds')),
         stallWakes: parsePositiveInteger(
@@ -4067,6 +4075,10 @@ async function main(): Promise<void> {
         ),
         timeoutSeconds: parseTimeoutSeconds(option(args, '--timeout-seconds')),
         markBackground: hasFlag(args, '--mark-background'),
+        ...(armLaunchedAt ? { launchedAt: armLaunchedAt } : {}),
+        ...(workerHandle ? { workerHandle } : {}),
+        ...(workerAgent ? { workerAgent } : {}),
+        ...(workerModel ? { workerModel } : {}),
         ...(agentState ? { agentState } : {}),
         // OUTPUT-001: progress lines only on an interactive terminal, so a
         // captured watch stays byte-identical to the JSON result.
@@ -4080,7 +4092,8 @@ async function main(): Promise<void> {
           ? result
           : `watch ${result.state}: invocation ${result.invocation_id}, ` +
               `${result.wakes} wakes over ${result.elapsed_seconds.toFixed(1)}s, ` +
-              `record ${result.record_path}`,
+              `record ${result.record_path}, launch ` +
+              `${launchRecordPath(root, runId, result.invocation_id)}`,
         json,
       )
       process.exitCode = WATCH_EXIT_CODES[result.state]

@@ -38,10 +38,6 @@ references both while carrying the structured fields the harness checks.
    `invocation_id` and `invocation_attestation` to the current card's values.
    The harness applies the patch and validates the merged document; keep
    everything you were not asked to change.
-9. Write `result` last, after every other field is final. The supervisor's
-   watch reads your output file while you are still writing it, and it may
-   treat a terminal `result` as evidence that you finished. A `result` written
-   early can end your supervision before your evidence exists.
 
 The harness rerenders the declared brief source during submission. A missing or
 invalid source, a non-HTML primary artifact, or artifact paths that differ from

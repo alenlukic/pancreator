@@ -81,9 +81,13 @@ import {
   DELEGATION_WATCH_LATE_SECONDS,
   delegationUnobservedMessage,
   redlineRecordPath,
+  resolveWatchedInvocation,
   summarizeDelegationObservation,
   summarizeDelegationWatch,
+  watchInvocation,
   type DelegationObservation,
+  type WatchOptions,
+  type WatchResult,
 } from './watch.js'
 import {
   OPERATOR_ARTIFACT_PROFILE_HEADINGS,
@@ -7429,6 +7433,56 @@ export function recordDelegatedWorker(
       ...(evidenceAttempt ? { evidence_attempt: evidenceAttempt } : {}),
     }
   })
+}
+
+export interface ArmWorkerWatchOptions extends WatchOptions {
+  /** Named agent definition the supervisor launched, when it reported one. */
+  workerAgent?: string
+  workerModel?: string
+}
+
+/**
+ * Arm the watch over a delegated worker, recording the platform handle the
+ * supervisor supplies with it.
+ *
+ * `pan worker record` asked the supervisor to remember a separate command,
+ * and no Phase 3 run ever recorded a handle. The arming is an action the
+ * supervisor already owes for every launch, so the handle rides along with
+ * it. A watch armed without one still arms, and the launch record says that
+ * none was supplied rather than leaving the absence unexplained.
+ */
+export async function armWorkerWatch(
+  root: string,
+  runId: string,
+  options: ArmWorkerWatchOptions = {},
+): Promise<WatchResult> {
+  const handle = options.workerHandle?.trim()
+
+  if (handle) {
+    const invocationId = resolveWatchedInvocation(
+      root,
+      runId,
+      options.invocationId,
+    ).invocation_id
+    const recorded = describeDelegatedWorkers(root, runId, {
+      invocationId,
+      role: STAGE_WORKER_ROLE,
+    })
+
+    // Re-arming a watch over the same worker is ordinary supervision, not a
+    // second launch, so the same handle records once.
+    if (!recorded.some((worker) => worker.handle === handle)) {
+      recordDelegatedWorker(root, runId, {
+        handle,
+        invocationId,
+        ...(options.workerAgent ? { agent: options.workerAgent } : {}),
+        ...(options.workerModel ? { model: options.workerModel } : {}),
+        launchMode: options.markBackground ? 'background' : 'unknown',
+      })
+    }
+  }
+
+  return watchInvocation(root, runId, options)
 }
 
 /** One declared path of a delegated worker, as it stands on disk. */
