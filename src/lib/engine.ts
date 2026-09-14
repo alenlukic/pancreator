@@ -264,6 +264,7 @@ import {
   snapshotEntryPath,
   workspaceChangedPathsFromSnapshots,
 } from './git.js'
+import { buildCurrency, buildCurrencyAdvisory } from './build-identity.js'
 import { entryGateWaiver, waiverCoversCriterion } from './waivers.js'
 import { resolveRoots } from './workspace/roots.js'
 import {
@@ -5981,6 +5982,21 @@ export function submitOutput(
     )
 
     advise('gate_bypass', evaluated.advisories)
+
+    // A self-development release lane can execute a build compiled from a
+    // tree other than the one it releases, so the run records which build
+    // actually answered. The disagreement is an advisory rather than a gate:
+    // the redirection that closes it is read from the executing build, so a
+    // gate here would refuse the first release that carries the mechanism.
+    const buildCurrencyRecord =
+      stage.slug === 'ship' && isSelfDevelopmentInstallation(root)
+        ? buildCurrency(workspaceDirectory(root, state))
+        : undefined
+
+    if (buildCurrencyRecord && !buildCurrencyRecord.current) {
+      advise('build_currency', [buildCurrencyAdvisory(buildCurrencyRecord)])
+    }
+
     governanceArtifactWarnings.push(
       ...attestationErrors,
       ...briefErrors.map((message) => `Operator brief: ${message}`),
@@ -6065,6 +6081,7 @@ export function submitOutput(
       ...(briefSourceRecord
         ? { operator_brief_source: briefSourceRecord }
         : {}),
+      ...(buildCurrencyRecord ? { build_currency: buildCurrencyRecord } : {}),
     }
 
     state.stage_history.push(historyItem)

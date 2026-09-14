@@ -3477,11 +3477,23 @@ export function evaluateDeterministicCriteria(
     const unattributedPaths = blockingPaths.filter(
       (relativePath) => !declaredInternalPaths.has(relativePath),
     )
-    // A harness-root write is never attributable: no declaration authorizes a
-    // stage to change the checkout its run is not working in.
+    // No worker declaration authorizes a stage to change the checkout its run
+    // is not working in, so a harness-root write is never attributable here.
+    // The one legitimate harness-root change a self-development release makes
+    // is landing its own release commit on the local default branch, and the
+    // ship contract sequences that landing after submit instead of excepting
+    // it, so a ship stage that followed the contract carries no such delta.
     const changed =
       harnessPaths.length > 0 ||
       (blockingPaths.length > 0 && !internallyAttributed)
+    // Naming the remedy where the failure is read: the Phase 3 release spent
+    // an operator waiver on a landing the contract now sequences later.
+    const harnessRootRemedy =
+      stage.slug === 'ship'
+        ? ' A release landing is an operator step after submit: complete the' +
+          ' ship stage first, then fast-forward the local default branch to' +
+          " this run's release or index commit."
+        : ''
 
     scopePassed = !changed
     const absorbedNote = absorbedRunAttributionNote(absorbedOwners, state)
@@ -3494,7 +3506,7 @@ export function evaluateDeterministicCriteria(
         (harnessPaths.length > 0
           ? `The run workspace is '${workspaceDir}', and this stage changed ` +
             `tracked files in the harness root '${root}' outside runtime/: ` +
-            `${boundedPathList(harnessPaths)}.`
+            `${boundedPathList(harnessPaths)}.${harnessRootRemedy}`
           : changed
             ? `Workspace contamination is external or unattributed for the '${stage.workspace_policy}' stage: ${boundedPathList(unattributedPaths.length > 0 ? unattributedPaths : blockingPaths)}.`
             : internallyAttributed

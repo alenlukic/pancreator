@@ -53,11 +53,16 @@ function separateWorkspace(): string {
   return workspace
 }
 
+function verifyStage(): StageDefinition {
+  return { ...shipStage(), slug: 'verify', title: 'Verification' }
+}
+
 function scopeResult(
   root: string,
   workspaceDir: string,
   harnessBefore: WorkspaceSnapshot | undefined,
   mutate: () => void,
+  stage: StageDefinition = shipStage(),
 ) {
   const before = gitWorkspaceSnapshot(workspaceDir)
   const runDirectory = path.join(root, 'runtime', 'logs', 'workflows', 'scope')
@@ -75,11 +80,11 @@ function scopeResult(
       stage_history: [],
       gate_overrides: {},
     } as unknown as RunState,
-    shipStage(),
+    stage,
     before,
     workspaceDir,
     {},
-    'ship',
+    stage.slug,
     undefined,
     undefined,
     null,
@@ -126,6 +131,52 @@ test('a run with its own workspace passes when it writes only that workspace', (
 
   assert.ok(result)
   assert.equal(result.passed, true)
+})
+
+// HR4-004 ships one mechanism: the release landing moves after submit rather
+// than becoming an exception here. A ship stage that still moves the harness
+// root to its own release commit therefore fails, exactly as any other
+// harness-root delta does, and the failure names where the step belongs.
+test('a ship stage that lands its own release on the harness root still fails', () => {
+  const root = createFixture()
+  const workspace = separateWorkspace()
+  const harnessBefore = gitWorkspaceSnapshot(root)
+  const result = scopeResult(root, workspace, harnessBefore, () => {
+    writeFileSync(path.join(root, 'VERSION'), '9.9.9\n')
+    fixtureGit(['add', '-A'], { cwd: root, encoding: 'utf8' })
+    fixtureGit(['commit', '-qm', 'release: prepare v9.9.9'], {
+      cwd: root,
+      encoding: 'utf8',
+    })
+  })
+
+  assert.ok(result)
+  assert.equal(result.passed, false)
+  assert.match(result.explanation ?? '', /VERSION/u)
+  assert.match(result.explanation ?? '', /operator step after submit/u)
+})
+
+test('a stage outside the release lane is not told to land after submit', () => {
+  const root = createFixture()
+  const workspace = separateWorkspace()
+  const harnessBefore = gitWorkspaceSnapshot(root)
+  const result = scopeResult(
+    root,
+    workspace,
+    harnessBefore,
+    () => {
+      writeFileSync(
+        path.join(root, 'src', 'base.ts'),
+        'export const base = false\n',
+      )
+    },
+    verifyStage(),
+  )
+
+  assert.ok(result)
+  assert.equal(result.passed, false)
+  assert.match(result.explanation ?? '', /src\/base\.ts/u)
+  assert.doesNotMatch(result.explanation ?? '', /after submit/u)
 })
 
 test('a run whose workspace is the harness root keeps its existing verdict', () => {

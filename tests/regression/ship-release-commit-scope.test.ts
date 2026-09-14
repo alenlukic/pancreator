@@ -10,9 +10,17 @@
  * mandated procedure: the release sync also fetches main and rebases onto it,
  * and a comparison window opened at a base the rebase had moved read every
  * path the upstream advance carried as contamination.
+ *
+ * The Phase 3 release then spent an operator waiver on the last variant the
+ * criterion cannot attribute: the fast-forward of the harness root's local
+ * default branch onto the run's own release commit. Of the two repairs the
+ * waiver named, the operator chose the resequencing, so the contract now
+ * places that landing after submit and the criterion keeps no exception for
+ * it. The last two cases pin that choice, because a criterion exception
+ * added later would ship the mechanism this repair deliberately did not.
  */
 import assert from 'node:assert/strict'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -335,6 +343,57 @@ test('an upstream advance does not launder an external edit across the rebase', 
 
   assert.equal(scope.passed, false)
   assert.match(scope.explanation ?? '', /src\/outside\.ts/u)
+})
+
+const REPO_ROOT = process.cwd()
+
+function repositoryText(relativePath: string): string {
+  return readFileSync(path.join(REPO_ROOT, relativePath), 'utf8')
+}
+
+test('the release contract sequences the harness-root landing after submit', () => {
+  const sources = [
+    'library/workflows/delivery/prompts/ship.md',
+    'library/personas/orchestrator.md',
+    'governance/criteria/index.md',
+  ]
+
+  for (const source of sources) {
+    const content = repositoryText(source)
+
+    assert.match(
+      content,
+      /after submit/u,
+      `${source} must place the release landing after submit`,
+    )
+    assert.match(
+      content,
+      /harness root/u,
+      `${source} must say which checkout the landing moves`,
+    )
+  }
+
+  const ship = repositoryText(
+    'library/workflows/delivery/prompts/ship.md',
+  ).indexOf('release finalize')
+  const stop = repositoryText(
+    'library/workflows/delivery/prompts/ship.md',
+  ).indexOf('operator step after submit')
+
+  assert.notEqual(ship, -1)
+  assert.ok(
+    stop > ship,
+    'the ship prompt must stop the steward after finalization, not before it',
+  )
+})
+
+// HR4-004 named two repairs and forbade shipping both. The criterion keeps no
+// landing exception, so the registry must describe the resequencing alone.
+test('the criterion registry describes the resequencing and no landing exception', () => {
+  const registry = repositoryText('governance/criteria/index.md')
+
+  assert.match(registry, /carries no exception for a release landing/u)
+  assert.match(registry, /MUST still fail and MUST name the paths/u)
 })
 
 test('a genuinely unattributable pre-existing path still fails', () => {

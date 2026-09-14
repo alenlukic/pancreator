@@ -47,7 +47,7 @@ function resolveCanonicalBoundaryPath(targetPath: string): string {
 }
 
 /** True when `candidate` is a Pancreator installation root. */
-function isPancreatorRoot(candidate: string): boolean {
+export function isPancreatorRoot(candidate: string): boolean {
   const packagePath = path.join(candidate, 'package.json')
 
   if (!existsSync(packagePath)) {
