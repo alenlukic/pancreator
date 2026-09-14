@@ -51,6 +51,7 @@ import {
   cohortStatus,
   initCohortSession,
   integrateCohort,
+  maybeAdvanceCohort,
   maybeStartDelivery,
   releaseCohort,
   retryDeliveryRoute,
@@ -391,7 +392,8 @@ export const HELP_BODY = `Usage:
   pan cohort status <cohort-id> [--json]
       Reports the active cohort, each chunk's run status, the free parallelism slots, and the start, supervise (/pan-cohort), integrate, and release commands that apply.
   pan cohort integrate <cohort-id> [--into-branch <branch>] [--json]
-      Merge the committed chunk branches of the finished cohort into its integration branch (the base branch by default) and record the satisfaction entry the next cohort needs. Once that entry lands the harness continues the plan: a non-final cohort starts the next cohort, and the final cohort starts the release run, a delivery run that begins at verify on the integration branch. The response reports that continuation as autostart.
+      The retry for an automatic advance that failed. The harness normally integrates a finished cohort by itself, as soon as its last chunk run reports succeeded.
+      Commit each chunk worktree that still holds work, merge the chunk branches of the finished cohort into its integration branch (the base branch by default), and record the satisfaction entry the next cohort needs. Once that entry lands the harness continues the plan: a non-final cohort starts the next cohort, and the final cohort starts the release run, a delivery run that begins at verify on the integration branch. The response reports that continuation as autostart.
       --into-branch retargets the session: this and every later cohort merge into that branch, and later cohorts branch from it. Use it when the checkout that holds the base branch carries uncommitted work. A missing branch is created from the current integration head; an existing one must already contain that head.
   pan cohort release <cohort-id> [--json]
       Start or adopt the release run once every cohort is integrated (merge-free). It is the retry for a release start that failed after the final integrate: it merges nothing, adopts a release run that already exists, and is refused with COHORT_NOT_SATISFIED while any cohort lacks its merge proof.
@@ -1033,6 +1035,14 @@ function applyAwayDecision(
         requiredArgument(selected.stage, 'selected stage'),
         selected.note ?? selected.rationale,
       )
+    case 'waive-gate':
+      // The note is the directive, and `selectAwayOption` already refused an
+      // option that carries none. The waiver is recorded with away
+      // authorship, so nothing in the record claims the operator wrote it.
+      return waiveGate(root, state.run_id, {
+        note: requiredArgument(selected.note, 'selected note'),
+        actor: 'away',
+      }).state
     default:
       throw new PanError(
         `Unsupported away action: ${String(selected.action)}`,
@@ -1619,6 +1629,11 @@ async function main(): Promise<void> {
       })
       process.stderr.write(`[pan submit:${runId}] validation complete.\n`)
 
+      // The hook runs after the submission is durable and outside the run
+      // mutex, so the integration takes its own mutexes and a failed advance
+      // cannot roll back the recorded stage result.
+      const advance = maybeAdvanceCohort(root, result.state)
+
       print({
         status: result.state.status,
         outcome: result.record.outcome,
@@ -1630,6 +1645,7 @@ async function main(): Promise<void> {
         next_stage: result.state.current_stage,
         pending_action: result.state.pending_action,
         advisories: result.advisories.map((advisory) => advisory.message),
+        ...(advance ? { advance } : {}),
       })
       return
     }
@@ -1637,12 +1653,14 @@ async function main(): Promise<void> {
       const runId = requiredArgument(args[0], 'run-id')
       const assessmentPath = requiredArgument(args[1], 'assessment-json')
       const result = assessStage(root, runId, assessmentPath)
+      const advance = maybeAdvanceCohort(root, result.state)
 
       print({
         status: result.state.status,
         verdict: result.assessment.verdict,
         next_stage: result.state.current_stage,
         pending_action: result.state.pending_action,
+        ...(advance ? { advance } : {}),
       })
       return
     }
@@ -1665,6 +1683,9 @@ async function main(): Promise<void> {
         { actor: 'operator', action: decision },
         deliveryRouteOptions(args),
       )
+      // The same shape for the cohort side: a decision that closed the last
+      // unit run of a group integrates that group and starts the next one.
+      const advance = maybeAdvanceCohort(root, state)
 
       print({
         status: state.status,
@@ -1673,6 +1694,7 @@ async function main(): Promise<void> {
         operator_revisions: state.operator_revisions ?? {},
         pending_action: state.pending_action,
         ...(autostart ? { autostart } : {}),
+        ...(advance ? { advance } : {}),
       })
       return
     }
@@ -2104,12 +2126,14 @@ async function main(): Promise<void> {
           actor: 'away',
           action: decision.selected_action?.action ?? '',
         })
+        const advance = maybeAdvanceCohort(root, next)
 
         print(
           {
             state: next,
             decision: record,
             ...(autostart ? { autostart } : {}),
+            ...(advance ? { advance } : {}),
           },
           json,
         )

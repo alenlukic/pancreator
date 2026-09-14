@@ -10,6 +10,7 @@ import {
 import {
   gitBranchExists,
   gitBranchNameIsValid,
+  gitCommit,
   gitCreateBranch,
   gitCurrentBranch,
   gitConflictedPaths,
@@ -18,6 +19,8 @@ import {
   gitMergeAbort,
   gitMergeBranch,
   gitRevParse,
+  gitStagePaths,
+  gitStatusPaths,
   gitWorktreeIsDirty,
   isGitRepository,
 } from './git.js'
@@ -221,6 +224,20 @@ export type DeliveryAutostartResult =
   | {
       status: 'failed'
       kind?: 'cohort' | 'delivery'
+      error: string
+      manual_commands: string[]
+    }
+
+/**
+ * What the completion of one chunk run advanced. `null` from the hook means
+ * the group is not finished yet, or a sibling submission already advanced it.
+ */
+export type CohortAdvanceResult =
+  | ({ status: 'integrated' } & CohortIntegrationResult)
+  | {
+      status: 'failed'
+      cohort_id: string
+      cohort_index: number
       error: string
       manual_commands: string[]
     }
@@ -1001,11 +1018,11 @@ export interface StartCohortOptions {
  * Create one worktree and one `delivery-chunk` run per chunk of the next
  * unsatisfied cohort, or of the cohort the operator names.
  *
- * This performs no source-control action beyond adding worktrees: committing a
- * chunk branch and integrating a finished cohort stay operator-owned. Each
- * chunk record is written before its worktree exists and again after its run
- * exists, so an interrupted fan-out leaves resources the lifecycle commands can
- * still find.
+ * This performs no source-control action beyond adding worktrees: the unit
+ * commit and the group merge belong to the integration that follows a finished
+ * group. Each chunk record is written before its worktree exists and again
+ * after its run exists, so an interrupted fan-out leaves resources the
+ * lifecycle commands can still find.
  */
 export function startCohort(
   root: string,
@@ -1314,14 +1331,15 @@ export function releaseCohort(
 }
 
 /**
- * Merge the committed chunk branches of the active cohort into the base branch
- * and record the satisfaction entry.
+ * Commit each unit worktree of the active cohort, merge the chunk branches
+ * into the base branch, and record the satisfaction entry.
  *
  * The satisfaction entry is the only signal that unblocks the next cohort, and
- * it is written only after a clean merge. An unsucceeded chunk run, a dirty
- * chunk worktree, or a conflict therefore leaves the next cohort blocked rather
- * than letting it branch from work that never landed. A cohort whose every
- * chunk the operator abandoned has nothing to merge and is recorded satisfied.
+ * it is written only after a clean merge. An unsucceeded chunk run, an
+ * integration checkout holding uncommitted work, or a conflict therefore
+ * leaves the next cohort blocked rather than letting it branch from work that
+ * never landed. A cohort whose every chunk the operator abandoned has nothing
+ * to merge and is recorded satisfied.
  *
  * `intoBranch` retargets the session: this cohort and every later one merge
  * into that branch, and later cohorts branch from it. The option exists for the
@@ -1345,19 +1363,106 @@ export function integrateCohort(
 ): CohortIntegrationResult {
   const integrated = integrateActiveCohort(root, cohortId, options)
 
+  invariant(
+    integrated,
+    `Session ${cohortId} reported no cohort to integrate.`,
+    { code: 'INVALID_COHORT_STATE' },
+  )
+
   return {
     ...integrated,
     autostart: continueAfterIntegration(root, cohortId),
   }
 }
 
+/**
+ * Integrate the group a finished chunk run belongs to, and continue the plan.
+ *
+ * A cohort session used to stop here: every unit of a group reported success,
+ * and the harness still waited for a human to commit the unit worktrees and
+ * run `cohort integrate`. Both steps are decided by records the harness
+ * already holds, so this hook takes them. It is the sibling of
+ * `maybeStartDelivery` and keeps that shape: it fires from the lifecycle
+ * commands after the run state is durable, outside the run mutex, and a
+ * failure is reported with the manual command rather than undoing anything.
+ *
+ * The hook never integrates a group other than the submitting run's own. Two
+ * siblings of one group can both reach this before either takes the session
+ * mutex, so the integration rechecks the active group under that mutex and the
+ * loser reports no advance instead of a failure against the next group.
+ */
+export function maybeAdvanceCohort(
+  root: string,
+  state: RunState,
+): CohortAdvanceResult | null {
+  const binding = state.cohort
+
+  if (
+    !binding ||
+    binding.role === 'release' ||
+    state.status !== 'succeeded' ||
+    !fileExists(cohortStatePath(root, binding.cohort_id))
+  ) {
+    return null
+  }
+
+  const { cohort_id: cohortId, cohort_index: cohortIndex } = binding
+  const session = loadCohortState(root, cohortId)
+
+  // Read before the mutex: the ordinary submission, whose group still has a
+  // unit running, then costs nothing beyond these two record reads.
+  if (
+    session.satisfaction.some((entry) => entry.cohort_index === cohortIndex) ||
+    !cohortRunsSucceeded(root, session, cohortIndex)
+  ) {
+    return null
+  }
+
+  try {
+    const integrated = integrateActiveCohort(root, cohortId, {
+      onlyCohortIndex: cohortIndex,
+    })
+
+    if (!integrated) {
+      return null
+    }
+
+    return {
+      status: 'integrated',
+      ...integrated,
+      autostart: continueAfterIntegration(root, cohortId),
+    }
+  } catch (error) {
+    // The merge proof is unwritten, so the next group stays blocked and the
+    // retry is the same command an operator would have run.
+    return {
+      status: 'failed',
+      cohort_id: cohortId,
+      cohort_index: cohortIndex,
+      error: errorMessage(error),
+      manual_commands: [`${panCommand(root)} cohort integrate ${cohortId}`],
+    }
+  }
+}
+
 type IntegratedCohort = Omit<CohortIntegrationResult, 'autostart'>
 
+interface IntegrateCohortOptions {
+  intoBranch?: string | null
+  /**
+   * The one group this call may integrate. The automatic advance sets it to
+   * the submitting run's own group, so a sibling submission that loses the
+   * race reports no advance instead of integrating a group it never ran.
+   */
+  onlyCohortIndex?: number
+}
+
+/** Null only when `onlyCohortIndex` no longer names the active group. */
 function integrateActiveCohort(
   root: string,
   cohortId: string,
-  options: { intoBranch?: string | null },
-): IntegratedCohort {
+  options: IntegrateCohortOptions,
+): IntegratedCohort | null {
   return withCohortSession(root, cohortId, (initial) => {
     const loaded = options.intoBranch
       ? retargetIntegration(root, initial, options.intoBranch)
@@ -1365,6 +1470,10 @@ function integrateActiveCohort(
     const cohortIndex = firstUnsatisfiedIndex(root, loaded)
 
     if (cohortIndex === null) {
+      if (options.onlyCohortIndex !== undefined) {
+        return null
+      }
+
       invariant(
         !loaded.release_run_id,
         `Every cohort of session ${cohortId} is already integrated.`,
@@ -1375,6 +1484,16 @@ function integrateActiveCohort(
       // integrate died between the merge and its continuation. Reporting the
       // final proof lets the caller run the continuation that is missing.
       return lastIntegratedCohort(loaded)
+    }
+
+    // Two sibling submissions can both see their own group unsatisfied before
+    // either takes this mutex. The loser finds the winner's satisfaction entry
+    // recorded and the active group moved on, and reports no advance.
+    if (
+      options.onlyCohortIndex !== undefined &&
+      options.onlyCohortIndex !== cohortIndex
+    ) {
+      return null
     }
 
     assertPredecessorsSatisfied(root, loaded, cohortIndex)
@@ -1388,7 +1507,7 @@ function integrateActiveCohort(
     }
 
     const index = readWorktreeIndex(root)
-    const pan = panCommand(root)
+    const unitCommits = new Map<string, string>()
 
     for (const chunk of chunks) {
       const run = chunkRunState(root, chunk.run_id)
@@ -1414,18 +1533,29 @@ function integrateActiveCohort(
           'merge.',
         { code: 'COHORT_INTEGRATION_INCOMPLETE', details: { chunk: chunk.id } },
       )
-      invariant(
-        !gitWorktreeIsDirty(resolveInside(root, record.path)),
-        `Chunk '${chunk.id}' has uncommitted work in ${record.path}. Commit ` +
-          `it, then run '${pan} cohort integrate ${cohortId}' again.`,
-        { code: 'COHORT_INTEGRATION_INCOMPLETE', details: { chunk: chunk.id } },
+
+      const unitCommit = commitUnitWorktree(
+        resolveInside(root, record.path),
+        loaded,
+        cohortIndex,
+        chunk,
       )
+
+      if (unitCommit) {
+        unitCommits.set(chunk.id, unitCommit)
+      }
     }
 
     const merged =
       chunks.length >= 2
-        ? mergeThroughReconcile(root, loaded, cohortIndex, chunks)
-        : mergeSingleChunkBranch(root, loaded, cohortIndex, chunks[0])
+        ? mergeThroughReconcile(root, loaded, cohortIndex, chunks, unitCommits)
+        : mergeSingleChunkBranch(
+            root,
+            loaded,
+            cohortIndex,
+            chunks[0],
+            unitCommits,
+          )
 
     persistCohortState(root, {
       ...loaded,
@@ -1452,6 +1582,38 @@ function integrateActiveCohort(
       evidence_path: merged.evidence_path,
     }
   })
+}
+
+/**
+ * Commit whatever a finished unit left uncommitted in its own worktree, and
+ * return the commit the harness created.
+ *
+ * The unit's run already reported success when this runs, so the change set
+ * is that unit's deliverable rather than work in progress. Only the paths the
+ * worktree's own status reports are staged, so a commit can never carry a
+ * sibling unit's changes or the integration checkout's. A clean worktree is a
+ * no-op and returns null.
+ */
+function commitUnitWorktree(
+  worktreePath: string,
+  state: CohortSessionState,
+  cohortIndex: number,
+  chunk: CohortChunkRecord,
+): string | null {
+  if (!gitWorktreeIsDirty(worktreePath)) {
+    return null
+  }
+
+  gitStagePaths(worktreePath, gitStatusPaths(worktreePath))
+
+  return gitCommit(
+    worktreePath,
+    `cohort: unit '${chunk.id}' of session ${state.cohort_id}\n\n` +
+      `Unit: ${chunk.id}\n` +
+      `Run: ${chunk.run_id ?? 'none'}\n` +
+      `Cohort: ${state.cohort_id}\n` +
+      `Group: ${cohortIndex}\n`,
+  )
 }
 
 /**
@@ -1505,6 +1667,8 @@ function writeIntegrationRecord(
   cohortIndex: number,
   record: {
     merged: CohortChunkRecord[]
+    /** Commit the harness created for a unit worktree that held work. */
+    unit_commits?: ReadonlyMap<string, string>
     abandoned?: Array<{ chunk: string; note: string; recorded_at: string }>
     base_commit_before_merge: string
     merge_commit: string
@@ -1531,6 +1695,7 @@ function writeIntegrationRecord(
       branch_head: chunk.branch
         ? gitRevParse(repositoryRoot, chunk.branch)
         : null,
+      unit_commit: record.unit_commits?.get(chunk.id) ?? null,
     })),
     abandoned_chunks: record.abandoned ?? [],
     base_commit_before_merge: record.base_commit_before_merge,
@@ -1659,6 +1824,7 @@ function mergeThroughReconcile(
   state: CohortSessionState,
   cohortIndex: number,
   chunks: CohortChunkRecord[],
+  unitCommits: ReadonlyMap<string, string>,
 ): MergeOutcome {
   const repositoryRoot = cohortRepositoryRoot(root, state)
   const target = integrationBranch(state)
@@ -1725,6 +1891,7 @@ function mergeThroughReconcile(
     merge_commit: mergeCommit,
     evidence_path: writeIntegrationRecord(root, state, cohortIndex, {
       merged: chunks,
+      unit_commits: unitCommits,
       base_commit_before_merge: baseBefore,
       merge_commit: mergeCommit,
       reconcile_evidence_path: result.evidence_path,
@@ -1754,6 +1921,7 @@ function mergeSingleChunkBranch(
   state: CohortSessionState,
   cohortIndex: number,
   chunk: CohortChunkRecord,
+  unitCommits: ReadonlyMap<string, string>,
 ): MergeOutcome {
   const branch = chunk.branch
   const target = integrationBranch(state)
@@ -1805,6 +1973,7 @@ function mergeSingleChunkBranch(
     merge_commit: mergeCommit,
     evidence_path: writeIntegrationRecord(root, state, cohortIndex, {
       merged: [chunk],
+      unit_commits: unitCommits,
       base_commit_before_merge: baseBefore,
       merge_commit: mergeCommit,
     }),
@@ -2446,9 +2615,9 @@ function newestRun(runs: RunState[]): RunState | undefined {
  * Continue the plan after one cohort's merge proof landed: start the next
  * cohort, or the release run when no cohort is left.
  *
- * Both branches add only worktrees, branches, and run records. The merge that
- * preceded them was the operator's explicit `cohort integrate`, so the
- * continuation stays inside the no-commit bound every autostart keeps.
+ * Both branches add only worktrees, branches, and run records. The unit
+ * commits and the merge that precede them belong to the integration, so the
+ * continuation itself touches no source-control history.
  */
 function continueAfterIntegration(
   root: string,

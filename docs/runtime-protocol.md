@@ -572,6 +572,8 @@ Deterministic-gate evidence logs and pre-implementation baselines bound each cap
 
 The operator note is the directive. `--criteria` is optional descriptive scope, `--stage` selects the source stage when needed, and `--to` optionally selects the destination; otherwise the waived stage's success transition is used. The harness records known failures, source and directive-time fingerprints, the operator's terms, and the resulting route, but does not reinterpret those facts as restrictions. A waiver remains active until a later attempt of the same stage supersedes it. Deferred criteria and linked spotfix cases are optional operator choices.
 
+Away mode can author a waiver when its snapshotted `allowed_actions` includes `waive-gate`. The evaluator's option note becomes the directive, and it must name the destination stage or the gate it waives, because a route forward past a gate is otherwise refused. Such a waiver records away authorship: the artifact heading names the away-mode directive, the persisted event is `away_gate_waived` rather than `operator_gate_waived`, and the waiver carries `actor: "away"`. Nothing about it is presented as the operator's own decision. An agent still may not originate a waiver.
+
 ## Evidence and invalidation
 
 Every deterministic check records:

@@ -47,15 +47,31 @@
       "audience": ["harness"]
     },
     "A direct advance of one bound run MUST meet the same refusal. The ordering blocker therefore holds outside the group command.",
-    "The merge of a completed group into its base branch MUST be an explicit operator command. The command MUST write the merge proof only after the merge lands cleanly.",
-    "An unsuccessful run, a workspace with uncommitted work, or a conflicting merge MUST leave the merge proof unwritten. The next group then stays blocked.",
+    "The merge of a completed group into its base branch is harness-owned. The harness MUST perform it as soon as every unit run of the group is resolved, and MUST write the merge proof only after the merge lands cleanly. `pan cohort integrate` stays available as the retry of a failed automatic advance.",
+    "An unsuccessful unit run, an integration checkout holding uncommitted work, or a conflicting merge MUST leave the merge proof unwritten. The next group then stays blocked.",
+    {
+      "text": "When every unit run of the active group is resolved and that group holds no merge proof, the harness MUST integrate the group and continue the plan with no operator command (`tests/integration/cohort-auto-advance.test.ts::a finished group integrates and advances with no operator command`).",
+      "audience": ["harness"]
+    },
+    {
+      "text": "The harness MUST commit each unit worktree that still holds uncommitted work when it integrates that unit's group, taken after the unit's run reports success. The commit MUST carry only that worktree's own changes and MUST name the unit id and the run id (`tests/integration/cohort-auto-advance.test.ts::each harness unit commit carries only its own worktree and names the unit and run`).",
+      "audience": ["harness"]
+    },
+    {
+      "text": "The automatic advance MUST act only on the submitting run's own group. Concurrent submissions of sibling unit runs MUST produce exactly one merge proof for that group, and a sibling that loses the race MUST report no advance rather than a failure against a later group (`tests/integration/cohort-auto-advance.test.ts::concurrent sibling submissions integrate the group exactly once`).",
+      "audience": ["harness"]
+    },
+    {
+      "text": "An automatic advance that fails MUST leave the merge proof unwritten and MUST report the concrete error with the manual integrate command. That command MUST stay available and idempotent as the retry (`tests/integration/cohort-auto-advance.test.ts::a failed automatic advance reports the manual command and the retry completes it`).",
+      "audience": ["harness"]
+    },
     "The exclusion of one unit from a group MUST be an operator decision. The record MUST carry the operator's stated reason.",
     {
       "text": "The harness MUST refuse to remove a unit's workspace while its run is live or its workspace holds uncommitted work. Only an explicit operator force overrides that refusal (`tests/integration/cohort-fanout-start.test.ts::cleaning a session removes its chunk worktrees and keeps the branches`).",
       "audience": ["harness"]
     },
     {
-      "text": "Run creation MUST perform no source-control action beyond adding worktrees and branches. This rule covers the runs of a group, a single-unit delivery run, and the release run. Committing, merging, pushing, and branch deletion stay operator-owned. The only merge the harness performs is the one `pan cohort integrate` runs as the operator's explicit command (`tests/integration/worktree-cli.test.ts::worktree create, list, source selection, and targeted init preserve the main checkout`).",
+      "text": "Run creation MUST perform no source-control action beyond adding worktrees and branches. This rule covers the runs of a group, a single-unit delivery run, and the release run. The unit commit and the group merge belong to the integration path alone; pushing, publication, deployment, and branch deletion stay operator-owned (`tests/integration/worktree-cli.test.ts::worktree create, list, source selection, and targeted init preserve the main checkout`).",
       "audience": ["harness"]
     },
     "Every unit run, single-unit delivery run, and release run MUST reach the shared plan context through an audited reference. The reference MUST state the source path, the content digest, and the read trigger. A run MUST NOT receive a copy of that context.",
@@ -93,7 +109,7 @@
       "audience": ["supervisor"]
     },
     {
-      "text": "The commit of a finished unit branch stays operator-owned. A supervisor commits a unit worktree only under an explicit operator directive that covers that commit. It MUST commit only that worktree's changes. It MUST name the unit id and run id in the commit message.",
+      "text": "The unit commit and the group merge are harness-owned. A supervisor MUST NOT commit a unit worktree or merge a group by hand. When the automatic advance reports a failure, the supervisor MUST report that error with the manual integrate command the harness named rather than performing the steps itself.",
       "audience": ["supervisor"]
     }
   ],

@@ -507,3 +507,87 @@ test('a waiver that would skip an unnamed gate requires an explicit destination'
 
   assert.equal(byFlag.state.current_stage, 'ship')
 })
+
+test('an away-authored waiver records away authorship and never the operator', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title: 'Away-authored waiver fixture',
+  })
+  const runId = state.run_id
+
+  setRunStage(root, runId, 'verify', 'Operator routes straight to verify.')
+
+  const waived = waiveGate(root, runId, {
+    stageSlug: 'verify',
+    actor: 'away',
+    note: 'The browser evidence is environment-blocked by a missing Chrome for Testing bundle; route the run to ship.',
+  })
+
+  assert.equal(waived.state.current_stage, 'ship')
+  assert.equal(waived.waiver.actor, 'away')
+
+  // AWAY-001 forbids presenting an away action as the operator's own, so the
+  // artifact and the event have to say who acted.
+  const artifact = readFileSync(
+    path.join(root, waived.waiver.artifact_path),
+    'utf8',
+  )
+
+  assert.match(artifact, /Away-mode waiver directive/u)
+  assert.ok(
+    !/Operator waiver directive/u.test(artifact),
+    'the away waiver claims operator authorship',
+  )
+
+  const events = readFileSync(
+    path.join(
+      root,
+      'runtime',
+      'logs',
+      'workflows',
+      runId,
+      'agent',
+      'events.jsonl',
+    ),
+    'utf8',
+  )
+    .split('\n')
+    .filter((line) => line.trim().length > 0)
+    .map((line) => JSON.parse(line) as { type: string; actor?: string })
+
+  assert.ok(
+    events.some(
+      (event) => event.type === 'away_gate_waived' && event.actor === 'away',
+    ),
+    'no away_gate_waived event was recorded',
+  )
+  assert.ok(
+    !events.some((event) => event.type === 'operator_gate_waived'),
+    'the away waiver recorded an operator waiver event',
+  )
+})
+
+test('an operator waiver keeps operator authorship and records no away actor', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'delivery',
+    requestPath: 'request.md',
+    title: 'Operator waiver authorship fixture',
+  })
+  const runId = state.run_id
+
+  setRunStage(root, runId, 'verify', 'Operator routes straight to verify.')
+
+  const waived = waiveGate(root, runId, {
+    stageSlug: 'verify',
+    note: 'Environment-blocked; route the run to ship as it stands.',
+  })
+
+  assert.equal(waived.waiver.actor, undefined)
+  assert.match(
+    readFileSync(path.join(root, waived.waiver.artifact_path), 'utf8'),
+    /Operator waiver directive/u,
+  )
+})

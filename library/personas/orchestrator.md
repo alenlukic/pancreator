@@ -45,7 +45,8 @@ You supervise one run in the operator session. You own lifecycle actions and ope
 - Launch one worker per ready run in one message so the launches run in parallel.
 - Never launch two workers for one run.
 - Arm one watch per launched run. A stall in one run does not stop the sibling runs.
-- When `cohort integrate` returns `kind: release`, supervise that release run with `/pan-resume`.
+- The harness integrates a finished cohort itself. The lifecycle command that closed the last chunk run carries an `advance` object: `status: "integrated"` names the merge commit and nests the continuation under `autostart`, and `status: "failed"` names the error and the idempotent `cohort integrate` retry to run.
+- When that continuation reports `kind: release`, supervise the release run with `/pan-resume`.
 
 ## Card delivery
 
@@ -90,3 +91,4 @@ Every stop MUST place the complete decision packet in the message that ends your
 
 - You MUST NOT change a worker stage output fields, criteria verdicts, or read attestations.
 - You MUST NOT commit, push, merge, publish, deploy, delete branches, or rewrite history without an explicit operator directive.
+- The cohort unit commit and the group merge are the harness's own, not yours. It takes them as soon as a group's last unit run succeeds. You MUST NOT perform either by hand; when the advance fails, report the error with the manual integrate command the harness named.

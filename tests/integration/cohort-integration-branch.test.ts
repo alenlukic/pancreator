@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { existsSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -16,7 +16,6 @@ import { createFixture } from '../fixture-template.js'
 import {
   commitInChunk,
   git,
-  markEmbedded,
   markSucceeded,
   ratifiedPlanRun,
 } from './cohort-helpers.js'
@@ -183,7 +182,7 @@ test('--into-branch integrates past a dirty base checkout and retargets later co
   )
 })
 
-test('a dirty chunk worktree leaves the cohort unsatisfied', () => {
+test('a dirty chunk worktree is committed by the harness and integrates', () => {
   const root = createFixture()
   const planRunId = ratifiedPlanRun(root, [
     { id: 'alpha', cohort_index: 1 },
@@ -195,21 +194,23 @@ test('a dirty chunk worktree leaves the cohort unsatisfied', () => {
 
   commitInChunk(root, workspace, 'alpha')
   markSucceeded(root, started.chunks[0].run_id)
-  writeFileSync(path.join(root, workspace, 'alpha.txt'), 'uncommitted\n')
-  markEmbedded(root)
+  git(root, ['add', '-A'])
+  git(root, ['commit', '-m', 'chore: cohort fixture baseline'])
 
-  assert.throws(
-    () => integrateCohort(root, session.cohort_id),
-    (error: unknown) =>
-      error instanceof PanError &&
-      error.code === 'COHORT_INTEGRATION_INCOMPLETE' &&
-      error.message.includes('uncommitted work') &&
-      error.message.includes(
-        `'./.pancreator/bin/pan cohort integrate ${session.cohort_id}' again`,
-      ),
-  )
+  // The unit's run already reported success, so what it left uncommitted is
+  // its deliverable rather than work in progress.
+  writeFileSync(path.join(root, workspace, 'alpha.txt'), 'uncommitted\n')
+
+  const integration = integrateCohort(root, session.cohort_id)
+
+  assert.deepEqual(integration.merged_chunks, ['alpha'])
   assert.deepEqual(
     cohortStatus(root, session.cohort_id).satisfied_cohort_indexes,
-    [],
+    [1],
+  )
+  assert.equal(
+    readFileSync(path.join(root, 'alpha.txt'), 'utf8'),
+    'uncommitted\n',
+    'the harness commit never reached the base branch',
   )
 })

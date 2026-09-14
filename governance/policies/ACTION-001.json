@@ -5,6 +5,7 @@
   "summary": "Agents MUST prepare reversible changes and MUST NOT perform irreversible source-control actions without explicit operator approval.",
   "instructions": [
     "Agents MUST NOT run git commit, git push, gh pr create, gh pr merge, branch deletion, history rewrite, or destructive reset commands unless the active invocation records operator approval for that action.",
+    "A commit or a merge the harness itself performs while integrating its own managed worktrees is the one carve-out. Those are harness actions rather than agent-run Git commands, so an agent MAY invoke the command that retries a failed integration and needs no recorded directive for it. Push, publication, deployment, and branch deletion stay operator-owned everywhere, including there.",
     "Agents SHOULD preserve the pre-task workspace state and MUST record enough evidence to diagnose or revert a failed change."
   ]
 }

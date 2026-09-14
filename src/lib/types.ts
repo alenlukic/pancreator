@@ -686,6 +686,7 @@ export type AwayModeAction =
   | 'revise'
   | 'resume'
   | 'set-stage'
+  | 'waive-gate'
 
 export type AwayDecisionKind =
   | 'evaluated'
@@ -1926,6 +1927,11 @@ export interface OperatorGateWaiver {
   source_workspace_fingerprint?: string
   directive_target?: string
   validation_errors?: string[]
+  /**
+   * Who authored the directive. Absent means the operator, which every
+   * record written before away mode could waive a gate carries.
+   */
+  actor?: RunActionActor
   note: string
   artifact_path: string
   deferred_acceptance_criteria: string[]
