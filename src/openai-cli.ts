@@ -13,6 +13,8 @@ import {
 } from './lib/executors/openai-auth.js'
 
 const REASONING_EFFORTS: readonly OpenAiReasoningEffort[] = [
+  'none',
+  'minimal',
   'low',
   'medium',
   'high',
@@ -47,7 +49,8 @@ Call an OpenAI model through the Responses API.
   --doctor                 Report authentication readiness without a request.
   --help                   Show this message.
 
-Reads OPENAI_API_KEY from the process environment or a repository-local .env.`
+Reads OPENAI_API_KEY from the process environment or a repository-local .env.
+Prefer stdin for sensitive prompts because process arguments can be inspected.`
 
 function badArgs(message: string): PanError {
   return new PanError(message, { code: 'OPENAI_CLI_BAD_ARGS' })

@@ -74,6 +74,7 @@ test('a successful call extracts output text, id, and usage', async () => {
   assert.equal(headers.Authorization, 'Bearer sk-test')
   assert.equal(sentBody.model, 'gpt-6-astra')
   assert.equal(sentBody.input, 'Say hello.')
+  assert.equal(sentBody.store, false)
 })
 
 test('optional request controls are forwarded when given', async () => {
@@ -154,6 +155,55 @@ test('a successful response without text fails explicitly', async () => {
 
   assert.equal(result.ok, false)
   assert.equal(result.code, 'OPENAI_NO_OUTPUT')
+})
+
+test('an incomplete response fails even when it contains partial text', async () => {
+  const { fetchImpl } = fakeFetch(
+    () =>
+      new Response(
+        JSON.stringify({
+          status: 'incomplete',
+          incomplete_details: { reason: 'max_output_tokens' },
+          output_text: 'Partial',
+        }),
+        { status: 200 },
+      ),
+  )
+
+  const result = await createOpenAiResponse({
+    apiKey: 'sk-test',
+    model: 'gpt-6-astra',
+    input: 'x',
+    fetchImpl,
+  })
+
+  assert.equal(result.ok, false)
+  assert.equal(result.code, 'OPENAI_INCOMPLETE_RESPONSE')
+  assert.match(result.error ?? '', /max_output_tokens/u)
+})
+
+test('a response-level error fails despite an HTTP success status', async () => {
+  const { fetchImpl } = fakeFetch(
+    () =>
+      new Response(
+        JSON.stringify({
+          status: 'failed',
+          error: { message: 'Generation failed.' },
+        }),
+        { status: 200 },
+      ),
+  )
+
+  const result = await createOpenAiResponse({
+    apiKey: 'sk-test',
+    model: 'gpt-6-astra',
+    input: 'x',
+    fetchImpl,
+  })
+
+  assert.equal(result.ok, false)
+  assert.equal(result.code, 'OPENAI_RESPONSE_NOT_COMPLETED')
+  assert.equal(result.error, 'Generation failed.')
 })
 
 test('a non-2xx status surfaces the API error message', async () => {

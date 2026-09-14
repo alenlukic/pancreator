@@ -2,7 +2,14 @@ import { isRecord } from '../io.js'
 
 export const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses'
 
-export type OpenAiReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max'
+export type OpenAiReasoningEffort =
+  | 'none'
+  | 'minimal'
+  | 'low'
+  | 'medium'
+  | 'high'
+  | 'xhigh'
+  | 'max'
 
 export interface OpenAiResponseRequest {
   apiKey: string
@@ -115,6 +122,7 @@ export async function createOpenAiResponse(
       body: JSON.stringify({
         model: request.model,
         input: request.input,
+        store: false,
         ...(request.instructions ? { instructions: request.instructions } : {}),
         ...(request.reasoningEffort
           ? { reasoning: { effort: request.reasoningEffort } }
@@ -183,6 +191,49 @@ export async function createOpenAiResponse(
       raw: parsedBody,
       error: 'Response body was valid JSON but not an object.',
       code: 'OPENAI_INVALID_RESPONSE',
+    }
+  }
+
+  const responseError = apiErrorMessage(parsedBody)
+  const responseStatus = parsedBody.status
+
+  if (responseStatus === 'incomplete') {
+    const reason = isRecord(parsedBody.incomplete_details)
+      ? parsedBody.incomplete_details.reason
+      : undefined
+
+    return {
+      ok: false,
+      model: request.model,
+      httpStatus: response.status,
+      raw: parsedBody,
+      error:
+        'OpenAI returned an incomplete response' +
+        (typeof reason === 'string' ? `: ${reason}.` : '.'),
+      code: 'OPENAI_INCOMPLETE_RESPONSE',
+    }
+  }
+
+  if (typeof responseStatus === 'string' && responseStatus !== 'completed') {
+    return {
+      ok: false,
+      model: request.model,
+      httpStatus: response.status,
+      raw: parsedBody,
+      error:
+        responseError ?? `OpenAI returned response status '${responseStatus}'.`,
+      code: 'OPENAI_RESPONSE_NOT_COMPLETED',
+    }
+  }
+
+  if (responseError !== undefined) {
+    return {
+      ok: false,
+      model: request.model,
+      httpStatus: response.status,
+      raw: parsedBody,
+      error: responseError,
+      code: 'OPENAI_RESPONSE_ERROR',
     }
   }
 
