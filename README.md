@@ -31,6 +31,9 @@ Pancreator adds a set of Cursor commands, supporting agents, and repository-awar
 - Git
 - Cursor with project commands and subagents enabled
 - Optional MCP servers configured in Cursor for teams that want them
+- Optional external stage executors, each needed only when the active persona
+  mapping routes a persona to one: the Claude Code CLI for `claude-code:`, and
+  an `OPENAI_API_KEY` for `openai:`
 
 ## Quick Start In Cursor
 

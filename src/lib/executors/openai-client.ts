@@ -11,16 +11,45 @@ export type OpenAiReasoningEffort =
   | 'xhigh'
   | 'max'
 
+/**
+ * One Responses conversation item. The harness resends the accumulated items
+ * every round because `store: false` leaves nothing server-side to reference.
+ */
+export type OpenAiInputItem =
+  | { role: 'user' | 'assistant' | 'system'; content: string }
+  | { type: 'function_call'; call_id: string; name: string; arguments: string }
+  | { type: 'function_call_output'; call_id: string; output: string }
+
+/** Function-tool declaration in the flat shape the Responses API expects. */
+export interface OpenAiToolDefinition {
+  type: 'function'
+  name: string
+  description: string
+  parameters: Record<string, unknown>
+  strict?: boolean
+}
+
+/** One tool invocation the model asked for in a single response. */
+export interface OpenAiFunctionCall {
+  call_id: string
+  name: string
+  /** Raw JSON text. The caller validates it before use. */
+  arguments: string
+}
+
 export interface OpenAiResponseRequest {
   apiKey: string
   model: string
-  input: string
+  input: string | OpenAiInputItem[]
   instructions?: string
   reasoningEffort?: OpenAiReasoningEffort
   maxOutputTokens?: number
+  tools?: OpenAiToolDefinition[]
   timeoutMs?: number
   /** Injected for tests. Defaults to the global `fetch`. */
   fetchImpl?: typeof fetch
+  /** Injected for tests. Overrides the Responses endpoint. */
+  endpoint?: string
 }
 
 export interface OpenAiUsage {
@@ -35,6 +64,8 @@ export interface OpenAiResponseResult {
   httpStatus: number | null
   responseId?: string
   outputText?: string
+  /** Empty when the model returned only a message. */
+  functionCalls: OpenAiFunctionCall[]
   usage?: OpenAiUsage
   raw?: unknown
   error?: string
@@ -77,6 +108,34 @@ function extractOutputText(body: Record<string, unknown>): string | undefined {
   return parts.length > 0 ? parts.join('') : undefined
 }
 
+function extractFunctionCalls(
+  body: Record<string, unknown>,
+): OpenAiFunctionCall[] {
+  if (!Array.isArray(body.output)) {
+    return []
+  }
+
+  const calls: OpenAiFunctionCall[] = []
+
+  for (const item of body.output) {
+    if (
+      isRecord(item) &&
+      item.type === 'function_call' &&
+      typeof item.call_id === 'string' &&
+      typeof item.name === 'string' &&
+      typeof item.arguments === 'string'
+    ) {
+      calls.push({
+        call_id: item.call_id,
+        name: item.name,
+        arguments: item.arguments,
+      })
+    }
+  }
+
+  return calls
+}
+
 function extractUsage(usage: unknown): OpenAiUsage | undefined {
   if (
     !isRecord(usage) ||
@@ -107,13 +166,14 @@ export async function createOpenAiResponse(
   request: OpenAiResponseRequest,
 ): Promise<OpenAiResponseResult> {
   const fetchImpl = request.fetchImpl ?? fetch
+  const endpoint = request.endpoint ?? OPENAI_RESPONSES_URL
   const timeoutMs = request.timeoutMs ?? DEFAULT_TIMEOUT_MS
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   let response: Response
 
   try {
-    response = await fetchImpl(OPENAI_RESPONSES_URL, {
+    response = await fetchImpl(endpoint, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${request.apiKey}`,
@@ -130,6 +190,9 @@ export async function createOpenAiResponse(
         ...(request.maxOutputTokens !== undefined
           ? { max_output_tokens: request.maxOutputTokens }
           : {}),
+        ...(request.tools && request.tools.length > 0
+          ? { tools: request.tools }
+          : {}),
       }),
       signal: controller.signal,
     })
@@ -141,9 +204,10 @@ export async function createOpenAiResponse(
       ok: false,
       model: request.model,
       httpStatus: null,
+      functionCalls: [],
       error: aborted
-        ? `Request to ${OPENAI_RESPONSES_URL} timed out after ${timeoutMs}ms.`
-        : `Request to ${OPENAI_RESPONSES_URL} failed: ${error instanceof Error ? error.message : String(error)}.`,
+        ? `Request to ${endpoint} timed out after ${timeoutMs}ms.`
+        : `Request to ${endpoint} failed: ${error instanceof Error ? error.message : String(error)}.`,
       code: aborted ? 'OPENAI_TIMEOUT' : 'OPENAI_REQUEST_FAILED',
     }
   }
@@ -161,9 +225,10 @@ export async function createOpenAiResponse(
       ok: false,
       model: request.model,
       httpStatus: response.status,
+      functionCalls: [],
       error: aborted
-        ? `Request to ${OPENAI_RESPONSES_URL} timed out after ${timeoutMs}ms.`
-        : `Response from ${OPENAI_RESPONSES_URL} was not valid JSON (status ${response.status}).`,
+        ? `Request to ${endpoint} timed out after ${timeoutMs}ms.`
+        : `Response from ${endpoint} was not valid JSON (status ${response.status}).`,
       code: aborted ? 'OPENAI_TIMEOUT' : 'OPENAI_INVALID_RESPONSE',
     }
   } finally {
@@ -175,6 +240,7 @@ export async function createOpenAiResponse(
       ok: false,
       model: request.model,
       httpStatus: response.status,
+      functionCalls: [],
       raw: parsedBody,
       error:
         apiErrorMessage(parsedBody) ??
@@ -188,6 +254,7 @@ export async function createOpenAiResponse(
       ok: false,
       model: request.model,
       httpStatus: response.status,
+      functionCalls: [],
       raw: parsedBody,
       error: 'Response body was valid JSON but not an object.',
       code: 'OPENAI_INVALID_RESPONSE',
@@ -206,6 +273,7 @@ export async function createOpenAiResponse(
       ok: false,
       model: request.model,
       httpStatus: response.status,
+      functionCalls: [],
       raw: parsedBody,
       error:
         'OpenAI returned an incomplete response' +
@@ -219,6 +287,7 @@ export async function createOpenAiResponse(
       ok: false,
       model: request.model,
       httpStatus: response.status,
+      functionCalls: [],
       raw: parsedBody,
       error:
         responseError ?? `OpenAI returned response status '${responseStatus}'.`,
@@ -231,6 +300,7 @@ export async function createOpenAiResponse(
       ok: false,
       model: request.model,
       httpStatus: response.status,
+      functionCalls: [],
       raw: parsedBody,
       error: responseError,
       code: 'OPENAI_RESPONSE_ERROR',
@@ -238,15 +308,20 @@ export async function createOpenAiResponse(
   }
 
   const outputText = extractOutputText(parsedBody)
+  const functionCalls = extractFunctionCalls(parsedBody)
   const usage = extractUsage(parsedBody.usage)
 
-  if (outputText === undefined) {
+  // A tool-calling turn legitimately carries no text, so an empty response is
+  // only a failure when the model asked for nothing at all.
+  if (outputText === undefined && functionCalls.length === 0) {
     return {
       ok: false,
       model: request.model,
       httpStatus: response.status,
+      functionCalls: [],
       raw: parsedBody,
-      error: 'OpenAI returned a successful response without output text.',
+      error:
+        'OpenAI returned a successful response without output text or a tool call.',
       code: 'OPENAI_NO_OUTPUT',
     }
   }
@@ -257,7 +332,8 @@ export async function createOpenAiResponse(
       typeof parsedBody.model === 'string' ? parsedBody.model : request.model,
     httpStatus: response.status,
     ...(typeof parsedBody.id === 'string' ? { responseId: parsedBody.id } : {}),
-    outputText,
+    ...(outputText !== undefined ? { outputText } : {}),
+    functionCalls,
     ...(usage !== undefined ? { usage } : {}),
     raw: parsedBody,
   }

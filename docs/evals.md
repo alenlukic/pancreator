@@ -2,7 +2,7 @@
 
 Evals are on-demand, bounded toy workflow runs plus deterministic graders over the run's records. They exist because a unit test cannot exercise agent behavior: a unit test proves that the harness rejects a bad output, but only a real run shows whether the supervisor and workers obeyed the policies the harness delivered. Evals are the way to assess that the governance works.
 
-Evals run outside `npm test`, outside every repository-check profile, and outside every workflow run. The operator starts them. Nothing in an eval calls a model or the network on its own: the harness drives the run, and a Cursor supervisor or a `claude-code:` executor does the agent work exactly as in production.
+Evals run outside `npm test`, outside every repository-check profile, and outside every workflow run. The operator starts them. Nothing in an eval calls a model or the network on its own: the harness drives the run, and a Cursor supervisor or an external executor does the agent work exactly as in production.
 
 ## How evals differ from unit tests
 
@@ -36,7 +36,7 @@ Evals run outside `npm test`, outside every repository-check profile, and outsid
 `eval run` copies the scenario's fixture to `runtime/logs/evals/<eval-id>/workspace`, gives the copy a Git identity, writes the request, and creates a run with the scenario's workflow, verification level, and involvement profile. It then advances the run itself for every harness-owned step:
 
 - `prepare_invocation` runs `prepareInvocation`, which runs the workspace setup commands once per worktree-bound run whose workflow has a stage that needs a provisioned tree (a source stage, a shell criterion, or evidence workers), recorded on the run state as `workspace_setup` with status `passed`, `failed`, or `not_configured`, and for a source-allowed stage captures the baselines in the toy workspace. A `planning` or `design` run records `not_configured` and runs no setup, and a run with captured baselines but no record is treated as provisioned.
-- `invoke_agent` for a persona whose mapping carries the `claude-code:` executor prefix runs the same path as `pan delegate`, then submits the output the executor wrote.
+- `invoke_agent` for a persona whose mapping carries an external executor prefix (`claude-code:` or `openai:`) runs the same path as `pan delegate`, then submits the output the executor wrote. Only a `cursor` persona is handed back to the operator's supervisor session.
 - An operator stop at a stage the scenario scripts applies that decision through the same path as `pan decide`, including the delivery routing hook: a `planning` scenario routes on approval by default, exactly like `pan init`, so the scripted approval starts one `delivery` run for a single-chunk plan or opens the cohort session and starts the first batch of chunk runs for a wider one. `cohort.autostart: false` records the `--no-autostart` opt-out, and `cohort.max_parallel` records the session's parallelism limit.
 
 Every run renders a supervisor card that a supervisor must read and attest before the first `prepare`. The eval driver is not a supervisor, so by default it hands off at that point and prints the exact `pan governance attest-supervisor` command. Pass `--attest-supervisor-card` to let the driver attest on your behalf; `eval.json` then records `supervisor_card_attested_by: "eval-driver"` so the report never hides who attested.

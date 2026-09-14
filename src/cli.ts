@@ -64,6 +64,7 @@ import {
   probeCursorModels,
 } from './lib/executors/cursor-probe.js'
 import { claudeCodeVersionPreflight } from './lib/executors/claude-code.js'
+import { openAiExecutorPreflight } from './lib/executors/openai-auth.js'
 import { browserReadiness } from './lib/browser-readiness.js'
 import { errorMessage, PanError } from './lib/errors.js'
 import { assertArgvElementsWithinLimit } from './lib/argv-limits.js'
@@ -404,9 +405,9 @@ export const HELP_BODY = `Usage:
 
 Cursor's supervisor reads invocation cards, delegates cursor-executor stages to
 named Cursor subagents, and returns structured output to this CLI. Stages whose
-persona mapping carries an external executor prefix (claude-code:<model>) are
-delegated by the harness itself: 'pan delegate' spawns the executor CLI with
-the canonical card and authors the delegation evidence.
+persona mapping carries an external executor prefix (claude-code:<model> or
+openai:<model>) are delegated by the harness itself: 'pan delegate' runs the
+executor with the canonical card and authors the delegation evidence.
 `
 
 function helpText(root: string): string {
@@ -4326,12 +4327,17 @@ async function main(): Promise<void> {
             ? {}
             : { error: repositoryChecksError }),
         },
-        // Reported only when the active mapping routes a persona to the
-        // claude-code executor; a pure-Cursor installation owes no binary.
+        // Each external executor is reported only when the active mapping
+        // routes a persona to it; a pure-Cursor installation owes neither.
         ...(Object.values(pipelineConfig.config.personas).some(
           (model) => personaExecutorOf(model) === 'claude-code',
         )
           ? { claude_code: claudeCodeVersionPreflight() }
+          : {}),
+        ...(Object.values(pipelineConfig.config.personas).some(
+          (model) => personaExecutorOf(model) === 'openai',
+        )
+          ? { openai: openAiExecutorPreflight(root) }
           : {}),
         validation,
         constraints: {
@@ -4344,6 +4350,7 @@ async function main(): Promise<void> {
             'Cursor rules',
             'MCP tools available to Cursor',
             'Claude Code CLI (external stage executor)',
+            'OpenAI Responses API (external stage executor)',
           ],
         },
       }

@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
+import { personaExecutorOf } from '../../src/lib/executors/mapping.js'
 import {
   loadPipelineConfig,
   makePipelineConfigSnapshot,
@@ -328,6 +329,7 @@ test('cursor tier aliases stay distinct from explicit executor mappings', () => 
         explicitCursor: 'cursor:gpt-5.2',
         explicitOptions: 'gpt-5.6-sol[reasoning=xhigh,fast=false]',
         external: 'claude-code:claude-opus-5[session-resume=true]',
+        openai: 'openai:gpt-6-astra[effort=high]',
       },
     },
   })
@@ -337,7 +339,68 @@ test('cursor tier aliases stay distinct from explicit executor mappings', () => 
     explicitCursor: 'cursor:gpt-5.2',
     explicitOptions: 'gpt-5.6-sol[reasoning=xhigh,fast=false]',
     external: 'claude-code:claude-opus-5[session-resume=true]',
+    openai: 'openai:gpt-6-astra[effort=high]',
   })
+})
+
+test('an oai tier alias and an openai executor prefix mean different things', () => {
+  // `oai:` names a Cursor tier family. `openai:` names the runtime that
+  // executes the stage. Registering the second must not capture the first.
+  const file = parsePipelineConfig({
+    schema_version: 1,
+    active_config: 'default',
+    oai: { balanced: 'gpt-5.5-medium', ultra: 'gpt-5.6-sol-high' },
+    configs: {
+      default: {
+        tier: 'oai:balanced',
+        runtime: 'openai:gpt-6-astra',
+      },
+    },
+  })
+
+  assert.deepEqual(file.configs.default.personas, {
+    tier: 'gpt-5.5-medium',
+    runtime: 'openai:gpt-6-astra',
+  })
+  assert.equal(personaExecutorOf(file.configs.default.personas.tier), 'cursor')
+  assert.equal(
+    personaExecutorOf(file.configs.default.personas.runtime),
+    'openai',
+  )
+})
+
+test('the config schema admits an openai spec and refuses one in an alias', () => {
+  const schema = JSON.parse(
+    readFileSync(
+      path.join(process.cwd(), 'library/schemas/config.schema.json'),
+      'utf8',
+    ),
+  ) as {
+    $defs: {
+      modelSpec: { pattern: string }
+      aliasValue: { allOf: { not?: { pattern: string } }[] }
+    }
+  }
+  const modelSpec = new RegExp(schema.$defs.modelSpec.pattern, 'u')
+
+  assert.equal(modelSpec.test('openai:gpt-6-astra'), true)
+  assert.equal(modelSpec.test('claude-code:claude-opus-5'), true)
+  assert.equal(modelSpec.test('cursor:auto'), true)
+  assert.equal(modelSpec.test('gpt-5.6-sol'), true)
+  assert.equal(modelSpec.test('codex:gpt-5.6-sol'), false)
+
+  // The alias side refuses every external executor prefix, so an alias family
+  // cannot move a persona onto another runtime.
+  const refusedByAlias = (value: string): boolean =>
+    schema.$defs.aliasValue.allOf.some((clause) =>
+      clause.not === undefined
+        ? false
+        : new RegExp(clause.not.pattern, 'u').test(value),
+    )
+
+  assert.equal(refusedByAlias('openai:gpt-6-astra'), true)
+  assert.equal(refusedByAlias('claude-code:claude-opus-5'), true)
+  assert.equal(refusedByAlias('gpt-5.6-sol'), false)
 })
 
 test('pipeline config accepts legacy nested named-config mappings', () => {

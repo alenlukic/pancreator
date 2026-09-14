@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { copyFileSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { setPriority } from 'node:os'
@@ -27,7 +27,10 @@ import {
   validateBriefSystem,
 } from './briefs.js'
 import { errorMessage, invariant } from './errors.js'
-import { canonicalPersonaMapping } from './executors/mapping.js'
+import {
+  canonicalPersonaMapping,
+  type ParsedPersonaMapping,
+} from './executors/mapping.js'
 import {
   expectedCursorModelForSpec,
   probeCursorModelSpec,
@@ -139,8 +142,16 @@ import {
   claudeCodeCredentialPreflight,
   claudeCodeVersionPreflight,
   runClaudeCode,
-  type ClaudeCodeInvocationResult,
 } from './executors/claude-code.js'
+import {
+  openAiExecutorPreflight,
+  resolveOpenAiApiKey,
+} from './executors/openai-auth.js'
+import type { OpenAiToolPolicy } from './executors/openai-tools.js'
+import {
+  OPENAI_SESSION_DEFAULTS,
+  redactOpenAiKey,
+} from './executors/openai-session.js'
 import {
   applyOperatorInvolvement,
   loadOperatorInvolvementFile,
@@ -204,6 +215,9 @@ import type {
   EntryGateReach,
   EvidenceWorkerAttempt,
   ExternalDelegationRecord,
+  ExternalMcpCapabilities,
+  ExternalPersonaExecutorKind,
+  ExternalRequestSettings,
   GovernanceArtifactIssue,
   Invocation,
   ManagedWorktreeReference,
@@ -3265,7 +3279,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
   const pipelineConfig = pipelineOverride
     ? overriddenPipelineConfig(loadPipelineConfig(root), pipelineOverride)
     : loadPipelineConfig(root, options.pipelineConfigName ?? undefined)
-  let workflowUsesClaudeCode = false
+  const workflowExternalExecutors = new Set<ExternalPersonaExecutorKind>()
 
   // The orchestrator persona is the supervisor running in the Cursor chat, so it
   // cannot be handed to an external process. Every run has a supervisor, whether
@@ -3301,22 +3315,30 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
           { code: 'MISSING_CURSOR_AGENT' },
         )
       } else {
-        workflowUsesClaudeCode = true
+        workflowExternalExecutors.add(mapping.executor)
       }
     }
   }
 
   // Fail closed before any run state exists: an external persona whose
-  // executor binary is absent or too old could never be delegated, and
-  // substituting Cursor would falsify the model snapshot. The credential probe
-  // spends a real invocation, so it runs at first delegation instead.
-  if (workflowUsesClaudeCode) {
-    const preflight = claudeCodeVersionPreflight()
+  // executor is unavailable could never be delegated, and substituting Cursor
+  // would falsify the model snapshot. Only the checks that cost nothing run
+  // here — Claude Code's credential probe spends a real invocation, so it runs
+  // at first delegation instead.
+  for (const executor of workflowExternalExecutors) {
+    const preflight =
+      executor === 'claude-code'
+        ? claudeCodeVersionPreflight()
+        : openAiExecutorPreflight(root)
 
-    invariant(preflight.ok, `Executor preflight failed: ${preflight.error}`, {
-      code: 'EXECUTOR_PREFLIGHT_FAILED',
-      details: preflight,
-    })
+    invariant(
+      preflight.ok,
+      `Executor preflight failed for '${executor}': ${preflight.error}`,
+      {
+        code: 'EXECUTOR_PREFLIGHT_FAILED',
+        details: { executor, ...preflight },
+      },
+    )
   }
 
   // An overridden run delegates to run-scoped agent variants, so the active
@@ -4954,11 +4976,56 @@ function ensureClaudeCodeReady(
   return { ok: true }
 }
 
+/**
+ * Verify the openai executor can run: platform capability plus a resolvable
+ * credential. Both checks are local and make no request, so the cached result
+ * saves work rather than a spent invocation.
+ */
+function ensureOpenAiReady(
+  root: string,
+  state: RunState,
+): { ok: true } | { ok: false; error: string } {
+  if (state.openai_preflight) {
+    return { ok: true }
+  }
+
+  const preflight = openAiExecutorPreflight(root)
+
+  if (!preflight.ok) {
+    return { ok: false, error: preflight.error ?? 'preflight failed' }
+  }
+
+  state.openai_preflight = {
+    key_source: preflight.key_source ?? 'unknown',
+    verified_at: now(),
+  }
+
+  return { ok: true }
+}
+
+function ensureExecutorReady(
+  root: string,
+  state: RunState,
+  executor: ExternalPersonaExecutorKind,
+): { ok: true } | { ok: false; error: string } {
+  return executor === 'claude-code'
+    ? ensureClaudeCodeReady(state)
+    : ensureOpenAiReady(root, state)
+}
+
+function executorPreflightRemedy(
+  executor: ExternalPersonaExecutorKind,
+): string {
+  return executor === 'claude-code'
+    ? 'Install and authenticate the Claude Code CLI on this machine'
+    : 'Export OPENAI_API_KEY, or add it to the repository-local .env file'
+}
+
 function pauseForExecutorPreflight(
   root: string,
   state: RunState,
   stage: StageDefinition,
-  executor: string,
+  executor: ExternalPersonaExecutorKind,
   error: string,
 ): void {
   const reason =
@@ -4971,20 +5038,45 @@ function pauseForExecutorPreflight(
   state.pending_action = { type: 'operator_decision' }
 
   writeDecision(root, state, 'External executor preflight failed', reason, [
-    'Install and authenticate the Claude Code CLI on this machine, then ' +
-      `resume with: ${panCommand(root)} resume ${state.run_id}`,
+    `${executorPreflightRemedy(executor)}, then resume with: ` +
+      `${panCommand(root)} resume ${state.run_id}`,
     'Or change the persona mapping in config.json, run ' +
       `${panCommand(root)} models --sync, and start a new run.`,
     `Or abort with: ${panCommand(root)} abort ${state.run_id}`,
   ])
 }
 
+/** Whether a stage's workspace policy lets its executor change source. */
+function stageMutatesSource(stage: StageDefinition): boolean {
+  return (
+    stage.workspace_policy === 'source_allowed' ||
+    stage.workspace_policy === 'release_metadata_only'
+  )
+}
+
 /**
- * Write rules for a non-source stage: the executor may write only inside the
- * harness runtime tree (its declared output, evidence, and brief artifacts all
- * live there). Expressed relative to the executor's working directory when the
- * runtime tree is reachable that way, and absolute (`//`) otherwise, which is
- * the detached-installation case.
+ * Absolute directories a stage's executor may write into. A non-source stage
+ * reaches only the harness runtime tree, where its declared output, evidence,
+ * and brief artifacts live. Both external executors consume this one decision:
+ * Claude Code renders it into `Write(...)` and `Edit(...)` rules, and the
+ * OpenAI tool loop hands it to its path authorizer.
+ */
+export function stageWriteRoots(
+  root: string,
+  workspaceDir: string,
+  stage: StageDefinition,
+): string[] {
+  const runtimeTree = path.join(root, 'runtime')
+
+  return stageMutatesSource(stage)
+    ? [...new Set([workspaceDir, runtimeTree])]
+    : [runtimeTree]
+}
+
+/**
+ * Write rules for a non-source stage, expressed relative to the executor's
+ * working directory when the runtime tree is reachable that way, and absolute
+ * (`//`) otherwise, which is the detached-installation case.
  */
 function claudeCodeWriteRules(root: string, workspaceDir: string): string[] {
   const runtimeAbsolute = path.join(root, 'runtime')
@@ -5008,15 +5100,12 @@ export function claudeCodeToolPolicy(
   workspaceDir: string,
   stage: StageDefinition,
 ): { allowedTools: string[]; addDirs: string[] } {
-  const sourceMutating =
-    stage.workspace_policy === 'source_allowed' ||
-    stage.workspace_policy === 'release_metadata_only'
   const allowedTools = [
     'Read',
     'Grep',
     'Glob',
     'Bash',
-    ...(sourceMutating
+    ...(stageWriteRoots(root, workspaceDir, stage).includes(workspaceDir)
       ? ['Write', 'Edit']
       : claudeCodeWriteRules(root, workspaceDir)),
   ]
@@ -5024,6 +5113,352 @@ export function claudeCodeToolPolicy(
   const addDirs = relative.startsWith('..') ? [root] : []
 
   return { allowedTools, addDirs }
+}
+
+/**
+ * Stage-derived tool policy for an openai invocation. The model reads the run
+ * workspace and the harness root, and writes only where the stage allows.
+ */
+export function openAiToolPolicy(
+  root: string,
+  workspaceDir: string,
+  stage: StageDefinition,
+  bounds: { maxResultBytes: number; shellTimeoutMs: number },
+): OpenAiToolPolicy {
+  return {
+    workspaceDir,
+    readRoots: [...new Set([workspaceDir, root])],
+    writeRoots: stageWriteRoots(root, workspaceDir, stage),
+    maxResultBytes: bounds.maxResultBytes,
+    shellTimeoutMs: bounds.shellTimeoutMs,
+  }
+}
+
+/**
+ * One external executor's delivery result, normalized so the delegation
+ * skeleton — evidence capture, session recording, failure persistence — is
+ * written once rather than per executor.
+ */
+interface ExternalExecutorRunResult {
+  ok: boolean
+  binary: string
+  /** Resolved argument vector. Never carries the prompt body or a credential. */
+  argv: string[]
+  exit_code: number | null
+  timed_out: boolean
+  duration_ms: number
+  stdout: string
+  stderr: string
+  session_id?: string
+  error?: string
+  result_subtype?: string
+  is_error?: boolean
+  request_settings?: ExternalRequestSettings
+  tool_summary?: Record<string, number>
+  response_ids?: string[]
+  usage?: { input_tokens: number; output_tokens: number; total_tokens: number }
+  failure_reason?: string
+  mcp_capabilities?: ExternalMcpCapabilities
+}
+
+interface ExternalExecutorAdapter {
+  kind: ExternalPersonaExecutorKind
+  /** Deliver one prompt, continuing `resumeSessionId` when one is supplied. */
+  run: (prompt: string, resumeSessionId?: string) => ExternalExecutorRunResult
+  /** Strip credentials from captured text before it becomes evidence. */
+  sanitize: (text: string) => string
+}
+
+const OPENAI_AGENT_ENTRYPOINT = 'openai-agent-cli.js'
+
+/**
+ * Pancreator offers an OpenAI-executed persona no MCP-backed tool. The
+ * harness's MCP servers are local stdio processes Cursor launches, and the
+ * Responses hosted-MCP tool reaches remote HTTP or SSE servers only. The
+ * record states the gap rather than omitting the field, so a stage that owes a
+ * browser verdict reports the case as environment-blocked under BROWSER-001.
+ */
+const OPENAI_MCP_CAPABILITIES: ExternalMcpCapabilities = {
+  offered: [],
+  reason:
+    'Pancreator MCP servers are local stdio processes the Cursor client hosts. ' +
+    'The Responses API reaches only remote MCP endpoints, so no MCP-backed ' +
+    'tool, including isolated browser inspection, is offered to this executor.',
+}
+
+function openAiAgentEntrypoint(): string {
+  return path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '..',
+    OPENAI_AGENT_ENTRYPOINT,
+  )
+}
+
+function positiveIntegerOption(
+  options: Record<string, string>,
+  key: string,
+): number | undefined {
+  const raw = options[key]
+
+  if (raw === undefined) {
+    return undefined
+  }
+
+  const parsed = Number(raw)
+
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined
+}
+
+interface OpenAiAdapterContext {
+  root: string
+  runId: string
+  invocationId: string
+  stage: StageDefinition
+  workspaceDir: string
+  mapping: ParsedPersonaMapping
+  evidenceDir: string
+  timeoutOverrideMs?: number
+}
+
+/**
+ * The openai adapter runs the Responses tool loop in a child process.
+ * `delegateInvocation` holds a synchronous run mutex whose helper releases on
+ * return, so an awaited loop inline would drop the lock mid-delegation. The
+ * child keeps the mutex, the evidence shape, and the process-level timeout
+ * identical to the Claude Code path, and keeps the key out of the argument
+ * vector the evidence records.
+ */
+function createOpenAiAdapter(
+  context: OpenAiAdapterContext,
+): ExternalExecutorAdapter {
+  const credential = resolveOpenAiApiKey(context.root)
+  const apiKey = credential.key ?? ''
+  const entrypoint = openAiAgentEntrypoint()
+  const options = context.mapping.options
+  const sessionTimeoutMs =
+    context.timeoutOverrideMs ??
+    positiveIntegerOption(options, 'timeout-ms') ??
+    OPENAI_SESSION_DEFAULTS.sessionTimeoutMs
+  const maxToolRounds =
+    positiveIntegerOption(options, 'max-tool-rounds') ??
+    OPENAI_SESSION_DEFAULTS.maxToolRounds
+  const maxOutputTokens = positiveIntegerOption(options, 'max-output-tokens')
+  const effort = options.effort
+  const toolPolicy = openAiToolPolicy(
+    context.root,
+    context.workspaceDir,
+    context.stage,
+    {
+      maxResultBytes: OPENAI_SESSION_DEFAULTS.maxToolResultBytes,
+      shellTimeoutMs: Math.min(
+        OPENAI_SESSION_DEFAULTS.shellTimeoutMs,
+        sessionTimeoutMs,
+      ),
+    },
+  )
+  const requestSettings: ExternalRequestSettings = {
+    model: context.mapping.model,
+    store: false,
+    ...(effort ? { reasoning_effort: effort } : {}),
+    ...(maxOutputTokens !== undefined
+      ? { max_output_tokens: maxOutputTokens }
+      : {}),
+    max_tool_rounds: maxToolRounds,
+    timeout_ms: sessionTimeoutMs,
+    max_tool_result_bytes: toolPolicy.maxResultBytes,
+  }
+  const transcriptPathFor = (sessionId: string): string =>
+    `${context.evidenceDir}/${sessionId}.openai-transcript.json`
+  const sanitize = (text: string): string => redactOpenAiKey(text, apiKey)
+
+  return {
+    kind: 'openai',
+    sanitize,
+    run: (prompt, resumeSessionId) => {
+      const sessionId = `openai-${context.invocationId}-${randomUUID().slice(0, 8)}`
+      const request = {
+        model: context.mapping.model,
+        prompt,
+        invocation_id: context.invocationId,
+        stage: context.stage.slug,
+        session_id: sessionId,
+        ...(effort ? { reasoning_effort: effort } : {}),
+        ...(maxOutputTokens !== undefined
+          ? { max_output_tokens: maxOutputTokens }
+          : {}),
+        max_tool_rounds: maxToolRounds,
+        request_timeout_ms: sessionTimeoutMs,
+        session_timeout_ms: sessionTimeoutMs,
+        transcript_path: resolveInside(
+          context.root,
+          transcriptPathFor(sessionId),
+        ),
+        transcript_max_bytes: OPENAI_SESSION_DEFAULTS.transcriptMaxBytes,
+        ...(resumeSessionId
+          ? {
+              resume_transcript_path: resolveInside(
+                context.root,
+                transcriptPathFor(resumeSessionId),
+              ),
+            }
+          : {}),
+        tool_policy: toolPolicy,
+      }
+      const argv = [entrypoint]
+      const startedAt = Date.now()
+      const spawned = spawnSync(process.execPath, argv, {
+        cwd: context.workspaceDir,
+        encoding: 'utf8',
+        input: JSON.stringify(request),
+        // The child reports its own named bound; the process timeout is the
+        // outer guard for a child that never returns at all.
+        timeout: sessionTimeoutMs + 30_000,
+        maxBuffer: 64 * 1024 * 1024,
+        env: { ...process.env, OPENAI_API_KEY: apiKey },
+      })
+      const durationMs = Date.now() - startedAt
+      const timedOut =
+        (spawned.error as NodeJS.ErrnoException | undefined)?.code ===
+        'ETIMEDOUT'
+      const stdout = sanitize(spawned.stdout ?? '')
+      const stderr = sanitize(spawned.stderr ?? '')
+      const base = {
+        binary: process.execPath,
+        argv,
+        exit_code: spawned.status,
+        timed_out: timedOut,
+        duration_ms: durationMs,
+        stdout,
+        stderr,
+        request_settings: requestSettings,
+        mcp_capabilities: OPENAI_MCP_CAPABILITIES,
+      }
+
+      if (spawned.error && !timedOut) {
+        return {
+          ...base,
+          ok: false,
+          error: `Failed to spawn the OpenAI executor: ${spawned.error.message}`,
+        }
+      }
+
+      let parsed: unknown
+
+      try {
+        parsed = JSON.parse(stdout.trim().split('\n').at(-1) ?? '')
+      } catch {
+        parsed = null
+      }
+
+      if (!isRecord(parsed)) {
+        return {
+          ...base,
+          ok: false,
+          session_id: sessionId,
+          error: timedOut
+            ? `OpenAI delegation timed out after ${durationMs}ms.`
+            : 'The OpenAI executor exited without the expected JSON result payload.',
+        }
+      }
+
+      const payload = parsed as {
+        ok?: unknown
+        session_id?: unknown
+        rounds?: unknown
+        response_ids?: unknown
+        tool_summary?: unknown
+        usage?: unknown
+        error?: unknown
+        failure_reason?: unknown
+      }
+
+      return {
+        ...base,
+        ok: payload.ok === true && spawned.status === 0,
+        session_id:
+          typeof payload.session_id === 'string'
+            ? payload.session_id
+            : sessionId,
+        ...(Array.isArray(payload.response_ids)
+          ? {
+              response_ids: payload.response_ids.filter(
+                (id): id is string => typeof id === 'string',
+              ),
+            }
+          : {}),
+        ...(isRecord(payload.tool_summary)
+          ? { tool_summary: payload.tool_summary as Record<string, number> }
+          : {}),
+        ...(isRecord(payload.usage)
+          ? {
+              usage: payload.usage as {
+                input_tokens: number
+                output_tokens: number
+                total_tokens: number
+              },
+            }
+          : {}),
+        ...(typeof payload.failure_reason === 'string'
+          ? { failure_reason: payload.failure_reason }
+          : {}),
+        ...(payload.ok === true && spawned.status === 0
+          ? {}
+          : {
+              is_error: true,
+              error: sanitize(
+                typeof payload.error === 'string'
+                  ? payload.error
+                  : `The OpenAI executor exited with status ${spawned.status}.`,
+              ),
+            }),
+      }
+    },
+  }
+}
+
+function createClaudeCodeAdapter(context: {
+  workspaceDir: string
+  mapping: ParsedPersonaMapping
+  policy: { allowedTools: string[]; addDirs: string[] }
+  timeoutMs?: number
+}): ExternalExecutorAdapter {
+  return {
+    kind: 'claude-code',
+    sanitize: (text) => text,
+    run: (prompt, resumeSessionId) => {
+      const result = runClaudeCode({
+        prompt,
+        cwd: context.workspaceDir,
+        model: context.mapping.model,
+        permissionMode: context.mapping.options['permission-mode'] ?? 'default',
+        allowedTools: context.policy.allowedTools,
+        addDirs: context.policy.addDirs,
+        ...(resumeSessionId ? { resumeSessionId } : {}),
+        ...(context.timeoutMs !== undefined
+          ? { timeoutMs: context.timeoutMs }
+          : {}),
+      })
+
+      return {
+        ok: result.ok,
+        binary: result.binary,
+        argv: result.argv,
+        exit_code: result.exit_code,
+        timed_out: result.timed_out,
+        duration_ms: result.duration_ms,
+        stdout: result.stdout,
+        stderr: result.stderr,
+        ...(result.session_id ? { session_id: result.session_id } : {}),
+        ...(result.error ? { error: result.error } : {}),
+        ...(result.parsed?.subtype
+          ? { result_subtype: result.parsed.subtype }
+          : {}),
+        ...(result.parsed?.is_error !== undefined
+          ? { is_error: result.parsed.is_error }
+          : {}),
+      }
+    },
+  }
 }
 
 export interface DelegateInvocationOptions extends OperationProgressOptions {
@@ -5081,16 +5516,24 @@ export function delegateInvocation(
     )
 
     invariant(
-      mapping.executor === 'claude-code',
+      mapping.executor !== 'cursor',
       `Stage '${stage.slug}' resolves to the '${mapping.executor}' executor. ` +
         `'pan delegate' dispatches only external executors; cursor personas ` +
         `are delegated by the supervisor per INVOCATION-001.`,
       { code: 'EXECUTOR_UNSUPPORTED' },
     )
+
+    // The resolved executor is never rewritten to another one: the prepared
+    // invocation has to agree with the mapping, or the card the worker reads
+    // would name a runtime the harness is not using.
+    const executor: ExternalPersonaExecutorKind = mapping.executor
+
     invariant(
-      invocation.stage.persona_executor === 'claude-code',
-      `Invocation ${invocationId} was prepared without executor routing. ` +
-        `Re-prepare the invocation before delegating.`,
+      invocation.stage.persona_executor === executor,
+      `Invocation ${invocationId} was prepared for executor ` +
+        `'${invocation.stage.persona_executor ?? 'cursor'}' but its persona ` +
+        `now resolves to '${executor}'. Re-prepare the invocation before ` +
+        `delegating.`,
       { code: 'EXECUTOR_UNSUPPORTED' },
     )
 
@@ -5106,48 +5549,51 @@ export function delegateInvocation(
       { code: 'INVOCATION_VALIDATION_FAILED' },
     )
 
-    const preflight = ensureClaudeCodeReady(state)
+    const preflight = ensureExecutorReady(root, state, executor)
 
     if (!preflight.ok) {
-      pauseForExecutorPreflight(
-        root,
-        state,
-        stage,
-        mapping.executor,
-        preflight.error,
-      )
+      pauseForExecutorPreflight(root, state, stage, executor, preflight.error)
       persistRun(root, state, 'run_paused', { reason: state.pause_reason })
 
       return { state, invocation, execution: null }
     }
 
     const workspaceDir = workspaceDirectory(root, state)
-    const policy = claudeCodeToolPolicy(root, workspaceDir, stage)
     const configuredTimeout = mapping.options['timeout-ms']
     const timeoutMs =
       options.timeoutMs ??
       (configuredTimeout ? Number(configuredTimeout) : undefined)
     const evidenceDir = resolveRunLayout(root, runId).evidence('').relative
+    const adapter: ExternalExecutorAdapter =
+      executor === 'claude-code'
+        ? createClaudeCodeAdapter({
+            workspaceDir,
+            mapping,
+            policy: claudeCodeToolPolicy(root, workspaceDir, stage),
+            ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+          })
+        : createOpenAiAdapter({
+            root,
+            runId,
+            invocationId,
+            stage,
+            workspaceDir,
+            mapping,
+            evidenceDir,
+            ...(options.timeoutMs !== undefined
+              ? { timeoutOverrideMs: options.timeoutMs }
+              : {}),
+          })
     const runExecutor = (
       prompt: string,
       resumeSessionId?: string,
-    ): ClaudeCodeInvocationResult =>
-      runClaudeCode({
-        prompt,
-        cwd: workspaceDir,
-        model: mapping.model,
-        permissionMode: mapping.options['permission-mode'] ?? 'default',
-        allowedTools: policy.allowedTools,
-        addDirs: policy.addDirs,
-        ...(resumeSessionId ? { resumeSessionId } : {}),
-        ...(timeoutMs !== undefined ? { timeoutMs } : {}),
-      })
+    ): ExternalExecutorRunResult => adapter.run(prompt, resumeSessionId)
     const writeExecutorLogs = (
       label: string,
-      result: ClaudeCodeInvocationResult,
+      result: ExternalExecutorRunResult,
     ): { stdout_path: string; stderr_path: string } => {
-      const stdoutPath = `${evidenceDir}/${invocationId}.claude-code${label}.stdout.json`
-      const stderrPath = `${evidenceDir}/${invocationId}.claude-code${label}.stderr.log`
+      const stdoutPath = `${evidenceDir}/${invocationId}.${executor}${label}.stdout.json`
+      const stderrPath = `${evidenceDir}/${invocationId}.${executor}${label}.stderr.log`
 
       writeTextAtomic(resolveInside(root, stdoutPath), result.stdout)
       writeTextAtomic(resolveInside(root, stderrPath), result.stderr)
@@ -5186,7 +5632,7 @@ export function delegateInvocation(
     const delegationArtifactPath = delegationPath(runId, invocationId, root)
     let delegationKind: ExternalDelegationRecord['delegation_kind'] = 'fresh'
     let deliveredPrompt = cardMarkdown
-    let result: ClaudeCodeInvocationResult
+    let result: ExternalExecutorRunResult
     let resumeAttempt: ExternalDelegationRecord['resume_attempt']
 
     if (resumeSession) {
@@ -5227,7 +5673,7 @@ export function delegateInvocation(
       ].join('\n')
 
       options.onProgress?.(
-        `resuming claude-code session ${resumeSession.session_id} with the operator directive`,
+        `resuming ${executor} session ${resumeSession.session_id} with the operator directive`,
       )
 
       const resumed = runExecutor(resumePrompt, resumeSession.session_id)
@@ -5253,13 +5699,13 @@ export function delegateInvocation(
         }
         delegationKind = 'resume_fallback'
         options.onProgress?.(
-          `delegating '${invocation.stage.persona}' to claude-code (${mapping.model})`,
+          `delegating '${invocation.stage.persona}' to ${executor} (${mapping.model})`,
         )
         result = runExecutor(cardMarkdown)
       }
     } else {
       options.onProgress?.(
-        `delegating '${invocation.stage.persona}' to claude-code (${mapping.model})`,
+        `delegating '${invocation.stage.persona}' to ${executor} (${mapping.model})`,
       )
       result = runExecutor(cardMarkdown)
     }
@@ -5286,7 +5732,7 @@ export function delegateInvocation(
       run_id: runId,
       invocation_id: invocationId,
       stage: stage.slug,
-      executor: 'claude-code',
+      executor,
       delegation_kind: delegationKind,
       binary: result.binary,
       argv: result.argv,
@@ -5297,16 +5743,26 @@ export function delegateInvocation(
       ...(resumeSession
         ? { resumed_from_session_id: resumeSession.session_id }
         : {}),
-      ...(result.parsed?.subtype
-        ? { result_subtype: result.parsed.subtype }
+      ...(result.result_subtype
+        ? { result_subtype: result.result_subtype }
         : {}),
-      ...(result.parsed?.is_error !== undefined
-        ? { is_error: result.parsed.is_error }
-        : {}),
+      ...(result.is_error !== undefined ? { is_error: result.is_error } : {}),
       ...logs,
       ...(resumeAttempt ? { resume_attempt: resumeAttempt } : {}),
       delegation_artifact_path: delegationArtifactPath,
       recorded_at: now(),
+      ...(result.request_settings
+        ? { request_settings: result.request_settings }
+        : {}),
+      ...(result.tool_summary ? { tool_summary: result.tool_summary } : {}),
+      ...(result.response_ids ? { response_ids: result.response_ids } : {}),
+      ...(result.usage ? { usage: result.usage } : {}),
+      ...(result.failure_reason
+        ? { failure_reason: result.failure_reason }
+        : {}),
+      ...(result.mcp_capabilities
+        ? { mcp_capabilities: result.mcp_capabilities }
+        : {}),
     }
 
     writeJsonAtomic(
@@ -5316,7 +5772,7 @@ export function delegateInvocation(
 
     if (result.session_id) {
       const sessionRecord = {
-        executor: 'claude-code' as const,
+        executor,
         session_id: result.session_id,
         invocation_id: invocationId,
         stage: stage.slug,
@@ -5337,10 +5793,13 @@ export function delegateInvocation(
       persistRun(root, state, 'external_delegation_failed', {
         invocation_id: invocationId,
         stage: stage.slug,
-        executor: 'claude-code',
+        executor,
         delegation_kind: delegationKind,
         exit_code: result.exit_code,
         timed_out: result.timed_out,
+        ...(result.failure_reason
+          ? { failure_reason: result.failure_reason }
+          : {}),
       })
 
       invariant(false, `External delegation failed: ${result.error}`, {
@@ -5356,7 +5815,7 @@ export function delegateInvocation(
     persistRun(root, state, 'external_delegation_recorded', {
       invocation_id: invocationId,
       stage: stage.slug,
-      executor: 'claude-code',
+      executor,
       delegation_kind: delegationKind,
       session_id: result.session_id ?? null,
     })

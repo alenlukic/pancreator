@@ -25,6 +25,25 @@ export interface OpenAiAuthenticationReadiness {
   advisories: string[]
 }
 
+/**
+ * Whether the executor can run at all, before any credential question. The
+ * Responses loop uses the platform `fetch`, which is the one runtime capability
+ * the zero-dependency design assumes.
+ */
+export interface OpenAiRuntimeCapability {
+  ok: boolean
+  node_version: string
+  fetch_available: boolean
+  error?: string
+}
+
+export interface OpenAiExecutorPreflight {
+  ok: boolean
+  key_source: OpenAiApiKeySource | null
+  runtime: OpenAiRuntimeCapability
+  error?: string
+}
+
 interface DotEnvCandidate extends OpenAiDotEnvInspection {
   key: string | null
 }
@@ -203,4 +222,52 @@ export function openAiAuthenticationReadiness(
     dotenv_files: candidates.map(withoutSecret),
     advisories,
   }
+}
+
+/** Report the executor's runtime capability without touching the network. */
+export function openAiRuntimeCapability(): OpenAiRuntimeCapability {
+  const fetchAvailable = typeof fetch === 'function'
+
+  return {
+    ok: fetchAvailable,
+    node_version: process.version,
+    fetch_available: fetchAvailable,
+    ...(fetchAvailable
+      ? {}
+      : {
+          error:
+            'This Node.js runtime provides no global fetch, which the OpenAI executor requires.',
+        }),
+  }
+}
+
+/**
+ * Executor readiness: runtime capability plus credential resolution. Both are
+ * local, so this is safe to run at run creation and again at delegation. The
+ * report names the credential source and never the credential.
+ */
+export function openAiExecutorPreflight(cwd: string): OpenAiExecutorPreflight {
+  const runtime = openAiRuntimeCapability()
+
+  if (!runtime.ok) {
+    return {
+      ok: false,
+      key_source: null,
+      runtime,
+      error: runtime.error ?? 'runtime capability check failed',
+    }
+  }
+
+  const readiness = openAiAuthenticationReadiness(cwd)
+
+  if (!readiness.key_available) {
+    return {
+      ok: false,
+      key_source: null,
+      runtime,
+      error: readiness.advisories.join(' '),
+    }
+  }
+
+  return { ok: true, key_source: readiness.source, runtime }
 }

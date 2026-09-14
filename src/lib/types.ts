@@ -32,10 +32,40 @@ export type StageExecutor = 'agent' | 'harness'
 /**
  * Which harness runs a persona's worker process. `cursor` delegates to a
  * projected Cursor subagent; `claude-code` spawns the operator-installed
- * Claude Code CLI. Distinct from `StageExecutor`, which says whether a stage is
- * performed by an agent at all — this says which agent runtime performs it.
+ * Claude Code CLI; `openai` runs a bounded Responses API tool loop in a
+ * harness-owned child process. Distinct from `StageExecutor`, which says
+ * whether a stage is performed by an agent at all — this says which agent
+ * runtime performs it.
  */
-export type PersonaExecutorKind = 'cursor' | 'claude-code'
+export type PersonaExecutorKind = 'cursor' | 'claude-code' | 'openai'
+
+/** Persona executors the harness itself dispatches through `pan delegate`. */
+export type ExternalPersonaExecutorKind = Exclude<PersonaExecutorKind, 'cursor'>
+
+/**
+ * Non-secret request settings an external executor resolved for one
+ * delegation. Recorded so an operator can reproduce the invocation without
+ * reading the executor's source.
+ */
+export interface ExternalRequestSettings {
+  model: string
+  store: false
+  reasoning_effort?: string
+  max_output_tokens?: number
+  max_tool_rounds: number
+  timeout_ms: number
+  max_tool_result_bytes: number
+}
+
+/**
+ * MCP capability set offered to an external executor. An empty list carries
+ * its reason rather than being omitted, so the audit distinguishes "no tools
+ * offered" from "the harness forgot to record them".
+ */
+export interface ExternalMcpCapabilities {
+  offered: string[]
+  reason?: string
+}
 
 /**
  * Executor session recorded after a successful external delegation, so an
@@ -43,7 +73,7 @@ export type PersonaExecutorKind = 'cursor' | 'claude-code'
  * starting a fresh invocation.
  */
 export interface ExternalExecutorSession {
-  executor: Exclude<PersonaExecutorKind, 'cursor'>
+  executor: ExternalPersonaExecutorKind
   session_id: string
   invocation_id: string
   stage: string
@@ -62,7 +92,7 @@ export interface ExternalDelegationRecord {
   run_id: string
   invocation_id: string
   stage: string
-  executor: Exclude<PersonaExecutorKind, 'cursor'>
+  executor: ExternalPersonaExecutorKind
   /**
    * `fresh` delivers the full canonical card in a new session. `resumed`
    * continues the recorded session with the operator's revision directive.
@@ -89,6 +119,21 @@ export interface ExternalDelegationRecord {
   }
   delegation_artifact_path: string
   recorded_at: string
+  /** Populated by executors that resolve their own request parameters. */
+  request_settings?: ExternalRequestSettings
+  /** Executed tool calls by tool name, for executors that run a tool loop. */
+  tool_summary?: Record<string, number>
+  /** Provider response identifiers observed during the delegation, in order. */
+  response_ids?: string[]
+  usage?: {
+    input_tokens: number
+    output_tokens: number
+    total_tokens: number
+  }
+  /** Named failure bound when a bounded loop terminated early. */
+  failure_reason?: string
+  /** Always recorded for a tool-loop executor, empty list and reason included. */
+  mcp_capabilities?: ExternalMcpCapabilities
 }
 
 /**
@@ -2220,6 +2265,15 @@ export interface RunState {
   claude_code_preflight?: {
     binary: string
     version: string
+    verified_at: string
+  }
+  /**
+   * Cached openai preflight for this run. Credential resolution and runtime
+   * capability are both local, so this caches work rather than a spent
+   * invocation, and it records which source supplied the key.
+   */
+  openai_preflight?: {
+    key_source: string
     verified_at: string
   }
   governance_artifact_issues?: GovernanceArtifactIssue[]

@@ -3,11 +3,12 @@ import type { PersonaExecutorKind } from '../types.js'
 
 /**
  * Closed set of persona executors. The seam is generic — one interface, one
- * registry — but only these two are registered; other CLIs are out of scope.
+ * registry — but only these three are registered; other CLIs are out of scope.
  */
 export const PERSONA_EXECUTOR_KINDS: readonly PersonaExecutorKind[] = [
   'cursor',
   'claude-code',
+  'openai',
 ]
 
 export const DEFAULT_PERSONA_EXECUTOR: PersonaExecutorKind = 'cursor'
@@ -38,6 +39,30 @@ const CLAUDE_CODE_OPTION_KEYS = new Set([
   'session-resume',
   'timeout-ms',
 ])
+
+/**
+ * Reasoning-effort levels the Responses API accepts. The enum is the same for
+ * every model id; an unsupported model/effort pair surfaces as the API's own
+ * error rather than a harness-side catalog the repository would have to track.
+ */
+export const OPENAI_REASONING_EFFORTS = new Set([
+  'none',
+  'minimal',
+  'low',
+  'medium',
+  'high',
+  'xhigh',
+  'max',
+])
+
+/** Sorted so the rejection message always lists the set the same way. */
+export const OPENAI_OPTION_KEYS = [
+  'effort',
+  'max-output-tokens',
+  'max-tool-rounds',
+  'session-resume',
+  'timeout-ms',
+] as const
 function parseBracketOptions(
   optionsText: string | undefined,
   source: string,
@@ -119,6 +144,62 @@ function validateClaudeCodeOptions(
   }
 }
 
+/**
+ * Every rejection names the whole supported set, because an operator editing a
+ * mapping by hand needs the alternatives rather than only the rejected key.
+ */
+function validateOpenAiOptions(
+  options: Record<string, string>,
+  source: string,
+): void {
+  const supported = `Supported options: ${OPENAI_OPTION_KEYS.join(', ')}.`
+
+  for (const [key, value] of Object.entries(options)) {
+    invariant(
+      (OPENAI_OPTION_KEYS as readonly string[]).includes(key),
+      `${source} uses unknown openai option '${key}'. ${supported}`,
+      { code: 'INVALID_PIPELINE_CONFIG' },
+    )
+
+    if (key === 'effort') {
+      invariant(
+        OPENAI_REASONING_EFFORTS.has(value),
+        `${source} effort '${value}' is not supported. Supported levels: ` +
+          `${[...OPENAI_REASONING_EFFORTS].join(', ')}. ${supported}`,
+        { code: 'INVALID_PIPELINE_CONFIG' },
+      )
+    }
+
+    if (key === 'max-output-tokens' || key === 'max-tool-rounds') {
+      const parsed = Number(value)
+
+      invariant(
+        Number.isInteger(parsed) && parsed > 0,
+        `${source} ${key} MUST be a positive integer. ${supported}`,
+        { code: 'INVALID_PIPELINE_CONFIG' },
+      )
+    }
+
+    if (key === 'session-resume') {
+      invariant(
+        value === 'true' || value === 'false',
+        `${source} session-resume MUST be true or false. ${supported}`,
+        { code: 'INVALID_PIPELINE_CONFIG' },
+      )
+    }
+
+    if (key === 'timeout-ms') {
+      const parsed = Number(value)
+
+      invariant(
+        Number.isInteger(parsed) && parsed >= 1_000,
+        `${source} timeout-ms MUST be an integer of at least 1000. ${supported}`,
+        { code: 'INVALID_PIPELINE_CONFIG' },
+      )
+    }
+  }
+}
+
 // Cursor option names and values are validated against the model catalog
 // registry at resolution time (resolveCursorModelSlug), never here: which
 // parameters exist, and with which values, is per-model data owned by Cursor.
@@ -131,7 +212,8 @@ function validateClaudeCodeOptions(
  *
  * The executor prefix is optional and defaults to `cursor`, so every existing
  * configuration parses unchanged. The harness validates Cursor options before
- * projection and validates claude-code options before delegation.
+ * projection and validates each external executor's options here, because it
+ * consumes them itself rather than passing them through.
  */
 export function parsePersonaMapping(
   raw: string,
@@ -173,6 +255,10 @@ export function parsePersonaMapping(
 
   if (executor === 'claude-code') {
     validateClaudeCodeOptions(options, source)
+  }
+
+  if (executor === 'openai') {
+    validateOpenAiOptions(options, source)
   }
 
   return {

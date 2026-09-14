@@ -109,6 +109,130 @@ test('optional request controls are forwarded when given', async () => {
   assert.equal(sentBody.max_output_tokens, 64)
 })
 
+test('function calls and tool definitions cross the client intact', async () => {
+  const { fetchImpl, calls } = fakeFetch(
+    () =>
+      new Response(
+        JSON.stringify({
+          id: 'resp_tools',
+          output: [
+            {
+              type: 'function_call',
+              call_id: 'call_1',
+              name: 'read_file',
+              arguments: '{"path":"src/cli.ts"}',
+            },
+            {
+              type: 'function_call',
+              call_id: 'call_2',
+              name: 'run_shell',
+              arguments: '{"command":"npm test"}',
+            },
+            {
+              type: 'message',
+              content: [{ type: 'output_text', text: 'Checking two things.' }],
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+  )
+
+  const result = await createOpenAiResponse({
+    apiKey: 'sk-test',
+    model: 'gpt-6-astra',
+    input: [
+      { role: 'user', content: '# card' },
+      {
+        type: 'function_call_output',
+        call_id: 'call_0',
+        output: 'previous result',
+      },
+    ],
+    tools: [
+      {
+        type: 'function',
+        name: 'read_file',
+        description: 'Read a file.',
+        parameters: {
+          type: 'object',
+          properties: { path: { type: 'string' } },
+          required: ['path'],
+        },
+      },
+    ],
+    fetchImpl,
+  })
+
+  assert.equal(result.ok, true)
+  // Text and calls arrive together; a turn may carry both.
+  assert.equal(result.outputText, 'Checking two things.')
+  assert.deepEqual(result.functionCalls, [
+    {
+      call_id: 'call_1',
+      name: 'read_file',
+      arguments: '{"path":"src/cli.ts"}',
+    },
+    {
+      call_id: 'call_2',
+      name: 'run_shell',
+      arguments: '{"command":"npm test"}',
+    },
+  ])
+
+  const sentBody = JSON.parse(String(calls[0]?.init.body)) as {
+    input: unknown[]
+    tools: { name: string }[]
+  }
+
+  // Structured input items and the tool catalog reach the API unchanged.
+  assert.deepEqual(sentBody.input, [
+    { role: 'user', content: '# card' },
+    {
+      type: 'function_call_output',
+      call_id: 'call_0',
+      output: 'previous result',
+    },
+  ])
+  assert.deepEqual(
+    sentBody.tools.map((tool) => tool.name),
+    ['read_file'],
+  )
+})
+
+test('a turn carrying only a function call is not an empty response', async () => {
+  const { fetchImpl } = fakeFetch(
+    () =>
+      new Response(
+        JSON.stringify({
+          id: 'resp_call_only',
+          output: [
+            {
+              type: 'function_call',
+              call_id: 'call_1',
+              name: 'list_directory',
+              arguments: '{"path":"."}',
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+  )
+
+  const result = await createOpenAiResponse({
+    apiKey: 'sk-test',
+    model: 'gpt-6-astra',
+    input: 'Look around.',
+    fetchImpl,
+  })
+
+  // A tool-only turn is how the loop advances, so it must not report
+  // OPENAI_NO_OUTPUT the way a genuinely empty turn does.
+  assert.equal(result.ok, true)
+  assert.equal(result.outputText, undefined)
+  assert.equal(result.functionCalls.length, 1)
+})
+
 test('multiple message text blocks are concatenated', async () => {
   const { fetchImpl } = fakeFetch(
     () =>

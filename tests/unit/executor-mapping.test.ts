@@ -37,6 +37,13 @@ test('a plain model string parses as a cursor mapping', () => {
       options: {},
     },
     {
+      spec: 'openai:gpt-6-astra[effort=high]',
+      executor: 'openai',
+      model: 'gpt-6-astra',
+      model_spec: 'gpt-6-astra[effort=high]',
+      options: { effort: 'high' },
+    },
+    {
       spec: 'claude-code:claude-opus-5[permission-mode=default,session-resume=true]',
       executor: 'claude-code',
       model: 'claude-opus-5',
@@ -62,13 +69,14 @@ test('a plain model string parses as a cursor mapping', () => {
 
   assert.equal(personaExecutorOf('claude-opus-5[thinking=true]'), 'cursor')
   assert.equal(personaExecutorOf('claude-code:claude-opus-5'), 'claude-code')
+  assert.equal(personaExecutorOf('openai:gpt-6-astra'), 'openai')
   assert.equal(personaExecutorOf('cursor:auto'), 'cursor')
 })
 
 test('unknown executor prefixes are rejected against the closed set', () => {
   assert.throws(
     () => parsePersonaMapping('codex:gpt-5.6-sol'),
-    /unknown executor 'codex'.*cursor, claude-code/su,
+    /unknown executor 'codex'.*cursor, claude-code, openai/su,
   )
 })
 

@@ -30,6 +30,11 @@ target repository tracks.
   `claude-code` executor. A missing or unauthenticated CLI is an
   operator-visible preflight pause, not an error to work around; the harness
   never silently substitutes Cursor. See `./bin/pan doctor`.
+- An `OPENAI_API_KEY`, readable from the environment or a `.env` file —
+  required only when the active mapping routes a persona to the `openai`
+  executor. That executor needs no installed binary: the harness calls the
+  Responses API itself. A missing key pauses the same way a missing CLI does.
+  See `./bin/pan doctor`.
 
 ## Install
 
