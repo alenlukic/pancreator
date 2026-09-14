@@ -202,6 +202,118 @@ test('pan-style is registered with its style card and forwards its worktree', ()
   )
 })
 
+test('pan-harden is registered with its harden card and forwards its worktree', () => {
+  const root = createFixture()
+  const command = readFileSync(
+    path.join(root, 'library/cursor/commands/pan-harden.md'),
+    'utf8',
+  )
+
+  // The session edits the workspace the card binds, so every invocation the
+  // command prints must accept the shared worktree option it forwards.
+  for (const invocation of panInvocations(command)) {
+    assert.doesNotThrow(
+      () =>
+        assertWorktreeOptionSupported(
+          invocation[0] as string,
+          invocation.slice(1),
+        ),
+      invocation.join(' '),
+    )
+  }
+
+  const registryPath = path.join(root, COMMAND_GOVERNANCE_REGISTRY_PATH)
+  const registry = JSON.parse(readFileSync(registryPath, 'utf8')) as {
+    card_commands: Array<{ command: string; card_mode: string }>
+    target_mutating_commands: Array<{
+      command: string
+      worktree_forwarding: string[]
+    }>
+  }
+
+  assert.deepEqual(
+    registry.card_commands.find((entry) => entry.command === 'pan-harden'),
+    { command: 'pan-harden', card_mode: 'harden' },
+  )
+
+  const mutating = registry.target_mutating_commands.find(
+    (entry) => entry.command === 'pan-harden',
+  )
+
+  assert.ok(mutating)
+  assert.deepEqual(mutating.worktree_forwarding, [
+    'governance card --mode harden --worktree <name>',
+  ])
+  assert.deepEqual(run(root).errors, [])
+
+  mutating.worktree_forwarding = [
+    'governance card --mode harden --worktree <name> --json',
+  ]
+  writeJson(registryPath, registry)
+
+  assert.ok(
+    run(root).errors.some((error) =>
+      error.includes('pan-harden.md is target-mutating and MUST forward'),
+    ),
+  )
+})
+
+test('pan-polish is registered with its polish card and forwards its worktree', () => {
+  const root = createFixture()
+  const command = readFileSync(
+    path.join(root, 'library/cursor/commands/pan-polish.md'),
+    'utf8',
+  )
+
+  // The session edits the workspace the card binds, so every invocation the
+  // command prints must accept the shared worktree option it forwards.
+  for (const invocation of panInvocations(command)) {
+    assert.doesNotThrow(
+      () =>
+        assertWorktreeOptionSupported(
+          invocation[0] as string,
+          invocation.slice(1),
+        ),
+      invocation.join(' '),
+    )
+  }
+
+  const registryPath = path.join(root, COMMAND_GOVERNANCE_REGISTRY_PATH)
+  const registry = JSON.parse(readFileSync(registryPath, 'utf8')) as {
+    card_commands: Array<{ command: string; card_mode: string }>
+    target_mutating_commands: Array<{
+      command: string
+      worktree_forwarding: string[]
+    }>
+  }
+
+  assert.deepEqual(
+    registry.card_commands.find((entry) => entry.command === 'pan-polish'),
+    { command: 'pan-polish', card_mode: 'polish' },
+  )
+
+  const mutating = registry.target_mutating_commands.find(
+    (entry) => entry.command === 'pan-polish',
+  )
+
+  assert.ok(mutating)
+  assert.deepEqual(mutating.worktree_forwarding, [
+    'governance card --mode polish --worktree <name>',
+  ])
+  assert.deepEqual(run(root).errors, [])
+
+  mutating.worktree_forwarding = [
+    'governance card --mode polish --worktree <name> --json',
+  ]
+  writeJson(registryPath, registry)
+
+  assert.ok(
+    run(root).errors.some((error) =>
+      error.includes('pan-polish.md is target-mutating and MUST forward'),
+    ),
+  )
+})
+
 test('a new command without a card fails validation with the fix named', () => {
   const root = createFixture()
 

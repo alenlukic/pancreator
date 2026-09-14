@@ -490,6 +490,30 @@ The session changes nothing: it returns ranked findings and a pass or fail
 verdict, and acting on them is a separate `/pan-spotfix` or a systematic run. Do not run
 it while a mutating workflow agent is active in the same workspace.
 
+Use `/pan-harden [scope hint]` when a burst of ad-hoc agent work in the current
+session is done and the working tree needs to reach a mergeable state. The
+session resolves the scope from the working tree and the merge base, exercises
+the changed behavior with the narrowest deterministic checks, delegates exactly
+one `pan-reviewer` over a single capture, inspects a rendered surface under
+`BROWSER-001` when one changed, and closes the ranked gaps. It then prepares
+the branch and names the integration command you would run next — it never
+commits, merges, rebases, pushes, or runs the integration itself. It creates no
+run and gates nothing. Do not run it while a mutating workflow agent is active
+in the same workspace.
+
+Use `/pan-polish [design task]` to bring UI and design work into conformance
+with the design handbook and the design system that owns each touched surface.
+With no argument the session takes the working tree's UI and design changes;
+with an argument it performs that design task under the same rules. Operator
+briefs conform to the project design system in `docs/operator-briefs/`, target
+UI to the target's own tokens or style guide, and the ux-guide heuristics apply
+on every surface. When a surface has no design system, the session proposes a
+minimal token set and generates it only after your recorded approval. Do not
+run it while a mutating workflow agent is active in the same workspace.
+
+Both commands accept `--worktree <name>` to bind the session to a named
+worktree.
+
 Invoke `/pan-pair` **once per conversation**, not once per turn. It opens the
 session by generating the governance card; after that, every directive is an
 ordinary chat message and the agent loops on its own. Re-invoking is harmless but
