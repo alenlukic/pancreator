@@ -13,6 +13,7 @@ import test from 'node:test'
 import { setTimeout as delay } from 'node:timers/promises'
 
 import {
+  adoptedBaselineWorkspaceDivergence,
   AGENT_REPOSITORY_CHECK_RUNS_FILE,
   agentRepositoryCheckAdvisories,
   compareRepositoryCheckToBaseline,
@@ -42,7 +43,10 @@ import {
 import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { loadRepositoryCheckBaseline } from '../../src/lib/validation.js'
-import type { RunState } from '../../src/lib/types.js'
+import type {
+  RepositoryCheckBaselinePointer,
+  RunState,
+} from '../../src/lib/types.js'
 import {
   createFixture,
   createTestTempDirectory,
@@ -538,6 +542,138 @@ test('baseline delta caps embedded diagnostics but preserves full counts', () =>
   assert.equal(comparison.delta.new.length, 100)
   assert.equal(comparison.delta.counts?.new, 102)
   assert.equal(comparison.delta.full?.new.length, 102)
+})
+
+// A cohort shares one baseline across chunk runs that each own a different
+// worktree, so a host failure of the capturing tree used to read as a
+// regression the adopting chunk had introduced, and the chunk spent its next
+// stage hunting a change that never happened.
+test('a baseline from another workspace diagnoses a new failure instead of attributing it', () => {
+  const newFailure = '/workspace/src/b.ts:3:1 error New failure no-new\n'
+  // Only an adopted baseline spans two trees, and only the pointer knows it
+  // was adopted, so the caller resolves the divergence and hands it in.
+  const pointer: RepositoryCheckBaselinePointer = {
+    profile: 'static',
+    status: 'passed',
+    artifact_path: 'runtime/logs/cohorts/c/baselines/pre-implementation.json',
+    workspace_fingerprint: 'f',
+    recorded_at: '2026-09-13T00:00:00.000Z',
+    shared_from_cohort: 'cohort-fixture',
+    capture_workspace_path: 'worktrees/operator/chunk-a',
+  }
+  const divergence = adoptedBaselineWorkspaceDivergence(
+    pointer,
+    'worktrees/operator/chunk-b',
+  )
+
+  assert.deepEqual(divergence, {
+    baseline_workspace: 'worktrees/operator/chunk-a',
+    current_workspace: 'worktrees/operator/chunk-b',
+  })
+  // The same chunk path, a baseline this run captured itself, and a pointer
+  // written before the capture path existed each report no divergence, so
+  // every run outside a shared adoption is graded exactly as it was.
+  assert.equal(
+    adoptedBaselineWorkspaceDivergence(pointer, 'worktrees/operator/chunk-a'),
+    null,
+  )
+  assert.equal(
+    adoptedBaselineWorkspaceDivergence(
+      { ...pointer, shared_from_cohort: undefined },
+      'worktrees/operator/chunk-b',
+    ),
+    null,
+  )
+  assert.equal(
+    adoptedBaselineWorkspaceDivergence(
+      { ...pointer, capture_workspace_path: undefined },
+      'worktrees/operator/chunk-b',
+    ),
+    null,
+  )
+  assert.equal(adoptedBaselineWorkspaceDivergence(undefined, '.'), null)
+
+  // The gate reads the baseline through the loader, so the loader is where
+  // the pointer's capture path has to reach the comparison.
+  const root = createTestTempDirectory('adopted-baseline-')
+  const artifactPath =
+    'runtime/logs/cohorts/c/baselines/pre-implementation-static.json'
+
+  mkdirSync(path.dirname(path.join(root, artifactPath)), { recursive: true })
+  writeFileSync(
+    path.join(root, artifactPath),
+    `${JSON.stringify({
+      schema_version: 1,
+      run_id: 'chunk-a-run',
+      stage: 'implement',
+      profile: 'static',
+      workspace_fingerprint: 'f',
+      recorded_at: pointer.recorded_at,
+      capture_workspace_path: 'worktrees/operator/chunk-a',
+      result: passedCheck(),
+    })}\n`,
+  )
+
+  const adoptingRun = {
+    workspace_root: 'worktrees/operator/chunk-b',
+    repository_check_baselines: {
+      static: { ...pointer, artifact_path: artifactPath },
+    },
+  } as unknown as RunState
+
+  assert.deepEqual(
+    loadRepositoryCheckBaseline(root, adoptingRun, 'static')
+      .workspace_divergence,
+    divergence,
+  )
+
+  const divergent = compareRepositoryCheckToBaseline(
+    passedCheck(),
+    failedCheck(newFailure),
+    divergence,
+  )
+
+  assert.deepEqual(divergent.delta.baseline_workspace_divergence, divergence)
+  // The explanation names the two trees and sends the reader to the one that
+  // can settle the question, instead of attributing the failure to a change
+  // this run may not have made.
+  assert.doesNotMatch(divergent.explanation, /introduced a new failure/u)
+  assert.match(divergent.explanation, /may belong to the capturing workspace/u)
+  assert.match(
+    divergent.explanation,
+    /captured in 'worktrees\/operator\/chunk-a'/u,
+  )
+  assert.match(
+    divergent.explanation,
+    /executed in 'worktrees\/operator\/chunk-b'/u,
+  )
+  // The diagnostic is still unexplained, so the gate still fails; only the
+  // attribution changes.
+  assert.equal(divergent.passed, false)
+  assert.equal(
+    divergent.delta.new.some((item) => item.diagnostic.includes('no-new')),
+    true,
+  )
+
+  // One workspace on both sides attributes the failure as it always did.
+  const sameWorkspace = compareRepositoryCheckToBaseline(
+    passedCheck(),
+    failedCheck(newFailure),
+  )
+
+  assert.equal(sameWorkspace.delta.baseline_workspace_divergence, undefined)
+  assert.match(sameWorkspace.explanation, /introduced a new failure/u)
+
+  // Divergence alone decides nothing: a run that adds no diagnostic still
+  // passes, and the marker only records where the two sides ran.
+  const clean = compareRepositoryCheckToBaseline(
+    passedCheck(),
+    passedCheck(),
+    divergence,
+  )
+
+  assert.equal(clean.passed, true)
+  assert.deepEqual(clean.delta.baseline_workspace_divergence, divergence)
 })
 
 test('baseline delta treats a first-time failing command as new', () => {
@@ -1418,7 +1554,7 @@ test('an agent clean profile pass is recorded where the gate looks for it', () =
 
   assert.match(evidence, /^\$ pan repository-check fast$/mu)
   assert.match(evidence, /exit_code=0/u)
-  assert.match(evidence, /invoked_by=command-line/u)
+  assert.match(evidence, /^invoked_by=agent$/mu)
 })
 
 // The verify stage permits each of its evidence workers one profile run, and
@@ -1623,6 +1759,7 @@ test('a recorded pass answers a repeated request for the same profile', () => {
     {
       profile: 'fast',
       invocation_id: 'implement-1',
+      worker_role: null,
       workspace_fingerprint: fingerprint,
       started_at: '2026-09-13T09:00:00.000Z',
       invoked_by: 'agent',
@@ -1661,6 +1798,7 @@ test('a reusable pass needs the same invocation, fingerprint, profile, and clean
     invocationId: string | null,
     profileName: string,
     observed: string,
+    workerRole: string | null = null,
   ): ReusableProfileExecution | null =>
     reusableProfileExecution(
       root,
@@ -1668,6 +1806,7 @@ test('a reusable pass needs the same invocation, fingerprint, profile, and clean
       invocationId,
       profileName,
       observed,
+      workerRole,
     )
 
   // A run that has recorded nothing has nothing to reuse.
@@ -1683,6 +1822,24 @@ test('a reusable pass needs the same invocation, fingerprint, profile, and clean
   assert.equal(reuse('implement-1', 'fast', 'a'.repeat(64)), null)
   assert.equal(reuse('verify-1', 'fast', fingerprint), null)
   assert.equal(reuse('implement-1', 'static', fingerprint), null)
+
+  // The two evidence workers of one verify stage share an invocation id, so
+  // the role is the only thing that keeps their entries apart. The stage
+  // worker's own entry answers no worker, and neither worker answers the
+  // other.
+  writeFileSync(ledger, entry({ invocation_id: 'verify-1' }))
+  assert.equal(reuse('verify-1', 'fast', fingerprint, 'review'), null)
+
+  writeFileSync(
+    ledger,
+    entry({ invocation_id: 'verify-1', worker_role: 'review' }),
+  )
+  assert.equal(reuse('verify-1', 'fast', fingerprint, 'qa'), null)
+  assert.equal(reuse('verify-1', 'fast', fingerprint), null)
+  assert.equal(
+    reuse('verify-1', 'fast', fingerprint, 'review')?.worker_role,
+    'review',
+  )
 
   // A failure has to re-run to show its repair.
   writeFileSync(ledger, entry({ status: 'failed' }))

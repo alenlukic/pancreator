@@ -5,12 +5,15 @@ import test from 'node:test'
 
 import { PanError } from '../../src/lib/errors.js'
 import {
+  INVOCATION_ALIAS_FILE,
   archiveWorkflowDirectories,
   finalizeWorkflowArtifacts,
   migrateRunSuffixes,
   migrateWorkflowNames,
   migratedRunId,
   repairWorkflowInboxReferences,
+  resolveRunCitation,
+  rewriteWorkflowArtifacts,
   standardizeRuntimeFileNames,
 } from '../../src/lib/workflow-artifacts.js'
 import { inboxTemporalScanDirectories } from '../../src/lib/inbox.js'
@@ -210,6 +213,127 @@ test('finalization rewrites exact-run inbox references only', () => {
   }
 
   assert.equal(readFileSync(unrelatedInbox, 'utf8'), unrelatedContent)
+})
+
+// A prefix moves twice: once while the run is live and the stage count
+// grows, and once when the run closes and the ids invert. Every path an
+// operator, an inbox item, or a report wrote down between those passes stops
+// resolving, and nothing inside the run says where it went.
+test('finalization leaves an alias from every in-flight invocation prefix to its final one', () => {
+  const root = createTestTempDirectory('pancreator-alias-')
+  const runId = '63308_Sep-01-0091_aliases'
+  const runDirectory = path.join(root, 'runtime/logs/workflows', runId)
+  const original = ['999_plan-1_02e65dfc', '998_implement-1_12e65dfc']
+
+  writeWorkflowSnapshot(runDirectory)
+  writeEvents(runDirectory, original)
+  writeState(runDirectory, runId, 'running', original)
+
+  for (const [index, invocationId] of original.entries()) {
+    writeInvocation(runDirectory, runId, invocationId, index)
+    write(
+      path.join(runDirectory, 'invocations', `${invocationId}.md`),
+      `Contract ${invocationId}\n`,
+    )
+  }
+
+  const citation = `runtime/logs/workflows/${runId}/invocations/${original[0]}.md`
+
+  // The live run resequences its prefixes, then closes and inverts them.
+  rewriteWorkflowArtifacts(root, runId, 'in-flight')
+
+  const intermediate = ['99_plan-1_02e65dfc', '98_implement-1_12e65dfc']
+
+  assert.equal(
+    existsSync(
+      path.join(runDirectory, 'invocations', `${intermediate[0]}.json`),
+    ),
+    true,
+  )
+
+  writeState(runDirectory, runId, 'succeeded', intermediate)
+  finalizeWorkflowArtifacts(root, runId)
+
+  const final = ['01_plan-1_02e65dfc', '00_implement-1_12e65dfc']
+  const aliases = JSON.parse(
+    readFileSync(path.join(runDirectory, INVOCATION_ALIAS_FILE), 'utf8'),
+  ) as { run_id: string; aliases: Record<string, string> }
+
+  assert.equal(aliases.run_id, runId)
+  // Both the id the run started with and the one it carried in between
+  // resolve to the id it holds now; the first pass's alias was repointed
+  // rather than left aimed at an id that no longer exists.
+  assert.deepEqual(aliases.aliases, {
+    [original[0]]: final[0],
+    [original[1]]: final[1],
+    [intermediate[0]]: final[0],
+    [intermediate[1]]: final[1],
+  })
+
+  // The oldest citation resolves to a path that exists, which is the whole
+  // point of keeping the map.
+  const resolved = resolveRunCitation(root, runId, citation)
+
+  assert.equal(resolved.aliased, true)
+  assert.equal(
+    resolved.resolved,
+    `runtime/logs/workflows/${runId}/invocations/${final[0]}.md`,
+  )
+  assert.equal(resolved.path, resolved.resolved)
+  assert.equal(existsSync(path.join(root, resolved.path!)), true)
+
+  // A bare id resolves to the card a reader following the citation wants.
+  assert.equal(
+    resolveRunCitation(root, runId, intermediate[1]!).path,
+    `runtime/logs/workflows/${runId}/invocations/${final[1]}.md`,
+  )
+
+  // A citation the map does not cover comes back untouched rather than
+  // guessed at.
+  const untouched = resolveRunCitation(root, runId, 'state.json')
+
+  assert.equal(untouched.aliased, false)
+  assert.equal(untouched.resolved, 'state.json')
+})
+
+// The resolver answers for one run, and a citation is operator-supplied
+// text. A candidate that leaves the run has to come back as no answer rather
+// than as a path the run does not hold.
+test('a citation that escapes the run resolves to nothing', () => {
+  const root = createTestTempDirectory('pancreator-citation-')
+  const outside = createTestTempDirectory('pancreator-citation-outside-')
+  const runId = '63308_Sep-01-0092_citation'
+  const siblingRunId = '63308_Sep-01-0093_sibling'
+  const outsideFile = path.join(outside, 'hosts')
+
+  writeState(root, runId, 'succeeded')
+  writeState(root, siblingRunId, 'succeeded')
+  write(outsideFile, 'escaped\n')
+
+  // The run's own artifact still resolves, so the containment refuses only
+  // what it is meant to refuse.
+  const own = `runtime/logs/workflows/${runId}/state.json`
+
+  assert.equal(resolveRunCitation(root, runId, own).path, own)
+
+  // A traversal out of the installation that names a file which exists: the
+  // existence probe reported this path before the candidates were contained.
+  const escape = path.relative(root, outsideFile)
+
+  assert.ok(escape.startsWith('..'), escape)
+  assert.equal(existsSync(path.join(root, escape)), true)
+  assert.equal(resolveRunCitation(root, runId, escape).path, null)
+  assert.equal(
+    resolveRunCitation(root, runId, '../../../../etc/hosts').path,
+    null,
+  )
+
+  // Another run's artifact is inside the installation and still outside the
+  // answer this resolver is asked for.
+  const sibling = `runtime/logs/workflows/${siblingRunId}/state.json`
+
+  assert.equal(existsSync(path.join(root, sibling)), true)
+  assert.equal(resolveRunCitation(root, runId, sibling).path, null)
 })
 
 test('historical repair reports unique changes and preserves ambiguities', () => {
@@ -589,6 +713,55 @@ test('workflow archive moves runs older than retention into archive directories'
       now: new Date('2026-07-01T22:00:00.000Z'),
     }).run_ids,
     [],
+  )
+})
+
+// `AUTO-001` lets a worker leave a task-specific script in the run's own
+// directory, and nothing said who removes it. Finalization fires the moment a
+// run closes, which is when an operator is still reading the record, so
+// sweeping there would take evidence out from under the reader; leaving the
+// scripts forever grows the runtime tree without bound.
+test('retention sweeps run-local worker scripts and finalization keeps them', () => {
+  const root = createTestTempDirectory('pancreator-scripts-')
+  const runId = '63379_Jun-22-0158_5f354f23'
+  const runDirectory = path.join(root, 'runtime/logs/workflows', runId)
+  const script = path.join(runDirectory, 'scripts', 'check-delta.mjs')
+  const invocationIds = ['plan-1-aaaaaaaa']
+
+  writeWorkflowSnapshot(runDirectory)
+  writeEvents(runDirectory, invocationIds)
+  writeState(runDirectory, runId, 'succeeded', invocationIds)
+  writeInvocation(runDirectory, runId, invocationIds[0]!, 0)
+  write(script, "console.log('one-run helper')\n")
+
+  finalizeWorkflowArtifacts(root, runId)
+
+  assert.equal(
+    existsSync(script),
+    true,
+    'the closing run keeps the script a reader may still need',
+  )
+
+  const summary = archiveWorkflowDirectories(root, {
+    retentionDays: 7,
+    now: new Date('2026-07-01T22:00:00.000Z'),
+  })
+
+  assert.deepEqual(summary.swept_script_run_ids, [runId])
+  assert.equal(existsSync(script), false)
+  // The sweep takes the scripts and nothing else: the rest of the run moves
+  // into the archive intact.
+  assert.equal(
+    existsSync(
+      path.join(root, 'runtime/logs/workflows/archive', runId, 'scripts'),
+    ),
+    false,
+  )
+  assert.equal(
+    existsSync(
+      path.join(root, 'runtime/logs/workflows/archive', runId, 'state.json'),
+    ),
+    true,
   )
 })
 

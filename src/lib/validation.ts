@@ -20,6 +20,7 @@ import { validateEvalScenarios } from './evals/scenario.js'
 import { creditKnownFailures } from './known-failing.js'
 import { loadPipelineConfig, resolveConfigPersonas } from './pipeline-config.js'
 import {
+  adoptedBaselineWorkspaceDivergence,
   assertRepositoryChecksValid,
   commandFailureDiagnostics,
   compareRepositoryCheckToBaseline,
@@ -27,6 +28,7 @@ import {
   runRepositoryCheck,
 } from './repository-checks.js'
 import type {
+  BaselineWorkspaceDivergence,
   RepositoryCheckBaselineArtifact,
   RepositoryCheckResult,
 } from './repository-checks.js'
@@ -2178,6 +2180,12 @@ export interface RepositoryCheckBaselineLoad {
   artifact_path?: string
   /** Why the baseline cannot support a gate. Absent when none is expected. */
   reason?: string
+  /**
+   * Set when this run adopted the baseline from another workspace, which a
+   * shared cohort baseline is. The comparison names the two trees instead of
+   * attributing a new diagnostic to this change.
+   */
+  workspace_divergence?: BaselineWorkspaceDivergence
 }
 
 /**
@@ -2264,6 +2272,15 @@ export function loadRepositoryCheckBaseline(
     }
   }
 
+  // Resolved from the pointer rather than from the two results, because only
+  // the pointer knows the baseline was adopted. A run that captured its own
+  // baseline is compared exactly as it was before, even when the checkout
+  // itself has moved since.
+  const divergence = adoptedBaselineWorkspaceDivergence(
+    pointer,
+    state.workspace_root || '.',
+  )
+  const divergenceField = divergence ? { workspace_divergence: divergence } : {}
   const absolute = resolveInside(root, pointer.artifact_path)
 
   if (!fileExists(absolute)) {
@@ -2295,7 +2312,11 @@ export function loadRepositoryCheckBaseline(
   }
 
   if (!artifact.full_result_path) {
-    return { result: artifact.result, artifact_path: pointer.artifact_path }
+    return {
+      result: artifact.result,
+      artifact_path: pointer.artifact_path,
+      ...divergenceField,
+    }
   }
 
   const fullAbsolute = resolveInside(root, artifact.full_result_path)
@@ -2331,6 +2352,7 @@ export function loadRepositoryCheckBaseline(
   return {
     result: fullArtifact.result,
     artifact_path: artifact.full_result_path,
+    ...divergenceField,
   }
 }
 
@@ -2499,6 +2521,7 @@ function runShellCheck(
         ? compareRepositoryCheckToBaseline(
             baselineLoad.result,
             cached.repository_result,
+            baselineLoad.workspace_divergence ?? null,
           )
         : undefined
     const explanation =
@@ -2662,6 +2685,7 @@ function runShellCheck(
       baselineComparison = compareRepositoryCheckToBaseline(
         load.result,
         repositoryResult,
+        load.workspace_divergence ?? null,
       )
       baselineEvidencePath = load.artifact_path
     } else if (load.reason) {

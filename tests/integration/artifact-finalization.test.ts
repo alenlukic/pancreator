@@ -1,11 +1,15 @@
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
 import { abortRun, getRunState } from '../../src/lib/engine.js'
 import { loadState, loadStateRevision } from '../../src/lib/state.js'
+import type { ResolvedRunCitation } from '../../src/lib/workflow-artifacts.js'
 import { checkpoint } from './delivery-helpers.js'
+
+const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
 
 test('aborting a run finalizes artifact numbering and layout', () => {
   const { root, runId, state, invocation } = checkpoint(
@@ -52,5 +56,48 @@ test('aborting a run finalizes artifact numbering and layout', () => {
     historical.current_invocation?.id ?? '',
     /^99_plan-1_/u,
     'historical revisions keep their pre-finalization invocation ids',
+  )
+})
+
+// The rewrite repairs every reference inside the run, and a citation that
+// left the run — in an operator's notes, a chat, a report of another run —
+// is the one it cannot reach. Those citations are how a reader returns to
+// the record, so the run has to answer for the ids it retired.
+test('a citation written before the close resolves through pan status', () => {
+  const { root, runId, invocation } = checkpoint('planning@plan-prepared')
+
+  assert.ok(invocation)
+  const citation = `runtime/logs/workflows/${runId}/agent/invocations/${invocation.invocation_id}.md`
+
+  abortRun(root, runId, 'operator canceled')
+
+  assert.equal(
+    existsSync(path.join(root, citation)),
+    false,
+    'the close retired the cited path',
+  )
+
+  const resolution = JSON.parse(
+    execFileSync(
+      process.execPath,
+      [CLI, 'status', runId, '--resolve', citation, '--json'],
+      { cwd: root, encoding: 'utf8' },
+    ),
+  ) as ResolvedRunCitation
+
+  assert.equal(resolution.aliased, true)
+  assert.match(resolution.resolved, /\/00_plan-1_[^/]+\.md$/u)
+  assert.equal(resolution.path, resolution.resolved)
+  assert.equal(existsSync(path.join(root, resolution.path ?? '')), true)
+  assert.ok(resolution.alias_path)
+
+  // The operator reading the terminal gets the same answer as the tooling.
+  assert.match(
+    execFileSync(
+      process.execPath,
+      [CLI, 'status', runId, '--resolve', invocation.invocation_id],
+      { cwd: root, encoding: 'utf8' },
+    ),
+    new RegExp(`resolves to .*00_plan-1_[^/]+\\.md`, 'u'),
   )
 })

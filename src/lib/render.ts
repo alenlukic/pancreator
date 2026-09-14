@@ -774,13 +774,16 @@ export function renderEvidenceWorkerBrief(
     '',
     // The run is where the supervisor audits an agent-run profile, so the
     // brief names the exact command that records the execution against it,
-    // or the gate evidence that makes running it unnecessary.
+    // or the gate evidence that makes running it unnecessary. The role is
+    // part of that command because every evidence worker of this stage
+    // shares its invocation id and owes its own recorded pass.
     fastEvidenceCurrent
       ? 'The implement gate already ran `fast` at this workspace ' +
         'fingerprint. Cite that gate evidence reference from your card ' +
         'instead of running the profile.'
       : 'When your scope allows one validation run of the fast profile, run ' +
-        `exactly \`./bin/pan repository-check fast --run ${invocation.run_id}\` ` +
+        `exactly \`./bin/pan repository-check fast --run ${invocation.run_id} ` +
+        `--role ${worker.role}\` ` +
         (harnessRoot
           ? `from the harness root \`${harnessRoot}\` `
           : 'from this checkout ') +
