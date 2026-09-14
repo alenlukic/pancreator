@@ -2964,12 +2964,12 @@ interface AccountableWindow {
  * delta, newest last.
  *
  * A ship attempt is accountable for the window between its own before and
- * after snapshots, and `scope.no_unapproved_changes` already adjudicates that
- * window against the stage's workspace policy. An out-of-stage attribution
- * record covers the same shape for work the operator directed between stages,
- * and carries the chain only when every path it names is a release-metadata
- * path — the same set the `release_metadata_only` policy permits a ship
- * attempt to touch.
+ * after snapshots, and `scope.no_unapproved_changes` adjudicates that window
+ * against the real snapshot delta. An out-of-stage attribution record spans
+ * the same kind of window for work the operator directed between stages, but
+ * nothing recomputes its delta here: it carries the chain only when the
+ * record declares at least one changed path and every path it declares is a
+ * release-metadata path.
  */
 function accountableWindowsSinceQa(
   state: RunState,

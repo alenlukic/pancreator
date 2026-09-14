@@ -21,6 +21,84 @@ const sample = (file: string, name: string): TestIdentity => ({
   lane: 'unit',
 })
 
+/** One recorded lane profile of a tune session, as the benchmark reads it. */
+const writeLaneProfile = (
+  root: string,
+  name: string,
+  wallMs: number,
+  testName: string,
+  fixtureMs: number,
+): string => {
+  const relative = `runtime/tune-harness/work/session/${name}.json`
+  const absolute = path.join(root, relative)
+  const file = `tests/${name}.test.ts`
+  const fileMs = Math.max(0, wallMs - 1)
+  const caseMs = Math.max(0, wallMs - 2)
+
+  mkdirSync(path.dirname(absolute), { recursive: true })
+  writeFileSync(
+    absolute,
+    `${JSON.stringify({
+      schema_version: 1,
+      lane: name,
+      recorded_at: '2026-01-01T10:00:00.000Z',
+      test_count: 1,
+      pass_count: 1,
+      fail_count: 0,
+      wall_clock_ms: wallMs,
+      files: [
+        {
+          file,
+          duration_ms: fileMs,
+          test_count: 1,
+          pass_count: 1,
+          fail_count: 0,
+        },
+      ],
+      slowest_tests: [{ file, name: testName, duration_ms: caseMs }],
+      all_tests: [{ file, name: testName, duration_ms: caseMs }],
+      fixture_cost: { template_ms: fixtureMs, clone_ms: fixtureMs / 2 },
+    })}\n`,
+  )
+
+  return relative
+}
+
+/** A prior session record that carries nothing but the benchmark under test. */
+const priorRecord = (benchmark: TuneRecord['benchmark']): TuneRecord => {
+  const interval: PassInterval = {
+    started_at: '2026-01-01T10:00:00.000Z',
+    ended_at: '2026-01-01T10:01:00.000Z',
+  }
+
+  return {
+    schema_version: 1,
+    session_id: 'prior',
+    harness_version: '0',
+    git_commit: 'abc',
+    workspace_fingerprint: 'fp',
+    workspace_dirty: false,
+    recorded_at: '2026-01-01T10:01:00.000Z',
+    baseline_source: { kind: 'none' },
+    passes: { benchmark: interval, comparison: interval, judgment: interval },
+    retained_set: [],
+    current_inventory: [],
+    comparison: {
+      retained_and_present: [],
+      added_since_retained: [],
+      retained_but_removed: [],
+    },
+    benchmark,
+    verdicts: [],
+    judgment_provenance: {
+      handbook_path: 'governance/handbooks/eng/testing.md',
+      handbook_revision: 'HEAD',
+      inventory_only: true,
+      inventory_path: 'runtime/tune-harness/work/s/current-inventory.json',
+    },
+  }
+}
+
 test('partitionRetainedSet produces three disjoint groups', () => {
   const retained = [sample('a.test.ts', 'one'), sample('b.test.ts', 'two')]
   const current = [sample('a.test.ts', 'one'), sample('c.test.ts', 'three')]
@@ -253,64 +331,14 @@ test('identityKey includes occurrence suffix for duplicate names', () => {
 
 test('buildBenchmarkFromProfiles preserves every timing and fixture cost', () => {
   const root = createTestTempDirectory('pan-tune-benchmark-')
-  const profileDir = path.join(root, 'runtime/tune-harness/work/session')
-
-  mkdirSync(profileDir, { recursive: true })
-
-  const writeProfile = (
-    name: string,
-    wallMs: number,
-    testName: string,
-    fixtureMs: number,
-  ): string => {
-    const relative = `runtime/tune-harness/work/session/${name}.json`
-    const absolute = path.join(root, relative)
-
-    writeFileSync(
-      absolute,
-      `${JSON.stringify({
-        schema_version: 1,
-        lane: name,
-        recorded_at: '2026-01-01T10:00:00.000Z',
-        test_count: 1,
-        pass_count: 1,
-        fail_count: 0,
-        wall_clock_ms: wallMs,
-        files: [
-          {
-            file: `tests/${name}.test.ts`,
-            duration_ms: wallMs - 1,
-            test_count: 1,
-            pass_count: 1,
-            fail_count: 0,
-          },
-        ],
-        slowest_tests: [
-          {
-            file: `tests/${name}.test.ts`,
-            name: testName,
-            duration_ms: wallMs - 2,
-          },
-        ],
-        all_tests: [
-          {
-            file: `tests/${name}.test.ts`,
-            name: testName,
-            duration_ms: wallMs - 2,
-          },
-        ],
-        fixture_cost: {
-          template_ms: fixtureMs,
-          clone_ms: fixtureMs / 2,
-        },
-      })}\n`,
-    )
-
-    return relative
-  }
-
-  const fast = writeProfile('fast', 100, 'fast test', 8)
-  const secondary = writeProfile('secondary', 200, 'secondary test', 10)
+  const fast = writeLaneProfile(root, 'fast', 100, 'fast test', 8)
+  const secondary = writeLaneProfile(
+    root,
+    'secondary',
+    200,
+    'secondary test',
+    10,
+  )
   const benchmark = buildBenchmarkFromProfiles(root, fast, secondary, null)
 
   assert.equal(benchmark.fast_lane_wall_ms, 100)
@@ -321,4 +349,66 @@ test('buildBenchmarkFromProfiles preserves every timing and fixture cost', () =>
   )
   assert.equal(benchmark.fixture_template_ms, 18)
   assert.equal(benchmark.fixture_clone_ms, 9)
+})
+
+test('an absent secondary lane is null and a measured zero stays zero', () => {
+  const root = createTestTempDirectory('pan-tune-secondary-absent-')
+  const fast = writeLaneProfile(root, 'fast', 100, 'fast test', 8)
+
+  // Coercing both to 0 made a session that never ran the lane indistinguishable
+  // from one that ran it and measured nothing.
+  assert.equal(
+    buildBenchmarkFromProfiles(root, fast, null, null).secondary_lane_wall_ms,
+    null,
+  )
+
+  const measuredZero = writeLaneProfile(root, 'secondary', 0, 'zero test', 0)
+
+  assert.equal(
+    buildBenchmarkFromProfiles(root, fast, measuredZero, null)
+      .secondary_lane_wall_ms,
+    0,
+  )
+})
+
+test('the secondary lane delta needs a measurement on both sides', () => {
+  const root = createTestTempDirectory('pan-tune-secondary-delta-')
+  const fast = writeLaneProfile(root, 'fast', 100, 'fast test', 8)
+  const secondary = writeLaneProfile(
+    root,
+    'secondary',
+    200,
+    'secondary test',
+    10,
+  )
+  const withLane = buildBenchmarkFromProfiles(root, fast, secondary, null)
+  const withoutLane = buildBenchmarkFromProfiles(root, fast, null, null)
+  const deltaKeys = (benchmark: TuneRecord['benchmark']): string[] =>
+    Object.keys(benchmark.prior_deltas ?? {})
+
+  assert.equal(
+    deltaKeys(
+      buildBenchmarkFromProfiles(
+        root,
+        fast,
+        secondary,
+        priorRecord(withoutLane),
+      ),
+    ).includes('secondary_lane_wall_ms'),
+    false,
+  )
+  assert.equal(
+    deltaKeys(
+      buildBenchmarkFromProfiles(root, fast, null, priorRecord(withLane)),
+    ).includes('secondary_lane_wall_ms'),
+    false,
+  )
+
+  // Both sides measured 200, so the honest delta is a real zero rather than
+  // the absent key the two unmeasured comparisons report.
+  assert.equal(
+    buildBenchmarkFromProfiles(root, fast, secondary, priorRecord(withLane))
+      .prior_deltas?.secondary_lane_wall_ms,
+    0,
+  )
 })
