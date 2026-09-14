@@ -988,6 +988,64 @@ test('TUNE-001 resolves its record validator for tune-harness sessions', () => {
   )
 })
 
+const CATEGORY_NOUN = /\bcategor(?:y|ies)\b/iu
+const UNIVERSAL_QUANTIFIER = /\b(?:every|each)\b/iu
+
+/**
+ * The three things a repair instruction surface must say about the category
+ * partition, each stated over sentence structure rather than wording. A
+ * surface may reword any of them; it may not drop the universal quantifier
+ * that binds the duty to the whole registry.
+ */
+const PARTITION_CLAUSES = [
+  {
+    id: 'assess_every_category',
+    holds: (sentence: string): boolean =>
+      UNIVERSAL_QUANTIFIER.test(sentence) &&
+      CATEGORY_NOUN.test(sentence) &&
+      /\b(?:judges?|assess(?:es)?|audits?)\b/iu.test(sentence),
+  },
+  {
+    id: 'one_intake_per_category',
+    holds: (sentence: string): boolean =>
+      UNIVERSAL_QUANTIFIER.test(sentence) &&
+      CATEGORY_NOUN.test(sentence) &&
+      /\bintakes?\b/iu.test(sentence) &&
+      /\bwrites?\b/iu.test(sentence),
+  },
+  {
+    id: 'report_cleared_categories',
+    holds: (sentence: string): boolean =>
+      CATEGORY_NOUN.test(sentence) &&
+      /\breports?\b/iu.test(sentence) &&
+      (UNIVERSAL_QUANTIFIER.test(sentence) ||
+        /\b(?:no|none)\b/iu.test(sentence)),
+  },
+]
+
+/**
+ * Partition clauses no single sentence of the surface states.
+ *
+ * Sentence scope carries the strength a verbatim pin used to carry: a surface
+ * that scatters the same words across unrelated sentences states no
+ * partition, which is how one shared pattern loose enough to fit all three
+ * surfaces degenerated into /categor/i.
+ */
+function unstatedPartitionClauses(text: string): string[] {
+  const sentences = text
+    .split(/\n\s*\n|\n(?=[ \t]*(?:[-*+] |\d+\. |#{1,6} ))/u)
+    .flatMap((block) =>
+      block
+        .replace(/\s+/gu, ' ')
+        .trim()
+        .split(/(?<=[a-z0-9)\]`'"])\.\s+/u),
+    )
+
+  return PARTITION_CLAUSES.filter(
+    (clause) => !sentences.some((sentence) => clause.holds(sentence)),
+  ).map((clause) => clause.id)
+}
+
 test('every repair instruction surface agrees on the category partition', () => {
   const root = sharedFixture()
 
@@ -1007,46 +1065,36 @@ test('every repair instruction surface agrees on the category partition', () => 
 
   assert.ok(categories.length > 0)
 
-  // Each surface states the partition in its own words, so each carries its
-  // own pattern. One shared pattern loose enough to fit all three degenerated
-  // into /categor/i, which any incidental mention of the word satisfied.
   const surfaces = [
-    {
-      relative: 'library/personas/harness-technician.md',
-      partition:
-        /MUST judge every issue category of the category registry the session\s+supplies against your evidence/u,
-    },
-    {
-      relative: 'library/cursor/agents/harness-technician.md',
-      partition:
-        /Assess every registry category, write at most one\s+intake for each category that produced a confirmed finding/u,
-    },
-    {
-      relative: 'library/cursor/commands/pan-repair.md',
-      partition: /Report every category the registry declares\./u,
-    },
-  ].map((surface) => ({
-    ...surface,
-    text: readFileSync(path.join(root, surface.relative), 'utf8'),
+    'library/personas/harness-technician.md',
+    'library/cursor/agents/harness-technician.md',
+    'library/cursor/commands/pan-repair.md',
+  ].map((relative) => ({
+    relative,
+    text: readFileSync(path.join(root, relative), 'utf8'),
   }))
 
   for (const surface of surfaces) {
-    assert.match(
-      surface.text,
-      surface.partition,
+    assert.deepEqual(
+      unstatedPartitionClauses(surface.text),
+      [],
       `${surface.relative} must state the category partition`,
     )
 
-    // The word survives elsewhere in every surface, so a pattern that only
-    // looked for it would still pass here. This one must not.
-    const withoutPartition = surface.text.replace(surface.partition, '')
-
-    assert.match(withoutPartition, /categor/iu)
-    assert.doesNotMatch(
-      withoutPartition,
-      surface.partition,
-      `${surface.relative} partition pin must fail when the statement is dropped`,
+    // Dropping the universal quantifier is what collapses the partition back
+    // into one document, so the check has to fail on a surface that lost it.
+    // The pin this replaced removed its own single match and then asserted
+    // the removal, which a pattern occurring once can never contradict.
+    const withoutQuantifier = unstatedPartitionClauses(
+      surface.text.replace(/\b(?:every|each)\b/giu, 'the'),
     )
+
+    for (const clause of ['assess_every_category', 'one_intake_per_category']) {
+      assert.ok(
+        withoutQuantifier.includes(clause),
+        `${surface.relative} partition check must fail on ${clause} once the quantifier is gone`,
+      )
+    }
 
     assert.doesNotMatch(
       surface.text,

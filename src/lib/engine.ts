@@ -8298,7 +8298,10 @@ export function waiveGate(
 ): {
   state: RunState
   waiver: OperatorGateWaiver
-  /** Stage entry gates this directive now reaches, in workflow order. */
+  /**
+   * The waived stage's own entry gate when this directive covers it. A waiver
+   * names one stage, so this holds at most one element.
+   */
   entry_gates_reached: EntryGateReach[]
   claimTransfer?: WorktreeClaimTransfer
 } {

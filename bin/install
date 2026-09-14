@@ -1135,7 +1135,7 @@ install_payload() {
     echo "Automatic release updates will remain disabled for this install."
   elif [[ "$SOURCE_INDEXED" != "true" ]]; then
     echo ""
-    echo "Unindexed release candidate: version $VERSION has no release-index entry yet."
+    echo "Unindexed release candidate: version $VERSION is not installing from an indexed release commit."
     echo "Automatic release updates will remain disabled for this install."
   fi
 
