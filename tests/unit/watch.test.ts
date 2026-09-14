@@ -35,6 +35,7 @@ import { read, writeCanonicalDelegation } from '../helpers.js'
 import {
   CADENCE_SECONDS,
   blockedSnapshotEvents,
+  currentInvocation,
   fakeClock,
   fillPreparedOutput,
   preparedRun,
@@ -268,7 +269,9 @@ test('watch --mark-background writes the background marker beside the record', a
     backgroundMarkerPath(root, state.run_id, invocationId),
   )
 
-  const marker = read(path.join(root, result.background_marker_path!)) as {
+  assert.ok(result.background_marker_path)
+
+  const marker = read(path.join(root, result.background_marker_path)) as {
     launch_mode: string
     watch_record_path: string
   }
@@ -367,9 +370,7 @@ test('touching the delegation artifact is not progress the watch counts', async 
     root,
     delegationPath(state.run_id, invocationId, root),
   )
-  const invocation = read(
-    path.join(root, state.current_invocation!.json_path),
-  ) as Parameters<typeof observeInvocation>[1]
+  const invocation = currentInvocation(root, state)
 
   writeCanonicalDelegation(root, invocation)
 
@@ -742,9 +743,7 @@ test('a plausible output under a running agent report ends no wake of its own', 
 // cheapest test of that, and `result` is written last by contract.
 test('an output missing a field its invocation declares required is not terminal', async () => {
   const { root, state } = preparedRun()
-  const invocation = read(
-    path.join(root, state.current_invocation!.json_path),
-  ) as Parameters<typeof observeInvocation>[1]
+  const invocation = currentInvocation(root, state)
 
   writeStageOutput(root, state)
 
@@ -804,9 +803,7 @@ test('an output missing a field its invocation declares required is not terminal
 // time is the same weak evidence as an output that landed too soon.
 test('an unreadable elapsed time holds the observation instead of completing it', () => {
   const { root, state } = preparedRun()
-  const invocation = read(
-    path.join(root, state.current_invocation!.json_path),
-  ) as Parameters<typeof observeInvocation>[1]
+  const invocation = currentInvocation(root, state)
 
   writeStageOutput(root, state)
 
@@ -835,9 +832,7 @@ test('an unreadable elapsed time holds the observation instead of completing it'
 // that began.
 test('the scaffold a worker writes before it starts is not a finished worker', async () => {
   const { root, state, invocationId } = preparedRun()
-  const invocation = read(
-    path.join(root, state.current_invocation!.json_path),
-  ) as Parameters<typeof scaffoldStageOutput>[1]
+  const invocation = currentInvocation(root, state)
 
   writeCanonicalDelegation(root, invocation)
   scaffoldStageOutput(root, invocation, invocation.output.path)
@@ -869,9 +864,7 @@ test('the scaffold a worker writes before it starts is not a finished worker', a
 
 test('a watch over a scaffold completes once the worker writes its output', async () => {
   const { root, state, invocationId } = preparedRun()
-  const invocation = read(
-    path.join(root, state.current_invocation!.json_path),
-  ) as Parameters<typeof scaffoldStageOutput>[1]
+  const invocation = currentInvocation(root, state)
 
   writeCanonicalDelegation(root, invocation)
   scaffoldStageOutput(root, invocation, invocation.output.path)
@@ -982,9 +975,7 @@ test('a completed verdict records whether an agent or a file produced it', async
 
   writeCanonicalDelegation(
     inferred.root,
-    read(
-      path.join(inferred.root, inferred.state.current_invocation!.json_path),
-    ) as Parameters<typeof scaffoldStageOutput>[1],
+    currentInvocation(inferred.root, inferred.state),
   )
   writeStageOutput(inferred.root, inferred.state)
 

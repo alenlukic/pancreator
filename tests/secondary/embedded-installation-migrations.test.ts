@@ -209,7 +209,7 @@ test('embedded installer refresh clears superseded legacy state in one pass', ()
 
     assert.equal(stamps.length, 1)
     assert.equal(
-      existsSync(path.join(configBackupRoot, stamps[0]!, 'project.json')),
+      existsSync(path.join(configBackupRoot, stamps[0], 'project.json')),
       true,
     )
 

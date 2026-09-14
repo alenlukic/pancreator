@@ -30,8 +30,9 @@ test('a pause taken because delegation is impossible records the acting agent', 
   )
 
   assert.equal(paused.operator_pause?.actor, 'supervisor')
+  assert.ok(paused.last_decision_path)
   assert.match(
-    readFileSync(path.join(root, paused.last_decision_path!), 'utf8'),
+    readFileSync(path.join(root, paused.last_decision_path), 'utf8'),
     /supervisor paused the workflow/iu,
   )
 

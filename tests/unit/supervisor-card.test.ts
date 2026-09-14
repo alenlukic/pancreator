@@ -320,7 +320,10 @@ test('a resume re-attests the card, opens a new session generation, and owes a n
 
   assert.equal(resumed.session_generation, 2)
 
-  const pointer = getRunState(root, state.run_id).current_invocation!
+  const pointer = getRunState(root, state.run_id).current_invocation
+
+  assert.ok(pointer)
+
   const invocation = read(path.join(root, pointer.json_path)) as Parameters<
     typeof makeOutput
   >[1]
@@ -432,8 +435,11 @@ test('a worktree-bound run names its worktree on the supervisor card', () => {
 
   // A run in the main checkout renders no worktree section.
   const plain = unattestedRun(root)
+
+  assert.ok(plain.supervisor_card)
+
   const plainCard = readFileSync(
-    path.join(root, plain.supervisor_card!.path),
+    path.join(root, plain.supervisor_card.path),
     'utf8',
   )
 
