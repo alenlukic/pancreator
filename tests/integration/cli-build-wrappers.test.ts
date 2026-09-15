@@ -459,7 +459,11 @@ test('run-tests removal survives the process group that launched it', async () =
       [
         '#!/usr/bin/env bash',
         'session="$(ps -o sess= -p $$ | tr -d " ")"',
-        `printf '%s %s\\n' "$$" "$session" > "${started}"`,
+        // The reader below waits on the record's existence, so the record has
+        // to appear whole. A redirection creates the file before it writes,
+        // and a read once landed in that window under the full profile.
+        `printf '%s %s\\n' "$$" "$session" > "${started}.tmp"`,
+        `/bin/mv "${started}.tmp" "${started}"`,
         // The count is a hang guard, not the proof: a test that fails before
         // it releases the stub must not leave it blocked forever.
         'waited=0',
