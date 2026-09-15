@@ -902,7 +902,7 @@ Best-of-N candidate worktrees are separate. They live under `worktrees/<bon-id>/
 
 `reconcile` merges two or more recorded source worktrees, one at a time and in the order you list them, with `git merge --no-ff`. The target is either a recorded worktree (`--into`) or an existing local branch (`--into-branch`). A branch no checkout holds is checked out into a new recorded worktree first, because Git can only merge inside a working tree. A branch a checkout already holds — including `main` in the main checkout, as above — merges inside that checkout, which must be clean; a dirty holding checkout is refused before any merge. Every source and the target are judged by the shared clean-tree rule, so an untracked path a `read-only-input` attribution covers does not refuse the merge, and a refusal names each blocking path with its attribution status. Every reconcile appends its operator invocation and outcome to `runtime/logs/worktrees/reconcile.jsonl`.
 
-Under `ACTION-001` an agent may run `pan worktree reconcile` on its own judgment when the target is `dev` or a branch that lands on `dev`. Merging into `main` is your promotion step, not the agent's.
+Under `ACTION-001` an agent may run `pan worktree reconcile` on its own judgment when the target is `pan-dev` or a branch that lands on `pan-dev`. Merging into `main` is your promotion step, not the agent's.
 
 On conflict the command stops at the first conflicting source and exits non-zero, and a conflict request is written to `runtime/inbox/` naming the target, the completed sources, the conflicted paths, and the sources not started. In a recorded worktree target the merge state stays in place; direct an agent at that request to resolve the conflict and commit the result. In a held checkout the conflicted merge is aborted instead, so your working tree comes back untouched; completed source merges remain on the branch, and the request explains how to finish through a worktree.
 
@@ -1383,7 +1383,7 @@ has already been updated by the release steward. Before approval, confirm:
 
 Approval marks the workflow succeeded. It does not itself create a commit, PR, merge, or deployment.
 
-Agents commit and merge on `dev` or on a branch that lands on `dev`. Landing work on `main` is your promotion step: merge or fast-forward `dev` into `main` yourself, then push.
+Agents commit and merge on `pan-dev` or on a branch that lands on `pan-dev`. Landing work on `main` is your promotion step: merge or fast-forward `pan-dev` into `main` yourself, then push. `./bin/install` creates a missing `pan-dev` from the target's HEAD on a fresh install or refresh, so a target normally carries the branch before its first run; `pan doctor` reports when it does not.
 
 ### Rejecting a release packet
 

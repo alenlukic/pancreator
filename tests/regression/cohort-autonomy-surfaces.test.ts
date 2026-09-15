@@ -41,7 +41,7 @@ const COHORT_OWNING_SURFACES = [
 
 /**
  * The surfaces that state the operator-owned action list. Each one has to
- * carry the `dev` landing rule, because that rule is what replaced the
+ * carry the `pan-dev` landing rule, because that rule is what replaced the
  * prohibition rather than an extra clause beside it.
  */
 const DEV_LANDING_SURFACES = [
@@ -172,7 +172,7 @@ test('AWAY-001 prohibits only the actions the operator kept, and bars no commit 
   }
 })
 
-test('ACTION-001 frees commit and local merge, keeps the remote and destructive prohibitions, and lands agent work on dev', () => {
+test('ACTION-001 frees commit and local merge, keeps the remote and destructive prohibitions, and lands agent work on pan-dev', () => {
   const action = instructions('ACTION-001')
   const prohibition = action.find((text) =>
     text.startsWith('Agents MUST NOT run'),
@@ -204,9 +204,9 @@ test('ACTION-001 frees commit and local merge, keeps the remote and destructive 
   const landing = action.find((text) => /\bcommit and merge\b/iu.test(text))
 
   assert.ok(landing, 'ACTION-001 no longer says where agents commit and merge')
-  assert.match(landing, /`dev`/u)
+  assert.match(landing, /`pan-dev`/u)
   assert.match(landing, /MUST NOT merge into `main`/u)
-  assert.match(landing, /operator promotes `dev` to `main`/u)
+  assert.match(landing, /operator promotes `pan-dev` to `main`/u)
 })
 
 test('the freed commit and merge did not loosen push, publication, deployment, or branch deletion', () => {
@@ -242,28 +242,28 @@ test('the freed commit and merge did not loosen push, publication, deployment, o
   )
 })
 
-test('every operator-owned action list surface states the dev landing rule once and adds no branching clause', () => {
+test('every operator-owned action list surface states the pan-dev landing rule once and adds no branching clause', () => {
   for (const surface of DEV_LANDING_SURFACES) {
     const body = read(surface)
 
     assert.match(
       body,
-      /commit and merge[^.\n]*`dev`/iu,
-      `${surface} never says agents commit and merge on dev`,
+      /commit and merge[^.\n]*`pan-dev`/iu,
+      `${surface} never says agents commit and merge on pan-dev`,
     )
     assert.match(
       body,
-      /operator promotes `dev` to `main`/u,
-      `${surface} never names the operator's dev-to-main promotion`,
+      /operator promotes `pan-dev` to `main`/u,
+      `${surface} never names the operator's pan-dev-to-main promotion`,
     )
     assert.equal(
-      body.match(/operator promotes `dev` to `main`/gu)?.length,
+      body.match(/operator promotes `pan-dev` to `main`/gu)?.length,
       1,
       `${surface} states the promotion rule more than once`,
     )
     assert.ok(
       !/trailer|path-scop/iu.test(body),
-      `${surface} adds a branching rule beyond the dev landing idea`,
+      `${surface} adds a branching rule beyond the pan-dev landing idea`,
     )
   }
 })

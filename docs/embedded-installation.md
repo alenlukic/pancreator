@@ -171,6 +171,19 @@ target `.gitignore`. The installer never rewrites that tracked file; it reports
 the legacy line for optional operator cleanup and uses `.git/info/exclude` going
 forward.
 
+The one piece of Git state the installer does create is the local integration
+branch `pan-dev`, which `ACTION-001` names as the branch agents commit and
+merge on. On a fresh install and on every refresh, when the target workspace is
+a Git repository and `pan-dev` does not exist yet, the installer runs
+`git branch pan-dev` from the target's current HEAD and prints
+`Created integration branch pan-dev from <short-head> (local only; not pushed)`.
+It never checks the branch out, never pushes it, and leaves an existing
+`pan-dev` at its own commit (`Retained integration branch pan-dev`). A
+repository with no commits yet has nothing to branch from, so the step prints a
+one-line notice and moves on. For a detached installation the branch is created
+in the target workspace, not in the harness directory. `pan doctor` reports the
+branch under `git.integration_branch` and names the repair when it is missing.
+
 ## Coexisting with an existing agentic harness
 
 A target repository MAY already run other agentic tooling. Pancreator installs
@@ -452,7 +465,7 @@ blanket-deleted.
 
 ## Harness versioning
 
-`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `6.8.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
+`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `6.9.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
 
 `release/index.json` is the internal mapping from harness version to immutable
 Git commit. Because a commit cannot contain its own hash, release publication is

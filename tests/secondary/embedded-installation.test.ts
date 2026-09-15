@@ -331,6 +331,20 @@ test('embedded installer stays out of target git state', () => {
     )
     assert.equal(git(project, ['rev-parse', 'HEAD']), head)
 
+    // The first install creates the integration branch from HEAD without
+    // leaving the checked-out branch; the refresh keeps it where it is.
+    assert.match(first.stdout, /Created integration branch pan-dev from/u)
+    assert.match(second.stdout, /Retained integration branch pan-dev/u)
+    assert.equal(git(project, ['rev-parse', 'refs/heads/pan-dev']), head)
+    assert.notEqual(
+      git(project, ['symbolic-ref', '--short', 'HEAD']),
+      'pan-dev',
+    )
+    assert.equal(
+      git(project, ['branch', '--list', 'pan-dev']).trim(),
+      'pan-dev',
+    )
+
     // A refresh MUST NOT duplicate the managed block.
     const exclude = readFileSync(
       path.join(project, '.git', 'info', 'exclude'),

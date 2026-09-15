@@ -99,6 +99,13 @@ test('detached installer places the harness outside the target tree and refreshe
     assert.match(exclude, /^\/\.cursor\/agents\/pan-\*\.md$/mu)
     assert.equal(git(project, ['status', '--porcelain']), '')
 
+    // The workspace, not the harness directory, lands agent work, so the
+    // integration branch belongs to the target and starts at its HEAD.
+    const initialHead = git(project, ['rev-parse', 'HEAD'])
+
+    assert.match(result.stdout, /Created integration branch pan-dev from/u)
+    assert.equal(git(project, ['rev-parse', 'refs/heads/pan-dev']), initialHead)
+
     // A refresh leaves live target instructions alone and takes no policy
     // copy.
     writeFileSync(
@@ -127,6 +134,10 @@ test('detached installer places the harness outside the target tree and refreshe
     assert.equal(refreshedConfig.installation_mode, 'detached')
     assert.equal(refreshedConfig.workspace_root, config.workspace_root)
     assert.equal(git(project, ['status', '--porcelain']), '')
+    // HEAD moved between the install and the refresh; a pre-existing pan-dev
+    // stays at its own commit rather than following HEAD.
+    assert.match(refresh.stdout, /Retained integration branch pan-dev/u)
+    assert.equal(git(project, ['rev-parse', 'refs/heads/pan-dev']), initialHead)
   } finally {
     rmSync(project, { recursive: true, force: true })
     rmSync(harness, { recursive: true, force: true })

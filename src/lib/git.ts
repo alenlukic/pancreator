@@ -167,6 +167,44 @@ export function gitBranchExists(root: string, branch: string): boolean {
 }
 
 /**
+ * The local branch `ACTION-001` lands agent work on. `bin/install` creates it
+ * from the target's HEAD on a fresh install or refresh when it is missing.
+ */
+export const INTEGRATION_BRANCH = 'pan-dev'
+
+export interface IntegrationBranchReadiness {
+  name: string
+  /** `null` when the workspace is not a Git repository. */
+  present: boolean | null
+  advisory?: string
+}
+
+/**
+ * Doctor's advisory view of the integration branch. A missing branch is a
+ * readiness gap, not a failure: the next `./bin/install` refresh creates it,
+ * and so does `git branch pan-dev`.
+ */
+export function integrationBranchReadiness(
+  workspaceRoot: string,
+): IntegrationBranchReadiness {
+  if (!isGitRepository(workspaceRoot)) {
+    return { name: INTEGRATION_BRANCH, present: null }
+  }
+
+  if (gitBranchExists(workspaceRoot, INTEGRATION_BRANCH)) {
+    return { name: INTEGRATION_BRANCH, present: true }
+  }
+
+  return {
+    name: INTEGRATION_BRANCH,
+    present: false,
+    advisory:
+      `integration branch ${INTEGRATION_BRANCH} missing; ` +
+      `run ./bin/install refresh or git branch ${INTEGRATION_BRANCH}`,
+  }
+}
+
+/**
  * Default branch of the repository.
  *
  * The remote head is authoritative where it exists. A repository without one,

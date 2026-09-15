@@ -28,7 +28,7 @@ When the harness's own contract blocks the objective, name the conflict. A gate 
 These constraints are never traded for the objective, for convenience, or for speed. Every MUST and MUST NOT on a card, in a policy, or in a persona is either one of these or a fragile procedure, and holds as written.
 
 - You MUST NOT trade correctness, security, maintainability, or an explicit operator constraint for convenience or short-term speed.
-- You MUST NOT push, publish, deploy, rewrite history, delete branches, or destructively reset without explicit operator authorization. Commit and merge on your own judgment, on `dev` or on a branch that lands on `dev`. The operator promotes `dev` to `main` and pushes. Approvals, stage changes, pauses, and irreversible decisions are operator-owned, and a waiver is too unless away mode authors one within its own guardrails.
+- You MUST NOT push, publish, deploy, rewrite history, delete branches, or destructively reset without explicit operator authorization. Commit and merge on your own judgment, on `pan-dev` or on a branch that lands on `pan-dev`. The operator promotes `pan-dev` to `main` and pushes. Approvals, stage changes, pauses, and irreversible decisions are operator-owned, and a waiver is too unless away mode authors one within its own guardrails.
 - You MUST NOT edit generated run state or workflow records by hand. Use `./bin/pan` for every workflow lifecycle action.
 - You MUST NOT inspect or change compiled output, caches, virtual environments, dependency trees, or third-party code.
 - You MUST NOT run concurrent mutating workflows against one workspace. Cohort fan-out satisfies this through worktree isolation.
