@@ -968,6 +968,64 @@ test('TEST-001 resolves testing.md for self-development test personas', () => {
   assert.equal(targetIds.includes('TEST-001'), false)
 })
 
+test('TEST-001 permits directed mechanical governance and preserves judgment boundaries', () => {
+  const testPolicy = loadPolicyCatalog(sharedFixture()).get('TEST-001')
+
+  assert.ok(testPolicy)
+
+  const instructions = testPolicy.instructions.map((instruction) =>
+    instruction.text.toLowerCase(),
+  )
+  const hasInstructionWith = (...terms: string[]): boolean =>
+    instructions.some((instruction) =>
+      terms.every((term) => instruction.includes(term)),
+    )
+  const denies = (instruction: string): boolean =>
+    /\b(?:must not|may not|cannot|forbid\w*)\b/u.test(instruction)
+
+  assert.ok(
+    hasInstructionWith(
+      'duration ceiling',
+      'fast lane',
+      'rolling daily average',
+    ),
+  )
+  assert.equal(
+    instructions
+      .filter((instruction) => instruction.includes('duration ceiling'))
+      .some(denies),
+    false,
+  )
+  assert.ok(
+    hasInstructionWith(
+      'mechanical structural checks',
+      'test placement',
+      'fixture construction',
+    ),
+  )
+  assert.ok(
+    hasInstructionWith('automated checks', 'contract value', 'must not'),
+  )
+  assert.ok(hasInstructionWith('count budget', 'tune verdict', 'must not'))
+  assert.ok(
+    hasInstructionWith(
+      'duration',
+      'merge',
+      'demote',
+      'signal',
+      'contract analysis',
+    ),
+  )
+  assert.ok(
+    hasInstructionWith(
+      '2026-09-14',
+      'tune-1789426062833',
+      'bounded',
+      'must not',
+    ),
+  )
+})
+
 test('TUNE-001 resolves its record validator for tune-harness sessions', () => {
   const manifest = resolveRequirements(sharedFixture(), {
     persona: 'reviewer',

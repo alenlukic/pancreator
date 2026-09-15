@@ -6,8 +6,10 @@
   "instructions": [
     "Agents writing, reviewing, or testing tests in self-development MUST read the complete testing guidance this policy references, and MUST apply it before completion.",
     "Each added test MUST appear in tests_added with one sentence naming the contract it proves. That existing disclosure contract remains unchanged.",
-    "No workflow stage, stage gate, self-criterion, or validator MAY judge handbook compliance automatically.",
-    "No count budget or duration ceiling MAY decide compliance or a verdict.",
+    "Automated checks MUST NOT judge a test's contract value.",
+    "The harness MAY enforce a duration ceiling on the fast lane's rolling daily average and MAY run mechanical structural checks on test placement and fixture construction.",
+    "A count budget MUST NOT decide a tune verdict.",
+    "The preceding permission is bounded to the operator directive of 2026-09-14 in tune session `tune-1789426062833` and MUST NOT be generalized beyond that directive.",
     "Duration MAY support a MERGE or DEMOTE verdict only after signal and contract analysis support that verdict.",
     "Review findings about test value, cost, fixtures, or lane placement MUST cite a stable TP identifier from the handbook and concrete test evidence."
   ],
