@@ -4781,7 +4781,7 @@ export function prepareInvocation(
               'You MUST NOT push, open or merge a pull request, publish, deploy, rewrite history, or perform other destructive source-control actions.',
             ]
           : [
-              'You MUST NOT commit, push, merge, publish, deploy, or perform destructive source-control actions.',
+              'You MUST NOT push, publish, deploy, or perform destructive source-control actions.',
             ]),
       ],
       ...(delegation ? { delegation } : {}),

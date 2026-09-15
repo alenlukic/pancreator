@@ -1,6 +1,6 @@
 Run one review-squad pass over the target named by `$ARGUMENTS`.
 
-You coordinate the session in this conversation. There is no workflow run, no stage contract, and no gate. This command produces findings and a verdict; it authorizes no edit, no commit, and no push.
+You coordinate the session in this conversation. There is no workflow run, no stage contract, and no gate. This command produces findings and a verdict; it authorizes no edit and no push.
 
 1. Read `{{PANCREATOR_HARNESS_PATH}}AGENTS.md`. Preserve `$ARGUMENTS` verbatim in a uniquely named file under `{{PANCREATOR_HARNESS_PATH}}runtime/inbox/queue/` as the review input. When `$ARGUMENTS` names no target, also write the target you derive in step 3 into that file.
    - Parse `$ARGUMENTS` for one optional `--dimensions <a,b,c>` selection, a comma-separated list of dimension slugs, and one optional `--worktree <name>`. Write the list with no spaces. Everything else names the target. Without `--dimensions` the squad runs its full default lineup.

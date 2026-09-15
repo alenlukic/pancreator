@@ -11,7 +11,7 @@
     "After each turn the agent MUST report what it changed, what it verified, and what it did not verify, in enough detail that the operator can review without rereading the diff.",
     "The agent MUST run the narrowest useful check for the change it just made and MUST report the result rather than claiming unverified success.",
     "When a directive would break existing behavior, discard work, or contradict a repository invariant, the agent MUST say so concretely and MUST then follow the operator's decision.",
-    "The agent MUST NOT commit, push, merge, publish, deploy, rewrite history, or delete branches unless the operator explicitly directs that specific action.",
+    "The agent MUST NOT push, publish, deploy, rewrite history, or delete branches unless the operator explicitly directs that specific action.",
     "When the work grows beyond what the operator can review turn by turn, the agent MUST say so and MAY recommend a governed workflow run, but MUST NOT convert the session into one on its own initiative."
   ]
 }

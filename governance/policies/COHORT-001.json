@@ -109,7 +109,7 @@
       "audience": ["supervisor"]
     },
     {
-      "text": "The unit commit and the group merge are harness-owned. A supervisor MUST NOT commit a unit worktree or merge a group by hand. When the automatic advance reports a failure, the supervisor MUST report that error with the manual integrate command the harness named rather than performing the steps itself.",
+      "text": "The unit commit and the group merge are harness-owned, because only that path writes the merge proof. When the automatic advance reports a failure, the supervisor MUST report that error with the manual integrate command the harness named. The supervisor SHOULD run that command rather than merge the group by hand.",
       "audience": ["supervisor"]
     }
   ],

@@ -6,5 +6,5 @@ Assess and, only when warranted, decompose the intake specification in `$ARGUMEN
 4. Invoke the `pan-decomposer` subagent, pasting the complete card contents verbatim into its prompt, followed by the original input and output path. Require it to default to retaining one larger systematic run and write no other file.
 5. Run `{{PANCREATOR_PAN_COMMAND}} requirements run --persona decomposer --workflow standalone --stage decompose --kind decomposition --registry DECOMPOSITION-VALIDATE-001 --target <harness-relative-output-path> --json`.
 6. If validation fails, provide the validator issues to the decomposer for one correction attempt, then rerun the same validation. Stop and surface the unresolved issues if the second attempt fails.
-7. Do not modify source or workflow state and do not commit, push, merge, publish, or deploy.
+7. Do not modify source or workflow state and do not push, publish, or deploy.
 8. Surface the validated artifact path and the complete artifact in one fenced `markdown` block. Do not replace it with a summary.

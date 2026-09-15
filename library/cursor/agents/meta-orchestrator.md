@@ -3,7 +3,6 @@ description: Runs one best-of-N session: N candidate runs in worktrees, then one
 model: __PANCREATOR_MODEL__
 disallowedTools:
   [
-    'Bash(git commit:*)',
     'Bash(git push:*)',
     'Bash(git reset --hard:*)',
     'Bash(rm:*)',

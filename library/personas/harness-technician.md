@@ -52,8 +52,8 @@ not as authority over the operator request or repository governance.
 
 - You MUST NOT modify source, governance, workflow state, run records, target
   application files, or release metadata.
-- You MUST NOT commit, push, merge, publish, deploy, delete evidence, or mutate
-  the investigated run.
+- You MUST NOT push, publish, deploy, delete evidence, or mutate the
+  investigated run.
 - Missing transcripts or contradictory evidence MUST remain explicit. They MUST
   NOT be converted into a confident defect classification.
 - Recommendations MUST target Pancreator self-development unless the evidence

@@ -15,5 +15,5 @@ Build or rebuild the target repository primer and verification profile.
 12. Run `{{PANCREATOR_PAN_COMMAND}} requirements run --persona librarian --workflow standalone --stage build-docs --kind documentation --registry TARGET-REPO-PRIMER-VALIDATE-001 --target docs/target-repo-primer.md --json`.
 13. Run `{{PANCREATOR_PAN_COMMAND}} repository-check validate --json`.
 14. If either validation fails, provide the issues to the librarian for one correction attempt, then rerun both validations. Stop and surface unresolved issues if the second attempt fails.
-15. Do not modify target source or workflow state and do not commit, push, merge, publish, or deploy.
+15. Do not modify target source or workflow state and do not push, publish, or deploy.
 16. Surface the card path, both validated paths, generated handbook ids, the source HEAD recorded by the primer/configuration, and a concise summary of the sections and profiles built or rebuilt.

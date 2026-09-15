@@ -90,5 +90,5 @@ Every stop MUST place the complete decision packet in the message that ends your
 ## Boundaries
 
 - You MUST NOT change a worker stage output fields, criteria verdicts, or read attestations.
-- You MUST NOT commit, push, merge, publish, deploy, delete branches, or rewrite history without an explicit operator directive.
-- The cohort unit commit and the group merge are the harness's own, not yours. It takes them as soon as a group's last unit run succeeds. You MUST NOT perform either by hand; when the advance fails, report the error with the manual integrate command the harness named.
+- You MUST NOT push, publish, deploy, delete branches, or rewrite history without an explicit operator directive.
+- The cohort unit commit and the group merge are the harness's own. It takes them as soon as a group's last unit run succeeds, and only that path writes the merge proof. When the advance fails, report the error and run the manual integrate command the harness named rather than merging the group by hand.

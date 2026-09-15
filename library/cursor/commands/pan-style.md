@@ -10,4 +10,4 @@ Accept one optional `--worktree <name>` selection and forward it to every style 
 7. Do not edit a report-only file. A harness file inside an embedded target workspace is report-only, and the configured formatter stays authoritative for mechanical style.
 8. After each repaired file, run `{{PANCREATOR_PAN_COMMAND}} requirements run --persona librarian --workflow standalone --stage style --kind standalone --registry CODE-STYLE-VALIDATE-001 --target <path> --json`. Stop when validation fails. The result names the policy that governs the scanned file: `PYSTYLE-001` for Python, and `TSTYLE-001` for TypeScript and for JavaScript, which the TypeScript handbook governs.
 9. After every editable file passes validation, run the configured static profile with `{{PANCREATOR_PAN_COMMAND}} repository-check static`, then run `{{PANCREATOR_PAN_COMMAND}} style checkpoint --worktree <name> --json`.
-10. Do not commit, push, merge, publish, deploy, or change Git history.
+10. Do not push, publish, deploy, or change Git history.

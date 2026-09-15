@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { cpSync, existsSync } from 'node:fs'
+import { cpSync, existsSync, readdirSync, renameSync } from 'node:fs'
 import path from 'node:path'
 
 import {
@@ -110,6 +110,27 @@ function uniqueEvalId(root: string, scenarioName: string): string {
   return candidate
 }
 
+/**
+ * Suffix that hides an agent instruction file from Cursor while it sits in
+ * the fixture source. Cursor auto-discovers every nested `AGENTS.md` and
+ * `CLAUDE.md` in the workspace and merges it into agent context, so the
+ * fixture stores `AGENTS.fixture.md` and the copy restores the real name.
+ */
+const FIXTURE_INSTRUCTION_SUFFIX = '.fixture.md'
+
+/** Rename `<name>.fixture.md` to `<name>.md` at the copied workspace root. */
+function restoreFixtureInstructionFiles(workspace: string): void {
+  for (const entry of readdirSync(workspace, { withFileTypes: true })) {
+    if (!entry.isFile() || !entry.name.endsWith(FIXTURE_INSTRUCTION_SUFFIX)) {
+      continue
+    }
+
+    const restored = `${entry.name.slice(0, -FIXTURE_INSTRUCTION_SUFFIX.length)}.md`
+
+    renameSync(path.join(workspace, entry.name), path.join(workspace, restored))
+  }
+}
+
 /** Copy the toy fixture and give it a Git identity so fingerprints work. */
 function materializeWorkspace(
   root: string,
@@ -128,6 +149,7 @@ function materializeWorkspace(
 
   ensureDir(path.dirname(workspace))
   cpSync(fixture, workspace, { recursive: true })
+  restoreFixtureInstructionFiles(workspace)
 
   try {
     const git = (args: string[]): void => {

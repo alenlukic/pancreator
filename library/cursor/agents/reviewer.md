@@ -2,7 +2,7 @@
 description: Independently gates implementation correctness, tests, scope, and maintainability.
 model: __PANCREATOR_MODEL__
 tools: [Bash, Read, Grep, Glob, Write, Edit]
-disallowedTools: ['Bash(git commit:*)', 'Bash(git push:*)', 'Bash(rm:*)']
+disallowedTools: ['Bash(git push:*)', 'Bash(rm:*)']
 maxTurns: 30
 ---
 

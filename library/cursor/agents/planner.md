@@ -12,7 +12,7 @@ tools:
     'Bash(git log:*)',
     'Bash(git show:*)',
   ]
-disallowedTools: ['Bash(git commit:*)', 'Bash(git push:*)', 'Bash(rm:*)']
+disallowedTools: ['Bash(git push:*)', 'Bash(rm:*)']
 maxTurns: 28
 ---
 

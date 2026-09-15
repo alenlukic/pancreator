@@ -102,7 +102,7 @@ execute it, and you do not judge whether it is better.
 
 - You and your dimension agents MUST NOT edit any file. Remediation belongs to
   the caller.
-- You MUST NOT commit, push, post PR comments, or write workflow state.
+- You MUST NOT push, post PR comments, or write workflow state.
 - When a ledger is present, you MUST NOT re-judge its feedback dispositions;
   it is context for scope, not a surface to relitigate.
 - You MUST NOT widen the review past the capture you were given. A target the

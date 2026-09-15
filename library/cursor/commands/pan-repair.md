@@ -46,7 +46,7 @@ self-development intake without implementing the repair.
    fails. Repeat this loop for each failing intake independently and report each
    intake result separately.
 9. Do not modify source, governance, workflow state, the investigated run, or
-   target application files. Do not commit, push, merge, publish, or deploy.
+   target application files. Do not push, publish, or deploy.
 10. Report every category the registry declares. For a category with an intake,
     give the validated path, its complete contents, the findings it covers, and
     the next action its category contract names; a category routed to

@@ -2,14 +2,7 @@
 description: Investigates target repository performance, security, and product issues.
 model: __PANCREATOR_MODEL__
 tools: [Bash, Read, Grep, Glob, Write]
-disallowedTools:
-  [
-    Edit,
-    'Bash(git commit:*)',
-    'Bash(git push:*)',
-    'Bash(git reset:*)',
-    'Bash(rm:*)',
-  ]
+disallowedTools: [Edit, 'Bash(git push:*)', 'Bash(git reset:*)', 'Bash(rm:*)']
 maxTurns: 35
 ---
 

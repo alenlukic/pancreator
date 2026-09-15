@@ -1,5 +1,21 @@
 # Changelog
 
+## [6.8.0] - 2026-09-15
+
+This release removes commit and merge from every MUST NOT list. Agents commit and merge on their own judgment, on `dev` or on a branch that lands on `dev`. The operator promotes `dev` to `main` and pushes. Push, publication, deployment, history rewrite, branch deletion, and destructive reset stay operator-authorized.
+
+### Changed
+
+- Remove commit and merge from the MUST NOT list on every invariant surface: `AGENTS.md`, the embedded and detached `AGENTS.md` templates, ACTION-001, the Cursor rules, the mode cards, and the governance card generator ([AGENTS](AGENTS.md), [ACTION-001](governance/policies/ACTION-001.json), [governance-card](src/lib/governance-card.ts), [17da734a](https://github.com/alenlukic/pancreator/commit/17da734a666cc7c97a0db9d59d43fdd5fa376a9d)).
+- State one landing rule on those surfaces. Agents commit and merge on `dev` or on a branch that lands on `dev`. Agents MUST NOT merge into `main`. The operator promotes `dev` to `main` and pushes ([ACTION-001](governance/policies/ACTION-001.json), [17da734a](https://github.com/alenlukic/pancreator/commit/17da734a666cc7c97a0db9d59d43fdd5fa376a9d)).
+- Delete the cohort-integration exception clauses from `AGENTS.md`, ACTION-001, AWAY-001, the templates, and the rules, because a permitted action needs no carve-out ([AWAY-001](governance/policies/AWAY-001.json), [17da734a](https://github.com/alenlukic/pancreator/commit/17da734a666cc7c97a0db9d59d43fdd5fa376a9d)).
+- Remove `git commit` from the `disallowedTools` list of every projected Cursor agent. Push and destructive reset stay denied ([coder](library/cursor/agents/coder.md), [17da734a](https://github.com/alenlukic/pancreator/commit/17da734a666cc7c97a0db9d59d43fdd5fa376a9d)).
+- Narrow the prohibition in every persona and command card to push, publish, deploy, history rewrite, and branch deletion ([orchestrator](library/personas/orchestrator.md), [pan-pair](library/cursor/commands/pan-pair.md), [17da734a](https://github.com/alenlukic/pancreator/commit/17da734a666cc7c97a0db9d59d43fdd5fa376a9d)).
+- Adjust COHORT-001 so the harness still owns the unit commit and the group merge, because only that path writes the merge proof. The supervisor SHOULD run the named integrate command rather than merge by hand ([COHORT-001](governance/policies/COHORT-001.json), [17da734a](https://github.com/alenlukic/pancreator/commit/17da734a666cc7c97a0db9d59d43fdd5fa376a9d)).
+- Narrow BESTOFN-001, PAIR-001, and SPOT-001 so each forbids only push, publication, deployment, branch deletion, and history rewrite ([BESTOFN-001](governance/policies/BESTOFN-001.json), [PAIR-001](governance/policies/PAIR-001.json), [SPOT-001](governance/policies/SPOT-001.json), [17da734a](https://github.com/alenlukic/pancreator/commit/17da734a666cc7c97a0db9d59d43fdd5fa376a9d)).
+- Rewrite the cohort-autonomy surface regression test. It now asserts that no invariant surface forbids commit or merge, that each states the `dev` landing rule, and that no exception clause remains ([cohort-autonomy-surfaces](tests/regression/cohort-autonomy-surfaces.test.ts), [17da734a](https://github.com/alenlukic/pancreator/commit/17da734a666cc7c97a0db9d59d43fdd5fa376a9d)).
+- Store the eval fixture instruction file as `evals/fixtures/toy-node/AGENTS.fixture.md`. Cursor merges every nested `AGENTS.md` into agent context and offers no exclusion. The eval runner restores the `AGENTS.md` name when it copies the fixture into the run workspace ([run](src/lib/evals/run.ts), [evals](docs/evals.md), [b2fa0570](https://github.com/alenlukic/pancreator/commit/b2fa057096971484d9407e005ff2f2c3007c23c2)).
+
 ## [6.7.0] - 2026-09-15
 
 This release lands two finished features that stayed on unmerged branches. The harness now advances a cohort group by itself, and clean-tree gates read the workspace attribution records.

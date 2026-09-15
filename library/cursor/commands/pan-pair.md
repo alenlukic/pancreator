@@ -16,5 +16,5 @@ Invoke this command once to open a session. Every later directive in the same co
    - Stop and wait for the operator's next directive. Do not continue to work you were not asked for.
 6. Say so plainly when a directive would break existing behavior, discard work, or contradict a repository invariant — then follow the operator's decision.
 7. Do not create or advance a workflow run, write workflow state, produce stage outputs or operator briefs, or invoke `pan submit`, `pan set-stage`, or `pan decide`.
-8. Do not commit, push, merge, publish, or deploy unless the operator explicitly directs that action.
+8. Do not push, publish, or deploy unless the operator explicitly directs that action.
 9. If the work grows past what the operator can review turn by turn, say so and offer a governed run. Do not convert the session into one yourself.

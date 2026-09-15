@@ -9,4 +9,4 @@ Scan changed operator artifacts, repair eligible prose, and record a clean check
 7. Do not edit rendered HTML or `CHANGELOG.md`. Report their issues only. `CHANGELOG.md` is release metadata a ship stage and `/pan-release` own.
 8. After each repaired file, run `{{PANCREATOR_PAN_COMMAND}} requirements run --persona librarian --workflow standalone --stage conform --kind standalone --registry SIMPLIFIED-ENGLISH-VALIDATE-001 --target <path> --json`. Stop when validation fails.
 9. After every editable file passes validation, run `{{PANCREATOR_PAN_COMMAND}} conform checkpoint --json`.
-10. Do not commit, push, merge, publish, deploy, or change Git history.
+10. Do not push, publish, deploy, or change Git history.

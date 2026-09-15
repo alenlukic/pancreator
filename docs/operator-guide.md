@@ -289,8 +289,7 @@ first successful `test` stage record. After expiry, the supervisor uses only
 away-mode decisions and normal harness actions through `ship`.
 
 The final ship approval applies only the recorded ship outcome. It completes
-the workflow without a commit, push, merge, publication, deployment, or branch
-deletion.
+the workflow without a push, publication, deployment, or branch deletion.
 
 After the run reaches a terminal state, the QA agent investigates each flagged
 issue. It separates a verified root-cause repair from a retry, workaround,
@@ -903,9 +902,9 @@ Best-of-N candidate worktrees are separate. They live under `worktrees/<bon-id>/
 
 `reconcile` merges two or more recorded source worktrees, one at a time and in the order you list them, with `git merge --no-ff`. The target is either a recorded worktree (`--into`) or an existing local branch (`--into-branch`). A branch no checkout holds is checked out into a new recorded worktree first, because Git can only merge inside a working tree. A branch a checkout already holds — including `main` in the main checkout, as above — merges inside that checkout, which must be clean; a dirty holding checkout is refused before any merge. Every source and the target are judged by the shared clean-tree rule, so an untracked path a `read-only-input` attribution covers does not refuse the merge, and a refusal names each blocking path with its attribution status. Every reconcile appends its operator invocation and outcome to `runtime/logs/worktrees/reconcile.jsonl`.
 
-A merge commit is an irreversible source-control action under `ACTION-001`, so an agent must hold a recorded operator directive before it runs `pan worktree reconcile`.
+Under `ACTION-001` an agent may run `pan worktree reconcile` on its own judgment when the target is `dev` or a branch that lands on `dev`. Merging into `main` is your promotion step, not the agent's.
 
-On conflict the command stops at the first conflicting source and exits non-zero, and a conflict request is written to `runtime/inbox/` naming the target, the completed sources, the conflicted paths, and the sources not started. In a recorded worktree target the merge state stays in place; direct an agent at that request to resolve the conflict, and do not commit the result without explicit operator approval. In a held checkout the conflicted merge is aborted instead, so your working tree comes back untouched; completed source merges remain on the branch, and the request explains how to finish through a worktree.
+On conflict the command stops at the first conflicting source and exits non-zero, and a conflict request is written to `runtime/inbox/` naming the target, the completed sources, the conflicted paths, and the sources not started. In a recorded worktree target the merge state stays in place; direct an agent at that request to resolve the conflict and commit the result. In a held checkout the conflicted merge is aborted instead, so your working tree comes back untouched; completed source merges remain on the branch, and the request explains how to finish through a worktree.
 
 Configure defaults in `config.json` when the built-in ones do not suit the repository:
 
@@ -1383,6 +1382,8 @@ has already been updated by the release steward. Before approval, confirm:
   delta since the last committed release bump
 
 Approval marks the workflow succeeded. It does not itself create a commit, PR, merge, or deployment.
+
+Agents commit and merge on `dev` or on a branch that lands on `dev`. Landing work on `main` is your promotion step: merge or fast-forward `dev` into `main` yourself, then push.
 
 ### Rejecting a release packet
 

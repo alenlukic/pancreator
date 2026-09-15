@@ -268,7 +268,7 @@ export interface StageDefinition {
   /**
    * Whether an operator-involvement profile may lower this stage's gate. Absent
    * means relaxable. `dev/ship` sets it false because SHIP-001 requires a pause
-   * before commit, push, merge, publication, or deployment; a stored config
+   * before branch push, pull-request creation, merge, publication, or deployment; a stored config
    * profile MUST NOT be able to remove that pause silently.
    */
   gate_relaxable?: boolean

@@ -1275,7 +1275,7 @@ function renderConflictRequest(
         ]
       : [
           `Run an agent task in \`${target.displayPath}\` and resolve each conflicted path.`,
-          'Do not commit the result without explicit operator approval.',
+          'Commit the result once every conflict is resolved.',
         ]),
     '',
   ]
