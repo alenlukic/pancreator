@@ -200,6 +200,16 @@ import {
   runRepositoryCheckStreaming,
 } from './lib/repository-checks.js'
 import { TEST_PROFILE_ENV } from './lib/suite-profile.js'
+import {
+  appendFastWallRun,
+  buildFastWallReport,
+  FAST_WALL_AGENT_PHASE,
+  FAST_WALL_PHASE_ENV,
+  FAST_WALL_RUN_ID_ENV,
+  FAST_WALL_SERIES_ROOT_ENV,
+  FAST_WALL_STANDALONE_PHASE,
+  formatFastWallReport,
+} from './lib/fast-wall-series.js'
 import { detectWorkspaceTechnologies } from './lib/technologies.js'
 import { resolveRunLayout } from './lib/run-layout.js'
 import {
@@ -312,6 +322,8 @@ export const HELP_BODY = `Usage:
   pan tests impacted [--worktree <name>] [--changed <ref> | --staged | --worktree-dirty] [--file <path>]... [--include <glob>]... [--depth <n>] [--list] [--json] [--advisory-ratio <0..1>]
       Self-development only. Select and run the lane tests whose import closure reaches the changed files. The default change set is the dirty working tree. An iteration aid, never a gate.
       --worktree runs the command from the installation root and selects against that worktree's tree, the same workspace selection pan repository-check accepts. Without it the installation root is the workspace, as before. The run record stays at the installation root either way.
+  pan tests wall [--json]
+      Report the rolling 24-hour fast-lane wall average, permitted ceiling, marginal wall cost per test, and pass or fail verdict.
   pan release sync --worktree <name> --message <message> [--run <run-id>] [--onto <ref> | --no-rebase] [--json]
       Sync refuses with RELEASE_REMOTE_BEHIND_LOCAL when the fetched remote head is behind the point this branch shares with the local default branch, because the rebase would rewrite commits that branch already carries. It never retargets on its own. --onto <ref> rebases onto a ref the operator names, normally the local integration head; --no-rebase keeps the local history as it stands. Either choice is recorded in rebase_override on the result.
   pan release continue --worktree <name> [--run <run-id>] [--json]
@@ -2457,9 +2469,16 @@ async function main(): Promise<void> {
       const result = await runRepositoryCheckStreaming(root, profile, {
         ...(timeoutMs !== undefined ? { timeout_ms: timeoutMs } : {}),
         ...(checkWorkspace ? { workspace: checkWorkspace } : {}),
-        ...(gatePassSuiteProfile
-          ? { env: { [TEST_PROFILE_ENV]: gatePassSuiteProfile.absolute } }
-          : {}),
+        env: {
+          [FAST_WALL_SERIES_ROOT_ENV]: root,
+          [FAST_WALL_PHASE_ENV]: FAST_WALL_AGENT_PHASE,
+          ...(evidenceRun
+            ? { [FAST_WALL_RUN_ID_ENV]: evidenceRun.run_id }
+            : {}),
+          ...(gatePassSuiteProfile
+            ? { [TEST_PROFILE_ENV]: gatePassSuiteProfile.absolute }
+            : {}),
+        },
         ...(harnessInitiated
           ? {}
           : {
@@ -2546,19 +2565,85 @@ async function main(): Promise<void> {
     case 'tests': {
       const sub = args[0]
 
-      if (sub !== 'impacted') {
-        throw new PanError(`Unknown tests subcommand: ${sub ?? '(missing)'}`, {
-          code: 'UNKNOWN_COMMAND',
-        })
+      if (sub === 'wall') {
+        const report = buildFastWallReport(root)
+
+        print(hasFlag(args, '--json') ? report : formatFastWallReport(report))
+
+        if (report.status === 'failed') {
+          process.exitCode = 1
+        }
+        return
       }
 
-      const worktree = sharedWorktreeWorkspace(root, args)
-      const impact = await runTestsImpacted(root, args.slice(1), {
-        ...(worktree ? { workspace: path.resolve(root, worktree.path) } : {}),
-      })
+      if (sub === 'record-fast-wall') {
+        const loadAverage = Number(
+          requiredArgument(option(args, '--load-average'), '--load-average'),
+        )
+        const wrapperWall = Number(
+          requiredArgument(
+            option(args, '--wrapper-wall-ms'),
+            '--wrapper-wall-ms',
+          ),
+        )
 
-      process.exitCode = impact.exit_code
-      return
+        appendFastWallRun({
+          series_root: requiredArgument(
+            option(args, '--series-root'),
+            '--series-root',
+          ),
+          workspace_fingerprint: gitWorkspaceSnapshot(
+            requiredArgument(
+              option(args, '--workspace-root'),
+              '--workspace-root',
+            ),
+          ).fingerprint,
+          duration_record_path: requiredArgument(
+            option(args, '--duration-record'),
+            '--duration-record',
+          ),
+          worker_count:
+            integerOption(args, '--worker-count') ??
+            (() => {
+              throw new PanError('--worker-count is required.', {
+                code: 'INVALID_ARGUMENT',
+              })
+            })(),
+          load_average: loadAverage,
+          wrapper_wall_clock_ms: wrapperWall,
+          invoker: requiredArgument(option(args, '--invoker'), '--invoker'),
+          run_id:
+            option(args, '--run-id') ??
+            process.env[FAST_WALL_RUN_ID_ENV] ??
+            'standalone',
+          phase:
+            option(args, '--phase') ??
+            process.env[FAST_WALL_PHASE_ENV] ??
+            FAST_WALL_STANDALONE_PHASE,
+          exit_code:
+            integerOption(args, '--exit-code') ??
+            (() => {
+              throw new PanError('--exit-code is required.', {
+                code: 'INVALID_ARGUMENT',
+              })
+            })(),
+        })
+        return
+      }
+
+      if (sub === 'impacted') {
+        const worktree = sharedWorktreeWorkspace(root, args)
+        const impact = await runTestsImpacted(root, args.slice(1), {
+          ...(worktree ? { workspace: path.resolve(root, worktree.path) } : {}),
+        })
+
+        process.exitCode = impact.exit_code
+        return
+      }
+
+      throw new PanError(`Unknown tests subcommand: ${sub ?? '(missing)'}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
     }
     case 'release': {
       const sub = requiredArgument(args[0], 'release subcommand')

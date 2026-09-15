@@ -36,7 +36,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function parseFileDurationRecord(value: unknown): FileDurationRecord | null {
+export function parseFileDurationRecord(
+  value: unknown,
+): FileDurationRecord | null {
   if (
     !isRecord(value) ||
     value.schema_version !== 1 ||

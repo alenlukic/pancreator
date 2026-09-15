@@ -80,6 +80,13 @@ import {
   recordSuiteProfileIndexEntry,
 } from './suite-profile.js'
 import {
+  buildFastWallStageSummary,
+  FAST_WALL_BASELINE_PHASE,
+  FAST_WALL_PHASE_ENV,
+  FAST_WALL_RUN_ID_ENV,
+  FAST_WALL_SERIES_ROOT_ENV,
+} from './fast-wall-series.js'
+import {
   DELEGATION_UNOBSERVED,
   DELEGATION_WATCH_LATE,
   DELEGATION_WATCH_LATE_SECONDS,
@@ -1570,6 +1577,11 @@ function captureRepositoryCheckBaselines(
     const result = runRepositoryCheck(root, profile.name, {
       timeout_ms: profile.timeout_ms,
       workspace: state.workspace_root || '.',
+      env: {
+        [FAST_WALL_SERIES_ROOT_ENV]: root,
+        [FAST_WALL_RUN_ID_ENV]: state.run_id,
+        [FAST_WALL_PHASE_ENV]: FAST_WALL_BASELINE_PHASE,
+      },
     })
     onProgress?.(
       `pre-implementation '${profile.name}' baseline ${result.status} in ${(result.total_duration_ms / 1000).toFixed(1)}s`,
@@ -4600,6 +4612,9 @@ export function prepareInvocation(
     const suiteProfile = stage.context.suite_profile
       ? buildSuiteProfileSummary(root, state)
       : null
+    const fastWall = stage.context.suite_profile
+      ? buildFastWallStageSummary(root, state)
+      : null
 
     const invocation: Invocation = {
       $operator: {
@@ -4660,6 +4675,7 @@ export function prepareInvocation(
       }),
       ...(evidenceWorkers ? { evidence_workers: evidenceWorkers } : {}),
       ...(suiteProfile ? { suite_profile: suiteProfile } : {}),
+      ...(fastWall ? { fast_wall: fastWall } : {}),
       policies,
       requirements,
       rubric: stage.criteria,
