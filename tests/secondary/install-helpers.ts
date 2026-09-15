@@ -233,11 +233,7 @@ export function installedProjectTemplate(): string {
       )
     }
 
-    recordFixtureEvent(
-      'template_build',
-      'secondary',
-      performance.now() - started,
-    )
+    recordFixtureEvent('template_build', performance.now() - started)
     installedTemplate = project
   }
 
@@ -250,7 +246,7 @@ export function cloneInstalledProject(): string {
   const project = createTestTempDirectory('pancreator-embed-')
 
   cloneTree(template, project, { verbatimSymlinks: true })
-  recordFixtureEvent('template_clone', 'secondary', performance.now() - started)
+  recordFixtureEvent('template_clone', performance.now() - started)
 
   return project
 }

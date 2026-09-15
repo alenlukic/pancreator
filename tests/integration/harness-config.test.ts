@@ -171,9 +171,14 @@ test('detached installation rejects a relative workspace root', () => {
 })
 
 test('PANCREATOR_ROOT locates a harness outside the working directory', () => {
-  const root = createFixture()
+  const root = createTestTempDirectory('pancreator-root-')
   const elsewhere = createTestTempDirectory('pancreator-cwd-')
   const previous = process.env.PANCREATOR_ROOT
+
+  writeFileSync(
+    path.join(root, 'package.json'),
+    JSON.stringify({ name: 'pancreator-v2-prototype' }),
+  )
 
   try {
     // Walking up from an unrelated directory can never reach a detached

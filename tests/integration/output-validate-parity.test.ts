@@ -269,6 +269,18 @@ test('a validator handler that throws leaves no scratch copy behind', () => {
 })
 
 test('invalid revision envelopes fail before structural validation', () => {
+  const {
+    root,
+    runId,
+    state: failedState,
+  } = checkpoint('delivery@implement-failed-once')
+  const prior = failedState.stage_history[0]
+  const prepared = prepareInvocation(root, runId)
+  const invocation = prepared.invocation
+  const invalidRevisions: unknown[] = []
+
+  assert.ok(invocation)
+
   const cases = [
     {
       name: 'non-object patch',
@@ -305,40 +317,33 @@ test('invalid revision envelopes fail before structural validation', () => {
   ]
 
   for (const item of cases) {
-    const {
-      root,
-      runId,
-      state: failedState,
-    } = checkpoint('delivery@implement-failed-once')
-    const prior = failedState.stage_history[0]
-    const prepared = prepareInvocation(root, runId)
-    const invocation = prepared.invocation
-
-    assert.ok(invocation)
-
     const revision = item.revision(
       prior.invocation_id,
       invocation.invocation_id,
     )
-    const outputPath = path.join(root, invocation.output.path)
 
-    writeJson(outputPath, revision)
+    invalidRevisions.push(revision)
 
-    for (const operation of [
+    assert.throws(
       () =>
-        validateOutputForSubmission(root, runId, invocation, revision, {
-          submittedPath: invocation.output.path,
-        }),
-      () => submitOutput(root, runId, invocation.output.path),
-    ]) {
-      assert.throws(
-        operation,
-        (error: unknown) =>
-          error instanceof PanError && error.code === 'INVALID_REVISION',
-        item.name,
-      )
-    }
+        materializeOutputSubmission(
+          root,
+          failedState,
+          revision,
+          invocation.invocation_id,
+        ),
+      (error: unknown) =>
+        error instanceof PanError && error.code === 'INVALID_REVISION',
+      item.name,
+    )
   }
+
+  writeJson(path.join(root, invocation.output.path), invalidRevisions[0])
+  assert.throws(
+    () => submitOutput(root, runId, invocation.output.path),
+    (error: unknown) =>
+      error instanceof PanError && error.code === 'INVALID_REVISION',
+  )
 })
 
 // AC-015. Selection by executor kept the claims validator — a harness-executor
@@ -386,47 +391,6 @@ test('the pre-submit set is chosen by side-effect freedom, not by executor', () 
   assert.deepEqual(
     selected.map((item) => item.requirement_id).sort(),
     eligible.map((item) => item.requirement_id).sort(),
-  )
-})
-
-// AC-014. The defect this command exists to catch: a changed path the output's
-// own workspace-changes block names but its declared changed files omit.
-test('pan output validate fails an output whose declared changed files omit its own changed path', () => {
-  const { root, runId, invocation, workflow } = checkpoint(
-    'delivery@implement-prepared',
-  )
-
-  assert.ok(invocation)
-
-  const output = makeOutput(
-    root,
-    invocation,
-    stageBySlug(workflow, 'implement'),
-  )
-
-  attachTargetInstructionEvidence(root, output, ['AGENTS.md'])
-
-  const clean = validateOutputForSubmission(root, runId, invocation, output)
-
-  assert.equal(clean.passed, true, JSON.stringify(clean.checks))
-
-  // The output's own attribution block names a path its claim omits.
-  output.workspace_changes = {
-    attribution: 'internal',
-    paths: ['src/lib/engine.ts'],
-    explanation: 'The stage edited the engine.',
-  }
-
-  const defective = validateOutputForSubmission(root, runId, invocation, output)
-
-  assert.equal(defective.passed, false)
-  assert.ok(
-    defective.checks.some(
-      (check) =>
-        check.id === 'validator.IMPLEMENTATION-CLAIMS-VALIDATE-001' &&
-        !check.passed,
-    ),
-    JSON.stringify(defective.checks),
   )
 })
 

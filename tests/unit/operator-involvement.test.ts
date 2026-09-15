@@ -10,9 +10,9 @@ import type {
   OperatorInvolvementProfile,
 } from '../../src/lib/types.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
-import { createFixture } from '../fixture-template.js'
+import { sharedFixture } from '../fixture-template.js'
 
-const ROOT = createFixture()
+const ROOT = sharedFixture()
 
 function involvementFile(
   profiles: Record<string, OperatorInvolvementProfile>,

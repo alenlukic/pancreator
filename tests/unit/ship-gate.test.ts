@@ -8,7 +8,7 @@ import {
 } from '../../src/lib/validation.js'
 import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
-import { createFixture } from '../fixture-template.js'
+import { sharedFixture } from '../fixture-template.js'
 import type {
   Criterion,
   RunState,
@@ -202,7 +202,7 @@ function localReleaseStageOf(root: string): StageDefinition {
 test('a worktree-bound run fails the local-release criterion it has not satisfied', () => {
   // The criterion carried only a positive assertion, so a change that always
   // returned `true` left the suite green.
-  const root = createFixture()
+  const root = sharedFixture()
   const snapshot = gitWorkspaceSnapshot(root)
   const state = {
     run_id: 'bound',
@@ -267,7 +267,7 @@ test('a worktree-bound run fails the local-release criterion it has not satisfie
 // installation that predates managed worktrees, and asked for the bypass to
 // become visible in the record instead.
 test('a worktree-less self-development run records the criterion it bypassed', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const localReleaseStage = localReleaseStageOf(root)
   const snapshot = gitWorkspaceSnapshot(root)
   const evaluated = evaluateDeterministicCriteria(

@@ -21,7 +21,7 @@
       "audience": ["harness"]
     },
     {
-      "text": "The harness-owned pan archive command MUST migrate recognized legacy workflow directory names, update persisted path references, and move active-root workflow directories older than seven days into an archive/ child of the same parent directory (`tests/integration/runtime-archive-cli.test.ts::pan archive migrates and archives old workflow directories`).",
+      "text": "The harness-owned pan archive command MUST migrate recognized legacy workflow directory names, update persisted path references, and move active-root workflow directories older than seven days into an archive/ child of the same parent directory (`tests/integration/inbox.test.ts::runtime maintenance migrates and archives old workflow directories`; the command surface is pinned by `tests/integration/runtime-archive-cli.test.ts::selects complete canceled or both inbox archives`).",
       "audience": ["harness"]
     },
     {

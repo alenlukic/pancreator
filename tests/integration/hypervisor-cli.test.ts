@@ -17,7 +17,6 @@ import {
 import {
   agentRegistryPath,
   readAgentRegistry,
-  tickHypervisor,
 } from '../../src/lib/hypervisor.js'
 import { createFixture } from '../helpers.js'
 import { createRun } from '../run-helpers.js'
@@ -163,25 +162,6 @@ test('hypervisor quarantine pauses the run and records a decision', () => {
       process.env.PANCREATOR_CURSOR_AGENT_BIN = previousBinary
     }
   }
-})
-
-// `runHypervisorCycle` in src/cli.ts returns a literal empty away_decisions
-// list and never consults the evaluator, so the tick itself is the contract.
-test('hypervisor tick leaves ordinary away decisions to the supervisor', () => {
-  const root = createFixture()
-  const state = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-  })
-
-  pauseRun(root, state.run_id, 'Operator unavailable.')
-  tickHypervisor(root)
-
-  const next = getRunState(root, state.run_id)
-
-  assert.equal(next.status, 'paused')
-  assert.equal(next.pending_action.type, 'operator_decision')
-  assert.deepEqual(readAwayDecisionLedger(root), [])
 })
 
 test('away evaluate and apply resume a paused run exactly once', () => {

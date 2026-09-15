@@ -84,6 +84,22 @@ test('listInbox ignores nested directories and non-Markdown files', () => {
   }
 })
 
+test('listInbox reads every lifecycle status directory', () => {
+  const root = inboxRoot()
+
+  for (const status of ['queue', 'active', 'canceled', 'complete'] as const) {
+    const target = path.join(root, 'runtime/inbox', status, `${status}.md`)
+
+    mkdirSync(path.dirname(target), { recursive: true })
+    writeFileSync(target, `# ${status}\n`, 'utf8')
+  }
+
+  assert.deepEqual(
+    listInbox(root).map((item) => item.status),
+    ['queue', 'active', 'canceled', 'complete'],
+  )
+})
+
 test('listInbox selects the first valid level-one heading and falls back to the file name', () => {
   const root = createTestTempDirectory('pancreator-inbox-unit-')
   const modifiedAt = new Date('2024-03-01T10:00:00.000Z')
@@ -511,12 +527,13 @@ test('renderInbox writes a stable table and names an empty inbox', () => {
 // layout migrates before the archive pass, so one call moves the file into
 // its status directory and then archives it.
 test('runtime maintenance migrates a legacy complete item before archiving it', () => {
-  const root = createFixture()
+  const root = inboxRoot()
   const runId = '63309_Aug-31-0403_complete-item'
   const runDirectory = path.join(root, 'runtime/logs/workflows', runId)
   const legacyAbsolute = path.join(root, 'runtime/inbox/legacy-complete.md')
   const stale = new Date('2026-06-22T21:22:54.051Z')
 
+  writeFileSync(path.join(root, 'config.json'), '{"schema_version":1}\n')
   mkdirSync(path.join(runDirectory, 'agent'), { recursive: true })
   writeFileSync(
     path.join(runDirectory, 'workflow.snapshot.json'),
@@ -559,6 +576,7 @@ test('runtime maintenance migrates a legacy complete item before archiving it', 
     })}\n`,
     'utf8',
   )
+  mkdirSync(path.dirname(legacyAbsolute), { recursive: true })
   writeFileSync(legacyAbsolute, '# Legacy complete\n', 'utf8')
   utimesSync(legacyAbsolute, stale, stale)
 
@@ -575,6 +593,74 @@ test('runtime maintenance migrates a legacy complete item before archiving it', 
       'utf8',
     ),
     '# Legacy complete\n',
+  )
+})
+
+test('runtime maintenance migrates and archives old workflow directories', () => {
+  const root = inboxRoot()
+  const legacyRunId = '20200101T120000000Z-abcdef12'
+  const createdAt = new Date('2020-01-01T12:00:00.000Z')
+  const currentRunId = makeWorkflowRunId(createdAt, 'old-fixture')
+  const logDirectory = path.join(root, 'runtime/logs/workflows', legacyRunId)
+  const stateDirectory = path.join(root, 'runtime/workflows', legacyRunId)
+  const write = (target: string, content: string): void => {
+    mkdirSync(path.dirname(target), { recursive: true })
+    writeFileSync(target, content, 'utf8')
+  }
+
+  writeFileSync(path.join(root, 'config.json'), '{"schema_version":1}\n')
+  write(
+    path.join(logDirectory, 'state.json'),
+    `${JSON.stringify({
+      schema_version: 1,
+      run_id: legacyRunId,
+      workflow_slug: 'delivery',
+      title: 'old fixture',
+      status: 'succeeded',
+      pending_action: { type: 'none' },
+      stage_history: [],
+      attempts: {},
+      created_at: createdAt.toISOString(),
+    })}\n`,
+  )
+  write(
+    path.join(logDirectory, 'workflow.snapshot.json'),
+    '{"stages":[{"slug":"plan"}]}\n',
+  )
+  write(path.join(logDirectory, 'events.jsonl'), '')
+  write(
+    path.join(stateDirectory, 'modifications.jsonl'),
+    `${JSON.stringify({ run_id: legacyRunId })}\n`,
+  )
+
+  const summary = maintainWorkflowRuntime(root, { retentionDays: 7 })
+
+  assert.equal(summary.migration.run_directories, 1)
+  assert.equal(summary.migration.state_directories, 1)
+  assert.equal(summary.archive.run_directories, 1)
+  assert.equal(summary.archive.state_directories, 1)
+  assert.deepEqual(summary.archive.run_ids, [currentRunId])
+  assert.equal(
+    existsSync(
+      path.join(
+        root,
+        'runtime/logs/workflows/archive',
+        currentRunId,
+        'state.json',
+      ),
+    ),
+    true,
+  )
+  assert.equal(
+    existsSync(
+      path.join(
+        root,
+        'runtime/workflows/archive',
+        currentRunId,
+        'modifications.jsonl',
+      ),
+    ),
+    true,
   )
 })
 
@@ -633,7 +719,7 @@ function writeRunWithInboxSource(
 // edge was a supported state with no command: the only route was a manual
 // file move that left the operator's decision unrecorded.
 test('restoreInboxRequest returns a canceled item to the queue', () => {
-  const root = createFixture()
+  const root = inboxRoot()
   const canceled = path.join(root, 'runtime/inbox/canceled/reopen.md')
 
   mkdirSync(path.dirname(canceled), { recursive: true })
@@ -723,7 +809,7 @@ test('restoreInboxRequest detaches the run that holds an active item', () => {
 })
 
 test('restoreInboxRequest refuses a completed and an already-queued item', () => {
-  const root = createFixture()
+  const root = inboxRoot()
 
   for (const [status, code] of [
     ['complete', 'INVALID_INBOX_TRANSITION'],

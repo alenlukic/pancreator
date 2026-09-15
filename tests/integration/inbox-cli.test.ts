@@ -60,7 +60,7 @@ function run(
 }
 
 // The command reads through listInbox and prints renderInbox, both covered in
-// tests/unit/inbox.test.ts. What only the process boundary proves is the JSON
+// tests/integration/inbox.test.ts. What only the process boundary proves is the JSON
 // item shape an operator tool parses.
 test('pan inbox --json reports the queued item shape', () => {
   const root = createFixture()
@@ -101,38 +101,6 @@ test('pan inbox --json reports the queued item shape', () => {
     'modified_at',
     'run_id',
     'status',
-  ])
-})
-
-// HR3-012: the listing read the queue directory alone, so an operator who
-// wanted to see an active, canceled, or completed item read the directories
-// by hand.
-test('pan inbox lists an item of every lifecycle status with its status', () => {
-  const root = createFixture()
-  const modifiedAt = new Date('2024-05-05T12:00:00.000Z')
-
-  for (const status of ['queue', 'active', 'canceled', 'complete'] as const) {
-    writeStatusFile(
-      root,
-      status,
-      `${status}-item.md`,
-      `# ${status} item\n`,
-      modifiedAt,
-    )
-  }
-
-  const listed = run(root, ['inbox'])
-
-  assert.equal(listed.status, 0, listed.stderr)
-
-  const rows = listed.stdout.trim().split('\n')
-
-  assert.equal(rows[0], 'STATUS\tFILE\tTITLE\tMODIFIED\tRUN')
-  assert.deepEqual(rows.slice(1), [
-    `queue\tqueue-item.md\tqueue item\t${modifiedAt.toISOString()}\t-`,
-    `active\tactive-item.md\tactive item\t${modifiedAt.toISOString()}\t-`,
-    `canceled\tcanceled-item.md\tcanceled item\t${modifiedAt.toISOString()}\t-`,
-    `complete\tcomplete-item.md\tcomplete item\t${modifiedAt.toISOString()}\t-`,
   ])
 })
 

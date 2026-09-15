@@ -9,7 +9,7 @@
       "audience": ["agent"]
     },
     {
-      "text": "The shared wrapper MAY emit minimal progress ticks to stderr while a wrapped command runs. A tick MUST reflect new output from the wrapped command, so a stopped tick stream exposes a silent hang. Ticks MUST stay off whenever stderr is not an interactive terminal. Default captured output then stays byte-identical. An explicit opt-in overrides that default. A caller that compares captured bytes MUST clear the opt-in (`tests/unit/quiet-command.test.ts::progress ticks mark intervals in which the command produced output`).",
+      "text": "The shared wrapper MAY emit minimal progress ticks to stderr while a wrapped command runs. A tick MUST reflect new output from the wrapped command, so a stopped tick stream exposes a silent hang. Ticks MUST stay off whenever stderr is not an interactive terminal. Default captured output then stays byte-identical. An explicit opt-in overrides that default. A caller that compares captured bytes MUST clear the opt-in (`tests/integration/quiet-command.test.ts::progress ticks mark intervals in which the command produced output`).",
       "audience": ["harness"]
     },
     {
@@ -29,7 +29,7 @@
       "audience": ["harness"]
     },
     {
-      "text": "Verbose command output MAY be enabled explicitly for diagnosis and MUST NOT be the default operator experience (`tests/unit/quiet-command.test.ts::quiet command streams successful output in verbose mode`).",
+      "text": "Verbose command output MAY be enabled explicitly for diagnosis and MUST NOT be the default operator experience (`tests/integration/quiet-command.test.ts::quiet command streams successful output in verbose mode`).",
       "audience": ["harness"]
     }
   ]

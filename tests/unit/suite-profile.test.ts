@@ -42,6 +42,7 @@ test('the reporter consumes process-specific fixture sidecars once', () => {
           template_files: 12,
         },
         { kind: 'template_clone', duration_ms: 2 },
+        { kind: 'run_prepare', duration_ms: 7 },
       ],
     }),
   )
@@ -56,6 +57,7 @@ test('the reporter consumes process-specific fixture sidecars once', () => {
           template_files: 12,
         },
         { kind: 'template_clone', duration_ms: 3 },
+        { kind: 'run_prepare', duration_ms: 11 },
       ],
     }),
   )
@@ -63,6 +65,7 @@ test('the reporter consumes process-specific fixture sidecars once', () => {
   assert.deepEqual(readFixtureCost(target), {
     template_ms: 10,
     clone_ms: 5,
+    prepare_ms: 18,
     template_bytes: 1024,
     template_files: 12,
   })
@@ -81,6 +84,7 @@ test('the reporter consumes process-specific fixture sidecars once', () => {
           template_files: 20,
         },
         { kind: 'template_clone', duration_ms: 1 },
+        { kind: 'run_prepare', duration_ms: 2 },
       ],
     }),
   )
@@ -88,6 +92,7 @@ test('the reporter consumes process-specific fixture sidecars once', () => {
   assert.deepEqual(readFixtureCost(target), {
     template_ms: 1,
     clone_ms: 1,
+    prepare_ms: 2,
     template_bytes: 2048,
     template_files: 20,
   })

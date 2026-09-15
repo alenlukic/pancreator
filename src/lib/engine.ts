@@ -6847,7 +6847,7 @@ export function submitOutput(
  * entry gate, a disabled gate cache, or the operator's own switch each leave
  * the gate to run the profile itself.
  */
-function pendingReleaseProfilePrefetch(
+export function pendingReleaseProfilePrefetch(
   root: string,
   state: RunState,
   workflow: WorkflowDefinition,

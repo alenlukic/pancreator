@@ -121,6 +121,7 @@ export function readFixtureCost(
 
   let template_ms = 0
   let clone_ms = 0
+  let prepare_ms = 0
   let template_bytes = 0
   let template_files = 0
 
@@ -144,6 +145,8 @@ export function readFixtureCost(
           template_files = Math.max(template_files, event.template_files ?? 0)
         } else if (event.kind === 'template_clone') {
           clone_ms += event.duration_ms
+        } else if (event.kind === 'run_prepare') {
+          prepare_ms += event.duration_ms
         }
       }
     } catch {
@@ -155,10 +158,17 @@ export function readFixtureCost(
 
   return template_ms === 0 &&
     clone_ms === 0 &&
+    prepare_ms === 0 &&
     template_bytes === 0 &&
     template_files === 0
     ? null
-    : { template_ms, clone_ms, template_bytes, template_files }
+    : {
+        template_ms,
+        clone_ms,
+        prepare_ms,
+        template_bytes,
+        template_files,
+      }
 }
 
 class ProfileCollector {
@@ -319,14 +329,39 @@ function writeJsonAtomic(
   value: unknown,
   pretty: boolean,
 ): void {
-  const temporary = `${target}.tmp-${process.pid}`
+  const body = `${pretty ? JSON.stringify(value, null, 2) : JSON.stringify(value)}\n`
 
   mkdirSync(path.dirname(target), { recursive: true })
-  writeFileSync(
-    temporary,
-    `${pretty ? JSON.stringify(value, null, 2) : JSON.stringify(value)}\n`,
+
+  // A gate points this target into a run's evidence directory, which a watch
+  // fingerprints and an evidence audit reads. A sibling staging file is
+  // visible there for the length of one write, so staging happens in the
+  // runner's scratch tree and only the finished document is ever named under
+  // the target.
+  const staging = fixtureSidecarDirectory()
+
+  mkdirSync(staging, { recursive: true })
+
+  const temporary = path.join(
+    staging,
+    `${path.basename(target)}.${process.pid}`,
   )
-  renameSync(temporary, target)
+
+  writeFileSync(temporary, body)
+
+  try {
+    renameSync(temporary, target)
+  } catch (error) {
+    // A rename cannot cross a device. Writing in place is no longer atomic,
+    // but losing the record would be worse than a torn read nobody performs.
+    if ((error as NodeJS.ErrnoException).code !== 'EXDEV') {
+      rmSync(temporary, { force: true })
+      throw error
+    }
+
+    writeFileSync(target, body)
+    rmSync(temporary, { force: true })
+  }
 }
 
 export default async function* failuresOnly(

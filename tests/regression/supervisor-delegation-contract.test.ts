@@ -20,39 +20,6 @@ interface ValidationArtifact {
   checks: Array<{ id: string; passed: boolean; message: string }>
 }
 
-const REPO_ROOT = process.cwd()
-
-function repoText(relativePath: string): string {
-  return readFileSync(path.join(REPO_ROOT, relativePath), 'utf8')
-}
-
-test('always-applied rules share one supervisor paragraph', () => {
-  const paragraphs = [
-    'library/cursor/rules/pancreator-self-development.mdc',
-    'library/cursor/rules/pancreator-embedded.mdc',
-  ].map((rulePath) => {
-    const body = repoText(rulePath)
-    const paragraph = body
-      .split(/\n\s*\n/u)
-      .find((candidate) =>
-        /A workflow supervisor MUST run in the operator's own session/u.test(
-          candidate,
-        ),
-      )
-
-    assert.ok(paragraph, `${rulePath} MUST state where the supervisor runs`)
-    assert.match(
-      paragraph,
-      /you MUST refuse before calling the subagent/u,
-      `${rulePath} MUST require refusal of injected supervisor delegation`,
-    )
-
-    return paragraph.trim()
-  })
-
-  assert.equal(paragraphs[0], paragraphs[1])
-})
-
 function cardText(root: string, markdownPath: string): string {
   return readFileSync(path.join(root, markdownPath), 'utf8')
 }

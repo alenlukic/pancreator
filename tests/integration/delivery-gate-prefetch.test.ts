@@ -486,51 +486,6 @@ test('a run reaching its terminal state leaves no prefetch child running', async
   }
 })
 
-test('the prefetch stays unstarted when the operator switches it off', () => {
-  const { root, runId, workflow } = checkpoint(
-    'delivery@implement-prepared',
-    checksVariant('checks=prefetch-off', PREFETCH_PROFILES),
-  )
-
-  // The switch is off, which is how the suite runs and how an operator opts
-  // out of spending background capacity.
-  withEnv({ PAN_PREFETCH_FULL: '0' }, () =>
-    submitStageOutput(
-      root,
-      runId,
-      stageBySlug(workflow, 'implement'),
-      'success',
-    ),
-  )
-
-  assert.equal(prefetchRecord(root, runId), null)
-  assert.equal(fullRuns(root), 0)
-})
-
-test('a failed submission starts no prefetch', () => {
-  // The prefetch answers for the tree the stage just handed over. A stage
-  // that failed hands over nothing: the run returns to the same source stage
-  // and the workspace changes again before any gate reads it.
-  const { root, runId, workflow } = checkpoint(
-    'delivery@implement-prepared',
-    checksVariant('checks=prefetch', PREFETCH_PROFILES),
-  )
-  const submitted = withEnv({ PAN_PREFETCH_FULL: null }, () =>
-    submitStageOutput(
-      root,
-      runId,
-      stageBySlug(workflow, 'implement'),
-      'failure',
-      ['implement.acceptance_claimed'],
-    ),
-  )
-
-  assert.equal(submitted.record.outcome, 'failure')
-  assert.equal(submitted.state.current_stage, 'implement')
-  assert.equal(prefetchRecord(root, runId), null)
-  assert.equal(fullRuns(root), 0)
-})
-
 test('a routed remediation prefetches for the verify it returns through', () => {
   // A direct return to ship left no window to compute the profile in: the
   // entry gate runs it the moment the run arrives. The repair now returns
@@ -576,54 +531,6 @@ test('a routed remediation prefetches for the verify it returns through', () => 
   } finally {
     endPrefetchChild(record)
   }
-})
-
-test('a level with no release gate starts no prefetch', () => {
-  // Minimal disables the ship release gate, so no gate result exists to
-  // compute ahead of time and the child would spend the machine on nothing.
-  const { root, runId, workflow } = checkpoint(
-    'delivery@implement-prepared',
-    checksVariant('verification=minimal,checks=prefetch', PREFETCH_PROFILES, {
-      verification: 'minimal',
-    }),
-  )
-  const submitted = withEnv({ PAN_PREFETCH_FULL: null }, () =>
-    submitStageOutput(
-      root,
-      runId,
-      stageBySlug(workflow, 'implement'),
-      'success',
-    ),
-  )
-
-  assert.equal(submitted.state.verification?.level, 'minimal')
-  assert.equal(submitted.state.current_stage, 'verify')
-  assert.equal(prefetchRecord(root, runId), null)
-  assert.equal(fullRuns(root), 0)
-})
-
-test('a disabled gate cache starts no prefetch', () => {
-  // The gate cache is the only channel the child has to hand its answer to
-  // the gate. With the cache off the gate executes the profile itself, so
-  // the child is duplicated work against the same machine.
-  const { root, runId, workflow } = checkpoint(
-    'delivery@implement-prepared',
-    checksVariant('checks=prefetch', PREFETCH_PROFILES),
-  )
-  const submitted = withEnv(
-    { PAN_PREFETCH_FULL: null, PAN_GATE_CACHE: '0' },
-    () =>
-      submitStageOutput(
-        root,
-        runId,
-        stageBySlug(workflow, 'implement'),
-        'success',
-      ),
-  )
-
-  assert.equal(submitted.state.current_stage, 'verify')
-  assert.equal(prefetchRecord(root, runId), null)
-  assert.equal(fullRuns(root), 0)
 })
 
 test('a prefetch answer that never lands leaves the ship entry gate to run the profile', () => {

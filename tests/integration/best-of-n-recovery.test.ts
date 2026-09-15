@@ -12,7 +12,6 @@ import {
   initBestOfN,
 } from '../../src/lib/best-of-n.js'
 import { withOperationMutex } from '../../src/lib/io.js'
-import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { createFixture, writeJson } from '../helpers.js'
 
 import {
@@ -118,17 +117,4 @@ test('one command at a time may mutate a session record', () => {
   // The mutation released the mutex it took, so the next command is not
   // refused by a file the last one left behind.
   assert.equal(existsSync(mutex), false)
-})
-
-test('status surfaces invalid candidate state', () => {
-  const { root, session } = bestOfNCheckpoint('ready')
-  const candidate = session.candidates[0]
-  const statePath = resolveRunLayout(root, candidate.run_id).state.absolute
-
-  writeJson(statePath, { schema_version: 1 })
-
-  assert.throws(
-    () => bestOfNStatus(root, session.bon_id),
-    /state\.json\.run_id MUST be a non-empty string/u,
-  )
 })

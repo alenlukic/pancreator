@@ -40,6 +40,7 @@ export interface SuiteProfileTest {
 export interface SuiteProfileFixtureCost {
   template_ms: number
   clone_ms: number
+  prepare_ms: number
   template_bytes: number
   template_files: number
 }
@@ -140,6 +141,9 @@ export function loadSuiteProfile(
       ? {
           template_ms: value.fixture_cost.template_ms,
           clone_ms: value.fixture_cost.clone_ms,
+          prepare_ms: isNumber(value.fixture_cost.prepare_ms)
+            ? value.fixture_cost.prepare_ms
+            : 0,
           template_bytes: isNumber(value.fixture_cost.template_bytes)
             ? value.fixture_cost.template_bytes
             : 0,

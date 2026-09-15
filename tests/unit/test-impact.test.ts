@@ -649,7 +649,7 @@ test('self-test: a change to src/lib/naming.ts selects the naming test and not t
   ])
 
   assert.ok(
-    policy.selected.includes('tests/unit/policies.test.ts'),
+    policy.selected.includes('tests/integration/policies.test.ts'),
     `selected ${policy.selected.join(', ')}`,
   )
   assert.deepEqual(policy.unreached, [])

@@ -4,6 +4,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { personaExecutorOf } from '../../src/lib/executors/mapping.js'
+import { PanError } from '../../src/lib/errors.js'
 import {
   loadPipelineConfig,
   makePipelineConfigSnapshot,
@@ -86,6 +87,28 @@ test('pipeline config rejects an undefined active config', () => {
         },
       }),
     /active_config 'missing' is not defined/u,
+  )
+})
+
+test('pipeline config rejects an invalid openai persona mapping', () => {
+  assert.throws(
+    () =>
+      parsePipelineConfig({
+        schema_version: 1,
+        active_config: 'default',
+        configs: {
+          default: {
+            planner: 'openai:gpt-6-astra[effort=extreme]',
+          },
+        },
+      }),
+    (error: unknown) =>
+      error instanceof PanError &&
+      error.code === 'INVALID_PIPELINE_CONFIG' &&
+      /planner/u.test(error.message) &&
+      /effort/u.test(error.message) &&
+      /session-resume/u.test(error.message) &&
+      /max-tool-rounds/u.test(error.message),
   )
 })
 
