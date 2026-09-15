@@ -5,9 +5,11 @@ import test from 'node:test'
 
 /**
  * Every surface that used to route the unit commit or the group merge to a
- * person. The harness owns both steps now, and a surface that says otherwise
- * stops a supervisor the policy already freed, so the list is asserted as a
- * whole rather than repaired one file at a time.
+ * person, and every surface that later carried the cohort-integration
+ * carve-out from a blanket commit-and-merge prohibition. Commit and merge are
+ * now agent-judgment actions everywhere, so a surface that reintroduces either
+ * the human step or the carve-out stops an agent the policy already freed. The
+ * list is asserted as a whole rather than repaired one file at a time.
  */
 const RECONCILED_SURFACES = [
   'AGENTS.md',
@@ -25,18 +27,37 @@ const RECONCILED_SURFACES = [
 ]
 
 /**
- * The subset that has to state the new owner rather than merely drop the old
- * wording. `docs/runtime-protocol.md` is excluded: its reconciliation is the
- * away-authored waiver, and the cohort lifecycle is not its subject.
+ * The subset that still has to say the harness owns the cohort integration.
+ * The invariant surfaces (`AGENTS.md`, `ACTION-001`, the templates, and the
+ * rules) no longer need to mention it: once commit and merge are ordinary
+ * agent actions, the integration is not an exception to anything.
  */
-const COHORT_OWNING_SURFACES = RECONCILED_SURFACES.filter(
-  (surface) => surface !== 'docs/runtime-protocol.md',
-)
+const COHORT_OWNING_SURFACES = [
+  'governance/policies/COHORT-001.json',
+  'library/personas/orchestrator.md',
+  'library/cursor/commands/pan-cohort.md',
+  'docs/operator-guide.md',
+]
+
+/**
+ * The surfaces that state the operator-owned action list. Each one has to
+ * carry the `dev` landing rule, because that rule is what replaced the
+ * prohibition rather than an extra clause beside it.
+ */
+const DEV_LANDING_SURFACES = [
+  'AGENTS.md',
+  'governance/policies/ACTION-001.json',
+  'library/templates/embedded-AGENTS.md',
+  'library/templates/detached-AGENTS.md',
+  'library/cursor/rules/pancreator-embedded.mdc',
+  'library/cursor/rules/pancreator-self-development.mdc',
+]
 
 /**
  * Short, stable phrases that only a retired stance produces. Each one is
  * narrow enough that the replacement wording cannot trip it, so the guard
- * fails on a reintroduced human step rather than on an ordinary rewrite.
+ * fails on a reintroduced human step or carve-out rather than on an ordinary
+ * rewrite.
  */
 const RETIRED_PHRASES = [
   'cohort integrate` are operator-owned',
@@ -49,10 +70,26 @@ const RETIRED_PHRASES = [
   'dirty chunk worktree',
   'commit them yourself',
   'commit or stash the chunk',
+  'cohort integration is the exception',
+  'cohort integration is the one carve-out',
+  'is the one carve-out',
+  'only retries that advance, so any agent may run it',
+  'must not commit, push, merge',
+  'must not originate commit, push, merge',
+  'must not run git commit',
 ]
 
-/** Prohibitions the change must not have loosened while it freed the merge. */
-const RETAINED_PROHIBITIONS = ['push', 'publication', 'deployment', 'branch']
+/**
+ * Prohibitions the change must not have loosened while it freed the merge.
+ * `ACTION-001` names Git commands rather than release actions, so its list is
+ * the command list; publication and deployment live on the away and cohort
+ * policies.
+ */
+const RETAINED_PROHIBITIONS: Record<string, string[]> = {
+  'AWAY-001': ['push', 'publication', 'deployment', 'branch'],
+  'ACTION-001': ['push', 'branch deletion', 'history rewrite'],
+  'COHORT-001': ['push', 'publication', 'deployment', 'branch'],
+}
 
 function read(file: string): string {
   return readFileSync(path.join(process.cwd(), file), 'utf8')
@@ -74,7 +111,7 @@ function instructions(policy: string): string[] {
   )
 }
 
-test('no reconciled surface still routes a unit commit or a group merge to a person', () => {
+test('no reconciled surface still routes a unit commit or a group merge to a person, or carves the integration out of a prohibition', () => {
   for (const surface of RECONCILED_SURFACES) {
     const body = read(surface).toLowerCase()
 
@@ -89,7 +126,7 @@ test('no reconciled surface still routes a unit commit or a group merge to a per
   }
 })
 
-test('every reconciled surface states that the harness owns the cohort integration', () => {
+test('every cohort-owning surface states that the harness owns the cohort integration', () => {
   // A sweep that only deletes wording leaves the reader with no rule at all.
   // Each surface has to say who owns the step instead.
   for (const surface of COHORT_OWNING_SURFACES) {
@@ -135,11 +172,48 @@ test('AWAY-001 prohibits only the actions the operator kept, and bars no commit 
   }
 })
 
-test('the freed merge did not loosen push, publication, deployment, or branch deletion', () => {
-  for (const policy of ['AWAY-001', 'ACTION-001', 'COHORT-001']) {
+test('ACTION-001 frees commit and local merge, keeps the remote and destructive prohibitions, and lands agent work on dev', () => {
+  const action = instructions('ACTION-001')
+  const prohibition = action.find((text) =>
+    text.startsWith('Agents MUST NOT run'),
+  )
+
+  assert.ok(prohibition, 'ACTION-001 no longer states a command prohibition')
+  assert.ok(
+    !/\bgit commit\b/u.test(prohibition),
+    `ACTION-001 still prohibits git commit: ${prohibition}`,
+  )
+  assert.ok(
+    !/\bgit merge\b/u.test(prohibition),
+    `ACTION-001 still prohibits a local git merge: ${prohibition}`,
+  )
+  for (const kept of [
+    'git push',
+    'gh pr create',
+    'gh pr merge',
+    'branch deletion',
+    'history rewrite',
+    'destructive reset',
+  ]) {
+    assert.ok(
+      prohibition.includes(kept),
+      `ACTION-001 no longer prohibits ${kept}: ${prohibition}`,
+    )
+  }
+
+  const landing = action.find((text) => /\bcommit and merge\b/iu.test(text))
+
+  assert.ok(landing, 'ACTION-001 no longer says where agents commit and merge')
+  assert.match(landing, /`dev`/u)
+  assert.match(landing, /MUST NOT merge into `main`/u)
+  assert.match(landing, /operator promotes `dev` to `main`/u)
+})
+
+test('the freed commit and merge did not loosen push, publication, deployment, or branch deletion', () => {
+  for (const [policy, retained] of Object.entries(RETAINED_PROHIBITIONS)) {
     const body = instructions(policy).join('\n').toLowerCase()
 
-    for (const prohibition of RETAINED_PROHIBITIONS) {
+    for (const prohibition of retained) {
       assert.ok(
         body.includes(prohibition),
         `${policy} no longer mentions ${prohibition}`,
@@ -157,8 +231,41 @@ test('the freed merge did not loosen push, publication, deployment, or branch de
 
   assert.match(
     card,
-    /MUST NOT commit, push, merge, publish, deploy, rewrite history, delete branches, or destructively reset without explicit operator authorization/u,
+    /MUST NOT push, publish, deploy, rewrite history, delete branches, or destructively reset without explicit operator authorization/u,
   )
+  // `MUST NOT commit`, or a MUST NOT list that opens with commit, is the
+  // retired stance. A rule that merely mentions a release commit is not.
+  assert.doesNotMatch(
+    card,
+    /MUST NOT (?:\w+ )?commit\b/u,
+    'AGENTS.md puts commit back on a MUST NOT list',
+  )
+})
+
+test('every operator-owned action list surface states the dev landing rule once and adds no branching clause', () => {
+  for (const surface of DEV_LANDING_SURFACES) {
+    const body = read(surface)
+
+    assert.match(
+      body,
+      /commit and merge[^.\n]*`dev`/iu,
+      `${surface} never says agents commit and merge on dev`,
+    )
+    assert.match(
+      body,
+      /operator promotes `dev` to `main`/u,
+      `${surface} never names the operator's dev-to-main promotion`,
+    )
+    assert.equal(
+      body.match(/operator promotes `dev` to `main`/gu)?.length,
+      1,
+      `${surface} states the promotion rule more than once`,
+    )
+    assert.ok(
+      !/trailer|path-scop/iu.test(body),
+      `${surface} adds a branching rule beyond the dev landing idea`,
+    )
+  }
 })
 
 test('COHORT-001 still requires a stated operator reason to exclude one unit from a group', () => {

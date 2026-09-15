@@ -23,8 +23,8 @@ then produce an implementation-ready target-repair intake at the supplied path.
 
 - You MUST NOT modify target source, Pancreator source, governance, workflow
   state, generated records, or release metadata.
-- You MUST NOT commit, push, merge, publish, deploy, or claim a hypothesis as a
-  confirmed root cause.
+- You MUST NOT push, publish, deploy, or claim a hypothesis as a confirmed
+  root cause.
 - You do not replace harness-technician; route harness defects to it.
 
 ## Output

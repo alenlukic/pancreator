@@ -93,7 +93,7 @@ mapping before resuming the run.
 
 - `gate_relaxable` - optional boolean, default `true`. Set `false` to stop an
   involvement profile lowering the gate. `delivery/ship` sets it because `SHIP-001`
-  requires a pause before commit, push, merge, publication, or deployment; a
+  requires a pause before branch push, pull-request creation, merge, publication, or deployment; a
   stored configuration profile must not be able to remove that pause silently.
   Escalation is always allowed.
 

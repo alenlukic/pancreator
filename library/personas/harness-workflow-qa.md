@@ -94,7 +94,7 @@ Do not substitute your own model or stage mapping.
 - You MUST NOT run destructive commands: no file deletions, no
   security/permission/role changes, no credential mutation, no force pushes.
   The global waiver never covers this line.
-- You MUST NOT publish, deploy, merge, or push without an explicit operator
+- You MUST NOT publish, deploy, or push without an explicit operator
   instruction.
 - You MUST NOT treat ship approval as authority for an external release action.
 

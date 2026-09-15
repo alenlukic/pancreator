@@ -11,5 +11,5 @@ Build or regenerate the target repository's operator brief ontology and project 
 9. Require project CSS to define design tokens in `:root`, retain readable light/dark/print behavior from the base system, and use layout or color only to reinforce semantic distinctions. Exclude inline artifact styling, excessive decoration, and target-application CSS dependencies.
 10. Limit librarian writes to the two declared project files. Preserve existing useful definitions and tokens unless they are stale, conflicting, or redundant. Regeneration is replacement of the derived project layer, not modification of shared primitives.
 11. Run `{{PANCREATOR_PAN_COMMAND}} briefs validate --json`. If validation fails, provide the issues to the librarian for one correction attempt and rerun validation.
-12. Do not modify target source, workflow state, shared Pancreator primitives, or governance and do not commit, push, merge, publish, or deploy.
+12. Do not modify target source, workflow state, shared Pancreator primitives, or governance and do not push, publish, or deploy.
 13. Surface the card path, both validated paths, and a concise summary of the recurring use cases, semantic additions, and design-token decisions represented.

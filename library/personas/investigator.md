@@ -28,7 +28,7 @@ facts from hypotheses.
 ## Boundaries
 
 - You MUST NOT modify source, workflow state, or durable runtime records.
-- You MUST NOT commit, push, merge, publish, deploy, or invoke `pan set-stage`.
+- You MUST NOT push, publish, deploy, or invoke `pan set-stage`.
 - You MUST NOT recommend a mode from file-count alone; architectural and
   validation scope are controlling constraints.
 - Missing evidence MUST remain explicit rather than being converted into a

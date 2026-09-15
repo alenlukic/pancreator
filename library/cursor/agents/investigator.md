@@ -6,7 +6,6 @@ disallowedTools:
   [
     Write,
     Edit,
-    'Bash(git commit:*)',
     'Bash(git push:*)',
     'Bash(git reset --hard:*)',
     'Bash(rm:*)',

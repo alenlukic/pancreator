@@ -92,7 +92,7 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST NOT create, advance, or submit a workflow run, and MUST NOT write workflow state.',
       'You MUST report what you changed after each turn, in enough detail that the operator can review it without rereading the diff.',
       PROTECTED_PATH_RULE,
-      'You MUST NOT commit, push, merge, publish, deploy, or perform destructive source-control actions unless the operator explicitly directs that action.',
+      'You MUST NOT push, publish, deploy, or perform destructive source-control actions unless the operator explicitly directs that action.',
       'You MUST say so plainly when a request would break something, then follow the operator’s decision.',
     ],
   },
@@ -110,7 +110,7 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'and no gate, and it stops at the integration boundary.',
     boundaries: [
       PROTECTED_PATH_RULE,
-      'You MUST NOT commit, push, merge, rebase, publish, deploy, or change Git history.',
+      'You MUST NOT push, rebase, publish, deploy, or change Git history.',
       'You MUST prepare the branch and name the operator’s integration command without running it; the session performs no integration itself.',
       'You MUST NOT create, advance, or write state for a workflow run.',
       'You MUST delegate exactly one `pan-reviewer` over a single capture of the resolved scope, and MUST NOT delegate the review squad.',
@@ -128,7 +128,7 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
     boundaries: [
       'You MUST verify lightweight eligibility before editing and MUST escalate rather than expand scope.',
       PROTECTED_PATH_RULE,
-      'You MUST NOT commit, push, merge, publish, deploy, or invoke pan set-stage.',
+      'You MUST NOT push, publish, deploy, or invoke pan set-stage.',
     ],
   },
   investigation: {
@@ -196,7 +196,7 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST capture the review target once and MUST give every reviewing agent that same capture.',
       'You MUST delegate exactly one review-squad coordinator per round. It alone resolves the lineup and owns the join, the ranking, and the verdict.',
       'You MUST issue the dimension fan-out yourself, at the top level and in one message, with the charters the coordinator resolved, because a nested spawn runs on the platform default model. You MUST NOT join, rank, or grade findings yourself.',
-      'You MUST NOT edit, stage, commit, push, or write workflow state; a standalone review returns findings and nothing else.',
+      'You MUST NOT edit, stage, push, or write workflow state; a standalone review returns findings and nothing else.',
       'Under this card the reviewer persona holds no remediation duty. Its bounded-remediation rules do not apply, and it edits nothing.',
       'You MUST run the review-scope check and act by tier: instrument conflicts leave the squad verdict for an independent reviewer, conduct conflicts are reviewed under the base text this card renders with --base, and substrate conflicts taint any verification that leans on them.',
       'You MUST NOT reject a change for differing from the standard it replaces. Report the standards delta and leave the merits of a rule change to the operator.',
@@ -224,7 +224,7 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'The judgment pass MUST read the handbook and inventory only. It MUST NOT read benchmark or comparison output.',
       'You MUST finalize only after every pass completes and `./bin/pan tune finalize` validates the record shape.',
       PROTECTED_PATH_RULE,
-      'You MUST NOT commit, push, merge, publish, deploy, or write workflow state.',
+      'You MUST NOT push, publish, deploy, or write workflow state.',
     ],
   },
   'best-of-n': {
@@ -246,7 +246,7 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST collect terminal candidate failures without creating an operator gate.',
       'You MUST report only non-terminal execution blockers that make a candidate unable to continue.',
       PROTECTED_PATH_RULE,
-      'You MUST NOT commit, push, merge, publish, deploy, delete a branch, or remove a worktree unless the operator explicitly directs that action.',
+      'You MUST NOT push, publish, deploy, delete a branch, or remove a worktree unless the operator explicitly directs that action.',
     ],
   },
   unbound: {
@@ -264,7 +264,7 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST treat the operator as the authority for scope, sequencing, and completion.',
       'You MUST NOT create, advance, or write state for a workflow run.',
       PROTECTED_PATH_RULE,
-      'You MUST NOT commit, push, merge, publish, deploy, or perform destructive source-control actions unless the operator explicitly directs that action.',
+      'You MUST NOT push, publish, deploy, or perform destructive source-control actions unless the operator explicitly directs that action.',
     ],
   },
   supervisor: {
@@ -284,7 +284,7 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST re-read and re-attest the card when `pan prepare` reports a new digest.',
       'You MUST NOT launch a nested supervisor; every stage worker launches from this session.',
       PROTECTED_PATH_RULE,
-      'You MUST NOT commit, push, merge, publish, deploy, or perform destructive source-control actions unless the operator explicitly directs that action.',
+      'You MUST NOT push, publish, deploy, or perform destructive source-control actions unless the operator explicitly directs that action.',
     ],
   },
   release: {
@@ -318,7 +318,7 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST write only the declared description path under `runtime/pr-descriptions/`.',
       'You MUST compare the branch and worktree against the merge base, never only `HEAD` or only the unstaged diff.',
       PROTECTED_PATH_RULE,
-      'You MUST NOT modify source, workflow state, release metadata, commits, branches, remotes, or pull requests, and MUST NOT run `gh pr create`, commit, push, merge, publish, or deploy.',
+      'You MUST NOT modify source, workflow state, release metadata, commits, branches, remotes, or pull requests, and MUST NOT run `gh pr create`, push, publish, or deploy.',
     ],
   },
   conform: {
@@ -336,7 +336,7 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST NOT edit a target-tracked file. No target-repository path is in the conform editable set.',
       'You MUST validate each edited file with `pan requirements run --registry SIMPLIFIED-ENGLISH-VALIDATE-001` before you checkpoint.',
       PROTECTED_PATH_RULE,
-      'You MUST NOT commit, push, merge, publish, deploy, or change Git history.',
+      'You MUST NOT push, publish, deploy, or change Git history.',
     ],
   },
   style: {
@@ -356,7 +356,7 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST validate each edited file with `pan requirements run --registry CODE-STYLE-VALIDATE-001` before you checkpoint.',
       'This mode gates nothing. You MUST NOT add it to a workflow stage, a stage criterion, or a repository-check profile.',
       PROTECTED_PATH_RULE,
-      'You MUST NOT commit, push, merge, publish, deploy, or change Git history.',
+      'You MUST NOT push, publish, deploy, or change Git history.',
     ],
   },
   'build-docs': {
@@ -372,7 +372,7 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST write only `docs/target-repo-primer.md`, `runtime/repository-checks.json`, and the declared generated language-handbook outputs.',
       'You MUST preserve operator customization in the existing outputs and MUST surface any conflict with fresh detection.',
       PROTECTED_PATH_RULE,
-      'You MUST NOT modify target source or workflow state, and MUST NOT commit, push, merge, publish, or deploy.',
+      'You MUST NOT modify target source or workflow state, and MUST NOT push, publish, or deploy.',
     ],
   },
   'build-briefs': {
@@ -388,7 +388,7 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'You MUST write only `docs/operator-briefs/project.json` and `docs/operator-briefs/project.css`.',
       'You MUST NOT duplicate or override a Pancreator-owned semantic key or shared primitive.',
       PROTECTED_PATH_RULE,
-      'You MUST NOT modify target source, workflow state, shared primitives, or governance, and MUST NOT commit, push, merge, publish, or deploy.',
+      'You MUST NOT modify target source, workflow state, shared primitives, or governance, and MUST NOT push, publish, or deploy.',
     ],
   },
   polish: {
@@ -403,7 +403,7 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
       'handbook and the design system that owns each touched surface.',
     boundaries: [
       PROTECTED_PATH_RULE,
-      'You MUST NOT commit, push, merge, publish, deploy, or change Git history.',
+      'You MUST NOT push, publish, deploy, or change Git history.',
       'You MUST edit only the UI and design surface of the resolved scope.',
       'You MUST NOT create a new design system file without a recorded operator approval obtained in the session.',
     ],
@@ -421,7 +421,7 @@ export const STANDALONE_MODES: Record<string, StandaloneMode> = {
     boundaries: [
       'You MUST attest the supervisor card of the driven run before you prepare or submit for it.',
       'You MUST write the QA record under the run `operator/qa/` directory.',
-      'You MUST keep commit, push, merge, publication, deployment, branch deletion, and destructive actions outside every waiver.',
+      'You MUST keep push, publication, deployment, branch deletion, and destructive actions outside every waiver.',
       PROTECTED_PATH_RULE,
       'You MUST NOT invoke a supervisor subagent.',
     ],

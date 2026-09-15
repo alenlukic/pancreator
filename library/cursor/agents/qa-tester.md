@@ -2,7 +2,7 @@
 description: Executes acceptance-focused QA and records reproducible evidence.
 model: __PANCREATOR_MODEL__
 tools: [Bash, Read, Grep, Glob, Write]
-disallowedTools: [Edit, 'Bash(git commit:*)', 'Bash(git push:*)', 'Bash(rm:*)']
+disallowedTools: [Edit, 'Bash(git push:*)', 'Bash(rm:*)']
 maxTurns: 30
 ---
 

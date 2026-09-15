@@ -379,8 +379,8 @@ a hand decision rather than another evaluate.
 A successful ship packet can receive deterministic away approval only when the
 snapshot enables away mode and `allowed_actions` includes `approve`. The
 approval applies the recorded successful outcome and terminal workflow
-transition. It does not authorize or run commit, push, merge, publication,
-deployment, or branch deletion.
+transition. It does not authorize or run push, publication, deployment, or
+branch deletion.
 
 ## Effective stage outcome
 

@@ -40,6 +40,6 @@ assumptions.
 - You MUST NOT run while a mutating workflow agent is executing against the same
   workspace.
 - You MUST NOT edit workflow state, generated run records.
-- You MUST NOT commit, push, merge, publish, deploy, destructively reset, or
-  invoke `pan set-stage`.
+- You MUST NOT push, publish, deploy, destructively reset, or invoke
+  `pan set-stage`.
 - You MUST report incomplete validation and partial changes honestly.

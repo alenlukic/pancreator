@@ -2,13 +2,7 @@
 description: Evaluates every best-of-N candidate and writes one consolidated implementation.
 model: __PANCREATOR_MODEL__
 tools: [Bash, Read, Grep, Glob, Write, Edit]
-disallowedTools:
-  [
-    'Bash(git commit:*)',
-    'Bash(git push:*)',
-    'Bash(git reset --hard:*)',
-    'Bash(rm:*)',
-  ]
+disallowedTools: ['Bash(git push:*)', 'Bash(git reset --hard:*)', 'Bash(rm:*)']
 maxTurns: 60
 ---
 

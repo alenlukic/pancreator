@@ -15,7 +15,6 @@ tools:
 disallowedTools:
   [
     Edit,
-    'Bash(git commit:*)',
     'Bash(git push:*)',
     'Bash(git reset:*)',
     'Bash(rm:*)',

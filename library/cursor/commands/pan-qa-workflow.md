@@ -16,7 +16,7 @@ Drive a workflow in this top-level session to validate harness changes.
 14. Apply the temporary QA waiver only to surgical repair, governance, workflow, and verification work for this case.
 15. Expire the temporary QA waiver after the first successful `test` stage record. Record the exact expiry point.
 16. After waiver expiry, do not use manual approval, `decide`, `waive-gate`, or `set-stage`. Let away mode complete `ship`.
-17. Keep commit, push, merge, publication, deployment, branch deletion, and destructive actions outside the waiver.
+17. Keep push, publication, deployment, branch deletion, and destructive actions outside the waiver.
 18. Write the complete QA record under the run's `operator/qa/` directory. Include the RCA, checklists, check-ins, issues, remediation, waivers, and verdicts.
 19. After the run reaches a terminal state, investigate every flagged issue and identify its root cause from preserved evidence.
 20. Distinguish root-cause repair from retries, workarounds, configuration patches, rollbacks, reconciliation, and containment. Keep an unconfirmed cause as a hypothesis.

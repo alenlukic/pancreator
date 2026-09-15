@@ -27,7 +27,7 @@ Work the phases in this order.
    do not guess ecosystem commands.
 3. **Review and analyze.** Delegate exactly one `pan-reviewer` subagent over a
    single capture of the resolved scope. Tell it the review is standalone and
-   that it MUST NOT edit, stage, or commit; its findings are its only output.
+   that it MUST NOT edit or stage; its findings are its only output.
    `DELEGATE-001` on the active card owns the delegation discipline and the
    outcome ownership. When the findings warrant a deeper pass, name
    `/pan-review` as the operator's option rather than running it.
@@ -41,8 +41,8 @@ Work the phases in this order.
    you do not fix with its reason; do not broaden the scope to force a pass.
 6. **Prepare for integration.** Leave the branch ready: checks green, findings
    dispositioned, evidence recorded. Then name the integration command the
-   operator would run next and stop. The session MUST NOT commit, merge,
-   rebase, push, publish, or deploy, and MUST NOT run `pan release` or
+   operator would run next and stop. The session MUST NOT rebase, push,
+   publish, or deploy, and MUST NOT run `pan release` or
    `pan cohort integrate`.
 
 ## Check ordering
