@@ -18,6 +18,7 @@ Evals run outside `npm test`, outside every repository-check profile, and outsid
 
 - `evals/scenarios/<name>.json` — one scenario per file. `pan validate` checks every scenario against `library/schemas/eval-scenario.schema.json` and checks that its fixture exists.
 - `evals/fixtures/<fixture>/` — a toy target repository. `toy-node` is one module, one test, and package scripts that answer every configured repository-check profile in under a second.
+- A fixture stores agent instruction files as `<name>.fixture.md` (for example `AGENTS.fixture.md`) so Cursor does not merge them into harness agent context. `pan eval run` restores the real name when it copies the fixture.
 - `runtime/logs/evals/<eval-id>/` — one directory per `pan eval run`: `workspace/` (the fixture copy the run mutates), `request.md`, `eval.json` (scenario, run id, status), and `report.json` + `report.md`.
 - `src/lib/evals/` — scenario loading and validation, the run-records reader, the graders, the report writer, and the run driver.
 

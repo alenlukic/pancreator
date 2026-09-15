@@ -245,6 +245,10 @@ test('pan eval run materializes the toy workspace, creates the run, and hands of
   assert.equal(run.workspace, `${run.eval_dir}/workspace`)
   assert.ok(existsSync(path.join(root, run.workspace, 'src', 'greet.mjs')))
   assert.ok(existsSync(path.join(root, run.workspace, '.git')))
+  // The fixture stores its instructions as AGENTS.fixture.md so Cursor does
+  // not merge them into harness agent context; the copy restores the name.
+  assert.ok(existsSync(path.join(root, run.workspace, 'AGENTS.md')))
+  assert.ok(!existsSync(path.join(root, run.workspace, 'AGENTS.fixture.md')))
   assert.ok(!existsSync(path.join(root, run.workspace, 'governance')))
 
   const state = JSON.parse(
