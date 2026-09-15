@@ -23,6 +23,19 @@ import type {
 } from '../../src/lib/types.js'
 import { createFixture, writeJson } from '../helpers.js'
 import { createRun } from '../run-helpers.js'
+import { createTestTempDirectory } from '../temp.js'
+
+test('loadState surfaces an invalid run state', () => {
+  const root = createTestTempDirectory('invalid-run-state-')
+  const runId = 'invalid-run'
+
+  writeJson(statePath(root, runId), { schema_version: 1 })
+
+  assert.throws(
+    () => loadState(root, runId),
+    /state\.json\.run_id MUST be a non-empty string/u,
+  )
+})
 
 test('state events use recoverable content-addressed references', () => {
   const root = createFixture()

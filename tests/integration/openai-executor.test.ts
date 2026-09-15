@@ -10,7 +10,6 @@ import {
   getRunState,
   prepareInvocation,
 } from '../../src/lib/engine.js'
-import { evalDrivesExecutor } from '../../src/lib/evals/run.js'
 import { loadPipelineConfigSnapshot } from '../../src/lib/pipeline-config.js'
 import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import type {
@@ -595,10 +594,4 @@ test('a retry after a failed attempt starts fresh with the full card', async () 
   }
 
   abortRun(root, runId, 'fixture complete')
-})
-
-test('the eval runner drives every external executor and hands back only cursor', () => {
-  assert.equal(evalDrivesExecutor('openai'), true)
-  assert.equal(evalDrivesExecutor('claude-code'), true)
-  assert.equal(evalDrivesExecutor('cursor'), false)
 })

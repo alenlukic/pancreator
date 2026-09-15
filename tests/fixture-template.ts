@@ -10,6 +10,7 @@
 import { execFileSync } from 'node:child_process'
 import {
   chmodSync,
+  constants,
   cpSync,
   existsSync,
   lstatSync,
@@ -39,6 +40,7 @@ const CURRENT_VERSION = readFileSync(
 const FIXTURE_GIT_TIMEOUT_MS = 180_000
 const FIXTURE_GIT_MAX_BUFFER = 1_024 * 1_024
 const FIXTURE_INVOLVEMENT_PROFILE = 'standard'
+const FIXTURE_PASS_COMMAND = 'node -e "process.exit(0)"'
 
 /** Cache key of the template every `createFixture` call clones. */
 const MAIN_TEMPLATE_KEY = 'fixture:main'
@@ -132,6 +134,43 @@ function pinFixtureInvolvement(root: string): void {
 }
 
 /**
+ * Keep fixture repository checks process-local.
+ *
+ * A fixture is its own repository, so its baselines resolve this file. Direct
+ * Node commands preserve each profile's passing contract without paying for
+ * an npm process that would only dispatch the fixture's stub scripts.
+ */
+function writeFixtureRepositoryChecks(root: string): void {
+  const profile = (name: string, description: string) => ({
+    description,
+    probes: ['node --version'],
+    commands: [`${FIXTURE_PASS_COMMAND} ${name}`],
+  })
+
+  writeFileSync(
+    path.join(root, 'runtime', 'repository-checks.json'),
+    `${JSON.stringify(
+      {
+        schema_version: 1,
+        profiles: {
+          configuration: profile(
+            'configuration',
+            'Validate fixture configuration.',
+          ),
+          static: profile('static', 'Run fixture static checks.'),
+          fast: profile('fast', 'Run the fixture mainline tests.'),
+          impacted: profile('impacted', 'Run fixture blast-radius tests.'),
+          secondary: profile('secondary', 'Run fixture secondary tests.'),
+          full: profile('full', 'Run complete fixture verification.'),
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  )
+}
+
+/**
  * Pin the model one persona resolves to in a fixture, in every named config.
  *
  * A fixture copies this checkout's effective configuration, so the operator's
@@ -170,36 +209,27 @@ export function pinFixturePersonaModel(
 }
 
 export interface CloneTreeOptions {
-  timeout?: number
   verbatimSymlinks?: boolean
 }
 
 /**
- * Copy a directory tree into `destination`. Uses copy-on-write when the
- * platform offers it and falls back to a plain recursive copy.
+ * Copy a directory tree into `destination`, copy-on-write where the
+ * filesystem offers it.
+ *
+ * `COPYFILE_FICLONE` asks for a reflink and degrades to a byte copy per file
+ * when the filesystem has none, so one in-process call covers every platform.
+ * The suite takes hundreds of these clones, and the `cp` process this
+ * replaced charged a fork and exec for each one on top of the same per-file
+ * clone syscalls.
  */
 export function cloneTree(
   template: string,
   destination: string,
   options: CloneTreeOptions = {},
 ): void {
-  const timeout = options.timeout ?? FIXTURE_GIT_TIMEOUT_MS
-
-  for (const flags of [['-Rc'], ['-a', '--reflink=auto']]) {
-    try {
-      execFileSync('cp', [...flags, `${template}/.`, destination], {
-        stdio: 'ignore',
-        timeout,
-      })
-
-      return
-    } catch {
-      // Fall back to the next flag set.
-    }
-  }
-
   cpSync(template, destination, {
     recursive: true,
+    mode: constants.COPYFILE_FICLONE,
     ...(options.verbatimSymlinks ? { verbatimSymlinks: true } : {}),
   })
 }
@@ -271,6 +301,8 @@ function buildFixtureTemplate(root: string): FixtureTemplateMeasurement {
   mkdirSync(path.join(root, 'runtime', 'backlog'), { recursive: true })
   mkdirSync(path.join(root, 'docs'), { recursive: true })
   mkdirSync(path.join(root, 'src'), { recursive: true })
+
+  writeFixtureRepositoryChecks(root)
 
   writeFileSync(
     path.join(root, 'AGENTS.md'),
@@ -347,12 +379,7 @@ function buildTemplateInThisProcess(): string {
 
   const measurement = buildFixtureTemplate(root)
 
-  recordFixtureEvent(
-    'template_build',
-    'main',
-    performance.now() - started,
-    measurement,
-  )
+  recordFixtureEvent('template_build', performance.now() - started, measurement)
 
   return root
 }
@@ -374,7 +401,6 @@ function mainTemplate(): string {
 
     recordFixtureEvent(
       'template_build',
-      'main',
       performance.now() - started,
       measurement,
     )
@@ -392,7 +418,7 @@ function cloneFixtureTemplate(template: string): string {
   const root = createTestTempDirectory('v2-')
 
   cloneTree(template, root)
-  recordFixtureEvent('template_clone', 'main', performance.now() - started)
+  recordFixtureEvent('template_clone', performance.now() - started)
 
   return root
 }

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { existsSync, readFileSync, utimesSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
-import { prepareInvocation, setRunStage } from '../../src/lib/engine.js'
+import { setRunStage } from '../../src/lib/engine.js'
 import type { Invocation, RunState } from '../../src/lib/types.js'
 import {
   delegationUnobservedMessage,
@@ -10,13 +10,8 @@ import {
   summarizeDelegationObservation,
 } from '../../src/lib/watch.js'
 import { loadWorkflowFile, stageBySlug } from '../../src/lib/workflow.js'
-import {
-  createFixture,
-  makeOutput,
-  read,
-  writeCanonicalDelegation,
-} from '../helpers.js'
-import { createRun } from '../run-helpers.js'
+import { makeOutput, read, writeCanonicalDelegation } from '../helpers.js'
+import { checkpoint, prepareCheckpointRun } from './delivery-helpers.js'
 
 // Cadence short enough for a unit test yet above the module floor.
 // Each wake observes the run tree and the workspace Git state, which costs a
@@ -108,17 +103,12 @@ export function preparedRun(): {
   invocationId: string
   outputPath: string
 } {
-  const root = createFixture()
-  const created = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-  })
-  const prepared = prepareInvocation(root, created.run_id)
+  const prepared = checkpoint('delivery@implement-prepared')
 
   assert.ok(prepared.invocation)
 
   return {
-    root,
+    root: prepared.root,
     state: prepared.state,
     invocationId: prepared.invocation.invocation_id,
     outputPath: prepared.invocation.output.path,
@@ -135,20 +125,25 @@ export function preparedVerifyRun(): {
   state: RunState
   invocation: Invocation
 } {
-  const root = createFixture()
-  const created = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-  })
+  const created = checkpoint('delivery@created')
 
-  setRunStage(root, created.run_id, 'verify', 'Verify the current workspace.')
+  setRunStage(
+    created.root,
+    created.runId,
+    'verify',
+    'Verify the current workspace.',
+  )
 
-  const prepared = prepareInvocation(root, created.run_id)
+  const prepared = prepareCheckpointRun(created.root, created.runId)
 
   assert.ok(prepared.invocation)
   assert.ok((prepared.invocation.evidence_workers ?? []).length > 0)
 
-  return { root, state: prepared.state, invocation: prepared.invocation }
+  return {
+    root: created.root,
+    state: prepared.state,
+    invocation: prepared.invocation,
+  }
 }
 
 /** The invocation record the run currently stands at. */

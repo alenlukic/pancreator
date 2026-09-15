@@ -111,7 +111,7 @@ test('CLI artifact options persist run-wide and stage selections', () => {
   })
 })
 
-test('pan init defaults to the planning workflow and routes on approval', () => {
+test('pan init accepts the no-autostart opt-out and rejects conflicting flags', () => {
   const root = createFixture()
   const init = (...args: string[]): Record<string, unknown> =>
     JSON.parse(
@@ -122,27 +122,11 @@ test('pan init defaults to the planning workflow and routes on approval', () => 
       ),
     ) as Record<string, unknown>
 
-  // An operator who names no workflow starts a planning run whose approval
-  // routes into delivery; nothing about the request text is inspected.
-  const routed = init()
-
-  assert.equal(routed.workflow, 'planning')
-  assert.equal(routed.autostart_delivery, true)
-
-  // `--autostart` is the explicit spelling of that default.
-  assert.equal(init('--autostart').autostart_delivery, true)
-
   // `--no-autostart` stops the run at the ratified plan.
   const stopped = init('--no-autostart')
 
   assert.equal(stopped.workflow, 'planning')
   assert.equal(stopped.autostart_delivery, false)
-
-  // The explicit escape hatch still creates a delivery run.
-  const delivery = init('--workflow', 'delivery')
-
-  assert.equal(delivery.workflow, 'delivery')
-  assert.equal(delivery.autostart_delivery, false)
 
   // The two spellings cannot be combined.
   assert.throws(
@@ -456,32 +440,17 @@ test('the run-scoped model probe returns without waiting for the model', async (
 
 test('a cohort subcommand refuses a flag in its cohort-id slot as a missing positional', () => {
   const root = createFixture()
-
-  // `pan cohort release --json` names no cohort: the flag is not a cohort id
-  // to validate, it is the absence of one.
-  for (const sub of ['status', 'start', 'integrate', 'release', 'clean']) {
-    const flagOnly = spawnSync(
-      process.execPath,
-      [CLI, 'cohort', sub, '--json'],
-      {
-        cwd: root,
-        encoding: 'utf8',
-      },
-    )
-
-    assert.notEqual(flagOnly.status, 0, sub)
-    assert.match(flagOnly.stderr, /INVALID_ARGUMENT/u, sub)
-    assert.match(flagOnly.stderr, /cohort-id is required\./u, sub)
-    assert.doesNotMatch(flagOnly.stderr, /INVALID_COHORT_ID/u, sub)
-  }
-
-  const abandon = spawnSync(
+  const flagOnly = spawnSync(
     process.execPath,
-    [CLI, 'cohort', 'abandon', '--chunk', 'alpha', '--note', 'why', '--json'],
-    { cwd: root, encoding: 'utf8' },
+    [CLI, 'cohort', 'release', '--json'],
+    {
+      cwd: root,
+      encoding: 'utf8',
+    },
   )
 
-  assert.notEqual(abandon.status, 0)
-  assert.match(abandon.stderr, /INVALID_ARGUMENT/u)
-  assert.match(abandon.stderr, /cohort-id is required\./u)
+  assert.notEqual(flagOnly.status, 0)
+  assert.match(flagOnly.stderr, /INVALID_ARGUMENT/u)
+  assert.match(flagOnly.stderr, /cohort-id is required\./u)
+  assert.doesNotMatch(flagOnly.stderr, /INVALID_COHORT_ID/u)
 })

@@ -37,13 +37,67 @@ import { operationMutexPath, statePath } from '../../src/lib/state.js'
 import { stageBySlug, loadWorkflow } from '../../src/lib/workflow.js'
 import {
   createFixture,
+  createTestTempDirectory,
   makeOutput,
   writeCanonicalDelegation,
   writeJson,
   writeFixtureCursorCatalog,
 } from '../helpers.js'
-import { createRun, submitAsSupervisor } from '../run-helpers.js'
-import { installClaudeCodeFixture, withStub } from './delivery-helpers.js'
+import { submitAsSupervisor } from '../run-helpers.js'
+import { claudeStubPath, checkpoint, withStub } from './delivery-helpers.js'
+import type { CheckpointVariant } from './delivery-helpers.js'
+
+function createdRunCheckpoint(name: 'delivery@created' | 'planning@created') {
+  const created = checkpoint(name)
+
+  return { root: created.root, run: created.state }
+}
+
+const MODEL_EVIDENCE_VARIANT: CheckpointVariant = {
+  key: 'model-evidence',
+  fixture: writeFixtureCursorCatalog,
+  afterCreate: (root, runId) => {
+    recordSupervisorModelEvidence(root, runId, 'GPT 5.6 Sol', 'metadata')
+  },
+}
+
+const VERIFY_MODEL_EVIDENCE_VARIANT: CheckpointVariant = {
+  ...MODEL_EVIDENCE_VARIANT,
+  key: 'verify-model-evidence',
+  afterCreate: (root, runId) => {
+    recordSupervisorModelEvidence(root, runId, 'GPT 5.6 Sol', 'metadata')
+    setRunStage(root, runId, 'verify', 'Verify the current workspace.')
+  },
+}
+
+const CATALOGLESS_MODEL_EVIDENCE_VARIANT: CheckpointVariant = {
+  key: 'catalogless-model-evidence',
+  fixture: (root) => {
+    rmSync(path.join(root, 'governance/registries/cursor_model_catalog.json'), {
+      force: true,
+    })
+  },
+  afterCreate: (root, runId) => {
+    recordSupervisorModelEvidence(
+      root,
+      runId,
+      'GPT 5.6 Sol',
+      'Cursor session metadata',
+    )
+  },
+}
+
+function preparedRunCheckpoint(variant?: CheckpointVariant) {
+  const prepared = checkpoint('delivery@implement-prepared', variant)
+
+  assert.ok(prepared.invocation)
+
+  return {
+    root: prepared.root,
+    run: prepared.state,
+    invocation: prepared.invocation,
+  }
+}
 
 function withFakeCursorAgent<T>(
   root: string,
@@ -139,12 +193,8 @@ function withStrictCursorAgent<T>(
 }
 
 test('supervisor evidence activates future worker-card enforcement', () => {
-  const legacyRoot = createFixture()
-  const legacyRun = createRun(legacyRoot, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Markerless compatibility run',
-  })
+  const { root: legacyRoot, run: legacyRun } =
+    createdRunCheckpoint('delivery@created')
   const legacyInvocation = prepareInvocation(
     legacyRoot,
     legacyRun.run_id,
@@ -178,12 +228,7 @@ test('supervisor evidence activates future worker-card enforcement', () => {
   assert.ok(laterLegacyInvocation)
   assert.equal(laterLegacyInvocation.model_evidence_required, undefined)
 
-  const root = createFixture()
-  const run = createRun(root, {
-    workflowSlug: 'planning',
-    requestPath: 'request.md',
-    title: 'Model evidence run',
-  })
+  const { root, run } = createdRunCheckpoint('planning@created')
   const recorded = recordSupervisorModelEvidence(
     root,
     run.run_id,
@@ -297,26 +342,9 @@ test('a bare model spec accepts any resolved Cursor variant', () => {
 })
 
 test('worker probes persist matches, mismatches, and missing metadata alike', () => {
-  const root = createFixture()
-
-  writeFixtureCursorCatalog(root)
-
-  const run = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Worker probe run',
-  })
-
-  recordSupervisorModelEvidence(
-    root,
-    run.run_id,
-    'GPT 5.6 Sol',
-    'Cursor session metadata',
+  const { root, run, invocation } = preparedRunCheckpoint(
+    MODEL_EVIDENCE_VARIANT,
   )
-
-  const invocation = prepareInvocation(root, run.run_id).invocation
-
-  assert.ok(invocation)
 
   const expected = expectedCursorModelForSpec(root, invocation.stage.model)
 
@@ -377,21 +405,9 @@ test('the run-scoped probe returns a pending marker and a detached child records
   // Every worker launch paid for a live model round trip before the worker
   // started, and only submission reads the answer. The command now records
   // that a probe is in flight and returns; the child lands the evidence.
-  const root = createFixture()
-
-  writeFixtureCursorCatalog(root)
-
-  const run = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Detached probe run',
-  })
-
-  recordSupervisorModelEvidence(root, run.run_id, 'GPT 5.6 Sol', 'metadata')
-
-  const invocation = prepareInvocation(root, run.run_id).invocation
-
-  assert.ok(invocation)
+  const { root, run, invocation } = preparedRunCheckpoint(
+    MODEL_EVIDENCE_VARIANT,
+  )
 
   const expected = expectedCursorModelForSpec(root, invocation.stage.model)
 
@@ -429,15 +445,9 @@ test('the run-scoped probe returns a pending marker and a detached child records
 test('preparing with an agent writes the labeled card and lands the probe', async () => {
   // One prepare replaces the three commands a supervisor ran by hand before
   // every Cursor worker launch: prepare, write the delegation file, probe.
-  const root = createFixture()
+  const { root, run } = createdRunCheckpoint('delivery@created')
 
   writeFixtureCursorCatalog(root)
-
-  const run = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Agent prepare run',
-  })
 
   recordSupervisorModelEvidence(root, run.run_id, 'GPT 5.6 Sol', 'metadata')
 
@@ -523,15 +533,9 @@ test('preparing with an agent writes the labeled card and lands the probe', asyn
 })
 
 test('preparing without an agent, and an external-executor stage, are unchanged', () => {
-  const root = createFixture()
+  const { root, run } = createdRunCheckpoint('delivery@created')
 
   writeFixtureCursorCatalog(root)
-
-  const run = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Plain prepare run',
-  })
   const prepared = prepareInvocation(root, run.run_id)
   const invocation = prepared.invocation
 
@@ -553,15 +557,10 @@ test('preparing without an agent, and an external-executor stage, are unchanged'
 
   // An external-executor stage authors its own evidence at `pan delegate`,
   // so the option writes nothing and starts nothing there.
-  const externalRoot = createFixture()
-  const stubPath = installClaudeCodeFixture(externalRoot, ['planner'])
-  const external = withStub(stubPath, null, () =>
-    createRun(externalRoot, {
-      workflowSlug: 'planning',
-      requestPath: 'request.md',
-      title: 'External executor run',
-    }),
-  )
+  const externalCreated = checkpoint('planning[claude-code:planner]@created')
+  const externalRoot = externalCreated.root
+  const external = externalCreated.state
+  const stubPath = claudeStubPath(externalRoot)
   const externalPrepared = withStub(stubPath, null, () =>
     prepareInvocation(externalRoot, external.run_id, { agent: 'pan-planner' }),
   )
@@ -592,21 +591,9 @@ test('a probe that never lands settles into a labeled default at submit', () => 
   // behind it says nothing the run snapshot does not already say, so
   // submission records the projected spec as a default instead of an
   // advisory the supervisor can only ignore.
-  const root = createFixture()
-
-  writeFixtureCursorCatalog(root)
-
-  const run = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Abandoned probe run',
-  })
-
-  recordSupervisorModelEvidence(root, run.run_id, 'GPT 5.6 Sol', 'metadata')
-
-  const invocation = prepareInvocation(root, run.run_id).invocation
-
-  assert.ok(invocation)
+  const { root, run, invocation } = preparedRunCheckpoint(
+    MODEL_EVIDENCE_VARIANT,
+  )
   recordPendingWorkerModelProbe(root, run.run_id, invocation.invocation_id)
 
   const stage = stageBySlug(
@@ -637,35 +624,23 @@ test('a probe that never lands settles into a labeled default at submit', () => 
 })
 
 /** A marked run standing at the verify stage, which declares two workers. */
-function verifyRun(root: string, title: string) {
-  writeFixtureCursorCatalog(root)
-
-  const run = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title,
-  })
-
-  recordSupervisorModelEvidence(root, run.run_id, 'GPT 5.6 Sol', 'metadata')
-  setRunStage(root, run.run_id, 'verify', 'Verify the current workspace.')
-
-  const invocation = prepareInvocation(root, run.run_id).invocation
-
-  assert.ok(invocation)
+function verifyRun() {
+  const { root, run, invocation } = preparedRunCheckpoint(
+    VERIFY_MODEL_EVIDENCE_VARIANT,
+  )
   assert.equal(invocation.stage.slug, 'verify')
   assert.deepEqual(
     (invocation.evidence_workers ?? []).map((worker) => worker.role),
     ['review', 'qa'],
   )
 
-  return { runId: run.run_id, invocation }
+  return { root, runId: run.run_id, invocation }
 }
 
 // A verify stage runs three models and recorded one. The stage verdict then
 // named a model that produced a third of the work behind it.
 test('every declared worker carries its own evidence, defaulted then probed', () => {
-  const root = createFixture()
-  const { runId, invocation } = verifyRun(root, 'Declared worker run')
+  const { root, runId, invocation } = verifyRun()
   const recordsFor = (state = getRunState(root, runId)) =>
     (state.model_evidence ?? []).filter(
       (item) => item.invocation_id === invocation.invocation_id,
@@ -715,8 +690,7 @@ test('every declared worker carries its own evidence, defaulted then probed', ()
 })
 
 test('a worker with no evidence earns a named advisory; a defaulted one earns none', () => {
-  const root = createFixture()
-  const { runId, invocation } = verifyRun(root, 'Unrecorded worker run')
+  const { root, runId, invocation } = verifyRun()
   const state = getRunState(root, runId)
   const runStatePath = statePath(root, runId)
 
@@ -753,21 +727,9 @@ test('a worker with no evidence earns a named advisory; a defaulted one earns no
 })
 
 test('submission refuses evidence that contradicts the run snapshot', () => {
-  const root = createFixture()
-
-  writeFixtureCursorCatalog(root)
-
-  const run = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Contradicted model run',
-  })
-
-  recordSupervisorModelEvidence(root, run.run_id, 'GPT 5.6 Sol', 'metadata')
-
-  const invocation = prepareInvocation(root, run.run_id).invocation
-
-  assert.ok(invocation)
+  const { root, run, invocation } = preparedRunCheckpoint(
+    MODEL_EVIDENCE_VARIANT,
+  )
 
   const probed = withFakeCursorAgent(root, 'Unexpected Model', () =>
     probeRunInvocationModel(root, run.run_id, invocation.invocation_id),
@@ -814,28 +776,10 @@ test('submission refuses evidence that contradicts the run snapshot', () => {
 // `bin/install` omits the catalog from a target payload because the catalog
 // covers one Cursor account.
 test('a bracketed spec without an installed catalog records rather than blocks', () => {
-  const root = createFixture()
-
-  rmSync(path.join(root, 'governance/registries/cursor_model_catalog.json'), {
-    force: true,
-  })
-
-  const run = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Catalog-less run',
-  })
-
-  recordSupervisorModelEvidence(
-    root,
-    run.run_id,
-    'GPT 5.6 Sol',
-    'Cursor session metadata',
+  const { root, run, invocation } = preparedRunCheckpoint(
+    CATALOGLESS_MODEL_EVIDENCE_VARIANT,
   )
 
-  const invocation = prepareInvocation(root, run.run_id).invocation
-
-  assert.ok(invocation)
   assert.ok(
     invocation.stage.model.includes('['),
     `expected a bracketed spec, got '${invocation.stage.model}'`,
@@ -886,7 +830,7 @@ test('a bracketed spec without an installed catalog records rather than blocks',
 // `unknown option '--mode'`, so every submission carried an unverified-model
 // advisory. The probe hard-coded an option the installed CLI had dropped.
 test('the probe adapts to the flags the installed cursor-agent accepts', () => {
-  const root = createFixture()
+  const root = createTestTempDirectory('strict-cursor-agent-')
 
   // Run 63310_Aug-30-0872: guarding only --mode moved the failure to
   // `unknown option '--trust'`. Every optional flag has to be asked for.
@@ -928,7 +872,7 @@ test('the probe adapts to the flags the installed cursor-agent accepts', () => {
 // same rejected flag, so an operator-owned ratification became a supervisor
 // stand-in.
 test('the executor sends only the flags the installed cursor-agent declares', () => {
-  const root = createFixture()
+  const root = createTestTempDirectory('cursor-agent-argv-')
   const bin = path.join(root, 'argv-bin')
   const executable = path.join(bin, 'cursor-agent')
   const argvLog = path.join(root, 'argv.txt')
@@ -985,18 +929,9 @@ test('the executor sends only the flags the installed cursor-agent declares', ()
 })
 
 test('the run mutex spans the evidence write, not the live probe', () => {
-  const root = createFixture()
-
-  writeFixtureCursorCatalog(root)
-
-  const run = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Probe lock scope',
-  })
-  const invocation = prepareInvocation(root, run.run_id).invocation
-
-  assert.ok(invocation)
+  const { root, run, invocation } = preparedRunCheckpoint(
+    MODEL_EVIDENCE_VARIANT,
+  )
 
   const expected = expectedCursorModelForSpec(root, invocation.stage.model)
 
@@ -1079,18 +1014,9 @@ test('the run mutex spans the evidence write, not the live probe', () => {
 })
 
 test('a lifecycle command succeeds while a probe is in its live call', async () => {
-  const root = createFixture()
-
-  writeFixtureCursorCatalog(root)
-
-  const run = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Probe window run',
-  })
-  const invocation = prepareInvocation(root, run.run_id).invocation
-
-  assert.ok(invocation)
+  const { root, run, invocation } = preparedRunCheckpoint(
+    MODEL_EVIDENCE_VARIANT,
+  )
 
   const expected = expectedCursorModelForSpec(root, invocation.stage.model)
 
@@ -1189,18 +1115,9 @@ test('a lifecycle command succeeds while a probe is in its live call', async () 
 })
 
 test('two concurrent probes serialize their evidence writes', async () => {
-  const root = createFixture()
-
-  writeFixtureCursorCatalog(root)
-
-  const run = createRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Concurrent probe run',
-  })
-  const invocation = prepareInvocation(root, run.run_id).invocation
-
-  assert.ok(invocation)
+  const { root, run, invocation } = preparedRunCheckpoint(
+    MODEL_EVIDENCE_VARIANT,
+  )
 
   const expected = expectedCursorModelForSpec(root, invocation.stage.model)
 
@@ -1330,7 +1247,8 @@ test('two concurrent probes serialize their evidence writes', async () => {
     .filter(
       (event) =>
         event.type === 'model_evidence_recorded' &&
-        event.invocation_id === invocation.invocation_id,
+        event.invocation_id === invocation.invocation_id &&
+        event.result === 'match',
     )
 
   // A lost write is the failure this criterion names: the queued probe must
@@ -1345,5 +1263,5 @@ test('two concurrent probes serialize their evidence writes', async () => {
     ).length,
     1,
   )
-  assert.equal(state.title, 'Concurrent probe run')
+  assert.equal(state.title, 'Checkpoint fixture run')
 })

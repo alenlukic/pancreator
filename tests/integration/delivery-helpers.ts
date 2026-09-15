@@ -37,6 +37,7 @@ import {
   writeJson,
 } from '../helpers.js'
 import { createRun, submitAsSupervisor } from '../run-helpers.js'
+import { recordFixtureEvent } from '../reporters/fixture-profile.js'
 
 export const PASS = `node -e "process.exit(0)"`
 
@@ -407,6 +408,10 @@ export interface CheckpointVariant {
   key: string
   /** Fixture edits applied before createRun (repository-checks.json, config). */
   fixture?: (root: string) => void
+  /** Specialized run construction when the standard attested driver is wrong. */
+  createRun?: (root: string) => RunState
+  /** Run edits applied after creation and before the first driven step. */
+  afterCreate?: (root: string, runId: string) => void
   run?: Partial<CreateRunOptions>
 }
 
@@ -490,15 +495,13 @@ interface Family {
 }
 
 interface StepDefinition {
-  parent: string | null
+  parent: Checkpoint | null
   drive: (
     root: string,
     runId: string,
     variant: CheckpointVariant | undefined,
   ) => void
 }
-
-const CLONE_TIMEOUT_MS = 180_000
 
 const FAMILIES: Record<string, Family> = {
   delivery: {
@@ -573,8 +576,25 @@ const FAMILIES: Record<string, Family> = {
   },
 }
 
+type PrepareOptions = Parameters<typeof prepareInvocation>[2]
+
+/** Prepare a checkpoint run and record the cost when profiling is active. */
+export function prepareCheckpointRun(
+  root: string,
+  runId: string,
+  options?: PrepareOptions,
+): ReturnType<typeof prepareInvocation> {
+  const started = performance.now()
+
+  try {
+    return prepareInvocation(root, runId, options)
+  } finally {
+    recordFixtureEvent('run_prepare', performance.now() - started)
+  }
+}
+
 function prepare(root: string, runId: string): void {
-  assert.ok(prepareInvocation(root, runId).invocation)
+  assert.ok(prepareCheckpointRun(root, runId).invocation)
 }
 
 function submitSuccess(root: string, runId: string): void {
@@ -596,7 +616,9 @@ function submitAwaitingOperator(root: string, runId: string): void {
 
 // The delivery workflow starts at implement: planning is its own workflow,
 // whose ratified child specification a delivery run receives as its request.
-const STEPS: Record<string, StepDefinition> = {
+// Keyed by the exported union so a step defined here without an export, or an
+// export without a step, is a type error rather than an unclonable checkpoint.
+const STEPS: Record<Checkpoint, StepDefinition> = {
   'delivery@created': { parent: null, drive: () => {} },
   'delivery@implement-prepared': {
     parent: 'delivery@created',
@@ -716,6 +738,7 @@ const STEPS: Record<string, StepDefinition> = {
 }
 
 export type Checkpoint =
+  | 'delivery@created'
   | 'delivery@implement-prepared'
   | 'delivery@implement-failed-once'
   | 'delivery@implement-baselined'
@@ -724,15 +747,21 @@ export type Checkpoint =
   | 'delivery@verify-failed-once-remediated'
   | 'delivery@ship-prepared'
   | 'delivery@ship-awaiting-operator'
+  | 'delivery[td]@created'
   | 'delivery[td]@implement-submitted'
   | 'delivery[td]@verify-prepared'
   | 'delivery[td]@verify-submitted'
+  | 'planning@created'
   | 'planning@plan-prepared'
   | 'planning@plan-awaiting-operator'
+  | 'planning[td]@created'
   | 'planning[td]@plan-submitted'
+  | 'planning[claude-code:planner]@created'
   | 'planning[claude-code:planner]@plan-prepared'
+  | 'delivery-candidate@created'
   | 'delivery-candidate@plan-prepared'
   | 'delivery-candidate@plan-awaiting-supervisor'
+  | 'prototype@created'
   | 'prototype@build-prepared'
 
 interface Template {
@@ -743,9 +772,14 @@ interface Template {
 const templates = new Map<string, Template>()
 
 function cloneTree(template: string): string {
+  const started = performance.now()
   const root = createTestTempDirectory('v2-cp-')
 
-  cloneSharedTree(template, root, { timeout: CLONE_TIMEOUT_MS })
+  cloneSharedTree(template, root)
+  // A checkpoint clone is the clone a driven-run test actually pays. Recording
+  // it here keeps the reported clone cost from naming only the bare fixture
+  // that the base of each chain starts from.
+  recordFixtureEvent('template_clone', performance.now() - started)
 
   return root
 }
@@ -772,7 +806,13 @@ function buildTemplate(
 
     variant?.fixture?.(root)
 
-    return { root, runId: family.createRun(root, variant?.run ?? {}).run_id }
+    const runId = (
+      variant?.createRun?.(root) ?? family.createRun(root, variant?.run ?? {})
+    ).run_id
+
+    variant?.afterCreate?.(root, runId)
+
+    return { root, runId }
   }
 
   const root = cloneTree(parent.root)
@@ -783,7 +823,7 @@ function buildTemplate(
 }
 
 function template(
-  name: string,
+  name: Checkpoint,
   variant: CheckpointVariant | undefined,
 ): Template {
   const key = `${name}|${variant?.key ?? ''}`
@@ -794,8 +834,6 @@ function template(
   }
 
   const step = STEPS[name]
-
-  assert.ok(step, `unknown checkpoint ${name}`)
 
   // The parent resolves before this link takes its own lock, so a chain never
   // holds two locks at once and a waiter never blocks on an ancestor's build.

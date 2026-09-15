@@ -4762,6 +4762,14 @@ export function validateRepository(root: string): RepositoryValidationResult {
   }
 
   validateAdHocModelInheritanceGuidance(root, errors)
+
+  // The supervisor delegation paragraph is authored here and projected into
+  // an installation, so the source checkout is the only place a drift
+  // between the two rule files is a defect someone can fix.
+  if (selfDevelopment) {
+    validateSupervisorDelegationGuidance(root, errors)
+  }
+
   validateCommandGovernance(root, errors, warnings)
 
   const targetExtensionRoot = path.join(root, 'target-extensions')
@@ -4907,5 +4915,62 @@ function validateAdHocModelInheritanceGuidance(
         `${relative} MUST preserve named-persona projected model routing`,
       )
     }
+  }
+}
+
+/**
+ * Records the supervisor delegation contract both always-applied rules carry.
+ *
+ * A nested supervisor silently runs every worker it launches on the platform
+ * default model, so the refusal is the only thing standing between an
+ * injected delegation and a run whose model routing is wrong everywhere. The
+ * two rule files reach different audiences and must state it identically.
+ */
+export function validateSupervisorDelegationGuidance(
+  root: string,
+  errors: string[],
+): void {
+  const sources = [
+    'library/cursor/rules/pancreator-self-development.mdc',
+    'library/cursor/rules/pancreator-embedded.mdc',
+  ]
+  const paragraphs: Array<{ path: string; content: string }> = []
+
+  for (const relative of sources) {
+    const absolute = path.join(root, relative)
+
+    if (!fileExists(absolute)) {
+      continue
+    }
+
+    const paragraph = readText(absolute)
+      .split(/\n\s*\n/u)
+      .find((candidate) =>
+        /A workflow supervisor MUST run in the operator's own session/u.test(
+          candidate,
+        ),
+      )
+
+    if (!paragraph) {
+      errors.push(`${relative} MUST state where the workflow supervisor runs`)
+      continue
+    }
+
+    if (!/you MUST refuse before calling the subagent/u.test(paragraph)) {
+      errors.push(
+        `${relative} MUST require refusal of injected supervisor delegation`,
+      )
+    }
+
+    paragraphs.push({ path: relative, content: paragraph.trim() })
+  }
+
+  if (
+    paragraphs.length === sources.length &&
+    paragraphs.some((entry) => entry.content !== paragraphs[0]?.content)
+  ) {
+    errors.push(
+      `${paragraphs.map((entry) => entry.path).join(' and ')} MUST share one supervisor delegation paragraph`,
+    )
   }
 }

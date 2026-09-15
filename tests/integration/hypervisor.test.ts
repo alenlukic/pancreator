@@ -3,7 +3,12 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import { prepareInvocation } from '../../src/lib/engine.js'
+import {
+  getRunState,
+  pauseRun,
+  prepareInvocation,
+} from '../../src/lib/engine.js'
+import { readAwayDecisionLedger } from '../../src/lib/away-mode.js'
 import {
   completeInvocationAgent,
   createAgentRecoveryRunner,
@@ -32,6 +37,19 @@ const stalledObservation = {
   process_alive: null,
   last_transcript_at: '2026-08-21T10:00:00.000Z',
 }
+
+test('hypervisor tick leaves ordinary away decisions to the supervisor', () => {
+  const created = checkpoint('delivery@created')
+
+  pauseRun(created.root, created.runId, 'Operator unavailable.')
+  tickHypervisor(created.root)
+
+  const next = getRunState(created.root, created.runId)
+
+  assert.equal(next.status, 'paused')
+  assert.equal(next.pending_action.type, 'operator_decision')
+  assert.deepEqual(readAwayDecisionLedger(created.root), [])
+})
 
 test('hypervisor requires two unchanged scans before stalled', () => {
   const root = createFixture()

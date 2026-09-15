@@ -535,7 +535,7 @@ function requiredArguments<Name extends string>(
  * `pan cohort release --json`, is a missing positional, not a value, so it is
  * refused as such instead of reaching the command's own validation.
  */
-function requiredPositional(
+export function requiredPositional(
   value: string | null | undefined,
   name: string,
 ): string {

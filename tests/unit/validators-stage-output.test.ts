@@ -3,7 +3,7 @@ import test from 'node:test'
 
 import { validateStageOutput } from '../../src/lib/validation.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
-import { createFixture } from '../fixture-template.js'
+import { sharedFixture } from '../fixture-template.js'
 import type { Invocation, StageOutput } from '../../src/lib/types.js'
 
 function fixtureInvocation(
@@ -112,7 +112,7 @@ function pendingBriefPaths(invocation: Invocation) {
 }
 
 test('strict stage output rejects pass claims without evidence', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const { invocation, stage } = fixtureInvocation(
     root,
     'implement',
@@ -187,7 +187,7 @@ test('strict stage output rejects pass claims without evidence', () => {
 // generic `stage_output.invalid` with nothing reporting the loss. Every issue
 // now carries the code its raising site assigned.
 test('every stage output issue carries the code its raising site assigned', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const { invocation, stage } = fixtureInvocation(
     root,
     'implement',
@@ -246,7 +246,7 @@ test('every stage output issue carries the code its raising site assigned', () =
 })
 
 test('strict stage output rejects success with failed self-evaluation', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const { invocation, stage } = fixtureInvocation(
     root,
     'verify',
@@ -262,7 +262,7 @@ test('strict stage output rejects success with failed self-evaluation', () => {
 })
 
 test('stage output rejects an unevaluated criterion on every result', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const { invocation, stage } = fixtureInvocation(
     root,
     'verify',
@@ -296,7 +296,7 @@ test('stage output rejects an unevaluated criterion on every result', () => {
 test('stage output rejects a skipped criterion on success', () => {
   // The remediate stage carries a shell gate (`implement.lint`); verify no
   // longer declares one, because no verify gate runs a repository profile.
-  const root = createFixture()
+  const root = sharedFixture()
   const { invocation, stage } = fixtureInvocation(
     root,
     'remediate',
@@ -319,7 +319,7 @@ test('stage output rejects a skipped criterion on success', () => {
 })
 
 test('stage output rejects a skipped judgment criterion on failure', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const { invocation, stage } = fixtureInvocation(
     root,
     'remediate',
@@ -358,7 +358,7 @@ test('stage output rejects a skipped judgment criterion on failure', () => {
 })
 
 test('stage output accepts a platform guidance conflict list and rejects a bare entry', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const { invocation, stage } = fixtureInvocation(
     root,
     'implement',
@@ -406,7 +406,7 @@ test('stage output accepts a platform guidance conflict list and rejects a bare 
  * instead of naming the one thing the operator had to supply.
  */
 test('a blocked ship output declares its precondition instead of a release packet', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const { invocation, stage } = fixtureInvocation(root, 'ship', 'ship-1-test')
   const undeclared = validateStageOutput(
     root,
@@ -457,7 +457,7 @@ test('a blocked ship output declares its precondition instead of a release packe
 })
 
 test('a successful ship output still owes every release field', () => {
-  const root = createFixture()
+  const root = sharedFixture()
   const { invocation, stage } = fixtureInvocation(root, 'ship', 'ship-2-test')
   const output = baseOutput(invocation, stage)
 

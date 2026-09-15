@@ -87,7 +87,7 @@ Seven `judgment-*` scenarios exercise the decision cases `PRINCIPLES-001` govern
 
 1. Add the id to `EVAL_GRADER_IDS` in `src/lib/evals/types.ts` and to the `graders[].id` enum in `library/schemas/eval-scenario.schema.json`.
 2. Implement the grader in `src/lib/evals/graders.ts` and register it in `GRADERS`. Read records through `RunRecords`; never import the engine. Return `passed`, `summary`, `evidence` (harness-relative paths), `details`, and an `observability` statement that says what the grader cannot see.
-3. Add a unit test in `tests/unit/eval-graders.test.ts` with a synthetic run directory that passes and one that fails.
+3. Add a unit test in `tests/integration/eval-graders.test.ts` with a synthetic run directory that passes and one that fails.
 4. Document the grader in this file.
 
 ## Governance

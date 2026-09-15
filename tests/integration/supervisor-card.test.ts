@@ -24,18 +24,27 @@ import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { createWorktree } from '../../src/lib/worktrees.js'
 import { createFixture, makeOutput, read, writeJson } from '../helpers.js'
 import { submitAsSupervisor } from '../run-helpers.js'
+import { checkpoint } from './delivery-helpers.js'
+import type { CheckpointVariant } from './delivery-helpers.js'
 
-function unattestedRun(root: string) {
-  return createEngineRun(root, {
-    workflowSlug: 'delivery',
-    requestPath: 'request.md',
-    title: 'Supervisor card fixture',
-  })
+const UNATTESTED_RUN_VARIANT: CheckpointVariant = {
+  key: 'supervisor-card-unattested',
+  createRun: (root) =>
+    createEngineRun(root, {
+      workflowSlug: 'delivery',
+      requestPath: 'request.md',
+      title: 'Supervisor card fixture',
+    }),
+}
+
+function unattestedRun() {
+  const created = checkpoint('delivery@created', UNATTESTED_RUN_VARIANT)
+
+  return { root: created.root, state: created.state }
 }
 
 test('pan init renders the supervisor card and records its digest in run state', () => {
-  const root = createFixture()
-  const state = unattestedRun(root)
+  const { root, state } = unattestedRun()
   const card = state.supervisor_card
 
   assert.ok(card, 'run state records the supervisor card')
@@ -92,8 +101,7 @@ test('pan init renders the supervisor card and records its digest in run state',
 })
 
 test('attesting the current digest unlocks prepare and submit; a wrong digest is refused', () => {
-  const root = createFixture()
-  const state = unattestedRun(root)
+  const { root, state } = unattestedRun()
   const card = state.supervisor_card
 
   assert.ok(card)
@@ -182,8 +190,7 @@ test('attesting the current digest unlocks prepare and submit; a wrong digest is
 })
 
 test('the card render is idempotent and a policy change re-binds the supervisor', () => {
-  const root = createFixture()
-  const state = unattestedRun(root)
+  const { root, state } = unattestedRun()
   const card = state.supervisor_card
 
   assert.ok(card)
@@ -233,8 +240,7 @@ test('the card render is idempotent and a policy change re-binds the supervisor'
 })
 
 test('a mid-run policy edit reports a digest diff and still owes re-attestation', () => {
-  const root = createFixture()
-  const state = unattestedRun(root)
+  const { root, state } = unattestedRun()
   const card = state.supervisor_card
 
   assert.ok(card)
@@ -306,8 +312,7 @@ test('a mid-run policy edit reports a digest diff and still owes re-attestation'
 })
 
 test('a resume re-attests the card, opens a new session generation, and owes a new redline', () => {
-  const root = createFixture()
-  const state = unattestedRun(root)
+  const { root, state } = unattestedRun()
   const card = state.supervisor_card
 
   assert.ok(card)
@@ -360,8 +365,7 @@ test('a resume re-attests the card, opens a new session generation, and owes a n
 })
 
 test('a run created before the card existed gains it on prepare and is bound afterwards', () => {
-  const root = createFixture()
-  const state = unattestedRun(root)
+  const { root, state } = unattestedRun()
   const statePath = path.join(
     root,
     `runtime/logs/workflows/${state.run_id}/agent/state.json`,
@@ -405,8 +409,7 @@ test('a run created before the card existed gains it on prepare and is bound aft
 })
 
 test('the supervisor card build reports what the CLI prints', () => {
-  const root = createFixture()
-  const state = unattestedRun(root)
+  const { root, state } = unattestedRun()
   const report = buildSupervisorCard(root, state.run_id)
 
   assert.equal(report.attested, false)
@@ -434,12 +437,12 @@ test('a worktree-bound run names its worktree on the supervisor card', () => {
   assert.ok(written.includes(`- Path: \`${record.path}\``))
 
   // A run in the main checkout renders no worktree section.
-  const plain = unattestedRun(root)
+  const plain = unattestedRun()
 
-  assert.ok(plain.supervisor_card)
+  assert.ok(plain.state.supervisor_card)
 
   const plainCard = readFileSync(
-    path.join(root, plain.supervisor_card.path),
+    path.join(plain.root, plain.state.supervisor_card.path),
     'utf8',
   )
 
@@ -449,8 +452,7 @@ test('a worktree-bound run names its worktree on the supervisor card', () => {
 // HR3-013: the refusal named the order, so a supervisor reading the
 // bootstrap set discovered it by being refused.
 test('the bootstrap command set orders the attestation before the redline and says why', () => {
-  const root = createFixture()
-  const state = unattestedRun(root)
+  const { root, state } = unattestedRun()
   const bootstrap = supervisorBootstrap(root, state, 'pan-start')
   const keys = Object.keys(bootstrap)
 
@@ -481,8 +483,7 @@ test('the bootstrap command set orders the attestation before the redline and sa
 // before any re-attestation reported only itself and the first edit left the
 // supervisor's reading list unread.
 test('two policy edits without an intervening attestation both appear in the diff', () => {
-  const root = createFixture()
-  const state = unattestedRun(root)
+  const { root, state } = unattestedRun()
   const card = state.supervisor_card
 
   assert.ok(card)

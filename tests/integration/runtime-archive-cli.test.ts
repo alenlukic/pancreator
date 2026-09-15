@@ -14,9 +14,9 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { pauseRun } from '../../src/lib/engine.js'
+import { makeWorkflowRunId } from '../../src/lib/naming.js'
 import { createFixture } from '../helpers.js'
 import { createRun } from '../run-helpers.js'
-import { makeWorkflowRunId } from '../../src/lib/naming.js'
 
 const CLI = path.join(process.cwd(), 'dist', 'src', 'cli.js')
 
@@ -24,83 +24,6 @@ function write(filePath: string, content: string): void {
   mkdirSync(path.dirname(filePath), { recursive: true })
   writeFileSync(filePath, content, 'utf8')
 }
-
-test('pan archive migrates and archives old workflow directories', () => {
-  const root = createFixture()
-  const legacyRunId = '20200101T120000000Z-abcdef12'
-  const createdAt = new Date('2020-01-01T12:00:00.000Z')
-  // Prefix migration preserves the hex fragment; suffix migration then
-  // replaces it with keywords derived from the run title.
-  const currentRunId = makeWorkflowRunId(createdAt, 'old-fixture')
-  const logDirectory = path.join(root, 'runtime/logs/workflows', legacyRunId)
-  const stateDirectory = path.join(root, 'runtime/workflows', legacyRunId)
-
-  write(
-    path.join(logDirectory, 'state.json'),
-    `${JSON.stringify({
-      schema_version: 1,
-      run_id: legacyRunId,
-      workflow_slug: 'delivery',
-      title: 'old fixture',
-      status: 'succeeded',
-      pending_action: { type: 'none' },
-      stage_history: [],
-      attempts: {},
-      created_at: createdAt.toISOString(),
-    })}\n`,
-  )
-  write(
-    path.join(logDirectory, 'workflow.snapshot.json'),
-    '{"stages":[{"slug":"plan"}]}\n',
-  )
-  write(path.join(logDirectory, 'events.jsonl'), '')
-  write(
-    path.join(stateDirectory, 'modifications.jsonl'),
-    `${JSON.stringify({ run_id: legacyRunId })}\n`,
-  )
-
-  const output = execFileSync(
-    process.execPath,
-    [CLI, 'archive', '--days', '7', '--json'],
-    { cwd: root, encoding: 'utf8' },
-  )
-  const summary = JSON.parse(output) as {
-    migration: { run_directories: number; state_directories: number }
-    archive: {
-      run_directories: number
-      state_directories: number
-      run_ids: string[]
-    }
-  }
-
-  assert.equal(summary.migration.run_directories, 1)
-  assert.equal(summary.migration.state_directories, 1)
-  assert.equal(summary.archive.run_directories, 1)
-  assert.equal(summary.archive.state_directories, 1)
-  assert.deepEqual(summary.archive.run_ids, [currentRunId])
-  assert.equal(
-    existsSync(
-      path.join(
-        root,
-        'runtime/logs/workflows/archive',
-        currentRunId,
-        'state.json',
-      ),
-    ),
-    true,
-  )
-  assert.equal(
-    existsSync(
-      path.join(
-        root,
-        'runtime/workflows/archive',
-        currentRunId,
-        'modifications.jsonl',
-      ),
-    ),
-    true,
-  )
-})
 
 test('status, resume, and archive preserve an unconverted v1 run', () => {
   const root = createFixture()
@@ -230,16 +153,94 @@ test('selects complete canceled or both inbox archives', () => {
   writeExpired(completeRoot, 'complete', '63379_Jun-22-0158_flag-complete.md')
   writeExpired(completeRoot, 'canceled', '63379_Jun-22-0158_kept-canceled.md')
 
+  // RUNTIME-001 names the `pan archive` command as the owner of legacy
+  // workflow-directory migration. The migration ordering itself is proved by
+  // the direct `maintainWorkflowRuntime` test in inbox.test.ts; this legacy
+  // run rides the spawn above so the command surface stays pinned without a
+  // second process.
+  const legacyRunId = '20200101T120000000Z-abcdef12'
+  const createdAt = new Date('2020-01-01T12:00:00.000Z')
+  const migratedRunId = makeWorkflowRunId(createdAt, 'old-fixture')
+  const legacyLogDirectory = path.join(
+    completeRoot,
+    'runtime/logs/workflows',
+    legacyRunId,
+  )
+
+  write(
+    path.join(legacyLogDirectory, 'state.json'),
+    `${JSON.stringify({
+      schema_version: 1,
+      run_id: legacyRunId,
+      workflow_slug: 'delivery',
+      title: 'old fixture',
+      status: 'succeeded',
+      pending_action: { type: 'none' },
+      stage_history: [],
+      attempts: {},
+      created_at: createdAt.toISOString(),
+    })}\n`,
+  )
+  write(
+    path.join(legacyLogDirectory, 'workflow.snapshot.json'),
+    '{"stages":[{"slug":"plan"}]}\n',
+  )
+  write(path.join(legacyLogDirectory, 'events.jsonl'), '')
+  write(
+    path.join(
+      completeRoot,
+      'runtime/workflows',
+      legacyRunId,
+      'modifications.jsonl',
+    ),
+    `${JSON.stringify({ run_id: legacyRunId })}\n`,
+  )
+
   const completeOnly = JSON.parse(
     execFileSync(process.execPath, [CLI, 'archive', '--days', '7', '--json'], {
       cwd: completeRoot,
       encoding: 'utf8',
     }) as string,
-  ) as { archive: { inbox_files: string[] } }
+  ) as {
+    migration: { run_directories: number; state_directories: number }
+    archive: {
+      inbox_files: string[]
+      run_directories: number
+      state_directories: number
+      run_ids: string[]
+    }
+  }
 
   assert.deepEqual(completeOnly.archive.inbox_files, [
     '63379_Jun-22-0158_flag-complete.md',
   ])
+  assert.equal(completeOnly.migration.run_directories, 1)
+  assert.equal(completeOnly.migration.state_directories, 1)
+  assert.equal(completeOnly.archive.run_directories, 1)
+  assert.equal(completeOnly.archive.state_directories, 1)
+  assert.deepEqual(completeOnly.archive.run_ids, [migratedRunId])
+  assert.equal(
+    existsSync(
+      path.join(
+        completeRoot,
+        'runtime/logs/workflows/archive',
+        migratedRunId,
+        'state.json',
+      ),
+    ),
+    true,
+  )
+  assert.equal(
+    existsSync(
+      path.join(
+        completeRoot,
+        'runtime/workflows/archive',
+        migratedRunId,
+        'modifications.jsonl',
+      ),
+    ),
+    true,
+  )
   assert.equal(
     existsSync(
       path.join(

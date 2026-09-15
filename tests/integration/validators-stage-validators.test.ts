@@ -2179,6 +2179,77 @@ test('plan trace rejects a test-plan case that reruns a profile', () => {
   assert.ok(reruns.some((item) => item.message.includes('`secondary`')))
 })
 
+test('plan file paths resolve against the workspace root', () => {
+  const root = createTestTempDirectory('plan-trace-root-')
+  const workspace = createTestTempDirectory('pan-workspace-')
+  const targetFile = path.join(workspace, 'app', 'model.py')
+  const sibling = createTestTempDirectory('pan-sibling-repo-')
+  const siblingFile = path.join(sibling, 'model.py')
+  const outputRelative = 'runtime/logs/workflows/x/outputs/plan.json'
+
+  installFieldContract(root)
+  mkdirSync(path.dirname(targetFile), { recursive: true })
+  writeFileSync(targetFile, 'x = 1\n')
+  writeFileSync(siblingFile, 'print("sibling")\n')
+  writeJson(path.join(root, outputRelative), {
+    data: {
+      engineering_plan: {
+        approach: 'Fixture',
+        components: ['app'],
+        files: [
+          { path: 'app/model.py', status: 'modified', purpose: 'core' },
+          { path: siblingFile, status: 'modified', purpose: 'core' },
+          {
+            path: '../nonexistent/app/model.py',
+            status: 'modified',
+            purpose: 'core',
+          },
+        ],
+        risks: [],
+        validation: ['tests'],
+      },
+      acceptance_criteria: [
+        {
+          id: 'AC-01',
+          criterion: 'Works',
+          maps_to: ['US-01'],
+          verification: { method: 'test', expected: 'passes' },
+        },
+      ],
+    },
+  })
+
+  const result = validatePlanTrace({
+    root,
+    targetPath: outputRelative,
+    requirement: {
+      policy_id: 'PLAN-002',
+      requirement_id: 'plan-trace-validate',
+      registry_id: 'PLAN-TRACE-VALIDATE-001',
+      arguments: {},
+    },
+    runState: { workspace_root: workspace },
+  })
+  const missing = result.issues.filter(
+    (item) => item.code === 'plan.file_missing',
+  )
+
+  assert.ok(!result.issues.some((item) => item.code === 'plan.file_path_shape'))
+  assert.ok(
+    !missing.some(
+      (item) =>
+        item.message.includes('app/model.py') &&
+        !item.message.includes('../nonexistent'),
+    ),
+  )
+  assert.ok(!missing.some((item) => item.message.includes(siblingFile)))
+  assert.ok(
+    missing.some((item) =>
+      item.message.includes('../nonexistent/app/model.py'),
+    ),
+  )
+})
+
 function claimsValidatorInput(
   root: string,
   target: string,
@@ -2227,6 +2298,41 @@ function contractIssues(issues: Array<{ code: string; message: string }>) {
     (issue) => issue.code === 'implementation.tests_added_contract_missing',
   )
 }
+
+test('implementation claims disclose every attributed workspace path', () => {
+  const root = createFixture()
+  const target =
+    'runtime/logs/workflows/run-attribution/outputs/implement-1-test.json'
+
+  writeJson(path.join(root, target), {
+    workspace_changes: {
+      attribution: 'internal',
+      paths: ['src/lib/engine.ts'],
+      explanation: 'The stage edited the engine.',
+    },
+    data: {
+      implementation: {
+        changed_files: [],
+        tests_added: [],
+        notes: [],
+      },
+      acceptance_results: [
+        { id: 'AC-01', result: 'pass', evidence: ['fixture evidence'] },
+      ],
+    },
+  })
+
+  const result = validateImplementationClaims(
+    claimsValidatorInput(root, target),
+  )
+
+  assert.ok(
+    result.issues.some(
+      (issue) => issue.code === 'claim.attribution_not_disclosed',
+    ),
+    JSON.stringify(result.issues),
+  )
+})
 
 test('tests_added requires a contract for a new test file and accepts one that names it', () => {
   const root = createFixture()

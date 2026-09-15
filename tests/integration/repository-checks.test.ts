@@ -61,11 +61,18 @@ const REPO_ROOT = process.cwd()
  * A profile command that backgrounds a grandchild ticking `file` until it is
  * killed. The `& wait` shape puts the ticker outside the shell the runner
  * spawns, so only a process-group kill reaches it.
+ *
+ * The ticker is a shell loop rather than a Node process: these tests time the
+ * kill out after a few hundred milliseconds, and a Node interpreter under
+ * suite load can take longer than that to reach its first tick, which left
+ * the caller asserting against a heartbeat that had never started. The loop
+ * writes its first tick within milliseconds and stops itself after 30 s, so a
+ * kill that fails to land still cannot outlive the suite.
  */
 function heartbeatCommand(file: string): string {
   return (
-    `sh -c "node -e \\"setInterval(() => require('node:fs')` +
-    `.appendFileSync('${file}', 'x'), 25); setTimeout(() => {}, 30000)\\"" & wait`
+    `sh -c 'n=0; while [ $n -lt 1500 ]; do printf x >> "${file}"; ` +
+    `n=$((n+1)); sleep 0.02; done' & wait`
   )
 }
 
@@ -756,29 +763,29 @@ test('a streaming timeout ends the whole process tree, not only the shell', asyn
   // shell alone left that tree running and holding the pipes, so the gate
   // returned only when the suite finished on its own, 130 s late in the field.
   const { root } = makeInstallation()
+  const heartbeat = path.join(root, 'streaming-timeout-heartbeat.txt')
 
   writeChecks(root, {
     fast: {
       probes: [],
-      // A grandchild that inherits stdout and would live far past the bound.
-      commands: ['sh -c "sleep 30; echo late" & wait'],
+      commands: [heartbeatCommand(heartbeat)],
     },
   })
 
-  const startedAt = Date.now()
   // The profile floor is 1 s; the stage-requested bound has no floor, and the
   // contract is the kill, not the wait.
   const result = await runRepositoryCheckStreaming(root, 'fast', {
     timeout_ms: 250,
   })
-  const elapsed = Date.now() - startedAt
 
   assert.equal(result.status, 'failed')
   assert.equal(result.results[0]?.timed_out, true)
-  assert.ok(
-    elapsed < 10_000,
-    `the gate returned after ${elapsed}ms; the orphaned tree kept it waiting`,
-  )
+
+  const ticks = heartbeatCount(heartbeat)
+
+  assert.ok(ticks > 0, 'the heartbeat grandchild never started')
+  await delay(500)
+  assert.equal(heartbeatCount(heartbeat), ticks)
 })
 
 test('a concurrent profile runs its commands together and records each one', async () => {
@@ -930,17 +937,18 @@ test('the concurrent field must be a boolean and the gate runner ignores it', ()
   )
 })
 
-test('a synchronous timeout ends the whole process tree, not only the shell', () => {
+test('a synchronous timeout ends the whole process tree, not only the shell', async () => {
   // The gate path runs commands synchronously. With piped output the call
   // returned only when the orphaned grandchildren closed the pipes: 916 s
   // against a 600 s bound in the field. Output now goes to files and the
   // child's process group is killed, so the bound is the bound.
   const { root } = makeInstallation()
+  const heartbeat = path.join(root, 'synchronous-timeout-heartbeat.txt')
 
   writeChecks(root, {
     fast: {
       probes: [],
-      commands: ['echo early; sh -c "sleep 30; echo late" & wait'],
+      commands: [`echo early; ${heartbeatCommand(heartbeat)}`],
     },
   })
 
@@ -951,10 +959,20 @@ test('a synchronous timeout ends the whole process tree, not only the shell', ()
   assert.equal(result.status, 'failed')
   assert.equal(result.results[0]?.timed_out, true)
   assert.match(result.results[0]?.stdout ?? '', /early/u)
+  // The heartbeat below proves the tree died; this bound proves the other
+  // half of the field defect, that the call came back near its deadline
+  // instead of waiting on a pipe an orphan still held. It is a generous hang
+  // guard, not the kill proof, exactly as its streaming sibling keeps it.
   assert.ok(
     elapsed < 10_000,
     `the gate returned after ${elapsed}ms; the orphaned tree kept it waiting`,
   )
+
+  const ticks = heartbeatCount(heartbeat)
+
+  assert.ok(ticks > 0, 'the heartbeat grandchild never started')
+  await delay(500)
+  assert.equal(heartbeatCount(heartbeat), ticks)
 })
 
 test('a synchronous capture past the byte cap is truncated at the cap with the marker', () => {
