@@ -21,9 +21,12 @@ usage() {
 #
 # A run that dies by signal skips its own cleanup, and so can a detached
 # removal. The next run sweeps any run directory whose owner is gone and any
-# discarded tree whose remover is gone, so a leak lasts one run at most and
-# never accumulates. runtime/ is gitignored.
-TESTS_TMP_ROOT="$ROOT/runtime/tmp/tests"
+# discarded tree whose remover is gone. A failed removal stays discarded for
+# another retry and never decides the suite status. runtime/ is gitignored.
+TESTS_TMP_ROOT="$ROOT/runtime/tmp/tests.noindex"
+FILE_DURATION_RECORD="$TESTS_TMP_ROOT/file-durations.json"
+FILE_ORDER_HELPER="$ROOT/dist/src/lib/test-file-order.js"
+SPOTLIGHT_MARKER="$TESTS_TMP_ROOT/.metadata_never_index"
 
 # A pid alone cannot identify a run: a directory orphaned by SIGKILL names a
 # pid the kernel later reassigns. Pairing the pid with the process start time
@@ -39,6 +42,80 @@ owner_token() {
   [[ -n "$started" ]] || return 1
 
   printf '%s' "$started"
+}
+
+# Trees renamed out of the way and still waiting for a remover to be started
+# for them. Queueing lets one sweep pay one Node startup instead of one per
+# directory, which is the only part of the handoff the wrapper waits on.
+PENDING_REMOVAL_TARGETS=()
+PENDING_REMOVAL_IDS=()
+
+flush_pending_removals() {
+  local remover rm_command id
+  local -a targets=()
+  local -a ids=()
+
+  if [[ "${#PENDING_REMOVAL_TARGETS[@]}" -gt 0 ]]; then
+    targets=("${PENDING_REMOVAL_TARGETS[@]}")
+    ids=("${PENDING_REMOVAL_IDS[@]}")
+  fi
+
+  PENDING_REMOVAL_TARGETS=()
+  PENDING_REMOVAL_IDS=()
+
+  [[ "${#targets[@]}" -gt 0 ]] || return 0
+
+  rm_command="$(command -v rm 2>/dev/null || true)"
+  [[ -n "$rm_command" ]] || return 0
+
+  # Node's detached option starts the remover in its own process group and
+  # session on Unix. It therefore survives the shell session that launched
+  # this runner. Starting or completing a removal can never decide test status.
+  remover="$(
+    node --input-type=module --eval '
+      import { spawn } from "node:child_process"
+      const [command, ...targets] = process.argv.slice(1)
+      const child = spawn(command, ["-rf", ...targets], {
+        detached: true,
+        stdio: "ignore",
+      })
+      child.once("error", () => {
+        process.exitCode = 1
+      })
+      child.once("spawn", () => {
+        process.stdout.write(String(child.pid))
+        child.unref()
+      })
+    ' "$rm_command" "${targets[@]}" 2>/dev/null
+  )" || return 0
+
+  [[ "$remover" =~ ^[0-9]+$ ]] || return 0
+
+  # One remover owns every tree of this batch, so each tree's marker names it.
+  for id in "${ids[@]}"; do
+    printf '%s\n%s\n' \
+      "$remover" \
+      "$(owner_token "$remover" || printf 'unidentified-%s' "$remover")" \
+      >"$TESTS_TMP_ROOT/.removing-$id" 2>/dev/null || true
+  done
+}
+
+# The rename is the part that has to happen before the caller continues. The
+# removal it queues is started once for the whole sweep.
+discard_directory() {
+  local source="$1"
+  local id="$2"
+  local discarded="$TESTS_TMP_ROOT/discarded-$id"
+
+  [[ -d "$source" ]] || return 0
+  [[ ! -e "$discarded" ]] || return 0
+
+  if ! mv "$source" "$discarded" 2>/dev/null; then
+    return 0
+  fi
+
+  PENDING_REMOVAL_TARGETS+=("$discarded")
+  PENDING_REMOVAL_IDS+=("$id")
 }
 
 sweep_dead_runs() {
@@ -62,14 +139,16 @@ sweep_dead_runs() {
       continue
     fi
 
-    rm -rf "$run"
+    discard_directory "$run" "${run##*/run-}"
   done
+
+  flush_pending_removals
 }
 
 # A discarded tree belongs to the detached removal that was started for it,
 # named in a marker beside the tree. A removal still working is left alone, so
 # two processes never delete one tree; a removal that died leaves its tree to
-# this sweep, which is the only cost a killed run passes on.
+# this sweep, which retries the removal without waiting for it.
 sweep_discarded_runs() {
   local discarded id marker owner token live
 
@@ -92,9 +171,12 @@ sweep_discarded_runs() {
       continue
     fi
 
-    rm -rf "$discarded"
-    rm -f "$marker"
+    rm -f "$marker" 2>/dev/null || true
+    PENDING_REMOVAL_TARGETS+=("$discarded")
+    PENDING_REMOVAL_IDS+=("$id")
   done
+
+  flush_pending_removals
 
   # A removal that finished leaves its marker behind, because the tree it was
   # told to delete is the only thing it touches.
@@ -105,6 +187,56 @@ sweep_discarded_runs() {
 
     [[ -d "$TESTS_TMP_ROOT/discarded-$id" ]] || rm -f "$marker"
   done
+}
+
+# A wrapper killed between writing the ordered list and removing it leaves
+# the one file in this root that belongs to no run directory.
+sweep_ordering_scratch() {
+  local ordered
+
+  for ordered in "$TESTS_TMP_ROOT"/.ordered-*; do
+    [[ -f "$ordered" ]] || continue
+
+    if ! owner_token "${ordered##*/.ordered-}" >/dev/null 2>&1; then
+      rm -f "$ordered" 2>/dev/null || true
+    fi
+  done
+}
+
+# Ordering is a scheduling optimization, so it decides how the suite is
+# dispatched and never whether it runs. dist/ and runtime/ have independent
+# lifetimes: a checkout whose helper has been cleaned while a record remains
+# would otherwise abort before a single test, which is the same rule the
+# cleanup path already follows above.
+order_test_file_arguments() {
+  ORDERED_ARGUMENTS=("$@")
+
+  [[ -s "$FILE_DURATION_RECORD" ]] || return 0
+
+  local output="$TESTS_TMP_ROOT/.ordered-$$"
+  local argument
+  local -a parsed=()
+
+  if ! node "$FILE_ORDER_HELPER" "$FILE_DURATION_RECORD" "$@" >"$output" 2>/dev/null; then
+    rm -f "$output"
+    echo "[run-tests] could not order test files from $FILE_DURATION_RECORD;" \
+      'running them in the order received' >&2
+    return 0
+  fi
+
+  while IFS= read -r -d '' argument; do
+    parsed+=("$argument")
+  done <"$output"
+
+  rm -f "$output"
+
+  if [[ "${#parsed[@]}" -ne "$#" ]]; then
+    echo '[run-tests] ordered test-file arguments were incomplete;' \
+      'running them in the order received' >&2
+    return 0
+  fi
+
+  ORDERED_ARGUMENTS=("${parsed[@]}")
 }
 
 if [[ "${1:-}" != '--' ]]; then
@@ -124,6 +256,12 @@ if ! mkdir -p "$TESTS_TMP_ROOT" 2>/dev/null; then
   exit 1
 fi
 
+# The suffix is the visible contract; the marker also covers hosts that keep
+# stale metadata for a renamed or still-removing child.
+if [[ ! -f "$SPOTLIGHT_MARKER" ]]; then
+  : >"$SPOTLIGHT_MARKER"
+fi
+
 # Node resolves a .js file's module type from the nearest package.json above
 # it. Without this file that would be this checkout's, whose "type": "module"
 # would turn a fixture's CommonJS script into a syntax error. An empty
@@ -135,6 +273,11 @@ fi
 
 sweep_dead_runs
 sweep_discarded_runs
+sweep_ordering_scratch
+
+order_test_file_arguments "$@"
+
+set -- "${ORDERED_ARGUMENTS[@]}"
 
 RUN_DIRECTORY="$(mktemp -d "$TESTS_TMP_ROOT/run-XXXXXXXX")"
 SELF_TOKEN="$(owner_token "$$" || printf 'unidentified-%s' "$$")"
@@ -142,36 +285,14 @@ SELF_TOKEN="$(owner_token "$$" || printf 'unidentified-%s' "$$")"
 printf '%s\n%s\n' "$$" "$SELF_TOKEN" >"$RUN_DIRECTORY/.owner"
 
 discard_run_directory() {
-  local id discarded marker remover
-
-  id="${RUN_DIRECTORY##*/run-}"
-  discarded="$TESTS_TMP_ROOT/discarded-$id"
-  marker="$TESTS_TMP_ROOT/.removing-$id"
-
-  # Both paths sit in one directory, so the rename never crosses a filesystem
-  # and never copies. A rename that fails leaves nothing renamed, so the
-  # foreground removal is still correct.
-  if ! mv "$RUN_DIRECTORY" "$discarded" 2>/dev/null; then
-    rm -rf "$RUN_DIRECTORY"
-    return
-  fi
-
-  nohup rm -rf "$discarded" >/dev/null 2>&1 &
-  remover=$!
-  disown "$remover" 2>/dev/null || true
-
-  # The marker tells the next run's sweep whether this removal is still
-  # working. A removal that finishes first leaves a marker naming a dead pid,
-  # which the sweep reads as "nothing to wait for".
-  printf '%s\n%s\n' \
-    "$remover" \
-    "$(owner_token "$remover" || printf 'unidentified-%s' "$remover")" \
-    >"$marker" 2>/dev/null || true
+  discard_directory "$RUN_DIRECTORY" "${RUN_DIRECTORY##*/run-}"
+  flush_pending_removals
 }
 
 trap discard_run_directory EXIT HUP INT TERM
 
 export PANCREATOR_TEST_TMP="$RUN_DIRECTORY"
+export PAN_TEST_FILE_DURATIONS="$FILE_DURATION_RECORD"
 
 # Several suites assert exactly how many times a verification profile
 # executed. The release-profile prefetch deliberately runs one of them in a

@@ -40,6 +40,8 @@ export interface SuiteProfileTest {
 export interface SuiteProfileFixtureCost {
   template_ms: number
   clone_ms: number
+  template_bytes: number
+  template_files: number
 }
 
 /** The document `PAN_TEST_PROFILE` produces. */
@@ -138,6 +140,12 @@ export function loadSuiteProfile(
       ? {
           template_ms: value.fixture_cost.template_ms,
           clone_ms: value.fixture_cost.clone_ms,
+          template_bytes: isNumber(value.fixture_cost.template_bytes)
+            ? value.fixture_cost.template_bytes
+            : 0,
+          template_files: isNumber(value.fixture_cost.template_files)
+            ? value.fixture_cost.template_files
+            : 0,
         }
       : undefined
 

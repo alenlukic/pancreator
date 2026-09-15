@@ -8,7 +8,7 @@ import {
 import path from 'node:path'
 
 // Test fixtures never touch the shared OS temp directory. They live under the
-// repository's own gitignored runtime/tmp/tests, which is per-root and so
+// repository's own gitignored runtime/tmp/tests.noindex, which is per-root and so
 // per-worktree, and which bin/run-tests wipes for each suite run. The shared
 // temp directory is unbounded, is written by every program on the host, and
 // once accumulated 166,000 leaked fixtures that taxed every create and unlink
@@ -19,7 +19,7 @@ import path from 'node:path'
 // A test file executed outside that wrapper falls back to a per-process
 // directory in the same place, which this module removes on exit.
 const REPO_ROOT = process.cwd()
-const TESTS_TMP_ROOT = path.join(REPO_ROOT, 'runtime', 'tmp', 'tests')
+const TESTS_TMP_ROOT = path.join(REPO_ROOT, 'runtime', 'tmp', 'tests.noindex')
 
 let processParent: string | null = null
 
@@ -32,6 +32,12 @@ function parentDirectory(): string {
 
   if (!processParent) {
     mkdirSync(TESTS_TMP_ROOT, { recursive: true })
+
+    const spotlightMarker = path.join(TESTS_TMP_ROOT, '.metadata_never_index')
+
+    if (!existsSync(spotlightMarker)) {
+      writeFileSync(spotlightMarker, '')
+    }
 
     // Ends Node's package.json walk here so a fixture's .js files keep the
     // default module type instead of inheriting this checkout's "module".

@@ -12,7 +12,9 @@ import {
   chmodSync,
   cpSync,
   existsSync,
+  lstatSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   writeFileSync,
 } from 'node:fs'
@@ -40,6 +42,60 @@ const FIXTURE_INVOLVEMENT_PROFILE = 'standard'
 
 /** Cache key of the template every `createFixture` call clones. */
 const MAIN_TEMPLATE_KEY = 'fixture:main'
+
+export const MAX_FIXTURE_TEMPLATE_BYTES = 30 * 1024 * 1024
+
+export interface FixtureTemplateMeasurement {
+  bytes: number
+  files: number
+}
+
+export function measureFixtureTemplate(
+  root: string,
+): FixtureTemplateMeasurement {
+  let bytes = 0
+  let files = 0
+  const pending = [root]
+
+  while (pending.length > 0) {
+    const directory = pending.pop()
+
+    if (!directory) {
+      continue
+    }
+
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const target = path.join(directory, entry.name)
+
+      if (entry.isDirectory()) {
+        pending.push(target)
+        continue
+      }
+
+      files += 1
+      bytes += lstatSync(target).size
+    }
+  }
+
+  return { bytes, files }
+}
+
+export function assertFixtureTemplateWithinLimit(
+  measurement: FixtureTemplateMeasurement,
+  limitBytes = MAX_FIXTURE_TEMPLATE_BYTES,
+): void {
+  if (measurement.bytes <= limitBytes) {
+    return
+  }
+
+  const measuredMb = (measurement.bytes / (1024 * 1024)).toFixed(2)
+  const limitMb = (limitBytes / (1024 * 1024)).toFixed(0)
+
+  throw new Error(
+    `Fixture template is ${measuredMb} MB (${measurement.bytes} bytes), ` +
+      `over the ${limitMb} MB limit.`,
+  )
+}
 
 export function fixtureGit(
   args: string[],
@@ -153,8 +209,8 @@ export function cloneTree(
 // existing imports from helpers keep working.
 export { createTestTempDirectory } from './temp.js'
 
-/** Populate `root` with the harness fixture every test clones. */
-function buildFixtureTemplate(root: string): void {
+/** Populate and measure `root` with the harness fixture every test clones. */
+function buildFixtureTemplate(root: string): FixtureTemplateMeasurement {
   for (const entry of [
     'governance',
     'library',
@@ -275,6 +331,12 @@ function buildFixtureTemplate(root: string): void {
   // clone of this template copies each one as its own file. Packing them once
   // here turns that per-clone cost into a handful of files.
   fixtureGit(['repack', '-a', '-d', '-q'], { cwd: root, encoding: 'utf8' })
+
+  const measurement = measureFixtureTemplate(root)
+
+  assertFixtureTemplateWithinLimit(measurement)
+
+  return measurement
 }
 
 let fixtureTemplateRoot: string | null = null
@@ -283,8 +345,14 @@ function buildTemplateInThisProcess(): string {
   const started = performance.now()
   const root = createTestTempDirectory('v2-template-')
 
-  buildFixtureTemplate(root)
-  recordFixtureEvent('template_build', 'main', performance.now() - started)
+  const measurement = buildFixtureTemplate(root)
+
+  recordFixtureEvent(
+    'template_build',
+    'main',
+    performance.now() - started,
+    measurement,
+  )
 
   return root
 }
@@ -302,8 +370,14 @@ function mainTemplate(): string {
     const started = performance.now()
 
     mkdirSync(destination, { recursive: true })
-    buildFixtureTemplate(destination)
-    recordFixtureEvent('template_build', 'main', performance.now() - started)
+    const measurement = buildFixtureTemplate(destination)
+
+    recordFixtureEvent(
+      'template_build',
+      'main',
+      performance.now() - started,
+      measurement,
+    )
 
     return null
   })

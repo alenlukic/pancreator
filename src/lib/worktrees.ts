@@ -1,4 +1,5 @@
-import { copyFileSync } from 'node:fs'
+import { spawn } from 'node:child_process'
+import { copyFileSync, readdirSync, renameSync } from 'node:fs'
 import path from 'node:path'
 
 import { errorMessage, invariant, PanError } from './errors.js'
@@ -52,6 +53,9 @@ import { now } from './state.js'
 import type { ManagedWorktreeReference } from './types.js'
 
 const WORKTREE_NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u
+const TEST_SCRATCH_RELATIVE_PATH = path.join('runtime', 'tmp', 'tests.noindex')
+/** A scratch tree `sweepWorktreeTestScratch` renamed out of its worktree. */
+const DISCARDED_SCRATCH_NAME = /^\..+-tests-\d+-\d+\.noindex$/u
 
 export interface WorktreeRecord extends ManagedWorktreeReference {
   created_from: string
@@ -104,6 +108,8 @@ export interface RemoveWorktreeResult {
   branch_deletion_refused?: string
   removed_worktree: boolean
   pruned_index_entry: boolean
+  /** Where the worktree's test scratch went for its detached removal. */
+  discarded_test_scratch?: string
 }
 
 export interface ReconcileTarget {
@@ -890,6 +896,81 @@ export function resolveWorkspacePathOrWorktree(
   return record ? record.path : value
 }
 
+function startDetachedScratchRemoval(target: string): void {
+  const remover = spawn('/bin/rm', ['-rf', target], {
+    detached: process.platform !== 'win32',
+    stdio: 'ignore',
+  })
+
+  remover.once('error', () => {
+    // The discarded tree stays beside the worktrees root for the next sweep.
+  })
+  remover.unref()
+}
+
+/**
+ * Move test scratch out of a worktree and remove it from a detached process,
+ * answering where the tree went.
+ *
+ * Removing the tree in place would charge the operator's worktree command a
+ * recursive unlink of a cloned fixture tree. A rename inside the worktrees
+ * root is a metadata operation, so the command returns when Git returns. A
+ * failed handoff leaves Git removal authoritative and never fails the
+ * command.
+ */
+export function sweepWorktreeTestScratch(worktreePath: string): string | null {
+  const scratch = path.join(worktreePath, TEST_SCRATCH_RELATIVE_PATH)
+
+  if (!fileExists(scratch)) {
+    return null
+  }
+
+  const discarded = path.join(
+    path.dirname(worktreePath),
+    `.${path.basename(worktreePath)}-tests-${process.pid}-${Date.now()}.noindex`,
+  )
+
+  try {
+    renameSync(scratch, discarded)
+  } catch {
+    return null
+  }
+
+  startDetachedScratchRemoval(discarded)
+
+  return discarded
+}
+
+/**
+ * Retry the scratch removals earlier sweeps handed off and lost.
+ *
+ * A detached remover can still die with the session that started it, which
+ * is how 699 fixture clones once accumulated, and a discarded tree beside
+ * the worktrees root is visited by no other cleanup. Restarting `rm -rf` on
+ * a tree another remover is already deleting is harmless, so this needs no
+ * ownership marker to keep two removers apart.
+ */
+export function sweepDiscardedWorktreeScratch(directory: string): string[] {
+  let names: string[]
+
+  try {
+    names = readdirSync(directory)
+  } catch {
+    return []
+  }
+
+  const discarded = names
+    .filter((name) => DISCARDED_SCRATCH_NAME.test(name))
+    .map((name) => path.join(directory, name))
+    .sort()
+
+  for (const target of discarded) {
+    startDetachedScratchRemoval(target)
+  }
+
+  return discarded
+}
+
 /**
  * Remove one operator worktree and its index entry.
  *
@@ -930,7 +1011,11 @@ export function removeWorktree(
       { code: 'WORKTREE_UNRESOLVED' },
     )
 
+    let discardedScratch: string | null = null
+
     if (present && repositoryRoot) {
+      sweepDiscardedWorktreeScratch(path.dirname(worktreePath))
+      discardedScratch = sweepWorktreeTestScratch(worktreePath)
       gitWorktreeRemove(repositoryRoot, worktreePath, options.force ?? false)
     } else if (repositoryRoot) {
       gitWorktreePrune(repositoryRoot)
@@ -957,6 +1042,7 @@ export function removeWorktree(
         : {}),
       removed_worktree: present,
       pruned_index_entry: !present,
+      ...(discardedScratch ? { discarded_test_scratch: discardedScratch } : {}),
     }
   })
 }

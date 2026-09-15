@@ -1133,7 +1133,7 @@ test('a current-path harness-managed worktree resolves the owning installation r
 })
 
 test('a directory under a worktree that is not itself a worktree keeps its own resolution', () => {
-  // Test fixtures live under <checkout>/runtime/tmp/tests/. When the checkout
+  // Test fixtures live under <checkout>/runtime/tmp/tests.noindex/. When the checkout
   // is a cohort worktree, every fixture path contains a `worktrees` segment.
   // The path alone must not send the fixture to the installation's file.
   const { root } = makeInstallation()
@@ -1145,7 +1145,7 @@ test('a directory under a worktree that is not itself a worktree keeps its own r
     worktree,
     'runtime',
     'tmp',
-    'tests',
+    'tests.noindex',
     'run-1',
     'checks-1',
   )

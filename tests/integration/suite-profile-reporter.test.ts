@@ -1,10 +1,17 @@
 import assert from 'node:assert/strict'
 import { spawn, spawnSync } from 'node:child_process'
 import type { SpawnSyncReturns } from 'node:child_process'
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
+import { TEST_FILE_DURATIONS_ENV } from '../../src/lib/suite-profile-env.js'
 import {
   loadSuiteProfile,
   TEST_PROFILE_ENV,
@@ -17,25 +24,53 @@ const REPORTER = path.resolve(
   'dist/tests/reporters/failures-only.js',
 )
 
-function tinyLane(): { cwd: string; file: string } {
-  const cwd = createTestTempDirectory('pancreator-suite-profile-')
+function laneFile(cwd: string, name: string, cases: string[]): string {
   const laneDir = path.join(cwd, 'tests', 'unit')
 
   mkdirSync(laneDir, { recursive: true })
 
-  const file = path.join(laneDir, 'tiny.test.js')
+  const file = path.join(laneDir, name)
 
   writeFileSync(
     file,
     [
       "const test = require('node:test');",
-      "test('alpha', () => {});",
-      "test('beta', () => {});",
+      ...cases.map((caseName) => `test('${caseName}', () => {});`),
       '',
     ].join('\n'),
   )
 
-  return { cwd, file }
+  return file
+}
+
+function tinyLane(): { cwd: string; file: string } {
+  const cwd = createTestTempDirectory('pancreator-suite-profile-')
+
+  return { cwd, file: laneFile(cwd, 'tiny.test.js', ['alpha', 'beta']) }
+}
+
+/** The record `bin/run-tests` hands the reporter, per checkout. */
+function durationRecordPath(cwd: string): string {
+  return path.join(
+    cwd,
+    'runtime',
+    'tmp',
+    'tests.noindex',
+    'file-durations.json',
+  )
+}
+
+interface DurationRecord {
+  schema_version: number
+  recorded_at: string
+  lane: string
+  test_count: number
+  wall_clock_ms: number
+  files: Array<{ file: string; duration_ms: number; recorded_at?: string }>
+}
+
+function readDurationRecord(target: string): DurationRecord {
+  return JSON.parse(readFileSync(target, 'utf8')) as DurationRecord
 }
 
 /** The parent runs under node --test; the child must not inherit that context. */
@@ -62,18 +97,37 @@ function runReporter(
   )
 }
 
-test('the reporter writes a suite profile only when PAN_TEST_PROFILE is set', () => {
+test('the reporter always writes durations and profiles only on request', () => {
   const { cwd, file } = tinyLane()
   const target = path.join(cwd, 'out', 'profile.json')
+  const durations = durationRecordPath(cwd)
 
-  const unset = runReporter(cwd, file, { [TEST_PROFILE_ENV]: '' })
+  const unset = runReporter(cwd, file, {
+    [TEST_PROFILE_ENV]: '',
+    [TEST_FILE_DURATIONS_ENV]: durations,
+  })
 
   assert.equal(unset.status, 0, unset.stderr)
   assert.match(unset.stdout, /^# pass 2$/mu)
   assert.equal(existsSync(target), false)
   assert.equal(existsSync(path.join(cwd, 'out')), false)
 
-  const set = runReporter(cwd, file, { [TEST_PROFILE_ENV]: target })
+  const durationRecord = readDurationRecord(durations)
+
+  assert.equal(durationRecord.schema_version, 1)
+  assert.match(durationRecord.recorded_at, /^\d{4}-\d{2}-\d{2}T/u)
+  assert.equal(durationRecord.lane, 'unit')
+  assert.equal(durationRecord.test_count, 2)
+  assert.ok(durationRecord.wall_clock_ms > 0)
+  assert.deepEqual(
+    durationRecord.files.map((entry) => entry.file),
+    ['tests/unit/tiny.test.js'],
+  )
+
+  const set = runReporter(cwd, file, {
+    [TEST_PROFILE_ENV]: target,
+    [TEST_FILE_DURATIONS_ENV]: durations,
+  })
 
   assert.equal(set.status, 0, set.stderr)
   // The printed output is unchanged apart from the measured duration.
@@ -101,6 +155,69 @@ test('the reporter writes a suite profile only when PAN_TEST_PROFILE is set', ()
     'alpha',
     'beta',
   ])
+})
+
+// `pan tests impacted` runs this reporter over a subset of the lane. Writing
+// that subset as the whole record left every file it skipped unmeasured, and
+// the scheduler leads with unmeasured files, so the known long pole went last.
+test('a reporter run over part of a lane keeps what other runs measured', () => {
+  const cwd = createTestTempDirectory('pancreator-duration-merge-')
+  const durations = durationRecordPath(cwd)
+  const slow = laneFile(cwd, 'slow.test.js', ['alpha', 'beta'])
+  const fast = laneFile(cwd, 'fast.test.js', ['gamma'])
+
+  for (const file of [slow, fast]) {
+    const complete = runReporter(cwd, file, {
+      [TEST_PROFILE_ENV]: '',
+      [TEST_FILE_DURATIONS_ENV]: durations,
+    })
+
+    assert.equal(complete.status, 0, complete.stderr)
+  }
+
+  const subset = runReporter(cwd, fast, {
+    [TEST_PROFILE_ENV]: '',
+    [TEST_FILE_DURATIONS_ENV]: durations,
+  })
+
+  assert.equal(subset.status, 0, subset.stderr)
+
+  const merged = readDurationRecord(durations)
+
+  assert.deepEqual(merged.files.map((entry) => entry.file).sort(), [
+    'tests/unit/fast.test.js',
+    'tests/unit/slow.test.js',
+  ])
+  assert.equal(merged.test_count, 1)
+
+  for (const entry of merged.files) {
+    assert.match(entry.recorded_at ?? '', /^\d{4}-\d{2}-\d{2}T/u)
+  }
+})
+
+// Only a run the runner scheduled owns the record. A bare `node --test` from
+// the repository root used to replace it with a document naming one file.
+test('a reporter run the runner did not schedule writes no duration record', () => {
+  const { cwd, file } = tinyLane()
+  const result = runReporter(cwd, file, {
+    [TEST_PROFILE_ENV]: '',
+    [TEST_FILE_DURATIONS_ENV]: '',
+  })
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.match(result.stdout, /^# pass 2$/mu)
+  assert.equal(existsSync(durationRecordPath(cwd)), false)
+  assert.equal(existsSync(path.join(cwd, 'runtime')), false)
+
+  // A relative target is not ownership either: it would resolve against
+  // whatever directory the process happened to start in.
+  const relative = runReporter(cwd, file, {
+    [TEST_PROFILE_ENV]: '',
+    [TEST_FILE_DURATIONS_ENV]: 'runtime/tmp/tests.noindex/file-durations.json',
+  })
+
+  assert.equal(relative.status, 0, relative.stderr)
+  assert.equal(existsSync(path.join(cwd, 'runtime')), false)
 })
 
 // The gate that profiles the suite points the target at a run's evidence
@@ -152,6 +269,9 @@ test('a profiled run leaves nothing transient in a run evidence directory', asyn
       env: childEnv({
         [TEST_PROFILE_ENV]: target,
         [TEST_SCRATCH_ENV]: scratch,
+        // This child is not a scheduled suite run, so it owns no scheduler
+        // record and must not contribute a fixture path to the real one.
+        [TEST_FILE_DURATIONS_ENV]: '',
       }),
       stdio: 'ignore',
     },
