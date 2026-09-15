@@ -1,5 +1,34 @@
 # Changelog
 
+## [6.7.0] - 2026-09-15
+
+This release lands two finished features that stayed on unmerged branches. The harness now advances a cohort group by itself, and clean-tree gates read the workspace attribution records.
+
+### Changed
+
+- Commit each verified unit worktree, merge the finished group, and start the next group or the release run without an operator command ([cohorts](src/lib/cohorts.ts), [64bda3c5](https://github.com/alenlukic/pancreator/commit/64bda3c5e26eb8976fb8cad1074954f52ad51a85)).
+- Give ACTION-001 and `AGENTS.md` a narrow carve-out for a commit or merge the harness performs during its own integration ([ACTION-001](governance/policies/ACTION-001.json), [AGENTS](AGENTS.md), [64bda3c5](https://github.com/alenlukic/pancreator/commit/64bda3c5e26eb8976fb8cad1074954f52ad51a85)).
+- Narrow AWAY-001 so away mode must not run push, publication, deployment, or branch-deletion actions ([AWAY-001](governance/policies/AWAY-001.json), [64bda3c5](https://github.com/alenlukic/pancreator/commit/64bda3c5e26eb8976fb8cad1074954f52ad51a85)).
+- Reconcile every operator-facing surface so each names the harness as the owner of cohort integration ([pan-cohort](library/cursor/commands/pan-cohort.md), [64bda3c5](https://github.com/alenlukic/pancreator/commit/64bda3c5e26eb8976fb8cad1074954f52ad51a85)).
+- Make every clean-tree gate treat an untracked read-only input as clean state ([operator-guide](docs/operator-guide.md), [6ea864bf](https://github.com/alenlukic/pancreator/commit/6ea864bfd15c70440298185acd2c766a0e01ff4b)).
+- Withhold a recorded read-only input from every harness commit: the cohort unit commit, the release checkpoint, and the release scope check ([cohorts](src/lib/cohorts.ts), [6ea864bf](https://github.com/alenlukic/pancreator/commit/6ea864bfd15c70440298185acd2c766a0e01ff4b)).
+- Refuse a cohort unit commit when a tracked read-only input is modified, so the edit never drops out of the merge in silence ([cohorts](src/lib/cohorts.ts), [6ea864bf](https://github.com/alenlukic/pancreator/commit/6ea864bfd15c70440298185acd2c766a0e01ff4b)).
+- Copy recorded read-only inputs into a new worktree at creation ([worktrees](src/lib/worktrees.ts), [6ea864bf](https://github.com/alenlukic/pancreator/commit/6ea864bfd15c70440298185acd2c766a0e01ff4b)).
+- Define uncommitted work and the three dispositions in COHORT-001 and OPERATOR-001 ([COHORT-001](governance/policies/COHORT-001.json), [6ea864bf](https://github.com/alenlukic/pancreator/commit/6ea864bfd15c70440298185acd2c766a0e01ff4b)).
+- Move the workspace-attribution suite to the integration lane to satisfy the 6.6.0 lane audit ([bf306326](https://github.com/alenlukic/pancreator/commit/bf306326231153d8965f3a741bee7f8cabb26c34)).
+
+### Added
+
+- Add `maybeAdvanceCohort` after submit, assess, decide, and away apply ([cli](src/cli.ts), [64bda3c5](https://github.com/alenlukic/pancreator/commit/64bda3c5e26eb8976fb8cad1074954f52ad51a85)).
+- Add `waive-gate` to the away-mode vocabulary with a required note and away authorship ([away-mode](src/lib/away-mode.ts), [WAIVER-001](governance/policies/WAIVER-001.json), [64bda3c5](https://github.com/alenlukic/pancreator/commit/64bda3c5e26eb8976fb8cad1074954f52ad51a85)).
+- Add `--disposition read-only-input|commit-with-unit|operator-owned` to `pan attribute`. The default is `operator-owned` ([6ea864bf](https://github.com/alenlukic/pancreator/commit/6ea864bfd15c70440298185acd2c766a0e01ff4b)).
+- Add a repository-scoped attribution store at `runtime/logs/workspace-attributions.json` ([workspace-attribution](src/lib/workspace-attribution.ts), [6ea864bf](https://github.com/alenlukic/pancreator/commit/6ea864bfd15c70440298185acd2c766a0e01ff4b)).
+- Add automatic-advance, away-waiver, attributed clean-tree, and surface-regression tests ([cohort-auto-advance](tests/integration/cohort-auto-advance.test.ts), [attributed-input-clean-tree](tests/regression/attributed-input-clean-tree.test.ts), [64bda3c5](https://github.com/alenlukic/pancreator/commit/64bda3c5e26eb8976fb8cad1074954f52ad51a85), [6ea864bf](https://github.com/alenlukic/pancreator/commit/6ea864bfd15c70440298185acd2c766a0e01ff4b)).
+
+### Fixed
+
+- Name each blocking path and its attribution status in a clean-tree refusal ([worktrees](src/lib/worktrees.ts), [6ea864bf](https://github.com/alenlukic/pancreator/commit/6ea864bfd15c70440298185acd2c766a0e01ff4b)).
+
 ## [6.6.0] - 2026-09-15
 
 This release bounds the fast test lane. The runner starts the longest files first. A tracked 120 s ceiling reports the daily average.
