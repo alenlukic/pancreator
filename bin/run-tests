@@ -2,6 +2,18 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+WRAPPER_STARTED_MS="$(node -e 'process.stdout.write(String(Date.now()))')"
+FAST_WALL_SERIES_ROOT="${PAN_FAST_WALL_SERIES_ROOT:-$ROOT}"
+FAST_WALL_RUN_ID="${PAN_FAST_WALL_RUN_ID:-standalone}"
+FAST_WALL_PHASE="${PAN_FAST_WALL_PHASE:-standalone}"
+FAST_WALL_INVOKER="${npm_lifecycle_event:-manual}"
+
+# The wrapper owns these values. Test children must not inherit them and append
+# a nested fixture run to the outer repository's series.
+unset PAN_FAST_WALL_SERIES_ROOT
+unset PAN_FAST_WALL_RUN_ID
+unset PAN_FAST_WALL_PHASE
+unset npm_lifecycle_event
 
 usage() {
   echo "Usage: bin/run-tests -- <command> [args...]" >&2
@@ -239,6 +251,92 @@ order_test_file_arguments() {
   ORDERED_ARGUMENTS=("${parsed[@]}")
 }
 
+test_worker_count() {
+  local argument next=0
+  local configured=''
+
+  for argument in "$@"; do
+    if [[ "$next" -eq 1 ]]; then
+      configured="$argument"
+      next=0
+      continue
+    fi
+
+    case "$argument" in
+      --test-concurrency)
+        next=1
+        ;;
+      --test-concurrency=*)
+        configured="${argument#--test-concurrency=}"
+        ;;
+    esac
+  done
+
+  if [[ "$configured" =~ ^[1-9][0-9]*$ ]]; then
+    printf '%s' "$configured"
+    return
+  fi
+
+  node -e \
+    'const os=require("node:os");process.stdout.write(String(os.availableParallelism()))'
+}
+
+is_complete_fast_lane() {
+  local argument candidate expected index index_actual actual_count=0 expected_count
+  # Bash 3.2 treats an empty array as unset under `set -u`. Keep a sentinel so
+  # a fixture with no compiled lane files remains a normal non-match.
+  local -a actual=('')
+  local -a expected_files=('')
+
+  [[ "$FAST_WALL_INVOKER" == 'test' ]] || return 1
+
+  for argument in "$@"; do
+    candidate="${argument#"$ROOT"/}"
+
+    case "$candidate" in
+      dist/tests/unit/*.test.js | \
+        dist/tests/integration/*.test.js | \
+        dist/tests/regression/*.test.js)
+        actual+=("$candidate")
+        actual_count=$((actual_count + 1))
+        ;;
+    esac
+  done
+
+  shopt -s nullglob
+  expected_files=(
+    ''
+    "$ROOT"/dist/tests/unit/*.test.js
+    "$ROOT"/dist/tests/integration/*.test.js
+    "$ROOT"/dist/tests/regression/*.test.js
+  )
+  shopt -u nullglob
+
+  expected_count=$((${#expected_files[@]} - 1))
+  # An empty compiled lane matches nothing: a tree with no lane files has no
+  # complete lane to record.
+  [[ "$expected_count" -gt 0 ]] || return 1
+  [[ "$actual_count" -eq "$expected_count" ]] || return 1
+
+  for ((index = 1; index < ${#expected_files[@]}; index++)); do
+    expected="${expected_files[$index]}"
+    candidate="${expected#"$ROOT"/}"
+    local found=0
+
+    for ((index_actual = 1; index_actual < ${#actual[@]}; index_actual++)); do
+      argument="${actual[$index_actual]}"
+      if [[ "$argument" == "$candidate" ]]; then
+        found=1
+        break
+      fi
+    done
+
+    [[ "$found" -eq 1 ]] || return 1
+  done
+
+  return 0
+}
+
 if [[ "${1:-}" != '--' ]]; then
   usage
   exit 1
@@ -317,6 +415,34 @@ export GIT_CEILING_DIRECTORIES="$RUN_DIRECTORY${GIT_CEILING_DIRECTORIES:+:$GIT_C
 # the discard happens then rather than being skipped. A wrapper killed
 # outright leaves one directory, which the next run's sweep removes.
 status=0
+FAST_WALL_LOAD_AVERAGE="$(
+  node -e 'process.stdout.write(String(require("node:os").loadavg()[0]))'
+)"
+FAST_WALL_WORKER_COUNT="$(test_worker_count "$@")"
+FAST_WALL_QUALIFIES=0
+
+if is_complete_fast_lane "$@"; then
+  FAST_WALL_QUALIFIES=1
+fi
+
 "$@" || status=$?
+
+WRAPPER_FINISHED_MS="$(node -e 'process.stdout.write(String(Date.now()))')"
+WRAPPER_WALL_MS=$((WRAPPER_FINISHED_MS - WRAPPER_STARTED_MS))
+
+if [[ "$FAST_WALL_QUALIFIES" -eq 1 ]] && ! node "$ROOT/dist/src/cli.js" tests record-fast-wall \
+  --series-root "$FAST_WALL_SERIES_ROOT" \
+  --workspace-root "$ROOT" \
+  --duration-record "$FILE_DURATION_RECORD" \
+  --worker-count "$FAST_WALL_WORKER_COUNT" \
+  --load-average "$FAST_WALL_LOAD_AVERAGE" \
+  --wrapper-wall-ms "$WRAPPER_WALL_MS" \
+  --invoker "$FAST_WALL_INVOKER" \
+  --run-id "$FAST_WALL_RUN_ID" \
+  --phase "$FAST_WALL_PHASE" \
+  --exit-code "$status"; then
+  echo '[run-tests] could not record the fast-lane wall measurement' >&2
+  [[ "$status" -ne 0 ]] || status=1
+fi
 
 exit "$status"

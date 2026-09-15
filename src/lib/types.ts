@@ -766,6 +766,8 @@ export interface ProjectConfig {
   workspace_id?: string
   workspace_root?: string
   state_root?: string
+  /** Self-development fast-lane wall ceiling and its permitted weekly rise. */
+  fast_wall?: FastWallConfig
   /** Maximum bytes permitted in one materialized workflow state file. */
   state_size_budget_bytes?: number
   /** Worker inactivity bound used by `pan status`. */
@@ -781,6 +783,12 @@ export interface ProjectConfig {
   installation_mode?: 'self_development' | 'embedded' | 'detached'
   /** Autonomous blocker handling, snapshotted into each new run. */
   away_mode?: AwayModeConfig
+}
+
+export interface FastWallConfig {
+  ceiling_ms: number
+  anchor_date: string
+  weekly_allowance_ms: number
 }
 
 export interface ResolvedRoots {
@@ -1084,6 +1092,23 @@ export interface SuiteProfileSummary {
   previous?: SuiteProfileDelta
 }
 
+export interface FastWallStagePoint {
+  recorded_at: string
+  wall_clock_ms: number
+  test_count: number
+  worker_count: number
+  /** The run phase that produced the record: `baseline`, a gate id, or `agent`. */
+  phase: string
+  /** This run's own marginal wall per test. Null on a record with no summed file time. */
+  marginal_wall_ms_per_test: number | null
+}
+
+export interface FastWallStageSummary {
+  series_path: string
+  before: FastWallStagePoint | null
+  after: FastWallStagePoint | null
+}
+
 export interface Invocation {
   $operator: {
     headline: string
@@ -1170,6 +1195,8 @@ export interface Invocation {
    * for it and the run recorded a profile. Never a gate.
    */
   suite_profile?: SuiteProfileSummary
+  /** Fast-lane measurements bracketing this run's implementation stage. */
+  fast_wall?: FastWallStageSummary
   policies: Policy[]
   requirements?: RequirementManifest
   rubric: Criterion[]

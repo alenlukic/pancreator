@@ -1216,6 +1216,74 @@ The `impacted` profile in `runtime/repository-checks.json` runs the same
 command. An embedded target may declare its own `impacted` command in its
 `repository-checks.json`; the harness never treats that profile as a gate.
 
+## Govern the fast-lane wall
+
+Self-development only. Every complete `npm test` run appends one record to
+`runtime/fast-wall-series.jsonl` under the installation root that started it:
+the UTC timestamp, the wall the runner measured around the suite, the wrapper's
+own wall beside it, the test count, the worker count, the load average before
+the run, the workspace fingerprint, the invoker, the run id, the phase that
+produced it (`baseline`, a gate id such as `implement.unit_tests`, `agent`, or
+`standalone`), the exit code, and the summed per-file test time. A harness gate
+writes to the installation root's series and tags the run; a developer's own
+`npm test` writes to the checkout it ran in and tags `standalone`.
+
+```sh
+./bin/pan tests wall          # rolling average, permitted ceiling, marginal cost, verdict
+./bin/pan tests wall --json   # the same report as JSON
+```
+
+The report describes one population: the qualified complete fast-lane runs
+recorded inside the trailing 24 hours. A row qualifies when its invoker is
+`test` and its lane is the complete unit, integration, and regression set;
+partial lanes, impacted subsets, and rows another writer appended are counted
+as `unqualified_runs` and ignored. A failing run still executes every test, so
+its exit code does not affect qualification. The marginal wall cost per test is
+measured inside each run as the summed per-file test time divided by the worker
+count and the test count, which is the wall one average test adds under the
+runner's concurrency; the report averages that per-run figure over the same
+window and names the sample count. Rows written before the phase and lane were
+recorded qualify on their `test` invoker alone and carry no marginal sample.
+
+The ceiling lives in the optional `fast_wall` block of `config.json`:
+`ceiling_ms`, the base ceiling; `anchor_date`, the UTC date the allowance counts
+from; and `weekly_allowance_ms`, the most the permitted value rises per complete
+elapsed week. The permitted value never changes for machine load. The `ship`
+stage of the `delivery` and `metacritic` workflows runs `pan tests wall` as the
+hard shell criterion `ship.fast_wall_ceiling`, so a rolling average above the
+permitted value blocks the release and the criterion's explanation names both
+numbers. The command exits `1` on that verdict and prints `not applicable` in
+an embedded or detached installation.
+
+The verify card of a `delivery` or `delivery-chunk` run carries the fast wall,
+the test count, and the marginal cost per test before and after the implement
+stage. The before point is the run's `fast` baseline record, selected by the
+fingerprint the run's baseline pointer names, so a baseline adopted from
+another run or shared across a cohort still resolves. The after point is the
+run's latest later-phase record. A run whose series holds neither shows no
+section, and a point from a row with no summed file time reads as
+`marginal cost unavailable` rather than as a zero.
+
+### The suite worker count
+
+`package.json` sets the worker count explicitly at `13`, overridable for one
+run with `PAN_TEST_WORKERS`. Eleven complete fast-lane runs at one workspace
+fingerprint, under everyday load, chose it:
+
+| Workers | Runs | Mean wall | Median wall | Own spread |
+| ------- | ---- | --------- | ----------- | ---------- |
+| 9       | 3    | 147.1 s   | 151.0 s     | 16.3 s     |
+| 13      | 4    | 141.3 s   | 140.7 s     | 8.2 s      |
+| 17      | 4    | 141.1 s   | 139.9 s     | 12.3 s     |
+
+Nine workers is clearly slower. Thirteen and seventeen are not distinguishable
+from this population: seventeen leads by 0.2 percent on the mean and 0.5
+percent on the median, and each group's own spread is more than ten times
+either gap. A failing run counts here for the same reason it counts toward the
+governed average, so all eleven runs are in the table. The operator ruled that
+thirteen stands, as the lower-contention choice between two counts the data
+cannot separate. Do not spend further fast-lane runs on the question.
+
 ## Run a batch repair pass
 
 Two operator-invoked batch passes repair work no workflow stage owns. Each one

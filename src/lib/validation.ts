@@ -42,6 +42,12 @@ import {
   TEST_PROFILE_ENV,
   suiteProfileEvidencePath,
 } from './suite-profile.js'
+import {
+  FAST_WALL_CRITERION_ID,
+  FAST_WALL_PHASE_ENV,
+  FAST_WALL_RUN_ID_ENV,
+  FAST_WALL_SERIES_ROOT_ENV,
+} from './fast-wall-series.js'
 import { auditTestScratchDirectories } from './test-scratch-audit.js'
 import {
   filterPolicyInstructionsForCard,
@@ -70,7 +76,9 @@ import {
 import {
   isTargetInstallation,
   isSelfDevelopmentInstallation,
+  panCommand,
 } from './project-config.js'
+import { executingSourceRoot } from './build-identity.js'
 import {
   buildGateCacheEntry,
   gateCacheKey,
@@ -2112,6 +2120,21 @@ export function resolveShellCheck(
   requestedCommand: string,
   overridden: boolean,
 ): ShellCheckResolution {
+  // Keyed on the criterion id, the same key `runShellCheck` uses to attach
+  // this gate's explanation. Resolving one half by literal command text let
+  // the two disagree over a re-spelled command or a borrowed one.
+  if (!overridden && criterion.id === FAST_WALL_CRITERION_ID) {
+    const executingRoot = executingSourceRoot()
+    const command = executingRoot
+      ? `'${path.join(executingRoot, 'bin/pan').replaceAll("'", "'\"'\"'")}'`
+      : panCommand(root)
+
+    return {
+      command: `${command} tests wall`,
+      profile_name: null,
+    }
+  }
+
   if (overridden || !isTargetInstallation(root)) {
     return {
       command: requestedCommand,
@@ -2621,9 +2644,14 @@ function runShellCheck(
     repositoryResult = runRepositoryCheck(root, profileName, {
       timeout_ms: criterion.timeout_ms,
       workspace: workspaceDir,
-      ...(suiteProfileTarget
-        ? { env: { [TEST_PROFILE_ENV]: suiteProfileTarget } }
-        : {}),
+      env: {
+        [FAST_WALL_SERIES_ROOT_ENV]: root,
+        [FAST_WALL_RUN_ID_ENV]: state.run_id,
+        [FAST_WALL_PHASE_ENV]: criterion.id,
+        ...(suiteProfileTarget
+          ? { [TEST_PROFILE_ENV]: suiteProfileTarget }
+          : {}),
+      },
     })
     onProgress?.(
       `${criterion.id} ${repositoryResult.status} in ${(repositoryResult.total_duration_ms / 1000).toFixed(1)}s`,
@@ -2867,6 +2895,9 @@ function runShellCheck(
           overridden: true,
           explanation: 'Gate command was overridden by run configuration.',
         }),
+    ...(criterion.id === FAST_WALL_CRITERION_ID && stdout.trim().length > 0
+      ? { explanation: stdout.trim() }
+      : {}),
     ...(remappedProfile && state.verification
       ? { verification_level: state.verification.level }
       : {}),

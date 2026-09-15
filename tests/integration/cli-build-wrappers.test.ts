@@ -122,6 +122,122 @@ test('pan reuses the prepared build during a repository test run', () => {
   }
 })
 
+// Two files share the unit lane so the negative case can withhold one file
+// while every lane is still represented. A matcher that only checked the lane
+// names would record that subset, and a one-file-per-lane fixture could not
+// tell the two implementations apart.
+test('run-tests records only the complete configured fast lane', () => {
+  const fixture = createBuildScriptFixture()
+  const durationRecord = path.join(
+    fixture.root,
+    'runtime',
+    'tmp',
+    'tests.noindex',
+    'file-durations.json',
+  )
+  const observed = path.join(fixture.root, 'fast-wall-call')
+  const testFiles = [
+    'dist/tests/unit/unit.test.js',
+    'dist/tests/unit/second-unit.test.js',
+    'dist/tests/integration/integration.test.js',
+    'dist/tests/regression/regression.test.js',
+  ]
+  const allLanesOneFileShort = testFiles.filter(
+    (file) => file !== 'dist/tests/unit/second-unit.test.js',
+  )
+
+  try {
+    for (const file of testFiles) {
+      mkdirSync(path.dirname(path.join(fixture.root, file)), {
+        recursive: true,
+      })
+      writeFileSync(path.join(fixture.root, file), '')
+    }
+
+    writeFileSync(
+      path.join(fixture.root, 'dist', 'src', 'cli.js'),
+      `require('node:fs').appendFileSync(${JSON.stringify(observed)}, process.argv.slice(2).join(' ') + '\\n')\n`,
+    )
+    mkdirSync(path.dirname(durationRecord), { recursive: true })
+    writeFileSync(
+      durationRecord,
+      JSON.stringify({
+        schema_version: 1,
+        recorded_at: '2026-09-15T00:00:00.000Z',
+        lane: 'integration+regression+unit',
+        wall_clock_ms: 100,
+        test_count: 4,
+        files: testFiles.map((file) => ({ file, duration_ms: 1 })),
+      }),
+    )
+
+    const env = { ...fixture.env, npm_lifecycle_event: 'test' }
+    const partial = spawnSync(
+      '/bin/bash',
+      [
+        path.join(fixture.root, 'bin', 'run-tests'),
+        '--',
+        '/usr/bin/true',
+        ...allLanesOneFileShort,
+      ],
+      { cwd: fixture.root, encoding: 'utf8', env },
+    )
+
+    assert.equal(partial.status, 0, partial.stderr)
+    assert.equal(existsSync(observed), false)
+
+    const complete = spawnSync(
+      '/bin/bash',
+      [
+        path.join(fixture.root, 'bin', 'run-tests'),
+        '--',
+        '/usr/bin/true',
+        ...testFiles,
+      ],
+      { cwd: fixture.root, encoding: 'utf8', env },
+    )
+
+    assert.equal(complete.status, 0, complete.stderr)
+    assert.match(
+      readFileSync(observed, 'utf8'),
+      /^tests record-fast-wall .*--worker-count /u,
+    )
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
+// Bash 3.2 treats an empty array as unset under `set -u`, so the matcher keeps
+// a sentinel element and compares counts. Without the explicit `expected_count
+// -gt 0` guard a tree with no compiled lane files matches an empty argument
+// list and records a run that never happened.
+test('run-tests records nothing when the compiled fast lane is empty', () => {
+  const fixture = createBuildScriptFixture()
+  const observed = path.join(fixture.root, 'fast-wall-call')
+
+  try {
+    writeFileSync(
+      path.join(fixture.root, 'dist', 'src', 'cli.js'),
+      `require('node:fs').appendFileSync(${JSON.stringify(observed)}, process.argv.slice(2).join(' ') + '\\n')\n`,
+    )
+
+    const result = spawnSync(
+      '/bin/bash',
+      [path.join(fixture.root, 'bin', 'run-tests'), '--', '/usr/bin/true'],
+      {
+        cwd: fixture.root,
+        encoding: 'utf8',
+        env: { ...fixture.env, npm_lifecycle_event: 'test' },
+      },
+    )
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(existsSync(observed), false)
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
 // Fixtures never touch the shared OS temp directory. The wrapper hands the
 // suite a directory under the root, fences git discovery at it so a fixture
 // without its own repository reads as none, and discards it when the suite

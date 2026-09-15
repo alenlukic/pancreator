@@ -422,6 +422,57 @@ test('a cached gate summary names the cached pass', () => {
   assert.match(renderSuiteProfileStatusLine(summary), /, cached \(no previous/u)
 })
 
+test('the verify card shows fast-wall measurements around implementation', () => {
+  const section = renderSuiteProfileSection(null, {
+    series_path: 'runtime/fast-wall-series.jsonl',
+    before: {
+      recorded_at: '2026-09-15T01:00:00.000Z',
+      wall_clock_ms: 119_000,
+      test_count: 1300,
+      worker_count: 13,
+      phase: 'baseline',
+      marginal_wall_ms_per_test: 100,
+    },
+    after: {
+      recorded_at: '2026-09-15T02:00:00.000Z',
+      wall_clock_ms: 118_000,
+      test_count: 1305,
+      worker_count: 13,
+      phase: 'implement.unit_tests',
+      marginal_wall_ms_per_test: 90.143,
+    },
+  }).join('\n')
+
+  assert.match(section, /Implement-stage fast wall/u)
+  assert.match(
+    section,
+    /Before implement: 1300 tests in 119\.0s .*100\.000ms marginal per test.*\(phase `baseline`\)/u,
+  )
+  assert.match(
+    section,
+    /After implement: 1305 tests in 118\.0s .*90\.143ms marginal per test.*\(phase `implement\.unit_tests`\)/u,
+  )
+  assert.match(section, /with 13 workers/u)
+
+  // A legacy row carries no summed file time, so its point has no marginal
+  // cost and the card says so rather than printing a fabricated zero.
+  const withoutMarginal = renderSuiteProfileSection(null, {
+    series_path: 'runtime/fast-wall-series.jsonl',
+    before: null,
+    after: {
+      recorded_at: '2026-09-15T02:00:00.000Z',
+      wall_clock_ms: 118_000,
+      test_count: 1305,
+      worker_count: 13,
+      phase: 'implement.unit_tests',
+      marginal_wall_ms_per_test: null,
+    },
+  }).join('\n')
+
+  assert.match(withoutMarginal, /Before implement: no fast-lane record\./u)
+  assert.match(withoutMarginal, /marginal cost unavailable/u)
+})
+
 test('fixture sidecars live in the runner scratch tree, not the profile target', () => {
   const scratch = createTestTempDirectory('pancreator-sidecar-scratch-')
   const target = path.join(

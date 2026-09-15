@@ -20,6 +20,10 @@ acceptance criterion.
 4. Add or update tests that prove the changed behavior. Do not weaken, skip,
    or delete existing tests to make the change pass; a needed test change must
    be disclosed in the notes with its reason.
+   Use the `checkpoint` helper for driven workflow runs and the read-only
+   `sharedFixture` as the default fixtures. Keep isolated logic in the unit
+   lane, fixture or subprocess behavior in integration, and slow installer or
+   release paths in secondary.
 5. After each group of changes, run the declared `impacted` profile plus any
    tests you added. In self-development that is `./bin/pan tests impacted`
    (static import-graph analysis selects the test modules your change set
