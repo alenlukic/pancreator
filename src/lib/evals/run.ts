@@ -221,7 +221,7 @@ function deliveryAutostartSteps(
   }
 
   return [
-    `Delivery autostart ${autostart.status} (cohort): session ${autostart.cohort_id} started ${autostart.chunks.length} chunk run(s) of cohort ${autostart.cohort_index} with ${autostart.deferred_chunks.length} deferred under a parallelism limit of ${autostart.max_parallel}. Supervise them with \`${autostart.supervise_command}\`, start deferred chunks with \`${pan} cohort start ${autostart.cohort_id}\` as slots free, and integrate each finished cohort with \`${pan} cohort integrate ${autostart.cohort_id}\`.`,
+    `Delivery autostart ${autostart.status} (cohort): session ${autostart.cohort_id} started ${autostart.chunks.length} chunk run(s) of cohort ${autostart.cohort_index} with ${autostart.deferred_chunks.length} deferred under a parallelism limit of ${autostart.max_parallel}. Supervise them with \`${autostart.supervise_command}\` and start deferred chunks with \`${pan} cohort start ${autostart.cohort_id}\` as slots free. The harness integrates each finished cohort itself; retry a failed advance with \`${pan} cohort integrate ${autostart.cohort_id}\`.`,
     `When every cohort is satisfied (\`${pan} cohort status ${autostart.cohort_id}\`), run \`${grade}\`.`,
   ]
 }

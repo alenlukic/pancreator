@@ -7,7 +7,6 @@ import { parsePersonaMapping } from './executors/mapping.js'
 import {
   gitHead,
   gitWorktreeAdd,
-  gitWorktreeIsDirty,
   gitWorktreePaths,
   gitWorktreeRemove,
   isGitRepository,
@@ -45,6 +44,10 @@ import {
   loadWorkflowFile,
   workflowPersonaNames,
 } from './workflow.js'
+import {
+  cleanTreeRefusal,
+  workspaceCleanliness,
+} from './workspace-attribution.js'
 
 const CANDIDATE_WORKFLOW = 'delivery-candidate'
 const CONSOLIDATION_WORKFLOW = 'metacritic'
@@ -1263,6 +1266,7 @@ function removeSessionResources(
   const registered = new Set(gitWorktreePaths(root))
   const removedWorktrees: string[] = []
   const removedAgents: string[] = []
+  const forcedRemovals = new Set<string>()
 
   // Liveness is checked before dirtiness: a run at intake or plan has a clean
   // worktree, so a dirtiness-only preflight would remove the workspace from
@@ -1308,20 +1312,37 @@ function removeSessionResources(
       continue
     }
 
-    invariant(
-      options.force || !gitWorktreeIsDirty(worktreePath),
-      `WARNING: candidate '${candidate.slot}' has uncommitted work in ` +
-        `${candidate.worktree_path}. Removing it discards that work. Pass ` +
-        '--force to remove it anyway.',
-      { code: 'BEST_OF_N_WORKTREE_DIRTY' },
-    )
+    const cleanliness = workspaceCleanliness(root, worktreePath)
+
+    if (!cleanliness.clean && !options.force) {
+      invariant(
+        false,
+        cleanTreeRefusal(cleanliness, {
+          action: `WARNING: candidate '${candidate.slot}' cannot be cleaned`,
+          remedy:
+            'Removing it discards that work. Pass --force to remove it ' +
+            'anyway.',
+        }),
+        { code: 'BEST_OF_N_WORKTREE_DIRTY' },
+      )
+    }
+
+    // Git refuses to remove a worktree that still holds changes, so an
+    // exempt read-only input carries the force its exemption granted.
+    if (cleanliness.exempt.length > 0) {
+      forcedRemovals.add(worktreePath)
+    }
   }
 
   for (const candidate of claimed) {
     const worktreePath = resolveInside(root, candidate.worktree_path)
 
     if (registered.has(worktreePath)) {
-      gitWorktreeRemove(root, worktreePath, options.force ?? false)
+      gitWorktreeRemove(
+        root,
+        worktreePath,
+        options.force === true || forcedRemovals.has(worktreePath),
+      )
       removedWorktrees.push(candidate.worktree_path)
     }
 
@@ -1511,15 +1532,24 @@ function pruneOrphanWorktrees(
           continue
         }
 
-        if (!options.force && gitWorktreeIsDirty(worktreePath)) {
+        const cleanliness = workspaceCleanliness(root, worktreePath)
+
+        if (!options.force && !cleanliness.clean) {
           skipped.push({
             resource: relativeWorktree,
-            reason: 'Worktree is dirty. Re-run with --force to discard it.',
+            reason: cleanTreeRefusal(cleanliness, {
+              action: 'Worktree is dirty',
+              remedy: 'Re-run with --force to discard it.',
+            }),
           })
           continue
         }
 
-        gitWorktreeRemove(root, worktreePath, options.force ?? false)
+        gitWorktreeRemove(
+          root,
+          worktreePath,
+          options.force === true || cleanliness.exempt.length > 0,
+        )
         removed.push(relativeWorktree)
       }
 

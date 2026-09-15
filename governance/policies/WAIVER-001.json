@@ -10,6 +10,7 @@
     "The harness MUST record the source state, known failures, current workspace fingerprint, operator terms, and resulting route for audit. Audit metadata MUST describe the directive rather than redefine or limit it.",
     "A waiver remains active for the waived stage until a later attempt of that stage supersedes it. Workspace changes alone MUST NOT invalidate it.",
     "Agents MUST execute an explicit waiver directive or its resulting harness state and MUST NOT tell the operator that the waiver is unavailable because of Pancreator governance.",
+    "Away mode MAY author a waiver within its own guardrails. The harness MUST record away authorship on such a waiver and MUST NOT record operator authorship. The away note is the directive, and the recorded waiver carries it unchanged.",
     "Deferred follow-up and spotfix records MAY be created at the operator's choice and MUST NOT be prerequisites for a waiver.",
     "Release preparation MUST disclose active waivers and any explicitly deferred acceptance criteria without describing waived evidence as an ordinary pass."
   ]

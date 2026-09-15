@@ -75,6 +75,11 @@ function option(rank: number, action: AwayModeAction): Record<string, unknown> {
     },
     ...(action === 'revise' ? { note: 'Clarify the implementation.' } : {}),
     ...(action === 'set-stage' ? { stage: 'implement' } : {}),
+    ...(action === 'waive-gate'
+      ? {
+          note: 'The baseline is stale rather than the change broken; route the run to ship.',
+        }
+      : {}),
   }
 }
 
@@ -210,7 +215,7 @@ test('away mode rejects duplicate ranks and missing action details', () => {
       parseAwayOptions({
         ranked_options: [{ ...option(1, 'resume'), action: 'push' }],
       }),
-    /MUST be approve/u,
+    /MUST be one of approve, reject, revise, resume, set-stage, waive-gate/u,
   )
   assert.throws(
     () =>
@@ -1057,4 +1062,111 @@ test('away mode rejects unsupported configured actions', () => {
     () => resolveAwayModeConfig(root),
     /allowed_actions MUST contain only/u,
   )
+})
+
+test('waive-gate is inside the away vocabulary and needs a note to be selected', () => {
+  // The action used to be forbidden outright, so an ordinary ranking that
+  // reached for it ended the session instead of clearing the blocker.
+  assert.ok(AWAY_MODE_ACTIONS.includes('waive-gate'))
+
+  const selected = selectAwayOption(
+    parseAwayOptions({ ranked_options: [option(1, 'waive-gate')] }),
+    awayConfig(),
+  )
+
+  assert.equal(selected.selected?.action, 'waive-gate')
+  assert.deepEqual(selected.rejected, [])
+
+  // The note is the directive the waiver records, so an option without one
+  // has nothing to record.
+  const unnoted = selectAwayOption(
+    parseAwayOptions({
+      ranked_options: [{ ...option(1, 'waive-gate'), note: undefined }],
+    }),
+    awayConfig(),
+  )
+
+  assert.equal(unnoted.selected, null)
+  assert.match(unnoted.rejected[0]?.reason ?? '', /note/u)
+
+  // Guardrails still narrow it: an operator who omits it gets it refused.
+  const narrowed = selectAwayOption(
+    parseAwayOptions({ ranked_options: [option(1, 'waive-gate')] }),
+    awayConfig({ allowed_actions: ['approve', 'resume'] }),
+  )
+
+  assert.equal(narrowed.selected, null)
+  assert.match(narrowed.rejected[0]?.reason ?? '', /guardrails/u)
+})
+
+test('an applied waive-gate decision records away authorship with its reason', () => {
+  const root = createFixture()
+
+  enableAwayMode(root, { allowed_actions: ['waive-gate'] })
+
+  const state = blockedRun(root)
+  const blocker = awayModeTrigger(state)
+
+  assert.ok(blocker)
+
+  const record = recordAwayEvaluation(
+    root,
+    state,
+    blocker,
+    { ranked_options: [option(1, 'waive-gate')] },
+    '2026-08-21T12:00:00.000Z',
+  )
+
+  assert.equal(record.result, 'accepted')
+  assert.equal(record.selected_action?.action, 'waive-gate')
+  assert.match(record.selected_action?.note ?? '', /route the run to ship/u)
+
+  const applied = recordAwayApplyResult(
+    root,
+    record,
+    'applied',
+    undefined,
+    'waive-gate',
+  )
+
+  assert.equal(applied.applied_action, 'waive-gate')
+  assert.equal(applied.linked_decision_id, record.decision_id)
+  assert.match(applied.selected_action?.note ?? '', /stale/u)
+
+  // The away ledger is the only place this decision is written. Nothing here
+  // is presented as an operator decision.
+  const ledger = readAwayDecisionLedger(root)
+
+  assert.ok(
+    ledger.some((entry) => entry.decision_id === applied.decision_id),
+    'the applied waiver decision is missing from the away ledger',
+  )
+  assert.deepEqual(validateAwayDecisionLedger(handlerInput(root)), {
+    status: 'passed',
+    issues: [],
+  })
+})
+
+test('the evaluator prompt states when a gate waiver may be ranked', () => {
+  const root = createFixture()
+
+  enableAwayMode(root)
+
+  const state = blockedRun(root)
+  const blocker = awayModeTrigger(state)
+
+  assert.ok(blocker)
+
+  const prompt = awayEvaluatorPrompt(root, state, blocker, {
+    hypervisorEventsPath: 'runtime/logs/hypervisor/events.jsonl',
+  })
+
+  // A bare "waive-gate is allowed" would let the evaluator reach for it on
+  // any blocker, which is the discretion the operator did not grant.
+  assert.match(prompt, /waive-gate/u)
+  assert.match(prompt, /mechanical/u)
+  assert.match(prompt, /note/u)
+  // A forward route past a gate is refused unless the note names where the
+  // run is going, so the prompt has to ask for it.
+  assert.match(prompt, /destination stage|stage or the gate|gate it waives/u)
 })

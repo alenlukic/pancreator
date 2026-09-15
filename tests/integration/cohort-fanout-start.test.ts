@@ -24,6 +24,7 @@ import { prepareInvocation } from '../../src/lib/engine.js'
 import { repositoryChecksConfigDigest } from '../../src/lib/gate-cache.js'
 import { gitWorkspaceSnapshot } from '../../src/lib/git.js'
 import { loadState } from '../../src/lib/state.js'
+import { recordWorkspaceAttribution } from '../../src/lib/workspace-attribution.js'
 import { readWorktreeIndex } from '../../src/lib/worktrees.js'
 import { attestRunCard, createFixture, writeJson } from '../helpers.js'
 import { git, markSucceeded, ratifiedPlanRun } from './cohort-helpers.js'
@@ -543,13 +544,32 @@ test('cleaning a session removes its chunk worktrees and keeps the branches', ()
   writeFileSync(path.join(root, workspaces[1], 'scratch.txt'), 'wip\n')
   assert.throws(
     () => cleanCohortSession(root, session.cohort_id),
-    (error: unknown) =>
-      error instanceof PanError && error.code === 'COHORT_WORKTREE_DIRTY',
+    (error: unknown) => {
+      assert.ok(error instanceof PanError)
+      assert.equal(error.code, 'COHORT_WORKTREE_DIRTY')
+      assert.match(error.message, /- `scratch\.txt` — no attribution record/u)
+
+      return true
+    },
   )
   assert.equal(readWorktreeIndex(root).worktrees.length, 2)
   assert.ok(existsSync(path.join(root, workspaces[0])))
 
   rmSync(path.join(root, workspaces[1], 'scratch.txt'))
+
+  // A chunk holding only a recorded read-only input is not uncommitted work,
+  // so cleanup proceeds without --force. Git still needs force to discard the
+  // file, and the harness supplies it from the exemption.
+  writeFileSync(path.join(root, workspaces[0], 'design-source.svg'), '<svg/>\n')
+  recordWorkspaceAttribution(root, {
+    workspacePath: root,
+    runId: planRunId,
+    actingRole: 'operator',
+    directive: 'Keep the design source I exported available to every chunk.',
+    disposition: 'read-only-input',
+    paths: ['design-source.svg'],
+    artifactPath: `runtime/logs/workflows/${planRunId}/agent/evidence/workspace-directive-1.md`,
+  })
 
   const cleaned = cleanCohortSession(root, session.cohort_id)
   const branches = git(root, ['branch', '--format=%(refname:short)'])

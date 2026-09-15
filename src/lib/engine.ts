@@ -249,6 +249,7 @@ import type {
   SupervisorAssessment,
   TaskRecord,
   WorkflowDefinition,
+  WorkspaceAttributionDisposition,
   WorkspaceDirectiveRecord,
   WorkspaceSnapshot,
   WorktreeClaimTransfer,
@@ -288,6 +289,7 @@ import {
 import {
   gitStatusPaths,
   gitWorkspaceSnapshot,
+  isGitRepository,
   snapshotEntryPath,
   workspaceChangedPathsFromSnapshots,
 } from './git.js'
@@ -299,6 +301,10 @@ import {
   PROTECTED_PATH_RULE,
 } from './workspace/protected-paths.js'
 import { worktreeReadiness } from './worktrees.js'
+import {
+  DEFAULT_WORKSPACE_ATTRIBUTION_DISPOSITION,
+  recordWorkspaceAttribution,
+} from './workspace-attribution.js'
 
 /**
  * Persona-to-model map that replaces the active pipeline config for one run.
@@ -8189,6 +8195,7 @@ export function recordWorkspaceDirective(
   options: {
     directive: string
     actingRole?: WorkspaceDirectiveRecord['acting_role']
+    disposition?: WorkspaceAttributionDisposition
     paths?: string[]
   },
 ): WorkspaceDirectiveRecord {
@@ -8201,6 +8208,7 @@ export function recordWorkspaceDirective(
     })
 
     const workspace = workspaceSnapshotForRun(root, state)
+    const workspacePath = workspaceDirectory(root, state)
     const declared = (options.paths ?? [])
       .map((item) => item.trim())
       .filter((item) => item.length > 0)
@@ -8208,7 +8216,7 @@ export function recordWorkspaceDirective(
       ...new Set(
         declared.length > 0
           ? declared
-          : gitStatusPaths(workspaceDirectory(root, state)).filter(
+          : gitStatusPaths(workspacePath).filter(
               (relativePath) =>
                 !relativePath.startsWith('runtime/') &&
                 !isProtectedWorkspacePath(relativePath),
@@ -8228,6 +8236,8 @@ export function recordWorkspaceDirective(
       `workspace-directive-${records.length + 1}.md`,
     ).relative
     const actingRole = options.actingRole ?? 'supervisor'
+    const disposition =
+      options.disposition ?? DEFAULT_WORKSPACE_ATTRIBUTION_DISPOSITION
     const timestamp = now()
     const beforeFingerprint = lastAccountableFingerprint(state)
     const record: WorkspaceDirectiveRecord = {
@@ -8235,6 +8245,7 @@ export function recordWorkspaceDirective(
       acting_role: actingRole,
       directive,
       stage: state.current_stage ?? 'none',
+      disposition,
       changed_paths: changedPaths,
       ...(beforeFingerprint
         ? { workspace_before_fingerprint: beforeFingerprint }
@@ -8251,6 +8262,7 @@ export function recordWorkspaceDirective(
         '',
         `**Run** \`${runId}\` · **Stage** \`${record.stage}\``,
         `**Acting role:** ${actingRole}`,
+        `**Disposition:** ${disposition}`,
         `**Recorded at:** ${timestamp}`,
         `**Workspace fingerprint:** \`${beforeFingerprint ?? 'unrecorded'}\` → \`${workspace.fingerprint}\``,
         '',
@@ -8265,12 +8277,30 @@ export function recordWorkspaceDirective(
       ].join('\n') + '\n',
     )
 
+    // One command writes both records: the run-scoped directive that answers
+    // who changed the workspace, and the repository-scoped attribution every
+    // clean-tree gate reads. A workspace Git does not track has no repository
+    // to key the second record on, and no clean-tree gate can refuse it, so
+    // the directive record is written alone rather than lost to a Git error.
+    if (isGitRepository(workspacePath)) {
+      recordWorkspaceAttribution(root, {
+        workspacePath,
+        runId,
+        actingRole,
+        directive,
+        disposition,
+        paths: changedPaths,
+        artifactPath: relativePath,
+      })
+    }
+
     records.push(record)
     state.workspace_directives = records
     persistRun(root, state, 'workspace_directive_recorded', {
       directive_id: record.directive_id,
       acting_role: actingRole,
       stage: record.stage,
+      disposition,
       changed_paths: changedPaths,
       artifact_path: relativePath,
     })
@@ -8575,6 +8605,11 @@ export interface WaiveGateOptions {
    * record the move.
    */
   adoptPlanFromRunId?: string | null
+  /**
+   * Who authored the directive. Away mode may waive a gate under
+   * `AWAY-001`, and that waiver MUST NOT be recorded as the operator's.
+   */
+  actor?: RunActionActor
 }
 
 /**
@@ -8970,8 +9005,10 @@ export function waiveGate(
             sourceEvidencePath,
           )
         : undefined
+    const actor = options.actor ?? 'operator'
+    const authorship = actor === 'away' ? 'Away-mode' : 'Operator'
     const body = [
-      '# Operator waiver directive',
+      `# ${authorship} waiver directive`,
       '',
       `**Run** \`${state.run_id}\` · **Stage** \`${stage.slug}\` · ` +
         `**Source attempt** ${history?.attempt ?? 'none'} · **Route to** \`${target}\``,
@@ -9003,7 +9040,7 @@ export function waiveGate(
             '',
           ]
         : []),
-      '## Operator terms',
+      `## ${authorship} terms`,
       '',
       options.note.trim(),
       '',
@@ -9026,7 +9063,7 @@ export function waiveGate(
               : []),
           ]
         : []),
-      'This artifact records the operator directive; it does not constrain or reinterpret the directive beyond the terms written above.',
+      `This artifact records the ${authorship.toLowerCase()} directive; it does not constrain or reinterpret the directive beyond the terms written above.`,
       '',
     ].join('\n')
 
@@ -9047,6 +9084,7 @@ export function waiveGate(
         : {}),
       directive_target: target,
       validation_errors: history?.validation_errors ?? [],
+      ...(actor === 'away' ? { actor } : {}),
       note: options.note.trim(),
       artifact_path: artifactPath,
       deferred_acceptance_criteria: deferred,
@@ -9075,25 +9113,32 @@ export function waiveGate(
 
     state.last_decision_path = artifactPath
 
-    persistRun(root, state, 'operator_gate_waived', {
-      waiver_id: waiverId,
-      stage: stage.slug,
-      source_invocation_id: waiver.source_invocation_id,
-      source_attempt: waiver.source_attempt,
-      source_evidence_path: sourceEvidencePath,
-      criterion_ids: waivedCriteria,
-      workspace_fingerprint: workspace.fingerprint,
-      source_workspace_fingerprint: waiver.source_workspace_fingerprint ?? null,
-      directive_target: target,
-      spotfix_case_path: spotfixCasePath ?? null,
-      entry_gates_reached: entryGatesReached,
-      ...(claimTransfer
-        ? {
-            worktree_claim_adopted_from: claimTransfer.from_run_id,
-            worktree: claimTransfer.worktree,
-          }
-        : {}),
-    })
+    persistRun(
+      root,
+      state,
+      actor === 'away' ? 'away_gate_waived' : 'operator_gate_waived',
+      {
+        actor,
+        waiver_id: waiverId,
+        stage: stage.slug,
+        source_invocation_id: waiver.source_invocation_id,
+        source_attempt: waiver.source_attempt,
+        source_evidence_path: sourceEvidencePath,
+        criterion_ids: waivedCriteria,
+        workspace_fingerprint: workspace.fingerprint,
+        source_workspace_fingerprint:
+          waiver.source_workspace_fingerprint ?? null,
+        directive_target: target,
+        spotfix_case_path: spotfixCasePath ?? null,
+        entry_gates_reached: entryGatesReached,
+        ...(claimTransfer
+          ? {
+              worktree_claim_adopted_from: claimTransfer.from_run_id,
+              worktree: claimTransfer.worktree,
+            }
+          : {}),
+      },
+    )
 
     return {
       state,

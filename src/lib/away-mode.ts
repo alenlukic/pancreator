@@ -138,7 +138,7 @@ function parseOption(value: unknown, index: number): AwayOption {
   )
   invariant(
     isAwayAction(value.action),
-    `${source}.action MUST be approve, reject, revise, resume, or set-stage.`,
+    `${source}.action MUST be one of ${AWAY_MODE_ACTIONS.join(', ')}.`,
     { code: 'INVALID_AWAY_DECISION' },
   )
   invariant(
@@ -206,6 +206,13 @@ function hardDenialReason(option: AwayOption): string | null {
 
   if (option.action === 'revise' && !option.note?.trim()) {
     return 'revise requires a non-empty note.'
+  }
+
+  // The note is the waiver directive itself, and `waiveGate` refuses an empty
+  // one. Denying it here keeps the refusal in the ranking, where the rejected
+  // rank explains why the evaluator's first choice was skipped.
+  if (option.action === 'waive-gate' && !option.note?.trim()) {
+    return 'waive-gate requires a non-empty note stating the waiver reason.'
   }
 
   return null
@@ -683,7 +690,7 @@ const AWAY_OPTION_SHAPE = {
     steps: ['one step per string'],
     verification: 'how to confirm the rollback took effect',
   },
-  note: 'only for revise',
+  note: 'only for revise and waive-gate',
   stage: 'only for set-stage',
 }
 
@@ -763,7 +770,8 @@ export function awayEvaluatorPrompt(
     'Return exactly one object with the single top-level key ranked_options and no prose. Every option has exactly this shape and these value types:',
     JSON.stringify(AWAY_OPTION_SHAPE),
     'rank starts at 1 with no gaps. action is one of allowed_actions. evidence entries are paths taken from evidence_references or stage_artifacts. rollback_plan.steps is a non-empty array of strings and rollback_plan.verification is one string.',
-    'revise needs note. set-stage needs stage. Otherwise omit note and stage.',
+    'revise needs note. waive-gate needs note. set-stage needs stage. Otherwise omit note and stage.',
+    'Rank waive-gate only when the blocker has a mechanical or administrative root cause, or a blast radius limited enough to remediate separately, and the run would otherwise stop for the rest of the operator absence. Prefer revise or resume when the work itself can still be repaired. The note becomes the recorded waiver directive, so it states the reason, what is deferred, and the destination stage or the gate it gives up.',
     JSON.stringify({
       run_id: state.run_id,
       invocation_id: state.current_invocation?.id ?? null,

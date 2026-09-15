@@ -22,7 +22,6 @@ import {
   gitStagePaths,
   gitStatusPaths,
   gitUpstreamRemote,
-  gitWorktreeIsDirty,
 } from './git.js'
 import {
   isRecord,
@@ -49,6 +48,11 @@ import {
   resolveOrCreateWorktree,
   resolveWorktreeWorkspace,
 } from './worktrees.js'
+import {
+  cleanTreeRefusal,
+  committablePaths,
+  workspaceCleanliness,
+} from './workspace-attribution.js'
 
 /**
  * Paths a release must never carry. The rule is one exported constant so the
@@ -316,14 +320,18 @@ export function syncLocalRelease(
     { code: 'WORKTREE_BRANCH_MISMATCH' },
   )
 
-  const paths = gitStatusPaths(resolved.absolute)
+  const { committable, withheld } = committablePaths(
+    root,
+    resolved.absolute,
+    gitStatusPaths(resolved.absolute),
+  )
 
-  assertCommittablePaths(paths)
+  assertCommittablePaths(committable)
 
   let checkpointCommit: string | null = null
 
-  if (paths.length > 0) {
-    gitStagePaths(resolved.absolute, paths)
+  if (committable.length > 0) {
+    gitStagePaths(resolved.absolute, committable)
     checkpointCommit = gitCommit(resolved.absolute, message.trim())
   }
 
@@ -344,6 +352,7 @@ export function syncLocalRelease(
         resolved_commit: null,
       },
       checkpoint_commit: checkpointCommit,
+      withheld_paths: withheld,
       conflicted_paths: [],
     }
   }
@@ -389,6 +398,7 @@ export function syncLocalRelease(
     rebase_target: rebaseTarget,
     rebase_override: override,
     checkpoint_commit: checkpointCommit,
+    withheld_paths: withheld,
     conflicted_paths: rebase.conflicted_paths,
   }
 }
@@ -408,14 +418,19 @@ export function continueLocalRelease(
       status: 'conflict',
       worktree: resolved.record,
       branch: resolved.record.branch,
+      withheld_paths: [],
       conflicted_paths: unresolved,
     }
   }
 
-  const paths = gitStatusPaths(resolved.absolute)
+  const { committable, withheld } = committablePaths(
+    root,
+    resolved.absolute,
+    gitStatusPaths(resolved.absolute),
+  )
 
-  assertCommittablePaths(paths)
-  gitStagePaths(resolved.absolute, paths)
+  assertCommittablePaths(committable)
+  gitStagePaths(resolved.absolute, committable)
 
   const result = gitRebaseContinue(resolved.absolute)
 
@@ -431,6 +446,7 @@ export function continueLocalRelease(
     status: result.succeeded ? 'complete' : 'conflict',
     worktree: resolved.record,
     branch: resolved.record.branch,
+    withheld_paths: withheld,
     conflicted_paths: result.conflicted_paths,
   }
 }
@@ -493,7 +509,13 @@ export function finalizeLocalRelease(
   const existing = releaseIndex.releases.find(
     (entry) => entry.version === version,
   )
-  const releasePaths = gitStatusPaths(resolved.absolute)
+  // A path the operator recorded as a read-only input is never committable,
+  // so finalization must neither stage it nor refuse the release over it.
+  const releasePaths = committablePaths(
+    root,
+    resolved.absolute,
+    gitStatusPaths(resolved.absolute),
+  ).committable
   const currentHead = gitHead(resolved.absolute)
 
   if (
@@ -588,11 +610,19 @@ export function finalizeLocalRelease(
     resolved.absolute,
     `chore: index release v${version}`,
   )
-  const clean = !gitWorktreeIsDirty(resolved.absolute)
+  const cleanliness = workspaceCleanliness(root, resolved.absolute)
+  const clean = cleanliness.clean
 
-  invariant(clean, 'Release finalization left a dirty worktree.', {
-    code: 'RELEASE_WORKTREE_DIRTY',
-  })
+  if (!clean) {
+    invariant(
+      false,
+      cleanTreeRefusal(cleanliness, {
+        action: 'Release finalization left a dirty worktree',
+        remedy: 'Resolve each path, then finalize again.',
+      }),
+      { code: 'RELEASE_WORKTREE_DIRTY' },
+    )
+  }
   invariant(
     gitHead(resolved.absolute) === indexCommit &&
       gitIsAncestor(resolved.absolute, fetchedMain, releaseCommit),

@@ -1,5 +1,5 @@
 import { spawnSync, type SpawnSyncReturns } from 'node:child_process'
-import { readFileSync, statSync } from 'node:fs'
+import { readFileSync, realpathSync, statSync } from 'node:fs'
 import path from 'node:path'
 
 import { PanError } from './errors.js'
@@ -68,6 +68,29 @@ export function gitHead(root: string): string | null {
 /** Absolute top-level directory of the repository that contains `directory`. */
 export function gitToplevel(directory: string): string {
   return runGit(directory, ['rev-parse', '--show-toplevel']).stdout.trim()
+}
+
+/**
+ * Absolute common Git directory of the repository that contains `directory`.
+ *
+ * The main checkout and every linked worktree report the same directory, so
+ * this is the identity that reaches every checkout of one repository. Git
+ * answers relatively inside the main checkout, so the value is resolved
+ * against the directory it was asked about and then canonicalized, because a
+ * repository reached through a symlinked parent must still compare equal.
+ */
+export function gitCommonDir(directory: string): string {
+  const reported = runGit(directory, [
+    'rev-parse',
+    '--git-common-dir',
+  ]).stdout.trim()
+  const absolute = path.resolve(directory, reported)
+
+  try {
+    return realpathSync.native(absolute)
+  } catch {
+    return absolute
+  }
 }
 
 /** Commit hash of a branch, tag, or revision expression. */
@@ -558,6 +581,53 @@ export function gitWorktreeIsDirty(worktreePath: string): boolean {
   )
 
   return result.status !== 0 || result.stdout.trim().length > 0
+}
+
+/** One path porcelain status reports for a worktree. */
+export interface GitDirtyEntry {
+  /** Repository-relative path. */
+  path: string
+  /** False only for an untracked (`??`) entry. */
+  tracked: boolean
+}
+
+/**
+ * Every path porcelain status reports for one worktree, sorted.
+ *
+ * `gitWorktreeIsDirty` answers whether anything is there; this answers what,
+ * so a caller can judge each path on its own. A status read that fails
+ * returns no entries, which is indistinguishable from a clean tree here, so a
+ * caller that must not read an unreadable worktree as clean keeps
+ * `gitWorktreeIsDirty` as its dirty signal. Both sides of a rename are
+ * tracked paths.
+ */
+export function gitDirtyEntries(worktreePath: string): GitDirtyEntry[] {
+  const result = runGit(
+    worktreePath,
+    ['status', '--porcelain=v1', '--untracked-files=all', '-z'],
+    { allowFailure: true },
+  )
+
+  if (result.status !== 0) {
+    return []
+  }
+
+  const tracked = new Map<string, boolean>()
+
+  for (const entry of parsePorcelainStatus(result.stdout)) {
+    tracked.set(entry.path, entry.status !== '??')
+
+    if (entry.source) {
+      tracked.set(entry.source, true)
+    }
+  }
+
+  return [...tracked]
+    .map(([relativePath, isTracked]) => ({
+      path: relativePath,
+      tracked: isTracked,
+    }))
+    .sort((left, right) => left.path.localeCompare(right.path))
 }
 
 export interface GitMergeResult {

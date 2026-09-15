@@ -6,7 +6,9 @@
  * unknown author.
  */
 import assert from 'node:assert/strict'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import type { SpawnSyncReturns } from 'node:child_process'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -15,7 +17,12 @@ import {
   prepareInvocation,
   recordWorkspaceDirective,
 } from '../../src/lib/engine.js'
+import { readJson, writeJsonAtomic } from '../../src/lib/io.js'
+import { resolveRunLayout } from '../../src/lib/run-layout.js'
 import { stageBySlug } from '../../src/lib/workflow.js'
+import { workspaceCleanliness } from '../../src/lib/workspace-attribution.js'
+import type { RunState, WorkspaceDirectiveRecord } from '../../src/lib/types.js'
+import { createTestTempDirectory } from '../temp.js'
 import { checkpoint, submitStageOutput } from './delivery-helpers.js'
 
 test('a supervisor-executed operator directive is recorded and named on the next card', () => {
@@ -34,6 +41,11 @@ test('a supervisor-executed operator directive is recorded and named on the next
   const record = recordWorkspaceDirective(root, runId, { directive })
 
   assert.equal(record.acting_role, 'supervisor')
+  assert.equal(
+    record.disposition,
+    'operator-owned',
+    'a directive that names no disposition keeps every refusal in place',
+  )
   assert.equal(record.directive, directive)
   assert.deepEqual(record.changed_paths, ['src/directed-fixture.ts'])
   assert.match(record.timestamp, /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/u)
@@ -58,6 +70,7 @@ test('a supervisor-executed operator directive is recorded and named on the next
   const artifact = readFileSync(path.join(root, record.artifact_path), 'utf8')
 
   assert.match(artifact, /\*\*Acting role:\*\* supervisor/u)
+  assert.match(artifact, /\*\*Disposition:\*\* operator-owned/u)
   assert.match(artifact, /Repair the stale fixture/u)
   assert.match(artifact, /- `src\/directed-fixture\.ts`/u)
   assert.match(
@@ -97,11 +110,26 @@ test('a supervisor-executed operator directive is recorded and named on the next
   assert.notEqual(second.artifact_path, record.artifact_path)
   assert.deepEqual(second.changed_paths, ['src/directed-fixture-two.ts'])
 
+  // Age the first record into the shape every directive written before this
+  // field carries, so the card resolves an absent disposition rather than
+  // printing `undefined` to every run whose directives predate the change.
+  const statePath = resolveRunLayout(root, runId).state.absolute
+  const persisted = readJson(statePath) as RunState
+  const aged = persisted.workspace_directives?.[0]
+
+  assert.ok(aged)
+  delete aged.disposition
+  writeJsonAtomic(statePath, persisted)
+
+  const legacyRecord: WorkspaceDirectiveRecord = { ...record }
+
+  delete legacyRecord.disposition
+
   // The next worker reads the attribution instead of auditing the delta.
   const next = prepareInvocation(root, runId)
 
   assert.ok(next.invocation)
-  assert.deepEqual(next.invocation.attributed_changes, [record, second])
+  assert.deepEqual(next.invocation.attributed_changes, [legacyRecord, second])
 
   const card = readFileSync(
     path.join(root, next.state.current_invocation?.markdown_path ?? ''),
@@ -110,5 +138,137 @@ test('a supervisor-executed operator directive is recorded and named on the next
 
   assert.match(card, /## 📌 Attributed workspace changes/u)
   assert.match(card, /- `src\/directed-fixture\.ts`/u)
-  assert.match(card, /Repair the stale fixture/u)
+  assert.match(
+    card,
+    /disposition `operator-owned`\): Repair the stale fixture/u,
+    'a record carrying no disposition key renders the default on the card',
+  )
+  assert.match(
+    card,
+    /disposition `operator-owned`\): Repair the second stale fixture/u,
+    'a record carrying the field renders the value it carries',
+  )
+})
+
+test('the disposition an operator chooses reaches the record, the artifact, and the card', () => {
+  const { root, runId, workflow } = checkpoint('delivery@verify-prepared')
+
+  submitStageOutput(root, runId, stageBySlug(workflow, 'verify'), 'success')
+
+  // The operator placed a design source as an input and directed the
+  // supervisor to record it as one.
+  writeFileSync(path.join(root, 'design-source.svg'), '<svg/>\n')
+
+  const record = recordWorkspaceDirective(root, runId, {
+    directive: 'Keep the design source I exported available to every stage.',
+    disposition: 'read-only-input',
+    paths: ['design-source.svg'],
+  })
+
+  assert.equal(record.disposition, 'read-only-input')
+  assert.deepEqual(getRunState(root, runId).workspace_directives, [record])
+  assert.match(
+    readFileSync(path.join(root, record.artifact_path), 'utf8'),
+    /\*\*Disposition:\*\* read-only-input/u,
+  )
+
+  // The same command wrote the repository-scoped record every clean-tree
+  // gate reads, so the placed input is already clean state.
+  const report = workspaceCleanliness(root, root)
+
+  assert.deepEqual(
+    report.exempt.map((entry) => entry.path),
+    ['design-source.svg'],
+  )
+  assert.deepEqual(
+    report.blocking.filter((entry) => entry.path === 'design-source.svg'),
+    [],
+  )
+
+  const next = prepareInvocation(root, runId)
+  const card = readFileSync(
+    path.join(root, next.state.current_invocation?.markdown_path ?? ''),
+    'utf8',
+  )
+
+  assert.match(card, /disposition `read-only-input`/u)
+})
+
+test('a directive is recorded for a workspace that holds no repository', () => {
+  const { root, runId } = checkpoint('delivery@verify-prepared')
+
+  // A run may be bound to a plain directory, which is why the workspace
+  // snapshot carries a filesystem branch. Such a workspace has no repository
+  // to key an attribution on, and the run-scoped record must survive anyway.
+  const workspace = createTestTempDirectory('repositoryless-workspace-')
+  const statePath = resolveRunLayout(root, runId).state.absolute
+  const state = readJson(statePath) as RunState
+
+  writeFileSync(path.join(workspace, 'placed-input.txt'), 'operator input\n')
+  state.workspace_root = workspace
+  writeJsonAtomic(statePath, state)
+
+  const record = recordWorkspaceDirective(root, runId, {
+    directive: 'Keep the input I placed in this workspace.',
+    disposition: 'read-only-input',
+    paths: ['placed-input.txt'],
+  })
+
+  assert.deepEqual(getRunState(root, runId).workspace_directives, [record])
+  assert.match(
+    readFileSync(path.join(root, record.artifact_path), 'utf8'),
+    /\*\*Disposition:\*\* read-only-input/u,
+  )
+  assert.equal(
+    existsSync(
+      path.join(root, 'runtime', 'logs', 'workspace-attributions.json'),
+    ),
+    false,
+    'no repository holds the workspace, so no repository-scoped record exists',
+  )
+})
+
+test('pan attribute rejects a disposition the harness does not define', () => {
+  const { root, runId } = checkpoint('delivery@verify-prepared')
+
+  writeFileSync(path.join(root, 'design-source.svg'), '<svg/>\n')
+
+  const attribute = (disposition: string): SpawnSyncReturns<string> =>
+    spawnSync(
+      process.execPath,
+      [
+        path.join(process.cwd(), 'dist', 'src', 'cli.js'),
+        'attribute',
+        runId,
+        '--note',
+        'Keep the design source I exported available to every stage.',
+        '--paths',
+        'design-source.svg',
+        '--disposition',
+        disposition,
+        '--json',
+      ],
+      { cwd: root, encoding: 'utf8', timeout: 120_000 },
+    )
+
+  const rejected = attribute('read-only')
+
+  assert.notEqual(rejected.status, 0)
+  assert.equal(
+    (JSON.parse(rejected.stderr) as { error: string }).error,
+    'INVALID_ARGUMENT',
+  )
+  assert.deepEqual(
+    getRunState(root, runId).workspace_directives ?? [],
+    [],
+    'a rejected disposition records nothing',
+  )
+
+  const accepted = attribute('commit-with-unit')
+
+  assert.equal(accepted.status, 0)
+  assert.equal(
+    (JSON.parse(accepted.stdout) as { disposition: string }).disposition,
+    'commit-with-unit',
+  )
 })

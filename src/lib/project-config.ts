@@ -71,6 +71,7 @@ export const AWAY_MODE_ACTIONS = [
   'revise',
   'resume',
   'set-stage',
+  'waive-gate',
 ] as const satisfies readonly AwayModeAction[]
 
 const DEFAULT_AWAY_MODE_ACTIONS = [...AWAY_MODE_ACTIONS]
@@ -269,7 +270,7 @@ function assertAwayModeBlock(value: unknown): void {
             typeof action === 'string' &&
             AWAY_MODE_ACTIONS.includes(action as AwayModeAction),
         )),
-    `${PROJECT_CONFIG_PATH}.away_mode.guardrails.allowed_actions MUST contain only approve, reject, revise, resume, or set-stage.`,
+    `${PROJECT_CONFIG_PATH}.away_mode.guardrails.allowed_actions MUST contain only ${AWAY_MODE_ACTIONS.join(', ')}.`,
     { code: 'INVALID_PROJECT_CONFIG' },
   )
 
