@@ -1,0 +1,5 @@
+# Worktree checkouts are full copies of this repository. Each carries its own
+# AGENTS.md, and Cursor otherwise discovers those as nested instruction files.
+worktrees/
+runtime/worktrees/
+.claude/worktrees/
